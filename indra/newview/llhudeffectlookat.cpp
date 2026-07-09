@@ -24,6 +24,13 @@
  * $/LicenseInfo$
  */
 
+// [BDMerge B11] setLookAt() gains an opt-in gate (BDMergeHideLookAt) that stops
+// this client's lookAt target from being broadcast (and locally animated) at all.
+// Donor: Black Dragon (Kyler Eastridge) 82477c484d / 5785bfdb70 / aae33e4ef2 / 2c91aed07b.
+// Note: Alchemy's pre-existing "EnableLookAtTarget" setting is a different,
+// unrelated feature here (render()'s local-indicator hide, "isPrivate") and is
+// left untouched. See doc/BD_MERGE_PATCHLOG.md.
+
 #include "llviewerprecompiledheaders.h"
 
 #include "llhudeffectlookat.h"
@@ -403,6 +410,27 @@ bool LLHUDEffectLookAt::setLookAt(ELookAtType target_type, LLViewerObject *objec
 {
     if (!mSourceObject)
     {
+        return false;
+    }
+
+    // [BDMerge B11] When enabled, stop sending (and locally animating) our own
+    // lookAt target entirely -- other clients no longer receive this client's
+    // focus target. Off by default: stock broadcast behavior is unchanged.
+    // Donor: Black Dragon 82477c484d5f605c44074c277230ea8d1a993fa2 (feature),
+    // 5785bfdb700c618365ea22c4deb3e6330d31c3d2 (fix: clear effect on toggle so
+    // it doesn't get stuck), aae33e4ef236359722fc8f0bfe4040392eaa3420 (rename).
+    static LLCachedControl<bool> bdmerge_hide_lookat(gSavedSettings, "BDMergeHideLookAt", false);
+    if (bdmerge_hide_lookat)
+    {
+        // Clear the effect so it doesn't linger around if it gets enabled mid-session
+        if (mTargetType != LOOKAT_TARGET_IDLE)
+        {
+            mTargetObject = gAgentAvatarp;
+            mTargetType = LOOKAT_TARGET_IDLE;
+            mTargetOffsetGlobal.set(2.f, 0.f, 0.f);
+            setDuration(3.f);
+            setNeedsSendToSim(true);
+        }
         return false;
     }
 

@@ -1957,6 +1957,17 @@
       <key>Value</key>
       <real>72.0</real>
     </map>
+    <key>BDMergeHideLookAt</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge B11] When enabled, stop sending (and locally animating) this client's lookAt/focus target entirely, so other clients no longer receive it. Off by default: stock lookAt broadcast behavior is unchanged. Distinct from EnableLookAtTarget, which only hides the local on-screen lookAt indicator for your own avatar. Donor: Black Dragon (Kyler Eastridge) 82477c484d/5785bfdb70. See doc/BD_MERGE_PATCHLOG.md.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
     <key>BDMergeSamplePatch</key>
     <map>
       <key>Comment</key>
