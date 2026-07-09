@@ -65,6 +65,7 @@
 #include "llurlfloaterdispatchhandler.h"
 #include "llviewerjoystick.h"
 #include "llcinematiccamera.h"
+#include "llheadrotmotion.h" // [BDMerge B4] per-frame push of head/eye rotation limits
 #include "llcalc.h"
 #include "llconversationlog.h"
 #if LL_WINDOWS
@@ -4989,6 +4990,26 @@ void LLAppViewer::idle()
             LL_INFOS("BDMerge") << "BDMergeSamplePatch toggled on (A0.1 scaffolding no-op)" << LL_ENDL;
         }
         bdmerge_sample_prev = bdmerge_sample;
+    }
+    // [BDMerge B4] configurable max head/eye rotation angle for lookAt (donor: Black
+    // Dragon 525e398af5). Pushes the per-frame setting into llcharacter's static
+    // constraint members, since llcharacter can't read gSavedSettings directly. When
+    // the gate is off, explicitly resets to the original stock constants so behavior
+    // stays bit-identical to stock rather than drifting from a stale pushed value.
+    {
+        static LLCachedControl<bool> bdmerge_head_eye_limits(gSavedSettings, "BDMergeHeadEyeLimits", false);
+        if (bdmerge_head_eye_limits)
+        {
+            static LLCachedControl<F32> bdmerge_head_limit_deg(gSavedSettings, "BDMergeHeadRotationLimit", 72.0f);
+            static LLCachedControl<F32> bdmerge_eye_limit_deg(gSavedSettings, "BDMergeEyeRotationLimit", 27.0f);
+            LLHeadRotMotion::setHeadRotationConstraint(bdmerge_head_limit_deg * DEG_TO_RAD);
+            LLEyeMotion::setEyeRotationConstraint(bdmerge_eye_limit_deg * DEG_TO_RAD);
+        }
+        else
+        {
+            LLHeadRotMotion::resetHeadRotationConstraint();
+            LLEyeMotion::resetEyeRotationConstraint();
+        }
     }
 
     F32 dt_raw = idle_timer.getElapsedTimeAndResetF32();

@@ -101,6 +101,12 @@ public:
     // called when a motion is deactivated
     virtual void onDeactivate();
 
+    // [BDMerge B4] configurable max head rotation angle, gated by BDMergeHeadEyeLimits
+    // (donor: Black Dragon 525e398af5). Pushed per-frame from newview via LLCachedControl;
+    // defaults to HEAD_ROTATION_CONSTRAINT so gate-off behavior is unchanged from stock.
+    static void setHeadRotationConstraint(F32 radians) { sHeadRotationConstraint = radians; }
+    static void resetHeadRotationConstraint();
+
 public:
     //-------------------------------------------------------------------------
     // joint states to be animated
@@ -117,6 +123,9 @@ public:
     LLPointer<LLJointState> mHeadState;
 
     LLQuaternion        mLastHeadRot;
+
+    // [BDMerge B4]
+    static F32          sHeadRotationConstraint;
 };
 
 //-----------------------------------------------------------------------------
@@ -186,6 +195,12 @@ public:
     // called when a motion is deactivated
     virtual void onDeactivate();
 
+    // [BDMerge B4] configurable max eye rotation angle, gated by BDMergeHeadEyeLimits
+    // (donor: Black Dragon 525e398af5). Pushed per-frame from newview via LLCachedControl;
+    // defaults to EYE_ROT_LIMIT_ANGLE so gate-off behavior is unchanged from stock.
+    static void setEyeRotationConstraint(F32 radians) { sEyeRotationConstraint = radians; }
+    static void resetEyeRotationConstraint();
+
 public:
     //-------------------------------------------------------------------------
     // joint states to be animated
@@ -210,6 +225,9 @@ public:
     LLFrameTimer        mEyeBlinkTimer;
     F32                 mEyeBlinkTime;
     bool                mEyesClosed;
+
+    // [BDMerge B4]
+    static F32          sEyeRotationConstraint;
 };
 
 #endif // LL_LLHEADROTMOTION_H

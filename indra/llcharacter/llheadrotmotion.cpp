@@ -24,6 +24,12 @@
  * $/LicenseInfo$
  */
 
+// [BDMerge B4] Configurable max head/eye rotation angle for lookAt, gated by
+// BDMergeHeadEyeLimits. donor: Black Dragon (NiranV Dean) 525e398af5 "Modify
+// head tracking options to allow customizing max head and eye rotation in
+// degrees", defaults per follow-up 637c2c6f7d/9b824a0b50. Gate-off behavior
+// is bit-identical to stock (statics default to the original constants).
+
 //-----------------------------------------------------------------------------
 // Header Files
 //-----------------------------------------------------------------------------
@@ -62,6 +68,22 @@ const F32 EYE_BLINK_MAX_TIME = 8.f; // maximum amount of time between blinks
 const F32 EYE_BLINK_CLOSE_TIME = 0.03f; // how long the eye stays closed in a blink
 const F32 EYE_BLINK_SPEED = 0.015f;     // seconds it takes for a eye open/close movement
 const F32 EYE_BLINK_TIME_DELTA = 0.005f; // time between one eye starting a blink and the other following
+
+// [BDMerge B4] runtime-configurable copies of the constraint constants above.
+// Default to the stock constants so behavior is unchanged until newview pushes
+// a custom value (only while BDMergeHeadEyeLimits is enabled).
+F32 LLHeadRotMotion::sHeadRotationConstraint = HEAD_ROTATION_CONSTRAINT;
+F32 LLEyeMotion::sEyeRotationConstraint = EYE_ROT_LIMIT_ANGLE;
+
+void LLHeadRotMotion::resetHeadRotationConstraint()
+{
+    sHeadRotationConstraint = HEAD_ROTATION_CONSTRAINT;
+}
+
+void LLEyeMotion::resetEyeRotationConstraint()
+{
+    sEyeRotationConstraint = EYE_ROT_LIMIT_ANGLE;
+}
 
 //-----------------------------------------------------------------------------
 // LLHeadRotMotion()
@@ -231,7 +253,7 @@ bool LLHeadRotMotion::onUpdate(F32 time, U8* joint_mask)
     }
 
     LLQuaternion head_rot_local = targetHeadRotWorld * currentInvRootRotWorld;
-    head_rot_local.constrain(HEAD_ROTATION_CONSTRAINT);
+    head_rot_local.constrain(sHeadRotationConstraint); // [BDMerge B4]
 
     // set final torso rotation
     // Set torso target rotation such that it lags behind the head rotation
@@ -399,7 +421,7 @@ void LLEyeMotion::adjustEyeTarget(LLVector3* targetPos, LLJointState& left_eye_s
         target_eye_rot.getEulerAngles(&roll, &pitch, &yaw);
         target_eye_rot.setQuat(0.0f, pitch, yaw);
         // constrain target orientation to be in front of avatar's face
-        target_eye_rot.constrain(EYE_ROT_LIMIT_ANGLE);
+        target_eye_rot.constrain(sEyeRotationConstraint); // [BDMerge B4]
 
         // calculate vergence
         F32 interocular_dist = (left_eye_state.getJoint()->getWorldPosition() - right_eye_state.getJoint()->getWorldPosition()).magVec();
