@@ -24,6 +24,9 @@
  * $/LicenseInfo$
  */
 
+// [BDMerge C8] See llslider.h for the slider precision override note.
+// donor: Black Dragon (NiranV Dean) 94c47d42de.
+
 #include "linden_common.h"
 
 #include "llslider.h"
@@ -93,15 +96,20 @@ LLSlider::~LLSlider()
     delete mMouseUpSignal;
 }
 
-void LLSlider::setValue(F32 value, bool from_event)
+void LLSlider::setValue(F32 value, bool from_event, bool precision_override)
 {
     value = llclamp( value, mMinValue, mMaxValue );
 
-    // Round to nearest increment (bias towards rounding down)
-    value -= mMinValue;
-    value += mIncrement/2.0001f;
-    value -= fmod(value, mIncrement);
-    value += mMinValue;
+    // [BDMerge C8] Allow callers (typed text-field commits) to bypass increment
+    // rounding. Drag/keyboard/scroll paths never pass precision_override=true.
+    if (!precision_override)
+    {
+        // Round to nearest increment (bias towards rounding down)
+        value -= mMinValue;
+        value += mIncrement/2.0001f;
+        value -= fmod(value, mIncrement);
+        value += mMinValue;
+    }
 
     if (!from_event && getValueF32() != value)
     {

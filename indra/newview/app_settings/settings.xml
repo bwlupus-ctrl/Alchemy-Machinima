@@ -1968,6 +1968,17 @@
       <key>Value</key>
       <integer>0</integer>
     </map>
+    <key>BDMergeSliderPrecision</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge C8] Allow a value typed directly into a slider's text field to be accepted between increments instead of being snapped to the nearest increment. Dragging the slider thumb (and keyboard/scroll-wheel nudges) still always snaps to the increment. When off, typed values snap exactly as in stock Alchemy. Donor: Black Dragon (NiranV Dean) 94c47d42de. See doc/BD_MERGE_PATCHLOG.md.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
     <key>BrowserIgnoreSSLCertErrors</key>
     <map>
       <key>Comment</key>

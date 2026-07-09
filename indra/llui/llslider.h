@@ -24,6 +24,16 @@
  * $/LicenseInfo$
  */
 
+// [BDMerge C8] Slider precision override: allow LLSlider::setValue() to skip
+// increment-clamping for a caller-supplied value, so a value typed into the
+// owning LLSliderCtrl's text editor can land between increments instead of
+// being snapped. donor: Black Dragon (NiranV Dean) 94c47d42de "Added: Ability
+// to override clamping to increments in sliders, allowing to input any value
+// inbetween increments into the text field." Gated at the LLSliderCtrl level
+// by BDMergeSliderPrecision; dragging the thumb, arrow keys and scroll wheel
+// still call the 2-arg overload (precision_override defaults to false) and
+// always snap to the increment. Gate-off behavior is bit-identical to stock.
+
 #ifndef LL_LLSLIDER_H
 #define LL_LLSLIDER_H
 
@@ -60,7 +70,8 @@ protected:
     friend class LLUICtrlFactory;
 public:
     virtual ~LLSlider();
-    void            setValue( F32 value, bool from_event = false );
+    // [BDMerge C8] precision_override skips increment-rounding below; see donor note above.
+    void            setValue( F32 value, bool from_event = false, bool precision_override = false );
     // overrides for LLF32UICtrl methods
     virtual void    setValue(const LLSD& value )    { setValue((F32)value.asReal(), true); }
 

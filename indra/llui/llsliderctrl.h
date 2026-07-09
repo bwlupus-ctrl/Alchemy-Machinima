@@ -24,6 +24,12 @@
  * $/LicenseInfo$
  */
 
+// [BDMerge C8] setValue() gains a precision_override parameter threaded down
+// to LLSlider::setValue(); onEditorCommit() (llsliderctrl.cpp) passes the
+// live BDMergeSliderPrecision setting so a typed text-field value can land
+// between increments. donor: Black Dragon (NiranV Dean) 94c47d42de. See
+// llslider.h for the full note.
+
 #ifndef LL_LLSLIDERCTRL_H
 #define LL_LLSLIDERCTRL_H
 
@@ -84,7 +90,8 @@ public:
     virtual ~LLSliderCtrl();
 
     /*virtual*/ F32 getValueF32() const { return mSlider->getValueF32(); }
-    void            setValue(F32 v, bool from_event = false);
+    // [BDMerge C8] precision_override forwarded to LLSlider::setValue(); see donor note above.
+    void            setValue(F32 v, bool from_event = false, bool precision_override = false);
 
     /*virtual*/ void    setValue(const LLSD& value) { setValue((F32)value.asReal(), true); }
     /*virtual*/ LLSD    getValue() const            { return LLSD(getValueF32()); }

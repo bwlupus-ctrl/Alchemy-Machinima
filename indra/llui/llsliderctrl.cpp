@@ -24,6 +24,9 @@
  * $/LicenseInfo$
  */
 
+// [BDMerge C8] See llsliderctrl.h / llslider.h for the slider precision
+// override note. donor: Black Dragon (NiranV Dean) 94c47d42de.
+
 #include "linden_common.h"
 
 #include "llsliderctrl.h"
@@ -210,9 +213,10 @@ void LLSliderCtrl::onEditorGainFocus( LLFocusableElement* caller, void *userdata
 }
 
 
-void LLSliderCtrl::setValue(F32 v, bool from_event)
+void LLSliderCtrl::setValue(F32 v, bool from_event, bool precision_override)
 {
-    mSlider->setValue( v, from_event );
+    // [BDMerge C8]
+    mSlider->setValue( v, from_event, precision_override );
     mValue = mSlider->getValueF32();
     updateText();
 }
@@ -339,7 +343,9 @@ void LLSliderCtrl::onEditorCommit( LLUICtrl* ctrl, const LLSD& userdata )
         val = (F32) atof( text.c_str() );
         if( self->mSlider->getMinValue() <= val && val <= self->mSlider->getMaxValue() )
         {
-            self->setValue( val );  // set the value temporarily so that the callback can retrieve it.
+            // [BDMerge C8] Typed values may land between increments when gated on.
+            static LLCachedControl<bool> sPrecisionOverride(*LLUI::getInstance()->mSettingGroups["config"], "BDMergeSliderPrecision", false);
+            self->setValue( val, false, sPrecisionOverride );  // set the value temporarily so that the callback can retrieve it.
             if( !self->mValidateSignal || (*(self->mValidateSignal))( self, val ) )
             {
                 success = true;
