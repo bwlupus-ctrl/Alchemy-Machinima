@@ -1913,6 +1913,17 @@
       <key>Value</key>
       <integer>40</integer>
     </map>
+    <key>BDMergeSamplePatch</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge A0.1] No-op sample patch demonstrating the per-item gating convention. Logs once to the BDMerge tag when toggled on. See doc/BD_MERGE_PATCHLOG.md.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
     <key>BrowserIgnoreSSLCertErrors</key>
     <map>
       <key>Comment</key>

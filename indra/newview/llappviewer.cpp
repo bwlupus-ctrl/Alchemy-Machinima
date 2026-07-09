@@ -4980,6 +4980,17 @@ void LLAppViewer::idle()
     {
         LLWebsocketMgr::instance().update();
     }
+    // [BDMerge A0.1] no-op sample patch proving the per-item runtime gate (doc/BD_MERGE_PATCHLOG.md)
+    {
+        static LLCachedControl<bool> bdmerge_sample(gSavedSettings, "BDMergeSamplePatch", false);
+        static bool bdmerge_sample_prev = false;
+        if (bdmerge_sample && !bdmerge_sample_prev)
+        {
+            LL_INFOS("BDMerge") << "BDMergeSamplePatch toggled on (A0.1 scaffolding no-op)" << LL_ENDL;
+        }
+        bdmerge_sample_prev = bdmerge_sample;
+    }
+
     F32 dt_raw = idle_timer.getElapsedTimeAndResetF32();
 
     LLGLTFMaterialList::flushUpdates();
