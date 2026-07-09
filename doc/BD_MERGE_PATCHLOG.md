@@ -139,5 +139,5 @@ as current BD.
 | C4 click-to-walk hardening | open | — |
 | C5 rebindable keys | **closed — no port** (PR-1; verified 2026-07-09: `llkeyconflict.cpp/h` + `key_bindings.xml` present, wired into preferences) | — |
 | C6 snapshot conveniences | open | B3 coordination |
-| C7 texture channel lock | open | — |
+| C7 texture channel lock | **closed — already present via shared upstream** (2026-07-09: "Synchronize materials" checkbox, `SyncMaterialSettings` + `syncOffsetX/Y`/`syncRepeatX/Y`/`syncMaterialRot` in `llpanelface.cpp`, upstream MAINT-3223 commit `69db7cd947` carried identically by BD and Alchemy; PBR/GLTF transforms untouched by sync in both trees, matching BD scope) | — |
 | C8 slider precision | open | — |
