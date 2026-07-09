@@ -80,15 +80,18 @@ survives in BD:
   only where necessary"), follow-up fixes `a9a8d6b3ad`, `7c0b4ce307`,
   `369109abd2`, `d7dd2f38cc` et al.; dismantled in `8b9bc67a72` + PBR merges.
 
-**Options (user decision owed):** (a) re-implement the granular loader
-against Alchemy's PBR `loadShadersDeferred` using BD history as design
-reference — large, and explicitly the case Ground Rule 2 warns about
-(pre-PBR shader code vs PBR pipeline); (b) descope A1.1 to the two portable
-handlers above (folds naturally into A4.1's shadow-resolution work) and
-accept full recompiles on SSAO/shadow toggles — matching what current BD
-actually does (PR-0 reading); or (c) defer. Downstream items gated on A1.1
-(A3.1, A5.x) are gated for iteration speed, not correctness — they can
-proceed without it, just with slower toggle-testing.
+**Ruling (user, 2026-07-09): descope — closed with no code change.**
+Follow-up diff showed even the two "portable" handlers don't port standalone:
+`handleShadowMapsChanged` reads BD's Vector4 per-cascade
+`RenderShadowResolution` (a constituent of **A4.1**, setting absent in
+Alchemy), and `handleRenderDeferredLightsChanged` services BD's
+light-toggle flags (constituent of **A5.6**, `sRenderDeferredLights` absent
+in Alchemy). Both port *with their owning items* (Ground Rule 3 — no
+double-application). Alchemy already avoids recompile on shadow-resolution
+scaling via `RenderShadowResolutionScale` → `requestResizeShadowTexture()`
+(`llviewercontrol.cpp:271,998`). Consequence: items formerly gated on A1.1
+(A3.1, A5.x) are ungated; toggle-testing pays a full-recompile stall, same
+as current BD.
 
 ## Item status board
 
@@ -96,22 +99,22 @@ proceed without it, just with slower toggle-testing.
 |------|--------|-----------|
 | A0.1 scaffolding | **done** | — |
 | A0.2 depth baseline | **done** (reference captures owed at next in-world session) | — |
-| A1.1 separable shaders | **needs re-scope decision** — see "A1.1 recon finding" below | user decision |
+| A1.1 separable shaders | **closed — no port** (2026-07-09 ruling: descope; see "A1.1 recon finding") | — |
 | A1.2 resolution autoscale | open | — |
 | A1.3 shadow softening kernel | open | — |
 | A2.1 near-clip reduction | open | A0.2 |
 | A2.2 alpha-out-of-depth | open | A0.2 |
 | A2.3 forced alpha masking | open | A2.2 |
 | A2.4 rigged alpha-swap flicker | open | A2.2/A2.3 |
-| A3.1 decouple SSAO/shadows/SSR | open | A1.1 |
-| A3.2 volumetric lighting | open | A1.1, A2.1, A2.2, A3.1 |
+| A3.1 decouple SSAO/shadows/SSR | open | — |
+| A3.2 volumetric lighting | open | A2.1, A2.2, A3.1 |
 | A4.1 per-cascade shadow res | open | A1.3 (soft) |
 | A4.2 quadratic shadow dims | open | A4.1 |
-| A5.1 tonemappers | open | A1.1 |
+| A5.1 tonemappers | open | — |
 | A5.2 HDR/auto-exposure | open | A5.1 |
-| A5.3 chromatic aberration | open | A1.1 |
-| A5.4 motion blur | open | A1.1 |
-| A5.5 sepia/greyscale/posterize/CAS | open | A1.1 |
+| A5.3 chromatic aberration | open | — |
+| A5.4 motion blur | open | — |
+| A5.5 sepia/greyscale/posterize/CAS | open | — |
 | A5.6 light-source toggles | open | — |
 | A5.7 high-altitude shadows | open | A1.3 (soft) |
 | B1 machinima sidebar | open | A-series settings it surfaces |
