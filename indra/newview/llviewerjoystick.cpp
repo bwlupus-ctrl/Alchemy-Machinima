@@ -40,6 +40,7 @@
 #include "llagent.h"
 #include "llagentcamera.h"
 #include "llfocusmgr.h"
+#include "llcameraoperator.h"
 
 #if LL_WINDOWS && !LL_MESA_HEADLESS
 // Require DirectInput version 8
@@ -1194,6 +1195,8 @@ void LLViewerJoystick::moveFlycam(bool reset)
         sFlycamZoom = LLViewerCamera::getInstance()->getView();
 
         resetDeltas(axis);
+        // don't carry reactive momentum across flycam toggles/teleports
+        LLCameraOperator::instance().reset();
 
         return;
     }
@@ -1328,10 +1331,48 @@ void LLViewerJoystick::moveFlycam(bool reset)
 
     LLViewerCamera::getInstance()->setView(sFlycamZoom);
     LLVector3 new_camera_pos = gAgent.getPosAgentFromGlobal(sFlycamPosition);
-    LLViewerCamera::getInstance()->setOrigin(new_camera_pos);
-    LLViewerCamera::getInstance()->mXAxis = LLVector3(mat.mMatrix[0]);
-    LLViewerCamera::getInstance()->mYAxis = LLVector3(mat.mMatrix[1]);
-    LLViewerCamera::getInstance()->mZAxis = LLVector3(mat.mMatrix[2]);
+
+    // Procedural handheld camera operator (native port of the VirtualCinema
+    // Handheld ReShade design). Fed the flycam's own per-frame deltas as
+    // ground-truth motion, applied only to the rendered camera this frame --
+    // sFlycamPosition/sFlycamRotation are never mutated, so nothing drifts
+    // and disabling the effect snaps cleanly back.
+    static LLCachedControl<bool> operator_enabled(gSavedSettings, "FlycamOperatorEnabled", false);
+    if (operator_enabled)
+    {
+        const F32 inv_t = 1.f / llmax(time, 0.0005f);
+        LLCameraOperatorInput opin;
+        opin.mDeltaTime  = time;
+        // sDelta[0..2] is the camera-local translation applied this frame,
+        // sDelta[3..5] the (roll, pitch, yaw) rotation applied this frame.
+        opin.mLinearVel  = LLVector3(sDelta[VX], sDelta[VY], sDelta[VZ]) * inv_t;
+        opin.mAngularVel = LLVector3(sDelta[3], sDelta[4], sDelta[5]) * inv_t;
+
+        const LLCameraOperatorOutput op = LLCameraOperator::instance().update(opin);
+
+        // orientation wobble pre-multiplied as a quaternion (same idiom as the
+        // flycam's own rotation above) so the basis stays orthonormal
+        LLMatrix3 wobble(op.mRoll, op.mPitch, op.mYaw);
+        LLMatrix3 shaken(LLQuaternion(wobble) * sFlycamRotation);
+
+        // gait/breath translation in camera-local space
+        new_camera_pos += LLVector3(shaken.mMatrix[0]) * op.mPosOffset.mV[VX]
+                        + LLVector3(shaken.mMatrix[1]) * op.mPosOffset.mV[VY]
+                        + LLVector3(shaken.mMatrix[2]) * op.mPosOffset.mV[VZ];
+
+        LLViewerCamera::getInstance()->setView(sFlycamZoom * op.mFovMul);
+        LLViewerCamera::getInstance()->setOrigin(new_camera_pos);
+        LLViewerCamera::getInstance()->mXAxis = LLVector3(shaken.mMatrix[0]);
+        LLViewerCamera::getInstance()->mYAxis = LLVector3(shaken.mMatrix[1]);
+        LLViewerCamera::getInstance()->mZAxis = LLVector3(shaken.mMatrix[2]);
+    }
+    else
+    {
+        LLViewerCamera::getInstance()->setOrigin(new_camera_pos);
+        LLViewerCamera::getInstance()->mXAxis = LLVector3(mat.mMatrix[0]);
+        LLViewerCamera::getInstance()->mYAxis = LLVector3(mat.mMatrix[1]);
+        LLViewerCamera::getInstance()->mZAxis = LLVector3(mat.mMatrix[2]);
+    }
 }
 
 // -----------------------------------------------------------------------------

@@ -245,6 +245,14 @@ void LLFloaterJoystick::initFromSettings()
     mAvatarFeathering = gSavedSettings.getF32("AvatarFeathering");
     mBuildFeathering = gSavedSettings.getF32("BuildFeathering");
     mFlycamFeathering = gSavedSettings.getF32("FlycamFeathering");
+
+    mFlycamOperatorEnabled = gSavedSettings.getBOOL("FlycamOperatorEnabled");
+    mFlycamOperatorStyle = gSavedSettings.getS32("FlycamOperatorStyle");
+    mFlycamOperatorProfile = gSavedSettings.getS32("FlycamOperatorProfile");
+    mFlycamOperatorMaster = gSavedSettings.getF32("FlycamOperatorMaster");
+    mFlycamOperatorReactivity = gSavedSettings.getF32("FlycamOperatorReactivity");
+    mFlycamOperatorIdleIntensity = gSavedSettings.getF32("FlycamOperatorIdleIntensity");
+    mFlycamOperatorForceWalk = gSavedSettings.getBOOL("FlycamOperatorForceWalk");
 }
 
 void LLFloaterJoystick::refresh()
@@ -412,6 +420,14 @@ void LLFloaterJoystick::cancel()
     gSavedSettings.setF32("AvatarFeathering", mAvatarFeathering);
     gSavedSettings.setF32("BuildFeathering", mBuildFeathering);
     gSavedSettings.setF32("FlycamFeathering", mFlycamFeathering);
+
+    gSavedSettings.setBOOL("FlycamOperatorEnabled", mFlycamOperatorEnabled);
+    gSavedSettings.setS32("FlycamOperatorStyle", mFlycamOperatorStyle);
+    gSavedSettings.setS32("FlycamOperatorProfile", mFlycamOperatorProfile);
+    gSavedSettings.setF32("FlycamOperatorMaster", mFlycamOperatorMaster);
+    gSavedSettings.setF32("FlycamOperatorReactivity", mFlycamOperatorReactivity);
+    gSavedSettings.setF32("FlycamOperatorIdleIntensity", mFlycamOperatorIdleIntensity);
+    gSavedSettings.setBOOL("FlycamOperatorForceWalk", mFlycamOperatorForceWalk);
 }
 
 void LLFloaterJoystick::onCommitJoystickEnabled(LLUICtrl*, void *joy_panel)

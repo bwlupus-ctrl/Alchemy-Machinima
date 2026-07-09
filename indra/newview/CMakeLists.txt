@@ -253,6 +253,8 @@ set(viewer_SOURCE_FILES
     llbrowsernotification.cpp
     llbuycurrencyhtml.cpp
     llcallingcard.cpp
+    llcameraoperator.cpp
+    llcinematiccamera.cpp
     llcefaccelinterop.cpp
     llcefsurfacereceiver.cpp
     llchannelmanager.cpp
@@ -707,6 +709,7 @@ set(viewer_SOURCE_FILES
     llregioninfomodel.cpp
     llregionposition.cpp
     llremoteparcelrequest.cpp
+    llreshadebridge.cpp
     llsaveoutfitcombobtn.cpp
     llscenemonitor.cpp
     llsceneview.cpp
@@ -1022,6 +1025,8 @@ set(viewer_HEADER_FILES
     llbox.h
     llbuycurrencyhtml.h
     llcallingcard.h
+    llcameraoperator.h
+    llcinematiccamera.h
     llcapabilityprovider.h
     llcefaccelinterop.h
     llcefsurfacereceiver.h
@@ -1466,6 +1471,7 @@ set(viewer_HEADER_FILES
     llregioninfomodel.h
     llregionposition.h
     llremoteparcelrequest.h
+    llreshadebridge.h
     llresourcedata.h
     llrootview.h
     llsaveoutfitcombobtn.h
