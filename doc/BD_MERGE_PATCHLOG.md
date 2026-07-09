@@ -39,7 +39,8 @@ work item. Newest entries at the top of each table.
 
 | Item | Commit | Donor | Gate(s) | Credits | Notes |
 |------|--------|-------|---------|---------|-------|
-| A0.1 — patch loop + build-flag scaffolding | (this commit) | — | `BDMergeSamplePatch` (no-op sample) | — | Establishes conventions above; sample gated no-op in `LLAppViewer::idle()`. |
+| A0.2 — depth-buffer baseline characterization | (this commit) | — | n/a (docs + test tool only) | — | `doc/BD_MERGE_DEPTH_BASELINE.md` + `scripts/perf/bdmerge_depth_compare.py` (self-tested against synthetic captures). In-world baseline reference captures owed at next login; procedure in the doc §6. |
+| A0.1 — patch loop + build-flag scaffolding | `d1e60e092a` | — | `BDMergeSamplePatch` (no-op sample) | — | Establishes conventions above; sample gated no-op in `LLAppViewer::idle()`. |
 | B3a — animation speed / slow-motion (all avatars) | `333e1e57b4` | FSX | `AnimationTimeFactor` via Advanced ▸ Animation Speed (`LLMotionController::sGlobalTimeFactor`) | Firestorm/Phoenix contributors; custom implementation by bwlupus-ctrl | Landed before this log existed, as part of the phoenix-reshade-XL port. Composition with B3 (Freeze World) still owed when B3 lands: freeze fully stops, slow-mo scales when not frozen, Poser (PR-2) overrides both. |
 
 ## Partial / related pre-existing work (not spec items, affects scoping)
@@ -59,13 +60,43 @@ Commit `333e1e57b4` (phoenix-reshade-XL port) also landed:
   `LL_RESHADE_ADDON=0`): outside the merge spec; render items (A-series)
   should avoid breaking its post-`renderFinalize()` capture point.
 
+## A1.1 recon finding (2026-07-09) — donor code no longer exists
+
+Ground Rule 6 verification against BD master (v5.6.3, `I:\black-dragon`)
+found that **BD's separable shader loading was dismantled during BD's PBR
+refactor.** Current BD's `llviewershadermgr.cpp` and its `setShaders()` path
+are structurally identical to Alchemy's monolithic LL baseline; SSAO/shadow
+toggles in current BD trigger the same full recompile Alchemy does. What
+survives in BD:
+
+- Dead, commented-out granular handlers (`handleSSAOChanged`,
+  `handleSSRChanged`, …) at BD `llviewercontrol.cpp:933-976`, calling
+  per-feature loaders (`loadShadersSSAO` etc.) that were deleted.
+- Two live, small recompile-avoidance wins that DO port directly:
+  `handleShadowMapsChanged` (BD `llviewercontrol.cpp:919` — shadow-resolution
+  changes do `allocateShadowBuffer()` realloc instead of full recompile) and
+  `handleRenderDeferredLightsChanged` (`:750`, flag-only).
+- Historical design reference: anchor commit `16bcf38b9c` ("reload shaders
+  only where necessary"), follow-up fixes `a9a8d6b3ad`, `7c0b4ce307`,
+  `369109abd2`, `d7dd2f38cc` et al.; dismantled in `8b9bc67a72` + PBR merges.
+
+**Options (user decision owed):** (a) re-implement the granular loader
+against Alchemy's PBR `loadShadersDeferred` using BD history as design
+reference — large, and explicitly the case Ground Rule 2 warns about
+(pre-PBR shader code vs PBR pipeline); (b) descope A1.1 to the two portable
+handlers above (folds naturally into A4.1's shadow-resolution work) and
+accept full recompiles on SSAO/shadow toggles — matching what current BD
+actually does (PR-0 reading); or (c) defer. Downstream items gated on A1.1
+(A3.1, A5.x) are gated for iteration speed, not correctness — they can
+proceed without it, just with slower toggle-testing.
+
 ## Item status board
 
 | Item | Status | Blocked by |
 |------|--------|-----------|
 | A0.1 scaffolding | **done** | — |
-| A0.2 depth baseline | open | — |
-| A1.1 separable shaders | open | — |
+| A0.2 depth baseline | **done** (reference captures owed at next in-world session) | — |
+| A1.1 separable shaders | **needs re-scope decision** — see "A1.1 recon finding" below | user decision |
 | A1.2 resolution autoscale | open | — |
 | A1.3 shadow softening kernel | open | — |
 | A2.1 near-clip reduction | open | A0.2 |
