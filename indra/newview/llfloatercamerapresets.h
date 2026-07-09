@@ -22,6 +22,9 @@
 * Linden Research, Inc., 945 Battery Street, San Francisco, CA  94111  USA
 * $/LicenseInfo$
 */
+// [BDMerge B2] Rename UI for camera preset list items — donor: Black Dragon
+// "Unlimited Camera Presets" UX (commit 152762d400). Gated by
+// BDMergeCameraPresets; hidden when the gate is off.
 #ifndef LLFLOATERCAMERAPRESETS_H
 #define LLFLOATERCAMERAPRESETS_H
 
@@ -64,9 +67,13 @@ public:
 private:
     void onDeleteBtnClick();
     void onResetBtnClick();
+    // [BDMerge B2]
+    void onRenameBtnClick();
+    static void onRenameConfirm(const LLSD& notification, const LLSD& response);
 
     LLButton* mDeleteBtn;
     LLButton* mResetBtn;
+    LLButton* mRenameBtn; // [BDMerge B2]
 
     std::string mPresetName;
     bool mIsDefaultPrest;

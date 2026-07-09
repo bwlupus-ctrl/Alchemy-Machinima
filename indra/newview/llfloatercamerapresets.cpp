@@ -22,6 +22,9 @@
 * Linden Research, Inc., 945 Battery Street, San Francisco, CA  94111  USA
 * $/LicenseInfo$
 */
+// [BDMerge B2] Rename UI for camera preset list items — donor: Black Dragon
+// "Unlimited Camera Presets" UX (commit 152762d400). Gated by
+// BDMergeCameraPresets; hidden when the gate is off.
 #include "llviewerprecompiledheaders.h"
 
 #include "llfloatercamera.h"
@@ -92,6 +95,7 @@ LLCameraPresetFlatItem::LLCameraPresetFlatItem(const std::string &preset_name, b
 {
     mCommitCallbackRegistrar.add("CameraPresets.Delete", boost::bind(&LLCameraPresetFlatItem::onDeleteBtnClick, this));
     mCommitCallbackRegistrar.add("CameraPresets.Reset", boost::bind(&LLCameraPresetFlatItem::onResetBtnClick, this));
+    mCommitCallbackRegistrar.add("CameraPresets.Rename", boost::bind(&LLCameraPresetFlatItem::onRenameBtnClick, this)); // [BDMerge B2]
     buildFromFile("panel_camera_preset_item.xml");
 }
 
@@ -106,6 +110,12 @@ bool LLCameraPresetFlatItem::postBuild()
 
     mResetBtn = getChild<LLButton>("reset_btn");
     mResetBtn->setVisible(false);
+
+    // [BDMerge B2] Rename is a BDMergeCameraPresets-gated addition; the button
+    // stays hidden entirely (not just on mouse-leave) when the gate is off, so
+    // toggling the setting off restores stock Alchemy's list item exactly.
+    mRenameBtn = getChild<LLButton>("rename_btn");
+    mRenameBtn->setVisible(false);
 
     LLStyle::Params style;
     LLTextBox* name_text = getChild<LLTextBox>("preset_name");
@@ -122,6 +132,9 @@ void LLCameraPresetFlatItem::onMouseEnter(S32 x, S32 y, MASK mask)
 {
     mDeleteBtn->setVisible(!mIsDefaultPrest);
     mResetBtn->setVisible(mIsDefaultPrest);
+    // [BDMerge B2] Rename only makes sense for non-default (renameable) presets.
+    static LLCachedControl<bool> merge_camera_presets(gSavedSettings, "BDMergeCameraPresets", false);
+    mRenameBtn->setVisible(!mIsDefaultPrest && merge_camera_presets);
     getChildView("hovered_icon")->setVisible(true);
     LLPanel::onMouseEnter(x, y, mask);
 }
@@ -130,6 +143,7 @@ void LLCameraPresetFlatItem::onMouseLeave(S32 x, S32 y, MASK mask)
 {
     mDeleteBtn->setVisible(false);
     mResetBtn->setVisible(false);
+    mRenameBtn->setVisible(false); // [BDMerge B2]
     getChildView("hovered_icon")->setVisible(false);
     LLPanel::onMouseLeave(x, y, mask);
 }
@@ -154,4 +168,40 @@ void LLCameraPresetFlatItem::onDeleteBtnClick()
 void LLCameraPresetFlatItem::onResetBtnClick()
 {
     LLPresetsManager::getInstance()->resetCameraPreset(mPresetName);
+}
+
+// [BDMerge B2]
+void LLCameraPresetFlatItem::onRenameBtnClick()
+{
+    LLSD args;
+    args["NAME"] = mPresetName;
+
+    LLSD payload;
+    payload["old_name"] = mPresetName;
+
+    LLNotificationsUtil::add("RenameCameraPreset", args, payload, boost::bind(&LLCameraPresetFlatItem::onRenameConfirm, _1, _2));
+}
+
+// static
+// [BDMerge B2]
+void LLCameraPresetFlatItem::onRenameConfirm(const LLSD& notification, const LLSD& response)
+{
+    S32 option = LLNotificationsUtil::getSelectedOption(notification, response);
+    if (option != 0) return; // canceled
+
+    std::string old_name = notification["payload"]["old_name"].asString();
+    std::string new_name = response["new_name"].asString();
+    LLStringUtil::trim(new_name);
+
+    if (new_name.empty() || new_name == old_name)
+    {
+        return;
+    }
+
+    if (!LLPresetsManager::getInstance()->renameCameraPreset(old_name, new_name))
+    {
+        LLSD args;
+        args["NAME"] = old_name;
+        LLNotificationsUtil::add("PresetNotRenamed", args);
+    }
 }

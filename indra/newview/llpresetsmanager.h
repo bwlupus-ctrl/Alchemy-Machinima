@@ -24,6 +24,11 @@
  * $/LicenseInfo$
  */
 
+// [BDMerge B2] Camera presets: auto-local-copy-on-edit + rename, layered on this
+// file's existing LL preset storage — donor: Black Dragon "Unlimited Camera
+// Presets" (llagentcamera.cpp / llfloaterpreference.cpp), commit 152762d400
+// (2018-12-03), moved in 4ff6498a7e (2020-07-06). Gated by BDMergeCameraPresets.
+
 #ifndef LL_PRESETSMANAGER_H
 #define LL_PRESETSMANAGER_H
 
@@ -80,6 +85,11 @@ public:
     bool isDefaultCameraPreset(std::string preset_name);
     void resetCameraPreset(std::string preset_name);
     bool createDefaultCameraPreset(std::string preset_name, bool force_reset = false);
+
+    // [BDMerge B2] True in-place rename for camera presets (Alchemy/LL stock only
+    // offered save-as-new + delete-old). No-ops when BDMergeCameraPresets is off.
+    // Donor: Black Dragon camera preset UX, see llpresetsmanager.cpp for details.
+    bool renameCameraPreset(const std::string& old_name, const std::string& new_name);
 
     void setIgnoreChangeSignal(bool val)
     {

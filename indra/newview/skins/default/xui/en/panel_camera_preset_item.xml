@@ -39,6 +39,25 @@
      top="2"
      value="Default"
      width="159" />
+    <!-- [BDMerge B2] Rename button; hidden unless BDMergeCameraPresets is on
+         (see LLCameraPresetFlatItem::postBuild/onMouseEnter). Placed to the
+         left of delete_btn so both can be visible together for non-default
+         presets. -->
+    <button
+     follows="right"
+     label="Rename"
+     font="SansSerifSmall"
+     layout="topleft"
+     left_pad="5"
+     right="-32"
+     name="rename_btn"
+     tool_tip="Rename preset"
+     top="3"
+     height="18"
+     width="50" >
+      <button.commit_callback
+        function="CameraPresets.Rename"/>
+    </button>
     <button
      follows="right"
      image_selected="TrashItem_Off"

@@ -39,7 +39,8 @@ work item. Newest entries at the top of each table.
 
 | Item | Commit | Donor | Gate(s) | Credits | Notes |
 |------|--------|-------|---------|---------|-------|
-| A0.2 — depth-buffer baseline characterization | (this commit) | — | n/a (docs + test tool only) | — | `doc/BD_MERGE_DEPTH_BASELINE.md` + `scripts/perf/bdmerge_depth_compare.py` (self-tested against synthetic captures). In-world baseline reference captures owed at next login; procedure in the doc §6. |
+| B2 — camera presets (Z focus/offset, per-preset custom) | (this commit) | BD | `BDMergeCameraPresets` | NiranV Dean (Black Dragon) | Alchemy already ships LL's full XYZ offset/focus/smoothing preset system (save/load/delete/per-control reset) — diff-first found only two genuine deltas: BD-style auto-persist-of-live-edits into the active preset, and true in-place rename (neither stock LL nor BD's own UI had rename; added to meet the spec's rename acceptance). BD's hyphen-delete bug verified not to reproduce (Alchemy uses LLURI::escape consistently). Donor ref: BD 152762d400 (2018-12-03) + 4ff6498a7e. |
+| A0.2 — depth-buffer baseline characterization | `3a89dbb9cf` | — | n/a (docs + test tool only) | — | `doc/BD_MERGE_DEPTH_BASELINE.md` + `scripts/perf/bdmerge_depth_compare.py` (self-tested against synthetic captures). In-world baseline reference captures owed at next login; procedure in the doc §6. |
 | A0.1 — patch loop + build-flag scaffolding | `d1e60e092a` | — | `BDMergeSamplePatch` (no-op sample) | — | Establishes conventions above; sample gated no-op in `LLAppViewer::idle()`. |
 | B3a — animation speed / slow-motion (all avatars) | `333e1e57b4` | FSX | `AnimationTimeFactor` via Advanced ▸ Animation Speed (`LLMotionController::sGlobalTimeFactor`) | Firestorm/Phoenix contributors; custom implementation by bwlupus-ctrl | Landed before this log existed, as part of the phoenix-reshade-XL port. Composition with B3 (Freeze World) still owed when B3 lands: freeze fully stops, slow-mo scales when not frozen, Poser (PR-2) overrides both. |
 
@@ -118,7 +119,7 @@ as current BD.
 | A5.6 light-source toggles | open | — |
 | A5.7 high-altitude shadows | open | A1.3 (soft) |
 | B1 machinima sidebar | open | A-series settings it surfaces |
-| B2 camera presets | open | — |
+| B2 camera presets | **done** | — |
 | B3 freeze world | open | — (coordinate with C6) |
 | B3a animation speed | **done** (`333e1e57b4`) | — |
 | B4 head/eye tracking limits | open | — |

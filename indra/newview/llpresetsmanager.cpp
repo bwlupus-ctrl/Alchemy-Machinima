@@ -27,6 +27,11 @@
  * $/LicenseInfo$
  */
 
+// [BDMerge B2] Camera presets: auto-local-copy-on-edit + rename, layered on this
+// file's existing LL preset storage — donor: Black Dragon "Unlimited Camera
+// Presets" (llagentcamera.cpp / llfloaterpreference.cpp), commit 152762d400
+// (2018-12-03), moved in 4ff6498a7e (2020-07-06). Gated by BDMergeCameraPresets.
+
 #include "llviewerprecompiledheaders.h"
 
 #include "llpresetsmanager.h"
@@ -283,6 +288,24 @@ void LLPresetsManager::cameraSettingChanged()
     static LLCachedControl<std::string> preset_camera_active(gSavedSettings, "PresetCameraActive", "");
     if (!preset_camera_active().empty() && !mIgnoreChangedSignal)
     {
+        // [BDMerge B2] Auto-local-copy on editing a system preset: instead of
+        // just deselecting the active preset (stock behavior below), persist
+        // the live edit straight back into the active preset's file, same as
+        // BD's onCameraArray()/onFocusArray() -> onAddCameraPreset(false, ...).
+        // Works uniformly for default and custom presets since both are plain
+        // files under user_settings/presets/camera; "reset to default" (below,
+        // resetCameraPreset()) still restores the pristine app_settings
+        // template regardless of how many auto-saves happened in between.
+        static LLCachedControl<bool> merge_camera_presets(gSavedSettings, "BDMergeCameraPresets", false);
+        if (merge_camera_presets)
+        {
+            std::string active_preset = preset_camera_active();
+            mIgnoreChangedSignal = true;
+            savePreset(PRESETS_CAMERA, active_preset);
+            mIgnoreChangedSignal = false;
+            return;
+        }
+
         gSavedSettings.setString("PresetCameraActive", "");
 
         triggerChangeCameraSignal();
@@ -672,6 +695,76 @@ bool LLPresetsManager::createDefaultCameraPreset(std::string preset_name, bool f
         return LLFile::copy(default_template_file, preset_file);
     }
     return false;
+}
+
+// [BDMerge B2] True in-place rename for camera presets. Stock Alchemy/LL only
+// offers save-as-new + delete-old (no identity-preserving rename exists for
+// either camera or graphics presets). No-ops (returns false) when
+// BDMergeCameraPresets is off. Donor: Black Dragon camera preset UX (BD itself
+// only offers the same save-as/delete workflow via its "camera_preset_name"
+// combo -- this rename is a genuine addition on top of Alchemy's storage,
+// added here to satisfy the merge spec's "save/load/rename/reset" acceptance
+// criteria).
+//
+// Filenames are consistently escaped with LLURI::escape()/unescape() across
+// save/load/delete/rename, so names containing '-' (or other RFC3986
+// "unreserved" characters) round-trip correctly; this sidesteps the historical
+// BD bug where a hand-rolled percent-encoder (bdfunctions.cpp escapeString())
+// was used inconsistently with LLURI::escape() elsewhere and could not
+// re-locate/delete preset files whose name contained '-'.
+bool LLPresetsManager::renameCameraPreset(const std::string& old_name, const std::string& new_name)
+{
+    static LLCachedControl<bool> merge_camera_presets(gSavedSettings, "BDMergeCameraPresets", false);
+    if (!merge_camera_presets)
+    {
+        return false;
+    }
+
+    if (old_name.empty() || new_name.empty() || old_name == new_name)
+    {
+        return false;
+    }
+
+    // Fixed-identity default/template presets can't be renamed: the switching
+    // logic in LLFloaterCamera::switchToPreset() and the reset-to-default path
+    // key off these exact names.
+    if (isDefaultCameraPreset(old_name) || isTemplateCameraPreset(old_name)
+        || isDefaultCameraPreset(new_name) || isTemplateCameraPreset(new_name)
+        || old_name == PRESETS_DEFAULT || new_name == PRESETS_DEFAULT)
+    {
+        LL_WARNS("Presets") << "Refusing to rename to/from a default/template camera preset name" << LL_ENDL;
+        return false;
+    }
+
+    std::string dir = getPresetsDir(PRESETS_CAMERA);
+    std::string old_path(dir + gDirUtilp->getDirDelimiter() + LLURI::escape(old_name) + ".xml");
+    std::string new_path(dir + gDirUtilp->getDirDelimiter() + LLURI::escape(new_name) + ".xml");
+
+    if (!gDirUtilp->fileExists(old_path))
+    {
+        LL_WARNS("Presets") << "Camera preset '" << old_name << "' does not exist" << LL_ENDL;
+        return false;
+    }
+
+    if (gDirUtilp->fileExists(new_path))
+    {
+        LL_WARNS("Presets") << "Camera preset '" << new_name << "' already exists" << LL_ENDL;
+        return false;
+    }
+
+    if (LLFile::rename(old_path, new_path) != 0)
+    {
+        LL_WARNS("Presets") << "Failed to rename camera preset file '" << old_path << "' -> '" << new_path << "'" << LL_ENDL;
+        return false;
+    }
+
+    if (gSavedSettings.getString("PresetCameraActive") == old_name)
+    {
+        gSavedSettings.setString("PresetCameraActive", new_name);
+    }
+
+    triggerChangeCameraSignal();
+    return true;
 }
 
 boost::signals2::connection LLPresetsManager::setPresetListChangeCameraCallback(const preset_list_signal_t::slot_type& cb)
