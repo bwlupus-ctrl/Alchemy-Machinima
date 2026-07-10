@@ -33,6 +33,7 @@
 
 #include "lltexturefetch.h"
 
+#include "bdmergetexpool.h"
 #include "bdmergetexspike.h"
 #include "lldir.h"
 #include "llhttpconstants.h"
@@ -1135,6 +1136,25 @@ bool LLTextureFetchWorker::doWork(S32 param)
         LL_DEBUGS(LOG_TXT) << mID << ": Priority: " << llformat("%8.0f",mImagePriority)
                            << " Desired Discard: " << mDesiredDiscard << " Desired Size: " << mDesiredSize << LL_ENDL;
 
+        // [BDMerge G5.1] decoded RAM pool short-circuit: a hit at the desired
+        // discard or finer skips the encoded cache read AND the J2K decode.
+        // The encoded disk cache was already written when this data first
+        // decoded, so persistence is not bypassed.
+        if (mFTType == FTT_DEFAULT && !mNeedsAux && BDMergeTexPool::enabled())
+        {
+            S32 pooled_discard = -1;
+            LLPointer<LLImageRaw> pooled = BDMergeTexPool::fetch(mID, mDesiredDiscard, pooled_discard);
+            if (pooled.notNull())
+            {
+                mRawImage = pooled;
+                mDecodedDiscard = pooled_discard;
+                mDecoded = true;
+                mFetchTime = mFetchTimer.getElapsedTimeF32();
+                setState(DONE);
+                return true;
+            }
+        }
+
         // fall through
     }
 
@@ -1843,6 +1863,11 @@ bool LLTextureFetchWorker::doWork(S32 param)
                 llassert_always(mRawImage.notNull());
                 LL_DEBUGS(LOG_TXT) << mID << ": Decoded. Discard: " << mDecodedDiscard
                                    << " Raw Image: " << llformat("%dx%d",mRawImage->getWidth(),mRawImage->getHeight()) << LL_ENDL;
+                // [BDMerge G5.1] write-through into the decoded RAM pool
+                if (mFTType == FTT_DEFAULT && !mNeedsAux)
+                {
+                    BDMergeTexPool::put(mID, mDecodedDiscard, mRawImage);
+                }
                 setState(WRITE_TO_CACHE);
             }
             // fall through
@@ -2499,6 +2524,8 @@ S32 LLTextureFetch::createRequest(FTType f_type, const std::string& url, const L
     S32 w, S32 h, S32 c, S32 desired_discard, bool needs_aux, bool can_use_http)
 {
     LL_PROFILE_ZONE_SCOPED;
+    // [BDMerge G5.1] main-thread settings/budget refresh for the decoded pool
+    BDMergeTexPool::refreshSettings();
     if (mDebugPause)
     {
         return CREATE_REQUEST_ERROR_DEFAULT;

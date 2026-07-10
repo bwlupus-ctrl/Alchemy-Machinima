@@ -2760,6 +2760,50 @@
       <key>Value</key>
       <string />
     </map>
+    <key>BDMergeTexPoolEnable</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge G5.1] Enable the decoded-texture RAM pool: decoded textures are kept in system RAM so re-entering view is a memcpy+upload instead of a disk read + J2K re-decode. Off = stock streaming.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>BDMergeTexPoolFraction</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge G5.1] Fraction of detected physical RAM the decoded-texture pool may use when BDMergeTexPoolMaxMB is 0 (auto). Clamped 0.05-0.9.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.5</real>
+    </map>
+    <key>BDMergeTexPoolMaxMB</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge G5.1] Manual decoded-texture pool budget in MB. 0 = auto-size from detected physical RAM via BDMergeTexPoolFraction.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>U32</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>BDMergeTexPoolFloorMB</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge G5.1] Minimum decoded-texture pool budget in MB when auto-sizing (protects small machines from a uselessly tiny pool).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>U32</string>
+      <key>Value</key>
+      <integer>1024</integer>
+    </map>
     <key>BDMergeTexSpikeLog</key>
     <map>
       <key>Comment</key>

@@ -17,6 +17,7 @@
 
 #include "bdmergetexspike.h"
 
+#include "bdmergetexpool.h"
 #include "llmutex.h"
 #include "lltimer.h"
 #include "llviewercontrol.h"
@@ -139,7 +140,8 @@ void dump()
     out << llformat("    repeat decodes (same-or-coarser than prior — what a decoded RAM pool eliminates): %llu of %llu decodes (%.1f%%), %.1fs decode + %.1fs cache-read spent on repeats",
                     sRepeatDecodes, sDecode.mCount,
                     sDecode.mCount ? 100.0 * sRepeatDecodes / sDecode.mCount : 0.0,
-                    sRepeatDecodeTime, sRepeatCacheReadTime);
+                    sRepeatDecodeTime, sRepeatCacheReadTime) << "\n";
+    BDMergeTexPool::appendReport(out);
     LL_INFOS("BDMergeTexSpike") << out.str() << LL_ENDL;
 }
 
