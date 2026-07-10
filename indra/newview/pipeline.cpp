@@ -5816,6 +5816,33 @@ static bool bdmerge_should_render_projector()
 }
 // [/BDMerge A5.6]
 
+// [BDMerge A1.2] Resolution-aware autoscale (SSAO / shadow blur / DoF).
+// llfloatersnapshot.cpp:Impl::updateResolution derives BDMergeSnapshotAutoscaleMultiplier
+// (output snapshot height / current window height) whenever the requested snapshot
+// resolution changes, but only while BDMergeSnapshotAutoscale is enabled. This helper is
+// the single read-back point: gate off (default) always returns 1.0 regardless of what is
+// stored, so rendering is bit-identical to stock. Consumed at the three sites BD scaled:
+// SSAO radius/max-radius (bindDeferredShader), the shared shadow+SSAO soften blur size
+// (renderDeferredLighting), and the DoF field-of-view input (renderFinalize). NOT covered
+// (per merge doc gotcha): screen-space reflections (RenderScreenSpaceReflection*) and
+// volumetric lighting/godrays (RenderGodrays*) still need manual reconfiguration at other
+// resolutions -- BD's donor commit never touched either.
+// donor: Black Dragon (NiranV Dean) 8eed1a6768 ("Added: Simple automatic SSAO/Shadow/DoF
+// scaling option..."), non-persist multiplier per fa96df28ee, gPipeline-gated read per
+// 33556578a1.
+static F32 bdmerge_snapshot_autoscale_multiplier()
+{
+    static LLCachedControl<bool> bdmerge_snapshot_autoscale(gSavedSettings, "BDMergeSnapshotAutoscale", false);
+    if (!bdmerge_snapshot_autoscale)
+    {
+        return 1.0f;
+    }
+
+    static LLCachedControl<F32> bdmerge_multiplier(gSavedSettings, "BDMergeSnapshotAutoscaleMultiplier", 1.0f);
+    // guard against a degenerate stored value (e.g. window minimized to zero height)
+    return llclamp((F32)bdmerge_multiplier, 0.01f, 100.f);
+}
+
 void LLPipeline::calcNearbyLights(LLCamera& camera)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
@@ -8770,7 +8797,10 @@ void LLPipeline::renderDoF(LLRenderTarget* src, LLRenderTarget* dst)
 
             F32 fov = LLViewerCamera::getInstance()->getView();
 
-            const F32 default_fov = CameraFieldOfView * F_PI / 180.f;
+            // [BDMerge A1.2] scale the FOV feeding the CoF blur_constant derivation below
+            // so DoF blur strength keeps its window-resolution weighting at higher snapshot
+            // output resolutions; see bdmerge_snapshot_autoscale_multiplier() above.
+            const F32 default_fov = CameraFieldOfView * bdmerge_snapshot_autoscale_multiplier() * F_PI / 180.f;
 
             // F32 aspect_ratio = (F32) mRT->screen.getWidth()/(F32)mRT->screen.getHeight();
 
@@ -9335,8 +9365,12 @@ void LLPipeline::bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_
     shader.uniform1f(LLShaderMgr::DEFERRED_SHADOW_NOISE, RenderShadowNoise);
     shader.uniform1f(LLShaderMgr::DEFERRED_BLUR_SIZE, RenderShadowBlurSize);
 
-    shader.uniform1f(LLShaderMgr::DEFERRED_SSAO_RADIUS, RenderSSAOScale);
-    shader.uniform1f(LLShaderMgr::DEFERRED_SSAO_MAX_RADIUS, (GLfloat)RenderSSAOMaxScale);
+    // [BDMerge A1.2] scale SSAO radius/max-radius so a high-res snapshot keeps the same
+    // ambient-occlusion footprint (in effective screen-space terms) it had at window
+    // resolution; see bdmerge_snapshot_autoscale_multiplier() above.
+    const F32 bdmerge_autoscale = bdmerge_snapshot_autoscale_multiplier();
+    shader.uniform1f(LLShaderMgr::DEFERRED_SSAO_RADIUS, RenderSSAOScale * bdmerge_autoscale);
+    shader.uniform1f(LLShaderMgr::DEFERRED_SSAO_MAX_RADIUS, (GLfloat)RenderSSAOMaxScale * bdmerge_autoscale);
 
     F32 ssao_factor = RenderSSAOFactor;
     shader.uniform1f(LLShaderMgr::DEFERRED_SSAO_FACTOR, ssao_factor);
@@ -9515,6 +9549,13 @@ void LLPipeline::renderDeferredLighting()
             const U32 kern_length = 4;
             F32       blur_size = RenderShadowBlurSize;
             F32       dist_factor = RenderShadowBlurDistFactor;
+
+            // [BDMerge A1.2] scale the shared shadow+SSAO soften blur kernel so a high-res
+            // snapshot keeps the same blur weighting it had at window resolution; this pass
+            // softens both the sun shadow and (when RenderDeferredSSAO is on, as gated
+            // above) SSAO together, matching BD's donor which scaled both together too.
+            // See bdmerge_snapshot_autoscale_multiplier() above.
+            blur_size *= bdmerge_snapshot_autoscale_multiplier();
 
             // sample symmetrically with the middle sample falling exactly on 0.0
             F32 x = 0.f;

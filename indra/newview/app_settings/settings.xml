@@ -2133,6 +2133,28 @@
       <key>Value</key>
       <integer>1</integer>
     </map>
+    <key>BDMergeSnapshotAutoscale</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge A1.2] Scale SSAO radius, the shared shadow+SSAO soften blur size, and the DoF field-of-view input to the ratio of snapshot output resolution over window resolution, so a high-res snapshot preserves the effect weighting seen at window resolution. Does NOT cover screen-space reflections or volumetric lighting - those still need manual reconfiguration at other resolutions. Donor: Black Dragon 8eed1a6768. See doc/BD_MERGE_PATCHLOG.md.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>BDMergeSnapshotAutoscaleMultiplier</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge A1.2] Runtime-derived output/window height ratio, written by the snapshot floater whenever BDMergeSnapshotAutoscale is enabled and the requested resolution changes; reset to 1.0 on floater close. Not meant to be hand-edited. Donor: BD RenderSnapshotMultiplier (non-persist per fa96df28ee).</string>
+      <key>Persist</key>
+      <integer>0</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.0</real>
+    </map>
     <key>BDMergeSnapshotExtras</key>
     <map>
       <key>Comment</key>

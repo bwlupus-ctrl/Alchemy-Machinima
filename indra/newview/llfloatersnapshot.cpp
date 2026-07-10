@@ -36,6 +36,12 @@
 // remembered snapshot destination panel across sessions, and a raised custom
 // resolution cap for save-to-disk. donor: Black Dragon (NiranV Dean)
 // fab3226ac5/f0db8914d0/4d0faf18c4. See doc/BD_MERGE_PATCHLOG.md.
+//
+// [BDMerge A1.2] Resolution-aware autoscale, gated by BDMergeSnapshotAutoscale:
+// derives an output/window height ratio here (updateResolution) that pipeline.cpp
+// applies to SSAO radius/blur, shadow-blur size, and DoF field-of-view input so
+// high-res snapshots preserve window-resolution effect weighting for those three.
+// donor: Black Dragon (NiranV Dean) 8eed1a6768. See doc/BD_MERGE_PATCHLOG.md.
 
 #include "llviewerprecompiledheaders.h"
 
@@ -769,6 +775,31 @@ void LLFloaterSnapshot::Impl::updateResolution(LLUICtrl* ctrl, void* data, bool 
 
         previewp->getSize(width, height);
 
+        // [BDMerge A1.2] Resolution-aware autoscale: while BDMergeSnapshotAutoscale is
+        // enabled, re-derive the output/window height ratio every time the requested
+        // snapshot resolution changes and stash it in BDMergeSnapshotAutoscaleMultiplier
+        // (non-persisted, mirrors donor's RenderSnapshotMultiplier). pipeline.cpp reads it
+        // back through an LLCachedControl-gated helper to scale SSAO radius/blur, the
+        // shared shadow+SSAO soften blur size, and the DoF field-of-view input so a
+        // high-res snapshot keeps the same effect *weighting* it had at window resolution
+        // instead of the effects visually shrinking as output resolution grows. Gate off
+        // (default) never touches the multiplier and pipeline.cpp forces it back to 1.0,
+        // so rendering stays bit-identical to stock.
+        // donor: Black Dragon (NiranV Dean) 8eed1a6768 ("Added: Simple automatic
+        // SSAO/Shadow/DoF scaling option..."), non-persist multiplier per fa96df28ee.
+        {
+            static LLCachedControl<bool> bdmerge_snapshot_autoscale(gSavedSettings, "BDMergeSnapshotAutoscale", false);
+            if (bdmerge_snapshot_autoscale)
+            {
+                S32 window_height = gViewerWindow->getWindowHeightRaw();
+                if (window_height > 0)
+                {
+                    F32 multiplier = (F32)height / (F32)window_height;
+                    gSavedSettings.setF32("BDMergeSnapshotAutoscaleMultiplier", multiplier);
+                }
+            }
+        }
+
         // We use the height spinner here because we come here via the aspect ratio
         // checkbox as well and we want height always changing to width by default.
         // If we use the width spinner we would change width according to height by
@@ -1305,6 +1336,11 @@ void LLFloaterSnapshotBase::onClose(bool app_quitting)
     // (the listener thaws the avatars); like BD, the freeze lives only while
     // its UI is reachable so the scene can never get stuck frozen
     gSavedSettings.setBOOL("UseFreezeWorld", false);
+
+    // [BDMerge A1.2] reset the autoscale multiplier so a high-res selection
+    // can't keep scaling SSAO/shadow/DoF for in-world rendering after the
+    // floater closes (donor follow-up fix 0b37fb26fd, same intent)
+    gSavedSettings.setF32("BDMergeSnapshotAutoscaleMultiplier", 1.f);
 
     gSavedSettings.setBOOL("FreezeTime", false);
     impl->mAvatarPauseHandles.clear();
