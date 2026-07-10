@@ -608,6 +608,19 @@ void LLViewerTexture::updateClass()
         }
     }
 
+    // [BDMerge G5.2] capture-mode pin: while on, hold the discard bias at its
+    // floor so no bias-driven downrez/unload can touch scene textures during
+    // a take (also neutralizes the backgrounded-viewer dump above and the
+    // bias>2 draw-distance shrink in llviewerdisplay.cpp). The G5.0 VRAM
+    // budget (full detected VRAM, 20% headroom) and the G5.1 decoded RAM
+    // pool absorb the larger working set. This disables a memory safety
+    // valve by design - it is a capture tool, default off.
+    static LLCachedControl<bool> capture_pin(gSavedSettings, "BDMergeCaptureModePin", false);
+    if (capture_pin)
+    {
+        sDesiredDiscardBias = 1.f;
+    }
+
     sDesiredDiscardBias = llclamp(sDesiredDiscardBias, 1.f, 4.f);
     if (last_texture_update_count_bias < sDesiredDiscardBias)
     {
