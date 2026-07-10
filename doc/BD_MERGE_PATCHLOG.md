@@ -161,3 +161,22 @@ as current BD.
 BD Graphics + FS QoL", memory/streaming phase for the RTX 5090 / 192GB target;
 no A/B/C equivalent existed. G5.0 findings map to the companion "Alchemy Memory
 Analysis" doc, findings 1/3/4/6.)*
+
+### Target-hardware notes for G5.1 Stage 2 (recorded 2026-07-10)
+
+Machine: **AMD Ryzen 9 9950X** (16 cores / 32 threads, Zen 5, full AVX-512) +
+RTX 5090 32GB + 192GB RAM. CPU-specific levers for the threading sub-item
+(spec G5.1 4a):
+
+- `image_decode_count = llclamp(cores − 6, 2, 16)` (`llappviewer.cpp:2189-2233`):
+  with 32 logical cores the formula gives 26 but the **16-thread clamp binds** —
+  the ceiling is the lever here, not the formula. Retune per the spike's queuing
+  data (spec 4a-i). Verify whether `cores` reads logical (32) or physical (16)
+  before retuning.
+- 9950X is homogeneous (no P/E hybrid) — the spec's anti-pinning caveat is moot
+  on this box, but worker-pool isolation (4a-ii) remains the right design anyway.
+- **AVX-512 J2K decode**: Zen 5 has the full 512-bit datapath and the viewer's
+  decoder is OpenJPEG 2.5.4. Personal build, no distribution → free wins
+  available from compiler arch flags (`/arch:AVX512` on the alchemy-bin +
+  openjpeg vcpkg port) and/or evaluating an SIMD-optimized J2K path. Only worth
+  pursuing if the spike confirms decode-dominance; file under G5.1 Stage 2.
