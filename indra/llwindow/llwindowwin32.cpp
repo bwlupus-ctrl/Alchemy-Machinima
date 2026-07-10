@@ -681,6 +681,21 @@ LLWindowWin32::LLWindowWin32(LLWindowCallbacks* callbacks,
     S32 virtual_screen_width = GetSystemMetrics(SM_CXVIRTUALSCREEN);
     S32 virtual_screen_height = GetSystemMetrics(SM_CYVIRTUALSCREEN);
 
+    // [BDMerge QoL] upstream sanitizes only position, not size: a saved
+    // oversized rect (e.g. from a crash-exit) creates a window larger than
+    // every attached display, leaving UI unreachable off screen. Clamp to the
+    // virtual desktop (union of all monitors) before sanitizing position.
+    if (width > virtual_screen_width || height > virtual_screen_height)
+    {
+        LL_WARNS("Window") << "Requested window size " << width << "x" << height
+                           << " exceeds virtual desktop " << virtual_screen_width << "x" << virtual_screen_height
+                           << "; clamping" << LL_ENDL;
+        width = llmin(width, virtual_screen_width);
+        height = llmin(height, virtual_screen_height);
+        window_rect.right = (long) width;
+        window_rect.bottom = (long) height;
+    }
+
     if (x < virtual_screen_x) x = virtual_screen_x;
     if (y < virtual_screen_y - window_border_y) y = virtual_screen_y - window_border_y;
 
