@@ -142,7 +142,7 @@ as current BD.
 | B4 head/eye tracking limits | **done** | — |
 | B5 max cam/pelvis diff | **closed — already present via LL upstream** (2026-07-09: `AvatarRotateThresholdSlow`/`Fast` debug settings wired at `llvoavatar.cpp:4613` — same change BD carries as LL commit 9fe788e031; Ground Rule 3, no double-apply. Slider UI deferred to B1 sidebar, which should surface these two settings) | — |
 | B6 bone camera | open | — (diff vs `llcinematiccamera` first) |
-| B7 poser | open | — (phased) |
+| B7 poser | **closed — already present via upstream** (2026-07-10: Alchemy adopted Firestorm's Poser upstream — `fsfloaterposer.cpp`/`fsposeranimator.cpp` with active upstream maintenance, World-menu entry `fs_poser`; resolves the F10 FS-vs-BD donor decision in favor of FS by upstream fiat; in-world capability verification owed) | — |
 | B8 cinematic camera mode | open | B6 |
 | B9 gamepad flycam | open | — (compose with `llcameraoperator`) |
 | B10 pose sync | open | B7 |
@@ -157,7 +157,7 @@ as current BD.
 | C6 snapshot conveniences | **done** | — |
 | C7 texture channel lock | **closed — already present via shared upstream** (2026-07-09: "Synchronize materials" checkbox, `SyncMaterialSettings` + `syncOffsetX/Y`/`syncRepeatX/Y`/`syncMaterialRot` in `llpanelface.cpp`, upstream MAINT-3223 commit `69db7cd947` carried identically by BD and Alchemy; PBR/GLTF transforms untouched by sync in both trees, matching BD scope) | — |
 | C8 slider precision | **done** | — |
-| F1 area search | **closed — already present** (2026-07-10 sweep: Alchemy Scene Explorer — `alfloatersceneexplorer.cpp` + filters/model/predicate, `menu_scene_explorer.xml` carries the full F1 action set: touch/sit/open/buy/pay/take_copy/TP/profile/focus) | — |
+| F1 area search | **closed — already present** (2026-07-10 sweep, deep-verified after user challenge: Scene Explorer searches name/description/owner/UUID with region/parcel/radius scope (`alsceneexplorerpredicate.h`) AND actively fetches all region objects' properties from the sim via a batched priority-queue pump (`alfloatersceneexplorer.cpp:1498` region) — the FS-defining mechanism; full action set in `menu_scene_explorer.xml`. Recent upstream work (2026, Rye Mutt) — absent from older Alchemy builds) | — |
 | F2 derender + asset blacklist | **closed — already present** (`alderenderlist.cpp` + `alassetblocklist.cpp` with LLSD save/load persistence + `panel_al_block_derender.xml` management UI) | — |
 | F5 camera roll | **closed — already present** (`LLAgentCamera::cameraRollOver`/`resetCameraRoll`, bindable `roll_left`/`roll_right` actions, default Shift+Q/E in `key_bindings.xml`; precise-positioning half covered by stock camera floater + C3/C8 spinners) | — |
 | C1 client AO | **closed — already present** (full AO: `ao.cpp`/`aoengine.cpp`/`aoset.cpp` + `floater_ao.xml`/`panel_ao*.xml`) | — |
