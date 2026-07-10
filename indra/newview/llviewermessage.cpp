@@ -4344,10 +4344,42 @@ void process_avatar_animation(LLMessageSystem *mesgsys, void **user_data)
     {
         LLUUID object_id;
 
+// [BDMerge C2] Nimble (landing half): skip pre-jump/landing/stand-up waits.
+// Donor: Catznip CATZ-400 (ba7dcf52e1, "Add option to turn off pre-jumping"),
+// carried by Black Dragon. When the server signals one of these transitional
+// animations for OUR OWN avatar, don't record it in mSignaledAnimations (so
+// processAnimationStateChanges() never starts it locally) and immediately tell
+// the server the animation is finished, exactly as the donor does. Donor used
+// two keys (PlayPrejumpAnim / PlayLandingAnim); collapsed under the single
+// BDMergeMovementFlags gate per coordinator ruling. Scoped to isSelf() only,
+// matching the donor (its hunk sat in the self branch) -- other avatars'
+// landing animations are untouched. Gate off = stock path, bit-identical.
+        static LLCachedControl<bool> sBDMergeMovementFlags(gSavedSettings, "BDMergeMovementFlags", false);
+// [/BDMerge C2]
+
         for( S32 i = 0; i < num_blocks; i++ )
         {
             mesgsys->getUUIDFast(_PREHASH_AnimationList, _PREHASH_AnimID, animation_id, i);
             mesgsys->getS32Fast(_PREHASH_AnimationList, _PREHASH_AnimSequenceID, anim_sequence_id, i);
+
+// [BDMerge C2] See block comment above. Unlike the donor's `continue`, the
+// EXT-2781 flying-mode hack below is replicated inside the skip path so that
+// gating on cannot reintroduce the stuck-AGENT_CONTROL_FLY bug for STANDUP.
+            if (sBDMergeMovementFlags &&
+                (animation_id == ANIM_AGENT_PRE_JUMP ||
+                 animation_id == ANIM_AGENT_LAND ||
+                 animation_id == ANIM_AGENT_MEDIUM_LAND ||
+                 animation_id == ANIM_AGENT_STANDUP))
+            {
+                if (animation_id == ANIM_AGENT_STANDUP && gAgent.getFlying())
+                {
+                    gAgent.setFlying(false);
+                }
+                gAgent.setControlFlags(AGENT_CONTROL_FINISH_ANIM);
+                send_agent_update(true, true);
+                continue;
+            }
+// [/BDMerge C2]
 
             avatarp->mSignaledAnimations[animation_id] = anim_sequence_id;
 

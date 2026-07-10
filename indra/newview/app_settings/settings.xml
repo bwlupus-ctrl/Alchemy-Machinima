@@ -1990,6 +1990,17 @@
       <key>Value</key>
       <integer>0</integer>
     </map>
+    <key>BDMergeMovementFlags</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge C2] Movement convenience: Nimble - skips the local pre-jump wind-up (LLAgent::moveUp adds AGENT_CONTROL_FINISH_ANIM to the jump AgentUpdate) and the landing/stand-up animation waits (process_avatar_animation skips PRE_JUMP/LAND/MEDIUM_LAND/STANDUP for own avatar). Tap-tap-hold-run (AllowTapTapHoldRun) and always-run were already present in Alchemy and are unaffected. Off = bit-identical stock. Donor: Catznip CATZ-400 (ba7dcf52e1), carried by Black Dragon. See doc/BD_MERGE_PATCHLOG.md.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
     <key>BDMergeRenderOthersAttachedLights</key>
     <map>
       <key>Comment</key>

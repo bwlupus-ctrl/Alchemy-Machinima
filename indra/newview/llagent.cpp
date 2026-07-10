@@ -817,6 +817,24 @@ void LLAgent::moveUp(S32 direction)
         if (!getFlying())
         {
             mLastJumpInputTime = LLTimer::getTotalSeconds();
+
+// [BDMerge C2] Nimble: skip the local pre-jump animation wind-up on jump
+// input, same as the always-play case above already does at completion.
+// Donor: Catznip CATZ-400 (ba7dcf52e1, "Add option to turn off pre-jumping"),
+// ported as a jump-input-time flag instead of a standing PlayPrejumpAnim/
+// PlayLandingAnim settings pair so the AgentUpdate control-flag semantics
+// used elsewhere in this file (see onAnimStop() above, and line ~2772) are
+// unchanged -- this only conditionally adds the existing AGENT_CONTROL_
+// FINISH_ANIM flag to the same update that already carries UP_POS.
+// The landing-side half (skipping ANIM_AGENT_LAND / ANIM_AGENT_MEDIUM_LAND /
+// ANIM_AGENT_STANDUP for our own avatar) lives in llviewermessage.cpp
+// process_avatar_animation(), under this same gate.
+            static LLCachedControl<bool> sBDMergeMovementFlags(gSavedSettings, "BDMergeMovementFlags", false);
+            if (sBDMergeMovementFlags)
+            {
+                setControlFlags(AGENT_CONTROL_FINISH_ANIM);
+            }
+// [/BDMerge C2]
         }
         setControlFlags(AGENT_CONTROL_UP_POS | AGENT_CONTROL_FAST_UP);
         mCrouch = false;
