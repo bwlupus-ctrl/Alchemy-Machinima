@@ -24,6 +24,12 @@
  * $/LicenseInfo$
  */
 
+// [BDMerge C6] Snapshot conveniences: gated high-res snapshot limit override
+// (bdmerge_max_snapshot_image_size) and toggleable date/time in local
+// snapshot filenames. donor: Black Dragon (NiranV Dean) 16143bb98b "Added:
+// Option to toggle adding date and time to snapshot names." + BD's
+// MAX_SNAPSHOT_IMAGE_SIZE raise. See doc/BD_MERGE_PATCHLOG.md.
+
 #include "llviewerprecompiledheaders.h"
 #include "llviewerwindow.h"
 
@@ -5176,6 +5182,15 @@ void LLViewerWindow::onSelectionFailure(const snapshot_saved_signal_t::slot_type
 }
 
 
+// [BDMerge C6] runtime max snapshot side length (see llviewerwindow.h);
+// 12288 with the gated high-res override on, stock 7680 otherwise
+S32 bdmerge_max_snapshot_image_size()
+{
+    static LLCachedControl<bool> bdmerge_snapshot_extras(gSavedSettings, "BDMergeSnapshotExtras", false);
+    static LLCachedControl<bool> bdmerge_res_unlock(gSavedSettings, "BDMergeSnapshotResolutionUnlock", false);
+    return (bdmerge_snapshot_extras && bdmerge_res_unlock) ? 12288 : (S32)MAX_SNAPSHOT_IMAGE_SIZE;
+}
+
 void LLViewerWindow::saveImageLocal(LLImageFormatted *image, const snapshot_saved_signal_t::slot_type& success_cb, const snapshot_saved_signal_t::slot_type& failure_cb)
 {
     std::string lastSnapshotDir = LLViewerWindow::getLastSnapshotDir();
@@ -5242,8 +5257,21 @@ void LLViewerWindow::saveImageLocal(LLImageFormatted *image, const snapshot_save
         filepath = sSnapshotDir;
         filepath += gDirUtilp->getDirDelimiter();
         filepath += sSnapshotBaseName;
-        filepath += now.toLocalDateString("_%Y-%m-%d_%H%M%S");
-        filepath += llformat("%.2d", i);
+        // [BDMerge C6] toggleable date/time in snapshot filenames (donor:
+        // Black Dragon 16143bb98b). Stock (gate off or toggle on) keeps the
+        // timestamp; with the gate on and the toggle off, fall back to plain
+        // sequential numbering like BD.
+        static LLCachedControl<bool> bdmerge_snapshot_extras(gSavedSettings, "BDMergeSnapshotExtras", false);
+        static LLCachedControl<bool> bdmerge_add_datetime(gSavedSettings, "BDMergeSnapshotAddDateTime", true);
+        if (!bdmerge_snapshot_extras || bdmerge_add_datetime)
+        {
+            filepath += now.toLocalDateString("_%Y-%m-%d_%H%M%S");
+            filepath += llformat("%.2d", i);
+        }
+        else if (is_snapshot_name_loc_set)
+        {
+            filepath += llformat("_%.3d", i);
+        }
         filepath += extension;
 
         llstat stat_info;

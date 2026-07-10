@@ -2001,6 +2001,61 @@
       <key>Value</key>
       <integer>0</integer>
     </map>
+    <key>BDMergeSnapshotAddDateTime</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge C6] Include date and time in local snapshot filenames (stock behavior). Turn off to use plain sequential numbering instead. Only effective while BDMergeSnapshotExtras is enabled. Donor: Black Dragon 16143bb98b (SnapshotAddDate). See doc/BD_MERGE_PATCHLOG.md.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>BDMergeSnapshotExtras</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge C6] Enables the Black Dragon-style snapshot floater conveniences: detachable/resizable big preview floater (PREVIEW button), remembered snapshot destination panel (BDMergeSnapshotRememberMode), high-res custom resolution override for save-to-disk (BDMergeSnapshotResolutionUnlock), and toggleable date/time in filenames (BDMergeSnapshotAddDateTime). When off, the snapshot floater behaves and lays out exactly as stock. Donor: Black Dragon fab3226ac5/16143bb98b. See doc/BD_MERGE_PATCHLOG.md.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>BDMergeSnapshotLastPanel</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge C6] Name of the last used snapshot destination panel, restored on open while BDMergeSnapshotExtras and BDMergeSnapshotRememberMode are enabled. Written by the snapshot floater on close.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>String</string>
+      <key>Value</key>
+      <string />
+    </map>
+    <key>BDMergeSnapshotRememberMode</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge C6] Remember the last used snapshot destination (save to disk/inventory/profile/email) across floater opens and sessions. Only effective while BDMergeSnapshotExtras is enabled. Donor: Black Dragon RememberSnapshotMode.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>BDMergeSnapshotResolutionUnlock</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge C6] Raise the custom snapshot resolution limit for save-to-disk from 7680 to 12288 pixels per side. Unsupported and potentially unstable; a warning is shown when enabling. Only effective while BDMergeSnapshotExtras is enabled. Donor: Black Dragon SnapshotResolutionUnlock / MAX_SNAPSHOT_IMAGE_SIZE raise.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
     <key>BrowserIgnoreSSLCertErrors</key>
     <map>
       <key>Comment</key>

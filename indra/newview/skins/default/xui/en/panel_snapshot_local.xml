@@ -197,6 +197,21 @@
      name="image_quality_slider"
      top_pad="6"
      width="203" />
+    <!-- [BDMerge C6] high-res override toggle (donor: Black Dragon "Allow High
+         Resolutions"). Hidden by default; LLPanelSnapshotLocal::postBuild shows
+         it while BDMergeSnapshotExtras is on. Last flow element - nothing below
+         shifts (the buttons underneath are anchored at top=337). -->
+    <check_box
+     top_pad="8"
+     height="15"
+     follows="left|top"
+     control_name="BDMergeSnapshotResolutionUnlock"
+     label="Allow high resolutions (unsafe)"
+     tool_tip="Raise the custom resolution limit for saved snapshots to 12288 pixels per side. Very large snapshots can run out of video memory and crash the viewer."
+     layout="topleft"
+     left="10"
+     visible="false"
+     name="bdmerge_unlock_resolutions" />
     <button
      follows="right|bottom"
      height="23"

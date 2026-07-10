@@ -68,6 +68,7 @@
 #include "llfloateravatartextures.h"
 #include "llfloaterbanduration.h"
 #include "llfloaterbeacons.h"
+#include "llfloaterbigpreview.h" // [BDMerge C6]
 #include "llfloaterbuildoptions.h"
 #include "llfloaterbulkpermission.h"
 #include "llfloaterbulkupload.h"
@@ -369,6 +370,8 @@ void LLViewerFloaterReg::registerFloaters()
 
     LLFloaterReg::add("ban_duration", "floater_ban_duration.xml", &LLFloaterReg::build<LLFloaterBanDuration>);
     LLFloaterReg::add("beacons", "floater_beacons.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterBeacons>);
+    // [BDMerge C6] detachable snapshot preview (donor: Black Dragon 4d0faf18c4)
+    LLFloaterReg::add("big_preview", "floater_big_preview.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterBigPreview>);
     LLFloaterReg::add("bulk_perms", "floater_bulk_perms.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterBulkPermission>);
     LLFloaterReg::add("buy_currency", "floater_buy_currency.xml", &LLFloaterBuyCurrency::buildFloater);
     LLFloaterReg::add("buy_currency_html", "floater_buy_currency_html.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterBuyCurrencyHTML>);

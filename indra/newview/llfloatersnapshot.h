@@ -24,6 +24,11 @@
  * $/LicenseInfo$
  */
 
+// [BDMerge C6] Snapshot conveniences: detachable big preview floater hookup
+// and remembered snapshot destination panel, gated by BDMergeSnapshotExtras.
+// donor: Black Dragon (NiranV Dean) fab3226ac5/f0db8914d0/16143bb98b.
+// See doc/BD_MERGE_PATCHLOG.md.
+
 #ifndef LL_LLFLOATERSNAPSHOT_H
 #define LL_LLFLOATERSNAPSHOT_H
 
@@ -35,6 +40,7 @@
 class LLSpinCtrl;
 class LLSnapshotLivePreview;
 class LLToolset;
+class LLFloaterBigPreview; // [BDMerge C6]
 
 class LLFloaterSnapshotBase : public LLFloater
 {
@@ -152,12 +158,18 @@ public:
 
     /*virtual*/ bool postBuild();
     /*virtual*/ void onOpen(const LLSD& key);
+    /*virtual*/ void onClose(bool app_quitting); // [BDMerge C6]
     /*virtual*/ S32 notify(const LLSD& info);
 
     static void update();
 
     void onExtendFloater();
     void on360Snapshot();
+
+    // [BDMerge C6] detachable big preview (donor: Black Dragon fab3226ac5)
+    void onClickBigPreview();
+    bool isPreviewVisible();
+    void attachPreview();
 
     static LLFloaterSnapshot* getInstance();
     static LLFloaterSnapshot* findInstance();
@@ -171,6 +183,10 @@ public:
 
     class Impl;
     friend class Impl;
+
+private:
+    // [BDMerge C6] detachable big preview floater (donor: Black Dragon)
+    LLFloaterBigPreview* mBigPreviewFloater = nullptr;
 };
 
 ///----------------------------------------------------------------------------

@@ -25,6 +25,11 @@
 * $/LicenseInfo$
 */
 
+// [BDMerge C6] gated high-res snapshot limit: the max-image-size clamps below
+// use bdmerge_max_snapshot_image_size() (llviewerwindow.h) instead of the
+// compile-time MAX_SNAPSHOT_IMAGE_SIZE. donor: Black Dragon (NiranV Dean)
+// MAX_SNAPSHOT_IMAGE_SIZE raise. See doc/BD_MERGE_PATCHLOG.md.
+
 #include "llviewerprecompiledheaders.h"
 
 #include "llagent.h"
@@ -113,7 +118,7 @@ LLSnapshotLivePreview::LLSnapshotLivePreview (const LLSnapshotLivePreview::Param
     mImageScaled[0] = false;
     mImageScaled[1] = false;
 
-    mMaxImageSize = MAX_SNAPSHOT_IMAGE_SIZE ;
+    mMaxImageSize = bdmerge_max_snapshot_image_size(); // [BDMerge C6]
     mKeepAspectRatio = gSavedSettings.getBOOL("KeepAspectForSnapshot") ;
     mThumbnailUpdateLock = false ;
     mThumbnailUpToDate   = false ;
@@ -136,7 +141,7 @@ LLSnapshotLivePreview::~LLSnapshotLivePreview()
 
 void LLSnapshotLivePreview::setMaxImageSize(S32 size)
 {
-    mMaxImageSize = llmin(size,(S32)(MAX_SNAPSHOT_IMAGE_SIZE));
+    mMaxImageSize = llmin(size, bdmerge_max_snapshot_image_size()); // [BDMerge C6]
 }
 
 LLViewerTexture* LLSnapshotLivePreview::getCurrentImage()

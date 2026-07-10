@@ -995,6 +995,22 @@ static bool handleUseFreezeWorldChanged(const LLSD& newvalue)
 }
 // [/BDMerge B3]
 
+// [BDMerge C6] warn when the high-res snapshot unlock is enabled (donor:
+// Black Dragon's Dragon.TriggerWarn on its SnapshotResolutionUnlock checkbox)
+static bool handleSnapshotResolutionUnlockChanged(const LLSD& newvalue)
+{
+    if (newvalue.asBoolean())
+    {
+        static LLCachedControl<bool> bdmerge_snapshot_extras(gSavedSettings, "BDMergeSnapshotExtras", false);
+        if (bdmerge_snapshot_extras)
+        {
+            LLNotificationsUtil::add("BDMergeSnapshotResolutionUnlock");
+        }
+    }
+    return true;
+}
+// [/BDMerge C6]
+
 ////////////////////////////////////////////////////////////////////////////
 
 LLPointer<LLControlVariable> setting_get_control(LLControlGroup& group, const std::string& setting)
@@ -1251,6 +1267,8 @@ void settings_setup_listeners()
     setting_setup_signal_listener(gSavedSettings, "AlchemyHudTextFadeRange", LLHUDText::onFadeSettingsChanged);
     // [BDMerge B3] Freeze World (donor: Black Dragon b4cfc2cb83)
     setting_setup_signal_listener(gSavedSettings, "UseFreezeWorld", handleUseFreezeWorldChanged);
+    // [BDMerge C6] high-res snapshot unlock warning
+    setting_setup_signal_listener(gSavedSettings, "BDMergeSnapshotResolutionUnlock", handleSnapshotResolutionUnlockChanged);
 }
 
 #if TEST_CACHED_CONTROL

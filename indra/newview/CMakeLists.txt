@@ -336,6 +336,7 @@ set(viewer_SOURCE_FILES
     llfloateravatartextures.cpp
     llfloaterbanduration.cpp
     llfloaterbeacons.cpp
+    llfloaterbigpreview.cpp
     llfloaterbuildoptions.cpp
     llfloaterbulkpermission.cpp
     llfloaterbulkupload.cpp
@@ -1110,6 +1111,7 @@ set(viewer_HEADER_FILES
     llfloateravatartextures.h
     llfloaterbanduration.h
     llfloaterbeacons.h
+    llfloaterbigpreview.h
     llfloaterbuildoptions.h
     llfloaterbulkpermission.h
     llfloaterbulkupload.h

@@ -84,6 +84,30 @@
      name="new_snapshot_btn"
      top_pad="26"
      width="167" />
+    <!-- [BDMerge C6] detachable big preview toggle (donor: Black Dragon
+         fab3226ac5). Hidden by default and overlapping new_snapshot_btn;
+         LLFloaterSnapshot::postBuild shrinks REFRESH to 86px and shows this
+         when BDMergeSnapshotExtras is on. Ends at x=177 so the following
+         retract_btn (left_pad=1 -> 178) keeps its stock position either way. -->
+    <button
+     follows="left|top"
+     height="25"
+     image_hover_unselected="Toolbar_Middle_Over"
+     image_selected="Toolbar_Middle_Selected"
+     image_unselected="Toolbar_Middle_Off"
+     image_overlay="Conv_toolbar_arrow_ne"
+     image_overlay_alignment="left"
+     imgoverlay_label_space="3"
+     pad_bottom="0"
+     halign="left"
+     layout="topleft"
+     left="97"
+     top_delta="0"
+     label="PREVIEW"
+     tool_tip="Show the snapshot preview in a separate resizable window"
+     name="big_preview_btn"
+     visible="false"
+     width="80" />
 	<button
        follows="left|top"
 	   control_name="AdvanceSnapshot"

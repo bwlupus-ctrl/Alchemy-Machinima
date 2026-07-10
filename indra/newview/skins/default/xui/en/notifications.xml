@@ -9286,6 +9286,20 @@ Failed to save snapshot to [PATH]: Disk is full. [NEED_MEMORY]KB is required but
 Failed to save snapshot to [PATH]: Directory does not exist.
   </notification>
 
+  <!-- [BDMerge C6] high-res snapshot unlock warning (donor: Black Dragon
+       "SnapshotResolutionUnlock" alertmodal, adapted wording) -->
+  <notification
+   icon="alertmodal.tga"
+   name="BDMergeSnapshotResolutionUnlock"
+   type="alertmodal">
+Warning!
+
+Snapshot resolutions above the standard limit (7680 pixels per side) are unsupported. Very large snapshots need a lot of video memory and may fail or crash the viewer, depending on your graphics hardware.
+
+Disable this option if you want a stable experience.
+  <tag>warning</tag>
+  </notification>
+
   <notification icon="notifytip.tga"
     name="SnapshotSavedToComputer" type="notifytip">
 Screenshot saved to:

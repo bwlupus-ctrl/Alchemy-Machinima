@@ -151,6 +151,12 @@ struct MainPanel : public LLPanel
 
 static const U32 MAX_SNAPSHOT_IMAGE_SIZE = 7680; // max snapshot image size 7680 * 7680 UHDTV2
 
+// [BDMerge C6] runtime max snapshot side length: 12288 when the high-res
+// override (BDMergeSnapshotExtras + BDMergeSnapshotResolutionUnlock) is on,
+// otherwise stock MAX_SNAPSHOT_IMAGE_SIZE. donor: Black Dragon b4cfc2cb83-era
+// constant raise (12228 in llviewerwindow.h), made a gated runtime value here.
+S32 bdmerge_max_snapshot_image_size();
+
 class LLViewerWindow : public LLWindowCallbacks
 {
 public:

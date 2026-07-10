@@ -24,6 +24,11 @@
  * $/LicenseInfo$
  */
 
+// [BDMerge C6] high-res override: reveal the "Allow high resolutions"
+// checkbox while BDMergeSnapshotExtras is enabled. donor: Black Dragon
+// (NiranV Dean) SnapshotResolutionUnlock checkbox in panel_snapshot_local.
+// See doc/BD_MERGE_PATCHLOG.md.
+
 #include "llviewerprecompiledheaders.h"
 
 #include "llcombobox.h"
@@ -84,6 +89,13 @@ bool LLPanelSnapshotLocal::postBuild()
     getChild<LLUICtrl>("image_quality_slider")->setCommitCallback(boost::bind(&LLPanelSnapshotLocal::onQualitySliderCommit, this, _1));
     getChild<LLUICtrl>("local_format_combo")->setCommitCallback(boost::bind(&LLPanelSnapshotLocal::onFormatComboCommit, this, _1));
     getChild<LLUICtrl>("save_btn")->setCommitCallback(boost::bind(&LLPanelSnapshotLocal::onSaveFlyoutCommit, this, _1));
+
+    // [BDMerge C6] high-res override checkbox, hidden unless the gate is on
+    // (donor: Black Dragon "Allow High Resolutions" in panel_snapshot_local)
+    {
+        static LLCachedControl<bool> bdmerge_snapshot_extras(gSavedSettings, "BDMergeSnapshotExtras", false);
+        getChildView("bdmerge_unlock_resolutions")->setVisible(bdmerge_snapshot_extras);
+    }
 
     return LLPanelSnapshot::postBuild();
 }

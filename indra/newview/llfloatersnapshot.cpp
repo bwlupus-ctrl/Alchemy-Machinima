@@ -30,11 +30,18 @@
 // camera stays free - without the removed laggy fullscreen preview. donor:
 // Black Dragon (NiranV Dean) b4cfc2cb83/fab3226ac5. Keep these hunks minimal;
 // item C6 will extend this floater later. See doc/BD_MERGE_PATCHLOG.md.
+//
+// [BDMerge C6] Snapshot conveniences, gated by BDMergeSnapshotExtras:
+// detachable/resizable big preview floater (PREVIEW button next to REFRESH),
+// remembered snapshot destination panel across sessions, and a raised custom
+// resolution cap for save-to-disk. donor: Black Dragon (NiranV Dean)
+// fab3226ac5/f0db8914d0/4d0faf18c4. See doc/BD_MERGE_PATCHLOG.md.
 
 #include "llviewerprecompiledheaders.h"
 
 #include "llfloatersnapshot.h"
 
+#include "llfloaterbigpreview.h" // [BDMerge C6]
 #include "llfloaterreg.h"
 #include "llimagefiltersmanager.h"
 #include "llcheckboxctrl.h"
@@ -334,8 +341,15 @@ void LLFloaterSnapshot::Impl::updateControls(LLFloaterSnapshotBase* floater)
         }
         else
         {
-            width_ctrl->setMaxValue(MAX_SNAPSHOT_IMAGE_SIZE);
-            height_ctrl->setMaxValue(MAX_SNAPSHOT_IMAGE_SIZE);
+            // [BDMerge C6] high-res override: save-to-disk custom resolution
+            // may exceed the stock cap when unlocked (donor: Black Dragon
+            // MAX_SNAPSHOT_IMAGE_SIZE raise, gated at runtime here). Other
+            // destinations (inventory/profile/postcard) keep the stock cap.
+            S32 max_side = (shot_type == LLSnapshotModel::SNAPSHOT_LOCAL)
+                               ? bdmerge_max_snapshot_image_size()
+                               : (S32)MAX_SNAPSHOT_IMAGE_SIZE;
+            width_ctrl->setMaxValue((F32)max_side);
+            height_ctrl->setMaxValue((F32)max_side);
         }
     }
 
@@ -1000,6 +1014,22 @@ bool LLFloaterSnapshot::postBuild()
     mSucceessLblPanel = getChild<LLUICtrl>("succeeded_panel");
     mFailureLblPanel = getChild<LLUICtrl>("failed_panel");
 
+    // [BDMerge C6] detachable big preview: PREVIEW button shares the refresh
+    // button's row; when the gate is on, shrink REFRESH (stock 167px wide)
+    // and reveal it (donor: Black Dragon fab3226ac5). Gate off: button stays
+    // hidden and overlapped, stock layout untouched.
+    {
+        static LLCachedControl<bool> bdmerge_snapshot_extras(gSavedSettings, "BDMergeSnapshotExtras", false);
+        LLButton* big_preview_btn = getChild<LLButton>("big_preview_btn");
+        big_preview_btn->setCommitCallback(boost::bind(&LLFloaterSnapshot::onClickBigPreview, this));
+        big_preview_btn->setVisible(bdmerge_snapshot_extras);
+        if (bdmerge_snapshot_extras)
+        {
+            mRefreshBtn->reshape(86, mRefreshBtn->getRect().getHeight());
+            mBigPreviewFloater = dynamic_cast<LLFloaterBigPreview*>(LLFloaterReg::getInstance("big_preview"));
+        }
+    }
+
     childSetCommitCallback("ui_check", ImplBase::onClickDisplaySetting, this);
     childSetCommitCallback("balance_check", ImplBase::onClickDisplaySetting, this);
     childSetCommitCallback("hud_check", ImplBase::onClickDisplaySetting, this);
@@ -1162,8 +1192,48 @@ void LLFloaterSnapshot::onOpen(const LLSD& key)
     impl->setAdvanced(gSavedSettings.getBOOL("AdvanceSnapshot"));
     impl->updateLayout(this);
 
+    // [BDMerge C6] remembered snapshot destination: restore the panel saved
+    // at last close (donor: Black Dragon RememberSnapshotMode, adapted to a
+    // persisted panel name so it also survives sessions)
+    {
+        static LLCachedControl<bool> bdmerge_snapshot_extras(gSavedSettings, "BDMergeSnapshotExtras", false);
+        static LLCachedControl<bool> bdmerge_remember_mode(gSavedSettings, "BDMergeSnapshotRememberMode", true);
+        if (bdmerge_snapshot_extras && bdmerge_remember_mode)
+        {
+            const std::string last_panel = gSavedSettings.getString("BDMergeSnapshotLastPanel");
+            LLSideTrayPanelContainer* panel_container = getChild<LLSideTrayPanelContainer>("panel_container");
+            if (!last_panel.empty()
+                && panel_container->getPanelByName(last_panel)
+                && panel_container->getCurrentPanel()->getName() != last_panel)
+            {
+                panel_container->openPanel(last_panel);
+            }
+        }
+    }
+
     // Initialize default tab.
     getChild<LLSideTrayPanelContainer>("panel_container")->getCurrentPanel()->onOpen(LLSD());
+}
+
+// virtual
+void LLFloaterSnapshot::onClose(bool app_quitting)
+{
+    // [BDMerge C6] remember the destination panel for the next open/session
+    // and take the detached big preview down with us (donor: Black Dragon)
+    static LLCachedControl<bool> bdmerge_snapshot_extras(gSavedSettings, "BDMergeSnapshotExtras", false);
+    if (bdmerge_snapshot_extras)
+    {
+        LLSideTrayPanelContainer* panel_container = getChild<LLSideTrayPanelContainer>("panel_container");
+        if (panel_container && panel_container->getCurrentPanel())
+        {
+            gSavedSettings.setString("BDMergeSnapshotLastPanel", panel_container->getCurrentPanel()->getName());
+        }
+        if (mBigPreviewFloater)
+        {
+            mBigPreviewFloater->closeOnFloaterOwnerClosing(this);
+        }
+    }
+    LLFloaterSnapshotBase::onClose(app_quitting);
 }
 
 void LLFloaterSnapshot::onExtendFloater()
@@ -1176,6 +1246,46 @@ void LLFloaterSnapshot::on360Snapshot()
     LLFloaterReg::showInstance("360capture");
     closeFloater();
 }
+
+// [BDMerge C6] detachable big preview (donor: Black Dragon fab3226ac5,
+// double-toggle crash fix f0db8914d0 folded in: never die() the shared
+// preview on hide)
+void LLFloaterSnapshot::onClickBigPreview()
+{
+    // Toggle the preview
+    if (isPreviewVisible())
+    {
+        LLFloaterReg::hideInstance("big_preview");
+    }
+    else
+    {
+        if (!mBigPreviewFloater)
+        {
+            mBigPreviewFloater = dynamic_cast<LLFloaterBigPreview*>(LLFloaterReg::getInstance("big_preview"));
+        }
+        attachPreview();
+        LLFloaterReg::showInstance("big_preview");
+    }
+}
+
+bool LLFloaterSnapshot::isPreviewVisible()
+{
+    return (mBigPreviewFloater && mBigPreviewFloater->getVisible());
+}
+
+void LLFloaterSnapshot::attachPreview()
+{
+    if (mBigPreviewFloater)
+    {
+        LLSnapshotLivePreview* previewp = getPreviewView();
+        if (previewp)
+        {
+            mBigPreviewFloater->setPreview(previewp);
+            mBigPreviewFloater->setFloaterOwner(this);
+        }
+    }
+}
+// [/BDMerge C6]
 
 //virtual
 void LLFloaterSnapshotBase::onClose(bool app_quitting)
