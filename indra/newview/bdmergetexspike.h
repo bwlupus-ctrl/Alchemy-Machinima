@@ -32,8 +32,11 @@ class BDMergeTexSpike
 public:
     // Called on the main thread from LLTextureFetch::getRequestFinished for
     // each completed request. state_timers is keyed by
-    // LLTextureFetchWorker::e_state.
+    // LLTextureFetchWorker::e_state. decoded_discard distinguishes progressive
+    // refinement (finer than any prior decode of the id — unavoidable work)
+    // from pure repeats (same or coarser — what a decoded pool eliminates).
     static void recordFetch(const LLUUID& id,
+                            S32 decoded_discard,
                             bool from_cache,
                             S32 file_size,
                             F32 cache_read_time,

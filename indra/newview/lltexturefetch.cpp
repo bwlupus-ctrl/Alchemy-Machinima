@@ -2821,9 +2821,9 @@ bool LLTextureFetch::getRequestFinished(const LLUUID& id, S32& discard_level, S3
             sample(sCacheWriteLatency, cache_write_time);
 
             // [BDMerge G5.1-S1] session-level attribution for the decoded-pool spike
-            BDMergeTexSpike::recordFetch(id, from_cache, file_size, cache_read_time,
-                                         decode_time, cache_write_time, fetch_time,
-                                         logged_state_timers);
+            BDMergeTexSpike::recordFetch(id, discard_level, from_cache, file_size,
+                                         cache_read_time, decode_time, cache_write_time,
+                                         fetch_time, logged_state_timers);
 
             //static LLCachedControl<F32> min_time_to_log(gSavedSettings, "TextureFetchMinTimeToLog", 2.f);
             //if (fetch_time > min_time_to_log)

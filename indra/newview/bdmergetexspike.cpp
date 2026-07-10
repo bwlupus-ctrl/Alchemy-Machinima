@@ -22,7 +22,7 @@
 #include "llviewercontrol.h"
 
 #include <atomic>
-#include <unordered_set>
+#include <unordered_map>
 
 namespace
 {
@@ -103,8 +103,10 @@ U64 sRequests = 0;
 U64 sCacheHits = 0;
 F64 sBytesFetched = 0.0;
 F64 sBytesDecoded = 0.0;
-std::unordered_set<LLUUID> sDecodedIDs;
-U64 sRepeatDecodes = 0;
+// best (lowest / finest) discard level decoded per texture this session
+std::unordered_map<LLUUID, S32> sDecodedIDs;
+U64 sRepeatDecodes = 0;        // same-or-coarser than a prior decode: pool-recoverable waste
+U64 sRefinementDecodes = 0;    // finer than any prior decode: progressive loading, unavoidable
 F64 sRepeatDecodeTime = 0.0;
 F64 sRepeatCacheReadTime = 0.0;
 
@@ -131,7 +133,10 @@ void dump()
     F64 decode_mbps = sDecode.mTotal > 0.0 ? (sBytesDecoded / (1024.0 * 1024.0)) / sDecode.mTotal : 0.0;
     out << llformat("    bytes fetched %.1f MB, decoded %.1f MB (encoded J2K in, %.1f MB/s through decode)",
                     sBytesFetched / (1024.0 * 1024.0), sBytesDecoded / (1024.0 * 1024.0), decode_mbps) << "\n";
-    out << llformat("    repeat decodes (same texture decoded again this session — what a decoded RAM pool eliminates): %llu of %llu decodes (%.1f%%), %.1fs decode + %.1fs cache-read spent on repeats",
+    out << llformat("    refinement decodes (finer discard than prior — progressive loading, unavoidable): %llu of %llu decodes (%.1f%%)",
+                    sRefinementDecodes, sDecode.mCount,
+                    sDecode.mCount ? 100.0 * sRefinementDecodes / sDecode.mCount : 0.0) << "\n";
+    out << llformat("    repeat decodes (same-or-coarser than prior — what a decoded RAM pool eliminates): %llu of %llu decodes (%.1f%%), %.1fs decode + %.1fs cache-read spent on repeats",
                     sRepeatDecodes, sDecode.mCount,
                     sDecode.mCount ? 100.0 * sRepeatDecodes / sDecode.mCount : 0.0,
                     sRepeatDecodeTime, sRepeatCacheReadTime);
@@ -141,7 +146,7 @@ void dump()
 } // anonymous namespace
 
 //static
-void BDMergeTexSpike::recordFetch(const LLUUID& id, bool from_cache, S32 file_size,
+void BDMergeTexSpike::recordFetch(const LLUUID& id, S32 decoded_discard, bool from_cache, S32 file_size,
                                   F32 cache_read_time, F32 decode_time, F32 cache_write_time,
                                   F32 fetch_time, const std::map<S32, F32>& state_timers)
 {
@@ -173,11 +178,20 @@ void BDMergeTexSpike::recordFetch(const LLUUID& id, bool from_cache, S32 file_si
         {
             sBytesDecoded += file_size;
         }
-        if (!sDecodedIDs.insert(id).second)
+        auto inserted = sDecodedIDs.emplace(id, decoded_discard);
+        if (!inserted.second)
         {
-            sRepeatDecodes++;
-            sRepeatDecodeTime += decode_time;
-            sRepeatCacheReadTime += llmax(cache_read_time, 0.f);
+            if (decoded_discard >= 0 && decoded_discard < inserted.first->second)
+            {
+                sRefinementDecodes++;
+                inserted.first->second = decoded_discard;
+            }
+            else
+            {
+                sRepeatDecodes++;
+                sRepeatDecodeTime += decode_time;
+                sRepeatCacheReadTime += llmax(cache_read_time, 0.f);
+            }
         }
     }
     for (const auto& st : state_timers)
