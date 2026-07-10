@@ -2236,7 +2236,11 @@ bool LLAppViewer::initThreads()
 
     // always use at least 2 threads for image decoding to prevent
     // a single texture blocking all other textures from decoding
-    S32 image_decode_count = llclamp(cores - 6, 2, 16);
+    // [BDMerge G5.1 4a-i] the stock 16-thread ceiling starves wide CPUs
+    // (measured: ~45 threads' worth of queued decode demand on 32 threads);
+    // 0 = stock ceiling of 16
+    U32 decode_ceiling = gSavedSettings.getU32("BDMergeDecodeThreadCeiling");
+    S32 image_decode_count = llclamp(cores - 6, 2, decode_ceiling > 0 ? (S32)decode_ceiling : 16);
 
     threadCounts["ImageDecode"] = image_decode_count;
     gSavedSettings.setLLSD("ThreadPoolSizes", threadCounts);

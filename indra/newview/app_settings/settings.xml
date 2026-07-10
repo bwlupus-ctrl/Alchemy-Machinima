@@ -2760,6 +2760,17 @@
       <key>Value</key>
       <string />
     </map>
+    <key>BDMergeDecodeThreadCeiling</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge G5.1 4a-i] Ceiling for the ImageDecode thread pool (final count is still clamp(cores-6, 2, ceiling)). 0 = stock ceiling of 16. Takes effect at next launch.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>U32</string>
+      <key>Value</key>
+      <integer>24</integer>
+    </map>
     <key>BDMergeTexPoolEnable</key>
     <map>
       <key>Comment</key>
