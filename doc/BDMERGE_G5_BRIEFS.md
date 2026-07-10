@@ -116,6 +116,31 @@ uploads more VRAM than stock would at high bias. On 32GB this is noise. Only
 build per-(UUID, discard) entries if VRAM pressure or upload stalls show up
 in real sessions. Mirror the mesh pool's (id, LOD) Key/KeyHash pattern.
 
+## B-2b.6 — Extend forced alpha masking (G2.3) to PBR/GLTF materials
+
+**Goal.** `BDMergeForceAlphaMask` currently covers legacy Blinn-Phong only —
+`LLFace::canRenderAsMask()` early-outs on `te->getGLTFRenderMaterial()`, and
+PBR blend faces route by `LLGLTFMaterial::mAlphaMode` in `llvovolume.cpp`
+(see the `gltf_mat->mAlphaMode == ALPHA_MODE_BLEND` sites, ~5965/6060 region
+and the alpha-pool classification at ~6146).
+
+**Design.** Do NOT remove the GLTF early-out in canRenderAsMask (PBR has its
+own routing). Instead, at the PBR classification sites, treat
+`ALPHA_MODE_BLEND` as `ALPHA_MODE_MASK` when the gate + same exclusions hold
+(base-color alpha == 1 analog: `gltf_mat->mBaseColor.mV[3] == 1.f`; respect
+rigged setting). Cutoff: PBR mask path uses the material's `mAlphaCutoff` —
+override per-batch with `BDMergeForceAlphaMaskCutoff` the same way the
+legacy sites do (grep `[BDMerge G2.3]` in llvovolume.cpp for the pattern).
+Reuse the SAME three settings — no new keys.
+
+**Accept.** A PBR blend-mode object z-fights with itself with the gate off,
+renders stable/masked with it on; legacy behavior unchanged; gate off =
+bit-identical stock.
+
+**Gotcha.** Verify the emissive-mask cutoff regression the spec warns about
+(LL had a bug where emissive + mask cutoff interacted) on BOTH material
+systems while testing.
+
 ## Non-G5 queue (unchanged priorities)
 
 Render cluster (A1.3 → A2.x → A3.x — needs the user in-world for depth
