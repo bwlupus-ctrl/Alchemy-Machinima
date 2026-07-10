@@ -2001,6 +2001,17 @@
       <key>Value</key>
       <integer>0</integer>
     </map>
+    <key>BDMergeMouselookHeadScale</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge B12] (EXPERIMENTAL) Scale down own head bone and its bento face/skull/eye descendants while in mouselook, so rigged mesh skinned to those bones (mesh heads, hair, horns) doesn't intrude on first-person view regardless of attachment point. Off = stock. See doc/BD_MERGE_PATCHLOG.md.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
     <key>BDMergeMouselookOffsetX</key>
     <map>
       <key>Comment</key>

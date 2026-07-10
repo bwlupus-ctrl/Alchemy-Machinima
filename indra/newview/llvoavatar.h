@@ -481,6 +481,17 @@ public:
 
     S32                 mLastSkeletonSerialNum;
 
+    // [BDMerge B12] Experimental mouselook head-bone scaling.
+    // Donor: Black Dragon bdanimator.cpp (BDAnimator::update) + llagentcamera.cpp (commit 605f6a7416
+    // and follow-ups). Reimplemented here without BD's Poser subsystem: applied/restored per-frame from
+    // idleUpdate() instead of on camera-mode-change events, and scoped to self only.
+    // Gated by BDMergeMouselookHeadScale (Boolean, default off). When active, scales the own mHead bone
+    // and all of its descendant joints (mSkull, mEyeLeft/Right, mFaceRoot and the whole bento face tree)
+    // to zero so any rigged mesh skinned to those bones collapses regardless of which attachment point it
+    // is actually parented to. Restored to each joint's skeleton-default scale on exit/gate-off.
+    void                updateMouselookHeadBoneScale();
+    bool                mMouselookHeadBonesScaled { false };
+    std::vector<LLJoint*> mMouselookHeadBones;
 
 /**                    Skeleton
  **                                                                            **

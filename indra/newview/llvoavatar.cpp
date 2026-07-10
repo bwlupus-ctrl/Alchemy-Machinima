@@ -2846,6 +2846,14 @@ void LLVOAvatar::idleUpdate(LLAgent &agent, const F64 &time)
     mLastRootPos = mRoot->getWorldPosition();
     bool detailed_update = updateCharacter(agent);
 
+    // [BDMerge B12] (EXPERIMENTAL) Mouselook head-bone scaling: apply/restore every frame, after the
+    // character's own motion/appearance-driven joint update above, so neither overwrites the other and
+    // repeated enter/exit (or an appearance message arriving mid-mouselook) self-heals within one frame.
+    if (isSelf())
+    {
+        updateMouselookHeadBoneScale();
+    }
+
     static LLUICachedControl<bool> visualizers_in_calls("ShowVoiceVisualizersInCalls", false);
     bool voice_enabled = (visualizers_in_calls || LLVoiceClient::getInstance()->inProximalChannel()) &&
                          LLVoiceClient::getInstance()->getVoiceEnabled(mID);
@@ -5096,6 +5104,91 @@ bool LLVOAvatar::updateCharacter(LLAgent &agent)
 }
 
 //-----------------------------------------------------------------------------
+// updateMouselookHeadBoneScale()
+//-----------------------------------------------------------------------------
+// [BDMerge B12] (EXPERIMENTAL) Scale down own head bone in mouselook.
+// Donor: Black Dragon indra/newview/bdanimator.cpp (BDAnimator::update(), commit 605f6a7416 "Changed:
+// (EXPERIMENTAL) Scale down head bones while in mouselook to prevent them clipping into view." and
+// follow-up fixes 5f3cd7dcca, 1bdedd1137, 6bef60d304, 5ee5e20dfc, f3196e7aa7, 771c862a8a, 518b3bbca0).
+// BD drives this from its own Poser/Animator subsystem (gDragonAnimator, called once per frame from
+// LLAppViewer::idle()) and restores by force-calling gAgentAvatarp->resetSkeleton(false) from
+// llagentcamera.cpp on every camera-mode change out of mouselook. Alchemy has neither BD's Poser
+// subsystem nor is llagentcamera.cpp in scope for this merge, so this is a clean-room reimplementation:
+// applied/restored per-frame from idleUpdate() below (self only), using a plain scale snap-back to each
+// joint's skeleton-default scale instead of resetSkeleton() (which BD needed several follow-up fixes for
+// -- see 1bdedd1137 "Head attachments shifting permanently", 6bef60d304 "Poser resetting when exiting
+// mouselook" -- because it also rebuilds the whole skeleton/visual-param state, not just scale).
+// Unlike BD's getJoint("HEAD") call (which actually resolves to the HEAD *collision volume*, not the
+// mHead bone, due to an exact-name lookup -- see LLVOAvatar::getJoint()), this scales mHead itself too,
+// since a rigged mesh head can be weighted predominantly to mHead with only incidental bento weights.
+// mHead's scale also feeds LLAvatarAppearance::computeBodySize() (used for the avatar's world height),
+// so computeBodySize() is skipped at its call sites while mMouselookHeadBonesScaled is true to avoid the
+// feet-clipping-into-floor regression BD hit in 518b3bbca0.
+void LLVOAvatar::updateMouselookHeadBoneScale()
+{
+    static LLCachedControl<bool> sMouselookHeadScale(gSavedSettings, "BDMergeMouselookHeadScale", false);
+
+    bool should_scale = sMouselookHeadScale && gAgentCamera.cameraMouselook();
+
+    if (should_scale)
+    {
+        if (mMouselookHeadBones.empty())
+        {
+            LLJoint* head_joint = getJoint("mHead");
+            if (!head_joint)
+            {
+                return;
+            }
+
+            // Depth-first walk of mHead and every descendant joint (mSkull, mEyeLeft/Right, mFaceRoot
+            // and the whole bento face tree) so rigged mesh skinned anywhere in the head region
+            // collapses, regardless of which attachment point the containing object is parented to.
+            std::vector<LLJoint*> stack;
+            stack.push_back(head_joint);
+            while (!stack.empty())
+            {
+                LLJoint* joint = stack.back();
+                stack.pop_back();
+                if (!joint) continue;
+
+                mMouselookHeadBones.push_back(joint);
+                for (LLJoint* child : joint->mChildren)
+                {
+                    stack.push_back(child);
+                }
+            }
+        }
+
+        for (LLJoint* joint : mMouselookHeadBones)
+        {
+            joint->setScale(LLVector3::zero);
+        }
+
+        mMouselookHeadBonesScaled = true;
+    }
+    else if (mMouselookHeadBonesScaled)
+    {
+        // Leaving mouselook (or the gate was toggled off mid-session): snap every affected joint back
+        // to the skeleton-default scale. Head-region bones are not currently driven by any shape slider
+        // (no <bone name="mHead|mSkull|mFace*"> distortion entries in avatar_lad.xml), so the skeleton
+        // default is exactly the pre-mouselook value; this avoids the drift BD saw from resetSkeleton().
+        for (LLJoint* joint : mMouselookHeadBones)
+        {
+            joint->setScale(joint->getDefaultScale());
+        }
+
+        mMouselookHeadBonesScaled = false;
+
+        // Any computeBodySize() calls that fired while we were scaled (appearance updates, animation
+        // state changes, pelvis recalcs) were skipped by the mMouselookHeadBonesScaled guards -- and
+        // their triggers (e.g. mLastSkeletonSerialNum) have already been consumed, so those recomputes
+        // are lost, not deferred. Recompute once now that all joint scales are correct again so
+        // mBodySize never stays stale past the restore frame.
+        computeBodySize();
+    }
+}
+
+//-----------------------------------------------------------------------------
 // updateHeadOffset()
 //-----------------------------------------------------------------------------
 void LLVOAvatar::updateHeadOffset()
@@ -5193,7 +5286,13 @@ void LLVOAvatar::debugBodySize() const
 void LLVOAvatar::postPelvisSetRecalc()
 {
     mRoot->updateWorldMatrixChildren();
-    computeBodySize();
+    // [BDMerge B12] Skip while our own head bone is force-scaled to zero for mouselook -- mHead's scale
+    // feeds directly into computeBodySize()'s height math and would otherwise shrink mBodySize for the
+    // duration of mouselook (the "feet clipping into the floor" regression BD fixed in 518b3bbca0).
+    if (!mMouselookHeadBonesScaled)
+    {
+        computeBodySize();
+    }
     dirtyMesh(2);
 }
 //------------------------------------------------------------------------
@@ -6290,7 +6389,12 @@ bool LLVOAvatar::processSingleAnimationStateChange( const LLUUID& anim_id, bool 
     // keep appearances in sync, but not so often that animations
     // cause constant jiggling of the body or camera. Possible
     // compromise is to do it on animation changes:
-    computeBodySize();
+    // [BDMerge B12] See postPelvisSetRecalc() above for why this is skipped while mouselook head-bone
+    // scaling is active.
+    if (!mMouselookHeadBonesScaled)
+    {
+        computeBodySize();
+    }
 
     bool result = false;
 
@@ -7463,7 +7567,12 @@ void LLVOAvatar::updateVisualParams()
 
     if (mLastSkeletonSerialNum != mSkeletonSerialNum)
     {
-        computeBodySize();
+        // [BDMerge B12] See postPelvisSetRecalc() above for why this is skipped while mouselook
+        // head-bone scaling is active.
+        if (!mMouselookHeadBonesScaled)
+        {
+            computeBodySize();
+        }
         mLastSkeletonSerialNum = mSkeletonSerialNum;
         mRoot->updateWorldMatrixChildren();
     }
