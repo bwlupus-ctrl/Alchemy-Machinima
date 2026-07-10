@@ -29,6 +29,8 @@
 
 #include "llviewertexture.h"
 
+#include "bdmergetexspike.h"
+
 // Library includes
 #include "llmath.h"
 #include "llerror.h"
@@ -1575,7 +1577,9 @@ bool LLViewerFetchedTexture::createTexture(S32 usename/*= 0*/)
         return false;
     }
 
+    LLTimer upload_timer; // [BDMerge G5.1-S1]
     bool res = mGLTexturep->createGLTexture(mRawDiscardLevel, mRawImage, usename, true, mBoostLevel);
+    BDMergeTexSpike::recordUpload(upload_timer.getElapsedTimeF32());
 
     return res;
 }

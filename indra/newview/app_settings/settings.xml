@@ -2760,6 +2760,28 @@
       <key>Value</key>
       <string />
     </map>
+    <key>BDMergeTexSpikeLog</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge G5.1-S1] Log periodic texture-pipeline latency attribution reports (cache read / decode / upload / repeat decodes) for the decoded-RAM-pool measurement spike. Log-only; no behavior change.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>BDMergeTexSpikeLogInterval</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge G5.1-S1] Seconds between texture-pipeline spike report dumps to the log.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>300.0</real>
+    </map>
     <key>CacheSize</key>
     <map>
       <key>Comment</key>

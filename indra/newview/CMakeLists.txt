@@ -148,6 +148,7 @@ endif ()
 
 set(viewer_SOURCE_FILES
     ao.cpp
+    bdmergetexspike.cpp
     aoengine.cpp
     aoset.cpp
     alassetblocklist.cpp
@@ -921,6 +922,7 @@ set(viewer_SOURCE_FILES
 set(viewer_HEADER_FILES
     ViewerInstall.cmake
     ao.h
+    bdmergetexspike.h
     aoengine.h
     aoset.h
     alassetblocklist.h

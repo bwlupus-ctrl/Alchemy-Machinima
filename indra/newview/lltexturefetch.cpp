@@ -33,6 +33,7 @@
 
 #include "lltexturefetch.h"
 
+#include "bdmergetexspike.h"
 #include "lldir.h"
 #include "llhttpconstants.h"
 #include "llimage.h"
@@ -2788,6 +2789,7 @@ bool LLTextureFetch::getRequestFinished(const LLUUID& id, S32& discard_level, S3
             F32 cache_read_time;
             F32 cache_write_time;
             S32 file_size;
+            bool from_cache;
             std::map<S32, F32> logged_state_timers;
             F32 skipped_states_time;
             worker->lockWorkMutex();                                    // +Mw
@@ -2801,6 +2803,7 @@ bool LLTextureFetch::getRequestFinished(const LLUUID& id, S32& discard_level, S3
             cache_read_time = worker->mCacheReadTime;
             cache_write_time = worker->mCacheWriteTime;
             file_size = worker->mFileSize;
+            from_cache = worker->mInLocalCache;
             worker->mCacheReadTimer.reset();
             worker->mDecodeTimer.reset();
             worker->mCacheWriteTimer.reset();
@@ -2816,6 +2819,11 @@ bool LLTextureFetch::getRequestFinished(const LLUUID& id, S32& discard_level, S3
             sample(sTexFetchLatency, fetch_time);
             sample(sCacheReadLatency, cache_read_time);
             sample(sCacheWriteLatency, cache_write_time);
+
+            // [BDMerge G5.1-S1] session-level attribution for the decoded-pool spike
+            BDMergeTexSpike::recordFetch(id, from_cache, file_size, cache_read_time,
+                                         decode_time, cache_write_time, fetch_time,
+                                         logged_state_timers);
 
             //static LLCachedControl<F32> min_time_to_log(gSavedSettings, "TextureFetchMinTimeToLog", 2.f);
             //if (fetch_time > min_time_to_log)
