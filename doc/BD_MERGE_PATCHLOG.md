@@ -157,6 +157,12 @@ as current BD.
 | C6 snapshot conveniences | **done** | — |
 | C7 texture channel lock | **closed — already present via shared upstream** (2026-07-09: "Synchronize materials" checkbox, `SyncMaterialSettings` + `syncOffsetX/Y`/`syncRepeatX/Y`/`syncMaterialRot` in `llpanelface.cpp`, upstream MAINT-3223 commit `69db7cd947` carried identically by BD and Alchemy; PBR/GLTF transforms untouched by sync in both trees, matching BD scope) | — |
 | C8 slider precision | **done** | — |
+| F1 area search | **closed — already present** (2026-07-10 sweep: Alchemy Scene Explorer — `alfloatersceneexplorer.cpp` + filters/model/predicate, `menu_scene_explorer.xml` carries the full F1 action set: touch/sit/open/buy/pay/take_copy/TP/profile/focus) | — |
+| F2 derender + asset blacklist | **closed — already present** (`alderenderlist.cpp` + `alassetblocklist.cpp` with LLSD save/load persistence + `panel_al_block_derender.xml` management UI) | — |
+| F5 camera roll | **closed — already present** (`LLAgentCamera::cameraRollOver`/`resetCameraRoll`, bindable `roll_left`/`roll_right` actions, default Shift+Q/E in `key_bindings.xml`; precise-positioning half covered by stock camera floater + C3/C8 spinners) | — |
+| C1 client AO | **closed — already present** (full AO: `ao.cpp`/`aoengine.cpp`/`aoset.cpp` + `floater_ao.xml`/`panel_ao*.xml`) | — |
+| F7 sound + animation explorer | **half-closed**: sound explorer present (`floater_explore_sounds.xml`); animation explorer absent — port briefed (B-2b.7) | — |
+| F6 movelock / pose stand / undeform | **split ruling (2026-07-10)**: movelock is NOT portable standalone — FS implements it through the FS LSL bridge (`fslslbridge.cpp`, worn scripted attachment doing the actual position lock; a pure client cannot resist pushes) → gated on a future whole-bridge decision. Pose stand + undeform are client-side and portable — briefed (B-2b.8) | movelock: LSL-bridge decision |
 | G5.0 memory prerequisites & fast wins | **done** (in-world validation owed: memory readout >16GB, VRAM detect, capture degrade check) | — |
 | G5.1 decoded-texture RAM pool | Stage 1 spike + Stage 2 core + **mesh pool (6d6fdf169d)** + **decode ceiling (1557a892fa)** landed. Remaining Stage 2b briefed for implementer models in `doc/BDMERGE_G5_BRIEFS.md`: tiers (B-2b.1), per-discard entries (B-2b.5), AVX-512 experiment (B-2b.4) | G5.0 ✓ |
 | G5.2 texture pinning / capture mode | **landed** (`7c89378321`, `BDMergeCaptureModePin`, default off) | — |

@@ -141,6 +141,52 @@ bit-identical stock.
 (LL had a bug where emissive + mask cutoff interacted) on BOTH material
 systems while testing.
 
+## B-2b.7 — Port FS Animation Explorer (F7 second half)
+
+**Goal.** Floater listing recently played animations on nearby avatars with
+source avatar, playback preview, stop/revoke. Sound explorer already exists
+in Alchemy (`floater_explore_sounds.xml`) — mirror its integration style.
+
+**Donor.** `I:\enve` (phoenix-reshade-XL, LGPL): `indra/newview/animationexplorer.cpp/h`
+(601 lines, self-contained) + `skins/default/xui/en/floater_animation_explorer.xml`.
+Keep the Firestorm license header (FIRESTORM-SOURCE_LICENSE_HEADER.txt pattern —
+see B3a's landed files for the precedent in this tree).
+
+**Port map.** Copy files → rename nothing (fs-prefix-free already) → register
+in `llviewerfloaterreg.cpp` → menu entry near the sound explorer's → check
+donor includes for FS-only widgets (e.g. `FSScrollListCtrl` → plain
+`LLScrollListCtrl` if hit) → CMakeLists (both lists, then build ZERO_CHECK).
+
+**Accept (spec F7).** Explorer lists live animation sources; playback preview
+and revoke work. One commit, `[BDMerge F7]`.
+
+## B-2b.8 — Port FS Pose Stand + Undeform (F6 portable half)
+
+**Goal.** Neutral pose stand floater + one-click undeform (clears stuck mesh
+deformers). Movelock is EXCLUDED — see the board ruling (FS implements it via
+their LSL bridge; do not attempt a client-only fake).
+
+**Donor (`I:\enve`).** `fsfloaterposestand.cpp/h` (137 lines) +
+`fspose.cpp/h` (shared helper, small) + `app_settings/posestand.xml` (pose
+data) + the floater XML (find via `grep -rl posestand skins/default/xui/en`)
++ undeform = `FSToolsUndeform` in `llviewermenu.cpp:10911` — one menu handler
+calling `FSPose::setPose(gSavedSettings.getString("FSUndeformUUID"))`; copy
+the `FSUndeformUUID` settings key + value from FS settings.xml.
+
+**Adaptation notes (verified in the Alchemy tree 2026-07-10):**
+- `LLAgent::setCustomAnim` EXISTS in Alchemy (`llagent.h:529`) — no port needed.
+- RLVa present in Alchemy — the `rlvhandler.h` include and `RLV_BHVR_SIT`
+  check port as-is.
+- The donor pauses FS's AO via `gSavedPerAccountSettings "UseAO"` — Alchemy's
+  AO uses a DIFFERENT key: find it in `ao.cpp`/`aoengine.cpp` (grep for the
+  enable setting) and map the pause/resume calls onto Alchemy's AO API.
+- Settings keys `FSPoseStandLock`/`FSPoseStandLastSelectedPose`: add to
+  settings.xml, keep donor names (F-item precedent: B3a kept donor naming).
+
+**Accept (spec F6, minus movelock).** Pose stand floater poses the avatar and
+restores state on close (AO resumes, custom-anim flag cleared); undeform
+clears a deformed avatar. One commit, `[BDMerge F6]`.
+
 ## Non-G5 queue (unchanged priorities)
 
 Render cluster (A1.3 → A2.x → A3.x — needs the user in-world for depth
