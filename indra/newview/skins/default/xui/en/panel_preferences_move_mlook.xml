@@ -222,4 +222,76 @@
    increment="16"
    name="iff_range_spinner"
    control_name="AlchemyMouselookIFFRange"/>
+  <!-- [BDMerge C3] Mouselook camera offset. Donor: novel, no BD source (see
+       llagentcamera.cpp calcCameraPositionTargetGlobal(), CAMERA_MODE_MOUSELOOK
+       branch). Spinners are enabled_control-bound to BDMergeCameraQoL (debug
+       setting, default off) so they read as visibly inert until the gate is on;
+       the offset itself is a no-op in code under the same gate. Plain
+       control_name binding, no commit_callback, matching mouse_sensitivity /
+       iff_range_spinner above - this panel's owning class registers no
+       CommitSettings handler. -->
+  <text
+   type="string"
+   length="1"
+   follows="left|top"
+   height="15"
+   layout="topleft"
+   left="75"
+   name="mouselook_offset_lbl"
+   top_pad="14"
+   width="270"
+   wrap="true">
+    Mouselook camera offset (X/Y/Z):
+  </text>
+  <spinner
+   control_name="BDMergeMouselookOffsetX"
+   decimal_digits="2"
+   enabled_control="BDMergeCameraQoL"
+   follows="left|top"
+   height="20"
+   increment="0.01"
+   label=""
+   label_width="0"
+   layout="topleft"
+   left="80"
+   max_val="1"
+   min_val="-1"
+   name="mouselook_offset_x"
+   tool_tip="Forward / back mouselook camera offset. Only active while the BDMergeCameraQoL debug setting is enabled."
+   top_pad="5"
+   width="65" />
+  <spinner
+   control_name="BDMergeMouselookOffsetY"
+   decimal_digits="2"
+   enabled_control="BDMergeCameraQoL"
+   follows="left|top"
+   height="20"
+   increment="0.01"
+   label=""
+   label_width="0"
+   layout="topleft"
+   left_pad="6"
+   max_val="1"
+   min_val="-1"
+   name="mouselook_offset_y"
+   tool_tip="Left / right mouselook camera offset. Only active while the BDMergeCameraQoL debug setting is enabled."
+   top_delta="0"
+   width="65" />
+  <spinner
+   control_name="BDMergeMouselookOffsetZ"
+   decimal_digits="2"
+   enabled_control="BDMergeCameraQoL"
+   follows="left|top"
+   height="20"
+   increment="0.01"
+   label=""
+   label_width="0"
+   layout="topleft"
+   left_pad="6"
+   max_val="1"
+   min_val="-1"
+   name="mouselook_offset_z"
+   tool_tip="Up / down mouselook camera offset. Only active while the BDMergeCameraQoL debug setting is enabled."
+   top_delta="0"
+   width="65" />
 </panel>

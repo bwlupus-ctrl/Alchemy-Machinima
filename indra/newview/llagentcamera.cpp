@@ -24,6 +24,18 @@
  * $/LicenseInfo$
  */
 
+// [BDMerge C3] Camera QoL: X/Y/Z mouselook offset. Donor: novel (no BD source -
+// I:\black-dragon has no mouselook offset feature at merge time); implemented
+// fresh in calcCameraPositionTargetGlobal()'s CAMERA_MODE_MOUSELOOK branch,
+// additive over the stock head_offset assembly. Gated by BDMergeCameraQoL /
+// BDMergeMouselookOffsetX/Y/Z. Note: the Shift+wheel/Ctrl+wheel camera-height
+// and focus-offset ("pitch") modifiers this item's spec calls for already
+// exist unconditionally in stock Alchemy handleScrollWheel() (commit
+// dd72a05cf14) - not touched here, see patch log. Numeric fields beside the
+// view-angle/distance sliders also already exist (panel_preferences_move_
+// general.xml can_edit_text sliders + floater_preferences_view_advanced.xml
+// spinners bound to the same control_name) - not touched here either.
+
 #include "llviewerprecompiledheaders.h"
 #include "llagentcamera.h"
 
@@ -1893,6 +1905,29 @@ LLVector3d LLAgentCamera::calcCameraPositionTargetGlobal(bool *hit_limit)
         {
             head_offset.mdV[VZ] += 0.1;
         }
+
+        // [BDMerge C3] X/Y/Z mouselook camera offset. Donor: novel - no BD source
+        // exists for this (I:\black-dragon has no "mouselook offset" /
+        // "CameraOffsetMouselook" setting or code at merge time); implemented fresh
+        // following this merge's BDMerge*/LLCachedControl conventions. Purely
+        // additive to the stock head_offset assembled above (pelvis fixup + sit +
+        // avatar mHeadOffset) - never replaces it, and is a no-op when
+        // BDMergeCameraQoL is off or the offsets are left at 0. Applied here,
+        // before the sit/stand rotation multiply below, so it rotates with the
+        // avatar the same way the stock head offset does. Stored as three F32s
+        // (X/Y/Z) rather than one Vector3 so each axis can be bound directly to a
+        // <spinner control_name="..."> in the prefs XML with no new C++ widget.
+        static LLCachedControl<bool> bdmerge_camera_qol(gSavedSettings, "BDMergeCameraQoL", false);
+        if (bdmerge_camera_qol)
+        {
+            static LLCachedControl<F32> bdmerge_mouselook_offset_x(gSavedSettings, "BDMergeMouselookOffsetX", 0.f);
+            static LLCachedControl<F32> bdmerge_mouselook_offset_y(gSavedSettings, "BDMergeMouselookOffsetY", 0.f);
+            static LLCachedControl<F32> bdmerge_mouselook_offset_z(gSavedSettings, "BDMergeMouselookOffsetZ", 0.f);
+            head_offset.mdV[VX] += bdmerge_mouselook_offset_x;
+            head_offset.mdV[VY] += bdmerge_mouselook_offset_y;
+            head_offset.mdV[VZ] += bdmerge_mouselook_offset_z;
+        }
+        // [/BDMerge C3]
 
         if (gAgentAvatarp->isSitting() && gAgentAvatarp->getParent())
         {

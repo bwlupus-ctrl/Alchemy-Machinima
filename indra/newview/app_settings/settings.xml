@@ -1924,6 +1924,17 @@
       <key>Value</key>
       <integer>0</integer>
     </map>
+    <key>BDMergeCameraQoL</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge C3] Enables camera QoL additions: X/Y/Z mouselook camera offset (BDMergeMouselookOffsetX/Y/Z). Off = stock mouselook camera positioning. Shift/Ctrl+wheel height/pitch and slider numeric fields already existed in stock Alchemy. See doc/BD_MERGE_PATCHLOG.md.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
     <key>BDMergeEyeRotationLimit</key>
     <map>
       <key>Comment</key>
@@ -1989,6 +2000,39 @@
       <string>Boolean</string>
       <key>Value</key>
       <integer>0</integer>
+    </map>
+    <key>BDMergeMouselookOffsetX</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge C3] Forward(+)/back(-) mouselook camera offset in meters, avatar-local frame. Applied only while BDMergeCameraQoL is enabled.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+    </map>
+    <key>BDMergeMouselookOffsetY</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge C3] Left(-)/right(+) mouselook camera offset in meters, avatar-local frame. Applied only while BDMergeCameraQoL is enabled.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+    </map>
+    <key>BDMergeMouselookOffsetZ</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge C3] Up(+)/down(-) mouselook camera offset in meters, avatar-local frame. Applied only while BDMergeCameraQoL is enabled.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
     </map>
     <key>BDMergeMovementFlags</key>
     <map>
