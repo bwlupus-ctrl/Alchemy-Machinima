@@ -5760,6 +5760,62 @@ static F32 calc_light_dist(LLVOVolume* light, const LLVector3& cam_pos, F32 max_
     return dist;
 }
 
+// [BDMerge A5.6] Independent light-source class toggles: world lights / own attached
+// lights / others' attached lights / projector (spotlight projection) rendering, each
+// toggled without affecting the others. Donor: I:\black-dragon indra/newview/pipeline.cpp
+// sRenderOtherAttachedLights / sRenderOwnAttachedLights / sRenderDeferredLights (own/other
+// split + a third static that -- despite the name -- gates *non-attachment* "world" lights;
+// see settings_blackdragon.xml key RenderDeferredLights, label "Render World Lights"),
+// handlers handleRenderOtherAttachedLightsChanged/handleRenderOwnAttachedLightsChanged/
+// handleRenderDeferredLightsChanged in llviewercontrol.cpp:738-753, wired at :1207-1209.
+// Stock Alchemy only has the blanket LLPipeline::sRenderAttachedLights (all attachment
+// lights on/off) applied redundantly in calcNearbyLights/setupHWLights/renderDeferredLighting
+// -- that gate is left untouched and always applies first. BD has no dedicated projector
+// toggle; that fourth class is a novel addition here, reusing the existing
+// LLVOVolume::isLightSpotlight() gate that already distinguishes spot-vs-omni light state
+// (setupHWLights) and spot/fullscreen_spot light routing (renderDeferredLighting). When off,
+// a projector prim keeps illuminating as a plain omni light (falls back) instead of
+// disappearing -- it only loses the directional cone / projected image.
+// Gated by master BDMergeLightToggles (default OFF); while off, or while master is on but a
+// given per-class Boolean is left at its default (ON), this is a no-op and rendering is
+// bit-identical to stock. LLCachedControl is used throughout since these run in the hot
+// per-frame light-gathering/render paths.
+static bool bdmerge_should_render_light(bool is_attachment, bool is_own_avatar)
+{
+    static LLCachedControl<bool> bdmerge_light_toggles(gSavedSettings, "BDMergeLightToggles", false);
+    if (!bdmerge_light_toggles)
+    {
+        return true;
+    }
+
+    if (is_attachment)
+    {
+        if (is_own_avatar)
+        {
+            static LLCachedControl<bool> bdmerge_render_own(gSavedSettings, "BDMergeRenderOwnAttachedLights", true);
+            return bdmerge_render_own;
+        }
+        static LLCachedControl<bool> bdmerge_render_others(gSavedSettings, "BDMergeRenderOthersAttachedLights", true);
+        return bdmerge_render_others;
+    }
+
+    static LLCachedControl<bool> bdmerge_render_world(gSavedSettings, "BDMergeRenderWorldLights", true);
+    return bdmerge_render_world;
+}
+
+static bool bdmerge_should_render_projector()
+{
+    static LLCachedControl<bool> bdmerge_light_toggles(gSavedSettings, "BDMergeLightToggles", false);
+    if (!bdmerge_light_toggles)
+    {
+        return true;
+    }
+
+    static LLCachedControl<bool> bdmerge_render_projectors(gSavedSettings, "BDMergeRenderProjectors", true);
+    return bdmerge_render_projectors;
+}
+// [/BDMerge A5.6]
+
 void LLPipeline::calcNearbyLights(LLCamera& camera)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
@@ -5806,12 +5862,28 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
                 }
 
                 LLVOAvatar *avatar = vobj->getAvatar();
+
+                // [BDMerge A5.6] independent own/other attached-light toggles
+                if (!bdmerge_should_render_light(true, avatar == gAgentAvatarp))
+                {
+                    drawable->clearState(LLDrawable::NEARBY_LIGHT);
+                    iter = mNearbyLights.erase(iter);
+                    continue;
+                }
+
                 if (avatar && (avatar->isTooComplex() || avatar->isInMuteList() || avatar->isTooSlow()))
                 {
                     drawable->clearState(LLDrawable::NEARBY_LIGHT);
                     iter = mNearbyLights.erase(iter);
                     continue;
                 }
+            }
+            // [BDMerge A5.6] independent world-light toggle (non-attachment lights had no toggle at all in stock)
+            else if (vobj && !bdmerge_should_render_light(false, false))
+            {
+                drawable->clearState(LLDrawable::NEARBY_LIGHT);
+                iter = mNearbyLights.erase(iter);
+                continue;
             }
 
             LLVOVolume* volight = drawable->getVOVolume();
@@ -5883,12 +5955,25 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
                 {
                     continue;
                 }
+
                 LLVOAvatar* av = light->getAvatar();
+
+                // [BDMerge A5.6] independent own/other attached-light toggles
+                if (!bdmerge_should_render_light(true, av == gAgentAvatarp))
+                {
+                    continue;
+                }
+
                 if (av && (av->isTooComplex() || av->isInMuteList() || av->isTooSlow()))
                 {
                     // avatars that are already in the list will be removed by removeMutedAVsLights
                     continue;
                 }
+            }
+            // [BDMerge A5.6] independent world-light toggle
+            else if (!bdmerge_should_render_light(false, false))
+            {
+                continue;
             }
             F32 dist = calc_light_dist(light, cam_pos, max_dist);
             if (dist >= max_dist)
@@ -6026,6 +6111,17 @@ void LLPipeline::setupHWLights()
                 {
                     continue;
                 }
+
+                // [BDMerge A5.6] independent own/other attached-light toggles
+                if (!bdmerge_should_render_light(true, light->getAvatar() == gAgentAvatarp))
+                {
+                    continue;
+                }
+            }
+            // [BDMerge A5.6] independent world-light toggle
+            else if (!bdmerge_should_render_light(false, false))
+            {
+                continue;
             }
 
             if (drawable->isState(LLDrawable::ACTIVE))
@@ -6095,7 +6191,8 @@ void LLPipeline::setupHWLights()
 
 
             if (light->isLightSpotlight() // directional (spot-)light
-                && (LLPipeline::sRenderDeferred || RenderSpotLightsInNondeferred)) // these are only rendered as GL spotlights if we're in deferred rendering mode *or* the setting forces them on
+                && (LLPipeline::sRenderDeferred || RenderSpotLightsInNondeferred) // these are only rendered as GL spotlights if we're in deferred rendering mode *or* the setting forces them on
+                && bdmerge_should_render_projector()) // [BDMerge A5.6] projector toggle: falls back to omni light below when off
             {
                 LLQuaternion quat = light->getRenderRotation();
                 LLVector3 at_axis(0,0,-1); // this matches deferred rendering's object light direction
@@ -9564,6 +9661,17 @@ void LLPipeline::renderDeferredLighting()
                         {
                             continue;
                         }
+
+                        // [BDMerge A5.6] independent own/other attached-light toggles
+                        if (!bdmerge_should_render_light(true, volume->getAvatar() == gAgentAvatarp))
+                        {
+                            continue;
+                        }
+                    }
+                    // [BDMerge A5.6] independent world-light toggle
+                    else if (!bdmerge_should_render_light(false, false))
+                    {
+                        continue;
                     }
 
                     LLVector4a center;
@@ -9597,7 +9705,7 @@ void LLPipeline::renderDeferredLighting()
                         camera->getOrigin().mV[1] > c[1] + s + 0.2f || camera->getOrigin().mV[1] < c[1] - s - 0.2f ||
                         camera->getOrigin().mV[2] > c[2] + s + 0.2f || camera->getOrigin().mV[2] < c[2] - s - 0.2f)
                     {  // draw box if camera is outside box
-                        if (volume->isLightSpotlight())
+                        if (volume->isLightSpotlight() && bdmerge_should_render_projector()) // [BDMerge A5.6] projector toggle: falls back to a regular box light below when off
                         {
                             drawablep->getVOVolume()->updateSpotLightPriority();
                             spot_lights.push_back(drawablep);
@@ -9616,7 +9724,7 @@ void LLPipeline::renderDeferredLighting()
                     }
                     else
                     {
-                        if (volume->isLightSpotlight())
+                        if (volume->isLightSpotlight() && bdmerge_should_render_projector()) // [BDMerge A5.6] projector toggle: falls back to a fullscreen point light below when off
                         {
                             drawablep->getVOVolume()->updateSpotLightPriority();
                             fullscreen_spot_lights.push_back(drawablep);

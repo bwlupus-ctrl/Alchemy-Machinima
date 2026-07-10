@@ -1979,6 +1979,61 @@
       <key>Value</key>
       <integer>0</integer>
     </map>
+    <key>BDMergeLightToggles</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge A5.6] Master gate for independent per-class light-source toggles (world / own-attached / others-attached / projector). Individual classes default ON so enabling this alone changes nothing. See doc/BD_MERGE_PATCHLOG.md.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>BDMergeRenderOthersAttachedLights</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge A5.6] Render light prims attached to other avatars, when BDMergeLightToggles is enabled.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>BDMergeRenderOwnAttachedLights</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge A5.6] Render light prims attached to your own avatar, when BDMergeLightToggles is enabled.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>BDMergeRenderProjectors</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge A5.6] Render spotlight prims as projectors (cone + projected image), when BDMergeLightToggles is enabled; when off, spotlights fall back to plain omni lights instead of disappearing.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>BDMergeRenderWorldLights</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge A5.6] Render unattached (world) light prims, when BDMergeLightToggles is enabled.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
     <key>BDMergeSamplePatch</key>
     <map>
       <key>Comment</key>
