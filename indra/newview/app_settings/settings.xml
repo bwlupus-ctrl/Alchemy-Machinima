@@ -2760,6 +2760,17 @@
       <key>Value</key>
       <string />
     </map>
+    <key>BDMergeCaptureModePin</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge G5.2] Capture mode: pin scene textures at loaded resolution - holds the discard bias at its floor so no bias-driven downrez, unload, backgrounded dump, or draw-distance shrink occurs during a take. Disables a memory safety valve by design; intended for capture sessions.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
     <key>BDMergeDecodeThreadCeiling</key>
     <map>
       <key>Comment</key>
@@ -2770,6 +2781,50 @@
       <string>U32</string>
       <key>Value</key>
       <integer>24</integer>
+    </map>
+    <key>BDMergeMeshPoolEnable</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge G5.1-2b] Enable the decoded-mesh RAM pool: unpacked mesh LOD geometry is kept in system RAM so re-entering draw distance skips the disk read and the inflate/parse/face build. Off = stock behavior.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>BDMergeMeshPoolFraction</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge G5.1-2b] Fraction of detected physical RAM the decoded-mesh pool may use when BDMergeMeshPoolMaxMB is 0 (auto). Clamped 0.01-0.5.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.1</real>
+    </map>
+    <key>BDMergeMeshPoolMaxMB</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge G5.1-2b] Manual decoded-mesh pool budget in MB. 0 = auto-size from detected physical RAM via BDMergeMeshPoolFraction.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>U32</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>BDMergeMeshPoolFloorMB</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge G5.1-2b] Minimum decoded-mesh pool budget in MB when auto-sizing.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>U32</string>
+      <key>Value</key>
+      <integer>256</integer>
     </map>
     <key>BDMergeTexPoolEnable</key>
     <map>

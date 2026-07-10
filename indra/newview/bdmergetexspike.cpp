@@ -17,6 +17,7 @@
 
 #include "bdmergetexspike.h"
 
+#include "bdmergemeshpool.h"
 #include "bdmergetexpool.h"
 #include "llmutex.h"
 #include "lltimer.h"
@@ -142,6 +143,8 @@ void dump()
                     sDecode.mCount ? 100.0 * sRepeatDecodes / sDecode.mCount : 0.0,
                     sRepeatDecodeTime, sRepeatCacheReadTime) << "\n";
     BDMergeTexPool::appendReport(out);
+    out << "\n";
+    BDMergeMeshPool::appendReport(out);
     LL_INFOS("BDMergeTexSpike") << out.str() << LL_ENDL;
 }
 

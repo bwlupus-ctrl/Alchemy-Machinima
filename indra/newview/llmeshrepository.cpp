@@ -29,6 +29,8 @@
 #include "llhttpconstants.h"
 #include "llmeshrepository.h"
 
+#include "bdmergemeshpool.h"
+
 #include "llagent.h"
 #include "llappviewer.h"
 #include "llbufferstream.h"
@@ -2029,6 +2031,48 @@ bool LLMeshRepoThread::fetchMeshLOD(const LLVolumeParams& mesh_params, S32 lod)
         bool in_cache = header.mLodInCache[lod];
         mHeaderMutex->unlock();
 
+        // [BDMerge G5.1-2b] decoded mesh pool short-circuit: a hit skips the
+        // disk read AND the inflate + LLSD parse + face build in lodReceived.
+        // Serves a deep copy; replicates lodReceived's post-unpack delivery.
+        if (BDMergeMeshPool::enabled())
+        {
+            LLPointer<LLVolume> pooled = new LLVolume(mesh_params, LLVolumeLODGroup::getVolumeScaleFromDetail(lod));
+            if (BDMergeMeshPool::fetch(mesh_id, lod, pooled))
+            {
+                S32 num_faces = pooled->getNumVolumeFaces();
+                LLPointer<LLMeshSkinInfo> skin_info = nullptr;
+                {
+                    LLMutexLock lock(mSkinMapMutex);
+                    skin_map::iterator iter = mSkinMap.find(mesh_id);
+                    if (iter != mSkinMap.end())
+                    {
+                        skin_info = iter->second;
+                    }
+                }
+                if (skin_info.notNull() && isAgentAvatarValid())
+                {
+                    for (S32 i = 0; i < num_faces; ++i)
+                    {
+                        LLVolumeFace& face = pooled->getVolumeFace(i);
+                        LLSkinningUtil::updateRiggingInfo(skin_info, gAgentAvatarp, face);
+                    }
+                }
+
+                LoadedMesh mesh(pooled, mesh_params, lod);
+                {
+                    LLMutexLock lock(mLoadedMutex);
+                    mLoadedQ.push_back(mesh);
+                    pooled = NULL;
+                    mesh.mVolume = NULL;
+                }
+                {
+                    LLMutexLock lock(mSkinMapMutex);
+                    skin_info = nullptr;
+                }
+                return true;
+            }
+        }
+
         if (version <= MAX_MESH_VERSION && offset >= 0 && size > 0)
         {
             S32 disk_ofset = offset + CACHE_PREAMBLE_SIZE;
@@ -2386,6 +2430,10 @@ EMeshProcessingResult LLMeshRepoThread::lodReceived(const LLVolumeParams& mesh_p
         S32 num_faces = volume->getNumVolumeFaces();
         if (num_faces > 0)
         {
+            // [BDMerge G5.1-2b] write-through into the decoded mesh pool,
+            // pre-rigging (hits re-run rigging against current avatar state)
+            BDMergeMeshPool::put(mesh_params.getSculptID(), lod, mesh_params, volume);
+
             // if we have a valid SkinInfo, cache per-joint bounding boxes for this LOD
             LLPointer<LLMeshSkinInfo> skin_info = nullptr;
             {
@@ -4505,6 +4553,9 @@ S32 LLMeshRepository::loadMesh(LLVOVolume* vobj, const LLVolumeParams& mesh_para
 void LLMeshRepository::notifyLoadedMeshes()
 { //called from main thread
     LL_PROFILE_ZONE_SCOPED_CATEGORY_NETWORK; //LL_RECORD_BLOCK_TIME(FTM_MESH_FETCH);
+
+    // [BDMerge G5.1-2b] main-thread settings/budget refresh for the mesh pool
+    BDMergeMeshPool::refreshSettings();
 
     // GetMesh2 operation with keepalives, etc.  With pipelining,
     // we'll increase this.  See llappcorehttp and llcorehttp for
