@@ -1935,6 +1935,17 @@
       <key>Value</key>
       <real>27.0</real>
     </map>
+    <key>BDMergeFreezeWorld</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge B3] Enables the Black Dragon-style Freeze World feature: the UseFreezeWorld toggle (snapshot floater checkbox, replaces the stock freeze-frame checkbox while enabled) freezes all avatar animation, object movement and particles while the camera stays free. When off, the Freeze World UI is hidden and the toggle is inert (stock behavior). Donor: Black Dragon b4cfc2cb83/fab3226ac5. See doc/BD_MERGE_PATCHLOG.md.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
     <key>BDMergeHeadEyeLimits</key>
     <map>
       <key>Comment</key>
@@ -14779,6 +14790,17 @@
       <string>Freeze time when taking snapshots.</string>
       <key>Persist</key>
       <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>UseFreezeWorld</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge B3] Freeze the entire world (avatar animation, object movement, particles) while the camera stays free. Runtime-only: never persisted across sessions, and only functional while BDMergeFreezeWorld is enabled. Donor: Black Dragon b4cfc2cb83.</string>
+      <key>Persist</key>
+      <integer>0</integer>
       <key>Type</key>
       <string>Boolean</string>
       <key>Value</key>

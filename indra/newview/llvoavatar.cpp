@@ -24,6 +24,10 @@
  * $/LicenseInfo$
  */
 
+// [BDMerge B3] Freeze World: stop avatar pelvis rotation while the world is
+// frozen, gated by BDMergeFreezeWorld + UseFreezeWorld. donor: Black Dragon
+// (NiranV Dean) b4cfc2cb83. See doc/BD_MERGE_PATCHLOG.md.
+
 #include "llviewerprecompiledheaders.h"
 
 #include "llvoavatar.h"
@@ -4618,6 +4622,16 @@ void LLVOAvatar::updateOrientation(LLAgent& agent, F32 speed, F32 delta_time)
             if (self_in_mouselook)
             {
                 pelvis_rot_threshold *= MOUSELOOK_PELVIS_FOLLOW_FACTOR;
+            }
+            // [BDMerge B3] Freeze World: stop avatars from rotating while the
+            // world is frozen (donor: Black Dragon b4cfc2cb83)
+            {
+                static LLCachedControl<bool> bdmerge_freeze_world(gSavedSettings, "BDMergeFreezeWorld", false);
+                static LLCachedControl<bool> use_freeze_world(gSavedSettings, "UseFreezeWorld", false);
+                if (bdmerge_freeze_world && use_freeze_world)
+                {
+                    pelvis_rot_threshold = 360.0f;
+                }
             }
             pelvis_rot_threshold *= DEG_TO_RAD;
 

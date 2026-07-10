@@ -24,6 +24,13 @@
  * $/LicenseInfo$
  */
 
+// [BDMerge B3] Freeze World: while BDMergeFreezeWorld is enabled the stock
+// freeze-frame checkbox is swapped for a Freeze World checkbox (bound to the
+// runtime-only UseFreezeWorld toggle) that freezes the whole scene while the
+// camera stays free - without the removed laggy fullscreen preview. donor:
+// Black Dragon (NiranV Dean) b4cfc2cb83/fab3226ac5. Keep these hunks minimal;
+// item C6 will extend this floater later. See doc/BD_MERGE_PATCHLOG.md.
+
 #include "llviewerprecompiledheaders.h"
 
 #include "llfloatersnapshot.h"
@@ -247,7 +254,12 @@ void LLFloaterSnapshotBase::ImplBase::updateLayout(LLFloaterSnapshotBase* floate
         floaterp->impl->mAvatarPauseHandles.clear();
 
         // thaw everything else
-        gSavedSettings.setBOOL("FreezeTime", false);
+        // [BDMerge B3] unless Freeze World is holding the scene: its own
+        // toggle owns FreezeTime for the duration of the freeze
+        if (!gSavedSettings.getBOOL("UseFreezeWorld"))
+        {
+            gSavedSettings.setBOOL("FreezeTime", false);
+        }
 
         // restore last tool (e.g. pie menu, etc)
         if (floaterp->impl->mLastToolset)
@@ -949,6 +961,10 @@ LLFloaterSnapshotBase::~LLFloaterSnapshotBase()
 {
     if (impl->mPreviewHandle.get()) impl->mPreviewHandle.get()->die();
 
+    // [BDMerge B3] fully release Freeze World (thaws avatars via the
+    // UseFreezeWorld listener) so no pause handles outlive the floater
+    gSavedSettings.setBOOL("UseFreezeWorld", false);
+
     //unfreeze everything else
     gSavedSettings.setBOOL("FreezeTime", false);
 
@@ -997,6 +1013,24 @@ bool LLFloaterSnapshot::postBuild()
     mFreezeFrameCheck = getChild<LLUICtrl>("freeze_frame_check");
     mFreezeFrameCheck->setValue(gSavedSettings.getBOOL("UseFreezeFrame"));
     mFreezeFrameCheck->setCommitCallback(&ImplBase::onCommitFreezeFrame, this);
+
+    // [BDMerge B3] Freeze World (donor: Black Dragon b4cfc2cb83): when the
+    // gate is on, show the Freeze World checkbox in place of the stock
+    // freeze-frame checkbox (BD replaced freeze-frame with Freeze World and
+    // dropped the laggy fullscreen preview; both occupy the same slot here).
+    // The checkbox is bound to UseFreezeWorld via control_name in XML.
+    {
+        static LLCachedControl<bool> bdmerge_freeze_world(gSavedSettings, "BDMergeFreezeWorld", false);
+        const bool freeze_world_enabled = bdmerge_freeze_world;
+        getChildView("freeze_world_check")->setVisible(freeze_world_enabled);
+        mFreezeFrameCheck->setVisible(!freeze_world_enabled);
+        if (freeze_world_enabled)
+        {
+            // never let the hidden stock freeze-frame checkbox re-engage its
+            // fullscreen preview while Freeze World owns the slot
+            mFreezeFrameCheck->setValue(false);
+        }
+    }
 
     getChild<LLUICtrl>("auto_snapshot_check")->setValue(gSavedSettings.getBOOL("AutoSnapshot"));
     childSetCommitCallback("auto_snapshot_check", ImplBase::onClickAutoSnap, this);
@@ -1156,6 +1190,11 @@ void LLFloaterSnapshotBase::onClose(bool app_quitting)
         previewp->setVisible(false);
         previewp->setEnabled(false);
     }
+
+    // [BDMerge B3] closing the snapshot floater always releases Freeze World
+    // (the listener thaws the avatars); like BD, the freeze lives only while
+    // its UI is reachable so the scene can never get stuck frozen
+    gSavedSettings.setBOOL("UseFreezeWorld", false);
 
     gSavedSettings.setBOOL("FreezeTime", false);
     impl->mAvatarPauseHandles.clear();

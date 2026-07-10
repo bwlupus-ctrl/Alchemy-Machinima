@@ -28,6 +28,13 @@
  * $/LicenseInfo$
  */
 
+// [BDMerge B3] Freeze World: pause every avatar's motion controller and set the
+// stock FreezeTime freeze-frame flag while the camera stays free, gated by
+// BDMergeFreezeWorld. donor: Black Dragon (NiranV Dean) b4cfc2cb83 "STORM-2118:
+// Changed: Rewrote how Freeze World works and renamed it internally to Freeze
+// World." (see also fab3226ac5, 4f4f37a4c3). Runtime state only — the
+// UseFreezeWorld toggle never persists. See doc/BD_MERGE_PATCHLOG.md.
+
 #include "llviewerprecompiledheaders.h"
 
 #include "llviewercontrol.h"
@@ -42,6 +49,7 @@
 #endif
 #include "llagent.h"
 #include "llagentcamera.h"
+#include "llcharacter.h" // [BDMerge B3] Freeze World avatar pause handles
 #include "llconsole.h"
 #include "lldrawpoolbump.h"
 #include "llfontgl.h"
@@ -935,6 +943,58 @@ void handleLocalTerrainChanged(const LLSD& newValue)
         gLocalTerrainMaterials.setPaintType(paint_enabled ? TERRAIN_PAINT_TYPE_PBR_PAINTMAP : TERRAIN_PAINT_TYPE_HEIGHTMAP_WITH_NOISE);
     }
 }
+
+// [BDMerge B3] Freeze World: freeze the whole scene (avatar animation, object
+// movement, particles) while the camera remains free. donor: Black Dragon
+// b4cfc2cb83. Runtime-only state: pause handles + FreezeTime (both Persist 0),
+// nothing saved settings-wise is mutated. The gate check keeps the hook inert
+// (bit-identical stock behavior) while BDMergeFreezeWorld is off.
+static std::vector<LLAnimPauseRequest> sFreezeWorldPauseHandles;
+static bool sFreezeWorldActive = false;
+
+static bool handleUseFreezeWorldChanged(const LLSD& newvalue)
+{
+    bool val = newvalue.asBoolean();
+    if (val)
+    {
+        static LLCachedControl<bool> bdmerge_freeze_world(gSavedSettings, "BDMergeFreezeWorld", false);
+        if (!bdmerge_freeze_world)
+        {
+            // feature gated off: refuse to engage so the setting never reads
+            // true while the world is not actually frozen
+            gSavedSettings.setBOOL("UseFreezeWorld", false);
+            return true;
+        }
+    }
+    if (val == sFreezeWorldActive)
+    {
+        return true;
+    }
+    if (val)
+    {
+        // freeze all avatars; requestPause() halts each motion controller
+        // outright, independent of LLMotionController::sGlobalTimeFactor
+        // (B3a slow-motion), which resumes untouched on thaw
+        for (LLCharacter* character : LLCharacter::sInstances)
+        {
+            sFreezeWorldPauseHandles.push_back(character->requestPause());
+        }
+        // freeze everything else (object movement/interpolation via
+        // LLPipeline::updateMove* and LLViewerObjectList::update)
+        gSavedSettings.setBOOL("FreezeTime", true);
+    }
+    else
+    {
+        // thaw all avatars
+        sFreezeWorldPauseHandles.clear();
+        // thaw everything else
+        gSavedSettings.setBOOL("FreezeTime", false);
+    }
+    sFreezeWorldActive = val;
+    return true;
+}
+// [/BDMerge B3]
+
 ////////////////////////////////////////////////////////////////////////////
 
 LLPointer<LLControlVariable> setting_get_control(LLControlGroup& group, const std::string& setting)
@@ -1189,6 +1249,8 @@ void settings_setup_listeners()
 // [/RLVa:KB]
     setting_setup_signal_listener(gSavedSettings, "AlchemyHudTextFadeDistance", LLHUDText::onFadeSettingsChanged);
     setting_setup_signal_listener(gSavedSettings, "AlchemyHudTextFadeRange", LLHUDText::onFadeSettingsChanged);
+    // [BDMerge B3] Freeze World (donor: Black Dragon b4cfc2cb83)
+    setting_setup_signal_listener(gSavedSettings, "UseFreezeWorld", handleUseFreezeWorldChanged);
 }
 
 #if TEST_CACHED_CONTROL

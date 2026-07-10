@@ -201,6 +201,20 @@
          top_pad="1"
          width="180"
          name="freeze_frame_check" />
+        <!-- [BDMerge B3] Freeze World (donor: Black Dragon b4cfc2cb83).
+             Occupies the same slot as freeze_frame_check; LLFloaterSnapshot::
+             postBuild shows exactly one of the two based on BDMergeFreezeWorld. -->
+        <check_box
+         label="Freeze world"
+         tool_tip="Freeze all avatars, objects and particles while the camera stays free. Not remembered across sessions."
+         layout="topleft"
+         height="16"
+         left="10"
+         top_delta="0"
+         width="180"
+         control_name="UseFreezeWorld"
+         visible="false"
+         name="freeze_world_check" />
         <check_box
          label="Auto-refresh"
          layout="topleft"

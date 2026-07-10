@@ -25,6 +25,10 @@
  * $/LicenseInfo$
  */
 
+// [BDMerge B3] Freeze World interaction guard: don't clear FreezeTime while
+// the Freeze World toggle (UseFreezeWorld) is holding the scene. donor:
+// Black Dragon (NiranV Dean) b4cfc2cb83. See doc/BD_MERGE_PATCHLOG.md.
+
 #include "llviewerprecompiledheaders.h"
 
 #include "llfloater360capture.h"
@@ -834,7 +838,12 @@ void LLFloater360Capture::freezeWorld(bool enable)
         mAvatarPauseHandles.clear();
 
         // thaw everything else
-        gSavedSettings.setBOOL("FreezeTime", false);
+        // [BDMerge B3] unless Freeze World is holding the scene: its own
+        // toggle owns FreezeTime for the duration of the freeze
+        if (!gSavedSettings.getBOOL("UseFreezeWorld"))
+        {
+            gSavedSettings.setBOOL("FreezeTime", false);
+        }
 
         //enable particle system
         LLViewerPartSim::getInstance()->enable(true);

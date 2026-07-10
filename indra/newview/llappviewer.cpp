@@ -5356,7 +5356,20 @@ void LLAppViewer::idle()
         gPipeline.updateMove();
     }
 
-    LLWorld::getInstance()->updateParticles();
+    // [BDMerge B3] Freeze World: hold the particle simulation while the world
+    // is frozen so existing particles hang in place instead of aging out
+    // (donor: Black Dragon b4cfc2cb83; BD leaves particles running, but the
+    // merge spec for this item requires the full scene — including particles —
+    // to stop). Camera updates below run regardless, so agent camera, flycam
+    // and LLCinematicCamera all stay live while frozen.
+    {
+        static LLCachedControl<bool> bdmerge_freeze_world(gSavedSettings, "BDMergeFreezeWorld", false);
+        static LLCachedControl<bool> use_freeze_world(gSavedSettings, "UseFreezeWorld", false);
+        if (!(bdmerge_freeze_world && use_freeze_world))
+        {
+            LLWorld::getInstance()->updateParticles();
+        }
+    }
 
     if (gAgentPilot.isPlaying() && gAgentPilot.getOverrideCamera())
     {
