@@ -1301,6 +1301,16 @@ void LLAppViewer::initMaxHeapSize()
     F32Gigabytes max_heap_size_gb = (F32Gigabytes)gSavedSettings.getF32("MaxHeapSize") ;
 #else
     F32Gigabytes max_heap_size_gb = (F32Gigabytes)gSavedSettings.getF32("MaxHeapSize64");
+    // [BDMerge G5.0] 0 = auto-size: 7/8 of installed physical RAM, never below
+    // the legacy 16GB default. A fixed cap makes updateMemoryInfo() report
+    // available memory as min(true available, cap - RSS), so a machine with
+    // far more RAM than the cap can misread as "low system memory" and
+    // trigger the emergency texture purge with plenty actually free.
+    if (max_heap_size_gb.value() <= 0.f)
+    {
+        const F32Gigabytes phys_gb = F32Gigabytes::convert(gSysMemory.getPhysicalMemoryKB());
+        max_heap_size_gb = F32Gigabytes(llmax(phys_gb.value() * 0.875f, 16.f));
+    }
 #endif
 
     LLMemory::initMaxHeapSizeGB(max_heap_size_gb);

@@ -2763,13 +2763,13 @@
     <key>CacheSize</key>
     <map>
       <key>Comment</key>
-      <string>Controls amount of hard drive space reserved for local file caching in MB</string>
+      <string>Controls amount of hard drive space reserved for local file caching in MB [BDMerge G5.0: default raised to the 32GB ceiling]</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
       <string>U32</string>
       <key>Value</key>
-      <integer>6144</integer>
+      <integer>32768</integer>
     </map>
     <key>CacheValidateCounter</key>
     <map>
@@ -6577,13 +6577,13 @@
     <key>MaxHeapSize64</key>
     <map>
       <key>Comment</key>
-      <string>Maximum heap size on 64-bit builds (GB)</string>
+      <string>Maximum heap size on 64-bit builds (GB); 0 = auto-size from installed physical memory, leaving OS headroom [BDMerge G5.0]</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
       <string>F32</string>
       <key>Value</key>
-      <real>16.0</real>
+      <real>0.0</real>
     </map>
     <key>MaxPersistentNotifications</key>
     <map>
