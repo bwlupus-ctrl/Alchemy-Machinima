@@ -139,7 +139,7 @@ as current BD.
 | C1 client AO | open | — |
 | C2 movement conveniences | open | — |
 | C3 camera QoL | open | — |
-| C4 click-to-walk hardening | open | — |
+| C4 click-to-walk hardening | **closed — already present via shared upstream** (2026-07-09: fly-click-walk early-return `lltoolpie.cpp:632` + `stopClickToWalk()` from `toggleFlying()`; HUD double-click guards `lltoolpie.cpp:660,754` + `mDoubleClickTimer`; alpha/particle immune via `pick_transparent=false`/`pick_particle=false` at `lltoolpie.cpp:597,607,742`. BD's fixes were 2011–2021 upstream LL commits both trees inherited; verified in current source, not just history) | — |
 | C5 rebindable keys | **closed — no port** (PR-1; verified 2026-07-09: `llkeyconflict.cpp/h` + `key_bindings.xml` present, wired into preferences) | — |
 | C6 snapshot conveniences | open | B3 coordination |
 | C7 texture channel lock | **closed — already present via shared upstream** (2026-07-09: "Synchronize materials" checkbox, `SyncMaterialSettings` + `syncOffsetX/Y`/`syncRepeatX/Y`/`syncMaterialRot` in `llpanelface.cpp`, upstream MAINT-3223 commit `69db7cd947` carried identically by BD and Alchemy; PBR/GLTF transforms untouched by sync in both trees, matching BD scope) | — |
