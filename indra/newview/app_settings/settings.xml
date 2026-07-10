@@ -2760,6 +2760,39 @@
       <key>Value</key>
       <string />
     </map>
+    <key>BDMergeForceAlphaMask</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge G2.3] Forced client-side alpha masking: render blended faces through the masked path (writes depth, sorts as solid, participates in SSAO/DoF). Works on no-mod content. Faces with a transparency percentage or glow keep blending. Per-shot render tool.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>BDMergeForceAlphaMaskCutoff</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge G2.3] Global alpha cutoff (0-1) for faces routed through the masked path by forced masking. Lower = more texels pass as solid.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.5</real>
+    </map>
+    <key>BDMergeForceAlphaMaskRigged</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge G2.3] Extend forced alpha masking to rigged (worn) faces. Stock never auto-masks rigged; expect visible changes on alpha hair/clothing - per-shot judgement call.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
     <key>BDMergeCaptureModePin</key>
     <map>
       <key>Comment</key>

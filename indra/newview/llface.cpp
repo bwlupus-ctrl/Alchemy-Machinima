@@ -1190,6 +1190,22 @@ bool LLFace::canRenderAsMask()
         return true;
     }
 
+    // [BDMerge G2.3] forced client-side alpha masking: route blended faces
+    // through the masked path (writes depth, sorts as solid) regardless of
+    // creator-chosen alpha mode or texture heuristics — works on no-mod
+    // content. Faces with a transparency percentage (color alpha < 1) or
+    // glow still need real blending and are left alone. The global cutoff
+    // for forced faces is applied at batch build (llvovolume genDrawInfo).
+    static LLCachedControl<bool> force_mask(gSavedSettings, "BDMergeForceAlphaMask", false);
+    static LLCachedControl<bool> force_mask_rigged(gSavedSettings, "BDMergeForceAlphaMaskRigged", false);
+    if (force_mask
+        && (force_mask_rigged || !isState(LLFace::RIGGED))
+        && te->getColor().mV[3] == 1.0f
+        && te->getGlow() == 0.f)
+    {
+        return true;
+    }
+
     if (isState(LLFace::RIGGED))
     { // never auto alpha-mask rigged faces
         return false;
