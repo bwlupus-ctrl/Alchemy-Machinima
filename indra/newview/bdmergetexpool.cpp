@@ -17,11 +17,13 @@
 
 #include "bdmergetexpool.h"
 
+#include "llagent.h"
 #include "llimage.h"
 #include "llmemory.h"
 #include "llmutex.h"
 #include "llsys.h"
 #include "llviewercontrol.h"
+#include "llviewerregion.h"
 
 #include <atomic>
 #include <list>
@@ -39,6 +41,8 @@ struct Entry
     U16 mHeight = 0;
     S8 mComponents = 0;
     S8 mDiscard = -1;
+    F64 mLastHit = 0.0;       // [B-2b.1] last put/fetch time (LLTimer::getTotalSeconds)
+    U64 mRegion = 0;          // [B-2b.1] agent region handle at insert time
     std::list<LLUUID>::iterator mLRUIt;
 };
 
@@ -46,6 +50,10 @@ struct Entry
 // worker threads.
 std::atomic<bool> sEnabled{ false };
 std::atomic<U64> sBudgetBytes{ 0 };
+// [B-2b.1] tier parameters, mirrored on the main thread like the rest
+std::atomic<U64> sCurrentRegion{ 0 };
+std::atomic<F32> sRegionGraceTTL{ 900.f };
+std::atomic<F32> sRecencyWindow{ 300.f };
 
 LLMutex sMutex;
 // Guarded by sMutex.
@@ -61,19 +69,66 @@ U64 sReplacedFinerSkips = 0;
 U64 sEvictions = 0;
 F64 sHitBytes = 0.0;
 
-void evictToBudgetLocked(U64 budget)
+// [B-2b.1] tiered eviction, oldest-first within each pass:
+//   pass 0 - departed-region entries past the region grace TTL
+//   pass 1 - any entry idle past the recency window
+//   pass 2 - plain LRU tail (stock behavior, budget backstop)
+// Region returns within the TTL and recently-visible content survive
+// pressure that would otherwise dump them in pure-LRU order.
+void evictPassLocked(U64 budget, S32 pass)
 {
-    while (sBytes > budget && !sLRU.empty())
+    if (sLRU.empty() || sBytes <= budget)
     {
-        const LLUUID& victim = sLRU.back();
-        auto it = sEntries.find(victim);
-        if (it != sEntries.end())
+        return;
+    }
+    const F64 now = LLTimer::getTotalSeconds();
+    const U64 region = sCurrentRegion.load(std::memory_order_relaxed);
+    const F64 grace = sRegionGraceTTL.load(std::memory_order_relaxed);
+    const F64 recency = sRecencyWindow.load(std::memory_order_relaxed);
+
+    auto it = std::prev(sLRU.end());
+    while (sBytes > budget)
+    {
+        const bool at_begin = (it == sLRU.begin());
+        auto cur = it;
+        if (!at_begin)
         {
-            sBytes -= it->second.mDataSize;
-            sEntries.erase(it);
+            --it;
+        }
+
+        auto eit = sEntries.find(*cur);
+        bool victim = true;
+        if (eit == sEntries.end())
+        { // stale key; drop from the list either way
+            sLRU.erase(cur);
+            if (at_begin) break;
+            continue;
+        }
+        else if (pass == 0)
+        {
+            victim = (eit->second.mRegion != region) && (now - eit->second.mLastHit > grace);
+        }
+        else if (pass == 1)
+        {
+            victim = (now - eit->second.mLastHit > recency);
+        }
+
+        if (victim)
+        {
+            sBytes -= eit->second.mDataSize;
+            sEntries.erase(eit);
+            sLRU.erase(cur);
             sEvictions++;
         }
-        sLRU.pop_back();
+        if (at_begin) break;
+    }
+}
+
+void evictToBudgetLocked(U64 budget)
+{
+    for (S32 pass = 0; pass < 3 && sBytes > budget; pass++)
+    {
+        evictPassLocked(budget, pass);
     }
 }
 
@@ -86,6 +141,15 @@ void BDMergeTexPool::refreshSettings()
     static LLCachedControl<F32> pool_fraction(gSavedSettings, "BDMergeTexPoolFraction", 0.5f);
     static LLCachedControl<U32> pool_max_mb(gSavedSettings, "BDMergeTexPoolMaxMB", 0);
     static LLCachedControl<U32> pool_floor_mb(gSavedSettings, "BDMergeTexPoolFloorMB", 1024);
+
+    static LLCachedControl<F32> region_grace(gSavedSettings, "BDMergeTexPoolRegionGraceTTL", 900.f);
+    static LLCachedControl<F32> recency_window(gSavedSettings, "BDMergeTexPoolRecencyWindow", 300.f);
+    sRegionGraceTTL.store(llmax((F32)region_grace, 0.f), std::memory_order_relaxed);
+    sRecencyWindow.store(llmax((F32)recency_window, 0.f), std::memory_order_relaxed);
+    if (LLViewerRegion* regionp = gAgent.getRegion())
+    {
+        sCurrentRegion.store(regionp->getHandle(), std::memory_order_relaxed);
+    }
 
     bool enable = pool_enable;
     U64 budget;
@@ -151,6 +215,8 @@ LLPointer<LLImageRaw> BDMergeTexPool::fetch(const LLUUID& id, S32 desired_discar
     entry_discard = e.mDiscard;
 
     sLRU.splice(sLRU.begin(), sLRU, e.mLRUIt); // touch
+    e.mLastHit = LLTimer::getTotalSeconds();
+    e.mRegion = sCurrentRegion.load(std::memory_order_relaxed);
     sHits++;
     sHitBytes += e.mDataSize;
     return raw;
@@ -201,6 +267,8 @@ void BDMergeTexPool::put(const LLUUID& id, S32 discard, const LLImageRaw* raw)
     e.mHeight = (U16)raw->getHeight();
     e.mComponents = (S8)raw->getComponents();
     e.mDiscard = (S8)discard;
+    e.mLastHit = LLTimer::getTotalSeconds();
+    e.mRegion = sCurrentRegion.load(std::memory_order_relaxed);
     e.mLRUIt = sLRU.begin();
     sBytes += data_size;
     sInserts++;

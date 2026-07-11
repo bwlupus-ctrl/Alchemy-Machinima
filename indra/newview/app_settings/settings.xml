@@ -2892,6 +2892,28 @@
       <key>Value</key>
       <real>0.5</real>
     </map>
+    <key>BDMergeTexPoolRegionGraceTTL</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge G5.1-2b-tiers] Seconds a departed region's pool entries survive eviction pressure (return TP within this window finds them warm). Evicted first once expired.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>900.0</real>
+    </map>
+    <key>BDMergeTexPoolRecencyWindow</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge G5.1-2b-tiers] Seconds since last use within which pool entries are protected from the idle-eviction pass (pan-away-pan-back window).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>300.0</real>
+    </map>
     <key>BDMergeTexPoolMaxMB</key>
     <map>
       <key>Comment</key>
