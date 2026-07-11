@@ -38,6 +38,19 @@
 #include "llviewercontrol.h"
 #include "pipeline.h"
 
+// [BDMerge B13] BD - Windlight Stuff
+#include "bdmergeenvlibrary.h"
+#include "llagent.h"
+#include "llcombobox.h"
+#include "llfilepicker.h"
+#include "llflyoutcombobtn.h"
+#include "llinventorymodel.h"
+#include "lllocalbitmaps.h"
+#include "llpanel.h"
+#include "llsettingsvo.h"
+#include "lltrans.h"
+#include "llviewermenufile.h"
+
 //=========================================================================
 namespace
 {
@@ -66,6 +79,26 @@ namespace
     const std::string FIELD_REFLECTION_PROBE_AMBIANCE("probe_ambiance");
     const std::string BTN_RESET("btn_reset");
 
+    // [BDMerge B13] BD - Windlight Stuff
+    const std::string ACTION_SAVELOCAL("save_as_local_setting");
+    const std::string ACTION_SAVEAS("save_as_new_settings");
+    const std::string FIELD_SKY_CLOUD_LOCK_X("cloud_lock_x");
+    const std::string FIELD_SKY_CLOUD_LOCK_Y("cloud_lock_y");
+    const std::string BTN_SAVE("save");
+    const std::string BTN_DELETE("delete");
+    const std::string BTN_IMPORT("import");
+    const std::string EDITOR_NAME("sky_preset_combo");
+    const std::string BUTTON_NAME_FLYOUT("btn_flyout");
+    const std::string PANEL_BDMERGE("lp_bdmerge");
+    const std::string XML_FLYOUTMENU_FILE("menu_save_settings_adjust.xml");
+
+    // [BDMerge B13] gate; off = stock behavior
+    bool bdmerge_env_gate()
+    {
+        static LLCachedControl<bool> gate(gSavedSettings, "BDMergeEnvLocalPresets", false);
+        return gate;
+    }
+
     const F32 SLIDER_SCALE_SUN_AMBIENT(3.0f);
     const F32 SLIDER_SCALE_BLUE_HORIZON_DENSITY(2.0f);
     const F32 SLIDER_SCALE_GLOW_R(20.0f);
@@ -81,7 +114,10 @@ LLFloaterEnvironmentAdjust::LLFloaterEnvironmentAdjust(const LLSD &key):
 {}
 
 LLFloaterEnvironmentAdjust::~LLFloaterEnvironmentAdjust()
-{}
+{
+    // [BDMerge B13]
+    delete mFlyoutControl;
+}
 
 //-------------------------------------------------------------------------
 bool LLFloaterEnvironmentAdjust::postBuild()
@@ -121,6 +157,35 @@ bool LLFloaterEnvironmentAdjust::postBuild()
 
     getChild<LLUICtrl>(FIELD_REFLECTION_PROBE_AMBIANCE)->setCommitCallback([this](LLUICtrl*, const LLSD&) { onReflectionProbeAmbianceChanged(); });
 
+    // [BDMerge B13] BD - Windlight Stuff: preset combo, save/delete/import,
+    // cloud scroll locks. All the widgets live in a hidden bottom strip
+    // (lp_bdmerge, visible="false"); when the gate is off nothing below is
+    // shown or wired, so stock appearance/behavior is unchanged.
+    if (bdmerge_env_gate())
+    {
+        if (LLPanel* bd_panel = findChild<LLPanel>(PANEL_BDMERGE))
+        {
+            bd_panel->setVisible(true);
+            // grow the floater by the strip's height so the stock controls
+            // keep their full size
+            reshape(getRect().getWidth(), getRect().getHeight() + bd_panel->getRect().getHeight());
+
+            mCloudScrollLockX = getChild<LLUICtrl>(FIELD_SKY_CLOUD_LOCK_X);
+            mCloudScrollLockX->setCommitCallback([this](LLUICtrl *ctrl, const LLSD &) { onCloudScrollXLocked(ctrl->getValue()); });
+            mCloudScrollLockY = getChild<LLUICtrl>(FIELD_SKY_CLOUD_LOCK_Y);
+            mCloudScrollLockY->setCommitCallback([this](LLUICtrl *ctrl, const LLSD &) { onCloudScrollYLocked(ctrl->getValue()); });
+
+            getChild<LLUICtrl>(BTN_DELETE)->setCommitCallback([this](LLUICtrl *, const LLSD &) { onButtonDelete(); });
+            getChild<LLUICtrl>(BTN_IMPORT)->setCommitCallback([this](LLUICtrl *, const LLSD &) { onButtonImport(); });
+
+            mFlyoutControl = new LLFlyoutComboBtnCtrl(this, BTN_SAVE, BUTTON_NAME_FLYOUT, XML_FLYOUTMENU_FILE, false);
+            mFlyoutControl->setAction([this](LLUICtrl *ctrl, const LLSD &data) { onButtonApply(ctrl, data); });
+
+            mNameCombo = getChild<LLComboBox>(EDITOR_NAME);
+            mNameCombo->setCommitCallback([this](LLUICtrl *, const LLSD &) { onSelectPreset(); });
+        }
+    }
+
     refresh();
     return true;
 }
@@ -140,6 +205,13 @@ void LLFloaterEnvironmentAdjust::onOpen(const LLSD& key)
 
     LLFloater::onOpen(key);
     refresh();
+
+    // [BDMerge B13] BD - Windlight Stuff: populate the sky preset combo
+    if (bdmerge_env_gate() && mNameCombo)
+    {
+        gBDMergeEnvLibrary.loadPresetsFromDir(mNameCombo, "skies");
+        gBDMergeEnvLibrary.addInventoryPresets(mNameCombo, mLiveSky);
+    }
 }
 
 void LLFloaterEnvironmentAdjust::onClose(bool app_quitting)
@@ -206,6 +278,14 @@ void LLFloaterEnvironmentAdjust::refresh()
     getChild<LLUICtrl>(FIELD_SKY_MOON_AZIMUTH)->setValue(azimuth);
     getChild<LLUICtrl>(FIELD_SKY_MOON_ELEVATION)->setValue(elevation);
     getChild<LLVirtualTrackball>(FIELD_SKY_MOON_ROTATION)->setRotation(quat);
+
+    // [BDMerge B13] BD - Windlight Stuff: reflect the env-wide lock state
+    if (mCloudScrollLockX && mCloudScrollLockY)
+    {
+        LLEnvironment &environment(LLEnvironment::instance());
+        mCloudScrollLockX->setValue(environment.isCloudScrollXLocked());
+        mCloudScrollLockY->setValue(environment.isCloudScrollYLocked());
+    }
 
     updateGammaLabel();
 }
@@ -535,4 +615,158 @@ void LLFloaterEnvironmentAdjust::onEnvironmentUpdated(LLEnvironment::EnvSelectio
             refresh();
         }
     }
+}
+
+// [BDMerge B13] BD - Windlight Stuff (donor: BD llfloaterenvironmentadjust.cpp
+// lines 753-937). Only reachable when BDMergeEnvLocalPresets is enabled
+// (controls hidden and unwired otherwise).
+//=====================================================================================================
+void LLFloaterEnvironmentAdjust::onCloudScrollXLocked(bool lock)
+{
+    if (!mLiveSky)
+        return;
+    LLEnvironment::instance().pauseCloudScrollX(lock);
+    refresh();
+}
+
+void LLFloaterEnvironmentAdjust::onCloudScrollYLocked(bool lock)
+{
+    if (!mLiveSky)
+        return;
+    LLEnvironment::instance().pauseCloudScrollY(lock);
+    refresh();
+}
+
+void LLFloaterEnvironmentAdjust::onButtonApply(LLUICtrl *ctrl, const LLSD &data)
+{
+    std::string ctrl_action = ctrl->getName();
+
+    std::string local_desc;
+    LLSettingsBase::ptr_t setting_clone;
+    bool is_local = false; // because getString can be empty
+    if (mLiveSky)
+    {
+        setting_clone = mLiveSky->buildClone();
+        if (LLLocalBitmapMgr::getInstance()->isLocal(mLiveSky->getSunTextureId()))
+        {
+            local_desc = LLTrans::getString("EnvironmentSun");
+            is_local = true;
+        }
+        else if (LLLocalBitmapMgr::getInstance()->isLocal(mLiveSky->getMoonTextureId()))
+        {
+            local_desc = LLTrans::getString("EnvironmentMoon");
+            is_local = true;
+        }
+        else if (LLLocalBitmapMgr::getInstance()->isLocal(mLiveSky->getCloudNoiseTextureId()))
+        {
+            local_desc = LLTrans::getString("EnvironmentCloudNoise");
+            is_local = true;
+        }
+        else if (LLLocalBitmapMgr::getInstance()->isLocal(mLiveSky->getBloomTextureId()))
+        {
+            local_desc = LLTrans::getString("EnvironmentBloom");
+            is_local = true;
+        }
+    }
+
+    if (is_local)
+    {
+        LLSD args;
+        args["FIELD"] = local_desc;
+        LLNotificationsUtil::add("WLLocalTextureFixedBlock", args);
+        return;
+    }
+
+    if (ctrl_action == ACTION_SAVELOCAL)
+    {
+        onButtonSave();
+    }
+    else if (ctrl_action == ACTION_SAVEAS)
+    {
+        LLSD args;
+        args["DESC"] = mLiveSky->getName();
+        LLNotificationsUtil::add("SaveSettingAs", args, LLSD(), boost::bind(&LLFloaterEnvironmentAdjust::onSaveAsCommit, this, _1, _2, setting_clone));
+    }
+    else
+    {
+        LL_WARNS("ENVIRONMENT") << "Unknown settings action '" << ctrl_action << "'" << LL_ENDL;
+    }
+}
+
+void LLFloaterEnvironmentAdjust::onSaveAsCommit(const LLSD& notification, const LLSD& response, const LLSettingsBase::ptr_t &settings)
+{
+    S32 option = LLNotificationsUtil::getSelectedOption(notification, response);
+    if (0 == option)
+    {
+        std::string settings_name = response["message"].asString();
+
+        LLInventoryObject::correctInventoryName(settings_name);
+        if (settings_name.empty())
+        {
+            // Ideally notification should disable 'OK' button if name won't fit our requirements,
+            // for now either display notification, or use some default name
+            settings_name = "Unnamed";
+        }
+
+        doApplyCreateNewInventory(settings_name, settings);
+    }
+}
+
+void LLFloaterEnvironmentAdjust::doApplyCreateNewInventory(std::string settings_name, const LLSettingsBase::ptr_t &settings)
+{
+    LLUUID parent_id = gInventory.findCategoryUUIDForType(LLFolderType::FT_SETTINGS);
+    // This method knows what sort of settings object to create.
+    LLSettingsVOBase::createInventoryItem(settings, parent_id, settings_name,
+        [this](LLUUID asset_id, LLUUID inventory_id, LLUUID, LLSD results) { onInventoryCreated(asset_id, inventory_id, results); });
+}
+
+void LLFloaterEnvironmentAdjust::onInventoryCreated(LLUUID asset_id, LLUUID inventory_id, LLSD results)
+{
+    LL_WARNS("ENVIRONMENT") << "Inventory item " << inventory_id << " has been created with asset " << asset_id << " results are:" << results << LL_ENDL;
+
+    if (inventory_id.isNull() || !results["success"].asBoolean())
+    {
+        LLNotificationsUtil::add("CantCreateInventory");
+        return;
+    }
+}
+
+void LLFloaterEnvironmentAdjust::onButtonSave()
+{
+    if (!mLiveSky || !mNameCombo) return;
+
+    LLSettingsSky::ptr_t sky = mLiveSky->buildClone();
+
+    gBDMergeEnvLibrary.savePreset(mNameCombo->getValue(), sky);
+    gBDMergeEnvLibrary.loadPresetsFromDir(mNameCombo, "skies");
+    gBDMergeEnvLibrary.addInventoryPresets(mNameCombo, sky);
+}
+
+void LLFloaterEnvironmentAdjust::onButtonDelete()
+{
+    if (!mLiveSky || !mNameCombo) return;
+    gBDMergeEnvLibrary.deletePreset(mNameCombo->getValue(), "skies");
+    gBDMergeEnvLibrary.loadPresetsFromDir(mNameCombo, "skies");
+    gBDMergeEnvLibrary.addInventoryPresets(mNameCombo, mLiveSky);
+}
+
+void LLFloaterEnvironmentAdjust::onButtonImport()
+{   // Load a legacy Windlight XML from disk.
+    LLFilePickerReplyThread::startPicker(boost::bind(&LLFloaterEnvironmentAdjust::loadSkySettingFromFile, this, _1), LLFilePicker::FFLOAD_XML, false);
+}
+
+void LLFloaterEnvironmentAdjust::loadSkySettingFromFile(const std::vector<std::string>& filenames)
+{
+    if (!mLiveSky) return;
+    if (filenames.size() < 1) return;
+    std::string filename = filenames[0];
+    gBDMergeEnvLibrary.loadPreset(filename, mLiveSky);
+    refresh();
+}
+
+void LLFloaterEnvironmentAdjust::onSelectPreset()
+{
+    if (!mLiveSky || !mNameCombo) return;
+    gBDMergeEnvLibrary.onSelectPreset(mNameCombo, mLiveSky);
+    refresh();
 }

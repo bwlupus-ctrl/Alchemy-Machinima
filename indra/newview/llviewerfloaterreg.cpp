@@ -98,6 +98,8 @@
 #include "llfloatereditextdaycycle.h"
 #include "llfloateremojipicker.h"
 #include "llfloaterenvironmentadjust.h"
+#include "llfloaterenvironmentsettings.h"   // [BDMerge B13]
+#include "llfloaterwateradjust.h"           // [BDMerge B13]
 #include "llfloaterexperienceprofile.h"
 #include "llfloaterexperiences.h"
 #include "llfloaterexperiencepicker.h"
@@ -406,6 +408,9 @@ void LLViewerFloaterReg::registerFloaters()
     LLFloaterReg::add("env_fixed_environmentent_sky", "floater_fixedenvironment.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterFixedEnvironmentSky>);
 
     LLFloaterReg::add("env_adjust_snapshot", "floater_adjust_environment.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterEnvironmentAdjust>);
+    // [BDMerge B13] BD environment editors (donor: BD llviewerfloaterreg.cpp:380-381)
+    LLFloaterReg::add("env_adjust_water", "floater_adjust_water.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterWaterAdjust>);
+    LLFloaterReg::add("env_settings", "floater_environment_settings.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterEnvironmentSettings>);
 
     LLFloaterReg::add("env_edit_extdaycycle", "floater_edit_ext_day_cycle.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterEditExtDayCycle>);
     LLFloaterReg::add("my_environments", "floater_my_environments.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterMyEnvironment>);

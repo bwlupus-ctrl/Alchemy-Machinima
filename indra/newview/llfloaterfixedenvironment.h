@@ -39,6 +39,8 @@ class LLButton;
 class LLLineEditor;
 class LLFloaterSettingsPicker;
 class LLFixedSettingCopiedCallback;
+//BD - [BDMerge B13]
+class LLComboBox;
 
 /**
  * Floater container for creating and editing fixed environment settings.
@@ -72,6 +74,20 @@ protected:
     LLSettingsBase::ptr_t   mSettings;
 
     LLFlyoutComboBtnCtrl *      mFlyoutControl;
+
+    // [BDMerge B13] BD - Windlight Stuff (gated by BDMergeEnvLocalPresets;
+    //  donor: BD llfloaterfixedenvironment.cpp/h). BD replaced the name line
+    //  editor with a preset combo; here the combo is a separate, hidden-by-
+    //  default widget so stock layout is untouched when the gate is off.
+    bool                    loadPreset(std::string filename, std::string type);
+    void                    onButtonSaveLocal();
+    void                    onButtonDelete();
+    void                    onSelectPreset();
+    void                    populatePresetsList();
+    void                    loadItem(LLSettingsBase::ptr_t settings);
+
+    LLComboBox *            mPresetCombo = nullptr;
+    bool                    mIsLocalEdit = false;
 
     void                    onInventoryCreated(LLUUID asset_id, LLUUID inventory_id);
     void                    onInventoryCreated(LLUUID asset_id, LLUUID inventory_id, LLSD results);

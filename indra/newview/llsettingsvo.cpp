@@ -525,6 +525,20 @@ LLSettingsSky::ptr_t LLSettingsVOSky::buildFromLegacyPresetFile(const std::strin
     return buildFromLegacyPreset(LLURI::unescape(name), legacy_data, messages);
 }
 
+// [BDMerge B13] BD - Local Windlights (donor: BD llsettingsvo.cpp)
+LLSettingsSky::ptr_t LLSettingsVOSky::buildFromPresetFile(const std::string &name, const std::string &path, LLSD &messages)
+{
+    LLSD data = read_legacy_preset_data(name, path, messages);
+
+    if (!data)
+    {   // messages filled in by read_legacy_preset_data
+        LL_WARNS("SETTINGS") << "Could not load Windlight preset \"" << name << "\" from " << path << LL_ENDL;
+        return ptr_t();
+    }
+
+    return buildSky(data);
+}
+
 
 LLSettingsSky::ptr_t LLSettingsVOSky::buildDefaultSky()
 {
@@ -991,6 +1005,20 @@ LLSettingsWater::ptr_t LLSettingsVOWater::buildFromLegacyPresetFile(const std::s
     return buildFromLegacyPreset(LLURI::unescape(name), legacy_data, messages);
 }
 
+// [BDMerge B13] BD - Local Windlights (donor: BD llsettingsvo.cpp)
+LLSettingsWater::ptr_t LLSettingsVOWater::buildFromPresetFile(const std::string &name, const std::string &path, LLSD &messages)
+{
+    LLSD data = read_legacy_preset_data(name, path, messages);
+
+    if (!data)
+    {   // messages filled in by read_legacy_preset_data
+        LL_WARNS("SETTINGS") << "Could not load Windlight preset \"" << name << "\" from " << path << LL_ENDL;
+        return ptr_t();
+    }
+
+    return buildWater(data);
+}
+
 
 LLSettingsWater::ptr_t LLSettingsVOWater::buildDefaultWater()
 {
@@ -1314,6 +1342,20 @@ LLSettingsDay::ptr_t LLSettingsVODay::buildFromLegacyPresetFile(const std::strin
     }
     // Name for LLSettingsDay only, path to get related files from filesystem
     return buildFromLegacyPreset(LLURI::unescape(name), path, legacy_data, messages);
+}
+
+// [BDMerge B13] BD - Local Windlights (donor: BD llsettingsvo.cpp)
+LLSettingsDay::ptr_t LLSettingsVODay::buildFromPresetFile(const std::string &name, const std::string &path, LLSD &messages)
+{
+    LLSD data = read_legacy_preset_data(name, path, messages);
+
+    if (!data)
+    {   // messages filled in by read_legacy_preset_data
+        LL_WARNS("SETTINGS") << "Could not load Windlight preset \"" << name << "\" from " << path << LL_ENDL;
+        return ptr_t();
+    }
+
+    return buildDay(data);
 }
 
 

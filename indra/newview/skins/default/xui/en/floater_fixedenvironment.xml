@@ -17,6 +17,10 @@
         width="750">
     <string name="edit_sky">Edit Sky:</string>
     <string name="edit_water">Edit Water:</string>
+    <!-- [BDMerge B13] BD local Windlight presets: title strings used only
+         when BDMergeEnvLocalPresets is enabled -->
+    <string name="CantSave">Fixed Environment - Can't save! Please select a local preset first.</string>
+    <string name="CanSave">Fixed Environment</string>
     <layout_stack name="floater_stack"
             left="5"
             top="5"
@@ -55,7 +59,7 @@
                     font="SansSerif"
                     top_delta="-2"
                     name="btn_load"
-                    tool_tip="Load a settings from inventory" 
+                    tool_tip="Load a settings from inventory"
                     width="96" />
             <button
                     height="23"
@@ -65,7 +69,36 @@
                     font="SansSerif"
                     top_delta="0"
                     name="btn_import"
-                    tool_tip="Import legacy settings from disk." 
+                    tool_tip="Import legacy settings from disk."
+                    width="96" />
+            <!-- [BDMerge B13] BD local Windlight presets: hidden by default,
+                 shown and wired only when BDMergeEnvLocalPresets is enabled
+                 (llfloaterfixedenvironment.cpp postBuild). The combo replaces
+                 the stock name line editor; the button deletes the selected
+                 local disk preset. -->
+            <combo_box
+                    follows="left|top"
+                    layout="topleft"
+                    allow_text_entry="true"
+                    left="55"
+                    top="26"
+                    max_chars="100"
+                    height="22"
+                    visible="false"
+                    name="bdmerge_preset_combo"
+                    tool_tip="Type a name to save a local preset, or select a preset to load"
+                    width="250"/>
+            <button
+                    height="23"
+                    label="Delete"
+                    follows="left|top"
+                    layout="topleft"
+                    left="415"
+                    top="28"
+                    font="SansSerif"
+                    visible="false"
+                    name="delete"
+                    tool_tip="Delete the selected local preset from disk"
                     width="96" />
         </layout_panel>
         <layout_panel name="tab_area"

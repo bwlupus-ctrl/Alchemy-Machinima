@@ -173,6 +173,11 @@ public:
     void                        pauseCloudScroll()          { mCloudScrollPaused = true; }
     void                        resumeCloudScroll()         { mCloudScrollPaused = false; }
     bool                        isCloudScrollPaused() const { return mCloudScrollPaused; }
+    // [BDMerge B13] BD per-axis cloud scroll locks (donor: BD llenvironment.h)
+    void                        pauseCloudScrollX(bool lock)    { mCloudScrollXLocked = lock; }
+    void                        pauseCloudScrollY(bool lock)    { mCloudScrollYLocked = lock; }
+    bool                        isCloudScrollXLocked() const    { return mCloudScrollXLocked; }
+    bool                        isCloudScrollYLocked() const    { return mCloudScrollYLocked; }
 
     F32                         getCamHeight() const;
     F32                         getWaterHeight() const;
@@ -208,6 +213,17 @@ public:
     static LLSettingsWater::ptr_t createWaterFromLegacyPreset(const std::string filename, LLSD &messages);
     static LLSettingsSky::ptr_t createSkyFromLegacyPreset(const std::string filename, LLSD &messages);
     static LLSettingsDay::ptr_t createDayCycleFromLegacyPreset(const std::string filename, LLSD &messages);
+
+    // [BDMerge B13] BD - Local Windlights: load EEP-format ("version"-keyed)
+    // preset files saved to disk by BDMergeEnvLibrary::savePreset.
+    static LLSettingsWater::ptr_t createWaterFromPreset(const std::string filename, LLSD &messages);
+    static LLSettingsSky::ptr_t createSkyFromPreset(const std::string filename, LLSD &messages);
+    static LLSettingsDay::ptr_t createDayCycleFromPreset(const std::string filename, LLSD &messages);
+
+    // [BDMerge B13] BD - Local Windlights: whether the current local
+    // environment came from a local disk preset (enables local re-saving).
+    bool                        isLocalPreset() const           { return mIsLocalPreset; }
+    void                        setLocalPreset(bool local)      { mIsLocalPreset = local; }
 
     // Construct a new day cycle based on the environment.  Replacing either the water or the sky tracks.
     LLSettingsDay::ptr_t        createDayCycleFromEnvironment(EnvSelection_t env, LLSettingsBase::ptr_t settings);
@@ -376,6 +392,11 @@ private:
 
     LLVector2                   mCloudScrollDelta;  // cumulative cloud delta
     bool                        mCloudScrollPaused;
+    // [BDMerge B13] BD per-axis cloud scroll locks
+    bool                        mCloudScrollXLocked;
+    bool                        mCloudScrollYLocked;
+    // [BDMerge B13] BD - Local Windlights
+    bool                        mIsLocalPreset;
 
     InstanceArray_t             mEnvironments;
 

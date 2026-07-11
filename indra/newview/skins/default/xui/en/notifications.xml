@@ -13521,6 +13521,29 @@ Incoming instant messages from anyone who is not your friend will now be answere
      yestext="OK"/>
   </notification>
 
+  <!-- [BDMerge B13] BD local Windlight preset notifications (donor: BD
+       notifications.xml, verbatim) -->
+  <notification
+   icon="alertmodal.tga"
+   name="BDCantParsePreset"
+   type="alertmodal">
+Preset data could not be parsed. It might be badly formatted or is corrupted.
+  </notification>
+
+  <notification
+   icon="alertmodal.tga"
+   name="BDCantLoadPreset"
+   type="alertmodal">
+Selected Preset could not be found. It's name contains invalid characters. Please import the preset or rename it manually.
+  </notification>
+
+  <notification
+   icon="alertmodal.tga"
+   name="BDCantRemovePreset"
+   type="alertmodal">
+Preset could not be removed, either it or its folder does not exist or you are not allowed to delete files.
+  </notification>
+
   <!-- [F4] Phototools environment quick-switcher (donor: Firestorm I:\enve
        indra/newview/skins/default/xui/en/notifications.xml; campaign item F4,
        alfloaterphototools.cpp) -->

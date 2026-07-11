@@ -1924,6 +1924,83 @@
       <key>Value</key>
       <integer>0</integer>
     </map>
+    <key>BDMergeEnvLocalPresets</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge B13] Enables Black Dragon-style local Windlight preset surface on the stock EEP editors: preset combo + Save To Disk/Delete in the Fixed Environment editor, preset combo/save/import/cloud-scroll locks strip in Personal Lighting, and BD permission behavior for locally loaded presets. Off = stock EEP editors. See doc/BD_MERGE_PATCHLOG.md.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>DayCycleName</key>
+    <map>
+      <key>Comment</key>
+      <string>Day cycle to use. May be superseded by region settings.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>String</string>
+      <key>Value</key>
+      <string>Default</string>
+    </map>
+    <key>RenderWindlightInterpolateTime</key>
+    <map>
+      <key>Comment</key>
+      <string>Timespan for interpolating between Windlight settings</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>5.0</real>
+    </map>
+    <key>SkyPresetName</key>
+    <map>
+      <key>Comment</key>
+      <string>Sky preset to use. May be superseded by region settings or by a day cycle (see DayCycleName).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>String</string>
+      <key>Value</key>
+      <string>Default</string>
+    </map>
+    <key>WaterPresetName</key>
+    <map>
+      <key>Comment</key>
+      <string>Water preset to use. May be superseded by region settings.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>String</string>
+      <key>Value</key>
+      <string>Default</string>
+    </map>
+    <key>UseDayCycle</key>
+    <map>
+      <key>Comment</key>
+      <string>Whether to use a day cycle or a fixed sky.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>UseEnvironmentFromRegion</key>
+    <map>
+      <key>Comment</key>
+      <string>Choose whether to use the region's environment settings, or override them with the local settings.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
     <key>BDMergeCameraQoL</key>
     <map>
       <key>Comment</key>

@@ -1230,6 +1230,27 @@
 					 function="RLV.EnableIfNot"
 					 parameter="setenv" />
 	     	 	</menu_item_call>
+	     	 	<!-- [BDMerge B13] BD environment editors -->
+	     	 	<menu_item_call
+	     	 	 label="Environment Settings..."
+	     	 	 name="bdmerge_env_settings">
+	     	 	 	<menu_item_call.on_click
+	     	 	 	 function="Floater.ToggleOrBringToFront"
+	     	 	 	 parameter="env_settings" />
+	     	 	 	<menu_item_call.on_enable
+	     	 	 	 function="RLV.EnableIfNot"
+	     	 	 	 parameter="setenv" />
+	     	 	</menu_item_call>
+	     	 	<menu_item_call
+	     	 	 label="Water Adjustments..."
+	     	 	 name="bdmerge_env_adjust_water">
+	     	 	 	<menu_item_call.on_click
+	     	 	 	 function="Floater.ToggleOrBringToFront"
+	     	 	 	 parameter="env_adjust_water" />
+	     	 	 	<menu_item_call.on_enable
+	     	 	 	 function="RLV.EnableIfNot"
+	     	 	 	 parameter="setenv" />
+	     	 	</menu_item_call>
 	     	 	<menu_item_separator/>
 	     	 	 <menu_item_check
 	     	 	 label="Pause Clouds"

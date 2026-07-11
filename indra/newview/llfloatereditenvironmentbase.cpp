@@ -47,6 +47,9 @@
 #include "llinventorymodel.h"
 #include "pipeline.h"
 
+// [BDMerge B13]
+#include "llviewercontrol.h"
+
 namespace
 {
     const std::string ACTION_APPLY_LOCAL("apply_local");
@@ -124,6 +127,18 @@ void LLFloaterEditEnvironmentBase::loadInventoryItem(const LLUUID  &inventoryId,
         mCanMod = true;
         mCanCopy = true;
         mCanTrans = true;
+
+        // [BDMerge B13] BD - local Windlight presets (donor: BD
+        // llfloaterfixedenvironment.cpp loadInventoryItem, lines 318-331):
+        // presets stay editable, but copy/trans (and thus Save As) only when
+        // a local disk preset is loaded. Gated; off = stock (all true).
+        static LLCachedControl<bool> bd_gate(gSavedSettings, "BDMergeEnvLocalPresets", false);
+        if (bd_gate)
+        {
+            bool is_local = LLEnvironment::instance().isLocalPreset();
+            mCanCopy = is_local;
+            mCanTrans = is_local;
+        }
         return;
     }
 

@@ -520,5 +520,90 @@
                 </layout_panel>
             </layout_stack>
         </layout_panel>
+        <!-- [BDMerge B13] BD local Windlight presets strip: hidden by default,
+             shown and wired only when BDMergeEnvLocalPresets is enabled
+             (llfloaterenvironmentadjust.cpp postBuild). -->
+        <layout_panel name="lp_bdmerge"
+                      border="false"
+                      bevel_style="in"
+                      auto_resize="false"
+                      user_resize="false"
+                      height="28"
+                      min_height="0"
+                      visible="false">
+            <combo_box
+                follows="top|left"
+                layout="topleft"
+                allow_text_entry="true"
+                left="5"
+                top="3"
+                max_chars="100"
+                height="22"
+                name="sky_preset_combo"
+                tool_tip="Type a name to save a local sky preset, or select a preset to load"
+                width="177"/>
+            <button
+                follows="top|left"
+                height="23"
+                label="Save"
+                layout="topleft"
+                left_pad="2"
+                top_delta="0"
+                name="save"
+                width="70"/>
+            <button
+                follows="top|left"
+                height="22"
+                name="btn_flyout"
+                label=""
+                layout="topleft"
+                left_pad="-16"
+                tab_stop="false"
+                top_delta="0"
+                image_selected="SegmentedBtn_Right_Selected_Press"
+                image_unselected="SegmentedBtn_Right_Off"
+                image_pressed="SegmentedBtn_Right_Press"
+                image_pressed_selected="SegmentedBtn_Right_Selected_Press"
+                image_overlay="Arrow_Small_Up"
+                width="16"/>
+            <button
+                follows="top|left"
+                height="23"
+                label="Delete"
+                layout="topleft"
+                left_pad="3"
+                top_delta="0"
+                name="delete"
+                width="70"/>
+            <button
+                follows="top|left"
+                height="23"
+                label="Import"
+                layout="topleft"
+                left_pad="3"
+                top_delta="0"
+                name="import"
+                width="70"/>
+            <check_box
+                follows="top|left"
+                layout="topleft"
+                left_pad="15"
+                top="6"
+                height="16"
+                label="Lock Cloud Scroll X"
+                name="cloud_lock_x"
+                tool_tip="Freeze cloud movement along the X axis"
+                width="130"/>
+            <check_box
+                follows="top|left"
+                layout="topleft"
+                left_pad="10"
+                top_delta="0"
+                height="16"
+                label="Lock Cloud Scroll Y"
+                name="cloud_lock_y"
+                tool_tip="Freeze cloud movement along the Y axis"
+                width="130"/>
+        </layout_panel>
     </layout_stack>
 </floater>

@@ -159,6 +159,10 @@ with the same filename but different name
   <texture name="Command_MiniMap_Icon"      file_name="toolbar_icons/mini_map.png"     preload="true" />
   <texture name="Command_Move_Icon"         file_name="toolbar_icons/move.png"         preload="true" />
   <texture name="Command_Environments_Icon" file_name="toolbar_icons/environments.png" preload="true" />
+  <!-- [BDMerge B13] BD environment editor toolbar icons -->
+  <texture name="Command_Sky_Icon"          file_name="toolbar_icons/sky.png"          preload="true" />
+  <texture name="Command_Water_Icon"        file_name="toolbar_icons/water.png"        preload="true" />
+  <texture name="Command_Windlight_Icon"    file_name="toolbar_icons/windlight.png"    preload="true" />
   <texture name="Command_Panic_Icon"        file_name="toolbar_icons/panic.png"        preload="false" />
   <texture name="Command_People_Icon"       file_name="toolbar_icons/people.png"       preload="true" />
   <texture name="Command_Performance_Icon"  file_name="toolbar_icons/performance.png"  preload="true" />

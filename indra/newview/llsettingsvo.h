@@ -97,6 +97,8 @@ public:
     virtual ptr_t   buildClone() SETTINGS_OVERRIDE;
 
     static ptr_t buildFromLegacyPresetFile(const std::string &name, const std::string &path, LLSD &messages);
+    // [BDMerge B13] BD - Local Windlights: EEP-format disk preset
+    static ptr_t buildFromPresetFile(const std::string &name, const std::string &path, LLSD &messages);
 
     static LLSD     convertToLegacy(const ptr_t &, bool isAdvanced);
 
@@ -132,6 +134,8 @@ public:
     virtual ptr_t   buildClone() SETTINGS_OVERRIDE;
 
     static ptr_t buildFromLegacyPresetFile(const std::string &name, const std::string &path, LLSD &messages);
+    // [BDMerge B13] BD - Local Windlights: EEP-format disk preset
+    static ptr_t buildFromPresetFile(const std::string &name, const std::string &path, LLSD &messages);
 
     static LLSD     convertToLegacy(const ptr_t &);
 
@@ -165,6 +169,8 @@ public:
 
     static ptr_t buildFromLegacyPreset(const std::string &name, const std::string &path, const LLSD &oldsettings, LLSD &messages);
     static ptr_t buildFromLegacyPresetFile(const std::string &name, const std::string &path, LLSD &messages);
+    // [BDMerge B13] BD - Local Windlights: EEP-format disk preset
+    static ptr_t buildFromPresetFile(const std::string &name, const std::string &path, LLSD &messages);
     static ptr_t    buildFromLegacyMessage(const LLUUID &regionId, LLSD daycycle, LLSD skys, LLSD water);
     static ptr_t    buildDefaultDayCycle();
     static ptr_t    buildFromEnvironmentMessage(LLSD settings);

@@ -854,6 +854,10 @@ std::string env_selection_to_string(LLEnvironment::EnvSelection_t sel)
 LLEnvironment::LLEnvironment():
     mCloudScrollDelta(),
     mCloudScrollPaused(false),
+    // [BDMerge B13] BD per-axis cloud scroll locks + local Windlights
+    mCloudScrollXLocked(false),
+    mCloudScrollYLocked(false),
+    mIsLocalPreset(false),
     mSelectedSky(),
     mSelectedWater(),
     mSelectedDay(),
@@ -1687,6 +1691,12 @@ void LLEnvironment::updateCloudScroll()
         else
         {
             LLVector2 cloud_delta = static_cast<F32>(delta_t) * (mCurrentEnvironment->getSky()->getCloudScrollRate()) / 100.0;
+            // [BDMerge B13] BD - Lock Cloud Scroll
+            if (mCloudScrollXLocked)
+                cloud_delta.mV[0] = 0.0f;
+            if (mCloudScrollYLocked)
+                cloud_delta.mV[1] = 0.0f;
+
             mCloudScrollDelta += cloud_delta;
         }
     }
@@ -2377,6 +2387,52 @@ LLSettingsDay::ptr_t LLEnvironment::createDayCycleFromLegacyPreset(const std::st
     }
     return day;
 }
+
+//======================================================================
+// [BDMerge B13] BD - Local Windlights (donor: BD llenvironment.cpp)
+LLSettingsWater::ptr_t LLEnvironment::createWaterFromPreset(const std::string filename, LLSD &messages)
+{
+    std::string name(gDirUtilp->getBaseFileName(filename, true));
+    std::string path(gDirUtilp->getDirName(filename));
+
+    LLSettingsWater::ptr_t water = LLSettingsVOWater::buildFromPresetFile(name, path, messages);
+
+    if (!water)
+    {
+        messages["NAME"] = name;
+        messages["FILE"] = filename;
+    }
+    return water;
+}
+
+LLSettingsSky::ptr_t LLEnvironment::createSkyFromPreset(const std::string filename, LLSD &messages)
+{
+    std::string name(gDirUtilp->getBaseFileName(filename, true));
+    std::string path(gDirUtilp->getDirName(filename));
+
+    LLSettingsSky::ptr_t sky = LLSettingsVOSky::buildFromPresetFile(name, path, messages);
+    if (!sky)
+    {
+        messages["NAME"] = name;
+        messages["FILE"] = filename;
+    }
+    return sky;
+}
+
+LLSettingsDay::ptr_t LLEnvironment::createDayCycleFromPreset(const std::string filename, LLSD &messages)
+{
+    std::string name(gDirUtilp->getBaseFileName(filename, true));
+    std::string path(gDirUtilp->getDirName(filename));
+
+    LLSettingsDay::ptr_t day = LLSettingsVODay::buildFromPresetFile(name, path, messages);
+    if (!day)
+    {
+        messages["NAME"] = name;
+        messages["FILE"] = filename;
+    }
+    return day;
+}
+//======================================================================
 
 LLSettingsDay::ptr_t LLEnvironment::createDayCycleFromEnvironment(EnvSelection_t env, LLSettingsBase::ptr_t settings)
 {

@@ -55,6 +55,14 @@
 #include "llsettingsvo.h"
 #include "llinventorymodel.h"
 
+// [BDMerge B13] BD - Windlight Stuff
+#include "bdmergeenvlibrary.h"
+#include "llcombobox.h"
+#include "llsdserialize.h"
+#include "lltexturectrl.h"
+#include "llviewercontrol.h"
+#include "llviewerinventory.h"
+
 extern LLControlGroup gSavedSettings;
 
 namespace
@@ -77,6 +85,18 @@ namespace
     const std::string ACTION_APPLY_REGION("apply_region");
 
     const std::string XML_FLYOUTMENU_FILE("menu_save_settings.xml");
+
+    // [BDMerge B13] BD - Windlight Stuff
+    const std::string ACTION_SAVELOCAL("save_as_local_setting");
+    const std::string BTN_DELETE("delete");
+    const std::string FIELD_PRESET_COMBO("bdmerge_preset_combo");
+
+    // [BDMerge B13] gate; off = stock behavior
+    bool bdmerge_env_gate()
+    {
+        static LLCachedControl<bool> gate(gSavedSettings, "BDMergeEnvLocalPresets", false);
+        return gate;
+    }
 }
 
 
@@ -108,6 +128,30 @@ bool LLFloaterFixedEnvironment::postBuild()
     mFlyoutControl->setAction([this](LLUICtrl *ctrl, const LLSD &data) { onButtonApply(ctrl, data); });
     mFlyoutControl->setMenuItemVisible(ACTION_COMMIT, false);
 
+    // [BDMerge B13] BD - Windlight Stuff: local preset combo + delete button.
+    // Both widgets are visible="false" in the XML; the flyout's SAVELOCAL item
+    // comes from menu_save_settings.xml and is hidden here when the gate is
+    // off, so stock appearance/behavior is unchanged.
+    bool bd_gate = bdmerge_env_gate();
+    mFlyoutControl->setMenuItemVisible(ACTION_SAVELOCAL, bd_gate);
+    mPresetCombo = findChild<LLComboBox>(FIELD_PRESET_COMBO);
+    LLButton* delete_btn = findChild<LLButton>(BTN_DELETE);
+    if (bd_gate)
+    {
+        if (mPresetCombo)
+        {
+            mPresetCombo->setVisible(true);
+            mPresetCombo->setCommitCallback([this](LLUICtrl *, const LLSD &) { onSelectPreset(); });
+            //BD - the combo replaces the stock name line editor
+            mTxtName->setVisible(false);
+        }
+        if (delete_btn)
+        {
+            delete_btn->setVisible(true);
+            delete_btn->setClickedCallback([this](LLUICtrl *, const LLSD &) { onButtonDelete(); });
+        }
+    }
+
     return true;
 }
 
@@ -122,6 +166,15 @@ void LLFloaterFixedEnvironment::onOpen(const LLSD& key)
 
     loadInventoryItem(invid);
     LL_INFOS("SETTINGS") << "Setting edit inventory item to " << mInventoryId << "." << LL_ENDL;
+
+    // [BDMerge B13] BD - Windlight Stuff: track whether this edit session was
+    // entered without an inventory item (local edit) and populate the preset
+    // combo from disk + inventory.
+    if (bdmerge_env_gate())
+    {
+        mIsLocalEdit = !mInventoryItem;
+        populatePresetsList();
+    }
 
     updateEditEnvironment();
     syncronizeTabs();
@@ -162,6 +215,36 @@ void LLFloaterFixedEnvironment::refresh()
 
     mTxtName->setValue(mSettings->getName());
     mTxtName->setEnabled(mCanMod);
+
+    // [BDMerge B13] BD - Windlight Stuff: local-preset permission surface
+    // (donor: BD llfloaterfixedenvironment.cpp refresh(), lines 217-255).
+    if (bdmerge_env_gate())
+    {
+        //BD - If we enter through an item we will proceed as normal, checking for its permissions
+        //     to determine what we can and can't do. If we enter through any other means (local) we
+        //     lock out all options and only display local saving if this is a local preset we loaded
+        //     which we currently can only know AFTER specifically switching to a local preset for the
+        //     first time.
+        bool is_local = LLEnvironment::instance().isLocalPreset();
+        bool visible = is_inventory_avail && mCanMod && !mInventoryId.isNull();
+        mFlyoutControl->setSelectedItem(!visible ? is_local ? ACTION_SAVELOCAL : ACTION_APPLY_PARCEL : ACTION_SAVE);
+        mFlyoutControl->setMenuItemVisible(ACTION_SAVE, visible);
+        mFlyoutControl->setMenuItemVisible(ACTION_SAVEAS, is_inventory_avail && (mCanCopy || is_local));
+        mFlyoutControl->setMenuItemVisible(ACTION_SAVELOCAL, mCanCopy || is_local);
+        mFlyoutControl->setMenuItemVisible(ACTION_APPLY_PARCEL, canApplyParcel());
+        mFlyoutControl->setMenuItemVisible(ACTION_APPLY_REGION, canApplyRegion());
+
+        if (mPresetCombo)
+        {
+            std::string debug = mSettings->getSettingsType() == "sky" ? "SkyPresetName" : "WaterPresetName";
+            std::string preset_name = mIsLocalEdit ? gSavedSettings.getString(debug) : mSettings->getName();
+            mPresetCombo->setLabel(preset_name);
+            mPresetCombo->setValue(preset_name);
+            mPresetCombo->setEnabled(mCanMod);
+        }
+
+        setTitle(getString(is_local ? "CanSave" : "CantSave"));
+    }
 
     S32 count = mTab->getTabCount();
 
@@ -310,6 +393,13 @@ void LLFloaterFixedEnvironment::onButtonApply(LLUICtrl *ctrl, const LLSD &data)
         doApplyUpdateInventory(setting_clone);
         clearDirtyFlag();
     }
+    // [BDMerge B13] BD - Windlight Stuff: save preset to disk (donor: BD
+    // llfloaterfixedenvironment.cpp onButtonApply/onButtonSave, line 1014).
+    // Unreachable when the gate is off (menu item hidden).
+    else if (ctrl_action == ACTION_SAVELOCAL)
+    {
+        onButtonSaveLocal();
+    }
     else if (ctrl_action == ACTION_SAVEAS)
     {
         LLSD args;
@@ -410,6 +500,191 @@ void LLFloaterFixedEnvironment::doSelectFromInventory()
     picker->setFocus(true);
 }
 
+// [BDMerge B13] BD - Windlight Stuff (donor: BD llfloaterfixedenvironment.cpp
+// lines 986-1158). All entry points are gated: the preset combo, delete
+// button, and SAVELOCAL flyout item are only visible/wired when
+// BDMergeEnvLocalPresets is enabled.
+//=====================================================================================================
+
+void LLFloaterFixedEnvironment::populatePresetsList()
+{
+    if (!mSettings || !mPresetCombo)
+        return;
+
+    //BD
+    std::string type = mSettings->getSettingsType();
+    std::string folder = type == "sky" ? "skies" : "water";
+    gBDMergeEnvLibrary.loadPresetsFromDir(mPresetCombo, folder);
+    gBDMergeEnvLibrary.addInventoryPresets(mPresetCombo, mSettings);
+}
+
+void LLFloaterFixedEnvironment::onButtonSaveLocal()
+{
+    if (!mSettings || !mPresetCombo) return;
+
+    std::string type = mSettings->getSettingsType();
+    if (type == "sky")
+    {
+        LLUUID moon_id = mTab->getChild<LLTextureCtrl>("moon_image")->getImageItemID();
+        LLUUID cloud_id = mTab->getChild<LLTextureCtrl>("cloud_map")->getImageItemID();
+        LLUUID sun_id = mTab->getChild<LLTextureCtrl>("sun_image")->getImageItemID();
+
+        //BD - Cull texture IDs we don't have full permissions on before they
+        //     end up in a shareable disk preset.
+        if (!gBDMergeEnvLibrary.checkPermissions(sun_id))
+            mSettings->setLLSD("sun_id", LLUUID::null);
+        if (!gBDMergeEnvLibrary.checkPermissions(moon_id))
+            mSettings->setLLSD("moon_id", LLUUID::null);
+        if (!gBDMergeEnvLibrary.checkPermissions(cloud_id))
+            mSettings->setLLSD("cloud_id", LLUUID::null);
+    }
+    else
+    {
+        LLUUID normal_map = mTab->getChild<LLTextureCtrl>("water_normal_map")->getImageItemID();
+        if (!gBDMergeEnvLibrary.checkPermissions(normal_map))
+            mSettings->setLLSD("normal_map", LLUUID::null);
+    }
+
+    gBDMergeEnvLibrary.savePreset(mPresetCombo->getValue(), mSettings);
+    populatePresetsList();
+}
+
+void LLFloaterFixedEnvironment::onButtonDelete()
+{
+    if (!mSettings || !mPresetCombo) return;
+
+    std::string type = mSettings->getSettingsType();
+    std::string folder = type == "sky" ? "skies" : "water";
+    gBDMergeEnvLibrary.deletePreset(mPresetCombo->getValue(), folder);
+    populatePresetsList();
+}
+
+void LLFloaterFixedEnvironment::onSelectPreset()
+{
+    if (!mSettings || !mPresetCombo) return;
+
+    std::string type = mSettings->getSettingsType();
+
+    //BD - First attempt to load it as inventory item.
+    if (mPresetCombo->getValue().isUUID())
+    {
+        LLUUID uuid = mPresetCombo->getValue();
+        LLViewerInventoryItem* item = gInventory.getItem(uuid);
+        if (item)
+        {
+            LLSettingsVOBase::getSettingsAsset(item->getAssetUUID(), [this](LLUUID asset_id, LLSettingsBase::ptr_t settings, S32 status, LLExtStat) { loadItem(settings); });
+            //BD - Assume loading was successful.
+            return;
+        }
+    }
+
+    //BD - Loading as inventory item failed so it must be a local preset.
+    std::string name = mPresetCombo->getValue().asString();
+
+    if (!loadPreset(name, type))
+    {
+        LLNotificationsUtil::add("BDCantLoadPreset");
+        LL_WARNS("Windlight") << "Failed to load " << type << " preset from:" << name << LL_ENDL;
+    }
+}
+
+void LLFloaterFixedEnvironment::loadItem(LLSettingsBase::ptr_t settings)
+{
+    if (!settings) return;
+
+    setDirtyFlag();
+    mSettings = settings;
+    LLEnvironment &env(LLEnvironment::instance());
+    std::string type = settings->getSettingsType();
+    if (type == "sky")
+    {
+        env.setEnvironment(LLEnvironment::ENV_LOCAL, std::static_pointer_cast<LLSettingsSky>(settings));
+        setEditSettings(std::static_pointer_cast<LLSettingsSky>(settings));
+    }
+    else
+    {
+        env.setEnvironment(LLEnvironment::ENV_LOCAL, std::static_pointer_cast<LLSettingsWater>(settings));
+        setEditSettings(std::static_pointer_cast<LLSettingsWater>(settings));
+    }
+
+    mIsLocalEdit = false;
+    gSavedSettings.setString(mSettings->getSettingsType() == "sky" ? "SkyPresetName" : "WaterPresetName", mSettings->getName());
+
+    env.setSelectedEnvironment(LLEnvironment::ENV_LOCAL);
+    env.updateEnvironment(LLSettingsBase::Seconds(gSavedSettings.getF32("RenderWindlightInterpolateTime")));
+
+    updateEditEnvironment();
+    refresh();
+}
+
+bool LLFloaterFixedEnvironment::loadPreset(std::string filename, std::string type)
+{
+    if (filename.empty()) return false;
+
+    //BD - If we get here we are loading a local preset which we assume allows us to save.
+    LLEnvironment::instance().setLocalPreset(true);
+
+    llifstream xml_file;
+    xml_file.open(filename.c_str());
+    if (!xml_file)
+        return false;
+
+    LLSD params_data;
+    LLPointer<LLSDParser> parser = new LLSDXMLParser();
+    if (parser->parse(xml_file, params_data, LLSDSerialize::SIZE_UNLIMITED) == LLSDParser::PARSE_FAILURE)
+    {
+        xml_file.close();
+        LLNotificationsUtil::add("BDCantParsePreset");
+        return false;
+    }
+    xml_file.close();
+
+    LLSD messages;
+    LLSettingsBase::ptr_t settings;
+    if (type == "sky")
+    {
+        settings = !params_data.has("version") ? LLEnvironment::createSkyFromLegacyPreset(filename, messages)
+            : LLEnvironment::createSkyFromPreset(filename, messages);
+    }
+    else
+    {
+        settings = !params_data.has("version") ? LLEnvironment::createWaterFromLegacyPreset(filename, messages)
+            : LLEnvironment::createWaterFromPreset(filename, messages);
+    }
+
+    if (!settings)
+    {
+        LLNotificationsUtil::add("WLImportFail", messages);
+        return false;
+    }
+
+    mSettings = settings;
+    loadInventoryItem(LLUUID::null);
+
+    mIsLocalEdit = true;
+
+    LLEnvironment &env(LLEnvironment::instance());
+    if (type == "sky")
+    {
+        env.setEnvironment(LLEnvironment::ENV_LOCAL, std::static_pointer_cast<LLSettingsSky>(settings), -2);
+        setEditSettings(std::static_pointer_cast<LLSettingsSky>(settings));
+    }
+    else
+    {
+        env.setEnvironment(LLEnvironment::ENV_LOCAL, std::static_pointer_cast<LLSettingsWater>(settings), -2);
+        setEditSettings(std::static_pointer_cast<LLSettingsWater>(settings));
+    }
+    env.setSelectedEnvironment(LLEnvironment::ENV_LOCAL);
+    env.updateEnvironment(LLSettingsBase::Seconds(gSavedSettings.getF32("RenderWindlightInterpolateTime")));
+
+    std::string control = type == "sky" ? "SkyPresetName" : "WaterPresetName";
+    gSavedSettings.setString(control, filename);
+
+    refresh();
+
+    return true;
+}
+
 //=========================================================================
 LLFloaterFixedEnvironmentWater::LLFloaterFixedEnvironmentWater(const LLSD &key):
     LLFloaterFixedEnvironment(key)
@@ -459,6 +734,15 @@ void LLFloaterFixedEnvironmentWater::loadWaterSettingFromFile(const std::vector<
 {
     LLSD messages;
     if (filenames.size() < 1) return;
+
+    // [BDMerge B13] BD import path also understands EEP-format disk presets
+    // and flags the result as a local preset (savable back to disk).
+    if (bdmerge_env_gate())
+    {
+        loadPreset(filenames[0], "water");
+        return;
+    }
+
     std::string filename = filenames[0];
     LL_DEBUGS("ENVEDIT") << "Selected file: " << filename << LL_ENDL;
     LLSettingsWater::ptr_t legacywater = LLEnvironment::createWaterFromLegacyPreset(filename, messages);
@@ -544,6 +828,15 @@ void LLFloaterFixedEnvironmentSky::doImportFromDisk()
 void LLFloaterFixedEnvironmentSky::loadSkySettingFromFile(const std::vector<std::string>& filenames)
 {
     if (filenames.size() < 1) return;
+
+    // [BDMerge B13] BD import path also understands EEP-format disk presets
+    // and flags the result as a local preset (savable back to disk).
+    if (bdmerge_env_gate())
+    {
+        loadPreset(filenames[0], "sky");
+        return;
+    }
+
     std::string filename = filenames[0];
     LLSD messages;
 

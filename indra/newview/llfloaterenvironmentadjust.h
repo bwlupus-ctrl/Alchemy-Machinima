@@ -36,6 +36,9 @@
 
 class LLButton;
 class LLLineEditor;
+//BD - [BDMerge B13]
+class LLComboBox;
+class LLFlyoutComboBtnCtrl;
 
 /**
  * Floater container for taking a snapshot of the current environment and making minor adjustments.
@@ -87,6 +90,29 @@ private:
     void                        onButtonReset();
 
     void                        onEnvironmentUpdated(LLEnvironment::EnvSelection_t env, S32 version);
+
+    // [BDMerge B13] BD - Windlight Stuff (gated by BDMergeEnvLocalPresets;
+    //  donor: BD llfloaterenvironmentadjust.cpp/h). Preset name combo,
+    //  save-local/save-as flyout, delete/import buttons, and per-axis cloud
+    //  scroll lock checkboxes; all controls hidden when the gate is off.
+    void                        onButtonApply(LLUICtrl *ctrl, const LLSD &data);
+    void                        onSaveAsCommit(const LLSD& notification, const LLSD& response, const LLSettingsBase::ptr_t &settings);
+    void                        onInventoryCreated(LLUUID asset_id, LLUUID inventory_id, LLSD results);
+    void                        doApplyCreateNewInventory(std::string settings_name, const LLSettingsBase::ptr_t &settings);
+
+    void                        onButtonSave();
+    void                        onButtonDelete();
+    void                        onButtonImport();
+    void                        onSelectPreset();
+    void                        loadSkySettingFromFile(const std::vector<std::string>& filenames);
+
+    void                        onCloudScrollXLocked(bool lock);
+    void                        onCloudScrollYLocked(bool lock);
+
+    LLComboBox*                 mNameCombo = nullptr;
+    LLFlyoutComboBtnCtrl *      mFlyoutControl = nullptr;
+    LLUICtrl*                   mCloudScrollLockX = nullptr;
+    LLUICtrl*                   mCloudScrollLockY = nullptr;
 
     LLSettingsSky::ptr_t        mLiveSky;
     LLSettingsWater::ptr_t      mLiveWater;
