@@ -233,6 +233,11 @@ F32 LLPipeline::CameraMaxCoF;
 F32 LLPipeline::CameraDoFResScale;
 F32 LLPipeline::RenderAutoHideSurfaceAreaLimit;
 bool LLPipeline::RenderScreenSpaceReflections;
+// [BDMerge G3.2] volumetric lighting (donor: Black Dragon)
+bool LLPipeline::RenderVolumetricLighting;
+U32 LLPipeline::RenderVolumetricLightingResolution;
+F32 LLPipeline::RenderVolumetricLightingMultiplier;
+F32 LLPipeline::RenderVolumetricLightingFalloffMultiplier;
 S32 LLPipeline::RenderScreenSpaceReflectionIterations;
 F32 LLPipeline::RenderScreenSpaceReflectionRayStep;
 F32 LLPipeline::RenderScreenSpaceReflectionDistanceBias;
@@ -589,6 +594,11 @@ void LLPipeline::init()
     connectRefreshCachedSettingsSafe("CameraDoFResScale");
     connectRefreshCachedSettingsSafe("RenderAutoHideSurfaceAreaLimit");
     connectRefreshCachedSettingsSafe("RenderScreenSpaceReflections");
+    // [BDMerge G3.2]
+    connectRefreshCachedSettingsSafe("RenderVolumetricLighting");
+    connectRefreshCachedSettingsSafe("RenderVolumetricLightingResolution");
+    connectRefreshCachedSettingsSafe("RenderVolumetricLightingMultiplier");
+    connectRefreshCachedSettingsSafe("RenderVolumetricLightingFalloffMultiplier");
     connectRefreshCachedSettingsSafe("RenderScreenSpaceReflectionIterations");
     connectRefreshCachedSettingsSafe("RenderScreenSpaceReflectionRayStep");
     connectRefreshCachedSettingsSafe("RenderScreenSpaceReflectionDistanceBias");
@@ -1196,6 +1206,11 @@ void LLPipeline::refreshCachedSettings()
     CameraDoFResScale = gSavedSettings.getF32("CameraDoFResScale");
     RenderAutoHideSurfaceAreaLimit = gSavedSettings.getF32("RenderAutoHideSurfaceAreaLimit");
     RenderScreenSpaceReflections = gSavedSettings.getBOOL("RenderScreenSpaceReflections");
+    // [BDMerge G3.2]
+    RenderVolumetricLighting = gSavedSettings.getBOOL("RenderVolumetricLighting");
+    RenderVolumetricLightingResolution = gSavedSettings.getU32("RenderVolumetricLightingResolution");
+    RenderVolumetricLightingMultiplier = gSavedSettings.getF32("RenderVolumetricLightingMultiplier");
+    RenderVolumetricLightingFalloffMultiplier = gSavedSettings.getF32("RenderVolumetricLightingFalloffMultiplier");
     RenderScreenSpaceReflectionIterations = gSavedSettings.getS32("RenderScreenSpaceReflectionIterations");
     RenderScreenSpaceReflectionRayStep = gSavedSettings.getF32("RenderScreenSpaceReflectionRayStep");
     RenderScreenSpaceReflectionDistanceBias = gSavedSettings.getF32("RenderScreenSpaceReflectionDistanceBias");
@@ -8671,6 +8686,43 @@ void LLPipeline::copyRenderTarget(LLRenderTarget* src, LLRenderTarget* dst)
     dst->flush();
 }
 
+// [BDMerge G3.2] volumetric lighting / godrays pass. Donor: Black Dragon
+// (NiranV Dean; Tofu Buzzard lineage), renderVolumetric at BD pipeline.cpp:8470.
+// Fix-forward vs donor: BD renders src->src while sampling the same target
+// (read/write feedback, undefined behavior); here it ping-pongs src->dst.
+// Requires shadow maps: the raymarch samples the sun cascades, so the pass
+// only runs when shadows are on.
+void LLPipeline::renderVolumetric(LLRenderTarget* src, LLRenderTarget* dst)
+{
+    if (RenderVolumetricLighting && RenderShadowDetail > 0 && !gCubeSnapshot &&
+        gVolumetricLightProgram.isComplete())
+    {
+        LL_PROFILE_GPU_ZONE("renderVolumetric");
+        dst->bindTarget();
+        gGL.setColorMask(true, false);
+
+        bindDeferredShader(gVolumetricLightProgram);
+        gVolumetricLightProgram.bindTexture(LLShaderMgr::DEFERRED_DIFFUSE, src, LLTexUnit::TFO_POINT);
+
+        gVolumetricLightProgram.uniform2f(LLShaderMgr::DEFERRED_SCREEN_RES, (GLfloat)src->getWidth(), (GLfloat)src->getHeight());
+        gVolumetricLightProgram.uniform1i(LLShaderMgr::GODRAY_RES, RenderVolumetricLightingResolution);
+        gVolumetricLightProgram.uniform1f(LLShaderMgr::GODRAY_MULTIPLIER, RenderVolumetricLightingMultiplier);
+        gVolumetricLightProgram.uniform1f(LLShaderMgr::FALLOFF_MULTIPLIER, RenderVolumetricLightingFalloffMultiplier);
+
+        mScreenTriangleVB->setBuffer();
+        mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+
+        unbindDeferredShader(gVolumetricLightProgram);
+        gGL.setColorMask(true, true);
+        dst->flush();
+    }
+    else if (src != dst)
+    { // pass disabled: keep the ping-pong chain coherent
+        gGL.getTexUnit(0)->disable();
+        copyRenderTarget(src, dst);
+    }
+}
+
 void LLPipeline::combineGlow(LLRenderTarget* src, LLRenderTarget* dst)
 {
     LL_PROFILE_GPU_ZONE("glow combine");
@@ -8959,6 +9011,15 @@ void LLPipeline::renderFinalize()
 
     LLRenderTarget* sourceBuffer = &mRT->postPingMap;
     LLRenderTarget* targetBuffer = &mRT->postPongMap;
+
+    // [BDMerge G3.2] volumetrics before AA (AA smooths raymarch banding) and
+    // before glow combine (donor ordering; glow stays intact at high
+    // brightness per spec acceptance)
+    if (RenderVolumetricLighting && RenderShadowDetail > 0 && !gCubeSnapshot && gVolumetricLightProgram.isComplete())
+    {
+        renderVolumetric(sourceBuffer, targetBuffer);
+        std::swap(sourceBuffer, targetBuffer);
+    }
 
     if (RenderFSAAType == 1)
     {

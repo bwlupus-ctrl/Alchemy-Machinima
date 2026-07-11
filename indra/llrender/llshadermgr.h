@@ -475,6 +475,11 @@ public:
 
         // End Alchemy Effects Stack
 
+        // [BDMerge G3.2] volumetric lighting (donor: Black Dragon)
+        GODRAY_RES,                        //  "godray_res"
+        GODRAY_MULTIPLIER,                 //  "godray_multiplier"
+        FALLOFF_MULTIPLIER,                //  "falloff_multiplier"
+
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

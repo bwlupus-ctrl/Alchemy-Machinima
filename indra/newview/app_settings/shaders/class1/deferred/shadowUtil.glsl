@@ -240,3 +240,56 @@ float sampleSpotShadow(vec3 pos, vec3 norm, int index, vec2 pos_screen)
 #endif
 }
 
+
+// [BDMerge G3.2] Donor: Black Dragon (NiranV Dean) shadowUtil.glsl - cheap
+// non-PCF cascade sampling for the volumetric raymarch (Tofu Buzzard lineage).
+float nonpcfShadow(sampler2DShadow shadowMap, vec4 stc, vec2 pos_screen, float shad_res, float bias)
+{
+#if defined(SUN_SHADOW)
+    float recip_shadow_res = 1.0 / shad_res;
+    stc.xyz /= stc.w;
+    stc.z += bias;
+
+    stc.x = floor(stc.x*shad_res + fract(pos_screen.y)) * recip_shadow_res;
+
+    float cs = texture(shadowMap, stc.xyz);
+    float shadow = cs * 4.0;
+    return shadow;
+#else
+    return 0.0;
+#endif
+}
+
+float nonpcfShadowAtPos(vec4 pos_world, vec2 pos_screen)
+{
+#if defined(SUN_SHADOW)
+    // BD: no shadow_clip.w early-out - volumetrics must not fade where the
+    // shadow maps end or the effect becomes draw-distance dependent
+    {
+        vec4 near_split = shadow_clip*-0.75;
+        vec4 far_split = shadow_clip*-1.25;
+
+        if (pos_world.z < near_split.z)
+        {
+            pos_world = shadow_matrix[3]*pos_world;
+            return nonpcfShadow(shadowMap3, pos_world, pos_screen, shadow_res.x, shadow_bias);
+        }
+        else if (pos_world.z < near_split.y)
+        {
+            pos_world = shadow_matrix[2]*pos_world;
+            return nonpcfShadow(shadowMap2, pos_world, pos_screen, shadow_res.x, shadow_bias);
+        }
+        else if (pos_world.z < near_split.x)
+        {
+            pos_world = shadow_matrix[1]*pos_world;
+            return nonpcfShadow(shadowMap1, pos_world, pos_screen, shadow_res.x, shadow_bias);
+        }
+        else if (pos_world.z > far_split.x)
+        {
+            pos_world = shadow_matrix[0]*pos_world;
+            return nonpcfShadow(shadowMap0, pos_world, pos_screen, shadow_res.x, shadow_bias);
+        }
+    }
+#endif
+    return 1.0;
+}

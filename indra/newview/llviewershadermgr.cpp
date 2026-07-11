@@ -215,6 +215,8 @@ LLGLSLShader            gSMAAEdgeDetectProgram[4];
 LLGLSLShader            gSMAABlendWeightsProgram[4];
 LLGLSLShader            gSMAANeighborhoodBlendProgram[4];
 LLGLSLShader            gCASProgram;
+// [BDMerge G3.2] volumetric lighting (donor: Black Dragon)
+LLGLSLShader            gVolumetricLightProgram;
 LLGLSLShader            gDeferredPostNoDoFProgram;
 LLGLSLShader            gDeferredWLSkyProgram;
 LLGLSLShader            gEnvironmentMapProgram;
@@ -1181,6 +1183,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
             gSMAANeighborhoodBlendProgram[i].unload();
         }
         gCASProgram.unload();
+        gVolumetricLightProgram.unload();
         gEnvironmentMapProgram.unload();
         gDeferredWLSkyProgram.unload();
         gDeferredWLCloudProgram.unload();
@@ -2915,6 +2918,34 @@ bool LLViewerShaderMgr::loadShadersDeferred()
 
     if (success && gGLManager.mGLVersion > 4.05f)
     {
+        // [BDMerge G3.2] volumetric lighting / godrays. Donor: Black Dragon
+        // (NiranV Dean, Tofu Buzzard lineage). Real scattering shader is
+        // class3; class1 is a passthrough stub for low shader levels.
+        // Fix-forward vs donor: GODRAYS_FADE permutation applied to THIS
+        // program (BD applies it to the soften program - a wiring bug; the
+        // #if lives in volumetricLightF.glsl).
+        gVolumetricLightProgram.mName = "Volumetric Light Shader";
+        gVolumetricLightProgram.mFeatures.isDeferred = true;
+        gVolumetricLightProgram.mFeatures.calculatesAtmospherics = true;
+        gVolumetricLightProgram.mFeatures.hasAtmospherics = true;
+        gVolumetricLightProgram.mFeatures.hasShadows = true;
+        gVolumetricLightProgram.mShaderFiles.clear();
+        gVolumetricLightProgram.clearPermutations();
+        gVolumetricLightProgram.addPermutation("SUN_SHADOW", "1");
+        if (gSavedSettings.getBOOL("RenderVolumetricLightingDirectional"))
+        {
+            gVolumetricLightProgram.addPermutation("GODRAYS_FADE", "1");
+        }
+        gVolumetricLightProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gVolumetricLightProgram.mShaderFiles.push_back(make_pair("deferred/volumetricLightF.glsl", GL_FRAGMENT_SHADER));
+        gVolumetricLightProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gVolumetricLightProgram.createShader();
+        if (!success)
+        {
+            LL_WARNS() << "Failed to create shader '" << gVolumetricLightProgram.mName << "', disabling!" << LL_ENDL;
+            success = true;
+        }
+
         gCASProgram.mName = "Contrast Adaptive Sharpening Shader";
         gCASProgram.mFeatures.hasSrgb = true;
         gCASProgram.mShaderFiles.clear();

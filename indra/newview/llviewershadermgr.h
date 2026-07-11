@@ -260,6 +260,8 @@ extern LLGLSLShader         gSMAAEdgeDetectProgram[4];
 extern LLGLSLShader         gSMAABlendWeightsProgram[4];
 extern LLGLSLShader         gSMAANeighborhoodBlendProgram[4];
 extern LLGLSLShader         gCASProgram;
+// [BDMerge G3.2] volumetric lighting (donor: Black Dragon)
+extern LLGLSLShader         gVolumetricLightProgram;
 extern LLGLSLShader         gDeferredPostNoDoFProgram;
 extern LLGLSLShader         gExposureProgram;
 extern LLGLSLShader         gExposureProgramNoFade;

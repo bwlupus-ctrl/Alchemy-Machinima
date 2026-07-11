@@ -1671,6 +1671,11 @@ void LLShaderMgr::initAttribsAndUniforms()
 
     // End Alchemy Effects Stack
 
+    // [BDMerge G3.2] volumetric lighting (donor: Black Dragon)
+    mReservedUniforms.push_back("godray_res");
+    mReservedUniforms.push_back("godray_multiplier");
+    mReservedUniforms.push_back("falloff_multiplier");
+
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 
     std::set<std::string> dupe_check;

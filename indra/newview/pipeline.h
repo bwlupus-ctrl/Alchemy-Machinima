@@ -141,6 +141,8 @@ public:
     void generateBloomHDR(LLRenderTarget* src);
     void compositeBloomHDR(LLRenderTarget* scene);
     void applyCAS(LLRenderTarget* src, LLRenderTarget* dst);
+    // [BDMerge G3.2] volumetric lighting (donor: Black Dragon)
+    void renderVolumetric(LLRenderTarget* src, LLRenderTarget* dst);
     void applyFXAA(LLRenderTarget* src, LLRenderTarget* dst);
     void generateSMAABuffers(LLRenderTarget* src);
     void applySMAA(LLRenderTarget* src, LLRenderTarget* dst);
@@ -1074,6 +1076,11 @@ public:
     static F32 CameraDoFResScale;
     static F32 RenderAutoHideSurfaceAreaLimit;
     static bool RenderScreenSpaceReflections;
+    // [BDMerge G3.2] volumetric lighting (donor: Black Dragon)
+    static bool RenderVolumetricLighting;
+    static U32 RenderVolumetricLightingResolution;
+    static F32 RenderVolumetricLightingMultiplier;
+    static F32 RenderVolumetricLightingFalloffMultiplier;
     static S32 RenderScreenSpaceReflectionIterations;
     static F32 RenderScreenSpaceReflectionRayStep;
     static F32 RenderScreenSpaceReflectionDistanceBias;
