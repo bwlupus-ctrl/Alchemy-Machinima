@@ -1533,6 +1533,15 @@ bool LLWindowWin32::switchContext(bool fullscreen, const LLCoordScreen& size, bo
             attrib_list[cur_attrib++] = WGL_GREEN_BITS_ARB;
             attrib_list[cur_attrib++] = 10;
 
+            // [BDMerge 10bit] Ask for the STANDARD R10G10B10A2 (2 alpha bits),
+            // not a bare R10G10B10. Without an alpha constraint the driver was
+            // handing back an R10G10B10A0 format (0 alpha), which ReShade (and
+            // anything mapping WGL->DXGI) does not recognize as 10-bit and so
+            // falls back to R8G8B8A8 (DXGI Format 28, 8 bpc). A2 is DXGI
+            // Format 24 (R10G10B10A2_UNORM) - the format the ecosystem expects.
+            attrib_list[cur_attrib++] = WGL_ALPHA_BITS_ARB;
+            attrib_list[cur_attrib++] = 2;
+
             // End the list
             attrib_list[cur_attrib++] = 0;
 
