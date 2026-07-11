@@ -253,20 +253,6 @@ void LLFloaterJoystick::initFromSettings()
     mFlycamOperatorReactivity = gSavedSettings.getF32("FlycamOperatorReactivity");
     mFlycamOperatorIdleIntensity = gSavedSettings.getF32("FlycamOperatorIdleIntensity");
     mFlycamOperatorForceWalk = gSavedSettings.getBOOL("FlycamOperatorForceWalk");
-
-    // [BDMerge B9a] Remappable joystick button controls (donor: Black Dragon).
-    mJoystickButton[0]  = gSavedSettings.getS32("JoystickButtonFly");
-    mJoystickButton[1]  = gSavedSettings.getS32("JoystickButtonFlycam");
-    mJoystickButton[2]  = gSavedSettings.getS32("JoystickButtonJump");
-    mJoystickButton[3]  = gSavedSettings.getS32("JoystickButtonCrouch");
-    mJoystickButton[4]  = gSavedSettings.getS32("JoystickButtonRunToggle");
-    mJoystickButton[5]  = gSavedSettings.getS32("JoystickButtonMouselook");
-    mJoystickButton[6]  = gSavedSettings.getS32("JoystickButtonZoomIn");
-    mJoystickButton[7]  = gSavedSettings.getS32("JoystickButtonZoomOut");
-    mJoystickButton[8]  = gSavedSettings.getS32("JoystickButtonZoomDefault");
-    mJoystickButton[9]  = gSavedSettings.getS32("JoystickButtonRollLeft");
-    mJoystickButton[10] = gSavedSettings.getS32("JoystickButtonRollRight");
-    mJoystickButton[11] = gSavedSettings.getS32("JoystickButtonRollDefault");
 }
 
 void LLFloaterJoystick::refresh()
@@ -442,20 +428,6 @@ void LLFloaterJoystick::cancel()
     gSavedSettings.setF32("FlycamOperatorReactivity", mFlycamOperatorReactivity);
     gSavedSettings.setF32("FlycamOperatorIdleIntensity", mFlycamOperatorIdleIntensity);
     gSavedSettings.setBOOL("FlycamOperatorForceWalk", mFlycamOperatorForceWalk);
-
-    // [BDMerge B9a] Remappable joystick button controls (donor: Black Dragon).
-    gSavedSettings.setS32("JoystickButtonFly", mJoystickButton[0]);
-    gSavedSettings.setS32("JoystickButtonFlycam", mJoystickButton[1]);
-    gSavedSettings.setS32("JoystickButtonJump", mJoystickButton[2]);
-    gSavedSettings.setS32("JoystickButtonCrouch", mJoystickButton[3]);
-    gSavedSettings.setS32("JoystickButtonRunToggle", mJoystickButton[4]);
-    gSavedSettings.setS32("JoystickButtonMouselook", mJoystickButton[5]);
-    gSavedSettings.setS32("JoystickButtonZoomIn", mJoystickButton[6]);
-    gSavedSettings.setS32("JoystickButtonZoomOut", mJoystickButton[7]);
-    gSavedSettings.setS32("JoystickButtonZoomDefault", mJoystickButton[8]);
-    gSavedSettings.setS32("JoystickButtonRollLeft", mJoystickButton[9]);
-    gSavedSettings.setS32("JoystickButtonRollRight", mJoystickButton[10]);
-    gSavedSettings.setS32("JoystickButtonRollDefault", mJoystickButton[11]);
 }
 
 void LLFloaterJoystick::onCommitJoystickEnabled(LLUICtrl*, void *joy_panel)

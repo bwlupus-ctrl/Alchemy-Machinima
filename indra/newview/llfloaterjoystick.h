@@ -99,12 +99,6 @@ private:
     F32 mFlycamOperatorIdleIntensity;
     bool mFlycamOperatorForceWalk;
 
-    // [BDMerge B9a] Remappable joystick button controls (donor: Black Dragon).
-    // Cached so Cancel reverts button remaps like every other setting in this
-    // floater. Order: Fly, Flycam, Jump, Crouch, RunToggle, Mouselook, ZoomIn,
-    // ZoomOut, ZoomDefault, RollLeft, RollRight, RollDefault.
-    S32 mJoystickButton[12];
-
     // Controls that can disable the flycam
     LLCheckBoxCtrl  *mCheckFlycamEnabled;
     LLComboBox      *mJoysticksCombo;

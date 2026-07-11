@@ -952,26 +952,12 @@ void LLViewerJoystick::moveAvatar(bool reset)
     bool is_zero = true;
     static bool button_held = false;
 
-    // [BDMerge B9a] Remappable joystick button controls (donor: Black Dragon
-    // llviewerjoystick.cpp, "//BD - Remappable Joystick Controls"). Each action
-    // reads a JoystickButton* S32 setting holding a physical button index
-    // (-1 = unassigned). Defaults preserve current Alchemy behavior bit-for-bit:
-    // Fly on physical button 1 (was hardcoded mBtn[1]); all newly-added actions
-    // default to -1 (inert). Per-frame reads go through LLCachedControl.
-    static LLCachedControl<S32> btn_fly(gSavedSettings, "JoystickButtonFly", 1);
-    static LLCachedControl<S32> btn_run(gSavedSettings, "JoystickButtonRunToggle", -1);
-    static LLCachedControl<S32> btn_mouselook(gSavedSettings, "JoystickButtonMouselook", -1);
-    static LLCachedControl<S32> btn_jump(gSavedSettings, "JoystickButtonJump", -1);
-    static LLCachedControl<S32> btn_crouch(gSavedSettings, "JoystickButtonCrouch", -1);
-    static bool w_button_held = false; // toggle-run edge tracker
-    static bool m_button_held = false; // mouselook edge tracker
-
-    if (getMappedButton(btn_fly) == 1)
+    if (mBtn[1] == 1)
     {
-        // If AutomaticFly is enabled, then the fly button merely causes a
+        // If AutomaticFly is enabled, then button1 merely causes a
         // jump (as the up/down axis already controls flying) if on the
         // ground, or cease flight if already flying.
-        // If AutomaticFly is disabled, then the fly button toggles flying.
+        // If AutomaticFly is disabled, then button1 toggles flying.
         if (gSavedSettings.getBOOL("AutomaticFly"))
         {
             if (!gAgent.getFlying())
@@ -995,62 +981,6 @@ void LLViewerJoystick::moveAvatar(bool reset)
     else
     {
         button_held = false;
-    }
-
-    // [BDMerge B9a] Toggle always-run (donor TOGGLE_RUN). Alchemy's run API
-    // (setAlwaysRun/clearAlwaysRun) already sends the SetAlwaysRun message and
-    // honors RLV internally, so the donor's explicit setRunning/sendWalkRun
-    // calls collapse to a single toggle here.
-    if (getMappedButton(btn_run) && !w_button_held)
-    {
-        w_button_held = true;
-        if (gAgent.getAlwaysRun())
-        {
-            gAgent.clearAlwaysRun();
-        }
-        else
-        {
-            gAgent.setAlwaysRun();
-        }
-        is_zero = false;
-    }
-    else if (!getMappedButton(btn_run) && w_button_held)
-    {
-        w_button_held = false;
-    }
-
-    // [BDMerge B9a] Toggle mouselook (donor MOUSELOOK).
-    if (getMappedButton(btn_mouselook) && !m_button_held)
-    {
-        m_button_held = true;
-        if (gAgentCamera.cameraMouselook())
-        {
-            gAgentCamera.changeCameraToDefault();
-        }
-        else
-        {
-            gAgentCamera.changeCameraToMouselook();
-        }
-        is_zero = false;
-    }
-    else if (!getMappedButton(btn_mouselook) && m_button_held)
-    {
-        m_button_held = false;
-    }
-
-    // [BDMerge B9a] Jump / crouch as held vertical movement (donor JUMP/CROUCH,
-    // which inject into the Z delta). Mapped onto Alchemy's native moveUp() so
-    // axis handling below is untouched. is_zero cleared to drive the AFK/camera
-    // refresh path just like axis motion does.
-    if (getMappedButton(btn_jump))
-    {
-        gAgent.moveUp(1);
-        is_zero = false;
-    }
-    if (getMappedButton(btn_crouch))
-    {
-        gAgent.moveUp(-1);
-        is_zero = false;
     }
 
     F32 axis_scale[] =
@@ -1306,32 +1236,6 @@ void LLViewerJoystick::moveFlycam(bool reset)
     bool absolute = gSavedSettings.getBOOL("Cursor3D");
     bool is_zero = true;
 
-    // [BDMerge B9a] Remappable joystick button controls (donor: Black Dragon
-    // llviewerjoystick.cpp, "//BD - Remappable Joystick Controls"), flycam-mode
-    // camera buttons. -1 = unassigned; all default to -1 so this whole block is
-    // inert (bit-identical to stock flycam) until the user maps a button. These
-    // run on a fixed per-frame gain, deliberately INDEPENDENT of the flycam
-    // roll/zoom axis scales (both default to 0), and are folded into the same
-    // feather + camera-operator path as the axis input, never mutating axis
-    // semantics.
-    static LLCachedControl<S32> btn_zoom_in(gSavedSettings, "JoystickButtonZoomIn", -1);
-    static LLCachedControl<S32> btn_zoom_out(gSavedSettings, "JoystickButtonZoomOut", -1);
-    static LLCachedControl<S32> btn_zoom_def(gSavedSettings, "JoystickButtonZoomDefault", -1);
-    static LLCachedControl<S32> btn_roll_left(gSavedSettings, "JoystickButtonRollLeft", -1);
-    static LLCachedControl<S32> btn_roll_right(gSavedSettings, "JoystickButtonRollRight", -1);
-    static LLCachedControl<S32> btn_roll_def(gSavedSettings, "JoystickButtonRollDefault", -1);
-    static LLCachedControl<S32> btn_fc_jump(gSavedSettings, "JoystickButtonJump", -1);
-    static LLCachedControl<S32> btn_fc_crouch(gSavedSettings, "JoystickButtonCrouch", -1);
-
-    const F32 BD_FLYCAM_ROLL_RATE = 0.6f; // rad/s of camera roll per held button
-    const F32 BD_FLYCAM_ZOOM_RATE = 0.5f; // rad/s of FOV change per held button
-    const F32 BD_FLYCAM_MOVE_RATE = 3.0f; // m/s of vertical dolly per held button
-    F32 bd_roll_input   = ((F32)getMappedButton(btn_roll_right) - (F32)getMappedButton(btn_roll_left)) * BD_FLYCAM_ROLL_RATE * time;
-    F32 bd_zoom_input   = ((F32)getMappedButton(btn_zoom_out)   - (F32)getMappedButton(btn_zoom_in))   * BD_FLYCAM_ZOOM_RATE * time;
-    F32 bd_updown_input = ((F32)getMappedButton(btn_fc_jump)    - (F32)getMappedButton(btn_fc_crouch)) * BD_FLYCAM_MOVE_RATE * time;
-    bool bd_roll_default = (getMappedButton(btn_roll_def) == 1);
-    bool bd_zoom_default = (getMappedButton(btn_zoom_def) == 1);
-
     for (U32 i = 0; i < 7; i++)
     {
         cur_delta[i] = -getJoystickAxis(axis[i]);
@@ -1372,22 +1276,6 @@ void LLViewerJoystick::moveFlycam(bool reset)
             cur_delta[i] *= time;
         }
 
-        // [BDMerge B9a] Fold the remappable camera-button motion into this
-        // axis' feather target. Gains already include the frame time, so they
-        // are framerate-independent and survive the (0 by default) axis scale.
-        if (i == VZ)
-        {
-            cur_delta[i] += bd_updown_input; // jump (up) / crouch (down)
-        }
-        else if (i == 3)
-        {
-            cur_delta[i] += bd_roll_input;   // roll right (+) / roll left (-)
-        }
-        else if (i == 6)
-        {
-            cur_delta[i] += bd_zoom_input;   // zoom out (+) / zoom in (-)
-        }
-
         sDelta[i] = sDelta[i] + (cur_delta[i]-sDelta[i])*time*feather;
 
         is_zero = is_zero && (cur_delta[i] == 0.f);
@@ -1412,9 +1300,7 @@ void LLViewerJoystick::moveFlycam(bool reset)
     LLMatrix3 rot_mat(sDelta[3], sDelta[4], sDelta[5]);
     sFlycamRotation = LLQuaternion(rot_mat)*sFlycamRotation;
 
-    // [BDMerge B9a] ROLL_DEFAULT button forces a one-frame auto-level, on top of
-    // the existing AutoLeveling setting (donor "Roll Default" behavior).
-    if (gSavedSettings.getBOOL("AutoLeveling") || bd_roll_default)
+    if (gSavedSettings.getBOOL("AutoLeveling"))
     {
         LLMatrix3 level(sFlycamRotation);
 
@@ -1440,20 +1326,6 @@ void LLViewerJoystick::moveFlycam(bool reset)
     {
         sFlycamZoom += sDelta[6];
     }
-
-    // [BDMerge B9a] ZOOM_DEFAULT button slams the flycam FOV back to CameraAngle
-    // (donor "Zoom Default"). The clamp bounds button-driven zoom to the valid
-    // FOV range so it cannot wind up past the limits; it is a no-op for the
-    // stock axis path (setView already clamps the rendered value), keeping
-    // default flycam behavior bit-identical.
-    if (bd_zoom_default)
-    {
-        sFlycamZoom = gSavedSettings.getF32("CameraAngle");
-        sDelta[6] = 0.f;
-    }
-    sFlycamZoom = llclamp(sFlycamZoom,
-                          LLViewerCamera::getInstance()->getMinView(),
-                          LLViewerCamera::getInstance()->getMaxView());
 
     LLMatrix3 mat(sFlycamRotation);
 
@@ -1565,13 +1437,9 @@ void LLViewerJoystick::scanJoystick()
 
     static long toggle_flycam = 0;
 
-    // [BDMerge B9a] Remappable flycam-toggle button (donor FLYCAM). Default 0
-    // preserves current Alchemy behavior bit-for-bit (was hardcoded mBtn[0]).
-    static LLCachedControl<S32> btn_flycam(gSavedSettings, "JoystickButtonFlycam", 0);
-    long flycam_btn = getMappedButton(btn_flycam);
-    if (flycam_btn == 1)
+    if (mBtn[0] == 1)
     {
-        if (flycam_btn != toggle_flycam)
+        if (mBtn[0] != toggle_flycam)
         {
             toggle_flycam = toggleFlycam() ? 1 : 0;
         }
