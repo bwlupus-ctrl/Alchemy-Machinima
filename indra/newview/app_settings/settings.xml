@@ -2793,6 +2793,17 @@
       <key>Value</key>
       <integer>0</integer>
     </map>
+    <key>BDMergeCacheIOThreads</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge G5.4] Worker threads for texture-cache body file I/O (reads and writes run in parallel instead of serializing on the single TextureCache thread). 0 = stock single-threaded behavior. Takes effect at next launch.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>U32</string>
+      <key>Value</key>
+      <integer>4</integer>
+    </map>
     <key>BDMergeCaptureModePin</key>
     <map>
       <key>Comment</key>

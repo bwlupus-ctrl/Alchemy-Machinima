@@ -37,8 +37,12 @@
 // Included to allow LLTextureCache::purgeTextures() to pause watchdog timeout
 #include "llappviewer.h"
 #include "llmemory.h"
+#include "threadpool.h"
 
 #include <fmt/xchar.h>
+
+#include <atomic>
+#include <memory>
 
 // Cache organization:
 // cache/texture.entries
@@ -246,6 +250,117 @@ bool LLTextureCacheLocalFileWorker::doWrite()
     return false;
 }
 
+// [BDMerge G5.4] Parallel cache body I/O.
+//
+// LLTextureCache is a single LLWorkerThread; stock doRead/doWrite perform
+// synchronous file I/O inline, serializing every cache read and write on one
+// thread (measured: 781ms mean / 5s p95 read latency under load on NVMe —
+// pure queueing). When BDMergeCacheIOThreads > 0, the BODY stages post their
+// file I/O to a small thread pool and poll for completion (doWork's
+// return-false-and-repoll contract, same as texture fetch workers use).
+//
+// Safety model: pool threads touch ONLY the self-contained job below (which
+// owns its buffers) plus LLFile path-based ops on per-texture body files.
+// All header-file access and cache-entry bookkeeping stays on the
+// TextureCache thread, so entry/header serialization is unchanged and a
+// worker abort can never race the pool (the shared_ptr job just completes
+// into the void and frees itself).
+static S32 sCacheIOThreadCount = 0;          // set once from the main thread in initCache
+static LL::ThreadPool* sCacheIOPool = nullptr;
+
+struct ALCacheIOJob
+{
+    enum EKind { READ_BODY, WRITE_BODY };
+    EKind mKind = READ_BODY;
+    std::filesystem::path mPath;
+
+    // READ_BODY inputs (plain values captured at post time)
+    S32 mReqOffset = 0;
+    S32 mReqDataSize = 0;
+    S32 mPrefixSize = 0;
+    U8 mPrefix[TEXTURE_CACHE_ENTRY_SIZE];    // header-stage bytes to prepend
+
+    // WRITE_BODY input: job-owned copy of the body bytes
+    U8* mWriteData = nullptr;
+    S32 mWriteSize = 0;
+
+    // outputs
+    U8* mBuffer = nullptr;                   // read result; adopted by the worker on success
+    S32 mOutDataSize = -1;
+    S32 mOutFileSize = -1;
+    S32 mBytes = -1;
+    bool mNoBody = false;
+    std::atomic<bool> mDone{ false };
+
+    ~ALCacheIOJob()
+    {
+        if (mBuffer) ll_aligned_free_16(mBuffer);
+        if (mWriteData) ll_aligned_free_16(mWriteData);
+    }
+
+    void run()
+    {
+        if (mKind == READ_BODY)
+        {
+            runReadBody();
+        }
+        else
+        {
+            mBytes = (S32)LLFile::write(mPath, mWriteData, 0, mWriteSize);
+        }
+        mDone.store(true, std::memory_order_release);
+    }
+
+    // Mirrors the synchronous BODY branch of doRead() exactly, against local
+    // values only.
+    void runReadBody()
+    {
+        S32 filesize = (S32)LLFile::size(mPath);
+        if (!(filesize > 0 && (filesize + TEXTURE_CACHE_ENTRY_SIZE) > mReqOffset))
+        {
+            mNoBody = true;
+            return;
+        }
+        S32 max_datasize = TEXTURE_CACHE_ENTRY_SIZE + filesize - mReqOffset;
+        S32 data_size = llmin(max_datasize, mReqDataSize);
+
+        S32 data_offset, file_offset, file_size;
+        if (mReqOffset < TEXTURE_CACHE_ENTRY_SIZE)
+        {
+            data_offset = TEXTURE_CACHE_ENTRY_SIZE - mReqOffset;
+            file_offset = 0;
+            file_size = data_size - data_offset;
+        }
+        else
+        {
+            data_offset = 0;
+            file_offset = mReqOffset - TEXTURE_CACHE_ENTRY_SIZE;
+            file_size = data_size;
+        }
+
+        U8* data = (U8*)ll_aligned_malloc_16(data_size);
+        if (!data)
+        {
+            mOutFileSize = file_size;
+            mBytes = -1; // maps to the stock alloc-failure branch
+            return;
+        }
+        if (data_offset > 0)
+        {
+            memcpy(data, mPrefix, llmin(data_offset, mPrefixSize));
+        }
+        mBytes = (S32)LLFile::read(mPath, data + data_offset, file_offset, file_size);
+        mOutFileSize = file_size;
+        if (mBytes != file_size)
+        {
+            ll_aligned_free_16(data);
+            return;
+        }
+        mBuffer = data;
+        mOutDataSize = data_size;
+    }
+};
+
 class LLTextureCacheRemoteWorker final : public LLTextureCacheWorker
 {
 public:
@@ -277,6 +392,7 @@ private:
     e_state mState;
     LLPointer<LLImageRaw> mRawImage;
     S32 mRawDiscardLevel;
+    std::shared_ptr<ALCacheIOJob> mIOJob; // [BDMerge G5.4] in-flight pooled body I/O
 };
 
 
@@ -454,6 +570,63 @@ bool LLTextureCacheRemoteWorker::doRead()
     }
 
     // Fourth state / stage : read the rest of the data from the UUID based cached file
+    // [BDMerge G5.4] pooled path: post the body read and poll for completion
+    // so this worker thread can keep dispatching other requests meanwhile.
+    if (!done && (mState == BODY) && sCacheIOPool)
+    {
+        if (!mIOJob)
+        {
+            auto job = std::make_shared<ALCacheIOJob>();
+            job->mKind = ALCacheIOJob::READ_BODY;
+            job->mPath = mCache->getTextureFileName(mID);
+            job->mReqOffset = mOffset;
+            job->mReqDataSize = mDataSize;
+            if (mOffset < TEXTURE_CACHE_ENTRY_SIZE && mReadData)
+            {
+                job->mPrefixSize = TEXTURE_CACHE_ENTRY_SIZE - mOffset;
+                memcpy(job->mPrefix, mReadData, job->mPrefixSize);
+            }
+            mIOJob = job;
+            sCacheIOPool->getQueue().post([job]() { job->run(); });
+            return false;
+        }
+        if (!mIOJob->mDone.load(std::memory_order_acquire))
+        {
+            return false;
+        }
+        std::shared_ptr<ALCacheIOJob> job;
+        job.swap(mIOJob);
+        if (job->mNoBody)
+        {
+            // No body: deliver whatever the header stage produced (stock behavior)
+            mDataSize = llmax(TEXTURE_CACHE_ENTRY_SIZE - mOffset, 0);
+            LL_DEBUGS() << "No body file for: " << job->mPath << LL_ENDL;
+        }
+        else if (!job->mBuffer)
+        {
+            LL_WARNS() << "LLTextureCacheWorker: " << mID
+                    << " incorrect number of bytes read from body: " << job->mBytes
+                    << " / " << job->mOutFileSize << LL_ENDL;
+            if (mReadData)
+            {
+                ll_aligned_free_16(mReadData);
+                mReadData = NULL;
+            }
+            mDataSize = -1; // failed
+        }
+        else
+        {
+            if (mReadData)
+            {
+                ll_aligned_free_16(mReadData);
+            }
+            mReadData = job->mBuffer;
+            job->mBuffer = nullptr;
+            mDataSize = job->mOutDataSize;
+        }
+        return true;
+    }
+
     if (!done && (mState == BODY))
     {
         std::filesystem::path file_path = mCache->getTextureFileName(mID);
@@ -677,6 +850,59 @@ bool LLTextureCacheRemoteWorker::doWrite()
     }
 
     // Fourth stage / state : write the body file, i.e. the rest of the texture in a "UUID" file name
+    // [BDMerge G5.4] pooled path: the job owns a copy of the body bytes, so
+    // worker teardown can never race the pool thread.
+    if (!done && (mState == BODY) && sCacheIOPool)
+    {
+        if (mDataSize <= TEXTURE_CACHE_ENTRY_SIZE)
+        {
+            LL_WARNS() << "mDataSize check failed" << LL_ENDL;
+            mDataSize = -1; // failed
+            done = true;
+        }
+        else if (!mIOJob)
+        {
+            S32 file_size = mDataSize - TEXTURE_CACHE_ENTRY_SIZE;
+            U8* copy = (U8*)ll_aligned_malloc_16(file_size);
+            if (!copy)
+            {
+                LL_WARNS() << "LLTextureCacheWorker: " << mID
+                    << " failed to allocate write copy of: " << file_size << LL_ENDL;
+                mDataSize = -1; // failed
+                done = true;
+            }
+            else
+            {
+                memcpy(copy, mWriteData + TEXTURE_CACHE_ENTRY_SIZE, file_size);
+                auto job = std::make_shared<ALCacheIOJob>();
+                job->mKind = ALCacheIOJob::WRITE_BODY;
+                job->mPath = mCache->getTextureFileName(mID);
+                job->mWriteData = copy;
+                job->mWriteSize = file_size;
+                mIOJob = job;
+                sCacheIOPool->getQueue().post([job]() { job->run(); });
+                return false;
+            }
+        }
+        else if (!mIOJob->mDone.load(std::memory_order_acquire))
+        {
+            return false;
+        }
+        else
+        {
+            std::shared_ptr<ALCacheIOJob> job;
+            job.swap(mIOJob);
+            if (job->mBytes <= 0)
+            {
+                LL_WARNS() << "LLTextureCacheWorker: " << mID
+                    << " incorrect number of bytes written to body: " << job->mBytes
+                    << " / " << job->mWriteSize << LL_ENDL;
+                mDataSize = -1; // failed
+            }
+            done = true;
+        }
+    }
+
     if (!done && (mState == BODY))
     {
         if (mDataSize <= TEXTURE_CACHE_ENTRY_SIZE) // wouldn't make sense to be here otherwise...
@@ -816,6 +1042,15 @@ LLTextureCache::~LLTextureCache()
     writeUpdatedEntries() ;
     delete mFastCachep;
     ll_aligned_free_16(mFastCachePadBuffer);
+
+    // [BDMerge G5.4] drain and stop the body-I/O pool; jobs are
+    // self-contained so any still-running ones just complete and free
+    if (sCacheIOPool)
+    {
+        sCacheIOPool->close();
+        delete sCacheIOPool;
+        sCacheIOPool = nullptr;
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1001,6 +1236,17 @@ S64 LLTextureCache::initCache(ELLPath location, S64 max_size, bool texture_cache
     LL_PROFILE_ZONE_SCOPED;
 
     llassert_always(getPending() == 0) ; //should not start accessing the texture cache before initialized.
+
+    // [BDMerge G5.4] main thread: size and start the cache body-I/O pool
+    if (!sCacheIOPool)
+    {
+        sCacheIOThreadCount = (S32)gSavedSettings.getU32("BDMergeCacheIOThreads");
+        if (sCacheIOThreadCount > 0 && !mReadOnly)
+        {
+            sCacheIOPool = new LL::ThreadPool("CacheIO", llclamp(sCacheIOThreadCount, 1, 16));
+            sCacheIOPool->start();
+        }
+    }
 
     S64 entries_size = (max_size * 36) / 100; //0.36 * max_size
     S64 max_entries = entries_size / (TEXTURE_CACHE_ENTRY_SIZE + TEXTURE_FAST_CACHE_ENTRY_SIZE);
