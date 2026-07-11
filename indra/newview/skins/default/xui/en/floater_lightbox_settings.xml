@@ -835,7 +835,7 @@
 				top_pad="-20"
 				height="15"
 				label_width="0"
-				right="-2"
+				right="-22"
 				decimal_digits="0"
 				follows="top|right"
 				layout="topleft"
@@ -846,6 +846,22 @@
 				control_name="RenderHeroProbeUpdateRate"
 				tool_tip="Sets how many rendered frames mirrors should wait to update. Can improve average FPS at the cost of jittering."
 				name="mirrorUpdateRateSpinner" />
+			<button
+				name="reset_RenderHeroProbeUpdateRate"
+				follows="top|right"
+				layout="topleft"
+				height="22"
+				right="-2"
+				top_pad="-19"
+				width="18"
+				scale_image="true"
+				image_overlay="Refresh_Off"
+				image_overlay_alignment="center"
+				tool_tip="Reset to default value">
+				<button.commit_callback
+					function="LightBox.ResetControlDefault"
+					parameter="RenderHeroProbeUpdateRate" />
+			</button>
 			<!--Probe Draw Distance-->
 			<!--
 			<text
@@ -1272,7 +1288,7 @@
 				height="20"
 				top_pad="-16"
 				left="110"
-				width="270"
+				width="248"
 				min_val="0.1"
 				max_val="4"
 				increment="0.125"
@@ -1280,6 +1296,22 @@
 				show_text="true"
 				name="bd_volume_lod_slider"
 				tool_tip="Mesh/prim LOD distance factor. BD default 2.0; Alchemy presets set 1.125-1.5 (the aggressive-LOD quality drop). 4 = maximum. Also sharpens shadows, which render the LODed geometry." />
+			<button
+				name="reset_RenderVolumeLODFactor"
+				follows="left|top"
+				layout="topleft"
+				height="22"
+				left="360"
+				top_pad="-22"
+				width="18"
+				scale_image="true"
+				image_overlay="Refresh_Off"
+				image_overlay_alignment="center"
+				tool_tip="Reset to default value">
+				<button.commit_callback
+					function="LightBox.ResetControlDefault"
+					parameter="RenderVolumeLODFactor" />
+			</button>
 			<text
 				follows="left|top"
 				height="15"
@@ -1295,7 +1327,7 @@
 				height="20"
 				top_pad="-16"
 				left="110"
-				width="270"
+				width="248"
 				min_val="0"
 				max_val="2"
 				increment="0.05"
@@ -1303,6 +1335,22 @@
 				show_text="true"
 				name="bd_tree_lod_slider"
 				tool_tip="Linden tree LOD factor. BD default 1.0 vs Alchemy 0.5." />
+			<button
+				name="reset_RenderTreeLODFactor"
+				follows="left|top"
+				layout="topleft"
+				height="22"
+				left="360"
+				top_pad="-22"
+				width="18"
+				scale_image="true"
+				image_overlay="Refresh_Off"
+				image_overlay_alignment="center"
+				tool_tip="Reset to default value">
+				<button.commit_callback
+					function="LightBox.ResetControlDefault"
+					parameter="RenderTreeLODFactor" />
+			</button>
 			<text
 				follows="left|top"
 				height="15"
@@ -1318,7 +1366,7 @@
 				height="20"
 				top_pad="-16"
 				left="110"
-				width="270"
+				width="248"
 				min_val="0"
 				max_val="1"
 				increment="0.05"
@@ -1326,6 +1374,22 @@
 				show_text="true"
 				name="bd_avatar_lod_slider"
 				tool_tip="Avatar LOD factor (1 = full detail at all distances)." />
+			<button
+				name="reset_RenderAvatarLODFactor"
+				follows="left|top"
+				layout="topleft"
+				height="22"
+				left="360"
+				top_pad="-22"
+				width="18"
+				scale_image="true"
+				image_overlay="Refresh_Off"
+				image_overlay_alignment="center"
+				tool_tip="Reset to default value">
+				<button.commit_callback
+					function="LightBox.ResetControlDefault"
+					parameter="RenderAvatarLODFactor" />
+			</button>
 			<text
 				follows="left|top"
 				height="15"
@@ -1341,7 +1405,7 @@
 				height="20"
 				top_pad="-16"
 				left="110"
-				width="270"
+				width="248"
 				min_val="1"
 				max_val="4"
 				increment="0.125"
@@ -1349,6 +1413,22 @@
 				show_text="true"
 				name="bd_terrain_lod_slider"
 				tool_tip="Terrain mesh LOD factor." />
+			<button
+				name="reset_RenderTerrainLODFactor"
+				follows="left|top"
+				layout="topleft"
+				height="22"
+				left="360"
+				top_pad="-22"
+				width="18"
+				scale_image="true"
+				image_overlay="Refresh_Off"
+				image_overlay_alignment="center"
+				tool_tip="Reset to default value">
+				<button.commit_callback
+					function="LightBox.ResetControlDefault"
+					parameter="RenderTerrainLODFactor" />
+			</button>
 			<text
 				follows="left|top"
 				height="15"
@@ -1364,7 +1444,7 @@
 				height="20"
 				top_pad="-16"
 				left="110"
-				width="270"
+				width="248"
 				min_val="32"
 				max_val="512"
 				increment="16"
@@ -1372,6 +1452,22 @@
 				show_text="true"
 				name="bd_farclip_slider"
 				tool_tip="Draw distance in meters. Note: godrays' bias>2 draw-distance shrink is disabled by the capture pin." />
+			<button
+				name="reset_RenderFarClip"
+				follows="left|top"
+				layout="topleft"
+				height="22"
+				left="360"
+				top_pad="-22"
+				width="18"
+				scale_image="true"
+				image_overlay="Refresh_Off"
+				image_overlay_alignment="center"
+				tool_tip="Reset to default value">
+				<button.commit_callback
+					function="LightBox.ResetControlDefault"
+					parameter="RenderFarClip" />
+			</button>
 			<text
 				follows="left|top"
 				height="28"
@@ -2184,7 +2280,7 @@
 				height="20"
 				top_pad="-16"
 				left="190"
-				width="180"
+				width="168"
 				min_val="2"
 				max_val="6"
 				increment="1"
@@ -2192,6 +2288,22 @@
 				show_text="true"
 				name="bd_max_spot_shadows"
 				tool_tip="How many projector lights cast shadows at once (stock: 2). Each adds a shadow-map pass per frame. Pairs with Stable projector shadows for deterministic slot assignment." />
+			<button
+				name="reset_BDMergeMaxSpotShadows"
+				follows="left|top"
+				layout="topleft"
+				height="22"
+				left="360"
+				top_pad="-22"
+				width="18"
+				scale_image="true"
+				image_overlay="Refresh_Off"
+				image_overlay_alignment="center"
+				tool_tip="Reset to default value">
+				<button.commit_callback
+					function="LightBox.ResetControlDefault"
+					parameter="BDMergeMaxSpotShadows" />
+			</button>
 			<text
 				follows="left|top"
 				height="15"
@@ -2881,7 +2993,7 @@
 				height="20"
 				top_pad="-16"
 				left="90"
-				width="290"
+				width="268"
 				min_val="0.01"
 				max_val="30"
 				increment="0.05"
@@ -2889,6 +3001,22 @@
 				show_text="true"
 				name="godray_multiplier_slider"
 				tool_tip="Godray brightness multiplier. 1-5 is a realistic range; higher for stylized shots." />
+			<button
+				name="reset_RenderVolumetricLightingMultiplier"
+				follows="left|top"
+				layout="topleft"
+				height="22"
+				left="360"
+				top_pad="-22"
+				width="18"
+				scale_image="true"
+				image_overlay="Refresh_Off"
+				image_overlay_alignment="center"
+				tool_tip="Reset to default value">
+				<button.commit_callback
+					function="LightBox.ResetControlDefault"
+					parameter="RenderVolumetricLightingMultiplier" />
+			</button>
 			<text
 				follows="left|top"
 				height="15"
@@ -2905,7 +3033,7 @@
 				height="20"
 				top_pad="-16"
 				left="90"
-				width="290"
+				width="268"
 				min_val="16"
 				max_val="128"
 				increment="1"
@@ -2913,6 +3041,22 @@
 				show_text="true"
 				name="godray_resolution_slider"
 				tool_tip="Raymarch sample count. Higher = smoother shafts, more GPU." />
+			<button
+				name="reset_RenderVolumetricLightingResolution"
+				follows="left|top"
+				layout="topleft"
+				height="22"
+				left="360"
+				top_pad="-22"
+				width="18"
+				scale_image="true"
+				image_overlay="Refresh_Off"
+				image_overlay_alignment="center"
+				tool_tip="Reset to default value">
+				<button.commit_callback
+					function="LightBox.ResetControlDefault"
+					parameter="RenderVolumetricLightingResolution" />
+			</button>
 			<text
 				follows="left|top"
 				height="15"
@@ -2929,7 +3073,7 @@
 				height="20"
 				top_pad="-16"
 				left="90"
-				width="290"
+				width="268"
 				min_val="0.0"
 				max_val="10"
 				increment="0.05"
@@ -2937,6 +3081,22 @@
 				show_text="true"
 				name="godray_falloff_slider"
 				tool_tip="Distance falloff. Higher fades shafts out closer to the camera." />
+			<button
+				name="reset_RenderVolumetricLightingFalloffMultiplier"
+				follows="left|top"
+				layout="topleft"
+				height="22"
+				left="360"
+				top_pad="-22"
+				width="18"
+				scale_image="true"
+				image_overlay="Refresh_Off"
+				image_overlay_alignment="center"
+				tool_tip="Reset to default value">
+				<button.commit_callback
+					function="LightBox.ResetControlDefault"
+					parameter="RenderVolumetricLightingFalloffMultiplier" />
+			</button>
 			<text
 				follows="left|top"
 				height="30"
@@ -2982,7 +3142,7 @@
 					height="20"
 					top_pad="-16"
 					left="90"
-					width="290"
+					width="268"
 					min_val="0.01"
 					max_val="30"
 					increment="0.05"
@@ -2990,6 +3150,22 @@
 					show_text="true"
 					name="projvol_multiplier_slider"
 					tool_tip="Projector shaft brightness multiplier. Primary tuning lever." />
+				<button
+					name="reset_BDMergeProjectorVolumetricsMultiplier"
+					follows="left|top"
+					layout="topleft"
+					height="22"
+					left="360"
+					top_pad="-22"
+					width="18"
+					scale_image="true"
+					image_overlay="Refresh_Off"
+					image_overlay_alignment="center"
+					tool_tip="Reset to default value">
+					<button.commit_callback
+						function="LightBox.ResetControlDefault"
+						parameter="BDMergeProjectorVolumetricsMultiplier" />
+				</button>
 				<text
 					follows="left|top"
 					height="15"
@@ -3006,7 +3182,7 @@
 					height="20"
 					top_pad="-16"
 					left="90"
-					width="290"
+					width="268"
 					min_val="8"
 					max_val="64"
 					increment="1"
@@ -3014,6 +3190,22 @@
 					show_text="true"
 					name="projvol_resolution_slider"
 					tool_tip="Raymarch samples per cone. Bounded local march - fewer needed than the sun godrays. Cost also scales with the number of shadow-casting projectors." />
+				<button
+					name="reset_BDMergeProjectorVolumetricsResolution"
+					follows="left|top"
+					layout="topleft"
+					height="22"
+					left="360"
+					top_pad="-22"
+					width="18"
+					scale_image="true"
+					image_overlay="Refresh_Off"
+					image_overlay_alignment="center"
+					tool_tip="Reset to default value">
+					<button.commit_callback
+						function="LightBox.ResetControlDefault"
+						parameter="BDMergeProjectorVolumetricsResolution" />
+				</button>
 				<text
 					follows="left|top"
 					height="15"
@@ -3030,7 +3222,7 @@
 					height="20"
 					top_pad="-16"
 					left="90"
-					width="290"
+					width="268"
 					min_val="0.0"
 					max_val="0.95"
 					increment="0.01"
@@ -3038,6 +3230,22 @@
 					show_text="true"
 					name="projvol_anisotropy_slider"
 					tool_tip="Henyey-Greenstein anisotropy. Higher = stronger forward-scatter glow when looking toward the light; 0 = even scatter from all angles." />
+				<button
+					name="reset_BDMergeProjectorVolumetricsAnisotropy"
+					follows="left|top"
+					layout="topleft"
+					height="22"
+					left="360"
+					top_pad="-22"
+					width="18"
+					scale_image="true"
+					image_overlay="Refresh_Off"
+					image_overlay_alignment="center"
+					tool_tip="Reset to default value">
+					<button.commit_callback
+						function="LightBox.ResetControlDefault"
+						parameter="BDMergeProjectorVolumetricsAnisotropy" />
+				</button>
 				<text
 					follows="left|top"
 					height="30"
@@ -3089,7 +3297,7 @@
 				height="20"
 				top_pad="-16"
 				left="110"
-				width="270"
+				width="248"
 				min_val="0"
 				max_val="0.25"
 				increment="0.005"
@@ -3097,6 +3305,22 @@
 				show_text="true"
 				name="bd_near_clip_slider"
 				tool_tip="Camera near-clip plane. 0 = stock (0.1m). Lower stops extreme close-ups clipping through geometry; costs scene-wide depth precision." />
+			<button
+				name="reset_BDMergeNearClipDistance"
+				follows="left|top"
+				layout="topleft"
+				height="22"
+				left="360"
+				top_pad="-22"
+				width="18"
+				scale_image="true"
+				image_overlay="Refresh_Off"
+				image_overlay_alignment="center"
+				tool_tip="Reset to default value">
+				<button.commit_callback
+					function="LightBox.ResetControlDefault"
+					parameter="BDMergeNearClipDistance" />
+			</button>
 			<text
 				follows="left|top"
 				height="15"
@@ -3143,7 +3367,7 @@
 				height="20"
 				top_pad="-16"
 				left="110"
-				width="270"
+				width="248"
 				min_val="0"
 				max_val="1"
 				increment="0.01"
@@ -3151,6 +3375,22 @@
 				show_text="true"
 				name="bd_mask_cutoff_slider"
 				tool_tip="How much texture alpha counts as solid. Lower = more texels pass as solid." />
+			<button
+				name="reset_BDMergeForceAlphaMaskCutoff"
+				follows="left|top"
+				layout="topleft"
+				height="22"
+				left="360"
+				top_pad="-22"
+				width="18"
+				scale_image="true"
+				image_overlay="Refresh_Off"
+				image_overlay_alignment="center"
+				tool_tip="Reset to default value">
+				<button.commit_callback
+					function="LightBox.ResetControlDefault"
+					parameter="BDMergeForceAlphaMaskCutoff" />
+			</button>
 			<text
 				follows="left|top"
 				height="15"
@@ -3196,7 +3436,7 @@
 				height="20"
 				top_pad="-16"
 				left="110"
-				width="270"
+				width="248"
 				min_val="0.05"
 				max_val="0.9"
 				increment="0.05"
@@ -3204,6 +3444,22 @@
 				show_text="true"
 				name="bd_texpool_fraction_slider"
 				tool_tip="Fraction of installed RAM the decoded-texture pool may use (0.5 = ~96GB here). Applies within a few seconds." />
+			<button
+				name="reset_BDMergeTexPoolFraction"
+				follows="left|top"
+				layout="topleft"
+				height="22"
+				left="360"
+				top_pad="-22"
+				width="18"
+				scale_image="true"
+				image_overlay="Refresh_Off"
+				image_overlay_alignment="center"
+				tool_tip="Reset to default value">
+				<button.commit_callback
+					function="LightBox.ResetControlDefault"
+					parameter="BDMergeTexPoolFraction" />
+			</button>
 			<text
 				follows="left|top"
 				height="15"
@@ -3334,7 +3590,7 @@
 				height="20"
 				top_pad="-16"
 				left="110"
-				width="270"
+				width="248"
 				min_val="0"
 				max_val="90"
 				increment="1"
@@ -3342,6 +3598,22 @@
 				show_text="true"
 				name="bd_head_limit_slider"
 				tool_tip="Maximum head-turn toward the look-at target, degrees." />
+			<button
+				name="reset_BDMergeHeadRotationLimit"
+				follows="left|top"
+				layout="topleft"
+				height="22"
+				left="360"
+				top_pad="-22"
+				width="18"
+				scale_image="true"
+				image_overlay="Refresh_Off"
+				image_overlay_alignment="center"
+				tool_tip="Reset to default value">
+				<button.commit_callback
+					function="LightBox.ResetControlDefault"
+					parameter="BDMergeHeadRotationLimit" />
+			</button>
 			<text
 				follows="left|top"
 				height="15"
@@ -3358,7 +3630,7 @@
 				height="20"
 				top_pad="-16"
 				left="110"
-				width="270"
+				width="248"
 				min_val="0"
 				max_val="60"
 				increment="1"
@@ -3366,6 +3638,22 @@
 				show_text="true"
 				name="bd_eye_limit_slider"
 				tool_tip="Maximum eye rotation toward the look-at target, degrees." />
+			<button
+				name="reset_BDMergeEyeRotationLimit"
+				follows="left|top"
+				layout="topleft"
+				height="22"
+				left="360"
+				top_pad="-22"
+				width="18"
+				scale_image="true"
+				image_overlay="Refresh_Off"
+				image_overlay_alignment="center"
+				tool_tip="Reset to default value">
+				<button.commit_callback
+					function="LightBox.ResetControlDefault"
+					parameter="BDMergeEyeRotationLimit" />
+			</button>
 			<text
 				follows="left|top"
 				height="15"
@@ -3390,7 +3678,7 @@
 				height="20"
 				top_pad="-16"
 				left="110"
-				width="270"
+				width="248"
 				min_val="2"
 				max_val="180"
 				increment="1"
@@ -3398,6 +3686,22 @@
 				show_text="true"
 				name="bd_rotate_slow_slider"
 				tool_tip="How far the camera can turn before a slow-moving avatar's body follows. Higher = calmer body during pans." />
+			<button
+				name="reset_AvatarRotateThresholdSlow"
+				follows="left|top"
+				layout="topleft"
+				height="22"
+				left="360"
+				top_pad="-22"
+				width="18"
+				scale_image="true"
+				image_overlay="Refresh_Off"
+				image_overlay_alignment="center"
+				tool_tip="Reset to default value">
+				<button.commit_callback
+					function="LightBox.ResetControlDefault"
+					parameter="AvatarRotateThresholdSlow" />
+			</button>
 			<text
 				follows="left|top"
 				height="15"
@@ -3413,7 +3717,7 @@
 				height="20"
 				top_pad="-16"
 				left="110"
-				width="270"
+				width="248"
 				min_val="2"
 				max_val="180"
 				increment="1"
@@ -3421,6 +3725,22 @@
 				show_text="true"
 				name="bd_rotate_fast_slider"
 				tool_tip="Body-turn threshold while moving fast." />
+			<button
+				name="reset_AvatarRotateThresholdFast"
+				follows="left|top"
+				layout="topleft"
+				height="22"
+				left="360"
+				top_pad="-22"
+				width="18"
+				scale_image="true"
+				image_overlay="Refresh_Off"
+				image_overlay_alignment="center"
+				tool_tip="Reset to default value">
+				<button.commit_callback
+					function="LightBox.ResetControlDefault"
+					parameter="AvatarRotateThresholdFast" />
+			</button>
 			<check_box
 				follows="left|top"
 				height="15"
@@ -3490,7 +3810,7 @@
 				height="20"
 				top_pad="-16"
 				left="110"
-				width="270"
+				width="248"
 				min_val="0"
 				max_val="1"
 				increment="0.01"
@@ -3498,6 +3818,22 @@
 				show_text="true"
 				name="bd_max_roll_slider"
 				tool_tip="1 = camera stays level; lower lets more head roll through." />
+			<button
+				name="reset_CameraMaxRoll"
+				follows="left|top"
+				layout="topleft"
+				height="22"
+				left="360"
+				top_pad="-22"
+				width="18"
+				scale_image="true"
+				image_overlay="Refresh_Off"
+				image_overlay_alignment="center"
+				tool_tip="Reset to default value">
+				<button.commit_callback
+					function="LightBox.ResetControlDefault"
+					parameter="CameraMaxRoll" />
+			</button>
 		</panel>
 	</tab_container>
 </floater>
