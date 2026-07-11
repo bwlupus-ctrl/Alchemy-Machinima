@@ -52,8 +52,11 @@
 #include "llui.h"
 #include "llglheaders.h"
 #include "llrender.h"
+#include "llrender2dutils.h" // [F8] gl_rect_2d, for renderCompositionGuideOverlay()
 #include "llstartup.h"
 #include "llwindow.h"   // swapBuffers()
+
+#include <array> // [F8] renderCompositionGuideOverlay()
 
 // newview includes
 #include "llagent.h"
@@ -307,6 +310,9 @@ bool    LLPipeline::sRenderSoundBeacons = false;
 bool    LLPipeline::sRenderBeacons = false;
 bool    LLPipeline::sRenderHighlight = true;
 LLRender::eTexIndex LLPipeline::sRenderHighlightTextureChannel = LLRender::DIFFUSE_MAP;
+// [F4] see pipeline.h; donor: Firestorm pipeline.cpp LLPipeline::sLastFocusPoint / sDoFEnabled
+LLVector3 LLPipeline::sLastFocusPoint = LLVector3::zero;
+bool    LLPipeline::sDoFEnabled = false;
 bool    LLPipeline::sForceOldBakedUpload = false;
 S32     LLPipeline::sUseOcclusion = 0;
 bool    LLPipeline::sAutoMaskAlphaDeferred = true;
@@ -4689,6 +4695,433 @@ void LLPipeline::renderPhysicsDisplay()
 
 }
 
+// [F4] DoF focus point crosshair (donor: Firestorm I:\enve
+// indra/newview/pipeline.cpp LLPipeline::renderFocusPoint, FIRE-32023; BD/
+// Alchemy merge campaign item F4). Bound to a new key, RenderFocusPointCrosshair
+// (donor: FSFocusPointRender), since Alchemy already ports the lock/follow
+// pair as RenderFocusPointLocked/RenderFocusPointFollowsPointer but has no
+// crosshair render toggle of its own. UI-pass only, gated on sDoFEnabled and
+// RENDER_DEBUG_FEATURE_UI so it is excluded from snapshots the same way FS
+// excludes it (see ADAPTATION RULE 5) - show_ui=false snapshots flip that
+// mask off around the raw capture (llviewerwindow.cpp rawSnapshot()).
+void LLPipeline::renderFocusPoint()
+{
+    static LLCachedControl<bool> render_focus_point_crosshair(gSavedSettings, "RenderFocusPointCrosshair", false);
+    if (sDoFEnabled && render_focus_point_crosshair && gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI))
+    {
+        gDebugProgram.bind();
+        LLVector3 focus_point = sLastFocusPoint;
+        F32 size = 0.02f;
+        LLGLDepthTest gls_depth(GL_FALSE);
+        gGL.pushMatrix();
+        gGL.translatef(focus_point.mV[VX], focus_point.mV[VY], focus_point.mV[VZ]);
+
+        gGL.begin(LLRender::LINES);
+        static LLCachedControl<bool> render_focus_point_locked(gSavedSettings, "RenderFocusPointLocked", false);
+        if (render_focus_point_locked)
+        {
+            gGL.color4f(1.0f, 0.0f, 0.0f, 0.5f);
+        }
+        else
+        {
+            gGL.color4f(1.0f, 1.0f, 0.0f, 0.5f);
+        }
+        gGL.vertex3f(-size, 0.0f, 0.0f);
+        gGL.vertex3f(size, 0.0f, 0.0f);
+
+        // Y-axis (Green)
+        gGL.vertex3f(0.0f, -size, 0.0f);
+        gGL.vertex3f(0.0f, size, 0.0f);
+
+        // Z-axis (Blue)
+        gGL.vertex3f(0.0f, 0.0f, -size);
+        gGL.vertex3f(0.0f, 0.0f, size);
+
+        gGL.end();
+
+        gGL.popMatrix();
+        gGL.flush();
+        gDebugProgram.unbind();
+    }
+}
+
+// [F8] Rule-of-thirds / golden-ratio / diagonal composition guide overlay
+// (donor: Firestorm I:\enve indra/newview/pipeline.cpp
+// LLPipeline::renderSnapshotGuidesOverlay; campaign item F8). The donor
+// version only populated its guide state from a companion shader-based
+// "capture frame" pass (FSSnapshotShowCaptureFrame / gPostSnapshotFrameProgram)
+// tied to the snapshot floater's crop rectangle; that shader pass was not
+// ported (out of spec scope - see F4/F8 campaign report pruned-controls
+// list), so this reads the new debug settings directly every frame and draws
+// full-viewport guides whenever RenderCompositionGuide is on, independent of
+// any snapshot floater being open. UI-pass only, gated on
+// RENDER_DEBUG_FEATURE_UI so guides are excluded from snapshots the same way
+// FS excludes them (see ADAPTATION RULE 5), and matching precedent set by
+// [BDMerge C6] BDMergeSnapshotExtras's UI-exclusion handling elsewhere in the
+// snapshot path (llviewerwindow.cpp rawSnapshot()).
+void LLPipeline::renderCompositionGuideOverlay()
+{
+    static LLCachedControl<bool> show_guides(gSavedSettings, "RenderCompositionGuide", false);
+    if (!show_guides || !gViewerWindow || !gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI))
+    {
+        return;
+    }
+
+    LLRect view_rect = gViewerWindow->getWorldViewRectRaw();
+    const F32 width = (F32)view_rect.getWidth();
+    const F32 height = (F32)view_rect.getHeight();
+    if (width <= 0.f || height <= 0.f)
+    {
+        return;
+    }
+
+    static LLCachedControl<LLColor3> guide_color(gSavedSettings, "RenderCompositionGuideColor", LLColor3(1.f, 1.f, 0.f));
+    static LLCachedControl<F32> guide_thickness(gSavedSettings, "RenderCompositionGuideWidth", 2.0f);
+    static LLCachedControl<F32> guide_visibility(gSavedSettings, "RenderCompositionGuideVisibility", 0.5f);
+    static LLCachedControl<std::string> guide_style_setting(gSavedSettings, "RenderCompositionGuideStyle", std::string("rule_of_thirds"));
+
+    enum class GuideStyle : U8 { RuleOfThirds, GoldenRatio, Diagonal };
+    enum class GoldenOrientation : U8 { TopLeft, TopRight, BottomLeft, BottomRight };
+
+    GuideStyle guide_style = GuideStyle::RuleOfThirds;
+    GoldenOrientation golden_orientation = GoldenOrientation::TopLeft;
+    const std::string style_value = guide_style_setting();
+    if (style_value == "golden_ratio_top_left")
+    {
+        guide_style = GuideStyle::GoldenRatio;
+        golden_orientation = GoldenOrientation::TopLeft;
+    }
+    else if (style_value == "golden_ratio_top_right")
+    {
+        guide_style = GuideStyle::GoldenRatio;
+        golden_orientation = GoldenOrientation::TopRight;
+    }
+    else if (style_value == "golden_ratio_bottom_left")
+    {
+        guide_style = GuideStyle::GoldenRatio;
+        golden_orientation = GoldenOrientation::BottomLeft;
+    }
+    else if (style_value == "golden_ratio_bottom_right")
+    {
+        guide_style = GuideStyle::GoldenRatio;
+        golden_orientation = GoldenOrientation::BottomRight;
+    }
+    else if (style_value == "diagonal")
+    {
+        guide_style = GuideStyle::Diagonal;
+    }
+
+    const F32 alpha = llclamp((F32)guide_visibility, 0.f, 1.f);
+    if (alpha <= 0.f)
+    {
+        return;
+    }
+
+    // Full viewport - unlike the donor there is no snapshot capture-frame
+    // rectangle to inset against (see comment above).
+    const F32 left_px = 0.f;
+    const F32 right_px = width;
+    const F32 bottom_px = 0.f;
+    const F32 top_px = height;
+    const F32 frame_width = width;
+    const F32 frame_height = height;
+
+    LLGLDisable depth(GL_DEPTH_TEST);
+    LLGLDisable cull(GL_CULL_FACE);
+    LLGLDisable stencil(GL_STENCIL_TEST);
+    LLGLEnable blend(GL_BLEND);
+    gGL.setSceneBlendType(LLRender::BT_ALPHA);
+
+    LLGLSLShader* ui_shader = &gUIProgram;
+    ui_shader->bind();
+
+    if (!LLViewerFetchedTexture::sWhiteImagep.isNull())
+    {
+        gGL.getTexUnit(0)->bind(LLViewerFetchedTexture::sWhiteImagep);
+    }
+    else
+    {
+        gGL.getTexUnit(0)->bindManual(LLTexUnit::TT_TEXTURE, LLTexUnit::sWhiteTexture);
+    }
+
+    gGL.matrixMode(LLRender::MM_PROJECTION);
+    gGL.pushMatrix();
+    gGL.loadIdentity();
+    gGL.ortho(0.f, width, 0.f, height, -1.f, 1.f);
+
+    gGL.matrixMode(LLRender::MM_MODELVIEW);
+    gGL.pushMatrix();
+    gGL.loadIdentity();
+    gGLLastMatrix = nullptr;
+
+    const LLColor4 line_color(guide_color(), alpha);
+    gGL.color4fv(line_color.mV);
+
+    const F32 thickness = llmax((F32)guide_thickness, 0.f);
+    const F32 half_thickness = thickness * 0.5f;
+    auto draw_filled_rect = [&](F32 l, F32 b, F32 r, F32 t)
+    {
+        const S32 left_i = ll_round(l);
+        const S32 right_i = ll_round(r);
+        const S32 top_i = ll_round(t);
+        const S32 bottom_i = ll_round(b);
+        gl_rect_2d(left_i, top_i, right_i, bottom_i, line_color, true);
+    };
+
+    auto draw_vertical_norm = [&](F32 norm)
+    {
+        const F32 x = left_px + frame_width * norm;
+        draw_filled_rect(x - half_thickness, bottom_px, x + half_thickness, top_px);
+    };
+
+    auto draw_horizontal_norm = [&](F32 norm)
+    {
+        const F32 y = bottom_px + frame_height * norm;
+        draw_filled_rect(left_px, y - half_thickness, right_px, y + half_thickness);
+    };
+
+    switch (guide_style)
+    {
+        case GuideStyle::RuleOfThirds:
+        {
+            constexpr std::array<F32, 2> offsets = { 1.f / 3.f, 2.f / 3.f };
+            for (F32 offset : offsets)
+            {
+                draw_vertical_norm(offset);
+                draw_horizontal_norm(offset);
+            }
+            break;
+        }
+        case GuideStyle::GoldenRatio:
+        {
+            constexpr F32 phi = 1.61803398875f;
+
+            const F32 scale = llmin(frame_width / phi, frame_height);
+            if (scale <= 0.f)
+            {
+                break;
+            }
+
+            const F32 golden_width = phi * scale;
+            const F32 golden_height = scale;
+            const F32 pad_x = frame_width - golden_width;
+            const F32 pad_y = frame_height - golden_height;
+
+            F32 anchor_x = left_px;
+            F32 anchor_y = bottom_px;
+            switch (golden_orientation)
+            {
+                case GoldenOrientation::TopLeft:
+                    anchor_y += pad_y;
+                    break;
+                case GoldenOrientation::TopRight:
+                    anchor_x += pad_x;
+                    anchor_y += pad_y;
+                    break;
+                case GoldenOrientation::BottomRight:
+                    anchor_x += pad_x;
+                    break;
+                case GoldenOrientation::BottomLeft:
+                default:
+                    break;
+            }
+
+            auto map_point = [&](F32 local_x, F32 local_y) -> LLVector2
+            {
+                F32 x = local_x;
+                F32 y = local_y;
+
+                if (golden_orientation == GoldenOrientation::TopLeft ||
+                    golden_orientation == GoldenOrientation::BottomLeft)
+                {
+                    x = golden_width - local_x;
+                }
+
+                if (golden_orientation == GoldenOrientation::BottomLeft ||
+                    golden_orientation == GoldenOrientation::BottomRight)
+                {
+                    y = golden_height - local_y;
+                }
+
+                return LLVector2(anchor_x + x, anchor_y + y);
+            };
+
+            std::vector<std::pair<LLVector2, LLVector2>> line_segments;
+            line_segments.reserve(24);
+
+            auto add_line = [&](F32 x0, F32 y0, F32 x1, F32 y1)
+            {
+                line_segments.emplace_back(map_point(x0, y0), map_point(x1, y1));
+            };
+
+            // Outline of the fitted golden rectangle.
+            add_line(0.f, 0.f, golden_width, 0.f);
+            add_line(0.f, golden_height, golden_width, golden_height);
+            add_line(0.f, 0.f, 0.f, golden_height);
+            add_line(golden_width, 0.f, golden_width, golden_height);
+
+            // Generate subdivision lines while we walk the squares.
+            F32 x0 = 0.f;
+            F32 y0 = 0.f;
+            F32 x1 = golden_width;
+            F32 y1 = golden_height;
+
+            for (U32 step = 0; step < 12; ++step)
+            {
+                const F32 w = x1 - x0;
+                const F32 h = y1 - y0;
+                if (w <= 1.f || h <= 1.f)
+                {
+                    break;
+                }
+
+                switch (step % 4)
+                {
+                    case 0:
+                        x0 += h;
+                        add_line(x0, y0, x0, y1);
+                        break;
+                    case 1:
+                        y0 += w;
+                        add_line(x0, y0, x1, y0);
+                        break;
+                    case 2:
+                        x1 -= h;
+                        add_line(x1, y0, x1, y1);
+                        break;
+                    default:
+                        y1 -= w;
+                        add_line(x0, y1, x1, y1);
+                        break;
+                }
+            }
+
+            auto draw_golden_spiral = [&](U32 max_depth)
+            {
+                gGL.begin(LLRender::LINE_STRIP);
+
+                F32 spiral_x0 = 0.f;
+                F32 spiral_y0 = 0.f;
+                F32 spiral_x1 = golden_width;
+                F32 spiral_y1 = golden_height;
+
+                for (U32 step = 0; step < max_depth; ++step)
+                {
+                    const F32 w = spiral_x1 - spiral_x0;
+                    const F32 h = spiral_y1 - spiral_y0;
+                    if (w <= 1.f || h <= 1.f)
+                    {
+                        break;
+                    }
+
+                    F32 size = 0.f;
+                    F32 cx = 0.f;
+                    F32 cy = 0.f;
+                    F32 start_angle = 0.f;
+                    F32 end_angle = 0.f;
+
+                    switch (step % 4)
+                    {
+                        case 0: // left square
+                            size = h;
+                            cx = spiral_x0 + size;
+                            cy = spiral_y0 + size;
+                            start_angle = F_PI;
+                            end_angle = 1.5f * F_PI;
+                            spiral_x0 += size;
+                            break;
+                        case 1: // bottom square
+                            size = w;
+                            cx = spiral_x0;
+                            cy = spiral_y0 + size;
+                            start_angle = 1.5f * F_PI;
+                            end_angle = 2.f * F_PI;
+                            spiral_y0 += size;
+                            break;
+                        case 2: // right square
+                            size = h;
+                            cx = spiral_x1 - size;
+                            cy = spiral_y0;
+                            start_angle = 0.f;
+                            end_angle = F_PI_BY_TWO;
+                            spiral_x1 -= size;
+                            break;
+                        case 3: // top square
+                        default:
+                            size = w;
+                            cx = spiral_x0 + size;
+                            cy = spiral_y1 - size;
+                            start_angle = F_PI_BY_TWO;
+                            end_angle = F_PI;
+                            spiral_y1 -= size;
+                            break;
+                    }
+
+                    if (size <= 0.f)
+                    {
+                        break;
+                    }
+
+                    const S32 segments = llclamp((S32)(size / 4.f), 12, 64);
+                    for (S32 i = 0; i <= segments; ++i)
+                    {
+                        const F32 t = start_angle + (end_angle - start_angle) * (F32)i / (F32)segments;
+                        const F32 local_x = cx + cosf(t) * size;
+                        const F32 local_y = cy + sinf(t) * size;
+                        LLVector2 mapped = map_point(local_x, local_y);
+                        gGL.vertex2f(mapped.mV[0], mapped.mV[1]);
+                    }
+                }
+
+                gGL.end();
+            };
+
+            gGL.flush();
+            const F32 line_width = llmax(thickness, 1.f);
+            gGL.setLineWidth(line_width);
+            draw_golden_spiral(12);
+            gGL.setLineWidth(1.f);
+
+            if (!line_segments.empty())
+            {
+                gGL.flush();
+                gGL.setLineWidth(line_width);
+                gGL.begin(LLRender::LINES);
+                for (const auto& segment : line_segments)
+                {
+                    gGL.vertex2f(segment.first.mV[VX], segment.first.mV[VY]);
+                    gGL.vertex2f(segment.second.mV[VX], segment.second.mV[VY]);
+                }
+                gGL.end();
+                gGL.setLineWidth(1.f);
+            }
+            break;
+        }
+        case GuideStyle::Diagonal:
+        {
+            const F32 line_width = llmax(thickness, 1.f);
+            gGL.flush();
+            gGL.setLineWidth(line_width);
+            gGL.begin(LLRender::LINES);
+            gGL.vertex2f(left_px, bottom_px);
+            gGL.vertex2f(right_px, top_px);
+            gGL.vertex2f(left_px, top_px);
+            gGL.vertex2f(right_px, bottom_px);
+            gGL.end();
+            gGL.setLineWidth(1.f);
+            break;
+        }
+    }
+
+    gGL.matrixMode(LLRender::MM_MODELVIEW);
+    gGL.popMatrix();
+    gGL.matrixMode(LLRender::MM_PROJECTION);
+    gGL.popMatrix();
+    gGLLastMatrix = nullptr;
+
+    ui_shader->unbind();
+}
+
 extern std::set<LLSpatialGroup*> visible_selected_groups;
 
 void LLPipeline::renderDebug()
@@ -8786,14 +9219,17 @@ void LLPipeline::renderDoF(LLRenderTarget* src, LLRenderTarget* dst)
         static LLCachedControl<bool> RenderDepthOfFieldInEditMode(gSavedSettings, "RenderDepthOfFieldInEditMode", false);
         static LLCachedControl<bool> RenderFocusPointLocked(gSavedSettings, "RenderFocusPointLocked", false);
         static LLCachedControl<bool> RenderFocusPointFollowsPointer(gSavedSettings, "RenderFocusPointFollowsPointer", false);
-        bool dof_enabled =
+        // [F4] sDoFEnabled promoted to a class static (was a local bool) so
+        // renderFocusPoint() can gate the crosshair on it later in
+        // renderFinalize(). donor: Firestorm pipeline.cpp sDoFEnabled, FIRE-32023.
+        sDoFEnabled =
             (RenderDepthOfFieldInEditMode || !LLToolMgr::getInstance()->inBuildMode()) &&
             RenderDepthOfField &&
             !gCubeSnapshot;
 
         gViewerWindow->setup3DViewport();
 
-        if (dof_enabled)
+        if (sDoFEnabled)
         {
             LLGLDisable blend(GL_BLEND);
 
@@ -8803,10 +9239,13 @@ void LLPipeline::renderDoF(LLRenderTarget* src, LLRenderTarget* dst)
             static F32 transition_time = 1.f;
 
             LLVector3 focus_point;
-            static LLVector3 last_focus_point{};
-            if (RenderFocusPointLocked && !last_focus_point.isExactlyZero())
+            // [F4] sLastFocusPoint promoted to a class static (was a local
+            // "last_focus_point") so renderFocusPoint() can draw a crosshair
+            // at the current DoF target. donor: Firestorm pipeline.cpp
+            // sLastFocusPoint, FIRE-16728.
+            if (RenderFocusPointLocked && !sLastFocusPoint.isExactlyZero())
             {
-                focus_point = last_focus_point;
+                focus_point = sLastFocusPoint;
             }
             else
             {
@@ -8850,7 +9289,7 @@ void LLPipeline::renderDoF(LLRenderTarget* src, LLRenderTarget* dst)
                     }
                 }
             }
-            last_focus_point = focus_point;
+            sLastFocusPoint = focus_point;
 
             LLVector3 eye = LLViewerCamera::getInstance()->getOrigin();
             F32 target_distance = 16.f;
@@ -8908,6 +9347,42 @@ void LLPipeline::renderDoF(LLRenderTarget* src, LLRenderTarget* dst)
             blur_constant /= 1000.f; // convert to meters for shader
             F32 magnification = focal_length / (subject_distance - focal_length);
 
+            // [F4] WYSIWYG DoF fix (donor: Firestorm FIRE-13989 "DOF should be
+            // equivalent in all resolutions of the same rendered image",
+            // I:\enve indra/newview/pipeline.cpp LLPipeline::renderDoF). Scales
+            // the pixel-angle and max circle-of-confusion the CoF/combine
+            // shaders consume by the ratio of the on-screen window height to
+            // this pass's render target height, so a DoF-enabled high-res
+            // snapshot (dst taller/shorter than the window) blurs by the same
+            // *visual* amount the user saw on screen, not the same *pixel*
+            // amount.
+            //
+            // Composition with [BDMerge A1.2] BDMergeSnapshotAutoscale: BD's
+            // gate (bdmerge_snapshot_autoscale_multiplier(), applied to
+            // default_fov above) rescales the FOV baseline that feeds
+            // focal_length/blur_constant/magnification - i.e. it changes the
+            // DoF *strength* going into this pass. FSSnapshotDoFWysiwyg below
+            // instead rescales DOF_TAN_PIXEL_ANGLE/DOF_MAX_COF downstream,
+            // after blur_constant/magnification are already fixed - i.e. it
+            // corrects the blur-radius *unit* mismatch between window and
+            // target resolution. The two touch different stages of the same
+            // pipeline and are numerically independent, so they compose
+            // cleanly (no double-scaling) when both gates are on. Per
+            // campaign ADAPTATION RULE 4, the FS behavior only applies while
+            // its own gate (FSSnapshotDoFWysiwyg, default true) is on; with
+            // it off, DOF_MAX_COF/DOF_TAN_PIXEL_ANGLE are unscaled exactly as
+            // upstream Alchemy today, and BDMergeSnapshotAutoscale continues
+            // to work unchanged either way.
+            static LLCachedControl<bool> fs_dof_wysiwyg(gSavedSettings, "FSSnapshotDoFWysiwyg", true);
+            F32 dof_tan_pixel_angle_scale = 1.f;
+            F32 adj_cof = CameraMaxCoF;
+            if (fs_dof_wysiwyg)
+            {
+                F32 screen_to_target_scale_factor = (F32)gViewerWindow->getWindowHeightRaw() / (F32)dst->getHeight();
+                dof_tan_pixel_angle_scale = screen_to_target_scale_factor;
+                adj_cof = CameraMaxCoF / screen_to_target_scale_factor;
+            }
+
             { // build diffuse+bloom+CoF
                 mRT->deferredLight.bindTarget();
 
@@ -8921,9 +9396,9 @@ void LLPipeline::renderDoF(LLRenderTarget* src, LLRenderTarget* dst)
                 gDeferredCoFProgram.uniform2f(LLShaderMgr::DEFERRED_SCREEN_RES, (GLfloat)dst->getWidth(), (GLfloat)dst->getHeight());
                 gDeferredCoFProgram.uniform1f(LLShaderMgr::DOF_FOCAL_DISTANCE, -subject_distance / 1000.f);
                 gDeferredCoFProgram.uniform1f(LLShaderMgr::DOF_BLUR_CONSTANT, blur_constant);
-                gDeferredCoFProgram.uniform1f(LLShaderMgr::DOF_TAN_PIXEL_ANGLE, tanf(1.f / LLDrawable::sCurPixelAngle));
+                gDeferredCoFProgram.uniform1f(LLShaderMgr::DOF_TAN_PIXEL_ANGLE, tanf(1.f / LLDrawable::sCurPixelAngle) * dof_tan_pixel_angle_scale);
                 gDeferredCoFProgram.uniform1f(LLShaderMgr::DOF_MAGNIFICATION, magnification);
-                gDeferredCoFProgram.uniform1f(LLShaderMgr::DOF_MAX_COF, CameraMaxCoF);
+                gDeferredCoFProgram.uniform1f(LLShaderMgr::DOF_MAX_COF, adj_cof);
                 gDeferredCoFProgram.uniform1f(LLShaderMgr::DOF_RES_SCALE, CameraDoFResScale);
 
                 mScreenTriangleVB->setBuffer();
@@ -8948,7 +9423,7 @@ void LLPipeline::renderDoF(LLRenderTarget* src, LLRenderTarget* dst)
                 post_program.bindTexture(LLShaderMgr::DEFERRED_DIFFUSE, &mRT->deferredLight, LLTexUnit::TFO_POINT);
 
                 post_program.uniform2f(LLShaderMgr::DEFERRED_SCREEN_RES, (GLfloat)dst->getWidth(), (GLfloat)dst->getHeight());
-                post_program.uniform1f(LLShaderMgr::DOF_MAX_COF, CameraMaxCoF);
+                post_program.uniform1f(LLShaderMgr::DOF_MAX_COF, adj_cof);
                 post_program.uniform1f(LLShaderMgr::DOF_RES_SCALE, CameraDoFResScale);
 
                 mScreenTriangleVB->setBuffer();
@@ -8970,7 +9445,7 @@ void LLPipeline::renderDoF(LLRenderTarget* src, LLRenderTarget* dst)
                 gDeferredDoFCombineProgram.bindTexture(LLShaderMgr::DEFERRED_LIGHT, &mRT->deferredLight, LLTexUnit::TFO_POINT);
 
                 gDeferredDoFCombineProgram.uniform2f(LLShaderMgr::DEFERRED_SCREEN_RES, (GLfloat)dst->getWidth(), (GLfloat)dst->getHeight());
-                gDeferredDoFCombineProgram.uniform1f(LLShaderMgr::DOF_MAX_COF, CameraMaxCoF);
+                gDeferredDoFCombineProgram.uniform1f(LLShaderMgr::DOF_MAX_COF, adj_cof);
                 gDeferredDoFCombineProgram.uniform1f(LLShaderMgr::DOF_RES_SCALE, CameraDoFResScale);
                 gDeferredDoFCombineProgram.uniform1f(LLShaderMgr::DOF_WIDTH, (dof_width - 1) / (F32)src->getWidth());
                 gDeferredDoFCombineProgram.uniform1f(LLShaderMgr::DOF_HEIGHT, (dof_height - 1) / (F32)src->getHeight());
@@ -9229,6 +9704,16 @@ void LLPipeline::renderFinalize()
     }
 
     gGL.setSceneBlendType(LLRender::BT_ALPHA);
+
+    // [F4/F8] campaign item F4/F8: composition guide overlay + DoF focus
+    // point crosshair. Placed here (after the final blit, before physics
+    // debug) to mirror donor Firestorm's call site in LLPipeline::renderFinalize
+    // (I:\enve indra/newview/pipeline.cpp, right after its final present
+    // blit). Both are UI-pass draws gated on RENDER_DEBUG_FEATURE_UI, so they
+    // are automatically excluded from snapshots exactly like the rest of the
+    // UI (see the two functions' own comments for detail).
+    renderCompositionGuideOverlay();
+    renderFocusPoint();
 
     if (hasRenderDebugMask(LLPipeline::RENDER_DEBUG_PHYSICS_SHAPES))
     {

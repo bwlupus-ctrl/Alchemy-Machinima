@@ -335,6 +335,19 @@ public:
     void renderHighlights();
     void renderDebug();
     void renderPhysicsDisplay();
+    // [F4] DoF focus point crosshair overlay (donor: Firestorm I:\enve
+    // indra/newview/pipeline.cpp LLPipeline::renderFocusPoint, FIRE-32023 /
+    // FIRE-16728; BD/Alchemy merge campaign item F4). Draws in the UI pass so
+    // it is excluded from snapshots the same way as the rest of the UI.
+    void renderFocusPoint();
+    // [F8] Rule-of-thirds / golden-ratio / diagonal composition guide overlay
+    // (donor: Firestorm I:\enve indra/newview/pipeline.cpp
+    // LLPipeline::renderSnapshotGuidesOverlay; campaign item F8). Unlike the
+    // donor, this is not gated on the snapshot floater's capture-frame border
+    // (FS FSSnapshotShowCaptureFrame / gPostSnapshotFrameProgram were not
+    // ported - see F4/F8 campaign report); it simply overlays the full
+    // viewport whenever RenderCompositionGuide is enabled. Also UI-pass only.
+    void renderCompositionGuideOverlay();
 
     void rebuildPools(); // Rebuild pools
 
@@ -1001,6 +1014,14 @@ public:
     // Determines which set of UVs to use in highlight display
     //
     static LLRender::eTexIndex sRenderHighlightTextureChannel;
+
+    // [F4] DoF focus target for the current frame, promoted from a local
+    // static in renderDoF() so renderFocusPoint() can draw it in the UI pass.
+    // (donor: Firestorm pipeline.h LLPipeline::sLastFocusPoint, FIRE-16728)
+    static LLVector3        sLastFocusPoint;
+    // [F4] whether DoF was actually composited this frame; gates the focus
+    // point crosshair the same way donor's sDoFEnabled does (FIRE-32023).
+    static bool             sDoFEnabled;
 
     //debug use
     static U32              sCurRenderPoolType ;

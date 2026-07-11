@@ -2137,6 +2137,87 @@
             <key>Value</key>
             <integer>0</integer>
         </map>
+        <key>RenderFocusPointCrosshair</key>
+        <map>
+            <key>Comment</key>
+            <string>[F4] Draw a small crosshair at the current DoF focus point (red while RenderFocusPointLocked, yellow otherwise). UI-pass only, excluded from snapshots. Donor: Firestorm FSFocusPointRender, FIRE-32023.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>Boolean</string>
+            <key>Value</key>
+            <integer>0</integer>
+        </map>
+        <key>RenderCompositionGuide</key>
+        <map>
+            <key>Comment</key>
+            <string>[F8] Overlay a rule-of-thirds/golden-ratio/diagonal composition guide on the 3D view. UI-pass only, excluded from snapshots. Donor: Firestorm FSSnapshotShowGuides (decoupled from FS's capture-frame border, not ported).</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>Boolean</string>
+            <key>Value</key>
+            <integer>0</integer>
+        </map>
+        <key>RenderCompositionGuideStyle</key>
+        <map>
+            <key>Comment</key>
+            <string>[F8] rule_of_thirds | golden_ratio_top_left | golden_ratio_top_right | golden_ratio_bottom_left | golden_ratio_bottom_right | diagonal. Donor: Firestorm FSSnapshotGuideStyle.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>String</string>
+            <key>Value</key>
+            <string>rule_of_thirds</string>
+        </map>
+        <key>RenderCompositionGuideColor</key>
+        <map>
+            <key>Comment</key>
+            <string>[F8] Composition guide line color. Donor: Firestorm FSSnapshotFrameGuideColor.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>Color3</string>
+            <key>Value</key>
+            <array>
+                <real>1.0</real>
+                <real>1.0</real>
+                <real>0.0</real>
+            </array>
+        </map>
+        <key>RenderCompositionGuideWidth</key>
+        <map>
+            <key>Comment</key>
+            <string>[F8] Composition guide line thickness in pixels. Donor: Firestorm FSSnapshotFrameGuideWidth.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>2.0</real>
+        </map>
+        <key>RenderCompositionGuideVisibility</key>
+        <map>
+            <key>Comment</key>
+            <string>[F8] Composition guide opacity [0,1]. Donor: Firestorm FSSnapshotGuideVisibility.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.5</real>
+        </map>
+        <key>FSSnapshotDoFWysiwyg</key>
+        <map>
+            <key>Comment</key>
+            <string>[F4] WYSIWYG DoF fix: scale DOF_TAN_PIXEL_ANGLE/DOF_MAX_COF by (window height / render target height) so DoF blur matches visually between on-screen and a differently-sized snapshot render target. Composes with [BDMerge A1.2] BDMergeSnapshotAutoscale (see pipeline.cpp renderDoF comment) - the two touch different stages of the DoF pipeline and do not double-scale. Donor: Firestorm FIRE-13989.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>Boolean</string>
+            <key>Value</key>
+            <integer>1</integer>
+        </map>
         <key>RenderGLContext10bitSDR</key>
         <map>
             <key>Comment</key>

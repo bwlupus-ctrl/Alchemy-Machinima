@@ -4531,4 +4531,11 @@ and report the problem.
     <string name="TooltipDistance">
         Distance: [OBJECT_DISTANCE]
     </string>
+
+    <!-- [F4] Phototools environment quick-switcher combo placeholder entries
+         (donor: Firestorm I:\enve indra/newview/skins/default/xui/en/strings.xml;
+         campaign item F4, alfloaterphototools.cpp) -->
+    <string name="QP_WL_Region_Default">Shared Environment</string>
+    <string name="QP_WL_Day_Cycle_Based">Day cycle based</string>
+    <string name="QP_WL_None">None</string>
 </strings>

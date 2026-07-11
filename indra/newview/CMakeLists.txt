@@ -170,6 +170,7 @@ set(viewer_SOURCE_FILES
     alfloatergroupprofile.cpp
     alfloaterlightbox.cpp
     alfloaterparticleeditor.cpp
+    alfloaterphototools.cpp
     alfloaterprofilelegacy.cpp
     alfloaterprogressview.cpp
     alfloaterregiontracker.cpp
@@ -945,6 +946,7 @@ set(viewer_HEADER_FILES
     alfloatergroupprofile.h
     alfloaterlightbox.h
     alfloaterparticleeditor.h
+    alfloaterphototools.h
     alfloaterprofilelegacy.h
     alfloaterprogressview.h
     alfloaterregiontracker.h
