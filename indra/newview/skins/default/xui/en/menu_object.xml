@@ -68,6 +68,25 @@
     <menu_item_check.on_enable
         function="Object.EnableVolumetricShaft" />
   </menu_item_check>
+  <!-- [BDMerge G3.3 Batch 1 C] per-projector art-direction override: snapshot the
+       current global shaft sliders onto this projector (also enables its shaft), or
+       clear back to the globals. Session-only. -->
+  <menu_item_call
+      label="Shaft: capture current settings"
+      name="Object Shaft Capture Override">
+    <menu_item_call.on_click
+        function="Object.ShaftCaptureOverride" />
+    <menu_item_call.on_enable
+        function="Object.EnableShaftCaptureOverride" />
+  </menu_item_call>
+  <menu_item_call
+      label="Shaft: clear override"
+      name="Object Shaft Clear Override">
+    <menu_item_call.on_click
+        function="Object.ShaftClearOverride" />
+    <menu_item_call.on_enable
+        function="Object.EnableShaftClearOverride" />
+  </menu_item_call>
   <menu_item_separator layout="topleft" />
   <context_menu
     label="Tools"

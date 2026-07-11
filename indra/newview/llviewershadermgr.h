@@ -266,6 +266,7 @@ extern LLGLSLShader         gVolumetricLightProgram;
 // [BDMerge G3.3] per-projector volumetric light cones (visible spotlight shafts)
 extern LLGLSLShader         gDeferredProjectorVolumetricProgram;
 extern LLGLSLShader         gDeferredProjectorVolumetricUpsampleProgram; // [BDMerge G3.3 P1 item 3]
+extern LLGLSLShader         gDeferredProjectorVolumetricTemporalProgram; // [BDMerge G3.3 Batch 1 A]
 extern LLGLSLShader         gDeferredProjectorVolumetricBloomFeedProgram; // [BDMerge G3.3 P3 item 4]
 extern LLGLSLShader         gDeferredPostNoDoFProgram;
 extern LLGLSLShader         gExposureProgram;

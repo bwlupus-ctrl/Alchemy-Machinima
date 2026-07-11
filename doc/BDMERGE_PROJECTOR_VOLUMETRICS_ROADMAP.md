@@ -223,6 +223,79 @@ all no-op defaults). **New shader/program** for the bloom feed (reconfigure was 
 so the staging manifest picked it up; verify it lands under
 `Release\app_settings\shaders\class1\deferred\`).
 
+## Batch 1 — quality/config upgrades (2026-07-11 Opus)
+
+Three deferred items completed. All gated under the existing
+`BDMergeProjectorVolumetrics` master; new levers default to the current shipped
+look. `setupSpotLightVolumetric` stays side-effect-free. In-world verification
+still owed (no SL session this pass).
+
+### A. Full across-frame temporal reprojection — DONE (completes Phase 1 item 2/3 remainder)
+Real temporal accumulation, not just static dither. New half-res program
+`gDeferredProjectorVolumetricTemporalProgram`
+(`class1/deferred/projectorVolumetricTemporalF.glsl`, `isDeferred` for
+`getPosition`) runs **between the half-res march and the bilateral upsample**.
+Two ping-pong RGBA16F history targets `mProjVolHistory[2]` (rgb = accumulated
+shaft, a = stored view-space depth) carry the accumulation; `mProjVolHistoryIdx`
+flips each frame; `mProjVolPrevViewProj` stores the previous frame's world→clip.
+The resolve reprojects each pixel's scene surface into the previous frame (view→
+agent via `projvol_inv_modelview`, then agent→prev-clip via `projvol_prev_viewproj`),
+**rejects history on camera cuts** (reprojected UV off-screen / behind camera) **and
+disocclusion** (>10% depth delta vs. stored depth), **neighborhood-clamps** the
+survivor to the current 3×3 shaft min/max, and EMA-blends
+(`projvol_temporal_blend`). The clamp is the anti-ghost safety net: worst case the
+result degrades to the current frame, so it can never smear — which is what makes
+it safe to default on and unverifiable-but-stable. The resolved slot becomes the
+shaft source (`mProjVolShaftSrc`) for the upsample **and** the bloom feed, so both
+sample the denoised shaft. History is invalidated on effect-off / temporal-off /
+resize / empty frame so a stale reprojection can never leak. New settings
+`BDMergeProjectorVolumetricsTemporal` (default **on**) +
+`...TemporalBlend` (0–0.98, default 0.85). Requires HalfRes on (the accumulation
+lives in the half-res history). Composes with the static dither and half-res path.
+**Deferred piece:** none of the design was cut, but note the reprojection uses
+scene **surface** depth (standard for volumetrics) — a dedicated shaft-depth
+history would tighten disocclusion further; documented for a future pass.
+
+### B. Gobo-colored occluder shadows in the shaft — DONE (gobo path); colored-shadow-map path documented
+`projectorVolumetricF.glsl` now composites the occluded term as
+`mix(cookie * projvol_shadow_tint, cookie, vis)` instead of `vis * cookie`: at
+`projvol_shadow_tint == 0` (default) this is byte-identical to the shipped crisp
+black occluder shadow; above 0, occluded march samples carry a **dimmed, gobo-
+shaped colored** contribution so occluders tint/dim the beam like stained glass
+(colored god-ray banding shaped by the projector's cookie, which is then multiplied
+by the light color like the rest of the shaft). Sub-control
+`BDMergeProjectorVolumetricsShadowTint` (0–1, **default 0 = off**). **Deferred /
+documented follow-up:** *true colored-occluder* shadows (the occluder's own albedo
+tinting the beam) need a **colored spot shadow map** — render occluder albedo into
+the spot shadow pass and sample it here. That is a large shadow-pipeline change
+(extra RT per spot slot + shadow-pass shader changes) and was assessed out of scope
+for this batch; the gobo-colored version ships now.
+
+### C. Per-projector volumetric overrides — DONE (completes the deferred Phase 2 item)
+Session-only per-UUID overrides parallel to the flag set: a
+`std::map<LLUUID, VolumetricShaftOverride>` (`sVolumetricShaftOverrides`, cleared on
+relog by `clearVolumetricShafts`) holding `{multiplier, feather, anisotropy,
+density, tint, tintStrength}`. When a flagged projector has an override the render
+loop uploads those per cone in place of the globals (the four float levers +
+`density` moved from once-per-frame to per-cone uploads; the tint folds into the
+per-cone light color). Set via a right-click context-menu action
+**"Shaft: capture current settings"** (`Object.ShaftCaptureOverride`) that snapshots
+the current global sliders onto every selected root and flags it on (capture implies
+enable); **"Shaft: clear override"** (`Object.ShaftClearOverride`, enabled only when
+the primary has an override) reverts to the globals. Both sit next to the existing
+"Volumetric Shaft" toggle on the object context menu's first page. **Documented
+follow-up:** a full per-projector parameter dialog (edit each override field
+directly, plus the non-overridable levers: dither, shadow samples, noise, fog,
+bloom) — the capture/clear model covers the art-direction ask for now.
+
+**New reserved uniforms** (llshadermgr.{h,cpp}): `projvol_shadow_tint` (B),
+`projvol_history` (A sampler), `projvol_prev_viewproj` (A), `projvol_temporal_blend`
+(A). **New settings** (all in the "Proj Shafts" Lightbox tab): `...Temporal`,
+`...TemporalBlend`, `...ShadowTint`. **New shader/program** for the temporal resolve
+(reconfigure run so the manifest picks it up; verify it lands under
+`Release\app_settings\shaders\class1\deferred\`). **New menu entries**:
+`Object.ShaftCaptureOverride`, `Object.ShaftClearOverride`.
+
 ## Sequencing
 Phase 1 → Phase 2 → Phase 3. Phase 1 items 1–2 (HDR composite + dither) are the
 biggest quality jump and should land together. Each phase is one or more

@@ -512,6 +512,13 @@ public:
         PROJVOL_INV_MODELVIEW,             //  "projvol_inv_modelview"     (items 1/2)
         PROJVOL_BLOOM_FEED,                //  "projvol_bloom_feed"        (item 4)
 
+        // [BDMerge G3.3 Batch 1] temporal reprojection (A) + gobo-colored occluder
+        // shadows (B)
+        PROJVOL_SHADOW_TINT,               //  "projvol_shadow_tint"  (B)
+        PROJVOL_HISTORY,                   //  "projvol_history"      (A, sampler)
+        PROJVOL_PREV_VIEWPROJ,             //  "projvol_prev_viewproj"(A)
+        PROJVOL_TEMPORAL_BLEND,            //  "projvol_temporal_blend"(A)
+
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

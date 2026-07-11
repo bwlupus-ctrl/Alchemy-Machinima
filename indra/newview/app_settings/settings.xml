@@ -10698,6 +10698,39 @@
       <key>Value</key>
       <real>0.0</real>
   </map>
+  <key>BDMergeProjectorVolumetricsTemporal</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 Batch 1] Enable across-frame temporal reprojection accumulation for the projector shafts. Blends each frame's shaft with a reprojected, neighborhood-clamped, disocclusion/camera-cut-rejected copy of the previous frame so the shaft is smoother and stays stable with fewer march samples. Neighborhood clamp bounds the result to the current frame so it cannot ghost or smear - a static scene converges to the current look, just denoised. Requires Half-res on (the accumulation lives in the half-res history targets). Default on.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+  </map>
+  <key>BDMergeProjectorVolumetricsTemporalBlend</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 Batch 1] Temporal accumulation history weight / EMA blend (0.0-0.98; default 0.85). Higher = more history retained = smoother and more stable but slower to react to change; lower = more responsive but noisier. Only active when Temporal is on.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.85</real>
+  </map>
+  <key>BDMergeProjectorVolumetricsShadowTint</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 Batch 1] Gobo-colored occluder shadow strength (0.0-1.0; default 0.0 = classic hard black occluder shadow). When above 0, occluded march samples still carry a dimmed, gobo-shaped colored contribution so occluders tint/dim the beam like stained glass (colored god-ray banding shaped by the projector's cookie) instead of punching pure-black holes. Keep subtle (~0.1-0.3). True colored-occluder shadows (the occluder's own albedo tinting the beam) would need a colored spot shadow map - documented as a follow-up.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+  </map>
   <key>RenderTextureVRAMDivisor</key>
   <map>
       <key>Comment</key>

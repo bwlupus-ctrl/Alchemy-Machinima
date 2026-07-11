@@ -632,6 +632,56 @@ namespace
         LLViewerObject* pObj = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
         return pObj && LLPipeline::isVolumetricShaftEnabled(pObj->getID());
     }
+
+    // [BDMerge G3.3 Batch 1 C] Snapshot the current global shaft sliders into a
+    // per-projector override for every selected root, and flag it on (capture
+    // implies enable). Session-only; cleared on relog with the flag set.
+    void handle_object_shaft_capture(const LLSD& /*sdParam*/)
+    {
+        LLPipeline::VolumetricShaftOverride ov;
+        ov.multiplier   = gSavedSettings.getF32("BDMergeProjectorVolumetricsMultiplier");
+        ov.feather      = gSavedSettings.getF32("BDMergeProjectorVolumetricsFeather");
+        ov.anisotropy   = gSavedSettings.getF32("BDMergeProjectorVolumetricsAnisotropy");
+        ov.density      = gSavedSettings.getF32("BDMergeProjectorVolumetricsDensity");
+        ov.tint         = gSavedSettings.getColor3("BDMergeProjectorVolumetricsTint");
+        ov.tintStrength = gSavedSettings.getF32("BDMergeProjectorVolumetricsTintStrength");
+
+        LLObjectSelectionHandle hSel = LLSelectMgr::getInstance()->getSelection();
+        if (hSel.isNull())
+            return;
+
+        for (LLObjectSelection::root_iterator itObj = hSel->root_begin(), endObj = hSel->root_end();
+             itObj != endObj; ++itObj)
+        {
+            const LLSelectNode* pNode = *itObj;
+            LLViewerObject* pObj = (pNode) ? pNode->getObject() : nullptr;
+            if (pObj && pObj->getID().notNull())
+                LLPipeline::setVolumetricShaftOverride(pObj->getID(), ov);
+        }
+    }
+
+    // [BDMerge G3.3 Batch 1 C] Revert every selected root to the global sliders.
+    void handle_object_shaft_clear_override(const LLSD& /*sdParam*/)
+    {
+        LLObjectSelectionHandle hSel = LLSelectMgr::getInstance()->getSelection();
+        if (hSel.isNull())
+            return;
+
+        for (LLObjectSelection::root_iterator itObj = hSel->root_begin(), endObj = hSel->root_end();
+             itObj != endObj; ++itObj)
+        {
+            const LLSelectNode* pNode = *itObj;
+            LLViewerObject* pObj = (pNode) ? pNode->getObject() : nullptr;
+            if (pObj && pObj->getID().notNull())
+                LLPipeline::clearVolumetricShaftOverride(pObj->getID());
+        }
+    }
+
+    bool enable_object_shaft_clear_override()
+    {
+        LLViewerObject* pObj = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
+        return pObj && LLPipeline::hasVolumetricShaftOverride(pObj->getID());
+    }
 }
 
 ////////////////////////////////////////////////////////
@@ -681,6 +731,11 @@ void ALViewerMenu::initialize_menus()
     commit.add("Object.VolumetricShaft", boost::bind(&handle_object_volumetric_shaft, _2));
     enable.add("Object.EnableVolumetricShaft", boost::bind(&enable_object_volumetric_shaft));
     enable.add("Object.CheckVolumetricShaft", boost::bind(&check_object_volumetric_shaft));
+// [BDMerge G3.3 Batch 1 C] per-projector volumetric override capture/clear
+    commit.add("Object.ShaftCaptureOverride", boost::bind(&handle_object_shaft_capture, _2));
+    enable.add("Object.EnableShaftCaptureOverride", boost::bind(&enable_object_volumetric_shaft));
+    commit.add("Object.ShaftClearOverride", boost::bind(&handle_object_shaft_clear_override, _2));
+    enable.add("Object.EnableShaftClearOverride", boost::bind(&enable_object_shaft_clear_override));
 
     // [SL:KB] - Patch: World-RenderExceptions | Checked: Catznip-5.2
     commit.add("View.Blocked", boost::bind(&handle_view_blocked, _2));

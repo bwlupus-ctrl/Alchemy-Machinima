@@ -81,6 +81,13 @@ uniform int   projvol_dither;     // item 2: 0=off(centre) 1=static bluenoise 2=
 uniform float projvol_frame;      // item 2: temporal seed (frame counter, wrapped)
 uniform float projvol_max;        // item 1: HDR headroom clamp (large in linear HDR)
 
+// [BDMerge G3.3 Batch 1 B] Gobo-colored occluder shadows. 0 = classic hard black
+// occluder shadow (the shipped look). >0 lets occluded march samples still carry a
+// dimmed, gobo-shaped colored contribution so occluders tint/dim the beam like
+// stained glass (colored god-ray banding shaped by the projector's cookie) rather
+// than punching pure-black holes.
+uniform float projvol_shadow_tint;
+
 // [Phase 3] atmosphere levers. All default to a no-op (density 1, strengths 0) so
 // the shipped look is a flat, uniform cone until a lever is dialed up.
 uniform float projvol_density;           // item 3: global haziness master (1 = no-op)
@@ -353,7 +360,14 @@ void main()
         float denom = 1.0 + g * g - 2.0 * g * cosT;
         float phase = (1.0 - g * g) / (4.0 * M_PI * pow(max(denom, 1e-4), 1.5));
 
-        accum += vis * atten * phase * cookie * edge_feather * density;
+        // [Batch 1 B] Gobo-colored occluder shadows. The lit term is the full gobo
+        // in-scatter (cookie); the occluded term is that same gobo dimmed by
+        // projvol_shadow_tint, so shadow bands stay colored/shaped by the cookie
+        // instead of going pure black. mix by visibility: vis=1 -> lit, vis=0 ->
+        // occluded. At projvol_shadow_tint == 0 this reduces exactly to vis*cookie
+        // (the classic crisp black occluder shadow).
+        vec3 scatter = mix(cookie * projvol_shadow_tint, cookie, vis);
+        accum += atten * phase * scatter * edge_feather * density;
     }
 
     // Single-scattering integral: weight by physical step length so a longer

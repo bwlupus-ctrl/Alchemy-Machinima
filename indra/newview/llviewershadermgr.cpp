@@ -221,6 +221,7 @@ LLGLSLShader            gVolumetricLightProgram;
 // [BDMerge G3.3] per-projector volumetric light cones (visible spotlight shafts)
 LLGLSLShader            gDeferredProjectorVolumetricProgram;
 LLGLSLShader            gDeferredProjectorVolumetricUpsampleProgram; // [BDMerge G3.3 P1 item 3]
+LLGLSLShader            gDeferredProjectorVolumetricTemporalProgram; // [BDMerge G3.3 Batch 1 A]
 LLGLSLShader            gDeferredProjectorVolumetricBloomFeedProgram; // [BDMerge G3.3 P3 item 4]
 LLGLSLShader            gDeferredPostNoDoFProgram;
 LLGLSLShader            gDeferredWLSkyProgram;
@@ -405,6 +406,7 @@ void LLViewerShaderMgr::finalizeShaderList()
     // util set as G3.2, so register it too (keeps linked util externs satisfied).
     mShaderList.push_back(&gDeferredProjectorVolumetricProgram);
     mShaderList.push_back(&gDeferredProjectorVolumetricUpsampleProgram); // [BDMerge G3.3 P1 item 3]
+    mShaderList.push_back(&gDeferredProjectorVolumetricTemporalProgram); // [BDMerge G3.3 Batch 1 A]
     mShaderList.push_back(&gDeferredProjectorVolumetricBloomFeedProgram); // [BDMerge G3.3 P3 item 4]
     mShaderList.push_back(&gDeferredAlphaProgram);
     mShaderList.push_back(&gHUDAlphaProgram);
@@ -1202,6 +1204,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gVolumetricLightProgram.unload();
         gDeferredProjectorVolumetricProgram.unload(); // [BDMerge G3.3]
         gDeferredProjectorVolumetricUpsampleProgram.unload(); // [BDMerge G3.3 P1 item 3]
+        gDeferredProjectorVolumetricTemporalProgram.unload(); // [BDMerge G3.3 Batch 1 A]
         gDeferredProjectorVolumetricBloomFeedProgram.unload(); // [BDMerge G3.3 P3 item 4]
         gEnvironmentMapProgram.unload();
         gDeferredWLSkyProgram.unload();
@@ -3065,6 +3068,24 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         if (!success)
         {
             LL_WARNS() << "Failed to create shader '" << gDeferredProjectorVolumetricUpsampleProgram.mName << "', disabling!" << LL_ENDL;
+            success = true;
+        }
+
+        // [BDMerge G3.3 Batch 1 A] Temporal reprojection resolve shader: blends the
+        // freshly-marched half-res shaft with the reprojected previous accumulation
+        // (neighborhood-clamped, depth/cut-rejected) into the history slot. Deferred
+        // so getPosition()/depthMap/inv_proj resolve for reprojection + disocclusion.
+        gDeferredProjectorVolumetricTemporalProgram.mName = "Projector Volumetric Temporal Shader";
+        gDeferredProjectorVolumetricTemporalProgram.mFeatures.isDeferred = true;
+        gDeferredProjectorVolumetricTemporalProgram.mShaderFiles.clear();
+        gDeferredProjectorVolumetricTemporalProgram.clearPermutations();
+        gDeferredProjectorVolumetricTemporalProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gDeferredProjectorVolumetricTemporalProgram.mShaderFiles.push_back(make_pair("deferred/projectorVolumetricTemporalF.glsl", GL_FRAGMENT_SHADER));
+        gDeferredProjectorVolumetricTemporalProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gDeferredProjectorVolumetricTemporalProgram.createShader();
+        if (!success)
+        {
+            LL_WARNS() << "Failed to create shader '" << gDeferredProjectorVolumetricTemporalProgram.mName << "', disabling!" << LL_ENDL;
             success = true;
         }
 

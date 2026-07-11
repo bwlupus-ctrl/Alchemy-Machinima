@@ -775,6 +775,20 @@ public:
     // bloom feed knows the texture is current and safe to sample.
     bool                    mProjVolHalfValid = false;
 
+    // [BDMerge G3.3 Batch 1 A] Temporal reprojection accumulation. Two half-res
+    // RGBA16F history targets (ping-pong): rgb = accumulated shaft, a = view-space
+    // depth stored for the disocclusion test. The temporal resolve reads the
+    // previous slot + the freshly-marched mProjVolHalf and writes the blended
+    // result into the current slot, which then feeds the upsample and bloom passes.
+    // Allocated/cleared with mProjVolHalf, released in releaseGLBuffers.
+    LLRenderTarget          mProjVolHistory[2];
+    U32                     mProjVolHistoryIdx = 0;   // current write slot
+    bool                    mProjVolHistoryValid = false; // false => no valid prev
+    F32                     mProjVolPrevViewProj[16]; // world->clip of the last resolve
+    // The shaft texture the upsample/bloom passes should sample this frame: the
+    // temporal-resolved history slot when temporal is on, else &mProjVolHalf.
+    LLRenderTarget*         mProjVolShaftSrc = nullptr;
+
     // exposure map for getting average color in scene
     LLRenderTarget          mLuminanceMap;
     LLRenderTarget          mExposureMap;
@@ -1179,9 +1193,35 @@ public:
     static F32 BDMergeProjectorVolumetricsFogFalloff;
     static F32 BDMergeProjectorVolumetricsFogBase;
     static F32 BDMergeProjectorVolumetricsBloomFeed;     // item 4: bloom halo feed
+    // [BDMerge G3.3 Batch 1 A] across-frame temporal reprojection accumulation.
+    static bool BDMergeProjectorVolumetricsTemporal;     // A: enable (default on)
+    static F32 BDMergeProjectorVolumetricsTemporalBlend; // A: history EMA weight
+    // [BDMerge G3.3 Batch 1 B] gobo-colored occluder shadows (stained-glass tint).
+    static F32 BDMergeProjectorVolumetricsShadowTint;    // B: 0 = classic black shadow
     // [BDMerge G3.3 Phase 2] session-only opt-in set of projector object UUIDs
     // (not persisted; see toggleVolumetricShaft/clearVolumetricShafts).
     static std::set<LLUUID> sVolumetricShaftObjects;
+
+    // [BDMerge G3.3 Batch 1 C] Session-only PER-PROJECTOR art-direction overrides.
+    // When a flagged projector has an override, the render loop uses these values
+    // in place of the global sliders for that cone. Set via the right-click
+    // "Shaft: capture current settings" action (snapshots the current globals) and
+    // removed via "Shaft: clear override". NOT persisted - cleared on relog with
+    // the flag set. A projector with no entry here falls back to the globals.
+    struct VolumetricShaftOverride
+    {
+        F32      multiplier   = 1.f;
+        F32      feather      = 0.15f;
+        F32      anisotropy   = 0.72f;
+        F32      density      = 1.f;
+        LLColor3 tint         = LLColor3(1.f, 1.f, 1.f);
+        F32      tintStrength = 0.f;
+    };
+    static void  setVolumetricShaftOverride(const LLUUID& id, const VolumetricShaftOverride& ov);
+    static void  clearVolumetricShaftOverride(const LLUUID& id);
+    static bool  getVolumetricShaftOverride(const LLUUID& id, VolumetricShaftOverride& out);
+    static bool  hasVolumetricShaftOverride(const LLUUID& id);
+    static std::map<LLUUID, VolumetricShaftOverride> sVolumetricShaftOverrides;
     static S32 RenderScreenSpaceReflectionIterations;
     static F32 RenderScreenSpaceReflectionRayStep;
     static F32 RenderScreenSpaceReflectionDistanceBias;

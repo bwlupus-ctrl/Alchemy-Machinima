@@ -266,6 +266,10 @@ F32 LLPipeline::BDMergeProjectorVolumetricsFogGroundDensity;
 F32 LLPipeline::BDMergeProjectorVolumetricsFogFalloff;
 F32 LLPipeline::BDMergeProjectorVolumetricsFogBase;
 F32 LLPipeline::BDMergeProjectorVolumetricsBloomFeed;
+bool LLPipeline::BDMergeProjectorVolumetricsTemporal;
+F32 LLPipeline::BDMergeProjectorVolumetricsTemporalBlend;
+F32 LLPipeline::BDMergeProjectorVolumetricsShadowTint;
+std::map<LLUUID, LLPipeline::VolumetricShaftOverride> LLPipeline::sVolumetricShaftOverrides;
 std::set<LLUUID> LLPipeline::sVolumetricShaftObjects;
 S32 LLPipeline::RenderScreenSpaceReflectionIterations;
 F32 LLPipeline::RenderScreenSpaceReflectionRayStep;
@@ -433,6 +437,11 @@ LLPipeline::LLPipeline() :
     {
         mHWLightColors[i] = LLColor4::black;
     }
+
+    // [BDMerge G3.3 Batch 1 A] identity so the first temporal-resolve upload is
+    // well-defined (it is ignored that frame anyway - history is invalid).
+    for (U32 i = 0; i < 16; ++i)
+        mProjVolPrevViewProj[i] = (i % 5 == 0) ? 1.f : 0.f;
 }
 
 void LLPipeline::connectRefreshCachedSettingsSafe(const std::string name)
@@ -664,6 +673,9 @@ void LLPipeline::init()
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsFogFalloff");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsFogBase");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsBloomFeed");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsTemporal");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsTemporalBlend");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsShadowTint");
     connectRefreshCachedSettingsSafe("RenderScreenSpaceReflectionIterations");
     connectRefreshCachedSettingsSafe("RenderScreenSpaceReflectionRayStep");
     connectRefreshCachedSettingsSafe("RenderScreenSpaceReflectionDistanceBias");
@@ -1344,6 +1356,9 @@ void LLPipeline::refreshCachedSettings()
     BDMergeProjectorVolumetricsFogFalloff = gSavedSettings.getF32("BDMergeProjectorVolumetricsFogFalloff");
     BDMergeProjectorVolumetricsFogBase = gSavedSettings.getF32("BDMergeProjectorVolumetricsFogBase");
     BDMergeProjectorVolumetricsBloomFeed = gSavedSettings.getF32("BDMergeProjectorVolumetricsBloomFeed");
+    BDMergeProjectorVolumetricsTemporal = gSavedSettings.getBOOL("BDMergeProjectorVolumetricsTemporal");
+    BDMergeProjectorVolumetricsTemporalBlend = gSavedSettings.getF32("BDMergeProjectorVolumetricsTemporalBlend");
+    BDMergeProjectorVolumetricsShadowTint = gSavedSettings.getF32("BDMergeProjectorVolumetricsShadowTint");
     RenderScreenSpaceReflectionIterations = gSavedSettings.getS32("RenderScreenSpaceReflectionIterations");
     RenderScreenSpaceReflectionRayStep = gSavedSettings.getF32("RenderScreenSpaceReflectionRayStep");
     RenderScreenSpaceReflectionDistanceBias = gSavedSettings.getF32("RenderScreenSpaceReflectionDistanceBias");
@@ -1405,6 +1420,9 @@ void LLPipeline::releaseGLBuffers()
     mSceneMap.release();
 
     mProjVolHalf.release(); // [BDMerge G3.3 Phase 1 item 3]
+    mProjVolHistory[0].release(); // [BDMerge G3.3 Batch 1 A] temporal history
+    mProjVolHistory[1].release();
+    mProjVolHistoryValid = false;
 
     mWaterExclusionMask.release();
 
@@ -9427,10 +9445,12 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
     // only re-validated below if the half-res path actually marches a shaft, so a
     // disabled/empty frame can never let the feed sample a stale mProjVolHalf.
     mProjVolHalfValid = false;
+    mProjVolShaftSrc = nullptr;
 
     if (!BDMergeProjectorVolumetrics || RenderShadowDetail <= 0 || gCubeSnapshot ||
         !gDeferredProjectorVolumetricProgram.isComplete())
     {
+        mProjVolHistoryValid = false; // effect off -> stale history can't be reused
         return;
     }
 
@@ -9470,6 +9490,47 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
         }
     }
 
+    // [Batch 1 A] Temporal reprojection accumulation. Requires the half-res path
+    // (its history + resolve live in half-res) and its own program. Two ping-pong
+    // half-res RGBA16F history targets carry the accumulated shaft (rgb) + stored
+    // view depth (a). On (re)allocation the pair is cleared and history is marked
+    // invalid so the first frame blends against black.
+    bool temporal = halfres && BDMergeProjectorVolumetricsTemporal &&
+                    gDeferredProjectorVolumetricTemporalProgram.isComplete();
+    if (temporal)
+    {
+        U32 hw = mProjVolHalf.getWidth();
+        U32 hh = mProjVolHalf.getHeight();
+        bool need_clear = false;
+        for (int k = 0; k < 2; ++k)
+        {
+            if (mProjVolHistory[k].getWidth() != hw || mProjVolHistory[k].getHeight() != hh)
+            {
+                mProjVolHistory[k].release();
+                if (!mProjVolHistory[k].allocate(hw, hh, GL_RGBA16F))
+                    temporal = false;
+                else
+                    need_clear = true;
+            }
+        }
+        if (temporal && need_clear)
+        {
+            mProjVolHistoryValid = false; // freshly (re)allocated -> no valid prev
+            LLGLDisable no_scissor(GL_SCISSOR_TEST);
+            for (int k = 0; k < 2; ++k)
+            {
+                mProjVolHistory[k].bindTarget();
+                glClearColor(0.f, 0.f, 0.f, 0.f);
+                mProjVolHistory[k].clear(GL_COLOR_BUFFER_BIT);
+                mProjVolHistory[k].flush();
+            }
+        }
+    }
+    if (!temporal)
+    {
+        mProjVolHistoryValid = false; // temporal off -> don't reproject next frame
+    }
+
     LLRenderTarget* march_target = halfres ? &mProjVolHalf : target;
 
     // Scissor + sphere projection work in the MARCH target's pixel space so the
@@ -9507,14 +9568,17 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
     bindDeferredShader(gDeferredProjectorVolumetricProgram); // binds the full per-slot shadow set
 
     // Shared (per-frame) uniforms - GODRAY_RES is uploaded per cone below because
-    // item 5 scales it adaptively.
-    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::GODRAY_MULTIPLIER, BDMergeProjectorVolumetricsMultiplier);
-    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_G, BDMergeProjectorVolumetricsAnisotropy);
-    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FEATHER, BDMergeProjectorVolumetricsFeather);
+    // item 5 scales it adaptively. [Batch 1 C] GODRAY_MULTIPLIER / PROJVOL_FEATHER /
+    // PROJVOL_G / PROJVOL_DENSITY moved to per-cone uploads so a projector's
+    // per-UUID override can replace them independently of the globals.
     gDeferredProjectorVolumetricProgram.uniform1i(LLShaderMgr::PROJVOL_SHADOW_SAMPLES, (S32)llclamp(BDMergeProjectorVolumetricsShadowSamples, (U32)1, (U32)4));
     gDeferredProjectorVolumetricProgram.uniform1i(LLShaderMgr::PROJVOL_DITHER, (S32)llclamp(BDMergeProjectorVolumetricsDither, (U32)0, (U32)2));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FRAME, (F32)(LLFrameTimer::getFrameCount() % 1024u));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_MAX, BDMergeProjectorVolumetricsMaxLuminance);
+    // [Batch 1 B] gobo-colored occluder shadows: 0 = classic hard black shadow
+    // (the shipped look), >0 lets occluded march samples carry a dimmed, gobo-shaped
+    // colored contribution ("stained glass" banding) instead of pure black.
+    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_SHADOW_TINT, llclamp(BDMergeProjectorVolumetricsShadowTint, 0.f, 1.f));
 
     // [Phase 3] atmosphere levers (all no-ops at their defaults). The inverse
     // modelview turns a view-space march sample back into agent(world, Z-up) space
@@ -9524,7 +9588,7 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
     glm::mat4 inv_mv = glm::inverse(mat);
     gDeferredProjectorVolumetricProgram.uniformMatrix4fv(LLShaderMgr::PROJVOL_INV_MODELVIEW, 1, false, glm::value_ptr(inv_mv));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_TIME, fmodf(gFrameTimeSeconds, 3600.f));
-    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_DENSITY, llmax(BDMergeProjectorVolumetricsDensity, 0.f));
+    // [Batch 1 C] PROJVOL_DENSITY moved to the per-cone upload (overridable).
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_NOISE_STRENGTH, llclamp(BDMergeProjectorVolumetricsNoiseStrength, 0.f, 1.f));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_NOISE_SCALE, llmax(BDMergeProjectorVolumetricsNoiseScale, 0.f));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_NOISE_SPEED, BDMergeProjectorVolumetricsNoiseSpeed);
@@ -9567,14 +9631,18 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
         // (off by default). The context menu flags root prims, but the light
         // feature can live on either the root or a child, so match both the
         // light-source prim's own ID and its root-edit ID.
+        LLUUID matched_id;
         {
-            bool flagged = isVolumetricShaftEnabled(volume->getID());
-            if (!flagged)
+            if (isVolumetricShaftEnabled(volume->getID()))
             {
-                if (LLViewerObject* root = volume->getRootEdit())
-                    flagged = isVolumetricShaftEnabled(root->getID());
+                matched_id = volume->getID();
             }
-            if (!flagged)
+            else if (LLViewerObject* root = volume->getRootEdit())
+            {
+                if (isVolumetricShaftEnabled(root->getID()))
+                    matched_id = root->getID();
+            }
+            if (matched_id.isNull())
             {
                 continue;
             }
@@ -9584,15 +9652,33 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
         // (NO mTargetShadowSpotLight priority reshuffle - R1).
         setupSpotLightVolumetric(gDeferredProjectorVolumetricProgram, drawablep, (S32)i);
 
+        // [Batch 1 C] Per-projector override: if this flagged projector has a
+        // captured override, use its values in place of the global sliders for this
+        // cone; otherwise fall back to the globals. Overridable levers: brightness,
+        // feather, forward-glow (g), density, tint + tint strength.
+        VolumetricShaftOverride ov;
+        const bool has_ov = getVolumetricShaftOverride(matched_id, ov);
+        const F32 e_mult     = has_ov ? ov.multiplier   : BDMergeProjectorVolumetricsMultiplier;
+        const F32 e_feather  = has_ov ? ov.feather      : BDMergeProjectorVolumetricsFeather;
+        const F32 e_g        = has_ov ? ov.anisotropy   : BDMergeProjectorVolumetricsAnisotropy;
+        const F32 e_density  = has_ov ? ov.density       : BDMergeProjectorVolumetricsDensity;
+        const LLColor3 e_tint = has_ov ? ov.tint        : BDMergeProjectorVolumetricsTint;
+        const F32 e_tintStr  = has_ov ? ov.tintStrength : BDMergeProjectorVolumetricsTintStrength;
+
+        gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::GODRAY_MULTIPLIER, e_mult);
+        gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FEATHER, e_feather);
+        gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_G, e_g);
+        gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_DENSITY, llmax(e_density, 0.f));
+
         LLColor3  col = volume->getLightLinearColor() * light_scale;
-        // [Phase 2 item 2] Global shaft tint: pull the shaft color toward the
-        // art-direction tint so it can differ from the light's own color. At
-        // TintStrength 0 (default) this is a no-op and shafts carry pure light
-        // color per the locked design.
-        if (BDMergeProjectorVolumetricsTintStrength > 0.f)
+        // [Phase 2 item 2 / Batch 1 C] Shaft tint (global or per-projector override):
+        // pull the shaft color toward the art-direction tint so it can differ from
+        // the light's own color. At TintStrength 0 (default) this is a no-op and
+        // shafts carry pure light color per the locked design.
+        if (e_tintStr > 0.f)
         {
-            const F32 t = llclamp(BDMergeProjectorVolumetricsTintStrength, 0.f, 1.f);
-            col = col * (1.f - t) + BDMergeProjectorVolumetricsTint * (light_scale * t);
+            const F32 t = llclamp(e_tintStr, 0.f, 1.f);
+            col = col * (1.f - t) + e_tint * (light_scale * t);
         }
         glm::vec3 c(drawablep->getPositionAgent());
         c = mul_mat4_vec3(mat, c); // agent -> view space
@@ -9686,9 +9772,89 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
 
     march_target->flush();
 
-    // [Phase 1 item 3] Resolve the half-res shaft to full resolution with a
-    // depth-aware bilateral upsample, compositing additively onto the scene. Skip
-    // entirely if no cone marched (nothing to upsample).
+    // The upsample + bloom passes sample this frame's shaft from here. Default to
+    // the freshly-marched half-res target; the temporal resolve below repoints it
+    // at the accumulated (denoised) history slot when temporal is active.
+    mProjVolShaftSrc = &mProjVolHalf;
+
+    // [Batch 1 A] Temporal reprojection resolve (half-res). Blend this frame's raw
+    // shaft with the reprojected previous accumulation - neighborhood-clamped and
+    // depth/camera-cut rejected so it can't ghost or smear - into the current
+    // history slot, which then becomes the shaft source for the upsample + bloom.
+    if (halfres && cones_drawn > 0 && temporal)
+    {
+        const U32 cur  = mProjVolHistoryIdx & 1u;
+        const U32 prev = cur ^ 1u;
+        LLRenderTarget& dst      = mProjVolHistory[cur];
+        LLRenderTarget& histprev = mProjVolHistory[prev];
+
+        dst.bindTarget();
+        {
+            LLGLDisable no_scissor(GL_SCISSOR_TEST);
+            LLGLDisable no_blend(GL_BLEND);           // full overwrite of the slot
+            gGL.setColorMask(true, true);
+
+            bindDeferredShader(gDeferredProjectorVolumetricTemporalProgram);
+
+            // Current raw half-res shaft -> projectionMap. POINT sampled so the
+            // neighborhood min/max clamp reads exact texels.
+            S32 cur_ch = gDeferredProjectorVolumetricTemporalProgram.enableTexture(LLShaderMgr::DEFERRED_PROJECTION);
+            if (cur_ch > -1)
+            {
+                mProjVolHalf.bindTexture(0, cur_ch, LLTexUnit::TFO_POINT);
+            }
+            // Previous accumulation -> projvol_history. BILINEAR for reprojection.
+            S32 hist_ch = gDeferredProjectorVolumetricTemporalProgram.enableTexture(LLShaderMgr::PROJVOL_HISTORY);
+            if (hist_ch > -1)
+            {
+                histprev.bindTexture(0, hist_ch, LLTexUnit::TFO_BILINEAR);
+            }
+
+            const F32 half_res[2] = { (F32)mProjVolHalf.getWidth(), (F32)mProjVolHalf.getHeight() };
+            static const LLStaticHashedString sHalfResT("projvol_half_res");
+            gDeferredProjectorVolumetricTemporalProgram.uniform2fv(sHalfResT, 1, half_res);
+
+            // view -> agent(world) for reprojection (same inverse-modelview as march).
+            gDeferredProjectorVolumetricTemporalProgram.uniformMatrix4fv(LLShaderMgr::PROJVOL_INV_MODELVIEW, 1, false, glm::value_ptr(inv_mv));
+            // Previous frame's world -> clip matrix (used to find each current
+            // sample's screen position last frame). Meaningless until history valid,
+            // so the EMA weight is forced to 0 that first frame.
+            gDeferredProjectorVolumetricTemporalProgram.uniformMatrix4fv(LLShaderMgr::PROJVOL_PREV_VIEWPROJ, 1, false, mProjVolPrevViewProj);
+            const F32 blend = mProjVolHistoryValid ? llclamp(BDMergeProjectorVolumetricsTemporalBlend, 0.f, 0.98f) : 0.f;
+            gDeferredProjectorVolumetricTemporalProgram.uniform1f(LLShaderMgr::PROJVOL_TEMPORAL_BLEND, blend);
+
+            mScreenTriangleVB->setBuffer();
+            mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+
+            gDeferredProjectorVolumetricTemporalProgram.disableTexture(LLShaderMgr::PROJVOL_HISTORY);
+            gDeferredProjectorVolumetricTemporalProgram.disableTexture(LLShaderMgr::DEFERRED_PROJECTION);
+            unbindDeferredShader(gDeferredProjectorVolumetricTemporalProgram);
+        }
+        dst.flush();
+
+        // Persist this frame's world->clip for next frame's reprojection; advance
+        // the ping-pong (next frame reads the slot we just wrote); the resolved slot
+        // is now the shaft source; history is valid from here on.
+        const glm::mat4 viewproj = proj * mat;
+        memcpy(mProjVolPrevViewProj, glm::value_ptr(viewproj), sizeof(mProjVolPrevViewProj));
+        mProjVolShaftSrc     = &dst;
+        mProjVolHistoryIdx   = prev;
+        mProjVolHistoryValid = true;
+
+        // The temporal pass wrote alpha (stored depth); restore the rgb-only mask
+        // the additive upsample composite below expects.
+        gGL.setColorMask(true, false);
+    }
+    else
+    {
+        // No temporal resolve this frame -> the stored history can't be reprojected
+        // cleanly next frame; drop it so the next temporal frame restarts from black.
+        mProjVolHistoryValid = false;
+    }
+
+    // [Phase 1 item 3] Resolve the (raw or temporally-accumulated) half-res shaft to
+    // full resolution with a depth-aware bilateral upsample, compositing additively
+    // onto the scene. Skip entirely if no cone marched (nothing to upsample).
     if (halfres && cones_drawn > 0)
     {
         target->bindTarget();
@@ -9720,9 +9886,9 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
         S32 half_ch = gDeferredProjectorVolumetricUpsampleProgram.enableTexture(LLShaderMgr::DEFERRED_PROJECTION);
         if (half_ch > -1)
         {
-            mProjVolHalf.bindTexture(0, half_ch, LLTexUnit::TFO_BILINEAR);
+            mProjVolShaftSrc->bindTexture(0, half_ch, LLTexUnit::TFO_BILINEAR);
         }
-        const F32 half_res[2] = { (F32)mProjVolHalf.getWidth(), (F32)mProjVolHalf.getHeight() };
+        const F32 half_res[2] = { (F32)mProjVolShaftSrc->getWidth(), (F32)mProjVolShaftSrc->getHeight() };
         static const LLStaticHashedString sHalfRes("projvol_half_res");
         gDeferredProjectorVolumetricUpsampleProgram.uniform2fv(sHalfRes, 1, half_res);
 
@@ -9763,8 +9929,9 @@ void LLPipeline::feedProjectorVolumetricBloom()
     if (!BDMergeProjectorVolumetrics || gCubeSnapshot ||
         BDMergeProjectorVolumetricsBloomFeed <= 0.f ||
         !mProjVolHalfValid ||
+        mProjVolShaftSrc == nullptr ||
         mRT->bloomMipCount < 1 ||
-        mProjVolHalf.getWidth() == 0 ||
+        mProjVolShaftSrc->getWidth() == 0 ||
         !gDeferredProjectorVolumetricBloomFeedProgram.isComplete())
     {
         return;
@@ -9782,9 +9949,9 @@ void LLPipeline::feedProjectorVolumetricBloom()
 
     gDeferredProjectorVolumetricBloomFeedProgram.bind();
     // Half-res shaft -> diffuseMap (bilinear; the shader tent-blurs it into a halo).
-    gDeferredProjectorVolumetricBloomFeedProgram.bindTexture(LLShaderMgr::DIFFUSE_MAP, &mProjVolHalf, false, LLTexUnit::TFO_BILINEAR);
+    gDeferredProjectorVolumetricBloomFeedProgram.bindTexture(LLShaderMgr::DIFFUSE_MAP, mProjVolShaftSrc, false, LLTexUnit::TFO_BILINEAR);
     gDeferredProjectorVolumetricBloomFeedProgram.uniform2f(LLShaderMgr::BLOOM_TEXEL_SIZE,
-        1.f / (F32)mProjVolHalf.getWidth(), 1.f / (F32)mProjVolHalf.getHeight());
+        1.f / (F32)mProjVolShaftSrc->getWidth(), 1.f / (F32)mProjVolShaftSrc->getHeight());
     gDeferredProjectorVolumetricBloomFeedProgram.uniform1f(LLShaderMgr::PROJVOL_BLOOM_FEED, BDMergeProjectorVolumetricsBloomFeed);
 
     mScreenTriangleVB->setBuffer();
@@ -9821,6 +9988,42 @@ bool LLPipeline::isVolumetricShaftEnabled(const LLUUID& id)
 void LLPipeline::clearVolumetricShafts()
 {
     sVolumetricShaftObjects.clear();
+    sVolumetricShaftOverrides.clear();
+}
+
+// [BDMerge G3.3 Batch 1 C] Session-only per-projector art-direction overrides.
+// Setting an override also implicitly flags the projector so it emits a shaft; the
+// render loop consults getVolumetricShaftOverride() per cone. Not persisted -
+// cleared with the flag set on relog (clearVolumetricShafts).
+void LLPipeline::setVolumetricShaftOverride(const LLUUID& id, const VolumetricShaftOverride& ov)
+{
+    if (id.isNull())
+        return;
+    sVolumetricShaftOverrides[id] = ov;
+    sVolumetricShaftObjects.insert(id); // capturing implies enabling the shaft
+}
+
+void LLPipeline::clearVolumetricShaftOverride(const LLUUID& id)
+{
+    auto it = sVolumetricShaftOverrides.find(id);
+    if (it != sVolumetricShaftOverrides.end())
+        sVolumetricShaftOverrides.erase(it);
+}
+
+bool LLPipeline::getVolumetricShaftOverride(const LLUUID& id, VolumetricShaftOverride& out)
+{
+    if (sVolumetricShaftOverrides.empty())
+        return false;
+    auto it = sVolumetricShaftOverrides.find(id);
+    if (it == sVolumetricShaftOverrides.end())
+        return false;
+    out = it->second;
+    return true;
+}
+
+bool LLPipeline::hasVolumetricShaftOverride(const LLUUID& id)
+{
+    return !sVolumetricShaftOverrides.empty() && sVolumetricShaftOverrides.count(id) != 0;
 }
 
 void LLPipeline::combineGlow(LLRenderTarget* src, LLRenderTarget* dst)

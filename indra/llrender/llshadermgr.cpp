@@ -1714,6 +1714,12 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("projvol_inv_modelview");
     mReservedUniforms.push_back("projvol_bloom_feed");
 
+    // [BDMerge G3.3 Batch 1] temporal reprojection (A) + gobo-colored shadows (B)
+    mReservedUniforms.push_back("projvol_shadow_tint");
+    mReservedUniforms.push_back("projvol_history");
+    mReservedUniforms.push_back("projvol_prev_viewproj");
+    mReservedUniforms.push_back("projvol_temporal_blend");
+
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 
     std::set<std::string> dupe_check;
