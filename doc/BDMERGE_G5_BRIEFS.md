@@ -76,7 +76,7 @@ that is the point, but throttle: boost in batches of ~500, next batch when
 pending fetches drop below the floor. 24 decode threads + the RAM pool make
 this fast on the target machine.
 
-## B-2b.3 — Surface the G5 toggles in UI — **MOSTLY DONE (coordinator, 2026-07-10: Lightbox Godrays tab ce321caf40, Shadows spinners 5b56a25d5a, Machinima tab ad1100347f). Remaining: pool-stats readout line (needs C++ - pull the pools' appendReport strings into a floater text field) and a warm-up button once B-2b.2 lands.**
+## B-2b.3 — Surface the G5 toggles in UI — **DONE except warm-up button (gated on B-2b.2). Lightbox: Godrays tab ce321caf40, Shadows spinners 5b56a25d5a, Machinima tab ad1100347f, live pool stats (this commit). (coordinator, 2026-07-10: Lightbox Godrays tab ce321caf40, Shadows spinners 5b56a25d5a, Machinima tab ad1100347f). Remaining: pool-stats readout line (needs C++ - pull the pools' appendReport strings into a floater text field) and a warm-up button once B-2b.2 lands.**
 
 **Goal.** Machinima-usable switches: capture pin toggle, warm-up button, pool
 on/off + budget readouts. No new settings — bind to the existing keys.
