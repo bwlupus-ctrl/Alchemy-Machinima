@@ -35,13 +35,18 @@ uniform sampler2DShadow shadowMap3;
 #if defined(SPOT_SHADOW)
 uniform sampler2DShadow shadowMap4;
 uniform sampler2DShadow shadowMap5;
+// [BDMerge NSpot] extended projector shadow slots
+uniform sampler2DShadow shadowMap6;
+uniform sampler2DShadow shadowMap7;
+uniform sampler2DShadow shadowMap8;
+uniform sampler2DShadow shadowMap9;
 #endif
 
 uniform vec3 sun_dir;
 uniform vec3 moon_dir;
 uniform vec2 shadow_res;
 uniform vec2 proj_shadow_res;
-uniform mat4 shadow_matrix[6];
+uniform mat4 shadow_matrix[10]; // [BDMerge NSpot] 4 sun + up to 6 spot
 uniform vec4 shadow_clip;
 uniform float shadow_bias;
 uniform float shadow_offset;
@@ -214,15 +219,36 @@ float sampleSpotShadow(vec3 pos, vec3 norm, int index, vec2 pos_screen)
             float w = 1.0;
             w -= max(spos.z-far_split.z, 0.0)/transition_domain.z;
 
+            // [BDMerge NSpot] up to 6 projector shadow slots
             if (index == 0)
             {
                 lpos = shadow_matrix[4]*spos;
                 shadow += pcfSpotShadow(shadowMap4, lpos, 0.8, spos.xy)*w;
             }
-            else
+            else if (index == 1)
             {
                 lpos = shadow_matrix[5]*spos;
                 shadow += pcfSpotShadow(shadowMap5, lpos, 0.8, spos.xy)*w;
+            }
+            else if (index == 2)
+            {
+                lpos = shadow_matrix[6]*spos;
+                shadow += pcfSpotShadow(shadowMap6, lpos, 0.8, spos.xy)*w;
+            }
+            else if (index == 3)
+            {
+                lpos = shadow_matrix[7]*spos;
+                shadow += pcfSpotShadow(shadowMap7, lpos, 0.8, spos.xy)*w;
+            }
+            else if (index == 4)
+            {
+                lpos = shadow_matrix[8]*spos;
+                shadow += pcfSpotShadow(shadowMap8, lpos, 0.8, spos.xy)*w;
+            }
+            else
+            {
+                lpos = shadow_matrix[9]*spos;
+                shadow += pcfSpotShadow(shadowMap9, lpos, 0.8, spos.xy)*w;
             }
             weight += w;
             shadow += max((pos.z+shadow_clip.z)/(shadow_clip.z-shadow_clip.w)*2.0-1.0, 0.0);

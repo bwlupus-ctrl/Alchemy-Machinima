@@ -712,7 +712,11 @@ public:
     // currently used render target pack
     RenderTargetPack* mRT;
 
-    LLRenderTarget          mSpotShadow[2];
+    // [BDMerge NSpot] compile-time ceiling for projector shadows; runtime
+    // count is BDMergeMaxSpotShadows (2 = stock)
+    static constexpr U32    MAX_SPOT_SHADOWS = 6;
+    static constexpr U32    MAX_SHADOW_MATS = 4 + MAX_SPOT_SHADOWS;
+    LLRenderTarget          mSpotShadow[MAX_SPOT_SHADOWS];
 
     LLRenderTarget          mPbrBrdfLut;
     LLRenderTarget          mWaterExclusionMask;
@@ -762,14 +766,14 @@ public:
     LLCamera                mShadowCamera[8];
     LLVector3               mShadowExtents[4][2];
     // TODO : separate Sun Shadow and Spot Shadow matrices
-    glm::mat4               mSunShadowMatrix[6];
-    glm::mat4               mShadowModelview[6];
-    glm::mat4               mShadowProjection[6];
+    glm::mat4               mSunShadowMatrix[MAX_SHADOW_MATS];
+    glm::mat4               mShadowModelview[MAX_SHADOW_MATS];
+    glm::mat4               mShadowProjection[MAX_SHADOW_MATS];
     glm::mat4               mReflectionModelView;
 
-    LLPointer<LLDrawable>   mShadowSpotLight[2];
-    F32                     mSpotLightFade[2];
-    LLPointer<LLDrawable>   mTargetShadowSpotLight[2];
+    LLPointer<LLDrawable>   mShadowSpotLight[MAX_SPOT_SHADOWS];
+    F32                     mSpotLightFade[MAX_SPOT_SHADOWS];
+    LLPointer<LLDrawable>   mTargetShadowSpotLight[MAX_SPOT_SHADOWS];
 
     LLVector4               mSunClipPlanes;
     LLVector4               mSunOrthoClipPlanes;

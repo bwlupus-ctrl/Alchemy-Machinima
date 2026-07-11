@@ -228,6 +228,10 @@ public:
         DEFERRED_SHADOW3,                   //  "shadowMap3"
         DEFERRED_SHADOW4,                   //  "shadowMap4"
         DEFERRED_SHADOW5,                   //  "shadowMap5"
+        DEFERRED_SHADOW6,                   //  "shadowMap6" [BDMerge NSpot]
+        DEFERRED_SHADOW7,                   //  "shadowMap7"
+        DEFERRED_SHADOW8,                   //  "shadowMap8"
+        DEFERRED_SHADOW9,                   //  "shadowMap9"
         DEFERRED_POSITION,                  //  "positionMap"
         DEFERRED_DIFFUSE,                   //  "diffuseRect"
         DEFERRED_SPECULAR,                  //  "specularRect"

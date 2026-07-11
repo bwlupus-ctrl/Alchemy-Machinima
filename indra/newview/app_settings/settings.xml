@@ -2881,6 +2881,17 @@
       <key>Value</key>
       <integer>0</integer>
     </map>
+    <key>BDMergeMaxSpotShadows</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge NSpot] Number of projector (spot) lights that can cast shadows at once (stock viewer: 2, max 6). Each slot renders an extra shadow map per frame. Reallocates live on change.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>U32</string>
+      <key>Value</key>
+      <integer>2</integer>
+    </map>
     <key>BDMergeProjectorShadowResolution</key>
     <map>
       <key>Comment</key>

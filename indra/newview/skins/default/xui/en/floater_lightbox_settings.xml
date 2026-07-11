@@ -2176,6 +2176,29 @@
 				top_pad="8"
 				width="180"
 				layout="topleft"
+				value="Shadow-casting projectors:" />
+			<slider
+				control_name="BDMergeMaxSpotShadows"
+				follows="left|top"
+				layout="topleft"
+				height="20"
+				top_pad="-16"
+				left="190"
+				width="180"
+				min_val="2"
+				max_val="6"
+				increment="1"
+				decimal_digits="0"
+				show_text="true"
+				name="bd_max_spot_shadows"
+				tool_tip="How many projector lights cast shadows at once (stock: 2). Each adds a shadow-map pass per frame. Pairs with Stable projector shadows for deterministic slot assignment." />
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="8"
+				width="180"
+				layout="topleft"
 				value="Projector shadow resolution:" />
 			<spinner
 				control_name="BDMergeProjectorShadowResolution"

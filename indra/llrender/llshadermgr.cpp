@@ -1424,6 +1424,10 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("shadowMap3");
     mReservedUniforms.push_back("shadowMap4");
     mReservedUniforms.push_back("shadowMap5");
+    mReservedUniforms.push_back("shadowMap6"); // [BDMerge NSpot]
+    mReservedUniforms.push_back("shadowMap7");
+    mReservedUniforms.push_back("shadowMap8");
+    mReservedUniforms.push_back("shadowMap9");
 
     llassert(mReservedUniforms.size() == LLShaderMgr::DEFERRED_SHADOW5+1);
 

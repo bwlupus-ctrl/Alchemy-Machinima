@@ -1110,6 +1110,7 @@ void settings_setup_listeners()
     setting_setup_signal_listener(gSavedSettings, "BDMergeShadowResolution2", handleShadowsResized);
     setting_setup_signal_listener(gSavedSettings, "BDMergeShadowResolution3", handleShadowsResized);
     setting_setup_signal_listener(gSavedSettings, "BDMergeProjectorShadowResolution", handleShadowsResized);
+    setting_setup_signal_listener(gSavedSettings, "BDMergeMaxSpotShadows", handleShadowsResized);
     setting_setup_signal_listener(gSavedSettings, "RenderGlow", handleReleaseGLBufferChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderGlow", handleSetShaderChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderGlowResolutionPow", handleReleaseGLBufferChanged);
