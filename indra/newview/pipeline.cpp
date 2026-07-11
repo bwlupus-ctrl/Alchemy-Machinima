@@ -247,6 +247,13 @@ bool LLPipeline::BDMergeProjectorVolumetrics;
 U32 LLPipeline::BDMergeProjectorVolumetricsResolution;
 F32 LLPipeline::BDMergeProjectorVolumetricsMultiplier;
 F32 LLPipeline::BDMergeProjectorVolumetricsAnisotropy;
+U32 LLPipeline::BDMergeProjectorVolumetricsDither;
+F32 LLPipeline::BDMergeProjectorVolumetricsFeather;
+U32 LLPipeline::BDMergeProjectorVolumetricsShadowSamples;
+bool LLPipeline::BDMergeProjectorVolumetricsScissor;
+bool LLPipeline::BDMergeProjectorVolumetricsAdaptive;
+U32 LLPipeline::BDMergeProjectorVolumetricsMinResolution;
+F32 LLPipeline::BDMergeProjectorVolumetricsMaxLuminance;
 S32 LLPipeline::RenderScreenSpaceReflectionIterations;
 F32 LLPipeline::RenderScreenSpaceReflectionRayStep;
 F32 LLPipeline::RenderScreenSpaceReflectionDistanceBias;
@@ -624,6 +631,13 @@ void LLPipeline::init()
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsResolution");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsMultiplier");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsAnisotropy");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsDither");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsFeather");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsShadowSamples");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsScissor");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsAdaptive");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsMinResolution");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsMaxLuminance");
     connectRefreshCachedSettingsSafe("RenderScreenSpaceReflectionIterations");
     connectRefreshCachedSettingsSafe("RenderScreenSpaceReflectionRayStep");
     connectRefreshCachedSettingsSafe("RenderScreenSpaceReflectionDistanceBias");
@@ -1268,6 +1282,13 @@ void LLPipeline::refreshCachedSettings()
     BDMergeProjectorVolumetricsResolution = gSavedSettings.getU32("BDMergeProjectorVolumetricsResolution");
     BDMergeProjectorVolumetricsMultiplier = gSavedSettings.getF32("BDMergeProjectorVolumetricsMultiplier");
     BDMergeProjectorVolumetricsAnisotropy = gSavedSettings.getF32("BDMergeProjectorVolumetricsAnisotropy");
+    BDMergeProjectorVolumetricsDither = gSavedSettings.getU32("BDMergeProjectorVolumetricsDither");
+    BDMergeProjectorVolumetricsFeather = gSavedSettings.getF32("BDMergeProjectorVolumetricsFeather");
+    BDMergeProjectorVolumetricsShadowSamples = gSavedSettings.getU32("BDMergeProjectorVolumetricsShadowSamples");
+    BDMergeProjectorVolumetricsScissor = gSavedSettings.getBOOL("BDMergeProjectorVolumetricsScissor");
+    BDMergeProjectorVolumetricsAdaptive = gSavedSettings.getBOOL("BDMergeProjectorVolumetricsAdaptive");
+    BDMergeProjectorVolumetricsMinResolution = gSavedSettings.getU32("BDMergeProjectorVolumetricsMinResolution");
+    BDMergeProjectorVolumetricsMaxLuminance = gSavedSettings.getF32("BDMergeProjectorVolumetricsMaxLuminance");
     RenderScreenSpaceReflectionIterations = gSavedSettings.getS32("RenderScreenSpaceReflectionIterations");
     RenderScreenSpaceReflectionRayStep = gSavedSettings.getF32("RenderScreenSpaceReflectionRayStep");
     RenderScreenSpaceReflectionDistanceBias = gSavedSettings.getF32("RenderScreenSpaceReflectionDistanceBias");
@@ -9273,24 +9294,42 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
 
     // View-space transform for the light center (same as the fullscreen spot
     // loop): center must live in the same space getPosition() reconstructs.
-    glm::mat4 mat = get_current_modelview();
+    // [Phase 1 items 4/5] projection matrix is needed to project each cone's
+    // sphere of influence to screen space (scissor + adaptive sample count).
+    glm::mat4 mat  = get_current_modelview();
+    glm::mat4 proj = get_current_projection();
+
+    const F32 tgt_w = (F32)target->getWidth();
+    const F32 tgt_h = (F32)target->getHeight();
 
     target->bindTarget();
 
     LLGLDepthTest depth(GL_FALSE);
     LLGLEnable    blend(GL_BLEND);
+    // [Phase 1 item 4] per-cone screen scissor; enabled only if requested, reset
+    // to the full target for each cone that cannot be safely bounded.
+    LLGLEnable    scissor_test(BDMergeProjectorVolumetricsScissor ? GL_SCISSOR_TEST : GL_NONE);
     gGL.setSceneBlendType(LLRender::BT_ADD); // GL_ONE, GL_ONE - additive accumulation over slots
     gGL.setColorMask(true, false);
 
     bindDeferredShader(gDeferredProjectorVolumetricProgram); // binds the full per-slot shadow set
 
-    gDeferredProjectorVolumetricProgram.uniform1i(LLShaderMgr::GODRAY_RES, BDMergeProjectorVolumetricsResolution);
+    // Shared (per-frame) uniforms - GODRAY_RES is uploaded per cone below because
+    // item 5 scales it adaptively.
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::GODRAY_MULTIPLIER, BDMergeProjectorVolumetricsMultiplier);
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_G, BDMergeProjectorVolumetricsAnisotropy);
+    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FEATHER, BDMergeProjectorVolumetricsFeather);
+    gDeferredProjectorVolumetricProgram.uniform1i(LLShaderMgr::PROJVOL_SHADOW_SAMPLES, (S32)llclamp(BDMergeProjectorVolumetricsShadowSamples, (U32)1, (U32)4));
+    gDeferredProjectorVolumetricProgram.uniform1i(LLShaderMgr::PROJVOL_DITHER, (S32)llclamp(BDMergeProjectorVolumetricsDither, (U32)0, (U32)2));
+    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FRAME, (F32)(LLFrameTimer::getFrameCount() % 1024u));
+    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_MAX, BDMergeProjectorVolumetricsMaxLuminance);
 
     gDeferredProjectorVolumetricProgram.enableTexture(LLShaderMgr::DEFERRED_PROJECTION);
 
     mScreenTriangleVB->setBuffer();
+
+    const U32 max_res = llclamp(BDMergeProjectorVolumetricsResolution, (U32)4, (U32)64);
+    const U32 min_res = llclamp(BDMergeProjectorVolumetricsMinResolution, (U32)4, max_res);
 
     // Shadow-casting projectors only (slots 0..N-1). mShadowSpotLight[] is
     // populated during generateSunShadow earlier this frame and valid here.
@@ -9321,12 +9360,82 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
         glm::vec3 c(drawablep->getPositionAgent());
         c = mul_mat4_vec3(mat, c); // agent -> view space
 
+        // Sphere of influence radius, matching the shader's LIGHT_SIZE.
+        const F32 radius = volume->getLightRadius() * 1.5f;
+
+        // ---- [Phase 1 items 4/5] project the sphere to screen space ----------
+        // Conservative screen AABB from the 8 corners of the view-space bounding
+        // box (c +/- radius). Perspective projection preserves containment for
+        // points in front of the camera, so min/max of the projected corners
+        // bounds the projected sphere silhouette. If any corner falls at/behind
+        // the camera plane the bound is unreliable -> fall back to full screen.
+        F32  min_x = tgt_w, min_y = tgt_h, max_x = 0.f, max_y = 0.f;
+        bool bounds_valid = true;
+        for (S32 cx = -1; cx <= 1 && bounds_valid; cx += 2)
+        for (S32 cy = -1; cy <= 1 && bounds_valid; cy += 2)
+        for (S32 cz = -1; cz <= 1 && bounds_valid; cz += 2)
+        {
+            glm::vec4 corner(c.x + cx * radius, c.y + cy * radius, c.z + cz * radius, 1.f);
+            glm::vec4 clip = proj * corner;
+            if (clip.w <= 0.0001f) // corner at/behind camera -> silhouette not bounded
+            {
+                bounds_valid = false;
+                break;
+            }
+            F32 px = (clip.x / clip.w * 0.5f + 0.5f) * tgt_w;
+            F32 py = (clip.y / clip.w * 0.5f + 0.5f) * tgt_h;
+            min_x = llmin(min_x, px); max_x = llmax(max_x, px);
+            min_y = llmin(min_y, py); max_y = llmax(max_y, py);
+        }
+
+        if (bounds_valid)
+        {
+            min_x = llclamp(min_x, 0.f, tgt_w); max_x = llclamp(max_x, 0.f, tgt_w);
+            min_y = llclamp(min_y, 0.f, tgt_h); max_y = llclamp(max_y, 0.f, tgt_h);
+            // Cone projects entirely off screen -> nothing to march.
+            if (max_x <= min_x || max_y <= min_y)
+            {
+                continue;
+            }
+        }
+        else
+        {
+            min_x = 0.f; min_y = 0.f; max_x = tgt_w; max_y = tgt_h;
+        }
+
+        if (BDMergeProjectorVolumetricsScissor)
+        {
+            glScissor((GLint)min_x, (GLint)min_y,
+                      (GLsizei)llceil(max_x - min_x), (GLsizei)llceil(max_y - min_y));
+        }
+
+        // [Phase 1 item 5] adaptive sample count: scale by the on-screen coverage
+        // of the cone (fraction of screen height its projected box spans). A cone
+        // filling the view marches the full Resolution; a small/distant one drops
+        // toward the floor. Bounded march means even the floor stays clean.
+        U32 cone_res = max_res;
+        if (BDMergeProjectorVolumetricsAdaptive)
+        {
+            F32 coverage = bounds_valid ? llclamp((max_y - min_y) / llmax(tgt_h, 1.f), 0.f, 1.f) : 1.f;
+            // sqrt gives small cones a fairer share than raw linear coverage.
+            F32 scaled   = (F32)min_res + (F32)(max_res - min_res) * sqrtf(coverage);
+            cone_res     = llclamp((U32)(scaled + 0.5f), min_res, max_res);
+        }
+        gDeferredProjectorVolumetricProgram.uniform1i(LLShaderMgr::GODRAY_RES, (S32)cone_res);
+
         gDeferredProjectorVolumetricProgram.uniform3fv(LLShaderMgr::LIGHT_CENTER, 1, glm::value_ptr(c));
-        gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::LIGHT_SIZE, volume->getLightRadius() * 1.5f);
+        gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::LIGHT_SIZE, radius);
         gDeferredProjectorVolumetricProgram.uniform3fv(LLShaderMgr::DIFFUSE_COLOR, 1, col.mV);
         gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::LIGHT_FALLOFF, volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF));
 
         mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+    }
+
+    // Restore full-screen scissor for anything downstream that assumes it (the
+    // LLGLEnable above only toggles the enable bit, not the rectangle).
+    if (BDMergeProjectorVolumetricsScissor)
+    {
+        glScissor(0, 0, (GLsizei)target->getWidth(), (GLsizei)target->getHeight());
     }
 
     gDeferredProjectorVolumetricProgram.disableTexture(LLShaderMgr::DEFERRED_PROJECTION);
@@ -9651,6 +9760,15 @@ void LLPipeline::renderFinalize()
         generateBloomHDR(&mRT->screen);
     }
 
+    // [BDMerge G3.3 Phase 1 item 1] HDR-space projector volumetrics: composite the
+    // shafts onto the still-linear HDR scene buffer, AFTER luminance/exposure/bloom
+    // are generated (so shafts don't skew auto-exposure or leak into bloom yet -
+    // feeding bloom is a deliberate Phase 3 item) but BEFORE colorCorrect, so the
+    // active tonemapper (AMD LPM / ACES) rolls off the bright cores filmically
+    // instead of the old post-tonemap placement clipping them. Additive in place
+    // onto mRT->screen; shafts carry each light's colour.
+    renderProjectorVolumetric(&mRT->screen);
+
     // Handles tonemap, colorgrading, and gamma correction in one pass. In the HDR
     // path, this also applies eye adaptation and bloom. In the non-HDR path, this
     // is just a linear copy with color correction.
@@ -9677,10 +9795,9 @@ void LLPipeline::renderFinalize()
         std::swap(sourceBuffer, targetBuffer);
     }
 
-    // [BDMerge G3.3] per-projector volumetric shafts. Independent gate from the
-    // sun godrays - runs even when RenderVolumetricLighting is off. Additive IN
-    // PLACE onto the current source buffer (scene + sun godrays), so no swap.
-    renderProjectorVolumetric(sourceBuffer);
+    // [BDMerge G3.3 Phase 1] the projector volumetric pass now runs earlier, in
+    // linear HDR before colorCorrect (see above). The sun godray block above keeps
+    // its original display-stage placement (G3.2 unchanged).
 
     if (RenderFSAAType == 1)
     {

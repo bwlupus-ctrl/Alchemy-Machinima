@@ -31,22 +31,63 @@ more filmic, and cheaper per frame. Scoped 2026-07-11 with user direction.
 ## Phase 1 — Quality + performance core (do first)
 Mostly self-contained shader/pipeline work; makes it both better *and* faster.
 
-1. **HDR-space composite before tonemapping.** Move `renderProjectorVolumetric`
-   ahead of `colorCorrect` so the shafts are shaped by the active tonemapper
-   (AMD LPM / ACES roll off the bright cores filmically instead of clipping).
-   Eliminates the HDR-blowout risk noted in the brief (R2). Highest-value item.
-2. **Blue-noise dithered march offset + temporal accumulation.** Per-pixel jittered
-   start + across-frame accumulate → smooth at ~8 samples, and **no shimmer during
-   camera moves** (mandatory for recording). TAA/jitter-aware.
-3. **Half-res march + bilateral (depth-aware) upsample.** March at ¼ pixels, edge-
-   preserving upscale. ~3–4× cheaper, near-identical look. Add a quality control.
-4. **Screen-space scissor to each cone's projected bounds.** Only march the rect the
-   frustum/sphere covers on screen — skips the majority of fullscreen work.
-5. **Adaptive sample count** by on-screen cone size / distance.
-6. **Feathered cone edge** — soften the angular falloff so the beam boundary isn't a
-   hard line.
-7. **Crisp volumetric occluder shadows** — higher-quality shadow taps inside the
-   shaft so bars/foliage throw sharp god-ray patterns through the beam.
+**STATUS 2026-07-11 (Opus): items 1, 2, 4, 5, 6, 7 landed; item 3 + full temporal
+reprojection deferred (documented below).** All gated under the existing
+`BDMergeProjectorVolumetrics` master (default off); each lever has a sub-control
+with a sensible default. In-world verification still owed (no SL session this pass).
+
+1. **HDR-space composite before tonemapping. — DONE.** `renderProjectorVolumetric`
+   now composites additively onto `mRT->screen` (linear HDR) *after*
+   luminance/exposure/bloom generation but *before* `colorCorrect`, so the active
+   tonemapper rolls off the bright cores instead of clipping (old post-`colorCorrect`
+   call removed). Placed after exposure/bloom so shafts don't skew auto-exposure or
+   leak into bloom (feeding bloom stays a Phase 3 item). Shader clamp relaxed from a
+   tight display-space `PROJVOL_MAX=4` to a generous linear-HDR headroom uniform
+   `projvol_max` (`BDMergeProjectorVolumetricsMaxLuminance`, default 8.0; guards
+   NaN/inf + fireflies only). Sun godray block (G3.2) left at its display stage,
+   untouched. Highest-value item.
+2. **Blue-noise dithered march offset (+ temporal). — DONE (spatial); temporal
+   reprojection DEFERRED.** Replaced the `sin`-hash jitter with interleaved-gradient
+   (blue-noise-like) dither keyed on `gl_FragCoord`. Because it is **static per
+   screen-pixel it never crawls/shimmers under camera motion** — the mandatory
+   recording requirement is met by construction, without a history buffer.
+   Sub-control `BDMergeProjectorVolumetricsDither` (0=off, 1=static blue-noise
+   [default], 2=animated: adds a subtle golden-ratio per-frame rotation that
+   averages residual banding on still shots). **Deferred:** true across-frame
+   temporal accumulation with reprojection/neighborhood-clamp — it needs a
+   dedicated half-res history target (tied to item 3) and can't be runtime-verified
+   this pass. Static blue-noise + the downstream FXAA/SMAA already give clean,
+   shimmer-free shafts; the animated mode is the conservative temporal blend.
+3. **Half-res march + bilateral (depth-aware) upsample. — DEFERRED.** Requires a new
+   half-res render target + a new bilateral-upsample shader program + a
+   configure-time staging change, none runtime-verifiable without an in-world
+   session, and it breaks the deliberately-chosen single-pass additive-in-place
+   design (brief §3). Deferred rather than shipped unverified. **Perf largely
+   recovered by items 4+5** (scissor + adaptive samples). Implementation sketch for
+   next pass: allocate `mProjVolHalf` (half-res, RGB16F) + `mProjVolHistory`; march
+   into half-res with the current shader at a half viewport; add
+   `projectorVolumetricUpsampleF.glsl` doing a depth-aware 4-tap bilateral upscale
+   that composites additively onto `mRT->screen`; fold the temporal EMA/reprojection
+   (item 2 remainder) into the half-res resolve using the previous-frame view-proj.
+4. **Screen-space scissor to each cone's projected bounds. — DONE.** Each cone's
+   sphere-of-influence is projected (8 view-space AABB corners → screen) to a
+   conservative pixel rect; `glScissor` restricts the fullscreen march to it. Corners
+   at/behind the camera plane → safe full-screen fallback; fully off-screen cones are
+   skipped entirely. Sub-control `BDMergeProjectorVolumetricsScissor` (default on).
+5. **Adaptive sample count. — DONE.** Per cone, sample count scales with on-screen
+   coverage (`sqrt` of projected-box screen-height fraction) between a floor
+   (`BDMergeProjectorVolumetricsMinResolution`, default 6) and the full
+   `...Resolution`. Uploaded per cone as `godray_res`. Sub-control
+   `BDMergeProjectorVolumetricsAdaptive` (default on).
+6. **Feathered cone edge. — DONE.** Shader smoothsteps the shaft to zero over the
+   last `projvol_feather` fraction of the cookie half-width so the beam boundary is
+   soft. Sub-control `BDMergeProjectorVolumetricsFeather` (0–0.5, default 0.15;
+   0 = hard edge).
+7. **Crisp volumetric occluder shadows. — DONE.** Optional `projvol_shadow_samples`
+   (1–4) sub-taps of the spot shadow map *between* march steps, resolving thin
+   occluders (bars/foliage) into sharp god-ray bands independent of march density.
+   Sub-control `BDMergeProjectorVolumetricsShadowSamples` (default 1 = cheap single
+   tap).
 
 ## Phase 2 — Art direction (the flag + per-light control)
 1. **Session per-projector opt-in**, right-click context menu ("Volumetric Shaft"),

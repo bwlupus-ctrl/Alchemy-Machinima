@@ -10485,6 +10485,83 @@
       <key>Value</key>
       <real>0.72</real>
   </map>
+  <key>BDMergeProjectorVolumetricsDither</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 Phase 1] Projector shaft march-start dither. 0 = off (banding at low sample counts), 1 = static blue-noise (interleaved gradient; stable per screen-pixel so it never shimmers under camera motion - recommended for recording), 2 = animated blue-noise (adds a subtle per-frame rotation that averages residual banding on still shots but can shimmer slightly in motion). Default 1.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>U32</string>
+      <key>Value</key>
+      <integer>1</integer>
+  </map>
+  <key>BDMergeProjectorVolumetricsFeather</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 Phase 1] Projector shaft cone-edge feather (0.0-0.5; default 0.15). Softens the angular beam boundary so the cone edge is not a hard line; the value is the fraction of the cookie half-width over which the shaft fades out. 0 = hard edge.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.15</real>
+  </map>
+  <key>BDMergeProjectorVolumetricsShadowSamples</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 Phase 1] Projector shaft occlusion sub-taps per march step (1-4; default 1). 1 = one shadow tap per step (cheap). Higher values sub-sample the shadow map between march steps so thin occluders (bars, foliage) resolve into crisp god-ray bands through the beam. Cost scales with this x resolution x projector count.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>U32</string>
+      <key>Value</key>
+      <integer>1</integer>
+  </map>
+  <key>BDMergeProjectorVolumetricsScissor</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 Phase 1] Restrict each projector shaft's fullscreen raymarch to the screen rectangle its sphere of influence actually covers (glScissor). Skips the majority of off-cone fragment work at no visual cost. Default on; disable only to diagnose clipping.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+  </map>
+  <key>BDMergeProjectorVolumetricsAdaptive</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 Phase 1] Adaptively scale the raymarch sample count per cone by its on-screen size: distant/small cones use fewer samples (down to the floor below), a cone filling the view uses the full Resolution. Default on. Disable to force every cone to the full Resolution.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+  </map>
+  <key>BDMergeProjectorVolumetricsMinResolution</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 Phase 1] Floor for the adaptive sample count (4-32; default 6). A cone never marches with fewer than this many samples regardless of how small it is on screen. Ignored when Adaptive is off.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>U32</string>
+      <key>Value</key>
+      <integer>6</integer>
+  </map>
+  <key>BDMergeProjectorVolumetricsMaxLuminance</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 Phase 1] Linear-HDR headroom clamp per cone (1.0-64.0; default 8.0). Because the shaft now composites in linear HDR before the tonemapper, this is a generous ceiling that guards against NaN/inf and lone fireflies while still letting the tonemapper roll off bright cores - not the tight display-space clamp the old post-tonemap placement used.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>8.0</real>
+  </map>
   <key>RenderTextureVRAMDivisor</key>
   <map>
       <key>Comment</key>

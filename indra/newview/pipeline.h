@@ -1118,6 +1118,14 @@ public:
     static U32 BDMergeProjectorVolumetricsResolution;
     static F32 BDMergeProjectorVolumetricsMultiplier;
     static F32 BDMergeProjectorVolumetricsAnisotropy;
+    // [BDMerge G3.3 Phase 1] cinema levers
+    static U32 BDMergeProjectorVolumetricsDither;
+    static F32 BDMergeProjectorVolumetricsFeather;
+    static U32 BDMergeProjectorVolumetricsShadowSamples;
+    static bool BDMergeProjectorVolumetricsScissor;
+    static bool BDMergeProjectorVolumetricsAdaptive;
+    static U32 BDMergeProjectorVolumetricsMinResolution;
+    static F32 BDMergeProjectorVolumetricsMaxLuminance;
     static S32 RenderScreenSpaceReflectionIterations;
     static F32 RenderScreenSpaceReflectionRayStep;
     static F32 RenderScreenSpaceReflectionDistanceBias;

@@ -1691,6 +1691,13 @@ void LLShaderMgr::initAttribsAndUniforms()
     // [BDMerge G3.3] per-projector volumetric light cones
     mReservedUniforms.push_back("projvol_g");
 
+    // [BDMerge G3.3 Phase 1] projector-volumetric cinema levers
+    mReservedUniforms.push_back("projvol_feather");
+    mReservedUniforms.push_back("projvol_shadow_samples");
+    mReservedUniforms.push_back("projvol_dither");
+    mReservedUniforms.push_back("projvol_frame");
+    mReservedUniforms.push_back("projvol_max");
+
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 
     std::set<std::string> dupe_check;

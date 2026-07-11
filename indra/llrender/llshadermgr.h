@@ -489,6 +489,13 @@ public:
         // [BDMerge G3.3] per-projector volumetric light cones
         PROJVOL_G,                         //  "projvol_g"
 
+        // [BDMerge G3.3 Phase 1] projector-volumetric cinema levers
+        PROJVOL_FEATHER,                   //  "projvol_feather"     (item 6)
+        PROJVOL_SHADOW_SAMPLES,            //  "projvol_shadow_samples" (item 7)
+        PROJVOL_DITHER,                    //  "projvol_dither"      (item 2)
+        PROJVOL_FRAME,                     //  "projvol_frame"       (item 2)
+        PROJVOL_MAX,                       //  "projvol_max"         (item 1)
+
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

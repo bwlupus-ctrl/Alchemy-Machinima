@@ -54,9 +54,17 @@ uniform float falloff;          // LIGHT_FALLOFF
 uniform int   proj_shadow_idx;  // this projector's shadow slot (0..N-1)
 
 // Shared godray controls (this program uploads its OWN values into these).
-uniform int   godray_res;         // raymarch sample count (bounded local march)
+uniform int   godray_res;         // raymarch sample count (bounded local march;
+                                  // Phase 1 item 5: adaptively scaled per cone in C++)
 uniform float godray_multiplier;  // shaft brightness multiplier
 uniform float projvol_g;          // Henyey-Greenstein anisotropy (forward scatter)
+
+// [Phase 1] per-lever sub-controls (uploaded by renderProjectorVolumetric).
+uniform float projvol_feather;    // item 6: angular cone-edge softness (0 = hard)
+uniform int   projvol_shadow_samples; // item 7: occlusion sub-taps per march step
+uniform int   projvol_dither;     // item 2: 0=off(centre) 1=static bluenoise 2=animated
+uniform float projvol_frame;      // item 2: temporal seed (frame counter, wrapped)
+uniform float projvol_max;        // item 1: HDR headroom clamp (large in linear HDR)
 
 const float M_PI = 3.14159265;
 
@@ -66,14 +74,15 @@ const float M_PI = 3.14159265;
 // scatter more. Tuned conservatively - in-world brightness tuning is owed.
 const float PROJVOL_SCATTER = 0.35;
 
-// HDR clamp (R2): shafts are added after colorCorrect (display stage) and N
-// cones accumulate additively, so clamp each cone's contribution to keep the
-// post-tonemap buffer from blowing out.
-const float PROJVOL_MAX = 4.0;
-
-float rand(vec2 co)
+// [Phase 1 item 2] Interleaved gradient noise (Jimenez): a cheap blue-noise-like
+// dither that, unlike a plain hash, is STATIC per screen-pixel - so the march
+// start offset does not crawl or shimmer while the camera moves (mandatory for
+// recording). An optional per-frame rotation (projvol_dither==2) averages the
+// residual banding across frames for still shots; it is a subtle opt-in, off by
+// default so motion stays shimmer-free by construction.
+float interleavedGradientNoise(vec2 p)
 {
-    return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+    return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715))));
 }
 
 // deferredUtil.glsl
@@ -126,7 +135,23 @@ void main()
 
     float march_len = t1 - t0;
     float dt        = march_len / float(godray_res); // physical step length
-    float roffset   = rand(tc);           // per-pixel jitter breaks up banding (R5)
+
+    // [Phase 1 item 2] blue-noise (interleaved gradient) march-start offset.
+    // Static per pixel => no crawl under camera motion; optional frame rotation.
+    float roffset;
+    if (projvol_dither == 0)
+    {
+        roffset = 0.5; // centred samples, no dither
+    }
+    else
+    {
+        float ign = interleavedGradientNoise(gl_FragCoord.xy);
+        if (projvol_dither == 2)
+        {
+            ign = fract(ign + projvol_frame * 0.61803399); // golden-ratio temporal walk
+        }
+        roffset = ign;
+    }
 
     vec3 accum = vec3(0.0);
 
@@ -152,10 +177,39 @@ void main()
             continue;
         }
 
+        // [Phase 1 item 6] Feathered cone edge: soften the angular falloff so the
+        // beam boundary is not a hard line. Distance to the nearest cookie border
+        // (0 at the frustum edge), smoothstepped over projvol_feather.
+        float edge_feather = 1.0;
+        if (projvol_feather > 0.0)
+        {
+            vec2  e2   = min(proj_tc.xy, vec2(1.0) - proj_tc.xy);
+            float edge = min(e2.x, e2.y);
+            edge_feather = smoothstep(0.0, projvol_feather, edge);
+        }
+
         // Volumetric self-shadowing: sample THIS projector's own shadow map.
         // No surface normal for an airborne sample, so pass 0 (the norm*offset
         // bias term is negligible in the shaft - accepted approximation).
-        float vis = sampleSpotShadow(spos, vec3(0.0), proj_shadow_idx, tc);
+        // [Phase 1 item 7] Crisp occluder shadows: take projvol_shadow_samples
+        // sub-taps spread across the step so thin occluders (bars/foliage) resolve
+        // into sharp god-ray bands instead of being blurred by the coarse march.
+        float vis;
+        if (projvol_shadow_samples <= 1)
+        {
+            vis = sampleSpotShadow(spos, vec3(0.0), proj_shadow_idx, tc);
+        }
+        else
+        {
+            vis = 0.0;
+            for (int s = 0; s < projvol_shadow_samples; ++s)
+            {
+                float ts   = t + (float(s) - float(projvol_shadow_samples - 1) * 0.5) * (dt / float(projvol_shadow_samples));
+                vec3  sp   = d * ts;
+                vis       += sampleSpotShadow(sp, vec3(0.0), proj_shadow_idx, tc);
+            }
+            vis /= float(projvol_shadow_samples);
+        }
 
         // Distance + range attenuation, identical to how spotLightF dims the
         // lit surface (inverse-square-ish + range falloff via calcLegacy...).
@@ -175,14 +229,19 @@ void main()
         float denom = 1.0 + g * g - 2.0 * g * cosT;
         float phase = (1.0 - g * g) / (4.0 * M_PI * pow(max(denom, 1e-4), 1.5));
 
-        accum += vis * atten * phase * cookie;
+        accum += vis * atten * phase * cookie * edge_feather;
     }
 
     // Single-scattering integral: weight by physical step length so a longer
-    // chord through the cone scatters more (the local-light look). Clamp for
-    // HDR safety across N additive cones.
+    // chord through the cone scatters more (the local-light look).
     vec3 shaft = accum * dt * PROJVOL_SCATTER * godray_multiplier;
-    shaft = clamp(shaft, vec3(0.0), vec3(PROJVOL_MAX));
+
+    // [Phase 1 item 1] HDR-space composite: this pass now runs BEFORE colorCorrect
+    // on the linear HDR scene buffer, so the active tonemapper (AMD LPM / ACES)
+    // rolls off the bright cores filmically. projvol_max is therefore a generous
+    // linear-HDR headroom clamp (guarding NaN/inf and lone fireflies) rather than
+    // the tight display-space clamp the old post-tonemap placement needed.
+    shaft = clamp(shaft, vec3(0.0), vec3(projvol_max));
 
     // Output ONLY the shaft delta - additive GL_ONE,GL_ONE onto the scene
     // buffer, so the pass never samples what it writes (no feedback).
