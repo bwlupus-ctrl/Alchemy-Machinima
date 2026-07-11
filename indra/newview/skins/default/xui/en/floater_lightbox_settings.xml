@@ -2789,5 +2789,171 @@
 				word_wrap="true"
 				value="Shafts appear where shadowed air meets sunlit gaps: shoot from inside structures or under canopy, camera across the light, sun low." />
 		</panel>
+		<!--[BDMerge B-2b.3] Machinima Panel - every runtime-adjustable BDMerge
+		    feature in one place; launch-time settings (decode/cache threads)
+		    intentionally stay in Debug Settings-->
+		<panel
+			label="Machinima"
+			layout="topleft"
+			name="machinima_settings">
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="8"
+				width="380"
+				layout="topleft"
+				font="SansSerifBold"
+				value="Capture" />
+			<check_box
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="4"
+				width="360"
+				layout="topleft"
+				label="Pin scene textures (no degrade during takes)"
+				tool_tip="Holds every scene texture at loaded resolution: no downrez, no unload, alt-tab safe. Disables a memory safety valve - use for capture sessions."
+				control_name="BDMergeCaptureModePin" />
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="10"
+				width="120"
+				layout="topleft"
+				value="Near clip (m):" />
+			<slider
+				control_name="BDMergeNearClipDistance"
+				follows="left|top"
+				layout="topleft"
+				height="20"
+				top_pad="-16"
+				left="110"
+				width="270"
+				min_val="0"
+				max_val="0.25"
+				increment="0.005"
+				decimal_digits="3"
+				show_text="true"
+				name="bd_near_clip_slider"
+				tool_tip="Camera near-clip plane. 0 = stock (0.1m). Lower stops extreme close-ups clipping through geometry; costs scene-wide depth precision." />
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="14"
+				width="380"
+				layout="topleft"
+				font="SansSerifBold"
+				value="Forced Alpha Masking" />
+			<check_box
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="4"
+				width="360"
+				layout="topleft"
+				label="Render blended faces as masked (fixes alpha z-fighting)"
+				tool_tip="Routes alpha-blended surfaces through the masked path: writes depth, sorts as solid, stable shadows, works on no-mod content. Legacy materials only (PBR pending)."
+				control_name="BDMergeForceAlphaMask" />
+			<check_box
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="4"
+				width="360"
+				layout="topleft"
+				label="Include worn / rigged items (hair, clothing)"
+				tool_tip="Extends forced masking to rigged attachments. Expect visible changes on alpha hair and clothing - a per-shot judgement call."
+				control_name="BDMergeForceAlphaMaskRigged"
+				enabled_control="BDMergeForceAlphaMask" />
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="10"
+				width="120"
+				layout="topleft"
+				value="Mask cutoff:" />
+			<slider
+				control_name="BDMergeForceAlphaMaskCutoff"
+				enabled_control="BDMergeForceAlphaMask"
+				follows="left|top"
+				layout="topleft"
+				height="20"
+				top_pad="-16"
+				left="110"
+				width="270"
+				min_val="0"
+				max_val="1"
+				increment="0.01"
+				decimal_digits="2"
+				show_text="true"
+				name="bd_mask_cutoff_slider"
+				tool_tip="How much texture alpha counts as solid. Lower = more texels pass as solid." />
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="14"
+				width="380"
+				layout="topleft"
+				font="SansSerifBold"
+				value="RAM Caches (192GB pools)" />
+			<check_box
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="4"
+				width="180"
+				layout="topleft"
+				label="Texture pool"
+				tool_tip="Decoded textures held in system RAM: re-entering view is a memcpy instead of a disk read + re-decode. Off = stock streaming."
+				control_name="BDMergeTexPoolEnable" />
+			<check_box
+				follows="left|top"
+				height="15"
+				top_pad="-15"
+				left="190"
+				width="180"
+				layout="topleft"
+				label="Mesh pool"
+				tool_tip="Unpacked mesh geometry held in system RAM: re-entering draw distance skips disk + parse + face build. Off = stock."
+				control_name="BDMergeMeshPoolEnable" />
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="10"
+				width="120"
+				layout="topleft"
+				value="Texture pool size:" />
+			<slider
+				control_name="BDMergeTexPoolFraction"
+				enabled_control="BDMergeTexPoolEnable"
+				follows="left|top"
+				layout="topleft"
+				height="20"
+				top_pad="-16"
+				left="110"
+				width="270"
+				min_val="0.05"
+				max_val="0.9"
+				increment="0.05"
+				decimal_digits="2"
+				show_text="true"
+				name="bd_texpool_fraction_slider"
+				tool_tip="Fraction of installed RAM the decoded-texture pool may use (0.5 = ~96GB here). Applies within a few seconds." />
+			<text
+				follows="left|top"
+				height="30"
+				left="5"
+				top_pad="12"
+				width="380"
+				layout="topleft"
+				word_wrap="true"
+				value="Launch-time performance settings (decode threads, cache I/O threads) live in Debug Settings: search 'BDMerge'." />
+		</panel>
 	</tab_container>
 </floater>
