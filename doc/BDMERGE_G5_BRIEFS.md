@@ -16,7 +16,7 @@ before msbuild sees them.
 
 ---
 
-## B-2b.1 — Tiered residency for the texture pool
+## B-2b.1 — Tiered residency for the texture pool — **DONE (24c97a2fda, coordinator-landed 2026-07-10)**
 
 **Goal.** Replace the texture pool's flat LRU with the spec's tiers so region
 changes demote instead of dump. (Spec G5.1 item 2; the LRU already handles
