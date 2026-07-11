@@ -11781,6 +11781,38 @@ void LLPipeline::generateSunShadow(LLCamera& camera)
 
             //update shadow targets
             const U32 num_spots = bdmergeMaxSpotShadows(); // [BDMerge NSpot]
+
+            // [BDMerge NSpot debug] throttled slot-state dump for diagnosing
+            // assignment bugs; enable BDMergeSpotDebug and grep the log
+            static LLCachedControl<bool> spot_debug(gSavedSettings, "BDMergeSpotDebug", false);
+            static LLFrameTimer spot_debug_timer;
+            if (spot_debug && spot_debug_timer.getElapsedTimeF32() > 2.f)
+            {
+                spot_debug_timer.reset();
+                std::ostringstream out;
+                out << "[NSpotDbg] n=" << num_spots;
+                for (U32 i = 0; i < num_spots; i++)
+                {
+                    out << " | s" << i << " w=" << mSpotShadow[i].getWidth()
+                        << " light=" << (mShadowSpotLight[i].notNull() ? "Y" : "-")
+                        << " fade=" << mSpotLightFade[i];
+                }
+                out << " || targets:";
+                for (U32 i = 0; i < num_spots; i++)
+                {
+                    if (mTargetShadowSpotLight[i].notNull())
+                    {
+                        LLVOVolume* v = mTargetShadowSpotLight[i]->getVOVolume();
+                        out << " t" << i << " pri=" << (v ? v->getSpotLightPriority() : -1.f);
+                    }
+                    else
+                    {
+                        out << " t" << i << "=-";
+                    }
+                }
+                LL_INFOS("NSpotDbg") << out.str() << LL_ENDL;
+            }
+
             for (U32 i = 0; i < num_spots; i++)
             { //for each current shadow
                 if (mSpotShadow[i].getWidth() == 0)
