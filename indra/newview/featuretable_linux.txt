@@ -65,7 +65,6 @@ RenderDeferred				1	1
 RenderDeferredSSAO			1	1
 RenderShadowDetail			1	2
 RenderUseStreamVBO			1	1
-RenderFSAAType			    1	2
 RenderFSAASamples			1	3
 RenderMaxTextureIndex		1	16
 RenderGLContextCoreProfile         1   1
@@ -113,7 +112,6 @@ RenderTreeLODFactor			1	0
 RenderVolumeLODFactor		1	1.125
 RenderDeferredSSAO			1	0
 RenderShadowDetail			1	0
-RenderFSAAType  			1	0
 RenderFSAASamples			1	0
 RenderScreenSpaceReflections 1  0
 RenderReflectionProbeLevel  1   0
@@ -155,7 +153,6 @@ RenderTreeLODFactor			1	0.5
 RenderVolumeLODFactor		1	1.125
 RenderDeferredSSAO			1	0
 RenderShadowDetail			1	0
-RenderFSAAType  			1	0
 RenderFSAASamples			1	0
 RenderScreenSpaceReflections 1  0
 RenderReflectionProbeLevel  1   0
@@ -195,7 +192,6 @@ RenderTreeLODFactor			1	0.5
 RenderVolumeLODFactor		1	1.25
 RenderDeferredSSAO			1	0
 RenderShadowDetail			1	0
-RenderFSAAType  			1	1
 RenderFSAASamples			1	1
 RenderReflectionsEnabled    1   1
 RenderReflectionProbeDetail	1	0
@@ -236,7 +232,6 @@ RenderTreeLODFactor			1	0.5
 RenderVolumeLODFactor		1	1.375
 RenderDeferredSSAO			1	0
 RenderShadowDetail			1	0
-RenderFSAAType  			1	1
 RenderFSAASamples			1	1
 RenderReflectionsEnabled    1   1
 RenderReflectionProbeDetail	1	1
@@ -277,7 +272,6 @@ RenderTreeLODFactor			1	0.5
 RenderVolumeLODFactor		1	1.5
 RenderDeferredSSAO			1	1
 RenderShadowDetail			1	1
-RenderFSAAType  			1	2
 RenderFSAASamples			1	2
 RenderReflectionsEnabled    1   1
 RenderReflectionProbeDetail	1	1
@@ -318,7 +312,6 @@ RenderTreeLODFactor			1	0.5
 RenderVolumeLODFactor		1	1.75
 RenderDeferredSSAO			1	1
 RenderShadowDetail			1	2
-RenderFSAAType  			1	2
 RenderFSAASamples			1	2
 RenderReflectionsEnabled    1   1
 RenderReflectionProbeDetail	1	1
@@ -359,7 +352,6 @@ RenderVolumeLODFactor		1	2.0
 WindLightUseAtmosShaders	1	1
 RenderDeferredSSAO			1	1
 RenderShadowDetail			1	2
-RenderFSAAType  			1	2
 RenderFSAASamples			1	3
 RenderReflectionsEnabled    1   1
 RenderReflectionProbeDetail	1	1
@@ -419,7 +411,6 @@ RenderReflectionProbeCount  0   0
 
 list Intel
 RenderAnisotropicLevel			1	0
-RenderFSAAType  			1	0
 RenderFSAASamples			1	0
 RenderGLContextCoreProfile  1   0
 RenderGLMultiThreadedMedia  1   0
@@ -432,7 +423,6 @@ list NVIDIA
 RenderGLMultiThreadedMedia         1   1
 
 list GL3
-RenderFSAAType  			0	0
 RenderFSAASamples           0   0
 RenderReflectionsEnabled    0   0
 RenderReflectionProbeDetail	0	0
