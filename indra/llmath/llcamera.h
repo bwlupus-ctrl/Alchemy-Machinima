@@ -45,6 +45,9 @@ constexpr F32 MAX_FAR_CLIP      = 512.0f;
 
 constexpr F32 MIN_ASPECT_RATIO  = 0.02f;
 constexpr F32 MIN_NEAR_PLANE    = 0.1f;
+// [BDMerge G2.1] absolute clamp floor; values below MIN_NEAR_PLANE are only
+// reachable via the BDMergeNearClipDistance override (costs depth precision)
+constexpr F32 ABS_MIN_NEAR_PLANE = 0.01f;
 constexpr F32 MIN_FAR_PLANE     = 0.2f;
 
 // Min/Max FOV values for square views. Call getMin/MaxView to get extremes based on current aspect ratio.

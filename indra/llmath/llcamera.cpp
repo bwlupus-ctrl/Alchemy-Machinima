@@ -63,7 +63,7 @@ LLCamera::LLCamera(F32 vertical_fov_rads, F32 aspect_ratio, S32 view_height_in_p
     }
 
     mAspect = llclamp(aspect_ratio, MIN_ASPECT_RATIO, MAX_ASPECT_RATIO);
-    mNearPlane = llclamp(near_plane, MIN_NEAR_PLANE, MAX_NEAR_PLANE);
+    mNearPlane = llclamp(near_plane, ABS_MIN_NEAR_PLANE, MAX_NEAR_PLANE); // [BDMerge G2.1] floor relaxed; stock callers still pass >= MIN_NEAR_PLANE
     if(far_plane < 0) far_plane = DEFAULT_FAR_PLANE;
     mFarPlane = llclamp(far_plane, MIN_FAR_PLANE, MAX_FAR_PLANE);
 
@@ -135,7 +135,7 @@ void LLCamera::setAspect(F32 aspect_ratio)
 
 void LLCamera::setNear(F32 near_plane)
 {
-    mNearPlane = llclamp(near_plane, MIN_NEAR_PLANE, MAX_NEAR_PLANE);
+    mNearPlane = llclamp(near_plane, ABS_MIN_NEAR_PLANE, MAX_NEAR_PLANE); // [BDMerge G2.1] floor relaxed; stock callers still pass >= MIN_NEAR_PLANE
     calculateFrustumPlanes();
 }
 

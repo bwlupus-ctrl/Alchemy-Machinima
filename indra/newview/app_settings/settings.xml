@@ -2804,6 +2804,17 @@
       <key>Value</key>
       <integer>4</integer>
     </map>
+    <key>BDMergeNearClipDistance</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge G2.1] Camera near-clip plane distance in meters (0.01-0.25). 0 = stock (0.1). Lower stops extreme close-ups/mouselook clipping through geometry at the cost of scene-wide depth precision.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+    </map>
     <key>BDMergeCaptureModePin</key>
     <map>
       <key>Comment</key>

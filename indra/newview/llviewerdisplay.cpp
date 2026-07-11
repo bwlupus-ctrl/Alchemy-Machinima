@@ -668,7 +668,13 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
     if (LLViewerCamera::instanceExists())
     {
         LLViewerCamera::getInstance()->setZoomParameters(zoom_factor, subfield);
-        LLViewerCamera::getInstance()->setNear(MIN_NEAR_PLANE);
+        // [BDMerge G2.1] configurable near-clip for extreme close-ups and
+        // mouselook; 0 = stock (MIN_NEAR_PLANE). Lower values cost z-buffer
+        // precision across the scene - per-shot tool, verify with the depth
+        // sanity test when changing.
+        static LLCachedControl<F32> bd_near_clip(gSavedSettings, "BDMergeNearClipDistance", 0.f);
+        F32 near_plane = (F32)bd_near_clip > 0.f ? llclamp((F32)bd_near_clip, ABS_MIN_NEAR_PLANE, DEFAULT_NEAR_PLANE) : MIN_NEAR_PLANE;
+        LLViewerCamera::getInstance()->setNear(near_plane);
     }
 
     //////////////////////////
