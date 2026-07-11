@@ -1497,7 +1497,7 @@
 				top_pad="-16"
 				left="110"
 				width="248"
-				min_val="0.1"
+				min_val="0.125"
 				max_val="4"
 				increment="0.125"
 				decimal_digits="3"
