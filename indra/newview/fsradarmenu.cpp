@@ -58,6 +58,7 @@
 #include "llmutelist.h"             // for LLRenderMuteList
 #include "llfloaterreg.h"
 #include "llviewermenu.h"           // for gMenuHolder
+#include "llviewerobjectlist.h"     // for gObjectList
 #include "llvoavatar.h"
 #include "rlvactions.h"
 #include "rlvhandler.h"

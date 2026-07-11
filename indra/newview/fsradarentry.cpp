@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file fsradarentry.cpp
  * @brief Firestorm radar entry implementation
  *
@@ -37,6 +37,7 @@
 
 #include "fsradar.h"
 #include "llagent.h"
+#include "lltrans.h"
 #include "llviewernetwork.h"
 #include "llviewerregion.h"
 #include "rlvhandler.h"
@@ -116,7 +117,7 @@ void FSRadarEntry::onAvatarNameCache(const LLUUID& av_id, const LLAvatarName& av
 {
     if (!gRlvHandler.hasBehaviour(RLV_BHVR_SHOWNAMES))
     {
-        mUserName = av_name.getUserNameForDisplay();
+        mUserName = av_name.getUserName();
         mDisplayName = av_name.getDisplayName();
         mName = getRadarName(av_name);
     }
@@ -153,10 +154,9 @@ void FSRadarEntry::processProperties(void* data, EAvatarProcessorType type)
             if (avatar_data && avatar_data->agent_id == gAgentID && avatar_data->avatar_id == mID)
             {
                 mStatus = avatar_data->flags;
-                if (avatar_data->hide_age)
-                    mAge = -2;
-                else
-                    mAge = (S32)((LLDate::now().secondsSinceEpoch() - (avatar_data->born_on).secondsSinceEpoch()) / 86400);
+                // Alchemy's LLAvatarLegacyData carries no hide_age field (only
+                // LLAvatarData does) - legacy path computes age unconditionally.
+                mAge = (S32)((LLDate::now().secondsSinceEpoch() - (avatar_data->born_on).secondsSinceEpoch()) / 86400);
                 checkAge();
             }
         }
@@ -189,34 +189,34 @@ std::string FSRadarEntry::getRadarName(const LLAvatarName& av_name)
         }
         else if (fmt == FSRADAR_NAMEFORMAT_USERNAME)
         {
-            return av_name.getUserNameForDisplay();
+            return av_name.getUserName();
         }
         else if (fmt == FSRADAR_NAMEFORMAT_DISPLAYNAME_USERNAME)
         {
             if (av_name.isDisplayNameDefault())
             {
-                return av_name.getUserNameForDisplay();
+                return av_name.getUserName();
             }
             else
             {
-                return llformat("%s (%s)", av_name.getDisplayName().c_str(), av_name.getUserNameForDisplay().c_str());
+                return llformat("%s (%s)", av_name.getDisplayName().c_str(), av_name.getUserName().c_str());
             }
         }
         else if (fmt == FSRADAR_NAMEFORMAT_USERNAME_DISPLAYNAME)
         {
             if (av_name.isDisplayNameDefault())
             {
-                return av_name.getUserNameForDisplay();
+                return av_name.getUserName();
             }
             else
             {
-                return llformat("%s (%s)", av_name.getUserNameForDisplay().c_str(), av_name.getDisplayName().c_str());
+                return llformat("%s (%s)", av_name.getUserName().c_str(), av_name.getDisplayName().c_str());
             }
         }
     }
 
     // else use legacy name lookups
-    return av_name.getUserNameForDisplay(); // will be mapped to legacyname automatically by the name cache
+    return av_name.getUserName(); // will be mapped to legacyname automatically by the name cache
 }
 
 void FSRadarEntry::checkAge()

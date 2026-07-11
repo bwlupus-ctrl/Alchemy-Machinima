@@ -297,6 +297,9 @@ public:
     std::vector<LLScrollListItem*> getAllSelected() const;
     S32                 getNumSelected() const;
     LLScrollListItem*   getLastSelectedItem() const { return mLastSelected; }
+    // [BDMerge F3] FS radar restores the multi-select anchor after a list
+    // rebuild (FSScrollListCtrl parity); mLastSelected is private.
+    void                setLastSelectedItem(const LLSD& id) { if (LLScrollListItem* item = getItem(id)) mLastSelected = item; }
 
     // iterate over all items
     LLScrollListItem*   getFirstData() const;
@@ -476,6 +479,9 @@ protected:
     item_list&      getItemList() { return mItemList; }
 
     void            updateLineHeight();
+    // [BDMerge F3] FS radar list wants a fixed row height (FSScrollListCtrl
+    // parity); mLineHeight is private so expose a narrow setter.
+    void            setLineHeight(S32 height) { mLineHeight = height; }
 
 private:
     void            drawItems();

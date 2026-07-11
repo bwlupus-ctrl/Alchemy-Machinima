@@ -54,6 +54,7 @@
 #include "lltracker.h"
 #include "lltrans.h"
 #include "llviewercontrol.h"        // for gSavedSettings
+#include "llviewerobjectlist.h"     // for gObjectList
 #include "llviewerparcelmgr.h"
 #include "llvoavatar.h"
 #include "llvoiceclient.h"
@@ -201,9 +202,11 @@ void FSRadar::updateRadarList()
     LLUIColorTable& colortable = LLUIColorTable::instance();
     LLAvatarTracker& avatartracker = LLAvatarTracker::instance();
 
-    LLViewerRegion* own_reg = gAgent.getRegion();
-    const F32 chat_range_say = (own_reg) ? (F32)own_reg->getSayRange() : 20.f;
-    const F32 chat_range_shout = (own_reg) ? (F32)own_reg->getShoutRange() : 100.f;
+    // Alchemy's LLViewerRegion has no say/shout range accessors (FS gets them
+    // from LFSimFeatureHandler) - use the protocol constants: 20m say (see
+    // CHAT_NORMAL_RADIUS), 100m shout.
+    const F32 chat_range_say = CHAT_NORMAL_RADIUS;
+    const F32 chat_range_shout = 100.f;
 
     static const std::string str_chat_entering =            LLTrans::getString("entering_chat_range");
     static const std::string str_chat_leaving =             LLTrans::getString("leaving_chat_range");
@@ -229,7 +232,7 @@ void FSRadar::updateRadarList()
     F32 drawRadius(sRenderFarClip);
     const LLVector3d& posSelf = gAgent.getPositionGlobal();
     LLUUID regionSelf;
-    if (own_reg)
+    if (LLViewerRegion* own_reg = gAgent.getRegion())
     {
         regionSelf = own_reg->getRegionID();
     }
@@ -322,7 +325,7 @@ void FSRadar::updateRadarList()
         // Try to get the avatar's viewer object - we will need it anyway later
         LLVOAvatar* avVo = static_cast<LLVOAvatar*>(gObjectList.findObject(avId));
 
-        static LLUICachedControl<bool> sFSShowDummyAVsinRadar("FSShowDummyAVsinRadar");
+        static LLUICachedControl<bool> sFSShowDummyAVsinRadar("FSShowDummyAVsinRadar", false);
         if (!sFSShowDummyAVsinRadar && avVo && avVo->mIsDummy)
         {
             continue;

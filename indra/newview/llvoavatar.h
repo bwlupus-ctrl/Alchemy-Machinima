@@ -1038,6 +1038,8 @@ public:
     void            clearChat();
     void            startTyping() { mTyping = true; mTypingTimer.reset(); }
     void            stopTyping() { mTyping = false; }
+    // [BDMerge F3] FS radar shows a typing indicator; mTyping is private (FS parity getter)
+    bool            isTyping() const { return mTyping; }
 private:
     bool            mVisibleChat = false;
 
