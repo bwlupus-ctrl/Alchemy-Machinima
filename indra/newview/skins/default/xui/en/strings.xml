@@ -4546,4 +4546,19 @@ and report the problem.
     <string name="QP_WL_Region_Default">Shared Environment</string>
     <string name="QP_WL_Day_Cycle_Based">Day cycle based</string>
     <string name="QP_WL_None">None</string>
+
+    <!-- [BDMerge F6] Pose Stand animation display names
+         (donor: Firestorm I:\enve indra/newview/skins/default/xui/en/strings.xml;
+         campaign item F6, fsfloaterposestand.cpp / app_settings/posestand.xml) -->
+    <string name="PS_T_Pose">T-Pose</string>
+    <string name="PS_Arms_Down_Legs_together">Arms down, Legs together</string>
+    <string name="PS_Arms_down_sitting">Arms down, sitting</string>
+    <string name="PS_Arms_downward_Legs_together">Arms downward, Legs together</string>
+    <string name="PS_Arms_downward_Legs_apart">Arms downward, Legs apart</string>
+    <string name="PS_Arms_forward_Legs_apart">Arms forward, Legs apart</string>
+    <string name="PS_Arms_forward_Legs_together">Arms forward, Legs together</string>
+    <string name="PS_Arms_straight_Legs_apart">Arms straight, Legs apart</string>
+    <string name="PS_Arms_straight_sitting">Arms straight, sitting</string>
+    <string name="PS_Arms_upward_Legs_apart">Arms upward, Legs apart</string>
+    <string name="PS_Arms_upward_Legs_together">Arms upward, Legs together</string>
 </strings>

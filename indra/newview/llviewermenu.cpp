@@ -72,6 +72,7 @@
 #include "llfloaterlandholdings.h"
 #include "llfloaterpathfindingcharacters.h"
 #include "llfloaterpathfindinglinksets.h"
+#include "fspose.h" // [BDMerge F6] FSPose::setPose() used by FSToolsUndeform
 #include "llfloaterpay.h"
 #include "llfloaterreporter.h"
 #include "llfloaterscriptdebug.h"
@@ -7107,6 +7108,30 @@ class LLAvatarResetSelfSkeletonAndAnimations : public view_listener_t
     }
 };
 
+// [BDMerge F6] Undeform Avatar (FSPose-driven) - ported from Firestorm fork
+// (I:\enve\indra\newview\llviewermenu.cpp:10911, class FSToolsUndeform,
+// FIRE-4345), BD/FS -> Alchemy merge campaign item F6. Distinct from
+// Alchemy's existing "Undeform Me" (Tools.UndeformSelf / avatar_undeform_self
+// in alviewermenu.cpp), which sends a fixed set of hardcoded animation UUIDs
+// directly; this variant instead plays a single, user-configurable animation
+// (FSUndeformUUID) through the shared FSPose helper used by the pose stand.
+class FSToolsUndeform : public view_listener_t
+{
+    bool handleEvent(const LLSD& userdata)
+    {
+        if (isAgentAvatarValid())
+        {
+            gAgentAvatarp->resetSkeleton(true);
+
+            FSPose::getInstance()->setPose(gSavedSettings.getString("FSUndeformUUID"), false);
+            gAgentAvatarp->updateVisualParams();
+        }
+
+        return true;
+    }
+};
+// [/BDMerge F6]
+
 class LLAvatarAddContact : public view_listener_t
 {
     bool handleEvent(const LLSD& userdata)
@@ -10771,6 +10796,7 @@ void initialize_menus()
     view_listener_t::addMenu(new LLAvatarResetSkeletonAndAnimations(), "Avatar.ResetSkeletonAndAnimations");
     view_listener_t::addMenu(new LLAvatarResetSelfSkeleton(), "Avatar.ResetSelfSkeleton");
     view_listener_t::addMenu(new LLAvatarResetSelfSkeletonAndAnimations(), "Avatar.ResetSelfSkeletonAndAnimations");
+    view_listener_t::addMenu(new FSToolsUndeform(), "Tools.Undeform"); // [BDMerge F6] FIRE-4345 Undeform, FSPose-driven
     enable.add("Avatar.IsMyProfileOpen", boost::bind(&my_profile_visible));
     enable.add("Avatar.IsPicksTabOpen", boost::bind(&picks_tab_visible));
 

@@ -87,6 +87,7 @@
 #include "llfloaterpreference.h"
 #include "llfloaterreg.h"
 #include "llfloatertools.h"
+#include "fsfloaterposestand.h" // [BDMerge F6]
 #include "llpaneloutfitsinventory.h"
 #include "llpanellogin.h"
 #include "llpaneltopinfobar.h"
@@ -1037,6 +1038,19 @@ static bool handleSnapshotResolutionUnlockChanged(const LLSD& newvalue)
 }
 // [/BDMerge C6]
 
+// [BDMerge F6] Pose Stand ground lock (donor: Firestorm I:\enve indra/newview/llviewercontrol.cpp,
+// FS:CR "Posestand Ground Lock"). Keeps the lock checkbox and the sit-lock state in sync.
+static void handleSetPoseStandLock(const LLSD& newvalue)
+{
+    FSFloaterPoseStand* pose_stand = LLFloaterReg::findTypedInstance<FSFloaterPoseStand>("fs_posestand");
+    if (pose_stand)
+    {
+        pose_stand->setLock(newvalue);
+        pose_stand->onCommitCombo();
+    }
+}
+// [/BDMerge F6]
+
 ////////////////////////////////////////////////////////////////////////////
 
 LLPointer<LLControlVariable> setting_get_control(LLControlGroup& group, const std::string& setting)
@@ -1308,6 +1322,8 @@ void settings_setup_listeners()
     setting_setup_signal_listener(gSavedSettings, "UseFreezeWorld", handleUseFreezeWorldChanged);
     // [BDMerge C6] high-res snapshot unlock warning
     setting_setup_signal_listener(gSavedSettings, "BDMergeSnapshotResolutionUnlock", handleSnapshotResolutionUnlockChanged);
+    // [BDMerge F6] Pose Stand ground lock
+    setting_setup_signal_listener(gSavedSettings, "FSPoseStandLock", handleSetPoseStandLock);
 }
 
 #if TEST_CACHED_CONTROL
