@@ -1754,6 +1754,16 @@ const   S32   max_format  = (S32)num_formats - 1;
         << " Depth Bits " << S32(pfd.cDepthBits)
         << LL_ENDL;
 
+    // [BDMerge 10bit] Per-channel PFD widths as reported by DescribePixelFormat -
+    // this is the exact data ReShade's convert_pixel_format() keys off. ReShade
+    // detects 10-bit only when cColorBits==30; NVIDIA reports cColorBits=32 for
+    // R10G10B10A2, so ReShade must instead check cRedBits==10 here. Confirm these
+    // read R10 G10 B10 A2 so the reshade-SL convert_pixel_format patch is valid.
+    LL_INFOS("Window") << "[BDMerge 10bit] DescribePixelFormat per-channel bits: R"
+        << S32(pfd.cRedBits) << " G" << S32(pfd.cGreenBits) << " B" << S32(pfd.cBlueBits)
+        << " A" << S32(pfd.cAlphaBits) << " (redShift=" << S32(pfd.cRedShift)
+        << ", cColorBits=" << S32(pfd.cColorBits) << ")" << LL_ENDL;
+
     mhRC = 0;
     if (wglCreateContextAttribsARB)
     { //attempt to create a specific versioned context
