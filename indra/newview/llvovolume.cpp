@@ -5779,17 +5779,6 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
             draw_info->mDiffuseAlphaMode = mat->getDiffuseAlphaMode();
             draw_info->mNormalMap = facep->getViewerObject()->getTENormalMap(facep->getTEOffset());
 
-            // [BDMerge G2.3] a face forced into a mask pass despite its
-            // material saying BLEND has a meaningless material cutoff (often
-            // 0 = fully solid) — use the adjustable global cutoff instead
-            static LLCachedControl<bool> force_mask(gSavedSettings, "BDMergeForceAlphaMask", false);
-            static LLCachedControl<F32> force_cutoff(gSavedSettings, "BDMergeForceAlphaMaskCutoff", 0.5f);
-            if (force_mask
-                && mat->getDiffuseAlphaMode() == LLMaterial::DIFFUSE_ALPHA_MODE_BLEND
-                && (type == LLRenderPass::PASS_ALPHA_MASK || type == LLRenderPass::PASS_FULLBRIGHT_ALPHA_MASK))
-            {
-                draw_info->mAlphaMaskCutoff = llclamp((F32)force_cutoff, 0.f, 1.f);
-            }
         }
         else
         {
@@ -5802,17 +5791,25 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
                 draw_info->mAlphaMaskCutoff = 0.33f;
             }
 
-            // [BDMerge G2.3] make the whole masked set follow the per-shot
-            // slider while forced masking is on (stock 0.33/0.5 otherwise)
+        }
+
+        // [BDMerge G2.3] Single consolidated forced-mask cutoff override: while
+        // forced masking is on, any Blinn-Phong face pushed into a mask pass uses
+        // the adjustable global cutoff - material BLEND faces (whose own cutoff is
+        // meaningless) and non-material faces (stock 0.33/0.5) alike. MASK-material
+        // faces keep their own cutoff; PBR/GLTF faces are excluded (they route by
+        // mAlphaMode, not canRenderAsMask). Gate off = byte-identical stock.
+        {
             static LLCachedControl<bool> force_mask(gSavedSettings, "BDMergeForceAlphaMask", false);
             static LLCachedControl<F32> force_cutoff(gSavedSettings, "BDMergeForceAlphaMaskCutoff", 0.5f);
             if (force_mask
-                && (type == LLRenderPass::PASS_ALPHA_MASK || type == LLRenderPass::PASS_FULLBRIGHT_ALPHA_MASK))
+                && !gltf_mat
+                && (type == LLRenderPass::PASS_ALPHA_MASK || type == LLRenderPass::PASS_FULLBRIGHT_ALPHA_MASK)
+                && (!mat || mat->getDiffuseAlphaMode() == LLMaterial::DIFFUSE_ALPHA_MODE_BLEND))
             {
                 draw_info->mAlphaMaskCutoff = llclamp((F32)force_cutoff, 0.f, 1.f);
             }
         }
-
         // if (type == LLRenderPass::PASS_ALPHA) // always populate the draw_info ptr
         { //for alpha sorting
             facep->setDrawInfo(draw_info);
