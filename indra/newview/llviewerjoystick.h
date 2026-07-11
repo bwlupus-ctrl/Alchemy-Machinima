@@ -66,6 +66,13 @@ public:
     void moveFlycam(bool reset = false);
     F32 getJoystickAxis(U32 axis) const;
     U32 getJoystickButton(U32 button) const;
+    // [BDMerge B9a] Remappable joystick button controls (donor: Black Dragon
+    // llviewerjoystick.cpp, "//BD - Remappable Joystick Controls"). Returns the
+    // physical button state for a mapped action index, or 0 when the action is
+    // unassigned (-1) or the index is out of range. -1 = unassigned is the
+    // natural "off" state, so an unmapped action never fires (and never indexes
+    // mBtn[] out of bounds the way the donor did).
+    long getMappedButton(S32 button) const { return (button >= 0 && button < 16) ? mBtn[button] : 0; }
     bool isJoystickInitialized() const {return (mDriverState==JDS_INITIALIZED);}
     bool isLikeSpaceNavigator() const;
     void setNeedsReset(bool reset = true) { mResetFlag = reset; }
