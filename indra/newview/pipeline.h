@@ -146,6 +146,18 @@ public:
     // [BDMerge G3.3] per-projector volumetric light cones: additive pass, one
     // fullscreen cone per shadow-casting projector slot, in place on target.
     void renderProjectorVolumetric(LLRenderTarget* target);
+
+    // [BDMerge G3.3 Phase 2] Session-only per-projector art-direction flag.
+    // A projector emits a volumetric shaft only when its object UUID has been
+    // opted in this session via the right-click "Volumetric Shaft" toggle.
+    // The set is NOT persisted - it is cleared on logout/relog (see
+    // clearVolumetricShafts(), called from LLAppViewer::disconnectViewer) and
+    // starts empty, so the effect is off per-projector by default even when the
+    // BDMergeProjectorVolumetrics master gate is on. Mirrors ALDerenderList's
+    // selection plumbing but purely in-memory.
+    static void  toggleVolumetricShaft(const LLUUID& id);
+    static bool  isVolumetricShaftEnabled(const LLUUID& id);
+    static void  clearVolumetricShafts();
     void applyFXAA(LLRenderTarget* src, LLRenderTarget* dst);
     void generateSMAABuffers(LLRenderTarget* src);
     void applySMAA(LLRenderTarget* src, LLRenderTarget* dst);
@@ -1126,6 +1138,12 @@ public:
     static bool BDMergeProjectorVolumetricsAdaptive;
     static U32 BDMergeProjectorVolumetricsMinResolution;
     static F32 BDMergeProjectorVolumetricsMaxLuminance;
+    // [BDMerge G3.3 Phase 2] global art-direction overrides for flagged shafts.
+    static LLColor3 BDMergeProjectorVolumetricsTint;
+    static F32 BDMergeProjectorVolumetricsTintStrength;
+    // [BDMerge G3.3 Phase 2] session-only opt-in set of projector object UUIDs
+    // (not persisted; see toggleVolumetricShaft/clearVolumetricShafts).
+    static std::set<LLUUID> sVolumetricShaftObjects;
     static S32 RenderScreenSpaceReflectionIterations;
     static F32 RenderScreenSpaceReflectionRayStep;
     static F32 RenderScreenSpaceReflectionDistanceBias;

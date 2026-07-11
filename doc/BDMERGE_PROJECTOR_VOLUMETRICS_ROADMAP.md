@@ -90,14 +90,47 @@ with a sensible default. In-world verification still owed (no SL session this pa
    tap).
 
 ## Phase 2 — Art direction (the flag + per-light control)
-1. **Session per-projector opt-in**, right-click context menu ("Volumetric Shaft"),
-   OFF by default. Session-only UUID set (not persisted). Raymarch runs only for
-   flagged, shadow-casting projectors. Mirror `ALDerenderList`'s selection plumbing
-   but session-scoped.
-2. **Per-light overrides** on flagged lights: intensity/density multiplier, cone
-   softness, and a **shaft color tint** that can differ from the light color.
-3. **Slot pinning** so a hero shaft keeps its shadow slot when other projectors are
-   nearer.
+
+**STATUS 2026-07-11 (Opus): item 1 landed (core ask); item 2 landed as global
+overrides; item 3 DEFERRED.** All still gated under the `BDMergeProjectorVolumetrics`
+master; the session flag is an additional filter *within* the enabled effect.
+In-world verification still owed (no SL session this pass).
+
+1. **Session per-projector opt-in. — DONE.** Right-click object context-menu entry
+   **"Volumetric Shaft"** (`menu_object.xml`, a `menu_item_check` next to the
+   Derender items). It is a **session-only** opt-in: a `std::set<LLUUID>`
+   (`LLPipeline::sVolumetricShaftObjects`) with static accessors
+   `toggleVolumetricShaft` / `isVolumetricShaftEnabled` / `clearVolumetricShafts`
+   on `LLPipeline`. **Not persisted** — cleared on logout/relog via
+   `clearVolumetricShafts()` called from `LLAppViewer::disconnectViewer()`, and
+   empty at startup so every projector is dark until flagged (OFF by default even
+   with the master gate on). Menu plumbing (`Object.VolumetricShaft` commit +
+   `Object.EnableVolumetricShaft` / `Object.CheckVolumetricShaft` enable/check
+   callbacks in `alviewermenu.cpp`) mirrors `ALDerenderList`'s selection wiring but
+   is purely in-memory; the entry enables only when the primary selection is a
+   spotlight projector (`isLightSpotlight()`), shows a checkmark when flagged, and
+   toggles every root object in the selection. **Render filter:**
+   `renderProjectorVolumetric()` now skips any spot-shadow slot whose light object
+   isn't flagged. Slot→object mapping: `mShadowSpotLight[i]` (an `LLDrawable*`) →
+   `getVOVolume()` → `getID()`, and also its `getRootEdit()->getID()` so a flag set
+   on the selected root still matches when the light feature lives on a child prim.
+2. **Per-light overrides. — DONE as GLOBAL overrides (per-UUID deferred).** The
+   two levers that already existed globally (intensity = `...Multiplier`, cone
+   softness = `...Feather`) cover most of the ask; the genuinely new lever is a
+   **shaft color tint** decoupled from the light color, added as global settings
+   `BDMergeProjectorVolumetricsTint` (Color3) + `BDMergeProjectorVolumetricsTintStrength`
+   (0–1, default 0 = pure light color → no-op vs. shipped look). Applied in
+   `renderProjectorVolumetric()` by lerping the per-cone `col` toward the tint
+   before upload. True **per-UUID** tint/intensity/softness maps deferred as a
+   follow-up to avoid ballooning scope (would need the flag set to become a
+   `map<LLUUID, params>` + a per-object editor UI); the global versions ship now.
+3. **Slot pinning. — DEFERRED.** Biasing `setupSpotLight`'s shadow-slot priority so
+   a flagged hero projector keeps its slot touches the shadow-assignment path and
+   risks destabilizing it / violating the brief-R1 side-effect-free rule; deferred
+   rather than shipped this pass. Sketch for next time: in the slot-priority
+   comparison, add a bonus to the effective priority of lights in
+   `sVolumetricShaftObjects` so they sort ahead of equidistant non-flagged
+   projectors, kept read-only w.r.t. the volumetric setup itself.
 
 ## Phase 3 — Atmosphere (tasteful)
 1. **Animated 3D noise medium** (scrolling curl/worley) → drifting dust motes /

@@ -49,6 +49,8 @@
 #include "llviewerregion.h"
 #include "llvoavatar.h"
 #include "llvoavatarself.h"
+#include "llvovolume.h"
+#include "pipeline.h"
 
 // llviewermenu.cpp
 LLVOAvatar* find_avatar_from_object(LLViewerObject* object);
@@ -586,6 +588,50 @@ namespace
         return ALDerenderList::canAddSelection();
     }
 // [/SL:KB]
+
+// [BDMerge G3.3 Phase 2] Right-click "Volumetric Shaft" toggle. Session-only
+// per-projector opt-in for the volumetric light-cone effect; mirrors the
+// derender selection plumbing but stores UUIDs in gPipeline's in-memory set
+// (never persisted). Toggles every root object in the current selection.
+    LLVOVolume* get_selected_projector_volume()
+    {
+        LLViewerObject* pObj = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
+        if (!pObj)
+            return nullptr;
+        LLVOVolume* pVol = dynamic_cast<LLVOVolume*>(pObj);
+        if (pVol && pVol->isLightSpotlight())
+            return pVol;
+        return nullptr;
+    }
+
+    void handle_object_volumetric_shaft(const LLSD& /*sdParam*/)
+    {
+        LLObjectSelectionHandle hSel = LLSelectMgr::getInstance()->getSelection();
+        if (hSel.isNull())
+            return;
+
+        for (LLObjectSelection::root_iterator itObj = hSel->root_begin(), endObj = hSel->root_end();
+             itObj != endObj; ++itObj)
+        {
+            const LLSelectNode* pNode = *itObj;
+            LLViewerObject* pObj = (pNode) ? pNode->getObject() : nullptr;
+            if (pObj && pObj->getID().notNull())
+                LLPipeline::toggleVolumetricShaft(pObj->getID());
+        }
+    }
+
+    bool enable_object_volumetric_shaft()
+    {
+        // Only meaningful on spotlight projectors (the only lights that can cast
+        // the shadow slots the effect marches). No-op harmlessly otherwise.
+        return get_selected_projector_volume() != nullptr;
+    }
+
+    bool check_object_volumetric_shaft()
+    {
+        LLViewerObject* pObj = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
+        return pObj && LLPipeline::isVolumetricShaftEnabled(pObj->getID());
+    }
 }
 
 ////////////////////////////////////////////////////////
@@ -630,6 +676,11 @@ void ALViewerMenu::initialize_menus()
     commit.add("Object.Derender", boost::bind(&handle_object_derender, _2));
     enable.add("Object.EnableDerender", boost::bind(&enable_object_derender));
     // [/SL:KB]
+
+// [BDMerge G3.3 Phase 2] session-only per-projector volumetric shaft toggle
+    commit.add("Object.VolumetricShaft", boost::bind(&handle_object_volumetric_shaft, _2));
+    enable.add("Object.EnableVolumetricShaft", boost::bind(&enable_object_volumetric_shaft));
+    enable.add("Object.CheckVolumetricShaft", boost::bind(&check_object_volumetric_shaft));
 
     // [SL:KB] - Patch: World-RenderExceptions | Checked: Catznip-5.2
     commit.add("View.Blocked", boost::bind(&handle_view_blocked, _2));

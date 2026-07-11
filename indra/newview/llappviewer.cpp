@@ -5898,6 +5898,11 @@ void LLAppViewer::disconnectViewer()
         LLSelectMgr::getInstance()->deselectAll();
     }
 
+    // [BDMerge G3.3 Phase 2] Session-only projector volumetric-shaft opt-in set
+    // must not survive a session; clear it on logout/relog (this runs before
+    // reconnecting to a new session and again on quit).
+    LLPipeline::clearVolumetricShafts();
+
     // save inventory if appropriate
     if (gInventory.isInventoryUsable()
         && gAgent.getID().notNull()) // Shouldn't be null at this stage

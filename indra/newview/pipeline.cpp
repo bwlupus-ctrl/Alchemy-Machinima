@@ -254,6 +254,9 @@ bool LLPipeline::BDMergeProjectorVolumetricsScissor;
 bool LLPipeline::BDMergeProjectorVolumetricsAdaptive;
 U32 LLPipeline::BDMergeProjectorVolumetricsMinResolution;
 F32 LLPipeline::BDMergeProjectorVolumetricsMaxLuminance;
+LLColor3 LLPipeline::BDMergeProjectorVolumetricsTint;
+F32 LLPipeline::BDMergeProjectorVolumetricsTintStrength;
+std::set<LLUUID> LLPipeline::sVolumetricShaftObjects;
 S32 LLPipeline::RenderScreenSpaceReflectionIterations;
 F32 LLPipeline::RenderScreenSpaceReflectionRayStep;
 F32 LLPipeline::RenderScreenSpaceReflectionDistanceBias;
@@ -638,6 +641,8 @@ void LLPipeline::init()
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsAdaptive");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsMinResolution");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsMaxLuminance");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsTint");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsTintStrength");
     connectRefreshCachedSettingsSafe("RenderScreenSpaceReflectionIterations");
     connectRefreshCachedSettingsSafe("RenderScreenSpaceReflectionRayStep");
     connectRefreshCachedSettingsSafe("RenderScreenSpaceReflectionDistanceBias");
@@ -1289,6 +1294,8 @@ void LLPipeline::refreshCachedSettings()
     BDMergeProjectorVolumetricsAdaptive = gSavedSettings.getBOOL("BDMergeProjectorVolumetricsAdaptive");
     BDMergeProjectorVolumetricsMinResolution = gSavedSettings.getU32("BDMergeProjectorVolumetricsMinResolution");
     BDMergeProjectorVolumetricsMaxLuminance = gSavedSettings.getF32("BDMergeProjectorVolumetricsMaxLuminance");
+    BDMergeProjectorVolumetricsTint = gSavedSettings.getColor3("BDMergeProjectorVolumetricsTint");
+    BDMergeProjectorVolumetricsTintStrength = gSavedSettings.getF32("BDMergeProjectorVolumetricsTintStrength");
     RenderScreenSpaceReflectionIterations = gSavedSettings.getS32("RenderScreenSpaceReflectionIterations");
     RenderScreenSpaceReflectionRayStep = gSavedSettings.getF32("RenderScreenSpaceReflectionRayStep");
     RenderScreenSpaceReflectionDistanceBias = gSavedSettings.getF32("RenderScreenSpaceReflectionDistanceBias");
@@ -9352,11 +9359,39 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
             continue;
         }
 
+        // [Phase 2 item 1] Session-only art-direction filter: a projector emits
+        // a shaft only after its object UUID has been opted in this session via
+        // the right-click "Volumetric Shaft" toggle. Empty set => nothing marches
+        // (off by default). The context menu flags root prims, but the light
+        // feature can live on either the root or a child, so match both the
+        // light-source prim's own ID and its root-edit ID.
+        {
+            bool flagged = isVolumetricShaftEnabled(volume->getID());
+            if (!flagged)
+            {
+                if (LLViewerObject* root = volume->getRootEdit())
+                    flagged = isVolumetricShaftEnabled(root->getID());
+            }
+            if (!flagged)
+            {
+                continue;
+            }
+        }
+
         // Side-effect-free geometry + cookie upload; slot passed in directly
         // (NO mTargetShadowSpotLight priority reshuffle - R1).
         setupSpotLightVolumetric(gDeferredProjectorVolumetricProgram, drawablep, (S32)i);
 
         LLColor3  col = volume->getLightLinearColor() * light_scale;
+        // [Phase 2 item 2] Global shaft tint: pull the shaft color toward the
+        // art-direction tint so it can differ from the light's own color. At
+        // TintStrength 0 (default) this is a no-op and shafts carry pure light
+        // color per the locked design.
+        if (BDMergeProjectorVolumetricsTintStrength > 0.f)
+        {
+            const F32 t = llclamp(BDMergeProjectorVolumetricsTintStrength, 0.f, 1.f);
+            col = col * (1.f - t) + BDMergeProjectorVolumetricsTint * (light_scale * t);
+        }
         glm::vec3 c(drawablep->getPositionAgent());
         c = mul_mat4_vec3(mat, c); // agent -> view space
 
@@ -9444,6 +9479,31 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
     gGL.setColorMask(true, true);
     gGL.setSceneBlendType(LLRender::BT_ALPHA);
     target->flush();
+}
+
+// [BDMerge G3.3 Phase 2] Session-only per-projector volumetric opt-in. The set
+// lives on gPipeline for the life of the process but is explicitly cleared on
+// logout/relog (clearVolumetricShafts, from LLAppViewer::disconnectViewer), so
+// flags never persist across a session or a viewer restart.
+void LLPipeline::toggleVolumetricShaft(const LLUUID& id)
+{
+    if (id.isNull())
+        return;
+    auto it = sVolumetricShaftObjects.find(id);
+    if (it != sVolumetricShaftObjects.end())
+        sVolumetricShaftObjects.erase(it);
+    else
+        sVolumetricShaftObjects.insert(id);
+}
+
+bool LLPipeline::isVolumetricShaftEnabled(const LLUUID& id)
+{
+    return !sVolumetricShaftObjects.empty() && sVolumetricShaftObjects.count(id) != 0;
+}
+
+void LLPipeline::clearVolumetricShafts()
+{
+    sVolumetricShaftObjects.clear();
 }
 
 void LLPipeline::combineGlow(LLRenderTarget* src, LLRenderTarget* dst)

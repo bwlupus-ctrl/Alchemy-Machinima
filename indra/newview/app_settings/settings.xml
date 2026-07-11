@@ -10562,6 +10562,32 @@
       <key>Value</key>
       <real>8.0</real>
   </map>
+  <key>BDMergeProjectorVolumetricsTint</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 Phase 2] Art-direction tint for flagged projector shafts (linear RGB). Blended toward by TintStrength so the shaft can carry a color that differs from the light's own color. Applies globally to every session-flagged shaft; default 1,1,1 (with TintStrength 0) is a no-op.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Color3</string>
+      <key>Value</key>
+      <array>
+        <real>1.0</real>
+        <real>1.0</real>
+        <real>1.0</real>
+      </array>
+  </map>
+  <key>BDMergeProjectorVolumetricsTintStrength</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 Phase 2] How strongly the shaft color is pulled toward Tint, away from the light's own color (0.0-1.0; default 0.0 = pure light color, 1.0 = pure Tint). Applies to all session-flagged shafts.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+  </map>
   <key>RenderTextureVRAMDivisor</key>
   <map>
       <key>Comment</key>
