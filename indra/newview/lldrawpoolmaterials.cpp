@@ -421,3 +421,34 @@ void LLDrawPoolMaterials::renderDeferred(S32 pass)
         }
     }
 }
+
+// ============================================================================
+// [BDMerge A5.4-1a] Velocity / motion-vector pass (rigid + camera).
+// Donor: Black Dragon lldrawpoolmaterials.cpp:292-348. All 12 legacy material
+// sub-passes are pushed with the plain (non-cutout) velocity program, matching
+// the donor -- alpha-mask material silhouettes over-cover slightly, which is
+// acceptable for the Phase 1a foundation. Rigged sub-passes are Phase 1b.
+// ============================================================================
+void LLDrawPoolMaterials::beginVelocityPass(S32 pass)
+{
+    gVelocityProgram.bind();
+    bindVelocityUniforms(gVelocityProgram);
+}
+
+void LLDrawPoolMaterials::endVelocityPass(S32 pass)
+{
+    gVelocityProgram.unbind();
+}
+
+void LLDrawPoolMaterials::renderVelocity(S32 pass)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_MATERIAL;
+    LLGLEnable cull(GL_CULL_FACE);
+
+    for (U32 i = 0; i < sizeof(sMaterialPassType) / sizeof(U32); ++i)
+    {
+        pushVelocityBatches(sMaterialPassType[i]);
+    }
+    // Phase 1b seam: the rigged sub-passes (sMaterialPassType[i] + 1) via
+    // pushRiggedVelocityBatches once the previous matrix palette exists.
+}

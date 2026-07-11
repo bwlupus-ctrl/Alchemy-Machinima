@@ -111,6 +111,15 @@ public:
     virtual S32 getNumShadowPasses();
     virtual void renderShadow(S32 pass = 0);
 
+    // [BDMerge A5.4-1a] Velocity / motion-vector pass. Base returns 0 passes so a
+    // pool that does not override these is silently skipped by renderGeomVelocity.
+    // Implemented (rigid + camera) by the opaque/alpha-mask draw pools; skinned
+    // batches are the Phase 1b seam (see pool .cpp files).
+    virtual void beginVelocityPass(S32 pass);
+    virtual void endVelocityPass(S32 pass);
+    virtual S32  getNumVelocityPasses();
+    virtual void renderVelocity(S32 pass = 0);
+
     virtual void render(S32 pass = 0) {};
     virtual void prerender() {};
     virtual U32 getVertexDataMask() { return 0; } // DEPRECATED -- draw pool doesn't actually determine vertex data mask any more
@@ -359,6 +368,18 @@ public:
 
     void pushRiggedBatches(U32 type, bool texture = true, bool batch_textures = false);
     void pushUntexturedRiggedBatches(U32 type);
+
+    // [BDMerge A5.4-1a] Velocity-pass batch pushers (rigid). pushVelocityBatches
+    // uploads the per-object previous matrix from mLastModelMatrix, draws, then
+    // writes the current matrix back for next frame. The *Textured variant also
+    // binds the diffuse texture for alpha-mask cutout. Rigged equivalents
+    // (pushRiggedVelocityBatches*) are Phase 1b.
+    void pushVelocityBatches(U32 type);
+    void pushVelocityBatchesTextured(U32 type);
+    // Bind a velocity program and upload the shared per-pass uniforms (previous
+    // camera modelview + un-jittered projection). Call at pass begin and after any
+    // rebind (e.g. the rigged-variant bind in Phase 1b).
+    static void bindVelocityUniforms(LLGLSLShader& shader);
 
     // push full GLTF batches
     // assumes draw infos of given type have valid GLTF materials

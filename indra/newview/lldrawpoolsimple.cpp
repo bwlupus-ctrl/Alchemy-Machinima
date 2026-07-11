@@ -232,3 +232,105 @@ void LLDrawPoolFullbrightAlphaMask::renderPostDeferred(S32 pass)
     }
 }
 
+// ============================================================================
+// [BDMerge A5.4-1a] Velocity / motion-vector passes (rigid + camera).
+// Donor: Black Dragon lldrawpoolsimple.cpp:160-322. Phase 1a pushes ONLY the
+// rigid batches; the rigged (skinned) pushes are the Phase 1b seam and are
+// intentionally omitted here (marked below).
+// ============================================================================
+
+void LLDrawPoolSimple::beginVelocityPass(S32 pass)
+{
+    gVelocityProgram.bind();
+    bindVelocityUniforms(gVelocityProgram);
+}
+
+void LLDrawPoolSimple::endVelocityPass(S32 pass)
+{
+    gVelocityProgram.unbind();
+}
+
+void LLDrawPoolSimple::renderVelocity(S32 pass)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
+    LLGLEnable cull(GL_CULL_FACE);
+    pushVelocityBatches(LLRenderPass::PASS_SIMPLE);
+    // Phase 1b seam: rigid+camera only for now. Skinned velocity (PASS_SIMPLE_RIGGED)
+    // needs the previous matrix palette -> pushRiggedVelocityBatches in Phase 1b.
+}
+
+void LLDrawPoolGrass::beginVelocityPass(S32 pass)
+{
+    gVelocityProgram.bind();
+    bindVelocityUniforms(gVelocityProgram);
+}
+
+void LLDrawPoolGrass::endVelocityPass(S32 pass)
+{
+    gVelocityProgram.unbind();
+}
+
+void LLDrawPoolGrass::renderVelocity(S32 pass)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
+    LLGLEnable cull(GL_CULL_FACE);
+    pushVelocityBatches(LLRenderPass::PASS_GRASS);
+}
+
+void LLDrawPoolFullbright::beginVelocityPass(S32 pass)
+{
+    gVelocityProgram.bind();
+    bindVelocityUniforms(gVelocityProgram);
+}
+
+void LLDrawPoolFullbright::endVelocityPass(S32 pass)
+{
+    gVelocityProgram.unbind();
+}
+
+void LLDrawPoolFullbright::renderVelocity(S32 pass)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
+    LLGLEnable cull(GL_CULL_FACE);
+    pushVelocityBatches(LLRenderPass::PASS_FULLBRIGHT);
+    // Phase 1b seam: PASS_FULLBRIGHT_RIGGED.
+}
+
+void LLDrawPoolAlphaMask::beginVelocityPass(S32 pass)
+{
+    gVelocityAlphaProgram.bind();
+    bindVelocityUniforms(gVelocityAlphaProgram);
+}
+
+void LLDrawPoolAlphaMask::endVelocityPass(S32 pass)
+{
+    gVelocityAlphaProgram.unbind();
+}
+
+void LLDrawPoolAlphaMask::renderVelocity(S32 pass)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
+    LLGLEnable cull(GL_CULL_FACE);
+    pushVelocityBatchesTextured(LLRenderPass::PASS_ALPHA_MASK);
+    // Phase 1b seam: PASS_ALPHA_MASK_RIGGED.
+}
+
+void LLDrawPoolFullbrightAlphaMask::beginVelocityPass(S32 pass)
+{
+    gVelocityAlphaProgram.bind();
+    bindVelocityUniforms(gVelocityAlphaProgram);
+}
+
+void LLDrawPoolFullbrightAlphaMask::endVelocityPass(S32 pass)
+{
+    gVelocityAlphaProgram.unbind();
+}
+
+void LLDrawPoolFullbrightAlphaMask::renderVelocity(S32 pass)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
+    LLGLEnable cull(GL_CULL_FACE);
+    pushVelocityBatchesTextured(LLRenderPass::PASS_FULLBRIGHT_ALPHA_MASK);
+    // Phase 1b seam: PASS_FULLBRIGHT_ALPHA_MASK_RIGGED.
+}
+

@@ -1729,6 +1729,15 @@ void LLShaderMgr::initAttribsAndUniforms()
     // [BDMerge Batch 2] Feature 2: gobo anisotropic/mip filtering
     mReservedUniforms.push_back("gobo_aniso");
 
+    // [BDMerge A5.4-1a] velocity / motion-vector buffer (must stay in lockstep
+    // with the enum block in llshadermgr.h)
+    mReservedUniforms.push_back("current_modelview_matrix");
+    mReservedUniforms.push_back("last_modelview_matrix");
+    mReservedUniforms.push_back("last_object_matrix");
+    mReservedUniforms.push_back("projection_matrix_unjittered");
+    mReservedUniforms.push_back("velocityMap");
+    mReservedUniforms.push_back("motion_blur_strength");
+
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 
     std::set<std::string> dupe_check;

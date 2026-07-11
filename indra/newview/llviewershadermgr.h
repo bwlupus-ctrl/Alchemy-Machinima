@@ -301,6 +301,11 @@ extern LLGLSLShader         gHUDFullbrightShinyProgram;
 extern LLGLSLShader         gNormalMapGenProgram;
 extern LLGLSLShader         gDeferredGenBrdfLutProgram;
 extern LLGLSLShader         gDeferredBufferVisualProgram;
+// [BDMerge A5.4-1a] velocity / motion-vector pass programs (rigid + camera).
+// Skinned/rigged + avatar variants are Phase 1b.
+extern LLGLSLShader         gVelocityProgram;
+extern LLGLSLShader         gVelocityAlphaProgram;
+extern LLGLSLShader         gVelocityDebugProgram;
 extern LLGLSLShader         gBlitWithEffectsProgram;
 extern LLGLSLShader         gCGGammaProgram;
 extern LLGLSLShader         gCGLegacyGammaProgram;

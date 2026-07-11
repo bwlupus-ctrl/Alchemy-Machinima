@@ -528,6 +528,17 @@ public:
         // [BDMerge Batch 2] Feature 2: gobo/cookie mip + anisotropic filtering
         GOBO_ANISO,                        //  "gobo_aniso"
 
+        // [BDMerge A5.4-1a] velocity / motion-vector buffer. CURRENT_MODELVIEW and
+        // MOTION_BLUR_STRENGTH are declared now for forward-compat (Phase 3 motion
+        // blur, debug-viz gain). PROJECTION_MATRIX_UNJITTERED carries the T2x
+        // jitter-free projection so motion vectors stay clean (brief pitfall 1).
+        CURRENT_MODELVIEW_MATRIX,          //  "current_modelview_matrix"
+        LAST_MODELVIEW_MATRIX,             //  "last_modelview_matrix"
+        LAST_OBJECT_MATRIX,                //  "last_object_matrix"
+        PROJECTION_MATRIX_UNJITTERED,      //  "projection_matrix_unjittered"
+        DEFERRED_VELOCITY,                 //  "velocityMap"
+        MOTION_BLUR_STRENGTH,              //  "motion_blur_strength"
+
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

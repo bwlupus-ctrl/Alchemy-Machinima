@@ -156,3 +156,31 @@ void LLDrawPoolGLTFPBR::renderPostDeferred(S32 pass)
     }
 }
 
+// ============================================================================
+// [BDMerge A5.4-1a] Velocity / motion-vector pass (rigid + camera).
+// Donor: Black Dragon lldrawpoolpbropaque.cpp:100-140. This pool owns both the
+// opaque and alpha-mask GLTF passes (mRenderType). Phase 1a pushes both with the
+// plain velocity program (position + model matrix); the GLTF alpha-mask cutout
+// (base_color_texcoord) is NOT applied here -- masked-transparent texels over-
+// cover slightly, acceptable for the foundation and cheaply refined later.
+// Rigged GLTF (mRenderType + 1) is Phase 1b.
+// ============================================================================
+void LLDrawPoolGLTFPBR::beginVelocityPass(S32 pass)
+{
+    gVelocityProgram.bind();
+    bindVelocityUniforms(gVelocityProgram);
+}
+
+void LLDrawPoolGLTFPBR::endVelocityPass(S32 pass)
+{
+    gVelocityProgram.unbind();
+}
+
+void LLDrawPoolGLTFPBR::renderVelocity(S32 pass)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
+    LLGLEnable cull(GL_CULL_FACE);
+    pushVelocityBatches(mRenderType);
+    // Phase 1b seam: pushRiggedVelocityBatches(mRenderType + 1).
+}
+

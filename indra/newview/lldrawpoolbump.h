@@ -76,6 +76,12 @@ public:
     virtual S32 getNumPostDeferredPasses() override { return 1; }
     /*virtual*/ void renderPostDeferred(S32 pass) override;
 
+    // [BDMerge A5.4-1a] velocity pass (rigid + camera)
+    S32  getNumVelocityPasses() override { return 1; }
+    void beginVelocityPass(S32 pass) override;
+    void endVelocityPass(S32 pass) override;
+    void renderVelocity(S32 pass) override;
+
     static bool bindBumpMap(LLDrawInfo& params, S32 channel = -2);
     static bool bindBumpMap(LLFace* face, S32 channel = -2);
 

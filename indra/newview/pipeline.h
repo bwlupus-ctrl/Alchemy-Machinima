@@ -326,6 +326,11 @@ public:
     void renderGeomDeferred(LLCamera& camera, bool do_occlusion = false);
     void renderGeomPostDeferred(LLCamera& camera);
     void renderGeomShadow(LLCamera& camera);
+    // [BDMerge A5.4-1a] Velocity / motion-vector geometry pass. Re-rasterizes the
+    // opaque scene into mVelocityMap (RG16F) writing per-pixel screen-space
+    // velocity. renderVelocityDebug blits it to screen for validation.
+    void renderGeomVelocity();
+    void renderVelocityDebug(LLRenderTarget* dst);
     void bindLightFunc(LLGLSLShader& shader);
 
     // bind shadow maps
@@ -702,6 +707,10 @@ public:
     static bool             sNoAlpha;
     static bool             sUseFarClip;
     static bool             sShadowRender;
+    // [BDMerge A5.4-1a] true only while the velocity/motion-vector geometry pass
+    // is executing (renderGeomVelocity). Lets pool code and shaders distinguish
+    // the velocity pass from the normal render if needed.
+    static bool             sVelocityRender;
     static bool             sDynamicLOD;
     static bool             sPickAvatar;
     static bool             sReflectionRender;
@@ -817,6 +826,16 @@ public:
     // index when building the jittered projection.
     LLRenderTarget          mSMAAHistory;
     U32                     mSMAAFrameIndex = 0;
+
+    // [BDMerge A5.4-1a] Screen-space velocity / motion-vector buffer (GL_RG16F).
+    // Shares the deferred screen's depth so the velocity pass depth-tests against
+    // the already-rendered opaque scene. Allocated only when BDMergeVelocityBuffer
+    // is on (Phase 2 will also allocate it whenever SMAA T2x is active).
+    LLRenderTarget          mVelocityMap;
+    // Un-jittered current projection captured at camera setup (llviewercamera),
+    // uploaded to the velocity programs so the SMAA T2x jitter does not leak into
+    // motion vectors. Public so LLViewerCamera can write it.
+    F32                     mVelocityProjMat[16] = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
 
     // render ui to buffer target
     LLRenderTarget          mUIScreen;
@@ -1219,6 +1238,10 @@ public:
     static bool BDMergeSoftShadowSun;          // also apply to the sun cascades
     // [BDMerge Batch 2] Feature 2: gobo/cookie mip + anisotropic filtering.
     static bool BDMergeGoboAnisotropic;        // default on
+    // [BDMerge A5.4-1a] velocity / motion-vector buffer (Phase 1a foundation).
+    static bool BDMergeVelocityBuffer;         // master gate, default OFF (extra geom pass)
+    static bool BDMergeVelocityDebug;          // blit velocityMap to screen for validation
+    static S32  BDMergeMotionBlurStrength;     // Phase 3 / debug-viz gain, default 32
     // [BDMerge G3.3 Phase 2] session-only opt-in set of projector object UUIDs
     // (not persisted; see toggleVolumetricShaft/clearVolumetricShafts).
     static std::set<LLUUID> sVolumetricShaftObjects;

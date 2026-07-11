@@ -615,6 +615,30 @@ void LLDrawPoolBump::renderDeferred(S32 pass)
 }
 
 
+// [BDMerge A5.4-1a] Velocity pass (rigid + camera). Donor: Black Dragon
+// lldrawpoolbump.cpp:595-624. Covers bump plus shiny surfaces owned by this pool
+// so metal/reflective geometry also produces motion vectors. Rigged is Phase 1b.
+void LLDrawPoolBump::beginVelocityPass(S32 pass)
+{
+    gVelocityProgram.bind();
+    bindVelocityUniforms(gVelocityProgram);
+}
+
+void LLDrawPoolBump::endVelocityPass(S32 pass)
+{
+    gVelocityProgram.unbind();
+}
+
+void LLDrawPoolBump::renderVelocity(S32 pass)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
+    LLGLEnable cull(GL_CULL_FACE);
+    pushVelocityBatches(LLRenderPass::PASS_BUMP);
+    pushVelocityBatches(LLRenderPass::PASS_SHINY);
+    pushVelocityBatches(LLRenderPass::PASS_FULLBRIGHT_SHINY);
+    // Phase 1b seam: PASS_BUMP_RIGGED / PASS_SHINY_RIGGED / PASS_FULLBRIGHT_SHINY_RIGGED.
+}
+
 void LLDrawPoolBump::renderPostDeferred(S32 pass)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;

@@ -100,6 +100,12 @@ public:
     const LLMatrix4* mNormalMapMatrix = nullptr;
     const LLMatrix4* mTextureMatrix = nullptr;
     const LLMatrix4* mModelMatrix = nullptr;
+    // [BDMerge A5.4-1a] Points at the owning drawable's mLastVelocityMatrix. Used
+    // only by the velocity pass: read as the previous object matrix, then the
+    // current mModelMatrix is written back into it for next frame. Null (default)
+    // -> identity fallback (zero object velocity). Wired in
+    // LLVolumeGeometryManager::registerFace.
+    LLMatrix4* mLastModelMatrix = nullptr;
 
     LLPointer<LLVOAvatar> mAvatar = nullptr;
     // Owning, like mAvatar above: the mesh repo culls skins whose only

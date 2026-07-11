@@ -378,6 +378,15 @@ void LLViewerCamera::setPerspective(bool for_selection,
 
     proj_mat *= glm::perspective(fov_y, aspect, z_near, z_far);
 
+    // [BDMerge A5.4-1a] Capture the UN-JITTERED projection for the velocity pass
+    // BEFORE the T2x jitter is applied below. The velocity shaders combine this
+    // with the (jitter-free) modelview to produce clean motion vectors, while
+    // gl_Position still uses the jittered MVP so the velocity buffer aligns with
+    // the jittered colour/depth buffer. Captured unconditionally: when jitter is
+    // off this equals the actual projection. The main scene render is the last
+    // setPerspective before renderGeomVelocity, so this holds the right matrix.
+    memcpy(gPipeline.mVelocityProjMat, glm::value_ptr(proj_mat), sizeof(F32) * 16);
+
     // [BDMerge A5.8] SMAA T2x subpixel jitter. Donor: Black Dragon (NiranV Dean).
     // Nudge the projection by alternating ±0.25px each frame so the two temporally
     // resolved samples average to a supersampled result. Only when T2x is the

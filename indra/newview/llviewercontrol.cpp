@@ -1126,6 +1126,8 @@ void settings_setup_listeners()
     setting_setup_signal_listener(gSavedSettings, "RenderUIBuffer", handleWindowResized);
     setting_setup_signal_listener(gSavedSettings, "RenderDepthOfField", handleReleaseGLBufferChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderFSAAType", handleReleaseGLBufferChanged);
+    // [BDMerge A5.4-1a] toggling the velocity buffer allocates/frees mVelocityMap
+    setting_setup_signal_listener(gSavedSettings, "BDMergeVelocityBuffer", handleReleaseGLBufferChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderSMAAUseStencil", handleReleaseGLBufferChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderSMAAPredication", handleSetShaderChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderSMAAPredicationThreshold", handleSetShaderChanged);

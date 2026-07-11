@@ -241,6 +241,11 @@ LLGLSLShader            gDeferredSkinnedFullbrightAlphaMaskAlphaProgram;
 LLGLSLShader            gNormalMapGenProgram;
 LLGLSLShader            gDeferredGenBrdfLutProgram;
 LLGLSLShader            gDeferredBufferVisualProgram;
+// [BDMerge A5.4-1a] velocity / motion-vector pass programs (rigid + camera). The
+// skinned/rigged and avatar variants are Phase 1b.
+LLGLSLShader            gVelocityProgram;
+LLGLSLShader            gVelocityAlphaProgram;
+LLGLSLShader            gVelocityDebugProgram;
 LLGLSLShader            gBlitWithEffectsProgram;
 LLGLSLShader            gCGGammaProgram;
 LLGLSLShader            gCGLegacyGammaProgram;
@@ -1226,6 +1231,9 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gNormalMapGenProgram.unload();
         gDeferredGenBrdfLutProgram.unload();
         gDeferredBufferVisualProgram.unload();
+        gVelocityProgram.unload();          // [BDMerge A5.4-1a]
+        gVelocityAlphaProgram.unload();     // [BDMerge A5.4-1a]
+        gVelocityDebugProgram.unload();     // [BDMerge A5.4-1a]
 
         for (U32 i = 0; i < LLMaterial::SHADER_COUNT*2; ++i)
         {
@@ -3380,6 +3388,40 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         add_common_permutations(&gDeferredBufferVisualProgram);
 
         success = gDeferredBufferVisualProgram.createShader();
+    }
+
+    // [BDMerge A5.4-1a] Velocity / motion-vector pass programs. Rigid + camera
+    // only in Phase 1a; the make_rigged_variant skinned pair and the avatar
+    // velocity program are added in Phase 1b. These programs are cheap to keep
+    // resident and are only invoked when BDMergeVelocityBuffer is enabled.
+    if (success)
+    {
+        gVelocityProgram.mName = "Velocity Shader";
+        gVelocityProgram.mShaderFiles.clear();
+        gVelocityProgram.mShaderFiles.push_back(make_pair("deferred/velocityV.glsl", GL_VERTEX_SHADER));
+        gVelocityProgram.mShaderFiles.push_back(make_pair("deferred/velocityF.glsl", GL_FRAGMENT_SHADER));
+        gVelocityProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gVelocityProgram.createShader();
+    }
+
+    if (success)
+    {
+        gVelocityAlphaProgram.mName = "Velocity Alpha Mask Shader";
+        gVelocityAlphaProgram.mShaderFiles.clear();
+        gVelocityAlphaProgram.mShaderFiles.push_back(make_pair("deferred/velocityAlphaV.glsl", GL_VERTEX_SHADER));
+        gVelocityAlphaProgram.mShaderFiles.push_back(make_pair("deferred/velocityAlphaF.glsl", GL_FRAGMENT_SHADER));
+        gVelocityAlphaProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gVelocityAlphaProgram.createShader();
+    }
+
+    if (success)
+    {
+        gVelocityDebugProgram.mName = "Velocity Debug Visualization Shader";
+        gVelocityDebugProgram.mShaderFiles.clear();
+        gVelocityDebugProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gVelocityDebugProgram.mShaderFiles.push_back(make_pair("deferred/velocityDebugF.glsl", GL_FRAGMENT_SHADER));
+        gVelocityDebugProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gVelocityDebugProgram.createShader();
     }
 
     if (success)

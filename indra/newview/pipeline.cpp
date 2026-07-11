@@ -276,6 +276,11 @@ F32  LLPipeline::BDMergeSoftShadowMaxPenumbra;
 F32  LLPipeline::BDMergeSoftShadowFill;
 bool LLPipeline::BDMergeSoftShadowSun;
 bool LLPipeline::BDMergeGoboAnisotropic;
+// [BDMerge A5.4-1a] velocity / motion-vector buffer
+bool LLPipeline::BDMergeVelocityBuffer;
+bool LLPipeline::BDMergeVelocityDebug;
+S32  LLPipeline::BDMergeMotionBlurStrength;
+bool LLPipeline::sVelocityRender = false;
 std::map<LLUUID, LLPipeline::VolumetricShaftOverride> LLPipeline::sVolumetricShaftOverrides;
 std::set<LLUUID> LLPipeline::sVolumetricShaftObjects;
 std::set<LLUUID> LLPipeline::sNoShadowProjectors; // [BDMerge Batch 3] cast-shadows opt-out
@@ -690,6 +695,9 @@ void LLPipeline::init()
     connectRefreshCachedSettingsSafe("BDMergeSoftShadowFill");
     connectRefreshCachedSettingsSafe("BDMergeSoftShadowSun");
     connectRefreshCachedSettingsSafe("BDMergeGoboAnisotropic");
+    connectRefreshCachedSettingsSafe("BDMergeVelocityBuffer");     // [BDMerge A5.4-1a]
+    connectRefreshCachedSettingsSafe("BDMergeVelocityDebug");      // [BDMerge A5.4-1a]
+    connectRefreshCachedSettingsSafe("BDMergeMotionBlurStrength"); // [BDMerge A5.4-1a]
     connectRefreshCachedSettingsSafe("RenderScreenSpaceReflectionIterations");
     connectRefreshCachedSettingsSafe("RenderScreenSpaceReflectionRayStep");
     connectRefreshCachedSettingsSafe("RenderScreenSpaceReflectionDistanceBias");
@@ -1089,6 +1097,21 @@ bool LLPipeline::allocateScreenBufferInternal(U32 resX, U32 resY)
             mSMAAHistory.release();
         }
 
+        // [BDMerge A5.4-1a] Velocity / motion-vector buffer (GL_RG16F). Shares the
+        // deferred screen's depth buffer so the velocity geometry pass depth-tests
+        // against the already-rendered opaque scene (mirror BD pipeline.cpp:1046).
+        // Default OFF (BDMergeVelocityBuffer) -> released -> zero extra cost/behavior.
+        // Phase 2 will additionally allocate this whenever SMAA T2x is active.
+        if (gSavedSettings.getBOOL("BDMergeVelocityBuffer"))
+        {
+            if (!mVelocityMap.allocate(resX, resY, GL_RG16F, false)) return false;
+            mRT->deferredScreen.shareDepthBuffer(mVelocityMap);
+        }
+        else
+        {
+            mVelocityMap.release();
+        }
+
         //water reflection texture (always needed as scratch space whether or not transparent water is enabled)
         mWaterDis.allocate(resX, resY, screenFormat, true);
 
@@ -1380,6 +1403,9 @@ void LLPipeline::refreshCachedSettings()
     BDMergeSoftShadowFill = gSavedSettings.getF32("BDMergeSoftShadowFill");
     BDMergeSoftShadowSun = gSavedSettings.getBOOL("BDMergeSoftShadowSun");
     BDMergeGoboAnisotropic = gSavedSettings.getBOOL("BDMergeGoboAnisotropic");
+    BDMergeVelocityBuffer = gSavedSettings.getBOOL("BDMergeVelocityBuffer");     // [BDMerge A5.4-1a]
+    BDMergeVelocityDebug = gSavedSettings.getBOOL("BDMergeVelocityDebug");       // [BDMerge A5.4-1a]
+    BDMergeMotionBlurStrength = gSavedSettings.getS32("BDMergeMotionBlurStrength"); // [BDMerge A5.4-1a]
     RenderScreenSpaceReflectionIterations = gSavedSettings.getS32("RenderScreenSpaceReflectionIterations");
     RenderScreenSpaceReflectionRayStep = gSavedSettings.getF32("RenderScreenSpaceReflectionRayStep");
     RenderScreenSpaceReflectionDistanceBias = gSavedSettings.getF32("RenderScreenSpaceReflectionDistanceBias");
@@ -1450,6 +1476,7 @@ void LLPipeline::releaseGLBuffers()
     mFXAAMap.release();
     mSMAABlendBuffer.release();
     mSMAAHistory.release(); // [BDMerge A5.8] SMAA T2x history
+    mVelocityMap.release(); // [BDMerge A5.4-1a] velocity / motion-vector buffer
 
     mUIScreen.release();
 
@@ -4544,6 +4571,58 @@ void LLPipeline::renderGeomDeferred(LLCamera& camera, bool do_occlusion)
     {
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
+}
+
+// [BDMerge A5.4-1a] Velocity / motion-vector geometry pass. Donor: Black Dragon
+// LLPipeline::renderGeomMotionBlur (pipeline.cpp:4305-4334). Re-rasterizes the
+// opaque scene into mVelocityMap (RG16F) writing per-pixel screen-space velocity
+// (current NDC - previous NDC). Depth-tests (no write) against the shared
+// deferred depth so only visible surfaces are stamped. Each draw pool emits its
+// own velocity via the getNumVelocityPasses / begin / render / endVelocityPass
+// hooks (rigid + camera in Phase 1a; skinned is the Phase 1b seam).
+//
+// Exclusions: blended alpha (order-dependent, double-stamp hazard), HUD/UI (this
+// runs before UI compositing), and cube snapshots / reflection probes (guarded by
+// the caller's !gCubeSnapshot). First-frame / no-prev-matrix drawables emit zero
+// velocity via the identity fallback in pushVelocityBatches.
+void LLPipeline::renderGeomVelocity()
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
+    LL_PROFILE_GPU_ZONE("renderGeomVelocity");
+
+    if (!mVelocityMap.isComplete())
+    { // buffer not allocated (e.g. setting toggled without a buffer realloc yet)
+        return;
+    }
+
+    mVelocityMap.bindTarget();
+    mVelocityMap.clear(GL_COLOR_BUFFER_BIT);
+
+    gGL.setColorMask(true, true);
+    LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL); // test against scene depth, no write
+
+    sVelocityRender = true;
+
+    // Each draw pool is responsible for producing its own velocity.
+    for (pool_set_t::iterator iter = mPools.begin(); iter != mPools.end(); ++iter)
+    {
+        LLDrawPool* poolp = *iter;
+        S32 num_passes = poolp->getNumVelocityPasses();
+        for (S32 i = 0; i < num_passes; ++i)
+        {
+            poolp->beginVelocityPass(i);
+            poolp->renderVelocity(i);
+            poolp->endVelocityPass(i);
+        }
+    }
+
+    sVelocityRender = false;
+
+    gGLLastMatrix = NULL;
+    gGL.matrixMode(LLRender::MM_MODELVIEW);
+    gGL.loadMatrix(gGLModelView);
+
+    mVelocityMap.flush();
 }
 
 // Render all of our geometry that's required after our deferred pass.
@@ -7958,6 +8037,31 @@ void LLPipeline::visualizeBuffers(LLRenderTarget* src, LLRenderTarget* dst, U32 
     dst->flush();
 }
 
+// [BDMerge A5.4-1a] Velocity buffer debug visualization (BDMergeVelocityDebug).
+// Blits mVelocityMap into dst as a colour field: rightward screen motion -> red,
+// upward -> green, static -> neutral grey. Used to VALIDATE the motion vectors in
+// world before Phase 1b/2 build on them. No-op if the buffer is not allocated.
+void LLPipeline::renderVelocityDebug(LLRenderTarget* dst)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_PIPELINE;
+
+    if (!mVelocityMap.isComplete() || !gVelocityDebugProgram.isComplete())
+    {
+        return;
+    }
+
+    dst->bindTarget();
+    gVelocityDebugProgram.bind();
+    gVelocityDebugProgram.bindTexture(LLShaderMgr::DEFERRED_VELOCITY, &mVelocityMap, false, LLTexUnit::TFO_POINT);
+    gVelocityDebugProgram.uniform1f(LLShaderMgr::MOTION_BLUR_STRENGTH, (F32)BDMergeMotionBlurStrength);
+
+    mScreenTriangleVB->setBuffer();
+    mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+
+    gVelocityDebugProgram.unbind();
+    dst->flush();
+}
+
 void LLPipeline::generateLuminance(LLRenderTarget* src, LLRenderTarget* dst)
 {
     // luminance sample and mipmap generation
@@ -10552,6 +10656,14 @@ void LLPipeline::renderFinalize()
         }
     }
 
+    // [BDMerge A5.4-1a] Velocity buffer debug overlay. Overwrites the final image
+    // with a colour visualization of mVelocityMap so the motion vectors can be
+    // validated in-world. Runs last (after AA/DoF) but before the present blit.
+    if (BDMergeVelocityBuffer && BDMergeVelocityDebug && !gCubeSnapshot)
+    {
+        renderVelocityDebug(sourceBuffer);
+    }
+
     // Present the screen target.
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("renderFinalize - final blit");
@@ -11475,6 +11587,15 @@ void LLPipeline::renderDeferredLighting()
     }
 
     screen_target->flush();
+
+    // [BDMerge A5.4-1a] Velocity / motion-vector pass. Runs after the opaque +
+    // post-deferred geometry and BEFORE the last-frame matrix snapshot below (so it
+    // reads gGLLastModelView == the PREVIOUS frame's camera). Guarded off by default
+    // (BDMergeVelocityBuffer) and never in cube snapshots / reflection probes.
+    if (BDMergeVelocityBuffer && !gCubeSnapshot)
+    {
+        renderGeomVelocity();
+    }
 
     if (!gCubeSnapshot)
     {

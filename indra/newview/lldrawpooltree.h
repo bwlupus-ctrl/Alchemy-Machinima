@@ -55,6 +55,13 @@ public:
     /*virtual*/ void endShadowPass(S32 pass);
     /*virtual*/ void renderShadow(S32 pass);
 
+    // [BDMerge A5.4-1a] velocity pass (camera only -- tree position is static;
+    // wind sway is a vertex effect not captured in Phase 1a)
+    /*virtual*/ S32  getNumVelocityPasses() override { return 1; }
+    /*virtual*/ void beginVelocityPass(S32 pass) override;
+    /*virtual*/ void endVelocityPass(S32 pass) override;
+    /*virtual*/ void renderVelocity(S32 pass) override;
+
     /*virtual*/ bool verify() const;
     /*virtual*/ LLViewerTexture *getTexture();
     /*virtual*/ LLViewerTexture *getDebugTexture();

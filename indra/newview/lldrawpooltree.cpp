@@ -104,6 +104,57 @@ void LLDrawPoolTree::endDeferredPass(S32 pass)
     shader->unbind();
 }
 
+// ============================================================================
+// [BDMerge A5.4-1a] Velocity / motion-vector pass. Donor: Black Dragon
+// lldrawpooltree.cpp:140-175. Trees are static-position, so previous object
+// matrix == current (region render matrix) and only camera motion contributes.
+// The whole (alpha-tested) tree quad is stamped -- foliage cutout is not applied
+// in Phase 1a; acceptable for the foundation.
+// ============================================================================
+void LLDrawPoolTree::beginVelocityPass(S32 pass)
+{
+    gVelocityProgram.bind();
+    LLRenderPass::bindVelocityUniforms(gVelocityProgram);
+}
+
+void LLDrawPoolTree::endVelocityPass(S32 pass)
+{
+    gVelocityProgram.unbind();
+}
+
+void LLDrawPoolTree::renderVelocity(S32 pass)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
+    LLGLEnable cull(GL_CULL_FACE);
+
+    if (mDrawFace.empty())
+    {
+        return;
+    }
+
+    for (std::vector<LLFace*>::iterator iter = mDrawFace.begin();
+         iter != mDrawFace.end(); ++iter)
+    {
+        LLFace* face = *iter;
+        LLVertexBuffer* buff = face->getVertexBuffer();
+        if (!buff)
+        {
+            continue;
+        }
+
+        LLMatrix4* model_matrix = &(face->getDrawable()->getRegion()->mRenderMatrix);
+
+        llassert(gGL.getMatrixMode() == LLRender::MM_MODELVIEW);
+        LLRenderPass::applyModelMatrix(model_matrix);
+
+        // static tree: previous object matrix == current
+        LLGLSLShader::sCurBoundShaderPtr->uniformMatrix4fv(LLShaderMgr::LAST_OBJECT_MATRIX, 1, GL_FALSE, (GLfloat*)model_matrix->mMatrix);
+
+        buff->setBuffer();
+        buff->drawRange(LLRender::TRIANGLES, 0, buff->getNumVerts() - 1, buff->getNumIndices(), 0);
+    }
+}
+
 //============================================
 // shadow implementation
 //============================================

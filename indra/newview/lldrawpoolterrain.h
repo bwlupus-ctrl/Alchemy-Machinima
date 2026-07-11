@@ -56,6 +56,14 @@ public:
     /*virtual*/ void endShadowPass(S32 pass);
     /*virtual*/ void renderShadow(S32 pass);
 
+    // [BDMerge A5.4-1a] velocity pass (camera only -- terrain is static, so its
+    // previous object matrix == current -> zero object velocity, camera velocity
+    // still applies)
+    /*virtual*/ S32  getNumVelocityPasses() override { return 1; }
+    /*virtual*/ void beginVelocityPass(S32 pass) override;
+    /*virtual*/ void endVelocityPass(S32 pass) override;
+    /*virtual*/ void renderVelocity(S32 pass) override;
+
     /*virtual*/ void prerender();
     /*virtual*/ void dirtyTextures(const std::set<LLViewerFetchedTexture*>& textures);
     /*virtual*/ LLViewerTexture *getTexture();

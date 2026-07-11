@@ -243,6 +243,32 @@ void LLDrawPool::renderShadow(S32 pass)
 
 }
 
+// [BDMerge A5.4-1a] Velocity-pass base hooks. Default: this pool contributes no
+// velocity (0 passes). Rigid draw pools override these; skinned support is 1b.
+//virtual
+void LLDrawPool::beginVelocityPass(S32 pass)
+{
+
+}
+
+//virtual
+void LLDrawPool::endVelocityPass(S32 pass)
+{
+
+}
+
+//virtual
+S32 LLDrawPool::getNumVelocityPasses()
+{
+    return 0;
+}
+
+//virtual
+void LLDrawPool::renderVelocity(S32 pass)
+{
+
+}
+
 //=============================
 // Face Pool Implementation
 //=============================
@@ -712,6 +738,108 @@ void LLRenderPass::applyModelMatrix(const LLMatrix4* model_matrix)
             gGL.multMatrix((GLfloat*) model_matrix->mMatrix);
         }
         gPipeline.mMatrixOpCount++;
+    }
+}
+
+// [BDMerge A5.4-1a] Bind a velocity program + upload the shared per-pass
+// uniforms. The current jittered modelview/projection/MVP are auto-synced on
+// draw; here we upload only the manual uniforms: the previous camera modelview
+// (for last-frame reprojection) and the un-jittered current projection (so T2x
+// jitter does not leak into the motion vectors -- brief pitfall 1).
+//static
+void LLRenderPass::bindVelocityUniforms(LLGLSLShader& shader)
+{
+    shader.uniformMatrix4fv(LLShaderMgr::LAST_MODELVIEW_MATRIX, 1, GL_FALSE, gGLLastModelView);
+    shader.uniformMatrix4fv(LLShaderMgr::CURRENT_MODELVIEW_MATRIX, 1, GL_FALSE, gGLModelView);
+    shader.uniformMatrix4fv(LLShaderMgr::PROJECTION_MATRIX_UNJITTERED, 1, GL_FALSE, gPipeline.mVelocityProjMat);
+}
+
+// [BDMerge A5.4-1a] Rigid velocity batch pushers. Donor: Black Dragon
+// LLRenderPass::pushVelocityBatches / pushVelocityBatchesTextured
+// (lldrawpool.cpp:802-910), adapted to Alchemy's iterator idiom.
+//
+// Per draw info: honour double-sided GLTF culling, apply the current model
+// matrix (so modelview_matrix syncs to camera*object), upload the PREVIOUS
+// object matrix (LAST_OBJECT_MATRIX) from mLastModelMatrix (identity fallback ->
+// zero object velocity), draw, then WRITE BACK the current matrix into
+// *mLastModelMatrix for next frame. The write-back must happen exactly once per
+// drawable per frame; blended-alpha is intentionally excluded from the velocity
+// pass to avoid double-stamping (see renderGeomVelocity exclusions).
+void LLRenderPass::pushVelocityBatches(U32 type)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
+    static const LLMatrix4 identity;
+
+    auto* begin = gPipeline.beginRenderMap(type);
+    auto* end = gPipeline.endRenderMap(type);
+
+    for (LLCullResult::drawinfo_iterator i = begin; i != end; )
+    {
+        LLDrawInfo& params = **i;
+        LLCullResult::increment_iterator(i, end);
+
+        if (params.mVertexBuffer.isNull())
+        {
+            continue;
+        }
+
+        LLGLDisable cull_face(params.mGLTFMaterial && params.mGLTFMaterial->mDoubleSided ? GL_CULL_FACE : 0);
+
+        applyModelMatrix(params);
+
+        const LLMatrix4* last_mat = params.mLastModelMatrix ? params.mLastModelMatrix : &identity;
+        LLGLSLShader::sCurBoundShaderPtr->uniformMatrix4fv(LLShaderMgr::LAST_OBJECT_MATRIX, 1, GL_FALSE, (GLfloat*)last_mat->mMatrix);
+
+        params.mVertexBuffer->setBuffer();
+        params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
+
+        // store current matrix on the drawable for next frame's "previous"
+        if (params.mLastModelMatrix)
+        {
+            const LLMatrix4* current_mat = params.mModelMatrix ? params.mModelMatrix : &identity;
+            *params.mLastModelMatrix = *current_mat;
+        }
+    }
+}
+
+void LLRenderPass::pushVelocityBatchesTextured(U32 type)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
+    static const LLMatrix4 identity;
+
+    auto* begin = gPipeline.beginRenderMap(type);
+    auto* end = gPipeline.endRenderMap(type);
+
+    for (LLCullResult::drawinfo_iterator i = begin; i != end; )
+    {
+        LLDrawInfo& params = **i;
+        LLCullResult::increment_iterator(i, end);
+
+        if (params.mVertexBuffer.isNull())
+        {
+            continue;
+        }
+
+        LLGLDisable cull_face(params.mGLTFMaterial && params.mGLTFMaterial->mDoubleSided ? GL_CULL_FACE : 0);
+
+        applyModelMatrix(params);
+
+        if (params.mTexture.notNull())
+        {
+            gGL.getTexUnit(0)->bindFast(params.mTexture);
+        }
+
+        const LLMatrix4* last_mat = params.mLastModelMatrix ? params.mLastModelMatrix : &identity;
+        LLGLSLShader::sCurBoundShaderPtr->uniformMatrix4fv(LLShaderMgr::LAST_OBJECT_MATRIX, 1, GL_FALSE, (GLfloat*)last_mat->mMatrix);
+
+        params.mVertexBuffer->setBuffer();
+        params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
+
+        if (params.mLastModelMatrix)
+        {
+            const LLMatrix4* current_mat = params.mModelMatrix ? params.mModelMatrix : &identity;
+            *params.mLastModelMatrix = *current_mat;
+        }
     }
 }
 

@@ -5730,6 +5730,10 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
         draw_vec.push_back(draw_info);
         draw_info->mTextureMatrix = tex_mat;
         draw_info->mModelMatrix = model_mat;
+        // [BDMerge A5.4-1a] velocity pass prev-object-matrix source (mirror BD
+        // llvovolume.cpp:5574). Rigid only; rigged faces (model_mat == null) get
+        // their previous transform from the palette cache in Phase 1b.
+        draw_info->mLastModelMatrix = &drawable->mLastVelocityMatrix;
 
         draw_info->mBump  = bump;
         draw_info->mShiny = shiny;

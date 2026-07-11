@@ -720,3 +720,55 @@ LLColor3 LLDrawPoolTerrain::getDebugColor() const
 {
     return LLColor3(0.f, 0.f, 1.f);
 }
+
+// ============================================================================
+// [BDMerge A5.4-1a] Velocity / motion-vector pass. Donor: Black Dragon
+// lldrawpoolterrain.cpp:208-257. Terrain is a face pool and never moves, so we
+// feed the region render matrix as BOTH current (via applyModelMatrix, which the
+// velocity shader picks up through modelview_matrix) and previous
+// (LAST_OBJECT_MATRIX) -> the object velocity is zero and only the camera
+// contributes. This is essential coverage: without terrain velocity, terrain
+// pixels would ghost under camera motion in Phase 2.
+// ============================================================================
+void LLDrawPoolTerrain::beginVelocityPass(S32 pass)
+{
+    gVelocityProgram.bind();
+    LLRenderPass::bindVelocityUniforms(gVelocityProgram);
+}
+
+void LLDrawPoolTerrain::endVelocityPass(S32 pass)
+{
+    gVelocityProgram.unbind();
+}
+
+void LLDrawPoolTerrain::renderVelocity(S32 pass)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
+    LLGLEnable cull(GL_CULL_FACE);
+
+    if (mDrawFace.empty())
+    {
+        return;
+    }
+
+    for (std::vector<LLFace*>::iterator iter = mDrawFace.begin();
+         iter != mDrawFace.end(); ++iter)
+    {
+        LLFace* facep = *iter;
+        LLDrawable* drawable = facep->getDrawable();
+        if (!drawable)
+        {
+            continue;
+        }
+
+        LLMatrix4* model_matrix = &(drawable->getRegion()->mRenderMatrix);
+
+        llassert(gGL.getMatrixMode() == LLRender::MM_MODELVIEW);
+        LLRenderPass::applyModelMatrix(model_matrix);
+
+        // static terrain: previous object matrix == current
+        LLGLSLShader::sCurBoundShaderPtr->uniformMatrix4fv(LLShaderMgr::LAST_OBJECT_MATRIX, 1, GL_FALSE, (GLfloat*)model_matrix->mMatrix);
+
+        facep->renderIndexed();
+    }
+}
