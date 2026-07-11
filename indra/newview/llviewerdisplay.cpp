@@ -228,6 +228,9 @@ void display_update_camera()
     }
     LLViewerCamera::getInstance()->setFar(final_far);
     LLVOAvatar::sRenderDistance = llclamp(final_far, 16.f, 256.f);
+    // [BDMerge A5.8] SMAA T2x: arm subpixel jitter for the scene projection when
+    // T2x is the active AA type. Disarmed again before the UI/HUD projection below.
+    LLPipeline::sT2xJitterEnabled = (LLPipeline::RenderFSAAType == 3);
     gViewerWindow->setup3DRender();
 
     if (!gCubeSnapshot)
@@ -1503,6 +1506,11 @@ void render_ui(F32 zoom_factor, int subfield)
         gGL.loadMatrix(gGLLastModelView);
         set_current_modelview(glm::make_mat4(gGLLastModelView));
     }
+
+    // [BDMerge A5.8] SMAA T2x: disable jitter before any UI-path projection setup.
+    // The main scene projection was jittered; UI/HUD/nametags must not be. The
+    // temporal resolve happens inside renderFinalize using the jittered scene.
+    LLPipeline::sT2xJitterEnabled = false;
 
     if(LLSceneMonitor::getInstance()->needsUpdate())
     {

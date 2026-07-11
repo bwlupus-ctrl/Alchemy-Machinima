@@ -348,6 +348,7 @@ bool    LLPipeline::sUnderWaterRender = false;
 bool    LLPipeline::sTextureBindTest = false;
 bool    LLPipeline::sRenderAttachedLights = true;
 bool    LLPipeline::sRenderAttachedParticles = true;
+bool    LLPipeline::sT2xJitterEnabled = false; // [BDMerge A5.8] SMAA T2x
 bool    LLPipeline::sRenderDeferred = false;
 bool    LLPipeline::sReflectionProbesEnabled = false;
 S32     LLPipeline::sVisibleLightCount = 0;
@@ -1012,7 +1013,10 @@ bool LLPipeline::allocateScreenBufferInternal(U32 resX, U32 resY)
             // blend-weights pass can skip non-edge pixels marked during edge detect.
             bool smaa_stencil = (RenderFSAAType == 2) && gSavedSettings.getBOOL("RenderSMAAUseStencil");
             if (!mFXAAMap.allocate(resX, resY, post_color_fmt, smaa_stencil, smaa_stencil)) return false;
-            if (RenderFSAAType == 2)
+            // [BDMerge A5.8] SMAA T2x (RenderFSAAType == 3) reuses the SMAA 1x
+            // buffers plus a previous-frame history target for the temporal
+            // resolve. Stencil skip is SMAA-1x-only (T2x jitters every pixel).
+            if (RenderFSAAType == 2 || RenderFSAAType == 3)
             {
                 if (!mSMAABlendBuffer.allocate(resX, resY, post_color_fmt, false)) return false;
                 if (smaa_stencil)
@@ -1020,11 +1024,25 @@ bool LLPipeline::allocateScreenBufferInternal(U32 resX, U32 resY)
                     mFXAAMap.shareDepthBuffer(mSMAABlendBuffer);
                 }
             }
+            else
+            {
+                mSMAABlendBuffer.release();
+            }
+
+            if (RenderFSAAType == 3)
+            {
+                if (!mSMAAHistory.allocate(resX, resY, post_color_fmt, false)) return false;
+            }
+            else
+            {
+                mSMAAHistory.release();
+            }
         }
         else
         {
             mFXAAMap.release();
             mSMAABlendBuffer.release();
+            mSMAAHistory.release();
         }
 
         //water reflection texture (always needed as scratch space whether or not transparent water is enabled)
@@ -1365,6 +1383,7 @@ void LLPipeline::releaseGLBuffers()
 
     mFXAAMap.release();
     mSMAABlendBuffer.release();
+    mSMAAHistory.release(); // [BDMerge A5.8] SMAA T2x history
 
     mUIScreen.release();
 
@@ -9029,7 +9048,8 @@ void LLPipeline::applyFXAA(LLRenderTarget* src, LLRenderTarget* dst)
 void LLPipeline::generateSMAABuffers(LLRenderTarget* src)
 {
     llassert(!gCubeSnapshot);
-    bool multisample = RenderFSAAType == 2 && gSMAAEdgeDetectProgram[0].isComplete() && mFXAAMap.isComplete() && mSMAABlendBuffer.isComplete();
+    // [BDMerge A5.8] SMAA T2x (type 3) shares the SMAA 1x edge/blend-weights passes.
+    bool multisample = (RenderFSAAType == 2 || RenderFSAAType == 3) && gSMAAEdgeDetectProgram[0].isComplete() && mFXAAMap.isComplete() && mSMAABlendBuffer.isComplete();
 
     // Present everything.
     if (multisample)
@@ -9120,6 +9140,25 @@ void LLPipeline::generateSMAABuffers(LLRenderTarget* src)
             blend_weights_shader.bind();
             blend_weights_shader.uniform4fv(sSmaaRTMetrics, 1, rt_metrics);
 
+            // [BDMerge A5.8] SMAA T2x subsample indices. Alternates (1,1,1,0) and
+            // (2,2,2,0) per frame so the two jittered samples pick complementary
+            // sub-pixel diagonals from the area texture. (0,0,0,0) for SMAA 1x,
+            // which reproduces the pre-T2x behavior exactly (previously hard-coded
+            // in SMAABlendWeightsF.glsl). Always uploaded so the uniform is defined.
+            float subsample[4] = { 0.f, 0.f, 0.f, 0.f };
+            if (RenderFSAAType == 3)
+            {
+                if (mSMAAFrameIndex & 1)
+                {
+                    subsample[0] = 2.f; subsample[1] = 2.f; subsample[2] = 2.f; subsample[3] = 0.f;
+                }
+                else
+                {
+                    subsample[0] = 1.f; subsample[1] = 1.f; subsample[2] = 1.f; subsample[3] = 0.f;
+                }
+            }
+            blend_weights_shader.uniform4fv(LLShaderMgr::SMAA_SUBSAMPLE_INDICES, 1, subsample);
+
             S32 edge_tex_channel = blend_weights_shader.enableTexture(LLShaderMgr::SMAA_EDGE_TEX, mFXAAMap.getUsage());
             if (edge_tex_channel > -1)
             {
@@ -9166,7 +9205,10 @@ void LLPipeline::applySMAA(LLRenderTarget* src, LLRenderTarget* dst)
 {
     LL_PROFILE_GPU_ZONE("SMAA");
     llassert(!gCubeSnapshot);
-    bool multisample = RenderFSAAType == 2 && gSMAAEdgeDetectProgram[0].isComplete() && mFXAAMap.isComplete() && mSMAABlendBuffer.isComplete();
+    // [BDMerge A5.8] SMAA T2x (type 3) uses the same neighborhood-blend program as
+    // 1x (identical when SMAA_REPROJECTION == 0); the temporal combine happens in
+    // resolveSMAAT2x afterward.
+    bool multisample = (RenderFSAAType == 2 || RenderFSAAType == 3) && gSMAAEdgeDetectProgram[0].isComplete() && mFXAAMap.isComplete() && mSMAABlendBuffer.isComplete();
 
     // Present everything.
     if (multisample)
@@ -9220,6 +9262,69 @@ void LLPipeline::applySMAA(LLRenderTarget* src, LLRenderTarget* dst)
     {
         copyRenderTarget(src, dst);
     }
+}
+
+// [BDMerge A5.8] SMAA T2x temporal resolve. Donor: Black Dragon (NiranV Dean).
+// Blends the freshly SMAA'd current frame (src) with the previous frame's SMAA
+// output (mSMAAHistory) 50/50 into dst, then stores src into mSMAAHistory for
+// the next frame. Combined with the alternating ±0.25px camera jitter, the two
+// samples average to a supersampled result on static geometry. This is the
+// no-motion-vector variant: velocity reprojection (which suppresses ghosting on
+// motion) is deferred with the A5.4 velocity subsystem, so fast motion will
+// ghost/double — see the AA-type warning tooltip. Falls back to a plain copy if
+// the resolve program or history target is unavailable.
+void LLPipeline::resolveSMAAT2x(LLRenderTarget* src, LLRenderTarget* dst)
+{
+    LL_PROFILE_GPU_ZONE("SMAA T2x Resolve");
+    llassert(!gCubeSnapshot);
+
+    static LLCachedControl<U32> aa_quality(gSavedSettings, "RenderFSAASamples", 0U);
+    U32 q = std::clamp(aa_quality(), 0U, 3U);
+
+    if (!gSMAAResolveProgram[q].isComplete() || !mSMAAHistory.isComplete())
+    {
+        // Temporal resolve unavailable: present the current SMAA'd frame as-is
+        // and keep history in sync so we don't blend against a stale frame later.
+        copyRenderTarget(src, dst);
+        copyRenderTarget(src, &mSMAAHistory);
+        return;
+    }
+
+    LLGLDepthTest depth(GL_FALSE, GL_FALSE);
+
+    dst->bindTarget();
+    dst->clear(GL_COLOR_BUFFER_BIT);
+
+    LLGLSLShader& shader = gSMAAResolveProgram[q];
+    shader.bind();
+
+    S32 cur_ch = shader.enableTexture(LLShaderMgr::SMAA_CURRENT_COLOR_TEX);
+    if (cur_ch > -1)
+    {
+        src->bindTexture(0, cur_ch, LLTexUnit::TFO_POINT);
+        gGL.getTexUnit(cur_ch)->setTextureAddressMode(LLTexUnit::TAM_CLAMP);
+    }
+
+    S32 prev_ch = shader.enableTexture(LLShaderMgr::SMAA_PREVIOUS_COLOR_TEX);
+    if (prev_ch > -1)
+    {
+        mSMAAHistory.bindTexture(0, prev_ch, LLTexUnit::TFO_POINT);
+        gGL.getTexUnit(prev_ch)->setTextureAddressMode(LLTexUnit::TAM_CLAMP);
+    }
+
+    mScreenTriangleVB->setBuffer();
+    mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+
+    shader.unbind();
+    dst->flush();
+
+    if (cur_ch > -1)  gGL.getTexUnit(cur_ch)->unbindFast(LLTexUnit::TT_TEXTURE);
+    if (prev_ch > -1) gGL.getTexUnit(prev_ch)->unbindFast(LLTexUnit::TT_TEXTURE);
+
+    // Save the current SMAA'd frame (not the resolved output) to history so the
+    // next frame blends the two raw jitter samples 50/50 rather than exponentially
+    // decaying an already-resolved image.
+    copyRenderTarget(src, &mSMAAHistory);
 }
 
 void LLPipeline::copyRenderTarget(LLRenderTarget* src, LLRenderTarget* dst)
@@ -9976,6 +10081,21 @@ void LLPipeline::renderFinalize()
         generateSMAABuffers(sourceBuffer);
         applySMAA(sourceBuffer, targetBuffer);
         std::swap(sourceBuffer, targetBuffer);
+    }
+    else if (RenderFSAAType == 3)
+    {
+        // [BDMerge A5.8] SMAA T2x: SMAA the (jittered) current frame, then
+        // temporally resolve it against the previous frame's SMAA output.
+        // Flip the frame index last so the next frame jitters the opposite way
+        // (LLViewerCamera reads mSMAAFrameIndex when building the projection).
+        generateSMAABuffers(sourceBuffer);
+        applySMAA(sourceBuffer, targetBuffer);
+        std::swap(sourceBuffer, targetBuffer);
+
+        resolveSMAAT2x(sourceBuffer, targetBuffer);
+        std::swap(sourceBuffer, targetBuffer);
+
+        mSMAAFrameIndex ^= 1;
     }
 
     static LLCachedControl<F32> cas_sharpness(gSavedSettings, "RenderCASSharpness", 0.4f);

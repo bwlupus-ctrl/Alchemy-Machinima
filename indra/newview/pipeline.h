@@ -161,6 +161,7 @@ public:
     void applyFXAA(LLRenderTarget* src, LLRenderTarget* dst);
     void generateSMAABuffers(LLRenderTarget* src);
     void applySMAA(LLRenderTarget* src, LLRenderTarget* dst);
+    void resolveSMAAT2x(LLRenderTarget* src, LLRenderTarget* dst); // [BDMerge A5.8] SMAA T2x
     void renderDoF(LLRenderTarget* src, LLRenderTarget* dst);
     void copyRenderTarget(LLRenderTarget* src, LLRenderTarget* dst);
     void combineGlow(LLRenderTarget* src, LLRenderTarget* dst);
@@ -693,6 +694,7 @@ public:
     static bool             sTextureBindTest;
     static bool             sRenderAttachedLights;
     static bool             sRenderAttachedParticles;
+    static bool             sT2xJitterEnabled; // [BDMerge A5.8] gate ±0.25px SMAA T2x subpixel jitter
     static bool             sRenderDeferred;
     static bool             sReflectionProbesEnabled;
     static S32              sVisibleLightCount;
@@ -771,6 +773,13 @@ public:
     // FXAA helper target
     LLRenderTarget          mFXAAMap;
     LLRenderTarget          mSMAABlendBuffer;
+    // [BDMerge A5.8] SMAA T2x temporal path. mSMAAHistory holds the previous
+    // frame's SMAA output; mSMAAFrameIndex alternates 0/1 to drive the ±0.25px
+    // camera jitter and the blend-weights subsample offset. This block is in a
+    // public section (see 'public:' above) so LLViewerCamera can read the frame
+    // index when building the jittered projection.
+    LLRenderTarget          mSMAAHistory;
+    U32                     mSMAAFrameIndex = 0;
 
     // render ui to buffer target
     LLRenderTarget          mUIScreen;

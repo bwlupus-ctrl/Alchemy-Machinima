@@ -214,6 +214,7 @@ LLGLSLShader            gFXAAProgram[4];
 LLGLSLShader            gSMAAEdgeDetectProgram[4];
 LLGLSLShader            gSMAABlendWeightsProgram[4];
 LLGLSLShader            gSMAANeighborhoodBlendProgram[4];
+LLGLSLShader            gSMAAResolveProgram[4]; // [BDMerge A5.8] SMAA T2x temporal resolve
 LLGLSLShader            gCASProgram;
 // [BDMerge G3.2] volumetric lighting (donor: Black Dragon)
 LLGLSLShader            gVolumetricLightProgram;
@@ -1193,6 +1194,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
             gSMAAEdgeDetectProgram[i].unload();
             gSMAABlendWeightsProgram[i].unload();
             gSMAANeighborhoodBlendProgram[i].unload();
+            gSMAAResolveProgram[i].unload(); // [BDMerge A5.8] SMAA T2x
         }
         gCASProgram.unload();
         gVolumetricLightProgram.unload();
@@ -2926,6 +2928,65 @@ bool LLViewerShaderMgr::loadShadersDeferred()
                 gSMAAEdgeDetectProgram[i].unload();
                 gSMAABlendWeightsProgram[i].unload();
                 gSMAANeighborhoodBlendProgram[i].unload();
+            }
+        }
+
+        // [BDMerge A5.8] SMAA T2x temporal resolve program (per quality preset).
+        // Donor: Black Dragon (NiranV Dean). The T2x neighborhood-blend reuses
+        // the plain SMAA 1x program above (identical when SMAA_REPROJECTION == 0),
+        // so the only extra program the temporal path needs is the resolve.
+        // Registered with SMAA_REPROJECTION 0: the resolve is a straight 50/50
+        // blend of the current and previous jitter samples. Velocity-based
+        // reprojection is deferred with the A5.4 motion-vector subsystem. If the
+        // resolve shader fails to build, T2x is left unregistered and the pipeline
+        // falls back to plain SMAA behavior (no crash).
+        if (!failed)
+        {
+            int t2x_i = 0;
+            bool t2x_failed = false;
+            for (const auto& smaa_pair : quality_levels)
+            {
+                std::map<std::string, std::string> t2x_defines;
+                if (gGLManager.mGLVersion >= 4.f)
+                    t2x_defines.emplace("SMAA_GLSL_4", "1");
+                else if (gGLManager.mGLVersion >= 3.1f)
+                    t2x_defines.emplace("SMAA_GLSL_3", "1");
+                else
+                    t2x_defines.emplace("SMAA_GLSL_2", "1");
+                t2x_defines.emplace("SMAA_PREDICATION", "0");
+                t2x_defines.emplace("SMAA_REPROJECTION", "0");
+                t2x_defines.emplace(smaa_pair.first, "1");
+
+                if (success)
+                {
+                    gSMAAResolveProgram[t2x_i].mName = llformat("SMAA T2x Resolve (%s)", smaa_pair.second.c_str());
+                    gSMAAResolveProgram[t2x_i].mFeatures.isDeferred = true;
+                    gSMAAResolveProgram[t2x_i].clearPermutations();
+                    gSMAAResolveProgram[t2x_i].addPermutations(t2x_defines);
+                    gSMAAResolveProgram[t2x_i].mShaderFiles.clear();
+                    gSMAAResolveProgram[t2x_i].mShaderFiles.push_back(make_pair("deferred/SMAAResolveF.glsl", GL_FRAGMENT_SHADER));
+                    gSMAAResolveProgram[t2x_i].mShaderFiles.push_back(make_pair("deferred/SMAAResolveV.glsl", GL_VERTEX_SHADER));
+                    gSMAAResolveProgram[t2x_i].mShaderFiles.push_back(make_pair("deferred/SMAA.glsl", GL_FRAGMENT_SHADER));
+                    gSMAAResolveProgram[t2x_i].mShaderFiles.push_back(make_pair("deferred/SMAA.glsl", GL_VERTEX_SHADER));
+                    gSMAAResolveProgram[t2x_i].mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+                    success = gSMAAResolveProgram[t2x_i].createShader();
+                    if (!success)
+                    {
+                        LL_WARNS() << "Failed to create shader '" << gSMAAResolveProgram[t2x_i].mName << "', disabling!" << LL_ENDL;
+                        t2x_failed = true;
+                        success = true;
+                        break;
+                    }
+                }
+                ++t2x_i;
+            }
+
+            if (t2x_failed)
+            {
+                for (auto j = 0; j < 4; ++j)
+                {
+                    gSMAAResolveProgram[j].unload();
+                }
             }
         }
     }

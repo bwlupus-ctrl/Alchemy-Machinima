@@ -41,6 +41,7 @@
 #include "llworld.h"
 #include "lltoolmgr.h"
 #include "llviewerjoystick.h"
+#include "pipeline.h" // [BDMerge A5.8] SMAA T2x subpixel jitter state
 // [RLVa:KB] - RLVa-2.0.0
 #include "rlvactions.h"
 // [/RLVa:KB]
@@ -376,6 +377,25 @@ void LLViewerCamera::setPerspective(bool for_selection,
     calcProjection(z_far); // Update the projection matrix cache
 
     proj_mat *= glm::perspective(fov_y, aspect, z_near, z_far);
+
+    // [BDMerge A5.8] SMAA T2x subpixel jitter. Donor: Black Dragon (NiranV Dean).
+    // Nudge the projection by alternating ±0.25px each frame so the two temporally
+    // resolved samples average to a supersampled result. Only when T2x is the
+    // active AA type (sT2xJitterEnabled), and never for selection picking or cube
+    // snapshots (those must stay unjittered).
+    extern bool gCubeSnapshot;
+    if (LLPipeline::sT2xJitterEnabled && !for_selection && !gCubeSnapshot)
+    {
+        static const float jitters[2][2] = {
+            { 0.25f, -0.25f },   // Frame 0
+            { -0.25f,  0.25f },  // Frame 1
+        };
+        U32 idx = gPipeline.mSMAAFrameIndex & 1;
+        float jx = jitters[idx][0] * 2.0f / (float)width;
+        float jy = jitters[idx][1] * 2.0f / (float)height;
+        proj_mat[2][0] += jx;
+        proj_mat[2][1] += jy;
+    }
 
     gGL.loadMatrix(glm::value_ptr(proj_mat));
 

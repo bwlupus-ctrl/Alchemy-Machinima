@@ -1567,6 +1567,9 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("searchTex");
     mReservedUniforms.push_back("blendTex");
     mReservedUniforms.push_back("predicationTex");
+    mReservedUniforms.push_back("subsampleIndices");   // [BDMerge A5.8] SMAA T2x
+    mReservedUniforms.push_back("currentColorTex");    // [BDMerge A5.8] SMAA T2x resolve
+    mReservedUniforms.push_back("previousColorTex");   // [BDMerge A5.8] SMAA T2x resolve
 
     mReservedUniforms.push_back("exposure");
     mReservedUniforms.push_back("tonemap_type");
