@@ -53,6 +53,21 @@ uniform float size;             // LIGHT_SIZE (sphere-of-influence radius); also
 uniform float falloff;          // LIGHT_FALLOFF
 uniform int   proj_shadow_idx;  // this projector's shadow slot (0..N-1)
 
+// [BDMerge G3.3 fix] The shaft's chroma MUST follow the projector's Light Color.
+// We redeclare the projector uniforms we read directly here (same pattern as
+// `size` above - a uniform of identical type may be declared in more than one
+// compilation unit of a stage; the linker merges them). `color` is the light's
+// linear diffuse color (LLShaderMgr::DIFFUSE_COLOR, uploaded per cone in
+// renderProjectorVolumetric, already lerped toward the art-direction tint).
+// Previously the shaft was tinted ONLY via getProjectedLightDiffuseColor(), which
+// bakes `color` INTO the gobo sample - entangling the light color with the cookie
+// so it read as "the shaft never follows the light color". We now sample the gobo
+// as TEXTURE-ONLY and multiply the light `color` in explicitly at the end.
+uniform vec3  color;            // DIFFUSE_COLOR - light's linear diffuse color (+tint)
+uniform float proj_focus;       // deferredUtil cookie LOD params (read directly here)
+uniform float proj_lod;
+uniform float proj_range;
+
 // Shared godray controls (this program uploads its OWN values into these).
 uniform int   godray_res;         // raymarch sample count (bounded local march;
                                   // Phase 1 item 5: adaptively scaled per cone in C++)
@@ -89,7 +104,19 @@ float interleavedGradientNoise(vec2 p)
 vec4 getPosition(vec2 pos_screen);
 bool clipProjectedLightVars(vec3 center, vec3 pos, out float dist, out float l_dist, out vec3 lv, out vec4 proj_tc);
 vec3 getProjectedLightDiffuseColor(float light_distance, vec2 projected_uv);
+vec4 getTexture2DLodDiffuse(vec2 tc, float lod); // gobo sample WITHOUT the light color
 float calcLegacyDistanceAttenuation(float distance, float falloff);
+
+// [BDMerge G3.3 fix] Texture/gobo footprint ONLY (no light color) - mirrors
+// getProjectedLightDiffuseColor()'s LOD math but drops its `color.rgb *` multiply
+// so we can apply the true light color once, explicitly, to the whole shaft.
+vec3 projGoboTexture(float light_distance, vec2 projected_uv)
+{
+    float diff  = clamp((light_distance - proj_focus) / proj_range, 0.0, 1.0);
+    float lod   = diff * proj_lod;
+    vec4  plcol = getTexture2DLodDiffuse(projected_uv.xy, lod);
+    return plcol.rgb * plcol.a;
+}
 // shadowUtil.glsl
 float sampleSpotShadow(vec3 pos, vec3 norm, int index, vec2 pos_screen);
 
@@ -215,8 +242,10 @@ void main()
         // lit surface (inverse-square-ish + range falloff via calcLegacy...).
         float atten = calcLegacyDistanceAttenuation(dist, falloff);
 
-        // Gobo/cone-edge shaped, light-coloured in-scatter (color * cookie).
-        vec3 cookie = getProjectedLightDiffuseColor(l_dist, proj_tc.xy);
+        // Gobo/cone-edge shaped in-scatter. TEXTURE ONLY here - the light color is
+        // applied once to the whole shaft below so changing the projector's Light
+        // Color visibly re-tints the beam (fix: was baked into the cookie sample).
+        vec3 cookie = projGoboTexture(l_dist, proj_tc.xy);
 
         // Per-sample Henyey-Greenstein phase. Because the light is LOCAL the
         // scatter geometry varies per step: Ldir is the light's travel
@@ -234,7 +263,11 @@ void main()
 
     // Single-scattering integral: weight by physical step length so a longer
     // chord through the cone scatters more (the local-light look).
-    vec3 shaft = accum * dt * PROJVOL_SCATTER * godray_multiplier;
+    // [BDMerge G3.3 fix] Multiply the projector's Light Color in HERE, once, over
+    // the whole accumulated (texture-only) shaft. `color` is the linear light
+    // diffuse already lerped toward the art-direction tint in C++, so the shaft
+    // base is the true light color and the tint layers on top of it.
+    vec3 shaft = accum * dt * PROJVOL_SCATTER * godray_multiplier * color;
 
     // [Phase 1 item 1] HDR-space composite: this pass now runs BEFORE colorCorrect
     // on the linear HDR scene buffer, so the active tonemapper (AMD LPM / ACES)
