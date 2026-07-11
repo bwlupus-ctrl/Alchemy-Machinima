@@ -53,6 +53,7 @@
 #include "alassetblocklist.h"
 #include "alfloaterblocked.h"
 #include "alfloatertransactionlog.h"
+#include "animationexplorer.h" // [BDMerge F7] RecentAnimationList::addAnimation() hook
 #include "llagent.h"
 #include "llagentbenefits.h"
 #include "llagentcamera.h"
@@ -4362,6 +4363,21 @@ void process_avatar_animation(LLMessageSystem *mesgsys, void **user_data)
             mesgsys->getUUIDFast(_PREHASH_AnimationList, _PREHASH_AnimID, animation_id, i);
             mesgsys->getS32Fast(_PREHASH_AnimationList, _PREHASH_AnimSequenceID, anim_sequence_id, i);
 
+// [BDMerge F7] Animation Explorer: honor a blacklisted animation asset by
+// telling the server to stop it for onlookers immediately (this can't undo a
+// deformer that already applied, but it stops the animation from continuing
+// to play for us or anyone who arrives after). Donor precedent:
+// animationexplorer.cpp's blacklist button + the matching gate in FS's
+// llviewermessage.cpp (FSAssetBlacklist::isBlacklisted), mapped onto
+// Alchemy's own ALAssetBlocklist (already gating sounds the same way a few
+// hundred lines away in this file).
+            if (ALAssetBlocklist::instance().isBlocked(animation_id))
+            {
+                gAgent.sendAnimationRequest(animation_id, ANIM_REQUEST_STOP);
+                continue;
+            }
+// [/BDMerge F7]
+
 // [BDMerge C2] See block comment above. Unlike the donor's `continue`, the
 // EXT-2781 flying-mode hack below is replicated inside the skip path so that
 // gating on cannot reintroduce the stuck-AGENT_CONTROL_FLY bug for STANDUP.
@@ -4423,6 +4439,14 @@ void process_avatar_animation(LLMessageSystem *mesgsys, void **user_data)
                     if (!anim_found)
                     {
                         avatarp->mAnimationSources.insert(LLVOAvatar::AnimationSourceMap::value_type(object_id, animation_id));
+                        // [BDMerge F7] Animation Explorer: record newly-started
+                        // animations sourced by an object/avatar onto OUR OWN
+                        // avatar (this branch is already gated on
+                        // avatarp->isSelf() above). Donor: animationexplorer.cpp
+                        // / RecentAnimationList::addAnimation(), called from the
+                        // equivalent spot in FS's llviewermessage.cpp.
+                        RecentAnimationList::instance().addAnimation(animation_id, object_id);
+                        // [/BDMerge F7]
                     }
                 }
                 LL_DEBUGS("Messaging", "Motion") << "Anim sequence ID: " << anim_sequence_id

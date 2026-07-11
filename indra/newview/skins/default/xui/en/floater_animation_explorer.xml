@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<!--
+    Donor: I:\enve (phoenix-reshade-XL / Firestorm, LGPL),
+    skins/default/xui/en/floater_animation_explorer.xml.
+    Ported for the BD/FS -> Alchemy merge campaign, item F7 (Animation Explorer).
+    [BDMerge F7]
+
+    Adapted to Alchemy's floater conventions (see floater_explore_sounds.xml):
+    <columns> instead of <scroll_list.column>, positioning="centered",
+    single_instance/save_visibility, and the animation_explorer_* strings are
+    declared locally via <floater.string> instead of the shared strings.xml.
+-->
+<floater
+ can_close="true"
+ can_minimize="true"
+ can_resize="true"
+ positioning="centered"
+ height="314"
+ min_height="314"
+ min_width="400"
+ width="574"
+ name="animation_explorer"
+ title="Animation Explorer"
+ save_rect="true"
+ save_visibility="true"
+ single_instance="true"
+ reuse_instance="false">
+
+	<floater.string name="animation_explorer_still_playing">
+		Still playing
+	</floater.string>
+	<floater.string name="animation_explorer_seconds_ago">
+		[SECONDS] seconds ago
+	</floater.string>
+	<floater.string name="animation_explorer_unknown_priority">
+		unknown
+	</floater.string>
+
+	<scroll_list
+	 bottom="-4"
+	 column_padding="0"
+	 draw_heading="true"
+	 follows="all"
+	 layout="topleft"
+	 left="4"
+	 name="animation_list"
+	 search_column="1"
+	 top="4"
+	 width="306">
+		<columns
+		 label="Played by"
+		 name="played_by" />
+		<columns
+		 label="Played"
+		 name="played" />
+		<columns
+		 label="Priority"
+		 name="priority"
+		 width="60"/>
+		<columns
+		 label="Timestamp"
+		 name="timestamp"
+		 width="-1" />
+		<columns
+		 label="Animation ID"
+		 name="animation_id"
+		 width="-1" />
+		<columns
+		 label="Object ID"
+		 name="object_id"
+		 width="-1" />
+	</scroll_list>
+
+	<view_border
+	 bevel_style="in"
+	 follows="top|bottom|right"
+	 height="256"
+	 name="animation_preview"
+	 layout="topleft"
+	 left_pad="4"
+	 top_delta="0"
+	 width="256" />
+
+	<panel
+	 follows="bottom|right"
+	 height="48"
+	 name="buttons_panel"
+	 top_pad="4"
+	 width="256">
+
+	<button
+	 follows="top|right"
+	 height="22"
+	 label="Stop"
+	 layout="topleft"
+	 left="0"
+	 name="stop_btn"
+	 top="0"
+	 width="98" />
+
+	<button
+	 follows="top|right"
+	 height="22"
+	 label="Stop and Revoke"
+	 layout="topleft"
+	 left_pad="4"
+	 name="stop_and_revoke_btn"
+	 width="154" />
+
+	<button
+	 follows="top|right"
+	 height="22"
+	 label="Blacklist"
+	 layout="topleft"
+	 left="0"
+	 name="blacklist_btn"
+	 top_pad="4"
+	 width="98" />
+
+	<check_box
+	 follows="top|right"
+	 height="22"
+	 label="No Owned Animations"
+	 left_pad="4"
+	 name="no_owned_animations_check"
+	 tool_tip="When checked this will filter out all animations that are owned by your avatar, like AO animations or system default animations."
+	 top_delta="-4"
+	 width="154" />
+
+	</panel>
+
+</floater>
