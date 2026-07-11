@@ -396,7 +396,7 @@
 				top_pad="5"
 				width="100"
 				layout="topleft"
-				value="HDR Max:" />
+				name="lpm_hdrmax_label" value="HDR Max:" />
 			<slider_bar
 				top_pad="-18"
 				height="20"
@@ -430,7 +430,7 @@
 				top_pad="5"
 				width="100"
 				layout="topleft"
-				value="Tone Exposure:" />
+				name="lpm_toneexp_label" value="Tone Exposure:" />
 			<slider_bar
 				top_pad="-18"
 				height="20"
@@ -464,7 +464,7 @@
 				top_pad="5"
 				width="100"
 				layout="topleft"
-				value="Contrast:" />
+				name="lpm_contrast_label" value="Contrast:" />
 			<slider_bar
 				top_pad="-18"
 				height="20"
@@ -498,7 +498,7 @@
 				top_pad="5"
 				width="100"
 				layout="topleft"
-				value="R Saturation:" />
+				name="lpm_satr_label" value="R Saturation:" />
 			<slider_bar
 				top_pad="-18"
 				height="20"
@@ -532,7 +532,7 @@
 				top_pad="5"
 				width="100"
 				layout="topleft"
-				value="G Saturation:" />
+				name="lpm_satg_label" value="G Saturation:" />
 			<slider_bar
 				top_pad="-18"
 				height="20"
@@ -566,7 +566,7 @@
 				top_pad="5"
 				width="100"
 				layout="topleft"
-				value="B Saturation:" />
+				name="lpm_satb_label" value="B Saturation:" />
 			<slider_bar
 				top_pad="-18"
 				height="20"
