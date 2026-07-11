@@ -1246,6 +1246,141 @@
 				increment=".1"
 				name="global_light_inten_spinner"
 				control_name="AlchemyGlobalLightScale" />
+		
+			<!--[BDMerge LOD] BD-parity LOD stack - per-shot quality knobs-->
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="12"
+				width="380"
+				layout="topleft"
+				font="SansSerifBold"
+				value="Level of Detail (BD parity: Objects 2.0+, Trees 1.0)" />
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="4"
+				width="100"
+				layout="topleft"
+				value="Objects:" />
+			<slider
+				control_name="RenderVolumeLODFactor"
+				follows="left|top"
+				layout="topleft"
+				height="20"
+				top_pad="-16"
+				left="110"
+				width="270"
+				min_val="0.1"
+				max_val="4"
+				increment="0.125"
+				decimal_digits="3"
+				show_text="true"
+				name="bd_volume_lod_slider"
+				tool_tip="Mesh/prim LOD distance factor. BD default 2.0; Alchemy presets set 1.125-1.5 (the aggressive-LOD quality drop). 4 = maximum. Also sharpens shadows, which render the LODed geometry." />
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="6"
+				width="100"
+				layout="topleft"
+				value="Trees:" />
+			<slider
+				control_name="RenderTreeLODFactor"
+				follows="left|top"
+				layout="topleft"
+				height="20"
+				top_pad="-16"
+				left="110"
+				width="270"
+				min_val="0"
+				max_val="2"
+				increment="0.05"
+				decimal_digits="2"
+				show_text="true"
+				name="bd_tree_lod_slider"
+				tool_tip="Linden tree LOD factor. BD default 1.0 vs Alchemy 0.5." />
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="6"
+				width="100"
+				layout="topleft"
+				value="Avatars:" />
+			<slider
+				control_name="RenderAvatarLODFactor"
+				follows="left|top"
+				layout="topleft"
+				height="20"
+				top_pad="-16"
+				left="110"
+				width="270"
+				min_val="0"
+				max_val="1"
+				increment="0.05"
+				decimal_digits="2"
+				show_text="true"
+				name="bd_avatar_lod_slider"
+				tool_tip="Avatar LOD factor (1 = full detail at all distances)." />
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="6"
+				width="100"
+				layout="topleft"
+				value="Terrain:" />
+			<slider
+				control_name="RenderTerrainLODFactor"
+				follows="left|top"
+				layout="topleft"
+				height="20"
+				top_pad="-16"
+				left="110"
+				width="270"
+				min_val="1"
+				max_val="4"
+				increment="0.125"
+				decimal_digits="2"
+				show_text="true"
+				name="bd_terrain_lod_slider"
+				tool_tip="Terrain mesh LOD factor." />
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="6"
+				width="100"
+				layout="topleft"
+				value="Draw distance:" />
+			<slider
+				control_name="RenderFarClip"
+				follows="left|top"
+				layout="topleft"
+				height="20"
+				top_pad="-16"
+				left="110"
+				width="270"
+				min_val="32"
+				max_val="512"
+				increment="16"
+				decimal_digits="0"
+				show_text="true"
+				name="bd_farclip_slider"
+				tool_tip="Draw distance in meters. Note: godrays' bias>2 draw-distance shrink is disabled by the capture pin." />
+			<text
+				follows="left|top"
+				height="28"
+				left="5"
+				top_pad="8"
+				width="380"
+				layout="topleft"
+				word_wrap="true"
+				value="Note: the Preferences quality preset rewrites these on change - re-apply here after moving the quality slider, or stay off the preset slider during shoots." />
 		</panel>
 		<!--Shadows/SSAO Panel-->
 		<panel
