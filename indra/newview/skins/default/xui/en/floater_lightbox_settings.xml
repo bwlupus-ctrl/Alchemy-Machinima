@@ -2973,5 +2973,205 @@
 				word_wrap="true"
 				value="Launch-time performance settings (decode threads, cache I/O threads) live in Debug Settings: search 'BDMerge'." />
 		</panel>
+		<!--[BDMerge B1] Avatar & Lights - surfaces the remaining merged
+		    settings (A5.6 light classes, B4 tracking limits, B5 rotate
+		    thresholds, B12/C3 mouselook). BD's sidebar architecture is
+		    deliberately not ported; the Lightbox is this fork's surface.-->
+		<panel
+			label="Avatar"
+			layout="topleft"
+			name="avatar_lights_settings">
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="8"
+				width="380"
+				layout="topleft"
+				font="SansSerifBold"
+				value="Light Sources" />
+			<check_box
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="4"
+				width="180"
+				layout="topleft"
+				label="Enable class toggles"
+				tool_tip="Master gate for the per-class light toggles below."
+				control_name="BDMergeLightToggles" />
+			<check_box
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="4"
+				width="180"
+				layout="topleft"
+				label="World lights"
+				control_name="BDMergeRenderWorldLights"
+				enabled_control="BDMergeLightToggles" />
+			<check_box
+				follows="left|top"
+				height="15"
+				top_pad="-15"
+				left="190"
+				width="180"
+				layout="topleft"
+				label="Projectors"
+				control_name="BDMergeRenderProjectors"
+				enabled_control="BDMergeLightToggles" />
+			<check_box
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="4"
+				width="180"
+				layout="topleft"
+				label="My attached lights"
+				control_name="BDMergeRenderOwnAttachedLights"
+				enabled_control="BDMergeLightToggles" />
+			<check_box
+				follows="left|top"
+				height="15"
+				top_pad="-15"
+				left="190"
+				width="180"
+				layout="topleft"
+				label="Others' attached lights"
+				control_name="BDMergeRenderOthersAttachedLights"
+				enabled_control="BDMergeLightToggles" />
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="12"
+				width="380"
+				layout="topleft"
+				font="SansSerifBold"
+				value="Head / Eye Tracking" />
+			<check_box
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="4"
+				width="360"
+				layout="topleft"
+				label="Limit tracking rotation"
+				tool_tip="Gate for the degree limits below (stock look-at behavior when off)."
+				control_name="BDMergeHeadEyeLimits" />
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="8"
+				width="100"
+				layout="topleft"
+				value="Head limit:" />
+			<slider
+				control_name="BDMergeHeadRotationLimit"
+				enabled_control="BDMergeHeadEyeLimits"
+				follows="left|top"
+				layout="topleft"
+				height="20"
+				top_pad="-16"
+				left="110"
+				width="270"
+				min_val="0"
+				max_val="90"
+				increment="1"
+				decimal_digits="0"
+				show_text="true"
+				name="bd_head_limit_slider"
+				tool_tip="Maximum head-turn toward the look-at target, degrees." />
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="6"
+				width="100"
+				layout="topleft"
+				value="Eye limit:" />
+			<slider
+				control_name="BDMergeEyeRotationLimit"
+				enabled_control="BDMergeHeadEyeLimits"
+				follows="left|top"
+				layout="topleft"
+				height="20"
+				top_pad="-16"
+				left="110"
+				width="270"
+				min_val="0"
+				max_val="60"
+				increment="1"
+				decimal_digits="0"
+				show_text="true"
+				name="bd_eye_limit_slider"
+				tool_tip="Maximum eye rotation toward the look-at target, degrees." />
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="12"
+				width="380"
+				layout="topleft"
+				font="SansSerifBold"
+				value="Body Turn Thresholds (degrees)" />
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="4"
+				width="100"
+				layout="topleft"
+				value="Walking:" />
+			<slider
+				control_name="AvatarRotateThresholdSlow"
+				follows="left|top"
+				layout="topleft"
+				height="20"
+				top_pad="-16"
+				left="110"
+				width="270"
+				min_val="2"
+				max_val="180"
+				increment="1"
+				decimal_digits="0"
+				show_text="true"
+				name="bd_rotate_slow_slider"
+				tool_tip="How far the camera can turn before a slow-moving avatar's body follows. Higher = calmer body during pans." />
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="6"
+				width="100"
+				layout="topleft"
+				value="Running:" />
+			<slider
+				control_name="AvatarRotateThresholdFast"
+				follows="left|top"
+				layout="topleft"
+				height="20"
+				top_pad="-16"
+				left="110"
+				width="270"
+				min_val="2"
+				max_val="180"
+				increment="1"
+				decimal_digits="0"
+				show_text="true"
+				name="bd_rotate_fast_slider"
+				tool_tip="Body-turn threshold while moving fast." />
+			<check_box
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="12"
+				width="360"
+				layout="topleft"
+				label="Mouselook: shrink own head (GoPro view, experimental)"
+				tool_tip="Scales your head bones down in mouselook so hair and lashes stop blocking first-person shots."
+				control_name="BDMergeMouselookHeadScale" />
+		</panel>
 	</tab_container>
 </floater>
