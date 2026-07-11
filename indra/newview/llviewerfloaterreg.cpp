@@ -52,6 +52,7 @@
 #include "allegacynotificationwellwindow.h"
 
 #include "fsfloaterposer.h" // <FS:AR> [FIRE-30873]: Poser
+#include "fsfloaterradar.h"
 
 #include "llcommandhandler.h"
 #include "llcompilequeue.h"
@@ -592,6 +593,7 @@ void LLViewerFloaterReg::registerFloaters()
 // [/SL:KB]
 // [SL:KB] - Patch: World-Derender | Checked: Catznip-3.2
     LLFloaterReg::add("blocked", "floater_al_blocked.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<ALFloaterBlocked>);
+    LLFloaterReg::add("radar", "floater_fs_radar.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<FSFloaterRadar>);
 // [/SL:KB]
     LLFloaterReg::add("chatbar", "floater_al_chatbar.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<ALChatBar>);
     LLFloaterReg::add("chat_alerts", "floater_chat_alerts.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterChatAlerts>);

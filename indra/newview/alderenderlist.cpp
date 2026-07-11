@@ -13,6 +13,8 @@
  * you have read and understood your obligations described above, and agree to
  * abide by those obligations.
  *
+ * Extended for the BD/FS -> Alchemy merge campaign, item F3: added
+ * ALDerenderList::addAvatar(), see alderenderlist.h for details.
  */
 #include "llviewerprecompiledheaders.h"
 
@@ -337,6 +339,30 @@ bool ALDerenderList::addSelection(bool fPersist, std::vector<LLUUID>* pIdList)
         save();
     s_ChangeSignal();
     return (!pIdList) || (!pIdList->empty());
+}
+
+bool ALDerenderList::addAvatar(const LLUUID& idAvatar, const std::string& strName, bool fPersist)
+{
+    if (idAvatar.isNull() || idAvatar == gAgentID)
+        return false;
+
+    if (isDerendered(ALDerenderEntry::TYPE_AVATAR, idAvatar))
+        return false;
+
+    auto pEntry = std::make_unique<ALDerenderAvatar>(idAvatar, strName, fPersist);
+    m_Entries.push_back(std::move(pEntry));
+
+    if (LLViewerObject* pObj = gObjectList.findObject(idAvatar))
+    {
+        if (gShowObjectUpdates)
+            gPipeline.addDebugBlip(pObj->getPositionAgent(), LLColor4(0.f, 1.f, 0.f, 1.f));
+        gObjectList.killObject(pObj);
+    }
+
+    if (fPersist)
+        save();
+    s_ChangeSignal();
+    return true;
 }
 
 bool ALDerenderList::canAdd(const LLViewerObject* pObj)

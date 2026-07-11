@@ -209,12 +209,18 @@ set(viewer_SOURCE_FILES
     alunzip.cpp
     alviewermenu.cpp
     fsfloaterposer.cpp
+    fsfloaterradar.cpp
     fsjointpose.cpp
     fsmaniprotatejoint.cpp
     fsmaniptranslatejoint.cpp
+    fspanelradar.cpp
     fsposeranimator.cpp
     fsposestate.cpp
     fsposingmotion.cpp
+    fsradar.cpp
+    fsradarentry.cpp
+    fsradarlistctrl.cpp
+    fsradarmenu.cpp
     gltf/asset.cpp
     gltf/accessor.cpp
     gltf/primitive.cpp
@@ -985,12 +991,18 @@ set(viewer_HEADER_FILES
     alunzip.h
     alviewermenu.h
     fsfloaterposer.h
+    fsfloaterradar.h
     fsjointpose.h
     fsmaniprotatejoint.h
     fsmaniptranslatejoint.h
+    fspanelradar.h
     fsposeranimator.h
     fsposestate.h
     fsposingmotion.h
+    fsradar.h
+    fsradarentry.h
+    fsradarlistctrl.h
+    fsradarmenu.h
     groupchatlistener.h
     gltf/asset.h
     gltf/accessor.h

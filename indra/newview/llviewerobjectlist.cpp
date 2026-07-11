@@ -352,7 +352,11 @@ LLViewerObject* LLViewerObjectList::processObjectUpdateFromCache(LLVOCacheEntry*
 
 // [SL:KB] - Patch: World-Derender | Checked: 2014-08-10 (Catznip-3.7)
     // Don't recreate derendered objects (also kill the cache entry so we don't do this per-frame)
-    if (ALDerenderList::instance().processObjectUpdate(regionp->getHandle(), fullid, entry))
+    if (ALDerenderList::instance().processObjectUpdate(regionp->getHandle(), fullid, entry)
+        // BD/FS -> Alchemy merge campaign, item F3: also gate derendered avatars
+        // reconstructed from the region's VOCache (see updateRegion() call for
+        // LLVOAvatar just above -- this path does serve avatars, not just prims).
+        || ALDerenderList::instance().isDerendered(ALDerenderEntry::TYPE_AVATAR, fullid))
     {
         regionp->killCacheEntry(local_id);  // NOTE: this will kill all child entries from the cache as well
         return NULL;
@@ -648,6 +652,17 @@ void LLViewerObjectList::processObjectUpdate(LLMessageSystem *mesgsys,
                 else if (OUT_FULL_COMPRESSED == update_type)
                 {
                     fBlockObject = ALDerenderList::instance().processObjectUpdate(regionp->getHandle(), fullid, local_id, compressed_dp.getBuffer());
+                }
+
+                // BD/FS -> Alchemy merge campaign, item F3: also gate derendered
+                // avatars. processObjectUpdate() above only tracks TYPE_OBJECT
+                // entries (root/child local-id bookkeeping doesn't apply to
+                // avatars), so TYPE_AVATAR entries need their own check here to
+                // keep FSRadar's "Derender" / "Show Friends Only" avatars from
+                // reappearing on the next full update.
+                if (!fBlockObject && ALDerenderList::instance().isDerendered(ALDerenderEntry::TYPE_AVATAR, fullid))
+                {
+                    fBlockObject = true;
                 }
 
                 if (fBlockObject)

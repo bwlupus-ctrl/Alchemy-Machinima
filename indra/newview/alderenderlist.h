@@ -13,6 +13,16 @@
  * you have read and understood your obligations described above, and agree to
  * abide by those obligations.
  *
+ * Extended for the BD/FS -> Alchemy merge campaign, item F3 (Extended Radar +
+ * Show Friends Only): ALDerenderAvatar previously had no constructor that
+ * actually populated an entry (only the fromLLSD() deserialization path did),
+ * and there was no public API to add a live avatar to the list. Added
+ * ALDerenderAvatar(id, name, persist) and ALDerenderList::addAvatar()/
+ * isDerendered(type, id) so FSRadar's per-avatar "Derender" / "Derender &
+ * Blacklist" actions and "Show Friends Only" have something to call. A
+ * matching gate was added in llviewerobjectlist.cpp so TYPE_AVATAR entries
+ * actually suppress avatar (re)creation, mirroring the existing TYPE_OBJECT
+ * gate in the same function.
  */
 #ifndef AL_DERENDERLIST_H
 #define AL_DERENDERLIST_H
@@ -125,6 +135,15 @@ public:
         : ALDerenderEntry(TYPE_AVATAR, fPersists)
     {
     }
+    // Added for the radar port: the only constructor that previously existed
+    // besides fromLLSD() left m_idEntry/m_strEntryName unset, so nothing
+    // could ever actually add a live avatar to the list.
+    ALDerenderAvatar(const LLUUID& idAvatar, const std::string& strName, bool fPersists)
+        : ALDerenderEntry(TYPE_AVATAR, fPersists)
+    {
+        m_idEntry = idAvatar;
+        m_strEntryName = strName;
+    }
     ALDerenderAvatar(const LLSD& sdData)
         : ALDerenderEntry(TYPE_AVATAR, sdData)
     {
@@ -152,8 +171,18 @@ public:
 
     const entry_list_t& getEntries() const { return m_Entries; }
     bool                isDerendered(const LLUUID& idObject) { return getObjectEntry(idObject) != nullptr; }
+    // Generic lookup across entry types (radar port: TYPE_AVATAR has no
+    // dedicated accessor like getObjectEntry()).
+    bool                isDerendered(ALDerenderEntry::EEntryType eType, const LLUUID& idEntry) { return findEntry(eType, idEntry) != m_Entries.end(); }
     void removeObject(ALDerenderEntry::EEntryType eType, const LLUUID& idObject);
     void removeObjects(ALDerenderEntry::EEntryType eType, const uuid_vec_t& idsObject);
+
+    // Add a live avatar to the derender list (radar port). Kills the current
+    // LLVOAvatar instance immediately if present; whether the avatar stays
+    // gone across future object updates for this session is enforced by a
+    // matching check in LLViewerObjectList::processObjectUpdate(). Returns
+    // false if the avatar is already derendered or is the agent's own avatar.
+    bool addAvatar(const LLUUID& idAvatar, const std::string& strName, bool fPersist);
 protected:
     entry_list_t::iterator findEntry(ALDerenderEntry::EEntryType eType, const LLUUID& idEntry);
     entry_list_t::iterator findObjectEntry(U64 idRegion, const LLUUID& idObject, U32 idRootLocal);
