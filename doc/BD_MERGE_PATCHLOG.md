@@ -147,7 +147,7 @@ as current BD.
 | B5 max cam/pelvis diff | **closed — already present via LL upstream** (2026-07-09: `AvatarRotateThresholdSlow`/`Fast` debug settings wired at `llvoavatar.cpp:4613` — same change BD carries as LL commit 9fe788e031; Ground Rule 3, no double-apply. Slider UI deferred to B1 sidebar, which should surface these two settings) | — |
 | B6 bone camera | **done** (100% donor-behavior port per user directive; see commit for donor refs. llcinematiccamera MODE_BONE_LOCK retained as the separate hard-lock tool) | — |
 | B7 poser | **closed — already present via upstream** (2026-07-10: Alchemy adopted Firestorm's Poser upstream — `fsfloaterposer.cpp`/`fsposeranimator.cpp` with active upstream maintenance, World-menu entry `fs_poser`; resolves the F10 FS-vs-BD donor decision in favor of FS by upstream fiat; in-world capability verification owed) | — |
-| B8 cinematic camera mode | **partially present / needs decision** (our Orbit/Fly-Hover/Sweep/Crane patterns ≠ BD's \"Cinematic Head Tracking\" (`mCinematicCamera` in BD llagentcamera — subtle head-follow). Decide: port BD's head-tracking as a 6th llcinematiccamera mode, or close as diverged-by-design) | B6 |
+| B8 cinematic camera mode | **done** (BD Cinematic Head Tracking ported verbatim; bone camera precedence per donor; Lightbox Avatar tab UI. Our llcinematiccamera motion patterns remain as a separate, additive tool) | — |
 | B9 gamepad flycam | open — next-session candidate (PR-3: BD joystick input authoritative; BD's flycam input mapping/deadzone/smoothing must COMPOSE with our `llcameraoperator` procedural handheld layer, not replace it) | — |
 | B10 pose sync | open | B7 |
 | B11 lookAt broadcast off | **done** (limit-distance half was already present) | — |
