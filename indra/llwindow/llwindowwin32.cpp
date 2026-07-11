@@ -1537,6 +1537,19 @@ bool LLWindowWin32::switchContext(bool fullscreen, const LLCoordScreen& size, bo
             attrib_list[cur_attrib++] = 0;
 
             result = wglChoosePixelFormatARB(mhDC, attrib_list, nullptr, 256, pixel_formats, &num_formats);
+
+            // [BDMerge 10bit] Definitive diagnostic: did the driver offer any
+            // 10-bit (R10G10B10A2) windowed pixel format at all? If num_formats
+            // is 0 here, no code change helps - the GPU/driver isn't exposing
+            // 30-bit color for windowed OpenGL (on NVIDIA GeForce this needs a
+            // Studio/recent driver AND "Output color depth: 10 bpc" set in the
+            // NVIDIA Control Panel; the display/link must carry 10-bit).
+            LL_INFOS("Window") << "[BDMerge 10bit] RenderGLContext10bitSDR on: wglChoosePixelFormatARB(10-bit) result="
+                << (result ? "TRUE" : "FALSE") << " num_formats=" << (result ? (S32)num_formats : 0)
+                << ((!result || !num_formats)
+                    ? " -> NO 10-bit format available, falling back to 8-bit (check driver 30-bit support + NVCP Output color depth = 10 bpc)"
+                    : " -> 10-bit format(s) available")
+                << LL_ENDL;
         }
 
         // If that fails, try 8-bit format
@@ -1620,6 +1633,24 @@ const   S32   max_format  = (S32)num_formats - 1;
         }
 
         pixel_format = pixel_formats[cur_format];
+
+        // [BDMerge 10bit] Report the ACTUAL per-channel bit depth of the format
+        // we selected, queried via the ARB path. DescribePixelFormat/pfd.cColorBits
+        // (logged later) can't distinguish R10G10B10A2 from R8G8B8A8 - it reports
+        // both as "Color Bits 32". These are the real numbers: R10 G10 B10 A2 =
+        // true 10-bit; R8 G8 B8 A8 = 8-bit fallback.
+        {
+            GLint bit_attribs[4] = { WGL_RED_BITS_ARB, WGL_GREEN_BITS_ARB, WGL_BLUE_BITS_ARB, WGL_ALPHA_BITS_ARB };
+            GLint bit_values[4]  = { 0, 0, 0, 0 };
+            if (wglGetPixelFormatAttribivARB(mhDC, pixel_format, 0, 4, bit_attribs, bit_values))
+            {
+                LL_INFOS("Window") << "[BDMerge 10bit] chosen pixel format " << pixel_format
+                    << " actual channel bits: R" << bit_values[0] << " G" << bit_values[1]
+                    << " B" << bit_values[2] << " A" << bit_values[3]
+                    << " (s10bitBackBuffer=" << (LLRender::s10bitBackBuffer ? "true" : "false")
+                    << ")" << LL_ENDL;
+            }
+        }
 
         if (mhDC != 0)                                          // Does The Window Have A Device Context?
         {
