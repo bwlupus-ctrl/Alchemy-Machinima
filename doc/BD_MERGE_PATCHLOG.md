@@ -122,11 +122,11 @@ as current BD.
 | A1.1 separable shaders | **closed — no port** (2026-07-09 ruling: descope; see "A1.1 recon finding") | — |
 | A1.2 resolution autoscale | **done** | — |
 | A1.3 shadow softening kernel | open | — |
-| A2.1 near-clip reduction | open | A0.2 |
+| A2.1 near-clip reduction | **done** (as G2.1; depth-sanity verification owed with A0.2 captures) | — |
 | A2.2 alpha-out-of-depth | open | A0.2 |
 | A2.3 forced alpha masking | **done** (as G2.3, landed without A2.2 gate — user directive 2026-07-10; in-world verification owed) | — |
 | A2.4 rigged alpha-swap flicker | open | A2.2/A2.3 |
-| A3.1 decouple SSAO/shadows/SSR | open | — |
+| A3.1 decouple SSAO/shadows/SSR | **closed — already present via upstream PBR rewrite** (2026-07-10 recon: sun-lightmap pass gates on `SSAO OR shadows` independently (`pipeline.cpp:9506`), SSAO-only and shadows-only both wired; SSR is Alchemy-native `RenderScreenSpaceReflections`, independent post toggle. BD's decoupling AND the coupling it fixed were both dissolved by the PBR restructure — same pattern as A1.1. In-world every-combination toggle check owed) | — |
 | A3.2 volumetric lighting | open | A2.1, A2.2, A3.1 |
 | A4.1 per-cascade shadow res | open | A1.3 (soft) |
 | A4.2 quadratic shadow dims | open | A4.1 |
