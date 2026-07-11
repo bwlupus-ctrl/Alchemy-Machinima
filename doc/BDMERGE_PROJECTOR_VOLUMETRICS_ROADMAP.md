@@ -31,8 +31,9 @@ more filmic, and cheaper per frame. Scoped 2026-07-11 with user direction.
 ## Phase 1 — Quality + performance core (do first)
 Mostly self-contained shader/pipeline work; makes it both better *and* faster.
 
-**STATUS 2026-07-11 (Opus): items 1, 2, 4, 5, 6, 7 landed; item 3 + full temporal
-reprojection deferred (documented below).** All gated under the existing
+**STATUS 2026-07-11 (Opus): items 1, 2, 4, 5, 6, 7 landed; item 3 (half-res +
+bilateral upsample) NOW LANDED (see below); full across-frame temporal
+reprojection still deferred.** All gated under the existing
 `BDMergeProjectorVolumetrics` master (default off); each lever has a sub-control
 with a sensible default. In-world verification still owed (no SL session this pass).
 
@@ -58,17 +59,28 @@ with a sensible default. In-world verification still owed (no SL session this pa
    dedicated half-res history target (tied to item 3) and can't be runtime-verified
    this pass. Static blue-noise + the downstream FXAA/SMAA already give clean,
    shimmer-free shafts; the animated mode is the conservative temporal blend.
-3. **Half-res march + bilateral (depth-aware) upsample. — DEFERRED.** Requires a new
-   half-res render target + a new bilateral-upsample shader program + a
-   configure-time staging change, none runtime-verifiable without an in-world
-   session, and it breaks the deliberately-chosen single-pass additive-in-place
-   design (brief §3). Deferred rather than shipped unverified. **Perf largely
-   recovered by items 4+5** (scissor + adaptive samples). Implementation sketch for
-   next pass: allocate `mProjVolHalf` (half-res, RGB16F) + `mProjVolHistory`; march
-   into half-res with the current shader at a half viewport; add
-   `projectorVolumetricUpsampleF.glsl` doing a depth-aware 4-tap bilateral upscale
-   that composites additively onto `mRT->screen`; fold the temporal EMA/reprojection
-   (item 2 remainder) into the half-res resolve using the previous-frame view-proj.
+3. **Half-res march + bilateral (depth-aware) upsample. — DONE (2026-07-11 Opus).**
+   New sub-control `BDMergeProjectorVolumetricsHalfRes` (default **on** for the FPS
+   win; off = original fullscreen additive-in-place path, kept intact). When on:
+   a half-res RGBA16F scratch target `mProjVolHalf` (allocated on demand in
+   `renderProjectorVolumetric`, released in `releaseGLBuffers`) is cleared to black
+   and the cones are marched into it at a half viewport (quarter the marched
+   fragments). A new program `gDeferredProjectorVolumetricUpsampleProgram`
+   (`class1/deferred/projectorVolumetricUpsampleF.glsl`, `isDeferred` for
+   `getPosition`) then does a **depth-aware 4-tap bilateral upscale** — each
+   full-res pixel gathers the 4 surrounding half-res texels weighted by bilinear
+   footprint × view-space depth similarity (`exp(-|Δdepth|/sigma)`), so the shaft
+   resolves cleanly without haloing across occluder silhouettes — compositing
+   additively onto `mRT->screen` at the exact Phase-1-item-1 placement (after
+   exposure/bloom, before `colorCorrect`). Scissor + adaptive still work in the
+   half-res march; the upsample is additionally scissored to the 2×-scaled union of
+   the marched cone rects. The half-res shaft is bound to the reserved `projectionMap`
+   sampler (unused by `bindDeferredShader` in this pass) so it gets a real texture
+   channel. Full across-frame temporal EMA/reprojection remains deferred (needs a
+   history target + reprojection; not runtime-verifiable this pass) — static
+   blue-noise (item 2) keeps the half-res result shimmer-free under motion.
+   **Expected: ~3-4× fewer marched fragments; the dominant FPS lever with 2+
+   flagged projectors on top of items 4+5.** In-world FPS check owed.
 4. **Screen-space scissor to each cone's projected bounds. — DONE.** Each cone's
    sphere-of-influence is projected (8 view-space AABB corners → screen) to a
    conservative pixel rect; `glScissor` restricts the fullscreen march to it. Corners
@@ -95,6 +107,28 @@ with a sensible default. In-world verification still owed (no SL session this pa
 overrides; item 3 DEFERRED.** All still gated under the `BDMergeProjectorVolumetrics`
 master; the session flag is an additional filter *within* the enabled effect.
 In-world verification still owed (no SL session this pass).
+
+**FIXES 2026-07-11 (Opus):**
+- **Menu placement.** The "Volumetric Shaft" `menu_item_check` was moved out of the
+  nested *Manage* submenu (where it sat beside Derender) to the **first page of the
+  object pie / context menu** (`menu_object.xml`, top level, in its own
+  separator-delimited section right after *Build*). The enable callback
+  (`enable_object_volumetric_shaft`) was already permission-free — it gates on
+  `isLightSpotlight()` **only**, no `canModify`/owner check — so the entry now shows
+  and is enabled for **any** spotlight projector regardless of ownership or mod
+  permission (the effect is purely client-side: a session UUID set, no server round
+  trip). The prior "doesn't apply to no-mod projectors" was the item being buried in
+  a submenu, not a permission gate in the callback.
+- **Shaft color now follows the projector's Light Color.** Root cause: the shaft's
+  chroma was sourced *only* through `getProjectedLightDiffuseColor()`, which bakes
+  the light `color` **into** the gobo sample — entangling the light color with the
+  cookie texture so it read as not tracking the Light Color. Fix
+  (`projectorVolumetricF.glsl`): sample the gobo as **texture-only**
+  (`projGoboTexture()`, the same LOD math minus the `color.rgb *`) and multiply the
+  light's linear diffuse `color` in **once, explicitly, over the whole shaft**. The
+  C++ already uploaded the correct per-cone color (`getLightLinearColor()` via
+  `DIFFUSE_COLOR`, parity with stock `setupSpotLight`), and the Phase 2 tint still
+  lerps on top of the true light color (`TintStrength>0`).
 
 1. **Session per-projector opt-in. — DONE.** Right-click object context-menu entry
    **"Volumetric Shaft"** (`menu_object.xml`, a `menu_item_check` next to the

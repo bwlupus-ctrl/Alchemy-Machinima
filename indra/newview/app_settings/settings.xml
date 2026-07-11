@@ -10540,6 +10540,17 @@
       <key>Value</key>
       <integer>1</integer>
   </map>
+  <key>BDMergeProjectorVolumetricsHalfRes</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 Phase 1] March the projector volumetric cones into a half-resolution buffer and depth-aware bilateral-upsample the result onto the scene. Quarters the marched fragment work - the biggest FPS lever with multiple flagged projectors - at a small softening of very thin shaft detail. Default on; turn off for the fullscreen (sharpest) path.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+  </map>
   <key>BDMergeProjectorVolumetricsMinResolution</key>
   <map>
       <key>Comment</key>

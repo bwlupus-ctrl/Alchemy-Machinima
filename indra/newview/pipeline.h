@@ -757,6 +757,12 @@ public:
     // for use by SSR
     LLRenderTarget          mSceneMap;
 
+    // [BDMerge G3.3 Phase 1 item 3] half-resolution scratch target the projector
+    // volumetric cones march into (RGBA16F, rgb = additive shaft). Depth-aware
+    // bilateral upsample composites it onto mRT->screen. Allocated on demand in
+    // renderProjectorVolumetric, released in releaseGLBuffers/destroyGL.
+    LLRenderTarget          mProjVolHalf;
+
     // exposure map for getting average color in scene
     LLRenderTarget          mLuminanceMap;
     LLRenderTarget          mExposureMap;
@@ -1136,6 +1142,9 @@ public:
     static U32 BDMergeProjectorVolumetricsShadowSamples;
     static bool BDMergeProjectorVolumetricsScissor;
     static bool BDMergeProjectorVolumetricsAdaptive;
+    // [BDMerge G3.3 Phase 1 item 3] march the cones into a half-res target and
+    // depth-aware bilateral-upsample the result onto the scene (big FPS win).
+    static bool BDMergeProjectorVolumetricsHalfRes;
     static U32 BDMergeProjectorVolumetricsMinResolution;
     static F32 BDMergeProjectorVolumetricsMaxLuminance;
     // [BDMerge G3.3 Phase 2] global art-direction overrides for flagged shafts.

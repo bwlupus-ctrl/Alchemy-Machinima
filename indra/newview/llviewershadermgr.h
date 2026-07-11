@@ -264,6 +264,7 @@ extern LLGLSLShader         gCASProgram;
 extern LLGLSLShader         gVolumetricLightProgram;
 // [BDMerge G3.3] per-projector volumetric light cones (visible spotlight shafts)
 extern LLGLSLShader         gDeferredProjectorVolumetricProgram;
+extern LLGLSLShader         gDeferredProjectorVolumetricUpsampleProgram; // [BDMerge G3.3 P1 item 3]
 extern LLGLSLShader         gDeferredPostNoDoFProgram;
 extern LLGLSLShader         gExposureProgram;
 extern LLGLSLShader         gExposureProgramNoFade;

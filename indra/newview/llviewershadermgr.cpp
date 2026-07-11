@@ -219,6 +219,7 @@ LLGLSLShader            gCASProgram;
 LLGLSLShader            gVolumetricLightProgram;
 // [BDMerge G3.3] per-projector volumetric light cones (visible spotlight shafts)
 LLGLSLShader            gDeferredProjectorVolumetricProgram;
+LLGLSLShader            gDeferredProjectorVolumetricUpsampleProgram; // [BDMerge G3.3 P1 item 3]
 LLGLSLShader            gDeferredPostNoDoFProgram;
 LLGLSLShader            gDeferredWLSkyProgram;
 LLGLSLShader            gEnvironmentMapProgram;
@@ -401,6 +402,7 @@ void LLViewerShaderMgr::finalizeShaderList()
     // [BDMerge G3.3] projector volumetrics links the same atmospherics/deferred
     // util set as G3.2, so register it too (keeps linked util externs satisfied).
     mShaderList.push_back(&gDeferredProjectorVolumetricProgram);
+    mShaderList.push_back(&gDeferredProjectorVolumetricUpsampleProgram); // [BDMerge G3.3 P1 item 3]
     mShaderList.push_back(&gDeferredAlphaProgram);
     mShaderList.push_back(&gHUDAlphaProgram);
     mShaderList.push_back(&gDeferredAlphaImpostorProgram);
@@ -1195,6 +1197,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gCASProgram.unload();
         gVolumetricLightProgram.unload();
         gDeferredProjectorVolumetricProgram.unload(); // [BDMerge G3.3]
+        gDeferredProjectorVolumetricUpsampleProgram.unload(); // [BDMerge G3.3 P1 item 3]
         gEnvironmentMapProgram.unload();
         gDeferredWLSkyProgram.unload();
         gDeferredWLCloudProgram.unload();
@@ -2979,6 +2982,25 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         if (!success)
         {
             LL_WARNS() << "Failed to create shader '" << gDeferredProjectorVolumetricProgram.mName << "', disabling!" << LL_ENDL;
+            success = true;
+        }
+
+        // [BDMerge G3.3 Phase 1 item 3] depth-aware bilateral upsample that resolves
+        // the half-res projector-volumetric march back to full resolution and
+        // composites it additively onto the linear HDR scene buffer. isDeferred so
+        // getPosition()/depthMap/inv_proj resolve for the depth weighting; no
+        // shadow set needed (the half-res pass already baked self-shadowing).
+        gDeferredProjectorVolumetricUpsampleProgram.mName = "Projector Volumetric Upsample Shader";
+        gDeferredProjectorVolumetricUpsampleProgram.mFeatures.isDeferred = true;
+        gDeferredProjectorVolumetricUpsampleProgram.mShaderFiles.clear();
+        gDeferredProjectorVolumetricUpsampleProgram.clearPermutations();
+        gDeferredProjectorVolumetricUpsampleProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gDeferredProjectorVolumetricUpsampleProgram.mShaderFiles.push_back(make_pair("deferred/projectorVolumetricUpsampleF.glsl", GL_FRAGMENT_SHADER));
+        gDeferredProjectorVolumetricUpsampleProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gDeferredProjectorVolumetricUpsampleProgram.createShader();
+        if (!success)
+        {
+            LL_WARNS() << "Failed to create shader '" << gDeferredProjectorVolumetricUpsampleProgram.mName << "', disabling!" << LL_ENDL;
             success = true;
         }
 

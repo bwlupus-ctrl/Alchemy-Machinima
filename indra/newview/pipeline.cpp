@@ -252,6 +252,7 @@ F32 LLPipeline::BDMergeProjectorVolumetricsFeather;
 U32 LLPipeline::BDMergeProjectorVolumetricsShadowSamples;
 bool LLPipeline::BDMergeProjectorVolumetricsScissor;
 bool LLPipeline::BDMergeProjectorVolumetricsAdaptive;
+bool LLPipeline::BDMergeProjectorVolumetricsHalfRes;
 U32 LLPipeline::BDMergeProjectorVolumetricsMinResolution;
 F32 LLPipeline::BDMergeProjectorVolumetricsMaxLuminance;
 LLColor3 LLPipeline::BDMergeProjectorVolumetricsTint;
@@ -639,6 +640,7 @@ void LLPipeline::init()
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsShadowSamples");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsScissor");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsAdaptive");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsHalfRes");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsMinResolution");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsMaxLuminance");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsTint");
@@ -1292,6 +1294,7 @@ void LLPipeline::refreshCachedSettings()
     BDMergeProjectorVolumetricsShadowSamples = gSavedSettings.getU32("BDMergeProjectorVolumetricsShadowSamples");
     BDMergeProjectorVolumetricsScissor = gSavedSettings.getBOOL("BDMergeProjectorVolumetricsScissor");
     BDMergeProjectorVolumetricsAdaptive = gSavedSettings.getBOOL("BDMergeProjectorVolumetricsAdaptive");
+    BDMergeProjectorVolumetricsHalfRes = gSavedSettings.getBOOL("BDMergeProjectorVolumetricsHalfRes");
     BDMergeProjectorVolumetricsMinResolution = gSavedSettings.getU32("BDMergeProjectorVolumetricsMinResolution");
     BDMergeProjectorVolumetricsMaxLuminance = gSavedSettings.getF32("BDMergeProjectorVolumetricsMaxLuminance");
     BDMergeProjectorVolumetricsTint = gSavedSettings.getColor3("BDMergeProjectorVolumetricsTint");
@@ -1355,6 +1358,8 @@ void LLPipeline::releaseGLBuffers()
     mWaterDis.release();
 
     mSceneMap.release();
+
+    mProjVolHalf.release(); // [BDMerge G3.3 Phase 1 item 3]
 
     mWaterExclusionMask.release();
 
@@ -9306,10 +9311,47 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
     glm::mat4 mat  = get_current_modelview();
     glm::mat4 proj = get_current_projection();
 
-    const F32 tgt_w = (F32)target->getWidth();
-    const F32 tgt_h = (F32)target->getHeight();
+    // [Phase 1 item 3] Half-res march path: march the cones into a half-resolution
+    // scratch target (mProjVolHalf) and depth-aware bilateral-upsample the result
+    // onto the scene. Big fill-rate win (quarter the marched fragments) for the
+    // common 2+ flagged-projector case. Falls back to the fullscreen path if the
+    // half-res target can't be allocated or the scene is too small to halve.
+    bool halfres = BDMergeProjectorVolumetricsHalfRes &&
+                   gDeferredProjectorVolumetricUpsampleProgram.isComplete() &&
+                   target->getWidth() >= 8 && target->getHeight() >= 8;
+    if (halfres)
+    {
+        U32 hw = llmax(1U, target->getWidth() / 2);
+        U32 hh = llmax(1U, target->getHeight() / 2);
+        if (mProjVolHalf.getWidth() != hw || mProjVolHalf.getHeight() != hh)
+        {
+            mProjVolHalf.release();
+            if (!mProjVolHalf.allocate(hw, hh, GL_RGBA16F))
+            {
+                halfres = false; // allocation failed -> fullscreen fallback
+            }
+        }
+    }
 
-    target->bindTarget();
+    LLRenderTarget* march_target = halfres ? &mProjVolHalf : target;
+
+    // Scissor + sphere projection work in the MARCH target's pixel space so the
+    // half-res path scissors correctly. LIGHT_CENTER etc are view-space and thus
+    // resolution independent.
+    const F32 tgt_w = (F32)march_target->getWidth();
+    const F32 tgt_h = (F32)march_target->getHeight();
+
+    march_target->bindTarget();
+    if (halfres)
+    {
+        // Additive accumulation needs a black base in the half-res target (the
+        // fullscreen path accumulates directly onto the existing scene instead).
+        // Disable scissor for the clear so a stale rect can't leave last frame's
+        // shaft in the border and let it accumulate.
+        LLGLDisable no_scissor(GL_SCISSOR_TEST);
+        glClearColor(0.f, 0.f, 0.f, 0.f);
+        march_target->clear(GL_COLOR_BUFFER_BIT);
+    }
 
     LLGLDepthTest depth(GL_FALSE);
     LLGLEnable    blend(GL_BLEND);
@@ -9318,6 +9360,12 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
     LLGLEnable    scissor_test(BDMergeProjectorVolumetricsScissor ? GL_SCISSOR_TEST : GL_NONE);
     gGL.setSceneBlendType(LLRender::BT_ADD); // GL_ONE, GL_ONE - additive accumulation over slots
     gGL.setColorMask(true, false);
+
+    // [Phase 1 item 3] union of all marched cone rects (march-target pixel space)
+    // so the upsample pass only touches pixels a shaft could have reached.
+    F32  union_min_x = tgt_w, union_min_y = tgt_h, union_max_x = 0.f, union_max_y = 0.f;
+    bool union_full  = false; // a cone needed the full-screen fallback
+    U32  cones_drawn = 0;
 
     bindDeferredShader(gDeferredProjectorVolumetricProgram); // binds the full per-slot shadow set
 
@@ -9436,7 +9484,13 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
         else
         {
             min_x = 0.f; min_y = 0.f; max_x = tgt_w; max_y = tgt_h;
+            union_full = true; // this cone couldn't be bounded -> upsample full screen
         }
+
+        // Grow the upsample union (march-target pixel space).
+        union_min_x = llmin(union_min_x, min_x); union_max_x = llmax(union_max_x, max_x);
+        union_min_y = llmin(union_min_y, min_y); union_max_y = llmax(union_max_y, max_y);
+        ++cones_drawn;
 
         if (BDMergeProjectorVolumetricsScissor)
         {
@@ -9470,15 +9524,68 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
     // LLGLEnable above only toggles the enable bit, not the rectangle).
     if (BDMergeProjectorVolumetricsScissor)
     {
-        glScissor(0, 0, (GLsizei)target->getWidth(), (GLsizei)target->getHeight());
+        glScissor(0, 0, (GLsizei)march_target->getWidth(), (GLsizei)march_target->getHeight());
     }
 
     gDeferredProjectorVolumetricProgram.disableTexture(LLShaderMgr::DEFERRED_PROJECTION);
     unbindDeferredShader(gDeferredProjectorVolumetricProgram);
 
+    march_target->flush();
+
+    // [Phase 1 item 3] Resolve the half-res shaft to full resolution with a
+    // depth-aware bilateral upsample, compositing additively onto the scene. Skip
+    // entirely if no cone marched (nothing to upsample).
+    if (halfres && cones_drawn > 0)
+    {
+        target->bindTarget();
+
+        // Scissor the upsample to the union of the marched cone rects, scaled from
+        // half-res march space to full-res target space (2x). A cone that fell back
+        // to full-screen forces a full-screen resolve. We force-enable scissor and
+        // set an explicit rect either way so a stale half-res rect from the march
+        // loop can never clip this full-res pass.
+        bool up_scissor = BDMergeProjectorVolumetricsScissor && !union_full;
+        LLGLEnable up_scissor_test(GL_SCISSOR_TEST);
+        if (up_scissor)
+        {
+            F32 fx0 = llclamp(union_min_x * 2.f, 0.f, (F32)target->getWidth());
+            F32 fy0 = llclamp(union_min_y * 2.f, 0.f, (F32)target->getHeight());
+            F32 fx1 = llclamp(union_max_x * 2.f, 0.f, (F32)target->getWidth());
+            F32 fy1 = llclamp(union_max_y * 2.f, 0.f, (F32)target->getHeight());
+            glScissor((GLint)fx0, (GLint)fy0, (GLsizei)llceil(fx1 - fx0), (GLsizei)llceil(fy1 - fy0));
+        }
+        else
+        {
+            glScissor(0, 0, (GLsizei)target->getWidth(), (GLsizei)target->getHeight());
+        }
+
+        bindDeferredShader(gDeferredProjectorVolumetricUpsampleProgram);
+        // Bind the half-res shaft to the reserved projectionMap sampler (unused by
+        // bindDeferredShader) so it gets a proper texture channel; bilinear so the
+        // shader's explicit 4-tap bilateral weighting reads clean texel centers.
+        S32 half_ch = gDeferredProjectorVolumetricUpsampleProgram.enableTexture(LLShaderMgr::DEFERRED_PROJECTION);
+        if (half_ch > -1)
+        {
+            mProjVolHalf.bindTexture(0, half_ch, LLTexUnit::TFO_BILINEAR);
+        }
+        const F32 half_res[2] = { (F32)mProjVolHalf.getWidth(), (F32)mProjVolHalf.getHeight() };
+        static const LLStaticHashedString sHalfRes("projvol_half_res");
+        gDeferredProjectorVolumetricUpsampleProgram.uniform2fv(sHalfRes, 1, half_res);
+
+        mScreenTriangleVB->setBuffer();
+        mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+
+        // Restore full-screen scissor rect (the LLGLEnable only toggles the bit).
+        glScissor(0, 0, (GLsizei)target->getWidth(), (GLsizei)target->getHeight());
+
+        gDeferredProjectorVolumetricUpsampleProgram.disableTexture(LLShaderMgr::DEFERRED_PROJECTION);
+        unbindDeferredShader(gDeferredProjectorVolumetricUpsampleProgram);
+
+        target->flush();
+    }
+
     gGL.setColorMask(true, true);
     gGL.setSceneBlendType(LLRender::BT_ALPHA);
-    target->flush();
 }
 
 // [BDMerge G3.3 Phase 2] Session-only per-projector volumetric opt-in. The set
