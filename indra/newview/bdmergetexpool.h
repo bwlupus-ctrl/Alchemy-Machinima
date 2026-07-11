@@ -35,6 +35,7 @@
 #include "lluuid.h"
 
 #include <iosfwd>
+#include <string>
 
 class LLImageRaw;
 
@@ -57,6 +58,9 @@ public:
     // any same-or-coarser entry (finer entries are kept instead). May evict
     // LRU entries to stay under budget.
     static void put(const LLUUID& id, S32 discard, const LLImageRaw* raw);
+
+    // Compact one-line status for UI readouts (thread-safe).
+    static std::string shortStatus();
 
     // Append a one-line stats summary (for the G5.1-S1 spike report).
     static void appendReport(std::ostream& out);

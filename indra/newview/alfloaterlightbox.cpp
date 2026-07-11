@@ -31,6 +31,9 @@
 #include "llviewerprecompiledheaders.h"
 #include "alfloaterlightbox.h"
 
+#include "bdmergemeshpool.h"
+#include "bdmergetexpool.h"
+
 //#include "alrenderutils.h"
 #include "llviewercontrol.h"
 #include "llspinctrl.h"
@@ -65,6 +68,14 @@ bool ALFloaterLightBox::postBuild()
 
 void ALFloaterLightBox::draw()
 {
+    // [BDMerge B-2b.3] live RAM-pool readouts on the Machinima tab
+    static LLFrameTimer pool_stats_timer;
+    if (pool_stats_timer.getElapsedTimeF32() > 1.f)
+    {
+        pool_stats_timer.reset();
+        getChild<LLTextBox>("bd_texpool_stats")->setValue("Textures: " + BDMergeTexPool::shortStatus());
+        getChild<LLTextBox>("bd_meshpool_stats")->setValue("Meshes: " + BDMergeMeshPool::shortStatus());
+    }
     LLFloater::draw();
 }
 

@@ -31,6 +31,7 @@
 #include "lluuid.h"
 
 #include <iosfwd>
+#include <string>
 
 class LLVolume;
 class LLVolumeParams;
@@ -52,6 +53,9 @@ public:
     // Worker threads: store a deep copy of src's unpacked faces under
     // (mesh_id, lod). May evict LRU entries to stay under budget.
     static void put(const LLUUID& mesh_id, S32 lod, const LLVolumeParams& params, const LLVolume* src);
+
+    // Compact one-line status for UI readouts (thread-safe).
+    static std::string shortStatus();
 
     // Append a one-line stats summary (for the G5.1-S1 spike report).
     static void appendReport(std::ostream& out);

@@ -213,6 +213,27 @@ void BDMergeMeshPool::put(const LLUUID& mesh_id, S32 lod, const LLVolumeParams& 
 }
 
 //static
+std::string BDMergeMeshPool::shortStatus()
+{
+    if (!enabled())
+    {
+        return "off";
+    }
+    U64 entries, bytes, hits, misses;
+    {
+        LLMutexLock lock(&sMutex);
+        entries = sEntries.size();
+        bytes = sBytes;
+        hits = sHits;
+        misses = sMisses;
+    }
+    const F64 GB = 1024.0 * 1024.0 * 1024.0;
+    return llformat("%.2f / %.0f GB - %llu meshes - %.1f%% hits",
+                    bytes / GB, sBudgetBytes.load(std::memory_order_relaxed) / GB,
+                    entries, (hits + misses) ? 100.0 * hits / (hits + misses) : 0.0);
+}
+
+//static
 void BDMergeMeshPool::appendReport(std::ostream& out)
 {
     U64 entries, bytes, hits, misses, inserts, evictions;

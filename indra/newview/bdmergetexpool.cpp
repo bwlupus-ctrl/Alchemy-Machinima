@@ -277,6 +277,27 @@ void BDMergeTexPool::put(const LLUUID& id, S32 discard, const LLImageRaw* raw)
 }
 
 //static
+std::string BDMergeTexPool::shortStatus()
+{
+    if (!enabled())
+    {
+        return "off";
+    }
+    U64 entries, bytes, hits, misses;
+    {
+        LLMutexLock lock(&sMutex);
+        entries = sEntries.size();
+        bytes = sBytes;
+        hits = sHits;
+        misses = sMisses;
+    }
+    const F64 GB = 1024.0 * 1024.0 * 1024.0;
+    return llformat("%.1f / %.0f GB - %llu textures - %.1f%% hits",
+                    bytes / GB, sBudgetBytes.load(std::memory_order_relaxed) / GB,
+                    entries, (hits + misses) ? 100.0 * hits / (hits + misses) : 0.0);
+}
+
+//static
 void BDMergeTexPool::appendReport(std::ostream& out)
 {
     U64 entries, bytes, hits, misses, inserts, evictions;

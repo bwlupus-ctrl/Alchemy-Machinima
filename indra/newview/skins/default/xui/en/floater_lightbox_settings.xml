@@ -2947,9 +2947,27 @@
 				tool_tip="Fraction of installed RAM the decoded-texture pool may use (0.5 = ~96GB here). Applies within a few seconds." />
 			<text
 				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="8"
+				width="380"
+				layout="topleft"
+				name="bd_texpool_stats"
+				value="Textures: -" />
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="2"
+				width="380"
+				layout="topleft"
+				name="bd_meshpool_stats"
+				value="Meshes: -" />
+			<text
+				follows="left|top"
 				height="30"
 				left="5"
-				top_pad="12"
+				top_pad="8"
 				width="380"
 				layout="topleft"
 				word_wrap="true"
