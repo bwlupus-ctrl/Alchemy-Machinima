@@ -126,7 +126,7 @@ as current BD.
 | A2.1 near-clip reduction | **done** (as G2.1; depth-sanity verification owed with A0.2 captures) | — |
 | A2.2 alpha-out-of-depth | open | A0.2 |
 | A2.3 forced alpha masking | **done** (as G2.3, landed without A2.2 gate — user directive 2026-07-10; in-world verification owed) | — |
-| A2.4 rigged alpha-swap flicker | open | A2.2/A2.3 |
+| A2.4 rigged alpha-swap flicker | **closed — already present via shared upstream rewrite** (2026-07-10: BD's fixes 58304bf0d3/8277e334a2/0e4a581def patched the old `LLDrawPoolAvatar::renderRigged` texture-format heuristic that let shadow and main passes classify alpha differently; LL's rigged-rendering rewrite deleted that whole path in BOTH trees — batch membership now drives main+shadow passes from one classification, desync impossible. Only vestigial `sShadowPass` bookkeeping remains. G2.3 forced masking inherits shadow coherence automatically: mask batches carry `mAlphaMaskCutoff` into shadow passes) | — |
 | A3.1 decouple SSAO/shadows/SSR | **closed — already present via upstream PBR rewrite** (2026-07-10 recon: sun-lightmap pass gates on `SSAO OR shadows` independently (`pipeline.cpp:9506`), SSAO-only and shadows-only both wired; SSR is Alchemy-native `RenderScreenSpaceReflections`, independent post toggle. BD's decoupling AND the coupling it fixed were both dissolved by the PBR restructure — same pattern as A1.1. In-world every-combination toggle check owed) | — |
 | A3.2 volumetric lighting | **done** (as G3.2 ⭐, `405baf77bf`; landed with A2.2 still open — alpha/particle godray participation is the remaining sub-feature, tied to the shared G2.2 toggle; in-world acceptance owed) | A2.2 (alpha participation only) |
 | A4.1 per-cascade shadow res | open | A1.3 (soft) |
