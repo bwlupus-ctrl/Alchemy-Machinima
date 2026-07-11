@@ -11936,7 +11936,7 @@ void LLPipeline::generateSunShadow(LLCamera& camera)
                 mSpotShadow[i].getViewport(gGLViewport);
                 mSpotShadow[i].clear();
 
-                static LLCullResult result[2];
+                static LLCullResult result[MAX_SPOT_SHADOWS]; // [BDMerge NSpot fix2] was [2] - slot 3+ stomped past the array (the actual hard-crash root cause, symbolized to LLCullResult::pushVisibleGroup)
 
                 LLViewerCamera::sCurCameraID = (LLViewerCamera::eCameraID)(LLViewerCamera::CAMERA_SPOT_SHADOW0 + i);
 
