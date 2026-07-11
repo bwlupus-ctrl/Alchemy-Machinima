@@ -2591,5 +2591,113 @@
 					parameter="CameraFocusTransitionTime" />
 			</button>
 		</panel>
+		<!--[BDMerge G3.2] Godrays Panel - thin UI, all widgets bind debug settings-->
+		<panel
+			label="Godrays"
+			layout="topleft"
+			name="godray_settings">
+			<check_box
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="8"
+				width="200"
+				layout="topleft"
+				label="Volumetric Lighting (Godrays)"
+				tool_tip="Raymarched sun shafts (donor: Black Dragon). Requires shadows (Sun/Moon+Projectors)."
+				control_name="RenderVolumetricLighting" />
+			<check_box
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="4"
+				width="200"
+				layout="topleft"
+				label="Fade unless facing sun"
+				tool_tip="Directional fade: rays strengthen when the camera faces the sun. NOTE: takes effect after a shader reload (toggle a graphics preset or relog)."
+				control_name="RenderVolumetricLightingDirectional"
+				enabled_control="RenderVolumetricLighting" />
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="10"
+				width="120"
+				layout="topleft"
+				value="Brightness:" />
+			<slider
+				control_name="RenderVolumetricLightingMultiplier"
+				enabled_control="RenderVolumetricLighting"
+				follows="left|top"
+				layout="topleft"
+				height="20"
+				top_pad="-16"
+				left="90"
+				width="290"
+				min_val="0.01"
+				max_val="30"
+				increment="0.05"
+				decimal_digits="2"
+				show_text="true"
+				name="godray_multiplier_slider"
+				tool_tip="Godray brightness multiplier. 1-5 is a realistic range; higher for stylized shots." />
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="10"
+				width="120"
+				layout="topleft"
+				value="Quality:" />
+			<slider
+				control_name="RenderVolumetricLightingResolution"
+				enabled_control="RenderVolumetricLighting"
+				follows="left|top"
+				layout="topleft"
+				height="20"
+				top_pad="-16"
+				left="90"
+				width="290"
+				min_val="16"
+				max_val="128"
+				increment="1"
+				decimal_digits="0"
+				show_text="true"
+				name="godray_resolution_slider"
+				tool_tip="Raymarch sample count. Higher = smoother shafts, more GPU." />
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="10"
+				width="120"
+				layout="topleft"
+				value="Falloff:" />
+			<slider
+				control_name="RenderVolumetricLightingFalloffMultiplier"
+				enabled_control="RenderVolumetricLighting"
+				follows="left|top"
+				layout="topleft"
+				height="20"
+				top_pad="-16"
+				left="90"
+				width="290"
+				min_val="0.0"
+				max_val="10"
+				increment="0.05"
+				decimal_digits="2"
+				show_text="true"
+				name="godray_falloff_slider"
+				tool_tip="Distance falloff. Higher fades shafts out closer to the camera." />
+			<text
+				follows="left|top"
+				height="30"
+				left="5"
+				top_pad="14"
+				width="380"
+				layout="topleft"
+				word_wrap="true"
+				value="Shafts appear where shadowed air meets sunlit gaps: shoot from inside structures or under canopy, camera across the light, sun low." />
+		</panel>
 	</tab_container>
 </floater>
