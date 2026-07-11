@@ -123,7 +123,7 @@ as current BD.
 | A0.2 depth baseline | **done** (reference captures owed at next in-world session) | — |
 | A1.1 separable shaders | **closed — no port** (2026-07-09 ruling: descope; see "A1.1 recon finding") | — |
 | A1.2 resolution autoscale | **done** | — |
-| A1.3 shadow softening kernel | open | — |
+| A1.3 shadow softening kernel | **closed — donor code gone** (2026-07-10: `blurLightF.glsl` byte-identical BD↔Alchemy; BD's Tofu split-blur kernel dismantled in their PBR sync, same as A1.1/G2.3. Stock parity; novel reimplementation only if stock blur proves insufficient after G4.1 resolution testing) | — |
 | A2.1 near-clip reduction | **done** (as G2.1; depth-sanity verification owed with A0.2 captures) | — |
 | A2.2 alpha-out-of-depth | open | A0.2 |
 | A2.3 forced alpha masking | **done** (as G2.3, landed without A2.2 gate — user directive 2026-07-10; in-world verification owed) | — |
@@ -132,13 +132,13 @@ as current BD.
 | A3.2 volumetric lighting | **done** (as G3.2 ⭐, `405baf77bf`; landed with A2.2 still open — alpha/particle godray participation is the remaining sub-feature, tied to the shared G2.2 toggle; in-world acceptance owed) | A2.2 (alpha participation only) |
 | A4.1 per-cascade shadow res | **done** (as G4.1, `5b56a25d5a`; quadratic-sizing sub-feature deliberately skipped — stock scale covers it) | — |
 | A4.2 quadratic shadow dims | open | A4.1 |
-| A5.1 tonemappers | open | — |
-| A5.2 HDR/auto-exposure | open | A5.1 |
-| A5.3 chromatic aberration | open | — |
-| A5.4 motion blur | open | — |
-| A5.5 sepia/greyscale/posterize/CAS | open | — |
+| A5.1 tonemappers | **closed — superseded by Alchemy's own effects stack** (`RenderTonemapType` + gCGTonemap* program family in colorCorrect; selectable tonemapping native) | — |
+| A5.2 HDR/auto-exposure | **closed — superseded** (Alchemy-native HDR path: `generateBloomHDR` + eye adaptation in `colorCorrect`, renderFinalize hdr branch) | — |
+| A5.3 chromatic aberration | **closed — already present** (`applyChromaticAberration` in Alchemy's postEffectUtilsF/colorCorrectF effects stack) | — |
+| A5.4 motion blur | open — **scoped 2026-07-10: SUBSYSTEM port, next big Fable block.** Donor ALIVE in BD (gDeferredMotionBlurProgram + renderMotionBlurComposite in renderFinalize + motionBlur[FV].glsl). The cost is the velocity buffer: `renderGeomMotionBlur` runs a per-object velocity geometry pass via virtual hooks on EVERY draw pool (getNumMotionBlurPasses/renderMotionBlur), requiring previous-frame matrix history incl. rigged skinning palettes. Multi-session; do not attempt as a tail-end item | — |
+| A5.5 sepia/greyscale/posterize/CAS | **closed — superseded** (CAS native `applyCAS`; artistic looks via Alchemy's LUT color-grading system in the Lightbox — strictly more capable than BD's fixed filters) | — |
 | A5.6 light-source toggles | **done** | — |
-| A5.7 high-altitude shadows | open | A1.3 (soft) |
+| A5.7 high-altitude shadows | **closed — donor code gone** (BD d0f2fbe499 made shadow_bias a per-cascade Vector4; current BD reverted to scalar in the PBR sync. If altitude shimmer persists after G4.1 per-cascade resolution, reimplement the vec4 bias novel — contained: uniform type + 4-way setting + shadowUtil sampling sites) | — |
 | B1 machinima sidebar | open | A-series settings it surfaces |
 | B2 camera presets | **done** | — |
 | B3 freeze world | **done** | — |
