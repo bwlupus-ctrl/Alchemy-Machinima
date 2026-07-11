@@ -120,6 +120,8 @@ as current BD.
 
 ## Next Fable-block queue (scoped 2026-07-10 night)
 
+**N projector shadows — DONE (`2352f924e0`, 2026-07-11).** Diagnostic (GLSLTextureChannels, un-suppressed this session) refuted the sampler-overflow theory: spot shaders use 7/32 channels. Real cause was the packed screen-space shadow buffer — sunLightF wrote only 2 spot-shadow channels (.b/.a) and spotLightF read them back, hard-capping projectors at 2 (3→lights-without-shadows, 6→blackout from stale-channel reads). Fix: spotLightF now calls `sampleSpotShadow()` to sample each projector's own shadow map directly (all the C++/binding/matrix machinery was already extended to N; only the consumer shader lagged). One-shader change, no C++, no exe rebuild. In-world test of 3/4/6 owed. Original scoping (now historical):
+
 1. **N projector shadows** (`BDMergeMaxSpotShadows`, 2=stock, target 4-6): mSpotShadow/mShadowSpotLight/mTargetShadowSpotLight/mSpotLightFade arrays 2→N; generateSunShadow spot loop; shadow_matrix[6]→[4+N] in EVERY deferred shader incl. shadowUtil + volumetricLightF; shadowMap6+ samplers + llshadermgr reserved uniforms; setupSpotLight slot logic (compose with BDMergeStableSpotShadows priority); bindDeferredShader hardcoded 6-matrix upload (pipeline.cpp:9389 region). One focused session; perf trivial on the 5090.
 2. **A5.4 motion blur** (see item row: velocity-pass subsystem).
 3. **B9 gamepad flycam** + BD camera accessories (free-DoF focus, mouse-position aim).
