@@ -2892,6 +2892,17 @@
       <key>Value</key>
       <integer>0</integer>
     </map>
+    <key>BDMergeStableSpotShadows</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge] Stable projector shadows: award the two projector-shadow slots by light world size instead of on-screen size, so set lights keep their shadows while the camera moves. Off = stock (screen-size auction).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
     <key>BDMergeCacheIOThreads</key>
     <map>
       <key>Comment</key>

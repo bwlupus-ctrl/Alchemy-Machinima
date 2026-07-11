@@ -3337,6 +3337,16 @@
 				top_pad="8"
 				width="360"
 				layout="topleft"
+				label="Stable projector shadows (set lights keep shadows)"
+				tool_tip="Award the two projector-shadow slots by light size instead of screen size - camera moves stop stealing your set lights' shadows. Note: SL only ever shadows two projectors at once."
+				control_name="BDMergeStableSpotShadows" />
+			<check_box
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="8"
+				width="360"
+				layout="topleft"
 				label="Cinematic head tracking (handheld feel)"
 				tool_tip="Camera aim and roll subtly follow your avatar's head. Bone camera wins if both are set."
 				control_name="UseCinematicCamera" />

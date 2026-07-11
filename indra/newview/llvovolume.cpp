@@ -3296,9 +3296,23 @@ void LLVOVolume::updateSpotLightPriority()
 
     mSpotLightPriority = gPipeline.calcPixelArea(pos, LLVector3(r,r,r), *LLViewerCamera::getInstance());
 
+    // [BDMerge SpotStable] Stable projector shadows: the viewer has only two
+    // projector-shadow slots, awarded by on-screen pixel size - so panning
+    // the camera away reshuffles which lights hold shadows mid-shot. When
+    // enabled, priority is the light's WORLD size instead (radius cubed, so
+    // big set lights dominate deterministically): the same two largest
+    // in-frustum projectors keep their shadows regardless of camera motion.
+    static LLCachedControl<bool> stable_spots(gSavedSettings, "BDMergeStableSpotShadows", false);
+    if (stable_spots)
+    {
+        mSpotLightPriority = r * r * r;
+    }
+
     if (mLightTexture.notNull())
     {
-        mLightTexture->addTextureStats(mSpotLightPriority);
+        // texture boost still needs the true screen coverage, not the
+        // shadow-slot priority
+        mLightTexture->addTextureStats(gPipeline.calcPixelArea(pos, LLVector3(r,r,r), *LLViewerCamera::getInstance()));
     }
 }
 
