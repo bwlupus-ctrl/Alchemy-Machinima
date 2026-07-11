@@ -1089,6 +1089,12 @@ bool LLPipeline::allocateShadowBuffer(U32 resX, U32 resY)
                 spot_shadow_map_width = spot_shadow_map_height = llclamp(custom_spot, 256u, 8192u);
             }
             const U32 num_spots = bdmergeMaxSpotShadows(); // [BDMerge NSpot]
+            for (U32 i = num_spots; i < MAX_SPOT_SHADOWS; i++)
+            { // slots beyond the runtime count: release and unassign
+                mSpotShadow[i].release();
+                mShadowSpotLight[i] = NULL;
+                mTargetShadowSpotLight[i] = NULL;
+            }
             for (U32 i = 0; i < num_spots; i++)
             {
                 if (!mSpotShadow[i].allocate(spot_shadow_map_width, spot_shadow_map_height, 0, true))
@@ -11777,6 +11783,10 @@ void LLPipeline::generateSunShadow(LLCamera& camera)
             const U32 num_spots = bdmergeMaxSpotShadows(); // [BDMerge NSpot]
             for (U32 i = 0; i < num_spots; i++)
             { //for each current shadow
+                if (mSpotShadow[i].getWidth() == 0)
+                { // not allocated yet (deferred realloc); skip this frame
+                    continue;
+                }
                 LLViewerCamera::sCurCameraID = (LLViewerCamera::eCameraID)(LLViewerCamera::CAMERA_SPOT_SHADOW0 + i);
 
                 bool is_target = false;
@@ -11833,6 +11843,13 @@ void LLPipeline::generateSunShadow(LLCamera& camera)
 
         for (S32 i = 0; i < (S32)bdmergeMaxSpotShadows(); i++) // [BDMerge NSpot]
         {
+            if (mSpotShadow[i].getWidth() == 0)
+            { // slot count raised before the deferred realloc ran - target
+              // not allocated yet this frame; skip (crash guard)
+                mShadowSpotLight[i] = NULL;
+                continue;
+            }
+
             set_current_modelview(saved_view);
             set_current_projection(saved_proj);
 
