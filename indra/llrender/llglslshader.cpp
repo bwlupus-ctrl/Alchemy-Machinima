@@ -508,6 +508,20 @@ bool LLGLSLShader::createShader()
 
     LL_DEBUGS("GLSLTextureChannels") << mName << " has " << mActiveTextureChannels << " active texture channels" << LL_ENDL;
 
+    // [BDMerge NSpot diag] silent sampler overflow is catastrophic (samplers
+    // past the GPU unit limit read unit 0) - always report near/over budget
+    if (mActiveTextureChannels > 24)
+    {
+        LL_INFOS("GLSLTextureChannels") << mName << " uses " << mActiveTextureChannels
+            << " texture channels (GPU limit: " << gGLManager.mNumTextureImageUnits << ")" << LL_ENDL;
+    }
+    if (mActiveTextureChannels > gGLManager.mNumTextureImageUnits)
+    {
+        LL_WARNS("GLSLTextureChannels") << mName << " EXCEEDS the texture image unit limit: "
+            << mActiveTextureChannels << " > " << gGLManager.mNumTextureImageUnits
+            << " - samplers beyond the limit silently read unit 0!" << LL_ENDL;
+    }
+
     for (U32 i = 0; i < mTexture.size(); i++)
     {
         if (mTexture[i] > -1)
