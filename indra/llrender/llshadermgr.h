@@ -499,6 +499,19 @@ public:
         PROJVOL_FRAME,                     //  "projvol_frame"       (item 2)
         PROJVOL_MAX,                       //  "projvol_max"         (item 1)
 
+        // [BDMerge G3.3 Phase 3] atmosphere levers (all default to a no-op)
+        PROJVOL_DENSITY,                   //  "projvol_density"           (item 3)
+        PROJVOL_NOISE_STRENGTH,            //  "projvol_noise_strength"    (item 1)
+        PROJVOL_NOISE_SCALE,               //  "projvol_noise_scale"       (item 1)
+        PROJVOL_NOISE_SPEED,               //  "projvol_noise_speed"       (item 1)
+        PROJVOL_TIME,                      //  "projvol_time"              (item 1)
+        PROJVOL_FOG_STRENGTH,              //  "projvol_fog_strength"      (item 2)
+        PROJVOL_FOG_GROUND,                //  "projvol_fog_ground_density"(item 2)
+        PROJVOL_FOG_FALLOFF,               //  "projvol_fog_falloff"       (item 2)
+        PROJVOL_FOG_BASE,                  //  "projvol_fog_base"          (item 2)
+        PROJVOL_INV_MODELVIEW,             //  "projvol_inv_modelview"     (items 1/2)
+        PROJVOL_BLOOM_FEED,                //  "projvol_bloom_feed"        (item 4)
+
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

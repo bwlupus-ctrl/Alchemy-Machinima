@@ -1701,6 +1701,19 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("projvol_frame");
     mReservedUniforms.push_back("projvol_max");
 
+    // [BDMerge G3.3 Phase 3] atmosphere levers
+    mReservedUniforms.push_back("projvol_density");
+    mReservedUniforms.push_back("projvol_noise_strength");
+    mReservedUniforms.push_back("projvol_noise_scale");
+    mReservedUniforms.push_back("projvol_noise_speed");
+    mReservedUniforms.push_back("projvol_time");
+    mReservedUniforms.push_back("projvol_fog_strength");
+    mReservedUniforms.push_back("projvol_fog_ground_density");
+    mReservedUniforms.push_back("projvol_fog_falloff");
+    mReservedUniforms.push_back("projvol_fog_base");
+    mReservedUniforms.push_back("projvol_inv_modelview");
+    mReservedUniforms.push_back("projvol_bloom_feed");
+
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 
     std::set<std::string> dupe_check;

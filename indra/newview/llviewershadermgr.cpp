@@ -221,6 +221,7 @@ LLGLSLShader            gVolumetricLightProgram;
 // [BDMerge G3.3] per-projector volumetric light cones (visible spotlight shafts)
 LLGLSLShader            gDeferredProjectorVolumetricProgram;
 LLGLSLShader            gDeferredProjectorVolumetricUpsampleProgram; // [BDMerge G3.3 P1 item 3]
+LLGLSLShader            gDeferredProjectorVolumetricBloomFeedProgram; // [BDMerge G3.3 P3 item 4]
 LLGLSLShader            gDeferredPostNoDoFProgram;
 LLGLSLShader            gDeferredWLSkyProgram;
 LLGLSLShader            gEnvironmentMapProgram;
@@ -404,6 +405,7 @@ void LLViewerShaderMgr::finalizeShaderList()
     // util set as G3.2, so register it too (keeps linked util externs satisfied).
     mShaderList.push_back(&gDeferredProjectorVolumetricProgram);
     mShaderList.push_back(&gDeferredProjectorVolumetricUpsampleProgram); // [BDMerge G3.3 P1 item 3]
+    mShaderList.push_back(&gDeferredProjectorVolumetricBloomFeedProgram); // [BDMerge G3.3 P3 item 4]
     mShaderList.push_back(&gDeferredAlphaProgram);
     mShaderList.push_back(&gHUDAlphaProgram);
     mShaderList.push_back(&gDeferredAlphaImpostorProgram);
@@ -1200,6 +1202,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gVolumetricLightProgram.unload();
         gDeferredProjectorVolumetricProgram.unload(); // [BDMerge G3.3]
         gDeferredProjectorVolumetricUpsampleProgram.unload(); // [BDMerge G3.3 P1 item 3]
+        gDeferredProjectorVolumetricBloomFeedProgram.unload(); // [BDMerge G3.3 P3 item 4]
         gEnvironmentMapProgram.unload();
         gDeferredWLSkyProgram.unload();
         gDeferredWLCloudProgram.unload();
@@ -3062,6 +3065,23 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         if (!success)
         {
             LL_WARNS() << "Failed to create shader '" << gDeferredProjectorVolumetricUpsampleProgram.mName << "', disabling!" << LL_ENDL;
+            success = true;
+        }
+
+        // [BDMerge G3.3 Phase 3 item 4] Bloom-feed shader: a small tent blur of the
+        // half-res projector-volumetric shaft, scaled by projvol_bloom_feed, additively
+        // composited into the HDR bloom pyramid base so bright shaft cores gain a soft
+        // glow halo. Not deferred (plain 2D texture pass, no depth reconstruction).
+        gDeferredProjectorVolumetricBloomFeedProgram.mName = "Projector Volumetric Bloom Feed Shader";
+        gDeferredProjectorVolumetricBloomFeedProgram.mShaderFiles.clear();
+        gDeferredProjectorVolumetricBloomFeedProgram.clearPermutations();
+        gDeferredProjectorVolumetricBloomFeedProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gDeferredProjectorVolumetricBloomFeedProgram.mShaderFiles.push_back(make_pair("deferred/projectorVolumetricBloomFeedF.glsl", GL_FRAGMENT_SHADER));
+        gDeferredProjectorVolumetricBloomFeedProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gDeferredProjectorVolumetricBloomFeedProgram.createShader();
+        if (!success)
+        {
+            LL_WARNS() << "Failed to create shader '" << gDeferredProjectorVolumetricBloomFeedProgram.mName << "', disabling!" << LL_ENDL;
             success = true;
         }
 

@@ -146,6 +146,12 @@ public:
     // [BDMerge G3.3] per-projector volumetric light cones: additive pass, one
     // fullscreen cone per shadow-casting projector slot, in place on target.
     void renderProjectorVolumetric(LLRenderTarget* target);
+    // [BDMerge G3.3 Phase 3 item 4] Controlled feed of the current frame's half-res
+    // shaft (mProjVolHalf) into the HDR bloom pyramid (bloomMip[0]) for a soft glow
+    // halo. Runs after renderProjectorVolumetric leaves the shaft in mProjVolHalf,
+    // gated by BDMergeProjectorVolumetricsBloomFeed (default 0 = off) so it never
+    // reintroduces uncontrolled bloom leakage.
+    void feedProjectorVolumetricBloom();
 
     // [BDMerge G3.3 Phase 2] Session-only per-projector art-direction flag.
     // A projector emits a volumetric shaft only when its object UUID has been
@@ -764,6 +770,10 @@ public:
     // bilateral upsample composites it onto mRT->screen. Allocated on demand in
     // renderProjectorVolumetric, released in releaseGLBuffers/destroyGL.
     LLRenderTarget          mProjVolHalf;
+    // [BDMerge G3.3 Phase 3 item 4] true iff the half-res march this frame produced
+    // a real shaft in mProjVolHalf (half-res path + at least one cone drawn), so the
+    // bloom feed knows the texture is current and safe to sample.
+    bool                    mProjVolHalfValid = false;
 
     // exposure map for getting average color in scene
     LLRenderTarget          mLuminanceMap;
@@ -1159,6 +1169,16 @@ public:
     // [BDMerge G3.3 Phase 2] global art-direction overrides for flagged shafts.
     static LLColor3 BDMergeProjectorVolumetricsTint;
     static F32 BDMergeProjectorVolumetricsTintStrength;
+    // [BDMerge G3.3 Phase 3] atmosphere levers (all default to a no-op).
+    static F32 BDMergeProjectorVolumetricsDensity;       // item 3: global haziness
+    static F32 BDMergeProjectorVolumetricsNoiseStrength; // item 1: animated noise
+    static F32 BDMergeProjectorVolumetricsNoiseScale;
+    static F32 BDMergeProjectorVolumetricsNoiseSpeed;
+    static F32 BDMergeProjectorVolumetricsFogStrength;   // item 2: height fog
+    static F32 BDMergeProjectorVolumetricsFogGroundDensity;
+    static F32 BDMergeProjectorVolumetricsFogFalloff;
+    static F32 BDMergeProjectorVolumetricsFogBase;
+    static F32 BDMergeProjectorVolumetricsBloomFeed;     // item 4: bloom halo feed
     // [BDMerge G3.3 Phase 2] session-only opt-in set of projector object UUIDs
     // (not persisted; see toggleVolumetricShaft/clearVolumetricShafts).
     static std::set<LLUUID> sVolumetricShaftObjects;

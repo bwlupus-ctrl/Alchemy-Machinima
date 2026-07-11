@@ -257,6 +257,15 @@ U32 LLPipeline::BDMergeProjectorVolumetricsMinResolution;
 F32 LLPipeline::BDMergeProjectorVolumetricsMaxLuminance;
 LLColor3 LLPipeline::BDMergeProjectorVolumetricsTint;
 F32 LLPipeline::BDMergeProjectorVolumetricsTintStrength;
+F32 LLPipeline::BDMergeProjectorVolumetricsDensity;
+F32 LLPipeline::BDMergeProjectorVolumetricsNoiseStrength;
+F32 LLPipeline::BDMergeProjectorVolumetricsNoiseScale;
+F32 LLPipeline::BDMergeProjectorVolumetricsNoiseSpeed;
+F32 LLPipeline::BDMergeProjectorVolumetricsFogStrength;
+F32 LLPipeline::BDMergeProjectorVolumetricsFogGroundDensity;
+F32 LLPipeline::BDMergeProjectorVolumetricsFogFalloff;
+F32 LLPipeline::BDMergeProjectorVolumetricsFogBase;
+F32 LLPipeline::BDMergeProjectorVolumetricsBloomFeed;
 std::set<LLUUID> LLPipeline::sVolumetricShaftObjects;
 S32 LLPipeline::RenderScreenSpaceReflectionIterations;
 F32 LLPipeline::RenderScreenSpaceReflectionRayStep;
@@ -646,6 +655,15 @@ void LLPipeline::init()
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsMaxLuminance");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsTint");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsTintStrength");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsDensity");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsNoiseStrength");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsNoiseScale");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsNoiseSpeed");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsFogStrength");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsFogGroundDensity");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsFogFalloff");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsFogBase");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsBloomFeed");
     connectRefreshCachedSettingsSafe("RenderScreenSpaceReflectionIterations");
     connectRefreshCachedSettingsSafe("RenderScreenSpaceReflectionRayStep");
     connectRefreshCachedSettingsSafe("RenderScreenSpaceReflectionDistanceBias");
@@ -1317,6 +1335,15 @@ void LLPipeline::refreshCachedSettings()
     BDMergeProjectorVolumetricsMaxLuminance = gSavedSettings.getF32("BDMergeProjectorVolumetricsMaxLuminance");
     BDMergeProjectorVolumetricsTint = gSavedSettings.getColor3("BDMergeProjectorVolumetricsTint");
     BDMergeProjectorVolumetricsTintStrength = gSavedSettings.getF32("BDMergeProjectorVolumetricsTintStrength");
+    BDMergeProjectorVolumetricsDensity = gSavedSettings.getF32("BDMergeProjectorVolumetricsDensity");
+    BDMergeProjectorVolumetricsNoiseStrength = gSavedSettings.getF32("BDMergeProjectorVolumetricsNoiseStrength");
+    BDMergeProjectorVolumetricsNoiseScale = gSavedSettings.getF32("BDMergeProjectorVolumetricsNoiseScale");
+    BDMergeProjectorVolumetricsNoiseSpeed = gSavedSettings.getF32("BDMergeProjectorVolumetricsNoiseSpeed");
+    BDMergeProjectorVolumetricsFogStrength = gSavedSettings.getF32("BDMergeProjectorVolumetricsFogStrength");
+    BDMergeProjectorVolumetricsFogGroundDensity = gSavedSettings.getF32("BDMergeProjectorVolumetricsFogGroundDensity");
+    BDMergeProjectorVolumetricsFogFalloff = gSavedSettings.getF32("BDMergeProjectorVolumetricsFogFalloff");
+    BDMergeProjectorVolumetricsFogBase = gSavedSettings.getF32("BDMergeProjectorVolumetricsFogBase");
+    BDMergeProjectorVolumetricsBloomFeed = gSavedSettings.getF32("BDMergeProjectorVolumetricsBloomFeed");
     RenderScreenSpaceReflectionIterations = gSavedSettings.getS32("RenderScreenSpaceReflectionIterations");
     RenderScreenSpaceReflectionRayStep = gSavedSettings.getF32("RenderScreenSpaceReflectionRayStep");
     RenderScreenSpaceReflectionDistanceBias = gSavedSettings.getF32("RenderScreenSpaceReflectionDistanceBias");
@@ -9396,6 +9423,11 @@ void LLPipeline::renderVolumetric(LLRenderTarget* src, LLRenderTarget* dst)
 // naturally capped by BDMergeMaxSpotShadows and resolution is the primary lever.
 void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
 {
+    // [Phase 3 item 4] Invalidate the bloom-feed source each frame up front: it is
+    // only re-validated below if the half-res path actually marches a shaft, so a
+    // disabled/empty frame can never let the feed sample a stale mProjVolHalf.
+    mProjVolHalfValid = false;
+
     if (!BDMergeProjectorVolumetrics || RenderShadowDetail <= 0 || gCubeSnapshot ||
         !gDeferredProjectorVolumetricProgram.isComplete())
     {
@@ -9483,6 +9515,23 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
     gDeferredProjectorVolumetricProgram.uniform1i(LLShaderMgr::PROJVOL_DITHER, (S32)llclamp(BDMergeProjectorVolumetricsDither, (U32)0, (U32)2));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FRAME, (F32)(LLFrameTimer::getFrameCount() % 1024u));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_MAX, BDMergeProjectorVolumetricsMaxLuminance);
+
+    // [Phase 3] atmosphere levers (all no-ops at their defaults). The inverse
+    // modelview turns a view-space march sample back into agent(world, Z-up) space
+    // so the noise medium is world-anchored (drifts, never crawls) and the height
+    // fog keys off true altitude. projvol_time is continuous seconds (wrapped) for a
+    // smooth noise scroll - NOT the wrapped frame counter used by the dither.
+    glm::mat4 inv_mv = glm::inverse(mat);
+    gDeferredProjectorVolumetricProgram.uniformMatrix4fv(LLShaderMgr::PROJVOL_INV_MODELVIEW, 1, false, glm::value_ptr(inv_mv));
+    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_TIME, fmodf(gFrameTimeSeconds, 3600.f));
+    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_DENSITY, llmax(BDMergeProjectorVolumetricsDensity, 0.f));
+    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_NOISE_STRENGTH, llclamp(BDMergeProjectorVolumetricsNoiseStrength, 0.f, 1.f));
+    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_NOISE_SCALE, llmax(BDMergeProjectorVolumetricsNoiseScale, 0.f));
+    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_NOISE_SPEED, BDMergeProjectorVolumetricsNoiseSpeed);
+    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FOG_STRENGTH, llclamp(BDMergeProjectorVolumetricsFogStrength, 0.f, 1.f));
+    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FOG_GROUND, llmax(BDMergeProjectorVolumetricsFogGroundDensity, 0.f));
+    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FOG_FALLOFF, llmax(BDMergeProjectorVolumetricsFogFalloff, 0.01f));
+    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FOG_BASE, BDMergeProjectorVolumetricsFogBase);
 
     gDeferredProjectorVolumetricProgram.enableTexture(LLShaderMgr::DEFERRED_PROJECTION);
 
@@ -9687,7 +9736,63 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
         unbindDeferredShader(gDeferredProjectorVolumetricUpsampleProgram);
 
         target->flush();
+
+        // [Phase 3 item 4] mProjVolHalf now holds this frame's shaft at half res:
+        // mark it valid so feedProjectorVolumetricBloom (called after bloom is built)
+        // may sample it. Only set on the half-res path with real cones drawn - the
+        // fullscreen path composites in place and has no reusable shaft texture.
+        mProjVolHalfValid = true;
     }
+
+    gGL.setColorMask(true, true);
+    gGL.setSceneBlendType(LLRender::BT_ALPHA);
+}
+
+// [BDMerge G3.3 Phase 3 item 4] Feed a controlled amount of the projector shaft
+// into the HDR bloom pyramid so bright shaft cores gain a soft glow halo. Called
+// from renderFinalize AFTER generateBloomHDR has built the pyramid from the CLEAN
+// (pre-shaft) scene and AFTER renderProjectorVolumetric has composited the shaft
+// and left it in mProjVolHalf. We add a separate, scaled, tent-blurred copy of the
+// half-res shaft additively into bloomMip[0] - the buffer colorCorrect samples as
+// the final bloom - so the scene bloom itself is untouched (no uncontrolled
+// leakage) and only projvol_bloom_feed worth of shaft becomes a halo. Default feed
+// 0 => early-out, Phase 1 bloom is byte-for-byte preserved. Requires the half-res
+// path (the reusable shaft texture) and the HDR bloom pyramid.
+void LLPipeline::feedProjectorVolumetricBloom()
+{
+    if (!BDMergeProjectorVolumetrics || gCubeSnapshot ||
+        BDMergeProjectorVolumetricsBloomFeed <= 0.f ||
+        !mProjVolHalfValid ||
+        mRT->bloomMipCount < 1 ||
+        mProjVolHalf.getWidth() == 0 ||
+        !gDeferredProjectorVolumetricBloomFeedProgram.isComplete())
+    {
+        return;
+    }
+
+    LL_PROFILE_GPU_ZONE("projvol bloom feed");
+
+    LLGLDepthTest depth(GL_FALSE);
+    LLGLEnable    blend(GL_BLEND);
+    LLGLDisable   cull(GL_CULL_FACE);
+    gGL.setSceneBlendType(LLRender::BT_ADD); // additive halo into the bloom base
+    gGL.setColorMask(true, false);
+
+    mRT->bloomMip[0].bindTarget();
+
+    gDeferredProjectorVolumetricBloomFeedProgram.bind();
+    // Half-res shaft -> diffuseMap (bilinear; the shader tent-blurs it into a halo).
+    gDeferredProjectorVolumetricBloomFeedProgram.bindTexture(LLShaderMgr::DIFFUSE_MAP, &mProjVolHalf, false, LLTexUnit::TFO_BILINEAR);
+    gDeferredProjectorVolumetricBloomFeedProgram.uniform2f(LLShaderMgr::BLOOM_TEXEL_SIZE,
+        1.f / (F32)mProjVolHalf.getWidth(), 1.f / (F32)mProjVolHalf.getHeight());
+    gDeferredProjectorVolumetricBloomFeedProgram.uniform1f(LLShaderMgr::PROJVOL_BLOOM_FEED, BDMergeProjectorVolumetricsBloomFeed);
+
+    mScreenTriangleVB->setBuffer();
+    mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+
+    gDeferredProjectorVolumetricBloomFeedProgram.unbind();
+
+    mRT->bloomMip[0].flush();
 
     gGL.setColorMask(true, true);
     gGL.setSceneBlendType(LLRender::BT_ALPHA);
@@ -10040,6 +10145,17 @@ void LLPipeline::renderFinalize()
     // instead of the old post-tonemap placement clipping them. Additive in place
     // onto mRT->screen; shafts carry each light's colour.
     renderProjectorVolumetric(&mRT->screen);
+
+    // [BDMerge G3.3 Phase 3 item 4] Optional, controlled soft-glow halo: feed a
+    // scaled, blurred copy of the just-marched half-res shaft into the HDR bloom
+    // pyramid base. Runs only in the HDR path (the bloom pyramid exists there) and
+    // only when BDMergeProjectorVolumetricsBloomFeed > 0 (default 0 = no-op). The
+    // bloom pyramid was already built from the clean pre-shaft scene above, so this
+    // never skews the scene bloom - it only adds the deliberate halo contribution.
+    if (hdr)
+    {
+        feedProjectorVolumetricBloom();
+    }
 
     // Handles tonemap, colorgrading, and gamma correction in one pass. In the HDR
     // path, this also applies eye adaptation and bloom. In the non-HDR path, this

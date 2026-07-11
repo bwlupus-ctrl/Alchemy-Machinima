@@ -167,11 +167,61 @@ In-world verification still owed (no SL session this pass).
    projectors, kept read-only w.r.t. the volumetric setup itself.
 
 ## Phase 3 — Atmosphere (tasteful)
-1. **Animated 3D noise medium** (scrolling curl/worley) → drifting dust motes /
-   turbulence in the beam. Subtle default; quality-gated per the ruling.
-2. **Height-based fog density** — denser near ground, thinning with altitude.
-3. **Global density / "haziness" master** for per-shot atmosphere.
-4. **Feed shafts into bloom** for a soft glow halo around the source.
+
+**STATUS 2026-07-11 (Opus): ALL FOUR ITEMS LANDED.** Every lever ships gated under
+the `BDMergeProjectorVolumetrics` master AND at a **no-op default** (density 1.0,
+every strength/feed 0.0) — so Phase 3 is invisible until a lever is deliberately
+dialed up. The atmosphere modulations work in BOTH the half-res and fullscreen
+march paths (same `projectorVolumetricF.glsl`, uniforms uploaded once per frame).
+`setupSpotLightVolumetric` stays side-effect-free; the Phase 2 session-flag
+semantics and the Phase 1 tonemapper-shaped HDR composite / light-color-follows
+behavior are preserved. In-world verification still owed (no SL session this pass).
+
+1. **Animated 3D noise medium. — DONE (TASTEFUL, default OFF).** The per-sample
+   in-scatter is modulated by a **world-anchored** 3-octave value-noise fbm (quintic
+   interpolation → soft cloud lobes, not the forbidden blocky/grainy hash). The
+   sample's view position is transformed back to agent (world, Z-up) space via a new
+   `projvol_inv_modelview` uniform so the motes **sit in the air and drift, never
+   crawl with the camera**; a continuous `projvol_time` (seconds) scrolls them
+   slowly. The density factor is centred on 1.0 (`1 + strength*(2*fbm-1)`) so it
+   varies density symmetrically instead of only dimming. Sub-controls
+   `...NoiseStrength` (0–1, **default 0 = OFF**; subtle preset ~0.2–0.35),
+   `...NoiseScale` (cycles/m, default 0.15 = large soft clouds), `...NoiseSpeed`
+   (m/s, default 0.15 = gentle drift). The whole noise block is skipped when
+   strength (and fog) are 0.
+2. **Height-based fog density. — DONE (default OFF).** Density falls off with world
+   altitude (`wpos.z` in region Z-up): `mix(1, ground_density*exp(-max(h,0)/falloff),
+   fog_strength)`, denser at/below the ground reference and thinning up high so
+   shafts have atmospheric depth. Sub-controls `...FogStrength` (0–1, **default 0 =
+   OFF**), `...FogGroundDensity` (default 1.0), `...FogFalloff` (e-fold metres,
+   default 24), `...FogBase` (region-Z ground reference, default 0).
+3. **Global density / "haziness" master. — DONE.** `...Density` (0–4, **default 1.0
+   = no-op**) — one multiplier scaling the whole participating-medium density for
+   per-shot atmosphere. Folded into the same per-sample `density` scalar as items
+   1–2.
+4. **Feed shafts into bloom (soft glow halo). — DONE (controlled, default OFF).** A
+   deliberate, gated feed that does NOT reintroduce uncontrolled bloom leakage: the
+   scene bloom pyramid is still generated from the **clean pre-shaft scene** (Phase 1
+   placement unchanged). After `renderProjectorVolumetric` leaves the shaft in the
+   half-res target `mProjVolHalf`, a new pass (`feedProjectorVolumetricBloom` +
+   `class1/deferred/projectorVolumetricBloomFeedF.glsl`, program
+   `gDeferredProjectorVolumetricBloomFeedProgram`) **tent-blurs** that half-res shaft
+   into a soft halo, scales it by `...BloomFeed`, and composites it **additively into
+   the HDR bloom pyramid base `bloomMip[0]`** (RGB only — alpha/halation untouched via
+   `colorMask(true,false)`) — the buffer `colorCorrect` samples as the final bloom.
+   So only `BloomFeed` worth of shaft becomes a halo. Sub-control `...BloomFeed`
+   (0–2, **default 0 = OFF**; modest ~0.15–0.4). Requires HalfRes on (the reusable
+   shaft texture) and the HDR path; guarded by `mProjVolHalfValid` (reset each frame,
+   set only when the half-res march drew a real shaft) so it can never sample a stale
+   texture.
+
+**New uniforms** (registered in `llshadermgr.{h,cpp}`): `projvol_density`,
+`projvol_noise_strength/scale/speed`, `projvol_time`, `projvol_fog_strength`,
+`projvol_fog_ground_density`, `projvol_fog_falloff`, `projvol_fog_base`,
+`projvol_inv_modelview`, `projvol_bloom_feed`. **New settings** (all listed above,
+all no-op defaults). **New shader/program** for the bloom feed (reconfigure was run
+so the staging manifest picked it up; verify it lands under
+`Release\app_settings\shaders\class1\deferred\`).
 
 ## Sequencing
 Phase 1 → Phase 2 → Phase 3. Phase 1 items 1–2 (HDR composite + dither) are the

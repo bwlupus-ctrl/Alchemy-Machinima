@@ -10599,6 +10599,105 @@
       <key>Value</key>
       <real>0.0</real>
   </map>
+  <key>BDMergeProjectorVolumetricsDensity</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 Phase 3] Global participating-medium density / haziness master for all flagged projector shafts (0.0-4.0; default 1.0). One multiplier scaling the whole shaft density for per-shot atmosphere: &lt;1 thins the beam, &gt;1 makes the air hazier. 1.0 = the shipped look (no-op).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.0</real>
+  </map>
+  <key>BDMergeProjectorVolumetricsNoiseStrength</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 Phase 3] Animated 3D noise medium strength (0.0-1.0; default 0.0 = OFF). Modulates shaft density with a slow, low-frequency world-anchored fbm so the beam has drifting dust motes / gentle turbulence instead of a flat cone. TASTEFUL LEVER: keep it low - a subtle cinematic value is ~0.2-0.35; high values look grainy and are an explicit non-goal. Default OFF (flat cone, the shipped look).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+  </map>
+  <key>BDMergeProjectorVolumetricsNoiseScale</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 Phase 3] Spatial scale of the animated noise medium in cycles per metre (0.01-2.0; default 0.15). Lower = larger, softer, more cinematic dust clouds; higher = finer (grainier) detail. Only active when NoiseStrength &gt; 0.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.15</real>
+  </map>
+  <key>BDMergeProjectorVolumetricsNoiseSpeed</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 Phase 3] Scroll speed of the animated noise medium in metres per second (0.0-2.0; default 0.15). Slow drift reads as gently settling dust; fast scroll looks artificial. Only active when NoiseStrength &gt; 0.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.15</real>
+  </map>
+  <key>BDMergeProjectorVolumetricsFogStrength</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 Phase 3] Height-based fog density strength (0.0-1.0; default 0.0 = OFF). Blends the shaft density toward an altitude-dependent falloff (denser near ground, thinner up high) so shafts have atmospheric depth and sit in the air. 0 = uniform density (the shipped look).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+  </map>
+  <key>BDMergeProjectorVolumetricsFogGroundDensity</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 Phase 3] Height fog density multiplier at/below the ground reference altitude (0.0-4.0; default 1.0). The shaft is densest here and thins with altitude per FogFalloff. Only active when FogStrength &gt; 0.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.0</real>
+  </map>
+  <key>BDMergeProjectorVolumetricsFogFalloff</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 Phase 3] Height fog e-fold falloff distance in metres (0.5-256.0; default 24.0). Over this many metres of altitude above the ground reference the density falls to ~37% of the ground value. Larger = the fog reaches higher. Only active when FogStrength &gt; 0.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>24.0</real>
+  </map>
+  <key>BDMergeProjectorVolumetricsFogBase</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 Phase 3] Ground reference altitude for height fog, in region-Z metres (default 0.0). Density equals FogGroundDensity at and below this height and thins above it. Set to the floor height of your set for shafts that pool at ground level. Only active when FogStrength &gt; 0.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+  </map>
+  <key>BDMergeProjectorVolumetricsBloomFeed</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 Phase 3] Controlled feed of the shaft into the HDR bloom pyramid for a soft glow halo around bright cores (0.0-2.0; default 0.0 = OFF). A separate, scaled, tent-blurred additive of the half-res shaft into the bloom buffer AFTER the pyramid is built from the clean scene - so it never reintroduces uncontrolled bloom leakage; the scene bloom itself is unchanged. Requires HalfRes on (uses the half-res shaft) and the HDR path. Keep modest (~0.15-0.4).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+  </map>
   <key>RenderTextureVRAMDivisor</key>
   <map>
       <key>Comment</key>

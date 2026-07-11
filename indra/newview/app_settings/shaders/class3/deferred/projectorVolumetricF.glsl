@@ -81,7 +81,70 @@ uniform int   projvol_dither;     // item 2: 0=off(centre) 1=static bluenoise 2=
 uniform float projvol_frame;      // item 2: temporal seed (frame counter, wrapped)
 uniform float projvol_max;        // item 1: HDR headroom clamp (large in linear HDR)
 
+// [Phase 3] atmosphere levers. All default to a no-op (density 1, strengths 0) so
+// the shipped look is a flat, uniform cone until a lever is dialed up.
+uniform float projvol_density;           // item 3: global haziness master (1 = no-op)
+uniform float projvol_noise_strength;    // item 1: animated noise amount (0 = off)
+uniform float projvol_noise_scale;       // item 1: noise spatial scale (cycles/m)
+uniform float projvol_noise_speed;       // item 1: noise scroll speed (m/s)
+uniform float projvol_time;              // item 1: continuous seconds (noise scroll)
+uniform float projvol_fog_strength;      // item 2: height-fog blend (0 = off)
+uniform float projvol_fog_ground_density;// item 2: density at/below the ground ref
+uniform float projvol_fog_falloff;       // item 2: e-fold altitude falloff (metres)
+uniform float projvol_fog_base;          // item 2: ground reference altitude (region Z)
+uniform mat4  projvol_inv_modelview;     // items 1/2: view -> agent(world, Z-up)
+
 const float M_PI = 3.14159265;
+
+// [Phase 3 item 1] Smooth low-frequency 3D value-noise fbm. TASTEFUL by design:
+// value noise with quintic (smootherstep) interpolation gives soft, cloud-like
+// lobes - not the blocky/grainy hash look the ruling forbids. A few octaves of
+// world-anchored fbm scrolled slowly read as gently drifting dust in the beam.
+float projvolHash(vec3 p)
+{
+    p = fract(p * 0.3183099 + vec3(0.1, 0.2, 0.3));
+    p *= 17.0;
+    return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+}
+
+float projvolValueNoise(vec3 x)
+{
+    vec3 p = floor(x);
+    vec3 f = fract(x);
+    // quintic fade -> C2 continuity, no lattice creases
+    f = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+
+    float n000 = projvolHash(p + vec3(0.0, 0.0, 0.0));
+    float n100 = projvolHash(p + vec3(1.0, 0.0, 0.0));
+    float n010 = projvolHash(p + vec3(0.0, 1.0, 0.0));
+    float n110 = projvolHash(p + vec3(1.0, 1.0, 0.0));
+    float n001 = projvolHash(p + vec3(0.0, 0.0, 1.0));
+    float n101 = projvolHash(p + vec3(1.0, 0.0, 1.0));
+    float n011 = projvolHash(p + vec3(0.0, 1.0, 1.0));
+    float n111 = projvolHash(p + vec3(1.0, 1.0, 1.0));
+
+    float nx00 = mix(n000, n100, f.x);
+    float nx10 = mix(n010, n110, f.x);
+    float nx01 = mix(n001, n101, f.x);
+    float nx11 = mix(n011, n111, f.x);
+    float nxy0 = mix(nx00, nx10, f.y);
+    float nxy1 = mix(nx01, nx11, f.y);
+    return mix(nxy0, nxy1, f.z); // [0,1]
+}
+
+float projvolFbm(vec3 p)
+{
+    // 3 octaves - enough for organic drift, cheap enough for the inner march loop.
+    float sum = 0.0;
+    float amp = 0.5;
+    for (int o = 0; o < 3; ++o)
+    {
+        sum += amp * projvolValueNoise(p);
+        p   *= 2.02;
+        amp *= 0.5;
+    }
+    return sum; // ~[0,1], mean ~0.5
+}
 
 // Internal scattering coefficient. Folds the per-metre scattering strength into
 // a single constant so godray_multiplier reads ~1.0 in typical set-light scale;
@@ -247,6 +310,38 @@ void main()
         // Color visibly re-tints the beam (fix: was baked into the cookie sample).
         vec3 cookie = projGoboTexture(l_dist, proj_tc.xy);
 
+        // [Phase 3] Participating-medium density modulation for this sample. The
+        // global haziness master, the animated noise medium and the height fog all
+        // fold into one scalar that scales the in-scatter. Defaults keep this at
+        // exactly projvol_density (1.0) -> a flat, uniform cone (the shipped look).
+        float density = projvol_density;
+        if (projvol_noise_strength > 0.0 || projvol_fog_strength > 0.0)
+        {
+            // Agent-space (world, Z-up) position of this airborne sample.
+            vec3 wpos = (projvol_inv_modelview * vec4(spos, 1.0)).xyz;
+
+            // [item 1] Animated 3D noise -> drifting dust motes / gentle turbulence.
+            // World-anchored + slowly scrolled so motes sit in the air and drift,
+            // never crawling with the camera. Centred on 1.0 so it varies density
+            // symmetrically instead of only dimming it.
+            if (projvol_noise_strength > 0.0)
+            {
+                vec3  np    = wpos * projvol_noise_scale + vec3(projvol_time * projvol_noise_speed);
+                float n     = projvolFbm(np);                 // ~[0,1], mean ~0.5
+                float mote  = 1.0 + projvol_noise_strength * (n * 2.0 - 1.0);
+                density    *= max(mote, 0.0);
+            }
+
+            // [item 2] Height fog: denser near the ground reference, thinning with
+            // altitude, blended in by fog_strength so the beam sits in the air.
+            if (projvol_fog_strength > 0.0)
+            {
+                float h    = wpos.z - projvol_fog_base;       // metres above ground ref
+                float hf   = projvol_fog_ground_density * exp(-max(h, 0.0) / max(projvol_fog_falloff, 0.01));
+                density   *= mix(1.0, hf, projvol_fog_strength);
+            }
+        }
+
         // Per-sample Henyey-Greenstein phase. Because the light is LOCAL the
         // scatter geometry varies per step: Ldir is the light's travel
         // direction at this sample, Vdir points back to the camera. Forward
@@ -258,7 +353,7 @@ void main()
         float denom = 1.0 + g * g - 2.0 * g * cosT;
         float phase = (1.0 - g * g) / (4.0 * M_PI * pow(max(denom, 1e-4), 1.5));
 
-        accum += vis * atten * phase * cookie * edge_feather;
+        accum += vis * atten * phase * cookie * edge_feather * density;
     }
 
     // Single-scattering integral: weight by physical step length so a longer
