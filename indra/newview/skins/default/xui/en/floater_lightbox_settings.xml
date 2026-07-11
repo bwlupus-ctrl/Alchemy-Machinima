@@ -3172,6 +3172,29 @@
 				label="Mouselook: shrink own head (GoPro view, experimental)"
 				tool_tip="Scales your head bones down in mouselook so hair and lashes stop blocking first-person shots."
 				control_name="BDMergeMouselookHeadScale" />
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="12"
+				width="100"
+				layout="topleft"
+				value="Bone camera:" />
+			<combo_box
+				control_name="CameraFollowJoint"
+				follows="left|top"
+				layout="topleft"
+				height="23"
+				top_pad="-18"
+				left="110"
+				width="200"
+				name="bd_joint_combo"
+				tool_tip="BD Bone Camera: the third-person camera focus follows this joint (orbit and zoom stay live). None = stock camera.">
+				<combo_box.item
+					label="None"
+					value="-1"
+					name="bd_joint_none" />
+			</combo_box>
 		</panel>
 	</tab_container>
 </floater>

@@ -2738,6 +2738,17 @@
       <key>Value</key>
       <string>cache</string>
     </map>
+    <key>CameraFollowJoint</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge B6] BD Bone Camera: character joint index the third-person camera focus follows (-1 = off). Donor: Black Dragon; key name kept for donor parity.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>-1</integer>
+    </map>
     <key>CacheLocation</key>
     <map>
       <key>Comment</key>

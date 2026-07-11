@@ -33,6 +33,7 @@
 
 #include "bdmergemeshpool.h"
 #include "bdmergetexpool.h"
+#include "llvoavatarself.h"
 
 //#include "alrenderutils.h"
 #include "llviewercontrol.h"
@@ -73,6 +74,24 @@ void ALFloaterLightBox::draw()
     if (pool_stats_timer.getElapsedTimeF32() > 1.f)
     {
         pool_stats_timer.reset();
+
+        // [BDMerge B6] BD Bone Camera joint dropdown - donor fill code
+        // (BD 9682ff208e), populated lazily once the avatar skeleton exists
+        LLComboBox* joint_combo = getChild<LLComboBox>("bd_joint_combo");
+        if (joint_combo->getItemCount() <= 1 && isAgentAvatarValid())
+        {
+            S32 current = gSavedSettings.getS32("CameraFollowJoint");
+            joint_combo->clear();
+            joint_combo->add("None", -1);
+            for (auto joint : gAgentAvatarp->getSkeleton())
+            {
+                if (joint)
+                {
+                    joint_combo->add(joint->getName(), joint->mJointNum);
+                }
+            }
+            joint_combo->setSelectedByValue(current, true);
+        }
         getChild<LLTextBox>("bd_texpool_stats")->setValue("Textures: " + BDMergeTexPool::shortStatus());
         getChild<LLTextBox>("bd_meshpool_stats")->setValue("Meshes: " + BDMergeMeshPool::shortStatus());
     }

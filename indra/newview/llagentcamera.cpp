@@ -220,6 +220,8 @@ LLAgentCamera::LLAgentCamera() :
 //-----------------------------------------------------------------------------
 void LLAgentCamera::init()
 {
+    // [BDMerge B6] BD Bone Camera initial value (live updates via listener)
+    mFollowJoint = gSavedSettings.getS32("CameraFollowJoint");
     // *Note: this is where LLViewerCamera::getInstance() used to be constructed.
 
     mDrawDistance = gSavedSettings.getF32("RenderFarClip");
@@ -1540,6 +1542,25 @@ void LLAgentCamera::updateCamera()
 //  LL_INFOS() << "Current FOV Zoom: " << mCameraCurrentFOVZoomFactor << " Target FOV Zoom: " << mCameraFOVZoomFactor << " Object penetration: " << mFocusObjectDist << LL_ENDL;
 
     LLVector3 focus_agent = gAgent.getPosAgentFromGlobal(mFocusGlobal);
+
+    // [BDMerge B6] BD Bone Camera (donor: Black Dragon, behavior port):
+    // when CameraFollowJoint != -1, the camera focus follows that character
+    // joint's world position plus the active preset's focus offset, rotated
+    // with the avatar (render rotation while sitting, agent frame otherwise
+    // - donor fix 5a8a46a437). Orbit/zoom/smoothing stay fully live: this is
+    // focus-follow, not a hard lock. Donor: BD llagentcamera.cpp bone-camera
+    // block + fix tail 7f151e0b4b.
+    if (isAgentAvatarValid() && mFocusOnAvatar && mCameraMode == CAMERA_MODE_THIRD_PERSON
+        && mFollowJoint != -1)
+    {
+        LLJoint* joint = gAgentAvatarp->getCharacterJoint(mFollowJoint);
+        if (joint)
+        {
+            LLQuaternion avatarRotationForFollowCam = gAgentAvatarp->isSitting() ? gAgentAvatarp->getRenderRotation() : gAgent.getFrameAgent().getQuaternion();
+            focus_agent = joint->getWorldPosition() + (LLVector3)getFocusOffsetInitial() * avatarRotationForFollowCam;
+        }
+    }
+
     LLVector3 position_agent = gAgent.getPosAgentFromGlobal(camera_pos_global);
 
     // Try to move the camera

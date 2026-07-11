@@ -127,6 +127,10 @@ public:
     /** Determines default focus offset depending on the current camera preset */
     LLVector3d getFocusOffsetInitial();
 
+    // [BDMerge B6] BD Bone Camera: character joint index the camera focus
+    // follows; -1 = off. Written by the CameraFollowJoint settings listener.
+    S32 mFollowJoint = -1;
+
     LLVector3 getCurrentCameraOffset();
     LLVector3d getCurrentFocusOffset();
     LLQuaternion getCurrentAvatarRotation();
