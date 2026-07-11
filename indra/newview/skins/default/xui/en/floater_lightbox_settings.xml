@@ -4133,5 +4133,27 @@
 			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" label="Also soften sun/moon shadows" control_name="BDMergeSoftShadowSun" enabled_control="BDMergeSoftProjectorShadows" tool_tip="Apply the same contact-hardening + fill to the sun/moon cascade shadows for a consistent look." />
 			<check_box follows="left|top" height="16" left="12" top_pad="8" width="360" layout="topleft" label="Gobo anisotropic/mip filtering (anti-alias)" control_name="BDMergeGoboAnisotropic" tool_tip="Trilinear-mip + anisotropic filtering on projector cookies plus a screen-space LOD clamp, so gobos stay crisp at grazing angles / distance instead of aliasing. Default on." />
 		</panel>
+		<!-- [BDMerge G3.3 Batch 3] Selected Light quick panel: live per-projector
+		     controls that follow the currently-selected object. Controls enable
+		     only when a spotlight projector is selected; state is driven from
+		     ALFloaterLightBox::draw(). All actions are session-only. -->
+		<panel label="Selected Light" layout="topleft" name="sellight_settings" can_resize="false">
+			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Selected Projector" />
+			<text follows="left|top" height="30" left="10" top_pad="6" width="380" layout="topleft" name="sl_status" word_wrap="true" value="Select a spotlight projector in-world to edit it here." />
+			<text follows="left|top" height="15" left="8" top_pad="10" width="384" layout="topleft" font="SansSerifBold" value="Shadow" />
+			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" name="sl_cast_shadows" label="Cast shadows" tool_tip="Uncheck to make this projector light-only (no shadow), freeing its shadow slot for other projectors. Session-only.">
+				<check_box.commit_callback function="LightBox.SelLightCastShadows" />
+			</check_box>
+			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Volumetric Shaft" />
+			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" name="sl_volumetric" label="Volumetric shaft (light cone)" tool_tip="Opt this projector in to the volumetric light-cone effect. Requires the master toggle on the Proj Shafts tab. Session-only.">
+				<check_box.commit_callback function="LightBox.SelLightVolumetric" />
+			</check_box>
+			<button follows="left|top" height="22" left="12" top_pad="8" width="200" layout="topleft" name="sl_capture" label="Capture shaft override">
+				<button.commit_callback function="LightBox.SelLightCaptureOverride" />
+			</button>
+			<button follows="left|top" height="22" left="12" top_pad="6" width="200" layout="topleft" name="sl_clear" label="Clear shaft override">
+				<button.commit_callback function="LightBox.SelLightClearOverride" />
+			</button>
+		</panel>
 	</tab_container>
 </floater>

@@ -164,6 +164,19 @@ public:
     static void  toggleVolumetricShaft(const LLUUID& id);
     static bool  isVolumetricShaftEnabled(const LLUUID& id);
     static void  clearVolumetricShafts();
+
+    // [BDMerge G3.3 Batch 3] Session-only per-projector "cast shadows" opt-OUT.
+    // A projector whose object UUID is in this set still lights the scene but is
+    // excluded from shadow-slot (mTargetShadowSpotLight[]) eligibility, so it
+    // casts no shadow and frees its slot for other projectors. Default: NOT in
+    // the set == casts shadows exactly as before (no behavior change until
+    // toggled). NOT persisted - cleared on relog via clearVolumetricShafts()
+    // (called from LLAppViewer::disconnectViewer). Mirrors the sVolumetricShaft-
+    // Objects flag-set pattern. isProjectorShadowSuppressed() applies the same
+    // own-ID + root-edit fallback the volumetric filter uses.
+    static void  toggleProjectorCastShadows(const LLUUID& id);
+    static bool  isProjectorNoShadow(const LLUUID& id);
+    static bool  isProjectorShadowSuppressed(LLVOVolume* volume);
     void applyFXAA(LLRenderTarget* src, LLRenderTarget* dst);
     void generateSMAABuffers(LLRenderTarget* src);
     void applySMAA(LLRenderTarget* src, LLRenderTarget* dst);
@@ -1209,6 +1222,11 @@ public:
     // [BDMerge G3.3 Phase 2] session-only opt-in set of projector object UUIDs
     // (not persisted; see toggleVolumetricShaft/clearVolumetricShafts).
     static std::set<LLUUID> sVolumetricShaftObjects;
+
+    // [BDMerge G3.3 Batch 3] session-only opt-OUT set of projector object UUIDs
+    // that should light but cast NO shadow (not persisted; see
+    // toggleProjectorCastShadows/clearVolumetricShafts).
+    static std::set<LLUUID> sNoShadowProjectors;
 
     // [BDMerge G3.3 Batch 1 C] Session-only PER-PROJECTOR art-direction overrides.
     // When a flagged projector has an override, the render loop uses these values

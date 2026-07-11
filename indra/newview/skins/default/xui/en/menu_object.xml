@@ -68,6 +68,19 @@
     <menu_item_check.on_enable
         function="Object.EnableVolumetricShaft" />
   </menu_item_check>
+  <!-- [BDMerge G3.3 Batch 3] per-projector Cast Shadows opt-out. Checked = casts
+       shadows (default); uncheck to make this projector light-only (no shadow),
+       freeing its shadow slot for other projectors. Session-only. -->
+  <menu_item_check
+      label="Cast Shadows"
+      name="Object Cast Shadows">
+    <menu_item_check.on_click
+        function="Object.CastShadows" />
+    <menu_item_check.on_check
+        function="Object.CheckCastShadows" />
+    <menu_item_check.on_enable
+        function="Object.EnableCastShadows" />
+  </menu_item_check>
   <!-- [BDMerge G3.3 Batch 1 C] per-projector art-direction override: snapshot the
        current global shaft sliders onto this projector (also enables its shaft), or
        clear back to the globals. Session-only. -->

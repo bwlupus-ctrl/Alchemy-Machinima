@@ -41,12 +41,24 @@
 #include "llsliderctrl.h"
 #include "lltextbox.h"
 #include "llcombobox.h"
+#include "llcheckboxctrl.h"
+#include "llbutton.h"
+
+// [BDMerge G3.3 Batch 3] Selected Light quick panel plumbing.
+#include "llselectmgr.h"
+#include "llvovolume.h"
+#include "pipeline.h"
 
 ALFloaterLightBox::ALFloaterLightBox(const LLSD& key)
 :   LLFloater(key)
 {
     mCommitCallbackRegistrar.add("LightBox.ResetControlDefault", std::bind(&ALFloaterLightBox::onClickResetControlDefault, this, std::placeholders::_2));
     mCommitCallbackRegistrar.add("LightBox.ResetGroupDefault", std::bind(&ALFloaterLightBox::onClickResetGroupDefault, this, std::placeholders::_2));
+    // [BDMerge G3.3 Batch 3] Selected Light quick panel actions.
+    mCommitCallbackRegistrar.add("LightBox.SelLightCastShadows", std::bind(&ALFloaterLightBox::onSelLightCastShadows, this));
+    mCommitCallbackRegistrar.add("LightBox.SelLightVolumetric", std::bind(&ALFloaterLightBox::onSelLightVolumetric, this));
+    mCommitCallbackRegistrar.add("LightBox.SelLightCaptureOverride", std::bind(&ALFloaterLightBox::onSelLightCaptureOverride, this));
+    mCommitCallbackRegistrar.add("LightBox.SelLightClearOverride", std::bind(&ALFloaterLightBox::onSelLightClearOverride, this));
 }
 
 ALFloaterLightBox::~ALFloaterLightBox()
@@ -95,7 +107,92 @@ void ALFloaterLightBox::draw()
         getChild<LLTextBox>("bd_texpool_stats")->setValue("Textures: " + BDMergeTexPool::shortStatus());
         getChild<LLTextBox>("bd_meshpool_stats")->setValue("Meshes: " + BDMergeMeshPool::shortStatus());
     }
+    // [BDMerge G3.3 Batch 3] Reflect the live selection in the Selected Light tab.
+    updateSelectedLightPanel();
     LLFloater::draw();
+}
+
+// [BDMerge G3.3 Batch 3] Selected Light quick panel. Follows the primary
+// selection each frame: enables the per-projector controls only when a spotlight
+// projector is selected, and mirrors the session-only state (cast-shadows opt-out,
+// volumetric-shaft opt-in, and whether a shaft override is captured). All state is
+// read from gPipeline's in-memory sets - nothing here is persisted.
+void ALFloaterLightBox::updateSelectedLightPanel()
+{
+    LLCheckBoxCtrl* cast_cb = findChild<LLCheckBoxCtrl>("sl_cast_shadows");
+    if (!cast_cb) // tab/widgets not built yet
+        return;
+    LLCheckBoxCtrl* vol_cb  = findChild<LLCheckBoxCtrl>("sl_volumetric");
+    LLButton*       cap_btn = findChild<LLButton>("sl_capture");
+    LLButton*       clr_btn = findChild<LLButton>("sl_clear");
+    LLTextBox*      status  = findChild<LLTextBox>("sl_status");
+
+    LLViewerObject* pObj = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
+    LLVOVolume* pVol = dynamic_cast<LLVOVolume*>(pObj);
+    const bool is_projector = (pVol && pVol->isLightSpotlight());
+
+    cast_cb->setEnabled(is_projector);
+    vol_cb->setEnabled(is_projector);
+    cap_btn->setEnabled(is_projector);
+
+    if (is_projector)
+    {
+        const LLUUID& id = pObj->getID();
+        // Checked = casts shadows (default), i.e. NOT in the opt-out set.
+        cast_cb->set(!LLPipeline::isProjectorNoShadow(id));
+        vol_cb->set(LLPipeline::isVolumetricShaftEnabled(id));
+        clr_btn->setEnabled(LLPipeline::hasVolumetricShaftOverride(id));
+        if (status)
+        {
+            LLSelectNode* node = LLSelectMgr::getInstance()->getSelection()->getFirstRootNode();
+            std::string name = (node && !node->mName.empty()) ? node->mName : std::string("(selected projector)");
+            status->setValue("Editing: " + name);
+        }
+    }
+    else
+    {
+        cast_cb->set(false);
+        vol_cb->set(false);
+        clr_btn->setEnabled(false);
+        if (status)
+            status->setValue("Select a spotlight projector in-world to edit it here.");
+    }
+}
+
+void ALFloaterLightBox::onSelLightCastShadows()
+{
+    LLViewerObject* pObj = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
+    if (pObj && pObj->getID().notNull())
+        LLPipeline::toggleProjectorCastShadows(pObj->getID());
+}
+
+void ALFloaterLightBox::onSelLightVolumetric()
+{
+    LLViewerObject* pObj = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
+    if (pObj && pObj->getID().notNull())
+        LLPipeline::toggleVolumetricShaft(pObj->getID());
+}
+
+void ALFloaterLightBox::onSelLightCaptureOverride()
+{
+    LLViewerObject* pObj = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
+    if (!pObj || pObj->getID().isNull())
+        return;
+    LLPipeline::VolumetricShaftOverride ov;
+    ov.multiplier   = gSavedSettings.getF32("BDMergeProjectorVolumetricsMultiplier");
+    ov.feather      = gSavedSettings.getF32("BDMergeProjectorVolumetricsFeather");
+    ov.anisotropy   = gSavedSettings.getF32("BDMergeProjectorVolumetricsAnisotropy");
+    ov.density      = gSavedSettings.getF32("BDMergeProjectorVolumetricsDensity");
+    ov.tint         = gSavedSettings.getColor3("BDMergeProjectorVolumetricsTint");
+    ov.tintStrength = gSavedSettings.getF32("BDMergeProjectorVolumetricsTintStrength");
+    LLPipeline::setVolumetricShaftOverride(pObj->getID(), ov);
+}
+
+void ALFloaterLightBox::onSelLightClearOverride()
+{
+    LLViewerObject* pObj = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
+    if (pObj && pObj->getID().notNull())
+        LLPipeline::clearVolumetricShaftOverride(pObj->getID());
 }
 
 void ALFloaterLightBox::populateLUTCombo()

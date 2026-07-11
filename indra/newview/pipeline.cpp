@@ -278,6 +278,7 @@ bool LLPipeline::BDMergeSoftShadowSun;
 bool LLPipeline::BDMergeGoboAnisotropic;
 std::map<LLUUID, LLPipeline::VolumetricShaftOverride> LLPipeline::sVolumetricShaftOverrides;
 std::set<LLUUID> LLPipeline::sVolumetricShaftObjects;
+std::set<LLUUID> LLPipeline::sNoShadowProjectors; // [BDMerge Batch 3] cast-shadows opt-out
 S32 LLPipeline::RenderScreenSpaceReflectionIterations;
 F32 LLPipeline::RenderScreenSpaceReflectionRayStep;
 F32 LLPipeline::RenderScreenSpaceReflectionDistanceBias;
@@ -10009,6 +10010,45 @@ void LLPipeline::clearVolumetricShafts()
 {
     sVolumetricShaftObjects.clear();
     sVolumetricShaftOverrides.clear();
+    sNoShadowProjectors.clear(); // [BDMerge Batch 3] cast-shadows opt-out is session-only too
+}
+
+// [BDMerge G3.3 Batch 3] Session-only per-projector "cast shadows" opt-OUT.
+// Toggling adds/removes the projector's object UUID; a projector in the set is
+// skipped in setupSpotLight's shadow-slot (mTargetShadowSpotLight[]) priority
+// assignment, so it lights normally but never occupies a shadow slot. Cleared on
+// relog with the shaft flag set (clearVolumetricShafts). Not persisted.
+void LLPipeline::toggleProjectorCastShadows(const LLUUID& id)
+{
+    if (id.isNull())
+        return;
+    auto it = sNoShadowProjectors.find(id);
+    if (it != sNoShadowProjectors.end())
+        sNoShadowProjectors.erase(it);
+    else
+        sNoShadowProjectors.insert(id);
+}
+
+bool LLPipeline::isProjectorNoShadow(const LLUUID& id)
+{
+    return !sNoShadowProjectors.empty() && sNoShadowProjectors.count(id) != 0;
+}
+
+// Match the light-source prim's own ID and its root-edit ID (the context menu
+// flags root prims, but the light feature can live on either the root or a
+// child) - identical fallback to the volumetric shaft filter.
+bool LLPipeline::isProjectorShadowSuppressed(LLVOVolume* volume)
+{
+    if (sNoShadowProjectors.empty() || volume == NULL)
+        return false;
+    if (isProjectorNoShadow(volume->getID()))
+        return true;
+    if (LLViewerObject* root = volume->getRootEdit())
+    {
+        if (isProjectorNoShadow(root->getID()))
+            return true;
+    }
+    return false;
 }
 
 // [BDMerge G3.3 Batch 1 C] Session-only per-projector art-direction overrides.
@@ -11676,7 +11716,14 @@ void LLPipeline::setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep)
     // make sure we're not already targeting the same spot light with both shadow maps
     llassert(mTargetShadowSpotLight[0] != mTargetShadowSpotLight[1] || mTargetShadowSpotLight[0].isNull());
 
-    if (!gCubeSnapshot)
+    // [BDMerge G3.3 Batch 3] Per-projector "cast shadows" opt-out: a projector in
+    // the no-shadow set still lights the scene (all the projection uniforms above
+    // are still set) but is excluded from the shadow-slot priority assignment
+    // below, so it never occupies an mTargetShadowSpotLight[] slot and casts no
+    // shadow. mTargetShadowSpotLight[] is rebuilt from scratch each frame (reset
+    // to NULL in renderDeferredLighting), so simply not re-adding it here frees
+    // the slot for other projectors via the normal fade-out path.
+    if (!gCubeSnapshot && !isProjectorShadowSuppressed(volume))
     {
         LLDrawable* potential = drawablep;
         //determine if this light is higher priority than one of the existing spot shadows

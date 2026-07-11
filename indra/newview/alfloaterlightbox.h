@@ -51,6 +51,14 @@ public:
     void updateCAS();
     void populateLUTCombo();
 
+    // [BDMerge G3.3 Batch 3] Selected Light quick panel: live per-projector
+    // controls that follow the currently-selected object.
+    void updateSelectedLightPanel();
+    void onSelLightCastShadows();
+    void onSelLightVolumetric();
+    void onSelLightCaptureOverride();
+    void onSelLightClearOverride();
+
     boost::signals2::scoped_connection mTonemapConnection;
     boost::signals2::scoped_connection mCASConnection;
 };

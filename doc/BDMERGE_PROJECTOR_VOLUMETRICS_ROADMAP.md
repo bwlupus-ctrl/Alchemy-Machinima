@@ -351,6 +351,54 @@ projector lighting branches — well-defined on the desktop GL target (RTX 5090)
 `deferredUtil.glsl`), so no reconfigure needed — but edited shaders must be
 re-staged into `Release\app_settings\shaders\...` on an incremental build.
 
+## Batch 3 — per-light Cast Shadows toggle (2026-07-11 Opus)
+Session-only, client-side per-projector "cast shadows" opt-OUT. In this deferred
+renderer only spot/projector lights cast shadows, and only N at once (the N-spot
+slots, `BDMergeMaxSpotShadows`). A projector opted out still **lights** the scene
+but is excluded from shadow-slot eligibility, so it casts no shadow and **frees
+its slot** for other projectors. Default (not opted out) == casts shadows exactly
+as before; no behavior change until toggled.
+
+### Mechanism — DONE
+- **No-shadow set** (`pipeline.{h,cpp}`): `std::set<LLUUID> LLPipeline::sNoShadowProjectors`
+  mirrors the `sVolumetricShaftObjects` flag-set pattern. Accessors:
+  `toggleProjectorCastShadows(id)`, `isProjectorNoShadow(id)`, and
+  `isProjectorShadowSuppressed(LLVOVolume*)` (applies the same own-ID + root-edit
+  fallback the volumetric filter uses). Cleared on relog inside
+  `clearVolumetricShafts()` (already called from `LLAppViewer::disconnectViewer`),
+  so nothing persists across a session/restart.
+- **Slot exclusion** (`setupSpotLight`, `pipeline.cpp`): the shadow-slot priority
+  reshuffle that populates `mTargetShadowSpotLight[]` is now gated by
+  `!isProjectorShadowSuppressed(volume)`. A suppressed projector never re-enters
+  `mTargetShadowSpotLight[]` (which is rebuilt from scratch each frame — reset to
+  NULL in `renderDeferredLighting`), so the existing fade-out path in
+  `generateSunShadow` releases its `mShadowSpotLight[]` slot for other projectors.
+  All the projection uniforms above the guard are still set, so the light still
+  renders. `setupSpotLightVolumetric` is untouched (stays side-effect-free); the
+  volumetric self-shadow path, Batch 1 (temporal/overrides) and Batch 2 (soft
+  shadows) are all unaffected.
+
+### UI — DONE (quick panel + context menu)
+- **Selected Light quick panel** (preferred): new "Selected Light" tab in the
+  Lightbox floater (`floater_lightbox_settings.xml` panel `sellight_settings`,
+  driven from `ALFloaterLightBox::draw()` → `updateSelectedLightPanel()`). Follows
+  the primary `LLSelectMgr` selection each frame; controls enable only when a
+  spotlight projector is selected. Offers **Cast shadows** (checked = casts, the
+  default), plus the existing per-projector **Volumetric shaft** toggle and
+  **Capture / Clear shaft override** actions for a one-stop selected-projector
+  panel. Actions: `LightBox.SelLight{CastShadows,Volumetric,CaptureOverride,ClearOverride}`.
+- **Context menu** (also shipped, mirrors "Volumetric Shaft"): `menu_object.xml`
+  `menu_item_check` "Cast Shadows" → `Object.CastShadows` / `Object.CheckCastShadows`
+  / `Object.EnableCastShadows` in `alviewermenu.cpp`. Checked = casts shadows
+  (default ticked); enabled only on spotlight projectors; toggles every selected
+  root.
+
+No new settings, no new shaders (no reconfigure). Menu/skin XML must be re-staged
+into `Release\...\skins\...` on an incremental build (done). **In-world checklist
+still owed:** select a projector → uncheck Cast Shadows → its shadow disappears
+(fades) but it still lights → another projector can take the freed slot → relog
+clears the opt-out.
+
 ## Sequencing
 Phase 1 → Phase 2 → Phase 3. Phase 1 items 1–2 (HDR composite + dither) are the
 biggest quality jump and should land together. Each phase is one or more

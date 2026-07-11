@@ -633,6 +633,41 @@ namespace
         return pObj && LLPipeline::isVolumetricShaftEnabled(pObj->getID());
     }
 
+    // [BDMerge G3.3 Batch 3] Right-click "Cast Shadows" toggle. Session-only
+    // per-projector opt-OUT of shadow-slot eligibility: an unchecked projector
+    // still lights the scene but casts no shadow and frees its slot. Default
+    // (not in the set) == casts shadows. Toggles every root in the selection.
+    void handle_object_cast_shadows(const LLSD& /*sdParam*/)
+    {
+        LLObjectSelectionHandle hSel = LLSelectMgr::getInstance()->getSelection();
+        if (hSel.isNull())
+            return;
+
+        for (LLObjectSelection::root_iterator itObj = hSel->root_begin(), endObj = hSel->root_end();
+             itObj != endObj; ++itObj)
+        {
+            const LLSelectNode* pNode = *itObj;
+            LLViewerObject* pObj = (pNode) ? pNode->getObject() : nullptr;
+            if (pObj && pObj->getID().notNull())
+                LLPipeline::toggleProjectorCastShadows(pObj->getID());
+        }
+    }
+
+    bool enable_object_cast_shadows()
+    {
+        // Only meaningful on spotlight projectors (the only lights that cast
+        // shadow slots). No-op harmlessly otherwise.
+        return get_selected_projector_volume() != nullptr;
+    }
+
+    bool check_object_cast_shadows()
+    {
+        // Checked when the projector DOES cast shadows (i.e. NOT in the opt-out
+        // set), so the default state shows as ticked.
+        LLViewerObject* pObj = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
+        return pObj && !LLPipeline::isProjectorNoShadow(pObj->getID());
+    }
+
     // [BDMerge G3.3 Batch 1 C] Snapshot the current global shaft sliders into a
     // per-projector override for every selected root, and flag it on (capture
     // implies enable). Session-only; cleared on relog with the flag set.
@@ -731,6 +766,10 @@ void ALViewerMenu::initialize_menus()
     commit.add("Object.VolumetricShaft", boost::bind(&handle_object_volumetric_shaft, _2));
     enable.add("Object.EnableVolumetricShaft", boost::bind(&enable_object_volumetric_shaft));
     enable.add("Object.CheckVolumetricShaft", boost::bind(&check_object_volumetric_shaft));
+// [BDMerge G3.3 Batch 3] session-only per-projector cast-shadows opt-out toggle
+    commit.add("Object.CastShadows", boost::bind(&handle_object_cast_shadows, _2));
+    enable.add("Object.EnableCastShadows", boost::bind(&enable_object_cast_shadows));
+    enable.add("Object.CheckCastShadows", boost::bind(&check_object_cast_shadows));
 // [BDMerge G3.3 Batch 1 C] per-projector volumetric override capture/clear
     commit.add("Object.ShaftCaptureOverride", boost::bind(&handle_object_shaft_capture, _2));
     enable.add("Object.EnableShaftCaptureOverride", boost::bind(&enable_object_volumetric_shaft));
