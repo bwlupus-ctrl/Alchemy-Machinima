@@ -125,6 +125,7 @@
 #include "llprogressview.h"
 #include "llcleanup.h"
 #include "lutcube.h"
+#include "allpm.h"
 // [RLVa:KB] - Checked: RLVa-2.0.0
 #include "llvisualeffect.h"
 #include "rlvactions.h"
@@ -8373,6 +8374,46 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst, bool app
                     awp_w       = awp_w * awp_slope;
 
                     shader->uniform4f(LLShaderMgr::TONEMAP_PARAMS, tonemap_agx_contrast, awp_toe_a, awp_slope, awp_w);
+                    break;
+                }
+                case 7: // AMD FidelityFX LPM (Luma Preserving Mapper)
+                {
+                    static LLCachedControl<F32> lpm_hdr_max(gSavedSettings, "AlchemyToneMapAMDHDRMax", 256.f);
+                    static LLCachedControl<F32> lpm_exposure(gSavedSettings, "AlchemyToneMapAMDExposure", 7.4f);
+                    static LLCachedControl<F32> lpm_contrast(gSavedSettings, "AlchemyToneMapAMDContrast", 0.05f);
+                    static LLCachedControl<F32> lpm_sat_r(gSavedSettings, "AlchemyToneMapAMDSaturationR", 0.f);
+                    static LLCachedControl<F32> lpm_sat_g(gSavedSettings, "AlchemyToneMapAMDSaturationG", 0.f);
+                    static LLCachedControl<F32> lpm_sat_b(gSavedSettings, "AlchemyToneMapAMDSaturationB", 0.f);
+
+                    // The shipping UI exposes no shoulder control: keep the fast
+                    // path (shoulderContrast == 1.0, shoulder == false). Crosstalk
+                    // uses AMD's suggested Rec.709 default {1.0, 0.5, 1/32}.
+                    const bool  lpm_shoulder          = false;
+                    const F32   lpm_shoulder_contrast = 1.0f;
+                    const F32   lpm_crosstalk_r        = 1.0f;
+                    const F32   lpm_crosstalk_g        = 0.5f;
+                    const F32   lpm_crosstalk_b        = 1.0f / 32.0f;
+
+                    // Cache the control block and recompute only when inputs change.
+                    static U32  s_lpm_ctl[ALLPM::CONTROL_BLOCK_WORDS] = {};
+                    static F32  s_lpm_inputs[6] = {};
+                    static bool s_lpm_valid = false;
+                    const F32 cur_inputs[6] = { lpm_hdr_max(), lpm_exposure(), lpm_contrast(),
+                                                lpm_sat_r(), lpm_sat_g(), lpm_sat_b() };
+                    if (!s_lpm_valid || memcmp(cur_inputs, s_lpm_inputs, sizeof(cur_inputs)) != 0)
+                    {
+                        memcpy(s_lpm_inputs, cur_inputs, sizeof(cur_inputs));
+                        s_lpm_valid = true;
+                        ALLPM::setup709(lpm_shoulder,
+                                        cur_inputs[0], cur_inputs[1], cur_inputs[2],
+                                        lpm_shoulder_contrast,
+                                        cur_inputs[3], cur_inputs[4], cur_inputs[5],
+                                        lpm_crosstalk_r, lpm_crosstalk_g, lpm_crosstalk_b,
+                                        s_lpm_ctl);
+                    }
+
+                    shader->uniform4uiv(LLShaderMgr::TONEMAP_AMD, 24, s_lpm_ctl);
+                    shader->uniform1i(LLShaderMgr::TONEMAP_AMD_SHOULDER, lpm_shoulder ? 1 : 0);
                     break;
                 }
                 default:

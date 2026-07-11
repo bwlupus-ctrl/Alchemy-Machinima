@@ -1132,13 +1132,79 @@
         <key>AlchemyRenderTonemapType</key>
         <map>
             <key>Comment</key>
-            <string>What tonemapper to use: 0 = Khronos Neutral, 1 = ACES Hill, 2 = ACES Boosted, 3 = Reinhard, 4 = Filmic, 5 = GT, 6 = AgX</string>
+            <string>What tonemapper to use: 0 = Khronos Neutral, 1 = ACES Hill, 2 = ACES Boosted, 3 = Reinhard, 4 = Filmic, 5 = GT, 6 = AgX, 7 = AMD LPM</string>
             <key>Persist</key>
             <integer>1</integer>
             <key>Type</key>
             <string>S32</string>
             <key>Value</key>
             <integer>1</integer>
+        </map>
+        <key>AlchemyToneMapAMDHDRMax</key>
+        <map>
+            <key>Comment</key>
+            <string>AMD FidelityFX LPM tonemapper (type 7): maximum input value (hdrMax).</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>256.0</real>
+        </map>
+        <key>AlchemyToneMapAMDExposure</key>
+        <map>
+            <key>Comment</key>
+            <string>AMD FidelityFX LPM tonemapper (type 7): stops between hdrMax and 18% mid-level input (exposure).</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>7.4</real>
+        </map>
+        <key>AlchemyToneMapAMDContrast</key>
+        <map>
+            <key>Comment</key>
+            <string>AMD FidelityFX LPM tonemapper (type 7): extra contrast, 0 (none) to 1 (maximum).</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.05</real>
+        </map>
+        <key>AlchemyToneMapAMDSaturationR</key>
+        <map>
+            <key>Comment</key>
+            <string>AMD FidelityFX LPM tonemapper (type 7): red saturation, &lt;0 decrease, 0 none, &gt;0 increase.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.0</real>
+        </map>
+        <key>AlchemyToneMapAMDSaturationG</key>
+        <map>
+            <key>Comment</key>
+            <string>AMD FidelityFX LPM tonemapper (type 7): green saturation, &lt;0 decrease, 0 none, &gt;0 increase.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.0</real>
+        </map>
+        <key>AlchemyToneMapAMDSaturationB</key>
+        <map>
+            <key>Comment</key>
+            <string>AMD FidelityFX LPM tonemapper (type 7): blue saturation, &lt;0 decrease, 0 none, &gt;0 increase.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.0</real>
         </map>
         <key>AlchemyRevokeObjectPerms</key>
         <map>

@@ -1122,6 +1122,10 @@
        label="AgX"
        name="6"
        value="6"/>
+      <combo_box.item
+       label="AMD LPM"
+       name="7"
+       value="7"/>
   </combo_box>
   <slider
    control_name="RenderTonemapMix"

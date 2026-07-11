@@ -299,6 +299,12 @@ bool LLShaderMgr::attachShaderFeatures(LLGLSLShader * shader)
         {
             return false;
         }
+        // AMD FidelityFX LPM (tonemap type 7) lives in its own object so that
+        // RunLPMFilter() (called from tonemapUtilF.glsl) resolves at link time.
+        if (!shader->attachFragmentObject("deferred/LPMUtil.glsl"))
+        {
+            return false;
+        }
     }
 
     if (features->hasColorGrade)
@@ -1566,6 +1572,8 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("tonemap_type");
     mReservedUniforms.push_back("tonemap_mix");
     mReservedUniforms.push_back("tonemap_params");
+    mReservedUniforms.push_back("tonemap_amd");
+    mReservedUniforms.push_back("tonemap_amd_shoulder");
 
     // Alchemy Effects Stack
     mReservedUniforms.push_back("uFrameId");

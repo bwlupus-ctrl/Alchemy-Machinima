@@ -188,6 +188,24 @@ void ALFloaterLightBox::onClickResetGroupDefault(const LLSD& userdata)
             }
         }
 
+        // AMD FidelityFX LPM (tonemap type 7) parameters.
+        static const char* const amd_lpm_controls[] = {
+            "AlchemyToneMapAMDHDRMax",
+            "AlchemyToneMapAMDExposure",
+            "AlchemyToneMapAMDContrast",
+            "AlchemyToneMapAMDSaturationR",
+            "AlchemyToneMapAMDSaturationG",
+            "AlchemyToneMapAMDSaturationB",
+        };
+        for (const char* control_name : amd_lpm_controls)
+        {
+            LLControlVariable* controlp = gSavedSettings.getControl(control_name);
+            if (controlp)
+            {
+                controlp->resetToDefault(true);
+            }
+        }
+
         //S32 tone_map_type = gSavedSettings.getS32("AlchemyRenderTonemapType");
         //switch (tone_map_type)
         //{

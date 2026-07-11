@@ -330,6 +330,10 @@ uniform float exposure;
 uniform float tonemap_mix;
 uniform int tonemap_type;
 
+// AMD FidelityFX LPM (tonemap type 7). Defined in deferred/LPMUtil.glsl,
+// which reads its own tonemap_amd[24] + tonemap_amd_shoulder uniforms.
+void RunLPMFilter(inout vec3 diff);
+
 vec3 applyExposure(vec3 color)
 {
     float exp_scale = texture(exposureMap, vec2(0.5,0.5)).r;
@@ -364,6 +368,9 @@ vec3 applyToneMap(vec3 color)
         break;
     case 6:
         color = tonemap_agx(color);
+        break;
+    case 7:
+        RunLPMFilter(color);
         break;
     }
 

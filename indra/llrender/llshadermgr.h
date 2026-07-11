@@ -370,6 +370,8 @@ public:
         TONEMAP_TYPE,
         TONEMAP_MIX,
         TONEMAP_PARAMS,
+        TONEMAP_AMD,                        //  "tonemap_amd" (AMD FidelityFX LPM control block)
+        TONEMAP_AMD_SHOULDER,               //  "tonemap_amd_shoulder"
 
         // Alchemy Effects Stack
         FRAME_ID,                           //  "uFrameId"

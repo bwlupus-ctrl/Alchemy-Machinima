@@ -919,6 +919,7 @@ set(viewer_SOURCE_FILES
     llxmlrpclistener.cpp
     llxmlrpctransaction.cpp
     lutcube.cpp
+    allpm.cpp
     noise.cpp
     pipeline.cpp
     rlvactions.cpp
@@ -1703,6 +1704,7 @@ set(viewer_HEADER_FILES
     llxmlrpclistener.h
     llxmlrpctransaction.h
     lutcube.h
+    allpm.h
     noise.h
     pipeline.h
     rlvactions.h
