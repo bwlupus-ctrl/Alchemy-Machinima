@@ -54,6 +54,21 @@
     <menu_item_call.on_enable
         function="EnableEdit"/>
   </menu_item_call>
+  <!-- [BDMerge G3.3] Machinima: purely client-side volumetric light-shaft opt-in.
+       Its own first-page section; works on ANY spotlight projector regardless of
+       ownership or mod permission (enable = isLightSpotlight() only, no canModify). -->
+  <menu_item_separator layout="topleft" />
+  <menu_item_check
+      label="Volumetric Shaft"
+      name="Object Volumetric Shaft">
+    <menu_item_check.on_click
+        function="Object.VolumetricShaft" />
+    <menu_item_check.on_check
+        function="Object.CheckVolumetricShaft" />
+    <menu_item_check.on_enable
+        function="Object.EnableVolumetricShaft" />
+  </menu_item_check>
+  <menu_item_separator layout="topleft" />
   <context_menu
     label="Tools"
     name="Tools">
@@ -304,16 +319,6 @@
          <menu_item_call.on_enable
           function="Object.EnableDerender" />
    </menu_item_call>
-   <menu_item_check
-      label="Volumetric Shaft"
-      name="Object Volumetric Shaft">
-         <menu_item_check.on_click
-          function="Object.VolumetricShaft" />
-         <menu_item_check.on_check
-          function="Object.CheckVolumetricShaft" />
-         <menu_item_check.on_enable
-          function="Object.EnableVolumetricShaft" />
-   </menu_item_check>
    <menu_item_separator />
     <menu_item_call
         enabled="false"
