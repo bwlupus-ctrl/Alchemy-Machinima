@@ -392,6 +392,10 @@ void LLViewerShaderMgr::finalizeShaderList()
     mShaderList.push_back(&gHazeProgram);
     mShaderList.push_back(&gHazeWaterProgram);
     mShaderList.push_back(&gDeferredSoftenProgram);
+    // [BDMerge G3.2] atmospherics uniforms (blue_density etc.) are pushed to
+    // registered shaders only - without this the volumetric shader computes
+    // haze_density/(blue_density+haze_density) = 0/0 = NaN and blacks the frame
+    mShaderList.push_back(&gVolumetricLightProgram);
     mShaderList.push_back(&gDeferredAlphaProgram);
     mShaderList.push_back(&gHUDAlphaProgram);
     mShaderList.push_back(&gDeferredAlphaImpostorProgram);
