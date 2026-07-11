@@ -2969,6 +2969,32 @@
       <key>Value</key>
       <integer>2</integer>
     </map>
+    <key>JoystickButtonJump</key>
+    <map><key>Comment</key><string>[BDMerge B9] Joystick button mapped to Jump</string><key>Persist</key><integer>1</integer><key>Type</key><string>S32</string><key>Value</key><integer>0</integer></map>
+    <key>JoystickButtonCrouch</key>
+    <map><key>Comment</key><string>[BDMerge B9] Joystick button mapped to Crouch</string><key>Persist</key><integer>1</integer><key>Type</key><string>S32</string><key>Value</key><integer>1</integer></map>
+    <key>JoystickButtonFly</key>
+    <map><key>Comment</key><string>[BDMerge B9] Joystick button mapped to Toggle Fly</string><key>Persist</key><integer>1</integer><key>Type</key><string>S32</string><key>Value</key><integer>2</integer></map>
+    <key>JoystickButtonRunToggle</key>
+    <map><key>Comment</key><string>[BDMerge B9] Joystick button mapped to Toggle Run</string><key>Persist</key><integer>1</integer><key>Type</key><string>S32</string><key>Value</key><integer>8</integer></map>
+    <key>JoystickButtonMouselook</key>
+    <map><key>Comment</key><string>[BDMerge B9] Joystick button mapped to Mouselook</string><key>Persist</key><integer>1</integer><key>Type</key><string>S32</string><key>Value</key><integer>9</integer></map>
+    <key>JoystickButtonZoomDefault</key>
+    <map><key>Comment</key><string>[BDMerge B9] Joystick button mapped to Zoom Default</string><key>Persist</key><integer>1</integer><key>Type</key><string>S32</string><key>Value</key><integer>6</integer></map>
+    <key>JoystickButtonFlycam</key>
+    <map><key>Comment</key><string>[BDMerge B9] Joystick button mapped to Toggle Flycam</string><key>Persist</key><integer>1</integer><key>Type</key><string>S32</string><key>Value</key><integer>7</integer></map>
+    <key>JoystickButtonZoomOut</key>
+    <map><key>Comment</key><string>[BDMerge B9] Joystick button mapped to Zoom Out</string><key>Persist</key><integer>1</integer><key>Type</key><string>S32</string><key>Value</key><integer>5</integer></map>
+    <key>JoystickButtonZoomIn</key>
+    <map><key>Comment</key><string>[BDMerge B9] Joystick button mapped to Zoom In</string><key>Persist</key><integer>1</integer><key>Type</key><string>S32</string><key>Value</key><integer>4</integer></map>
+    <key>JoystickButtonRollLeft</key>
+    <map><key>Comment</key><string>[BDMerge B9] Joystick button mapped to Roll Left</string><key>Persist</key><integer>1</integer><key>Type</key><string>S32</string><key>Value</key><integer>-1</integer></map>
+    <key>JoystickButtonRollRight</key>
+    <map><key>Comment</key><string>[BDMerge B9] Joystick button mapped to Roll Right</string><key>Persist</key><integer>1</integer><key>Type</key><string>S32</string><key>Value</key><integer>-1</integer></map>
+    <key>JoystickButtonRollDefault</key>
+    <map><key>Comment</key><string>[BDMerge B9] Joystick button mapped to Roll Default (level camera)</string><key>Persist</key><integer>1</integer><key>Type</key><string>S32</string><key>Value</key><integer>-1</integer></map>
+    <key>JoystickInvertPitch</key>
+    <map><key>Comment</key><string>[BDMerge B9] Invert pitch axis in all joystick modes</string><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><integer>0</integer></map>
     <key>FSPoseStandLock</key>
     <map>
       <key>Comment</key>

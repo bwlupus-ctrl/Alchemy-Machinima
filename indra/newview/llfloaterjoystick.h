@@ -45,6 +45,12 @@ public:
     virtual void cancel();  // Cancel the changed values.
     virtual void draw();
     static  void setSNDefaults();
+//  //BD - Xbox360 Controller Support
+    static  void setXboxDefaults();
+
+//  //BD - Optimized Joystick Mappings: re-read every mapping into the live
+//         subsystem after any control commits ("Joystick.Refresh").
+    void refreshAll();
 
     static bool addDeviceCallback(std::string &name, LLSD& value, void* userdata);
     void addDevice(std::string &name, LLSD& value);
@@ -64,6 +70,10 @@ private:
 
     static void onCommitJoystickEnabled(LLUICtrl*, void*);
     static void onClickRestoreSNDefaults(void*);
+//  //BD - Xbox360 Controller Support
+    static void onClickRestoreXboxDefaults(void*);
+//  //BD - Optimized Joystick Mappings: invert the sign of a bound scale control.
+    static void onCommitInvert(LLUICtrl* ctrl);
     static void onClickCancel(void*);
     static void onClickOK(void*);
 
