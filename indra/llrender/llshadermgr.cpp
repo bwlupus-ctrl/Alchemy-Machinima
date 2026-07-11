@@ -1680,6 +1680,9 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("godray_multiplier");
     mReservedUniforms.push_back("falloff_multiplier");
 
+    // [BDMerge G3.3] per-projector volumetric light cones
+    mReservedUniforms.push_back("projvol_g");
+
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 
     std::set<std::string> dupe_check;

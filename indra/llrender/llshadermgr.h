@@ -484,6 +484,9 @@ public:
         GODRAY_MULTIPLIER,                 //  "godray_multiplier"
         FALLOFF_MULTIPLIER,                //  "falloff_multiplier"
 
+        // [BDMerge G3.3] per-projector volumetric light cones
+        PROJVOL_G,                         //  "projvol_g"
+
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

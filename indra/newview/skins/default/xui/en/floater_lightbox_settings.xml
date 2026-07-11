@@ -2946,6 +2946,107 @@
 				layout="topleft"
 				word_wrap="true"
 				value="Shafts appear where shadowed air meets sunlit gaps: shoot from inside structures or under canopy, camera across the light, sun low." />
+				<!--[BDMerge G3.3] per-projector volumetric light cones-->
+				<text
+					follows="left|top"
+					height="15"
+					left="5"
+					top_pad="10"
+					width="380"
+					layout="topleft"
+					font="SansSerifBold"
+					value="Projector Shafts (Set Lights)" />
+				<check_box
+					follows="left|top"
+					height="15"
+					left="5"
+					top_pad="4"
+					width="200"
+					layout="topleft"
+					label="Volumetric Projector Cones"
+					tool_tip="Visible light shafts from shadow-casting projectors (set lights), shaped by the gobo/projection texture. Requires shadows. Independent of the sun godrays above."
+					control_name="BDMergeProjectorVolumetrics" />
+				<text
+					follows="left|top"
+					height="15"
+					left="5"
+					top_pad="10"
+					width="120"
+					layout="topleft"
+					value="Brightness:" />
+				<slider
+					control_name="BDMergeProjectorVolumetricsMultiplier"
+					enabled_control="BDMergeProjectorVolumetrics"
+					follows="left|top"
+					layout="topleft"
+					height="20"
+					top_pad="-16"
+					left="90"
+					width="290"
+					min_val="0.01"
+					max_val="30"
+					increment="0.05"
+					decimal_digits="2"
+					show_text="true"
+					name="projvol_multiplier_slider"
+					tool_tip="Projector shaft brightness multiplier. Primary tuning lever." />
+				<text
+					follows="left|top"
+					height="15"
+					left="5"
+					top_pad="10"
+					width="120"
+					layout="topleft"
+					value="Quality:" />
+				<slider
+					control_name="BDMergeProjectorVolumetricsResolution"
+					enabled_control="BDMergeProjectorVolumetrics"
+					follows="left|top"
+					layout="topleft"
+					height="20"
+					top_pad="-16"
+					left="90"
+					width="290"
+					min_val="8"
+					max_val="64"
+					increment="1"
+					decimal_digits="0"
+					show_text="true"
+					name="projvol_resolution_slider"
+					tool_tip="Raymarch samples per cone. Bounded local march - fewer needed than the sun godrays. Cost also scales with the number of shadow-casting projectors." />
+				<text
+					follows="left|top"
+					height="15"
+					left="5"
+					top_pad="10"
+					width="120"
+					layout="topleft"
+					value="Forward glow:" />
+				<slider
+					control_name="BDMergeProjectorVolumetricsAnisotropy"
+					enabled_control="BDMergeProjectorVolumetrics"
+					follows="left|top"
+					layout="topleft"
+					height="20"
+					top_pad="-16"
+					left="90"
+					width="290"
+					min_val="0.0"
+					max_val="0.95"
+					increment="0.01"
+					decimal_digits="2"
+					show_text="true"
+					name="projvol_anisotropy_slider"
+					tool_tip="Henyey-Greenstein anisotropy. Higher = stronger forward-scatter glow when looking toward the light; 0 = even scatter from all angles." />
+				<text
+					follows="left|top"
+					height="30"
+					left="5"
+					top_pad="14"
+					width="380"
+					layout="topleft"
+					word_wrap="true"
+					value="Only shadow-casting projectors cast shafts (raise Max Spot Shadows on the Shadows tab to promote more). Point the camera toward a set light for the strongest glow." />
 		</panel>
 		<!--[BDMerge B-2b.3] Machinima Panel - every runtime-adjustable BDMerge
 		    feature in one place; launch-time settings (decode/cache threads)

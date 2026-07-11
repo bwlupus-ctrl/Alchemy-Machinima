@@ -262,6 +262,8 @@ extern LLGLSLShader         gSMAANeighborhoodBlendProgram[4];
 extern LLGLSLShader         gCASProgram;
 // [BDMerge G3.2] volumetric lighting (donor: Black Dragon)
 extern LLGLSLShader         gVolumetricLightProgram;
+// [BDMerge G3.3] per-projector volumetric light cones (visible spotlight shafts)
+extern LLGLSLShader         gDeferredProjectorVolumetricProgram;
 extern LLGLSLShader         gDeferredPostNoDoFProgram;
 extern LLGLSLShader         gExposureProgram;
 extern LLGLSLShader         gExposureProgramNoFade;

@@ -10441,6 +10441,50 @@
       <key>Value</key>
       <real>1.0</real>
   </map>
+  <key>BDMergeProjectorVolumetrics</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3] Enable per-projector volumetric light cones (visible spotlight shafts) from shadow-casting projectors. Independent of RenderVolumetricLighting (the sun godrays), but like it requires shadows (RenderShadowDetail &gt; 0) - the shaft is self-shadowed by each projector's own shadow map. NET-NEW local-light effect (not a Black Dragon port).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+  </map>
+  <key>BDMergeProjectorVolumetricsResolution</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3] Projector shaft raymarch sample count (8-64; default 16). This is a BOUNDED local march - every sample lands inside the cone's range, so far fewer samples are needed than the sun godrays' 32. Cost scales with this x the number of shadow-casting projectors.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>U32</string>
+      <key>Value</key>
+      <integer>16</integer>
+  </map>
+  <key>BDMergeProjectorVolumetricsMultiplier</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3] Projector shaft brightness multiplier (0.01-30; default 1.0). Primary in-world tuning lever for shaft intensity.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.0</real>
+  </map>
+  <key>BDMergeProjectorVolumetricsAnisotropy</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3] Henyey-Greenstein scattering anisotropy g (0.0-0.95; default 0.72). Forward-scatter: higher = brighter glow when the camera looks toward the projector, dimmer from the side. 0 = isotropic.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.72</real>
+  </map>
   <key>RenderTextureVRAMDivisor</key>
   <map>
       <key>Comment</key>

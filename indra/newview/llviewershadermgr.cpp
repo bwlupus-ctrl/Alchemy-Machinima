@@ -217,6 +217,8 @@ LLGLSLShader            gSMAANeighborhoodBlendProgram[4];
 LLGLSLShader            gCASProgram;
 // [BDMerge G3.2] volumetric lighting (donor: Black Dragon)
 LLGLSLShader            gVolumetricLightProgram;
+// [BDMerge G3.3] per-projector volumetric light cones (visible spotlight shafts)
+LLGLSLShader            gDeferredProjectorVolumetricProgram;
 LLGLSLShader            gDeferredPostNoDoFProgram;
 LLGLSLShader            gDeferredWLSkyProgram;
 LLGLSLShader            gEnvironmentMapProgram;
@@ -396,6 +398,9 @@ void LLViewerShaderMgr::finalizeShaderList()
     // registered shaders only - without this the volumetric shader computes
     // haze_density/(blue_density+haze_density) = 0/0 = NaN and blacks the frame
     mShaderList.push_back(&gVolumetricLightProgram);
+    // [BDMerge G3.3] projector volumetrics links the same atmospherics/deferred
+    // util set as G3.2, so register it too (keeps linked util externs satisfied).
+    mShaderList.push_back(&gDeferredProjectorVolumetricProgram);
     mShaderList.push_back(&gDeferredAlphaProgram);
     mShaderList.push_back(&gHUDAlphaProgram);
     mShaderList.push_back(&gDeferredAlphaImpostorProgram);
@@ -1188,6 +1193,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         }
         gCASProgram.unload();
         gVolumetricLightProgram.unload();
+        gDeferredProjectorVolumetricProgram.unload(); // [BDMerge G3.3]
         gEnvironmentMapProgram.unload();
         gDeferredWLSkyProgram.unload();
         gDeferredWLCloudProgram.unload();
@@ -2947,6 +2953,31 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         if (!success)
         {
             LL_WARNS() << "Failed to create shader '" << gVolumetricLightProgram.mName << "', disabling!" << LL_ENDL;
+            success = true;
+        }
+
+        // [BDMerge G3.3] per-projector volumetric light cones (visible spotlight
+        // shafts). NET-NEW local-light companion to G3.2. Same feature/util set
+        // as the sun godray program so the shared deferredUtil/shadowUtil externs
+        // resolve identically; SPOT_SHADOW=1 (instead of the sun's SUN_SHADOW)
+        // pulls in shadowUtil's indexed projector-shadow dispatch (sampleSpotShadow,
+        // shadowMap4-9). Real march is class3; class1 is an additive-safe no-op
+        // (outputs black) for shader levels below 3.
+        gDeferredProjectorVolumetricProgram.mName = "Projector Volumetric Light Shader";
+        gDeferredProjectorVolumetricProgram.mFeatures.isDeferred = true;
+        gDeferredProjectorVolumetricProgram.mFeatures.calculatesAtmospherics = true;
+        gDeferredProjectorVolumetricProgram.mFeatures.hasAtmospherics = true;
+        gDeferredProjectorVolumetricProgram.mFeatures.hasShadows = true;
+        gDeferredProjectorVolumetricProgram.mShaderFiles.clear();
+        gDeferredProjectorVolumetricProgram.clearPermutations();
+        gDeferredProjectorVolumetricProgram.addPermutation("SPOT_SHADOW", "1");
+        gDeferredProjectorVolumetricProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gDeferredProjectorVolumetricProgram.mShaderFiles.push_back(make_pair("deferred/projectorVolumetricF.glsl", GL_FRAGMENT_SHADER));
+        gDeferredProjectorVolumetricProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gDeferredProjectorVolumetricProgram.createShader();
+        if (!success)
+        {
+            LL_WARNS() << "Failed to create shader '" << gDeferredProjectorVolumetricProgram.mName << "', disabling!" << LL_ENDL;
             success = true;
         }
 
