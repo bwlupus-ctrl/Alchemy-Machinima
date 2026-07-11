@@ -3195,6 +3195,40 @@
 					value="-1"
 					name="bd_joint_none" />
 			</combo_box>
+			<check_box
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="8"
+				width="360"
+				layout="topleft"
+				label="Cinematic head tracking (handheld feel)"
+				tool_tip="Camera aim and roll subtly follow your avatar's head. Bone camera wins if both are set."
+				control_name="UseCinematicCamera" />
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="6"
+				width="100"
+				layout="topleft"
+				value="Roll clamp:" />
+			<slider
+				control_name="CameraMaxRoll"
+				enabled_control="UseCinematicCamera"
+				follows="left|top"
+				layout="topleft"
+				height="20"
+				top_pad="-16"
+				left="110"
+				width="270"
+				min_val="0"
+				max_val="1"
+				increment="0.01"
+				decimal_digits="2"
+				show_text="true"
+				name="bd_max_roll_slider"
+				tool_tip="1 = camera stays level; lower lets more head roll through." />
 		</panel>
 	</tab_container>
 </floater>

@@ -2738,6 +2738,39 @@
       <key>Value</key>
       <string>cache</string>
     </map>
+    <key>UseCinematicCamera</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge B8] BD Cinematic Head Tracking: third-person camera aim and roll subtly follow your avatar's head (donor: Black Dragon; donor key name kept). Bone camera takes precedence when both are set.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>CameraMaxRoll</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge B8] Head-roll clamp while standing (lerp-to-upright factor: 1 = no roll, lower = more head roll leaks into the camera).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.9</real>
+    </map>
+    <key>CameraMaxRollSitting</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge B8] Head-roll clamp while sitting.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.95</real>
+    </map>
     <key>CameraFollowJoint</key>
     <map>
       <key>Comment</key>

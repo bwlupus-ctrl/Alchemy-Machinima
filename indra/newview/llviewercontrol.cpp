@@ -283,6 +283,25 @@ static bool handleFollowJointChanged(const LLSD& newvalue)
     return true;
 }
 
+// [BDMerge B8] BD Cinematic Head Tracking (donor wiring)
+static bool handleCinematicCameraChanged(const LLSD& newvalue)
+{
+    gAgentCamera.mCinematicCamera = newvalue.asBoolean();
+    return true;
+}
+
+static bool handleCameraMaxRollChanged(const LLSD& newvalue)
+{
+    gAgentCamera.mCameraMaxRoll = (F32)newvalue.asReal();
+    return true;
+}
+
+static bool handleCameraMaxRollSittingChanged(const LLSD& newvalue)
+{
+    gAgentCamera.mCameraMaxRollSitting = (F32)newvalue.asReal();
+    return true;
+}
+
 static bool handleShadowsResized(const LLSD& newvalue)
 {
     gPipeline.requestResizeShadowTexture();
@@ -1081,6 +1100,10 @@ void settings_setup_listeners()
     setting_setup_signal_listener(gSavedSettings, "RenderShadowResolutionScale", handleShadowsResized);
     // [BDMerge B6] BD Bone Camera
     setting_setup_signal_listener(gSavedSettings, "CameraFollowJoint", handleFollowJointChanged);
+    // [BDMerge B8] BD Cinematic Head Tracking
+    setting_setup_signal_listener(gSavedSettings, "UseCinematicCamera", handleCinematicCameraChanged);
+    setting_setup_signal_listener(gSavedSettings, "CameraMaxRoll", handleCameraMaxRollChanged);
+    setting_setup_signal_listener(gSavedSettings, "CameraMaxRollSitting", handleCameraMaxRollSittingChanged);
     // [BDMerge G4.1] per-cascade + projector shadow resolution
     setting_setup_signal_listener(gSavedSettings, "BDMergeShadowResolution0", handleShadowsResized);
     setting_setup_signal_listener(gSavedSettings, "BDMergeShadowResolution1", handleShadowsResized);

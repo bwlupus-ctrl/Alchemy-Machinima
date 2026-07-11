@@ -130,6 +130,11 @@ public:
     // [BDMerge B6] BD Bone Camera: character joint index the camera focus
     // follows; -1 = off. Written by the CameraFollowJoint settings listener.
     S32 mFollowJoint = -1;
+    // [BDMerge B8] BD Cinematic Head Tracking: camera aim/up-vector subtly
+    // follow the head, roll clamped by the lerp factors (1 = fully upright).
+    bool mCinematicCamera = false;
+    F32 mCameraMaxRoll = 0.9f;
+    F32 mCameraMaxRollSitting = 0.95f;
 
     LLVector3 getCurrentCameraOffset();
     LLVector3d getCurrentFocusOffset();

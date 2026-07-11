@@ -222,6 +222,10 @@ void LLAgentCamera::init()
 {
     // [BDMerge B6] BD Bone Camera initial value (live updates via listener)
     mFollowJoint = gSavedSettings.getS32("CameraFollowJoint");
+    // [BDMerge B8] BD Cinematic Head Tracking
+    mCinematicCamera = gSavedSettings.getBOOL("UseCinematicCamera");
+    mCameraMaxRoll = gSavedSettings.getF32("CameraMaxRoll");
+    mCameraMaxRollSitting = gSavedSettings.getF32("CameraMaxRollSitting");
     // *Note: this is where LLViewerCamera::getInstance() used to be constructed.
 
     mDrawDistance = gSavedSettings.getF32("RenderFarClip");
@@ -1559,6 +1563,23 @@ void LLAgentCamera::updateCamera()
             LLQuaternion avatarRotationForFollowCam = gAgentAvatarp->isSitting() ? gAgentAvatarp->getRenderRotation() : gAgent.getFrameAgent().getQuaternion();
             focus_agent = joint->getWorldPosition() + (LLVector3)getFocusOffsetInitial() * avatarRotationForFollowCam;
         }
+    }
+    // [BDMerge B8] BD Cinematic Head Tracking (donor: Black Dragon, verbatim
+    // math; donor precedence: bone camera wins when both are set). The focus
+    // nudges with the head, and the camera up-vector inherits head roll,
+    // clamped by lerping back to world-up (factor 1 = no roll at all).
+    else if (isAgentAvatarValid() && mFocusOnAvatar && mCameraMode == CAMERA_MODE_THIRD_PERSON
+             && mCinematicCamera)
+    {
+        LLVector3 head_pos = gAgentAvatarp->mHeadp->getWorldPosition() -
+            LLVector3(0.08f, 0.f, 0.05f) * gAgentAvatarp->mHeadp->getWorldRotation() +
+            LLVector3(0.1f, 0.f, 0.f) * gAgentAvatarp->mPelvisp->getWorldRotation();
+        LLVector3 head_offset = gAgentAvatarp->mHeadp->getWorldPosition() - head_pos;
+        focus_agent += head_offset;
+
+        mCameraUpVector += (LLVector3::z_axis * gAgentAvatarp->mHeadp->getWorldRotation());
+        mCameraUpVector = lerp(mCameraUpVector, LLVector3::z_axis, gAgentAvatarp->isSitting() ? mCameraMaxRollSitting : mCameraMaxRoll);
+        mCameraUpVector.normalize();
     }
 
     LLVector3 position_agent = gAgent.getPosAgentFromGlobal(camera_pos_global);
