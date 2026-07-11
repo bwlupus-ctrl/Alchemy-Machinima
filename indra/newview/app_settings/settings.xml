@@ -2793,6 +2793,61 @@
       <key>Value</key>
       <integer>0</integer>
     </map>
+    <key>BDMergeShadowResolution0</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge G4.1] Sun shadow cascade 0 resolution (square, 256-8192). 0 = stock screen-derived sizing. Cascade 0 is nearest the camera. Reallocates live on change.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>U32</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>BDMergeShadowResolution1</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge G4.1] Sun shadow cascade 1 resolution (square, 256-8192). 0 = stock screen-derived sizing. Cascade 0 is nearest the camera. Reallocates live on change.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>U32</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>BDMergeShadowResolution2</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge G4.1] Sun shadow cascade 2 resolution (square, 256-8192). 0 = stock screen-derived sizing. Cascade 0 is nearest the camera. Reallocates live on change.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>U32</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>BDMergeShadowResolution3</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge G4.1] Sun shadow cascade 3 resolution (square, 256-8192). 0 = stock screen-derived sizing. Cascade 0 is nearest the camera. Reallocates live on change.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>U32</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>BDMergeProjectorShadowResolution</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge G4.1] Projector (spot) shadow map resolution (square, 256-8192). 0 = stock. Reallocates live on change.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>U32</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
     <key>BDMergeCacheIOThreads</key>
     <map>
       <key>Comment</key>

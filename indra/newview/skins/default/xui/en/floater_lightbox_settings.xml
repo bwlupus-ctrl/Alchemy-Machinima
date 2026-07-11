@@ -1967,6 +1967,96 @@
 					function="LightBox.ResetControlDefault"
 					parameter="RenderSSAOMaxScale" />
 			</button>
+		
+			<!--[BDMerge G4.1] per-cascade + projector shadow resolution-->
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="12"
+				width="380"
+				layout="topleft"
+				value="Cascade resolution (0 = auto from screen; near to far):" />
+			<spinner
+				control_name="BDMergeShadowResolution0"
+				follows="left|top"
+				layout="topleft"
+				height="20"
+				top_pad="4"
+				left="5"
+				width="88"
+				label=""
+				min_val="0"
+				max_val="8192"
+				increment="256"
+				decimal_digits="0"
+				tool_tip="Nearest cascade. 0 = stock sizing. 4096 is a good start on a big GPU."
+				name="bd_shadow_res0" />
+			<spinner
+				control_name="BDMergeShadowResolution1"
+				follows="left|top"
+				layout="topleft"
+				height="20"
+				top_pad="-20"
+				left_pad="8"
+				width="88"
+				label=""
+				min_val="0"
+				max_val="8192"
+				increment="256"
+				decimal_digits="0"
+				name="bd_shadow_res1" />
+			<spinner
+				control_name="BDMergeShadowResolution2"
+				follows="left|top"
+				layout="topleft"
+				height="20"
+				top_pad="-20"
+				left_pad="8"
+				width="88"
+				label=""
+				min_val="0"
+				max_val="8192"
+				increment="256"
+				decimal_digits="0"
+				name="bd_shadow_res2" />
+			<spinner
+				control_name="BDMergeShadowResolution3"
+				follows="left|top"
+				layout="topleft"
+				height="20"
+				top_pad="-20"
+				left_pad="8"
+				width="88"
+				label=""
+				min_val="0"
+				max_val="8192"
+				increment="256"
+				decimal_digits="0"
+				name="bd_shadow_res3" />
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="8"
+				width="180"
+				layout="topleft"
+				value="Projector shadow resolution:" />
+			<spinner
+				control_name="BDMergeProjectorShadowResolution"
+				follows="left|top"
+				layout="topleft"
+				height="20"
+				top_pad="-16"
+				left="190"
+				width="88"
+				label=""
+				min_val="0"
+				max_val="8192"
+				increment="256"
+				decimal_digits="0"
+				tool_tip="Spot/projector light shadow maps. 0 = stock."
+				name="bd_shadow_res_proj" />
 		</panel>
 		<!--Glow Panel-->
 		<panel

@@ -1037,7 +1037,21 @@ bool LLPipeline::allocateShadowBuffer(U32 resX, U32 resY)
     { //allocate 4 sun shadow maps
         for (U32 i = 0; i < 4; i++)
         {
-            if (!mRT->shadow[i].allocate(sun_shadow_map_width, sun_shadow_map_height, 0, true))
+            U32 cascade_width = sun_shadow_map_width;
+            U32 cascade_height = sun_shadow_map_height;
+            // [BDMerge G4.1] per-cascade square resolution override (donor
+            // behavior: BD's RenderShadowResolution Vector4). 0 = stock
+            // screen-derived sizing. Probe shadow maps keep stock sizing.
+            if (!gCubeSnapshot)
+            {
+                static const char* cascade_keys[4] = { "BDMergeShadowResolution0", "BDMergeShadowResolution1", "BDMergeShadowResolution2", "BDMergeShadowResolution3" };
+                U32 custom = gSavedSettings.getU32(cascade_keys[i]);
+                if (custom >= 256)
+                {
+                    cascade_width = cascade_height = llclamp(custom, 256u, 8192u);
+                }
+            }
+            if (!mRT->shadow[i].allocate(cascade_width, cascade_height, 0, true))
             {
                 return false;
             }
@@ -1060,6 +1074,12 @@ bool LLPipeline::allocateShadowBuffer(U32 resX, U32 resY)
         { //allocate two spot shadow maps
             U32 spot_shadow_map_width = width;
             U32 spot_shadow_map_height = height;
+            // [BDMerge G4.1] independent projector shadow resolution
+            U32 custom_spot = gSavedSettings.getU32("BDMergeProjectorShadowResolution");
+            if (custom_spot >= 256)
+            {
+                spot_shadow_map_width = spot_shadow_map_height = llclamp(custom_spot, 256u, 8192u);
+            }
             for (U32 i = 0; i < 2; i++)
             {
                 if (!mSpotShadow[i].allocate(spot_shadow_map_width, spot_shadow_map_height, 0, true))
