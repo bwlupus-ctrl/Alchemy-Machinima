@@ -115,6 +115,12 @@ scaling via `RenderShadowResolutionScale` → `requestResizeShadowTexture()`
 (A3.1, A5.x) are ungated; toggle-testing pays a full-recompile stall, same
 as current BD.
 
+## Next Fable-block queue (scoped 2026-07-10 night)
+
+1. **N projector shadows** (`BDMergeMaxSpotShadows`, 2=stock, target 4-6): mSpotShadow/mShadowSpotLight/mTargetShadowSpotLight/mSpotLightFade arrays 2→N; generateSunShadow spot loop; shadow_matrix[6]→[4+N] in EVERY deferred shader incl. shadowUtil + volumetricLightF; shadowMap6+ samplers + llshadermgr reserved uniforms; setupSpotLight slot logic (compose with BDMergeStableSpotShadows priority); bindDeferredShader hardcoded 6-matrix upload (pipeline.cpp:9389 region). One focused session; perf trivial on the 5090.
+2. **A5.4 motion blur** (see item row: velocity-pass subsystem).
+3. **B9 gamepad flycam** + BD camera accessories (free-DoF focus, mouse-position aim).
+
 ## Item status board
 
 | Item | Status | Blocked by |
