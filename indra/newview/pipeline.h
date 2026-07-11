@@ -143,6 +143,9 @@ public:
     void applyCAS(LLRenderTarget* src, LLRenderTarget* dst);
     // [BDMerge G3.2] volumetric lighting (donor: Black Dragon)
     void renderVolumetric(LLRenderTarget* src, LLRenderTarget* dst);
+    // [BDMerge G3.3] per-projector volumetric light cones: additive pass, one
+    // fullscreen cone per shadow-casting projector slot, in place on target.
+    void renderProjectorVolumetric(LLRenderTarget* target);
     void applyFXAA(LLRenderTarget* src, LLRenderTarget* dst);
     void generateSMAABuffers(LLRenderTarget* src);
     void applySMAA(LLRenderTarget* src, LLRenderTarget* dst);
@@ -299,6 +302,10 @@ public:
     void bindDeferredShaderFast(LLGLSLShader& shader);
     void bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_target = nullptr, LLRenderTarget* depth_target = nullptr);
     void setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep);
+    // [BDMerge G3.3] side-effect-free variant of setupSpotLight for the
+    // finalize-stage volumetric pass: uploads only geometry + cookie (NO
+    // mTargetShadowSpotLight priority reshuffle - R1), shadow slot passed in.
+    void setupSpotLightVolumetric(LLGLSLShader& shader, LLDrawable* drawablep, S32 slot);
 
     void unbindDeferredShader(LLGLSLShader& shader);
 
@@ -1106,6 +1113,11 @@ public:
     static U32 RenderVolumetricLightingResolution;
     static F32 RenderVolumetricLightingMultiplier;
     static F32 RenderVolumetricLightingFalloffMultiplier;
+    // [BDMerge G3.3] per-projector volumetric light cones (visible spotlight shafts)
+    static bool BDMergeProjectorVolumetrics;
+    static U32 BDMergeProjectorVolumetricsResolution;
+    static F32 BDMergeProjectorVolumetricsMultiplier;
+    static F32 BDMergeProjectorVolumetricsAnisotropy;
     static S32 RenderScreenSpaceReflectionIterations;
     static F32 RenderScreenSpaceReflectionRayStep;
     static F32 RenderScreenSpaceReflectionDistanceBias;

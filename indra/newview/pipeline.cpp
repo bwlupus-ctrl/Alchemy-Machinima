@@ -241,6 +241,11 @@ bool LLPipeline::RenderVolumetricLighting;
 U32 LLPipeline::RenderVolumetricLightingResolution;
 F32 LLPipeline::RenderVolumetricLightingMultiplier;
 F32 LLPipeline::RenderVolumetricLightingFalloffMultiplier;
+// [BDMerge G3.3] per-projector volumetric light cones (visible spotlight shafts)
+bool LLPipeline::BDMergeProjectorVolumetrics;
+U32 LLPipeline::BDMergeProjectorVolumetricsResolution;
+F32 LLPipeline::BDMergeProjectorVolumetricsMultiplier;
+F32 LLPipeline::BDMergeProjectorVolumetricsAnisotropy;
 S32 LLPipeline::RenderScreenSpaceReflectionIterations;
 F32 LLPipeline::RenderScreenSpaceReflectionRayStep;
 F32 LLPipeline::RenderScreenSpaceReflectionDistanceBias;
@@ -613,6 +618,11 @@ void LLPipeline::init()
     connectRefreshCachedSettingsSafe("RenderVolumetricLightingResolution");
     connectRefreshCachedSettingsSafe("RenderVolumetricLightingMultiplier");
     connectRefreshCachedSettingsSafe("RenderVolumetricLightingFalloffMultiplier");
+    // [BDMerge G3.3]
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetrics");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsResolution");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsMultiplier");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsAnisotropy");
     connectRefreshCachedSettingsSafe("RenderScreenSpaceReflectionIterations");
     connectRefreshCachedSettingsSafe("RenderScreenSpaceReflectionRayStep");
     connectRefreshCachedSettingsSafe("RenderScreenSpaceReflectionDistanceBias");
@@ -1252,6 +1262,11 @@ void LLPipeline::refreshCachedSettings()
     RenderVolumetricLightingResolution = gSavedSettings.getU32("RenderVolumetricLightingResolution");
     RenderVolumetricLightingMultiplier = gSavedSettings.getF32("RenderVolumetricLightingMultiplier");
     RenderVolumetricLightingFalloffMultiplier = gSavedSettings.getF32("RenderVolumetricLightingFalloffMultiplier");
+    // [BDMerge G3.3]
+    BDMergeProjectorVolumetrics = gSavedSettings.getBOOL("BDMergeProjectorVolumetrics");
+    BDMergeProjectorVolumetricsResolution = gSavedSettings.getU32("BDMergeProjectorVolumetricsResolution");
+    BDMergeProjectorVolumetricsMultiplier = gSavedSettings.getF32("BDMergeProjectorVolumetricsMultiplier");
+    BDMergeProjectorVolumetricsAnisotropy = gSavedSettings.getF32("BDMergeProjectorVolumetricsAnisotropy");
     RenderScreenSpaceReflectionIterations = gSavedSettings.getS32("RenderScreenSpaceReflectionIterations");
     RenderScreenSpaceReflectionRayStep = gSavedSettings.getF32("RenderScreenSpaceReflectionRayStep");
     RenderScreenSpaceReflectionDistanceBias = gSavedSettings.getF32("RenderScreenSpaceReflectionDistanceBias");
@@ -9191,6 +9206,96 @@ void LLPipeline::renderVolumetric(LLRenderTarget* src, LLRenderTarget* dst)
     }
 }
 
+// [BDMerge G3.3] per-projector volumetric light cones (visible spotlight shafts).
+// NET-NEW local-light companion to G3.2. Runs in renderFinalize right after the
+// sun volumetric block, ADDITIVELY IN PLACE onto the scene buffer: one fullscreen
+// cone per shadow-casting projector slot, each outputting ONLY its shaft delta
+// (frag_color = shaft), blended GL_ONE,GL_ONE. Because the shader never samples
+// the buffer it writes, there is no read/write feedback and no extra ping-pong
+// target is needed (it still reads depthMap - a separate texture - to clamp the
+// march at the first opaque surface). Cost scales with N x resolution; N is
+// naturally capped by BDMergeMaxSpotShadows and resolution is the primary lever.
+void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
+{
+    if (!BDMergeProjectorVolumetrics || RenderShadowDetail <= 0 || gCubeSnapshot ||
+        !gDeferredProjectorVolumetricProgram.isComplete())
+    {
+        return;
+    }
+
+    LL_PROFILE_GPU_ZONE("renderProjectorVolumetric");
+
+    // Match the deferred spot loop's light-color scale (no cube snapshot here -
+    // renderFinalize asserts !gCubeSnapshot - so this is the plain global scale).
+    static LLCachedControl<F32> alchemy_light_scale(gSavedSettings, "AlchemyGlobalLightScale", 1.f);
+    const F32 light_scale = alchemy_light_scale;
+
+    // View-space transform for the light center (same as the fullscreen spot
+    // loop): center must live in the same space getPosition() reconstructs.
+    glm::mat4 mat = get_current_modelview();
+
+    target->bindTarget();
+
+    LLGLDepthTest depth(GL_FALSE);
+    LLGLEnable    blend(GL_BLEND);
+    gGL.setSceneBlendType(LLRender::BT_ADD); // GL_ONE, GL_ONE - additive accumulation over slots
+    gGL.setColorMask(true, false);
+
+    bindDeferredShader(gDeferredProjectorVolumetricProgram); // binds the full per-slot shadow set
+
+    gDeferredProjectorVolumetricProgram.uniform1i(LLShaderMgr::GODRAY_RES, BDMergeProjectorVolumetricsResolution);
+    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::GODRAY_MULTIPLIER, BDMergeProjectorVolumetricsMultiplier);
+    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_G, BDMergeProjectorVolumetricsAnisotropy);
+
+    gDeferredProjectorVolumetricProgram.enableTexture(LLShaderMgr::DEFERRED_PROJECTION);
+
+    mScreenTriangleVB->setBuffer();
+
+    // Shadow-casting projectors only (slots 0..N-1). mShadowSpotLight[] is
+    // populated during generateSunShadow earlier this frame and valid here.
+    for (U32 i = 0; i < bdmergeMaxSpotShadows(); ++i)
+    {
+        LLDrawable* drawablep = mShadowSpotLight[i];
+        if (drawablep == NULL)
+        {
+            continue;
+        }
+        // Skip slots whose shadow map was never allocated this frame.
+        LLRenderTarget* shadow_target = getSpotShadowTarget(i);
+        if (shadow_target == NULL || shadow_target->getWidth() == 0)
+        {
+            continue;
+        }
+        LLVOVolume* volume = drawablep->getVOVolume();
+        if (volume == NULL)
+        {
+            continue;
+        }
+
+        // Side-effect-free geometry + cookie upload; slot passed in directly
+        // (NO mTargetShadowSpotLight priority reshuffle - R1).
+        setupSpotLightVolumetric(gDeferredProjectorVolumetricProgram, drawablep, (S32)i);
+
+        LLColor3  col = volume->getLightLinearColor() * light_scale;
+        glm::vec3 c(drawablep->getPositionAgent());
+        c = mul_mat4_vec3(mat, c); // agent -> view space
+
+        gDeferredProjectorVolumetricProgram.uniform3fv(LLShaderMgr::LIGHT_CENTER, 1, glm::value_ptr(c));
+        gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::LIGHT_SIZE, volume->getLightRadius() * 1.5f);
+        gDeferredProjectorVolumetricProgram.uniform3fv(LLShaderMgr::DIFFUSE_COLOR, 1, col.mV);
+        gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::LIGHT_FALLOFF, volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF));
+
+        mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+    }
+
+    gDeferredProjectorVolumetricProgram.disableTexture(LLShaderMgr::DEFERRED_PROJECTION);
+    unbindDeferredShader(gDeferredProjectorVolumetricProgram);
+
+    gGL.setColorMask(true, true);
+    gGL.setSceneBlendType(LLRender::BT_ALPHA);
+    target->flush();
+}
+
 void LLPipeline::combineGlow(LLRenderTarget* src, LLRenderTarget* dst)
 {
     LL_PROFILE_GPU_ZONE("glow combine");
@@ -9530,6 +9635,11 @@ void LLPipeline::renderFinalize()
         renderVolumetric(sourceBuffer, targetBuffer);
         std::swap(sourceBuffer, targetBuffer);
     }
+
+    // [BDMerge G3.3] per-projector volumetric shafts. Independent gate from the
+    // sun godrays - runs even when RenderVolumetricLighting is off. Additive IN
+    // PLACE onto the current source buffer (scene + sun godrays), so no swap.
+    renderProjectorVolumetric(sourceBuffer);
 
     if (RenderFSAAType == 1)
     {
@@ -10824,6 +10934,121 @@ void LLPipeline::setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep)
         }
     }
 
+}
+
+// [BDMerge G3.3] Side-effect-free variant of setupSpotLight for the finalize-stage
+// projector volumetric pass (R1). It uploads ONLY the projector geometry (proj_mat
+// /near/p/n/origin/range/ambiance) and the cookie (projectionMap + focus/lod), and
+// takes the shadow slot as a parameter instead of searching mShadowSpotLight[]. It
+// deliberately OMITS setupSpotLight's mTargetShadowSpotLight[] priority reshuffle:
+// that mutation runs once per frame during renderDeferredLighting, and re-triggering
+// it from renderFinalize would double-apply the swap and corrupt next-frame shadow
+// slot assignment. Uses get_current_modelview() (== gGLModelView, the camera view
+// matrix) so proj_mat is consistent with getPosition()'s view-space reconstruction.
+void LLPipeline::setupSpotLightVolumetric(LLGLSLShader& shader, LLDrawable* drawablep, S32 slot)
+{
+    //construct frustum
+    LLVOVolume* volume = drawablep->getVOVolume();
+    LLVector3 params = volume->getSpotLightParams();
+
+    F32 fov = params.mV[0];
+    F32 focus = params.mV[1];
+
+    LLVector3 pos = drawablep->getPositionAgent();
+    LLQuaternion quat = volume->getRenderRotation();
+    LLVector3 scale = volume->getScale();
+
+    //get near clip plane
+    LLVector3 at_axis(0,0,-scale.mV[2]*0.5f);
+    at_axis *= quat;
+
+    LLVector3 np = pos+at_axis;
+    at_axis.normVec();
+
+    //get origin that has given fov for plane np, at_axis, and given scale
+    F32 dist = (scale.mV[1]*0.5f)/tanf(fov*0.5f);
+
+    LLVector3 origin = np - at_axis*dist;
+
+    //matrix from volume space to agent space
+    LLMatrix4 light_mat(quat, LLVector4(origin,1.f));
+
+    glm::mat4 light_to_agent(glm::make_mat4((F32*) light_mat.mMatrix));
+    glm::mat4 light_to_screen = get_current_modelview() * light_to_agent;
+
+    glm::mat4 screen_to_light = glm::inverse(light_to_screen);
+
+    F32 s = volume->getLightRadius()*1.5f;
+    F32 near_clip = dist;
+    F32 width = scale.mV[VX];
+    F32 height = scale.mV[VY];
+    F32 far_clip = s+dist-scale.mV[VZ];
+
+    F32 fovy = fov; // radians
+    F32 aspect = width/height;
+
+    glm::mat4 trans(0.5f, 0.0f, 0.0f, 0.0f,
+                        0.0f, 0.5f, 0.0f, 0.0f,
+                        0.0f, 0.0f, 0.5f, 0.0f,
+                        0.5f, 0.5f, 0.5f, 1.0f);
+
+    glm::vec3 p1(0, 0, -(near_clip+0.01f));
+    glm::vec3 p2(0, 0, -(near_clip+1.f));
+
+    glm::vec3 screen_origin(0, 0, 0);
+
+    p1 = mul_mat4_vec3(light_to_screen, p1);
+    p2 = mul_mat4_vec3(light_to_screen, p2);
+    screen_origin = mul_mat4_vec3(light_to_screen, screen_origin);
+
+    glm::vec3 n = p2-p1;
+    n = glm::normalize(n);
+
+    F32 proj_range = far_clip - near_clip;
+    glm::mat4 light_proj = glm::perspective(fovy, aspect, near_clip, far_clip);
+    screen_to_light = trans * light_proj * screen_to_light;
+    shader.uniformMatrix4fv(LLShaderMgr::PROJECTOR_MATRIX, 1, false, glm::value_ptr(screen_to_light));
+    shader.uniform1f(LLShaderMgr::PROJECTOR_NEAR, near_clip);
+    shader.uniform3fv(LLShaderMgr::PROJECTOR_P, 1, glm::value_ptr(p1));
+    shader.uniform3fv(LLShaderMgr::PROJECTOR_N, 1, glm::value_ptr(n));
+    shader.uniform3fv(LLShaderMgr::PROJECTOR_ORIGIN, 1, glm::value_ptr(screen_origin));
+    shader.uniform1f(LLShaderMgr::PROJECTOR_RANGE, proj_range);
+    shader.uniform1f(LLShaderMgr::PROJECTOR_AMBIANCE, params.mV[2]);
+
+    // Shadow slot is known by the caller - no mShadowSpotLight[] search, and no
+    // mTargetShadowSpotLight[] priority mutation (that is setupSpotLight's job).
+    shader.uniform1i(LLShaderMgr::PROJECTOR_SHADOW_INDEX, slot);
+    if (slot >= 0 && slot < (S32)MAX_SPOT_SHADOWS)
+    {
+        shader.uniform1f(LLShaderMgr::PROJECTOR_SHADOW_FADE, 1.f-mSpotLightFade[slot]);
+    }
+    else
+    {
+        shader.uniform1f(LLShaderMgr::PROJECTOR_SHADOW_FADE, 1.f);
+    }
+
+    LLViewerTexture* img = volume->getLightTexture();
+
+    if (img == NULL)
+    {
+        img = LLViewerFetchedTexture::sWhiteImagep;
+    }
+
+    S32 channel = shader.enableTexture(LLShaderMgr::DEFERRED_PROJECTION);
+
+    if (channel > -1)
+    {
+        if (img)
+        {
+            gGL.getTexUnit(channel)->bind(img);
+
+            F32 lod_range = logf((F32)img->getWidth())/logf(2.f);
+
+            shader.uniform1f(LLShaderMgr::PROJECTOR_FOCUS, focus);
+            shader.uniform1f(LLShaderMgr::PROJECTOR_LOD, lod_range);
+            shader.uniform1f(LLShaderMgr::PROJECTOR_AMBIENT_LOD, llclamp((proj_range-focus)/proj_range*lod_range, 0.f, 1.f));
+        }
+    }
 }
 
 void LLPipeline::unbindDeferredShader(LLGLSLShader &shader)
