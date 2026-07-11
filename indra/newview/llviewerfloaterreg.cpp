@@ -31,6 +31,7 @@
 #include "llfloaterreg.h"
 #include "llviewerfloaterreg.h"
 
+#include "animationexplorer.h" // [BDMerge F7]
 #include "ao.h"
 #include "alchatbar.h"
 // [SL:KB] - Patch: World-Derender | Checked: Catznip-3.2
@@ -52,6 +53,7 @@
 #include "allegacynotificationwellwindow.h"
 
 #include "fsfloaterposer.h" // <FS:AR> [FIRE-30873]: Poser
+#include "fsfloaterposestand.h" // [BDMerge F6]
 #include "fsfloaterradar.h"
 
 #include "llcommandhandler.h"
@@ -591,6 +593,7 @@ void LLViewerFloaterReg::registerFloaters()
     LLFloaterReg::add("world_map", "floater_world_map.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterWorldMap>);
 
     // Alchemy Floaters
+    LLFloaterReg::add("animation_explorer", "floater_animation_explorer.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<AnimationExplorer>); // [BDMerge F7]
     LLFloaterReg::add("ao", "floater_ao.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<FloaterAO>);
     LLFloaterReg::add("asset_hex_editor", "floater_hex_editor.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterHexEditor>);
 // [SL:KB] - Patch: Build-AssetRecovery | Checked: 2011-11-24 (Catznip-3.2)
@@ -624,6 +627,7 @@ void LLViewerFloaterReg::registerFloaters()
     LLFloaterReg::add("webprofile", "floater_al_web_profile.xml", (LLFloaterBuildFunc)&ALFloaterWebProfile::create);
 
     LLFloaterReg::add("fs_poser", "floater_fs_poser.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<FSFloaterPoser>); // <FS:AR> [FIRE-30873]: Poser
+    LLFloaterReg::add("fs_posestand", "floater_fs_posestand.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<FSFloaterPoseStand>); // [BDMerge F6]
 
     // *NOTE: Please keep these alphabetized for easier merges
 

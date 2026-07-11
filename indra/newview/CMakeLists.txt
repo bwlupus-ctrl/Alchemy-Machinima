@@ -153,6 +153,7 @@ set(viewer_SOURCE_FILES
     bdmergeenvlibrary.cpp
     bdmergetexspike.cpp
     aoengine.cpp
+    animationexplorer.cpp
     aoset.cpp
     alassetblocklist.cpp
     alavataractions.cpp
@@ -210,11 +211,13 @@ set(viewer_SOURCE_FILES
     alunzip.cpp
     alviewermenu.cpp
     fsfloaterposer.cpp
+    fsfloaterposestand.cpp
     fsfloaterradar.cpp
     fsjointpose.cpp
     fsmaniprotatejoint.cpp
     fsmaniptranslatejoint.cpp
     fspanelradar.cpp
+    fspose.cpp
     fsposeranimator.cpp
     fsposestate.cpp
     fsposingmotion.cpp
@@ -939,6 +942,7 @@ set(viewer_HEADER_FILES
     bdmergeenvlibrary.h
     bdmergetexspike.h
     aoengine.h
+    animationexplorer.h
     aoset.h
     alassetblocklist.h
     alavataractions.h
@@ -995,11 +999,13 @@ set(viewer_HEADER_FILES
     alunzip.h
     alviewermenu.h
     fsfloaterposer.h
+    fsfloaterposestand.h
     fsfloaterradar.h
     fsjointpose.h
     fsmaniprotatejoint.h
     fsmaniptranslatejoint.h
     fspanelradar.h
+    fspose.h
     fsposeranimator.h
     fsposestate.h
     fsposingmotion.h

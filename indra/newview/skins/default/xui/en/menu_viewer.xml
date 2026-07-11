@@ -568,6 +568,19 @@
          function="Tools.UndeformSelf" />
       </menu_item_call>
       <menu_item_call
+       label="Pose Stand..."
+       name="pose_stand">
+        <menu_item_call.on_click
+         function="Floater.Show"
+         parameter="fs_posestand" />
+      </menu_item_call>
+      <menu_item_call
+       label="Undeform Avatar"
+       name="undeform_avatar">
+        <menu_item_call.on_click
+         function="Tools.Undeform" />
+      </menu_item_call>
+      <menu_item_call
        label="Clear Viewer Effects"
        name="Clear Viewer Effects">
         <menu_item_call.on_click
@@ -783,6 +796,17 @@
             <menu_item_check.on_click
              function="Floater.Toggle"
              parameter="sound_explorer" />
+        </menu_item_check>
+        <menu_item_check
+         label="Animation Explorer"
+         name="Animation Explorer"
+         use_mac_ctrl="true">
+            <menu_item_check.on_check
+             function="Floater.Visible"
+             parameter="animation_explorer" />
+            <menu_item_check.on_click
+             function="Floater.Toggle"
+             parameter="animation_explorer" />
         </menu_item_check>
         <menu_item_check
          label="Poser"
