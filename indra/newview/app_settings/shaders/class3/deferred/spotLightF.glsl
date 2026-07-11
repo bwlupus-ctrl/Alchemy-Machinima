@@ -90,6 +90,9 @@ void pbrPunctual(vec3 diffuseColor, vec3 specularColor,
 
 GBufferInfo getGBuffer(vec2 screenpos);
 
+// [BDMerge NSpot] direct per-projector shadow sampling (shadowUtil.glsl)
+float sampleSpotShadow(vec3 pos, vec3 norm, int index, vec2 pos_screen);
+
 void main()
 {
     vec3 final_color = vec3(0,0,0);
@@ -115,8 +118,17 @@ void main()
 
     if (proj_shadow_idx >= 0)
     {
-        vec4 shd = texture(lightMap, tc);
-        shadow = (proj_shadow_idx==0)?shd.b:shd.a;
+        // [BDMerge NSpot] Sample THIS projector's own shadow map directly via
+        // shadowUtil's indexed dispatch (shadowMap4-9 / shadow_matrix[4+idx]),
+        // instead of reading a pre-resolved channel of the packed screen-space
+        // shadow buffer. The old packed path (shd.b / shd.a) had only 2 free
+        // channels, hard-capping projector shadows at 2 (raising the slider
+        // gave extra lights with no shadow, or blacked out the scene). The
+        // shadow maps + matrices for all BDMergeMaxSpotShadows slots are
+        // already bound by bindShadowMaps()/bindDeferredShader(), and
+        // proj_shadow_idx already carries this light's slot (0..N-1).
+        vec3 spot_norm = getNorm(tc).xyz;
+        shadow = sampleSpotShadow(pos, spot_norm, proj_shadow_idx, tc);
         shadow += shadow_fade;
         shadow = clamp(shadow, 0.0, 1.0);
     }
