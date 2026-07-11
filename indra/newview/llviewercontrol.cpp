@@ -394,10 +394,35 @@ static bool validateAnisotropicFiltering(const LLSD& val)
     return filter_level == 0 || filter_level == 2 || filter_level == 4 || filter_level == 8 || filter_level == 16;
 }
 
+// [BDMerge Batch4] Machinima High-LOD: effective object-LOD-factor ceiling. Stock is
+// MAX_LOD_FACTOR (4.0); while BDMergeMachinimaHighLOD is on the ceiling is raised so
+// RenderVolumeLODFactor can push mesh-repo fetch / detail well past stock.
+static F32 machinimaEffectiveMaxLODFactor()
+{
+    static LLCachedControl<bool> machinima(gSavedSettings, "BDMergeMachinimaHighLOD", false);
+    return machinima ? MACHINIMA_MAX_LOD_FACTOR : MAX_LOD_FACTOR;
+}
+
 static bool handleVolumeLODChanged(const LLSD& newvalue)
 {
-    LLVOVolume::sLODFactor = llclamp((F32) newvalue.asReal(), 0.01f, MAX_LOD_FACTOR);
-    LLVOVolume::sDistanceFactor = 1.f-LLVOVolume::sLODFactor * 0.1f;
+    LLVOVolume::sLODFactor = llclamp((F32) newvalue.asReal(), 0.01f, machinimaEffectiveMaxLODFactor());
+    // [BDMerge Batch4] sDistanceFactor = 1 - lod*0.1 goes negative (distance math inverts)
+    // above factor 10; clamp to a small positive floor so uncapping past 4.0 stays safe.
+    LLVOVolume::sDistanceFactor = llmax(0.1f, 1.f - LLVOVolume::sLODFactor * 0.1f);
+    return true;
+}
+
+// [BDMerge Batch4] BDMergeMachinimaHighLOD master toggle. Drives the force-LOD-3 path
+// and re-clamps the LOD factor against the raised ceiling. The avatar impostor kill and
+// small-face relax are done by gating the reads directly (see llvoavatar.cpp isImpostor/
+// shouldImpostor/isTooComplex and llvovolume.cpp machinimaForce* accessors) so the mode
+// never writes to or clobbers the user's saved impostor settings - turning it OFF simply
+// stops gating and prior behavior returns.
+static bool handleMachinimaHighLODChanged(const LLSD& newvalue)
+{
+    LLVOVolume::sMachinimaForceMaxLOD = newvalue.asBoolean();
+    // Re-clamp the object LOD factor now that the effective ceiling changed.
+    handleVolumeLODChanged(gSavedSettings.getControl("RenderVolumeLODFactor")->getValue());
     return true;
 }
 
@@ -1138,6 +1163,8 @@ void settings_setup_listeners()
     setting_setup_signal_listener(gSavedSettings, "RenderGlowNoise", handleSetShaderChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderGammaFull", handleSetShaderChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderVolumeLODFactor", handleVolumeLODChanged);
+    // [BDMerge Batch4] Machinima High-LOD master toggle
+    setting_setup_signal_listener(gSavedSettings, "BDMergeMachinimaHighLOD", handleMachinimaHighLODChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderAvatarComplexityMode", handleUserImpostorByDistEnabledChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderAvatarLODFactor", handleAvatarLODChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderAvatarPhysicsLODFactor", handleAvatarPhysicsLODChanged);

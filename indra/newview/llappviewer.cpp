@@ -567,8 +567,12 @@ static void settings_to_globals()
     LLRender::sNsightDebugSupport = gSavedSettings.getBOOL("RenderNsightDebugSupport");
     LLRender::sAnisotropicFilteringLevel = static_cast<F32>(gSavedSettings.getU32("RenderAnisotropicLevel"));
     LLImageGL::sCompressTextures        = gSavedSettings.getBOOL("RenderCompressTextures");
-    LLVOVolume::sLODFactor              = llclamp(gSavedSettings.getF32("RenderVolumeLODFactor"), 0.01f, MAX_LOD_FACTOR);
-    LLVOVolume::sDistanceFactor         = 1.f-LLVOVolume::sLODFactor * 0.1f;
+    // [BDMerge Batch4] Machinima High-LOD: honor a persisted-ON master toggle at startup
+    // (raised object-LOD ceiling, force-LOD-3, clamped-positive distance factor).
+    LLVOVolume::sMachinimaForceMaxLOD   = gSavedSettings.getBOOL("BDMergeMachinimaHighLOD");
+    LLVOVolume::sLODFactor              = llclamp(gSavedSettings.getF32("RenderVolumeLODFactor"), 0.01f,
+                                                  LLVOVolume::sMachinimaForceMaxLOD ? MACHINIMA_MAX_LOD_FACTOR : MAX_LOD_FACTOR);
+    LLVOVolume::sDistanceFactor         = llmax(0.1f, 1.f - LLVOVolume::sLODFactor * 0.1f);
     LLVolumeImplFlexible::sUpdateFactor = gSavedSettings.getF32("RenderFlexTimeFactor");
     LLVOTree::sTreeFactor               = gSavedSettings.getF32("RenderTreeLODFactor");
     LLVOAvatar::sLODFactor              = llclamp(gSavedSettings.getF32("RenderAvatarLODFactor"), 0.f, MAX_AVATAR_LOD_FACTOR);

@@ -5,7 +5,9 @@ wide/zoomed-out shots lose detail and pop, which knobs already exist and where t
 hard-cap, and a concrete gated "machinima" mode to push LOD quality over culling.
 Target HW: RTX 5090 32GB / 192GB / 9950X — massive headroom, machine-specific tuning is fine.
 
-All anchors are `file:line` in `I:\alchemy-machinima` unless noted. READ-ONLY brief; nothing here has been applied.
+All anchors are `file:line` in `I:\alchemy-machinima` unless noted.
+
+> **STATUS: IMPLEMENTED (Batch 4, gated `BDMergeMachinimaHighLOD`, default OFF).** All four levers from §5/§8 landed — see the "Batch 4" row in `doc/BD_MERGE_PATCHLOG.md`. Deltas from the brief's original plan: the impostor kill (Lever B) and the FORCE_* relax (Lever C) are implemented by **gating the reads** (`llvoavatar.cpp` `isImpostor`/`shouldImpostor`/`isTooComplex`; `llvovolume.cpp` `machinimaForce*` accessors) rather than writing/save-restoring settings, so the user's saved impostor values are never clobbered and OFF returns byte-identical behavior. `MAX_LOD_FACTOR` is left at 4.0 for stock; a new `MACHINIMA_MAX_LOD_FACTOR = 32.0` is used only while the mode is on (both clamp sites), and `sDistanceFactor` is clamped to `llmax(0.1, 1 - lod*0.1)` (§6 landmine fixed). Lever E (occlusion relax) intentionally NOT implemented (guardrail). In-world acceptance owed. The rest of this brief is preserved as the original read-only investigation.
 
 ---
 

@@ -1260,6 +1260,17 @@
 				name="resMult_spinner"
 				tool_tip="(Default: 1.0) [DANGEROUS] Internal render resolution scale."
 				control_name="RenderResolutionMultiplier" />
+			<!--Machinima High LOD (BDMerge Batch4)-->
+			<check_box
+				follows="left|top"
+				height="15"
+				left="10"
+				top_pad="12"
+				width="300"
+				layout="topleft"
+				label="Machinima High LOD"
+				tool_tip="Filming toggle. Forces every object to max detail (no wide-shot LOD loss, no popping), uncaps Object LOD past 4.0, and keeps distant/complex avatars fully 3D (no impostors). VRAM/triangle heavy - enable BEFORE rolling camera so high-LOD meshes have time to fetch. Frustum + occlusion culling stay on. Turn off after filming to restore normal LOD/impostor behavior."
+				control_name="BDMergeMachinimaHighLOD" />
 			<!--Draw Distance-->
 			<text
 				follows="left|top"
@@ -1275,7 +1286,7 @@
 				increment="32"
 				follows="left|top|right"
 				layout="topleft"
-				max_val="1024"
+				max_val="2048"
 				min_val="32"
 				left="130"
 				right="-55"
@@ -1289,7 +1300,7 @@
 				decimal_digits="0"
 				follows="top|right"
 				layout="topleft"
-				max_val="1024"
+				max_val="2048"
 				min_val="32"
 				width="55"
 				increment="32"
@@ -1310,7 +1321,7 @@
 				increment=".1"
 				follows="left|top|right"
 				layout="topleft"
-				max_val="4.0"
+				max_val="32.0"
 				min_val="1.0"
 				left="130"
 				right="-55"
@@ -1324,7 +1335,7 @@
 				decimal_digits="1"
 				follows="top|right"
 				layout="topleft"
-				max_val="4.0"
+				max_val="32.0"
 				min_val="1.0"
 				width="55"
 				increment=".1"

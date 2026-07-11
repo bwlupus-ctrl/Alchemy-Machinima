@@ -9013,6 +9013,18 @@ bool LLVOAvatar::isTooComplex() const
     }
     else
     {
+        // [BDMerge Batch4] Machinima High-LOD: while filming, disable the complexity /
+        // surface-area auto-mute path (equivalent to RenderAvatarMaxComplexity=0 and
+        // RenderAutoMuteSurfaceAreaLimit=0) so distant/complex avatars stay full 3D.
+        // Manual mutes (AV_DO_NOT_RENDER / mute list, handled above) still apply, and
+        // we don't touch the user's saved settings (no clobber).
+        static LLCachedControl<bool> machinima(gSavedSettings, "BDMergeMachinimaHighLOD", false);
+        if (machinima)
+        {
+            too_complex = false;
+        }
+        else
+        {
         // Determine if visually muted or not
         static LLCachedControl<U32> max_render_cost(gSavedSettings, "RenderAvatarMaxComplexity", 0U);
         static LLCachedControl<F32> max_attachment_area(gSavedSettings, "RenderAutoMuteSurfaceAreaLimit", 1000.0f);
@@ -9023,6 +9035,7 @@ bool LLVOAvatar::isTooComplex() const
                           && (mVisualComplexity > max_render_cost
                            || (max_attachment_area > 0.0f && mAttachmentSurfaceArea > max_attachment_area)
                            ));
+        }
     }
 
     return too_complex;
@@ -11317,6 +11330,14 @@ void LLVOAvatar::updateImpostors()
 // virtual
 bool LLVOAvatar::isImpostor()
 {
+    // [BDMerge Batch4] Machinima High-LOD: while filming, disable the rank/count-based
+    // impostor path (equivalent to RenderAvatarMaxNonImpostors=0) so all avatars render
+    // full 3D. Manual visual mutes still impostor. No saved settings are touched.
+    static LLCachedControl<bool> machinima(gSavedSettings, "BDMergeMachinimaHighLOD", false);
+    if (machinima)
+    {
+        return isVisuallyMuted();
+    }
     return isVisuallyMuted() || (sLimitNonImpostors && (mUpdatePeriod > 1));
 }
 
@@ -11329,6 +11350,12 @@ bool LLVOAvatar::shouldImpostor(const F32 rank_factor)
     if (isVisuallyMuted())
     {
         return true;
+    }
+    // [BDMerge Batch4] Machinima High-LOD: never rank-impostor while filming.
+    static LLCachedControl<bool> machinima(gSavedSettings, "BDMergeMachinimaHighLOD", false);
+    if (machinima)
+    {
+        return false;
     }
     return sLimitNonImpostors && (mVisibilityRank > sMaxNonImpostors * rank_factor);
 }

@@ -98,11 +98,26 @@ const F32 FORCE_SIMPLE_RENDER_AREA = 512.f;
 const F32 FORCE_CULL_AREA = 8.f;
 U32 JOINT_COUNT_REQUIRED_FOR_FULLRIG = 1;
 
+// [BDMerge Batch4] Machinima High-LOD: when BDMergeMachinimaHighLOD is on, relax the
+// small-on-screen face degradation constants to 0 so small/distant faces keep full
+// materials and aren't dropped from batching. Off = stock constants (byte-identical).
+static F32 machinimaForceSimpleRenderArea()
+{
+    static LLCachedControl<bool> machinima(gSavedSettings, "BDMergeMachinimaHighLOD", false);
+    return machinima ? 0.f : FORCE_SIMPLE_RENDER_AREA;
+}
+static F32 machinimaForceCullArea()
+{
+    static LLCachedControl<bool> machinima(gSavedSettings, "BDMergeMachinimaHighLOD", false);
+    return machinima ? 0.f : FORCE_CULL_AREA;
+}
+
 bool gAnimateTextures = true;
 
 F32 LLVOVolume::sLODFactor = 1.f;
 F32 LLVOVolume::sLODSlopDistanceFactor = 0.5f; //Changing this to zero, effectively disables the LOD transition slop
 F32 LLVOVolume::sDistanceFactor = 1.0f;
+bool LLVOVolume::sMachinimaForceMaxLOD = false; // [BDMerge Batch4] BDMergeMachinimaHighLOD
 S32 LLVOVolume::sNumLODChanges = 0;
 S32 LLVOVolume::mRenderComplexity_last = 0;
 S32 LLVOVolume::mRenderComplexity_current = 0;
@@ -1574,7 +1589,15 @@ bool LLVOVolume::calcLOD()
     mLODAdjustedDistance = distance;
 
     static LLCachedControl<S32> debug_selection_lods(gSavedSettings, "DebugSelectionLODs", 0);
-    if (isHUDAttachment())
+    if (sMachinimaForceMaxLOD)
+    {
+        // [BDMerge Batch4] BDMergeMachinimaHighLOD: force every volume to highest
+        // detail regardless of distance/zoom. This kills wide-shot LOD loss AND the
+        // LOD-change popping (cur_detail stops changing -> updateLOD's markRebuild
+        // stops firing). Reuses the proven HUD/selection forced-LOD path.
+        cur_detail = 3;
+    }
+    else if (isHUDAttachment())
     {
         // HUDs always show at highest detail
         cur_detail = 3;
@@ -6127,7 +6150,7 @@ void LLVolumeGeometryManager::rebuildGeom(LLSpatialGroup* group)
                         }
                     }
 
-                    bool force_simple = (facep->getPixelArea() < FORCE_SIMPLE_RENDER_AREA);
+                    bool force_simple = (facep->getPixelArea() < machinimaForceSimpleRenderArea()); // [BDMerge Batch4]
                     U32 type = gPipeline.getPoolTypeFromTE(te, tex);
                     if (is_pbr && gltf_mat && gltf_mat->mAlphaMode != LLGLTFMaterial::ALPHA_MODE_BLEND)
                     {
@@ -7028,7 +7051,7 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
 
             //append face to appropriate render batch
 
-            bool force_simple = facep->getPixelArea() < FORCE_SIMPLE_RENDER_AREA;
+            bool force_simple = facep->getPixelArea() < machinimaForceSimpleRenderArea(); // [BDMerge Batch4]
             bool fullbright = facep->isState(LLFace::FULLBRIGHT);
             if ((mask & LLVertexBuffer::MAP_NORMAL) == 0)
             { //paranoia check to make sure GL doesn't try to read non-existant normals
@@ -7423,7 +7446,7 @@ void LLGeometryManager::addGeometryCount(LLSpatialGroup* group, U32 &vertex_coun
             LLFace* facep = drawablep->getFace(i);
             if (facep)
             {
-                if (facep->hasGeometry() && facep->getPixelArea() > FORCE_CULL_AREA &&
+                if (facep->hasGeometry() && facep->getPixelArea() > machinimaForceCullArea() && // [BDMerge Batch4]
                     facep->getGeomCount() + vertex_count <= 65536)
                 {
                     vertex_count += facep->getGeomCount();

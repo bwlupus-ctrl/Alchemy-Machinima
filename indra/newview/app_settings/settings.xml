@@ -2078,6 +2078,17 @@
       <key>Value</key>
       <integer>0</integer>
     </map>
+    <key>BDMergeMachinimaHighLOD</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge B4/Batch4] Machinima High-LOD filming mode (master gate, default OFF = byte-identical stock behavior). When ON: forces every volume to render at max object detail (LOD 3) regardless of distance/zoom (kills wide-shot LOD loss AND popping), uncaps RenderVolumeLODFactor past the stock 4.0 ceiling (up to 32) and clamps sDistanceFactor to stay positive, disables avatar impostors (drives RenderAvatarMaxNonImpostors=0 and RenderAutoMuteSurfaceAreaLimit=0 with save/restore of the user's prior values on OFF), and relaxes the small-face simple-render / cull constants so small/distant faces keep full materials. Frustum + occlusion culling stay ON. VRAM/triangle heavy - enable BEFORE rolling camera so high-LOD meshes fetch; keep it a filming toggle. See doc/BDMERGE_LOD_ZOOM_BRIEF.md.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
     <key>BDMergeMouselookHeadScale</key>
     <map>
       <key>Comment</key>

@@ -55,6 +55,9 @@ enum LLVolumeInterfaceType
 };
 
 const F32 MAX_LOD_FACTOR = 4.0f;
+// [BDMerge Batch4] Machinima High-LOD: raised object-LOD-factor ceiling used only
+// while BDMergeMachinimaHighLOD is on (stock stays clamped to MAX_LOD_FACTOR).
+const F32 MACHINIMA_MAX_LOD_FACTOR = 32.0f;
 
 
 class LLRiggedVolume : public LLVolume
@@ -496,6 +499,7 @@ public:
     static F32 sLODSlopDistanceFactor;// Changing this to zero, effectively disables the LOD transition slop
     static F32 sLODFactor;              // LOD scale factor
     static F32 sDistanceFactor;         // LOD distance factor
+    static bool sMachinimaForceMaxLOD;  // [BDMerge Batch4] BDMergeMachinimaHighLOD: force every volume to LOD 3
 
     static LLPointer<LLObjectMediaDataClient> sObjectMediaClient;
     static LLPointer<LLObjectMediaNavigateClient> sObjectMediaNavigateClient;
