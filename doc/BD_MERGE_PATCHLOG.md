@@ -139,20 +139,20 @@ as current BD.
 | A5.5 sepia/greyscale/posterize/CAS | **closed — superseded** (CAS native `applyCAS`; artistic looks via Alchemy's LUT color-grading system in the Lightbox — strictly more capable than BD's fixed filters) | — |
 | A5.6 light-source toggles | **done** | — |
 | A5.7 high-altitude shadows | **closed — donor code gone** (BD d0f2fbe499 made shadow_bias a per-cascade Vector4; current BD reverted to scalar in the PBR sync. If altitude shimmer persists after G4.1 per-cascade resolution, reimplement the vec4 bias novel — contained: uniform type + 4-way setting + shadowUtil sampling sites) | — |
-| B1 machinima sidebar | open | A-series settings it surfaces |
+| B1 machinima sidebar | **done — recast** (`90fab9497e`: BD's sidebar architecture deliberately not ported; the Lightbox is this fork's surface. Avatar tab surfaces A5.6 light classes, B4 limits, B5 thresholds, B12 head scale; Machinima/Godrays/Shadows tabs cover the rest. Every merged runtime setting now has UI) | — |
 | B2 camera presets | **done** | — |
 | B3 freeze world | **done** | — |
 | B3a animation speed | **done** (`333e1e57b4`) | — |
 | B4 head/eye tracking limits | **done** | — |
 | B5 max cam/pelvis diff | **closed — already present via LL upstream** (2026-07-09: `AvatarRotateThresholdSlow`/`Fast` debug settings wired at `llvoavatar.cpp:4613` — same change BD carries as LL commit 9fe788e031; Ground Rule 3, no double-apply. Slider UI deferred to B1 sidebar, which should surface these two settings) | — |
-| B6 bone camera | open | — (diff vs `llcinematiccamera` first) |
+| B6 bone camera | **partially present** (2026-07-10 diff: `llcinematiccamera` MODE_BONE_LOCK covers the core. BD gaps: arbitrary-joint dropdown in prefs (5a441b6d1d/9682ff208e), camera-smoothing + preset-focus-offset integration (7f151e0b4b), avatar-base-rotation fix (5a8a46a437). Next-session port map: extend llcinematiccamera with a joint-name setting + BD's fix tail) | — |
 | B7 poser | **closed — already present via upstream** (2026-07-10: Alchemy adopted Firestorm's Poser upstream — `fsfloaterposer.cpp`/`fsposeranimator.cpp` with active upstream maintenance, World-menu entry `fs_poser`; resolves the F10 FS-vs-BD donor decision in favor of FS by upstream fiat; in-world capability verification owed) | — |
-| B8 cinematic camera mode | open | B6 |
-| B9 gamepad flycam | open | — (compose with `llcameraoperator`) |
+| B8 cinematic camera mode | **partially present / needs decision** (our Orbit/Fly-Hover/Sweep/Crane patterns ≠ BD's \"Cinematic Head Tracking\" (`mCinematicCamera` in BD llagentcamera — subtle head-follow). Decide: port BD's head-tracking as a 6th llcinematiccamera mode, or close as diverged-by-design) | B6 |
+| B9 gamepad flycam | open — next-session candidate (PR-3: BD joystick input authoritative; BD's flycam input mapping/deadzone/smoothing must COMPOSE with our `llcameraoperator` procedural handheld layer, not replace it) | — |
 | B10 pose sync | open | B7 |
 | B11 lookAt broadcast off | **done** (limit-distance half was already present) | — |
 | B12 mouselook head scaling | **done** (experimental) | — |
-| B13 EEP editor rework | open | — |
+| B13 EEP editor rework | open — large standalone UI project (BD's environment editor rewrite); no dependencies, no urgency while Lightbox + stock EEP editor cover machinima needs | — |
 | C1 client AO | open | — |
 | C2 movement conveniences | **done** (partial port — 2 of 3 sub-features already present) | — |
 | C3 camera QoL | **done** (2 of 3 sub-features already present) | — |
