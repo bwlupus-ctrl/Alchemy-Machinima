@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <floater
 	width="400"
-	height="380"
+	height="860"
 	layout="topleft"
 	min_height="500"
 	min_width="365"
@@ -9,13 +9,13 @@
 	positioning="cascading"
 	title="LIGHTBOX WORK IN PROGRESS"
 	save_rect="true"
-	can_resize="false"
-	can_resize_height="false">
+	can_resize="true"
+	can_resize_height="true">
 	<tab_container
 		top_pad="0"
 		enabled="true"
-		follows="left|top"
-		height="380"
+		follows="all"
+		height="830"
 		mouse_opaque="false"
 		name="lightbox_tab_container"
 		tab_position="top"
