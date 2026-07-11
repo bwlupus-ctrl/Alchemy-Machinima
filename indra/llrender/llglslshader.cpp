@@ -29,6 +29,8 @@
 #include "llglslshader.h"
 
 #include "llshadermgr.h"
+#include "lldir.h"
+#include "llfile.h"
 #include "llfile.h"
 #include "llrender.h"
 #include "llvertexbuffer.h"
@@ -2022,6 +2024,46 @@ LLUUID LLGLSLShader::hash()
     hash_obj.update(gGLManager.mGLVendor);
     hash_obj.update(gGLManager.mGLRenderer);
     hash_obj.update(gGLManager.mGLVersionString);
+
+    // [BDMerge ShaderCacheFix] include shader SOURCE CONTENTS in the cache
+    // key. Stock hashes only file names/defines/features/GL strings, so
+    // editing a .glsl file silently kept serving the stale cached binary
+    // (observed: NSpot spot-shadow chain changes in shadowUtil.glsl ignored
+    // until the cache was invalidated). Mirrors loadShaderFile's class-level
+    // fallback when resolving which file would actually be loaded.
+    for (const auto& shdr_pair : mShaderFiles)
+    {
+        std::string found;
+        for (S32 lvl = mShaderLevel; lvl > 0; lvl--)
+        {
+            std::string path = LLShaderMgr::instance()->getShaderDirPrefix() + llformat("%d", lvl) + gDirUtilp->getDirDelimiter() + shdr_pair.first;
+            if (LLFile::isfile(path))
+            {
+                found = path;
+                break;
+            }
+        }
+        if (found.empty())
+        {
+            std::string path = gDirUtilp->getExpandedFilename(LL_PATH_APP_SETTINGS, "shaders", shdr_pair.first);
+            if (LLFile::isfile(path))
+            {
+                found = path;
+            }
+        }
+        if (!found.empty())
+        {
+            llifstream fin(found, std::ios::in | std::ios::binary);
+            if (fin.is_open())
+            {
+                std::stringstream buf;
+                buf << fin.rdbuf();
+                const std::string contents = buf.str();
+                hash_obj.update(contents);
+            }
+        }
+    }
+
     return hash_obj.digest();
 }
 
