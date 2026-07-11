@@ -184,7 +184,7 @@ as current BD.
 | G5.0 memory prerequisites & fast wins | **done** (in-world validation owed: memory readout >16GB, VRAM detect, capture degrade check) | — |
 | G5.1 decoded-texture RAM pool | Stage 1 spike + Stage 2 core + **mesh pool (6d6fdf169d)** + **decode ceiling (1557a892fa)** landed. Remaining Stage 2b briefed for implementer models in `doc/BDMERGE_G5_BRIEFS.md`: tiers (B-2b.1), per-discard entries (B-2b.5), AVX-512 experiment (B-2b.4) | G5.0 ✓ |
 | G5.2 texture pinning / capture mode | **landed** (`7c89378321`, `BDMergeCaptureModePin`, default off) | — |
-| G5.3 scene warm-up / preload | open — **briefed** (B-2b.2) | G5.2 ✓ |
+| G5.3 scene warm-up / preload | **closed — descoped (user, 2026-07-11)**: marginal convenience; G5.1's session-resident texture/mesh pools already largely eliminate the first-seconds streaming this targeted. Brief B-2b.2 retired; the warm-up button in B-2b.3 is dropped with it. | — |
 
 *(G5.x ids are from the 2026-07 top-tier spec sheet — "Alchemy Fork Spec Sheet
 BD Graphics + FS QoL", memory/streaming phase for the RTX 5090 / 192GB target;
