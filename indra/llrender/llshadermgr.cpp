@@ -1720,6 +1720,15 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("projvol_prev_viewproj");
     mReservedUniforms.push_back("projvol_temporal_blend");
 
+    // [BDMerge Batch 2] Feature 1: soft shadows
+    mReservedUniforms.push_back("soft_shadow_enable");
+    mReservedUniforms.push_back("soft_shadow_scale");
+    mReservedUniforms.push_back("soft_shadow_max");
+    mReservedUniforms.push_back("soft_shadow_fill");
+    mReservedUniforms.push_back("soft_shadow_sun");
+    // [BDMerge Batch 2] Feature 2: gobo anisotropic/mip filtering
+    mReservedUniforms.push_back("gobo_aniso");
+
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 
     std::set<std::string> dupe_check;

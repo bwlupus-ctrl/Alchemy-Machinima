@@ -269,6 +269,13 @@ F32 LLPipeline::BDMergeProjectorVolumetricsBloomFeed;
 bool LLPipeline::BDMergeProjectorVolumetricsTemporal;
 F32 LLPipeline::BDMergeProjectorVolumetricsTemporalBlend;
 F32 LLPipeline::BDMergeProjectorVolumetricsShadowTint;
+// [BDMerge Batch 2]
+bool LLPipeline::BDMergeSoftProjectorShadows;
+F32  LLPipeline::BDMergeSoftShadowSoftness;
+F32  LLPipeline::BDMergeSoftShadowMaxPenumbra;
+F32  LLPipeline::BDMergeSoftShadowFill;
+bool LLPipeline::BDMergeSoftShadowSun;
+bool LLPipeline::BDMergeGoboAnisotropic;
 std::map<LLUUID, LLPipeline::VolumetricShaftOverride> LLPipeline::sVolumetricShaftOverrides;
 std::set<LLUUID> LLPipeline::sVolumetricShaftObjects;
 S32 LLPipeline::RenderScreenSpaceReflectionIterations;
@@ -676,6 +683,12 @@ void LLPipeline::init()
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsTemporal");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsTemporalBlend");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsShadowTint");
+    connectRefreshCachedSettingsSafe("BDMergeSoftProjectorShadows");
+    connectRefreshCachedSettingsSafe("BDMergeSoftShadowSoftness");
+    connectRefreshCachedSettingsSafe("BDMergeSoftShadowMaxPenumbra");
+    connectRefreshCachedSettingsSafe("BDMergeSoftShadowFill");
+    connectRefreshCachedSettingsSafe("BDMergeSoftShadowSun");
+    connectRefreshCachedSettingsSafe("BDMergeGoboAnisotropic");
     connectRefreshCachedSettingsSafe("RenderScreenSpaceReflectionIterations");
     connectRefreshCachedSettingsSafe("RenderScreenSpaceReflectionRayStep");
     connectRefreshCachedSettingsSafe("RenderScreenSpaceReflectionDistanceBias");
@@ -1359,6 +1372,13 @@ void LLPipeline::refreshCachedSettings()
     BDMergeProjectorVolumetricsTemporal = gSavedSettings.getBOOL("BDMergeProjectorVolumetricsTemporal");
     BDMergeProjectorVolumetricsTemporalBlend = gSavedSettings.getF32("BDMergeProjectorVolumetricsTemporalBlend");
     BDMergeProjectorVolumetricsShadowTint = gSavedSettings.getF32("BDMergeProjectorVolumetricsShadowTint");
+    // [BDMerge Batch 2]
+    BDMergeSoftProjectorShadows = gSavedSettings.getBOOL("BDMergeSoftProjectorShadows");
+    BDMergeSoftShadowSoftness = gSavedSettings.getF32("BDMergeSoftShadowSoftness");
+    BDMergeSoftShadowMaxPenumbra = gSavedSettings.getF32("BDMergeSoftShadowMaxPenumbra");
+    BDMergeSoftShadowFill = gSavedSettings.getF32("BDMergeSoftShadowFill");
+    BDMergeSoftShadowSun = gSavedSettings.getBOOL("BDMergeSoftShadowSun");
+    BDMergeGoboAnisotropic = gSavedSettings.getBOOL("BDMergeGoboAnisotropic");
     RenderScreenSpaceReflectionIterations = gSavedSettings.getS32("RenderScreenSpaceReflectionIterations");
     RenderScreenSpaceReflectionRayStep = gSavedSettings.getF32("RenderScreenSpaceReflectionRayStep");
     RenderScreenSpaceReflectionDistanceBias = gSavedSettings.getF32("RenderScreenSpaceReflectionDistanceBias");
@@ -10851,6 +10871,15 @@ void LLPipeline::bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_
     shader.uniform1f(LLShaderMgr::DEFERRED_SPOT_SHADOW_OFFSET, RenderSpotShadowOffset);
     shader.uniform1f(LLShaderMgr::DEFERRED_SPOT_SHADOW_BIAS, RenderSpotShadowBias);
 
+    // [BDMerge Batch 2] Feature 1: soft (contact-hardening + filled) shadow uniforms.
+    // Consumed by shadowUtil.glsl (pcfSpotShadow / pcfShadow). Gate off (default)
+    // => the classic hard 5-tap kernels run and the look is unchanged.
+    shader.uniform1i(LLShaderMgr::SOFT_SHADOW_ENABLE, BDMergeSoftProjectorShadows ? 1 : 0);
+    shader.uniform1f(LLShaderMgr::SOFT_SHADOW_SCALE, BDMergeSoftShadowSoftness);
+    shader.uniform1f(LLShaderMgr::SOFT_SHADOW_MAX, llmax(BDMergeSoftShadowMaxPenumbra, 1.f));
+    shader.uniform1f(LLShaderMgr::SOFT_SHADOW_FILL, llclamp(BDMergeSoftShadowFill, 0.f, 1.f));
+    shader.uniform1i(LLShaderMgr::SOFT_SHADOW_SUN, BDMergeSoftShadowSun ? 1 : 0);
+
     shader.uniform3fv(LLShaderMgr::DEFERRED_SUN_DIR, 1, mTransformedSunDir.mV);
     shader.uniform3fv(LLShaderMgr::DEFERRED_MOON_DIR, 1, mTransformedMoonDir.mV);
     shader.uniform2f(LLShaderMgr::DEFERRED_SHADOW_RES, (GLfloat)mRT->shadow[0].getWidth(), (GLfloat)mRT->shadow[0].getHeight());
@@ -11690,6 +11719,18 @@ void LLPipeline::setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep)
         {
             gGL.getTexUnit(channel)->bind(img);
 
+            // [BDMerge Batch 2] Feature 2: gobo/cookie mip + anisotropic filtering.
+            // Force a trilinear (mipmapped) min filter + anisotropic filter state on
+            // the cookie texture so a projected gobo viewed at a grazing angle or from
+            // far away samples coarser mips instead of aliasing. Requires the cookie to
+            // carry a mip chain (fetched projector textures do); if it has none this
+            // safely degrades to plain LINEAR (no regression). The matching shader-side
+            // LOD clamp (goboLod, gated by gobo_aniso) actually selects those mips.
+            if (BDMergeGoboAnisotropic)
+            {
+                gGL.getTexUnit(channel)->setTextureFilteringOption(LLTexUnit::TFO_ANISOTROPIC);
+            }
+
             F32 lod_range = logf((F32)img->getWidth())/logf(2.f);
 
             shader.uniform1f(LLShaderMgr::PROJECTOR_FOCUS, focus);
@@ -11698,6 +11739,10 @@ void LLPipeline::setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep)
         }
     }
 
+    // Tell the cookie samplers (deferredUtil::goboLod) whether to clamp the
+    // focus LOD up to the screen-space minification LOD. Only the surface
+    // projector programs get this; the volumetric march leaves it at 0.
+    shader.uniform1i(LLShaderMgr::GOBO_ANISO, BDMergeGoboAnisotropic ? 1 : 0);
 }
 
 // [BDMerge G3.3] Side-effect-free variant of setupSpotLight for the finalize-stage

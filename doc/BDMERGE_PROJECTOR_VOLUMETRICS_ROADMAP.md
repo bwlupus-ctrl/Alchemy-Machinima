@@ -296,6 +296,61 @@ bloom) — the capture/clear model covers the art-direction ask for now.
 `Release\app_settings\shaders\class1\deferred\`). **New menu entries**:
 `Object.ShaftCaptureOverride`, `Object.ShaftClearOverride`.
 
+## Batch 2 — projector shadow/cookie quality (2026-07-11 Opus)
+
+Two shadow/cookie-quality upgrades. Both default to the current look when their
+gate is off (soft shadows default **off**; gobo filtering default **on**, but a
+monotonic anti-alias change — it can only sample coarser mips, never introduce
+new aliasing). `setupSpotLightVolumetric` stays side-effect-free; the N-spot
+shadow slots, the volumetric self-shadow path, and Batch 1 are untouched.
+In-world verification still owed (no SL session this pass).
+
+### Feature 1. Soft projector shadows (contact-hardening + fill) — DONE
+`shadowUtil.glsl` `pcfSpotShadow` gains a gated soft branch: the PCF kernel
+radius grows with the receiver's normalized shadow-map depth (a lightweight
+PCSS-style proxy for occluder→receiver distance — the penumbra is sharp at
+contact and softer far from the light) scaled by a per-light source-size term
+(`soft_shadow_scale`), capped at `soft_shadow_max` texels, sampled over a 12-tap
+Poisson disk. An ambient fill floor (`soft_shadow_fill`) lifts shadowed pixels
+off pure black toward an ambient value so projector shadows don't crush to black.
+The same contact-hardening + fill model is applied to the **sun** `pcfShadow`,
+gated additionally by `soft_shadow_sun`. When `soft_shadow_enable == 0` (default)
+both functions fall through to the byte-identical classic hard 5-tap kernels, so
+default behavior is unchanged. New settings (Proj Shafts tab, "Shadow Quality
+(Batch 2)" section): `BDMergeSoftProjectorShadows` (master, default **off**),
+`BDMergeSoftShadowSoftness` (penumbra rate, 3.0), `BDMergeSoftShadowMaxPenumbra`
+(cap texels, 6.0), `BDMergeSoftShadowFill` (fill floor, 0.15),
+`BDMergeSoftShadowSun` (apply to sun, default off). Uniforms uploaded in
+`bindDeferredShader` so both the sun soften pass and the spotlight pass receive
+them. **Deferred / documented follow-up:** a true blocker-search PCSS needs the
+raw (non-comparison) depth of the spot shadow map; with only `sampler2DShadow`
+here the receiver-distance proxy is the clean approximation and is what ships.
+
+### Feature 2. Gobo/cookie mip + anisotropic filtering — DONE (default on)
+The projector cookie (gobo) aliased at grazing angles/distance because the
+surface cookie samplers used `textureLod` with a purely focus-based LOD, ignoring
+screen-space minification. C++ (`setupSpotLight`) now sets a trilinear-mip +
+anisotropic filter state (`LLTexUnit::TFO_ANISOTROPIC`) on the cookie texture
+after binding, and uploads `gobo_aniso`. `deferredUtil.glsl` gains `goboLod()`,
+which (when `gobo_aniso != 0`) clamps the focus LOD **up** to the derivative-based
+minification LOD (`0.5*log2(max(|dFdx·size|², |dFdy·size|²))`); the three cookie
+LOD samplers (`getTexture2DLodDiffuse` / `getTexture2DLodAmbient` /
+`texture2DLodSpecular`) route through it. This is monotonic (only ever selects a
+coarser mip) so it removes grazing aliasing without introducing artifacts —
+hence safe to default on. Only the **surface** spotlight programs upload
+`gobo_aniso`; the volumetric march (`setupSpotLightVolumetric`) leaves it 0, so
+the shaft's `projGoboTexture` → `getTexture2DLodDiffuse` path is unchanged. New
+setting `BDMergeGoboAnisotropic` (default **on**). **Notes:** relies on the
+cookie carrying a mip chain (fetched projector textures do); a mip-less cookie
+degrades safely to plain LINEAR. `goboLod` uses fragment derivatives inside the
+projector lighting branches — well-defined on the desktop GL target (RTX 5090).
+
+**New reserved uniforms** (llshadermgr.{h,cpp}): `soft_shadow_enable`,
+`soft_shadow_scale`, `soft_shadow_max`, `soft_shadow_fill`, `soft_shadow_sun`,
+`gobo_aniso`. **No new shader files** (only edits to `shadowUtil.glsl`,
+`deferredUtil.glsl`), so no reconfigure needed — but edited shaders must be
+re-staged into `Release\app_settings\shaders\...` on an incremental build.
+
 ## Sequencing
 Phase 1 → Phase 2 → Phase 3. Phase 1 items 1–2 (HDR composite + dither) are the
 biggest quality jump and should land together. Each phase is one or more

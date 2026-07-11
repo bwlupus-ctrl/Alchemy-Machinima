@@ -519,6 +519,15 @@ public:
         PROJVOL_PREV_VIEWPROJ,             //  "projvol_prev_viewproj"(A)
         PROJVOL_TEMPORAL_BLEND,            //  "projvol_temporal_blend"(A)
 
+        // [BDMerge Batch 2] Feature 1: soft (contact-hardening + filled) shadows
+        SOFT_SHADOW_ENABLE,                //  "soft_shadow_enable"
+        SOFT_SHADOW_SCALE,                 //  "soft_shadow_scale"   (penumbra rate)
+        SOFT_SHADOW_MAX,                   //  "soft_shadow_max"     (max penumbra texels)
+        SOFT_SHADOW_FILL,                  //  "soft_shadow_fill"    (ambient floor)
+        SOFT_SHADOW_SUN,                   //  "soft_shadow_sun"     (apply to sun too)
+        // [BDMerge Batch 2] Feature 2: gobo/cookie mip + anisotropic filtering
+        GOBO_ANISO,                        //  "gobo_aniso"
+
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

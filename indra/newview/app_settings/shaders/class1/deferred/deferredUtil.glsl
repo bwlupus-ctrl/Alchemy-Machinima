@@ -64,9 +64,38 @@ uniform float proj_ambiance;
 
 uniform int classic_mode;
 
+// [BDMerge Batch 2] Feature 2 - gobo/cookie mip + anisotropic filtering.
+// When non-zero, the cookie LOD samplers clamp their focus-based LOD up to the
+// screen-space (derivative) minification LOD, so a projected gobo viewed at a
+// grazing angle or from far away samples a coarser mip instead of aliasing.
+// Only the surface projector programs upload this (setupSpotLight); it stays 0
+// for every other consumer, keeping their sampling byte-identical.
+uniform int gobo_aniso;
+
 // light params
 uniform vec3 color; // light_color
 uniform float size; // light_size
+
+// [BDMerge Batch 2] Screen-space minification LOD from the cookie UV derivatives.
+// Returns the base (focus) LOD raised to the minification LOD so grazing/distant
+// gobos never sample a finer mip than the pixel footprint warrants (anti-alias).
+// The C++ side sets a trilinear-mip + anisotropic filter state on the cookie so
+// the extra mip levels this selects are actually present and crisply filtered.
+float goboLod(vec2 tc, float base_lod)
+{
+#ifndef FXAA_GLSL_120
+    if (gobo_aniso != 0)
+    {
+        vec2  ts  = vec2(textureSize(projectionMap, 0));
+        vec2  dx  = dFdx(tc) * ts;
+        vec2  dy  = dFdy(tc) * ts;
+        float d2  = max(dot(dx, dx), dot(dy, dy));
+        float slod = 0.5 * log2(max(d2, 1.0e-8));
+        return max(base_lod, slod);
+    }
+#endif
+    return base_lod;
+}
 
 uniform mat4 inv_proj;
 uniform vec2 screen_res;
@@ -194,7 +223,7 @@ float getDepth(vec2 pos_screen)
 vec4 getTexture2DLodAmbient(vec2 tc, float lod)
 {
 #ifndef FXAA_GLSL_120
-    vec4 ret = textureLod(projectionMap, tc, lod);
+    vec4 ret = textureLod(projectionMap, tc, goboLod(tc, lod));
 #else
     vec4 ret = texture(projectionMap, tc);
 #endif
@@ -210,7 +239,7 @@ vec4 getTexture2DLodAmbient(vec2 tc, float lod)
 vec4 getTexture2DLodDiffuse(vec2 tc, float lod)
 {
 #ifndef FXAA_GLSL_120
-    vec4 ret = textureLod(projectionMap, tc, lod);
+    vec4 ret = textureLod(projectionMap, tc, goboLod(tc, lod));
 #else
     vec4 ret = texture(projectionMap, tc);
 #endif
@@ -257,7 +286,7 @@ vec3 getProjectedLightDiffuseColor(float light_distance, vec2 projected_uv)
 vec4 texture2DLodSpecular(vec2 tc, float lod)
 {
 #ifndef FXAA_GLSL_120
-    vec4 ret = textureLod(projectionMap, tc, lod);
+    vec4 ret = textureLod(projectionMap, tc, goboLod(tc, lod));
 #else
     vec4 ret = texture(projectionMap, tc);
 #endif

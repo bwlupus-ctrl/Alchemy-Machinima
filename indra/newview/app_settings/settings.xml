@@ -10731,6 +10731,72 @@
       <key>Value</key>
       <real>0.0</real>
   </map>
+  <key>BDMergeSoftProjectorShadows</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge Batch 2] Master gate for soft (contact-hardening + filled) shadows. Default OFF = classic hard 5-tap projector/sun shadows, byte-identical to before. When ON, the projector-shadow PCF kernel widens with receiver distance (a physically-motivated penumbra that is sharp at contact and softer farther away) and shadowed pixels are lifted off pure black toward an ambient fill floor. See BDMergeSoftShadowSoftness / MaxPenumbra / Fill / Sun for the sub-controls.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+  </map>
+  <key>BDMergeSoftShadowSoftness</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge Batch 2] Soft-shadow penumbra rate (0.0-16.0; default 3.0). The per-light source-size term: how fast the PCF kernel widens with the receiver's distance from the light. Higher = softer, wider penumbrae. Only active when BDMergeSoftProjectorShadows is on.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>3.0</real>
+  </map>
+  <key>BDMergeSoftShadowMaxPenumbra</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge Batch 2] Hard cap on the soft-shadow penumbra kernel radius in shadow-map texels (1.0-16.0; default 6.0). Bounds how blurry a distant shadow edge can get and keeps the widened PCF cost bounded. Only active when BDMergeSoftProjectorShadows is on.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>6.0</real>
+  </map>
+  <key>BDMergeSoftShadowFill</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge Batch 2] Ambient shadow-fill floor (0.0-1.0; default 0.15). Lifts fully shadowed regions off pure black toward this value so projector shadows read like real shadows (ambient/bounce fill) instead of crushing to black. 0 = no fill. Only active when BDMergeSoftProjectorShadows is on.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.15</real>
+  </map>
+  <key>BDMergeSoftShadowSun</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge Batch 2] Also apply the contact-hardening + fill model to the sun/moon cascade shadows (default OFF), for consistency with softened projector shadows. When off the sun path is byte-identical to before even if BDMergeSoftProjectorShadows is on.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+  </map>
+  <key>BDMergeGoboAnisotropic</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge Batch 2] Gobo/cookie mip + anisotropic filtering (default ON). Sets a trilinear-mip + anisotropic filter state on the projector cookie texture and clamps the shader's focus-based cookie LOD up to the screen-space minification LOD, so a projected gobo viewed at a grazing angle or from far away stays crisp instead of aliasing. Only affects projector cookie sampling; turn off to restore the old fixed-LOD cookie look.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+  </map>
   <key>RenderTextureVRAMDivisor</key>
   <map>
       <key>Comment</key>

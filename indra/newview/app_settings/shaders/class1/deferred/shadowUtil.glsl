@@ -56,12 +56,62 @@ uniform mat4 inv_proj;
 uniform vec2 screen_res;
 uniform int sun_up_factor;
 
+// [BDMerge Batch 2] Feature 1 - soft (contact-hardening + filled) shadows.
+// All gated: soft_shadow_enable == 0 -> the classic hard 5-tap paths run
+// byte-identically, so default behavior is unchanged.
+uniform int   soft_shadow_enable; // 0 = classic hard shadows (default)
+uniform float soft_shadow_scale;  // penumbra rate: texels of kernel growth per unit
+                                  // receiver depth (light source-size term)
+uniform float soft_shadow_max;    // hard cap on the penumbra kernel radius (texels)
+uniform float soft_shadow_fill;   // ambient floor: shadowed regions lift toward this
+                                  // instead of crushing to pure black (0 = no fill)
+uniform int   soft_shadow_sun;    // also apply contact-hardening+fill to the sun
+
+// 12-tap Poisson-ish disk for the widened soft-shadow PCF kernel.
+const vec2 SOFT_SHADOW_DISK[12] = vec2[12](
+    vec2( 0.0000,  0.0000),
+    vec2( 0.5279,  0.1600),
+    vec2(-0.3251,  0.4331),
+    vec2(-0.4247, -0.3900),
+    vec2( 0.2148, -0.5352),
+    vec2( 0.7623, -0.4218),
+    vec2(-0.7841, -0.1594),
+    vec2(-0.1417,  0.8531),
+    vec2( 0.5560,  0.7139),
+    vec2( 0.9330,  0.2100),
+    vec2(-0.6521,  0.5928),
+    vec2( 0.0730, -0.9420)
+);
+
 float pcfShadow(sampler2DShadow shadowMap, vec3 norm, vec4 stc, float bias_mul, vec2 pos_screen, vec3 light_dir)
 {
 #if defined(SUN_SHADOW)
     float offset = shadow_bias * bias_mul;
     stc.xyz /= stc.w;
     stc.z += offset * 2.0;
+
+    // [BDMerge Batch 2] Optional soft (contact-hardening + filled) sun path.
+    // Gated by BOTH soft_shadow_enable and soft_shadow_sun so the default is the
+    // byte-identical classic 5-tap kernel below.
+    if (soft_shadow_enable != 0 && soft_shadow_sun != 0)
+    {
+        float pr = clamp(1.0 + soft_shadow_scale * clamp(stc.z, 0.0, 1.0),
+                         1.0, max(soft_shadow_max, 1.0));
+        vec2 texel = pr / shadow_res;
+        float jit = fract(pos_screen.y * shadow_res.y);
+        float shadow = 0.0;
+        for (int i = 0; i < 12; ++i)
+        {
+            vec2 o = SOFT_SHADOW_DISK[i] * texel;
+            o.x += (jit - 0.5) * texel.x;
+            shadow += texture(shadowMap, vec3(stc.xy + o, stc.z));
+        }
+        shadow /= 12.0;
+        if (soft_shadow_fill > 0.0)
+            shadow = mix(soft_shadow_fill, 1.0, shadow);
+        return clamp(shadow, 0.0, 1.0);
+    }
+
     stc.x = floor(stc.x*shadow_res.x + fract(pos_screen.y*shadow_res.y))/shadow_res.x; // add some chaotic jitter to X sample pos according to Y to disguise the snapping going on here
     float cs = texture(shadowMap, stc.xyz);
     float shadow = cs * 4.0;
@@ -80,6 +130,34 @@ float pcfSpotShadow(sampler2DShadow shadowMap, vec4 stc, float bias_scale, vec2 
 #if defined(SPOT_SHADOW)
     stc.xyz /= stc.w;
     stc.z += spot_shadow_bias * bias_scale;
+
+    // [BDMerge Batch 2] Feature 1 - soft projector shadows. Contact-hardening
+    // penumbra: the PCF kernel radius grows with the receiver's normalized depth
+    // (a lightweight proxy for occluder->receiver distance) times the per-light
+    // source-size term (soft_shadow_scale). Sharp at contact (stc.z small),
+    // softer far from the light. Plus an ambient fill floor so shadowed pixels
+    // never crush to pure black. Gated: soft_shadow_enable == 0 falls through to
+    // the byte-identical classic 5-tap kernel below.
+    if (soft_shadow_enable != 0)
+    {
+        float pr = clamp(1.0 + soft_shadow_scale * clamp(stc.z, 0.0, 1.0),
+                         1.0, max(soft_shadow_max, 1.0));
+        vec2 texel = pr / proj_shadow_res;
+        texel.y *= 1.5;
+        float jit = fract(pos_screen.y * 0.666666666);
+        float shadow = 0.0;
+        for (int i = 0; i < 12; ++i)
+        {
+            vec2 o = SOFT_SHADOW_DISK[i] * texel;
+            o.x += (jit - 0.5) * texel.x;
+            shadow += texture(shadowMap, vec3(stc.xy + o, stc.z));
+        }
+        shadow /= 12.0;
+        if (soft_shadow_fill > 0.0)
+            shadow = mix(soft_shadow_fill, 1.0, shadow);
+        return clamp(shadow, 0.0, 1.0);
+    }
+
     stc.x = floor(proj_shadow_res.x * stc.x + fract(pos_screen.y*0.666666666)) / proj_shadow_res.x; // snap
 
     float cs = texture(shadowMap, stc.xyz);

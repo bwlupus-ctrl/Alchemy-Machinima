@@ -1198,6 +1198,14 @@ public:
     static F32 BDMergeProjectorVolumetricsTemporalBlend; // A: history EMA weight
     // [BDMerge G3.3 Batch 1 B] gobo-colored occluder shadows (stained-glass tint).
     static F32 BDMergeProjectorVolumetricsShadowTint;    // B: 0 = classic black shadow
+    // [BDMerge Batch 2] Feature 1: soft (contact-hardening + filled) shadows.
+    static bool BDMergeSoftProjectorShadows;   // master gate (default off)
+    static F32  BDMergeSoftShadowSoftness;     // penumbra rate (kernel growth)
+    static F32  BDMergeSoftShadowMaxPenumbra;  // max penumbra kernel radius (texels)
+    static F32  BDMergeSoftShadowFill;         // ambient fill floor (0 = none)
+    static bool BDMergeSoftShadowSun;          // also apply to the sun cascades
+    // [BDMerge Batch 2] Feature 2: gobo/cookie mip + anisotropic filtering.
+    static bool BDMergeGoboAnisotropic;        // default on
     // [BDMerge G3.3 Phase 2] session-only opt-in set of projector object UUIDs
     // (not persisted; see toggleVolumetricShaft/clearVolumetricShafts).
     static std::set<LLUUID> sVolumetricShaftObjects;
