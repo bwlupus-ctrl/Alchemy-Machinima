@@ -2815,6 +2815,28 @@
       <key>Value</key>
       <string>cache</string>
     </map>
+    <key>BDMergeCameraStraightLift</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge B8s] Verbatim Black Dragon camera-behaviour corrections in LLAgentCamera::updateCamera: BD's roll-reset inside the third-person focus-on-avatar block, BD's mutually-exclusive bone/cinematic if/else-if nesting, the un-normalized cinematic up-vector (undoes the prior B8 reinterpretation), and the sit-time up-vector flip in both mouselook AND third person gated by AllowCameraFlipOnSit. Off = prior B6/B8 behaviour, and Alchemy's F5 third-person camera roll keeps working. On = BD verbatim, which also resets accumulated camera roll while focused on the avatar in third person (BD design). Bone camera stays focus-follow either way (BD has no position hard-lock; MODE_BONE_LOCK is the fork's separate rigid tool). See doc/BD_MERGE_PATCHLOG.md.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>AllowCameraFlipOnSit</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge B8s] Allow the camera up-vector to roll/flip with the seat while sitting (donor: Black Dragon; donor key name and default kept). Only consulted while BDMergeCameraStraightLift is enabled.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
     <key>UseCinematicCamera</key>
     <map>
       <key>Comment</key>
@@ -2829,24 +2851,24 @@
     <key>CameraMaxRoll</key>
     <map>
       <key>Comment</key>
-      <string>[BDMerge B8] Head-roll clamp while standing (lerp-to-upright factor: 1 = no roll, lower = more head roll leaks into the camera).</string>
+      <string>[BDMerge B8] Head-roll clamp while standing (lerp-to-upright factor: 1 = no roll, lower = more head roll leaks into the camera). Donor default 0.85.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
       <string>F32</string>
       <key>Value</key>
-      <real>0.9</real>
+      <real>0.85</real>
     </map>
     <key>CameraMaxRollSitting</key>
     <map>
       <key>Comment</key>
-      <string>[BDMerge B8] Head-roll clamp while sitting.</string>
+      <string>[BDMerge B8] Head-roll clamp while sitting. Donor default 0.85.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
       <string>F32</string>
       <key>Value</key>
-      <real>0.95</real>
+      <real>0.85</real>
     </map>
     <key>CameraFollowJoint</key>
     <map>

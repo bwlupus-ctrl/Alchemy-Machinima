@@ -1292,7 +1292,32 @@ void LLAgentCamera::updateCamera()
 
     validateFocusObject();
 
-    if (isAgentAvatarValid() &&
+    // [BDMerge B8s] BD camera straight-lift (donor: Black Dragon, verbatim
+    // llagentcamera.cpp updateCamera). Master gate for the verbatim-BD camera
+    // fidelity corrections in this function: BD's roll-reset + bone/cinematic
+    // if/else-if nesting, the un-normalized cinematic up-vector, and the
+    // sit-time up-vector flip in both mouselook AND third person gated by
+    // AllowCameraFlipOnSit. Default off; when off, the prior B6/B8 behaviour
+    // (and Alchemy's F5 third-person camera roll) is preserved bit-identically.
+    static LLCachedControl<bool> bd_cam_straightlift(gSavedSettings, "BDMergeCameraStraightLift", false);
+
+    if (bd_cam_straightlift)
+    {
+        // BD: while sitting and focused on the avatar, the camera up-vector
+        // inherits the seat rotation in BOTH mouselook and third person, gated
+        // by AllowCameraFlipOnSit (BD's own setting, default on).
+        static LLCachedControl<bool> bd_allow_flip_on_sit(gSavedSettings, "AllowCameraFlipOnSit", true);
+        if (isAgentAvatarValid() &&
+            gAgentAvatarp->isSitting() && mFocusOnAvatar &&
+            (camera_mode == CAMERA_MODE_MOUSELOOK || camera_mode == CAMERA_MODE_THIRD_PERSON))
+        {
+            if (bd_allow_flip_on_sit)
+            {
+                mCameraUpVector *= gAgentAvatarp->getRenderRotation();
+            }
+        }
+    }
+    else if (isAgentAvatarValid() &&
         gAgentAvatarp->isSitting() &&
         camera_mode == CAMERA_MODE_MOUSELOOK)
     {
@@ -1547,39 +1572,82 @@ void LLAgentCamera::updateCamera()
 
     LLVector3 focus_agent = gAgent.getPosAgentFromGlobal(mFocusGlobal);
 
-    // [BDMerge B6] BD Bone Camera (donor: Black Dragon, behavior port):
-    // when CameraFollowJoint != -1, the camera focus follows that character
-    // joint's world position plus the active preset's focus offset, rotated
-    // with the avatar (render rotation while sitting, agent frame otherwise
-    // - donor fix 5a8a46a437). Orbit/zoom/smoothing stay fully live: this is
-    // focus-follow, not a hard lock. Donor: BD llagentcamera.cpp bone-camera
-    // block + fix tail 7f151e0b4b.
-    if (isAgentAvatarValid() && mFocusOnAvatar && mCameraMode == CAMERA_MODE_THIRD_PERSON
-        && mFollowJoint != -1)
+    if (bd_cam_straightlift)
     {
-        LLJoint* joint = gAgentAvatarp->getCharacterJoint(mFollowJoint);
-        if (joint)
+        // [BDMerge B8s] BD camera straight-lift (donor: Black Dragon, verbatim
+        // llagentcamera.cpp updateCamera). Bone camera and cinematic head
+        // tracking nest under ONE third-person / focus-on-avatar guard that
+        // first zeroes any accumulated camera roll (BD reverts key-roll here so
+        // it cannot fight the cinematic head-roll; note this intentionally
+        // resets Alchemy's F5 third-person roll while active), then bone camera
+        // (focus-follow) wins over cinematic when both are set. Verbatim BD
+        // math including NO up-vector normalize - this undoes the prior B8
+        // reinterpretation (mCameraUpVector.normalize()) that BD does not have.
+        if (isAgentAvatarValid() && mFocusOnAvatar && mCameraMode == CAMERA_MODE_THIRD_PERSON)
         {
-            LLQuaternion avatarRotationForFollowCam = gAgentAvatarp->isSitting() ? gAgentAvatarp->getRenderRotation() : gAgent.getFrameAgent().getQuaternion();
-            focus_agent = joint->getWorldPosition() + (LLVector3)getFocusOffsetInitial() * avatarRotationForFollowCam;
+            // BD's mCameraRollAngle == Alchemy's mRollAngle (F5 camera roll).
+            mRollAngle = 0.f;
+            if (mFollowJoint != -1)
+            {
+                LLJoint* joint = gAgentAvatarp->getCharacterJoint(mFollowJoint);
+                if (joint)
+                {
+                    LLQuaternion avatarRotationForFollowCam = gAgentAvatarp->isSitting() ? gAgentAvatarp->getRenderRotation() : gAgent.getFrameAgent().getQuaternion();
+                    focus_agent = joint->getWorldPosition() + (LLVector3)getFocusOffsetInitial() * avatarRotationForFollowCam;
+                }
+            }
+            else if (mCinematicCamera)
+            {
+                LLVector3 head_pos = gAgentAvatarp->mHeadp->getWorldPosition() -
+                    LLVector3(0.08f, 0.f, 0.05f) * gAgentAvatarp->mHeadp->getWorldRotation() +
+                    LLVector3(0.1f, 0.f, 0.f) * gAgentAvatarp->mPelvisp->getWorldRotation();
+                LLVector3 head_offset = gAgentAvatarp->mHeadp->getWorldPosition() - head_pos;
+                focus_agent += head_offset;
+
+                mCameraUpVector += (LLVector3::z_axis * gAgentAvatarp->mHeadp->getWorldRotation());
+                mCameraUpVector = lerp(mCameraUpVector, LLVector3::z_axis, gAgentAvatarp->isSitting() ? mCameraMaxRollSitting : mCameraMaxRoll);
+            }
         }
     }
-    // [BDMerge B8] BD Cinematic Head Tracking (donor: Black Dragon, verbatim
-    // math; donor precedence: bone camera wins when both are set). The focus
-    // nudges with the head, and the camera up-vector inherits head roll,
-    // clamped by lerping back to world-up (factor 1 = no roll at all).
-    else if (isAgentAvatarValid() && mFocusOnAvatar && mCameraMode == CAMERA_MODE_THIRD_PERSON
-             && mCinematicCamera)
+    else
     {
-        LLVector3 head_pos = gAgentAvatarp->mHeadp->getWorldPosition() -
-            LLVector3(0.08f, 0.f, 0.05f) * gAgentAvatarp->mHeadp->getWorldRotation() +
-            LLVector3(0.1f, 0.f, 0.f) * gAgentAvatarp->mPelvisp->getWorldRotation();
-        LLVector3 head_offset = gAgentAvatarp->mHeadp->getWorldPosition() - head_pos;
-        focus_agent += head_offset;
+        // Prior B6/B8 behaviour, retained bit-identically when the straight-lift
+        // gate is off (F5 third-person camera roll keeps working here).
+        //
+        // [BDMerge B6] BD Bone Camera (donor: Black Dragon, behavior port):
+        // when CameraFollowJoint != -1, the camera focus follows that character
+        // joint's world position plus the active preset's focus offset, rotated
+        // with the avatar (render rotation while sitting, agent frame otherwise
+        // - donor fix 5a8a46a437). Orbit/zoom/smoothing stay fully live: this is
+        // focus-follow, not a hard lock. Donor: BD llagentcamera.cpp bone-camera
+        // block + fix tail 7f151e0b4b.
+        if (isAgentAvatarValid() && mFocusOnAvatar && mCameraMode == CAMERA_MODE_THIRD_PERSON
+            && mFollowJoint != -1)
+        {
+            LLJoint* joint = gAgentAvatarp->getCharacterJoint(mFollowJoint);
+            if (joint)
+            {
+                LLQuaternion avatarRotationForFollowCam = gAgentAvatarp->isSitting() ? gAgentAvatarp->getRenderRotation() : gAgent.getFrameAgent().getQuaternion();
+                focus_agent = joint->getWorldPosition() + (LLVector3)getFocusOffsetInitial() * avatarRotationForFollowCam;
+            }
+        }
+        // [BDMerge B8] BD Cinematic Head Tracking (donor: Black Dragon, verbatim
+        // math; donor precedence: bone camera wins when both are set). The focus
+        // nudges with the head, and the camera up-vector inherits head roll,
+        // clamped by lerping back to world-up (factor 1 = no roll at all).
+        else if (isAgentAvatarValid() && mFocusOnAvatar && mCameraMode == CAMERA_MODE_THIRD_PERSON
+                 && mCinematicCamera)
+        {
+            LLVector3 head_pos = gAgentAvatarp->mHeadp->getWorldPosition() -
+                LLVector3(0.08f, 0.f, 0.05f) * gAgentAvatarp->mHeadp->getWorldRotation() +
+                LLVector3(0.1f, 0.f, 0.f) * gAgentAvatarp->mPelvisp->getWorldRotation();
+            LLVector3 head_offset = gAgentAvatarp->mHeadp->getWorldPosition() - head_pos;
+            focus_agent += head_offset;
 
-        mCameraUpVector += (LLVector3::z_axis * gAgentAvatarp->mHeadp->getWorldRotation());
-        mCameraUpVector = lerp(mCameraUpVector, LLVector3::z_axis, gAgentAvatarp->isSitting() ? mCameraMaxRollSitting : mCameraMaxRoll);
-        mCameraUpVector.normalize();
+            mCameraUpVector += (LLVector3::z_axis * gAgentAvatarp->mHeadp->getWorldRotation());
+            mCameraUpVector = lerp(mCameraUpVector, LLVector3::z_axis, gAgentAvatarp->isSitting() ? mCameraMaxRollSitting : mCameraMaxRoll);
+            mCameraUpVector.normalize();
+        }
     }
 
     LLVector3 position_agent = gAgent.getPosAgentFromGlobal(camera_pos_global);
