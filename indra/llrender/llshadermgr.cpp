@@ -1726,6 +1726,12 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("projvol_rim_threshold");
     mReservedUniforms.push_back("projvol_rim_wrap");
 
+    // [BDMerge G3.3 S-Log] physically-plausible beam levers (all default no-op)
+    mReservedUniforms.push_back("projvol_extinction");
+    mReservedUniforms.push_back("projvol_contact_fade");
+    mReservedUniforms.push_back("projvol_contact_pool");
+    mReservedUniforms.push_back("projvol_soft_knee");
+
     // [BDMerge Batch 2] Feature 1: soft shadows
     mReservedUniforms.push_back("soft_shadow_enable");
     mReservedUniforms.push_back("soft_shadow_scale");

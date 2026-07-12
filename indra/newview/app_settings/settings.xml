@@ -10852,6 +10852,50 @@
       <key>Value</key>
       <real>0.0</real>
   </map>
+  <key>BDMergeProjectorVolumetricsExtinction</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 S-Log] Beer-Lambert extinction coefficient per metre along the view ray (0.0-4.0; default 0.0 = OFF = the pure-additive shipped look). When above 0, each march sample's in-scatter is attenuated by the medium between it and the camera, so the near part of the beam scatters brighter and the far part falls off naturally - a real density gradient instead of a flat wedge. Smooth gradients grade far better under a flat S-Log3 profile than the uniform additive cone. Typical cinematic values ~0.3-0.8; scales with shaft density, so hazier air also extinguishes faster.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+  </map>
+  <key>BDMergeProjectorVolumetricsContactFade</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 S-Log] Soft contact fade band in metres above the opaque surface that caps the shaft march (0.0-4.0; default 0.0 = OFF = the hard seam). When above 0, march samples within this many metres of the surface fade smoothly toward zero, so the line where the beam meets a floor/wall softens into a gradient instead of clipping hard - the hard seam bands visibly under a flat S-Log3 grade. Typical values ~0.2-0.5 m. Also sets the falloff band of ContactPool when that is above 0.25 m.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+  </map>
+  <key>BDMergeProjectorVolumetricsContactPool</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 S-Log] Contact-pool in-scatter deposit strength where the beam lands on a surface (0.0-4.0; default 0.0 = OFF). Adds extra in-scatter concentrated right at the point the shaft meets the capping surface - colored by the gobo cookie, gated by this projector's own shadow map and scaled by the local density - so the light visibly pools/kisses the floor or wall it hits instead of just stopping. Peaks at the surface and falls off over the ContactFade band (minimum 0.25 m). Typical values ~0.3-1.0.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+  </map>
+  <key>BDMergeProjectorVolumetricsSoftKnee</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 S-Log] Soft-knee highlight rolloff blend for the shaft's MaxLuminance ceiling (0.0-1.0; default 0.0 = the exact hard clamp, the shipped look). When above 0, bright shaft cores roll off along a smooth exponential shoulder toward MaxLuminance instead of clipping flat - a hard clamp flattens exactly the highlight gradient a flat S-Log3 profile exists to preserve. 1.0 = full soft shoulder (nothing ever quite reaches the ceiling); intermediate values blend between the two. Typical value ~0.5.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+  </map>
   <key>BDMergeSoftProjectorShadows</key>
   <map>
       <key>Comment</key>

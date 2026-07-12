@@ -273,6 +273,11 @@ F32 LLPipeline::BDMergeProjectorVolumetricsRimStrength;
 F32 LLPipeline::BDMergeProjectorVolumetricsRimPower;
 F32 LLPipeline::BDMergeProjectorVolumetricsRimThreshold;
 F32 LLPipeline::BDMergeProjectorVolumetricsRimWrap;
+// [BDMerge G3.3 S-Log] physically-plausible beam levers
+F32 LLPipeline::BDMergeProjectorVolumetricsExtinction;
+F32 LLPipeline::BDMergeProjectorVolumetricsContactFade;
+F32 LLPipeline::BDMergeProjectorVolumetricsContactPool;
+F32 LLPipeline::BDMergeProjectorVolumetricsSoftKnee;
 // [BDMerge Batch 2]
 bool LLPipeline::BDMergeSoftProjectorShadows;
 F32  LLPipeline::BDMergeSoftShadowSoftness;
@@ -697,6 +702,10 @@ void LLPipeline::init()
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsRimPower");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsRimThreshold");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsRimWrap");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsExtinction");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsContactFade");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsContactPool");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsSoftKnee");
     connectRefreshCachedSettingsSafe("BDMergeSoftProjectorShadows");
     connectRefreshCachedSettingsSafe("BDMergeSoftShadowSoftness");
     connectRefreshCachedSettingsSafe("BDMergeSoftShadowMaxPenumbra");
@@ -1408,6 +1417,10 @@ void LLPipeline::refreshCachedSettings()
     BDMergeProjectorVolumetricsRimPower = gSavedSettings.getF32("BDMergeProjectorVolumetricsRimPower");
     BDMergeProjectorVolumetricsRimThreshold = gSavedSettings.getF32("BDMergeProjectorVolumetricsRimThreshold");
     BDMergeProjectorVolumetricsRimWrap = gSavedSettings.getF32("BDMergeProjectorVolumetricsRimWrap");
+    BDMergeProjectorVolumetricsExtinction = gSavedSettings.getF32("BDMergeProjectorVolumetricsExtinction");
+    BDMergeProjectorVolumetricsContactFade = gSavedSettings.getF32("BDMergeProjectorVolumetricsContactFade");
+    BDMergeProjectorVolumetricsContactPool = gSavedSettings.getF32("BDMergeProjectorVolumetricsContactPool");
+    BDMergeProjectorVolumetricsSoftKnee = gSavedSettings.getF32("BDMergeProjectorVolumetricsSoftKnee");
     // [BDMerge Batch 2]
     BDMergeSoftProjectorShadows = gSavedSettings.getBOOL("BDMergeSoftProjectorShadows");
     BDMergeSoftShadowSoftness = gSavedSettings.getF32("BDMergeSoftShadowSoftness");
@@ -9725,6 +9738,16 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_POWER, llmax(BDMergeProjectorVolumetricsRimPower, 0.01f));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_THRESHOLD, llmax(BDMergeProjectorVolumetricsRimThreshold, 0.f));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_WRAP, llclamp(BDMergeProjectorVolumetricsRimWrap, 0.f, 1.f));
+
+    // [BDMerge G3.3 S-Log] Physically-plausible beam levers for the S-Log3 grading
+    // workflow: Beer-Lambert extinction along the march (depth falloff), soft
+    // surface-contact fade + contact pool (light landing on surfaces), and a
+    // soft-knee highlight shoulder replacing the hard projvol_max clamp. All
+    // default 0.0 = off = the shipped look, byte-identical.
+    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_EXTINCTION, llmax(BDMergeProjectorVolumetricsExtinction, 0.f));
+    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_CONTACT_FADE, llmax(BDMergeProjectorVolumetricsContactFade, 0.f));
+    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_CONTACT_POOL, llmax(BDMergeProjectorVolumetricsContactPool, 0.f));
+    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_SOFT_KNEE, llclamp(BDMergeProjectorVolumetricsSoftKnee, 0.f, 1.f));
 
     // [Phase 3] atmosphere levers (all no-ops at their defaults). The inverse
     // modelview turns a view-space march sample back into agent(world, Z-up) space
