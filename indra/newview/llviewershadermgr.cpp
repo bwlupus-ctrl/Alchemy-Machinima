@@ -251,6 +251,8 @@ LLGLSLShader            gFroxelDebugProgram;
 // [BDMerge Froxel F1] P4 integrate + P5 apply passes.
 LLGLSLShader            gFroxelIntegrateProgram;
 LLGLSLShader            gFroxelApplyProgram;
+// [BDMerge Froxel F2] P2 per-light injection pass.
+LLGLSLShader            gFroxelInjectProgram;
 LLGLSLShader            gBlitWithEffectsProgram;
 LLGLSLShader            gCGGammaProgram;
 LLGLSLShader            gCGLegacyGammaProgram;
@@ -422,6 +424,7 @@ void LLViewerShaderMgr::finalizeShaderList()
     mShaderList.push_back(&gFroxelDebugProgram); // [BDMerge Froxel F0]
     mShaderList.push_back(&gFroxelIntegrateProgram); // [BDMerge Froxel F1]
     mShaderList.push_back(&gFroxelApplyProgram); // [BDMerge Froxel F1]
+    mShaderList.push_back(&gFroxelInjectProgram); // [BDMerge Froxel F2]
     mShaderList.push_back(&gDeferredAlphaProgram);
     mShaderList.push_back(&gHUDAlphaProgram);
     mShaderList.push_back(&gDeferredAlphaImpostorProgram);
@@ -1246,6 +1249,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gFroxelDebugProgram.unload();       // [BDMerge Froxel F0]
         gFroxelIntegrateProgram.unload();   // [BDMerge Froxel F1]
         gFroxelApplyProgram.unload();       // [BDMerge Froxel F1]
+        gFroxelInjectProgram.unload();      // [BDMerge Froxel F2]
 
         for (U32 i = 0; i < LLMaterial::SHADER_COUNT*2; ++i)
         {
@@ -3455,6 +3459,37 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         if (!success)
         {
             LL_WARNS() << "Failed to create shader '" << gFroxelApplyProgram.mName << "', disabling!" << LL_ENDL;
+            success = true;
+        }
+    }
+
+    // [BDMerge Froxel F2] P2 per-light injection pass. Mirrors the per-cone projector-
+    // volumetric program's binding needs so setupSpotLightVolumetric + sampleSpotShadow
+    // resolve identically: isDeferred (deferredUtil - clipProjectedLightVars, gobo,
+    // atten), hasShadows + SPOT_SHADOW=1 (shadowUtil's indexed projector-shadow
+    // dispatch), atmospherics features to match the proven per-cone link. PLUS it
+    // attaches froxelUtil.glsl (the grid<->atlas helper) as a second fragment object,
+    // exactly like the other froxel programs. Rendered once per injecting projector
+    // into the light atlas (additive), so it is a froxel program AND a projector
+    // program at the same time.
+    if (success)
+    {
+        gFroxelInjectProgram.mName = "Froxel Light Injection Shader";
+        gFroxelInjectProgram.mFeatures.isDeferred = true;
+        gFroxelInjectProgram.mFeatures.calculatesAtmospherics = true;
+        gFroxelInjectProgram.mFeatures.hasAtmospherics = true;
+        gFroxelInjectProgram.mFeatures.hasShadows = true;
+        gFroxelInjectProgram.mShaderFiles.clear();
+        gFroxelInjectProgram.clearPermutations();
+        gFroxelInjectProgram.addPermutation("SPOT_SHADOW", "1");
+        gFroxelInjectProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gFroxelInjectProgram.mShaderFiles.push_back(make_pair("deferred/froxelInjectF.glsl", GL_FRAGMENT_SHADER));
+        gFroxelInjectProgram.mShaderFiles.push_back(make_pair("deferred/froxelUtil.glsl", GL_FRAGMENT_SHADER));
+        gFroxelInjectProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gFroxelInjectProgram.createShader();
+        if (!success)
+        {
+            LL_WARNS() << "Failed to create shader '" << gFroxelInjectProgram.mName << "', disabling!" << LL_ENDL;
             success = true;
         }
     }

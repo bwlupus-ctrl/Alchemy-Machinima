@@ -34,6 +34,9 @@
  *   Mode 3: [F1] trilinear-sample the INTEGRATED atlas at the surface froxel and show
  *           its in-scatter radiance L (rgb) directly - validates the integrate pass
  *           independently of the scene composite.
+ *   Mode 4: [F2] trilinear-sample the LIGHT atlas at the surface froxel and show the
+ *           injected per-light in-scatter source (rgb) - shows WHERE light energy
+ *           landed in the grid (which froxels each projector illuminated).
  */
 
 /*[EXTRA_CODE_HERE]*/
@@ -44,6 +47,7 @@ in vec2 vary_fragcoord;
 
 uniform sampler2D froxelMedia;     // the RGBA16F media atlas (rgb=sigma_s, a=sigma_t)
 uniform sampler2D froxelIntegrated;// [F1] the RGBA16F integrated atlas (rgb=L, a=T)
+uniform sampler2D froxelLight;     // [F2] the RGBA16F light atlas (rgb=injected source)
 
 uniform vec3  froxel_grid;         // (GridX, GridY, GridZ)
 uniform vec4  froxel_atlas;        // (tilesX, tilesY, atlasW, atlasH)
@@ -108,6 +112,15 @@ void main()
             // integrate pass can be validated on its own (before/without the scene
             // composite). rgb = L directly; raise Ambient/Density to see it clearly.
             col = froxelTrilinear(froxelIntegrated, fc, froxel_grid, froxel_atlas).rgb;
+        }
+        else if (froxel_debug_mode == 4)
+        {
+            // ---- Mode 4: [F2] injected per-light source at the surface froxel -------
+            // Show the raw light-atlas source the injection pass deposited (before
+            // integration), so where each projector lit the grid is visible directly.
+            // rgb = injected in-scatter source; raise Density so sigma_s (which the
+            // injection multiplies in) is non-trivial and the beams read.
+            col = froxelTrilinear(froxelLight, fc, froxel_grid, froxel_atlas).rgb;
         }
         else
         {

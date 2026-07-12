@@ -11050,10 +11050,32 @@
       <key>Value</key>
       <real>0.35</real>
   </map>
+  <key>BDMergeFroxelLights</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge Froxel F2] When the froxel master (BDMergeFroxelVolumetrics) is on, inject volumetric-flagged projectors INTO the froxel grid (one flat integration cost for all of them) INSTEAD of rendering their per-cone shafts. Default ON. Turn it OFF for the F1 look (ambient-only fog) with the per-cone shafts untouched - the A/B lever between the old sharp-shaft path and the new soft-grid beams. Injected projectors are automatically excluded from the per-cone pass so they never double-light. No effect unless BDMergeFroxelVolumetrics is on.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+  </map>
+  <key>BDMergeFroxelMaxLights</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge Froxel F2] Maximum number of projector light-injection passes per frame (clamped 1-16; default 8). Volumetric-flagged projectors are injected in shadow-slot order up to this cap; any beyond it are skipped this frame (logged to the Pipeline debug tag, not spammed). Each pass is a cheap ~2MP additive atlas draw. Only active when BDMergeFroxelVolumetrics and BDMergeFroxelLights are on.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>U32</string>
+      <key>Value</key>
+      <integer>8</integer>
+  </map>
   <key>BDMergeFroxelDebug</key>
   <map>
       <key>Comment</key>
-      <string>[BDMerge Froxel F0] Froxel debug visualizer overlay. 0 = off, 1 = show media density at the surface froxel (fullscreen 50% overlay, black-&gt;green-&gt;yellow-&gt;red ramp over 0-&gt;2x BDMergeFroxelDensity - proves froxel coords line up with the scene), 2 = show one middle Z-slice tile stretched fullscreen (proves the atlas tiling), 3 = [F1] show the INTEGRATED atlas in-scatter radiance L at the surface froxel (validates the integrate pass independently of the scene composite). Only active when BDMergeFroxelVolumetrics is on.</string>
+      <string>[BDMerge Froxel F0] Froxel debug visualizer overlay. 0 = off, 1 = show media density at the surface froxel (fullscreen 50% overlay, black-&gt;green-&gt;yellow-&gt;red ramp over 0-&gt;2x BDMergeFroxelDensity - proves froxel coords line up with the scene), 2 = show one middle Z-slice tile stretched fullscreen (proves the atlas tiling), 3 = [F1] show the INTEGRATED atlas in-scatter radiance L at the surface froxel (validates the integrate pass independently of the scene composite), 4 = [F2] show the LIGHT atlas injected in-scatter source at the surface froxel (shows where each projector lit the grid; raise Density so the beams read). Only active when BDMergeFroxelVolumetrics is on.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>

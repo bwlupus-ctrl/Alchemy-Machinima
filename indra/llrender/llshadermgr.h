@@ -579,6 +579,14 @@ public:
         FROXEL_INTEGRATED,                 //  "froxelIntegrated"     (sampler: integrated atlas)
         FROXEL_AMBIENT,                    //  "froxel_ambient"
 
+        // [BDMerge Froxel F2] per-light injection. FROXEL_LIGHT is the light atlas
+        // (rgb = injected in-scatter source radiance from all projectors, a unused);
+        // FROXEL_LIGHT_ENABLE gates the integrate pass's light term so that with it
+        // 0 the integrate output is exactly F1 (ambient-only). Appended after the F1
+        // block, in lockstep with the matching push_back block in .cpp.
+        FROXEL_LIGHT,                      //  "froxelLight"          (sampler: light atlas)
+        FROXEL_LIGHT_ENABLE,               //  "froxel_light_enable"
+
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

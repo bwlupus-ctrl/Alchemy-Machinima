@@ -831,6 +831,24 @@ public:
     LLRenderTarget          mFroxelIntegrated;
     bool                    mFroxelIntegratedValid = false;
 
+    // [BDMerge Froxel F2] Light-injection froxel atlas (RGBA16F, same atlas dims as
+    // mFroxelMedia). rgb = summed per-light in-scatter SOURCE radiance (one additive
+    // pass per injecting projector); a unused. Produced by the P2 injection loop,
+    // consumed by the P4 integrate pass (added to the ambient source). Allocated /
+    // released alongside the others (lazily inside the gated block, only when
+    // BDMergeFroxelLights is on; freed in releaseGLBuffers). mFroxelLightValid tracks
+    // whether it holds this frame's injected light.
+    LLRenderTarget          mFroxelLight;
+    bool                    mFroxelLightValid = false;
+
+    // [BDMerge Froxel F2] Per-frame set of projector object UUIDs that were injected
+    // into the froxel light atlas this frame. Populated by renderFroxelVolumetrics'
+    // injection loop and read by renderProjectorVolumetric's cone loop to SKIP the
+    // per-cone shaft for those projectors (they light via the grid instead - no
+    // double-lighting). Cleared at the top of renderFroxelVolumetrics every frame, so
+    // it is empty whenever the froxel master or BDMergeFroxelLights is off.
+    std::set<LLUUID>        mFroxelInjectedProjectors;
+
     // exposure map for getting average color in scene
     LLRenderTarget          mLuminanceMap;
     LLRenderTarget          mExposureMap;
@@ -1270,7 +1288,9 @@ public:
     static F32  BDMergeFroxelNoiseScale;
     static F32  BDMergeFroxelNoiseSpeed;
     static F32  BDMergeFroxelAmbient;       // [F1] uniform ambient in-scatter radiance
-    static U32  BDMergeFroxelDebug;         // 0=off 1=density 2=Z-slice 3=integrated L
+    static bool BDMergeFroxelLights;        // [F2] inject volumetric projectors into the grid
+    static U32  BDMergeFroxelMaxLights;     // [F2] cap on injection passes/frame (clamp 1..16)
+    static U32  BDMergeFroxelDebug;         // 0=off 1=density 2=Z-slice 3=integrated L 4=light
     // [BDMerge Batch 2] Feature 1: soft (contact-hardening + filled) shadows.
     static bool BDMergeSoftProjectorShadows;   // master gate (default off)
     static F32  BDMergeSoftShadowSoftness;     // penumbra rate (kernel growth)

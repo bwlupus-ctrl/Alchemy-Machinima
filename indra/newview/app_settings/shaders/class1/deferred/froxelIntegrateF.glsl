@@ -29,8 +29,9 @@
  *   a   = transmittance T over the same span.
  * Reads ONLY the media atlas (rgb = sigma_s, a = sigma_t) - a DIFFERENT texture than
  * the write target - so there is no GL feedback-loop hazard; no 64-draw slice-scan.
- * Source radiance this batch is uniform ambient only: S_j = froxel_ambient * sigma_s.
- * F2 will add per-light in-scatter to S_j.
+ * Source radiance: uniform ambient in-scatter PLUS, when froxel_light_enable != 0,
+ * the per-light injected source from the light atlas (F2). With the gate 0 the
+ * output is exactly F1 (ambient-only) - byte-identical, no light atlas sampled.
  */
 
 /*[EXTRA_CODE_HERE]*/
@@ -40,11 +41,13 @@ out vec4 frag_color;
 in vec2 vary_fragcoord;
 
 uniform sampler2D froxelMedia;   // RGBA16F media atlas (rgb = sigma_s, a = sigma_t)
+uniform sampler2D froxelLight;   // [F2] RGBA16F light atlas (rgb = injected in-scatter source)
 
 uniform vec3  froxel_grid;       // (GridX, GridY, GridZ)
 uniform vec4  froxel_atlas;      // (tilesX, tilesY, atlasW, atlasH)
 uniform vec2  froxel_near_far;   // (camera near, BDMergeFroxelFar) metres
 uniform float froxel_ambient;    // uniform ambient in-scatter radiance (BDMergeFroxelAmbient)
+uniform int   froxel_light_enable; // [F2] 0 = ambient only (exactly F1); !=0 = add light atlas
 
 // froxelUtil.glsl
 float froxelSliceToViewZ(float slice, vec2 nf, float gz);
@@ -107,8 +110,15 @@ void main()
                               : froxelSliceToViewZ(float(j) + 0.5,  froxel_near_far, froxel_grid.z);
         float d_j   = max(zNext - zCur, 0.0);
 
-        // Source radiance this slice: uniform ambient in-scatter (F2 adds lights).
+        // Source radiance this slice: uniform ambient in-scatter, plus the per-light
+        // injected source (F2) when enabled. The light atlas is atlas-aligned with the
+        // media atlas, so the same (fx,fy,j) texel is an exact point fetch. With the
+        // gate off this is bit-identical to F1 (froxel_ambient * sigma_s only).
         vec3 S_j = froxel_ambient * sigma_s;
+        if (froxel_light_enable != 0)
+        {
+            S_j += texelFetch(froxelLight, ivec2(jtx * gx + fx, jty * gy + fy), 0).rgb;
+        }
 
         // Hillaire's energy-conserving slice integral (NOT point-sampled S*d, which
         // bands). As sigma_t -> 0 the max() floors the divisor at 1e-5 and contrib ->

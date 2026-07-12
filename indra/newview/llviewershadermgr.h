@@ -311,6 +311,8 @@ extern LLGLSLShader         gFroxelDebugProgram;
 // [BDMerge Froxel F1] P4 integrate + P5 apply passes.
 extern LLGLSLShader         gFroxelIntegrateProgram;
 extern LLGLSLShader         gFroxelApplyProgram;
+// [BDMerge Froxel F2] P2 per-light injection pass.
+extern LLGLSLShader         gFroxelInjectProgram;
 extern LLGLSLShader         gBlitWithEffectsProgram;
 extern LLGLSLShader         gCGGammaProgram;
 extern LLGLSLShader         gCGLegacyGammaProgram;

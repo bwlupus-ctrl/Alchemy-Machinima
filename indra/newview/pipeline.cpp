@@ -292,6 +292,8 @@ F32  LLPipeline::BDMergeFroxelNoiseStrength;
 F32  LLPipeline::BDMergeFroxelNoiseScale;
 F32  LLPipeline::BDMergeFroxelNoiseSpeed;
 F32  LLPipeline::BDMergeFroxelAmbient;   // [BDMerge Froxel F1]
+bool LLPipeline::BDMergeFroxelLights;    // [BDMerge Froxel F2]
+U32  LLPipeline::BDMergeFroxelMaxLights; // [BDMerge Froxel F2]
 U32  LLPipeline::BDMergeFroxelDebug;
 // [BDMerge Batch 2]
 bool LLPipeline::BDMergeSoftProjectorShadows;
@@ -735,6 +737,8 @@ void LLPipeline::init()
     connectRefreshCachedSettingsSafe("BDMergeFroxelNoiseScale");
     connectRefreshCachedSettingsSafe("BDMergeFroxelNoiseSpeed");
     connectRefreshCachedSettingsSafe("BDMergeFroxelAmbient"); // [BDMerge Froxel F1]
+    connectRefreshCachedSettingsSafe("BDMergeFroxelLights");    // [BDMerge Froxel F2]
+    connectRefreshCachedSettingsSafe("BDMergeFroxelMaxLights"); // [BDMerge Froxel F2]
     connectRefreshCachedSettingsSafe("BDMergeFroxelDebug");
     connectRefreshCachedSettingsSafe("BDMergeSoftProjectorShadows");
     connectRefreshCachedSettingsSafe("BDMergeSoftShadowSoftness");
@@ -1457,6 +1461,8 @@ void LLPipeline::refreshCachedSettings()
     BDMergeFroxelNoiseScale = gSavedSettings.getF32("BDMergeFroxelNoiseScale");
     BDMergeFroxelNoiseSpeed = gSavedSettings.getF32("BDMergeFroxelNoiseSpeed");
     BDMergeFroxelAmbient = gSavedSettings.getF32("BDMergeFroxelAmbient"); // [BDMerge Froxel F1]
+    BDMergeFroxelLights = gSavedSettings.getBOOL("BDMergeFroxelLights");       // [BDMerge Froxel F2]
+    BDMergeFroxelMaxLights = gSavedSettings.getU32("BDMergeFroxelMaxLights");  // [BDMerge Froxel F2]
     BDMergeFroxelDebug = gSavedSettings.getU32("BDMergeFroxelDebug");
     // [BDMerge Batch 2]
     BDMergeSoftProjectorShadows = gSavedSettings.getBOOL("BDMergeSoftProjectorShadows");
@@ -1537,6 +1543,8 @@ void LLPipeline::releaseGLBuffers()
     mFroxelMediaValid = false;
     mFroxelIntegrated.release(); // [BDMerge Froxel F1] integrated froxel atlas
     mFroxelIntegratedValid = false;
+    mFroxelLight.release(); // [BDMerge Froxel F2] light-injection froxel atlas
+    mFroxelLightValid = false;
 
     mWaterExclusionMask.release();
 
@@ -9547,6 +9555,13 @@ void LLPipeline::renderVolumetric(LLRenderTarget* src, LLRenderTarget* dst)
 // the frame is byte-identical to today. Called right before renderProjectorVolumetric.
 void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
 {
+    // [BDMerge Froxel F2] Clear the per-frame injected-projector set up front, BEFORE
+    // the master gate's early-return, so that when the froxel master (or the lights
+    // lever) is off the set is empty and renderProjectorVolumetric's per-cone loop is
+    // never excluded - the per-cone path stays exactly as it was.
+    mFroxelInjectedProjectors.clear();
+    mFroxelLightValid = false;
+
     // Master gate: OFF => no alloc, no passes, no debug. Also require a non-cube
     // frame and a compiled media program (the debug pass is separately gated below).
     if (!BDMergeFroxelVolumetrics || gCubeSnapshot || !gFroxelMediaProgram.isComplete())
@@ -9652,6 +9667,181 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
         mFroxelMediaValid = true;
     }
 
+    // ---- P2 light injection into the light atlas ----------------------------
+    // ONE additive pass per volumetric-flagged projector (blend GL_ONE,GL_ONE) into
+    // mFroxelLight, each binding ONE projector's cookie + shadow slot with the SAME
+    // helpers the per-cone path uses (setupSpotLightVolumetric + the per-cone uniform
+    // list). Every fragment is one froxel; the shader evaluates that projector at the
+    // froxel centre (frustum/cookie/atten/shadow/phase) x the shared media sigma_s and
+    // outputs the in-scatter source, so N lights = N ~2MP passes and O(1) integrate.
+    // Gated on BDMergeFroxelLights AND shadow detail (the injection samples the spot
+    // shadow maps, populated only when shadows are on). When off, nothing here runs,
+    // the light atlas is neither allocated nor bound, and the integrate pass runs
+    // exactly as F1 (ambient-only) via froxel_light_enable = 0.
+    bool inject = BDMergeFroxelLights && RenderShadowDetail > 0 && !gCubeSnapshot &&
+                  gFroxelInjectProgram.isComplete();
+    if (inject &&
+        (mFroxelLight.getWidth() != atlasW || mFroxelLight.getHeight() != atlasH))
+    {
+        mFroxelLight.release();
+        if (!mFroxelLight.allocate(atlasW, atlasH, GL_RGBA16F))
+        {
+            inject = false; // allocation failed -> skip injection this frame
+        }
+    }
+    if (inject)
+    {
+        LL_PROFILE_GPU_ZONE("froxel inject");
+
+        // Match the deferred spot loop's light-color scale (same as the per-cone path;
+        // renderFinalize asserts !gCubeSnapshot so this is the plain global scale).
+        static LLCachedControl<F32> alchemy_light_scale(gSavedSettings, "AlchemyGlobalLightScale", 1.f);
+        const F32 light_scale = alchemy_light_scale;
+
+        mFroxelLight.bindTarget(); // viewport = atlas size
+
+        // Clear to 0 WITHOUT scissor (mirror the mProjVolHalf clear's guard against a
+        // stale scissor rect leaving garbage in the atlas border), then accumulate.
+        {
+            LLGLDisable no_scissor(GL_SCISSOR_TEST);
+            glClearColor(0.f, 0.f, 0.f, 0.f);
+            mFroxelLight.clear(GL_COLOR_BUFFER_BIT);
+        }
+
+        LLGLDepthTest depth(GL_FALSE);
+        LLGLEnable    blend(GL_BLEND);
+        LLGLDisable   no_scissor(GL_SCISSOR_TEST);
+        gGL.setSceneBlendType(LLRender::BT_ADD); // GL_ONE, GL_ONE additive over lights
+        gGL.setColorMask(true, true);
+
+        // bindDeferredShader ONCE (binds the full per-slot spot-shadow set so
+        // sampleSpotShadow resolves); per-light cookie/geometry come from
+        // setupSpotLightVolumetric inside the loop, exactly like the per-cone path.
+        bindDeferredShader(gFroxelInjectProgram);
+
+        // Shared froxel uniforms (froxel-centre reconstruction + media coupling).
+        gFroxelInjectProgram.uniform3fv(LLShaderMgr::FROXEL_GRID, 1, grid3);
+        gFroxelInjectProgram.uniform4fv(LLShaderMgr::FROXEL_ATLAS, 1, atlas4);
+        gFroxelInjectProgram.uniform2fv(LLShaderMgr::FROXEL_NEAR_FAR, 1, nearfar);
+        gFroxelInjectProgram.uniform2fv(LLShaderMgr::FROXEL_TAN_HALF_FOV, 1, thf2);
+
+        S32 mch = gFroxelInjectProgram.enableTexture(LLShaderMgr::FROXEL_MEDIA);
+        if (mch > -1)
+        {
+            mFroxelMedia.bindTexture(0, mch, LLTexUnit::TFO_POINT); // atlas-aligned point fetch
+        }
+        gFroxelInjectProgram.enableTexture(LLShaderMgr::DEFERRED_PROJECTION);
+
+        mScreenTriangleVB->setBuffer();
+
+        const U32 max_lights = llclamp(BDMergeFroxelMaxLights, (U32)1, (U32)16);
+        U32 injected = 0;
+        U32 overflow = 0;
+
+        // Same slot iteration + validity + volumetric-flag matching as the per-cone
+        // loop (renderProjectorVolumetric); slots beyond max_lights are counted as
+        // overflow but not drawn (no per-frame spam - LL_DEBUGS only).
+        for (U32 i = 0; i < bdmergeMaxSpotShadows(); ++i)
+        {
+            LLDrawable* drawablep = mShadowSpotLight[i];
+            if (drawablep == NULL)
+            {
+                continue;
+            }
+            LLRenderTarget* shadow_target = getSpotShadowTarget(i);
+            if (shadow_target == NULL || shadow_target->getWidth() == 0)
+            {
+                continue;
+            }
+            LLVOVolume* volume = drawablep->getVOVolume();
+            if (volume == NULL)
+            {
+                continue;
+            }
+
+            // Match the light-source prim's own ID and its root-edit ID (identical to
+            // the per-cone loop's session-only art-direction filter).
+            LLUUID matched_id;
+            if (isVolumetricShaftEnabled(volume->getID()))
+            {
+                matched_id = volume->getID();
+            }
+            else if (LLViewerObject* root = volume->getRootEdit())
+            {
+                if (isVolumetricShaftEnabled(root->getID()))
+                    matched_id = root->getID();
+            }
+            if (matched_id.isNull())
+            {
+                continue;
+            }
+
+            if (injected >= max_lights)
+            {
+                ++overflow; // flagged but over the per-frame cap -> not injected
+                continue;
+            }
+
+            // Side-effect-free geometry + cookie upload; slot passed in directly.
+            setupSpotLightVolumetric(gFroxelInjectProgram, drawablep, (S32)i);
+
+            // Per-projector override, resolved exactly like the per-cone loop so the
+            // grid beam honors the same captured art-direction (brightness/feather/g/
+            // tint). Density is NOT applied here - the shared media atlas already
+            // carries it via sigma_s (the physical scattering coupling).
+            VolumetricShaftOverride ov;
+            const bool has_ov = getVolumetricShaftOverride(matched_id, ov);
+            const F32 e_mult     = has_ov ? ov.multiplier   : BDMergeProjectorVolumetricsMultiplier;
+            const F32 e_feather  = has_ov ? ov.feather      : BDMergeProjectorVolumetricsFeather;
+            const F32 e_g        = has_ov ? ov.anisotropy   : BDMergeProjectorVolumetricsAnisotropy;
+            const LLColor3 e_tint = has_ov ? ov.tint        : BDMergeProjectorVolumetricsTint;
+            const F32 e_tintStr  = has_ov ? ov.tintStrength : BDMergeProjectorVolumetricsTintStrength;
+
+            gFroxelInjectProgram.uniform1f(LLShaderMgr::GODRAY_MULTIPLIER, e_mult);
+            gFroxelInjectProgram.uniform1f(LLShaderMgr::PROJVOL_FEATHER, e_feather);
+            gFroxelInjectProgram.uniform1f(LLShaderMgr::PROJVOL_G, e_g);
+
+            LLColor3 col = volume->getLightLinearColor() * light_scale;
+            if (e_tintStr > 0.f) // shaft tint lerp (no-op at TintStrength 0), same as per-cone
+            {
+                const F32 t = llclamp(e_tintStr, 0.f, 1.f);
+                col = col * (1.f - t) + e_tint * (light_scale * t);
+            }
+            glm::vec3 c(drawablep->getPositionAgent());
+            c = mul_mat4_vec3(mat, c); // agent -> view space
+            const F32 radius = volume->getLightRadius() * 1.5f;
+
+            gFroxelInjectProgram.uniform3fv(LLShaderMgr::LIGHT_CENTER, 1, glm::value_ptr(c));
+            gFroxelInjectProgram.uniform1f(LLShaderMgr::LIGHT_SIZE, radius);
+            gFroxelInjectProgram.uniform3fv(LLShaderMgr::DIFFUSE_COLOR, 1, col.mV);
+            gFroxelInjectProgram.uniform1f(LLShaderMgr::LIGHT_FALLOFF, volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF));
+
+            mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+
+            // Mark this projector injected so the per-cone loop skips its shaft.
+            mFroxelInjectedProjectors.insert(matched_id);
+            ++injected;
+        }
+
+        if (overflow > 0)
+        {
+            LL_DEBUGS("Pipeline") << "Froxel light injection capped at " << max_lights
+                                  << " projectors (" << overflow << " more flagged, skipped this frame)" << LL_ENDL;
+        }
+
+        gFroxelInjectProgram.disableTexture(LLShaderMgr::DEFERRED_PROJECTION);
+        if (mch > -1)
+        {
+            gFroxelInjectProgram.disableTexture(LLShaderMgr::FROXEL_MEDIA);
+        }
+        unbindDeferredShader(gFroxelInjectProgram);
+
+        gGL.setColorMask(true, true);
+        gGL.setSceneBlendType(LLRender::BT_ALPHA); // restore default
+        mFroxelLight.flush();
+        mFroxelLightValid = true;
+    }
+
     // ---- P4 integrate pass into the integrated atlas ------------------------
     // One full-atlas draw: every output fragment (fx,fy,k) front-to-back integrates
     // the media column j=0..k with Hillaire's energy-conserving slice integral,
@@ -9677,6 +9867,21 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
             mFroxelMedia.bindTexture(0, ch, LLTexUnit::TFO_POINT); // point-fetch the aligned column
         }
 
+        // [BDMerge Froxel F2] Bind the light atlas + gate the light term. When lights
+        // are off (mFroxelLightValid false) the gate is 0 and the shader never samples
+        // the light atlas -> the integrate output is exactly F1 (ambient-only).
+        const bool light_on = mFroxelLightValid;
+        S32 lch = -1;
+        gFroxelIntegrateProgram.uniform1i(LLShaderMgr::FROXEL_LIGHT_ENABLE, light_on ? 1 : 0);
+        if (light_on)
+        {
+            lch = gFroxelIntegrateProgram.enableTexture(LLShaderMgr::FROXEL_LIGHT);
+            if (lch > -1)
+            {
+                mFroxelLight.bindTexture(0, lch, LLTexUnit::TFO_POINT); // atlas-aligned point fetch
+            }
+        }
+
         gFroxelIntegrateProgram.uniform3fv(LLShaderMgr::FROXEL_GRID, 1, grid3);
         gFroxelIntegrateProgram.uniform4fv(LLShaderMgr::FROXEL_ATLAS, 1, atlas4);
         gFroxelIntegrateProgram.uniform2fv(LLShaderMgr::FROXEL_NEAR_FAR, 1, nearfar);
@@ -9688,6 +9893,10 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
         if (ch > -1)
         {
             gFroxelIntegrateProgram.disableTexture(LLShaderMgr::FROXEL_MEDIA);
+        }
+        if (lch > -1)
+        {
+            gFroxelIntegrateProgram.disableTexture(LLShaderMgr::FROXEL_LIGHT);
         }
         gFroxelIntegrateProgram.unbind();
         mFroxelIntegrated.flush();
@@ -9771,6 +9980,14 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
             mFroxelIntegrated.bindTexture(0, chi, LLTexUnit::TFO_BILINEAR);
         }
 
+        // [BDMerge Froxel F2] Mode 4 visualizes the light atlas; bind it too (valid
+        // only when injection ran this frame). Harmless for modes 1/2/3.
+        S32 chl = gFroxelDebugProgram.enableTexture(LLShaderMgr::FROXEL_LIGHT);
+        if (chl > -1 && mFroxelLightValid)
+        {
+            mFroxelLight.bindTexture(0, chl, LLTexUnit::TFO_BILINEAR);
+        }
+
         // Mode 2 shows a fixed middle Z-slice tile (simple, deterministic).
         const F32 debug_slice = floorf((F32)gz * 0.5f);
 
@@ -9791,6 +10008,10 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
         if (chi > -1)
         {
             gFroxelDebugProgram.disableTexture(LLShaderMgr::FROXEL_INTEGRATED); // [BDMerge Froxel F1]
+        }
+        if (chl > -1)
+        {
+            gFroxelDebugProgram.disableTexture(LLShaderMgr::FROXEL_LIGHT); // [BDMerge Froxel F2]
         }
         unbindDeferredShader(gFroxelDebugProgram);
         gGL.setColorMask(true, true);
@@ -10037,6 +10258,18 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
             {
                 continue;
             }
+        }
+
+        // [BDMerge Froxel F2] Skip the per-cone shaft for any projector that was
+        // injected into the froxel light grid this frame - it lights via the grid
+        // (soft, volumetric) instead, so marching it here too would double-light. The
+        // set is populated by renderFroxelVolumetrics' injection loop (which runs
+        // earlier this frame) and is empty whenever the froxel master or the lights
+        // lever is off, so the per-cone path is unchanged in that case.
+        if (BDMergeFroxelVolumetrics && BDMergeFroxelLights &&
+            mFroxelInjectedProjectors.count(matched_id) != 0)
+        {
+            continue;
         }
 
         // Side-effect-free geometry + cookie upload; slot passed in directly

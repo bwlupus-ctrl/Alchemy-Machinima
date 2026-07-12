@@ -1775,6 +1775,11 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("froxelIntegrated");
     mReservedUniforms.push_back("froxel_ambient");
 
+    // [BDMerge Froxel F2] per-light injection (lockstep with the FROXEL_LIGHT /
+    // FROXEL_LIGHT_ENABLE enums appended to the FROXEL_* block in llshadermgr.h).
+    mReservedUniforms.push_back("froxelLight");
+    mReservedUniforms.push_back("froxel_light_enable");
+
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 
     std::set<std::string> dupe_check;
