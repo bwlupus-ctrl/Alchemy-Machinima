@@ -1297,15 +1297,20 @@ bool LLWindowWin32::switchContext(bool fullscreen, const LLCoordScreen& size, bo
 
     if (fullscreen && sBorderlessFullscreen)
     {
-        // [BDMerge Borderless] Borderless fullscreen windowed on the PRIMARY monitor:
-        // a plain WS_POPUP window sized to the primary monitor's WORK AREA. No display
-        // mode change (no EnumDisplaySettings hunt / setDisplayResolution), NOT topmost,
-        // and no focus-time churn - so it behaves like an ordinary window: click off and
-        // it just loses focus (no minimize, no desktop-mode flicker), other apps and
-        // monitors stay fully usable. Work area (not full monitor bounds) means a
-        // non-topmost window never underlaps the taskbar and occludes the viewer's own
-        // UI; if the taskbar is set to auto-hide the work area is the full monitor and
-        // the cover becomes edge-to-edge (best for machinima capture).
+        // [BDMerge Borderless] Borderless fullscreen windowed on the PRIMARY monitor: a
+        // plain WS_POPUP window, NOT topmost, with NO display-mode change - so it behaves
+        // like an ordinary window (click off = just loses focus).
+        //
+        // CRITICAL anti-"exclusive" measure: Windows "Fullscreen Optimizations" silently
+        // promotes a borderless window that covers a monitor EXACTLY into independent-flip
+        // / exclusive-style presentation - which is what produced the alt-tab pause, black
+        // flash and "changing resolution" feel even though this code never calls
+        // ChangeDisplaySettings. (It bit us specifically once the taskbar was hidden, which
+        // makes the work area equal the full monitor -> an exact cover.) We defeat it by
+        // making the window ONE PIXEL taller than its target rect: a window that does not
+        // exactly match the monitor is never eligible for the optimization, so it stays
+        // fully composited/windowed. The extra row hangs 1px off the bottom edge (off
+        // screen), so the visible result is still edge-to-edge.
         mFullscreen = true;
 
         RECT mon;
@@ -1318,9 +1323,10 @@ bool LLWindowWin32::switchContext(bool fullscreen, const LLCoordScreen& size, bo
             mon.bottom = height;
         }
 
-        window_rect = mon;                              // primary work-area bounds
-        mFullscreenWidth   = mon.right - mon.left;
-        mFullscreenHeight  = mon.bottom - mon.top;
+        window_rect = mon;
+        window_rect.bottom += 1;                        // +1px overhang: defeat Fullscreen Optimizations
+        mFullscreenWidth   = window_rect.right - window_rect.left;
+        mFullscreenHeight  = window_rect.bottom - window_rect.top;
         mFullscreenRefresh = (S32)current_refresh;      // desktop refresh; unchanged
         dw_ex_style = WS_EX_APPWINDOW;                  // NOT topmost - no exclusive feel
         dw_style    = WS_POPUP;                         // borderless
@@ -1330,7 +1336,7 @@ bool LLWindowWin32::switchContext(bool fullscreen, const LLCoordScreen& size, bo
         LL_INFOS("Window") << "[BDMerge Borderless] PRIMARY-monitor borderless windowed "
             << mFullscreenWidth << "x" << mFullscreenHeight
             << " at (" << mon.left << "," << mon.top << ")"
-            << " - no mode change, not topmost" << LL_ENDL;
+            << " - no mode change, not topmost, +1px anti-FSO overhang" << LL_ENDL;
     }
     else if (fullscreen)
     {
