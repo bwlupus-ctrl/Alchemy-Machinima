@@ -293,6 +293,9 @@ F32  LLPipeline::BDMergeFroxelFogBase;
 F32  LLPipeline::BDMergeFroxelNoiseStrength;
 F32  LLPipeline::BDMergeFroxelNoiseScale;
 F32  LLPipeline::BDMergeFroxelNoiseSpeed;
+F32  LLPipeline::BDMergeFroxelWindX;     // [BDMerge Froxel F5]
+F32  LLPipeline::BDMergeFroxelWindY;     // [BDMerge Froxel F5]
+F32  LLPipeline::BDMergeFroxelWindZ;     // [BDMerge Froxel F5]
 F32  LLPipeline::BDMergeFroxelAmbient;   // [BDMerge Froxel F1]
 bool LLPipeline::BDMergeFroxelLights;    // [BDMerge Froxel F2]
 U32  LLPipeline::BDMergeFroxelMaxLights; // [BDMerge Froxel F2]
@@ -748,6 +751,9 @@ void LLPipeline::init()
     connectRefreshCachedSettingsSafe("BDMergeFroxelNoiseStrength");
     connectRefreshCachedSettingsSafe("BDMergeFroxelNoiseScale");
     connectRefreshCachedSettingsSafe("BDMergeFroxelNoiseSpeed");
+    connectRefreshCachedSettingsSafe("BDMergeFroxelWindX"); // [BDMerge Froxel F5]
+    connectRefreshCachedSettingsSafe("BDMergeFroxelWindY"); // [BDMerge Froxel F5]
+    connectRefreshCachedSettingsSafe("BDMergeFroxelWindZ"); // [BDMerge Froxel F5]
     connectRefreshCachedSettingsSafe("BDMergeFroxelAmbient"); // [BDMerge Froxel F1]
     connectRefreshCachedSettingsSafe("BDMergeFroxelLights");    // [BDMerge Froxel F2]
     connectRefreshCachedSettingsSafe("BDMergeFroxelMaxLights"); // [BDMerge Froxel F2]
@@ -1476,6 +1482,9 @@ void LLPipeline::refreshCachedSettings()
     BDMergeFroxelNoiseStrength = gSavedSettings.getF32("BDMergeFroxelNoiseStrength");
     BDMergeFroxelNoiseScale = gSavedSettings.getF32("BDMergeFroxelNoiseScale");
     BDMergeFroxelNoiseSpeed = gSavedSettings.getF32("BDMergeFroxelNoiseSpeed");
+    BDMergeFroxelWindX = gSavedSettings.getF32("BDMergeFroxelWindX"); // [BDMerge Froxel F5]
+    BDMergeFroxelWindY = gSavedSettings.getF32("BDMergeFroxelWindY"); // [BDMerge Froxel F5]
+    BDMergeFroxelWindZ = gSavedSettings.getF32("BDMergeFroxelWindZ"); // [BDMerge Froxel F5]
     BDMergeFroxelAmbient = gSavedSettings.getF32("BDMergeFroxelAmbient"); // [BDMerge Froxel F1]
     BDMergeFroxelLights = gSavedSettings.getBOOL("BDMergeFroxelLights");       // [BDMerge Froxel F2]
     BDMergeFroxelMaxLights = gSavedSettings.getU32("BDMergeFroxelMaxLights");  // [BDMerge Froxel F2]
@@ -9692,6 +9701,17 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
         gFroxelMediaProgram.uniform1f(LLShaderMgr::FROXEL_NOISE_STRENGTH, llclamp(BDMergeFroxelNoiseStrength, 0.f, 1.f));
         gFroxelMediaProgram.uniform1f(LLShaderMgr::FROXEL_NOISE_SCALE, llmax(BDMergeFroxelNoiseScale, 0.f));
         gFroxelMediaProgram.uniform1f(LLShaderMgr::FROXEL_NOISE_SPEED, BDMergeFroxelNoiseSpeed);
+        // [F5] Directional drift: fold the master NoiseSpeed into the wind direction so
+        // the shader scrolls the noise along (WindX,WindY,WindZ) * NoiseSpeed (agent axes,
+        // negatives valid). Replaces the old hardwired (1,1,1) diagonal.
+        {
+            F32 wind3[3] = {
+                BDMergeFroxelWindX * BDMergeFroxelNoiseSpeed,
+                BDMergeFroxelWindY * BDMergeFroxelNoiseSpeed,
+                BDMergeFroxelWindZ * BDMergeFroxelNoiseSpeed
+            };
+            gFroxelMediaProgram.uniform3fv(LLShaderMgr::FROXEL_WIND, 1, wind3);
+        }
         gFroxelMediaProgram.uniform1f(LLShaderMgr::FROXEL_TIME, fmodf(gFrameTimeSeconds, 3600.f));
 
         mScreenTriangleVB->setBuffer();

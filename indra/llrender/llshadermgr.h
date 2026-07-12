@@ -570,6 +570,7 @@ public:
         FROXEL_NOISE_STRENGTH,             //  "froxel_noise_strength"
         FROXEL_NOISE_SCALE,                //  "froxel_noise_scale"
         FROXEL_NOISE_SPEED,                //  "froxel_noise_speed"
+        FROXEL_WIND,                       //  "froxel_wind"          [F5] (wind_dir * noise_speed)
         FROXEL_TIME,                       //  "froxel_time"
         FROXEL_DEBUG_MODE,                 //  "froxel_debug_mode"
         FROXEL_DEBUG_SLICE,                //  "froxel_debug_slice"

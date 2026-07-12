@@ -53,7 +53,8 @@ uniform float froxel_fog_falloff;         // e-fold altitude falloff (metres)
 uniform float froxel_fog_base;            // ground reference altitude (agent Z)
 uniform float froxel_noise_strength;      // animated noise amount (0 = off)
 uniform float froxel_noise_scale;         // noise spatial scale (cycles/m)
-uniform float froxel_noise_speed;         // noise scroll speed (m/s)
+uniform float froxel_noise_speed;         // master noise scroll speed (m/s); folded into froxel_wind CPU-side
+uniform vec3  froxel_wind;                // [F5] scroll velocity in agent axes = wind_dir * noise_speed (m/s)
 uniform float froxel_time;                // continuous seconds (noise scroll)
 
 // froxelUtil.glsl
@@ -95,12 +96,15 @@ void main()
     // Base extinction.
     float sigma_t = max(froxel_density, 0.0);
 
-    // Animated value-noise fbm -> drifting dust motes. World-anchored + slowly
-    // scrolled, centred on 1.0 so it varies density symmetrically. (Same form as
-    // the per-cone projvol noise.)
+    // Animated value-noise fbm -> drifting dust motes. World-anchored and scrolled
+    // along froxel_wind (a directional wind velocity in agent axes = wind_dir *
+    // noise_speed, computed CPU-side), centred on 1.0 so it varies density
+    // symmetrically. [F5] The old drift was the fixed (1,1,1) diagonal; the wind
+    // vector now steers the direction (X/Y region-horizontal, Z vertical, negatives
+    // reverse) so fog can be made to blow across the scene naturally.
     if (froxel_noise_strength > 0.0)
     {
-        vec3  np   = wpos * froxel_noise_scale + vec3(froxel_time * froxel_noise_speed);
+        vec3  np   = wpos * froxel_noise_scale + froxel_wind * froxel_time;
         float n    = froxelFbm(np);                       // ~[0,1], mean ~0.5
         float mote = 1.0 + froxel_noise_strength * (n * 2.0 - 1.0);
         sigma_t   *= max(mote, 0.0);

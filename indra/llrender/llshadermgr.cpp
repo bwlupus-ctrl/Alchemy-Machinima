@@ -1768,6 +1768,7 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("froxel_noise_strength");
     mReservedUniforms.push_back("froxel_noise_scale");
     mReservedUniforms.push_back("froxel_noise_speed");
+    mReservedUniforms.push_back("froxel_wind"); // [F5] wind_dir * noise_speed
     mReservedUniforms.push_back("froxel_time");
     mReservedUniforms.push_back("froxel_debug_mode");
     mReservedUniforms.push_back("froxel_debug_slice");

@@ -11064,13 +11064,46 @@
   <key>BDMergeFroxelNoiseSpeed</key>
   <map>
       <key>Comment</key>
-      <string>[BDMerge Froxel F0] Scroll speed of the animated noise medium in metres per second (0.0-2.0; default 0.1). Slow drift reads as gently settling dust. Only active when BDMergeFroxelNoiseStrength &gt; 0.</string>
+      <string>[BDMerge Froxel F0/F5] Master scroll speed of the animated noise medium in metres per second (-2.0..2.0; default 0.1). Multiplies the BDMergeFroxelWindX/Y/Z direction vector to give the actual drift velocity; negative reverses the drift along the wind vector. Slow drift reads as gently settling dust. Only active when BDMergeFroxelNoiseStrength &gt; 0.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
       <string>F32</string>
       <key>Value</key>
       <real>0.1</real>
+  </map>
+  <key>BDMergeFroxelWindX</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge Froxel F5] Wind/drift direction of the animated noise medium along the region X (east/west) axis (-2.0..2.0; default 1.0). The effective scroll velocity is (WindX,WindY,WindZ) * BDMergeFroxelNoiseSpeed, so this steers which way the fog drifts; negative reverses it. Old default was the fixed (1,1,1) diagonal; the new (1,0,0.15) default is a mostly-horizontal, more natural drift. Only active when BDMergeFroxelNoiseStrength &gt; 0.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.0</real>
+  </map>
+  <key>BDMergeFroxelWindY</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge Froxel F5] Wind/drift direction of the animated noise medium along the region Y (north/south) axis (-2.0..2.0; default 0.0). The effective scroll velocity is (WindX,WindY,WindZ) * BDMergeFroxelNoiseSpeed; negative reverses it. Only active when BDMergeFroxelNoiseStrength &gt; 0.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+  </map>
+  <key>BDMergeFroxelWindZ</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge Froxel F5] Wind/drift direction of the animated noise medium along the vertical Z (up/down) axis (-2.0..2.0; default 0.15). The effective scroll velocity is (WindX,WindY,WindZ) * BDMergeFroxelNoiseSpeed; a small positive value gives a gentle upward rise, negative sinks the drift. Only active when BDMergeFroxelNoiseStrength &gt; 0.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.15</real>
   </map>
   <key>BDMergeFroxelAmbient</key>
   <map>
