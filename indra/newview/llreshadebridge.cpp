@@ -111,6 +111,13 @@ void LLReShadeBridge::gatherFrame()
             f.mTexColorHDR = scr.getTexture(0);
         }
 
+        // [RTGI Step B] A5.4 velocity buffer (RG16F, NDC-delta). Only allocated when
+        // BDMergeVelocityBuffer is on; getWidth()==0 => not produced this session.
+        if (gPipeline.mVelocityMap.getWidth() > 0 && gPipeline.mVelocityMap.getNumTextures() > 0)
+        {
+            f.mTexVelocity = gPipeline.mVelocityMap.getTexture(0);
+        }
+
         // Consider the frame usable only if the two effect-critical buffers exist.
         f.mValid = (f.mTexNormals != 0) && (f.mTexDepth != 0);
     }
@@ -134,7 +141,8 @@ void LLReShadeBridge::gatherFrame()
 // once lets its contents flow every frame - re-binding per frame is expensive and
 // unnecessary. We therefore (re)bind only when the depth texture name changes
 // (i.e. the render targets were (re)allocated on a resolution change).
-static U32 sBoundDepthName = 0;
+static U32 sBoundDepthName    = 0;
+static U32 sBoundVelocityName = 0;   // [RTGI Step B]
 
 static reshade::api::resource_view gl_tex_srv(U32 gl_name)
 {
@@ -148,17 +156,34 @@ static void on_reshade_begin_effects(reshade::api::effect_runtime* runtime,
                                      reshade::api::resource_view /*rtv_srgb*/)
 {
     const LLReShadeFrameData& f = LLReShadeBridge::instance().getFrameData();
-    if (!f.mValid || f.mTexDepth == 0 || f.mTexDepth == sBoundDepthName)
+    if (!f.mValid)
     {
         return;
     }
-    sBoundDepthName = f.mTexDepth;
 
-    reshade::api::resource_view srv = gl_tex_srv(f.mTexDepth);
-    runtime->update_texture_bindings("DEPTH", srv, srv);
+    // Each binding (re)fires only when its GL texture name changes (RT (re)alloc);
+    // a stable name flows its contents to ReShade every frame without re-binding.
+    if (f.mTexDepth != 0 && f.mTexDepth != sBoundDepthName)
+    {
+        sBoundDepthName = f.mTexDepth;
+        reshade::api::resource_view srv = gl_tex_srv(f.mTexDepth);
+        runtime->update_texture_bindings("DEPTH", srv, srv);
+        LL_INFOS("ReShade") << "[RTGI Step A] bound viewer depth (GL " << f.mTexDepth
+                            << ") to ReShade DEPTH semantic" << LL_ENDL;
+    }
 
-    LL_INFOS("ReShade") << "[RTGI Step A] bound viewer depth (GL " << f.mTexDepth
-                        << ") to ReShade DEPTH semantic" << LL_ENDL;
+    // [RTGI Step B] Bind the A5.4 velocity buffer to a custom semantic that our
+    // SL_GBufferProvider.fx reads and transcodes into iMMERSE's shared
+    // Deferred::MotionVectorsTex (NDC-delta -> UV-delta). Same bind-once-per-handle
+    // rule. 0 when BDMergeVelocityBuffer is off (no motion produced this session).
+    if (f.mTexVelocity != 0 && f.mTexVelocity != sBoundVelocityName)
+    {
+        sBoundVelocityName = f.mTexVelocity;
+        reshade::api::resource_view srv = gl_tex_srv(f.mTexVelocity);
+        runtime->update_texture_bindings("SL_MOTION_NDC", srv, srv);
+        LL_INFOS("ReShade") << "[RTGI Step B] bound viewer velocity (GL " << f.mTexVelocity
+                            << ") to ReShade SL_MOTION_NDC semantic" << LL_ENDL;
+    }
 }
 
 static void on_destroy_effect_runtime(reshade::api::effect_runtime* /*runtime*/)

@@ -51,8 +51,10 @@ struct LLReShadeFrameData
     U32 mTexDepth    = 0;       // depth buffer (shared by deferredScreen/screen)
     U32 mTexAlbedo   = 0;       // deferredScreen attachment 0
     U32 mTexORM      = 0;       // deferredScreen attachment 1 (occlusion/roughness/metallic)
-    U32 mTexNormals  = 0;       // deferredScreen attachment 2 (encoded world normals)
+    U32 mTexNormals  = 0;       // deferredScreen attachment 2 (encoded view-space normals)
     U32 mTexEmissive = 0;       // deferredScreen attachment 3 (optional; 0 if disabled)
+    U32 mTexVelocity = 0;       // [RTGI Step B] A5.4 mVelocityMap (RG16F): per-pixel
+                                // NDC-space motion delta (cur_ndc - last_ndc)
 
     bool mValid = false;        // false if the pipeline had no usable RT this frame
 };
