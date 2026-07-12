@@ -2196,6 +2196,25 @@ bool LLAppViewer::cleanup()
 
     removeDumpDir();
 
+    // [BDMerge FastExit] Everything durable is now persisted (settings, per-account
+    // settings, mute list, conversation/transaction logs, inventory cache) and all
+    // child processes (SLVoice, media/CEF plugins) and worker threads have already
+    // been shut down above - the only thing left in the normal path is ~LLAppViewer
+    // plus the C/C++ static-destructor and CRT heap teardown, which merely frees
+    // memory the OS is about to reclaim anyway. On a long, bloated session that
+    // teardown (the CRT walking and freeing millions of allocations) is what makes
+    // the client take an age to actually disappear. Hand the whole address space
+    // back to the OS at once instead. removeMarkerFiles() is normally called later
+    // from ~LLAppViewer, so do it here first or the next launch flags a false crash.
+    // Gated (default on); set BDMergeFastExit=0 for a fully graceful teardown.
+    static LLCachedControl<bool> fast_exit(gSavedSettings, "BDMergeFastExit", true);
+    if (fast_exit)
+    {
+        LL_INFOS() << "[BDMerge FastExit] Persistence and subsystem shutdown complete; skipping static teardown and exiting now." << LL_ENDL;
+        removeMarkerFiles();
+        _exit(0);
+    }
+
     // return 0;
     return true;
 }

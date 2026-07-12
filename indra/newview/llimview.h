@@ -141,6 +141,16 @@ public:
 
         chat_message_list_t mMsgs;
 
+        // [BDMerge ChatCap] Number of oldest messages dropped from mMsgs by the
+        // in-RAM cap (BDMergeMaxSessionChatMessages). Every message's "index" is
+        // its absolute position since session start; when we trim the oldest off
+        // the back of mMsgs we bump this instead of re-indexing, so the invariant
+        // (front index == mMsgs.size() + mMsgTrimOffset - 1) still holds and the
+        // incremental-display arithmetic in getMessagesSilently stays correct.
+        // The full transcript is on disk (logToFile), so trimmed lines are never
+        // lost. Reset on session clear.
+        S32 mMsgTrimOffset { 0 };
+
         LLVoiceChannel* mVoiceChannel;
         LLIMSpeakerMgr* mSpeakers;
         bool            mP2PAsAdhocCall;

@@ -1040,13 +1040,33 @@ void LLIMModel::LLIMSession::addMessage(const std::string& from,
     message["message"] = utf8_text;
     message["time"] = time;         // string used in display, may be full data YYYY/MM/DD HH:MM or just HH:MM
     message["timestamp"] = (S32)timestamp;          // use string? LLLogChat::timestamp2LogString(timestamp, true);
-    message["index"] = (LLSD::Integer)mMsgs.size();
+    // [BDMerge ChatCap] Absolute index = position since session start = live count
+    // (mMsgs.size()) plus however many were already trimmed (mMsgTrimOffset).
+    message["index"] = (LLSD::Integer)(mMsgs.size() + mMsgTrimOffset);
     message["is_history"] = is_history;
     message["is_region_msg"] = is_region_msg;
 
     LL_DEBUGS("UIUsage") << "addMessage " << " from " << from << " from_id " << from_id << " utf8_text " << utf8_text << " time " << time << " is_history " << is_history << " session mType " << mType << LL_ENDL;
 
     mMsgs.push_front(message);          // Add most recent messages to the front of mMsgs
+
+    // [BDMerge ChatCap] Bound the in-RAM per-session backlog so a long, busy
+    // session (heavy group / nearby chat) doesn't accumulate an unbounded LLSD
+    // list that costs memory and slows shutdown teardown. The full transcript is
+    // already persisted to disk per message (logToFile), and re-opening a session
+    // reloads older lines from the on-disk cache, so dropping the oldest in-RAM
+    // entries loses no data. pop_back() is O(1) on std::list; mMsgTrimOffset keeps
+    // message indices absolute so getMessagesSilently() stays correct. 0 = off.
+    static LLCachedControl<S32> max_session_msgs(gSavedSettings, "BDMergeMaxSessionChatMessages", 8192);
+    const S32 cap = max_session_msgs;
+    if (cap > 0)
+    {
+        while ((S32)mMsgs.size() > cap)
+        {
+            mMsgs.pop_back();
+            ++mMsgTrimOffset;
+        }
+    }
 
     if (mSpeakers && from_id.notNull())
     {
@@ -1291,7 +1311,7 @@ void LLIMModel::LLIMSession::addMessagesFromServerHistory(const LLSD& history,  
                 message["message"] = history_msg_text;
                 message["time"] = chat_time_str;
                 message["timestamp"] = (S32)history_msg_timestamp;
-                message["index"] = (LLSD::Integer)mMsgs.size();
+                message["index"] = (LLSD::Integer)(mMsgs.size() + mMsgTrimOffset);   // [BDMerge ChatCap] absolute index
                 message["is_history"] = true;
                 mMsgs.push_front(message);
 
@@ -1315,7 +1335,7 @@ void LLIMModel::LLIMSession::addMessagesFromServerHistory(const LLSD& history,  
         LLSD newer_message = shift_msgs.front();
         shift_msgs.pop_front();
         S32 old_index = newer_message["index"];
-        newer_message["index"] = (LLSD::Integer)mMsgs.size();   // Update the index to match the new position in the conversation
+        newer_message["index"] = (LLSD::Integer)(mMsgs.size() + mMsgTrimOffset);   // Update the index to match the new position in the conversation ([BDMerge ChatCap] absolute)
         LL_DEBUGS("ChatHistory") << mSessionID << ": Re-adding newest group chat history messages from " << newer_message["from"]
             << ", text: " << newer_message["message"]
             << " old index " << old_index << ", new index " << newer_message["index"] << LL_ENDL;
@@ -1351,6 +1371,7 @@ void LLIMModel::LLIMSession::chatFromLogFile(LLLogChat::ELogLineType type, const
 void LLIMModel::LLIMSession::loadHistory()
 {
     mMsgs.clear();
+    mMsgTrimOffset = 0;                 // [BDMerge ChatCap] indices restart with the reloaded backlog
     mLastHistoryCacheMsgs.clear();
     mLastHistoryCacheDateTime.clear();
 
@@ -1625,7 +1646,17 @@ void LLIMModel::getMessagesSilently(const LLUUID& session_id, chat_message_list_
         return;
     }
 
-    int i = static_cast<int>(session->mMsgs.size()) - start_index;
+    // [BDMerge ChatCap] "index" is absolute (position since session start), so the
+    // count of messages at or after start_index is total-ever (live size + trimmed)
+    // minus start_index. Clamp to what is still physically in mMsgs: if the caller
+    // is further behind than the cap, the oldest wanted messages were trimmed (they
+    // remain on disk) and we return the newest live ones we still have.
+    const int live = static_cast<int>(session->mMsgs.size());
+    int i = (live + session->mMsgTrimOffset) - start_index;
+    if (i > live)
+    {
+        i = live;
+    }
 
     for (chat_message_list_t::iterator iter = session->mMsgs.begin();
         iter != session->mMsgs.end() && i > 0;

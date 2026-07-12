@@ -2958,6 +2958,28 @@
       <key>Value</key>
       <integer>1</integer>
     </map>
+    <key>BDMergeFastExit</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge] On quit, once all durable data is saved (settings, per-account settings, mute list, conversation/transaction logs, inventory cache) and all child processes and worker threads are shut down, skip the remaining static-destructor and CRT heap teardown and hand the process's memory back to the OS at once. Dramatically shortens the time the client lingers after a long, memory-heavy session, since that teardown only frees memory the OS reclaims anyway. Set to 0 for a fully graceful shutdown. Default on.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>BDMergeMaxSessionChatMessages</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge] Cap on how many chat messages each IM/group/nearby session keeps in RAM (the in-memory backlog used for the chat window). The full transcript is always written to disk per message, and reopening a session reloads older lines from the on-disk log, so this only bounds live memory - it never loses history. Prevents a long, busy session from accumulating an unbounded backlog that wastes RAM and slows client shutdown. 0 disables the cap (stock behavior). Default 8192.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>8192</integer>
+    </map>
     <key>BDMergeForceAlphaMask</key>
     <map>
       <key>Comment</key>
