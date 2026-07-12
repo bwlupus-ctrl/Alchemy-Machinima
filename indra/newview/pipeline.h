@@ -181,6 +181,18 @@ public:
     static void  toggleProjectorCastShadows(const LLUUID& id);
     static bool  isProjectorNoShadow(const LLUUID& id);
     static bool  isProjectorShadowSuppressed(LLVOVolume* volume);
+
+    // [BDMerge F4] Session-only per-projector "Hero Beam" flag. A hero-flagged
+    // projector is SKIPPED by the froxel light-injection loop, so with the froxel
+    // master ON it renders its sharp per-cone shaft (Batch A/B march) ON TOP of the
+    // soft froxel atmosphere - the film "key light sharp, air soft" split. Non-hero
+    // flagged projectors keep injecting (soft, in-grid). With froxel OFF the flag is
+    // inert (everything marches per-cone anyway). Mirrors sNoShadowProjectors
+    // exactly: session-only, not persisted, cleared on relog via
+    // clearVolumetricShafts(). Toggled on root ids, matched against the same
+    // shaft-flag id the render loops resolve.
+    static void  toggleHeroProjector(const LLUUID& id);
+    static bool  isHeroProjector(const LLUUID& id);
     void applyFXAA(LLRenderTarget* src, LLRenderTarget* dst);
     void generateSMAABuffers(LLRenderTarget* src);
     void applySMAA(LLRenderTarget* src, LLRenderTarget* dst);
@@ -1296,6 +1308,7 @@ public:
     static F32 BDMergeProjectorVolumetricsRimPower;      // Fresnel exponent (silhouette tightness)
     static F32 BDMergeProjectorVolumetricsRimThreshold;  // ignore incident light dimmer than this
     static F32 BDMergeProjectorVolumetricsRimWrap;       // directional wrap (0 = back-only, 1 = broad)
+    static F32 BDMergeProjectorVolumetricsRimSoftness;   // [F4] avatar skin softness (0 = hard outline)
     // [BDMerge Froxel F0] hybrid froxel volumetrics grid (master gate default OFF ->
     // no alloc, no passes, no debug; the whole subsystem is a no-op at defaults).
     static bool BDMergeFroxelVolumetrics;   // master gate (default off)
@@ -1338,6 +1351,12 @@ public:
     // toggleProjectorCastShadows/clearVolumetricShafts).
     static std::set<LLUUID> sNoShadowProjectors;
 
+    // [BDMerge F4] session-only "Hero Beam" set of projector object UUIDs. Hero
+    // projectors are excluded from froxel light injection and march per-cone
+    // instead (see toggleHeroProjector/isHeroProjector; cleared in
+    // clearVolumetricShafts). Not persisted.
+    static std::set<LLUUID> sHeroProjectors;
+
     // [BDMerge G3.3 Batch 1 C] Session-only PER-PROJECTOR art-direction overrides.
     // When a flagged projector has an override, the render loop uses these values
     // in place of the global sliders for that cone. Set via the right-click
@@ -1352,6 +1371,13 @@ public:
         F32      density      = 1.f;
         LLColor3 tint         = LLColor3(1.f, 1.f, 1.f);
         F32      tintStrength = 0.f;
+        // [BDMerge F4] per-projector RIM overrides (defaults match the global
+        // setting defaults so an override captured at defaults reproduces the
+        // global look). RimThreshold stays global (a quality gate, not an art lever).
+        F32      rimStrength  = 0.f;
+        F32      rimPower     = 2.f;
+        F32      rimWrap      = 0.35f;
+        F32      rimSoftness  = 0.f;
     };
     static void  setVolumetricShaftOverride(const LLUUID& id, const VolumetricShaftOverride& ov);
     static void  clearVolumetricShaftOverride(const LLUUID& id);

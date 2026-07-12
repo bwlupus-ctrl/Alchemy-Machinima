@@ -185,6 +185,11 @@ void ALFloaterLightBox::onSelLightCaptureOverride()
     ov.density      = gSavedSettings.getF32("BDMergeProjectorVolumetricsDensity");
     ov.tint         = gSavedSettings.getColor3("BDMergeProjectorVolumetricsTint");
     ov.tintStrength = gSavedSettings.getF32("BDMergeProjectorVolumetricsTintStrength");
+    // [BDMerge F4] snapshot the rim art-direction levers too (RimThreshold stays global)
+    ov.rimStrength  = gSavedSettings.getF32("BDMergeProjectorVolumetricsRimStrength");
+    ov.rimPower     = gSavedSettings.getF32("BDMergeProjectorVolumetricsRimPower");
+    ov.rimWrap      = gSavedSettings.getF32("BDMergeProjectorVolumetricsRimWrap");
+    ov.rimSoftness  = gSavedSettings.getF32("BDMergeProjectorVolumetricsRimSoftness");
     LLPipeline::setVolumetricShaftOverride(pObj->getID(), ov);
 }
 

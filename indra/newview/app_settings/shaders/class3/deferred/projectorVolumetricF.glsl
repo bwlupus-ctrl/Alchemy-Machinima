@@ -128,6 +128,7 @@ uniform float projvol_rim_strength;      // master brightness (0 = off)
 uniform float projvol_rim_power;         // Fresnel exponent: higher = tighter to the silhouette
 uniform float projvol_rim_threshold;     // ignore incident light dimmer than this (soft gate)
 uniform float projvol_rim_wrap;          // directional wrap: 0 = crisp back-only rim, 1 = broad wrap onto the body
+uniform float projvol_rim_softness;      // [F4] skin softness: 0 = hard outline, 1 = smoothstep-softened glow
 
 const float M_PI = 3.14159265;
 
@@ -539,6 +540,14 @@ void main()
             // turns perpendicular to view. This alone was the OLD term and it is
             // what made every edge glow uniformly.
             float graze = pow(1.0 - nv, max(projvol_rim_power, 0.01));
+
+            // [F4] Skin-softness lever for AVATAR rims. projvol_rim_softness
+            // smoothstep-shapes the graze falloff so the edge reads as a soft glow
+            // bleeding onto skin instead of a hard, cutout-like outline. The remap
+            // graze*graze*(3-2*graze) is a monotone S-curve on [0,1]; mixing toward
+            // it eases both ends of the transition. 0 = identity (exact current
+            // look), 1 = fully softened. Cheap (a couple of ALU), no branch.
+            graze = mix(graze, graze * graze * (3.0 - 2.0 * graze), projvol_rim_softness);
 
             // (2) THE FIX - directionality. A rim only exists where the light rakes
             // the form, i.e. where the surface faces the projector (N.L). Soft-wrap

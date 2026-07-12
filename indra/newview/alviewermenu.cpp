@@ -693,6 +693,41 @@ namespace
         return pObj && !LLPipeline::isProjectorNoShadow(pObj->getID());
     }
 
+    // [BDMerge F4] Right-click "Hero Beam" toggle. Session-only per-projector flag:
+    // a hero projector is excluded from froxel light injection and marches its sharp
+    // per-cone shaft on top of the froxel atmosphere (film key-light-sharp/air-soft
+    // split). With froxel OFF the flag is inert. Toggles every root in the selection,
+    // mirroring the Volumetric Shaft / Cast Shadows toggles.
+    void handle_object_hero_beam(const LLSD& /*sdParam*/)
+    {
+        LLObjectSelectionHandle hSel = LLSelectMgr::getInstance()->getSelection();
+        if (hSel.isNull())
+            return;
+
+        for (LLObjectSelection::root_iterator itObj = hSel->root_begin(), endObj = hSel->root_end();
+             itObj != endObj; ++itObj)
+        {
+            const LLSelectNode* pNode = *itObj;
+            LLViewerObject* pObj = (pNode) ? pNode->getObject() : nullptr;
+            if (pObj && pObj->getID().notNull())
+                LLPipeline::toggleHeroProjector(pObj->getID());
+        }
+    }
+
+    bool enable_object_hero_beam()
+    {
+        // Only meaningful on spotlight projectors (the shaft the hero beam marches).
+        // Same enable condition as the Volumetric Shaft item. No-op harmlessly
+        // otherwise, and inert unless the shaft is also flagged + froxel is on.
+        return get_selected_projector_volume() != nullptr;
+    }
+
+    bool check_object_hero_beam()
+    {
+        LLViewerObject* pObj = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
+        return pObj && LLPipeline::isHeroProjector(pObj->getID());
+    }
+
     // [BDMerge G3.3 Batch 1 C] Snapshot the current global shaft sliders into a
     // per-projector override for every selected root, and flag it on (capture
     // implies enable). Session-only; cleared on relog with the flag set.
@@ -705,6 +740,11 @@ namespace
         ov.density      = gSavedSettings.getF32("BDMergeProjectorVolumetricsDensity");
         ov.tint         = gSavedSettings.getColor3("BDMergeProjectorVolumetricsTint");
         ov.tintStrength = gSavedSettings.getF32("BDMergeProjectorVolumetricsTintStrength");
+        // [BDMerge F4] snapshot the rim art-direction levers too (RimThreshold stays global)
+        ov.rimStrength  = gSavedSettings.getF32("BDMergeProjectorVolumetricsRimStrength");
+        ov.rimPower     = gSavedSettings.getF32("BDMergeProjectorVolumetricsRimPower");
+        ov.rimWrap      = gSavedSettings.getF32("BDMergeProjectorVolumetricsRimWrap");
+        ov.rimSoftness  = gSavedSettings.getF32("BDMergeProjectorVolumetricsRimSoftness");
 
         LLObjectSelectionHandle hSel = LLSelectMgr::getInstance()->getSelection();
         if (hSel.isNull())
@@ -795,6 +835,10 @@ void ALViewerMenu::initialize_menus()
     commit.add("Object.CastShadows", boost::bind(&handle_object_cast_shadows, _2));
     enable.add("Object.EnableCastShadows", boost::bind(&enable_object_cast_shadows));
     enable.add("Object.CheckCastShadows", boost::bind(&check_object_cast_shadows));
+// [BDMerge F4] session-only per-projector Hero Beam toggle (per-cone march over froxel)
+    commit.add("Object.HeroBeam", boost::bind(&handle_object_hero_beam, _2));
+    enable.add("Object.EnableHeroBeam", boost::bind(&enable_object_hero_beam));
+    enable.add("Object.CheckHeroBeam", boost::bind(&check_object_hero_beam));
 // [BDMerge G3.3 Batch 1 C] per-projector volumetric override capture/clear
     commit.add("Object.ShaftCaptureOverride", boost::bind(&handle_object_shaft_capture, _2));
     enable.add("Object.EnableShaftCaptureOverride", boost::bind(&enable_object_volumetric_shaft));

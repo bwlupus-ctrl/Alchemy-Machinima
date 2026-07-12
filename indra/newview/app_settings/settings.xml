@@ -10907,6 +10907,17 @@
       <key>Value</key>
       <real>0.0</real>
   </map>
+  <key>BDMergeProjectorVolumetricsRimSoftness</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge F4] Rim SKIN SOFTNESS for avatar rims (0.0-1.0; default 0.0 = exact current look). Smoothstep-shapes the rim's grazing falloff so an avatar edge reads as a soft glow bleeding onto skin instead of a hard, cutout-like outline. 0 = identity (unchanged); raise toward 1 to progressively soften the transition. Only active when RimStrength > 0. Per-projector capturable (Shaft: capture current settings).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+  </map>
   <key>BDMergeFroxelVolumetrics</key>
   <map>
       <key>Comment</key>

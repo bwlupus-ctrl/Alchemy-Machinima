@@ -68,6 +68,20 @@
     <menu_item_check.on_enable
         function="Object.EnableVolumetricShaft" />
   </menu_item_check>
+  <!-- [BDMerge F4] per-projector Hero Beam. When the froxel volumetrics master is on,
+       a hero-flagged projector renders its SHARP per-cone shaft on top of the soft
+       froxel atmosphere (other projectors stay soft-in-grid). Inert with froxel off.
+       Session-only. -->
+  <menu_item_check
+      label="Hero Beam"
+      name="Object Hero Beam">
+    <menu_item_check.on_click
+        function="Object.HeroBeam" />
+    <menu_item_check.on_check
+        function="Object.CheckHeroBeam" />
+    <menu_item_check.on_enable
+        function="Object.EnableHeroBeam" />
+  </menu_item_check>
   <!-- [BDMerge G3.3 Batch 3] per-projector Cast Shadows opt-out. Checked = casts
        shadows (default); uncheck to make this projector light-only (no shadow),
        freeing its shadow slot for other projectors. Session-only. -->

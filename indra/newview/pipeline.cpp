@@ -278,6 +278,7 @@ F32 LLPipeline::BDMergeProjectorVolumetricsRimStrength;
 F32 LLPipeline::BDMergeProjectorVolumetricsRimPower;
 F32 LLPipeline::BDMergeProjectorVolumetricsRimThreshold;
 F32 LLPipeline::BDMergeProjectorVolumetricsRimWrap;
+F32 LLPipeline::BDMergeProjectorVolumetricsRimSoftness;
 // [BDMerge Froxel F0] hybrid froxel volumetrics grid (master gate default OFF).
 bool LLPipeline::BDMergeFroxelVolumetrics;
 U32  LLPipeline::BDMergeFroxelGridX;
@@ -313,6 +314,7 @@ bool LLPipeline::sVelocityRender = false;
 std::map<LLUUID, LLPipeline::VolumetricShaftOverride> LLPipeline::sVolumetricShaftOverrides;
 std::set<LLUUID> LLPipeline::sVolumetricShaftObjects;
 std::set<LLUUID> LLPipeline::sNoShadowProjectors; // [BDMerge Batch 3] cast-shadows opt-out
+std::set<LLUUID> LLPipeline::sHeroProjectors;     // [BDMerge F4] Hero Beam per-cone opt-in
 S32 LLPipeline::RenderScreenSpaceReflectionIterations;
 F32 LLPipeline::RenderScreenSpaceReflectionRayStep;
 F32 LLPipeline::RenderScreenSpaceReflectionDistanceBias;
@@ -731,6 +733,7 @@ void LLPipeline::init()
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsRimPower");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsRimThreshold");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsRimWrap");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsRimSoftness");
     // [BDMerge Froxel F0] hybrid froxel volumetrics grid
     connectRefreshCachedSettingsSafe("BDMergeFroxelVolumetrics");
     connectRefreshCachedSettingsSafe("BDMergeFroxelGridX");
@@ -1458,6 +1461,7 @@ void LLPipeline::refreshCachedSettings()
     BDMergeProjectorVolumetricsRimPower = gSavedSettings.getF32("BDMergeProjectorVolumetricsRimPower");
     BDMergeProjectorVolumetricsRimThreshold = gSavedSettings.getF32("BDMergeProjectorVolumetricsRimThreshold");
     BDMergeProjectorVolumetricsRimWrap = gSavedSettings.getF32("BDMergeProjectorVolumetricsRimWrap");
+    BDMergeProjectorVolumetricsRimSoftness = gSavedSettings.getF32("BDMergeProjectorVolumetricsRimSoftness");
     // [BDMerge Froxel F0] hybrid froxel volumetrics grid
     BDMergeFroxelVolumetrics = gSavedSettings.getBOOL("BDMergeFroxelVolumetrics");
     BDMergeFroxelGridX = gSavedSettings.getU32("BDMergeFroxelGridX");
@@ -9848,6 +9852,17 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
                 continue;
             }
 
+            // [BDMerge F4] Hero Beam split: a hero-flagged projector is NEVER
+            // injected into the grid - it must render its sharp per-cone shaft on top
+            // of the froxel atmosphere. Skipping here (before the cap and before
+            // insertion into mFroxelInjectedProjectors) is exactly what makes the
+            // per-cone loop march it fully (not rim-only). Non-hero projectors fall
+            // through and inject as in F2/F3. Does not consume an injection slot.
+            if (isHeroProjector(matched_id))
+            {
+                continue;
+            }
+
             if (injected >= max_lights)
             {
                 ++overflow; // flagged but over the per-frame cap -> not injected
@@ -10343,10 +10358,9 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
     // by this projector's own light at the surface (cookie x atten x its shadow map)
     // and the real G-buffer normal, added into the additive HDR shaft so it rides
     // the existing bloom-feed into a soft halo. Strength 0 (default) = no-op.
-    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_STRENGTH, llmax(BDMergeProjectorVolumetricsRimStrength, 0.f));
-    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_POWER, llmax(BDMergeProjectorVolumetricsRimPower, 0.01f));
+    // [F4] Rim STRENGTH/POWER/WRAP/SOFTNESS are now uploaded PER-CONE (override-aware)
+    // in the cone loop below; only the quality-gate THRESHOLD stays global here.
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_THRESHOLD, llmax(BDMergeProjectorVolumetricsRimThreshold, 0.f));
-    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_WRAP, llclamp(BDMergeProjectorVolumetricsRimWrap, 0.f, 1.f));
 
     // [Phase 3] atmosphere levers (all no-ops at their defaults). The inverse
     // modelview turns a view-space march sample back into agent(world, Z-up) space
@@ -10357,10 +10371,16 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
     gDeferredProjectorVolumetricProgram.uniformMatrix4fv(LLShaderMgr::PROJVOL_INV_MODELVIEW, 1, false, glm::value_ptr(inv_mv));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_TIME, fmodf(gFrameTimeSeconds, 3600.f));
     // [Batch 1 C] PROJVOL_DENSITY moved to the per-cone upload (overridable).
-    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_NOISE_STRENGTH, llclamp(BDMergeProjectorVolumetricsNoiseStrength, 0.f, 1.f));
+    // [BDMerge F4] Per-cone media flattening: when the froxel master is ON the shared
+    // air lives in the grid, so the per-cone march must NOT add its own noise/fog on
+    // top (double-fog). Force NOISE/FOG strengths to 0 for cones (the flat-density
+    // partner is uploaded per-cone as PROJVOL_DENSITY = 1). When froxel is OFF these
+    // are exactly the shipped per-cone media levers - byte-identical.
+    const bool froxel_flatten = BDMergeFroxelVolumetrics;
+    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_NOISE_STRENGTH, froxel_flatten ? 0.f : llclamp(BDMergeProjectorVolumetricsNoiseStrength, 0.f, 1.f));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_NOISE_SCALE, llmax(BDMergeProjectorVolumetricsNoiseScale, 0.f));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_NOISE_SPEED, BDMergeProjectorVolumetricsNoiseSpeed);
-    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FOG_STRENGTH, llclamp(BDMergeProjectorVolumetricsFogStrength, 0.f, 1.f));
+    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FOG_STRENGTH, froxel_flatten ? 0.f : llclamp(BDMergeProjectorVolumetricsFogStrength, 0.f, 1.f));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FOG_GROUND, llmax(BDMergeProjectorVolumetricsFogGroundDensity, 0.f));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FOG_FALLOFF, llmax(BDMergeProjectorVolumetricsFogFalloff, 0.01f));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FOG_BASE, BDMergeProjectorVolumetricsFogBase);
@@ -10416,6 +10436,21 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
             }
         }
 
+        // [Batch 1 C / F4] Per-projector override, resolved UP FRONT: the rim-only
+        // demotion below needs the EFFECTIVE (override-aware) rim strength, and the
+        // rim uniforms are now uploaded per-cone (see [F4] below). If this flagged
+        // projector has a captured override, use its values in place of the global
+        // sliders for this cone; otherwise fall back to the globals. Overridable
+        // levers: brightness, feather, forward-glow (g), density, tint + tint
+        // strength, and [F4] rim strength/power/wrap/softness (RimThreshold stays
+        // global - a quality gate, not a per-light art lever).
+        VolumetricShaftOverride ov;
+        const bool has_ov = getVolumetricShaftOverride(matched_id, ov);
+        const F32 e_rimStrength = has_ov ? ov.rimStrength : BDMergeProjectorVolumetricsRimStrength;
+        const F32 e_rimPower    = has_ov ? ov.rimPower    : BDMergeProjectorVolumetricsRimPower;
+        const F32 e_rimWrap     = has_ov ? ov.rimWrap     : BDMergeProjectorVolumetricsRimWrap;
+        const F32 e_rimSoftness = has_ov ? ov.rimSoftness : BDMergeProjectorVolumetricsRimSoftness;
+
         // [BDMerge Froxel F2] A projector injected into the froxel light grid this
         // frame lights via the grid (soft, volumetric) - marching its shaft here too
         // would double-light. BUT the surface-coupled RIM/wrap glow (and the
@@ -10423,12 +10458,15 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
         // reproduce, so instead of skipping the cone entirely we demote it to a
         // RIM-ONLY pass: GODRAY_RES is forced to 0 below (march loop never runs,
         // shaft = 0) and only the rim block evaluates at the capped surface. If the
-        // rim is off there is nothing per-cone left to draw - skip. The injected set
-        // is empty whenever the froxel master or lights lever is off, so the
-        // per-cone path is unchanged in that case.
+        // rim is off there is nothing per-cone left to draw - skip. [F4] The test now
+        // uses the EFFECTIVE rim strength so a per-light rim=0 skips cleanly even when
+        // the global is up, and a per-light rim>0 still draws when the global is 0.
+        // (Hero-flagged projectors are never injected -> never rim-only -> they march
+        // fully here.) The injected set is empty whenever the froxel master or lights
+        // lever is off, so the per-cone path is unchanged in that case.
         const bool froxel_rim_only = BDMergeFroxelVolumetrics && BDMergeFroxelLights &&
             mFroxelInjectedProjectors.count(matched_id) != 0;
-        if (froxel_rim_only && BDMergeProjectorVolumetricsRimStrength <= 0.f)
+        if (froxel_rim_only && e_rimStrength <= 0.f)
         {
             continue;
         }
@@ -10437,12 +10475,7 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
         // (NO mTargetShadowSpotLight priority reshuffle - R1).
         setupSpotLightVolumetric(gDeferredProjectorVolumetricProgram, drawablep, (S32)i);
 
-        // [Batch 1 C] Per-projector override: if this flagged projector has a
-        // captured override, use its values in place of the global sliders for this
-        // cone; otherwise fall back to the globals. Overridable levers: brightness,
-        // feather, forward-glow (g), density, tint + tint strength.
-        VolumetricShaftOverride ov;
-        const bool has_ov = getVolumetricShaftOverride(matched_id, ov);
+        // Remaining per-cone override levers (brightness/feather/g/density/tint).
         const F32 e_mult     = has_ov ? ov.multiplier   : BDMergeProjectorVolumetricsMultiplier;
         const F32 e_feather  = has_ov ? ov.feather      : BDMergeProjectorVolumetricsFeather;
         const F32 e_g        = has_ov ? ov.anisotropy   : BDMergeProjectorVolumetricsAnisotropy;
@@ -10453,7 +10486,24 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
         gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::GODRAY_MULTIPLIER, e_mult);
         gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FEATHER, e_feather);
         gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_G, e_g);
-        gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_DENSITY, llmax(e_density, 0.f));
+        // [BDMerge F4] Per-cone media flattening when the froxel master is ON: the
+        // shared atmosphere (density/height-fog/noise) now lives in the froxel grid,
+        // so a per-cone march (hero cone or rim-only cone) marching its OWN fog on top
+        // would double-fog. Upload a FLAT medium (density 1, noise/fog strengths 0 -
+        // the latter two are the global uploads gated the same way above) regardless
+        // of the per-cone media sliders/overrides. When froxel is OFF this is exactly
+        // the old per-cone density path (override-aware), byte-identical.
+        const F32 cone_density = BDMergeFroxelVolumetrics ? 1.f : llmax(e_density, 0.f);
+        gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_DENSITY, cone_density);
+
+        // [BDMerge F4] Per-projector RIM overrides, uploaded per-cone (moved from the
+        // global pre-loop block). Effective values were resolved up front so the
+        // rim-only demotion could consult the strength. Identical to the global path
+        // when no override is captured -> default behavior unchanged.
+        gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_STRENGTH, llmax(e_rimStrength, 0.f));
+        gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_POWER, llmax(e_rimPower, 0.01f));
+        gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_WRAP, llclamp(e_rimWrap, 0.f, 1.f));
+        gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_SOFTNESS, llclamp(e_rimSoftness, 0.f, 1.f));
 
         LLColor3  col = volume->getLightLinearColor() * light_scale;
         // [Phase 2 item 2 / Batch 1 C] Shaft tint (global or per-projector override):
@@ -10785,6 +10835,7 @@ void LLPipeline::clearVolumetricShafts()
     sVolumetricShaftObjects.clear();
     sVolumetricShaftOverrides.clear();
     sNoShadowProjectors.clear(); // [BDMerge Batch 3] cast-shadows opt-out is session-only too
+    sHeroProjectors.clear();     // [BDMerge F4] Hero Beam flags are session-only too
 }
 
 // [BDMerge G3.3 Batch 3] Session-only per-projector "cast shadows" opt-OUT.
@@ -10806,6 +10857,27 @@ void LLPipeline::toggleProjectorCastShadows(const LLUUID& id)
 bool LLPipeline::isProjectorNoShadow(const LLUUID& id)
 {
     return !sNoShadowProjectors.empty() && sNoShadowProjectors.count(id) != 0;
+}
+
+// [BDMerge F4] Session-only per-projector "Hero Beam" flag. Toggling adds/removes
+// the projector's (root) object UUID; a projector in the set is skipped by the
+// froxel light-injection loop and therefore marches its sharp shaft per-cone on top
+// of the froxel atmosphere. Cleared on relog with the shaft flag
+// (clearVolumetricShafts). Not persisted. Mirrors toggleProjectorCastShadows.
+void LLPipeline::toggleHeroProjector(const LLUUID& id)
+{
+    if (id.isNull())
+        return;
+    auto it = sHeroProjectors.find(id);
+    if (it != sHeroProjectors.end())
+        sHeroProjectors.erase(it);
+    else
+        sHeroProjectors.insert(id);
+}
+
+bool LLPipeline::isHeroProjector(const LLUUID& id)
+{
+    return !sHeroProjectors.empty() && sHeroProjectors.count(id) != 0;
 }
 
 // Match the light-source prim's own ID and its root-edit ID (the context menu
