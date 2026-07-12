@@ -595,12 +595,37 @@ namespace
 // (never persisted). Toggles every root object in the current selection.
     LLVOVolume* get_selected_projector_volume()
     {
-        LLViewerObject* pObj = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
-        if (!pObj)
+        // A spotlight projector is often a CHILD prim of a linked fixture, not the
+        // root, while the primary selected object is usually the root - so checking
+        // ONLY the primary object wrongly greyed this menu for linksets (it worked
+        // only on UNLINKED lights). Scan every selected prim AND each one's linkset
+        // children for the first spotlight. The render side already matches a flagged
+        // root id against a child light's root-edit id, so toggling the root (in
+        // handle_object_volumetric_shaft) lights the whole fixture's projectors.
+        LLObjectSelectionHandle hSel = LLSelectMgr::getInstance()->getSelection();
+        if (hSel.isNull())
             return nullptr;
-        LLVOVolume* pVol = dynamic_cast<LLVOVolume*>(pObj);
-        if (pVol && pVol->isLightSpotlight())
-            return pVol;
+
+        for (LLObjectSelection::valid_iterator itObj = hSel->valid_begin(), endObj = hSel->valid_end();
+             itObj != endObj; ++itObj)
+        {
+            const LLSelectNode* pNode = *itObj;
+            LLViewerObject* pObj = (pNode) ? pNode->getObject() : nullptr;
+            if (!pObj)
+                continue;
+
+            LLVOVolume* pVol = dynamic_cast<LLVOVolume*>(pObj);
+            if (pVol && pVol->isLightSpotlight())
+                return pVol;
+
+            // Children too, in case only the root node is in the selection.
+            for (const LLPointer<LLViewerObject>& pChildPtr : pObj->getChildren())
+            {
+                LLVOVolume* pChildVol = dynamic_cast<LLVOVolume*>(pChildPtr.get());
+                if (pChildVol && pChildVol->isLightSpotlight())
+                    return pChildVol;
+            }
+        }
         return nullptr;
     }
 
