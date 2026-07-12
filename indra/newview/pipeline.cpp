@@ -10260,14 +10260,19 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
             }
         }
 
-        // [BDMerge Froxel F2] Skip the per-cone shaft for any projector that was
-        // injected into the froxel light grid this frame - it lights via the grid
-        // (soft, volumetric) instead, so marching it here too would double-light. The
-        // set is populated by renderFroxelVolumetrics' injection loop (which runs
-        // earlier this frame) and is empty whenever the froxel master or the lights
-        // lever is off, so the per-cone path is unchanged in that case.
-        if (BDMergeFroxelVolumetrics && BDMergeFroxelLights &&
-            mFroxelInjectedProjectors.count(matched_id) != 0)
+        // [BDMerge Froxel F2] A projector injected into the froxel light grid this
+        // frame lights via the grid (soft, volumetric) - marching its shaft here too
+        // would double-light. BUT the surface-coupled RIM/wrap glow (and the
+        // bloom-feed halo it rides into) is a per-cone SURFACE effect the grid can't
+        // reproduce, so instead of skipping the cone entirely we demote it to a
+        // RIM-ONLY pass: GODRAY_RES is forced to 0 below (march loop never runs,
+        // shaft = 0) and only the rim block evaluates at the capped surface. If the
+        // rim is off there is nothing per-cone left to draw - skip. The injected set
+        // is empty whenever the froxel master or lights lever is off, so the
+        // per-cone path is unchanged in that case.
+        const bool froxel_rim_only = BDMergeFroxelVolumetrics && BDMergeFroxelLights &&
+            mFroxelInjectedProjectors.count(matched_id) != 0;
+        if (froxel_rim_only && BDMergeProjectorVolumetricsRimStrength <= 0.f)
         {
             continue;
         }
@@ -10374,7 +10379,10 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
             F32 scaled   = (F32)min_res + (F32)(max_res - min_res) * sqrtf(coverage);
             cone_res     = llclamp((U32)(scaled + 0.5f), min_res, max_res);
         }
-        gDeferredProjectorVolumetricProgram.uniform1i(LLShaderMgr::GODRAY_RES, (S32)cone_res);
+        // [BDMerge Froxel F2] Rim-only demotion: res 0 skips the march loop entirely
+        // (shaft = 0; the shader's dt guard handles the division) so only the surface
+        // rim evaluates - the beam itself lives in the froxel grid.
+        gDeferredProjectorVolumetricProgram.uniform1i(LLShaderMgr::GODRAY_RES, froxel_rim_only ? 0 : (S32)cone_res);
 
         gDeferredProjectorVolumetricProgram.uniform3fv(LLShaderMgr::LIGHT_CENTER, 1, glm::value_ptr(c));
         gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::LIGHT_SIZE, radius);

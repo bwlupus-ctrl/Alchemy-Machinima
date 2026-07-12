@@ -311,7 +311,10 @@ void main()
     }
 
     float march_len = t1 - t0;
-    float dt        = march_len / float(godray_res); // physical step length
+    // max() guards godray_res == 0: the rim-only mode for froxel-injected projectors
+    // (beam lives in the grid; only the surface rim + bloom-feed halo render here).
+    // Without it dt = inf and 0*inf = NaN would poison the final shaft.
+    float dt        = march_len / max(float(godray_res), 1.0); // physical step length
 
     // [Phase 1 item 2] blue-noise (interleaved gradient) march-start offset.
     // Static per pixel => no crawl under camera motion; optional frame rotation.
