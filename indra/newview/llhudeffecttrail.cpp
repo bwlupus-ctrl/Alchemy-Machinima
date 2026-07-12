@@ -39,6 +39,7 @@
 #include "llviewerobjectlist.h"
 #include "llviewerpartsim.h"
 #include "llviewerpartsource.h"
+#include "llviewerwindow.h"     // [BDMerge HideUI] getIndicatorsVisible
 #include "llvoavatar.h"
 #include "llworld.h"
 
@@ -264,10 +265,15 @@ void LLHUDEffectSpiral::render()
 {
     F32 time = mTimer.getElapsedTimeF32();
 
+    // [BDMerge HideUI] Selection/edit/script beams are particle effects, so hiding
+    // the 2D interface never touched them. Treat a hidden interface exactly like
+    // ShowSelectionBeam=off: kill the part source. Effects are re-sent continuously
+    // while active (edits, scripted effects), so beams reappear when the UI does.
     if ((!mSourceObject.isNull() && mSourceObject->isDead()) ||
         (!mTargetObject.isNull() && mTargetObject->isDead()) ||
         mKillTime < time ||
-        (!mPartSourcep.isNull() && !gSavedSettings.getBOOL("ShowSelectionBeam")) )
+        (!mPartSourcep.isNull() && (!gSavedSettings.getBOOL("ShowSelectionBeam") ||
+                                    (gViewerWindow && !gViewerWindow->getIndicatorsVisible()))) )
     {
         markDead();
         return;

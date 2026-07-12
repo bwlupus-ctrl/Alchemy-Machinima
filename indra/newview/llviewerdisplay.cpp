@@ -1700,7 +1700,11 @@ void render_ui_3d()
 
     gViewerWindow->renderSelections(false, false, true); // Non HUD call in render_hud_elements
 
-    if (gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI))
+    // [BDMerge HideUI] Beacon lines are indicators too: require the interface to be
+    // visible under BOTH hide mechanisms (the mask gate below already covers
+    // Ctrl+Alt+F1; getUIVisibility covers HideUIControls / mouselook).
+    if (gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI) &&
+        gViewerWindow->getUIVisibility())
     {
         // Render debugging beacons.
         gObjectList.renderObjectBeacons();

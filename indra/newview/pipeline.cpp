@@ -4413,7 +4413,10 @@ void LLPipeline::renderHighlights()
     LLGLSPipelineAlpha gls_pipeline_alpha;
     disableLights();
 
-    if (hasRenderDebugFeatureMask(RENDER_DEBUG_FEATURE_SELECTED))
+    // [BDMerge HideUI] Face highlights (white selected-face glow, red beacon
+    // highlight) are selection/debug indicators - hide them with the interface.
+    if (hasRenderDebugFeatureMask(RENDER_DEBUG_FEATURE_SELECTED) &&
+        gViewerWindow && gViewerWindow->getIndicatorsVisible())
     {
         bindHighlightProgram(gHighlightProgram);
 
@@ -4442,7 +4445,8 @@ void LLPipeline::renderHighlights()
     // have touch-handlers.
     mHighlightFaces.clear();
 
-    if (hasRenderDebugFeatureMask(RENDER_DEBUG_FEATURE_SELECTED))
+    if (hasRenderDebugFeatureMask(RENDER_DEBUG_FEATURE_SELECTED) &&
+        gViewerWindow && gViewerWindow->getIndicatorsVisible()) // [BDMerge HideUI]
     {
         if (sRenderHighlightTextureChannel == LLRender::NORMAL_MAP)
         {
@@ -9733,11 +9737,19 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
     // colored contribution ("stained glass" banding) instead of pure black.
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_SHADOW_TINT, llclamp(BDMergeProjectorVolumetricsShadowTint, 0.f, 1.f));
 
+    // [BDMerge G3.3 S-Log debug] Component kill-switches for isolating temporal
+    // artifacts (ghosting): RimOff forces the rim ("specular"-like silhouette glow)
+    // to zero and PhaseOff (below, per cone) forces the HG forward-scatter lobe to
+    // isotropic - both regardless of the global sliders AND any per-projector
+    // override, so one flip guarantees the component is gone from every cone.
+    static LLCachedControl<bool> projvol_rim_off(gSavedSettings, "BDMergeProjectorVolumetricsRimOff", false);
+    static LLCachedControl<bool> projvol_phase_off(gSavedSettings, "BDMergeProjectorVolumetricsPhaseOff", false);
+
     // [BDMerge G3.3 Rim] Physical surface-coupled rim / wrap glow. Driven entirely
     // by this projector's own light at the surface (cookie x atten x its shadow map)
     // and the real G-buffer normal, added into the additive HDR shaft so it rides
     // the existing bloom-feed into a soft halo. Strength 0 (default) = no-op.
-    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_STRENGTH, llmax(BDMergeProjectorVolumetricsRimStrength, 0.f));
+    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_STRENGTH, projvol_rim_off ? 0.f : llmax(BDMergeProjectorVolumetricsRimStrength, 0.f));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_POWER, llmax(BDMergeProjectorVolumetricsRimPower, 0.01f));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_THRESHOLD, llmax(BDMergeProjectorVolumetricsRimThreshold, 0.f));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_WRAP, llclamp(BDMergeProjectorVolumetricsRimWrap, 0.f, 1.f));
@@ -9839,7 +9851,9 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
 
         gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::GODRAY_MULTIPLIER, e_mult);
         gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FEATHER, e_feather);
-        gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_G, e_g);
+        // [S-Log debug] PhaseOff forces isotropic scatter (g = 0) even over a
+        // per-projector override - kills the forward-glow hotspot for A/B tests.
+        gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_G, projvol_phase_off ? 0.f : e_g);
         gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_DENSITY, llmax(e_density, 0.f));
 
         LLColor3  col = volume->getLightLinearColor() * light_scale;

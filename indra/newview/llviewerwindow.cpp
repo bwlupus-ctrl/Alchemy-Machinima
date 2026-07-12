@@ -4447,6 +4447,15 @@ void LLViewerWindow::saveLastMouse(const LLCoordGL &point)
 //  render_hud_elements:    false, false, false
 void LLViewerWindow::renderSelections( bool for_gl_pick, bool pick_parcel_walls, bool for_hud )
 {
+    // [BDMerge HideUI] Selection indicators (silhouettes + manipulator tools) are
+    // interface: skip them entirely while the interface is hidden so a shot never
+    // carries "something is selected" tells. GL picking must keep working (it
+    // renders into the pick buffer, not the screen), so that path is exempt.
+    if (!for_gl_pick && !getIndicatorsVisible())
+    {
+        return;
+    }
+
     LLObjectSelectionHandle selection = LLSelectMgr::getInstance()->getSelection();
 
     if (!for_hud && !for_gl_pick)
@@ -6639,6 +6648,14 @@ void LLViewerWindow::setUIVisibility(bool visible)
 bool LLViewerWindow::getUIVisibility()
 {
     return mUIVisible;
+}
+
+// [BDMerge HideUI] Indicator overlays follow the interface: hidden under either
+// hide-UI mechanism (see header). Used by renderSelections, the selection-beam
+// effects, beacon lines and face highlights.
+bool LLViewerWindow::getIndicatorsVisible()
+{
+    return mUIVisible && gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI);
 }
 
 ////////////////////////////////////////////////////////////////////////////

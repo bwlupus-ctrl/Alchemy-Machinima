@@ -10797,6 +10797,28 @@
       <key>Value</key>
       <real>0.85</real>
   </map>
+  <key>BDMergeProjectorVolumetricsPhaseOff</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 S-Log debug] Kill-switch: force the volumetric shaft's Henyey-Greenstein forward-scatter lobe to isotropic (g = 0), overriding both the global Anisotropy slider AND any per-projector override. Removes the bright forward-glow hotspot so temporal artifacts (ghosting) can be attributed: if ghosting vanishes with this on, the phase lobe's view-dependent contrast is the driver. Debug aid - default off.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+  </map>
+  <key>BDMergeProjectorVolumetricsRimOff</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 S-Log debug] Kill-switch: force the volumetric rim / wrap glow (the specular-like silhouette highlight) to zero regardless of the RimStrength slider. Removes the surface-coupled glow so temporal artifacts (ghosting) can be attributed: if ghosting vanishes with this on, the rim's high-contrast silhouette term is the driver. Debug aid - default off.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+  </map>
   <key>BDMergeProjectorVolumetricsTemporalReject</key>
   <map>
       <key>Comment</key>

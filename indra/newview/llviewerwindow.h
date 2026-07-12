@@ -193,6 +193,13 @@ public:
     void            initWorldUI();
     void            setUIVisibility(bool);
     bool            getUIVisibility();
+    // [BDMerge HideUI] True when in-world INDICATOR overlays (selection outlines +
+    // manipulators, selection/edit particle beams, beacon lines, face highlights)
+    // should draw. False when the interface is hidden by EITHER mechanism: the
+    // HideUIControls / mouselook path (mUIVisible) or the Advanced > Rendering
+    // Features > UI mask (Ctrl+Alt+F1) - so hiding the interface for a shot also
+    // hides every "you have something selected / script activity" tell.
+    bool            getIndicatorsVisible();
     void            handlePieMenu(S32 x, S32 y, MASK mask);
 
     void            reshapeStatusBarContainer();
