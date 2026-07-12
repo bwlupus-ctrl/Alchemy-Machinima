@@ -124,3 +124,94 @@ depth — the "neon through haze" look from the reference frame, physically moti
 Every item stays behind its own default-off/no-op gate per fork convention; every landing gets an
 in-world A/B before the next lands — one variable at a time, which is the other thing this
 session's ghost hunt re-taught.
+
+---
+
+# EXECUTION PLAN — Opus-tier subworker batches
+
+Constraints this plan is built around (all learned the hard way):
+- **Sequential builds** — every worker builds in the main tree; never two workers at once.
+- **Agents cannot run the viewer** — every batch ends at a hard STOP for the user's in-world A/B.
+  One batch = one variable set; nothing lands on top of an un-evaluated batch.
+- **Orchestrator reviews before the user tests** — after each worker reports, the orchestrator
+  verifies: enum/string lockstep (`llshadermgr.h` vs `.cpp` insertion position AND order),
+  default-state no-op (every new branch guards on its gate; grep the diff), build linked, commit
+  message format. Only then hand to the user.
+- **Batch 0 gates nothing except priorities** — Batch A is bisection-independent; Batch B is the
+  fix if toggle (1) kills the ghost, and still correct (just less urgent) if it's ReShade.
+
+## Batch 0 — USER, in-world, no build (5 minutes)
+1. `BDMergeProjectorVolumetricsTemporal = FALSE` → ghost dies? ⇒ accumulator (Batch B is the fix).
+2. Re-enable temporal; disable ReShade Launchpad + RTGI/SPECGI techniques → ghost dies? ⇒ ReShade
+   optical-flow temporal; viewer-side work proceeds on merit, ghost handled by shot discipline.
+Report which toggle killed it before Batch B is dispatched (A can start immediately).
+
+## Batch A — worker 1: "look-neutral performance" (E1, E2, E4)
+- **E1 FrustumClip** (`BDMergeProjectorVolumetricsFrustumClip`, Bool, default OFF for A/B):
+  C++ computes the projector's 4 side planes + near/far in view space from the same state
+  `setupSpotLightVolumetric` uploads (`pipeline.cpp:9706` area) and uploads them per cone
+  (new vec4[6] reserved uniform, or 6 vec4s). Shader (`class3/deferred/projectorVolumetricF.glsl`)
+  slab-clips [t0,t1] against the planes once per pixel after the existing sphere clip
+  (`lines ~232-253`), before the loop. Degenerate plane set ⇒ keep sphere bounds.
+- **E2 ShadowJitterTap** (`...ShadowJitterTap`, Bool, default OFF): replaces the
+  `projvol_shadow_samples` sub-tap loop (`glsl ~313-331`) with ONE `sampleSpotShadow` at a
+  position offset along the step by the existing IGN value (`roffset` machinery, `~258-273`).
+  When ON, ignores ShadowSamples>1.
+- **E4 early-out** (no setting): `break` when `max(accum)*dt*PROJVOL_SCATTER*godray_multiplier`
+  exceeds `projvol_max` — provably invisible because of the existing final clamp (`~483`).
+- Deliverables: build clean, commit, and a perf-verification recipe for the user (GPU zone
+  "projector volumetric cones" in the profiler HUD, before/after with a 3-cone scene).
+- STOP → orchestrator review → user A/B: look identical with gates OFF and ON; frame-time delta.
+
+## Batch B — worker 2: "temporal correctness" (R1, R2, R4)
+- **R1 TemporalBeamDepth** (`...TemporalBeamDepth`, Bool, default OFF): march accumulates
+  `depth_w += w·t; w_sum += w` (w = the sample's scalar in-scatter weight) and writes
+  `frag_color.a = w_sum > eps ? depth_w/w_sum : t_surface` — CHECK `mProjVolHalf`'s format first
+  (allocated near `pipeline.cpp:9551` block; if RGB-only, widen to RGBA16F). Temporal pass
+  (`class1/deferred/projectorVolumetricTemporalF.glsl`): when the gate is on, reproject with the
+  BEAM depth from `projectionMap.a` (current) and disocclusion-test against history alpha as now;
+  when off, byte-identical legacy (surface depth). The upsample/bloom passes ignore alpha — verify.
+- **R2 TemporalReject re-land** (`...TemporalReject`, F32, **default 0.0** this time): identical
+  math to reverted `7c39d0b523` (scale-invariant luminance disagreement → `w *= exp(-k·change)`),
+  re-inserted AFTER the neighborhood clamp. Enum/string: insert directly after
+  `PROJVOL_TEMPORAL_BLEND` in BOTH files.
+- **R4 LockMediaClock** (`...LockMediaClock`, Bool, default OFF): when ON, `projvol_time` and the
+  dither frame counter derive from a resettable take clock (reset when the flycam recorder starts
+  playback — hook `llflycamrecorder` start; worker locates it) instead of `gFrameTimeSeconds` /
+  frame count, so identical camera paths render identical beams across takes.
+- STOP → review → user A/B: ghost test with BeamDepth ON vs OFF (this is the decision the whole
+  plan turns on if Batch 0 fingered the accumulator).
+
+## Batch C — worker 3: "cinematic pack 1" (C1, C2, C3)
+- **C1**: re-land the S-Log pack by cherry-picking `40116f1770` (expect small conflicts where the
+  kill-switches were stripped: rim upload line, per-cone G upload; resolve to the plain uploads).
+  Re-verify all four gates are 0.0-default no-ops.
+- **C2 dual-lobe phase**: `...PhaseLobeMix` (F32 0=off) + `...PhaseLobeG2` (F32, default -0.15):
+  `phase = mix(HG(g), HG(g2), lobe_mix)` in the loop (`glsl ~374-383`).
+- **C3 barn doors**: `projvol_feather` scalar → keep the scalar setting for back-compat and add
+  `...FeatherY` (F32, -1 = "use X" sentinel = default); shader takes vec2 feather and the edge
+  test (`~299-308`) feathers x/y independently.
+- STOP → review → user A/B under the S-Log3 grade.
+
+## Batch D — worker 4: "cinematic pack 2 + production" (C4, C5, C6, E3, E5)
+- **C4 anamorphic feed**: `...BloomFeedAnamorphic` (F32 1.0=off): scale the tent-blur tap X
+  spacing in `projectorVolumetricBloomFeedF.glsl`.
+- **C5 air floor**: `...AirFloor` (F32 0=off): constant in-scatter term added to `density`-scaled
+  accumulation inside the cookie footprint only.
+- **C6 spectral extinction**: `...ExtinctionR/G/B` or one color setting; fills C1's vec3 sigma_t.
+- **E3 exponential steps**: `...ExpSteps` (Bool, default OFF): remap `t = t0 + (e^(k·u)-1)/(e^k-1)·len`.
+- **E5 step budget**: `...StepBudget` (U32, 0=off): after the adaptive per-cone res calc
+  (`pipeline.cpp:9794` area), scale all cones' res proportionally so Σ(res_i) ≤ budget.
+- STOP → review → final user pass.
+
+## Standard worker packet (paste into every dispatch)
+Repo `I:\alchemy-machinima`, branch `develop`, work directly (no worktree). Build (PowerShell,
+never Git Bash): `cmake --build "I:\alchemy-machinima\build-Windows-vs2026-os" --config Release
+--target alchemy-bin`. Exe locked while the viewer runs — report a LNK1104, don't fight it.
+Gotchas: NEW shader files need llviewershadermgr registration + a cmake reconfigure + staging
+verification (prefer editing existing shaders); enum/string lockstep in llshadermgr.h/.cpp is
+order-critical; every feature behind its own default-no-op gate (grep-verify every new branch
+guards on its gate); settings.xml F32/Bool keys Persist=1 mirroring existing BDMergeProjector-
+Volumetrics* blocks; match comment density/style; commit per feature-group ending with the
+Co-Authored-By line; report: commit hash, build tail, per-setting name/default/range, in-world
+eval checklist, uncertainties.
