@@ -10111,60 +10111,6 @@ void LLPipeline::feedProjectorVolumetricBloom()
     gGL.setSceneBlendType(LLRender::BT_ALPHA);
 }
 
-// [RTGI] Copy the scene's raw depth into an R32F color texture the ReShade bridge
-// hands to ReShade's DEPTH semantic. ReShade cannot sample our raw GL depth-format
-// handle (reads flat) and its generic_depth detection is unreliable for OpenGL, so
-// we do generic_depth's copy trick on the engine's exact, known depth. Gated by
-// BDMergeReShadeOverrideDepth (default off => no cost, generic_depth owns DEPTH).
-void LLPipeline::copyReShadeDepth()
-{
-    static LLCachedControl<bool> override_depth(gSavedSettings, "BDMergeReShadeOverrideDepth", false);
-    if (!override_depth || gCubeSnapshot || !gReShadeDepthCopyProgram.isComplete())
-    {
-        return;
-    }
-
-    LLRenderTarget& src = mRT->deferredScreen;
-    const U32 w = src.getWidth();
-    const U32 h = src.getHeight();
-    if (w == 0 || h == 0)
-    {
-        return;
-    }
-
-    if (mReShadeDepthCopy.getWidth() != w || mReShadeDepthCopy.getHeight() != h)
-    {
-        mReShadeDepthCopy.release();
-        if (!mReShadeDepthCopy.allocate(w, h, GL_R32F))
-        {
-            return;
-        }
-    }
-
-    LL_PROFILE_GPU_ZONE("reshade depth copy");
-
-    LLGLDepthTest depth(GL_FALSE);
-    LLGLDisable   blend(GL_BLEND);
-    LLGLDisable   cull(GL_CULL_FACE);
-    gGL.setColorMask(true, true);
-
-    mReShadeDepthCopy.bindTarget();
-    gReShadeDepthCopyProgram.bind();
-
-    S32 channel = gReShadeDepthCopyProgram.enableTexture(LLShaderMgr::DEFERRED_DEPTH, src.getUsage());
-    if (channel > -1)
-    {
-        gGL.getTexUnit(channel)->bind(&src, true); // true = bind the depth attachment
-    }
-
-    mScreenTriangleVB->setBuffer();
-    mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
-
-    gReShadeDepthCopyProgram.disableTexture(LLShaderMgr::DEFERRED_DEPTH, src.getUsage());
-    gReShadeDepthCopyProgram.unbind();
-    mReShadeDepthCopy.flush();
-}
-
 // [BDMerge G3.3 Phase 2] Session-only per-projector volumetric opt-in. The set
 // lives on gPipeline for the life of the process but is explicitly cleared on
 // logout/relog (clearVolumetricShafts, from LLAppViewer::disconnectViewer), so

@@ -2199,17 +2199,6 @@
       <key>Value</key>
       <integer>1</integer>
     </map>
-    <key>BDMergeReShadeOverrideDepth</key>
-    <map>
-      <key>Comment</key>
-      <string>[RTGI] Override ReShade's DEPTH semantic with the viewer's own depth (via an R32F copy pass). DEFAULT OFF - this path does NOT currently work in-world (ReShade shows flat depth); generic_depth works and should be used for depth. Under re-evaluation - see memory reshade-rtgi-bridge-reeval. Leave OFF to avoid a wasted copy pass. Motion (SL_MOTION_NDC) is independent.</string>
-      <key>Persist</key>
-      <integer>1</integer>
-      <key>Type</key>
-      <string>Boolean</string>
-      <key>Value</key>
-      <integer>0</integer>
-    </map>
     <key>BDMergeVelocityBuffer</key>
     <map>
       <key>Comment</key>

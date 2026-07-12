@@ -832,11 +832,6 @@ public:
     // the already-rendered opaque scene. Allocated only when BDMergeVelocityBuffer
     // is on (Phase 2 will also allocate it whenever SMAA T2x is active).
     LLRenderTarget          mVelocityMap;
-    // [RTGI] R32F copy of the scene depth for the ReShade bridge (ReShade can't
-    // sample our raw GL depth-format handle; a color copy - like generic_depth
-    // makes - is what it needs). Allocated only when BDMergeReShadeOverrideDepth on.
-    LLRenderTarget          mReShadeDepthCopy;
-    void copyReShadeDepth(); // fill mReShadeDepthCopy from the scene depth (RTGI)
     // Un-jittered current projection captured at camera setup (llviewercamera),
     // uploaded to the velocity programs so the SMAA T2x jitter does not leak into
     // motion vectors. Public so LLViewerCamera can write it.

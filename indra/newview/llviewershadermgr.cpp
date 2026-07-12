@@ -223,7 +223,6 @@ LLGLSLShader            gDeferredProjectorVolumetricProgram;
 LLGLSLShader            gDeferredProjectorVolumetricUpsampleProgram; // [BDMerge G3.3 P1 item 3]
 LLGLSLShader            gDeferredProjectorVolumetricTemporalProgram; // [BDMerge G3.3 Batch 1 A]
 LLGLSLShader            gDeferredProjectorVolumetricBloomFeedProgram; // [BDMerge G3.3 P3 item 4]
-LLGLSLShader            gReShadeDepthCopyProgram; // [RTGI] scene depth -> R32F for ReShade
 LLGLSLShader            gDeferredPostNoDoFProgram;
 LLGLSLShader            gDeferredWLSkyProgram;
 LLGLSLShader            gEnvironmentMapProgram;
@@ -414,7 +413,6 @@ void LLViewerShaderMgr::finalizeShaderList()
     mShaderList.push_back(&gDeferredProjectorVolumetricUpsampleProgram); // [BDMerge G3.3 P1 item 3]
     mShaderList.push_back(&gDeferredProjectorVolumetricTemporalProgram); // [BDMerge G3.3 Batch 1 A]
     mShaderList.push_back(&gDeferredProjectorVolumetricBloomFeedProgram); // [BDMerge G3.3 P3 item 4]
-    mShaderList.push_back(&gReShadeDepthCopyProgram); // [RTGI]
     mShaderList.push_back(&gDeferredAlphaProgram);
     mShaderList.push_back(&gHUDAlphaProgram);
     mShaderList.push_back(&gDeferredAlphaImpostorProgram);
@@ -1213,7 +1211,6 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gDeferredProjectorVolumetricUpsampleProgram.unload(); // [BDMerge G3.3 P1 item 3]
         gDeferredProjectorVolumetricTemporalProgram.unload(); // [BDMerge G3.3 Batch 1 A]
         gDeferredProjectorVolumetricBloomFeedProgram.unload(); // [BDMerge G3.3 P3 item 4]
-        gReShadeDepthCopyProgram.unload(); // [RTGI]
         gEnvironmentMapProgram.unload();
         gDeferredWLSkyProgram.unload();
         gDeferredWLCloudProgram.unload();
@@ -3114,22 +3111,6 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         if (!success)
         {
             LL_WARNS() << "Failed to create shader '" << gDeferredProjectorVolumetricBloomFeedProgram.mName << "', disabling!" << LL_ENDL;
-            success = true;
-        }
-
-        // [RTGI] Depth->R32F copy so the ReShade bridge can hand ReShade a
-        // sampleable, engine-exact scene depth (SL's OpenGL depth defeats ReShade's
-        // generic_depth). Plain 2D pass, no depth reconstruction.
-        gReShadeDepthCopyProgram.mName = "ReShade Depth Copy Shader";
-        gReShadeDepthCopyProgram.mShaderFiles.clear();
-        gReShadeDepthCopyProgram.clearPermutations();
-        gReShadeDepthCopyProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
-        gReShadeDepthCopyProgram.mShaderFiles.push_back(make_pair("deferred/reshadeDepthCopyF.glsl", GL_FRAGMENT_SHADER));
-        gReShadeDepthCopyProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
-        success = gReShadeDepthCopyProgram.createShader();
-        if (!success)
-        {
-            LL_WARNS() << "Failed to create shader '" << gReShadeDepthCopyProgram.mName << "', disabling!" << LL_ENDL;
             success = true;
         }
 
