@@ -10650,6 +10650,28 @@
       <key>Value</key>
       <real>8.0</real>
   </map>
+  <key>BDMergeProjectorVolumetricsFrustumClip</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 Batch A - E1] Bound each projector shaft's raymarch by the light's actual frustum (4 side planes + near) instead of only its sphere of influence. For narrow cones this tightens the marched interval several-fold, so the same sample budget gives a cleaner shaft (or the budget can be lowered for free). Look-neutral: the clipped interval is a strict superset of the lit region and falls back to the sphere bounds if degenerate. Default off (A/B baseline).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+  </map>
+  <key>BDMergeProjectorVolumetricsShadowJitterTap</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 Batch A - E2] Take a single interleaved-gradient-jittered self-shadow tap per march step instead of ShadowSamples sub-taps (up to 4x fewer shadow-map fetches, the loop's most expensive op). The per-pixel dither already offsets the tap along the step so it decorrelates like the sub-taps and the dither/temporal path averages it. When on, ShadowSamples>1 is ignored. Default off (A/B baseline); keep off with Temporal off for fully deterministic sub-taps.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+  </map>
   <key>BDMergeProjectorVolumetricsTint</key>
   <map>
       <key>Comment</key>

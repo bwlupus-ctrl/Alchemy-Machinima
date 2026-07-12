@@ -81,6 +81,11 @@ uniform int   projvol_dither;     // item 2: 0=off(centre) 1=static bluenoise 2=
 uniform float projvol_frame;      // item 2: temporal seed (frame counter, wrapped)
 uniform float projvol_max;        // item 1: HDR headroom clamp (large in linear HDR)
 
+// [BDMerge G3.3 Batch A] look-neutral performance gates (all default to a no-op).
+uniform int   projvol_frustum_clip;       // E1: 0 = sphere bounds (default); !=0 = frustum-clipped [t0,t1]
+uniform vec4  projvol_frustum_planes[6];  // E1: view-space frustum planes, inside>=0: 0=L 1=R 2=B 3=T 4=near 5=far
+uniform int   projvol_shadow_jitter_tap;  // E2: 0 = sub-tap loop (default); !=0 = one IGN-jittered shadow tap
+
 // [BDMerge G3.3 Batch 1 B] Gobo-colored occluder shadows. 0 = classic hard black
 // occluder shadow (the shipped look). >0 lets occluded march samples still carry a
 // dimmed, gobo-shaped colored contribution so occluders tint/dim the beam like
@@ -252,6 +257,50 @@ void main()
         return;
     }
 
+    // [BDMerge G3.3 Batch A - E1] Frustum-clipped march. The sphere [t0,t1] above
+    // is a loose bound; for a narrow cone most steps then `continue` out of the
+    // cookie test after paying the projection math. When enabled, slab-clip the
+    // view ray (origin = view-space 0, dir = d) against the projector's frustum
+    // planes (uploaded per cone in view space) and INTERSECT with the sphere
+    // interval so the sample budget concentrates in the lit segment. Only the 4
+    // side planes + near are applied: they exactly match the per-sample cookie/near
+    // test (clipProjectedLightVars: proj_tc.xy in [0,1] and projected_point.z >= 0),
+    // so the clipped interval is a strict SUPERSET of the lit interval. The FAR
+    // plane (index 5) is deliberately skipped - the sphere of influence extends
+    // past the projector's far clip and the per-sample test still lights those
+    // samples, so clipping far would remove lit space. A degenerate/empty refined
+    // interval falls back to the sphere bounds (never a worse result than today).
+    // At the gate default (off) this whole block is skipped -> byte-identical.
+    if (projvol_frustum_clip != 0)
+    {
+        float ct0 = t0;
+        float ct1 = t1;
+        bool  ok  = true;
+        for (int p = 0; p < 5; ++p) // 0=L 1=R 2=B 3=T 4=near  (5=far intentionally skipped)
+        {
+            vec4  pl    = projvol_frustum_planes[p];
+            float denom = dot(pl.xyz, d); // rate of the plane value along the ray
+            float f0    = pl.w;           // plane value at t=0 (the ray origin)
+            if (denom > 1e-6)
+            {
+                ct0 = max(ct0, -f0 / denom); // ray ENTERS this half-space at this t
+            }
+            else if (denom < -1e-6)
+            {
+                ct1 = min(ct1, -f0 / denom); // ray LEAVES this half-space at this t
+            }
+            else if (f0 < 0.0)
+            {
+                ok = false; // parallel to the plane and on its outside -> empty
+            }
+        }
+        if (ok && ct1 > ct0)
+        {
+            t0 = ct0;
+            t1 = ct1;
+        }
+    }
+
     float march_len = t1 - t0;
     float dt        = march_len / float(godray_res); // physical step length
 
@@ -314,7 +363,14 @@ void main()
         // sub-taps spread across the step so thin occluders (bars/foliage) resolve
         // into sharp god-ray bands instead of being blurred by the coarse march.
         float vis;
-        if (projvol_shadow_samples <= 1)
+        // [BDMerge G3.3 Batch A - E2] One IGN-jittered shadow tap instead of N
+        // sub-taps. spos = d*(t0+(i+roffset)*dt) already carries the per-pixel
+        // interleaved-gradient offset ALONG the step, so a single tap here is
+        // decorrelated exactly like the sub-taps and the dither/temporal path
+        // averages it - at up to 4x fewer shadow fetches. When the jitter gate is
+        // on it overrides ShadowSamples>1. Gate off (default) => the condition is
+        // exactly `projvol_shadow_samples <= 1` and both legacy paths are unchanged.
+        if (projvol_shadow_jitter_tap != 0 || projvol_shadow_samples <= 1)
         {
             vis = sampleSpotShadow(spos, vec3(0.0), proj_shadow_idx, tc);
         }
@@ -390,6 +446,23 @@ void main()
         // (the classic crisp black occluder shadow).
         vec3 scatter = mix(cookie * projvol_shadow_tint, cookie, vis);
         accum += atten * phase * scatter * edge_feather * density;
+
+        // [BDMerge G3.3 Batch A - E4] Luminance early-out (no gate - provably
+        // invisible). The final composite below is
+        //   shaft = accum * dt * PROJVOL_SCATTER * godray_multiplier * color
+        // then clamp(shaft, 0, projvol_max). Every remaining sample adds a
+        // NON-NEGATIVE term (atten, phase for the documented g in [0,0.95], cookie,
+        // edge_feather, density are all >= 0) so `accum` only grows per channel, and
+        // the post-loop rim term is likewise additive - so once this EXACT product
+        // reaches projvol_max on all three channels the clamped output can no longer
+        // change and further stepping is wasted work. The check reuses the identical
+        // expression as the composite, so it can never trigger before the true value
+        // is clamped (breaking early would then be visible). Break AFTER the sample's
+        // contribution is added, matching the composite's factors precisely.
+        if (all(greaterThanEqual(accum * dt * PROJVOL_SCATTER * godray_multiplier * color, vec3(projvol_max))))
+        {
+            break;
+        }
     }
 
     // Single-scattering integral: weight by physical step length so a longer

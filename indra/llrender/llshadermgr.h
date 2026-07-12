@@ -522,6 +522,11 @@ public:
         PROJVOL_RIM_THRESHOLD,             //  "projvol_rim_threshold"
         PROJVOL_RIM_WRAP,                  //  "projvol_rim_wrap"
 
+        // [BDMerge G3.3 Batch A] look-neutral performance (E1 frustum clip, E2 jitter tap)
+        PROJVOL_FRUSTUM_CLIP,              //  "projvol_frustum_clip"     (E1 gate)
+        PROJVOL_FRUSTUM_PLANES,            //  "projvol_frustum_planes"   (E1 vec4[6])
+        PROJVOL_SHADOW_JITTER_TAP,         //  "projvol_shadow_jitter_tap"(E2 gate)
+
         // [BDMerge Batch 2] Feature 1: soft (contact-hardening + filled) shadows
         SOFT_SHADOW_ENABLE,                //  "soft_shadow_enable"
         SOFT_SHADOW_SCALE,                 //  "soft_shadow_scale"   (penumbra rate)

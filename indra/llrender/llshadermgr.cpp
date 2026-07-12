@@ -1723,6 +1723,11 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("projvol_rim_threshold");
     mReservedUniforms.push_back("projvol_rim_wrap");
 
+    // [BDMerge G3.3 Batch A] look-neutral performance (E1 frustum clip, E2 jitter tap)
+    mReservedUniforms.push_back("projvol_frustum_clip");
+    mReservedUniforms.push_back("projvol_frustum_planes");
+    mReservedUniforms.push_back("projvol_shadow_jitter_tap");
+
     // [BDMerge Batch 2] Feature 1: soft shadows
     mReservedUniforms.push_back("soft_shadow_enable");
     mReservedUniforms.push_back("soft_shadow_scale");

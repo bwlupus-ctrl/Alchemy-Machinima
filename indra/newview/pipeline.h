@@ -1203,6 +1203,9 @@ public:
     static bool BDMergeProjectorVolumetricsHalfRes;
     static U32 BDMergeProjectorVolumetricsMinResolution;
     static F32 BDMergeProjectorVolumetricsMaxLuminance;
+    // [BDMerge G3.3 Batch A] look-neutral performance gates (both default OFF).
+    static bool BDMergeProjectorVolumetricsFrustumClip;   // E1: frustum-clipped march
+    static bool BDMergeProjectorVolumetricsShadowJitterTap;// E2: single IGN-jittered shadow tap
     // [BDMerge G3.3 Phase 2] global art-direction overrides for flagged shafts.
     static LLColor3 BDMergeProjectorVolumetricsTint;
     static F32 BDMergeProjectorVolumetricsTintStrength;

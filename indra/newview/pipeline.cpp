@@ -255,6 +255,8 @@ bool LLPipeline::BDMergeProjectorVolumetricsAdaptive;
 bool LLPipeline::BDMergeProjectorVolumetricsHalfRes;
 U32 LLPipeline::BDMergeProjectorVolumetricsMinResolution;
 F32 LLPipeline::BDMergeProjectorVolumetricsMaxLuminance;
+bool LLPipeline::BDMergeProjectorVolumetricsFrustumClip;
+bool LLPipeline::BDMergeProjectorVolumetricsShadowJitterTap;
 LLColor3 LLPipeline::BDMergeProjectorVolumetricsTint;
 F32 LLPipeline::BDMergeProjectorVolumetricsTintStrength;
 F32 LLPipeline::BDMergeProjectorVolumetricsDensity;
@@ -678,6 +680,8 @@ void LLPipeline::init()
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsHalfRes");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsMinResolution");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsMaxLuminance");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsFrustumClip");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsShadowJitterTap");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsTint");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsTintStrength");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsDensity");
@@ -1380,6 +1384,8 @@ void LLPipeline::refreshCachedSettings()
     BDMergeProjectorVolumetricsHalfRes = gSavedSettings.getBOOL("BDMergeProjectorVolumetricsHalfRes");
     BDMergeProjectorVolumetricsMinResolution = gSavedSettings.getU32("BDMergeProjectorVolumetricsMinResolution");
     BDMergeProjectorVolumetricsMaxLuminance = gSavedSettings.getF32("BDMergeProjectorVolumetricsMaxLuminance");
+    BDMergeProjectorVolumetricsFrustumClip = gSavedSettings.getBOOL("BDMergeProjectorVolumetricsFrustumClip");
+    BDMergeProjectorVolumetricsShadowJitterTap = gSavedSettings.getBOOL("BDMergeProjectorVolumetricsShadowJitterTap");
     BDMergeProjectorVolumetricsTint = gSavedSettings.getColor3("BDMergeProjectorVolumetricsTint");
     BDMergeProjectorVolumetricsTintStrength = gSavedSettings.getF32("BDMergeProjectorVolumetricsTintStrength");
     BDMergeProjectorVolumetricsDensity = gSavedSettings.getF32("BDMergeProjectorVolumetricsDensity");
@@ -9619,6 +9625,13 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
     gDeferredProjectorVolumetricProgram.uniform1i(LLShaderMgr::PROJVOL_DITHER, (S32)llclamp(BDMergeProjectorVolumetricsDither, (U32)0, (U32)2));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FRAME, (F32)(LLFrameTimer::getFrameCount() % 1024u));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_MAX, BDMergeProjectorVolumetricsMaxLuminance);
+    // [BDMerge G3.3 Batch A] look-neutral performance gates (both default off ->
+    // no-op). E1 frustum clip refines [t0,t1] against the projector's frustum (the
+    // per-cone planes are uploaded in setupSpotLightVolumetric); E2 replaces the
+    // shadow sub-tap loop with one IGN-jittered tap. E4 (luminance early-out) needs
+    // no uniform - it is provably invisible via the existing projvol_max clamp.
+    gDeferredProjectorVolumetricProgram.uniform1i(LLShaderMgr::PROJVOL_FRUSTUM_CLIP, BDMergeProjectorVolumetricsFrustumClip ? 1 : 0);
+    gDeferredProjectorVolumetricProgram.uniform1i(LLShaderMgr::PROJVOL_SHADOW_JITTER_TAP, BDMergeProjectorVolumetricsShadowJitterTap ? 1 : 0);
     // [Batch 1 B] gobo-colored occluder shadows: 0 = classic hard black shadow
     // (the shipped look), >0 lets occluded march samples carry a dimmed, gobo-shaped
     // colored contribution ("stained glass" banding) instead of pure black.
@@ -11896,6 +11909,43 @@ void LLPipeline::setupSpotLightVolumetric(LLGLSLShader& shader, LLDrawable* draw
 
     F32 proj_range = far_clip - near_clip;
     glm::mat4 light_proj = glm::perspective(fovy, aspect, near_clip, far_clip);
+
+    // [BDMerge G3.3 Batch A - E1] Frustum-clipped march bounds. Extract the
+    // projector's 6 frustum planes in VIEW space - the exact space the shaft
+    // marches in - so the shader can slab-clip [t0,t1] to the real cone instead of
+    // the loose sphere. `screen_to_light` here is still inverse(light_to_screen) =
+    // view -> light-eye space (it is overwritten into the [0,1] texture matrix on
+    // the next line, so this MUST run before it). Composing with light_proj gives
+    // view -> projector clip; Gribb-Hartmann on its rows yields inside-positive
+    // half-spaces (a*x+b*y+c*z+d >= 0 for a view-space point). Order matches the
+    // shader: 0=left 1=right 2=bottom 3=top 4=near 5=far. Computed + uploaded per
+    // cone only when the gate is on; the shader ignores the planes when off.
+    if (BDMergeProjectorVolumetricsFrustumClip)
+    {
+        glm::mat4 view_to_clip = light_proj * screen_to_light; // view -> projector clip
+        // glm is column-major: row i of the matrix is (m[0][i], m[1][i], m[2][i], m[3][i]).
+        glm::vec4 r0(view_to_clip[0][0], view_to_clip[1][0], view_to_clip[2][0], view_to_clip[3][0]);
+        glm::vec4 r1(view_to_clip[0][1], view_to_clip[1][1], view_to_clip[2][1], view_to_clip[3][1]);
+        glm::vec4 r2(view_to_clip[0][2], view_to_clip[1][2], view_to_clip[2][2], view_to_clip[3][2]);
+        glm::vec4 r3(view_to_clip[0][3], view_to_clip[1][3], view_to_clip[2][3], view_to_clip[3][3]);
+        glm::vec4 planes[6];
+        planes[0] = r3 + r0; // left
+        planes[1] = r3 - r0; // right
+        planes[2] = r3 + r1; // bottom
+        planes[3] = r3 - r1; // top
+        planes[4] = r3 + r2; // near
+        planes[5] = r3 - r2; // far (uploaded for completeness; the shader skips it)
+        for (S32 p = 0; p < 6; ++p)
+        {
+            F32 len = glm::length(glm::vec3(planes[p]));
+            if (len > 1e-6f)
+            {
+                planes[p] /= len; // normalize so the shader's parallel-epsilon is metric
+            }
+        }
+        shader.uniform4fv(LLShaderMgr::PROJVOL_FRUSTUM_PLANES, 6, glm::value_ptr(planes[0]));
+    }
+
     screen_to_light = trans * light_proj * screen_to_light;
     shader.uniformMatrix4fv(LLShaderMgr::PROJECTOR_MATRIX, 1, false, glm::value_ptr(screen_to_light));
     shader.uniform1f(LLShaderMgr::PROJECTOR_NEAR, near_clip);
