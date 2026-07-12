@@ -9674,7 +9674,21 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
         gFroxelMediaProgram.uniform1f(LLShaderMgr::FROXEL_FOG_STRENGTH, llclamp(BDMergeFroxelFogStrength, 0.f, 1.f));
         gFroxelMediaProgram.uniform1f(LLShaderMgr::FROXEL_FOG_GROUND, llmax(BDMergeFroxelFogGroundDensity, 0.f));
         gFroxelMediaProgram.uniform1f(LLShaderMgr::FROXEL_FOG_FALLOFF, llmax(BDMergeFroxelFogFalloff, 0.01f));
-        gFroxelMediaProgram.uniform1f(LLShaderMgr::FROXEL_FOG_BASE, BDMergeFroxelFogBase);
+        // [F4 UX fix] FogBase as an absolute region altitude is unusable (the useful
+        // band is +-10m out of 0-4096, and it breaks entirely in a skybox). In the
+        // default agent-relative mode the setting is an OFFSET from the avatar's feet:
+        // 0 = fog layer top right at your feet, +2 = knee/waist fog above the floor,
+        // negative sinks it. Anchored to the AVATAR (not the camera) so the layer
+        // stays put during flycam moves. Mode 0 keeps the legacy absolute semantics.
+        {
+            static LLCachedControl<U32> fog_base_mode(gSavedSettings, "BDMergeFroxelFogBaseMode", 1U);
+            F32 eff_base = BDMergeFroxelFogBase;
+            if (fog_base_mode != 0)
+            {
+                eff_base += gAgent.getPositionAgent().mV[VZ];
+            }
+            gFroxelMediaProgram.uniform1f(LLShaderMgr::FROXEL_FOG_BASE, eff_base);
+        }
         gFroxelMediaProgram.uniform1f(LLShaderMgr::FROXEL_NOISE_STRENGTH, llclamp(BDMergeFroxelNoiseStrength, 0.f, 1.f));
         gFroxelMediaProgram.uniform1f(LLShaderMgr::FROXEL_NOISE_SCALE, llmax(BDMergeFroxelNoiseScale, 0.f));
         gFroxelMediaProgram.uniform1f(LLShaderMgr::FROXEL_NOISE_SPEED, BDMergeFroxelNoiseSpeed);

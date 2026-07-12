@@ -11009,24 +11009,35 @@
   <key>BDMergeFroxelFogFalloff</key>
   <map>
       <key>Comment</key>
-      <string>[BDMerge Froxel F0] Height-fog e-fold falloff distance in metres (0.5-256.0; default 20.0). Over this many metres of altitude above the ground reference the density falls to ~37% of the ground value. Only active when BDMergeFroxelFogStrength &gt; 0.</string>
+      <string>[BDMerge Froxel F0/F4] Height-fog e-fold falloff distance in metres (0.5-256.0; default 3.0). Over this many metres of altitude above the ground reference the density falls to ~37% of the ground value. Small values (2-5) give a visible fog "surface" at set scale; the old default of 20 was imperceptible over a room-height span. Only active when BDMergeFroxelFogStrength &gt; 0.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
       <string>F32</string>
       <key>Value</key>
-      <real>20.0</real>
+      <real>3.0</real>
   </map>
   <key>BDMergeFroxelFogBase</key>
   <map>
       <key>Comment</key>
-      <string>[BDMerge Froxel F0] Ground reference altitude for the froxel height fog, in region-Z metres (default 0.0). Density equals FogGroundDensity at and below this height and thins above it. Set to your set's floor height. Only active when BDMergeFroxelFogStrength &gt; 0.</string>
+      <string>[BDMerge Froxel F0/F4] Height reference for the froxel ground fog. In the default agent-relative mode (BDMergeFroxelFogBaseMode 1) this is an OFFSET in metres from your avatar's feet: 0 = fog layer top right at your feet, +2 = waist-height fog, negative sinks it below the floor. Anchored to the avatar (not the camera) so the layer stays put during flycam moves and works at any skybox altitude. In mode 0 it is a legacy absolute region-Z altitude. Density equals FogGroundDensity at and below the reference and thins above it per FogFalloff. Only active when BDMergeFroxelFogStrength &gt; 0.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
       <string>F32</string>
       <key>Value</key>
       <real>0.0</real>
+  </map>
+  <key>BDMergeFroxelFogBaseMode</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge Froxel F4] How BDMergeFroxelFogBase is interpreted: 1 (default) = relative offset from the avatar's feet (usable range roughly -10..+10; deterministic during flycam camera moves); 0 = legacy absolute region-Z altitude (0-4096, only useful if you need the layer pinned to a world height independent of where you stand).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>U32</string>
+      <key>Value</key>
+      <integer>1</integer>
   </map>
   <key>BDMergeFroxelNoiseStrength</key>
   <map>
