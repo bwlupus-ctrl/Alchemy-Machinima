@@ -9888,6 +9888,17 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
             }
             if (is_hero)
             {
+                // [F4 debug] Once per second at most: proves the hero exclusion is
+                // actually firing for this projector (pairs with the HeroBeam toggle
+                // log in alviewermenu). If a "hero does nothing" report shows the
+                // toggle log but never this line, the flag/id plumbing is broken; if
+                // both appear, the per-cone march side is where to look.
+                static LLFrameTimer sHeroLogTimer;
+                if (sHeroLogTimer.getElapsedTimeF32() > 1.f)
+                {
+                    sHeroLogTimer.reset();
+                    LL_INFOS("HeroBeam") << "injection skip (hero) " << matched_id << LL_ENDL;
+                }
                 continue;
             }
 

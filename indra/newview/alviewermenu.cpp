@@ -710,7 +710,13 @@ namespace
             const LLSelectNode* pNode = *itObj;
             LLViewerObject* pObj = (pNode) ? pNode->getObject() : nullptr;
             if (pObj && pObj->getID().notNull())
+            {
                 LLPipeline::toggleHeroProjector(pObj->getID());
+                // [F4 debug] Decisive breadcrumb for "Hero Beam does nothing" reports:
+                // confirms the click reached the handler and which id carries the flag.
+                LL_INFOS("HeroBeam") << "toggled " << pObj->getID() << " -> "
+                                     << (LLPipeline::isHeroProjector(pObj->getID()) ? "ON" : "OFF") << LL_ENDL;
+            }
         }
     }
 
