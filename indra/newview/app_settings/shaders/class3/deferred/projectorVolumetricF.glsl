@@ -443,26 +443,35 @@ void main()
             // physically how rim lights behave (they must come from behind/beside).
             float wrap = clamp((nl + projvol_rim_wrap) / (1.0 + projvol_rim_wrap), 0.0, 1.0);
 
-            // Incident projector light at this point: gobo footprint x distance/range
-            // attenuation x THIS projector's own shadow map. This is the light, before
-            // the surface albedo - so an unlit/shadowed/out-of-cone edge cannot glow.
-            float atten_s  = calcLegacyDistanceAttenuation(dist_s, falloff);
-            float shadow_s = sampleSpotShadow(pos.xyz, nrm, proj_shadow_idx, tc);
-            vec3  cookie_s = projGoboTexture(l_dist_s, ptc_s.xy);
-            vec3  E        = cookie_s * atten_s * shadow_s;
+            // [Perf] The shadow-map sample + cookie fetch below are the expensive part
+            // of the rim. Gate them on the cheap geometry (one normal fetch already
+            // done): skip entirely where the rim is negligible - the flat/camera-facing
+            // pixels (graze~0) and shadow-side pixels (wrap~0), i.e. the large majority
+            // of a cone's coverage. Only true light-facing silhouette pixels pay for
+            // the shadow lookup, so whole non-grazing warps early-out.
+            float geom = graze * wrap * projvol_rim_strength;
+            if (geom > 0.002)
+            {
+                // Incident projector light at this point: gobo footprint x distance/range
+                // attenuation x THIS projector's own shadow map. The light before albedo -
+                // so an unlit/shadowed/out-of-cone edge cannot glow.
+                float atten_s  = calcLegacyDistanceAttenuation(dist_s, falloff);
+                float shadow_s = sampleSpotShadow(pos.xyz, nrm, proj_shadow_idx, tc);
+                vec3  cookie_s = projGoboTexture(l_dist_s, ptc_s.xy);
+                vec3  E        = cookie_s * atten_s * shadow_s;
 
-            // Brightness gate (RimGlow's "ignore light dimmer than"): keep the rim on
-            // meaningfully lit surfaces so faint spill can't paint a grey outline.
-            float lum  = dot(E, vec3(0.2126, 0.7152, 0.0722));
-            float gate = (projvol_rim_threshold > 0.0)
-                       ? smoothstep(projvol_rim_threshold * 0.5, projvol_rim_threshold, lum)
-                       : 1.0;
+                // Brightness gate (RimGlow's "ignore light dimmer than"): keep the rim on
+                // meaningfully lit surfaces so faint spill can't paint a grey outline.
+                float lum  = dot(E, vec3(0.2126, 0.7152, 0.0722));
+                float gate = (projvol_rim_threshold > 0.0)
+                           ? smoothstep(projvol_rim_threshold * 0.5, projvol_rim_threshold, lum)
+                           : 1.0;
 
-            // Carry the light's chroma (E's cookie + `color`); the scalar terms drive
-            // brightness only, so it reads as colored light instead of clipping to a
-            // white sticker edge. Independent of godray_multiplier so beam and rim
-            // tune separately. Added into the additive HDR shaft -> rides bloom-feed.
-            shaft += E * (graze * wrap * gate * projvol_rim_strength * PROJVOL_RIM_SCALE) * color;
+                // Carry the light's chroma (E's cookie + `color`); the scalar terms drive
+                // brightness only, so it reads as colored light instead of clipping to a
+                // white sticker edge. Added into the additive HDR shaft -> rides bloom-feed.
+                shaft += E * (geom * gate * PROJVOL_RIM_SCALE) * color;
+            }
         }
     }
 
