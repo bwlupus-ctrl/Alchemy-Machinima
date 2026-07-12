@@ -213,32 +213,33 @@ static HWND sWindowHandleForMessageBox = NULL;
 // the legacy exclusive path can be restored if ever needed (default = borderless).
 static bool sBorderlessFullscreen = true;
 
-// [BDMerge Borderless] Full pixel bounds of the monitor the window belongs to (or
-// the one under the requested position on first creation), i.e. that monitor's
-// desktop resolution and virtual-screen offset. rcMonitor (not rcWork) so the
-// cover includes the taskbar area = true fullscreen.
-static bool getBorderlessMonitorRect(HWND hwnd, const LLCoordScreen* posp, RECT& out_rect)
+// [BDMerge Borderless] Work area of the PRIMARY monitor (desktop resolution minus
+// any reserved taskbar). Work area, not full monitor bounds, so a plain non-topmost
+// borderless window never underlaps the taskbar and hides the viewer's own menu bar
+// / UI. If the Windows taskbar is set to auto-hide, the work area IS the full monitor
+// and the cover becomes edge-to-edge. SPI_GETWORKAREA reports the primary monitor's
+// work area directly (origin 0,0), which is exactly the requested "primary monitor"
+// target and avoids following a stale saved window position onto the wrong screen.
+static bool getBorderlessPrimaryRect(RECT& out_rect)
 {
-    HMONITOR hmon;
-    if (hwnd)
+    RECT work;
+    ::ZeroMemory(&work, sizeof(work));
+    if (SystemParametersInfo(SPI_GETWORKAREA, 0, &work, 0) &&
+        work.right > work.left && work.bottom > work.top)
     {
-        hmon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTOPRIMARY);
-    }
-    else
-    {
-        POINT pt = { posp ? (LONG)posp->mX : 0, posp ? (LONG)posp->mY : 0 };
-        hmon = MonitorFromPoint(pt, MONITOR_DEFAULTTOPRIMARY);
+        out_rect = work;
+        return true;
     }
 
-    MONITORINFO mi;
-    ::ZeroMemory(&mi, sizeof(mi));
-    mi.cbSize = sizeof(mi);
-    if (!GetMonitorInfo(hmon, &mi))
+    // Fallback: full primary monitor bounds.
+    int w = GetSystemMetrics(SM_CXSCREEN);
+    int h = GetSystemMetrics(SM_CYSCREEN);
+    if (w > 0 && h > 0)
     {
-        return false;
+        out_rect.left = 0; out_rect.top = 0; out_rect.right = w; out_rect.bottom = h;
+        return true;
     }
-    out_rect = mi.rcMonitor;
-    return true;
+    return false;
 }
 
 // The following class LLWinImm delegates Windows IMM APIs.
@@ -1143,6 +1144,14 @@ bool LLWindowWin32::maximize()
     bool success = false;
     if (!mWindowHandle) return success;
 
+    // [BDMerge Borderless] A borderless-fullscreen window already covers the primary
+    // monitor; re-maximizing it (SW_MAXIMIZE) resizes the WS_POPUP - triggering a GL
+    // realloc black-flash and re-covering the taskbar. No-op in that mode.
+    if (mFullscreen && sBorderlessFullscreen)
+    {
+        return true;
+    }
+
     mWindowThread->post([=, this]
         {
             WINDOWPLACEMENT placement;
@@ -1288,41 +1297,40 @@ bool LLWindowWin32::switchContext(bool fullscreen, const LLCoordScreen& size, bo
 
     if (fullscreen && sBorderlessFullscreen)
     {
-        // [BDMerge Borderless] Borderless fullscreen windowed: cover the target
-        // monitor at its current desktop resolution with a WS_POPUP window. No
-        // EnumDisplaySettings mode hunt, no setDisplayResolution / ChangeDisplaySettings
-        // exclusive switch - so the desktop resolution is never dropped and there is
-        // no exclusive-mode alt-tab churn.
+        // [BDMerge Borderless] Borderless fullscreen windowed on the PRIMARY monitor:
+        // a plain WS_POPUP window sized to the primary monitor's WORK AREA. No display
+        // mode change (no EnumDisplaySettings hunt / setDisplayResolution), NOT topmost,
+        // and no focus-time churn - so it behaves like an ordinary window: click off and
+        // it just loses focus (no minimize, no desktop-mode flicker), other apps and
+        // monitors stay fully usable. Work area (not full monitor bounds) means a
+        // non-topmost window never underlaps the taskbar and occludes the viewer's own
+        // UI; if the taskbar is set to auto-hide the work area is the full monitor and
+        // the cover becomes edge-to-edge (best for machinima capture).
         mFullscreen = true;
 
         RECT mon;
-        if (!getBorderlessMonitorRect(mWindowHandle, posp, mon))
+        if (!getBorderlessPrimaryRect(mon))
         {
-            // Monitor query failed - fall back to the requested size at the origin.
-            mon.left   = posp ? (long)posp->mX : 0;
-            mon.top    = posp ? (long)posp->mY : 0;
-            mon.right  = mon.left + width;
-            mon.bottom = mon.top + height;
+            // Query failed - fall back to the requested size at the origin.
+            mon.left   = 0;
+            mon.top    = 0;
+            mon.right  = width;
+            mon.bottom = height;
         }
 
-        window_rect = mon;                              // exact monitor pixel bounds
+        window_rect = mon;                              // primary work-area bounds
         mFullscreenWidth   = mon.right - mon.left;
         mFullscreenHeight  = mon.bottom - mon.top;
         mFullscreenRefresh = (S32)current_refresh;      // desktop refresh; unchanged
-        // WS_EX_TOPMOST so the borderless cover sits ABOVE the (topmost) taskbar and
-        // hides it - otherwise a taskbar on any edge occludes the viewer's own menu
-        // bar / UI and shows up in captures. Dropped to not-topmost on focus loss
-        // (WM_ACTIVATEAPP) so alt-tab still reaches other apps and the taskbar.
-        dw_ex_style = WS_EX_APPWINDOW | WS_EX_TOPMOST;
-        dw_style    = WS_POPUP;
+        dw_ex_style = WS_EX_APPWINDOW;                  // NOT topmost - no exclusive feel
+        dw_style    = WS_POPUP;                         // borderless
 
         // window_rect is already the final borderless window rect (WS_POPUP has no
-        // frame), so it must NOT be expanded by ll_adjust_window_rect_dpi - it has
-        // to match the monitor 1:1 to cover it exactly.
-        LL_INFOS("Window") << "Borderless fullscreen: " << mFullscreenWidth
-            << "x" << mFullscreenHeight
-            << " @ " << mFullscreenRefresh
-            << " (desktop resolution, no exclusive mode change)" << LL_ENDL;
+        // frame), so it must NOT be expanded by ll_adjust_window_rect_dpi.
+        LL_INFOS("Window") << "[BDMerge Borderless] PRIMARY-monitor borderless windowed "
+            << mFullscreenWidth << "x" << mFullscreenHeight
+            << " at (" << mon.left << "," << mon.top << ")"
+            << " - no mode change, not topmost" << LL_ENDL;
     }
     else if (fullscreen)
     {
@@ -2601,19 +2609,10 @@ LRESULT CALLBACK LLWindowWin32::mainWindowProc(HWND h_wnd, UINT u_msg, WPARAM w_
                             window_imp->resetDisplayResolution();
                         }
                     }
-                    else if (window_imp->mFullscreen /* && sBorderlessFullscreen */)
-                    {
-                        // [BDMerge Borderless] No minimize / display-mode churn - just
-                        // toggle topmost so the cover hides the taskbar while focused
-                        // but yields to other apps (and the taskbar) on alt-tab.
-                        HWND h = window_imp->mWindowHandle;
-                        if (h)
-                        {
-                            SetWindowPos(h, activating ? HWND_TOPMOST : HWND_NOTOPMOST,
-                                         0, 0, 0, 0,
-                                         SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-                        }
-                    }
+                    // [BDMerge Borderless] Borderless fullscreen is an ordinary window:
+                    // NO activate-time handling at all - no minimize, no display-mode
+                    // restore, no topmost toggle. Clicking off just loses focus like any
+                    // window (that focus-time churn was the "acts exclusive" behavior).
 
                     if (!activating)
                     {
@@ -3892,6 +3891,15 @@ bool LLWindowWin32::setFullscreenResolution()
 // protected
 bool LLWindowWin32::resetDisplayResolution()
 {
+    // [BDMerge Borderless] Borderless fullscreen never changes the display mode, so
+    // there is nothing to reset. Skip the ChangeDisplaySettings call entirely - calling
+    // it on focus loss / context rebuild is what produced the "changing resolutions"
+    // pause and desktop flash even though no exclusive mode was ever set.
+    if (sBorderlessFullscreen)
+    {
+        return true;
+    }
+
     LL_DEBUGS("Window") << "resetDisplayResolution START" << LL_ENDL;
 
     LONG cds_result = ChangeDisplaySettings(NULL, 0);
