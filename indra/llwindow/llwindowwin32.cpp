@@ -1309,7 +1309,11 @@ bool LLWindowWin32::switchContext(bool fullscreen, const LLCoordScreen& size, bo
         mFullscreenWidth   = mon.right - mon.left;
         mFullscreenHeight  = mon.bottom - mon.top;
         mFullscreenRefresh = (S32)current_refresh;      // desktop refresh; unchanged
-        dw_ex_style = WS_EX_APPWINDOW;
+        // WS_EX_TOPMOST so the borderless cover sits ABOVE the (topmost) taskbar and
+        // hides it - otherwise a taskbar on any edge occludes the viewer's own menu
+        // bar / UI and shows up in captures. Dropped to not-topmost on focus loss
+        // (WM_ACTIVATEAPP) so alt-tab still reaches other apps and the taskbar.
+        dw_ex_style = WS_EX_APPWINDOW | WS_EX_TOPMOST;
         dw_style    = WS_POPUP;
 
         // window_rect is already the final borderless window rect (WS_POPUP has no
@@ -2595,6 +2599,19 @@ LRESULT CALLBACK LLWindowWin32::mainWindowProc(HWND h_wnd, UINT u_msg, WPARAM w_
                         {
                             window_imp->minimize();
                             window_imp->resetDisplayResolution();
+                        }
+                    }
+                    else if (window_imp->mFullscreen /* && sBorderlessFullscreen */)
+                    {
+                        // [BDMerge Borderless] No minimize / display-mode churn - just
+                        // toggle topmost so the cover hides the taskbar while focused
+                        // but yields to other apps (and the taskbar) on alt-tab.
+                        HWND h = window_imp->mWindowHandle;
+                        if (h)
+                        {
+                            SetWindowPos(h, activating ? HWND_TOPMOST : HWND_NOTOPMOST,
+                                         0, 0, 0, 0,
+                                         SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
                         }
                     }
 
