@@ -10439,6 +10439,18 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_NOISE_STRENGTH, froxel_flatten ? 0.f : llclamp(BDMergeProjectorVolumetricsNoiseStrength, 0.f, 1.f));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_NOISE_SCALE, llmax(BDMergeProjectorVolumetricsNoiseScale, 0.f));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_NOISE_SPEED, BDMergeProjectorVolumetricsNoiseSpeed);
+    // [F5 follow-up] Shared dust-wind direction for the BEAM dust (same
+    // BDMergeFroxelWind* trio the froxel air uses - one coherent air), scaled by the
+    // per-cone NoiseSpeed so beams keep their own speed/reverse control. Replaces
+    // the old hardwired (1,1,1) diagonal drift; steer it from the Lightbox Froxel
+    // tab's Wind sliders (they apply to beam dust whether or not froxel is on).
+    {
+        static LLCachedControl<F32> wind_x(gSavedSettings, "BDMergeFroxelWindX", 1.0f);
+        static LLCachedControl<F32> wind_y(gSavedSettings, "BDMergeFroxelWindY", 0.0f);
+        static LLCachedControl<F32> wind_z(gSavedSettings, "BDMergeFroxelWindZ", 0.15f);
+        const F32 s = BDMergeProjectorVolumetricsNoiseSpeed;
+        gDeferredProjectorVolumetricProgram.uniform3f(LLShaderMgr::PROJVOL_WIND, wind_x * s, wind_y * s, wind_z * s);
+    }
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FOG_STRENGTH, froxel_flatten ? 0.f : llclamp(BDMergeProjectorVolumetricsFogStrength, 0.f, 1.f));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FOG_GROUND, llmax(BDMergeProjectorVolumetricsFogGroundDensity, 0.f));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FOG_FALLOFF, llmax(BDMergeProjectorVolumetricsFogFalloff, 0.01f));

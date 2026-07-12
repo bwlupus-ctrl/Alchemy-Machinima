@@ -107,7 +107,13 @@ uniform float projvol_shadow_tint;
 uniform float projvol_density;           // item 3: global haziness master (1 = no-op)
 uniform float projvol_noise_strength;    // item 1: animated noise amount (0 = off)
 uniform float projvol_noise_scale;       // item 1: noise spatial scale (cycles/m)
-uniform float projvol_noise_speed;       // item 1: noise scroll speed (m/s)
+uniform float projvol_noise_speed;       // item 1: noise scroll speed (m/s) - kept
+                                         // uploaded for compatibility; the scroll now
+                                         // uses projvol_wind (speed folded in CPU-side)
+// [F5 follow-up] Shared dust-wind direction (region axes, Z up) already scaled by
+// the per-cone NoiseSpeed on the CPU. Steers the drifting beam dust; negative
+// NoiseSpeed (or negative wind components) reverses. Same wind the froxel air uses.
+uniform vec3  projvol_wind;
 uniform float projvol_time;              // item 1: continuous seconds (noise scroll)
 uniform float projvol_fog_strength;      // item 2: height-fog blend (0 = off)
 uniform float projvol_fog_ground_density;// item 2: density at/below the ground ref
@@ -430,7 +436,7 @@ void main()
             // symmetrically instead of only dimming it.
             if (projvol_noise_strength > 0.0)
             {
-                vec3  np    = wpos * projvol_noise_scale + vec3(projvol_time * projvol_noise_speed);
+                vec3  np    = wpos * projvol_noise_scale + projvol_wind * projvol_time;
                 float n     = projvolFbm(np);                 // ~[0,1], mean ~0.5
                 float mote  = 1.0 + projvol_noise_strength * (n * 2.0 - 1.0);
                 density    *= max(mote, 0.0);

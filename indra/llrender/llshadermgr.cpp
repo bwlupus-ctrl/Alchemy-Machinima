@@ -1728,6 +1728,7 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("projvol_rim_threshold");
     mReservedUniforms.push_back("projvol_rim_wrap");
     mReservedUniforms.push_back("projvol_rim_softness"); // [F4] skin softness
+    mReservedUniforms.push_back("projvol_wind"); // [F5] shared dust-wind * cone NoiseSpeed
 
     // [BDMerge G3.3 Batch A] look-neutral performance (E1 frustum clip, E2 jitter tap)
     mReservedUniforms.push_back("projvol_frustum_clip");

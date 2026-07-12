@@ -527,6 +527,7 @@ public:
         PROJVOL_RIM_THRESHOLD,             //  "projvol_rim_threshold"
         PROJVOL_RIM_WRAP,                  //  "projvol_rim_wrap"
         PROJVOL_RIM_SOFTNESS,              //  "projvol_rim_softness" (F4 skin softness)
+        PROJVOL_WIND,                      //  "projvol_wind" (F5: shared dust-wind * cone NoiseSpeed)
 
         // [BDMerge G3.3 Batch A] look-neutral performance (E1 frustum clip, E2 jitter tap)
         PROJVOL_FRUSTUM_CLIP,              //  "projvol_frustum_clip"     (E1 gate)
