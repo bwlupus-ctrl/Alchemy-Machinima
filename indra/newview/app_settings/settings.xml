@@ -2199,6 +2199,17 @@
       <key>Value</key>
       <integer>1</integer>
     </map>
+    <key>BDMergeReShadeOverrideDepth</key>
+    <map>
+      <key>Comment</key>
+      <string>[RTGI] When ON, the ReShade bridge overrides ReShade's DEPTH semantic with the viewer's own depth buffer. Default OFF: ReShade's built-in generic_depth add-on owns DEPTH (it copies depth into a sampleable texture, which our raw GL depth-format handle is not - binding it directly reads flat/constant and breaks depth effects). Leave OFF unless a proper depth-copy path has been implemented. Motion vectors (SL_MOTION_NDC) are unaffected and always provided.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
     <key>BDMergeVelocityBuffer</key>
     <map>
       <key>Comment</key>

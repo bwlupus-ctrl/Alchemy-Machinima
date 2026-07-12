@@ -15,6 +15,7 @@
 
 #include "pipeline.h"          // gPipeline, RenderTargetPack, LLRenderTarget
 #include "llviewercamera.h"    // LLViewerCamera (matrices, near/far/fov, world frame)
+#include "llviewercontrol.h"   // gSavedSettings (BDMergeReShadeOverrideDepth)
 
 #if LL_RESHADE_ADDON
 // Vendored ReShade add-on SDK header (Apache-2.0, indra/newview/reshade). ReShade
@@ -118,6 +119,11 @@ void LLReShadeBridge::gatherFrame()
             f.mTexVelocity = gPipeline.mVelocityMap.getTexture(0);
         }
 
+        // Opt-in DEPTH override (default off) - read here on the main thread and
+        // stashed for the ReShade-thread callback. Off => generic_depth owns DEPTH.
+        static LLCachedControl<bool> bind_depth(gSavedSettings, "BDMergeReShadeOverrideDepth", false);
+        mBindDepth = bind_depth;
+
         // Consider the frame usable only if the two effect-critical buffers exist.
         f.mValid = (f.mTexNormals != 0) && (f.mTexDepth != 0);
     }
@@ -141,8 +147,8 @@ void LLReShadeBridge::gatherFrame()
 // once lets its contents flow every frame - re-binding per frame is expensive and
 // unnecessary. We therefore (re)bind only when the depth texture name changes
 // (i.e. the render targets were (re)allocated on a resolution change).
-static U32 sBoundDepthName    = 0;
-static U32 sBoundVelocityName = 0;   // [RTGI Step B]
+static U32  sBoundDepthName    = 0;
+static U32  sBoundVelocityName = 0;   // [RTGI Step B]
 
 static reshade::api::resource_view gl_tex_srv(U32 gl_name)
 {
@@ -171,7 +177,14 @@ static void on_reshade_begin_effects(reshade::api::effect_runtime* runtime,
 
     // Each binding (re)fires only when its GL texture name changes (RT (re)alloc);
     // a stable name flows its contents to ReShade every frame without re-binding.
-    if (f.mTexDepth != 0 && f.mTexDepth != sBoundDepthName)
+    //
+    // DEPTH override is OPT-IN (default off). ReShade's DEPTH pipeline expects a
+    // sampleable depth COPY (which its built-in generic_depth add-on produces);
+    // handing it our raw GL depth-format texture samples as a flat/constant value
+    // and OVERRIDES generic_depth's working depth (symptom: DisplayDepth shows a
+    // uniform depth, DOF/RTGI depth breaks). So we leave depth to generic_depth and
+    // only override it when someone has implemented a proper depth copy.
+    if (LLReShadeBridge::instance().bindDepth() && f.mTexDepth != 0 && f.mTexDepth != sBoundDepthName)
     {
         sBoundDepthName = f.mTexDepth;
         reshade::api::resource_view srv = gl_tex_srv(f.mTexDepth);

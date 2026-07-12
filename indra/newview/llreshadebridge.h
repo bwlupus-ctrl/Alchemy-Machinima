@@ -76,12 +76,16 @@ public:
 
     const LLReShadeFrameData& getFrameData() const { return mFrame; }
     bool isEnabled() const { return mEnabled; }
+    // [RTGI] Opt-in DEPTH override (BDMergeReShadeOverrideDepth); default off so
+    // ReShade's generic_depth owns DEPTH (our raw depth binds flat - see .cpp).
+    bool bindDepth() const { return mBindDepth; }
 
 private:
     LLReShadeBridge() = default;
 
     LLReShadeFrameData mFrame;
     bool mEnabled = false;   // true once a ReShade runtime is present and we're registered
+    bool mBindDepth = false; // mirror of BDMergeReShadeOverrideDepth (set in gatherFrame)
 };
 
 #endif // LL_LLRESHADEBRIDGE_H
