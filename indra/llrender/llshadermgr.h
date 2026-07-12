@@ -515,19 +515,12 @@ public:
         PROJVOL_HISTORY,                   //  "projvol_history"      (A, sampler)
         PROJVOL_PREV_VIEWPROJ,             //  "projvol_prev_viewproj"(A)
         PROJVOL_TEMPORAL_BLEND,            //  "projvol_temporal_blend"(A)
-        PROJVOL_TEMPORAL_REJECT,           //  "projvol_temporal_reject" (contrast-aware anti-ghost)
 
         // [BDMerge G3.3 Rim] surface-coupled rim / wrap glow (physical auto-rim)
         PROJVOL_RIM_STRENGTH,              //  "projvol_rim_strength"
         PROJVOL_RIM_POWER,                 //  "projvol_rim_power"
         PROJVOL_RIM_THRESHOLD,             //  "projvol_rim_threshold"
         PROJVOL_RIM_WRAP,                  //  "projvol_rim_wrap"
-
-        // [BDMerge G3.3 S-Log] physically-plausible beam levers (all default no-op)
-        PROJVOL_EXTINCTION,                //  "projvol_extinction"
-        PROJVOL_CONTACT_FADE,              //  "projvol_contact_fade"
-        PROJVOL_CONTACT_POOL,              //  "projvol_contact_pool"
-        PROJVOL_SOFT_KNEE,                 //  "projvol_soft_knee"
 
         // [BDMerge Batch 2] Feature 1: soft (contact-hardening + filled) shadows
         SOFT_SHADOW_ENABLE,                //  "soft_shadow_enable"

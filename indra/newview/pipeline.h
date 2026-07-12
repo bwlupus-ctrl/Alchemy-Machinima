@@ -1219,7 +1219,6 @@ public:
     // [BDMerge G3.3 Batch 1 A] across-frame temporal reprojection accumulation.
     static bool BDMergeProjectorVolumetricsTemporal;     // A: enable (default on)
     static F32 BDMergeProjectorVolumetricsTemporalBlend; // A: history EMA weight
-    static F32 BDMergeProjectorVolumetricsTemporalReject; // contrast-aware anti-ghost strength
     // [BDMerge G3.3 Batch 1 B] gobo-colored occluder shadows (stained-glass tint).
     static F32 BDMergeProjectorVolumetricsShadowTint;    // B: 0 = classic black shadow
     // [BDMerge G3.3 Rim] physical surface-coupled rim / wrap glow (auto-rim analog).
@@ -1227,11 +1226,6 @@ public:
     static F32 BDMergeProjectorVolumetricsRimPower;      // Fresnel exponent (silhouette tightness)
     static F32 BDMergeProjectorVolumetricsRimThreshold;  // ignore incident light dimmer than this
     static F32 BDMergeProjectorVolumetricsRimWrap;       // directional wrap (0 = back-only, 1 = broad)
-    // [BDMerge G3.3 S-Log] physically-plausible beam levers (all default 0 = off).
-    static F32 BDMergeProjectorVolumetricsExtinction;    // Beer-Lambert per-metre extinction
-    static F32 BDMergeProjectorVolumetricsContactFade;   // soft surface-contact fade band (metres)
-    static F32 BDMergeProjectorVolumetricsContactPool;   // surface-landing in-scatter deposit
-    static F32 BDMergeProjectorVolumetricsSoftKnee;      // highlight soft-knee blend (0 = hard clamp)
     // [BDMerge Batch 2] Feature 1: soft (contact-hardening + filled) shadows.
     static bool BDMergeSoftProjectorShadows;   // master gate (default off)
     static F32  BDMergeSoftShadowSoftness;     // penumbra rate (kernel growth)

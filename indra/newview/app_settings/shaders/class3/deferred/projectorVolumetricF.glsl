@@ -115,23 +115,6 @@ uniform float projvol_rim_power;         // Fresnel exponent: higher = tighter t
 uniform float projvol_rim_threshold;     // ignore incident light dimmer than this (soft gate)
 uniform float projvol_rim_wrap;          // directional wrap: 0 = crisp back-only rim, 1 = broad wrap onto the body
 
-// [BDMerge G3.3 S-Log] Physically-plausible beam levers for the S-Log3 grading /
-// capture workflow (a flat log profile punishes banding and clipped cores and
-// rewards smooth gradients and clean occlusion). All default to 0.0 = OFF, so the
-// shipped look is byte-identical until a lever is dialed up:
-//  - extinction:   Beer-Lambert transmittance along the view ray - the near part
-//                  of the beam scatters brighter, the far part falls off naturally
-//                  (a real density gradient instead of a flat additive wedge).
-//  - contact_fade: softens the hard seam where the beam meets the capping surface.
-//  - contact_pool: extra in-scatter deposited right where the beam lands, so the
-//                  light visibly pools/kisses the surface.
-//  - soft_knee:    replaces the hard projvol_max clamp with a smooth exponential
-//                  shoulder toward projvol_max, preserving the highlight gradient.
-uniform float projvol_extinction;   // per-metre extinction coefficient (0 = off)
-uniform float projvol_contact_fade; // fade band above the capping surface, metres (0 = off)
-uniform float projvol_contact_pool; // surface-landing in-scatter deposit strength (0 = off)
-uniform float projvol_soft_knee;    // 0 = exact hard clamp, 1 = full soft shoulder
-
 const float M_PI = 3.14159265;
 
 // [Phase 3 item 1] Smooth low-frequency 3D value-noise fbm. TASTEFUL by design:
@@ -291,14 +274,6 @@ void main()
 
     vec3 accum = vec3(0.0);
 
-    // [S-Log extinction] Beer-Lambert transmittance accumulated front-to-back
-    // along the view ray. Every sample's in-scatter is weighted by the light
-    // surviving the medium between the camera and that sample; at the default
-    // projvol_extinction == 0 this stays exactly vec3(1.0) (the additive look).
-    // Kept as a vec3 (the scalar uniform fills all three channels) so spectral
-    // (per-channel) extinction can be added later without restructuring the loop.
-    vec3 trans = vec3(1.0);
-
     for (int i = 0; i < godray_res; ++i)
     {
         float t    = t0 + (float(i) + roffset) * dt;
@@ -407,48 +382,14 @@ void main()
         float denom = 1.0 + g * g - 2.0 * g * cosT;
         float phase = (1.0 - g * g) / (4.0 * M_PI * pow(max(denom, 1e-4), 1.5));
 
-        // [S-Log contact fade] Soften the hard seam where the beam meets the
-        // capping surface: samples within projvol_contact_fade metres of t_surface
-        // fade smoothly toward 0 instead of clipping to a hard line where the
-        // march stops. Default 0 = off (surf_fade stays 1.0, the shipped look).
-        float surf_fade = 1.0;
-        if (projvol_contact_fade > 0.0)
-        {
-            surf_fade = smoothstep(0.0, projvol_contact_fade, t_surface - t);
-        }
-
         // [Batch 1 B] Gobo-colored occluder shadows. The lit term is the full gobo
         // in-scatter (cookie); the occluded term is that same gobo dimmed by
         // projvol_shadow_tint, so shadow bands stay colored/shaped by the cookie
         // instead of going pure black. mix by visibility: vis=1 -> lit, vis=0 ->
         // occluded. At projvol_shadow_tint == 0 this reduces exactly to vis*cookie
         // (the classic crisp black occluder shadow).
-        // [S-Log extinction] Weighted by trans (light surviving the medium up to
-        // this sample) - identically 1.0 while projvol_extinction is 0.
         vec3 scatter = mix(cookie * projvol_shadow_tint, cookie, vis);
-        accum += trans * atten * phase * scatter * edge_feather * density * surf_fade;
-
-        // [S-Log contact pool] Extra in-scatter deposited right where the beam
-        // lands: peaks at the capping surface and falls off over the contact-fade
-        // band (min 0.25 m so a zero fade still gives a visible pool), colored by
-        // the cookie and gated by this projector's own shadow so occluded ground
-        // never pools. Rides accum, so it inherits the dt / PROJVOL_SCATTER /
-        // godray_multiplier / light-color weighting below. Default 0 = off.
-        if (projvol_contact_pool > 0.0)
-        {
-            float pool = projvol_contact_pool * (1.0 - smoothstep(0.0, max(projvol_contact_fade, 0.25), t_surface - t));
-            accum += trans * cookie * atten * vis * density * pool;
-        }
-
-        // [S-Log extinction] Attenuate the transmittance AFTER depositing this
-        // sample (front-to-back single scattering): the medium between this sample
-        // and the next absorbs/out-scatters per Beer-Lambert, scaled by the local
-        // density so hazier air also extinguishes faster. Default 0 = off.
-        if (projvol_extinction > 0.0)
-        {
-            vec3 sigma_t = vec3(projvol_extinction); // scalar for now; vec3 so spectral extinction can slot in later
-            trans *= exp(-sigma_t * dt * density);
-        }
+        accum += atten * phase * scatter * edge_feather * density;
     }
 
     // Single-scattering integral: weight by physical step length so a longer
@@ -539,21 +480,7 @@ void main()
     // rolls off the bright cores filmically. projvol_max is therefore a generous
     // linear-HDR headroom clamp (guarding NaN/inf and lone fireflies) rather than
     // the tight display-space clamp the old post-tonemap placement needed.
-    // [S-Log soft knee] A hard clamp flattens exactly the highlight gradient that
-    // S-Log3 exists to preserve. At projvol_soft_knee > 0 the ceiling becomes a
-    // smooth exponential shoulder that rolls the core off asymptotically toward
-    // projvol_max instead of clipping flat; the knee blends between the two so
-    // 0.0 is the EXACT hard clamp (the shipped look) and 1.0 is the full shoulder.
-    if (projvol_soft_knee > 0.0)
-    {
-        vec3 hard = clamp(shaft, vec3(0.0), vec3(projvol_max));
-        vec3 soft = projvol_max * (vec3(1.0) - exp(-max(shaft, vec3(0.0)) / max(projvol_max, 1e-3)));
-        shaft = mix(hard, soft, projvol_soft_knee);
-    }
-    else
-    {
-        shaft = clamp(shaft, vec3(0.0), vec3(projvol_max));
-    }
+    shaft = clamp(shaft, vec3(0.0), vec3(projvol_max));
 
     // Output ONLY the shaft delta - additive GL_ONE,GL_ONE onto the scene
     // buffer, so the pass never samples what it writes (no feedback).
