@@ -365,9 +365,6 @@ public:
         SMAA_SEARCH_TEX,                    //  "searchTex"
         SMAA_BLEND_TEX,                     //  "blendTex"
         SMAA_PREDICATION_TEX,               //  "predicationTex"
-        SMAA_SUBSAMPLE_INDICES,             //  "subsampleIndices" ([BDMerge A5.8] SMAA T2x)
-        SMAA_CURRENT_COLOR_TEX,             //  "currentColorTex"  ([BDMerge A5.8] SMAA T2x resolve)
-        SMAA_PREVIOUS_COLOR_TEX,            //  "previousColorTex" ([BDMerge A5.8] SMAA T2x resolve)
 
         EXPOSURE,
         TONEMAP_TYPE,

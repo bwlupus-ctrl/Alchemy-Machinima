@@ -34,9 +34,6 @@ in vec4 vary_offset[3];
 uniform sampler2D edgesTex;
 uniform sampler2D areaTex;
 uniform sampler2D searchTex;
-// [BDMerge A5.8] SMAA T2x: per-frame subsample offset for the temporal path.
-// Uploaded as (0,0,0,0) for plain SMAA 1x, preserving 1x behavior exactly.
-uniform vec4 subsampleIndices;
 
 vec4 SMAABlendingWeightCalculationPS(vec2 texcoord,
                                        vec2 pixcoord,
@@ -54,7 +51,7 @@ void main()
                                                  edgesTex,
                                                  areaTex,
                                                  searchTex,
-                                                 subsampleIndices
+                                                 vec4(0.0)
                                                  );
 }
 

@@ -259,7 +259,6 @@ extern LLGLSLShader         gFXAAProgram[4];
 extern LLGLSLShader         gSMAAEdgeDetectProgram[4];
 extern LLGLSLShader         gSMAABlendWeightsProgram[4];
 extern LLGLSLShader         gSMAANeighborhoodBlendProgram[4];
-extern LLGLSLShader         gSMAAResolveProgram[4]; // [BDMerge A5.8] SMAA T2x temporal resolve
 extern LLGLSLShader         gCASProgram;
 // [BDMerge G3.2] volumetric lighting (donor: Black Dragon)
 extern LLGLSLShader         gVolumetricLightProgram;

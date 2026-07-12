@@ -41,7 +41,6 @@
 #include "llworld.h"
 #include "lltoolmgr.h"
 #include "llviewerjoystick.h"
-#include "pipeline.h" // [BDMerge A5.8] SMAA T2x subpixel jitter state
 // [RLVa:KB] - RLVa-2.0.0
 #include "rlvactions.h"
 // [/RLVa:KB]
@@ -378,33 +377,14 @@ void LLViewerCamera::setPerspective(bool for_selection,
 
     proj_mat *= glm::perspective(fov_y, aspect, z_near, z_far);
 
-    // [BDMerge A5.4-1a] Capture the UN-JITTERED projection for the velocity pass
-    // BEFORE the T2x jitter is applied below. The velocity shaders combine this
-    // with the (jitter-free) modelview to produce clean motion vectors, while
-    // gl_Position still uses the jittered MVP so the velocity buffer aligns with
-    // the jittered colour/depth buffer. Captured unconditionally: when jitter is
-    // off this equals the actual projection. The main scene render is the last
-    // setPerspective before renderGeomVelocity, so this holds the right matrix.
+    // [BDMerge A5.4-1a] Capture the (un-jittered) projection for the velocity pass.
+    // The velocity shaders combine this with the (jitter-free) modelview to produce
+    // clean motion vectors. (The SMAA T2x jitter that used to be applied after this
+    // capture was reverted with A5.8 - it ghosted on motion without velocity
+    // reprojection - so this now always equals the actual scene projection. The
+    // main scene render is the last setPerspective before renderGeomVelocity, so
+    // this holds the right matrix.)
     memcpy(gPipeline.mVelocityProjMat, glm::value_ptr(proj_mat), sizeof(F32) * 16);
-
-    // [BDMerge A5.8] SMAA T2x subpixel jitter. Donor: Black Dragon (NiranV Dean).
-    // Nudge the projection by alternating ±0.25px each frame so the two temporally
-    // resolved samples average to a supersampled result. Only when T2x is the
-    // active AA type (sT2xJitterEnabled), and never for selection picking or cube
-    // snapshots (those must stay unjittered).
-    extern bool gCubeSnapshot;
-    if (LLPipeline::sT2xJitterEnabled && !for_selection && !gCubeSnapshot)
-    {
-        static const float jitters[2][2] = {
-            { 0.25f, -0.25f },   // Frame 0
-            { -0.25f,  0.25f },  // Frame 1
-        };
-        U32 idx = gPipeline.mSMAAFrameIndex & 1;
-        float jx = jitters[idx][0] * 2.0f / (float)width;
-        float jy = jitters[idx][1] * 2.0f / (float)height;
-        proj_mat[2][0] += jx;
-        proj_mat[2][1] += jy;
-    }
 
     gGL.loadMatrix(glm::value_ptr(proj_mat));
 

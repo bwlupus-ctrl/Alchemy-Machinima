@@ -11666,7 +11666,7 @@
     <key>RenderFSAAType</key>
     <map>
       <key>Comment</key>
-      <string>Type of Antialiasing to use: 0 = None, 1 = FXAA, 2 = SMAA, 3 = SMAA T2x (temporal)</string>
+      <string>Type of Antialiasing to use: 0 = None, 1 = FXAA, 2 = SMAA</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>

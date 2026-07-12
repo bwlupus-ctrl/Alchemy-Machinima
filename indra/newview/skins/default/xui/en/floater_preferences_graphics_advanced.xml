@@ -460,11 +460,6 @@
           label="SMAA"
           name="SMAA"
           value="2" />
-        <combo_box.item
-          label="SMAA T2x"
-          name="SMAA_T2x"
-          tool_tip="Temporal SMAA: sharper subpixel antialiasing and reduced edge shimmer by jittering and blending two frames. Warning: can cause ghosting or doubled textures on fast motion."
-          value="3" />
     </combo_box>
   <text
     type="string"
