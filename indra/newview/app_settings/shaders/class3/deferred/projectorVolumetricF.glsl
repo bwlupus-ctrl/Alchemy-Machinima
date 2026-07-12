@@ -101,6 +101,19 @@ uniform float projvol_fog_falloff;       // item 2: e-fold altitude falloff (met
 uniform float projvol_fog_base;          // item 2: ground reference altitude (region Z)
 uniform mat4  projvol_inv_modelview;     // items 1/2: view -> agent(world, Z-up)
 
+// [BDMerge G3.3 Rim] Surface-coupled rim / wrap glow. Physical analog of the
+// ReShade "Auto Rim" concept, but driven by the projector's REAL incident light
+// (cookie x distance attenuation x this projector's own shadow map) and the REAL
+// G-buffer normal instead of a screen-space guess. At the opaque surface that
+// caps the march we deposit E = cookie*atten*shadow (the light actually landing
+// there), concentrate it toward grazing silhouettes with a Fresnel term built
+// from the real normal, and add it to the same additive HDR shaft - so it flows
+// straight into the existing bloom-feed and reads as a soft halo hugging the lit
+// edge. Strength 0 (default) skips the whole block: the shipped look is unchanged.
+uniform float projvol_rim_strength;      // master brightness (0 = off)
+uniform float projvol_rim_power;         // Fresnel exponent: higher = tighter to the silhouette
+uniform float projvol_rim_threshold;     // ignore incident light dimmer than this (soft gate)
+
 const float M_PI = 3.14159265;
 
 // [Phase 3 item 1] Smooth low-frequency 3D value-noise fbm. TASTEFUL by design:
@@ -176,6 +189,7 @@ bool clipProjectedLightVars(vec3 center, vec3 pos, out float dist, out float l_d
 vec3 getProjectedLightDiffuseColor(float light_distance, vec2 projected_uv);
 vec4 getTexture2DLodDiffuse(vec2 tc, float lod); // gobo sample WITHOUT the light color
 float calcLegacyDistanceAttenuation(float distance, float falloff);
+vec4 getNorm(vec2 screenpos); // [Rim] real view-space G-buffer normal (deferredUtil)
 
 // [BDMerge G3.3 fix] Texture/gobo footprint ONLY (no light color) - mirrors
 // getProjectedLightDiffuseColor()'s LOD math but drops its `color.rgb *` multiply
@@ -377,6 +391,53 @@ void main()
     // diffuse already lerped toward the art-direction tint in C++, so the shaft
     // base is the true light color and the tint layers on top of it.
     vec3 shaft = accum * dt * PROJVOL_SCATTER * godray_multiplier * color;
+
+    // [BDMerge G3.3 Rim] Surface-coupled rim / wrap glow at the opaque surface that
+    // capped the march. Everything here is the projector's REAL light on the REAL
+    // surface, so a rim only appears where the object is genuinely lit by THIS cone
+    // (inside the frustum, not in its shadow) and turns away from the camera - it is
+    // physically the light landing on the surface back-scattering toward the eye at
+    // grazing angles. Added to the same additive HDR shaft, so the existing
+    // bloom-feed softens it into a halo for free.
+    if (projvol_rim_strength > 0.0)
+    {
+        // Re-evaluate the projector at the exact surface point (the march only
+        // sampled the air between t0 and t1). clipProjectedLightVars gives dist /
+        // l_dist / proj_tc for pos; a true return or an out-of-cookie coord means
+        // the surface is outside this cone -> no rim.
+        vec3  lv_s;
+        vec4  ptc_s;
+        float dist_s, l_dist_s;
+        if (!clipProjectedLightVars(C, pos.xyz, dist_s, l_dist_s, lv_s, ptc_s) &&
+            ptc_s.x > 0.0 && ptc_s.x < 1.0 && ptc_s.y > 0.0 && ptc_s.y < 1.0)
+        {
+            // Real G-buffer normal (view space) -> genuine Fresnel, not a depth-slope
+            // guess. d is camera->surface, so -d is the view direction (surface->eye).
+            vec3  nrm   = normalize(getNorm(tc).xyz);
+            float nv    = max(dot(nrm, -d), 0.0);
+            float graze = pow(1.0 - nv, max(projvol_rim_power, 0.01));
+
+            // Incident projector light actually reaching this surface point: the
+            // gobo footprint, distance/range attenuation, and THIS projector's own
+            // shadow map (real normal used for the bias). Matches how spotLightF
+            // dims the lit surface - this is the light, before the surface's albedo.
+            float atten_s  = calcLegacyDistanceAttenuation(dist_s, falloff);
+            float shadow_s = sampleSpotShadow(pos.xyz, nrm, proj_shadow_idx, tc);
+            vec3  cookie_s = projGoboTexture(l_dist_s, ptc_s.xy);
+            vec3  E        = cookie_s * atten_s * shadow_s;
+
+            // Soft brightness gate (RimGlow's "ignore light dimmer than"): only
+            // meaningfully lit surfaces glow, so dim ambient spill can't grey the rim.
+            float lum  = dot(E, vec3(0.2126, 0.7152, 0.0722));
+            float gate = (projvol_rim_threshold > 0.0)
+                       ? smoothstep(projvol_rim_threshold * 0.5, projvol_rim_threshold, lum)
+                       : 1.0;
+
+            // Rim carries the light's own color; kept independent of godray_multiplier
+            // so beam brightness and rim brightness tune separately.
+            shaft += E * graze * gate * projvol_rim_strength * color;
+        }
+    }
 
     // [Phase 1 item 1] HDR-space composite: this pass now runs BEFORE colorCorrect
     // on the linear HDR scene buffer, so the active tonemapper (AMD LPM / ACES)

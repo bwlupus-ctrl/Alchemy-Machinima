@@ -269,6 +269,9 @@ F32 LLPipeline::BDMergeProjectorVolumetricsBloomFeed;
 bool LLPipeline::BDMergeProjectorVolumetricsTemporal;
 F32 LLPipeline::BDMergeProjectorVolumetricsTemporalBlend;
 F32 LLPipeline::BDMergeProjectorVolumetricsShadowTint;
+F32 LLPipeline::BDMergeProjectorVolumetricsRimStrength;
+F32 LLPipeline::BDMergeProjectorVolumetricsRimPower;
+F32 LLPipeline::BDMergeProjectorVolumetricsRimThreshold;
 // [BDMerge Batch 2]
 bool LLPipeline::BDMergeSoftProjectorShadows;
 F32  LLPipeline::BDMergeSoftShadowSoftness;
@@ -689,6 +692,9 @@ void LLPipeline::init()
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsTemporal");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsTemporalBlend");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsShadowTint");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsRimStrength");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsRimPower");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsRimThreshold");
     connectRefreshCachedSettingsSafe("BDMergeSoftProjectorShadows");
     connectRefreshCachedSettingsSafe("BDMergeSoftShadowSoftness");
     connectRefreshCachedSettingsSafe("BDMergeSoftShadowMaxPenumbra");
@@ -1396,6 +1402,9 @@ void LLPipeline::refreshCachedSettings()
     BDMergeProjectorVolumetricsTemporal = gSavedSettings.getBOOL("BDMergeProjectorVolumetricsTemporal");
     BDMergeProjectorVolumetricsTemporalBlend = gSavedSettings.getF32("BDMergeProjectorVolumetricsTemporalBlend");
     BDMergeProjectorVolumetricsShadowTint = gSavedSettings.getF32("BDMergeProjectorVolumetricsShadowTint");
+    BDMergeProjectorVolumetricsRimStrength = gSavedSettings.getF32("BDMergeProjectorVolumetricsRimStrength");
+    BDMergeProjectorVolumetricsRimPower = gSavedSettings.getF32("BDMergeProjectorVolumetricsRimPower");
+    BDMergeProjectorVolumetricsRimThreshold = gSavedSettings.getF32("BDMergeProjectorVolumetricsRimThreshold");
     // [BDMerge Batch 2]
     BDMergeSoftProjectorShadows = gSavedSettings.getBOOL("BDMergeSoftProjectorShadows");
     BDMergeSoftShadowSoftness = gSavedSettings.getF32("BDMergeSoftShadowSoftness");
@@ -9704,6 +9713,14 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
     // (the shipped look), >0 lets occluded march samples carry a dimmed, gobo-shaped
     // colored contribution ("stained glass" banding) instead of pure black.
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_SHADOW_TINT, llclamp(BDMergeProjectorVolumetricsShadowTint, 0.f, 1.f));
+
+    // [BDMerge G3.3 Rim] Physical surface-coupled rim / wrap glow. Driven entirely
+    // by this projector's own light at the surface (cookie x atten x its shadow map)
+    // and the real G-buffer normal, added into the additive HDR shaft so it rides
+    // the existing bloom-feed into a soft halo. Strength 0 (default) = no-op.
+    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_STRENGTH, llmax(BDMergeProjectorVolumetricsRimStrength, 0.f));
+    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_POWER, llmax(BDMergeProjectorVolumetricsRimPower, 0.01f));
+    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_THRESHOLD, llmax(BDMergeProjectorVolumetricsRimThreshold, 0.f));
 
     // [Phase 3] atmosphere levers (all no-ops at their defaults). The inverse
     // modelview turns a view-space march sample back into agent(world, Z-up) space

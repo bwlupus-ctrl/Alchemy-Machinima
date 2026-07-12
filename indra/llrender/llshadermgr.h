@@ -519,6 +519,11 @@ public:
         PROJVOL_PREV_VIEWPROJ,             //  "projvol_prev_viewproj"(A)
         PROJVOL_TEMPORAL_BLEND,            //  "projvol_temporal_blend"(A)
 
+        // [BDMerge G3.3 Rim] surface-coupled rim / wrap glow (physical auto-rim)
+        PROJVOL_RIM_STRENGTH,              //  "projvol_rim_strength"
+        PROJVOL_RIM_POWER,                 //  "projvol_rim_power"
+        PROJVOL_RIM_THRESHOLD,             //  "projvol_rim_threshold"
+
         // [BDMerge Batch 2] Feature 1: soft (contact-hardening + filled) shadows
         SOFT_SHADOW_ENABLE,                //  "soft_shadow_enable"
         SOFT_SHADOW_SCALE,                 //  "soft_shadow_scale"   (penumbra rate)

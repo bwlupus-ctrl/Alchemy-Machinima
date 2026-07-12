@@ -1230,6 +1230,10 @@ public:
     static F32 BDMergeProjectorVolumetricsTemporalBlend; // A: history EMA weight
     // [BDMerge G3.3 Batch 1 B] gobo-colored occluder shadows (stained-glass tint).
     static F32 BDMergeProjectorVolumetricsShadowTint;    // B: 0 = classic black shadow
+    // [BDMerge G3.3 Rim] physical surface-coupled rim / wrap glow (auto-rim analog).
+    static F32 BDMergeProjectorVolumetricsRimStrength;   // master brightness (0 = off)
+    static F32 BDMergeProjectorVolumetricsRimPower;      // Fresnel exponent (silhouette tightness)
+    static F32 BDMergeProjectorVolumetricsRimThreshold;  // ignore incident light dimmer than this
     // [BDMerge Batch 2] Feature 1: soft (contact-hardening + filled) shadows.
     static bool BDMergeSoftProjectorShadows;   // master gate (default off)
     static F32  BDMergeSoftShadowSoftness;     // penumbra rate (kernel growth)
