@@ -291,6 +291,7 @@ F32  LLPipeline::BDMergeFroxelFogBase;
 F32  LLPipeline::BDMergeFroxelNoiseStrength;
 F32  LLPipeline::BDMergeFroxelNoiseScale;
 F32  LLPipeline::BDMergeFroxelNoiseSpeed;
+F32  LLPipeline::BDMergeFroxelAmbient;   // [BDMerge Froxel F1]
 U32  LLPipeline::BDMergeFroxelDebug;
 // [BDMerge Batch 2]
 bool LLPipeline::BDMergeSoftProjectorShadows;
@@ -733,6 +734,7 @@ void LLPipeline::init()
     connectRefreshCachedSettingsSafe("BDMergeFroxelNoiseStrength");
     connectRefreshCachedSettingsSafe("BDMergeFroxelNoiseScale");
     connectRefreshCachedSettingsSafe("BDMergeFroxelNoiseSpeed");
+    connectRefreshCachedSettingsSafe("BDMergeFroxelAmbient"); // [BDMerge Froxel F1]
     connectRefreshCachedSettingsSafe("BDMergeFroxelDebug");
     connectRefreshCachedSettingsSafe("BDMergeSoftProjectorShadows");
     connectRefreshCachedSettingsSafe("BDMergeSoftShadowSoftness");
@@ -1454,6 +1456,7 @@ void LLPipeline::refreshCachedSettings()
     BDMergeFroxelNoiseStrength = gSavedSettings.getF32("BDMergeFroxelNoiseStrength");
     BDMergeFroxelNoiseScale = gSavedSettings.getF32("BDMergeFroxelNoiseScale");
     BDMergeFroxelNoiseSpeed = gSavedSettings.getF32("BDMergeFroxelNoiseSpeed");
+    BDMergeFroxelAmbient = gSavedSettings.getF32("BDMergeFroxelAmbient"); // [BDMerge Froxel F1]
     BDMergeFroxelDebug = gSavedSettings.getU32("BDMergeFroxelDebug");
     // [BDMerge Batch 2]
     BDMergeSoftProjectorShadows = gSavedSettings.getBOOL("BDMergeSoftProjectorShadows");
@@ -1532,6 +1535,8 @@ void LLPipeline::releaseGLBuffers()
 
     mFroxelMedia.release(); // [BDMerge Froxel F0] froxel media atlas
     mFroxelMediaValid = false;
+    mFroxelIntegrated.release(); // [BDMerge Froxel F1] integrated froxel atlas
+    mFroxelIntegratedValid = false;
 
     mWaterExclusionMask.release();
 
@@ -9547,6 +9552,7 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
     if (!BDMergeFroxelVolumetrics || gCubeSnapshot || !gFroxelMediaProgram.isComplete())
     {
         mFroxelMediaValid = false;
+        mFroxelIntegratedValid = false; // [BDMerge Froxel F1]
         return;
     }
 
@@ -9577,6 +9583,21 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
             return; // allocation failed -> skip the whole subsystem this frame
         }
         mFroxelMediaValid = false;
+    }
+
+    // [BDMerge Froxel F1] Integrated atlas: same dims/format, allocated alongside the
+    // media atlas (and only here, inside the gated block). Held separate so the
+    // integrate pass reads media and writes integrated - two different textures, no
+    // GL feedback-loop hazard.
+    if (mFroxelIntegrated.getWidth() != atlasW || mFroxelIntegrated.getHeight() != atlasH)
+    {
+        mFroxelIntegrated.release();
+        if (!mFroxelIntegrated.allocate(atlasW, atlasH, GL_RGBA16F))
+        {
+            mFroxelIntegratedValid = false;
+            return; // allocation failed -> skip the whole subsystem this frame
+        }
+        mFroxelIntegratedValid = false;
     }
 
     // ---- Shared froxel uniforms (view-pos reconstruction) -------------------
@@ -9631,6 +9652,93 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
         mFroxelMediaValid = true;
     }
 
+    // ---- P4 integrate pass into the integrated atlas ------------------------
+    // One full-atlas draw: every output fragment (fx,fy,k) front-to-back integrates
+    // the media column j=0..k with Hillaire's energy-conserving slice integral,
+    // writing rgb = accumulated in-scatter L, a = transmittance T. Reads ONLY the
+    // media atlas (a different texture than the write target), so there is no GL
+    // read/write feedback loop. Skipped if the program failed to compile - the apply
+    // pass below is guarded on mFroxelIntegratedValid so the scene is untouched.
+    if (gFroxelIntegrateProgram.isComplete())
+    {
+        LL_PROFILE_GPU_ZONE("froxel integrate");
+        mFroxelIntegrated.bindTarget(); // viewport = atlas size
+
+        LLGLDepthTest depth(GL_FALSE);
+        LLGLDisable   no_blend(GL_BLEND);   // full overwrite: every froxel is written
+        LLGLDisable   no_scissor(GL_SCISSOR_TEST);
+        gGL.setColorMask(true, true);
+
+        gFroxelIntegrateProgram.bind();
+
+        S32 ch = gFroxelIntegrateProgram.enableTexture(LLShaderMgr::FROXEL_MEDIA);
+        if (ch > -1)
+        {
+            mFroxelMedia.bindTexture(0, ch, LLTexUnit::TFO_POINT); // point-fetch the aligned column
+        }
+
+        gFroxelIntegrateProgram.uniform3fv(LLShaderMgr::FROXEL_GRID, 1, grid3);
+        gFroxelIntegrateProgram.uniform4fv(LLShaderMgr::FROXEL_ATLAS, 1, atlas4);
+        gFroxelIntegrateProgram.uniform2fv(LLShaderMgr::FROXEL_NEAR_FAR, 1, nearfar);
+        gFroxelIntegrateProgram.uniform1f(LLShaderMgr::FROXEL_AMBIENT, llmax(BDMergeFroxelAmbient, 0.f));
+
+        mScreenTriangleVB->setBuffer();
+        mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+
+        if (ch > -1)
+        {
+            gFroxelIntegrateProgram.disableTexture(LLShaderMgr::FROXEL_MEDIA);
+        }
+        gFroxelIntegrateProgram.unbind();
+        mFroxelIntegrated.flush();
+        mFroxelIntegratedValid = true;
+    }
+
+    // ---- P5 apply composite onto the scene ----------------------------------
+    // Fullscreen pass onto `target` (mRT->screen). Per pixel: view depth -> continuous
+    // slice coord (minus the 0.5 slice-centre offset), trilinear-sample the integrated
+    // atlas -> (L, T), output frag_color = vec4(L, T). Blend GL_ONE / GL_SRC_ALPHA so
+    // the framebuffer becomes dst' = L + dst*T == scene*T + L (fog occludes AND glows)
+    // WITHOUT ever sampling the target it writes. Runs before the function returns so
+    // the per-cone hero shafts composite additively on top afterward.
+    if (mFroxelIntegratedValid && target != nullptr && gFroxelApplyProgram.isComplete())
+    {
+        LL_PROFILE_GPU_ZONE("froxel apply");
+        target->bindTarget();
+
+        LLGLDepthTest depth(GL_FALSE);   // depth test off, depth write off
+        LLGLEnable    blend(GL_BLEND);
+        LLGLDisable   no_scissor(GL_SCISSOR_TEST);
+        // dst' = src*ONE + dst*SRC_ALPHA = L + scene*T. Restored to BT_ALPHA below.
+        gGL.blendFunc(LLRender::BF_ONE, LLRender::BF_SOURCE_ALPHA);
+        gGL.setColorMask(true, false); // scene rgb only; leave scene alpha intact
+
+        // isDeferred bind: getPosition()/depthMap/inv_proj for the surface view depth.
+        bindDeferredShader(gFroxelApplyProgram);
+
+        S32 ch = gFroxelApplyProgram.enableTexture(LLShaderMgr::FROXEL_INTEGRATED);
+        if (ch > -1)
+        {
+            mFroxelIntegrated.bindTexture(0, ch, LLTexUnit::TFO_BILINEAR); // trilinear = manual Z lerp of two bilinear taps
+        }
+
+        gFroxelApplyProgram.uniform3fv(LLShaderMgr::FROXEL_GRID, 1, grid3);
+        gFroxelApplyProgram.uniform4fv(LLShaderMgr::FROXEL_ATLAS, 1, atlas4);
+        gFroxelApplyProgram.uniform2fv(LLShaderMgr::FROXEL_NEAR_FAR, 1, nearfar);
+
+        mScreenTriangleVB->setBuffer();
+        mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+
+        if (ch > -1)
+        {
+            gFroxelApplyProgram.disableTexture(LLShaderMgr::FROXEL_INTEGRATED);
+        }
+        unbindDeferredShader(gFroxelApplyProgram);
+        gGL.setSceneBlendType(LLRender::BT_ALPHA); // restore default src_alpha / one-minus-src_alpha
+        gGL.setColorMask(true, true);
+        target->flush();
+    }
+
     // ---- Debug overlay (optional, gated separately) -------------------------
     // Draws AFTER the media pass into the scene target at 50% opacity. This is the
     // F0 checkpoint deliverable. No-op when BDMergeFroxelDebug == 0.
@@ -9655,6 +9763,14 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
             mFroxelMedia.bindTexture(0, ch, LLTexUnit::TFO_BILINEAR);
         }
 
+        // [BDMerge Froxel F1] Mode 3 visualizes the integrated atlas; bind it too
+        // (valid by now - the integrate pass ran above). Harmless for modes 1/2.
+        S32 chi = gFroxelDebugProgram.enableTexture(LLShaderMgr::FROXEL_INTEGRATED);
+        if (chi > -1 && mFroxelIntegratedValid)
+        {
+            mFroxelIntegrated.bindTexture(0, chi, LLTexUnit::TFO_BILINEAR);
+        }
+
         // Mode 2 shows a fixed middle Z-slice tile (simple, deterministic).
         const F32 debug_slice = floorf((F32)gz * 0.5f);
 
@@ -9671,6 +9787,10 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
         if (ch > -1)
         {
             gFroxelDebugProgram.disableTexture(LLShaderMgr::FROXEL_MEDIA);
+        }
+        if (chi > -1)
+        {
+            gFroxelDebugProgram.disableTexture(LLShaderMgr::FROXEL_INTEGRATED); // [BDMerge Froxel F1]
         }
         unbindDeferredShader(gFroxelDebugProgram);
         gGL.setColorMask(true, true);

@@ -308,6 +308,9 @@ extern LLGLSLShader         gVelocityDebugProgram;
 // [BDMerge Froxel F0] hybrid froxel volumetrics: P1 media pass + debug visualizer.
 extern LLGLSLShader         gFroxelMediaProgram;
 extern LLGLSLShader         gFroxelDebugProgram;
+// [BDMerge Froxel F1] P4 integrate + P5 apply passes.
+extern LLGLSLShader         gFroxelIntegrateProgram;
+extern LLGLSLShader         gFroxelApplyProgram;
 extern LLGLSLShader         gBlitWithEffectsProgram;
 extern LLGLSLShader         gCGGammaProgram;
 extern LLGLSLShader         gCGLegacyGammaProgram;

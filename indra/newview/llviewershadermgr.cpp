@@ -248,6 +248,9 @@ LLGLSLShader            gVelocityDebugProgram;
 // [BDMerge Froxel F0] hybrid froxel volumetrics: P1 media pass + debug visualizer.
 LLGLSLShader            gFroxelMediaProgram;
 LLGLSLShader            gFroxelDebugProgram;
+// [BDMerge Froxel F1] P4 integrate + P5 apply passes.
+LLGLSLShader            gFroxelIntegrateProgram;
+LLGLSLShader            gFroxelApplyProgram;
 LLGLSLShader            gBlitWithEffectsProgram;
 LLGLSLShader            gCGGammaProgram;
 LLGLSLShader            gCGLegacyGammaProgram;
@@ -417,6 +420,8 @@ void LLViewerShaderMgr::finalizeShaderList()
     mShaderList.push_back(&gDeferredProjectorVolumetricBloomFeedProgram); // [BDMerge G3.3 P3 item 4]
     mShaderList.push_back(&gFroxelMediaProgram); // [BDMerge Froxel F0]
     mShaderList.push_back(&gFroxelDebugProgram); // [BDMerge Froxel F0]
+    mShaderList.push_back(&gFroxelIntegrateProgram); // [BDMerge Froxel F1]
+    mShaderList.push_back(&gFroxelApplyProgram); // [BDMerge Froxel F1]
     mShaderList.push_back(&gDeferredAlphaProgram);
     mShaderList.push_back(&gHUDAlphaProgram);
     mShaderList.push_back(&gDeferredAlphaImpostorProgram);
@@ -1239,6 +1244,8 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gVelocityDebugProgram.unload();     // [BDMerge A5.4-1a]
         gFroxelMediaProgram.unload();       // [BDMerge Froxel F0]
         gFroxelDebugProgram.unload();       // [BDMerge Froxel F0]
+        gFroxelIntegrateProgram.unload();   // [BDMerge Froxel F1]
+        gFroxelApplyProgram.unload();       // [BDMerge Froxel F1]
 
         for (U32 i = 0; i < LLMaterial::SHADER_COUNT*2; ++i)
         {
@@ -3408,6 +3415,46 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         if (!success)
         {
             LL_WARNS() << "Failed to create shader '" << gFroxelDebugProgram.mName << "', disabling!" << LL_ENDL;
+            success = true;
+        }
+    }
+
+    // [BDMerge Froxel F1] P4 integrate + P5 apply passes. Both link froxelUtil.glsl
+    // as a second fragment object, exactly like the F0 media/debug programs. The
+    // integrate pass is a plain fullscreen pass (reads the media atlas only, writes
+    // the integrated atlas). The apply pass is isDeferred so getPosition()/depthMap/
+    // inv_proj resolve for the surface-depth sample it composites onto the scene.
+    if (success)
+    {
+        gFroxelIntegrateProgram.mName = "Froxel Integrate Pass Shader";
+        gFroxelIntegrateProgram.mShaderFiles.clear();
+        gFroxelIntegrateProgram.clearPermutations();
+        gFroxelIntegrateProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gFroxelIntegrateProgram.mShaderFiles.push_back(make_pair("deferred/froxelIntegrateF.glsl", GL_FRAGMENT_SHADER));
+        gFroxelIntegrateProgram.mShaderFiles.push_back(make_pair("deferred/froxelUtil.glsl", GL_FRAGMENT_SHADER));
+        gFroxelIntegrateProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gFroxelIntegrateProgram.createShader();
+        if (!success)
+        {
+            LL_WARNS() << "Failed to create shader '" << gFroxelIntegrateProgram.mName << "', disabling!" << LL_ENDL;
+            success = true;
+        }
+    }
+
+    if (success)
+    {
+        gFroxelApplyProgram.mName = "Froxel Apply Pass Shader";
+        gFroxelApplyProgram.mFeatures.isDeferred = true;
+        gFroxelApplyProgram.mShaderFiles.clear();
+        gFroxelApplyProgram.clearPermutations();
+        gFroxelApplyProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gFroxelApplyProgram.mShaderFiles.push_back(make_pair("deferred/froxelApplyF.glsl", GL_FRAGMENT_SHADER));
+        gFroxelApplyProgram.mShaderFiles.push_back(make_pair("deferred/froxelUtil.glsl", GL_FRAGMENT_SHADER));
+        gFroxelApplyProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gFroxelApplyProgram.createShader();
+        if (!success)
+        {
+            LL_WARNS() << "Failed to create shader '" << gFroxelApplyProgram.mName << "', disabling!" << LL_ENDL;
             success = true;
         }
     }

@@ -572,6 +572,13 @@ public:
         FROXEL_DEBUG_MODE,                 //  "froxel_debug_mode"
         FROXEL_DEBUG_SLICE,                //  "froxel_debug_slice"
 
+        // [BDMerge Froxel F1] integrate + apply. FROXEL_INTEGRATED is the second
+        // atlas (rgb = integrated in-scatter L, a = transmittance T); FROXEL_AMBIENT
+        // is the uniform ambient in-scatter radiance of the medium. Appended after
+        // the F0 block, in lockstep with the matching push_back block in .cpp.
+        FROXEL_INTEGRATED,                 //  "froxelIntegrated"     (sampler: integrated atlas)
+        FROXEL_AMBIENT,                    //  "froxel_ambient"
+
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

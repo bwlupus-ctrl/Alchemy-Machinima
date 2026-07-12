@@ -11039,10 +11039,21 @@
       <key>Value</key>
       <real>0.1</real>
   </map>
+  <key>BDMergeFroxelAmbient</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge Froxel F1] Uniform ambient in-scatter radiance of the froxel medium - the "air glow" (0.0-8.0; default 0.35). At 0 the fog only extinguishes (darkens/occludes distant geometry); above 0 it also glows softly, reading as atmospheric haze. This is the medium's only light source until per-light injection (F2) adds real lights on top. Only active when BDMergeFroxelVolumetrics is on.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.35</real>
+  </map>
   <key>BDMergeFroxelDebug</key>
   <map>
       <key>Comment</key>
-      <string>[BDMerge Froxel F0] Froxel debug visualizer overlay. 0 = off, 1 = show media density at the surface froxel (fullscreen 50% overlay, black-&gt;green-&gt;yellow-&gt;red ramp over 0-&gt;2x BDMergeFroxelDensity - proves froxel coords line up with the scene), 2 = show one middle Z-slice tile stretched fullscreen (proves the atlas tiling). Only active when BDMergeFroxelVolumetrics is on.</string>
+      <string>[BDMerge Froxel F0] Froxel debug visualizer overlay. 0 = off, 1 = show media density at the surface froxel (fullscreen 50% overlay, black-&gt;green-&gt;yellow-&gt;red ramp over 0-&gt;2x BDMergeFroxelDensity - proves froxel coords line up with the scene), 2 = show one middle Z-slice tile stretched fullscreen (proves the atlas tiling), 3 = [F1] show the INTEGRATED atlas in-scatter radiance L at the surface froxel (validates the integrate pass independently of the scene composite). Only active when BDMergeFroxelVolumetrics is on.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>

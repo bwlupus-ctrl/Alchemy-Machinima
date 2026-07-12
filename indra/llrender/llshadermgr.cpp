@@ -1770,6 +1770,11 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("froxel_debug_mode");
     mReservedUniforms.push_back("froxel_debug_slice");
 
+    // [BDMerge Froxel F1] integrate + apply (lockstep with the FROXEL_INTEGRATED /
+    // FROXEL_AMBIENT enums appended to the FROXEL_* block in llshadermgr.h).
+    mReservedUniforms.push_back("froxelIntegrated");
+    mReservedUniforms.push_back("froxel_ambient");
+
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 
     std::set<std::string> dupe_check;

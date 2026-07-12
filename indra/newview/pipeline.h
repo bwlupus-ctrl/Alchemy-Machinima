@@ -821,6 +821,16 @@ public:
     LLRenderTarget          mFroxelMedia;
     bool                    mFroxelMediaValid = false;
 
+    // [BDMerge Froxel F1] Integrated froxel atlas (RGBA16F, same atlas dims as
+    // mFroxelMedia). rgb = in-scatter radiance L integrated from the camera to this
+    // froxel's slice-centre depth; a = transmittance T over the same span. Produced
+    // by the P4 integrate pass, consumed by the P5 apply composite. Allocated /
+    // released exactly alongside mFroxelMedia (lazily inside the gated block; freed
+    // in releaseGLBuffers). mFroxelIntegratedValid tracks whether it holds this
+    // frame's integral.
+    LLRenderTarget          mFroxelIntegrated;
+    bool                    mFroxelIntegratedValid = false;
+
     // exposure map for getting average color in scene
     LLRenderTarget          mLuminanceMap;
     LLRenderTarget          mExposureMap;
@@ -1259,7 +1269,8 @@ public:
     static F32  BDMergeFroxelNoiseStrength; // animated noise (0 = off)
     static F32  BDMergeFroxelNoiseScale;
     static F32  BDMergeFroxelNoiseSpeed;
-    static U32  BDMergeFroxelDebug;         // 0=off 1=density overlay 2=Z-slice sweep
+    static F32  BDMergeFroxelAmbient;       // [F1] uniform ambient in-scatter radiance
+    static U32  BDMergeFroxelDebug;         // 0=off 1=density 2=Z-slice 3=integrated L
     // [BDMerge Batch 2] Feature 1: soft (contact-hardening + filled) shadows.
     static bool BDMergeSoftProjectorShadows;   // master gate (default off)
     static F32  BDMergeSoftShadowSoftness;     // penumbra rate (kernel growth)

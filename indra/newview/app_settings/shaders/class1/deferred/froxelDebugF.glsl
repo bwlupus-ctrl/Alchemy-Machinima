@@ -31,6 +31,9 @@
  *           [0, 2*density]. Proves the froxel coords line up with the scene.
  *   Mode 2: map one Z-slice tile fullscreen (fixed middle slice) - proves the atlas
  *           layout / tiling.
+ *   Mode 3: [F1] trilinear-sample the INTEGRATED atlas at the surface froxel and show
+ *           its in-scatter radiance L (rgb) directly - validates the integrate pass
+ *           independently of the scene composite.
  */
 
 /*[EXTRA_CODE_HERE]*/
@@ -40,12 +43,13 @@ out vec4 frag_color;
 in vec2 vary_fragcoord;
 
 uniform sampler2D froxelMedia;     // the RGBA16F media atlas (rgb=sigma_s, a=sigma_t)
+uniform sampler2D froxelIntegrated;// [F1] the RGBA16F integrated atlas (rgb=L, a=T)
 
 uniform vec3  froxel_grid;         // (GridX, GridY, GridZ)
 uniform vec4  froxel_atlas;        // (tilesX, tilesY, atlasW, atlasH)
 uniform vec2  froxel_near_far;     // (near, far) metres
 uniform float froxel_density;      // base sigma_t (ramp normalisation: 2*density = red)
-uniform int   froxel_debug_mode;   // 1 = surface-depth density, 2 = Z-slice sweep
+uniform int   froxel_debug_mode;   // 1 = surface-depth density, 2 = Z-slice sweep, 3 = integrated L
 uniform float froxel_debug_slice;  // Mode 2: which slice tile to show
 
 // deferredUtil.glsl (this program is isDeferred -> depthMap/inv_proj are bound)
@@ -97,8 +101,19 @@ void main()
         vec2  local  = tc * froxel_grid.xy;
         vec3  fc     = vec3(local, scoord);
 
-        float sigma_t = froxelTrilinear(froxelMedia, fc, froxel_grid, froxel_atlas).a;
-        col = froxelRamp(sigma_t / ramp_max);
+        if (froxel_debug_mode == 3)
+        {
+            // ---- Mode 3: [F1] integrated in-scatter L at the surface froxel --------
+            // Show the radiance the apply composite ADDS at this pixel's depth, so the
+            // integrate pass can be validated on its own (before/without the scene
+            // composite). rgb = L directly; raise Ambient/Density to see it clearly.
+            col = froxelTrilinear(froxelIntegrated, fc, froxel_grid, froxel_atlas).rgb;
+        }
+        else
+        {
+            float sigma_t = froxelTrilinear(froxelMedia, fc, froxel_grid, froxel_atlas).a;
+            col = froxelRamp(sigma_t / ramp_max);
+        }
     }
 
     // 50% alpha overlay (C++ sets SRC_ALPHA / ONE_MINUS_SRC_ALPHA for this pass).
