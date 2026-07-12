@@ -2202,13 +2202,13 @@
     <key>BDMergeReShadeOverrideDepth</key>
     <map>
       <key>Comment</key>
-      <string>[RTGI] When ON, the ReShade bridge overrides ReShade's DEPTH semantic with the viewer's own depth buffer. Default OFF: ReShade's built-in generic_depth add-on owns DEPTH (it copies depth into a sampleable texture, which our raw GL depth-format handle is not - binding it directly reads flat/constant and breaks depth effects). Leave OFF unless a proper depth-copy path has been implemented. Motion vectors (SL_MOTION_NDC) are unaffected and always provided.</string>
+      <string>[RTGI] When ON (default), the ReShade bridge feeds ReShade's DEPTH semantic the viewer's own EXACT scene depth via an R32F color copy (copyReShadeDepth) - ReShade cannot sample our raw GL depth-format texture, and its built-in generic_depth detection is unreliable for OpenGL apps like SL. This is the reliable way to get real depth into ReShade for depth effects (DOF, RTGI). Turn OFF to fall back to ReShade's generic_depth. Costs one screen-res copy pass per frame when on. Motion vectors (SL_MOTION_NDC) are independent and always provided.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
       <string>Boolean</string>
       <key>Value</key>
-      <integer>0</integer>
+      <integer>1</integer>
     </map>
     <key>BDMergeVelocityBuffer</key>
     <map>

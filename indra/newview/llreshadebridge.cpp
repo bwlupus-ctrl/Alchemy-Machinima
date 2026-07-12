@@ -97,6 +97,9 @@ void LLReShadeBridge::gatherFrame()
 
         f.mWidth    = def.getWidth();
         f.mHeight   = def.getHeight();
+        // Raw depth handle: used for the mValid check below. When the DEPTH override
+        // is on we hand ReShade the R32F COLOR copy instead (set further down), since
+        // ReShade can't sample the raw depth-format texture.
         f.mTexDepth = def.getDepth();
 
         // deferredScreen attachment layout (see addDeferredAttachments):
@@ -123,6 +126,15 @@ void LLReShadeBridge::gatherFrame()
         // stashed for the ReShade-thread callback. Off => generic_depth owns DEPTH.
         static LLCachedControl<bool> bind_depth(gSavedSettings, "BDMergeReShadeOverrideDepth", false);
         mBindDepth = bind_depth;
+
+        // When overriding, bind the R32F depth COPY (sampleable) instead of the raw
+        // depth. copyReShadeDepth() (called just before gatherFrame) fills it.
+        if (mBindDepth &&
+            gPipeline.mReShadeDepthCopy.getWidth() > 0 &&
+            gPipeline.mReShadeDepthCopy.getNumTextures() > 0)
+        {
+            f.mTexDepth = gPipeline.mReShadeDepthCopy.getTexture(0);
+        }
 
         // Consider the frame usable only if the two effect-critical buffers exist.
         f.mValid = (f.mTexNormals != 0) && (f.mTexDepth != 0);
