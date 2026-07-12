@@ -1750,6 +1750,26 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("velocityMap");
     mReservedUniforms.push_back("motion_blur_strength");
 
+    // [BDMerge Froxel F0] hybrid froxel volumetrics (must stay in lockstep with the
+    // FROXEL_* enum block in llshadermgr.h - same position, same order).
+    mReservedUniforms.push_back("froxelMedia");
+    mReservedUniforms.push_back("froxel_grid");
+    mReservedUniforms.push_back("froxel_atlas");
+    mReservedUniforms.push_back("froxel_near_far");
+    mReservedUniforms.push_back("froxel_tan_half_fov");
+    mReservedUniforms.push_back("froxel_inv_modelview");
+    mReservedUniforms.push_back("froxel_density");
+    mReservedUniforms.push_back("froxel_fog_strength");
+    mReservedUniforms.push_back("froxel_fog_ground_density");
+    mReservedUniforms.push_back("froxel_fog_falloff");
+    mReservedUniforms.push_back("froxel_fog_base");
+    mReservedUniforms.push_back("froxel_noise_strength");
+    mReservedUniforms.push_back("froxel_noise_scale");
+    mReservedUniforms.push_back("froxel_noise_speed");
+    mReservedUniforms.push_back("froxel_time");
+    mReservedUniforms.push_back("froxel_debug_mode");
+    mReservedUniforms.push_back("froxel_debug_slice");
+
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 
     std::set<std::string> dupe_check;

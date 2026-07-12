@@ -146,6 +146,10 @@ public:
     // [BDMerge G3.3] per-projector volumetric light cones: additive pass, one
     // fullscreen cone per shadow-casting projector slot, in place on target.
     void renderProjectorVolumetric(LLRenderTarget* target);
+    // [BDMerge Froxel F0] hybrid froxel volumetrics: run the P1 media pass into the
+    // Z-slice atlas and (optionally) the debug overlay. Fully gated on
+    // BDMergeFroxelVolumetrics - a no-op (no alloc, no passes) when off.
+    void renderFroxelVolumetrics(LLRenderTarget* target);
     // [BDMerge G3.3 Phase 3 item 4] Controlled feed of the current frame's half-res
     // shaft (mProjVolHalf) into the HDR bloom pyramid (bloomMip[0]) for a soft glow
     // halo. Runs after renderProjectorVolumetric leaves the shaft in mProjVolHalf,
@@ -809,6 +813,14 @@ public:
     // temporal-resolved history slot when temporal is on, else &mProjVolHalf.
     LLRenderTarget*         mProjVolShaftSrc = nullptr;
 
+    // [BDMerge Froxel F0] Froxel media atlas (RGBA16F, rgb = sigma_s, a = sigma_t).
+    // 2D Z-slice atlas: tilesX x tilesY tiles of GridX x GridY. Allocated lazily
+    // inside renderFroxelVolumetrics ONLY when the master gate is on, released in
+    // releaseGLBuffers with the other volumetric targets. mFroxelMediaValid tracks
+    // whether it holds this frame's medium (reset on release / gate-off).
+    LLRenderTarget          mFroxelMedia;
+    bool                    mFroxelMediaValid = false;
+
     // exposure map for getting average color in scene
     LLRenderTarget          mLuminanceMap;
     LLRenderTarget          mExposureMap;
@@ -1232,6 +1244,22 @@ public:
     static F32 BDMergeProjectorVolumetricsRimPower;      // Fresnel exponent (silhouette tightness)
     static F32 BDMergeProjectorVolumetricsRimThreshold;  // ignore incident light dimmer than this
     static F32 BDMergeProjectorVolumetricsRimWrap;       // directional wrap (0 = back-only, 1 = broad)
+    // [BDMerge Froxel F0] hybrid froxel volumetrics grid (master gate default OFF ->
+    // no alloc, no passes, no debug; the whole subsystem is a no-op at defaults).
+    static bool BDMergeFroxelVolumetrics;   // master gate (default off)
+    static U32  BDMergeFroxelGridX;         // frustum froxel counts
+    static U32  BDMergeFroxelGridY;
+    static U32  BDMergeFroxelGridZ;         // clamped [16,128]; exponential Z slices
+    static F32  BDMergeFroxelFar;           // grid far distance (metres)
+    static F32  BDMergeFroxelDensity;       // base sigma_t per metre
+    static F32  BDMergeFroxelFogStrength;   // height-fog blend (0 = off)
+    static F32  BDMergeFroxelFogGroundDensity;
+    static F32  BDMergeFroxelFogFalloff;
+    static F32  BDMergeFroxelFogBase;
+    static F32  BDMergeFroxelNoiseStrength; // animated noise (0 = off)
+    static F32  BDMergeFroxelNoiseScale;
+    static F32  BDMergeFroxelNoiseSpeed;
+    static U32  BDMergeFroxelDebug;         // 0=off 1=density overlay 2=Z-slice sweep
     // [BDMerge Batch 2] Feature 1: soft (contact-hardening + filled) shadows.
     static bool BDMergeSoftProjectorShadows;   // master gate (default off)
     static F32  BDMergeSoftShadowSoftness;     // penumbra rate (kernel growth)

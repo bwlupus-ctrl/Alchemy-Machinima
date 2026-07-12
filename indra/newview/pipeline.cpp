@@ -277,6 +277,21 @@ F32 LLPipeline::BDMergeProjectorVolumetricsRimStrength;
 F32 LLPipeline::BDMergeProjectorVolumetricsRimPower;
 F32 LLPipeline::BDMergeProjectorVolumetricsRimThreshold;
 F32 LLPipeline::BDMergeProjectorVolumetricsRimWrap;
+// [BDMerge Froxel F0] hybrid froxel volumetrics grid (master gate default OFF).
+bool LLPipeline::BDMergeFroxelVolumetrics;
+U32  LLPipeline::BDMergeFroxelGridX;
+U32  LLPipeline::BDMergeFroxelGridY;
+U32  LLPipeline::BDMergeFroxelGridZ;
+F32  LLPipeline::BDMergeFroxelFar;
+F32  LLPipeline::BDMergeFroxelDensity;
+F32  LLPipeline::BDMergeFroxelFogStrength;
+F32  LLPipeline::BDMergeFroxelFogGroundDensity;
+F32  LLPipeline::BDMergeFroxelFogFalloff;
+F32  LLPipeline::BDMergeFroxelFogBase;
+F32  LLPipeline::BDMergeFroxelNoiseStrength;
+F32  LLPipeline::BDMergeFroxelNoiseScale;
+F32  LLPipeline::BDMergeFroxelNoiseSpeed;
+U32  LLPipeline::BDMergeFroxelDebug;
 // [BDMerge Batch 2]
 bool LLPipeline::BDMergeSoftProjectorShadows;
 F32  LLPipeline::BDMergeSoftShadowSoftness;
@@ -704,6 +719,21 @@ void LLPipeline::init()
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsRimPower");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsRimThreshold");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsRimWrap");
+    // [BDMerge Froxel F0] hybrid froxel volumetrics grid
+    connectRefreshCachedSettingsSafe("BDMergeFroxelVolumetrics");
+    connectRefreshCachedSettingsSafe("BDMergeFroxelGridX");
+    connectRefreshCachedSettingsSafe("BDMergeFroxelGridY");
+    connectRefreshCachedSettingsSafe("BDMergeFroxelGridZ");
+    connectRefreshCachedSettingsSafe("BDMergeFroxelFar");
+    connectRefreshCachedSettingsSafe("BDMergeFroxelDensity");
+    connectRefreshCachedSettingsSafe("BDMergeFroxelFogStrength");
+    connectRefreshCachedSettingsSafe("BDMergeFroxelFogGroundDensity");
+    connectRefreshCachedSettingsSafe("BDMergeFroxelFogFalloff");
+    connectRefreshCachedSettingsSafe("BDMergeFroxelFogBase");
+    connectRefreshCachedSettingsSafe("BDMergeFroxelNoiseStrength");
+    connectRefreshCachedSettingsSafe("BDMergeFroxelNoiseScale");
+    connectRefreshCachedSettingsSafe("BDMergeFroxelNoiseSpeed");
+    connectRefreshCachedSettingsSafe("BDMergeFroxelDebug");
     connectRefreshCachedSettingsSafe("BDMergeSoftProjectorShadows");
     connectRefreshCachedSettingsSafe("BDMergeSoftShadowSoftness");
     connectRefreshCachedSettingsSafe("BDMergeSoftShadowMaxPenumbra");
@@ -1410,6 +1440,21 @@ void LLPipeline::refreshCachedSettings()
     BDMergeProjectorVolumetricsRimPower = gSavedSettings.getF32("BDMergeProjectorVolumetricsRimPower");
     BDMergeProjectorVolumetricsRimThreshold = gSavedSettings.getF32("BDMergeProjectorVolumetricsRimThreshold");
     BDMergeProjectorVolumetricsRimWrap = gSavedSettings.getF32("BDMergeProjectorVolumetricsRimWrap");
+    // [BDMerge Froxel F0] hybrid froxel volumetrics grid
+    BDMergeFroxelVolumetrics = gSavedSettings.getBOOL("BDMergeFroxelVolumetrics");
+    BDMergeFroxelGridX = gSavedSettings.getU32("BDMergeFroxelGridX");
+    BDMergeFroxelGridY = gSavedSettings.getU32("BDMergeFroxelGridY");
+    BDMergeFroxelGridZ = gSavedSettings.getU32("BDMergeFroxelGridZ");
+    BDMergeFroxelFar = gSavedSettings.getF32("BDMergeFroxelFar");
+    BDMergeFroxelDensity = gSavedSettings.getF32("BDMergeFroxelDensity");
+    BDMergeFroxelFogStrength = gSavedSettings.getF32("BDMergeFroxelFogStrength");
+    BDMergeFroxelFogGroundDensity = gSavedSettings.getF32("BDMergeFroxelFogGroundDensity");
+    BDMergeFroxelFogFalloff = gSavedSettings.getF32("BDMergeFroxelFogFalloff");
+    BDMergeFroxelFogBase = gSavedSettings.getF32("BDMergeFroxelFogBase");
+    BDMergeFroxelNoiseStrength = gSavedSettings.getF32("BDMergeFroxelNoiseStrength");
+    BDMergeFroxelNoiseScale = gSavedSettings.getF32("BDMergeFroxelNoiseScale");
+    BDMergeFroxelNoiseSpeed = gSavedSettings.getF32("BDMergeFroxelNoiseSpeed");
+    BDMergeFroxelDebug = gSavedSettings.getU32("BDMergeFroxelDebug");
     // [BDMerge Batch 2]
     BDMergeSoftProjectorShadows = gSavedSettings.getBOOL("BDMergeSoftProjectorShadows");
     BDMergeSoftShadowSoftness = gSavedSettings.getF32("BDMergeSoftShadowSoftness");
@@ -1484,6 +1529,9 @@ void LLPipeline::releaseGLBuffers()
     mProjVolHistory[0].release(); // [BDMerge G3.3 Batch 1 A] temporal history
     mProjVolHistory[1].release();
     mProjVolHistoryValid = false;
+
+    mFroxelMedia.release(); // [BDMerge Froxel F0] froxel media atlas
+    mFroxelMediaValid = false;
 
     mWaterExclusionMask.release();
 
@@ -9486,6 +9534,150 @@ void LLPipeline::renderVolumetric(LLRenderTarget* src, LLRenderTarget* dst)
     }
 }
 
+// [BDMerge Froxel F0] Hybrid froxel volumetrics - foundation batch. Builds the
+// camera-frustum froxel grid's media atlas (P1) and, when the debug lever is on,
+// overlays a visualization of it. NO lighting / integration / scene composite yet
+// (later batches). The WHOLE function is gated on BDMergeFroxelVolumetrics: at the
+// default (off) it early-returns before allocating anything or running any pass, so
+// the frame is byte-identical to today. Called right before renderProjectorVolumetric.
+void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
+{
+    // Master gate: OFF => no alloc, no passes, no debug. Also require a non-cube
+    // frame and a compiled media program (the debug pass is separately gated below).
+    if (!BDMergeFroxelVolumetrics || gCubeSnapshot || !gFroxelMediaProgram.isComplete())
+    {
+        mFroxelMediaValid = false;
+        return;
+    }
+
+    LL_PROFILE_GPU_ZONE("renderFroxelVolumetrics");
+
+    // ---- Grid + atlas layout ------------------------------------------------
+    // Grid dims (clamped). GridZ is clamped to [16,128] per the atlas-tiling
+    // requirement; X/Y get a generous clamp so a bad setting can't blow up VRAM.
+    const U32 gx = llclamp(BDMergeFroxelGridX, (U32)16, (U32)512);
+    const U32 gy = llclamp(BDMergeFroxelGridY, (U32)16, (U32)512);
+    const U32 gz = llclamp(BDMergeFroxelGridZ, (U32)16, (U32)128);
+
+    // Square-ish tiling: tilesX = ceil(sqrt(gz)), tilesY = ceil(gz / tilesX). The
+    // atlas may hold a few dead tiles past slice gz-1 (the media pass clears them).
+    const U32 tilesX = (U32)llceil(sqrtf((F32)gz));
+    const U32 tilesY = (U32)llceil((F32)gz / (F32)tilesX);
+    const U32 atlasW = gx * tilesX;
+    const U32 atlasH = gy * tilesY;
+
+    // Lazily (re)allocate the atlas ONLY inside this gated block. Mirrors the
+    // mProjVolHalf on-demand allocate/release pattern; released in releaseGLBuffers.
+    if (mFroxelMedia.getWidth() != atlasW || mFroxelMedia.getHeight() != atlasH)
+    {
+        mFroxelMedia.release();
+        if (!mFroxelMedia.allocate(atlasW, atlasH, GL_RGBA16F))
+        {
+            mFroxelMediaValid = false;
+            return; // allocation failed -> skip the whole subsystem this frame
+        }
+        mFroxelMediaValid = false;
+    }
+
+    // ---- Shared froxel uniforms (view-pos reconstruction) -------------------
+    glm::mat4 mat  = get_current_modelview();
+    glm::mat4 proj = get_current_projection();
+    glm::mat4 inv_mv = glm::inverse(mat);
+
+    // Centered perspective: proj[0][0] = 1/tan(fovx/2), proj[1][1] = 1/tan(fovy/2)
+    // (glm is column-major: proj[col][row]). The froxel grid runs only in the main
+    // centered view, so deriving the tan-half-fov terms this way is exact here.
+    const F32 tan_half_fov_x = (fabsf(proj[0][0]) > 1e-6f) ? (1.f / proj[0][0]) : 1.f;
+    const F32 tan_half_fov_y = (fabsf(proj[1][1]) > 1e-6f) ? (1.f / proj[1][1]) : 1.f;
+    const F32 near_clip = LLViewerCamera::getInstance()->getNear();
+    const F32 far_clip  = llmax(BDMergeFroxelFar, near_clip + 1.f);
+
+    const F32 grid3[3]   = { (F32)gx, (F32)gy, (F32)gz };
+    const F32 atlas4[4]  = { (F32)tilesX, (F32)tilesY, (F32)atlasW, (F32)atlasH };
+    const F32 nearfar[2] = { near_clip, far_clip };
+    const F32 thf2[2]    = { tan_half_fov_x, tan_half_fov_y };
+
+    // ---- P1 media pass into the atlas ---------------------------------------
+    {
+        LL_PROFILE_GPU_ZONE("froxel media");
+        mFroxelMedia.bindTarget(); // sets viewport to the atlas size
+
+        LLGLDepthTest depth(GL_FALSE);
+        LLGLDisable   no_blend(GL_BLEND);   // full overwrite: every froxel is written
+        LLGLDisable   no_scissor(GL_SCISSOR_TEST);
+        gGL.setColorMask(true, true);
+
+        gFroxelMediaProgram.bind();
+        gFroxelMediaProgram.uniform3fv(LLShaderMgr::FROXEL_GRID, 1, grid3);
+        gFroxelMediaProgram.uniform4fv(LLShaderMgr::FROXEL_ATLAS, 1, atlas4);
+        gFroxelMediaProgram.uniform2fv(LLShaderMgr::FROXEL_NEAR_FAR, 1, nearfar);
+        gFroxelMediaProgram.uniform2fv(LLShaderMgr::FROXEL_TAN_HALF_FOV, 1, thf2);
+        gFroxelMediaProgram.uniformMatrix4fv(LLShaderMgr::FROXEL_INV_MODELVIEW, 1, false, glm::value_ptr(inv_mv));
+        gFroxelMediaProgram.uniform1f(LLShaderMgr::FROXEL_DENSITY, llmax(BDMergeFroxelDensity, 0.f));
+        gFroxelMediaProgram.uniform1f(LLShaderMgr::FROXEL_FOG_STRENGTH, llclamp(BDMergeFroxelFogStrength, 0.f, 1.f));
+        gFroxelMediaProgram.uniform1f(LLShaderMgr::FROXEL_FOG_GROUND, llmax(BDMergeFroxelFogGroundDensity, 0.f));
+        gFroxelMediaProgram.uniform1f(LLShaderMgr::FROXEL_FOG_FALLOFF, llmax(BDMergeFroxelFogFalloff, 0.01f));
+        gFroxelMediaProgram.uniform1f(LLShaderMgr::FROXEL_FOG_BASE, BDMergeFroxelFogBase);
+        gFroxelMediaProgram.uniform1f(LLShaderMgr::FROXEL_NOISE_STRENGTH, llclamp(BDMergeFroxelNoiseStrength, 0.f, 1.f));
+        gFroxelMediaProgram.uniform1f(LLShaderMgr::FROXEL_NOISE_SCALE, llmax(BDMergeFroxelNoiseScale, 0.f));
+        gFroxelMediaProgram.uniform1f(LLShaderMgr::FROXEL_NOISE_SPEED, BDMergeFroxelNoiseSpeed);
+        gFroxelMediaProgram.uniform1f(LLShaderMgr::FROXEL_TIME, fmodf(gFrameTimeSeconds, 3600.f));
+
+        mScreenTriangleVB->setBuffer();
+        mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+
+        gFroxelMediaProgram.unbind();
+        mFroxelMedia.flush();
+        mFroxelMediaValid = true;
+    }
+
+    // ---- Debug overlay (optional, gated separately) -------------------------
+    // Draws AFTER the media pass into the scene target at 50% opacity. This is the
+    // F0 checkpoint deliverable. No-op when BDMergeFroxelDebug == 0.
+    const U32 debug_mode = BDMergeFroxelDebug;
+    if (debug_mode != 0 && target != nullptr && gFroxelDebugProgram.isComplete())
+    {
+        LL_PROFILE_GPU_ZONE("froxel debug");
+        target->bindTarget();
+
+        LLGLDepthTest depth(GL_FALSE);
+        LLGLEnable    blend(GL_BLEND);
+        LLGLDisable   no_scissor(GL_SCISSOR_TEST);
+        gGL.setSceneBlendType(LLRender::BT_ALPHA); // src_alpha / one-minus-src-alpha
+        gGL.setColorMask(true, false);
+
+        // isDeferred bind: gives getPosition()/depthMap/inv_proj for the surface sample.
+        bindDeferredShader(gFroxelDebugProgram);
+
+        S32 ch = gFroxelDebugProgram.enableTexture(LLShaderMgr::FROXEL_MEDIA);
+        if (ch > -1)
+        {
+            mFroxelMedia.bindTexture(0, ch, LLTexUnit::TFO_BILINEAR);
+        }
+
+        // Mode 2 shows a fixed middle Z-slice tile (simple, deterministic).
+        const F32 debug_slice = floorf((F32)gz * 0.5f);
+
+        gFroxelDebugProgram.uniform3fv(LLShaderMgr::FROXEL_GRID, 1, grid3);
+        gFroxelDebugProgram.uniform4fv(LLShaderMgr::FROXEL_ATLAS, 1, atlas4);
+        gFroxelDebugProgram.uniform2fv(LLShaderMgr::FROXEL_NEAR_FAR, 1, nearfar);
+        gFroxelDebugProgram.uniform1f(LLShaderMgr::FROXEL_DENSITY, llmax(BDMergeFroxelDensity, 1e-4f));
+        gFroxelDebugProgram.uniform1i(LLShaderMgr::FROXEL_DEBUG_MODE, (S32)debug_mode);
+        gFroxelDebugProgram.uniform1f(LLShaderMgr::FROXEL_DEBUG_SLICE, debug_slice);
+
+        mScreenTriangleVB->setBuffer();
+        mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+
+        if (ch > -1)
+        {
+            gFroxelDebugProgram.disableTexture(LLShaderMgr::FROXEL_MEDIA);
+        }
+        unbindDeferredShader(gFroxelDebugProgram);
+        gGL.setColorMask(true, true);
+        target->flush();
+    }
+}
+
 // [BDMerge G3.3] per-projector volumetric light cones (visible spotlight shafts).
 // NET-NEW local-light companion to G3.2. Runs in renderFinalize right after the
 // sun volumetric block, ADDITIVELY IN PLACE onto the scene buffer: one fullscreen
@@ -10470,6 +10662,11 @@ void LLPipeline::renderFinalize()
     // active tonemapper (AMD LPM / ACES) rolls off the bright cores filmically
     // instead of the old post-tonemap placement clipping them. Additive in place
     // onto mRT->screen; shafts carry each light's colour.
+    // [BDMerge Froxel F0] Hybrid froxel volumetrics grid (media atlas + debug
+    // overlay). Runs right before the per-cone projector volumetrics, at the same
+    // composite point. Fully gated on BDMergeFroxelVolumetrics (default OFF = no-op).
+    renderFroxelVolumetrics(&mRT->screen);
+
     renderProjectorVolumetric(&mRT->screen);
 
     // [BDMerge G3.3 Phase 3 item 4] Optional, controlled soft-glow halo: feed a

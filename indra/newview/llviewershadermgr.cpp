@@ -245,6 +245,9 @@ LLGLSLShader            gDeferredBufferVisualProgram;
 LLGLSLShader            gVelocityProgram;
 LLGLSLShader            gVelocityAlphaProgram;
 LLGLSLShader            gVelocityDebugProgram;
+// [BDMerge Froxel F0] hybrid froxel volumetrics: P1 media pass + debug visualizer.
+LLGLSLShader            gFroxelMediaProgram;
+LLGLSLShader            gFroxelDebugProgram;
 LLGLSLShader            gBlitWithEffectsProgram;
 LLGLSLShader            gCGGammaProgram;
 LLGLSLShader            gCGLegacyGammaProgram;
@@ -412,6 +415,8 @@ void LLViewerShaderMgr::finalizeShaderList()
     mShaderList.push_back(&gDeferredProjectorVolumetricUpsampleProgram); // [BDMerge G3.3 P1 item 3]
     mShaderList.push_back(&gDeferredProjectorVolumetricTemporalProgram); // [BDMerge G3.3 Batch 1 A]
     mShaderList.push_back(&gDeferredProjectorVolumetricBloomFeedProgram); // [BDMerge G3.3 P3 item 4]
+    mShaderList.push_back(&gFroxelMediaProgram); // [BDMerge Froxel F0]
+    mShaderList.push_back(&gFroxelDebugProgram); // [BDMerge Froxel F0]
     mShaderList.push_back(&gDeferredAlphaProgram);
     mShaderList.push_back(&gHUDAlphaProgram);
     mShaderList.push_back(&gDeferredAlphaImpostorProgram);
@@ -1232,6 +1237,8 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gVelocityProgram.unload();          // [BDMerge A5.4-1a]
         gVelocityAlphaProgram.unload();     // [BDMerge A5.4-1a]
         gVelocityDebugProgram.unload();     // [BDMerge A5.4-1a]
+        gFroxelMediaProgram.unload();       // [BDMerge Froxel F0]
+        gFroxelDebugProgram.unload();       // [BDMerge Froxel F0]
 
         for (U32 i = 0; i < LLMaterial::SHADER_COUNT*2; ++i)
         {
@@ -3361,6 +3368,48 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gVelocityDebugProgram.mShaderFiles.push_back(make_pair("deferred/velocityDebugF.glsl", GL_FRAGMENT_SHADER));
         gVelocityDebugProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
         success = gVelocityDebugProgram.createShader();
+    }
+
+    // [BDMerge Froxel F0] Hybrid froxel volumetrics: P1 media pass + debug
+    // visualizer. Both link froxelUtil.glsl (the shared grid<->atlas helper) as a
+    // second fragment object - the same multi-file link the loader does for every
+    // program (createShader attaches each mShaderFiles entry). froxelUtil carries no
+    // main(), only froxel-prefixed functions, so it cannot collide. The media pass
+    // is a plain fullscreen pass (like velocityDebug); the debug pass is isDeferred
+    // so getPosition()/depthMap/inv_proj resolve for the surface-depth sample.
+    if (success)
+    {
+        gFroxelMediaProgram.mName = "Froxel Media Pass Shader";
+        gFroxelMediaProgram.mShaderFiles.clear();
+        gFroxelMediaProgram.clearPermutations();
+        gFroxelMediaProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gFroxelMediaProgram.mShaderFiles.push_back(make_pair("deferred/froxelMediaF.glsl", GL_FRAGMENT_SHADER));
+        gFroxelMediaProgram.mShaderFiles.push_back(make_pair("deferred/froxelUtil.glsl", GL_FRAGMENT_SHADER));
+        gFroxelMediaProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gFroxelMediaProgram.createShader();
+        if (!success)
+        {
+            LL_WARNS() << "Failed to create shader '" << gFroxelMediaProgram.mName << "', disabling!" << LL_ENDL;
+            success = true;
+        }
+    }
+
+    if (success)
+    {
+        gFroxelDebugProgram.mName = "Froxel Debug Visualization Shader";
+        gFroxelDebugProgram.mFeatures.isDeferred = true;
+        gFroxelDebugProgram.mShaderFiles.clear();
+        gFroxelDebugProgram.clearPermutations();
+        gFroxelDebugProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gFroxelDebugProgram.mShaderFiles.push_back(make_pair("deferred/froxelDebugF.glsl", GL_FRAGMENT_SHADER));
+        gFroxelDebugProgram.mShaderFiles.push_back(make_pair("deferred/froxelUtil.glsl", GL_FRAGMENT_SHADER));
+        gFroxelDebugProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gFroxelDebugProgram.createShader();
+        if (!success)
+        {
+            LL_WARNS() << "Failed to create shader '" << gFroxelDebugProgram.mName << "', disabling!" << LL_ENDL;
+            success = true;
+        }
     }
 
     if (success)

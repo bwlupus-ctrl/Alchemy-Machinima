@@ -551,6 +551,27 @@ public:
         DEFERRED_VELOCITY,                 //  "velocityMap"
         MOTION_BLUR_STRENGTH,              //  "motion_blur_strength"
 
+        // [BDMerge Froxel F0] hybrid froxel volumetrics (grid/atlas media pass +
+        // debug visualizer). MUST stay in lockstep with the matching push_back
+        // block in llshadermgr.cpp - same position, same order.
+        FROXEL_MEDIA,                      //  "froxelMedia"          (sampler: media atlas)
+        FROXEL_GRID,                       //  "froxel_grid"          (GridX,GridY,GridZ)
+        FROXEL_ATLAS,                      //  "froxel_atlas"         (tilesX,tilesY,atlasW,atlasH)
+        FROXEL_NEAR_FAR,                   //  "froxel_near_far"      (near, far)
+        FROXEL_TAN_HALF_FOV,               //  "froxel_tan_half_fov"  (tan(fovx/2),tan(fovy/2))
+        FROXEL_INV_MODELVIEW,              //  "froxel_inv_modelview" (view -> agent)
+        FROXEL_DENSITY,                    //  "froxel_density"
+        FROXEL_FOG_STRENGTH,               //  "froxel_fog_strength"
+        FROXEL_FOG_GROUND,                 //  "froxel_fog_ground_density"
+        FROXEL_FOG_FALLOFF,                //  "froxel_fog_falloff"
+        FROXEL_FOG_BASE,                   //  "froxel_fog_base"
+        FROXEL_NOISE_STRENGTH,             //  "froxel_noise_strength"
+        FROXEL_NOISE_SCALE,                //  "froxel_noise_scale"
+        FROXEL_NOISE_SPEED,                //  "froxel_noise_speed"
+        FROXEL_TIME,                       //  "froxel_time"
+        FROXEL_DEBUG_MODE,                 //  "froxel_debug_mode"
+        FROXEL_DEBUG_SLICE,                //  "froxel_debug_slice"
+
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

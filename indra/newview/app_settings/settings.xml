@@ -10896,6 +10896,160 @@
       <key>Value</key>
       <real>0.0</real>
   </map>
+  <key>BDMergeFroxelVolumetrics</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge Froxel F0] MASTER GATE for the hybrid froxel volumetrics grid (camera-frustum froxel atlas carrying the shared atmosphere). Default OFF = zero froxel code runs, zero targets allocate, output byte-identical. Independent of the per-cone BDMergeProjectorVolumetrics path, which is unchanged. F0 builds only the grid + media pass + debug visualizer - no lighting yet.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+  </map>
+  <key>BDMergeFroxelGridX</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge Froxel F0] Froxel grid width in cells across the frustum (16-512; default 240). Higher = finer horizontal detail at higher atlas cost. Only active when BDMergeFroxelVolumetrics is on.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>U32</string>
+      <key>Value</key>
+      <integer>240</integer>
+  </map>
+  <key>BDMergeFroxelGridY</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge Froxel F0] Froxel grid height in cells across the frustum (16-512; default 136). Higher = finer vertical detail at higher atlas cost. Only active when BDMergeFroxelVolumetrics is on.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>U32</string>
+      <key>Value</key>
+      <integer>136</integer>
+  </map>
+  <key>BDMergeFroxelGridZ</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge Froxel F0] Froxel grid depth in exponentially-distributed Z slices (clamped to 16-128; default 64). Packed into a 2D Z-slice atlas (tilesX = ceil(sqrt(GridZ)), tilesY = ceil(GridZ/tilesX)). Higher = smoother depth gradient at higher atlas cost. Only active when BDMergeFroxelVolumetrics is on.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>U32</string>
+      <key>Value</key>
+      <integer>64</integer>
+  </map>
+  <key>BDMergeFroxelFar</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge Froxel F0] Far distance of the froxel grid in metres (8.0-1024.0; default 128.0). The exponential Z slices span from the camera near plane to this distance. Beyond it there is no froxel medium. Only active when BDMergeFroxelVolumetrics is on.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>128.0</real>
+  </map>
+  <key>BDMergeFroxelDensity</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge Froxel F0] Base extinction (sigma_t) of the froxel medium per metre (0.0-4.0; default 0.02). The uniform air density before height fog and noise modulate it. In the F0 debug view this is the mid-ramp value (red saturates at 2x this). Only active when BDMergeFroxelVolumetrics is on.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.02</real>
+  </map>
+  <key>BDMergeFroxelFogStrength</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge Froxel F0] Height-fog blend for the froxel medium (0.0-1.0; default 0.0 = OFF). Blends the base density toward an altitude-dependent falloff (denser near ground, thinner up high). Raise it in the debug view to see a ground-hugging density gradient. Only active when BDMergeFroxelVolumetrics is on.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+  </map>
+  <key>BDMergeFroxelFogGroundDensity</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge Froxel F0] Height-fog density multiplier at/below the ground reference altitude (0.0-4.0; default 1.0). The medium is densest here and thins with altitude per BDMergeFroxelFogFalloff. Only active when BDMergeFroxelFogStrength &gt; 0.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.0</real>
+  </map>
+  <key>BDMergeFroxelFogFalloff</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge Froxel F0] Height-fog e-fold falloff distance in metres (0.5-256.0; default 20.0). Over this many metres of altitude above the ground reference the density falls to ~37% of the ground value. Only active when BDMergeFroxelFogStrength &gt; 0.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>20.0</real>
+  </map>
+  <key>BDMergeFroxelFogBase</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge Froxel F0] Ground reference altitude for the froxel height fog, in region-Z metres (default 0.0). Density equals FogGroundDensity at and below this height and thins above it. Set to your set's floor height. Only active when BDMergeFroxelFogStrength &gt; 0.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+  </map>
+  <key>BDMergeFroxelNoiseStrength</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge Froxel F0] Animated 3D value-noise medium strength (0.0-1.0; default 0.0 = OFF). Modulates the froxel density with a slow, low-frequency world-anchored fbm so the air has drifting dust motes instead of being flat. Raise it in the debug view to see drifting mottling. TASTEFUL LEVER - a subtle value is ~0.2-0.35. Only active when BDMergeFroxelVolumetrics is on.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+  </map>
+  <key>BDMergeFroxelNoiseScale</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge Froxel F0] Spatial scale of the animated noise medium in cycles per metre (0.01-2.0; default 0.25). Lower = larger, softer clouds; higher = finer detail. Only active when BDMergeFroxelNoiseStrength &gt; 0.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.25</real>
+  </map>
+  <key>BDMergeFroxelNoiseSpeed</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge Froxel F0] Scroll speed of the animated noise medium in metres per second (0.0-2.0; default 0.1). Slow drift reads as gently settling dust. Only active when BDMergeFroxelNoiseStrength &gt; 0.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.1</real>
+  </map>
+  <key>BDMergeFroxelDebug</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge Froxel F0] Froxel debug visualizer overlay. 0 = off, 1 = show media density at the surface froxel (fullscreen 50% overlay, black-&gt;green-&gt;yellow-&gt;red ramp over 0-&gt;2x BDMergeFroxelDensity - proves froxel coords line up with the scene), 2 = show one middle Z-slice tile stretched fullscreen (proves the atlas tiling). Only active when BDMergeFroxelVolumetrics is on.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>U32</string>
+      <key>Value</key>
+      <integer>0</integer>
+  </map>
   <key>BDMergeSoftProjectorShadows</key>
   <map>
       <key>Comment</key>
