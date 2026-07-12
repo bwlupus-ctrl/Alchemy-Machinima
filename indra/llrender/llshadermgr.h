@@ -523,6 +523,7 @@ public:
         PROJVOL_RIM_STRENGTH,              //  "projvol_rim_strength"
         PROJVOL_RIM_POWER,                 //  "projvol_rim_power"
         PROJVOL_RIM_THRESHOLD,             //  "projvol_rim_threshold"
+        PROJVOL_RIM_WRAP,                  //  "projvol_rim_wrap"
 
         // [BDMerge Batch 2] Feature 1: soft (contact-hardening + filled) shadows
         SOFT_SHADOW_ENABLE,                //  "soft_shadow_enable"

@@ -10778,7 +10778,7 @@
   <key>BDMergeProjectorVolumetricsRimStrength</key>
   <map>
       <key>Comment</key>
-      <string>[BDMerge G3.3 Rim] Physical rim / wrap glow strength around objects the projector actually lights (0.0-4.0; default 0.0 = OFF). At the opaque surface capping the shaft march, the projector's real incident light (gobo cookie x distance attenuation x this projector's own shadow map) is concentrated toward grazing silhouettes using the real G-buffer normal and added to the additive HDR shaft, so it flows through the bloom-feed into a soft halo hugging the lit edge. Unlike a ReShade auto-rim this is genuine per-cone light: zero in the projector's shadow, outside its frustum, or on camera-facing faces. For the soft-bloom halo, also raise BDMergeProjectorVolumetricsBloomFeed. Try ~0.5-1.5.</string>
+      <string>[BDMerge G3.3 Rim] Physical DIRECTIONAL rim / wrap glow strength around objects the projector actually lights (0.0-4.0; default 0.0 = OFF). At the opaque surface capping the shaft march, the projector's real incident light (gobo cookie x distance attenuation x this projector's own shadow map) is placed only where the light RAKES the form - grazing silhouette (real G-buffer normal, N.V) AND facing the projector (N.L wrap, see RimWrap). So only edges the light physically wraps around glow, carrying the light's color; a frontal/camera-position light produces no rim (correct). Added to the additive HDR shaft, so it flows through the bloom-feed into a soft halo. For the soft-bloom halo also raise BDMergeProjectorVolumetricsBloomFeed. Try ~0.5-1.5.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
@@ -10789,13 +10789,24 @@
   <key>BDMergeProjectorVolumetricsRimPower</key>
   <map>
       <key>Comment</key>
-      <string>[BDMerge G3.3 Rim] Rim Fresnel exponent (0.5-8.0; default 3.0). Controls how tightly the glow clings to the silhouette: higher = a thin bright edge only at grazing angles; lower = the glow wraps further onto the body's lit face (interior fill). Only active when RimStrength > 0.</string>
+      <string>[BDMerge G3.3 Rim] Rim grazing (Fresnel) exponent (0.5-8.0; default 2.0). How tightly the glow clings to the silhouette: higher = a thin bright edge only at the extreme grazing angle; lower = a broader band reaching onto the form. Works together with RimWrap (which sets how far past the light terminator it reaches). Only active when RimStrength > 0.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
       <string>F32</string>
       <key>Value</key>
-      <real>3.0</real>
+      <real>2.0</real>
+  </map>
+  <key>BDMergeProjectorVolumetricsRimWrap</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 Rim] Rim directional wrap (0.0-1.0; default 0.35). Sets how far past the light/shadow terminator the rim reaches around the form. 0 = a crisp rim only on the strictly light-facing silhouette (pure back-light); higher softens the terminator and wraps the glow further onto the body as interior fill. This is the term that makes the rim directional instead of a uniform outline. Only active when RimStrength > 0.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.35</real>
   </map>
   <key>BDMergeProjectorVolumetricsRimThreshold</key>
   <map>

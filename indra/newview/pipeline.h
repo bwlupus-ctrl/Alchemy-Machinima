@@ -1234,6 +1234,7 @@ public:
     static F32 BDMergeProjectorVolumetricsRimStrength;   // master brightness (0 = off)
     static F32 BDMergeProjectorVolumetricsRimPower;      // Fresnel exponent (silhouette tightness)
     static F32 BDMergeProjectorVolumetricsRimThreshold;  // ignore incident light dimmer than this
+    static F32 BDMergeProjectorVolumetricsRimWrap;       // directional wrap (0 = back-only, 1 = broad)
     // [BDMerge Batch 2] Feature 1: soft (contact-hardening + filled) shadows.
     static bool BDMergeSoftProjectorShadows;   // master gate (default off)
     static F32  BDMergeSoftShadowSoftness;     // penumbra rate (kernel growth)

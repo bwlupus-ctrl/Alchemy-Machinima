@@ -1724,6 +1724,7 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("projvol_rim_strength");
     mReservedUniforms.push_back("projvol_rim_power");
     mReservedUniforms.push_back("projvol_rim_threshold");
+    mReservedUniforms.push_back("projvol_rim_wrap");
 
     // [BDMerge Batch 2] Feature 1: soft shadows
     mReservedUniforms.push_back("soft_shadow_enable");

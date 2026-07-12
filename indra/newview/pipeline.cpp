@@ -272,6 +272,7 @@ F32 LLPipeline::BDMergeProjectorVolumetricsShadowTint;
 F32 LLPipeline::BDMergeProjectorVolumetricsRimStrength;
 F32 LLPipeline::BDMergeProjectorVolumetricsRimPower;
 F32 LLPipeline::BDMergeProjectorVolumetricsRimThreshold;
+F32 LLPipeline::BDMergeProjectorVolumetricsRimWrap;
 // [BDMerge Batch 2]
 bool LLPipeline::BDMergeSoftProjectorShadows;
 F32  LLPipeline::BDMergeSoftShadowSoftness;
@@ -695,6 +696,7 @@ void LLPipeline::init()
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsRimStrength");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsRimPower");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsRimThreshold");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsRimWrap");
     connectRefreshCachedSettingsSafe("BDMergeSoftProjectorShadows");
     connectRefreshCachedSettingsSafe("BDMergeSoftShadowSoftness");
     connectRefreshCachedSettingsSafe("BDMergeSoftShadowMaxPenumbra");
@@ -1405,6 +1407,7 @@ void LLPipeline::refreshCachedSettings()
     BDMergeProjectorVolumetricsRimStrength = gSavedSettings.getF32("BDMergeProjectorVolumetricsRimStrength");
     BDMergeProjectorVolumetricsRimPower = gSavedSettings.getF32("BDMergeProjectorVolumetricsRimPower");
     BDMergeProjectorVolumetricsRimThreshold = gSavedSettings.getF32("BDMergeProjectorVolumetricsRimThreshold");
+    BDMergeProjectorVolumetricsRimWrap = gSavedSettings.getF32("BDMergeProjectorVolumetricsRimWrap");
     // [BDMerge Batch 2]
     BDMergeSoftProjectorShadows = gSavedSettings.getBOOL("BDMergeSoftProjectorShadows");
     BDMergeSoftShadowSoftness = gSavedSettings.getF32("BDMergeSoftShadowSoftness");
@@ -9721,6 +9724,7 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_STRENGTH, llmax(BDMergeProjectorVolumetricsRimStrength, 0.f));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_POWER, llmax(BDMergeProjectorVolumetricsRimPower, 0.01f));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_THRESHOLD, llmax(BDMergeProjectorVolumetricsRimThreshold, 0.f));
+    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_WRAP, llclamp(BDMergeProjectorVolumetricsRimWrap, 0.f, 1.f));
 
     // [Phase 3] atmosphere levers (all no-ops at their defaults). The inverse
     // modelview turns a view-space march sample back into agent(world, Z-up) space

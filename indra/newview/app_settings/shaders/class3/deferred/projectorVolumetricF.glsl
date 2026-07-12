@@ -113,6 +113,7 @@ uniform mat4  projvol_inv_modelview;     // items 1/2: view -> agent(world, Z-up
 uniform float projvol_rim_strength;      // master brightness (0 = off)
 uniform float projvol_rim_power;         // Fresnel exponent: higher = tighter to the silhouette
 uniform float projvol_rim_threshold;     // ignore incident light dimmer than this (soft gate)
+uniform float projvol_rim_wrap;          // directional wrap: 0 = crisp back-only rim, 1 = broad wrap onto the body
 
 const float M_PI = 3.14159265;
 
@@ -411,31 +412,50 @@ void main()
         if (!clipProjectedLightVars(C, pos.xyz, dist_s, l_dist_s, lv_s, ptc_s) &&
             ptc_s.x > 0.0 && ptc_s.x < 1.0 && ptc_s.y > 0.0 && ptc_s.y < 1.0)
         {
-            // Real G-buffer normal (view space) -> genuine Fresnel, not a depth-slope
-            // guess. d is camera->surface, so -d is the view direction (surface->eye).
-            vec3  nrm   = normalize(getNorm(tc).xyz);
-            float nv    = max(dot(nrm, -d), 0.0);
+            // Real view-space G-buffer normal, plus the two directions that define
+            // a rim: V = surface->camera (d is camera->surface), L = surface->light.
+            vec3  nrm = normalize(getNorm(tc).xyz);
+            vec3  V   = -d;
+            vec3  L   = normalize(C - pos.xyz);
+
+            float nv = max(dot(nrm, V), 0.0);
+            float nl = dot(nrm, L);
+
+            // (1) Grazing edge: a rim lives on the silhouette where the surface
+            // turns perpendicular to view. This alone was the OLD term and it is
+            // what made every edge glow uniformly.
             float graze = pow(1.0 - nv, max(projvol_rim_power, 0.01));
 
-            // Incident projector light actually reaching this surface point: the
-            // gobo footprint, distance/range attenuation, and THIS projector's own
-            // shadow map (real normal used for the bias). Matches how spotLightF
-            // dims the lit surface - this is the light, before the surface's albedo.
+            // (2) THE FIX - directionality. A rim only exists where the light rakes
+            // the form, i.e. where the surface faces the projector (N.L). Soft-wrap
+            // it so it bleeds a gradient onto the body instead of a hard terminator;
+            // projvol_rim_wrap widens how far past the terminator the glow reaches
+            // (0 = crisp back-only rim, 1 = broad wrap / interior fill). This term
+            // is what kills the "cutout outline": a frontal/camera-position light
+            // has N.L ~ 0 at the silhouette (N _|_ V and L ~ V) -> no rim, which is
+            // physically how rim lights behave (they must come from behind/beside).
+            float wrap = clamp((nl + projvol_rim_wrap) / (1.0 + projvol_rim_wrap), 0.0, 1.0);
+
+            // Incident projector light at this point: gobo footprint x distance/range
+            // attenuation x THIS projector's own shadow map. This is the light, before
+            // the surface albedo - so an unlit/shadowed/out-of-cone edge cannot glow.
             float atten_s  = calcLegacyDistanceAttenuation(dist_s, falloff);
             float shadow_s = sampleSpotShadow(pos.xyz, nrm, proj_shadow_idx, tc);
             vec3  cookie_s = projGoboTexture(l_dist_s, ptc_s.xy);
             vec3  E        = cookie_s * atten_s * shadow_s;
 
-            // Soft brightness gate (RimGlow's "ignore light dimmer than"): only
-            // meaningfully lit surfaces glow, so dim ambient spill can't grey the rim.
+            // Brightness gate (RimGlow's "ignore light dimmer than"): keep the rim on
+            // meaningfully lit surfaces so faint spill can't paint a grey outline.
             float lum  = dot(E, vec3(0.2126, 0.7152, 0.0722));
             float gate = (projvol_rim_threshold > 0.0)
                        ? smoothstep(projvol_rim_threshold * 0.5, projvol_rim_threshold, lum)
                        : 1.0;
 
-            // Rim carries the light's own color; kept independent of godray_multiplier
-            // so beam brightness and rim brightness tune separately.
-            shaft += E * graze * gate * projvol_rim_strength * color;
+            // Carry the light's chroma (E's cookie + `color`); the scalar terms drive
+            // brightness only, so it reads as colored light instead of clipping to a
+            // white sticker edge. Independent of godray_multiplier so beam and rim
+            // tune separately. Added into the additive HDR shaft -> rides bloom-feed.
+            shaft += E * (graze * wrap * gate * projvol_rim_strength) * color;
         }
     }
 
