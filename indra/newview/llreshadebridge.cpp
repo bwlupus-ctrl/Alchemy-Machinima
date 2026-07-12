@@ -17,9 +17,15 @@
 #include "llviewercamera.h"    // LLViewerCamera (matrices, near/far/fov, world frame)
 
 #if LL_RESHADE_ADDON
-// Vendored ReShade add-on SDK header (Apache-2.0). Only pulled in once the
-// header exists in the tree and CMake adds its include dir. See notes at bottom.
+// Vendored ReShade add-on SDK header (Apache-2.0, indra/newview/reshade). ReShade
+// is injected into this process as opengl32.dll; these inline helpers resolve its
+// exports at runtime, so nothing is linked and a normal (no-ReShade) launch is
+// unaffected - register_addon simply returns false.
+// RESHADE_ADDON must be defined before the header to enable the add-on event API
+// (reshade_events.hpp gates the event traits behind `#if RESHADE_ADDON`).
+#define RESHADE_ADDON 1
 #include "reshade.hpp"
+#include "llgl.h"              // GL_TEXTURE_2D for the resource-view handle encoding
 #endif
 
 // -----------------------------------------------------------------------------
@@ -35,6 +41,18 @@ LLReShadeBridge& LLReShadeBridge::instance()
 // -----------------------------------------------------------------------------
 void LLReShadeBridge::gatherFrame()
 {
+#if LL_RESHADE_ADDON
+    // Register with ReShade lazily on the first frame: by now the GL context and
+    // the injected ReShade runtime both exist. One-shot; stays inert if ReShade
+    // isn't present (register_addon returns false).
+    static bool sInitAttempted = false;
+    if (!sInitAttempted)
+    {
+        sInitAttempted = true;
+        init();
+    }
+#endif
+
     LLReShadeFrameData& f = mFrame;
     f = LLReShadeFrameData();   // reset; mValid defaults false
 
@@ -97,50 +115,91 @@ void LLReShadeBridge::gatherFrame()
         f.mValid = (f.mTexNormals != 0) && (f.mTexDepth != 0);
     }
 
-#if LL_RESHADE_ADDON
-    if (mEnabled && f.mValid)
-    {
-        // pushToReShade(f);  // implemented against real reshade.hpp once vendored
-    }
-#endif
+    // [RTGI Step A] The actual push (binding the real depth to ReShade's DEPTH
+    // semantic) happens in on_reshade_begin_effects, which reads this mFrame - so
+    // the binding is done on ReShade's own thread at the right point in its frame.
 }
 
 // -----------------------------------------------------------------------------
 // Add-on lifecycle. No-ops unless LL_RESHADE_ADDON is enabled.
 // -----------------------------------------------------------------------------
+#if LL_RESHADE_ADDON
+// [RTGI Step A] Feed the viewer's REAL depth buffer to ReShade's built-in DEPTH
+// semantic, so depth-dependent effects (RTGI/MXAO/DOF/...) stop reconstructing /
+// heuristically detecting depth and use the engine's exact buffer.
+//
+// A raw GL texture name becomes a ReShade resource_view via the OpenGL backend's
+// handle encoding: (GLenum target << 40) | object (confirmed against reshade-SL's
+// opengl_impl_type_convert). The GL name is STABLE across frames, so binding it
+// once lets its contents flow every frame - re-binding per frame is expensive and
+// unnecessary. We therefore (re)bind only when the depth texture name changes
+// (i.e. the render targets were (re)allocated on a resolution change).
+static U32 sBoundDepthName = 0;
+
+static reshade::api::resource_view gl_tex_srv(U32 gl_name)
+{
+    return reshade::api::resource_view{ (static_cast<uint64_t>(GL_TEXTURE_2D) << 40)
+                                        | static_cast<uint64_t>(gl_name) };
+}
+
+static void on_reshade_begin_effects(reshade::api::effect_runtime* runtime,
+                                     reshade::api::command_list* /*cmd*/,
+                                     reshade::api::resource_view /*rtv*/,
+                                     reshade::api::resource_view /*rtv_srgb*/)
+{
+    const LLReShadeFrameData& f = LLReShadeBridge::instance().getFrameData();
+    if (!f.mValid || f.mTexDepth == 0 || f.mTexDepth == sBoundDepthName)
+    {
+        return;
+    }
+    sBoundDepthName = f.mTexDepth;
+
+    reshade::api::resource_view srv = gl_tex_srv(f.mTexDepth);
+    runtime->update_texture_bindings("DEPTH", srv, srv);
+
+    LL_INFOS("ReShade") << "[RTGI Step A] bound viewer depth (GL " << f.mTexDepth
+                        << ") to ReShade DEPTH semantic" << LL_ENDL;
+}
+
+static void on_destroy_effect_runtime(reshade::api::effect_runtime* /*runtime*/)
+{
+    // Runtime (re)created (e.g. device reset) -> force a re-bind next frame.
+    sBoundDepthName = 0;
+}
+#endif // LL_RESHADE_ADDON
+
 void LLReShadeBridge::init()
 {
 #if LL_RESHADE_ADDON
-    // Integration contract (ReShade 6.x add-on API, to be written against the
-    // vendored reshade.hpp -- NOT from memory):
-    //
-    //   1. reshade::register_addon(hSelfModule)      // ReShade is injected into
-    //                                                // THIS process, so we register
-    //                                                // the viewer's own module.
-    //   2. reshade::register_event<reshade::addon_event::init_effect_runtime>(...)
-    //        -> cache the effect_runtime* so pushToReShade can talk to it.
-    //   3. reshade::register_event<reshade::addon_event::reshade_begin_effects>(...)
-    //        -> each frame: feed uniforms + texture bindings from mFrame.
-    //
-    // Uniforms (matrices, near/far, fov, camera frame):
-    //   effect_runtime::enumerate_uniform_variables(nullptr, cb) and match a
-    //   custom "source" annotation, then set_uniform_value_float(...).
-    //
-    // Textures (depth/normals/ORM/albedo/emissive/HDR color):
-    //   wrap each raw GL name as a reshade::api::resource_view in ReShade's GL
-    //   handle encoding, then effect_runtime::update_texture_bindings("SEMANTIC", view).
-    //   NOTE: the GL-name -> resource_view encoding is the one detail that MUST be
-    //   confirmed against the ReShade GL add-on examples; do not guess it.
-    //
-    // mEnabled = true;  // set once init_effect_runtime has fired
-#endif
+    // ReShade is injected as opengl32.dll into THIS process, so register the
+    // viewer's own module as an in-process add-on. Returns false (harmlessly) when
+    // no ReShade runtime is present - a normal launch is entirely unaffected.
+    if (!reshade::register_addon(GetModuleHandle(nullptr)))
+    {
+        mEnabled = false;
+        LL_INFOS("ReShade") << "[RTGI] no ReShade runtime present; bridge inert" << LL_ENDL;
+        return;
+    }
+
+    reshade::register_event<reshade::addon_event::reshade_begin_effects>(&on_reshade_begin_effects);
+    reshade::register_event<reshade::addon_event::destroy_effect_runtime>(&on_destroy_effect_runtime);
+    sBoundDepthName = 0;
+    mEnabled = true;
+    LL_INFOS("ReShade") << "[RTGI Step A] add-on registered; will feed real depth to ReShade" << LL_ENDL;
+#else
     mEnabled = false;
+#endif
 }
 
 void LLReShadeBridge::shutdown()
 {
 #if LL_RESHADE_ADDON
-    // reshade::unregister_addon(hSelfModule);
+    if (mEnabled)
+    {
+        reshade::unregister_event<reshade::addon_event::reshade_begin_effects>(&on_reshade_begin_effects);
+        reshade::unregister_event<reshade::addon_event::destroy_effect_runtime>(&on_destroy_effect_runtime);
+        reshade::unregister_addon(GetModuleHandle(nullptr));
+    }
 #endif
     mEnabled = false;
 }

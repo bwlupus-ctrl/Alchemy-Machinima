@@ -1975,6 +1975,16 @@ check_message_template(${VIEWER_BINARY_NAME})
 
 target_include_directories(${VIEWER_BINARY_NAME} PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 
+# [RTGI] ReShade add-on bridge: feed the viewer's real G-buffer/depth to an injected
+# ReShade runtime (llreshadebridge.cpp). Header-only SDK vendored in newview/reshade;
+# resolves ReShade's exports at runtime, so nothing is linked and a no-ReShade launch
+# is unaffected (register_addon just returns false). Default ON for this fork.
+option(USE_RESHADE_ADDON "Build the ReShade add-on G-buffer bridge" ON)
+if (USE_RESHADE_ADDON AND WINDOWS)
+    target_include_directories(${VIEWER_BINARY_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/reshade)
+    target_compile_definitions(${VIEWER_BINARY_NAME} PRIVATE LL_RESHADE_ADDON=1)
+endif ()
+
 target_precompile_headers(${VIEWER_BINARY_NAME} PRIVATE llviewerprecompiledheaders.h)
 
 # *NOTE: - this list is very sensitive to ordering, test carefully on all
