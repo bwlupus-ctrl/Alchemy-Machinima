@@ -173,6 +173,13 @@ float projvolFbm(vec3 p)
 // scatter more. Tuned conservatively - in-world brightness tuning is owed.
 const float PROJVOL_SCATTER = 0.35;
 
+// [BDMerge G3.3 Rim] Internal rim brightness scale. In-world tuning found the good
+// look sat around RimStrength ~0.15, cramming every usable value into the bottom of
+// the slider. This factor spreads the useful range across the slider so the same look
+// lands near RimStrength ~0.75 (0.15 / 0.2), giving finer control. Purely a slider-
+// ergonomics constant - fold any future global rim-brightness retune in here.
+const float PROJVOL_RIM_SCALE = 0.2;
+
 // [Phase 1 item 2] Interleaved gradient noise (Jimenez): a cheap blue-noise-like
 // dither that, unlike a plain hash, is STATIC per screen-pixel - so the march
 // start offset does not crawl or shimmer while the camera moves (mandatory for
@@ -455,7 +462,7 @@ void main()
             // brightness only, so it reads as colored light instead of clipping to a
             // white sticker edge. Independent of godray_multiplier so beam and rim
             // tune separately. Added into the additive HDR shaft -> rides bloom-feed.
-            shaft += E * (graze * wrap * gate * projvol_rim_strength) * color;
+            shaft += E * (graze * wrap * gate * projvol_rim_strength * PROJVOL_RIM_SCALE) * color;
         }
     }
 
