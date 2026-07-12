@@ -213,25 +213,25 @@ static HWND sWindowHandleForMessageBox = NULL;
 // the legacy exclusive path can be restored if ever needed (default = borderless).
 static bool sBorderlessFullscreen = true;
 
-// [BDMerge Borderless] Work area of the PRIMARY monitor (desktop resolution minus
-// any reserved taskbar). Work area, not full monitor bounds, so a plain non-topmost
-// borderless window never underlaps the taskbar and hides the viewer's own menu bar
-// / UI. If the Windows taskbar is set to auto-hide, the work area IS the full monitor
-// and the cover becomes edge-to-edge. SPI_GETWORKAREA reports the primary monitor's
-// work area directly (origin 0,0), which is exactly the requested "primary monitor"
-// target and avoids following a stale saved window position onto the wrong screen.
+// [BDMerge Borderless] FULL pixel bounds of the PRIMARY monitor (rcMonitor, taskbar
+// area included) so the cover is edge-to-edge and, combined with WS_EX_TOPMOST while
+// focused, sits OVER the taskbar and hides it. The primary monitor is always at
+// virtual-screen origin (0,0), so this is exactly the requested "primary monitor"
+// target and never follows a stale saved window position onto the wrong screen.
 static bool getBorderlessPrimaryRect(RECT& out_rect)
 {
-    RECT work;
-    ::ZeroMemory(&work, sizeof(work));
-    if (SystemParametersInfo(SPI_GETWORKAREA, 0, &work, 0) &&
-        work.right > work.left && work.bottom > work.top)
+    POINT origin = { 0, 0 };
+    HMONITOR hmon = MonitorFromPoint(origin, MONITOR_DEFAULTTOPRIMARY);
+    MONITORINFO mi;
+    ::ZeroMemory(&mi, sizeof(mi));
+    mi.cbSize = sizeof(mi);
+    if (GetMonitorInfo(hmon, &mi))
     {
-        out_rect = work;
+        out_rect = mi.rcMonitor;   // full monitor bounds (covers the taskbar)
         return true;
     }
 
-    // Fallback: full primary monitor bounds.
+    // Fallback: full primary monitor bounds via metrics.
     int w = GetSystemMetrics(SM_CXSCREEN);
     int h = GetSystemMetrics(SM_CYSCREEN);
     if (w > 0 && h > 0)
@@ -1297,15 +1297,14 @@ bool LLWindowWin32::switchContext(bool fullscreen, const LLCoordScreen& size, bo
 
     if (fullscreen && sBorderlessFullscreen)
     {
-        // [BDMerge Borderless] Borderless fullscreen windowed on the PRIMARY monitor:
-        // a plain WS_POPUP window sized to the primary monitor's WORK AREA. No display
-        // mode change (no EnumDisplaySettings hunt / setDisplayResolution), NOT topmost,
-        // and no focus-time churn - so it behaves like an ordinary window: click off and
-        // it just loses focus (no minimize, no desktop-mode flicker), other apps and
-        // monitors stay fully usable. Work area (not full monitor bounds) means a
-        // non-topmost window never underlaps the taskbar and occludes the viewer's own
-        // UI; if the taskbar is set to auto-hide the work area is the full monitor and
-        // the cover becomes edge-to-edge (best for machinima capture).
+        // [BDMerge Borderless] Borderless fullscreen on the PRIMARY monitor: a WS_POPUP
+        // window covering the full monitor bounds, made WS_EX_TOPMOST so while focused it
+        // sits OVER the taskbar and hides it (true edge-to-edge - clean for machinima).
+        // Crucially this is NOT exclusive: no display-mode change (no EnumDisplaySettings
+        // hunt / setDisplayResolution), and WM_ACTIVATEAPP drops it to NOT-topmost on
+        // focus loss so alt-tab and other apps/monitors work normally. The
+        // resetDisplayResolution + maximize no-ops (below/elsewhere) remove the flicker
+        // and black-flash that earlier made topmost feel like an exclusive mode switch.
         mFullscreen = true;
 
         RECT mon;
@@ -1318,19 +1317,21 @@ bool LLWindowWin32::switchContext(bool fullscreen, const LLCoordScreen& size, bo
             mon.bottom = height;
         }
 
-        window_rect = mon;                              // primary work-area bounds
+        window_rect = mon;                              // full primary monitor bounds
         mFullscreenWidth   = mon.right - mon.left;
         mFullscreenHeight  = mon.bottom - mon.top;
         mFullscreenRefresh = (S32)current_refresh;      // desktop refresh; unchanged
-        dw_ex_style = WS_EX_APPWINDOW;                  // NOT topmost - no exclusive feel
-        dw_style    = WS_POPUP;                         // borderless
+        // Topmost so the cover hides the (topmost) taskbar while focused; dropped to
+        // not-topmost on focus loss in WM_ACTIVATEAPP so it never traps focus.
+        dw_ex_style = WS_EX_APPWINDOW | WS_EX_TOPMOST;
+        dw_style    = WS_POPUP;
 
         // window_rect is already the final borderless window rect (WS_POPUP has no
         // frame), so it must NOT be expanded by ll_adjust_window_rect_dpi.
         LL_INFOS("Window") << "[BDMerge Borderless] PRIMARY-monitor borderless windowed "
             << mFullscreenWidth << "x" << mFullscreenHeight
             << " at (" << mon.left << "," << mon.top << ")"
-            << " - no mode change, not topmost" << LL_ENDL;
+            << " - covers taskbar when focused, no mode change" << LL_ENDL;
     }
     else if (fullscreen)
     {
@@ -2609,10 +2610,20 @@ LRESULT CALLBACK LLWindowWin32::mainWindowProc(HWND h_wnd, UINT u_msg, WPARAM w_
                             window_imp->resetDisplayResolution();
                         }
                     }
-                    // [BDMerge Borderless] Borderless fullscreen is an ordinary window:
-                    // NO activate-time handling at all - no minimize, no display-mode
-                    // restore, no topmost toggle. Clicking off just loses focus like any
-                    // window (that focus-time churn was the "acts exclusive" behavior).
+                    else if (window_imp->mFullscreen /* && sBorderlessFullscreen */)
+                    {
+                        // [BDMerge Borderless] NO minimize / display-mode churn (that was
+                        // the "acts exclusive" flicker). Just toggle topmost: cover (hide)
+                        // the taskbar while focused, and yield to not-topmost on focus loss
+                        // so alt-tab and other apps/monitors are reachable - never trapped.
+                        HWND h = window_imp->mWindowHandle;
+                        if (h)
+                        {
+                            SetWindowPos(h, activating ? HWND_TOPMOST : HWND_NOTOPMOST,
+                                         0, 0, 0, 0,
+                                         SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+                        }
+                    }
 
                     if (!activating)
                     {
