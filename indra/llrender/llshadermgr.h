@@ -518,6 +518,7 @@ public:
         PROJVOL_HISTORY,                   //  "projvol_history"      (A, sampler)
         PROJVOL_PREV_VIEWPROJ,             //  "projvol_prev_viewproj"(A)
         PROJVOL_TEMPORAL_BLEND,            //  "projvol_temporal_blend"(A)
+        PROJVOL_TEMPORAL_REJECT,           //  "projvol_temporal_reject" (contrast-aware anti-ghost)
 
         // [BDMerge G3.3 Rim] surface-coupled rim / wrap glow (physical auto-rim)
         PROJVOL_RIM_STRENGTH,              //  "projvol_rim_strength"

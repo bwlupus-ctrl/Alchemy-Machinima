@@ -1719,6 +1719,7 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("projvol_history");
     mReservedUniforms.push_back("projvol_prev_viewproj");
     mReservedUniforms.push_back("projvol_temporal_blend");
+    mReservedUniforms.push_back("projvol_temporal_reject");
 
     // [BDMerge G3.3 Rim] surface-coupled rim / wrap glow
     mReservedUniforms.push_back("projvol_rim_strength");

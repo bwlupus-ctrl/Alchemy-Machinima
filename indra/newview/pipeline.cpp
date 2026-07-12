@@ -268,6 +268,7 @@ F32 LLPipeline::BDMergeProjectorVolumetricsFogBase;
 F32 LLPipeline::BDMergeProjectorVolumetricsBloomFeed;
 bool LLPipeline::BDMergeProjectorVolumetricsTemporal;
 F32 LLPipeline::BDMergeProjectorVolumetricsTemporalBlend;
+F32 LLPipeline::BDMergeProjectorVolumetricsTemporalReject;
 F32 LLPipeline::BDMergeProjectorVolumetricsShadowTint;
 F32 LLPipeline::BDMergeProjectorVolumetricsRimStrength;
 F32 LLPipeline::BDMergeProjectorVolumetricsRimPower;
@@ -697,6 +698,7 @@ void LLPipeline::init()
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsBloomFeed");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsTemporal");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsTemporalBlend");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsTemporalReject");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsShadowTint");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsRimStrength");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsRimPower");
@@ -1412,6 +1414,7 @@ void LLPipeline::refreshCachedSettings()
     BDMergeProjectorVolumetricsBloomFeed = gSavedSettings.getF32("BDMergeProjectorVolumetricsBloomFeed");
     BDMergeProjectorVolumetricsTemporal = gSavedSettings.getBOOL("BDMergeProjectorVolumetricsTemporal");
     BDMergeProjectorVolumetricsTemporalBlend = gSavedSettings.getF32("BDMergeProjectorVolumetricsTemporalBlend");
+    BDMergeProjectorVolumetricsTemporalReject = gSavedSettings.getF32("BDMergeProjectorVolumetricsTemporalReject");
     BDMergeProjectorVolumetricsShadowTint = gSavedSettings.getF32("BDMergeProjectorVolumetricsShadowTint");
     BDMergeProjectorVolumetricsRimStrength = gSavedSettings.getF32("BDMergeProjectorVolumetricsRimStrength");
     BDMergeProjectorVolumetricsRimPower = gSavedSettings.getF32("BDMergeProjectorVolumetricsRimPower");
@@ -9991,6 +9994,7 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
             gDeferredProjectorVolumetricTemporalProgram.uniformMatrix4fv(LLShaderMgr::PROJVOL_PREV_VIEWPROJ, 1, false, mProjVolPrevViewProj);
             const F32 blend = mProjVolHistoryValid ? llclamp(BDMergeProjectorVolumetricsTemporalBlend, 0.f, 0.98f) : 0.f;
             gDeferredProjectorVolumetricTemporalProgram.uniform1f(LLShaderMgr::PROJVOL_TEMPORAL_BLEND, blend);
+            gDeferredProjectorVolumetricTemporalProgram.uniform1f(LLShaderMgr::PROJVOL_TEMPORAL_REJECT, llmax(BDMergeProjectorVolumetricsTemporalReject, 0.f));
 
             mScreenTriangleVB->setBuffer();
             mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);

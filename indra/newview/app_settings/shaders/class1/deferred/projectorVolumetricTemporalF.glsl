@@ -58,6 +58,15 @@ uniform vec2  projvol_half_res;        // dimensions of the half-res targets
 uniform mat4  projvol_inv_modelview;   // view -> agent(world)
 uniform mat4  projvol_prev_viewproj;   // world -> previous-frame clip
 uniform float projvol_temporal_blend;  // EMA history weight (0 => pure current)
+// [BDMerge G3.3 S-Log] Contrast-aware history rejection. The neighborhood clamp
+// below can only stop a trail when local contrast is LOW; a high-contrast beam
+// feature (the extinction gradient, a contact-pool hotspot) reprojected off the
+// approximate surface depth leaves a plausible-but-stale value INSIDE the clamp
+// window, which reads as ghosting. This drops history in proportion to how much
+// the (already-clamped) history disagrees with the current shaft at this pixel,
+// so steady beam still accumulates (denoise kept) but moving/changing features
+// snap to the current frame (trail killed). 0 = off (legacy Batch-1 behavior).
+uniform float projvol_temporal_reject;
 
 // deferredUtil.glsl - view-space position reconstruction from the full-res depth.
 vec4 getPosition(vec2 pos_screen);
@@ -124,6 +133,23 @@ void main()
 
     // EMA blend: weight toward the (clamped, validated) history.
     float w   = clamp(validity, 0.0, 0.98);
+
+    // [BDMerge G3.3 S-Log] Contrast-aware rejection. Measure how much the clamped
+    // history still disagrees with the current shaft, RELATIVE to their magnitude
+    // (so the test is scale-invariant for a dim or a bright beam). Where they agree
+    // (steady beam) change ~0 and the weight is untouched -> full denoise. Where a
+    // feature is moving through (extinction gradient / contact pool sweeping past)
+    // change rises toward 1 and the weight is pulled down exponentially -> the
+    // pixel snaps to the current frame instead of trailing. At reject == 0 this is
+    // an exact no-op (the shipped Batch-1 blend).
+    if (projvol_temporal_reject > 0.0)
+    {
+        float lc = dot(cur,    vec3(0.2126, 0.7152, 0.0722));
+        float lh = dot(hclamp, vec3(0.2126, 0.7152, 0.0722));
+        float change = abs(lc - lh) / (lc + lh + 1e-3);   // 0 steady .. ~1 fully changed
+        w *= exp(-projvol_temporal_reject * change);
+    }
+
     vec3  outc = mix(cur, hclamp, w);
 
     // Store accumulated shaft + this frame's depth for next frame's disocclusion.

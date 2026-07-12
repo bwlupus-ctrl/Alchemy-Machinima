@@ -10797,6 +10797,17 @@
       <key>Value</key>
       <real>0.85</real>
   </map>
+  <key>BDMergeProjectorVolumetricsTemporalReject</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 S-Log] Contrast-aware temporal anti-ghost strength. Reduces the temporal history weight in proportion to how much the beam is changing frame-to-frame at each pixel, so steady shaft still denoises but moving/high-contrast features (the extinction gradient, contact-pool hotspots) snap to the current frame instead of leaving a trail. Higher = more aggressive ghost suppression (and slightly noisier on motion); 0 = off (legacy behavior, ghosting bounded only by the neighborhood clamp). Only active when Temporal is on. Default 3.0.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>3.0</real>
+  </map>
   <key>BDMergeProjectorVolumetricsShadowTint</key>
   <map>
       <key>Comment</key>
