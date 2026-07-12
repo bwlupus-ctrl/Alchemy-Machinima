@@ -10430,13 +10430,13 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
     gDeferredProjectorVolumetricProgram.uniformMatrix4fv(LLShaderMgr::PROJVOL_INV_MODELVIEW, 1, false, glm::value_ptr(inv_mv));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_TIME, fmodf(gFrameTimeSeconds, 3600.f));
     // [Batch 1 C] PROJVOL_DENSITY moved to the per-cone upload (overridable).
-    // [BDMerge F4] Per-cone media flattening: when the froxel master is ON the shared
-    // air lives in the grid, so the per-cone march must NOT add its own noise/fog on
-    // top (double-fog). Force NOISE/FOG strengths to 0 for cones (the flat-density
-    // partner is uploaded per-cone as PROJVOL_DENSITY = 1). When froxel is OFF these
-    // are exactly the shipped per-cone media levers - byte-identical.
-    const bool froxel_flatten = BDMergeFroxelVolumetrics;
-    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_NOISE_STRENGTH, froxel_flatten ? 0.f : llclamp(BDMergeProjectorVolumetricsNoiseStrength, 0.f, 1.f));
+    // [F4 flattening REMOVED] F4 zeroed the per-cone noise/fog (and forced density 1)
+    // whenever the froxel master was on, to prevent double-fog. In practice it stole
+    // the beam-dust look entirely (in-world report: "can't enable the dust" - the
+    // user's beams live on per-cone noise). Per-cone media levers now work regardless
+    // of froxel; whether beams carry their own dust on top of the shared air is the
+    // artist's call, not the renderer's.
+    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_NOISE_STRENGTH, llclamp(BDMergeProjectorVolumetricsNoiseStrength, 0.f, 1.f));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_NOISE_SCALE, llmax(BDMergeProjectorVolumetricsNoiseScale, 0.f));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_NOISE_SPEED, BDMergeProjectorVolumetricsNoiseSpeed);
     // [F5 follow-up] Shared dust-wind direction for the BEAM dust (same
@@ -10451,7 +10451,7 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
         const F32 s = BDMergeProjectorVolumetricsNoiseSpeed;
         gDeferredProjectorVolumetricProgram.uniform3f(LLShaderMgr::PROJVOL_WIND, wind_x * s, wind_y * s, wind_z * s);
     }
-    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FOG_STRENGTH, froxel_flatten ? 0.f : llclamp(BDMergeProjectorVolumetricsFogStrength, 0.f, 1.f));
+    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FOG_STRENGTH, llclamp(BDMergeProjectorVolumetricsFogStrength, 0.f, 1.f));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FOG_GROUND, llmax(BDMergeProjectorVolumetricsFogGroundDensity, 0.f));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FOG_FALLOFF, llmax(BDMergeProjectorVolumetricsFogFalloff, 0.01f));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FOG_BASE, BDMergeProjectorVolumetricsFogBase);
@@ -10564,8 +10564,9 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
         // the latter two are the global uploads gated the same way above) regardless
         // of the per-cone media sliders/overrides. When froxel is OFF this is exactly
         // the old per-cone density path (override-aware), byte-identical.
-        const F32 cone_density = BDMergeFroxelVolumetrics ? 1.f : llmax(e_density, 0.f);
-        gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_DENSITY, cone_density);
+        // [F4 flattening REMOVED] density lever live regardless of froxel (see the
+        // noise/fog note at the per-frame uploads above).
+        gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_DENSITY, llmax(e_density, 0.f));
 
         // [BDMerge F4] Per-projector RIM overrides, uploaded per-cone (moved from the
         // global pre-loop block). Effective values were resolved up front so the
