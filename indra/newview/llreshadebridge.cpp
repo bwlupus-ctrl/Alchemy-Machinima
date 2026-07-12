@@ -146,7 +146,15 @@ static U32 sBoundVelocityName = 0;   // [RTGI Step B]
 
 static reshade::api::resource_view gl_tex_srv(U32 gl_name)
 {
+    // Match ReShade's GL make_resource_view_handle(target, object, standalone=true):
+    // (target << 40) | (standalone << 32) | object. The standalone bit (32) is
+    // MANDATORY for a raw external texture object we own - ReShade's own
+    // create_resource_view sets it, and its binding path (opengl_impl_device.cpp
+    // ~1218/1364) uses it to treat the low bits as a directly-bindable texture.
+    // Without it the runtime can't resolve the view and binds its empty texture
+    // (symptom: the semantic sampler reads all-zero -> flat grey).
     return reshade::api::resource_view{ (static_cast<uint64_t>(GL_TEXTURE_2D) << 40)
+                                        | (static_cast<uint64_t>(1) << 32)
                                         | static_cast<uint64_t>(gl_name) };
 }
 
