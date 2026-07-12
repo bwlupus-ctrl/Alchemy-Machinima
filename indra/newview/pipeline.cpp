@@ -9858,7 +9858,21 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
             // insertion into mFroxelInjectedProjectors) is exactly what makes the
             // per-cone loop march it fully (not rim-only). Non-hero projectors fall
             // through and inject as in F2/F3. Does not consume an injection slot.
-            if (isHeroProjector(matched_id))
+            // [F4 fix] Match BOTH the light prim's own id AND its root id, NOT just
+            // matched_id: the shaft flag and the hero flag can legitimately land on
+            // different ids of the same linkset (Edit Linked selects the child as
+            // its own selection root; a normal selection roots at the linkset root),
+            // and testing only the shaft-matched id made Hero silently never match
+            // in that case (reported in-world: "no change when selecting hero beam").
+            bool is_hero = isHeroProjector(volume->getID());
+            if (!is_hero)
+            {
+                if (LLViewerObject* root = volume->getRootEdit())
+                {
+                    is_hero = isHeroProjector(root->getID());
+                }
+            }
+            if (is_hero)
             {
                 continue;
             }

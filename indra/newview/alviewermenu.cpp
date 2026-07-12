@@ -724,8 +724,16 @@ namespace
 
     bool check_object_hero_beam()
     {
+        // [F4 fix] Reflect the flag whether it was set on this prim or its root
+        // (the toggle iterates selection roots; Edit Linked makes a child its own
+        // selection root, so both ids are legitimate carriers of the flag).
         LLViewerObject* pObj = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
-        return pObj && LLPipeline::isHeroProjector(pObj->getID());
+        if (!pObj)
+            return false;
+        if (LLPipeline::isHeroProjector(pObj->getID()))
+            return true;
+        LLViewerObject* pRoot = pObj->getRootEdit();
+        return pRoot && LLPipeline::isHeroProjector(pRoot->getID());
     }
 
     // [BDMerge G3.3 Batch 1 C] Snapshot the current global shaft sliders into a
