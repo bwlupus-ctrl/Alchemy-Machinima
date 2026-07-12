@@ -6637,11 +6637,19 @@ void show_debug_menus()
         rlvMenuToggleVisible();
 // [/RLVa:KB]
 
-        gMenuBarView->setItemVisible("Debug", qamode);
-        gMenuBarView->setItemEnabled("Debug", qamode);
+        // [BDMerge DevMenus] Show the Debug/Develop menus whenever the Advanced menu
+        // is on (UseDebugMenus), not ONLY under QAMode. QAMode has intrusive side
+        // effects in release builds (it turns missing-UI-string warnings into fatal
+        // LL_ERRS crashes and echoes the log into chat - see llpanel.cpp /
+        // llviewerwindow.cpp), so it must stay off by default; the dev menus should
+        // not be chained to it. Ctrl+Alt+D (toggle_debug_menus) now toggles all
+        // three dev menus together. QAMode still forces them on for QA runs.
+        const bool devmenus = debug || qamode;
+        gMenuBarView->setItemVisible("Debug", devmenus);
+        gMenuBarView->setItemEnabled("Debug", devmenus);
 
-        gMenuBarView->setItemVisible("Develop", qamode);
-        gMenuBarView->setItemEnabled("Develop", qamode);
+        gMenuBarView->setItemVisible("Develop", devmenus);
+        gMenuBarView->setItemEnabled("Develop", devmenus);
 
         // Server ('Admin') menu hidden when not in godmode.
         const bool show_server_menu = (gAgent.getGodLevel() > GOD_NOT || (debug && gAgent.getAdminOverride()));

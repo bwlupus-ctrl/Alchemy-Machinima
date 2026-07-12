@@ -16181,13 +16181,13 @@
     <key>UseDebugMenus</key>
     <map>
       <key>Comment</key>
-      <string>Turns on "Debug" menu</string>
+      <string>Turns on the Advanced menu plus the Debug/Develop menus. [BDMerge] Default on for this machinima/dev fork.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
       <string>Boolean</string>
       <key>Value</key>
-      <integer>0</integer>
+      <integer>1</integer>
     </map>
     <key>UseDefaultColorPicker</key>
     <map>
