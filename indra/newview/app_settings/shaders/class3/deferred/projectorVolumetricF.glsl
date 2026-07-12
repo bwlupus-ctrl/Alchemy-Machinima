@@ -86,6 +86,15 @@ uniform int   projvol_frustum_clip;       // E1: 0 = sphere bounds (default); !=
 uniform vec4  projvol_frustum_planes[6];  // E1: view-space frustum planes, inside>=0: 0=L 1=R 2=B 3=T 4=near 5=far
 uniform int   projvol_shadow_jitter_tap;  // E2: 0 = sub-tap loop (default); !=0 = one IGN-jittered shadow tap
 
+// [BDMerge G3.3 Batch B - R1] Beam-depth reprojection gate. 0 (default) = alpha of
+// the output stays 0, exactly as before. !=0 = write the scatter-weighted mean
+// sample distance (Sum(w*t)/Sum(w)) into alpha so the temporal pass can reproject
+// the airborne shaft instead of the opaque surface behind it. C++ only ever uploads
+// this as 1 on the temporal (half-res) path, where the march writes to mProjVolHalf;
+// on the direct/non-half-res path it stays 0 so the ADDITIVE scene composite (whose
+// alpha must stay 0) is never corrupted.
+uniform int   projvol_temporal_beam_depth;
+
 // [BDMerge G3.3 Batch 1 B] Gobo-colored occluder shadows. 0 = classic hard black
 // occluder shadow (the shipped look). >0 lets occluded march samples still carry a
 // dimmed, gobo-shaped colored contribution so occluders tint/dim the beam like
@@ -323,6 +332,12 @@ void main()
 
     vec3 accum = vec3(0.0);
 
+    // [BDMerge G3.3 Batch B - R1] Scatter-weighted mean sample distance. Only
+    // accumulated when the beam-depth gate is on; otherwise these stay 0 and cost
+    // nothing beyond the loop's existing work (byte-identical output path).
+    float depth_w = 0.0;
+    float w_sum   = 0.0;
+
     for (int i = 0; i < godray_res; ++i)
     {
         float t    = t0 + (float(i) + roffset) * dt;
@@ -447,6 +462,22 @@ void main()
         vec3 scatter = mix(cookie * projvol_shadow_tint, cookie, vis);
         accum += atten * phase * scatter * edge_feather * density;
 
+        // [BDMerge G3.3 Batch B - R1] Reproject the BEAM, not the wall. Accumulate a
+        // scatter-weighted mean sample distance: weight is this sample's scalar
+        // in-scatter contribution (atten*phase*edge_feather*density - the luminance-
+        // ish factor already multiplying the vec3 cookie above, a consistent scalar
+        // proxy for how much this sample brightens the shaft). t is the distance
+        // along the normalized ray (spos = d*t, so |spos| == t), matching how the
+        // temporal pass measures length(vpos). Gated: default path does no extra
+        // work and the loop result is unchanged. Placed before the E4 early-out so a
+        // clamped-out tail still contributes to the mean over the samples taken.
+        if (projvol_temporal_beam_depth != 0)
+        {
+            float w_beam = atten * phase * edge_feather * density;
+            depth_w += w_beam * t;
+            w_sum   += w_beam;
+        }
+
         // [BDMerge G3.3 Batch A - E4] Luminance early-out (no gate - provably
         // invisible). The final composite below is
         //   shaft = accum * dt * PROJVOL_SCATTER * godray_multiplier * color
@@ -555,7 +586,16 @@ void main()
     // the tight display-space clamp the old post-tonemap placement needed.
     shaft = clamp(shaft, vec3(0.0), vec3(projvol_max));
 
+    // [BDMerge G3.3 Batch B - R1] Scatter-weighted mean beam distance for temporal
+    // reprojection. Fall back to the opaque surface distance when the shaft is empty
+    // (no in-scatter accumulated) so a beam-free pixel reprojects like the wall.
+    float beam_dist = (w_sum > 1e-5) ? (depth_w / w_sum) : t_surface;
+
     // Output ONLY the shaft delta - additive GL_ONE,GL_ONE onto the scene
     // buffer, so the pass never samples what it writes (no feedback).
-    frag_color = vec4(shaft, 0.0);
+    // [BDMerge G3.3 Batch B - R1] Alpha carries the mean beam distance ONLY when the
+    // gate is on (temporal/half-res path -> mProjVolHalf). On the direct/non-half-res
+    // path C++ leaves this uniform at 0, so alpha stays 0 and the ADDITIVE scene
+    // composite is never corrupted (byte-identical to today at default settings).
+    frag_color = vec4(shaft, (projvol_temporal_beam_depth != 0) ? beam_dist : 0.0);
 }

@@ -1222,6 +1222,9 @@ public:
     // [BDMerge G3.3 Batch 1 A] across-frame temporal reprojection accumulation.
     static bool BDMergeProjectorVolumetricsTemporal;     // A: enable (default on)
     static F32 BDMergeProjectorVolumetricsTemporalBlend; // A: history EMA weight
+    // [BDMerge G3.3 Batch B] temporal correctness (both default no-op).
+    static F32 BDMergeProjectorVolumetricsTemporalReject;   // R2: contrast-aware reject (0 = off)
+    static bool BDMergeProjectorVolumetricsTemporalBeamDepth;// R1: reproject beam, not wall (off)
     // [BDMerge G3.3 Batch 1 B] gobo-colored occluder shadows (stained-glass tint).
     static F32 BDMergeProjectorVolumetricsShadowTint;    // B: 0 = classic black shadow
     // [BDMerge G3.3 Rim] physical surface-coupled rim / wrap glow (auto-rim analog).

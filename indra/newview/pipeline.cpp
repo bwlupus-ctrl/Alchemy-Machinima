@@ -270,6 +270,8 @@ F32 LLPipeline::BDMergeProjectorVolumetricsFogBase;
 F32 LLPipeline::BDMergeProjectorVolumetricsBloomFeed;
 bool LLPipeline::BDMergeProjectorVolumetricsTemporal;
 F32 LLPipeline::BDMergeProjectorVolumetricsTemporalBlend;
+F32 LLPipeline::BDMergeProjectorVolumetricsTemporalReject;
+bool LLPipeline::BDMergeProjectorVolumetricsTemporalBeamDepth;
 F32 LLPipeline::BDMergeProjectorVolumetricsShadowTint;
 F32 LLPipeline::BDMergeProjectorVolumetricsRimStrength;
 F32 LLPipeline::BDMergeProjectorVolumetricsRimPower;
@@ -695,6 +697,8 @@ void LLPipeline::init()
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsBloomFeed");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsTemporal");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsTemporalBlend");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsTemporalReject");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsTemporalBeamDepth");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsShadowTint");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsRimStrength");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsRimPower");
@@ -1399,6 +1403,8 @@ void LLPipeline::refreshCachedSettings()
     BDMergeProjectorVolumetricsBloomFeed = gSavedSettings.getF32("BDMergeProjectorVolumetricsBloomFeed");
     BDMergeProjectorVolumetricsTemporal = gSavedSettings.getBOOL("BDMergeProjectorVolumetricsTemporal");
     BDMergeProjectorVolumetricsTemporalBlend = gSavedSettings.getF32("BDMergeProjectorVolumetricsTemporalBlend");
+    BDMergeProjectorVolumetricsTemporalReject = gSavedSettings.getF32("BDMergeProjectorVolumetricsTemporalReject");
+    BDMergeProjectorVolumetricsTemporalBeamDepth = gSavedSettings.getBOOL("BDMergeProjectorVolumetricsTemporalBeamDepth");
     BDMergeProjectorVolumetricsShadowTint = gSavedSettings.getF32("BDMergeProjectorVolumetricsShadowTint");
     BDMergeProjectorVolumetricsRimStrength = gSavedSettings.getF32("BDMergeProjectorVolumetricsRimStrength");
     BDMergeProjectorVolumetricsRimPower = gSavedSettings.getF32("BDMergeProjectorVolumetricsRimPower");
@@ -9632,6 +9638,13 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
     // no uniform - it is provably invisible via the existing projvol_max clamp.
     gDeferredProjectorVolumetricProgram.uniform1i(LLShaderMgr::PROJVOL_FRUSTUM_CLIP, BDMergeProjectorVolumetricsFrustumClip ? 1 : 0);
     gDeferredProjectorVolumetricProgram.uniform1i(LLShaderMgr::PROJVOL_SHADOW_JITTER_TAP, BDMergeProjectorVolumetricsShadowJitterTap ? 1 : 0);
+    // [BDMerge G3.3 Batch B - R1] Beam-depth reprojection: the march writes its
+    // scatter-weighted mean sample distance to the output ALPHA only when this is 1.
+    // Upload 1 ONLY on the temporal path (which requires halfres, so the march writes
+    // to mProjVolHalf - never the additive scene buffer). On the direct/non-halfres
+    // path `temporal` is false here, so the gate stays 0 and alpha stays 0 - the
+    // additive composite is never corrupted and the output is byte-identical.
+    gDeferredProjectorVolumetricProgram.uniform1i(LLShaderMgr::PROJVOL_TEMPORAL_BEAM_DEPTH, (temporal && BDMergeProjectorVolumetricsTemporalBeamDepth) ? 1 : 0);
     // [Batch 1 B] gobo-colored occluder shadows: 0 = classic hard black shadow
     // (the shipped look), >0 lets occluded march samples carry a dimmed, gobo-shaped
     // colored contribution ("stained glass" banding) instead of pure black.
@@ -9888,6 +9901,11 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
             gDeferredProjectorVolumetricTemporalProgram.uniformMatrix4fv(LLShaderMgr::PROJVOL_PREV_VIEWPROJ, 1, false, mProjVolPrevViewProj);
             const F32 blend = mProjVolHistoryValid ? llclamp(BDMergeProjectorVolumetricsTemporalBlend, 0.f, 0.98f) : 0.f;
             gDeferredProjectorVolumetricTemporalProgram.uniform1f(LLShaderMgr::PROJVOL_TEMPORAL_BLEND, blend);
+            // [BDMerge G3.3 Batch B] R2 contrast-aware reject (0 = no-op) + R1 beam-depth
+            // reprojection gate (must match the march-side upload above: on this path
+            // `temporal` is true, so the setting alone selects it, exactly like the march).
+            gDeferredProjectorVolumetricTemporalProgram.uniform1f(LLShaderMgr::PROJVOL_TEMPORAL_REJECT, llmax(BDMergeProjectorVolumetricsTemporalReject, 0.f));
+            gDeferredProjectorVolumetricTemporalProgram.uniform1i(LLShaderMgr::PROJVOL_TEMPORAL_BEAM_DEPTH, BDMergeProjectorVolumetricsTemporalBeamDepth ? 1 : 0);
 
             mScreenTriangleVB->setBuffer();
             mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);

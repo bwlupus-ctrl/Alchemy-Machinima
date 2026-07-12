@@ -1717,6 +1717,10 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("projvol_prev_viewproj");
     mReservedUniforms.push_back("projvol_temporal_blend");
 
+    // [BDMerge G3.3 Batch B] temporal correctness (R2 contrast reject, R1 beam depth)
+    mReservedUniforms.push_back("projvol_temporal_reject");
+    mReservedUniforms.push_back("projvol_temporal_beam_depth");
+
     // [BDMerge G3.3 Rim] surface-coupled rim / wrap glow
     mReservedUniforms.push_back("projvol_rim_strength");
     mReservedUniforms.push_back("projvol_rim_power");

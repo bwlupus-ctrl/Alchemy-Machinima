@@ -10819,6 +10819,28 @@
       <key>Value</key>
       <real>0.85</real>
   </map>
+  <key>BDMergeProjectorVolumetricsTemporalReject</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 Batch B] Contrast-aware temporal anti-ghost strength (0.0-8.0; default 0.0 = off/legacy). Reduces the temporal history weight in proportion to how much the beam is changing frame-to-frame at each pixel, so a steady shaft still denoises but moving/high-contrast features snap to the current frame instead of leaving a trail. Higher = more aggressive ghost suppression (and slightly noisier on motion); 0 = off (ghosting bounded only by the neighborhood clamp). Only active when Temporal is on.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+  </map>
+  <key>BDMergeProjectorVolumetricsTemporalBeamDepth</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 Batch B] Reproject the BEAM, not the wall behind it (default off = legacy surface-based reprojection). The projector shaft is airborne, so under camera motion the mid-air scatter and the opaque surface behind it move differently; reprojecting temporal history off the surface depth lands it wrong and the beam ghosts/trails. When on, the march writes its scatter-weighted mean sample distance into the half-res target's alpha and the temporal pass reprojects and disocclusion-tests with THAT, so the shaft tracks correctly and stops ghosting under motion. Only active when Temporal is on (which requires Half-res). Off = byte-identical to the shipped Batch-1 temporal.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+  </map>
   <key>BDMergeProjectorVolumetricsShadowTint</key>
   <map>
       <key>Comment</key>
