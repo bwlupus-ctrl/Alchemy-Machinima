@@ -2947,6 +2947,17 @@
       <key>Value</key>
       <string />
     </map>
+    <key>BDMergeLogTransactions</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge] Durably log every L$ transaction (paid/received, with amount, other party id, and the item description) to &lt;per-account&gt;/transactions.log the moment it happens - independent of the transient popups and the on-demand Transaction Log floater. So a missed toast or a crash never loses the record of what you paid for and to whom (needed to chase a redelivery). Default on.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
     <key>BDMergeForceAlphaMask</key>
     <map>
       <key>Comment</key>

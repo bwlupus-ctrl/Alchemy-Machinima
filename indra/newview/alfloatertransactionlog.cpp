@@ -66,9 +66,11 @@ bool ALFloaterTransactionLog::postBuild()
 
 void ALFloaterTransactionLog::addTransaction(const LLDate& date, const LLUUID& sender, S32 amount, bool incoming)
 {
-    // drop it
-    if (!getVisible())
-        return;
+    // [BDMerge Transactions] Was "if (!getVisible()) return;" - which dropped every
+    // transaction unless this floater happened to be open AND front-most, so opening
+    // it later showed an empty session. Keep accumulating whenever the floater exists
+    // (it is only built on demand anyway); the durable on-disk log in llviewermessage
+    // is the crash-proof record.
 
     if (incoming)
     {

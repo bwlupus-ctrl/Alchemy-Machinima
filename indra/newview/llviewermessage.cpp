@@ -43,6 +43,7 @@
 #include "llregionhandle.h"
 #include "llsd.h"
 #include "llsdserialize.h"
+#include "llfile.h"                 // [BDMerge Transactions] llofstream for the durable transaction log
 #include "llteleportflags.h"
 #include "lltoastnotifypanel.h"
 #include "lltransactionflags.h"
@@ -5012,6 +5013,42 @@ static void money_balance_avatar_notify(const LLUUID& agent_id,
     LLNotificationsUtil::add(notification, args, payload);
 }
 
+// [BDMerge Transactions] Durable, always-on money-transaction log. The in-world
+// money notifications are transient toasts, and the Transaction Log floater only
+// records while it is open+visible and keeps nothing on disk - so a missed toast or
+// a crash loses all record of what you paid for and to whom, with no way to chase a
+// redelivery. This appends every transaction to <per-account>/transactions.log the
+// instant it happens, independent of any floater and of the Notify* popup settings.
+static void log_transaction_durable(S32 transaction_type, const LLUUID& source_id,
+    const LLUUID& dest_id, S32 amount, const std::string& item_description,
+    const std::string& reason, bool success)
+{
+    static LLCachedControl<bool> log_tx(gSavedSettings, "BDMergeLogTransactions", true);
+    if (!log_tx)
+        return;
+
+    const bool you_paid = (source_id == gAgentID);
+    const std::string path =
+        gDirUtilp->getExpandedFilename(LL_PATH_PER_SL_ACCOUNT, "transactions.log");
+
+    llofstream out(path.c_str(), std::ios_base::app);
+    if (!out.is_open())
+        return;
+
+    std::string other  = (you_paid ? dest_id : source_id).asString();
+    std::string detail = item_description.empty() ? reason : item_description;
+    LLStringUtil::replaceChar(detail, '\n', ' ');   // one line per entry
+
+    out << LLDate::now().asString()
+        << " | " << (success ? "OK  " : "FAIL")
+        << " | " << (you_paid ? "SPENT   " : "RECEIVED")
+        << " L$" << amount
+        << " | " << (you_paid ? "to   " : "from ") << other
+        << " | type " << transaction_type
+        << " | " << detail
+        << "\n";
+}
+
 static void process_money_balance_reply_extended(LLMessageSystem* msg)
 {
     // Added in server 1.40 and viewer 2.1, support for localization
@@ -5070,6 +5107,11 @@ static void process_money_balance_reply_extended(LLMessageSystem* msg)
 
     std::string reason =
         reason_from_transaction_type(transaction_type, item_description);
+
+    // [BDMerge Transactions] Durable record BEFORE the Notify* popup gates below, so
+    // it is logged even when the popups are disabled, missed, or a crash follows.
+    log_transaction_durable(transaction_type, source_id, dest_id, amount,
+                            item_description, reason, success);
 
     LLStringUtil::format_map_t args;
     args["REASON"] = reason; // could be empty
