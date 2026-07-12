@@ -107,7 +107,10 @@ float pcfShadow(sampler2DShadow shadowMap, vec3 norm, vec4 stc, float bias_mul, 
             shadow += texture(shadowMap, vec3(stc.xy + o, stc.z));
         }
         shadow /= 12.0;
-        if (soft_shadow_fill > 0.0)
+        // [BDMerge fix] Same partial-visibility guard as the spot path below: the
+        // fill floor must never lift a FULLY occluded pixel (e.g. a room interior),
+        // or the sun leaks through walls wherever soft sun shadows are enabled.
+        if (soft_shadow_fill > 0.0 && shadow > 0.0)
             shadow = mix(soft_shadow_fill, 1.0, shadow);
         return clamp(shadow, 0.0, 1.0);
     }
@@ -153,7 +156,13 @@ float pcfSpotShadow(sampler2DShadow shadowMap, vec4 stc, float bias_scale, vec2 
             shadow += texture(shadowMap, vec3(stc.xy + o, stc.z));
         }
         shadow /= 12.0;
-        if (soft_shadow_fill > 0.0)
+        // [BDMerge fix] Fill lifts only PARTIALLY lit pixels (>= 1 of the 12 taps
+        // saw the light - genuine penumbra / terminator regions on a lit subject).
+        // A fully occluded pixel (all taps blocked, e.g. behind a solid wall) must
+        // stay 0: an unconditional floor paints the projector's cookie - and the
+        // volumetric beam, which shares this sampler - straight through solid
+        // objects (reported in-world with soft shadows on, Fill default 0.15).
+        if (soft_shadow_fill > 0.0 && shadow > 0.0)
             shadow = mix(soft_shadow_fill, 1.0, shadow);
         return clamp(shadow, 0.0, 1.0);
     }
