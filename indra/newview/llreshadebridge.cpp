@@ -186,6 +186,26 @@ static void bind_gl_texture(reshade::api::effect_runtime* runtime, const char* s
         state.srv = reshade::api::resource_view{ 0 };
     }
 
+    // ---- Texture-completeness fix: THE root cause of the flat-depth / grey-motion
+    // symptom. ReShade samples effect textures through GL SAMPLER OBJECTS whose min
+    // filter is ALWAYS a mipmapped mode (reshade-SL create_sampler maps every
+    // api::filter_mode to GL_*_MIPMAP_*). When a sampler object is bound, ITS
+    // filter - not the texture's - determines completeness (GL 4.6 8.17/8.23.1).
+    // Viewer RT textures are mutable (glTexImage2D), level-0-only, with
+    // GL_TEXTURE_MAX_LEVEL at the default 1000 => mipmap-INCOMPLETE under ReShade's
+    // samplers, and every sample returns constant (0,0,0,1). generic_depth never
+    // trips this because it binds textures ReShade itself created via glTexStorage
+    // (immutable => always complete). Clamping MAX_LEVEL to the one defined level
+    // makes ours complete; the viewer never mip-samples these RTs, so this is
+    // side-effect free. We are in-process on the render thread (ReShade fires
+    // begin_effects inside SwapBuffers), so direct GL here is safe; restore the
+    // binding we disturb.
+    GLint prev_tex2d = 0;
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &prev_tex2d);
+    glBindTexture(GL_TEXTURE_2D, gl_name);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+    glBindTexture(GL_TEXTURE_2D, static_cast<GLuint>(prev_tex2d));
+
     // Raw GL texture object -> ReShade resource, then a proper shader-resource view.
     reshade::api::resource res =
         reshade::api::resource{ (static_cast<uint64_t>(GL_TEXTURE_2D) << 40) | static_cast<uint64_t>(gl_name) };
