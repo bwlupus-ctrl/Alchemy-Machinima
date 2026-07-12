@@ -153,27 +153,57 @@ void LLReShadeBridge::gatherFrame()
 // semantic, so depth-dependent effects (RTGI/MXAO/DOF/...) stop reconstructing /
 // heuristically detecting depth and use the engine's exact buffer.
 //
-// A raw GL texture name becomes a ReShade resource_view via the OpenGL backend's
-// handle encoding: (GLenum target << 40) | object (confirmed against reshade-SL's
-// opengl_impl_type_convert). The GL name is STABLE across frames, so binding it
-// once lets its contents flow every frame - re-binding per frame is expensive and
-// unnecessary. We therefore (re)bind only when the depth texture name changes
-// (i.e. the render targets were (re)allocated on a resolution change).
-static U32  sBoundDepthName    = 0;
-static U32  sBoundVelocityName = 0;   // [RTGI Step B]
+// Bindings MUST be created through ReShade's device via create_resource_view - NOT
+// by hand-encoding a handle. This is exactly how the reference generic_depth add-on
+// (examples/09-depth) does it, and it is what makes ReShade set up the view's FORMAT
+// + shader-resource usage so the effect sampler reads REAL values. A hand-encoded
+// handle is not a registered view: ReShade doesn't know its format and the sampler
+// reads flat/zero (our earlier depth-flat / motion-grey symptoms). We wrap the raw
+// GL texture name as a resource ((target<<40)|object = make_resource_handle), create
+// a proper shader-resource view of it, and cache per-semantic so the previous view
+// is destroyed and we rebind only when the GL texture name changes (RT realloc).
+struct BoundSem { U32 gl_name = 0; reshade::api::resource_view srv = { 0 }; };
+static BoundSem sDepthBound;
+static BoundSem sVelocityBound;
 
-static reshade::api::resource_view gl_tex_srv(U32 gl_name)
+static void bind_gl_texture(reshade::api::effect_runtime* runtime, const char* semantic,
+                            U32 gl_name, reshade::api::format fmt, BoundSem& state)
 {
-    // Match ReShade's GL make_resource_view_handle(target, object, standalone=true):
-    // (target << 40) | (standalone << 32) | object. The standalone bit (32) is
-    // MANDATORY for a raw external texture object we own - ReShade's own
-    // create_resource_view sets it, and its binding path (opengl_impl_device.cpp
-    // ~1218/1364) uses it to treat the low bits as a directly-bindable texture.
-    // Without it the runtime can't resolve the view and binds its empty texture
-    // (symptom: the semantic sampler reads all-zero -> flat grey).
-    return reshade::api::resource_view{ (static_cast<uint64_t>(GL_TEXTURE_2D) << 40)
-                                        | (static_cast<uint64_t>(1) << 32)
-                                        | static_cast<uint64_t>(gl_name) };
+    if (gl_name == state.gl_name)
+    {
+        return; // same GL texture already bound; its contents flow every frame
+    }
+
+    reshade::api::device* dev = runtime->get_device();
+    if (dev == nullptr)
+    {
+        return;
+    }
+
+    if (state.srv != 0)
+    {
+        dev->destroy_resource_view(state.srv);
+        state.srv = reshade::api::resource_view{ 0 };
+    }
+
+    // Raw GL texture object -> ReShade resource, then a proper shader-resource view.
+    reshade::api::resource res =
+        reshade::api::resource{ (static_cast<uint64_t>(GL_TEXTURE_2D) << 40) | static_cast<uint64_t>(gl_name) };
+    reshade::api::resource_view srv = reshade::api::resource_view{ 0 };
+    if (dev->create_resource_view(res, reshade::api::resource_usage::shader_resource,
+                                  reshade::api::resource_view_desc(fmt), &srv))
+    {
+        runtime->update_texture_bindings(semantic, srv, srv);
+        state.srv     = srv;
+        state.gl_name = gl_name;
+        LL_INFOS("ReShade") << "[RTGI] bound GL " << gl_name << " (" << (int)fmt
+                            << ") -> ReShade '" << semantic << "'" << LL_ENDL;
+    }
+    else
+    {
+        LL_WARNS("ReShade") << "[RTGI] create_resource_view failed for GL " << gl_name
+                            << " -> '" << semantic << "'" << LL_ENDL;
+    }
 }
 
 static void on_reshade_begin_effects(reshade::api::effect_runtime* runtime,
@@ -187,42 +217,28 @@ static void on_reshade_begin_effects(reshade::api::effect_runtime* runtime,
         return;
     }
 
-    // Each binding (re)fires only when its GL texture name changes (RT (re)alloc);
-    // a stable name flows its contents to ReShade every frame without re-binding.
-    //
-    // DEPTH override is OPT-IN (default off). ReShade's DEPTH pipeline expects a
-    // sampleable depth COPY (which its built-in generic_depth add-on produces);
-    // handing it our raw GL depth-format texture samples as a flat/constant value
-    // and OVERRIDES generic_depth's working depth (symptom: DisplayDepth shows a
-    // uniform depth, DOF/RTGI depth breaks). So we leave depth to generic_depth and
-    // only override it when someone has implemented a proper depth copy.
-    if (LLReShadeBridge::instance().bindDepth() && f.mTexDepth != 0 && f.mTexDepth != sBoundDepthName)
+    // DEPTH override (opt-in): when on, f.mTexDepth is the R32F COLOR copy that
+    // copyReShadeDepth() produced (ReShade can't sample a raw depth-format texture).
+    // The copy is R32F -> format::r32_float.
+    if (LLReShadeBridge::instance().bindDepth() && f.mTexDepth != 0)
     {
-        sBoundDepthName = f.mTexDepth;
-        reshade::api::resource_view srv = gl_tex_srv(f.mTexDepth);
-        runtime->update_texture_bindings("DEPTH", srv, srv);
-        LL_INFOS("ReShade") << "[RTGI Step A] bound viewer depth (GL " << f.mTexDepth
-                            << ") to ReShade DEPTH semantic" << LL_ENDL;
+        bind_gl_texture(runtime, "DEPTH", f.mTexDepth, reshade::api::format::r32_float, sDepthBound);
     }
 
-    // [RTGI Step B] Bind the A5.4 velocity buffer to a custom semantic that our
-    // SL_GBufferProvider.fx reads and transcodes into iMMERSE's shared
-    // Deferred::MotionVectorsTex (NDC-delta -> UV-delta). Same bind-once-per-handle
-    // rule. 0 when BDMergeVelocityBuffer is off (no motion produced this session).
-    if (f.mTexVelocity != 0 && f.mTexVelocity != sBoundVelocityName)
+    // [RTGI Step B] A5.4 velocity buffer (RG16F) -> custom SL_MOTION_NDC semantic,
+    // which SL_GBufferProvider.fx transcodes into iMMERSE's Deferred::MotionVectorsTex.
+    if (f.mTexVelocity != 0)
     {
-        sBoundVelocityName = f.mTexVelocity;
-        reshade::api::resource_view srv = gl_tex_srv(f.mTexVelocity);
-        runtime->update_texture_bindings("SL_MOTION_NDC", srv, srv);
-        LL_INFOS("ReShade") << "[RTGI Step B] bound viewer velocity (GL " << f.mTexVelocity
-                            << ") to ReShade SL_MOTION_NDC semantic" << LL_ENDL;
+        bind_gl_texture(runtime, "SL_MOTION_NDC", f.mTexVelocity, reshade::api::format::r16g16_float, sVelocityBound);
     }
 }
 
 static void on_destroy_effect_runtime(reshade::api::effect_runtime* /*runtime*/)
 {
-    // Runtime (re)created (e.g. device reset) -> force a re-bind next frame.
-    sBoundDepthName = 0;
+    // Runtime (re)created (device reset) -> our views are gone with it. Reset state
+    // (no destroy - the device/views are already torn down) so we recreate next frame.
+    sDepthBound    = BoundSem{};
+    sVelocityBound = BoundSem{};
 }
 #endif // LL_RESHADE_ADDON
 
@@ -241,9 +257,10 @@ void LLReShadeBridge::init()
 
     reshade::register_event<reshade::addon_event::reshade_begin_effects>(&on_reshade_begin_effects);
     reshade::register_event<reshade::addon_event::destroy_effect_runtime>(&on_destroy_effect_runtime);
-    sBoundDepthName = 0;
+    sDepthBound    = BoundSem{};
+    sVelocityBound = BoundSem{};
     mEnabled = true;
-    LL_INFOS("ReShade") << "[RTGI Step A] add-on registered; will feed real depth to ReShade" << LL_ENDL;
+    LL_INFOS("ReShade") << "[RTGI] add-on registered (create_resource_view bindings)" << LL_ENDL;
 #else
     mEnabled = false;
 #endif
