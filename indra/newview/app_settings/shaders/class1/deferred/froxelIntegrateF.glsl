@@ -41,7 +41,11 @@ out vec4 frag_color;
 in vec2 vary_fragcoord;
 
 uniform sampler2D froxelMedia;   // RGBA16F media atlas (rgb = sigma_s, a = sigma_t)
-uniform sampler2D froxelLight;   // [F2] RGBA16F light atlas (rgb = injected in-scatter source)
+// [F2] RGBA16F light atlas (rgb = injected in-scatter source). [F3] When froxel
+// temporal is on, C++ binds the temporally-RESOLVED light atlas here instead of the
+// raw injection target - same layout/format, so this pass is unchanged either way; it
+// simply integrates whichever (raw or resolved) source atlas it is handed.
+uniform sampler2D froxelLight;
 
 uniform vec3  froxel_grid;       // (GridX, GridY, GridZ)
 uniform vec4  froxel_atlas;      // (tilesX, tilesY, atlasW, atlasH)

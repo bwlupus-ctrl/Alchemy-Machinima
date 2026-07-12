@@ -253,6 +253,8 @@ LLGLSLShader            gFroxelIntegrateProgram;
 LLGLSLShader            gFroxelApplyProgram;
 // [BDMerge Froxel F2] P2 per-light injection pass.
 LLGLSLShader            gFroxelInjectProgram;
+// [BDMerge Froxel F3] P3 froxel-space temporal resolve pass.
+LLGLSLShader            gFroxelTemporalProgram;
 LLGLSLShader            gBlitWithEffectsProgram;
 LLGLSLShader            gCGGammaProgram;
 LLGLSLShader            gCGLegacyGammaProgram;
@@ -425,6 +427,7 @@ void LLViewerShaderMgr::finalizeShaderList()
     mShaderList.push_back(&gFroxelIntegrateProgram); // [BDMerge Froxel F1]
     mShaderList.push_back(&gFroxelApplyProgram); // [BDMerge Froxel F1]
     mShaderList.push_back(&gFroxelInjectProgram); // [BDMerge Froxel F2]
+    mShaderList.push_back(&gFroxelTemporalProgram); // [BDMerge Froxel F3]
     mShaderList.push_back(&gDeferredAlphaProgram);
     mShaderList.push_back(&gHUDAlphaProgram);
     mShaderList.push_back(&gDeferredAlphaImpostorProgram);
@@ -1250,6 +1253,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gFroxelIntegrateProgram.unload();   // [BDMerge Froxel F1]
         gFroxelApplyProgram.unload();       // [BDMerge Froxel F1]
         gFroxelInjectProgram.unload();      // [BDMerge Froxel F2]
+        gFroxelTemporalProgram.unload();    // [BDMerge Froxel F3]
 
         for (U32 i = 0; i < LLMaterial::SHADER_COUNT*2; ++i)
         {
@@ -3490,6 +3494,29 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         if (!success)
         {
             LL_WARNS() << "Failed to create shader '" << gFroxelInjectProgram.mName << "', disabling!" << LL_ENDL;
+            success = true;
+        }
+    }
+
+    // [BDMerge Froxel F3] P3 temporal resolve pass. Plain froxel program (like media /
+    // integrate): a fullscreen-triangle draw over the light atlas that reprojects each
+    // froxel's world position into the previous grid and EMA-blends the resolved
+    // history. Attaches froxelUtil.glsl (grid<->atlas + trilinear) as a second fragment
+    // object, same as every froxel program. NOT isDeferred - it reads only froxel
+    // atlases, never the G-buffer.
+    if (success)
+    {
+        gFroxelTemporalProgram.mName = "Froxel Temporal Resolve Shader";
+        gFroxelTemporalProgram.mShaderFiles.clear();
+        gFroxelTemporalProgram.clearPermutations();
+        gFroxelTemporalProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gFroxelTemporalProgram.mShaderFiles.push_back(make_pair("deferred/froxelTemporalF.glsl", GL_FRAGMENT_SHADER));
+        gFroxelTemporalProgram.mShaderFiles.push_back(make_pair("deferred/froxelUtil.glsl", GL_FRAGMENT_SHADER));
+        gFroxelTemporalProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gFroxelTemporalProgram.createShader();
+        if (!success)
+        {
+            LL_WARNS() << "Failed to create shader '" << gFroxelTemporalProgram.mName << "', disabling!" << LL_ENDL;
             success = true;
         }
     }

@@ -508,6 +508,7 @@ public:
         PROJVOL_FOG_BASE,                  //  "projvol_fog_base"          (item 2)
         PROJVOL_INV_MODELVIEW,             //  "projvol_inv_modelview"     (items 1/2)
         PROJVOL_BLOOM_FEED,                //  "projvol_bloom_feed"        (item 4)
+        PROJVOL_BLOOM_ANAMORPHIC,          //  "projvol_bloom_anamorphic"  (item 4: X-stretch)
 
         // [BDMerge G3.3 Batch 1] temporal reprojection (A) + gobo-colored occluder
         // shadows (B)
@@ -586,6 +587,20 @@ public:
         // block, in lockstep with the matching push_back block in .cpp.
         FROXEL_LIGHT,                      //  "froxelLight"          (sampler: light atlas)
         FROXEL_LIGHT_ENABLE,               //  "froxel_light_enable"
+
+        // [BDMerge Froxel F3] froxel-space temporal accumulation. FROXEL_LIGHT_HISTORY
+        // is the previous frame's RESOLVED light atlas (sampled trilinear via the
+        // world-space grid-to-grid reprojection); FROXEL_PREV_MODELVIEW is last frame's
+        // world->view matrix (reproject a current froxel's world pos into the prev
+        // grid); FROXEL_TEMPORAL_BLEND is the EMA history weight; FROXEL_JITTER gates
+        // the per-frame injection jitter and FROXEL_FRAME is the wrapped frame counter
+        // that walks it. Appended after the F2 block, in lockstep with the matching
+        // push_back block in .cpp.
+        FROXEL_LIGHT_HISTORY,              //  "froxelLightHistory"   (sampler: prev resolved atlas)
+        FROXEL_PREV_MODELVIEW,             //  "froxel_prev_modelview"
+        FROXEL_TEMPORAL_BLEND,             //  "froxel_temporal_blend"
+        FROXEL_JITTER,                     //  "froxel_jitter"
+        FROXEL_FRAME,                      //  "froxel_frame"
 
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;

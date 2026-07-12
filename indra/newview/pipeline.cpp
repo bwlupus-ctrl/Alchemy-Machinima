@@ -268,6 +268,7 @@ F32 LLPipeline::BDMergeProjectorVolumetricsFogGroundDensity;
 F32 LLPipeline::BDMergeProjectorVolumetricsFogFalloff;
 F32 LLPipeline::BDMergeProjectorVolumetricsFogBase;
 F32 LLPipeline::BDMergeProjectorVolumetricsBloomFeed;
+F32 LLPipeline::BDMergeProjectorVolumetricsBloomFeedAnamorphic;
 bool LLPipeline::BDMergeProjectorVolumetricsTemporal;
 F32 LLPipeline::BDMergeProjectorVolumetricsTemporalBlend;
 F32 LLPipeline::BDMergeProjectorVolumetricsTemporalReject;
@@ -294,6 +295,8 @@ F32  LLPipeline::BDMergeFroxelNoiseSpeed;
 F32  LLPipeline::BDMergeFroxelAmbient;   // [BDMerge Froxel F1]
 bool LLPipeline::BDMergeFroxelLights;    // [BDMerge Froxel F2]
 U32  LLPipeline::BDMergeFroxelMaxLights; // [BDMerge Froxel F2]
+bool LLPipeline::BDMergeFroxelTemporal;      // [BDMerge Froxel F3]
+F32  LLPipeline::BDMergeFroxelTemporalBlend; // [BDMerge Froxel F3]
 U32  LLPipeline::BDMergeFroxelDebug;
 // [BDMerge Batch 2]
 bool LLPipeline::BDMergeSoftProjectorShadows;
@@ -480,6 +483,11 @@ LLPipeline::LLPipeline() :
     // well-defined (it is ignored that frame anyway - history is invalid).
     for (U32 i = 0; i < 16; ++i)
         mProjVolPrevViewProj[i] = (i % 5 == 0) ? 1.f : 0.f;
+
+    // [BDMerge Froxel F3] same: identity prev-modelview so the first froxel-temporal
+    // upload is well-defined (ignored that frame - history is invalid, blend forced 0).
+    for (U32 i = 0; i < 16; ++i)
+        mFroxelPrevModelview[i] = (i % 5 == 0) ? 1.f : 0.f;
 }
 
 void LLPipeline::connectRefreshCachedSettingsSafe(const std::string name)
@@ -713,6 +721,7 @@ void LLPipeline::init()
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsFogFalloff");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsFogBase");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsBloomFeed");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsBloomFeedAnamorphic");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsTemporal");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsTemporalBlend");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsTemporalReject");
@@ -739,6 +748,8 @@ void LLPipeline::init()
     connectRefreshCachedSettingsSafe("BDMergeFroxelAmbient"); // [BDMerge Froxel F1]
     connectRefreshCachedSettingsSafe("BDMergeFroxelLights");    // [BDMerge Froxel F2]
     connectRefreshCachedSettingsSafe("BDMergeFroxelMaxLights"); // [BDMerge Froxel F2]
+    connectRefreshCachedSettingsSafe("BDMergeFroxelTemporal");      // [BDMerge Froxel F3]
+    connectRefreshCachedSettingsSafe("BDMergeFroxelTemporalBlend"); // [BDMerge Froxel F3]
     connectRefreshCachedSettingsSafe("BDMergeFroxelDebug");
     connectRefreshCachedSettingsSafe("BDMergeSoftProjectorShadows");
     connectRefreshCachedSettingsSafe("BDMergeSoftShadowSoftness");
@@ -1437,6 +1448,7 @@ void LLPipeline::refreshCachedSettings()
     BDMergeProjectorVolumetricsFogFalloff = gSavedSettings.getF32("BDMergeProjectorVolumetricsFogFalloff");
     BDMergeProjectorVolumetricsFogBase = gSavedSettings.getF32("BDMergeProjectorVolumetricsFogBase");
     BDMergeProjectorVolumetricsBloomFeed = gSavedSettings.getF32("BDMergeProjectorVolumetricsBloomFeed");
+    BDMergeProjectorVolumetricsBloomFeedAnamorphic = gSavedSettings.getF32("BDMergeProjectorVolumetricsBloomFeedAnamorphic");
     BDMergeProjectorVolumetricsTemporal = gSavedSettings.getBOOL("BDMergeProjectorVolumetricsTemporal");
     BDMergeProjectorVolumetricsTemporalBlend = gSavedSettings.getF32("BDMergeProjectorVolumetricsTemporalBlend");
     BDMergeProjectorVolumetricsTemporalReject = gSavedSettings.getF32("BDMergeProjectorVolumetricsTemporalReject");
@@ -1463,6 +1475,8 @@ void LLPipeline::refreshCachedSettings()
     BDMergeFroxelAmbient = gSavedSettings.getF32("BDMergeFroxelAmbient"); // [BDMerge Froxel F1]
     BDMergeFroxelLights = gSavedSettings.getBOOL("BDMergeFroxelLights");       // [BDMerge Froxel F2]
     BDMergeFroxelMaxLights = gSavedSettings.getU32("BDMergeFroxelMaxLights");  // [BDMerge Froxel F2]
+    BDMergeFroxelTemporal = gSavedSettings.getBOOL("BDMergeFroxelTemporal");            // [BDMerge Froxel F3]
+    BDMergeFroxelTemporalBlend = gSavedSettings.getF32("BDMergeFroxelTemporalBlend");   // [BDMerge Froxel F3]
     BDMergeFroxelDebug = gSavedSettings.getU32("BDMergeFroxelDebug");
     // [BDMerge Batch 2]
     BDMergeSoftProjectorShadows = gSavedSettings.getBOOL("BDMergeSoftProjectorShadows");
@@ -1545,6 +1559,9 @@ void LLPipeline::releaseGLBuffers()
     mFroxelIntegratedValid = false;
     mFroxelLight.release(); // [BDMerge Froxel F2] light-injection froxel atlas
     mFroxelLightValid = false;
+    mFroxelLightHistory[0].release(); // [BDMerge Froxel F3] temporal light-atlas history
+    mFroxelLightHistory[1].release();
+    mFroxelHistoryValid = false;
 
     mWaterExclusionMask.release();
 
@@ -9689,6 +9706,54 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
             inject = false; // allocation failed -> skip injection this frame
         }
     }
+
+    // ---- P3 temporal eligibility + history atlases --------------------------
+    // [BDMerge Froxel F3] The light atlas is the noisy/jittered component, so it (not
+    // the deterministic media) is temporalized. Temporal runs only when the lever is
+    // on, lights are actually injecting (nothing to resolve otherwise), and the resolve
+    // program compiled. When off: no jitter is uploaded and the integrate pass reads the
+    // raw light atlas directly => the exact F2 behavior. Two ping-pong RGBA16F history
+    // atlases (atlas dims) mirror the per-cone mProjVolHistory pattern exactly.
+    U32  froxel_injected = 0; // set by the inject loop; gates whether the resolve runs
+    bool temporal = BDMergeFroxelTemporal && inject && gFroxelTemporalProgram.isComplete();
+
+    // Grid-to-grid reprojection assumes the grid dims / near / far are frame-to-frame
+    // constant; a change makes the stored history meaningless -> invalidate (blend
+    // forced 0 this frame). Atlas-dim changes are also caught by the (re)alloc below.
+    if (temporal && (mFroxelPrevGridX != gx || mFroxelPrevGridY != gy || mFroxelPrevGridZ != gz ||
+                     mFroxelPrevNear != near_clip || mFroxelPrevFar != far_clip))
+    {
+        mFroxelHistoryValid = false;
+    }
+
+    if (temporal)
+    {
+        bool need_clear = false;
+        for (int k = 0; k < 2; ++k)
+        {
+            if (mFroxelLightHistory[k].getWidth() != atlasW || mFroxelLightHistory[k].getHeight() != atlasH)
+            {
+                mFroxelLightHistory[k].release();
+                if (!mFroxelLightHistory[k].allocate(atlasW, atlasH, GL_RGBA16F))
+                    temporal = false;
+                else
+                    need_clear = true;
+            }
+        }
+        if (temporal && need_clear)
+        {
+            mFroxelHistoryValid = false; // freshly (re)allocated -> no valid prev
+            LLGLDisable no_scissor(GL_SCISSOR_TEST);
+            for (int k = 0; k < 2; ++k)
+            {
+                mFroxelLightHistory[k].bindTarget();
+                glClearColor(0.f, 0.f, 0.f, 0.f);
+                mFroxelLightHistory[k].clear(GL_COLOR_BUFFER_BIT);
+                mFroxelLightHistory[k].flush();
+            }
+        }
+    }
+
     if (inject)
     {
         LL_PROFILE_GPU_ZONE("froxel inject");
@@ -9724,6 +9789,13 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
         gFroxelInjectProgram.uniform4fv(LLShaderMgr::FROXEL_ATLAS, 1, atlas4);
         gFroxelInjectProgram.uniform2fv(LLShaderMgr::FROXEL_NEAR_FAR, 1, nearfar);
         gFroxelInjectProgram.uniform2fv(LLShaderMgr::FROXEL_TAN_HALF_FOV, 1, thf2);
+
+        // [BDMerge Froxel F3] Jitter gate + wrapped frame counter. Jitter is ON only
+        // when the temporal resolve will run (it needs a resolve to average the noise);
+        // with temporal off the gate is 0 => the exact deterministic F2 froxel-centre
+        // sample. Frame counter mirrors the per-cone PROJVOL_FRAME upload.
+        gFroxelInjectProgram.uniform1i(LLShaderMgr::FROXEL_JITTER, temporal ? 1 : 0);
+        gFroxelInjectProgram.uniform1f(LLShaderMgr::FROXEL_FRAME, (F32)(LLFrameTimer::getFrameCount() % 1024u));
 
         S32 mch = gFroxelInjectProgram.enableTexture(LLShaderMgr::FROXEL_MEDIA);
         if (mch > -1)
@@ -9840,6 +9912,87 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
         gGL.setSceneBlendType(LLRender::BT_ALPHA); // restore default
         mFroxelLight.flush();
         mFroxelLightValid = true;
+        froxel_injected = injected; // [F3] number of lights that actually injected
+    }
+
+    // ---- P3 temporal resolve into the light-atlas history -------------------
+    // [BDMerge Froxel F3] One full-atlas draw: reproject each froxel's WORLD position
+    // into the previous frame's grid (pure grid-to-grid, no surface depth - so it
+    // cannot ghost a beam against a wall), trilinear-sample the previous RESOLVED light
+    // atlas, clamp it to the current froxel's 6-neighborhood, and EMA-blend with the
+    // freshly-injected light. Writes the current history slot; the integrate pass below
+    // reads THAT resolved atlas (and it becomes next frame's history). Reads mFroxelLight
+    // + history[prev], writes history[cur] - all distinct textures, no feedback hazard.
+    // Runs only when temporal is active AND at least one light injected this frame.
+    LLRenderTarget* froxel_light_src = &mFroxelLight; // integrate reads this (raw by default)
+    if (temporal && mFroxelLightValid && froxel_injected > 0)
+    {
+        LL_PROFILE_GPU_ZONE("froxel temporal");
+        const U32 cur  = mFroxelHistoryIdx & 1u;
+        const U32 prev = cur ^ 1u;
+        LLRenderTarget& dst  = mFroxelLightHistory[cur];
+        LLRenderTarget& hist = mFroxelLightHistory[prev];
+
+        dst.bindTarget(); // viewport = atlas size
+
+        LLGLDepthTest depth(GL_FALSE);
+        LLGLDisable   no_blend(GL_BLEND);   // full overwrite of the slot
+        LLGLDisable   no_scissor(GL_SCISSOR_TEST);
+        gGL.setColorMask(true, true);
+
+        gFroxelTemporalProgram.bind();
+
+        S32 lch = gFroxelTemporalProgram.enableTexture(LLShaderMgr::FROXEL_LIGHT);
+        if (lch > -1)
+        {
+            mFroxelLight.bindTexture(0, lch, LLTexUnit::TFO_POINT); // current, atlas-aligned point fetch
+        }
+        S32 hch = gFroxelTemporalProgram.enableTexture(LLShaderMgr::FROXEL_LIGHT_HISTORY);
+        if (hch > -1)
+        {
+            hist.bindTexture(0, hch, LLTexUnit::TFO_BILINEAR); // previous resolved, trilinear
+        }
+
+        gFroxelTemporalProgram.uniform3fv(LLShaderMgr::FROXEL_GRID, 1, grid3);
+        gFroxelTemporalProgram.uniform4fv(LLShaderMgr::FROXEL_ATLAS, 1, atlas4);
+        gFroxelTemporalProgram.uniform2fv(LLShaderMgr::FROXEL_NEAR_FAR, 1, nearfar);
+        gFroxelTemporalProgram.uniform2fv(LLShaderMgr::FROXEL_TAN_HALF_FOV, 1, thf2);
+        gFroxelTemporalProgram.uniformMatrix4fv(LLShaderMgr::FROXEL_INV_MODELVIEW, 1, false, glm::value_ptr(inv_mv));
+        // Previous frame's world->view; meaningless until history valid, so the blend is
+        // forced 0 that first frame (below), exactly like the per-cone prev-viewproj.
+        gFroxelTemporalProgram.uniformMatrix4fv(LLShaderMgr::FROXEL_PREV_MODELVIEW, 1, false, mFroxelPrevModelview);
+        const F32 blend = mFroxelHistoryValid ? llclamp(BDMergeFroxelTemporalBlend, 0.f, 0.95f) : 0.f;
+        gFroxelTemporalProgram.uniform1f(LLShaderMgr::FROXEL_TEMPORAL_BLEND, blend);
+
+        mScreenTriangleVB->setBuffer();
+        mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+
+        if (lch > -1)
+        {
+            gFroxelTemporalProgram.disableTexture(LLShaderMgr::FROXEL_LIGHT);
+        }
+        if (hch > -1)
+        {
+            gFroxelTemporalProgram.disableTexture(LLShaderMgr::FROXEL_LIGHT_HISTORY);
+        }
+        gFroxelTemporalProgram.unbind();
+        dst.flush();
+
+        // Snapshot this frame's world->view + grid params for next frame's reprojection;
+        // advance the ping-pong (next frame reads the slot we just wrote); the resolved
+        // slot is what integrate reads; history is valid from here on.
+        memcpy(mFroxelPrevModelview, glm::value_ptr(mat), sizeof(mFroxelPrevModelview));
+        mFroxelPrevGridX = gx; mFroxelPrevGridY = gy; mFroxelPrevGridZ = gz;
+        mFroxelPrevNear  = near_clip; mFroxelPrevFar = far_clip;
+        froxel_light_src      = &dst;
+        mFroxelHistoryIdx     = prev;
+        mFroxelHistoryValid   = true;
+    }
+    else
+    {
+        // No resolve this frame -> the stored history can't be cleanly reprojected next
+        // frame; drop it so the next temporal frame restarts from pure current (blend 0).
+        mFroxelHistoryValid = false;
     }
 
     // ---- P4 integrate pass into the integrated atlas ------------------------
@@ -9870,6 +10023,9 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
         // [BDMerge Froxel F2] Bind the light atlas + gate the light term. When lights
         // are off (mFroxelLightValid false) the gate is 0 and the shader never samples
         // the light atlas -> the integrate output is exactly F1 (ambient-only).
+        // [F3] Bind the RESOLVED light atlas when the temporal resolve ran this frame
+        // (froxel_light_src points at the history slot it wrote); otherwise this is the
+        // raw injection atlas => exactly F2. Same layout/format either way.
         const bool light_on = mFroxelLightValid;
         S32 lch = -1;
         gFroxelIntegrateProgram.uniform1i(LLShaderMgr::FROXEL_LIGHT_ENABLE, light_on ? 1 : 0);
@@ -9878,7 +10034,7 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
             lch = gFroxelIntegrateProgram.enableTexture(LLShaderMgr::FROXEL_LIGHT);
             if (lch > -1)
             {
-                mFroxelLight.bindTexture(0, lch, LLTexUnit::TFO_POINT); // atlas-aligned point fetch
+                froxel_light_src->bindTexture(0, lch, LLTexUnit::TFO_POINT); // atlas-aligned point fetch
             }
         }
 
@@ -10590,6 +10746,8 @@ void LLPipeline::feedProjectorVolumetricBloom()
     gDeferredProjectorVolumetricBloomFeedProgram.uniform2f(LLShaderMgr::BLOOM_TEXEL_SIZE,
         1.f / (F32)mProjVolShaftSrc->getWidth(), 1.f / (F32)mProjVolShaftSrc->getHeight());
     gDeferredProjectorVolumetricBloomFeedProgram.uniform1f(LLShaderMgr::PROJVOL_BLOOM_FEED, BDMergeProjectorVolumetricsBloomFeed);
+    // [item C4] Anamorphic X-stretch of the tent taps (1.0 = exact isotropic tent, no-op).
+    gDeferredProjectorVolumetricBloomFeedProgram.uniform1f(LLShaderMgr::PROJVOL_BLOOM_ANAMORPHIC, llmax(BDMergeProjectorVolumetricsBloomFeedAnamorphic, 1.f));
 
     mScreenTriangleVB->setBuffer();
     mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);

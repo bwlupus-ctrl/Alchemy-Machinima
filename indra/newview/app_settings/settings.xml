@@ -10797,6 +10797,17 @@
       <key>Value</key>
       <real>0.0</real>
   </map>
+  <key>BDMergeProjectorVolumetricsBloomFeedAnamorphic</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 item C4] Anamorphic stretch of the projector-volumetric bloom-feed halo (1.0-4.0; default 1.0 = OFF/exact isotropic tent). Scales the X tap spacing of the bloom-feed tent blur (Y unchanged) so the fed halo streaks horizontally - the classic anamorphic streak on beam cores AND the rim glow (they ride the same feed). Only has an effect when BDMergeProjectorVolumetricsBloomFeed &gt; 0; try BloomFeed ~0.3 with this at 2.0-3.0.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.0</real>
+  </map>
   <key>BDMergeProjectorVolumetricsTemporal</key>
   <map>
       <key>Comment</key>
@@ -11071,6 +11082,28 @@
       <string>U32</string>
       <key>Value</key>
       <integer>8</integer>
+  </map>
+  <key>BDMergeFroxelTemporal</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge Froxel F3] Froxel-space temporal accumulation of the light atlas. Default ON (froxel is opt-in overall, and the jittered injection this enables NEEDS the resolve to average). When ON: the injection samples are jittered per frame and a resolve pass reprojects each froxel's world position into the previous frame's grid, neighborhood-clamps, and EMA-blends - beams in fog become smoother/less steppy over ~a second when the camera holds, with NO trailing/ghost when panning (the reprojection is pure world-space grid-to-grid, no surface depth, so a beam cannot ghost against a wall). When OFF: no jitter, no resolve, and the integrate pass reads the raw injected light atlas directly = exactly the F2 look (slightly steppier but identical layout). Only active when BDMergeFroxelVolumetrics and BDMergeFroxelLights are on.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+  </map>
+  <key>BDMergeFroxelTemporalBlend</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge Froxel F3] Froxel light-atlas history EMA weight (0.0-0.95; default 0.9; clamped in code). How much of the reprojected, neighborhood-clamped previous frame is blended into each froxel's light this frame: higher = smoother/more denoised beams but slower to converge on change; 0 disables accumulation (pure current frame, still jittered so it shimmers). The neighborhood clamp bounds it so it cannot smear. Only active when BDMergeFroxelVolumetrics, BDMergeFroxelLights and BDMergeFroxelTemporal are on.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.9</real>
   </map>
   <key>BDMergeFroxelDebug</key>
   <map>

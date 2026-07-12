@@ -313,6 +313,8 @@ extern LLGLSLShader         gFroxelIntegrateProgram;
 extern LLGLSLShader         gFroxelApplyProgram;
 // [BDMerge Froxel F2] P2 per-light injection pass.
 extern LLGLSLShader         gFroxelInjectProgram;
+// [BDMerge Froxel F3] P3 froxel-space temporal resolve pass.
+extern LLGLSLShader         gFroxelTemporalProgram;
 extern LLGLSLShader         gBlitWithEffectsProgram;
 extern LLGLSLShader         gCGGammaProgram;
 extern LLGLSLShader         gCGLegacyGammaProgram;

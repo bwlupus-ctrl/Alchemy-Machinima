@@ -1710,6 +1710,7 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("projvol_fog_base");
     mReservedUniforms.push_back("projvol_inv_modelview");
     mReservedUniforms.push_back("projvol_bloom_feed");
+    mReservedUniforms.push_back("projvol_bloom_anamorphic");
 
     // [BDMerge G3.3 Batch 1] temporal reprojection (A) + gobo-colored shadows (B)
     mReservedUniforms.push_back("projvol_shadow_tint");
@@ -1779,6 +1780,15 @@ void LLShaderMgr::initAttribsAndUniforms()
     // FROXEL_LIGHT_ENABLE enums appended to the FROXEL_* block in llshadermgr.h).
     mReservedUniforms.push_back("froxelLight");
     mReservedUniforms.push_back("froxel_light_enable");
+
+    // [BDMerge Froxel F3] temporal accumulation (lockstep with the FROXEL_LIGHT_HISTORY
+    // / FROXEL_PREV_MODELVIEW / FROXEL_TEMPORAL_BLEND / FROXEL_JITTER / FROXEL_FRAME
+    // enums appended to the FROXEL_* block in llshadermgr.h - same position, same order).
+    mReservedUniforms.push_back("froxelLightHistory");
+    mReservedUniforms.push_back("froxel_prev_modelview");
+    mReservedUniforms.push_back("froxel_temporal_blend");
+    mReservedUniforms.push_back("froxel_jitter");
+    mReservedUniforms.push_back("froxel_frame");
 
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 

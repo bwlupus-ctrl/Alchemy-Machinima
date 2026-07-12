@@ -78,7 +78,22 @@ uniform float proj_focus;
 uniform float proj_lod;
 uniform float proj_range;
 
+// [BDMerge Froxel F3] Per-frame injection jitter. froxel_jitter gates it (0 = the F2
+// deterministic froxel-centre sample, byte-identical); froxel_frame is the wrapped
+// frame counter that walks the pattern. C++ turns the gate ON only when the temporal
+// resolve is active, so the noise it introduces always has a resolve pass to average.
+uniform int   froxel_jitter;
+uniform float froxel_frame;
+
 const float M_PI = 3.14159265;
+
+// [BDMerge Froxel F3] Interleaved gradient noise (Jimenez) - the SAME blue-noise-like
+// dither the per-cone march uses (class3/deferred/projectorVolumetricF.glsl). Static
+// per screen-pixel so it does not crawl; the golden-ratio frame walk below rotates it.
+float interleavedGradientNoise(vec2 p)
+{
+    return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715))));
+}
 
 // deferredUtil.glsl
 bool  clipProjectedLightVars(vec3 center, vec3 pos, out float dist, out float l_dist, out vec3 lv, out vec4 proj_tc);
@@ -127,10 +142,32 @@ void main()
         return;
     }
 
-    // Froxel-centre view-space position (exponential Z, same 0.5 slice-centre
-    // convention as every froxel pass).
-    float viewz = froxelSliceToViewZ(float(fz) + 0.5, froxel_near_far, froxel_grid.z);
-    vec3  vpos  = froxelViewPos(vec2(float(fx) + 0.5, float(fy) + 0.5), viewz,
+    // [BDMerge Froxel F3] Per-frame jitter of the evaluated sample point WITHIN this
+    // froxel's extent (before the light evaluation) so the temporal resolve pass has
+    // decorrelated samples to average into a smooth beam. Construction (documented):
+    //   - Three DECORRELATED interleaved-gradient-noise values, one per axis, from the
+    //     same IGN at three distinct spatial scrambles of gl_FragCoord.
+    //   - Each is advanced by a golden-ratio frame walk (froxel_frame * 0.61803399, the
+    //     low-discrepancy step the per-cone dither==2 branch uses) so successive frames
+    //     visit fresh offsets rather than repeating.
+    //   - Recentred to [-0.5, 0.5] => a 3D offset in FROXEL units (x,y in the tile
+    //     plane, z along the slice axis), covering the whole froxel volume over frames.
+    // Gated: froxel_jitter == 0 => zero offset => the exact F2 froxel-centre sample.
+    vec3 jit = vec3(0.0);
+    if (froxel_jitter != 0)
+    {
+        float walk = froxel_frame * 0.61803399;
+        float jx = fract(interleavedGradientNoise(gl_FragCoord.xy)                   + walk);
+        float jy = fract(interleavedGradientNoise(gl_FragCoord.xy + vec2(59.0, 37.0)) + walk);
+        float jz = fract(interleavedGradientNoise(gl_FragCoord.xy + vec2(11.0, 97.0)) + walk);
+        jit = vec3(jx, jy, jz) - 0.5; // [-0.5, 0.5]^3, froxel units
+    }
+
+    // Froxel sample view-space position (exponential Z, same 0.5 slice-centre
+    // convention as every froxel pass) with the F3 jitter applied to the froxel-centre
+    // coordinates BEFORE reconstruction (unjittered when froxel_jitter == 0).
+    float viewz = froxelSliceToViewZ(float(fz) + 0.5 + jit.z, froxel_near_far, froxel_grid.z);
+    vec3  vpos  = froxelViewPos(vec2(float(fx) + 0.5 + jit.x, float(fy) + 0.5 + jit.y), viewz,
                                 froxel_grid, froxel_tan_half_fov);
 
     // Evaluate THIS projector at the froxel centre - one march-sample's worth of the

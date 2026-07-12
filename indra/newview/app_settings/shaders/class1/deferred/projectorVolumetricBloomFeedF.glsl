@@ -42,11 +42,19 @@ in vec2 vary_fragcoord;
 uniform sampler2D diffuseMap;       // the half-res marched shaft (rgb additive)
 uniform vec2  bloom_texel_size;     // 1 / half-res dimensions (blur tap spacing)
 uniform float projvol_bloom_feed;   // controlled feed scale (0 = off)
+// [BDMerge G3.3 item C4] Anamorphic feed: scales the X tap spacing (Y unchanged) so the
+// fed halo stretches horizontally - the classic anamorphic streak on beam cores and rim
+// glow. 1.0 = the exact isotropic 3x3 tent above (no-op); >1.0 widens the horizontal
+// footprint. Shapes the halo of BOTH beam cores and the rim glow (they ride this feed).
+uniform float projvol_bloom_anamorphic;
 
 void main()
 {
     vec2 uv = vary_fragcoord.xy;
-    vec2 t  = bloom_texel_size;
+    // Per-axis tap spacing: X stretched by the anamorphic factor, Y left alone. At
+    // projvol_bloom_anamorphic == 1.0 this is exactly bloom_texel_size, so every tap
+    // offset below is bit-identical to the isotropic tent (default no-op).
+    vec2 t  = vec2(bloom_texel_size.x * projvol_bloom_anamorphic, bloom_texel_size.y);
 
     // 3x3 tent blur (same weights as the bloom upsample) so the fed shaft reads as
     // a soft glow rather than a sharp copy of the beam.

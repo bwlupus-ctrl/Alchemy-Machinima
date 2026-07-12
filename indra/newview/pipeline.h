@@ -849,6 +849,29 @@ public:
     // it is empty whenever the froxel master or BDMergeFroxelLights is off.
     std::set<LLUUID>        mFroxelInjectedProjectors;
 
+    // [BDMerge Froxel F3] Froxel-space temporal accumulation of the LIGHT atlas (the
+    // jittered/noisy component; the media atlas stays deterministic). Two ping-pong
+    // RGBA16F history targets at the atlas dims carry the RESOLVED light atlas: the
+    // resolve pass reads the previous slot + the freshly-injected mFroxelLight and
+    // writes the blended result into the current slot, which the integrate pass then
+    // reads (and which becomes next frame's history). Allocated/cleared alongside
+    // mFroxelLight inside the gated block, released in releaseGLBuffers. Mirrors the
+    // per-cone mProjVolHistory pattern exactly. mFroxelHistoryValid is forced false on
+    // (re)alloc / grid-setting change / first frame so the resolve blends against 0
+    // (pure current) that frame. mFroxelPrevModelview is last frame's world->view,
+    // snapshotted AFTER the resolve, used to reproject the current grid into the prev
+    // grid. mFroxelPrev* record the grid params the history was built with, to detect
+    // a grid-setting change that would make the grid-to-grid reprojection invalid.
+    LLRenderTarget          mFroxelLightHistory[2];
+    U32                     mFroxelHistoryIdx = 0;      // current write slot
+    bool                    mFroxelHistoryValid = false; // false => no valid prev
+    F32                     mFroxelPrevModelview[16];   // world->view of the last resolve
+    U32                     mFroxelPrevGridX = 0;       // grid params the history was built with
+    U32                     mFroxelPrevGridY = 0;
+    U32                     mFroxelPrevGridZ = 0;
+    F32                     mFroxelPrevNear = 0.f;
+    F32                     mFroxelPrevFar  = 0.f;
+
     // exposure map for getting average color in scene
     LLRenderTarget          mLuminanceMap;
     LLRenderTarget          mExposureMap;
@@ -1259,6 +1282,7 @@ public:
     static F32 BDMergeProjectorVolumetricsFogFalloff;
     static F32 BDMergeProjectorVolumetricsFogBase;
     static F32 BDMergeProjectorVolumetricsBloomFeed;     // item 4: bloom halo feed
+    static F32 BDMergeProjectorVolumetricsBloomFeedAnamorphic; // item 4: bloom halo X-stretch
     // [BDMerge G3.3 Batch 1 A] across-frame temporal reprojection accumulation.
     static bool BDMergeProjectorVolumetricsTemporal;     // A: enable (default on)
     static F32 BDMergeProjectorVolumetricsTemporalBlend; // A: history EMA weight
@@ -1290,6 +1314,8 @@ public:
     static F32  BDMergeFroxelAmbient;       // [F1] uniform ambient in-scatter radiance
     static bool BDMergeFroxelLights;        // [F2] inject volumetric projectors into the grid
     static U32  BDMergeFroxelMaxLights;     // [F2] cap on injection passes/frame (clamp 1..16)
+    static bool BDMergeFroxelTemporal;      // [F3] jittered injection + temporal resolve (default on)
+    static F32  BDMergeFroxelTemporalBlend; // [F3] light-atlas history EMA weight (clamp 0..0.95)
     static U32  BDMergeFroxelDebug;         // 0=off 1=density 2=Z-slice 3=integrated L 4=light
     // [BDMerge Batch 2] Feature 1: soft (contact-hardening + filled) shadows.
     static bool BDMergeSoftProjectorShadows;   // master gate (default off)
