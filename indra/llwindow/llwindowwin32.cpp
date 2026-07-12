@@ -205,6 +205,42 @@ HMODULE LLWindowWin32::sGLDLLHandle = nullptr;
 
 static HWND sWindowHandleForMessageBox = NULL;
 
+// [BDMerge Borderless] Fullscreen is a borderless windowed cover of the target
+// monitor at its CURRENT desktop resolution, NOT an exclusive display-mode change.
+// This means: no ChangeDisplaySettings mode switch, no forced resolution drop, no
+// alt-tab minimize/mode-restore churn, and instant, tear-free switching that plays
+// nice with the desktop compositor and multi-monitor. Left as a single toggle so
+// the legacy exclusive path can be restored if ever needed (default = borderless).
+static bool sBorderlessFullscreen = true;
+
+// [BDMerge Borderless] Full pixel bounds of the monitor the window belongs to (or
+// the one under the requested position on first creation), i.e. that monitor's
+// desktop resolution and virtual-screen offset. rcMonitor (not rcWork) so the
+// cover includes the taskbar area = true fullscreen.
+static bool getBorderlessMonitorRect(HWND hwnd, const LLCoordScreen* posp, RECT& out_rect)
+{
+    HMONITOR hmon;
+    if (hwnd)
+    {
+        hmon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTOPRIMARY);
+    }
+    else
+    {
+        POINT pt = { posp ? (LONG)posp->mX : 0, posp ? (LONG)posp->mY : 0 };
+        hmon = MonitorFromPoint(pt, MONITOR_DEFAULTTOPRIMARY);
+    }
+
+    MONITORINFO mi;
+    ::ZeroMemory(&mi, sizeof(mi));
+    mi.cbSize = sizeof(mi);
+    if (!GetMonitorInfo(hmon, &mi))
+    {
+        return false;
+    }
+    out_rect = mi.rcMonitor;
+    return true;
+}
+
 // The following class LLWinImm delegates Windows IMM APIs.
 // It was originally introduced to support US Windows XP, on which we needed
 // to dynamically load IMM32.DLL and use GetProcAddress to resolve its entry
@@ -768,8 +804,11 @@ LLWindowWin32::LLWindowWin32(LLWindowCallbacks* callbacks,
     // Drop resolution and go fullscreen
     // use a display mode with our desired size and depth, with a refresh
     // rate as close at possible to the users' default
+    // [BDMerge Borderless] Skipped entirely for borderless fullscreen - there is
+    // no exclusive display-mode change; switchContext() sizes the WS_POPUP window
+    // to the target monitor's current desktop resolution instead.
     //-----------------------------------------------------------------------
-    if (mFullscreen)
+    if (mFullscreen && !sBorderlessFullscreen)
     {
         bool success = false;
         DWORD closest_refresh = 0;
@@ -1247,7 +1286,41 @@ bool LLWindowWin32::switchContext(bool fullscreen, const LLCoordScreen& size, bo
         mhRC = NULL;
     }
 
-    if (fullscreen)
+    if (fullscreen && sBorderlessFullscreen)
+    {
+        // [BDMerge Borderless] Borderless fullscreen windowed: cover the target
+        // monitor at its current desktop resolution with a WS_POPUP window. No
+        // EnumDisplaySettings mode hunt, no setDisplayResolution / ChangeDisplaySettings
+        // exclusive switch - so the desktop resolution is never dropped and there is
+        // no exclusive-mode alt-tab churn.
+        mFullscreen = true;
+
+        RECT mon;
+        if (!getBorderlessMonitorRect(mWindowHandle, posp, mon))
+        {
+            // Monitor query failed - fall back to the requested size at the origin.
+            mon.left   = posp ? (long)posp->mX : 0;
+            mon.top    = posp ? (long)posp->mY : 0;
+            mon.right  = mon.left + width;
+            mon.bottom = mon.top + height;
+        }
+
+        window_rect = mon;                              // exact monitor pixel bounds
+        mFullscreenWidth   = mon.right - mon.left;
+        mFullscreenHeight  = mon.bottom - mon.top;
+        mFullscreenRefresh = (S32)current_refresh;      // desktop refresh; unchanged
+        dw_ex_style = WS_EX_APPWINDOW;
+        dw_style    = WS_POPUP;
+
+        // window_rect is already the final borderless window rect (WS_POPUP has no
+        // frame), so it must NOT be expanded by ll_adjust_window_rect_dpi - it has
+        // to match the monitor 1:1 to cover it exactly.
+        LL_INFOS("Window") << "Borderless fullscreen: " << mFullscreenWidth
+            << "x" << mFullscreenHeight
+            << " @ " << mFullscreenRefresh
+            << " (desktop resolution, no exclusive mode change)" << LL_ENDL;
+    }
+    else if (fullscreen)
     {
         mFullscreen = true;
         bool success = false;
@@ -2503,7 +2576,13 @@ LRESULT CALLBACK LLWindowWin32::mainWindowProc(HWND h_wnd, UINT u_msg, WPARAM w_
                     // This message should be sent whenever the app gains or loses focus.
                     BOOL activating = (BOOL)w_param;
 
-                    if (window_imp->mFullscreen)
+                    // [BDMerge Borderless] Only EXCLUSIVE fullscreen needs the
+                    // minimize-on-focus-loss / restore-mode-on-focus-gain dance
+                    // (its display-mode change must be released so other apps and
+                    // the desktop are usable). Borderless fullscreen is an ordinary
+                    // window - it must stay put on alt-tab like any other window,
+                    // never force-minimize, and never touch the display mode.
+                    if (window_imp->mFullscreen && !sBorderlessFullscreen)
                     {
                         // When we run fullscreen, restoring or minimizing the app needs
                         // to switch the screen resolution
@@ -3777,6 +3856,12 @@ bool LLWindowWin32::setDisplayResolution(S32 width, S32 height, S32 refresh)
 // protected
 bool LLWindowWin32::setFullscreenResolution()
 {
+    // [BDMerge Borderless] No exclusive display mode was ever set, so there is
+    // nothing to (re)apply - the desktop resolution is already correct.
+    if (sBorderlessFullscreen)
+    {
+        return true;
+    }
     if (mFullscreen)
     {
         return setDisplayResolution( mFullscreenWidth, mFullscreenHeight, mFullscreenRefresh);
