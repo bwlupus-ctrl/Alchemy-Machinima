@@ -1338,9 +1338,6 @@ public:
     static F32  BDMergeFroxelNoiseStrength; // animated noise (0 = off)
     static F32  BDMergeFroxelNoiseScale;
     static F32  BDMergeFroxelNoiseSpeed;
-    static F32  BDMergeFroxelWindX;         // [F5] drift direction (region X), * NoiseSpeed
-    static F32  BDMergeFroxelWindY;         // [F5] drift direction (region Y), * NoiseSpeed
-    static F32  BDMergeFroxelWindZ;         // [F5] drift direction (vertical Z), * NoiseSpeed
     static F32  BDMergeFroxelAmbient;       // [F1] uniform ambient in-scatter radiance
     static bool BDMergeFroxelLights;        // [F2] inject volumetric projectors into the grid
     static U32  BDMergeFroxelMaxLights;     // [F2] cap on injection passes/frame (clamp 1..16)

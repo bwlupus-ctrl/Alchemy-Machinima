@@ -11072,21 +11072,10 @@
       <key>Value</key>
       <real>0.1</real>
   </map>
-  <key>BDMergeFroxelWindX</key>
+  <key>BDMergeFroxelWindAzimuth</key>
   <map>
       <key>Comment</key>
-      <string>[BDMerge Froxel F5] Wind/drift direction of the animated noise medium along the region X (east/west) axis (-2.0..2.0; default 1.0). The effective scroll velocity is (WindX,WindY,WindZ) * BDMergeFroxelNoiseSpeed, so this steers which way the fog drifts; negative reverses it. Old default was the fixed (1,1,1) diagonal; the new (1,0,0.15) default is a mostly-horizontal, more natural drift. Only active when BDMergeFroxelNoiseStrength &gt; 0.</string>
-      <key>Persist</key>
-      <integer>1</integer>
-      <key>Type</key>
-      <string>F32</string>
-      <key>Value</key>
-      <real>1.0</real>
-  </map>
-  <key>BDMergeFroxelWindY</key>
-  <map>
-      <key>Comment</key>
-      <string>[BDMerge Froxel F5] Wind/drift direction of the animated noise medium along the region Y (north/south) axis (-2.0..2.0; default 0.0). The effective scroll velocity is (WindX,WindY,WindZ) * BDMergeFroxelNoiseSpeed; negative reverses it. Only active when BDMergeFroxelNoiseStrength &gt; 0.</string>
+      <string>[BDMerge Froxel] Dust-wind compass bearing in degrees (0-360; default 0 = true north). This is the direction the wind comes FROM; by default the dust drifts the OPPOSITE way, so 0 = a north wind blowing toward the south. Toggle BDMergeFroxelWindInverted to blow toward the bearing instead. Steers both the froxel air and projector-beam dust; the drift SPEED is BDMerge*NoiseSpeed. Only active when noise strength &gt; 0.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
@@ -11094,16 +11083,27 @@
       <key>Value</key>
       <real>0.0</real>
   </map>
-  <key>BDMergeFroxelWindZ</key>
+  <key>BDMergeFroxelWindElevation</key>
   <map>
       <key>Comment</key>
-      <string>[BDMerge Froxel F5] Wind/drift direction of the animated noise medium along the vertical Z (up/down) axis (-2.0..2.0; default 0.15). The effective scroll velocity is (WindX,WindY,WindZ) * BDMergeFroxelNoiseSpeed; a small positive value gives a gentle upward rise, negative sinks the drift. Only active when BDMergeFroxelNoiseStrength &gt; 0.</string>
+      <string>[BDMerge Froxel] Dust-wind vertical tilt in degrees (-90..90; default 0 = level). Positive = wind comes from above so the dust drifts DOWNWARD (settling); negative rises. Combined with BDMergeFroxelWindInverted. Only active when noise strength &gt; 0.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
       <string>F32</string>
       <key>Value</key>
-      <real>0.15</real>
+      <real>0.0</real>
+  </map>
+  <key>BDMergeFroxelWindInverted</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge Froxel] Invert the dust-wind direction: OFF (default) = the dust blows the OPPOSITE way to the Azimuth bearing (meteorological: a north wind blows south); ON = it blows TOWARD the Azimuth bearing instead.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
   </map>
   <key>BDMergeFroxelAmbient</key>
   <map>
