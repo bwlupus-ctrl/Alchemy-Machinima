@@ -155,6 +155,17 @@
 					name="lut_AST5"
 					value="AESTHETICS_5.png" />
 			</combo_box>
+			<!-- [BDMerge] CAS sharpen strength. The one implemented sharpener (AMD
+			     Contrast Adaptive Sharpening), always in the chain; 0 = OFF. Bound
+			     to the live RenderCASSharpness (the legacy Sharpen block below stays
+			     commented - it advertised an unimplemented DLS method). -->
+			<view_border bevel_style="none" height="0" layout="topleft" left="0" name="cas_border" top_pad="6" width="500" />
+			<text follows="left|top" height="15" left="10" top_pad="7" width="124" layout="topleft" value="Sharpen (CAS):"
+			      tool_tip="AMD Contrast Adaptive Sharpening strength. 0 = off. For an S-Log3/log capture, keep this low or 0 and sharpen in the grade." />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true"
+			        name="cas_sharpness_slider" control_name="RenderCASSharpness"
+			        tool_tip="0 = off (recommended for log capture); ~0.4 default; 1 = max. Edge-aware, won't crunch flat areas." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="cas_reset_RenderCASSharpness"><button.commit_callback function="LightBox.ResetControlDefault" parameter="RenderCASSharpness" /></button>
             <!--Sharpen Controls--><!--
             <view_border
 				bevel_style="none"
