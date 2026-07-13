@@ -805,6 +805,88 @@ namespace
         LLViewerObject* pObj = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
         return pObj && LLPipeline::hasVolumetricShaftOverride(pObj->getID());
     }
+
+    // [BDMerge G2.3 per-target] Right-click "Alpha Mode" submenu. Session-only
+    // per-object override of alpha handling (0=Default, 1=Force Mask, 2=Force Blend),
+    // keyed by object ROOT id. Purely client-side render state - works on ANY owner /
+    // no-mod content (no permission/mValid gate), mirroring the Volumetric Shaft /
+    // Hero Beam session toggles. setAlphaModeOverride() re-routes the geometry
+    // immediately, so the change is visible on click.
+    void handle_object_alpha_mode(const LLSD& sdParam)
+    {
+        const S32 mode = sdParam.asInteger(); // 0/1/2 from the menu param
+        LLObjectSelectionHandle hSel = LLSelectMgr::getInstance()->getSelection();
+        if (hSel.isNull())
+            return;
+
+        // Iterate the RAW selection roots (root_begin/root_end = object-non-null, NOT
+        // valid_root_*). mValid needs a server ObjectProperties reply that never comes
+        // for others' no-mod objects, so a valid_* gate would silently skip them.
+        for (LLObjectSelection::root_iterator itObj = hSel->root_begin(), endObj = hSel->root_end();
+             itObj != endObj; ++itObj)
+        {
+            const LLSelectNode* pNode = *itObj;
+            LLViewerObject* pObj = (pNode) ? pNode->getObject() : nullptr;
+            if (pObj && pObj->getID().notNull())
+                LLPipeline::setAlphaModeOverride(pObj->getID(), mode); // rebuild happens inside
+        }
+    }
+
+    bool check_object_alpha_mode(const LLSD& sdParam)
+    {
+        const S32 mode = sdParam.asInteger();
+        LLViewerObject* pObj = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
+        if (!pObj)
+            return false;
+        LLUUID objId = pObj->getRootEdit() ? pObj->getRootEdit()->getID() : LLUUID::null;
+        LLUUID avId  = pObj->getAvatar() ? pObj->getAvatar()->getID() : LLUUID::null;
+        return LLPipeline::resolveAlphaMode(objId, avId) == mode;
+    }
+
+    bool enable_object_alpha_mode()
+    {
+        // Enabled whenever the selection has any volume object - no permission gate.
+        LLObjectSelectionHandle hSel = LLSelectMgr::getInstance()->getSelection();
+        if (hSel.isNull())
+            return false;
+        for (LLObjectSelection::iterator itObj = hSel->begin(), endObj = hSel->end();
+             itObj != endObj; ++itObj)
+        {
+            const LLSelectNode* pNode = *itObj;
+            LLViewerObject* pObj = (pNode) ? pNode->getObject() : nullptr;
+            if (dynamic_cast<LLVOVolume*>(pObj))
+                return true;
+        }
+        return false;
+    }
+
+    // [BDMerge G2.3 per-target] Right-click avatar "Attachments Alpha" submenu.
+    // Applies the same session-only alpha-mode override to the AVATAR's id, so ALL of
+    // that avatar's attachments follow (resolveAlphaMode falls back to the avatar id
+    // when no per-object override is set). Keyed off the right-clicked avatar, resolved
+    // the same way every other Avatar.* handler does (find_avatar_from_object on the
+    // primary selected object). Object-specific overrides still beat this avatar-wide one.
+    void handle_avatar_alpha_mode(const LLSD& sdParam)
+    {
+        const S32 mode = sdParam.asInteger();
+        LLVOAvatar* avatarp = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
+        if (avatarp && avatarp->getID().notNull())
+            LLPipeline::setAlphaModeOverride(avatarp->getID(), mode); // rebuilds all attachments inside
+    }
+
+    bool check_avatar_alpha_mode(const LLSD& sdParam)
+    {
+        const S32 mode = sdParam.asInteger();
+        LLVOAvatar* avatarp = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
+        if (!avatarp)
+            return false;
+        return LLPipeline::getAlphaModeOverride(avatarp->getID()) == mode;
+    }
+
+    bool enable_avatar_alpha_mode()
+    {
+        return find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject()) != nullptr;
+    }
 }
 
 ////////////////////////////////////////////////////////
@@ -867,6 +949,13 @@ void ALViewerMenu::initialize_menus()
     enable.add("Object.EnableShaftCaptureOverride", boost::bind(&enable_object_volumetric_shaft));
     commit.add("Object.ShaftClearOverride", boost::bind(&handle_object_shaft_clear_override, _2));
     enable.add("Object.EnableShaftClearOverride", boost::bind(&enable_object_shaft_clear_override));
+// [BDMerge G2.3 per-target] session-only per-object / per-avatar alpha-mode override
+    commit.add("Object.AlphaMode", boost::bind(&handle_object_alpha_mode, _2));
+    enable.add("Object.CheckAlphaMode", boost::bind(&check_object_alpha_mode, _2));
+    enable.add("Object.EnableAlphaMode", boost::bind(&enable_object_alpha_mode));
+    commit.add("Avatar.AlphaMode", boost::bind(&handle_avatar_alpha_mode, _2));
+    enable.add("Avatar.CheckAlphaMode", boost::bind(&check_avatar_alpha_mode, _2));
+    enable.add("Avatar.EnableAlphaMode", boost::bind(&enable_avatar_alpha_mode));
 
     // [SL:KB] - Patch: World-RenderExceptions | Checked: Catznip-5.2
     commit.add("View.Blocked", boost::bind(&handle_view_blocked, _2));

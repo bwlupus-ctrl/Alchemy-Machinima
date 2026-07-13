@@ -96,6 +96,7 @@
 #include "llviewerregion.h" // for audio debugging.
 #include "llviewerwindow.h" // For getSpinAxis
 #include "llvoavatarself.h"
+#include "llviewerjointattachment.h"
 #include "llvocache.h"
 #include "llvosky.h"
 #include "llvowlsky.h"
@@ -318,6 +319,7 @@ std::map<LLUUID, LLPipeline::VolumetricShaftOverride> LLPipeline::sVolumetricSha
 std::set<LLUUID> LLPipeline::sVolumetricShaftObjects;
 std::set<LLUUID> LLPipeline::sNoShadowProjectors; // [BDMerge Batch 3] cast-shadows opt-out
 std::set<LLUUID> LLPipeline::sHeroProjectors;     // [BDMerge F4] Hero Beam per-cone opt-in
+std::map<LLUUID, S32> LLPipeline::sAlphaModeOverride; // [BDMerge G2.3 per-target] per-object/avatar alpha mode
 S32 LLPipeline::RenderScreenSpaceReflectionIterations;
 F32 LLPipeline::RenderScreenSpaceReflectionRayStep;
 F32 LLPipeline::RenderScreenSpaceReflectionDistanceBias;
@@ -10908,6 +10910,7 @@ void LLPipeline::clearVolumetricShafts()
     sVolumetricShaftOverrides.clear();
     sNoShadowProjectors.clear(); // [BDMerge Batch 3] cast-shadows opt-out is session-only too
     sHeroProjectors.clear();     // [BDMerge F4] Hero Beam flags are session-only too
+    sAlphaModeOverride.clear();  // [BDMerge G2.3 per-target] alpha-mode overrides are session-only too
 }
 
 // [BDMerge G3.3 Batch 3] Session-only per-projector "cast shadows" opt-OUT.
@@ -10950,6 +10953,96 @@ void LLPipeline::toggleHeroProjector(const LLUUID& id)
 bool LLPipeline::isHeroProjector(const LLUUID& id)
 {
     return !sHeroProjectors.empty() && sHeroProjectors.count(id) != 0;
+}
+
+// [BDMerge G2.3 per-target] Rebuild the geometry keyed by an override id NOW, so a
+// mode change re-routes immediately (canRenderAsMask() is consulted at batch build;
+// the global flag only takes effect lazily). The id may be an object ROOT id (rebuild
+// the whole linkset) or an AVATAR id (rebuild every non-HUD attachment's linkset).
+// All drawable derefs are null-guarded.
+static void bdmerge_rebuild_for_alpha_target(const LLUUID& id)
+{
+    if (id.isNull())
+        return;
+    LLViewerObject* obj = gObjectList.findObject(id);
+    if (!obj)
+        return;
+
+    if (LLVOAvatar* av = obj->asAvatar())
+    {
+        // Avatar id: re-route every attachment (and its linkset children).
+        for (LLVOAvatar::attachment_map_t::iterator it = av->mAttachmentPoints.begin();
+             it != av->mAttachmentPoints.end(); ++it)
+        {
+            LLViewerJointAttachment* attachment = it->second;
+            if (!attachment)
+                continue;
+            for (LLViewerJointAttachment::attachedobjs_vec_t::iterator ait = attachment->mAttachedObjects.begin();
+                 ait != attachment->mAttachedObjects.end(); ++ait)
+            {
+                LLViewerObject* att = ait->get();
+                if (!att)
+                    continue;
+                if (att->mDrawable.notNull())
+                    gPipeline.markRebuild(att->mDrawable, LLDrawable::REBUILD_ALL);
+                for (const LLPointer<LLViewerObject>& child : att->getChildren())
+                {
+                    if (child.notNull() && child->mDrawable.notNull())
+                        gPipeline.markRebuild(child->mDrawable, LLDrawable::REBUILD_ALL);
+                }
+            }
+        }
+        return;
+    }
+
+    // Object id: rebuild this object and its linkset children.
+    if (obj->mDrawable.notNull())
+        gPipeline.markRebuild(obj->mDrawable, LLDrawable::REBUILD_ALL);
+    for (const LLPointer<LLViewerObject>& child : obj->getChildren())
+    {
+        if (child.notNull() && child->mDrawable.notNull())
+            gPipeline.markRebuild(child->mDrawable, LLDrawable::REBUILD_ALL);
+    }
+}
+
+// [BDMerge G2.3 per-target] Session-only per-object/per-avatar alpha-mode override.
+// mode 0 ERASES the entry (back to Default); 1/2 insert/overwrite. After changing we
+// re-route the affected geometry so the change is visible immediately.
+void LLPipeline::setAlphaModeOverride(const LLUUID& id, S32 mode)
+{
+    if (id.isNull())
+        return;
+    if (mode == 0)
+    {
+        auto it = sAlphaModeOverride.find(id);
+        if (it != sAlphaModeOverride.end())
+            sAlphaModeOverride.erase(it);
+    }
+    else
+    {
+        sAlphaModeOverride[id] = mode;
+    }
+    bdmerge_rebuild_for_alpha_target(id);
+}
+
+S32 LLPipeline::getAlphaModeOverride(const LLUUID& id)
+{
+    if (sAlphaModeOverride.empty() || id.isNull())
+        return 0;
+    auto it = sAlphaModeOverride.find(id);
+    return (it != sAlphaModeOverride.end()) ? it->second : 0;
+}
+
+// Object-specific override beats avatar-wide: OBJECT override wins if present
+// (non-0); else the AVATAR override; else 0 (no override).
+S32 LLPipeline::resolveAlphaMode(const LLUUID& objRootId, const LLUUID& avatarId)
+{
+    if (sAlphaModeOverride.empty())
+        return 0;
+    S32 objMode = getAlphaModeOverride(objRootId);
+    if (objMode != 0)
+        return objMode;
+    return getAlphaModeOverride(avatarId);
 }
 
 // Match the light-source prim's own ID and its root-edit ID (the context menu

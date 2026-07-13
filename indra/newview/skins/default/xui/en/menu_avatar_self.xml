@@ -295,6 +295,51 @@
        <menu_item_call.on_click
         function="Avatar.ResetSkeletonAndAnimations" />
   </menu_item_call>
+  <!-- [BDMerge G2.3 per-target] avatar-wide session alpha-mode override for ALL of my
+       attachments (a per-object override still beats it). Default = stock + global;
+       Force Mask routes their alpha faces through the masked path; Force Blend forces
+       real transparency. Client-side, session-only. -->
+  <context_menu
+   label="Attachments Alpha"
+   layout="topleft"
+   name="Attachments Alpha">
+    <menu_item_check
+      label="Default"
+      name="Self Alpha Default">
+      <menu_item_check.on_click
+        function="Avatar.AlphaMode"
+        parameter="0" />
+      <menu_item_check.on_check
+        function="Avatar.CheckAlphaMode"
+        parameter="0" />
+      <menu_item_check.on_enable
+        function="Avatar.EnableAlphaMode" />
+    </menu_item_check>
+    <menu_item_check
+      label="Force Mask"
+      name="Self Alpha Force Mask">
+      <menu_item_check.on_click
+        function="Avatar.AlphaMode"
+        parameter="1" />
+      <menu_item_check.on_check
+        function="Avatar.CheckAlphaMode"
+        parameter="1" />
+      <menu_item_check.on_enable
+        function="Avatar.EnableAlphaMode" />
+    </menu_item_check>
+    <menu_item_check
+      label="Force Blend"
+      name="Self Alpha Force Blend">
+      <menu_item_check.on_click
+        function="Avatar.AlphaMode"
+        parameter="2" />
+      <menu_item_check.on_check
+        function="Avatar.CheckAlphaMode"
+        parameter="2" />
+      <menu_item_check.on_enable
+        function="Avatar.EnableAlphaMode" />
+    </menu_item_check>
+  </context_menu>
     <menu_item_call
 		 label="Debug Textures"
          name="Debug...">

@@ -193,6 +193,20 @@ public:
     // shaft-flag id the render loops resolve.
     static void  toggleHeroProjector(const LLUUID& id);
     static bool  isHeroProjector(const LLUUID& id);
+
+    // [BDMerge G2.3 per-target] Session-only per-object / per-avatar alpha-mode
+    // override. Value = mode: 0 = Default (stock + global BDMergeForceAlphaMask
+    // behavior), 1 = Force Mask (route this target's alpha faces through the
+    // masked path), 2 = Force Blend (force real alpha blending, overriding stock
+    // heuristics AND the global force-mask). Keyed by object ROOT id or AVATAR id.
+    // Purely client-side render state - works on any owner / no-mod content, needs
+    // no ObjectProperties. NOT persisted - cleared on relog via
+    // clearVolumetricShafts(). See llface.cpp canRenderAsMask() for the routing.
+    static void  setAlphaModeOverride(const LLUUID& id, S32 mode);
+    static S32   getAlphaModeOverride(const LLUUID& id);
+    // Object override wins if present (non-0); else avatar override; else 0.
+    static S32   resolveAlphaMode(const LLUUID& objRootId, const LLUUID& avatarId);
+
     void applyFXAA(LLRenderTarget* src, LLRenderTarget* dst);
     void generateSMAABuffers(LLRenderTarget* src);
     void applySMAA(LLRenderTarget* src, LLRenderTarget* dst);
@@ -1359,6 +1373,11 @@ public:
     // instead (see toggleHeroProjector/isHeroProjector; cleared in
     // clearVolumetricShafts). Not persisted.
     static std::set<LLUUID> sHeroProjectors;
+
+    // [BDMerge G2.3 per-target] session-only per-object/per-avatar alpha-mode
+    // override map (0=Default, 1=Force Mask, 2=Force Blend). Keyed by object ROOT
+    // id or AVATAR id. Not persisted; cleared on relog via clearVolumetricShafts().
+    static std::map<LLUUID, S32> sAlphaModeOverride;
 
     // [BDMerge G3.3 Batch 1 C] Session-only PER-PROJECTOR art-direction overrides.
     // When a flagged projector has an override, the render loop uses these values

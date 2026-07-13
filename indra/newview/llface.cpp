@@ -1196,6 +1196,38 @@ bool LLFace::canRenderAsMask()
     // content. Faces with a transparency percentage (color alpha < 1) or
     // glow still need real blending and are left alone. The global cutoff
     // for forced faces is applied at batch build (llvovolume genDrawInfo).
+    // [BDMerge G2.3 per-target] Session-only per-object / per-avatar override, keyed
+    // by object ROOT id (object-wide) or the wearer's AVATAR id (all attachments).
+    // Resolved FIRST, before the global flag: an explicit choice wins over the hammer.
+    //   mode 1 = Force Mask: behave like the global force path (route to masked) but
+    //            still respect the physical guards (opaque color + no glow) - a
+    //            translucent/glowing face genuinely can't be masked, so on guard-fail
+    //            we fall through to stock. Unlike the global flag, an EXPLICIT per-
+    //            target Force Mask also masks RIGGED faces (the user deliberately chose
+    //            it), so it overrides the "never auto-mask rigged" exclusion below.
+    //   mode 2 = Force Blend: return false immediately - forces real alpha blending,
+    //            overriding BOTH stock heuristics AND the global force-mask (the escape
+    //            hatch for a face the global mask over-masks). Applies to rigged too.
+    //   mode 0 = no override: fall straight through to the existing logic unchanged
+    //            (byte-identical to stock when nothing is set).
+    {
+        LLViewerObject* vobj = getViewerObject();
+        LLUUID objId = vobj ? vobj->getRootEdit()->getID() : LLUUID::null;
+        LLUUID avId  = (vobj && vobj->getAvatar()) ? vobj->getAvatar()->getID() : LLUUID::null;
+        S32 mode = LLPipeline::resolveAlphaMode(objId, avId);
+        if (mode == 2)
+        {   // Force Blend - real transparency, overriding stock + global mask + rigged.
+            return false;
+        }
+        if (mode == 1
+            && te->getColor().mV[3] == 1.0f
+            && te->getGlow() == 0.f)
+        {   // Force Mask - explicit, so it masks rigged faces too (deviation from the
+            // global flag's rigged exclusion). Guard-fail falls through to stock.
+            return true;
+        }
+    }
+
     static LLCachedControl<bool> force_mask(gSavedSettings, "BDMergeForceAlphaMask", false);
     static LLCachedControl<bool> force_mask_rigged(gSavedSettings, "BDMergeForceAlphaMaskRigged", false);
     if (force_mask
