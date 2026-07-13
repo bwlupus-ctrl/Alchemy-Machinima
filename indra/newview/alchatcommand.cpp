@@ -56,7 +56,10 @@ bool ALChatCommand::parseCommand(std::string data)
     static LLCachedControl<bool> enableChatCmd(gSavedSettings, "AlchemyChatCommandEnable", true);
     if (enableChatCmd)
     {
-        utf8str_tolower(data);
+        data = utf8str_tolower(data);   // [BDMerge fix] utf8str_tolower RETURNS the
+        // lowercased string - it does not mutate in place. The result was being
+        // discarded, so any capitalized command (/Calc, /PLAT) failed to match and
+        // got sent as chat. Assign it back so commands are case-insensitive as intended.
         std::istringstream input(data);
         std::string cmd;
 
