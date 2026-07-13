@@ -606,7 +606,16 @@ namespace
         if (hSel.isNull())
             return nullptr;
 
-        for (LLObjectSelection::valid_iterator itObj = hSel->valid_begin(), endObj = hSel->valid_end();
+        // [BDMerge fix] Iterate the RAW selection (begin/end = object-non-null only),
+        // NOT valid_begin/valid_end. `mValid` is set only after the server's
+        // ObjectProperties reply arrives, which for a right-click selection of another
+        // person's NO-MOD object typically never comes - so valid_* was empty and this
+        // enable gate greyed the item for any light that isn't yours (reported
+        // in-world). Volumetric Shaft / Hero Beam are purely CLIENT-SIDE, session-only
+        // render toggles keyed by UUID; they touch nothing on the object and need no
+        // properties/permissions - only that it renders as a spotlight (client data
+        // available for everything you can see). Ownership/mod is irrelevant.
+        for (LLObjectSelection::iterator itObj = hSel->begin(), endObj = hSel->end();
              itObj != endObj; ++itObj)
         {
             const LLSelectNode* pNode = *itObj;
