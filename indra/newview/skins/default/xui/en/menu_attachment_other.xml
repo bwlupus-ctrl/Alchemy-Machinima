@@ -3,6 +3,48 @@
 <context_menu
  layout="topleft"
  name="Avatar Attachment Pie">
+  <context_menu
+    label="Alpha Mode"
+    name="Alpha Mode">
+    <menu_item_check
+        label="Default"
+        name="Object Alpha Default">
+      <menu_item_check.on_click
+          function="Object.AlphaMode"
+          parameter="0" />
+      <menu_item_check.on_check
+          function="Object.CheckAlphaMode"
+          parameter="0" />
+      <menu_item_check.on_enable
+          function="Object.EnableAlphaMode" />
+    </menu_item_check>
+    <menu_item_check
+        label="Force Mask"
+        name="Object Alpha Force Mask">
+      <menu_item_check.on_click
+          function="Object.AlphaMode"
+          parameter="1" />
+      <menu_item_check.on_check
+          function="Object.CheckAlphaMode"
+          parameter="1" />
+      <menu_item_check.on_enable
+          function="Object.EnableAlphaMode" />
+    </menu_item_check>
+    <menu_item_check
+        label="Force Blend"
+        name="Object Alpha Force Blend">
+      <menu_item_check.on_click
+          function="Object.AlphaMode"
+          parameter="2" />
+      <menu_item_check.on_check
+          function="Object.CheckAlphaMode"
+          parameter="2" />
+      <menu_item_check.on_enable
+          function="Object.EnableAlphaMode" />
+    </menu_item_check>
+  </context_menu>
+    <menu_item_separator layout="topleft" />
+
   <menu_item_call
    label="View Profile"
    name="Profile...">
