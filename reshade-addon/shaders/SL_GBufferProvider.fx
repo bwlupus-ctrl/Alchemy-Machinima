@@ -65,8 +65,16 @@ void SL_FullscreenVS(in uint id : SV_VertexID,
 #define SL_NORMAL_FLIP_Z 1
 #endif
 
-// Diagnostic: paint the screen with what iMMERSE will actually read back AFTER
-// our write — ground truth for what RTGI consumes.
+// Diagnostic view. Set SL_ENABLE_DEBUG to 0 for a production build to compile
+// out the readback pass entirely (saves a fullscreen pass; the provider then has
+// no on-screen output, which is the intended steady state).
+#ifndef SL_ENABLE_DEBUG
+#define SL_ENABLE_DEBUG 1
+#endif
+
+#if SL_ENABLE_DEBUG
+// Paint the screen with what iMMERSE will actually read back AFTER our write —
+// ground truth for what RTGI consumes.
 //   Normals: compare vs SL_BridgeDebug "Normals (decoded)" — same R/G with BLUE
 //            inverted = correct (Z-flip); blocky depth-normals = wrong ORDER.
 //   Motion:  hue = direction, brightness = speed. Pan the camera and compare to
@@ -77,6 +85,7 @@ uniform int SL_DEBUG_VIEW <
     ui_items = "Off\0Normals iMMERSE receives\0Motion iMMERSE receives\0";
     ui_label = "DEBUG view";
 > = 0;
+#endif
 
 // Motion conversion (live-tunable so you can dial signs without a reload).
 // SL velocity = (cur_ndc - last_ndc), NDC space, forward. iMMERSE wants
@@ -161,6 +170,7 @@ void PS_ProvideMotion(in float4 vpos : SV_Position, in float2 uv : TEXCOORD,
 }
 #endif
 
+#if SL_ENABLE_DEBUG
 // Diagnostic pass: reads back what we wrote (via iMMERSE's own accessors) and
 // paints it to the backbuffer. Discards when Off (no-op).
 float3 PS_ShowReceived(in float4 vpos : SV_Position, in float2 uv : TEXCOORD) : SV_Target
@@ -183,6 +193,7 @@ float3 PS_ShowReceived(in float4 vpos : SV_Position, in float2 uv : TEXCOORD) : 
     }
     return o;
 }
+#endif // SL_ENABLE_DEBUG
 
 technique SL_GBufferProvider <
     ui_tooltip = "Overrides iMMERSE normals with real SL G-buffer normals from "
@@ -205,11 +216,13 @@ technique SL_GBufferProvider <
         RenderTarget = Deferred::MotionVectorsTex;
     }
 #endif
+#if SL_ENABLE_DEBUG
     // must be LAST so it reads the final NormalsTexV3; writes backbuffer only
-    // when SL_DEBUG_VIEW is not Off.
+    // when SL_DEBUG_VIEW is not Off. Compiles out entirely when SL_ENABLE_DEBUG=0.
     pass ShowReceived
     {
         VertexShader = SL_FullscreenVS;
         PixelShader  = PS_ShowReceived;
     }
+#endif
 }

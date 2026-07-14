@@ -65,9 +65,31 @@ normals so RTGI/MXAO use true geometry instead of depth-derived normals.
   (`SL_NORMAL_FLIP_Z`, default 1; flip to 0 if RTGI lighting looks inverted).
 - **Safety:** if the add-on isn't feeding, every pixel discards → pure no-op,
   RTGI falls back to Launchpad normals.
-- **Motion:** `SL_PROVIDE_MOTION` (default 0) writes `Deferred::MotionVectorsTex`
-  from the velocity buffer — leave off until `BDMergeVelocityBuffer` motion is
-  validated in-world.
+- **Motion:** `SL_PROVIDE_MOTION` (default 1) writes `Deferred::MotionVectorsTex`
+  from the velocity buffer. Enable `BDMergeVelocityBuffer` in the viewer to feed
+  it; the pass discards where the velocity delta is zero, so it is a no-op when
+  the buffer is off. Tune sign/scale live via the Motion controls.
+
+## Recommended Launchpad settings (performance)
+
+Because the provider **overwrites** Launchpad's motion and detail normals, you
+otherwise pay for work that is immediately thrown away. Launchpad is proprietary
+(do NOT modify it); instead reclaim the cost through its own UI:
+
+- **Motion Estimation → Flow Quality → `Low`.** Its optical-flow result is
+  discarded and replaced by our real motion, so there's no reason to pay for a
+  high-quality estimate. Reclaims most of Launchpad's per-frame cost.
+- **Normal Maps → Enable Texture Normals → `Off`.** It estimates fake relief
+  into the XY normals we then overwrite with real ones — pure waste.
+- **Normal Maps → Enable Smooth Normals → `On`.** Keep this; it smooths the ZW
+  geometry normals the provider deliberately preserves, improving RTGI stability.
+
+(Launchpad still allocates its flow buffers regardless of quality, so this
+recovers GPU time, not memory. Modifying Launchpad to drop them is not permitted
+by its license.)
+
+For a lean production build set `SL_ENABLE_DEBUG = 0` (global preprocessor
+definition) to compile out the on-screen debug readback pass entirely.
 
 ## Building
 
