@@ -443,6 +443,15 @@ static void on_reloaded_effects(effect_runtime *runtime)
 
 static void do_begin_effects(effect_runtime *runtime, command_list *cmd)
 {
+    // Fault-isolation probes (compile with /DSL_PROBE=N):
+    //   1 = events registered but begin_effects does NOTHING
+    //   2 = only resolves+reads the viewer frame, no GL work
+    // If the overlay dies even at probe 1, the problem is registration itself
+    // (or another addon interaction); if it dies first at 2, it's the viewer
+    // export call; if only at full, it's our GL work.
+#if defined(SL_PROBE) && SL_PROBE == 1
+    return;
+#endif
     // Multi-context guard: the viewer runs several GL contexts (main + a
     // worker sharing 0x20000); ReShade can host runtimes on more than one.
     // Our slot resources belong to exactly ONE device -- if this callback
@@ -472,6 +481,10 @@ static void do_begin_effects(effect_runtime *runtime, command_list *cmd)
     {
         return;
     }
+
+#if defined(SL_PROBE) && SL_PROBE == 2
+    return;   // probe 2: viewer export called + frame read, but no GL work
+#endif
 
     // Same frame republished (paused / minimized)? Uniforms are cheap; still
     // push them (effects may reload between viewer frames), but skip copies.
