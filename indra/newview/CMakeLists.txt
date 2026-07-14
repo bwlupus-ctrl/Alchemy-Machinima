@@ -726,6 +726,7 @@ set(viewer_SOURCE_FILES
     llregioninfomodel.cpp
     llregionposition.cpp
     llremoteparcelrequest.cpp
+    llreshadebridge.cpp
     llsaveoutfitcombobtn.cpp
     llscenemonitor.cpp
     llsceneview.cpp
@@ -1505,6 +1506,8 @@ set(viewer_HEADER_FILES
     llregioninfomodel.h
     llregionposition.h
     llremoteparcelrequest.h
+    llreshadebridge.h
+    llreshadebridgeabi.h
     llresourcedata.h
     llrootview.h
     llsaveoutfitcombobtn.h

@@ -156,6 +156,12 @@ public:
     U32 getTexture(U32 attachment = 0) const;
     U32 getNumTextures() const;
 
+    //GL internal format of a color attachment (0 if no such attachment)
+    U32 getInternalFormat(U32 attachment = 0) const
+    {
+        return attachment < mInternalFormat.size() ? mInternalFormat[attachment] : 0;
+    }
+
     U32 getDepth(void) const { return mDepth; }
     bool hasStencil() const { return mStencil; }
     eDepthFormat getDepthFormat() const { return mDepthFormat; }
