@@ -125,9 +125,16 @@ static const SLReShadeTexture *pick_colorhdr(const SLReShadeFrame &f) { return &
 struct BridgeState
 {
     effect_runtime      *runtime = nullptr;
+    device              *dev = nullptr;      // device our slot resources belong to
     SLReShade_GetFrame_t get_frame = nullptr;
     bool                 export_missing_logged = false;
     uint64_t             last_frame_counter = ~0ull;
+
+    // Crash containment: if any of our GL work faults (multi-context churn,
+    // stale handles, driver quirk), we log it and go permanently inert for the
+    // session instead of taking ReShade's hook down (the "soft-crash").
+    volatile bool        dead = false;
+    const char          *stage = "idle";     // breadcrumb for the fault log
 
     GBufferSlot slots[5] = {
         { "SL_NORMALS",   &pick_normals  },
@@ -290,7 +297,9 @@ static void update_slot(GBufferSlot &slot, const SLReShadeTexture &src_tex,
     if (slot.dest == 0 || slot.width != src_tex.width ||
         slot.height != src_tex.height || slot.fmt != want)
     {
+        g.stage = "destroy_stale_slot";
         slot.destroy(dev);
+        g.stage = "create_resource";
 
         const resource_desc desc(
             src_tex.width, src_tex.height, 1 /*layers*/, 1 /*levels*/, want,
@@ -305,6 +314,7 @@ static void update_slot(GBufferSlot &slot, const SLReShadeTexture &src_tex,
             slot.dest = { 0 };
             return;
         }
+        g.stage = "create_resource_view";
         if (!dev->create_resource_view(slot.dest, resource_usage::shader_resource,
                                        resource_view_desc(want), &slot.dest_srv))
         {
@@ -319,6 +329,7 @@ static void update_slot(GBufferSlot &slot, const SLReShadeTexture &src_tex,
         slot.fmt    = want;
 
         // Bind the (new) SRV to the semantic for all loaded effects.
+        g.stage = "update_texture_bindings";
         runtime->update_texture_bindings(slot.semantic, slot.dest_srv, slot.dest_srv);
         logf(reshade::log::level::info,
              "[SLBridge] %s: bound %ux%u fmt %d (src GL %u)",
@@ -327,11 +338,13 @@ static void update_slot(GBufferSlot &slot, const SLReShadeTexture &src_tex,
 
     // Copy viewer texture -> our immutable texture. Source completeness is
     // irrelevant for copies (only sampling needs mip-complete textures).
+    g.stage = "copy_texture_region";
     const resource src = wrap_gl_texture(src_tex.gl_name);
     cmd->barrier(slot.dest, resource_usage::shader_resource, resource_usage::copy_dest);
     cmd->copy_texture_region(src, 0, nullptr, slot.dest, 0, nullptr,
                              filter_mode::min_mag_mip_point);
     cmd->barrier(slot.dest, resource_usage::copy_dest, resource_usage::shader_resource);
+    g.stage = "post_copy";
 }
 
 // -----------------------------------------------------------------------------
@@ -388,19 +401,37 @@ static void on_destroy_effect_runtime(effect_runtime *runtime)
     {
         return;
     }
-    device *dev = runtime->get_device();
+    // CRITICAL: do NOT call destroy_resource here. destroy_effect_runtime fires
+    // during the viewer's GL context teardown (wglDeleteContext, e.g. on world
+    // entry) where the owning context may no longer be current -- issuing
+    // glDeleteTextures then faults and takes ReShade's runtime down with it
+    // (soft-crash: overlay dies, game keeps rendering via passthrough).
+    // The context's own destruction frees these textures; we just drop handles.
+    // (Resize/format changes still destroy safely in update_slot, where the
+    // context is current.) Mirrors on_init_effect_runtime's handling.
     for (GBufferSlot &s : g.slots)
     {
-        s.destroy(dev);
+        s.dest = { 0 }; s.dest_srv = { 0 };
+        s.width = s.height = 0; s.fmt = format::unknown;
     }
     g.uniforms.clear();
     g.runtime = nullptr;
+    g.dev = nullptr;
 }
 
 static void on_reloaded_effects(effect_runtime *runtime)
 {
+    if (g.dead)
+    {
+        return;
+    }
     g.uniforms_dirty = true;
     // Re-issue semantic bindings: effect reload resets texture bindings.
+    // Only if the SRVs belong to this runtime's device (multi-context guard).
+    if (runtime->get_device() != g.dev)
+    {
+        return;
+    }
     for (GBufferSlot &s : g.slots)
     {
         if (s.dest_srv != 0)
@@ -410,9 +441,32 @@ static void on_reloaded_effects(effect_runtime *runtime)
     }
 }
 
-static void on_begin_effects(effect_runtime *runtime, command_list *cmd,
-                             resource_view /*rtv*/, resource_view /*rtv_srgb*/)
+static void do_begin_effects(effect_runtime *runtime, command_list *cmd)
 {
+    // Multi-context guard: the viewer runs several GL contexts (main + a
+    // worker sharing 0x20000); ReShade can host runtimes on more than one.
+    // Our slot resources belong to exactly ONE device -- if this callback
+    // arrives on a different device, drop the handles (no GL destroy; wrong
+    // context) and rebuild everything on the presenting device.
+    g.stage = "device_key";
+    device *dev = runtime->get_device();
+    if (g.dev != dev)
+    {
+        for (GBufferSlot &s : g.slots)
+        {
+            s.dest = { 0 }; s.dest_srv = { 0 };
+            s.width = s.height = 0; s.fmt = format::unknown;
+        }
+        g.uniforms_dirty = true;
+        if (g.dev != nullptr)
+        {
+            logf(reshade::log::level::info,
+                 "[SLBridge] runtime device changed -- rebuilding resources");
+        }
+        g.dev = dev;
+    }
+
+    g.stage = "read_frame";
     SLReShadeFrame f;
     if (!read_viewer_frame(f) || !(f.flags & SLRESHADE_FLAG_VALID))
     {
@@ -434,8 +488,10 @@ static void on_begin_effects(effect_runtime *runtime, command_list *cmd,
 
     if (g.uniforms_dirty)
     {
+        g.stage = "rebuild_uniforms";
         rebuild_uniform_cache(runtime);
     }
+    g.stage = "push_uniforms";
     float scratch[16];
     for (const BridgeState::UniformTarget &u : g.uniforms)
     {
@@ -444,6 +500,33 @@ static void on_begin_effects(effect_runtime *runtime, command_list *cmd,
         {
             runtime->set_uniform_value_float(u.var, data, kUniformSources[u.source].count);
         }
+    }
+    g.stage = "idle";
+}
+
+// SEH-guarded wrapper: whatever faults inside our per-frame work, log the
+// exception code + the stage breadcrumb and permanently self-disable -- the
+// bridge goes inert but ReShade's hook SURVIVES (no more silent soft-crash).
+// NOTE: this function must contain no C++ objects needing unwinding (C2712).
+static void on_begin_effects(effect_runtime *runtime, command_list *cmd,
+                             resource_view /*rtv*/, resource_view /*rtv_srgb*/)
+{
+    if (g.dead)
+    {
+        return;
+    }
+    unsigned long code = 0;
+    __try
+    {
+        do_begin_effects(runtime, cmd);
+    }
+    __except ((code = GetExceptionCode()), EXCEPTION_EXECUTE_HANDLER)
+    {
+        g.dead = true;
+        logf(reshade::log::level::error,
+             "[SLBridge] FATAL: exception 0x%08lX at stage '%s' -- bridge "
+             "self-disabled for this session (ReShade keeps running)",
+             code, g.stage);
     }
 }
 
