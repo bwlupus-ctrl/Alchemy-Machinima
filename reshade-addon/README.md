@@ -69,6 +69,11 @@ normals so RTGI/MXAO use true geometry instead of depth-derived normals.
   from the velocity buffer. Enable `BDMergeVelocityBuffer` in the viewer to feed
   it; the pass discards where the velocity delta is zero, so it is a no-op when
   the buffer is off. Tune sign/scale live via the Motion controls.
+- **Albedo:** `SL_PROVIDE_ALBEDO` (default 1) writes `Deferred::AlbedoTex` with
+  real unlit surface color so RTGI bounces true colored light instead of
+  Launchpad's lit-backbuffer estimate. Discards on black (no-op when unbound).
+  If colored bounce looks too dark/saturated, set `SL_ALBEDO_TO_LINEAR = 1`
+  (SL gbuffer albedo is sRGB-encoded). Validate via DEBUG view → "Albedo".
 
 ## Recommended Launchpad settings (performance)
 

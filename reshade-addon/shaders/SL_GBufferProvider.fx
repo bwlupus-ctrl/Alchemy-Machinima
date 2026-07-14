@@ -57,6 +57,20 @@ void SL_FullscreenVS(in uint id : SV_VertexID,
 #define SL_PROVIDE_MOTION 1
 #endif
 
+// Provide real unlit albedo into Deferred::AlbedoTex so RTGI bounces true
+// surface color (colored GI) instead of Launchpad's lit-backbuffer estimate.
+// Safe: discards where the SL albedo is exactly black (unbound bridge → no-op).
+#ifndef SL_PROVIDE_ALBEDO
+#define SL_PROVIDE_ALBEDO 1
+#endif
+
+// iMMERSE mixes albedo with linear GI, so it wants LINEAR albedo. If colored
+// bounce looks too dark/saturated, the SL gbuffer albedo is sRGB-encoded — set
+// this to 1 to convert sRGB->linear. Validate live via the albedo debug view.
+#ifndef SL_ALBEDO_TO_LINEAR
+#define SL_ALBEDO_TO_LINEAR 0
+#endif
+
 // GL eye-space (SL, right-handed, camera looks down -Z) → iMMERSE/D3D view-space
 // (left-handed, camera looks down +Z) is a Z negate. This is the one piece that
 // warrants in-world confirmation: if RTGI lighting/AO looks inverted (light from
@@ -82,7 +96,7 @@ void SL_FullscreenVS(in uint id : SV_VertexID,
 //            should point the SAME way. Opposite hue => flip a Motion axis below.
 uniform int SL_DEBUG_VIEW <
     ui_type = "combo";
-    ui_items = "Off\0Normals iMMERSE receives\0Motion iMMERSE receives\0";
+    ui_items = "Off\0Normals iMMERSE receives\0Motion iMMERSE receives\0Albedo iMMERSE receives\0";
     ui_label = "DEBUG view";
 > = 0;
 #endif
@@ -170,6 +184,30 @@ void PS_ProvideMotion(in float4 vpos : SV_Position, in float2 uv : TEXCOORD,
 }
 #endif
 
+#if SL_PROVIDE_ALBEDO
+sampler SL_sAlbedoPoint
+{
+    Texture = SLAlbedoTex;
+    MinFilter = POINT; MagFilter = POINT; MipFilter = POINT;
+    AddressU = CLAMP; AddressV = CLAMP;
+};
+
+// RenderTarget is Deferred::AlbedoTex (RGBA16F, full-res). DISCARD where the SL
+// albedo is exactly black — that keeps Launchpad's albedo on unwritten pixels
+// (sky) and makes the pass a no-op when the bridge isn't feeding.
+void PS_ProvideAlbedo(in float4 vpos : SV_Position, in float2 uv : TEXCOORD,
+                      out float3 o : SV_Target)
+{
+    float3 a = tex2Dlod(SL_sAlbedoPoint, float4(SL_UV(uv), 0, 0)).rgb;
+    if (a.r == 0.0 && a.g == 0.0 && a.b == 0.0)
+        discard;
+#if SL_ALBEDO_TO_LINEAR
+    a = pow(a, 2.2);   // sRGB -> approx linear
+#endif
+    o = a;
+}
+#endif
+
 #if SL_ENABLE_DEBUG
 // Diagnostic pass: reads back what we wrote (via iMMERSE's own accessors) and
 // paints it to the backbuffer. Discards when Off (no-op).
@@ -186,6 +224,10 @@ float3 PS_ShowReceived(in float4 vpos : SV_Position, in float2 uv : TEXCOORD) : 
         float  ang = atan2(m.y, m.x);
         float3 rgb = saturate(3.0 * abs(2.0 * frac(ang / 6.2831853 + float3(0.0, -1.0/3.0, 1.0/3.0)) - 1.0) - 1.0);
         o = lerp(0.5, rgb, saturate(length(m) * 250.0));
+    }
+    else if (SL_DEBUG_VIEW == 3)     // albedo iMMERSE receives (unlit surface color)
+    {
+        o = Deferred::get_albedo(uv);
     }
     else                             // Off → don't touch the backbuffer
     {
@@ -214,6 +256,14 @@ technique SL_GBufferProvider <
         VertexShader = SL_FullscreenVS;
         PixelShader  = PS_ProvideMotion;
         RenderTarget = Deferred::MotionVectorsTex;
+    }
+#endif
+#if SL_PROVIDE_ALBEDO
+    pass ProvideAlbedo
+    {
+        VertexShader = SL_FullscreenVS;
+        PixelShader  = PS_ProvideAlbedo;
+        RenderTarget = Deferred::AlbedoTex;
     }
 #endif
 #if SL_ENABLE_DEBUG
