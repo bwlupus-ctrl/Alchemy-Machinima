@@ -303,7 +303,7 @@ static void update_slot(GBufferSlot &slot, const SLReShadeTexture &src_tex,
 
         const resource_desc desc(
             src_tex.width, src_tex.height, 1 /*layers*/, 1 /*levels*/, want,
-            1 /*samples*/, memory_heap::default_,
+            1 /*samples*/, memory_heap::gpu_only,   // ("default_" in newer SDKs)
             resource_usage::shader_resource | resource_usage::copy_dest);
 
         if (!dev->create_resource(desc, nullptr, resource_usage::shader_resource, &slot.dest))
