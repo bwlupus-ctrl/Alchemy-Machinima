@@ -154,6 +154,27 @@ fallback, so the `PS_ProvideAlbedo` `discard` should then be removed (write the
 value). Only worth it if you always run with `BDMergeVelocityBuffer` on and the
 bridge feeding. Left as opt-in because the overlay form is safer.
 
+## 3b. Put SL_Bridge.fxh NEXT TO Launchpad (important)
+
+Launchpad lives in `Shaders\iMMERSE\` but `SL_Bridge.fxh` typically sits in
+`Shaders\`. Resolving `#include "SL_Bridge.fxh"` then relies on ReShade's
+search-path include resolution, which can **intermittently fail on reload**
+(seen in ReShade.log as `error X3004: undeclared identifier 'SLNormalsTex' /
+'SL_UV'`). When it fails the whole file fails to compile, so Launchpad AND the
+`SL_Bridge_Debug` technique vanish from the list. Fix: keep a copy of
+`SL_Bridge.fxh` in `Shaders\iMMERSE\` (next to Launchpad) so the include
+resolves relative-to-file. Keep it in sync with the `Shaders\` copy the
+standalone effects use.
+
+## 3c. Using the SL_Bridge_Debug view (two gotchas)
+
+- Its control is the **`DEBUG view` combo under the MartysMods_Launchpad effect
+  settings** (category "Second Life Bridge") — NOT under the SL_Bridge_Debug
+  entry (both techniques share one .fx's uniforms). Set it there.
+- `SL_Bridge_Debug` must be the **absolute last enabled effect** — it paints the
+  backbuffer, so anything below it overwrites the debug output. If unsure,
+  temporarily disable every other effect except Launchpad + SL_Bridge_Debug.
+
 ## 4. Notes carried over
 
 - With OF removed, there is **no motion fallback** — `BDMergeVelocityBuffer`
