@@ -10,7 +10,15 @@
 #include <charconv>
 
 // Current version of the ReShade API
+// LOCAL CHANGE (alchemy): made overridable so the build can REQUEST an older API
+// than these headers describe. The installed ReShade only supports API 18, and
+// register_addon() fails hard on a newer request ("requested API version (20) is
+// not supported (18)"), so the add-on must ask for 18. This is safe as long as we
+// only call API-18-era methods -- ReShade appends new vtable entries, so existing
+// indices stay valid. See reshade-addon/CMakeLists.txt (RESHADE_API_VERSION).
+#ifndef RESHADE_API_VERSION
 #define RESHADE_API_VERSION 20
+#endif
 
 // Optionally import ReShade API functions when 'RESHADE_API_LIBRARY' is defined instead of using header-only mode
 #if defined(RESHADE_API_LIBRARY) || defined(RESHADE_API_LIBRARY_EXPORT)

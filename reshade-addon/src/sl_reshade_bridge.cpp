@@ -76,6 +76,15 @@ static format map_gl_internal_format(uint32_t glfmt)
     {
     case 0x1908 /* GL_RGBA (unsized; driver resolves to RGBA8) */:
     case 0x8058 /* GL_RGBA8      */: return format::r8g8b8a8_unorm;
+    // The viewer's deferredScreen (=> SL_ALBEDO, attachment 0) is allocated
+    // GL_SRGB8_ALPHA8 (pipeline.cpp: deferredScreen.allocate(..., GL_SRGB8_ALPHA8)).
+    // This was UNMAPPED -> format::unknown -> the ALBEDO slot silently disabled
+    // itself, SLAlbedoTex read all-zero, PS_ProvideAlbedo discarded every pixel,
+    // and iMMERSE fell back to Launchpad's *estimated* albedo for the whole
+    // session. Mapping it to the _srgb view means the hardware decodes sRGB->
+    // linear on sample, which is what iMMERSE wants (it mixes albedo with LINEAR
+    // GI) -- so SL_ALBEDO_TO_LINEAR must stay 0; setting it to 1 would decode twice.
+    case 0x8C43 /* GL_SRGB8_ALPHA8 */: return format::r8g8b8a8_unorm_srgb;
     case 0x805B /* GL_RGBA16     */: return format::r16g16b16a16_unorm;
     case 0x8059 /* GL_RGB10_A2   */: return format::r10g10b10a2_unorm;
     case 0x881A /* GL_RGBA16F    */: return format::r16g16b16a16_float;
@@ -111,6 +120,58 @@ struct GBufferSlot
     }
 };
 
+// -----------------------------------------------------------------------------
+// TRUE DEPTH -- replaces ReShade's built-in generic_depth heuristic.
+//
+// Bound DIRECTLY (no replicate/copy), unlike the colour G-buffer slots above:
+//   * depth<->colour copies are ILLEGAL (glCopyImageSubData requires a matching
+//     internal-format class), so the replicate path simply cannot carry depth;
+//   * the replicate path only exists to dodge GL mip-INcompleteness when
+//     sampling, which does not apply here -- the viewer allocates depth as a
+//     single-level NEAREST texture, so it is already complete and safe to
+//     sample in place.
+// This mirrors what generic_depth itself does, minus the guesswork: we bind the
+// viewer's real deferredScreen depth, so DEPTH is guaranteed to be the exact
+// buffer our normals/albedo/motion came from (no heuristic misdetection during
+// shadow / reflection-probe / impostor passes).
+//
+// REQUIRES the built-in "Generic depth" add-on to be DISABLED -- it rebinds the
+// DEPTH semantic every frame and would otherwise fight us for the binding.
+//
+// STATUS 2026-07-14: DISABLED (rolled back). The direct bind does NOT work --
+// create_resource_view() fails on the viewer's GL depth texture:
+//     "[SLBridge] DEPTH: create_resource_view failed for GL 3044 (fmt 0x81A6)"
+// Almost certainly because ReShade's GL backend builds views via glTextureView,
+// which requires IMMUTABLE storage (glTexStorage*), while LLRenderTarget
+// allocates with glTexImage2D (mutable). That is very likely the original reason
+// the colour slots replicate into add-on-OWNED textures (ReShade creates those
+// immutable, so they are viewable) rather than binding the source directly.
+//
+// => Direct-bind is a dead end. See doc/SL_TRUTH_RESHADE_BRIEF.md §2: the
+//    pre-compensated-depth design routes around this entirely, because the client
+//    writes depth into an R32F COLOUR texture, which rides the existing proven
+//    copy path and needs no view of a depth resource at all.
+//
+// Code kept (inert) as the delivery mechanism for that design.
+// Set SL_PROVIDE_DEPTH=1 only if the view problem is solved.
+// -----------------------------------------------------------------------------
+#ifndef SL_PROVIDE_DEPTH
+#define SL_PROVIDE_DEPTH 0
+#endif
+
+struct DepthSlot
+{
+    resource_view srv     = { 0 };
+    uint32_t      gl_name = 0;
+    uint32_t      width   = 0;
+    uint32_t      height  = 0;
+    bool          warned  = false;
+
+    // Drop handles WITHOUT a GL destroy (owning context gone / wrong device) --
+    // same rule as the colour slots, see on_destroy_effect_runtime.
+    void forget() { srv = { 0 }; gl_name = width = height = 0; }
+};
+
 static const SLReShadeTexture *pick_normals (const SLReShadeFrame &f) { return &f.normals;   }
 static const SLReShadeTexture *pick_motion  (const SLReShadeFrame &f) { return &f.motion;    }
 static const SLReShadeTexture *pick_albedo  (const SLReShadeFrame &f) { return &f.albedo;    }
@@ -143,6 +204,8 @@ struct BridgeState
         { "SL_ORM",       &pick_orm      },
         { "SL_COLOR_HDR", &pick_colorhdr },
     };
+
+    DepthSlot depth;   // ReShade's DEPTH semantic, bound direct (see DepthSlot)
 
     // uniform push list, rebuilt on effect (re)load
     struct UniformTarget
@@ -348,6 +411,70 @@ static void update_slot(GBufferSlot &slot, const SLReShadeTexture &src_tex,
 }
 
 // -----------------------------------------------------------------------------
+// Point ReShade's DEPTH semantic at the viewer's real depth buffer.
+// Cheap: only (re)creates the view when the source texture actually changes
+// (resize / RT rebuild); steady-state frames early-out.
+// -----------------------------------------------------------------------------
+#if SL_PROVIDE_DEPTH
+static void update_depth_binding(const SLReShadeTexture &src, effect_runtime *runtime)
+{
+    device *dev = runtime->get_device();
+
+    if (src.gl_name == 0 || src.width == 0 || src.height == 0)
+    {
+        // Not published this frame (RT rebuild in progress): keep the last good
+        // binding rather than dropping DEPTH to nothing.
+        return;
+    }
+
+    // Same source as last time -> existing view is still valid.
+    if (g.depth.srv != 0 && g.depth.gl_name == src.gl_name &&
+        g.depth.width == src.width && g.depth.height == src.height)
+    {
+        return;
+    }
+
+    g.stage = "depth_create_resource_view";
+    if (g.depth.srv != 0)
+    {
+        dev->destroy_resource_view(g.depth.srv);
+        g.depth.srv = { 0 };
+    }
+
+    // D24 sampled as R24 -> depth arrives in .r, which is what ReShade's
+    // RESHADE_DEPTH_* macros / ReShade::GetLinearizedDepth() expect. Feed RAW
+    // (non-linear) depth: linearisation is the FX layer's job, do NOT pre-do it.
+    if (!dev->create_resource_view(wrap_gl_texture(src.gl_name),
+                                   resource_usage::shader_resource,
+                                   resource_view_desc(format::r24_unorm_x8_uint),
+                                   &g.depth.srv))
+    {
+        if (!g.depth.warned)
+        {
+            g.depth.warned = true;
+            logf(reshade::log::level::error,
+                 "[SLBridge] DEPTH: create_resource_view failed for GL %u (fmt 0x%04X) "
+                 "-- leaving the DEPTH semantic alone",
+                 src.gl_name, src.gl_internal_format);
+        }
+        g.depth.srv = { 0 };
+        return;
+    }
+
+    g.depth.gl_name = src.gl_name;
+    g.depth.width   = src.width;
+    g.depth.height  = src.height;
+
+    g.stage = "depth_update_texture_bindings";
+    runtime->update_texture_bindings("DEPTH", g.depth.srv, g.depth.srv);
+    logf(reshade::log::level::info,
+         "[SLBridge] DEPTH: bound TRUE SL depth %ux%u (GL %u). Disable the built-in "
+         "\"Generic depth\" add-on or it will fight us for this semantic.",
+         g.depth.width, g.depth.height, g.depth.gl_name);
+}
+#endif // SL_PROVIDE_DEPTH
+
+// -----------------------------------------------------------------------------
 // Uniform cache: rebuilt after every effect (re)load.
 // -----------------------------------------------------------------------------
 static void rebuild_uniform_cache(effect_runtime *runtime)
@@ -392,6 +519,7 @@ static void on_init_effect_runtime(effect_runtime *runtime)
         s.dest = { 0 }; s.dest_srv = { 0 };
         s.width = s.height = 0; s.fmt = format::unknown;
     }
+    g.depth.forget();
     logf(reshade::log::level::info, "[SLBridge] effect runtime initialized");
 }
 
@@ -414,6 +542,7 @@ static void on_destroy_effect_runtime(effect_runtime *runtime)
         s.dest = { 0 }; s.dest_srv = { 0 };
         s.width = s.height = 0; s.fmt = format::unknown;
     }
+    g.depth.forget();   // view belongs to the dying context; drop, don't destroy
     g.uniforms.clear();
     g.runtime = nullptr;
     g.dev = nullptr;
@@ -466,6 +595,7 @@ static void do_begin_effects(effect_runtime *runtime, command_list *cmd)
             s.dest = { 0 }; s.dest_srv = { 0 };
             s.width = s.height = 0; s.fmt = format::unknown;
         }
+        g.depth.forget();
         g.uniforms_dirty = true;
         if (g.dev != nullptr)
         {
@@ -497,6 +627,9 @@ static void do_begin_effects(effect_runtime *runtime, command_list *cmd)
         {
             update_slot(s, *s.pick(f), runtime, cmd);
         }
+#if SL_PROVIDE_DEPTH
+        update_depth_binding(f.depth, runtime);
+#endif
     }
 
     if (g.uniforms_dirty)
