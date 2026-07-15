@@ -245,6 +245,7 @@ LLGLSLShader            gDeferredBufferVisualProgram;
 LLGLSLShader            gVelocityProgram;
 LLGLSLShader            gVelocityAlphaProgram;
 LLGLSLShader            gVelocityDebugProgram;
+LLGLSLShader            gVelocityCameraProgram; // [BDMerge A5.4-1c] camera fallback
 // [BDMerge Froxel F0] hybrid froxel volumetrics: P1 media pass + debug visualizer.
 LLGLSLShader            gFroxelMediaProgram;
 LLGLSLShader            gFroxelDebugProgram;
@@ -1248,6 +1249,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gVelocityProgram.unload();          // [BDMerge A5.4-1a]
         gVelocityAlphaProgram.unload();     // [BDMerge A5.4-1a]
         gVelocityDebugProgram.unload();     // [BDMerge A5.4-1a]
+        gVelocityCameraProgram.unload();    // [BDMerge A5.4-1c]
         gFroxelMediaProgram.unload();       // [BDMerge Froxel F0]
         gFroxelDebugProgram.unload();       // [BDMerge Froxel F0]
         gFroxelIntegrateProgram.unload();   // [BDMerge Froxel F1]
@@ -3383,6 +3385,33 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gVelocityDebugProgram.mShaderFiles.push_back(make_pair("deferred/velocityDebugF.glsl", GL_FRAGMENT_SHADER));
         gVelocityDebugProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
         success = gVelocityDebugProgram.createShader();
+    }
+
+    // [BDMerge A5.4-1c] Fullscreen camera-motion fallback. Fills the velocity
+    // buffer from scene depth + the previous camera before the geometry pass
+    // stamps true per-object motion, so avatar/sky/uncovered pixels carry
+    // camera-induced motion instead of reading "static". inv_proj/inv_modelview
+    // are auto-fed by the matrix sync in llrender.cpp; last_modelview_matrix and
+    // projection_matrix_unjittered are uploaded at the call site.
+    //
+    // NON-FATAL: this is an optional feature (gated by BDMergeVelocityBuffer and
+    // guarded by isComplete() at the call site). Its load result must NOT feed
+    // back into `success` -- otherwise a missing/rejected file would mark the
+    // ENTIRE deferred set as failed and crash login on the first null bind()
+    // (ASSERT mProgramObject != 0). Degrade to "no camera fallback" instead.
+    if (success)
+    {
+        gVelocityCameraProgram.mName = "Velocity Camera Fallback Shader";
+        gVelocityCameraProgram.mShaderFiles.clear();
+        gVelocityCameraProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gVelocityCameraProgram.mShaderFiles.push_back(make_pair("deferred/velocityCameraF.glsl", GL_FRAGMENT_SHADER));
+        gVelocityCameraProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        if (!gVelocityCameraProgram.createShader())
+        {
+            LL_WARNS("ShaderLoading") << "Velocity camera fallback shader failed to "
+                "load; camera-motion velocity fill disabled (velocity buffer still "
+                "works via geometry passes)." << LL_ENDL;
+        }
     }
 
     // [BDMerge Froxel F0] Hybrid froxel volumetrics: P1 media pass + debug

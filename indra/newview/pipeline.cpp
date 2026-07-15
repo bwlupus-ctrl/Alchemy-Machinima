@@ -4702,6 +4702,33 @@ void LLPipeline::renderGeomVelocity()
     gGL.setColorMask(true, true);
     LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL); // test against scene depth, no write
 
+    // [BDMerge A5.4-1c] Camera-motion fallback FIRST: fill every pixel with the
+    // camera-induced motion reprojected from scene depth, so pixels no draw pool
+    // stamps (avatars/rigged until Phase 1b, sky, excluded alpha) don't read
+    // "static" and ghost in temporal consumers (SMAA T2x, ReShade bridge/RTGI).
+    // The geometry passes below then overwrite covered pixels with true
+    // per-object motion. Depth test/write fully off: we shade all pixels and the
+    // shared depth attachment is only SAMPLED (legal: no depth writes occur).
+    if (gVelocityCameraProgram.isComplete())
+    {
+        LLGLDepthTest fallback_no_depth(GL_FALSE, GL_FALSE);
+
+        // deterministic camera matrices for the auto-fed inv_proj/inv_modelview
+        gGLLastMatrix = NULL;
+        gGL.matrixMode(LLRender::MM_MODELVIEW);
+        gGL.loadMatrix(gGLModelView);
+
+        gVelocityCameraProgram.bind();
+        gVelocityCameraProgram.bindTexture(LLShaderMgr::DEFERRED_DEPTH, &mRT->deferredScreen, true);
+        gVelocityCameraProgram.uniformMatrix4fv(LLShaderMgr::LAST_MODELVIEW_MATRIX, 1, GL_FALSE, gGLLastModelView);
+        gVelocityCameraProgram.uniformMatrix4fv(LLShaderMgr::PROJECTION_MATRIX_UNJITTERED, 1, GL_FALSE, mVelocityProjMat);
+
+        mScreenTriangleVB->setBuffer();
+        mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+
+        gVelocityCameraProgram.unbind();
+    }
+
     sVelocityRender = true;
 
     // Each draw pool is responsible for producing its own velocity.

@@ -305,6 +305,9 @@ extern LLGLSLShader         gDeferredBufferVisualProgram;
 extern LLGLSLShader         gVelocityProgram;
 extern LLGLSLShader         gVelocityAlphaProgram;
 extern LLGLSLShader         gVelocityDebugProgram;
+// [BDMerge A5.4-1c] fullscreen camera-motion fallback (fills avatar/sky/uncovered
+// pixels with camera-induced motion before the geometry velocity stamps).
+extern LLGLSLShader         gVelocityCameraProgram;
 // [BDMerge Froxel F0] hybrid froxel volumetrics: P1 media pass + debug visualizer.
 extern LLGLSLShader         gFroxelMediaProgram;
 extern LLGLSLShader         gFroxelDebugProgram;
