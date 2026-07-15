@@ -843,6 +843,141 @@ void LLRenderPass::pushVelocityBatchesTextured(U32 type)
     }
 }
 
+// [BDMerge A5.4-1b] Upload current + previous skinning palettes for a rigged
+// velocity draw. Donor: BD uploadMatrixPalette/uploadLastMatrixPalette pair,
+// merged so AVATAR_LAST_MATRIX is ALWAYS left valid for the draw that follows:
+// the donor skipped the last-palette upload when it had no previous data,
+// silently reusing whatever palette the uniform held from the previous avatar
+// (a one-frame velocity explosion on that mesh). Here the previous palette
+// falls back to the CURRENT one -- zero limb velocity, camera velocity still
+// correct -- whenever it is missing, non-contiguous (mLastFrame !=
+// gFrameCount-1: avatar was culled or just appeared, brief pitfall 2/3), or
+// sized differently (joint count changed under a mesh swap).
+//static
+bool LLRenderPass::uploadVelocityMatrixPalettes(LLVOAvatar* avatar, LLMeshSkinInfo* skinInfo,
+                                                const LLVOAvatar*& lastAvatar, U64& lastMeshId,
+                                                bool& skipLastSkin)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_AVATAR;
+
+    llassert(skinInfo);
+    llassert(LLGLSLShader::sCurBoundShaderPtr);
+
+    if (!avatar)
+    {
+        return false;
+    }
+
+    if (avatar == lastAvatar && skinInfo->mHash == lastMeshId)
+    {
+        return !skipLastSkin;
+    }
+
+    const LLVOAvatar::MatrixPaletteCache& mpc = avatar->updateSkinInfoMatrixPalette(skinInfo);
+    U32 count = static_cast<U32>(mpc.mMatrixPalette.size());
+    skipLastSkin = !bool(count);
+    lastAvatar = avatar;
+    lastMeshId = skinInfo->mHash;
+
+    if (!skipLastSkin)
+    {
+        LLGLSLShader::sCurBoundShaderPtr->uniformMatrix3x4fv(LLShaderMgr::AVATAR_MATRIX,
+            count,
+            false,
+            (GLfloat*)&(mpc.mGLMp[0]));
+
+        const bool prev_valid = (mpc.mLastFrame == gFrameCount - 1)
+            && (mpc.mLastGLMp.size() == mpc.mGLMp.size());
+        const GLfloat* last_mp = prev_valid ? (GLfloat*)&(mpc.mLastGLMp[0])
+                                            : (GLfloat*)&(mpc.mGLMp[0]);
+        LLGLSLShader::sCurBoundShaderPtr->uniformMatrix3x4fv(LLShaderMgr::AVATAR_LAST_MATRIX,
+            count,
+            false,
+            last_mp);
+    }
+
+    return !skipLastSkin;
+}
+
+// [BDMerge A5.4-1b] Rigged velocity batch pushers. Same iteration shape as
+// pushRiggedBatches; per (avatar, mesh) key both palettes are uploaded once,
+// then every batch of that mesh draws. No mLastModelMatrix bookkeeping here --
+// rigged motion lives entirely in the palettes.
+void LLRenderPass::pushRiggedVelocityBatches(U32 type)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
+
+    const LLVOAvatar* lastAvatar = nullptr;
+    U64 lastMeshId = 0;
+    bool skipLastSkin = false;
+
+    auto* begin = gPipeline.beginRenderMap(type);
+    auto* end = gPipeline.endRenderMap(type);
+
+    for (LLCullResult::drawinfo_iterator i = begin; i != end; )
+    {
+        LLDrawInfo& params = **i;
+        LLCullResult::increment_iterator(i, end);
+
+        if (params.mVertexBuffer.isNull() || !params.mAvatar || !params.mSkinInfo)
+        {
+            continue;
+        }
+
+        if (!uploadVelocityMatrixPalettes(params.mAvatar, params.mSkinInfo, lastAvatar, lastMeshId, skipLastSkin))
+        {
+            continue;
+        }
+
+        LLGLDisable cull_face(params.mGLTFMaterial && params.mGLTFMaterial->mDoubleSided ? GL_CULL_FACE : 0);
+
+        applyModelMatrix(params);
+
+        params.mVertexBuffer->setBuffer();
+        params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
+    }
+}
+
+void LLRenderPass::pushRiggedVelocityBatchesTextured(U32 type)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
+
+    const LLVOAvatar* lastAvatar = nullptr;
+    U64 lastMeshId = 0;
+    bool skipLastSkin = false;
+
+    auto* begin = gPipeline.beginRenderMap(type);
+    auto* end = gPipeline.endRenderMap(type);
+
+    for (LLCullResult::drawinfo_iterator i = begin; i != end; )
+    {
+        LLDrawInfo& params = **i;
+        LLCullResult::increment_iterator(i, end);
+
+        if (params.mVertexBuffer.isNull() || !params.mAvatar || !params.mSkinInfo)
+        {
+            continue;
+        }
+
+        if (!uploadVelocityMatrixPalettes(params.mAvatar, params.mSkinInfo, lastAvatar, lastMeshId, skipLastSkin))
+        {
+            continue;
+        }
+
+        LLGLDisable cull_face(params.mGLTFMaterial && params.mGLTFMaterial->mDoubleSided ? GL_CULL_FACE : 0);
+
+        applyModelMatrix(params);
+
+        if (params.mTexture.notNull())
+        {
+            gGL.getTexUnit(0)->bindFast(params.mTexture);
+        }
+
+        params.mVertexBuffer->setBuffer();
+        params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
+    }
+}
+
 void LLRenderPass::pushBatch(LLDrawInfo& params, bool texture, bool batch_textures)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;

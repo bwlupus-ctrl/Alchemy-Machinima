@@ -659,6 +659,76 @@ void LLDrawPoolAvatar::endSkinned()
     gGL.getTexUnit(0)->activate();
 }
 
+// ============================================================================
+// [BDMerge A5.4-1b] Classic (system) avatar velocity pass. Donor: Black Dragon
+// lldrawpoolavatar.cpp:500-566. Draws the system-avatar meshes with
+// gAvatarVelocityProgram; llviewerjointmesh::uploadJointMatrices detects that
+// program and uploads the previous frame's joint palette (AVATAR_LAST_MATRIX)
+// alongside the current one. Mesh-rigged attachments are handled by the volume
+// pools' pushRiggedVelocityBatches*, not here.
+// ============================================================================
+
+S32 LLDrawPoolAvatar::getNumVelocityPasses()
+{
+    return 1;
+}
+
+void LLDrawPoolAvatar::beginVelocityPass(S32 pass)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_AVATAR;
+
+    sShaderLevel = mShaderLevel;
+    sVertexProgram = &gAvatarVelocityProgram;
+    sRenderingSkinned = true;
+
+    sVertexProgram->bind();
+    LLRenderPass::bindVelocityUniforms(*sVertexProgram);
+    gGL.diffuseColor4f(1, 1, 1, 1);
+}
+
+void LLDrawPoolAvatar::endVelocityPass(S32 pass)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_AVATAR;
+
+    sRenderingSkinned = false;
+    sVertexProgram->unbind();
+    sVertexProgram = NULL;
+}
+
+void LLDrawPoolAvatar::renderVelocity(S32 pass)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_AVATAR;
+    LLGLEnable cull(GL_CULL_FACE);
+
+    if (mDrawFace.empty())
+    {
+        return;
+    }
+
+    const LLFace* facep = mDrawFace[0];
+    if (!facep->getDrawable())
+    {
+        return;
+    }
+    LLVOAvatar* avatarp = (LLVOAvatar*)facep->getDrawable()->getVObj().get();
+
+    if (!avatarp || avatarp->isDead() || avatarp->isUIAvatar() || avatarp->mDrawable.isNull())
+    {
+        return;
+    }
+
+    // Impostors and jellydolled avatars are static billboards/simplified reps --
+    // the camera fallback already covers them; true limb velocity is meaningless.
+    bool impostor = !LLPipeline::sImpostorRender && avatarp->isImpostor();
+    if (avatarp->isTooSlow() || impostor
+        || (avatarp->getOverallAppearance() == LLVOAvatar::AOA_INVISIBLE))
+    {
+        return;
+    }
+
+    avatarp->renderSkinned();
+}
+
 void LLDrawPoolAvatar::beginDeferredSkinned()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_AVATAR;

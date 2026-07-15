@@ -73,6 +73,14 @@ private:
 
     //copy mesh into given face's vertex buffer, applying current animation pose
     static void updateGeometry(LLFace* face, LLPolyMesh* mesh);
+
+    // [BDMerge A5.4-1b] Previous frame's joint palette for the classic-avatar
+    // velocity pass (donor: Black Dragon llviewerjointmesh). Uploaded to
+    // AVATAR_LAST_MATRIX when gAvatarVelocityProgram is bound; reset to the
+    // current palette after a frame gap so re-entering avatars emit zero limb
+    // velocity instead of a stale-palette motion spike.
+    GLfloat mLastMatrixPalette[45*4] = {};
+    U32     mLastMatrixPaletteFrame = 0;
 };
 
 #endif // LL_LLVIEWERJOINTMESH_H

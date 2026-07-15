@@ -171,10 +171,28 @@ void LLViewerJointMesh::uploadJointMatrices()
                 memcpy(mat+offset*4, vector, sizeof(GLfloat)*4);
             }
         }
+        // [BDMerge A5.4-1b] Maintain the previous frame's palette for the
+        // velocity pass (donor: BD llviewerjointmesh.cpp:190-207, with a
+        // U32-underflow-safe staleness test). After a frame gap the previous
+        // palette is reseeded from the current one -> zero limb velocity.
+        if (mLastMatrixPaletteFrame + 1 < gFrameCount)
+        {
+            memcpy(mLastMatrixPalette, mat, sizeof(GLfloat) * 45 * 4);
+        }
+        mLastMatrixPaletteFrame = gFrameCount;
+
         stop_glerror();
         if (LLGLSLShader::sCurBoundShaderPtr)
         {
             LLGLSLShader::sCurBoundShaderPtr->uniform4fv(LLViewerShaderMgr::AVATAR_MATRIX, 45, mat);
+
+            // [BDMerge A5.4-1b] velocity pass: also upload the previous
+            // palette, then roll the current one forward for next frame.
+            if (LLGLSLShader::sCurBoundShaderPtr == &gAvatarVelocityProgram)
+            {
+                LLGLSLShader::sCurBoundShaderPtr->uniform4fv(LLViewerShaderMgr::AVATAR_LAST_MATRIX, 45, mLastMatrixPalette);
+                memcpy(mLastMatrixPalette, mat, sizeof(GLfloat) * 45 * 4);
+            }
         }
         stop_glerror();
     }

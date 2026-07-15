@@ -449,6 +449,12 @@ void LLDrawPoolMaterials::renderVelocity(S32 pass)
     {
         pushVelocityBatches(sMaterialPassType[i]);
     }
-    // Phase 1b seam: the rigged sub-passes (sMaterialPassType[i] + 1) via
-    // pushRiggedVelocityBatches once the previous matrix palette exists.
+
+    // [BDMerge A5.4-1b] rigged sub-passes (each rigid pass type + 1)
+    gVelocityProgram.bind(true);
+    bindVelocityUniforms(*gVelocityProgram.mRiggedVariant);
+    for (U32 i = 0; i < sizeof(sMaterialPassType) / sizeof(U32); ++i)
+    {
+        pushRiggedVelocityBatches(sMaterialPassType[i] + 1);
+    }
 }

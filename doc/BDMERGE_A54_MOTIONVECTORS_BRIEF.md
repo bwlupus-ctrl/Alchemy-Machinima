@@ -1,9 +1,44 @@
 # [BDMerge A5.4] Motion-Vector / Velocity-Buffer Subsystem — Implementation Brief
 
-Status: **Phase 1a IMPLEMENTED** (rigid + camera velocity, `develop`). Phases 1b (rigged/
-skinned avatars), 2 (SMAA T2x reprojection), 3 (motion blur) remain PLANNED. This document is
-the executable, phased plan for porting Black Dragon's velocity-buffer subsystem into the
+Status: **Phase 1a + 1c + 1b IMPLEMENTED** (`develop`). 1a = rigid + camera velocity;
+1c = fullscreen camera-motion fallback; 1b (2026-07-15) = rigged/skinned + classic-avatar
+velocity. Phases 2 (SMAA T2x reprojection) and 3 (motion blur) remain PLANNED. This document
+is the executable, phased plan for porting Black Dragon's velocity-buffer subsystem into the
 Alchemy-Machinima fork.
+
+## Phase 1b — status: DONE (2026-07-15)
+
+Shipped (same gate: `BDMergeVelocityBuffer` off = velocity pass never runs = byte-identical):
+- `MatrixPaletteCache` += `mLastGLMp`/`mLastFrame` (`llvoavatar.h`); swap-stash of the outgoing
+  palette in `updateSkinInfoMatrixPalette` (`llvoavatar.cpp`) — allocation-free steady-state.
+- New reserved uniform `AVATAR_LAST_MATRIX` ("lastMatrixPalette"), lockstep in `llshadermgr.h/.cpp`.
+- `getLastObjectSkinnedTransform()` + `lastMatrixPalette[MAX_JOINTS_PER_MESH_OBJECT]` added to
+  `avatar/objectSkinV.glsl` (BD-style: dead-code-eliminated in every non-velocity rigged shader).
+- `LLRenderPass::uploadVelocityMatrixPalettes` (`lldrawpool.cpp`) uploads BOTH palettes per
+  (avatar, mesh) key. **Hardened over the donor:** falls back to the CURRENT palette (zero limb
+  velocity, camera velocity intact) when the previous palette is non-contiguous
+  (`mLastFrame != gFrameCount-1` — culled/just-appeared avatar, pitfalls 2/3) or joint counts
+  changed; donor left the previous avatar's palette in the uniform (one-frame velocity spike).
+- `pushRiggedVelocityBatches`/`pushRiggedVelocityBatchesTextured` + rigged wiring in ALL pool
+  velocity hooks: Simple, Fullbright, AlphaMask, FullbrightAlphaMask (`lldrawpoolsimple.cpp`),
+  Bump/Shiny/FullbrightShiny (`lldrawpoolbump.cpp`), all 12 material sub-passes + 1
+  (`lldrawpoolmaterials.cpp`), GLTF PBR `mRenderType + 1` (`lldrawpoolpbropaque.cpp`).
+  Each rebinds the `make_rigged_variant` program and re-uploads bindVelocityUniforms
+  (distinct GL program, own uniform storage).
+- Programs: `gVelocitySkinnedProgram`, `gVelocityAlphaSkinnedProgram` (make_rigged_variant),
+  `gAvatarVelocityProgram` (classic; `avatarVelocityV.glsl` NEW + reuses `velocityF.glsl`;
+  un-jittered convention, row-vector `pos * skin` palette apply verified against `avatarV.glsl`).
+- Classic-avatar prev palette: `LLViewerJointMesh::mLastMatrixPalette[45*4]`/`mLastMatrixPaletteFrame`
+  (U32-underflow-safe staleness reseed), uploaded in `uploadJointMatrices` when
+  `gAvatarVelocityProgram` is bound; avatar pool velocity hooks in `lldrawpoolavatar.cpp`
+  (impostor / too-slow / invisible guarded — camera fallback covers those).
+
+Owed in-world validation (BDMergeVelocityBuffer + BDMergeVelocityDebug):
+1. Animated avatar, camera LOCKED: limbs paint RG color in the debug viz (pre-1b they read
+   flat grey = camera-only). Worn rigged hair/clothing moves with the body.
+2. Avatar walking past a static camera: whole-body coherent color, no trail.
+3. Impostored crowd: no velocity garbage (should read camera fallback grey).
+4. Toggle BDMergeVelocityBuffer off → identical stock frame.
 
 ## Phase 1a — status: DONE
 

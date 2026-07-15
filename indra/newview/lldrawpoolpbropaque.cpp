@@ -181,6 +181,10 @@ void LLDrawPoolGLTFPBR::renderVelocity(S32 pass)
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
     LLGLEnable cull(GL_CULL_FACE);
     pushVelocityBatches(mRenderType);
-    // Phase 1b seam: pushRiggedVelocityBatches(mRenderType + 1).
+
+    // [BDMerge A5.4-1b] rigged GLTF
+    gVelocityProgram.bind(true);
+    bindVelocityUniforms(*gVelocityProgram.mRiggedVariant);
+    pushRiggedVelocityBatches(mRenderType + 1);
 }
 

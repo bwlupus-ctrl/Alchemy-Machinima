@@ -10400,6 +10400,15 @@ const LLVOAvatar::MatrixPaletteCache& LLVOAvatar::updateSkinInfoMatrixPalette(co
     {
         LL_PROFILE_ZONE_SCOPED_CATEGORY_AVATAR;
 
+        // [BDMerge A5.4-1b] Stash the outgoing palette as the previous frame's
+        // before rebuilding (velocity pass). swap() instead of copy: mGLMp is
+        // resized+rewritten just below, so this is allocation-free steady-state.
+        if (!entry.mGLMp.empty())
+        {
+            entry.mLastGLMp.swap(entry.mGLMp);
+            entry.mLastFrame = entry.mFrame;
+        }
+
         entry.mFrame = gFrameCount;
 
         //build matrix palette

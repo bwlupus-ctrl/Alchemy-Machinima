@@ -246,6 +246,9 @@ LLGLSLShader            gVelocityProgram;
 LLGLSLShader            gVelocityAlphaProgram;
 LLGLSLShader            gVelocityDebugProgram;
 LLGLSLShader            gVelocityCameraProgram; // [BDMerge A5.4-1c] camera fallback
+LLGLSLShader            gVelocitySkinnedProgram;        // [BDMerge A5.4-1b]
+LLGLSLShader            gVelocityAlphaSkinnedProgram;   // [BDMerge A5.4-1b]
+LLGLSLShader            gAvatarVelocityProgram;         // [BDMerge A5.4-1b] classic avatar
 // [BDMerge Froxel F0] hybrid froxel volumetrics: P1 media pass + debug visualizer.
 LLGLSLShader            gFroxelMediaProgram;
 LLGLSLShader            gFroxelDebugProgram;
@@ -1250,6 +1253,9 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gVelocityAlphaProgram.unload();     // [BDMerge A5.4-1a]
         gVelocityDebugProgram.unload();     // [BDMerge A5.4-1a]
         gVelocityCameraProgram.unload();    // [BDMerge A5.4-1c]
+        gVelocitySkinnedProgram.unload();       // [BDMerge A5.4-1b]
+        gVelocityAlphaSkinnedProgram.unload();  // [BDMerge A5.4-1b]
+        gAvatarVelocityProgram.unload();        // [BDMerge A5.4-1b]
         gFroxelMediaProgram.unload();       // [BDMerge Froxel F0]
         gFroxelDebugProgram.unload();       // [BDMerge Froxel F0]
         gFroxelIntegrateProgram.unload();   // [BDMerge Froxel F1]
@@ -3353,10 +3359,10 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         success = gDeferredBufferVisualProgram.createShader();
     }
 
-    // [BDMerge A5.4-1a] Velocity / motion-vector pass programs. Rigid + camera
-    // only in Phase 1a; the make_rigged_variant skinned pair and the avatar
-    // velocity program are added in Phase 1b. These programs are cheap to keep
-    // resident and are only invoked when BDMergeVelocityBuffer is enabled.
+    // [BDMerge A5.4-1a/1b] Velocity / motion-vector pass programs. Phase 1b adds
+    // the make_rigged_variant skinned pair (HAS_SKIN -> objectSkinV.glsl current
+    // + last palettes) and the classic-avatar velocity program. These programs
+    // are cheap to keep resident and only run when BDMergeVelocityBuffer is on.
     if (success)
     {
         gVelocityProgram.mName = "Velocity Shader";
@@ -3364,7 +3370,8 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gVelocityProgram.mShaderFiles.push_back(make_pair("deferred/velocityV.glsl", GL_VERTEX_SHADER));
         gVelocityProgram.mShaderFiles.push_back(make_pair("deferred/velocityF.glsl", GL_FRAGMENT_SHADER));
         gVelocityProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
-        success = gVelocityProgram.createShader();
+        success = make_rigged_variant(gVelocityProgram, gVelocitySkinnedProgram);   // [BDMerge A5.4-1b]
+        success = success && gVelocityProgram.createShader();
     }
 
     if (success)
@@ -3374,7 +3381,23 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gVelocityAlphaProgram.mShaderFiles.push_back(make_pair("deferred/velocityAlphaV.glsl", GL_VERTEX_SHADER));
         gVelocityAlphaProgram.mShaderFiles.push_back(make_pair("deferred/velocityAlphaF.glsl", GL_FRAGMENT_SHADER));
         gVelocityAlphaProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
-        success = gVelocityAlphaProgram.createShader();
+        success = make_rigged_variant(gVelocityAlphaProgram, gVelocityAlphaSkinnedProgram); // [BDMerge A5.4-1b]
+        success = success && gVelocityAlphaProgram.createShader();
+    }
+
+    // [BDMerge A5.4-1b] Classic (system) avatar velocity: avatarSkinV supplies
+    // getSkinnedTransform (hasSkinning feature); the previous palette is
+    // uploaded by llviewerjointmesh uploadJointMatrices when this program is
+    // bound. Reuses velocityF.glsl (vary_cur_clip/vary_last_clip interface).
+    if (success)
+    {
+        gAvatarVelocityProgram.mName = "Avatar Velocity Shader";
+        gAvatarVelocityProgram.mFeatures.hasSkinning = true;
+        gAvatarVelocityProgram.mShaderFiles.clear();
+        gAvatarVelocityProgram.mShaderFiles.push_back(make_pair("deferred/avatarVelocityV.glsl", GL_VERTEX_SHADER));
+        gAvatarVelocityProgram.mShaderFiles.push_back(make_pair("deferred/velocityF.glsl", GL_FRAGMENT_SHADER));
+        gAvatarVelocityProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gAvatarVelocityProgram.createShader();
     }
 
     if (success)

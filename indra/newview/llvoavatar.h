@@ -852,6 +852,15 @@ public:
         // Float array ready to be sent to GL
         std::vector<F32> mGLMp;
 
+        // [BDMerge A5.4-1b] Previous frame's GL palette for the velocity pass
+        // (donor: Black Dragon llvoavatar.h MatrixPaletteCache). mLastFrame is
+        // the gFrameCount mLastGLMp was CURRENT for; consumers must treat it as
+        // valid only when mLastFrame == gFrameCount - 1 (contiguous), else the
+        // avatar was culled/offscreen and a stale palette would produce a huge
+        // spurious motion spike on re-entry.
+        std::vector<F32> mLastGLMp;
+        U32 mLastFrame = 0;
+
         MatrixPaletteCache() :
             mFrame(gFrameCount - 1)
         {

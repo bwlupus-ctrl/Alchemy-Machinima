@@ -636,7 +636,13 @@ void LLDrawPoolBump::renderVelocity(S32 pass)
     pushVelocityBatches(LLRenderPass::PASS_BUMP);
     pushVelocityBatches(LLRenderPass::PASS_SHINY);
     pushVelocityBatches(LLRenderPass::PASS_FULLBRIGHT_SHINY);
-    // Phase 1b seam: PASS_BUMP_RIGGED / PASS_SHINY_RIGGED / PASS_FULLBRIGHT_SHINY_RIGGED.
+
+    // [BDMerge A5.4-1b] rigged
+    gVelocityProgram.bind(true);
+    bindVelocityUniforms(*gVelocityProgram.mRiggedVariant);
+    pushRiggedVelocityBatches(LLRenderPass::PASS_BUMP_RIGGED);
+    pushRiggedVelocityBatches(LLRenderPass::PASS_SHINY_RIGGED);
+    pushRiggedVelocityBatches(LLRenderPass::PASS_FULLBRIGHT_SHINY_RIGGED);
 }
 
 void LLDrawPoolBump::renderPostDeferred(S32 pass)

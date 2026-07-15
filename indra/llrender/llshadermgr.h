@@ -553,6 +553,9 @@ public:
         PROJECTION_MATRIX_UNJITTERED,      //  "projection_matrix_unjittered"
         DEFERRED_VELOCITY,                 //  "velocityMap"
         MOTION_BLUR_STRENGTH,              //  "motion_blur_strength"
+        // [BDMerge A5.4-1b] previous-frame skinning palettes (rigged + classic
+        // avatar velocity). Lockstep with llshadermgr.cpp push_back block.
+        AVATAR_LAST_MATRIX,                //  "lastMatrixPalette"
 
         // [BDMerge Froxel F0] hybrid froxel volumetrics (grid/atlas media pass +
         // debug visualizer). MUST stay in lockstep with the matching push_back

@@ -1752,6 +1752,8 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("projection_matrix_unjittered");
     mReservedUniforms.push_back("velocityMap");
     mReservedUniforms.push_back("motion_blur_strength");
+    // [BDMerge A5.4-1b] previous-frame skinning palettes
+    mReservedUniforms.push_back("lastMatrixPalette");
 
     // [BDMerge Froxel F0] hybrid froxel volumetrics (must stay in lockstep with the
     // FROXEL_* enum block in llshadermgr.h - same position, same order).

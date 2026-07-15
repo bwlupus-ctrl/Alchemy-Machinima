@@ -54,7 +54,11 @@ mat4 getLastObjectSkinnedTransform();
 void main()
 {
 #ifdef HAS_SKIN
-    // Phase 1b path (skinned/rigged). Not built in Phase 1a.
+    // [BDMerge A5.4-1b] Skinned/rigged path. getLastObjectSkinnedTransform is
+    // defined in avatar/objectSkinV.glsl against lastMatrixPalette (the
+    // previous frame's palette, uploaded by pushRiggedVelocityBatches*; falls
+    // back to the CURRENT palette when no contiguous prev exists -> zero
+    // limb velocity, camera velocity still correct via last_modelview).
     mat4 cur_mat = getObjectSkinnedTransform();
     vec4 mv_pos = modelview_matrix * cur_mat * vec4(position.xyz, 1.0);
     gl_Position = projection_matrix * mv_pos;                        // jittered raster

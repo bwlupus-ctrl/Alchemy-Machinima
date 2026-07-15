@@ -4680,7 +4680,9 @@ void LLPipeline::renderGeomDeferred(LLCamera& camera, bool do_occlusion)
 // (current NDC - previous NDC). Depth-tests (no write) against the shared
 // deferred depth so only visible surfaces are stamped. Each draw pool emits its
 // own velocity via the getNumVelocityPasses / begin / render / endVelocityPass
-// hooks (rigid + camera in Phase 1a; skinned is the Phase 1b seam).
+// hooks (rigid + camera since Phase 1a; rigged/skinned + classic avatar since
+// Phase 1b -- prev-frame palettes via MatrixPaletteCache.mLastGLMp and
+// llviewerjointmesh.mLastMatrixPalette).
 //
 // Exclusions: blended alpha (order-dependent, double-stamp hazard), HUD/UI (this
 // runs before UI compositing), and cube snapshots / reflection probes (guarded by
@@ -4704,8 +4706,9 @@ void LLPipeline::renderGeomVelocity()
 
     // [BDMerge A5.4-1c] Camera-motion fallback FIRST: fill every pixel with the
     // camera-induced motion reprojected from scene depth, so pixels no draw pool
-    // stamps (avatars/rigged until Phase 1b, sky, excluded alpha) don't read
-    // "static" and ghost in temporal consumers (SMAA T2x, ReShade bridge/RTGI).
+    // stamps (sky, excluded blended alpha, impostors) don't read "static" and
+    // ghost in temporal consumers (SMAA T2x, ReShade bridge/RTGI). Rigged and
+    // classic avatars get true limb velocity from the geometry passes (1b).
     // The geometry passes below then overwrite covered pixels with true
     // per-object motion. Depth test/write fully off: we shade all pixels and the
     // shared depth attachment is only SAMPLED (legal: no depth writes occur).

@@ -93,6 +93,13 @@ typedef enum
     /*virtual*/ void endShadowPass(S32 pass);
     /*virtual*/ void renderShadow(S32 pass);
 
+    // [BDMerge A5.4-1b] classic (system) avatar velocity pass. Donor: Black
+    // Dragon lldrawpoolavatar.cpp:500-566 (motion-blur hooks).
+    /*virtual*/ S32  getNumVelocityPasses();
+    /*virtual*/ void beginVelocityPass(S32 pass);
+    /*virtual*/ void endVelocityPass(S32 pass);
+    /*virtual*/ void renderVelocity(S32 pass);
+
     void beginRigid();
     void beginImpostor();
     void beginSkinned();

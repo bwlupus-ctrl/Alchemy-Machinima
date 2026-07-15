@@ -372,10 +372,24 @@ public:
     // [BDMerge A5.4-1a] Velocity-pass batch pushers (rigid). pushVelocityBatches
     // uploads the per-object previous matrix from mLastModelMatrix, draws, then
     // writes the current matrix back for next frame. The *Textured variant also
-    // binds the diffuse texture for alpha-mask cutout. Rigged equivalents
-    // (pushRiggedVelocityBatches*) are Phase 1b.
+    // binds the diffuse texture for alpha-mask cutout.
     void pushVelocityBatches(U32 type);
     void pushVelocityBatchesTextured(U32 type);
+    // [BDMerge A5.4-1b] Rigged velocity pushers: upload CURRENT palette
+    // (matrixPalette) + PREVIOUS palette (lastMatrixPalette) per (avatar, mesh)
+    // key, then draw. Donor: Black Dragon lldrawpool.cpp:838-869/912-948, with
+    // two hardening fixes over the donor: the previous palette falls back to
+    // the current one (-> zero limb velocity, correct camera velocity) when it
+    // is non-contiguous (avatar culled/just appeared) or joint counts changed,
+    // and it is re-uploaded on every key change so a stale palette from the
+    // previous avatar can never leak into this draw.
+    void pushRiggedVelocityBatches(U32 type);
+    void pushRiggedVelocityBatchesTextured(U32 type);
+    // Upload both palettes for a rigged velocity draw. Returns false if the
+    // skin isn't ready (skip the draw). Dedup via lastAvatar/lastMeshId.
+    static bool uploadVelocityMatrixPalettes(LLVOAvatar* avatar, LLMeshSkinInfo* skinInfo,
+                                             const LLVOAvatar*& lastAvatar, U64& lastMeshId,
+                                             bool& skipLastSkin);
     // Bind a velocity program and upload the shared per-pass uniforms (previous
     // camera modelview + un-jittered projection). Call at pass begin and after any
     // rebind (e.g. the rigged-variant bind in Phase 1b).
