@@ -308,6 +308,7 @@ extern LLGLSLShader         gVelocityDebugProgram;
 extern LLGLSLShader         gVelocitySkinnedProgram;        // [BDMerge A5.4-1b]
 extern LLGLSLShader         gVelocityAlphaSkinnedProgram;   // [BDMerge A5.4-1b]
 extern LLGLSLShader         gAvatarVelocityProgram;         // [BDMerge A5.4-1b] classic avatar
+extern LLGLSLShader         gDeferredMotionBlurProgram;     // [BDMerge A5.4-3]
 // [BDMerge A5.4-1c] fullscreen camera-motion fallback (fills avatar/sky/uncovered
 // pixels with camera-induced motion before the geometry velocity stamps).
 extern LLGLSLShader         gVelocityCameraProgram;

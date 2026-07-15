@@ -311,6 +311,7 @@ bool LLPipeline::BDMergeGoboAnisotropic;
 bool LLPipeline::BDMergeVelocityBuffer;
 bool LLPipeline::BDMergeVelocityDebug;
 S32  LLPipeline::BDMergeMotionBlurStrength;
+bool LLPipeline::BDMergeMotionBlur; // [BDMerge A5.4-3]
 bool LLPipeline::sVelocityRender = false;
 std::map<LLUUID, LLPipeline::VolumetricShaftOverride> LLPipeline::sVolumetricShaftOverrides;
 std::set<LLUUID> LLPipeline::sVolumetricShaftObjects;
@@ -763,6 +764,7 @@ void LLPipeline::init()
     connectRefreshCachedSettingsSafe("BDMergeSoftShadowSun");
     connectRefreshCachedSettingsSafe("BDMergeGoboAnisotropic");
     connectRefreshCachedSettingsSafe("BDMergeVelocityBuffer");     // [BDMerge A5.4-1a]
+    connectRefreshCachedSettingsSafe("BDMergeMotionBlur");         // [BDMerge A5.4-3]
     connectRefreshCachedSettingsSafe("BDMergeVelocityDebug");      // [BDMerge A5.4-1a]
     connectRefreshCachedSettingsSafe("BDMergeMotionBlurStrength"); // [BDMerge A5.4-1a]
     connectRefreshCachedSettingsSafe("RenderScreenSpaceReflectionIterations");
@@ -1150,9 +1152,9 @@ bool LLPipeline::allocateScreenBufferInternal(U32 resX, U32 resY)
         // [BDMerge A5.4-1a] Velocity / motion-vector buffer (GL_RG16F). Shares the
         // deferred screen's depth buffer so the velocity geometry pass depth-tests
         // against the already-rendered opaque scene (mirror BD pipeline.cpp:1046).
-        // Default OFF (BDMergeVelocityBuffer) -> released -> zero extra cost/behavior.
-        // Phase 2 will additionally allocate this whenever SMAA T2x is active.
-        if (gSavedSettings.getBOOL("BDMergeVelocityBuffer"))
+        // Default OFF -> released -> zero extra cost/behavior. [A5.4-3] Motion
+        // blur consumes this buffer, so it also forces allocation + the pass.
+        if (gSavedSettings.getBOOL("BDMergeVelocityBuffer") || gSavedSettings.getBOOL("BDMergeMotionBlur"))
         {
             if (!mVelocityMap.allocate(resX, resY, GL_RG16F, false)) return false;
             mRT->deferredScreen.shareDepthBuffer(mVelocityMap);
@@ -1494,6 +1496,7 @@ void LLPipeline::refreshCachedSettings()
     BDMergeVelocityBuffer = gSavedSettings.getBOOL("BDMergeVelocityBuffer");     // [BDMerge A5.4-1a]
     BDMergeVelocityDebug = gSavedSettings.getBOOL("BDMergeVelocityDebug");       // [BDMerge A5.4-1a]
     BDMergeMotionBlurStrength = gSavedSettings.getS32("BDMergeMotionBlurStrength"); // [BDMerge A5.4-1a]
+    BDMergeMotionBlur = gSavedSettings.getBOOL("BDMergeMotionBlur");             // [BDMerge A5.4-3]
     RenderScreenSpaceReflectionIterations = gSavedSettings.getS32("RenderScreenSpaceReflectionIterations");
     RenderScreenSpaceReflectionRayStep = gSavedSettings.getF32("RenderScreenSpaceReflectionRayStep");
     RenderScreenSpaceReflectionDistanceBias = gSavedSettings.getF32("RenderScreenSpaceReflectionDistanceBias");
@@ -8193,6 +8196,32 @@ void LLPipeline::renderVelocityDebug(LLRenderTarget* dst)
     dst->flush();
 }
 
+// [BDMerge A5.4-3] Motion blur composite. Donor: Black Dragon
+// renderMotionBlurComposite (pipeline.cpp:8229-8249). 32-tap triangle-weighted
+// gather along the per-pixel velocity (camera + rigid + rigged + classic since
+// Phase 1b); the shader early-outs under 0.5px of motion, so a static scene is
+// a near-passthrough. Runs in the post chain after glow-combine, before DoF
+// and all UI/HUD compositing.
+void LLPipeline::renderMotionBlurComposite(LLRenderTarget* src, LLRenderTarget* dst)
+{
+    LL_PROFILE_GPU_ZONE("motion blur");
+
+    dst->bindTarget();
+
+    gDeferredMotionBlurProgram.bind();
+    gDeferredMotionBlurProgram.bindTexture(LLShaderMgr::DEFERRED_DIFFUSE, src);
+    gDeferredMotionBlurProgram.bindTexture(LLShaderMgr::DEFERRED_VELOCITY, &mVelocityMap);
+    gDeferredMotionBlurProgram.uniform2f(LLShaderMgr::DEFERRED_SCREEN_RES,
+        (GLfloat)src->getWidth(), (GLfloat)src->getHeight());
+    gDeferredMotionBlurProgram.uniform1i(LLShaderMgr::MOTION_BLUR_STRENGTH, BDMergeMotionBlurStrength);
+
+    mScreenTriangleVB->setBuffer();
+    mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+
+    gDeferredMotionBlurProgram.unbind();
+    dst->flush();
+}
+
 void LLPipeline::generateLuminance(LLRenderTarget* src, LLRenderTarget* dst)
 {
     // luminance sample and mipmap generation
@@ -11540,6 +11569,16 @@ void LLPipeline::renderFinalize()
         std::swap(sourceBuffer, targetBuffer);
     }
 
+    // [BDMerge A5.4-3] Motion blur: after glow-combine, before DoF (mirror BD
+    // pipeline.cpp:8556-8560). Requires the velocity buffer (which this gate
+    // also forces on via the alloc/pass sites); never in cube snapshots.
+    if (BDMergeMotionBlur && !gCubeSnapshot && mVelocityMap.isComplete()
+        && gDeferredMotionBlurProgram.isComplete())
+    {
+        renderMotionBlurComposite(sourceBuffer, targetBuffer);
+        std::swap(sourceBuffer, targetBuffer);
+    }
+
     gGLViewport[0] = gViewerWindow->getWorldViewRectRaw().mLeft;
     gGLViewport[1] = gViewerWindow->getWorldViewRectRaw().mBottom;
     gGLViewport[2] = gViewerWindow->getWorldViewRectRaw().getWidth();
@@ -12537,8 +12576,9 @@ void LLPipeline::renderDeferredLighting()
     // [BDMerge A5.4-1a] Velocity / motion-vector pass. Runs after the opaque +
     // post-deferred geometry and BEFORE the last-frame matrix snapshot below (so it
     // reads gGLLastModelView == the PREVIOUS frame's camera). Guarded off by default
-    // (BDMergeVelocityBuffer) and never in cube snapshots / reflection probes.
-    if (BDMergeVelocityBuffer && !gCubeSnapshot)
+    // and never in cube snapshots / reflection probes. [A5.4-3] Motion blur
+    // consumes the buffer, so it also forces the pass.
+    if ((BDMergeVelocityBuffer || BDMergeMotionBlur) && !gCubeSnapshot)
     {
         renderGeomVelocity();
     }

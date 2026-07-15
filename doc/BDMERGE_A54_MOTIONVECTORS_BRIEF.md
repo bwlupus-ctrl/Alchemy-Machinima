@@ -1,10 +1,13 @@
 # [BDMerge A5.4] Motion-Vector / Velocity-Buffer Subsystem — Implementation Brief
 
-Status: **Phase 1a + 1c + 1b IMPLEMENTED** (`develop`). 1a = rigid + camera velocity;
+Status: **Phase 1a + 1c + 1b + 3 IMPLEMENTED** (`develop`). 1a = rigid + camera velocity;
 1c = fullscreen camera-motion fallback; 1b (2026-07-15) = rigged/skinned + classic-avatar
-velocity. Phases 2 (SMAA T2x reprojection) and 3 (motion blur) remain PLANNED. This document
-is the executable, phased plan for porting Black Dragon's velocity-buffer subsystem into the
-Alchemy-Machinima fork.
+velocity (validated in-world same day: limbs paint RG in the debug viz); 3 (2026-07-15) =
+native motion blur composite (`BDMergeMotionBlur`). Phase 2 (SMAA T2x reprojection) is
+**RETIRED, not planned** — T2x stays reverted (user decision 2026-07-15); the velocity
+buffer's temporal consumer is the ReShade bridge chain (TAAU/RCAO/MXAO/ShutterBlur) via
+SL_GBufferProvider motion. This document is the executable, phased plan for porting Black
+Dragon's velocity-buffer subsystem into the Alchemy-Machinima fork.
 
 ## Phase 1b — status: DONE (2026-07-15)
 

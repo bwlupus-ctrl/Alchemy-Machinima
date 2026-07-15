@@ -2144,6 +2144,17 @@
       <key>Value</key>
       <integer>0</integer>
     </map>
+    <key>BDMergeMotionBlur</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge A5.4-3] Native per-pixel motion blur (32-tap gather along the velocity buffer, donor Black Dragon). Requires the velocity subsystem; enabling this also allocates/runs the velocity pass even if BDMergeVelocityBuffer is off. Blur length capped by BDMergeMotionBlurStrength (pixels). Applied after glow, before DoF and UI. Off = pass never runs.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
     <key>BDMergeMotionBlurStrength</key>
     <map>
       <key>Comment</key>

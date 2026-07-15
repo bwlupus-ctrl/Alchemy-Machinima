@@ -249,6 +249,7 @@ LLGLSLShader            gVelocityCameraProgram; // [BDMerge A5.4-1c] camera fall
 LLGLSLShader            gVelocitySkinnedProgram;        // [BDMerge A5.4-1b]
 LLGLSLShader            gVelocityAlphaSkinnedProgram;   // [BDMerge A5.4-1b]
 LLGLSLShader            gAvatarVelocityProgram;         // [BDMerge A5.4-1b] classic avatar
+LLGLSLShader            gDeferredMotionBlurProgram;     // [BDMerge A5.4-3]
 // [BDMerge Froxel F0] hybrid froxel volumetrics: P1 media pass + debug visualizer.
 LLGLSLShader            gFroxelMediaProgram;
 LLGLSLShader            gFroxelDebugProgram;
@@ -1256,6 +1257,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gVelocitySkinnedProgram.unload();       // [BDMerge A5.4-1b]
         gVelocityAlphaSkinnedProgram.unload();  // [BDMerge A5.4-1b]
         gAvatarVelocityProgram.unload();        // [BDMerge A5.4-1b]
+        gDeferredMotionBlurProgram.unload();    // [BDMerge A5.4-3]
         gFroxelMediaProgram.unload();       // [BDMerge Froxel F0]
         gFroxelDebugProgram.unload();       // [BDMerge Froxel F0]
         gFroxelIntegrateProgram.unload();   // [BDMerge Froxel F1]
@@ -3398,6 +3400,19 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gAvatarVelocityProgram.mShaderFiles.push_back(make_pair("deferred/velocityF.glsl", GL_FRAGMENT_SHADER));
         gAvatarVelocityProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
         success = gAvatarVelocityProgram.createShader();
+    }
+
+    // [BDMerge A5.4-3] Motion blur composite (32-tap gather along the velocity
+    // buffer). Donor: Black Dragon llviewershadermgr.cpp:3009-3019.
+    if (success)
+    {
+        gDeferredMotionBlurProgram.mName = "Deferred Motion Blur Shader";
+        gDeferredMotionBlurProgram.mFeatures.isDeferred = true;
+        gDeferredMotionBlurProgram.mShaderFiles.clear();
+        gDeferredMotionBlurProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gDeferredMotionBlurProgram.mShaderFiles.push_back(make_pair("deferred/motionBlurF.glsl", GL_FRAGMENT_SHADER));
+        gDeferredMotionBlurProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gDeferredMotionBlurProgram.createShader();
     }
 
     if (success)

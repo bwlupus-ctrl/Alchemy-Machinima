@@ -360,6 +360,8 @@ public:
     // velocity. renderVelocityDebug blits it to screen for validation.
     void renderGeomVelocity();
     void renderVelocityDebug(LLRenderTarget* dst);
+    // [BDMerge A5.4-3] motion blur composite (32-tap gather along mVelocityMap).
+    void renderMotionBlurComposite(LLRenderTarget* src, LLRenderTarget* dst);
     void bindLightFunc(LLGLSLShader& shader);
 
     // bind shadow maps
@@ -1356,6 +1358,8 @@ public:
     static bool BDMergeVelocityBuffer;         // master gate, default OFF (extra geom pass)
     static bool BDMergeVelocityDebug;          // blit velocityMap to screen for validation
     static S32  BDMergeMotionBlurStrength;     // Phase 3 / debug-viz gain, default 32
+    // [BDMerge A5.4-3] native motion blur composite (implies the velocity pass).
+    static bool BDMergeMotionBlur;             // default OFF
     // [BDMerge G3.3 Phase 2] session-only opt-in set of projector object UUIDs
     // (not persisted; see toggleVolumetricShaft/clearVolumetricShafts).
     static std::set<LLUUID> sVolumetricShaftObjects;
