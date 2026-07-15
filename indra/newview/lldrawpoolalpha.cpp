@@ -197,14 +197,37 @@ void LLDrawPoolAlpha::renderPostDeferred(S32 pass)
     // already being setup for rendering
     LLGLSLShader::unbind();
 
+    // [BDMerge] Gated 3-pass alpha ordering (port of AYAstorm double-alpha fix,
+    // mayatonton PR #122). When on, POST_WATER non-rigged BLEND is split around the
+    // rigged pass: SIM non-rigged (background windows/foliage) -> rigged (hair/
+    // clothing) -> worn attachment non-rigged (eyelash prims etc.). This keeps worn
+    // attachment alpha prims in front of rigged hair instead of being over-blended
+    // away, while SIM background alpha still precedes hair. Gate off == stock order
+    // (rigged first, then all non-rigged) and is byte-identical. PRE_WATER keeps the
+    // stock order (rigged-first depth is needed for water fog); HUD is a single
+    // non-rigged pass. See docs/BDMERGE_ALPHA_ATTACHMENT_SORT_BRIEF.md.
+    static LLCachedControl<bool> attach_sort(gSavedSettings, "BDMergeAlphaAttachmentSort", false);
     if (!LLPipeline::sRenderingHUDs)
     {
-        // first pass, render rigged objects only and render to depth buffer
-        forwardRender(true);
+        if (attach_sort && getType() == LLDrawPool::POOL_ALPHA_POST_WATER)
+        {
+            forwardRender(false, ATTACHMENT_NONE);  // pass 1: SIM non-rigged
+            forwardRender(true);                    // pass 2: rigged
+            forwardRender(false, ATTACHMENT_ONLY);  // pass 3: worn attachment non-rigged
+        }
+        else
+        {
+            // stock: first pass render rigged objects only (and to depth), then
+            // the regular forward non-rigged pass.
+            forwardRender(true);
+            forwardRender();
+        }
     }
-
-    // second pass, regular forward alpha rendering
-    forwardRender();
+    else
+    {
+        // HUD: single non-rigged forward pass (stock)
+        forwardRender();
+    }
 
     // final pass, render to depth for depth of field effects
     if (!LLPipeline::sImpostorRender && LLPipeline::RenderDepthOfField && !gCubeSnapshot && !LLPipeline::sRenderingHUDs && getType() == LLDrawPool::POOL_ALPHA_POST_WATER)
@@ -227,7 +250,7 @@ void LLDrawPoolAlpha::renderPostDeferred(S32 pass)
     }
 }
 
-void LLDrawPoolAlpha::forwardRender(bool rigged)
+void LLDrawPoolAlpha::forwardRender(bool rigged, AttachmentFilter filter)
 {
     gPipeline.enableLightsDynamic();
 
@@ -254,11 +277,15 @@ void LLDrawPoolAlpha::forwardRender(bool rigged)
 
     // If the face is more than 90% transparent, then don't update the Depth buffer for Dof
     // We don't want the nearly invisible objects to cause of DoF effects
-    renderAlpha(getVertexDataMask() | LLVertexBuffer::MAP_TEXTURE_INDEX | LLVertexBuffer::MAP_TANGENT | LLVertexBuffer::MAP_TEXCOORD1 | LLVertexBuffer::MAP_TEXCOORD2, false, rigged);
+    renderAlpha(getVertexDataMask() | LLVertexBuffer::MAP_TEXTURE_INDEX | LLVertexBuffer::MAP_TANGENT | LLVertexBuffer::MAP_TEXCOORD1 | LLVertexBuffer::MAP_TEXCOORD2, false, rigged, filter);
 
     gGL.setColorMask(true, false);
 
-    if (!rigged && getType() == LLDrawPoolAlpha::POOL_ALPHA_POST_WATER)
+    // [BDMerge] In the gated 3-pass path the non-rigged pass runs twice (SIM then
+    // attachment); fire the debug highlight only on the attachment pass so it isn't
+    // drawn twice. ATTACHMENT_ALL is the stock/gate-off single non-rigged pass.
+    if (!rigged && getType() == LLDrawPoolAlpha::POOL_ALPHA_POST_WATER &&
+        (filter == ATTACHMENT_ALL || filter == ATTACHMENT_ONLY))
     { //render "highlight alpha" on final non-rigged pass
         // NOTE -- hacky call here protected by !rigged instead of alongside "forwardRender"
         // so renderDebugAlpha is executed while gls_pipeline_alpha and depth GL state
@@ -552,7 +579,7 @@ void LLDrawPoolAlpha::renderRiggedPbrEmissives(std::vector<LLDrawInfo*>& emissiv
     }
 }
 
-void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, bool rigged)
+void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, bool rigged, AttachmentFilter filter)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
     bool initialized_lighting = false;
@@ -643,6 +670,21 @@ void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, bool rigged)
                 if ((bool)params.mAvatar != rigged)
                 {
                     continue;
+                }
+
+                // [BDMerge] 3-pass attachment filter (non-rigged path only). Gate
+                // off / rigged path use ATTACHMENT_ALL, which skips nothing, so this
+                // is byte-identical to stock when disabled.
+                if (!rigged)
+                {
+                    if (filter == ATTACHMENT_NONE && params.mAttachedToAvatar)
+                    {
+                        continue;
+                    }
+                    if (filter == ATTACHMENT_ONLY && !params.mAttachedToAvatar)
+                    {
+                        continue;
+                    }
                 }
 
                 LL_PROFILE_ZONE_NAMED_CATEGORY_DRAWPOOL("ra - push batch");

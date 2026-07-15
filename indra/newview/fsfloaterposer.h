@@ -33,6 +33,9 @@
 #include "fsposeranimator.h"
 #include "fsmaniprotatejoint.h"
 
+#include <map>
+#include <set>
+
 class FSVirtualTrackpad;
 class LLButton;
 class LLCheckBoxCtrl;
@@ -257,6 +260,16 @@ public:
     // Visual cue for which bone is under the mouse-cursor
     void drawOnHoverJointHint();
     void markSelectedJointsToHighlight();
+
+    // [BDMerge] Local animation playback tab: play/stop a nearby-seen animation
+    // LOCALLY on the selected target (avatar or animesh). Client-side only; nothing
+    // is sent to the sim. Motions started via LLCharacter::startMotion survive the
+    // server animation-state reconciliation (they are not in mPlayingAnimations), so
+    // they persist until explicitly stopped.
+    void refreshAnimationList();
+    void onAnimPlay();
+    void onAnimStop();
+    void onAnimStopAll();
 
     // UI Event Handlers
     void onAvatarsRefresh();
@@ -525,6 +538,11 @@ public:
     LLScrollListCtrl* mEntireAvJointScroll{ nullptr };
     LLScrollListCtrl* mPosesScrollList{ nullptr };
     LLScrollListCtrl* mHandPresetsScrollList{ nullptr };
+    LLScrollListCtrl* mAnimPlaybackScrollList{ nullptr };
+
+    // [BDMerge] target avatar/animesh id -> set of animation ids WE started locally,
+    // so Stop / Stop All can reliably stop exactly what this floater played.
+    std::map<LLUUID, std::set<LLUUID>> mLocallyPlayedAnims;
 
     LLButton* mToggleVisualManipulators{ nullptr };
     LLButton* mStartStopPosingBtn{ nullptr };

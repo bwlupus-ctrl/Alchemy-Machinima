@@ -2980,6 +2980,28 @@
       <key>Value</key>
       <integer>8192</integer>
     </map>
+    <key>BDMergePoserAnyAvatar</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge] Let the Poser pose ANY nearby (same-region) avatar and non-owned animesh, regardless of ownership/permissions. This is purely LOCAL/client-side: the pose is a local motion on your own skeleton copy and is never sent to the sim, so only you see it (machinima framing). Off = stock Firestorm behavior (self + owned animesh only).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>BDMergeAlphaAttachmentSort</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge] Gated 3-pass alpha ordering (port of AYAstorm double-alpha fix). Splits the above-water non-rigged alpha pass around the rigged pass: SIM non-rigged -> rigged (hair/clothing) -> worn attachment non-rigged. Keeps worn attachment alpha prims (eyelashes etc.) in front of rigged hair instead of being over-blended away, while SIM background alpha still precedes hair. Off = stock order (byte-identical). Per-shot render tool.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
     <key>BDMergeForceAlphaMask</key>
     <map>
       <key>Comment</key>

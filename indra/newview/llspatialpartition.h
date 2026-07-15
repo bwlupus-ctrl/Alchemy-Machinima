@@ -117,6 +117,14 @@ public:
     // volume or by the co-generated draw-info references here.
     LLPointer<LLMeshSkinInfo> mSkinInfo;
 
+    // [BDMerge] True when this draw belongs to a worn avatar attachment (rigged or
+    // not). Discriminator for the gated 3-pass alpha ordering (SIM non-rigged ->
+    // rigged -> attachment non-rigged) that keeps worn attachment alpha prims
+    // (eyelashes etc.) from being over-blended by rigged hair. Set in
+    // LLVolumeGeometryManager::registerFace. Ported from the AYAstorm double-alpha
+    // fix (mayatonton/phoenix-firestorm PR #122).
+    bool mAttachedToAvatar = false;
+
     // Material pointer here is likely for debugging only and are immaterial (zing!)
     LLPointer<LLMaterial> mMaterial;
 

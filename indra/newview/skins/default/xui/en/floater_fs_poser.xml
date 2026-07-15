@@ -1145,6 +1145,89 @@
 						 top_pad="5"
 						 width="134" />
 					</panel>
+					<panel
+						follows="all"
+						background_visible="false"
+						height="302"
+						layout="topleft"
+						left="0"
+						title="Anims"
+						name="animation_playback_panel"
+						top="0"
+						width="481">
+						<text
+							follows="left|top"
+							height="24"
+							layout="topleft"
+							left="2"
+							name="anim_playback_label"
+							top="2"
+							width="475"
+							wrap="true">
+							Animations seen playing nearby. Select one and play it LOCALLY on the selected avatar/animesh (only you see it).
+						</text>
+						<scroll_list
+							column_padding="2"
+							height="228"
+							follows="top|left|right"
+							can_sort="true"
+							layout="topleft"
+							left="2"
+							width="479"
+							multi_select="false"
+							name="poser_anim_scroll"
+							tool_tip="Animations currently signaled on nearby avatars and animesh."
+							top_pad="2">
+							<scroll_list.columns
+								label="Animation (asset UUID)"
+								name="anim"
+								relative_width="0.72"/>
+							<scroll_list.columns
+								label="Seen"
+								name="count"
+								relative_width="0.28"/>
+						</scroll_list>
+						<button
+							follows="bottom|left"
+							height="22"
+							label="Play on Selected"
+							layout="topleft"
+							left="2"
+							top_pad="4"
+							name="poser_anim_play"
+							tool_tip="Play the selected animation locally on the avatar/animesh selected in the Model tab."
+							width="140" />
+						<button
+							follows="bottom|left"
+							height="22"
+							label="Stop"
+							layout="topleft"
+							left_pad="4"
+							top_delta="0"
+							name="poser_anim_stop"
+							tool_tip="Stop the selected animation on the selected avatar (locally-played only)."
+							width="80" />
+						<button
+							follows="bottom|left"
+							height="22"
+							label="Stop All"
+							layout="topleft"
+							left_pad="4"
+							top_delta="0"
+							name="poser_anim_stopall"
+							tool_tip="Stop every animation this floater started locally, on all targets."
+							width="90" />
+						<button
+							follows="bottom|left"
+							height="22"
+							label="Refresh"
+							layout="topleft"
+							left_pad="4"
+							top_delta="0"
+							name="poser_anim_refresh"
+							tool_tip="Rescan nearby avatars and animesh for playing animations."
+							width="90" />
+					</panel>
 				</tab_container>
 				<button
 				 follows="bottom|left"

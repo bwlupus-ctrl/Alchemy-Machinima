@@ -175,6 +175,13 @@ bool FSFloaterPoser::postBuild()
 
     mHandPresetsScrollList = getChild<LLScrollListCtrl>("hand_presets_scroll");
 
+    // [BDMerge] Local animation playback tab
+    mAnimPlaybackScrollList = getChild<LLScrollListCtrl>("poser_anim_scroll");
+    getChild<LLButton>("poser_anim_play")->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAnimPlay(); });
+    getChild<LLButton>("poser_anim_stop")->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAnimStop(); });
+    getChild<LLButton>("poser_anim_stopall")->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAnimStopAll(); });
+    getChild<LLButton>("poser_anim_refresh")->setCommitCallback([this](LLUICtrl*, const LLSD&) { refreshAnimationList(); });
+
     mPosXSlider = getChild<LLSliderCtrl>("av_position_inout");
     mPosYSlider = getChild<LLSliderCtrl>("av_position_leftright");
     mPosZSlider = getChild<LLSliderCtrl>("av_position_updown");
@@ -268,6 +275,7 @@ void FSFloaterPoser::onOpen(const LLSD& key)
     startPosingSelf();
 
     enableVisualManipulators();
+    refreshAnimationList();
     LLFloater::onOpen(key);
 }
 
@@ -1504,7 +1512,14 @@ bool FSFloaterPoser::havePermissionToAnimateOtherAvatar(LLVOAvatar* avatar) cons
     if (!avatar || avatar->isDead())
         return false;
 
-    return false;
+    // [BDMerge] Posing is applied as a LOCAL motion on our own copy of the target's
+    // skeleton (FSPosingMotion via LLCharacter::startMotion) and is never transmitted
+    // to the sim, so posing a nearby avatar only affects how they render in THIS
+    // viewer. When enabled, allow posing any same-region avatar / non-owned animesh
+    // regardless of ownership. Off = stock (self + owned animesh only). isAvatarSafeToUse
+    // (same-region, alive) is still enforced by the animator layer.
+    static LLCachedControl<bool> poseAnyAvatar(gSavedSettings, "BDMergePoserAnyAvatar", false);
+    return poseAnyAvatar;
 }
 
 void FSFloaterPoser::poseControlsEnable(bool enable)
@@ -2509,6 +2524,112 @@ E_PoserReferenceFrame FSFloaterPoser::getReferenceFrame() const
 /// An event handler for selecting an avatar or animesh on the POSES_AVATAR_SCROLL_LIST_NAME.
 /// In general this will refresh the views for joints or their proxies, and (dis/en)able elements of the view.
 /// </summary>
+// [BDMerge] Local animation playback: gather every animation asset UUID currently
+// signaled on nearby avatars (per-avatar mSignaledAnimations) and animesh (the
+// separate LLObjectSignaledAnimationMap), and list them for local playback.
+void FSFloaterPoser::refreshAnimationList()
+{
+    if (!mAnimPlaybackScrollList)
+        return;
+
+    LLUUID prevSel;
+    if (LLScrollListItem* sel = mAnimPlaybackScrollList->getFirstSelected())
+        prevSel = sel->getValue().asUUID();
+
+    mAnimPlaybackScrollList->deleteAllItems();
+
+    // animation asset id -> number of nearby characters signaling it
+    std::map<LLUUID, S32> animCounts;
+
+    uuid_vec_t nearby = getNearbyAvatarsAndAnimeshes();
+    for (const LLUUID& id : nearby)
+    {
+        LLVOAvatar* av = getAvatarByUuid(id);
+        if (!av || av->isDead())
+            continue;
+        for (const auto& p : av->mSignaledAnimations)
+            animCounts[p.first]++;
+    }
+
+    // Animesh animations arrive via ObjectAnimation, not AvatarAnimation, so they live
+    // in a separate global map keyed by object id - fold them in for full coverage.
+    for (const auto& obj : LLObjectSignaledAnimationMap::instance().getMap())
+        for (const auto& p : obj.second)
+            animCounts[p.first]++;
+
+    for (const auto& a : animCounts)
+    {
+        LLSD row;
+        row["value"] = a.first;
+        row["columns"][0]["column"] = "anim";
+        row["columns"][0]["value"]  = a.first.asString();
+        row["columns"][1]["column"] = "count";
+        row["columns"][1]["value"]  = llformat("%d", a.second);
+        mAnimPlaybackScrollList->addElement(row);
+    }
+
+    if (prevSel.notNull())
+        mAnimPlaybackScrollList->selectByValue(LLSD(prevSel));
+}
+
+void FSFloaterPoser::onAnimPlay()
+{
+    LLVOAvatar* target = getUiSelectedAvatar();
+    if (!target || target->isDead())
+        return;
+
+    // Same local-playback gate as posing (honors BDMergePoserAnyAvatar).
+    if (!havePermissionToAnimateAvatar(target) && !havePermissionToAnimateOtherAvatar(target))
+        return;
+
+    LLScrollListItem* sel = mAnimPlaybackScrollList ? mAnimPlaybackScrollList->getFirstSelected() : nullptr;
+    if (!sel)
+        return;
+
+    LLUUID animId = sel->getValue().asUUID();
+    if (animId.isNull())
+        return;
+
+    // Local client-side motion: only rendered in our viewer, never sent to the sim.
+    target->startMotion(animId);
+    mLocallyPlayedAnims[target->getID()].insert(animId);
+}
+
+void FSFloaterPoser::onAnimStop()
+{
+    LLVOAvatar* target = getUiSelectedAvatar();
+    LLScrollListItem* sel = mAnimPlaybackScrollList ? mAnimPlaybackScrollList->getFirstSelected() : nullptr;
+    if (!target || !sel)
+        return;
+
+    LLUUID animId = sel->getValue().asUUID();
+    if (animId.isNull())
+        return;
+
+    target->stopMotion(animId);
+
+    auto it = mLocallyPlayedAnims.find(target->getID());
+    if (it != mLocallyPlayedAnims.end())
+    {
+        it->second.erase(animId);
+        if (it->second.empty())
+            mLocallyPlayedAnims.erase(it);
+    }
+}
+
+void FSFloaterPoser::onAnimStopAll()
+{
+    for (const auto& entry : mLocallyPlayedAnims)
+    {
+        LLVOAvatar* av = getAvatarByUuid(entry.first);
+        if (!av || av->isDead())
+            continue;
+        for (const LLUUID& animId : entry.second)
+            av->stopMotion(animId);
+    }
+    mLocallyPlayedAnims.clear();
+}
+
 void FSFloaterPoser::onAvatarSelect()
 {
     LLVOAvatar* avatar = getUiSelectedAvatar();

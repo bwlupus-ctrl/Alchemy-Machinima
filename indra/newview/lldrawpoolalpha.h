@@ -58,13 +58,25 @@ public:
     /*virtual*/ void renderPostDeferred(S32 pass);
     /*virtual*/ S32  getNumPasses() { return 1; }
 
-    void forwardRender(bool write_depth = false);
+    // [BDMerge] Per-draw avatar-attachment filter for the non-rigged BLEND dispatch.
+    // Drives the gated 3-pass ordering (SIM non-rigged -> rigged -> attachment
+    // non-rigged) so worn attachment alpha prims are not over-blended by rigged hair.
+    // Only meaningful on the non-rigged path; rigged always renders ATTACHMENT_ALL.
+    // Ported from AYAstorm (mayatonton/phoenix-firestorm PR #122).
+    enum AttachmentFilter
+    {
+        ATTACHMENT_ALL = 0,   // draw both SIM and attachment (stock / gate-off behavior)
+        ATTACHMENT_NONE,      // SIM-rezzed only   (mAttachedToAvatar == false)
+        ATTACHMENT_ONLY       // worn attachment only (mAttachedToAvatar == true)
+    };
+
+    void forwardRender(bool rigged = false, AttachmentFilter filter = ATTACHMENT_ALL);
     /*virtual*/ void prerender();
 
     void renderDebugAlpha();
 
     void renderGroupAlpha(LLSpatialGroup* group, U32 type, U32 mask, bool texture = true);
-    void renderAlpha(U32 mask, bool depth_only = false, bool rigged = false);
+    void renderAlpha(U32 mask, bool depth_only = false, bool rigged = false, AttachmentFilter filter = ATTACHMENT_ALL);
     void renderAlphaHighlight();
 
     static bool sShowDebugAlpha;
