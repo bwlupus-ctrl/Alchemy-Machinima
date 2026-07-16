@@ -2,12 +2,6 @@
  * @file llviewerjoystick.h
  * @brief Viewer joystick / NDOF device functionality.
  *
- * [BDMerge B9] Full named-mapping joystick/gamepad configuration subsystem
- * ported from Black Dragon (donor: llviewerjoystick.h/.cpp, NiranV Dean),
- * adapted to Alchemy's LLAgent/LLAgentCamera/device APIs and composed with
- * the fork's native llcameraoperator handheld-camera layer + Alchemy's
- * AutomaticFly-aware fly toggle. See doc/BD_MERGE_PATCHLOG.md item B9.
- *
  * $LicenseInfo:firstyear=2001&license=viewerlgpl$
  * Second Life Viewer Source Code
  * Copyright (C) 2010, Linden Research, Inc.
@@ -52,66 +46,6 @@ typedef enum e_joystick_driver_state
     JDS_INITIALIZING
 } EJoystickDriverState;
 
-//BD - Optimized Joystick Mappings (donor: Black Dragon; [BDMerge B9])
-//     Each E_Buttons entry is an action; the floater's button combo_boxes map
-//     a physical device button index (0..15, or -1 = unmapped) to each action.
-typedef enum E_Buttons
-{
-    ROLL_LEFT = 0,
-    ROLL_RIGHT,
-    ROLL_DEFAULT,
-    ZOOM_IN,
-    ZOOM_OUT,
-    ZOOM_DEFAULT,
-    JUMP,
-    CROUCH,
-    FLY,
-    MOUSELOOK,
-    FLYCAM,
-    TOGGLE_RUN,
-    MAX_BUTTONS
-} E_buttons;
-
-//BD - Physical axis roles. The floater's axis combo_boxes map a physical
-//     device axis index (0..5, or -1 = unmapped) to each role.
-typedef enum E_Axes
-{
-    X_AXIS = 0,
-    Y_AXIS = 1,
-    Z_AXIS = 2,
-    CAM_X_AXIS = 3,
-    CAM_Y_AXIS = 4,
-    CAM_Z_AXIS = 5,
-    CAM_W_AXIS = 6,
-    MAX_AXES = 7
-} E_Axes;
-
-//BD - Per-mode axis scaling / deadzone slots (Avatar 0-5, Build 6-11,
-//     Flycam 12-18). MAX_SCALINGS also sizes mAxesDeadzones.
-typedef enum E_Scalings
-{
-    AV_AXIS_0 = 0,
-    AV_AXIS_1 = 1,
-    AV_AXIS_2 = 2,
-    AV_AXIS_3 = 3,
-    AV_AXIS_4 = 4,
-    AV_AXIS_5 = 5,
-    BUILD_AXIS_0 = 6,
-    BUILD_AXIS_1 = 7,
-    BUILD_AXIS_2 = 8,
-    BUILD_AXIS_3 = 9,
-    BUILD_AXIS_4 = 10,
-    BUILD_AXIS_5 = 11,
-    FLYCAM_AXIS_0 = 12,
-    FLYCAM_AXIS_1 = 13,
-    FLYCAM_AXIS_2 = 14,
-    FLYCAM_AXIS_3 = 15,
-    FLYCAM_AXIS_4 = 16,
-    FLYCAM_AXIS_5 = 17,
-    FLYCAM_AXIS_6 = 18,
-    MAX_SCALINGS = 19
-} E_Scalings;
-
 class LLViewerJoystick : public LLSingleton<LLViewerJoystick>
 {
     LLSINGLETON(LLViewerJoystick);
@@ -141,13 +75,6 @@ public:
     void setOverrideCamera(bool val);
     bool toggleFlycam();
     void setSNDefaults();
-    //BD - Xbox360 Controller Support
-    void setXboxDefaults();
-    //BD - Optimized Joystick Mappings
-    void refreshButtonMapping();
-    void refreshAxesMapping();
-    void refreshSettings();
-    void refreshEverything();
     bool isDeviceUUIDSet();
     LLSD getDeviceUUID(); //unconverted, OS dependent value wrapped into LLSD, for comparison/search
     std::string getDeviceUUIDString(); // converted readable value for settings
@@ -171,11 +98,12 @@ protected:
 #endif
 
 private:
-    F32                     mAxes[MAX_AXES];
+    F32                     mAxes[6];
     long                    mBtn[16];
     EJoystickDriverState    mDriverState;
     NDOF_Device             *mNdofDev;
     bool                    mResetFlag;
+    F32                     mPerfScale;
     bool                    mCameraUpdated;
     bool                    mOverrideCamera;
     U32                     mJoystickRun;
@@ -185,31 +113,8 @@ private:
     // Else: integer 1 for no device/ndof's default device
     LLSD                    mLastDeviceUUID;
 
-    static F32              sLastDelta[MAX_AXES];
-    static F32              sDelta[MAX_AXES];
-
-    //BD - Optimized Joystick Mappings (cached from settings via refresh*())
-    S32 mMappedButtons[MAX_BUTTONS];
-    S32 mMappedAxes[MAX_AXES];
-    F32 mAxesScalings[MAX_SCALINGS];
-    F32 mAxesDeadzones[MAX_SCALINGS];
-
-    bool mAutoLeveling;
-    bool mZoomDirect;
-    bool mJoystickEnabled;
-    bool mJoystickFlycamEnabled;
-    bool mJoystickBuildEnabled;
-    bool mJoystickAvatarEnabled;
-    bool mJoystickInvertPitch;
-    bool mJoystickMouselookYaw;
-    bool mCursor3D;
-    bool mAutomaticFly;
-
-    F32 mFlycamFeathering;
-    F32 mAvatarFeathering;
-    F32 mBuildFeathering;
-    F32 mFlycamBuildModeScale;
-    F32 mJoystickRunThreshold;
+    static F32              sLastDelta[7];
+    static F32              sDelta[7];
 };
 
 #endif

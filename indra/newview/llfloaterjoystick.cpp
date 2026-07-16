@@ -97,12 +97,6 @@ LLFloaterJoystick::LLFloaterJoystick(const LLSD& data)
     , mHasDeviceList(false)
     , mJoystickInitialized(false)
 {
-//  //BD - Optimized Joystick Mappings: every mapping control in the floater XML
-//         commits through "Joystick.Refresh" so the live subsystem re-reads its
-//         cache immediately; "Joystick.Invert" flips the sign of a bound scale.
-    mCommitCallbackRegistrar.add("Joystick.Refresh", boost::bind(&LLFloaterJoystick::refreshAll, this));
-    mCommitCallbackRegistrar.add("Joystick.Invert", boost::bind(&LLFloaterJoystick::onCommitInvert, _1));
-
     if (!LLViewerJoystick::getInstance()->isJoystickInitialized())
     {
         LLViewerJoystick::getInstance()->init(false);
@@ -165,8 +159,6 @@ bool LLFloaterJoystick::postBuild()
     childSetCommitCallback("JoystickFlycamEnabled",onCommitJoystickEnabled,this);
 
     childSetAction("SpaceNavigatorDefaults", onClickRestoreSNDefaults, this);
-//  //BD - Xbox360 Controller Support
-    childSetAction("Xbox360Defaults", onClickRestoreXboxDefaults, this);
     childSetAction("cancel_btn", onClickCancel, this);
     childSetAction("ok_btn", onClickOK, this);
 
@@ -476,46 +468,12 @@ void LLFloaterJoystick::onCommitJoystickEnabled(LLUICtrl*, void *joy_panel)
     std::string device_string = LLViewerJoystick::getInstance()->getDeviceUUIDString();
     LL_DEBUGS("Joystick") << "Selected " << device_string << " as joystick." << LL_ENDL;
 
-//  //BD - Optimized Joystick Mappings: enabling/disabling the device or the
-//         flycam mode must re-sync the subsystem's cached flags.
-    LLViewerJoystick::getInstance()->refreshEverything();
-
     self->refreshListOfDevices();
 }
 
 void LLFloaterJoystick::onClickRestoreSNDefaults(void *joy_panel)
 {
     setSNDefaults();
-}
-
-//BD - Xbox360 Controller Support
-void LLFloaterJoystick::onClickRestoreXboxDefaults(void *joy_panel)
-{
-    setXboxDefaults();
-}
-
-//BD - Optimized Joystick Mappings: negate the sign of the scale setting bound
-//     to the invert button's control_name, then re-sync the live subsystem.
-void LLFloaterJoystick::onCommitInvert(LLUICtrl* ctrl)
-{
-    if (!ctrl)
-    {
-        return;
-    }
-
-    LLControlVariable* control = ctrl->getControlVariable();
-    if (control)
-    {
-        F32 val = (F32)control->getValue().asReal();
-        control->setValue(-val);
-    }
-    else
-    {
-        F32 val = (F32)ctrl->getValue().asReal();
-        ctrl->setValue(-val);
-    }
-
-    LLViewerJoystick::getInstance()->refreshEverything();
 }
 
 void LLFloaterJoystick::onClickCancel(void *joy_panel)
@@ -527,9 +485,6 @@ void LLFloaterJoystick::onClickCancel(void *joy_panel)
         if (self)
         {
             self->cancel();
-//          //BD - Optimized Joystick Mappings: restore the live subsystem cache
-//                 to the values cancel() just wrote back.
-            LLViewerJoystick::getInstance()->refreshEverything();
             self->closeFloater();
         }
     }
@@ -557,18 +512,6 @@ void LLFloaterJoystick::onClickCloseBtn(bool app_quitting)
 void LLFloaterJoystick::setSNDefaults()
 {
     LLViewerJoystick::getInstance()->setSNDefaults();
-}
-
-//BD - Xbox360 Controller Support
-void LLFloaterJoystick::setXboxDefaults()
-{
-    LLViewerJoystick::getInstance()->setXboxDefaults();
-}
-
-//BD - Optimized Joystick Mappings
-void LLFloaterJoystick::refreshAll()
-{
-    LLViewerJoystick::getInstance()->refreshEverything();
 }
 
 void LLFloaterJoystick::onClose(bool app_quitting)
