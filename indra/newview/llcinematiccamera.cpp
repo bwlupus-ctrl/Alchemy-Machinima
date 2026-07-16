@@ -107,7 +107,7 @@ bool LLCinematicCamera::isActive() const
 {
     static LLCachedControl<bool> enabled(gSavedSettings, "CinematicCamEnabled", false);
     static LLCachedControl<S32>  mode(gSavedSettings, "CinematicCamMode", 1);
-    if (!enabled || (S32)mode <= MODE_OFF || (S32)mode > MODE_CRANE)
+    if (!enabled || (S32)mode <= MODE_OFF || (S32)mode > MODE_OTS)
     {
         return false;
     }
@@ -252,6 +252,153 @@ LLVector3 LLCinematicCamera::patternCrane(const LLVector3& center, F32 phase)
 }
 
 // ---------------------------------------------------------------------------
+// film-grammar patterns
+// ---------------------------------------------------------------------------
+namespace
+{
+// avatar facing yaw (radians, region frame)
+F32 cc_avatarYaw(LLVOAvatar* av)
+{
+    LLVector3 at = LLVector3(1.f, 0.f, 0.f) * av->getRenderRotation();
+    return atan2f(at.mV[VY], at.mV[VX]);
+}
+
+// eased one-shot / ping-pong / loop progress over a duration
+// end_mode: 0 = hold at end, 1 = ping-pong, 2 = loop
+F32 cc_progress(F32 phase, F32 duration, S32 end_mode)
+{
+    const F32 d = llmax(duration, 0.1f);
+    F32 u;
+    switch (end_mode)
+    {
+        case 1: { const F32 c = cc_frac(phase / (2.f * d)) * 2.f; u = (c < 1.f) ? c : 2.f - c; break; }
+        case 2: u = cc_frac(phase / d); break;
+        default: u = llclamp(phase / d, 0.f, 1.f); break;
+    }
+    return u * u * (3.f - 2.f * u);     // smoothstep ease in/out
+}
+} // anonymous namespace
+
+// Vertigo shot: camera travels between two distances along a bearing fixed to
+// the subject's facing while the FOV compensates so the SUBJECT keeps constant
+// angular size -- the background stretches or compresses around them.
+LLVector3 LLCinematicCamera::patternDollyZoom(LLVOAvatar* av, const LLVector3& focus,
+                                              F32 phase, F32& fov_mul)
+{
+    static LLCachedControl<F32> d_start(gSavedSettings, "CinematicCamVertigoStartDist", 2.f);
+    static LLCachedControl<F32> d_end(gSavedSettings, "CinematicCamVertigoEndDist", 7.f);
+    static LLCachedControl<F32> duration(gSavedSettings, "CinematicCamVertigoDuration", 8.f);
+    static LLCachedControl<F32> heading(gSavedSettings, "CinematicCamVertigoHeading", 0.f);  // deg from facing
+    static LLCachedControl<F32> height(gSavedSettings, "CinematicCamVertigoHeight", 0.f);    // rel focus
+    static LLCachedControl<S32> end_mode(gSavedSettings, "CinematicCamVertigoEndMode", 1);   // ping-pong
+
+    const F32 u  = cc_progress(phase, duration, end_mode);
+    const F32 d0 = llmax((F32)d_start, 0.3f);
+    const F32 d  = llmax(cc_lerp(d0, llmax((F32)d_end, 0.3f), u), 0.3f);
+
+    // keep the subject's angular size constant: tan(fov/2) * d == const
+    LLViewerCamera* cam = LLViewerCamera::getInstance();
+    const F32 half0 = 0.5f * cam->getDefaultFOV();
+    const F32 half  = atanf(tanf(half0) * d0 / d);
+    fov_mul = llclamp(half / llmax(half0, 0.001f), 0.05f, 4.f);
+
+    const F32 yaw = cc_avatarYaw(av) + heading * DEG_TO_RAD;
+    return focus + LLVector3(cosf(yaw) * d, sinf(yaw) * d, (F32)height);
+}
+
+// slow creep from a wide start to a close-up on the face; holds at the end
+LLVector3 LLCinematicCamera::patternPushIn(LLVOAvatar* av, const LLVector3& focus, F32 phase)
+{
+    static LLCachedControl<F32> d_start(gSavedSettings, "CinematicCamPushStartDist", 4.f);
+    static LLCachedControl<F32> d_end(gSavedSettings, "CinematicCamPushEndDist", 0.8f);
+    static LLCachedControl<F32> duration(gSavedSettings, "CinematicCamPushDuration", 12.f);
+    static LLCachedControl<F32> heading(gSavedSettings, "CinematicCamPushHeading", 0.f);   // deg from facing
+    static LLCachedControl<F32> height(gSavedSettings, "CinematicCamPushHeight", 0.f);     // rel focus (eye level)
+    static LLCachedControl<S32> end_mode(gSavedSettings, "CinematicCamPushEndMode", 0);    // hold
+
+    const F32 u = cc_progress(phase, duration, end_mode);
+    const F32 d = llmax(cc_lerp(llmax((F32)d_start, 0.3f), llmax((F32)d_end, 0.3f), u), 0.3f);
+    const F32 yaw = cc_avatarYaw(av) + heading * DEG_TO_RAD;
+    return focus + LLVector3(cosf(yaw) * d, sinf(yaw) * d, (F32)height);
+}
+
+// low-angle hero shot: camera near the ground in front of the subject looking
+// up, drifting on a slow arc with a gentle breathing push
+LLVector3 LLCinematicCamera::patternLowHero(LLVOAvatar* av, const LLVector3& center, F32 phase)
+{
+    static LLCachedControl<F32> distance(gSavedSettings, "CinematicCamHeroDistance", 2.2f);
+    static LLCachedControl<F32> height(gSavedSettings, "CinematicCamHeroHeight", 0.35f);   // above feet
+    static LLCachedControl<F32> arc(gSavedSettings, "CinematicCamHeroArc", 30.f);          // deg total drift
+    static LLCachedControl<F32> period(gSavedSettings, "CinematicCamHeroPeriod", 14.f);
+    static LLCachedControl<F32> heading(gSavedSettings, "CinematicCamHeroHeading", 0.f);   // deg from facing
+
+    const F32 w = F_TWO_PI / llmax((F32)period, 1.f);
+    const F32 yaw = cc_avatarYaw(av) + (heading + 0.5f * arc * sinf(phase * w)) * DEG_TO_RAD;
+    const F32 d = llmax((F32)distance, 0.3f) * (1.f - 0.12f * sinf(phase * w * 0.5f));
+    return center + LLVector3(cosf(yaw) * d, sinf(yaw) * d, (F32)height);
+}
+
+// God's-eye: straight down on the subject, rising (or descending) between two
+// heights, with an optional slow spin carried out as camera roll
+LLVector3 LLCinematicCamera::patternOverhead(const LLVector3& center, F32 phase, F32& roll_out)
+{
+    static LLCachedControl<F32> h_start(gSavedSettings, "CinematicCamOverheadStart", 4.f);
+    static LLCachedControl<F32> h_end(gSavedSettings, "CinematicCamOverheadEnd", 14.f);
+    static LLCachedControl<F32> duration(gSavedSettings, "CinematicCamOverheadDuration", 16.f);
+    static LLCachedControl<F32> spin(gSavedSettings, "CinematicCamOverheadSpin", 4.f);     // deg/s
+    static LLCachedControl<S32> end_mode(gSavedSettings, "CinematicCamOverheadEndMode", 0); // hold
+
+    const F32 u = cc_progress(phase, duration, end_mode);
+    roll_out = spin * phase * DEG_TO_RAD;
+    // tiny lateral epsilon keeps the straight-down look-at well-defined
+    return center + LLVector3(0.02f, 0.f, llmax(cc_lerp((F32)h_start, (F32)h_end, u), 0.5f));
+}
+
+// over-the-shoulder: anchored behind MY shoulder, framing the resolved target
+// (the selected avatar; falls back to what I'm facing when nothing is selected)
+LLVector3 LLCinematicCamera::patternOTS(LLVOAvatar* target, LLVector3& focus_io)
+{
+    static LLCachedControl<S32> side(gSavedSettings, "CinematicCamOTSSide", 1);        // 1=right, 0=left
+    static LLCachedControl<F32> back(gSavedSettings, "CinematicCamOTSBack", 0.45f);
+    static LLCachedControl<F32> out(gSavedSettings, "CinematicCamOTSOut", 0.22f);
+    static LLCachedControl<F32> up(gSavedSettings, "CinematicCamOTSUp", 0.12f);
+
+    LLVOAvatar* self = isAgentAvatarValid() ? (LLVOAvatar*)gAgentAvatarp : target;
+
+    const char* joint_name = ((S32)side != 0) ? "mShoulderRight" : "mShoulderLeft";
+    LLVector3 shoulder = self->getPositionAgent() + LLVector3(0.f, 0.f, 1.4f);
+    if (LLJoint* j = self->getJoint(joint_name))
+    {
+        shoulder = j->getWorldPosition();
+    }
+
+    const F32 yaw = cc_avatarYaw(self);
+    const LLVector3 fwd(cosf(yaw), sinf(yaw), 0.f);
+    const LLVector3 right(sinf(yaw), -cosf(yaw), 0.f);
+    const F32 s = ((S32)side != 0) ? 1.f : -1.f;
+
+    // frame the conversation partner's head; with no distinct target, frame
+    // the space I'm facing so the shot still composes
+    if (target && target != self)
+    {
+        if (LLJoint* th = target->getJoint("mHead"))
+        {
+            focus_io = th->getWorldPosition();
+        }
+        else
+        {
+            focus_io = target->getPositionAgent() + LLVector3(0.f, 0.f, 1.5f);
+        }
+    }
+    else
+    {
+        focus_io = shoulder + fwd * 3.f;
+    }
+
+    return shoulder - fwd * (F32)back + right * s * (F32)out + LLVector3(0.f, 0.f, (F32)up);
+}
+
+// ---------------------------------------------------------------------------
 void LLCinematicCamera::updateCamera()
 {
     static LLCachedControl<S32>  mode(gSavedSettings, "CinematicCamMode", 1);
@@ -264,6 +411,18 @@ void LLCinematicCamera::updateCamera()
     {
         return;
     }
+
+    // fresh activation (mode was off for a few frames): restart the pattern
+    // clock so one-shot moves (dolly zoom, push-in, overhead) begin at their
+    // start pose, and let smoothing/operator re-seed instead of lerping from
+    // a stale pose
+    if (gFrameCount > mLastUpdateFrame + 3)
+    {
+        mPhase = 0.f;
+        mHavePose = false;
+        mWasActive = false;
+    }
+    mLastUpdateFrame = gFrameCount;
 
     F32 dt = llclamp(gFrameIntervalSeconds.value(), 0.0005f, 0.25f);
     mPhase += dt;
@@ -286,20 +445,38 @@ void LLCinematicCamera::updateCamera()
     LLVector3 pos;
     LLQuaternion rot;
     bool have_rot = false;
+    F32 mode_fov_mul = 1.f;     // dolly zoom writes this
+    F32 mode_roll = 0.f;        // overhead spin writes this (radians)
 
     switch ((S32)mode)
     {
-        case MODE_BONE_LOCK: patternBoneLock(av, mPhase, pos, rot, have_rot); break;
-        case MODE_ORBIT:     pos = patternOrbit(center, mPhase); break;
-        case MODE_FLY_HOVER: pos = patternHover(center, mPhase); break;
-        case MODE_SWEEP:     pos = patternSweep(center, mPhase); break;
-        case MODE_CRANE:     pos = patternCrane(center, mPhase); break;
-        default:             return;
+        case MODE_BONE_LOCK:  patternBoneLock(av, mPhase, pos, rot, have_rot); break;
+        case MODE_ORBIT:      pos = patternOrbit(center, mPhase); break;
+        case MODE_FLY_HOVER:  pos = patternHover(center, mPhase); break;
+        case MODE_SWEEP:      pos = patternSweep(center, mPhase); break;
+        case MODE_CRANE:      pos = patternCrane(center, mPhase); break;
+        case MODE_DOLLY_ZOOM: pos = patternDollyZoom(av, focus, mPhase, mode_fov_mul); break;
+        case MODE_PUSH_IN:    pos = patternPushIn(av, focus, mPhase); break;
+        case MODE_LOW_HERO:   pos = patternLowHero(av, center, mPhase); break;
+        case MODE_OVERHEAD:   pos = patternOverhead(center, mPhase, mode_roll); break;
+        case MODE_OTS:        pos = patternOTS(av, focus); break;
+        default:              return;
     }
 
     if (!have_rot)
     {
         rot = cc_lookAt(pos, focus);
+    }
+
+    // dutch angle (composable unease dial for every mode) + overhead spin,
+    // as a roll in the camera's local frame -- same trim idiom as bone lock
+    static LLCachedControl<F32> dutch(gSavedSettings, "CinematicCamDutchAngle", 0.f);   // deg
+    const F32 total_roll = (F32)dutch * DEG_TO_RAD + mode_roll;
+    if (fabsf(total_roll) > 0.0001f)
+    {
+        LLQuaternion roll_q;
+        roll_q.setEulerAngles(total_roll, 0.f, 0.f);
+        rot = roll_q * rot;
     }
 
     // ---- temporal smoothing (one-pole, framerate-independent) -------------
@@ -359,7 +536,7 @@ void LLCinematicCamera::updateCamera()
     // ---- write the render camera -------------------------------------------
     LLViewerCamera* cam = LLViewerCamera::getInstance();
     LLMatrix3 final_axes(out_rot);
-    cam->setView(cam->getDefaultFOV() * fov_mul);
+    cam->setView(cam->getDefaultFOV() * mode_fov_mul * fov_mul);
     cam->setOrigin(out_pos);
     cam->mXAxis = LLVector3(final_axes.mMatrix[0]);
     cam->mYAxis = LLVector3(final_axes.mMatrix[1]);

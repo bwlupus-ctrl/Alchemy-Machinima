@@ -43,6 +43,12 @@ public:
         MODE_FLY_HOVER  = 3,
         MODE_SWEEP      = 4,
         MODE_CRANE      = 5,
+        // film-grammar modes: named for the emotion they carry
+        MODE_DOLLY_ZOOM = 6,    // Vertigo: subject constant, world stretches (dread)
+        MODE_PUSH_IN    = 7,    // slow creep to close-up (intimacy / tension)
+        MODE_LOW_HERO   = 8,    // low-angle drift-arc push (power / awe)
+        MODE_OVERHEAD   = 9,    // God's-eye rise + spin (isolation / fate)
+        MODE_OTS        = 10,   // over-the-shoulder on the selected target (dialogue)
     };
 
     static LLCinematicCamera& instance();
@@ -66,8 +72,16 @@ private:
     LLVector3 patternHover(const LLVector3& center, F32 phase);
     LLVector3 patternSweep(const LLVector3& center, F32 phase);
     LLVector3 patternCrane(const LLVector3& center, F32 phase);
+    // film-grammar patterns. Some produce a FOV multiplier (dolly zoom), a
+    // roll contribution (overhead spin) or their own focus point (OTS).
+    LLVector3 patternDollyZoom(LLVOAvatar* av, const LLVector3& focus, F32 phase, F32& fov_mul);
+    LLVector3 patternPushIn(LLVOAvatar* av, const LLVector3& focus, F32 phase);
+    LLVector3 patternLowHero(LLVOAvatar* av, const LLVector3& center, F32 phase);
+    LLVector3 patternOverhead(const LLVector3& center, F32 phase, F32& roll_out);
+    LLVector3 patternOTS(LLVOAvatar* target, LLVector3& focus_io);
 
     // ---- state ----
+    U32         mLastUpdateFrame = 0;   // fresh-activation detection (phase reset)
     bool        mWasActive = false;
     F32         mPhase = 0.f;           // wrapped pattern clock, seconds*speed
     F32         mPrevTime = 0.f;

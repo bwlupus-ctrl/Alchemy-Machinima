@@ -35,6 +35,11 @@
         <combo_box.item label="Fly Hover" name="cc_hover" value="3" />
         <combo_box.item label="Sweep" name="cc_sweep" value="4" />
         <combo_box.item label="Crane" name="cc_crane" value="5" />
+        <combo_box.item label="Dolly Zoom (Vertigo)" name="cc_vertigo" value="6" />
+        <combo_box.item label="Push-In (Close-Up)" name="cc_pushin" value="7" />
+        <combo_box.item label="Low Hero" name="cc_hero" value="8" />
+        <combo_box.item label="Overhead (God's Eye)" name="cc_overhead" value="9" />
+        <combo_box.item label="Over-the-Shoulder" name="cc_ots" value="10" />
     </combo_box>
     <check_box
      control_name="CinematicCamUseSelected"

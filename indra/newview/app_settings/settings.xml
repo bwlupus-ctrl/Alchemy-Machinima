@@ -101,6 +101,303 @@
       <key>Value</key>
       <real>0.2</real>
     </map>
+    <key>CinematicCamDutchAngle</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Dutch (canted) angle in degrees, composable roll applied to EVERY cinematic mode. Film grammar: unease, wrongness, tension. 0 = level.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0</real>
+    </map>
+    <key>CinematicCamVertigoStartDist</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Dolly Zoom: start distance from subject (m). The move travels start->end while FOV keeps the subject a constant size (Vertigo/Jaws).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>2.0</real>
+    </map>
+    <key>CinematicCamVertigoEndDist</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Dolly Zoom: end distance (m). Start near + end far = background stretches away (dread); reverse = world closes in.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>7.0</real>
+    </map>
+    <key>CinematicCamVertigoDuration</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Dolly Zoom: seconds for one traversal.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>8.0</real>
+    </map>
+    <key>CinematicCamVertigoHeading</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Dolly Zoom: bearing in degrees relative to the subject FACING (0 = head-on).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0</real>
+    </map>
+    <key>CinematicCamVertigoHeight</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Dolly Zoom: camera height relative to the focus point (m).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0</real>
+    </map>
+    <key>CinematicCamVertigoEndMode</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Dolly Zoom end behavior: 0 hold at end, 1 ping-pong, 2 loop.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>CinematicCamPushStartDist</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Push-In: start distance (m) of the slow creep toward the face.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>4.0</real>
+    </map>
+    <key>CinematicCamPushEndDist</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Push-In: end distance (m). 0.8 = tight close-up.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.8</real>
+    </map>
+    <key>CinematicCamPushDuration</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Push-In: seconds for the move.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>12.0</real>
+    </map>
+    <key>CinematicCamPushHeading</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Push-In: bearing in degrees relative to subject facing (0 = face-on).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0</real>
+    </map>
+    <key>CinematicCamPushHeight</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Push-In: height relative to the focus point (m); 0 = eye level.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0</real>
+    </map>
+    <key>CinematicCamPushEndMode</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Push-In end behavior: 0 hold (default), 1 ping-pong, 2 loop.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>CinematicCamHeroDistance</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Low Hero: distance from subject (m), low-angle looking up (power/awe).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>2.2</real>
+    </map>
+    <key>CinematicCamHeroHeight</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Low Hero: camera height above the subject root (m). 0.35 = knee height.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.35</real>
+    </map>
+    <key>CinematicCamHeroArc</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Low Hero: total slow drift arc in degrees around the subject.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>30</real>
+    </map>
+    <key>CinematicCamHeroPeriod</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Low Hero: seconds per drift/breathing cycle.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>14</real>
+    </map>
+    <key>CinematicCamHeroHeading</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Low Hero: center bearing in degrees relative to subject facing.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0</real>
+    </map>
+    <key>CinematicCamOverheadStart</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Overhead (God's-eye): start height above subject (m), looking straight down.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>4</real>
+    </map>
+    <key>CinematicCamOverheadEnd</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Overhead: end height (m). Rising pull-away = isolation/fate.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>14</real>
+    </map>
+    <key>CinematicCamOverheadDuration</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Overhead: seconds for the rise/descent.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>16</real>
+    </map>
+    <key>CinematicCamOverheadSpin</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Overhead: slow spin in degrees/second (camera roll while looking down). 0 = none.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>4</real>
+    </map>
+    <key>CinematicCamOverheadEndMode</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Overhead end behavior: 0 hold, 1 ping-pong, 2 loop.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>CinematicCamOTSSide</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Over-the-Shoulder: 1 = over my right shoulder, 0 = left.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>CinematicCamOTSBack</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Over-the-Shoulder: distance behind the shoulder (m).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.45</real>
+    </map>
+    <key>CinematicCamOTSOut</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Over-the-Shoulder: lateral offset outboard of the shoulder (m).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.22</real>
+    </map>
+    <key>CinematicCamOTSUp</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Over-the-Shoulder: height above the shoulder joint (m). Frames the SELECTED avatar (Use Selected not required); nothing selected = frames what I face.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.12</real>
+    </map>
     <key>CinematicCamCraneRadius</key>
     <map>
       <key>Comment</key>
