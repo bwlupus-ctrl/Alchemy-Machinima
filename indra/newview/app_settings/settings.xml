@@ -398,6 +398,567 @@
       <key>Value</key>
       <real>0.12</real>
     </map>
+    <key>CinematicCamCrashZoom</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Crash Zoom: target FOV multiplier (under 1 = zoom in). Snap with slight overshoot from a tripod position captured at activation; toggle the mode to retrigger.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.35</real>
+    </map>
+    <key>CinematicCamCrashDuration</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Crash Zoom: seconds for the snap.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.4</real>
+    </map>
+    <key>CinematicCamSlowZoomTarget</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Slow Zoom: target FOV multiplier reached at the end (under 1 creep in, over 1 creep out). Position frozen at activation (Kubrick zoom).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.55</real>
+    </map>
+    <key>CinematicCamSlowZoomDuration</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Slow Zoom: seconds for the full creep.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>45</real>
+    </map>
+    <key>CinematicCamWhipFrom</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Whip Arc: start bearing (deg, facing-relative).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>-60</real>
+    </map>
+    <key>CinematicCamWhipTo</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Whip Arc: end bearing (deg).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>60</real>
+    </map>
+    <key>CinematicCamWhipDuration</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Whip Arc: seconds; keep under 0.6 for a true whip (motion blur sells it).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.45</real>
+    </map>
+    <key>CinematicCamWhipDistance</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Whip Arc: distance from subject (m).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>3</real>
+    </map>
+    <key>CinematicCamWhipHeight</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Whip Arc: camera height above subject root (m).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.2</real>
+    </map>
+    <key>CinematicCamArcFrom</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Arc Move: start bearing (deg, facing-relative). One eased partial orbit, then hold - the universal oner building block.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>-40</real>
+    </map>
+    <key>CinematicCamArcTo</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Arc Move: end bearing (deg).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>40</real>
+    </map>
+    <key>CinematicCamArcDuration</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Arc Move: seconds for the traversal.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>9</real>
+    </map>
+    <key>CinematicCamArcDistance</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Arc Move: distance from subject (m).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>2.6</real>
+    </map>
+    <key>CinematicCamArcHeight</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Arc Move: camera height above subject root (m).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.3</real>
+    </map>
+    <key>CinematicCamArcEndMode</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Arc Move end behavior: 0 hold, 1 ping-pong, 2 loop.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>CinematicCamRevealBehind</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Reveal Rise: distance behind the subject (m).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.4</real>
+    </map>
+    <key>CinematicCamRevealLowHeight</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Reveal Rise: start height (m above subject root).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.4</real>
+    </map>
+    <key>CinematicCamRevealHighHeight</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Reveal Rise: end height (m).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>2.1</real>
+    </map>
+    <key>CinematicCamRevealAhead</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Reveal Rise: how far ahead of the subject the framing lifts to (m) - the vista.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>14</real>
+    </map>
+    <key>CinematicCamRevealDuration</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Reveal Rise: seconds for the move.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>10</real>
+    </map>
+    <key>CinematicCamPullStartDist</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Pull-Back: start distance (m).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.2</real>
+    </map>
+    <key>CinematicCamPullEndDist</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Pull-Back: end distance (m) - the walk-away wide.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>10</real>
+    </map>
+    <key>CinematicCamPullEndHeight</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Pull-Back: rise gained by the end (m).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>2.5</real>
+    </map>
+    <key>CinematicCamPullDuration</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Pull-Back: seconds.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>14</real>
+    </map>
+    <key>CinematicCamPullHeading</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Pull-Back: bearing (deg, facing-relative).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0</real>
+    </map>
+    <key>CinematicCamTwoShotSide</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Two-Shot: 1 = camera on the right of the self-to-target line, 0 = left.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>CinematicCamTwoShotPad</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Two-Shot: camera distance = separation x this factor.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.3</real>
+    </map>
+    <key>CinematicCamTwoShotMinDist</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Two-Shot: minimum camera distance (m).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>2.5</real>
+    </map>
+    <key>CinematicCamTwoShotHeight</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Two-Shot: framing height above the midpoint (m).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.4</real>
+    </map>
+    <key>CinematicCamLeadDistance</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Lead Follow: distance ahead of the subject (m); the camera backpedals as they advance.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>2.2</real>
+    </map>
+    <key>CinematicCamLeadHeight</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Lead Follow: height relative to the focus point (m).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0</real>
+    </map>
+    <key>CinematicCamLeadSway</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Lead Follow: lateral sway amplitude (m) for organic drift.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.15</real>
+    </map>
+    <key>CinematicCamECUDistance</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] ECU Eyes: distance from the face (m).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.5</real>
+    </map>
+    <key>CinematicCamECUZoom</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] ECU Eyes: FOV multiplier (narrow lens).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.55</real>
+    </map>
+    <key>CinematicCamECUDrift</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] ECU Eyes: micro-drift amplitude (m) so the frame breathes.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.006</real>
+    </map>
+    <key>CinematicCamLongDistance</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Long Lens: distance from subject (m).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>15</real>
+    </map>
+    <key>CinematicCamLongZoom</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Long Lens: FOV multiplier; small = heavy telephoto compression.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.22</real>
+    </map>
+    <key>CinematicCamLongHeading</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Long Lens: bearing (deg, facing-relative).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>35</real>
+    </map>
+    <key>CinematicCamLongHeight</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Long Lens: camera height above the focus (m).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.4</real>
+    </map>
+    <key>CinematicCamLongDrift</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Long Lens: slow positional drift amplitude (m).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.05</real>
+    </map>
+    <key>CinematicCamSpiralStartRadius</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Spiral: starting orbit radius (m).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>6</real>
+    </map>
+    <key>CinematicCamSpiralEndRadius</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Spiral: ending radius (m) - the spiral tightens to this.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.4</real>
+    </map>
+    <key>CinematicCamSpiralStartHeight</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Spiral: starting height (m).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.3</real>
+    </map>
+    <key>CinematicCamSpiralEndHeight</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Spiral: ending height (m).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>2</real>
+    </map>
+    <key>CinematicCamSpiralSpeed</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Spiral: angular speed (deg/s).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>40</real>
+    </map>
+    <key>CinematicCamSpiralDuration</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Spiral: seconds to complete the tighten/rise (then holds).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>12</real>
+    </map>
+    <key>CinematicCamPedestalDistance</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Pedestal: frontal distance (m).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.8</real>
+    </map>
+    <key>CinematicCamPedestalStart</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Pedestal: start height (m above root) - boots.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.2</real>
+    </map>
+    <key>CinematicCamPedestalEnd</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Pedestal: end height (m) - face.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.75</real>
+    </map>
+    <key>CinematicCamPedestalDuration</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Pedestal: seconds for the rise.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>8</real>
+    </map>
+    <key>CinematicCamPedestalHeading</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Pedestal: bearing (deg, facing-relative).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0</real>
+    </map>
     <key>CinematicCamCraneRadius</key>
     <map>
       <key>Comment</key>

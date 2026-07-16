@@ -49,6 +49,18 @@ public:
         MODE_LOW_HERO   = 8,    // low-angle drift-arc push (power / awe)
         MODE_OVERHEAD   = 9,    // God's-eye rise + spin (isolation / fate)
         MODE_OTS        = 10,   // over-the-shoulder on the selected target (dialogue)
+        MODE_CRASH_ZOOM = 11,   // snap zoom w/ overshoot, tripod-locked (shock)
+        MODE_SLOW_ZOOM  = 12,   // Kubrick creep, position frozen (slow dread)
+        MODE_WHIP_ARC   = 13,   // violent 0.4s arc around subject (transition energy)
+        MODE_ARC        = 14,   // eased one-shot partial orbit, holds (the oner block)
+        MODE_REVEAL     = 15,   // low-behind rise, focus lifts to the horizon (arrival)
+        MODE_PULL_BACK  = 16,   // eased retreat + rise close->wide (farewell)
+        MODE_TWO_SHOT   = 17,   // perpendicular to the self<->target line (dialogue master)
+        MODE_LEAD_FOLLOW= 18,   // backpedal ahead of the subject (walk-and-talk)
+        MODE_ECU_EYES   = 19,   // locked face micro-frame, narrow lens (standoff)
+        MODE_LONG_LENS  = 20,   // distant compressed telephoto w/ drift (surveillance)
+        MODE_SPIRAL     = 21,   // orbit tightening + rising as it turns (euphoria)
+        MODE_PEDESTAL   = 22,   // boots-to-face vertical rise, level gaze (introduction)
     };
 
     static LLCinematicCamera& instance();
@@ -79,9 +91,22 @@ private:
     LLVector3 patternLowHero(LLVOAvatar* av, const LLVector3& center, F32 phase);
     LLVector3 patternOverhead(const LLVector3& center, F32 phase, F32& roll_out);
     LLVector3 patternOTS(LLVOAvatar* target, LLVector3& focus_io);
+    LLVector3 patternCrashZoom(F32 phase, F32& fov_mul);
+    LLVector3 patternSlowZoom(F32 phase, F32& fov_mul);
+    LLVector3 patternWhipArc(LLVOAvatar* av, const LLVector3& center, F32 phase);
+    LLVector3 patternArc(LLVOAvatar* av, const LLVector3& center, F32 phase);
+    LLVector3 patternReveal(LLVOAvatar* av, const LLVector3& center, F32 phase, LLVector3& focus_io);
+    LLVector3 patternPullBack(LLVOAvatar* av, const LLVector3& focus, F32 phase);
+    LLVector3 patternTwoShot(LLVOAvatar* target, LLVector3& focus_io);
+    LLVector3 patternLeadFollow(LLVOAvatar* av, const LLVector3& focus, F32 phase);
+    LLVector3 patternECU(LLVOAvatar* av, const LLVector3& focus, F32 phase, F32& fov_mul);
+    LLVector3 patternLongLens(LLVOAvatar* av, const LLVector3& focus, F32 phase, F32& fov_mul);
+    LLVector3 patternSpiral(const LLVector3& center, F32 phase);
+    LLVector3 patternPedestal(LLVOAvatar* av, const LLVector3& center, F32 phase, LLVector3& focus_io);
 
     // ---- state ----
     U32         mLastUpdateFrame = 0;   // fresh-activation detection (phase reset)
+    LLVector3   mTripodPos = LLVector3::zero;   // camera pos captured at activation (zoom modes)
     bool        mWasActive = false;
     F32         mPhase = 0.f;           // wrapped pattern clock, seconds*speed
     F32         mPrevTime = 0.f;

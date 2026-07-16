@@ -40,6 +40,18 @@
         <combo_box.item label="Low Hero" name="cc_hero" value="8" />
         <combo_box.item label="Overhead (God's Eye)" name="cc_overhead" value="9" />
         <combo_box.item label="Over-the-Shoulder" name="cc_ots" value="10" />
+        <combo_box.item label="Crash Zoom" name="cc_crash" value="11" />
+        <combo_box.item label="Slow Zoom (Kubrick)" name="cc_slowzoom" value="12" />
+        <combo_box.item label="Whip Arc" name="cc_whip" value="13" />
+        <combo_box.item label="Arc Move" name="cc_arc" value="14" />
+        <combo_box.item label="Reveal Rise" name="cc_reveal" value="15" />
+        <combo_box.item label="Pull-Back" name="cc_pull" value="16" />
+        <combo_box.item label="Two-Shot" name="cc_twoshot" value="17" />
+        <combo_box.item label="Lead Follow" name="cc_lead" value="18" />
+        <combo_box.item label="ECU Eyes" name="cc_ecu" value="19" />
+        <combo_box.item label="Long Lens" name="cc_long" value="20" />
+        <combo_box.item label="Spiral" name="cc_spiral" value="21" />
+        <combo_box.item label="Pedestal Rise" name="cc_pedestal" value="22" />
     </combo_box>
     <check_box
      control_name="CinematicCamUseSelected"

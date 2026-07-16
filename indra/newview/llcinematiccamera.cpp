@@ -107,7 +107,7 @@ bool LLCinematicCamera::isActive() const
 {
     static LLCachedControl<bool> enabled(gSavedSettings, "CinematicCamEnabled", false);
     static LLCachedControl<S32>  mode(gSavedSettings, "CinematicCamMode", 1);
-    if (!enabled || (S32)mode <= MODE_OFF || (S32)mode > MODE_OTS)
+    if (!enabled || (S32)mode <= MODE_OFF || (S32)mode > MODE_PEDESTAL)
     {
         return false;
     }
@@ -354,6 +354,206 @@ LLVector3 LLCinematicCamera::patternOverhead(const LLVector3& center, F32 phase,
     return center + LLVector3(0.02f, 0.f, llmax(cc_lerp((F32)h_start, (F32)h_end, u), 0.5f));
 }
 
+// snap zoom with a slight overshoot from a tripod position captured at
+// activation; toggle the mode off/on to retrigger the hit
+LLVector3 LLCinematicCamera::patternCrashZoom(F32 phase, F32& fov_mul)
+{
+    static LLCachedControl<F32> zoom(gSavedSettings, "CinematicCamCrashZoom", 0.35f);      // end fov mul
+    static LLCachedControl<F32> duration(gSavedSettings, "CinematicCamCrashDuration", 0.4f);
+
+    const F32 u = llclamp(phase / llmax((F32)duration, 0.05f), 0.f, 1.f);
+    // sharp attack with a ~8% overshoot that settles
+    const F32 e = 1.f - powf(1.f - u, 3.f);
+    const F32 over = 1.f + 0.08f * sinf(llmin(u * 2.f, 1.f) * F_PI) * (1.f - u);
+    fov_mul = llclamp(cc_lerp(1.f, (F32)zoom, e) * (u < 1.f ? over : 1.f), 0.05f, 4.f);
+    return mTripodPos;
+}
+
+// Kubrick creep: position frozen, FOV drifts imperceptibly over a long time
+LLVector3 LLCinematicCamera::patternSlowZoom(F32 phase, F32& fov_mul)
+{
+    static LLCachedControl<F32> zoom(gSavedSettings, "CinematicCamSlowZoomTarget", 0.55f); // <1 in, >1 out
+    static LLCachedControl<F32> duration(gSavedSettings, "CinematicCamSlowZoomDuration", 45.f);
+
+    const F32 u = cc_progress(phase, duration, 0);
+    fov_mul = llclamp(cc_lerp(1.f, (F32)zoom, u), 0.05f, 4.f);
+    return mTripodPos;
+}
+
+// violent sub-second arc around the subject; reads as a whip with motion blur
+LLVector3 LLCinematicCamera::patternWhipArc(LLVOAvatar* av, const LLVector3& center, F32 phase)
+{
+    static LLCachedControl<F32> from_deg(gSavedSettings, "CinematicCamWhipFrom", -60.f);
+    static LLCachedControl<F32> to_deg(gSavedSettings, "CinematicCamWhipTo", 60.f);
+    static LLCachedControl<F32> duration(gSavedSettings, "CinematicCamWhipDuration", 0.45f);
+    static LLCachedControl<F32> distance(gSavedSettings, "CinematicCamWhipDistance", 3.f);
+    static LLCachedControl<F32> height(gSavedSettings, "CinematicCamWhipHeight", 1.2f);
+
+    F32 u = llclamp(phase / llmax((F32)duration, 0.05f), 0.f, 1.f);
+    u = u * u * (3.f - 2.f * u); u = u * u * (3.f - 2.f * u);   // double smoothstep: hard whip
+    const F32 yaw = cc_avatarYaw(av) + cc_lerp((F32)from_deg, (F32)to_deg, u) * DEG_TO_RAD;
+    return center + LLVector3(cosf(yaw) * distance, sinf(yaw) * distance, (F32)height);
+}
+
+// the universal oner building block: one eased partial orbit, then hold
+LLVector3 LLCinematicCamera::patternArc(LLVOAvatar* av, const LLVector3& center, F32 phase)
+{
+    static LLCachedControl<F32> from_deg(gSavedSettings, "CinematicCamArcFrom", -40.f);
+    static LLCachedControl<F32> to_deg(gSavedSettings, "CinematicCamArcTo", 40.f);
+    static LLCachedControl<F32> duration(gSavedSettings, "CinematicCamArcDuration", 9.f);
+    static LLCachedControl<F32> distance(gSavedSettings, "CinematicCamArcDistance", 2.6f);
+    static LLCachedControl<F32> height(gSavedSettings, "CinematicCamArcHeight", 1.3f);
+    static LLCachedControl<S32> end_mode(gSavedSettings, "CinematicCamArcEndMode", 0);     // hold
+
+    const F32 u = cc_progress(phase, duration, end_mode);
+    const F32 yaw = cc_avatarYaw(av) + cc_lerp((F32)from_deg, (F32)to_deg, u) * DEG_TO_RAD;
+    return center + LLVector3(cosf(yaw) * distance, sinf(yaw) * distance, (F32)height);
+}
+
+// epic arrival: starts low behind the subject, rises over their shoulder while
+// the framing lifts from the subject to the horizon ahead of them
+LLVector3 LLCinematicCamera::patternReveal(LLVOAvatar* av, const LLVector3& center,
+                                           F32 phase, LLVector3& focus_io)
+{
+    static LLCachedControl<F32> behind(gSavedSettings, "CinematicCamRevealBehind", 1.4f);
+    static LLCachedControl<F32> low_h(gSavedSettings, "CinematicCamRevealLowHeight", 0.4f);
+    static LLCachedControl<F32> high_h(gSavedSettings, "CinematicCamRevealHighHeight", 2.1f);
+    static LLCachedControl<F32> ahead(gSavedSettings, "CinematicCamRevealAhead", 14.f);
+    static LLCachedControl<F32> duration(gSavedSettings, "CinematicCamRevealDuration", 10.f);
+
+    const F32 u = cc_progress(phase, duration, 0);
+    const F32 yaw = cc_avatarYaw(av);
+    const LLVector3 fwd(cosf(yaw), sinf(yaw), 0.f);
+
+    const LLVector3 subject = focus_io;     // head focus from the caller
+    focus_io = subject * (1.f - u) + (subject + fwd * (F32)ahead + LLVector3(0.f, 0.f, 1.f)) * u;
+    return center - fwd * (F32)behind + LLVector3(0.f, 0.f, cc_lerp((F32)low_h, (F32)high_h, u));
+}
+
+// closing shot: eased retreat and rise, leaving the subject in the frame
+LLVector3 LLCinematicCamera::patternPullBack(LLVOAvatar* av, const LLVector3& focus, F32 phase)
+{
+    static LLCachedControl<F32> d_start(gSavedSettings, "CinematicCamPullStartDist", 1.2f);
+    static LLCachedControl<F32> d_end(gSavedSettings, "CinematicCamPullEndDist", 10.f);
+    static LLCachedControl<F32> h_end(gSavedSettings, "CinematicCamPullEndHeight", 2.5f);
+    static LLCachedControl<F32> duration(gSavedSettings, "CinematicCamPullDuration", 14.f);
+    static LLCachedControl<F32> heading(gSavedSettings, "CinematicCamPullHeading", 0.f);
+
+    const F32 u = cc_progress(phase, duration, 0);
+    const F32 yaw = cc_avatarYaw(av) + heading * DEG_TO_RAD;
+    const F32 d = cc_lerp(llmax((F32)d_start, 0.3f), llmax((F32)d_end, 0.3f), u);
+    return focus + LLVector3(cosf(yaw) * d, sinf(yaw) * d, (F32)h_end * u);
+}
+
+// dialogue master: perpendicular to the line between me and the selected
+// avatar, framing the midpoint; degrades to a profile shot of the subject
+LLVector3 LLCinematicCamera::patternTwoShot(LLVOAvatar* target, LLVector3& focus_io)
+{
+    static LLCachedControl<S32> side(gSavedSettings, "CinematicCamTwoShotSide", 1);
+    static LLCachedControl<F32> pad(gSavedSettings, "CinematicCamTwoShotPad", 1.3f);       // dist = sep * pad
+    static LLCachedControl<F32> min_d(gSavedSettings, "CinematicCamTwoShotMinDist", 2.5f);
+    static LLCachedControl<F32> height(gSavedSettings, "CinematicCamTwoShotHeight", 1.4f);
+
+    LLVOAvatar* self = isAgentAvatarValid() ? (LLVOAvatar*)gAgentAvatarp : target;
+    const F32 s = ((S32)side != 0) ? 1.f : -1.f;
+
+    LLVector3 a = self->getPositionAgent();
+    LLVector3 b = (target && target != self) ? target->getPositionAgent()
+                                             : a + LLVector3(cosf(cc_avatarYaw(self)), sinf(cc_avatarYaw(self)), 0.f) * 2.f;
+    LLVector3 line = b - a; line.mV[VZ] = 0.f;
+    const F32 sep = llmax(line.normVec(), 0.5f);
+    const LLVector3 perp(-line.mV[VY] * s, line.mV[VX] * s, 0.f);
+
+    const LLVector3 mid = (a + b) * 0.5f;
+    focus_io = mid + LLVector3(0.f, 0.f, (F32)height);
+    return focus_io + perp * llmax(sep * (F32)pad, (F32)min_d);
+}
+
+// walk-and-talk: camera ahead of the subject looking back, backpedaling as
+// they advance (the smoothing constant supplies the steadicam lag)
+LLVector3 LLCinematicCamera::patternLeadFollow(LLVOAvatar* av, const LLVector3& focus, F32 phase)
+{
+    static LLCachedControl<F32> distance(gSavedSettings, "CinematicCamLeadDistance", 2.2f);
+    static LLCachedControl<F32> height(gSavedSettings, "CinematicCamLeadHeight", 0.f);      // rel focus
+    static LLCachedControl<F32> sway(gSavedSettings, "CinematicCamLeadSway", 0.15f);
+
+    const F32 yaw = cc_avatarYaw(av);
+    LLVector3 fwd(cosf(yaw), sinf(yaw), 0.f);
+    LLVector3 left(-fwd.mV[VY], fwd.mV[VX], 0.f);
+    return focus + fwd * llmax((F32)distance, 0.5f)
+                 + left * (cc_fbm(phase * 0.25f) * (F32)sway)
+                 + LLVector3(0.f, 0.f, (F32)height);
+}
+
+// Leone standoff: locked micro-frame on the face through a narrow lens, with
+// a barely-there float so it breathes
+LLVector3 LLCinematicCamera::patternECU(LLVOAvatar* av, const LLVector3& focus,
+                                        F32 phase, F32& fov_mul)
+{
+    static LLCachedControl<F32> distance(gSavedSettings, "CinematicCamECUDistance", 0.5f);
+    static LLCachedControl<F32> zoom(gSavedSettings, "CinematicCamECUZoom", 0.55f);
+    static LLCachedControl<F32> drift(gSavedSettings, "CinematicCamECUDrift", 0.006f);
+
+    fov_mul = llclamp((F32)zoom, 0.05f, 1.5f);
+    const F32 yaw = cc_avatarYaw(av);
+    LLVector3 p = focus + LLVector3(cosf(yaw), sinf(yaw), 0.f) * llmax((F32)distance, 0.25f);
+    p += LLVector3(cc_fbm(phase * 0.31f), cc_fbm(phase * 0.27f + 13.f), cc_fbm(phase * 0.23f + 29.f)) * (F32)drift;
+    return p;
+}
+
+// surveillance: far off through a long lens; the compression plus a slow
+// drift reads as "someone is watching"
+LLVector3 LLCinematicCamera::patternLongLens(LLVOAvatar* av, const LLVector3& focus,
+                                             F32 phase, F32& fov_mul)
+{
+    static LLCachedControl<F32> distance(gSavedSettings, "CinematicCamLongDistance", 15.f);
+    static LLCachedControl<F32> zoom(gSavedSettings, "CinematicCamLongZoom", 0.22f);
+    static LLCachedControl<F32> heading(gSavedSettings, "CinematicCamLongHeading", 35.f);  // deg from facing
+    static LLCachedControl<F32> height(gSavedSettings, "CinematicCamLongHeight", 0.4f);
+    static LLCachedControl<F32> drift(gSavedSettings, "CinematicCamLongDrift", 0.05f);
+
+    fov_mul = llclamp((F32)zoom, 0.05f, 1.f);
+    const F32 yaw = cc_avatarYaw(av) + heading * DEG_TO_RAD;
+    LLVector3 p = focus + LLVector3(cosf(yaw), sinf(yaw), 0.f) * llmax((F32)distance, 3.f)
+                        + LLVector3(0.f, 0.f, (F32)height);
+    p += LLVector3(cc_fbm(phase * 0.11f), cc_fbm(phase * 0.13f + 7.f), cc_fbm(phase * 0.09f + 17.f)) * (F32)drift;
+    return p;
+}
+
+// oner flourish: the orbit tightens and rises as it turns, ending close
+LLVector3 LLCinematicCamera::patternSpiral(const LLVector3& center, F32 phase)
+{
+    static LLCachedControl<F32> r_start(gSavedSettings, "CinematicCamSpiralStartRadius", 6.f);
+    static LLCachedControl<F32> r_end(gSavedSettings, "CinematicCamSpiralEndRadius", 1.4f);
+    static LLCachedControl<F32> h_start(gSavedSettings, "CinematicCamSpiralStartHeight", 0.3f);
+    static LLCachedControl<F32> h_end(gSavedSettings, "CinematicCamSpiralEndHeight", 2.f);
+    static LLCachedControl<F32> speed(gSavedSettings, "CinematicCamSpiralSpeed", 40.f);    // deg/s
+    static LLCachedControl<F32> duration(gSavedSettings, "CinematicCamSpiralDuration", 12.f);
+
+    const F32 u = cc_progress(phase, duration, 0);
+    const F32 a = phase * speed * DEG_TO_RAD;
+    const F32 r = cc_lerp((F32)r_start, llmax((F32)r_end, 0.3f), u);
+    return center + LLVector3(cosf(a) * r, sinf(a) * r, cc_lerp((F32)h_start, (F32)h_end, u));
+}
+
+// character introduction: boots-to-face vertical rise at a fixed frontal
+// distance, the gaze staying level with whatever the frame is passing
+LLVector3 LLCinematicCamera::patternPedestal(LLVOAvatar* av, const LLVector3& center,
+                                             F32 phase, LLVector3& focus_io)
+{
+    static LLCachedControl<F32> distance(gSavedSettings, "CinematicCamPedestalDistance", 1.8f);
+    static LLCachedControl<F32> h_start(gSavedSettings, "CinematicCamPedestalStart", 0.2f);
+    static LLCachedControl<F32> h_end(gSavedSettings, "CinematicCamPedestalEnd", 1.75f);
+    static LLCachedControl<F32> duration(gSavedSettings, "CinematicCamPedestalDuration", 8.f);
+    static LLCachedControl<F32> heading(gSavedSettings, "CinematicCamPedestalHeading", 0.f);
+
+    const F32 u = cc_progress(phase, duration, 0);
+    const F32 h = cc_lerp((F32)h_start, (F32)h_end, u);
+    const F32 yaw = cc_avatarYaw(av) + heading * DEG_TO_RAD;
+    focus_io = center + LLVector3(0.f, 0.f, h);
+    return center + LLVector3(cosf(yaw) * llmax((F32)distance, 0.4f), sinf(yaw) * llmax((F32)distance, 0.4f), h);
+}
+
 // over-the-shoulder: anchored behind MY shoulder, framing the resolved target
 // (the selected avatar; falls back to what I'm facing when nothing is selected)
 LLVector3 LLCinematicCamera::patternOTS(LLVOAvatar* target, LLVector3& focus_io)
@@ -421,6 +621,9 @@ void LLCinematicCamera::updateCamera()
         mPhase = 0.f;
         mHavePose = false;
         mWasActive = false;
+        // tripod modes (crash/slow zoom) shoot from wherever the camera was
+        // when the mode engaged
+        mTripodPos = LLViewerCamera::getInstance()->getOrigin();
     }
     mLastUpdateFrame = gFrameCount;
 
@@ -460,6 +663,18 @@ void LLCinematicCamera::updateCamera()
         case MODE_LOW_HERO:   pos = patternLowHero(av, center, mPhase); break;
         case MODE_OVERHEAD:   pos = patternOverhead(center, mPhase, mode_roll); break;
         case MODE_OTS:        pos = patternOTS(av, focus); break;
+        case MODE_CRASH_ZOOM: pos = patternCrashZoom(mPhase, mode_fov_mul); break;
+        case MODE_SLOW_ZOOM:  pos = patternSlowZoom(mPhase, mode_fov_mul); break;
+        case MODE_WHIP_ARC:   pos = patternWhipArc(av, center, mPhase); break;
+        case MODE_ARC:        pos = patternArc(av, center, mPhase); break;
+        case MODE_REVEAL:     pos = patternReveal(av, center, mPhase, focus); break;
+        case MODE_PULL_BACK:  pos = patternPullBack(av, focus, mPhase); break;
+        case MODE_TWO_SHOT:   pos = patternTwoShot(av, focus); break;
+        case MODE_LEAD_FOLLOW:pos = patternLeadFollow(av, focus, mPhase); break;
+        case MODE_ECU_EYES:   pos = patternECU(av, focus, mPhase, mode_fov_mul); break;
+        case MODE_LONG_LENS:  pos = patternLongLens(av, focus, mPhase, mode_fov_mul); break;
+        case MODE_SPIRAL:     pos = patternSpiral(center, mPhase); break;
+        case MODE_PEDESTAL:   pos = patternPedestal(av, center, mPhase, focus); break;
         default:              return;
     }
 
