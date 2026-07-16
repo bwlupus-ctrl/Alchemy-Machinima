@@ -65,6 +65,7 @@
 #include "llurlfloaterdispatchhandler.h"
 #include "llviewerjoystick.h"
 #include "llcinematiccamera.h"
+#include "llflycamrecorder.h"
 #include "llheadrotmotion.h" // [BDMerge B4] per-frame push of head/eye rotation limits
 #include "llcalc.h"
 #include "llconversationlog.h"
@@ -5412,6 +5413,11 @@ void LLAppViewer::idle()
     {
         gAgentPilot.moveCamera();
     }
+    else if (LLFlycamRecorder::instance().isPlaybackActive())
+    {
+        // recorded camera path playback / scrubbing (phoenix port)
+        LLFlycamRecorder::instance().updateCamera();
+    }
     else if (LLCinematicCamera::instance().isActive())
     {
         // automated cinematic camera (bone lock / orbit / hover / sweep / crane)
@@ -5430,6 +5436,9 @@ void LLAppViewer::idle()
 
         gAgentCamera.updateCamera();
     }
+
+    // sample the (now final) camera into the flycam recorder when recording
+    LLFlycamRecorder::instance().onIdleFrame();
 
     // update media focus
     LLViewerMediaFocus::getInstance()->update();

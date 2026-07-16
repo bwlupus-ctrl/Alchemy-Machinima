@@ -269,6 +269,8 @@ set(viewer_SOURCE_FILES
     llcallingcard.cpp
     llcameraoperator.cpp
     llcinematiccamera.cpp
+    llfloaterflycamrecorder.cpp
+    llflycamrecorder.cpp
     llcefaccelinterop.cpp
     llcefsurfacereceiver.cpp
     llchannelmanager.cpp
@@ -1059,6 +1061,8 @@ set(viewer_HEADER_FILES
     llcallingcard.h
     llcameraoperator.h
     llcinematiccamera.h
+    llfloaterflycamrecorder.h
+    llflycamrecorder.h
     llcapabilityprovider.h
     llcefaccelinterop.h
     llcefsurfacereceiver.h

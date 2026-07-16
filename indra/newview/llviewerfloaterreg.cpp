@@ -107,6 +107,7 @@
 #include "llfloaterexperiencepicker.h"
 #include "llfloaterevent.h"
 #include "llfloaterfixedenvironment.h"
+#include "llfloaterflycamrecorder.h"
 #include "llfloaterfonttest.h"
 #include "llfloaterforgetuser.h"
 #include "llfloatergesture.h"
@@ -513,6 +514,7 @@ void LLViewerFloaterReg::registerFloaters()
     LLFloaterReg::add("prefs_autoreplace", "floater_autoreplace.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterAutoReplaceSettings>);
     LLFloaterReg::add("pref_joystick", "floater_joystick.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterJoystick>);
     LLFloaterReg::add("cinematic_camera", "floater_cinematic_camera.xml", &LLFloaterReg::build<LLFloater>);
+    LLFloaterReg::add("flycam_recorder", "floater_flycam_recorder.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterFlycamRecorder>);
     LLFloaterReg::add("preview_anim", "floater_preview_animation.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLPreviewAnim>, "preview");
     LLFloaterReg::add("preview_conversation", "floater_conversation_preview.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterConversationPreview>);
     LLFloaterReg::add("preview_gesture", "floater_preview_gesture.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLPreviewGesture>, "preview");
