@@ -64,7 +64,7 @@ void pbrPunctual(vec3 diffuseColor, vec3 specularColor,
                     out vec3 spec);
 
 GBufferInfo getGBuffer(vec2 screenpos);
-float bdmergeContactShadowLocal(vec3 pos, vec3 dir_n, vec2 pos_screen); // [BDMerge CS]
+float bdmergeContactShadowLocal(vec3 pos, vec3 norm, vec3 dir_n, vec2 pos_screen); // [BDMerge CS]
 
 void main()
 {
@@ -116,7 +116,7 @@ void main()
 
                 float dist_atten = calcLegacyDistanceAttenuation(dist, falloff);
                 // [BDMerge CS] per-light contact shadow (see pointLightF.glsl)
-                dist_atten *= bdmergeContactShadowLocal(pos, lv, tc);
+                dist_atten *= bdmergeContactShadowLocal(pos, n, lv, tc);
 
                 vec3 intensity = dist_atten * lightColor * 3.25;
                 float nl = 0;
@@ -148,7 +148,7 @@ void main()
                     float fa         = light_col[i].a;
                     float dist_atten = calcLegacyDistanceAttenuation(dist, fa);
                     // [BDMerge CS] per-light contact shadow (l = normalized from calcHalfVectors)
-                    dist_atten *= bdmergeContactShadowLocal(pos, l, tc);
+                    dist_atten *= bdmergeContactShadowLocal(pos, n, l, tc);
 
                     float lit = nl * dist_atten;
 
