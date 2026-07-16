@@ -54,7 +54,6 @@ vec2 getScreenXY(vec4 clip);
 vec2 getScreenCoord(vec4 clip);
 vec3 srgb_to_linear(vec3 c);
 float getDepth(vec2 tc);
-float bdmergeContactShadowLocal(vec3 pos, vec3 dir_n, vec2 pos_screen); // [BDMerge CS]
 
 void pbrPunctual(vec3 diffuseColor, vec3 specularColor,
                     float perceptualRoughness,
@@ -92,10 +91,6 @@ void main()
     }
     float dist = lightDist / size;
     float dist_atten = calcLegacyDistanceAttenuation(dist, falloff);
-    // [BDMerge CS] screen-space contact shadow: point lights have no shadow
-    // maps at all in this engine -- this is their only directional occlusion.
-    // Multiplying the attenuation covers both PBR and legacy branches below.
-    dist_atten *= bdmergeContactShadowLocal(pos, l, tc);
 
     if (GET_GBUFFER_FLAG(gb.gbufferFlag, GBUFFER_FLAG_HAS_PBR))
     {

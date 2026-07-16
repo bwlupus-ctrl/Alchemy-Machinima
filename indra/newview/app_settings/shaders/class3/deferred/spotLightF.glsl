@@ -89,7 +89,6 @@ void pbrPunctual(vec3 diffuseColor, vec3 specularColor,
                     out vec3 spec);
 
 GBufferInfo getGBuffer(vec2 screenpos);
-float bdmergeContactShadowLocal(vec3 pos, vec3 dir_n, vec2 pos_screen); // [BDMerge CS]
 
 // [BDMerge NSpot] direct per-projector shadow sampling (shadowUtil.glsl)
 float sampleSpotShadow(vec3 pos, vec3 norm, int index, vec2 pos_screen);
@@ -143,9 +142,6 @@ void main()
     {
         discard;
     }
-
-    // [BDMerge CS] sub-bias contact detail on top of the projector shadow map
-    dist_atten *= bdmergeContactShadowLocal(pos.xyz, normalize(lv), tc);
 
     lv = proj_origin-pos.xyz;
     vec3  h, l, v = -normalize(pos);

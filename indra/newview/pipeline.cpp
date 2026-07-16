@@ -11810,31 +11810,6 @@ void LLPipeline::bindShadowMaps(LLGLSLShader& shader)
     }
 }
 
-// [BDMerge CS] Screen-space contact shadow uniforms. Uploaded on every
-// deferred bind (2x uniform4f, negligible) so settings changes apply live.
-// Flags are zeroed during cube snapshots (probe faces have their own depth
-// and tiny viewports -- marching there wastes time and can smear probes) and
-// when the master toggle is off, which turns every apply site into an
-// early-out on a uniform compare.
-static void bdmerge_bind_contact_shadow_uniforms(LLGLSLShader& shader)
-{
-    static LLCachedControl<bool> cs_on(gSavedSettings, "BDMergeContactShadows", false);
-    static LLCachedControl<F32>  cs_range(gSavedSettings, "BDMergeContactShadowRange", 0.25f);
-    static LLCachedControl<F32>  cs_thick(gSavedSettings, "BDMergeContactShadowThickness", 0.12f);
-    static LLCachedControl<F32>  cs_intensity(gSavedSettings, "BDMergeContactShadowIntensity", 0.85f);
-    static LLCachedControl<S32>  cs_steps(gSavedSettings, "BDMergeContactShadowSteps", 16);
-    static LLCachedControl<bool> cs_sun(gSavedSettings, "BDMergeContactShadowSun", true);
-    static LLCachedControl<bool> cs_local(gSavedSettings, "BDMergeContactShadowLocal", true);
-
-    const bool active = cs_on && !gCubeSnapshot;
-    shader.uniform4f(LLShaderMgr::CONTACT_SHADOW_PARAMS,
-                     llmax(0.f, (F32)cs_range), llmax(0.01f, (F32)cs_thick),
-                     llclamp((F32)cs_intensity, 0.f, 1.f), (F32)llclamp((S32)cs_steps, 1, 48));
-    shader.uniform4f(LLShaderMgr::CONTACT_SHADOW_FLAGS,
-                     (active && cs_sun) ? 1.f : 0.f,
-                     (active && cs_local) ? 1.f : 0.f, 0.f, 0.f);
-}
-
 void LLPipeline::bindDeferredShaderFast(LLGLSLShader& shader)
 {
     if (shader.mCanBindFast)
@@ -11843,7 +11818,6 @@ void LLPipeline::bindDeferredShaderFast(LLGLSLShader& shader)
         bindLightFunc(shader);
         bindShadowMaps(shader);
         bindReflectionProbes(shader);
-        bdmerge_bind_contact_shadow_uniforms(shader); // [BDMerge CS]
     }
     else
     { //wasn't previously bound, use slow path
@@ -11859,7 +11833,6 @@ void LLPipeline::bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_
     LLRenderTarget* deferred_light_target = &mRT->deferredLight;
 
     shader.bind();
-    bdmerge_bind_contact_shadow_uniforms(shader); // [BDMerge CS]
     S32 channel = 0;
     channel = shader.enableTexture(LLShaderMgr::DEFERRED_DIFFUSE, deferred_target->getUsage());
     if (channel > -1)
