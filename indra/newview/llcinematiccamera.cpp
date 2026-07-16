@@ -18,6 +18,7 @@
 #include "lljoint.h"
 #include "llmath.h"
 #include "llselectmgr.h"
+#include "llviewerobjectlist.h"     // gObjectList (locked follow target)
 #include "llviewercamera.h"
 #include "llviewercontrol.h"        // gSavedSettings, LLCachedControl
 #include "llviewerobject.h"
@@ -103,6 +104,21 @@ LLCinematicCamera& LLCinematicCamera::instance()
     return sInstance;
 }
 
+// session-only locked follow subject
+static LLUUID sCinematicFollowTarget;
+
+//static
+void LLCinematicCamera::toggleFollowTarget(const LLUUID& id)
+{
+    sCinematicFollowTarget = (sCinematicFollowTarget == id) ? LLUUID::null : id;
+}
+
+//static
+bool LLCinematicCamera::isFollowTarget(const LLUUID& id)
+{
+    return id.notNull() && sCinematicFollowTarget == id;
+}
+
 bool LLCinematicCamera::isActive() const
 {
     static LLCachedControl<bool> enabled(gSavedSettings, "CinematicCamEnabled", false);
@@ -116,6 +132,18 @@ bool LLCinematicCamera::isActive() const
 
 LLVOAvatar* LLCinematicCamera::resolveTarget() const
 {
+    // locked follow subject wins (session-only, set from the avatar context
+    // menu); a dead/derezzed subject falls through rather than dropping out
+    if (sCinematicFollowTarget.notNull())
+    {
+        LLViewerObject* obj = gObjectList.findObject(sCinematicFollowTarget);
+        LLVOAvatar* av = obj ? obj->asAvatar() : nullptr;
+        if (av && !av->isDead())
+        {
+            return av;
+        }
+    }
+
     static LLCachedControl<bool> use_selected(gSavedSettings, "CinematicCamUseSelected", false);
     if (use_selected)
     {

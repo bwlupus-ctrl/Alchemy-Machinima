@@ -65,6 +65,12 @@ public:
 
     static LLCinematicCamera& instance();
 
+    // Session-only locked follow subject (right-click avatar > Cinematic Cam
+    // Follow). Beats the selection-based targeting while set; toggling the
+    // same avatar clears it. Null = stock behavior (selection / self).
+    static void toggleFollowTarget(const LLUUID& id);
+    static bool isFollowTarget(const LLUUID& id);
+
     // True when the system should own the render camera this frame.
     bool isActive() const;
 

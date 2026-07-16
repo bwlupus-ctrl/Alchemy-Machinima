@@ -115,6 +115,16 @@
        ALL of this avatar's attachments (a per-object override still beats it). Default
        = stock + global; Force Mask routes their alpha faces through the masked path;
        Force Blend forces real transparency. Client-side, session-only. -->
+    <menu_item_check
+    label="Cinematic Cam Follow"
+    name="CineCam Follow">
+    <menu_item_check.on_click
+      function="Avatar.CineCamFollow" />
+    <menu_item_check.on_check
+      function="Avatar.CheckCineCamFollow" />
+    <menu_item_check.on_enable
+      function="Avatar.EnableAlphaMode" />
+  </menu_item_check>
   <context_menu
    label="Attachments Alpha"
    name="Attachments Alpha">

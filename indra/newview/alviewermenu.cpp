@@ -29,6 +29,7 @@
 
 // newview
 #include "alavataractions.h"
+#include "llcinematiccamera.h"  // [Cinematic] locked follow subject
 //#include "alcinematicmode.h"
 #include "alderenderlist.h"
 #include "alfloaterblocked.h"
@@ -887,6 +888,21 @@ namespace
     {
         return find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject()) != nullptr;
     }
+
+// [Cinematic] right-click avatar > lock as the Cinematic Camera follow subject
+// (session-only; clicking the same avatar again clears the lock)
+    void handle_avatar_cinecam_follow(const LLSD&)
+    {
+        LLVOAvatar* avatarp = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
+        if (avatarp && avatarp->getID().notNull())
+            LLCinematicCamera::toggleFollowTarget(avatarp->getID());
+    }
+
+    bool check_avatar_cinecam_follow(const LLSD&)
+    {
+        LLVOAvatar* avatarp = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
+        return avatarp && LLCinematicCamera::isFollowTarget(avatarp->getID());
+    }
 }
 
 ////////////////////////////////////////////////////////
@@ -956,6 +972,9 @@ void ALViewerMenu::initialize_menus()
     commit.add("Avatar.AlphaMode", boost::bind(&handle_avatar_alpha_mode, _2));
     enable.add("Avatar.CheckAlphaMode", boost::bind(&check_avatar_alpha_mode, _2));
     enable.add("Avatar.EnableAlphaMode", boost::bind(&enable_avatar_alpha_mode));
+    // [Cinematic] locked follow subject (reuses the alpha-mode avatar resolution + enable)
+    commit.add("Avatar.CineCamFollow", boost::bind(&handle_avatar_cinecam_follow, _2));
+    enable.add("Avatar.CheckCineCamFollow", boost::bind(&check_avatar_cinecam_follow, _2));
 
     // [SL:KB] - Patch: World-RenderExceptions | Checked: Catznip-5.2
     commit.add("View.Blocked", boost::bind(&handle_view_blocked, _2));

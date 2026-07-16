@@ -3,6 +3,16 @@
 <context_menu
  layout="topleft"
  name="Avatar Attachment Pie">
+  <menu_item_check
+    label="Cinematic Cam Follow"
+    name="CineCam Follow">
+    <menu_item_check.on_click
+      function="Avatar.CineCamFollow" />
+    <menu_item_check.on_check
+      function="Avatar.CheckCineCamFollow" />
+    <menu_item_check.on_enable
+      function="Avatar.EnableAlphaMode" />
+  </menu_item_check>
   <context_menu
     label="Alpha Mode"
     name="Alpha Mode">
