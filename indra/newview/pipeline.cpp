@@ -11826,24 +11826,13 @@ static void bdmerge_bind_contact_shadow_uniforms(LLGLSLShader& shader)
     static LLCachedControl<bool> cs_sun(gSavedSettings, "BDMergeContactShadowSun", true);
     static LLCachedControl<bool> cs_local(gSavedSettings, "BDMergeContactShadowLocal", true);
 
-    // Impostor generation renders with its own tiny camera; the scene
-    // projection below would mis-project there -> disable during it too.
-    const bool active = cs_on && !gCubeSnapshot && !LLPipeline::sImpostorRender;
+    const bool active = cs_on && !gCubeSnapshot;
     shader.uniform4f(LLShaderMgr::CONTACT_SHADOW_PARAMS,
                      llmax(0.f, (F32)cs_range), llmax(0.01f, (F32)cs_thick),
                      llclamp((F32)cs_intensity, 0.f, 1.f), (F32)llclamp((S32)cs_steps, 1, 48));
     shader.uniform4f(LLShaderMgr::CONTACT_SHADOW_FLAGS,
                      (active && cs_sun) ? 1.f : 0.f,
                      (active && cs_local) ? 1.f : 0.f, 0.f, 0.f);
-    if (active)
-    {
-        // The SCENE projection for view->screen reprojection inside the march.
-        // The sun / fullscreen-light passes run with identity matrices loaded,
-        // so the auto-synced projection_matrix is useless there; the velocity
-        // system's un-jittered per-frame capture is exactly right (and jitter-
-        // free under SMAA T2x).
-        shader.uniformMatrix4fv(LLShaderMgr::PROJECTION_MATRIX_UNJITTERED, 1, GL_FALSE, gPipeline.mVelocityProjMat);
-    }
 }
 
 void LLPipeline::bindDeferredShaderFast(LLGLSLShader& shader)
