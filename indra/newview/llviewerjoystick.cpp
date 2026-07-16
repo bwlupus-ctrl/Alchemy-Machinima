@@ -2182,12 +2182,15 @@ void LLViewerJoystick::setXboxDefaults()
     gSavedSettings.setS32("JoystickAxis5", 3);  // Yaw
     gSavedSettings.setS32("JoystickAxis6", -1); // Zoom
 
-    gSavedSettings.setS32("JoystickButtonJump", 0);
-    gSavedSettings.setS32("JoystickButtonCrouch", 1);
+    // [fork] Personalized defaults: values below marked [user] come from the
+    // owner's proven AlchemyBeta 7.1.9.2516 config (Desktop settings.xml
+    // snapshot, 2026-07-16) so "Xbox Defaults" restores THAT setup, not stock.
+    gSavedSettings.setS32("JoystickButtonJump", 1);     // [user] (stock 0)
+    gSavedSettings.setS32("JoystickButtonCrouch", 0);   // [user] (stock 1)
     gSavedSettings.setS32("JoystickButtonFly", 2);
-    gSavedSettings.setS32("JoystickButtonRunToggle", 8);
+    gSavedSettings.setS32("JoystickButtonRunToggle", 6);  // [user] (stock 8)
     gSavedSettings.setS32("JoystickButtonMouselook", 9);
-    gSavedSettings.setS32("JoystickButtonZoomDefault", 6);
+    gSavedSettings.setS32("JoystickButtonZoomDefault", 7); // [user] (stock 6)
     gSavedSettings.setS32("JoystickButtonFlycam", 7);
     gSavedSettings.setS32("JoystickButtonZoomOut", 5);
     gSavedSettings.setS32("JoystickButtonZoomIn", 4);
@@ -2212,13 +2215,14 @@ void LLViewerJoystick::setXboxDefaults()
     gSavedSettings.setF32("BuildAxisScale4", 1.f);
     gSavedSettings.setF32("BuildAxisScale5", 1.f);
     gSavedSettings.setF32("BuildAxisScale3", 1.f);
-    gSavedSettings.setF32("FlycamAxisScale0", 5.0f);
-    gSavedSettings.setF32("FlycamAxisScale2", 5.0f);
-    gSavedSettings.setF32("FlycamAxisScale1", 5.0f);
-    gSavedSettings.setF32("FlycamAxisScale4", 2.0f);
-    gSavedSettings.setF32("FlycamAxisScale5", 2.5f);
-    gSavedSettings.setF32("FlycamAxisScale3", 2.0f);
-    gSavedSettings.setF32("FlycamAxisScale6", 1.0f);
+    // [user] flycam scales: slow, machinima-tuned; scale4 negative = inverted pitch
+    gSavedSettings.setF32("FlycamAxisScale0", 0.6f);    // [user] (stock 5.0)
+    gSavedSettings.setF32("FlycamAxisScale2", 0.03f);   // [user] (stock 5.0)
+    gSavedSettings.setF32("FlycamAxisScale1", 0.4f);    // [user] (stock 5.0)
+    gSavedSettings.setF32("FlycamAxisScale4", -0.75f);  // [user] (stock 2.0)
+    gSavedSettings.setF32("FlycamAxisScale5", 0.66f);   // [user] (stock 2.5)
+    gSavedSettings.setF32("FlycamAxisScale3", 0.2f);    // [user] (stock 2.0)
+    gSavedSettings.setF32("FlycamAxisScale6", 0.03f);   // [user] (stock 1.0)
 
     gSavedSettings.setF32("AvatarAxisDeadZone0", .6f);
     gSavedSettings.setF32("AvatarAxisDeadZone2", .3f);
@@ -2226,19 +2230,20 @@ void LLViewerJoystick::setXboxDefaults()
     gSavedSettings.setF32("AvatarAxisDeadZone3", .3f);
     gSavedSettings.setF32("AvatarAxisDeadZone4", .3f);
     gSavedSettings.setF32("AvatarAxisDeadZone5", .3f);
-    gSavedSettings.setF32("BuildAxisDeadZone0", .25f);
+    gSavedSettings.setF32("BuildAxisDeadZone0", .34f);  // [user] (stock .25)
     gSavedSettings.setF32("BuildAxisDeadZone2", .25f);
     gSavedSettings.setF32("BuildAxisDeadZone1", .25f);
     gSavedSettings.setF32("BuildAxisDeadZone3", .3f);
     gSavedSettings.setF32("BuildAxisDeadZone4", .3f);
     gSavedSettings.setF32("BuildAxisDeadZone5", .1f);
-    gSavedSettings.setF32("FlycamAxisDeadZone0", .25f);
-    gSavedSettings.setF32("FlycamAxisDeadZone2", .25f);
-    gSavedSettings.setF32("FlycamAxisDeadZone1", .25f);
-    gSavedSettings.setF32("FlycamAxisDeadZone3", .1f);
-    gSavedSettings.setF32("FlycamAxisDeadZone4", .3f);
-    gSavedSettings.setF32("FlycamAxisDeadZone5", .3f);
-    gSavedSettings.setF32("FlycamAxisDeadZone6", .1f);
+    // [user] flycam deadzones: tight (precise SpaceNav-style input on gamepad)
+    gSavedSettings.setF32("FlycamAxisDeadZone0", .1f);  // [user] (stock .25)
+    gSavedSettings.setF32("FlycamAxisDeadZone2", .1f);  // [user] (stock .25)
+    gSavedSettings.setF32("FlycamAxisDeadZone1", .1f);  // [user] (stock .25)
+    gSavedSettings.setF32("FlycamAxisDeadZone3", .02f); // [user] (stock .1)
+    gSavedSettings.setF32("FlycamAxisDeadZone4", .1f);  // [user] (stock .3)
+    gSavedSettings.setF32("FlycamAxisDeadZone5", .1f);  // [user] (stock .3)
+    gSavedSettings.setF32("FlycamAxisDeadZone6", 0.f);  // [user] (stock .1)
 
     gSavedSettings.setF32("AvatarFeathering", 20.0f);
     gSavedSettings.setF32("BuildFeathering", 3.f);
