@@ -1856,6 +1856,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gDeferredLightProgram.mShaderFiles.clear();
         gDeferredLightProgram.mShaderFiles.push_back(make_pair("deferred/pointLightV.glsl", GL_VERTEX_SHADER));
         gDeferredLightProgram.mShaderFiles.push_back(make_pair("deferred/pointLightF.glsl", GL_FRAGMENT_SHADER));
+        gDeferredLightProgram.mShaderFiles.push_back(make_pair("deferred/contactShadowUtil.glsl", GL_FRAGMENT_SHADER)); // [BDMerge CS]
         gDeferredLightProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
 
         gDeferredLightProgram.clearPermutations();
@@ -1880,6 +1881,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
             gDeferredMultiLightProgram[i].mShaderFiles.clear();
             gDeferredMultiLightProgram[i].mShaderFiles.push_back(make_pair("deferred/multiPointLightV.glsl", GL_VERTEX_SHADER));
             gDeferredMultiLightProgram[i].mShaderFiles.push_back(make_pair("deferred/multiPointLightF.glsl", GL_FRAGMENT_SHADER));
+        gDeferredMultiLightProgram[i].mShaderFiles.push_back(make_pair("deferred/contactShadowUtil.glsl", GL_FRAGMENT_SHADER)); // [BDMerge CS]
             gDeferredMultiLightProgram[i].mShaderLevel = mShaderLevel[SHADER_DEFERRED];
             gDeferredMultiLightProgram[i].addPermutation("LIGHT_COUNT", llformat("%d", i+1));
 
@@ -1902,6 +1904,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gDeferredSpotLightProgram.clearPermutations();
         gDeferredSpotLightProgram.mShaderFiles.push_back(make_pair("deferred/pointLightV.glsl", GL_VERTEX_SHADER));
         gDeferredSpotLightProgram.mShaderFiles.push_back(make_pair("deferred/spotLightF.glsl", GL_FRAGMENT_SHADER));
+        gDeferredSpotLightProgram.mShaderFiles.push_back(make_pair("deferred/contactShadowUtil.glsl", GL_FRAGMENT_SHADER)); // [BDMerge CS]
         gDeferredSpotLightProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
 
         add_common_permutations(&gDeferredSpotLightProgram);
@@ -1923,6 +1926,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gDeferredMultiSpotLightProgram.mShaderFiles.clear();
         gDeferredMultiSpotLightProgram.mShaderFiles.push_back(make_pair("deferred/multiPointLightV.glsl", GL_VERTEX_SHADER));
         gDeferredMultiSpotLightProgram.mShaderFiles.push_back(make_pair("deferred/spotLightF.glsl", GL_FRAGMENT_SHADER));
+        gDeferredMultiSpotLightProgram.mShaderFiles.push_back(make_pair("deferred/contactShadowUtil.glsl", GL_FRAGMENT_SHADER)); // [BDMerge CS]
         gDeferredMultiSpotLightProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
 
         add_common_permutations(&gDeferredMultiSpotLightProgram);
@@ -1952,6 +1956,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gDeferredSunProgram.mShaderFiles.clear();
         gDeferredSunProgram.mShaderFiles.push_back(make_pair("deferred/sunLightV.glsl", GL_VERTEX_SHADER));
         gDeferredSunProgram.mShaderFiles.push_back(make_pair(fragment, GL_FRAGMENT_SHADER));
+        gDeferredSunProgram.mShaderFiles.push_back(make_pair("deferred/contactShadowUtil.glsl", GL_FRAGMENT_SHADER)); // [BDMerge CS]
         gDeferredSunProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
 
         add_common_permutations(&gDeferredSunProgram);
@@ -1969,6 +1974,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gDeferredSunProbeProgram.mShaderFiles.clear();
         gDeferredSunProbeProgram.mShaderFiles.push_back(make_pair("deferred/sunLightV.glsl", GL_VERTEX_SHADER));
         gDeferredSunProbeProgram.mShaderFiles.push_back(make_pair("deferred/sunLightF.glsl", GL_FRAGMENT_SHADER));
+        gDeferredSunProbeProgram.mShaderFiles.push_back(make_pair("deferred/contactShadowUtil.glsl", GL_FRAGMENT_SHADER)); // [BDMerge CS]
         gDeferredSunProbeProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
 
         add_common_permutations(&gDeferredSunProbeProgram);

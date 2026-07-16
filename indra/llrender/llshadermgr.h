@@ -556,6 +556,10 @@ public:
         // [BDMerge A5.4-1b] previous-frame skinning palettes (rigged + classic
         // avatar velocity). Lockstep with llshadermgr.cpp push_back block.
         AVATAR_LAST_MATRIX,                //  "lastMatrixPalette"
+        // [BDMerge CS] screen-space contact shadows. Lockstep with the
+        // llshadermgr.cpp push_back block.
+        CONTACT_SHADOW_PARAMS,             //  "contact_shadow_params"
+        CONTACT_SHADOW_FLAGS,              //  "contact_shadow_flags"
 
         // [BDMerge Froxel F0] hybrid froxel volumetrics (grid/atlas media pass +
         // debug visualizer). MUST stay in lockstep with the matching push_back

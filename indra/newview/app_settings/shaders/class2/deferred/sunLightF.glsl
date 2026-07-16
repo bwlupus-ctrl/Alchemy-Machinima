@@ -33,6 +33,8 @@ out vec4 frag_color;
 in vec2 vary_fragcoord;
 
 uniform vec3 sun_dir;
+uniform vec3 moon_dir;      // [BDMerge CS] march toward the active caster
+uniform int  sun_up_factor; // [BDMerge CS]
 uniform float shadow_bias;
 
 vec4 getNorm(vec2 pos_screen);
@@ -40,6 +42,7 @@ vec4 getPosition(vec2 pos_screen);
 
 float sampleDirectionalShadow(vec3 pos, vec3 norm, vec2 pos_screen);
 float sampleSpotShadow(vec3 pos, vec3 norm, int index, vec2 pos_screen);
+float bdmergeContactShadowSun(vec3 pos, vec3 dir_n, vec2 pos_screen); // [BDMerge CS]
 
 void main()
 {
@@ -49,6 +52,10 @@ void main()
 
     vec4 col;
     col.r = sampleDirectionalShadow(pos.xyz, norm.xyz, pos_screen);
+    // [BDMerge CS] sub-bias directional micro-occlusion into the same channel
+    // every consumer (soften, alpha forward, projectors) already reads.
+    vec3 cs_dir = (sun_up_factor == 1) ? sun_dir : moon_dir;
+    col.r *= bdmergeContactShadowSun(pos.xyz, normalize(cs_dir), pos_screen);
     col.g = 1.0f;
     col.b = sampleSpotShadow(pos.xyz, norm.xyz, 0, pos_screen);
     col.a = sampleSpotShadow(pos.xyz, norm.xyz, 1, pos_screen);

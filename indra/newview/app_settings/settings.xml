@@ -2144,6 +2144,83 @@
       <key>Value</key>
       <integer>0</integer>
     </map>
+    <key>BDMergeContactShadows</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge CS] Master toggle for screen-space contact shadows: a short per-pixel ray march against scene depth toward each light, catching self-shadowing BELOW the shadow map's bias threshold (worn mesh layers, cloth-on-skin, jewelry). Applies to sun/moon and local lights; gives point lights (which never get shadow maps) their first directional shadowing. Spatial-only dither = stable in video capture. Off = zeroed uniforms, apply sites early-out.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>BDMergeContactShadowRange</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge CS] Maximum contact-shadow ray distance in meters. Small values (0.15-0.35) = tight worn-mesh self-shadowing; larger = broader screen-space shadows but more SS artifacts.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.25</real>
+    </map>
+    <key>BDMergeContactShadowThickness</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge CS] Assumed occluder thickness in meters. Prevents thin foreground silhouettes from casting onto everything behind them. Raise if contact shadows look broken/stripey on thick geometry; lower if halos appear behind thin objects.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.12</real>
+    </map>
+    <key>BDMergeContactShadowIntensity</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge CS] Contact shadow darkness (0-1). Art dial; 1.0 = full occlusion at contact.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.85</real>
+    </map>
+    <key>BDMergeContactShadowSteps</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge CS] March steps per light per pixel (1-48). 16 is clean at 4K on a 5090; raise for longer ranges.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>16</integer>
+    </map>
+    <key>BDMergeContactShadowSun</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge CS] Apply contact shadows to the sun/moon directional light.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>BDMergeContactShadowLocal</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge CS] Apply contact shadows to local lights (point + projector). Point lights gain their only directional shadowing from this.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
     <key>BDMergeMotionBlur</key>
     <map>
       <key>Comment</key>
