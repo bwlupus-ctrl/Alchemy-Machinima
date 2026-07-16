@@ -33,18 +33,19 @@
 class LLCheckBoxCtrl;
 class LLComboBox;
 
-class LLFloaterJoystick : public LLFloater
+class LLFloaterJoystick final : public LLFloater
 {
     friend class LLFloaterReg;
 
 public:
 
-    virtual bool postBuild();
+    virtual bool postBuild();   // [fork] base class migrated BOOL->bool
     virtual void refresh();
     virtual void apply();   // Apply the changed values.
     virtual void cancel();  // Cancel the changed values.
     virtual void draw();
     static  void setSNDefaults();
+    static  void setXboxDefaults();
 
     static bool addDeviceCallback(std::string &name, LLSD& value, void* userdata);
     void addDevice(std::string &name, LLSD& value);
@@ -64,6 +65,7 @@ private:
 
     static void onCommitJoystickEnabled(LLUICtrl*, void*);
     static void onClickRestoreSNDefaults(void*);
+    static void onClickRestoreXboxDefaults(void*);
     static void onClickCancel(void*);
     static void onClickOK(void*);
 
@@ -90,25 +92,16 @@ private:
     F32 mBuildFeathering;
     F32 mFlycamFeathering;
 
-    // Flycam camera operator prefs (floater-exposed subset)
-    bool mFlycamOperatorEnabled;
-    S32 mFlycamOperatorStyle;
-    S32 mFlycamOperatorProfile;
-    F32 mFlycamOperatorMaster;
-    F32 mFlycamOperatorReactivity;
-    F32 mFlycamOperatorIdleIntensity;
-    bool mFlycamOperatorForceWalk;
-
     // Controls that can disable the flycam
     LLCheckBoxCtrl  *mCheckFlycamEnabled;
     LLComboBox      *mJoysticksCombo;
 
     bool mHasDeviceList;
-    bool mJoystickInitialized;
-    LLUUID mCurrentDeviceId;
 
     // stats view
     LLStatBar* mAxisStatsBar[6];
+
+    LLButton* mAxisButton[16];
 };
 
 #endif

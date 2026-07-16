@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <floater
  legacy_header_height="18"
- height="548"
+ height="700"
  layout="topleft"
  name="Joystick"
  help_topic="Viewerhelp:Joystick_Configuration"
  title="JOYSTICK CONFIGURATION"
- width="569">
+ width="565">
     <floater.string
      name="JoystickDisabled">
         None
@@ -175,7 +175,7 @@
      bottom="134"
      height="10"     
      control_name="JoystickAvatarEnabled"
-     halign="center"
+     halign="left"
      label="Avatar"
      layout="topleft"
      left="150"
@@ -185,7 +185,7 @@
      bottom_delta="0"
      height="10"     
      control_name="JoystickBuildEnabled"
-     halign="center"
+     halign="left"
      label="Build"
      layout="topleft"
      left="219"
@@ -195,7 +195,7 @@
      bottom_delta="0"
      height="10"     
      control_name="JoystickFlycamEnabled"
-     halign="center"
+     halign="left"
      label="Flycam"
      layout="topleft"
      left="289"
@@ -892,128 +892,1654 @@
      left="290"
      name="FlycamAxisDeadZone6"
      width="56" />
-    <text
-     type="string"
-     length="1"
-     follows="left|bottom"
-     halign="left"
+     <text
+     name="general_label"
+     follows="left|top"
      layout="topleft"
-     left="14"
-     top="470"
-     height="14"
-     width="200"
-     name="camera_operator_lbl">
-        Flycam Camera Operator:
-    </text>
-    <check_box
-     control_name="FlycamOperatorEnabled"
-     follows="left|bottom"
-     height="16"
-     label="Enable"
-     layout="topleft"
-     left="20"
-     top_pad="2"
-     name="FlycamOperatorEnabled"
-     tool_tip="Procedural handheld camera operator while flycam is active. Fine controls under Debug Settings: FlycamOperator*"
-     width="80" />
-    <combo_box
-     control_name="FlycamOperatorStyle"
-     follows="left|bottom"
-     height="20"
-     layout="topleft"
-     left_pad="6"
-     top_delta="-2"
-     name="FlycamOperatorStyle"
-     tool_tip="Who is holding the camera? Sets the baseline idle motion character"
-     width="140">
-        <combo_box.item label="Custom" name="op_custom" value="0" />
-        <combo_box.item label="Tripod / Sticks" name="op_tripod" value="1" />
-        <combo_box.item label="Subtle Handheld" name="op_subtle" value="2" />
-        <combo_box.item label="Documentary" name="op_documentary" value="3" />
-        <combo_box.item label="Run &amp; Gun" name="op_rungun" value="4" />
-        <combo_box.item label="Shoulder Rig" name="op_shoulder" value="5" />
-        <combo_box.item label="Gimbal Float" name="op_gimbal" value="6" />
-        <combo_box.item label="Verite (Chaotic)" name="op_verite" value="7" />
-        <combo_box.item label="Breathing Only" name="op_breathing" value="8" />
-    </combo_box>
-    <combo_box
-     control_name="FlycamOperatorProfile"
-     follows="left|bottom"
-     height="20"
-     layout="topleft"
-     left_pad="6"
-     top_delta="0"
-     name="FlycamOperatorProfile"
-     tool_tip="How does the operator react to camera movement? Layered over the style"
-     width="120">
-        <combo_box.item label="Natural" name="pr_natural" value="0" />
-        <combo_box.item label="Locked" name="pr_locked" value="1" />
-        <combo_box.item label="Follow" name="pr_follow" value="2" />
-        <combo_box.item label="Restless" name="pr_restless" value="3" />
-        <combo_box.item label="Composed" name="pr_composed" value="4" />
-        <combo_box.item label="Drift" name="pr_drift" value="5" />
-        <combo_box.item label="Snap" name="pr_snap" value="6" />
-        <combo_box.item label="March" name="pr_march" value="7" />
-    </combo_box>
-    <spinner
-     control_name="FlycamOperatorMaster"
-     decimal_digits="2"
-     follows="left|bottom"
-     height="16"
-     increment="0.05"
-     label="Master"
-     label_width="45"
-     layout="topleft"
-     left="20"
-     max_val="2"
-     min_val="0"
-     name="FlycamOperatorMaster"
-     tool_tip="Overall motion scale: 0 = static, 1 = normal, 2 = exaggerated"
-     top_pad="6"
-     width="105" />
-    <spinner
-     control_name="FlycamOperatorReactivity"
-     decimal_digits="2"
-     follows="left|bottom"
-     height="16"
-     increment="0.05"
-     label="Reactivity"
-     label_width="60"
-     layout="topleft"
-     left_pad="10"
-     max_val="2"
-     min_val="0"
-     name="FlycamOperatorReactivity"
-     tool_tip="Gain on motion-reactive response only (whip, drag, settle, gait)"
-     top_delta="0"
-     width="120" />
-    <spinner
-     control_name="FlycamOperatorIdleIntensity"
-     decimal_digits="2"
-     follows="left|bottom"
-     height="16"
-     increment="0.05"
-     label="Idle"
-     label_width="30"
-     layout="topleft"
-     left_pad="10"
-     max_val="2"
-     min_val="0"
-     name="FlycamOperatorIdleIntensity"
-     tool_tip="Procedural idle motion intensity"
-     top_delta="0"
-     width="90" />
-    <check_box
-     control_name="FlycamOperatorForceWalk"
-     follows="left|bottom"
-     height="16"
-     label="Walk"
-     layout="topleft"
-     left_pad="10"
-     top_delta="0"
-     name="FlycamOperatorForceWalk"
-     tool_tip="Force the walking gait at full strength even when the camera is static"
-     width="60" />
+     top_pad="5" 
+     left="30" 
+     height="12"
+     width="94">
+     Button Mapping:
+     </text>
+       <text
+       top_pad="7"
+       height="18"
+       label_width="125"
+       layout="topleft"
+       left_delta="0"
+       name="JoystickButtonJump"
+       width="90" >
+       Jump
+       </text>
+        <icons_combo_box
+           follows="left|top|right"
+           control_name="JoystickButtonJump"
+           height="23"
+           layout="topleft"
+           left_pad="0"
+           name="JoystickButtonJump"
+           top_delta="0"
+           width="170">
+           <icons_combo_box.drop_down_button
+           image_overlay="None"
+           image_overlay_alignment="left"
+           imgoverlay_label_space="3"
+           pad_left="3"/>
+           <icons_combo_box.item
+              name="none"
+              value="-1">
+              <item.columns
+                halign="left"
+                type="icontext"
+                label="None"
+                value="None"
+                width="20"/>
+            </icons_combo_box.item>
+           <icons_combo_box.item
+              name="btn_a"
+              value="0">
+              <item.columns
+                halign="left"
+                type="icontext"
+                label="Button A"
+                value="Button_A"
+                width="20"/>
+            </icons_combo_box.item>
+           <icons_combo_box.item
+              name="btn_b"
+              value="1">
+              <item.columns
+                halign="left"
+                type="icontext"
+                label="Button B"
+                value="Button_B"
+                width="20"/>
+            </icons_combo_box.item>
+           <icons_combo_box.item
+              name="btn_y"
+              value="3">
+              <item.columns
+                halign="left"
+                type="icontext"
+                label="Button Y"
+                value="Button_Y"
+                width="20"/>
+            </icons_combo_box.item>
+           <icons_combo_box.item
+              name="btn_x"
+              value="2">
+              <item.columns
+                halign="left"
+                type="icontext"
+                label="Button X"
+                value="Button_X"
+                width="20"/>
+            </icons_combo_box.item>
+           <icons_combo_box.item
+              name="back"
+              value="6">
+              <item.columns
+                halign="left"
+                type="icontext"
+                label="Back"
+                value="Button_Back"
+                width="20"/>
+            </icons_combo_box.item>
+           <icons_combo_box.item
+              name="start"
+              value="7">
+              <item.columns
+                halign="left"
+                type="icontext"
+                label="Start"
+                value="Button_Start"
+                width="20"/>
+            </icons_combo_box.item>
+           <icons_combo_box.item
+              name="button_left"
+              value="4">
+              <item.columns
+                halign="left"
+                type="icontext"
+                label="Left Shoulder Button"
+                value="Left_Button"
+                width="20"/>
+            </icons_combo_box.item>
+           <icons_combo_box.item
+              name="button_right"
+              value="5">
+              <item.columns
+                halign="left"
+                type="icontext"
+                label="Right Shoulder Button"
+                value="Right_Button"
+                width="20"/>
+            </icons_combo_box.item>
+           <icons_combo_box.item
+              name="thumb_l"
+              value="8">
+              <item.columns
+                halign="left"
+                type="icontext"
+                label="Thumbstick Left"
+                value="Left_Thumb_Press"
+                width="20"/>
+            </icons_combo_box.item>
+           <icons_combo_box.item
+              name="thumb_r"
+              value="9">
+              <item.columns
+                halign="left"
+                type="icontext"
+                label="Thumbstick Right"
+                value="Right_Thumb_Press"
+                width="20"/>
+            </icons_combo_box.item>
+        </icons_combo_box>
+        <text
+       top_pad="5"
+       layout="topleft"
+       left_delta="-90"
+       name="JoystickButtonCrouch"
+       width="90"
+       height="18" >
+       Crouch
+       </text>
+        <icons_combo_box
+           follows="left|top|right"
+           control_name="JoystickButtonCrouch"
+           height="23"
+           layout="topleft"
+           left_pad="0"
+           name="JoystickButtonCrouch"
+           top_delta="0"
+           width="170">
+              <icons_combo_box.commit_callback
+              function="Joystick.Refresh"/>
+              <icons_combo_box.drop_down_button
+              image_overlay="None"
+              image_overlay_alignment="left"
+              imgoverlay_label_space="3"
+              pad_left="3"/>
+              <icons_combo_box.item
+                 name="none"
+                 value="-1">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="None"
+                   value="None"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_a"
+                 value="0">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button A"
+                   value="Button_A"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_b"
+                 value="1">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button B"
+                   value="Button_B"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_y"
+                 value="3">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button Y"
+                   value="Button_Y"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_x"
+                 value="2">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button X"
+                   value="Button_X"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="back"
+                 value="6">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Back"
+                   value="Button_Back"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="start"
+                 value="7">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Start"
+                   value="Button_Start"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="button_left"
+                 value="4">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Left Shoulder Button"
+                   value="Left_Button"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="button_right"
+                 value="5">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Right Shoulder Button"
+                   value="Right_Button"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="thumb_l"
+                 value="8">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Thumbstick Left"
+                   value="Left_Thumb_Press"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="thumb_r"
+                 value="9">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Thumbstick Right"
+                   value="Right_Thumb_Press"
+                   width="20"/>
+               </icons_combo_box.item>
+          </icons_combo_box>
+        <text
+       top_pad="5"
+       layout="topleft"
+       left_delta="-90"
+       name="JoystickButtonFly"
+       width="90" 
+       height="18">
+       Toggle Fly
+       </text>
+        <icons_combo_box
+           follows="left|top|right"
+           control_name="JoystickButtonFly"
+           height="23"
+           layout="topleft"
+           left_pad="0"
+           name="JoystickButtonFly"
+           top_delta="0"
+           width="170">
+              <icons_combo_box.commit_callback
+              function="Joystick.Refresh"/>
+              <icons_combo_box.drop_down_button
+              image_overlay="None"
+              image_overlay_alignment="left"
+              imgoverlay_label_space="3"
+              pad_left="3"/>
+              <icons_combo_box.item
+                 name="none"
+                 value="-1">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="None"
+                   value="None"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_a"
+                 value="0">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button A"
+                   value="Button_A"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_b"
+                 value="1">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button B"
+                   value="Button_B"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_y"
+                 value="3">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button Y"
+                   value="Button_Y"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_x"
+                 value="2">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button X"
+                   value="Button_X"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="back"
+                 value="6">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Back"
+                   value="Button_Back"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="start"
+                 value="7">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Start"
+                   value="Button_Start"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="button_left"
+                 value="4">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Left Shoulder Button"
+                   value="Left_Button"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="button_right"
+                 value="5">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Right Shoulder Button"
+                   value="Right_Button"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="thumb_l"
+                 value="8">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Thumbstick Left"
+                   value="Left_Thumb_Press"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="thumb_r"
+                 value="9">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Thumbstick Right"
+                   value="Right_Thumb_Press"
+                   width="20"/>
+               </icons_combo_box.item>
+          </icons_combo_box>
+        <text
+       height="18"
+       top_pad="5"
+       layout="topleft"
+       left_delta="-90"
+       name="JoystickButtonRunToggle"
+       width="90" >
+       Toggle Run
+       </text>
+        <icons_combo_box
+           follows="left|top|right"
+           control_name="JoystickButtonRunToggle"
+           height="23"
+           layout="topleft"
+           left_pad="0"
+           name="JoystickButtonRunToggle"
+           top_delta="0"
+           width="170">
+              <icons_combo_box.commit_callback
+              function="Joystick.Refresh"/>
+              <icons_combo_box.drop_down_button
+              image_overlay="None"
+              image_overlay_alignment="left"
+              imgoverlay_label_space="3"
+              pad_left="3"/>
+              <icons_combo_box.item
+                 name="none"
+                 value="-1">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="None"
+                   value="None"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_a"
+                 value="0">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button A"
+                   value="Button_A"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_b"
+                 value="1">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button B"
+                   value="Button_B"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_y"
+                 value="3">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button Y"
+                   value="Button_Y"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_x"
+                 value="2">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button X"
+                   value="Button_X"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="back"
+                 value="6">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Back"
+                   value="Button_Back"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="start"
+                 value="7">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Start"
+                   value="Button_Start"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="button_left"
+                 value="4">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Left Shoulder Button"
+                   value="Left_Button"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="button_right"
+                 value="5">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Right Shoulder Button"
+                   value="Right_Button"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="thumb_l"
+                 value="8">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Thumbstick Left"
+                   value="Left_Thumb_Press"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="thumb_r"
+                 value="9">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Thumbstick Right"
+                   value="Right_Thumb_Press"
+                   width="20"/>
+               </icons_combo_box.item>
+          </icons_combo_box>
+        <text
+       height="18"
+       top_pad="5"
+       layout="topleft"
+       left_delta="-90"
+       name="JoystickButtonMouselook"
+       width="90" >
+       Mouselook
+       </text>
+        <icons_combo_box
+           follows="left|top|right"
+           control_name="JoystickButtonMouselook"
+           height="23"
+           layout="topleft"
+           left_pad="0"
+           name="JoystickButtonMouselook"
+           top_delta="0"
+           width="170">
+              <icons_combo_box.commit_callback
+              function="Joystick.Refresh"/>
+              <icons_combo_box.drop_down_button
+              image_overlay="None"
+              image_overlay_alignment="left"
+              imgoverlay_label_space="3"
+              pad_left="3"/>
+              <icons_combo_box.item
+                 name="none"
+                 value="-1">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="None"
+                   value="None"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_a"
+                 value="0">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button A"
+                   value="Button_A"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_b"
+                 value="1">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button B"
+                   value="Button_B"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_y"
+                 value="3">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button Y"
+                   value="Button_Y"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_x"
+                 value="2">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button X"
+                   value="Button_X"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="back"
+                 value="6">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Back"
+                   value="Button_Back"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="start"
+                 value="7">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Start"
+                   value="Button_Start"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="button_left"
+                 value="4">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Left Shoulder Button"
+                   value="Left_Button"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="button_right"
+                 value="5">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Right Shoulder Button"
+                   value="Right_Button"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="thumb_l"
+                 value="8">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Thumbstick Left"
+                   value="Left_Thumb_Press"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="thumb_r"
+                 value="9">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Thumbstick Right"
+                   value="Right_Thumb_Press"
+                   width="20"/>
+               </icons_combo_box.item>
+          </icons_combo_box>
+        <text
+       height="18"
+       top_pad="5"
+       layout="topleft"
+       left_delta="-90"
+       name="JoystickButtonFlycam"
+       width="90" >
+       Toggle Flycam
+       </text>
+        <icons_combo_box
+           follows="left|top|right"
+           control_name="JoystickButtonFlycam"
+           height="23"
+           layout="topleft"
+           left_pad="0"
+           name="JoystickButtonFlycam"
+           top_delta="0"
+           width="170">
+              <icons_combo_box.commit_callback
+              function="Joystick.Refresh"/>
+              <icons_combo_box.drop_down_button
+              image_overlay="None"
+              image_overlay_alignment="left"
+              imgoverlay_label_space="3"
+              pad_left="3"/>
+              <icons_combo_box.item
+                 name="none"
+                 value="-1">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="None"
+                   value="None"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_a"
+                 value="0">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button A"
+                   value="Button_A"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_b"
+                 value="1">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button B"
+                   value="Button_B"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_y"
+                 value="3">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button Y"
+                   value="Button_Y"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_x"
+                 value="2">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button X"
+                   value="Button_X"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="back"
+                 value="6">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Back"
+                   value="Button_Back"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="start"
+                 value="7">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Start"
+                   value="Button_Start"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="button_left"
+                 value="4">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Left Shoulder Button"
+                   value="Left_Button"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="button_right"
+                 value="5">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Right Shoulder Button"
+                   value="Right_Button"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="thumb_l"
+                 value="8">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Thumbstick Left"
+                   value="Left_Thumb_Press"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="thumb_r"
+                 value="9">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Thumbstick Right"
+                   value="Right_Thumb_Press"
+                   width="20"/>
+               </icons_combo_box.item>
+          </icons_combo_box>
+        <text
+       height="18"
+       top_delta="-140"
+       label_width="125"
+       layout="topleft"
+       left_pad="10"
+       name="JoystickButtonZoomOut"
+       width="90" >
+       Zoom Out
+       </text>
+        <icons_combo_box
+           follows="left|top|right"
+           control_name="JoystickButtonZoomOut"
+           height="23"
+           layout="topleft"
+           left_pad="0"
+           name="JoystickButtonZoomOut"
+           top_delta="0"
+           width="170">
+              <icons_combo_box.commit_callback
+              function="Joystick.Refresh"/>
+              <icons_combo_box.drop_down_button
+              image_overlay="None"
+              image_overlay_alignment="left"
+              imgoverlay_label_space="3"
+              pad_left="3"/>
+              <icons_combo_box.item
+                 name="none"
+                 value="-1">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="None"
+                   value="None"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_a"
+                 value="0">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button A"
+                   value="Button_A"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_b"
+                 value="1">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button B"
+                   value="Button_B"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_y"
+                 value="3">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button Y"
+                   value="Button_Y"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_x"
+                 value="2">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button X"
+                   value="Button_X"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="back"
+                 value="6">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Back"
+                   value="Button_Back"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="start"
+                 value="7">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Start"
+                   value="Button_Start"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="button_left"
+                 value="4">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Left Shoulder Button"
+                   value="Left_Button"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="button_right"
+                 value="5">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Right Shoulder Button"
+                   value="Right_Button"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="thumb_l"
+                 value="8">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Thumbstick Left"
+                   value="Left_Thumb_Press"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="thumb_r"
+                 value="9">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Thumbstick Right"
+                   value="Right_Thumb_Press"
+                   width="20"/>
+               </icons_combo_box.item>
+          </icons_combo_box>
+        <text
+       height="18"
+       top_pad="5"
+       label_width="125"
+       layout="topleft"
+       left_delta="-90"
+       name="JoystickButtonZoomIn"
+       width="90" >
+       Zoom In
+       </text>
+        <icons_combo_box
+           follows="left|top|right"
+           control_name="JoystickButtonZoomIn"
+           height="23"
+           layout="topleft"
+           left_pad="0"
+           name="JoystickButtonZoomIn"
+           top_delta="0"
+           width="170">
+              <icons_combo_box.commit_callback
+              function="Joystick.Refresh"/>
+              <icons_combo_box.drop_down_button
+              image_overlay="None"
+              image_overlay_alignment="left"
+              imgoverlay_label_space="3"
+              pad_left="3"/>
+              <icons_combo_box.item
+                 name="none"
+                 value="-1">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="None"
+                   value="None"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_a"
+                 value="0">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button A"
+                   value="Button_A"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_b"
+                 value="1">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button B"
+                   value="Button_B"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_y"
+                 value="3">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button Y"
+                   value="Button_Y"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_x"
+                 value="2">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button X"
+                   value="Button_X"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="back"
+                 value="6">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Back"
+                   value="Button_Back"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="start"
+                 value="7">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Start"
+                   value="Button_Start"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="button_left"
+                 value="4">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Left Shoulder Button"
+                   value="Left_Button"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="button_right"
+                 value="5">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Right Shoulder Button"
+                   value="Right_Button"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="thumb_l"
+                 value="8">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Thumbstick Left"
+                   value="Left_Thumb_Press"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="thumb_r"
+                 value="9">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Thumbstick Right"
+                   value="Right_Thumb_Press"
+                   width="20"/>
+               </icons_combo_box.item>
+          </icons_combo_box>
+        <text
+       height="18"
+       top_pad="5"
+       label_width="125"
+       layout="topleft"
+       left_delta="-90"
+       name="JoystickButtonZoomDefault"
+       width="90" >
+       Zoom Default
+       </text>
+        <icons_combo_box
+           follows="left|top|right"
+           control_name="JoystickButtonZoomDefault"
+           height="23"
+           layout="topleft"
+           left_pad="0"
+           name="JoystickButtonZoomDefault"
+           top_delta="0"
+           width="170">
+              <icons_combo_box.commit_callback
+              function="Joystick.Refresh"/>
+              <icons_combo_box.drop_down_button
+              image_overlay="None"
+              image_overlay_alignment="left"
+              imgoverlay_label_space="3"
+              pad_left="3"/>
+              <icons_combo_box.item
+                 name="none"
+                 value="-1">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="None"
+                   value="None"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_a"
+                 value="0">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button A"
+                   value="Button_A"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_b"
+                 value="1">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button B"
+                   value="Button_B"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_y"
+                 value="3">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button Y"
+                   value="Button_Y"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_x"
+                 value="2">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button X"
+                   value="Button_X"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="back"
+                 value="6">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Back"
+                   value="Button_Back"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="start"
+                 value="7">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Start"
+                   value="Button_Start"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="button_left"
+                 value="4">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Left Shoulder Button"
+                   value="Left_Button"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="button_right"
+                 value="5">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Right Shoulder Button"
+                   value="Right_Button"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="thumb_l"
+                 value="8">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Thumbstick Left"
+                   value="Left_Thumb_Press"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="thumb_r"
+                 value="9">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Thumbstick Right"
+                   value="Right_Thumb_Press"
+                   width="20"/>
+               </icons_combo_box.item>
+          </icons_combo_box>
+        <text
+        height="18"
+       top_pad="5"
+       label_width="125"
+       layout="topleft"
+       left_delta="-90"
+       name="JoystickButtonRollLeft"
+       width="90" >
+       Roll Left
+       </text>
+        <icons_combo_box
+           follows="left|top|right"
+           control_name="JoystickButtonRollLeft"
+           height="23"
+           layout="topleft"
+           left_pad="0"
+           name="JoystickButtonRollLeft"
+           top_delta="0"
+           width="170">
+              <icons_combo_box.commit_callback
+              function="Joystick.Refresh"/>
+              <icons_combo_box.drop_down_button
+              image_overlay="None"
+              image_overlay_alignment="left"
+              imgoverlay_label_space="3"
+              pad_left="3"/>
+              <icons_combo_box.item
+                 name="none"
+                 value="-1">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="None"
+                   value="None"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_a"
+                 value="0">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button A"
+                   value="Button_A"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_b"
+                 value="1">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button B"
+                   value="Button_B"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_y"
+                 value="3">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button Y"
+                   value="Button_Y"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_x"
+                 value="2">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button X"
+                   value="Button_X"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="back"
+                 value="6">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Back"
+                   value="Button_Back"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="start"
+                 value="7">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Start"
+                   value="Button_Start"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="button_left"
+                 value="4">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Left Shoulder Button"
+                   value="Left_Button"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="button_right"
+                 value="5">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Right Shoulder Button"
+                   value="Right_Button"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="thumb_l"
+                 value="8">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Thumbstick Left"
+                   value="Left_Thumb_Press"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="thumb_r"
+                 value="9">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Thumbstick Right"
+                   value="Right_Thumb_Press"
+                   width="20"/>
+               </icons_combo_box.item>
+          </icons_combo_box>
+        <text
+       height="18"
+       top_pad="5"
+       label_width="125"
+       layout="topleft"
+       left_delta="-90"
+       name="JoystickButtonRollRight"
+       width="90" >
+       Roll Right
+       </text>
+        <icons_combo_box
+           follows="left|top|right"
+           control_name="JoystickButtonRollRight"
+           height="23"
+           layout="topleft"
+           left_pad="0"
+           name="JoystickButtonRollRight"
+           top_delta="0"
+           width="170">
+              <icons_combo_box.commit_callback
+              function="Joystick.Refresh"/>
+              <icons_combo_box.drop_down_button
+              image_overlay="None"
+              image_overlay_alignment="left"
+              imgoverlay_label_space="3"
+              pad_left="3"/>
+              <icons_combo_box.item
+                 name="none"
+                 value="-1">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="None"
+                   value="None"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_a"
+                 value="0">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button A"
+                   value="Button_A"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_b"
+                 value="1">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button B"
+                   value="Button_B"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_y"
+                 value="3">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button Y"
+                   value="Button_Y"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_x"
+                 value="2">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button X"
+                   value="Button_X"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="back"
+                 value="6">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Back"
+                   value="Button_Back"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="start"
+                 value="7">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Start"
+                   value="Button_Start"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="button_left"
+                 value="4">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Left Shoulder Button"
+                   value="Left_Button"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="button_right"
+                 value="5">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Right Shoulder Button"
+                   value="Right_Button"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="thumb_l"
+                 value="8">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Thumbstick Left"
+                   value="Left_Thumb_Press"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="thumb_r"
+                 value="9">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Thumbstick Right"
+                   value="Right_Thumb_Press"
+                   width="20"/>
+               </icons_combo_box.item>
+          </icons_combo_box>
+        <text
+       height="18"
+       top_pad="5"
+       label_width="125"
+       layout="topleft"
+       left_delta="-90"
+       name="JoystickButtonRollDefault"
+       width="90" >
+       Roll Default
+       </text>
+        <icons_combo_box
+           follows="left|top|right"
+           control_name="JoystickButtonRollDefault"
+           height="23"
+           layout="topleft"
+           left_pad="0"
+           name="JoystickButtonRollDefault"
+           top_delta="0"
+           width="170">
+              <icons_combo_box.commit_callback
+              function="Joystick.Refresh"/>
+              <icons_combo_box.drop_down_button
+              image_overlay="None"
+              image_overlay_alignment="left"
+              imgoverlay_label_space="3"
+              pad_left="3"/>
+              <icons_combo_box.item
+                 name="none"
+                 value="-1">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="None"
+                   value="None"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_a"
+                 value="0">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button A"
+                   value="Button_A"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_b"
+                 value="1">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button B"
+                   value="Button_B"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_y"
+                 value="3">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button Y"
+                   value="Button_Y"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="btn_x"
+                 value="2">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Button X"
+                   value="Button_X"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="back"
+                 value="6">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Back"
+                   value="Button_Back"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="start"
+                 value="7">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Start"
+                   value="Button_Start"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="button_left"
+                 value="4">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Left Shoulder Button"
+                   value="Left_Button"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="button_right"
+                 value="5">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Right Shoulder Button"
+                   value="Right_Button"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="thumb_l"
+                 value="8">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Thumbstick Left"
+                   value="Left_Thumb_Press"
+                   width="20"/>
+               </icons_combo_box.item>
+              <icons_combo_box.item
+                 name="thumb_r"
+                 value="9">
+                 <item.columns
+                   halign="left"
+                   type="icontext"
+                   label="Thumbstick Right"
+                   value="Right_Thumb_Press"
+                   width="20"/>
+               </icons_combo_box.item>
+          </icons_combo_box>
+
     <button
      follows="left|top"
      height="22"
@@ -1021,7 +2547,16 @@
      layout="topleft"
      left="359"
      name="SpaceNavigatorDefaults"
-     top="437"
+     top="417"
+     width="200" />
+     <button
+     follows="left|top"
+     height="22"
+     label="Xbox Defaults"
+     layout="topleft"
+     left="359"
+     name="XboxDefaults"
+     top="445"
      width="200" />
     <button
      follows="right|bottom"
@@ -1029,9 +2564,9 @@
      label="OK"
      label_selected="OK"
      layout="topleft"
-     left_delta="0"
+     left="359"
      name="ok_btn"
-     top_pad="9"
+     top="650"
      width="98" />
     <button
      follows="right|bottom"
