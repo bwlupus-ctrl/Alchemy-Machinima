@@ -23,32 +23,33 @@
  * $/LicenseInfo$
  */
 
-// [BDMerge CS v2] Screen-space contact shadows tuned for FINE DETAIL (AO-like
-// scale, but directional per-light). v1 field failures fixed:
-//  - whole-screen self-shadowing on close-ups / camera-axis lights: the
-//    same-plane depth gap grows ~linearly along the ray (t * -dir.z) and fell
-//    inside the fixed thickness window. The occlusion epsilon now grows at
-//    exactly that slope, so a surface can NEVER self-occlude at any light
-//    angle; only geometry standing off the plane (a layer above it) hits.
-//  - normal-offset ray start escapes the surface before the first sample.
-//  - hard screen-footprint cap (fraction of screen) so close-ups
-//    automatically shorten the effective radius -> stays micro-detail.
-//  - soft proximity-weighted accumulation instead of a binary first hit.
-// Frame-stable spatial dither only (video-capture-safe).
+// [BDMerge CS] Screen-space contact shadows: short per-pixel ray march against
+// the scene depth toward a specific light. Catches occlusion BELOW the shadow
+// map's bias threshold (thin worn-mesh layers, cloth-on-skin, jewelry) and
+// gives point lights -- which never get shadow maps in this engine -- their
+// first directional shadowing. Cinematic design choices: spatial-only dither
+// (stable across frames, capture-safe), distance-weighted softening (near
+// hits darker), screen-edge and thickness guards against SS artifacts.
+//
+// No main(); linked as a second fragment object into the sun and local-light
+// programs (froxelUtil pattern). getPosition() comes from deferredUtil.glsl,
+// which is already linked into every consumer.
 
 uniform vec4 contact_shadow_params; // x=range(m) y=thickness(m) z=intensity w=steps
 uniform vec4 contact_shadow_flags;  // x=sun/moon on, y=local lights on, zw spare
 
-// The SCENE projection, uploaded explicitly by the C++ bind helper (velocity
-// system's un-jittered capture). The sun / fullscreen-light passes draw with
-// identity matrices, so the auto-synced projection_matrix is useless here.
+// The SCENE projection, uploaded explicitly by the C++ bind helper (reuses the
+// velocity system's un-jittered capture). Do NOT use the auto-synced
+// projection_matrix here: the sun and fullscreen multi-light passes draw with
+// IDENTITY matrices loaded, which turned every reprojection into garbage
+// (no visible effect + occasional false-hit black flicker).
 uniform mat4 projection_matrix_unjittered;
 #define CS_PROJ projection_matrix_unjittered
 
 vec4 getPosition(vec2 pos_screen);  // deferredUtil.glsl
-uniform vec2 screen_res;            // duplicate declaration merges at link
+uniform vec2 screen_res;            // duplicate declaration is legal; merged at link
 
-float bdmergeContactShadowMarch(vec3 pos, vec3 norm, vec3 dir_n, vec2 pos_screen)
+float bdmergeContactShadowMarch(vec3 pos, vec3 dir_n, vec2 pos_screen)
 {
     float range     = contact_shadow_params.x;
     float thickness = contact_shadow_params.y;
@@ -60,84 +61,65 @@ float bdmergeContactShadowMarch(vec3 pos, vec3 norm, vec3 dir_n, vec2 pos_screen
         return 1.0;
     }
 
-    // grazing lights are where screen-space marching lies the most; fade the
-    // whole effect out as the light drops toward the surface plane
-    float ndl = dot(norm, dir_n);
-    if (ndl <= 0.02)
-    {
-        return 1.0;
-    }
-    float graze_fade = smoothstep(0.02, 0.15, ndl);
-
-    // escape the surface plane before sampling
-    vec3 ro = pos + norm * 0.02;
-
-    // interleaved-gradient noise from screen position only: per-pixel offset,
-    // identical every frame -> stable in video capture
+    // interleaved-gradient noise from SCREEN POSITION only: per-pixel offsets
+    // decorrelate banding, but the pattern is identical every frame so video
+    // capture never shimmers (deliberately NOT framecount-animated).
     float jitter = fract(52.9829189 * fract(dot(pos_screen, vec2(0.06711056, 0.00583715))));
 
     float t_step = range / float(steps);
-    float t      = t_step * (0.25 + 0.75 * jitter);
+    float t      = t_step * (0.35 + 0.65 * jitter); // start off the surface
     float occl   = 0.0;
-
-    vec2 uv0 = pos_screen / screen_res;
 
     for (int i = 0; i < steps; ++i)
     {
-        vec3 sp = ro + dir_n * t;
+        vec3 sp = pos + dir_n * t;
 
         vec4 clip = CS_PROJ * vec4(sp, 1.0);
         if (clip.w <= 0.0)
         {
-            break;
+            break; // marched behind the camera
         }
         vec2 uv = (clip.xy / clip.w) * 0.5 + 0.5;
         if (uv.x <= 0.0 || uv.x >= 1.0 || uv.y <= 0.0 || uv.y >= 1.0)
         {
-            break;
-        }
-        // FINE-DETAIL CONTRACT: never let the march cover more than a small
-        // fraction of the screen. On close-ups this is what keeps the effect
-        // at AO scale instead of smearing shadows across the frame.
-        if (distance(uv, uv0) > 0.06)
-        {
-            break;
+            break; // left the screen: unknown territory, assume unoccluded
         }
 
         float scene_z = getPosition(uv * screen_res).z;
 
-        // slope-aware epsilon: a flat surface produces diff == t * (-dir_n.z)
-        // exactly; requiring MORE than that (plus margins) means only geometry
-        // standing off the receiver plane can register as an occluder.
-        float eps  = 0.012 + 0.03 * t + t * max(0.0, -dir_n.z);
+        // view space looks down -Z: nearer surfaces have GREATER z. The sample
+        // is occluded when the depth buffer's surface sits in front of it by
+        // more than a self-hit epsilon but less than the assumed occluder
+        // thickness (prevents thin foreground silhouettes casting onto the
+        // whole world behind them).
         float diff = scene_z - sp.z;
-        if (diff > eps && diff < thickness)
+        if (diff > 0.008 && diff < thickness)
         {
-            // proximity-weighted, distance-softened accumulation (AO-like):
-            // nearer hits and closer occluders darken more; no binary edge
-            float w = (1.0 - t / range);
-            w *= 1.0 - 0.5 * clamp(diff / thickness, 0.0, 1.0);
-            occl = max(occl, w);
+            // near hits shadow harder than far hits -> pseudo-penumbra
+            float o = 1.0 - 0.7 * (t / range);
+            // fade near screen edges where the march is unreliable
+            vec2 ef = min(uv, vec2(1.0) - uv);
+            o *= clamp(min(ef.x, ef.y) * 12.0, 0.0, 1.0);
+            occl = max(occl, o);
+            break;
         }
 
         t += t_step;
     }
 
-    // screen-edge fade on the RECEIVER (cheap; per-sample fade handled by cap)
-    vec2 ef = min(uv0, vec2(1.0) - uv0);
-    float edge = clamp(min(ef.x, ef.y) * 12.0, 0.0, 1.0);
-
-    return 1.0 - occl * intensity * graze_fade * edge;
+    return 1.0 - occl * intensity;
 }
 
-float bdmergeContactShadowSun(vec3 pos, vec3 norm, vec3 dir_n, vec2 pos_screen)
+// Gated wrappers so apply sites stay one-liners and the master/sub toggles
+// live in the uniforms (zeroed by C++ when off or during cube snapshots).
+float bdmergeContactShadowSun(vec3 pos, vec3 dir_n, vec2 pos_screen)
 {
     if (contact_shadow_flags.x < 0.5) return 1.0;
-    return bdmergeContactShadowMarch(pos, norm, dir_n, pos_screen);
+    return bdmergeContactShadowMarch(pos, dir_n, pos_screen);
 }
 
-float bdmergeContactShadowLocal(vec3 pos, vec3 norm, vec3 dir_n, vec2 pos_screen)
+float bdmergeContactShadowLocal(vec3 pos, vec3 dir_n, vec2 pos_screen)
 {
     if (contact_shadow_flags.y < 0.5) return 1.0;
-    return bdmergeContactShadowMarch(pos, norm, dir_n, pos_screen);
+    return bdmergeContactShadowMarch(pos, dir_n, pos_screen);
 }

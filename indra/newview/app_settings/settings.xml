@@ -2164,7 +2164,7 @@
       <key>Type</key>
       <string>F32</string>
       <key>Value</key>
-      <real>0.1</real>
+      <real>0.25</real>
     </map>
     <key>BDMergeContactShadowThickness</key>
     <map>
@@ -2175,7 +2175,7 @@
       <key>Type</key>
       <string>F32</string>
       <key>Value</key>
-      <real>0.08</real>
+      <real>0.12</real>
     </map>
     <key>BDMergeContactShadowIntensity</key>
     <map>
@@ -2186,7 +2186,7 @@
       <key>Type</key>
       <string>F32</string>
       <key>Value</key>
-      <real>0.6</real>
+      <real>0.85</real>
     </map>
     <key>BDMergeContactShadowSteps</key>
     <map>
