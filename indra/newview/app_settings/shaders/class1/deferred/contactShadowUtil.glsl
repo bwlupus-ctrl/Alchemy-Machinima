@@ -38,7 +38,13 @@
 uniform vec4 contact_shadow_params; // x=range(m) y=thickness(m) z=intensity w=steps
 uniform vec4 contact_shadow_flags;  // x=sun/moon on, y=local lights on, zw spare
 
-uniform mat4 projection_matrix;     // auto-fed by matrix sync
+// The SCENE projection, uploaded explicitly by the C++ bind helper (reuses the
+// velocity system's un-jittered capture). Do NOT use the auto-synced
+// projection_matrix here: the sun and fullscreen multi-light passes draw with
+// IDENTITY matrices loaded, which turned every reprojection into garbage
+// (no visible effect + occasional false-hit black flicker).
+uniform mat4 projection_matrix_unjittered;
+#define CS_PROJ projection_matrix_unjittered
 
 vec4 getPosition(vec2 pos_screen);  // deferredUtil.glsl
 uniform vec2 screen_res;            // duplicate declaration is legal; merged at link
@@ -68,7 +74,7 @@ float bdmergeContactShadowMarch(vec3 pos, vec3 dir_n, vec2 pos_screen)
     {
         vec3 sp = pos + dir_n * t;
 
-        vec4 clip = projection_matrix * vec4(sp, 1.0);
+        vec4 clip = CS_PROJ * vec4(sp, 1.0);
         if (clip.w <= 0.0)
         {
             break; // marched behind the camera
