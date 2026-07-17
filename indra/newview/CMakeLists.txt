@@ -271,6 +271,7 @@ set(viewer_SOURCE_FILES
     llactormover.cpp
     llcinematiccamera.cpp
     llfloateractormover.cpp
+    llfloatercinematiccamera.cpp
     llfloaterflycamrecorder.cpp
     llflycamrecorder.cpp
     llcefaccelinterop.cpp
@@ -1065,6 +1066,7 @@ set(viewer_HEADER_FILES
     llactormover.h
     llcinematiccamera.h
     llfloateractormover.h
+    llfloatercinematiccamera.h
     llfloaterflycamrecorder.h
     llflycamrecorder.h
     llcapabilityprovider.h

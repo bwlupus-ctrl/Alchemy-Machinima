@@ -108,6 +108,7 @@
 #include "llfloaterevent.h"
 #include "llfloaterfixedenvironment.h"
 #include "llfloateractormover.h"
+#include "llfloatercinematiccamera.h"
 #include "llfloaterflycamrecorder.h"
 #include "llfloaterfonttest.h"
 #include "llfloaterforgetuser.h"
@@ -514,7 +515,7 @@ void LLViewerFloaterReg::registerFloaters()
     LLFloaterReg::add("prefs_spellchecker", "floater_spellcheck.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterSpellCheckerSettings>);
     LLFloaterReg::add("prefs_autoreplace", "floater_autoreplace.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterAutoReplaceSettings>);
     LLFloaterReg::add("pref_joystick", "floater_joystick.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterJoystick>);
-    LLFloaterReg::add("cinematic_camera", "floater_cinematic_camera.xml", &LLFloaterReg::build<LLFloater>);
+    LLFloaterReg::add("cinematic_camera", "floater_cinematic_camera.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterCinematicCamera>);
     LLFloaterReg::add("flycam_recorder", "floater_flycam_recorder.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterFlycamRecorder>);
     LLFloaterReg::add("flycam_orbit", "floater_flycam_orbit.xml", &LLFloaterReg::build<LLFloater>);
     LLFloaterReg::add("actor_mover", "floater_actor_mover.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterActorMover>);

@@ -13557,4 +13557,56 @@ No valid environment setting selected.
 Please note that &quot;Shared Environment&quot; and &quot;Day cycle based&quot; cannot be selected!
   <tag>fail</tag>
   </notification>
+
+  <notification
+   icon="alertmodal.tga"
+   label="Save cinematic camera preset"
+   name="CinematicCamSavePreset"
+   type="alertmodal">
+    <unique/>
+    Save the complete cinematic camera rig state (every mode's settings) as:
+    <tag>confirm</tag>
+    <form name="form">
+      <input name="message" type="text">
+        [DESC]
+      </input>
+      <button
+       default="true"
+       index="0"
+       name="OK"
+       text="Save"/>
+      <button
+       index="1"
+       name="Cancel"
+       text="Cancel"/>
+    </form>
+  </notification>
+
+  <notification
+   icon="alertmodal.tga"
+   name="CinematicCamConfirmDeletePreset"
+   type="alertmodal">
+    <unique/>
+    Delete the cinematic camera preset &quot;[NAME]&quot;?
+    <tag>confirm</tag>
+    <usetemplate
+     name="okcancelbuttons"
+     notext="Cancel"
+     yestext="Delete"/>
+  </notification>
+
+  <notification
+   icon="alertmodal.tga"
+   name="CinematicCamConfirmResetAll"
+   type="alertmodal">
+    <unique/>
+    Reset ALL cinematic camera settings (shared options and every mode's parameters) to their defaults?
+
+This cannot be undone.
+    <tag>confirm</tag>
+    <usetemplate
+     name="okcancelbuttons"
+     notext="Cancel"
+     yestext="Reset All"/>
+  </notification>
 </notifications>
