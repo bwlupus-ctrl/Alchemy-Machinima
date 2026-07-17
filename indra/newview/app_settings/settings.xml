@@ -12993,24 +12993,24 @@
     <key>RenderAutoMaskAlphaNonDeferred</key>
     <map>
       <key>Comment</key>
-      <string>Use alpha masks where appropriate when not using the Advanced Lighting Model</string>
+      <string>Use alpha masks where appropriate when not using the Advanced Lighting Model. [BDMerge] Default OFF: textures render with their authored alpha mode; use the per-object Alpha Mode override to mask manually.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
       <string>Boolean</string>
       <key>Value</key>
-      <integer>1</integer>
+      <integer>0</integer>
     </map>
     <key>RenderAutoMaskAlphaDeferred</key>
     <map>
       <key>Comment</key>
-      <string>Use alpha masks where appropriate in the Advanced Lighting Model</string>
+      <string>Use alpha masks where appropriate in the Advanced Lighting Model. [BDMerge] Default OFF: textures render with their authored alpha mode; use the per-object Alpha Mode override to mask manually.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
       <string>Boolean</string>
       <key>Value</key>
-      <integer>1</integer>
+      <integer>0</integer>
     </map>
     <key>RenderFlexTimeFactor</key>
     <map>
