@@ -55,11 +55,19 @@ public:
     // -----------------------------------------------------------------------
     struct Waypoint
     {
-        LLVector3d mPosGlobal;          // node position, global coords (foot/ground level)
+        LLVector3d mPosGlobal;          // node position, global coords (foot/GROUND level)
         F32        mDwell = 0.f;        // seconds to hold at this node (0 = none)
         F32        mSpeedOverride = 0.f;// local ground speed, m/s (0 = use path speed)
         LLUUID     mAnim;               // per-node anim (null = use loco anim)
         F32        mGroundOffset = 0.f; // manual Z nudge at this node, m
+        // Authored root height ABOVE the ground at this node (captured once, like
+        // the legacy straight-move captures its root origin). Placement adds this
+        // to the resolved ground so the rendered root sits at the SAME stable
+        // standing height it had when the node was dropped -- it is NOT rebuilt
+        // per frame from the live, pose-dependent getPelvisToFoot(). On flat
+        // ground this makes path placement byte-match the legacy straight move;
+        // ground-follow rides slopes/stairs by swapping the ground under it.
+        F32        mRootAbove = 0.f;    // root Z - snapped ground Z at capture, m
     };
 
     struct Path
@@ -160,6 +168,9 @@ private:
         U32          mLastFrame = 0xFFFFFFFF;
         LLVector3    mCurPos;
         LLQuaternion mCurRot;
+        // diagnostic: frames already logged this walk (gated by ActorMoverPathZDebug,
+        // off by default). Logs the first few frames' Z reasoning, then goes quiet.
+        S32          mDbgFrames = 0;
 
         // ---- path-traversal runtime (mIsPath) -----------------------------
         // A Move with mIsPath walks the actor's Path (looked up by the map key)

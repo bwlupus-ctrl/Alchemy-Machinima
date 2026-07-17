@@ -22,6 +22,7 @@
 #include "lljoint.h"
 #include "llrender.h"               // gGL (heading preview)
 #include "llvector4a.h"             // downward ground raycast (pathing ground-follow)
+#include "llviewercamera.h"         // camera basis for billboarded path node numbers
 #include "llviewercontrol.h"        // gSavedSettings, LLCachedControl
 #include "llviewershadermgr.h"      // gUIProgram (heading preview)
 #include "llvoavatar.h"
@@ -152,8 +153,11 @@ F32 pathSpeedAt(const LLActorMover::Path& path, F32 d, bool skip_ease)
     return base * llmax(factor, 0.08f);
 }
 
-// per-node ground-offset nudge, interpolated across the bracketing nodes
-F32 pathGroundOffsetAt(const LLActorMover::Path& path, F32 d)
+// per-node scalar (ground-offset nudge or authored root-above-ground height),
+// interpolated across the bracketing nodes at arc distance d. Both fields ride
+// the same node-distance bracket, so one helper covers them.
+F32 pathNodeScalarAt(const LLActorMover::Path& path, F32 d,
+                     F32 (*field)(const LLActorMover::Waypoint&))
 {
     const S32 n = (S32)path.mNodes.size();
     if (n == 0)
@@ -162,7 +166,7 @@ F32 pathGroundOffsetAt(const LLActorMover::Path& path, F32 d)
     }
     if (path.mNodeDist.size() < 2)
     {
-        return path.mNodes[0].mGroundOffset;
+        return field(path.mNodes[0]);
     }
     S32 i = 0;
     while (i + 1 < (S32)path.mNodeDist.size() && path.mNodeDist[i + 1] <= d)
@@ -173,9 +177,24 @@ F32 pathGroundOffsetAt(const LLActorMover::Path& path, F32 d)
     const F32 db = (i + 1 < (S32)path.mNodeDist.size())
                        ? path.mNodeDist[i + 1] : path.mTotalLength;
     const F32 f = (db > da) ? llclamp((d - da) / (db - da), 0.f, 1.f) : 0.f;
-    const F32 ga = path.mNodes[llclamp(i, 0, n - 1)].mGroundOffset;
-    const F32 gb = path.mNodes[llclamp(i + 1, 0, n - 1)].mGroundOffset;
-    return ga * (1.f - f) + gb * f;
+    const F32 va = field(path.mNodes[llclamp(i, 0, n - 1)]);
+    const F32 vb = field(path.mNodes[llclamp(i + 1, 0, n - 1)]);
+    return va * (1.f - f) + vb * f;
+}
+
+F32 pathGroundOffsetAt(const LLActorMover::Path& path, F32 d)
+{
+    return pathNodeScalarAt(path, d,
+        [](const LLActorMover::Waypoint& w) { return w.mGroundOffset; });
+}
+
+// authored root height above the ground at arc distance d: the stable standing
+// height the placement adds on top of the (authored or live) ground, matching
+// the legacy straight-move convention (root held at its captured height).
+F32 pathRootAboveAt(const LLActorMover::Path& path, F32 d)
+{
+    return pathNodeScalarAt(path, d,
+        [](const LLActorMover::Waypoint& w) { return w.mRootAbove; });
 }
 } // anonymous namespace
 
@@ -369,16 +388,25 @@ void LLActorMover::appendWaypointHere(const LLUUID& actor_id)
     {
         return;
     }
-    // author at FOOT/ground level: drop the pelvis-to-foot from the rendered
-    // root, then ground-snap so the node lands on terrain/stairs under the
-    // actor (P2's click-to-place will snap the same way).
-    LLVector3 foot = av->getRootJoint()->getWorldPosition();
-    foot.mV[VZ] -= av->getPelvisToFoot();
+    // Store the node at FOOT/GROUND level (mPosGlobal) AND the authored root
+    // height above that ground (mRootAbove). The ground level: drop the
+    // pelvis-to-foot from the rendered root, then ground-snap so the node lands
+    // on terrain/stairs under the actor (P2's click-to-place snaps the same
+    // way). mRootAbove is the RESIDUAL back up to the true rendered root, so the
+    // capture->walk round-trip reproduces the exact captured root height no
+    // matter what the ground-snap returned or how the walk pose differs -- the
+    // same "hold the captured root" convention the legacy straight move uses.
+    const LLVector3 root = av->getRootJoint()->getWorldPosition();
+    const F32 p2f = av->getPelvisToFoot();
+    LLVector3 foot = root;
+    foot.mV[VZ] -= p2f;
     bool hit = false;
-    foot.mV[VZ] = resolveGroundZ(av, foot, foot.mV[VZ], hit);
+    const F32 ground_z = resolveGroundZ(av, foot, foot.mV[VZ], hit);
+    foot.mV[VZ] = ground_z;
 
     Waypoint wp;
     wp.mPosGlobal = gAgent.getPosGlobalFromAgent(foot);
+    wp.mRootAbove = root.mV[VZ] - ground_z;     // captured standing height above ground
 
     Path& path = mPaths[av->getID()];
     path.mNodes.push_back(wp);
@@ -386,6 +414,16 @@ void LLActorMover::appendWaypointHere(const LLUUID& actor_id)
     LL_INFOS("ActorMover") << "path waypoint " << path.mNodes.size()
                            << " for " << av->getID() << " at " << foot
                            << (hit ? " (ground-snapped)" : "") << LL_ENDL;
+
+    static LLCachedControl<bool> zdbg(gSavedSettings, "ActorMoverPathZDebug", false);
+    if (zdbg)
+    {
+        LL_INFOS("ActorPath") << "capture node " << path.mNodes.size()
+            << " root.z=" << root.mV[VZ] << " pelvisToFoot=" << p2f
+            << " foot.z(pre-snap)=" << (root.mV[VZ] - p2f)
+            << " groundZ=" << ground_z << " hit=" << (hit ? 1 : 0)
+            << " rootAbove=" << wp.mRootAbove << LL_ENDL;
+    }
 }
 
 // [Director] the roster API is now an alias for Director cast membership
@@ -737,10 +775,11 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
     if (n < 2 || path.mTotalLength <= 0.001f)
     {
         // degenerate (all nodes coincident): hold at node 0 so we never place
-        // the root at the origin
+        // the root at the origin. Lift by the AUTHORED root-above-ground, not the
+        // live pelvisToFoot, to match the placement convention below.
         LLVector3 a = gAgent.getPosAgentFromGlobal(path.mNodes.empty()
                           ? LLVector3d() : path.mNodes[0].mPosGlobal);
-        a.mV[VZ] += av->getPelvisToFoot();
+        a.mV[VZ] += path.mNodes.empty() ? 0.f : path.mNodes[0].mRootAbove;
         mv.mCurPos = a;
         return;
     }
@@ -856,17 +895,41 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
         tan_global = -tan_global;   // ping-pong return leg faces backward
     }
 
-    // ---- agent frame + ground-follow ----
+    // ---- agent frame + ground placement --------------------------------------
+    // pos_global.Z is the AUTHORED ground/foot level the node was snapped to.
+    // Place the root at a STABLE authored standing height (mRootAbove) above the
+    // ground -- the same convention as the legacy straight move, which captures
+    // its root once and never rebuilds it from the live, pose-dependent
+    // getPelvisToFoot(). On flat ground this reproduces the exact captured root
+    // (feet on the ground, byte-matching the legacy move); ground-follow swaps
+    // the authored ground for the live ground so the root rides slopes/stairs.
     LLVector3 agent = gAgent.getPosAgentFromGlobal(pos_global);
-    F32 foot_z = agent.mV[VZ];
+    const F32 spline_ground_z = agent.mV[VZ];
+    F32 ground_z = spline_ground_z;
     bool ground_hit = false;
     if (path.mGroundFollow)
     {
-        foot_z = resolveGroundZ(av, agent, agent.mV[VZ], ground_hit);
+        ground_z = resolveGroundZ(av, agent, agent.mV[VZ], ground_hit);
     }
-    foot_z += pathGroundOffsetAt(path, mv.mDist);
-    agent.mV[VZ] = foot_z + av->getPelvisToFoot();
+    ground_z += pathGroundOffsetAt(path, mv.mDist);
+    const F32 root_above = pathRootAboveAt(path, mv.mDist);
+    agent.mV[VZ] = ground_z + root_above;
     mv.mCurPos = agent;
+
+    static LLCachedControl<bool> zdbg(gSavedSettings, "ActorMoverPathZDebug", false);
+    if (zdbg && mv.mDbgFrames < 5)
+    {
+        ++mv.mDbgFrames;
+        LL_INFOS("ActorPath") << "walk f" << mv.mDbgFrames
+            << " d=" << mv.mDist
+            << " splineGroundZ=" << spline_ground_z
+            << " groundFollow=" << (path.mGroundFollow ? 1 : 0)
+            << " resolvedGroundZ=" << ground_z << " hit=" << (ground_hit ? 1 : 0)
+            << " rootAbove=" << root_above
+            << " placedRootZ=" << agent.mV[VZ]
+            << " liveRootZ=" << av->getRootJoint()->getWorldPosition().mV[VZ]
+            << " livePelvisToFoot=" << av->getPelvisToFoot() << LL_ENDL;
+    }
 
     // ---- facing: target yaw from tangent (or arrival facing), turn-rate clamp ----
     F32 target_yaw;
@@ -1001,10 +1064,196 @@ F32 LLActorMover::resolveGroundZ(LLVOAvatar* av, const LLVector3& agent_pos,
     return fallback_z;
 }
 
+// ===========================================================================
+// Path visualization helpers (Problem 2 + 3). All draw in the same beacon-style
+// UI pass as renderHeadingPreview(): gUIProgram / LLGLSUIDefault / no depth
+// writes, so they read as a client-side overlay over any ground. GL line width
+// is unreliable across drivers, so "thickness" is faked with filled triangle
+// ribbons; only thin accents (sticks, digits) use lines.
+// ===========================================================================
+namespace
+{
+// small lifts so overlay geometry sits just above the ground it describes
+const F32 PATH_RIBBON_LIFT = 0.08f;
+const F32 NODE_BASE_LIFT   = 0.03f;
+const F32 NODE_STICK_H     = 0.75f;     // marker post height, m
+const F32 NODE_NUM_H       = 0.26f;     // billboarded digit height, m
+
+// filled ground ribbon along a polyline: for each segment emit a quad (2 tris)
+// offset +/- half_width along the in-plane perpendicular. No mitre joins -- the
+// node markers / chevrons cover the small corner gaps, which is cheaper and
+// cannot self-overlap into dark seams.
+void drawRibbon(const std::vector<LLVector3>& pts, F32 half_width, const LLColor4& col)
+{
+    if (pts.size() < 2)
+    {
+        return;
+    }
+    gGL.begin(LLRender::TRIANGLES);
+    gGL.color4fv(col.mV);
+    for (size_t i = 0; i + 1 < pts.size(); ++i)
+    {
+        LLVector3 seg = pts[i + 1] - pts[i];
+        seg.mV[VZ] = 0.f;
+        const F32 len = seg.length();
+        if (len < 1e-4f)
+        {
+            continue;
+        }
+        seg *= (1.f / len);
+        const LLVector3 perp(-seg.mV[VY] * half_width, seg.mV[VX] * half_width, 0.f);
+        const LLVector3 a0 = pts[i]     - perp;
+        const LLVector3 a1 = pts[i]     + perp;
+        const LLVector3 b0 = pts[i + 1] - perp;
+        const LLVector3 b1 = pts[i + 1] + perp;
+        gGL.vertex3fv(a0.mV); gGL.vertex3fv(b0.mV); gGL.vertex3fv(b1.mV);
+        gGL.vertex3fv(a0.mV); gGL.vertex3fv(b1.mV); gGL.vertex3fv(a1.mV);
+    }
+    gGL.end();
+}
+
+// a dark, slightly-wider outline pass under a brighter fill pass, so the line
+// reads over both bright and dark ground
+void drawThickLine(const std::vector<LLVector3>& pts, F32 half_width, const LLColor4& fill)
+{
+    drawRibbon(pts, half_width * 1.7f, LLColor4(0.f, 0.f, 0.f, 0.65f));
+    drawRibbon(pts, half_width, fill);
+}
+
+// forward-pointing filled chevrons spaced along the polyline's arc length
+void drawChevrons(const std::vector<LLVector3>& pts, const LLColor4& col)
+{
+    if (pts.size() < 2)
+    {
+        return;
+    }
+    const F32 SPACING = 1.75f;
+    const F32 SZ      = 0.22f;
+    gGL.begin(LLRender::TRIANGLES);
+    gGL.color4fv(col.mV);
+    F32 acc = 0.f, next = 0.9f;
+    for (size_t i = 0; i + 1 < pts.size(); ++i)
+    {
+        LLVector3 seg = pts[i + 1] - pts[i];
+        seg.mV[VZ] = 0.f;
+        const F32 len = seg.length();
+        if (len < 1e-4f)
+        {
+            continue;
+        }
+        seg *= (1.f / len);
+        const LLVector3 perp(-seg.mV[VY], seg.mV[VX], 0.f);
+        while (next <= acc + len)
+        {
+            const F32 f = (next - acc) / len;
+            const LLVector3 c = pts[i] + (pts[i + 1] - pts[i]) * f;
+            const LLVector3 tip  = c + seg * SZ;
+            const LLVector3 left  = c - seg * (SZ * 0.35f) + perp * (SZ * 0.75f);
+            const LLVector3 right = c - seg * (SZ * 0.35f) - perp * (SZ * 0.75f);
+            gGL.vertex3fv(tip.mV); gGL.vertex3fv(left.mV); gGL.vertex3fv(right.mV);
+            next += SPACING;
+        }
+        acc += len;
+    }
+    gGL.end();
+}
+
+// a flat filled diamond lying on the ground at base, plus an upright post
+void drawNodeMarker(const LLVector3& base, const LLColor4& col, bool dwell)
+{
+    const F32 R = 0.24f;
+    gGL.begin(LLRender::TRIANGLES);
+    gGL.color4fv(col.mV);
+    const LLVector3 e0 = base + LLVector3( R, 0.f, 0.f);
+    const LLVector3 e1 = base + LLVector3(0.f,  R, 0.f);
+    const LLVector3 e2 = base + LLVector3(-R, 0.f, 0.f);
+    const LLVector3 e3 = base + LLVector3(0.f, -R, 0.f);
+    gGL.vertex3fv(e0.mV); gGL.vertex3fv(e1.mV); gGL.vertex3fv(e2.mV);
+    gGL.vertex3fv(e0.mV); gGL.vertex3fv(e2.mV); gGL.vertex3fv(e3.mV);
+    gGL.end();
+
+    // dwell nodes get a cyan ring on the ground around the diamond
+    if (dwell)
+    {
+        const F32 RR = R * 1.9f;
+        gGL.setLineWidth(2.f);
+        gGL.begin(LLRender::LINES);
+        gGL.color4f(0.4f, 0.9f, 1.f, 0.95f);
+        const S32 SEGS = 20;
+        for (S32 s = 0; s < SEGS; ++s)
+        {
+            const F32 a = (F32)s        / SEGS * F_TWO_PI;
+            const F32 b = (F32)(s + 1)  / SEGS * F_TWO_PI;
+            gGL.vertex3f(base.mV[VX] + RR * cosf(a), base.mV[VY] + RR * sinf(a), base.mV[VZ]);
+            gGL.vertex3f(base.mV[VX] + RR * cosf(b), base.mV[VY] + RR * sinf(b), base.mV[VZ]);
+        }
+        gGL.end();
+    }
+
+    // upright post so the number floats legibly above the node
+    gGL.setLineWidth(2.5f);
+    gGL.begin(LLRender::LINES);
+    gGL.color4fv(col.mV);
+    gGL.vertex3fv(base.mV);
+    gGL.vertex3f(base.mV[VX], base.mV[VY], base.mV[VZ] + NODE_STICK_H);
+    gGL.end();
+}
+
+// a camera-billboarded integer drawn as 7-segment line digits at anchor
+// (anchor = baseline centre). right/up are the screen-facing axes.
+void drawNumber(S32 value, const LLVector3& anchor, F32 h,
+                const LLVector3& right, const LLVector3& up, const LLColor4& col)
+{
+    // segment endpoints in a unit cell [0..1] x [0..1]: a b c d e f g
+    static const F32 SEG[7][4] = {
+        {0.f, 1.f, 1.f, 1.f},   // a  top
+        {1.f, 1.f, 1.f, .5f},   // b  upper-right
+        {1.f, .5f, 1.f, 0.f},   // c  lower-right
+        {0.f, 0.f, 1.f, 0.f},   // d  bottom
+        {0.f, .5f, 0.f, 0.f},   // e  lower-left
+        {0.f, 1.f, 0.f, .5f},   // f  upper-left
+        {0.f, .5f, 1.f, .5f}    // g  middle
+    };
+    // bit per segment: a=1 b=2 c=4 d=8 e=16 f=32 g=64
+    static const U8 DIG[10] = { 63, 6, 91, 79, 102, 109, 125, 7, 127, 111 };
+
+    const std::string s = std::to_string(llmax(0, value));
+    const F32 w   = h * 0.6f;               // digit cell width
+    const F32 gap = w * 0.4f;               // inter-digit gap
+    const F32 total_w = s.size() * w + (s.size() - 1) * gap;
+    LLVector3 pen = anchor - right * (total_w * 0.5f);   // left edge, centred
+
+    gGL.setLineWidth(2.5f);
+    gGL.begin(LLRender::LINES);
+    gGL.color4fv(col.mV);
+    for (char ch : s)
+    {
+        const S32 d = ch - '0';
+        if (d >= 0 && d <= 9)
+        {
+            const U8 mask = DIG[d];
+            for (S32 seg = 0; seg < 7; ++seg)
+            {
+                if (!(mask & (1 << seg)))
+                {
+                    continue;
+                }
+                const LLVector3 p0 = pen + right * (SEG[seg][0] * w) + up * (SEG[seg][1] * h);
+                const LLVector3 p1 = pen + right * (SEG[seg][2] * w) + up * (SEG[seg][3] * h);
+                gGL.vertex3fv(p0.mV);
+                gGL.vertex3fv(p1.mV);
+            }
+        }
+        pen += right * (w + gap);
+    }
+    gGL.end();
+}
+} // anonymous namespace
+
 // ---------------------------------------------------------------------------
 void LLActorMover::renderHeadingPreview()
 {
-    static LLCachedControl<bool> show(gSavedSettings, "ActorMoverShowHeading", false);
+    static LLCachedControl<bool> show(gSavedSettings, "ActorMoverShowHeading", true);
     if (!show)
     {
         return;
@@ -1025,14 +1274,24 @@ void LLActorMover::renderHeadingPreview()
     static LLCachedControl<F32> heading(gSavedSettings, "ActorMoverHeading", 0.f);
     const F32 dist = llmax((F32)distance, 0.1f);
 
-    // same beacon-style local debug lines as renderObjectBeacons(): UI shader,
-    // no texture, no depth writes -- strictly a client-side overlay
+    // same beacon-style local overlay as renderObjectBeacons(): UI shader, no
+    // texture, no depth writes -- strictly a client-side overlay
     LLGLSUIDefault gls_ui;
     gUIProgram.bind();
     gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
-    gGL.setLineWidth(2.f);
-    gGL.begin(LLRender::LINES);
-    gGL.color4f(1.f, 0.75f, 0.2f, 0.9f);
+
+    // camera basis for billboarded node numbers (face the viewer, stay upright)
+    LLViewerCamera* cam = LLViewerCamera::getInstance();
+    const LLVector3 bb_right = -cam->getLeftAxis();
+    const LLVector3 bb_up    = cam->getUpAxis();
+
+    // palette
+    const LLColor4 col_line (1.f, 0.72f, 0.2f, 0.9f);   // amber travel line
+    const LLColor4 col_chev (1.f, 0.96f, 0.6f, 0.95f);  // bright chevrons
+    const LLColor4 col_start(0.3f, 1.f, 0.35f, 0.95f);  // start node = green
+    const LLColor4 col_end  (1.f, 0.32f, 0.22f, 0.95f); // end node   = red
+    const LLColor4 col_mid  (1.f, 0.8f, 0.3f, 0.95f);   // interior nodes = amber
+    const LLColor4 col_num  (1.f, 1.f, 1.f, 1.f);       // digits = white
 
     uuid_vec_t roster = getRoster();
     if (roster.empty())
@@ -1047,34 +1306,86 @@ void LLActorMover::renderHeadingPreview()
             continue;
         }
 
-        // planned bearing = same math as start(): current facing + trim
-        LLVector3 at = LLVector3(1.f, 0.f, 0.f) * av->getRenderRotation();
-        const F32 yaw = atan2f(at.mV[VY], at.mV[VX]) + (F32)heading * DEG_TO_RAD;
-        const LLVector3 dir(cosf(yaw), sinf(yaw), 0.f);
-
-        LLVector3 origin = av->getRootJoint()->getWorldPosition();
-        origin.mV[VZ] += 0.15f - av->getPelvisToFoot();     // just above ground
-        const LLVector3 end = origin + dir * dist;
-
-        // main segment (ping-pong/loop share the same single leg)
-        gGL.vertex3fv(origin.mV);
-        gGL.vertex3fv(end.mV);
-
-        // arrowhead barbs + a small vertical tick at the endpoint
-        const F32 barb_len = llmin(0.4f, dist * 0.25f);
-        for (F32 side : { 1.f, -1.f })
+        // a walkable path (>= 2 nodes) draws the full spline + numbered markers;
+        // otherwise the upgraded thick straight heading arrow (today's preview)
+        auto pit = mPaths.find(av->getID());
+        if (pit != mPaths.end() && pit->second.mNodes.size() >= 2)
         {
-            const F32 b = yaw + side * 2.6f;    // ~150 deg back from travel
-            gGL.vertex3fv(end.mV);
-            gGL.vertex3f(end.mV[VX] + barb_len * cosf(b),
-                         end.mV[VY] + barb_len * sinf(b),
-                         end.mV[VZ]);
+            Path& path = pit->second;
+            if (path.mDirty)
+            {
+                path.rebuild();
+            }
+
+            // sample the spline at short arc-length steps for the polyline
+            const F32 total = llmax(path.mTotalLength, 0.01f);
+            const S32 steps = llclamp((S32)ceilf(total / 0.35f), 1, 4096);
+            std::vector<LLVector3> pts;
+            pts.reserve(steps + 1);
+            for (S32 i = 0; i <= steps; ++i)
+            {
+                const F32 d = total * (F32)i / (F32)steps;
+                LLVector3d gp, gt;
+                path.evalAtDistance(d, gp, gt);
+                LLVector3 a = gAgent.getPosAgentFromGlobal(gp);
+                a.mV[VZ] += PATH_RIBBON_LIFT;
+                pts.push_back(a);
+            }
+
+            drawThickLine(pts, 0.11f, col_line);
+            drawChevrons(pts, col_chev);
+
+            // numbered node markers, start/end distinguished, dwell flagged
+            const S32 n = (S32)path.mNodes.size();
+            const bool loop = (path.mEndMode == 1);
+            for (S32 i = 0; i < n; ++i)
+            {
+                LLVector3 base = gAgent.getPosAgentFromGlobal(path.mNodes[i].mPosGlobal);
+                base.mV[VZ] += NODE_BASE_LIFT;
+                const bool is_start = (i == 0);
+                const bool is_end   = (i == n - 1) && !loop;    // a loop has no distinct end
+                const LLColor4& c = is_start ? col_start : (is_end ? col_end : col_mid);
+                drawNodeMarker(base, c, path.mNodes[i].mDwell > 0.f);
+
+                LLVector3 num_at = base;
+                num_at.mV[VZ] += NODE_STICK_H + 0.06f;
+                drawNumber(i + 1, num_at, NODE_NUM_H, bb_right, bb_up, col_num);
+            }
         }
-        gGL.vertex3fv(end.mV);
-        gGL.vertex3f(end.mV[VX], end.mV[VY], end.mV[VZ] + 0.3f);
+        else
+        {
+            // ---- upgraded straight heading arrow (no path set) ----
+            LLVector3 at = LLVector3(1.f, 0.f, 0.f) * av->getRenderRotation();
+            const F32 yaw = atan2f(at.mV[VY], at.mV[VX]) + (F32)heading * DEG_TO_RAD;
+            const LLVector3 dir(cosf(yaw), sinf(yaw), 0.f);
+
+            LLVector3 origin = av->getRootJoint()->getWorldPosition();
+            origin.mV[VZ] += PATH_RIBBON_LIFT - av->getPelvisToFoot();   // just above ground
+            const LLVector3 end = origin + dir * dist;
+
+            std::vector<LLVector3> pts{ origin, end };
+            drawThickLine(pts, 0.10f, col_line);
+
+            // filled arrowhead + a small vertical tick at the endpoint
+            const LLVector3 perp(-dir.mV[VY], dir.mV[VX], 0.f);
+            const F32 hb = llmin(0.5f, dist * 0.28f);
+            const LLVector3 tip = end + dir * (hb * 0.6f);
+            const LLVector3 lft = end + perp * (hb * 0.5f) - dir * (hb * 0.1f);
+            const LLVector3 rgt = end - perp * (hb * 0.5f) - dir * (hb * 0.1f);
+            gGL.begin(LLRender::TRIANGLES);
+            gGL.color4fv(col_line.mV);
+            gGL.vertex3fv(tip.mV); gGL.vertex3fv(lft.mV); gGL.vertex3fv(rgt.mV);
+            gGL.end();
+
+            gGL.setLineWidth(2.5f);
+            gGL.begin(LLRender::LINES);
+            gGL.color4fv(col_line.mV);
+            gGL.vertex3fv(end.mV);
+            gGL.vertex3f(end.mV[VX], end.mV[VY], end.mV[VZ] + 0.3f);
+            gGL.end();
+        }
     }
 
-    gGL.end();
     gGL.setLineWidth(1.f);
     gGL.flush();
 }

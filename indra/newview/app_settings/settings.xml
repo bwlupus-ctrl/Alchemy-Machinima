@@ -2729,7 +2729,18 @@
     <key>ActorMoverShowHeading</key>
     <map>
       <key>Comment</key>
-      <string>[ActorMover] Draw an in-world preview arrow per roster actor along the planned travel bearing (current facing + heading trim) for the configured distance. Client-side debug lines; only rendered while the Actor Mover floater is open.</string>
+      <string>[ActorMover] Show path: draw the in-world path preview for each roster/cast actor. With a walkable path (2+ nodes) this is the thick outlined spline with direction chevrons and numbered node markers (start green, end red, dwell nodes ringed); with no path it is the thick straight heading arrow along the planned travel bearing (current facing + heading trim) for the configured distance. Client-side overlay only; rendered while the Actor Mover or Director floater is open.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>ActorMoverPathZDebug</key>
+    <map>
+      <key>Comment</key>
+      <string>[ActorMover] Diagnostic: log the actor-path height (Z) reasoning to the "ActorPath" log tag -- root/ground/pelvis-to-foot at node capture and the first few walk frames (spline ground, resolved ground, authored root-above-ground, placed root Z). Off by default; enable only to debug flat-ground hover / ground-follow placement.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>

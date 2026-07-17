@@ -143,12 +143,12 @@
    control_name="ActorMoverShowHeading"
    follows="left|top"
    height="16"
-   label="Show heading"
+   label="Show path"
    layout="topleft"
    left="12"
    top_pad="8"
    name="show_heading_check"
-   tool_tip="Draw an in-world preview arrow for each roster actor along the planned travel bearing for the configured distance. Client-side only; updates live while dragging the Heading slider."
+   tool_tip="Show the in-world path preview for each roster actor. With a walkable path: the thick outlined spline with direction chevrons and numbered node markers (start green, end red, dwell nodes ringed). With no path: the thick straight heading arrow along the planned bearing for the configured distance. Client-side only; updates live."
    width="276" />
   <check_box
    control_name="ActorMoverUseCustomAnim"

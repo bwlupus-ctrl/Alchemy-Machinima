@@ -220,12 +220,12 @@
      control_name="ActorMoverShowHeading"
      follows="left|bottom"
      height="16"
-     label="Heading rays"
+     label="Show path"
      layout="topleft"
      left="8"
      top="390"
      name="show_heading_check"
-     tool_tip="Draw an in-world preview ray for each cast actor along the planned travel bearing for the configured distance (m). Client-side only; tracks the heading dial live"
+     tool_tip="Show the in-world path preview for each cast actor. With a walkable path: the thick outlined spline with direction chevrons and numbered node markers (start green, end red, dwell nodes ringed). With no path: the thick straight heading ray along the planned bearing (m). Client-side only; tracks the heading dial live"
      width="170" />
     <button
      follows="left|bottom"
