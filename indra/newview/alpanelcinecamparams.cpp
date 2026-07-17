@@ -1,7 +1,6 @@
 /**
- * @file llfloatercinematiccamera.cpp
- * @brief Cinematic Camera floater: per-mode auto-hiding parameter panels,
- *        mode/all resets and named global presets stored as LLSD files.
+ * @file alpanelcinecamparams.cpp
+ * @brief Cinematic Camera parameter panel -- see alpanelcinecamparams.h.
  *
  * $LicenseInfo:firstyear=2026&license=viewerlgpl$
  * Alchemy-Machinima fork
@@ -10,7 +9,7 @@
 
 #include "llviewerprecompiledheaders.h"
 
-#include "llfloatercinematiccamera.h"
+#include "alpanelcinecamparams.h"
 
 #include "llbutton.h"
 #include "llcombobox.h"
@@ -18,10 +17,13 @@
 #include "lldiriterator.h"
 #include "llfile.h"
 #include "llnotificationsutil.h"
-#include "llpanel.h"
 #include "llsdserialize.h"
 #include "lluri.h"
 #include "llviewercontrol.h"        // gSavedSettings
+
+// both the standalone Cinematic Camera floater and the Director Console
+// instantiate this class via <panel class="panel_cinecam_params" .../>
+static LLPanelInjector<ALPanelCineCamParams> t_panel_cinecam_params("panel_cinecam_params");
 
 namespace
 {
@@ -36,7 +38,7 @@ constexpr char PRESET_SUBDIR[] = "cinematic_presets";
 // mode gets its own panel. Keep this table in sync with the camera code.
 // ---------------------------------------------------------------------------
 //static
-const std::vector<LLFloaterCinematicCamera::ModeEntry>& LLFloaterCinematicCamera::modeTable()
+const std::vector<ALPanelCineCamParams::ModeEntry>& ALPanelCineCamParams::modeTable()
 {
     static const std::vector<ModeEntry> table = {
         {  1, "panel_mode_bone",     { "CinematicCamJoint",
@@ -96,7 +98,7 @@ const std::vector<LLFloaterCinematicCamera::ModeEntry>& LLFloaterCinematicCamera
 }
 
 //static
-const std::vector<std::string>& LLFloaterCinematicCamera::sharedSettings()
+const std::vector<std::string>& ALPanelCineCamParams::sharedSettings()
 {
     // read for every mode in isActive()/resolveTarget()/updateCamera()
     static const std::vector<std::string> shared = {
@@ -113,12 +115,7 @@ const std::vector<std::string>& LLFloaterCinematicCamera::sharedSettings()
 }
 
 // ---------------------------------------------------------------------------
-LLFloaterCinematicCamera::LLFloaterCinematicCamera(const LLSD& key)
-:   LLFloater(key)
-{
-}
-
-LLFloaterCinematicCamera::~LLFloaterCinematicCamera()
+ALPanelCineCamParams::~ALPanelCineCamParams()
 {
     if (mModeConnection.connected())
     {
@@ -126,7 +123,7 @@ LLFloaterCinematicCamera::~LLFloaterCinematicCamera()
     }
 }
 
-bool LLFloaterCinematicCamera::postBuild()
+bool ALPanelCineCamParams::postBuild()
 {
     getChild<LLButton>("btn_reset_mode")->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onClickResetMode(); });
@@ -141,7 +138,8 @@ bool LLFloaterCinematicCamera::postBuild()
     mPresetCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPresetSelected(); });
 
     // react to mode changes from the header combo AND from anywhere else
-    // (debug settings, scripts): the control's commit signal covers both
+    // (debug settings, scripts, another instance of this panel): the
+    // control's commit signal covers all of them
     if (LLControlVariable* mode_ctrl = gSavedSettings.getControl("CinematicCamMode"))
     {
         mModeConnection = mode_ctrl->getSignal()->connect(
@@ -153,17 +151,23 @@ bool LLFloaterCinematicCamera::postBuild()
     return true;
 }
 
-void LLFloaterCinematicCamera::onOpen(const LLSD& key)
+void ALPanelCineCamParams::onVisibilityChange(bool new_visibility)
 {
-    LLFloater::onOpen(key);
-    updateModePanel();
-    refreshPresetList();
+    if (new_visibility)
+    {
+        updateModePanel();
+        // keep the current selection while picking up presets saved from
+        // another instance since we were last shown
+        refreshPresetList(mPresetCombo ? mPresetCombo->getSelectedItemLabel()
+                                       : std::string());
+    }
+    LLPanel::onVisibilityChange(new_visibility);
 }
 
 // ---------------------------------------------------------------------------
 // per-mode panel visibility
 // ---------------------------------------------------------------------------
-void LLFloaterCinematicCamera::updateModePanel()
+void ALPanelCineCamParams::updateModePanel()
 {
     const S32 mode = gSavedSettings.getS32("CinematicCamMode");
     for (const ModeEntry& entry : modeTable())
@@ -178,7 +182,7 @@ void LLFloaterCinematicCamera::updateModePanel()
 // ---------------------------------------------------------------------------
 // resets
 // ---------------------------------------------------------------------------
-void LLFloaterCinematicCamera::onClickResetMode()
+void ALPanelCineCamParams::onClickResetMode()
 {
     const S32 mode = gSavedSettings.getS32("CinematicCamMode");
     for (const ModeEntry& entry : modeTable())
@@ -198,20 +202,20 @@ void LLFloaterCinematicCamera::onClickResetMode()
     }
 }
 
-void LLFloaterCinematicCamera::onClickResetAll()
+void ALPanelCineCamParams::onClickResetAll()
 {
-    LLHandle<LLFloater> handle = getHandle();
+    LLHandle<ALPanelCineCamParams> handle = getDerivedHandle<ALPanelCineCamParams>();
     LLNotificationsUtil::add("CinematicCamConfirmResetAll", LLSD(), LLSD(),
         [handle](const LLSD& notification, const LLSD& response)
         {
-            if (auto* self = dynamic_cast<LLFloaterCinematicCamera*>(handle.get()))
+            if (ALPanelCineCamParams* self = handle.get())
             {
                 self->resetAllCallback(notification, response);
             }
         });
 }
 
-bool LLFloaterCinematicCamera::resetAllCallback(const LLSD& notification, const LLSD& response)
+bool ALPanelCineCamParams::resetAllCallback(const LLSD& notification, const LLSD& response)
 {
     if (LLNotificationsUtil::getSelectedOption(notification, response) != 0)
     {
@@ -243,7 +247,7 @@ bool LLFloaterCinematicCamera::resetAllCallback(const LLSD& notification, const 
 // shared settings and every mode's settings (a complete rig state)
 // ---------------------------------------------------------------------------
 //static
-std::string LLFloaterCinematicCamera::presetsDir()
+std::string ALPanelCineCamParams::presetsDir()
 {
     std::string dir = gDirUtilp->getExpandedFilename(LL_PATH_USER_SETTINGS, PRESET_SUBDIR);
     if (!gDirUtilp->fileExists(dir))
@@ -254,13 +258,13 @@ std::string LLFloaterCinematicCamera::presetsDir()
 }
 
 //static
-std::string LLFloaterCinematicCamera::presetPath(const std::string& name)
+std::string ALPanelCineCamParams::presetPath(const std::string& name)
 {
     // same reversible sanitization the graphics presets use
     return gDirUtilp->add(presetsDir(), LLURI::escape(name) + ".xml");
 }
 
-void LLFloaterCinematicCamera::refreshPresetList(const std::string& select_name)
+void ALPanelCineCamParams::refreshPresetList(const std::string& select_name)
 {
     if (!mPresetCombo)
     {
@@ -290,7 +294,7 @@ void LLFloaterCinematicCamera::refreshPresetList(const std::string& select_name)
     mPresetCombo->setLabel(getString("no_preset_label"));
 }
 
-void LLFloaterCinematicCamera::onClickSavePreset()
+void ALPanelCineCamParams::onClickSavePreset()
 {
     LLSD args;
     // preselect the current name so "tweak and re-save" is one click
@@ -302,18 +306,18 @@ void LLFloaterCinematicCamera::onClickSavePreset()
     {
         args["DESC"] = LLStringUtil::null;
     }
-    LLHandle<LLFloater> handle = getHandle();
+    LLHandle<ALPanelCineCamParams> handle = getDerivedHandle<ALPanelCineCamParams>();
     LLNotificationsUtil::add("CinematicCamSavePreset", args, LLSD(),
         [handle](const LLSD& notification, const LLSD& response)
         {
-            if (auto* self = dynamic_cast<LLFloaterCinematicCamera*>(handle.get()))
+            if (ALPanelCineCamParams* self = handle.get())
             {
                 self->savePresetCallback(notification, response);
             }
         });
 }
 
-bool LLFloaterCinematicCamera::savePresetCallback(const LLSD& notification, const LLSD& response)
+bool ALPanelCineCamParams::savePresetCallback(const LLSD& notification, const LLSD& response)
 {
     if (LLNotificationsUtil::getSelectedOption(notification, response) != 0)
     {
@@ -330,7 +334,7 @@ bool LLFloaterCinematicCamera::savePresetCallback(const LLSD& notification, cons
     return false;
 }
 
-void LLFloaterCinematicCamera::writePreset(const std::string& name)
+void ALPanelCineCamParams::writePreset(const std::string& name)
 {
     LLSD settings = LLSD::emptyMap();
     auto capture = [&settings](const std::string& setting)
@@ -368,7 +372,7 @@ void LLFloaterCinematicCamera::writePreset(const std::string& name)
     LL_INFOS("CinematicCam") << "Saved cinematic camera preset '" << name << "'" << LL_ENDL;
 }
 
-void LLFloaterCinematicCamera::onPresetSelected()
+void ALPanelCineCamParams::onPresetSelected()
 {
     if (mPresetCombo)
     {
@@ -380,7 +384,7 @@ void LLFloaterCinematicCamera::onPresetSelected()
     }
 }
 
-void LLFloaterCinematicCamera::applyPreset(const std::string& name)
+void ALPanelCineCamParams::applyPreset(const std::string& name)
 {
     const std::string path = presetPath(name);
     llifstream in(path.c_str());
@@ -398,7 +402,7 @@ void LLFloaterCinematicCamera::applyPreset(const std::string& name)
         return;
     }
 
-    // only apply keys this floater owns: a preset file is data, not commands
+    // only apply keys this panel owns: a preset file is data, not commands
     auto apply = [&preset](const std::string& setting)
     {
         if (preset["settings"].has(setting))
@@ -428,7 +432,7 @@ void LLFloaterCinematicCamera::applyPreset(const std::string& name)
     LL_INFOS("CinematicCam") << "Applied cinematic camera preset '" << name << "'" << LL_ENDL;
 }
 
-void LLFloaterCinematicCamera::onClickDeletePreset()
+void ALPanelCineCamParams::onClickDeletePreset()
 {
     if (!mPresetCombo)
     {
@@ -441,19 +445,19 @@ void LLFloaterCinematicCamera::onClickDeletePreset()
     }
     LLSD args;
     args["NAME"] = name;
-    LLHandle<LLFloater> handle = getHandle();
+    LLHandle<ALPanelCineCamParams> handle = getDerivedHandle<ALPanelCineCamParams>();
     LLNotificationsUtil::add("CinematicCamConfirmDeletePreset", args, LLSD(),
         [handle, name](const LLSD& notification, const LLSD& response)
         {
-            if (auto* self = dynamic_cast<LLFloaterCinematicCamera*>(handle.get()))
+            if (ALPanelCineCamParams* self = handle.get())
             {
                 self->deletePresetCallback(notification, response, name);
             }
         });
 }
 
-bool LLFloaterCinematicCamera::deletePresetCallback(const LLSD& notification, const LLSD& response,
-                                                    const std::string name)
+bool ALPanelCineCamParams::deletePresetCallback(const LLSD& notification, const LLSD& response,
+                                                const std::string name)
 {
     if (LLNotificationsUtil::getSelectedOption(notification, response) != 0)
     {

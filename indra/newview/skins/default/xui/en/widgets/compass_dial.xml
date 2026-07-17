@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- Default params for the ALCompassDial custom widget (tag "compass_dial").
+     Same defaults-file idiom as fs_virtual_trackpad.xml. -->
+<compass_dial
+    name="compass_dial"
+    width="130"
+    height="130"
+    clockwise="true"
+    show_readout="true"
+    ring_color="LtGray"
+    tick_color="LtGray_50"
+    needle_color="EmphasisColor"
+    text_color="White" />

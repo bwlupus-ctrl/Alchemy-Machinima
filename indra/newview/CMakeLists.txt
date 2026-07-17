@@ -272,8 +272,9 @@ set(viewer_SOURCE_FILES
     llcinematiccamera.cpp
     lldirectorcast.cpp
     llfloateractormover.cpp
-    llfloatercinematiccamera.cpp
+    llfloaterdirector.cpp
     llfloaterflycamrecorder.cpp
+    alpanelcinecamparams.cpp
     llflycamrecorder.cpp
     llcefaccelinterop.cpp
     llcefsurfacereceiver.cpp
@@ -1068,8 +1069,9 @@ set(viewer_HEADER_FILES
     llcinematiccamera.h
     lldirectorcast.h
     llfloateractormover.h
-    llfloatercinematiccamera.h
+    llfloaterdirector.h
     llfloaterflycamrecorder.h
+    alpanelcinecamparams.h
     llflycamrecorder.h
     llcapabilityprovider.h
     llcefaccelinterop.h

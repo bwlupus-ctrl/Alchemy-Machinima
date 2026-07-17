@@ -111,6 +111,13 @@
          parameter="actor_mover" />
       </menu_item_call>
       <menu_item_call
+       label="Director Console..."
+       name="director_item_call">
+        <menu_item_call.on_click
+         function="Floater.Toggle"
+         parameter="director" />
+      </menu_item_call>
+      <menu_item_call
        label="Phototools..."
        name="phototools_item_call">
         <menu_item_call.on_click

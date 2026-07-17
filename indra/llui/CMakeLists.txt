@@ -4,6 +4,7 @@ add_library (llui STATIC)
 
 target_sources(llui
     PRIVATE
+    alcompassdial.cpp
     fsvirtualtrackpad.cpp
     llaccordionctrl.cpp
     llaccordionctrltab.cpp
@@ -113,6 +114,7 @@ target_sources(llui
     PUBLIC
     FILE_SET HEADERS
     FILES
+    alcompassdial.h
     fsvirtualtrackpad.h
     llaccordionctrl.h
     llaccordionctrltab.h

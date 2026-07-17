@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<!-- [Director] context menu for the Director Console's cast list.
+     Callbacks (Director.*) are registered with a ScopedRegistrar in
+     LLFloaterDirector::postBuild() before this file is instantiated. -->
+<context_menu
+ layout="topleft"
+ name="DirectorCastContextMenu">
+  <menu_item_call
+   label="Set Subject A"
+   layout="topleft"
+   name="set_subject_a">
+    <menu_item_call.on_click
+     function="Director.SetSubjectA" />
+  </menu_item_call>
+  <menu_item_call
+   label="Set Subject B"
+   layout="topleft"
+   name="set_subject_b">
+    <menu_item_call.on_click
+     function="Director.SetSubjectB" />
+  </menu_item_call>
+  <menu_item_separator layout="topleft" />
+  <menu_item_call
+   label="Set Mark Here"
+   layout="topleft"
+   name="set_mark_here">
+    <menu_item_call.on_click
+     function="Director.SetMarkHere" />
+  </menu_item_call>
+  <menu_item_call
+   label="Reset to Mark"
+   layout="topleft"
+   name="reset_to_mark">
+    <menu_item_call.on_click
+     function="Director.ResetToMark" />
+  </menu_item_call>
+  <menu_item_separator layout="topleft" />
+  <menu_item_call
+   label="Clear Loco Anim"
+   layout="topleft"
+   name="clear_loco_anim">
+    <menu_item_call.on_click
+     function="Director.ClearLocoAnim" />
+  </menu_item_call>
+  <menu_item_call
+   label="Copy UUID"
+   layout="topleft"
+   name="copy_uuid">
+    <menu_item_call.on_click
+     function="Director.CopyUUID" />
+  </menu_item_call>
+  <menu_item_separator layout="topleft" />
+  <menu_item_call
+   label="Remove from Cast"
+   layout="topleft"
+   name="remove_from_cast">
+    <menu_item_call.on_click
+     function="Director.RemoveFromCast" />
+  </menu_item_call>
+</context_menu>

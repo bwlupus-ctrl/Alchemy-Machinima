@@ -1,0 +1,1080 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- Director Console (D2): ACTION/CUT transport + persistent cast column +
+     left-rail Move / Animate / Camera / Takes tabs (poser visual language).
+     Pure view over LLDirectorCast and the machinima singletons; every
+     parameter control is settings-backed, shared with the standalone
+     floaters. -->
+<floater
+ legacy_header_height="18"
+ can_resize="true"
+ height="460"
+ min_height="440"
+ min_width="620"
+ layout="topleft"
+ name="floater_director"
+ title="Director Console"
+ save_rect="true"
+ single_instance="true"
+ width="640">
+
+    <!-- ============ transport bar ============ -->
+    <button
+     follows="left|top"
+     font="SansSerifBold"
+     height="26"
+     label="ACTION"
+     layout="topleft"
+     left="8"
+     top="22"
+     name="btn_action"
+     width="110" />
+    <button
+     follows="left|top"
+     font="SansSerifBold"
+     height="26"
+     image_color="0.85 0.25 0.25 1"
+     label="CUT"
+     label_color="White"
+     layout="topleft"
+     left="8"
+     top="22"
+     name="btn_cut"
+     visible="false"
+     width="110" />
+    <spinner
+     control_name="DirectorActionDelay"
+     decimal_digits="1"
+     follows="left|top"
+     height="20"
+     increment="0.5"
+     label="Delay (s)"
+     label_width="52"
+     layout="topleft"
+     left="126"
+     max_val="10"
+     min_val="0"
+     top="26"
+     name="delay_spinner"
+     tool_tip="Countdown before ACTION fires (s), so a solo operator can get into frame. 0 = immediately"
+     width="112" />
+    <button
+     follows="left|top"
+     height="22"
+     label="Set marks"
+     layout="topleft"
+     left="246"
+     top="24"
+     name="btn_set_marks"
+     width="80" />
+    <button
+     follows="left|top"
+     height="22"
+     label="Reset to marks"
+     layout="topleft"
+     left="330"
+     top="24"
+     name="btn_reset_marks"
+     width="100" />
+    <combo_box
+     enabled="false"
+     follows="left|top"
+     height="22"
+     layout="topleft"
+     left="438"
+     top="24"
+     name="scene_combo"
+     tool_tip="Scenes arrive in the next update"
+     width="96" />
+    <button
+     enabled="false"
+     follows="left|top"
+     height="22"
+     label="Save"
+     layout="topleft"
+     left="538"
+     top="24"
+     name="btn_scene_save"
+     tool_tip="Scenes arrive in the next update"
+     width="44" />
+    <button
+     enabled="false"
+     follows="left|top"
+     height="22"
+     label="X"
+     layout="topleft"
+     left="586"
+     top="24"
+     name="btn_scene_delete"
+     tool_tip="Scenes arrive in the next update"
+     width="22" />
+
+    <!-- ============ arming row ============ -->
+    <text
+     follows="left|top"
+     height="16"
+     layout="topleft"
+     left="8"
+     top="54"
+     name="arming_lbl"
+     width="74">
+        Action fires:
+    </text>
+    <check_box
+     control_name="DirectorArmMoves"
+     follows="left|top"
+     height="16"
+     label="Actor moves"
+     layout="topleft"
+     left="84"
+     top="53"
+     name="arm_moves_check"
+     tool_tip="ACTION starts a ghost walk for every cast member (you, if the cast is empty); CUT stops them"
+     width="94" />
+    <check_box
+     control_name="DirectorArmCamera"
+     follows="left|top"
+     height="16"
+     label="Camera"
+     layout="topleft"
+     left="182"
+     top="53"
+     name="arm_camera_check"
+     tool_tip="ACTION enables the cinematic camera pattern; CUT restores the enable state it changed"
+     width="76" />
+    <check_box
+     control_name="DirectorArmRecorderPlay"
+     follows="left|top"
+     height="16"
+     label="Recorder play"
+     layout="topleft"
+     left="262"
+     top="53"
+     name="arm_play_check"
+     tool_tip="ACTION starts Flycam Recorder playback of the loaded take; CUT stops it. Ignored while capture is also armed"
+     width="104" />
+    <check_box
+     control_name="DirectorArmRecorderCapture"
+     follows="left|top"
+     height="16"
+     label="Recorder capture"
+     layout="topleft"
+     left="370"
+     top="53"
+     name="arm_capture_check"
+     tool_tip="ACTION starts a fresh camera capture (replaces the current take); CUT stops it. Beats recorder play when both are armed"
+     width="124" />
+
+    <!-- ============ cast column (persistent) ============ -->
+    <scroll_list
+     column_padding="0"
+     draw_heading="true"
+     follows="left|top|bottom"
+     height="312"
+     layout="topleft"
+     left="8"
+     multi_select="true"
+     top="74"
+     name="cast_list"
+     tool_tip="The cast: right-click a row for subjects, marks and more. Multi-select drives batch Move-tab ops"
+     width="180">
+        <columns
+         label=""
+         name="status"
+         width="20" />
+        <columns
+         label="Actor"
+         name="name"
+         width="92" />
+        <columns
+         label="AB"
+         name="ab"
+         width="22" />
+        <columns
+         label="M"
+         name="mark"
+         width="24" />
+    </scroll_list>
+    <text
+     follows="left|top"
+     height="60"
+     layout="topleft"
+     left="14"
+     top="110"
+     mouse_opaque="false"
+     name="cast_hint"
+     text_color="LtGray_50"
+     word_wrap="true"
+     width="166">
+        Right-click an avatar or animesh in world &gt; Add to Cast
+    </text>
+    <check_box
+     control_name="ActorMoverShowHeading"
+     follows="left|bottom"
+     height="16"
+     label="Heading rays"
+     layout="topleft"
+     left="8"
+     top="390"
+     name="show_heading_check"
+     tool_tip="Draw an in-world preview ray for each cast actor along the planned travel bearing for the configured distance (m). Client-side only; tracks the heading dial live"
+     width="170" />
+    <button
+     follows="left|bottom"
+     height="22"
+     label="+ You"
+     layout="topleft"
+     left="8"
+     top="408"
+     name="btn_add_you"
+     tool_tip="Add your own avatar to the cast"
+     width="84" />
+    <button
+     follows="left|bottom"
+     height="22"
+     label="Remove"
+     layout="topleft"
+     left="98"
+     top="408"
+     name="btn_remove"
+     width="90" />
+
+    <!-- ============ left-rail tabs ============ -->
+    <tab_container
+     follows="all"
+     height="360"
+     layout="topleft"
+     left="196"
+     top="74"
+     name="director_tabs"
+     tab_height="22"
+     tab_width="62"
+     tab_group="1"
+     tab_position="left"
+     width="436">
+
+        <!-- ============ Move tab ============ -->
+        <panel
+         follows="all"
+         background_visible="false"
+         height="360"
+         label="Move"
+         layout="topleft"
+         name="move_tab"
+         top="0"
+         width="374">
+            <radio_group
+             draw_border="false"
+             follows="left|top"
+             height="18"
+             layout="topleft"
+             left="10"
+             top="8"
+             name="scope_radio"
+             tool_tip="Who Walk / Stop drive: the cast members selected in the list, or everyone (you, if the cast is empty)"
+             width="240">
+                <radio_item
+                 follows="left|top"
+                 height="16"
+                 label="Selected actors"
+                 layout="topleft"
+                 left="0"
+                 top="0"
+                 name="scope_selected"
+                 value="0"
+                 width="110" />
+                <radio_item
+                 follows="left|top"
+                 height="16"
+                 label="Everyone"
+                 layout="topleft"
+                 left="115"
+                 top="0"
+                 name="scope_everyone"
+                 value="1"
+                 width="90" />
+            </radio_group>
+            <compass_dial
+             clockwise="false"
+             follows="left|top"
+             height="132"
+             layout="topleft"
+             left="10"
+             top="30"
+             name="heading_dial"
+             tool_tip="Heading trim (deg): travel bearing relative to each actor's facing, 0 = straight ahead. Drag the needle; mouse wheel trims 5 deg per click. The in-world heading ray tracks it live"
+             width="132" />
+            <spinner
+             control_name="ActorMoverHeading"
+             decimal_digits="0"
+             follows="left|top"
+             height="20"
+             increment="5"
+             label="Heading (deg)"
+             label_width="80"
+             layout="topleft"
+             left="154"
+             max_val="180"
+             min_val="-180"
+             top="42"
+             name="heading_spinner"
+             tool_tip="Travel bearing relative to each actor's facing (deg). 0 = straight ahead"
+             width="150" />
+            <text
+             follows="left|top"
+             height="54"
+             layout="topleft"
+             left="154"
+             top="70"
+             name="move_hint"
+             text_color="LtGray_50"
+             word_wrap="true"
+             width="210">
+                Parameters are captured when a walk starts; running actors keep theirs.
+            </text>
+            <text
+             follows="left|top"
+             height="14"
+             layout="topleft"
+             left="10"
+             top="170"
+             name="speed_lbl"
+             width="88">
+                Speed (m/s)
+            </text>
+            <slider
+             control_name="ActorMoverSpeed"
+             decimal_digits="2"
+             follows="left|top"
+             height="16"
+             increment="0.05"
+             initial_value="1.0"
+             layout="topleft"
+             left="100"
+             max_val="6.0"
+             min_val="0.05"
+             show_text="false"
+             top="168"
+             name="speed_slider"
+             tool_tip="Ground speed of the ghost walk (m/s)"
+             width="164" />
+            <spinner
+             control_name="ActorMoverSpeed"
+             decimal_digits="2"
+             follows="left|top"
+             height="16"
+             increment="0.05"
+             label=""
+             label_width="0"
+             layout="topleft"
+             left="270"
+             max_val="6.0"
+             min_val="0.05"
+             top="168"
+             name="speed_spinner"
+             tool_tip="Ground speed of the ghost walk (m/s)"
+             width="64" />
+            <text
+             follows="left|top"
+             height="14"
+             layout="topleft"
+             left="10"
+             top="192"
+             name="dist_lbl"
+             width="88">
+                Distance (m)
+            </text>
+            <slider
+             control_name="ActorMoverDistance"
+             decimal_digits="1"
+             follows="left|top"
+             height="16"
+             increment="0.5"
+             initial_value="6.0"
+             layout="topleft"
+             left="100"
+             max_val="64.0"
+             min_val="0.5"
+             show_text="false"
+             top="190"
+             name="dist_slider"
+             tool_tip="Path length of the walk (m)"
+             width="164" />
+            <spinner
+             control_name="ActorMoverDistance"
+             decimal_digits="1"
+             follows="left|top"
+             height="16"
+             increment="0.5"
+             label=""
+             label_width="0"
+             layout="topleft"
+             left="270"
+             max_val="64.0"
+             min_val="0.5"
+             top="190"
+             name="dist_spinner"
+             tool_tip="Path length of the walk (m)"
+             width="64" />
+            <text
+             follows="left|top"
+             height="14"
+             layout="topleft"
+             left="10"
+             top="214"
+             name="cadence_lbl"
+             width="88">
+                Cadence (m/s)
+            </text>
+            <slider
+             control_name="ActorMoverWalkNominal"
+             decimal_digits="1"
+             follows="left|top"
+             height="16"
+             increment="0.1"
+             initial_value="3.0"
+             layout="topleft"
+             left="100"
+             max_val="5.0"
+             min_val="1.0"
+             show_text="false"
+             top="212"
+             name="cadence_slider"
+             tool_tip="Ground speed the walk animation was designed for (m/s). Lower it if feet slide forward at slow speeds; raise if they slide back"
+             width="164" />
+            <spinner
+             control_name="ActorMoverWalkNominal"
+             decimal_digits="1"
+             follows="left|top"
+             height="16"
+             increment="0.1"
+             label=""
+             label_width="0"
+             layout="topleft"
+             left="270"
+             max_val="5.0"
+             min_val="1.0"
+             top="212"
+             name="cadence_spinner"
+             tool_tip="Ground speed the walk animation was designed for (m/s)"
+             width="64" />
+            <text
+             follows="left|top"
+             height="14"
+             layout="topleft"
+             left="10"
+             top="242"
+             name="end_lbl"
+             width="88">
+                End behavior
+            </text>
+            <combo_box
+             control_name="ActorMoverEndMode"
+             follows="left|top"
+             height="20"
+             layout="topleft"
+             left="100"
+             top="238"
+             name="end_mode_combo"
+             tool_tip="What happens when a walk reaches the end of its path"
+             width="130">
+                <combo_box.item label="Stop at end" name="em_hold" value="0" />
+                <combo_box.item label="Loop" name="em_loop" value="1" />
+                <combo_box.item label="Ping-pong" name="em_pingpong" value="2" />
+            </combo_box>
+            <check_box
+             control_name="ActorMoverUseCustomAnim"
+             follows="left|top"
+             height="16"
+             label="Custom walk anim (UUID)"
+             layout="topleft"
+             left="10"
+             top="264"
+             name="custom_anim_check"
+             tool_tip="Play this animation asset instead of the system walk while moving (local playback only). Cadence stays the foot-plant tuning knob"
+             width="200" />
+            <line_editor
+             control_name="ActorMoverCustomAnim"
+             follows="left|top"
+             height="20"
+             layout="topleft"
+             left="10"
+             top="282"
+             max_length_chars="36"
+             name="custom_anim_editor"
+             tool_tip="Animation asset UUID. Use the Animation Explorer's 'Send to Actor Mover' to fill this"
+             width="354" />
+            <button
+             follows="left|top"
+             height="24"
+             label="Walk"
+             layout="topleft"
+             left="10"
+             top="310"
+             name="btn_walk"
+             width="110" />
+            <button
+             follows="left|top"
+             height="24"
+             label="Stop / Release"
+             layout="topleft"
+             left="126"
+             top="310"
+             name="btn_stop"
+             width="110" />
+        </panel>
+
+        <!-- ============ Animate tab (D3 placeholder) ============ -->
+        <panel
+         follows="all"
+         background_visible="false"
+         height="360"
+         label="Animate"
+         layout="topleft"
+         name="animate_tab"
+         top="0"
+         width="374">
+            <text
+             follows="left|top"
+             font="SansSerifBold"
+             height="16"
+             layout="topleft"
+             left="10"
+             top="10"
+             name="animate_header"
+             use_ellipses="true"
+             width="350">
+                No cast member selected
+            </text>
+            <button
+             follows="left|top"
+             height="22"
+             label="Open Animation Explorer"
+             layout="topleft"
+             left="10"
+             top="34"
+             name="btn_open_animexp"
+             tool_tip="Browse animations playing around you, copy UUIDs, and hand one to the Actor Mover"
+             width="180" />
+            <text
+             follows="left|top"
+             height="40"
+             layout="topleft"
+             left="10"
+             top="66"
+             name="animate_placeholder"
+             text_color="LtGray_50"
+             word_wrap="true"
+             width="350">
+                Live animation tools arrive in the next update.
+            </text>
+        </panel>
+
+        <!-- ============ Camera tab ============ -->
+        <panel
+         follows="all"
+         background_visible="false"
+         height="360"
+         label="Camera"
+         layout="topleft"
+         name="camera_tab"
+         top="0"
+         width="374">
+            <text
+             follows="left|top"
+             height="14"
+             layout="topleft"
+             left="10"
+             top="8"
+             name="subject_a_text"
+             tool_tip="Subject A: the CineCam / orbit anchor. Set from the cast list's right-click menu or the button"
+             use_ellipses="true"
+             width="140">
+                A:
+            </text>
+            <button
+             follows="left|top"
+             height="18"
+             label="Set from selection"
+             layout="topleft"
+             left="152"
+             top="5"
+             name="btn_set_a"
+             width="120" />
+            <button
+             follows="left|top"
+             height="18"
+             label="Clear"
+             layout="topleft"
+             left="276"
+             top="5"
+             name="btn_clear_a"
+             width="52" />
+            <text
+             follows="left|top"
+             height="14"
+             layout="topleft"
+             left="10"
+             top="28"
+             name="subject_b_text"
+             tool_tip="Subject B: the second body for Two-Shot / Over-the-Shoulder"
+             use_ellipses="true"
+             width="140">
+                B:
+            </text>
+            <button
+             follows="left|top"
+             height="18"
+             label="Set from selection"
+             layout="topleft"
+             left="152"
+             top="25"
+             name="btn_set_b"
+             width="120" />
+            <button
+             follows="left|top"
+             height="18"
+             label="Clear"
+             layout="topleft"
+             left="276"
+             top="25"
+             name="btn_clear_b"
+             width="52" />
+            <scroll_container
+             follows="all"
+             height="312"
+             layout="topleft"
+             left="0"
+             top="48"
+             name="camera_scroll"
+             opaque="false"
+             width="374">
+                <panel
+                 background_visible="false"
+                 height="420"
+                 layout="topleft"
+                 left="0"
+                 top="0"
+                 name="camera_scroll_content"
+                 width="354">
+                    <panel
+                     class="panel_cinecam_params"
+                     filename="panel_cinecam_params.xml"
+                     follows="left|top"
+                     height="262"
+                     layout="topleft"
+                     left="0"
+                     top="0"
+                     name="cinecam_params_embedded"
+                     width="320" />
+                    <panel
+                     background_visible="false"
+                     border="true"
+                     follows="left|top"
+                     height="146"
+                     layout="topleft"
+                     left="6"
+                     top="266"
+                     name="orbit_group"
+                     width="340">
+                        <text
+                         follows="left|top"
+                         font="SansSerifBold"
+                         height="14"
+                         layout="topleft"
+                         left="8"
+                         top="4"
+                         name="orbit_lbl"
+                         width="200">
+                            Flycam Orbit
+                        </text>
+                        <check_box
+                         control_name="FlycamOrbitEnabled"
+                         follows="left|top"
+                         height="16"
+                         label="Enabled"
+                         layout="topleft"
+                         left="8"
+                         top="20"
+                         name="orbit_enabled_check"
+                         tool_tip="While in flycam: orbit, pan and dolly relative to the anchor joint instead of free flight. Anchors on Subject A when set"
+                         width="90" />
+                        <check_box
+                         control_name="FlycamOrbitLevel"
+                         follows="left|top"
+                         height="16"
+                         label="Level horizon"
+                         layout="topleft"
+                         left="110"
+                         top="20"
+                         name="orbit_level_check"
+                         tool_tip="Keep the orbit ring horizontal (ignore bone roll/pitch). Off = ride the full bone frame"
+                         width="110" />
+                        <spinner
+                         control_name="FlycamOrbitMinRadius"
+                         decimal_digits="2"
+                         follows="left|top"
+                         height="16"
+                         increment="0.1"
+                         label="Min r (m)"
+                         label_width="54"
+                         layout="topleft"
+                         left="8"
+                         max_val="10"
+                         min_val="0.05"
+                         top="42"
+                         name="orbit_min_spinner"
+                         tool_tip="Closest the dolly can approach the anchor (m)"
+                         width="120" />
+                        <spinner
+                         control_name="FlycamOrbitMaxRadius"
+                         decimal_digits="1"
+                         follows="left|top"
+                         height="16"
+                         increment="0.5"
+                         label="Max r (m)"
+                         label_width="56"
+                         layout="topleft"
+                         left="136"
+                         max_val="200"
+                         min_val="0.5"
+                         top="42"
+                         name="orbit_max_spinner"
+                         tool_tip="Farthest the dolly can retreat from the anchor (m)"
+                         width="124" />
+                        <spinner
+                         control_name="FlycamOrbitOffsetUp"
+                         decimal_digits="2"
+                         follows="left|top"
+                         height="16"
+                         increment="0.05"
+                         label="Up (m)"
+                         label_width="44"
+                         layout="topleft"
+                         left="8"
+                         max_val="2"
+                         min_val="-2"
+                         top="64"
+                         name="orbit_up_spinner"
+                         tool_tip="Shift the anchor focus point upward (m): frame higher/lower on the body"
+                         width="110" />
+                        <spinner
+                         control_name="FlycamOrbitOffsetLeft"
+                         decimal_digits="2"
+                         follows="left|top"
+                         height="16"
+                         increment="0.05"
+                         label="Left (m)"
+                         label_width="50"
+                         layout="topleft"
+                         left="136"
+                         max_val="2"
+                         min_val="-2"
+                         top="64"
+                         name="orbit_left_spinner"
+                         tool_tip="Shift the anchor focus point to the left (m): off-center framing"
+                         width="118" />
+                        <text
+                         follows="left|top"
+                         height="14"
+                         layout="topleft"
+                         left="8"
+                         top="90"
+                         name="orbit_zoom_lbl"
+                         width="84">
+                            Lens (zoom x)
+                        </text>
+                        <slider
+                         control_name="FlycamOrbitZoom"
+                         decimal_digits="2"
+                         follows="left|top"
+                         height="16"
+                         increment="0.05"
+                         initial_value="1.0"
+                         layout="topleft"
+                         left="96"
+                         max_val="2"
+                         min_val="0.2"
+                         show_text="false"
+                         top="88"
+                         name="orbit_zoom_slider"
+                         tool_tip="FOV multiplier while orbiting only: below 1 = tighter/telephoto, above 1 = wider"
+                         width="150" />
+                        <spinner
+                         control_name="FlycamOrbitZoom"
+                         decimal_digits="2"
+                         follows="left|top"
+                         height="16"
+                         increment="0.05"
+                         label=""
+                         label_width="0"
+                         layout="topleft"
+                         left="252"
+                         max_val="2"
+                         min_val="0.2"
+                         top="88"
+                         name="orbit_zoom_spinner"
+                         tool_tip="FOV multiplier while orbiting only"
+                         width="64" />
+                        <text
+                         follows="left|top"
+                         height="14"
+                         layout="topleft"
+                         left="8"
+                         top="112"
+                         name="orbit_smooth_lbl"
+                         width="84">
+                            Smooth (s)
+                        </text>
+                        <slider
+                         control_name="FlycamOrbitSmoothing"
+                         decimal_digits="2"
+                         follows="left|top"
+                         height="16"
+                         increment="0.01"
+                         initial_value="0.15"
+                         layout="topleft"
+                         left="96"
+                         max_val="2"
+                         min_val="0"
+                         show_text="false"
+                         top="110"
+                         name="orbit_smooth_slider"
+                         tool_tip="Temporal smoothing of the anchor motion (s). 0 = rigid lock, higher = steadicam glide"
+                         width="150" />
+                        <spinner
+                         control_name="FlycamOrbitSmoothing"
+                         decimal_digits="2"
+                         follows="left|top"
+                         height="16"
+                         increment="0.01"
+                         label=""
+                         label_width="0"
+                         layout="topleft"
+                         left="252"
+                         max_val="2"
+                         min_val="0"
+                         top="110"
+                         name="orbit_smooth_spinner"
+                         tool_tip="Temporal smoothing of the anchor motion (s)"
+                         width="64" />
+                    </panel>
+                </panel>
+            </scroll_container>
+        </panel>
+
+        <!-- ============ Takes tab ============ -->
+        <panel
+         follows="all"
+         background_visible="false"
+         height="360"
+         label="Takes"
+         layout="topleft"
+         name="takes_tab"
+         top="0"
+         width="374">
+            <button
+             follows="left|top"
+             height="22"
+             label="Record"
+             layout="topleft"
+             left="10"
+             top="8"
+             name="btn_take_record"
+             tool_tip="Record the live camera (flycam, mouse, or cinematic) into a take"
+             width="76" />
+            <button
+             follows="left|top"
+             height="22"
+             label="Play"
+             layout="topleft"
+             left="92"
+             top="8"
+             name="btn_take_play"
+             width="76" />
+            <button
+             follows="left|top"
+             height="22"
+             label="Stop"
+             layout="topleft"
+             left="174"
+             top="8"
+             name="btn_take_stop"
+             tool_tip="Stop recording or playback and give the camera back"
+             width="76" />
+            <slider
+             decimal_digits="1"
+             follows="left|top"
+             height="16"
+             increment="0.1"
+             initial_value="0"
+             label="Time (s)"
+             label_width="52"
+             layout="topleft"
+             left="10"
+             max_val="1"
+             min_val="0"
+             top="40"
+             name="take_scrub"
+             width="354" />
+            <text
+             follows="left|top"
+             height="14"
+             layout="topleft"
+             left="10"
+             top="60"
+             name="take_time_text"
+             width="354">
+                0.0 / 0.0 s   0 keys
+            </text>
+            <text
+             follows="left|top"
+             height="14"
+             layout="topleft"
+             left="10"
+             top="76"
+             name="take_status_text"
+             text_color="EmphasisColor"
+             width="354">
+            </text>
+            <text
+             follows="left|top"
+             font="SansSerifBold"
+             height="14"
+             layout="topleft"
+             left="10"
+             top="98"
+             name="playback_lbl"
+             width="200">
+                Playback
+            </text>
+            <text
+             follows="left|top"
+             height="14"
+             layout="topleft"
+             left="10"
+             top="116"
+             name="take_speed_lbl"
+             width="70">
+                Speed (x)
+            </text>
+            <slider
+             control_name="FlycamRecSpeed"
+             decimal_digits="2"
+             follows="left|top"
+             height="16"
+             increment="0.05"
+             initial_value="1"
+             layout="topleft"
+             left="84"
+             max_val="5"
+             min_val="0.05"
+             show_text="false"
+             top="114"
+             name="take_speed_slider"
+             tool_tip="Playback speed multiplier: 0.5 = slow motion, 2 = double time"
+             width="180" />
+            <spinner
+             control_name="FlycamRecSpeed"
+             decimal_digits="2"
+             follows="left|top"
+             height="16"
+             increment="0.05"
+             label=""
+             label_width="0"
+             layout="topleft"
+             left="270"
+             max_val="5"
+             min_val="0.05"
+             top="114"
+             name="take_speed_spinner"
+             tool_tip="Playback speed multiplier"
+             width="64" />
+            <combo_box
+             control_name="FlycamRecLoopMode"
+             follows="left|top"
+             height="20"
+             layout="topleft"
+             left="10"
+             top="140"
+             name="take_loop_combo"
+             tool_tip="What happens when playback reaches the end of the take"
+             width="140">
+                <combo_box.item label="Hold last frame" name="loop_hold" value="0" />
+                <combo_box.item label="Loop" name="loop_repeat" value="1" />
+                <combo_box.item label="Ping-pong" name="loop_pingpong" value="2" />
+            </combo_box>
+            <check_box
+             control_name="FlycamRecSmooth"
+             follows="left|top"
+             height="16"
+             label="Smooth splines"
+             layout="topleft"
+             left="158"
+             top="142"
+             name="take_smooth_check"
+             tool_tip="Catmull-Rom / squad interpolation between keyframes. Uncheck for straight linear segments"
+             width="130" />
+            <combo_box
+             control_name="FlycamRecAnchorMode"
+             follows="left|top"
+             height="20"
+             layout="topleft"
+             left="10"
+             top="166"
+             name="take_anchor_combo"
+             tool_tip="Where the path plays: at its recorded world position, or re-anchored to a subject. Anchored modes map the path's offsets from the recording avatar onto the new anchor"
+             width="180">
+                <combo_box.item label="World (as recorded)" name="anchor_world" value="0" />
+                <combo_box.item label="My avatar" name="anchor_self" value="1" />
+                <combo_box.item label="Selected object/avatar" name="anchor_sel" value="2" />
+                <combo_box.item label="Camera at play start" name="anchor_cam" value="3" />
+            </combo_box>
+            <check_box
+             control_name="FlycamRecFollowAnchor"
+             follows="left|top"
+             height="16"
+             label="Follow anchor"
+             layout="topleft"
+             left="198"
+             top="168"
+             name="take_follow_check"
+             tool_tip="Re-anchor every frame so the whole move rides a walking avatar or moving object"
+             width="120" />
+            <check_box
+             control_name="FlycamRecUseOperator"
+             follows="left|top"
+             height="16"
+             label="Handheld operator layer on playback"
+             layout="topleft"
+             left="10"
+             top="192"
+             name="take_operator_check"
+             tool_tip="Route playback through the procedural handheld operator. Record a clean pass with the operator off, then add the texture here"
+             width="300" />
+            <text
+             follows="left|top"
+             height="28"
+             layout="topleft"
+             left="10"
+             top="216"
+             name="take_hint"
+             text_color="LtGray_50"
+             word_wrap="true"
+             width="354">
+                Save / Load and the capture sample rate live in the standalone Flycam Recorder floater.
+            </text>
+        </panel>
+    </tab_container>
+
+    <!-- ============ status strip ============ -->
+    <text
+     follows="left|right|bottom"
+     height="14"
+     layout="topleft"
+     left="8"
+     top="440"
+     name="status_strip"
+     width="624">
+        0 moving
+    </text>
+</floater>

@@ -342,10 +342,16 @@ void LLActorMover::renderHeadingPreview()
     {
         return;
     }
+    // an operator floater must be up: the standalone mover or the Director
+    // Console (its Move tab drives the same heading/distance settings)
     LLFloater* floaterp = LLFloaterReg::findInstance("actor_mover");
     if (!floaterp || !floaterp->getVisible())
     {
-        return;
+        floaterp = LLFloaterReg::findInstance("director");
+        if (!floaterp || !floaterp->getVisible())
+        {
+            return;
+        }
     }
 
     static LLCachedControl<F32> distance(gSavedSettings, "ActorMoverDistance", 6.f);

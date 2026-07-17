@@ -1,31 +1,41 @@
 /**
- * @file llfloatercinematiccamera.h
- * @brief Cinematic Camera floater: per-mode auto-hiding parameter panels,
- *        mode/all resets and named global presets stored as LLSD files.
+ * @file alpanelcinecamparams.h
+ * @brief Cinematic Camera parameter panel: shared header, per-mode
+ *        auto-hiding parameter panels, mode/all resets and named global
+ *        presets stored as LLSD files.
  *
  * $LicenseInfo:firstyear=2026&license=viewerlgpl$
  * Alchemy-Machinima fork
  * $/LicenseInfo$
+ *
+ * Extracted from LLFloaterCinematicCamera so the standalone Cinematic
+ * Camera floater and the Director Console can embed the SAME panel
+ * (panel_cinecam_params.xml) instead of duplicating 22 mode panels of
+ * XML. Every control is settings-backed (control_name), so multiple
+ * live instances stay in sync through gSavedSettings; the panel holds
+ * no floater-singleton state.
  */
 
-#ifndef LL_LLFLOATERCINEMATICCAMERA_H
-#define LL_LLFLOATERCINEMATICCAMERA_H
+#ifndef AL_ALPANELCINECAMPARAMS_H
+#define AL_ALPANELCINECAMPARAMS_H
 
-#include "llfloater.h"
+#include "llpanel.h"
 
 #include <string>
 #include <vector>
 
 class LLComboBox;
 
-class LLFloaterCinematicCamera final : public LLFloater
+class ALPanelCineCamParams final : public LLPanel
 {
 public:
-    LLFloaterCinematicCamera(const LLSD& key);
-    ~LLFloaterCinematicCamera() override;
+    ALPanelCineCamParams() = default;
+    ~ALPanelCineCamParams() override;
 
     bool postBuild() override;
-    void onOpen(const LLSD& key) override;
+    // each embedding floater's onOpen lands here: re-sync the mode panel
+    // and pick up presets saved from another instance
+    void onVisibilityChange(bool new_visibility) override;
 
 private:
     // One entry per CinematicCamMode value: the params panel that exposes it
@@ -66,4 +76,4 @@ private:
     boost::signals2::connection mModeConnection;
 };
 
-#endif // LL_LLFLOATERCINEMATICCAMERA_H
+#endif // AL_ALPANELCINECAMPARAMS_H
