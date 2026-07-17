@@ -1822,18 +1822,29 @@ void LLViewerJoystick::moveFlycam(bool reset)
     // flight resumes seamlessly from wherever the orbit leaves the camera.
     static LLCachedControl<bool> orbit_enabled(gSavedSettings, "FlycamOrbitEnabled", false);
     bool orbit_active = false;
+    F32 orbit_fov_mul = 1.f;    // FOV multiplier, applied only while orbiting
     if (orbit_enabled)
     {
         static LLCachedControl<bool> orbit_level(gSavedSettings, "FlycamOrbitLevel", true);
-        static LLCachedControl<F32>  orbit_min_r(gSavedSettings, "FlycamOrbitMinRadius", 0.3f);
+        static LLCachedControl<F32>  orbit_min_r(gSavedSettings, "FlycamOrbitMinRadius", 0.1f);
         static LLCachedControl<F32>  orbit_max_r(gSavedSettings, "FlycamOrbitMaxRadius", 30.f);
         static LLCachedControl<F32>  orbit_smooth(gSavedSettings, "FlycamOrbitSmoothing", 0.15f);
+        static LLCachedControl<F32>  orbit_zoom(gSavedSettings, "FlycamOrbitZoom", 1.f);
+        static LLCachedControl<F32>  orbit_off_up(gSavedSettings, "FlycamOrbitOffsetUp", 0.f);
+        static LLCachedControl<F32>  orbit_off_left(gSavedSettings, "FlycamOrbitOffsetLeft", 0.f);
 
         LLVector3 anchor_pos;
         LLQuaternion anchor_rot;
         if (LLCinematicCamera::instance().resolveAnchor(anchor_pos, anchor_rot, orbit_level))
         {
             orbit_active = true;
+            // lens: composed into the camera write below, never into
+            // sFlycamZoom itself, so leaving orbit restores free-flight FOV
+            orbit_fov_mul = llclamp((F32)orbit_zoom, 0.1f, 4.f);
+            // framing offset in the (leveled) anchor frame, applied before
+            // smoothing/recovery so it shifts both what the camera circles
+            // around and what it aims at
+            anchor_pos += LLVector3(0.f, (F32)orbit_off_left, (F32)orbit_off_up) * anchor_rot;
             const F32 dt = llclamp(gFrameIntervalSeconds.value(), 0.0005f, 0.25f);
             const F32 min_r = llmax((F32)orbit_min_r, 0.01f);
             const F32 max_r = llmax((F32)orbit_max_r, min_r);
@@ -1936,7 +1947,7 @@ void LLViewerJoystick::moveFlycam(bool reset)
 
     LLMatrix3 mat(sFlycamRotation);
 
-    LLViewerCamera::getInstance()->setView(sFlycamZoom);
+    LLViewerCamera::getInstance()->setView(sFlycamZoom * orbit_fov_mul);
 
     // [phoenix port] Procedural handheld camera operator (native port of the
     // VirtualCinema Handheld ReShade design). Fed the flycam's own per-frame
@@ -1970,7 +1981,7 @@ void LLViewerJoystick::moveFlycam(bool reset)
                              + LLVector3(shaken.mMatrix[1]) * op.mPosOffset.mV[VY]
                              + LLVector3(shaken.mMatrix[2]) * op.mPosOffset.mV[VZ];
 
-        LLViewerCamera::getInstance()->setView(sFlycamZoom * op.mFovMul);
+        LLViewerCamera::getInstance()->setView(sFlycamZoom * orbit_fov_mul * op.mFovMul);
         LLViewerCamera::getInstance()->setOrigin(shaken_pos);
         LLViewerCamera::getInstance()->mXAxis = LLVector3(shaken.mMatrix[0]);
         LLViewerCamera::getInstance()->mYAxis = LLVector3(shaken.mMatrix[1]);

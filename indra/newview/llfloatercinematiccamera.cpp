@@ -107,6 +107,7 @@ const std::vector<std::string>& LLFloaterCinematicCamera::sharedSettings()
         "CinematicCamUseOperator",
         "CinematicCamSmoothing",
         "CinematicCamDutchAngle",
+        "CinematicCamFrameOffsetUp",
     };
     return shared;
 }

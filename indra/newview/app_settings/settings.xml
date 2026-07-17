@@ -1003,6 +1003,17 @@
       <key>Value</key>
       <integer>0</integer>
     </map>
+    <key>CinematicCamFrameOffsetUp</key>
+    <map>
+      <key>Comment</key>
+      <string>Vertical offset (m) added to the resolved focus/center point before patterns run; every target-framing mode frames higher/lower (not applied in Bone Lock)</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+    </map>
     <key>CinematicCamHoverDistance</key>
     <map>
       <key>Comment</key>
@@ -1782,7 +1793,29 @@
       <key>Type</key>
       <string>F32</string>
       <key>Value</key>
-      <real>0.3</real>
+      <real>0.1</real>
+    </map>
+    <key>FlycamOrbitOffsetLeft</key>
+    <map>
+      <key>Comment</key>
+      <string>Flycam Orbit anchor focus offset to the left (m), in the anchor frame; shifts what the camera circles and aims at</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+    </map>
+    <key>FlycamOrbitOffsetUp</key>
+    <map>
+      <key>Comment</key>
+      <string>Flycam Orbit anchor focus offset upward (m), in the anchor frame; shifts what the camera circles and aims at</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
     </map>
     <key>FlycamOrbitSmoothing</key>
     <map>
@@ -1794,6 +1827,17 @@
       <string>F32</string>
       <key>Value</key>
       <real>0.15</real>
+    </map>
+    <key>FlycamOrbitZoom</key>
+    <map>
+      <key>Comment</key>
+      <string>FOV multiplier applied only while Flycam Orbit is active; below 1 = tighter/telephoto, above 1 = wider. Does not touch the free-flight zoom</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.0</real>
     </map>
     <key>Include</key>
     <array>

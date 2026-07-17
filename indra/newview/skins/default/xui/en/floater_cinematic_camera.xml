@@ -112,8 +112,8 @@
      height="16"
      increment="0.01"
      initial_value="0.35"
-     label="Smoothing (s)"
-     label_width="90"
+     label="Smooth (s)"
+     label_width="62"
      layout="topleft"
      left="12"
      max_val="2"
@@ -121,7 +121,23 @@
      top_pad="6"
      name="CinematicCamSmoothing"
      tool_tip="Temporal smoothing in seconds. 0 = rigid lock (true GoPro), higher = steadicam glide"
-     width="290" />
+     width="176" />
+    <spinner
+     control_name="CinematicCamFrameOffsetUp"
+     decimal_digits="2"
+     follows="left|top"
+     height="16"
+     increment="0.05"
+     label="Frame Up"
+     label_width="56"
+     layout="topleft"
+     left_pad="8"
+     max_val="3"
+     min_val="-3"
+     top_delta="0"
+     name="CinematicCamFrameOffsetUp"
+     tool_tip="Raise/lower the framing point (m) for every target-framing mode. Not applied in Bone Lock (use its mount offsets)"
+     width="118" />
     <text
      follows="left|top"
      halign="left"

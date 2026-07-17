@@ -666,6 +666,7 @@ void LLCinematicCamera::updateCamera()
     static LLCachedControl<F32>  smoothing(gSavedSettings, "CinematicCamSmoothing", 0.35f);   // seconds
     static LLCachedControl<bool> look_at_head(gSavedSettings, "CinematicCamLookAtHead", true);
     static LLCachedControl<bool> use_operator(gSavedSettings, "CinematicCamUseOperator", false);
+    static LLCachedControl<F32>  frame_up(gSavedSettings, "CinematicCamFrameOffsetUp", 0.f);
 
     LLVOAvatar* av = resolveTarget();
     if (!av)
@@ -704,7 +705,16 @@ void LLCinematicCamera::updateCamera()
             focus = head->getWorldPosition();
         }
     }
-    const LLVector3 center = av->getPositionAgent();
+    LLVector3 center = av->getPositionAgent();
+
+    // global frame offset: raise/lower the point every target-framing mode
+    // circles around and aims at. Bone lock has its own mount offsets.
+    if ((S32)mode != MODE_BONE_LOCK)
+    {
+        const LLVector3 frame_off(0.f, 0.f, (F32)frame_up);
+        focus += frame_off;
+        center += frame_off;
+    }
 
     LLVector3 pos;
     LLQuaternion rot;
