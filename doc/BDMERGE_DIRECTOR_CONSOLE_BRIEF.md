@@ -127,6 +127,31 @@ Layout (resizable, min 620x480, save_rect):
 **Status strip**: one line, always current: "<n> moving · CineCam: <mode> → <A name>
  · Orbit on/off · REC ●/○". Doubles as the at-a-glance sanity check before ACTION.
 
+## Visual language (bind D2) — match the poser, not our v1 floaters
+User feedback 2026-07-17: the v1 machinima floaters (stacked full-width sliders)
+read as utilitarian next to the FS poser. The poser's language, all reusable
+in-tree (floater_fs_poser.xml is the reference):
+1. **Left icon/label tab rail**: `tab_container` with `tab_position="left"` —
+   the console's Move/Animate/Camera/Takes tabs use this, NOT top tabs. The
+   cast list sits inside each tab's left edge? No — cast stays a persistent
+   column between rail and tab content (rail 72px, cast ~180px, content flex).
+2. **Direct-manipulation centerpiece**: the poser's `fs_virtual_trackpad`
+   (FSVirtualTrackpad, registered custom LLUICtrl) is the pattern. The console
+   gets a **heading/orbit pad**: Move tab shows a compass dial (drag to set
+   ActorMoverHeading, needle + N/E/S/W ticks, live-linked to the heading ray);
+   Camera tab reuses the same widget class for orbit azimuth/elevation.
+   Implement as a new custom widget (al_compass_dial or similar) registered
+   like fs_virtual_trackpad; design it to be reusable for the planned wind
+   az/el dial later (same widget, different bindings).
+3. **Row idiom**: label + slider + spinner on ONE row (poser style), consistent
+   label column width per panel; group related rows in bordered sub-panels
+   with a bold section label; buttons in aligned rows at panel bottom.
+4. **Iconography**: use existing skin icons (the poser's floater.string icon
+   registry idiom) for cast row glyphs (avatar vs animesh vs missing) and
+   transport buttons instead of ASCII glyphs where an icon exists.
+5. **Density**: the poser fits a whole rig in 450x330. Budget the console at
+   ~640x460 default; no wasted vertical runs of full-width sliders.
+
 ## Usability rules (bind the implementation)
 1. Disabled controls carry tooltips that say WHY ("Select a cast member first").
 2. No notification popups for names: scene save uses an inline line editor +
