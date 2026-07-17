@@ -18,6 +18,11 @@
  * avatars (regular or animesh control avatars). An empty roster still means
  * "my avatar". Each Move captures its own parameters at start, so different
  * actors can run different speeds/headings concurrently.
+ *
+ * [Director] The roster IS the Director cast: membership storage lives in
+ * LLDirectorCast and the static roster API here delegates to it, so
+ * "Actor Mover Target" and "Add to Cast" toggle the same list and the
+ * Director Console floater is a view over the same actors.
  */
 
 #ifndef LL_LLACTORMOVER_H
@@ -49,6 +54,12 @@ public:
     void startAll();
     void stop(const LLUUID& actor_id);
     void stopAll();
+
+    // [Director] pin an actor's rendered root at a position (a zero-speed
+    // hold Move, no locomotion anim): Reset to Marks uses this for the
+    // snap-back. Stops the actor's active move first. Released like any
+    // move (stop/stopAll), and a later start() walks FROM the held spot.
+    void placeAt(const LLUUID& actor_id, const LLVector3& pos);
     bool anyMoving() const { return !mMoves.empty(); }
     bool isMoving(const LLUUID& id) const { return mMoves.count(id) != 0; }
 

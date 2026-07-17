@@ -270,6 +270,7 @@ set(viewer_SOURCE_FILES
     llcameraoperator.cpp
     llactormover.cpp
     llcinematiccamera.cpp
+    lldirectorcast.cpp
     llfloateractormover.cpp
     llfloatercinematiccamera.cpp
     llfloaterflycamrecorder.cpp
@@ -1065,6 +1066,7 @@ set(viewer_HEADER_FILES
     llcameraoperator.h
     llactormover.h
     llcinematiccamera.h
+    lldirectorcast.h
     llfloateractormover.h
     llfloatercinematiccamera.h
     llfloaterflycamrecorder.h

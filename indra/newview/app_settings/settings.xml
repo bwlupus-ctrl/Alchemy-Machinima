@@ -2759,6 +2759,61 @@
       <key>Value</key>
       <integer>0</integer>
     </map>
+    <key>DirectorArmMoves</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] ACTION starts (and CUT stops) ghost moves for every cast actor via the Actor Mover, each capturing the shared move parameters at start.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>DirectorArmCamera</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] ACTION enables the Cinematic Camera pattern (CUT restores the enable state ACTION found). Flycam Orbit is untouched; it rides its own enable.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>DirectorArmRecorderPlay</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] ACTION starts Flycam Recorder playback of the loaded take (CUT stops it). Ignored while DirectorArmRecorderCapture is also on.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>DirectorArmRecorderCapture</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] ACTION starts a fresh Flycam Recorder capture of the live camera (CUT stops it). Replaces the current take; beats DirectorArmRecorderPlay when both are armed.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>DirectorActionDelay</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Countdown in seconds between pressing ACTION and everything armed firing, so a solo operator can get into frame. 0 = fire immediately. CUT cancels a pending countdown.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+    </map>
     <key>AvatarAxisDeadZone0</key>
     <map>
       <key>Comment</key>

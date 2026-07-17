@@ -31,6 +31,7 @@
 #include "alavataractions.h"
 #include "llcinematiccamera.h"  // [Cinematic] locked follow subject
 #include "llactormover.h"       // [ActorMover] ghost locomotion subject
+#include "lldirectorcast.h"     // [Director] cast membership
 //#include "alcinematicmode.h"
 #include "alderenderlist.h"
 #include "alfloaterblocked.h"
@@ -919,6 +920,23 @@ namespace
         LLVOAvatar* avatarp = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
         return avatarp && LLActorMover::isTarget(avatarp->getID());
     }
+
+// [Director] right-click avatar (or animesh, resolved to its control avatar
+// by find_avatar_from_object) > toggle Director cast membership. Same list
+// the Actor Mover roster delegates to, so this and "Actor Mover Target" are
+// aliases; both stay for discoverability.
+    void handle_avatar_add_to_cast(const LLSD&)
+    {
+        LLVOAvatar* avatarp = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
+        if (avatarp && avatarp->getID().notNull())
+            LLDirectorCast::instance().toggle(avatarp->getID());
+    }
+
+    bool check_avatar_add_to_cast(const LLSD&)
+    {
+        LLVOAvatar* avatarp = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
+        return avatarp && LLDirectorCast::instance().contains(avatarp->getID());
+    }
 }
 
 ////////////////////////////////////////////////////////
@@ -994,6 +1012,9 @@ void ALViewerMenu::initialize_menus()
     // [ActorMover] ghost-locomotion subject
     commit.add("Avatar.ActorMoverTarget", boost::bind(&handle_avatar_actor_mover_target, _2));
     enable.add("Avatar.CheckActorMoverTarget", boost::bind(&check_avatar_actor_mover_target, _2));
+    // [Director] cast membership (alias of the Actor Mover roster)
+    commit.add("Avatar.AddToCast", boost::bind(&handle_avatar_add_to_cast, _2));
+    enable.add("Avatar.CheckAddToCast", boost::bind(&check_avatar_add_to_cast, _2));
 
     // [SL:KB] - Patch: World-RenderExceptions | Checked: Catznip-5.2
     commit.add("View.Blocked", boost::bind(&handle_view_blocked, _2));

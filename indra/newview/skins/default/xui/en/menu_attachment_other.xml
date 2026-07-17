@@ -4,6 +4,16 @@
  layout="topleft"
  name="Avatar Attachment Pie">
     <menu_item_check
+    label="Add to Cast"
+    name="Add To Cast">
+    <menu_item_check.on_click
+      function="Avatar.AddToCast" />
+    <menu_item_check.on_check
+      function="Avatar.CheckAddToCast" />
+    <menu_item_check.on_enable
+      function="Avatar.EnableAlphaMode" />
+  </menu_item_check>
+  <menu_item_check
     label="Actor Mover Target"
     name="ActorMover Target">
     <menu_item_check.on_click

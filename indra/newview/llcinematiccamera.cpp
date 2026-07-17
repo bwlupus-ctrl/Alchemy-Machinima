@@ -15,6 +15,7 @@
 
 #include "llcameraoperator.h"
 #include "llappviewer.h"            // gFrameIntervalSeconds
+#include "lldirectorcast.h"         // [Director] Subject A/B
 #include "lljoint.h"
 #include "llmath.h"
 #include "llselectmgr.h"
@@ -132,6 +133,14 @@ bool LLCinematicCamera::isActive() const
 
 LLVOAvatar* LLCinematicCamera::resolveTarget() const
 {
+    // [Director] Subject A beats everything while set and alive; unset (or
+    // out-of-world) falls through to the stock chain, so an empty cast is
+    // byte-identical to pre-Director behavior
+    if (LLVOAvatar* subject = LLDirectorCast::instance().resolveSubjectA())
+    {
+        return subject;
+    }
+
     // locked follow subject wins (session-only, set from the avatar context
     // menu); a dead/derezzed subject falls through rather than dropping out
     if (sCinematicFollowTarget.notNull())
@@ -515,7 +524,11 @@ LLVector3 LLCinematicCamera::patternTwoShot(LLVOAvatar* target, LLVector3& focus
     static LLCachedControl<F32> min_d(gSavedSettings, "CinematicCamTwoShotMinDist", 2.5f);
     static LLCachedControl<F32> height(gSavedSettings, "CinematicCamTwoShotHeight", 1.4f);
 
-    LLVOAvatar* self = isAgentAvatarValid() ? (LLVOAvatar*)gAgentAvatarp : target;
+    // [Director] Subject B supplies the second body when set and alive;
+    // otherwise the stock self+target pairing
+    LLVOAvatar* second = LLDirectorCast::instance().resolveSubjectB();
+    LLVOAvatar* self = second ? second
+                              : (isAgentAvatarValid() ? (LLVOAvatar*)gAgentAvatarp : target);
     const F32 s = ((S32)side != 0) ? 1.f : -1.f;
 
     LLVector3 a = self->getPositionAgent();
@@ -624,7 +637,11 @@ LLVector3 LLCinematicCamera::patternOTS(LLVOAvatar* target, LLVector3& focus_io)
     static LLCachedControl<F32> out(gSavedSettings, "CinematicCamOTSOut", 0.22f);
     static LLCachedControl<F32> up(gSavedSettings, "CinematicCamOTSUp", 0.12f);
 
-    LLVOAvatar* self = isAgentAvatarValid() ? (LLVOAvatar*)gAgentAvatarp : target;
+    // [Director] Subject B's shoulder anchors the shot when set and alive
+    // (B looking at A); otherwise the stock behind-my-shoulder framing
+    LLVOAvatar* second = LLDirectorCast::instance().resolveSubjectB();
+    LLVOAvatar* self = second ? second
+                              : (isAgentAvatarValid() ? (LLVOAvatar*)gAgentAvatarp : target);
 
     const char* joint_name = ((S32)side != 0) ? "mShoulderRight" : "mShoulderLeft";
     LLVector3 shoulder = self->getPositionAgent() + LLVector3(0.f, 0.f, 1.4f);
