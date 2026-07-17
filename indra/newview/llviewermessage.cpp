@@ -4339,6 +4339,19 @@ void process_avatar_animation(LLMessageSystem *mesgsys, void **user_data)
 
     LL_DEBUGS("Messaging", "Motion") << "Processing " << num_blocks << " Animations" << LL_ENDL;
 
+// [BDMerge F7] Animation Explorer "Capture all avatars": each AvatarAnimation
+// message re-lists EVERYTHING currently playing on that avatar, so snapshot
+// the previous signaled set before it's cleared to detect genuinely NEW anims
+// in the non-self branch below. Default off = stock behavior, zero cost.
+    static LLCachedControl<bool> sAnimExplorerCaptureAll(gSavedSettings, "AnimExplorerCaptureAll", false);
+    const bool capture_other_avatar = sAnimExplorerCaptureAll && !avatarp->isSelf() && isAgentAvatarValid();
+    std::map<LLUUID, S32> prev_signaled_anims;
+    if (capture_other_avatar)
+    {
+        prev_signaled_anims = avatarp->mSignaledAnimations;
+    }
+// [/BDMerge F7]
+
     //clear animation flags
     avatarp->mSignaledAnimations.clear();
 
@@ -4468,6 +4481,17 @@ void process_avatar_animation(LLMessageSystem *mesgsys, void **user_data)
             mesgsys->getUUIDFast(_PREHASH_AnimationList, _PREHASH_AnimID, animation_id, i);
             mesgsys->getS32Fast(_PREHASH_AnimationList, _PREHASH_AnimSequenceID, anim_sequence_id, i);
             avatarp->mSignaledAnimations[animation_id] = anim_sequence_id;
+
+// [BDMerge F7] Animation Explorer "Capture all avatars": record anims newly
+// signaled on OTHER avatars (machinima actors). This branch carries no
+// AnimationSourceList data, so the animated avatar itself is passed as the
+// "played by" source. MAX_ANIMATIONS trimming happens inside addAnimation().
+            if (capture_other_avatar &&
+                prev_signaled_anims.find(animation_id) == prev_signaled_anims.end())
+            {
+                RecentAnimationList::instance().addAnimation(animation_id, uuid);
+            }
+// [/BDMerge F7]
         }
     }
 

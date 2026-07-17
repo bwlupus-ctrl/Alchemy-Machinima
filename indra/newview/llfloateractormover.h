@@ -12,6 +12,9 @@
 
 #include "llfloater.h"
 
+class LLButton;
+class LLScrollListCtrl;
+
 class LLFloaterActorMover final : public LLFloater
 {
 public:
@@ -22,6 +25,12 @@ public:
 private:
     void onClickWalk();
     void onClickStop();
+    void refreshRoster();
+    LLUUID selectedActor() const;   // null when nothing selected
+
+    LLScrollListCtrl* mRosterList = nullptr;
+    LLButton*         mWalkBtn = nullptr;
+    LLButton*         mStopBtn = nullptr;
 };
 
 #endif // LL_LLFLOATERACTORMOVER_H

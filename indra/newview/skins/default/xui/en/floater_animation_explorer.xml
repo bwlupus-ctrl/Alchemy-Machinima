@@ -15,8 +15,8 @@
  can_minimize="true"
  can_resize="true"
  positioning="centered"
- height="314"
- min_height="314"
+ height="374"
+ min_height="374"
  min_width="400"
  width="574"
  name="animation_explorer"
@@ -37,7 +37,7 @@
 	</floater.string>
 
 	<scroll_list
-	 bottom="-4"
+	 bottom="-34"
 	 column_padding="0"
 	 draw_heading="true"
 	 follows="all"
@@ -83,7 +83,7 @@
 
 	<panel
 	 follows="bottom|right"
-	 height="48"
+	 height="74"
 	 name="buttons_panel"
 	 top_pad="4"
 	 width="256">
@@ -127,6 +127,53 @@
 	 top_delta="-4"
 	 width="154" />
 
+	<!-- [ActorMover] capture anims starting on OTHER avatars too (persisted).
+	     Off = stock behavior: only anims playing on your own avatar are recorded. -->
+	<check_box
+	 control_name="AnimExplorerCaptureAll"
+	 follows="top|right"
+	 height="22"
+	 label="Capture all avatars"
+	 left="0"
+	 name="capture_all_check"
+	 tool_tip="Also record animations that start on OTHER avatars (machinima actors). The animated avatar is shown as the 'Played by' source."
+	 top_pad="4"
+	 width="256" />
+
 	</panel>
+
+	<!-- [ActorMover] UUID tools strip: selected anim UUID readout + copy/handoff -->
+	<line_editor
+	 follows="left|bottom"
+	 height="20"
+	 layout="topleft"
+	 left="4"
+	 bottom="-6"
+	 max_length_chars="36"
+	 name="anim_uuid_editor"
+	 tool_tip="Asset UUID of the selected animation"
+	 width="270" />
+
+	<button
+	 follows="left|bottom"
+	 height="20"
+	 label="Copy UUID"
+	 layout="topleft"
+	 left_pad="6"
+	 bottom_delta="0"
+	 name="copy_uuid_btn"
+	 tool_tip="Copy the selected animation's asset UUID to the clipboard"
+	 width="90" />
+
+	<button
+	 follows="left|bottom"
+	 height="20"
+	 label="To Actor Mover"
+	 layout="topleft"
+	 left_pad="6"
+	 bottom_delta="0"
+	 name="to_actor_mover_btn"
+	 tool_tip="Use the selected animation as the Actor Mover's custom locomotion anim and open the Actor Mover"
+	 width="120" />
 
 </floater>

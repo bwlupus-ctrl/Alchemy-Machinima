@@ -2,11 +2,30 @@
 <floater
  legacy_header_height="18"
  can_resize="false"
- height="235"
+ height="412"
  layout="topleft"
  name="floater_actor_mover"
  title="ACTOR MOVER (LOCAL)"
  width="300">
+  <scroll_list
+   column_padding="0"
+   draw_heading="true"
+   follows="left|top"
+   height="88"
+   layout="topleft"
+   left="12"
+   top="24"
+   name="roster_list"
+   width="276">
+    <columns
+     label="Actor"
+     name="name"
+     width="170" />
+    <columns
+     label="Status"
+     name="status"
+     width="100" />
+  </scroll_list>
   <text
    type="string"
    length="1"
@@ -14,7 +33,7 @@
    height="14"
    layout="topleft"
    left="12"
-   top="24"
+   top_pad="6"
    name="status_text"
    width="276">
     Idle
@@ -24,11 +43,11 @@
    height="14"
    layout="topleft"
    left="12"
-   top_pad="8"
+   top_pad="4"
    name="hint_text"
    text_color="LtGray_50"
    width="276">
-    Right-click an avatar &gt; Actor Mover Target. None = you.
+    Right-click avatar/animesh &gt; Actor Mover Target.
   </text>
   <slider
    control_name="ActorMoverSpeed"
@@ -41,7 +60,7 @@
    label_width="90"
    layout="topleft"
    left="12"
-   top_pad="10"
+   top_pad="8"
    min_val="0.05"
    max_val="6.0"
    name="speed_slider"
@@ -109,6 +128,50 @@
     <combo_box.item label="Loop" name="em_loop" value="1" />
     <combo_box.item label="Ping-pong" name="em_pingpong" value="2" />
   </combo_box>
+  <check_box
+   control_name="ActorMoverSync"
+   follows="left|top"
+   height="16"
+   label="Sync all"
+   layout="topleft"
+   left_pad="12"
+   top_delta="2"
+   name="sync_check"
+   tool_tip="On: Walk/Stop drive every roster actor with the shared parameters. Off: Walk/Stop apply to the actor selected in the list only, so actors can run different speeds and headings."
+   width="110" />
+  <check_box
+   control_name="ActorMoverShowHeading"
+   follows="left|top"
+   height="16"
+   label="Show heading"
+   layout="topleft"
+   left="12"
+   top_pad="8"
+   name="show_heading_check"
+   tool_tip="Draw an in-world preview arrow for each roster actor along the planned travel bearing for the configured distance. Client-side only; updates live while dragging the Heading slider."
+   width="276" />
+  <check_box
+   control_name="ActorMoverUseCustomAnim"
+   follows="left|top"
+   height="16"
+   label="Custom walk anim (UUID)"
+   layout="topleft"
+   left="12"
+   top_pad="6"
+   name="custom_anim_check"
+   tool_tip="Play this animation asset instead of the system walk while moving (local playback only). The Cadence ref slider stays the foot-plant tuning knob."
+   width="276" />
+  <line_editor
+   control_name="ActorMoverCustomAnim"
+   follows="left|top"
+   height="20"
+   layout="topleft"
+   left="12"
+   top_pad="4"
+   max_length_chars="36"
+   name="custom_anim_editor"
+   tool_tip="Animation asset UUID. Use the Animation Explorer's 'To Actor Mover' button to fill this."
+   width="276" />
   <button
    follows="left|top"
    height="22"

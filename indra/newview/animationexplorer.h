@@ -74,6 +74,8 @@ public:
 class LLAvatarName;
 class LLButton;
 class LLCheckBoxCtrl;
+class LLContextMenu;
+class LLLineEditor;
 class LLScrollListCtrl;
 class LLView;
 class LLViewerObject;
@@ -111,6 +113,10 @@ protected:
     LLButton*         mStopAndRevokeButton;
     LLCheckBoxCtrl*   mNoOwnedAnimationsCheckBox;
 
+    // [ActorMover] UUID tools: readout line + copy/handoff + list context menu
+    LLLineEditor*           mAnimUUIDEditor = nullptr;
+    LLHandle<LLContextMenu> mPopupMenuHandle;
+
     LLView*                       mPreviewCtrl;      // dummy control on the floater where the avatar preview should go
     LLPointer<LLPreviewAnimation> mAnimationPreview; // actual avatar preview
 
@@ -135,6 +141,11 @@ protected:
     void onBlacklistPressed();
     void onStopAndRevokePressed();
     void onOwnedCheckToggled();
+
+    // [ActorMover] UUID tools
+    void onCopyUUIDPressed();
+    void onToActorMoverPressed();
+    void onScrollListRightClicked(LLUICtrl* ctrl, S32 x, S32 y);
 };
 
 #endif // ANIMATIONEXPLORER_H

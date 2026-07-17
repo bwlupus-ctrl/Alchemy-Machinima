@@ -905,7 +905,8 @@ namespace
         return avatarp && LLCinematicCamera::isFollowTarget(avatarp->getID());
     }
 
-// [ActorMover] right-click avatar > lock as the ghost-locomotion subject
+// [ActorMover] right-click avatar (or animesh, resolved to its control avatar
+// by find_avatar_from_object) > toggle ghost-locomotion roster membership
     void handle_avatar_actor_mover_target(const LLSD&)
     {
         LLVOAvatar* avatarp = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());

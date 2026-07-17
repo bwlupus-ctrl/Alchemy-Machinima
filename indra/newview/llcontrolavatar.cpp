@@ -26,6 +26,7 @@
 
 #include "llviewerprecompiledheaders.h"
 #include "llcontrolavatar.h"
+#include "llactormover.h"   // [ActorMover] local ghost locomotion for animesh
 #include "llagent.h" //  Get state values from here
 #include "llviewerobjectlist.h"
 #include "pipeline.h"
@@ -245,6 +246,16 @@ void LLControlAvatar::matchVolumeTransform()
 
             setGlobalScale(mScaleConstraintFixup);
         }
+
+        // [ActorMover] local ghost locomotion for animesh: this function is
+        // the linkset-driven root placement and runs from BOTH the avatar
+        // update (llvoavatar.cpp) and LLDrawable::updateXform(), so it would
+        // otherwise snap a ghost-moved control avatar back onto its volume
+        // every time the drawable moves. Re-asserting the override here (a
+        // per-frame-cached no-op when this avatar isn't being moved) makes
+        // the Actor Mover win cleanly at every call site; stop() releases it
+        // and the next call through here restores the linkset transform.
+        LLActorMover::instance().applyOverride(this);
     }
 }
 

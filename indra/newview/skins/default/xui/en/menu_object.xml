@@ -38,6 +38,21 @@
     <menu_item_call.on_visible
         function="Object.EnablePlayLocalAnim" />
   </menu_item_call>
+  <!-- [ActorMover] animesh: the commit handler resolves the clicked linkset to
+       its control avatar (find_avatar_from_object -> getAvatar() ->
+       getControlAvatar) and toggles roster membership, so animesh can be
+       ghost-moved alongside regular avatars. Visible only for animesh,
+       mirroring PlayLocalAnim's gate. -->
+  <menu_item_check
+      label="Actor Mover Target"
+      name="ActorMover Target">
+    <menu_item_check.on_click
+        function="Avatar.ActorMoverTarget" />
+    <menu_item_check.on_check
+        function="Avatar.CheckActorMoverTarget" />
+    <menu_item_check.on_visible
+        function="Object.EnablePlayLocalAnim" />
+  </menu_item_check>
   <menu_item_call
       label="Edit PBR material"
       name="EditGLTFMaterial">

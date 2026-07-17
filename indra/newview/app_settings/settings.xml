@@ -2605,6 +2605,61 @@
       <key>Value</key>
       <real>3.0</real>
     </map>
+    <key>ActorMoverSync</key>
+    <map>
+      <key>Comment</key>
+      <string>[ActorMover] On: Walk/Stop drive every roster actor with the shared parameters. Off: Walk/Stop apply only to the actor selected in the roster list, so actors can run different speeds/headings.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>ActorMoverShowHeading</key>
+    <map>
+      <key>Comment</key>
+      <string>[ActorMover] Draw an in-world preview arrow per roster actor along the planned travel bearing (current facing + heading trim) for the configured distance. Client-side debug lines; only rendered while the Actor Mover floater is open.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>ActorMoverUseCustomAnim</key>
+    <map>
+      <key>Comment</key>
+      <string>[ActorMover] Play the ActorMoverCustomAnim asset instead of the system walk while ghost-moving (local playback only; falls back to the system walk when the UUID is invalid).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>ActorMoverCustomAnim</key>
+    <map>
+      <key>Comment</key>
+      <string>[ActorMover] Asset UUID of the custom locomotion animation used when ActorMoverUseCustomAnim is on. The Animation Explorer's "To Actor Mover" button fills this.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>String</string>
+      <key>Value</key>
+      <string />
+    </map>
+    <key>AnimExplorerCaptureAll</key>
+    <map>
+      <key>Comment</key>
+      <string>[ActorMover] Animation Explorer also records animations starting on OTHER avatars (machinima actors), with the animated avatar as the "played by" source. Off = stock behavior (own avatar only).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
     <key>AvatarAxisDeadZone0</key>
     <map>
       <key>Comment</key>

@@ -66,8 +66,14 @@
 #include "llanimationstates.h"
 #include "llbutton.h"
 #include "llcheckboxctrl.h"
+#include "llclipboard.h"            // [ActorMover] Copy UUID
 #include "llfloater.h"
 #include "llfloaterreg.h"
+#include "lllineeditor.h"           // [ActorMover] UUID readout
+#include "llmenugl.h"               // [ActorMover] list context menu
+#include "lluictrlfactory.h"        // [ActorMover] list context menu
+#include "llviewercontrol.h"        // [ActorMover] gSavedSettings handoff
+#include "llviewermenu.h"           // [ActorMover] gMenuHolder
 #include "llkeyframemotion.h"       // for LLKeyframeMotion
 #include "llrender.h"                // for gGL
 #include "llrect.h"
@@ -164,6 +170,13 @@ AnimationExplorer::~AnimationExplorer()
 {
     mAnimationPreview = nullptr;
 
+    // [ActorMover] list context menu
+    if (auto menu = mPopupMenuHandle.get())
+    {
+        menu->die();
+        mPopupMenuHandle.markDead();
+    }
+
     for (const auto& cb : mAvatarNameCacheConnections)
     {
         if (cb.second.connected())
@@ -211,6 +224,24 @@ bool AnimationExplorer::postBuild()
     mStopAndRevokeButton->setCommitCallback(boost::bind(&AnimationExplorer::onStopAndRevokePressed, this));
     mNoOwnedAnimationsCheckBox->setCommitCallback(boost::bind(&AnimationExplorer::onOwnedCheckToggled, this));
 
+    // [ActorMover] UUID tools: readout line, copy/handoff buttons, and a
+    // right-click context menu on the animation list (same LLContextMenu
+    // idiom as LLFloaterBump's bump_list menu)
+    mAnimUUIDEditor = getChild<LLLineEditor>("anim_uuid_editor");
+    getChild<LLButton>("copy_uuid_btn")->setCommitCallback(boost::bind(&AnimationExplorer::onCopyUUIDPressed, this));
+    getChild<LLButton>("to_actor_mover_btn")->setCommitCallback(boost::bind(&AnimationExplorer::onToActorMoverPressed, this));
+    mAnimationScrollList->setRightMouseDownCallback(boost::bind(&AnimationExplorer::onScrollListRightClicked, this, _1, _2, _3));
+    {
+        LLUICtrl::CommitCallbackRegistry::ScopedRegistrar registrar;
+        registrar.add("AnimExplorer.CopyUUID", boost::bind(&AnimationExplorer::onCopyUUIDPressed, this));
+        registrar.add("AnimExplorer.ToActorMover", boost::bind(&AnimationExplorer::onToActorMoverPressed, this));
+        if (LLContextMenu* menu = LLUICtrlFactory::getInstance()->createFromFile<LLContextMenu>(
+                "menu_animation_explorer.xml", gMenuHolder, LLViewerMenuHolderGL::child_registry_t::instance()))
+        {
+            mPopupMenuHandle = menu->getHandle();
+        }
+    }
+
     // Notified whenever an ObjectProperties/ObjectPropertiesFamily reply lands
     // for ANY object, so a pending "played by" name can resolve without the
     // floater polling for it.
@@ -253,7 +284,59 @@ void AnimationExplorer::onSelectAnimation()
     column = mAnimationScrollList->getColumn("object_id")->mIndex;
     mCurrentObject = item->getColumn(column)->getValue().asUUID();
 
+    // [ActorMover] keep the UUID readout in sync with the selection
+    if (mAnimUUIDEditor)
+    {
+        mAnimUUIDEditor->setText(mCurrentAnimationID.asString());
+    }
+
     startMotion(mCurrentAnimationID);
+}
+
+// [ActorMover] copy the selected animation asset UUID to the clipboard
+// (same LLClipboard idiom as alviewermenu.cpp's object_copy_key())
+void AnimationExplorer::onCopyUUIDPressed()
+{
+    if (mCurrentAnimationID.isNull())
+    {
+        return;
+    }
+    LLWString idwstr = utf8string_to_wstring(mCurrentAnimationID.asString());
+    LLClipboard::instance().copyToClipboard(idwstr, 0, narrow(idwstr.size()));
+}
+
+// [ActorMover] hand the selected animation to the Actor Mover as its custom
+// locomotion anim, then surface the transport floater
+void AnimationExplorer::onToActorMoverPressed()
+{
+    if (mCurrentAnimationID.isNull())
+    {
+        return;
+    }
+    gSavedSettings.setString("ActorMoverCustomAnim", mCurrentAnimationID.asString());
+    gSavedSettings.setBOOL("ActorMoverUseCustomAnim", true);
+    LLFloaterReg::showInstance("actor_mover");
+}
+
+// [ActorMover] right-click on the animation list: select the row under the
+// cursor (so the menu acts on what was clicked) and pop the context menu
+void AnimationExplorer::onScrollListRightClicked(LLUICtrl* ctrl, S32 x, S32 y)
+{
+    LLScrollListItem* item = mAnimationScrollList->hitItem(x, y);
+    auto menu = mPopupMenuHandle.get();
+    if (item && menu)
+    {
+        const S32 index = mAnimationScrollList->getItemIndex(item);
+        if (index >= 0)
+        {
+            mAnimationScrollList->selectNthItem(index);
+            onSelectAnimation();
+        }
+        menu->buildDrawLabels();
+        menu->updateParent(LLMenuGL::sMenuContainer);
+        menu->show(x, y);
+        LLMenuGL::showPopup(ctrl, menu, x, y);
+    }
 }
 
 void AnimationExplorer::onStopPressed()

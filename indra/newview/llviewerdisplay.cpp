@@ -30,6 +30,8 @@
 
 #include "alfloaterprogressview.h"
 #include "fsyspath.h"
+#include "llactormover.h"   // [ActorMover] heading preview lines
+
 #include "hexdump.h"
 #include "llagent.h"
 #include "llagentcamera.h"
@@ -1707,6 +1709,9 @@ void render_ui_3d()
         gObjectList.renderObjectBeacons();
         gObjectList.resetObjectBeacons();
         gSky.addSunMoonBeacons();
+        // [ActorMover] in-world heading preview lines (client-side only;
+        // no-op unless ActorMoverShowHeading is on and the floater is open)
+        LLActorMover::instance().renderHeadingPreview();
     }
     else
     {
