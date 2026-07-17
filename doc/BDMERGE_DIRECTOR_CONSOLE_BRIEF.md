@@ -181,3 +181,128 @@ Save/load/delete UI in the transport bar (combo + Save + delete ×).
 
 Each stage: default no-op outside the new floater, build-lock protocol if agents
 run in parallel, staging + grep-verify, explicit-path commits.
+
+D1/D2/D3 SHIPPED 2026-07-17 (faf3789b71a / ac42adff161 / 73bdca95273).
+
+===========================================================================
+# ACTOR PATHING SUBSYSTEM (2026-07-17 — built BEFORE the deferred polish below,
+# per user "pathing first, polish later"). Requirement from user, verbatim intent:
+# pathing must be ROBUST and NATURAL above all — smooth natural rotation between
+# points, works on slopes/stairs (3D), easy to place/edit/manipulate, DOCUMENTED.
+===========================================================================
+
+## Concept
+Generalize an actor move from today's single straight segment (LLActorMover::Move
+= mOrigin/mHeading/mSpeed/mDistance) to a **3D polyline path** the actor walks,
+with natural curved turning, ground-following, and per-node expression. Local-only
+(same ghost philosophy — sim never told). The path is owned per cast member and
+saved in the scene file.
+
+## P1 — Path engine (LLActorMover, no new floater)
+Data model — replace/extend Move with a path:
+- `struct Waypoint { LLVector3 mPosGlobal (region/global coords, Z included);
+   F32 mDwell (s, 0=none); F32 mSpeedOverride (0=use path speed); LLUUID mAnim
+   (null=use loco anim); F32 mGroundOffset (manual Z nudge). }`
+- `struct Path { std::vector<Waypoint>; F32 mSpeed; S32 mEndMode (stop/loop/
+   pingpong); F32 mTension (0..1 corner smoothing); F32 mEaseIn, mEaseOut (s);
+   S32 mArrivalFacingMode (none/direction/castmember); F32/LLUUID facing target;
+   bool mGroundFollow; bool mPitchToSlope; }`. Stored per-actor in LLDirectorCast
+   (or an LLActorMover map keyed by actor id). A single-waypoint or empty path
+   falls back to the legacy straight-segment behavior (byte-identical default).
+
+Motion (the load-bearing math — get this RIGHT):
+- **Centripetal Catmull-Rom spline** through the waypoints (centripetal alpha=0.5
+   parameterization SPECIFICALLY — it is the variant proven free of cusps and
+   self-intersections on tight corners; uniform/chordal will loop and look drunk).
+   `mTension` blends corner sharpness (0=tight/near-polyline, 1=loose/flowing);
+   expose as a slider. Endpoints: duplicate/reflect end tangents (standard CR
+   phantom-point trick).
+- **Arc-length parameterization**: precompute a cumulative arc-length table so the
+   actor advances at CONSTANT GROUND SPEED along the curve, not constant spline
+   parameter. This is what keeps cadence-lock honest — foot plants match true
+   ground speed through curves and over 3D climbs. Recompute the table when the
+   path edits.
+- **Facing** from the path tangent (derivative of the spline), with a **max
+   turn-rate clamp** (deg/s, ~natural walk turn) so sharp nodes ease rather than
+   snap. Straightaways ignore the clamp.
+- **Ease-in/ease-out**: speed ramps from 0 over mEaseIn at the start and down to 0
+   over mEaseOut into the final node (skip for loop mode). No pop from standstill.
+- **Arrival facing**: at path end (stop mode), rotate to face a compass direction
+   or a cast member.
+- Cadence-lock unchanged in principle: setAnimTimeFactor from the CURRENT ground
+   speed (which now varies with ease + per-node speed overrides), so the walk
+   clock tracks instantaneous speed. Speed-driven gait: optional walk/run anim
+   pick by a speed threshold.
+
+3D / ground-follow (slopes + stairs):
+- Per-waypoint Z stored; between nodes the spline interpolates Z.
+- **mGroundFollow ON**: each frame, resolve the ground under the actor and clamp
+   feet to it + mGroundOffset. Terrain slopes: cheap land-height query
+   (LLWorld::resolveLandHeightGlobal or equiv). **Stairs/prims: downward object
+   raycast** (the tree raycasts for build tools — reuse that path; e.g.
+   LLWorld::raycast / gViewerWindow pick down-vector). CAUTION for the worker:
+   per-frame per-actor object raycasts cost + have surface-pick edge cases — cap
+   the ray length, skip the actor's own attachments, fall back to interpolated Z
+   on no-hit, and note this as the piece needing in-world A/B (stairs especially).
+- **mPitchToSlope** (default off): tilt root pitch to the local path/ground slope.
+
+Integration: the existing Walk button walks the path (falls back to straight when
+no path). applyOverride evaluates the spline at the path clock each frame and sets
+root world pos/rot — same site that already beats animesh matchVolumeTransform.
+Everything default-off / empty-path = byte-identical to current behavior.
+
+## P2 — In-world editor + path visualization (Move tab + debug render)
+Placement/manipulation (EASY TO USE — bind this):
+- With an actor selected + an "Edit path" mode toggle on: left-click ground = drop
+   a numbered waypoint (Z from ground-snap under the click); drag a node to move
+   it (screen-drag on the ground plane, Alt-drag for height); click a segment to
+   insert a node; right-click a node = delete/set dwell/set speed/set anim; Shift
+   changes append-vs-insert. A waypoint list in the Move tab mirrors the nodes
+   (select row ↔ highlight node) with a per-node inspector (dwell/speed/anim/Z).
+Visualization (UPGRADES the current thin amber heading line):
+- Thick, outlined path line (readable over any ground), **numbered node markers**,
+   **direction chevrons** along the path, dwell nodes flagged, **time-tick marks**
+   (where the actor is at t=1s,2s… — for eyeballing camera sync), selected node
+   highlighted/pulsing, a start **facing gizmo** (current facing vs first travel
+   dir). No path yet → the thick straight heading arrow (today's line, upgraded).
+- Renders in the same beacon-style UI pass (no depth writes) already used by
+   renderHeadingPreview; gated to when the Director/Actor Mover floater is open.
+- mTension slider, ground-follow + pitch-to-slope toggles, ease-in/out spinners,
+   arrival-facing controls all live on the Move tab.
+
+## P3 — Choreography (build on P1; feature-complete per user)
+- **Look-at while walking**: per-actor gaze target = point / cast member / camera.
+   Client-side head+neck+eye joint override layered on the walk. Head-vs-eyes-only
+   blend + intensity weight + NATURAL joint limits (ease toward target, give up
+   gracefully when it's behind them). Default "look where I'm going" tracks the
+   path tangent. Composes with Lead-Follow cam = walk-and-talk.
+- **Sync path to camera Take**: bind a path's duration to a LLFlycamRecorder take;
+   the take's playhead becomes the master clock driving the actor's path param
+   (with a lead/trail offset). SCRUBBING THE TAKE SCRUBS THE ACTOR (dry-run preview
+   of body+lens together). Press ACTION once → deterministic re-takes. This is the
+   feature that makes Takes legible (retro-fixes the "what does Takes do" confusion).
+- **Follow-the-leader**: actor B rides actor A's path BY REFERENCE (edit A → B
+   updates) at a distance offset (N m back on the curve) or time offset (T s later).
+   Chainable for processions; composes with look-at + dwell.
+- **Staggered start delay** per actor (entrances not all on one frame).
+- Named paths saved in the scene file (blocking restored on scene load, not just
+   marks). Path-ghost dry-run scrubber (draggable phantom along the path).
+
+## Explicitly OUT (director wants exact control, not surprises)
+Inter-actor collision avoidance; navmesh pathfinding (client can't reach it cleanly
+— ground-raycast covers real needs).
+
+===========================================================================
+# DEFERRED POLISH (after pathing, per user sequencing)
+===========================================================================
+- **Layout reflow**: Director floater panels should stretch with the window
+   (follows/auto-resize), less cramped, workflow order L→R (Cast→Move→Animate→
+   Camera→Takes→ACTION). Bump default size; cast column + tab body both grow.
+- **Takes-tab explainer**: one-line header "Record and replay the CAMERA's motion
+   for this shot" — kill the waypoints-vs-camera confusion at the source.
+- **Animate tab preview pane**: embed LLPreviewAnimation (the Animation Explorer
+   spinning-dummy viewport). Clicking a UUID row (or pasting a UUID) AUTO-PLAYS it
+   in the pane ON LOOP. Plus the **priority slider** on the custom UUID player
+   (LLKeyframeMotion::setPriority exists — but motions are asset-cached, so VERIFY
+   setting priority doesn't bleed onto other avatars playing the same asset; scope/
+   restore if it does).
