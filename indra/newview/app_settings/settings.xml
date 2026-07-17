@@ -12465,6 +12465,28 @@
       <key>Value</key>
       <integer>0</integer>
   </map>
+  <key>RenderShadowSoftVogel</key>
+  <map>
+      <key>Comment</key>
+      <string>[Vogel A/B] Soft-shadow kernel selector. Default OFF (0) = the fixed 12-tap Poisson-disk soft-shadow kernel, byte-identical to before (baseline for the A/B). ON (1) = Vogel-disk PCF with a per-pixel spatial rotation (interleaved gradient noise), which turns the fixed disk's banding in wide penumbrae into fine grain that reads as smoother. The rotation is spatial only (no per-frame animation) so it stays stable under the ReShade TAAU / motion-vector chain. Only active when BDMergeSoftProjectorShadows (and, for the sun cascades, BDMergeSoftShadowSun) is on. See RenderShadowSoftTaps for the tap count.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+  </map>
+  <key>RenderShadowSoftTaps</key>
+  <map>
+      <key>Comment</key>
+      <string>[Vogel A/B] Vogel-disk soft-shadow tap count (8-32; default 16). Number of shadow-map samples in the Vogel PCF kernel when RenderShadowSoftVogel is on. Higher = smoother penumbra grain at higher shadow-sampling cost; clamped to 32. Ignored when RenderShadowSoftVogel is off.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>16</integer>
+  </map>
   <key>BDMergeGoboAnisotropic</key>
   <map>
       <key>Comment</key>

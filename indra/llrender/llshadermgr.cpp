@@ -1741,6 +1741,10 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("soft_shadow_max");
     mReservedUniforms.push_back("soft_shadow_fill");
     mReservedUniforms.push_back("soft_shadow_sun");
+    // [Vogel A/B] soft-shadow kernel selector + Vogel tap count (lockstep with
+    // the SOFT_SHADOW_VOGEL / SOFT_SHADOW_TAPS enum block in llshadermgr.h)
+    mReservedUniforms.push_back("soft_shadow_vogel");
+    mReservedUniforms.push_back("soft_shadow_taps");
     // [BDMerge Batch 2] Feature 2: gobo anisotropic/mip filtering
     mReservedUniforms.push_back("gobo_aniso");
 

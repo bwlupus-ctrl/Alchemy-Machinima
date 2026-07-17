@@ -540,6 +540,10 @@ public:
         SOFT_SHADOW_MAX,                   //  "soft_shadow_max"     (max penumbra texels)
         SOFT_SHADOW_FILL,                  //  "soft_shadow_fill"    (ambient floor)
         SOFT_SHADOW_SUN,                   //  "soft_shadow_sun"     (apply to sun too)
+        // [Vogel A/B] soft-shadow kernel selector + Vogel tap count (must stay in
+        // lockstep with the mReservedUniforms push_back block in llshadermgr.cpp)
+        SOFT_SHADOW_VOGEL,                 //  "soft_shadow_vogel"   (0 = fixed disk, 1 = Vogel)
+        SOFT_SHADOW_TAPS,                  //  "soft_shadow_taps"    (Vogel tap count)
         // [BDMerge Batch 2] Feature 2: gobo/cookie mip + anisotropic filtering
         GOBO_ANISO,                        //  "gobo_aniso"
 

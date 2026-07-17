@@ -306,6 +306,9 @@ F32  LLPipeline::BDMergeSoftShadowSoftness;
 F32  LLPipeline::BDMergeSoftShadowMaxPenumbra;
 F32  LLPipeline::BDMergeSoftShadowFill;
 bool LLPipeline::BDMergeSoftShadowSun;
+// [Vogel A/B] soft-shadow kernel selector
+bool LLPipeline::BDMergeSoftShadowVogel;
+S32  LLPipeline::BDMergeSoftShadowTaps;
 bool LLPipeline::BDMergeGoboAnisotropic;
 // [BDMerge A5.4-1a] velocity / motion-vector buffer
 bool LLPipeline::BDMergeVelocityBuffer;
@@ -762,6 +765,8 @@ void LLPipeline::init()
     connectRefreshCachedSettingsSafe("BDMergeSoftShadowMaxPenumbra");
     connectRefreshCachedSettingsSafe("BDMergeSoftShadowFill");
     connectRefreshCachedSettingsSafe("BDMergeSoftShadowSun");
+    connectRefreshCachedSettingsSafe("RenderShadowSoftVogel");     // [Vogel A/B]
+    connectRefreshCachedSettingsSafe("RenderShadowSoftTaps");      // [Vogel A/B]
     connectRefreshCachedSettingsSafe("BDMergeGoboAnisotropic");
     connectRefreshCachedSettingsSafe("BDMergeVelocityBuffer");     // [BDMerge A5.4-1a]
     connectRefreshCachedSettingsSafe("BDMergeMotionBlur");         // [BDMerge A5.4-3]
@@ -1492,6 +1497,9 @@ void LLPipeline::refreshCachedSettings()
     BDMergeSoftShadowMaxPenumbra = gSavedSettings.getF32("BDMergeSoftShadowMaxPenumbra");
     BDMergeSoftShadowFill = gSavedSettings.getF32("BDMergeSoftShadowFill");
     BDMergeSoftShadowSun = gSavedSettings.getBOOL("BDMergeSoftShadowSun");
+    // [Vogel A/B] soft-shadow kernel selector + Vogel tap count
+    BDMergeSoftShadowVogel = gSavedSettings.getBOOL("RenderShadowSoftVogel");
+    BDMergeSoftShadowTaps = gSavedSettings.getS32("RenderShadowSoftTaps");
     BDMergeGoboAnisotropic = gSavedSettings.getBOOL("BDMergeGoboAnisotropic");
     BDMergeVelocityBuffer = gSavedSettings.getBOOL("BDMergeVelocityBuffer");     // [BDMerge A5.4-1a]
     BDMergeVelocityDebug = gSavedSettings.getBOOL("BDMergeVelocityDebug");       // [BDMerge A5.4-1a]
@@ -12016,6 +12024,10 @@ void LLPipeline::bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_
     shader.uniform1f(LLShaderMgr::SOFT_SHADOW_MAX, llmax(BDMergeSoftShadowMaxPenumbra, 1.f));
     shader.uniform1f(LLShaderMgr::SOFT_SHADOW_FILL, llclamp(BDMergeSoftShadowFill, 0.f, 1.f));
     shader.uniform1i(LLShaderMgr::SOFT_SHADOW_SUN, BDMergeSoftShadowSun ? 1 : 0);
+    // [Vogel A/B] kernel selector: 0 = fixed 12-tap Poisson (baseline), 1 = Vogel
+    // disk with a per-pixel spatial rotation. Tap count clamped to the shader max.
+    shader.uniform1i(LLShaderMgr::SOFT_SHADOW_VOGEL, BDMergeSoftShadowVogel ? 1 : 0);
+    shader.uniform1i(LLShaderMgr::SOFT_SHADOW_TAPS, llclamp(BDMergeSoftShadowTaps, 1, 32));
 
     shader.uniform3fv(LLShaderMgr::DEFERRED_SUN_DIR, 1, mTransformedSunDir.mV);
     shader.uniform3fv(LLShaderMgr::DEFERRED_MOON_DIR, 1, mTransformedMoonDir.mV);

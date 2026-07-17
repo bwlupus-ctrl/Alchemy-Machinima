@@ -67,6 +67,19 @@ uniform float soft_shadow_fill;   // ambient floor: shadowed regions lift toward
                                   // instead of crushing to pure black (0 = no fill)
 uniform int   soft_shadow_sun;    // also apply contact-hardening+fill to the sun
 
+// [Vogel A/B] Runtime upgrade of the soft-shadow kernel. soft_shadow_vogel == 0
+// keeps the fixed 12-tap Poisson disk below (the byte-identical baseline for the
+// A/B). soft_shadow_vogel != 0 switches BOTH the sun and spot soft branches to a
+// Vogel-disk PCF whose taps are rotated per pixel by a SPATIAL-ONLY hash
+// (interleaved gradient noise on gl_FragCoord). A static rotation plus a higher
+// tap count converts the fixed disk's wide-penumbra banding into fine grain that
+// reads as smooth. There is deliberately NO per-frame / time term: an animated
+// shadow dither would feed rolling noise into the ReShade TAAU / motion-vector
+// chain (the specular-jitter failure class) and ghost on moving actors, so the
+// rotation is a pure function of screen position.
+uniform int   soft_shadow_vogel;  // 0 = fixed 12-tap Poisson (default), 1 = Vogel
+uniform int   soft_shadow_taps;   // Vogel tap count (clamped to SOFT_SHADOW_VOGEL_MAX)
+
 // 12-tap Poisson-ish disk for the widened soft-shadow PCF kernel.
 const vec2 SOFT_SHADOW_DISK[12] = vec2[12](
     vec2( 0.0000,  0.0000),
@@ -83,6 +96,12 @@ const vec2 SOFT_SHADOW_DISK[12] = vec2[12](
     vec2( 0.0730, -0.9420)
 );
 
+// [Vogel A/B] Constant upper bound on the Vogel tap loop so it stays
+// constant-bounded (and unrollable); soft_shadow_taps selects how many of these
+// samples are actually summed. Golden angle (radians) drives the spiral.
+const int   SOFT_SHADOW_VOGEL_MAX   = 32;
+const float SOFT_SHADOW_GOLDEN_ANGLE = 2.3999632;
+
 float pcfShadow(sampler2DShadow shadowMap, vec3 norm, vec4 stc, float bias_mul, vec2 pos_screen, vec3 light_dir)
 {
 #if defined(SUN_SHADOW)
@@ -98,15 +117,42 @@ float pcfShadow(sampler2DShadow shadowMap, vec3 norm, vec4 stc, float bias_mul, 
         float pr = clamp(1.0 + soft_shadow_scale * clamp(stc.z, 0.0, 1.0),
                          1.0, max(soft_shadow_max, 1.0));
         vec2 texel = pr / shadow_res;
-        float jit = fract(pos_screen.y * shadow_res.y);
         float shadow = 0.0;
-        for (int i = 0; i < 12; ++i)
+
+        if (soft_shadow_vogel != 0)
         {
-            vec2 o = SOFT_SHADOW_DISK[i] * texel;
-            o.x += (jit - 0.5) * texel.x;
-            shadow += texture(shadowMap, vec3(stc.xy + o, stc.z));
+            // [Vogel A/B] Vogel-disk PCF over the SAME penumbra radius (texel).
+            // Per-pixel base rotation phi = interleaved gradient noise on
+            // gl_FragCoord.xy - SPATIAL ONLY, no frame/time term, so the dither
+            // is stable under the ReShade temporal chain. gl_FragCoord.xy (not
+            // pos_screen) is used because pos_screen's units differ per caller
+            // (0..1 UV here, world xy in the spot path); gl_FragCoord is always
+            // window pixels, exactly what IGN expects for true per-pixel grain.
+            int taps = clamp(soft_shadow_taps, 1, SOFT_SHADOW_VOGEL_MAX);
+            float inv_n = 1.0 / float(taps);
+            float phi = 6.2831853 * fract(52.9829189 *
+                        fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+            for (int i = 0; i < SOFT_SHADOW_VOGEL_MAX; ++i)
+            {
+                if (i >= taps) break;
+                float r = sqrt((float(i) + 0.5) * inv_n);
+                float theta = float(i) * SOFT_SHADOW_GOLDEN_ANGLE + phi;
+                vec2 o = r * vec2(cos(theta), sin(theta)) * texel;
+                shadow += texture(shadowMap, vec3(stc.xy + o, stc.z));
+            }
+            shadow *= inv_n;
         }
-        shadow /= 12.0;
+        else
+        {
+            float jit = fract(pos_screen.y * shadow_res.y);
+            for (int i = 0; i < 12; ++i)
+            {
+                vec2 o = SOFT_SHADOW_DISK[i] * texel;
+                o.x += (jit - 0.5) * texel.x;
+                shadow += texture(shadowMap, vec3(stc.xy + o, stc.z));
+            }
+            shadow /= 12.0;
+        }
         // [BDMerge fix] Same partial-visibility guard as the spot path below: the
         // fill floor must never lift a FULLY occluded pixel (e.g. a room interior),
         // or the sun leaks through walls wherever soft sun shadows are enabled.
@@ -147,16 +193,39 @@ float pcfSpotShadow(sampler2DShadow shadowMap, vec4 stc, float bias_scale, vec2 
                          1.0, max(soft_shadow_max, 1.0));
         vec2 texel = pr / proj_shadow_res;
         texel.y *= 1.5;
-        float jit = fract(pos_screen.y * 0.666666666);
         float shadow = 0.0;
-        for (int i = 0; i < 12; ++i)
+
+        if (soft_shadow_vogel != 0)
         {
-            vec2 o = SOFT_SHADOW_DISK[i] * texel;
-            o.x += (jit - 0.5) * texel.x;
-            shadow += texture(shadowMap, vec3(stc.xy + o, stc.z));
+            // [Vogel A/B] Vogel-disk PCF over the SAME (anisotropic) texel radius.
+            // Same spatial-only per-pixel rotation as the sun path (interleaved
+            // gradient noise on gl_FragCoord; no temporal term).
+            int taps = clamp(soft_shadow_taps, 1, SOFT_SHADOW_VOGEL_MAX);
+            float inv_n = 1.0 / float(taps);
+            float phi = 6.2831853 * fract(52.9829189 *
+                        fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+            for (int i = 0; i < SOFT_SHADOW_VOGEL_MAX; ++i)
+            {
+                if (i >= taps) break;
+                float r = sqrt((float(i) + 0.5) * inv_n);
+                float theta = float(i) * SOFT_SHADOW_GOLDEN_ANGLE + phi;
+                vec2 o = r * vec2(cos(theta), sin(theta)) * texel;
+                shadow += texture(shadowMap, vec3(stc.xy + o, stc.z));
+            }
+            shadow *= inv_n;
         }
-        shadow /= 12.0;
-        // [BDMerge fix] Fill lifts only PARTIALLY lit pixels (>= 1 of the 12 taps
+        else
+        {
+            float jit = fract(pos_screen.y * 0.666666666);
+            for (int i = 0; i < 12; ++i)
+            {
+                vec2 o = SOFT_SHADOW_DISK[i] * texel;
+                o.x += (jit - 0.5) * texel.x;
+                shadow += texture(shadowMap, vec3(stc.xy + o, stc.z));
+            }
+            shadow /= 12.0;
+        }
+        // [BDMerge fix] Fill lifts only PARTIALLY lit pixels (>= 1 of the taps
         // saw the light - genuine penumbra / terminator regions on a lit subject).
         // A fully occluded pixel (all taps blocked, e.g. behind a solid wall) must
         // stay 0: an unconditional floor paints the projector's cookie - and the

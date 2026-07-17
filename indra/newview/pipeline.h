@@ -1352,6 +1352,10 @@ public:
     static F32  BDMergeSoftShadowMaxPenumbra;  // max penumbra kernel radius (texels)
     static F32  BDMergeSoftShadowFill;         // ambient fill floor (0 = none)
     static bool BDMergeSoftShadowSun;          // also apply to the sun cascades
+    // [Vogel A/B] soft-shadow kernel selector (RenderShadowSoftVogel /
+    // RenderShadowSoftTaps). Default off = the fixed 12-tap Poisson disk above.
+    static bool BDMergeSoftShadowVogel;        // Vogel-disk PCF A/B (default off)
+    static S32  BDMergeSoftShadowTaps;         // Vogel tap count (8..32, default 16)
     // [BDMerge Batch 2] Feature 2: gobo/cookie mip + anisotropic filtering.
     static bool BDMergeGoboAnisotropic;        // default on
     // [BDMerge A5.4-1a] velocity / motion-vector buffer (Phase 1a foundation).
