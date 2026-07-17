@@ -1740,6 +1740,61 @@
       <key>Value</key>
       <real>1.0</real>
     </map>
+    <key>FlycamOrbitEnabled</key>
+    <map>
+      <key>Comment</key>
+      <string>Flycam Orbit: lock the flycam frame of reference to the Cinematic Cam anchor joint and orbit/pan/zoom relative to it</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>FlycamOrbitLevel</key>
+    <map>
+      <key>Comment</key>
+      <string>Keep the orbit anchor frame horizon-leveled (ignore bone roll/pitch); off = full bone frame (GoPro-style tumbling)</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>FlycamOrbitMaxRadius</key>
+    <map>
+      <key>Comment</key>
+      <string>Flycam Orbit maximum orbit radius (m)</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>30.0</real>
+    </map>
+    <key>FlycamOrbitMinRadius</key>
+    <map>
+      <key>Comment</key>
+      <string>Flycam Orbit minimum orbit radius (m)</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.3</real>
+    </map>
+    <key>FlycamOrbitSmoothing</key>
+    <map>
+      <key>Comment</key>
+      <string>Temporal smoothing of the orbit anchor transform in seconds; 0 = rigid lock</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.15</real>
+    </map>
     <key>Include</key>
     <array>
       <string>settings_alchemy.xml</string>

@@ -74,6 +74,12 @@ public:
     // True when the system should own the render camera this frame.
     bool isActive() const;
 
+    // Anchor transform for external riders (Flycam Orbit): the resolved
+    // target's CinematicCamJoint world pose in agent region coordinates.
+    // level_horizon strips bone roll/pitch so the frame's Z stays world-up.
+    // Returns false when no target avatar resolves.
+    bool resolveAnchor(LLVector3& pos, LLQuaternion& rot, bool level_horizon) const;
+
     // Compute and write this frame's camera. Call from the idle camera
     // dispatch INSTEAD of gAgentCamera.updateCamera() when isActive().
     void updateCamera();

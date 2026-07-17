@@ -516,6 +516,7 @@ void LLViewerFloaterReg::registerFloaters()
     LLFloaterReg::add("pref_joystick", "floater_joystick.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterJoystick>);
     LLFloaterReg::add("cinematic_camera", "floater_cinematic_camera.xml", &LLFloaterReg::build<LLFloater>);
     LLFloaterReg::add("flycam_recorder", "floater_flycam_recorder.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterFlycamRecorder>);
+    LLFloaterReg::add("flycam_orbit", "floater_flycam_orbit.xml", &LLFloaterReg::build<LLFloater>);
     LLFloaterReg::add("actor_mover", "floater_actor_mover.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterActorMover>);
     LLFloaterReg::add("preview_anim", "floater_preview_animation.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLPreviewAnim>, "preview");
     LLFloaterReg::add("preview_conversation", "floater_conversation_preview.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterConversationPreview>);

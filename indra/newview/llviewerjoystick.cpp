@@ -42,6 +42,7 @@
 #include "llagentcamera.h"
 #include "llfocusmgr.h"
 #include "llcameraoperator.h"   // [phoenix port] procedural handheld operator
+#include "llcinematiccamera.h"  // [machinima] Flycam Orbit anchor resolution
 
 #if LL_WINDOWS && !LL_MESA_HEADLESS
 // Require DirectInput version 8
@@ -1531,6 +1532,17 @@ void LLViewerJoystick::moveFlycam(bool reset)
     static LLVector3            sFlycamPosition;
     static F32                  sFlycamZoom;
 
+    // [machinima] Flycam Orbit state: orbit maintained relative to a moving
+    // bone anchor (azimuth/elevation/radius + anchor-local pan offset)
+    static bool                 sOrbitWasActive = false;
+    static LLVector3            sOrbitAnchorPos;        // smoothed anchor pose
+    static LLQuaternion         sOrbitAnchorRot;
+    static F32                  sOrbitAzimuth = 0.f;    // radians, anchor frame
+    static F32                  sOrbitElevation = 0.f;
+    static F32                  sOrbitRadius = 3.f;
+    static LLVector3            sOrbitFocus;            // pan offset, anchor-local
+    static F32                  sOrbitRoll = 0.f;       // view-axis roll (unleveled mode)
+
     if (!gFocusMgr.getAppHasFocus() || mDriverState != JDS_INITIALIZED
         || !mJoystickEnabled || !mFlycamEnabled)
     {
@@ -1547,6 +1559,8 @@ void LLViewerJoystick::moveFlycam(bool reset)
         resetDeltas(mJoystickAxis);
         // [phoenix port] don't carry reactive momentum across flycam toggles/teleports
         LLCameraOperator::instance().reset();
+        // [machinima] re-seed the orbit from the fresh camera pose next frame
+        sOrbitWasActive = false;
 
         return;
     }
@@ -1795,6 +1809,130 @@ void LLViewerJoystick::moveFlycam(bool reset)
             sFlycamZoom = llclamp(sFlycamZoom + sDelta[6], LLViewerCamera::getInstance()->getMinView(), LLViewerCamera::getInstance()->getMaxView());
         }
     }
+
+    // [machinima] Flycam Orbit: bone-locked stabilized orbit. When active, the
+    // free-space pose integrated above is replaced by an orbit maintained
+    // RELATIVE to the Cinematic Camera anchor (target avatar + CinematicCamJoint),
+    // so the whole rig rides the subject as it walks/turns/animates. The
+    // already-feathered sDelta values are consumed as orbit-space controls
+    // (yaw->azimuth, pitch->elevation, forward->radius, left/up->focus pan);
+    // zoom (sDelta[CAM_W_AXIS]) is untouched above. The result is written back
+    // into sFlycamPosition/sFlycamRotation so the tail below (camera write,
+    // handheld operator layer, flycam recorder) works unchanged, and free
+    // flight resumes seamlessly from wherever the orbit leaves the camera.
+    static LLCachedControl<bool> orbit_enabled(gSavedSettings, "FlycamOrbitEnabled", false);
+    bool orbit_active = false;
+    if (orbit_enabled)
+    {
+        static LLCachedControl<bool> orbit_level(gSavedSettings, "FlycamOrbitLevel", true);
+        static LLCachedControl<F32>  orbit_min_r(gSavedSettings, "FlycamOrbitMinRadius", 0.3f);
+        static LLCachedControl<F32>  orbit_max_r(gSavedSettings, "FlycamOrbitMaxRadius", 30.f);
+        static LLCachedControl<F32>  orbit_smooth(gSavedSettings, "FlycamOrbitSmoothing", 0.15f);
+
+        LLVector3 anchor_pos;
+        LLQuaternion anchor_rot;
+        if (LLCinematicCamera::instance().resolveAnchor(anchor_pos, anchor_rot, orbit_level))
+        {
+            orbit_active = true;
+            const F32 dt = llclamp(gFrameIntervalSeconds.value(), 0.0005f, 0.25f);
+            const F32 min_r = llmax((F32)orbit_min_r, 0.01f);
+            const F32 max_r = llmax((F32)orbit_max_r, min_r);
+
+            // temporal smoothing of the ANCHOR only (one-pole, dt-correct);
+            // user input stays direct
+            const F32 tau = llmax((F32)orbit_smooth, 0.f);
+            if (!sOrbitWasActive || tau < 1e-3f)
+            {
+                sOrbitAnchorPos = anchor_pos;
+                sOrbitAnchorRot = anchor_rot;
+            }
+            else
+            {
+                const F32 alpha = 1.f - expf(-dt / tau);
+                sOrbitAnchorPos += (anchor_pos - sOrbitAnchorPos) * alpha;
+                sOrbitAnchorRot = nlerp(alpha, sOrbitAnchorRot, anchor_rot);
+            }
+
+            if (!sOrbitWasActive)
+            {
+                // engage without a position jump: recover the orbit state from
+                // the camera's current pose relative to the anchor
+                LLVector3 rel = (sFlycamPosition - sOrbitAnchorPos) * ~sOrbitAnchorRot;
+                const F32 len = rel.magVec();
+                sOrbitRadius = llclamp(len, min_r, max_r);
+                if (len > 0.001f)
+                {
+                    sOrbitAzimuth = atan2f(rel.mV[VY], rel.mV[VX]);
+                    sOrbitElevation = asinf(llclamp(rel.mV[VZ] / len, -1.f, 1.f));
+                }
+                else
+                {
+                    sOrbitAzimuth = 0.f;
+                    sOrbitElevation = 0.f;
+                }
+                sOrbitElevation = llclamp(sOrbitElevation, -85.f * DEG_TO_RAD, 85.f * DEG_TO_RAD);
+                sOrbitFocus.setZero();
+                sOrbitRoll = 0.f;
+            }
+
+            // consume the feathered deltas as orbit controls
+            sOrbitAzimuth += sDelta[CAM_Z_AXIS];
+            if (sOrbitAzimuth > F_PI)       sOrbitAzimuth -= F_TWO_PI;
+            else if (sOrbitAzimuth < -F_PI) sOrbitAzimuth += F_TWO_PI;
+            sOrbitElevation = llclamp(sOrbitElevation + sDelta[CAM_Y_AXIS],
+                                      -85.f * DEG_TO_RAD, 85.f * DEG_TO_RAD);
+            sOrbitRadius = llclamp(sOrbitRadius - sDelta[X_AXIS], min_r, max_r);
+
+            // camera offset from the focus point, in the anchor frame
+            const F32 ce = cosf(sOrbitElevation);
+            const LLVector3 sph(cosf(sOrbitAzimuth) * ce,
+                                sinf(sOrbitAzimuth) * ce,
+                                sinf(sOrbitElevation));
+            const LLVector3 off_world = (sph * sOrbitRadius) * sOrbitAnchorRot;
+
+            // look-at basis: X=at (toward focus), up referenced to the anchor
+            // frame so the unleveled (GoPro) mode tumbles with the bone
+            LLVector3 at = -off_world;
+            at.normVec();
+            LLVector3 up_ref = LLVector3(0.f, 0.f, 1.f) * sOrbitAnchorRot;
+            LLVector3 left = up_ref % at;
+            if (left.magVecSquared() < 1e-6f)   // looking straight along up_ref
+            {
+                left = LLVector3(0.f, 1.f, 0.f) * sOrbitAnchorRot;
+            }
+            left.normVec();
+            LLVector3 up = at % left;
+            LLMatrix3 basis;
+            basis.setRows(at, left, up);
+            LLQuaternion orbit_rot(basis);
+
+            // pan the focus point in the camera's left/up plane (stored
+            // anchor-local so it rides the subject)
+            sOrbitFocus += (left * sDelta[Y_AXIS] + up * sDelta[Z_AXIS]) * ~sOrbitAnchorRot;
+
+            // roll about the view axis: ignored while leveled, free otherwise
+            if (!orbit_level)
+            {
+                sOrbitRoll += sDelta[CAM_X_AXIS];
+                if (sOrbitRoll > F_PI)       sOrbitRoll -= F_TWO_PI;
+                else if (sOrbitRoll < -F_PI) sOrbitRoll += F_TWO_PI;
+                if (fabsf(sOrbitRoll) > 0.0001f)
+                {
+                    LLQuaternion roll_q;
+                    roll_q.setEulerAngles(sOrbitRoll, 0.f, 0.f);
+                    orbit_rot = roll_q * orbit_rot;
+                }
+            }
+            else
+            {
+                sOrbitRoll = 0.f;
+            }
+
+            sFlycamPosition = sOrbitAnchorPos + (sOrbitFocus * sOrbitAnchorRot) + off_world;
+            sFlycamRotation = orbit_rot;
+        }
+    }
+    sOrbitWasActive = orbit_active;
 
     LLMatrix3 mat(sFlycamRotation);
 

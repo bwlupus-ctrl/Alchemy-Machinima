@@ -161,6 +161,39 @@ LLVOAvatar* LLCinematicCamera::resolveTarget() const
     return isAgentAvatarValid() ? (LLVOAvatar*)gAgentAvatarp : nullptr;
 }
 
+// anchor transform for external riders (Flycam Orbit): same target/joint
+// resolution as Bone Lock, without the mount/aim trim
+bool LLCinematicCamera::resolveAnchor(LLVector3& pos, LLQuaternion& rot, bool level_horizon) const
+{
+    LLVOAvatar* av = resolveTarget();
+    if (!av)
+    {
+        return false;
+    }
+
+    static LLCachedControl<std::string> joint_name(gSavedSettings, "CinematicCamJoint", std::string("mHead"));
+    LLJoint* joint = av->getJoint(std::string(joint_name));
+    if (!joint)
+    {
+        joint = av->getJoint("mHead");
+    }
+    if (joint)
+    {
+        pos = joint->getWorldPosition();
+        rot = joint->getWorldRotation();
+    }
+    else
+    {
+        pos = av->getPositionAgent() + LLVector3(0.f, 0.f, 1.f);
+        rot = av->getRenderRotation();
+    }
+    if (level_horizon)
+    {
+        rot = cc_levelHorizon(rot);
+    }
+    return true;
+}
+
 // ---------------------------------------------------------------------------
 // pattern generators (agent region coordinates, Z up)
 // ---------------------------------------------------------------------------

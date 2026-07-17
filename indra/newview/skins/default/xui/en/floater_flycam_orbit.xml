@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<floater
+ legacy_header_height="18"
+ can_resize="false"
+ height="240"
+ layout="topleft"
+ name="flycam_orbit"
+ title="Flycam Orbit"
+ save_rect="true"
+ single_instance="true"
+ width="320">
+    <check_box
+     control_name="FlycamOrbitEnabled"
+     follows="left|top"
+     height="18"
+     label="Enable Flycam Orbit"
+     layout="topleft"
+     left="12"
+     top="24"
+     name="FlycamOrbitEnabled"
+     tool_tip="While in flycam: orbit, pan and dolly relative to the anchor joint instead of free flight. Uncheck for normal flycam."
+     width="180" />
+    <text
+     follows="left|top"
+     halign="left"
+     height="28"
+     layout="topleft"
+     left="12"
+     top_pad="4"
+     width="296"
+     word_wrap="true"
+     text_color="LtGray_50"
+     name="anchor_hint">
+        Anchor: Cinematic Cam target + joint. Right-click an avatar &gt; Cinematic Cam Follow, or use Target selected.
+    </text>
+    <combo_box
+     allow_text_entry="true"
+     control_name="CinematicCamJoint"
+     follows="left|top"
+     height="20"
+     layout="topleft"
+     left="12"
+     top_pad="6"
+     name="CinematicCamJoint"
+     tool_tip="Skeleton joint to anchor the orbit on (type any joint name, including Bento bones)"
+     width="140">
+        <combo_box.item label="mHead" name="j_head" value="mHead" />
+        <combo_box.item label="mNeck" name="j_neck" value="mNeck" />
+        <combo_box.item label="mChest" name="j_chest" value="mChest" />
+        <combo_box.item label="mTorso" name="j_torso" value="mTorso" />
+        <combo_box.item label="mPelvis" name="j_pelvis" value="mPelvis" />
+        <combo_box.item label="mShoulderRight" name="j_shr" value="mShoulderRight" />
+        <combo_box.item label="mElbowRight" name="j_elr" value="mElbowRight" />
+        <combo_box.item label="mWristRight" name="j_wrr" value="mWristRight" />
+        <combo_box.item label="mShoulderLeft" name="j_shl" value="mShoulderLeft" />
+        <combo_box.item label="mWristLeft" name="j_wrl" value="mWristLeft" />
+        <combo_box.item label="mHipRight" name="j_hipr" value="mHipRight" />
+        <combo_box.item label="mKneeRight" name="j_kner" value="mKneeRight" />
+        <combo_box.item label="mFootRight" name="j_footr" value="mFootRight" />
+        <combo_box.item label="mFootLeft" name="j_footl" value="mFootLeft" />
+    </combo_box>
+    <check_box
+     control_name="CinematicCamUseSelected"
+     follows="left|top"
+     height="16"
+     label="Target selected avatar"
+     layout="topleft"
+     left_pad="8"
+     top_delta="2"
+     name="CinematicCamUseSelected"
+     tool_tip="Anchor on the selected avatar instead of yourself (falls back to you if nothing valid is selected)"
+     width="150" />
+    <check_box
+     control_name="FlycamOrbitLevel"
+     follows="left|top"
+     height="16"
+     label="Level horizon"
+     layout="topleft"
+     left="12"
+     top_pad="8"
+     name="FlycamOrbitLevel"
+     tool_tip="Keep the orbit ring horizontal (ignore bone roll/pitch). Off = ride the full bone frame, GoPro-style"
+     width="150" />
+    <spinner
+     control_name="FlycamOrbitMinRadius"
+     decimal_digits="2"
+     follows="left|top"
+     height="16"
+     increment="0.1"
+     label="Min radius"
+     label_width="66"
+     layout="topleft"
+     left="12"
+     max_val="10"
+     min_val="0.05"
+     top_pad="10"
+     name="FlycamOrbitMinRadius"
+     tool_tip="Closest the dolly can approach the anchor (m)"
+     width="140" />
+    <spinner
+     control_name="FlycamOrbitMaxRadius"
+     decimal_digits="1"
+     follows="left|top"
+     height="16"
+     increment="0.5"
+     label="Max radius"
+     label_width="66"
+     layout="topleft"
+     left_pad="10"
+     max_val="200"
+     min_val="0.5"
+     top_delta="0"
+     name="FlycamOrbitMaxRadius"
+     tool_tip="Farthest the dolly can retreat from the anchor (m)"
+     width="146" />
+    <slider
+     control_name="FlycamOrbitSmoothing"
+     decimal_digits="2"
+     follows="left|top"
+     height="16"
+     increment="0.01"
+     initial_value="0.15"
+     label="Smoothing (s)"
+     label_width="90"
+     layout="topleft"
+     left="12"
+     max_val="2"
+     min_val="0"
+     top_pad="10"
+     name="FlycamOrbitSmoothing"
+     tool_tip="Temporal smoothing of the anchor motion only. 0 = rigid lock, higher = steadicam glide"
+     width="296" />
+</floater>
