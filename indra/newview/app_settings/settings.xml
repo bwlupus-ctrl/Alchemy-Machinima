@@ -2704,6 +2704,17 @@
       <key>Value</key>
       <real>3.0</real>
     </map>
+    <key>PathTurnRateDegPerSec</key>
+    <map>
+      <key>Comment</key>
+      <string>[ActorMover] Actor pathing: maximum facing turn rate in degrees/second while walking a path. Sharp corners ease toward the new heading at this rate instead of snapping; straightaways are unaffected. Lower = lazier turns, higher = snappier.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>180.0</real>
+    </map>
     <key>ActorMoverSync</key>
     <map>
       <key>Comment</key>

@@ -30,6 +30,7 @@
 
 // viewer includes
 #include "aoengine.h"
+#include "llactormover.h"       // [Pathing] /pathadd /pathwalk /pathclear /pathloop test harness
 #include "llagent.h"
 #include "llagentcamera.h"
 #include "llagentui.h"
@@ -348,6 +349,47 @@ bool ALChatCommand::parseCommand(std::string data)
             msg->addS32Fast(_PREHASH_ButtonIndex, 0);
             msg->addStringFast(_PREHASH_ButtonLabel, button);
             gAgent.sendReliableMessage();
+            return true;
+        }
+        // -------------------------------------------------------------------
+        // [Pathing] Actor pathing P1 test harness (until the P2 in-world
+        // editor exists). All four operate on MY avatar's session path, so a
+        // solo operator can seed, walk, and clear a 3D Catmull-Rom path and
+        // A/B the engine (slopes, stairs, turning) before any UI lands. A path
+        // with >= 2 nodes makes the Actor Mover Walk button curve along it;
+        // 0/1 node falls back to the legacy straight walk.
+        // -------------------------------------------------------------------
+        else if (cmd == "/pathadd")     // append a ground-snapped waypoint here
+        {
+            LLActorMover::instance().appendWaypointHere(LLUUID::null);
+            return true;
+        }
+        else if (cmd == "/pathwalk")    // walk my path (needs >= 2 nodes)
+        {
+            if (LLActorMover::instance().hasWalkablePath(LLUUID::null))
+            {
+                LLActorMover::instance().start(LLUUID::null);
+            }
+            else
+            {
+                LL_WARNS("ActorMover") << "/pathwalk: fewer than 2 waypoints; "
+                                          "use /pathadd first" << LL_ENDL;
+            }
+            return true;
+        }
+        else if (cmd == "/pathclear")   // stop + drop all my waypoints
+        {
+            LLActorMover::instance().stop(LLUUID::null);
+            LLActorMover::instance().clearPath(LLUUID::null);
+            return true;
+        }
+        else if (cmd == "/pathloop")    // toggle loop end-mode on my path
+        {
+            LLActorMover::Path& path = LLActorMover::instance().editPath(LLUUID::null);
+            path.mEndMode = (path.mEndMode == 1) ? 0 : 1;    // loop <-> stop
+            path.markDirty();   // loop changes the segment count -> arc table
+            LL_INFOS("ActorMover") << "/pathloop: end mode now "
+                                   << (path.mEndMode == 1 ? "loop" : "stop") << LL_ENDL;
             return true;
         }
     }
