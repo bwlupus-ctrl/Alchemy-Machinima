@@ -97,6 +97,13 @@
          parameter="flycam_recorder" />
       </menu_item_call>
       <menu_item_call
+       label="Actor Mover..."
+       name="actor_mover_item_call">
+        <menu_item_call.on_click
+         function="Floater.Toggle"
+         parameter="actor_mover" />
+      </menu_item_call>
+      <menu_item_call
        label="Phototools..."
        name="phototools_item_call">
         <menu_item_call.on_click

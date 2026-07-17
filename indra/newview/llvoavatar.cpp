@@ -48,6 +48,7 @@
 #include "llagentcamera.h"
 #include "llagentwearables.h"
 #include "llanimationstates.h"
+#include "llactormover.h"   // [ActorMover] local ghost locomotion
 #include "llavatarnamecache.h"
 #include "llavatarpropertiesprocessor.h"
 #include "llavatarrendernotifier.h"
@@ -4909,6 +4910,12 @@ void LLVOAvatar::updateRootPositionAndRotation(LLAgent& agent, F32 speed, bool w
         mRoot->setPosition(pos);
         mRoot->setRotation(mDrawable->getRotation());
     }
+
+    // [ActorMover] local ghost locomotion: when this avatar is being moved by
+    // the Actor Mover, override the rendered root pose AFTER the sim-derived
+    // placement above. The skeleton and every attachment follow the root; the
+    // sim-true position (and culling) are untouched. Client-side only.
+    LLActorMover::instance().applyOverride(this);
 }
 
 //------------------------------------------------------------------------

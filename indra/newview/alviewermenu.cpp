@@ -30,6 +30,7 @@
 // newview
 #include "alavataractions.h"
 #include "llcinematiccamera.h"  // [Cinematic] locked follow subject
+#include "llactormover.h"       // [ActorMover] ghost locomotion subject
 //#include "alcinematicmode.h"
 #include "alderenderlist.h"
 #include "alfloaterblocked.h"
@@ -903,6 +904,20 @@ namespace
         LLVOAvatar* avatarp = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
         return avatarp && LLCinematicCamera::isFollowTarget(avatarp->getID());
     }
+
+// [ActorMover] right-click avatar > lock as the ghost-locomotion subject
+    void handle_avatar_actor_mover_target(const LLSD&)
+    {
+        LLVOAvatar* avatarp = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
+        if (avatarp && avatarp->getID().notNull())
+            LLActorMover::toggleTarget(avatarp->getID());
+    }
+
+    bool check_avatar_actor_mover_target(const LLSD&)
+    {
+        LLVOAvatar* avatarp = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
+        return avatarp && LLActorMover::isTarget(avatarp->getID());
+    }
 }
 
 ////////////////////////////////////////////////////////
@@ -975,6 +990,9 @@ void ALViewerMenu::initialize_menus()
     // [Cinematic] locked follow subject (reuses the alpha-mode avatar resolution + enable)
     commit.add("Avatar.CineCamFollow", boost::bind(&handle_avatar_cinecam_follow, _2));
     enable.add("Avatar.CheckCineCamFollow", boost::bind(&check_avatar_cinecam_follow, _2));
+    // [ActorMover] ghost-locomotion subject
+    commit.add("Avatar.ActorMoverTarget", boost::bind(&handle_avatar_actor_mover_target, _2));
+    enable.add("Avatar.CheckActorMoverTarget", boost::bind(&check_avatar_actor_mover_target, _2));
 
     // [SL:KB] - Patch: World-RenderExceptions | Checked: Catznip-5.2
     commit.add("View.Blocked", boost::bind(&handle_view_blocked, _2));

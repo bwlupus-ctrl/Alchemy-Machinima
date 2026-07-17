@@ -268,7 +268,9 @@ set(viewer_SOURCE_FILES
     llbuycurrencyhtml.cpp
     llcallingcard.cpp
     llcameraoperator.cpp
+    llactormover.cpp
     llcinematiccamera.cpp
+    llfloateractormover.cpp
     llfloaterflycamrecorder.cpp
     llflycamrecorder.cpp
     llcefaccelinterop.cpp
@@ -1060,7 +1062,9 @@ set(viewer_HEADER_FILES
     llbuycurrencyhtml.h
     llcallingcard.h
     llcameraoperator.h
+    llactormover.h
     llcinematiccamera.h
+    llfloateractormover.h
     llfloaterflycamrecorder.h
     llflycamrecorder.h
     llcapabilityprovider.h

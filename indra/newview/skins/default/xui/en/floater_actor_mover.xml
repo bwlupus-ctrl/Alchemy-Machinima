@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<floater
+ legacy_header_height="18"
+ can_resize="false"
+ height="235"
+ layout="topleft"
+ name="floater_actor_mover"
+ title="ACTOR MOVER (LOCAL)"
+ width="300">
+  <text
+   type="string"
+   length="1"
+   follows="left|top"
+   height="14"
+   layout="topleft"
+   left="12"
+   top="24"
+   name="status_text"
+   width="276">
+    Idle
+  </text>
+  <text
+   follows="left|top"
+   height="14"
+   layout="topleft"
+   left="12"
+   top_pad="8"
+   name="hint_text"
+   text_color="LtGray_50"
+   width="276">
+    Right-click an avatar &gt; Actor Mover Target. None = you.
+  </text>
+  <slider
+   control_name="ActorMoverSpeed"
+   decimal_digits="2"
+   follows="left|top"
+   height="18"
+   increment="0.05"
+   initial_value="1.0"
+   label="Speed m/s"
+   label_width="90"
+   layout="topleft"
+   left="12"
+   top_pad="10"
+   min_val="0.05"
+   max_val="6.0"
+   name="speed_slider"
+   width="276" />
+  <slider
+   control_name="ActorMoverDistance"
+   decimal_digits="1"
+   follows="left|top"
+   height="18"
+   increment="0.5"
+   initial_value="6.0"
+   label="Distance m"
+   label_width="90"
+   layout="topleft"
+   left="12"
+   top_pad="6"
+   min_val="0.5"
+   max_val="64.0"
+   name="dist_slider"
+   width="276" />
+  <slider
+   control_name="ActorMoverHeading"
+   decimal_digits="0"
+   follows="left|top"
+   height="18"
+   increment="5"
+   initial_value="0"
+   label="Heading °"
+   label_width="90"
+   layout="topleft"
+   left="12"
+   top_pad="6"
+   min_val="-180"
+   max_val="180"
+   name="heading_slider"
+   width="276" />
+  <slider
+   control_name="ActorMoverWalkNominal"
+   decimal_digits="1"
+   follows="left|top"
+   height="18"
+   increment="0.1"
+   initial_value="3.0"
+   label="Cadence ref"
+   label_width="90"
+   layout="topleft"
+   left="12"
+   top_pad="6"
+   min_val="1.0"
+   max_val="5.0"
+   name="nominal_slider"
+   tool_tip="Ground speed the walk animation was designed for. Lower it if feet slide forward at slow speeds; raise if they slide back."
+   width="276" />
+  <combo_box
+   control_name="ActorMoverEndMode"
+   follows="left|top"
+   height="20"
+   label="End behavior"
+   layout="topleft"
+   left="12"
+   top_pad="8"
+   name="end_mode_combo"
+   width="150">
+    <combo_box.item label="Stop at end" name="em_hold" value="0" />
+    <combo_box.item label="Loop" name="em_loop" value="1" />
+    <combo_box.item label="Ping-pong" name="em_pingpong" value="2" />
+  </combo_box>
+  <button
+   follows="left|top"
+   height="22"
+   label="Walk"
+   layout="topleft"
+   left="12"
+   top_pad="12"
+   name="walk_btn"
+   width="132" />
+  <button
+   follows="left|top"
+   height="22"
+   label="Stop / Release"
+   layout="topleft"
+   left_pad="12"
+   top_delta="0"
+   name="stop_btn"
+   width="132" />
+</floater>

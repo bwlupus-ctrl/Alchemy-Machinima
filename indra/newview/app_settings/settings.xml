@@ -2550,6 +2550,61 @@
       <key>Value</key>
       <real>1.0</real>
     </map>
+    <key>ActorMoverSpeed</key>
+    <map>
+      <key>Comment</key>
+      <string>[ActorMover] Ghost-walk ground speed in m/s. Client-side only: the sim never sees the movement; the walk animation clock is scaled to match so foot plants never slide.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.0</real>
+    </map>
+    <key>ActorMoverDistance</key>
+    <map>
+      <key>Comment</key>
+      <string>[ActorMover] Path length in meters from the start pose.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>6.0</real>
+    </map>
+    <key>ActorMoverHeading</key>
+    <map>
+      <key>Comment</key>
+      <string>[ActorMover] Travel bearing in degrees relative to the actor facing at start (0 = straight ahead).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0</real>
+    </map>
+    <key>ActorMoverEndMode</key>
+    <map>
+      <key>Comment</key>
+      <string>[ActorMover] End behavior: 0 stop at end (settles to stand), 1 loop, 2 ping-pong (faces back on the return leg).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>ActorMoverWalkNominal</key>
+    <map>
+      <key>Comment</key>
+      <string>[ActorMover] Ground speed the walk animation was authored for (cadence reference). Tune until feet lock to the ground at your working speed.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>3.0</real>
+    </map>
     <key>AvatarAxisDeadZone0</key>
     <map>
       <key>Comment</key>

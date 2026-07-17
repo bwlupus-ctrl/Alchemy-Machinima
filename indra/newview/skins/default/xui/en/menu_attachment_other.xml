@@ -3,6 +3,16 @@
 <context_menu
  layout="topleft"
  name="Avatar Attachment Pie">
+    <menu_item_check
+    label="Actor Mover Target"
+    name="ActorMover Target">
+    <menu_item_check.on_click
+      function="Avatar.ActorMoverTarget" />
+    <menu_item_check.on_check
+      function="Avatar.CheckActorMoverTarget" />
+    <menu_item_check.on_enable
+      function="Avatar.EnableAlphaMode" />
+  </menu_item_check>
   <menu_item_check
     label="Cinematic Cam Follow"
     name="CineCam Follow">
