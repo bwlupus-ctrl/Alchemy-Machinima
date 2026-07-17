@@ -165,6 +165,27 @@ void ALPanelCineCamParams::onVisibilityChange(bool new_visibility)
 }
 
 // ---------------------------------------------------------------------------
+// Director Console scene-file hooks
+// ---------------------------------------------------------------------------
+std::string ALPanelCineCamParams::getSelectedPresetName() const
+{
+    // the selected LIST item only -- the "no preset" button label never
+    // leaks out of here (getSelectedItemLabel is empty without a selection)
+    return mPresetCombo ? mPresetCombo->getSelectedItemLabel() : std::string();
+}
+
+bool ALPanelCineCamParams::applyPresetByName(const std::string& name)
+{
+    if (name.empty() || !gDirUtilp->fileExists(presetPath(name)))
+    {
+        return false;
+    }
+    applyPreset(name);
+    refreshPresetList(name);
+    return true;
+}
+
+// ---------------------------------------------------------------------------
 // per-mode panel visibility
 // ---------------------------------------------------------------------------
 void ALPanelCineCamParams::updateModePanel()

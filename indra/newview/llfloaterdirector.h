@@ -20,11 +20,15 @@
 #include "llfloater.h"
 
 #include <string>
+#include <utility>
 #include <vector>
 
 class ALCompassDial;
+class ALPanelCineCamParams;
 class LLButton;
+class LLComboBox;
 class LLContextMenu;
+class LLLineEditor;
 class LLRadioGroup;
 class LLScrollListCtrl;
 class LLSliderCtrl;
@@ -34,8 +38,13 @@ class LLFloaterDirector final : public LLFloater
 {
 public:
     LLFloaterDirector(const LLSD& key);
+    ~LLFloaterDirector() override;
     bool postBuild() override;
+    void onOpen(const LLSD& key) override;
     void draw() override;
+    // Esc = CUT while the transport is running or counting down; stock
+    // floater behavior otherwise
+    bool handleKeyHere(KEY key, MASK mask) override;
 
 private:
     // ---- transport ----
@@ -43,6 +52,21 @@ private:
     void onClickSetMarks();
     void onClickResetMarks();
     void refreshTransport();
+
+    // ---- scene files (transport bar) ----
+    static std::string scenesDir();     // created on demand
+    static std::string scenePath(const std::string& name);
+    // every settings-backed value a scene captures besides the cast/subjects
+    // (which LLDirectorCast::sceneData() owns) and the CineCam mode/preset
+    // (which get special ordering on load)
+    static const std::vector<std::string>& sceneSettingsList();
+    void refreshSceneList(const std::string& select_name = std::string());
+    void onSceneSelected();             // combo commit = load
+    void onClickSceneSave();            // reveal the inline name editor / commit
+    void commitSceneName();             // editor commit (Enter) or second Save
+    void onClickSceneDelete();
+    void saveScene(const std::string& name);
+    void loadScene(const std::string& name);
 
     // ---- cast column ----
     void refreshCastList();
@@ -64,6 +88,18 @@ private:
     void onClickWalk();
     void onClickStop();
     void refreshMoveTab();
+
+    // ---- Animate tab ----
+    void refreshAnimateTab();
+    void onAnimRightClick(LLUICtrl* ctrl, S32 x, S32 y);
+    LLUUID selectedAnimId() const;      // selected row's anim asset id
+    LLUUID pasteAnimId() const;         // validated paste-row UUID (null = invalid)
+    void onAnimCopyUUID();
+    void onAnimSetLoco();               // row -> selected member's loco anim
+    void onAnimPlayLocal(bool play);    // start/stopMotion, client-side only
+    void onPastePlayLocal(bool play);
+    void onPasteSetLoco();
+    void onClickClearLoco();
 
     // ---- Camera tab ----
     static LLUUID avatarFromSelection();
@@ -92,6 +128,13 @@ private:
     LLButton* mCutBtn = nullptr;
     LLButton* mSetMarksBtn = nullptr;
     LLButton* mResetMarksBtn = nullptr;
+
+    // scene files (transport bar)
+    LLComboBox*   mSceneCombo = nullptr;
+    LLLineEditor* mSceneNameEditor = nullptr;   // revealed in the combo's spot
+    LLButton*     mSceneSaveBtn = nullptr;
+    LLButton*     mSceneDeleteBtn = nullptr;
+    ALPanelCineCamParams* mCineCamPanel = nullptr;  // embedded shared params panel
 
     // cast column
     LLScrollListCtrl* mCastList = nullptr;
@@ -125,7 +168,30 @@ private:
     LLButton*  mClearBBtn = nullptr;
 
     // Animate tab
-    LLTextBox* mAnimateHeader = nullptr;
+    LLTextBox*        mAnimateHeader = nullptr;
+    LLScrollListCtrl* mAnimList = nullptr;
+    LLTextBox*        mAnimHint = nullptr;
+    LLButton*         mAnimCopyBtn = nullptr;
+    LLButton*         mAnimSetLocoBtn = nullptr;
+    LLButton*         mAnimPlayBtn = nullptr;
+    LLButton*         mAnimStopBtn = nullptr;
+    LLLineEditor*     mPasteEditor = nullptr;
+    LLButton*         mPastePlayBtn = nullptr;
+    LLButton*         mPasteStopBtn = nullptr;
+    LLButton*         mPasteSetLocoBtn = nullptr;
+    LLTextBox*        mLocoText = nullptr;
+    LLButton*         mClearLocoBtn = nullptr;
+    LLHandle<LLContextMenu> mAnimMenuHandle;
+    // change-diffing: rows rebuilt only when the shown member or their
+    // signaled-animation set changed; prio/playing cells re-set only on change
+    LLUUID mAnimAvatarId;
+    std::vector<std::pair<LLUUID, S32>> mAnimSnapshot;
+    struct AnimRowState
+    {
+        std::string mPrio;
+        std::string mPlaying;
+    };
+    std::vector<AnimRowState> mAnimRowStates;
 
     // Takes tab
     LLButton*     mTakeRecordBtn = nullptr;

@@ -11,26 +11,40 @@
 
 #include "llfloaterdirector.h"
 
+#include "indra_constants.h"        // KEY_ESCAPE / MASK_NONE
+
 #include "alcompassdial.h"
+#include "alpanelcinecamparams.h"   // embedded shared panel (scene preset hooks)
 #include "llactormover.h"
 #include "llavatarnamecache.h"
 #include "llbutton.h"
 #include "llclipboard.h"
+#include "llcombobox.h"
+#include "lldir.h"                  // gDirUtilp (scene files)
 #include "lldirectorcast.h"
+#include "lldiriterator.h"          // scene file listing
+#include "llfile.h"                 // LLFile::mkdir/remove, ll*fstream
 #include "llfloaterreg.h"
 #include "llflycamrecorder.h"
+#include "llkeyframemotion.h"       // priority readout (AnimationExplorer idiom)
+#include "lllineeditor.h"
 #include "llmenugl.h"
+#include "llnotificationsutil.h"    // scene delete confirm
 #include "llradiogroup.h"
 #include "llscrolllistctrl.h"
+#include "llsdserialize.h"          // scene LLSD XML files
 #include "llselectmgr.h"
 #include "llsliderctrl.h"
 #include "lltextbox.h"
 #include "lluictrlfactory.h"
+#include "lluri.h"                  // LLURI::escape scene filenames
 #include "llviewercontrol.h"        // gSavedSettings, LLCachedControl
 #include "llviewermenu.h"           // gMenuHolder, LLViewerMenuHolderGL
 #include "llviewerobjectlist.h"     // gObjectList
 #include "llvoavatar.h"
 #include "llvoavatarself.h"         // gAgentAvatarp, isAgentAvatarValid()
+
+#include <algorithm>
 
 namespace
 {
@@ -39,6 +53,12 @@ constexpr char ICON_MOVING[]   = "Move_Walk_Off";
 constexpr char ICON_IDLE[]     = "Profile_Friend_Online";
 constexpr char ICON_GONE[]     = "Profile_Friend_Offline";
 constexpr char ICON_MARK[]     = "Flag";
+
+// scene files live beside the cinematic presets, same idiom
+constexpr char SCENE_SUBDIR[]  = "director_scenes";
+constexpr S32  SCENE_VERSION   = 1;
+// playing-marker glyph for the Animate tab's list
+constexpr char GLYPH_PLAYING[] = "\xE2\x96\xB6";    // BLACK RIGHT-POINTING TRIANGLE
 
 // CinematicCamMode value -> display name (matches the mode combo labels)
 const char* cinecam_mode_name(S32 mode)
@@ -60,6 +80,21 @@ LLFloaterDirector::LLFloaterDirector(const LLSD& key)
 {
 }
 
+LLFloaterDirector::~LLFloaterDirector()
+{
+    // AnimationExplorer idiom: menus were parented to gMenuHolder, not us
+    if (LLContextMenu* menu = mCastMenuHandle.get())
+    {
+        menu->die();
+        mCastMenuHandle.markDead();
+    }
+    if (LLContextMenu* menu = mAnimMenuHandle.get())
+    {
+        menu->die();
+        mAnimMenuHandle.markDead();
+    }
+}
+
 bool LLFloaterDirector::postBuild()
 {
     // ---- transport ----
@@ -71,6 +106,20 @@ bool LLFloaterDirector::postBuild()
     mCutBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickAction(); });
     mSetMarksBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSetMarks(); });
     mResetMarksBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickResetMarks(); });
+    // Enter anywhere sensible fires ACTION (the default button); while it is
+    // hidden (running/counting) Enter does nothing -- Esc is CUT (handleKeyHere)
+    setDefaultBtn(mActionBtn);
+
+    // ---- scene files (transport bar) ----
+    mSceneCombo = getChild<LLComboBox>("scene_combo");
+    mSceneNameEditor = getChild<LLLineEditor>("scene_name_editor");
+    mSceneSaveBtn = getChild<LLButton>("btn_scene_save");
+    mSceneDeleteBtn = getChild<LLButton>("btn_scene_delete");
+    mSceneCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSceneSelected(); });
+    mSceneNameEditor->setCommitCallback([this](LLUICtrl*, const LLSD&) { commitSceneName(); });
+    mSceneSaveBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSceneSave(); });
+    mSceneDeleteBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSceneDelete(); });
+    refreshSceneList();
 
     // ---- cast column ----
     mCastList = getChild<LLScrollListCtrl>("cast_list");
@@ -91,10 +140,20 @@ bool LLFloaterDirector::postBuild()
         registrar.add("Director.ClearLocoAnim", [this](LLUICtrl*, const LLSD&) { onCastClearLocoAnim(); });
         registrar.add("Director.CopyUUID", [this](LLUICtrl*, const LLSD&) { onCastCopyUUID(); });
         registrar.add("Director.RemoveFromCast", [this](LLUICtrl*, const LLSD&) { onCastRemove(); });
+        // Animate tab's list menu shares the registrar scope
+        registrar.add("Director.AnimCopyUUID", [this](LLUICtrl*, const LLSD&) { onAnimCopyUUID(); });
+        registrar.add("Director.AnimSetLoco", [this](LLUICtrl*, const LLSD&) { onAnimSetLoco(); });
+        registrar.add("Director.AnimPlayLocal", [this](LLUICtrl*, const LLSD&) { onAnimPlayLocal(true); });
+        registrar.add("Director.AnimStopLocal", [this](LLUICtrl*, const LLSD&) { onAnimPlayLocal(false); });
         if (LLContextMenu* menu = LLUICtrlFactory::getInstance()->createFromFile<LLContextMenu>(
                 "menu_director_cast.xml", gMenuHolder, LLViewerMenuHolderGL::child_registry_t::instance()))
         {
             mCastMenuHandle = menu->getHandle();
+        }
+        if (LLContextMenu* menu = LLUICtrlFactory::getInstance()->createFromFile<LLContextMenu>(
+                "menu_director_anims.xml", gMenuHolder, LLViewerMenuHolderGL::child_registry_t::instance()))
+        {
+            mAnimMenuHandle = menu->getHandle();
         }
     }
 
@@ -112,6 +171,28 @@ bool LLFloaterDirector::postBuild()
 
     // ---- Animate tab ----
     mAnimateHeader = getChild<LLTextBox>("animate_header");
+    mAnimList = getChild<LLScrollListCtrl>("anim_list");
+    mAnimHint = getChild<LLTextBox>("anim_hint");
+    mAnimCopyBtn = getChild<LLButton>("btn_anim_copy");
+    mAnimSetLocoBtn = getChild<LLButton>("btn_anim_setloco");
+    mAnimPlayBtn = getChild<LLButton>("btn_anim_play");
+    mAnimStopBtn = getChild<LLButton>("btn_anim_stop");
+    mPasteEditor = getChild<LLLineEditor>("paste_uuid_editor");
+    mPastePlayBtn = getChild<LLButton>("btn_paste_play");
+    mPasteStopBtn = getChild<LLButton>("btn_paste_stop");
+    mPasteSetLocoBtn = getChild<LLButton>("btn_paste_setloco");
+    mLocoText = getChild<LLTextBox>("loco_text");
+    mClearLocoBtn = getChild<LLButton>("btn_clear_loco");
+    mAnimCopyBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAnimCopyUUID(); });
+    mAnimSetLocoBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAnimSetLoco(); });
+    mAnimPlayBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAnimPlayLocal(true); });
+    mAnimStopBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAnimPlayLocal(false); });
+    mPastePlayBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPastePlayLocal(true); });
+    mPasteStopBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPastePlayLocal(false); });
+    mPasteSetLocoBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPasteSetLoco(); });
+    mClearLocoBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickClearLoco(); });
+    mAnimList->setRightMouseDownCallback(
+        [this](LLUICtrl* ctrl, S32 x, S32 y, MASK) { onAnimRightClick(ctrl, x, y); });
     getChild<LLButton>("btn_open_animexp")->setCommitCallback(
         [](LLUICtrl*, const LLSD&) { LLFloaterReg::showInstance("animation_explorer"); });
 
@@ -126,6 +207,9 @@ bool LLFloaterDirector::postBuild()
     mSetBBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSetSubjectFromSelection(false); });
     mClearABtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickClearSubject(true); });
     mClearBBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickClearSubject(false); });
+    // embedded shared params panel: scene files read its selected preset and
+    // apply presets through it on load
+    mCineCamPanel = findChild<ALPanelCineCamParams>("cinecam_params_embedded");
 
     // ---- Takes tab ----
     mTakeRecordBtn = getChild<LLButton>("btn_take_record");
@@ -145,15 +229,43 @@ bool LLFloaterDirector::postBuild()
     return true;
 }
 
+void LLFloaterDirector::onOpen(const LLSD& key)
+{
+    // pick up scenes saved by an earlier session without losing the current
+    // combo selection
+    if (mSceneCombo)
+    {
+        refreshSceneList(mSceneCombo->getSelectedItemLabel());
+    }
+    LLFloater::onOpen(key);
+}
+
 void LLFloaterDirector::draw()
 {
     refreshCastList();
     refreshTransport();
     refreshMoveTab();
+    refreshAnimateTab();
     refreshCameraTab();
     refreshTakesTab();
     refreshStatusStrip();
     LLFloater::draw();
+}
+
+bool LLFloaterDirector::handleKeyHere(KEY key, MASK mask)
+{
+    if (key == KEY_ESCAPE && mask == MASK_NONE)
+    {
+        // Esc = CUT, but ONLY while the transport is live; an idle floater
+        // keeps the stock Esc behavior (defocus/close handling upstream)
+        LLDirectorCast& cast = LLDirectorCast::instance();
+        if (cast.isRunning() || cast.isCountingDown())
+        {
+            cast.cut();
+            return true;
+        }
+    }
+    return LLFloater::handleKeyHere(key, mask);
 }
 
 //static
@@ -256,6 +368,283 @@ void LLFloaterDirector::refreshTransport()
     setToolTipIfChanged(mResetMarksBtn, any_marked
         ? std::string("Snap every marked cast member back to their mark (local only)")
         : std::string("Set marks first"));
+
+    // scene controls
+    const bool naming = mSceneNameEditor->getVisible();
+    const std::string scene_sel = mSceneCombo->getSelectedItemLabel();
+    setToolTipIfChanged(mSceneSaveBtn, naming
+        ? std::string("Write the scene file (Enter in the name box saves too; an empty name cancels)")
+        : std::string("Save the whole setup as a scene: cast, marks, loco anims, subjects, arming, camera and move parameters. Opens an inline name box; re-saving the selected scene keeps its name"));
+    setToolTipIfChanged(mSceneCombo, mSceneCombo->getItemCount() > 0
+        ? std::string("Load a scene: restores cast, marks, loco anims, subjects and parameters. Nothing is moved; press Reset to marks to place actors")
+        : std::string("No saved scenes yet. Save one first"));
+    mSceneDeleteBtn->setEnabled(!scene_sel.empty() && !naming);
+    setToolTipIfChanged(mSceneDeleteBtn, scene_sel.empty()
+        ? std::string("Select a scene first")
+        : naming ? std::string("Finish naming first")
+                 : std::string("Delete the selected scene file (asks to confirm)"));
+}
+
+// ---------------------------------------------------------------------------
+// scene files: one LLSD XML per scene in user_settings/director_scenes/,
+// same folder/escape/list idiom as the cinematic camera presets
+// ---------------------------------------------------------------------------
+//static
+std::string LLFloaterDirector::scenesDir()
+{
+    std::string dir = gDirUtilp->getExpandedFilename(LL_PATH_USER_SETTINGS, SCENE_SUBDIR);
+    if (!gDirUtilp->fileExists(dir))
+    {
+        LLFile::mkdir(dir);
+    }
+    return dir;
+}
+
+//static
+std::string LLFloaterDirector::scenePath(const std::string& name)
+{
+    // same reversible sanitization the graphics/cinematic presets use
+    return gDirUtilp->add(scenesDir(), LLURI::escape(name) + ".xml");
+}
+
+//static
+const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()
+{
+    // CinematicCamMode is NOT here: it is stored separately so a scene's
+    // mode can be applied AFTER its named preset (the preset apply path
+    // writes the mode too, and the scene's own mode must win)
+    static const std::vector<std::string> settings = {
+        // transport arming + countdown
+        "DirectorArmMoves",
+        "DirectorArmCamera",
+        "DirectorArmRecorderPlay",
+        "DirectorArmRecorderCapture",
+        "DirectorActionDelay",
+        // Flycam Orbit rig
+        "FlycamOrbitEnabled",
+        "FlycamOrbitLevel",
+        "FlycamOrbitMinRadius",
+        "FlycamOrbitMaxRadius",
+        "FlycamOrbitOffsetUp",
+        "FlycamOrbitOffsetLeft",
+        "FlycamOrbitZoom",
+        "FlycamOrbitSmoothing",
+        // Move-tab (Actor Mover) parameters
+        "ActorMoverSpeed",
+        "ActorMoverDistance",
+        "ActorMoverHeading",
+        "ActorMoverWalkNominal",
+        "ActorMoverEndMode",
+        "ActorMoverSync",
+        "ActorMoverUseCustomAnim",
+        "ActorMoverCustomAnim",
+    };
+    return settings;
+}
+
+void LLFloaterDirector::refreshSceneList(const std::string& select_name)
+{
+    if (!mSceneCombo)
+    {
+        return;
+    }
+    mSceneCombo->clearRows();
+
+    std::vector<std::string> names;
+    {
+        LLDirIterator dir_iter(scenesDir(), "*.xml");
+        std::string file;
+        while (dir_iter.next(file))
+        {
+            names.emplace_back(LLURI::unescape(
+                gDirUtilp->getBaseFileName(file, /*strip_exten=*/true)));
+        }
+    }
+    std::sort(names.begin(), names.end());
+    for (const std::string& name : names)
+    {
+        mSceneCombo->add(name);
+    }
+
+    if (!select_name.empty() && mSceneCombo->setSelectedByValue(select_name, true))
+    {
+        return;
+    }
+    mSceneCombo->setLabel(LLStringExplicit("Scenes"));
+}
+
+void LLFloaterDirector::onSceneSelected()
+{
+    const std::string name = mSceneCombo->getSelectedItemLabel();
+    if (!name.empty())
+    {
+        loadScene(name);
+    }
+}
+
+void LLFloaterDirector::onClickSceneSave()
+{
+    if (!mSceneNameEditor->getVisible())
+    {
+        // reveal the inline name box in the combo's spot (usability rule 2:
+        // no naming popups), preloaded so "tweak and re-save" is Save-Enter
+        mSceneNameEditor->setText(mSceneCombo->getSelectedItemLabel());
+        mSceneCombo->setVisible(false);
+        mSceneNameEditor->setVisible(true);
+        mSceneNameEditor->setFocus(true);
+        mSceneNameEditor->selectAll();
+    }
+    else
+    {
+        commitSceneName();
+    }
+}
+
+void LLFloaterDirector::commitSceneName()
+{
+    std::string name = mSceneNameEditor->getText();
+    LLStringUtil::trim(name);
+    mSceneNameEditor->setVisible(false);
+    mSceneCombo->setVisible(true);
+    if (name.empty())
+    {
+        return;     // empty name = cancel, nothing written
+    }
+    saveScene(name);
+    refreshSceneList(name);
+}
+
+void LLFloaterDirector::onClickSceneDelete()
+{
+    const std::string name = mSceneCombo->getSelectedItemLabel();
+    if (name.empty())
+    {
+        return;
+    }
+    LLSD args;
+    args["NAME"] = name;
+    LLHandle<LLFloater> handle = getHandle();
+    LLNotificationsUtil::add("DirectorConfirmDeleteScene", args, LLSD(),
+        [handle, name](const LLSD& notification, const LLSD& response)
+        {
+            if (LLNotificationsUtil::getSelectedOption(notification, response) != 0)
+            {
+                return;
+            }
+            const std::string path = scenePath(name);
+            if (LLFile::remove(path) != 0)
+            {
+                LL_WARNS("Director") << "Cannot delete scene file " << path << LL_ENDL;
+            }
+            if (LLFloaterDirector* self = static_cast<LLFloaterDirector*>(handle.get()))
+            {
+                self->refreshSceneList();
+            }
+        });
+}
+
+void LLFloaterDirector::saveScene(const std::string& name)
+{
+    // engine data (cast, marks, loco anims, subjects) ...
+    LLSD scene = LLDirectorCast::instance().sceneData();
+    scene["version"] = SCENE_VERSION;
+
+    // ... plus everything settings-backed
+    LLSD settings = LLSD::emptyMap();
+    for (const std::string& setting : sceneSettingsList())
+    {
+        if (LLControlVariable* ctrl = gSavedSettings.getControl(setting))
+        {
+            settings[setting] = ctrl->getValue();
+        }
+    }
+    scene["settings"] = settings;
+
+    // CineCam: active mode, and the ACTIVE named preset when one is selected
+    // in the shared params panel (stored by name; applied via the panel on load)
+    scene["cinecam_mode"] = gSavedSettings.getS32("CinematicCamMode");
+    if (mCineCamPanel)
+    {
+        const std::string preset = mCineCamPanel->getSelectedPresetName();
+        if (!preset.empty())
+        {
+            scene["cinecam_preset"] = preset;
+        }
+    }
+
+    const std::string path = scenePath(name);
+    llofstream out(path.c_str());
+    if (!out.is_open())
+    {
+        LL_WARNS("Director") << "Cannot write scene file " << path << LL_ENDL;
+        return;
+    }
+    LLSDSerialize::toPrettyXML(scene, out);
+    out.close();
+    LL_INFOS("Director") << "Saved scene '" << name << "'" << LL_ENDL;
+}
+
+void LLFloaterDirector::loadScene(const std::string& name)
+{
+    const std::string path = scenePath(name);
+    llifstream in(path.c_str());
+    if (!in.is_open())
+    {
+        LL_WARNS("Director") << "Cannot open scene file " << path << LL_ENDL;
+        return;
+    }
+    LLSD scene;
+    LLSDSerialize::fromXML(scene, in);
+    in.close();
+    if (!scene.isMap())
+    {
+        LL_WARNS("Director") << "Malformed scene file " << path << LL_ENDL;
+        return;
+    }
+
+    // a loaded scene starts from a clean transport
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    if (cast.isRunning() || cast.isCountingDown())
+    {
+        cast.cut();
+    }
+
+    // cast, marks, loco anims, subjects -- data only, nothing moves; members
+    // not in world stay in the cast grayed "(away)"
+    cast.applySceneData(scene);
+
+    // only apply keys this floater owns: a scene file is data, not commands
+    if (scene["settings"].isMap())
+    {
+        for (const std::string& setting : sceneSettingsList())
+        {
+            if (scene["settings"].has(setting))
+            {
+                if (LLControlVariable* ctrl = gSavedSettings.getControl(setting))
+                {
+                    ctrl->setValue(scene["settings"][setting]);
+                }
+            }
+        }
+    }
+
+    // named preset first (its apply path writes CinematicCam* including the
+    // mode), THEN the scene's explicit mode wins
+    if (scene["cinecam_preset"].isString() && mCineCamPanel)
+    {
+        const std::string preset = scene["cinecam_preset"].asString();
+        if (!mCineCamPanel->applyPresetByName(preset))
+        {
+            LL_WARNS("Director") << "Scene '" << name
+                                 << "' references missing cinematic preset '"
+                                 << preset << "'" << LL_ENDL;
+        }
+    }
+    if (scene["cinecam_mode"].isInteger())
+    {
+        gSavedSettings.setS32("CinematicCamMode", scene["cinecam_mode"].asInteger());
+    }
+    LL_INFOS("Director") << "Loaded scene '" << name << "'" << LL_ENDL;
 }
 
 // ---------------------------------------------------------------------------
@@ -611,10 +1000,290 @@ void LLFloaterDirector::refreshMoveTab()
         : std::string("Select a cast member first (or switch to Everyone)");
     setToolTipIfChanged(mWalkBtn, walk_tip);
     setToolTipIfChanged(mStopBtn, stop_tip);
+}
 
-    // Animate tab header rides the same selection
-    mAnimateHeader->setText(have_sel ? castMemberName(firstSelectedCastId())
-                                     : std::string("No cast member selected"));
+// ---------------------------------------------------------------------------
+// Animate tab: live signaled-animation list for the selected cast member
+// ---------------------------------------------------------------------------
+LLUUID LLFloaterDirector::selectedAnimId() const
+{
+    LLScrollListItem* item = mAnimList->getFirstSelected();
+    return item ? item->getValue().asUUID() : LLUUID::null;
+}
+
+LLUUID LLFloaterDirector::pasteAnimId() const
+{
+    std::string text = mPasteEditor->getText();
+    LLStringUtil::trim(text);
+    if (!LLUUID::validate(text))
+    {
+        return LLUUID::null;
+    }
+    return LLUUID(text);    // an all-zero uuid also comes back null-equivalent
+}
+
+void LLFloaterDirector::onAnimRightClick(LLUICtrl* ctrl, S32 x, S32 y)
+{
+    LLScrollListItem* item = mAnimList->hitItem(x, y);
+    LLContextMenu* menu = mAnimMenuHandle.get();
+    if (item && menu)
+    {
+        if (!item->getSelected())
+        {
+            const S32 index = mAnimList->getItemIndex(item);
+            if (index >= 0)
+            {
+                mAnimList->selectNthItem(index);
+            }
+        }
+        menu->buildDrawLabels();
+        menu->updateParent(LLMenuGL::sMenuContainer);
+        menu->show(x, y);
+        LLMenuGL::showPopup(ctrl, menu, x, y);
+    }
+}
+
+void LLFloaterDirector::onAnimCopyUUID()
+{
+    const LLUUID anim = selectedAnimId();
+    if (anim.isNull())
+    {
+        return;
+    }
+    // same LLClipboard idiom as the Animation Explorer's Copy UUID
+    LLWString idwstr = utf8string_to_wstring(anim.asString());
+    LLClipboard::instance().copyToClipboard(idwstr, 0, narrow(idwstr.size()));
+}
+
+void LLFloaterDirector::onAnimSetLoco()
+{
+    const LLUUID anim = selectedAnimId();
+    LLDirectorCast::CastMember* m =
+        LLDirectorCast::instance().getMember(firstSelectedCastId());
+    if (anim.notNull() && m)
+    {
+        // the loco line under the paste row is the visible confirmation
+        m->mLocoAnim = anim;
+    }
+}
+
+void LLFloaterDirector::onAnimPlayLocal(bool play)
+{
+    const LLUUID anim = selectedAnimId();
+    LLVOAvatar* av = LLDirectorCast::instance().resolve(firstSelectedCastId());
+    if (anim.isNull() || !av)
+    {
+        return;
+    }
+    // client-side only: nothing is sent to the sim
+    play ? (void)av->startMotion(anim) : (void)av->stopMotion(anim);
+}
+
+void LLFloaterDirector::onPastePlayLocal(bool play)
+{
+    const LLUUID anim = pasteAnimId();
+    LLVOAvatar* av = LLDirectorCast::instance().resolve(firstSelectedCastId());
+    if (anim.isNull() || !av)
+    {
+        return;
+    }
+    play ? (void)av->startMotion(anim) : (void)av->stopMotion(anim);
+}
+
+void LLFloaterDirector::onPasteSetLoco()
+{
+    const LLUUID anim = pasteAnimId();
+    LLDirectorCast::CastMember* m =
+        LLDirectorCast::instance().getMember(firstSelectedCastId());
+    if (anim.notNull() && m)
+    {
+        m->mLocoAnim = anim;
+    }
+}
+
+void LLFloaterDirector::onClickClearLoco()
+{
+    if (LLDirectorCast::CastMember* m =
+            LLDirectorCast::instance().getMember(firstSelectedCastId()))
+    {
+        m->mLocoAnim.setNull();
+    }
+}
+
+void LLFloaterDirector::refreshAnimateTab()
+{
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    const LLUUID sel = firstSelectedCastId();
+    LLVOAvatar* av = sel.notNull() ? cast.resolve(sel) : nullptr;
+    const std::string member_name = sel.notNull() ? castMemberName(sel)
+                                                  : std::string();
+
+    // header: who the tab is showing
+    mAnimateHeader->setText(sel.isNull()
+        ? std::string("No cast member selected")
+        : av ? member_name
+             : member_name + " (away)");
+
+    // snapshot the signaled set (std::map iteration = stable id order)
+    std::vector<std::pair<LLUUID, S32>> snap;
+    if (av)
+    {
+        snap.assign(av->mSignaledAnimations.begin(), av->mSignaledAnimations.end());
+    }
+
+    // membership change -> rebuild rows (rare); otherwise only re-set cells
+    if (sel != mAnimAvatarId || snap != mAnimSnapshot)
+    {
+        const LLUUID prev_sel = selectedAnimId();
+        mAnimAvatarId = sel;
+        mAnimSnapshot = snap;
+        mAnimList->deleteAllItems();
+        mAnimRowStates.clear();
+        mAnimRowStates.resize(snap.size());
+        for (const auto& entry : snap)
+        {
+            const LLUUID& anim_id = entry.first;
+            LLSD row;
+            row["value"] = anim_id;
+            row["columns"][0]["column"] = "anim_id";
+            row["columns"][0]["value"] = anim_id.asString();
+            row["columns"][0]["font"] = "Monospace";
+            row["columns"][1]["column"] = "prio";
+            row["columns"][1]["value"] = "?";
+            row["columns"][2]["column"] = "playing";
+            row["columns"][2]["value"] = "";
+            mAnimList->addElement(row, ADD_BOTTOM);
+        }
+        if (prev_sel.notNull())
+        {
+            mAnimList->selectByID(prev_sel);
+        }
+    }
+
+    // per-row priority / playing marker, diffed (draw()-rate friendly)
+    if (av)
+    {
+        const S32 prio_col = mAnimList->getColumn("prio")->mIndex;
+        const S32 playing_col = mAnimList->getColumn("playing")->mIndex;
+        std::vector<LLScrollListItem*> items = mAnimList->getAllData();
+        for (size_t i = 0; i < items.size() && i < mAnimRowStates.size(); ++i)
+        {
+            LLScrollListItem* item = items[i];
+            AnimRowState& state = mAnimRowStates[i];
+            const LLUUID anim_id = item->getValue().asUUID();
+
+            // priority when resolvable via findMotion (AnimationExplorer idiom)
+            std::string prio = "?";
+            if (auto* motion = dynamic_cast<LLKeyframeMotion*>(av->findMotion(anim_id)))
+            {
+                prio = llformat("%d", (S32)motion->getPriority());
+            }
+            const std::string playing =
+                av->mPlayingAnimations.find(anim_id) != av->mPlayingAnimations.end()
+                    ? GLYPH_PLAYING : "";
+
+            if (state.mPrio != prio)
+            {
+                if (auto* cell = dynamic_cast<LLScrollListText*>(item->getColumn(prio_col)))
+                {
+                    cell->setText(prio);
+                }
+                state.mPrio = prio;
+            }
+            if (state.mPlaying != playing)
+            {
+                if (auto* cell = dynamic_cast<LLScrollListText*>(item->getColumn(playing_col)))
+                {
+                    cell->setText(playing);
+                }
+                state.mPlaying = playing;
+            }
+        }
+    }
+
+    // empty-state hint over the list
+    std::string hint;
+    if (sel.isNull())
+    {
+        hint = "Select a cast member to see the animations playing on them";
+    }
+    else if (!av)
+    {
+        hint = member_name + " is not in world right now";
+    }
+    else if (snap.empty())
+    {
+        hint = "No signaled animations on " + member_name;
+    }
+    mAnimHint->setVisible(!hint.empty());
+    if (!hint.empty())
+    {
+        mAnimHint->setText(hint);
+    }
+
+    // row-action buttons (reason-tooltips when disabled, usability rule 1)
+    const bool have_row = mAnimList->getFirstSelected() != nullptr;
+    const std::string no_row_tip = "Select an animation row first";
+
+    mAnimCopyBtn->setEnabled(have_row);
+    setToolTipIfChanged(mAnimCopyBtn, have_row
+        ? std::string("Copy the animation asset UUID to the clipboard")
+        : no_row_tip);
+    mAnimSetLocoBtn->setEnabled(have_row && sel.notNull());
+    setToolTipIfChanged(mAnimSetLocoBtn, !have_row ? no_row_tip
+        : sel.isNull() ? std::string("Select a cast member first")
+        : "Use this animation as " + member_name
+          + "'s walk while the mover drives them (overrides the shared custom anim)");
+    const std::string not_in_world_tip = sel.isNull()
+        ? std::string("Select a cast member first")
+        : member_name + " is not in world";
+    mAnimPlayBtn->setEnabled(have_row && av);
+    setToolTipIfChanged(mAnimPlayBtn, !have_row ? no_row_tip
+        : !av ? not_in_world_tip
+        : "Play this animation on " + member_name + " now (client-side only)");
+    mAnimStopBtn->setEnabled(have_row && av);
+    setToolTipIfChanged(mAnimStopBtn, !have_row ? no_row_tip
+        : !av ? not_in_world_tip
+        : "Stop this animation on " + member_name + " (client-side only)");
+
+    // paste row
+    const LLUUID pasted = pasteAnimId();
+    std::string paste_text = mPasteEditor->getText();
+    LLStringUtil::trim(paste_text);
+    const std::string bad_uuid_tip = paste_text.empty()
+        ? std::string("Enter an animation asset UUID first")
+        : std::string("That is not a valid UUID");
+    mPastePlayBtn->setEnabled(pasted.notNull() && av);
+    setToolTipIfChanged(mPastePlayBtn, pasted.isNull() ? bad_uuid_tip
+        : !av ? not_in_world_tip
+        : "Play the pasted animation on " + member_name + " now (client-side only)");
+    mPasteStopBtn->setEnabled(pasted.notNull() && av);
+    setToolTipIfChanged(mPasteStopBtn, pasted.isNull() ? bad_uuid_tip
+        : !av ? not_in_world_tip
+        : "Stop the pasted animation on " + member_name + " (client-side only)");
+    mPasteSetLocoBtn->setEnabled(pasted.notNull() && sel.notNull());
+    setToolTipIfChanged(mPasteSetLocoBtn, pasted.isNull() ? bad_uuid_tip
+        : sel.isNull() ? std::string("Select a cast member first")
+        : "Use the pasted animation as " + member_name + "'s walk while the mover drives them");
+
+    // loco-anim affordance: current override + Clear
+    const LLDirectorCast::CastMember* m = cast.getMember(sel);
+    std::string loco = "Loco anim: \xE2\x80\x94";
+    if (m)
+    {
+        loco = m->mLocoAnim.notNull() ? "Loco anim: " + m->mLocoAnim.asString()
+                                      : std::string("Loco anim: default walk");
+    }
+    if (mLocoText->getText() != loco)
+    {
+        mLocoText->setText(loco);
+    }
+    const bool have_loco = m && m->mLocoAnim.notNull();
+    mClearLocoBtn->setEnabled(have_loco);
+    setToolTipIfChanged(mClearLocoBtn, !m
+        ? std::string("Select a cast member first")
+        : have_loco ? member_name + " returns to the default walk (or the shared custom anim when enabled)"
+                    : std::string("No loco anim override set"));
 }
 
 // ---------------------------------------------------------------------------

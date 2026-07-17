@@ -37,6 +37,14 @@ public:
     // and pick up presets saved from another instance
     void onVisibilityChange(bool new_visibility) override;
 
+    // ---- for the Director Console's scene files ----
+    // name of the preset currently selected in this panel's combo (empty
+    // when none is selected)
+    std::string getSelectedPresetName() const;
+    // apply a preset through the exact path the combo uses and reflect it
+    // in the combo selection; false (no-op) when no such preset exists
+    bool applyPresetByName(const std::string& name);
+
 private:
     // One entry per CinematicCamMode value: the params panel that exposes it
     // and every CinematicCam* setting that mode's pattern function reads

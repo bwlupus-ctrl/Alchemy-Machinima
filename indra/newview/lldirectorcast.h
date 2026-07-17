@@ -32,6 +32,7 @@
 #ifndef LL_LLDIRECTORCAST_H
 #define LL_LLDIRECTORCAST_H
 
+#include "llsd.h"
 #include "lluuid.h"
 #include "v3math.h"
 
@@ -91,6 +92,16 @@ public:
     // placement hold; an active move is stopped first).
     void setMarks();
     void resetToMarks();
+
+    // ---- scene serialization (UI-free; the Director Console owns the
+    //      files and everything settings-backed) ----
+    // sceneData() captures cast membership, cached names, marks, loco anims
+    // and Subjects A/B as one LLSD map. applySceneData() replaces the cast
+    // wholesale from such a map; members not currently in world stay in the
+    // cast (they render "(away)" and revive on return). Nothing is moved:
+    // marks come back as data only.
+    LLSD sceneData() const;
+    void applySceneData(const LLSD& data);
 
     // ---- ACTION / CUT transport ----
     // action() fires everything armed by the DirectorArm* settings, after

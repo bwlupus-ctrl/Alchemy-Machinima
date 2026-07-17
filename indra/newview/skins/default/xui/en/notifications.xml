@@ -13597,6 +13597,19 @@ Please note that &quot;Shared Environment&quot; and &quot;Day cycle based&quot; 
 
   <notification
    icon="alertmodal.tga"
+   name="DirectorConfirmDeleteScene"
+   type="alertmodal">
+    <unique/>
+    Delete the scene &quot;[NAME]&quot;?
+    <tag>confirm</tag>
+    <usetemplate
+     name="okcancelbuttons"
+     notext="Cancel"
+     yestext="Delete"/>
+  </notification>
+
+  <notification
+   icon="alertmodal.tga"
    name="CinematicCamConfirmResetAll"
    type="alertmodal">
     <unique/>

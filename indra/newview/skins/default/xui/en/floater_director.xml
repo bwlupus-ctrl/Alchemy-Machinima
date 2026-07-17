@@ -56,56 +56,65 @@
      top="26"
      name="delay_spinner"
      tool_tip="Countdown before ACTION fires (s), so a solo operator can get into frame. 0 = immediately"
-     width="112" />
+     width="104" />
     <button
      follows="left|top"
      height="22"
      label="Set marks"
      layout="topleft"
-     left="246"
+     left="236"
      top="24"
      name="btn_set_marks"
-     width="80" />
+     width="76" />
     <button
      follows="left|top"
      height="22"
      label="Reset to marks"
      layout="topleft"
-     left="330"
+     left="316"
      top="24"
      name="btn_reset_marks"
      width="100" />
     <combo_box
-     enabled="false"
      follows="left|top"
      height="22"
      layout="topleft"
-     left="438"
+     left="420"
      top="24"
      name="scene_combo"
-     tool_tip="Scenes arrive in the next update"
-     width="96" />
+     tool_tip="Load a scene: restores cast, marks, loco anims, subjects and parameters"
+     width="118" />
+    <line_editor
+     commit_on_focus_lost="false"
+     follows="left|top"
+     height="22"
+     layout="topleft"
+     left="420"
+     top="24"
+     max_length_chars="64"
+     name="scene_name_editor"
+     tool_tip="Scene name. Enter or Save writes the file; an empty name cancels"
+     visible="false"
+     width="118" />
     <button
-     enabled="false"
      follows="left|top"
      height="22"
      label="Save"
      layout="topleft"
-     left="538"
+     left="542"
      top="24"
      name="btn_scene_save"
-     tool_tip="Scenes arrive in the next update"
+     tool_tip="Save the whole setup as a scene"
      width="44" />
     <button
-     enabled="false"
      follows="left|top"
      height="22"
      label="X"
      layout="topleft"
-     left="586"
+     left="590"
      top="24"
      name="btn_scene_delete"
-     tool_tip="Scenes arrive in the next update"
+     tool_tip="Delete the selected scene file (asks to confirm)"
      width="22" />
 
     <!-- ============ arming row ============ -->
@@ -523,7 +532,7 @@
              width="110" />
         </panel>
 
-        <!-- ============ Animate tab (D3 placeholder) ============ -->
+        <!-- ============ Animate tab ============ -->
         <panel
          follows="all"
          background_visible="false"
@@ -539,34 +548,165 @@
              height="16"
              layout="topleft"
              left="10"
-             top="10"
+             top="8"
              name="animate_header"
              use_ellipses="true"
-             width="350">
+             width="354">
                 No cast member selected
             </text>
-            <button
-             follows="left|top"
-             height="22"
-             label="Open Animation Explorer"
+            <scroll_list
+             column_padding="0"
+             draw_heading="true"
+             follows="left|top|right|bottom"
+             height="148"
              layout="topleft"
              left="10"
-             top="34"
-             name="btn_open_animexp"
-             tool_tip="Browse animations playing around you, copy UUIDs, and hand one to the Actor Mover"
-             width="180" />
+             top="28"
+             name="anim_list"
+             tool_tip="Animations currently signaled on the selected cast member. Right-click a row for actions"
+             width="354">
+                <columns
+                 label="Animation UUID"
+                 name="anim_id"
+                 width="242" />
+                <columns
+                 label="Pri"
+                 name="prio"
+                 tool_tip="Animation priority when the motion is resolvable; ? otherwise"
+                 width="30" />
+                <columns
+                 label="On"
+                 name="playing"
+                 tool_tip="Marker: the animation is actually playing right now"
+                 width="28" />
+            </scroll_list>
             <text
              follows="left|top"
              height="40"
              layout="topleft"
-             left="10"
-             top="66"
-             name="animate_placeholder"
+             left="20"
+             top="64"
+             mouse_opaque="false"
+             name="anim_hint"
              text_color="LtGray_50"
              word_wrap="true"
-             width="350">
-                Live animation tools arrive in the next update.
+             width="330">
+                Select a cast member to see the animations playing on them
             </text>
+            <button
+             follows="left|bottom"
+             height="20"
+             label="Copy UUID"
+             layout="topleft"
+             left="10"
+             top="182"
+             name="btn_anim_copy"
+             width="78" />
+            <button
+             follows="left|bottom"
+             height="20"
+             label="Set as loco"
+             layout="topleft"
+             left="92"
+             top="182"
+             name="btn_anim_setloco"
+             width="88" />
+            <button
+             follows="left|bottom"
+             height="20"
+             label="Play local"
+             layout="topleft"
+             left="184"
+             top="182"
+             name="btn_anim_play"
+             width="82" />
+            <button
+             follows="left|bottom"
+             height="20"
+             label="Stop local"
+             layout="topleft"
+             left="270"
+             top="182"
+             name="btn_anim_stop"
+             width="82" />
+            <text
+             follows="left|bottom"
+             height="14"
+             layout="topleft"
+             left="10"
+             top="208"
+             name="paste_lbl"
+             width="354">
+                Play any animation on the selected member (client-side only):
+            </text>
+            <line_editor
+             follows="left|right|bottom"
+             height="20"
+             layout="topleft"
+             left="10"
+             top="224"
+             max_length_chars="36"
+             name="paste_uuid_editor"
+             tool_tip="Animation asset UUID. Paste one from the Animation Explorer or your inventory"
+             width="354" />
+            <button
+             follows="left|bottom"
+             height="20"
+             label="Play local"
+             layout="topleft"
+             left="10"
+             top="248"
+             name="btn_paste_play"
+             width="82" />
+            <button
+             follows="left|bottom"
+             height="20"
+             label="Stop local"
+             layout="topleft"
+             left="96"
+             top="248"
+             name="btn_paste_stop"
+             width="82" />
+            <button
+             follows="left|bottom"
+             height="20"
+             label="Set as loco"
+             layout="topleft"
+             left="182"
+             top="248"
+             name="btn_paste_setloco"
+             width="88" />
+            <text
+             follows="left|bottom"
+             height="14"
+             layout="topleft"
+             left="10"
+             top="278"
+             name="loco_text"
+             tool_tip="The selected member's locomotion override: the animation the mover plays while walking them"
+             use_ellipses="true"
+             width="272">
+                Loco anim: &#8212;
+            </text>
+            <button
+             follows="left|bottom"
+             height="20"
+             label="Clear"
+             layout="topleft"
+             left="288"
+             top="274"
+             name="btn_clear_loco"
+             width="66" />
+            <button
+             follows="left|bottom"
+             height="22"
+             label="Open Animation Explorer"
+             layout="topleft"
+             left="10"
+             top="302"
+             name="btn_open_animexp"
+             tool_tip="Browse animations playing around you, copy UUIDs, and hand one to the Actor Mover"
+             width="180" />
         </panel>
 
         <!-- ============ Camera tab ============ -->

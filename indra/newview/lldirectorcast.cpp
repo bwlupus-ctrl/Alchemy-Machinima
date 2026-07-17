@@ -13,6 +13,7 @@
 
 #include "llactormover.h"           // startAll/stopAll/placeAt (ACTION, marks)
 #include "lleventtimer.h"           // one-shot countdown timer
+#include "llsdutil_math.h"          // ll_sd_from_vector3 (scene marks)
 #include "llflycamrecorder.h"       // armed recorder playback/capture
 #include "llviewercontrol.h"        // gSavedSettings, LLCachedControl
 #include "llviewerobjectlist.h"     // gObjectList
@@ -165,6 +166,79 @@ void LLDirectorCast::resetToMarks()
             // walk/stop (nothing is sent to the sim)
             LLActorMover::instance().placeAt(m.mId, m.mMark);
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// scene serialization
+// ---------------------------------------------------------------------------
+LLSD LLDirectorCast::sceneData() const
+{
+    LLSD data = LLSD::emptyMap();
+    LLSD cast_arr = LLSD::emptyArray();
+    for (const CastMember& m : mCast)
+    {
+        LLSD e = LLSD::emptyMap();
+        e["id"] = m.mId;
+        e["name"] = m.mLastName;
+        e["has_mark"] = m.mHasMark;
+        if (m.mHasMark)
+        {
+            e["mark"] = ll_sd_from_vector3(m.mMark);
+        }
+        e["loco_anim"] = m.mLocoAnim;
+        cast_arr.append(e);
+    }
+    data["cast"] = cast_arr;
+    data["subject_a"] = mSubjectA;
+    data["subject_b"] = mSubjectB;
+    return data;
+}
+
+void LLDirectorCast::applySceneData(const LLSD& data)
+{
+    // replace membership wholesale; a running transport is the caller's
+    // problem (the console cuts before loading)
+    mCast.clear();
+    mIds.clear();
+    mSubjectA.setNull();
+    mSubjectB.setNull();
+
+    const LLSD& cast_arr = data["cast"];
+    for (LLSD::array_const_iterator it = cast_arr.beginArray();
+         it != cast_arr.endArray(); ++it)
+    {
+        const LLSD& e = *it;
+        CastMember m;
+        m.mId = e["id"].asUUID();
+        if (m.mId.isNull() || contains(m.mId))
+        {
+            continue;
+        }
+        m.mLastName = e["name"].asString();
+        m.mHasMark = e["has_mark"].asBoolean();
+        if (m.mHasMark && e.has("mark"))
+        {
+            m.mMark = ll_vector3_from_sd(e["mark"]);
+        }
+        m.mLocoAnim = e["loco_anim"].asUUID();
+        mCast.push_back(m);
+        mIds.push_back(m.mId);
+        // refresh the cached name when the actor is in world; a resolve
+        // failure just leaves the member "(away)" -- never dropped
+        resolve(m.mId);
+    }
+
+    // subjects only survive when they point into the loaded cast
+    const LLUUID a = data["subject_a"].asUUID();
+    const LLUUID b = data["subject_b"].asUUID();
+    if (contains(a))
+    {
+        mSubjectA = a;
+    }
+    if (contains(b))
+    {
+        mSubjectB = b;
     }
 }
 
