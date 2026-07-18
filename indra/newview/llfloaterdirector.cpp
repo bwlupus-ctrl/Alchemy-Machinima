@@ -42,7 +42,6 @@
 #include "llscrolllistctrl.h"
 #include "llsdserialize.h"          // scene LLSD XML files
 #include "llselectmgr.h"
-#include "llsliderctrl.h"
 #include "lltabcontainer.h"
 #include "lltextbox.h"
 #include "lltoolmgr.h"              // MASK_ORBIT / MASK_PAN (preview hover)
@@ -51,7 +50,6 @@
 #include "lluri.h"                  // LLURI::escape scene filenames
 #include "llviewercontrol.h"        // gSavedSettings, LLCachedControl
 #include "llviewermenu.h"           // gMenuHolder, LLViewerMenuHolderGL
-#include "llviewermenufile.h"       // LLFilePickerReplyThread (take save/load)
 #include "llviewerobjectlist.h"     // gObjectList
 #include "llviewerregion.h"         // region name (blacklist)
 #include "llviewerwindow.h"         // gViewerWindow (preview cursor)
@@ -80,26 +78,6 @@ constexpr char SCENE_SUBDIR[]  = "director_scenes";
 constexpr S32  SCENE_VERSION   = 1;
 // playing-marker glyph for the Animate tab's list
 constexpr char GLYPH_PLAYING[] = "\xE2\x96\xB6";    // BLACK RIGHT-POINTING TRIANGLE
-
-// take file I/O: route through the recorder singleton so a console close
-// while the picker is up can't dangle (mirrors llfloaterflycamrecorder.cpp)
-void takePickerSave(const std::vector<std::string>& filenames,
-                    LLFilePicker::ELoadFilter, LLFilePicker::ESaveFilter)
-{
-    if (!filenames.empty())
-    {
-        LLFlycamRecorder::instance().saveToFile(filenames[0]);
-    }
-}
-
-void takePickerLoad(const std::vector<std::string>& filenames,
-                    LLFilePicker::ELoadFilter, LLFilePicker::ESaveFilter)
-{
-    if (!filenames.empty())
-    {
-        LLFlycamRecorder::instance().loadFromFile(filenames[0]);
-    }
-}
 
 // CinematicCamMode value -> display name (matches the mode combo labels)
 const char* cinecam_mode_name(S32 mode)
@@ -302,22 +280,10 @@ bool LLFloaterDirector::postBuild()
     mCineCamPanel = findChild<ALPanelCineCamParams>("cinecam_params_embedded");
 
     // ---- Takes tab ----
-    mTakeRecordBtn = getChild<LLButton>("btn_take_record");
-    mTakePlayBtn = getChild<LLButton>("btn_take_play");
-    mTakeStopBtn = getChild<LLButton>("btn_take_stop");
-    mTakeClearBtn = getChild<LLButton>("btn_take_clear");
-    mTakeSaveBtn = getChild<LLButton>("btn_take_save");
-    mTakeLoadBtn = getChild<LLButton>("btn_take_load");
-    mTakeScrub = getChild<LLSliderCtrl>("take_scrub");
-    mTakeTimeText = getChild<LLTextBox>("take_time_text");
-    mTakeStatusText = getChild<LLTextBox>("take_status_text");
-    mTakeRecordBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onTakeRecord(); });
-    mTakePlayBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onTakePlayPause(); });
-    mTakeStopBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onTakeStop(); });
-    mTakeClearBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onTakeClear(); });
-    mTakeSaveBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onTakeSave(); });
-    mTakeLoadBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onTakeLoad(); });
-    mTakeScrub->setCommitCallback([this](LLUICtrl*, const LLSD&) { onTakeScrub(); });
+    // the transport + controls are the shared ALPanelFlycamRecorder embedded in
+    // the Takes tab (panel_flycam_recorder.xml); it owns its own wiring and
+    // self-refreshes, so there is nothing to hook up here. Same panel the
+    // standalone Flycam Recorder floater uses -> one singleton, no fork.
 
     // ---- status strip ----
     mStatusStrip = getChild<LLTextBox>("status_strip");
@@ -379,7 +345,6 @@ void LLFloaterDirector::draw()
     refreshAnimateTab();
     refreshAnimPreview();
     refreshCameraTab();
-    refreshTakesTab();
     refreshStatusStrip();
     LLFloater::draw();
 
@@ -1821,115 +1786,6 @@ void LLFloaterDirector::refreshCameraTab()
     setToolTipIfChanged(mClearBBtn, b.notNull()
         ? std::string("Clear Subject B; Two-Shot/OTS fall back to you + target")
         : std::string("Subject B is not set"));
-}
-
-// ---------------------------------------------------------------------------
-// Takes tab (mirrors llfloaterflycamrecorder.cpp against the same API)
-// ---------------------------------------------------------------------------
-void LLFloaterDirector::onTakeRecord()
-{
-    LLFlycamRecorder& rec = LLFlycamRecorder::instance();
-    if (rec.getState() == LLFlycamRecorder::STATE_RECORDING)
-    {
-        rec.stopRecording();
-    }
-    else
-    {
-        rec.startRecording();
-    }
-}
-
-void LLFloaterDirector::onTakePlayPause()
-{
-    LLFlycamRecorder::instance().togglePlayback();
-}
-
-void LLFloaterDirector::onTakeStop()
-{
-    LLFlycamRecorder& rec = LLFlycamRecorder::instance();
-    if (rec.getState() == LLFlycamRecorder::STATE_RECORDING)
-    {
-        rec.stopRecording();
-    }
-    else
-    {
-        rec.stopPlayback();
-    }
-}
-
-void LLFloaterDirector::onTakeClear()
-{
-    LLFlycamRecorder::instance().clear();
-}
-
-void LLFloaterDirector::onTakeSave()
-{
-    // callbacks route through the recorder singleton, so an early console
-    // close while the picker is up can't dangle
-    LLFilePickerReplyThread::startPicker(&takePickerSave, LLFilePicker::FFSAVE_XML,
-                                         "flycam_take.xml");
-}
-
-void LLFloaterDirector::onTakeLoad()
-{
-    LLFilePickerReplyThread::startPicker(&takePickerLoad, LLFilePicker::FFLOAD_XML, false);
-}
-
-void LLFloaterDirector::onTakeScrub()
-{
-    // commit only fires on user interaction (refresh's setValue doesn't),
-    // so this is always a deliberate scrub; from idle it previews the pose
-    LLFlycamRecorder::instance().seek(mTakeScrub->getValueF32());
-}
-
-void LLFloaterDirector::refreshTakesTab()
-{
-    LLFlycamRecorder& rec = LLFlycamRecorder::instance();
-    const LLFlycamRecorder::EState state = rec.getState();
-    const F32 duration = rec.getDuration();
-    const bool recording = (state == LLFlycamRecorder::STATE_RECORDING);
-    const bool have_take = rec.getNumKeyframes() > 0;
-
-    mTakeRecordBtn->setLabel(recording ? LLStringExplicit("Stop rec")
-                                       : LLStringExplicit("Record"));
-    mTakePlayBtn->setLabel(state == LLFlycamRecorder::STATE_PLAYING
-                               ? LLStringExplicit("Pause")
-                               : LLStringExplicit("Play"));
-    mTakePlayBtn->setEnabled(have_take && !recording);
-    setToolTipIfChanged(mTakePlayBtn,
-        !have_take ? std::string("Record or load a take first")
-        : recording ? std::string("Stop recording first")
-                    : std::string("Play or pause the recorded take (takes over the camera)"));
-    mTakeScrub->setEnabled(have_take && !recording);
-    setToolTipIfChanged(mTakeScrub,
-        !have_take ? std::string("Record or load a take first")
-        : recording ? std::string("Stop recording first")
-                    : std::string("Scrub through the take (s). Dragging while stopped previews that moment"));
-
-    mTakeScrub->setMaxValue(llmax(duration, 0.01f));
-    mTakeScrub->setValue(rec.getPlayhead());
-
-    const F32 shown = recording ? duration : rec.getPlayhead();
-    mTakeTimeText->setText(llformat("%.1f / %.1f s   %d keys",
-                                    shown, duration, rec.getNumKeyframes()));
-    mTakeStatusText->setText(rec.getStatus());
-
-    // Clear / Save need a take; Load is always available (same singleton the
-    // standalone Flycam Recorder floater drives)
-    mTakeClearBtn->setEnabled(have_take && !recording);
-    setToolTipIfChanged(mTakeClearBtn,
-        !have_take ? std::string("No take to clear")
-        : recording ? std::string("Stop recording first")
-                    : std::string("Discard the current take"));
-    mTakeSaveBtn->setEnabled(have_take && !recording);
-    setToolTipIfChanged(mTakeSaveBtn,
-        !have_take ? std::string("Record or load a take first")
-        : recording ? std::string("Stop recording first")
-                    : std::string("Save the take to a hand-editable XML file"));
-    setToolTipIfChanged(mTakeLoadBtn,
-        recording ? std::string("Stop recording first")
-                  : std::string("Load a take from an XML file"));
-    mTakeLoadBtn->setEnabled(!recording);
 }
 
 // ---------------------------------------------------------------------------

@@ -109,7 +109,6 @@
 #include "llfloaterfixedenvironment.h"
 #include "llfloateractormover.h"
 #include "llfloaterdirector.h"
-#include "llfloaterflycamrecorder.h"
 #include "llfloaterfonttest.h"
 #include "llfloaterforgetuser.h"
 #include "llfloatergesture.h"
@@ -518,7 +517,7 @@ void LLViewerFloaterReg::registerFloaters()
     // cinematic_camera is a thin shell around panel_cinecam_params.xml
     // (ALPanelCineCamParams), shared with the Director Console
     LLFloaterReg::add("cinematic_camera", "floater_cinematic_camera.xml", &LLFloaterReg::build<LLFloater>);
-    LLFloaterReg::add("flycam_recorder", "floater_flycam_recorder.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterFlycamRecorder>);
+    LLFloaterReg::add("flycam_recorder", "floater_flycam_recorder.xml", &LLFloaterReg::build<LLFloater>);
     LLFloaterReg::add("flycam_orbit", "floater_flycam_orbit.xml", &LLFloaterReg::build<LLFloater>);
     LLFloaterReg::add("actor_mover", "floater_actor_mover.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterActorMover>);
     LLFloaterReg::add("director", "floater_director.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterDirector>);

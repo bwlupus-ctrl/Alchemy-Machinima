@@ -983,6 +983,10 @@
         </panel>
 
         <!-- ============ Takes tab ============ -->
+        <!-- Transport + controls are the shared ALPanelFlycamRecorder
+             (panel_flycam_recorder.xml), the same panel the standalone Flycam
+             Recorder floater embeds -> identical UI, one LLFlycamRecorder
+             singleton, no hand-copied widgets to drift. -->
         <panel
          follows="all"
          background_visible="false"
@@ -992,252 +996,16 @@
          name="takes_tab"
          top="0"
          width="374">
-            <button
+            <panel
+             class="panel_flycam_recorder"
+             filename="panel_flycam_recorder.xml"
              follows="left|top"
-             height="22"
-             label="Record"
+             height="314"
              layout="topleft"
-             left="10"
-             top="8"
-             name="btn_take_record"
-             tool_tip="Record the live camera (flycam, mouse, or cinematic) into a take"
-             width="76" />
-            <button
-             follows="left|top"
-             height="22"
-             label="Play"
-             layout="topleft"
-             left="92"
-             top="8"
-             name="btn_take_play"
-             width="76" />
-            <button
-             follows="left|top"
-             height="22"
-             label="Stop"
-             layout="topleft"
-             left="174"
-             top="8"
-             name="btn_take_stop"
-             tool_tip="Stop recording or playback and give the camera back"
-             width="76" />
-            <button
-             follows="left|top"
-             height="22"
-             label="Clear"
-             layout="topleft"
-             left="256"
-             top="8"
-             name="btn_take_clear"
-             tool_tip="Discard the current take"
-             width="76" />
-            <slider
-             decimal_digits="1"
-             follows="left|top"
-             height="16"
-             increment="0.1"
-             initial_value="0"
-             label="Time (s)"
-             label_width="52"
-             layout="topleft"
-             left="10"
-             max_val="1"
-             min_val="0"
-             top="40"
-             name="take_scrub"
-             width="354" />
-            <text
-             follows="left|top"
-             height="14"
-             layout="topleft"
-             left="10"
-             top="60"
-             name="take_time_text"
-             width="354">
-                0.0 / 0.0 s   0 keys
-            </text>
-            <text
-             follows="left|top"
-             height="14"
-             layout="topleft"
-             left="10"
-             top="76"
-             name="take_status_text"
-             text_color="EmphasisColor"
-             width="354">
-            </text>
-            <text
-             follows="left|top"
-             font="SansSerifBold"
-             height="14"
-             layout="topleft"
-             left="10"
-             top="98"
-             name="playback_lbl"
-             width="200">
-                Playback
-            </text>
-            <text
-             follows="left|top"
-             height="14"
-             layout="topleft"
-             left="10"
-             top="116"
-             name="take_speed_lbl"
-             width="70">
-                Speed (x)
-            </text>
-            <slider
-             control_name="FlycamRecSpeed"
-             decimal_digits="2"
-             follows="left|top"
-             height="16"
-             increment="0.05"
-             initial_value="1"
-             layout="topleft"
-             left="84"
-             max_val="5"
-             min_val="0.05"
-             show_text="false"
-             top="114"
-             name="take_speed_slider"
-             tool_tip="Playback speed multiplier: 0.5 = slow motion, 2 = double time"
-             width="180" />
-            <spinner
-             control_name="FlycamRecSpeed"
-             decimal_digits="2"
-             follows="left|top"
-             height="16"
-             increment="0.05"
-             label=""
-             label_width="0"
-             layout="topleft"
-             left="270"
-             max_val="5"
-             min_val="0.05"
-             top="114"
-             name="take_speed_spinner"
-             tool_tip="Playback speed multiplier"
-             width="64" />
-            <combo_box
-             control_name="FlycamRecLoopMode"
-             follows="left|top"
-             height="20"
-             layout="topleft"
-             left="10"
-             top="140"
-             name="take_loop_combo"
-             tool_tip="What happens when playback reaches the end of the take"
-             width="140">
-                <combo_box.item label="Hold last frame" name="loop_hold" value="0" />
-                <combo_box.item label="Loop" name="loop_repeat" value="1" />
-                <combo_box.item label="Ping-pong" name="loop_pingpong" value="2" />
-            </combo_box>
-            <check_box
-             control_name="FlycamRecSmooth"
-             follows="left|top"
-             height="16"
-             label="Smooth splines"
-             layout="topleft"
-             left="158"
-             top="142"
-             name="take_smooth_check"
-             tool_tip="Catmull-Rom / squad interpolation between keyframes. Uncheck for straight linear segments"
-             width="130" />
-            <combo_box
-             control_name="FlycamRecAnchorMode"
-             follows="left|top"
-             height="20"
-             layout="topleft"
-             left="10"
-             top="166"
-             name="take_anchor_combo"
-             tool_tip="Where the path plays: at its recorded world position, or re-anchored to a subject. Anchored modes map the path's offsets from the recording avatar onto the new anchor"
-             width="180">
-                <combo_box.item label="World (as recorded)" name="anchor_world" value="0" />
-                <combo_box.item label="My avatar" name="anchor_self" value="1" />
-                <combo_box.item label="Selected object/avatar" name="anchor_sel" value="2" />
-                <combo_box.item label="Camera at play start" name="anchor_cam" value="3" />
-            </combo_box>
-            <check_box
-             control_name="FlycamRecFollowAnchor"
-             follows="left|top"
-             height="16"
-             label="Follow anchor"
-             layout="topleft"
-             left="198"
-             top="168"
-             name="take_follow_check"
-             tool_tip="Re-anchor every frame so the whole move rides a walking avatar or moving object"
-             width="120" />
-            <check_box
-             control_name="FlycamRecUseOperator"
-             follows="left|top"
-             height="16"
-             label="Handheld operator layer on playback"
-             layout="topleft"
-             left="10"
-             top="192"
-             name="take_operator_check"
-             tool_tip="Route playback through the procedural handheld operator. Record a clean pass with the operator off, then add the texture here"
-             width="300" />
-            <text
-             follows="left|top"
-             font="SansSerifBold"
-             height="14"
-             layout="topleft"
-             left="10"
-             top="218"
-             name="recording_lbl"
-             width="200">
-                Recording
-            </text>
-            <slider
-             control_name="FlycamRecSampleRate"
-             decimal_digits="0"
-             follows="left|top"
-             height="16"
-             increment="1"
-             initial_value="30"
-             label="Sample rate (Hz)"
-             label_width="110"
-             layout="topleft"
-             left="10"
-             max_val="120"
-             min_val="1"
-             top="236"
-             name="take_sample_rate"
-             tool_tip="Keyframes captured per second. 30 is plenty with smoothing on; lower makes smaller, easier-to-hand-edit files"
-             width="354" />
-            <text
-             follows="left|top"
-             font="SansSerifBold"
-             height="14"
-             layout="topleft"
-             left="10"
-             top="260"
-             name="file_lbl"
-             width="200">
-                Take file (XML)
-            </text>
-            <button
-             follows="left|top"
-             height="22"
-             label="Save..."
-             layout="topleft"
-             left="10"
-             top="278"
-             name="btn_take_save"
-             width="170" />
-            <button
-             follows="left|top"
-             height="22"
-             label="Load..."
-             layout="topleft"
-             left="184"
-             top="278"
-             name="btn_take_load"
-             width="170" />
+             left="8"
+             top="6"
+             name="flycam_recorder_embedded"
+             width="320" />
         </panel>
     </tab_container>
 

@@ -9,9 +9,10 @@
  * Pure view over LLDirectorCast (D1 engine) plus the existing machinima
  * singletons: ACTION/CUT transport with arming + countdown, the persistent
  * cast column, and Move / Path / Animate / Camera / Takes tabs re-homing the
- * Actor Mover, Cinematic Camera (shared ALPanelCineCamParams instance),
- * Flycam Orbit and Flycam Recorder controls. Everything underneath is the
- * same settings/state the standalone floaters use -- no forks.
+ * Actor Mover, Cinematic Camera (shared ALPanelCineCamParams), Flycam Orbit
+ * (shared ALPanelFlycamOrbit) and Flycam Recorder (shared ALPanelFlycamRecorder)
+ * controls. Everything underneath is the same settings/state the standalone
+ * floaters use -- no forks.
  */
 
 #ifndef LL_LLFLOATERDIRECTOR_H
@@ -35,7 +36,6 @@ class LLLineEditor;
 class LLPanel;
 class LLRadioGroup;
 class LLScrollListCtrl;
-class LLSliderCtrl;
 class LLTabContainer;
 class LLTextBox;
 class LLView;
@@ -142,14 +142,8 @@ private:
     void refreshCameraTab();
 
     // ---- Takes tab ----
-    void onTakeRecord();
-    void onTakePlayPause();
-    void onTakeStop();
-    void onTakeClear();
-    void onTakeSave();
-    void onTakeLoad();
-    void onTakeScrub();
-    void refreshTakesTab();
+    // the shared ALPanelFlycamRecorder (panel_flycam_recorder.xml) is embedded
+    // in the Takes tab and owns its own wiring + refresh -- nothing here.
 
     // ---- status strip ----
     void refreshStatusStrip();
@@ -248,16 +242,8 @@ private:
     };
     std::vector<AnimRowState> mAnimRowStates;
 
-    // Takes tab
-    LLButton*     mTakeRecordBtn = nullptr;
-    LLButton*     mTakePlayBtn = nullptr;
-    LLButton*     mTakeStopBtn = nullptr;
-    LLButton*     mTakeClearBtn = nullptr;
-    LLButton*     mTakeSaveBtn = nullptr;
-    LLButton*     mTakeLoadBtn = nullptr;
-    LLSliderCtrl* mTakeScrub = nullptr;
-    LLTextBox*    mTakeTimeText = nullptr;
-    LLTextBox*    mTakeStatusText = nullptr;
+    // Takes tab: the shared ALPanelFlycamRecorder is embedded in the XML and
+    // self-contained -- no widget pointers to hold here.
 
     // status strip
     LLTextBox* mStatusStrip = nullptr;

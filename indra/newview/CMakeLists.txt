@@ -274,9 +274,9 @@ set(viewer_SOURCE_FILES
     lldirectorcast.cpp
     llfloateractormover.cpp
     llfloaterdirector.cpp
-    llfloaterflycamrecorder.cpp
     alpanelcinecamparams.cpp
     alpanelflycamorbit.cpp
+    alpanelflycamrecorder.cpp
     alpanelpatheditor.cpp
     llflycamrecorder.cpp
     llpathcamera.cpp
@@ -1075,9 +1075,9 @@ set(viewer_HEADER_FILES
     lldirectorcast.h
     llfloateractormover.h
     llfloaterdirector.h
-    llfloaterflycamrecorder.h
     alpanelcinecamparams.h
     alpanelflycamorbit.h
+    alpanelflycamrecorder.h
     alpanelpatheditor.h
     llflycamrecorder.h
     llpathcamera.h
