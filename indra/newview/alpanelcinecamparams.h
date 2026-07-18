@@ -10,7 +10,7 @@
  *
  * Extracted from LLFloaterCinematicCamera so the standalone Cinematic
  * Camera floater and the Director Console can embed the SAME panel
- * (panel_cinecam_params.xml) instead of duplicating 22 mode panels of
+ * (panel_cinecam_params.xml) instead of duplicating 34 mode panels of
  * XML. Every control is settings-backed (control_name), so multiple
  * live instances stay in sync through gSavedSettings; the panel holds
  * no floater-singleton state.

@@ -124,7 +124,7 @@ bool LLCinematicCamera::isActive() const
 {
     static LLCachedControl<bool> enabled(gSavedSettings, "CinematicCamEnabled", false);
     static LLCachedControl<S32>  mode(gSavedSettings, "CinematicCamMode", 1);
-    if (!enabled || (S32)mode <= MODE_OFF || (S32)mode > MODE_PEDESTAL)
+    if (!enabled || (S32)mode <= MODE_OFF || (S32)mode > MODE_TILT_WHIP)
     {
         return false;
     }
@@ -333,18 +333,23 @@ F32 cc_avatarYaw(LLVOAvatar* av)
     return atan2f(at.mV[VY], at.mV[VX]);
 }
 
-// eased one-shot / ping-pong / loop progress over a duration
+// raw (linear) one-shot / ping-pong / loop progress over a duration
 // end_mode: 0 = hold at end, 1 = ping-pong, 2 = loop
-F32 cc_progress(F32 phase, F32 duration, S32 end_mode)
+F32 cc_progress_raw(F32 phase, F32 duration, S32 end_mode)
 {
     const F32 d = llmax(duration, 0.1f);
-    F32 u;
     switch (end_mode)
     {
-        case 1: { const F32 c = cc_frac(phase / (2.f * d)) * 2.f; u = (c < 1.f) ? c : 2.f - c; break; }
-        case 2: u = cc_frac(phase / d); break;
-        default: u = llclamp(phase / d, 0.f, 1.f); break;
+        case 1: { const F32 c = cc_frac(phase / (2.f * d)) * 2.f; return (c < 1.f) ? c : 2.f - c; }
+        case 2:  return cc_frac(phase / d);
+        default: return llclamp(phase / d, 0.f, 1.f);
     }
+}
+
+// eased (smoothstep) variant of the above
+F32 cc_progress(F32 phase, F32 duration, S32 end_mode)
+{
+    const F32 u = cc_progress_raw(phase, duration, end_mode);
     return u * u * (3.f - 2.f * u);     // smoothstep ease in/out
 }
 } // anonymous namespace
@@ -677,6 +682,248 @@ LLVector3 LLCinematicCamera::patternOTS(LLVOAvatar* target, LLVector3& focus_io)
 }
 
 // ---------------------------------------------------------------------------
+// acrobatic / dance / closeup / impact patterns
+// ---------------------------------------------------------------------------
+
+// held frontal frame with the camera rolling: continuous spin (RollSpeed) or an
+// eased oscillation (RollAmplitude / RollPeriod). Reads as a dance flourish.
+LLVector3 LLCinematicCamera::patternBarrelRoll(LLVOAvatar* av, const LLVector3& center,
+                                               F32 phase, F32& roll_out)
+{
+    static LLCachedControl<F32> distance(gSavedSettings, "CinematicCamBarrelDistance", 3.f);
+    static LLCachedControl<F32> height(gSavedSettings, "CinematicCamBarrelHeight", 1.f);
+    static LLCachedControl<F32> roll_speed(gSavedSettings, "CinematicCamBarrelRollSpeed", 45.f);   // deg/s
+    static LLCachedControl<F32> roll_amp(gSavedSettings, "CinematicCamBarrelRollAmplitude", 30.f); // deg
+    static LLCachedControl<F32> roll_period(gSavedSettings, "CinematicCamBarrelRollPeriod", 4.f);  // s
+    static LLCachedControl<bool> oscillate(gSavedSettings, "CinematicCamBarrelOscillate", false);
+
+    if (oscillate)
+    {
+        const F32 w = F_TWO_PI / llmax((F32)roll_period, 0.1f);
+        roll_out = (F32)roll_amp * sinf(phase * w) * DEG_TO_RAD;
+    }
+    else
+    {
+        roll_out = (F32)roll_speed * phase * DEG_TO_RAD;
+    }
+
+    const F32 yaw = cc_avatarYaw(av);
+    return center + LLVector3(cosf(yaw) * llmax((F32)distance, 0.3f),
+                             sinf(yaw) * llmax((F32)distance, 0.3f), (F32)height);
+}
+
+// aggressive spiral: orbit whose radius and height lerp start->end across Turns
+// revolutions in Duration, rolling RollPerTurn per revolution. Loop/ping-pong.
+LLVector3 LLCinematicCamera::patternCorkscrew(const LLVector3& center, F32 phase, F32& roll_out)
+{
+    static LLCachedControl<F32> r_start(gSavedSettings, "CinematicCamCorkStartRadius", 5.f);
+    static LLCachedControl<F32> r_end(gSavedSettings, "CinematicCamCorkEndRadius", 1.5f);
+    static LLCachedControl<F32> h_start(gSavedSettings, "CinematicCamCorkStartHeight", 0.3f);
+    static LLCachedControl<F32> h_end(gSavedSettings, "CinematicCamCorkEndHeight", 2.5f);
+    static LLCachedControl<F32> turns(gSavedSettings, "CinematicCamCorkTurns", 2.f);
+    static LLCachedControl<F32> duration(gSavedSettings, "CinematicCamCorkDuration", 8.f);
+    static LLCachedControl<F32> roll_per_turn(gSavedSettings, "CinematicCamCorkRollPerTurn", 90.f); // deg
+    static LLCachedControl<S32> end_mode(gSavedSettings, "CinematicCamCorkEndMode", 2);             // loop
+
+    const F32 u = cc_progress(phase, duration, end_mode);
+    const F32 revs = (F32)turns * u;                    // revolutions completed
+    const F32 a = revs * F_TWO_PI;
+    const F32 r = cc_lerp((F32)r_start, llmax((F32)r_end, 0.3f), u);
+    roll_out = revs * (F32)roll_per_turn * DEG_TO_RAD;
+    return center + LLVector3(cosf(a) * r, sinf(a) * r, cc_lerp((F32)h_start, (F32)h_end, u));
+}
+
+// eases at the extremes, fastest through center: a horizontal swing of half-
+// width SwingAngle about a facing-relative heading, always aimed at the subject
+LLVector3 LLCinematicCamera::patternPendulum(LLVOAvatar* av, const LLVector3& center, F32 phase)
+{
+    static LLCachedControl<F32> radius(gSavedSettings, "CinematicCamPendulumRadius", 3.5f);
+    static LLCachedControl<F32> height(gSavedSettings, "CinematicCamPendulumHeight", 1.2f);
+    static LLCachedControl<F32> swing(gSavedSettings, "CinematicCamPendulumSwing", 45.f);   // deg half-width
+    static LLCachedControl<F32> period(gSavedSettings, "CinematicCamPendulumPeriod", 6.f);  // s
+    static LLCachedControl<F32> heading(gSavedSettings, "CinematicCamPendulumHeading", 0.f);// deg, arc facing
+
+    const F32 w = F_TWO_PI / llmax((F32)period, 0.5f);
+    const F32 ang = (F32)swing * sinf(phase * w);       // eased at the extremes
+    const F32 yaw = cc_avatarYaw(av) + (heading + ang) * DEG_TO_RAD;
+    return center + LLVector3(cosf(yaw) * llmax((F32)radius, 0.3f),
+                             sinf(yaw) * llmax((F32)radius, 0.3f), (F32)height);
+}
+
+// dolly-zoom-while-circling: a steady orbit while the FOV warps between two
+// multipliers, so the perspective breathes as the camera comes around
+LLVector3 LLCinematicCamera::patternContraOrbit(const LLVector3& center, F32 phase, F32& fov_mul)
+{
+    static LLCachedControl<F32> radius(gSavedSettings, "CinematicCamContraRadius", 4.f);
+    static LLCachedControl<F32> height(gSavedSettings, "CinematicCamContraHeight", 1.f);
+    static LLCachedControl<F32> speed(gSavedSettings, "CinematicCamContraSpeed", 25.f);     // deg/s
+    static LLCachedControl<F32> fov_start(gSavedSettings, "CinematicCamContraFovStart", 0.6f);
+    static LLCachedControl<F32> fov_end(gSavedSettings, "CinematicCamContraFovEnd", 1.5f);
+    static LLCachedControl<F32> warp_period(gSavedSettings, "CinematicCamContraWarpPeriod", 8.f); // s
+
+    const F32 a = phase * speed * DEG_TO_RAD;
+    const F32 w = F_TWO_PI / llmax((F32)warp_period, 0.5f);
+    const F32 t = 0.5f + 0.5f * sinf(phase * w);
+    fov_mul = llclamp(cc_lerp((F32)fov_start, (F32)fov_end, t), 0.05f, 4.f);
+    return center + LLVector3(cosf(a) * radius, sinf(a) * radius, (F32)height);
+}
+
+// wide-lens impact: a constant wide FOV while the camera pushes from far to
+// near at the face and recoils over Duration (eased). One-shot / ping-pong.
+LLVector3 LLCinematicCamera::patternFisheyeLunge(LLVOAvatar* av, const LLVector3& focus,
+                                                 F32 phase, F32& fov_mul)
+{
+    static LLCachedControl<F32> near_d(gSavedSettings, "CinematicCamFisheyeNear", 0.6f);
+    static LLCachedControl<F32> far_d(gSavedSettings, "CinematicCamFisheyeFar", 4.f);
+    static LLCachedControl<F32> wide_fov(gSavedSettings, "CinematicCamFisheyeFov", 1.7f);  // >1 = wide
+    static LLCachedControl<F32> duration(gSavedSettings, "CinematicCamFisheyeDuration", 2.5f);
+    static LLCachedControl<F32> height(gSavedSettings, "CinematicCamFisheyeHeight", 0.f);  // rel focus
+    static LLCachedControl<S32> end_mode(gSavedSettings, "CinematicCamFisheyeEndMode", 1); // ping-pong
+
+    fov_mul = llclamp((F32)wide_fov, 0.05f, 4.f);
+    const F32 u = cc_progress(phase, duration, end_mode);
+    const F32 lunge = sinf(F_PI * u);                   // 0 -> 1 -> 0 (near at the middle)
+    const F32 d = llmax(cc_lerp(llmax((F32)far_d, 0.3f), llmax((F32)near_d, 0.2f), lunge), 0.2f);
+    const F32 yaw = cc_avatarYaw(av);
+    return focus + LLVector3(cosf(yaw) * d, sinf(yaw) * d, (F32)height);
+}
+
+// ground-level lateral track (ping-pong) at a very low height, aimed up at the
+// subject so the low angle reads
+LLVector3 LLCinematicCamera::patternFloorSkimmer(LLVOAvatar* av, const LLVector3& center, F32 phase)
+{
+    static LLCachedControl<F32> height(gSavedSettings, "CinematicCamSkimmerHeight", 0.25f);
+    static LLCachedControl<F32> distance(gSavedSettings, "CinematicCamSkimmerDistance", 3.f);
+    static LLCachedControl<F32> length(gSavedSettings, "CinematicCamSkimmerLength", 6.f);
+    static LLCachedControl<F32> speed(gSavedSettings, "CinematicCamSkimmerSpeed", 1.5f);    // m/s
+    static LLCachedControl<F32> heading(gSavedSettings, "CinematicCamSkimmerHeading", 0.f); // deg
+
+    const F32 h = heading * DEG_TO_RAD;
+    const LLVector3 dir(cosf(h), sinf(h), 0.f);
+    const LLVector3 perp(-sinf(h), cosf(h), 0.f);
+
+    const F32 len = llmax((F32)length, 0.1f);
+    const F32 s = phase * llmax((F32)speed, 0.01f) / len;
+    const F32 c = cc_frac(s * 0.5f) * 2.f;              // 0..2
+    const F32 t = (c < 1.f) ? c : 2.f - c;              // triangle 0..1..0 (ping-pong)
+    return center + perp * llmax((F32)distance, 0.3f) + dir * ((t - 0.5f) * len)
+                  + LLVector3(0.f, 0.f, (F32)height);
+}
+
+// one-shot rocket launch: from near the floor, accelerating (ease-in) straight
+// up to EndHeight; the look-at tilts down to keep the subject as it passes
+LLVector3 LLCinematicCamera::patternBoostRise(LLVOAvatar* av, const LLVector3& center, F32 phase)
+{
+    static LLCachedControl<F32> h_start(gSavedSettings, "CinematicCamBoostStartHeight", 0.2f);
+    static LLCachedControl<F32> h_end(gSavedSettings, "CinematicCamBoostEndHeight", 8.f);
+    static LLCachedControl<F32> distance(gSavedSettings, "CinematicCamBoostDistance", 3.f);
+    static LLCachedControl<F32> duration(gSavedSettings, "CinematicCamBoostDuration", 4.f);
+    static LLCachedControl<F32> heading(gSavedSettings, "CinematicCamBoostHeading", 0.f);
+    static LLCachedControl<S32> end_mode(gSavedSettings, "CinematicCamBoostEndMode", 0);    // hold
+
+    const F32 p = cc_progress_raw(phase, duration, end_mode);
+    const F32 e = p * p;                                // accelerate (ease-in)
+    const F32 h = cc_lerp((F32)h_start, (F32)h_end, e);
+    const F32 yaw = cc_avatarYaw(av) + heading * DEG_TO_RAD;
+    return center + LLVector3(cosf(yaw) * llmax((F32)distance, 0.3f),
+                             sinf(yaw) * llmax((F32)distance, 0.3f), h);
+}
+
+// jib over the top: an elliptical vertical arc that lifts from one side, up
+// over the apex above the subject, and down the far side (eased)
+LLVector3 LLCinematicCamera::patternBoomOver(LLVOAvatar* av, const LLVector3& center, F32 phase)
+{
+    static LLCachedControl<F32> radius(gSavedSettings, "CinematicCamBoomRadius", 4.f);      // horizontal
+    static LLCachedControl<F32> apex(gSavedSettings, "CinematicCamBoomApex", 5.f);          // peak height
+    static LLCachedControl<F32> span(gSavedSettings, "CinematicCamBoomSpan", 180.f);        // deg total
+    static LLCachedControl<F32> duration(gSavedSettings, "CinematicCamBoomDuration", 6.f);
+    static LLCachedControl<F32> axis(gSavedSettings, "CinematicCamBoomAxis", 0.f);          // deg heading
+    static LLCachedControl<S32> end_mode(gSavedSettings, "CinematicCamBoomEndMode", 0);     // hold
+
+    const F32 u = cc_progress(phase, duration, end_mode);
+    const F32 half = 0.5f * (F32)span * DEG_TO_RAD;
+    const F32 phi = cc_lerp(-half, half, u);            // -span/2 .. +span/2
+    const F32 ax = axis * DEG_TO_RAD;
+    const LLVector3 dir(cosf(ax), sinf(ax), 0.f);
+    return center + dir * ((F32)radius * sinf(phi)) + LLVector3(0.f, 0.f, (F32)apex * cosf(phi));
+}
+
+// Busby Berkeley: locked directly overhead looking straight down, the frame
+// spinning about the vertical (carried as camera roll). Offset 0 = pure top-down.
+LLVector3 LLCinematicCamera::patternTopSpin(const LLVector3& center, F32 phase, F32& roll_out)
+{
+    static LLCachedControl<F32> height(gSavedSettings, "CinematicCamTopSpinHeight", 5.f);
+    static LLCachedControl<F32> speed(gSavedSettings, "CinematicCamTopSpinSpeed", 30.f);    // deg/s
+    static LLCachedControl<F32> offset(gSavedSettings, "CinematicCamTopSpinOffset", 0.f);   // small radius
+
+    const F32 a = phase * speed * DEG_TO_RAD;
+    roll_out = a;                                       // spin the straight-down view
+    // a tiny lateral epsilon keeps the look-straight-down orientation well
+    // defined even with Offset 0
+    const F32 r = (F32)offset;
+    return center + LLVector3(cosf(a) * r + 0.02f, sinf(a) * r, llmax((F32)height, 0.5f));
+}
+
+// showcase crane: a subject-centered orbit while the height eases between two
+// levels for a full-body reveal
+LLVector3 LLCinematicCamera::patternTurntable(const LLVector3& center, F32 phase)
+{
+    static LLCachedControl<F32> radius(gSavedSettings, "CinematicCamTurntableRadius", 4.f);
+    static LLCachedControl<F32> speed(gSavedSettings, "CinematicCamTurntableSpeed", 15.f);  // deg/s
+    static LLCachedControl<F32> min_h(gSavedSettings, "CinematicCamTurntableMinHeight", 0.5f);
+    static LLCachedControl<F32> max_h(gSavedSettings, "CinematicCamTurntableMaxHeight", 3.f);
+    static LLCachedControl<F32> period(gSavedSettings, "CinematicCamTurntablePeriod", 20.f);// s
+
+    const F32 a = phase * speed * DEG_TO_RAD;
+    const F32 u = 0.5f + 0.5f * sinf(phase * F_TWO_PI / llmax((F32)period, 1.f));
+    return center + LLVector3(cosf(a) * radius, sinf(a) * radius, cc_lerp((F32)min_h, (F32)max_h, u));
+}
+
+// intimate face close-up: a narrow lens, drifting on low-amplitude noise with a
+// slight distance breathing so it never locks off
+LLVector3 LLCinematicCamera::patternFloatingECU(LLVOAvatar* av, const LLVector3& focus,
+                                                F32 phase, F32& fov_mul)
+{
+    static LLCachedControl<F32> distance(gSavedSettings, "CinematicCamFloatDistance", 0.8f);
+    static LLCachedControl<F32> drift(gSavedSettings, "CinematicCamFloatDrift", 0.04f);
+    static LLCachedControl<F32> speed(gSavedSettings, "CinematicCamFloatSpeed", 0.5f);
+    static LLCachedControl<F32> zoom(gSavedSettings, "CinematicCamFloatFov", 0.6f);         // <1 = narrow
+
+    fov_mul = llclamp((F32)zoom, 0.05f, 1.5f);
+    const F32 t = phase * llmax((F32)speed, 0.01f);
+    const F32 d = llmax((F32)distance, 0.25f) * (1.f + 0.08f * sinf(t * 0.7f));   // breathing
+    const F32 yaw = cc_avatarYaw(av);
+    LLVector3 p = focus + LLVector3(cosf(yaw), sinf(yaw), 0.f) * d;
+    p += LLVector3(cc_fbm(t + 3.1f), cc_fbm(t + 13.7f), cc_fbm(t + 29.3f)) * (F32)drift;
+    return p;
+}
+
+// percussive accent: held frontal frame while the aim whips vertically -- a
+// sharp attack each Period settling on an exponential decay, alternating up/down
+LLVector3 LLCinematicCamera::patternTiltWhip(LLVOAvatar* av, const LLVector3& center,
+                                             F32 phase, LLVector3& focus_io)
+{
+    static LLCachedControl<F32> distance(gSavedSettings, "CinematicCamTiltWhipDistance", 3.f);
+    static LLCachedControl<F32> height(gSavedSettings, "CinematicCamTiltWhipHeight", 1.2f);
+    static LLCachedControl<F32> amplitude(gSavedSettings, "CinematicCamTiltWhipAmplitude", 25.f); // deg
+    static LLCachedControl<F32> period(gSavedSettings, "CinematicCamTiltWhipPeriod", 2.f);        // s
+    static LLCachedControl<F32> snap(gSavedSettings, "CinematicCamTiltWhipSnap", 6.f);            // decay
+
+    const F32 per = llmax((F32)period, 0.1f);
+    const F32 idx = floorf(phase / per);
+    const F32 ph = cc_frac(phase / per);                // 0..1 within a whip
+    const F32 sign = (cc_frac(idx * 0.5f) < 0.25f) ? 1.f : -1.f;   // alternate up/down
+    const F32 env = expf(-llmax((F32)snap, 0.f) * ph);  // sharp attack, eased settle
+    const F32 pitch = llclamp((F32)amplitude * DEG_TO_RAD * env * sign, -1.4f, 1.4f);
+
+    const F32 yaw = cc_avatarYaw(av);
+    const F32 d = llmax((F32)distance, 0.3f);
+    // whip the aim by raising/lowering the framing point: tan(pitch) * distance
+    focus_io.mV[VZ] += d * tanf(pitch);
+    return center + LLVector3(cosf(yaw) * d, sinf(yaw) * d, (F32)height);
+}
+
+// ---------------------------------------------------------------------------
 void LLCinematicCamera::updateCamera()
 {
     static LLCachedControl<S32>  mode(gSavedSettings, "CinematicCamMode", 1);
@@ -763,6 +1010,18 @@ void LLCinematicCamera::updateCamera()
         case MODE_LONG_LENS:  pos = patternLongLens(av, focus, mPhase, mode_fov_mul); break;
         case MODE_SPIRAL:     pos = patternSpiral(center, mPhase); break;
         case MODE_PEDESTAL:   pos = patternPedestal(av, center, mPhase, focus); break;
+        case MODE_BARREL_ROLL:  pos = patternBarrelRoll(av, center, mPhase, mode_roll); break;
+        case MODE_CORKSCREW:    pos = patternCorkscrew(center, mPhase, mode_roll); break;
+        case MODE_PENDULUM:     pos = patternPendulum(av, center, mPhase); break;
+        case MODE_CONTRA_ORBIT: pos = patternContraOrbit(center, mPhase, mode_fov_mul); break;
+        case MODE_FISHEYE_LUNGE:pos = patternFisheyeLunge(av, focus, mPhase, mode_fov_mul); break;
+        case MODE_FLOOR_SKIMMER:pos = patternFloorSkimmer(av, center, mPhase); break;
+        case MODE_BOOST_RISE:   pos = patternBoostRise(av, center, mPhase); break;
+        case MODE_BOOM_OVER:    pos = patternBoomOver(av, center, mPhase); break;
+        case MODE_TOP_SPIN:     pos = patternTopSpin(center, mPhase, mode_roll); break;
+        case MODE_TURNTABLE:    pos = patternTurntable(center, mPhase); break;
+        case MODE_FLOATING_ECU: pos = patternFloatingECU(av, focus, mPhase, mode_fov_mul); break;
+        case MODE_TILT_WHIP:    pos = patternTiltWhip(av, center, mPhase, focus); break;
         default:              return;
     }
 

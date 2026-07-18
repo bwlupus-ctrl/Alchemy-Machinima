@@ -61,6 +61,19 @@ public:
         MODE_LONG_LENS  = 20,   // distant compressed telephoto w/ drift (surveillance)
         MODE_SPIRAL     = 21,   // orbit tightening + rising as it turns (euphoria)
         MODE_PEDESTAL   = 22,   // boots-to-face vertical rise, level gaze (introduction)
+        // acrobatic / dance / closeup / impact modes
+        MODE_BARREL_ROLL  = 23, // hold + continuous/oscillating roll (dance energy)
+        MODE_CORKSCREW    = 24, // rising, tightening orbit while rolling (aggressive spiral)
+        MODE_PENDULUM     = 25, // eased horizontal swing arc, always on the subject
+        MODE_CONTRA_ORBIT = 26, // orbit while the FOV warps (dolly-zoom-while-circling)
+        MODE_FISHEYE_LUNGE= 27, // wide-lens push to the face and recoil (impact)
+        MODE_FLOOR_SKIMMER= 28, // ground-level lateral track aimed up (low hero)
+        MODE_BOOST_RISE   = 29, // accelerating vertical launch, tilting to hold frame
+        MODE_BOOM_OVER    = 30, // jib arc up over the subject and down the far side
+        MODE_TOP_SPIN     = 31, // locked straight overhead, spinning (Busby Berkeley)
+        MODE_TURNTABLE    = 32, // subject-centered orbit, height eases (showcase crane)
+        MODE_FLOATING_ECU = 33, // drifting intimate face close-up, narrow lens
+        MODE_TILT_WHIP    = 34, // percussive vertical pitch whips (impact accent)
     };
 
     static LLCinematicCamera& instance();
@@ -115,6 +128,22 @@ private:
     LLVector3 patternLongLens(LLVOAvatar* av, const LLVector3& focus, F32 phase, F32& fov_mul);
     LLVector3 patternSpiral(const LLVector3& center, F32 phase);
     LLVector3 patternPedestal(LLVOAvatar* av, const LLVector3& center, F32 phase, LLVector3& focus_io);
+    // acrobatic / dance / closeup / impact patterns. Some output a roll
+    // (barrel / corkscrew / top-spin), a FOV multiplier (contra-orbit /
+    // fisheye lunge / floating ECU) or drive their own aim through the focus
+    // point (tilt whip).
+    LLVector3 patternBarrelRoll(LLVOAvatar* av, const LLVector3& center, F32 phase, F32& roll_out);
+    LLVector3 patternCorkscrew(const LLVector3& center, F32 phase, F32& roll_out);
+    LLVector3 patternPendulum(LLVOAvatar* av, const LLVector3& center, F32 phase);
+    LLVector3 patternContraOrbit(const LLVector3& center, F32 phase, F32& fov_mul);
+    LLVector3 patternFisheyeLunge(LLVOAvatar* av, const LLVector3& focus, F32 phase, F32& fov_mul);
+    LLVector3 patternFloorSkimmer(LLVOAvatar* av, const LLVector3& center, F32 phase);
+    LLVector3 patternBoostRise(LLVOAvatar* av, const LLVector3& center, F32 phase);
+    LLVector3 patternBoomOver(LLVOAvatar* av, const LLVector3& center, F32 phase);
+    LLVector3 patternTopSpin(const LLVector3& center, F32 phase, F32& roll_out);
+    LLVector3 patternTurntable(const LLVector3& center, F32 phase);
+    LLVector3 patternFloatingECU(LLVOAvatar* av, const LLVector3& focus, F32 phase, F32& fov_mul);
+    LLVector3 patternTiltWhip(LLVOAvatar* av, const LLVector3& center, F32 phase, LLVector3& focus_io);
 
     // ---- state ----
     U32         mLastUpdateFrame = 0;   // fresh-activation detection (phase reset)

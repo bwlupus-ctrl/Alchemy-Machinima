@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <!-- Cinematic Camera parameter panel (ALPanelCineCamParams, class
      "panel_cinecam_params"): shared header row, preset row, resets, and the
-     22 per-mode auto-hiding parameter panels. Embedded by BOTH the
+     34 per-mode auto-hiding parameter panels. Embedded by BOTH the
      standalone Cinematic Camera floater and the Director Console's Camera
      tab; every control is settings-backed so instances stay in sync. -->
 <panel
@@ -57,6 +57,18 @@
         <combo_box.item label="Long Lens" name="cc_long" value="20" />
         <combo_box.item label="Spiral" name="cc_spiral" value="21" />
         <combo_box.item label="Pedestal Rise" name="cc_pedestal" value="22" />
+        <combo_box.item label="Barrel Roll" name="cc_barrel" value="23" />
+        <combo_box.item label="Corkscrew" name="cc_cork" value="24" />
+        <combo_box.item label="Pendulum" name="cc_pendulum" value="25" />
+        <combo_box.item label="Contra-Orbit" name="cc_contra" value="26" />
+        <combo_box.item label="Fisheye Lunge" name="cc_fisheye" value="27" />
+        <combo_box.item label="Floor Skimmer" name="cc_skimmer" value="28" />
+        <combo_box.item label="Boost Rise" name="cc_boost" value="29" />
+        <combo_box.item label="Boom Over" name="cc_boom" value="30" />
+        <combo_box.item label="Top Spin" name="cc_topspin" value="31" />
+        <combo_box.item label="Turntable Crane" name="cc_turntable" value="32" />
+        <combo_box.item label="Floating Close-Up" name="cc_float" value="33" />
+        <combo_box.item label="Tilt Whip" name="cc_tiltwhip" value="34" />
     </combo_box>
     <check_box
      control_name="CinematicCamUseSelected"
@@ -725,5 +737,304 @@
         <spinner control_name="CinematicCamPedestalHeading" decimal_digits="0" follows="left|top" height="16" increment="15"
          label="Heading" label_width="50" layout="topleft" left_pad="6" max_val="180" min_val="-180" top_delta="0"
          name="CinematicCamPedestalHeading" tool_tip="Bearing relative to the subject's facing (deg)" width="112" />
+    </panel>
+
+    <panel name="panel_mode_barrel" left="0" top="162" width="320" height="98"
+     follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+        <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
+            Barrel Roll (held frame, rolling)
+        </text>
+        <spinner control_name="CinematicCamBarrelDistance" decimal_digits="1" follows="left|top" height="16" increment="0.25"
+         label="Dist" label_width="28" layout="topleft" left="12" max_val="15" min_val="0.3" top_pad="6"
+         name="CinematicCamBarrelDistance" tool_tip="Frontal distance from the subject (m)" width="92" />
+        <spinner control_name="CinematicCamBarrelHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
+         label="Ht" label_width="20" layout="topleft" left_pad="6" max_val="10" min_val="-2" top_delta="0"
+         name="CinematicCamBarrelHeight" tool_tip="Height above the subject (m)" width="84" />
+        <spinner control_name="CinematicCamBarrelRollSpeed" decimal_digits="0" follows="left|top" height="16" increment="5"
+         label="Roll/s" label_width="40" layout="topleft" left_pad="6" max_val="360" min_val="-360" top_delta="0"
+         name="CinematicCamBarrelRollSpeed" tool_tip="Continuous roll speed (deg/s); used when not oscillating" width="96" />
+        <spinner control_name="CinematicCamBarrelRollAmplitude" decimal_digits="0" follows="left|top" height="16" increment="5"
+         label="Amp" label_width="30" layout="topleft" left="12" max_val="180" min_val="0" top_pad="5"
+         name="CinematicCamBarrelRollAmplitude" tool_tip="Roll oscillation amplitude (deg); used when oscillating" width="92" />
+        <spinner control_name="CinematicCamBarrelRollPeriod" decimal_digits="1" follows="left|top" height="16" increment="0.5"
+         label="Per" label_width="26" layout="topleft" left_pad="6" max_val="30" min_val="0.5" top_delta="0"
+         name="CinematicCamBarrelRollPeriod" tool_tip="Seconds per roll oscillation cycle (s)" width="86" />
+        <check_box control_name="CinematicCamBarrelOscillate"
+         follows="left|top" height="16" label="Oscillate" layout="topleft" left_pad="6" top_delta="0"
+         name="CinematicCamBarrelOscillate"
+         tool_tip="Oscillate the roll instead of spinning continuously" width="90" />
+    </panel>
+
+    <panel name="panel_mode_cork" left="0" top="162" width="320" height="98"
+     follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+        <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
+            Corkscrew (rising orbit while rolling)
+        </text>
+        <spinner control_name="CinematicCamCorkStartRadius" decimal_digits="1" follows="left|top" height="16" increment="0.5"
+         label="R0" label_width="22" layout="topleft" left="12" max_val="30" min_val="0.3" top_pad="6"
+         name="CinematicCamCorkStartRadius" tool_tip="Start orbit radius (m)" width="86" />
+        <spinner control_name="CinematicCamCorkEndRadius" decimal_digits="1" follows="left|top" height="16" increment="0.25"
+         label="R1" label_width="22" layout="topleft" left_pad="6" max_val="30" min_val="0.3" top_delta="0"
+         name="CinematicCamCorkEndRadius" tool_tip="End orbit radius (m)" width="86" />
+        <spinner control_name="CinematicCamCorkStartHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
+         label="H0" label_width="22" layout="topleft" left_pad="6" max_val="20" min_val="-5" top_delta="0"
+         name="CinematicCamCorkStartHeight" tool_tip="Start height above the subject (m)" width="86" />
+        <spinner control_name="CinematicCamCorkEndHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
+         label="H1" label_width="22" layout="topleft" left="12" max_val="20" min_val="-5" top_pad="5"
+         name="CinematicCamCorkEndHeight" tool_tip="End height above the subject (m)" width="86" />
+        <spinner control_name="CinematicCamCorkTurns" decimal_digits="1" follows="left|top" height="16" increment="0.5"
+         label="Turns" label_width="40" layout="topleft" left_pad="6" max_val="10" min_val="0.25" top_delta="0"
+         name="CinematicCamCorkTurns" tool_tip="Revolutions swept over the duration" width="92" />
+        <spinner control_name="CinematicCamCorkRollPerTurn" decimal_digits="0" follows="left|top" height="16" increment="15"
+         label="Roll/T" label_width="44" layout="topleft" left_pad="6" max_val="720" min_val="-720" top_delta="0"
+         name="CinematicCamCorkRollPerTurn" tool_tip="Camera roll per revolution (deg)" width="96" />
+        <spinner control_name="CinematicCamCorkDuration" decimal_digits="1" follows="left|top" height="16" increment="0.5"
+         label="Time" label_width="32" layout="topleft" left="12" max_val="60" min_val="0.5" top_pad="5"
+         name="CinematicCamCorkDuration" tool_tip="Seconds for the tighten/rise sweep (s)" width="94" />
+        <combo_box control_name="CinematicCamCorkEndMode" follows="left|top" height="20" layout="topleft"
+         left_pad="8" top_delta="-2" name="CinematicCamCorkEndMode"
+         tool_tip="What happens when the sweep finishes" width="94">
+            <combo_box.item label="Hold" name="em_hold" value="0" />
+            <combo_box.item label="Ping-pong" name="em_pp" value="1" />
+            <combo_box.item label="Loop" name="em_loop" value="2" />
+        </combo_box>
+    </panel>
+
+    <panel name="panel_mode_pendulum" left="0" top="162" width="320" height="98"
+     follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+        <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
+            Pendulum (eased horizontal swing)
+        </text>
+        <spinner control_name="CinematicCamPendulumRadius" decimal_digits="1" follows="left|top" height="16" increment="0.5"
+         label="Radius" label_width="42" layout="topleft" left="12" max_val="30" min_val="0.3" top_pad="6"
+         name="CinematicCamPendulumRadius" tool_tip="Distance from the subject (m)" width="100" />
+        <spinner control_name="CinematicCamPendulumHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
+         label="Ht" label_width="20" layout="topleft" left_pad="6" max_val="20" min_val="-5" top_delta="0"
+         name="CinematicCamPendulumHeight" tool_tip="Height above the subject (m)" width="80" />
+        <spinner control_name="CinematicCamPendulumSwing" decimal_digits="0" follows="left|top" height="16" increment="5"
+         label="Swing" label_width="40" layout="topleft" left_pad="6" max_val="180" min_val="0" top_delta="0"
+         name="CinematicCamPendulumSwing" tool_tip="Swing half-width each side of center (deg)" width="92" />
+        <spinner control_name="CinematicCamPendulumPeriod" decimal_digits="1" follows="left|top" height="16" increment="0.5"
+         label="Period" label_width="42" layout="topleft" left="12" max_val="60" min_val="0.5" top_pad="5"
+         name="CinematicCamPendulumPeriod" tool_tip="Seconds per full swing cycle (s)" width="104" />
+        <spinner control_name="CinematicCamPendulumHeading" decimal_digits="0" follows="left|top" height="16" increment="15"
+         label="Heading" label_width="50" layout="topleft" left_pad="6" max_val="180" min_val="-180" top_delta="0"
+         name="CinematicCamPendulumHeading" tool_tip="Center bearing of the arc (deg, facing-relative)" width="112" />
+    </panel>
+
+    <panel name="panel_mode_contra" left="0" top="162" width="320" height="98"
+     follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+        <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
+            Contra-Orbit (orbit while the FOV warps)
+        </text>
+        <spinner control_name="CinematicCamContraRadius" decimal_digits="1" follows="left|top" height="16" increment="0.5"
+         label="Radius" label_width="42" layout="topleft" left="12" max_val="30" min_val="0.5" top_pad="6"
+         name="CinematicCamContraRadius" tool_tip="Orbit radius (m)" width="100" />
+        <spinner control_name="CinematicCamContraHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
+         label="Ht" label_width="20" layout="topleft" left_pad="6" max_val="20" min_val="-5" top_delta="0"
+         name="CinematicCamContraHeight" tool_tip="Height above the subject (m)" width="80" />
+        <spinner control_name="CinematicCamContraSpeed" decimal_digits="0" follows="left|top" height="16" increment="5"
+         label="Speed" label_width="40" layout="topleft" left_pad="6" max_val="180" min_val="-180" top_delta="0"
+         name="CinematicCamContraSpeed" tool_tip="Orbit speed (deg/s); negative reverses" width="92" />
+        <spinner control_name="CinematicCamContraFovStart" decimal_digits="2" follows="left|top" height="16" increment="0.05"
+         label="Fov0" label_width="34" layout="topleft" left="12" max_val="4" min_val="0.05" top_pad="5"
+         name="CinematicCamContraFovStart" tool_tip="FOV multiplier at one end of the warp (below 1 = narrow)" width="92" />
+        <spinner control_name="CinematicCamContraFovEnd" decimal_digits="2" follows="left|top" height="16" increment="0.05"
+         label="Fov1" label_width="34" layout="topleft" left_pad="6" max_val="4" min_val="0.05" top_delta="0"
+         name="CinematicCamContraFovEnd" tool_tip="FOV multiplier at the other end (above 1 = wide)" width="92" />
+        <spinner control_name="CinematicCamContraWarpPeriod" decimal_digits="1" follows="left|top" height="16" increment="0.5"
+         label="Warp" label_width="40" layout="topleft" left_pad="6" max_val="60" min_val="0.5" top_delta="0"
+         name="CinematicCamContraWarpPeriod" tool_tip="Seconds per FOV warp cycle (s)" width="96" />
+    </panel>
+
+    <panel name="panel_mode_fisheye" left="0" top="162" width="320" height="98"
+     follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+        <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
+            Fisheye Lunge (wide push to the face)
+        </text>
+        <spinner control_name="CinematicCamFisheyeNear" decimal_digits="1" follows="left|top" height="16" increment="0.1"
+         label="Near" label_width="34" layout="topleft" left="12" max_val="15" min_val="0.2" top_pad="6"
+         name="CinematicCamFisheyeNear" tool_tip="Nearest distance to the face (m)" width="92" />
+        <spinner control_name="CinematicCamFisheyeFar" decimal_digits="1" follows="left|top" height="16" increment="0.25"
+         label="Far" label_width="26" layout="topleft" left_pad="6" max_val="30" min_val="0.3" top_delta="0"
+         name="CinematicCamFisheyeFar" tool_tip="Farthest distance before/after the lunge (m)" width="84" />
+        <spinner control_name="CinematicCamFisheyeFov" decimal_digits="2" follows="left|top" height="16" increment="0.05"
+         label="Fov" label_width="28" layout="topleft" left_pad="6" max_val="4" min_val="0.5" top_delta="0"
+         name="CinematicCamFisheyeFov" tool_tip="Constant FOV multiplier (above 1 = wide)" width="92" />
+        <spinner control_name="CinematicCamFisheyeHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
+         label="Ht" label_width="20" layout="topleft" left="12" max_val="5" min_val="-5" top_pad="5"
+         name="CinematicCamFisheyeHeight" tool_tip="Height relative to the focus point (m)" width="80" />
+        <spinner control_name="CinematicCamFisheyeDuration" decimal_digits="1" follows="left|top" height="16" increment="0.25"
+         label="Time" label_width="32" layout="topleft" left_pad="6" max_val="30" min_val="0.25" top_delta="0"
+         name="CinematicCamFisheyeDuration" tool_tip="Seconds for the push-and-recoil (s)" width="92" />
+        <combo_box control_name="CinematicCamFisheyeEndMode" follows="left|top" height="20" layout="topleft"
+         left_pad="6" top_delta="-2" name="CinematicCamFisheyeEndMode"
+         tool_tip="What happens when the lunge finishes" width="94">
+            <combo_box.item label="Hold" name="em_hold" value="0" />
+            <combo_box.item label="Ping-pong" name="em_pp" value="1" />
+            <combo_box.item label="Loop" name="em_loop" value="2" />
+        </combo_box>
+    </panel>
+
+    <panel name="panel_mode_skimmer" left="0" top="162" width="320" height="98"
+     follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+        <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
+            Floor Skimmer (ground-level lateral track)
+        </text>
+        <spinner control_name="CinematicCamSkimmerHeight" decimal_digits="2" follows="left|top" height="16" increment="0.05"
+         label="Ht" label_width="20" layout="topleft" left="12" max_val="2" min_val="0.05" top_pad="6"
+         name="CinematicCamSkimmerHeight" tool_tip="Camera height above the ground (m)" width="80" />
+        <spinner control_name="CinematicCamSkimmerDistance" decimal_digits="1" follows="left|top" height="16" increment="0.25"
+         label="Dist" label_width="28" layout="topleft" left_pad="6" max_val="20" min_val="0.5" top_delta="0"
+         name="CinematicCamSkimmerDistance" tool_tip="Lateral distance from the subject (m)" width="92" />
+        <spinner control_name="CinematicCamSkimmerLength" decimal_digits="0" follows="left|top" height="16" increment="1"
+         label="Len" label_width="26" layout="topleft" left_pad="6" max_val="50" min_val="1" top_delta="0"
+         name="CinematicCamSkimmerLength" tool_tip="Lateral track length (m)" width="86" />
+        <spinner control_name="CinematicCamSkimmerSpeed" decimal_digits="2" follows="left|top" height="16" increment="0.1"
+         label="Speed" label_width="40" layout="topleft" left="12" max_val="10" min_val="0.05" top_pad="5"
+         name="CinematicCamSkimmerSpeed" tool_tip="Track speed (m/s)" width="100" />
+        <spinner control_name="CinematicCamSkimmerHeading" decimal_digits="0" follows="left|top" height="16" increment="15"
+         label="Heading" label_width="50" layout="topleft" left_pad="6" max_val="360" min_val="0" top_delta="0"
+         name="CinematicCamSkimmerHeading" tool_tip="Track heading (deg, world frame)" width="112" />
+    </panel>
+
+    <panel name="panel_mode_boost" left="0" top="162" width="320" height="98"
+     follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+        <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
+            Boost Rise (accelerating vertical launch)
+        </text>
+        <spinner control_name="CinematicCamBoostStartHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
+         label="Start" label_width="32" layout="topleft" left="12" max_val="10" min_val="0" top_pad="6"
+         name="CinematicCamBoostStartHeight" tool_tip="Start height near the floor (m)" width="92" />
+        <spinner control_name="CinematicCamBoostEndHeight" decimal_digits="1" follows="left|top" height="16" increment="0.5"
+         label="End" label_width="28" layout="topleft" left_pad="6" max_val="100" min_val="0.5" top_delta="0"
+         name="CinematicCamBoostEndHeight" tool_tip="End height at the top of the launch (m)" width="88" />
+        <spinner control_name="CinematicCamBoostDistance" decimal_digits="1" follows="left|top" height="16" increment="0.25"
+         label="Dist" label_width="28" layout="topleft" left_pad="6" max_val="20" min_val="0.3" top_delta="0"
+         name="CinematicCamBoostDistance" tool_tip="Frontal distance from the subject (m)" width="88" />
+        <spinner control_name="CinematicCamBoostDuration" decimal_digits="1" follows="left|top" height="16" increment="0.5"
+         label="Time" label_width="32" layout="topleft" left="12" max_val="60" min_val="0.5" top_pad="5"
+         name="CinematicCamBoostDuration" tool_tip="Seconds for the accelerating rise (s)" width="90" />
+        <spinner control_name="CinematicCamBoostHeading" decimal_digits="0" follows="left|top" height="16" increment="15"
+         label="Hdg" label_width="28" layout="topleft" left_pad="6" max_val="180" min_val="-180" top_delta="0"
+         name="CinematicCamBoostHeading" tool_tip="Bearing relative to the subject's facing (deg)" width="80" />
+        <combo_box control_name="CinematicCamBoostEndMode" follows="left|top" height="20" layout="topleft"
+         left_pad="6" top_delta="-2" name="CinematicCamBoostEndMode"
+         tool_tip="What happens when the rise finishes" width="90">
+            <combo_box.item label="Hold" name="em_hold" value="0" />
+            <combo_box.item label="Ping-pong" name="em_pp" value="1" />
+            <combo_box.item label="Loop" name="em_loop" value="2" />
+        </combo_box>
+    </panel>
+
+    <panel name="panel_mode_boom" left="0" top="162" width="320" height="98"
+     follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+        <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
+            Boom Over (jib arc over the subject)
+        </text>
+        <spinner control_name="CinematicCamBoomRadius" decimal_digits="1" follows="left|top" height="16" increment="0.5"
+         label="Rad" label_width="28" layout="topleft" left="12" max_val="30" min_val="0.5" top_pad="6"
+         name="CinematicCamBoomRadius" tool_tip="Horizontal half-extent of the arc (m)" width="88" />
+        <spinner control_name="CinematicCamBoomApex" decimal_digits="1" follows="left|top" height="16" increment="0.5"
+         label="Apex" label_width="34" layout="topleft" left_pad="6" max_val="50" min_val="0.5" top_delta="0"
+         name="CinematicCamBoomApex" tool_tip="Peak height above the subject at the apex (m)" width="92" />
+        <spinner control_name="CinematicCamBoomSpan" decimal_digits="0" follows="left|top" height="16" increment="15"
+         label="Span" label_width="34" layout="topleft" left_pad="6" max_val="300" min_val="20" top_delta="0"
+         name="CinematicCamBoomSpan" tool_tip="Total swept arc (deg); 180 = side to side over the top" width="92" />
+        <spinner control_name="CinematicCamBoomDuration" decimal_digits="1" follows="left|top" height="16" increment="0.5"
+         label="Time" label_width="32" layout="topleft" left="12" max_val="60" min_val="0.5" top_pad="5"
+         name="CinematicCamBoomDuration" tool_tip="Seconds for the jib arc (s)" width="88" />
+        <spinner control_name="CinematicCamBoomAxis" decimal_digits="0" follows="left|top" height="16" increment="15"
+         label="Axis" label_width="28" layout="topleft" left_pad="6" max_val="360" min_val="0" top_delta="0"
+         name="CinematicCamBoomAxis" tool_tip="Arc axis heading (deg, world frame)" width="86" />
+        <combo_box control_name="CinematicCamBoomEndMode" follows="left|top" height="20" layout="topleft"
+         left_pad="8" top_delta="-2" name="CinematicCamBoomEndMode"
+         tool_tip="What happens when the arc finishes" width="94">
+            <combo_box.item label="Hold" name="em_hold" value="0" />
+            <combo_box.item label="Ping-pong" name="em_pp" value="1" />
+            <combo_box.item label="Loop" name="em_loop" value="2" />
+        </combo_box>
+    </panel>
+
+    <panel name="panel_mode_topspin" left="0" top="162" width="320" height="98"
+     follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+        <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
+            Top Spin (locked overhead, spinning)
+        </text>
+        <spinner control_name="CinematicCamTopSpinHeight" decimal_digits="1" follows="left|top" height="16" increment="0.5"
+         label="Ht" label_width="20" layout="topleft" left="12" max_val="50" min_val="0.5" top_pad="6"
+         name="CinematicCamTopSpinHeight" tool_tip="Height directly above the subject (m)" width="86" />
+        <spinner control_name="CinematicCamTopSpinSpeed" decimal_digits="0" follows="left|top" height="16" increment="5"
+         label="Speed" label_width="40" layout="topleft" left_pad="6" max_val="180" min_val="-180" top_delta="0"
+         name="CinematicCamTopSpinSpeed" tool_tip="Spin speed about vertical (deg/s); negative reverses" width="100" />
+        <spinner control_name="CinematicCamTopSpinOffset" decimal_digits="2" follows="left|top" height="16" increment="0.05"
+         label="Offset" label_width="40" layout="topleft" left_pad="6" max_val="5" min_val="0" top_delta="0"
+         name="CinematicCamTopSpinOffset" tool_tip="Small horizontal radius (m); 0 = pure top-down" width="92" />
+        <text follows="left|top" halign="left" height="26" layout="topleft" left="12" top_pad="8" width="296" name="hint" word_wrap="true">
+            Looks straight down; the spin is carried as camera roll.
+        </text>
+    </panel>
+
+    <panel name="panel_mode_turntable" left="0" top="162" width="320" height="98"
+     follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+        <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
+            Turntable Crane (orbit, easing height)
+        </text>
+        <spinner control_name="CinematicCamTurntableRadius" decimal_digits="1" follows="left|top" height="16" increment="0.5"
+         label="Radius" label_width="42" layout="topleft" left="12" max_val="30" min_val="0.5" top_pad="6"
+         name="CinematicCamTurntableRadius" tool_tip="Orbit radius (m)" width="104" />
+        <spinner control_name="CinematicCamTurntableSpeed" decimal_digits="0" follows="left|top" height="16" increment="2"
+         label="Speed" label_width="40" layout="topleft" left_pad="6" max_val="180" min_val="-180" top_delta="0"
+         name="CinematicCamTurntableSpeed" tool_tip="Orbit speed (deg/s); negative reverses" width="100" />
+        <spinner control_name="CinematicCamTurntableMinHeight" decimal_digits="1" follows="left|top" height="16" increment="0.2"
+         label="Lo" label_width="20" layout="topleft" left="12" max_val="20" min_val="-5" top_pad="5"
+         name="CinematicCamTurntableMinHeight" tool_tip="Minimum height above the subject (m)" width="84" />
+        <spinner control_name="CinematicCamTurntableMaxHeight" decimal_digits="1" follows="left|top" height="16" increment="0.2"
+         label="Hi" label_width="20" layout="topleft" left_pad="6" max_val="30" min_val="-5" top_delta="0"
+         name="CinematicCamTurntableMaxHeight" tool_tip="Maximum height above the subject (m)" width="84" />
+        <spinner control_name="CinematicCamTurntablePeriod" decimal_digits="0" follows="left|top" height="16" increment="1"
+         label="Cycle s" label_width="44" layout="topleft" left_pad="6" max_val="120" min_val="2" top_delta="0"
+         name="CinematicCamTurntablePeriod" tool_tip="Seconds per full rise+descend cycle (s)" width="110" />
+    </panel>
+
+    <panel name="panel_mode_float" left="0" top="162" width="320" height="98"
+     follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+        <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
+            Floating Close-Up (drifting intimate face)
+        </text>
+        <spinner control_name="CinematicCamFloatDistance" decimal_digits="2" follows="left|top" height="16" increment="0.05"
+         label="Dist" label_width="28" layout="topleft" left="12" max_val="3" min_val="0.25" top_pad="6"
+         name="CinematicCamFloatDistance" tool_tip="Distance from the face (m)" width="88" />
+        <spinner control_name="CinematicCamFloatDrift" decimal_digits="3" follows="left|top" height="16" increment="0.005"
+         label="Drift" label_width="32" layout="topleft" left_pad="6" max_val="0.3" min_val="0" top_delta="0"
+         name="CinematicCamFloatDrift" tool_tip="Drift amplitude (m)" width="92" />
+        <spinner control_name="CinematicCamFloatSpeed" decimal_digits="2" follows="left|top" height="16" increment="0.05"
+         label="Speed" label_width="40" layout="topleft" left_pad="6" max_val="3" min_val="0.01" top_delta="0"
+         name="CinematicCamFloatSpeed" tool_tip="Drift speed (unitless rate)" width="92" />
+        <spinner control_name="CinematicCamFloatFov" decimal_digits="2" follows="left|top" height="16" increment="0.05"
+         label="Zoom x" label_width="44" layout="topleft" left="12" max_val="1.5" min_val="0.05" top_pad="5"
+         name="CinematicCamFloatFov" tool_tip="FOV multiplier: below 1 = narrow lens" width="110" />
+    </panel>
+
+    <panel name="panel_mode_tiltwhip" left="0" top="162" width="320" height="98"
+     follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+        <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
+            Tilt Whip (percussive vertical whips)
+        </text>
+        <spinner control_name="CinematicCamTiltWhipDistance" decimal_digits="1" follows="left|top" height="16" increment="0.25"
+         label="Dist" label_width="28" layout="topleft" left="12" max_val="15" min_val="0.3" top_pad="6"
+         name="CinematicCamTiltWhipDistance" tool_tip="Frontal distance from the subject (m)" width="92" />
+        <spinner control_name="CinematicCamTiltWhipHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
+         label="Ht" label_width="20" layout="topleft" left_pad="6" max_val="10" min_val="-2" top_delta="0"
+         name="CinematicCamTiltWhipHeight" tool_tip="Height above the subject (m)" width="80" />
+        <spinner control_name="CinematicCamTiltWhipAmplitude" decimal_digits="0" follows="left|top" height="16" increment="5"
+         label="Amp" label_width="30" layout="topleft" left_pad="6" max_val="80" min_val="0" top_delta="0"
+         name="CinematicCamTiltWhipAmplitude" tool_tip="Pitch whip amplitude (deg)" width="92" />
+        <spinner control_name="CinematicCamTiltWhipPeriod" decimal_digits="1" follows="left|top" height="16" increment="0.25"
+         label="Period" label_width="42" layout="topleft" left="12" max_val="30" min_val="0.25" top_pad="5"
+         name="CinematicCamTiltWhipPeriod" tool_tip="Seconds between whip hits (s)" width="104" />
+        <spinner control_name="CinematicCamTiltWhipSnap" decimal_digits="1" follows="left|top" height="16" increment="0.5"
+         label="Snap" label_width="34" layout="topleft" left_pad="6" max_val="20" min_val="0" top_delta="0"
+         name="CinematicCamTiltWhipSnap" tool_tip="Attack sharpness (higher = snappier settle)" width="96" />
     </panel>
 </panel>
