@@ -12,8 +12,8 @@
 
 #include "llfloater.h"
 
+class ALPanelActorMover;
 class ALPanelPathEditor;
-class LLButton;
 class LLScrollListCtrl;
 
 class LLFloaterActorMover final : public LLFloater
@@ -24,15 +24,12 @@ public:
     void draw() override;
 
 private:
-    void onClickWalk();
-    void onClickStop();
     void refreshRoster();
     LLUUID selectedActor() const;   // null when nothing selected
 
-    LLScrollListCtrl*  mRosterList = nullptr;
-    LLButton*          mWalkBtn = nullptr;
-    LLButton*          mStopBtn = nullptr;
-    ALPanelPathEditor* mPathPanel = nullptr;    // shared waypoint editor
+    LLScrollListCtrl*   mRosterList = nullptr;
+    ALPanelActorMover*  mMoverPanel = nullptr;  // shared transport (scope, heading, params, Walk/Stop)
+    ALPanelPathEditor*  mPathPanel = nullptr;   // shared waypoint editor
 };
 
 #endif // LL_LLFLOATERACTORMOVER_H

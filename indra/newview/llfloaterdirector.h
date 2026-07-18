@@ -24,7 +24,7 @@
 #include <utility>
 #include <vector>
 
-class ALCompassDial;
+class ALPanelActorMover;
 class ALPanelAnimPreview;
 class ALPanelCineCamParams;
 class ALPanelPathEditor;
@@ -33,7 +33,6 @@ class LLComboBox;
 class LLContextMenu;
 class LLLineEditor;
 class LLPanel;
-class LLRadioGroup;
 class LLScrollListCtrl;
 class LLTabContainer;
 class LLTextBox;
@@ -98,11 +97,7 @@ private:
     void onCastRemove();
 
     // ---- Move tab ----
-    void onScopeCommit();
-    void onDialCommit();
-    void onClickWalk();
-    void onClickStop();
-    void refreshMoveTab();
+    void refreshMoveTab();              // feed the shared transport panel the cast selection
 
     // ---- Path tab ----
     void refreshPathTab();              // point the embedded editor at the selection
@@ -177,11 +172,9 @@ private:
     };
     std::vector<CastRowState> mRowStates;
 
-    // Move tab
-    LLRadioGroup*      mScopeRadio = nullptr;
-    ALCompassDial*     mHeadingDial = nullptr;
-    LLButton*          mWalkBtn = nullptr;
-    LLButton*          mStopBtn = nullptr;
+    // Move tab -- the shared transport (scope, heading dial, params, Walk/Stop);
+    // the console feeds it the cast selection each draw
+    ALPanelActorMover* mMoverPanel = nullptr;
 
     // Path tab (dedicated) -- shared waypoint editor, targets the selection
     ALPanelPathEditor* mPathPanel = nullptr;

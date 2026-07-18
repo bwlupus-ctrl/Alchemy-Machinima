@@ -1,0 +1,295 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- Actor Mover transport (ALPanelActorMover, class "panel_actor_mover"): the
+     Selected|Everyone scope (ActorMoverSync), the heading compass dial + spinner
+     (ActorMoverHeading), Speed / Distance / Cadence, End behavior, the custom
+     walk-anim UUID row, and the Walk / Stop buttons. Embedded by BOTH the
+     standalone Actor Mover floater and the Director Console Move tab, so the two
+     hosts render the identical transport from one source and can never drift.
+     Every parameter is settings-backed (control_name); the scope radio and the
+     compass dial two-way sync their settings in draw(), and Walk / Stop honor
+     ActorMoverSync (Everyone drives startAll/stopAll; Selected drives the
+     host-provided selection fed via setSelectedActors each draw). The roster /
+     cast list stays host-specific (the standalone's own list, the console's
+     persistent cast column); this panel is the transport half only. -->
+<panel
+ background_visible="false"
+ border="false"
+ height="360"
+ layout="topleft"
+ name="panel_actor_mover"
+ width="374">
+    <!-- who Walk / Stop drive: the list selection, or everyone -->
+    <radio_group
+     draw_border="false"
+     follows="left|top"
+     height="18"
+     layout="topleft"
+     left="10"
+     top="6"
+     name="scope_radio"
+     tool_tip="Who Walk / Stop drive: the actors selected in the list, or everyone (you, if the list is empty)"
+     width="210">
+        <radio_item
+         follows="left|top"
+         height="16"
+         label="Selected actors"
+         layout="topleft"
+         left="0"
+         top="0"
+         name="scope_selected"
+         value="0"
+         width="112" />
+        <radio_item
+         follows="left|top"
+         height="16"
+         label="Everyone"
+         layout="topleft"
+         left="116"
+         top="0"
+         name="scope_everyone"
+         value="1"
+         width="90" />
+    </radio_group>
+
+    <!-- ==== compass move parameters (all settings-backed) ==== -->
+    <panel
+     background_visible="false"
+     follows="all"
+     height="360"
+     layout="topleft"
+     left="0"
+     mouse_opaque="false"
+     name="straight_group"
+     top="0"
+     width="374">
+        <compass_dial
+         clockwise="false"
+         follows="left|top"
+         height="132"
+         layout="topleft"
+         left="10"
+         top="30"
+         name="heading_dial"
+         tool_tip="Heading trim (deg): travel bearing relative to each actor's facing, 0 = straight ahead. Drag the needle; mouse wheel trims 5 deg per click. The in-world heading ray tracks it live"
+         width="132" />
+        <spinner
+         control_name="ActorMoverHeading"
+         decimal_digits="0"
+         follows="left|top"
+         height="20"
+         increment="5"
+         label="Heading (deg)"
+         label_width="80"
+         layout="topleft"
+         left="154"
+         max_val="180"
+         min_val="-180"
+         top="42"
+         name="heading_spinner"
+         tool_tip="Travel bearing relative to each actor's facing (deg). 0 = straight ahead"
+         width="150" />
+        <text
+         follows="left|top"
+         height="54"
+         layout="topleft"
+         left="154"
+         top="70"
+         name="move_hint"
+         text_color="LtGray_50"
+         word_wrap="true"
+         width="210">
+            Parameters are captured when a walk starts; running actors keep theirs.
+        </text>
+        <text
+         follows="left|top"
+         height="14"
+         layout="topleft"
+         left="10"
+         top="170"
+         name="speed_lbl"
+         width="88">
+            Speed (m/s)
+        </text>
+        <slider
+         control_name="ActorMoverSpeed"
+         decimal_digits="2"
+         follows="left|top"
+         height="16"
+         increment="0.05"
+         initial_value="1.0"
+         layout="topleft"
+         left="100"
+         max_val="6.0"
+         min_val="0.05"
+         show_text="false"
+         top="168"
+         name="speed_slider"
+         tool_tip="Ground speed of the ghost walk (m/s)"
+         width="164" />
+        <spinner
+         control_name="ActorMoverSpeed"
+         decimal_digits="2"
+         follows="left|top"
+         height="16"
+         increment="0.05"
+         label=""
+         label_width="0"
+         layout="topleft"
+         left="270"
+         max_val="6.0"
+         min_val="0.05"
+         top="168"
+         name="speed_spinner"
+         tool_tip="Ground speed of the ghost walk (m/s)"
+         width="64" />
+        <text
+         follows="left|top"
+         height="14"
+         layout="topleft"
+         left="10"
+         top="192"
+         name="dist_lbl"
+         width="88">
+            Distance (m)
+        </text>
+        <slider
+         control_name="ActorMoverDistance"
+         decimal_digits="1"
+         follows="left|top"
+         height="16"
+         increment="0.5"
+         initial_value="6.0"
+         layout="topleft"
+         left="100"
+         max_val="64.0"
+         min_val="0.5"
+         show_text="false"
+         top="190"
+         name="dist_slider"
+         tool_tip="Path length of the walk (m)"
+         width="164" />
+        <spinner
+         control_name="ActorMoverDistance"
+         decimal_digits="1"
+         follows="left|top"
+         height="16"
+         increment="0.5"
+         label=""
+         label_width="0"
+         layout="topleft"
+         left="270"
+         max_val="64.0"
+         min_val="0.5"
+         top="190"
+         name="dist_spinner"
+         tool_tip="Path length of the walk (m)"
+         width="64" />
+        <text
+         follows="left|top"
+         height="14"
+         layout="topleft"
+         left="10"
+         top="214"
+         name="cadence_lbl"
+         width="88">
+            Cadence (m/s)
+        </text>
+        <slider
+         control_name="ActorMoverWalkNominal"
+         decimal_digits="1"
+         follows="left|top"
+         height="16"
+         increment="0.1"
+         initial_value="3.0"
+         layout="topleft"
+         left="100"
+         max_val="5.0"
+         min_val="1.0"
+         show_text="false"
+         top="212"
+         name="cadence_slider"
+         tool_tip="Ground speed the walk animation was designed for (m/s). Lower it if feet slide forward at slow speeds; raise if they slide back"
+         width="164" />
+        <spinner
+         control_name="ActorMoverWalkNominal"
+         decimal_digits="1"
+         follows="left|top"
+         height="16"
+         increment="0.1"
+         label=""
+         label_width="0"
+         layout="topleft"
+         left="270"
+         max_val="5.0"
+         min_val="1.0"
+         top="212"
+         name="cadence_spinner"
+         tool_tip="Ground speed the walk animation was designed for (m/s)"
+         width="64" />
+        <text
+         follows="left|top"
+         height="14"
+         layout="topleft"
+         left="10"
+         top="242"
+         name="end_lbl"
+         width="88">
+            End behavior
+        </text>
+        <combo_box
+         control_name="ActorMoverEndMode"
+         follows="left|top"
+         height="20"
+         layout="topleft"
+         left="100"
+         top="238"
+         name="end_mode_combo"
+         tool_tip="What happens when a walk reaches the end of its path"
+         width="130">
+            <combo_box.item label="Stop at end" name="em_hold" value="0" />
+            <combo_box.item label="Loop" name="em_loop" value="1" />
+            <combo_box.item label="Ping-pong" name="em_pingpong" value="2" />
+        </combo_box>
+        <check_box
+         control_name="ActorMoverUseCustomAnim"
+         follows="left|top"
+         height="16"
+         label="Custom walk anim (UUID)"
+         layout="topleft"
+         left="10"
+         top="264"
+         name="custom_anim_check"
+         tool_tip="Play this animation asset instead of the system walk while moving (local playback only). Cadence stays the foot-plant tuning knob"
+         width="200" />
+        <line_editor
+         control_name="ActorMoverCustomAnim"
+         follows="left|top"
+         height="20"
+         layout="topleft"
+         left="10"
+         top="282"
+         max_length_chars="36"
+         name="custom_anim_editor"
+         tool_tip="Animation asset UUID. Use the Animation Explorer's 'Send to Actor Mover' to fill this"
+         width="354" />
+    </panel>
+
+    <button
+     follows="left|bottom"
+     height="24"
+     label="Walk"
+     layout="topleft"
+     left="10"
+     top="326"
+     name="btn_walk"
+     width="110" />
+    <button
+     follows="left|bottom"
+     height="24"
+     label="Stop / Release"
+     layout="topleft"
+     left="126"
+     top="326"
+     name="btn_stop"
+     width="110" />
+</panel>

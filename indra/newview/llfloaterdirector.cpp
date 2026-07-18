@@ -13,7 +13,7 @@
 
 #include "indra_constants.h"        // KEY_ESCAPE / MASK_NONE, MASK_ALT
 
-#include "alcompassdial.h"
+#include "alpanelactormover.h"      // embedded shared Actor Mover transport
 #include "alpanelanimpreview.h"     // embedded shared preview pane + own-avatar controls
 #include "alpanelcinecamparams.h"   // embedded shared panel (scene preset hooks)
 #include "alpanelpatheditor.h"      // embedded shared Actor Pathing editor
@@ -32,7 +32,6 @@
 #include "lllineeditor.h"
 #include "llmenugl.h"
 #include "llnotificationsutil.h"    // scene delete confirm
-#include "llradiogroup.h"
 #include "llscrolllistctrl.h"
 #include "llsdserialize.h"          // scene LLSD XML files
 #include "llselectmgr.h"
@@ -199,16 +198,10 @@ bool LLFloaterDirector::postBuild()
     }
 
     // ---- Move tab ----
-    mScopeRadio = getChild<LLRadioGroup>("scope_radio");
-    mScopeRadio->setCommitCallback([this](LLUICtrl*, const LLSD&) { onScopeCommit(); });
-    // initial selection (draw()'s diff-sync only reacts to changes)
-    mScopeRadio->setValue(gSavedSettings.getBOOL("ActorMoverSync") ? 1 : 0);
-    mHeadingDial = getChild<ALCompassDial>("heading_dial");
-    mHeadingDial->setCommitCallback([this](LLUICtrl*, const LLSD&) { onDialCommit(); });
-    mWalkBtn = getChild<LLButton>("btn_walk");
-    mStopBtn = getChild<LLButton>("btn_stop");
-    mWalkBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickWalk(); });
-    mStopBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickStop(); });
+    // the transport (scope, heading dial, params, Walk/Stop) is the shared
+    // ALPanelActorMover the standalone Actor Mover floater also embeds; the
+    // console feeds it the cast selection each draw (refreshMoveTab)
+    mMoverPanel = findChild<ALPanelActorMover>("actor_mover_panel");
 
     // ---- Path tab ----
     // the waypoint editor lives in its own tab now; always visible, its target
@@ -1028,84 +1021,20 @@ void LLFloaterDirector::onCastRemove()
 }
 
 // ---------------------------------------------------------------------------
-// Move tab
+// Move tab: the shared transport panel, targeting the cast selection
 // ---------------------------------------------------------------------------
-void LLFloaterDirector::onScopeCommit()
-{
-    // segmented Selected|Everyone drives the same setting as the standalone
-    // mover's "Sync all" checkbox (1 = Everyone = sync on)
-    gSavedSettings.setBOOL("ActorMoverSync", mScopeRadio->getValue().asInteger() == 1);
-}
-
-void LLFloaterDirector::onDialCommit()
-{
-    // live while dragging, so the in-world heading ray tracks the needle
-    gSavedSettings.setF32("ActorMoverHeading", (F32)mHeadingDial->getValue().asReal());
-}
-
-void LLFloaterDirector::onClickWalk()
-{
-    static LLCachedControl<bool> sync(gSavedSettings, "ActorMoverSync", true);
-    if (sync)
-    {
-        LLActorMover::instance().startAll();
-    }
-    else
-    {
-        for (const LLUUID& id : selectedCastIds())
-        {
-            LLActorMover::instance().start(id);
-        }
-    }
-}
-
-void LLFloaterDirector::onClickStop()
-{
-    static LLCachedControl<bool> sync(gSavedSettings, "ActorMoverSync", true);
-    if (sync)
-    {
-        LLActorMover::instance().stopAll();
-    }
-    else
-    {
-        for (const LLUUID& id : selectedCastIds())
-        {
-            LLActorMover::instance().stop(id);
-        }
-    }
-}
-
 void LLFloaterDirector::refreshMoveTab()
 {
-    static LLCachedControl<bool> sync(gSavedSettings, "ActorMoverSync", true);
-    static LLCachedControl<F32> heading(gSavedSettings, "ActorMoverHeading", 0.f);
-
-    // two-way: reflect external changes (slider in the standalone floater,
-    // debug settings) without fighting the dial's own live commits
-    const S32 want = sync ? 1 : 0;
-    if (mScopeRadio->getValue().asInteger() != want)
+    // the shared ALPanelActorMover owns the scope radio, heading dial, params,
+    // and Walk/Stop; the console's only job is to hand it the current cast
+    // selection each draw. Walk/Stop honor ActorMoverSync internally -- Everyone
+    // drives startAll/stopAll, Selected acts on exactly this set, so the buttons
+    // behave identically to the standalone floater (which feeds its roster
+    // selection the same way).
+    if (mMoverPanel)
     {
-        mScopeRadio->setValue(want);
+        mMoverPanel->setSelectedActors(selectedCastIds());
     }
-    if (fabsf((F32)mHeadingDial->getValue().asReal() - (F32)heading) > 0.01f)
-    {
-        mHeadingDial->setValue((F32)heading);
-    }
-
-    const bool have_sel = mCastList->getFirstSelected() != nullptr;
-    const bool enabled = sync || have_sel;
-    mWalkBtn->setEnabled(enabled);
-    mStopBtn->setEnabled(enabled);
-    const std::string walk_tip = enabled
-        ? std::string(sync ? "Start every cast member (you, if the cast is empty) with these parameters"
-                           : "Start the selected cast member(s) with these parameters")
-        : std::string("Select a cast member first (or switch to Everyone)");
-    const std::string stop_tip = enabled
-        ? std::string(sync ? "Stop every cast member and release their rendered bodies"
-                           : "Stop the selected cast member(s)")
-        : std::string("Select a cast member first (or switch to Everyone)");
-    setToolTipIfChanged(mWalkBtn, walk_tip);
-    setToolTipIfChanged(mStopBtn, stop_tip);
 }
 
 // ---------------------------------------------------------------------------

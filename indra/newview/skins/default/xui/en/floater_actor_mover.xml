@@ -2,13 +2,13 @@
 <floater
  legacy_header_height="18"
  can_resize="true"
- height="988"
+ height="1250"
  min_height="440"
- min_width="372"
+ min_width="390"
  layout="topleft"
  name="floater_actor_mover"
  title="ACTOR MOVER (LOCAL)"
- width="372">
+ width="390">
   <scroll_list
    column_padding="0"
    draw_heading="true"
@@ -51,96 +51,8 @@
    width="276">
     Right-click avatar/animesh &gt; Actor Mover Target.
   </text>
-  <slider
-   control_name="ActorMoverSpeed"
-   decimal_digits="2"
-   follows="left|top"
-   height="18"
-   increment="0.05"
-   initial_value="1.0"
-   label="Speed m/s"
-   label_width="90"
-   layout="topleft"
-   left="12"
-   top_pad="8"
-   min_val="0.05"
-   max_val="6.0"
-   name="speed_slider"
-   width="276" />
-  <slider
-   control_name="ActorMoverDistance"
-   decimal_digits="1"
-   follows="left|top"
-   height="18"
-   increment="0.5"
-   initial_value="6.0"
-   label="Distance m"
-   label_width="90"
-   layout="topleft"
-   left="12"
-   top_pad="6"
-   min_val="0.5"
-   max_val="64.0"
-   name="dist_slider"
-   width="276" />
-  <slider
-   control_name="ActorMoverHeading"
-   decimal_digits="0"
-   follows="left|top"
-   height="18"
-   increment="5"
-   initial_value="0"
-   label="Heading °"
-   label_width="90"
-   layout="topleft"
-   left="12"
-   top_pad="6"
-   min_val="-180"
-   max_val="180"
-   name="heading_slider"
-   width="276" />
-  <slider
-   control_name="ActorMoverWalkNominal"
-   decimal_digits="1"
-   follows="left|top"
-   height="18"
-   increment="0.1"
-   initial_value="3.0"
-   label="Cadence ref"
-   label_width="90"
-   layout="topleft"
-   left="12"
-   top_pad="6"
-   min_val="1.0"
-   max_val="5.0"
-   name="nominal_slider"
-   tool_tip="Ground speed the walk animation was designed for. Lower it if feet slide forward at slow speeds; raise if they slide back."
-   width="276" />
-  <combo_box
-   control_name="ActorMoverEndMode"
-   follows="left|top"
-   height="20"
-   label="End behavior"
-   layout="topleft"
-   left="12"
-   top_pad="8"
-   name="end_mode_combo"
-   width="150">
-    <combo_box.item label="Stop at end" name="em_hold" value="0" />
-    <combo_box.item label="Loop" name="em_loop" value="1" />
-    <combo_box.item label="Ping-pong" name="em_pingpong" value="2" />
-  </combo_box>
-  <check_box
-   control_name="ActorMoverSync"
-   follows="left|top"
-   height="16"
-   label="Sync all"
-   layout="topleft"
-   left_pad="12"
-   top_delta="2"
-   name="sync_check"
-   tool_tip="On: Walk/Stop drive every roster actor with the shared parameters. Off: Walk/Stop apply to the actor selected in the list only, so actors can run different speeds and headings."
-   width="110" />
+  <!-- in-world path preview toggle: host chrome (the console keeps its own copy
+       in the persistent cast column). Settings-backed, so it can never drift. -->
   <check_box
    control_name="ActorMoverShowHeading"
    follows="left|top"
@@ -152,47 +64,21 @@
    name="show_heading_check"
    tool_tip="Show the in-world path preview for each roster actor. With a walkable path: the thick outlined spline with direction chevrons and numbered node markers (start green, end red, dwell nodes ringed). With no path: the thick straight heading arrow along the planned bearing for the configured distance. Client-side only; updates live."
    width="276" />
-  <check_box
-   control_name="ActorMoverUseCustomAnim"
-   follows="left|top"
-   height="16"
-   label="Custom walk anim (UUID)"
+  <!-- shared Actor Mover transport: same panel the Director Console Move tab
+       embeds (scope, heading compass dial, Speed/Distance/Cadence, End behavior,
+       custom walk anim, Walk/Stop). The roster list above stays this floater's
+       own presentation; the floater feeds the panel its selection each draw. -->
+  <panel
+   class="panel_actor_mover"
+   filename="panel_actor_mover.xml"
+   follows="left|top|right"
+   height="360"
    layout="topleft"
-   left="12"
+   left="6"
    top_pad="6"
-   name="custom_anim_check"
-   tool_tip="Play this animation asset instead of the system walk while moving (local playback only). The Cadence ref slider stays the foot-plant tuning knob."
-   width="276" />
-  <line_editor
-   control_name="ActorMoverCustomAnim"
-   follows="left|top"
-   height="20"
-   layout="topleft"
-   left="12"
-   top_pad="4"
-   max_length_chars="36"
-   name="custom_anim_editor"
-   tool_tip="Animation asset UUID. Use the Animation Explorer's 'To Actor Mover' button to fill this."
-   width="276" />
-  <button
-   follows="left|top"
-   height="22"
-   label="Walk"
-   layout="topleft"
-   left="12"
-   top_pad="12"
-   name="walk_btn"
-   width="132" />
-  <button
-   follows="left|top"
-   height="22"
-   label="Stop / Release"
-   layout="topleft"
-   left_pad="12"
-   top_delta="0"
-   name="stop_btn"
-   width="132" />
-  <!-- shared Actor Pathing editor: same panel the Director Console Move tab
+   name="actor_mover_panel"
+   width="374" />
+  <!-- shared Actor Pathing editor: same panel the Director Console Path tab
        embeds. Targets the roster row selected above. -->
   <text
    follows="left|top"
@@ -200,7 +86,7 @@
    height="14"
    layout="topleft"
    left="12"
-   top_pad="14"
+   top_pad="8"
    name="path_section_lbl"
    width="276">
     Path (waypoints)

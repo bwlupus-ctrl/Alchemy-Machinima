@@ -12,12 +12,11 @@
 #include "llfloateractormover.h"
 
 #include "llactormover.h"
+#include "alpanelactormover.h"
 #include "alpanelpatheditor.h"
 #include "llavatarnamecache.h"
-#include "llbutton.h"
 #include "llscrolllistctrl.h"
 #include "lltextbox.h"
-#include "llviewercontrol.h"        // gSavedSettings, LLCachedControl
 #include "llviewerobjectlist.h"     // gObjectList
 #include "llvoavatar.h"
 #include "llvoavatarself.h"         // gAgentAvatarp, isAgentAvatarValid()
@@ -30,11 +29,11 @@ LLFloaterActorMover::LLFloaterActorMover(const LLSD& key)
 bool LLFloaterActorMover::postBuild()
 {
     mRosterList = getChild<LLScrollListCtrl>("roster_list");
-    mWalkBtn = getChild<LLButton>("walk_btn");
-    mStopBtn = getChild<LLButton>("stop_btn");
+    // the transport (scope, heading dial, params, Walk/Stop) is the shared
+    // ALPanelActorMover the Director Console Move tab also embeds; the roster
+    // list above stays this floater's own presentation
+    mMoverPanel = findChild<ALPanelActorMover>("actor_mover_panel");
     mPathPanel = findChild<ALPanelPathEditor>("path_editor");
-    mWalkBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickWalk(); });
-    mStopBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickStop(); });
     return true;
 }
 
@@ -152,8 +151,6 @@ void LLFloaterActorMover::refreshRoster()
 
 void LLFloaterActorMover::draw()
 {
-    static LLCachedControl<bool> sync(gSavedSettings, "ActorMoverSync", true);
-
     refreshRoster();
 
     // live transport state readout
@@ -165,10 +162,20 @@ void LLFloaterActorMover::draw()
                             : std::string("Idle"));
     }
 
-    // sync off = per-actor control: need a roster selection
-    const bool enabled = sync || mRosterList->getFirstSelected() != nullptr;
-    mWalkBtn->setEnabled(enabled);
-    mStopBtn->setEnabled(enabled);
+    // feed the shared transport panel this floater's selection: the one roster
+    // row that is selected (empty when none). The panel's Walk/Stop honor
+    // ActorMoverSync -- Everyone drives startAll/stopAll and ignores this; else
+    // it acts on exactly this set, so the buttons behave identically to the
+    // console Move tab (which feeds its cast-list selection the same way).
+    if (mMoverPanel)
+    {
+        uuid_vec_t sel;
+        if (const LLUUID id = selectedActor(); id.notNull())
+        {
+            sel.push_back(id);
+        }
+        mMoverPanel->setSelectedActors(sel);
+    }
 
     // point the shared path editor at the selected roster actor (implicit self
     // resolves to a concrete id in refreshRoster, so this is never null-for-self)
@@ -178,30 +185,4 @@ void LLFloaterActorMover::draw()
     }
 
     LLFloater::draw();
-}
-
-void LLFloaterActorMover::onClickWalk()
-{
-    static LLCachedControl<bool> sync(gSavedSettings, "ActorMoverSync", true);
-    if (sync)
-    {
-        LLActorMover::instance().startAll();
-    }
-    else if (const LLUUID id = selectedActor(); id.notNull())
-    {
-        LLActorMover::instance().start(id);
-    }
-}
-
-void LLFloaterActorMover::onClickStop()
-{
-    static LLCachedControl<bool> sync(gSavedSettings, "ActorMoverSync", true);
-    if (sync)
-    {
-        LLActorMover::instance().stopAll();
-    }
-    else if (const LLUUID id = selectedActor(); id.notNull())
-    {
-        LLActorMover::instance().stop(id);
-    }
 }
