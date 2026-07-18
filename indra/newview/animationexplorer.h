@@ -33,8 +33,6 @@
 #define ANIMATIONEXPLORER_H
 
 #include "llfloater.h"
-#include "llfloaterbvhpreview.h" // for LLPreviewAnimation
-#include "llscrolldelta.h"       // for LLScrollDelta (handleScrollWheel)
 #include "llsingleton.h"
 
 #include <boost/signals2.hpp>
@@ -71,6 +69,7 @@ public:
 // options to preview, stop animations and revoke animation permissions
 // --------------------------------------------------------------------------
 
+class ALPanelAnimPreview;
 class LLAvatarName;
 class LLButton;
 class LLCheckBoxCtrl;
@@ -92,14 +91,10 @@ public:
     bool postBuild() override;
     void addAnimation(const LLUUID& id, const LLUUID& playedBy, F64 time); // called from RecentAnimationList
 
-    // copied from llfloaterbvhpreview.h; NOTE Alchemy's LLView::handleScrollWheel
-    // takes an LLScrollDelta (high-precision wheel delta), not S32 clicks like
-    // upstream LL/Firestorm -- see llfloaterbvhpreview.h in this tree.
-    bool handleMouseDown(S32 x, S32 y, MASK mask) override;
-    bool handleMouseUp(S32 x, S32 y, MASK mask) override;
-    bool handleHover(S32 x, S32 y, MASK mask) override;
-    bool handleScrollWheel(S32 x, S32 y, LLScrollDelta delta) override;
-    void onMouseCaptureLost() override;
+    // The preview pane + its mouse-drag-to-rotate handling + the own-avatar
+    // Stop / Stop-and-Revoke / Blacklist / Capture-all controls now live in the
+    // shared ALPanelAnimPreview (panel_anim_preview.xml), embedded below; this
+    // floater just feeds it the selected animation via previewAnim().
 
 protected:
     void onAvatarNameCallback(const LLUUID& id, const LLAvatarName& av_name);
@@ -108,20 +103,14 @@ protected:
     void requestObjectName(LLViewerObject* vo); // provoke an ObjectProperties reply for an anonymous source
 
     LLScrollListCtrl* mAnimationScrollList;
-    LLButton*         mStopButton;
-    LLButton*         mBlacklistButton;
-    LLButton*         mStopAndRevokeButton;
     LLCheckBoxCtrl*   mNoOwnedAnimationsCheckBox;
 
     // [ActorMover] UUID tools: readout line + copy/handoff + list context menu
     LLLineEditor*           mAnimUUIDEditor = nullptr;
     LLHandle<LLContextMenu> mPopupMenuHandle;
 
-    LLView*                       mPreviewCtrl;      // dummy control on the floater where the avatar preview should go
-    LLPointer<LLPreviewAnimation> mAnimationPreview; // actual avatar preview
-
-    S32 mLastMouseX;
-    S32 mLastMouseY;
+    // shared preview pane + own-avatar action controls (owns its own dummy)
+    ALPanelAnimPreview* mPreviewPanel = nullptr;
 
     LLUUID mCurrentAnimationID; // currently selected animation's asset ID
     LLUUID mCurrentObject;      // object ID that played the currently selected animation
@@ -134,12 +123,8 @@ protected:
     void draw() override;
     void update();                          // request list update from RecentAnimationList
     void updateList(F64 current_timestamp); // update times and playing status in animation list
-    void startMotion(const LLUUID& motionID);
 
     void onSelectAnimation();
-    void onStopPressed();
-    void onBlacklistPressed();
-    void onStopAndRevokePressed();
     void onOwnedCheckToggled();
 
     // [ActorMover] UUID tools

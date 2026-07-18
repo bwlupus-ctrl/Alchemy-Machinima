@@ -17,8 +17,8 @@
  positioning="centered"
  height="374"
  min_height="374"
- min_width="400"
- width="574"
+ min_width="676"
+ width="676"
  name="animation_explorer"
  title="Animation Explorer"
  save_rect="true"
@@ -40,7 +40,7 @@
 	 bottom="-34"
 	 column_padding="0"
 	 draw_heading="true"
-	 follows="all"
+	 follows="left|top|bottom"
 	 layout="topleft"
 	 left="4"
 	 name="animation_list"
@@ -71,76 +71,33 @@
 		 width="-1" />
 	</scroll_list>
 
-	<view_border
-	 bevel_style="in"
-	 follows="top|bottom|right"
-	 height="256"
-	 name="animation_preview"
-	 layout="topleft"
-	 left_pad="4"
-	 top_delta="0"
-	 width="256" />
-
+	<!-- Shared preview pane + own-avatar controls: the spinning LLPreviewAnimation
+	     dummy (drag to orbit, wheel to zoom), auto-loops the selected animation,
+	     and the Capture-all / Stop / Stop and Revoke / Blacklist controls. The
+	     same ALPanelAnimPreview the Director Console Animate tab embeds -> the
+	     preview + its mouse handling live in one place and cannot drift. -->
 	<panel
-	 follows="bottom|right"
-	 height="74"
-	 name="buttons_panel"
-	 top_pad="4"
-	 width="256">
-
-	<button
+	 class="panel_anim_preview"
+	 filename="panel_anim_preview.xml"
 	 follows="top|right"
-	 height="22"
-	 label="Stop"
+	 height="188"
 	 layout="topleft"
-	 left="0"
-	 name="stop_btn"
-	 top="0"
-	 width="98" />
+	 left="316"
+	 name="anim_preview_panel"
+	 top="4"
+	 width="354" />
 
-	<button
-	 follows="top|right"
-	 height="22"
-	 label="Stop and Revoke"
-	 layout="topleft"
-	 left_pad="4"
-	 name="stop_and_revoke_btn"
-	 width="154" />
-
-	<button
-	 follows="top|right"
-	 height="22"
-	 label="Blacklist"
-	 layout="topleft"
-	 left="0"
-	 name="blacklist_btn"
-	 top_pad="4"
-	 width="98" />
-
+	<!-- Explorer-only: filters the recent-played list, not a preview control -->
 	<check_box
 	 follows="top|right"
 	 height="22"
 	 label="No Owned Animations"
-	 left_pad="4"
+	 layout="topleft"
+	 left="316"
 	 name="no_owned_animations_check"
 	 tool_tip="When checked this will filter out all animations that are owned by your avatar, like AO animations or system default animations."
-	 top_delta="-4"
-	 width="154" />
-
-	<!-- [ActorMover] capture anims starting on OTHER avatars too (persisted).
-	     Off = stock behavior: only anims playing on your own avatar are recorded. -->
-	<check_box
-	 control_name="AnimExplorerCaptureAll"
-	 follows="top|right"
-	 height="22"
-	 label="Capture all avatars"
-	 left="0"
-	 name="capture_all_check"
-	 tool_tip="Also record animations that start on OTHER avatars (machinima actors). The animated avatar is shown as the 'Played by' source."
-	 top_pad="4"
-	 width="256" />
-
-	</panel>
+	 top="200"
+	 width="354" />
 
 	<!-- [ActorMover] UUID tools strip: selected anim UUID readout + copy/handoff -->
 	<line_editor

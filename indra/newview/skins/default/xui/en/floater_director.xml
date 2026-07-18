@@ -787,7 +787,12 @@
              name="btn_clear_loco"
              width="66" />
 
-            <!-- ==== embedded preview + Animation Explorer controls ==== -->
+            <!-- ==== shared preview pane + own-avatar controls ==== -->
+            <!-- The spinning preview, its drag-to-rotate mouse handling, the
+                 auto-loop, and the Capture-all / Stop / Stop and Revoke /
+                 Blacklist controls are the shared ALPanelAnimPreview: the same
+                 panel the standalone Animation Explorer floater embeds, so the
+                 preview + mouse handling live in one place and cannot drift. -->
             <text
              follows="left|top"
              font="SansSerifBold"
@@ -799,73 +804,24 @@
              width="354">
                 Preview &amp; animation control
             </text>
-            <view_border
-             bevel_style="in"
+            <panel
+             class="panel_anim_preview"
+             filename="panel_anim_preview.xml"
              follows="left|top"
-             height="180"
+             height="188"
              layout="topleft"
              left="10"
              top="288"
-             name="animation_preview"
-             width="180" />
-            <text
-             follows="left|top"
-             height="26"
-             layout="topleft"
-             left="200"
-             top="288"
-             mouse_opaque="false"
-             name="preview_hint"
-             text_color="LtGray_50"
-             word_wrap="true"
-             width="164">
-                Previews the selected row / pasted UUID on loop. Drag to orbit, wheel to zoom.
-            </text>
-            <check_box
-             control_name="AnimExplorerCaptureAll"
-             follows="left|top"
-             height="16"
-             label="Capture all avatars"
-             layout="topleft"
-             left="200"
-             top="318"
-             name="capture_all_check"
-             tool_tip="Also record animations that start on OTHER avatars (machinima actors) into the Animation Explorer's list"
-             width="164" />
-            <button
-             follows="left|top"
-             height="20"
-             label="Stop"
-             layout="topleft"
-             left="200"
-             top="340"
-             name="btn_anim_ex_stop"
-             width="164" />
-            <button
-             follows="left|top"
-             height="20"
-             label="Stop and Revoke"
-             layout="topleft"
-             left="200"
-             top="364"
-             name="btn_anim_ex_revoke"
-             width="164" />
-            <button
-             follows="left|top"
-             height="20"
-             label="Blacklist"
-             layout="topleft"
-             left="200"
-             top="388"
-             name="btn_anim_ex_blacklist"
-             width="164" />
+             name="anim_preview_panel"
+             width="354" />
+            <!-- console-only: open the standalone Explorer (recent-anim list) -->
             <button
              follows="left|top"
              height="22"
              label="Open Animation Explorer"
              layout="topleft"
              left="200"
-             top="412"
+             top="482"
              name="btn_open_animexp"
              tool_tip="Open the standalone Animation Explorer (recent-animation list, name lookups)"
              width="164" />

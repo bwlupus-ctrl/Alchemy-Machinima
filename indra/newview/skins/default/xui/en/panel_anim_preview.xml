@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- Shared animation-preview panel (ALPanelAnimPreview, class
+     "panel_anim_preview"): a spinning LLPreviewAnimation dummy (drag to orbit,
+     wheel to zoom) that auto-plays the fed animation UUID on loop, plus the
+     own-avatar action controls (Capture-all, Stop, Stop and Revoke, Blacklist).
+     Embedded by BOTH the standalone Animation Explorer floater and the Director
+     Console Animate tab so the preview pane + its mouse-drag-to-rotate handling
+     + the auto-loop logic live in ONE place and can never drift. The preview
+     child rect is the placement target the C++ panel blits its own dummy into
+     and gates its mouse handlers to; the host feeds the anim + source object via
+     previewAnim(). Capture-all is settings-backed (control_name). -->
+<panel
+ background_visible="false"
+ border="false"
+ height="188"
+ layout="topleft"
+ name="panel_anim_preview"
+ width="354">
+    <view_border
+     bevel_style="in"
+     follows="left|top"
+     height="180"
+     layout="topleft"
+     left="0"
+     top="4"
+     name="animation_preview"
+     width="180" />
+    <text
+     follows="left|top"
+     height="44"
+     layout="topleft"
+     left="190"
+     top="4"
+     mouse_opaque="false"
+     name="preview_hint"
+     text_color="LtGray_50"
+     word_wrap="true"
+     width="164">
+        Previews the selected animation on loop. Drag to orbit, wheel to zoom.
+    </text>
+    <check_box
+     control_name="AnimExplorerCaptureAll"
+     follows="left|top"
+     height="16"
+     label="Capture all avatars"
+     layout="topleft"
+     left="190"
+     top="52"
+     name="capture_all_check"
+     tool_tip="Also record animations that start on OTHER avatars (machinima actors) into the Animation Explorer's list. The animated avatar is shown as the 'Played by' source."
+     width="164" />
+    <button
+     follows="left|top"
+     height="20"
+     label="Stop"
+     layout="topleft"
+     left="190"
+     top="74"
+     name="btn_anim_ex_stop"
+     width="164" />
+    <button
+     follows="left|top"
+     height="20"
+     label="Stop and Revoke"
+     layout="topleft"
+     left="190"
+     top="98"
+     name="btn_anim_ex_revoke"
+     width="164" />
+    <button
+     follows="left|top"
+     height="20"
+     label="Blacklist"
+     layout="topleft"
+     left="190"
+     top="122"
+     name="btn_anim_ex_blacklist"
+     width="164" />
+</panel>

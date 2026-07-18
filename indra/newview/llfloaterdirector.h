@@ -19,14 +19,13 @@
 #define LL_LLFLOATERDIRECTOR_H
 
 #include "llfloater.h"
-#include "llfloaterbvhpreview.h"     // LLPreviewAnimation (embedded preview dummy)
-#include "llscrolldelta.h"           // LLScrollDelta (handleScrollWheel, preview spin)
 
 #include <string>
 #include <utility>
 #include <vector>
 
 class ALCompassDial;
+class ALPanelAnimPreview;
 class ALPanelCineCamParams;
 class ALPanelPathEditor;
 class LLButton;
@@ -52,13 +51,8 @@ public:
     // floater behavior otherwise
     bool handleKeyHere(KEY key, MASK mask) override;
 
-    // Spin / zoom / pan the Animate-tab preview dummy (Animation Explorer
-    // idiom, gated to the embedded preview rect while that tab is showing).
-    bool handleMouseDown(S32 x, S32 y, MASK mask) override;
-    bool handleMouseUp(S32 x, S32 y, MASK mask) override;
-    bool handleHover(S32 x, S32 y, MASK mask) override;
-    bool handleScrollWheel(S32 x, S32 y, LLScrollDelta delta) override;
-    void onMouseCaptureLost() override;
+    // The Animate-tab preview dummy + its drag-to-rotate mouse handling live in
+    // the shared ALPanelAnimPreview embedded in the tab, not on this floater.
 
 private:
     // ---- transport ----
@@ -124,16 +118,9 @@ private:
     void onPastePlayLocal(bool play);
     void onPasteSetLoco();
     void onClickClearLoco();
-    // embedded preview + Animation Explorer parity (auto-loop the focus anim
-    // on a spinning dummy; stop / stop+revoke / blacklist against your avatar)
+    // The shared preview panel is fed the anim to show + the object playing it:
     LLUUID previewAnimId() const;                       // selected row, else pasted uuid
     LLUUID animSourceObject(const LLUUID& anim_id) const; // the object playing it on you
-    void   refreshAnimPreview();
-    void   onAnimExStop();
-    void   onAnimExStopAndRevoke();
-    void   onAnimExBlacklist();
-    // preview-ctrl rect in this floater's local space (false if not showing)
-    bool   previewRect(LLRect& out) const;
 
     // ---- Camera tab ----
     static LLUUID avatarFromSelection();
@@ -222,15 +209,9 @@ private:
     LLTextBox*        mLocoText = nullptr;
     LLButton*         mClearLocoBtn = nullptr;
     LLHandle<LLContextMenu> mAnimMenuHandle;
-    // embedded preview (LLPreviewAnimation spinning dummy) + Explorer controls
-    LLView*                       mAnimPreviewCtrl = nullptr;
-    LLPointer<LLPreviewAnimation> mAnimationPreview;
-    LLUUID            mPreviewAnimId;         // anim currently looping on the dummy
-    S32               mPreviewLastMouseX = 0;
-    S32               mPreviewLastMouseY = 0;
-    LLButton*         mAnimExStopBtn = nullptr;
-    LLButton*         mAnimExRevokeBtn = nullptr;
-    LLButton*         mAnimExBlacklistBtn = nullptr;
+    // shared preview pane + own-avatar controls (owns its own dummy); fed the
+    // selected/pasted anim + its source object each draw
+    ALPanelAnimPreview* mAnimPreviewPanel = nullptr;
     // change-diffing: rows rebuilt only when the shown member or their
     // signaled-animation set changed; prio/playing cells re-set only on change
     LLUUID mAnimAvatarId;

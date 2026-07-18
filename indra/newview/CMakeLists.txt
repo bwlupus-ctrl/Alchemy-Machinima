@@ -274,6 +274,7 @@ set(viewer_SOURCE_FILES
     lldirectorcast.cpp
     llfloateractormover.cpp
     llfloaterdirector.cpp
+    alpanelanimpreview.cpp
     alpanelcinecamparams.cpp
     alpanelflycamorbit.cpp
     alpanelflycamrecorder.cpp
@@ -1075,6 +1076,7 @@ set(viewer_HEADER_FILES
     lldirectorcast.h
     llfloateractormover.h
     llfloaterdirector.h
+    alpanelanimpreview.h
     alpanelcinecamparams.h
     alpanelflycamorbit.h
     alpanelflycamrecorder.h

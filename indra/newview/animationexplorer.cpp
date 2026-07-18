@@ -59,11 +59,10 @@
 #include "llviewerprecompiledheaders.h"
 #include "animationexplorer.h"
 
-#include "indra_constants.h"        // for MASK_ALT etc.
+#include "indra_constants.h"
 #include "message.h"                // for gMessageSystem
 #include "llagent.h"                // for gAgent
 #include "llagentdata.h"            // for gAgentID, gAgentSessionID
-#include "llanimationstates.h"
 #include "llbutton.h"
 #include "llcheckboxctrl.h"
 #include "llclipboard.h"            // [ActorMover] Copy UUID
@@ -74,24 +73,19 @@
 #include "lluictrlfactory.h"        // [ActorMover] list context menu
 #include "llviewercontrol.h"        // [ActorMover] gSavedSettings handoff
 #include "llviewermenu.h"           // [ActorMover] gMenuHolder
-#include "llkeyframemotion.h"       // for LLKeyframeMotion
-#include "llrender.h"                // for gGL
-#include "llrect.h"
-#include "llscriptruntimeperms.h"   // for SCRIPT_PERMISSIONS / SCRIPT_PERMISSION_*
+#include "llkeyframemotion.h"       // for LLKeyframeMotion (priority readout)
 #include "llscrolllistctrl.h"
 #include "lltimer.h"
-#include "lltoolmgr.h"              // for MASK_ORBIT etc.
 #include "lltrans.h"
 #include "lluuid.h"
 #include "llview.h"
 #include "llviewerobjectlist.h"
 #include "llviewerregion.h"
-#include "llviewerwindow.h"         // for gViewerWindow
 #include "llvoavatar.h"
 #include "llvoavatarself.h"         // for gAgentAvatarp
 #include "llavatarnamecache.h"
 
-#include "alassetblocklist.h"       // FSAssetBlacklist -> ALAssetBlocklist
+#include "alpanelanimpreview.h"     // shared preview pane + own-avatar controls
 #include "alobjectproperties.h"     // ALObjectPropertiesCache (name lookups)
 
 #include "rlvhandler.h"             // @shownames anonymization, matches ALFloaterExploreSounds
@@ -156,19 +150,13 @@ void RecentAnimationList::requestList(AnimationExplorer* explorer)
 AnimationExplorer::AnimationExplorer(const LLSD& key)
 :   LLFloater(key),
     mAnimationScrollList(nullptr),
-    mStopButton(nullptr),
-    mBlacklistButton(nullptr),
-    mStopAndRevokeButton(nullptr),
-    mNoOwnedAnimationsCheckBox(nullptr),
-    mPreviewCtrl(nullptr),
-    mLastMouseX(0),
-    mLastMouseY(0)
+    mNoOwnedAnimationsCheckBox(nullptr)
 {
 }
 
 AnimationExplorer::~AnimationExplorer()
 {
-    mAnimationPreview = nullptr;
+    // the shared preview panel owns and releases its own dummy avatar
 
     // [ActorMover] list context menu
     if (auto menu = mPopupMenuHandle.get())
@@ -192,36 +180,12 @@ AnimationExplorer::~AnimationExplorer()
     }
 }
 
-void AnimationExplorer::startMotion(const LLUUID& motionID)
-{
-    if (!mAnimationPreview)
-    {
-        return;
-    }
-
-    LLVOAvatar* avatarp = mAnimationPreview->getDummyAvatar();
-
-    avatarp->deactivateAllMotions();
-    avatarp->startMotion(ANIM_AGENT_STAND, 0.0f);
-
-    if (motionID.notNull())
-    {
-        avatarp->startMotion(motionID, 0.0f);
-    }
-}
-
 bool AnimationExplorer::postBuild()
 {
     mAnimationScrollList = getChild<LLScrollListCtrl>("animation_list");
-    mStopButton = getChild<LLButton>("stop_btn");
-    mBlacklistButton = getChild<LLButton>("blacklist_btn");
-    mStopAndRevokeButton = getChild<LLButton>("stop_and_revoke_btn");
     mNoOwnedAnimationsCheckBox = getChild<LLCheckBoxCtrl>("no_owned_animations_check");
 
     mAnimationScrollList->setCommitCallback(boost::bind(&AnimationExplorer::onSelectAnimation, this));
-    mStopButton->setCommitCallback(boost::bind(&AnimationExplorer::onStopPressed, this));
-    mBlacklistButton->setCommitCallback(boost::bind(&AnimationExplorer::onBlacklistPressed, this));
-    mStopAndRevokeButton->setCommitCallback(boost::bind(&AnimationExplorer::onStopAndRevokePressed, this));
     mNoOwnedAnimationsCheckBox->setCommitCallback(boost::bind(&AnimationExplorer::onOwnedCheckToggled, this));
 
     // [ActorMover] UUID tools: readout line, copy/handoff buttons, and a
@@ -248,20 +212,14 @@ bool AnimationExplorer::postBuild()
     mObjectPropsConnection = ALObjectPropertiesCache::instance().setChangeCallback(
         boost::bind(&AnimationExplorer::onObjectPropsChanged, this, _1));
 
-    mPreviewCtrl = findChild<LLView>("animation_preview");
-    if (mPreviewCtrl)
+    // the preview pane, its mouse-drag-to-rotate, the auto-loop, and the
+    // Stop / Stop-and-Revoke / Blacklist / Capture-all controls are the shared
+    // ALPanelAnimPreview embedded in the floater XML; it owns its own dummy and
+    // wiring. We just feed it the selected animation (onSelectAnimation).
+    mPreviewPanel = findChild<ALPanelAnimPreview>("anim_preview_panel");
+    if (!mPreviewPanel)
     {
-        if (isAgentAvatarValid())
-        {
-            mAnimationPreview = new LLPreviewAnimation(mPreviewCtrl->getRect().getWidth(), mPreviewCtrl->getRect().getHeight());
-            mAnimationPreview->setZoom(2.0f);
-            startMotion(LLUUID::null);
-        }
-    }
-    else
-    {
-        LL_WARNS("AnimationExplorer") << "Could not find animation preview control to place animation texture" << LL_ENDL;
-        return false;
+        LL_WARNS("AnimationExplorer") << "Could not find embedded anim preview panel" << LL_ENDL;
     }
 
     // request list of recent animations
@@ -290,7 +248,12 @@ void AnimationExplorer::onSelectAnimation()
         mAnimUUIDEditor->setText(mCurrentAnimationID.asString());
     }
 
-    startMotion(mCurrentAnimationID);
+    // feed the shared preview panel: it loops the anim on its dummy and points
+    // its Stop / Revoke / Blacklist at the object that played it
+    if (mPreviewPanel)
+    {
+        mPreviewPanel->previewAnim(mCurrentAnimationID, mCurrentObject);
+    }
 }
 
 // [ActorMover] copy the selected animation asset UUID to the clipboard
@@ -339,55 +302,6 @@ void AnimationExplorer::onScrollListRightClicked(LLUICtrl* ctrl, S32 x, S32 y)
     }
 }
 
-void AnimationExplorer::onStopPressed()
-{
-    if (mCurrentAnimationID.notNull())
-    {
-        gAgentAvatarp->stopMotion(mCurrentAnimationID);
-        gAgent.sendAnimationRequest(mCurrentAnimationID, ANIM_REQUEST_STOP);
-    }
-}
-
-void AnimationExplorer::onBlacklistPressed()
-{
-    onStopPressed();
-    LLScrollListItem* item = mAnimationScrollList->getFirstSelected();
-    if (!item)
-    {
-        return;
-    }
-
-    std::string region_name{};
-    if (gAgent.getRegion())
-    {
-        region_name = gAgent.getRegion()->getName();
-    }
-
-    // ALAssetBlocklist::addEntry() records the source UUID (not a display
-    // name, unlike the donor's FSAssetBlacklist::addNewItemToBlacklist()) --
-    // pass the object/avatar that played the animation.
-    ALAssetBlocklist::instance().addEntry(mCurrentAnimationID, mCurrentObject, region_name, LLAssetType::AT_ANIMATION);
-}
-
-void AnimationExplorer::onStopAndRevokePressed()
-{
-    onStopPressed();
-
-    if (mCurrentObject.notNull())
-    {
-        if (LLViewerObject* vo = gObjectList.findObject(mCurrentObject))
-        {
-            // gAgentAvatarp->revokePermissionsOnObject() does not exist in this
-            // tree. Replicate revoke_permissions_on_object() (llvoavatar.cpp) /
-            // LLAgent::stopCurrentAnimations() (llagent.cpp), the only two
-            // permission bits the server accepts for this message.
-            U32 permissions = SCRIPT_PERMISSIONS[SCRIPT_PERMISSION_TRIGGER_ANIMATION].permbit
-                             | SCRIPT_PERMISSIONS[SCRIPT_PERMISSION_OVERRIDE_ANIMATIONS].permbit;
-            gAgent.sendRevokePermissions(vo->getID(), permissions);
-        }
-    }
-}
-
 void AnimationExplorer::onOwnedCheckToggled()
 {
     update();
@@ -397,33 +311,7 @@ void AnimationExplorer::onOwnedCheckToggled()
 void AnimationExplorer::draw()
 {
     LLFloater::draw();
-    LLRect r = mPreviewCtrl->getRect();
-
-    if (mAnimationPreview)
-    {
-        mAnimationPreview->requestUpdate();
-
-        gGL.color3f(1.0f, 1.0f, 1.0f);
-        gGL.getTexUnit(0)->bind(mAnimationPreview);
-        gGL.begin(LLRender::TRIANGLES);
-        {
-            gGL.texCoord2f(0.0f, 1.0f);
-            gGL.vertex2i(r.mLeft, r.mTop);
-            gGL.texCoord2f(0.0f, 0.0f);
-            gGL.vertex2i(r.mLeft, r.mBottom);
-            gGL.texCoord2f(1.0f, 0.0f);
-            gGL.vertex2i(r.mRight, r.mBottom);
-
-            gGL.texCoord2f(0.0f, 1.0f);
-            gGL.vertex2i(r.mLeft, r.mTop);
-            gGL.texCoord2f(1.0f, 0.0f);
-            gGL.vertex2i(r.mRight, r.mBottom);
-            gGL.texCoord2f(1.0f, 1.0f);
-            gGL.vertex2i(r.mRight, r.mTop);
-        }
-        gGL.end();
-        gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
-    }
+    // the embedded ALPanelAnimPreview blits + spins its own dummy in its draw()
 
     // update times and "Still playing" status in the list once every few seconds
     static F64 last_update = 0.0;
@@ -436,8 +324,11 @@ void AnimationExplorer::draw()
 
 void AnimationExplorer::update()
 {
-    // stop playing preview animations when reloading the list
-    startMotion(LLUUID::null);
+    // stop previewing when reloading the list (the shared panel loops the dummy)
+    if (mPreviewPanel)
+    {
+        mPreviewPanel->clearPreview();
+    }
 
     mAnimationScrollList->deleteAllItems();
     RecentAnimationList::instance().requestList(this);
@@ -674,95 +565,4 @@ void AnimationExplorer::updateListEntry(const LLUUID& id, const std::string& nam
             played_by_text->setText(name);
         }
     }
-}
-
-// Copied from llfloaterbvhpreview.cpp
-bool AnimationExplorer::handleMouseDown(S32 x, S32 y, MASK mask)
-{
-    if (mPreviewCtrl && mPreviewCtrl->getRect().pointInRect(x, y))
-    {
-        bringToFront(x, y);
-        gFocusMgr.setMouseCapture(this);
-        gViewerWindow->hideCursor();
-        mLastMouseX = x;
-        mLastMouseY = y;
-        return true;
-    }
-
-    return LLFloater::handleMouseDown(x, y, mask);
-}
-
-// Copied from llfloaterbvhpreview.cpp
-bool AnimationExplorer::handleMouseUp(S32 x, S32 y, MASK mask)
-{
-    gFocusMgr.setMouseCapture(nullptr);
-    gViewerWindow->showCursor();
-    return LLFloater::handleMouseUp(x, y, mask);
-}
-
-// (Almost) Copied from llfloaterbvhpreview.cpp
-bool AnimationExplorer::handleHover(S32 x, S32 y, MASK mask)
-{
-    if (!mPreviewCtrl || !mAnimationPreview || !mPreviewCtrl->getRect().pointInRect(x, y))
-    {
-        return LLFloater::handleHover(x, y, mask);
-    }
-
-    MASK local_mask = mask & ~MASK_ALT;
-    if (mAnimationPreview && hasMouseCapture())
-    {
-        if (local_mask == MASK_PAN)
-        {
-            // pan here
-            mAnimationPreview->pan((F32)(x - mLastMouseX) * -0.005f, (F32)(y - mLastMouseY) * -0.005f);
-        }
-        else if (local_mask == MASK_ORBIT)
-        {
-            F32 yaw_radians = (F32)(x - mLastMouseX) * -0.01f;
-            F32 pitch_radians = (F32)(y - mLastMouseY) * 0.02f;
-            mAnimationPreview->rotate(yaw_radians, pitch_radians);
-        }
-        else
-        {
-            F32 yaw_radians = (F32)(x - mLastMouseX) * -0.01f;
-            F32 zoom_amt = (F32)(y - mLastMouseY) * 0.02f;
-            mAnimationPreview->rotate(yaw_radians, 0.f);
-            mAnimationPreview->zoom(zoom_amt);
-        }
-        mAnimationPreview->requestUpdate();
-        LLUI::getInstance()->setMousePositionLocal(this, mLastMouseX, mLastMouseY);
-    }
-    else if (local_mask == MASK_ORBIT)
-    {
-        gViewerWindow->setCursor(UI_CURSOR_TOOLCAMERA);
-    }
-    else if (local_mask == MASK_PAN)
-    {
-        gViewerWindow->setCursor(UI_CURSOR_TOOLPAN);
-    }
-    else
-    {
-        gViewerWindow->setCursor(UI_CURSOR_TOOLZOOMIN);
-    }
-    return true;
-}
-
-// (Almost) Copied from llfloaterbvhpreview.cpp -- adapted for LLScrollDelta
-// (this tree's high-precision scroll wheel type) instead of the donor's S32
-// clicks; mPrecise carries the same sign/scale the donor's `clicks` did.
-bool AnimationExplorer::handleScrollWheel(S32 x, S32 y, LLScrollDelta delta)
-{
-    if (mPreviewCtrl && mPreviewCtrl->getRect().pointInRect(x, y))
-    {
-        mAnimationPreview->zoom((F32)delta.mPrecise * -0.2f);
-        mAnimationPreview->requestUpdate();
-        return true;
-    }
-    return LLFloater::handleScrollWheel(x, y, delta);
-}
-
-// Copied from llfloaterbvhpreview.cpp
-void AnimationExplorer::onMouseCaptureLost()
-{
-    gViewerWindow->showCursor();
 }
