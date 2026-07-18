@@ -272,7 +272,7 @@
          top="0"
          width="374">
             <!-- mode: Straight (one-shot compass move) vs Path (waypoint editor).
-                 Shows/hides UI only -- the engine auto-walks a path with >= 2
+                 Shows/hides UI only; the engine auto-walks a path with 2+
                  nodes, so ACTION/CUT/marks/sync are unchanged. -->
             <radio_group
              draw_border="false"
@@ -337,7 +337,7 @@
                  width="90" />
             </radio_group>
 
-            <!-- ---- Straight mode group (the existing one-shot move controls) ---- -->
+            <!-- ==== Straight mode group (the existing one-shot move controls) ==== -->
             <panel
              background_visible="false"
              follows="all"
@@ -560,7 +560,7 @@
              width="354" />
             </panel>
 
-            <!-- ---- Path mode group (shared waypoint editor panel) ---- -->
+            <!-- ==== Path mode group (shared waypoint editor panel) ==== -->
             <panel
              class="panel_path_editor"
              filename="panel_path_editor.xml"
