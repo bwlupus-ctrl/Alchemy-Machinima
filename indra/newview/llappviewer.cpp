@@ -66,6 +66,7 @@
 #include "llviewerjoystick.h"
 #include "llcinematiccamera.h"
 #include "llflycamrecorder.h"
+#include "llpathcamera.h"    // per-node path camera source (authored actor+camera TAKE)
 #include "llheadrotmotion.h" // [BDMerge B4] per-frame push of head/eye rotation limits
 #include "llcalc.h"
 #include "llconversationlog.h"
@@ -5417,6 +5418,14 @@ void LLAppViewer::idle()
     {
         // recorded camera path playback / scrubbing (phoenix port)
         LLFlycamRecorder::instance().updateCamera();
+    }
+    else if (LLPathCamera::instance().isActive())
+    {
+        // per-node path camera: the cameras authored on Subject A's path drive
+        // the render camera as the actor walks (a walk + camera = one take).
+        // Below recorder playback, above the auto cinematic patterns. Releases
+        // to the agent camera the same frame the walk ends / actor derezzes.
+        LLPathCamera::instance().updateCamera();
     }
     else if (LLCinematicCamera::instance().isActive())
     {

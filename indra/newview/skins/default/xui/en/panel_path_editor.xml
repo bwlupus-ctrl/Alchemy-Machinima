@@ -8,7 +8,7 @@
 <panel
  background_visible="false"
  border="false"
- height="288"
+ height="384"
  layout="topleft"
  name="panel_path_editor"
  width="360">
@@ -308,4 +308,81 @@
      name="color_swatch"
      tool_tip="This actor's path color in world (auto, from its id)"
      width="40" />
+
+    <text
+     follows="left|top"
+     font="SansSerifSmallBold"
+     height="12"
+     layout="topleft"
+     left="6"
+     top="296"
+     name="cam_lbl"
+     width="70">
+        Camera
+    </text>
+    <check_box
+     control_name="PathCameraEnabled"
+     follows="left|top"
+     height="16"
+     label="Enable path camera (session)"
+     layout="topleft"
+     left="80"
+     top="294"
+     name="path_camera_enable_check"
+     tool_tip="When on, the cameras you set on Subject A's path drive the view as that actor walks, so a walk plays as one actor + camera take. Off is a no-op; existing pathing is unchanged. The camera hands back to normal control the moment the walk stops, finishes, is cut, or the actor leaves the region."
+     width="274" />
+    <button
+     follows="left|top"
+     height="20"
+     label="Set camera here"
+     layout="topleft"
+     left="6"
+     top="314"
+     name="btn_node_setcam"
+     tool_tip="Capture the current camera position, aim and FOV into this node"
+     width="130" />
+    <button
+     follows="left|top"
+     height="20"
+     label="Clear camera"
+     layout="topleft"
+     left="140"
+     top="314"
+     name="btn_node_clearcam"
+     tool_tip="Remove the camera from this node"
+     width="110" />
+    <combo_box
+     follows="left|top"
+     height="20"
+     layout="topleft"
+     left="6"
+     top="338"
+     name="node_cam_transition_combo"
+     tool_tip="How the camera reaches this node. Cut: snap to this shot when the actor arrives. Ease: glide from the previous camera node as the actor walks between them."
+     width="120">
+        <combo_box.item label="Cut" name="cam_cut" value="0" />
+        <combo_box.item label="Ease" name="cam_ease" value="1" />
+    </combo_box>
+    <button
+     follows="left|top"
+     height="20"
+     label="Preview"
+     layout="topleft"
+     left="132"
+     top="338"
+     name="btn_node_preview"
+     tool_tip="Jump the camera to this node's shot to check the framing, without walking"
+     width="110" />
+    <text
+     follows="left|top"
+     height="12"
+     layout="topleft"
+     left="6"
+     top="364"
+     name="node_cam_status"
+     text_color="LtGray_50"
+     use_ellipses="true"
+     width="348">
+        Select a waypoint to author its camera
+    </text>
 </panel>

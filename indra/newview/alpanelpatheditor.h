@@ -64,6 +64,7 @@ private:
     void refreshList();
     void refreshInspector();
     void refreshPathControls();
+    void refreshCameraControls();           // P3 per-node camera row state
     void syncListSelectionFromEngine();     // engine edit node -> list row
 
     S32  listSelectedNode() const;          // selected row -> node index (-1 none)
@@ -78,6 +79,13 @@ private:
 
     // edit-mode toggle (the in-world tool)
     void onToggleEditMode();
+
+    // P3 per-node camera authoring: capture the live render camera into the
+    // selected node, clear it, flip cut/ease, and static-preview its framing
+    void onClickSetCam();
+    void onClickClearCam();
+    void onCamTransitionCommit();
+    void onClickPreview();      // toggles LLPathCamera preview on the selected node
 
     // per-node inspector commits
     void onNodeHeightCommit();
@@ -102,7 +110,7 @@ private:
 
     // change-diffing snapshot so the list only rebuilds when the geometry/
     // summary of a node actually changed
-    struct NodeSnap { LLVector3d mPos; F32 mDwell = 0.f; F32 mSpeed = 0.f; };
+    struct NodeSnap { LLVector3d mPos; F32 mDwell = 0.f; F32 mSpeed = 0.f; bool mHasCam = false; };
     std::vector<NodeSnap> mSnap;
     S32    mSnapEndMode = -999;    // end mode the current rows were built for
     S32    mLastEngineNode = -2;   // last edit-node we mirrored into the list
@@ -127,6 +135,13 @@ private:
     LLCheckBoxCtrl*    mPitch = nullptr;
     LLComboBox*        mEndCombo = nullptr;
     LLPanel*           mColorSwatch = nullptr;
+
+    // P3 per-node camera row
+    LLButton*          mSetCamBtn = nullptr;
+    LLButton*          mClearCamBtn = nullptr;
+    LLButton*          mPreviewBtn = nullptr;
+    LLComboBox*        mCamTransCombo = nullptr;
+    LLTextBox*         mCamStatus = nullptr;
 };
 
 #endif // AL_ALPANELPATHEDITOR_H

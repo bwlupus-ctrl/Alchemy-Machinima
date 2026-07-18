@@ -13,6 +13,7 @@
 
 #include "altoolpathedit.h"
 #include "llactormover.h"
+#include "llagent.h"                 // gAgent camera origin <-> global (Set camera here)
 #include "llavatarnamecache.h"
 #include "llbutton.h"
 #include "llcheckboxctrl.h"
@@ -20,11 +21,13 @@
 #include "lldirectorcast.h"          // names + Subject A for "face target" (UI reads engine)
 #include "lllineeditor.h"
 #include "llnotificationsutil.h"
+#include "llpathcamera.h"            // static Preview of a node's stored camera
 #include "llscrolllistctrl.h"
 #include "llsliderctrl.h"
 #include "llspinctrl.h"
 #include "lltextbox.h"
 #include "lltoolmgr.h"
+#include "llviewercamera.h"          // capture the live render camera pose
 
 // both the Director Console Move tab and the standalone Actor Mover embed this
 // via <panel class="panel_path_editor" filename="panel_path_editor.xml"/>
@@ -45,8 +48,10 @@ ALPanelPathEditor::ALPanelPathEditor()
 
 ALPanelPathEditor::~ALPanelPathEditor()
 {
-    // never leave the shared tool armed if the panel is torn down
+    // never leave the shared tool armed or a camera preview latched if the
+    // panel is torn down
     exitEditMode();
+    LLPathCamera::instance().stopPreview();
 }
 
 bool ALPanelPathEditor::postBuild()
@@ -71,6 +76,12 @@ bool ALPanelPathEditor::postBuild()
     mEndCombo      = getChild<LLComboBox>("path_end_combo");
     mColorSwatch   = getChild<LLPanel>("color_swatch");
 
+    mSetCamBtn     = getChild<LLButton>("btn_node_setcam");
+    mClearCamBtn   = getChild<LLButton>("btn_node_clearcam");
+    mPreviewBtn    = getChild<LLButton>("btn_node_preview");
+    mCamTransCombo = getChild<LLComboBox>("node_cam_transition_combo");
+    mCamStatus     = getChild<LLTextBox>("node_cam_status");
+
     mEditModeCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onToggleEditMode(); });
     mList->setCommitCallback([this](LLUICtrl*, const LLSD&) { onListSelect(); });
     mAddBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickAdd(); });
@@ -90,6 +101,11 @@ bool ALPanelPathEditor::postBuild()
     mGroundFollow->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPathGroundFollowCommit(); });
     mPitch->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPathPitchCommit(); });
     mEndCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPathEndCommit(); });
+
+    mSetCamBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSetCam(); });
+    mClearCamBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickClearCam(); });
+    mPreviewBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickPreview(); });
+    mCamTransCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onCamTransitionCommit(); });
 
     if (mColorSwatch)
     {
@@ -157,6 +173,7 @@ void ALPanelPathEditor::draw()
     refreshList();
     refreshInspector();
     refreshPathControls();
+    refreshCameraControls();
 
     LLPanel::draw();
 }
@@ -166,8 +183,9 @@ void ALPanelPathEditor::onVisibilityChange(bool new_visibility)
     if (!new_visibility)
     {
         // leaving the tab / hiding the panel must never strand the user in the
-        // tool, and must drop the in-world highlight
+        // tool or in a camera preview, and must drop the in-world highlight
         exitEditMode();
+        LLPathCamera::instance().stopPreview();
         LLActorMover::instance().setEditActor(LLUUID::null);
     }
     LLPanel::onVisibilityChange(new_visibility);
@@ -201,7 +219,8 @@ void ALPanelPathEditor::refreshList()
     {
         if (mSnap[i].mPos != path->mNodes[i].mPosGlobal ||
             mSnap[i].mDwell != path->mNodes[i].mDwell ||
-            mSnap[i].mSpeed != path->mNodes[i].mSpeedOverride)
+            mSnap[i].mSpeed != path->mNodes[i].mSpeedOverride ||
+            mSnap[i].mHasCam != path->mNodes[i].mHasCam)
         {
             changed = true;
         }
@@ -229,6 +248,13 @@ void ALPanelPathEditor::refreshList()
                 if (!detail.empty()) { detail += "  "; }
                 detail += llformat("%.2f m/s", w.mSpeedOverride);
             }
+            if (w.mHasCam)
+            {
+                if (!detail.empty()) { detail += "  "; }
+                // a camera icon glyph so a shot node reads at a glance in the list
+                detail += (w.mCamTransition == 0) ? "\xF0\x9F\x93\xB7 cut"
+                                                  : "\xF0\x9F\x93\xB7 ease";
+            }
 
             LLSD row;
             row["value"] = i;
@@ -239,7 +265,7 @@ void ALPanelPathEditor::refreshList()
             row["columns"][2]["column"] = "detail";
             row["columns"][2]["value"]  = detail;
             mList->addElement(row, ADD_BOTTOM);
-            mSnap.push_back({ w.mPosGlobal, w.mDwell, w.mSpeedOverride });
+            mSnap.push_back({ w.mPosGlobal, w.mDwell, w.mSpeedOverride, w.mHasCam });
         }
         mLastEngineNode = -2;       // force a selection re-sync below
     }
@@ -405,6 +431,79 @@ void ALPanelPathEditor::refreshPathControls()
 }
 
 // ---------------------------------------------------------------------------
+// P3 per-node camera row: enable/tooltip + status + cut/ease reflect the
+// selected node's stored camera; Preview reflects LLPathCamera's live state.
+// ---------------------------------------------------------------------------
+void ALPanelPathEditor::refreshCameraControls()
+{
+    const LLActorMover::Path* path = LLActorMover::instance().getPath(mActor);
+    const S32  sel  = listSelectedNode();
+    const bool have = path && sel >= 0 && sel < (S32)path->mNodes.size();
+    const bool previewing = LLPathCamera::instance().isPreviewing();
+
+    // read the selected node's camera. getNodeCamera fills the cut/ease
+    // preference (ctrans) even when it returns false (no camera yet), so one
+    // call covers both the "has camera" and "remembered preference" cases.
+    LLVector3d cpos; LLQuaternion crot; F32 cfov = 0.f; S32 ctrans = 1;
+    const bool has_cam = have &&
+        LLActorMover::instance().getNodeCamera(mActor, sel, cpos, crot, cfov, ctrans);
+
+    // Set is blocked while previewing (the render camera is the frozen preview
+    // pose -- capturing it would be a no-op)
+    mSetCamBtn->setEnabled(have && !previewing);
+    mSetCamBtn->setToolTip(!have
+        ? std::string("Select a waypoint first")
+        : (previewing
+            ? std::string("Exit preview first so you can aim the camera")
+            : std::string("Capture the current camera position, aim and FOV into this node")));
+
+    mClearCamBtn->setEnabled(has_cam && !previewing);
+    mClearCamBtn->setToolTip(!have
+        ? std::string("Select a waypoint first")
+        : (has_cam ? std::string("Remove the camera from this node")
+                   : std::string("This node has no camera yet")));
+
+    mCamTransCombo->setEnabled(has_cam);
+    mCamTransCombo->setToolTip(has_cam
+        ? std::string("Cut: snap to this shot when the actor reaches the node. Ease: glide from the previous camera node")
+        : std::string("Set a camera on this node first"));
+    if (has_cam && !mCamTransCombo->hasFocus() &&
+        mCamTransCombo->getValue().asInteger() != ctrans)
+    {
+        mCamTransCombo->setValue(ctrans);
+    }
+
+    // Preview toggles: enabled when the node has a camera, or always available
+    // to exit while previewing
+    mPreviewBtn->setEnabled(has_cam || previewing);
+    mPreviewBtn->setLabel(previewing ? std::string("Exit preview")
+                                     : std::string("Preview"));
+    mPreviewBtn->setToolTip(previewing
+        ? std::string("Return the camera to normal control")
+        : (has_cam ? std::string("Jump the camera to this node's shot to check the framing")
+                   : std::string("Set a camera on this node first")));
+
+    if (previewing)
+    {
+        mCamStatus->setText(std::string("Previewing \xE2\x80\x94 camera is held on this shot"));
+    }
+    else if (has_cam)
+    {
+        const S32 fov_deg = (S32)llround(cfov * RAD_TO_DEG);
+        mCamStatus->setText(llformat("Camera set \xE2\x80\x94 %s \xC2\xB7 FOV %d\xC2\xB0",
+                                     (ctrans == 0) ? "cut" : "ease", fov_deg));
+    }
+    else if (have)
+    {
+        mCamStatus->setText(std::string("No camera on this node"));
+    }
+    else
+    {
+        mCamStatus->setText(std::string("Select a waypoint to author its camera"));
+    }
+}
+
+// ---------------------------------------------------------------------------
 // list + buttons
 // ---------------------------------------------------------------------------
 void ALPanelPathEditor::onListSelect()
@@ -524,6 +623,9 @@ void ALPanelPathEditor::onToggleEditMode()
             mEditMode = false;
             return;
         }
+        // edit mode places nodes by picking against the render camera; a held
+        // preview would freeze that camera, so the two are mutually exclusive
+        LLPathCamera::instance().stopPreview();
         LLActorMover::instance().setEditActor(mActor);
         tm->setTransientTool(ALToolPathEdit::getInstance());
         mEditMode = true;
@@ -549,6 +651,79 @@ void ALPanelPathEditor::exitEditMode()
     {
         mEditModeCheck->set(false);
     }
+}
+
+// ---------------------------------------------------------------------------
+// P3 per-node camera authoring
+// ---------------------------------------------------------------------------
+void ALPanelPathEditor::onClickSetCam()
+{
+    const S32 sel = listSelectedNode();
+    if (mActor.isNull() || sel < 0 || LLPathCamera::instance().isPreviewing())
+    {
+        return;
+    }
+    // capture the CURRENT render camera pose: origin -> global (studio cameras
+    // are world-anchored, like the flycam recorder), full orientation, and the
+    // vertical FOV. Reuse the node's remembered cut/ease if it already had a
+    // camera, else take the combo's current selection.
+    LLViewerCamera* cam = LLViewerCamera::getInstance();
+    const LLVector3d pos_global = gAgent.getPosGlobalFromAgent(cam->getOrigin());
+    const LLQuaternion rot      = cam->getQuaternion();
+    const F32 fov               = cam->getView();
+
+    LLVector3d p; LLQuaternion r; F32 f = 0.f; S32 trans = 1;
+    if (!LLActorMover::instance().getNodeCamera(mActor, sel, p, r, f, trans))
+    {
+        trans = mCamTransCombo ? mCamTransCombo->getValue().asInteger() : 1;
+    }
+    LLActorMover::instance().setNodeCamera(mActor, sel, pos_global, rot, fov,
+                                           llclamp(trans, 0, 1));
+}
+
+void ALPanelPathEditor::onClickClearCam()
+{
+    const S32 sel = listSelectedNode();
+    if (mActor.isNull() || sel < 0)
+    {
+        return;
+    }
+    // if we were previewing this shot, hand the camera back before removing it
+    LLPathCamera::instance().stopPreview();
+    LLActorMover::instance().clearNodeCamera(mActor, sel);
+}
+
+void ALPanelPathEditor::onCamTransitionCommit()
+{
+    const S32 sel = listSelectedNode();
+    if (mActor.notNull() && sel >= 0)
+    {
+        LLActorMover::instance().setNodeCamTransition(mActor, sel,
+            mCamTransCombo->getValue().asInteger());
+    }
+}
+
+void ALPanelPathEditor::onClickPreview()
+{
+    // toggle: if already previewing, hand the camera back
+    if (LLPathCamera::instance().isPreviewing())
+    {
+        LLPathCamera::instance().stopPreview();
+        return;
+    }
+    const S32 sel = listSelectedNode();
+    if (mActor.isNull() || sel < 0)
+    {
+        return;
+    }
+    LLVector3d pos; LLQuaternion rot; F32 fov = 0.f; S32 trans = 1;
+    if (!LLActorMover::instance().getNodeCamera(mActor, sel, pos, rot, fov, trans))
+    {
+        return;         // nothing to preview
+    }
+    // previewing and the in-world edit tool both want the camera; drop edit mode
+    exitEditMode();
+    LLPathCamera::instance().startPreview(pos, rot, fov);
 }
 
 // ---------------------------------------------------------------------------

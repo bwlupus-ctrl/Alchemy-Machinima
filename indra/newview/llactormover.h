@@ -69,6 +69,21 @@ public:
         // ground this makes path placement byte-match the legacy straight move;
         // ground-follow rides slopes/stairs by swapping the ground under it.
         F32        mRootAbove = 0.f;    // root Z - snapped ground Z at capture, m
+
+        // ---- P3 optional per-node camera (author a shot inline on the path) ---
+        // A world-anchored studio camera captured from the live render camera and
+        // stored in GLOBAL coords (consistent with mPosGlobal, so it survives a
+        // region crossing exactly like LLFlycamRecorder::Keyframe). When mHasCam,
+        // the path-camera source frames this pose as the actor's arc clock passes
+        // the node: a CUT node snaps at the crossing, an EASE node interpolates
+        // from the previous camera node. Session-only; scene code serializes these
+        // through the clean accessors below. (Actor-relative cameras that ride a
+        // re-anchor are a deferred later flag -- world-anchored is the default.)
+        bool         mHasCam = false;
+        LLVector3d   mCamPosGlobal;      // camera origin, global coords
+        LLQuaternion mCamRot;            // camera orientation, world frame
+        F32          mCamFov = 0.f;      // vertical FOV, radians (0 = viewer default)
+        S32          mCamTransition = 1; // how the camera REACHES this node: 0 cut, 1 ease
     };
 
     struct Path
@@ -130,6 +145,42 @@ public:
     bool setNodeSpeed(const LLUUID& actor_id, S32 index, F32 speed_override);
     bool setNodeAnim(const LLUUID& actor_id, S32 index, const LLUUID& anim);
     bool setNodeGroundOffset(const LLUUID& actor_id, S32 index, F32 offset_m);
+
+    // ---- P3 per-node camera (author an actor+camera TAKE inline) --------------
+    // Capture a camera into a node from a render-camera pose already resolved to
+    // GLOBAL coords by the caller (LLViewerCamera origin -> global, orientation,
+    // getView() as vertical FOV). transition: 0 = cut, 1 = ease. Marks mHasCam.
+    // Bad index / unresolved actor -> false. Camera fields do not affect the
+    // arc-length geometry, so these do NOT dirty the path.
+    bool setNodeCamera(const LLUUID& actor_id, S32 index, const LLVector3d& cam_pos_global,
+                       const LLQuaternion& cam_rot, F32 cam_fov, S32 transition);
+    bool clearNodeCamera(const LLUUID& actor_id, S32 index);
+    bool setNodeCamTransition(const LLUUID& actor_id, S32 index, S32 transition);
+    // read a node's stored camera (panel Preview + inspector). False = bad index
+    // or the node carries no camera.
+    bool getNodeCamera(const LLUUID& actor_id, S32 index, LLVector3d& cam_pos_global,
+                       LLQuaternion& cam_rot, F32& cam_fov, S32& transition) const;
+    // how many nodes on this actor's path carry a camera (panel + viz gate)
+    S32  pathCameraNodeCount(const LLUUID& actor_id) const;
+
+    // ---- P3 path-camera SOURCE (drives the render camera during a TAKE) -------
+    // The camera-driving path is the path of the Subject-A actor (there is only
+    // ever one Subject A, so EXACTLY ONE path drives the camera -- no two sources
+    // fight). The LLPathCamera source calls these every frame.
+    //
+    // hasActivePathCamera() is the OWNERSHIP gate: true only while the actor is
+    // actively walking its path (an mIsPath Move that has not settled at a
+    // stop-mode end) AND that path has >= 1 camera node. It must go false the
+    // SAME frame the walk stops / finishes / is cut, so the source releases the
+    // render camera back to the agent camera and never latches. (Actor derez /
+    // region change is caught upstream: LLPathCamera resolves Subject A each
+    // frame and releases the instant it is unresolvable.)
+    bool hasActivePathCamera(const LLUUID& actor_id) const;
+    // Evaluate the eased/cut camera track at the actor's CURRENT arc distance and
+    // return the render-camera pose (global origin, world rotation, vertical FOV
+    // radians). False when not path-walking or the path has no camera nodes.
+    bool getPathCameraPose(const LLUUID& actor_id, LLVector3d& cam_pos_global,
+                           LLQuaternion& cam_rot, F32& cam_fov) const;
 
     // ---- P2 edit selection (shared by the path-editor panel + in-world tool + viz) ---
     // Which actor's path is being edited (stored as the resolved path key) and

@@ -3430,6 +3430,17 @@
       <key>Value</key>
       <real>180.0</real>
     </map>
+    <key>PathCameraEnabled</key>
+    <map>
+      <key>Comment</key>
+      <string>[ActorMover] Per-node path camera master switch (session tool). When on, the cameras a director authored on Subject A's path drive the render camera as that actor walks, so a walk plays as one actor+camera take. Off (default) is a byte-identical no-op: the new camera source never engages and existing pathing is unchanged. The camera releases back to the normal agent camera the moment the walk stops, finishes, is cut, or the actor derezzes / leaves the region.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
     <key>ActorMoverSync</key>
     <map>
       <key>Comment</key>

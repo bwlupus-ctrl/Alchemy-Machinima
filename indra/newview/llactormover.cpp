@@ -556,6 +556,268 @@ bool LLActorMover::setNodeGroundOffset(const LLUUID& actor_id, S32 index, F32 of
 }
 
 // ---------------------------------------------------------------------------
+// P3 per-node camera: capture / clear / read. Camera data is world-anchored
+// (global coords) and does NOT touch the arc-length geometry, so these never
+// mark the path dirty (no needless spline rebuild).
+// ---------------------------------------------------------------------------
+bool LLActorMover::setNodeCamera(const LLUUID& actor_id, S32 index,
+                                 const LLVector3d& cam_pos_global,
+                                 const LLQuaternion& cam_rot, F32 cam_fov, S32 transition)
+{
+    const Path* cp = getPath(actor_id);
+    if (!cp || index < 0 || index >= (S32)cp->mNodes.size())
+    {
+        return false;
+    }
+    Path& path = editPath(actor_id);
+    Waypoint& w = path.mNodes[index];
+    w.mHasCam       = true;
+    w.mCamPosGlobal = cam_pos_global;
+    w.mCamRot       = cam_rot;
+    w.mCamFov       = cam_fov;
+    w.mCamTransition = llclamp(transition, 0, 1);
+    return true;
+}
+
+bool LLActorMover::clearNodeCamera(const LLUUID& actor_id, S32 index)
+{
+    const Path* cp = getPath(actor_id);
+    if (!cp || index < 0 || index >= (S32)cp->mNodes.size())
+    {
+        return false;
+    }
+    Path& path = editPath(actor_id);
+    Waypoint& w = path.mNodes[index];
+    w.mHasCam = false;
+    w.mCamPosGlobal.setZero();
+    w.mCamRot.loadIdentity();
+    w.mCamFov = 0.f;
+    // keep mCamTransition as the node's remembered cut/ease preference
+    return true;
+}
+
+bool LLActorMover::setNodeCamTransition(const LLUUID& actor_id, S32 index, S32 transition)
+{
+    const Path* cp = getPath(actor_id);
+    if (!cp || index < 0 || index >= (S32)cp->mNodes.size())
+    {
+        return false;
+    }
+    editPath(actor_id).mNodes[index].mCamTransition = llclamp(transition, 0, 1);
+    return true;
+}
+
+bool LLActorMover::getNodeCamera(const LLUUID& actor_id, S32 index,
+                                 LLVector3d& cam_pos_global, LLQuaternion& cam_rot,
+                                 F32& cam_fov, S32& transition) const
+{
+    const Path* cp = getPath(actor_id);
+    if (!cp || index < 0 || index >= (S32)cp->mNodes.size())
+    {
+        return false;
+    }
+    const Waypoint& w = cp->mNodes[index];
+    transition = w.mCamTransition;      // valid even with no camera (remembered pref)
+    if (!w.mHasCam)
+    {
+        return false;
+    }
+    cam_pos_global = w.mCamPosGlobal;
+    cam_rot        = w.mCamRot;
+    cam_fov        = w.mCamFov;
+    return true;
+}
+
+S32 LLActorMover::pathCameraNodeCount(const LLUUID& actor_id) const
+{
+    const Path* cp = getPath(actor_id);
+    if (!cp)
+    {
+        return 0;
+    }
+    S32 count = 0;
+    for (const Waypoint& w : cp->mNodes)
+    {
+        if (w.mHasCam)
+        {
+            ++count;
+        }
+    }
+    return count;
+}
+
+// ---------------------------------------------------------------------------
+// P3 path-camera SOURCE. hasActivePathCamera() is the ownership gate; it must
+// go false the same frame the walk ends so the render camera is released.
+// ---------------------------------------------------------------------------
+bool LLActorMover::hasActivePathCamera(const LLUUID& actor_id) const
+{
+    const LLUUID key = path_key(actor_id);
+    auto mit = mMoves.find(key);
+    if (mit == mMoves.end() || !mit->second.mIsPath)
+    {
+        return false;                   // not walking a path -> release
+    }
+    // a stop-mode walk that has settled at the final node is FINISHED; hand the
+    // camera back rather than latching on the parked actor. Loop / ping-pong
+    // never "arrive", so they keep the camera until Stop / CUT removes the Move.
+    if (mit->second.mArrived && mit->second.mEndMode == 0)
+    {
+        return false;
+    }
+    auto pit = mPaths.find(key);
+    if (pit == mPaths.end())
+    {
+        return false;
+    }
+    for (const Waypoint& w : pit->second.mNodes)
+    {
+        if (w.mHasCam)
+        {
+            return true;
+        }
+    }
+    return false;                       // no camera nodes -> nothing to drive
+}
+
+bool LLActorMover::getPathCameraPose(const LLUUID& actor_id, LLVector3d& out_pos,
+                                     LLQuaternion& out_rot, F32& out_fov) const
+{
+    const LLUUID key = path_key(actor_id);
+    auto mit = mMoves.find(key);
+    if (mit == mMoves.end() || !mit->second.mIsPath)
+    {
+        return false;
+    }
+    auto pit = mPaths.find(key);
+    if (pit == mPaths.end())
+    {
+        return false;
+    }
+    const Path& path = pit->second;
+    const S32   n     = (S32)path.mNodes.size();
+    // Need the arc-length table to map node index -> arc distance. It is rebuilt
+    // in start()/advancePath(); a structural mismatch (edit not yet recompiled)
+    // is rare and safe to skip for a frame rather than read a stale index.
+    if (n < 1 || (S32)path.mNodeDist.size() < n)
+    {
+        return false;
+    }
+
+    // camera nodes in path order (mNodeDist is monotonic, so this stays sorted
+    // by arc distance)
+    struct CamRef { F32 dist; S32 idx; };
+    std::vector<CamRef> cams;
+    cams.reserve(n);
+    for (S32 i = 0; i < n; ++i)
+    {
+        if (path.mNodes[i].mHasCam)
+        {
+            cams.push_back({ path.mNodeDist[i], i });
+        }
+    }
+    if (cams.empty())
+    {
+        return false;
+    }
+
+    struct Pose { LLVector3d p; LLQuaternion r; F32 f; };
+    auto poseOf = [&](S32 ci) -> Pose
+    {
+        const Waypoint& w = path.mNodes[cams[ci].idx];
+        return { w.mCamPosGlobal, w.mCamRot, w.mCamFov };
+    };
+    // smoothstep-eased blend between two camera poses: slerp rotation (short
+    // way -- hemisphere-aligned first), lerp position + FOV. u is raw 0..1.
+    auto easeBetween = [](const Pose& a, const Pose& b, F32 u) -> Pose
+    {
+        const F32 s = u * u * (3.f - 2.f * u);
+        Pose o;
+        o.p = a.p * (1.0 - (F64)s) + b.p * (F64)s;
+        const F32 dot = a.r.mQ[0] * b.r.mQ[0] + a.r.mQ[1] * b.r.mQ[1]
+                      + a.r.mQ[2] * b.r.mQ[2] + a.r.mQ[3] * b.r.mQ[3];
+        const LLQuaternion bb = (dot < 0.f) ? (-b.r) : b.r;
+        o.r = slerp(s, a.r, bb);
+        o.f = a.f * (1.f - s) + b.f * s;
+        return o;
+    };
+
+    const S32 last = (S32)cams.size() - 1;
+    Pose result;
+
+    if (last == 0)
+    {
+        result = poseOf(0);             // single camera node: hold it
+    }
+    else
+    {
+        // interior bracket: transition INTO cams[k+1] governs the segment. CUT
+        // holds cams[k] until the actor crosses cams[k+1]; EASE interpolates.
+        auto interior = [&](F32 dd) -> Pose
+        {
+            S32 k = 0;
+            while (k + 1 <= last && cams[k + 1].dist <= dd)
+            {
+                ++k;
+            }
+            k = llclamp(k, 0, last - 1);
+            const S32 into = cams[k + 1].idx;
+            if (path.mNodes[into].mCamTransition == 0)      // CUT: hold previous
+            {
+                return poseOf(k);
+            }
+            const F32 span = cams[k + 1].dist - cams[k].dist;
+            const F32 u = (span > 1e-4f)
+                              ? llclamp((dd - cams[k].dist) / span, 0.f, 1.f) : 1.f;
+            return easeBetween(poseOf(k), poseOf(k + 1), u);
+        };
+
+        const F32 d = mit->second.mDist;
+
+        if (path.mEndMode == 1)         // loop: the camera track wraps closed
+        {
+            const F32 total = llmax(path.mTotalLength, 1e-4f);
+            if (d >= cams[last].dist || d < cams[0].dist)
+            {
+                // wrap segment: last camera -> first camera (through the seam).
+                // Transition into the FIRST node governs it.
+                if (path.mNodes[cams[0].idx].mCamTransition == 0)
+                {
+                    result = poseOf(last);
+                }
+                else
+                {
+                    const F32 dd = (d >= cams[last].dist) ? d : d + total;
+                    const F32 a  = cams[last].dist;
+                    const F32 b  = cams[0].dist + total;
+                    const F32 span = b - a;
+                    const F32 u = (span > 1e-4f)
+                                      ? llclamp((dd - a) / span, 0.f, 1.f) : 1.f;
+                    result = easeBetween(poseOf(last), poseOf(0), u);
+                }
+            }
+            else
+            {
+                result = interior(d);
+            }
+        }
+        else                            // stop / ping-pong: hold ends
+        {
+            if (d <= cams[0].dist)         { result = poseOf(0); }
+            else if (d >= cams[last].dist) { result = poseOf(last); }
+            else                           { result = interior(d); }
+        }
+    }
+
+    out_pos = result.p;
+    out_rot = result.r;
+    // guard a degenerate / unset FOV so we never write a zero vertical FOV
+    out_fov = (result.f > 0.01f) ? result.f
+                                 : LLViewerCamera::getInstance()->getDefaultFOV();
+    return true;
+}
+
+// ---------------------------------------------------------------------------
 // P2 edit selection (shared spine for the panel, the in-world tool and the viz)
 // ---------------------------------------------------------------------------
 void LLActorMover::setEditActor(const LLUUID& actor_id)
@@ -1451,6 +1713,59 @@ void drawNumber(S32 value, const LLVector3& anchor, F32 h,
     }
     gGL.end();
 }
+
+// a small camera frustum gizmo at a node's authored camera pose: the apex
+// (camera origin), four edges out to a lens rectangle a short way along the
+// aim, the rectangle itself, and a short "up" nub so roll/tilt reads. Tinted
+// by the transition so the director sees cut vs ease at a glance. Lines only,
+// in the same no-depth UI pass. rot is the stored camera orientation (the SL
+// camera looks down its +X axis; +Z is up, +Y is left).
+void drawCameraGizmo(const LLVector3& apex, const LLQuaternion& rot, F32 vfov,
+                     const LLColor4& col)
+{
+    const LLVector3 fwd = LLVector3(1.f, 0.f, 0.f) * rot;
+    const LLVector3 up  = LLVector3(0.f, 0.f, 1.f) * rot;
+    const LLVector3 rgt = LLVector3(0.f, -1.f, 0.f) * rot;   // right = -left(Y)
+
+    const F32 L  = 0.7f;                                     // gizmo depth, m
+    const F32 hh = L * tanf(llclamp(vfov, 0.15f, 2.6f) * 0.5f);
+    const F32 hw = hh * 1.5f;                                // gizmo lens aspect
+    const LLVector3 c  = apex + fwd * L;
+    const LLVector3 tl = c - rgt * hw + up * hh;
+    const LLVector3 tr = c + rgt * hw + up * hh;
+    const LLVector3 bl = c - rgt * hw - up * hh;
+    const LLVector3 br = c + rgt * hw - up * hh;
+
+    gGL.setLineWidth(2.f);
+    gGL.begin(LLRender::LINES);
+    gGL.color4fv(col.mV);
+    // apex -> lens corners
+    gGL.vertex3fv(apex.mV); gGL.vertex3fv(tl.mV);
+    gGL.vertex3fv(apex.mV); gGL.vertex3fv(tr.mV);
+    gGL.vertex3fv(apex.mV); gGL.vertex3fv(bl.mV);
+    gGL.vertex3fv(apex.mV); gGL.vertex3fv(br.mV);
+    // lens rectangle
+    gGL.vertex3fv(tl.mV); gGL.vertex3fv(tr.mV);
+    gGL.vertex3fv(tr.mV); gGL.vertex3fv(br.mV);
+    gGL.vertex3fv(br.mV); gGL.vertex3fv(bl.mV);
+    gGL.vertex3fv(bl.mV); gGL.vertex3fv(tl.mV);
+    // up nub (roll indicator) rising from the top edge centre
+    const LLVector3 tc = (tl + tr) * 0.5f;
+    gGL.vertex3fv(tc.mV); gGL.vertex3fv((tc + up * (hh * 0.6f)).mV);
+    gGL.end();
+
+    // a small filled diamond at the apex so the camera origin reads as a point
+    const F32 R = 0.09f;
+    gGL.begin(LLRender::TRIANGLES);
+    gGL.color4fv(col.mV);
+    const LLVector3 a0 = apex + rgt * R;
+    const LLVector3 a1 = apex + up  * R;
+    const LLVector3 a2 = apex - rgt * R;
+    const LLVector3 a3 = apex - up  * R;
+    gGL.vertex3fv(a0.mV); gGL.vertex3fv(a1.mV); gGL.vertex3fv(a2.mV);
+    gGL.vertex3fv(a0.mV); gGL.vertex3fv(a2.mV); gGL.vertex3fv(a3.mV);
+    gGL.end();
+}
 } // anonymous namespace
 
 // ---------------------------------------------------------------------------
@@ -1587,6 +1902,32 @@ void LLActorMover::renderHeadingPreview()
                 LLVector3 num_at = base;
                 num_at.mV[VZ] += NODE_STICK_H + 0.06f;
                 drawNumber(i + 1, num_at, NODE_NUM_H, bb_right, bb_up, col_num);
+
+                // authored camera on this node: a frustum gizmo at the camera
+                // pose plus a thin leader from the node up to the camera, so the
+                // shot layout is legible in world. Cut = warm amber, ease = cyan.
+                const LLActorMover::Waypoint& wp = path.mNodes[i];
+                if (wp.mHasCam)
+                {
+                    const LLVector3 apex = gAgent.getPosAgentFromGlobal(wp.mCamPosGlobal);
+                    const bool cut = (wp.mCamTransition == 0);
+                    const LLColor4 cam_col = cut
+                        ? LLColor4(1.f, 0.58f, 0.15f, 0.95f)     // hard cut: amber
+                        : LLColor4(0.35f, 0.85f, 1.f, 0.95f);    // ease: cyan
+
+                    // leader line node -> camera apex (dim, so it doesn't shout)
+                    gGL.setLineWidth(1.5f);
+                    gGL.begin(LLRender::LINES);
+                    gGL.color4f(cam_col.mV[VX], cam_col.mV[VY], cam_col.mV[VZ], 0.45f);
+                    gGL.vertex3f(base.mV[VX], base.mV[VY], base.mV[VZ] + NODE_STICK_H * 0.5f);
+                    gGL.vertex3fv(apex.mV);
+                    gGL.end();
+
+                    drawCameraGizmo(apex, wp.mCamRot, wp.mCamFov > 0.01f
+                                        ? wp.mCamFov
+                                        : LLViewerCamera::getInstance()->getDefaultFOV(),
+                                    cam_col);
+                }
             }
         }
         else

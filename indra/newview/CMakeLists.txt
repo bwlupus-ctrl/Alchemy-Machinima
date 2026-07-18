@@ -278,6 +278,7 @@ set(viewer_SOURCE_FILES
     alpanelcinecamparams.cpp
     alpanelpatheditor.cpp
     llflycamrecorder.cpp
+    llpathcamera.cpp
     llcefaccelinterop.cpp
     llcefsurfacereceiver.cpp
     llchannelmanager.cpp
@@ -1077,6 +1078,7 @@ set(viewer_HEADER_FILES
     alpanelcinecamparams.h
     alpanelpatheditor.h
     llflycamrecorder.h
+    llpathcamera.h
     llcapabilityprovider.h
     llcefaccelinterop.h
     llcefsurfacereceiver.h
