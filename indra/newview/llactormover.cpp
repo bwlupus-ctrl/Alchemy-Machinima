@@ -17,6 +17,7 @@
 #include "llanimationstates.h"      // ANIM_AGENT_WALK
 #include "llappviewer.h"            // gFrameIntervalSeconds
 #include "lldirectorcast.h"         // [Director] roster storage + per-actor loco anim
+#include "llflycamrecorder.h"       // sync-to-take: the recorder playhead is the clock
 #include "llfloaterreg.h"           // heading preview only draws with the floater open
 #include "llframetimer.h"           // per-frame idempotency for applyOverride()
 #include "llgl.h"
@@ -570,6 +571,100 @@ bool LLActorMover::isPathWalking(const LLUUID& actor_id) const
     return it != mMoves.end() && it->second.mIsPath;
 }
 
+// ===========================================================================
+// P3 Choreography: follow-the-leader (procession by reference). A follower
+// rides the leader's spline at an offset; see advanceFollower() for traversal.
+// ===========================================================================
+bool LLActorMover::wouldFollowCycle(const LLUUID& follower,
+                                    const LLUUID& candidate_leader) const
+{
+    const LLUUID fk = path_key(follower);
+    LLUUID cur = path_key(candidate_leader);
+    if (cur.isNull() || cur == fk)
+    {
+        return true;        // self-follow is a degenerate cycle
+    }
+    // walk the candidate's leader chain: if it reaches the follower, the new edge
+    // would close a loop. The depth cap is a belt-and-braces guard against a
+    // pre-existing corrupt chain (setFollow already refuses cycles, so none can
+    // form, but a bounded walk can never hang).
+    for (S32 i = 0; i < 64 && cur.notNull(); ++i)
+    {
+        if (cur == fk)
+        {
+            return true;
+        }
+        auto it = mFollows.find(cur);
+        if (it == mFollows.end())
+        {
+            break;          // chain ends at a non-follower: no cycle
+        }
+        cur = it->second.mLeader;
+    }
+    return false;
+}
+
+bool LLActorMover::setFollow(const LLUUID& follower, const LLUUID& leader,
+                             S32 mode, F32 offset)
+{
+    const LLUUID fk = path_key(follower);
+    const LLUUID lk = path_key(leader);
+    if (fk.isNull() || lk.isNull() || lk == fk)
+    {
+        return false;       // no self-follow, no null actor
+    }
+    if (wouldFollowCycle(follower, leader))
+    {
+        return false;       // refuse a relationship that would loop the procession
+    }
+    Follow f;
+    f.mLeader = lk;
+    f.mMode   = llclamp(mode, 0, 1);
+    f.mOffset = llmax(0.f, offset);
+    mFollows[fk] = f;
+    LL_INFOS("ActorMover") << "follow set: " << fk << " -> " << lk
+                           << " mode " << f.mMode << " offset " << f.mOffset << LL_ENDL;
+    return true;
+}
+
+void LLActorMover::clearFollow(const LLUUID& follower)
+{
+    const LLUUID fk = path_key(follower);
+    auto it = mFollows.find(fk);
+    if (it == mFollows.end())
+    {
+        return;
+    }
+    mFollows.erase(it);
+    // If a follow-driven ghost walk is running and the actor has no path of its
+    // own, end it cleanly here -- otherwise advancePath would fall through to an
+    // empty own-path and hold the actor at the coordinate origin.
+    auto mit = mMoves.find(fk);
+    if (mit != mMoves.end() && mit->second.mIsPath && !hasWalkablePath(follower))
+    {
+        stop(follower);
+    }
+}
+
+bool LLActorMover::getFollow(const LLUUID& follower, LLUUID& leader,
+                             S32& mode, F32& offset) const
+{
+    auto it = mFollows.find(path_key(follower));
+    if (it == mFollows.end())
+    {
+        return false;
+    }
+    leader = it->second.mLeader;
+    mode   = it->second.mMode;
+    offset = it->second.mOffset;
+    return true;
+}
+
+bool LLActorMover::isFollowing(const LLUUID& follower) const
+{
+    return mFollows.count(path_key(follower)) != 0;
+}
+
 bool LLActorMover::getPathStats(const LLUUID& actor_id, F32& out_length, F32& out_duration)
 {
     const Path* cp = getPath(actor_id);
@@ -628,6 +723,8 @@ LLActorMover::PathState LLActorMover::captureState(const LLUUID& key) const
         st.mArrivalTarget     = p.mArrivalTarget;
         st.mGroundFollow      = p.mGroundFollow;
         st.mPitchToSlope      = p.mPitchToSlope;
+        st.mSyncToTake        = p.mSyncToTake;
+        st.mSyncLeadTrail     = p.mSyncLeadTrail;
     }
     return st;
 }
@@ -652,6 +749,8 @@ void LLActorMover::applyState(const LLUUID& key, const PathState& st)
         p.mArrivalTarget     = st.mArrivalTarget;
         p.mGroundFollow      = st.mGroundFollow;
         p.mPitchToSlope      = st.mPitchToSlope;
+        p.mSyncToTake        = st.mSyncToTake;
+        p.mSyncLeadTrail     = st.mSyncLeadTrail;
         p.markDirty();
         p.rebuild();
     }
@@ -886,6 +985,8 @@ bool LLActorMover::copyPathTo(const LLUUID& src_actor, const LLUUID& dst_actor)
     dst.mArrivalTarget     = src.mArrivalTarget;
     dst.mGroundFollow      = src.mGroundFollow;
     dst.mPitchToSlope      = src.mPitchToSlope;
+    dst.mSyncToTake        = src.mSyncToTake;
+    dst.mSyncLeadTrail     = src.mSyncLeadTrail;
     dst.markDirty();
     dst.rebuild();
     return true;
@@ -1250,6 +1351,34 @@ void LLActorMover::start(const LLUUID& actor_id)
     LLVOAvatar* av = resolve_actor(actor_id);
     if (!av || !av->getRootJoint())
     {
+        return;
+    }
+
+    // [Follow-the-leader] a follower rides the leader's path by reference. It
+    // starts a path Move regardless of its own (ignored) nodes, so advancePath's
+    // follower branch drives it; the actual position/facing come from the leader
+    // each frame. Takes precedence over the actor's own path when both exist.
+    if (isFollowing(av->getID()))
+    {
+        auto old_it = mMoves.find(av->getID());
+        if (old_it != mMoves.end() && old_it->second.mAnim.notNull())
+        {
+            av->stopMotion(old_it->second.mAnim);
+        }
+
+        Move mv;
+        mv.mIsPath   = true;
+        mv.mSpeed    = 1.f;                 // filled from the leader path each frame
+        mv.mDistance = 0.f;                 // "
+        mv.mDist     = 0.f;
+        mv.mDir      = 1.f;
+        mv.mNominal  = llmax((F32)nominal, 0.5f);
+        mv.mAnim     = locomotion_anim(av->getID());
+        mv.mFaceInit = false;
+        mMoves[av->getID()] = mv;
+
+        av->startMotion(mv.mAnim);          // cadence is retimed per frame by ground speed
+        LL_INFOS("ActorMover") << "ghost follow walk: " << av->getID() << LL_ENDL;
         return;
     }
 
@@ -1841,6 +1970,15 @@ void LLActorMover::cancelSuspended(const LLUUID& actor_id)
 // ---------------------------------------------------------------------------
 void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
 {
+    // [Follow-the-leader] a follower rides the LEADER's spline by reference; hand
+    // off here so it never touches its own (ignored) path.
+    auto fit = mFollows.find(av->getID());
+    if (fit != mFollows.end())
+    {
+        advanceFollower(av, mv, fit->second, dt);
+        return;
+    }
+
     Path& path = mPaths[av->getID()];       // start() guaranteed this exists
     if (path.mDirty)
     {
@@ -1871,8 +2009,27 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
         mv.mFaceInit = true;
     }
 
-    // ---- dwell: hold at a node, walk clock frozen ----
-    if (mv.mDwellNode >= 0)
+    // ---- Sync-to-take? the recorder playhead becomes the master arc clock ----
+    // A sync-flagged path with a loaded take derives its arc position directly
+    // from the playhead each frame (no dt integration, no dwell/ease/loop wrap):
+    // PLAY or SCRUB the recorder and the actor moves in lockstep. An empty take /
+    // zero duration falls through to the normal walk below (byte-identical), so
+    // the flag is safe when no take is loaded. A single-frame arc jump larger than
+    // this is a scrub SEEK -> snap facing rather than turn-rate-lag toward it.
+    const F32 SYNC_SEEK_SNAP_M = 1.0f;
+    bool sync_active = false;
+    bool sync_seek   = false;
+    if (path.mSyncToTake)
+    {
+        const LLFlycamRecorder& rec = LLFlycamRecorder::instance();
+        if (rec.getNumKeyframes() > 0 && rec.getDuration() > 0.001f)
+        {
+            sync_active = true;
+        }
+    }
+
+    // ---- dwell: hold at a node, walk clock frozen (not while sync-driven) ----
+    if (!sync_active && mv.mDwellNode >= 0)
     {
         mv.mDwellT += dt;
         const F32 want = (mv.mDwellNode < n) ? path.mNodes[mv.mDwellNode].mDwell : 0.f;
@@ -1894,68 +2051,91 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
         return;     // position/facing stay at the cached dwell pose
     }
 
-    // ---- advance arc-length distance at the instantaneous ground speed ----
-    const F32 speed = pathSpeedAt(path, mv.mDist, loop || pingpong);
+    // ---- advance arc-length distance ----
+    F32       speed;
     const F32 old_d = mv.mDist;
-    F32 nd = mv.mDist + mv.mDir * speed * dt;
+    F32       nd;
+    if (sync_active)
+    {
+        // playhead -> normalized (with lead/trail) -> arc distance. Scrub the take
+        // and the actor scrubs with it; play it and the actor plays in lockstep.
+        const LLFlycamRecorder& rec = LLFlycamRecorder::instance();
+        const F32 dur = rec.getDuration();                  // > 0 (guarded above)
+        F32 u = (rec.getPlayhead() + path.mSyncLeadTrail) / dur;
+        u = llclamp(u, 0.f, 1.f);
+        nd = u * path.mTotalLength;
+        // cadence tracks the ground speed IMPLIED by the playhead motion (dArc/dt),
+        // so feet stay planted at any play/scrub rate; a paused playhead -> 0 speed
+        // -> a frozen stride. A large one-frame jump is a scrub seek (snap facing).
+        const F32 d_arc = nd - old_d;
+        speed     = (dt > 1e-4f) ? fabsf(d_arc) / dt : 0.f;
+        sync_seek = fabsf(d_arc) > SYNC_SEEK_SNAP_M;
+        mv.mDir     = 1.f;      // always face forward along the path
+        mv.mArrived = false;    // a synced actor never settles; a scrub can move it
+    }
+    else
+    {
+        speed = pathSpeedAt(path, mv.mDist, loop || pingpong);
+        nd    = mv.mDist + mv.mDir * speed * dt;
 
-    mv.mArrived = false;
-    if (loop)
-    {
-        if (nd >= path.mTotalLength) { nd = fmodf(nd, path.mTotalLength); mv.mLastDwellNode = -1; }
-        else if (nd < 0.f)           { nd = path.mTotalLength + fmodf(nd, path.mTotalLength); }
-    }
-    else if (pingpong)
-    {
-        if (nd > path.mTotalLength)  { nd = 2.f * path.mTotalLength - nd; mv.mDir = -1.f; mv.mLastDwellNode = -1; }
-        else if (nd < 0.f)           { nd = -nd; mv.mDir = 1.f; mv.mLastDwellNode = -1; }
-    }
-    else // stop
-    {
-        if (nd >= path.mTotalLength) { nd = path.mTotalLength; mv.mArrived = true; }
-    }
-
-    // ---- dwell detection: did we cross an interior node with dwell > 0? ----
-    if (mv.mDwellNode < 0)
-    {
-        const F32 lo = llmin(old_d, nd);
-        const F32 hi = llmax(old_d, nd);
-        S32 best = -1;
-        F32 best_d = 0.f;
-        for (S32 i = 1; i <= n - 2; ++i)        // interior nodes only
+        mv.mArrived = false;
+        if (loop)
         {
-            if (i == mv.mLastDwellNode || path.mNodes[i].mDwell <= 0.f)
+            if (nd >= path.mTotalLength) { nd = fmodf(nd, path.mTotalLength); mv.mLastDwellNode = -1; }
+            else if (nd < 0.f)           { nd = path.mTotalLength + fmodf(nd, path.mTotalLength); }
+        }
+        else if (pingpong)
+        {
+            if (nd > path.mTotalLength)  { nd = 2.f * path.mTotalLength - nd; mv.mDir = -1.f; mv.mLastDwellNode = -1; }
+            else if (nd < 0.f)           { nd = -nd; mv.mDir = 1.f; mv.mLastDwellNode = -1; }
+        }
+        else // stop
+        {
+            if (nd >= path.mTotalLength) { nd = path.mTotalLength; mv.mArrived = true; }
+        }
+
+        // ---- dwell detection: did we cross an interior node with dwell > 0? ----
+        if (mv.mDwellNode < 0)
+        {
+            const F32 lo = llmin(old_d, nd);
+            const F32 hi = llmax(old_d, nd);
+            S32 best = -1;
+            F32 best_d = 0.f;
+            for (S32 i = 1; i <= n - 2; ++i)        // interior nodes only
             {
-                continue;
-            }
-            const F32 ndpos = (i < (S32)path.mNodeDist.size()) ? path.mNodeDist[i] : -1.f;
-            if (ndpos > lo && ndpos <= hi)
-            {
-                // pick the first node reached in the travel direction
-                if (best < 0 || (mv.mDir >= 0.f ? ndpos < best_d : ndpos > best_d))
+                if (i == mv.mLastDwellNode || path.mNodes[i].mDwell <= 0.f)
                 {
-                    best = i;
-                    best_d = ndpos;
+                    continue;
+                }
+                const F32 ndpos = (i < (S32)path.mNodeDist.size()) ? path.mNodeDist[i] : -1.f;
+                if (ndpos > lo && ndpos <= hi)
+                {
+                    // pick the first node reached in the travel direction
+                    if (best < 0 || (mv.mDir >= 0.f ? ndpos < best_d : ndpos > best_d))
+                    {
+                        best = i;
+                        best_d = ndpos;
+                    }
                 }
             }
-        }
-        if (best >= 0)
-        {
-            nd = best_d;
-            mv.mDwellNode = best;
-            mv.mDwellT = 0.f;
-            // switch to a stand (or the node's anim) so the actor isn't walking
-            // in place while held
-            if (mv.mAnim.notNull())
+            if (best >= 0)
             {
-                av->stopMotion(mv.mAnim);
-                av->setAnimTimeFactor(1.f);
-            }
-            const LLUUID& na = path.mNodes[best].mAnim;
-            if (na.notNull())
-            {
-                av->startMotion(na);
-                mv.mDwellAnim = na;
+                nd = best_d;
+                mv.mDwellNode = best;
+                mv.mDwellT = 0.f;
+                // switch to a stand (or the node's anim) so the actor isn't walking
+                // in place while held
+                if (mv.mAnim.notNull())
+                {
+                    av->stopMotion(mv.mAnim);
+                    av->setAnimTimeFactor(1.f);
+                }
+                const LLUUID& na = path.mNodes[best].mAnim;
+                if (na.notNull())
+                {
+                    av->startMotion(na);
+                    mv.mDwellAnim = na;
+                }
             }
         }
     }
@@ -2061,7 +2241,10 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
     F32 dyaw = target_yaw - cur_yaw;
     while (dyaw >  F_PI) { dyaw -= 2.f * F_PI; }
     while (dyaw < -F_PI) { dyaw += 2.f * F_PI; }
-    const F32 max_step = llmax(1.f, (F32)turn_rate) * DEG_TO_RAD * dt;
+    // a scrub seek snaps facing (up to a half turn in one frame); normal playback
+    // and free walks ease at the configured turn rate
+    const F32 max_step = sync_seek ? F_PI
+                                   : llmax(1.f, (F32)turn_rate) * DEG_TO_RAD * dt;
     dyaw = llclamp(dyaw, -max_step, max_step);
     mv.mCurRot.setEulerAngles(0.f, target_pitch, cur_yaw + dyaw);
 
@@ -2083,6 +2266,133 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
         }
         av->setAnimTimeFactor(1.f);
         mv.mAnim.setNull();     // stop() won't double-stop; facing keeps easing
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Follow-the-leader traversal: ride the leader's spline at an offset arc. Robust
+// by construction -- any moment the leader is not actively path-walking, or the
+// leader path is degenerate, the follower HOLDS in place (frozen stride) rather
+// than crashing or snapping. Distance offset is shipped; time offset is deferred
+// (it holds until implemented). Facing follows the leader tangent; cadence locks
+// to the follower's OWN instantaneous ground speed so its feet stay planted.
+// ---------------------------------------------------------------------------
+void LLActorMover::advanceFollower(LLVOAvatar* av, Move& mv, const Follow& f, F32 dt)
+{
+    // hold helper: paint the last good pose (seed from the live pose the first
+    // time so we never place at the coordinate origin) with a frozen stride
+    auto holdInPlace = [&]()
+    {
+        if (!mv.mFaceInit)
+        {
+            mv.mCurPos          = av->getRootJoint()->getWorldPosition();
+            mv.mCurRot          = av->getRenderRotation();
+            mv.mFollowRootAbove = llmax(0.f, av->getPelvisToFoot());
+            mv.mFaceInit        = true;
+        }
+        if (mv.mAnim.notNull())
+        {
+            av->setAnimTimeFactor(0.f);     // planted stride while waiting
+        }
+    };
+
+    // resolve the leader's authored path + live walk. The leader must have a
+    // walkable path AND be actively path-walking (not merely a hold, not
+    // suspended) for the follower to have something to ride. Time offset (mode 1)
+    // is DEFERRED, so it holds until implemented.
+    auto pit = mPaths.find(f.mLeader);
+    auto lit = mMoves.find(f.mLeader);
+    const bool leader_ok =
+        f.mMode == 0 &&
+        pit != mPaths.end() && pit->second.mNodes.size() >= 2 &&
+        lit != mMoves.end() && lit->second.mIsPath && !lit->second.mSuspended;
+    if (!leader_ok)
+    {
+        holdInPlace();
+        return;
+    }
+
+    Path& lpath = pit->second;
+    if (lpath.mDirty)
+    {
+        lpath.rebuild();
+    }
+    const F32 total = lpath.mTotalLength;
+    if (total <= 0.001f)
+    {
+        holdInPlace();
+        return;
+    }
+    mv.mDistance = total;                       // progress readout vs the leader path
+
+    // ---- follower arc = leader arc minus the distance offset ----
+    const F32 leaderArc = lit->second.mDist;
+    F32 fArc;
+    if (lpath.mEndMode == 1)        // loop: trail continuously around the ring
+    {
+        fArc = leaderArc - f.mOffset;
+        fArc -= floorf(fArc / total) * total;   // positive modulo into [0, total)
+    }
+    else                            // stop / ping-pong: clamp, so the follower
+    {                               // waits at the start until the leader has
+        fArc = llclamp(leaderArc - f.mOffset, 0.f, total);  // travelled the offset
+    }
+
+    const F32 old_d   = mv.mDist;
+    const F32 implied = (dt > 1e-4f) ? fabsf(fArc - old_d) / dt : 0.f;
+    // a loop-seam wrap (arc jumps total->0) would spike the implied speed for one
+    // frame; cap the cadence so the stride never flickers at the seam
+    const F32 cad_speed = llmin(implied, 12.f);
+    mv.mDist = fArc;
+
+    // ---- evaluate the LEADER's spline at the follower's arc ----
+    LLVector3d pos_global, tan_global;
+    lpath.evalAtDistance(fArc, pos_global, tan_global);
+
+    // seed facing + capture the follower's own standing height on the first frame
+    if (!mv.mFaceInit)
+    {
+        LLVector3 at = LLVector3(1.f, 0.f, 0.f) * av->getRenderRotation();
+        mv.mCurRot.setEulerAngles(0.f, 0.f, atan2f(at.mV[VY], at.mV[VX]));
+        mv.mFollowRootAbove = llmax(0.f, av->getPelvisToFoot());
+        mv.mFaceInit = true;
+    }
+
+    // ---- agent frame + ground placement (follower's OWN standing height) ----
+    LLVector3 agent = gAgent.getPosAgentFromGlobal(pos_global);
+    F32  ground_z   = agent.mV[VZ];
+    bool ground_hit = false;
+    if (lpath.mGroundFollow)
+    {
+        ground_z = resolveGroundZ(av, agent, agent.mV[VZ], ground_hit);
+    }
+    ground_z += pathGroundOffsetAt(lpath, fArc);
+    agent.mV[VZ] = ground_z + mv.mFollowRootAbove;
+    mv.mCurPos = agent;
+
+    // ---- facing: leader tangent at the follower's position, turn-rate clamped ----
+    const F32 target_yaw = atan2f((F32)tan_global.mdV[VY], (F32)tan_global.mdV[VX]);
+    F32 target_pitch = 0.f;
+    if (lpath.mPitchToSlope)
+    {
+        const F32 horiz = sqrtf((F32)(tan_global.mdV[VX] * tan_global.mdV[VX]
+                                    + tan_global.mdV[VY] * tan_global.mdV[VY]));
+        target_pitch = atan2f(-(F32)tan_global.mdV[VZ], llmax(horiz, 1e-4f));
+    }
+    static LLCachedControl<F32> turn_rate(gSavedSettings, "PathTurnRateDegPerSec", 180.f);
+    LLVector3 cur_at = LLVector3(1.f, 0.f, 0.f) * mv.mCurRot;
+    const F32 cur_yaw = atan2f(cur_at.mV[VY], cur_at.mV[VX]);
+    F32 dyaw = target_yaw - cur_yaw;
+    while (dyaw >  F_PI) { dyaw -= 2.f * F_PI; }
+    while (dyaw < -F_PI) { dyaw += 2.f * F_PI; }
+    const F32 max_step = llmax(1.f, (F32)turn_rate) * DEG_TO_RAD * dt;
+    dyaw = llclamp(dyaw, -max_step, max_step);
+    mv.mCurRot.setEulerAngles(0.f, target_pitch, cur_yaw + dyaw);
+
+    // ---- cadence lock from the follower's own instantaneous ground speed ----
+    if (mv.mAnim.notNull())
+    {
+        av->setAnimTimeFactor(cad_speed / llmax(mv.mNominal, 0.5f));
     }
 }
 

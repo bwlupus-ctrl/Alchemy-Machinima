@@ -10,7 +10,7 @@
 <panel
  background_visible="false"
  border="false"
- height="452"
+ height="548"
  layout="topleft"
  name="panel_path_editor"
  width="360">
@@ -492,6 +492,115 @@
      use_ellipses="true"
      width="348">
         Select a waypoint to author its camera
+    </text>
+
+    <!-- Choreography: sync this path to a camera Take (recorder playhead drives
+         the walk) and follow another cast member's path (procession). -->
+    <text
+     follows="left|top"
+     font="SansSerifSmallBold"
+     height="12"
+     layout="topleft"
+     left="6"
+     top="446"
+     name="choreo_lbl"
+     width="200">
+        Choreography
+    </text>
+    <check_box
+     follows="left|top"
+     height="16"
+     label="Sync to camera take"
+     layout="topleft"
+     left="6"
+     top="460"
+     name="sync_take_check"
+     tool_tip="Drive this path from the Flycam Recorder playhead: play or scrub the take and the actor moves in lockstep. No take loaded = no change to the walk."
+     width="186" />
+    <spinner
+     decimal_digits="1"
+     follows="left|top"
+     height="16"
+     increment="0.5"
+     label="Lead/trail (s)"
+     label_width="88"
+     layout="topleft"
+     left="196"
+     max_val="60"
+     min_val="-60"
+     name="sync_offset_spinner"
+     tool_tip="Lead (+) or trail (-) the lens by this many seconds along the take"
+     top="460"
+     width="158" />
+    <text
+     follows="left|top"
+     height="12"
+     layout="topleft"
+     left="6"
+     top="480"
+     name="sync_status"
+     text_color="LtGray_50"
+     use_ellipses="true"
+     width="348">
+        Off, the walk uses its own clock
+    </text>
+
+    <text
+     follows="left|top"
+     height="12"
+     layout="topleft"
+     left="6"
+     top="498"
+     name="follow_lbl"
+     width="42">
+        Follow
+    </text>
+    <combo_box
+     follows="left|top"
+     height="20"
+     layout="topleft"
+     left="50"
+     top="496"
+     name="follow_leader_combo"
+     tool_tip="Pick a cast member whose path this actor should follow. Self and any choice that would loop the procession are excluded."
+     width="186" />
+    <button
+     follows="left|top"
+     height="20"
+     label="Stop following"
+     layout="topleft"
+     left="240"
+     top="496"
+     name="btn_stop_following"
+     tool_tip="Stop following; this actor keeps its own path (if any)"
+     width="114" />
+    <spinner
+     decimal_digits="1"
+     follows="left|top"
+     height="16"
+     increment="0.5"
+     initial_value="3.0"
+     label="Behind (m)"
+     label_width="66"
+     layout="topleft"
+     left="6"
+     max_val="64"
+     min_val="0"
+     name="follow_offset_spinner"
+     tool_tip="Metres the follower stays behind the leader along the path"
+     top="518"
+     width="170" />
+    <text
+     follows="left|top"
+     height="12"
+     layout="topleft"
+     left="182"
+     top="520"
+     name="follow_status"
+     text_color="LtGray_50"
+     use_ellipses="true"
+     width="172">
+        Not following
     </text>
 
     <!-- TP-away suspend banner: shown only while the selected actor's walk is

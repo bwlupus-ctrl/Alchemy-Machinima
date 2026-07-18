@@ -19,6 +19,7 @@
 #include "llcheckboxctrl.h"
 #include "llcombobox.h"
 #include "lldirectorcast.h"          // names + Subject A for "face target" (UI reads engine)
+#include "llflycamrecorder.h"        // sync-to-take status (take loaded? duration)
 #include "lllineeditor.h"
 #include "llnotificationsutil.h"
 #include "llpathcamera.h"            // static Preview of a node's stored camera
@@ -92,6 +93,14 @@ bool ALPanelPathEditor::postBuild()
     mCamTransCombo = getChild<LLComboBox>("node_cam_transition_combo");
     mCamStatus     = getChild<LLTextBox>("node_cam_status");
 
+    mSyncCheck     = getChild<LLCheckBoxCtrl>("sync_take_check");
+    mSyncOffset    = getChild<LLSpinCtrl>("sync_offset_spinner");
+    mSyncStatus    = getChild<LLTextBox>("sync_status");
+    mFollowCombo   = getChild<LLComboBox>("follow_leader_combo");
+    mStopFollowBtn = getChild<LLButton>("btn_stop_following");
+    mFollowOffset  = getChild<LLSpinCtrl>("follow_offset_spinner");
+    mFollowStatus  = getChild<LLTextBox>("follow_status");
+
     mHint             = getChild<LLTextBox>("hint");
     mSuspendBanner    = getChild<LLPanel>("suspend_banner");
     mSuspendStatus    = getChild<LLTextBox>("suspend_status");
@@ -135,6 +144,12 @@ bool ALPanelPathEditor::postBuild()
     mResumeBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickResume(); });
     mReanchorBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickReanchor(); });
     mCancelSuspendBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickCancelSuspend(); });
+
+    mSyncCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSyncToggle(); });
+    mSyncOffset->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSyncOffsetCommit(); });
+    mFollowCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onFollowCommit(); });
+    mStopFollowBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onStopFollow(); });
+    mFollowOffset->setCommitCallback([this](LLUICtrl*, const LLSD&) { onFollowOffsetCommit(); });
 
     if (mColorSwatch)
     {
@@ -207,6 +222,7 @@ void ALPanelPathEditor::draw()
     refreshReadout();
     refreshEditButtons();
     refreshCopyCombo();
+    refreshChoreography();
 
     LLPanel::draw();
 }
@@ -998,6 +1014,200 @@ void ALPanelPathEditor::refreshCopyCombo()
         : (!have_dst ? std::string("Add another cast member to copy the path to")
         : (dst_walking ? std::string("That actor is walking \xE2\x80\x94 stop it first")
                        : std::string("Copy this path onto the chosen cast member (overlays at the same spot)"))));
+}
+
+// ---------------------------------------------------------------------------
+// P3 choreography: sync-to-take + follow-the-leader. Both reflect engine state
+// and are reason-tooltipped; the combo excludes self and cycle-forming leaders.
+// ---------------------------------------------------------------------------
+void ALPanelPathEditor::refreshChoreography()
+{
+    LLActorMover& m = LLActorMover::instance();
+    const bool have_actor = mActor.notNull();
+    const LLActorMover::Path* path = m.getPath(mActor);
+
+    // ---- Sync to camera take ----
+    const bool sync_on = path ? path->mSyncToTake : false;
+    mSyncCheck->setEnabled(have_actor);
+    mSyncCheck->setToolTip(have_actor
+        ? std::string("Drive this path from the Flycam Recorder playhead: play or scrub the take and the actor moves in lockstep (deterministic actor+lens takes). No take loaded = no change to the walk.")
+        : std::string("Select a cast member first"));
+    if (mSyncCheck->getValue().asBoolean() != sync_on)
+    {
+        mSyncCheck->set(sync_on);
+    }
+    mSyncOffset->setEnabled(have_actor && sync_on);
+    mSyncOffset->setToolTip(std::string("Lead (+) or trail (-) the lens by this many seconds along the take"));
+    const F32 lead = path ? path->mSyncLeadTrail : 0.f;
+    if (!mSyncOffset->hasFocus() &&
+        fabsf((F32)mSyncOffset->getValue().asReal() - lead) > 0.001f)
+    {
+        mSyncOffset->setValue(lead);
+    }
+
+    // status reflects whether a take is actually loaded to drive the walk
+    LLFlycamRecorder& rec = LLFlycamRecorder::instance();
+    const bool take_loaded = rec.getNumKeyframes() > 0 && rec.getDuration() > 0.001f;
+    std::string sstat;
+    if (!have_actor)
+    {
+        sstat = "Select a cast member";
+    }
+    else if (!sync_on)
+    {
+        sstat = "Off \xE2\x80\x94 the walk uses its own clock";
+    }
+    else if (!take_loaded)
+    {
+        sstat = "Sync on \xE2\x80\x94 record or load a take to drive the walk";
+    }
+    else
+    {
+        sstat = llformat("Driven by recorder playhead (%.1fs take)", rec.getDuration());
+    }
+    if (mSyncStatus->getValue().asString() != sstat)
+    {
+        mSyncStatus->setText(sstat);
+    }
+
+    // ---- Follow the leader ----
+    // rebuild the leader picker only when the cast, the target, or the set of
+    // cycle-forming candidates changes. "(not following)" first, then every cast
+    // member that is not self and would not loop the procession.
+    const uuid_vec_t& ids = LLDirectorCast::instance().getIds();
+    std::string sig = "F" + mActor.asString();
+    for (const LLUUID& id : ids)
+    {
+        if (id != mActor && !m.wouldFollowCycle(mActor, id))
+        {
+            sig += id.asString();
+        }
+    }
+    if (sig != mFollowSig)
+    {
+        mFollowSig = sig;
+        mFollowCombo->removeall();
+        mFollowCombo->add("(not following)", LLSD(std::string()));
+        for (const LLUUID& id : ids)
+        {
+            if (id != mActor && !m.wouldFollowCycle(mActor, id))
+            {
+                mFollowCombo->add(actorName(id), LLSD(id.asString()));
+            }
+        }
+    }
+
+    LLUUID leader; S32 mode = 0; F32 offset = 3.f;
+    const bool following = have_actor && m.getFollow(mActor, leader, mode, offset);
+
+    if (!mFollowCombo->hasFocus())
+    {
+        const std::string want = following ? leader.asString() : std::string();
+        if (mFollowCombo->getSelectedValue().asString() != want)
+        {
+            if (!mFollowCombo->setSelectedByValue(LLSD(want), true))
+            {
+                mFollowCombo->selectFirstItem();    // leader unpickable -> (none)
+            }
+        }
+    }
+    mFollowCombo->setEnabled(have_actor && mFollowCombo->getItemCount() > 1);
+
+    mFollowOffset->setEnabled(following);
+    mFollowOffset->setToolTip(std::string("Metres the follower stays behind the leader along the path"));
+    if (following && !mFollowOffset->hasFocus() &&
+        fabsf((F32)mFollowOffset->getValue().asReal() - offset) > 0.001f)
+    {
+        mFollowOffset->setValue(offset);
+    }
+
+    mStopFollowBtn->setEnabled(following);
+    mStopFollowBtn->setToolTip(following
+        ? std::string("Stop following; this actor keeps its own path (if any)")
+        : std::string("This actor isn't following anyone"));
+
+    std::string fstat;
+    if (!have_actor)
+    {
+        fstat = "Select a cast member";
+    }
+    else if (following)
+    {
+        fstat = llformat("Following %s \xE2\x80\x94 %.1f m behind",
+                         actorName(leader).c_str(), offset);
+    }
+    else if (mFollowCombo->getItemCount() <= 1)
+    {
+        fstat = "Add another cast member to lead";
+    }
+    else
+    {
+        fstat = "Not following";
+    }
+    if (mFollowStatus->getValue().asString() != fstat)
+    {
+        mFollowStatus->setText(fstat);
+    }
+}
+
+void ALPanelPathEditor::onSyncToggle()
+{
+    if (mActor.isNull())
+    {
+        return;
+    }
+    // sync is a path-wide authored flag (like ground-follow); it does not change
+    // the geometry, so no arc-length rebuild
+    LLActorMover::instance().editPath(mActor).mSyncToTake = mSyncCheck->get();
+}
+
+void ALPanelPathEditor::onSyncOffsetCommit()
+{
+    if (mActor.isNull())
+    {
+        return;
+    }
+    LLActorMover::instance().editPath(mActor).mSyncLeadTrail =
+        (F32)mSyncOffset->getValue().asReal();
+}
+
+void ALPanelPathEditor::onFollowCommit()
+{
+    if (mActor.isNull())
+    {
+        return;
+    }
+    LLActorMover& m = LLActorMover::instance();
+    const std::string val = mFollowCombo->getSelectedValue().asString();
+    if (val.empty())
+    {
+        m.clearFollow(mActor);      // "(not following)"
+        return;
+    }
+    // distance mode (0) only; time offset is deferred. setFollow refuses cycles.
+    m.setFollow(mActor, LLUUID(val), 0, (F32)mFollowOffset->getValue().asReal());
+}
+
+void ALPanelPathEditor::onFollowOffsetCommit()
+{
+    if (mActor.isNull())
+    {
+        return;
+    }
+    LLActorMover& m = LLActorMover::instance();
+    LLUUID leader; S32 mode = 0; F32 offset = 0.f;
+    if (m.getFollow(mActor, leader, mode, offset))
+    {
+        m.setFollow(mActor, leader, mode, (F32)mFollowOffset->getValue().asReal());
+    }
+}
+
+void ALPanelPathEditor::onStopFollow()
+{
+    if (mActor.notNull())
+    {
+        LLActorMover::instance().clearFollow(mActor);
+    }
 }
 
 // ---------------------------------------------------------------------------

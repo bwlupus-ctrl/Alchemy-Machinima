@@ -101,6 +101,19 @@ public:
         bool   mGroundFollow = false;   // clamp feet to terrain/prims each frame
         bool   mPitchToSlope = false;   // tilt root pitch to the local slope
 
+        // ---- P3 sync-to-take: the Flycam Recorder playhead drives the arc ------
+        // When mSyncToTake AND a take is loaded (>=1 keyframe, duration > 0), the
+        // actor's arc position is derived every frame from the recorder playhead
+        // instead of advancing by dt: arc = clamp((playhead + lead/trail)/duration,
+        // 0..1) * mTotalLength. PLAY or SCRUB the recorder and the actor moves in
+        // lockstep (deterministic actor+lens takes, body+lens dry-run preview). The
+        // lead/trail shifts the normalized playhead by mSyncLeadTrail/duration so
+        // the actor can lead (+) or trail (-) the lens by N seconds. An empty take
+        // / zero duration is a no-op: the walk advances normally (byte-identical),
+        // so the flag is safe with no take loaded. Authored + serialized fields.
+        bool   mSyncToTake   = false;   // drive arc from the recorder playhead
+        F32    mSyncLeadTrail = 0.f;    // seconds the actor leads(+)/trails(-) the lens
+
         // any edit to the geometry/shape must invalidate the arc-length table
         void markDirty() { mDirty = true; }
 
@@ -232,6 +245,39 @@ public:
     // so a running walk is never corrupted underneath its arc clock.
     bool isPathWalking(const LLUUID& actor_id) const;
 
+    // ---- P3 Follow-the-leader (procession by reference) -----------------------
+    // A follower rides the LEADER's authored path BY REFERENCE (edit the leader's
+    // path and the follower updates automatically -- the follower keeps NO nodes
+    // of its own; any it has are ignored while following). The follower evaluates
+    // the leader's spline at an OFFSET arc position behind the leader. Chainable
+    // (a follower can itself lead another). Facing tracks the leader's path
+    // tangent at the follower's position; cadence locks to the follower's own
+    // instantaneous ground speed. Robustness: if the leader stops / finishes /
+    // suspends / derezzes, the follower HOLDS gracefully (freezes in place, never
+    // crashes, never snaps to the origin). Session-only, like the paths.
+    //
+    // Offset modes: 0 = DISTANCE (N metres behind on the arc -- shipped, robust);
+    // 1 = TIME (T seconds later -- DEFERRED, not yet driven, see the report).
+    struct Follow
+    {
+        LLUUID mLeader;         // resolved path key of the leader (never null)
+        S32    mMode  = 0;      // 0 distance (m behind), 1 time (s later, deferred)
+        F32    mOffset = 3.f;   // metres behind (mode 0) / seconds later (mode 1)
+    };
+    // Establish/replace a follow. Refuses (returns false) a null/self leader or
+    // any relationship that would form a CYCLE (A->B->A), so a procession chain
+    // can never loop. mode 1 (time) is accepted into the data model but currently
+    // behaves as a HOLD at the follower (time-offset traversal is deferred).
+    bool setFollow(const LLUUID& follower, const LLUUID& leader, S32 mode, F32 offset);
+    // Drop a follow. If the follower was riding a leader with no path of its own,
+    // its ghost walk is ended cleanly so it never falls back to an empty path.
+    void clearFollow(const LLUUID& follower);
+    bool getFollow(const LLUUID& follower, LLUUID& leader, S32& mode, F32& offset) const;
+    bool isFollowing(const LLUUID& follower) const;
+    // Would making `follower` follow `candidate_leader` create a cycle (or is it
+    // self)? The UI excludes such leaders from the picker.
+    bool wouldFollowCycle(const LLUUID& follower, const LLUUID& candidate_leader) const;
+
     // stable per-actor overlay color derived from the actor id (path ribbon +
     // interior nodes tint to this hue; the panel shows it as a read-only swatch)
     static LLColor4 actorPathColor(const LLUUID& actor_id);
@@ -340,6 +386,10 @@ private:
         F32       mNominal  = 3.f;      // cadence reference (walk design speed)
         bool      mArrived  = false;    // reached the last node (stop mode)
         bool      mFaceInit = false;    // mCurRot seeded from actor facing yet
+        // follower-only: this actor's own standing height above the (leader path)
+        // ground, captured once on the first followed frame so B stands feet-on-
+        // ground without per-frame pose jitter (same reasoning as node mRootAbove)
+        F32       mFollowRootAbove = 0.f;
         // dwell bookkeeping
         S32       mDwellNode = -1;      // node index we are currently holding at (-1 none)
         F32       mDwellT    = 0.f;     // seconds elapsed in the current dwell
@@ -365,6 +415,12 @@ private:
     // per-frame evaluation of an active path traversal (called from
     // applyOverride once the path clock has advanced this frame)
     void   advancePath(LLVOAvatar* av, Move& mv, F32 dt);
+
+    // per-frame evaluation of a FOLLOWER: ride the leader's spline at the offset
+    // arc position, face the leader's tangent, cadence-lock to the follower's own
+    // ground speed. Holds gracefully (freezes in place) when the leader is not
+    // actively path-walking. Called from advancePath when this actor follows.
+    void   advanceFollower(LLVOAvatar* av, Move& mv, const Follow& f, F32 dt);
 
     // suspend/resume internals: enterSuspend() freezes a walk (capturing the
     // return anchor + stopping the loco anim if the actor is still present);
@@ -397,6 +453,8 @@ private:
         LLUUID mArrivalTarget;
         bool   mGroundFollow = false;
         bool   mPitchToSlope = false;
+        bool   mSyncToTake   = false;
+        F32    mSyncLeadTrail = 0.f;
     };
     struct EditHistory { std::vector<PathState> mUndo, mRedo; };
     static const S32 UNDO_DEPTH = 30;
@@ -407,6 +465,7 @@ private:
     std::map<LLUUID, Move> mMoves;
     std::map<LLUUID, Path> mPaths;      // authored path per actor (session-only)
     std::map<LLUUID, EditHistory> mHistory;   // per-actor bounded undo/redo stacks
+    std::map<LLUUID, Follow> mFollows;  // follower key -> leader relationship (session-only)
 
     // P2 edit selection: the path key under edit + the selected node index
     LLUUID mEditActor;      // resolved path key (null = nothing being edited)

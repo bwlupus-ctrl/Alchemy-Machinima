@@ -8,8 +8,8 @@
 <floater
  legacy_header_height="18"
  can_resize="true"
- height="546"
- min_height="500"
+ height="650"
+ min_height="560"
  min_width="658"
  layout="topleft"
  name="floater_director"
@@ -272,7 +272,7 @@
     <!-- ============ left-rail tabs ============ -->
     <tab_container
      follows="all"
-     height="446"
+     height="550"
      layout="topleft"
      left="196"
      top="74"
@@ -573,7 +573,7 @@
         <panel
          follows="all"
          background_visible="false"
-         height="446"
+         height="550"
          label="Path"
          layout="topleft"
          name="path_tab"
@@ -583,7 +583,7 @@
              class="panel_path_editor"
              filename="panel_path_editor.xml"
              follows="left|top|right"
-             height="452"
+             height="548"
              layout="topleft"
              left="8"
              name="path_editor"

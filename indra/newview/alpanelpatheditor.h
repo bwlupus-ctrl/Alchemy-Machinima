@@ -69,6 +69,7 @@ private:
     void refreshReadout();                  // P3 QOL: length + est. duration line
     void refreshEditButtons();              // P3 QOL: undo/redo/reverse/mirror/loop/walk enable
     void refreshCopyCombo();                // P3 QOL: cast picker for "copy path to"
+    void refreshChoreography();             // P3 sync-to-take + follow-the-leader row
     void syncListSelectionFromEngine();     // engine edit node -> list row
 
     S32  listSelectedNode() const;          // selected row -> node index (-1 none)
@@ -98,6 +99,15 @@ private:
     void onClickResume();
     void onClickReanchor();
     void onClickCancelSuspend();
+
+    // P3 choreography: sync the path to the recorder take, and follow another
+    // cast member's path (procession). Each is a no-op / reason-tooltip when
+    // unavailable; both compose with the existing walk + suspend/resume.
+    void onSyncToggle();
+    void onSyncOffsetCommit();
+    void onFollowCommit();          // combo pick -> set/clear the follow relationship
+    void onFollowOffsetCommit();
+    void onStopFollow();
 
     // P3 per-node camera authoring: capture the live render camera into the
     // selected node, clear it, flip cut/ease, and static-preview its framing
@@ -174,6 +184,16 @@ private:
     LLButton*          mPreviewBtn = nullptr;
     LLComboBox*        mCamTransCombo = nullptr;
     LLTextBox*         mCamStatus = nullptr;
+
+    // P3 choreography: sync-to-take + follow-the-leader
+    LLCheckBoxCtrl*    mSyncCheck = nullptr;
+    LLSpinCtrl*        mSyncOffset = nullptr;
+    LLTextBox*         mSyncStatus = nullptr;
+    LLComboBox*        mFollowCombo = nullptr;
+    LLButton*          mStopFollowBtn = nullptr;
+    LLSpinCtrl*        mFollowOffset = nullptr;
+    LLTextBox*         mFollowStatus = nullptr;
+    std::string        mFollowSig;   // cast+target+cycle signature (rebuild on change)
 
     // in-world placement hint (hidden while the suspend banner is up)
     LLTextBox*         mHint = nullptr;
