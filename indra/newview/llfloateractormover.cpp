@@ -120,10 +120,21 @@ void LLFloaterActorMover::refreshRoster()
         }
 
         F32 traveled = 0.f, total = 0.f;
-        const std::string status =
-            LLActorMover::instance().getProgress(id, traveled, total)
-                ? llformat("Moving %.1f/%.1f m", traveled, total)
-                : std::string("Idle");
+        std::string status;
+        if (LLActorMover::instance().isWalkSuspended(id))
+        {
+            // TP-away: the walk is frozen (actor derezzed / left region /
+            // teleported), held for a smart resume rather than shown as moving
+            status = "Suspended";
+        }
+        else if (LLActorMover::instance().getProgress(id, traveled, total))
+        {
+            status = llformat("Moving %.1f/%.1f m", traveled, total);
+        }
+        else
+        {
+            status = "Idle";
+        }
 
         // only touch the cells when the text actually changed
         if (LLScrollListText* cell = dynamic_cast<LLScrollListText*>(item->getColumn(name_col));

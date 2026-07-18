@@ -658,6 +658,11 @@ bool LLActorMover::hasActivePathCamera(const LLUUID& actor_id) const
     {
         return false;                   // not walking a path -> release
     }
+    if (mit->second.mSuspended)
+    {
+        return false;                   // a suspended walk owns no camera (composes
+                                        // with the LLPathCamera Subject-A release)
+    }
     // a stop-mode walk that has settled at the final node is FINISHED; hand the
     // camera back rather than latching on the parked actor. Loop / ping-pong
     // never "arrive", so they keep the camera until Stop / CUT removes the Move.
@@ -685,7 +690,7 @@ bool LLActorMover::getPathCameraPose(const LLUUID& actor_id, LLVector3d& out_pos
 {
     const LLUUID key = path_key(actor_id);
     auto mit = mMoves.find(key);
-    if (mit == mMoves.end() || !mit->second.mIsPath)
+    if (mit == mMoves.end() || !mit->second.mIsPath || mit->second.mSuspended)
     {
         return false;
     }
@@ -1138,13 +1143,25 @@ bool LLActorMover::applyOverride(LLVOAvatar* av)
     {
         return false;
     }
-    if (av->isDead() || !av->getRootJoint())
-    {
-        mMoves.erase(it);
-        return false;
-    }
 
     Move& mv = it->second;
+
+    // A suspended walk (actor derezzed / left the region / teleported) paints
+    // NOTHING: freezing the override here is exactly what stops a stale pose
+    // being left at old-region coords. The idle-loop state machine
+    // (updateSuspendState) owns the suspend/resume lifecycle, so a dead actor is
+    // no longer ERASED here -- the Move is kept for a smart resume.
+    if (mv.mSuspended)
+    {
+        return false;
+    }
+    if (av->isDead() || !av->getRootJoint())
+    {
+        // Not yet suspended (still inside the debounce window, or the first dead
+        // frame): never paint a dead actor and never advance the clock, but keep
+        // the Move so updateSuspendState() can suspend rather than destroy it.
+        return false;
+    }
 
     // advance the path clock only once per frame; later calls in the same
     // frame (e.g. LLControlAvatar::matchVolumeTransform() re-syncing an
@@ -1184,6 +1201,280 @@ bool LLActorMover::applyOverride(LLVOAvatar* av)
     av->getRootJoint()->setWorldPosition(mv.mCurPos);
     av->getRootJoint()->setWorldRotation(mv.mCurRot);
     return true;
+}
+
+// ===========================================================================
+// TP-away suspend / resume: keep an in-progress walk alive across a derez /
+// region change / teleport instead of destroying it. See the header contract.
+// ===========================================================================
+namespace
+{
+// how long an actor must stay unresolvable before we suspend, in FRAMES: a
+// short debounce so a 1-frame resolve hiccup never suspends a live walk.
+const S32 SUSPEND_DEBOUNCE_FRAMES = 6;
+// a single-frame sim-true global jump this large is a teleport / region change,
+// never a walk: an actor's sim-true position is otherwise frozen during a ghost
+// walk, and global coords stay continuous across region borders. Far below one
+// region (256 m), far above any real per-frame avatar motion.
+const F64 TP_JUMP_METERS = 40.0;
+// "came back to the same place": resolvable again within this distance of the
+// suspend anchor -> auto-resume seamlessly. Above a walk step, below "wandered
+// off / different sim" (which stays suspended for a manual Resume / Re-anchor).
+const F64 RESUME_NEAR_METERS = 10.0;
+} // anonymous namespace
+
+// ---------------------------------------------------------------------------
+void LLActorMover::enterSuspend(const LLUUID& key, Move& mv, LLVOAvatar* av)
+{
+    if (mv.mSuspended)
+    {
+        return;
+    }
+    mv.mSuspended = true;
+    // the return test compares the actor's future sim-true position to where it
+    // was when it went away: the last frozen sim-true position (the real spot
+    // the walk was anchored at), or -- lacking one -- the live position.
+    mv.mSuspendTrueGlobal = mv.mHasTrueGlobal
+                                ? mv.mLastTrueGlobal
+                                : (av ? av->getPositionGlobal() : LLVector3d());
+    // a still-present actor (e.g. the user's own avatar on teleport) must not be
+    // left standing there walking in place: stop the loco / dwell anim. The walk
+    // clock is already frozen because applyOverride() bails while suspended.
+    if (av && !av->isDead())
+    {
+        if (mv.mAnim.notNull() && av->findMotion(mv.mAnim))
+        {
+            av->stopMotion(mv.mAnim);
+        }
+        if (mv.mDwellAnim.notNull() && av->findMotion(mv.mDwellAnim))
+        {
+            av->stopMotion(mv.mDwellAnim);
+        }
+        av->setAnimTimeFactor(1.f);
+    }
+    LL_INFOS("ActorMover") << "walk SUSPENDED for " << key
+                           << " at dist " << mv.mDist << LL_ENDL;
+}
+
+void LLActorMover::resumeMove(const LLUUID& key, Move& mv, LLVOAvatar* av)
+{
+    mv.mSuspended = false;
+    mv.mUnresolvedFrames = 0;
+    if (av && !av->isDead() && av->getRootJoint())
+    {
+        // reseed the jump probe from the current sim-true position so the
+        // resumed walk does not instantly re-detect the (old) teleport delta
+        mv.mLastTrueGlobal = av->getPositionGlobal();
+        mv.mHasTrueGlobal = true;
+        // restart the loco cadence unless the walk had already arrived (a
+        // finished stop-mode walk resumes as a settled stand, facing still eases)
+        if (!mv.mArrived && mv.mAnim.notNull())
+        {
+            av->startMotion(mv.mAnim);
+            av->setAnimTimeFactor(llclamp(mv.mSpeed, 0.05f, 10.f)
+                                  / llmax(mv.mNominal, 0.5f));
+        }
+        // ease facing from the actor's current yaw on the next advance instead
+        // of snapping to the stored travel facing
+        mv.mFaceInit = false;
+    }
+    else
+    {
+        mv.mHasTrueGlobal = false;
+    }
+    LL_INFOS("ActorMover") << "walk RESUMED for " << key
+                           << " at dist " << mv.mDist << LL_ENDL;
+}
+
+// ---------------------------------------------------------------------------
+// Per-frame state machine (idle loop, before the character update). Each move
+// runs its own WALKING <-> SUSPENDED transition independently.
+// ---------------------------------------------------------------------------
+void LLActorMover::updateSuspendState()
+{
+    if (mMoves.empty())
+    {
+        return;
+    }
+    for (auto& pair : mMoves)
+    {
+        const LLUUID& key = pair.first;
+        Move&         mv  = pair.second;
+        LLVOAvatar*   av  = resolve_actor(key);     // null = unresolvable (dead/gone)
+
+        if (!mv.mSuspended)
+        {
+            if (!av || !av->getRootJoint())
+            {
+                // actor gone: debounce before suspending so a 1-frame resolve
+                // hiccup does not suspend a live walk
+                if (++mv.mUnresolvedFrames >= SUSPEND_DEBOUNCE_FRAMES)
+                {
+                    enterSuspend(key, mv, av);
+                }
+            }
+            else
+            {
+                mv.mUnresolvedFrames = 0;
+                // teleport / region-jump on the sim-true position (unaffected by
+                // the ghost root override, and frozen during a walk)
+                const LLVector3d cur = av->getPositionGlobal();
+                if (mv.mHasTrueGlobal &&
+                    (cur - mv.mLastTrueGlobal).length() > TP_JUMP_METERS)
+                {
+                    enterSuspend(key, mv, av);      // keeps mLastTrueGlobal (pre-jump)
+                }
+                else
+                {
+                    mv.mLastTrueGlobal = cur;
+                    mv.mHasTrueGlobal = true;
+                }
+            }
+        }
+        else if (av && av->getRootJoint())
+        {
+            // SUSPENDED and the actor is resolvable again: auto-resume the
+            // instant it is back NEAR where the walk left off. Farther away
+            // (wandered off / different sim) it stays suspended so the walk is
+            // never yanked to old coords -- the Path tab offers Resume / Re-
+            // anchor / Cancel.
+            if ((av->getPositionGlobal() - mv.mSuspendTrueGlobal).length()
+                    <= RESUME_NEAR_METERS)
+            {
+                resumeMove(key, mv, av);
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Path-tab UI queries + actions
+// ---------------------------------------------------------------------------
+bool LLActorMover::isWalkSuspended(const LLUUID& actor_id) const
+{
+    auto it = mMoves.find(path_key(actor_id));
+    return it != mMoves.end() && it->second.mSuspended;
+}
+
+bool LLActorMover::suspendedActorResolvable(const LLUUID& actor_id) const
+{
+    const LLUUID key = path_key(actor_id);
+    auto it = mMoves.find(key);
+    if (it == mMoves.end() || !it->second.mSuspended)
+    {
+        return false;
+    }
+    LLVOAvatar* av = resolve_actor(key);
+    return av && av->getRootJoint();
+}
+
+bool LLActorMover::suspendedActorNearAnchor(const LLUUID& actor_id) const
+{
+    const LLUUID key = path_key(actor_id);
+    auto it = mMoves.find(key);
+    if (it == mMoves.end() || !it->second.mSuspended)
+    {
+        return false;
+    }
+    LLVOAvatar* av = resolve_actor(key);
+    if (!av || !av->getRootJoint())
+    {
+        return false;
+    }
+    return (av->getPositionGlobal() - it->second.mSuspendTrueGlobal).length()
+               <= RESUME_NEAR_METERS;
+}
+
+bool LLActorMover::resumeWalk(const LLUUID& actor_id)
+{
+    const LLUUID key = path_key(actor_id);
+    auto it = mMoves.find(key);
+    if (it == mMoves.end() || !it->second.mSuspended)
+    {
+        return false;
+    }
+    LLVOAvatar* av = resolve_actor(key);
+    if (!av || !av->getRootJoint())
+    {
+        return false;               // cannot resume an actor that is not here
+    }
+    resumeMove(key, it->second, av);
+    return true;
+}
+
+bool LLActorMover::reanchorWalk(const LLUUID& actor_id)
+{
+    const LLUUID key = path_key(actor_id);
+    auto it = mMoves.find(key);
+    if (it == mMoves.end() || !it->second.mSuspended || !it->second.mIsPath)
+    {
+        return false;               // re-anchor only makes sense for a path walk
+    }
+    LLVOAvatar* av = resolve_actor(key);
+    if (!av || !av->getRootJoint())
+    {
+        return false;
+    }
+    auto pit = mPaths.find(key);
+    if (pit == mPaths.end() || pit->second.mNodes.size() < 2)
+    {
+        return false;
+    }
+    Path& path = pit->second;
+    if (path.mDirty)
+    {
+        path.rebuild();
+    }
+    // where the walk currently sits on the (old) path, in global foot coords...
+    LLVector3d cur_pos, cur_tan;
+    path.evalAtDistance(it->second.mDist, cur_pos, cur_tan);
+    // ...and the actor's current foot position now (rendered root minus the
+    // pelvis-to-foot, matching the node capture convention). Suspended, the root
+    // is NOT overridden, so it reflects the actor's real standing pose.
+    LLVector3  root_agent  = av->getRootJoint()->getWorldPosition();
+    LLVector3d foot_global = gAgent.getPosGlobalFromAgent(root_agent);
+    foot_global.mdV[VZ] -= av->getPelvisToFoot();
+    // translate the WHOLE path (and every node camera) so the current arc
+    // position lands on the actor -> the walk continues from here on the new sim
+    const LLVector3d delta = foot_global - cur_pos;
+    for (Waypoint& w : path.mNodes)
+    {
+        w.mPosGlobal += delta;
+        if (w.mHasCam)
+        {
+            w.mCamPosGlobal += delta;
+        }
+    }
+    path.markDirty();
+    path.rebuild();
+    resumeMove(key, it->second, av);
+    return true;
+}
+
+void LLActorMover::cancelSuspended(const LLUUID& actor_id)
+{
+    const LLUUID key = path_key(actor_id);
+    auto it = mMoves.find(key);
+    if (it == mMoves.end() || !it->second.mSuspended)
+    {
+        return;
+    }
+    // drop the walk back to idle. enterSuspend() already stopped the loco anim
+    // on a resolvable actor, but clear any anim that might still be resolving so
+    // a cancel never leaves a looping walk cycle behind.
+    if (LLVOAvatar* av = resolve_actor(key))
+    {
+        if (it->second.mAnim.notNull() && av->findMotion(it->second.mAnim))
+        {
+            av->stopMotion(it->second.mAnim);
+        }
+        if (it->second.mDwellAnim.notNull() && av->findMotion(it->second.mDwellAnim))
+        {
+            av->stopMotion(it->second.mDwellAnim);
+        }
+        av->setAnimTimeFactor(1.f);
+    }
+    mMoves.erase(it);
 }
 
 // ---------------------------------------------------------------------------

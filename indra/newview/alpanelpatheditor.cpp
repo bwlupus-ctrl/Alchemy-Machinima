@@ -82,6 +82,13 @@ bool ALPanelPathEditor::postBuild()
     mCamTransCombo = getChild<LLComboBox>("node_cam_transition_combo");
     mCamStatus     = getChild<LLTextBox>("node_cam_status");
 
+    mHint             = getChild<LLTextBox>("hint");
+    mSuspendBanner    = getChild<LLPanel>("suspend_banner");
+    mSuspendStatus    = getChild<LLTextBox>("suspend_status");
+    mResumeBtn        = getChild<LLButton>("btn_suspend_resume");
+    mReanchorBtn      = getChild<LLButton>("btn_suspend_reanchor");
+    mCancelSuspendBtn = getChild<LLButton>("btn_suspend_cancel");
+
     mEditModeCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onToggleEditMode(); });
     mList->setCommitCallback([this](LLUICtrl*, const LLSD&) { onListSelect(); });
     mAddBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickAdd(); });
@@ -106,6 +113,10 @@ bool ALPanelPathEditor::postBuild()
     mClearCamBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickClearCam(); });
     mPreviewBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickPreview(); });
     mCamTransCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onCamTransitionCommit(); });
+
+    mResumeBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickResume(); });
+    mReanchorBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickReanchor(); });
+    mCancelSuspendBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickCancelSuspend(); });
 
     if (mColorSwatch)
     {
@@ -174,6 +185,7 @@ void ALPanelPathEditor::draw()
     refreshInspector();
     refreshPathControls();
     refreshCameraControls();
+    refreshSuspendBanner();
 
     LLPanel::draw();
 }
@@ -500,6 +512,96 @@ void ALPanelPathEditor::refreshCameraControls()
     else
     {
         mCamStatus->setText(std::string("Select a waypoint to author its camera"));
+    }
+}
+
+// ---------------------------------------------------------------------------
+// TP-away suspend banner: shown only while the selected actor's walk is
+// suspended (actor derezzed / left the region / teleported). Resume is offered
+// when the actor is resolvable; Re-anchor (path walks) translates the whole
+// path to the actor's current position; Cancel drops the walk. The engine's
+// idle state machine auto-resumes a near return, so the "moved" case is what
+// surfaces here.
+// ---------------------------------------------------------------------------
+void ALPanelPathEditor::refreshSuspendBanner()
+{
+    LLActorMover& m = LLActorMover::instance();
+    const bool suspended = mActor.notNull() && m.isWalkSuspended(mActor);
+
+    if (suspended != mSuspendShown)
+    {
+        mSuspendShown = suspended;
+        mSuspendBanner->setVisible(suspended);
+        // the in-world placement hint shares the banner's band; hide it while
+        // the banner is up so they never overlap
+        if (mHint)
+        {
+            mHint->setVisible(!suspended);
+        }
+    }
+    if (!suspended)
+    {
+        return;
+    }
+
+    const bool resolvable = m.suspendedActorResolvable(mActor);
+    const bool is_near     = m.suspendedActorNearAnchor(mActor);
+    const bool has_path    = m.hasWalkablePath(mActor);
+
+    mResumeBtn->setEnabled(resolvable);
+    mResumeBtn->setToolTip(resolvable
+        ? std::string("Resume the walk from where it left off")
+        : std::string("The actor isn't here yet \xE2\x80\x94 waiting for it to return"));
+
+    mReanchorBtn->setEnabled(resolvable && has_path);
+    mReanchorBtn->setToolTip(!resolvable
+        ? std::string("The actor isn't here yet \xE2\x80\x94 waiting for it to return")
+        : (has_path
+            ? std::string("Move the whole path to the actor's current position and resume from here (keep shooting on this sim)")
+            : std::string("Re-anchor applies to a waypoint path")));
+
+    mCancelSuspendBtn->setEnabled(true);     // always able to drop the walk
+
+    std::string status;
+    if (!resolvable)
+    {
+        status = "Walk suspended \xE2\x80\x94 actor away (held for return)";
+    }
+    else if (is_near)
+    {
+        status = "Actor is back \xE2\x80\x94 resuming\xE2\x80\xA6";
+    }
+    else
+    {
+        status = "Walk suspended \xE2\x80\x94 actor moved. Resume, re-anchor, or cancel";
+    }
+    if (mSuspendStatus->getValue().asString() != status)
+    {
+        mSuspendStatus->setText(status);
+    }
+}
+
+void ALPanelPathEditor::onClickResume()
+{
+    if (mActor.notNull())
+    {
+        LLActorMover::instance().resumeWalk(mActor);
+    }
+}
+
+void ALPanelPathEditor::onClickReanchor()
+{
+    if (mActor.notNull())
+    {
+        LLActorMover::instance().reanchorWalk(mActor);
+    }
+}
+
+void ALPanelPathEditor::onClickCancelSuspend()
+{
+    if (mActor.notNull())
+    {
+        LLActorMover::instance().cancelSuspended(mActor);
     }
 }
 

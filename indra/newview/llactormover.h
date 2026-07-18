@@ -228,6 +228,41 @@ public:
     // LLControlAvatar::matchVolumeTransform() for animesh.
     bool applyOverride(LLVOAvatar* av);
 
+    // ---- TP-away suspend / resume (walk resilience) ---------------------------
+    // Per-frame state machine, called once from the main idle loop BEFORE the
+    // avatar character update that runs applyOverride(). When a moving actor
+    // derezzes / leaves the region / teleports, the walk is not destroyed but
+    // SUSPENDED: the path clock freezes, the override stops painting (so no
+    // stale pose is ever left at old-region coords), the loco anim stops, and
+    // the Move + Path + progress are kept intact. Detection is either a large
+    // sim-true global-position jump (a still-resolvable actor, e.g. the user's
+    // own avatar on teleport) or the actor going unresolvable for a short
+    // debounce (derez / left region), so a 1-frame hiccup never suspends. A
+    // suspended walk auto-resumes the instant the actor is resolvable again NEAR
+    // where it left off; otherwise it stays suspended (held for return) and the
+    // Path tab surfaces the Resume / Re-anchor / Cancel controls below. Each
+    // moving actor suspends and resumes independently. A deliberate stop() still
+    // erases as before -- only the derez/teleport path suspends.
+    void updateSuspendState();
+
+    // Path-tab UI state: is this actor's walk suspended, is the actor resolvable
+    // right now (gates Resume / Re-anchor), and is it back near the suspend
+    // anchor (status readout). All key by the resolved path key.
+    bool isWalkSuspended(const LLUUID& actor_id) const;
+    bool suspendedActorResolvable(const LLUUID& actor_id) const;
+    bool suspendedActorNearAnchor(const LLUUID& actor_id) const;
+
+    // Path-tab UI actions. resumeWalk() unfreezes from the preserved progress at
+    // the ORIGINAL anchor; reanchorWalk() translates the WHOLE path (every node
+    // global position and node camera) by the delta from the current arc
+    // position to the actor's current position, then resumes there (keep
+    // shooting on the new sim); cancelSuspended() drops the suspended walk back
+    // to idle. resume / reanchor no-op and return false when not suspended or
+    // the actor is unresolvable (reanchor also requires a walkable path).
+    bool resumeWalk(const LLUUID& actor_id);
+    bool reanchorWalk(const LLUUID& actor_id);
+    void cancelSuspended(const LLUUID& actor_id);
+
     // in-world heading preview lines (called from render_ui_3d, same pass as
     // the debug beacons). Zero cost unless ActorMoverShowHeading is on AND
     // the Actor Mover floater is open.
@@ -269,6 +304,19 @@ private:
         F32       mDwellT    = 0.f;     // seconds elapsed in the current dwell
         S32       mLastDwellNode = -1;  // last node already dwelled (avoid re-trigger)
         LLUUID    mDwellAnim;           // per-node anim started for the dwell (stop on resume)
+
+        // ---- TP-away suspend/resume state ---------------------------------
+        // A suspended walk freezes here: applyOverride() returns early (no clock
+        // advance, no stale placement) until the state machine resumes or
+        // cancels it. The sim-true global position (NOT the ghost-overridden
+        // root) is tracked while walking so a teleport shows up as a large
+        // one-frame jump, and is captured at suspend as the anchor the return
+        // test compares against.
+        bool       mSuspended        = false;
+        S32        mUnresolvedFrames  = 0;      // consecutive unresolvable frames (debounce)
+        bool       mHasTrueGlobal     = false;  // mLastTrueGlobal seeded yet
+        LLVector3d mLastTrueGlobal;             // last sim-true global while walking
+        LLVector3d mSuspendTrueGlobal;          // sim-true global captured at suspend
     };
 
     static F32 pathParam(const Move& mv, F32* face); // leg progress s, facing
@@ -276,6 +324,13 @@ private:
     // per-frame evaluation of an active path traversal (called from
     // applyOverride once the path clock has advanced this frame)
     void   advancePath(LLVOAvatar* av, Move& mv, F32 dt);
+
+    // suspend/resume internals: enterSuspend() freezes a walk (capturing the
+    // return anchor + stopping the loco anim if the actor is still present);
+    // resumeMove() unfreezes it (restarting the cadence + reseeding the jump
+    // probe and facing). Both operate on an entry already located in mMoves.
+    void   enterSuspend(const LLUUID& key, Move& mv, LLVOAvatar* av);
+    void   resumeMove(const LLUUID& key, Move& mv, LLVOAvatar* av);
     // resolve the ground Z (agent frame) under an actor for ground-follow:
     // a capped downward object raycast for stairs/prims, else terrain land
     // height when the actor sits near it, else the interpolated spline Z

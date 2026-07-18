@@ -385,4 +385,67 @@
      width="348">
         Select a waypoint to author its camera
     </text>
+
+    <!-- TP-away suspend banner: shown only while the selected actor's walk is
+         suspended (actor derezzed, left the region, or teleported). Declared
+         last so it draws on top; overlays the hint band near the top of the
+         panel and drives LLActorMover resume / re-anchor / cancel. Hidden by
+         default; the panel toggles it via setVisible. -->
+    <panel
+     background_visible="true"
+     background_opaque="true"
+     bg_opaque_color="DkGray"
+     border="true"
+     follows="left|top|right"
+     height="42"
+     layout="topleft"
+     left="4"
+     name="suspend_banner"
+     top="18"
+     visible="false"
+     width="352">
+        <text
+         follows="left|top"
+         font="SansSerifSmallBold"
+         height="14"
+         layout="topleft"
+         left="6"
+         name="suspend_status"
+         text_color="EmphasisColor"
+         top="4"
+         use_ellipses="true"
+         width="340">
+            Walk suspended &#8212; actor away
+        </text>
+        <button
+         follows="left|top"
+         height="20"
+         label="Resume"
+         layout="topleft"
+         left="6"
+         name="btn_suspend_resume"
+         tool_tip="Resume the walk from where it left off"
+         top="20"
+         width="80" />
+        <button
+         follows="left|top"
+         height="20"
+         label="Re-anchor here"
+         layout="topleft"
+         left="90"
+         name="btn_suspend_reanchor"
+         tool_tip="Move the whole path to the actor's current position and resume from here (keep shooting on this sim)"
+         top="20"
+         width="150" />
+        <button
+         follows="left|top"
+         height="20"
+         label="Cancel"
+         layout="topleft"
+         left="244"
+         name="btn_suspend_cancel"
+         tool_tip="Drop the suspended walk and return to idle"
+         top="20"
+         width="100" />
+    </panel>
 </panel>

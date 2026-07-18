@@ -65,6 +65,7 @@ private:
     void refreshInspector();
     void refreshPathControls();
     void refreshCameraControls();           // P3 per-node camera row state
+    void refreshSuspendBanner();            // TP-away suspend/resume banner
     void syncListSelectionFromEngine();     // engine edit node -> list row
 
     S32  listSelectedNode() const;          // selected row -> node index (-1 none)
@@ -79,6 +80,12 @@ private:
 
     // edit-mode toggle (the in-world tool)
     void onToggleEditMode();
+
+    // TP-away suspend banner actions (resume where it left off / translate the
+    // path to the actor's current spot and resume / drop the suspended walk)
+    void onClickResume();
+    void onClickReanchor();
+    void onClickCancelSuspend();
 
     // P3 per-node camera authoring: capture the live render camera into the
     // selected node, clear it, flip cut/ease, and static-preview its framing
@@ -107,6 +114,7 @@ private:
 
     LLUUID mActor;              // current target (raw cast/roster id; null = none)
     bool   mEditMode = false;   // our transient tool is armed
+    bool   mSuspendShown = false;   // banner visibility last set (avoid churn)
 
     // change-diffing snapshot so the list only rebuilds when the geometry/
     // summary of a node actually changed
@@ -142,6 +150,17 @@ private:
     LLButton*          mPreviewBtn = nullptr;
     LLComboBox*        mCamTransCombo = nullptr;
     LLTextBox*         mCamStatus = nullptr;
+
+    // in-world placement hint (hidden while the suspend banner is up)
+    LLTextBox*         mHint = nullptr;
+
+    // TP-away suspend/resume banner (shown only when the selected actor's walk
+    // is suspended -- actor derezzed / left region / teleported)
+    LLPanel*           mSuspendBanner = nullptr;
+    LLTextBox*         mSuspendStatus = nullptr;
+    LLButton*          mResumeBtn = nullptr;
+    LLButton*          mReanchorBtn = nullptr;
+    LLButton*          mCancelSuspendBtn = nullptr;
 };
 
 #endif // AL_ALPANELPATHEDITOR_H

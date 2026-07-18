@@ -64,6 +64,7 @@
 #include "llfocusmgr.h"
 #include "llurlfloaterdispatchhandler.h"
 #include "llviewerjoystick.h"
+#include "llactormover.h"    // TP-away walk suspend/resume state machine (idle tick)
 #include "llcinematiccamera.h"
 #include "llflycamrecorder.h"
 #include "llpathcamera.h"    // per-node path camera source (authored actor+camera TAKE)
@@ -5409,6 +5410,12 @@ void LLAppViewer::idle()
             LLWorld::getInstance()->updateParticles();
         }
     }
+
+    // [ActorMover] TP-away suspend/resume: run the per-actor walk state machine
+    // once per frame, BEFORE the character update (applyOverride) and the camera
+    // dispatch below, so a teleport/derez suspends the walk (and releases the
+    // path camera) the same frame instead of leaving a stale override pose.
+    LLActorMover::instance().updateSuspendState();
 
     if (gAgentPilot.isPlaying() && gAgentPilot.getOverrideCamera())
     {
