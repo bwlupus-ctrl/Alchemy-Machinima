@@ -8,7 +8,7 @@
  *
  * Pure view over LLDirectorCast (D1 engine) plus the existing machinima
  * singletons: ACTION/CUT transport with arming + countdown, the persistent
- * cast column, and Move / Animate / Camera / Takes tabs re-homing the
+ * cast column, and Move / Path / Animate / Camera / Takes tabs re-homing the
  * Actor Mover, Cinematic Camera (shared ALPanelCineCamParams instance),
  * Flycam Orbit and Flycam Recorder controls. Everything underneath is the
  * same settings/state the standalone floaters use -- no forks.
@@ -86,12 +86,13 @@ private:
 
     // ---- Move tab ----
     void onScopeCommit();
-    void onMoveModeCommit();            // Straight | Path toggle (show/hide only)
     void onDialCommit();
     void onClickWalk();
     void onClickStop();
     void refreshMoveTab();
-    void applyMoveMode(bool path_mode); // straight_group vs path_editor visibility
+
+    // ---- Path tab ----
+    void refreshPathTab();              // point the embedded editor at the selection
 
     // ---- Animate tab ----
     void refreshAnimateTab();
@@ -159,16 +160,12 @@ private:
 
     // Move tab
     LLRadioGroup*      mScopeRadio = nullptr;
-    LLRadioGroup*      mMoveModeRadio = nullptr;
-    LLPanel*           mStraightGroup = nullptr;
-    ALPanelPathEditor* mPathPanel = nullptr;
     ALCompassDial*     mHeadingDial = nullptr;
     LLButton*          mWalkBtn = nullptr;
     LLButton*          mStopBtn = nullptr;
-    // Path-mode auto-pick: the cast id the mode was last auto-decided for, so a
-    // fresh selection with a walkable path flips to Path once (not every draw)
-    LLUUID mMoveModeActor;
-    bool   mMoveModeInit = false;
+
+    // Path tab (dedicated) -- shared waypoint editor, targets the selection
+    ALPanelPathEditor* mPathPanel = nullptr;
 
     // Camera tab
     LLTextBox* mSubjectAText = nullptr;

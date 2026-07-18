@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <!-- Director Console (D2): ACTION/CUT transport + persistent cast column +
-     left-rail Move / Animate / Camera / Takes tabs (poser visual language).
+     left-rail Move / Path / Animate / Camera / Takes tabs (poser visual
+     language).
      Pure view over LLDirectorCast and the machinima singletons; every
      parameter control is settings-backed, shared with the standalone
      floaters. -->
@@ -271,46 +272,13 @@
          name="move_tab"
          top="0"
          width="374">
-            <!-- mode: Straight (one-shot compass move) vs Path (waypoint editor).
-                 Shows/hides UI only; the engine auto-walks a path with 2+
-                 nodes, so ACTION/CUT/marks/sync are unchanged. -->
+            <!-- who Walk / Stop drive: the list selection, or everyone -->
             <radio_group
              draw_border="false"
              follows="left|top"
              height="18"
              layout="topleft"
              left="10"
-             top="6"
-             name="move_mode_radio"
-             tool_tip="Straight: the compass-dial one-shot move. Path: the waypoint editor. The Walk button walks whichever the selected actor has (a path with 2+ nodes always wins)"
-             width="150">
-                <radio_item
-                 follows="left|top"
-                 height="16"
-                 label="Straight"
-                 layout="topleft"
-                 left="0"
-                 top="0"
-                 name="mode_straight"
-                 value="0"
-                 width="72" />
-                <radio_item
-                 follows="left|top"
-                 height="16"
-                 label="Path"
-                 layout="topleft"
-                 left="74"
-                 top="0"
-                 name="mode_path"
-                 value="1"
-                 width="60" />
-            </radio_group>
-            <radio_group
-             draw_border="false"
-             follows="left|top"
-             height="18"
-             layout="topleft"
-             left="162"
              top="6"
              name="scope_radio"
              tool_tip="Who Walk / Stop drive: the cast members selected in the list, or everyone (you, if the cast is empty)"
@@ -337,7 +305,7 @@
                  width="90" />
             </radio_group>
 
-            <!-- ==== Straight mode group (the existing one-shot move controls) ==== -->
+            <!-- ==== one-shot compass move controls ==== -->
             <panel
              background_visible="false"
              follows="all"
@@ -560,19 +528,6 @@
              width="354" />
             </panel>
 
-            <!-- ==== Path mode group (shared waypoint editor panel) ==== -->
-            <panel
-             class="panel_path_editor"
-             filename="panel_path_editor.xml"
-             follows="left|top|right"
-             height="288"
-             layout="topleft"
-             left="8"
-             name="path_editor"
-             top="30"
-             visible="false"
-             width="360" />
-
             <button
              follows="left|bottom"
              height="24"
@@ -591,6 +546,28 @@
              top="326"
              name="btn_stop"
              width="110" />
+        </panel>
+
+        <!-- ============ Path tab ============ -->
+        <panel
+         follows="all"
+         background_visible="false"
+         height="360"
+         label="Path"
+         layout="topleft"
+         name="path_tab"
+         top="0"
+         width="374">
+            <panel
+             class="panel_path_editor"
+             filename="panel_path_editor.xml"
+             follows="left|top|right"
+             height="288"
+             layout="topleft"
+             left="8"
+             name="path_editor"
+             top="8"
+             width="360" />
         </panel>
 
         <!-- ============ Animate tab ============ -->
