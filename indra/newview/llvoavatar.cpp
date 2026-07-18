@@ -5077,6 +5077,12 @@ bool LLVOAvatar::updateCharacter(LLAgent &agent)
         updateMotions(LLCharacter::NORMAL_UPDATE);
     }
 
+    // [ActorMover] procedural gaze (look-at while walking): layer the per-actor
+    // head/neck/torso/eye override on top of the pose the motion controller just
+    // produced. Must run AFTER updateMotions (unlike applyOverride, which paints
+    // the root pre-motion). A no-op for any avatar with no gaze configured.
+    LLActorMover::instance().applyGaze(this);
+
     // Special handling for sitting on ground.
     if (!getParent() && (isSitting() || was_sit_ground_constrained))
     {

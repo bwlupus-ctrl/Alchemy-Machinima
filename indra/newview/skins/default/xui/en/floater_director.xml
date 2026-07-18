@@ -583,7 +583,7 @@
              class="panel_path_editor"
              filename="panel_path_editor.xml"
              follows="left|top|right"
-             height="548"
+             height="656"
              layout="topleft"
              left="8"
              name="path_editor"

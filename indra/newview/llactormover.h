@@ -278,6 +278,53 @@ public:
     // self)? The UI excludes such leaders from the picker.
     bool wouldFollowCycle(const LLUUID& follower, const LLUUID& candidate_leader) const;
 
+    // ---- P3 Look-at while walking (procedural gaze) ---------------------------
+    // Per-actor head/neck/torso/eye gaze, layered on the walk each frame AFTER
+    // the motion controller poses the skeleton (applyGaze, called post-motion
+    // from the avatar update). The aim + distribution + limits are ported from
+    // the viewer's own look-at motions (LLHeadRotMotion / LLEyeMotion) so it
+    // reads as natural as stock head tracking, with knobs the built-in lacks:
+    // head-vs-eyes blend, overall intensity, and a smoothing time constant, plus
+    // an ease-in/out envelope so enabling/disabling/releasing never pops.
+    //
+    // Gaze is only PAINTED while the actor is under an active, non-suspended Move
+    // (a walk or a placeAt hold) -- so it composes with walk-and-talk and eases
+    // cleanly out to the anim pose the moment the walk ends / suspends / the actor
+    // derezzes / gaze is disabled, then stops touching the joints entirely. With
+    // no gaze configured for an avatar this is a single map-miss no-op (the walk /
+    // AO plays byte-identically to today). Config is session-only, keyed by the
+    // resolved actor id, and persists across stop/start like the path.
+    //
+    // Target modes: 0 = path tangent ("look where I'm going", DEFAULT), 1 =
+    // camera, 2 = cast member, 3 = fixed point (global). An unresolvable cast
+    // target / degenerate direction falls back to the path tangent gracefully.
+    enum { GAZE_TANGENT = 0, GAZE_CAMERA = 1, GAZE_CAST = 2, GAZE_POINT = 3 };
+
+    void   setGazeEnabled(const LLUUID& actor_id, bool on);
+    bool   isGazeEnabled(const LLUUID& actor_id) const;
+    void   setGazeTargetMode(const LLUUID& actor_id, S32 mode);      // 0..3
+    S32    getGazeTargetMode(const LLUUID& actor_id) const;
+    void   setGazeCastTarget(const LLUUID& actor_id, const LLUUID& cast_id);
+    LLUUID getGazeCastTarget(const LLUUID& actor_id) const;
+    void   setGazePointGlobal(const LLUUID& actor_id, const LLVector3d& p);
+    void   setGazeHeadEyeBlend(const LLUUID& actor_id, F32 v);       // 0 eyes-only .. 1 full
+    F32    getGazeHeadEyeBlend(const LLUUID& actor_id) const;
+    void   setGazeIntensity(const LLUUID& actor_id, F32 v);          // 0..1
+    F32    getGazeIntensity(const LLUUID& actor_id) const;
+    void   setGazeSmoothing(const LLUUID& actor_id, F32 v);          // 0 snappy .. 1 very smooth
+    F32    getGazeSmoothing(const LLUUID& actor_id) const;
+    // one-line status for the panel (e.g. "Looking at Kestrel", "Gaze off",
+    // "Gaze armed -- starts with the walk"). Always fills out; returns false only
+    // when the actor id is null.
+    bool   getGazeStatus(const LLUUID& actor_id, std::string& out) const;
+
+    // per-frame gaze paint: called from the avatar update AFTER updateMotions has
+    // posed the skeleton, so the override layers on the current anim pose and is
+    // re-asserted every frame (like applyOverride does for the root). A no-op for
+    // any avatar with no gaze entry. Safe on missing joints / animesh (each joint
+    // is guarded; it drives whatever of mHead/mNeck/mTorso/mEye* exist).
+    void   applyGaze(LLVOAvatar* av);
+
     // stable per-actor overlay color derived from the actor id (path ribbon +
     // interior nodes tint to this hue; the panel shows it as a read-only swatch)
     static LLColor4 actorPathColor(const LLUUID& actor_id);
@@ -462,10 +509,34 @@ private:
     PathState captureState(const LLUUID& key) const;   // authored state of mPaths[key] (empty if none)
     void      applyState(const LLUUID& key, const PathState& st);   // restore + rebuild + clamp edit node
 
+    // ---- P3 gaze: per-actor look-at config + smoothing/ease runtime -----------
+    // Authored fields are the knobs the panel writes; the runtime fields are the
+    // envelope + smoothed direction the paint carries frame to frame. Kept in its
+    // own map (session-only) so a no-gaze avatar is a pure map-miss no-op.
+    struct Gaze
+    {
+        // authored (panel writes these)
+        bool       mEnabled      = false;
+        S32        mTarget       = 0;       // GAZE_TANGENT..GAZE_POINT
+        LLUUID     mCastTarget;             // cast member (mode GAZE_CAST)
+        LLVector3d mPoint;                  // fixed point, global (mode GAZE_POINT)
+        F32        mHeadEyeBlend  = 0.7f;   // 0 = eyes only, 1 = full head+neck+torso
+        F32        mIntensity     = 1.f;    // overall weight 0..1
+        F32        mSmoothing     = 0.5f;   // 0 = snappy, 1 = very smooth
+        // runtime (paint carries these; not authored)
+        F32        mEnv           = 0.f;    // ease-in/out envelope 0..1
+        bool       mDirValid      = false;  // mSmoothDir seeded yet
+        LLVector3  mSmoothDir;              // smoothed world look direction from the head
+        U32        mLastFrame     = 0xFFFFFFFF;  // per-frame temporal-advance guard
+    };
+    // per-frame gaze solve helpers (file-scope math lives in the cpp)
+    void gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bool advance);
+
     std::map<LLUUID, Move> mMoves;
     std::map<LLUUID, Path> mPaths;      // authored path per actor (session-only)
     std::map<LLUUID, EditHistory> mHistory;   // per-actor bounded undo/redo stacks
     std::map<LLUUID, Follow> mFollows;  // follower key -> leader relationship (session-only)
+    std::map<LLUUID, Gaze> mGazes;      // per-actor look-at config + runtime (session-only)
 
     // P2 edit selection: the path key under edit + the selected node index
     LLUUID mEditActor;      // resolved path key (null = nothing being edited)

@@ -2,7 +2,7 @@
 <floater
  legacy_header_height="18"
  can_resize="true"
- height="880"
+ height="988"
  min_height="440"
  min_width="372"
  layout="topleft"
@@ -209,7 +209,7 @@
    class="panel_path_editor"
    filename="panel_path_editor.xml"
    follows="left|top|right"
-   height="548"
+   height="656"
    layout="topleft"
    left="6"
    top_pad="4"

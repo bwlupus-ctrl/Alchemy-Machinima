@@ -665,6 +665,143 @@ bool LLActorMover::isFollowing(const LLUUID& follower) const
     return mFollows.count(path_key(follower)) != 0;
 }
 
+// ===========================================================================
+// P3 Look-at while walking (procedural gaze): per-actor config accessors. The
+// paint itself is applyGaze()/gazePaint() further down; these just read/write
+// the session-only Gaze map keyed by the resolved actor id. Getters return the
+// struct defaults when the actor has no entry yet, so the panel can show sane
+// values before anything is authored.
+// ===========================================================================
+void LLActorMover::setGazeEnabled(const LLUUID& actor_id, bool on)
+{
+    mGazes[path_key(actor_id)].mEnabled = on;
+}
+
+bool LLActorMover::isGazeEnabled(const LLUUID& actor_id) const
+{
+    auto it = mGazes.find(path_key(actor_id));
+    return it != mGazes.end() && it->second.mEnabled;
+}
+
+void LLActorMover::setGazeTargetMode(const LLUUID& actor_id, S32 mode)
+{
+    mGazes[path_key(actor_id)].mTarget = llclamp(mode, (S32)GAZE_TANGENT, (S32)GAZE_POINT);
+}
+
+S32 LLActorMover::getGazeTargetMode(const LLUUID& actor_id) const
+{
+    auto it = mGazes.find(path_key(actor_id));
+    return it != mGazes.end() ? it->second.mTarget : (S32)GAZE_TANGENT;
+}
+
+void LLActorMover::setGazeCastTarget(const LLUUID& actor_id, const LLUUID& cast_id)
+{
+    mGazes[path_key(actor_id)].mCastTarget = cast_id;
+}
+
+LLUUID LLActorMover::getGazeCastTarget(const LLUUID& actor_id) const
+{
+    auto it = mGazes.find(path_key(actor_id));
+    return it != mGazes.end() ? it->second.mCastTarget : LLUUID::null;
+}
+
+void LLActorMover::setGazePointGlobal(const LLUUID& actor_id, const LLVector3d& p)
+{
+    mGazes[path_key(actor_id)].mPoint = p;
+}
+
+void LLActorMover::setGazeHeadEyeBlend(const LLUUID& actor_id, F32 v)
+{
+    mGazes[path_key(actor_id)].mHeadEyeBlend = llclamp(v, 0.f, 1.f);
+}
+
+F32 LLActorMover::getGazeHeadEyeBlend(const LLUUID& actor_id) const
+{
+    auto it = mGazes.find(path_key(actor_id));
+    return it != mGazes.end() ? it->second.mHeadEyeBlend : 0.7f;
+}
+
+void LLActorMover::setGazeIntensity(const LLUUID& actor_id, F32 v)
+{
+    mGazes[path_key(actor_id)].mIntensity = llclamp(v, 0.f, 1.f);
+}
+
+F32 LLActorMover::getGazeIntensity(const LLUUID& actor_id) const
+{
+    auto it = mGazes.find(path_key(actor_id));
+    return it != mGazes.end() ? it->second.mIntensity : 1.f;
+}
+
+void LLActorMover::setGazeSmoothing(const LLUUID& actor_id, F32 v)
+{
+    mGazes[path_key(actor_id)].mSmoothing = llclamp(v, 0.f, 1.f);
+}
+
+F32 LLActorMover::getGazeSmoothing(const LLUUID& actor_id) const
+{
+    auto it = mGazes.find(path_key(actor_id));
+    return it != mGazes.end() ? it->second.mSmoothing : 0.5f;
+}
+
+bool LLActorMover::getGazeStatus(const LLUUID& actor_id, std::string& out) const
+{
+    if (actor_id.isNull() && !isAgentAvatarValid())
+    {
+        out = "Select a cast member";
+        return false;
+    }
+    const LLUUID key = path_key(actor_id);
+    auto it = mGazes.find(key);
+    if (it == mGazes.end() || !it->second.mEnabled)
+    {
+        out = "Gaze off \xE2\x80\x94 the walk's own head motion plays";
+        return true;
+    }
+    const Gaze& g = it->second;
+
+    // describe the target
+    std::string tgt;
+    switch (g.mTarget)
+    {
+        case GAZE_CAMERA: tgt = "the camera"; break;
+        case GAZE_CAST:
+        {
+            std::string name;
+            if (const LLDirectorCast::CastMember* m =
+                    LLDirectorCast::instance().getMember(g.mCastTarget))
+            {
+                name = m->mLastName;
+            }
+            tgt = g.mCastTarget.isNull()
+                      ? std::string("a cast member (none picked)")
+                      : (name.empty() ? std::string("a cast member") : name);
+            break;
+        }
+        case GAZE_POINT:
+            tgt = g.mPoint.isExactlyZero() ? std::string("a fixed point (unset)")
+                                           : std::string("a fixed point");
+            break;
+        case GAZE_TANGENT:
+        default:
+            tgt = "where it's going";
+            break;
+    }
+
+    // is it actually painting right now (under an active, non-suspended Move)?
+    auto mit = mMoves.find(key);
+    const bool painting = mit != mMoves.end() && !mit->second.mSuspended;
+    if (!painting)
+    {
+        out = llformat("Gaze armed \xE2\x80\x94 will look at %s when the walk starts",
+                       tgt.c_str());
+    }
+    else
+    {
+        out = llformat("Looking at %s", tgt.c_str());
+    }
+    return true;
+}
+
 bool LLActorMover::getPathStats(const LLUUID& actor_id, F32& out_length, F32& out_duration)
 {
     const Path* cp = getPath(actor_id);
@@ -2393,6 +2530,315 @@ void LLActorMover::advanceFollower(LLVOAvatar* av, Move& mv, const Follow& f, F3
     if (mv.mAnim.notNull())
     {
         av->setAnimTimeFactor(cad_speed / llmax(mv.mNominal, 0.5f));
+    }
+}
+
+// ===========================================================================
+// P3 Look-at while walking (procedural gaze): the per-frame paint. Ported from
+// the viewer's own look-at motions (LLHeadRotMotion + LLEyeMotion) so it reads
+// as natural as stock head tracking, then wrapped in the knobs the built-in
+// lacks (head-vs-eyes blend, intensity, smoothing) plus an ease-in/out envelope.
+//
+// WHERE IN THE FRAME: applyGaze() is called from LLVOAvatar::updateCharacter
+// AFTER updateMotions() has posed the skeleton, so the override layers on the
+// current anim pose (unlike applyOverride(), which runs pre-motion and only
+// touches the root). Because ANIM_AGENT_HEAD_ROT / ANIM_AGENT_EYE re-pose
+// mHead/mNeck/mTorso/mEye* every frame for ordinary avatars, joint->getRotation()
+// at entry is the anim pose: the nlerp below layers on it, and easing the weight
+// to 0 returns cleanly to it (no frozen head-lock). We never permanently corrupt
+// the skeleton -- the motion controller rebuilds it next frame and we re-assert.
+// ===========================================================================
+namespace
+{
+const F32 GAZE_EASE_TIME      = 0.35f;   // ease-in / ease-out envelope, s
+const F32 GAZE_TAU_MIN        = 0.04f;   // dir smoothing time constant, s (snappy)
+const F32 GAZE_TAU_MAX        = 0.50f;   // (very smooth)
+const F32 GAZE_LOOKAHEAD      = 6.0f;    // tangent look-ahead distance, m
+const F32 GAZE_MIN_DIST       = 0.25f;   // ignore a target closer than this to the head
+const F32 GAZE_TORSO_LAG      = 0.25f;   // torso share of the combined head aim
+const F32 GAZE_NECK_LAG       = 0.50f;   // neck vs head split of the remaining aim
+const F32 GAZE_HEAD_YAW_MAX   = 72.f * DEG_TO_RAD;  // combined body-relative yaw clamp
+const F32 GAZE_HEAD_PITCH_MAX = 45.f * DEG_TO_RAD;  // combined body-relative pitch clamp
+const F32 GAZE_EYE_YAW_MAX    = 35.f * DEG_TO_RAD;  // per spec
+const F32 GAZE_EYE_PITCH_MAX  = 25.f * DEG_TO_RAD;  // per spec
+} // anonymous namespace
+
+void LLActorMover::applyGaze(LLVOAvatar* av)
+{
+    if (mGazes.empty() || !av)
+    {
+        return;                 // default no-op: no gaze configured anywhere
+    }
+    auto git = mGazes.find(av->getID());
+    if (git == mGazes.end())
+    {
+        return;                 // this avatar has no gaze entry -> byte-identical
+    }
+    Gaze& g = git->second;
+
+    // gaze PAINTS only while enabled AND the actor is under an active, non-
+    // suspended Move (a walk or a placeAt hold). Anything else -> ease out and
+    // release. This is what makes it compose with walk-and-talk and release
+    // cleanly on walk end / suspend / derez / disable.
+    const Move* mv = nullptr;
+    if (g.mEnabled)
+    {
+        auto mit = mMoves.find(av->getID());
+        if (mit != mMoves.end() && !mit->second.mSuspended)
+        {
+            mv = &mit->second;
+        }
+    }
+    const bool active = (mv != nullptr);
+
+    // advance the envelope + direction smoothing once per frame; the joint set is
+    // re-asserted on every call (same idempotent idiom as applyOverride)
+    const U32  frame   = LLFrameTimer::getFrameCount();
+    const bool advance = (g.mLastFrame != frame);
+    F32        dt      = 0.f;
+    if (advance)
+    {
+        g.mLastFrame = frame;
+        dt = llclamp(gFrameIntervalSeconds.value(), 0.f, 0.25f);
+        const F32 step = (GAZE_EASE_TIME > 0.f) ? dt / GAZE_EASE_TIME : 1.f;
+        g.mEnv = llclamp(g.mEnv + (active ? step : -step), 0.f, 1.f);
+    }
+
+    // fully released and inactive: stop touching the joints entirely (the walk /
+    // AO plays exactly as today). Reseed the smoother so a later re-activation
+    // never snaps in from a stale direction.
+    if (!active && g.mEnv <= 0.001f)
+    {
+        g.mDirValid = false;
+        return;
+    }
+    if (av->isDead() || !av->getRootJoint())
+    {
+        return;                 // never paint a dead / rootless actor
+    }
+
+    gazePaint(av, g, mv, dt, advance);
+}
+
+void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bool advance)
+{
+    LLJoint* head = av->getJoint("mHead");
+    LLJoint* root = av->getJoint("mRoot");
+    if (!head || !root)
+    {
+        return;                 // no head/root to drive (animesh without them)
+    }
+
+    const LLVector3 headPos = head->getWorldPosition();
+
+    // ---- resolve the LIVE desired look direction (world / agent frame) --------
+    // A direction along the current travel (path tangent, look-ahead) is the
+    // default; camera / cast / point resolve to a world point instead. An
+    // unresolvable cast target or a too-close point falls back to the tangent.
+    auto tangentDir = [&]() -> LLVector3
+    {
+        if (mv && mv->mIsPath)
+        {
+            const Path* p = getPath(av->getID());
+            if (p && p->mNodes.size() >= 2 && !p->mDirty && p->mTotalLength > 0.01f)
+            {
+                LLVector3d pos_g, tan_g;
+                const F32 d = llclamp(mv->mDist + GAZE_LOOKAHEAD, 0.f, p->mTotalLength);
+                p->evalAtDistance(d, pos_g, tan_g);
+                LLVector3 t((F32)tan_g.mdV[VX], (F32)tan_g.mdV[VY], (F32)tan_g.mdV[VZ]);
+                if (mv->mDir < 0.f) { t = -t; }     // ping-pong return leg
+                if (t.magVecSquared() > 1e-6f) { return t; }
+            }
+        }
+        // straight move / hold: look along the (turn-rate-smoothed) facing
+        return mv ? (LLVector3(1.f, 0.f, 0.f) * mv->mCurRot) : LLVector3(1.f, 0.f, 0.f);
+    };
+
+    LLVector3 dir(0.f, 0.f, 0.f);
+    bool      haveDir = false;
+    if (mv)                     // only chase a live target while active
+    {
+        LLVector3 target(0.f, 0.f, 0.f);
+        bool usePoint = false;
+        switch (g.mTarget)
+        {
+            case GAZE_CAMERA:
+                target   = LLViewerCamera::getInstance()->getOrigin();
+                usePoint = true;
+                break;
+            case GAZE_POINT:
+                if (!g.mPoint.isExactlyZero())
+                {
+                    target   = gAgent.getPosAgentFromGlobal(g.mPoint);
+                    usePoint = true;
+                }
+                break;
+            case GAZE_CAST:
+            {
+                LLVOAvatar* tgt = (g.mCastTarget.notNull() && g.mCastTarget != av->getID())
+                    ? LLDirectorCast::instance().resolve(g.mCastTarget) : nullptr;
+                if (tgt)
+                {
+                    // aim at the target's head (chest-ish); guard a rootless one
+                    if (LLJoint* th = tgt->getJoint("mHead"))
+                    {
+                        target   = th->getWorldPosition();
+                        usePoint = true;
+                    }
+                }
+                break;
+            }
+            case GAZE_TANGENT:
+            default:
+                break;
+        }
+
+        if (usePoint)
+        {
+            dir = target - headPos;
+            if (dir.magVecSquared() < GAZE_MIN_DIST * GAZE_MIN_DIST)
+            {
+                dir = tangentDir();     // target on top of the head -> fall back
+            }
+        }
+        else
+        {
+            dir = tangentDir();
+        }
+        if (dir.magVecSquared() > 1e-6f)
+        {
+            dir.normVec();
+            haveDir = true;
+        }
+    }
+
+    // ---- smooth the direction (exp toward the target; reseed on activation) ----
+    if (haveDir)
+    {
+        if (!g.mDirValid)
+        {
+            g.mSmoothDir = dir;
+            g.mDirValid  = true;
+        }
+        else if (advance)
+        {
+            const F32 tau = GAZE_TAU_MIN + (GAZE_TAU_MAX - GAZE_TAU_MIN) * g.mSmoothing;
+            const F32 a   = 1.f - expf(-dt / llmax(tau, 0.01f));
+            g.mSmoothDir += (dir - g.mSmoothDir) * a;
+            if (g.mSmoothDir.normVec() < 1e-4f)
+            {
+                g.mSmoothDir = dir;     // degenerate average -> snap to the target
+            }
+        }
+    }
+    if (!g.mDirValid)
+    {
+        return;                 // nothing to aim at yet -> leave the anim pose
+    }
+
+    // ---- solve + apply (LLHeadRotMotion + LLEyeMotion math, weighted) ---------
+    // eased envelope * intensity = overall paint weight; the head/eyes blend gates
+    // the body chain (torso/neck/head) so blend=0 is eyes-only.
+    const F32 env_eased = g.mEnv * g.mEnv * (3.f - 2.f * g.mEnv);    // smoothstep
+    const F32 env_i     = env_eased * g.mIntensity;
+    const F32 wEye      = env_i;
+    const F32 wBody     = env_i * g.mHeadEyeBlend;
+
+    const LLQuaternion rootWorld = root->getWorldRotation();
+    const LLQuaternion invRoot   = ~rootWorld;
+
+    LLVector3 look = g.mSmoothDir;      // unit world direction
+
+    // head aim in the root frame, with the built-in's degenerate guard: a target
+    // directly overhead / underfoot makes left ~ 0, so lerp toward straight ahead.
+    LLVector3 root_up = LLVector3(0.f, 0.f, 1.f) * rootWorld;
+    LLVector3 left    = root_up % look;
+    if (left.magVecSquared() < 0.15f)
+    {
+        LLVector3 root_at = LLVector3(1.f, 0.f, 0.f) * rootWorld;
+        root_at.mV[VZ] = 0.f;
+        root_at.normVec();
+        look = lerp(look, root_at, 0.4f);
+        look.normVec();
+        left = root_up % look;
+    }
+    left.normVec();
+    LLVector3 up = look % left;
+    up.normVec();
+    const LLQuaternion targetHeadWorld(look, left, up);
+    LLQuaternion       head_rot_local = targetHeadWorld * invRoot;   // root-relative
+
+    // clamp yaw AND pitch to human head+neck+torso capacity and zero the roll, so
+    // a target behind the actor eases to the max and HOLDS there (no neck-wrap, no
+    // snap) -- the "give up gracefully" behavior.
+    {
+        F32 roll = 0.f, pitch = 0.f, yaw = 0.f;
+        head_rot_local.getEulerAngles(&roll, &pitch, &yaw);
+        yaw   = llclamp(yaw,   -GAZE_HEAD_YAW_MAX,   GAZE_HEAD_YAW_MAX);
+        pitch = llclamp(pitch, -GAZE_HEAD_PITCH_MAX, GAZE_HEAD_PITCH_MAX);
+        head_rot_local.setEulerAngles(0.f, pitch, yaw);
+    }
+
+    if (wBody > 0.001f)
+    {
+        // torso takes a small share (large turns lean the chest). Root-relative
+        // approximation as in the built-in; nlerp from the anim pose so the walk's
+        // torso sway still reads at partial weight.
+        if (LLJoint* torso = av->getJoint("mTorso"))
+        {
+            const LLQuaternion torso_target =
+                nlerp(GAZE_TORSO_LAG, LLQuaternion::DEFAULT, head_rot_local);
+            torso->setRotation(nlerp(wBody, torso->getRotation(), torso_target));
+        }
+
+        // neck + head split, converted into the neck's parent-local frame exactly
+        // like LLHeadRotMotion so the chain composes correctly.
+        LLJoint* neck = av->getJoint("mNeck");
+        if (neck && neck->getParent())
+        {
+            const LLQuaternion torsoRotLocal = neck->getParent()->getWorldRotation() * invRoot;
+            const LLQuaternion head_rel      = head_rot_local * ~torsoRotLocal;
+            const LLQuaternion neck_target   = nlerp(GAZE_NECK_LAG,       LLQuaternion::DEFAULT, head_rel);
+            const LLQuaternion head_target   = nlerp(1.f - GAZE_NECK_LAG, LLQuaternion::DEFAULT, head_rel);
+            neck->setRotation(nlerp(wBody, neck->getRotation(), neck_target));
+            head->setRotation(nlerp(wBody, head->getRotation(), head_target));
+        }
+    }
+
+    // eyes: residual toward the target RELATIVE to the head's actual world rotation
+    // (recomputed from the locals just set). Eyes carry whatever the head did not
+    // -- the full angle when blend=0 (eyes-only), near zero when the head turned.
+    if (wEye > 0.001f)
+    {
+        const LLQuaternion headWorld = head->getWorldRotation();
+        auto applyEye = [&](LLJoint* eye)
+        {
+            if (!eye)
+            {
+                return;
+            }
+            const LLVector3 skyward(0.f, 0.f, 1.f);
+            LLVector3 eleft = skyward % look;
+            if (eleft.magVecSquared() < 1e-4f)
+            {
+                return;         // looking straight up/down: leave the eyes be
+            }
+            eleft.normVec();
+            LLVector3 eup = look % eleft;
+            eup.normVec();
+            LLQuaternion tgt(look, eleft, eup);     // world
+            tgt = tgt * ~headWorld;                 // head-local
+            F32 roll = 0.f, pitch = 0.f, yaw = 0.f;
+            tgt.getEulerAngles(&roll, &pitch, &yaw);
+            yaw   = llclamp(yaw,   -GAZE_EYE_YAW_MAX,   GAZE_EYE_YAW_MAX);
+            pitch = llclamp(pitch, -GAZE_EYE_PITCH_MAX, GAZE_EYE_PITCH_MAX);
+            tgt.setEulerAngles(0.f, pitch, yaw);
+            eye->setRotation(nlerp(wEye, eye->getRotation(), tgt));
+        };
+        applyEye(av->getJoint("mEyeLeft"));
+        applyEye(av->getJoint("mEyeRight"));
+        applyEye(av->getJoint("mFaceEyeAltLeft"));      // Bento alt eyes, if present
+        applyEye(av->getJoint("mFaceEyeAltRight"));
     }
 }
 
