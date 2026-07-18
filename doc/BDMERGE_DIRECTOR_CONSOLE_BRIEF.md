@@ -270,7 +270,45 @@ Visualization (UPGRADES the current thin amber heading line):
 - mTension slider, ground-follow + pitch-to-slope toggles, ease-in/out spinners,
    arrival-facing controls all live on the Move tab.
 
-## P3 — Choreography (build on P1; feature-complete per user)
+## P3 — Choreography + per-node camera + TP resilience (2026-07-18 additions, user-endorsed)
+
+### Per-node camera (the centerpiece — turns a path into an actor+camera TAKE)
+- Each Waypoint gains an OPTIONAL camera: pos + orientation + FOV + a cut|ease flag.
+- Authoring: fly the render camera where you want, hit "Set camera here" on the selected
+  node → captures the current render pose into that node (camera icon marks it; "Clear
+  camera" removes). Node inspector gets the button + cut/ease toggle.
+- Playback: as the actor's path clock crosses a node → CUT snaps to that node's angle;
+  EASE lerps between adjacent nodes' cameras by segment arc-progress (camera moves WITH
+  the actor). Nodes w/o a camera pass through (prev holds). Becomes its own camera source
+  (like recorder playback) — owns the camera while a path-with-cameras walks.
+- World-anchored default (fixed studio cams) + optional actor-relative (rides re-anchor).
+- Press ACTION once → walk + camera play as ONE take. Cleaner than sync-to-Take (author
+  the camera inline on the same nodes); sync-to-Take stays as the alt for pre-recorded lens.
+
+### TP-while-walking: BUG FIX first, smart resume second
+- **BUG (urgent, breaks camera control):** TP away mid-walk → "impossible to take control of
+  the camera." A camera source (CineCam framing a now-absent actor / mover override /
+  recorder) stays latched instead of releasing. TRACE which source is stuck BEFORE patching
+  (no blind camera-lock fix). Fix = on region-change / actor-unresolvable, RELEASE the
+  camera to the normal agent camera + suspend the walk.
+- **Smart suspend/resume state machine** (paths already store global coords):
+  WALKING → (actor derez/region change) → SUSPENDED (freeze path clock, release camera, KEEP
+  path+progress) → (actor resolves again in orig region) → auto-resume / "Resume walk?" prompt.
+  Stay on new sim → stay suspended (held for return) + Path-tab control "Suspended — Resume /
+  Re-anchor here / Cancel" ("Re-anchor here" translates the whole path to current pos).
+  Logout → session-only clears (durable = saved scene).
+
+### QOL bundle (user-endorsed 2026-07-18)
+- **Total length + est. duration readout** on the path (time a walk to music/cuts — high value).
+- **Undo/redo** for node placement/drag/delete.
+- **Reverse / duplicate / mirror path**; **copy path to another actor** (processions, symmetry).
+- **Path library**: save named templates (circle, figure-8, line, custom), drop on any actor.
+- **Multi-select nodes** (move/delete groups).
+- **"Walk to here"**: one ground click = quick single-segment path, no editor.
+- **Onion-skin**: faint ghost of the actor's pose at each node (see blocking w/o ACTION).
+- **Loop-close snap**: snap last node onto first for a seamless loop.
+
+## P3 — Choreography (original; build on P1; feature-complete per user)
 - **Look-at while walking**: per-actor gaze target = point / cast member / camera.
    Client-side head+neck+eye joint override layered on the walk. Head-vs-eyes-only
    blend + intensity weight + NATURAL joint limits (ease toward target, give up
