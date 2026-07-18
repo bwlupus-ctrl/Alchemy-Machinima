@@ -937,6 +937,78 @@ namespace
         LLVOAvatar* avatarp = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
         return avatarp && LLDirectorCast::instance().contains(avatarp->getID());
     }
+
+// [Director] right-click avatar (or animesh) > designate as Subject A / B.
+// Subjects must be cast members -- LLDirectorCast clears a subject the moment
+// it leaves the cast -- so resolve the clicked avatar the same way Add to Cast
+// does, ensure membership (add() no-ops when already in), then set the subject.
+    void handle_avatar_set_subject_a(const LLSD&)
+    {
+        LLVOAvatar* avatarp = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
+        if (avatarp && avatarp->getID().notNull())
+        {
+            LLDirectorCast& cast = LLDirectorCast::instance();
+            cast.add(avatarp->getID());
+            cast.setSubjectA(avatarp->getID());
+        }
+    }
+
+    bool check_avatar_set_subject_a(const LLSD&)
+    {
+        LLVOAvatar* avatarp = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
+        return avatarp && LLDirectorCast::instance().getSubjectA() == avatarp->getID();
+    }
+
+    void handle_avatar_set_subject_b(const LLSD&)
+    {
+        LLVOAvatar* avatarp = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
+        if (avatarp && avatarp->getID().notNull())
+        {
+            LLDirectorCast& cast = LLDirectorCast::instance();
+            cast.add(avatarp->getID());
+            cast.setSubjectB(avatarp->getID());
+        }
+    }
+
+    bool check_avatar_set_subject_b(const LLSD&)
+    {
+        LLVOAvatar* avatarp = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
+        return avatarp && LLDirectorCast::instance().getSubjectB() == avatarp->getID();
+    }
+
+// [Director] right-click avatar (or animesh) > Set Mark Here / Reset to Mark.
+// Marks live on cast members, so Set Mark ensures membership first; Reset to
+// Mark is gated disabled until a mark exists for the clicked actor.
+    void handle_avatar_set_mark(const LLSD&)
+    {
+        LLVOAvatar* avatarp = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
+        if (avatarp && avatarp->getID().notNull())
+        {
+            LLDirectorCast& cast = LLDirectorCast::instance();
+            cast.add(avatarp->getID());
+            cast.setMark(avatarp->getID());
+        }
+    }
+
+    void handle_avatar_reset_to_mark(const LLSD&)
+    {
+        LLVOAvatar* avatarp = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
+        if (avatarp && avatarp->getID().notNull())
+        {
+            LLDirectorCast::instance().resetToMark(avatarp->getID());
+        }
+    }
+
+    bool enable_avatar_reset_to_mark(const LLSD&)
+    {
+        LLVOAvatar* avatarp = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
+        if (!avatarp)
+        {
+            return false;
+        }
+        const LLDirectorCast::CastMember* m = LLDirectorCast::instance().getMember(avatarp->getID());
+        return m && m->mHasMark;
+    }
 }
 
 ////////////////////////////////////////////////////////
@@ -1015,6 +1087,15 @@ void ALViewerMenu::initialize_menus()
     // [Director] cast membership (alias of the Actor Mover roster)
     commit.add("Avatar.AddToCast", boost::bind(&handle_avatar_add_to_cast, _2));
     enable.add("Avatar.CheckAddToCast", boost::bind(&check_avatar_add_to_cast, _2));
+    // [Director] Subjects A/B (setters add to the cast when absent; subjects
+    // must be cast members) + per-actor marks (Set Mark Here / Reset to Mark)
+    commit.add("Avatar.SetSubjectA", boost::bind(&handle_avatar_set_subject_a, _2));
+    enable.add("Avatar.CheckSubjectA", boost::bind(&check_avatar_set_subject_a, _2));
+    commit.add("Avatar.SetSubjectB", boost::bind(&handle_avatar_set_subject_b, _2));
+    enable.add("Avatar.CheckSubjectB", boost::bind(&check_avatar_set_subject_b, _2));
+    commit.add("Avatar.SetMark", boost::bind(&handle_avatar_set_mark, _2));
+    commit.add("Avatar.ResetToMark", boost::bind(&handle_avatar_reset_to_mark, _2));
+    enable.add("Avatar.EnableResetToMark", boost::bind(&enable_avatar_reset_to_mark, _2));
 
     // [SL:KB] - Patch: World-RenderExceptions | Checked: Catznip-5.2
     commit.add("View.Blocked", boost::bind(&handle_view_blocked, _2));

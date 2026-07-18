@@ -22,47 +22,143 @@
     <menu_item_call.on_enable
         function="EnableEdit"/>
   </menu_item_call>
-  <menu_item_call
-      label="Play Local Animation..."
-      name="PlayLocalAnim">
-    <menu_item_call.on_click
-        function="Object.PlayLocalAnim" />
-    <menu_item_call.on_visible
-        function="Object.EnablePlayLocalAnim" />
-  </menu_item_call>
-  <menu_item_call
-      label="Stop Local Animation"
-      name="StopLocalAnim">
-    <menu_item_call.on_click
-        function="Object.StopLocalAnim" />
-    <menu_item_call.on_visible
-        function="Object.EnablePlayLocalAnim" />
-  </menu_item_call>
-  <!-- [ActorMover] animesh: the commit handler resolves the clicked linkset to
-       its control avatar (find_avatar_from_object -> getAvatar() ->
-       getControlAvatar) and toggles roster membership, so animesh can be
-       ghost-moved alongside regular avatars. Visible only for animesh,
-       mirroring PlayLocalAnim's gate. -->
-  <menu_item_check
-      label="Add to Cast"
-      name="Add To Cast">
-    <menu_item_check.on_click
-        function="Avatar.AddToCast" />
-    <menu_item_check.on_check
-        function="Avatar.CheckAddToCast" />
-    <menu_item_check.on_visible
-        function="Object.EnablePlayLocalAnim" />
-  </menu_item_check>
-  <menu_item_check
-      label="Actor Mover Target"
-      name="ActorMover Target">
-    <menu_item_check.on_click
-        function="Avatar.ActorMoverTarget" />
-    <menu_item_check.on_check
-        function="Avatar.CheckActorMoverTarget" />
-    <menu_item_check.on_visible
-        function="Object.EnablePlayLocalAnim" />
-  </menu_item_check>
+  <!-- [Director] Machinima tools for objects, consolidated. Play/Stop Local
+       Animation and the cast / subject / mover / cinecam / mark items are
+       animesh-only: their commit handlers resolve the clicked linkset to its
+       control avatar (find_avatar_from_object -> getAvatar() ->
+       getControlAvatar) and they are gated visible by Object.EnablePlayLocalAnim
+       (same animesh gate as before). Subjects and marks are cast members, so
+       their setters add to the cast when needed. Alpha Mode is the per-object
+       session alpha override and applies to ANY object (shown for regular prims
+       too). Client-side, session-only. -->
+  <context_menu
+      label="Director"
+      name="Director">
+    <menu_item_call
+        label="Play Local Animation..."
+        name="PlayLocalAnim">
+      <menu_item_call.on_click
+          function="Object.PlayLocalAnim" />
+      <menu_item_call.on_visible
+          function="Object.EnablePlayLocalAnim" />
+    </menu_item_call>
+    <menu_item_call
+        label="Stop Local Animation"
+        name="StopLocalAnim">
+      <menu_item_call.on_click
+          function="Object.StopLocalAnim" />
+      <menu_item_call.on_visible
+          function="Object.EnablePlayLocalAnim" />
+    </menu_item_call>
+    <menu_item_check
+        label="Add to Cast"
+        name="Add To Cast">
+      <menu_item_check.on_click
+          function="Avatar.AddToCast" />
+      <menu_item_check.on_check
+          function="Avatar.CheckAddToCast" />
+      <menu_item_check.on_visible
+          function="Object.EnablePlayLocalAnim" />
+    </menu_item_check>
+    <menu_item_check
+        label="Set Subject A"
+        name="Set Subject A">
+      <menu_item_check.on_click
+          function="Avatar.SetSubjectA" />
+      <menu_item_check.on_check
+          function="Avatar.CheckSubjectA" />
+      <menu_item_check.on_visible
+          function="Object.EnablePlayLocalAnim" />
+    </menu_item_check>
+    <menu_item_check
+        label="Set Subject B"
+        name="Set Subject B">
+      <menu_item_check.on_click
+          function="Avatar.SetSubjectB" />
+      <menu_item_check.on_check
+          function="Avatar.CheckSubjectB" />
+      <menu_item_check.on_visible
+          function="Object.EnablePlayLocalAnim" />
+    </menu_item_check>
+    <menu_item_check
+        label="Cinematic Cam Follow"
+        name="CineCam Follow">
+      <menu_item_check.on_click
+          function="Avatar.CineCamFollow" />
+      <menu_item_check.on_check
+          function="Avatar.CheckCineCamFollow" />
+      <menu_item_check.on_visible
+          function="Object.EnablePlayLocalAnim" />
+    </menu_item_check>
+    <menu_item_check
+        label="Actor Mover Target"
+        name="ActorMover Target">
+      <menu_item_check.on_click
+          function="Avatar.ActorMoverTarget" />
+      <menu_item_check.on_check
+          function="Avatar.CheckActorMoverTarget" />
+      <menu_item_check.on_visible
+          function="Object.EnablePlayLocalAnim" />
+    </menu_item_check>
+    <menu_item_call
+        label="Set Mark Here"
+        name="Set Mark Here">
+      <menu_item_call.on_click
+          function="Avatar.SetMark" />
+      <menu_item_call.on_visible
+          function="Object.EnablePlayLocalAnim" />
+    </menu_item_call>
+    <menu_item_call
+        label="Reset to Mark"
+        name="Reset To Mark">
+      <menu_item_call.on_click
+          function="Avatar.ResetToMark" />
+      <menu_item_call.on_visible
+          function="Object.EnablePlayLocalAnim" />
+      <menu_item_call.on_enable
+          function="Avatar.EnableResetToMark" />
+    </menu_item_call>
+    <context_menu
+        label="Alpha Mode"
+        name="Alpha Mode">
+      <menu_item_check
+          label="Default"
+          name="Object Alpha Default">
+        <menu_item_check.on_click
+            function="Object.AlphaMode"
+            parameter="0" />
+        <menu_item_check.on_check
+            function="Object.CheckAlphaMode"
+            parameter="0" />
+        <menu_item_check.on_enable
+            function="Object.EnableAlphaMode" />
+      </menu_item_check>
+      <menu_item_check
+          label="Force Mask"
+          name="Object Alpha Force Mask">
+        <menu_item_check.on_click
+            function="Object.AlphaMode"
+            parameter="1" />
+        <menu_item_check.on_check
+            function="Object.CheckAlphaMode"
+            parameter="1" />
+        <menu_item_check.on_enable
+            function="Object.EnableAlphaMode" />
+      </menu_item_check>
+      <menu_item_check
+          label="Force Blend"
+          name="Object Alpha Force Blend">
+        <menu_item_check.on_click
+            function="Object.AlphaMode"
+            parameter="2" />
+        <menu_item_check.on_check
+            function="Object.CheckAlphaMode"
+            parameter="2" />
+        <menu_item_check.on_enable
+            function="Object.EnableAlphaMode" />
+      </menu_item_check>
+    </context_menu>
+  </context_menu>
   <menu_item_call
       label="Edit PBR material"
       name="EditGLTFMaterial">
@@ -139,52 +235,6 @@
     <menu_item_call.on_enable
         function="Object.EnableShaftClearOverride" />
   </menu_item_call>
-  <!-- [BDMerge G2.3 per-target] per-object session alpha-mode override. Default =
-       stock + global BDMergeForceAlphaMask behavior; Force Mask routes this object's
-       alpha faces through the masked path (crunchy edges, correct depth sorting);
-       Force Blend forces real transparency, overriding the stock heuristics AND the
-       global force-mask. Purely client-side, works on ANY owner / no-mod content,
-       session-only. -->
-  <context_menu
-    label="Alpha Mode"
-    name="Alpha Mode">
-    <menu_item_check
-        label="Default"
-        name="Object Alpha Default">
-      <menu_item_check.on_click
-          function="Object.AlphaMode"
-          parameter="0" />
-      <menu_item_check.on_check
-          function="Object.CheckAlphaMode"
-          parameter="0" />
-      <menu_item_check.on_enable
-          function="Object.EnableAlphaMode" />
-    </menu_item_check>
-    <menu_item_check
-        label="Force Mask"
-        name="Object Alpha Force Mask">
-      <menu_item_check.on_click
-          function="Object.AlphaMode"
-          parameter="1" />
-      <menu_item_check.on_check
-          function="Object.CheckAlphaMode"
-          parameter="1" />
-      <menu_item_check.on_enable
-          function="Object.EnableAlphaMode" />
-    </menu_item_check>
-    <menu_item_check
-        label="Force Blend"
-        name="Object Alpha Force Blend">
-      <menu_item_check.on_click
-          function="Object.AlphaMode"
-          parameter="2" />
-      <menu_item_check.on_check
-          function="Object.CheckAlphaMode"
-          parameter="2" />
-      <menu_item_check.on_enable
-          function="Object.EnableAlphaMode" />
-    </menu_item_check>
-  </context_menu>
   <menu_item_separator layout="topleft" />
   <context_menu
     label="Tools"

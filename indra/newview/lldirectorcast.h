@@ -93,6 +93,14 @@ public:
     void setMarks();
     void resetToMarks();
 
+    // Per-member variants of the above (UI-free): right-click "Set Mark Here"
+    // and "Reset to Mark" drive these on a single clicked actor. setMark()
+    // snapshots that member's current rendered root; resetToMark() snaps it
+    // back. Both no-op and return false when the id is not a resolvable cast
+    // member (setMark) or has no mark yet (resetToMark).
+    bool setMark(const LLUUID& id);
+    bool resetToMark(const LLUUID& id);
+
     // ---- scene serialization (UI-free; the Director Console owns the
     //      files and everything settings-backed) ----
     // sceneData() captures cast membership, cached names, marks, loco anims

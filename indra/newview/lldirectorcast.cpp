@@ -169,6 +169,35 @@ void LLDirectorCast::resetToMarks()
     }
 }
 
+bool LLDirectorCast::setMark(const LLUUID& id)
+{
+    CastMember* m = getMember(id);
+    if (!m)
+    {
+        return false;   // only cast members carry marks
+    }
+    LLVOAvatar* av = resolve(id);
+    if (!av || !av->getRootJoint())
+    {
+        return false;
+    }
+    // same capture as setMarks(): the current RENDERED root
+    m->mMark = av->getRootJoint()->getWorldPosition();
+    m->mHasMark = true;
+    return true;
+}
+
+bool LLDirectorCast::resetToMark(const LLUUID& id)
+{
+    const CastMember* m = getMember(id);
+    if (!m || !m->mHasMark)
+    {
+        return false;
+    }
+    LLActorMover::instance().placeAt(id, m->mMark);
+    return true;
+}
+
 // ---------------------------------------------------------------------------
 // scene serialization
 // ---------------------------------------------------------------------------

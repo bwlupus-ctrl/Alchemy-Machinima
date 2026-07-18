@@ -2,45 +2,123 @@
 <context_menu
  layout="topleft"
  name="Attachment Pie">
+  <!-- [Director] Machinima tools, consolidated. The cast / subject / mover /
+       cinecam / mark items resolve the attachment's WEARER avatar (here, self)
+       via find_avatar_from_object and share the Director cast state; subjects
+       and marks are cast members, so their setters add to the cast when needed.
+       Alpha Mode is the per-object session alpha override for THIS attachment.
+       Client-side, session-only. -->
   <context_menu
-    label="Alpha Mode"
-    name="Alpha Mode">
+    label="Director"
+    name="Director">
     <menu_item_check
-        label="Default"
-        name="Object Alpha Default">
+      label="Add to Cast"
+      name="Add To Cast">
       <menu_item_check.on_click
-          function="Object.AlphaMode"
-          parameter="0" />
+        function="Avatar.AddToCast" />
       <menu_item_check.on_check
-          function="Object.CheckAlphaMode"
-          parameter="0" />
+        function="Avatar.CheckAddToCast" />
       <menu_item_check.on_enable
-          function="Object.EnableAlphaMode" />
+        function="Avatar.EnableAlphaMode" />
     </menu_item_check>
     <menu_item_check
-        label="Force Mask"
-        name="Object Alpha Force Mask">
+      label="Set Subject A"
+      name="Set Subject A">
       <menu_item_check.on_click
-          function="Object.AlphaMode"
-          parameter="1" />
+        function="Avatar.SetSubjectA" />
       <menu_item_check.on_check
-          function="Object.CheckAlphaMode"
-          parameter="1" />
+        function="Avatar.CheckSubjectA" />
       <menu_item_check.on_enable
-          function="Object.EnableAlphaMode" />
+        function="Avatar.EnableAlphaMode" />
     </menu_item_check>
     <menu_item_check
-        label="Force Blend"
-        name="Object Alpha Force Blend">
+      label="Set Subject B"
+      name="Set Subject B">
       <menu_item_check.on_click
-          function="Object.AlphaMode"
-          parameter="2" />
+        function="Avatar.SetSubjectB" />
       <menu_item_check.on_check
-          function="Object.CheckAlphaMode"
-          parameter="2" />
+        function="Avatar.CheckSubjectB" />
       <menu_item_check.on_enable
-          function="Object.EnableAlphaMode" />
+        function="Avatar.EnableAlphaMode" />
     </menu_item_check>
+    <menu_item_check
+      label="Cinematic Cam Follow"
+      name="CineCam Follow">
+      <menu_item_check.on_click
+        function="Avatar.CineCamFollow" />
+      <menu_item_check.on_check
+        function="Avatar.CheckCineCamFollow" />
+      <menu_item_check.on_enable
+        function="Avatar.EnableAlphaMode" />
+    </menu_item_check>
+    <menu_item_check
+      label="Actor Mover Target"
+      name="ActorMover Target">
+      <menu_item_check.on_click
+        function="Avatar.ActorMoverTarget" />
+      <menu_item_check.on_check
+        function="Avatar.CheckActorMoverTarget" />
+      <menu_item_check.on_enable
+        function="Avatar.EnableAlphaMode" />
+    </menu_item_check>
+    <menu_item_separator layout="topleft" />
+    <menu_item_call
+      label="Set Mark Here"
+      name="Set Mark Here">
+      <menu_item_call.on_click
+        function="Avatar.SetMark" />
+      <menu_item_call.on_enable
+        function="Avatar.EnableAlphaMode" />
+    </menu_item_call>
+    <menu_item_call
+      label="Reset to Mark"
+      name="Reset To Mark">
+      <menu_item_call.on_click
+        function="Avatar.ResetToMark" />
+      <menu_item_call.on_enable
+        function="Avatar.EnableResetToMark" />
+    </menu_item_call>
+    <menu_item_separator layout="topleft" />
+    <context_menu
+      label="Alpha Mode"
+      name="Alpha Mode">
+      <menu_item_check
+          label="Default"
+          name="Object Alpha Default">
+        <menu_item_check.on_click
+            function="Object.AlphaMode"
+            parameter="0" />
+        <menu_item_check.on_check
+            function="Object.CheckAlphaMode"
+            parameter="0" />
+        <menu_item_check.on_enable
+            function="Object.EnableAlphaMode" />
+      </menu_item_check>
+      <menu_item_check
+          label="Force Mask"
+          name="Object Alpha Force Mask">
+        <menu_item_check.on_click
+            function="Object.AlphaMode"
+            parameter="1" />
+        <menu_item_check.on_check
+            function="Object.CheckAlphaMode"
+            parameter="1" />
+        <menu_item_check.on_enable
+            function="Object.EnableAlphaMode" />
+      </menu_item_check>
+      <menu_item_check
+          label="Force Blend"
+          name="Object Alpha Force Blend">
+        <menu_item_check.on_click
+            function="Object.AlphaMode"
+            parameter="2" />
+        <menu_item_check.on_check
+            function="Object.CheckAlphaMode"
+            parameter="2" />
+        <menu_item_check.on_enable
+            function="Object.EnableAlphaMode" />
+      </menu_item_check>
+    </context_menu>
   </context_menu>
     <menu_item_separator layout="topleft" />
 
