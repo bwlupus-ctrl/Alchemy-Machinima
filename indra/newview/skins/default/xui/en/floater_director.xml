@@ -10,13 +10,13 @@
  can_resize="true"
  height="460"
  min_height="440"
- min_width="620"
+ min_width="658"
  layout="topleft"
  name="floater_director"
  title="Director Console"
  save_rect="true"
  single_instance="true"
- width="640">
+ width="658">
 
     <!-- ============ transport bar ============ -->
     <button
@@ -173,6 +173,17 @@
      name="arm_capture_check"
      tool_tip="ACTION starts a fresh camera capture (replaces the current take); CUT stops it. Beats recorder play when both are armed"
      width="124" />
+    <button
+     follows="right|top"
+     font="SansSerifBold"
+     height="18"
+     label="?"
+     layout="topleft"
+     left="632"
+     top="51"
+     name="btn_help"
+     tool_tip="Show a legend for the cast icons, A/B subjects, marks and path colors"
+     width="18" />
 
     <!-- ============ cast column (persistent) ============ -->
     <scroll_list
@@ -237,16 +248,26 @@
      top="408"
      name="btn_add_you"
      tool_tip="Add your own avatar to the cast"
-     width="84" />
+     width="54" />
     <button
      follows="left|bottom"
      height="22"
      label="Remove"
      layout="topleft"
-     left="98"
+     left="66"
      top="408"
      name="btn_remove"
-     width="90" />
+     width="56" />
+    <button
+     follows="left|bottom"
+     height="22"
+     label="Focus"
+     layout="topleft"
+     left="126"
+     top="408"
+     name="btn_focus"
+     tool_tip="Frame the selected cast member in the camera"
+     width="62" />
 
     <!-- ============ left-rail tabs ============ -->
     <tab_container
@@ -257,10 +278,10 @@
      top="74"
      name="director_tabs"
      tab_height="22"
-     tab_width="62"
+     tab_width="80"
      tab_group="1"
      tab_position="left"
-     width="436">
+     width="454">
 
         <!-- ============ Move tab ============ -->
         <panel
@@ -1246,13 +1267,77 @@
 
     <!-- ============ status strip ============ -->
     <text
-     follows="left|right|bottom"
+     follows="left|bottom"
      height="14"
      layout="topleft"
      left="8"
      top="440"
      name="status_strip"
-     width="624">
+     width="548">
         0 moving
     </text>
+    <text
+     follows="right|bottom"
+     halign="right"
+     height="14"
+     layout="topleft"
+     left="576"
+     top="440"
+     name="rec_indicator"
+     tool_tip="Recorder capture indicator: red while a take is being captured"
+     width="74">
+        REC
+    </text>
+
+    <!-- ============ legend popover (toggled by the ? button) ============ -->
+    <panel
+     background_opaque="true"
+     background_visible="true"
+     border="true"
+     follows="left|top"
+     height="196"
+     layout="topleft"
+     left="210"
+     name="legend_panel"
+     top="110"
+     visible="false"
+     width="424">
+        <text
+         follows="left|top"
+         font="SansSerifBold"
+         height="16"
+         layout="topleft"
+         left="12"
+         top="10"
+         name="legend_title"
+         width="300">
+            Director Console legend
+        </text>
+        <text
+         follows="left|top|right"
+         height="150"
+         layout="topleft"
+         left="12"
+         top="30"
+         name="legend_body"
+         word_wrap="true"
+         width="400">
+Status column: a walking figure means the actor is moving, a green dot means idle and in world, a gray dot means the actor is not in world (shown "(away)").
+
+AB column: A marks Subject A and B marks Subject B, the bodies the cinematic camera frames. Set them from the cast right-click menu, the Camera tab, or by double-clicking a cast row (sets Subject A).
+
+M column: a flag means a mark (a saved position) is set for that actor.
+
+Paths: each actor's in-world path preview and its numbered nodes are drawn in a stable per-actor color, so overlapping routes stay readable.
+        </text>
+        <button
+         follows="left|top"
+         height="20"
+         label="Close"
+         layout="topleft"
+         left="12"
+         top="168"
+         name="btn_legend_close"
+         width="60" />
+    </panel>
 </floater>

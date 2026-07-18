@@ -36,6 +36,7 @@
 #include "llsdserialize.h"          // scene LLSD XML files
 #include "llselectmgr.h"
 #include "llsliderctrl.h"
+#include "lltabcontainer.h"
 #include "lltextbox.h"
 #include "lluictrlfactory.h"
 #include "lluri.h"                  // LLURI::escape scene filenames
@@ -54,6 +55,13 @@ constexpr char ICON_MOVING[]   = "Move_Walk_Off";
 constexpr char ICON_IDLE[]     = "Profile_Friend_Online";
 constexpr char ICON_GONE[]     = "Profile_Friend_Offline";
 constexpr char ICON_MARK[]     = "Flag";
+
+// left-rail tab icons (existing toolbar-icon skin assets, one family)
+constexpr char TAB_ICON_MOVE[]    = "Command_Move_Icon";
+constexpr char TAB_ICON_PATH[]    = "Command_Places_Icon";
+constexpr char TAB_ICON_ANIMATE[] = "Command_Poser_Icon";
+constexpr char TAB_ICON_CAMERA[]  = "Command_View_Icon";
+constexpr char TAB_ICON_TAKES[]   = "Command_Snapshot_Icon";
 
 // scene files live beside the cinematic presets, same idiom
 constexpr char SCENE_SUBDIR[]  = "director_scenes";
@@ -122,15 +130,45 @@ bool LLFloaterDirector::postBuild()
     mSceneDeleteBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSceneDelete(); });
     refreshSceneList();
 
+    // ---- left-rail tabs (remember the active tab, icon each rail button) ----
+    mTabContainer = getChild<LLTabContainer>("director_tabs");
+    mTabContainer->setCommitCallback([this](LLUICtrl*, const LLSD&) { onTabChanged(); });
+    // per-tab icons: image overlay left of the label (existing skin assets)
+    struct { const char* panel; const char* icon; } tab_icons[] = {
+        { "move_tab",    TAB_ICON_MOVE },
+        { "path_tab",    TAB_ICON_PATH },
+        { "animate_tab", TAB_ICON_ANIMATE },
+        { "camera_tab",  TAB_ICON_CAMERA },
+        { "takes_tab",   TAB_ICON_TAKES },
+    };
+    for (const auto& t : tab_icons)
+    {
+        if (LLPanel* panel = mTabContainer->getPanelByName(t.panel))
+        {
+            mTabContainer->setTabImage(panel, t.icon);
+        }
+    }
+
+    // ---- legend popover ----
+    mHelpBtn = getChild<LLButton>("btn_help");
+    mLegendPanel = getChild<LLPanel>("legend_panel");
+    mHelpBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onToggleLegend(); });
+    mLegendPanel->getChild<LLButton>("btn_legend_close")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { mLegendPanel->setVisible(false); });
+
     // ---- cast column ----
     mCastList = getChild<LLScrollListCtrl>("cast_list");
     mCastHint = getChild<LLTextBox>("cast_hint");
     mRemoveBtn = getChild<LLButton>("btn_remove");
+    mFocusBtn = getChild<LLButton>("btn_focus");
     getChild<LLButton>("btn_add_you")->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onClickAddYou(); });
     mRemoveBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onCastRemove(); });
+    mFocusBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickFocusActor(); });
     mCastList->setRightMouseDownCallback(
         [this](LLUICtrl* ctrl, S32 x, S32 y, MASK) { onCastRightClick(ctrl, x, y); });
+    // double-click a cast row = Set Subject A (mirrors the right-click path)
+    mCastList->setDoubleClickCallback([this]() { onCastSetSubject(true); });
     {
         // same LLContextMenu idiom as the Animation Explorer's list menu
         LLUICtrl::CommitCallbackRegistry::ScopedRegistrar registrar;
@@ -231,6 +269,7 @@ bool LLFloaterDirector::postBuild()
 
     // ---- status strip ----
     mStatusStrip = getChild<LLTextBox>("status_strip");
+    mRecIndicator = getChild<LLTextBox>("rec_indicator");
 
     return true;
 }
@@ -243,7 +282,40 @@ void LLFloaterDirector::onOpen(const LLSD& key)
     {
         refreshSceneList(mSceneCombo->getSelectedItemLabel());
     }
+
+    // return to the tab left showing last time (clamped: tab set can shrink)
+    if (mTabContainer)
+    {
+        const S32 last = llclamp(gSavedSettings.getS32("DirectorLastTab"),
+                                 0, mTabContainer->getTabCount() - 1);
+        mTabContainer->selectTab(last);
+    }
+
+    // a reopened console never resurfaces the legend
+    if (mLegendPanel)
+    {
+        mLegendPanel->setVisible(false);
+    }
     LLFloater::onOpen(key);
+}
+
+// ---------------------------------------------------------------------------
+// tabs + legend
+// ---------------------------------------------------------------------------
+void LLFloaterDirector::onTabChanged()
+{
+    if (mTabContainer)
+    {
+        gSavedSettings.setS32("DirectorLastTab", mTabContainer->getCurrentPanelIndex());
+    }
+}
+
+void LLFloaterDirector::onToggleLegend()
+{
+    if (mLegendPanel)
+    {
+        mLegendPanel->setVisible(!mLegendPanel->getVisible());
+    }
 }
 
 void LLFloaterDirector::draw()
@@ -799,6 +871,15 @@ void LLFloaterDirector::refreshCastList()
     setToolTipIfChanged(mRemoveBtn, have_sel
         ? std::string("Remove the selected member(s) from the cast")
         : std::string("Select a cast member first"));
+
+    // focus needs a selection that is actually in world (reason-tooltip otherwise)
+    const LLUUID focus_id = firstSelectedCastId();
+    const bool   focus_in_world = focus_id.notNull() && cast.resolve(focus_id) != nullptr;
+    mFocusBtn->setEnabled(focus_in_world);
+    setToolTipIfChanged(mFocusBtn, focus_id.isNull()
+        ? std::string("Select a cast member first")
+        : focus_in_world ? "Frame " + castMemberName(focus_id) + " in the camera"
+                         : castMemberName(focus_id) + " is not in world");
 }
 
 uuid_vec_t LLFloaterDirector::selectedCastIds() const
@@ -843,6 +924,21 @@ void LLFloaterDirector::onClickAddYou()
     if (isAgentAvatarValid())
     {
         LLDirectorCast::instance().add(gAgentAvatarp->getID());
+    }
+}
+
+void LLFloaterDirector::onClickFocusActor()
+{
+    const LLUUID id = firstSelectedCastId();
+    if (id.isNull())
+    {
+        return;
+    }
+    // reuse the viewer's "Zoom In" focus path; a no-op (returns false) when the
+    // actor isn't a reachable in-world object
+    if (LLDirectorCast::instance().resolve(id))
+    {
+        handle_zoom_to_object(id);
     }
 }
 
@@ -1506,9 +1602,22 @@ void LLFloaterDirector::refreshStatusStrip()
         cam = "CineCam: off";
     }
 
-    const bool rec = LLFlycamRecorder::instance().getState() == LLFlycamRecorder::STATE_RECORDING;
-    mStatusStrip->setText(llformat("%d moving \xC2\xB7 %s \xC2\xB7 Orbit %s \xC2\xB7 REC %s",
+    mStatusStrip->setText(llformat("%d moving \xC2\xB7 %s \xC2\xB7 Orbit %s",
                                    moving, cam.c_str(),
-                                   orbit_enabled ? "on" : "off",
-                                   rec ? "\xE2\x97\x8F" : "\xE2\x97\x8B"));
+                                   orbit_enabled ? "on" : "off"));
+
+    // REC indicator: red danger dot while capturing, muted circle when idle
+    // (diffed so the color/text are only re-set on a state change)
+    const bool rec = LLFlycamRecorder::instance().getState() == LLFlycamRecorder::STATE_RECORDING;
+    const S32 rec_state = rec ? 1 : 0;
+    if (mRecState != rec_state)
+    {
+        mRecState = rec_state;
+        const LLColor4 rec_color = rec ? LLColor4(0.85f, 0.25f, 0.25f, 1.f)
+                                       : LLColor4(0.5f, 0.5f, 0.5f, 1.f);
+        mRecIndicator->setText(rec ? std::string("REC \xE2\x97\x8F")
+                                   : std::string("REC \xE2\x97\x8B"));
+        mRecIndicator->setColor(rec_color);
+        mRecIndicator->setReadOnlyColor(rec_color);
+    }
 }

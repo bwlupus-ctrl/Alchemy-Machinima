@@ -34,6 +34,7 @@ class LLPanel;
 class LLRadioGroup;
 class LLScrollListCtrl;
 class LLSliderCtrl;
+class LLTabContainer;
 class LLTextBox;
 
 class LLFloaterDirector final : public LLFloater
@@ -70,10 +71,17 @@ private:
     void saveScene(const std::string& name);
     void loadScene(const std::string& name);
 
+    // ---- tabs ----
+    void onTabChanged();                // remember the active tab (DirectorLastTab)
+
+    // ---- legend popover ----
+    void onToggleLegend();
+
     // ---- cast column ----
     void refreshCastList();
     void onCastRightClick(LLUICtrl* ctrl, S32 x, S32 y);
     void onClickAddYou();
+    void onClickFocusActor();           // frame the selected member in the camera
     uuid_vec_t selectedCastIds() const;
     LLUUID     firstSelectedCastId() const;
     // context-menu / button ops (act on the list selection)
@@ -141,9 +149,15 @@ private:
     LLButton*     mSceneDeleteBtn = nullptr;
     ALPanelCineCamParams* mCineCamPanel = nullptr;  // embedded shared params panel
 
+    // left-rail tabs + legend popover
+    LLTabContainer* mTabContainer = nullptr;
+    LLButton*       mHelpBtn = nullptr;
+    LLPanel*        mLegendPanel = nullptr;
+
     // cast column
     LLScrollListCtrl* mCastList = nullptr;
     LLButton*         mRemoveBtn = nullptr;
+    LLButton*         mFocusBtn = nullptr;
     LLTextBox*        mCastHint = nullptr;
     LLHandle<LLContextMenu> mCastMenuHandle;
     // per-row last-applied cell state, parallel to the list rows, so cells
@@ -211,6 +225,8 @@ private:
 
     // status strip
     LLTextBox* mStatusStrip = nullptr;
+    LLTextBox* mRecIndicator = nullptr;
+    S32        mRecState = -1;       // -1 unknown, 0 idle, 1 capturing (diffing)
 };
 
 #endif // LL_LLFLOATERDIRECTOR_H

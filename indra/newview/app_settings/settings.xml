@@ -3551,6 +3551,17 @@
       <key>Value</key>
       <real>0.0</real>
     </map>
+    <key>DirectorLastTab</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Index of the last-active Director Console tab (0=Move, 1=Path, 2=Animate, 3=Camera, 4=Takes). Restored when the console reopens.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
     <key>AvatarAxisDeadZone0</key>
     <map>
       <key>Comment</key>
