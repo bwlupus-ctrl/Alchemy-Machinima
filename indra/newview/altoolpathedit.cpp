@@ -133,14 +133,33 @@ S32 ALToolPathEdit::pickSegment(S32 x, S32 y, const LLUUID& actor) const
 bool ALToolPathEdit::handleMouseDown(S32 x, S32 y, MASK mask)
 {
     const LLUUID actor = targetActor();
+    LLActorMover& mover = LLActorMover::instance();
+
+    // "Walk to here" one-shot: the next ground click builds a fresh straight
+    // path and walks it (startWalkTo snapshots undo itself). A sky-miss keeps
+    // the arm so the user can click again; a hit hands the camera back.
+    if (mWalkToArmed)
+    {
+        LLVector3d gp;
+        if (groundPointAt(x, y, gp))
+        {
+            mover.startWalkTo(actor, gp);
+            mWalkToArmed = false;
+            LLToolMgr::getInstance()->clearTransientTool();
+        }
+        return true;
+    }
 
     // click a node -> select + begin drag (works even if the actor can't
-    // resolve: the path data is keyed by id, independent of the avatar)
+    // resolve: the path data is keyed by id, independent of the avatar). The
+    // pre-drag undo snapshot is deferred to the first actual move (handleHover)
+    // so a plain select-click leaves no empty undo entry.
     const S32 node = pickNode(x, y, actor);
     if (node >= 0)
     {
-        LLActorMover::instance().setEditNode(node);
+        mover.setEditNode(node);
         mDragNode = node;
+        mDragDidSnapshot = false;
         setMouseCapture(true);
         return true;
     }
@@ -151,7 +170,7 @@ bool ALToolPathEdit::handleMouseDown(S32 x, S32 y, MASK mask)
     {
         return true;        // consumed but nothing to place (clicked the sky)
     }
-    LLActorMover& mover = LLActorMover::instance();
+    mover.snapshotForUndo(actor);       // a discrete placement is one undo step
     const S32 seg = pickSegment(x, y, actor);
     if (seg >= 0)
     {
@@ -174,7 +193,15 @@ bool ALToolPathEdit::handleHover(S32 x, S32 y, MASK mask)
         LLVector3d gp;
         if (groundPointAt(x, y, gp))
         {
-            LLActorMover::instance().moveWaypoint(targetActor(), mDragNode, gp);
+            LLActorMover& mover = LLActorMover::instance();
+            // snapshot the pre-drag state once, on the first real move, so the
+            // whole drag collapses into a single undo entry
+            if (!mDragDidSnapshot)
+            {
+                mover.snapshotForUndo(targetActor());
+                mDragDidSnapshot = true;
+            }
+            mover.moveWaypoint(targetActor(), mDragNode, gp);
         }
         gViewerWindow->setCursor(UI_CURSOR_TOOLGRAB);
         return true;
@@ -221,6 +248,7 @@ bool ALToolPathEdit::handleKey(KEY key, MASK mask)
     if ((key == KEY_DELETE || key == KEY_BACKSPACE) && mover.getEditNode() >= 0)
     {
         const S32 n = mover.getEditNode();
+        mover.snapshotForUndo(mover.getEditActor());
         if (mover.deleteWaypoint(mover.getEditActor(), n))
         {
             mover.setEditNode(-1);
@@ -248,11 +276,14 @@ void ALToolPathEdit::handleDeselect()
         setMouseCapture(false);
     }
     mDragNode = -1;
+    mDragDidSnapshot = false;
+    mWalkToArmed = false;       // never leave a pending walk-to armed off-tool
 }
 
 void ALToolPathEdit::onMouseCaptureLost()
 {
     mDragNode = -1;
+    mDragDidSnapshot = false;
 }
 
 // ---------------------------------------------------------------------------
@@ -279,9 +310,13 @@ void ALToolPathEdit::onMenuDelete()
 {
     LLActorMover& mover = LLActorMover::instance();
     const S32 n = mover.getEditNode();
-    if (n >= 0 && mover.deleteWaypoint(mover.getEditActor(), n))
+    if (n >= 0)
     {
-        mover.setEditNode(-1);
+        mover.snapshotForUndo(mover.getEditActor());
+        if (mover.deleteWaypoint(mover.getEditActor(), n))
+        {
+            mover.setEditNode(-1);
+        }
     }
 }
 
@@ -295,6 +330,7 @@ void ALToolPathEdit::onMenuInsertAfter()
     {
         return;
     }
+    mover.snapshotForUndo(actor);
     // midpoint toward the next node (or an offset past the last node), so the
     // menu insert needs no second click and never lands on top of a neighbor
     LLVector3d mid;

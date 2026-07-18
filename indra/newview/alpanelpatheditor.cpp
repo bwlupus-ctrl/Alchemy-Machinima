@@ -63,6 +63,16 @@ bool ALPanelPathEditor::postBuild()
     mInsertBtn     = getChild<LLButton>("btn_wp_insert");
     mDeleteBtn     = getChild<LLButton>("btn_wp_delete");
     mClearBtn      = getChild<LLButton>("btn_wp_clear");
+
+    mReadout       = getChild<LLTextBox>("path_readout");
+    mUndoBtn       = getChild<LLButton>("btn_edit_undo");
+    mRedoBtn       = getChild<LLButton>("btn_edit_redo");
+    mReverseBtn    = getChild<LLButton>("btn_edit_reverse");
+    mMirrorBtn     = getChild<LLButton>("btn_edit_mirror");
+    mLoopCloseBtn  = getChild<LLButton>("btn_edit_loopclose");
+    mWalkHereBtn   = getChild<LLButton>("btn_walk_here");
+    mCopyToCombo   = getChild<LLComboBox>("copy_to_combo");
+    mCopyBtn       = getChild<LLButton>("btn_copy_to");
     mNodeHeight    = getChild<LLSpinCtrl>("node_height_spinner");
     mNodeDwell     = getChild<LLSpinCtrl>("node_dwell_spinner");
     mNodeSpeed     = getChild<LLSpinCtrl>("node_speed_spinner");
@@ -95,6 +105,14 @@ bool ALPanelPathEditor::postBuild()
     mInsertBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickInsert(); });
     mDeleteBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickDelete(); });
     mClearBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickClear(); });
+
+    mUndoBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickUndo(); });
+    mRedoBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickRedo(); });
+    mReverseBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickReverse(); });
+    mMirrorBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickMirror(); });
+    mLoopCloseBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickLoopClose(); });
+    mWalkHereBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickWalkHere(); });
+    mCopyBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickCopyTo(); });
 
     mNodeHeight->setCommitCallback([this](LLUICtrl*, const LLSD&) { onNodeHeightCommit(); });
     mNodeDwell->setCommitCallback([this](LLUICtrl*, const LLSD&) { onNodeDwellCommit(); });
@@ -186,6 +204,9 @@ void ALPanelPathEditor::draw()
     refreshPathControls();
     refreshCameraControls();
     refreshSuspendBanner();
+    refreshReadout();
+    refreshEditButtons();
+    refreshCopyCombo();
 
     LLPanel::draw();
 }
@@ -623,6 +644,7 @@ void ALPanelPathEditor::onClickAdd()
         return;
     }
     LLActorMover& m = LLActorMover::instance();
+    m.snapshotForUndo(mActor);
     m.appendWaypointHere(mActor);       // ground-snaps at the actor's feet
     if (const LLActorMover::Path* p = m.getPath(mActor); p && !p->mNodes.empty())
     {
@@ -639,6 +661,7 @@ void ALPanelPathEditor::onClickInsert()
     {
         return;
     }
+    m.snapshotForUndo(mActor);
     const S32 n = (S32)p->mNodes.size();
     if (sel + 1 < n)
     {
@@ -668,6 +691,7 @@ void ALPanelPathEditor::onClickDelete()
         return;
     }
     LLActorMover& m = LLActorMover::instance();
+    m.snapshotForUndo(mActor);
     if (m.deleteWaypoint(mActor, sel))
     {
         const LLActorMover::Path* p = m.getPath(mActor);
@@ -705,6 +729,7 @@ bool ALPanelPathEditor::clearCallback(const LLSD& notification, const LLSD& resp
         return false;       // Cancel
     }
     LLActorMover& m = LLActorMover::instance();
+    m.snapshotForUndo(mActor);
     m.clearPath(mActor);
     m.setEditNode(-1);
     return false;
@@ -753,6 +778,226 @@ void ALPanelPathEditor::exitEditMode()
     {
         mEditModeCheck->set(false);
     }
+}
+
+// ---------------------------------------------------------------------------
+// P3 QOL edit ops. Structural ops snapshot undo then delegate; each is a no-op
+// (guarded here and in the engine) when there is no walkable path or a walk is
+// active, matching the button enable/tooltip state below.
+// ---------------------------------------------------------------------------
+void ALPanelPathEditor::onClickUndo()
+{
+    if (mActor.notNull())
+    {
+        LLActorMover::instance().undoPath(mActor);
+    }
+}
+
+void ALPanelPathEditor::onClickRedo()
+{
+    if (mActor.notNull())
+    {
+        LLActorMover::instance().redoPath(mActor);
+    }
+}
+
+void ALPanelPathEditor::onClickReverse()
+{
+    LLActorMover& m = LLActorMover::instance();
+    if (mActor.isNull() || m.isPathWalking(mActor) || !m.hasWalkablePath(mActor))
+    {
+        return;
+    }
+    m.snapshotForUndo(mActor);
+    m.reversePath(mActor);
+}
+
+void ALPanelPathEditor::onClickMirror()
+{
+    LLActorMover& m = LLActorMover::instance();
+    if (mActor.isNull() || m.isPathWalking(mActor) || !m.hasWalkablePath(mActor))
+    {
+        return;
+    }
+    m.snapshotForUndo(mActor);
+    m.mirrorPath(mActor);
+}
+
+void ALPanelPathEditor::onClickLoopClose()
+{
+    LLActorMover& m = LLActorMover::instance();
+    if (mActor.isNull() || m.isPathWalking(mActor) || !m.hasWalkablePath(mActor))
+    {
+        return;
+    }
+    m.snapshotForUndo(mActor);
+    m.loopClosePath(mActor);
+}
+
+void ALPanelPathEditor::onClickCopyTo()
+{
+    LLActorMover& m = LLActorMover::instance();
+    if (mActor.isNull() || !m.hasWalkablePath(mActor) || !mCopyToCombo)
+    {
+        return;
+    }
+    const LLUUID dst(mCopyToCombo->getSelectedValue().asString());
+    if (dst.isNull() || dst == mActor || m.isPathWalking(dst))
+    {
+        return;
+    }
+    m.snapshotForUndo(dst);     // the destination's overwrite is undoable on that actor
+    m.copyPathTo(mActor, dst);
+}
+
+void ALPanelPathEditor::onClickWalkHere()
+{
+    if (mActor.isNull())
+    {
+        return;
+    }
+    // arming picks against the render camera, so hand back any held preview and
+    // drop edit mode; the tool disarms + returns the camera after the click
+    LLPathCamera::instance().stopPreview();
+    exitEditMode();
+    LLActorMover::instance().setEditActor(mActor);
+    ALToolPathEdit* tool = ALToolPathEdit::getInstance();
+    tool->armWalkTo();
+    LLToolMgr::getInstance()->setTransientTool(tool);
+}
+
+// ---------------------------------------------------------------------------
+// P3 QOL refreshers: readout, edit-op enable/tooltips, copy picker
+// ---------------------------------------------------------------------------
+void ALPanelPathEditor::refreshReadout()
+{
+    if (!mReadout)
+    {
+        return;
+    }
+    LLActorMover& m = LLActorMover::instance();
+    const LLActorMover::Path* path = m.getPath(mActor);
+    const S32 nodes = path ? (S32)path->mNodes.size() : 0;
+
+    std::string txt;
+    F32 len = 0.f, dur = 0.f;
+    if (m.getPathStats(mActor, len, dur))
+    {
+        const S32 emode = path ? path->mEndMode : 0;
+        const char* suffix = (emode == 1) ? " / lap"
+                           : (emode == 2) ? " each way" : "";
+        // middot U+00B7, em-dash U+2014 as raw UTF-8
+        txt = llformat("%.1f m \xC2\xB7 ~%.1f s%s \xC2\xB7 %d nodes",
+                       len, dur, suffix, nodes);
+    }
+    else if (nodes == 1)
+    {
+        txt = "1 node \xE2\x80\x94 add another to make a path";
+    }
+    else
+    {
+        txt = "No path yet";
+    }
+    if (mReadout->getValue().asString() != txt)
+    {
+        mReadout->setText(txt);
+    }
+}
+
+void ALPanelPathEditor::refreshEditButtons()
+{
+    LLActorMover& m = LLActorMover::instance();
+    const bool have_actor = mActor.notNull();
+    const bool walking  = have_actor && m.isPathWalking(mActor);
+    const bool walkable = have_actor && m.hasWalkablePath(mActor);
+    const bool can_undo = have_actor && m.canUndoPath(mActor);
+    const bool can_redo = have_actor && m.canRedoPath(mActor);
+
+    mUndoBtn->setEnabled(can_undo && !walking);
+    mUndoBtn->setToolTip(walking
+        ? std::string("Stop the walk to undo path edits")
+        : (can_undo ? std::string("Undo the last path edit")
+                    : std::string("Nothing to undo")));
+    mRedoBtn->setEnabled(can_redo && !walking);
+    mRedoBtn->setToolTip(walking
+        ? std::string("Stop the walk to redo path edits")
+        : (can_redo ? std::string("Redo the last undone edit")
+                    : std::string("Nothing to redo")));
+
+    // one shared reason for the structural ops (walk active / no walkable path)
+    const std::string reason = walking
+        ? std::string("Stop the walk to edit the path")
+        : (!walkable ? std::string("Needs a path with at least two waypoints")
+                     : std::string());
+    const bool ops_ok = walkable && !walking;
+
+    mReverseBtn->setEnabled(ops_ok);
+    mReverseBtn->setToolTip(reason.empty()
+        ? std::string("Reverse the path direction (per-node timing and cameras stay attached)")
+        : reason);
+    mMirrorBtn->setEnabled(ops_ok);
+    mMirrorBtn->setToolTip(reason.empty()
+        ? std::string("Mirror the path left-to-right across its line of travel (positions and cameras)")
+        : reason);
+    mLoopCloseBtn->setEnabled(ops_ok);
+    mLoopCloseBtn->setToolTip(reason.empty()
+        ? std::string("Snap the last waypoint onto the first and set the path to loop")
+        : reason);
+
+    mWalkHereBtn->setEnabled(have_actor);
+    mWalkHereBtn->setToolTip(have_actor
+        ? std::string("Arm one ground click: the actor gets a straight path to that spot and walks it")
+        : std::string("Select a cast member first"));
+}
+
+void ALPanelPathEditor::refreshCopyCombo()
+{
+    if (!mCopyToCombo || !mCopyBtn)
+    {
+        return;
+    }
+    LLActorMover& m = LLActorMover::instance();
+    const uuid_vec_t& ids = LLDirectorCast::instance().getIds();
+
+    // rebuild the picker only when the cast membership or target changes
+    std::string sig = mActor.asString();
+    for (const LLUUID& id : ids)
+    {
+        sig += id.asString();
+    }
+    if (sig != mCopySig)
+    {
+        mCopySig = sig;
+        mCopyToCombo->removeall();
+        for (const LLUUID& id : ids)
+        {
+            if (id != mActor)
+            {
+                mCopyToCombo->add(actorName(id), LLSD(id.asString()));
+            }
+        }
+        if (mCopyToCombo->getItemCount() > 0)
+        {
+            mCopyToCombo->selectFirstItem();
+        }
+    }
+
+    const bool walkable = mActor.notNull() && m.hasWalkablePath(mActor);
+    const bool have_dst = mCopyToCombo->getItemCount() > 0;
+    mCopyToCombo->setEnabled(have_dst);
+
+    LLUUID dst;
+    if (have_dst)
+    {
+        dst = LLUUID(mCopyToCombo->getSelectedValue().asString());
+    }
+    const bool dst_walking = dst.notNull() && m.isPathWalking(dst);
+    mCopyBtn->setEnabled(walkable && have_dst && !dst_walking);
+    mCopyBtn->setToolTip(!walkable
+        ? std::string("This actor has no path to copy")
+        : (!have_dst ? std::string("Add another cast member to copy the path to")
+        : (dst_walking ? std::string("That actor is walking \xE2\x80\x94 stop it first")
+                       : std::string("Copy this path onto the chosen cast member (overlays at the same spot)"))));
 }
 
 // ---------------------------------------------------------------------------
@@ -836,6 +1081,7 @@ void ALPanelPathEditor::onNodeHeightCommit()
     const S32 sel = listSelectedNode();
     if (mActor.notNull() && sel >= 0)
     {
+        LLActorMover::instance().snapshotForUndo(mActor);
         LLActorMover::instance().setNodeGroundOffset(mActor, sel, (F32)mNodeHeight->getValue().asReal());
     }
 }
@@ -845,6 +1091,7 @@ void ALPanelPathEditor::onNodeDwellCommit()
     const S32 sel = listSelectedNode();
     if (mActor.notNull() && sel >= 0)
     {
+        LLActorMover::instance().snapshotForUndo(mActor);
         LLActorMover::instance().setNodeDwell(mActor, sel, (F32)mNodeDwell->getValue().asReal());
     }
 }
@@ -854,6 +1101,7 @@ void ALPanelPathEditor::onNodeSpeedCommit()
     const S32 sel = listSelectedNode();
     if (mActor.notNull() && sel >= 0)
     {
+        LLActorMover::instance().snapshotForUndo(mActor);
         LLActorMover::instance().setNodeSpeed(mActor, sel, (F32)mNodeSpeed->getValue().asReal());
     }
 }
@@ -876,6 +1124,7 @@ void ALPanelPathEditor::onNodeAnimCommit()
     {
         return;         // not a valid UUID: leave the node anim unchanged
     }
+    LLActorMover::instance().snapshotForUndo(mActor);
     LLActorMover::instance().setNodeAnim(mActor, sel, id);
 }
 

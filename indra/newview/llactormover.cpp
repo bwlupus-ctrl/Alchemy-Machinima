@@ -11,6 +11,8 @@
 
 #include "llactormover.h"
 
+#include <algorithm>                // std::reverse (path reverse op)
+
 #include "llagent.h"                // gAgent global<->agent coord conversion (pathing)
 #include "llanimationstates.h"      // ANIM_AGENT_WALK
 #include "llappviewer.h"            // gFrameIntervalSeconds
@@ -552,6 +554,361 @@ bool LLActorMover::setNodeGroundOffset(const LLUUID& actor_id, S32 index, F32 of
     Path& path = editPath(actor_id);
     path.mNodes[index].mGroundOffset = offset_m;
     path.markDirty();
+    return true;
+}
+
+// ===========================================================================
+// P3 QOL bundle: length/duration readout, undo/redo, reverse/mirror/loop-close/
+// copy-to-actor, walk-to-here. Structural ops keep every node's per-node data
+// attached (they operate on the whole Waypoint) and rebuild the arc table; they
+// are gated off while the actor is walking a path so a running arc clock is
+// never left indexing rewritten geometry.
+// ===========================================================================
+bool LLActorMover::isPathWalking(const LLUUID& actor_id) const
+{
+    auto it = mMoves.find(path_key(actor_id));
+    return it != mMoves.end() && it->second.mIsPath;
+}
+
+bool LLActorMover::getPathStats(const LLUUID& actor_id, F32& out_length, F32& out_duration)
+{
+    const Path* cp = getPath(actor_id);
+    if (!cp || cp->mNodes.size() < 2)
+    {
+        return false;
+    }
+    Path& p = editPath(actor_id);       // non-const: may need the arc table
+    if (p.mDirty)
+    {
+        p.rebuild();
+    }
+    out_length = p.mTotalLength;
+
+    // integrate travel time over the arc samples at the same eased / per-node
+    // override ground speed the walk uses; loop/ping-pong skip ease (as the walk
+    // does). One pass: one lap in loop mode, one-way in ping-pong.
+    const bool skip_ease = (p.mEndMode == 1 || p.mEndMode == 2);
+    F32 dur = 0.f;
+    for (size_t i = 1; i < p.mArc.size(); ++i)
+    {
+        const F32 ds = p.mArc[i].mDist - p.mArc[i - 1].mDist;
+        if (ds <= 0.f)
+        {
+            continue;
+        }
+        const F32 dmid = 0.5f * (p.mArc[i].mDist + p.mArc[i - 1].mDist);
+        dur += ds / llmax(pathSpeedAt(p, dmid, skip_ease), 0.05f);
+    }
+    // the walk only dwells at INTERIOR nodes (1 .. n-2); match that here
+    const S32 n = (S32)p.mNodes.size();
+    for (S32 i = 1; i <= n - 2; ++i)
+    {
+        dur += llmax(0.f, p.mNodes[i].mDwell);
+    }
+    out_duration = dur;
+    return true;
+}
+
+// ---- undo/redo: authored-state snapshots ----------------------------------
+LLActorMover::PathState LLActorMover::captureState(const LLUUID& key) const
+{
+    PathState st;
+    auto it = mPaths.find(key);
+    if (it != mPaths.end())
+    {
+        const Path& p = it->second;
+        st.mNodes             = p.mNodes;
+        st.mSpeed             = p.mSpeed;
+        st.mEndMode           = p.mEndMode;
+        st.mTension           = p.mTension;
+        st.mEaseIn            = p.mEaseIn;
+        st.mEaseOut           = p.mEaseOut;
+        st.mArrivalFacingMode = p.mArrivalFacingMode;
+        st.mArrivalDir        = p.mArrivalDir;
+        st.mArrivalTarget     = p.mArrivalTarget;
+        st.mGroundFollow      = p.mGroundFollow;
+        st.mPitchToSlope      = p.mPitchToSlope;
+    }
+    return st;
+}
+
+void LLActorMover::applyState(const LLUUID& key, const PathState& st)
+{
+    if (st.mNodes.empty())
+    {
+        mPaths.erase(key);      // undo of the first placement drops the path
+    }
+    else
+    {
+        Path& p = mPaths[key];
+        p.mNodes             = st.mNodes;
+        p.mSpeed             = st.mSpeed;
+        p.mEndMode           = st.mEndMode;
+        p.mTension           = st.mTension;
+        p.mEaseIn            = st.mEaseIn;
+        p.mEaseOut           = st.mEaseOut;
+        p.mArrivalFacingMode = st.mArrivalFacingMode;
+        p.mArrivalDir        = st.mArrivalDir;
+        p.mArrivalTarget     = st.mArrivalTarget;
+        p.mGroundFollow      = st.mGroundFollow;
+        p.mPitchToSlope      = st.mPitchToSlope;
+        p.markDirty();
+        p.rebuild();
+    }
+    // keep the shared edit-node selection inside the restored range
+    if (mEditActor == key)
+    {
+        const S32 cnt = (S32)st.mNodes.size();
+        if (mEditNode >= cnt)
+        {
+            mEditNode = cnt > 0 ? cnt - 1 : -1;
+        }
+    }
+}
+
+void LLActorMover::snapshotForUndo(const LLUUID& actor_id)
+{
+    const LLUUID key = path_key(actor_id);
+    EditHistory& h = mHistory[key];
+    h.mUndo.push_back(captureState(key));
+    if ((S32)h.mUndo.size() > UNDO_DEPTH)
+    {
+        h.mUndo.erase(h.mUndo.begin());     // bounded depth: drop the oldest
+    }
+    h.mRedo.clear();                        // a fresh edit invalidates the redo branch
+}
+
+bool LLActorMover::canUndoPath(const LLUUID& actor_id) const
+{
+    auto it = mHistory.find(path_key(actor_id));
+    return it != mHistory.end() && !it->second.mUndo.empty();
+}
+
+bool LLActorMover::canRedoPath(const LLUUID& actor_id) const
+{
+    auto it = mHistory.find(path_key(actor_id));
+    return it != mHistory.end() && !it->second.mRedo.empty();
+}
+
+bool LLActorMover::undoPath(const LLUUID& actor_id)
+{
+    if (isPathWalking(actor_id))
+    {
+        return false;       // never swap geometry under a running arc clock
+    }
+    const LLUUID key = path_key(actor_id);
+    auto hit = mHistory.find(key);
+    if (hit == mHistory.end() || hit->second.mUndo.empty())
+    {
+        return false;
+    }
+    hit->second.mRedo.push_back(captureState(key));     // current -> redo
+    PathState st = hit->second.mUndo.back();
+    hit->second.mUndo.pop_back();
+    applyState(key, st);
+    return true;
+}
+
+bool LLActorMover::redoPath(const LLUUID& actor_id)
+{
+    if (isPathWalking(actor_id))
+    {
+        return false;
+    }
+    const LLUUID key = path_key(actor_id);
+    auto hit = mHistory.find(key);
+    if (hit == mHistory.end() || hit->second.mRedo.empty())
+    {
+        return false;
+    }
+    hit->second.mUndo.push_back(captureState(key));     // current -> undo
+    PathState st = hit->second.mRedo.back();
+    hit->second.mRedo.pop_back();
+    applyState(key, st);
+    return true;
+}
+
+// ---- structural ops --------------------------------------------------------
+bool LLActorMover::reversePath(const LLUUID& actor_id)
+{
+    if (isPathWalking(actor_id))
+    {
+        return false;
+    }
+    const Path* cp = getPath(actor_id);
+    if (!cp || cp->mNodes.size() < 2)
+    {
+        return false;
+    }
+    Path& p = editPath(actor_id);
+    std::reverse(p.mNodes.begin(), p.mNodes.end());     // per-node data rides each node
+    p.markDirty();
+    p.rebuild();
+    return true;
+}
+
+bool LLActorMover::mirrorPath(const LLUUID& actor_id)
+{
+    if (isPathWalking(actor_id))
+    {
+        return false;
+    }
+    const Path* cp = getPath(actor_id);
+    if (!cp || cp->mNodes.size() < 2)
+    {
+        return false;
+    }
+    Path& p = editPath(actor_id);
+    const S32 n = (S32)p.mNodes.size();
+
+    // centroid of the node positions
+    LLVector3d c(0.0, 0.0, 0.0);
+    for (const Waypoint& w : p.mNodes)
+    {
+        c += w.mPosGlobal;
+    }
+    c *= (1.0 / (F64)n);
+
+    // dominant travel direction (start -> end), horizontal; world X if degenerate
+    LLVector3d dir = p.mNodes[n - 1].mPosGlobal - p.mNodes[0].mPosGlobal;
+    dir.mdV[VZ] = 0.0;
+    if (dir.length() < 1e-3)
+    {
+        dir = LLVector3d(1.0, 0.0, 0.0);
+    }
+    else
+    {
+        dir.normalize();
+    }
+    // horizontal normal of the vertical mirror plane (perp to travel, XY)
+    const LLVector3d nrm(-dir.mdV[VY], dir.mdV[VX], 0.0);
+    const LLVector3 nrmf((F32)nrm.mdV[VX], (F32)nrm.mdV[VY], 0.f);
+
+    // reflect a global point across the vertical plane {c, nrm} (Z unchanged)
+    auto reflectPoint = [&](const LLVector3d& pt) -> LLVector3d
+    {
+        const LLVector3d d = pt - c;
+        const F64 dn = d.mdV[VX] * nrm.mdV[VX] + d.mdV[VY] * nrm.mdV[VY];
+        return LLVector3d(pt.mdV[VX] - 2.0 * dn * nrm.mdV[VX],
+                          pt.mdV[VY] - 2.0 * dn * nrm.mdV[VY],
+                          pt.mdV[VZ]);
+    };
+    // reflect a world direction across the same plane (Z component untouched)
+    auto reflectDir = [&](const LLVector3& v) -> LLVector3
+    {
+        const F32 dn = v.mV[VX] * nrmf.mV[VX] + v.mV[VY] * nrmf.mV[VY];
+        return LLVector3(v.mV[VX] - 2.f * dn * nrmf.mV[VX],
+                         v.mV[VY] - 2.f * dn * nrmf.mV[VY],
+                         v.mV[VZ]);
+    };
+
+    for (Waypoint& w : p.mNodes)
+    {
+        w.mPosGlobal = reflectPoint(w.mPosGlobal);
+        if (w.mHasCam)
+        {
+            w.mCamPosGlobal = reflectPoint(w.mCamPosGlobal);
+            // mirror the camera basis: reflect forward + up, then rebuild a valid
+            // right-handed frame (SL local axes: +X forward, +Y left, +Z up), so
+            // the shot looks at the mirrored subject with roll/dutch preserved.
+            LLVector3 fwd = reflectDir(LLVector3(1.f, 0.f, 0.f) * w.mCamRot);
+            LLVector3 up  = reflectDir(LLVector3(0.f, 0.f, 1.f) * w.mCamRot);
+            fwd.normalize();
+            up = up - fwd * (up * fwd);     // re-orthogonalize up against forward
+            up.normalize();
+            LLVector3 left = up % fwd;       // Y = Z x X (right-handed)
+            left.normalize();
+            w.mCamRot = LLQuaternion(fwd, left, up);
+        }
+    }
+    p.markDirty();
+    p.rebuild();
+    return true;
+}
+
+bool LLActorMover::loopClosePath(const LLUUID& actor_id)
+{
+    if (isPathWalking(actor_id))
+    {
+        return false;
+    }
+    const Path* cp = getPath(actor_id);
+    if (!cp || cp->mNodes.size() < 2)
+    {
+        return false;
+    }
+    Path& p = editPath(actor_id);
+    // snap the last node onto the first (position + standing height + nudge) so
+    // the loop seam is a single shared point, and set the end mode to loop
+    const Waypoint& first = p.mNodes.front();
+    Waypoint& last = p.mNodes.back();
+    last.mPosGlobal    = first.mPosGlobal;
+    last.mRootAbove    = first.mRootAbove;
+    last.mGroundOffset = first.mGroundOffset;
+    p.mEndMode           = 1;   // loop
+    p.mArrivalFacingMode = 0;   // arrival facing is meaningless for a loop
+    p.markDirty();
+    p.rebuild();
+    return true;
+}
+
+bool LLActorMover::copyPathTo(const LLUUID& src_actor, const LLUUID& dst_actor)
+{
+    const LLUUID src_key = path_key(src_actor);
+    const LLUUID dst_key = path_key(dst_actor);
+    if (src_key == dst_key)
+    {
+        return false;       // no self-copy
+    }
+    auto sit = mPaths.find(src_key);
+    if (sit == mPaths.end() || sit->second.mNodes.size() < 2)
+    {
+        return false;
+    }
+    if (isPathWalking(dst_actor))
+    {
+        return false;       // don't clobber a walk in progress on the destination
+    }
+    // deep-copy the authored path onto the destination slot; global coords are
+    // unchanged so it overlays the source (per-actor overlay color keeps them
+    // distinct in world). std::map insert never invalidates other nodes, so the
+    // source reference stays valid across the destination insertion.
+    Path& dst = mPaths[dst_key];
+    const Path& src = sit->second;
+    dst.mNodes             = src.mNodes;
+    dst.mSpeed             = src.mSpeed;
+    dst.mEndMode           = src.mEndMode;
+    dst.mTension           = src.mTension;
+    dst.mEaseIn            = src.mEaseIn;
+    dst.mEaseOut           = src.mEaseOut;
+    dst.mArrivalFacingMode = src.mArrivalFacingMode;
+    dst.mArrivalDir        = src.mArrivalDir;
+    dst.mArrivalTarget     = src.mArrivalTarget;
+    dst.mGroundFollow      = src.mGroundFollow;
+    dst.mPitchToSlope      = src.mPitchToSlope;
+    dst.markDirty();
+    dst.rebuild();
+    return true;
+}
+
+bool LLActorMover::startWalkTo(const LLUUID& actor_id, const LLVector3d& ground_global)
+{
+    LLVOAvatar* av = resolve_actor(actor_id);
+    if (!av || !av->getRootJoint())
+    {
+        return false;
+    }
+    snapshotForUndo(actor_id);
+    // fresh 2-node straight path: node 0 at the actor's current rendered foot
+    // (with its authored standing height), node 1 at the clicked ground point
+    clearPath(actor_id);
+    appendWaypointHere(actor_id);
+    appendWaypointAt(actor_id, ground_global);
+    if (!hasWalkablePath(actor_id))
+    {
+        return false;
+    }
+    start(actor_id);        // walks the path (rebuilds the arc table if dirty)
     return true;
 }
 
@@ -2057,6 +2414,77 @@ void drawCameraGizmo(const LLVector3& apex, const LLQuaternion& rot, F32 vfov,
     gGL.vertex3fv(a0.mV); gGL.vertex3fv(a2.mV); gGL.vertex3fv(a3.mV);
     gGL.end();
 }
+
+// onion-skin: a faint humanoid SILHOUETTE at a node so a director can read the
+// blocking at each waypoint without pressing ACTION. A cheap stick figure --
+// spine, billboarded head, shoulders/arms, splayed legs -- plus a ground facing
+// arrow, tinted to the actor. Lines/triangles only, in the same no-depth UI
+// pass; deliberately NOT a skinned-mesh instance (too costly). base = foot/ground
+// point (agent frame), face = horizontal travel direction, height = figure
+// height (m), bb_right/bb_up = camera billboard axes for the head ring.
+void drawPoseGhost(const LLVector3& base, const LLVector3& face, F32 height,
+                   const LLColor4& tint, const LLVector3& bb_right, const LLVector3& bb_up)
+{
+    const F32 H      = llclamp(height, 1.2f, 2.2f);
+    const F32 hipZ   = H * 0.52f;
+    const F32 shZ    = H * 0.82f;
+    const F32 headZ  = H * 0.92f;
+    const F32 halfsh = H * 0.11f;   // half shoulder width
+    const F32 halfft = H * 0.09f;   // half stance width
+    const F32 hr     = H * 0.07f;   // head radius
+
+    LLVector3 f = face; f.mV[VZ] = 0.f;
+    if (f.magVecSquared() < 1e-6f)
+    {
+        f = LLVector3(1.f, 0.f, 0.f);
+    }
+    f.normalize();
+    const LLVector3 perp(-f.mV[VY], f.mV[VX], 0.f);     // horizontal, across facing
+
+    const LLVector3 hipC = base + LLVector3(0.f, 0.f, hipZ);
+    const LLVector3 shC  = base + LLVector3(0.f, 0.f, shZ);
+    const LLVector3 shL  = shC - perp * halfsh;
+    const LLVector3 shR  = shC + perp * halfsh;
+
+    LLColor4 c = tint; c.mV[VW] = 0.30f;               // faint body
+    gGL.setLineWidth(2.f);
+    gGL.begin(LLRender::LINES);
+    gGL.color4fv(c.mV);
+    // spine + shoulders
+    gGL.vertex3fv(hipC.mV); gGL.vertex3fv(shC.mV);
+    gGL.vertex3fv(shL.mV);  gGL.vertex3fv(shR.mV);
+    // arms angling down toward the hands
+    gGL.vertex3fv(shL.mV);
+    gGL.vertex3fv((base + perp * (halfsh * 1.15f) + LLVector3(0.f, 0.f, hipZ * 0.72f)).mV);
+    gGL.vertex3fv(shR.mV);
+    gGL.vertex3fv((base - perp * (halfsh * 1.15f) + LLVector3(0.f, 0.f, hipZ * 0.72f)).mV);
+    // legs from the hip to splayed feet
+    gGL.vertex3fv(hipC.mV); gGL.vertex3fv((base - perp * halfft).mV);
+    gGL.vertex3fv(hipC.mV); gGL.vertex3fv((base + perp * halfft).mV);
+    // head: a small billboarded ring (always faces the viewer)
+    const LLVector3 hc = base + LLVector3(0.f, 0.f, headZ);
+    const S32 SEG = 10;
+    for (S32 s = 0; s < SEG; ++s)
+    {
+        const F32 a = (F32)s       / SEG * F_TWO_PI;
+        const F32 b = (F32)(s + 1) / SEG * F_TWO_PI;
+        gGL.vertex3fv((hc + bb_right * (hr * cosf(a)) + bb_up * (hr * sinf(a))).mV);
+        gGL.vertex3fv((hc + bb_right * (hr * cosf(b)) + bb_up * (hr * sinf(b))).mV);
+    }
+    gGL.end();
+
+    // ground facing arrow (a touch stronger than the body so heading reads)
+    LLColor4 ac = tint; ac.mV[VW] = 0.5f;
+    const F32 AL = 0.5f;
+    const LLVector3 g   = base + LLVector3(0.f, 0.f, 0.02f);
+    const LLVector3 tip = g + f * AL;
+    const LLVector3 al  = g + f * (AL * 0.55f) + perp * (AL * 0.28f);
+    const LLVector3 ar  = g + f * (AL * 0.55f) - perp * (AL * 0.28f);
+    gGL.begin(LLRender::TRIANGLES);
+    gGL.color4fv(ac.mV);
+    gGL.vertex3fv(tip.mV); gGL.vertex3fv(al.mV); gGL.vertex3fv(ar.mV);
+    gGL.end();
+}
 } // anonymous namespace
 
 // ---------------------------------------------------------------------------
@@ -2081,6 +2509,9 @@ void LLActorMover::renderHeadingPreview()
 
     static LLCachedControl<F32> distance(gSavedSettings, "ActorMoverDistance", 6.f);
     static LLCachedControl<F32> heading(gSavedSettings, "ActorMoverHeading", 0.f);
+    // onion-skin: faint pose ghosts at each node. Opt-in, default off, so the
+    // overlay pass adds nothing per frame unless the director asks for it.
+    static LLCachedControl<bool> onion(gSavedSettings, "PathShowOnionSkin", false);
     const F32 dist = llmax((F32)distance, 0.1f);
 
     // same beacon-style local overlay as renderObjectBeacons(): UI shader, no
@@ -2193,6 +2624,28 @@ void LLActorMover::renderHeadingPreview()
                 LLVector3 num_at = base;
                 num_at.mV[VZ] += NODE_STICK_H + 0.06f;
                 drawNumber(i + 1, num_at, NODE_NUM_H, bb_right, bb_up, col_num);
+
+                // onion-skin ghost of the actor's blocking at this node, facing
+                // the way it would travel through it (next node, or previous for
+                // the final node / the seam for a loop)
+                if (onion)
+                {
+                    S32 fromIdx = i;
+                    S32 toIdx   = (i + 1 < n) ? (i + 1) : (loop ? 0 : i);
+                    if (toIdx == fromIdx && i > 0)
+                    {
+                        fromIdx = i - 1;    // last node of an open path: face along the incoming leg
+                        toIdx   = i;
+                    }
+                    LLVector3 face(1.f, 0.f, 0.f);
+                    if (toIdx != fromIdx)
+                    {
+                        face = gAgent.getPosAgentFromGlobal(path.mNodes[toIdx].mPosGlobal)
+                             - gAgent.getPosAgentFromGlobal(path.mNodes[fromIdx].mPosGlobal);
+                    }
+                    const F32 gh = path.mNodes[i].mRootAbove * 1.9f;
+                    drawPoseGhost(base, face, gh, col_mid, bb_right, bb_up);
+                }
 
                 // authored camera on this node: a frustum gizmo at the camera
                 // pose plus a thin leader from the node up to the camera, so the

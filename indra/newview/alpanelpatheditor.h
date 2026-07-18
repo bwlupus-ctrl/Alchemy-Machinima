@@ -66,6 +66,9 @@ private:
     void refreshPathControls();
     void refreshCameraControls();           // P3 per-node camera row state
     void refreshSuspendBanner();            // TP-away suspend/resume banner
+    void refreshReadout();                  // P3 QOL: length + est. duration line
+    void refreshEditButtons();              // P3 QOL: undo/redo/reverse/mirror/loop/walk enable
+    void refreshCopyCombo();                // P3 QOL: cast picker for "copy path to"
     void syncListSelectionFromEngine();     // engine edit node -> list row
 
     S32  listSelectedNode() const;          // selected row -> node index (-1 none)
@@ -80,6 +83,15 @@ private:
 
     // edit-mode toggle (the in-world tool)
     void onToggleEditMode();
+
+    // P3 QOL edit ops (each is a no-op with a reason-tooltip when unsafe / empty)
+    void onClickUndo();
+    void onClickRedo();
+    void onClickReverse();
+    void onClickMirror();
+    void onClickLoopClose();
+    void onClickCopyTo();
+    void onClickWalkHere();     // arms a single ground click via ALToolPathEdit
 
     // TP-away suspend banner actions (resume where it left off / translate the
     // path to the actor's current spot and resume / drop the suspended walk)
@@ -131,6 +143,18 @@ private:
     LLButton*          mInsertBtn = nullptr;
     LLButton*          mDeleteBtn = nullptr;
     LLButton*          mClearBtn = nullptr;
+
+    // P3 QOL: readout + edit-op row + copy picker
+    LLTextBox*         mReadout = nullptr;
+    LLButton*          mUndoBtn = nullptr;
+    LLButton*          mRedoBtn = nullptr;
+    LLButton*          mReverseBtn = nullptr;
+    LLButton*          mMirrorBtn = nullptr;
+    LLButton*          mLoopCloseBtn = nullptr;
+    LLButton*          mWalkHereBtn = nullptr;
+    LLComboBox*        mCopyToCombo = nullptr;
+    LLButton*          mCopyBtn = nullptr;
+    std::string        mCopySig;   // cast+target signature so the combo rebuilds only on change
     LLSpinCtrl*        mNodeHeight = nullptr;
     LLSpinCtrl*        mNodeDwell = nullptr;
     LLSpinCtrl*        mNodeSpeed = nullptr;

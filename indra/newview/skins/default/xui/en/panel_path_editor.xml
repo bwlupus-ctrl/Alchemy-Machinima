@@ -1,14 +1,16 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <!-- Actor Pathing editor (ALPanelPathEditor, class "panel_path_editor"):
      waypoint list + per-node inspector + path-wide controls + an in-world
-     "Edit mode" toggle. Embedded by the Director Console Move tab and the
-     standalone Actor Mover, exactly like panel_cinecam_params. The host sets
-     the target actor each frame; the panel drives LLActorMover's P2 editing
-     API and the shared edit-selection model. -->
+     "Edit mode" toggle, plus the P3 QOL row (length/duration readout, undo/redo,
+     reverse/mirror/loop-close, copy-to-actor, walk-to-here, pose ghosts).
+     Embedded by the Director Console Path tab and the standalone Actor Mover,
+     exactly like panel_cinecam_params. The host sets the target actor each
+     frame; the panel drives LLActorMover's editing API and the shared
+     edit-selection model. -->
 <panel
  background_visible="false"
  border="false"
- height="384"
+ height="452"
  layout="topleft"
  name="panel_path_editor"
  width="360">
@@ -22,7 +24,7 @@
      top="2"
      name="path_header"
      use_ellipses="true"
-     width="240">
+     width="238">
         Path &#8212; select a cast member
     </text>
     <check_box
@@ -30,11 +32,11 @@
      height="16"
      label="Edit mode"
      layout="topleft"
-     left="250"
+     left="248"
      top="2"
      name="edit_mode_check"
      tool_tip="Edit this path in world: click the ground to place a waypoint, drag a node to move it, right-click a node to delete it. Unchecking (or leaving this tab) hands the camera back"
-     width="104" />
+     width="106" />
     <text
      follows="left|top"
      height="12"
@@ -53,10 +55,10 @@
      column_padding="0"
      draw_heading="true"
      follows="left|top|right"
-     height="64"
+     height="60"
      layout="topleft"
      left="6"
-     top="32"
+     top="34"
      name="waypoint_list"
      tool_tip="Waypoints in order. Select a row to inspect / highlight that node in world"
      width="348">
@@ -65,13 +67,38 @@
         <columns label="Detail" name="detail" width="268" />
     </scroll_list>
 
+    <text
+     follows="left|top"
+     font="SansSerifSmall"
+     height="12"
+     layout="topleft"
+     left="6"
+     top="96"
+     name="path_readout"
+     tool_tip="Total path length and the estimated time to walk it once (accounts for speed, per-node speed overrides, ease in/out and dwell)"
+     use_ellipses="true"
+     width="215">
+        No path yet
+    </text>
+    <check_box
+     control_name="PathShowOnionSkin"
+     follows="top|right"
+     height="14"
+     label="Pose ghosts"
+     layout="topleft"
+     left="224"
+     top="95"
+     name="onion_skin_check"
+     tool_tip="Draw a faint ghost of the actor's blocking at each waypoint (with a facing arrow) so you can read the staging without pressing ACTION. Client-side overlay; shows with the path preview."
+     width="130" />
+
     <button
      follows="left|top"
      height="20"
      label="Add"
      layout="topleft"
      left="6"
-     top="100"
+     top="114"
      name="btn_wp_add"
      tool_tip="Append a waypoint at the actor's feet"
      width="84" />
@@ -81,7 +108,7 @@
      label="Insert"
      layout="topleft"
      left="94"
-     top="100"
+     top="114"
      name="btn_wp_insert"
      width="84" />
     <button
@@ -90,7 +117,7 @@
      label="Delete"
      layout="topleft"
      left="182"
-     top="100"
+     top="114"
      name="btn_wp_delete"
      width="84" />
     <button
@@ -99,9 +126,90 @@
      label="Clear"
      layout="topleft"
      left="270"
-     top="100"
+     top="114"
      name="btn_wp_clear"
      width="84" />
+
+    <button
+     follows="left|top"
+     height="20"
+     label="Undo"
+     layout="topleft"
+     left="6"
+     top="138"
+     name="btn_edit_undo"
+     tool_tip="Undo the last path edit"
+     width="58" />
+    <button
+     follows="left|top"
+     height="20"
+     label="Redo"
+     layout="topleft"
+     left="66"
+     top="138"
+     name="btn_edit_redo"
+     tool_tip="Redo the last undone edit"
+     width="58" />
+    <button
+     follows="left|top"
+     height="20"
+     label="Reverse"
+     layout="topleft"
+     left="126"
+     top="138"
+     name="btn_edit_reverse"
+     tool_tip="Reverse the path direction"
+     width="74" />
+    <button
+     follows="left|top"
+     height="20"
+     label="Mirror"
+     layout="topleft"
+     left="202"
+     top="138"
+     name="btn_edit_mirror"
+     tool_tip="Mirror the path left-to-right across its line of travel"
+     width="70" />
+    <button
+     follows="left|top"
+     height="20"
+     label="Loop"
+     layout="topleft"
+     left="274"
+     top="138"
+     name="btn_edit_loopclose"
+     tool_tip="Snap the last waypoint onto the first and set the path to loop"
+     width="80" />
+
+    <combo_box
+     follows="left|top"
+     height="20"
+     layout="topleft"
+     left="6"
+     top="162"
+     name="copy_to_combo"
+     tool_tip="Cast member to copy this path onto"
+     width="150" />
+    <button
+     follows="left|top"
+     height="20"
+     label="Copy to"
+     layout="topleft"
+     left="160"
+     top="162"
+     name="btn_copy_to"
+     tool_tip="Copy this path onto the chosen cast member (overlays at the same spot)"
+     width="96" />
+    <button
+     follows="left|top"
+     height="20"
+     label="Walk here"
+     layout="topleft"
+     left="258"
+     top="162"
+     name="btn_walk_here"
+     tool_tip="Arm one ground click: the actor gets a straight path to that spot and walks it"
+     width="96" />
 
     <text
      follows="left|top"
@@ -109,7 +217,7 @@
      height="12"
      layout="topleft"
      left="6"
-     top="126"
+     top="188"
      name="node_lbl"
      width="200">
         Selected node
@@ -127,7 +235,7 @@
      min_val="-5"
      name="node_height_spinner"
      tool_tip="Manual height nudge at this node (m). 0 = feet on the ground"
-     top="140"
+     top="202"
      width="170" />
     <spinner
      decimal_digits="1"
@@ -142,7 +250,7 @@
      min_val="0"
      name="node_dwell_spinner"
      tool_tip="Seconds the actor holds at this node (0 = no pause)"
-     top="140"
+     top="202"
      width="172" />
     <spinner
      decimal_digits="2"
@@ -157,14 +265,14 @@
      min_val="0"
      name="node_speed_spinner"
      tool_tip="Speed override at this node (m/s). 0 = use the path speed"
-     top="160"
+     top="222"
      width="170" />
     <text
      follows="left|top"
      height="12"
      layout="topleft"
      left="184"
-     top="162"
+     top="224"
      name="node_anim_lbl"
      width="170">
         Node anim (UUID)
@@ -177,7 +285,7 @@
      max_length_chars="36"
      name="node_anim_editor"
      tool_tip="Play this animation at the node instead of the walk anim (local only). Blank = walk anim"
-     top="178"
+     top="240"
      width="348" />
 
     <text
@@ -186,7 +294,7 @@
      height="12"
      layout="topleft"
      left="6"
-     top="200"
+     top="262"
      name="path_lbl"
      width="200">
         Path settings
@@ -204,7 +312,7 @@
      min_val="0.05"
      name="path_speed_spinner"
      tool_tip="Nominal ground speed along the path (m/s). Per-node overrides win where set"
-     top="214"
+     top="276"
      width="170" />
     <slider
      decimal_digits="2"
@@ -219,7 +327,7 @@
      min_val="0"
      name="path_tension_slider"
      tool_tip="Corner smoothing (0..1): 0 = tight, near-straight corners; 1 = full flowing curves"
-     top="214"
+     top="276"
      width="172" />
     <spinner
      decimal_digits="1"
@@ -234,7 +342,7 @@
      min_val="0"
      name="path_easein_spinner"
      tool_tip="Accelerate from a standstill over this many seconds at the start"
-     top="234"
+     top="296"
      width="170" />
     <spinner
      decimal_digits="1"
@@ -249,7 +357,7 @@
      min_val="0"
      name="path_easeout_spinner"
      tool_tip="Decelerate to a stop over this many seconds into the final node"
-     top="234"
+     top="296"
      width="172" />
     <check_box
      follows="left|top"
@@ -257,7 +365,7 @@
      label="Ground-follow"
      layout="topleft"
      left="6"
-     top="254"
+     top="316"
      name="path_groundfollow_check"
      tool_tip="Clamp feet to terrain / prims each frame so the walk rides slopes and stairs"
      width="120" />
@@ -267,7 +375,7 @@
      label="Pitch to slope"
      layout="topleft"
      left="130"
-     top="254"
+     top="316"
      name="path_pitch_check"
      tool_tip="Tilt the body pitch to the local slope while walking"
      width="120" />
@@ -276,7 +384,7 @@
      height="20"
      layout="topleft"
      left="6"
-     top="272"
+     top="334"
      name="path_end_combo"
      tool_tip="What happens when the actor reaches the end of the path"
      width="180">
@@ -290,7 +398,7 @@
      height="12"
      layout="topleft"
      left="196"
-     top="276"
+     top="338"
      name="color_lbl"
      tool_tip="This actor's path color in world (auto, from its id)"
      width="42">
@@ -304,7 +412,7 @@
      height="16"
      layout="topleft"
      left="240"
-     top="274"
+     top="336"
      name="color_swatch"
      tool_tip="This actor's path color in world (auto, from its id)"
      width="40" />
@@ -315,7 +423,7 @@
      height="12"
      layout="topleft"
      left="6"
-     top="296"
+     top="358"
      name="cam_lbl"
      width="70">
         Camera
@@ -327,7 +435,7 @@
      label="Enable path camera (session)"
      layout="topleft"
      left="80"
-     top="294"
+     top="356"
      name="path_camera_enable_check"
      tool_tip="When on, the cameras you set on Subject A's path drive the view as that actor walks, so a walk plays as one actor + camera take. Off is a no-op; existing pathing is unchanged. The camera hands back to normal control the moment the walk stops, finishes, is cut, or the actor leaves the region."
      width="274" />
@@ -337,7 +445,7 @@
      label="Set camera here"
      layout="topleft"
      left="6"
-     top="314"
+     top="376"
      name="btn_node_setcam"
      tool_tip="Capture the current camera position, aim and FOV into this node"
      width="130" />
@@ -347,7 +455,7 @@
      label="Clear camera"
      layout="topleft"
      left="140"
-     top="314"
+     top="376"
      name="btn_node_clearcam"
      tool_tip="Remove the camera from this node"
      width="110" />
@@ -356,7 +464,7 @@
      height="20"
      layout="topleft"
      left="6"
-     top="338"
+     top="400"
      name="node_cam_transition_combo"
      tool_tip="How the camera reaches this node. Cut: snap to this shot when the actor arrives. Ease: glide from the previous camera node as the actor walks between them."
      width="120">
@@ -369,7 +477,7 @@
      label="Preview"
      layout="topleft"
      left="132"
-     top="338"
+     top="400"
      name="btn_node_preview"
      tool_tip="Jump the camera to this node's shot to check the framing, without walking"
      width="110" />
@@ -378,7 +486,7 @@
      height="12"
      layout="topleft"
      left="6"
-     top="364"
+     top="426"
      name="node_cam_status"
      text_color="LtGray_50"
      use_ellipses="true"

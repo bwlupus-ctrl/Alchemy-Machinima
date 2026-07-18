@@ -191,6 +191,47 @@ public:
     void          setEditNode(S32 index) { mEditNode = index; }
     S32           getEditNode() const { return mEditNode; }
 
+    // ---- P3 QOL bundle (readout, undo/redo, structural ops) -------------------
+    // Path length + estimated walk duration (seconds), for timing a walk to music
+    // or cuts. Duration integrates the eased/per-node-override ground speed over
+    // the arc plus interior-node dwell (matching the walk), for ONE pass (one lap
+    // in loop mode, one-way in ping-pong). Rebuilds the arc table if dirty. False
+    // when the actor has no walkable path (>= 2 nodes).
+    bool getPathStats(const LLUUID& actor_id, F32& out_length, F32& out_duration);
+
+    // Bounded per-actor edit-history for path mutations (nodes + per-node
+    // dwell/speed/anim/camera/groundOffset + path-wide params). A discrete edit
+    // pushes the PRE-edit authored state via snapshotForUndo() before mutating;
+    // undo/redo swap authored state and rebuild the arc table. History is keyed by
+    // the resolved path key, capped at UNDO_DEPTH, and lives for the session.
+    void snapshotForUndo(const LLUUID& actor_id);
+    bool undoPath(const LLUUID& actor_id);
+    bool redoPath(const LLUUID& actor_id);
+    bool canUndoPath(const LLUUID& actor_id) const;
+    bool canRedoPath(const LLUUID& actor_id) const;
+
+    // Structural ops (each keeps every node's per-node data attached and rebuilds
+    // the arc table). Callers snapshotForUndo() first; these are no-ops (return
+    // false) on a bad/short path. reverse: flip node order. mirror: reflect node +
+    // camera positions/aim left-to-right across the vertical plane through the
+    // path centroid containing the dominant travel direction. loopClose: snap the
+    // last node onto the first and set end-mode to loop. copyPathTo: deep-copy the
+    // authored path onto another actor's slot (global coords unchanged; overlays).
+    bool reversePath(const LLUUID& actor_id);
+    bool mirrorPath(const LLUUID& actor_id);
+    bool loopClosePath(const LLUUID& actor_id);
+    bool copyPathTo(const LLUUID& src_actor, const LLUUID& dst_actor);
+
+    // "Walk to here": replace the actor's path with a fresh 2-node straight path
+    // (current rendered foot -> ground_global) and start the walk. Snapshots undo
+    // first. False when the actor is unresolvable.
+    bool startWalkTo(const LLUUID& actor_id, const LLVector3d& ground_global);
+
+    // is this actor currently walking a PATH (mIsPath Move present, suspended or
+    // not)? Structural edits/undo that rewrite geometry are gated off while true,
+    // so a running walk is never corrupted underneath its arc clock.
+    bool isPathWalking(const LLUUID& actor_id) const;
+
     // stable per-actor overlay color derived from the actor id (path ribbon +
     // interior nodes tint to this hue; the panel shows it as a read-only swatch)
     static LLColor4 actorPathColor(const LLUUID& actor_id);
@@ -338,8 +379,34 @@ private:
     static F32 resolveGroundZ(LLVOAvatar* av, const LLVector3& agent_pos,
                               F32 fallback_z, bool& out_hit);
 
+    // ---- P3 undo/redo: authored-only path snapshot + per-actor history ---------
+    // Captures exactly the serialized/authored fields of a Path (never the arc
+    // cache), so applying one back and rebuilding restores nodes + all per-node
+    // data + path-wide params. An empty mNodes means "no path" (undo of the first
+    // placement clears the path).
+    struct PathState
+    {
+        std::vector<Waypoint> mNodes;
+        F32    mSpeed        = 1.f;
+        S32    mEndMode      = 0;
+        F32    mTension      = 0.5f;
+        F32    mEaseIn       = 0.f;
+        F32    mEaseOut      = 0.f;
+        S32    mArrivalFacingMode = 0;
+        F32    mArrivalDir   = 0.f;
+        LLUUID mArrivalTarget;
+        bool   mGroundFollow = false;
+        bool   mPitchToSlope = false;
+    };
+    struct EditHistory { std::vector<PathState> mUndo, mRedo; };
+    static const S32 UNDO_DEPTH = 30;
+
+    PathState captureState(const LLUUID& key) const;   // authored state of mPaths[key] (empty if none)
+    void      applyState(const LLUUID& key, const PathState& st);   // restore + rebuild + clamp edit node
+
     std::map<LLUUID, Move> mMoves;
     std::map<LLUUID, Path> mPaths;      // authored path per actor (session-only)
+    std::map<LLUUID, EditHistory> mHistory;   // per-actor bounded undo/redo stacks
 
     // P2 edit selection: the path key under edit + the selected node index
     LLUUID mEditActor;      // resolved path key (null = nothing being edited)

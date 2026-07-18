@@ -50,6 +50,11 @@ public:
     void handleDeselect() override;
     void onMouseCaptureLost() override;
 
+    // "Walk to here" one-shot: the panel arms this, then the NEXT ground click
+    // builds a fresh 2-node straight path (actor -> click) and walks it, and the
+    // tool hands the camera back. A sky-miss stays armed for another try.
+    void armWalkTo() { mWalkToArmed = true; }
+
 private:
     // the actor whose path we edit: the shared edit-selection actor
     LLUUID targetActor() const;
@@ -67,7 +72,9 @@ private:
     void onMenuDelete();
     void onMenuInsertAfter();
 
-    S32  mDragNode = -1;    // node being dragged (-1 = none)
+    S32  mDragNode = -1;         // node being dragged (-1 = none)
+    bool mDragDidSnapshot = false;  // pushed the pre-drag undo yet (coalesce a drag to one entry)
+    bool mWalkToArmed = false;      // next ground click is a "walk to here"
     LLHandle<LLContextMenu> mMenuHandle;
 };
 
