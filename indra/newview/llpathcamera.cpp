@@ -16,6 +16,7 @@
 #include "lldirectorcast.h"     // Subject A = the camera-driving actor
 #include "llviewercamera.h"     // the render camera we write
 #include "llviewercontrol.h"    // gSavedSettings (master toggle)
+#include "llviewerjoystick.h"   // preview must yield to an active flycam
 #include "llvoavatar.h"
 #include "m3math.h"             // LLMatrix3 (quaternion -> camera axes)
 
@@ -33,11 +34,14 @@ LLPathCamera& LLPathCamera::instance()
 // ---------------------------------------------------------------------------
 bool LLPathCamera::isActive() const
 {
-    // Preview owns the camera regardless of the master toggle so a director can
-    // check framing before enabling the take.
+    // Preview owns the camera so a director can check framing before enabling
+    // the take -- but it is a TRANSIENT check and must NEVER starve an
+    // explicitly-enabled flycam (the user directly grabbing the camera, e.g.
+    // Flycam Orbit). If the flycam is overriding, yield: otherwise this source
+    // sits above the flycam in the idle dispatch and freezes it.
     if (mPreview)
     {
-        return true;
+        return !LLViewerJoystick::getInstance()->getOverrideCamera();
     }
 
     static LLCachedControl<bool> enabled(gSavedSettings, "PathCameraEnabled", false);

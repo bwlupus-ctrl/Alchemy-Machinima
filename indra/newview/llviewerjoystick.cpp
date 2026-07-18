@@ -28,6 +28,7 @@
 
 #include "llviewerjoystick.h"
 
+#include "llpathcamera.h"       // clear a latched path-camera preview on flycam engage
 #include "llviewercontrol.h"
 #include "llviewerwindow.h"
 #include "llviewercamera.h"
@@ -2018,6 +2019,10 @@ bool LLViewerJoystick::toggleFlycam()
     mOverrideCamera = !mOverrideCamera;
     if (mOverrideCamera)
     {
+        // Taking manual camera control definitively ends any latched path-camera
+        // preview so it can't sit above the flycam in the idle dispatch and
+        // starve it (Flycam Orbit regression).
+        LLPathCamera::instance().stopPreview();
         moveFlycam(true);
 
     }
