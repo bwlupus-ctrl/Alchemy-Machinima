@@ -12,6 +12,7 @@
 
 #include "llfloater.h"
 
+class ALPanelPathEditor;
 class LLButton;
 class LLScrollListCtrl;
 
@@ -28,9 +29,10 @@ private:
     void refreshRoster();
     LLUUID selectedActor() const;   // null when nothing selected
 
-    LLScrollListCtrl* mRosterList = nullptr;
-    LLButton*         mWalkBtn = nullptr;
-    LLButton*         mStopBtn = nullptr;
+    LLScrollListCtrl*  mRosterList = nullptr;
+    LLButton*          mWalkBtn = nullptr;
+    LLButton*          mStopBtn = nullptr;
+    ALPanelPathEditor* mPathPanel = nullptr;    // shared waypoint editor
 };
 
 #endif // LL_LLFLOATERACTORMOVER_H

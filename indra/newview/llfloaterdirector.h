@@ -25,10 +25,12 @@
 
 class ALCompassDial;
 class ALPanelCineCamParams;
+class ALPanelPathEditor;
 class LLButton;
 class LLComboBox;
 class LLContextMenu;
 class LLLineEditor;
+class LLPanel;
 class LLRadioGroup;
 class LLScrollListCtrl;
 class LLSliderCtrl;
@@ -84,10 +86,12 @@ private:
 
     // ---- Move tab ----
     void onScopeCommit();
+    void onMoveModeCommit();            // Straight | Path toggle (show/hide only)
     void onDialCommit();
     void onClickWalk();
     void onClickStop();
     void refreshMoveTab();
+    void applyMoveMode(bool path_mode); // straight_group vs path_editor visibility
 
     // ---- Animate tab ----
     void refreshAnimateTab();
@@ -154,10 +158,17 @@ private:
     std::vector<CastRowState> mRowStates;
 
     // Move tab
-    LLRadioGroup*  mScopeRadio = nullptr;
-    ALCompassDial* mHeadingDial = nullptr;
-    LLButton*      mWalkBtn = nullptr;
-    LLButton*      mStopBtn = nullptr;
+    LLRadioGroup*      mScopeRadio = nullptr;
+    LLRadioGroup*      mMoveModeRadio = nullptr;
+    LLPanel*           mStraightGroup = nullptr;
+    ALPanelPathEditor* mPathPanel = nullptr;
+    ALCompassDial*     mHeadingDial = nullptr;
+    LLButton*          mWalkBtn = nullptr;
+    LLButton*          mStopBtn = nullptr;
+    // Path-mode auto-pick: the cast id the mode was last auto-decided for, so a
+    // fresh selection with a walkable path flips to Path once (not every draw)
+    LLUUID mMoveModeActor;
+    bool   mMoveModeInit = false;
 
     // Camera tab
     LLTextBox* mSubjectAText = nullptr;

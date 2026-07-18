@@ -12,6 +12,7 @@
 #include "llfloateractormover.h"
 
 #include "llactormover.h"
+#include "alpanelpatheditor.h"
 #include "llavatarnamecache.h"
 #include "llbutton.h"
 #include "llscrolllistctrl.h"
@@ -31,6 +32,7 @@ bool LLFloaterActorMover::postBuild()
     mRosterList = getChild<LLScrollListCtrl>("roster_list");
     mWalkBtn = getChild<LLButton>("walk_btn");
     mStopBtn = getChild<LLButton>("stop_btn");
+    mPathPanel = findChild<ALPanelPathEditor>("path_editor");
     mWalkBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickWalk(); });
     mStopBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickStop(); });
     return true;
@@ -156,6 +158,13 @@ void LLFloaterActorMover::draw()
     const bool enabled = sync || mRosterList->getFirstSelected() != nullptr;
     mWalkBtn->setEnabled(enabled);
     mStopBtn->setEnabled(enabled);
+
+    // point the shared path editor at the selected roster actor (implicit self
+    // resolves to a concrete id in refreshRoster, so this is never null-for-self)
+    if (mPathPanel)
+    {
+        mPathPanel->setTargetActor(selectedActor());
+    }
 
     LLFloater::draw();
 }

@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- Actor Pathing editor (ALPanelPathEditor, class "panel_path_editor"):
+     waypoint list + per-node inspector + path-wide controls + an in-world
+     "Edit mode" toggle. Embedded by the Director Console Move tab and the
+     standalone Actor Mover, exactly like panel_cinecam_params. The host sets
+     the target actor each frame; the panel drives LLActorMover's P2 editing
+     API and the shared edit-selection model. -->
+<panel
+ background_visible="false"
+ border="false"
+ height="288"
+ layout="topleft"
+ name="panel_path_editor"
+ width="360">
+
+    <text
+     follows="left|top"
+     font="SansSerifBold"
+     height="16"
+     layout="topleft"
+     left="6"
+     top="2"
+     name="path_header"
+     use_ellipses="true"
+     width="240">
+        Path &#8212; select a cast member
+    </text>
+    <check_box
+     follows="top|right"
+     height="16"
+     label="Edit mode"
+     layout="topleft"
+     left="250"
+     top="2"
+     name="edit_mode_check"
+     tool_tip="Edit this path in world: click the ground to place a waypoint, drag a node to move it, right-click a node to delete it. Unchecking (or leaving this tab) hands the camera back"
+     width="104" />
+    <text
+     follows="left|top"
+     height="12"
+     layout="topleft"
+     left="6"
+     top="20"
+     mouse_opaque="false"
+     name="hint"
+     text_color="LtGray_50"
+     use_ellipses="true"
+     width="348">
+        Click ground to place &#183; drag a node to move &#183; right-click to delete
+    </text>
+
+    <scroll_list
+     column_padding="0"
+     draw_heading="true"
+     follows="left|top|right"
+     height="64"
+     layout="topleft"
+     left="6"
+     top="32"
+     name="waypoint_list"
+     tool_tip="Waypoints in order. Select a row to inspect / highlight that node in world"
+     width="348">
+        <columns label="#" name="num" width="24" />
+        <columns label="Role" name="role" width="52" />
+        <columns label="Detail" name="detail" width="268" />
+    </scroll_list>
+
+    <button
+     follows="left|top"
+     height="20"
+     label="Add"
+     layout="topleft"
+     left="6"
+     top="100"
+     name="btn_wp_add"
+     tool_tip="Append a waypoint at the actor's feet"
+     width="84" />
+    <button
+     follows="left|top"
+     height="20"
+     label="Insert"
+     layout="topleft"
+     left="94"
+     top="100"
+     name="btn_wp_insert"
+     width="84" />
+    <button
+     follows="left|top"
+     height="20"
+     label="Delete"
+     layout="topleft"
+     left="182"
+     top="100"
+     name="btn_wp_delete"
+     width="84" />
+    <button
+     follows="left|top"
+     height="20"
+     label="Clear"
+     layout="topleft"
+     left="270"
+     top="100"
+     name="btn_wp_clear"
+     width="84" />
+
+    <text
+     follows="left|top"
+     font="SansSerifSmallBold"
+     height="12"
+     layout="topleft"
+     left="6"
+     top="126"
+     name="node_lbl"
+     width="200">
+        Selected node
+    </text>
+    <spinner
+     decimal_digits="2"
+     follows="left|top"
+     height="16"
+     increment="0.05"
+     label="Height (m)"
+     label_width="66"
+     layout="topleft"
+     left="6"
+     max_val="5"
+     min_val="-5"
+     name="node_height_spinner"
+     tool_tip="Manual height nudge at this node (m). 0 = feet on the ground"
+     top="140"
+     width="170" />
+    <spinner
+     decimal_digits="1"
+     follows="left|top"
+     height="16"
+     increment="0.5"
+     label="Dwell (s)"
+     label_width="56"
+     layout="topleft"
+     left="182"
+     max_val="120"
+     min_val="0"
+     name="node_dwell_spinner"
+     tool_tip="Seconds the actor holds at this node (0 = no pause)"
+     top="140"
+     width="172" />
+    <spinner
+     decimal_digits="2"
+     follows="left|top"
+     height="16"
+     increment="0.05"
+     label="Speed (m/s)"
+     label_width="66"
+     layout="topleft"
+     left="6"
+     max_val="10"
+     min_val="0"
+     name="node_speed_spinner"
+     tool_tip="Speed override at this node (m/s). 0 = use the path speed"
+     top="160"
+     width="170" />
+    <text
+     follows="left|top"
+     height="12"
+     layout="topleft"
+     left="184"
+     top="162"
+     name="node_anim_lbl"
+     width="170">
+        Node anim (UUID)
+    </text>
+    <line_editor
+     follows="left|top|right"
+     height="18"
+     layout="topleft"
+     left="6"
+     max_length_chars="36"
+     name="node_anim_editor"
+     tool_tip="Play this animation at the node instead of the walk anim (local only). Blank = walk anim"
+     top="178"
+     width="348" />
+
+    <text
+     follows="left|top"
+     font="SansSerifSmallBold"
+     height="12"
+     layout="topleft"
+     left="6"
+     top="200"
+     name="path_lbl"
+     width="200">
+        Path settings
+    </text>
+    <spinner
+     decimal_digits="2"
+     follows="left|top"
+     height="16"
+     increment="0.05"
+     label="Speed (m/s)"
+     label_width="66"
+     layout="topleft"
+     left="6"
+     max_val="10"
+     min_val="0.05"
+     name="path_speed_spinner"
+     tool_tip="Nominal ground speed along the path (m/s). Per-node overrides win where set"
+     top="214"
+     width="170" />
+    <slider
+     decimal_digits="2"
+     follows="left|top"
+     height="16"
+     increment="0.05"
+     label="Smoothing"
+     label_width="62"
+     layout="topleft"
+     left="182"
+     max_val="1"
+     min_val="0"
+     name="path_tension_slider"
+     tool_tip="Corner smoothing (0..1): 0 = tight, near-straight corners; 1 = full flowing curves"
+     top="214"
+     width="172" />
+    <spinner
+     decimal_digits="1"
+     follows="left|top"
+     height="16"
+     increment="0.5"
+     label="Ease in (s)"
+     label_width="66"
+     layout="topleft"
+     left="6"
+     max_val="10"
+     min_val="0"
+     name="path_easein_spinner"
+     tool_tip="Accelerate from a standstill over this many seconds at the start"
+     top="234"
+     width="170" />
+    <spinner
+     decimal_digits="1"
+     follows="left|top"
+     height="16"
+     increment="0.5"
+     label="Ease out (s)"
+     label_width="68"
+     layout="topleft"
+     left="182"
+     max_val="10"
+     min_val="0"
+     name="path_easeout_spinner"
+     tool_tip="Decelerate to a stop over this many seconds into the final node"
+     top="234"
+     width="172" />
+    <check_box
+     follows="left|top"
+     height="16"
+     label="Ground-follow"
+     layout="topleft"
+     left="6"
+     top="254"
+     name="path_groundfollow_check"
+     tool_tip="Clamp feet to terrain / prims each frame so the walk rides slopes and stairs"
+     width="120" />
+    <check_box
+     follows="left|top"
+     height="16"
+     label="Pitch to slope"
+     layout="topleft"
+     left="130"
+     top="254"
+     name="path_pitch_check"
+     tool_tip="Tilt the body pitch to the local slope while walking"
+     width="120" />
+    <combo_box
+     follows="left|top"
+     height="20"
+     layout="topleft"
+     left="6"
+     top="272"
+     name="path_end_combo"
+     tool_tip="What happens when the actor reaches the end of the path"
+     width="180">
+        <combo_box.item label="Stop at end" name="pe_stop" value="0" />
+        <combo_box.item label="Stop + face target" name="pe_stopface" value="1" />
+        <combo_box.item label="Loop" name="pe_loop" value="2" />
+        <combo_box.item label="Ping-pong" name="pe_pingpong" value="3" />
+    </combo_box>
+    <text
+     follows="left|top"
+     height="12"
+     layout="topleft"
+     left="196"
+     top="276"
+     name="color_lbl"
+     tool_tip="This actor's path color in world (auto, from its id)"
+     width="42">
+        Color
+    </text>
+    <panel
+     background_visible="true"
+     background_opaque="true"
+     border="true"
+     follows="left|top"
+     height="16"
+     layout="topleft"
+     left="240"
+     top="274"
+     name="color_swatch"
+     tool_tip="This actor's path color in world (auto, from its id)"
+     width="40" />
+</panel>

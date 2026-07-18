@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
 <floater
  legacy_header_height="18"
- can_resize="false"
- height="412"
+ can_resize="true"
+ height="716"
+ min_height="440"
+ min_width="372"
  layout="topleft"
  name="floater_actor_mover"
  title="ACTOR MOVER (LOCAL)"
- width="300">
+ width="372">
   <scroll_list
    column_padding="0"
    draw_heading="true"
@@ -190,4 +192,27 @@
    top_delta="0"
    name="stop_btn"
    width="132" />
+  <!-- shared Actor Pathing editor: same panel the Director Console Move tab
+       embeds. Targets the roster row selected above. -->
+  <text
+   follows="left|top"
+   font="SansSerifBold"
+   height="14"
+   layout="topleft"
+   left="12"
+   top_pad="14"
+   name="path_section_lbl"
+   width="276">
+    Path (waypoints)
+  </text>
+  <panel
+   class="panel_path_editor"
+   filename="panel_path_editor.xml"
+   follows="left|top|right"
+   height="288"
+   layout="topleft"
+   left="6"
+   top_pad="4"
+   name="path_editor"
+   width="360" />
 </floater>

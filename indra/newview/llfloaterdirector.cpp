@@ -15,6 +15,7 @@
 
 #include "alcompassdial.h"
 #include "alpanelcinecamparams.h"   // embedded shared panel (scene preset hooks)
+#include "alpanelpatheditor.h"      // embedded shared Actor Pathing editor
 #include "llactormover.h"
 #include "llavatarnamecache.h"
 #include "llbutton.h"
@@ -162,12 +163,17 @@ bool LLFloaterDirector::postBuild()
     mScopeRadio->setCommitCallback([this](LLUICtrl*, const LLSD&) { onScopeCommit(); });
     // initial selection (draw()'s diff-sync only reacts to changes)
     mScopeRadio->setValue(gSavedSettings.getBOOL("ActorMoverSync") ? 1 : 0);
+    mMoveModeRadio = getChild<LLRadioGroup>("move_mode_radio");
+    mMoveModeRadio->setCommitCallback([this](LLUICtrl*, const LLSD&) { onMoveModeCommit(); });
+    mStraightGroup = getChild<LLPanel>("straight_group");
+    mPathPanel = findChild<ALPanelPathEditor>("path_editor");
     mHeadingDial = getChild<ALCompassDial>("heading_dial");
     mHeadingDial->setCommitCallback([this](LLUICtrl*, const LLSD&) { onDialCommit(); });
     mWalkBtn = getChild<LLButton>("btn_walk");
     mStopBtn = getChild<LLButton>("btn_stop");
     mWalkBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickWalk(); });
     mStopBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickStop(); });
+    applyMoveMode(false);   // start in Straight mode; refreshMoveTab auto-picks
 
     // ---- Animate tab ----
     mAnimateHeader = getChild<LLTextBox>("animate_header");
@@ -931,6 +937,29 @@ void LLFloaterDirector::onScopeCommit()
     gSavedSettings.setBOOL("ActorMoverSync", mScopeRadio->getValue().asInteger() == 1);
 }
 
+void LLFloaterDirector::onMoveModeCommit()
+{
+    // user picked a mode by hand: honor it and stop auto-flipping for the
+    // current actor (mMoveModeActor already matches the shown actor)
+    applyMoveMode(mMoveModeRadio->getValue().asInteger() == 1);
+}
+
+void LLFloaterDirector::applyMoveMode(bool path_mode)
+{
+    if (mStraightGroup)
+    {
+        mStraightGroup->setVisible(!path_mode);
+    }
+    if (mPathPanel)
+    {
+        mPathPanel->setVisible(path_mode);
+    }
+    if (mMoveModeRadio && (mMoveModeRadio->getValue().asInteger() == 1) != path_mode)
+    {
+        mMoveModeRadio->setValue(path_mode ? 1 : 0);
+    }
+}
+
 void LLFloaterDirector::onDialCommit()
 {
     // live while dragging, so the in-world heading ray tracks the needle
@@ -984,6 +1013,23 @@ void LLFloaterDirector::refreshMoveTab()
     if (fabsf((F32)mHeadingDial->getValue().asReal() - (F32)heading) > 0.01f)
     {
         mHeadingDial->setValue((F32)heading);
+    }
+
+    // Path editor targets the console's cast selection. Re-point it every draw
+    // (cheap; the panel diffs internally) and auto-pick Path mode ONCE per new
+    // selection when that actor already has a walkable path.
+    const LLUUID sel_id = firstSelectedCastId();
+    if (mPathPanel)
+    {
+        mPathPanel->setTargetActor(sel_id);
+    }
+    if (!mMoveModeInit || sel_id != mMoveModeActor)
+    {
+        mMoveModeInit = true;
+        mMoveModeActor = sel_id;
+        // auto-select Path when the freshly-selected actor has >= 2 waypoints,
+        // else fall back to Straight (the default one-shot move)
+        applyMoveMode(sel_id.notNull() && LLActorMover::instance().hasWalkablePath(sel_id));
     }
 
     const bool have_sel = mCastList->getFirstSelected() != nullptr;

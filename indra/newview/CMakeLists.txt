@@ -269,12 +269,14 @@ set(viewer_SOURCE_FILES
     llcallingcard.cpp
     llcameraoperator.cpp
     llactormover.cpp
+    altoolpathedit.cpp
     llcinematiccamera.cpp
     lldirectorcast.cpp
     llfloateractormover.cpp
     llfloaterdirector.cpp
     llfloaterflycamrecorder.cpp
     alpanelcinecamparams.cpp
+    alpanelpatheditor.cpp
     llflycamrecorder.cpp
     llcefaccelinterop.cpp
     llcefsurfacereceiver.cpp
@@ -1066,12 +1068,14 @@ set(viewer_HEADER_FILES
     llcallingcard.h
     llcameraoperator.h
     llactormover.h
+    altoolpathedit.h
     llcinematiccamera.h
     lldirectorcast.h
     llfloateractormover.h
     llfloaterdirector.h
     llfloaterflycamrecorder.h
     alpanelcinecamparams.h
+    alpanelpatheditor.h
     llflycamrecorder.h
     llcapabilityprovider.h
     llcefaccelinterop.h

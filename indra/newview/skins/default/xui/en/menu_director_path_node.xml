@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<!-- [Director] context menu for a path node under the in-world edit tool
+     (ALToolPathEdit). Callbacks (PathNode.*) are registered with a
+     ScopedRegistrar in ALToolPathEdit::ensureMenu() before this file is
+     instantiated. Kept minimal + robust: the panel inspector handles
+     dwell / speed / anim / height. -->
+<context_menu
+ layout="topleft"
+ name="DirectorPathNodeContextMenu">
+  <menu_item_call
+   label="Insert node after"
+   layout="topleft"
+   name="insert_after">
+    <menu_item_call.on_click
+     function="PathNode.InsertAfter" />
+  </menu_item_call>
+  <menu_item_separator layout="topleft" />
+  <menu_item_call
+   label="Delete node"
+   layout="topleft"
+   name="delete_node">
+    <menu_item_call.on_click
+     function="PathNode.Delete" />
+  </menu_item_call>
+</context_menu>

@@ -426,6 +426,171 @@ void LLActorMover::appendWaypointHere(const LLUUID& actor_id)
     }
 }
 
+// ---------------------------------------------------------------------------
+// P2 index-based editing. All operate on mPaths[path_key(actor)] and mark the
+// path dirty so the arc-length table rebuilds on the next eval/render. A placed
+// or moved node stores its foot/ground position (mPosGlobal) plus mRootAbove --
+// the actor's standing height above that ground -- so a walked node sits
+// feet-on-ground exactly like appendWaypointHere (no hover). ground_pos is the
+// GLOBAL surface point (an in-world pick already snaps to terrain/prim).
+// ---------------------------------------------------------------------------
+namespace
+{
+// captured standing height above the ground for a placed node: the resolving
+// actor's live pelvis-to-foot (feet-on-ground convention). A fallback keeps a
+// node from sitting at Z=0 when the actor is momentarily unresolvable.
+F32 capture_root_above(LLVOAvatar* av)
+{
+    return (av && av->getRootJoint()) ? llmax(0.f, av->getPelvisToFoot()) : 0.9f;
+}
+} // anonymous namespace
+
+S32 LLActorMover::appendWaypointAt(const LLUUID& actor_id, const LLVector3d& ground_pos)
+{
+    Path& path = editPath(actor_id);
+    Waypoint wp;
+    wp.mPosGlobal = ground_pos;
+    wp.mRootAbove = capture_root_above(resolve_actor(actor_id));
+    path.mNodes.push_back(wp);
+    path.markDirty();
+    return (S32)path.mNodes.size() - 1;
+}
+
+S32 LLActorMover::insertWaypoint(const LLUUID& actor_id, S32 index, const LLVector3d& ground_pos)
+{
+    Path& path = editPath(actor_id);
+    const S32 at = llclamp(index, 0, (S32)path.mNodes.size());
+    Waypoint wp;
+    wp.mPosGlobal = ground_pos;
+    wp.mRootAbove = capture_root_above(resolve_actor(actor_id));
+    path.mNodes.insert(path.mNodes.begin() + at, wp);
+    path.markDirty();
+    return at;
+}
+
+bool LLActorMover::moveWaypoint(const LLUUID& actor_id, S32 index, const LLVector3d& new_ground_pos)
+{
+    const Path* cp = getPath(actor_id);
+    if (!cp || index < 0 || index >= (S32)cp->mNodes.size())
+    {
+        return false;
+    }
+    Path& path = editPath(actor_id);
+    Waypoint& wp = path.mNodes[index];
+    wp.mPosGlobal = new_ground_pos;
+    // re-capture the standing height so a node dragged onto higher/lower ground
+    // still plants feet-on-ground rather than keeping its old lift
+    wp.mRootAbove = capture_root_above(resolve_actor(actor_id));
+    path.markDirty();
+    return true;
+}
+
+bool LLActorMover::deleteWaypoint(const LLUUID& actor_id, S32 index)
+{
+    const Path* cp = getPath(actor_id);
+    if (!cp || index < 0 || index >= (S32)cp->mNodes.size())
+    {
+        return false;
+    }
+    Path& path = editPath(actor_id);
+    path.mNodes.erase(path.mNodes.begin() + index);
+    path.markDirty();
+    // an emptied path is dropped so hasWalkablePath()/render fall back cleanly
+    if (path.mNodes.empty())
+    {
+        clearPath(actor_id);
+    }
+    return true;
+}
+
+bool LLActorMover::setNodeDwell(const LLUUID& actor_id, S32 index, F32 dwell_s)
+{
+    const Path* cp = getPath(actor_id);
+    if (!cp || index < 0 || index >= (S32)cp->mNodes.size())
+    {
+        return false;
+    }
+    Path& path = editPath(actor_id);
+    path.mNodes[index].mDwell = llmax(0.f, dwell_s);
+    path.markDirty();
+    return true;
+}
+
+bool LLActorMover::setNodeSpeed(const LLUUID& actor_id, S32 index, F32 speed_override)
+{
+    const Path* cp = getPath(actor_id);
+    if (!cp || index < 0 || index >= (S32)cp->mNodes.size())
+    {
+        return false;
+    }
+    Path& path = editPath(actor_id);
+    path.mNodes[index].mSpeedOverride = llmax(0.f, speed_override);
+    path.markDirty();
+    return true;
+}
+
+bool LLActorMover::setNodeAnim(const LLUUID& actor_id, S32 index, const LLUUID& anim)
+{
+    const Path* cp = getPath(actor_id);
+    if (!cp || index < 0 || index >= (S32)cp->mNodes.size())
+    {
+        return false;
+    }
+    Path& path = editPath(actor_id);
+    path.mNodes[index].mAnim = anim;
+    path.markDirty();
+    return true;
+}
+
+bool LLActorMover::setNodeGroundOffset(const LLUUID& actor_id, S32 index, F32 offset_m)
+{
+    const Path* cp = getPath(actor_id);
+    if (!cp || index < 0 || index >= (S32)cp->mNodes.size())
+    {
+        return false;
+    }
+    Path& path = editPath(actor_id);
+    path.mNodes[index].mGroundOffset = offset_m;
+    path.markDirty();
+    return true;
+}
+
+// ---------------------------------------------------------------------------
+// P2 edit selection (shared spine for the panel, the in-world tool and the viz)
+// ---------------------------------------------------------------------------
+void LLActorMover::setEditActor(const LLUUID& actor_id)
+{
+    // A concrete avatar id IS the path key (path_key is identity for non-null),
+    // so the viz -- which compares against a live av->getID() -- and the editing
+    // ops agree on one identity. Null does NOT normalize to self here: "nothing
+    // selected" must clear editing, not silently target your own avatar's path.
+    if (actor_id != mEditActor)
+    {
+        mEditActor = actor_id;
+        mEditNode = -1;     // a fresh actor starts with nothing selected
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Stable per-actor overlay color: fold the 16 id bytes to a hue, then a vivid
+// HSL. Deterministic, so an actor's path keeps the same color all session and
+// multiple actors' paths stay distinguishable at a glance.
+// ---------------------------------------------------------------------------
+//static
+LLColor4 LLActorMover::actorPathColor(const LLUUID& actor_id)
+{
+    U32 h = 2166136261u;                // FNV-1a fold
+    for (S32 i = 0; i < 16; ++i)
+    {
+        h = (h ^ actor_id.mData[i]) * 16777619u;
+    }
+    const F32 hue = (F32)(h % 1000u) / 1000.f;
+    LLColor4 c;
+    c.setHSL(hue, 0.72f, 0.58f);        // vivid but not blown out
+    c.mV[VW] = 1.f;
+    return c;
+}
+
 // [Director] the roster API is now an alias for Director cast membership
 //static
 void LLActorMover::toggleTarget(const LLUUID& id)
@@ -1199,6 +1364,44 @@ void drawNodeMarker(const LLVector3& base, const LLColor4& col, bool dwell)
     gGL.end();
 }
 
+// selected-node emphasis drawn on top of the normal marker: an enlarged,
+// breathing filled diamond plus a pulsing ground ring. pulse in [0,1] comes
+// from the frame clock (LLFrameTimer, NOT Math-random), so the selected node
+// reads as "live" without any per-frame randomness.
+void drawSelectedHighlight(const LLVector3& base, const LLColor4& col, F32 pulse)
+{
+    const F32 R = 0.30f + 0.12f * pulse;            // breathing radius, m
+    LLColor4 hi = col;
+    hi.mV[VX] = llmin(1.f, hi.mV[VX] * 1.3f + 0.25f);
+    hi.mV[VY] = llmin(1.f, hi.mV[VY] * 1.3f + 0.25f);
+    hi.mV[VZ] = llmin(1.f, hi.mV[VZ] * 1.3f + 0.25f);
+    hi.mV[VW] = 0.55f + 0.4f * pulse;
+
+    gGL.begin(LLRender::TRIANGLES);
+    gGL.color4fv(hi.mV);
+    const LLVector3 e0 = base + LLVector3( R, 0.f, 0.f);
+    const LLVector3 e1 = base + LLVector3(0.f,  R, 0.f);
+    const LLVector3 e2 = base + LLVector3(-R, 0.f, 0.f);
+    const LLVector3 e3 = base + LLVector3(0.f, -R, 0.f);
+    gGL.vertex3fv(e0.mV); gGL.vertex3fv(e1.mV); gGL.vertex3fv(e2.mV);
+    gGL.vertex3fv(e0.mV); gGL.vertex3fv(e2.mV); gGL.vertex3fv(e3.mV);
+    gGL.end();
+
+    const F32 RR = R * 2.0f;
+    gGL.setLineWidth(2.5f);
+    gGL.begin(LLRender::LINES);
+    gGL.color4fv(hi.mV);
+    const S32 SEGS = 24;
+    for (S32 s = 0; s < SEGS; ++s)
+    {
+        const F32 a = (F32)s       / SEGS * F_TWO_PI;
+        const F32 b = (F32)(s + 1) / SEGS * F_TWO_PI;
+        gGL.vertex3f(base.mV[VX] + RR * cosf(a), base.mV[VY] + RR * sinf(a), base.mV[VZ]);
+        gGL.vertex3f(base.mV[VX] + RR * cosf(b), base.mV[VY] + RR * sinf(b), base.mV[VZ]);
+    }
+    gGL.end();
+}
+
 // a camera-billboarded integer drawn as 7-segment line digits at anchor
 // (anchor = baseline centre). right/up are the screen-facing axes.
 void drawNumber(S32 value, const LLVector3& anchor, F32 h,
@@ -1285,13 +1488,28 @@ void LLActorMover::renderHeadingPreview()
     const LLVector3 bb_right = -cam->getLeftAxis();
     const LLVector3 bb_up    = cam->getUpAxis();
 
-    // palette
-    const LLColor4 col_line (1.f, 0.72f, 0.2f, 0.9f);   // amber travel line
-    const LLColor4 col_chev (1.f, 0.96f, 0.6f, 0.95f);  // bright chevrons
-    const LLColor4 col_start(0.3f, 1.f, 0.35f, 0.95f);  // start node = green
-    const LLColor4 col_end  (1.f, 0.32f, 0.22f, 0.95f); // end node   = red
-    const LLColor4 col_mid  (1.f, 0.8f, 0.3f, 0.95f);   // interior nodes = amber
-    const LLColor4 col_num  (1.f, 1.f, 1.f, 1.f);       // digits = white
+    // digits stay white for legibility over any ribbon hue; every other color is
+    // now derived PER ACTOR (see actorPathColor) so multiple paths are distinct.
+    const LLColor4 col_num(1.f, 1.f, 1.f, 1.f);
+
+    // pulse phase for the selected-node highlight, from the frame clock (never
+    // Math-random): a slow breathe shared by every actor's selected node.
+    const F32 now   = (F32)LLFrameTimer::getElapsedSeconds();
+    const F32 pulse = 0.5f + 0.5f * sinf(now * 3.2f);
+
+    // blend toward a role color while staying in the actor's hue family, so
+    // start reads greenish and end reddish but a viewer can still tell whose
+    // path it is at a glance
+    auto blend = [](const LLColor4& a, const LLColor4& b, F32 t) -> LLColor4
+    {
+        return LLColor4(a.mV[VX] * (1.f - t) + b.mV[VX] * t,
+                        a.mV[VY] * (1.f - t) + b.mV[VY] * t,
+                        a.mV[VZ] * (1.f - t) + b.mV[VZ] * t,
+                        a.mV[VW] * (1.f - t) + b.mV[VW] * t);
+    };
+
+    const LLUUID edit_actor = mEditActor;
+    const S32    edit_node  = mEditNode;
 
     uuid_vec_t roster = getRoster();
     if (roster.empty())
@@ -1305,6 +1523,19 @@ void LLActorMover::renderHeadingPreview()
         {
             continue;
         }
+
+        // per-actor tint: ribbon = the stable hue, chevrons brighter, start
+        // blended toward green, end toward red, interior nodes the base hue
+        const LLColor4 actor_col = actorPathColor(av->getID());
+        LLColor4 col_line  = actor_col; col_line.mV[VW]  = 0.9f;
+        LLColor4 col_chev  = blend(actor_col, LLColor4(1.f, 1.f, 1.f, 1.f), 0.45f);
+        col_chev.mV[VW]    = 0.95f;
+        LLColor4 col_start = blend(actor_col, LLColor4(0.3f, 1.f, 0.35f, 1.f), 0.55f);
+        col_start.mV[VW]   = 0.98f;
+        LLColor4 col_end   = blend(actor_col, LLColor4(1.f, 0.28f, 0.2f, 1.f), 0.55f);
+        col_end.mV[VW]     = 0.98f;
+        LLColor4 col_mid   = actor_col; col_mid.mV[VW]   = 0.95f;
+        const bool is_edit_actor = (edit_actor.notNull() && edit_actor == av->getID());
 
         // a walkable path (>= 2 nodes) draws the full spline + numbered markers;
         // otherwise the upgraded thick straight heading arrow (today's preview)
@@ -1345,6 +1576,12 @@ void LLActorMover::renderHeadingPreview()
                 const bool is_start = (i == 0);
                 const bool is_end   = (i == n - 1) && !loop;    // a loop has no distinct end
                 const LLColor4& c = is_start ? col_start : (is_end ? col_end : col_mid);
+
+                // the edit-selected node breathes under an enlarged highlight
+                if (is_edit_actor && i == edit_node)
+                {
+                    drawSelectedHighlight(base, c, pulse);
+                }
                 drawNodeMarker(base, c, path.mNodes[i].mDwell > 0.f);
 
                 LLVector3 num_at = base;

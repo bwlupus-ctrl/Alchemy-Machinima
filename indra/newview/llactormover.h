@@ -31,6 +31,7 @@
 #include "lluuid.h"
 #include "v3math.h"
 #include "v3dmath.h"
+#include "v4color.h"        // actorPathColor()
 #include "llquaternion.h"
 
 #include <map>
@@ -110,9 +111,38 @@ public:
     bool        hasWalkablePath(const LLUUID& actor_id) const;   // path with >= 2 nodes
     void        clearPath(const LLUUID& actor_id);
 
-    // test harness (chat commands, until the P2 editor exists): append a
-    // ground-snapped waypoint at the actor's current rendered position.
+    // test harness (chat commands) + panel "Add": append a ground-snapped
+    // waypoint at the actor's current rendered position.
     void        appendWaypointHere(const LLUUID& actor_id);
+
+    // ---- P2 index-based editing (session-only; operate on the actor's Path) ---
+    // ground_pos is a GLOBAL foot/ground position (typically an in-world pick).
+    // Each op captures mRootAbove from the resolving actor's standing height so a
+    // placed/moved node sits feet-on-ground rather than hovering, and marks the
+    // path dirty so the arc-length table rebuilds. Bad index or unresolved actor
+    // -> no-op (returns -1 / false). Index ops use std::vector insert semantics.
+    S32  appendWaypointAt(const LLUUID& actor_id, const LLVector3d& ground_pos);  // -> new index, -1 fail
+    S32  insertWaypoint(const LLUUID& actor_id, S32 index, const LLVector3d& ground_pos); // insert AT index
+    bool moveWaypoint(const LLUUID& actor_id, S32 index, const LLVector3d& new_ground_pos);
+    bool deleteWaypoint(const LLUUID& actor_id, S32 index);
+    // per-node field setters (do not move geometry; still mark dirty per spec)
+    bool setNodeDwell(const LLUUID& actor_id, S32 index, F32 dwell_s);
+    bool setNodeSpeed(const LLUUID& actor_id, S32 index, F32 speed_override);
+    bool setNodeAnim(const LLUUID& actor_id, S32 index, const LLUUID& anim);
+    bool setNodeGroundOffset(const LLUUID& actor_id, S32 index, F32 offset_m);
+
+    // ---- P2 edit selection (shared by the path-editor panel + in-world tool + viz) ---
+    // Which actor's path is being edited (stored as the resolved path key) and
+    // which node is selected (-1 = none). Written by the panel (list row <->
+    // in-world node) and read by renderHeadingPreview() (highlight) + the tool.
+    void          setEditActor(const LLUUID& actor_id);
+    const LLUUID& getEditActor() const { return mEditActor; }
+    void          setEditNode(S32 index) { mEditNode = index; }
+    S32           getEditNode() const { return mEditNode; }
+
+    // stable per-actor overlay color derived from the actor id (path ribbon +
+    // interior nodes tint to this hue; the panel shows it as a read-only swatch)
+    static LLColor4 actorPathColor(const LLUUID& actor_id);
 
     // right-click targeting (same session-lock idiom as CineCam Follow), now a
     // roster: toggling an avatar adds/removes it; empty roster = "my avatar"
@@ -204,6 +234,10 @@ private:
 
     std::map<LLUUID, Move> mMoves;
     std::map<LLUUID, Path> mPaths;      // authored path per actor (session-only)
+
+    // P2 edit selection: the path key under edit + the selected node index
+    LLUUID mEditActor;      // resolved path key (null = nothing being edited)
+    S32    mEditNode = -1;  // selected node in that path (-1 = none)
 };
 
 #endif // LL_LLACTORMOVER_H
