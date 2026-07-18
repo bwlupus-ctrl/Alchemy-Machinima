@@ -570,6 +570,11 @@
         </panel>
 
         <!-- ============ Path tab ============ -->
+        <!-- The shared path editor is 656 tall (its Look-at / Gaze section
+             sits at the very bottom). At the console's default height the tab
+             viewport is shorter than that, so the editor is wrapped in a
+             scroll_container (same idiom as the Camera tab) - every control,
+             gaze included, is reachable without resizing the floater. -->
         <panel
          follows="all"
          background_visible="false"
@@ -579,19 +584,44 @@
          name="path_tab"
          top="0"
          width="374">
-            <panel
-             class="panel_path_editor"
-             filename="panel_path_editor.xml"
-             follows="left|top|right"
-             height="656"
+            <scroll_container
+             follows="all"
+             height="540"
              layout="topleft"
-             left="8"
-             name="path_editor"
-             top="8"
-             width="360" />
+             left="0"
+             top="0"
+             name="path_scroll"
+             opaque="false"
+             width="374">
+                <panel
+                 background_visible="false"
+                 height="672"
+                 layout="topleft"
+                 left="0"
+                 top="0"
+                 name="path_scroll_content"
+                 width="354">
+                    <panel
+                     class="panel_path_editor"
+                     filename="panel_path_editor.xml"
+                     follows="left|top|right"
+                     height="656"
+                     layout="topleft"
+                     left="0"
+                     name="path_editor"
+                     top="8"
+                     width="354" />
+                </panel>
+            </scroll_container>
         </panel>
 
         <!-- ============ Animate tab ============ -->
+        <!-- Top: the selected cast member's live signaled-animation list plus
+             per-actor loco / play-local tools. Bottom: an embedded spinning
+             preview (drag to orbit, wheel to zoom) that auto-plays the selected
+             row / pasted UUID on loop, plus the Animation Explorer's own
+             Capture-all / Stop / Stop and Revoke / Blacklist controls, so the
+             console does everything the standalone Explorer can. -->
         <panel
          follows="all"
          background_visible="false"
@@ -616,8 +646,8 @@
             <scroll_list
              column_padding="0"
              draw_heading="true"
-             follows="left|top|right|bottom"
-             height="148"
+             follows="left|top|right"
+             height="118"
              layout="topleft"
              left="10"
              top="28"
@@ -644,7 +674,7 @@
              height="40"
              layout="topleft"
              left="20"
-             top="64"
+             top="60"
              mouse_opaque="false"
              name="anim_hint"
              text_color="LtGray_50"
@@ -653,94 +683,94 @@
                 Select a cast member to see the animations playing on them
             </text>
             <button
-             follows="left|bottom"
+             follows="left|top"
              height="20"
              label="Copy UUID"
              layout="topleft"
              left="10"
-             top="182"
+             top="150"
              name="btn_anim_copy"
              width="78" />
             <button
-             follows="left|bottom"
+             follows="left|top"
              height="20"
              label="Set as loco"
              layout="topleft"
              left="92"
-             top="182"
+             top="150"
              name="btn_anim_setloco"
              width="88" />
             <button
-             follows="left|bottom"
+             follows="left|top"
              height="20"
              label="Play local"
              layout="topleft"
              left="184"
-             top="182"
+             top="150"
              name="btn_anim_play"
              width="82" />
             <button
-             follows="left|bottom"
+             follows="left|top"
              height="20"
              label="Stop local"
              layout="topleft"
              left="270"
-             top="182"
+             top="150"
              name="btn_anim_stop"
              width="82" />
             <text
-             follows="left|bottom"
+             follows="left|top"
              height="14"
              layout="topleft"
              left="10"
-             top="208"
+             top="176"
              name="paste_lbl"
              width="354">
                 Play any animation on the selected member (client-side only):
             </text>
             <line_editor
-             follows="left|right|bottom"
+             follows="left|top|right"
              height="20"
              layout="topleft"
              left="10"
-             top="224"
+             top="192"
              max_length_chars="36"
              name="paste_uuid_editor"
-             tool_tip="Animation asset UUID. Paste one from the Animation Explorer or your inventory"
+             tool_tip="Animation asset UUID. Paste one from the Animation Explorer or your inventory. Also previews below on loop"
              width="354" />
             <button
-             follows="left|bottom"
+             follows="left|top"
              height="20"
              label="Play local"
              layout="topleft"
              left="10"
-             top="248"
+             top="216"
              name="btn_paste_play"
              width="82" />
             <button
-             follows="left|bottom"
+             follows="left|top"
              height="20"
              label="Stop local"
              layout="topleft"
              left="96"
-             top="248"
+             top="216"
              name="btn_paste_stop"
              width="82" />
             <button
-             follows="left|bottom"
+             follows="left|top"
              height="20"
              label="Set as loco"
              layout="topleft"
              left="182"
-             top="248"
+             top="216"
              name="btn_paste_setloco"
              width="88" />
             <text
-             follows="left|bottom"
+             follows="left|top"
              height="14"
              layout="topleft"
              left="10"
-             top="278"
+             top="244"
              name="loco_text"
              tool_tip="The selected member's locomotion override: the animation the mover plays while walking them"
              use_ellipses="true"
@@ -748,24 +778,97 @@
                 Loco anim: &#8212;
             </text>
             <button
-             follows="left|bottom"
+             follows="left|top"
              height="20"
              label="Clear"
              layout="topleft"
              left="288"
-             top="274"
+             top="242"
              name="btn_clear_loco"
              width="66" />
+
+            <!-- ==== embedded preview + Animation Explorer controls ==== -->
+            <text
+             follows="left|top"
+             font="SansSerifBold"
+             height="14"
+             layout="topleft"
+             left="10"
+             top="270"
+             name="preview_section_lbl"
+             width="354">
+                Preview &amp; animation control
+            </text>
+            <view_border
+             bevel_style="in"
+             follows="left|top"
+             height="180"
+             layout="topleft"
+             left="10"
+             top="288"
+             name="animation_preview"
+             width="180" />
+            <text
+             follows="left|top"
+             height="26"
+             layout="topleft"
+             left="200"
+             top="288"
+             mouse_opaque="false"
+             name="preview_hint"
+             text_color="LtGray_50"
+             word_wrap="true"
+             width="164">
+                Previews the selected row / pasted UUID on loop. Drag to orbit, wheel to zoom.
+            </text>
+            <check_box
+             control_name="AnimExplorerCaptureAll"
+             follows="left|top"
+             height="16"
+             label="Capture all avatars"
+             layout="topleft"
+             left="200"
+             top="318"
+             name="capture_all_check"
+             tool_tip="Also record animations that start on OTHER avatars (machinima actors) into the Animation Explorer's list"
+             width="164" />
             <button
-             follows="left|bottom"
+             follows="left|top"
+             height="20"
+             label="Stop"
+             layout="topleft"
+             left="200"
+             top="340"
+             name="btn_anim_ex_stop"
+             width="164" />
+            <button
+             follows="left|top"
+             height="20"
+             label="Stop and Revoke"
+             layout="topleft"
+             left="200"
+             top="364"
+             name="btn_anim_ex_revoke"
+             width="164" />
+            <button
+             follows="left|top"
+             height="20"
+             label="Blacklist"
+             layout="topleft"
+             left="200"
+             top="388"
+             name="btn_anim_ex_blacklist"
+             width="164" />
+            <button
+             follows="left|top"
              height="22"
              label="Open Animation Explorer"
              layout="topleft"
-             left="10"
-             top="302"
+             left="200"
+             top="412"
              name="btn_open_animexp"
-             tool_tip="Browse animations playing around you, copy UUIDs, and hand one to the Actor Mover"
-             width="180" />
+             tool_tip="Open the standalone Animation Explorer (recent-animation list, name lookups)"
+             width="164" />
         </panel>
 
         <!-- ============ Camera tab ============ -->
@@ -1100,6 +1203,16 @@
              name="btn_take_stop"
              tool_tip="Stop recording or playback and give the camera back"
              width="76" />
+            <button
+             follows="left|top"
+             height="22"
+             label="Clear"
+             layout="topleft"
+             left="256"
+             top="8"
+             name="btn_take_clear"
+             tool_tip="Discard the current take"
+             width="76" />
             <slider
              decimal_digits="1"
              follows="left|top"
@@ -1252,16 +1365,61 @@
              width="300" />
             <text
              follows="left|top"
-             height="28"
+             font="SansSerifBold"
+             height="14"
              layout="topleft"
              left="10"
-             top="216"
-             name="take_hint"
-             text_color="LtGray_50"
-             word_wrap="true"
-             width="354">
-                Save / Load and the capture sample rate live in the standalone Flycam Recorder floater.
+             top="218"
+             name="recording_lbl"
+             width="200">
+                Recording
             </text>
+            <slider
+             control_name="FlycamRecSampleRate"
+             decimal_digits="0"
+             follows="left|top"
+             height="16"
+             increment="1"
+             initial_value="30"
+             label="Sample rate (Hz)"
+             label_width="110"
+             layout="topleft"
+             left="10"
+             max_val="120"
+             min_val="1"
+             top="236"
+             name="take_sample_rate"
+             tool_tip="Keyframes captured per second. 30 is plenty with smoothing on; lower makes smaller, easier-to-hand-edit files"
+             width="354" />
+            <text
+             follows="left|top"
+             font="SansSerifBold"
+             height="14"
+             layout="topleft"
+             left="10"
+             top="260"
+             name="file_lbl"
+             width="200">
+                Take file (XML)
+            </text>
+            <button
+             follows="left|top"
+             height="22"
+             label="Save..."
+             layout="topleft"
+             left="10"
+             top="278"
+             name="btn_take_save"
+             width="170" />
+            <button
+             follows="left|top"
+             height="22"
+             label="Load..."
+             layout="topleft"
+             left="184"
+             top="278"
+             name="btn_take_load"
+             width="170" />
         </panel>
     </tab_container>
 

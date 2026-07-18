@@ -18,6 +18,8 @@
 #define LL_LLFLOATERDIRECTOR_H
 
 #include "llfloater.h"
+#include "llfloaterbvhpreview.h"     // LLPreviewAnimation (embedded preview dummy)
+#include "llscrolldelta.h"           // LLScrollDelta (handleScrollWheel, preview spin)
 
 #include <string>
 #include <utility>
@@ -36,6 +38,7 @@ class LLScrollListCtrl;
 class LLSliderCtrl;
 class LLTabContainer;
 class LLTextBox;
+class LLView;
 
 class LLFloaterDirector final : public LLFloater
 {
@@ -48,6 +51,14 @@ public:
     // Esc = CUT while the transport is running or counting down; stock
     // floater behavior otherwise
     bool handleKeyHere(KEY key, MASK mask) override;
+
+    // Spin / zoom / pan the Animate-tab preview dummy (Animation Explorer
+    // idiom, gated to the embedded preview rect while that tab is showing).
+    bool handleMouseDown(S32 x, S32 y, MASK mask) override;
+    bool handleMouseUp(S32 x, S32 y, MASK mask) override;
+    bool handleHover(S32 x, S32 y, MASK mask) override;
+    bool handleScrollWheel(S32 x, S32 y, LLScrollDelta delta) override;
+    void onMouseCaptureLost() override;
 
 private:
     // ---- transport ----
@@ -113,6 +124,16 @@ private:
     void onPastePlayLocal(bool play);
     void onPasteSetLoco();
     void onClickClearLoco();
+    // embedded preview + Animation Explorer parity (auto-loop the focus anim
+    // on a spinning dummy; stop / stop+revoke / blacklist against your avatar)
+    LLUUID previewAnimId() const;                       // selected row, else pasted uuid
+    LLUUID animSourceObject(const LLUUID& anim_id) const; // the object playing it on you
+    void   refreshAnimPreview();
+    void   onAnimExStop();
+    void   onAnimExStopAndRevoke();
+    void   onAnimExBlacklist();
+    // preview-ctrl rect in this floater's local space (false if not showing)
+    bool   previewRect(LLRect& out) const;
 
     // ---- Camera tab ----
     static LLUUID avatarFromSelection();
@@ -124,6 +145,9 @@ private:
     void onTakeRecord();
     void onTakePlayPause();
     void onTakeStop();
+    void onTakeClear();
+    void onTakeSave();
+    void onTakeLoad();
     void onTakeScrub();
     void refreshTakesTab();
 
@@ -204,6 +228,15 @@ private:
     LLTextBox*        mLocoText = nullptr;
     LLButton*         mClearLocoBtn = nullptr;
     LLHandle<LLContextMenu> mAnimMenuHandle;
+    // embedded preview (LLPreviewAnimation spinning dummy) + Explorer controls
+    LLView*                       mAnimPreviewCtrl = nullptr;
+    LLPointer<LLPreviewAnimation> mAnimationPreview;
+    LLUUID            mPreviewAnimId;         // anim currently looping on the dummy
+    S32               mPreviewLastMouseX = 0;
+    S32               mPreviewLastMouseY = 0;
+    LLButton*         mAnimExStopBtn = nullptr;
+    LLButton*         mAnimExRevokeBtn = nullptr;
+    LLButton*         mAnimExBlacklistBtn = nullptr;
     // change-diffing: rows rebuilt only when the shown member or their
     // signaled-animation set changed; prio/playing cells re-set only on change
     LLUUID mAnimAvatarId;
@@ -219,6 +252,9 @@ private:
     LLButton*     mTakeRecordBtn = nullptr;
     LLButton*     mTakePlayBtn = nullptr;
     LLButton*     mTakeStopBtn = nullptr;
+    LLButton*     mTakeClearBtn = nullptr;
+    LLButton*     mTakeSaveBtn = nullptr;
+    LLButton*     mTakeLoadBtn = nullptr;
     LLSliderCtrl* mTakeScrub = nullptr;
     LLTextBox*    mTakeTimeText = nullptr;
     LLTextBox*    mTakeStatusText = nullptr;

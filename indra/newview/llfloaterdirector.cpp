@@ -11,12 +11,15 @@
 
 #include "llfloaterdirector.h"
 
-#include "indra_constants.h"        // KEY_ESCAPE / MASK_NONE
+#include "indra_constants.h"        // KEY_ESCAPE / MASK_NONE, MASK_ALT
 
+#include "alassetblocklist.h"       // Blacklist (Animation Explorer parity)
 #include "alcompassdial.h"
 #include "alpanelcinecamparams.h"   // embedded shared panel (scene preset hooks)
 #include "alpanelpatheditor.h"      // embedded shared Actor Pathing editor
 #include "llactormover.h"
+#include "llagent.h"                // gAgent (anim stop / revoke requests)
+#include "llanimationstates.h"      // ANIM_AGENT_STAND, ANIM_REQUEST_STOP
 #include "llavatarnamecache.h"
 #include "llbutton.h"
 #include "llclipboard.h"
@@ -25,24 +28,33 @@
 #include "lldirectorcast.h"
 #include "lldiriterator.h"          // scene file listing
 #include "llfile.h"                 // LLFile::mkdir/remove, ll*fstream
+#include "llfloaterbvhpreview.h"    // LLPreviewAnimation (embedded preview)
 #include "llfloaterreg.h"
 #include "llflycamrecorder.h"
-#include "llkeyframemotion.h"       // priority readout (AnimationExplorer idiom)
+#include "llfocusmgr.h"             // gFocusMgr (preview mouse capture)
+#include "llkeyframemotion.h"       // priority readout / preview loop
 #include "lllineeditor.h"
 #include "llmenugl.h"
 #include "llnotificationsutil.h"    // scene delete confirm
 #include "llradiogroup.h"
+#include "llrender.h"               // gGL (preview blit)
+#include "llscriptruntimeperms.h"   // SCRIPT_PERMISSIONS (revoke)
 #include "llscrolllistctrl.h"
 #include "llsdserialize.h"          // scene LLSD XML files
 #include "llselectmgr.h"
 #include "llsliderctrl.h"
 #include "lltabcontainer.h"
 #include "lltextbox.h"
+#include "lltoolmgr.h"              // MASK_ORBIT / MASK_PAN (preview hover)
+#include "llui.h"                   // LLUI::setMousePositionLocal
 #include "lluictrlfactory.h"
 #include "lluri.h"                  // LLURI::escape scene filenames
 #include "llviewercontrol.h"        // gSavedSettings, LLCachedControl
 #include "llviewermenu.h"           // gMenuHolder, LLViewerMenuHolderGL
+#include "llviewermenufile.h"       // LLFilePickerReplyThread (take save/load)
 #include "llviewerobjectlist.h"     // gObjectList
+#include "llviewerregion.h"         // region name (blacklist)
+#include "llviewerwindow.h"         // gViewerWindow (preview cursor)
 #include "llvoavatar.h"
 #include "llvoavatarself.h"         // gAgentAvatarp, isAgentAvatarValid()
 
@@ -69,6 +81,26 @@ constexpr S32  SCENE_VERSION   = 1;
 // playing-marker glyph for the Animate tab's list
 constexpr char GLYPH_PLAYING[] = "\xE2\x96\xB6";    // BLACK RIGHT-POINTING TRIANGLE
 
+// take file I/O: route through the recorder singleton so a console close
+// while the picker is up can't dangle (mirrors llfloaterflycamrecorder.cpp)
+void takePickerSave(const std::vector<std::string>& filenames,
+                    LLFilePicker::ELoadFilter, LLFilePicker::ESaveFilter)
+{
+    if (!filenames.empty())
+    {
+        LLFlycamRecorder::instance().saveToFile(filenames[0]);
+    }
+}
+
+void takePickerLoad(const std::vector<std::string>& filenames,
+                    LLFilePicker::ELoadFilter, LLFilePicker::ESaveFilter)
+{
+    if (!filenames.empty())
+    {
+        LLFlycamRecorder::instance().loadFromFile(filenames[0]);
+    }
+}
+
 // CinematicCamMode value -> display name (matches the mode combo labels)
 const char* cinecam_mode_name(S32 mode)
 {
@@ -91,6 +123,9 @@ LLFloaterDirector::LLFloaterDirector(const LLSD& key)
 
 LLFloaterDirector::~LLFloaterDirector()
 {
+    // release the preview dummy texture (AnimationExplorer idiom)
+    mAnimationPreview = nullptr;
+
     // AnimationExplorer idiom: menus were parented to gMenuHolder, not us
     if (LLContextMenu* menu = mCastMenuHandle.get())
     {
@@ -240,6 +275,17 @@ bool LLFloaterDirector::postBuild()
     getChild<LLButton>("btn_open_animexp")->setCommitCallback(
         [](LLUICtrl*, const LLSD&) { LLFloaterReg::showInstance("animation_explorer"); });
 
+    // embedded animation preview (LLPreviewAnimation) + Animation Explorer
+    // parity controls. The preview is created lazily once the agent avatar is
+    // valid (refreshAnimPreview); AnimExplorerCaptureAll is settings-backed.
+    mAnimPreviewCtrl = findChild<LLView>("animation_preview");
+    mAnimExStopBtn = getChild<LLButton>("btn_anim_ex_stop");
+    mAnimExRevokeBtn = getChild<LLButton>("btn_anim_ex_revoke");
+    mAnimExBlacklistBtn = getChild<LLButton>("btn_anim_ex_blacklist");
+    mAnimExStopBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAnimExStop(); });
+    mAnimExRevokeBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAnimExStopAndRevoke(); });
+    mAnimExBlacklistBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAnimExBlacklist(); });
+
     // ---- Camera tab ----
     mSubjectAText = getChild<LLTextBox>("subject_a_text");
     mSubjectBText = getChild<LLTextBox>("subject_b_text");
@@ -259,12 +305,18 @@ bool LLFloaterDirector::postBuild()
     mTakeRecordBtn = getChild<LLButton>("btn_take_record");
     mTakePlayBtn = getChild<LLButton>("btn_take_play");
     mTakeStopBtn = getChild<LLButton>("btn_take_stop");
+    mTakeClearBtn = getChild<LLButton>("btn_take_clear");
+    mTakeSaveBtn = getChild<LLButton>("btn_take_save");
+    mTakeLoadBtn = getChild<LLButton>("btn_take_load");
     mTakeScrub = getChild<LLSliderCtrl>("take_scrub");
     mTakeTimeText = getChild<LLTextBox>("take_time_text");
     mTakeStatusText = getChild<LLTextBox>("take_status_text");
     mTakeRecordBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onTakeRecord(); });
     mTakePlayBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onTakePlayPause(); });
     mTakeStopBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onTakeStop(); });
+    mTakeClearBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onTakeClear(); });
+    mTakeSaveBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onTakeSave(); });
+    mTakeLoadBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onTakeLoad(); });
     mTakeScrub->setCommitCallback([this](LLUICtrl*, const LLSD&) { onTakeScrub(); });
 
     // ---- status strip ----
@@ -325,10 +377,53 @@ void LLFloaterDirector::draw()
     refreshMoveTab();
     refreshPathTab();
     refreshAnimateTab();
+    refreshAnimPreview();
     refreshCameraTab();
     refreshTakesTab();
     refreshStatusStrip();
     LLFloater::draw();
+
+    // blit the spinning preview dummy into its pane, in this floater's local
+    // space (the pane is nested in the tab container, so the rect is converted
+    // from the child's coordinates). Only while the Animate tab is showing.
+    LLRect r;
+    if (mAnimationPreview && previewRect(r))
+    {
+        mAnimationPreview->requestUpdate();
+        gGL.color3f(1.0f, 1.0f, 1.0f);
+        gGL.getTexUnit(0)->bind(mAnimationPreview);
+        gGL.begin(LLRender::TRIANGLES);
+        {
+            gGL.texCoord2f(0.0f, 1.0f);
+            gGL.vertex2i(r.mLeft, r.mTop);
+            gGL.texCoord2f(0.0f, 0.0f);
+            gGL.vertex2i(r.mLeft, r.mBottom);
+            gGL.texCoord2f(1.0f, 0.0f);
+            gGL.vertex2i(r.mRight, r.mBottom);
+
+            gGL.texCoord2f(0.0f, 1.0f);
+            gGL.vertex2i(r.mLeft, r.mTop);
+            gGL.texCoord2f(1.0f, 0.0f);
+            gGL.vertex2i(r.mRight, r.mBottom);
+            gGL.texCoord2f(1.0f, 1.0f);
+            gGL.vertex2i(r.mRight, r.mTop);
+        }
+        gGL.end();
+        gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
+    }
+}
+
+// The preview pane's rect converted into this floater's local coordinate
+// space (what draw() and the mouse handlers work in). Returns false when the
+// Animate tab isn't showing, so the preview never eats clicks on other tabs.
+bool LLFloaterDirector::previewRect(LLRect& out) const
+{
+    if (!mAnimPreviewCtrl || !mAnimPreviewCtrl->isInVisibleChain())
+    {
+        return false;
+    }
+    return mAnimPreviewCtrl->localRectToOtherView(
+        mAnimPreviewCtrl->getLocalRect(), &out, this);
 }
 
 bool LLFloaterDirector::handleKeyHere(KEY key, MASK mask)
@@ -345,6 +440,99 @@ bool LLFloaterDirector::handleKeyHere(KEY key, MASK mask)
         }
     }
     return LLFloater::handleKeyHere(key, mask);
+}
+
+// ---------------------------------------------------------------------------
+// Animate-tab preview: drag to orbit / pan, wheel to zoom (LLFloaterBvhPreview /
+// AnimationExplorer idiom, gated to the nested preview rect while it is showing)
+// ---------------------------------------------------------------------------
+bool LLFloaterDirector::handleMouseDown(S32 x, S32 y, MASK mask)
+{
+    LLRect r;
+    if (mAnimationPreview && previewRect(r) && r.pointInRect(x, y))
+    {
+        bringToFront(x, y);
+        gFocusMgr.setMouseCapture(this);
+        gViewerWindow->hideCursor();
+        mPreviewLastMouseX = x;
+        mPreviewLastMouseY = y;
+        return true;
+    }
+    return LLFloater::handleMouseDown(x, y, mask);
+}
+
+bool LLFloaterDirector::handleMouseUp(S32 x, S32 y, MASK mask)
+{
+    if (hasMouseCapture())
+    {
+        gFocusMgr.setMouseCapture(nullptr);
+        gViewerWindow->showCursor();
+    }
+    return LLFloater::handleMouseUp(x, y, mask);
+}
+
+bool LLFloaterDirector::handleHover(S32 x, S32 y, MASK mask)
+{
+    LLRect r;
+    if (!mAnimationPreview || !previewRect(r) || !r.pointInRect(x, y))
+    {
+        return LLFloater::handleHover(x, y, mask);
+    }
+
+    MASK local_mask = mask & ~MASK_ALT;
+    if (hasMouseCapture())
+    {
+        if (local_mask == MASK_PAN)
+        {
+            mAnimationPreview->pan((F32)(x - mPreviewLastMouseX) * -0.005f,
+                                   (F32)(y - mPreviewLastMouseY) * -0.005f);
+        }
+        else if (local_mask == MASK_ORBIT)
+        {
+            F32 yaw_radians = (F32)(x - mPreviewLastMouseX) * -0.01f;
+            F32 pitch_radians = (F32)(y - mPreviewLastMouseY) * 0.02f;
+            mAnimationPreview->rotate(yaw_radians, pitch_radians);
+        }
+        else
+        {
+            F32 yaw_radians = (F32)(x - mPreviewLastMouseX) * -0.01f;
+            F32 zoom_amt = (F32)(y - mPreviewLastMouseY) * 0.02f;
+            mAnimationPreview->rotate(yaw_radians, 0.f);
+            mAnimationPreview->zoom(zoom_amt);
+        }
+        mAnimationPreview->requestUpdate();
+        LLUI::getInstance()->setMousePositionLocal(this, mPreviewLastMouseX, mPreviewLastMouseY);
+    }
+    else if (local_mask == MASK_ORBIT)
+    {
+        gViewerWindow->setCursor(UI_CURSOR_TOOLCAMERA);
+    }
+    else if (local_mask == MASK_PAN)
+    {
+        gViewerWindow->setCursor(UI_CURSOR_TOOLPAN);
+    }
+    else
+    {
+        gViewerWindow->setCursor(UI_CURSOR_TOOLZOOMIN);
+    }
+    return true;
+}
+
+bool LLFloaterDirector::handleScrollWheel(S32 x, S32 y, LLScrollDelta delta)
+{
+    LLRect r;
+    if (mAnimationPreview && previewRect(r) && r.pointInRect(x, y))
+    {
+        mAnimationPreview->zoom((F32)delta.mPrecise * -0.2f);
+        mAnimationPreview->requestUpdate();
+        return true;
+    }
+    return LLFloater::handleScrollWheel(x, y, delta);
+}
+
+void LLFloaterDirector::onMouseCaptureLost()
+{
+    gViewerWindow->showCursor();
 }
 
 //static
@@ -1404,6 +1592,157 @@ void LLFloaterDirector::refreshAnimateTab()
 }
 
 // ---------------------------------------------------------------------------
+// Animate tab: embedded preview dummy + Animation Explorer parity controls
+// ---------------------------------------------------------------------------
+// The animation the preview shows and the Explorer controls act on: the
+// selected signaled-animation row, else the pasted UUID.
+LLUUID LLFloaterDirector::previewAnimId() const
+{
+    const LLUUID sel = selectedAnimId();
+    return sel.notNull() ? sel : pasteAnimId();
+}
+
+// The in-world object playing a given animation on your own avatar (revoke /
+// blacklist target), or null when nothing on you is playing it.
+LLUUID LLFloaterDirector::animSourceObject(const LLUUID& anim_id) const
+{
+    if (anim_id.isNull() || !isAgentAvatarValid())
+    {
+        return LLUUID::null;
+    }
+    for (const auto& [object_id, source_anim_id] : gAgentAvatarp->mAnimationSources)
+    {
+        if (source_anim_id == anim_id)
+        {
+            return object_id;
+        }
+    }
+    return LLUUID::null;
+}
+
+void LLFloaterDirector::refreshAnimPreview()
+{
+    // create the dummy-avatar preview lazily, once the agent avatar is ready
+    if (!mAnimationPreview && mAnimPreviewCtrl && isAgentAvatarValid())
+    {
+        mAnimationPreview = new LLPreviewAnimation(mAnimPreviewCtrl->getRect().getWidth(),
+                                                   mAnimPreviewCtrl->getRect().getHeight());
+        mAnimationPreview->setZoom(2.0f);
+    }
+
+    const LLUUID focus = previewAnimId();
+
+    // auto-play the focus animation on the dummy, on loop; re-arm when the
+    // selection / pasted UUID changes
+    if (mAnimationPreview)
+    {
+        if (LLVOAvatar* dummy = mAnimationPreview->getDummyAvatar())
+        {
+            if (focus != mPreviewAnimId)
+            {
+                dummy->deactivateAllMotions();
+                dummy->startMotion(ANIM_AGENT_STAND, 0.0f);
+                mPreviewAnimId = focus;
+                if (focus.notNull())
+                {
+                    dummy->startMotion(focus, 0.0f);
+                }
+            }
+            else if (focus.notNull())
+            {
+                // keep it looping: force the loop flag once the asset resolves,
+                // and restart if a non-looping motion has run to the end
+                if (auto* motion = dynamic_cast<LLKeyframeMotion*>(dummy->findMotion(focus)))
+                {
+                    if (!motion->getLoop())
+                    {
+                        motion->setLoop(true);
+                        motion->setLoopOut(motion->getDuration());
+                    }
+                }
+                if (!dummy->isMotionActive(focus))
+                {
+                    dummy->startMotion(focus, 0.0f);
+                }
+            }
+        }
+    }
+
+    // Explorer controls: Stop works on any focus anim; revoke / blacklist need
+    // a source object on your own avatar (reason-tooltips when unavailable)
+    const LLUUID source = animSourceObject(focus);
+    const std::string no_focus_tip("Select an animation row or paste a UUID first");
+    const std::string no_source_tip(
+        "This animation isn't playing on your avatar, so there's no source to act on");
+
+    if (mAnimExStopBtn)
+    {
+        mAnimExStopBtn->setEnabled(focus.notNull());
+        setToolTipIfChanged(mAnimExStopBtn, focus.isNull() ? no_focus_tip
+            : std::string("Stop this animation on your own avatar and tell the region (Animation Explorer's Stop)"));
+    }
+    if (mAnimExRevokeBtn)
+    {
+        mAnimExRevokeBtn->setEnabled(focus.notNull() && source.notNull());
+        setToolTipIfChanged(mAnimExRevokeBtn, focus.isNull() ? no_focus_tip
+            : source.isNull() ? no_source_tip
+            : std::string("Stop it and revoke the source object's animation permissions"));
+    }
+    if (mAnimExBlacklistBtn)
+    {
+        mAnimExBlacklistBtn->setEnabled(focus.notNull() && source.notNull());
+        setToolTipIfChanged(mAnimExBlacklistBtn, focus.isNull() ? no_focus_tip
+            : source.isNull() ? no_source_tip
+            : std::string("Stop it and add the animation to the asset blacklist"));
+    }
+}
+
+void LLFloaterDirector::onAnimExStop()
+{
+    const LLUUID focus = previewAnimId();
+    if (focus.isNull() || !isAgentAvatarValid())
+    {
+        return;
+    }
+    gAgentAvatarp->stopMotion(focus);
+    gAgent.sendAnimationRequest(focus, ANIM_REQUEST_STOP);
+}
+
+void LLFloaterDirector::onAnimExStopAndRevoke()
+{
+    onAnimExStop();
+    const LLUUID source = animSourceObject(previewAnimId());
+    if (source.isNull())
+    {
+        return;
+    }
+    if (LLViewerObject* vo = gObjectList.findObject(source))
+    {
+        // the two permission bits revoke_permissions_on_object() uses
+        U32 permissions = SCRIPT_PERMISSIONS[SCRIPT_PERMISSION_TRIGGER_ANIMATION].permbit
+                         | SCRIPT_PERMISSIONS[SCRIPT_PERMISSION_OVERRIDE_ANIMATIONS].permbit;
+        gAgent.sendRevokePermissions(vo->getID(), permissions);
+    }
+}
+
+void LLFloaterDirector::onAnimExBlacklist()
+{
+    const LLUUID focus = previewAnimId();
+    const LLUUID source = animSourceObject(focus);
+    if (focus.isNull() || source.isNull())
+    {
+        return;
+    }
+    onAnimExStop();
+    std::string region_name;
+    if (gAgent.getRegion())
+    {
+        region_name = gAgent.getRegion()->getName();
+    }
+    ALAssetBlocklist::instance().addEntry(focus, source, region_name, LLAssetType::AT_ANIMATION);
+}
+
+// ---------------------------------------------------------------------------
 // Camera tab
 // ---------------------------------------------------------------------------
 //static
@@ -1518,6 +1857,24 @@ void LLFloaterDirector::onTakeStop()
     }
 }
 
+void LLFloaterDirector::onTakeClear()
+{
+    LLFlycamRecorder::instance().clear();
+}
+
+void LLFloaterDirector::onTakeSave()
+{
+    // callbacks route through the recorder singleton, so an early console
+    // close while the picker is up can't dangle
+    LLFilePickerReplyThread::startPicker(&takePickerSave, LLFilePicker::FFSAVE_XML,
+                                         "flycam_take.xml");
+}
+
+void LLFloaterDirector::onTakeLoad()
+{
+    LLFilePickerReplyThread::startPicker(&takePickerLoad, LLFilePicker::FFLOAD_XML, false);
+}
+
 void LLFloaterDirector::onTakeScrub()
 {
     // commit only fires on user interaction (refresh's setValue doesn't),
@@ -1556,6 +1913,23 @@ void LLFloaterDirector::refreshTakesTab()
     mTakeTimeText->setText(llformat("%.1f / %.1f s   %d keys",
                                     shown, duration, rec.getNumKeyframes()));
     mTakeStatusText->setText(rec.getStatus());
+
+    // Clear / Save need a take; Load is always available (same singleton the
+    // standalone Flycam Recorder floater drives)
+    mTakeClearBtn->setEnabled(have_take && !recording);
+    setToolTipIfChanged(mTakeClearBtn,
+        !have_take ? std::string("No take to clear")
+        : recording ? std::string("Stop recording first")
+                    : std::string("Discard the current take"));
+    mTakeSaveBtn->setEnabled(have_take && !recording);
+    setToolTipIfChanged(mTakeSaveBtn,
+        !have_take ? std::string("Record or load a take first")
+        : recording ? std::string("Stop recording first")
+                    : std::string("Save the take to a hand-editable XML file"));
+    setToolTipIfChanged(mTakeLoadBtn,
+        recording ? std::string("Stop recording first")
+                  : std::string("Load a take from an XML file"));
+    mTakeLoadBtn->setEnabled(!recording);
 }
 
 // ---------------------------------------------------------------------------
