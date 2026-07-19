@@ -3466,13 +3466,24 @@
     <key>PathShowOnionSkin</key>
     <map>
       <key>Comment</key>
-      <string>[ActorMover] Onion-skin: draw a faint humanoid ghost (stick figure + facing arrow) at each waypoint of a walkable path, tinted to the actor, so blocking reads without pressing ACTION. Shows only while the path preview (ActorMoverShowHeading) is on and the Actor Mover / Director floater is open. Off by default; adds no per-frame cost when off.</string>
+      <string>[ActorMover] Pose/blocking ghosts: draw translucent copies of the actor so blocking reads without pressing ACTION. With no path laid down, a ghost is shown at the actor's CURRENT position and at the planned DESTINATION; with a walkable path, a ghost is shown at every node. Uses a real translucent avatar impostor billboard when PathGhostUseImpostor is on (else a stick-figure fallback), tinted to the actor. Shows only while the path preview (ActorMoverShowHeading) is on and the Actor Mover / Director floater is open. Off by default; adds no per-frame cost when off.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
       <string>Boolean</string>
       <key>Value</key>
       <integer>0</integer>
+    </map>
+    <key>PathGhostUseImpostor</key>
+    <map>
+      <key>Comment</key>
+      <string>[ActorMover] When drawing pose/blocking ghosts (PathShowOnionSkin), stamp a REAL translucent avatar image (an impostor billboard snapshot of the actual rendered avatar) instead of a stick figure. The snapshot is a frozen 2D card of the current pose, camera-facing, refreshed when the camera swings around the actor; it is a blocking-preview aid, not a live second body. Turn off to use the lightweight stick-figure ghost. On by default; only does work while the ghost toggle is on and a mover/Director floater is open.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
     </map>
     <key>ActorMoverPathZDebug</key>
     <map>

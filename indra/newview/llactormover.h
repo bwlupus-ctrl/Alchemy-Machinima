@@ -402,6 +402,23 @@ public:
     // the Actor Mover floater is open.
     void renderHeadingPreview();
 
+    // ---- Pose/blocking ghosts: translucent REAL-avatar billboards -------------
+    // Refresh each roster actor's cached impostor snapshot (a billboard image of
+    // the actual rendered avatar) so renderHeadingPreview() can stamp it as a
+    // translucent, camera-facing "ghost" at the actor's current position, its
+    // planned destination, and every path node. Called ONCE per frame from the
+    // main render loop at the SAME site as LLVOAvatar::updateImpostors(), so the
+    // generateImpostor() re-render happens in the frame's dedicated impostor
+    // context (correct viewport / matrix save-restore). No-op with zero cost
+    // unless PathShowOnionSkin AND PathGhostUseImpostor are on AND a mover /
+    // Director floater is open. Regenerates an actor's snapshot only when stale
+    // (no texture yet, the camera swung far enough around the actor that the
+    // frozen 2D card would misread, or a max age elapsed) and at most a small
+    // budget of regens per frame, so it is never a per-frame full re-render.
+    // Caveat (documented): the snapshot is a FROZEN 2D card of the CURRENT pose;
+    // it is a blocking-preview aid, not a live skinned second body.
+    void updateGhostImpostors();
+
 private:
     LLActorMover() = default;
 
@@ -531,6 +548,24 @@ private:
     };
     // per-frame gaze solve helpers (file-scope math lives in the cpp)
     void gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bool advance);
+
+    // ---- Pose-ghost impostor cache (session-only) -----------------------------
+    // The pixel data itself lives in each actor's own LLVOAvatar::mImpostor
+    // render target (we do not own a texture); this only tracks WHEN we last
+    // refreshed that snapshot and from what camera angle, so the billboard stays
+    // a stable frozen card until it is meaningfully stale, plus the billboard
+    // centre height above the feet captured at that refresh (so a ghost stamped
+    // at a foot position sits at the right height without a per-frame probe).
+    struct GhostImpostor
+    {
+        bool      mValid           = false; // a usable snapshot has been captured
+        F32       mLastGenTime     = 0.f;   // frame seconds at last generateImpostor
+        LLVector3 mCamDir;                  // normalized actor->camera dir at capture
+        F32       mCenterAboveFoot = 0.9f;  // billboard centre height above feet, m
+    };
+    std::map<LLUUID, GhostImpostor> mGhostImpostors;
+    // is this actor's cached ghost snapshot stale (needs a regen)?
+    static bool ghostImpostorStale(LLVOAvatar* av, const GhostImpostor& gi);
 
     std::map<LLUUID, Move> mMoves;
     std::map<LLUUID, Path> mPaths;      // authored path per actor (session-only)

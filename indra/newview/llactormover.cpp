@@ -3200,13 +3200,16 @@ void drawCameraGizmo(const LLVector3& apex, const LLQuaternion& rot, F32 vfov,
     gGL.end();
 }
 
-// onion-skin: a faint humanoid SILHOUETTE at a node so a director can read the
-// blocking at each waypoint without pressing ACTION. A cheap stick figure --
-// spine, billboarded head, shoulders/arms, splayed legs -- plus a ground facing
-// arrow, tinted to the actor. Lines/triangles only, in the same no-depth UI
-// pass; deliberately NOT a skinned-mesh instance (too costly). base = foot/ground
-// point (agent frame), face = horizontal travel direction, height = figure
-// height (m), bb_right/bb_up = camera billboard axes for the head ring.
+// onion-skin FALLBACK: a humanoid SILHOUETTE at a ghost position so a director
+// can read the blocking without pressing ACTION. A cheap stick figure -- spine,
+// billboarded head, shoulders/arms, splayed legs -- plus a ground facing arrow,
+// tinted to the actor. Lines/triangles only, in the same no-depth UI pass;
+// deliberately NOT a skinned-mesh instance (too costly). Used only when a REAL
+// translucent avatar impostor is unavailable (see drawImpostorGhost). Now drawn
+// with a dark outline underlay + a readable body alpha so it reads over BOTH
+// bright and dark ground. base = foot/ground point (agent frame), face =
+// horizontal travel direction, height = figure height (m), bb_right/bb_up =
+// camera billboard axes for the head ring.
 void drawPoseGhost(const LLVector3& base, const LLVector3& face, F32 height,
                    const LLColor4& tint, const LLVector3& bb_right, const LLVector3& bb_up)
 {
@@ -3226,49 +3229,136 @@ void drawPoseGhost(const LLVector3& base, const LLVector3& face, F32 height,
     f.normalize();
     const LLVector3 perp(-f.mV[VY], f.mV[VX], 0.f);     // horizontal, across facing
 
-    const LLVector3 hipC = base + LLVector3(0.f, 0.f, hipZ);
-    const LLVector3 shC  = base + LLVector3(0.f, 0.f, shZ);
-    const LLVector3 shL  = shC - perp * halfsh;
-    const LLVector3 shR  = shC + perp * halfsh;
+    const LLVector3 hipC  = base + LLVector3(0.f, 0.f, hipZ);
+    const LLVector3 shC   = base + LLVector3(0.f, 0.f, shZ);
+    const LLVector3 shL   = shC - perp * halfsh;
+    const LLVector3 shR   = shC + perp * halfsh;
+    const LLVector3 hc    = base + LLVector3(0.f, 0.f, headZ);  // head centre
+    const LLVector3 handL = base + perp * (halfsh * 1.15f) + LLVector3(0.f, 0.f, hipZ * 0.72f);
+    const LLVector3 handR = base - perp * (halfsh * 1.15f) + LLVector3(0.f, 0.f, hipZ * 0.72f);
+    const LLVector3 footL = base - perp * halfft;
+    const LLVector3 footR = base + perp * halfft;
 
-    LLColor4 c = tint; c.mV[VW] = 0.30f;               // faint body
-    gGL.setLineWidth(2.f);
-    gGL.begin(LLRender::LINES);
-    gGL.color4fv(c.mV);
-    // spine + shoulders
-    gGL.vertex3fv(hipC.mV); gGL.vertex3fv(shC.mV);
-    gGL.vertex3fv(shL.mV);  gGL.vertex3fv(shR.mV);
-    // arms angling down toward the hands
-    gGL.vertex3fv(shL.mV);
-    gGL.vertex3fv((base + perp * (halfsh * 1.15f) + LLVector3(0.f, 0.f, hipZ * 0.72f)).mV);
-    gGL.vertex3fv(shR.mV);
-    gGL.vertex3fv((base - perp * (halfsh * 1.15f) + LLVector3(0.f, 0.f, hipZ * 0.72f)).mV);
-    // legs from the hip to splayed feet
-    gGL.vertex3fv(hipC.mV); gGL.vertex3fv((base - perp * halfft).mV);
-    gGL.vertex3fv(hipC.mV); gGL.vertex3fv((base + perp * halfft).mV);
-    // head: a small billboarded ring (always faces the viewer)
-    const LLVector3 hc = base + LLVector3(0.f, 0.f, headZ);
+    // emit the whole stick figure (spine/shoulders/arms/legs + billboarded head
+    // ring) as one LINES batch in the given color, at the current line width, so
+    // it can be drawn twice: a wide dark underlay then the bright body.
     const S32 SEG = 10;
-    for (S32 s = 0; s < SEG; ++s)
+    auto emit_figure = [&](const LLColor4& col)
     {
-        const F32 a = (F32)s       / SEG * F_TWO_PI;
-        const F32 b = (F32)(s + 1) / SEG * F_TWO_PI;
-        gGL.vertex3fv((hc + bb_right * (hr * cosf(a)) + bb_up * (hr * sinf(a))).mV);
-        gGL.vertex3fv((hc + bb_right * (hr * cosf(b)) + bb_up * (hr * sinf(b))).mV);
-    }
-    gGL.end();
+        gGL.begin(LLRender::LINES);
+        gGL.color4fv(col.mV);
+        gGL.vertex3fv(hipC.mV); gGL.vertex3fv(shC.mV);      // spine
+        gGL.vertex3fv(shL.mV);  gGL.vertex3fv(shR.mV);      // shoulders
+        gGL.vertex3fv(shL.mV);  gGL.vertex3fv(handL.mV);    // arms
+        gGL.vertex3fv(shR.mV);  gGL.vertex3fv(handR.mV);
+        gGL.vertex3fv(hipC.mV); gGL.vertex3fv(footL.mV);    // legs
+        gGL.vertex3fv(hipC.mV); gGL.vertex3fv(footR.mV);
+        for (S32 s = 0; s < SEG; ++s)                       // head ring (billboard)
+        {
+            const F32 a = (F32)s       / SEG * F_TWO_PI;
+            const F32 b = (F32)(s + 1) / SEG * F_TWO_PI;
+            gGL.vertex3fv((hc + bb_right * (hr * cosf(a)) + bb_up * (hr * sinf(a))).mV);
+            gGL.vertex3fv((hc + bb_right * (hr * cosf(b)) + bb_up * (hr * sinf(b))).mV);
+        }
+        gGL.end();
+    };
 
-    // ground facing arrow (a touch stronger than the body so heading reads)
-    LLColor4 ac = tint; ac.mV[VW] = 0.5f;
+    gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);   // lines, no texture
+    // dark outline underlay (wider) so the figure reads over any ground ...
+    gGL.setLineWidth(5.f);
+    emit_figure(LLColor4(0.f, 0.f, 0.f, 0.5f));
+    // ... then the readable body on top
+    LLColor4 c = tint; c.mV[VW] = 0.55f;
+    gGL.setLineWidth(2.f);
+    emit_figure(c);
+
+    // ground facing arrow (a touch stronger than the body so heading reads),
+    // with its own dark outline so it never washes out over the ground/ribbon
     const F32 AL = 0.5f;
     const LLVector3 g   = base + LLVector3(0.f, 0.f, 0.02f);
     const LLVector3 tip = g + f * AL;
     const LLVector3 al  = g + f * (AL * 0.55f) + perp * (AL * 0.28f);
     const LLVector3 ar  = g + f * (AL * 0.55f) - perp * (AL * 0.28f);
+    // outline: three thick dark edges around the arrowhead
+    gGL.setLineWidth(4.f);
+    gGL.begin(LLRender::LINES);
+    gGL.color4f(0.f, 0.f, 0.f, 0.55f);
+    gGL.vertex3fv(tip.mV); gGL.vertex3fv(al.mV);
+    gGL.vertex3fv(al.mV);  gGL.vertex3fv(ar.mV);
+    gGL.vertex3fv(ar.mV);  gGL.vertex3fv(tip.mV);
+    gGL.end();
+    // filled arrowhead
+    LLColor4 ac = tint; ac.mV[VW] = 0.7f;
     gGL.begin(LLRender::TRIANGLES);
     gGL.color4fv(ac.mV);
     gGL.vertex3fv(tip.mV); gGL.vertex3fv(al.mV); gGL.vertex3fv(ar.mV);
     gGL.end();
+}
+
+// REAL avatar ghost: stamp the actor's cached impostor snapshot (a billboard
+// image of the ACTUAL rendered avatar, produced by gPipeline.generateImpostor)
+// as a translucent, camera-facing quad centred at `center` (agent frame). This
+// mirrors LLVOAvatar::renderImpostor()'s billboard construction -- same
+// mImpostorDim half-extents projected onto the camera left/up basis -- but at an
+// arbitrary position and with a ghost alpha, so the director sees a translucent
+// copy of the real avatar rather than a stick figure. Returns false (draws
+// nothing) when the actor has no usable snapshot yet, so the caller falls back
+// to drawPoseGhost(). CAVEATS (inherent to impostors, documented in the report):
+// the card is a FROZEN 2D snapshot of the pose/appearance at capture and faces
+// the camera flat, so orbiting far from the capture angle reveals the flatness
+// until the snapshot is refreshed by updateGhostImpostors().
+bool drawImpostorGhost(LLVOAvatar* av, const LLVector3& center,
+                       const LLColor4& tint, F32 alpha)
+{
+    if (!av || !av->mImpostor.isComplete())
+    {
+        return false;
+    }
+    const LLVector2 dim = av->getImpostorDim();
+    if (dim.mV[0] <= 0.001f || dim.mV[1] <= 0.001f)
+    {
+        return false;
+    }
+    LLViewerCamera* cam = LLViewerCamera::getInstance();
+    LLVector3 at = center - cam->getOrigin();
+    if (at.normalize() < 1e-4f)
+    {
+        return false;
+    }
+    LLVector3 left = cam->getUpAxis() % at;
+    if (left.normalize() < 1e-4f)
+    {
+        return false;
+    }
+    LLVector3 up = at % left;
+    up.normalize();
+    left *= dim.mV[0];
+    up   *= dim.mV[1];
+
+    // translucent, camera-facing quad textured with the impostor snapshot. The
+    // snapshot already carries a per-texel alpha silhouette (transparent
+    // background), so alpha-blending it against a mostly-white tint*alpha color
+    // yields a clean translucent avatar cutout. A faint pull toward the actor
+    // hue keeps multiple actors' ghosts distinguishable without hiding the image.
+    LLGLEnable blend(GL_BLEND);
+    gGL.setSceneBlendType(LLRender::BT_ALPHA);
+    gGL.getTexUnit(0)->bind(&av->mImpostor);
+    const F32 t = 0.22f;
+    gGL.color4f(1.f - t + tint.mV[VX] * t,
+                1.f - t + tint.mV[VY] * t,
+                1.f - t + tint.mV[VZ] * t,
+                alpha);
+    gGL.begin(LLRender::TRIANGLES);
+    gGL.texCoord2f(0.f, 0.f); gGL.vertex3fv((center + left - up).mV);
+    gGL.texCoord2f(1.f, 0.f); gGL.vertex3fv((center - left - up).mV);
+    gGL.texCoord2f(1.f, 1.f); gGL.vertex3fv((center - left + up).mV);
+    gGL.texCoord2f(0.f, 0.f); gGL.vertex3fv((center + left - up).mV);
+    gGL.texCoord2f(1.f, 1.f); gGL.vertex3fv((center - left + up).mV);
+    gGL.texCoord2f(0.f, 1.f); gGL.vertex3fv((center + left + up).mV);
+    gGL.end();
+    gGL.flush();
+    gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
+    return true;
 }
 } // anonymous namespace
 
@@ -3294,9 +3384,13 @@ void LLActorMover::renderHeadingPreview()
 
     static LLCachedControl<F32> distance(gSavedSettings, "ActorMoverDistance", 6.f);
     static LLCachedControl<F32> heading(gSavedSettings, "ActorMoverHeading", 0.f);
-    // onion-skin: faint pose ghosts at each node. Opt-in, default off, so the
-    // overlay pass adds nothing per frame unless the director asks for it.
+    // pose/blocking ghosts: translucent copies of the actor at its current spot,
+    // its destination, and every path node. Opt-in, default off, so the overlay
+    // pass adds nothing per frame unless the director asks for it. PathGhostUse-
+    // Impostor picks the REAL-avatar impostor billboard (default) vs the cheap
+    // stick-figure fallback -- the fallback also covers "no snapshot captured yet".
     static LLCachedControl<bool> onion(gSavedSettings, "PathShowOnionSkin", false);
+    static LLCachedControl<bool> use_impostor(gSavedSettings, "PathGhostUseImpostor", true);
     const F32 dist = llmax((F32)distance, 0.1f);
 
     // same beacon-style local overlay as renderObjectBeacons(): UI shader, no
@@ -3332,6 +3426,22 @@ void LLActorMover::renderHeadingPreview()
 
     const LLUUID edit_actor = mEditActor;
     const S32    edit_node  = mEditNode;
+
+    // Ghost billboards are collected across the whole roster and drawn LAST, in a
+    // single far-to-near pass, so the translucent avatar cards blend correctly
+    // against each other (the UI 3D pass runs on a cleared depth buffer, so there
+    // is no scene depth to sort against -- painter order is what we control) and
+    // do not interleave with the opaque line/ribbon viz. Only populated when the
+    // ghost toggle is on, so the default-off path allocates nothing.
+    struct GhostItem
+    {
+        LLVOAvatar* mAv;
+        LLVector3   mFoot;      // ground point, agent frame
+        LLVector3   mFace;      // horizontal travel direction (stick fallback)
+        F32         mHeight;    // figure height for the stick fallback, m
+        LLColor4    mTint;      // actor hue
+    };
+    std::vector<GhostItem> ghosts;
 
     uuid_vec_t roster = getRoster();
     if (roster.empty())
@@ -3412,7 +3522,8 @@ void LLActorMover::renderHeadingPreview()
 
                 // onion-skin ghost of the actor's blocking at this node, facing
                 // the way it would travel through it (next node, or previous for
-                // the final node / the seam for a loop)
+                // the final node / the seam for a loop). Collected for the sorted
+                // ghost pass below (real impostor billboard, or stick fallback).
                 if (onion)
                 {
                     S32 fromIdx = i;
@@ -3429,7 +3540,7 @@ void LLActorMover::renderHeadingPreview()
                              - gAgent.getPosAgentFromGlobal(path.mNodes[fromIdx].mPosGlobal);
                     }
                     const F32 gh = path.mNodes[i].mRootAbove * 1.9f;
-                    drawPoseGhost(base, face, gh, col_mid, bb_right, bb_up);
+                    ghosts.push_back({ av, base, face, gh, col_mid });
                 }
 
                 // authored camera on this node: a frustum gizmo at the camera
@@ -3470,6 +3581,18 @@ void LLActorMover::renderHeadingPreview()
             origin.mV[VZ] += PATH_RIBBON_LIFT - av->getPelvisToFoot();   // just above ground
             const LLVector3 end = origin + dir * dist;
 
+            // pose ghosts at the CURRENT position and the planned DESTINATION so
+            // toggling ghost mode ALWAYS shows something even without a laid-down
+            // path (the visibility fix). Height for the stick fallback is derived
+            // from the actor's standing height; the impostor path uses its own
+            // captured dimensions and ignores this.
+            if (onion)
+            {
+                const F32 gh = llmax(1.2f, av->getPelvisToFoot() * 2.f);
+                ghosts.push_back({ av, origin, dir, gh, col_mid });
+                ghosts.push_back({ av, end,    dir, gh, col_mid });
+            }
+
             std::vector<LLVector3> pts{ origin, end };
             drawThickLine(pts, 0.10f, col_line);
 
@@ -3493,6 +3616,147 @@ void LLActorMover::renderHeadingPreview()
         }
     }
 
+    // ---- ghost pass: draw every collected pose ghost far-to-near --------------
+    // Real translucent avatar billboards when a snapshot exists (drawImpostor-
+    // Ghost), else the readable stick-figure fallback (drawPoseGhost). Sorted by
+    // camera distance so overlapping translucent cards blend correctly on the
+    // cleared-depth UI pass. NOTE (documented caveat): because this pass runs on
+    // a cleared depth buffer, world geometry does NOT occlude the ghosts -- like
+    // the rest of the path viz they read as a client overlay ON TOP of the scene.
+    if (!ghosts.empty())
+    {
+        const LLVector3 cam_pos = cam->getOrigin();
+        std::sort(ghosts.begin(), ghosts.end(),
+                  [&](const GhostItem& a, const GhostItem& b)
+                  {
+                      return (a.mFoot - cam_pos).magVecSquared()
+                           > (b.mFoot - cam_pos).magVecSquared();
+                  });
+        const F32 GHOST_ALPHA = 0.6f;
+        for (const GhostItem& g : ghosts)
+        {
+            // billboard centre = foot + the centre-above-foot height captured at
+            // snapshot time (or half the figure height when no snapshot exists)
+            F32 center_above = g.mHeight * 0.5f;
+            auto it = mGhostImpostors.find(g.mAv->getID());
+            if (it != mGhostImpostors.end() && it->second.mValid)
+            {
+                center_above = it->second.mCenterAboveFoot;
+            }
+            LLVector3 center = g.mFoot;
+            center.mV[VZ] += center_above;
+
+            bool drew = false;
+            if (use_impostor)
+            {
+                drew = drawImpostorGhost(g.mAv, center, g.mTint, GHOST_ALPHA);
+            }
+            if (!drew)
+            {
+                drawPoseGhost(g.mFoot, g.mFace, g.mHeight, g.mTint, bb_right, bb_up);
+            }
+        }
+        gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);   // leave UI state untextured
+    }
+
     gGL.setLineWidth(1.f);
     gGL.flush();
+}
+
+// ---------------------------------------------------------------------------
+// A cached ghost snapshot is stale when there is no usable texture yet, when a
+// max age has elapsed (catches pose / appearance / attachment changes we do not
+// otherwise track), or when the camera has swung far enough AROUND the actor
+// that the frozen 2D card would no longer read as the same view.
+bool LLActorMover::ghostImpostorStale(LLVOAvatar* av, const GhostImpostor& gi)
+{
+    if (!gi.mValid || !av->mImpostor.isComplete())
+    {
+        return true;
+    }
+    const F32 MAX_AGE = 2.0f;   // seconds
+    if ((F32)LLFrameTimer::getElapsedSeconds() - gi.mLastGenTime > MAX_AGE)
+    {
+        return true;
+    }
+    LLVector3 dir = LLViewerCamera::getInstance()->getOrigin()
+                  - (av->getRenderPosition() + av->getImpostorOffset());
+    if (dir.normalize() < 1e-4f)
+    {
+        return false;   // degenerate: keep what we have
+    }
+    const F32 COS_THRESH = 0.990f;   // ~8 degrees of camera swing
+    return (dir * gi.mCamDir) < COS_THRESH;
+}
+
+// ---------------------------------------------------------------------------
+void LLActorMover::updateGhostImpostors()
+{
+    // same gate as the preview: opt-in, impostor mode on, and an operator
+    // floater up. Any miss is an immediate zero-cost return (default no-op).
+    static LLCachedControl<bool> show(gSavedSettings, "ActorMoverShowHeading", true);
+    static LLCachedControl<bool> onion(gSavedSettings, "PathShowOnionSkin", false);
+    static LLCachedControl<bool> use_impostor(gSavedSettings, "PathGhostUseImpostor", true);
+    if (!show || !onion || !use_impostor)
+    {
+        return;
+    }
+    LLFloater* floaterp = LLFloaterReg::findInstance("actor_mover");
+    if (!floaterp || !floaterp->getVisible())
+    {
+        floaterp = LLFloaterReg::findInstance("director");
+        if (!floaterp || !floaterp->getVisible())
+        {
+            return;
+        }
+    }
+
+    uuid_vec_t roster = getRoster();
+    if (roster.empty())
+    {
+        roster.push_back(LLUUID::null);     // my avatar
+    }
+
+    // Budget: at most a couple of full avatar re-renders per frame, so a busy
+    // roster catches up over a few frames instead of spiking one frame. A static
+    // frame snapshot is fine for a blocking preview, so a small lag is invisible.
+    S32 regen_budget = 2;
+    for (const LLUUID& id : roster)
+    {
+        if (regen_budget <= 0)
+        {
+            break;
+        }
+        LLVOAvatar* av = resolve_actor(id);
+        if (!av || av->isDead() || !av->mDrawable || !av->getRootJoint())
+        {
+            continue;
+        }
+        GhostImpostor& gi = mGhostImpostors[av->getID()];
+        if (!ghostImpostorStale(av, gi))
+        {
+            continue;
+        }
+
+        // Render the ACTUAL avatar into its own impostor render target. Called
+        // here (the updateImpostors() site) so it runs in the frame's dedicated
+        // impostor context -- the caller in llviewerdisplay.cpp already brackets
+        // this with the viewport + projection/modelview save-restore.
+        gPipeline.generateImpostor(av);
+        --regen_budget;
+
+        gi.mValid       = av->mImpostor.isComplete();
+        gi.mLastGenTime = (F32)LLFrameTimer::getElapsedSeconds();
+        LLVector3 dir = LLViewerCamera::getInstance()->getOrigin()
+                      - (av->getRenderPosition() + av->getImpostorOffset());
+        dir.normalize();
+        gi.mCamDir = dir;
+        // billboard centre height above the feet at capture, so a ghost stamped
+        // at a foot position sits at the right height without a per-frame probe.
+        // renderPosition + impostorOffset is the avatar bbox centre (see
+        // LLVOAvatar::calculateSpatialExtents), and feet = root - pelvisToFoot.
+        const F32 foot_z   = av->getRootJoint()->getWorldPosition().mV[VZ] - av->getPelvisToFoot();
+        const F32 center_z = (av->getRenderPosition() + av->getImpostorOffset()).mV[VZ];
+        gi.mCenterAboveFoot = llmax(0.2f, center_z - foot_z);
+    }
 }

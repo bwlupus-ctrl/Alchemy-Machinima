@@ -89,7 +89,7 @@
      left="224"
      top="95"
      name="onion_skin_check"
-     tool_tip="Draw a faint ghost of the actor's blocking at each waypoint (with a facing arrow) so you can read the staging without pressing ACTION. Client-side overlay; shows with the path preview."
+     tool_tip="Show translucent copies of the actor so you can read the staging without pressing ACTION. With no path yet, ghosts appear at the actor's current spot and its destination; with a path, at every node. A real translucent avatar image by default (a frozen, camera-facing snapshot), or a stick figure if PathGhostUseImpostor is off. Client-side overlay; shows with the path preview."
      width="130" />
 
     <button

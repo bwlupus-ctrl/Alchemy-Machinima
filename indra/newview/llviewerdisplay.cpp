@@ -845,6 +845,14 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
 
                 LLVOAvatar::updateImpostors();
 
+                // [ActorMover] refresh translucent pose-ghost snapshots in the
+                // SAME dedicated impostor context (viewport + matrices are
+                // save-restored around this block). No-op with zero cost unless
+                // the ghost toggle + impostor mode are on and a mover/Director
+                // floater is open. The billboards themselves are drawn later in
+                // render_ui_3d() by renderHeadingPreview().
+                LLActorMover::instance().updateGhostImpostors();
+
                 set_current_projection(proj);
                 set_current_modelview(mod);
                 gGL.matrixMode(LLRender::MM_PROJECTION);
