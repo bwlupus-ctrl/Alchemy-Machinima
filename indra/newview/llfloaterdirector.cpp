@@ -42,6 +42,7 @@
 #include "llviewercontrol.h"        // gSavedSettings, LLCachedControl
 #include "llviewermenu.h"           // gMenuHolder, LLViewerMenuHolderGL
 #include "llviewerobjectlist.h"     // gObjectList
+#include "llmotion.h"               // LLMotion::setPriorityOverride (play-local priority)
 #include "llvoavatar.h"
 #include "llvoavatarself.h"         // gAgentAvatarp, isAgentAvatarValid()
 
@@ -1116,6 +1117,27 @@ void LLFloaterDirector::onAnimSetLoco()
     }
 }
 
+// Apply the client-side play-local priority (DirectorAnimPlayLocalPriority) to a
+// just-started local anim. -1 = baked (no override, byte-identical); 0..4 force
+// LOW..HIGHEST. Per-instance (see LLMotion::setPriorityOverride) so other avatars
+// are unaffected; cleared automatically when the anim stops.
+static void apply_play_local_priority(LLVOAvatar* av, const LLUUID& anim)
+{
+    if (!av || anim.isNull())
+    {
+        return;
+    }
+    static LLCachedControl<S32> prio(gSavedSettings, "DirectorAnimPlayLocalPriority", -1);
+    if (prio < 0)
+    {
+        return;
+    }
+    if (LLMotion* m = av->findMotion(anim))
+    {
+        m->setPriorityOverride(prio);
+    }
+}
+
 void LLFloaterDirector::onAnimPlayLocal(bool play)
 {
     const LLUUID anim = selectedAnimId();
@@ -1126,6 +1148,10 @@ void LLFloaterDirector::onAnimPlayLocal(bool play)
     }
     // client-side only: nothing is sent to the sim
     play ? (void)av->startMotion(anim) : (void)av->stopMotion(anim);
+    if (play)
+    {
+        apply_play_local_priority(av, anim);
+    }
 }
 
 void LLFloaterDirector::onPastePlayLocal(bool play)
@@ -1137,6 +1163,10 @@ void LLFloaterDirector::onPastePlayLocal(bool play)
         return;
     }
     play ? (void)av->startMotion(anim) : (void)av->stopMotion(anim);
+    if (play)
+    {
+        apply_play_local_priority(av, anim);
+    }
 }
 
 void LLFloaterDirector::onPasteSetLoco()

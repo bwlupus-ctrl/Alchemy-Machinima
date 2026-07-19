@@ -51,6 +51,7 @@ LLMotion::LLMotion( const LLUUID &id ) :
     mSendStopTimestamp(F32_MAX),
     mResidualWeight(0.f),
     mFadeWeight(1.f),
+    mPriorityOverride(-1),
     mDeactivateCallback(nullptr),
     mDeactivateCallbackUserData(nullptr)
 {
@@ -102,11 +103,10 @@ void LLMotion::fadeIn()
 void LLMotion::addJointState(const LLPointer<LLJointState>& jointState)
 {
     mPose.addJointState(jointState);
-    S32 priority = jointState->getPriority();
-    if (priority == LLJoint::USE_MOTION_PRIORITY)
-    {
-        priority = getPriority();
-    }
+    // Honor any per-instance priority override here too, so the joint signature
+    // this builds agrees with what the pose blender will use. With no override
+    // this is the stock rule (USE_MOTION_PRIORITY -> motion base priority).
+    S32 priority = getJointPriority(jointState);
 
     U32 usage = jointState->getUsage();
 
@@ -120,6 +120,46 @@ void LLMotion::addJointState(const LLPointer<LLJointState>& jointState)
     mJointSignature[0][joint_num] = (usage & LLJointState::POS) ? (0xff >> (7 - priority)) : 0;
     mJointSignature[1][joint_num] = (usage & LLJointState::ROT) ? (0xff >> (7 - priority)) : 0;
     mJointSignature[2][joint_num] = (usage & LLJointState::SCALE) ? (0xff >> (7 - priority)) : 0;
+}
+
+//-----------------------------------------------------------------------------
+// setPriorityOverride()
+//-----------------------------------------------------------------------------
+void LLMotion::setPriorityOverride(S32 priority)
+{
+    if (priority == mPriorityOverride)
+    {
+        return;
+    }
+    mPriorityOverride = priority;
+
+    // Rebuild THIS instance's joint signature so the motion controller's
+    // per-joint update/mask logic agrees with the overridden blend priority.
+    // Both mPose and mJointSignature are per-instance; the shared, per-asset
+    // JointMotionList (cached in LLKeyframeDataCache) is never touched here, so
+    // other avatars playing the same asset are unaffected. If the asset has not
+    // finished loading yet mPose is empty and this loop is a no-op -- the
+    // signature is then (re)built with the override honored when the joint
+    // states are added in setupPose()/addJointState().
+    for (LLJointState* jsp = mPose.getFirstJointState(); jsp; jsp = mPose.getNextJointState())
+    {
+        LLJoint* joint = jsp->getJoint();
+        if (!joint)
+        {
+            continue;
+        }
+        S32 joint_num = joint->getJointNum();
+        if ((joint_num < 0) || (joint_num >= (S32)LL_CHARACTER_MAX_ANIMATED_JOINTS))
+        {
+            continue;
+        }
+        U32 usage = jsp->getUsage();
+        // keep the signature shift well-defined for any override value
+        S32 pri = llclamp((S32)getJointPriority(jsp), (S32)LLJoint::LOW_PRIORITY, (S32)LL_CHARACTER_MAX_PRIORITY);
+        mJointSignature[0][joint_num] = (usage & LLJointState::POS)   ? (U8)(0xff >> (7 - pri)) : 0;
+        mJointSignature[1][joint_num] = (usage & LLJointState::ROT)   ? (U8)(0xff >> (7 - pri)) : 0;
+        mJointSignature[2][joint_num] = (usage & LLJointState::SCALE) ? (U8)(0xff >> (7 - pri)) : 0;
+    }
 }
 
 void LLMotion::setDeactivateCallback( void (*cb)(void *), void* userdata )
@@ -158,6 +198,14 @@ void LLMotion::deactivate()
 {
     mActive = false;
     mPose.setWeight(0.f);
+
+    // A client-side priority override does not survive a stop: clear it and
+    // restore the baked joint signature so a later replay of this instance
+    // starts from the asset's real priority unless the caller re-applies one.
+    if (mPriorityOverride >= 0)
+    {
+        setPriorityOverride(-1);
+    }
 
     if (mDeactivateCallback)
     {

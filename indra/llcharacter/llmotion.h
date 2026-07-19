@@ -87,6 +87,33 @@ public:
 
     F32 getFadeWeight() const { return mFadeWeight; }
 
+    //-------------------------------------------------------------------------
+    // Client-side, PER-INSTANCE priority override (machinima capture).
+    // -1 == none (baked priority, byte-identical to stock). When set, THIS
+    // motion instance blends at the overridden priority WITHOUT mutating the
+    // shared, per-asset motion data (LLKeyframeMotion::mJointMotionList, cached
+    // in LLKeyframeDataCache). A second avatar playing the same asset has its
+    // own motion instance with its own (default -1) override, so it is
+    // unaffected. Cleared automatically on deactivate().
+    //-------------------------------------------------------------------------
+    void setPriorityOverride(S32 priority);
+    S32  getPriorityOverride() const { return mPriorityOverride; }
+
+    // Effective blend priority for a single joint state, honoring any override.
+    // Used by BOTH the pose blender and the per-instance joint-signature build
+    // so the two always agree. When no override is set this reproduces the
+    // stock rule (USE_MOTION_PRIORITY -> motion base priority, else the joint's
+    // own priority) exactly. Reads only; never mutates shared data.
+    LLJoint::JointPriority getJointPriority(const LLJointState* jsp)
+    {
+        if (mPriorityOverride >= 0)
+        {
+            return (LLJoint::JointPriority)mPriorityOverride;
+        }
+        LLJoint::JointPriority p = jsp->getPriority();
+        return (p == LLJoint::USE_MOTION_PRIORITY) ? getPriority() : p;
+    }
+
     F32 getStopTime() const { return mStopTimestamp; }
 
     virtual void setStopTime(F32 time);
@@ -184,6 +211,7 @@ protected:
     F32 mSendStopTimestamp;     // time when simulator should be told to stop this motion
     F32 mResidualWeight;        // blend weight at beginning of stop motion phase
     F32 mFadeWeight;            // for fading in and out based on LOD
+    S32 mPriorityOverride;      // client-side per-instance priority override; -1 = none (baked)
     U8  mJointSignature[3][LL_CHARACTER_MAX_ANIMATED_JOINTS];   // signature of which joints are animated at what priority
     void (*mDeactivateCallback)(void* data);
     void* mDeactivateCallbackUserData;

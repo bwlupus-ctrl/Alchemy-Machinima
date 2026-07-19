@@ -507,6 +507,23 @@
              top="216"
              name="btn_paste_setloco"
              width="88" />
+            <combo_box
+             control_name="DirectorAnimPlayLocalPriority"
+             follows="left|top"
+             height="20"
+             layout="topleft"
+             left="274"
+             top="216"
+             name="play_local_priority_combo"
+             tool_tip="Client-side priority both Play local actions use (the selected row and the pasted UUID). Local playback only; per-instance, so other avatars are unaffected. Baked keeps the animation's own priority; higher wins over lower when animations overlap."
+             width="88">
+                <combo_box.item label="Baked" name="dpl_baked" value="-1" />
+                <combo_box.item label="Pri 0 - Low" name="dpl_low" value="0" />
+                <combo_box.item label="Pri 1 - Medium" name="dpl_med" value="1" />
+                <combo_box.item label="Pri 2 - High" name="dpl_high" value="2" />
+                <combo_box.item label="Pri 3 - Higher" name="dpl_higher" value="3" />
+                <combo_box.item label="Pri 4 - Highest" name="dpl_highest" value="4" />
+            </combo_box>
             <text
              follows="left|top"
              height="14"

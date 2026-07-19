@@ -20,6 +20,7 @@
 #include "llflycamrecorder.h"       // sync-to-take: the recorder playhead is the clock
 #include "llfloaterreg.h"           // heading preview only draws with the floater open
 #include "llframetimer.h"           // per-frame idempotency for applyOverride()
+#include "llmotion.h"               // LLMotion::setPriorityOverride (custom-anim priority)
 #include "llgl.h"
 #include "llglstates.h"             // LLGLSUIDefault (heading preview)
 #include "lljoint.h"
@@ -69,6 +70,29 @@ LLUUID locomotion_anim(const LLUUID& actor_id)
         }
     }
     return ANIM_AGENT_WALK;
+}
+
+// Apply the client-side custom-anim priority (ActorMoverCustomAnimPriority) to a
+// just-started loco motion. -1 = baked (no override, byte-identical); 0..4 force
+// LOW..HIGHEST. Skipped for the built-in system walk. The override is PER-INSTANCE
+// (see LLMotion::setPriorityOverride) so other avatars are unaffected; it also
+// survives the not-yet-loaded case (the instance exists in STATUS_HOLD and honors
+// the override when its joints load). Cleared automatically when the anim stops.
+void apply_custom_anim_priority(LLVOAvatar* av, const LLUUID& anim)
+{
+    if (!av || anim.isNull() || anim == ANIM_AGENT_WALK)
+    {
+        return;
+    }
+    static LLCachedControl<S32> prio(gSavedSettings, "ActorMoverCustomAnimPriority", -1);
+    if (prio < 0)
+    {
+        return;
+    }
+    if (LLMotion* m = av->findMotion(anim))
+    {
+        m->setPriorityOverride(prio);
+    }
 }
 
 // ===========================================================================
@@ -1515,6 +1539,7 @@ void LLActorMover::start(const LLUUID& actor_id)
         mMoves[av->getID()] = mv;
 
         av->startMotion(mv.mAnim);          // cadence is retimed per frame by ground speed
+        apply_custom_anim_priority(av, mv.mAnim);
         LL_INFOS("ActorMover") << "ghost follow walk: " << av->getID() << LL_ENDL;
         return;
     }
@@ -1553,6 +1578,7 @@ void LLActorMover::start(const LLUUID& actor_id)
         // cadence-lock seeds from the path speed; advancePath() then tracks the
         // INSTANTANEOUS ground speed (ease + per-node overrides) each frame
         av->startMotion(mv.mAnim);
+        apply_custom_anim_priority(av, mv.mAnim);
         av->setAnimTimeFactor(llclamp(mv.mSpeed, 0.05f, 10.f) / mv.mNominal);
 
         LL_INFOS("ActorMover") << "ghost path walk: " << av->getID()
@@ -1591,6 +1617,7 @@ void LLActorMover::start(const LLUUID& actor_id)
     // plants match the traversal at ANY speed. Local motion + local clock:
     // nothing is sent to the sim (custom anims play locally too).
     av->startMotion(mv.mAnim);
+    apply_custom_anim_priority(av, mv.mAnim);
     av->setAnimTimeFactor(mv.mSpeed / llmax((F32)nominal, 0.5f));
 
     LL_INFOS("ActorMover") << "ghost move: " << av->getID() << " speed " << mv.mSpeed
@@ -1894,6 +1921,7 @@ void LLActorMover::resumeMove(const LLUUID& key, Move& mv, LLVOAvatar* av)
         if (!mv.mArrived && mv.mAnim.notNull())
         {
             av->startMotion(mv.mAnim);
+            apply_custom_anim_priority(av, mv.mAnim);
             av->setAnimTimeFactor(llclamp(mv.mSpeed, 0.05f, 10.f)
                                   / llmax(mv.mNominal, 0.5f));
         }
@@ -2181,6 +2209,7 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
             if (mv.mAnim.notNull())
             {
                 av->startMotion(mv.mAnim);
+                apply_custom_anim_priority(av, mv.mAnim);
             }
             mv.mLastDwellNode = mv.mDwellNode;
             mv.mDwellNode = -1;

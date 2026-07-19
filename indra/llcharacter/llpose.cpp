@@ -488,14 +488,12 @@ bool LLPoseBlender::addMotion(LLMotion* motion)
             joint_blender = mJointStateBlenderPool[jointp];
         }
 
-        if (jsp->getPriority() == LLJoint::USE_MOTION_PRIORITY)
-        {
-            joint_blender->addJointState(jsp, motion->getPriority(), motion->getBlendType() == LLMotion::ADDITIVE_BLEND);
-        }
-        else
-        {
-            joint_blender->addJointState(jsp, jsp->getPriority(), motion->getBlendType() == LLMotion::ADDITIVE_BLEND);
-        }
+        // getJointPriority() applies the stock rule (USE_MOTION_PRIORITY -> the
+        // motion's base priority, else the joint's own priority) and folds in
+        // any per-instance client-side priority override. It never mutates the
+        // shared per-asset data, so other avatars playing the same asset blend
+        // at the baked priority.
+        joint_blender->addJointState(jsp, motion->getJointPriority(jsp), motion->getBlendType() == LLMotion::ADDITIVE_BLEND);
 
         // add it to our list of active blenders
         if (std::find(mActiveBlenders.begin(), mActiveBlenders.end(), joint_blender) == mActiveBlenders.end())

@@ -271,7 +271,24 @@
          max_length_chars="36"
          name="custom_anim_editor"
          tool_tip="Animation asset UUID. Use the Animation Explorer's 'Send to Actor Mover' to fill this"
-         width="354" />
+         width="240" />
+        <combo_box
+         control_name="ActorMoverCustomAnimPriority"
+         follows="left|top"
+         height="20"
+         layout="topleft"
+         left="256"
+         top="282"
+         name="custom_anim_priority_combo"
+         tool_tip="Client-side priority the custom walk plays at (local playback only; per-instance, so other avatars are unaffected). Baked keeps the animation's own priority. Higher wins over lower when animations overlap."
+         width="108">
+            <combo_box.item label="Baked" name="camp_baked" value="-1" />
+            <combo_box.item label="Pri 0 - Low" name="camp_low" value="0" />
+            <combo_box.item label="Pri 1 - Medium" name="camp_med" value="1" />
+            <combo_box.item label="Pri 2 - High" name="camp_high" value="2" />
+            <combo_box.item label="Pri 3 - Higher" name="camp_higher" value="3" />
+            <combo_box.item label="Pri 4 - Highest" name="camp_highest" value="4" />
+        </combo_box>
     </panel>
 
     <button

@@ -111,6 +111,9 @@ public:
 
     // motions must report their priority
     virtual LLJoint::JointPriority getPriority() {
+        // client-side per-instance override wins WITHOUT touching the shared,
+        // per-asset mJointMotionList->mBasePriority (see LLMotion::setPriorityOverride)
+        if (mPriorityOverride >= 0) return (LLJoint::JointPriority)mPriorityOverride;
         if (mJointMotionList) return mJointMotionList->mBasePriority;
         else return LLJoint::LOW_PRIORITY;
     }

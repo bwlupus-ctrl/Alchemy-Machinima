@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <floater
  legacy_header_height="18"
- height="241"
+ height="269"
  layout="topleft"
  name="preview_anim"
  help_topic="preview_anim"
@@ -66,6 +66,35 @@
      width="160">
         Only you can see
     </text>
+    <text
+     type="string"
+     length="1"
+     follows="left|top"
+     font="SansSerif"
+     height="19"
+     layout="topleft"
+     left="10"
+     name="priority_lbl"
+     top_pad="7"
+     width="90">
+        Play priority:
+    </text>
+    <combo_box
+     follows="left|top"
+     height="20"
+     layout="topleft"
+     left_pad="4"
+     top_delta="-2"
+     name="priority_combo"
+     tool_tip="CLIENT-SIDE / LOCAL priority for this playback only. Baked keeps the animation's own priority (default, no change). A higher priority wins over lower when animations overlap. Play in World still shows other people the baked priority; this only changes your own local view (the capture case)."
+     width="150">
+        <combo_box.item label="Baked (default)" name="pri_baked" value="-1" />
+        <combo_box.item label="0 - Low" name="pri_low" value="0" />
+        <combo_box.item label="1 - Medium" name="pri_med" value="1" />
+        <combo_box.item label="2 - High" name="pri_high" value="2" />
+        <combo_box.item label="3 - Higher" name="pri_higher" value="3" />
+        <combo_box.item label="4 - Highest" name="pri_highest" value="4" />
+    </combo_box>
     <text
      type="string"
      length="1"

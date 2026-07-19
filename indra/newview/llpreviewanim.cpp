@@ -28,6 +28,8 @@
 
 #include "llpreviewanim.h"
 #include "llbutton.h"
+#include "llcombobox.h"
+#include "llmotion.h"         // LLMotion::setPriorityOverride (client-side priority)
 #include "llresmgr.h"
 #include "llinventory.h"
 #include "llvoavatarself.h"
@@ -54,6 +56,13 @@ bool LLPreviewAnim::postBuild()
 {
     childSetCommitCallback("desc", LLPreview::onText, this);
     getChild<LLLineEditor>("desc")->setPrevalidate(&LLTextValidate::validateASCIIPrintableNoPipe);
+
+    // Default the client-side priority selector to "Baked (default)" (first
+    // item, value -1) so an untouched floater is byte-identical to stock.
+    if (LLComboBox* prio = findChild<LLComboBox>("priority_combo"))
+    {
+        prio->selectFirstItem();
+    }
     getChild<LLTextBox>("adv_trigger")->setClickedCallback(boost::bind(&LLPreviewAnim::showAdvanced, this));
     pAdvancedStatsTextBox = getChild<LLTextBox>("AdvancedStats");
 
@@ -105,6 +114,12 @@ void LLPreviewAnim::play(const LLSD& param)
 
         if (getChild<LLUICtrl>(btn_name)->getValue().asBoolean() )
         {
+            // Client-side, per-instance priority for this playback. "Baked
+            // (default)" is -1 == no override == byte-identical to stock. This
+            // never mutates the shared per-asset data; a "Play in World" still
+            // shows other viewers the baked priority. See LLMotion::setPriorityOverride.
+            mPriorityOverride = getChild<LLUICtrl>("priority_combo")->getValue().asInteger();
+
             if("Inworld" == btn_name)
             {
                 gAgent.sendAnimationRequest(itemID, ANIM_REQUEST_START);
@@ -119,6 +134,11 @@ void LLPreviewAnim::play(const LLSD& param)
             {
                 mItemID = itemID;
                 mDidStart = false;
+                // Apply immediately for the common (already-cached) local case.
+                // draw() re-applies once more when the motion first goes active,
+                // covering the async asset-load / in-world sim-echo ordering
+                // where the instance is not resolvable synchronously here.
+                motion->setPriorityOverride(mPriorityOverride);
             }
         }
         else
@@ -154,6 +174,9 @@ void LLPreviewAnim::draw()
                 if (item && motion)
                 {
                     motion->setName(item->getName());
+                    // (re)apply the chosen client-side priority now that the
+                    // motion instance actually exists (async-load / in-world case)
+                    motion->setPriorityOverride(mPriorityOverride);
                 }
                 this->mDidStart = true;
             }

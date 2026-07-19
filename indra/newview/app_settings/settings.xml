@@ -3507,6 +3507,28 @@
       <key>Value</key>
       <string />
     </map>
+    <key>ActorMoverCustomAnimPriority</key>
+    <map>
+      <key>Comment</key>
+      <string>[ActorMover] Client-side priority the custom locomotion animation plays at while ghost-moving. -1 = baked (use the animation's own priority); 0..4 = force LOW..HIGHEST. Local playback only; per-instance, so other avatars are unaffected.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>-1</integer>
+    </map>
+    <key>DirectorAnimPlayLocalPriority</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Client-side priority the Animate tab's Play local uses (selected row and pasted UUID). -1 = baked (use the animation's own priority); 0..4 = force LOW..HIGHEST. Local playback only; per-instance, so other avatars are unaffected.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>-1</integer>
+    </map>
     <key>AnimExplorerCaptureAll</key>
     <map>
       <key>Comment</key>
