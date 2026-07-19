@@ -24,7 +24,8 @@
      top="4"
      name="CinematicCamEnabled"
      tool_tip="Takes over the camera. Uncheck to return to the normal camera."
-     width="180" />
+     width="167" />
+    <button follows="left|top" height="18" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamEnabled" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamEnabled" />
     <combo_box
      control_name="CinematicCamMode"
      follows="left|top"
@@ -34,7 +35,7 @@
      top_delta="-1"
      name="CinematicCamMode"
      tool_tip="Camera motion pattern"
-     width="110">
+     width="97">
         <combo_box.item label="Bone Lock" name="cc_bone" value="1" />
         <combo_box.item label="Orbit" name="cc_orbit" value="2" />
         <combo_box.item label="Fly Hover" name="cc_hover" value="3" />
@@ -70,6 +71,7 @@
         <combo_box.item label="Floating Close-Up" name="cc_float" value="33" />
         <combo_box.item label="Tilt Whip" name="cc_tiltwhip" value="34" />
     </combo_box>
+    <button follows="left|top" height="20" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamMode" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamMode" />
     <check_box
      control_name="CinematicCamUseSelected"
      follows="left|top"
@@ -80,7 +82,8 @@
      top_pad="5"
      name="CinematicCamUseSelected"
      tool_tip="Follow the selected avatar instead of yourself (falls back to you if nothing valid is selected)"
-     width="150" />
+     width="137" />
+    <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamUseSelected" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamUseSelected" />
     <check_box
      control_name="CinematicCamLookAtHead"
      follows="left|top"
@@ -91,7 +94,8 @@
      top_delta="0"
      name="CinematicCamLookAtHead"
      tool_tip="Patterns aim at the head joint instead of chest height"
-     width="100" />
+     width="87" />
+    <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamLookAtHead" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamLookAtHead" />
     <check_box
      control_name="CinematicCamUseOperator"
      follows="left|top"
@@ -102,7 +106,8 @@
      top_pad="4"
      name="CinematicCamUseOperator"
      tool_tip="Route the cinematic camera through the procedural handheld operator for organic texture"
-     width="140" />
+     width="127" />
+    <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamUseOperator" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamUseOperator" />
     <spinner
      control_name="CinematicCamDutchAngle"
      decimal_digits="0"
@@ -118,7 +123,8 @@
      top_delta="0"
      name="CinematicCamDutchAngle"
      tool_tip="Dutch (tilt) angle in deg, applied to every mode. 0 = level"
-     width="110" />
+     width="97" />
+    <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamDutchAngle" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamDutchAngle" />
     <slider
      control_name="CinematicCamSmoothing"
      decimal_digits="2"
@@ -135,7 +141,8 @@
      top_pad="6"
      name="CinematicCamSmoothing"
      tool_tip="Temporal smoothing in seconds. 0 = rigid lock (true GoPro), higher = steadicam glide"
-     width="176" />
+     width="163" />
+    <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamSmoothing" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamSmoothing" />
     <spinner
      control_name="CinematicCamFrameOffsetUp"
      decimal_digits="2"
@@ -151,7 +158,8 @@
      top_delta="0"
      name="CinematicCamFrameOffsetUp"
      tool_tip="Raise/lower the framing point (m) for every target-framing mode. Not applied in Bone Lock (use its mount offsets)"
-     width="118" />
+     width="105" />
+    <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamFrameOffsetUp" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamFrameOffsetUp" />
     <text
      follows="left|top"
      halign="left"
@@ -231,7 +239,7 @@
          top_pad="4"
          name="CinematicCamJoint"
          tool_tip="Skeleton joint to mount the camera on (type any joint name, including Bento bones)"
-         width="140">
+         width="127">
             <combo_box.item label="mHead" name="j_head" value="mHead" />
             <combo_box.item label="mNeck" name="j_neck" value="mNeck" />
             <combo_box.item label="mChest" name="j_chest" value="mChest" />
@@ -247,30 +255,38 @@
             <combo_box.item label="mFootRight" name="j_footr" value="mFootRight" />
             <combo_box.item label="mFootLeft" name="j_footl" value="mFootLeft" />
         </combo_box>
+        <button follows="left|top" height="20" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamJoint" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamJoint" />
         <check_box
          control_name="CinematicCamBoneHorizonLock"
          follows="left|top" height="16" label="Level horizon" layout="topleft" left_pad="8" top_delta="2"
          name="CinematicCamBoneHorizonLock"
          tool_tip="Keep the horizon level (gimbal) instead of rolling with the bone"
-         width="120" />
+         width="107" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBoneHorizonLock" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBoneHorizonLock" />
         <spinner control_name="CinematicCamBoneOffsetForward" decimal_digits="2" follows="left|top" height="16" increment="0.05"
          label="Fwd" label_width="28" layout="topleft" left="12" max_val="3" min_val="-3" top_pad="6"
-         name="CinematicCamBoneOffsetForward" tool_tip="Mount offset forward of the joint (m)" width="94" />
+         name="CinematicCamBoneOffsetForward" tool_tip="Mount offset forward of the joint (m)" width="81" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBoneOffsetForward" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBoneOffsetForward" />
         <spinner control_name="CinematicCamBoneOffsetLeft" decimal_digits="2" follows="left|top" height="16" increment="0.05"
          label="Left" label_width="28" layout="topleft" left_pad="6" max_val="3" min_val="-3" top_delta="0"
-         name="CinematicCamBoneOffsetLeft" tool_tip="Mount offset left of the joint (m)" width="94" />
+         name="CinematicCamBoneOffsetLeft" tool_tip="Mount offset left of the joint (m)" width="81" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBoneOffsetLeft" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBoneOffsetLeft" />
         <spinner control_name="CinematicCamBoneOffsetUp" decimal_digits="2" follows="left|top" height="16" increment="0.05"
          label="Up" label_width="24" layout="topleft" left_pad="6" max_val="3" min_val="-3" top_delta="0"
-         name="CinematicCamBoneOffsetUp" tool_tip="Mount offset above the joint (m)" width="90" />
+         name="CinematicCamBoneOffsetUp" tool_tip="Mount offset above the joint (m)" width="77" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBoneOffsetUp" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBoneOffsetUp" />
         <spinner control_name="CinematicCamBoneAimYaw" decimal_digits="0" follows="left|top" height="16" increment="5"
          label="Yaw" label_width="28" layout="topleft" left="12" max_val="180" min_val="-180" top_pad="5"
-         name="CinematicCamBoneAimYaw" tool_tip="Aim trim yaw (deg)" width="94" />
+         name="CinematicCamBoneAimYaw" tool_tip="Aim trim yaw (deg)" width="81" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBoneAimYaw" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBoneAimYaw" />
         <spinner control_name="CinematicCamBoneAimPitch" decimal_digits="0" follows="left|top" height="16" increment="5"
          label="Pitch" label_width="32" layout="topleft" left_pad="6" max_val="180" min_val="-180" top_delta="0"
-         name="CinematicCamBoneAimPitch" tool_tip="Aim trim pitch (deg)" width="98" />
+         name="CinematicCamBoneAimPitch" tool_tip="Aim trim pitch (deg)" width="85" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBoneAimPitch" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBoneAimPitch" />
         <spinner control_name="CinematicCamBoneAimRoll" decimal_digits="0" follows="left|top" height="16" increment="5"
          label="Roll" label_width="26" layout="topleft" left_pad="6" max_val="180" min_val="-180" top_delta="0"
-         name="CinematicCamBoneAimRoll" tool_tip="Aim trim roll (deg)" width="92" />
+         name="CinematicCamBoneAimRoll" tool_tip="Aim trim roll (deg)" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBoneAimRoll" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBoneAimRoll" />
     </panel>
 
     <panel name="panel_mode_orbit" left="0" top="162" width="320" height="98"
@@ -280,16 +296,20 @@
         </text>
         <spinner control_name="CinematicCamOrbitRadius" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="Radius" label_width="42" layout="topleft" left="12" max_val="30" min_val="0.5" top_pad="6"
-         name="CinematicCamOrbitRadius" tool_tip="Orbit radius (m)" width="104" />
+         name="CinematicCamOrbitRadius" tool_tip="Orbit radius (m)" width="91" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamOrbitRadius" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamOrbitRadius" />
         <spinner control_name="CinematicCamOrbitSpeed" decimal_digits="0" follows="left|top" height="16" increment="5"
          label="Speed" label_width="40" layout="topleft" left_pad="6" max_val="180" min_val="-180" top_delta="0"
-         name="CinematicCamOrbitSpeed" tool_tip="Orbit speed (deg/s); negative reverses" width="100" />
+         name="CinematicCamOrbitSpeed" tool_tip="Orbit speed (deg/s); negative reverses" width="87" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamOrbitSpeed" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamOrbitSpeed" />
         <spinner control_name="CinematicCamOrbitHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="Ht" label_width="20" layout="topleft" left_pad="6" max_val="20" min_val="-5" top_delta="0"
-         name="CinematicCamOrbitHeight" tool_tip="Height above the subject (m)" width="84" />
+         name="CinematicCamOrbitHeight" tool_tip="Height above the subject (m)" width="71" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamOrbitHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamOrbitHeight" />
         <spinner control_name="CinematicCamOrbitBob" decimal_digits="2" follows="left|top" height="16" increment="0.05"
          label="Bob" label_width="28" layout="topleft" left="12" max_val="5" min_val="0" top_pad="5"
-         name="CinematicCamOrbitBob" tool_tip="Vertical bob amplitude while orbiting (m); 0 = flat" width="100" />
+         name="CinematicCamOrbitBob" tool_tip="Vertical bob amplitude while orbiting (m); 0 = flat" width="87" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamOrbitBob" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamOrbitBob" />
     </panel>
 
     <panel name="panel_mode_hover" left="0" top="162" width="320" height="98"
@@ -299,16 +319,20 @@
         </text>
         <spinner control_name="CinematicCamHoverDistance" decimal_digits="1" follows="left|top" height="16" increment="0.25"
          label="Dist" label_width="28" layout="topleft" left="12" max_val="15" min_val="0.5" top_pad="6"
-         name="CinematicCamHoverDistance" tool_tip="Mean distance from the subject (m)" width="94" />
+         name="CinematicCamHoverDistance" tool_tip="Mean distance from the subject (m)" width="81" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamHoverDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamHoverDistance" />
         <spinner control_name="CinematicCamHoverWander" decimal_digits="2" follows="left|top" height="16" increment="0.05"
          label="Wander" label_width="46" layout="topleft" left_pad="6" max_val="3" min_val="0" top_delta="0"
-         name="CinematicCamHoverWander" tool_tip="Wander/jitter intensity (unitless)" width="108" />
+         name="CinematicCamHoverWander" tool_tip="Wander/jitter intensity (unitless)" width="95" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamHoverWander" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamHoverWander" />
         <spinner control_name="CinematicCamHoverSpeed" decimal_digits="2" follows="left|top" height="16" increment="0.05"
          label="Speed" label_width="40" layout="topleft" left_pad="6" max_val="3" min_val="0.01" top_delta="0"
-         name="CinematicCamHoverSpeed" tool_tip="Hover motion speed (unitless rate)" width="92" />
+         name="CinematicCamHoverSpeed" tool_tip="Hover motion speed (unitless rate)" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamHoverSpeed" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamHoverSpeed" />
         <spinner control_name="CinematicCamHoverHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="Ht" label_width="20" layout="topleft" left="12" max_val="20" min_val="-5" top_pad="5"
-         name="CinematicCamHoverHeight" tool_tip="Mean height above the subject (m)" width="84" />
+         name="CinematicCamHoverHeight" tool_tip="Mean height above the subject (m)" width="71" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamHoverHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamHoverHeight" />
     </panel>
 
     <panel name="panel_mode_sweep" left="0" top="162" width="320" height="98"
@@ -318,25 +342,31 @@
         </text>
         <spinner control_name="CinematicCamSweepLength" decimal_digits="0" follows="left|top" height="16" increment="1"
          label="Len" label_width="26" layout="topleft" left="12" max_val="50" min_val="1" top_pad="6"
-         name="CinematicCamSweepLength" tool_tip="Path length (m)" width="86" />
+         name="CinematicCamSweepLength" tool_tip="Path length (m)" width="73" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamSweepLength" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamSweepLength" />
         <spinner control_name="CinematicCamSweepDistance" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="Dist" label_width="28" layout="topleft" left_pad="6" max_val="30" min_val="0.5" top_delta="0"
-         name="CinematicCamSweepDistance" tool_tip="Lateral distance from the subject (m)" width="92" />
+         name="CinematicCamSweepDistance" tool_tip="Lateral distance from the subject (m)" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamSweepDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamSweepDistance" />
         <spinner control_name="CinematicCamSweepSpeed" decimal_digits="2" follows="left|top" height="16" increment="0.1"
          label="m/s" label_width="26" layout="topleft" left_pad="6" max_val="10" min_val="0.05" top_delta="0"
-         name="CinematicCamSweepSpeed" tool_tip="Travel speed (m/s)" width="92" />
+         name="CinematicCamSweepSpeed" tool_tip="Travel speed (m/s)" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamSweepSpeed" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamSweepSpeed" />
         <spinner control_name="CinematicCamSweepHeading" decimal_digits="0" follows="left|top" height="16" increment="15"
          label="Heading" label_width="50" layout="topleft" left="12" max_val="360" min_val="0" top_pad="5"
-         name="CinematicCamSweepHeading" tool_tip="Travel heading (deg, world frame)" width="112" />
+         name="CinematicCamSweepHeading" tool_tip="Travel heading (deg, world frame)" width="99" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamSweepHeading" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamSweepHeading" />
         <spinner control_name="CinematicCamSweepHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="Ht" label_width="20" layout="topleft" left_pad="6" max_val="20" min_val="-5" top_delta="0"
-         name="CinematicCamSweepHeight" tool_tip="Height above the subject (m)" width="80" />
+         name="CinematicCamSweepHeight" tool_tip="Height above the subject (m)" width="67" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamSweepHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamSweepHeight" />
         <check_box
          control_name="CinematicCamSweepPingPong"
          follows="left|top" height="16" label="Ping-pong" layout="topleft" left_pad="8" top_delta="0"
          name="CinematicCamSweepPingPong"
          tool_tip="Reverse at the ends instead of jumping back to the start"
-         width="90" />
+         width="77" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamSweepPingPong" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamSweepPingPong" />
     </panel>
 
     <panel name="panel_mode_crane" left="0" top="162" width="320" height="98"
@@ -346,19 +376,24 @@
         </text>
         <spinner control_name="CinematicCamCraneRadius" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="Radius" label_width="42" layout="topleft" left="12" max_val="30" min_val="0.5" top_pad="6"
-         name="CinematicCamCraneRadius" tool_tip="Crane orbit radius (m)" width="106" />
+         name="CinematicCamCraneRadius" tool_tip="Crane orbit radius (m)" width="93" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamCraneRadius" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamCraneRadius" />
         <spinner control_name="CinematicCamCraneSpeed" decimal_digits="0" follows="left|top" height="16" increment="2"
          label="Speed" label_width="40" layout="topleft" left_pad="6" max_val="180" min_val="-180" top_delta="0"
-         name="CinematicCamCraneSpeed" tool_tip="Orbit speed (deg/s); negative reverses" width="100" />
+         name="CinematicCamCraneSpeed" tool_tip="Orbit speed (deg/s); negative reverses" width="87" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamCraneSpeed" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamCraneSpeed" />
         <spinner control_name="CinematicCamCraneMinHeight" decimal_digits="1" follows="left|top" height="16" increment="0.2"
          label="Lo" label_width="20" layout="topleft" left="12" max_val="20" min_val="-5" top_pad="5"
-         name="CinematicCamCraneMinHeight" tool_tip="Crane minimum height (m)" width="84" />
+         name="CinematicCamCraneMinHeight" tool_tip="Crane minimum height (m)" width="71" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamCraneMinHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamCraneMinHeight" />
         <spinner control_name="CinematicCamCraneMaxHeight" decimal_digits="1" follows="left|top" height="16" increment="0.2"
          label="Hi" label_width="20" layout="topleft" left_pad="6" max_val="30" min_val="-5" top_delta="0"
-         name="CinematicCamCraneMaxHeight" tool_tip="Crane maximum height (m)" width="84" />
+         name="CinematicCamCraneMaxHeight" tool_tip="Crane maximum height (m)" width="71" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamCraneMaxHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamCraneMaxHeight" />
         <spinner control_name="CinematicCamCraneRisePeriod" decimal_digits="0" follows="left|top" height="16" increment="1"
          label="Cycle s" label_width="44" layout="topleft" left_pad="6" max_val="120" min_val="2" top_delta="0"
-         name="CinematicCamCraneRisePeriod" tool_tip="Seconds per full rise+descend cycle (s)" width="110" />
+         name="CinematicCamCraneRisePeriod" tool_tip="Seconds per full rise+descend cycle (s)" width="97" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamCraneRisePeriod" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamCraneRisePeriod" />
     </panel>
 
     <panel name="panel_mode_vertigo" left="0" top="162" width="320" height="98"
@@ -368,26 +403,32 @@
         </text>
         <spinner control_name="CinematicCamVertigoStartDist" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="Start" label_width="32" layout="topleft" left="12" max_val="30" min_val="0.3" top_pad="6"
-         name="CinematicCamVertigoStartDist" tool_tip="Start distance from the subject (m)" width="94" />
+         name="CinematicCamVertigoStartDist" tool_tip="Start distance from the subject (m)" width="81" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamVertigoStartDist" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamVertigoStartDist" />
         <spinner control_name="CinematicCamVertigoEndDist" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="End" label_width="28" layout="topleft" left_pad="6" max_val="30" min_val="0.3" top_delta="0"
-         name="CinematicCamVertigoEndDist" tool_tip="End distance from the subject (m)" width="90" />
+         name="CinematicCamVertigoEndDist" tool_tip="End distance from the subject (m)" width="77" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamVertigoEndDist" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamVertigoEndDist" />
         <spinner control_name="CinematicCamVertigoDuration" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="Time" label_width="32" layout="topleft" left_pad="6" max_val="60" min_val="0.5" top_delta="0"
-         name="CinematicCamVertigoDuration" tool_tip="Move duration (s)" width="94" />
+         name="CinematicCamVertigoDuration" tool_tip="Move duration (s)" width="81" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamVertigoDuration" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamVertigoDuration" />
         <spinner control_name="CinematicCamVertigoHeading" decimal_digits="0" follows="left|top" height="16" increment="15"
          label="Heading" label_width="50" layout="topleft" left="12" max_val="180" min_val="-180" top_pad="5"
-         name="CinematicCamVertigoHeading" tool_tip="Bearing relative to the subject's facing (deg)" width="112" />
+         name="CinematicCamVertigoHeading" tool_tip="Bearing relative to the subject's facing (deg)" width="99" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamVertigoHeading" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamVertigoHeading" />
         <spinner control_name="CinematicCamVertigoHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="Ht" label_width="20" layout="topleft" left_pad="6" max_val="5" min_val="-5" top_delta="0"
-         name="CinematicCamVertigoHeight" tool_tip="Height relative to the focus point (m)" width="80" />
+         name="CinematicCamVertigoHeight" tool_tip="Height relative to the focus point (m)" width="67" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamVertigoHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamVertigoHeight" />
         <combo_box control_name="CinematicCamVertigoEndMode" follows="left|top" height="20" layout="topleft"
          left_pad="8" top_delta="-2" name="CinematicCamVertigoEndMode"
-         tool_tip="What happens when the move finishes" width="94">
+         tool_tip="What happens when the move finishes" width="81">
             <combo_box.item label="Hold" name="em_hold" value="0" />
             <combo_box.item label="Ping-pong" name="em_pp" value="1" />
             <combo_box.item label="Loop" name="em_loop" value="2" />
         </combo_box>
+        <button follows="left|top" height="20" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamVertigoEndMode" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamVertigoEndMode" />
     </panel>
 
     <panel name="panel_mode_push" left="0" top="162" width="320" height="98"
@@ -397,26 +438,32 @@
         </text>
         <spinner control_name="CinematicCamPushStartDist" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="Start" label_width="32" layout="topleft" left="12" max_val="30" min_val="0.3" top_pad="6"
-         name="CinematicCamPushStartDist" tool_tip="Start distance from the subject (m)" width="94" />
+         name="CinematicCamPushStartDist" tool_tip="Start distance from the subject (m)" width="81" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamPushStartDist" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamPushStartDist" />
         <spinner control_name="CinematicCamPushEndDist" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="End" label_width="28" layout="topleft" left_pad="6" max_val="30" min_val="0.3" top_delta="0"
-         name="CinematicCamPushEndDist" tool_tip="End distance from the subject (m)" width="90" />
+         name="CinematicCamPushEndDist" tool_tip="End distance from the subject (m)" width="77" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamPushEndDist" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamPushEndDist" />
         <spinner control_name="CinematicCamPushDuration" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="Time" label_width="32" layout="topleft" left_pad="6" max_val="120" min_val="0.5" top_delta="0"
-         name="CinematicCamPushDuration" tool_tip="Move duration (s)" width="94" />
+         name="CinematicCamPushDuration" tool_tip="Move duration (s)" width="81" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamPushDuration" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamPushDuration" />
         <spinner control_name="CinematicCamPushHeading" decimal_digits="0" follows="left|top" height="16" increment="15"
          label="Heading" label_width="50" layout="topleft" left="12" max_val="180" min_val="-180" top_pad="5"
-         name="CinematicCamPushHeading" tool_tip="Bearing relative to the subject's facing (deg)" width="112" />
+         name="CinematicCamPushHeading" tool_tip="Bearing relative to the subject's facing (deg)" width="99" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamPushHeading" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamPushHeading" />
         <spinner control_name="CinematicCamPushHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="Ht" label_width="20" layout="topleft" left_pad="6" max_val="5" min_val="-5" top_delta="0"
-         name="CinematicCamPushHeight" tool_tip="Height relative to the focus point (m)" width="80" />
+         name="CinematicCamPushHeight" tool_tip="Height relative to the focus point (m)" width="67" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamPushHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamPushHeight" />
         <combo_box control_name="CinematicCamPushEndMode" follows="left|top" height="20" layout="topleft"
          left_pad="8" top_delta="-2" name="CinematicCamPushEndMode"
-         tool_tip="What happens when the move finishes" width="94">
+         tool_tip="What happens when the move finishes" width="81">
             <combo_box.item label="Hold" name="em_hold" value="0" />
             <combo_box.item label="Ping-pong" name="em_pp" value="1" />
             <combo_box.item label="Loop" name="em_loop" value="2" />
         </combo_box>
+        <button follows="left|top" height="20" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamPushEndMode" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamPushEndMode" />
     </panel>
 
     <panel name="panel_mode_hero" left="0" top="162" width="320" height="98"
@@ -426,19 +473,24 @@
         </text>
         <spinner control_name="CinematicCamHeroDistance" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="Dist" label_width="28" layout="topleft" left="12" max_val="15" min_val="0.3" top_pad="6"
-         name="CinematicCamHeroDistance" tool_tip="Distance from the subject (m)" width="92" />
+         name="CinematicCamHeroDistance" tool_tip="Distance from the subject (m)" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamHeroDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamHeroDistance" />
         <spinner control_name="CinematicCamHeroHeight" decimal_digits="2" follows="left|top" height="16" increment="0.05"
          label="Ht" label_width="20" layout="topleft" left_pad="6" max_val="3" min_val="0" top_delta="0"
-         name="CinematicCamHeroHeight" tool_tip="Camera height above the subject's feet (m)" width="86" />
+         name="CinematicCamHeroHeight" tool_tip="Camera height above the subject's feet (m)" width="73" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamHeroHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamHeroHeight" />
         <spinner control_name="CinematicCamHeroArc" decimal_digits="0" follows="left|top" height="16" increment="5"
          label="Arc" label_width="26" layout="topleft" left_pad="6" max_val="180" min_val="0" top_delta="0"
-         name="CinematicCamHeroArc" tool_tip="Total drift arc (deg)" width="90" />
+         name="CinematicCamHeroArc" tool_tip="Total drift arc (deg)" width="77" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamHeroArc" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamHeroArc" />
         <spinner control_name="CinematicCamHeroPeriod" decimal_digits="0" follows="left|top" height="16" increment="1"
          label="Period" label_width="42" layout="topleft" left="12" max_val="60" min_val="1" top_pad="5"
-         name="CinematicCamHeroPeriod" tool_tip="Seconds per drift cycle (s)" width="104" />
+         name="CinematicCamHeroPeriod" tool_tip="Seconds per drift cycle (s)" width="91" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamHeroPeriod" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamHeroPeriod" />
         <spinner control_name="CinematicCamHeroHeading" decimal_digits="0" follows="left|top" height="16" increment="15"
          label="Heading" label_width="50" layout="topleft" left_pad="6" max_val="180" min_val="-180" top_delta="0"
-         name="CinematicCamHeroHeading" tool_tip="Bearing relative to the subject's facing (deg)" width="112" />
+         name="CinematicCamHeroHeading" tool_tip="Bearing relative to the subject's facing (deg)" width="99" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamHeroHeading" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamHeroHeading" />
     </panel>
 
     <panel name="panel_mode_overhead" left="0" top="162" width="320" height="98"
@@ -448,23 +500,28 @@
         </text>
         <spinner control_name="CinematicCamOverheadStart" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="Start" label_width="32" layout="topleft" left="12" max_val="50" min_val="0.5" top_pad="6"
-         name="CinematicCamOverheadStart" tool_tip="Start height above the subject (m)" width="94" />
+         name="CinematicCamOverheadStart" tool_tip="Start height above the subject (m)" width="81" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamOverheadStart" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamOverheadStart" />
         <spinner control_name="CinematicCamOverheadEnd" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="End" label_width="28" layout="topleft" left_pad="6" max_val="100" min_val="0.5" top_delta="0"
-         name="CinematicCamOverheadEnd" tool_tip="End height above the subject (m)" width="90" />
+         name="CinematicCamOverheadEnd" tool_tip="End height above the subject (m)" width="77" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamOverheadEnd" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamOverheadEnd" />
         <spinner control_name="CinematicCamOverheadDuration" decimal_digits="1" follows="left|top" height="16" increment="1"
          label="Time" label_width="32" layout="topleft" left_pad="6" max_val="120" min_val="1" top_delta="0"
-         name="CinematicCamOverheadDuration" tool_tip="Rise duration (s)" width="94" />
+         name="CinematicCamOverheadDuration" tool_tip="Rise duration (s)" width="81" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamOverheadDuration" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamOverheadDuration" />
         <spinner control_name="CinematicCamOverheadSpin" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="Spin" label_width="30" layout="topleft" left="12" max_val="90" min_val="-90" top_pad="5"
-         name="CinematicCamOverheadSpin" tool_tip="Camera roll spin (deg/s); negative reverses" width="96" />
+         name="CinematicCamOverheadSpin" tool_tip="Camera roll spin (deg/s); negative reverses" width="83" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamOverheadSpin" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamOverheadSpin" />
         <combo_box control_name="CinematicCamOverheadEndMode" follows="left|top" height="20" layout="topleft"
          left_pad="8" top_delta="-2" name="CinematicCamOverheadEndMode"
-         tool_tip="What happens when the rise finishes" width="94">
+         tool_tip="What happens when the rise finishes" width="81">
             <combo_box.item label="Hold" name="em_hold" value="0" />
             <combo_box.item label="Ping-pong" name="em_pp" value="1" />
             <combo_box.item label="Loop" name="em_loop" value="2" />
         </combo_box>
+        <button follows="left|top" height="20" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamOverheadEndMode" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamOverheadEndMode" />
     </panel>
 
     <panel name="panel_mode_ots" left="0" top="162" width="320" height="98"
@@ -474,19 +531,23 @@
         </text>
         <combo_box control_name="CinematicCamOTSSide" follows="left|top" height="20" layout="topleft"
          left="12" top_pad="4" name="CinematicCamOTSSide"
-         tool_tip="Which of your shoulders the camera hangs over" width="90">
+         tool_tip="Which of your shoulders the camera hangs over" width="77">
             <combo_box.item label="Left" name="side_l" value="0" />
             <combo_box.item label="Right" name="side_r" value="1" />
         </combo_box>
+        <button follows="left|top" height="20" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamOTSSide" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamOTSSide" />
         <spinner control_name="CinematicCamOTSBack" decimal_digits="2" follows="left|top" height="16" increment="0.05"
          label="Back" label_width="32" layout="topleft" left_pad="8" max_val="2" min_val="0" top_delta="2"
-         name="CinematicCamOTSBack" tool_tip="Camera distance behind the shoulder (m)" width="98" />
+         name="CinematicCamOTSBack" tool_tip="Camera distance behind the shoulder (m)" width="85" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamOTSBack" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamOTSBack" />
         <spinner control_name="CinematicCamOTSOut" decimal_digits="2" follows="left|top" height="16" increment="0.02"
          label="Out" label_width="26" layout="topleft" left_pad="6" max_val="1" min_val="0" top_delta="0"
-         name="CinematicCamOTSOut" tool_tip="Camera offset outward from the shoulder (m)" width="92" />
+         name="CinematicCamOTSOut" tool_tip="Camera offset outward from the shoulder (m)" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamOTSOut" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamOTSOut" />
         <spinner control_name="CinematicCamOTSUp" decimal_digits="2" follows="left|top" height="16" increment="0.02"
          label="Up" label_width="24" layout="topleft" left="12" max_val="1" min_val="-0.5" top_pad="7"
-         name="CinematicCamOTSUp" tool_tip="Camera offset above the shoulder (m)" width="90" />
+         name="CinematicCamOTSUp" tool_tip="Camera offset above the shoulder (m)" width="77" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamOTSUp" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamOTSUp" />
     </panel>
 
     <panel name="panel_mode_crash" left="0" top="162" width="320" height="98"
@@ -496,10 +557,12 @@
         </text>
         <spinner control_name="CinematicCamCrashZoom" decimal_digits="2" follows="left|top" height="16" increment="0.05"
          label="Zoom x" label_width="44" layout="topleft" left="12" max_val="4" min_val="0.05" top_pad="6"
-         name="CinematicCamCrashZoom" tool_tip="End FOV multiplier: below 1 zooms in, above 1 zooms out" width="110" />
+         name="CinematicCamCrashZoom" tool_tip="End FOV multiplier: below 1 zooms in, above 1 zooms out" width="97" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamCrashZoom" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamCrashZoom" />
         <spinner control_name="CinematicCamCrashDuration" decimal_digits="2" follows="left|top" height="16" increment="0.05"
          label="Time" label_width="32" layout="topleft" left_pad="8" max_val="3" min_val="0.05" top_delta="0"
-         name="CinematicCamCrashDuration" tool_tip="Zoom hit duration (s). Toggle the mode off/on to retrigger" width="98" />
+         name="CinematicCamCrashDuration" tool_tip="Zoom hit duration (s). Toggle the mode off/on to retrigger" width="85" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamCrashDuration" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamCrashDuration" />
         <text follows="left|top" halign="left" height="26" layout="topleft" left="12" top_pad="8" width="296" name="hint" word_wrap="true">
             Shoots from where the camera was when the mode engaged.
         </text>
@@ -512,10 +575,12 @@
         </text>
         <spinner control_name="CinematicCamSlowZoomTarget" decimal_digits="2" follows="left|top" height="16" increment="0.05"
          label="Zoom x" label_width="44" layout="topleft" left="12" max_val="4" min_val="0.05" top_pad="6"
-         name="CinematicCamSlowZoomTarget" tool_tip="Target FOV multiplier: below 1 creeps in, above 1 creeps out" width="110" />
+         name="CinematicCamSlowZoomTarget" tool_tip="Target FOV multiplier: below 1 creeps in, above 1 creeps out" width="97" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamSlowZoomTarget" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamSlowZoomTarget" />
         <spinner control_name="CinematicCamSlowZoomDuration" decimal_digits="0" follows="left|top" height="16" increment="5"
          label="Time" label_width="32" layout="topleft" left_pad="8" max_val="300" min_val="1" top_delta="0"
-         name="CinematicCamSlowZoomDuration" tool_tip="Creep duration (s)" width="98" />
+         name="CinematicCamSlowZoomDuration" tool_tip="Creep duration (s)" width="85" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamSlowZoomDuration" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamSlowZoomDuration" />
         <text follows="left|top" halign="left" height="26" layout="topleft" left="12" top_pad="8" width="296" name="hint" word_wrap="true">
             Shoots from where the camera was when the mode engaged.
         </text>
@@ -528,19 +593,24 @@
         </text>
         <spinner control_name="CinematicCamWhipFrom" decimal_digits="0" follows="left|top" height="16" increment="5"
          label="From" label_width="34" layout="topleft" left="12" max_val="360" min_val="-360" top_pad="6"
-         name="CinematicCamWhipFrom" tool_tip="Start bearing relative to the subject's facing (deg)" width="98" />
+         name="CinematicCamWhipFrom" tool_tip="Start bearing relative to the subject's facing (deg)" width="85" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamWhipFrom" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamWhipFrom" />
         <spinner control_name="CinematicCamWhipTo" decimal_digits="0" follows="left|top" height="16" increment="5"
          label="To" label_width="22" layout="topleft" left_pad="6" max_val="360" min_val="-360" top_delta="0"
-         name="CinematicCamWhipTo" tool_tip="End bearing relative to the subject's facing (deg)" width="86" />
+         name="CinematicCamWhipTo" tool_tip="End bearing relative to the subject's facing (deg)" width="73" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamWhipTo" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamWhipTo" />
         <spinner control_name="CinematicCamWhipDuration" decimal_digits="2" follows="left|top" height="16" increment="0.05"
          label="Time" label_width="32" layout="topleft" left_pad="6" max_val="3" min_val="0.05" top_delta="0"
-         name="CinematicCamWhipDuration" tool_tip="Whip duration (s). Toggle the mode off/on to retrigger" width="96" />
+         name="CinematicCamWhipDuration" tool_tip="Whip duration (s). Toggle the mode off/on to retrigger" width="83" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamWhipDuration" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamWhipDuration" />
         <spinner control_name="CinematicCamWhipDistance" decimal_digits="1" follows="left|top" height="16" increment="0.25"
          label="Dist" label_width="28" layout="topleft" left="12" max_val="15" min_val="0.5" top_pad="5"
-         name="CinematicCamWhipDistance" tool_tip="Distance from the subject (m)" width="92" />
+         name="CinematicCamWhipDistance" tool_tip="Distance from the subject (m)" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamWhipDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamWhipDistance" />
         <spinner control_name="CinematicCamWhipHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="Ht" label_width="20" layout="topleft" left_pad="6" max_val="5" min_val="-2" top_delta="0"
-         name="CinematicCamWhipHeight" tool_tip="Height above the subject (m)" width="84" />
+         name="CinematicCamWhipHeight" tool_tip="Height above the subject (m)" width="71" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamWhipHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamWhipHeight" />
     </panel>
 
     <panel name="panel_mode_arc" left="0" top="162" width="320" height="98"
@@ -550,26 +620,32 @@
         </text>
         <spinner control_name="CinematicCamArcFrom" decimal_digits="0" follows="left|top" height="16" increment="5"
          label="From" label_width="34" layout="topleft" left="12" max_val="360" min_val="-360" top_pad="6"
-         name="CinematicCamArcFrom" tool_tip="Start bearing relative to the subject's facing (deg)" width="98" />
+         name="CinematicCamArcFrom" tool_tip="Start bearing relative to the subject's facing (deg)" width="85" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamArcFrom" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamArcFrom" />
         <spinner control_name="CinematicCamArcTo" decimal_digits="0" follows="left|top" height="16" increment="5"
          label="To" label_width="22" layout="topleft" left_pad="6" max_val="360" min_val="-360" top_delta="0"
-         name="CinematicCamArcTo" tool_tip="End bearing relative to the subject's facing (deg)" width="86" />
+         name="CinematicCamArcTo" tool_tip="End bearing relative to the subject's facing (deg)" width="73" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamArcTo" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamArcTo" />
         <spinner control_name="CinematicCamArcDuration" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="Time" label_width="32" layout="topleft" left_pad="6" max_val="60" min_val="0.5" top_delta="0"
-         name="CinematicCamArcDuration" tool_tip="Arc duration (s)" width="96" />
+         name="CinematicCamArcDuration" tool_tip="Arc duration (s)" width="83" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamArcDuration" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamArcDuration" />
         <spinner control_name="CinematicCamArcDistance" decimal_digits="1" follows="left|top" height="16" increment="0.25"
          label="Dist" label_width="28" layout="topleft" left="12" max_val="15" min_val="0.5" top_pad="5"
-         name="CinematicCamArcDistance" tool_tip="Distance from the subject (m)" width="92" />
+         name="CinematicCamArcDistance" tool_tip="Distance from the subject (m)" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamArcDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamArcDistance" />
         <spinner control_name="CinematicCamArcHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="Ht" label_width="20" layout="topleft" left_pad="6" max_val="5" min_val="-2" top_delta="0"
-         name="CinematicCamArcHeight" tool_tip="Height above the subject (m)" width="84" />
+         name="CinematicCamArcHeight" tool_tip="Height above the subject (m)" width="71" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamArcHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamArcHeight" />
         <combo_box control_name="CinematicCamArcEndMode" follows="left|top" height="20" layout="topleft"
          left_pad="8" top_delta="-2" name="CinematicCamArcEndMode"
-         tool_tip="What happens when the arc finishes" width="94">
+         tool_tip="What happens when the arc finishes" width="81">
             <combo_box.item label="Hold" name="em_hold" value="0" />
             <combo_box.item label="Ping-pong" name="em_pp" value="1" />
             <combo_box.item label="Loop" name="em_loop" value="2" />
         </combo_box>
+        <button follows="left|top" height="20" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamArcEndMode" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamArcEndMode" />
     </panel>
 
     <panel name="panel_mode_reveal" left="0" top="162" width="320" height="98"
@@ -579,19 +655,24 @@
         </text>
         <spinner control_name="CinematicCamRevealBehind" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="Behind" label_width="44" layout="topleft" left="12" max_val="10" min_val="0" top_pad="6"
-         name="CinematicCamRevealBehind" tool_tip="Camera distance behind the subject (m)" width="106" />
+         name="CinematicCamRevealBehind" tool_tip="Camera distance behind the subject (m)" width="93" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamRevealBehind" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamRevealBehind" />
         <spinner control_name="CinematicCamRevealLowHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="Lo" label_width="20" layout="topleft" left_pad="6" max_val="5" min_val="0" top_delta="0"
-         name="CinematicCamRevealLowHeight" tool_tip="Start (low) height (m)" width="82" />
+         name="CinematicCamRevealLowHeight" tool_tip="Start (low) height (m)" width="69" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamRevealLowHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamRevealLowHeight" />
         <spinner control_name="CinematicCamRevealHighHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="Hi" label_width="20" layout="topleft" left_pad="6" max_val="10" min_val="0" top_delta="0"
-         name="CinematicCamRevealHighHeight" tool_tip="End (high) height (m)" width="82" />
+         name="CinematicCamRevealHighHeight" tool_tip="End (high) height (m)" width="69" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamRevealHighHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamRevealHighHeight" />
         <spinner control_name="CinematicCamRevealAhead" decimal_digits="0" follows="left|top" height="16" increment="1"
          label="Ahead" label_width="40" layout="topleft" left="12" max_val="100" min_val="1" top_pad="5"
-         name="CinematicCamRevealAhead" tool_tip="How far ahead of the subject the framing lifts to (m)" width="102" />
+         name="CinematicCamRevealAhead" tool_tip="How far ahead of the subject the framing lifts to (m)" width="89" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamRevealAhead" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamRevealAhead" />
         <spinner control_name="CinematicCamRevealDuration" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="Time" label_width="32" layout="topleft" left_pad="6" max_val="60" min_val="1" top_delta="0"
-         name="CinematicCamRevealDuration" tool_tip="Rise duration (s)" width="94" />
+         name="CinematicCamRevealDuration" tool_tip="Rise duration (s)" width="81" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamRevealDuration" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamRevealDuration" />
     </panel>
 
     <panel name="panel_mode_pull" left="0" top="162" width="320" height="98"
@@ -601,19 +682,24 @@
         </text>
         <spinner control_name="CinematicCamPullStartDist" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="Start" label_width="32" layout="topleft" left="12" max_val="10" min_val="0.3" top_pad="6"
-         name="CinematicCamPullStartDist" tool_tip="Start distance from the subject (m)" width="94" />
+         name="CinematicCamPullStartDist" tool_tip="Start distance from the subject (m)" width="81" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamPullStartDist" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamPullStartDist" />
         <spinner control_name="CinematicCamPullEndDist" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="End" label_width="28" layout="topleft" left_pad="6" max_val="100" min_val="0.5" top_delta="0"
-         name="CinematicCamPullEndDist" tool_tip="End distance from the subject (m)" width="90" />
+         name="CinematicCamPullEndDist" tool_tip="End distance from the subject (m)" width="77" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamPullEndDist" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamPullEndDist" />
         <spinner control_name="CinematicCamPullEndHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="End Ht" label_width="42" layout="topleft" left_pad="6" max_val="20" min_val="0" top_delta="0"
-         name="CinematicCamPullEndHeight" tool_tip="Rise reached at the end of the move (m)" width="102" />
+         name="CinematicCamPullEndHeight" tool_tip="Rise reached at the end of the move (m)" width="89" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamPullEndHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamPullEndHeight" />
         <spinner control_name="CinematicCamPullDuration" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="Time" label_width="32" layout="topleft" left="12" max_val="60" min_val="1" top_pad="5"
-         name="CinematicCamPullDuration" tool_tip="Move duration (s)" width="94" />
+         name="CinematicCamPullDuration" tool_tip="Move duration (s)" width="81" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamPullDuration" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamPullDuration" />
         <spinner control_name="CinematicCamPullHeading" decimal_digits="0" follows="left|top" height="16" increment="15"
          label="Heading" label_width="50" layout="topleft" left_pad="6" max_val="180" min_val="-180" top_delta="0"
-         name="CinematicCamPullHeading" tool_tip="Bearing relative to the subject's facing (deg)" width="112" />
+         name="CinematicCamPullHeading" tool_tip="Bearing relative to the subject's facing (deg)" width="99" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamPullHeading" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamPullHeading" />
     </panel>
 
     <panel name="panel_mode_twoshot" left="0" top="162" width="320" height="98"
@@ -623,19 +709,23 @@
         </text>
         <combo_box control_name="CinematicCamTwoShotSide" follows="left|top" height="20" layout="topleft"
          left="12" top_pad="4" name="CinematicCamTwoShotSide"
-         tool_tip="Which side of the you-to-target line the camera sits on" width="90">
+         tool_tip="Which side of the you-to-target line the camera sits on" width="77">
             <combo_box.item label="Left" name="side_l" value="0" />
             <combo_box.item label="Right" name="side_r" value="1" />
         </combo_box>
+        <button follows="left|top" height="20" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamTwoShotSide" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamTwoShotSide" />
         <spinner control_name="CinematicCamTwoShotPad" decimal_digits="2" follows="left|top" height="16" increment="0.05"
          label="Pad x" label_width="38" layout="topleft" left_pad="8" max_val="3" min_val="0.5" top_delta="2"
-         name="CinematicCamTwoShotPad" tool_tip="Camera distance as a multiple of the pair's separation" width="102" />
+         name="CinematicCamTwoShotPad" tool_tip="Camera distance as a multiple of the pair's separation" width="89" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamTwoShotPad" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamTwoShotPad" />
         <spinner control_name="CinematicCamTwoShotMinDist" decimal_digits="1" follows="left|top" height="16" increment="0.25"
          label="Min" label_width="28" layout="topleft" left="12" max_val="20" min_val="0.5" top_pad="7"
-         name="CinematicCamTwoShotMinDist" tool_tip="Minimum camera distance (m)" width="92" />
+         name="CinematicCamTwoShotMinDist" tool_tip="Minimum camera distance (m)" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamTwoShotMinDist" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamTwoShotMinDist" />
         <spinner control_name="CinematicCamTwoShotHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="Ht" label_width="20" layout="topleft" left_pad="6" max_val="3" min_val="0" top_delta="0"
-         name="CinematicCamTwoShotHeight" tool_tip="Frame height above the midpoint (m)" width="84" />
+         name="CinematicCamTwoShotHeight" tool_tip="Frame height above the midpoint (m)" width="71" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamTwoShotHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamTwoShotHeight" />
     </panel>
 
     <panel name="panel_mode_lead" left="0" top="162" width="320" height="98"
@@ -645,13 +735,16 @@
         </text>
         <spinner control_name="CinematicCamLeadDistance" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="Dist" label_width="28" layout="topleft" left="12" max_val="10" min_val="0.5" top_pad="6"
-         name="CinematicCamLeadDistance" tool_tip="Distance ahead of the subject (m)" width="92" />
+         name="CinematicCamLeadDistance" tool_tip="Distance ahead of the subject (m)" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamLeadDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamLeadDistance" />
         <spinner control_name="CinematicCamLeadHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="Ht" label_width="20" layout="topleft" left_pad="6" max_val="2" min_val="-2" top_delta="0"
-         name="CinematicCamLeadHeight" tool_tip="Height relative to the focus point (m)" width="84" />
+         name="CinematicCamLeadHeight" tool_tip="Height relative to the focus point (m)" width="71" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamLeadHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamLeadHeight" />
         <spinner control_name="CinematicCamLeadSway" decimal_digits="2" follows="left|top" height="16" increment="0.01"
          label="Sway" label_width="34" layout="topleft" left_pad="6" max_val="1" min_val="0" top_delta="0"
-         name="CinematicCamLeadSway" tool_tip="Lateral drift amplitude (m)" width="98" />
+         name="CinematicCamLeadSway" tool_tip="Lateral drift amplitude (m)" width="85" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamLeadSway" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamLeadSway" />
     </panel>
 
     <panel name="panel_mode_ecu" left="0" top="162" width="320" height="98"
@@ -661,13 +754,16 @@
         </text>
         <spinner control_name="CinematicCamECUDistance" decimal_digits="2" follows="left|top" height="16" increment="0.05"
          label="Dist" label_width="28" layout="topleft" left="12" max_val="3" min_val="0.25" top_pad="6"
-         name="CinematicCamECUDistance" tool_tip="Distance from the face (m)" width="92" />
+         name="CinematicCamECUDistance" tool_tip="Distance from the face (m)" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamECUDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamECUDistance" />
         <spinner control_name="CinematicCamECUZoom" decimal_digits="2" follows="left|top" height="16" increment="0.05"
          label="Zoom x" label_width="44" layout="topleft" left_pad="6" max_val="1.5" min_val="0.05" top_delta="0"
-         name="CinematicCamECUZoom" tool_tip="FOV multiplier: below 1 = narrow lens" width="108" />
+         name="CinematicCamECUZoom" tool_tip="FOV multiplier: below 1 = narrow lens" width="95" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamECUZoom" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamECUZoom" />
         <spinner control_name="CinematicCamECUDrift" decimal_digits="3" follows="left|top" height="16" increment="0.001"
          label="Drift" label_width="32" layout="topleft" left_pad="6" max_val="0.05" min_val="0" top_delta="0"
-         name="CinematicCamECUDrift" tool_tip="Micro float amplitude (m)" width="100" />
+         name="CinematicCamECUDrift" tool_tip="Micro float amplitude (m)" width="87" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamECUDrift" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamECUDrift" />
     </panel>
 
     <panel name="panel_mode_long" left="0" top="162" width="320" height="98"
@@ -677,19 +773,24 @@
         </text>
         <spinner control_name="CinematicCamLongDistance" decimal_digits="0" follows="left|top" height="16" increment="1"
          label="Dist" label_width="28" layout="topleft" left="12" max_val="100" min_val="3" top_pad="6"
-         name="CinematicCamLongDistance" tool_tip="Distance from the subject (m)" width="92" />
+         name="CinematicCamLongDistance" tool_tip="Distance from the subject (m)" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamLongDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamLongDistance" />
         <spinner control_name="CinematicCamLongZoom" decimal_digits="2" follows="left|top" height="16" increment="0.02"
          label="Zoom x" label_width="44" layout="topleft" left_pad="6" max_val="1" min_val="0.05" top_delta="0"
-         name="CinematicCamLongZoom" tool_tip="FOV multiplier: below 1 = long lens" width="108" />
+         name="CinematicCamLongZoom" tool_tip="FOV multiplier: below 1 = long lens" width="95" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamLongZoom" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamLongZoom" />
         <spinner control_name="CinematicCamLongHeading" decimal_digits="0" follows="left|top" height="16" increment="15"
          label="Hdg" label_width="28" layout="topleft" left_pad="6" max_val="180" min_val="-180" top_delta="0"
-         name="CinematicCamLongHeading" tool_tip="Bearing relative to the subject's facing (deg)" width="92" />
+         name="CinematicCamLongHeading" tool_tip="Bearing relative to the subject's facing (deg)" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamLongHeading" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamLongHeading" />
         <spinner control_name="CinematicCamLongHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="Ht" label_width="20" layout="topleft" left="12" max_val="10" min_val="-5" top_pad="5"
-         name="CinematicCamLongHeight" tool_tip="Height relative to the focus point (m)" width="84" />
+         name="CinematicCamLongHeight" tool_tip="Height relative to the focus point (m)" width="71" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamLongHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamLongHeight" />
         <spinner control_name="CinematicCamLongDrift" decimal_digits="2" follows="left|top" height="16" increment="0.01"
          label="Drift" label_width="32" layout="topleft" left_pad="6" max_val="1" min_val="0" top_delta="0"
-         name="CinematicCamLongDrift" tool_tip="Slow drift amplitude (m)" width="98" />
+         name="CinematicCamLongDrift" tool_tip="Slow drift amplitude (m)" width="85" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamLongDrift" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamLongDrift" />
     </panel>
 
     <panel name="panel_mode_spiral" left="0" top="162" width="320" height="98"
@@ -699,22 +800,28 @@
         </text>
         <spinner control_name="CinematicCamSpiralStartRadius" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="R start" label_width="42" layout="topleft" left="12" max_val="30" min_val="0.3" top_pad="6"
-         name="CinematicCamSpiralStartRadius" tool_tip="Start radius (m)" width="104" />
+         name="CinematicCamSpiralStartRadius" tool_tip="Start radius (m)" width="91" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamSpiralStartRadius" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamSpiralStartRadius" />
         <spinner control_name="CinematicCamSpiralEndRadius" decimal_digits="1" follows="left|top" height="16" increment="0.25"
          label="R end" label_width="38" layout="topleft" left_pad="6" max_val="30" min_val="0.3" top_delta="0"
-         name="CinematicCamSpiralEndRadius" tool_tip="End radius (m)" width="100" />
+         name="CinematicCamSpiralEndRadius" tool_tip="End radius (m)" width="87" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamSpiralEndRadius" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamSpiralEndRadius" />
         <spinner control_name="CinematicCamSpiralSpeed" decimal_digits="0" follows="left|top" height="16" increment="5"
          label="deg/s" label_width="36" layout="topleft" left_pad="6" max_val="180" min_val="-180" top_delta="0"
-         name="CinematicCamSpiralSpeed" tool_tip="Turn speed (deg/s); negative reverses" width="96" />
+         name="CinematicCamSpiralSpeed" tool_tip="Turn speed (deg/s); negative reverses" width="83" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamSpiralSpeed" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamSpiralSpeed" />
         <spinner control_name="CinematicCamSpiralStartHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="Ht start" label_width="46" layout="topleft" left="12" max_val="20" min_val="-5" top_pad="5"
-         name="CinematicCamSpiralStartHeight" tool_tip="Start height above the subject (m)" width="108" />
+         name="CinematicCamSpiralStartHeight" tool_tip="Start height above the subject (m)" width="95" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamSpiralStartHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamSpiralStartHeight" />
         <spinner control_name="CinematicCamSpiralEndHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="Ht end" label_width="42" layout="topleft" left_pad="6" max_val="20" min_val="-5" top_delta="0"
-         name="CinematicCamSpiralEndHeight" tool_tip="End height above the subject (m)" width="104" />
+         name="CinematicCamSpiralEndHeight" tool_tip="End height above the subject (m)" width="91" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamSpiralEndHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamSpiralEndHeight" />
         <spinner control_name="CinematicCamSpiralDuration" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="Time" label_width="32" layout="topleft" left="12" max_val="60" min_val="1" top_pad="5"
-         name="CinematicCamSpiralDuration" tool_tip="Tighten-and-rise duration (s); the turn keeps going" width="94" />
+         name="CinematicCamSpiralDuration" tool_tip="Tighten-and-rise duration (s); the turn keeps going" width="81" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamSpiralDuration" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamSpiralDuration" />
     </panel>
 
     <panel name="panel_mode_pedestal" left="0" top="162" width="320" height="98"
@@ -724,19 +831,24 @@
         </text>
         <spinner control_name="CinematicCamPedestalDistance" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="Dist" label_width="28" layout="topleft" left="12" max_val="10" min_val="0.4" top_pad="6"
-         name="CinematicCamPedestalDistance" tool_tip="Frontal distance from the subject (m)" width="92" />
+         name="CinematicCamPedestalDistance" tool_tip="Frontal distance from the subject (m)" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamPedestalDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamPedestalDistance" />
         <spinner control_name="CinematicCamPedestalStart" decimal_digits="2" follows="left|top" height="16" increment="0.05"
          label="Start" label_width="32" layout="topleft" left_pad="6" max_val="3" min_val="0" top_delta="0"
-         name="CinematicCamPedestalStart" tool_tip="Start height above the feet (m)" width="96" />
+         name="CinematicCamPedestalStart" tool_tip="Start height above the feet (m)" width="83" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamPedestalStart" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamPedestalStart" />
         <spinner control_name="CinematicCamPedestalEnd" decimal_digits="2" follows="left|top" height="16" increment="0.05"
          label="End" label_width="28" layout="topleft" left_pad="6" max_val="3" min_val="0" top_delta="0"
-         name="CinematicCamPedestalEnd" tool_tip="End height above the feet (m)" width="92" />
+         name="CinematicCamPedestalEnd" tool_tip="End height above the feet (m)" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamPedestalEnd" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamPedestalEnd" />
         <spinner control_name="CinematicCamPedestalDuration" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="Time" label_width="32" layout="topleft" left="12" max_val="60" min_val="0.5" top_pad="5"
-         name="CinematicCamPedestalDuration" tool_tip="Rise duration (s)" width="94" />
+         name="CinematicCamPedestalDuration" tool_tip="Rise duration (s)" width="81" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamPedestalDuration" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamPedestalDuration" />
         <spinner control_name="CinematicCamPedestalHeading" decimal_digits="0" follows="left|top" height="16" increment="15"
          label="Heading" label_width="50" layout="topleft" left_pad="6" max_val="180" min_val="-180" top_delta="0"
-         name="CinematicCamPedestalHeading" tool_tip="Bearing relative to the subject's facing (deg)" width="112" />
+         name="CinematicCamPedestalHeading" tool_tip="Bearing relative to the subject's facing (deg)" width="99" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamPedestalHeading" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamPedestalHeading" />
     </panel>
 
     <panel name="panel_mode_barrel" left="0" top="162" width="320" height="98"
@@ -746,23 +858,29 @@
         </text>
         <spinner control_name="CinematicCamBarrelDistance" decimal_digits="1" follows="left|top" height="16" increment="0.25"
          label="Dist" label_width="28" layout="topleft" left="12" max_val="15" min_val="0.3" top_pad="6"
-         name="CinematicCamBarrelDistance" tool_tip="Frontal distance from the subject (m)" width="92" />
+         name="CinematicCamBarrelDistance" tool_tip="Frontal distance from the subject (m)" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBarrelDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBarrelDistance" />
         <spinner control_name="CinematicCamBarrelHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="Ht" label_width="20" layout="topleft" left_pad="6" max_val="10" min_val="-2" top_delta="0"
-         name="CinematicCamBarrelHeight" tool_tip="Height above the subject (m)" width="84" />
+         name="CinematicCamBarrelHeight" tool_tip="Height above the subject (m)" width="71" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBarrelHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBarrelHeight" />
         <spinner control_name="CinematicCamBarrelRollSpeed" decimal_digits="0" follows="left|top" height="16" increment="5"
          label="Roll/s" label_width="40" layout="topleft" left_pad="6" max_val="360" min_val="-360" top_delta="0"
-         name="CinematicCamBarrelRollSpeed" tool_tip="Continuous roll speed (deg/s); used when not oscillating" width="96" />
+         name="CinematicCamBarrelRollSpeed" tool_tip="Continuous roll speed (deg/s); used when not oscillating" width="83" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBarrelRollSpeed" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBarrelRollSpeed" />
         <spinner control_name="CinematicCamBarrelRollAmplitude" decimal_digits="0" follows="left|top" height="16" increment="5"
          label="Amp" label_width="30" layout="topleft" left="12" max_val="180" min_val="0" top_pad="5"
-         name="CinematicCamBarrelRollAmplitude" tool_tip="Roll oscillation amplitude (deg); used when oscillating" width="92" />
+         name="CinematicCamBarrelRollAmplitude" tool_tip="Roll oscillation amplitude (deg); used when oscillating" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBarrelRollAmplitude" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBarrelRollAmplitude" />
         <spinner control_name="CinematicCamBarrelRollPeriod" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="Per" label_width="26" layout="topleft" left_pad="6" max_val="30" min_val="0.5" top_delta="0"
-         name="CinematicCamBarrelRollPeriod" tool_tip="Seconds per roll oscillation cycle (s)" width="86" />
+         name="CinematicCamBarrelRollPeriod" tool_tip="Seconds per roll oscillation cycle (s)" width="73" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBarrelRollPeriod" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBarrelRollPeriod" />
         <check_box control_name="CinematicCamBarrelOscillate"
          follows="left|top" height="16" label="Oscillate" layout="topleft" left_pad="6" top_delta="0"
          name="CinematicCamBarrelOscillate"
-         tool_tip="Oscillate the roll instead of spinning continuously" width="90" />
+         tool_tip="Oscillate the roll instead of spinning continuously" width="77" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBarrelOscillate" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBarrelOscillate" />
     </panel>
 
     <panel name="panel_mode_cork" left="0" top="162" width="320" height="98"
@@ -772,32 +890,40 @@
         </text>
         <spinner control_name="CinematicCamCorkStartRadius" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="R0" label_width="22" layout="topleft" left="12" max_val="30" min_val="0.3" top_pad="6"
-         name="CinematicCamCorkStartRadius" tool_tip="Start orbit radius (m)" width="86" />
+         name="CinematicCamCorkStartRadius" tool_tip="Start orbit radius (m)" width="73" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamCorkStartRadius" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamCorkStartRadius" />
         <spinner control_name="CinematicCamCorkEndRadius" decimal_digits="1" follows="left|top" height="16" increment="0.25"
          label="R1" label_width="22" layout="topleft" left_pad="6" max_val="30" min_val="0.3" top_delta="0"
-         name="CinematicCamCorkEndRadius" tool_tip="End orbit radius (m)" width="86" />
+         name="CinematicCamCorkEndRadius" tool_tip="End orbit radius (m)" width="73" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamCorkEndRadius" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamCorkEndRadius" />
         <spinner control_name="CinematicCamCorkStartHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="H0" label_width="22" layout="topleft" left_pad="6" max_val="20" min_val="-5" top_delta="0"
-         name="CinematicCamCorkStartHeight" tool_tip="Start height above the subject (m)" width="86" />
+         name="CinematicCamCorkStartHeight" tool_tip="Start height above the subject (m)" width="73" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamCorkStartHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamCorkStartHeight" />
         <spinner control_name="CinematicCamCorkEndHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="H1" label_width="22" layout="topleft" left="12" max_val="20" min_val="-5" top_pad="5"
-         name="CinematicCamCorkEndHeight" tool_tip="End height above the subject (m)" width="86" />
+         name="CinematicCamCorkEndHeight" tool_tip="End height above the subject (m)" width="73" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamCorkEndHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamCorkEndHeight" />
         <spinner control_name="CinematicCamCorkTurns" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="Turns" label_width="40" layout="topleft" left_pad="6" max_val="10" min_val="0.25" top_delta="0"
-         name="CinematicCamCorkTurns" tool_tip="Revolutions swept over the duration" width="92" />
+         name="CinematicCamCorkTurns" tool_tip="Revolutions swept over the duration" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamCorkTurns" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamCorkTurns" />
         <spinner control_name="CinematicCamCorkRollPerTurn" decimal_digits="0" follows="left|top" height="16" increment="15"
          label="Roll/T" label_width="44" layout="topleft" left_pad="6" max_val="720" min_val="-720" top_delta="0"
-         name="CinematicCamCorkRollPerTurn" tool_tip="Camera roll per revolution (deg)" width="96" />
+         name="CinematicCamCorkRollPerTurn" tool_tip="Camera roll per revolution (deg)" width="83" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamCorkRollPerTurn" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamCorkRollPerTurn" />
         <spinner control_name="CinematicCamCorkDuration" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="Time" label_width="32" layout="topleft" left="12" max_val="60" min_val="0.5" top_pad="5"
-         name="CinematicCamCorkDuration" tool_tip="Seconds for the tighten/rise sweep (s)" width="94" />
+         name="CinematicCamCorkDuration" tool_tip="Seconds for the tighten/rise sweep (s)" width="81" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamCorkDuration" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamCorkDuration" />
         <combo_box control_name="CinematicCamCorkEndMode" follows="left|top" height="20" layout="topleft"
          left_pad="8" top_delta="-2" name="CinematicCamCorkEndMode"
-         tool_tip="What happens when the sweep finishes" width="94">
+         tool_tip="What happens when the sweep finishes" width="81">
             <combo_box.item label="Hold" name="em_hold" value="0" />
             <combo_box.item label="Ping-pong" name="em_pp" value="1" />
             <combo_box.item label="Loop" name="em_loop" value="2" />
         </combo_box>
+        <button follows="left|top" height="20" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamCorkEndMode" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamCorkEndMode" />
     </panel>
 
     <panel name="panel_mode_pendulum" left="0" top="162" width="320" height="98"
@@ -807,19 +933,24 @@
         </text>
         <spinner control_name="CinematicCamPendulumRadius" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="Radius" label_width="42" layout="topleft" left="12" max_val="30" min_val="0.3" top_pad="6"
-         name="CinematicCamPendulumRadius" tool_tip="Distance from the subject (m)" width="100" />
+         name="CinematicCamPendulumRadius" tool_tip="Distance from the subject (m)" width="87" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamPendulumRadius" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamPendulumRadius" />
         <spinner control_name="CinematicCamPendulumHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="Ht" label_width="20" layout="topleft" left_pad="6" max_val="20" min_val="-5" top_delta="0"
-         name="CinematicCamPendulumHeight" tool_tip="Height above the subject (m)" width="80" />
+         name="CinematicCamPendulumHeight" tool_tip="Height above the subject (m)" width="67" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamPendulumHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamPendulumHeight" />
         <spinner control_name="CinematicCamPendulumSwing" decimal_digits="0" follows="left|top" height="16" increment="5"
          label="Swing" label_width="40" layout="topleft" left_pad="6" max_val="180" min_val="0" top_delta="0"
-         name="CinematicCamPendulumSwing" tool_tip="Swing half-width each side of center (deg)" width="92" />
+         name="CinematicCamPendulumSwing" tool_tip="Swing half-width each side of center (deg)" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamPendulumSwing" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamPendulumSwing" />
         <spinner control_name="CinematicCamPendulumPeriod" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="Period" label_width="42" layout="topleft" left="12" max_val="60" min_val="0.5" top_pad="5"
-         name="CinematicCamPendulumPeriod" tool_tip="Seconds per full swing cycle (s)" width="104" />
+         name="CinematicCamPendulumPeriod" tool_tip="Seconds per full swing cycle (s)" width="91" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamPendulumPeriod" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamPendulumPeriod" />
         <spinner control_name="CinematicCamPendulumHeading" decimal_digits="0" follows="left|top" height="16" increment="15"
          label="Heading" label_width="50" layout="topleft" left_pad="6" max_val="180" min_val="-180" top_delta="0"
-         name="CinematicCamPendulumHeading" tool_tip="Center bearing of the arc (deg, facing-relative)" width="112" />
+         name="CinematicCamPendulumHeading" tool_tip="Center bearing of the arc (deg, facing-relative)" width="99" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamPendulumHeading" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamPendulumHeading" />
     </panel>
 
     <panel name="panel_mode_contra" left="0" top="162" width="320" height="98"
@@ -829,22 +960,28 @@
         </text>
         <spinner control_name="CinematicCamContraRadius" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="Radius" label_width="42" layout="topleft" left="12" max_val="30" min_val="0.5" top_pad="6"
-         name="CinematicCamContraRadius" tool_tip="Orbit radius (m)" width="100" />
+         name="CinematicCamContraRadius" tool_tip="Orbit radius (m)" width="87" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamContraRadius" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamContraRadius" />
         <spinner control_name="CinematicCamContraHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="Ht" label_width="20" layout="topleft" left_pad="6" max_val="20" min_val="-5" top_delta="0"
-         name="CinematicCamContraHeight" tool_tip="Height above the subject (m)" width="80" />
+         name="CinematicCamContraHeight" tool_tip="Height above the subject (m)" width="67" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamContraHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamContraHeight" />
         <spinner control_name="CinematicCamContraSpeed" decimal_digits="0" follows="left|top" height="16" increment="5"
          label="Speed" label_width="40" layout="topleft" left_pad="6" max_val="180" min_val="-180" top_delta="0"
-         name="CinematicCamContraSpeed" tool_tip="Orbit speed (deg/s); negative reverses" width="92" />
+         name="CinematicCamContraSpeed" tool_tip="Orbit speed (deg/s); negative reverses" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamContraSpeed" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamContraSpeed" />
         <spinner control_name="CinematicCamContraFovStart" decimal_digits="2" follows="left|top" height="16" increment="0.05"
          label="Fov0" label_width="34" layout="topleft" left="12" max_val="4" min_val="0.05" top_pad="5"
-         name="CinematicCamContraFovStart" tool_tip="FOV multiplier at one end of the warp (below 1 = narrow)" width="92" />
+         name="CinematicCamContraFovStart" tool_tip="FOV multiplier at one end of the warp (below 1 = narrow)" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamContraFovStart" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamContraFovStart" />
         <spinner control_name="CinematicCamContraFovEnd" decimal_digits="2" follows="left|top" height="16" increment="0.05"
          label="Fov1" label_width="34" layout="topleft" left_pad="6" max_val="4" min_val="0.05" top_delta="0"
-         name="CinematicCamContraFovEnd" tool_tip="FOV multiplier at the other end (above 1 = wide)" width="92" />
+         name="CinematicCamContraFovEnd" tool_tip="FOV multiplier at the other end (above 1 = wide)" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamContraFovEnd" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamContraFovEnd" />
         <spinner control_name="CinematicCamContraWarpPeriod" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="Warp" label_width="40" layout="topleft" left_pad="6" max_val="60" min_val="0.5" top_delta="0"
-         name="CinematicCamContraWarpPeriod" tool_tip="Seconds per FOV warp cycle (s)" width="96" />
+         name="CinematicCamContraWarpPeriod" tool_tip="Seconds per FOV warp cycle (s)" width="83" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamContraWarpPeriod" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamContraWarpPeriod" />
     </panel>
 
     <panel name="panel_mode_fisheye" left="0" top="162" width="320" height="98"
@@ -854,26 +991,32 @@
         </text>
         <spinner control_name="CinematicCamFisheyeNear" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="Near" label_width="34" layout="topleft" left="12" max_val="15" min_val="0.2" top_pad="6"
-         name="CinematicCamFisheyeNear" tool_tip="Nearest distance to the face (m)" width="92" />
+         name="CinematicCamFisheyeNear" tool_tip="Nearest distance to the face (m)" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamFisheyeNear" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamFisheyeNear" />
         <spinner control_name="CinematicCamFisheyeFar" decimal_digits="1" follows="left|top" height="16" increment="0.25"
          label="Far" label_width="26" layout="topleft" left_pad="6" max_val="30" min_val="0.3" top_delta="0"
-         name="CinematicCamFisheyeFar" tool_tip="Farthest distance before/after the lunge (m)" width="84" />
+         name="CinematicCamFisheyeFar" tool_tip="Farthest distance before/after the lunge (m)" width="71" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamFisheyeFar" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamFisheyeFar" />
         <spinner control_name="CinematicCamFisheyeFov" decimal_digits="2" follows="left|top" height="16" increment="0.05"
          label="Fov" label_width="28" layout="topleft" left_pad="6" max_val="4" min_val="0.5" top_delta="0"
-         name="CinematicCamFisheyeFov" tool_tip="Constant FOV multiplier (above 1 = wide)" width="92" />
+         name="CinematicCamFisheyeFov" tool_tip="Constant FOV multiplier (above 1 = wide)" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamFisheyeFov" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamFisheyeFov" />
         <spinner control_name="CinematicCamFisheyeHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="Ht" label_width="20" layout="topleft" left="12" max_val="5" min_val="-5" top_pad="5"
-         name="CinematicCamFisheyeHeight" tool_tip="Height relative to the focus point (m)" width="80" />
+         name="CinematicCamFisheyeHeight" tool_tip="Height relative to the focus point (m)" width="67" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamFisheyeHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamFisheyeHeight" />
         <spinner control_name="CinematicCamFisheyeDuration" decimal_digits="1" follows="left|top" height="16" increment="0.25"
          label="Time" label_width="32" layout="topleft" left_pad="6" max_val="30" min_val="0.25" top_delta="0"
-         name="CinematicCamFisheyeDuration" tool_tip="Seconds for the push-and-recoil (s)" width="92" />
+         name="CinematicCamFisheyeDuration" tool_tip="Seconds for the push-and-recoil (s)" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamFisheyeDuration" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamFisheyeDuration" />
         <combo_box control_name="CinematicCamFisheyeEndMode" follows="left|top" height="20" layout="topleft"
          left_pad="6" top_delta="-2" name="CinematicCamFisheyeEndMode"
-         tool_tip="What happens when the lunge finishes" width="94">
+         tool_tip="What happens when the lunge finishes" width="81">
             <combo_box.item label="Hold" name="em_hold" value="0" />
             <combo_box.item label="Ping-pong" name="em_pp" value="1" />
             <combo_box.item label="Loop" name="em_loop" value="2" />
         </combo_box>
+        <button follows="left|top" height="20" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamFisheyeEndMode" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamFisheyeEndMode" />
     </panel>
 
     <panel name="panel_mode_skimmer" left="0" top="162" width="320" height="98"
@@ -883,19 +1026,24 @@
         </text>
         <spinner control_name="CinematicCamSkimmerHeight" decimal_digits="2" follows="left|top" height="16" increment="0.05"
          label="Ht" label_width="20" layout="topleft" left="12" max_val="2" min_val="0.05" top_pad="6"
-         name="CinematicCamSkimmerHeight" tool_tip="Camera height above the ground (m)" width="80" />
+         name="CinematicCamSkimmerHeight" tool_tip="Camera height above the ground (m)" width="67" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamSkimmerHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamSkimmerHeight" />
         <spinner control_name="CinematicCamSkimmerDistance" decimal_digits="1" follows="left|top" height="16" increment="0.25"
          label="Dist" label_width="28" layout="topleft" left_pad="6" max_val="20" min_val="0.5" top_delta="0"
-         name="CinematicCamSkimmerDistance" tool_tip="Lateral distance from the subject (m)" width="92" />
+         name="CinematicCamSkimmerDistance" tool_tip="Lateral distance from the subject (m)" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamSkimmerDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamSkimmerDistance" />
         <spinner control_name="CinematicCamSkimmerLength" decimal_digits="0" follows="left|top" height="16" increment="1"
          label="Len" label_width="26" layout="topleft" left_pad="6" max_val="50" min_val="1" top_delta="0"
-         name="CinematicCamSkimmerLength" tool_tip="Lateral track length (m)" width="86" />
+         name="CinematicCamSkimmerLength" tool_tip="Lateral track length (m)" width="73" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamSkimmerLength" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamSkimmerLength" />
         <spinner control_name="CinematicCamSkimmerSpeed" decimal_digits="2" follows="left|top" height="16" increment="0.1"
          label="Speed" label_width="40" layout="topleft" left="12" max_val="10" min_val="0.05" top_pad="5"
-         name="CinematicCamSkimmerSpeed" tool_tip="Track speed (m/s)" width="100" />
+         name="CinematicCamSkimmerSpeed" tool_tip="Track speed (m/s)" width="87" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamSkimmerSpeed" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamSkimmerSpeed" />
         <spinner control_name="CinematicCamSkimmerHeading" decimal_digits="0" follows="left|top" height="16" increment="15"
          label="Heading" label_width="50" layout="topleft" left_pad="6" max_val="360" min_val="0" top_delta="0"
-         name="CinematicCamSkimmerHeading" tool_tip="Track heading (deg, world frame)" width="112" />
+         name="CinematicCamSkimmerHeading" tool_tip="Track heading (deg, world frame)" width="99" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamSkimmerHeading" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamSkimmerHeading" />
     </panel>
 
     <panel name="panel_mode_boost" left="0" top="162" width="320" height="98"
@@ -905,26 +1053,32 @@
         </text>
         <spinner control_name="CinematicCamBoostStartHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="Start" label_width="32" layout="topleft" left="12" max_val="10" min_val="0" top_pad="6"
-         name="CinematicCamBoostStartHeight" tool_tip="Start height near the floor (m)" width="92" />
+         name="CinematicCamBoostStartHeight" tool_tip="Start height near the floor (m)" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBoostStartHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBoostStartHeight" />
         <spinner control_name="CinematicCamBoostEndHeight" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="End" label_width="28" layout="topleft" left_pad="6" max_val="100" min_val="0.5" top_delta="0"
-         name="CinematicCamBoostEndHeight" tool_tip="End height at the top of the launch (m)" width="88" />
+         name="CinematicCamBoostEndHeight" tool_tip="End height at the top of the launch (m)" width="75" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBoostEndHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBoostEndHeight" />
         <spinner control_name="CinematicCamBoostDistance" decimal_digits="1" follows="left|top" height="16" increment="0.25"
          label="Dist" label_width="28" layout="topleft" left_pad="6" max_val="20" min_val="0.3" top_delta="0"
-         name="CinematicCamBoostDistance" tool_tip="Frontal distance from the subject (m)" width="88" />
+         name="CinematicCamBoostDistance" tool_tip="Frontal distance from the subject (m)" width="75" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBoostDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBoostDistance" />
         <spinner control_name="CinematicCamBoostDuration" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="Time" label_width="32" layout="topleft" left="12" max_val="60" min_val="0.5" top_pad="5"
-         name="CinematicCamBoostDuration" tool_tip="Seconds for the accelerating rise (s)" width="90" />
+         name="CinematicCamBoostDuration" tool_tip="Seconds for the accelerating rise (s)" width="77" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBoostDuration" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBoostDuration" />
         <spinner control_name="CinematicCamBoostHeading" decimal_digits="0" follows="left|top" height="16" increment="15"
          label="Hdg" label_width="28" layout="topleft" left_pad="6" max_val="180" min_val="-180" top_delta="0"
-         name="CinematicCamBoostHeading" tool_tip="Bearing relative to the subject's facing (deg)" width="80" />
+         name="CinematicCamBoostHeading" tool_tip="Bearing relative to the subject's facing (deg)" width="67" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBoostHeading" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBoostHeading" />
         <combo_box control_name="CinematicCamBoostEndMode" follows="left|top" height="20" layout="topleft"
          left_pad="6" top_delta="-2" name="CinematicCamBoostEndMode"
-         tool_tip="What happens when the rise finishes" width="90">
+         tool_tip="What happens when the rise finishes" width="77">
             <combo_box.item label="Hold" name="em_hold" value="0" />
             <combo_box.item label="Ping-pong" name="em_pp" value="1" />
             <combo_box.item label="Loop" name="em_loop" value="2" />
         </combo_box>
+        <button follows="left|top" height="20" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBoostEndMode" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBoostEndMode" />
     </panel>
 
     <panel name="panel_mode_boom" left="0" top="162" width="320" height="98"
@@ -934,26 +1088,32 @@
         </text>
         <spinner control_name="CinematicCamBoomRadius" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="Rad" label_width="28" layout="topleft" left="12" max_val="30" min_val="0.5" top_pad="6"
-         name="CinematicCamBoomRadius" tool_tip="Horizontal half-extent of the arc (m)" width="88" />
+         name="CinematicCamBoomRadius" tool_tip="Horizontal half-extent of the arc (m)" width="75" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBoomRadius" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBoomRadius" />
         <spinner control_name="CinematicCamBoomApex" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="Apex" label_width="34" layout="topleft" left_pad="6" max_val="50" min_val="0.5" top_delta="0"
-         name="CinematicCamBoomApex" tool_tip="Peak height above the subject at the apex (m)" width="92" />
+         name="CinematicCamBoomApex" tool_tip="Peak height above the subject at the apex (m)" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBoomApex" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBoomApex" />
         <spinner control_name="CinematicCamBoomSpan" decimal_digits="0" follows="left|top" height="16" increment="15"
          label="Span" label_width="34" layout="topleft" left_pad="6" max_val="300" min_val="20" top_delta="0"
-         name="CinematicCamBoomSpan" tool_tip="Total swept arc (deg); 180 = side to side over the top" width="92" />
+         name="CinematicCamBoomSpan" tool_tip="Total swept arc (deg); 180 = side to side over the top" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBoomSpan" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBoomSpan" />
         <spinner control_name="CinematicCamBoomDuration" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="Time" label_width="32" layout="topleft" left="12" max_val="60" min_val="0.5" top_pad="5"
-         name="CinematicCamBoomDuration" tool_tip="Seconds for the jib arc (s)" width="88" />
+         name="CinematicCamBoomDuration" tool_tip="Seconds for the jib arc (s)" width="75" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBoomDuration" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBoomDuration" />
         <spinner control_name="CinematicCamBoomAxis" decimal_digits="0" follows="left|top" height="16" increment="15"
          label="Axis" label_width="28" layout="topleft" left_pad="6" max_val="360" min_val="0" top_delta="0"
-         name="CinematicCamBoomAxis" tool_tip="Arc axis heading (deg, world frame)" width="86" />
+         name="CinematicCamBoomAxis" tool_tip="Arc axis heading (deg, world frame)" width="73" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBoomAxis" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBoomAxis" />
         <combo_box control_name="CinematicCamBoomEndMode" follows="left|top" height="20" layout="topleft"
          left_pad="8" top_delta="-2" name="CinematicCamBoomEndMode"
-         tool_tip="What happens when the arc finishes" width="94">
+         tool_tip="What happens when the arc finishes" width="81">
             <combo_box.item label="Hold" name="em_hold" value="0" />
             <combo_box.item label="Ping-pong" name="em_pp" value="1" />
             <combo_box.item label="Loop" name="em_loop" value="2" />
         </combo_box>
+        <button follows="left|top" height="20" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBoomEndMode" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBoomEndMode" />
     </panel>
 
     <panel name="panel_mode_topspin" left="0" top="162" width="320" height="98"
@@ -963,13 +1123,16 @@
         </text>
         <spinner control_name="CinematicCamTopSpinHeight" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="Ht" label_width="20" layout="topleft" left="12" max_val="50" min_val="0.5" top_pad="6"
-         name="CinematicCamTopSpinHeight" tool_tip="Height directly above the subject (m)" width="86" />
+         name="CinematicCamTopSpinHeight" tool_tip="Height directly above the subject (m)" width="73" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamTopSpinHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamTopSpinHeight" />
         <spinner control_name="CinematicCamTopSpinSpeed" decimal_digits="0" follows="left|top" height="16" increment="5"
          label="Speed" label_width="40" layout="topleft" left_pad="6" max_val="180" min_val="-180" top_delta="0"
-         name="CinematicCamTopSpinSpeed" tool_tip="Spin speed about vertical (deg/s); negative reverses" width="100" />
+         name="CinematicCamTopSpinSpeed" tool_tip="Spin speed about vertical (deg/s); negative reverses" width="87" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamTopSpinSpeed" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamTopSpinSpeed" />
         <spinner control_name="CinematicCamTopSpinOffset" decimal_digits="2" follows="left|top" height="16" increment="0.05"
          label="Offset" label_width="40" layout="topleft" left_pad="6" max_val="5" min_val="0" top_delta="0"
-         name="CinematicCamTopSpinOffset" tool_tip="Small horizontal radius (m); 0 = pure top-down" width="92" />
+         name="CinematicCamTopSpinOffset" tool_tip="Small horizontal radius (m); 0 = pure top-down" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamTopSpinOffset" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamTopSpinOffset" />
         <text follows="left|top" halign="left" height="26" layout="topleft" left="12" top_pad="8" width="296" name="hint" word_wrap="true">
             Looks straight down; the spin is carried as camera roll.
         </text>
@@ -982,19 +1145,24 @@
         </text>
         <spinner control_name="CinematicCamTurntableRadius" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="Radius" label_width="42" layout="topleft" left="12" max_val="30" min_val="0.5" top_pad="6"
-         name="CinematicCamTurntableRadius" tool_tip="Orbit radius (m)" width="104" />
+         name="CinematicCamTurntableRadius" tool_tip="Orbit radius (m)" width="91" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamTurntableRadius" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamTurntableRadius" />
         <spinner control_name="CinematicCamTurntableSpeed" decimal_digits="0" follows="left|top" height="16" increment="2"
          label="Speed" label_width="40" layout="topleft" left_pad="6" max_val="180" min_val="-180" top_delta="0"
-         name="CinematicCamTurntableSpeed" tool_tip="Orbit speed (deg/s); negative reverses" width="100" />
+         name="CinematicCamTurntableSpeed" tool_tip="Orbit speed (deg/s); negative reverses" width="87" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamTurntableSpeed" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamTurntableSpeed" />
         <spinner control_name="CinematicCamTurntableMinHeight" decimal_digits="1" follows="left|top" height="16" increment="0.2"
          label="Lo" label_width="20" layout="topleft" left="12" max_val="20" min_val="-5" top_pad="5"
-         name="CinematicCamTurntableMinHeight" tool_tip="Minimum height above the subject (m)" width="84" />
+         name="CinematicCamTurntableMinHeight" tool_tip="Minimum height above the subject (m)" width="71" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamTurntableMinHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamTurntableMinHeight" />
         <spinner control_name="CinematicCamTurntableMaxHeight" decimal_digits="1" follows="left|top" height="16" increment="0.2"
          label="Hi" label_width="20" layout="topleft" left_pad="6" max_val="30" min_val="-5" top_delta="0"
-         name="CinematicCamTurntableMaxHeight" tool_tip="Maximum height above the subject (m)" width="84" />
+         name="CinematicCamTurntableMaxHeight" tool_tip="Maximum height above the subject (m)" width="71" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamTurntableMaxHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamTurntableMaxHeight" />
         <spinner control_name="CinematicCamTurntablePeriod" decimal_digits="0" follows="left|top" height="16" increment="1"
          label="Cycle s" label_width="44" layout="topleft" left_pad="6" max_val="120" min_val="2" top_delta="0"
-         name="CinematicCamTurntablePeriod" tool_tip="Seconds per full rise+descend cycle (s)" width="110" />
+         name="CinematicCamTurntablePeriod" tool_tip="Seconds per full rise+descend cycle (s)" width="97" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamTurntablePeriod" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamTurntablePeriod" />
     </panel>
 
     <panel name="panel_mode_float" left="0" top="162" width="320" height="98"
@@ -1004,16 +1172,20 @@
         </text>
         <spinner control_name="CinematicCamFloatDistance" decimal_digits="2" follows="left|top" height="16" increment="0.05"
          label="Dist" label_width="28" layout="topleft" left="12" max_val="3" min_val="0.25" top_pad="6"
-         name="CinematicCamFloatDistance" tool_tip="Distance from the face (m)" width="88" />
+         name="CinematicCamFloatDistance" tool_tip="Distance from the face (m)" width="75" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamFloatDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamFloatDistance" />
         <spinner control_name="CinematicCamFloatDrift" decimal_digits="3" follows="left|top" height="16" increment="0.005"
          label="Drift" label_width="32" layout="topleft" left_pad="6" max_val="0.3" min_val="0" top_delta="0"
-         name="CinematicCamFloatDrift" tool_tip="Drift amplitude (m)" width="92" />
+         name="CinematicCamFloatDrift" tool_tip="Drift amplitude (m)" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamFloatDrift" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamFloatDrift" />
         <spinner control_name="CinematicCamFloatSpeed" decimal_digits="2" follows="left|top" height="16" increment="0.05"
          label="Speed" label_width="40" layout="topleft" left_pad="6" max_val="3" min_val="0.01" top_delta="0"
-         name="CinematicCamFloatSpeed" tool_tip="Drift speed (unitless rate)" width="92" />
+         name="CinematicCamFloatSpeed" tool_tip="Drift speed (unitless rate)" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamFloatSpeed" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamFloatSpeed" />
         <spinner control_name="CinematicCamFloatFov" decimal_digits="2" follows="left|top" height="16" increment="0.05"
          label="Zoom x" label_width="44" layout="topleft" left="12" max_val="1.5" min_val="0.05" top_pad="5"
-         name="CinematicCamFloatFov" tool_tip="FOV multiplier: below 1 = narrow lens" width="110" />
+         name="CinematicCamFloatFov" tool_tip="FOV multiplier: below 1 = narrow lens" width="97" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamFloatFov" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamFloatFov" />
     </panel>
 
     <panel name="panel_mode_tiltwhip" left="0" top="162" width="320" height="98"
@@ -1023,18 +1195,23 @@
         </text>
         <spinner control_name="CinematicCamTiltWhipDistance" decimal_digits="1" follows="left|top" height="16" increment="0.25"
          label="Dist" label_width="28" layout="topleft" left="12" max_val="15" min_val="0.3" top_pad="6"
-         name="CinematicCamTiltWhipDistance" tool_tip="Frontal distance from the subject (m)" width="92" />
+         name="CinematicCamTiltWhipDistance" tool_tip="Frontal distance from the subject (m)" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamTiltWhipDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamTiltWhipDistance" />
         <spinner control_name="CinematicCamTiltWhipHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="Ht" label_width="20" layout="topleft" left_pad="6" max_val="10" min_val="-2" top_delta="0"
-         name="CinematicCamTiltWhipHeight" tool_tip="Height above the subject (m)" width="80" />
+         name="CinematicCamTiltWhipHeight" tool_tip="Height above the subject (m)" width="67" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamTiltWhipHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamTiltWhipHeight" />
         <spinner control_name="CinematicCamTiltWhipAmplitude" decimal_digits="0" follows="left|top" height="16" increment="5"
          label="Amp" label_width="30" layout="topleft" left_pad="6" max_val="80" min_val="0" top_delta="0"
-         name="CinematicCamTiltWhipAmplitude" tool_tip="Pitch whip amplitude (deg)" width="92" />
+         name="CinematicCamTiltWhipAmplitude" tool_tip="Pitch whip amplitude (deg)" width="79" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamTiltWhipAmplitude" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamTiltWhipAmplitude" />
         <spinner control_name="CinematicCamTiltWhipPeriod" decimal_digits="1" follows="left|top" height="16" increment="0.25"
          label="Period" label_width="42" layout="topleft" left="12" max_val="30" min_val="0.25" top_pad="5"
-         name="CinematicCamTiltWhipPeriod" tool_tip="Seconds between whip hits (s)" width="104" />
+         name="CinematicCamTiltWhipPeriod" tool_tip="Seconds between whip hits (s)" width="91" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamTiltWhipPeriod" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamTiltWhipPeriod" />
         <spinner control_name="CinematicCamTiltWhipSnap" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="Snap" label_width="34" layout="topleft" left_pad="6" max_val="20" min_val="0" top_delta="0"
-         name="CinematicCamTiltWhipSnap" tool_tip="Attack sharpness (higher = snappier settle)" width="96" />
+         name="CinematicCamTiltWhipSnap" tool_tip="Attack sharpness (higher = snappier settle)" width="83" />
+        <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamTiltWhipSnap" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamTiltWhipSnap" />
     </panel>
 </panel>

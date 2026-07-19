@@ -26,10 +26,16 @@
 
 class LLComboBox;
 
+// Registers the single global "Machinima.ResetControl" commit callback shared by
+// the per-control reset buttons in BOTH camera panels (this one and
+// panel_flycam_orbit). Idempotent; every camera-panel constructor calls it so the
+// callback is present before the panels' reset buttons are built, in either host.
+void alRegisterMachinimaResetControl();
+
 class ALPanelCineCamParams final : public LLPanel
 {
 public:
-    ALPanelCineCamParams() = default;
+    ALPanelCineCamParams();
     ~ALPanelCineCamParams() override;
 
     bool postBuild() override;

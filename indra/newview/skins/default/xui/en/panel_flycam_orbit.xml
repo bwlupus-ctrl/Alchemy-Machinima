@@ -22,7 +22,8 @@
      top="4"
      name="FlycamOrbitEnabled"
      tool_tip="While in flycam: orbit, pan and dolly relative to the anchor joint instead of free flight. Uncheck for normal flycam."
-     width="180" />
+     width="167" />
+    <button follows="left|top" height="18" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_FlycamOrbitEnabled" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOrbitEnabled" />
     <text
      follows="left|top"
      halign="left"
@@ -46,7 +47,7 @@
      top_pad="6"
      name="CinematicCamJoint"
      tool_tip="Skeleton joint to anchor the orbit on (type any joint name, including Bento bones)"
-     width="140">
+     width="127">
         <combo_box.item label="mHead" name="j_head" value="mHead" />
         <combo_box.item label="mNeck" name="j_neck" value="mNeck" />
         <combo_box.item label="mChest" name="j_chest" value="mChest" />
@@ -62,6 +63,7 @@
         <combo_box.item label="mFootRight" name="j_footr" value="mFootRight" />
         <combo_box.item label="mFootLeft" name="j_footl" value="mFootLeft" />
     </combo_box>
+    <button follows="left|top" height="20" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamJoint" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamJoint" />
     <check_box
      control_name="CinematicCamUseSelected"
      follows="left|top"
@@ -72,7 +74,8 @@
      top_delta="2"
      name="CinematicCamUseSelected"
      tool_tip="Anchor on the selected avatar instead of yourself (falls back to you if nothing valid is selected)"
-     width="150" />
+     width="137" />
+    <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamUseSelected" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamUseSelected" />
     <check_box
      control_name="FlycamOrbitLevel"
      follows="left|top"
@@ -83,7 +86,8 @@
      top_pad="8"
      name="FlycamOrbitLevel"
      tool_tip="Keep the orbit ring horizontal (ignore bone roll/pitch). Off = ride the full bone frame, GoPro-style"
-     width="150" />
+     width="137" />
+    <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_FlycamOrbitLevel" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOrbitLevel" />
     <spinner
      control_name="FlycamOrbitMinRadius"
      decimal_digits="2"
@@ -99,7 +103,8 @@
      top_pad="10"
      name="FlycamOrbitMinRadius"
      tool_tip="Closest the dolly can approach the anchor (m)"
-     width="140" />
+     width="127" />
+    <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_FlycamOrbitMinRadius" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOrbitMinRadius" />
     <spinner
      control_name="FlycamOrbitMaxRadius"
      decimal_digits="1"
@@ -115,7 +120,8 @@
      top_delta="0"
      name="FlycamOrbitMaxRadius"
      tool_tip="Farthest the dolly can retreat from the anchor (m)"
-     width="146" />
+     width="133" />
+    <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_FlycamOrbitMaxRadius" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOrbitMaxRadius" />
     <slider
      control_name="FlycamOrbitSmoothing"
      decimal_digits="2"
@@ -132,7 +138,8 @@
      top_pad="10"
      name="FlycamOrbitSmoothing"
      tool_tip="Temporal smoothing of the anchor motion only. 0 = rigid lock, higher = steadicam glide"
-     width="296" />
+     width="283" />
+    <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_FlycamOrbitSmoothing" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOrbitSmoothing" />
     <slider
      control_name="FlycamOrbitZoom"
      decimal_digits="2"
@@ -149,7 +156,8 @@
      top_pad="10"
      name="FlycamOrbitZoom"
      tool_tip="FOV multiplier while orbiting only: below 1 = tighter/telephoto, above 1 = wider, 1 = unchanged. Free-flight zoom is untouched"
-     width="296" />
+     width="283" />
+    <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_FlycamOrbitZoom" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOrbitZoom" />
     <spinner
      control_name="FlycamOrbitOffsetUp"
      decimal_digits="2"
@@ -165,7 +173,8 @@
      top_pad="10"
      name="FlycamOrbitOffsetUp"
      tool_tip="Shift the anchor focus point upward (m): frame higher/lower on the body"
-     width="140" />
+     width="127" />
+    <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_FlycamOrbitOffsetUp" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOrbitOffsetUp" />
     <spinner
      control_name="FlycamOrbitOffsetLeft"
      decimal_digits="2"
@@ -181,5 +190,6 @@
      top_delta="0"
      name="FlycamOrbitOffsetLeft"
      tool_tip="Shift the anchor focus point to the left (m): off-center framing"
-     width="146" />
+     width="133" />
+    <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_FlycamOrbitOffsetLeft" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOrbitOffsetLeft" />
 </panel>

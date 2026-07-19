@@ -25,7 +25,7 @@
 class ALPanelFlycamOrbit final : public LLPanel
 {
 public:
-    ALPanelFlycamOrbit() = default;
+    ALPanelFlycamOrbit();
     ~ALPanelFlycamOrbit() override = default;
 
     bool postBuild() override;

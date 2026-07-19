@@ -31,6 +31,46 @@ constexpr char PRESET_SUBDIR[] = "cinematic_presets";
 } // anonymous namespace
 
 // ---------------------------------------------------------------------------
+// One global commit callback behind every per-control reset button in the two
+// shared camera panels (this panel and panel_flycam_orbit). It resets just the
+// named setting to its built-in default, so XUI can wire a reset button with
+//   commit_callback.function="Machinima.ResetControl"
+//   commit_callback.parameter="<control_name>"
+// A single registration covers both hosts (Director Console + standalone
+// floaters) because both embed the same panels. Registered once, before any of
+// these panels' reset buttons are built; a param naming no setting is a no-op.
+// ---------------------------------------------------------------------------
+void alRegisterMachinimaResetControl()
+{
+    static bool sRegistered = false;
+    if (sRegistered)
+    {
+        return;
+    }
+    sRegistered = true;
+    LLUICtrl::CommitCallbackRegistry::defaultRegistrar().add(
+        "Machinima.ResetControl",
+        [](LLUICtrl*, const LLSD& param)
+        {
+            const std::string name = param.asString();
+            if (name.empty())
+            {
+                return;
+            }
+            if (LLControlVariable* ctrl = gSavedSettings.getControl(name))
+            {
+                ctrl->resetToDefault(true);
+            }
+        });
+}
+
+ALPanelCineCamParams::ALPanelCineCamParams()
+{
+    // ensure the reset buttons' commit callback resolves before our children build
+    alRegisterMachinimaResetControl();
+}
+
+// ---------------------------------------------------------------------------
 // mode -> panel + settings table
 //
 // Ground truth is the set of LLCachedControl declarations inside each pattern
