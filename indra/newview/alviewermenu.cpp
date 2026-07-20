@@ -31,6 +31,7 @@
 #include "alavataractions.h"
 #include "llcinematiccamera.h"  // [Cinematic] locked follow subject
 #include "llactormover.h"       // [ActorMover] ghost locomotion subject
+#include "alobjectpathmover.h"  // [ObjectPath] prop-on-a-spline roster
 #include "lldirectorcast.h"     // [Director] cast membership
 //#include "alcinematicmode.h"
 #include "alderenderlist.h"
@@ -921,6 +922,35 @@ namespace
         return avatarp && LLActorMover::isTarget(avatarp->getID());
     }
 
+// [ObjectPath] right-click any object > Director > "Path Object": toggle the
+// clicked linkset's ROOT into the client-side object path mover roster (drive
+// a prop along a spline, sim never told). The clicked prim resolves to its
+// root so children never enroll; avatars are excluded (they have the Actor
+// Mover). Authoring/transport ride the /objpath* chat commands for now.
+    LLUUID object_path_root_from_selection()
+    {
+        LLViewerObject* obj = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
+        if (!obj || obj->isAvatar())
+        {
+            return LLUUID::null;
+        }
+        LLViewerObject* root = obj->getRootEdit();
+        return root ? root->getID() : LLUUID::null;
+    }
+
+    void handle_object_path_target(const LLSD&)
+    {
+        const LLUUID root_id = object_path_root_from_selection();
+        if (root_id.notNull())
+            ALObjectPathMover::toggleTarget(root_id);
+    }
+
+    bool check_object_path_target(const LLSD&)
+    {
+        const LLUUID root_id = object_path_root_from_selection();
+        return root_id.notNull() && ALObjectPathMover::isTarget(root_id);
+    }
+
 // [Director] right-click avatar (or animesh, resolved to its control avatar
 // by find_avatar_from_object) > toggle Director cast membership. Same list
 // the Actor Mover roster delegates to, so this and "Actor Mover Target" are
@@ -1084,6 +1114,9 @@ void ALViewerMenu::initialize_menus()
     // [ActorMover] ghost-locomotion subject
     commit.add("Avatar.ActorMoverTarget", boost::bind(&handle_avatar_actor_mover_target, _2));
     enable.add("Avatar.CheckActorMoverTarget", boost::bind(&check_avatar_actor_mover_target, _2));
+    // [ObjectPath] client-side object path mover roster (props on splines)
+    commit.add("Object.PathTarget", boost::bind(&handle_object_path_target, _2));
+    enable.add("Object.CheckPathTarget", boost::bind(&check_object_path_target, _2));
     // [Director] cast membership (alias of the Actor Mover roster)
     commit.add("Avatar.AddToCast", boost::bind(&handle_avatar_add_to_cast, _2));
     enable.add("Avatar.CheckAddToCast", boost::bind(&check_avatar_add_to_cast, _2));

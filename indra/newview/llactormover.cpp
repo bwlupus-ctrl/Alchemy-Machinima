@@ -232,6 +232,21 @@ F32 pathRootAboveAt(const LLActorMover::Path& path, F32 d)
 }
 } // anonymous namespace
 
+// [ObjectPath] public wrappers over the file-scope evaluators above, so the
+// object path mover drives with EXACTLY the walk's speed math (overrides +
+// ease) and the interpolated per-node skid yaw. Named eval* (not pathSpeedAt)
+// so class-scope lookup inside member functions never shadows the free helper.
+F32 LLActorMover::evalPathSpeed(const Path& path, F32 dist, bool skip_ease)
+{
+    return pathSpeedAt(path, dist, skip_ease);
+}
+
+F32 LLActorMover::evalPathYawOffset(const Path& path, F32 dist)
+{
+    return pathNodeScalarAt(path, dist,
+                            [](const Waypoint& w) { return w.mYawOffset; });
+}
+
 // ---------------------------------------------------------------------------
 // Path compilation (arc-length table) + evaluation
 // ---------------------------------------------------------------------------
@@ -572,6 +587,20 @@ bool LLActorMover::setNodeAnim(const LLUUID& actor_id, S32 index, const LLUUID& 
     }
     Path& path = editPath(actor_id);
     path.mNodes[index].mAnim = anim;
+    path.markDirty();
+    return true;
+}
+
+// [ObjectPath] per-node skid yaw (same field-setter shape as its siblings)
+bool LLActorMover::setNodeYawOffset(const LLUUID& actor_id, S32 index, F32 yaw_rad)
+{
+    const Path* cp = getPath(actor_id);
+    if (!cp || index < 0 || index >= (S32)cp->mNodes.size())
+    {
+        return false;
+    }
+    Path& path = editPath(actor_id);
+    path.mNodes[index].mYawOffset = yaw_rad;
     path.markDirty();
     return true;
 }
@@ -3940,19 +3969,13 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
 // ---------------------------------------------------------------------------
 void LLActorMover::renderHeadingPreview()
 {
-    // [GhostStudio] studio instances render regardless of the path-preview
-    // gates below (they are scene dressing, not an editing overlay), so the
-    // early-outs detour through the self-contained studio pass instead of
-    // returning past it.
-    const bool studio_active = ALGhostStudio::instance().anyEnabled();
-
+    // (Ghost Studio instances do NOT draw here: they are scene dressing, not
+    // an editing indicator, so render_ui_3d() calls renderStudioGhosts()
+    // OUTSIDE the beacon/UI-visibility gate -- studio ghosts stay on screen
+    // while actually filming with the UI hidden.)
     static LLCachedControl<bool> show(gSavedSettings, "ActorMoverShowHeading", true);
     if (!show)
     {
-        if (studio_active)
-        {
-            renderStudioGhosts();
-        }
         return;
     }
     // an operator floater must be up: the standalone mover or the Director
@@ -3963,10 +3986,6 @@ void LLActorMover::renderHeadingPreview()
         floaterp = LLFloaterReg::findInstance("director");
         if (!floaterp || !floaterp->getVisible())
         {
-            if (studio_active)
-            {
-                renderStudioGhosts();
-            }
             return;
         }
     }
@@ -4290,14 +4309,6 @@ void LLActorMover::renderHeadingPreview()
             }
         }
         gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);   // leave UI state untextured
-    }
-
-    // [GhostStudio] free-standing ghost instances draw after the path viz and
-    // node ghosts (self-contained state; same cleared-depth UI overlay, so
-    // painter order is all we control and the studio sorts itself internally)
-    if (studio_active)
-    {
-        renderStudioGhosts();
     }
 
     gGL.setLineWidth(1.f);

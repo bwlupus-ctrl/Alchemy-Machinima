@@ -65,6 +65,7 @@
 #include "llurlfloaterdispatchhandler.h"
 #include "llviewerjoystick.h"
 #include "llactormover.h"    // TP-away walk suspend/resume state machine (idle tick)
+#include "alobjectpathmover.h"  // [ObjectPath] per-frame object drives (idle tick)
 #include "llcinematiccamera.h"
 #include "llflycamrecorder.h"
 #include "llpathcamera.h"    // per-node path camera source (authored actor+camera TAKE)
@@ -5421,6 +5422,12 @@ void LLAppViewer::idle()
     // dispatch below, so a teleport/derez suspends the walk (and releases the
     // path camera) the same frame instead of leaving a stale override pose.
     LLActorMover::instance().updateSuspendState();
+
+    // [ObjectPath] client-side object drives (props on splines): advance and
+    // re-assert each enrolled object's rendered transform once per frame, at
+    // the same idle site as the actor state machine so a drive always lands
+    // before this frame's render. Zero cost with no drives.
+    ALObjectPathMover::instance().update();
 
     if (gAgentPilot.isPlaying() && gAgentPilot.getOverrideCamera())
     {

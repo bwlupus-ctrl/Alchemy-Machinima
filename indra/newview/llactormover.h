@@ -62,6 +62,13 @@ public:
         F32        mSpeedOverride = 0.f;// local ground speed, m/s (0 = use path speed)
         LLUUID     mAnim;               // per-node anim (null = use loco anim)
         F32        mGroundOffset = 0.f; // manual Z nudge at this node, m
+        // [ObjectPath] authored yaw offset at this node, radians: the object
+        // path mover ADDS this to the tangent facing as a drive passes the
+        // node (fake a skid / drift through a corner; interpolated across the
+        // bracketing nodes like the other per-node scalars). Ignored by the
+        // avatar walk, whose facing is the turn-rate-smoothed tangent. Rides
+        // PathState/undo automatically -- those copy Waypoint wholesale.
+        F32        mYawOffset = 0.f;    // radians, + = counter-clockwise
         // Authored root height ABOVE the ground at this node (captured once, like
         // the legacy straight-move captures its root origin). Placement adds this
         // to the resolved ground so the rendered root sits at the SAME stable
@@ -159,6 +166,14 @@ public:
     bool setNodeSpeed(const LLUUID& actor_id, S32 index, F32 speed_override);
     bool setNodeAnim(const LLUUID& actor_id, S32 index, const LLUUID& anim);
     bool setNodeGroundOffset(const LLUUID& actor_id, S32 index, F32 offset_m);
+    bool setNodeYawOffset(const LLUUID& actor_id, S32 index, F32 yaw_rad);  // [ObjectPath] skid
+
+    // [ObjectPath] evaluation helpers shared with the object path mover, so an
+    // object drive uses the EXACT speed math the avatar walk uses (per-node
+    // overrides blended across nodes + ease in/out over the arc -- no parallel
+    // implementation to drift) plus the interpolated per-node yaw offset.
+    static F32 evalPathSpeed(const Path& path, F32 dist, bool skip_ease);
+    static F32 evalPathYawOffset(const Path& path, F32 dist);
 
     // ---- P3 per-node camera (author an actor+camera TAKE inline) --------------
     // Capture a camera into a node from a render-camera pose already resolved to
@@ -400,11 +415,17 @@ public:
 
     // in-world heading preview lines (called from render_ui_3d, same pass as
     // the debug beacons). Zero cost unless ActorMoverShowHeading is on AND
-    // the Actor Mover floater is open -- except the Ghost Studio pass below,
-    // which also runs whenever the studio has enabled instances (its ghosts
-    // are scene dressing, not an editing overlay, so they must not vanish
-    // when the operator closes the floaters).
+    // the Actor Mover floater is open.
     void renderHeadingPreview();
+
+    // [GhostStudio] draw every enabled studio ghost instance (far-to-near)
+    // through the model-ghost renderer with its per-instance placement, style
+    // and FX. Called from render_ui_3d OUTSIDE the beacon/UI-visibility gate
+    // and with no floater requirement: studio ghosts are SCENE DRESSING, not
+    // an editing indicator -- they stay on screen while filming with the UI
+    // hidden and every floater closed. Self-contained overlay state; zero
+    // cost when the studio has no enabled instances.
+    void renderStudioGhosts();
 
     // ---- Pose/blocking ghosts: translucent REAL-avatar billboards -------------
     // Refresh each roster actor's cached impostor snapshot (a billboard image of
@@ -634,13 +655,6 @@ private:
 
     // is this actor's cached ghost snapshot stale (needs a regen)?
     static bool ghostImpostorStale(LLVOAvatar* av, const GhostImpostor& gi);
-
-    // [GhostStudio] draw every enabled studio ghost instance (far-to-near)
-    // through the model-ghost renderer with its per-instance placement, style
-    // and FX. Self-contained UI-overlay state; called from
-    // renderHeadingPreview() both on the normal path and on the early-out
-    // path so studio ghosts show without any operator floater open.
-    void renderStudioGhosts();
 
     std::map<LLUUID, Move> mMoves;
     std::map<LLUUID, Path> mPaths;      // authored path per actor (session-only)

@@ -158,6 +158,17 @@
             function="Object.EnableAlphaMode" />
       </menu_item_check>
     </context_menu>
+    <!-- [ObjectPath] enroll this linkset's ROOT in the client-side object
+         path mover (drive a prop along a spline; sim never told). Applies to
+         ANY object, like Alpha Mode. Author + drive via /objpath* commands. -->
+    <menu_item_check
+        label="Path Object"
+        name="Path Object">
+      <menu_item_check.on_click
+          function="Object.PathTarget" />
+      <menu_item_check.on_check
+          function="Object.CheckPathTarget" />
+    </menu_item_check>
   </context_menu>
   <menu_item_call
       label="Edit PBR material"

@@ -30,6 +30,7 @@
 
 // viewer includes
 #include "aoengine.h"
+#include "alobjectpathmover.h"  // [ObjectPath] /objpath* harness (props on splines)
 #include "llactormover.h"       // [Pathing] /pathadd /pathwalk /pathclear /pathloop test harness
 #include "llagent.h"
 #include "llagentcamera.h"
@@ -390,6 +391,97 @@ bool ALChatCommand::parseCommand(std::string data)
             path.markDirty();   // loop changes the segment count -> arc table
             LL_INFOS("ActorMover") << "/pathloop: end mode now "
                                    << (path.mEndMode == 1 ? "loop" : "stop") << LL_ENDL;
+            return true;
+        }
+        // -------------------------------------------------------------------
+        // [ObjectPath] object path mover harness (prototype UI; see
+        // doc/OBJECT_PATHING.md). Enroll props via right-click > Director >
+        // "Path Object"; these commands then author + drive EVERY enrolled
+        // object at once (each object keeps its own path, so a two-car chase
+        // still authors per object as they sit staged apart).
+        //   /objpathadd            append a node at each object's current spot
+        //   /objpathdrive          drive every enrolled object with a path
+        //   /objpathstop           release every drive (objects stay put)
+        //   /objpathclear          stop + drop every enrolled object's nodes
+        //   /objpathloop           toggle loop end-mode on the enrolled paths
+        //   /objpathspeed <m/s>    set the enrolled paths' nominal speed
+        //   /objpathskid <deg>     set the LAST node's skid yaw offset
+        // -------------------------------------------------------------------
+        else if (cmd == "/objpathadd")
+        {
+            ALObjectPathMover& opm = ALObjectPathMover::instance();
+            S32 added = 0;
+            for (const LLUUID& id : opm.getRoster())
+            {
+                added += opm.appendWaypointHere(id) ? 1 : 0;
+            }
+            if (!added)
+            {
+                LL_WARNS("ObjectPath") << "/objpathadd: no enrolled object resolvable; "
+                                          "right-click > Director > Path Object first" << LL_ENDL;
+            }
+            return true;
+        }
+        else if (cmd == "/objpathdrive")
+        {
+            ALObjectPathMover::instance().startAll();
+            return true;
+        }
+        else if (cmd == "/objpathstop")
+        {
+            ALObjectPathMover::instance().stopAll();
+            return true;
+        }
+        else if (cmd == "/objpathclear")
+        {
+            ALObjectPathMover& opm = ALObjectPathMover::instance();
+            opm.stopAll();
+            for (const LLUUID& id : opm.getRoster())
+            {
+                LLActorMover::instance().clearPath(id);
+            }
+            return true;
+        }
+        else if (cmd == "/objpathloop")
+        {
+            for (const LLUUID& id : ALObjectPathMover::instance().getRoster())
+            {
+                LLActorMover::Path& path = LLActorMover::instance().editPath(id);
+                path.mEndMode = (path.mEndMode == 1) ? 0 : 1;
+                path.markDirty();
+            }
+            return true;
+        }
+        else if (cmd == "/objpathspeed")
+        {
+            F32 speed;
+            if (input >> speed)
+            {
+                for (const LLUUID& id : ALObjectPathMover::instance().getRoster())
+                {
+                    LLActorMover::Path& path = LLActorMover::instance().editPath(id);
+                    path.mSpeed = llclamp(speed, 0.05f, 50.f);
+                    path.markDirty();
+                }
+            }
+            return true;
+        }
+        else if (cmd == "/objpathskid")
+        {
+            F32 deg;
+            if (input >> deg)
+            {
+                LLActorMover& mover = LLActorMover::instance();
+                for (const LLUUID& id : ALObjectPathMover::instance().getRoster())
+                {
+                    const LLActorMover::Path* path = mover.getPath(id);
+                    if (path && !path->mNodes.empty())
+                    {
+                        mover.setNodeYawOffset(id, (S32)path->mNodes.size() - 1,
+                                               deg * DEG_TO_RAD);
+                    }
+                }
+            }
             return true;
         }
     }

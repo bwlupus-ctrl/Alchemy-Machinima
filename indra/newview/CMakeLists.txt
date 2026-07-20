@@ -271,6 +271,7 @@ set(viewer_SOURCE_FILES
     llcameraoperator.cpp
     llactormover.cpp
     alghoststudio.cpp
+    alobjectpathmover.cpp
     alpanelghoststudio.cpp
     altoolghostplace.cpp
     altoolpathedit.cpp
@@ -1078,6 +1079,7 @@ set(viewer_HEADER_FILES
     llcameraoperator.h
     llactormover.h
     alghoststudio.h
+    alobjectpathmover.h
     alpanelghoststudio.h
     altoolghostplace.h
     altoolpathedit.h

@@ -1736,6 +1736,12 @@ void render_ui_3d()
         LLHUDObject::renderAllForTimer();
     }
 
+    // [GhostStudio] studio ghost instances are SCENE DRESSING, not an editing
+    // indicator: they draw OUTSIDE the beacon/UI-visibility gate above, so
+    // hiding the UI to film (Ctrl+Alt+F1 / HideUIControls) keeps every placed
+    // ghost in shot. Zero cost when the studio has no enabled instances.
+    LLActorMover::instance().renderStudioGhosts();
+
     stop_glerror();
 }
 
