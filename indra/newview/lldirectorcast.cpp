@@ -138,6 +138,56 @@ LLVOAvatar* LLDirectorCast::resolveSubjectB()
 }
 
 // ---------------------------------------------------------------------------
+// groups
+// ---------------------------------------------------------------------------
+void LLDirectorCast::setGroup(const LLUUID& id, const std::string& name)
+{
+    if (CastMember* m = getMember(id))
+    {
+        m->mGroup = name;   // "" = ungroup; no registry to keep in sync
+    }
+}
+
+std::string LLDirectorCast::getGroup(const LLUUID& id) const
+{
+    const CastMember* m = getMember(id);
+    return m ? m->mGroup : std::string();
+}
+
+std::vector<std::string> LLDirectorCast::getGroupNames() const
+{
+    // first-appearance cast order (NOT sorted): a combo rebuilt from this list
+    // keeps its rows where the operator last saw them
+    std::vector<std::string> names;
+    for (const CastMember& m : mCast)
+    {
+        if (!m.mGroup.empty()
+            && std::find(names.begin(), names.end(), m.mGroup) == names.end())
+        {
+            names.push_back(m.mGroup);
+        }
+    }
+    return names;
+}
+
+uuid_vec_t LLDirectorCast::membersInGroup(const std::string& name) const
+{
+    uuid_vec_t ids;
+    if (name.empty())
+    {
+        return ids;     // "" means ungrouped, never a startable group
+    }
+    for (const CastMember& m : mCast)
+    {
+        if (m.mGroup == name)
+        {
+            ids.push_back(m.mId);
+        }
+    }
+    return ids;
+}
+
+// ---------------------------------------------------------------------------
 // marks
 // ---------------------------------------------------------------------------
 void LLDirectorCast::setMarks()
@@ -216,6 +266,7 @@ LLSD LLDirectorCast::sceneData() const
             e["mark"] = ll_sd_from_vector3(m.mMark);
         }
         e["loco_anim"] = m.mLocoAnim;
+        e["group"] = m.mGroup;
         cast_arr.append(e);
     }
     data["cast"] = cast_arr;
@@ -251,6 +302,7 @@ void LLDirectorCast::applySceneData(const LLSD& data)
             m.mMark = ll_vector3_from_sd(e["mark"]);
         }
         m.mLocoAnim = e["loco_anim"].asUUID();
+        m.mGroup = e["group"].asString();   // absent in pre-group scenes -> ""
         mCast.push_back(m);
         mIds.push_back(m.mId);
         // refresh the cached name when the actor is in world; a resolve

@@ -15,6 +15,7 @@
 #include "alpanelactormover.h"
 #include "alpanelpatheditor.h"
 #include "llavatarnamecache.h"
+#include "lldirectorcast.h"         // group tag suffix (roster IS the cast)
 #include "llscrolllistctrl.h"
 #include "lltextbox.h"
 #include "llviewerobjectlist.h"     // gObjectList
@@ -116,6 +117,13 @@ void LLFloaterActorMover::refreshRoster()
         if (implicit_self)
         {
             name += " (you)";
+        }
+        // [Director] group tag rides the name as a middle-dot suffix, same
+        // presentation as the console's cast list (the roster IS the cast)
+        if (const std::string group = LLDirectorCast::instance().getGroup(id);
+            !group.empty())
+        {
+            name += " \xC2\xB7 " + group;
         }
 
         F32 traveled = 0.f, total = 0.f;

@@ -198,6 +198,20 @@ bool LLFloaterDirector::postBuild()
         }
     }
 
+    // ---- groups ----
+    // assign combo (cast column): tags every selected member; free-typed names
+    // create groups, picking an existing name reuses it, an empty name ungroups.
+    // The embedded editor commits on Enter / item pick only (never focus-lost),
+    // so a half-typed name can never tag a freshly clicked row by accident.
+    mGroupAssignCombo = getChild<LLComboBox>("group_assign_combo");
+    mGroupAssignCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onCommitGroupAssign(); });
+    // group transport (Move tab): pick a group, Start/Stop every member in it
+    mGroupRunCombo = getChild<LLComboBox>("group_run_combo");
+    mGroupStartBtn = getChild<LLButton>("btn_group_start");
+    mGroupStopBtn = getChild<LLButton>("btn_group_stop");
+    mGroupStartBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroup(true); });
+    mGroupStopBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroup(false); });
+
     // ---- Move tab ----
     // the transport (scope, heading dial, params, Walk/Stop) is the shared
     // ALPanelActorMover the standalone Actor Mover floater also embeds; the
@@ -318,6 +332,7 @@ void LLFloaterDirector::onToggleLegend()
 void LLFloaterDirector::draw()
 {
     refreshCastList();
+    refreshGroupControls();
     refreshTransport();
     refreshMoveTab();
     refreshPathTab();
@@ -814,15 +829,23 @@ void LLFloaterDirector::refreshCastList()
         const std::string icon = !in_world ? ICON_GONE
                                : moving    ? ICON_MOVING
                                            : ICON_IDLE;
+        const LLDirectorCast::CastMember* m = cast.getMember(id);
+
         std::string name = castMemberName(id);
         if (!in_world)
         {
             name += " (away)";
         }
+        if (m && !m->mGroup.empty())
+        {
+            // the group tag rides the name cell as a middle-dot suffix -- the
+            // narrow cast list has no room for a fifth column, and the diffed
+            // CastRowState::mName below keys on the combined string anyway
+            name += " \xC2\xB7 " + m->mGroup;
+        }
         std::string ab;
         if (cast.getSubjectA() == id) ab = "A";
         else if (cast.getSubjectB() == id) ab = "B";
-        const LLDirectorCast::CastMember* m = cast.getMember(id);
         const std::string mark = (m && m->mHasMark) ? ICON_MARK : "";
 
         if (state.mIcon != icon)
@@ -1019,6 +1042,103 @@ void LLFloaterDirector::onCastRemove()
     {
         cast.remove(id);
     }
+}
+
+// ---------------------------------------------------------------------------
+// groups: assign combo (cast column) + group transport (Move tab)
+// ---------------------------------------------------------------------------
+void LLFloaterDirector::onCommitGroupAssign()
+{
+    // typed name or picked row; whitespace trims away so " guards " and
+    // "guards" are one group, and an empty commit ungroups
+    std::string name = mGroupAssignCombo->getSimple();
+    LLStringUtil::trim(name);
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    for (const LLUUID& id : selectedCastIds())
+    {
+        cast.setGroup(id, name);    // multi-select tags a whole crowd at once
+    }
+    // force the next refreshGroupControls() to re-mirror the (possibly brand
+    // new) name set + the selected member's tag into both combos
+    mLastGroupNames.assign(1, std::string());   // impossible value ("" is never listed)
+    mGroupShownFor.setNull();
+}
+
+void LLFloaterDirector::onClickGroup(bool start)
+{
+    const std::string name = mGroupRunCombo->getSelectedItemLabel();
+    if (name.empty())
+    {
+        return;
+    }
+    // same per-member iteration as LLActorMover::startAll()/stopAll(), just
+    // scoped to the group's ids; each start() captures its own parameters, so
+    // a group launch behaves exactly like pressing Walk on each member
+    LLActorMover& mover = LLActorMover::instance();
+    for (const LLUUID& id : LLDirectorCast::instance().membersInGroup(name))
+    {
+        start ? mover.start(id) : mover.stop(id);
+    }
+}
+
+void LLFloaterDirector::refreshGroupControls()
+{
+    LLDirectorCast& cast = LLDirectorCast::instance();
+
+    // rebuild both combos only when the distinct-name set changed (rare)
+    const std::vector<std::string> names = cast.getGroupNames();
+    if (names != mLastGroupNames)
+    {
+        mLastGroupNames = names;
+        const std::string run_sel = mGroupRunCombo->getSelectedItemLabel();
+        mGroupAssignCombo->clearRows();
+        mGroupRunCombo->clearRows();
+        for (const std::string& name : names)
+        {
+            mGroupAssignCombo->add(name);
+            mGroupRunCombo->add(name);
+        }
+        // keep the run combo on the group the operator had picked, when it
+        // still exists; otherwise fall back to the prompt label
+        if (run_sel.empty() || !mGroupRunCombo->setSimple(LLStringExplicit(run_sel)))
+        {
+            mGroupRunCombo->setLabel(LLStringExplicit("Group"));
+        }
+    }
+
+    // mirror the first selected member's tag into the assign box -- but never
+    // over the operator's in-progress typing (focus covers the embedded editor)
+    const LLUUID sel = firstSelectedCastId();
+    if (sel != mGroupShownFor && !mGroupAssignCombo->hasFocus())
+    {
+        mGroupShownFor = sel;
+        mGroupAssignCombo->setTextEntry(LLStringExplicit(cast.getGroup(sel)));
+    }
+    const bool have_sel = sel.notNull();
+    mGroupAssignCombo->setEnabled(have_sel);
+    setToolTipIfChanged(mGroupAssignCombo, have_sel
+        ? std::string("Group tag for the selected member(s): type a new name or pick an existing one, Enter commits. Empty ungroups")
+        : std::string("Select a cast member first"));
+
+    // group transport: Start/Stop need a picked group that still has members
+    const std::string run_sel = mGroupRunCombo->getSelectedItemLabel();
+    const bool have_group = !run_sel.empty()
+                         && !cast.membersInGroup(run_sel).empty();
+    mGroupRunCombo->setEnabled(!names.empty());
+    setToolTipIfChanged(mGroupRunCombo, names.empty()
+        ? std::string("No groups yet: tag cast members via the Group box under the cast list")
+        : std::string("The group Start/Stop act on"));
+    mGroupStartBtn->setEnabled(have_group);
+    mGroupStopBtn->setEnabled(have_group);
+    const std::string need_group_tip = names.empty()
+        ? std::string("No groups yet: tag cast members via the Group box under the cast list")
+        : std::string("Pick a group first");
+    setToolTipIfChanged(mGroupStartBtn, have_group
+        ? "Start a move for every member of '" + run_sel + "' (same as pressing Walk on each)"
+        : need_group_tip);
+    setToolTipIfChanged(mGroupStopBtn, have_group
+        ? "Stop every member of '" + run_sel + "'"
+        : need_group_tip);
 }
 
 // ---------------------------------------------------------------------------

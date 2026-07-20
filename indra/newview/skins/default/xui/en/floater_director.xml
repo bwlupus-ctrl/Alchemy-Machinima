@@ -190,13 +190,13 @@
      column_padding="0"
      draw_heading="true"
      follows="left|top|bottom"
-     height="312"
+     height="286"
      layout="topleft"
      left="8"
      multi_select="true"
      top="74"
      name="cast_list"
-     tool_tip="The cast: right-click a row for subjects, marks and more. Multi-select drives batch Move-tab ops"
+     tool_tip="The cast: right-click a row for subjects, marks and more. Multi-select drives batch Move-tab ops. A member's group shows as a suffix after the name"
      width="180">
         <columns
          label=""
@@ -228,6 +228,30 @@
      width="166">
         Right-click an avatar or animesh in world &gt; Add to Cast
     </text>
+    <!-- group assign: tag the selected member(s); type a new name or pick an
+         existing one (Enter commits, empty ungroups). Groups drive the Move
+         tab's Start/Stop group transport. -->
+    <text
+     follows="left|bottom"
+     height="16"
+     layout="topleft"
+     left="8"
+     top="367"
+     name="group_assign_lbl"
+     width="42">
+        Group
+    </text>
+    <combo_box
+     allow_text_entry="true"
+     follows="left|bottom"
+     height="20"
+     layout="topleft"
+     left="52"
+     max_chars="32"
+     top="364"
+     name="group_assign_combo"
+     tool_tip="Group tag for the selected member(s): type a new name or pick an existing one, Enter commits. Empty ungroups"
+     width="136" />
     <check_box
      control_name="ActorMoverShowHeading"
      follows="left|bottom"
@@ -287,7 +311,7 @@
         <panel
          follows="all"
          background_visible="false"
-         height="360"
+         height="550"
          label="Move"
          layout="topleft"
          name="move_tab"
@@ -302,13 +326,56 @@
             <panel
              class="panel_actor_mover"
              filename="panel_actor_mover.xml"
-             follows="all"
+             follows="left|top|right"
              height="360"
              layout="topleft"
              left="0"
              name="actor_mover_panel"
              top="0"
              width="374" />
+            <!-- console-only group transport: Start/Stop every member of a
+                 cast group at once (members are tagged via the Group box under
+                 the cast list). Calls LLActorMover start()/stop() per member --
+                 the group-scoped sibling of the shared panel's Walk/Stop, not
+                 a fork of it. -->
+            <text
+             follows="left|top"
+             height="16"
+             layout="topleft"
+             left="10"
+             top="369"
+             name="group_run_lbl"
+             width="44">
+                Group:
+            </text>
+            <combo_box
+             follows="left|top"
+             height="20"
+             label="Group"
+             layout="topleft"
+             left="56"
+             top="366"
+             name="group_run_combo"
+             tool_tip="The group Start/Stop act on"
+             width="122" />
+            <button
+             follows="left|top"
+             height="20"
+             label="Start group"
+             layout="topleft"
+             left="184"
+             top="366"
+             name="btn_group_start"
+             width="88" />
+            <button
+             follows="left|top"
+             height="20"
+             label="Stop group"
+             layout="topleft"
+             left="276"
+             top="366"
+             name="btn_group_stop"
+             width="88" />
         </panel>
 
         <!-- ============ Path tab ============ -->
@@ -754,7 +821,7 @@
      background_visible="true"
      border="true"
      follows="left|top"
-     height="196"
+     height="232"
      layout="topleft"
      left="210"
      name="legend_panel"
@@ -774,7 +841,7 @@
         </text>
         <text
          follows="left|top|right"
-         height="150"
+         height="186"
          layout="topleft"
          left="12"
          top="30"
@@ -787,6 +854,8 @@ AB column: A marks Subject A and B marks Subject B, the bodies the cinematic cam
 
 M column: a flag means a mark (a saved position) is set for that actor.
 
+Groups: the dot-suffix after a name is the member's group tag (set in the Group box under the list); the Move tab's Start/Stop group drive every member of a group at once.
+
 Paths: each actor's in-world path preview and its numbered nodes are drawn in a stable per-actor color, so overlapping routes stay readable.
         </text>
         <button
@@ -795,7 +864,7 @@ Paths: each actor's in-world path preview and its numbered nodes are drawn in a 
          label="Close"
          layout="topleft"
          left="12"
-         top="168"
+         top="204"
          name="btn_legend_close"
          width="60" />
     </panel>

@@ -52,6 +52,7 @@ public:
         LLVector3   mMark = LLVector3::zero;    // region coords; unset unless mHasMark
         bool        mHasMark = false;
         LLUUID      mLocoAnim;       // per-actor locomotion override (null = stock walk)
+        std::string mGroup;          // production group tag ("" = ungrouped; session-only)
     };
 
     static LLDirectorCast& instance();
@@ -86,6 +87,20 @@ public:
     LLVOAvatar* resolveSubjectA();
     LLVOAvatar* resolveSubjectB();
 
+    // ---- groups (session-only production tags) ----
+    // Free-form label per member ("guards", "crowd B", ...) so console ops can
+    // address a subset of the cast at once (group-scoped Start/Stop today;
+    // group-scoped triggering later). A group exists only as the union of the
+    // members carrying its tag -- there is no separate registry to hold stale
+    // names, so removing/re-tagging the last member retires the group.
+    void        setGroup(const LLUUID& id, const std::string& name);   // "" = ungroup
+    std::string getGroup(const LLUUID& id) const;                      // "" when none/unknown
+    // distinct non-empty group names in first-appearance cast order (stable,
+    // so a combo rebuilt from this does not shuffle under the operator)
+    std::vector<std::string> getGroupNames() const;
+    // every member tagged with this group, in cast order (empty name -> empty)
+    uuid_vec_t membersInGroup(const std::string& name) const;
+
     // ---- marks ----
     // setMarks() snapshots every resolvable member's current rendered root;
     // resetToMarks() snaps marked members back (ActorMover-style local root
@@ -103,8 +118,8 @@ public:
 
     // ---- scene serialization (UI-free; the Director Console owns the
     //      files and everything settings-backed) ----
-    // sceneData() captures cast membership, cached names, marks, loco anims
-    // and Subjects A/B as one LLSD map. applySceneData() replaces the cast
+    // sceneData() captures cast membership, cached names, marks, loco anims,
+    // groups and Subjects A/B as one LLSD map. applySceneData() replaces the cast
     // wholesale from such a map; members not currently in world stay in the
     // cast (they render "(away)" and revive on return). Nothing is moved:
     // marks come back as data only.

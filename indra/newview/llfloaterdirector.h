@@ -95,6 +95,10 @@ private:
     void onCastClearLocoAnim();
     void onCastCopyUUID();
     void onCastRemove();
+    // ---- groups ----
+    void onCommitGroupAssign();         // tag the selected member(s) ("" = ungroup)
+    void onClickGroup(bool start);      // Start/Stop every member of the picked group
+    void refreshGroupControls();        // combos rebuilt only when the name set changed
 
     // ---- Move tab ----
     void refreshMoveTab();              // feed the shared transport panel the cast selection
@@ -165,12 +169,22 @@ private:
     struct CastRowState
     {
         std::string mIcon;
-        std::string mName;
+        std::string mName;      // includes the "(away)" / group suffixes
         std::string mAB;
         std::string mMark;
         bool        mInWorld = true;
     };
     std::vector<CastRowState> mRowStates;
+
+    // groups: the assign combo under the cast list (free-typed or picked) and
+    // the Move tab's group transport (selector + Start/Stop). Both combos are
+    // rebuilt only when the distinct-name set changes (draw()-rate friendly).
+    LLComboBox* mGroupAssignCombo = nullptr;
+    LLComboBox* mGroupRunCombo = nullptr;
+    LLButton*   mGroupStartBtn = nullptr;
+    LLButton*   mGroupStopBtn = nullptr;
+    std::vector<std::string> mLastGroupNames;   // last set the combos were built from
+    LLUUID      mGroupShownFor;                 // whose group the assign combo shows
 
     // Move tab -- the shared transport (scope, heading dial, params, Walk/Stop);
     // the console feeds it the cast selection each draw
