@@ -335,7 +335,7 @@
              width="374" />
             <!-- console-only group transport: Start/Stop every member of a
                  cast group at once (members are tagged via the Group box under
-                 the cast list). Calls LLActorMover start()/stop() per member --
+                 the cast list). Calls LLActorMover start()/stop() per member;
                  the group-scoped sibling of the shared panel's Walk/Stop, not
                  a fork of it. -->
             <text
