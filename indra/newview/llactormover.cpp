@@ -3793,6 +3793,17 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     gGL.translatef(-pivot.mV[VX], -pivot.mV[VY], -pivot.mV[VZ]);
     gGL.syncMatrices();
 
+    // [R2-5] CULL-FAITHFUL ghost: the overlay context (LLGLSUIDefault)
+    // DISABLES backface culling, so before this fix every batch drew
+    // double-sided -- single-sided geometry showed interior backfaces in the
+    // silhouette prime, subtly wrong against the real render. Mirror the
+    // world pipeline instead: cull as the baseline, per-batch/per-face
+    // LLGLDisable for double-sided GLTF materials (the exact idiom of
+    // lldrawpoolalpha.cpp:528/575/697 and pushGLTFBatch; legacy geometry is
+    // single-sided in the real render too -- "two-sided" legacy content ships
+    // flipped duplicate triangles, which the buffers already contain).
+    LLGLEnable ghost_cull(GL_CULL_FACE);
+
     // ---- ONE parameterized sweep over the snapshotted batches ----------------
     // subset      -- SOLID (opaque + cutoff-masked), BLEND (the batches the real
     //                render alpha-blends), GLOW ([R2-2] the clone's additive
@@ -3864,6 +3875,17 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             }
 
             const bool is_mask = ghost_pass_is_mask(gb.mPass);
+
+            // [R2-5] double-sided GLTF unculls for this batch, exactly like
+            // the real render; indexed batches uncull when ANY slot is
+            // double-sided (pushGLTFBatchIndexed's OR-over-slots rule)
+            bool two_sided = di->mGLTFMaterial.notNull() && di->mGLTFMaterial->mDoubleSided;
+            for (size_t ds = 0; !two_sided && ds < di->mGLTFMaterialList.size(); ++ds)
+            {
+                two_sided = di->mGLTFMaterialList[ds].notNull()
+                         && di->mGLTFMaterialList[ds]->mDoubleSided;
+            }
+            LLGLDisable no_cull(two_sided ? GL_CULL_FACE : 0);
 
             // [R2-2] indexed multi-material batches: the vertex buffer's
             // texture_index attribute picks the material per vertex, so ONE
@@ -4089,6 +4111,9 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             {
                 continue;
             }
+
+            // [R2-5] cull-faithful: double-sided GLTF unculls per face
+            LLGLDisable no_cull(gf.mDoubleSided ? GL_CULL_FACE : 0);
 
             // texture + clone colour, mirroring the rigged sweep's semantics
             LLViewerTexture* ftex = nullptr;
