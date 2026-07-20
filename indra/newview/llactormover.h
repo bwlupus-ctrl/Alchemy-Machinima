@@ -430,6 +430,19 @@ public:
     // off. Cached LLDrawInfo* stay valid for the frame (owned by spatial groups).
     void collectGhostBatches();
 
+    // One snapshotted rigged draw batch for the true-3D model ghost: the frame-
+    // lifetime LLDrawInfo* plus the render pass it was collected FROM. The pass
+    // is what tells the ghost draw how the real render treats the batch's alpha
+    // (opaque / cutoff-masked / blended) -- an LLDrawInfo alone does not remember
+    // which pass map it sat in, and drawing a masked hair sheet or a blended
+    // clothing layer fully opaque is exactly the halo/fringe corruption the
+    // styled clone suffered from.
+    struct GhostBatch
+    {
+        LLDrawInfo* mInfo = nullptr;
+        U32         mPass = 0;      // LLRenderPass::PASS_*_RIGGED it was collected from
+    };
+
 private:
     LLActorMover() = default;
 
@@ -579,8 +592,11 @@ private:
     // Per-actor rigged draw batches for the true-3D model ghost, snapshotted by
     // collectGhostBatches() each frame while the world render maps are valid, and
     // consumed by the ghost draw in renderHeadingPreview(). Rebuilt every frame;
-    // pointers are frame-lifetime only (never stored across frames).
-    std::map<LLUUID, std::vector<LLDrawInfo*> > mGhostBatches;
+    // pointers are frame-lifetime only (never stored across frames). Keyed by the
+    // WEARER: batches of an animesh attachment (rigged to its own LLControlAvatar
+    // skeleton, so their mAvatar is the control avatar, not the wearer) are
+    // bucketed under the wearing actor so the whole outfit ghosts as one body.
+    std::map<LLUUID, std::vector<GhostBatch> > mGhostBatches;
 
     // is this actor's cached ghost snapshot stale (needs a regen)?
     static bool ghostImpostorStale(LLVOAvatar* av, const GhostImpostor& gi);

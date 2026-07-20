@@ -4041,14 +4041,16 @@ bool LLViewerShaderMgr::loadShadersInterface()
 
     if (success)
     {
-        // [ActorMover] pose-ghost FX shader (hologram / x-ray styles): the
+        // [ActorMover] pose-ghost FX shader (ALL model-ghost styles): the
         // highlight pair's skinned constant-colour transform plus animated
-        // screen-space scanlines, a fresnel-ish rim boost and a subtle time
-        // flicker, fed per style via the ghostTime / ghostParams uniforms.
+        // screen-space scanlines, a fresnel-ish rim boost, a subtle time
+        // flicker (ghostTime / ghostParams) and the per-batch alpha stage
+        // (ghostAux: mask-cutoff discard + texture-RGB mix) that lets masked
+        // and blended clothing layers render faithfully on the ghost/clone.
         // Same registration idiom as gHighlightProgram (the rigged variant is
         // what drawGeometryGhost binds), but NON-FATAL like the indexed-PBR
-        // extras: a compile failure only logs and the hologram/x-ray styles
-        // fall back to the classic ghost at draw time.
+        // extras: a compile failure only logs; every style then degrades to
+        // the classic unmasked look on gHighlightProgram at draw time.
         gActorGhostProgram.mName = "Actor Ghost Shader";
         gActorGhostProgram.mShaderFiles.clear();
         gActorGhostProgram.mShaderFiles.push_back(make_pair("interface/actorghostV.glsl", GL_VERTEX_SHADER));

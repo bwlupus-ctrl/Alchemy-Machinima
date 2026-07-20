@@ -17,6 +17,7 @@
 #include "llagent.h"                // gAgent global<->agent coord conversion (pathing)
 #include "llanimationstates.h"      // ANIM_AGENT_WALK
 #include "llappviewer.h"            // gFrameIntervalSeconds
+#include "llcontrolavatar.h"        // animesh attachments bucket under the wearer (model ghost)
 #include "lldirectorcast.h"         // [Director] roster storage + per-actor loco anim
 #include "lldrawpool.h"             // LLRenderPass (rigged pass enum + uploadMatrixPalette)
 #include "llflycamrecorder.h"       // sync-to-take: the recorder playhead is the clock
@@ -3383,6 +3384,135 @@ enum EGhostStyle : S32
 // custom uniforms of the actor-ghost FX shader (actorghostF.glsl); hashed once
 static LLStaticHashedString sGhostTime("ghostTime");
 static LLStaticHashedString sGhostParams("ghostParams");
+static LLStaticHashedString sGhostAux("ghostAux");
+
+// ---------------------------------------------------------------------------
+// Per-batch alpha semantics: how does the REAL render treat this rigged pass's
+// texels? Masked passes cutoff-discard in their fragment shaders; blend passes
+// alpha-blend in the alpha pool. The ghost draw mirrors both (discard via the
+// FX shader's ghostAux.x, blending via a separate sweep) instead of drawing
+// everything opaque -- drawing a masked hair sheet or a sheer clothing layer
+// solid is what produced the white halos / solid fringes on the styled clone.
+bool ghost_pass_is_mask(U32 pass)
+{
+    switch (pass)
+    {
+    case LLRenderPass::PASS_ALPHA_MASK_RIGGED:
+    case LLRenderPass::PASS_FULLBRIGHT_ALPHA_MASK_RIGGED:
+    case LLRenderPass::PASS_MATERIAL_ALPHA_MASK_RIGGED:
+    case LLRenderPass::PASS_SPECMAP_MASK_RIGGED:
+    case LLRenderPass::PASS_NORMMAP_MASK_RIGGED:
+    case LLRenderPass::PASS_NORMSPEC_MASK_RIGGED:
+    case LLRenderPass::PASS_GLTF_PBR_ALPHA_MASK_RIGGED:
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool ghost_pass_is_blend(U32 pass)
+{
+    switch (pass)
+    {
+    case LLRenderPass::PASS_ALPHA_RIGGED:
+    case LLRenderPass::PASS_MATERIAL_ALPHA_RIGGED:
+    case LLRenderPass::PASS_SPECMAP_BLEND_RIGGED:
+    case LLRenderPass::PASS_NORMMAP_BLEND_RIGGED:
+    case LLRenderPass::PASS_NORMSPEC_BLEND_RIGGED:
+        return true;
+    default:
+        return false;
+    }
+}
+
+// Resolve the texture that colours this batch the way the REAL render does.
+// GLTF PBR batches carry no mTexture in the usual case -- their base colour
+// map lives on the fetched material, and mTexture is only the media override,
+// which wins when present (mirrors LLRenderPass::pushGLTFBatch handing
+// params.mTexture into LLFetchedGLTFMaterial::bind). Legacy Blinn-Phong /
+// diffuse batches use mTexture directly. May return null (no texture resolves,
+// e.g. a multi-material indexed batch); the clone caller then shades mid-grey
+// rather than white -- white reads as GLOW, grey reads as "untextured".
+LLViewerTexture* ghost_batch_texture(LLDrawInfo* di)
+{
+    if (di->mGLTFMaterial.notNull())
+    {
+        if (di->mTexture.notNull())
+        {
+            return di->mTexture.get();      // media override on a PBR face
+        }
+        return di->mGLTFMaterial->mBaseColorTexture.get();
+    }
+    return di->mTexture.get();
+}
+
+// The batch's alpha-mask cutoff for the ghost shader's discard: the GLTF
+// material's authored cutoff for PBR mask batches, the LLDrawInfo cutoff
+// (already normalized 0..1 by registerFace) for legacy mask batches, and 0
+// ("keep every texel") for everything else.
+F32 ghost_batch_cutoff(LLDrawInfo* di, U32 pass)
+{
+    if (!ghost_pass_is_mask(pass))
+    {
+        return 0.f;
+    }
+    if (di->mGLTFMaterial.notNull())
+    {
+        return di->mGLTFMaterial->mAlphaCutoff;
+    }
+    return di->mAlphaMaskCutoff;
+}
+
+// Build the texture_matrix0 this batch needs so its UVs land where the real
+// render puts them: the legacy SL texture-anim matrix (di->mTextureMatrix, the
+// same one setup_texture_matrix() in lldrawpool.cpp uploads) composed with the
+// GLTF KHR_texture_transform of the base colour map (which the PBR shaders
+// apply from uniforms the highlight/ghost shaders do not have). The KHR
+// transform runs in a flipped-Y (left-handed) UV frame; this is the closed
+// form of textureUtilV.glsl's texture_transform() -- flip, offset*rot*scale,
+// flip back -- collapsed into one affine, written in LLMatrix4's row-vector
+// convention (v * M, which is what the shader's texture_matrix0 computes after
+// the column-major reinterpretation on upload). Returns false when identity
+// would do, so the common case skips the matrix load entirely.
+bool ghost_batch_uv_matrix(LLDrawInfo* di, LLMatrix4& out)
+{
+    bool have = false;
+    if (di->mTextureMatrix)
+    {
+        out = *di->mTextureMatrix;      // SL texture animation, applied FIRST
+        have = true;
+    }
+    else
+    {
+        out.setIdentity();
+    }
+    if (di->mGLTFMaterial.notNull())
+    {
+        const LLGLTFMaterial::TextureTransform& tt =
+            di->mGLTFMaterial->mTextureTransform[LLGLTFMaterial::GLTF_TEXTURE_INFO_BASE_COLOR];
+        if (tt.mOffset.mV[VX] != 0.f || tt.mOffset.mV[VY] != 0.f
+            || tt.mScale.mV[VX] != 1.f || tt.mScale.mV[VY] != 1.f
+            || tt.mRotation != 0.f)
+        {
+            const F32 c = cosf(tt.mRotation);
+            const F32 s = sinf(tt.mRotation);
+            const F32 sx = tt.mScale.mV[VX], sy = tt.mScale.mV[VY];
+            const F32 ox = tt.mOffset.mV[VX], oy = tt.mOffset.mV[VY];
+            // u' = c*sx*u - s*sy*v + (s*sy + ox)
+            // v' = s*sx*u + c*sy*v + (1 - c*sy - oy)
+            LLMatrix4 k;                        // identity-constructed
+            k.mMatrix[0][0] = c * sx;
+            k.mMatrix[0][1] = s * sx;
+            k.mMatrix[1][0] = -s * sy;
+            k.mMatrix[1][1] = c * sy;
+            k.mMatrix[3][0] = s * sy + ox;
+            k.mMatrix[3][1] = 1.f - c * sy - oy;
+            out *= k;       // row-vector composition: anim first, then KHR
+            have = true;
+        }
+    }
+    return have;
+}
 
 // TRUE 3D ghost: re-render the actor's own worn rigged geometry as a styled
 // copy standing on `foot` (agent frame), skinned from the actor's LIVE joint
@@ -3395,44 +3525,55 @@ static LLStaticHashedString sGhostParams("ghostParams");
 // (LLVOAvatar::updateSkinInfoMatrixPalette) already bakes every vertex into WORLD
 // space (invBind * joint world matrix), so placing the ghost elsewhere is just a
 // world-space translation premultiplied into the modelview -- no per-vertex work,
-// no second skeleton. The classic ghost / clone / wireframe styles reuse the
-// engine's skinned constant-colour shader (gHighlightProgram's rigged variant,
-// the same one that draws selection glow on rigged attachments); the hologram /
-// x-ray styles bind the dedicated gActorGhostProgram (scanlines + rim + flicker,
-// see actorghostF.glsl) and gracefully fall back to the classic look if that
-// shader failed to compile. Per batch, upload the actor's live palette and draw
-// the same vertex ranges the world pass drew -- but offset and re-shaded.
+// no second skeleton. ONE shader covers every style when it compiled: the
+// dedicated gActorGhostProgram (actorghostF.glsl) reduces exactly to the
+// highlight look (color * texture) with its FX params zeroed, and adds what no
+// stock interface shader has -- a per-batch alpha-mask DISCARD (ghostAux.x) and
+// texture-alpha-aware blending, which is what keeps masked hair sheets / lace
+// from drawing as solid halos. If it failed to compile, gHighlightProgram's
+// rigged variant is the fallback: classic styles keep working, FX styles
+// degrade to the classic ghost, masked batches draw unmasked (degraded, never
+// blank). Per batch, upload the drawing avatar's live palette and draw the same
+// vertex ranges the world pass drew -- but offset and re-shaded. (The drawing
+// avatar is the batch's own mAvatar: for an animesh attachment that is the
+// attachment's control avatar, whose world-space palette rides along under the
+// same translation as the wearer's.)
 //
 // Two passes so the styled skin reads as ONE clean layer instead of showing its
-// own backfaces through the front: pass 1 primes depth (colour masked off),
-// pass 2 shades only where depth is equal (the front-most layer). The wireframe
-// style polygon-offsets the prime slightly back so its LEQUAL line pass wins
-// cleanly -- classic hidden-line removal.
+// own backfaces through the front: pass 1 primes depth (colour masked off,
+// masked texels discarded), pass 2 shades only where depth is equal (the
+// front-most layer). The wireframe style polygon-offsets the prime slightly
+// back so its LEQUAL line pass wins cleanly -- classic hidden-line removal.
 //
-// Styles, one colour pass each (see EGhostStyle):
+// Styles (see EGhostStyle):
 //   GHOST     -- alpha-blended flat tint, faintly pulled toward the actor hue.
-//   CLONE     -- opaque UNLIT textured copy: each batch re-binds its own diffuse
-//                map and draws near-white so the texture reads. This is a
-//                fullbright-style clone; a scene-LIT clone needs deferred-pass
-//                integration (gbuffer + light apply) and is future work.
-//                Alpha-blend clothing layers draw opaque here (documented
-//                tradeoff of staying in this one overlay pass).
-//   HOLOGRAM  -- gActorGhostProgram: cyan tint, animated screen-space scanlines,
-//                fresnel-ish rim boost, subtle time flicker.
+//   CLONE     -- UNLIT textured copy: each batch re-binds its own resolved
+//                colour map (legacy diffuse or PBR base colour -- see
+//                ghost_batch_texture) and draws near-white * base-colour-factor
+//                so the texture reads as authored. Opaque + masked batches draw
+//                unblended (mask holes come from the shader discard); the
+//                batches the real render alpha-BLENDS get their own blended
+//                sweep over the primed body. This is a fullbright-style clone;
+//                a scene-LIT clone needs deferred-pass integration (gbuffer +
+//                light apply) and is future work.
+//   HOLOGRAM  -- cyan tint, animated screen-space scanlines, fresnel-ish rim
+//                boost, subtle time flicker.
 //   WIREFRAME -- glPolygonMode(GL_LINE) over the offset depth prime: thin
-//                hidden-line wireframe in a brighter actor tint.
-//   XRAY      -- gActorGhostProgram with rim-only params: body interior nearly
-//                clear, silhouette edges glow (cheap creative bonus style).
+//                hidden-line wireframe in a brighter actor tint (deliberately
+//                unmasked: the wireframe wants the whole mesh's edges).
+//   XRAY      -- rim-only params: body interior nearly clear, silhouette edges
+//                glow (cheap creative bonus style).
 //
 // Returns the number of rigged batches drawn; 0 means this actor had no usable
 // rigged geometry in view this frame, so the caller falls back to the impostor
-// card / stick figure. SCOPE: covers WORN MESH (rigged attachments) -- essentially
-// the whole visible body of a modern mesh avatar. The legacy SYSTEM avatar body
-// uses a different skinning path and is not drawn here (a pure system-avatar actor
+// card / stick figure. SCOPE: covers WORN MESH (rigged attachments, including
+// animesh attachments bucketed under the wearer) -- essentially the whole
+// visible body of a modern mesh avatar. The legacy SYSTEM avatar body uses a
+// different skinning path and is not drawn here (a pure system-avatar actor
 // falls back). NOTE: uses the LIVE pose (a copy of the body as it stands right
 // now); an independent, held ("out of sync") pose is the next step, and drops in
 // by uploading a snapshotted palette here instead of the live one.
-S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLDrawInfo*>& batches,
+S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch>& batches,
                       const LLVector3& foot, const LLColor4& tint, F32 alpha,
                       S32 style)
 {
@@ -3441,20 +3582,14 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLDrawInfo*>& batches,
         return 0;
     }
 
-    // FX styles need the dedicated shader; if it failed to compile (program
-    // object 0) degrade to the classic ghost rather than drawing nothing
-    if (style == GHOST_STYLE_HOLOGRAM || style == GHOST_STYLE_XRAY)
+    // shader choice + graceful degradation (see the header comment)
+    LLGLSLShader* fx = gActorGhostProgram.mRiggedVariant;
+    const bool have_fx = fx && fx->mProgramObject;
+    if (!have_fx && (style == GHOST_STYLE_HOLOGRAM || style == GHOST_STYLE_XRAY))
     {
-        LLGLSLShader* fx = gActorGhostProgram.mRiggedVariant;
-        if (!fx || !fx->mProgramObject)
-        {
-            style = GHOST_STYLE_GHOST;
-        }
+        style = GHOST_STYLE_GHOST;
     }
-    LLGLSLShader* shader =
-        (style == GHOST_STYLE_HOLOGRAM || style == GHOST_STYLE_XRAY)
-            ? gActorGhostProgram.mRiggedVariant
-            : gHighlightProgram.mRiggedVariant;
+    LLGLSLShader* shader = have_fx ? fx : gHighlightProgram.mRiggedVariant;
     if (!shader)
     {
         return 0;
@@ -3472,41 +3607,155 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLDrawInfo*>& batches,
 
     shader->bind();
     // frag_color = color * texture(diffuseMap): a white texture makes the output
-    // exactly the `color` uniform (driven by gGL.diffuseColor4f below). The
-    // clone style re-binds each batch's own diffuse map in its colour pass.
+    // exactly the `color` uniform (driven by gGL.diffuseColor4f below); batches
+    // that need their own map (clone / masked / blended) re-bind per batch.
     gGL.getTexUnit(0)->bind(LLViewerFetchedTexture::sWhiteImagep);
-
+    if (have_fx)
+    {
+        // neutral FX state: no scanlines/rim/flicker (the FX styles override
+        // below), keep-every-texel cutoff, flat-tint texture mix. The sweeps
+        // below retarget ghostAux per style / per batch as needed.
+        shader->uniform1f(sGhostTime, (F32)LLFrameTimer::getElapsedSeconds());
+        shader->uniform4f(sGhostParams, 0.f, 0.f, 0.f, 6.f);
+        shader->uniform4f(sGhostAux, 0.f, 0.f, 0.f, 0.f);
+    }
+    // texture_matrix0 could hold a stale value from an earlier frame's sync to
+    // this shader; start every ghost from a known-identity UV transform (the
+    // per-batch loads below swap it in and out as needed)
+    gGL.getTexUnit(0)->activate();
+    gGL.matrixMode(LLRender::MM_TEXTURE);
+    gGL.loadIdentity();
     gGL.matrixMode(LLRender::MM_MODELVIEW);
+
     gGL.pushMatrix();
     gGL.translatef(delta.mV[VX], delta.mV[VY], delta.mV[VZ]);   // modelview = view * T(delta)
     gGL.syncMatrices();
 
-    // one sweep over the snapshotted batches (shared by every pass below);
-    // bind_batch_tex re-binds each batch's own diffuse map (clone style)
-    auto draw_batches = [&batches](bool bind_batch_tex)
+    // ---- ONE parameterized sweep over the snapshotted batches ----------------
+    // subset      -- SOLID (opaque + cutoff-masked), BLEND (the batches the real
+    //                render alpha-blends), or ALL.
+    // clone_tex   -- bind every batch's own resolved colour map + per-batch
+    //                clone colour (the clone colour sweeps).
+    // alpha_aware -- honor the real render's alpha semantics: masked batches
+    //                bind their texture and cutoff-discard (ghostAux.x), blend
+    //                batches bind their texture so its alpha shapes the blend.
+    //                FX shader only -- the highlight fallback has no discard,
+    //                so it keeps the pre-fix unmasked behavior.
+    enum ESweep : S32 { SWEEP_SOLID, SWEEP_BLEND, SWEEP_ALL };
+    // texture-RGB mix for ghostAux.y: the clone wants the texture's colours,
+    // every other style wants the flat tint even when a masked/blended batch
+    // has its real texture bound for its ALPHA channel
+    auto draw_batches = [&](S32 subset, bool clone_tex, bool alpha_aware)
     {
         const LLVOAvatar* lastAvatar = nullptr;
         U64  lastMeshId = 0;
         bool skipLastSkin = false;
-        for (LLDrawInfo* di : batches)
+        const F32 tex_mix = clone_tex ? 1.f : 0.f;
+        F32  cur_cutoff = -1.f;     // force the first ghostAux upload per sweep
+        bool tex_mat_on = false;    // a non-identity texture_matrix0 is loaded
+        for (const LLActorMover::GhostBatch& gb : batches)
         {
-            if (LLRenderPass::uploadMatrixPalette(di->mAvatar, di->mSkinInfo,
-                                                  lastAvatar, lastMeshId, skipLastSkin))
+            LLDrawInfo* di = gb.mInfo;
+            const bool is_blend = ghost_pass_is_blend(gb.mPass);
+            if ((subset == SWEEP_SOLID && is_blend)
+                || (subset == SWEEP_BLEND && !is_blend))
             {
-                if (bind_batch_tex)
-                {
-                    LLViewerTexture* tex = di->mTexture.get();
-                    gGL.getTexUnit(0)->bind(
-                        tex ? tex : (LLViewerTexture*)LLViewerFetchedTexture::sWhiteImagep);
-                }
-                di->mVertexBuffer->setBuffer();
-                di->mVertexBuffer->drawRange(LLRender::TRIANGLES,
-                                             di->mStart, di->mEnd, di->mCount, di->mOffset);
+                continue;
             }
+            if (!LLRenderPass::uploadMatrixPalette(di->mAvatar, di->mSkinInfo,
+                                                   lastAvatar, lastMeshId, skipLastSkin))
+            {
+                continue;
+            }
+
+            // which texture this draw needs bound: the batch's own for the
+            // clone, and for masked/blended batches whenever alpha is honored
+            // (the discard / blend shaping needs the real alpha channel);
+            // everything else samples plain white (flat tint, tex.a == 1)
+            const bool is_mask = ghost_pass_is_mask(gb.mPass);
+            LLViewerTexture* tex = nullptr;
+            if (clone_tex || (alpha_aware && have_fx && (is_mask || is_blend)))
+            {
+                tex = ghost_batch_texture(di);
+            }
+            gGL.getTexUnit(0)->bind(
+                tex ? tex : (LLViewerTexture*)LLViewerFetchedTexture::sWhiteImagep);
+
+            if (clone_tex)
+            {
+                // per-batch clone colour: near-white so the texture reads
+                // as-is. A batch whose texture cannot be resolved shades
+                // MID-GREY -- white reads as glow, grey reads as "untextured".
+                // A PBR base-colour factor tints the way the material author
+                // intended (linear factor pushed to gamma space -- documented
+                // approximation for an unlit clone in the sRGB overlay pass).
+                F32 r = 0.98f, g = 0.98f, b = 0.98f, a = 1.f;
+                if (!tex)
+                {
+                    r = g = b = 0.5f;
+                }
+                else if (di->mGLTFMaterial.notNull())
+                {
+                    const LLColor4& f = di->mGLTFMaterial->mBaseColor;
+                    r *= powf(llmax(f.mV[0], 0.f), 0.4545f);
+                    g *= powf(llmax(f.mV[1], 0.f), 0.4545f);
+                    b *= powf(llmax(f.mV[2], 0.f), 0.4545f);
+                    a  = f.mV[3];   // factor alpha shapes the blended sweep
+                }
+                gGL.diffuseColor4f(r, g, b, a);
+            }
+
+            if (have_fx)
+            {
+                // per-batch cutoff (0 keeps everything); re-upload only on change
+                const F32 cutoff = alpha_aware ? ghost_batch_cutoff(di, gb.mPass) : 0.f;
+                if (cutoff != cur_cutoff)
+                {
+                    shader->uniform4f(sGhostAux, cutoff, tex_mix, 0.f, 0.f);
+                    cur_cutoff = cutoff;
+                }
+            }
+
+            // per-batch UV transform (SL texture animation and/or the GLTF
+            // KHR base-colour transform); identity restored when unused so a
+            // transformed batch never bleeds its UVs into the next
+            LLMatrix4 uvm;
+            if (tex && ghost_batch_uv_matrix(di, uvm))
+            {
+                gGL.getTexUnit(0)->activate();
+                gGL.matrixMode(LLRender::MM_TEXTURE);
+                gGL.loadMatrix((GLfloat*)uvm.mMatrix);
+                gGL.matrixMode(LLRender::MM_MODELVIEW);
+                tex_mat_on = true;
+            }
+            else if (tex_mat_on)
+            {
+                gGL.matrixMode(LLRender::MM_TEXTURE);
+                gGL.loadIdentity();
+                gGL.matrixMode(LLRender::MM_MODELVIEW);
+                tex_mat_on = false;
+            }
+
+            di->mVertexBuffer->setBuffer();
+            di->mVertexBuffer->drawRange(LLRender::TRIANGLES,
+                                         di->mStart, di->mEnd, di->mCount, di->mOffset);
+        }
+        if (tex_mat_on)
+        {   // leave the UV transform clean for the next sweep / caller
+            gGL.matrixMode(LLRender::MM_TEXTURE);
+            gGL.loadIdentity();
+            gGL.matrixMode(LLRender::MM_MODELVIEW);
         }
     };
 
     // --- pass 1: prime depth only (single-layer silhouette), no colour ---
+    // Masked batches cutoff-discard here too, so the depth silhouette matches
+    // the real body -- no more solid halos around hair sheets / lace. The clone
+    // excludes BLENDED layers from the prime so the body under a sheer skirt
+    // still shades (they get their own blended sweep below); the flat-tint
+    // styles keep them (a translucent layer still contributes silhouette to a
+    // flat ghost). Wireframe stays fully unmasked: hidden-line wants the whole
+    // mesh's edges, holes included.
     {
         LLGLDepthTest depth(GL_TRUE, GL_TRUE, GL_LESS);
         LLGLDisable   blend(GL_BLEND);
@@ -3518,7 +3767,15 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLDrawInfo*>& batches,
             glPolygonOffset(1.f, 1.f);
         }
         gGL.setColorMask(false, false);
-        draw_batches(false);
+        if (style == GHOST_STYLE_WIREFRAME)
+        {
+            draw_batches(SWEEP_ALL, false, false);
+        }
+        else
+        {
+            draw_batches(style == GHOST_STYLE_CLONE ? SWEEP_SOLID : SWEEP_ALL,
+                         false, true);
+        }
         if (style == GHOST_STYLE_WIREFRAME)
         {
             glPolygonOffset(0.f, 0.f);
@@ -3530,13 +3787,24 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLDrawInfo*>& batches,
     {
     case GHOST_STYLE_CLONE:
     {
-        // unlit textured copy: opaque, near-white so each batch's own diffuse
-        // map reads as-is (fullbright clone; scene-LIT is future work, above)
-        LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
-        LLGLDisable   blend(GL_BLEND);
-        gGL.setColorMask(true, true);
-        gGL.diffuseColor4f(0.98f, 0.98f, 0.98f, 1.f);
-        draw_batches(true);
+        // unlit textured copy, two sweeps. Sweep 1: opaque + masked batches,
+        // no blending (mask holes come from the shader discard). Sweep 2: the
+        // batches the real render alpha-BLENDS, blended over the primed body
+        // -- depth-tested against the prime, so a layer behind the body stays
+        // hidden and a sheer layer in front shades over it. Layer-vs-layer
+        // order is snapshot order, not a depth sort (fine for a preview clone).
+        {
+            LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
+            LLGLDisable   blend(GL_BLEND);
+            gGL.setColorMask(true, true);
+            draw_batches(SWEEP_SOLID, true, true);
+        }
+        {
+            LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
+            LLGLEnable    blend(GL_BLEND);
+            gGL.setSceneBlendType(LLRender::BT_ALPHA);
+            draw_batches(SWEEP_BLEND, true, true);
+        }
         break;
     }
     case GHOST_STYLE_WIREFRAME:
@@ -3553,7 +3821,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLDrawInfo*>& batches,
                            tint.mV[VZ] * (1.f - t) + t,
                            llmin(1.f, alpha * 1.5f));
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        draw_batches(false);
+        draw_batches(SWEEP_ALL, false, false);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         break;
     }
@@ -3566,7 +3834,6 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLDrawInfo*>& batches,
         LLGLEnable    blend(GL_BLEND);
         gGL.setSceneBlendType(LLRender::BT_ALPHA);
         gGL.setColorMask(true, true);
-        shader->uniform1f(sGhostTime, (F32)LLFrameTimer::getElapsedSeconds());
         if (style == GHOST_STYLE_HOLOGRAM)
         {
             // classic sci-fi cyan, faintly pulled toward the actor hue so
@@ -3589,7 +3856,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLDrawInfo*>& batches,
                                alpha * 0.4f);
             shader->uniform4f(sGhostParams, 0.f, 2.2f, 0.f, 6.f);
         }
-        draw_batches(false);
+        draw_batches(SWEEP_ALL, false, true);
         break;
     }
     case GHOST_STYLE_GHOST:
@@ -3607,7 +3874,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLDrawInfo*>& batches,
                            1.f - t + tint.mV[VY] * t,
                            1.f - t + tint.mV[VZ] * t,
                            alpha);
-        draw_batches(false);
+        draw_batches(SWEEP_ALL, false, true);
         break;
     }
     }
@@ -4162,18 +4429,36 @@ void LLActorMover::collectGhostBatches()
             {
                 continue;
             }
+            // Whose outfit does this batch belong to? Directly the wanted
+            // actor's, or -- the animesh case -- rigged to the control avatar
+            // of an object a wanted actor WEARS (an animesh attachment's
+            // geometry skins off the attachment's own LLControlAvatar
+            // skeleton, so its mAvatar is that control avatar, never the
+            // wearer). Bucket those under the WEARER so the whole outfit
+            // ghosts as one body; the draw keeps uploading each batch's own
+            // mAvatar palette, and the world-space palettes ride the shared
+            // placement delta in lockstep.
             LLVOAvatar* av = di->mAvatar.get();
-            if (wanted.find(av) == wanted.end())
+            LLVOAvatar* owner = (wanted.find(av) != wanted.end()) ? av : nullptr;
+            if (!owner && av->isControlAvatar())
+            {
+                LLVOAvatar* wearer = static_cast<LLControlAvatar*>(av)->getAttachedAvatar();
+                if (wearer && wanted.find(wearer) != wanted.end())
+                {
+                    owner = wearer;
+                }
+            }
+            if (!owner)
             {
                 continue;
             }
-            std::vector<LLDrawInfo*>& bucket = mGhostBatches[av->getID()];
+            std::vector<GhostBatch>& bucket = mGhostBatches[owner->getID()];
             bool dup = false;
-            for (LLDrawInfo* b : bucket)
+            for (const GhostBatch& b : bucket)
             {
-                if (b->mVertexBuffer.get() == di->mVertexBuffer.get()
-                    && b->mStart == di->mStart && b->mEnd == di->mEnd
-                    && b->mOffset == di->mOffset)
+                if (b.mInfo->mVertexBuffer.get() == di->mVertexBuffer.get()
+                    && b.mInfo->mStart == di->mStart && b.mInfo->mEnd == di->mEnd
+                    && b.mInfo->mOffset == di->mOffset)
                 {
                     dup = true;
                     break;
@@ -4181,7 +4466,7 @@ void LLActorMover::collectGhostBatches()
             }
             if (!dup)
             {
-                bucket.push_back(di);
+                bucket.push_back({ di, pass });
             }
         }
     }
