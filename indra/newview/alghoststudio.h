@@ -115,6 +115,15 @@ public:
     // the render/collect gate: master on AND at least one enabled instance
     bool anyEnabled() const;
 
+    // ---- [R2-3] shared edit selection ----
+    // THE selected instance, shared by every UI over the studio -- both panel
+    // hosts' lists AND the in-world edit tool (ALToolGhostEdit) read/write it,
+    // the same one-selection model as LLActorMover's edit actor/node. The
+    // panels mirror it into their list each draw; the selected ghost gets the
+    // in-world highlight ring while the edit tool is active.
+    void          setSelected(const LLUUID& id) { mSelected = id; }
+    const LLUUID& getSelected() const { return mSelected; }
+
     // ---- instance CRUD ----
     // Add spawns at the source's current rendered feet (so a fresh ghost is
     // immediately visible standing in the actor); nullptr when the source is
@@ -154,6 +163,7 @@ private:
 
     std::vector<Instance> mInstances;
     bool mShowAll = true;
+    LLUUID mSelected;       // [R2-3] shared edit selection (null = none)
 };
 
 #endif // AL_ALGHOSTSTUDIO_H

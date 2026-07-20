@@ -70,6 +70,10 @@ private:
     void onClickToMe();             // snap to my avatar's current feet
     void exitPlaceMode();           // drop the transient tool if it is ours
 
+    // ---- [R2-3] in-world edit mode (persistent ALToolGhostEdit) ----
+    void onToggleEditMode();        // checkbox -> arm / disarm the edit tool
+    void exitEditMode();            // drop the tool if it is ours + uncheck
+
     // ---- look ----
     void onStyleCommit();
     void onActorTintToggle();
@@ -98,9 +102,13 @@ private:
     std::string mListSig;           // composed instance-list signature last built
     std::string mSourceSig;         // cast signature the source combo was built from
     LLUUID      mShownFor;          // instance the detail widgets were last loaded for
+    bool        mEditMode = false;  // [R2-3] our transient edit tool is armed
+    bool        mHintEdit = false;  // which hint string the header line shows
 
     // ---- widgets ----
     LLCheckBoxCtrl*   mShowAllCheck = nullptr;
+    LLCheckBoxCtrl*   mEditModeCheck = nullptr;     // [R2-3]
+    LLTextBox*        mHint = nullptr;              // [R2-3] swaps in edit mode
     LLScrollListCtrl* mList = nullptr;
     LLComboBox*       mSourceCombo = nullptr;
     LLButton*         mAddBtn = nullptr;

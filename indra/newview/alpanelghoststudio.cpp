@@ -12,6 +12,7 @@
 #include "alpanelghoststudio.h"
 
 #include "alghoststudio.h"
+#include "altoolghostedit.h"        // [R2-3] persistent in-world edit mode
 #include "altoolghostplace.h"
 #include "llactormover.h"           // actorPathColor naming consistency (style ids)
 #include "llagent.h"                // agent <-> global conversion (position spinners)
@@ -57,7 +58,9 @@ ALPanelGhostStudio::~ALPanelGhostStudio() = default;
 // ---------------------------------------------------------------------------
 bool ALPanelGhostStudio::postBuild()
 {
-    mShowAllCheck = getChild<LLCheckBoxCtrl>("show_all_check");
+    mShowAllCheck  = getChild<LLCheckBoxCtrl>("show_all_check");
+    mEditModeCheck = getChild<LLCheckBoxCtrl>("edit_ghosts_check");
+    mHint          = getChild<LLTextBox>("studio_hint");
     mList         = getChild<LLScrollListCtrl>("ghost_list");
     mSourceCombo  = getChild<LLComboBox>("source_combo");
     mAddBtn       = getChild<LLButton>("btn_ghost_add");
@@ -95,6 +98,7 @@ bool ALPanelGhostStudio::postBuild()
     mStatusText = getChild<LLTextBox>("studio_status");
 
     mShowAllCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onShowAllToggle(); });
+    mEditModeCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onToggleEditMode(); });
     mList->setCommitCallback([this](LLUICtrl*, const LLSD&) { onListSelect(); });
     mList->setDoubleClickCallback([this]() { onListDoubleClick(); });
     mAddBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickAdd(); });
@@ -134,8 +138,9 @@ void ALPanelGhostStudio::onVisibilityChange(bool new_visibility)
 {
     if (!new_visibility)
     {
-        // never strand the user in the placement tool when the panel hides
+        // never strand the user in a tool when the panel hides
         exitPlaceMode();
+        exitEditMode();
     }
     LLPanel::onVisibilityChange(new_visibility);
 }
@@ -170,15 +175,53 @@ LLUUID ALPanelGhostStudio::selectedInstance() const
 // ---------------------------------------------------------------------------
 void ALPanelGhostStudio::draw()
 {
-    // if the placement tool was taken away (build tools, focus loss), nothing
-    // to un-stick here -- the tool disarms itself on deselect. Keep the master
-    // check honest against external state instead.
-    if (mShowAllCheck->get() != ALGhostStudio::instance().getShowAll())
+    ALGhostStudio& studio = ALGhostStudio::instance();
+
+    // keep the master check honest against external state
+    if (mShowAllCheck->get() != studio.getShowAll())
     {
-        mShowAllCheck->set(ALGhostStudio::instance().getShowAll());
+        mShowAllCheck->set(studio.getShowAll());
     }
+
+    // [R2-3] if our edit tool was taken away (build tools, another picker, Esc
+    // inside the tool), reflect that in the toggle instead of a stale "on" --
+    // the path panel's exact idiom
+    if (mEditMode
+        && LLToolMgr::getInstance()->getCurrentTool() != ALToolGhostEdit::getInstance())
+    {
+        mEditMode = false;
+    }
+    if (mEditModeCheck->get() != mEditMode)
+    {
+        mEditModeCheck->set(mEditMode);
+    }
+    // hint line follows the mode (diffed; tells the hands what they can do)
+    if (mHintEdit != mEditMode)
+    {
+        mHintEdit = mEditMode;
+        mHint->setText(mEditMode
+            ? std::string("Click a ghost to select \xC2\xB7 drag moves \xC2\xB7 Shift-drag turns \xC2\xB7 Del removes \xC2\xB7 Esc exits")
+            : std::string("Styled copies of cast bodies: place, pose, multiply. Double-click a row to show/hide it"));
+    }
+
     refreshSourceCombo();
     refreshList();
+
+    // [R2-3] mirror the SHARED selection (the in-world edit tool writes it;
+    // both panel hosts follow). selectByID is programmatic -- no commit loop.
+    const LLUUID shared_sel = studio.getSelected();
+    if (shared_sel != selectedInstance())
+    {
+        if (shared_sel.isNull())
+        {
+            mList->deselectAllItems(true);
+        }
+        else
+        {
+            mList->selectByID(shared_sel);
+        }
+    }
+
     refreshDetail();
     refreshStatus();
     LLPanel::draw();
@@ -377,7 +420,9 @@ void ALPanelGhostStudio::refreshStatus()
 // ---------------------------------------------------------------------------
 void ALPanelGhostStudio::onListSelect()
 {
-    // refreshDetail() loads the widgets on the next draw; nothing else to do
+    // [R2-3] the list drives the SHARED selection (tool + both hosts follow);
+    // refreshDetail() loads the widgets on the next draw
+    ALGhostStudio::instance().setSelected(selectedInstance());
 }
 
 void ALPanelGhostStudio::onListDoubleClick()
@@ -395,6 +440,7 @@ void ALPanelGhostStudio::onClickAdd()
     if (ALGhostStudio::Instance* inst = ALGhostStudio::instance().addInstance(source))
     {
         const LLUUID id = inst->mId;    // list rebuild invalidates the pointer
+        ALGhostStudio::instance().setSelected(id);
         refreshList();
         mList->selectByID(id);
     }
@@ -406,6 +452,7 @@ void ALPanelGhostStudio::onClickDuplicate()
             ALGhostStudio::instance().duplicateInstance(selectedInstance()))
     {
         const LLUUID id = inst->mId;
+        ALGhostStudio::instance().setSelected(id);
         refreshList();
         mList->selectByID(id);
     }
@@ -501,6 +548,43 @@ void ALPanelGhostStudio::exitPlaceMode()
         && tm->getCurrentTool() == ALToolGhostPlace::getInstance())
     {
         tm->clearTransientTool();
+    }
+}
+
+// ---------------------------------------------------------------------------
+// [R2-3] in-world edit mode (persistent ALToolGhostEdit)
+// ---------------------------------------------------------------------------
+void ALPanelGhostStudio::onToggleEditMode()
+{
+    const bool want = mEditModeCheck->get();
+    if (want)
+    {
+        // the one-shot Place arm and the persistent edit mode are exclusive
+        exitPlaceMode();
+        LLToolMgr::getInstance()->setTransientTool(ALToolGhostEdit::getInstance());
+        mEditMode = true;
+    }
+    else
+    {
+        exitEditMode();
+    }
+}
+
+void ALPanelGhostStudio::exitEditMode()
+{
+    if (mEditMode)
+    {
+        mEditMode = false;
+        LLToolMgr* tm = LLToolMgr::getInstance();
+        if (tm->usingTransientTool()
+            && tm->getCurrentTool() == ALToolGhostEdit::getInstance())
+        {
+            tm->clearTransientTool();   // restores the prior tool (camera control)
+        }
+    }
+    if (mEditModeCheck)
+    {
+        mEditModeCheck->set(false);
     }
 }
 

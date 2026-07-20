@@ -106,11 +106,16 @@ void ALGhostStudio::removeInstance(const LLUUID& id)
         std::remove_if(mInstances.begin(), mInstances.end(),
                        [&id](const Instance& i) { return i.mId == id; }),
         mInstances.end());
+    if (mSelected == id)
+    {
+        mSelected.setNull();    // never leave the shared selection dangling
+    }
 }
 
 void ALGhostStudio::removeAll()
 {
     mInstances.clear();
+    mSelected.setNull();
 }
 
 ALGhostStudio::Instance* ALGhostStudio::getInstance(const LLUUID& id)

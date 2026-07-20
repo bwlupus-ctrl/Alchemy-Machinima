@@ -274,6 +274,7 @@ set(viewer_SOURCE_FILES
     alobjectpathmover.cpp
     alpanelghoststudio.cpp
     alpanelpropmover.cpp
+    altoolghostedit.cpp
     altoolghostplace.cpp
     altoolpathedit.cpp
     llcinematiccamera.cpp
@@ -1083,6 +1084,7 @@ set(viewer_HEADER_FILES
     alobjectpathmover.h
     alpanelghoststudio.h
     alpanelpropmover.h
+    altoolghostedit.h
     altoolghostplace.h
     altoolpathedit.h
     llcinematiccamera.h

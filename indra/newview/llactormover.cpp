@@ -17,6 +17,7 @@
 #include "alobjectpathmover.h"      // heading preview also draws enrolled PROP paths
 
 #include "alghoststudio.h"          // [GhostStudio] free-standing ghost instances
+#include "altoolghostedit.h"        // [R2-3] selected-ghost ring gates on the edit tool
 #include "llagent.h"                // gAgent global<->agent coord conversion (pathing)
 #include "llanimationstates.h"      // ANIM_AGENT_WALK
 #include "llappviewer.h"            // gFrameIntervalSeconds
@@ -33,6 +34,7 @@
 #include "lljoint.h"
 #include "llrender.h"               // gGL (heading preview)
 #include "llspatialpartition.h"     // LLDrawInfo / LLCullResult (model-ghost geometry sweep)
+#include "lltoolmgr.h"              // [R2-3] edit-tool gate for the highlight ring
 #include "llvector4a.h"             // downward ground raycast (pathing ground-follow)
 #include "llvertexbuffer.h"         // draw the actor's rigged batches for the model ghost
 #include "llviewercamera.h"         // camera basis for billboarded path node numbers
@@ -5310,5 +5312,52 @@ void LLActorMover::renderStudioGhosts()
     // leave clean UI-overlay state for whoever draws next
     gUIProgram.bind();
     gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
+
+    // ---- [R2-3] selected-ghost highlight ring (edit tool active only) --------
+    // A pulsing ground ring in the ghost's tint at its foot. This is an EDIT
+    // indicator, not scene dressing, so it only draws while ALToolGhostEdit is
+    // the current tool -- it can never leak into a filmed frame (the tool is
+    // gone the moment the operator leaves edit mode, and studio ghosts render
+    // with the UI hidden precisely because they are NOT gated like this).
+    if (LLToolMgr::getInstance()->getCurrentTool() == ALToolGhostEdit::getInstance())
+    {
+        if (ALGhostStudio::Instance* inst = studio.getInstance(studio.getSelected()))
+        {
+            LLColor4 ring_tint;
+            if (!inst->mUseActorTint)
+            {
+                ring_tint.setHSL(fmodf(llmax(inst->mHue, 0.f), 360.f) / 360.f, 0.9f, 0.6f);
+            }
+            else if (LLVOAvatar* av = resolve_actor(inst->mSource))
+            {
+                ring_tint = actorPathColor(av->getID());
+            }
+            else
+            {
+                ring_tint = LLColor4(1.f, 1.f, 1.f, 1.f);
+            }
+            // slow breathe, same clock as the path editor's selected node
+            const F32 now   = (F32)LLFrameTimer::getElapsedSeconds();
+            const F32 pulse = 0.55f + 0.45f * sinf(now * 3.2f);
+            ring_tint.mV[VW] = 0.85f * pulse;
+
+            LLVector3 foot = gAgent.getPosAgentFromGlobal(inst->mFootGlobal);
+            foot.mV[VZ] += 0.05f;   // sit the ring just off the ground
+            const F32 r0 = 0.45f * llmax(inst->mScale, 0.3f);
+            const F32 r1 = r0 + 0.09f;
+            constexpr S32 SEGS = 32;
+            gGL.begin(LLRender::TRIANGLE_STRIP);
+            gGL.color4fv(ring_tint.mV);
+            for (S32 i = 0; i <= SEGS; ++i)
+            {
+                const F32 a = F_TWO_PI * (F32)i / (F32)SEGS;
+                const F32 c = cosf(a), s = sinf(a);
+                gGL.vertex3f(foot.mV[VX] + c * r0, foot.mV[VY] + s * r0, foot.mV[VZ]);
+                gGL.vertex3f(foot.mV[VX] + c * r1, foot.mV[VY] + s * r1, foot.mV[VZ]);
+            }
+            gGL.end();
+        }
+    }
+
     gGL.flush();
 }

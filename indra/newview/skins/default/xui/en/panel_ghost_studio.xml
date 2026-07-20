@@ -45,9 +45,19 @@
      name="studio_hint"
      text_color="LtGray_50"
      use_ellipses="true"
-     width="348">
+     width="238">
         Styled copies of cast bodies: place, pose, multiply. Double-click a row to show/hide it
     </text>
+    <check_box
+     follows="top|right"
+     height="16"
+     label="Edit ghosts"
+     layout="topleft"
+     left="248"
+     top="17"
+     name="edit_ghosts_check"
+     tool_tip="Edit ghosts in world: click a ghost to select it, drag to move it on the ground, Shift-drag to turn it, click empty ground to re-place the selection, Delete removes it. Esc (or unchecking) hands the camera back. Spinners below stay the precision path"
+     width="106" />
 
     <scroll_list
      column_padding="0"
