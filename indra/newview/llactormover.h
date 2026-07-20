@@ -38,6 +38,7 @@
 #include <vector>
 
 class LLVOAvatar;
+class LLDrawInfo;
 
 class LLActorMover
 {
@@ -419,6 +420,16 @@ public:
     // it is a blocking-preview aid, not a live skinned second body.
     void updateGhostImpostors();
 
+    // Snapshot each ghosted actor's rigged draw batches while the frame's render
+    // maps still hold WORLD-camera geometry. MUST be called from the main render
+    // loop AFTER the world render but BEFORE render_ui() -- render_hud_attachments()
+    // re-runs stateSort with the HUD camera and repopulates those maps, so reading
+    // them at draw time (render_ui_3d) finds no world geometry whenever a HUD is
+    // worn (the "HUD hides the ghost" bug). The model ghost draw then reads this
+    // cache instead of the live maps. Zero cost / clears the cache when ghosts are
+    // off. Cached LLDrawInfo* stay valid for the frame (owned by spatial groups).
+    void collectGhostBatches();
+
 private:
     LLActorMover() = default;
 
@@ -564,6 +575,13 @@ private:
         F32       mCenterAboveFoot = 0.9f;  // billboard centre height above feet, m
     };
     std::map<LLUUID, GhostImpostor> mGhostImpostors;
+
+    // Per-actor rigged draw batches for the true-3D model ghost, snapshotted by
+    // collectGhostBatches() each frame while the world render maps are valid, and
+    // consumed by the ghost draw in renderHeadingPreview(). Rebuilt every frame;
+    // pointers are frame-lifetime only (never stored across frames).
+    std::map<LLUUID, std::vector<LLDrawInfo*> > mGhostBatches;
+
     // is this actor's cached ghost snapshot stale (needs a regen)?
     static bool ghostImpostorStale(LLVOAvatar* av, const GhostImpostor& gi);
 

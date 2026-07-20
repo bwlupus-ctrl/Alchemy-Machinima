@@ -3474,10 +3474,21 @@
       <key>Value</key>
       <integer>0</integer>
     </map>
+    <key>PathGhostUseModel</key>
+    <map>
+      <key>Comment</key>
+      <string>[ActorMover] When drawing pose/blocking ghosts (PathShowOnionSkin), render a TRUE 3D translucent copy of the actor's real rigged body at each ghost position -- the actor's own worn mesh, re-skinned from its live joint pose and re-drawn at an offset with a ghost tint. Unlike the flat impostor card this is fully three-dimensional and orbits correctly, and it is the foundation for holding an independent (out-of-sync) pose. Falls back to the impostor billboard (PathGhostUseImpostor) then the stick figure when the body has no rigged geometry available. On by default; only does work while the ghost toggle is on and a mover/Director floater is open.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
     <key>PathGhostUseImpostor</key>
     <map>
       <key>Comment</key>
-      <string>[ActorMover] When drawing pose/blocking ghosts (PathShowOnionSkin), stamp a REAL translucent avatar image (an impostor billboard snapshot of the actual rendered avatar) instead of a stick figure. The snapshot is a frozen 2D card of the current pose, camera-facing, refreshed when the camera swings around the actor; it is a blocking-preview aid, not a live second body. Turn off to use the lightweight stick-figure ghost. On by default; only does work while the ghost toggle is on and a mover/Director floater is open.</string>
+      <string>[ActorMover] Fallback ghost style when the true 3D model ghost (PathGhostUseModel) is off or unavailable: stamp a REAL translucent avatar image (an impostor billboard snapshot of the actual rendered avatar) instead of a stick figure. The snapshot is a frozen 2D card of the current pose, camera-facing, refreshed when the camera swings around the actor; it is a blocking-preview aid, not a live second body. Turn off to use the lightweight stick-figure ghost. On by default; only does work while the ghost toggle is on and a mover/Director floater is open.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>

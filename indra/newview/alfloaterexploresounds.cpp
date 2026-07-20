@@ -9,7 +9,12 @@
 #include "alassetblocklist.h"
 #include "alfloaterblocked.h"
 #include "llcheckboxctrl.h"
+#include "lldir.h"                  // gDirUtilp: cache path + openDir (OS file manager)
+#include "llfile.h"                 // LLFile::isfile (is the sound decoded to cache yet?)
+#include "llmenugl.h"               // LLMenuGL::showPopup
 #include "llscrolllistctrl.h"
+#include "lluictrlfactory.h"        // createFromFile<LLContextMenu>
+#include "llviewermenu.h"           // gMenuHolder + LLViewerMenuHolderGL::child_registry_t
 #include "llagent.h"
 #include "llagentcamera.h"
 #include "llavatarnamecache.h"
@@ -69,6 +74,12 @@ ALFloaterExploreSounds::~ALFloaterExploreSounds()
     mBlacklistAvatarNameCacheConnections.clear();
 
     mLocalPlayingAudioSourceIDs.clear();
+
+    if (LLContextMenu* menu = mPopupMenuHandle.get())
+    {
+        menu->die();
+        mPopupMenuHandle.markDead();
+    }
 }
 
 bool ALFloaterExploreSounds::postBuild()
@@ -85,6 +96,20 @@ bool ALFloaterExploreSounds::postBuild()
     mHistoryScroller->setCommitCallback(boost::bind(&ALFloaterExploreSounds::handleSelection, this));
     mHistoryScroller->setDoubleClickCallback(boost::bind(&ALFloaterExploreSounds::handlePlayLocally, this));
     mHistoryScroller->sortByColumn("playing", true);
+
+    // right-click the sound list -> "Show in Cache Folder" (reveal the decoded
+    // cache/sounds/<asset>.dsf in the OS file manager). Same LLContextMenu idiom
+    // as the Animation Explorer's animation_list menu.
+    mHistoryScroller->setRightMouseDownCallback(boost::bind(&ALFloaterExploreSounds::onScrollListRightClicked, this, _1, _2, _3));
+    {
+        LLUICtrl::CommitCallbackRegistry::ScopedRegistrar registrar;
+        registrar.add("ExploreSounds.ShowInCache", boost::bind(&ALFloaterExploreSounds::showSelectedInCacheFolder, this));
+        if (LLContextMenu* menu = LLUICtrlFactory::getInstance()->createFromFile<LLContextMenu>(
+                "menu_explore_sounds.xml", gMenuHolder, LLViewerMenuHolderGL::child_registry_t::instance()))
+        {
+            mPopupMenuHandle = menu->getHandle();
+        }
+    }
 
     mCollisionSounds = getChild<LLCheckBoxCtrl>("collision_chk");
     mRepeatedAssets = getChild<LLCheckBoxCtrl>("repeated_asset_chk");
@@ -520,4 +545,56 @@ void ALFloaterExploreSounds::blacklistSound()
     }
 
     handleStop();
+}
+
+// right-click on the sound list: select the row under the cursor (so the menu
+// acts on what was clicked) and pop the context menu. Mirrors
+// AnimationExplorer::onScrollListRightClicked.
+void ALFloaterExploreSounds::onScrollListRightClicked(LLUICtrl* ctrl, S32 x, S32 y)
+{
+    LLScrollListItem* hit = mHistoryScroller->hitItem(x, y);
+    LLContextMenu* menu = mPopupMenuHandle.get();
+    if (hit && menu)
+    {
+        const S32 index = mHistoryScroller->getItemIndex(hit);
+        if (index >= 0)
+        {
+            mHistoryScroller->selectNthItem(index);
+            handleSelection();
+        }
+        menu->buildDrawLabels();
+        menu->updateParent(LLMenuGL::sMenuContainer);
+        menu->show(x, y);
+        LLMenuGL::showPopup(ctrl, menu, x, y);
+    }
+}
+
+// Reveal the selected sound's decoded cache file in the OS file manager. Decoded
+// sounds live in the dedicated cache subfolder as cache/sounds/<asset>.dsf (see
+// LLAudioEngine::init). If that file exists we reveal it directly (Explorer
+// /select, Finder -R); if the sound hasn't been decoded to disk yet we fall back
+// to opening the sounds cache folder itself so the user still lands in the cache
+// location.
+void ALFloaterExploreSounds::showSelectedInCacheFolder()
+{
+    LLSoundHistoryItem item = getItem(mHistoryScroller->getSelectedValue().asUUID());
+    if (item.mID.isNull() || item.mAssetID.isNull())
+    {
+        return;
+    }
+
+    const std::string dsf_path =
+        gDirUtilp->getExpandedFilename(LL_PATH_CACHE, "sounds", item.mAssetID.asString() + ".dsf");
+
+    if (LLFile::isfile(dsf_path))
+    {
+        gDirUtilp->openDir(dsf_path);   // highlight the file in the OS file manager
+    }
+    else
+    {
+        // not decoded to disk (yet) -- open the sounds cache folder instead
+        LL_INFOS("SoundExplorer") << "No cached .dsf for " << item.mAssetID
+                                  << " yet; opening the sounds cache folder." << LL_ENDL;
+        gDirUtilp->openDir(gDirUtilp->getExpandedFilename(LL_PATH_CACHE, "sounds"));
+    }
 }

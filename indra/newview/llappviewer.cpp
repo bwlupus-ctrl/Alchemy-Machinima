@@ -1888,7 +1888,9 @@ bool LLAppViewer::cleanup()
     removeCacheFiles("*.tmp");
     removeCacheFiles("*.lso");
     removeCacheFiles("*.out");
-    removeCacheFiles("*.dsf");
+    removeCacheFiles("*.dsf");   // legacy: decoded sounds used to live loose in the cache root
+    // decoded sounds now live in the dedicated "sounds" subfolder -- clear it too
+    gDirUtilp->deleteFilesInDir(gDirUtilp->getExpandedFilename(LL_PATH_CACHE, "sounds"), "*.dsf");
     removeCacheFiles("*.bodypart");
     removeCacheFiles("*.clothing");
 
@@ -4736,6 +4738,9 @@ void LLAppViewer::purgeCache()
     LLViewerShaderMgr::instance()->clearShaderCache();
     purgeCefStaleCaches();
     gDirUtilp->deleteFilesInDir(gDirUtilp->getExpandedFilename(LL_PATH_CACHE, ""), "*");
+    // deleteFilesInDir is non-recursive, so the decoded-sound subfolder needs its
+    // own sweep to be cleared along with the rest of the cache.
+    gDirUtilp->deleteFilesInDir(gDirUtilp->getExpandedFilename(LL_PATH_CACHE, "sounds"), "*");
 }
 
 //purge cache immediately, do not wait until the next login.

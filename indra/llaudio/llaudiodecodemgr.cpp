@@ -659,7 +659,9 @@ LLPointer<LLVorbisDecodeState> beginDecodingAndWritingAudio(const LLUUID &decode
 
     LL_DEBUGS() << "Decoding " << decode_id << " from audio queue!" << LL_ENDL;
 
-    std::string                    d_path       = gDirUtilp->getExpandedFilename(LL_PATH_CACHE, decode_id.asString()) + ".dsf";
+    // Decoded audio is written into the dedicated "sounds" cache subfolder (see
+    // LLAudioEngine::init, which creates it) rather than loose in the cache root.
+    std::string                    d_path       = gDirUtilp->getExpandedFilename(LL_PATH_CACHE, "sounds", decode_id.asString() + ".dsf");
     LLPointer<LLVorbisDecodeState> decode_state = new LLVorbisDecodeState(decode_id, d_path);
 
     if (!decode_state->initDecode())

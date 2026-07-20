@@ -123,6 +123,13 @@ bool LLAudioEngine::init(void* userdata, const std::string &app_title)
 
     allocateListener();
 
+    // Decoded sounds live in their own cache subfolder ("sounds") to keep the
+    // cache tidy instead of dumping loose .dsf files into the cache root. Create
+    // it up front so the first decode's write has somewhere to go (mkdir is a
+    // harmless no-op if it already exists). Still under LL_PATH_CACHE, so it is
+    // cleared along with the rest of the cache.
+    LLFile::mkdir(gDirUtilp->getExpandedFilename(LL_PATH_CACHE, "sounds"));
+
     LL_INFOS("AudioEngine") << "LLAudioEngine::init() AudioEngine successfully initialized" << LL_ENDL;
 
     return true;
@@ -1114,8 +1121,7 @@ bool LLAudioEngine::hasDecodedFile(const LLUUID &uuid)
     uuid.toString(uuid_str);
 
     std::string wav_path;
-    wav_path = gDirUtilp->getExpandedFilename(LL_PATH_CACHE,uuid_str);
-    wav_path += ".dsf";
+    wav_path = gDirUtilp->getExpandedFilename(LL_PATH_CACHE, "sounds", uuid_str + ".dsf");
 
     if (LLFile::isfile(wav_path))
     {
@@ -2111,7 +2117,7 @@ bool LLAudioData::load()
         return false;
     }
 
-    std::string wav_path = gDirUtilp->getExpandedFilename(LL_PATH_CACHE, mID.asString()) + ".dsf";
+    std::string wav_path = gDirUtilp->getExpandedFilename(LL_PATH_CACHE, "sounds", mID.asString() + ".dsf");
     mHasWAVLoadFailed = !mBufferp->loadWAV(wav_path);
     if (mHasWAVLoadFailed)
     {

@@ -12,11 +12,13 @@
 #include "llactormover.h"
 
 #include <algorithm>                // std::reverse (path reverse op)
+#include <set>                      // collectGhostBatches (wanted-actor set)
 
 #include "llagent.h"                // gAgent global<->agent coord conversion (pathing)
 #include "llanimationstates.h"      // ANIM_AGENT_WALK
 #include "llappviewer.h"            // gFrameIntervalSeconds
 #include "lldirectorcast.h"         // [Director] roster storage + per-actor loco anim
+#include "lldrawpool.h"             // LLRenderPass (rigged pass enum + uploadMatrixPalette)
 #include "llflycamrecorder.h"       // sync-to-take: the recorder playhead is the clock
 #include "llfloaterreg.h"           // heading preview only draws with the floater open
 #include "llframetimer.h"           // per-frame idempotency for applyOverride()
@@ -25,10 +27,13 @@
 #include "llglstates.h"             // LLGLSUIDefault (heading preview)
 #include "lljoint.h"
 #include "llrender.h"               // gGL (heading preview)
+#include "llspatialpartition.h"     // LLDrawInfo / LLCullResult (model-ghost geometry sweep)
 #include "llvector4a.h"             // downward ground raycast (pathing ground-follow)
+#include "llvertexbuffer.h"         // draw the actor's rigged batches for the model ghost
 #include "llviewercamera.h"         // camera basis for billboarded path node numbers
 #include "llviewercontrol.h"        // gSavedSettings, LLCachedControl
-#include "llviewershadermgr.h"      // gUIProgram (heading preview)
+#include "llviewershadermgr.h"      // gUIProgram / gHighlightProgram (heading preview + model ghost)
+#include "llviewertexture.h"        // sWhiteImagep (flat-tint texture for the model ghost)
 #include "llvoavatar.h"
 #include "llvoavatarself.h"         // gAgentAvatarp, isAgentAvatarValid()
 #include "llworld.h"                // resolveLandHeightAgent (pathing ground-follow)
@@ -3360,6 +3365,125 @@ bool drawImpostorGhost(LLVOAvatar* av, const LLVector3& center,
     gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
     return true;
 }
+
+// TRUE 3D ghost: re-render the actor's own worn rigged geometry as a translucent
+// tinted copy standing on `foot` (agent frame), skinned from the actor's LIVE
+// joint pose. Unlike drawImpostorGhost's flat card this is real three-dimensional
+// geometry -- the actual mesh the avatar is wearing, re-skinned this frame and
+// re-placed at the ghost spot -- so it orbits correctly and reads as a second
+// body rather than a photo of one.
+//
+// The seam that makes this cheap: a rigged mesh's matrix palette
+// (LLVOAvatar::updateSkinInfoMatrixPalette) already bakes every vertex into WORLD
+// space (invBind * joint world matrix), so placing the ghost elsewhere is just a
+// world-space translation premultiplied into the modelview -- no per-vertex work,
+// no second skeleton. We reuse the engine's skinned constant-colour shader
+// (gHighlightProgram's rigged variant, the same one that draws selection glow on
+// rigged attachments), so there is no new shader to register: bind it, upload the
+// actor's live palette per batch, and draw the same vertex ranges the world pass
+// drew -- but offset and flat-tinted.
+//
+// Two passes so the translucent skin reads as ONE clean layer instead of showing
+// its own backfaces through the front: pass 1 primes depth (colour masked off),
+// pass 2 blends the tint only where depth is equal (the front-most layer).
+//
+// Returns the number of rigged batches drawn; 0 means this actor had no usable
+// rigged geometry in view this frame, so the caller falls back to the impostor
+// card / stick figure. SCOPE: covers WORN MESH (rigged attachments) -- essentially
+// the whole visible body of a modern mesh avatar. The legacy SYSTEM avatar body
+// uses a different skinning path and is not drawn here (a pure system-avatar actor
+// falls back). NOTE: uses the LIVE pose (a translucent copy of the body as it
+// stands right now); an independent, held ("out of sync") pose is the next step,
+// and drops in by uploading a snapshotted palette here instead of the live one.
+S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLDrawInfo*>& batches,
+                      const LLVector3& foot, const LLColor4& tint, F32 alpha)
+{
+    if (!av || av->isDead() || batches.empty())
+    {
+        return 0;
+    }
+
+    LLGLSLShader* shader = gHighlightProgram.mRiggedVariant;
+    if (!shader)
+    {
+        return 0;
+    }
+
+    // Placement: translate the whole (world-space-skinned) body from the actor's
+    // live render root to the ghost root standing on `foot`, preserving standing
+    // height via pelvisToFoot so the feet sit on the ground. Pure translation --
+    // the ghost keeps the actor's current facing; a facing/rotation remap is a
+    // later refinement (bake yaw about the root into this delta).
+    const LLVector3 live_root = av->getRenderPosition();
+    const F32       p2f       = av->getPelvisToFoot();
+    const LLVector3 ghost_root(foot.mV[VX], foot.mV[VY], foot.mV[VZ] + p2f);
+    const LLVector3 delta = ghost_root - live_root;
+
+    shader->bind();
+    // frag_color = color * texture(diffuseMap): a white texture makes the output
+    // exactly the `color` uniform (driven by gGL.diffuseColor4f below).
+    gGL.getTexUnit(0)->bind(LLViewerFetchedTexture::sWhiteImagep);
+
+    gGL.matrixMode(LLRender::MM_MODELVIEW);
+    gGL.pushMatrix();
+    gGL.translatef(delta.mV[VX], delta.mV[VY], delta.mV[VZ]);   // modelview = view * T(delta)
+    gGL.syncMatrices();
+
+    // --- pass 1: prime depth only (single-layer silhouette), no colour ---
+    {
+        LLGLDepthTest depth(GL_TRUE, GL_TRUE, GL_LESS);
+        LLGLDisable   blend(GL_BLEND);
+        gGL.setColorMask(false, false);
+        const LLVOAvatar* lastAvatar = nullptr;
+        U64  lastMeshId = 0;
+        bool skipLastSkin = false;
+        for (LLDrawInfo* di : batches)
+        {
+            if (LLRenderPass::uploadMatrixPalette(di->mAvatar, di->mSkinInfo,
+                                                  lastAvatar, lastMeshId, skipLastSkin))
+            {
+                di->mVertexBuffer->setBuffer();
+                di->mVertexBuffer->drawRange(LLRender::TRIANGLES,
+                                             di->mStart, di->mEnd, di->mCount, di->mOffset);
+            }
+        }
+    }
+
+    // --- pass 2: blend the flat tint only on the primed front layer ---
+    {
+        LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
+        LLGLEnable    blend(GL_BLEND);
+        gGL.setSceneBlendType(LLRender::BT_ALPHA);
+        gGL.setColorMask(true, true);
+        // mostly white, with a faint pull toward the actor hue so overlapping
+        // actors' ghosts stay distinguishable without hiding the body shape.
+        const F32 t = 0.25f;
+        gGL.diffuseColor4f(1.f - t + tint.mV[VX] * t,
+                           1.f - t + tint.mV[VY] * t,
+                           1.f - t + tint.mV[VZ] * t,
+                           alpha);
+        const LLVOAvatar* lastAvatar = nullptr;
+        U64  lastMeshId = 0;
+        bool skipLastSkin = false;
+        for (LLDrawInfo* di : batches)
+        {
+            if (LLRenderPass::uploadMatrixPalette(di->mAvatar, di->mSkinInfo,
+                                                  lastAvatar, lastMeshId, skipLastSkin))
+            {
+                di->mVertexBuffer->setBuffer();
+                di->mVertexBuffer->drawRange(LLRender::TRIANGLES,
+                                             di->mStart, di->mEnd, di->mCount, di->mOffset);
+            }
+        }
+    }
+
+    gGL.popMatrix();
+    gGL.syncMatrices();
+    gGL.setColorMask(true, true);
+    gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
+    shader->unbind();
+    return (S32)batches.size();
+}
 } // anonymous namespace
 
 // ---------------------------------------------------------------------------
@@ -3387,9 +3511,12 @@ void LLActorMover::renderHeadingPreview()
     // pose/blocking ghosts: translucent copies of the actor at its current spot,
     // its destination, and every path node. Opt-in, default off, so the overlay
     // pass adds nothing per frame unless the director asks for it. PathGhostUse-
-    // Impostor picks the REAL-avatar impostor billboard (default) vs the cheap
-    // stick-figure fallback -- the fallback also covers "no snapshot captured yet".
+    // Ghost style precedence: the true 3D model ghost (PathGhostUseModel, default)
+    // wins; the impostor billboard (PathGhostUseImpostor) and the stick figure are
+    // fallbacks for actors the model ghost can't cover (no rigged geometry) or when
+    // the model ghost is switched off.
     static LLCachedControl<bool> onion(gSavedSettings, "PathShowOnionSkin", false);
+    static LLCachedControl<bool> use_model(gSavedSettings, "PathGhostUseModel", true);
     static LLCachedControl<bool> use_impostor(gSavedSettings, "PathGhostUseImpostor", true);
     const F32 dist = llmax((F32)distance, 0.1f);
 
@@ -3581,17 +3708,15 @@ void LLActorMover::renderHeadingPreview()
             origin.mV[VZ] += PATH_RIBBON_LIFT - av->getPelvisToFoot();   // just above ground
             const LLVector3 end = origin + dir * dist;
 
-            // pose ghosts at the CURRENT position and the planned DESTINATION so
-            // toggling ghost mode ALWAYS shows something even without a laid-down
-            // path (the visibility fix). Height for the stick fallback is derived
-            // from the actor's standing height; the impostor path uses its own
-            // captured dimensions and ignores this.
-            if (onion)
-            {
-                const F32 gh = llmax(1.2f, av->getPelvisToFoot() * 2.f);
-                ghosts.push_back({ av, origin, dir, gh, col_mid });
-                ghosts.push_back({ av, end,    dir, gh, col_mid });
-            }
+            // NOTE: no pose ghosts in the no-path case. Previously this stamped a
+            // ghost at the CURRENT position AND the projected DESTINATION for every
+            // roster/cast actor, which (a) put a translucent double right on top of
+            // each idle actor's live body and (b) drew a speculative destination
+            // ghost from the shared heading/distance on cast members that had no
+            // path at all -- the "multiple ghosts despite no path" the director saw.
+            // Ghosts now appear only where they mean something: at the nodes of an
+            // actual walkable path (the branch above). Opt-in blocking ghosts for an
+            // idle actor return with the per-actor standalone-ghost feature.
 
             std::vector<LLVector3> pts{ origin, end };
             drawThickLine(pts, 0.10f, col_line);
@@ -3617,12 +3742,14 @@ void LLActorMover::renderHeadingPreview()
     }
 
     // ---- ghost pass: draw every collected pose ghost far-to-near --------------
-    // Real translucent avatar billboards when a snapshot exists (drawImpostor-
-    // Ghost), else the readable stick-figure fallback (drawPoseGhost). Sorted by
-    // camera distance so overlapping translucent cards blend correctly on the
-    // cleared-depth UI pass. NOTE (documented caveat): because this pass runs on
-    // a cleared depth buffer, world geometry does NOT occlude the ghosts -- like
-    // the rest of the path viz they read as a client overlay ON TOP of the scene.
+    // Preference order per actor: a TRUE 3D model ghost (drawGeometryGhost -- the
+    // actor's own worn mesh re-skinned and re-placed, depth-tested so it reads as
+    // a real translucent body), else a real avatar impostor billboard (drawImpostor-
+    // Ghost), else the readable stick figure (drawPoseGhost). Sorted far-to-near so
+    // the translucent draws stack correctly. NOTE (documented caveat): the ghost
+    // pass runs on a cleared depth buffer, so world geometry does NOT occlude the
+    // ghosts -- they read as a client overlay ON TOP of the scene (each model
+    // ghost still self-occludes cleanly via its own depth prime).
     if (!ghosts.empty())
     {
         const LLVector3 cam_pos = cam->getOrigin();
@@ -3633,8 +3760,45 @@ void LLActorMover::renderHeadingPreview()
                            > (b.mFoot - cam_pos).magVecSquared();
                   });
         const F32 GHOST_ALPHA = 0.6f;
-        for (const GhostItem& g : ghosts)
+
+        // Pass A: true 3D model ghosts. Each is a real geometry draw with its own
+        // shader + depth state, so they are drawn as a group; actors with no rigged
+        // geometry drawn (return 0) drop through to the billboard/stick pass below.
+        std::vector<const GhostItem*> fallback;
+        if (use_model)
         {
+            for (const GhostItem& g : ghosts)
+            {
+                // batches were snapshotted by collectGhostBatches() earlier this
+                // frame (while the world render maps were valid); a miss / empty
+                // bucket drops through to the billboard/stick fallback.
+                S32 drew = 0;
+                auto bit = mGhostBatches.find(g.mAv->getID());
+                if (bit != mGhostBatches.end() && !bit->second.empty())
+                {
+                    drew = drawGeometryGhost(g.mAv, bit->second, g.mFoot, g.mTint, GHOST_ALPHA);
+                }
+                if (drew == 0)
+                {
+                    fallback.push_back(&g);
+                }
+            }
+            // the model pass left the rigged-highlight shader / depth state; restore
+            // the UI-overlay context the billboard + stick draws below expect.
+            gUIProgram.bind();
+        }
+        else
+        {
+            for (const GhostItem& g : ghosts)
+            {
+                fallback.push_back(&g);
+            }
+        }
+
+        // Pass B: billboard / stick fallback on the cleared-depth UI overlay.
+        for (const GhostItem* gp : fallback)
+        {
+            const GhostItem& g = *gp;
             // billboard centre = foot + the centre-above-foot height captured at
             // snapshot time (or half the figure height when no snapshot exists)
             F32 center_above = g.mHeight * 0.5f;
@@ -3694,10 +3858,15 @@ void LLActorMover::updateGhostImpostors()
 {
     // same gate as the preview: opt-in, impostor mode on, and an operator
     // floater up. Any miss is an immediate zero-cost return (default no-op).
+    // The true 3D model ghost skins live geometry and needs no impostor snapshot,
+    // so when it is active we skip the (expensive) generateImpostor re-render
+    // entirely -- a pure system-avatar actor the model ghost can't cover then
+    // falls back to the stick figure rather than a billboard.
     static LLCachedControl<bool> show(gSavedSettings, "ActorMoverShowHeading", true);
     static LLCachedControl<bool> onion(gSavedSettings, "PathShowOnionSkin", false);
+    static LLCachedControl<bool> use_model(gSavedSettings, "PathGhostUseModel", true);
     static LLCachedControl<bool> use_impostor(gSavedSettings, "PathGhostUseImpostor", true);
-    if (!show || !onion || !use_impostor)
+    if (!show || !onion || use_model || !use_impostor)
     {
         return;
     }
@@ -3758,5 +3927,123 @@ void LLActorMover::updateGhostImpostors()
         const F32 foot_z   = av->getRootJoint()->getWorldPosition().mV[VZ] - av->getPelvisToFoot();
         const F32 center_z = (av->getRenderPosition() + av->getImpostorOffset()).mV[VZ];
         gi.mCenterAboveFoot = llmax(0.2f, center_z - foot_z);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Snapshot the rigged draw batches for each ghosted actor WHILE the frame's
+// render maps still hold world-camera geometry (called from display() after the
+// world render, before render_ui()). render_hud_attachments() re-runs stateSort
+// with the HUD camera and repopulates these maps, so a model ghost that read
+// them at draw time went blank whenever a HUD was worn -- this decouples the
+// enumeration from that timing. One sweep over each rigged pass, bucketed per
+// actor and de-duped by buffer range.
+void LLActorMover::collectGhostBatches()
+{
+    mGhostBatches.clear();
+
+    // same gate as the ghost preview: byte-identical zero cost when off
+    static LLCachedControl<bool> show(gSavedSettings, "ActorMoverShowHeading", true);
+    static LLCachedControl<bool> onion(gSavedSettings, "PathShowOnionSkin", false);
+    static LLCachedControl<bool> use_model(gSavedSettings, "PathGhostUseModel", true);
+    if (!show || !onion || !use_model)
+    {
+        return;
+    }
+    LLFloater* floaterp = LLFloaterReg::findInstance("actor_mover");
+    if (!floaterp || !floaterp->getVisible())
+    {
+        floaterp = LLFloaterReg::findInstance("director");
+        if (!floaterp || !floaterp->getVisible())
+        {
+            return;
+        }
+    }
+
+    // the actors renderHeadingPreview() will ghost: roster members with a walkable
+    // path (>= 2 nodes). Collect batches only for those.
+    uuid_vec_t roster = getRoster();
+    if (roster.empty())
+    {
+        roster.push_back(LLUUID::null);     // my avatar
+    }
+    std::set<LLVOAvatar*> wanted;
+    for (const LLUUID& id : roster)
+    {
+        LLVOAvatar* av = resolve_actor(id);
+        if (!av || av->isDead())
+        {
+            continue;
+        }
+        auto pit = mPaths.find(av->getID());
+        if (pit != mPaths.end() && pit->second.mNodes.size() >= 2)
+        {
+            wanted.insert(av);
+        }
+    }
+    if (wanted.empty())
+    {
+        return;
+    }
+
+    static const U32 kRiggedPasses[] = {
+        LLRenderPass::PASS_SIMPLE_RIGGED,
+        LLRenderPass::PASS_FULLBRIGHT_RIGGED,
+        LLRenderPass::PASS_FULLBRIGHT_SHINY_RIGGED,
+        LLRenderPass::PASS_SHINY_RIGGED,
+        LLRenderPass::PASS_BUMP_RIGGED,
+        LLRenderPass::PASS_MATERIAL_RIGGED,
+        LLRenderPass::PASS_MATERIAL_ALPHA_RIGGED,
+        LLRenderPass::PASS_MATERIAL_ALPHA_MASK_RIGGED,
+        LLRenderPass::PASS_SPECMAP_RIGGED,
+        LLRenderPass::PASS_SPECMAP_BLEND_RIGGED,
+        LLRenderPass::PASS_SPECMAP_MASK_RIGGED,
+        LLRenderPass::PASS_NORMMAP_RIGGED,
+        LLRenderPass::PASS_NORMMAP_BLEND_RIGGED,
+        LLRenderPass::PASS_NORMMAP_MASK_RIGGED,
+        LLRenderPass::PASS_NORMSPEC_RIGGED,
+        LLRenderPass::PASS_NORMSPEC_BLEND_RIGGED,
+        LLRenderPass::PASS_NORMSPEC_MASK_RIGGED,
+        LLRenderPass::PASS_ALPHA_RIGGED,
+        LLRenderPass::PASS_ALPHA_MASK_RIGGED,
+        LLRenderPass::PASS_FULLBRIGHT_ALPHA_MASK_RIGGED,
+        LLRenderPass::PASS_GLTF_PBR_RIGGED,
+        LLRenderPass::PASS_GLTF_PBR_ALPHA_MASK_RIGGED,
+    };
+    for (U32 pass : kRiggedPasses)
+    {
+        auto* begin = gPipeline.beginRenderMap(pass);
+        auto* end   = gPipeline.endRenderMap(pass);
+        for (LLCullResult::drawinfo_iterator i = begin; i != end; )
+        {
+            LLDrawInfo* di = *i;
+            LLCullResult::increment_iterator(i, end);
+            if (!di || di->mAvatar.isNull()
+                || di->mSkinInfo.isNull() || di->mVertexBuffer.isNull())
+            {
+                continue;
+            }
+            LLVOAvatar* av = di->mAvatar.get();
+            if (wanted.find(av) == wanted.end())
+            {
+                continue;
+            }
+            std::vector<LLDrawInfo*>& bucket = mGhostBatches[av->getID()];
+            bool dup = false;
+            for (LLDrawInfo* b : bucket)
+            {
+                if (b->mVertexBuffer.get() == di->mVertexBuffer.get()
+                    && b->mStart == di->mStart && b->mEnd == di->mEnd
+                    && b->mOffset == di->mOffset)
+                {
+                    dup = true;
+                    break;
+                }
+            }
+            if (!dup)
+            {
+                bucket.push_back(di);
+            }
+        }
     }
 }

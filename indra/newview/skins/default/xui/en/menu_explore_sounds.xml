@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<!-- Context menu for the Sound Explorer's sound list. The callback
+     (ExploreSounds.ShowInCache) is registered with a ScopedRegistrar in
+     ALFloaterExploreSounds::postBuild() before this file is instantiated. -->
+<context_menu
+ layout="topleft"
+ name="ExploreSoundsContextMenu">
+  <menu_item_call
+   label="Show in Cache Folder"
+   layout="topleft"
+   name="show_in_cache">
+    <menu_item_call.on_click
+     function="ExploreSounds.ShowInCache" />
+  </menu_item_call>
+</context_menu>

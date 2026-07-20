@@ -9,9 +9,12 @@
 #include "lleventtimer.h"
 #include "llaudioengine.h"
 #include "llavatarnamecache.h"
+#include "llhandle.h"
 
 class LLCheckBoxCtrl;
+class LLContextMenu;
 class LLScrollListCtrl;
+class LLUICtrl;
 
 class ALFloaterExploreSounds final
 : public LLFloater, public LLEventTimer
@@ -32,6 +35,13 @@ private:
     void handleStopLocally();
     void handleSelection();
     void blacklistSound();
+
+    // right-click context menu on the sound list: reveal the selected sound's
+    // decoded cache file (cache/sounds/<asset>.dsf) in the OS file manager.
+    void onScrollListRightClicked(LLUICtrl* ctrl, S32 x, S32 y);
+    void showSelectedInCacheFolder();
+
+    LLHandle<LLContextMenu> mPopupMenuHandle;
 
     LLScrollListCtrl*   mHistoryScroller;
     LLCheckBoxCtrl*     mCollisionSounds;

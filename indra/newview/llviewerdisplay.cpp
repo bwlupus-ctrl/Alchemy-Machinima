@@ -1076,6 +1076,15 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
         }
 
         LLAppViewer::instance()->pingMainloopTimeout("Display:RenderUI");
+
+        // [ActorMover] snapshot each ghosted actor's rigged draw batches NOW, while
+        // the render maps still hold world-camera geometry. render_ui() below calls
+        // render_hud_attachments(), which re-runs stateSort with the HUD camera and
+        // repopulates those maps -- so the model ghost (drawn later in render_ui_3d)
+        // must read this cache, not the live maps, or it goes blank when a HUD is
+        // worn. No-op with zero cost unless the ghost toggle is on.
+        LLActorMover::instance().collectGhostBatches();
+
         if (!for_snapshot)
         {
             render_ui();
