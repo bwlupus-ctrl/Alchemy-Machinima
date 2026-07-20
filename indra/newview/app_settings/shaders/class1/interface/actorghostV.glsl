@@ -10,8 +10,9 @@
  * the eye-space position and normal the fragment side needs for its
  * fresnel-ish rim term. HAS_SKIN mirrors highlightV.glsl (make_rigged_variant
  * links avatar/objectSkinV.glsl for getObjectSkinnedTransform); the rigged
- * variant is what the ghost draw binds -- the base variant exists to satisfy
- * shader creation, same as the highlight pair.
+ * variant skins the worn-mesh batches, and the BASE variant places the
+ * non-rigged attachment faces (collar/jewelry/flexi) through the modelview
+ * the ghost draw composes per face.
  */
 
 uniform mat4 texture_matrix0;
@@ -22,10 +23,15 @@ uniform mat3 normal_matrix;
 in vec3 position;
 in vec3 normal;
 in vec2 texcoord0;
+// [R2-2] indexed-batch material slot (the batcher packs it into position.w;
+// the attribute array is only enabled on buffers that carry it -- others read
+// the integer generic, which the ghostSlot = -1 default never filters on)
+in int texture_index;
 
 out vec2 vary_texcoord0;
 out vec3 vary_position;     // eye space
 out vec3 vary_normal;       // eye space; normalized in the fragment shader
+flat out int vary_texture_index;
 
 #ifdef HAS_SKIN
 mat4 getObjectSkinnedTransform();
@@ -49,4 +55,5 @@ void main()
     vary_position = pos.xyz;
     gl_Position = projection_matrix * pos;
     vary_texcoord0 = (texture_matrix0 * vec4(texcoord0, 0, 1)).xy;
+    vary_texture_index = texture_index;
 }

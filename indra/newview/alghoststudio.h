@@ -38,6 +38,7 @@
 #include "lluuid.h"
 #include "v3math.h"
 #include "v3dmath.h"
+#include "m4math.h"         // frozen attachment matrices
 
 #include <map>
 #include <string>
@@ -92,6 +93,13 @@ public:
         // what makes the pivot math region-crossing-proof (see file header)
         LLVector3   mFrozenFootAgent;
         palette_map_t mFrozenPalettes;
+        // [R2-2] frozen NON-RIGGED attachment placement: object id -> that
+        // object's render matrix at freeze time (capture agent frame, like
+        // the palettes). A draw-time miss keeps the LIVE matrix; FLEXI
+        // attachments always render at live physics pose (their vertices are
+        // CPU-deformed in the shared buffer every frame -- documented
+        // limitation, see the freeze tooltip).
+        std::map<LLUUID, LLMatrix4> mFrozenAttachMats;
     };
 
     // ---- master visibility ----

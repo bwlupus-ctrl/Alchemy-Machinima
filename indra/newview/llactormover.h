@@ -33,12 +33,14 @@
 #include "v3dmath.h"
 #include "v4color.h"        // actorPathColor()
 #include "llquaternion.h"
+#include "m4math.h"         // frozen attachment matrices (GhostDrawParams)
 
 #include <map>
 #include <vector>
 
 class LLVOAvatar;
 class LLDrawInfo;
+class LLFace;
 
 class LLActorMover
 {
@@ -473,6 +475,23 @@ public:
     // freeze snapshot copies palettes out, never the batch pointers).
     const std::vector<GhostBatch>* ghostBatchesFor(const LLUUID& wearer_id) const;
 
+    // [GhostStudio/R2-2] one NON-RIGGED worn-attachment face for the ghost:
+    // collars, jewelry, flexi tails -- static prims whose faces never enter
+    // the rigged pass maps (LLFace::mAvatar is only ever set on RIGGED faces,
+    // so the batch sweep cannot see them; this is why the clone lacked them).
+    // Collected per wearer alongside the rigged batches and drawn with the
+    // BASE (non-skinned) ghost shader under the same placement composed with
+    // each face's own render matrix. Frame-lifetime, never cached.
+    struct GhostStaticFace
+    {
+        LLFace* mFace = nullptr;
+        LLUUID  mObjectId;          // owning object (frozen-matrix lookup key)
+        S32     mAlphaKind = 0;     // 0 solid, 1 cutoff-mask, 2 blend (real-render semantics)
+        F32     mCutoff = 0.f;      // mask cutoff when mAlphaKind == 1
+        bool    mDoubleSided = false;   // GLTF double-sided (cull-faithful draw)
+    };
+    const std::vector<GhostStaticFace>* ghostStaticFacesFor(const LLUUID& wearer_id) const;
+
     // [GhostStudio] optional per-ghost placement + FX overrides for the model
     // ghost draw. Default-constructed = byte-identical to the classic path-node
     // ghost (pure translation, live pose, no FX). The placement composes
@@ -490,6 +509,12 @@ public:
         LLVector3  mPivotFootAgent;     // capture-frame foot anchor (when mHavePivot)
         // frozen (drawing avatar id, skin hash) -> GL 3x4 palette; null = live
         const std::map<std::pair<LLUUID, U64>, std::vector<F32> >* mFrozenPalettes = nullptr;
+        // [R2-2] frozen NON-RIGGED attachment placement: object id -> the
+        // object's render matrix captured at freeze time (capture agent frame,
+        // consistent with the palettes + pivot). Null / lookup miss = the
+        // face's LIVE matrix (documented fallback; flexi always stays live --
+        // its vertices are CPU-deformed in the shared buffer every frame).
+        const std::map<LLUUID, LLMatrix4>* mFrozenAttachMats = nullptr;
         // cheap creative FX, each 0 = off (see actorghostF.glsl)
         F32        mShimmerSpeed = 0.f;     // Hz
         F32        mShimmerIntensity = 0.f; // 0..1
@@ -657,6 +682,9 @@ private:
     // skeleton, so their mAvatar is the control avatar, not the wearer) are
     // bucketed under the wearing actor so the whole outfit ghosts as one body.
     std::map<LLUUID, std::vector<GhostBatch> > mGhostBatches;
+    // [R2-2] per-wearer NON-RIGGED worn-attachment faces (collar/jewelry/flexi),
+    // collected alongside the batches each frame; same lifetime rules
+    std::map<LLUUID, std::vector<GhostStaticFace> > mGhostStaticFaces;
 
     // is this actor's cached ghost snapshot stale (needs a regen)?
     static bool ghostImpostorStale(LLVOAvatar* av, const GhostImpostor& gi);

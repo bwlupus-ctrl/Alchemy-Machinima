@@ -242,7 +242,7 @@
      left="6"
      top="268"
      name="style_combo"
-     tool_tip="Render style, same looks as the path pose ghosts. Ghost: translucent tint. Clone: unlit textured copy. Hologram: cyan scanlines. Wireframe: hidden-line wire. X-ray: glowing silhouette"
+     tool_tip="Render style, same looks as the path pose ghosts. Ghost: translucent tint. Clone: unlit textured copy (covers worn mesh, attachments and PBR emissive; legacy system-mesh eyeballs are a known gap). Hologram: cyan scanlines. Wireframe: hidden-line wire. X-ray: glowing silhouette"
      width="120">
         <combo_box.item label="Ghost" name="st_ghost" value="0" />
         <combo_box.item label="Clone" name="st_clone" value="1" />
@@ -374,7 +374,7 @@
      left="6"
      top="370"
      name="btn_freeze"
-     tool_tip="FREEZE: snapshot the source's current pose into this ghost. The ghost holds it while the live body keeps animating"
+     tool_tip="FREEZE: snapshot the source's current pose into this ghost (worn mesh + attachment placement). The ghost holds it while the live body keeps animating. Known limits: flexi tails/skirts keep their live physics motion, and legacy system-mesh eyeballs are not part of the ghost"
      width="112" />
     <button
      follows="left|top"

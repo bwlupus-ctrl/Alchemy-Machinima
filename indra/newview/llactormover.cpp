@@ -26,6 +26,7 @@
 #include "llflycamrecorder.h"       // sync-to-take: the recorder playhead is the clock
 #include "llfloaterreg.h"           // heading preview only draws with the floater open
 #include "llframetimer.h"           // per-frame idempotency for applyOverride()
+#include "llmaterial.h"             // legacy alpha-mode classification (static ghost faces)
 #include "llmotion.h"               // LLMotion::setPriorityOverride (custom-anim priority)
 #include "llgl.h"
 #include "llglstates.h"             // LLGLSUIDefault (heading preview)
@@ -3419,6 +3420,7 @@ static LLStaticHashedString sGhostTime("ghostTime");
 static LLStaticHashedString sGhostParams("ghostParams");
 static LLStaticHashedString sGhostAux("ghostAux");
 static LLStaticHashedString sGhostFx("ghostFx");
+static LLStaticHashedString sGhostSlot("ghostSlot");
 
 // ---------------------------------------------------------------------------
 // Per-batch alpha semantics: how does the REAL render treat this rigged pass's
@@ -3457,6 +3459,80 @@ bool ghost_pass_is_blend(U32 pass)
     default:
         return false;
     }
+}
+
+// [R2-2] GLOW batches are DUPLICATES of base-pass geometry (a face with PBR
+// emissive renders in its base pass AND again, additively, in the glow pass),
+// so they are excluded from every sweep except the clone's dedicated additive
+// emissive sweep -- otherwise the body would double-draw. Only the GLTF glow
+// pass is collected: PBR emissive is real surface COLOUR (emissive map x
+// emissive colour -- the missing iris on emissive-driven eyes); legacy
+// PASS_GLOW_RIGGED is a bloom intensity whose per-vertex glow amount lives in
+// the EMISSIVE vertex attribute this shader does not read, so honoring it
+// faithfully is out of scope (its faces' base colour already draws via their
+// base pass).
+bool ghost_pass_is_glow(U32 pass)
+{
+    return pass == LLRenderPass::PASS_GLTF_GLOW_RIGGED;
+}
+
+// [R2-2] Indexed (multi-material) batches: how many slots does this batch
+// carry? 1 = scalar (mGLTFMaterial / mTexture as usual). >1 = the vertex
+// buffer's texture_index attribute selects the material per vertex, and a
+// single bound texture is WRONG for every non-anchor slot (this is how eye
+// materials merged into a head's indexed batch came out white) -- the clone
+// redraws such a batch once per slot with the ghostSlot shader filter.
+S32 ghost_batch_slot_count(LLDrawInfo* di)
+{
+    if (di->mGLTFMaterialList.size() > 1)  return (S32)di->mGLTFMaterialList.size();
+    if (di->mMaterialSlotList.size() > 1)  return (S32)di->mMaterialSlotList.size();
+    if (di->mTextureList.size() > 1)       return (S32)di->mTextureList.size();
+    return 1;
+}
+
+// [R2-2] resolve one slot of an indexed batch for the clone: the slot's colour
+// texture (emissive map instead when `emissive`), its mask cutoff (0 = keep
+// all; only bites when the batch's pass masks), and its colour factor (GLTF
+// base colour / emissive colour, linear -- caller gamma-approximates like the
+// scalar path; white for legacy slots, whose tint rides vertex colours).
+// Returns nullptr for a gap slot (fragmented batch) -- caller skips the pass.
+LLViewerTexture* ghost_batch_slot_texture(LLDrawInfo* di, S32 slot, bool emissive,
+                                          F32& out_cutoff, LLColor4& out_factor)
+{
+    out_cutoff = 0.f;
+    out_factor = LLColor4::white;
+    if (di->mGLTFMaterialList.size() > 1)
+    {
+        LLFetchedGLTFMaterial* m = ((size_t)slot < di->mGLTFMaterialList.size())
+            ? di->mGLTFMaterialList[slot].get() : nullptr;
+        if (!m)
+        {
+            return nullptr;     // gap left by a fragmented batch (never sampled)
+        }
+        if (m->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_MASK)
+        {
+            out_cutoff = m->mAlphaCutoff;
+        }
+        if (emissive)
+        {
+            out_factor = LLColor4(m->mEmissiveColor.mV[0], m->mEmissiveColor.mV[1],
+                                  m->mEmissiveColor.mV[2], 1.f);
+            return m->mEmissiveTexture.get();   // null = flat emissive colour
+        }
+        out_factor = m->mBaseColor;
+        return m->mBaseColorTexture.get();
+    }
+    if (di->mMaterialSlotList.size() > 1)
+    {
+        const LLDrawInfo::MaterialSlot& s = di->mMaterialSlotList[slot];
+        out_cutoff = s.mAlphaMaskCutoff;    // caller gates on the pass masking
+        return s.mDiffuse.get();
+    }
+    if ((size_t)slot < di->mTextureList.size())
+    {
+        return di->mTextureList[slot].get();
+    }
+    return nullptr;
 }
 
 // Resolve the texture that colours this batch the way the REAL render does.
@@ -3508,6 +3584,34 @@ F32 ghost_batch_cutoff(LLDrawInfo* di, U32 pass)
 // convention (v * M, which is what the shader's texture_matrix0 computes after
 // the column-major reinterpretation on upload). Returns false when identity
 // would do, so the common case skips the matrix load entirely.
+// the KHR closed form alone (flip / offset*rot*scale / flip collapsed to one
+// affine, row-vector convention); composed after `out`'s current contents.
+// Split out so the indexed per-slot redraw can apply each SLOT's transform.
+bool ghost_compose_khr_uv(const LLGLTFMaterial::TextureTransform& tt, LLMatrix4& out)
+{
+    if (tt.mOffset.mV[VX] == 0.f && tt.mOffset.mV[VY] == 0.f
+        && tt.mScale.mV[VX] == 1.f && tt.mScale.mV[VY] == 1.f
+        && tt.mRotation == 0.f)
+    {
+        return false;
+    }
+    const F32 c = cosf(tt.mRotation);
+    const F32 s = sinf(tt.mRotation);
+    const F32 sx = tt.mScale.mV[VX], sy = tt.mScale.mV[VY];
+    const F32 ox = tt.mOffset.mV[VX], oy = tt.mOffset.mV[VY];
+    // u' = c*sx*u - s*sy*v + (s*sy + ox)
+    // v' = s*sx*u + c*sy*v + (1 - c*sy - oy)
+    LLMatrix4 k;                        // identity-constructed
+    k.mMatrix[0][0] = c * sx;
+    k.mMatrix[0][1] = s * sx;
+    k.mMatrix[1][0] = -s * sy;
+    k.mMatrix[1][1] = c * sy;
+    k.mMatrix[3][0] = s * sy + ox;
+    k.mMatrix[3][1] = 1.f - c * sy - oy;
+    out *= k;       // row-vector composition: prior transform first, then KHR
+    return true;
+}
+
 bool ghost_batch_uv_matrix(LLDrawInfo* di, LLMatrix4& out)
 {
     bool have = false;
@@ -3522,28 +3626,9 @@ bool ghost_batch_uv_matrix(LLDrawInfo* di, LLMatrix4& out)
     }
     if (di->mGLTFMaterial.notNull())
     {
-        const LLGLTFMaterial::TextureTransform& tt =
-            di->mGLTFMaterial->mTextureTransform[LLGLTFMaterial::GLTF_TEXTURE_INFO_BASE_COLOR];
-        if (tt.mOffset.mV[VX] != 0.f || tt.mOffset.mV[VY] != 0.f
-            || tt.mScale.mV[VX] != 1.f || tt.mScale.mV[VY] != 1.f
-            || tt.mRotation != 0.f)
-        {
-            const F32 c = cosf(tt.mRotation);
-            const F32 s = sinf(tt.mRotation);
-            const F32 sx = tt.mScale.mV[VX], sy = tt.mScale.mV[VY];
-            const F32 ox = tt.mOffset.mV[VX], oy = tt.mOffset.mV[VY];
-            // u' = c*sx*u - s*sy*v + (s*sy + ox)
-            // v' = s*sx*u + c*sy*v + (1 - c*sy - oy)
-            LLMatrix4 k;                        // identity-constructed
-            k.mMatrix[0][0] = c * sx;
-            k.mMatrix[0][1] = s * sx;
-            k.mMatrix[1][0] = -s * sy;
-            k.mMatrix[1][1] = c * sy;
-            k.mMatrix[3][0] = s * sy + ox;
-            k.mMatrix[3][1] = 1.f - c * sy - oy;
-            out *= k;       // row-vector composition: anim first, then KHR
-            have = true;
-        }
+        have |= ghost_compose_khr_uv(
+            di->mGLTFMaterial->mTextureTransform[LLGLTFMaterial::GLTF_TEXTURE_INFO_BASE_COLOR],
+            out);
     }
     return have;
 }
@@ -3610,14 +3695,17 @@ bool ghost_batch_uv_matrix(LLDrawInfo* di, LLMatrix4& out)
 S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch>& batches,
                       const LLVector3& foot, const LLColor4& tint, F32 alpha,
                       S32 style,
-                      const LLActorMover::GhostDrawParams& gp = LLActorMover::GhostDrawParams())
+                      const LLActorMover::GhostDrawParams& gp = LLActorMover::GhostDrawParams(),
+                      const std::vector<LLActorMover::GhostStaticFace>* static_faces = nullptr)
 {
-    if (!av || av->isDead() || batches.empty())
+    if (!av || av->isDead() || (batches.empty() && (!static_faces || static_faces->empty())))
     {
         return 0;
     }
 
-    // shader choice + graceful degradation (see the header comment)
+    // shader choice + graceful degradation (see the header comment). The
+    // rigged variant skins the batches; the BASE variant places the NON-RIGGED
+    // attachment faces (collar/jewelry/flexi) through their own render matrix.
     LLGLSLShader* fx = gActorGhostProgram.mRiggedVariant;
     const bool have_fx = fx && fx->mProgramObject;
     if (!have_fx && (style == GHOST_STYLE_HOLOGRAM || style == GHOST_STYLE_XRAY))
@@ -3625,9 +3713,14 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         style = GHOST_STYLE_GHOST;
     }
     LLGLSLShader* shader = have_fx ? fx : gHighlightProgram.mRiggedVariant;
+    LLGLSLShader* static_shader = have_fx ? &gActorGhostProgram : &gHighlightProgram;
     if (!shader)
     {
         return 0;
+    }
+    if (!static_shader->mProgramObject)
+    {
+        static_faces = nullptr;     // base variant unavailable: rigged-only ghost
     }
 
     // Placement: move the whole (world-space-skinned) body from where it is
@@ -3645,31 +3738,39 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         : LLVector3(live_root.mV[VX], live_root.mV[VY], live_root.mV[VZ] - p2f);
     const F32 scale = llclamp(gp.mScale, 0.05f, 10.f);
 
-    shader->bind();
+    // ---- per-program setup, shared by the rigged and static sweeps -----------
     // frag_color = color * texture(diffuseMap): a white texture makes the output
-    // exactly the `color` uniform (driven by gGL.diffuseColor4f below); batches
-    // that need their own map (clone / masked / blended) re-bind per batch.
-    gGL.getTexUnit(0)->bind(LLViewerFetchedTexture::sWhiteImagep);
-    if (have_fx)
+    // exactly the `color` uniform (driven by gGL.diffuseColor4f); batches/faces
+    // that need their own map (clone / masked / blended) re-bind per draw.
+    // Uniforms are PER PROGRAM, so the style params are captured in locals and
+    // (re)applied to whichever variant a sweep binds.
+    LLColor4  style_color(1.f, 1.f, 1.f, alpha);    // set per style below
+    LLVector4 style_params(0.f, 0.f, 0.f, 6.f);     // ghostParams per style
+    const F32 ghost_now = (F32)LLFrameTimer::getElapsedSeconds();
+    auto apply_program = [&](LLGLSLShader* sh)
     {
-        // neutral FX state: no scanlines/rim/flicker (the FX styles override
-        // below), keep-every-texel cutoff, flat-tint texture mix, plus the
-        // per-instance creative FX (all zero = byte-identical output). The
-        // sweeps below retarget ghostAux.xy per style / per batch and must
-        // preserve zw (pixelation + phase).
-        shader->uniform1f(sGhostTime, (F32)LLFrameTimer::getElapsedSeconds());
-        shader->uniform4f(sGhostParams, 0.f, 0.f, 0.f, 6.f);
-        shader->uniform4f(sGhostAux, 0.f, 0.f, gp.mPixelSize, gp.mPhase);
-        shader->uniform4f(sGhostFx, gp.mShimmerSpeed, gp.mShimmerIntensity,
+        sh->bind();
+        if (have_fx)
+        {
+            // neutral alpha state (per-draw code retargets ghostAux.xy and
+            // ghostSlot); the per-instance creative FX ride zw / ghostFx
+            sh->uniform1f(sGhostTime, ghost_now);
+            sh->uniform4fv(sGhostParams, 1, style_params.mV);
+            sh->uniform4f(sGhostAux, 0.f, 0.f, gp.mPixelSize, gp.mPhase);
+            sh->uniform4f(sGhostFx, gp.mShimmerSpeed, gp.mShimmerIntensity,
                           gp.mGlitch, 0.f);
-    }
-    // texture_matrix0 could hold a stale value from an earlier frame's sync to
-    // this shader; start every ghost from a known-identity UV transform (the
-    // per-batch loads below swap it in and out as needed)
-    gGL.getTexUnit(0)->activate();
-    gGL.matrixMode(LLRender::MM_TEXTURE);
-    gGL.loadIdentity();
-    gGL.matrixMode(LLRender::MM_MODELVIEW);
+            sh->uniform1i(sGhostSlot, -1);
+        }
+        gGL.diffuseColor4fv(style_color.mV);
+        // texture_matrix0 could hold a stale value from an earlier frame's
+        // sync to this program; start from a known-identity UV transform
+        gGL.getTexUnit(0)->activate();
+        gGL.matrixMode(LLRender::MM_TEXTURE);
+        gGL.loadIdentity();
+        gGL.matrixMode(LLRender::MM_MODELVIEW);
+        gGL.getTexUnit(0)->bind(LLViewerFetchedTexture::sWhiteImagep);
+    };
+    apply_program(shader);
 
     gGL.pushMatrix();
     // modelview = view * T(ghost_foot) * Rz(yaw) * S(s) * T(-pivot)
@@ -3687,7 +3788,9 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
 
     // ---- ONE parameterized sweep over the snapshotted batches ----------------
     // subset      -- SOLID (opaque + cutoff-masked), BLEND (the batches the real
-    //                render alpha-blends), or ALL.
+    //                render alpha-blends), GLOW ([R2-2] the clone's additive
+    //                emissive re-draws -- glow batches are DUPLICATE geometry,
+    //                so every other subset excludes them), or ALL (solid+blend).
     // clone_tex   -- bind every batch's own resolved colour map + per-batch
     //                clone colour (the clone colour sweeps).
     // alpha_aware -- honor the real render's alpha semantics: masked batches
@@ -3695,7 +3798,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     //                batches bind their texture so its alpha shapes the blend.
     //                FX shader only -- the highlight fallback has no discard,
     //                so it keeps the pre-fix unmasked behavior.
-    enum ESweep : S32 { SWEEP_SOLID, SWEEP_BLEND, SWEEP_ALL };
+    enum ESweep : S32 { SWEEP_SOLID, SWEEP_BLEND, SWEEP_GLOW, SWEEP_ALL };
     // texture-RGB mix for ghostAux.y: the clone wants the texture's colours,
     // every other style wants the flat tint even when a masked/blended batch
     // has its real texture bound for its ALPHA channel
@@ -3711,6 +3814,12 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         {
             LLDrawInfo* di = gb.mInfo;
             const bool is_blend = ghost_pass_is_blend(gb.mPass);
+            const bool is_glow  = ghost_pass_is_glow(gb.mPass);
+            // glow duplicates base-pass geometry: only the glow sweep draws it
+            if (is_glow != (subset == SWEEP_GLOW))
+            {
+                continue;
+            }
             if ((subset == SWEEP_SOLID && is_blend)
                 || (subset == SWEEP_BLEND && !is_blend))
             {
@@ -3747,93 +3856,189 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 continue;
             }
 
-            // which texture this draw needs bound: the batch's own for the
-            // clone, and for masked/blended batches whenever alpha is honored
-            // (the discard / blend shaping needs the real alpha channel);
-            // everything else samples plain white (flat tint, tex.a == 1)
             const bool is_mask = ghost_pass_is_mask(gb.mPass);
-            LLViewerTexture* tex = nullptr;
-            if (clone_tex || (alpha_aware && have_fx && (is_mask || is_blend)))
-            {
-                tex = ghost_batch_texture(di);
-            }
-            gGL.getTexUnit(0)->bind(
-                tex ? tex : (LLViewerTexture*)LLViewerFetchedTexture::sWhiteImagep);
 
-            if (clone_tex)
-            {
-                // per-batch clone colour: near-white so the texture reads
-                // as-is. A batch whose texture cannot be resolved shades
-                // MID-GREY -- white reads as glow, grey reads as "untextured".
-                // A PBR base-colour factor tints the way the material author
-                // intended (linear factor pushed to gamma space -- documented
-                // approximation for an unlit clone in the sRGB overlay pass).
-                F32 r = 0.98f, g = 0.98f, b = 0.98f, a = 1.f;
-                if (!tex)
-                {
-                    r = g = b = 0.5f;
-                }
-                else if (di->mGLTFMaterial.notNull())
-                {
-                    const LLColor4& f = di->mGLTFMaterial->mBaseColor;
-                    r *= powf(llmax(f.mV[0], 0.f), 0.4545f);
-                    g *= powf(llmax(f.mV[1], 0.f), 0.4545f);
-                    b *= powf(llmax(f.mV[2], 0.f), 0.4545f);
-                    a  = f.mV[3];   // factor alpha shapes the blended sweep
-                }
-                // Ghost Studio's custom hue applies to the clone too (the fix
-                // for "the hue slider does nothing in Clone"): a deliberate art
-                // direction beats texture fidelity. Brightness-normalized so
-                // the tint shifts hue without dimming the body; the default
-                // identity tint stays ignored so a stock clone matches the
-                // avatar exactly.
-                if (gp.mTintCustom)
-                {
-                    const F32 mx = llmax(llmax(tint.mV[0], tint.mV[1]),
-                                         llmax(tint.mV[2], 0.001f));
-                    const F32 s = 0.65f;    // mix strength: clearly tinted, still textured
-                    r *= 1.f - s + s * (tint.mV[0] / mx);
-                    g *= 1.f - s + s * (tint.mV[1] / mx);
-                    b *= 1.f - s + s * (tint.mV[2] / mx);
-                }
-                gGL.diffuseColor4f(r, g, b, a);
-            }
+            // [R2-2] indexed multi-material batches: the vertex buffer's
+            // texture_index attribute picks the material per vertex, so ONE
+            // bound texture is wrong for every non-anchor slot (white eyes).
+            // Where the slot data matters -- clone colour sweeps, and masked
+            // batches whose cutoffs differ per slot -- redraw the batch once
+            // per slot with the ghostSlot shader filter; flat tints that never
+            // sample texture RGB keep the single unfiltered draw.
+            const S32 slot_count = ghost_batch_slot_count(di);
+            const bool per_slot = have_fx && slot_count > 1
+                && (clone_tex || (alpha_aware && is_mask))
+                && di->mVertexBuffer->hasDataType(LLVertexBuffer::TYPE_TEXTURE_INDEX);
+            const S32 draws = per_slot ? slot_count : 1;
 
-            if (have_fx)
+            for (S32 s = 0; s < draws; ++s)
             {
-                // per-batch cutoff (0 keeps everything); re-upload only on
-                // change, always carrying the instance FX in zw along
-                const F32 cutoff = alpha_aware ? ghost_batch_cutoff(di, gb.mPass) : 0.f;
-                if (cutoff != cur_cutoff)
+                // ---- resolve this draw's texture + colour factor + cutoff ----
+                LLViewerTexture* tex = nullptr;
+                F32 cutoff = 0.f;
+                LLColor4 factor(1.f, 1.f, 1.f, 1.f);
+                bool have_factor = false;
+                const LLGLTFMaterial::TextureTransform* khr = nullptr;
+
+                if (per_slot)
                 {
-                    shader->uniform4f(sGhostAux, cutoff, tex_mix, gp.mPixelSize, gp.mPhase);
-                    cur_cutoff = cutoff;
+                    tex = ghost_batch_slot_texture(di, s, subset == SWEEP_GLOW,
+                                                   cutoff, factor);
+                    const bool gltf_slots = di->mGLTFMaterialList.size() > 1;
+                    if (gltf_slots
+                        && ((size_t)s >= di->mGLTFMaterialList.size()
+                            || di->mGLTFMaterialList[s].isNull()))
+                    {
+                        continue;   // gap slot of a fragmented batch: never sampled
+                    }
+                    have_factor = gltf_slots;
+                    if (!(alpha_aware && is_mask))
+                    {
+                        cutoff = 0.f;   // legacy slots carry a cutoff even unmasked
+                    }
+                    if (gltf_slots)
+                    {
+                        khr = &di->mGLTFMaterialList[s]->mTextureTransform[
+                            subset == SWEEP_GLOW
+                                ? LLGLTFMaterial::GLTF_TEXTURE_INFO_EMISSIVE
+                                : LLGLTFMaterial::GLTF_TEXTURE_INFO_BASE_COLOR];
+                    }
                 }
-            }
+                else if (subset == SWEEP_GLOW)
+                {
+                    // scalar GLTF glow: emissive map x emissive colour (the
+                    // additive sweep only ever collects PASS_GLTF_GLOW_RIGGED)
+                    if (di->mGLTFMaterial.isNull())
+                    {
+                        continue;
+                    }
+                    const LLColor3& e = di->mGLTFMaterial->mEmissiveColor;
+                    factor = LLColor4(e.mV[0], e.mV[1], e.mV[2], 1.f);
+                    have_factor = true;
+                    tex = di->mGLTFMaterial->mEmissiveTexture.get();
+                    if (!tex && e.mV[0] + e.mV[1] + e.mV[2] < 0.01f)
+                    {
+                        continue;   // black flat emissive adds nothing
+                    }
+                    khr = &di->mGLTFMaterial->mTextureTransform[
+                        LLGLTFMaterial::GLTF_TEXTURE_INFO_EMISSIVE];
+                }
+                else
+                {
+                    // scalar path (the common case, unchanged semantics)
+                    if (clone_tex || (alpha_aware && have_fx && (is_mask || is_blend)))
+                    {
+                        tex = ghost_batch_texture(di);
+                    }
+                    cutoff = alpha_aware ? ghost_batch_cutoff(di, gb.mPass) : 0.f;
+                    if (di->mGLTFMaterial.notNull())
+                    {
+                        factor = di->mGLTFMaterial->mBaseColor;
+                        have_factor = true;
+                    }
+                }
 
-            // per-batch UV transform (SL texture animation and/or the GLTF
-            // KHR base-colour transform); identity restored when unused so a
-            // transformed batch never bleeds its UVs into the next
-            LLMatrix4 uvm;
-            if (tex && ghost_batch_uv_matrix(di, uvm))
-            {
-                gGL.getTexUnit(0)->activate();
-                gGL.matrixMode(LLRender::MM_TEXTURE);
-                gGL.loadMatrix((GLfloat*)uvm.mMatrix);
-                gGL.matrixMode(LLRender::MM_MODELVIEW);
-                tex_mat_on = true;
-            }
-            else if (tex_mat_on)
-            {
-                gGL.matrixMode(LLRender::MM_TEXTURE);
-                gGL.loadIdentity();
-                gGL.matrixMode(LLRender::MM_MODELVIEW);
-                tex_mat_on = false;
-            }
+                gGL.getTexUnit(0)->bind(
+                    tex ? tex : (LLViewerTexture*)LLViewerFetchedTexture::sWhiteImagep);
 
-            di->mVertexBuffer->setBuffer();
-            di->mVertexBuffer->drawRange(LLRender::TRIANGLES,
-                                         di->mStart, di->mEnd, di->mCount, di->mOffset);
+                if (clone_tex)
+                {
+                    // per-draw clone colour: near-white so the texture reads
+                    // as-is; an unresolvable texture shades MID-GREY (white
+                    // reads as glow); a GLTF base-colour / emissive factor
+                    // tints as authored (linear pushed to gamma space --
+                    // documented approximation for an unlit clone).
+                    F32 r = 0.98f, g = 0.98f, b = 0.98f, a = 1.f;
+                    if (!tex && subset != SWEEP_GLOW)
+                    {
+                        r = g = b = 0.5f;
+                    }
+                    if (have_factor)
+                    {
+                        r *= powf(llmax(factor.mV[0], 0.f), 0.4545f);
+                        g *= powf(llmax(factor.mV[1], 0.f), 0.4545f);
+                        b *= powf(llmax(factor.mV[2], 0.f), 0.4545f);
+                        if (subset != SWEEP_GLOW)
+                        {
+                            a = factor.mV[3];   // factor alpha shapes the blended sweep
+                        }
+                    }
+                    // Ghost Studio's custom hue applies to the clone too (the fix
+                    // for "the hue slider does nothing in Clone"): a deliberate art
+                    // direction beats texture fidelity. Brightness-normalized so
+                    // the tint shifts hue without dimming the body; the default
+                    // identity tint stays ignored so a stock clone matches the
+                    // avatar exactly.
+                    if (gp.mTintCustom)
+                    {
+                        const F32 mx = llmax(llmax(tint.mV[0], tint.mV[1]),
+                                             llmax(tint.mV[2], 0.001f));
+                        const F32 st = 0.65f;   // mix strength: clearly tinted, still textured
+                        r *= 1.f - st + st * (tint.mV[0] / mx);
+                        g *= 1.f - st + st * (tint.mV[1] / mx);
+                        b *= 1.f - st + st * (tint.mV[2] / mx);
+                    }
+                    gGL.diffuseColor4f(r, g, b, a);
+                }
+
+                if (have_fx)
+                {
+                    // per-draw cutoff (0 keeps everything); re-upload only on
+                    // change, always carrying the instance FX in zw along
+                    if (cutoff != cur_cutoff)
+                    {
+                        shader->uniform4f(sGhostAux, cutoff, tex_mix, gp.mPixelSize, gp.mPhase);
+                        cur_cutoff = cutoff;
+                    }
+                    // slot filter: exact slot for per-slot re-draws, -1 = off
+                    shader->uniform1i(sGhostSlot, per_slot ? s : -1);
+                }
+
+                // per-draw UV transform; identity restored when unused so a
+                // transformed draw never bleeds its UVs into the next. The
+                // scalar path composes anim + base KHR as before; slot / glow
+                // draws compose the slot's (or emissive's) own KHR transform.
+                LLMatrix4 uvm;
+                bool have_uv = false;
+                if (tex)
+                {
+                    if (per_slot || subset == SWEEP_GLOW)
+                    {
+                        if (di->mTextureMatrix)
+                        {
+                            uvm = *di->mTextureMatrix;
+                            have_uv = true;
+                        }
+                        if (khr)
+                        {
+                            have_uv |= ghost_compose_khr_uv(*khr, uvm);
+                        }
+                    }
+                    else
+                    {
+                        have_uv = ghost_batch_uv_matrix(di, uvm);
+                    }
+                }
+                if (have_uv)
+                {
+                    gGL.getTexUnit(0)->activate();
+                    gGL.matrixMode(LLRender::MM_TEXTURE);
+                    gGL.loadMatrix((GLfloat*)uvm.mMatrix);
+                    gGL.matrixMode(LLRender::MM_MODELVIEW);
+                    tex_mat_on = true;
+                }
+                else if (tex_mat_on)
+                {
+                    gGL.matrixMode(LLRender::MM_TEXTURE);
+                    gGL.loadIdentity();
+                    gGL.matrixMode(LLRender::MM_MODELVIEW);
+                    tex_mat_on = false;
+                }
+
+                di->mVertexBuffer->setBuffer();
+                di->mVertexBuffer->drawRange(LLRender::TRIANGLES,
+                                             di->mStart, di->mEnd, di->mCount, di->mOffset);
+            }
         }
         if (tex_mat_on)
         {   // leave the UV transform clean for the next sweep / caller
@@ -3841,6 +4046,143 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             gGL.loadIdentity();
             gGL.matrixMode(LLRender::MM_MODELVIEW);
         }
+        if (have_fx)
+        {
+            shader->uniform1i(sGhostSlot, -1);      // never leak the slot filter
+        }
+    };
+
+    // ---- [R2-2] the NON-RIGGED worn-attachment sweep -------------------------
+    // Same subset semantics as draw_batches, drawn with the BASE shader variant:
+    // each face renders through the shared ghost placement COMPOSED with its own
+    // render matrix (view * T(foot)*Rz*S*T(-pivot) * M_face), so a collar rides
+    // its joint exactly as worn. A FROZEN instance swaps in the object matrix
+    // captured at freeze (capture-frame, consistent with the palettes); a miss
+    // keeps the LIVE matrix -- flexi is always live (its verts are CPU-deformed
+    // in the shared buffer every frame; documented limitation). Legacy editor
+    // tints ride the vertex colours (R2-4), not a per-face constant.
+    auto draw_static = [&](S32 subset, bool clone_tex, bool alpha_aware)
+    {
+        if (!static_faces || static_faces->empty() || subset == SWEEP_GLOW)
+        {
+            return;
+        }
+        apply_program(static_shader);
+        for (const LLActorMover::GhostStaticFace& gf : *static_faces)
+        {
+            const bool is_blend = gf.mAlphaKind == 2;
+            if ((subset == SWEEP_SOLID && is_blend)
+                || (subset == SWEEP_BLEND && !is_blend))
+            {
+                continue;
+            }
+            LLFace* face = gf.mFace;
+            LLVertexBuffer* vb = face ? face->getVertexBuffer() : nullptr;
+            if (!vb)
+            {
+                continue;
+            }
+
+            // texture + clone colour, mirroring the rigged sweep's semantics
+            LLViewerTexture* ftex = nullptr;
+            const LLTextureEntry* te = face->getTextureEntry();
+            LLGLTFMaterial* gmat = te ? te->getGLTFRenderMaterial() : nullptr;
+            if (clone_tex || (alpha_aware && have_fx && gf.mAlphaKind != 0))
+            {
+                ftex = face->getTexture();
+            }
+            gGL.getTexUnit(0)->bind(
+                ftex ? ftex : (LLViewerTexture*)LLViewerFetchedTexture::sWhiteImagep);
+            if (clone_tex)
+            {
+                F32 r = 0.98f, g = 0.98f, b = 0.98f, a = 1.f;
+                if (!ftex)
+                {
+                    r = g = b = 0.5f;
+                }
+                if (gmat)
+                {
+                    const LLColor4& f = gmat->mBaseColor;
+                    r *= powf(llmax(f.mV[0], 0.f), 0.4545f);
+                    g *= powf(llmax(f.mV[1], 0.f), 0.4545f);
+                    b *= powf(llmax(f.mV[2], 0.f), 0.4545f);
+                    a  = f.mV[3];
+                }
+                if (gp.mTintCustom)
+                {
+                    const F32 mx = llmax(llmax(tint.mV[0], tint.mV[1]),
+                                         llmax(tint.mV[2], 0.001f));
+                    const F32 st = 0.65f;
+                    r *= 1.f - st + st * (tint.mV[0] / mx);
+                    g *= 1.f - st + st * (tint.mV[1] / mx);
+                    b *= 1.f - st + st * (tint.mV[2] / mx);
+                }
+                gGL.diffuseColor4f(r, g, b, a);
+            }
+            if (have_fx)
+            {
+                static_shader->uniform4f(sGhostAux,
+                    (alpha_aware && gf.mAlphaKind == 1) ? gf.mCutoff : 0.f,
+                    clone_tex ? 1.f : 0.f, gp.mPixelSize, gp.mPhase);
+            }
+            // per-face UV transform (SL texture animation / GLTF KHR)
+            {
+                LLMatrix4 uvm;
+                bool have_uv = false;
+                if (ftex)
+                {
+                    if (face->mTextureMatrix)
+                    {
+                        uvm = *face->mTextureMatrix;
+                        have_uv = true;
+                    }
+                    if (gmat)
+                    {
+                        have_uv |= ghost_compose_khr_uv(
+                            gmat->mTextureTransform[LLGLTFMaterial::GLTF_TEXTURE_INFO_BASE_COLOR],
+                            uvm);
+                    }
+                }
+                gGL.getTexUnit(0)->activate();
+                gGL.matrixMode(LLRender::MM_TEXTURE);
+                if (have_uv)
+                {
+                    gGL.loadMatrix((GLfloat*)uvm.mMatrix);
+                }
+                else
+                {
+                    gGL.loadIdentity();
+                }
+                gGL.matrixMode(LLRender::MM_MODELVIEW);
+            }
+
+            // placement * this face's model matrix (frozen capture wins)
+            gGL.pushMatrix();
+            bool used_frozen = false;
+            if (gp.mFrozenAttachMats)
+            {
+                auto fit = gp.mFrozenAttachMats->find(gf.mObjectId);
+                if (fit != gp.mFrozenAttachMats->end())
+                {
+                    gGL.multMatrix((GLfloat*)fit->second.mMatrix);
+                    used_frozen = true;
+                }
+            }
+            if (!used_frozen)
+            {
+                gGL.multMatrix((GLfloat*)face->getRenderMatrix().mMatrix);
+            }
+            gGL.syncMatrices();
+
+            vb->setBuffer();
+            vb->drawRange(LLRender::TRIANGLES, face->getGeomIndex(),
+                          face->getGeomIndex() + face->getGeomCount() - 1,
+                          face->getIndicesCount(), face->getIndicesStart());
+            gGL.popMatrix();
+        }
+        gGL.syncMatrices();
+        // hand the GL back to the rigged program for the next sweep
+        apply_program(shader);
     };
 
     // --- pass 1: prime depth only (single-layer silhouette), no colour ---
@@ -3850,7 +4192,8 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     // still shades (they get their own blended sweep below); the flat-tint
     // styles keep them (a translucent layer still contributes silhouette to a
     // flat ghost). Wireframe stays fully unmasked: hidden-line wants the whole
-    // mesh's edges, holes included.
+    // mesh's edges, holes included. [R2-2] the non-rigged attachment faces
+    // prime alongside the batches so collar and body occlude each other right.
     {
         LLGLDepthTest depth(GL_TRUE, GL_TRUE, GL_LESS);
         LLGLDisable   blend(GL_BLEND);
@@ -3865,11 +4208,13 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         if (style == GHOST_STYLE_WIREFRAME)
         {
             draw_batches(SWEEP_ALL, false, false);
+            draw_static(SWEEP_ALL, false, false);
         }
         else
         {
-            draw_batches(style == GHOST_STYLE_CLONE ? SWEEP_SOLID : SWEEP_ALL,
-                         false, true);
+            const S32 prime_subset = (style == GHOST_STYLE_CLONE) ? SWEEP_SOLID : SWEEP_ALL;
+            draw_batches(prime_subset, false, true);
+            draw_static(prime_subset, false, true);
         }
         if (style == GHOST_STYLE_WIREFRAME)
         {
@@ -3878,27 +4223,40 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     }
 
     // --- pass 2: shade the primed front layer, per style ---
+    // each style sets style_color / style_params FIRST (apply_program pushes
+    // them to whichever shader variant a sweep binds), then runs its sweeps
     switch (style)
     {
     case GHOST_STYLE_CLONE:
     {
-        // unlit textured copy, two sweeps. Sweep 1: opaque + masked batches,
+        // unlit textured copy, three sweeps. Sweep 1: opaque + masked batches,
         // no blending (mask holes come from the shader discard). Sweep 2: the
         // batches the real render alpha-BLENDS, blended over the primed body
         // -- depth-tested against the prime, so a layer behind the body stays
-        // hidden and a sheer layer in front shades over it. Layer-vs-layer
-        // order is snapshot order, not a depth sort (fine for a preview clone).
+        // hidden and a sheer layer in front shades over it (layer-vs-layer
+        // order is snapshot order, not a depth sort). Sweep 3 [R2-2]: ADDITIVE
+        // emissive -- PBR faces whose visible colour lives in the emissive map
+        // (stylized eyes) get it back; black emissive adds nothing.
         {
             LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
             LLGLDisable   blend(GL_BLEND);
             gGL.setColorMask(true, true);
             draw_batches(SWEEP_SOLID, true, true);
+            draw_static(SWEEP_SOLID, true, true);
         }
         {
             LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
             LLGLEnable    blend(GL_BLEND);
             gGL.setSceneBlendType(LLRender::BT_ALPHA);
             draw_batches(SWEEP_BLEND, true, true);
+            draw_static(SWEEP_BLEND, true, true);
+        }
+        {
+            LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
+            LLGLEnable    blend(GL_BLEND);
+            gGL.setSceneBlendType(LLRender::BT_ADD);
+            draw_batches(SWEEP_GLOW, true, true);
+            gGL.setSceneBlendType(LLRender::BT_ALPHA);  // leave standard state
         }
         break;
     }
@@ -3911,12 +4269,14 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         gGL.setSceneBlendType(LLRender::BT_ALPHA);
         gGL.setColorMask(true, true);
         const F32 t = 0.55f;
-        gGL.diffuseColor4f(tint.mV[VX] * (1.f - t) + t,
-                           tint.mV[VY] * (1.f - t) + t,
-                           tint.mV[VZ] * (1.f - t) + t,
-                           llmin(1.f, alpha * 1.5f));
+        style_color.set(tint.mV[VX] * (1.f - t) + t,
+                        tint.mV[VY] * (1.f - t) + t,
+                        tint.mV[VZ] * (1.f - t) + t,
+                        llmin(1.f, alpha * 1.5f));
+        gGL.diffuseColor4fv(style_color.mV);
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         draw_batches(SWEEP_ALL, false, false);
+        draw_static(SWEEP_ALL, false, false);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         break;
     }
@@ -3934,24 +4294,27 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             // classic sci-fi cyan, faintly pulled toward the actor hue so
             // overlapping actors' holograms stay tellable-apart
             const F32 t = 0.25f;
-            gGL.diffuseColor4f(0.25f * (1.f - t) + tint.mV[VX] * t,
-                               0.85f * (1.f - t) + tint.mV[VY] * t,
-                               1.00f * (1.f - t) + tint.mV[VZ] * t,
-                               alpha);
-            shader->uniform4f(sGhostParams, 1.f, 0.8f, 1.f, 6.f);
+            style_color.set(0.25f * (1.f - t) + tint.mV[VX] * t,
+                            0.85f * (1.f - t) + tint.mV[VY] * t,
+                            1.00f * (1.f - t) + tint.mV[VZ] * t,
+                            alpha);
+            style_params = LLVector4(1.f, 0.8f, 1.f, 6.f);
         }
         else
         {
             // x-ray: rim-only (no scanlines/flicker) over a faint cool body --
             // interior nearly clear, silhouette edges glow in the actor hue
             const F32 t = 0.35f;
-            gGL.diffuseColor4f(0.55f * (1.f - t) + tint.mV[VX] * t,
-                               0.75f * (1.f - t) + tint.mV[VY] * t,
-                               1.00f * (1.f - t) + tint.mV[VZ] * t,
-                               alpha * 0.4f);
-            shader->uniform4f(sGhostParams, 0.f, 2.2f, 0.f, 6.f);
+            style_color.set(0.55f * (1.f - t) + tint.mV[VX] * t,
+                            0.75f * (1.f - t) + tint.mV[VY] * t,
+                            1.00f * (1.f - t) + tint.mV[VZ] * t,
+                            alpha * 0.4f);
+            style_params = LLVector4(0.f, 2.2f, 0.f, 6.f);
         }
+        gGL.diffuseColor4fv(style_color.mV);
+        shader->uniform4fv(sGhostParams, 1, style_params.mV);
         draw_batches(SWEEP_ALL, false, true);
+        draw_static(SWEEP_ALL, false, true);
         break;
     }
     case GHOST_STYLE_GHOST:
@@ -3965,11 +4328,13 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         gGL.setSceneBlendType(LLRender::BT_ALPHA);
         gGL.setColorMask(true, true);
         const F32 t = 0.25f;
-        gGL.diffuseColor4f(1.f - t + tint.mV[VX] * t,
-                           1.f - t + tint.mV[VY] * t,
-                           1.f - t + tint.mV[VZ] * t,
-                           alpha);
+        style_color.set(1.f - t + tint.mV[VX] * t,
+                        1.f - t + tint.mV[VY] * t,
+                        1.f - t + tint.mV[VZ] * t,
+                        alpha);
+        gGL.diffuseColor4fv(style_color.mV);
         draw_batches(SWEEP_ALL, false, true);
+        draw_static(SWEEP_ALL, false, true);
         break;
     }
     }
@@ -3978,8 +4343,8 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     gGL.syncMatrices();
     gGL.setColorMask(true, true);
     gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
-    shader->unbind();
-    return (S32)batches.size();
+    shader->unbind();   // draw_static always hands back to the rigged program
+    return (S32)(batches.size() + (static_faces ? static_faces->size() : 0));
 }
 } // anonymous namespace
 
@@ -4328,13 +4693,17 @@ void LLActorMover::renderHeadingPreview()
             {
                 // batches were snapshotted by collectGhostBatches() earlier this
                 // frame (while the world render maps were valid); a miss / empty
-                // bucket drops through to the billboard/stick fallback.
+                // bucket drops through to the billboard/stick fallback. [R2-2]
+                // the wearer's non-rigged attachment faces ride along so the
+                // node ghosts wear their collars/jewelry too.
                 S32 drew = 0;
                 auto bit = mGhostBatches.find(g.mAv->getID());
                 if (bit != mGhostBatches.end() && !bit->second.empty())
                 {
                     drew = drawGeometryGhost(g.mAv, bit->second, g.mFoot, g.mTint,
-                                             GHOST_ALPHA, (S32)ghost_style);
+                                             GHOST_ALPHA, (S32)ghost_style,
+                                             LLActorMover::GhostDrawParams(),
+                                             ghostStaticFacesFor(g.mAv->getID()));
                 }
                 if (drew == 0)
                 {
@@ -4499,6 +4868,7 @@ void LLActorMover::updateGhostImpostors()
 void LLActorMover::collectGhostBatches()
 {
     mGhostBatches.clear();
+    mGhostStaticFaces.clear();
 
     // Two independent reasons to collect: the PATH-NODE ghost preview (its
     // classic gate: setting trio + an operator floater up) and the GHOST
@@ -4585,11 +4955,25 @@ void LLActorMover::collectGhostBatches()
         LLRenderPass::PASS_NORMSPEC_RIGGED,
         LLRenderPass::PASS_NORMSPEC_BLEND_RIGGED,
         LLRenderPass::PASS_NORMSPEC_MASK_RIGGED,
+        // [R2-2] legacy EMISSIVE-mode materials are BASE geometry passes (a
+        // face whose material uses diffuse-alpha-mode EMISSIVE renders ONLY
+        // here) -- missing them dropped whole faces from the clone
+        LLRenderPass::PASS_MATERIAL_ALPHA_EMISSIVE_RIGGED,
+        LLRenderPass::PASS_SPECMAP_EMISSIVE_RIGGED,
+        LLRenderPass::PASS_NORMMAP_EMISSIVE_RIGGED,
+        LLRenderPass::PASS_NORMSPEC_EMISSIVE_RIGGED,
         LLRenderPass::PASS_ALPHA_RIGGED,
         LLRenderPass::PASS_ALPHA_MASK_RIGGED,
         LLRenderPass::PASS_FULLBRIGHT_ALPHA_MASK_RIGGED,
         LLRenderPass::PASS_GLTF_PBR_RIGGED,
         LLRenderPass::PASS_GLTF_PBR_ALPHA_MASK_RIGGED,
+        // [R2-2] PBR glow: DUPLICATE geometry carrying the emissive map; only
+        // the clone's additive sweep draws it (see ghost_pass_is_glow) so an
+        // emissive-driven iris keeps its colour. Deliberately still excluded:
+        // PASS_GLOW_RIGGED (legacy glow is a bloom intensity riding the
+        // EMISSIVE vertex attribute, not surface colour), the INVISIBLE
+        // passes (water exclusion), and PASS_POST_BUMP_RIGGED (cosmetic).
+        LLRenderPass::PASS_GLTF_GLOW_RIGGED,
     };
     for (U32 pass : kRiggedPasses)
     {
@@ -4645,6 +5029,97 @@ void LLActorMover::collectGhostBatches()
             }
         }
     }
+
+    // ---- [R2-2] NON-RIGGED worn attachments (collar / jewelry / flexi) -------
+    // Their faces never carry LLFace::mAvatar (only RIGGED faces do), so the
+    // pass sweep above cannot see them. Walk each wanted wearer's attachment
+    // points -> attached objects (+ child links) -> drawable faces, skipping
+    // HUD attachment points and RIGGED faces (already covered above). Alpha
+    // semantics are classified per face the way the real render pools would.
+    for (LLVOAvatar* av : wanted)
+    {
+        std::vector<GhostStaticFace>& faces = mGhostStaticFaces[av->getID()];
+        for (const auto& ap_pair : av->mAttachmentPoints)
+        {
+            LLViewerJointAttachment* ap = ap_pair.second;
+            if (!ap || ap->getIsHUDAttachment())
+            {
+                continue;   // HUDs are screen chrome, never body geometry
+            }
+            for (const LLPointer<LLViewerObject>& attached : ap->mAttachedObjects)
+            {
+                // the attachment root plus every child link
+                std::vector<LLViewerObject*> objs;
+                if (attached.notNull())
+                {
+                    objs.push_back(attached.get());
+                    for (LLViewerObject* child : attached->getChildren())
+                    {
+                        objs.push_back(child);
+                    }
+                }
+                for (LLViewerObject* obj : objs)
+                {
+                    if (!obj || obj->isDead() || obj->mDrawable.isNull()
+                        || obj->mDrawable->isDead())
+                    {
+                        continue;
+                    }
+                    LLDrawable* drawable = obj->mDrawable.get();
+                    const S32 n = drawable->getNumFaces();
+                    for (S32 f = 0; f < n; ++f)
+                    {
+                        LLFace* face = drawable->getFace(f);
+                        if (!face || face->isState(LLFace::RIGGED)
+                            || !face->getVertexBuffer() || face->getIndicesCount() == 0)
+                        {
+                            continue;   // rigged faces came via the batch sweep
+                        }
+                        GhostStaticFace gf;
+                        gf.mFace = face;
+                        gf.mObjectId = obj->getID();
+                        // alpha classification, mirroring the real pools: GLTF
+                        // mode wins; legacy mask comes from the material; the
+                        // alpha POOL marks everything it owns as blended
+                        const LLTextureEntry* te = face->getTextureEntry();
+                        LLGLTFMaterial* gmat = te ? te->getGLTFRenderMaterial() : nullptr;
+                        if (gmat)
+                        {
+                            gf.mDoubleSided = gmat->mDoubleSided;
+                            if (gmat->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_MASK)
+                            {
+                                gf.mAlphaKind = 1;
+                                gf.mCutoff = gmat->mAlphaCutoff;
+                            }
+                            else if (gmat->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_BLEND)
+                            {
+                                gf.mAlphaKind = 2;
+                            }
+                        }
+                        else if (te)
+                        {
+                            const LLMaterial* mat = te->getMaterialParams().get();
+                            if (mat && mat->getDiffuseAlphaMode() == LLMaterial::DIFFUSE_ALPHA_MODE_MASK)
+                            {
+                                gf.mAlphaKind = 1;
+                                gf.mCutoff = mat->getAlphaMaskCutoff() * (1.f / 255.f);
+                            }
+                            else if (face->getPoolType() == LLDrawPool::POOL_ALPHA
+                                     || te->getColor().mV[VW] < 0.999f)
+                            {
+                                gf.mAlphaKind = 2;
+                            }
+                        }
+                        faces.push_back(gf);
+                    }
+                }
+            }
+        }
+        if (faces.empty())
+        {
+            mGhostStaticFaces.erase(av->getID());   // keep the map miss-cheap
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -4654,6 +5129,13 @@ const std::vector<LLActorMover::GhostBatch>* LLActorMover::ghostBatchesFor(const
 {
     auto it = mGhostBatches.find(wearer_id);
     return (it != mGhostBatches.end() && !it->second.empty()) ? &it->second : nullptr;
+}
+
+// [R2-2] frame-lifetime static-face access (freeze matrix capture + draw)
+const std::vector<LLActorMover::GhostStaticFace>* LLActorMover::ghostStaticFacesFor(const LLUUID& wearer_id) const
+{
+    auto it = mGhostStaticFaces.find(wearer_id);
+    return (it != mGhostStaticFaces.end() && !it->second.empty()) ? &it->second : nullptr;
 }
 
 // ---------------------------------------------------------------------------
@@ -4672,12 +5154,16 @@ void LLActorMover::renderStudioGhosts()
         return;
     }
 
-    // per-instance draw items, resolved once
+    // per-instance draw items, resolved once. [R2-2] a wearer's non-rigged
+    // attachment faces ride along; an instance needs rigged batches OR static
+    // faces to draw (an empty frame skips quietly -- the panel surfaces why).
+    static const std::vector<GhostBatch> sNoBatches;
     struct StudioItem
     {
         const ALGhostStudio::Instance* mInst;
         LLVOAvatar* mAv;
         const std::vector<GhostBatch>* mBatches;
+        const std::vector<GhostStaticFace>* mStatic;
         LLVector3   mFootAgent;
     };
     std::vector<StudioItem> items;
@@ -4693,11 +5179,12 @@ void LLActorMover::renderStudioGhosts()
             continue;
         }
         const std::vector<GhostBatch>* batches = ghostBatchesFor(av->getID());
-        if (!batches)
+        const std::vector<GhostStaticFace>* statics = ghostStaticFacesFor(av->getID());
+        if (!batches && !statics)
         {
             continue;
         }
-        items.push_back({ &inst, av, batches,
+        items.push_back({ &inst, av, batches ? batches : &sNoBatches, statics,
                           gAgent.getPosAgentFromGlobal(inst.mFootGlobal) });
     }
     if (items.empty())
@@ -4743,6 +5230,12 @@ void LLActorMover::renderStudioGhosts()
             gp.mHavePivot      = true;
             gp.mPivotFootAgent = inst.mFrozenFootAgent;
             gp.mFrozenPalettes = &inst.mFrozenPalettes;
+            // [R2-2] frozen non-rigged attachment placement (capture-frame
+            // matrices; a lookup miss -- e.g. flexi -- stays LIVE, documented)
+            if (!inst.mFrozenAttachMats.empty())
+            {
+                gp.mFrozenAttachMats = &inst.mFrozenAttachMats;
+            }
         }
         gp.mShimmerSpeed     = inst.mShimmerSpeed;
         gp.mShimmerIntensity = inst.mShimmerIntensity;
@@ -4754,7 +5247,8 @@ void LLActorMover::renderStudioGhosts()
         gp.mPhase = (F32)(inst.mId.mData[0] | (inst.mId.mData[1] << 8)) * (F_TWO_PI / 65536.f);
 
         drawGeometryGhost(item.mAv, *item.mBatches, item.mFootAgent, tint,
-                          llclamp(inst.mAlpha, 0.f, 1.f), inst.mStyle, gp);
+                          llclamp(inst.mAlpha, 0.f, 1.f), inst.mStyle, gp,
+                          item.mStatic);
     }
 
     // leave clean UI-overlay state for whoever draws next

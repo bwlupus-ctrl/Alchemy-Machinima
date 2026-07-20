@@ -180,6 +180,27 @@ bool ALGhostStudio::freezeInstance(const LLUUID& id)
     }
 
     inst->mFrozenPalettes.swap(frozen);
+
+    // [R2-2] freeze the NON-RIGGED attachment placement too: capture each
+    // collected static face's owning-object render matrix (capture agent
+    // frame, consistent with the palettes + anchor) so a frozen body's collar
+    // holds with the pose instead of riding the live skeleton. A flexi prim's
+    // matrix freezes here too, but its VERTICES stay live-deformed -- the
+    // documented flexi limitation (see the freeze tooltip).
+    inst->mFrozenAttachMats.clear();
+    if (const std::vector<LLActorMover::GhostStaticFace>* statics =
+            LLActorMover::instance().ghostStaticFacesFor(av->getID()))
+    {
+        for (const LLActorMover::GhostStaticFace& gf : *statics)
+        {
+            if (gf.mFace
+                && inst->mFrozenAttachMats.find(gf.mObjectId) == inst->mFrozenAttachMats.end())
+            {
+                inst->mFrozenAttachMats[gf.mObjectId] = gf.mFace->getRenderMatrix();
+            }
+        }
+    }
+
     // frame-matched anchor: the foot in the SAME agent frame the palettes
     // bake into (see the header for why this survives region crossings)
     LLVector3 foot = av->getRootJoint()->getWorldPosition();
@@ -195,6 +216,7 @@ void ALGhostStudio::unfreezeInstance(const LLUUID& id)
     {
         inst->mPose = POSE_LIVE;
         inst->mFrozenPalettes.clear();
+        inst->mFrozenAttachMats.clear();
     }
 }
 

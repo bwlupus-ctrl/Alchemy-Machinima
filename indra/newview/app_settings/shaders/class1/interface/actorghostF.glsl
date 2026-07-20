@@ -50,10 +50,15 @@ uniform float ghostTime;
 uniform vec4 ghostParams;
 uniform vec4 ghostAux;
 uniform vec4 ghostFx;
+// [R2-2] indexed-batch slot filter: >= 0 draws ONLY fragments whose
+// per-vertex material slot matches (the clone re-draws a multi-material
+// batch once per slot with that slot's texture bound); -1 = no filtering.
+uniform int ghostSlot;
 
 in vec2 vary_texcoord0;
 in vec3 vary_position;
 in vec3 vary_normal;
+flat in int vary_texture_index;
 
 // cheap stable hash for the glitch bands (classic one-liner)
 float ghost_hash(vec2 p)
@@ -63,6 +68,12 @@ float ghost_hash(vec2 p)
 
 void main()
 {
+    // [R2-2] indexed-batch slot filter (see ghostSlot above)
+    if (ghostSlot >= 0 && vary_texture_index != ghostSlot)
+    {
+        discard;
+    }
+
     vec2 uv = vary_texcoord0.xy;
 
     // [GhostStudio] pixelation: quantize the sampling UV in ~screen-pixel
