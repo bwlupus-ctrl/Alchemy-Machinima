@@ -446,14 +446,16 @@ public:
     // it is a blocking-preview aid, not a live skinned second body.
     void updateGhostImpostors();
 
-    // Snapshot each ghosted actor's rigged draw batches while the frame's render
-    // maps still hold WORLD-camera geometry. MUST be called from the main render
-    // loop AFTER the world render but BEFORE render_ui() -- render_hud_attachments()
-    // re-runs stateSort with the HUD camera and repopulates those maps, so reading
-    // them at draw time (render_ui_3d) finds no world geometry whenever a HUD is
-    // worn (the "HUD hides the ghost" bug). The model ghost draw then reads this
-    // cache instead of the live maps. Zero cost / clears the cache when ghosts are
-    // off. Cached LLDrawInfo* stay valid for the frame (owned by spatial groups).
+    // Snapshot each ghosted actor's rigged draw batches + non-rigged attachment
+    // faces, once per frame from the main render loop. [R2-6] The harvest walks
+    // each wanted wearer's attachment objects into their SPATIAL-GROUP DRAW
+    // MAPS directly -- never the frame's cull results -- so ghosts keep
+    // rendering while the source avatar is off-frame, occluded, or impostored
+    // (the filming case: camera on the ghosts, actor outside the shot), and the
+    // old HUD-stateSort timing hazard is gone by construction. Zero cost /
+    // clears the caches when ghosts are off. Collected LLDrawInfo* / LLFace*
+    // stay valid for the frame (owned by spatial groups / drawables) and are
+    // never cached across frames.
     void collectGhostBatches();
 
     // One snapshotted rigged draw batch for the true-3D model ghost: the frame-

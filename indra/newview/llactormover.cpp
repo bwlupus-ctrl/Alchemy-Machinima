@@ -5010,70 +5010,29 @@ void LLActorMover::collectGhostBatches()
         // passes (water exclusion), and PASS_POST_BUMP_RIGGED (cosmetic).
         LLRenderPass::PASS_GLTF_GLOW_RIGGED,
     };
-    for (U32 pass : kRiggedPasses)
-    {
-        auto* begin = gPipeline.beginRenderMap(pass);
-        auto* end   = gPipeline.endRenderMap(pass);
-        for (LLCullResult::drawinfo_iterator i = begin; i != end; )
-        {
-            LLDrawInfo* di = *i;
-            LLCullResult::increment_iterator(i, end);
-            if (!di || di->mAvatar.isNull()
-                || di->mSkinInfo.isNull() || di->mVertexBuffer.isNull())
-            {
-                continue;
-            }
-            // Whose outfit does this batch belong to? Directly the wanted
-            // actor's, or -- the animesh case -- rigged to the control avatar
-            // of an object a wanted actor WEARS (an animesh attachment's
-            // geometry skins off the attachment's own LLControlAvatar
-            // skeleton, so its mAvatar is that control avatar, never the
-            // wearer). Bucket those under the WEARER so the whole outfit
-            // ghosts as one body; the draw keeps uploading each batch's own
-            // mAvatar palette, and the world-space palettes ride the shared
-            // placement delta in lockstep.
-            LLVOAvatar* av = di->mAvatar.get();
-            LLVOAvatar* owner = (wanted.find(av) != wanted.end()) ? av : nullptr;
-            if (!owner && av->isControlAvatar())
-            {
-                LLVOAvatar* wearer = static_cast<LLControlAvatar*>(av)->getAttachedAvatar();
-                if (wearer && wanted.find(wearer) != wanted.end())
-                {
-                    owner = wearer;
-                }
-            }
-            if (!owner)
-            {
-                continue;
-            }
-            std::vector<GhostBatch>& bucket = mGhostBatches[owner->getID()];
-            bool dup = false;
-            for (const GhostBatch& b : bucket)
-            {
-                if (b.mInfo->mVertexBuffer.get() == di->mVertexBuffer.get()
-                    && b.mInfo->mStart == di->mStart && b.mInfo->mEnd == di->mEnd
-                    && b.mInfo->mOffset == di->mOffset)
-                {
-                    dup = true;
-                    break;
-                }
-            }
-            if (!dup)
-            {
-                bucket.push_back({ di, pass });
-            }
-        }
-    }
-
-    // ---- [R2-2] NON-RIGGED worn attachments (collar / jewelry / flexi) -------
-    // Their faces never carry LLFace::mAvatar (only RIGGED faces do), so the
-    // pass sweep above cannot see them. Walk each wanted wearer's attachment
-    // points -> attached objects (+ child links) -> drawable faces, skipping
-    // HUD attachment points and RIGGED faces (already covered above). Alpha
-    // semantics are classified per face the way the real render pools would.
+    // [R2-6] ONE attachment walk per wanted wearer harvests BOTH collections
+    // straight from the SPATIAL-GROUP DRAW MAPS -- never the frame's cull
+    // results. The cull-result render maps are just aggregations of visible
+    // groups' mDrawMap entries (direct group access is an existing idiom --
+    // lldrawpoolalpha's group->mDrawMap[PASS_ALPHA_RIGGED]), so this is
+    // strictly more complete: ghosts keep rendering while the source avatar
+    // is OFF-FRAME, occluded, or IMPOSTORED -- exactly the filming case
+    // (camera on the ghosts, actor outside the shot). It also retires the old
+    // HUD-stateSort timing hazard outright: nothing here reads cull maps, so
+    // render_hud_attachments() repopulating them cannot blank a ghost. Draw
+    // maps are geometry-scoped (rebuilt on geometry change, not per frame);
+    // the LLDrawInfo pointers are still consumed same-frame only. Caveats
+    // (documented): an off-frame avatar's motion updates throttle, so a LIVE
+    // ghost of an out-of-shot actor holds a coarsely-updated pose (FROZEN
+    // instances are unaffected -- that is what freezing is for), and the
+    // source's geometry must have been built once since login (seen nearby)
+    // for its draw maps to exist at all.
     for (LLVOAvatar* av : wanted)
     {
+        std::vector<GhostBatch>& bucket = mGhostBatches[av->getID()];
         std::vector<GhostStaticFace>& faces = mGhostStaticFaces[av->getID()];
+        std::set<LLSpatialGroup*> groups;   // attachment drawables' groups, deduped
+
         for (const auto& ap_pair : av->mAttachmentPoints)
         {
             LLViewerJointAttachment* ap = ap_pair.second;
@@ -5101,6 +5060,19 @@ void LLActorMover::collectGhostBatches()
                         continue;
                     }
                     LLDrawable* drawable = obj->mDrawable.get();
+
+                    // rigged batches live in this drawable's spatial group's
+                    // draw maps (inside the attachment's bridge partition)
+                    if (LLSpatialGroup* group = drawable->getSpatialGroup())
+                    {
+                        groups.insert(group);
+                    }
+
+                    // ---- [R2-2] NON-RIGGED faces (collar / jewelry / flexi):
+                    // they never carry LLFace::mAvatar, so no rigged pass owns
+                    // them -- collected per face with real-render alpha
+                    // classification (GLTF mode wins; legacy mask from the
+                    // material; the alpha POOL marks its faces blended)
                     const S32 n = drawable->getNumFaces();
                     for (S32 f = 0; f < n; ++f)
                     {
@@ -5150,9 +5122,56 @@ void LLActorMover::collectGhostBatches()
                 }
             }
         }
+
+        // [R2-6] rigged batches out of the deduped groups' draw maps.
+        // Everything in an attachment group belongs to THIS wearer by
+        // construction (the animesh case included: those draw infos carry the
+        // attachment's own control avatar as mAvatar, and the draw uploads
+        // per-batch palettes), so bucketing needs no owner resolution.
+        for (LLSpatialGroup* group : groups)
+        {
+            for (U32 pass : kRiggedPasses)
+            {
+                auto dit = group->mDrawMap.find(pass);      // find(): never insert
+                if (dit == group->mDrawMap.end())
+                {
+                    continue;
+                }
+                for (const LLPointer<LLDrawInfo>& dip : dit->second)
+                {
+                    LLDrawInfo* di = dip.get();
+                    if (!di || di->mAvatar.isNull()
+                        || di->mSkinInfo.isNull() || di->mVertexBuffer.isNull())
+                    {
+                        continue;
+                    }
+                    bool dup = false;
+                    for (const GhostBatch& b : bucket)
+                    {
+                        if (b.mInfo->mVertexBuffer.get() == di->mVertexBuffer.get()
+                            && b.mInfo->mStart == di->mStart && b.mInfo->mEnd == di->mEnd
+                            && b.mInfo->mOffset == di->mOffset)
+                        {
+                            dup = true;
+                            break;
+                        }
+                    }
+                    if (!dup)
+                    {
+                        bucket.push_back({ di, pass });
+                    }
+                }
+            }
+        }
+
+        // keep both maps miss-cheap
+        if (bucket.empty())
+        {
+            mGhostBatches.erase(av->getID());
+        }
         if (faces.empty())
         {
-            mGhostStaticFaces.erase(av->getID());   // keep the map miss-cheap
+            mGhostStaticFaces.erase(av->getID());
         }
     }
 }
@@ -5175,12 +5194,13 @@ const std::vector<LLActorMover::GhostStaticFace>* LLActorMover::ghostStaticFaces
 
 // ---------------------------------------------------------------------------
 // [GhostStudio] draw every enabled studio instance. Self-contained UI-overlay
-// state (it can be entered from renderHeadingPreview's early-outs, where no
-// state has been set up yet). MODEL ghosts only: an instance whose source has
-// no collected rigged batches this frame (out of world, culled before the
-// snapshot, pure system avatar) is skipped quietly -- the panel surfaces why.
-// Sorted far-to-near so translucent styles stack correctly against each other
-// on the cleared-depth overlay.
+// state (its render_ui() call site sets nothing up for it). MODEL ghosts only:
+// an instance whose source yielded neither rigged batches nor attachment faces
+// this frame (out of world, geometry never built, pure system avatar) is
+// skipped quietly -- the panel surfaces why. [R2-6] off-frame/occluded/
+// impostored sources DO yield (the collector reads spatial-group draw maps,
+// not cull results). Sorted far-to-near so translucent styles stack correctly
+// against each other on the cleared-depth overlay.
 void LLActorMover::renderStudioGhosts()
 {
     ALGhostStudio& studio = ALGhostStudio::instance();

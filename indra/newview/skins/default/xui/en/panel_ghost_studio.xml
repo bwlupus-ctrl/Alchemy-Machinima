@@ -58,7 +58,7 @@
      left="6"
      top="34"
      name="ghost_list"
-     tool_tip="Every ghost instance. Select a row to edit it below; double-click toggles it on/off"
+     tool_tip="Every ghost instance. Select a row to edit it below; double-click toggles it on/off. Ghosts keep rendering when their source avatar is off-camera or impostored; a LIVE ghost's pose updates coarsely while its source is out of view (freeze to lock it)"
      width="348">
         <columns label="" name="on" width="20" />
         <columns label="Source" name="source" width="140" />
