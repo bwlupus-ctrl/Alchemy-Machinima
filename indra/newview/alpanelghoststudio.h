@@ -79,6 +79,7 @@ private:
     void onShimmerAmountCommit();
     void onPixelCommit();
     void onGlitchCommit();
+    void onBrightnessCommit();      // [R2-1] night-scene output dimmer
 
     // ---- pose ----
     void onClickFreeze();           // "Grab pose now" -> FROZEN snapshot
@@ -123,6 +124,7 @@ private:
     LLSliderCtrl*     mShimmerAmountSlider = nullptr;
     LLSliderCtrl*     mPixelSlider = nullptr;
     LLSliderCtrl*     mGlitchSlider = nullptr;
+    LLSliderCtrl*     mBrightnessSlider = nullptr;    // [R2-1]
 
     LLButton*         mFreezeBtn = nullptr;
     LLButton*         mLiveBtn = nullptr;

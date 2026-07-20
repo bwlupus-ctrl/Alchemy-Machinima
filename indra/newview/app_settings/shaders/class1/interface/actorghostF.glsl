@@ -34,10 +34,13 @@
  *   ghostAux    -- x minimum-alpha discard cutoff (0 keeps every texel),
  *                  y texture-RGB mix 0..1, z pixelation block size in screen
  *                  pixels (0 = off), w per-instance FX phase (radians).
- *   ghostFx     -- [GhostStudio] per-instance creative FX, all 0 = off:
+ *   ghostFx     -- [GhostStudio] per-instance creative FX (xyz all 0 = off):
  *                  x shimmer speed Hz, y shimmer intensity 0..1 (brightness/
  *                  alpha wobble), z glitch amount 0..1 (slice offset + chroma
- *                  split), w reserved.
+ *                  split), w OUTPUT BRIGHTNESS multiplier [R2-1] (1 = as-is;
+ *                  the draw always uploads it -- the ghost is unlit in the
+ *                  post-tonemap overlay, so this is how a clone sits into a
+ *                  night scene instead of glowing fullbright).
  * Hologram = scan+rim+flicker on; x-ray = rim only; ghost/clone/wireframe =
  * all zero (plain colour * texture with the alpha stage).
  */
@@ -154,8 +157,10 @@ void main()
     vec3 base = mix(vec3(1.0), tex.rgb, clamp(ghostAux.y, 0.0, 1.0)) * color.rgb;
 
     // scanlines dim the body colour; the rim ADDS glow on top (and lifts the
-    // alpha, so an x-ray body is faint inside with bright silhouette edges)
-    vec3  rgb   = base * scan * flicker + color.rgb * rim;
+    // alpha, so an x-ray body is faint inside with bright silhouette edges).
+    // [R2-1] the per-instance brightness scales the WHOLE output colour (rim
+    // included) but never the alpha -- a dimmed clone stays as opaque.
+    vec3  rgb   = (base * scan * flicker + color.rgb * rim) * max(ghostFx.w, 0.0);
     float alpha = clamp(color.a * tex.a * (1.0 - scan_amt * (0.4 - 0.4 * band)) * flicker
                         + rim * 0.5, 0.0, 1.0);
     frag_color = max(vec4(rgb, alpha), vec4(0));

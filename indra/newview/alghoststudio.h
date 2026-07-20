@@ -79,6 +79,10 @@ public:
         F32         mAlpha = 0.6f;      // base opacity (matches the path-ghost default)
         bool        mUseActorTint = true;   // tint from the source's stable path hue
         F32         mHue = 200.f;       // degrees 0..360, used when !mUseActorTint
+        // [R2-1] output brightness: the ghost draws unlit into the post-
+        // tonemap overlay, so a clone reads FULLBRIGHT in a night scene --
+        // dial ~0.3-0.5 to sit it into dark sets. 1 = as authored.
+        F32         mBrightness = 1.f;  // 0.05..1.5
 
         // ---- cheap creative FX (each defaults OFF = byte-identical output) --
         F32         mShimmerSpeed = 1.f;      // Hz (only matters when intensity > 0)

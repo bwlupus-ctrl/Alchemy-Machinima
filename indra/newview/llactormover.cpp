@@ -3758,7 +3758,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             sh->uniform4fv(sGhostParams, 1, style_params.mV);
             sh->uniform4f(sGhostAux, 0.f, 0.f, gp.mPixelSize, gp.mPhase);
             sh->uniform4f(sGhostFx, gp.mShimmerSpeed, gp.mShimmerIntensity,
-                          gp.mGlitch, 0.f);
+                          gp.mGlitch, llclamp(gp.mBrightness, 0.05f, 1.5f));
             sh->uniform1i(sGhostSlot, -1);
         }
         // [R2-4] park the diffuse_color GENERIC at white: buffers WITHOUT a
@@ -5276,6 +5276,7 @@ void LLActorMover::renderStudioGhosts()
         gp.mShimmerIntensity = inst.mShimmerIntensity;
         gp.mPixelSize        = inst.mPixelSize;
         gp.mGlitch           = inst.mGlitch;
+        gp.mBrightness       = inst.mBrightness;      // [R2-1] night-scene dimmer
         gp.mTintCustom       = !inst.mUseActorTint;   // hue slider reaches the clone
         // stable per-instance FX phase from the id, so a crowd of ghosts
         // shimmers/glitches out of sync instead of strobing as one

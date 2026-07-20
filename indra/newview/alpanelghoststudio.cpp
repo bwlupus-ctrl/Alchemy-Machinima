@@ -81,6 +81,7 @@ bool ALPanelGhostStudio::postBuild()
     mShimmerAmountSlider = getChild<LLSliderCtrl>("shimmer_amount_slider");
     mPixelSlider    = getChild<LLSliderCtrl>("pixel_slider");
     mGlitchSlider   = getChild<LLSliderCtrl>("glitch_slider");
+    mBrightnessSlider = getChild<LLSliderCtrl>("brightness_slider");
 
     mFreezeBtn  = getChild<LLButton>("btn_freeze");
     mLiveBtn    = getChild<LLButton>("btn_live");
@@ -117,6 +118,7 @@ bool ALPanelGhostStudio::postBuild()
     mShimmerAmountSlider->setCommitCallback([this](LLUICtrl*, const LLSD&) { onShimmerAmountCommit(); });
     mPixelSlider->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPixelCommit(); });
     mGlitchSlider->setCommitCallback([this](LLUICtrl*, const LLSD&) { onGlitchCommit(); });
+    mBrightnessSlider->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBrightnessCommit(); });
 
     mFreezeBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickFreeze(); });
     mLiveBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickLive(); });
@@ -285,6 +287,7 @@ void ALPanelGhostStudio::refreshDetail()
     mShimmerAmountSlider->setEnabled(have);
     mPixelSlider->setEnabled(have);
     mGlitchSlider->setEnabled(have);
+    mBrightnessSlider->setEnabled(have);
     mFreezeBtn->setEnabled(have);
     mLiveBtn->setEnabled(have && inst->mPose == ALGhostStudio::POSE_FROZEN);
     mArrayCount->setEnabled(have);
@@ -327,6 +330,7 @@ void ALPanelGhostStudio::refreshDetail()
         mShimmerAmountSlider->setValue(inst->mShimmerIntensity);
         mPixelSlider->setValue(inst->mPixelSize);
         mGlitchSlider->setValue(inst->mGlitch);
+        mBrightnessSlider->setValue(inst->mBrightness);
     }
 
     // pose status: what the ghost is doing, and why a freeze might not bite
@@ -572,6 +576,22 @@ void ALPanelGhostStudio::onGlitchCommit()
             ALGhostStudio::instance().getInstance(selectedInstance()))
     {
         inst->mGlitch = (F32)mGlitchSlider->getValue().asReal();
+    }
+}
+
+// [R2-1] output brightness -- the unlit clone's night-scene dimmer. A
+// "match scene" helper was considered and SKIPPED: the ghost draws into the
+// post-tonemap overlay, and a sky ambient/sun probe yields scene-referred
+// linear values that do not map to a post-tonemap multiplier without
+// inverting exposure + tonemap and ignoring local lights -- the estimate
+// would be least reliable exactly in the night-with-practicals shots it is
+// meant for. The slider is the honest control.
+void ALPanelGhostStudio::onBrightnessCommit()
+{
+    if (ALGhostStudio::Instance* inst =
+            ALGhostStudio::instance().getInstance(selectedInstance()))
+    {
+        inst->mBrightness = llclamp((F32)mBrightnessSlider->getValue().asReal(), 0.05f, 1.5f);
     }
 }
 

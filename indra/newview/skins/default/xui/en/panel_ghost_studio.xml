@@ -354,6 +354,22 @@
      tool_tip="Broken-signal effect: horizontal slices tear sideways with a chroma split. 0 = off"
      top="332"
      width="168" />
+    <slider
+     decimal_digits="2"
+     follows="left|top"
+     height="16"
+     increment="0.05"
+     initial_value="1.0"
+     label="Brightness"
+     label_width="60"
+     layout="topleft"
+     left="182"
+     max_val="1.5"
+     min_val="0.05"
+     name="brightness_slider"
+     tool_tip="Output brightness: the ghost is unlit, so a clone reads fullbright in a night scene. Dial down (~0.3-0.5) to sit it into dark sets; 1 = as authored"
+     top="332"
+     width="172" />
 
     <text
      follows="left|top"

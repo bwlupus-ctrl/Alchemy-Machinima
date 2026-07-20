@@ -521,6 +521,10 @@ public:
         F32        mPixelSize = 0.f;        // screen px (0 = off)
         F32        mGlitch = 0.f;           // 0..1 slice offset + chroma split
         F32        mPhase = 0.f;            // per-instance phase so FX don't sync up
+        // [R2-1] output brightness multiplier (rides ghostFx.w; 1 = as-is).
+        // The ghost is unlit in the post-tonemap overlay, so this is how a
+        // clone sits into a night scene instead of glowing fullbright.
+        F32        mBrightness = 1.f;       // 0.05..1.5
         // the tint is an operator-authored custom hue (Ghost Studio hue slider)
         // rather than the default actor identity color. The CLONE style ignores
         // the identity tint (a clone should match the avatar), but a custom hue
