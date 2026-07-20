@@ -61,6 +61,7 @@ constexpr char ICON_MARK[]     = "Flag";
 constexpr char TAB_ICON_MOVE[]    = "Command_Move_Icon";
 constexpr char TAB_ICON_PATH[]    = "Command_Places_Icon";
 constexpr char TAB_ICON_GHOSTS[]  = "Command_Appearance_Icon";
+constexpr char TAB_ICON_PROPS[]   = "Command_Build_Icon";
 constexpr char TAB_ICON_ANIMATE[] = "Command_Poser_Icon";
 constexpr char TAB_ICON_CAMERA[]  = "Command_View_Icon";
 constexpr char TAB_ICON_TAKES[]   = "Command_Snapshot_Icon";
@@ -164,6 +165,7 @@ bool LLFloaterDirector::postBuild()
         { "move_tab",    TAB_ICON_MOVE },
         { "path_tab",    TAB_ICON_PATH },
         { "ghosts_tab",  TAB_ICON_GHOSTS },
+        { "props_tab",   TAB_ICON_PROPS },
         { "animate_tab", TAB_ICON_ANIMATE },
         { "camera_tab",  TAB_ICON_CAMERA },
         { "takes_tab",   TAB_ICON_TAKES },

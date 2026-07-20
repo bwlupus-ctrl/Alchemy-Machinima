@@ -537,6 +537,32 @@
              width="354" />
         </panel>
 
+        <!-- ============ Props tab ============ -->
+        <!-- The shared Prop Mover panel (panel_prop_mover.xml): the SAME panel
+             the standalone Prop Mover floater hosts, so the console is a
+             superset. Self-contained (enrollment reads the in-world selection
+             or the object context menu); nothing to feed it from the console. -->
+        <panel
+         follows="all"
+         background_visible="false"
+         height="550"
+         label="Props"
+         layout="topleft"
+         name="props_tab"
+         top="0"
+         width="374">
+            <panel
+             class="panel_prop_mover"
+             filename="panel_prop_mover.xml"
+             follows="left|top|right"
+             height="470"
+             layout="topleft"
+             left="0"
+             name="prop_mover_panel"
+             top="8"
+             width="354" />
+        </panel>
+
         <!-- ============ Animate tab ============ -->
         <!-- Top: the selected cast member's live signaled-animation list plus
              per-actor loco / play-local tools. Bottom: an embedded spinning

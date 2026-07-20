@@ -524,6 +524,9 @@ void LLViewerFloaterReg::registerFloaters()
     // ghost_studio is a thin shell around panel_ghost_studio.xml
     // (ALPanelGhostStudio), shared with the Director Console Ghosts tab
     LLFloaterReg::add("ghost_studio", "floater_ghost_studio.xml", &LLFloaterReg::build<LLFloater>);
+    // prop_mover is the same idiom: a thin shell around panel_prop_mover.xml
+    // (ALPanelPropMover), shared with the Director Console Props tab
+    LLFloaterReg::add("prop_mover", "floater_prop_mover.xml", &LLFloaterReg::build<LLFloater>);
     LLFloaterReg::add("preview_anim", "floater_preview_animation.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLPreviewAnim>, "preview");
     LLFloaterReg::add("preview_conversation", "floater_conversation_preview.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterConversationPreview>);
     LLFloaterReg::add("preview_gesture", "floater_preview_gesture.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLPreviewGesture>, "preview");

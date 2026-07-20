@@ -14,6 +14,8 @@
 #include <algorithm>                // std::reverse (path reverse op)
 #include <set>                      // collectGhostBatches (wanted-actor set)
 
+#include "alobjectpathmover.h"      // heading preview also draws enrolled PROP paths
+
 #include "alghoststudio.h"          // [GhostStudio] free-standing ghost instances
 #include "llagent.h"                // gAgent global<->agent coord conversion (pathing)
 #include "llanimationstates.h"      // ANIM_AGENT_WALK
@@ -3978,16 +3980,22 @@ void LLActorMover::renderHeadingPreview()
     {
         return;
     }
-    // an operator floater must be up: the standalone mover or the Director
-    // Console (its Move tab drives the same heading/distance settings)
-    LLFloater* floaterp = LLFloaterReg::findInstance("actor_mover");
-    if (!floaterp || !floaterp->getVisible())
+    // an operator floater must be up: the standalone mover, the Director
+    // Console (its Move tab drives the same heading/distance settings), or the
+    // Prop Mover (whose enrolled object paths draw in this same pass below)
+    bool operator_open = false;
+    for (const char* name : { "actor_mover", "director", "prop_mover" })
     {
-        floaterp = LLFloaterReg::findInstance("director");
-        if (!floaterp || !floaterp->getVisible())
+        LLFloater* floaterp = LLFloaterReg::findInstance(name);
+        if (floaterp && floaterp->getVisible())
         {
-            return;
+            operator_open = true;
+            break;
         }
+    }
+    if (!operator_open)
+    {
+        return;
     }
 
     static LLCachedControl<F32> distance(gSavedSettings, "ActorMoverDistance", 6.f);
@@ -4225,6 +4233,53 @@ void LLActorMover::renderHeadingPreview()
             gGL.vertex3fv(end.mV);
             gGL.vertex3f(end.mV[VX], end.mV[VY], end.mV[VZ] + 0.3f);
             gGL.end();
+        }
+    }
+
+    // ---- enrolled PROP paths (object path mover) ------------------------------
+    // Same ribbon + chevrons + numbered nodes as an actor path, per-prop tinted
+    // (actorPathColor hashes any UUID), drawn AT the authored node heights --
+    // object paths are authored at the prop's own root height (a car's axle),
+    // so no ground lift is wanted. This is the visual feedback that makes the
+    // Prop Mover legible: enroll a prop, drop nodes, SEE the route.
+    for (const LLUUID& prop_id : ALObjectPathMover::instance().getRoster())
+    {
+        auto pit = mPaths.find(prop_id);
+        if (pit == mPaths.end() || pit->second.mNodes.size() < 2)
+        {
+            continue;
+        }
+        Path& path = pit->second;
+        if (path.mDirty)
+        {
+            path.rebuild();
+        }
+
+        LLColor4 col = actorPathColor(prop_id);
+        col.mV[VW] = 0.9f;
+        LLColor4 col_chev = blend(col, LLColor4(1.f, 1.f, 1.f, 1.f), 0.45f);
+        col_chev.mV[VW] = 0.95f;
+
+        const F32 total = llmax(path.mTotalLength, 0.01f);
+        const S32 steps = llclamp((S32)ceilf(total / 0.35f), 1, 4096);
+        std::vector<LLVector3> pts;
+        pts.reserve(steps + 1);
+        for (S32 i = 0; i <= steps; ++i)
+        {
+            LLVector3d gp, gt;
+            path.evalAtDistance(total * (F32)i / (F32)steps, gp, gt);
+            pts.push_back(gAgent.getPosAgentFromGlobal(gp));
+        }
+        drawThickLine(pts, 0.09f, col);
+        drawChevrons(pts, col_chev);
+
+        for (S32 i = 0; i < (S32)path.mNodes.size(); ++i)
+        {
+            const LLVector3 base = gAgent.getPosAgentFromGlobal(path.mNodes[i].mPosGlobal);
+            drawNodeMarker(base, col, false);
+            LLVector3 num_at = base;
+            num_at.mV[VZ] += NODE_STICK_H + 0.06f;
+            drawNumber(i + 1, num_at, NODE_NUM_H, bb_right, bb_up, col_num);
         }
     }
 

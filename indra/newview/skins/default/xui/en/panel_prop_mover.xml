@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- Shared Prop Mover panel: the GUI over the client-side object path mover
+     (drive a linked set along a spline; the sim is never told). Hosted by the
+     standalone Prop Mover floater AND the Director Console's Props tab (the
+     console stays a superset). The /objpath* chat commands drive the same
+     state and remain as a scriptable harness. -->
+<panel
+ background_visible="false"
+ follows="all"
+ height="470"
+ layout="topleft"
+ name="panel_prop_mover"
+ width="360">
+
+    <text
+     follows="left|top|right"
+     height="26"
+     layout="topleft"
+     left="8"
+     top="4"
+     name="hint_text"
+     text_color="LtGray_50"
+     word_wrap="true"
+     width="344">
+        Right-click an object &gt; Director &gt; Path Object, or select it and press Enroll. Move the prop, drop nodes, then Drive.
+    </text>
+
+    <!-- ============ enrollment ============ -->
+    <button
+     follows="left|top"
+     height="22"
+     label="Enroll selected object"
+     layout="topleft"
+     left="8"
+     top="34"
+     name="btn_enroll"
+     tool_tip="Enroll the in-world selection's linkset ROOT as a drivable prop (select it with right-click or the edit tool first)"
+     width="150" />
+    <button
+     follows="left|top"
+     height="22"
+     label="Remove"
+     layout="topleft"
+     left="164"
+     top="34"
+     name="btn_remove"
+     tool_tip="Un-enroll the selected prop. Its authored path is dropped too"
+     width="80" />
+
+    <scroll_list
+     column_padding="0"
+     draw_heading="true"
+     follows="left|top|right"
+     height="96"
+     layout="topleft"
+     left="8"
+     top="60"
+     name="prop_list"
+     tool_tip="Enrolled props. The name fills in from the object's properties (fetched when you selected it); away = the object is not currently resolvable (out of interest range or derezzed)"
+     width="344">
+        <columns
+         label="Prop"
+         name="name"
+         width="184" />
+        <columns
+         label="Nodes"
+         name="nodes"
+         width="52" />
+        <columns
+         label="State"
+         name="state"
+         width="80" />
+    </scroll_list>
+
+    <!-- ============ nodes ============ -->
+    <button
+     follows="left|top"
+     height="22"
+     label="Add node here"
+     layout="topleft"
+     left="8"
+     top="162"
+     name="btn_node_add"
+     tool_tip="Append a path node at the prop's CURRENT position (drag the prop with the edit tool between adds to lay out the route)"
+     width="106" />
+    <button
+     follows="left|top"
+     height="22"
+     label="Delete node"
+     layout="topleft"
+     left="118"
+     top="162"
+     name="btn_node_del"
+     tool_tip="Delete the selected node (the last node when none is selected)"
+     width="90" />
+    <button
+     follows="left|top"
+     height="22"
+     label="Clear path"
+     layout="topleft"
+     left="212"
+     top="162"
+     name="btn_node_clear"
+     tool_tip="Stop the drive and drop every node of the selected prop (it stays enrolled)"
+     width="90" />
+
+    <scroll_list
+     column_padding="0"
+     draw_heading="true"
+     follows="left|top|right"
+     height="90"
+     layout="topleft"
+     left="8"
+     top="188"
+     name="node_list"
+     tool_tip="The selected prop's path nodes. Select one to tune its skid yaw and speed override below"
+     width="344">
+        <columns
+         label="#"
+         name="index"
+         width="34" />
+        <columns
+         label="Skid (deg)"
+         name="skid"
+         width="86" />
+        <columns
+         label="Speed"
+         name="speed"
+         width="86" />
+    </scroll_list>
+
+    <!-- ============ per-node params (selected node) ============ -->
+    <spinner
+     decimal_digits="0"
+     follows="left|top"
+     height="20"
+     increment="5"
+     label="Skid (deg)"
+     label_width="60"
+     layout="topleft"
+     left="8"
+     max_val="180"
+     min_val="-180"
+     top="284"
+     name="node_skid_spin"
+     tool_tip="Yaw offset from the travel direction as the drive passes the selected node: fake a skid or drift through a corner. + is counter-clockwise"
+     width="160" />
+    <spinner
+     decimal_digits="2"
+     follows="left|top"
+     height="20"
+     increment="0.25"
+     label="m/s"
+     label_width="30"
+     layout="topleft"
+     left="180"
+     max_val="50"
+     min_val="0"
+     top="284"
+     name="node_speed_spin"
+     tool_tip="Local speed override at the selected node (0 = use the path speed). Ramp node speeds to fake acceleration or braking"
+     width="120" />
+
+    <!-- ============ path-wide params (selected prop) ============ -->
+    <spinner
+     decimal_digits="2"
+     follows="left|top"
+     height="20"
+     increment="0.25"
+     label="Path m/s"
+     label_width="60"
+     layout="topleft"
+     left="8"
+     max_val="50"
+     min_val="0.05"
+     top="312"
+     name="path_speed_spin"
+     tool_tip="Nominal drive speed along the whole path (per-node overrides win locally)"
+     width="160" />
+    <combo_box
+     follows="left|top"
+     height="22"
+     layout="topleft"
+     left="180"
+     top="310"
+     name="end_mode_combo"
+     tool_tip="What happens at the last node: hold there, loop back to the start, or ping-pong the route"
+     width="120">
+        <combo_box.item
+         label="Stop at end"
+         name="end_stop"
+         value="0" />
+        <combo_box.item
+         label="Loop"
+         name="end_loop"
+         value="1" />
+        <combo_box.item
+         label="Ping-pong"
+         name="end_pingpong"
+         value="2" />
+    </combo_box>
+
+    <!-- ============ transport ============ -->
+    <button
+     follows="left|top"
+     font="SansSerifBold"
+     height="24"
+     label="Drive"
+     layout="topleft"
+     left="8"
+     top="340"
+     name="btn_drive"
+     tool_tip="Drive the selected prop along its path (needs at least 2 nodes). Client-side only: other viewers see the prop parked"
+     width="80" />
+    <button
+     follows="left|top"
+     height="24"
+     label="Stop"
+     layout="topleft"
+     left="92"
+     top="340"
+     name="btn_stop"
+     tool_tip="Release the selected prop's drive; it stays rendered where the drive left it until the next server update"
+     width="80" />
+    <button
+     follows="left|top"
+     height="24"
+     label="Drive all"
+     layout="topleft"
+     left="180"
+     top="340"
+     name="btn_drive_all"
+     tool_tip="Drive every enrolled prop that has a drivable path"
+     width="80" />
+    <button
+     follows="left|top"
+     height="24"
+     label="Stop all"
+     layout="topleft"
+     left="264"
+     top="340"
+     name="btn_stop_all"
+     tool_tip="Release every drive"
+     width="80" />
+
+    <check_box
+     control_name="ActorMoverShowHeading"
+     follows="left|top"
+     height="16"
+     label="Show paths in world"
+     layout="topleft"
+     left="8"
+     top="372"
+     name="show_paths_check"
+     tool_tip="Draw every enrolled prop's path in world (ribbon, chevrons and numbered nodes, tinted per prop) while a mover floater is open. Shared with the avatar path preview"
+     width="200" />
+
+    <text
+     follows="left|top|right"
+     height="28"
+     layout="topleft"
+     left="8"
+     top="394"
+     name="status_text"
+     text_color="LtGray"
+     word_wrap="true"
+     width="344">
+        0 props enrolled, 0 driving
+    </text>
+</panel>

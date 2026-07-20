@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- Standalone host for the shared Prop Mover panel; the Director Console
+     embeds the SAME panel in its Props tab (superset rule), so this floater
+     is pure chrome: a plain LLFloater, same idiom as the Ghost Studio. -->
+<floater
+ legacy_header_height="18"
+ can_resize="true"
+ height="452"
+ min_height="330"
+ min_width="380"
+ layout="topleft"
+ name="floater_prop_mover"
+ title="PROP MOVER (LOCAL)"
+ width="380">
+  <panel
+   class="panel_prop_mover"
+   filename="panel_prop_mover.xml"
+   follows="all"
+   height="424"
+   layout="topleft"
+   left="8"
+   top="24"
+   name="prop_mover_panel"
+   width="360" />
+</floater>

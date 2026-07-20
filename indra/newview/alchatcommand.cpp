@@ -53,6 +53,22 @@
 #include "llvolume.h"
 #include "llvolumemessage.h"
 
+// [ObjectPath] /objpath* feedback straight to nearby chat, so a command is
+// never a silent no-op the operator has to dig out of the log (the mistake
+// the prototype shipped with). Same local stand-in idiom as fsradar.cpp's
+// radar_report_to_nearby_chat.
+static void objpath_report(const std::string& message)
+{
+    if (LLFloaterIMNearbyChat* nearby_chat = LLFloaterReg::getTypedInstance<LLFloaterIMNearbyChat>("nearby_chat"))
+    {
+        LLChat chat;
+        chat.mText = "[Prop Mover] " + message;
+        chat.mSourceType = CHAT_SOURCE_SYSTEM;
+        chat.mChatType = CHAT_TYPE_NORMAL;
+        nearby_chat->addMessage(chat);
+    }
+}
+
 bool ALChatCommand::parseCommand(std::string data)
 {
     static LLCachedControl<bool> enableChatCmd(gSavedSettings, "AlchemyChatCommandEnable", true);
@@ -410,26 +426,46 @@ bool ALChatCommand::parseCommand(std::string data)
         else if (cmd == "/objpathadd")
         {
             ALObjectPathMover& opm = ALObjectPathMover::instance();
+            if (opm.getRoster().empty())
+            {
+                objpath_report("No props enrolled. Right-click an object > Director > "
+                               "Path Object, or use World > Prop Mover.");
+                return true;
+            }
             S32 added = 0;
             for (const LLUUID& id : opm.getRoster())
             {
                 added += opm.appendWaypointHere(id) ? 1 : 0;
             }
-            if (!added)
-            {
-                LL_WARNS("ObjectPath") << "/objpathadd: no enrolled object resolvable; "
-                                          "right-click > Director > Path Object first" << LL_ENDL;
-            }
+            objpath_report(added
+                ? llformat("Node added to %d prop%s.", added, added == 1 ? "" : "s")
+                : "No enrolled prop is resolvable right now (out of view or derezzed).");
             return true;
         }
         else if (cmd == "/objpathdrive")
         {
-            ALObjectPathMover::instance().startAll();
+            ALObjectPathMover& opm = ALObjectPathMover::instance();
+            if (opm.getRoster().empty())
+            {
+                objpath_report("No props enrolled. Right-click an object > Director > "
+                               "Path Object, or use World > Prop Mover.");
+                return true;
+            }
+            opm.startAll();
+            S32 driving = 0;
+            for (const LLUUID& id : opm.getRoster())
+            {
+                driving += opm.isDriving(id) ? 1 : 0;
+            }
+            objpath_report(driving
+                ? llformat("Driving %d prop%s.", driving, driving == 1 ? "" : "s")
+                : "Nothing drivable: each prop needs at least 2 nodes (/objpathadd).");
             return true;
         }
         else if (cmd == "/objpathstop")
         {
             ALObjectPathMover::instance().stopAll();
+            objpath_report("All drives stopped.");
             return true;
         }
         else if (cmd == "/objpathclear")
@@ -440,16 +476,21 @@ bool ALChatCommand::parseCommand(std::string data)
             {
                 LLActorMover::instance().clearPath(id);
             }
+            objpath_report("All prop paths cleared (props stay enrolled).");
             return true;
         }
         else if (cmd == "/objpathloop")
         {
+            S32 looping = 0;
             for (const LLUUID& id : ALObjectPathMover::instance().getRoster())
             {
                 LLActorMover::Path& path = LLActorMover::instance().editPath(id);
                 path.mEndMode = (path.mEndMode == 1) ? 0 : 1;
                 path.markDirty();
+                looping += (path.mEndMode == 1) ? 1 : 0;
             }
+            objpath_report(llformat("Loop toggled: %d prop path%s now loop.",
+                                    looping, looping == 1 ? "" : "s"));
             return true;
         }
         else if (cmd == "/objpathspeed")
@@ -457,12 +498,18 @@ bool ALChatCommand::parseCommand(std::string data)
             F32 speed;
             if (input >> speed)
             {
+                speed = llclamp(speed, 0.05f, 50.f);
                 for (const LLUUID& id : ALObjectPathMover::instance().getRoster())
                 {
                     LLActorMover::Path& path = LLActorMover::instance().editPath(id);
-                    path.mSpeed = llclamp(speed, 0.05f, 50.f);
+                    path.mSpeed = speed;
                     path.markDirty();
                 }
+                objpath_report(llformat("Path speed set to %.2f m/s on every enrolled prop.", speed));
+            }
+            else
+            {
+                objpath_report("Usage: /objpathspeed <m/s>");
             }
             return true;
         }
@@ -471,6 +518,7 @@ bool ALChatCommand::parseCommand(std::string data)
             F32 deg;
             if (input >> deg)
             {
+                S32 set = 0;
                 LLActorMover& mover = LLActorMover::instance();
                 for (const LLUUID& id : ALObjectPathMover::instance().getRoster())
                 {
@@ -479,8 +527,17 @@ bool ALChatCommand::parseCommand(std::string data)
                     {
                         mover.setNodeYawOffset(id, (S32)path->mNodes.size() - 1,
                                                deg * DEG_TO_RAD);
+                        ++set;
                     }
                 }
+                objpath_report(set
+                    ? llformat("Skid %.0f deg set on the last node of %d path%s.",
+                               deg, set, set == 1 ? "" : "s")
+                    : "No prop has nodes yet (/objpathadd first).");
+            }
+            else
+            {
+                objpath_report("Usage: /objpathskid <degrees>");
             }
             return true;
         }

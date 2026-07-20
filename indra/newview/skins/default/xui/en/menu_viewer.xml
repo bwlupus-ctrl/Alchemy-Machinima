@@ -125,6 +125,13 @@
          parameter="ghost_studio" />
       </menu_item_call>
       <menu_item_call
+       label="Prop Mover..."
+       name="prop_mover_item_call">
+        <menu_item_call.on_click
+         function="Floater.Toggle"
+         parameter="prop_mover" />
+      </menu_item_call>
+      <menu_item_call
        label="Phototools..."
        name="phototools_item_call">
         <menu_item_call.on_click
