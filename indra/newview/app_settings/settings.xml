@@ -3639,6 +3639,17 @@
       <key>Value</key>
       <integer>0</integer>
     </map>
+    <key>DirectorHotkeysEnabled</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Enable the machinima F-key transport (unmodified keys; see doc/DIRECTOR_HOTKEYS.md for the F1-F12 audit): F2 toggle Director Console, F3 ACTION (CUT while counting down / running), F4 CUT, F5 Reset to marks, F6 Pose ghosts on/off, F7 flycam take play/pause, F8 Set marks. Except F2, the keys fire only while the Director Console or Actor Mover floater is open, so they can never hijack normal use; a user gesture bound to the same key and Ctrl/Alt/Shift-modified combos (e.g. Ctrl+Alt+F1 hide UI) always win regardless. On by default because unmodified F2-F12 carry no viewer bindings.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
     <key>AvatarAxisDeadZone0</key>
     <map>
       <key>Comment</key>

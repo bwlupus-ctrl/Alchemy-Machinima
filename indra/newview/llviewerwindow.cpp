@@ -90,6 +90,7 @@
 
 // newview includes
 #include "alchatbar.h"
+#include "aldirectorhotkeys.h"
 #include "alfloaterprogressview.h"
 #include "llaccordionctrl.h"
 // [SL:KB] - Patch: Build-DragNDrop | Checked: 2013-07-22 (Catznip-3.6)
@@ -3437,6 +3438,18 @@ bool LLViewerWindow::handleKey(KEY key, MASK mask)
             ALChatBar::startChat(nullptr);
             return TRUE;
         }
+    }
+
+    // [Director] machinima F-key transport (unmodified F2..F8, see
+    // doc/DIRECTOR_HOTKEYS.md): dispatched AFTER gestures -- a user gesture
+    // bound to the same key always wins -- and BEFORE the menu accelerators.
+    // Returns false fast unless DirectorHotkeysEnabled and (except the F2
+    // console toggle) a Director Console / Actor Mover floater is open, so
+    // the keys never hijack normal use.
+    if (ALDirectorHotkeys::handleKey(key, mask))
+    {
+        LLViewerEventRecorder::instance().logKeyEvent(key, mask);
+        return true;
     }
 
     // give menus a chance to handle unmodified accelerator keys

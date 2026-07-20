@@ -163,6 +163,7 @@ set(viewer_SOURCE_FILES
     alcheatcodes.cpp
     alclassifieditem.cpp
     alderenderlist.cpp
+    aldirectorhotkeys.cpp
     aldroptarget.cpp
     alfloaterblocked.cpp
     alfloaterdirectory.cpp
@@ -965,6 +966,7 @@ set(viewer_HEADER_FILES
     alchatcommand.h
     alclassifieditem.h
     alderenderlist.h
+    aldirectorhotkeys.h
     aldroptarget.h
     alfloaterblocked.h
     alfloaterdirectory.h

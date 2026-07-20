@@ -821,7 +821,7 @@
      background_visible="true"
      border="true"
      follows="left|top"
-     height="232"
+     height="280"
      layout="topleft"
      left="210"
      name="legend_panel"
@@ -841,7 +841,7 @@
         </text>
         <text
          follows="left|top|right"
-         height="186"
+         height="234"
          layout="topleft"
          left="12"
          top="30"
@@ -857,6 +857,8 @@ M column: a flag means a mark (a saved position) is set for that actor.
 Groups: the dot-suffix after a name is the member's group tag (set in the Group box under the list); the Move tab's Start/Stop group drive every member of a group at once.
 
 Paths: each actor's in-world path preview and its numbered nodes are drawn in a stable per-actor color, so overlapping routes stay readable.
+
+Hotkeys (while this console or the Actor Mover is open): F2 toggle console &#183; F3 ACTION/CUT &#183; F4 CUT &#183; F5 reset to marks &#183; F6 pose ghosts &#183; F7 take play/pause &#183; F8 set marks. Disable via DirectorHotkeysEnabled.
         </text>
         <button
          follows="left|top"
@@ -864,7 +866,7 @@ Paths: each actor's in-world path preview and its numbered nodes are drawn in a 
          label="Close"
          layout="topleft"
          left="12"
-         top="204"
+         top="252"
          name="btn_legend_close"
          width="60" />
     </panel>
