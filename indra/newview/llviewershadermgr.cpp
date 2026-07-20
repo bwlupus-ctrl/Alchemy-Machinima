@@ -122,6 +122,9 @@ LLGLSLShader        gHighlightProgram;
 LLGLSLShader        gSkinnedHighlightProgram;
 LLGLSLShader        gHighlightNormalProgram;
 LLGLSLShader        gHighlightSpecularProgram;
+// [ActorMover] pose-ghost FX (hologram / x-ray ghost styles)
+LLGLSLShader        gActorGhostProgram;
+LLGLSLShader        gSkinnedActorGhostProgram;
 
 LLGLSLShader        gDeferredHighlightProgram;
 
@@ -4034,6 +4037,31 @@ bool LLViewerShaderMgr::loadShadersInterface()
         gHighlightProgram.mShaderLevel = mShaderLevel[SHADER_INTERFACE];
         success = make_rigged_variant(gHighlightProgram, gSkinnedHighlightProgram);
         success = success && gHighlightProgram.createShader();
+    }
+
+    if (success)
+    {
+        // [ActorMover] pose-ghost FX shader (hologram / x-ray styles): the
+        // highlight pair's skinned constant-colour transform plus animated
+        // screen-space scanlines, a fresnel-ish rim boost and a subtle time
+        // flicker, fed per style via the ghostTime / ghostParams uniforms.
+        // Same registration idiom as gHighlightProgram (the rigged variant is
+        // what drawGeometryGhost binds), but NON-FATAL like the indexed-PBR
+        // extras: a compile failure only logs and the hologram/x-ray styles
+        // fall back to the classic ghost at draw time.
+        gActorGhostProgram.mName = "Actor Ghost Shader";
+        gActorGhostProgram.mShaderFiles.clear();
+        gActorGhostProgram.mShaderFiles.push_back(make_pair("interface/actorghostV.glsl", GL_VERTEX_SHADER));
+        gActorGhostProgram.mShaderFiles.push_back(make_pair("interface/actorghostF.glsl", GL_FRAGMENT_SHADER));
+        gActorGhostProgram.mShaderLevel = mShaderLevel[SHADER_INTERFACE];
+        bool ghost_ok = make_rigged_variant(gActorGhostProgram, gSkinnedActorGhostProgram);
+        ghost_ok = ghost_ok && gActorGhostProgram.createShader();
+        if (!ghost_ok)
+        {
+            LL_WARNS("Shader") << "Actor ghost FX shader failed to load; the"
+                                  " hologram / x-ray ghost styles will fall back"
+                                  " to the classic translucent ghost" << LL_ENDL;
+        }
     }
 
     if (success)

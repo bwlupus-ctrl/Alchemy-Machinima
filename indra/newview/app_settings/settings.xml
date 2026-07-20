@@ -3466,7 +3466,7 @@
     <key>PathShowOnionSkin</key>
     <map>
       <key>Comment</key>
-      <string>[ActorMover] Pose/blocking ghosts: draw translucent copies of the actor so blocking reads without pressing ACTION. With no path laid down, a ghost is shown at the actor's CURRENT position and at the planned DESTINATION; with a walkable path, a ghost is shown at every node. Uses a real translucent avatar impostor billboard when PathGhostUseImpostor is on (else a stick-figure fallback), tinted to the actor. Shows only while the path preview (ActorMoverShowHeading) is on and the Actor Mover / Director floater is open. Off by default; adds no per-frame cost when off.</string>
+      <string>[ActorMover] Pose/blocking ghosts: draw copies of the actor at every node of its walkable path so blocking reads without pressing ACTION. The default renderer is the true 3D model ghost (PathGhostUseModel), whose LOOK is picked by PathGhostStyle (ghost / clone / hologram / wireframe / x-ray); the impostor billboard (PathGhostUseImpostor) and the stick figure are fallbacks, tinted to the actor. Shows only while the path preview (ActorMoverShowHeading) is on and the Actor Mover / Director floater is open. Off by default; adds no per-frame cost when off.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
@@ -3477,7 +3477,7 @@
     <key>PathGhostUseModel</key>
     <map>
       <key>Comment</key>
-      <string>[ActorMover] When drawing pose/blocking ghosts (PathShowOnionSkin), render a TRUE 3D translucent copy of the actor's real rigged body at each ghost position -- the actor's own worn mesh, re-skinned from its live joint pose and re-drawn at an offset with a ghost tint. Unlike the flat impostor card this is fully three-dimensional and orbits correctly, and it is the foundation for holding an independent (out-of-sync) pose. Falls back to the impostor billboard (PathGhostUseImpostor) then the stick figure when the body has no rigged geometry available. On by default; only does work while the ghost toggle is on and a mover/Director floater is open.</string>
+      <string>[ActorMover] When drawing pose/blocking ghosts (PathShowOnionSkin), render a TRUE 3D copy of the actor's real rigged body at each ghost position -- the actor's own worn mesh, re-skinned from its live joint pose and re-drawn at an offset. Unlike the flat impostor card this is fully three-dimensional and orbits correctly, and it is the foundation for holding an independent (out-of-sync) pose. The copy's LOOK is picked by PathGhostStyle (translucent ghost, textured clone, hologram, wireframe, x-ray). Falls back to the impostor billboard (PathGhostUseImpostor) then the stick figure when the body has no rigged geometry available. On by default; only does work while the ghost toggle is on and a mover/Director floater is open.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
@@ -3488,13 +3488,24 @@
     <key>PathGhostUseImpostor</key>
     <map>
       <key>Comment</key>
-      <string>[ActorMover] Fallback ghost style when the true 3D model ghost (PathGhostUseModel) is off or unavailable: stamp a REAL translucent avatar image (an impostor billboard snapshot of the actual rendered avatar) instead of a stick figure. The snapshot is a frozen 2D card of the current pose, camera-facing, refreshed when the camera swings around the actor; it is a blocking-preview aid, not a live second body. Turn off to use the lightweight stick-figure ghost. On by default; only does work while the ghost toggle is on and a mover/Director floater is open.</string>
+      <string>[ActorMover] Fallback ghost renderer when the true 3D model ghost (PathGhostUseModel) is off or unavailable: stamp a REAL translucent avatar image (an impostor billboard snapshot of the actual rendered avatar) instead of a stick figure. The snapshot is a frozen 2D card of the current pose, camera-facing, refreshed when the camera swings around the actor; it is a blocking-preview aid, not a live second body. Turn off to use the lightweight stick-figure ghost. On by default; only does work while the ghost toggle is on and a mover/Director floater is open.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
       <string>Boolean</string>
       <key>Value</key>
       <integer>1</integer>
+    </map>
+    <key>PathGhostStyle</key>
+    <map>
+      <key>Comment</key>
+      <string>[ActorMover] Look of the true 3D model ghost (PathShowOnionSkin + PathGhostUseModel): 0 = Ghost (classic translucent flat tint, faintly pulled toward the actor hue), 1 = Clone (opaque UNLIT textured copy of the worn mesh -- fullbright-style; a scene-lit clone is future work), 2 = Hologram (cyan, animated scanlines + fresnel rim + subtle flicker, via the dedicated actor-ghost shader), 3 = Wireframe (thin hidden-line wireframe in a brighter actor tint), 4 = X-ray (rim-lit: body interior nearly clear, silhouette edges glow). Hologram/X-ray degrade to Ghost if the FX shader failed to load. Only affects the model ghost; the impostor/stick fallbacks are unstyled. Set from the style dropdown next to the Pose ghosts toggle (Path editor / Director Console).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>0</integer>
     </map>
     <key>ActorMoverPathZDebug</key>
     <map>

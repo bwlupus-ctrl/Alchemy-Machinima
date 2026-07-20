@@ -77,7 +77,7 @@
      name="path_readout"
      tool_tip="Total path length and the estimated time to walk it once (accounts for speed, per-node speed overrides, ease in/out and dwell)"
      use_ellipses="true"
-     width="215">
+     width="150">
         No path yet
     </text>
     <check_box
@@ -86,11 +86,27 @@
      height="14"
      label="Pose ghosts"
      layout="topleft"
-     left="224"
+     left="160"
      top="95"
      name="onion_skin_check"
-     tool_tip="Show translucent copies of the actor so you can read the staging without pressing ACTION. With no path yet, ghosts appear at the actor's current spot and its destination; with a path, at every node. A real translucent avatar image by default (a frozen, camera-facing snapshot), or a stick figure if PathGhostUseImpostor is off. Client-side overlay; shows with the path preview."
-     width="130" />
+     tool_tip="Show styled copies of the actor at every node of its path so you can read the staging without pressing ACTION. The look comes from the style dropdown alongside (true 3D body: ghost, clone, hologram, wireframe, x-ray); actors with no rigged mesh fall back to a frozen camera-facing avatar snapshot (impostor), or a stick figure if PathGhostUseImpostor is off. Client-side overlay; shows with the path preview."
+     width="96" />
+    <combo_box
+     control_name="PathGhostStyle"
+     follows="top|right"
+     height="18"
+     layout="topleft"
+     left="258"
+     top="93"
+     name="ghost_style_combo"
+     tool_tip="Look of the 3D pose ghost. Ghost: translucent tint. Clone: unlit textured copy of the worn mesh. Hologram: cyan scanlines + rim glow, animated. Wireframe: hidden-line mesh wire. X-ray: clear body, glowing silhouette edges."
+     width="96">
+        <combo_box.item label="Ghost" name="gs_ghost" value="0" />
+        <combo_box.item label="Clone" name="gs_clone" value="1" />
+        <combo_box.item label="Hologram" name="gs_hologram" value="2" />
+        <combo_box.item label="Wireframe" name="gs_wireframe" value="3" />
+        <combo_box.item label="X-ray" name="gs_xray" value="4" />
+    </combo_box>
 
     <button
      follows="left|top"

@@ -3366,9 +3366,27 @@ bool drawImpostorGhost(LLVOAvatar* av, const LLVector3& center,
     return true;
 }
 
-// TRUE 3D ghost: re-render the actor's own worn rigged geometry as a translucent
-// tinted copy standing on `foot` (agent frame), skinned from the actor's LIVE
-// joint pose. Unlike drawImpostorGhost's flat card this is real three-dimensional
+// Ghost STYLES (PathGhostStyle) -- how the true 3D model ghost is shaded. Keep
+// the ids in sync with panel_path_editor.xml's ghost_style_combo and the
+// PathGhostStyle setting comment. Every style shares the same geometry path
+// (snapshotted rigged batches, world-space palette, depth prime); only the
+// colour pass differs.
+enum EGhostStyle : S32
+{
+    GHOST_STYLE_GHOST     = 0,  // classic translucent flat tint
+    GHOST_STYLE_CLONE     = 1,  // unlit textured copy (opaque)
+    GHOST_STYLE_HOLOGRAM  = 2,  // animated cyan hologram (scanlines + rim + flicker)
+    GHOST_STYLE_WIREFRAME = 3,  // hidden-line wireframe
+    GHOST_STYLE_XRAY      = 4,  // rim-lit x-ray (hologram shader, rim-only params)
+};
+
+// custom uniforms of the actor-ghost FX shader (actorghostF.glsl); hashed once
+static LLStaticHashedString sGhostTime("ghostTime");
+static LLStaticHashedString sGhostParams("ghostParams");
+
+// TRUE 3D ghost: re-render the actor's own worn rigged geometry as a styled
+// copy standing on `foot` (agent frame), skinned from the actor's LIVE joint
+// pose. Unlike drawImpostorGhost's flat card this is real three-dimensional
 // geometry -- the actual mesh the avatar is wearing, re-skinned this frame and
 // re-placed at the ghost spot -- so it orbits correctly and reads as a second
 // body rather than a photo of one.
@@ -3377,33 +3395,66 @@ bool drawImpostorGhost(LLVOAvatar* av, const LLVector3& center,
 // (LLVOAvatar::updateSkinInfoMatrixPalette) already bakes every vertex into WORLD
 // space (invBind * joint world matrix), so placing the ghost elsewhere is just a
 // world-space translation premultiplied into the modelview -- no per-vertex work,
-// no second skeleton. We reuse the engine's skinned constant-colour shader
-// (gHighlightProgram's rigged variant, the same one that draws selection glow on
-// rigged attachments), so there is no new shader to register: bind it, upload the
-// actor's live palette per batch, and draw the same vertex ranges the world pass
-// drew -- but offset and flat-tinted.
+// no second skeleton. The classic ghost / clone / wireframe styles reuse the
+// engine's skinned constant-colour shader (gHighlightProgram's rigged variant,
+// the same one that draws selection glow on rigged attachments); the hologram /
+// x-ray styles bind the dedicated gActorGhostProgram (scanlines + rim + flicker,
+// see actorghostF.glsl) and gracefully fall back to the classic look if that
+// shader failed to compile. Per batch, upload the actor's live palette and draw
+// the same vertex ranges the world pass drew -- but offset and re-shaded.
 //
-// Two passes so the translucent skin reads as ONE clean layer instead of showing
-// its own backfaces through the front: pass 1 primes depth (colour masked off),
-// pass 2 blends the tint only where depth is equal (the front-most layer).
+// Two passes so the styled skin reads as ONE clean layer instead of showing its
+// own backfaces through the front: pass 1 primes depth (colour masked off),
+// pass 2 shades only where depth is equal (the front-most layer). The wireframe
+// style polygon-offsets the prime slightly back so its LEQUAL line pass wins
+// cleanly -- classic hidden-line removal.
+//
+// Styles, one colour pass each (see EGhostStyle):
+//   GHOST     -- alpha-blended flat tint, faintly pulled toward the actor hue.
+//   CLONE     -- opaque UNLIT textured copy: each batch re-binds its own diffuse
+//                map and draws near-white so the texture reads. This is a
+//                fullbright-style clone; a scene-LIT clone needs deferred-pass
+//                integration (gbuffer + light apply) and is future work.
+//                Alpha-blend clothing layers draw opaque here (documented
+//                tradeoff of staying in this one overlay pass).
+//   HOLOGRAM  -- gActorGhostProgram: cyan tint, animated screen-space scanlines,
+//                fresnel-ish rim boost, subtle time flicker.
+//   WIREFRAME -- glPolygonMode(GL_LINE) over the offset depth prime: thin
+//                hidden-line wireframe in a brighter actor tint.
+//   XRAY      -- gActorGhostProgram with rim-only params: body interior nearly
+//                clear, silhouette edges glow (cheap creative bonus style).
 //
 // Returns the number of rigged batches drawn; 0 means this actor had no usable
 // rigged geometry in view this frame, so the caller falls back to the impostor
 // card / stick figure. SCOPE: covers WORN MESH (rigged attachments) -- essentially
 // the whole visible body of a modern mesh avatar. The legacy SYSTEM avatar body
 // uses a different skinning path and is not drawn here (a pure system-avatar actor
-// falls back). NOTE: uses the LIVE pose (a translucent copy of the body as it
-// stands right now); an independent, held ("out of sync") pose is the next step,
-// and drops in by uploading a snapshotted palette here instead of the live one.
+// falls back). NOTE: uses the LIVE pose (a copy of the body as it stands right
+// now); an independent, held ("out of sync") pose is the next step, and drops in
+// by uploading a snapshotted palette here instead of the live one.
 S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLDrawInfo*>& batches,
-                      const LLVector3& foot, const LLColor4& tint, F32 alpha)
+                      const LLVector3& foot, const LLColor4& tint, F32 alpha,
+                      S32 style)
 {
     if (!av || av->isDead() || batches.empty())
     {
         return 0;
     }
 
-    LLGLSLShader* shader = gHighlightProgram.mRiggedVariant;
+    // FX styles need the dedicated shader; if it failed to compile (program
+    // object 0) degrade to the classic ghost rather than drawing nothing
+    if (style == GHOST_STYLE_HOLOGRAM || style == GHOST_STYLE_XRAY)
+    {
+        LLGLSLShader* fx = gActorGhostProgram.mRiggedVariant;
+        if (!fx || !fx->mProgramObject)
+        {
+            style = GHOST_STYLE_GHOST;
+        }
+    }
+    LLGLSLShader* shader =
+        (style == GHOST_STYLE_HOLOGRAM || style == GHOST_STYLE_XRAY)
+            ? gActorGhostProgram.mRiggedVariant
+            : gHighlightProgram.mRiggedVariant;
     if (!shader)
     {
         return 0;
@@ -3421,7 +3472,8 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLDrawInfo*>& batches,
 
     shader->bind();
     // frag_color = color * texture(diffuseMap): a white texture makes the output
-    // exactly the `color` uniform (driven by gGL.diffuseColor4f below).
+    // exactly the `color` uniform (driven by gGL.diffuseColor4f below). The
+    // clone style re-binds each batch's own diffuse map in its colour pass.
     gGL.getTexUnit(0)->bind(LLViewerFetchedTexture::sWhiteImagep);
 
     gGL.matrixMode(LLRender::MM_MODELVIEW);
@@ -3429,11 +3481,10 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLDrawInfo*>& batches,
     gGL.translatef(delta.mV[VX], delta.mV[VY], delta.mV[VZ]);   // modelview = view * T(delta)
     gGL.syncMatrices();
 
-    // --- pass 1: prime depth only (single-layer silhouette), no colour ---
+    // one sweep over the snapshotted batches (shared by every pass below);
+    // bind_batch_tex re-binds each batch's own diffuse map (clone style)
+    auto draw_batches = [&batches](bool bind_batch_tex)
     {
-        LLGLDepthTest depth(GL_TRUE, GL_TRUE, GL_LESS);
-        LLGLDisable   blend(GL_BLEND);
-        gGL.setColorMask(false, false);
         const LLVOAvatar* lastAvatar = nullptr;
         U64  lastMeshId = 0;
         bool skipLastSkin = false;
@@ -3442,39 +3493,123 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLDrawInfo*>& batches,
             if (LLRenderPass::uploadMatrixPalette(di->mAvatar, di->mSkinInfo,
                                                   lastAvatar, lastMeshId, skipLastSkin))
             {
+                if (bind_batch_tex)
+                {
+                    LLViewerTexture* tex = di->mTexture.get();
+                    gGL.getTexUnit(0)->bind(
+                        tex ? tex : (LLViewerTexture*)LLViewerFetchedTexture::sWhiteImagep);
+                }
                 di->mVertexBuffer->setBuffer();
                 di->mVertexBuffer->drawRange(LLRender::TRIANGLES,
                                              di->mStart, di->mEnd, di->mCount, di->mOffset);
             }
         }
+    };
+
+    // --- pass 1: prime depth only (single-layer silhouette), no colour ---
+    {
+        LLGLDepthTest depth(GL_TRUE, GL_TRUE, GL_LESS);
+        LLGLDisable   blend(GL_BLEND);
+        // wireframe: push the fill prime slightly back so the LEQUAL line pass
+        // below wins depth without z-fighting (standard hidden-line removal)
+        LLGLEnable offset(style == GHOST_STYLE_WIREFRAME ? GL_POLYGON_OFFSET_FILL : 0);
+        if (style == GHOST_STYLE_WIREFRAME)
+        {
+            glPolygonOffset(1.f, 1.f);
+        }
+        gGL.setColorMask(false, false);
+        draw_batches(false);
+        if (style == GHOST_STYLE_WIREFRAME)
+        {
+            glPolygonOffset(0.f, 0.f);
+        }
     }
 
-    // --- pass 2: blend the flat tint only on the primed front layer ---
+    // --- pass 2: shade the primed front layer, per style ---
+    switch (style)
     {
+    case GHOST_STYLE_CLONE:
+    {
+        // unlit textured copy: opaque, near-white so each batch's own diffuse
+        // map reads as-is (fullbright clone; scene-LIT is future work, above)
+        LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
+        LLGLDisable   blend(GL_BLEND);
+        gGL.setColorMask(true, true);
+        gGL.diffuseColor4f(0.98f, 0.98f, 0.98f, 1.f);
+        draw_batches(true);
+        break;
+    }
+    case GHOST_STYLE_WIREFRAME:
+    {
+        // thin hidden-line wireframe in a brighter tint (pulled further toward
+        // white than the classic ghost, and more opaque, so 1px lines read)
         LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
         LLGLEnable    blend(GL_BLEND);
         gGL.setSceneBlendType(LLRender::BT_ALPHA);
         gGL.setColorMask(true, true);
+        const F32 t = 0.55f;
+        gGL.diffuseColor4f(tint.mV[VX] * (1.f - t) + t,
+                           tint.mV[VY] * (1.f - t) + t,
+                           tint.mV[VZ] * (1.f - t) + t,
+                           llmin(1.f, alpha * 1.5f));
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        draw_batches(false);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        break;
+    }
+    case GHOST_STYLE_HOLOGRAM:
+    case GHOST_STYLE_XRAY:
+    {
+        // FX shader: colour carries the tint + base alpha; ghostParams shape
+        // the look (x scanlines, y rim, z flicker, w scanline period px)
+        LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
+        LLGLEnable    blend(GL_BLEND);
+        gGL.setSceneBlendType(LLRender::BT_ALPHA);
+        gGL.setColorMask(true, true);
+        shader->uniform1f(sGhostTime, (F32)LLFrameTimer::getElapsedSeconds());
+        if (style == GHOST_STYLE_HOLOGRAM)
+        {
+            // classic sci-fi cyan, faintly pulled toward the actor hue so
+            // overlapping actors' holograms stay tellable-apart
+            const F32 t = 0.25f;
+            gGL.diffuseColor4f(0.25f * (1.f - t) + tint.mV[VX] * t,
+                               0.85f * (1.f - t) + tint.mV[VY] * t,
+                               1.00f * (1.f - t) + tint.mV[VZ] * t,
+                               alpha);
+            shader->uniform4f(sGhostParams, 1.f, 0.8f, 1.f, 6.f);
+        }
+        else
+        {
+            // x-ray: rim-only (no scanlines/flicker) over a faint cool body --
+            // interior nearly clear, silhouette edges glow in the actor hue
+            const F32 t = 0.35f;
+            gGL.diffuseColor4f(0.55f * (1.f - t) + tint.mV[VX] * t,
+                               0.75f * (1.f - t) + tint.mV[VY] * t,
+                               1.00f * (1.f - t) + tint.mV[VZ] * t,
+                               alpha * 0.4f);
+            shader->uniform4f(sGhostParams, 0.f, 2.2f, 0.f, 6.f);
+        }
+        draw_batches(false);
+        break;
+    }
+    case GHOST_STYLE_GHOST:
+    default:
+    {
+        // classic: blend the flat tint only on the primed front layer --
         // mostly white, with a faint pull toward the actor hue so overlapping
-        // actors' ghosts stay distinguishable without hiding the body shape.
+        // actors' ghosts stay distinguishable without hiding the body shape
+        LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
+        LLGLEnable    blend(GL_BLEND);
+        gGL.setSceneBlendType(LLRender::BT_ALPHA);
+        gGL.setColorMask(true, true);
         const F32 t = 0.25f;
         gGL.diffuseColor4f(1.f - t + tint.mV[VX] * t,
                            1.f - t + tint.mV[VY] * t,
                            1.f - t + tint.mV[VZ] * t,
                            alpha);
-        const LLVOAvatar* lastAvatar = nullptr;
-        U64  lastMeshId = 0;
-        bool skipLastSkin = false;
-        for (LLDrawInfo* di : batches)
-        {
-            if (LLRenderPass::uploadMatrixPalette(di->mAvatar, di->mSkinInfo,
-                                                  lastAvatar, lastMeshId, skipLastSkin))
-            {
-                di->mVertexBuffer->setBuffer();
-                di->mVertexBuffer->drawRange(LLRender::TRIANGLES,
-                                             di->mStart, di->mEnd, di->mCount, di->mOffset);
-            }
-        }
+        draw_batches(false);
+        break;
+    }
     }
 
     gGL.popMatrix();
@@ -3508,16 +3643,19 @@ void LLActorMover::renderHeadingPreview()
 
     static LLCachedControl<F32> distance(gSavedSettings, "ActorMoverDistance", 6.f);
     static LLCachedControl<F32> heading(gSavedSettings, "ActorMoverHeading", 0.f);
-    // pose/blocking ghosts: translucent copies of the actor at its current spot,
-    // its destination, and every path node. Opt-in, default off, so the overlay
-    // pass adds nothing per frame unless the director asks for it. PathGhostUse-
-    // Ghost style precedence: the true 3D model ghost (PathGhostUseModel, default)
-    // wins; the impostor billboard (PathGhostUseImpostor) and the stick figure are
-    // fallbacks for actors the model ghost can't cover (no rigged geometry) or when
-    // the model ghost is switched off.
+    // pose/blocking ghosts: styled copies of the actor at every path node.
+    // Opt-in, default off, so the overlay pass adds nothing per frame unless
+    // the director asks for it. Renderer precedence: the true 3D model ghost
+    // (PathGhostUseModel, default) wins; the impostor billboard
+    // (PathGhostUseImpostor) and the stick figure are fallbacks for actors the
+    // model ghost can't cover (no rigged geometry) or when the model ghost is
+    // switched off. PathGhostStyle picks the model ghost's LOOK (ghost / clone /
+    // hologram / wireframe / x-ray, see EGhostStyle); the fallbacks are
+    // unaffected by it.
     static LLCachedControl<bool> onion(gSavedSettings, "PathShowOnionSkin", false);
     static LLCachedControl<bool> use_model(gSavedSettings, "PathGhostUseModel", true);
     static LLCachedControl<bool> use_impostor(gSavedSettings, "PathGhostUseImpostor", true);
+    static LLCachedControl<S32>  ghost_style(gSavedSettings, "PathGhostStyle", 0);
     const F32 dist = llmax((F32)distance, 0.1f);
 
     // same beacon-style local overlay as renderObjectBeacons(): UI shader, no
@@ -3776,7 +3914,8 @@ void LLActorMover::renderHeadingPreview()
                 auto bit = mGhostBatches.find(g.mAv->getID());
                 if (bit != mGhostBatches.end() && !bit->second.empty())
                 {
-                    drew = drawGeometryGhost(g.mAv, bit->second, g.mFoot, g.mTint, GHOST_ALPHA);
+                    drew = drawGeometryGhost(g.mAv, bit->second, g.mFoot, g.mTint,
+                                             GHOST_ALPHA, (S32)ghost_style);
                 }
                 if (drew == 0)
                 {

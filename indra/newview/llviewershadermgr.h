@@ -207,6 +207,10 @@ extern LLGLSLShader         gBloomCompositeProgram;
 extern LLGLSLShader         gHighlightProgram;
 extern LLGLSLShader         gHighlightNormalProgram;
 extern LLGLSLShader         gHighlightSpecularProgram;
+// [ActorMover] pose-ghost FX (hologram / x-ray styles); the rigged variant is
+// what drawGeometryGhost binds. Optional: draw code falls back to the classic
+// ghost when this failed to compile.
+extern LLGLSLShader         gActorGhostProgram;
 
 extern LLGLSLShader         gDeferredHighlightProgram;
 
