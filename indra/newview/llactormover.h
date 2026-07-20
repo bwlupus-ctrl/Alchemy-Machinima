@@ -496,6 +496,11 @@ public:
         F32        mPixelSize = 0.f;        // screen px (0 = off)
         F32        mGlitch = 0.f;           // 0..1 slice offset + chroma split
         F32        mPhase = 0.f;            // per-instance phase so FX don't sync up
+        // the tint is an operator-authored custom hue (Ghost Studio hue slider)
+        // rather than the default actor identity color. The CLONE style ignores
+        // the identity tint (a clone should match the avatar), but a custom hue
+        // is an explicit art direction and gets mixed into the clone too.
+        bool       mTintCustom = false;
     };
 
 private:

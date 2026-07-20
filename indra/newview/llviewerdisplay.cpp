@@ -1562,6 +1562,17 @@ void render_ui(F32 zoom_factor, int subfield)
             gPipeline.disableLights();
         }
 
+        // [GhostStudio] studio ghost instances are SCENE DRESSING, not an
+        // editing indicator. They draw HERE -- before (and independent of) the
+        // RENDER_DEBUG_FEATURE_UI gate below -- because the previous home at
+        // the end of render_ui_3d() only LOOKED gate-free: render_ui_3d itself
+        // is skipped entirely when the UI feature flag is off, so Ctrl+Alt+F1
+        // still hid every placed ghost (the bug the director reported while
+        // filming). Drawing before the gate also keeps ghosts UNDER beacons /
+        // selections / 2D chrome when the UI is on. Zero cost when the studio
+        // has no enabled instances.
+        LLActorMover::instance().renderStudioGhosts();
+
         bool render_ui = gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI);
         if (render_ui)
         {
@@ -1735,12 +1746,6 @@ void render_ui_3d()
         // Make sure particle effects disappear
         LLHUDObject::renderAllForTimer();
     }
-
-    // [GhostStudio] studio ghost instances are SCENE DRESSING, not an editing
-    // indicator: they draw OUTSIDE the beacon/UI-visibility gate above, so
-    // hiding the UI to film (Ctrl+Alt+F1 / HideUIControls) keeps every placed
-    // ghost in shot. Zero cost when the studio has no enabled instances.
-    LLActorMover::instance().renderStudioGhosts();
 
     stop_glerror();
 }

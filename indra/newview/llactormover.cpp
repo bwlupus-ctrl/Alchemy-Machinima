@@ -3781,6 +3781,21 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                     b *= powf(llmax(f.mV[2], 0.f), 0.4545f);
                     a  = f.mV[3];   // factor alpha shapes the blended sweep
                 }
+                // Ghost Studio's custom hue applies to the clone too (the fix
+                // for "the hue slider does nothing in Clone"): a deliberate art
+                // direction beats texture fidelity. Brightness-normalized so
+                // the tint shifts hue without dimming the body; the default
+                // identity tint stays ignored so a stock clone matches the
+                // avatar exactly.
+                if (gp.mTintCustom)
+                {
+                    const F32 mx = llmax(llmax(tint.mV[0], tint.mV[1]),
+                                         llmax(tint.mV[2], 0.001f));
+                    const F32 s = 0.65f;    // mix strength: clearly tinted, still textured
+                    r *= 1.f - s + s * (tint.mV[0] / mx);
+                    g *= 1.f - s + s * (tint.mV[1] / mx);
+                    b *= 1.f - s + s * (tint.mV[2] / mx);
+                }
                 gGL.diffuseColor4f(r, g, b, a);
             }
 
@@ -4733,6 +4748,7 @@ void LLActorMover::renderStudioGhosts()
         gp.mShimmerIntensity = inst.mShimmerIntensity;
         gp.mPixelSize        = inst.mPixelSize;
         gp.mGlitch           = inst.mGlitch;
+        gp.mTintCustom       = !inst.mUseActorTint;   // hue slider reaches the clone
         // stable per-instance FX phase from the id, so a crowd of ghosts
         // shimmers/glitches out of sync instead of strobing as one
         gp.mPhase = (F32)(inst.mId.mData[0] | (inst.mId.mData[1] << 8)) * (F_TWO_PI / 65536.f);
