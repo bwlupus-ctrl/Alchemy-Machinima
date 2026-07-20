@@ -59,6 +59,7 @@ in vec2 vary_texcoord0;
 in vec3 vary_position;
 in vec3 vary_normal;
 flat in int vary_texture_index;
+in vec4 vary_vertex_color;
 
 // cheap stable hash for the glitch bands (classic one-liner)
 float ghost_hash(vec2 p)
@@ -109,6 +110,13 @@ void main()
         tex.r = texture(diffuseMap, uv + split).r;
         tex.b = texture(diffuseMap, uv - split).b;
     }
+
+    // [R2-4] per-vertex colour: the editor's TE tint (rgb) and transparency
+    // (a) on legacy faces, folded into the sample so every consumer below --
+    // clone RGB, the flat-tint styles' alpha, and the mask discard -- sees it
+    // exactly like the real render does. White (the parked generic) for PBR
+    // and untinted faces = byte-identical.
+    tex *= vary_vertex_color;
 
     // alpha-mask cutoff, exactly like the real render's masked passes. With
     // ghostAux.x == 0 no texel can be below the cutoff, so the branch is free

@@ -3761,6 +3761,13 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                           gp.mGlitch, 0.f);
             sh->uniform1i(sGhostSlot, -1);
         }
+        // [R2-4] park the diffuse_color GENERIC at white: buffers WITHOUT a
+        // COLOR array (PBR) read the generic, whose GL boot default is BLACK
+        // -- unparked, every PBR batch would shade black the moment the
+        // shader gained the attribute. Buffers WITH the array (legacy faces,
+        // carrying the baked TE tint + transparency) ignore the generic.
+        // Generic state is global per attribute location; restored at exit.
+        sh->vertexAttrib4f(LLVertexBuffer::TYPE_COLOR, 1.f, 1.f, 1.f, 1.f);
         gGL.diffuseColor4fv(style_color.mV);
         // texture_matrix0 could hold a stale value from an earlier frame's
         // sync to this program; start from a known-identity UV transform
@@ -4343,6 +4350,9 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     gGL.syncMatrices();
     gGL.setColorMask(true, true);
     gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
+    // [R2-4] restore the diffuse_color generic to the GL boot default so no
+    // later pass inherits our white park (generic state is global)
+    shader->vertexAttrib4f(LLVertexBuffer::TYPE_COLOR, 0.f, 0.f, 0.f, 1.f);
     shader->unbind();   // draw_static always hands back to the rigged program
     return (S32)(batches.size() + (static_faces ? static_faces->size() : 0));
 }

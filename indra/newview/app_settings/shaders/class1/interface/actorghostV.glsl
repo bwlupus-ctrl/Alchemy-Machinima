@@ -27,11 +27,18 @@ in vec2 texcoord0;
 // the attribute array is only enabled on buffers that carry it -- others read
 // the integer generic, which the ghostSlot = -1 default never filters on)
 in int texture_index;
+// [R2-4] per-vertex colour: legacy faces bake the editor's TE tint (rgb) and
+// transparency (a) here. Buffers without a COLOR array read the generic
+// attribute, which the ghost draw parks at WHITE -- so PBR batches (whose
+// tint is the base-colour FACTOR already in the colour uniform) and untinted
+// faces are byte-identical, never double-tinted.
+in vec4 diffuse_color;
 
 out vec2 vary_texcoord0;
 out vec3 vary_position;     // eye space
 out vec3 vary_normal;       // eye space; normalized in the fragment shader
 flat out int vary_texture_index;
+out vec4 vary_vertex_color;
 
 #ifdef HAS_SKIN
 mat4 getObjectSkinnedTransform();
@@ -56,4 +63,5 @@ void main()
     gl_Position = projection_matrix * pos;
     vary_texcoord0 = (texture_matrix0 * vec4(texcoord0, 0, 1)).xy;
     vary_texture_index = texture_index;
+    vary_vertex_color = diffuse_color;
 }
