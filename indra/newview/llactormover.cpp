@@ -1632,20 +1632,19 @@ void LLActorMover::start(const LLUUID& actor_id)
 
 void LLActorMover::startAll()
 {
-    const uuid_vec_t& roster = getRoster();
-    if (roster.empty())
-    {
-        start(LLUUID::null);
-        return;
-    }
-    for (const LLUUID& id : roster)
-    {
-        start(id);
-    }
+    // [Director] delay-aware: members of a cast group carrying a start delay
+    // are queued and begin N seconds later (staggered starts) -- so ACTION,
+    // the console group Start and the shared panel's Walk-everyone all honor
+    // the same per-group delays. With no delays configured this reduces to
+    // the plain per-member start loop (self when the roster is empty).
+    LLDirectorCast::instance().startMovesStaggered(getRoster());
 }
 
 void LLActorMover::stop(const LLUUID& actor_id)
 {
+    // [Director] a deliberate stop also disarms this actor's queued staggered
+    // start (group delay), so no Stop button can leave a surprise walk armed
+    LLDirectorCast::instance().cancelPendingStart(actor_id);
     LLVOAvatar* av = resolve_actor(actor_id);
     if (av)
     {
@@ -1670,6 +1669,8 @@ void LLActorMover::stop(const LLUUID& actor_id)
 
 void LLActorMover::stopAll()
 {
+    // [Director] stop-everything also empties the staggered-start queue
+    LLDirectorCast::instance().cancelPendingStarts();
     for (auto& pair : mMoves)
     {
         if (LLVOAvatar* mav = resolve_actor(pair.first))

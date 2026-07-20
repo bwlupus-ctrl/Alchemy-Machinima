@@ -101,6 +101,40 @@ public:
     // every member tagged with this group, in cast order (empty name -> empty)
     uuid_vec_t membersInGroup(const std::string& name) const;
 
+    // group MANAGEMENT (console Groups section). renameGroup retags every
+    // member and carries the group's start delay across; renaming onto an
+    // existing group MERGES the two (the surviving delay is the target's when
+    // it has one, else the source's). dissolveGroup clears every member's tag
+    // -- nobody leaves the cast -- and drops the delay. Both return false on
+    // an empty/unknown source name (rename also refuses an empty new name).
+    bool renameGroup(const std::string& old_name, const std::string& new_name);
+    bool dissolveGroup(const std::string& name);
+
+    // per-group START DELAY (staggered starts): seconds after ACTION / "Start
+    // group" before the group's members begin their moves, so crowds can enter
+    // in waves off one ACTION. Stored keyed by group name -- the tag on the
+    // members IS the group; this map only annotates it, and a name that loses
+    // its last member sheds its delay too (same no-stale-registry rule as the
+    // tags). Serialized with the scene alongside the tags.
+    void setGroupDelay(const std::string& name, F32 seconds);
+    F32  getGroupDelay(const std::string& name) const;     // 0 when none set
+
+    // ---- staggered starts (pending-start queue) ----
+    // startMovesStaggered() is the delay-aware replacement for the plain
+    // LLActorMover start loops: each id whose group carries a delay is QUEUED
+    // and started by a self-deleting one-shot timer when due; everyone else
+    // starts immediately (a zero-delay call is behavior-identical to the old
+    // per-member start loop). An empty id list means "my avatar" (mirrors
+    // startAll()). The cancels drop queued members WITHOUT touching running
+    // moves; CUT and every deliberate stop path call them alongside the stops
+    // (LLActorMover::stop/stopAll cancel pending starts themselves, so no
+    // stop button can leave a surprise walk armed).
+    void startMovesStaggered(const uuid_vec_t& ids);
+    void cancelPendingStarts();
+    void cancelPendingStart(const LLUUID& id);
+    bool hasPendingStarts() const { return !mPendingStarts.empty(); }
+    S32  pendingStartCount() const { return (S32)mPendingStarts.size(); }
+
     // ---- marks ----
     // setMarks() snapshots every resolvable member's current rendered root;
     // resetToMarks() snaps marked members back (ActorMover-style local root
@@ -143,6 +177,13 @@ private:
     void fireAction();
     void cancelCountdown();
 
+    // staggered starts: fire every queued start that has come due, then prune
+    // dead (already-fired, self-deleted) timer pointers from mStaggerTimers
+    void servicePendingStarts();
+    // drop a group's delay once its last member is gone/retagged (the
+    // no-stale-registry rule); safe on names that never had a delay
+    void pruneGroupDelay(const std::string& name);
+
     std::vector<CastMember> mCast;
     uuid_vec_t              mIds;       // mirrors mCast order
 
@@ -162,6 +203,22 @@ private:
     // nulls it before the timer self-deletes, cancelCountdown() deletes it)
     LLEventTimer* mCountdownTimer = nullptr;
     F64           mCountdownEndsAt = 0.0;   // LLTimer::getElapsedSeconds() deadline
+
+    // ---- staggered starts ----
+    std::map<std::string, F32> mGroupDelays;    // group name -> start delay, s
+
+    struct PendingStart
+    {
+        LLUUID mId;         // cast member queued to start
+        F64    mDueAt;      // LLTimer::getElapsedSeconds() deadline
+    };
+    std::vector<PendingStart> mPendingStarts;
+    // self-deleting one-shot fire timers (LLEventTimer::run_after contract),
+    // one per distinct delay per staggered call. Every pointer here is live
+    // by construction: a firing timer's lambda removes its own pointer BEFORE
+    // servicing the queue (the same discipline as mCountdownTimer), so
+    // cancelPendingStarts() can delete the rest without a liveness probe.
+    std::vector<LLEventTimer*> mStaggerTimers;
 };
 
 #endif // LL_LLDIRECTORCAST_H

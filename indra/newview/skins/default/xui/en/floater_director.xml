@@ -376,6 +376,93 @@
              top="366"
              name="btn_group_stop"
              width="88" />
+            <!-- Groups MANAGEMENT: every group at a glance (member count +
+                 start delay), select a row to highlight its members in the
+                 cast list and edit its delay / name below. Dissolve only
+                 untags; nobody leaves the cast. Delays drive the staggered
+                 starts (ACTION / Start group launch a delayed group's members
+                 N seconds late) and save with the scene. -->
+            <text
+             follows="left|top"
+             font="SansSerifSmallBold"
+             height="14"
+             layout="topleft"
+             left="10"
+             top="392"
+             name="groups_lbl"
+             width="120">
+                Groups
+            </text>
+            <scroll_list
+             column_padding="0"
+             draw_heading="true"
+             follows="left|top"
+             height="76"
+             layout="topleft"
+             left="10"
+             top="408"
+             name="groups_list"
+             tool_tip="Every group with its member count and start delay. Select a row to highlight its members in the cast list and load the delay / rename fields below"
+             width="354">
+                <columns
+                 label="Group"
+                 name="group"
+                 width="180" />
+                <columns
+                 label="Members"
+                 name="members"
+                 width="70" />
+                <columns
+                 label="Delay"
+                 name="delay"
+                 width="80" />
+            </scroll_list>
+            <spinner
+             decimal_digits="1"
+             follows="left|top"
+             height="20"
+             increment="0.5"
+             label="Delay (s)"
+             label_width="52"
+             layout="topleft"
+             left="10"
+             max_val="120"
+             min_val="0"
+             name="group_delay_spinner"
+             tool_tip="Start delay for the selected group (s): ACTION and Start group launch its members this many seconds late (staggered starts). 0 = immediate. Saved with the scene"
+             top="490"
+             width="130" />
+            <button
+             follows="left|top"
+             height="22"
+             label="Dissolve"
+             layout="topleft"
+             left="264"
+             top="488"
+             name="btn_group_dissolve"
+             tool_tip="Clear the selected group: every member is untagged (nobody is removed from the cast); its delay is dropped"
+             width="100" />
+            <line_editor
+             commit_on_focus_lost="false"
+             follows="left|top"
+             height="20"
+             layout="topleft"
+             left="10"
+             max_length_chars="32"
+             name="group_rename_editor"
+             tool_tip="New name for the selected group; Enter or Rename commits. Renaming onto an existing group merges them"
+             top="516"
+             width="248" />
+            <button
+             follows="left|top"
+             height="22"
+             label="Rename"
+             layout="topleft"
+             left="264"
+             top="515"
+             name="btn_group_rename"
+             tool_tip="Rename the selected group to the name on the left (retags every member)"
+             width="100" />
         </panel>
 
         <!-- ============ Path tab ============ -->

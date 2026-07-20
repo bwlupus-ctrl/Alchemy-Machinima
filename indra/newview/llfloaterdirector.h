@@ -34,6 +34,7 @@ class LLContextMenu;
 class LLLineEditor;
 class LLPanel;
 class LLScrollListCtrl;
+class LLSpinCtrl;
 class LLTabContainer;
 class LLTextBox;
 class LLView;
@@ -96,9 +97,17 @@ private:
     void onCastCopyUUID();
     void onCastRemove();
     // ---- groups ----
-    void onCommitGroupAssign();         // tag the selected member(s) ("" = ungroup)
+    void onCommitGroupAssign();         // tag the selected member(s) ("" / "(none)" = ungroup)
     void onClickGroup(bool start);      // Start/Stop every member of the picked group
     void refreshGroupControls();        // combos rebuilt only when the name set changed
+    // Groups management section (Move tab): list of groups with member counts
+    // + start delays; selecting a row highlights its members in the cast list
+    // and loads the delay spinner / rename editor
+    std::string selectedManagedGroup() const;   // groups_list selection ("" = none)
+    void onGroupsListSelect();
+    void onCommitGroupDelay();          // spinner -> the selected group's start delay
+    void onClickGroupRename();          // rename editor commit / Rename button
+    void onClickGroupDissolve();
 
     // ---- Move tab ----
     void refreshMoveTab();              // feed the shared transport panel the cast selection
@@ -185,6 +194,15 @@ private:
     LLButton*   mGroupStopBtn = nullptr;
     std::vector<std::string> mLastGroupNames;   // last set the combos were built from
     LLUUID      mGroupShownFor;                 // whose group the assign combo shows
+    // Groups management section (Move tab): the list is rebuilt only when its
+    // composed name/count/delay snapshot changes (draw()-rate friendly)
+    LLScrollListCtrl* mGroupsList = nullptr;
+    LLSpinCtrl*       mGroupDelaySpinner = nullptr;
+    LLLineEditor*     mGroupRenameEditor = nullptr;
+    LLButton*         mGroupRenameBtn = nullptr;
+    LLButton*         mGroupDissolveBtn = nullptr;
+    std::vector<std::string> mGroupsListSnapshot;   // "name|count|delay" rows last built
+    std::string       mGroupDelayShownFor;          // whose delay the spinner shows
 
     // Move tab -- the shared transport (scope, heading dial, params, Walk/Stop);
     // the console feeds it the cast selection each draw

@@ -54,6 +54,7 @@ void LLDirectorCast::remove(const LLUUID& id)
     {
         return;
     }
+    const std::string group = it->mGroup;
     mCast.erase(it);
     mIds.erase(std::find(mIds.begin(), mIds.end(), id));
     // a subject that leaves the cast stops being a subject
@@ -65,6 +66,9 @@ void LLDirectorCast::remove(const LLUUID& id)
     {
         mSubjectB.setNull();
     }
+    // leaving the cast also leaves the start queue, and may retire the group
+    cancelPendingStart(id);
+    pruneGroupDelay(group);
 }
 
 void LLDirectorCast::toggle(const LLUUID& id)
@@ -144,7 +148,12 @@ void LLDirectorCast::setGroup(const LLUUID& id, const std::string& name)
 {
     if (CastMember* m = getMember(id))
     {
+        const std::string old = m->mGroup;
         m->mGroup = name;   // "" = ungroup; no registry to keep in sync
+        if (old != name)
+        {
+            pruneGroupDelay(old);   // retagging the last member retires the group
+        }
     }
 }
 
@@ -185,6 +194,194 @@ uuid_vec_t LLDirectorCast::membersInGroup(const std::string& name) const
         }
     }
     return ids;
+}
+
+bool LLDirectorCast::renameGroup(const std::string& old_name, const std::string& new_name)
+{
+    if (old_name.empty() || new_name.empty() || old_name == new_name)
+    {
+        return false;
+    }
+    bool any = false;
+    for (CastMember& m : mCast)
+    {
+        if (m.mGroup == old_name)
+        {
+            m.mGroup = new_name;
+            any = true;
+        }
+    }
+    if (!any)
+    {
+        return false;   // unknown group: nothing carried the tag
+    }
+    // carry the start delay across. Renaming ONTO an existing group merges the
+    // two; the target's own delay wins when it has one (the surviving name
+    // keeps behaving the way the operator last saw it), else the source's
+    // rides along.
+    auto old_it = mGroupDelays.find(old_name);
+    if (old_it != mGroupDelays.end())
+    {
+        if (mGroupDelays.find(new_name) == mGroupDelays.end())
+        {
+            mGroupDelays[new_name] = old_it->second;
+        }
+        mGroupDelays.erase(old_name);
+    }
+    return true;
+}
+
+bool LLDirectorCast::dissolveGroup(const std::string& name)
+{
+    if (name.empty())
+    {
+        return false;
+    }
+    bool any = false;
+    for (CastMember& m : mCast)
+    {
+        if (m.mGroup == name)
+        {
+            m.mGroup.clear();   // untag only -- nobody leaves the cast
+            any = true;
+        }
+    }
+    mGroupDelays.erase(name);
+    return any;
+}
+
+void LLDirectorCast::setGroupDelay(const std::string& name, F32 seconds)
+{
+    if (name.empty())
+    {
+        return;
+    }
+    if (seconds > 0.01f)
+    {
+        mGroupDelays[name] = seconds;
+    }
+    else
+    {
+        mGroupDelays.erase(name);   // 0 = no entry, so the map never bloats
+    }
+}
+
+F32 LLDirectorCast::getGroupDelay(const std::string& name) const
+{
+    auto it = mGroupDelays.find(name);
+    return it != mGroupDelays.end() ? it->second : 0.f;
+}
+
+void LLDirectorCast::pruneGroupDelay(const std::string& name)
+{
+    if (!name.empty() && membersInGroup(name).empty())
+    {
+        mGroupDelays.erase(name);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// staggered starts (pending-start queue)
+// ---------------------------------------------------------------------------
+void LLDirectorCast::startMovesStaggered(const uuid_vec_t& ids)
+{
+    LLActorMover& mover = LLActorMover::instance();
+    if (ids.empty())
+    {
+        // mirrors startAll(): an empty cast still means "my avatar" (self is
+        // never grouped, so there is nothing to stagger)
+        mover.start(LLUUID::null);
+        return;
+    }
+
+    const F64 now = LLTimer::getElapsedSeconds().value();
+    std::vector<F32> delays;    // distinct delays queued by THIS call
+    for (const LLUUID& id : ids)
+    {
+        const F32 delay = getGroupDelay(getGroup(id));
+        if (delay <= 0.01f)
+        {
+            mover.start(id);    // undelayed: byte-identical to the old loop
+            continue;
+        }
+        // re-queue rather than double-queue on a repeated Start: drop any
+        // older pending entry for this member first
+        cancelPendingStart(id);
+        mPendingStarts.push_back({ id, now + delay });
+        if (std::find(delays.begin(), delays.end(), delay) == delays.end())
+        {
+            delays.push_back(delay);
+        }
+    }
+    // one self-deleting one-shot per distinct delay; each fire sweeps the
+    // whole queue for everything due (so a late timer still starts everyone
+    // it should, and a timer whose members were canceled is a clean no-op).
+    // The lambda removes ITS OWN pointer from mStaggerTimers before anything
+    // else -- after tick() returns, updateClass() deletes the timer object
+    // (run_after contract), so this is the same "pointer in the list is live
+    // by construction" discipline mCountdownTimer uses. The shared cell only
+    // exists because the pointer is not known until run_after returns.
+    for (F32 delay : delays)
+    {
+        auto cell = std::make_shared<LLEventTimer*>(nullptr);
+        *cell = LLEventTimer::run_after(delay, [this, cell]()
+        {
+            mStaggerTimers.erase(
+                std::remove(mStaggerTimers.begin(), mStaggerTimers.end(), *cell),
+                mStaggerTimers.end());
+            servicePendingStarts();
+        });
+        mStaggerTimers.push_back(*cell);
+    }
+    if (!mPendingStarts.empty())
+    {
+        LL_INFOS("DirectorCast") << mPendingStarts.size()
+                                 << " staggered start(s) queued" << LL_ENDL;
+    }
+}
+
+void LLDirectorCast::servicePendingStarts()
+{
+    // start everything due (small epsilon: LLEventTimer fires on frame
+    // granularity, so a fire can land a hair before its own deadline)
+    const F64 now = LLTimer::getElapsedSeconds().value() + 0.02;
+    LLActorMover& mover = LLActorMover::instance();
+    for (size_t i = 0; i < mPendingStarts.size(); )
+    {
+        if (mPendingStarts[i].mDueAt <= now)
+        {
+            const LLUUID id = mPendingStarts[i].mId;
+            mPendingStarts.erase(mPendingStarts.begin() + i);
+            mover.start(id);    // may re-enter cancelPendingStart(id): erase FIRST
+        }
+        else
+        {
+            ++i;
+        }
+    }
+}
+
+void LLDirectorCast::cancelPendingStarts()
+{
+    mPendingStarts.clear();
+    // every pointer in the list is live by construction (a fired timer
+    // removed itself first), so deleting cancels the pending one-shots
+    for (LLEventTimer* t : mStaggerTimers)
+    {
+        delete t;
+    }
+    mStaggerTimers.clear();
+}
+
+void LLDirectorCast::cancelPendingStart(const LLUUID& id)
+{
+    // the member leaves the queue; its timer (possibly shared with others)
+    // stays scheduled and fires as a no-op sweep -- harmless and simpler than
+    // reference-counting timers per member
+    mPendingStarts.erase(
+        std::remove_if(mPendingStarts.begin(), mPendingStarts.end(),
+                       [&id](const PendingStart& p) { return p.mId == id; }),
+        mPendingStarts.end());
 }
 
 // ---------------------------------------------------------------------------
@@ -272,13 +469,28 @@ LLSD LLDirectorCast::sceneData() const
     data["cast"] = cast_arr;
     data["subject_a"] = mSubjectA;
     data["subject_b"] = mSubjectB;
+    // per-group start delays, only for groups that still exist (the members
+    // above carry the tags; this map just annotates them)
+    LLSD delays = LLSD::emptyMap();
+    for (const std::string& name : getGroupNames())
+    {
+        const F32 d = getGroupDelay(name);
+        if (d > 0.01f)
+        {
+            delays[name] = d;
+        }
+    }
+    data["group_delays"] = delays;
     return data;
 }
 
 void LLDirectorCast::applySceneData(const LLSD& data)
 {
     // replace membership wholesale; a running transport is the caller's
-    // problem (the console cuts before loading)
+    // problem (the console cuts before loading). Queued staggered starts and
+    // group delays belong to the outgoing cast, so both reset here.
+    cancelPendingStarts();
+    mGroupDelays.clear();
     mCast.clear();
     mIds.clear();
     mSubjectA.setNull();
@@ -320,6 +532,20 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     if (contains(b))
     {
         mSubjectB = b;
+    }
+
+    // group start delays (absent in pre-delay scenes); only names some loaded
+    // member actually carries are kept -- no stale registry
+    const LLSD& delays = data["group_delays"];
+    if (delays.isMap())
+    {
+        for (LLSD::map_const_iterator it = delays.beginMap(); it != delays.endMap(); ++it)
+        {
+            if (!membersInGroup(it->first).empty())
+            {
+                setGroupDelay(it->first, (F32)it->second.asReal());
+            }
+        }
     }
 }
 
@@ -394,8 +620,11 @@ void LLDirectorCast::fireAction()
     if (arm_moves)
     {
         // start-all-cast (self when the cast is empty), each move capturing
-        // the shared parameters at start -- same call the mover floater makes
-        LLActorMover::instance().startAll();
+        // the shared parameters at start. Delay-aware: members of a group
+        // carrying a start delay are queued and begin N seconds later
+        // (staggered starts); with no delays configured this is
+        // behavior-identical to the old startAll().
+        startMovesStaggered(mIds);
         mFiredMoves = true;
     }
     if (arm_camera)
@@ -438,6 +667,10 @@ void LLDirectorCast::fireAction()
 void LLDirectorCast::cut()
 {
     cancelCountdown();
+    // queued staggered starts die with the take -- BEFORE the running check,
+    // so a CUT pressed while only group-Start waves are pending (transport
+    // never "running") still disarms them
+    cancelPendingStarts();
     if (!mRunning)
     {
         return;

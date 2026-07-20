@@ -35,6 +35,7 @@
 #include "llscrolllistctrl.h"
 #include "llsdserialize.h"          // scene LLSD XML files
 #include "llselectmgr.h"
+#include "llspinctrl.h"             // group start-delay spinner (Groups section)
 #include "lltabcontainer.h"
 #include "lltextbox.h"
 #include "lluictrlfactory.h"
@@ -66,6 +67,28 @@ constexpr char TAB_ICON_TAKES[]   = "Command_Snapshot_Icon";
 // scene files live beside the cinematic presets, same idiom
 constexpr char SCENE_SUBDIR[]  = "director_scenes";
 constexpr S32  SCENE_VERSION   = 1;
+
+// the assign combo's explicit "ungroup" row: discoverable equivalent of
+// committing an empty name (which still works)
+constexpr char GROUP_NONE_LABEL[] = "(none)";
+
+// Stable per-group tint for cast rows: hash the name to a hue, keep it a
+// readable pastel (low saturation, full value) so the text stays legible on
+// the dark list while two groups a row apart still read as different colors.
+// Same spirit as LLActorMover::actorPathColor, keyed by name instead of id.
+LLColor4 group_tint(const std::string& name)
+{
+    U32 h = 2166136261u;            // FNV-1a over the name bytes
+    for (unsigned char c : name)
+    {
+        h = (h ^ c) * 16777619u;
+    }
+    const F32 hue = (h % 360u) / 360.f;
+    LLColor4 col;
+    col.setHSL(hue, 0.55f, 0.78f);  // pastel: light, moderately saturated
+    col.mV[VW] = 1.f;
+    return col;
+}
 // playing-marker glyph for the Animate tab's list
 constexpr char GLYPH_PLAYING[] = "\xE2\x96\xB6";    // BLACK RIGHT-POINTING TRIANGLE
 
@@ -211,6 +234,19 @@ bool LLFloaterDirector::postBuild()
     mGroupStopBtn = getChild<LLButton>("btn_group_stop");
     mGroupStartBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroup(true); });
     mGroupStopBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroup(false); });
+    // Groups management section (Move tab): list every group with member count
+    // + start delay; select a row to highlight its members in the cast list
+    // and edit its delay / name. Dissolve only untags -- nobody leaves the cast.
+    mGroupsList = getChild<LLScrollListCtrl>("groups_list");
+    mGroupDelaySpinner = getChild<LLSpinCtrl>("group_delay_spinner");
+    mGroupRenameEditor = getChild<LLLineEditor>("group_rename_editor");
+    mGroupRenameBtn = getChild<LLButton>("btn_group_rename");
+    mGroupDissolveBtn = getChild<LLButton>("btn_group_dissolve");
+    mGroupsList->setCommitCallback([this](LLUICtrl*, const LLSD&) { onGroupsListSelect(); });
+    mGroupDelaySpinner->setCommitCallback([this](LLUICtrl*, const LLSD&) { onCommitGroupDelay(); });
+    mGroupRenameEditor->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroupRename(); });
+    mGroupRenameBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroupRename(); });
+    mGroupDissolveBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroupDissolve(); });
 
     // ---- Move tab ----
     // the transport (scope, heading dial, params, Walk/Stop) is the shared
@@ -861,8 +897,13 @@ void LLFloaterDirector::refreshCastList()
             if (auto* cell = dynamic_cast<LLScrollListText*>(item->getColumn(name_col)))
             {
                 cell->setText(name);
-                // out-of-world members stay in the cast, grayed
-                cell->setColor(in_world ? LLColor4::white : LLColor4::grey);
+                // out-of-world members stay in the cast, grayed; grouped
+                // members tint to their group's stable pastel hue so the
+                // grouping reads at a glance (the diffed mName includes the
+                // group suffix, so a retag re-applies the color)
+                cell->setColor(!in_world ? LLColor4::grey
+                             : (m && !m->mGroup.empty()) ? group_tint(m->mGroup)
+                                                         : LLColor4::white);
             }
             state.mName = name;
             state.mInWorld = in_world;
@@ -1050,9 +1091,14 @@ void LLFloaterDirector::onCastRemove()
 void LLFloaterDirector::onCommitGroupAssign()
 {
     // typed name or picked row; whitespace trims away so " guards " and
-    // "guards" are one group, and an empty commit ungroups
+    // "guards" are one group, and an empty commit ungroups. The "(none)" row
+    // is the discoverable spelling of the empty commit.
     std::string name = mGroupAssignCombo->getSimple();
     LLStringUtil::trim(name);
+    if (name == GROUP_NONE_LABEL)
+    {
+        name.clear();
+    }
     LLDirectorCast& cast = LLDirectorCast::instance();
     for (const LLUUID& id : selectedCastIds())
     {
@@ -1071,14 +1117,99 @@ void LLFloaterDirector::onClickGroup(bool start)
     {
         return;
     }
-    // same per-member iteration as LLActorMover::startAll()/stopAll(), just
-    // scoped to the group's ids; each start() captures its own parameters, so
-    // a group launch behaves exactly like pressing Walk on each member
-    LLActorMover& mover = LLActorMover::instance();
-    for (const LLUUID& id : LLDirectorCast::instance().membersInGroup(name))
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    if (start)
     {
-        start ? mover.start(id) : mover.stop(id);
+        // delay-aware: the whole group shares one delay, so with one set the
+        // members queue and step off together N seconds from now; without one
+        // this is exactly the old per-member start loop (each start() captures
+        // its own parameters, like pressing Walk on each member)
+        cast.startMovesStaggered(cast.membersInGroup(name));
     }
+    else
+    {
+        // stop() also disarms each member's queued staggered start
+        LLActorMover& mover = LLActorMover::instance();
+        for (const LLUUID& id : cast.membersInGroup(name))
+        {
+            mover.stop(id);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Groups management section (Move tab)
+// ---------------------------------------------------------------------------
+std::string LLFloaterDirector::selectedManagedGroup() const
+{
+    LLScrollListItem* item = mGroupsList->getFirstSelected();
+    return item ? item->getValue().asString() : std::string();
+}
+
+void LLFloaterDirector::onGroupsListSelect()
+{
+    const std::string name = selectedManagedGroup();
+    if (name.empty())
+    {
+        return;
+    }
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    // highlight the group's members in the cast list (cheap: selectMultiple
+    // walks the rows once), so "who is in this group" is one click. This also
+    // makes the batch ops to the left (assign, marks, Move-tab Walk on the
+    // selection) act on exactly this group.
+    mCastList->selectMultiple(cast.membersInGroup(name));
+    // load the delay spinner + prefill the rename editor with the current name
+    mGroupDelayShownFor = name;
+    mGroupDelaySpinner->setValue(cast.getGroupDelay(name));
+    mGroupRenameEditor->setText(name);
+}
+
+void LLFloaterDirector::onCommitGroupDelay()
+{
+    const std::string name = selectedManagedGroup();
+    if (!name.empty())
+    {
+        LLDirectorCast::instance().setGroupDelay(name, (F32)mGroupDelaySpinner->getValue().asReal());
+    }
+}
+
+void LLFloaterDirector::onClickGroupRename()
+{
+    const std::string old_name = selectedManagedGroup();
+    std::string new_name = mGroupRenameEditor->getText();
+    LLStringUtil::trim(new_name);
+    if (old_name.empty() || new_name.empty() || new_name == GROUP_NONE_LABEL)
+    {
+        return;
+    }
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    if (cast.renameGroup(old_name, new_name))
+    {
+        // rebuild everything group-shaped next draw and follow the selection
+        // onto the new name so the operator's context is not lost
+        mLastGroupNames.assign(1, std::string());
+        mGroupShownFor.setNull();
+        mGroupsListSnapshot.clear();
+        mGroupDelayShownFor.clear();
+        refreshGroupControls();
+        mGroupsList->setSelectedByValue(new_name, true);
+    }
+}
+
+void LLFloaterDirector::onClickGroupDissolve()
+{
+    const std::string name = selectedManagedGroup();
+    if (name.empty())
+    {
+        return;
+    }
+    // untag only: every member stays in the cast; the delay goes with the tag
+    LLDirectorCast::instance().dissolveGroup(name);
+    mLastGroupNames.assign(1, std::string());
+    mGroupShownFor.setNull();
+    mGroupsListSnapshot.clear();
+    mGroupDelayShownFor.clear();
 }
 
 void LLFloaterDirector::refreshGroupControls()
@@ -1093,6 +1224,9 @@ void LLFloaterDirector::refreshGroupControls()
         const std::string run_sel = mGroupRunCombo->getSelectedItemLabel();
         mGroupAssignCombo->clearRows();
         mGroupRunCombo->clearRows();
+        // "(none)" first: the discoverable way to clear one member's tag
+        // (commits as the empty name; typing nothing still works too)
+        mGroupAssignCombo->add(GROUP_NONE_LABEL);
         for (const std::string& name : names)
         {
             mGroupAssignCombo->add(name);
@@ -1133,12 +1267,74 @@ void LLFloaterDirector::refreshGroupControls()
     const std::string need_group_tip = names.empty()
         ? std::string("No groups yet: tag cast members via the Group box under the cast list")
         : std::string("Pick a group first");
+    const F32 run_delay = have_group ? cast.getGroupDelay(run_sel) : 0.f;
     setToolTipIfChanged(mGroupStartBtn, have_group
-        ? "Start a move for every member of '" + run_sel + "' (same as pressing Walk on each)"
+        ? (run_delay > 0.01f
+            ? llformat("Start every member of '%s' after its %.1f s delay (staggered)", run_sel.c_str(), run_delay)
+            : "Start a move for every member of '" + run_sel + "' (same as pressing Walk on each)")
         : need_group_tip);
     setToolTipIfChanged(mGroupStopBtn, have_group
-        ? "Stop every member of '" + run_sel + "'"
+        ? "Stop every member of '" + run_sel + "' (also disarms queued staggered starts)"
         : need_group_tip);
+
+    // ---- Groups management section (Move tab) ----
+    // rebuild the list only when its composed snapshot (name, member count,
+    // delay) changed; keyed rows keep the selection across rebuilds
+    std::vector<std::string> snapshot;
+    snapshot.reserve(names.size());
+    for (const std::string& name : names)
+    {
+        snapshot.push_back(llformat("%s|%d|%.1f", name.c_str(),
+                                    (S32)cast.membersInGroup(name).size(),
+                                    cast.getGroupDelay(name)));
+    }
+    if (snapshot != mGroupsListSnapshot)
+    {
+        mGroupsListSnapshot = snapshot;
+        const std::string prev_sel = selectedManagedGroup();
+        mGroupsList->deleteAllItems();
+        for (const std::string& name : names)
+        {
+            const F32 d = cast.getGroupDelay(name);
+            LLSD row;
+            row["value"] = name;
+            row["columns"][0]["column"] = "group";
+            row["columns"][0]["value"] = name;
+            row["columns"][1]["column"] = "members";
+            row["columns"][1]["value"] = llformat("%d", (S32)cast.membersInGroup(name).size());
+            row["columns"][2]["column"] = "delay";
+            row["columns"][2]["value"] = d > 0.01f ? llformat("%.1f s", d)
+                                                   : std::string("\xE2\x80\x94");   // em dash
+            mGroupsList->addElement(row, ADD_BOTTOM);
+        }
+        if (!prev_sel.empty())
+        {
+            mGroupsList->setSelectedByValue(prev_sel, true);
+        }
+    }
+
+    // spinner mirrors the selected group's delay -- but never over the
+    // operator's in-progress edit (focus check, same rule as the assign combo)
+    const std::string managed = selectedManagedGroup();
+    const bool have_managed = !managed.empty();
+    if (managed != mGroupDelayShownFor && !mGroupDelaySpinner->hasFocus())
+    {
+        mGroupDelayShownFor = managed;
+        mGroupDelaySpinner->setValue(have_managed ? cast.getGroupDelay(managed) : 0.f);
+    }
+    mGroupDelaySpinner->setEnabled(have_managed);
+    mGroupRenameEditor->setEnabled(have_managed);
+    mGroupRenameBtn->setEnabled(have_managed);
+    mGroupDissolveBtn->setEnabled(have_managed);
+    setToolTipIfChanged(mGroupDelaySpinner, have_managed
+        ? llformat("Start delay for '%s' (s): ACTION and Start group launch its members this many seconds late, so groups can enter in waves. 0 = immediate. Saved with the scene", managed.c_str())
+        : std::string("Select a group in the list first"));
+    setToolTipIfChanged(mGroupDissolveBtn, have_managed
+        ? llformat("Dissolve '%s': every member is untagged (nobody leaves the cast); its delay is dropped", managed.c_str())
+        : std::string("Select a group in the list first"));
+    setToolTipIfChanged(mGroupRenameBtn, have_managed
+        ? llformat("Rename '%s' to the name on the left (retags every member; renaming onto an existing group merges them)", managed.c_str())
+        : std::string("Select a group in the list first"));
 }
 
 // ---------------------------------------------------------------------------
@@ -1650,8 +1846,14 @@ void LLFloaterDirector::refreshStatusStrip()
         cam = "CineCam: off";
     }
 
-    mStatusStrip->setText(llformat("%d moving \xC2\xB7 %s \xC2\xB7 Orbit %s",
-                                   moving, cam.c_str(),
+    // queued staggered starts surface here so a delayed wave is never invisible
+    std::string queued;
+    if (cast.hasPendingStarts())
+    {
+        queued = llformat(" \xC2\xB7 %d queued", cast.pendingStartCount());
+    }
+    mStatusStrip->setText(llformat("%d moving%s \xC2\xB7 %s \xC2\xB7 Orbit %s",
+                                   moving, queued.c_str(), cam.c_str(),
                                    orbit_enabled ? "on" : "off"));
 
     // REC indicator: red danger dot while capturing, muted circle when idle
