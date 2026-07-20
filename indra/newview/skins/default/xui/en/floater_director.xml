@@ -379,7 +379,7 @@
         </panel>
 
         <!-- ============ Path tab ============ -->
-        <!-- The shared path editor is 656 tall (its Look-at / Gaze section
+        <!-- The shared path editor is 716 tall (its Look-at / Gaze section
              sits at the very bottom). At the console's default height the tab
              viewport is shorter than that, so the editor is wrapped in a
              scroll_container (same idiom as the Camera tab) - every control,
@@ -404,7 +404,7 @@
              width="374">
                 <panel
                  background_visible="false"
-                 height="672"
+                 height="732"
                  layout="topleft"
                  left="0"
                  top="0"
@@ -414,7 +414,7 @@
                      class="panel_path_editor"
                      filename="panel_path_editor.xml"
                      follows="left|top|right"
-                     height="656"
+                     height="716"
                      layout="topleft"
                      left="0"
                      name="path_editor"
