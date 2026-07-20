@@ -400,7 +400,10 @@ public:
 
     // in-world heading preview lines (called from render_ui_3d, same pass as
     // the debug beacons). Zero cost unless ActorMoverShowHeading is on AND
-    // the Actor Mover floater is open.
+    // the Actor Mover floater is open -- except the Ghost Studio pass below,
+    // which also runs whenever the studio has enabled instances (its ghosts
+    // are scene dressing, not an editing overlay, so they must not vanish
+    // when the operator closes the floaters).
     void renderHeadingPreview();
 
     // ---- Pose/blocking ghosts: translucent REAL-avatar billboards -------------
@@ -441,6 +444,37 @@ public:
     {
         LLDrawInfo* mInfo = nullptr;
         U32         mPass = 0;      // LLRenderPass::PASS_*_RIGGED it was collected from
+    };
+
+    // [GhostStudio] this frame's collected batches for a wearer (nullptr /
+    // empty = the pipeline is not rendering that body this frame). Pointers
+    // are frame-lifetime; callers must consume them immediately (the studio's
+    // freeze snapshot copies palettes out, never the batch pointers).
+    const std::vector<GhostBatch>* ghostBatchesFor(const LLUUID& wearer_id) const;
+
+    // [GhostStudio] optional per-ghost placement + FX overrides for the model
+    // ghost draw. Default-constructed = byte-identical to the classic path-node
+    // ghost (pure translation, live pose, no FX). The placement composes
+    //   T(ghost_foot) * Rz(mYaw) * S(mScale) * T(-pivot_foot)
+    // into the modelview -- pivoting at the FOOT keeps scaled/rotated feet
+    // planted on the ghost spot. The pivot is the source's live foot for LIVE
+    // pose, or the capture-frame anchor when a frozen palette map is supplied
+    // (the palettes bake vertices into the capture-time agent frame, so the
+    // frame-matched anchor keeps placement correct across region crossings).
+    struct GhostDrawParams
+    {
+        F32        mYaw = 0.f;          // radians about the ghost's vertical axis
+        F32        mScale = 1.f;        // uniform, pivoted at the foot
+        bool       mHavePivot = false;  // use mPivotFootAgent (FROZEN) instead of the live foot
+        LLVector3  mPivotFootAgent;     // capture-frame foot anchor (when mHavePivot)
+        // frozen (drawing avatar id, skin hash) -> GL 3x4 palette; null = live
+        const std::map<std::pair<LLUUID, U64>, std::vector<F32> >* mFrozenPalettes = nullptr;
+        // cheap creative FX, each 0 = off (see actorghostF.glsl)
+        F32        mShimmerSpeed = 0.f;     // Hz
+        F32        mShimmerIntensity = 0.f; // 0..1
+        F32        mPixelSize = 0.f;        // screen px (0 = off)
+        F32        mGlitch = 0.f;           // 0..1 slice offset + chroma split
+        F32        mPhase = 0.f;            // per-instance phase so FX don't sync up
     };
 
 private:
@@ -600,6 +634,13 @@ private:
 
     // is this actor's cached ghost snapshot stale (needs a regen)?
     static bool ghostImpostorStale(LLVOAvatar* av, const GhostImpostor& gi);
+
+    // [GhostStudio] draw every enabled studio ghost instance (far-to-near)
+    // through the model-ghost renderer with its per-instance placement, style
+    // and FX. Self-contained UI-overlay state; called from
+    // renderHeadingPreview() both on the normal path and on the early-out
+    // path so studio ghosts show without any operator floater open.
+    void renderStudioGhosts();
 
     std::map<LLUUID, Move> mMoves;
     std::map<LLUUID, Path> mPaths;      // authored path per actor (session-only)

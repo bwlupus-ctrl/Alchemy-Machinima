@@ -60,6 +60,7 @@ constexpr char ICON_MARK[]     = "Flag";
 // left-rail tab icons (existing toolbar-icon skin assets, one family)
 constexpr char TAB_ICON_MOVE[]    = "Command_Move_Icon";
 constexpr char TAB_ICON_PATH[]    = "Command_Places_Icon";
+constexpr char TAB_ICON_GHOSTS[]  = "Command_Appearance_Icon";
 constexpr char TAB_ICON_ANIMATE[] = "Command_Poser_Icon";
 constexpr char TAB_ICON_CAMERA[]  = "Command_View_Icon";
 constexpr char TAB_ICON_TAKES[]   = "Command_Snapshot_Icon";
@@ -162,6 +163,7 @@ bool LLFloaterDirector::postBuild()
     struct { const char* panel; const char* icon; } tab_icons[] = {
         { "move_tab",    TAB_ICON_MOVE },
         { "path_tab",    TAB_ICON_PATH },
+        { "ghosts_tab",  TAB_ICON_GHOSTS },
         { "animate_tab", TAB_ICON_ANIMATE },
         { "camera_tab",  TAB_ICON_CAMERA },
         { "takes_tab",   TAB_ICON_TAKES },

@@ -14,6 +14,7 @@
 #include <algorithm>                // std::reverse (path reverse op)
 #include <set>                      // collectGhostBatches (wanted-actor set)
 
+#include "alghoststudio.h"          // [GhostStudio] free-standing ghost instances
 #include "llagent.h"                // gAgent global<->agent coord conversion (pathing)
 #include "llanimationstates.h"      // ANIM_AGENT_WALK
 #include "llappviewer.h"            // gFrameIntervalSeconds
@@ -3386,6 +3387,7 @@ enum EGhostStyle : S32
 static LLStaticHashedString sGhostTime("ghostTime");
 static LLStaticHashedString sGhostParams("ghostParams");
 static LLStaticHashedString sGhostAux("ghostAux");
+static LLStaticHashedString sGhostFx("ghostFx");
 
 // ---------------------------------------------------------------------------
 // Per-batch alpha semantics: how does the REAL render treat this rigged pass's
@@ -3576,7 +3578,8 @@ bool ghost_batch_uv_matrix(LLDrawInfo* di, LLMatrix4& out)
 // by uploading a snapshotted palette here instead of the live one.
 S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch>& batches,
                       const LLVector3& foot, const LLColor4& tint, F32 alpha,
-                      S32 style)
+                      S32 style,
+                      const LLActorMover::GhostDrawParams& gp = LLActorMover::GhostDrawParams())
 {
     if (!av || av->isDead() || batches.empty())
     {
@@ -3596,15 +3599,20 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         return 0;
     }
 
-    // Placement: translate the whole (world-space-skinned) body from the actor's
-    // live render root to the ghost root standing on `foot`, preserving standing
-    // height via pelvisToFoot so the feet sit on the ground. Pure translation --
-    // the ghost keeps the actor's current facing; a facing/rotation remap is a
-    // later refinement (bake yaw about the root into this delta).
+    // Placement: move the whole (world-space-skinned) body from where it is
+    // skinned to the ghost spot: T(ghost_foot) * Rz(yaw) * S(scale) *
+    // T(-pivot_foot) premultiplied into the modelview. The pivot is the
+    // actor's LIVE foot (root minus pelvisToFoot) -- or, for a FROZEN studio
+    // instance, the capture-frame anchor that matches the frozen palettes.
+    // Pivoting at the foot keeps rotated/scaled feet planted on `foot`; with
+    // the default params (yaw 0, scale 1) this collapses to the classic pure
+    // translation T(foot - live_foot).
     const LLVector3 live_root = av->getRenderPosition();
     const F32       p2f       = av->getPelvisToFoot();
-    const LLVector3 ghost_root(foot.mV[VX], foot.mV[VY], foot.mV[VZ] + p2f);
-    const LLVector3 delta = ghost_root - live_root;
+    LLVector3 pivot = gp.mHavePivot
+        ? gp.mPivotFootAgent
+        : LLVector3(live_root.mV[VX], live_root.mV[VY], live_root.mV[VZ] - p2f);
+    const F32 scale = llclamp(gp.mScale, 0.05f, 10.f);
 
     shader->bind();
     // frag_color = color * texture(diffuseMap): a white texture makes the output
@@ -3614,11 +3622,15 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     if (have_fx)
     {
         // neutral FX state: no scanlines/rim/flicker (the FX styles override
-        // below), keep-every-texel cutoff, flat-tint texture mix. The sweeps
-        // below retarget ghostAux per style / per batch as needed.
+        // below), keep-every-texel cutoff, flat-tint texture mix, plus the
+        // per-instance creative FX (all zero = byte-identical output). The
+        // sweeps below retarget ghostAux.xy per style / per batch and must
+        // preserve zw (pixelation + phase).
         shader->uniform1f(sGhostTime, (F32)LLFrameTimer::getElapsedSeconds());
         shader->uniform4f(sGhostParams, 0.f, 0.f, 0.f, 6.f);
-        shader->uniform4f(sGhostAux, 0.f, 0.f, 0.f, 0.f);
+        shader->uniform4f(sGhostAux, 0.f, 0.f, gp.mPixelSize, gp.mPhase);
+        shader->uniform4f(sGhostFx, gp.mShimmerSpeed, gp.mShimmerIntensity,
+                          gp.mGlitch, 0.f);
     }
     // texture_matrix0 could hold a stale value from an earlier frame's sync to
     // this shader; start every ghost from a known-identity UV transform (the
@@ -3629,7 +3641,17 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     gGL.matrixMode(LLRender::MM_MODELVIEW);
 
     gGL.pushMatrix();
-    gGL.translatef(delta.mV[VX], delta.mV[VY], delta.mV[VZ]);   // modelview = view * T(delta)
+    // modelview = view * T(ghost_foot) * Rz(yaw) * S(s) * T(-pivot)
+    gGL.translatef(foot.mV[VX], foot.mV[VY], foot.mV[VZ]);
+    if (gp.mYaw != 0.f)
+    {
+        gGL.rotatef(gp.mYaw * RAD_TO_DEG, 0.f, 0.f, 1.f);
+    }
+    if (scale != 1.f)
+    {
+        gGL.scalef(scale, scale, scale);
+    }
+    gGL.translatef(-pivot.mV[VX], -pivot.mV[VY], -pivot.mV[VZ]);
     gGL.syncMatrices();
 
     // ---- ONE parameterized sweep over the snapshotted batches ----------------
@@ -3663,8 +3685,33 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             {
                 continue;
             }
-            if (!LLRenderPass::uploadMatrixPalette(di->mAvatar, di->mSkinInfo,
-                                                   lastAvatar, lastMeshId, skipLastSkin))
+
+            // matrix palette: a FROZEN studio instance uploads the snapshot
+            // captured at freeze time (per drawing-avatar + skin hash, so the
+            // count matches this batch's skin by construction); a hash miss
+            // falls back to the LIVE palette rather than dropping the batch.
+            bool palette_ok = false;
+            if (gp.mFrozenPalettes)
+            {
+                auto fit = gp.mFrozenPalettes->find(
+                    std::make_pair(di->mAvatar->getID(), di->getSkinHash()));
+                if (fit != gp.mFrozenPalettes->end() && !fit->second.empty())
+                {
+                    // same uniform the live path drives (AVATAR_MATRIX, GL-ready
+                    // 3x4 floats, 12 per joint)
+                    shader->uniformMatrix3x4fv(LLViewerShaderMgr::AVATAR_MATRIX,
+                                               (U32)(fit->second.size() / 12),
+                                               false, fit->second.data());
+                    // poison the live-upload cache so a following live batch
+                    // re-uploads instead of "already bound" skipping
+                    lastAvatar = nullptr;
+                    lastMeshId = 0;
+                    palette_ok = true;
+                }
+            }
+            if (!palette_ok
+                && !LLRenderPass::uploadMatrixPalette(di->mAvatar, di->mSkinInfo,
+                                                      lastAvatar, lastMeshId, skipLastSkin))
             {
                 continue;
             }
@@ -3708,11 +3755,12 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
 
             if (have_fx)
             {
-                // per-batch cutoff (0 keeps everything); re-upload only on change
+                // per-batch cutoff (0 keeps everything); re-upload only on
+                // change, always carrying the instance FX in zw along
                 const F32 cutoff = alpha_aware ? ghost_batch_cutoff(di, gb.mPass) : 0.f;
                 if (cutoff != cur_cutoff)
                 {
-                    shader->uniform4f(sGhostAux, cutoff, tex_mix, 0.f, 0.f);
+                    shader->uniform4f(sGhostAux, cutoff, tex_mix, gp.mPixelSize, gp.mPhase);
                     cur_cutoff = cutoff;
                 }
             }
@@ -3892,9 +3940,19 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
 // ---------------------------------------------------------------------------
 void LLActorMover::renderHeadingPreview()
 {
+    // [GhostStudio] studio instances render regardless of the path-preview
+    // gates below (they are scene dressing, not an editing overlay), so the
+    // early-outs detour through the self-contained studio pass instead of
+    // returning past it.
+    const bool studio_active = ALGhostStudio::instance().anyEnabled();
+
     static LLCachedControl<bool> show(gSavedSettings, "ActorMoverShowHeading", true);
     if (!show)
     {
+        if (studio_active)
+        {
+            renderStudioGhosts();
+        }
         return;
     }
     // an operator floater must be up: the standalone mover or the Director
@@ -3905,6 +3963,10 @@ void LLActorMover::renderHeadingPreview()
         floaterp = LLFloaterReg::findInstance("director");
         if (!floaterp || !floaterp->getVisible())
         {
+            if (studio_active)
+            {
+                renderStudioGhosts();
+            }
             return;
         }
     }
@@ -4230,6 +4292,14 @@ void LLActorMover::renderHeadingPreview()
         gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);   // leave UI state untextured
     }
 
+    // [GhostStudio] free-standing ghost instances draw after the path viz and
+    // node ghosts (self-contained state; same cleared-depth UI overlay, so
+    // painter order is all we control and the studio sorts itself internally)
+    if (studio_active)
+    {
+        renderStudioGhosts();
+    }
+
     gGL.setLineWidth(1.f);
     gGL.flush();
 }
@@ -4349,43 +4419,66 @@ void LLActorMover::collectGhostBatches()
 {
     mGhostBatches.clear();
 
-    // same gate as the ghost preview: byte-identical zero cost when off
+    // Two independent reasons to collect: the PATH-NODE ghost preview (its
+    // classic gate: setting trio + an operator floater up) and the GHOST
+    // STUDIO (enabled instances render floater-or-not -- they are scene
+    // dressing, not an editing overlay). Neither active = byte-identical
+    // zero cost.
     static LLCachedControl<bool> show(gSavedSettings, "ActorMoverShowHeading", true);
     static LLCachedControl<bool> onion(gSavedSettings, "PathShowOnionSkin", false);
     static LLCachedControl<bool> use_model(gSavedSettings, "PathGhostUseModel", true);
-    if (!show || !onion || !use_model)
+    bool path_ghosts = show && onion && use_model;
+    if (path_ghosts)
+    {
+        LLFloater* floaterp = LLFloaterReg::findInstance("actor_mover");
+        if (!floaterp || !floaterp->getVisible())
+        {
+            floaterp = LLFloaterReg::findInstance("director");
+            path_ghosts = floaterp && floaterp->getVisible();
+        }
+    }
+    const bool studio = ALGhostStudio::instance().anyEnabled();
+    if (!path_ghosts && !studio)
     {
         return;
     }
-    LLFloater* floaterp = LLFloaterReg::findInstance("actor_mover");
-    if (!floaterp || !floaterp->getVisible())
-    {
-        floaterp = LLFloaterReg::findInstance("director");
-        if (!floaterp || !floaterp->getVisible())
-        {
-            return;
-        }
-    }
 
-    // the actors renderHeadingPreview() will ghost: roster members with a walkable
-    // path (>= 2 nodes). Collect batches only for those.
-    uuid_vec_t roster = getRoster();
-    if (roster.empty())
-    {
-        roster.push_back(LLUUID::null);     // my avatar
-    }
+    // the bodies the ghost passes will draw this frame: roster members with a
+    // walkable path (>= 2 nodes) for the node preview, plus every source an
+    // enabled studio instance references. Collect batches only for those.
     std::set<LLVOAvatar*> wanted;
-    for (const LLUUID& id : roster)
+    if (path_ghosts)
     {
-        LLVOAvatar* av = resolve_actor(id);
-        if (!av || av->isDead())
+        uuid_vec_t roster = getRoster();
+        if (roster.empty())
         {
-            continue;
+            roster.push_back(LLUUID::null);     // my avatar
         }
-        auto pit = mPaths.find(av->getID());
-        if (pit != mPaths.end() && pit->second.mNodes.size() >= 2)
+        for (const LLUUID& id : roster)
         {
-            wanted.insert(av);
+            LLVOAvatar* av = resolve_actor(id);
+            if (!av || av->isDead())
+            {
+                continue;
+            }
+            auto pit = mPaths.find(av->getID());
+            if (pit != mPaths.end() && pit->second.mNodes.size() >= 2)
+            {
+                wanted.insert(av);
+            }
+        }
+    }
+    if (studio)
+    {
+        uuid_vec_t sources;
+        ALGhostStudio::instance().getWantedSources(sources);
+        for (const LLUUID& id : sources)
+        {
+            LLVOAvatar* av = resolve_actor(id);
+            if (av && !av->isDead())
+            {
+                wanted.insert(av);
+            }
         }
     }
     if (wanted.empty())
@@ -4471,4 +4564,119 @@ void LLActorMover::collectGhostBatches()
             }
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// [GhostStudio] frame-lifetime batch access for the studio (freeze snapshot +
+// per-instance draw). Null when the pipeline is not rendering that body.
+const std::vector<LLActorMover::GhostBatch>* LLActorMover::ghostBatchesFor(const LLUUID& wearer_id) const
+{
+    auto it = mGhostBatches.find(wearer_id);
+    return (it != mGhostBatches.end() && !it->second.empty()) ? &it->second : nullptr;
+}
+
+// ---------------------------------------------------------------------------
+// [GhostStudio] draw every enabled studio instance. Self-contained UI-overlay
+// state (it can be entered from renderHeadingPreview's early-outs, where no
+// state has been set up yet). MODEL ghosts only: an instance whose source has
+// no collected rigged batches this frame (out of world, culled before the
+// snapshot, pure system avatar) is skipped quietly -- the panel surfaces why.
+// Sorted far-to-near so translucent styles stack correctly against each other
+// on the cleared-depth overlay.
+void LLActorMover::renderStudioGhosts()
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    if (!studio.anyEnabled())
+    {
+        return;
+    }
+
+    // per-instance draw items, resolved once
+    struct StudioItem
+    {
+        const ALGhostStudio::Instance* mInst;
+        LLVOAvatar* mAv;
+        const std::vector<GhostBatch>* mBatches;
+        LLVector3   mFootAgent;
+    };
+    std::vector<StudioItem> items;
+    for (const ALGhostStudio::Instance& inst : studio.getInstances())
+    {
+        if (!inst.mEnabled)
+        {
+            continue;
+        }
+        LLVOAvatar* av = resolve_actor(inst.mSource);
+        if (!av || av->isDead())
+        {
+            continue;
+        }
+        const std::vector<GhostBatch>* batches = ghostBatchesFor(av->getID());
+        if (!batches)
+        {
+            continue;
+        }
+        items.push_back({ &inst, av, batches,
+                          gAgent.getPosAgentFromGlobal(inst.mFootGlobal) });
+    }
+    if (items.empty())
+    {
+        return;
+    }
+
+    // same overlay idiom as the path preview: UI shader, no depth vs the world
+    LLGLSUIDefault gls_ui;
+    gUIProgram.bind();
+    gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
+
+    const LLVector3 cam_pos = LLViewerCamera::getInstance()->getOrigin();
+    std::sort(items.begin(), items.end(),
+              [&](const StudioItem& a, const StudioItem& b)
+              {
+                  return (a.mFootAgent - cam_pos).magVecSquared()
+                       > (b.mFootAgent - cam_pos).magVecSquared();
+              });
+
+    for (const StudioItem& item : items)
+    {
+        const ALGhostStudio::Instance& inst = *item.mInst;
+
+        // tint: the source's stable path hue by default, or the instance's own
+        // authored hue (pastel-bright so every style's tint pull reads)
+        LLColor4 tint;
+        if (inst.mUseActorTint)
+        {
+            tint = actorPathColor(item.mAv->getID());
+        }
+        else
+        {
+            tint.setHSL(fmodf(llmax(inst.mHue, 0.f), 360.f) / 360.f, 0.9f, 0.6f);
+            tint.mV[VW] = 1.f;
+        }
+
+        GhostDrawParams gp;
+        gp.mYaw   = inst.mYaw;
+        gp.mScale = inst.mScale;
+        if (inst.mPose == ALGhostStudio::POSE_FROZEN && !inst.mFrozenPalettes.empty())
+        {
+            gp.mHavePivot      = true;
+            gp.mPivotFootAgent = inst.mFrozenFootAgent;
+            gp.mFrozenPalettes = &inst.mFrozenPalettes;
+        }
+        gp.mShimmerSpeed     = inst.mShimmerSpeed;
+        gp.mShimmerIntensity = inst.mShimmerIntensity;
+        gp.mPixelSize        = inst.mPixelSize;
+        gp.mGlitch           = inst.mGlitch;
+        // stable per-instance FX phase from the id, so a crowd of ghosts
+        // shimmers/glitches out of sync instead of strobing as one
+        gp.mPhase = (F32)(inst.mId.mData[0] | (inst.mId.mData[1] << 8)) * (F_TWO_PI / 65536.f);
+
+        drawGeometryGhost(item.mAv, *item.mBatches, item.mFootAgent, tint,
+                          llclamp(inst.mAlpha, 0.f, 1.f), inst.mStyle, gp);
+    }
+
+    // leave clean UI-overlay state for whoever draws next
+    gUIProgram.bind();
+    gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
+    gGL.flush();
 }

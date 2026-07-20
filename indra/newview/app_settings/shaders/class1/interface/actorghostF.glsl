@@ -32,7 +32,12 @@
  *   ghostParams -- x scanline strength 0..1, y rim strength, z flicker
  *                  strength 0..1, w scanline period in pixels.
  *   ghostAux    -- x minimum-alpha discard cutoff (0 keeps every texel),
- *                  y texture-RGB mix 0..1, zw reserved.
+ *                  y texture-RGB mix 0..1, z pixelation block size in screen
+ *                  pixels (0 = off), w per-instance FX phase (radians).
+ *   ghostFx     -- [GhostStudio] per-instance creative FX, all 0 = off:
+ *                  x shimmer speed Hz, y shimmer intensity 0..1 (brightness/
+ *                  alpha wobble), z glitch amount 0..1 (slice offset + chroma
+ *                  split), w reserved.
  * Hologram = scan+rim+flicker on; x-ray = rim only; ghost/clone/wireframe =
  * all zero (plain colour * texture with the alpha stage).
  */
@@ -44,14 +49,55 @@ uniform sampler2D diffuseMap;
 uniform float ghostTime;
 uniform vec4 ghostParams;
 uniform vec4 ghostAux;
+uniform vec4 ghostFx;
 
 in vec2 vary_texcoord0;
 in vec3 vary_position;
 in vec3 vary_normal;
 
+// cheap stable hash for the glitch bands (classic one-liner)
+float ghost_hash(vec2 p)
+{
+    return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
 void main()
 {
-    vec4 tex = texture(diffuseMap, vary_texcoord0.xy);
+    vec2 uv = vary_texcoord0.xy;
+
+    // [GhostStudio] pixelation: quantize the sampling UV in ~screen-pixel
+    // blocks. fwidth(uv) is the UV footprint of ONE screen pixel here, so
+    // multiplying by the block size snaps the texture into blocks that stay
+    // screen-sized regardless of zoom. Reads strongest on the textured clone;
+    // flat-tint styles only show it through the alpha/mask stage.
+    if (ghostAux.z > 0.5)
+    {
+        vec2 px = max(fwidth(uv) * ghostAux.z, vec2(1e-6));
+        uv = (floor(uv / px) + 0.5) * px;
+    }
+
+    // [GhostStudio] glitch: a few horizontal screen bands tear sideways for a
+    // frame-ish beat (time-quantized so slices hold, not swim), scaled by the
+    // amount. The active band also chroma-splits below.
+    float glitch = clamp(ghostFx.z, 0.0, 1.0);
+    float torn = 0.0;
+    if (glitch > 0.001)
+    {
+        float band_id = floor(gl_FragCoord.y / 14.0);
+        float beat    = floor(ghostTime * 9.0);
+        float r       = ghost_hash(vec2(band_id, beat + ghostAux.w));
+        torn = step(1.0 - 0.35 * glitch, r);            // a minority of bands tear
+        uv.x += torn * (r - 0.5) * 0.22 * glitch;       // sideways slice offset
+    }
+
+    vec4 tex = texture(diffuseMap, uv);
+    if (torn > 0.0)
+    {
+        // chroma split on the torn slice: R and B sampled a hair apart
+        vec2 split = vec2(0.006 * glitch, 0.0);
+        tex.r = texture(diffuseMap, uv + split).r;
+        tex.b = texture(diffuseMap, uv - split).b;
+    }
 
     // alpha-mask cutoff, exactly like the real render's masked passes. With
     // ghostAux.x == 0 no texel can be below the cutoff, so the branch is free
@@ -75,6 +121,15 @@ void main()
     // subtle whole-body flicker (13 Hz-ish beat against 7.3, capped at -30%)
     float flicker = 1.0 - 0.30 * clamp(ghostParams.z, 0.0, 1.0)
                         * (0.5 + 0.5 * sin(ghostTime * 13.0) * sin(ghostTime * 7.3));
+
+    // [GhostStudio] shimmer: adjustable brightness/alpha wobble -- the
+    // parameterized cousin of the hologram flicker, phase-offset per instance
+    // so a crowd of ghosts never strobes in lockstep. Intensity 0 = exactly 1.
+    flicker *= 1.0 - clamp(ghostFx.y, 0.0, 1.0)
+                   * (0.5 + 0.5 * sin(ghostTime * max(ghostFx.x, 0.0) * 6.2831853
+                                      + ghostAux.w)) * 0.6;
+    // a torn glitch slice also pops brighter for that broken-signal read
+    flicker *= 1.0 + torn * 0.35 * glitch;
 
     // texture RGB shows per ghostAux.y (clone = 1); the tint always multiplies
     vec3 base = mix(vec3(1.0), tex.rgb, clamp(ghostAux.y, 0.0, 1.0)) * color.rgb;

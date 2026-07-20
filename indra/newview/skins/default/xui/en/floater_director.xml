@@ -511,6 +511,32 @@
             </scroll_container>
         </panel>
 
+        <!-- ============ Ghosts tab ============ -->
+        <!-- The shared Ghost Studio panel (panel_ghost_studio.xml): the SAME
+             panel the standalone Ghost Studio floater hosts, so the console
+             is a superset. Self-contained (it carries its own cast-source
+             picker); nothing to feed it from the console. -->
+        <panel
+         follows="all"
+         background_visible="false"
+         height="550"
+         label="Ghosts"
+         layout="topleft"
+         name="ghosts_tab"
+         top="0"
+         width="374">
+            <panel
+             class="panel_ghost_studio"
+             filename="panel_ghost_studio.xml"
+             follows="left|top|right"
+             height="440"
+             layout="topleft"
+             left="0"
+             name="ghost_studio_panel"
+             top="8"
+             width="354" />
+        </panel>
+
         <!-- ============ Animate tab ============ -->
         <!-- Top: the selected cast member's live signaled-animation list plus
              per-actor loco / play-local tools. Bottom: an embedded spinning

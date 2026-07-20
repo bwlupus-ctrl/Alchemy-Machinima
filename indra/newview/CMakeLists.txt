@@ -270,6 +270,9 @@ set(viewer_SOURCE_FILES
     llcallingcard.cpp
     llcameraoperator.cpp
     llactormover.cpp
+    alghoststudio.cpp
+    alpanelghoststudio.cpp
+    altoolghostplace.cpp
     altoolpathedit.cpp
     llcinematiccamera.cpp
     lldirectorcast.cpp
@@ -1074,6 +1077,9 @@ set(viewer_HEADER_FILES
     llcallingcard.h
     llcameraoperator.h
     llactormover.h
+    alghoststudio.h
+    alpanelghoststudio.h
+    altoolghostplace.h
     altoolpathedit.h
     llcinematiccamera.h
     lldirectorcast.h

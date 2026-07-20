@@ -521,6 +521,9 @@ void LLViewerFloaterReg::registerFloaters()
     LLFloaterReg::add("flycam_orbit", "floater_flycam_orbit.xml", &LLFloaterReg::build<LLFloater>);
     LLFloaterReg::add("actor_mover", "floater_actor_mover.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterActorMover>);
     LLFloaterReg::add("director", "floater_director.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterDirector>);
+    // ghost_studio is a thin shell around panel_ghost_studio.xml
+    // (ALPanelGhostStudio), shared with the Director Console Ghosts tab
+    LLFloaterReg::add("ghost_studio", "floater_ghost_studio.xml", &LLFloaterReg::build<LLFloater>);
     LLFloaterReg::add("preview_anim", "floater_preview_animation.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLPreviewAnim>, "preview");
     LLFloaterReg::add("preview_conversation", "floater_conversation_preview.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterConversationPreview>);
     LLFloaterReg::add("preview_gesture", "floater_preview_gesture.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLPreviewGesture>, "preview");

@@ -1,0 +1,467 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- Ghost Studio (ALPanelGhostStudio, class "panel_ghost_studio"): free
+     standing styled body copies. Instance list + source picker + CRUD, per
+     ghost placement (numeric, one-click Place, snaps), look (style, tint,
+     alpha, shimmer, pixelation, glitch), LIVE|FROZEN pose, and the line/ring
+     array helper. Embedded by the standalone Ghost Studio floater AND the
+     Director Console Ghosts tab, exactly like panel_path_editor. -->
+<panel
+ background_visible="false"
+ border="false"
+ height="440"
+ layout="topleft"
+ name="panel_ghost_studio"
+ width="360">
+
+    <text
+     follows="left|top"
+     font="SansSerifBold"
+     height="16"
+     layout="topleft"
+     left="6"
+     top="2"
+     name="studio_header"
+     width="200">
+        Ghost Studio
+    </text>
+    <check_box
+     follows="top|right"
+     height="16"
+     initial_value="true"
+     label="Show ghosts"
+     layout="topleft"
+     left="248"
+     top="2"
+     name="show_all_check"
+     tool_tip="Master visibility: hide every ghost at once without losing the per-ghost enables. Session-only"
+     width="106" />
+    <text
+     follows="left|top"
+     height="12"
+     layout="topleft"
+     left="6"
+     top="20"
+     mouse_opaque="false"
+     name="studio_hint"
+     text_color="LtGray_50"
+     use_ellipses="true"
+     width="348">
+        Styled copies of cast bodies: place, pose, multiply. Double-click a row to show/hide it
+    </text>
+
+    <scroll_list
+     column_padding="0"
+     draw_heading="true"
+     follows="left|top|right"
+     height="108"
+     layout="topleft"
+     left="6"
+     top="34"
+     name="ghost_list"
+     tool_tip="Every ghost instance. Select a row to edit it below; double-click toggles it on/off"
+     width="348">
+        <columns label="" name="on" width="20" />
+        <columns label="Source" name="source" width="140" />
+        <columns label="Style" name="style" width="86" />
+        <columns label="Pose" name="pose" width="64" />
+    </scroll_list>
+
+    <combo_box
+     follows="left|top"
+     height="20"
+     layout="topleft"
+     left="6"
+     top="146"
+     name="source_combo"
+     tool_tip="Whose body the new ghost copies: you, or any cast member"
+     width="150" />
+    <button
+     follows="left|top"
+     height="20"
+     label="Add"
+     layout="topleft"
+     left="160"
+     top="146"
+     name="btn_ghost_add"
+     tool_tip="Add a ghost of the picked source, standing where they stand now"
+     width="56" />
+    <button
+     follows="left|top"
+     height="20"
+     label="Duplicate"
+     layout="topleft"
+     left="220"
+     top="146"
+     name="btn_ghost_dup"
+     tool_tip="Copy the selected ghost (including a frozen pose) one step to its left"
+     width="72" />
+    <button
+     follows="left|top"
+     height="20"
+     label="Delete"
+     layout="topleft"
+     left="296"
+     top="146"
+     name="btn_ghost_del"
+     tool_tip="Remove the selected ghost"
+     width="58" />
+
+    <text
+     follows="left|top"
+     font="SansSerifSmallBold"
+     height="12"
+     layout="topleft"
+     left="6"
+     top="172"
+     name="place_lbl"
+     width="200">
+        Placement
+    </text>
+    <spinner
+     decimal_digits="2"
+     follows="left|top"
+     height="16"
+     increment="0.1"
+     label="X"
+     label_width="12"
+     layout="topleft"
+     left="6"
+     max_val="9000"
+     min_val="-1000"
+     name="pos_x_spinner"
+     tool_tip="Ghost foot position, region coordinates (m)"
+     top="186"
+     width="108" />
+    <spinner
+     decimal_digits="2"
+     follows="left|top"
+     height="16"
+     increment="0.1"
+     label="Y"
+     label_width="12"
+     layout="topleft"
+     left="120"
+     max_val="9000"
+     min_val="-1000"
+     name="pos_y_spinner"
+     tool_tip="Ghost foot position, region coordinates (m)"
+     top="186"
+     width="108" />
+    <spinner
+     decimal_digits="2"
+     follows="left|top"
+     height="16"
+     increment="0.1"
+     label="Z"
+     label_width="12"
+     layout="topleft"
+     left="234"
+     max_val="9000"
+     min_val="-1000"
+     name="pos_z_spinner"
+     tool_tip="Ghost foot height, region coordinates (m)"
+     top="186"
+     width="108" />
+    <spinner
+     decimal_digits="0"
+     follows="left|top"
+     height="16"
+     increment="5"
+     label="Yaw (deg)"
+     label_width="56"
+     layout="topleft"
+     left="6"
+     max_val="180"
+     min_val="-180"
+     name="yaw_spinner"
+     tool_tip="Turn the ghost about its own vertical axis, relative to the source's facing"
+     top="206"
+     width="140" />
+    <spinner
+     decimal_digits="2"
+     follows="left|top"
+     height="16"
+     increment="0.05"
+     initial_value="1.0"
+     label="Scale"
+     label_width="36"
+     layout="topleft"
+     left="182"
+     max_val="10"
+     min_val="0.05"
+     name="scale_spinner"
+     tool_tip="Uniform size, pivoted at the feet so they stay planted (1 = life size)"
+     top="206"
+     width="130" />
+    <button
+     follows="left|top"
+     height="20"
+     label="Place (click ground)"
+     layout="topleft"
+     left="6"
+     top="228"
+     name="btn_place"
+     tool_tip="Arm one ground click: the next click on ground/prim puts the ghost's feet there. Esc or right-click cancels"
+     width="140" />
+    <button
+     follows="left|top"
+     height="20"
+     label="To actor"
+     layout="topleft"
+     left="150"
+     top="228"
+     name="btn_to_actor"
+     tool_tip="Snap the ghost onto its source's current feet"
+     width="96" />
+    <button
+     follows="left|top"
+     height="20"
+     label="To me"
+     layout="topleft"
+     left="250"
+     top="228"
+     name="btn_to_me"
+     tool_tip="Snap the ghost onto your avatar's current feet"
+     width="104" />
+
+    <text
+     follows="left|top"
+     font="SansSerifSmallBold"
+     height="12"
+     layout="topleft"
+     left="6"
+     top="254"
+     name="look_lbl"
+     width="200">
+        Look
+    </text>
+    <combo_box
+     follows="left|top"
+     height="20"
+     layout="topleft"
+     left="6"
+     top="268"
+     name="style_combo"
+     tool_tip="Render style, same looks as the path pose ghosts. Ghost: translucent tint. Clone: unlit textured copy. Hologram: cyan scanlines. Wireframe: hidden-line wire. X-ray: glowing silhouette"
+     width="120">
+        <combo_box.item label="Ghost" name="st_ghost" value="0" />
+        <combo_box.item label="Clone" name="st_clone" value="1" />
+        <combo_box.item label="Hologram" name="st_hologram" value="2" />
+        <combo_box.item label="Wireframe" name="st_wireframe" value="3" />
+        <combo_box.item label="X-ray" name="st_xray" value="4" />
+    </combo_box>
+    <check_box
+     follows="left|top"
+     height="16"
+     initial_value="true"
+     label="Actor hue"
+     layout="topleft"
+     left="134"
+     top="270"
+     name="actor_tint_check"
+     tool_tip="Tint from the source's stable path color (matches its path/ghost hue). Uncheck to pick a hue with the slider"
+     width="84" />
+    <slider
+     decimal_digits="0"
+     follows="left|top"
+     height="16"
+     increment="5"
+     initial_value="200"
+     label="Hue"
+     label_width="28"
+     layout="topleft"
+     left="222"
+     max_val="360"
+     min_val="0"
+     name="hue_slider"
+     tool_tip="Tint hue (degrees) when Actor hue is off"
+     top="270"
+     width="132" />
+    <slider
+     decimal_digits="2"
+     follows="left|top"
+     height="16"
+     increment="0.05"
+     initial_value="0.6"
+     label="Alpha"
+     label_width="40"
+     layout="topleft"
+     left="6"
+     max_val="1"
+     min_val="0"
+     name="alpha_slider"
+     tool_tip="Base opacity of the ghost"
+     top="292"
+     width="168" />
+    <slider
+     decimal_digits="0"
+     follows="left|top"
+     height="16"
+     increment="1"
+     label="Pixelate"
+     label_width="50"
+     layout="topleft"
+     left="182"
+     max_val="64"
+     min_val="0"
+     name="pixel_slider"
+     tool_tip="Screen-space pixelation block size (px). 0 = off. Reads strongest on the Clone style"
+     top="292"
+     width="172" />
+    <slider
+     decimal_digits="1"
+     follows="left|top"
+     height="16"
+     increment="0.5"
+     initial_value="1"
+     label="Shimmer Hz"
+     label_width="66"
+     layout="topleft"
+     left="6"
+     max_val="10"
+     min_val="0"
+     name="shimmer_speed_slider"
+     tool_tip="Shimmer speed (wobbles per second); only matters when Amount is above 0"
+     top="312"
+     width="168" />
+    <slider
+     decimal_digits="2"
+     follows="left|top"
+     height="16"
+     increment="0.05"
+     label="Amount"
+     label_width="48"
+     layout="topleft"
+     left="182"
+     max_val="1"
+     min_val="0"
+     name="shimmer_amount_slider"
+     tool_tip="Shimmer depth: brightness/alpha wobble, phase-offset per ghost so crowds do not strobe together. 0 = off"
+     top="312"
+     width="172" />
+    <slider
+     decimal_digits="2"
+     follows="left|top"
+     height="16"
+     increment="0.05"
+     label="Glitch"
+     label_width="40"
+     layout="topleft"
+     left="6"
+     max_val="1"
+     min_val="0"
+     name="glitch_slider"
+     tool_tip="Broken-signal effect: horizontal slices tear sideways with a chroma split. 0 = off"
+     top="332"
+     width="168" />
+
+    <text
+     follows="left|top"
+     font="SansSerifSmallBold"
+     height="12"
+     layout="topleft"
+     left="6"
+     top="356"
+     name="pose_lbl"
+     width="60">
+        Pose
+    </text>
+    <button
+     follows="left|top"
+     height="20"
+     label="Grab pose now"
+     layout="topleft"
+     left="6"
+     top="370"
+     name="btn_freeze"
+     tool_tip="FREEZE: snapshot the source's current pose into this ghost. The ghost holds it while the live body keeps animating"
+     width="112" />
+    <button
+     follows="left|top"
+     height="20"
+     label="Follow live"
+     layout="topleft"
+     left="122"
+     top="370"
+     name="btn_live"
+     tool_tip="Drop the frozen pose; the ghost mirrors the source's live animation again"
+     width="90" />
+    <text
+     follows="left|top"
+     height="12"
+     layout="topleft"
+     left="218"
+     top="374"
+     name="pose_status"
+     text_color="LtGray_50"
+     use_ellipses="true"
+     width="136">
+        Select a ghost
+    </text>
+
+    <spinner
+     decimal_digits="0"
+     follows="left|top"
+     height="16"
+     increment="1"
+     initial_value="4"
+     label="Copies"
+     label_width="44"
+     layout="topleft"
+     left="6"
+     max_val="32"
+     min_val="2"
+     name="array_count_spinner"
+     tool_tip="Total ghosts in the array (the selected one counts as the first)"
+     top="396"
+     width="104" />
+    <spinner
+     decimal_digits="1"
+     follows="left|top"
+     height="16"
+     increment="0.5"
+     initial_value="1.5"
+     label="Spacing"
+     label_width="50"
+     layout="topleft"
+     left="116"
+     max_val="20"
+     min_val="0.2"
+     name="array_spacing_spinner"
+     tool_tip="Metres between neighbouring ghosts in the array"
+     top="396"
+     width="116" />
+    <button
+     follows="left|top"
+     height="20"
+     label="Line"
+     layout="topleft"
+     left="238"
+     top="394"
+     name="btn_array_line"
+     tool_tip="Duplicate the selected ghost into a line along its facing"
+     width="54" />
+    <button
+     follows="left|top"
+     height="20"
+     label="Ring"
+     layout="topleft"
+     left="296"
+     top="394"
+     name="btn_array_ring"
+     tool_tip="Duplicate the selected ghost into a ring around it, each copy facing outward"
+     width="58" />
+
+    <text
+     follows="left|top"
+     height="12"
+     layout="topleft"
+     left="6"
+     top="422"
+     name="studio_status"
+     text_color="LtGray_50"
+     use_ellipses="true"
+     width="348">
+        0 ghosts
+    </text>
+</panel>
