@@ -15,6 +15,7 @@
 #include <set>                      // collectGhostBatches (wanted-actor set)
 
 #include "alobjectpathmover.h"      // heading preview also draws enrolled PROP paths
+#include "llfetchedgltfmaterial.h"  // static-face PBR base-colour texture resolution
 
 #include "alghoststudio.h"          // [GhostStudio] free-standing ghost instances
 #include "altoolghostedit.h"        // [R2-3] selected-ghost ring gates on the edit tool
@@ -3980,8 +3981,14 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                     // tints as authored (linear pushed to gamma space --
                     // documented approximation for an unlit clone).
                     F32 r = 0.98f, g = 0.98f, b = 0.98f, a = 1.f;
-                    if (!tex && subset != SWEEP_GLOW)
+                    if (!tex && subset != SWEEP_GLOW
+                        && !(di->mVertexBuffer->getTypeMask() & LLVertexBuffer::MAP_COLOR))
                     {
+                        // [R3] see the static sweep: grey only a batch with NO
+                        // colour at all, never one carrying a per-vertex TE
+                        // tint -- greying a tinted face halves the authored
+                        // colour, which is why colour-only rigged surfaces read
+                        // as missing in a dark set.
                         r = g = b = 0.5f;
                     }
                     if (have_factor)
@@ -4123,15 +4130,42 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             LLGLTFMaterial* gmat = te ? te->getGLTFRenderMaterial() : nullptr;
             if (clone_tex || (alpha_aware && have_fx && gf.mAlphaKind != 0))
             {
-                ftex = face->getTexture();
+                // [R3] Mirror ghost_batch_texture's rule for rigged batches. On
+                // a PBR face the colour map is the MATERIAL's base-colour
+                // texture; LLFace::getTexture() defaults to the DIFFUSE channel,
+                // which a GLTF face does not populate -- so every PBR static
+                // attachment resolved to "no texture", fell back to white +
+                // mid-grey, and read as "unrigged mesh textures not loading" on
+                // the clone. Diffuse still wins when there is no GLTF material
+                // (legacy faces) or no base-colour map (media override case).
+                // getGLTFRenderMaterial() hands back the BASE type; the resolved
+                // textures live on the FETCHED subclass, which is what a render
+                // material always is in practice (same assumption the tree
+                // asserts, e.g. llviewerobject.cpp:5166).
+                if (const LLFetchedGLTFMaterial* fmat =
+                        dynamic_cast<const LLFetchedGLTFMaterial*>(gmat))
+                {
+                    ftex = fmat->mBaseColorTexture.get();
+                }
+                if (!ftex)
+                {
+                    ftex = face->getTexture();
+                }
             }
             gGL.getTexUnit(0)->bind(
                 ftex ? ftex : (LLViewerTexture*)LLViewerFetchedTexture::sWhiteImagep);
             if (clone_tex)
             {
                 F32 r = 0.98f, g = 0.98f, b = 0.98f, a = 1.f;
-                if (!ftex)
+                if (!ftex && !(vb->getTypeMask() & LLVertexBuffer::MAP_COLOR))
                 {
+                    // [R3] mid-grey says "untextured" -- but ONLY for a face
+                    // with no colour information at all. A face carrying a
+                    // per-vertex TE tint has real authored colour, and greying
+                    // it HALVES that tint (the untextured fallback stacking on
+                    // the R2-4 vertex-colour multiply is why colour-only
+                    // surfaces read as missing in a dark set). Tinted faces
+                    // keep the near-white base so tint x white == authored.
                     r = g = b = 0.5f;
                 }
                 if (gmat)
