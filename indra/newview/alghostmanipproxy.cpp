@@ -164,6 +164,44 @@ void ALGhostManipProxy::selectProxy()
     gBasicToolset->selectTool(LLToolCompTranslate::getInstance());
 }
 
+void ALGhostManipProxy::enterPickerState()
+{
+    LLToolMgr* tool_mgr = LLToolMgr::getInstance();
+
+    // Idempotent: if we already hold no proxy and the in-world picker is current,
+    // we ARE in State B -- do nothing. Otherwise this would deselect / re-install /
+    // re-fire ALToolGhostEdit::handleSelect() every frame while nothing is picked.
+    if (mProxy.isNull() && tool_mgr->getCurrentTool() == ALToolGhostEdit::getInstance())
+    {
+        return;
+    }
+
+    // Cancel any in-progress gizmo drag and release capture. Capture lives on the
+    // stock composite's INTERNAL manip, so releaseManip() -- not setMouseCapture()
+    // on the composite (which wouldn't release it).
+    if (LLToolComposite* comp = dynamic_cast<LLToolComposite*>(tool_mgr->getCurrentTool()))
+    {
+        comp->releaseManip();
+    }
+    if (mDragging)
+    {
+        endDrag(false);
+    }
+
+    // Clear the (now stale) proxy selection and destroy the proxy BEFORE handing
+    // the tool back, so the stock manipulator never holds a dead object.
+    LLSelectMgr::getInstance()->deselectAll();
+    destroyProxy();
+    mInstanceId.setNull();
+    mSeenRevision = 0;
+
+    // Hand the in-world ghost picker back so the user can select another ghost.
+    // The departure detector treats ALToolGhostEdit as an editing tool, so this
+    // does NOT read as leaving edit mode. Mirrors the panel's edit-mode entry
+    // (alpanelghoststudio.cpp: setTransientTool(ALToolGhostEdit)).
+    tool_mgr->setTransientTool(ALToolGhostEdit::getInstance());
+}
+
 void ALGhostManipProxy::pushInstanceToProxy()
 {
     if (mProxy.isNull() || mProxy->isDead())
@@ -213,12 +251,24 @@ void ALGhostManipProxy::pullProxyToInstance()
         return;
     }
 
-    // TRANSLATE / ROTATE drag: position + rotation; scale unchanged. The
-    // center<->foot conversion uses the SCALED box height.
-    const F32 h = PROXY_HEIGHT * llclamp(inst->mScale, 0.05f, 10.f);
+    // TRANSLATE / ROTATE drag: position + rotation; scale unchanged.
     const LLQuaternion rotation = mProxy->getRotation();
-    inst->mRotation   = rotation;
-    inst->mFootGlobal = footFromProxyCenter(mProxy->getPositionGlobal(), rotation, h);
+    inst->mRotation = rotation;
+    if (LLToolMgr::getInstance()->getCurrentTool() == LLToolCompRotate::getInstance())
+    {
+        // ROTATE pivots around the planted FOOT: keep the drag-start foot and take
+        // only the new orientation. Stock rotate spins about the box CENTRE, which
+        // would swing the foot out for pitch/roll; endDrag() re-normalises the
+        // proxy centre back over this foot so the gizmo re-seats on the next tick.
+        inst->mFootGlobal = mDragStartFoot;
+    }
+    else
+    {
+        // TRANSLATE: the foot follows the box centre (the center<->foot conversion
+        // uses the SCALED box height).
+        const F32 h = PROXY_HEIGHT * llclamp(inst->mScale, 0.05f, 10.f);
+        inst->mFootGlobal = footFromProxyCenter(mProxy->getPositionGlobal(), rotation, h);
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -281,19 +331,32 @@ void ALGhostManipProxy::tick()
         return;
     }
 
-    // Handoff exit: once we've switched to the stock toolset (mSavedToolset set),
-    // the user LEAVING it (Esc, or picking another tool) means "exit ghost edit".
-    // Switching between the translate and rotate gizmos keeps gBasicToolset
-    // current, so this only fires on a genuine departure. Cancels an open drag.
-    if (mSavedToolset && LLToolMgr::getInstance()->getCurrentToolset() != gBasicToolset)
+    // Handoff exit: once the proxy is selected (mSavedToolset set), the current
+    // tool is one of the ghost-edit tools -- the in-world picker (State B) or a
+    // stock manip gizmo (State A). Switching among Translate/Rotate/Scale keeps us
+    // editing; the picker keeps us editing; ANY OTHER tool (Camera, Grab, Create,
+    // Inspect, Land, ...) is a genuine departure -> exit ghost edit. Check the TOOL
+    // identity, NOT merely the toolset: the stock manip tools AND several unrelated
+    // tools all live in gBasicToolset, so a toolset compare would miss a departure
+    // to e.g. the Camera tool and leave the invisible proxy selected under it.
+    if (mSavedToolset)
     {
-        if (mDragging)
+        const LLTool* cur_tool = LLToolMgr::getInstance()->getCurrentTool();
+        const bool on_edit_tool =
+            cur_tool == ALToolGhostEdit::getInstance() ||
+            cur_tool == LLToolCompTranslate::getInstance() ||
+            cur_tool == LLToolCompRotate::getInstance() ||
+            cur_tool == LLToolCompScale::getInstance();
+        if (!on_edit_tool)
         {
-            endDrag(false);
+            if (mDragging)
+            {
+                endDrag(false);
+            }
+            // Departure: do NOT restore the toolset -- the user chose the new one.
+            ALToolGhostEdit::getInstance()->stopEditMode(/*restore_toolset*/ false);
+            return;
         }
-        // Departure: do NOT restore the toolset -- the user chose the new one.
-        ALToolGhostEdit::getInstance()->stopEditMode(/*restore_toolset*/ false);
-        return;
     }
 
     ALGhostStudio& studio = ALGhostStudio::instance();
@@ -308,15 +371,25 @@ void ALGhostManipProxy::tick()
         mSeenRevision = 0;
     }
 
-    ALGhostStudio::Instance* inst = selected.notNull() ? studio.getInstance(selected) : nullptr;
+    // Region temporarily unavailable (e.g. a region cross in flight): an
+    // AVAILABILITY condition, not a lost selection. Drop the stale proxy and retry
+    // next tick -- do NOT clear the still-valid Ghost Studio selection or drop to
+    // the picker on a transient region gap.
     LLViewerRegion* region = gAgent.getRegion();
-
-    // No resolvable selection (or no live region): stay ARMED in edit mode but
-    // hold no proxy -- the user can still pick a ghost from the panel/in-world.
-    // Only an explicit stop (toggle off / Esc) tears edit mode down.
-    if (!inst || !region)
+    if (!region)
     {
         destroyProxy();
+        return;
+    }
+
+    // No resolvable instance (deselected, deleted, or removed under us): stay ARMED
+    // in edit mode but hand the in-world picker back (State B) so the user can pick
+    // another ghost. Only an explicit stop (toggle off / Esc / departure) tears
+    // edit mode down.
+    ALGhostStudio::Instance* inst = selected.notNull() ? studio.getInstance(selected) : nullptr;
+    if (!inst)
+    {
+        enterPickerState();
         return;
     }
 

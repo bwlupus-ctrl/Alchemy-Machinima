@@ -127,7 +127,10 @@ static bool selectionAllLocalPreview(LLObjectSelectionHandle selection)
     for (LLObjectSelection::iterator iter = selection->begin(); iter != selection->end(); ++iter)
     {
         LLViewerObject* obj = (*iter)->getObject();
-        if (obj && !isLocalPreviewObject(obj))
+        // A null node means the selection is NOT proven all-local -- fall back to a
+        // normal simulator send rather than silently suppressing it (matches the
+        // stricter selectionAllLocalMeshPreview()).
+        if (!obj || !isLocalPreviewObject(obj))
         {
             return false;
         }
@@ -192,6 +195,10 @@ static void synthesizeLocalPreviewNode(LLSelectNode* nodep, LLViewerObject* obje
     nodep->mName = objectp->isGhostManipProxy() ? "(ghost manipulation proxy)"
                                                 : "(local mesh preview)";
     nodep->mDescription.clear();
+    // Only a genuine Local Mesh preview may consult LLLocalMeshMgr. A Ghost Studio
+    // manipulation proxy is isLocalOnly() but NOT a mesh preview, so it must never
+    // touch that singleton/lookup (it keeps its "(ghost manipulation proxy)" name).
+    if (objectp->isLocalMeshPreview())
     {
         std::string mesh_name, mesh_path;
         if (LLLocalMeshMgr::getInstance()->getPreviewDisplay(objectp, mesh_name, mesh_path))

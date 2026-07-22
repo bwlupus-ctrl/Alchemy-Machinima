@@ -75,6 +75,12 @@ private:
     bool createProxy(LLViewerRegion* region);
     void destroyProxy();
     void selectProxy();
+    // Transition to "State B": no instance is selected, so drop the proxy and hand
+    // the in-world ghost picker (ALToolGhostEdit) back to the user WITHOUT leaving
+    // edit mode. Idempotent -- owns drag-cancel, capture release, deselect, proxy
+    // destroy, bookkeeping reset, and transient-picker install, so the deleted /
+    // deselected / removed paths all funnel through one place.
+    void enterPickerState();
     void pushInstanceToProxy();     // Instance -> proxy transform
     void pullProxyToInstance();     // proxy transform -> Instance (no revision bump)
 

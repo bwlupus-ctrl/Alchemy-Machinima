@@ -171,6 +171,7 @@
 #include "lltoolfocus.h"
 #include "lltoolgrab.h"
 #include "lltoolmgr.h"
+#include "altoolghostedit.h"        // [GhostStudio] Esc exits edit mode post-handoff
 #include "lltoolmorph.h"
 #include "lltoolpie.h"
 #include "lltoolselectland.h"
@@ -3373,6 +3374,28 @@ bool LLViewerWindow::handleKey(KEY key, MASK mask)
             return true;
         } else {
             LL_DEBUGS() << "LLviewerWindow::handleKey - in 'traverse up' - no loops seen... just called keyboard_focus->handleKey an it returned false" << LL_ENDL;
+        }
+    }
+
+    // [GhostStudio] Esc leaves ghost edit-mode even after the build-mode handoff.
+    // Once a ghost is selected the transient ALToolGhostEdit is no longer current
+    // (a stock Translate/Rotate/Scale composite is), so that tool's own handleKey()
+    // can never see Esc. Handle it here -- AFTER focused UI/menus get their chance
+    // -- but only for unmodified Esc while editing, and only when a stock manip
+    // composite is current (State B, where the picker IS current, is handled by
+    // ALToolGhostEdit::handleKey() below). Restore the pre-edit toolset and consume.
+    if (key == KEY_ESCAPE && mask == MASK_NONE
+        && ALToolGhostEdit::instanceExists()
+        && ALToolGhostEdit::getInstance()->isEditModeActive())
+    {
+        const LLTool* cur_tool = LLToolMgr::getInstance()->getCurrentTool();
+        if (cur_tool == LLToolCompTranslate::getInstance()
+            || cur_tool == LLToolCompRotate::getInstance()
+            || cur_tool == LLToolCompScale::getInstance())
+        {
+            ALToolGhostEdit::getInstance()->stopEditMode(/*restore_toolset*/ true);
+            LLViewerEventRecorder::instance().logKeyEvent(key, mask);
+            return true;
         }
     }
 
