@@ -337,6 +337,10 @@ public:
     virtual const LLVector3 getRenderPosition() const;
 
     virtual const LLVector3 getPivotPositionAgent() const; // Usually = to getPositionAgent, unless like flex objects it's not
+    // [GhostStudio] position used for the EDIT MANIPULATOR pivot only. Defaults to
+    // getPivotPositionAgent(); the ghost manip proxy raises it above its (large,
+    // invisible) body so the constant-screen-size gizmo isn't buried in the clone.
+    virtual LLVector3 getManipPivotPositionAgent() const;
 
     LLViewerObject* getRootEdit() const;
 

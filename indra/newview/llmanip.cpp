@@ -350,7 +350,23 @@ bool LLManip::nearestPointOnLineFromMouse( S32 x, S32 y, const LLVector3& b1, co
 
 LLVector3 LLManip::getSavedPivotPoint() const
 {
-    return LLSelectMgr::getInstance()->getSavedBBoxOfSelection().getCenterAgent();
+    const LLVector3 saved_center = LLSelectMgr::getInstance()->getSavedBBoxOfSelection().getCenterAgent();
+    // [GhostStudio] mirror getPivotPoint()'s raised manip pivot for the ghost proxy
+    // so translate drag/snap deltas stay consistent -- a raised live pivot against a
+    // bbox-centre saved pivot would jump the drag at start. Translation doesn't
+    // change the proxy's rotation/scale, so the raise offset is drag-invariant and
+    // can be applied to the saved bbox centre.
+    // getFirstObject()/getObjectCount() are non-const; this method is const, so
+    // query through LLSelectMgr's current selection handle (same selection the
+    // saved/live bbox lookups above already use) rather than the const member.
+    LLObjectSelectionHandle selection = LLSelectMgr::getInstance()->getSelection();
+    LLViewerObject* obj = selection->getFirstObject();
+    if (obj && obj->isGhostManipProxy() && selection->getObjectCount() == 1)
+    {
+        const LLVector3 live_center = LLSelectMgr::getInstance()->getBBoxOfSelection().getCenterAgent();
+        return saved_center + (obj->getManipPivotPositionAgent() - live_center);
+    }
+    return saved_center;
 }
 
 LLVector3 LLManip::getPivotPoint()
@@ -359,7 +375,7 @@ LLVector3 LLManip::getPivotPoint()
     LLViewerObject* object = mObjectSelection->getFirstRootObject(true);
     if (object && (mObjectSelection->getObjectCount() == 1 || editRootAxis) && mObjectSelection->getSelectType() != SELECT_TYPE_HUD)
     {
-        return mObjectSelection->getFirstObject()->getPivotPositionAgent();
+        return mObjectSelection->getFirstObject()->getManipPivotPositionAgent();
     }
     return LLSelectMgr::getInstance()->getBBoxOfSelection().getCenterAgent();
 }

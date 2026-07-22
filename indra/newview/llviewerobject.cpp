@@ -4556,6 +4556,11 @@ const LLVector3 LLViewerObject::getPivotPositionAgent() const
     return getRenderPosition();
 }
 
+LLVector3 LLViewerObject::getManipPivotPositionAgent() const
+{
+    return getPivotPositionAgent();
+}
+
 const LLQuaternion LLViewerObject::getRenderRotation() const
 {
     LLQuaternion ret;

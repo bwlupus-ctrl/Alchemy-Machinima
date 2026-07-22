@@ -147,6 +147,7 @@ public:
                 void    setLOD(S32 lod)                     { mLOD = lod; mLODChanged = true; }
                 bool    isNoLOD() const                     { return NO_LOD == mLOD; }
     const LLVector3     getPivotPositionAgent() const override;
+    LLVector3           getManipPivotPositionAgent() const override;
     const LLMatrix4&    getRelativeXform() const                { return mRelativeXform; }
     const LLMatrix3&    getRelativeXformInvTrans() const        { return mRelativeXformInvTrans; }
     /*virtual*/ const LLMatrix4 getRenderMatrix() const override;

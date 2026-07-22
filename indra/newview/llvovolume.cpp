@@ -4646,6 +4646,26 @@ const LLVector3 LLVOVolume::getPivotPositionAgent() const
     return LLViewerObject::getPivotPositionAgent();
 }
 
+LLVector3 LLVOVolume::getManipPivotPositionAgent() const
+{
+    if (isGhostManipProxy())
+    {
+        // Raise the edit-manip pivot to just above the invisible proxy box top so
+        // the constant-screen-size translate/rotate gizmo sits clearly OVER the
+        // ghost, not buried mid-body at large clone scales. Only the manipulator
+        // ORIGIN moves -- the proxy transform, bbox, and stretch-scale handles are
+        // unchanged (see alghostmanipproxy.cpp). Clearance is scale-aware with a
+        // floor so the gizmo clears the head at both small and large scales.
+        constexpr F32 MIN_CLEARANCE_M = 0.35f;
+        constexpr F32 HEAD_CLEARANCE_FRACTION = 0.15f;
+        const F32 box_h = getScale().mV[VZ];
+        const LLVector3 up = LLVector3::z_axis * getRenderRotation();
+        const F32 clearance = llmax(MIN_CLEARANCE_M, HEAD_CLEARANCE_FRACTION * box_h);
+        return getRenderPosition() + up * (0.5f * box_h + clearance);
+    }
+    return getPivotPositionAgent();
+}
+
 void LLVOVolume::onShift(const LLVector4a &shift_vector)
 {
     if (mVolumeImpl)
