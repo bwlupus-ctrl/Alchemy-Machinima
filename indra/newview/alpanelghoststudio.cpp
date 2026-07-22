@@ -186,8 +186,10 @@ void ALPanelGhostStudio::draw()
     // [R2-3] if our edit tool was taken away (build tools, another picker, Esc
     // inside the tool), reflect that in the toggle instead of a stale "on" --
     // the path panel's exact idiom
-    if (mEditMode
-        && LLToolMgr::getInstance()->getCurrentTool() != ALToolGhostEdit::getInstance())
+    // Edit mode is the tool's EXPLICIT state, NOT "ALToolGhostEdit is current":
+    // once a ghost is selected the proxy hands off to the stock translate/rotate
+    // tool, so the ghost tool is no longer current while editing continues.
+    if (mEditMode && !ALToolGhostEdit::getInstance()->isEditModeActive())
     {
         mEditMode = false;
     }
@@ -200,7 +202,7 @@ void ALPanelGhostStudio::draw()
     {
         mHintEdit = mEditMode;
         mHint->setText(mEditMode
-            ? std::string("Click a ghost to select \xC2\xB7 drag moves \xC2\xB7 Shift-drag turns \xC2\xB7 Del removes \xC2\xB7 Esc exits")
+            ? std::string("Click a ghost to select \xC2\xB7 move/rotate with the gizmo \xC2\xB7 scale below \xC2\xB7 Del removes \xC2\xB7 Esc exits")
             : std::string("Styled copies of cast bodies: place, pose, multiply. Double-click a row to show/hide it"));
     }
 
@@ -363,7 +365,7 @@ void ALPanelGhostStudio::refreshDetail()
     if (sel != mShownFor)
     {
         mShownFor = sel;
-        mYawSpin->setValue(inst->mYaw * RAD_TO_DEG);
+        mYawSpin->setValue(inst->getYaw() * RAD_TO_DEG);
         mScaleSpin->setValue(inst->mScale);
         mStyleCombo->setValue(inst->mStyle);
         mActorTintCheck->set(inst->mUseActorTint);
@@ -475,7 +477,7 @@ void ALPanelGhostStudio::onPosCommit()
         const LLVector3 agent_pos((F32)mPosX->getValue().asReal(),
                                   (F32)mPosY->getValue().asReal(),
                                   (F32)mPosZ->getValue().asReal());
-        inst->mFootGlobal = gAgent.getPosGlobalFromAgent(agent_pos);
+        inst->setFootGlobal(gAgent.getPosGlobalFromAgent(agent_pos));
     }
 }
 
@@ -484,7 +486,7 @@ void ALPanelGhostStudio::onYawCommit()
     if (ALGhostStudio::Instance* inst =
             ALGhostStudio::instance().getInstance(selectedInstance()))
     {
-        inst->mYaw = (F32)mYawSpin->getValue().asReal() * DEG_TO_RAD;
+        inst->setYaw((F32)mYawSpin->getValue().asReal() * DEG_TO_RAD);
     }
 }
 
@@ -493,7 +495,7 @@ void ALPanelGhostStudio::onScaleCommit()
     if (ALGhostStudio::Instance* inst =
             ALGhostStudio::instance().getInstance(selectedInstance()))
     {
-        inst->mScale = llclamp((F32)mScaleSpin->getValue().asReal(), 0.05f, 10.f);
+        inst->setScale(llclamp((F32)mScaleSpin->getValue().asReal(), 0.05f, 10.f));
     }
 }
 
@@ -524,7 +526,7 @@ void ALPanelGhostStudio::onClickToActor()
     {
         LLVector3 foot = av->getRootJoint()->getWorldPosition();
         foot.mV[VZ] -= av->getPelvisToFoot();
-        inst->mFootGlobal = gAgent.getPosGlobalFromAgent(foot);
+        inst->setFootGlobal(gAgent.getPosGlobalFromAgent(foot));
     }
 }
 
@@ -538,7 +540,7 @@ void ALPanelGhostStudio::onClickToMe()
     }
     LLVector3 foot = gAgentAvatarp->getRootJoint()->getWorldPosition();
     foot.mV[VZ] -= gAgentAvatarp->getPelvisToFoot();
-    inst->mFootGlobal = gAgent.getPosGlobalFromAgent(foot);
+    inst->setFootGlobal(gAgent.getPosGlobalFromAgent(foot));
 }
 
 void ALPanelGhostStudio::exitPlaceMode()
@@ -575,6 +577,11 @@ void ALPanelGhostStudio::exitEditMode()
     if (mEditMode)
     {
         mEditMode = false;
+        // The proxy may have handed off to the stock toolset, so ALToolGhostEdit
+        // is no longer current/transient -- stopEditMode() tears the proxy down
+        // and restores the prior toolset regardless. Also clear the transient
+        // tool in the (no-selection) case where the ghost tool is still current.
+        ALToolGhostEdit::getInstance()->stopEditMode();
         LLToolMgr* tm = LLToolMgr::getInstance();
         if (tm->usingTransientTool()
             && tm->getCurrentTool() == ALToolGhostEdit::getInstance())

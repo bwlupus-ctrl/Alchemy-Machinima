@@ -497,7 +497,7 @@ public:
     // [GhostStudio] optional per-ghost placement + FX overrides for the model
     // ghost draw. Default-constructed = byte-identical to the classic path-node
     // ghost (pure translation, live pose, no FX). The placement composes
-    //   T(ghost_foot) * Rz(mYaw) * S(mScale) * T(-pivot_foot)
+    //   T(ghost_foot) * R(mRotation) * S(mScale) * T(-pivot_foot)
     // into the modelview -- pivoting at the FOOT keeps scaled/rotated feet
     // planted on the ghost spot. The pivot is the source's live foot for LIVE
     // pose, or the capture-frame anchor when a frozen palette map is supplied
@@ -505,7 +505,7 @@ public:
     // frame-matched anchor keeps placement correct across region crossings).
     struct GhostDrawParams
     {
-        F32        mYaw = 0.f;          // radians about the ghost's vertical axis
+        LLQuaternion mRotation;        // orientation about the foot (identity = source facing)
         F32        mScale = 1.f;        // uniform, pivoted at the foot
         bool       mHavePivot = false;  // use mPivotFootAgent (FROZEN) instead of the live foot
         LLVector3  mPivotFootAgent;     // capture-frame foot anchor (when mHavePivot)

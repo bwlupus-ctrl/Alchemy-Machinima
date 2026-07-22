@@ -662,19 +662,9 @@ void revoke_permissions_on_object(const LLUUID &object_id)
 //-----------------------------------------------------------------------------
 // LLVOAvatar()
 //-----------------------------------------------------------------------------
-// [AvatarKind] Public ctor: anything constructed without an explicit kind is
-// another simulator-backed resident.
 LLVOAvatar::LLVOAvatar(const LLUUID& id,
                        const LLPCode pcode,
                        LLViewerRegion* regionp) :
-    LLVOAvatar(id, pcode, regionp, AVATAR_KIND_RESIDENT)
-{
-}
-
-LLVOAvatar::LLVOAvatar(const LLUUID& id,
-                       const LLPCode pcode,
-                       LLViewerRegion* regionp,
-                       EAvatarKind kind) :
     LLAvatarAppearance(&gAgentWearables),
     LLViewerObject(id, pcode, regionp),
     mSpecialRenderMode(0),
@@ -738,15 +728,8 @@ LLVOAvatar::LLVOAvatar(const LLUUID& id,
     mIsControlAvatar(false),
     mIsUIAvatar(false),
     mIsGhostAvatar(false),
-    mEnableDefaultMotions(true),
-    mAvatarKind(kind)
+    mEnableDefaultMotions(true)
 {
-    // [AvatarKind] The old "dummy" flag is now DERIVED, not authored. It means
-    // only "use the simplified preview appearance path" and is consumed by the
-    // llappearance layer; it is no longer an identity or world-membership test.
-    // Subclasses must not assign it.
-    mIsDummy = usesPreviewAppearancePath();
-
     LL_DEBUGS("AvatarRender") << "LLVOAvatar Constructor (0x" << this << ") id:" << mID << LL_ENDL;
 
     //VTResume();  // VTune
@@ -814,119 +797,9 @@ LLVOAvatar::LLVOAvatar(const LLUUID& id,
         LLSceneMonitor::getInstance()->freezeAvatar((LLCharacter*)this);
     }
 
-    // [AvatarKind] Ghosts skip the saved render-policy lookup: their id is
-    // synthetic, so any hit would be a stranger's setting. This replaces the
-    // subclass-side undo that used to be needed because the base ctor could
-    // not tell what it was constructing.
-    //
-    // Deliberately keyed on GHOST alone rather than !hasResidentIdentity():
-    // control and UI avatars performed this lookup before, and commit 1 is
-    // meant to be behaviour-neutral for them. Whether they should also skip it
-    // is a separate question for a later commit.
-    if (mAvatarKind != AVATAR_KIND_GHOST)
-    {
-        mVisuallyMuteSetting = LLVOAvatar::VisualMuteSettings(LLRenderMuteList::getInstance()->getSavedVisualMuteSetting(getID()));
-    }
-    else
-    {
-        mVisuallyMuteSetting = LLVOAvatar::AV_RENDER_NORMALLY;
-    }
+    mVisuallyMuteSetting = LLVOAvatar::VisualMuteSettings(LLRenderMuteList::getInstance()->getSavedVisualMuteSetting(getID()));
 
     sInstances.push_back(this);
-}
-
-//-----------------------------------------------------------------------------
-// [AvatarKind] Capability predicates.
-//
-// All policy lives HERE, derived from the immutable kind, so behaviour for a
-// new avatar kind is decided in one readable place instead of being spread as
-// type tests across the viewer. Call sites should ask what an avatar may DO,
-// never what class it is.
-//-----------------------------------------------------------------------------
-
-bool LLVOAvatar::usesAvatarSceneRenderPath() const
-{
-    // Ghosts render as real scene avatars -- that is the entire point of them.
-    return mAvatarKind == AVATAR_KIND_RESIDENT
-        || mAvatarKind == AVATAR_KIND_SELF
-        || mAvatarKind == AVATAR_KIND_GHOST;
-}
-
-bool LLVOAvatar::usesPreviewAppearancePath() const
-{
-    // Exactly the old mIsDummy population: control + UI avatars.
-    return mAvatarKind == AVATAR_KIND_CONTROL
-        || mAvatarKind == AVATAR_KIND_UI;
-}
-
-bool LLVOAvatar::hasResidentIdentity() const
-{
-    return mAvatarKind == AVATAR_KIND_RESIDENT
-        || mAvatarKind == AVATAR_KIND_SELF;
-}
-
-bool LLVOAvatar::acceptsSimulatorAvatarData() const
-{
-    return hasResidentIdentity();
-}
-
-bool LLVOAvatar::participatesInWorldPresence() const
-{
-    return hasResidentIdentity();
-}
-
-bool LLVOAvatar::producesResidentEffects() const
-{
-    return hasResidentIdentity();
-}
-
-bool LLVOAvatar::recordsAvatarRezMetrics() const
-{
-    return hasResidentIdentity();
-}
-
-bool LLVOAvatar::participatesInAvatarRenderBudget() const
-{
-    // CONTROL is EXCLUDED here, unlike the motion/resource predicates below.
-    // That is not an oversight: the existing autotune and render-info paths
-    // already exclude control avatars explicitly (llvoavatar.cpp autotune
-    // guard and visibility accounting, llavatarrenderinfoaccountant.cpp), so
-    // including them here would silently change animesh behaviour the moment
-    // those exclusions are replaced by this predicate.
-    //
-    // NOTE this means resident/autotune/impostor ACCOUNTING, not "costs GPU
-    // time" -- a ghost certainly does. Ghost Studio must impose its own clone
-    // budget rather than relying on resident render policy to throttle it.
-    return mAvatarKind == AVATAR_KIND_RESIDENT
-        || mAvatarKind == AVATAR_KIND_SELF;
-}
-
-// NOTE: there is deliberately NO "participatesInAvatarGPUMetrics" predicate.
-// The raw GPU-time aggregates must keep measuring EVERY avatar, ghosts
-// included: a ghost consumes real GPU time, and the avatar total is subtracted
-// from frame time to estimate non-avatar cost (llperfstats.cpp). Excluding
-// ghosts there would not isolate them from resident policy -- it would
-// reclassify their cost as SCENE cost, skewing draw-distance tuning and still
-// tightening resident ART limits by another route. Ghosts are excluded at the
-// points where resident policy ACTS, via participatesInAvatarRenderBudget().
-
-bool LLVOAvatar::participatesInAvatarMotionBudget() const
-{
-    // Animated objects contribute to motion scheduling today; keep that. A
-    // ghost's pose is externally driven, so it does not.
-    return mAvatarKind == AVATAR_KIND_RESIDENT
-        || mAvatarKind == AVATAR_KIND_SELF
-        || mAvatarKind == AVATAR_KIND_CONTROL;
-}
-
-bool LLVOAvatar::participatesInAvatarResourcePressure() const
-{
-    // Preserves LLControlAvatar behaviour and the existing UI-avatar exemption
-    // in releaseMeshData(); additionally exempts ghosts so a local crowd can
-    // never push REAL avatars over the mesh-release threshold.
-    return mAvatarKind == AVATAR_KIND_RESIDENT
-        || mAvatarKind == AVATAR_KIND_SELF
-        || mAvatarKind == AVATAR_KIND_CONTROL;
 }
 
 std::string LLVOAvatar::avString() const
@@ -1358,15 +1231,6 @@ void LLVOAvatar::cleanupClass()
 // virtual
 void LLVOAvatar::initInstance()
 {
-    // [AvatarKind] MIGRATION GUARD. Runs after the subclass constructor body,
-    // so it can confirm the new immutable kind agrees with the old booleans it
-    // is replacing. When these have held across self / other residents /
-    // animesh / UI previews / ghosts, the old booleans can be deleted.
-    llassert(mIsDummy == usesPreviewAppearancePath());
-    llassert(mIsControlAvatar == (mAvatarKind == AVATAR_KIND_CONTROL));
-    llassert(mIsUIAvatar == (mAvatarKind == AVATAR_KIND_UI));
-    llassert(mIsGhostAvatar == (mAvatarKind == AVATAR_KIND_GHOST));
-
     //-------------------------------------------------------------------------
     // register motions
     //-------------------------------------------------------------------------

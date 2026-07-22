@@ -44,6 +44,19 @@ Run from the repo root. Foreground by default (add `--background` + poll with `s
 The `codex:codex-rescue` subagent is a fire-and-forget FORWARDER — it cannot poll and will only
 return a job handle, so call the helper directly from the main loop instead.
 
+### ⚠️ PASSING FILES TO CODEX — INLINE or IN-REPO ONLY (recurring time-waster)
+Codex can ONLY read files inside its workspace = **the repo root (`I:\alchemy-machinima`)**. It
+**cannot** read the Claude scratchpad (`C:\Users\...\AppData\Local\Temp\claude\...`) or any path
+outside the repo — a prompt that says "read the file at <scratchpad path>" fails with *"outside the
+permitted workspace"* and wastes a full round-trip. This has happened repeatedly. Rules:
+- **Inline the CONTENT** of the artifact (diff, plan, brief) directly in the prompt text — do not
+  reference a scratchpad path. This is the default.
+- For a large diff, tell Codex to run **`git diff`** / **`git show <sha>`** / **`git diff --stat`**
+  itself — repo-relative git always works and needs nothing pasted.
+- If a file reference is genuinely needed, **write the file INSIDE the repo first** (e.g. `doc/` or a
+  repo-local scratch path) and reference that repo-relative path.
+- **Never** put a `C:\Users\...\Temp\claude\...` path in a Codex prompt and expect it to be read.
+
 ### Why this rule exists — earned the hard way on the ghost-clone work
 - Codex caught `LLVOAvatar::slamPosition()` opening with `gAgent.setPositionAgent()`
   (llvoavatar.cpp:4038) — copied from LLUIAvatar, it would have **teleported the real user** onto

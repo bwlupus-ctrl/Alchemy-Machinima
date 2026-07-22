@@ -58,6 +58,21 @@
 // we use this in various places instead of NULL
 static LLPointer<LLTool> sNullTool(new LLTool(std::string("null"), NULL));
 
+// [GhostStudio] a manip drag holds mouse capture on the internal LLManip, not on
+// the composite -- so external drivers (ALGhostManipProxy) must query these.
+bool LLToolComposite::isManipulating() const
+{
+    return mManip != nullptr && mCur == mManip && mManip->hasMouseCapture();
+}
+
+void LLToolComposite::releaseManip()
+{
+    if (mManip && mManip->hasMouseCapture())
+    {
+        mManip->setMouseCapture(false);
+    }
+}
+
 //-----------------------------------------------------------------------
 // LLToolComposite
 

@@ -94,7 +94,7 @@ ALGhostStudio::Instance* ALGhostStudio::duplicateInstance(const LLUUID& id)
     copy.mId.generate();
     // one step to the ghost's LEFT (perpendicular to its yaw) so the copy is
     // immediately visible beside the original instead of hidden inside it
-    const F32 yaw = copy.mYaw;
+    const F32 yaw = copy.getYaw();
     copy.mFootGlobal += LLVector3d(-sinf(yaw), cosf(yaw), 0.0);
     mInstances.push_back(copy);
     return &mInstances.back();
@@ -249,11 +249,12 @@ S32 ALGhostStudio::makeArray(const LLUUID& id, S32 count, F32 spacing, bool ring
         {
             Instance copy = proto;
             copy.mId.generate();
-            const F32 a = proto.mYaw + step * (F32)i;
-            copy.mFootGlobal += LLVector3d(cosf(a) - cosf(proto.mYaw),
-                                           sinf(a) - sinf(proto.mYaw), 0.0) * (F64)radius;
+            const F32 proto_yaw = proto.getYaw();
+            const F32 a = proto_yaw + step * (F32)i;
+            copy.mFootGlobal += LLVector3d(cosf(a) - cosf(proto_yaw),
+                                           sinf(a) - sinf(proto_yaw), 0.0) * (F64)radius;
             // each ghost faces outward from the ring centre, like a crowd
-            copy.mYaw = a;
+            copy.setYaw(a);
             mInstances.push_back(copy);
             ++made;
         }
@@ -261,7 +262,8 @@ S32 ALGhostStudio::makeArray(const LLUUID& id, S32 count, F32 spacing, bool ring
     else
     {
         // line of `count` total along the prototype's facing direction
-        const LLVector3d dir(cosf(proto.mYaw), sinf(proto.mYaw), 0.0);
+        const F32 proto_yaw = proto.getYaw();
+        const LLVector3d dir(cosf(proto_yaw), sinf(proto_yaw), 0.0);
         for (S32 i = 1; i < count; ++i)
         {
             Instance copy = proto;

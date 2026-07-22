@@ -35,11 +35,9 @@
 #include "llviewerregion.h"
 
 LLUIAvatar::LLUIAvatar(const LLUUID& id, const LLPCode pcode, LLViewerRegion* regionp) :
-    LLVOAvatar(id, pcode, regionp, AVATAR_KIND_UI)
+    LLVOAvatar(id, pcode, regionp)
 {
-    // [AvatarKind] mIsDummy is now derived from the kind in LLVOAvatar's ctor;
-    // do not assign it here. mIsUIAvatar is kept for one migration commit so
-    // initInstance() can assert the old and new representations agree.
+    mIsDummy = true;
     mIsUIAvatar = true;
 }
 

@@ -39,6 +39,7 @@
 #include "v3math.h"
 #include "v3dmath.h"
 #include "m4math.h"         // frozen attachment matrices
+#include "llquaternion.h"   // per-instance orientation
 
 #include <map>
 #include <string>
@@ -71,8 +72,52 @@ public:
 
         // ---- placement ----
         LLVector3d  mFootGlobal;        // ghost FOOT position, global coords
-        F32         mYaw = 0.f;         // radians, about the ghost's vertical axis
+        // Orientation about the foot pivot (identity = the source's facing).
+        // mYaw is gone: yaw-only UI/gestures go through getYaw()/setYaw(), and
+        // full 3-axis editing (the manip proxy) writes mRotation directly.
+        LLQuaternion mRotation;
         F32         mScale = 1.f;       // uniform, pivoted at the foot (feet stay planted)
+
+        // [ManipProxy] bumped on EXTERNAL transform edits (panel numeric, array
+        // helpers). The in-world manip proxy PULL writes mFootGlobal/mRotation
+        // DIRECTLY without bumping this, so it never triggers a push-back that
+        // would fight an in-progress drag. Starts at 1 so a fresh proxy (which
+        // seeds mSeenRevision at 0) gets an initial push.
+        U64         mTransformRevision = 1;
+
+        // Heading (radians, CCW from +X -- the former mYaw convention), extracted
+        // from mRotation; exact for a pure world-Z rotation (the grounded edit
+        // default), a reasonable heading under authored pitch/roll.
+        F32  getYaw() const
+        {
+            const LLVector3 fwd = LLVector3::x_axis * mRotation;
+            return atan2f(fwd.mV[VY], fwd.mV[VX]);
+        }
+        // Grounded edit: replace orientation with a pure world-Z rotation (no
+        // pitch/roll authored on this path). Free-rotate sets mRotation directly.
+        void setYaw(F32 yaw_rad)
+        {
+            mRotation = LLQuaternion(yaw_rad, LLVector3::z_axis);
+            ++mTransformRevision;
+        }
+        // External foot / full-transform edits (bump the revision so the in-world
+        // proxy re-syncs). The proxy pull deliberately does NOT use these.
+        void setFootGlobal(const LLVector3d& foot)
+        {
+            mFootGlobal = foot;
+            ++mTransformRevision;
+        }
+        void setTransform(const LLVector3d& foot, const LLQuaternion& rot)
+        {
+            mFootGlobal = foot;
+            mRotation   = rot;
+            ++mTransformRevision;
+        }
+        void setScale(F32 scale)
+        {
+            mScale = scale;
+            ++mTransformRevision;    // re-syncs the manip proxy box to the new size
+        }
 
         // ---- look ----
         S32         mStyle = 0;         // EGhostStyle id (same values as PathGhostStyle)

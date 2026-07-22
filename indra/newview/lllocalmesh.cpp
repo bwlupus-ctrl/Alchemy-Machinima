@@ -1554,6 +1554,7 @@ LLViewerObject* LLLocalMeshMgr::spawnLinkset(const LLUUID& tracking_id, const LL
         // permission flags so the tools enable manipulation.
         vol->mbCanSelect = true;
         vol->mIsLocalOnly = true;
+        vol->mLocalObjectKind = LLViewerObject::LOCAL_OBJECT_MESH_PREVIEW;
         vol->setFlagsWithoutUpdate(FLAGS_OBJECT_YOU_OWNER | FLAGS_OBJECT_MODIFY | FLAGS_OBJECT_MOVE | FLAGS_OBJECT_COPY | FLAGS_OBJECT_TRANSFER, true);
 
         // Build the drawable and force a valid LOD before setVolume (a NO_LOD

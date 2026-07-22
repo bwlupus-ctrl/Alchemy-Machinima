@@ -928,6 +928,7 @@ void LLCinematicCamera::updateCamera()
 {
     static LLCachedControl<S32>  mode(gSavedSettings, "CinematicCamMode", 1);
     static LLCachedControl<F32>  smoothing(gSavedSettings, "CinematicCamSmoothing", 0.35f);   // seconds
+    static LLCachedControl<bool> bonelock_bypass(gSavedSettings, "CinematicCamBoneLockBypassSmoothing", true);
     static LLCachedControl<bool> look_at_head(gSavedSettings, "CinematicCamLookAtHead", true);
     static LLCachedControl<bool> use_operator(gSavedSettings, "CinematicCamUseOperator", false);
     static LLCachedControl<F32>  frame_up(gSavedSettings, "CinematicCamFrameOffsetUp", 0.f);
@@ -1042,7 +1043,13 @@ void LLCinematicCamera::updateCamera()
     }
 
     // ---- temporal smoothing (one-pole, framerate-independent) -------------
-    const F32 tau = llmax((F32)smoothing, 0.f);
+    // Bone Lock is a RIGID mount: patternBoneLock() already returns the exact
+    // joint pose every frame, so the absolute one-pole would only lag it and
+    // rubber-band against a MOVING mount (the dominant Bone Lock jitter). Auto-
+    // bypass smoothing for Bone Lock (snap) unless the operator opts back in;
+    // every other mode smooths exactly as before.
+    const bool bypass_smoothing = ((S32)mode == MODE_BONE_LOCK) && bonelock_bypass;
+    const F32 tau = bypass_smoothing ? 0.f : llmax((F32)smoothing, 0.f);
     if (!mHavePose || tau < 1e-3f)
     {
         mSmPos = pos;

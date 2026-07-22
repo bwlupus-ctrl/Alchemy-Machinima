@@ -6,26 +6,23 @@
  * Alchemy-Machinima fork
  * $/LicenseInfo$
  *
- * [R2-3] The Ghost Studio panel's "Edit ghosts" toggle activates this
- * transient LLTool (modeled on ALToolPathEdit; the one-shot ALToolGhostPlace
- * stays for the Place button's single-click contract). While active:
+ * The Ghost Studio panel's "Edit ghosts" toggle activates this transient LLTool.
+ * While active it is a thin SELECTOR + host for the build-mode manipulation
+ * proxy (ALGhostManipProxy):
  *
- *   - left-click a ghost        -> select it (shared ALGhostStudio selection;
- *                                  the panel lists follow, and the selected
- *                                  ghost shows a pulsing ground ring)
- *   - left-drag a ghost         -> move it on the ground (world pick per hover)
- *   - SHIFT + drag a ghost      -> turn it: horizontal mouse travel adjusts
- *                                  yaw, position untouched
- *   - left-click empty ground   -> re-place the SELECTED ghost there
- *   - Delete / Backspace        -> remove the selected ghost
- *   - Esc                       -> leave the tool (camera control returns)
- *   - right-click               -> passes through (camera orbit keeps working;
- *                                  never trap the user)
+ *   - left-click a ghost   -> select it (shared ALGhostStudio selection). The
+ *                             per-frame proxy tick then spawns an invisible
+ *                             local-only proxy on the selection and hands off to
+ *                             the stock 3-axis Translate/Rotate gizmos.
+ *   - Delete / Backspace    -> remove the selected ghost
+ *   - Esc                   -> leave edit mode (proxy torn down, camera returns)
  *
- * Ghost picking is SCREEN-SPACE like the path tool's node pick: each enabled
- * instance's foot and a mid-body point project to the screen and the nearest
- * within a pixel radius wins. Numeric spinners in the panel stay the
- * precision path; this is the blocking-by-hand path.
+ * Uniform scale stays on the panel numeric for now. Ghost picking is
+ * SCREEN-SPACE (each enabled instance's foot + mid-body project to the screen,
+ * nearest within a pixel radius wins). Because selecting a ghost switches to the
+ * stock toolset, THIS TOOL STOPS BEING CURRENT while editing continues -- so
+ * edit-mode is an explicit state (isEditModeActive()), never "am I the current
+ * tool", and handleDeselect() must NOT tear the proxy down during that handoff.
  */
 
 #ifndef AL_ALTOOLGHOSTEDIT_H
@@ -35,31 +32,37 @@
 #include "llsingleton.h"
 #include "lluuid.h"
 
+#include "alghostmanipproxy.h"
+
 class ALToolGhostEdit final : public LLTool, public LLSingleton<ALToolGhostEdit>
 {
     LLSINGLETON(ALToolGhostEdit);
 
 public:
     bool handleMouseDown(S32 x, S32 y, MASK mask) override;
-    bool handleMouseUp(S32 x, S32 y, MASK mask) override;
-    bool handleHover(S32 x, S32 y, MASK mask) override;
     bool handleRightMouseDown(S32 x, S32 y, MASK mask) override;
     bool handleKey(KEY key, MASK mask) override;
 
     void handleSelect() override;
     void handleDeselect() override;
-    void onMouseCaptureLost() override;
+
+    // The in-world build-mode manip proxy driving the selected ghost's gizmos.
+    ALGhostManipProxy& getManipProxy() { return mManipProxy; }
+
+    // Edit-mode is an EXPLICIT state, NOT "this tool is current" (selecting a
+    // ghost hands off to the stock translate tool). The panel reads this to keep
+    // the toggle lit, and calls stopEditMode() to leave.
+    bool isEditModeActive() const { return mEditModeActive; }
+    // restore_toolset: true for an explicit exit (panel toggle / Esc) restores the
+    // pre-edit tool; false when the user already switched tools (departure).
+    void stopEditMode(bool restore_toolset = true);
 
 private:
-    // nearest enabled instance to (x,y) within the pick radius; null = none
+    // nearest enabled instance to (x,y) within a pixel threshold; null = none
     LLUUID pickInstance(S32 x, S32 y) const;
-    // world pick -> global surface point; false when the pick misses (sky)
-    bool   groundPointAt(S32 x, S32 y, LLVector3d& out_global) const;
 
-    LLUUID mDragInstance;       // instance being dragged (null = none)
-    bool   mYawDrag = false;    // Shift-drag: turning instead of moving
-    S32    mYawAnchorX = 0;     // screen x where the yaw drag started
-    F32    mYawStart = 0.f;     // instance yaw at yaw-drag start, radians
+    ALGhostManipProxy mManipProxy;
+    bool              mEditModeActive = false;
 };
 
 #endif // AL_ALTOOLGHOSTEDIT_H

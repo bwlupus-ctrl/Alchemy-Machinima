@@ -798,6 +798,23 @@ public:
     bool            mIsLocalOnly;
     bool            isLocalOnly() const { return mIsLocalOnly; }
 
+    // [GhostStudio] WHICH KIND of client-only object this is. isLocalOnly() only
+    // says "no sim counterpart" -- that is true for BOTH a local mesh preview and
+    // a Ghost Studio manipulation proxy, which must NOT share Local Mesh delete/
+    // duplicate/attach behaviour. Local-mesh dispatch tests isLocalMeshPreview();
+    // ghost command policy tests isGhostManipProxy(). The ~45 client-only sites
+    // (sim-send suppression, inventory, media, grab, RLV) keep using isLocalOnly().
+    // INVARIANT: a non-NONE kind implies mIsLocalOnly == true (set them together).
+    enum ELocalObjectKind : U8
+    {
+        LOCAL_OBJECT_NONE = 0,          // a normal sim object, or an untyped client-only clone
+        LOCAL_OBJECT_MESH_PREVIEW,      // an LLLocalMeshMgr preview
+        LOCAL_OBJECT_GHOST_MANIP_PROXY  // a Ghost Studio in-world manipulation proxy
+    };
+    ELocalObjectKind mLocalObjectKind = LOCAL_OBJECT_NONE;
+    bool            isLocalMeshPreview() const { return mLocalObjectKind == LOCAL_OBJECT_MESH_PREVIEW; }
+    bool            isGhostManipProxy() const { return mLocalObjectKind == LOCAL_OBJECT_GHOST_MANIP_PROXY; }
+
 private:
     // Grabbed from UPDATE_FLAGS
     U32             mFlags;

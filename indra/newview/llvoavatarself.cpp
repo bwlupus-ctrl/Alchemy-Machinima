@@ -158,7 +158,7 @@ std::map< LLGLenum, LLGLuint*> LLVOAvatarSelf::sScratchTexNames;
 LLVOAvatarSelf::LLVOAvatarSelf(const LLUUID& id,
                                const LLPCode pcode,
                                LLViewerRegion* regionp) :
-    LLVOAvatar(id, pcode, regionp, AVATAR_KIND_SELF),
+    LLVOAvatar(id, pcode, regionp),
 // [RLVa:KB] - Checked: 2012-07-28 (RLVa-1.4.7)
     mAttachmentSignal(NULL),
 // [/RLVa:KB]

@@ -66,6 +66,7 @@
 #include "llviewerjoystick.h"
 #include "llactormover.h"    // TP-away walk suspend/resume state machine (idle tick)
 #include "alobjectpathmover.h"  // [ObjectPath] per-frame object drives (idle tick)
+#include "altoolghostedit.h"    // [GhostStudio] per-frame manip-proxy sync (idle tick)
 #include "llcinematiccamera.h"
 #include "llflycamrecorder.h"
 #include "llpathcamera.h"    // per-node path camera source (authored actor+camera TAKE)
@@ -5438,6 +5439,12 @@ void LLAppViewer::idle()
     // dispatch below, so a teleport/derez suspends the walk (and releases the
     // path camera) the same frame instead of leaving a stale override pose.
     LLActorMover::instance().updateSuspendState();
+
+    // [GhostStudio] drive the in-world manipulation proxy once per frame HERE in
+    // idle -- before render -- so any proxy creation / selection / toolset switch
+    // happens off the render path, and the sync observes this frame's manip drag.
+    // Near-zero cost when edit mode is off (an idempotent early-out).
+    ALToolGhostEdit::getInstance()->getManipProxy().tick();
 
     // NOTE: ALObjectPathMover::update() was MOVED from here to just before
     // gObjectList.update() above, to fix moving-mount camera jitter (the driven

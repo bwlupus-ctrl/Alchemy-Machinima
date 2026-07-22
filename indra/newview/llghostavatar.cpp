@@ -53,15 +53,14 @@
 static std::vector<LLUUID> sTestGhostIds;
 
 LLGhostAvatar::LLGhostAvatar(const LLUUID& id, const LLPCode pcode, LLViewerRegion* regionp) :
-    LLVOAvatar(id, pcode, regionp, AVATAR_KIND_GHOST),
+    LLVOAvatar(id, pcode, regionp),
     mMarkedForDeath(false)
 {
-    // [AvatarKind] The kind now carries this: AVATAR_KIND_GHOST reports
-    // usesAvatarSceneRenderPath() == true (the whole point -- deferred
-    // lighting, shadows, fog, tonemap, ReShade) while reporting false for
-    // resident identity, world presence, effects and every budget.
-    // mIsGhostAvatar is kept for one migration commit so initInstance() can
-    // assert the old and new representations agree.
+    // A ghost renders through the REAL scene avatar path -- that is the whole
+    // point (deferred lighting, shadows, fog, tonemap, ReShade). Unlike
+    // LLControlAvatar / LLUIAvatar it must NOT be a dummy. mIsDummy defaults to
+    // false (LLAvatarAppearance), but keep it explicit so the intent is local.
+    mIsDummy = false;
     mIsGhostAvatar = true;
 
     // The default motion controller would overwrite any pose we place on this
@@ -69,10 +68,12 @@ LLGhostAvatar::LLGhostAvatar(const LLUUID& id, const LLPCode pcode, LLViewerRegi
     // as LLControlAvatar (llcontrolavatar.cpp:57).
     mEnableDefaultMotions = false;
 
-    // NOTE: the old subclass-side undo of the base ctor's saved-mute lookup is
-    // gone. The base ctor knows the kind and skips that lookup for GHOST
-    // specifically. (Control and UI avatars still perform it, exactly as they
-    // always did -- whether they should is a separate question.)
+    // Undo the base ctor's saved render-policy lookup: a ghost's id is
+    // synthetic, so any saved-visual-mute hit would be a STRANGER's setting.
+    // Use the LOCAL (non-persisting) setter -- setVisualMuteSettings() would
+    // write the synthetic id back into LLRenderMuteList. (Control/UI avatars
+    // keep the base lookup, exactly as they always did.)
+    setVisualMuteSettingsLocal(LLVOAvatar::AV_RENDER_NORMALLY);
 }
 
 // virtual

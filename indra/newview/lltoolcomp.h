@@ -81,6 +81,16 @@ public:
     bool                    isSelecting();
     LLTool*                 getCurrentTool()                                { return mCur; }
 
+    // [GhostStudio] True while an internal LLManip is actively dragging (holds
+    // mouse capture). The composite / getCurrentTool() do NOT hold the capture --
+    // the internal manip does -- so an external driver must ask THIS, not
+    // hasMouseCapture(), to detect a gizmo drag. Out-of-line: LLManip is only
+    // forward-declared in this header.
+    bool                    isManipulating() const;
+    // Release an in-progress internal-manip drag (used when an external owner
+    // tears the edited object out from under the manipulator).
+    void                    releaseManip();
+
 protected:
     void                    setCurrentTool( LLTool* new_tool );
     // In hover handler, call this to auto-switch tools

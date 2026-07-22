@@ -3783,11 +3783,16 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     apply_program(shader);
 
     gGL.pushMatrix();
-    // modelview = view * T(ghost_foot) * Rz(yaw) * S(s) * T(-pivot)
+    // modelview = view * T(ghost_foot) * R(mRotation) * S(s) * T(-pivot)
     gGL.translatef(foot.mV[VX], foot.mV[VY], foot.mV[VZ]);
-    if (gp.mYaw != 0.f)
+    if (!gp.mRotation.isIdentity())
     {
-        gGL.rotatef(gp.mYaw * RAD_TO_DEG, 0.f, 0.f, 1.f);
+        // row-major LLMatrix4 passed flat reads as the column-major GL matrix --
+        // the standard viewer LL->GL bridge (same idiom as the frozen-attach mats
+        // above); an identity quaternion is skipped so the default ghost stays a
+        // pure translation.
+        LLMatrix4 rot(gp.mRotation);
+        gGL.multMatrix((GLfloat*)rot.mMatrix);
     }
     if (scale != 1.f)
     {
@@ -5314,8 +5319,8 @@ void LLActorMover::renderStudioGhosts()
         }
 
         GhostDrawParams gp;
-        gp.mYaw   = inst.mYaw;
-        gp.mScale = inst.mScale;
+        gp.mRotation = inst.mRotation;
+        gp.mScale    = inst.mScale;
         if (inst.mPose == ALGhostStudio::POSE_FROZEN && !inst.mFrozenPalettes.empty())
         {
             gp.mHavePivot      = true;

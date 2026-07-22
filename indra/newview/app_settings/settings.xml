@@ -46,6 +46,17 @@
       <key>Value</key>
       <integer>0</integer>
     </map>
+    <key>CinematicCamBoneLockBypassSmoothing</key>
+    <map>
+      <key>Comment</key>
+      <string>Bone Lock ignores CinematicCamSmoothing and snaps rigidly to the joint each frame (a moving mount must not be temporal-smoothed, or the camera lags/rubber-bands behind it). Off = smooth Bone Lock like the other modes.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
     <key>CinematicCamBoneOffsetForward</key>
     <map>
       <key>Comment</key>

@@ -7722,7 +7722,7 @@ private:
             // attachment point the user picked from this menu (render order is sorted
             // by attachment-point id, so the choice matters). Kept AFTER the RLVa gate
             // above so attach restrictions apply to previews too.
-            if (selectedObject->isLocalOnly() && LLLocalMeshMgr::instanceExists())
+            if (selectedObject->isLocalMeshPreview() && LLLocalMeshMgr::instanceExists())
             {
                 LLLocalMeshMgr::getInstance()->attachPreviewToAvatar(selectedObject, index, mReplace);
                 setObjectSelection(NULL);
@@ -8012,7 +8012,7 @@ class LLAttachmentDetach : public view_listener_t
         // Client-only local mesh previews have no inventory item or sim object, so
         // the item-id based detach below is a no-op for them. Route to the local
         // mesh manager, which detaches the whole preview linkset client-side.
-        if (object->isLocalOnly() && LLLocalMeshMgr::instanceExists())
+        if (object->isLocalMeshPreview() && LLLocalMeshMgr::instanceExists())
         {
             LLLocalMeshMgr::getInstance()->detachPreviewFromAvatar(object);
             return true;

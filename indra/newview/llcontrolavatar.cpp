@@ -43,7 +43,7 @@ const F32 LLControlAvatar::MAX_LEGAL_SIZE = 64.0f;
 boost::signals2::connection LLControlAvatar::sRegionChangedSlot;
 
 LLControlAvatar::LLControlAvatar(const LLUUID& id, const LLPCode pcode, LLViewerRegion* regionp) :
-    LLVOAvatar(id, pcode, regionp, AVATAR_KIND_CONTROL),
+    LLVOAvatar(id, pcode, regionp),
     mPlaying(false),
     mGlobalScale(1.0f),
     mMarkedForDeath(false),
@@ -52,9 +52,7 @@ LLControlAvatar::LLControlAvatar(const LLUUID& id, const LLPCode pcode, LLViewer
     mScaleConstraintFixup(1.0),
     mRegionChanged(false)
 {
-    // [AvatarKind] mIsDummy is now derived from the kind in LLVOAvatar's ctor;
-    // do not assign it here. mIsControlAvatar is kept for one migration commit
-    // so initInstance() can assert the old and new representations agree.
+    mIsDummy = true;
     mIsControlAvatar = true;
     mEnableDefaultMotions = false;
 }

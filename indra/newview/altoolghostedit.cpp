@@ -13,16 +13,14 @@
 
 #include "indra_constants.h"        // KEY_DELETE / KEY_BACKSPACE / KEY_ESCAPE
 #include "alghoststudio.h"
-#include "llagent.h"                // global <-> agent conversion
+#include "llagent.h"                // global <-> agent (pick projection)
 #include "lltoolmgr.h"
 #include "llviewercamera.h"         // projectPosAgentToScreen (screen-space pick)
-#include "llviewerwindow.h"         // gViewerWindow, pickImmediate
+#include "llviewerwindow.h"         // gViewerWindow
 
 namespace
 {
 constexpr F32 GHOST_PICK_PX = 18.f;     // screen radius for a ghost hit, px
-// yaw sensitivity for Shift-drag: full turn in ~360 px of horizontal travel
-constexpr F32 YAW_PER_PX = 0.0175f;     // radians (~1 degree per pixel)
 } // anonymous namespace
 
 ALToolGhostEdit::ALToolGhostEdit()
@@ -31,26 +29,11 @@ ALToolGhostEdit::ALToolGhostEdit()
 }
 
 // ---------------------------------------------------------------------------
-bool ALToolGhostEdit::groundPointAt(S32 x, S32 y, LLVector3d& out_global) const
-{
-    // a normal world pick: land or prim surface, avatars excluded (rigged
-    // false) so the ray falls through a body to the floor -- ALToolPathEdit's
-    // exact pick (ghosts themselves are an overlay and never intercept it)
-    LLPickInfo pick = gViewerWindow->pickImmediate(x, y, /*transparent*/ false, /*rigged*/ false);
-    if (pick.mPosGlobal.isExactlyZero())
-    {
-        return false;       // missed the world (sky)
-    }
-    out_global = pick.mPosGlobal;
-    return true;
-}
-
 LLUUID ALToolGhostEdit::pickInstance(S32 x, S32 y) const
 {
     // screen-space pick like the path tool's node pick: the ghosts are overlay
     // draws, not scene objects, so project each enabled instance's FOOT and a
-    // MID-BODY point (foot + 1 m, easier to grab than the ground marker) and
-    // take the nearest within the radius
+    // MID-BODY point (foot + 1 m, easier to grab) and take the nearest in radius
     LLViewerCamera* cam = LLViewerCamera::getInstance();
     LLUUID best;
     F32 best_d2 = GHOST_PICK_PX * GHOST_PICK_PX;
@@ -58,7 +41,7 @@ LLUUID ALToolGhostEdit::pickInstance(S32 x, S32 y) const
     {
         if (!inst.mEnabled)
         {
-            continue;       // you drag what you can see; hidden ghosts via the list
+            continue;       // you pick what you can see; hidden ghosts via the list
         }
         const LLVector3 foot = gAgent.getPosAgentFromGlobal(inst.mFootGlobal);
         LLVector3 probes[2] = { foot, foot };
@@ -86,82 +69,15 @@ LLUUID ALToolGhostEdit::pickInstance(S32 x, S32 y) const
 // ---------------------------------------------------------------------------
 bool ALToolGhostEdit::handleMouseDown(S32 x, S32 y, MASK mask)
 {
-    ALGhostStudio& studio = ALGhostStudio::instance();
-
-    // click a ghost -> select + begin a drag (Shift = yaw mode)
+    // Select the clicked ghost; the per-frame proxy tick then spawns the proxy on
+    // the selection and hands off to the stock move/rotate gizmos. This only runs
+    // while NO ghost is selected yet -- once one is, the stock tool is current.
     const LLUUID hit = pickInstance(x, y);
     if (hit.notNull())
     {
-        studio.setSelected(hit);
-        mDragInstance = hit;
-        mYawDrag = (mask & MASK_SHIFT) != 0;
-        if (mYawDrag)
-        {
-            mYawAnchorX = x;
-            if (const ALGhostStudio::Instance* inst = studio.getInstance(hit))
-            {
-                mYawStart = inst->mYaw;
-            }
-        }
-        setMouseCapture(true);
-        return true;
+        ALGhostStudio::instance().setSelected(hit);
     }
-
-    // empty ground with a selection -> re-place the selected ghost there
-    if (studio.getSelected().notNull())
-    {
-        LLVector3d gp;
-        if (groundPointAt(x, y, gp))
-        {
-            if (ALGhostStudio::Instance* inst = studio.getInstance(studio.getSelected()))
-            {
-                inst->mFootGlobal = gp;
-            }
-        }
-        return true;    // consumed either way (a sky-miss just does nothing)
-    }
-    return true;        // tool mode: clicks never fall through to selection
-}
-
-bool ALToolGhostEdit::handleHover(S32 x, S32 y, MASK mask)
-{
-    if (mDragInstance.notNull() && hasMouseCapture())
-    {
-        ALGhostStudio::Instance* inst =
-            ALGhostStudio::instance().getInstance(mDragInstance);
-        if (inst)
-        {
-            if (mYawDrag)
-            {
-                // horizontal travel turns the ghost; position untouched
-                inst->mYaw = mYawStart + (F32)(x - mYawAnchorX) * YAW_PER_PX;
-            }
-            else
-            {
-                LLVector3d gp;
-                if (groundPointAt(x, y, gp))
-                {
-                    inst->mFootGlobal = gp;
-                }
-            }
-        }
-        gViewerWindow->setCursor(mYawDrag ? UI_CURSOR_TOOLROTATE : UI_CURSOR_TOOLGRAB);
-        return true;
-    }
-    gViewerWindow->setCursor(UI_CURSOR_TOOLTRANSLATE);
-    return true;
-}
-
-bool ALToolGhostEdit::handleMouseUp(S32 x, S32 y, MASK mask)
-{
-    if (mDragInstance.notNull())
-    {
-        mDragInstance.setNull();
-        mYawDrag = false;
-        setMouseCapture(false);
-        return true;
-    }
-    return false;
+    return true;        // tool mode: clicks never fall through to world selection
 }
 
 bool ALToolGhostEdit::handleRightMouseDown(S32 x, S32 y, MASK mask)
@@ -181,6 +97,7 @@ bool ALToolGhostEdit::handleKey(KEY key, MASK mask)
     }
     if (key == KEY_ESCAPE)
     {
+        stopEditMode();
         LLToolMgr::getInstance()->clearTransientTool();
         return true;
     }
@@ -190,21 +107,25 @@ bool ALToolGhostEdit::handleKey(KEY key, MASK mask)
 // ---------------------------------------------------------------------------
 void ALToolGhostEdit::handleSelect()
 {
+    mEditModeActive = true;
+    mManipProxy.begin();
     gViewerWindow->setCursor(UI_CURSOR_TOOLTRANSLATE);
 }
 
 void ALToolGhostEdit::handleDeselect()
 {
-    if (hasMouseCapture())
+    // DO NOT tear the proxy down here. Switching to the stock toolset (the
+    // intentional gizmo handoff) deselects this transient tool and fires
+    // handleDeselect while editing legitimately continues. Only reflect a real
+    // exit -- the explicit stopEditMode() path (panel toggle / Esc) clears it.
+    if (!mManipProxy.isActive())
     {
-        setMouseCapture(false);
+        mEditModeActive = false;
     }
-    mDragInstance.setNull();
-    mYawDrag = false;
 }
 
-void ALToolGhostEdit::onMouseCaptureLost()
+void ALToolGhostEdit::stopEditMode(bool restore_toolset)
 {
-    mDragInstance.setNull();
-    mYawDrag = false;
+    mEditModeActive = false;
+    mManipProxy.teardown(restore_toolset);
 }

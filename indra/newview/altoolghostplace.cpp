@@ -33,7 +33,7 @@ bool ALToolGhostPlace::handleMouseDown(S32 x, S32 y, MASK mask)
     }
     if (ALGhostStudio::Instance* inst = ALGhostStudio::instance().getInstance(mInstance))
     {
-        inst->mFootGlobal = pick.mPosGlobal;    // feet onto the picked surface
+        inst->setFootGlobal(pick.mPosGlobal);   // feet onto the picked surface (bumps revision)
     }
     // one-shot done (even if the instance vanished meanwhile): camera back
     LLToolMgr::getInstance()->clearTransientTool();

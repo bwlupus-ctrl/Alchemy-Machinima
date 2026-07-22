@@ -103,6 +103,7 @@
 #include "llglheaders.h"
 #include "llinventoryobserver.h"
 #include "lllocalmesh.h"
+#include "alghoststudio.h"          // [GhostStudio] Delete routes to the selected ghost
 
 LLViewerObject* getSelectedParentObject(LLViewerObject *object) ;
 
@@ -134,6 +135,49 @@ static bool selectionAllLocalPreview(LLObjectSelectionHandle selection)
     return true;
 }
 
+// True only if the selection is non-empty and consists entirely of local MESH
+// previews (LLLocalMeshMgr). Narrower than selectionAllLocalPreview(): a Ghost
+// Studio manipulation proxy is client-only (isLocalOnly) but is NOT a mesh
+// preview, so it must never be routed to the Local Mesh delete/duplicate/attach
+// paths. Send-suppression keeps using the broader selectionAllLocalPreview().
+static bool selectionAllLocalMeshPreview(LLObjectSelectionHandle selection)
+{
+    if (selection.isNull() || selection->getNumNodes() == 0)
+    {
+        return false;
+    }
+    for (LLObjectSelection::iterator iter = selection->begin(); iter != selection->end(); ++iter)
+    {
+        LLViewerObject* obj = (*iter)->getObject();
+        if (!obj || !obj->isLocalMeshPreview())
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+// [GhostStudio] true if the selection contains the ghost manipulation proxy. The
+// proxy is only an editing HANDLE, so Delete on it must remove the selected GHOST
+// instance, not the proxy object -- and after the stock-tool handoff, the normal
+// selection-delete path is the only place a Delete key still reaches.
+static bool selectionHasGhostManipProxy(LLObjectSelectionHandle selection)
+{
+    if (selection.isNull())
+    {
+        return false;
+    }
+    for (LLObjectSelection::iterator iter = selection->begin(); iter != selection->end(); ++iter)
+    {
+        LLViewerObject* obj = (*iter)->getObject();
+        if (obj && obj->isGhostManipProxy())
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 // Populate a select node for a client-only preview the way the sim would via
 // processObjectProperties -- no such reply will ever arrive -- so the build
 // tools treat it as a valid, fully agent-owned, editable object.
@@ -145,7 +189,8 @@ static void synthesizeLocalPreviewNode(LLSelectNode* nodep, LLViewerObject* obje
     }
     nodep->mValid = true;
     // Show the actual sub-mesh name/source instead of a generic placeholder.
-    nodep->mName = "(local mesh preview)";
+    nodep->mName = objectp->isGhostManipProxy() ? "(ghost manipulation proxy)"
+                                                : "(local mesh preview)";
     nodep->mDescription.clear();
     {
         std::string mesh_name, mesh_path;
@@ -210,6 +255,13 @@ static void deleteLocalPreviewSelection()
 
     for (LLPointer<LLViewerObject>& obj : objects)
     {
+        // Defence in depth: only actual mesh previews belong to LLLocalMeshMgr. The
+        // dispatch already filters to all-mesh-preview selections, but a ghost manip
+        // proxy (client-only, not a mesh preview) must never be despawned here.
+        if (obj.isNull() || !obj->isLocalMeshPreview())
+        {
+            continue;
+        }
         // Derez the linkset (the in-world Delete key takes a local preview out of the
         // world but keeps the loaded file in the Local Assets list). The first part of
         // a linkset derezzes it; later parts no-op. Use the floater's Delete to unload.
@@ -4305,9 +4357,19 @@ void LLSelectMgr::selectDelete()
     }
 // [/RLVa:KB]
 
-    // Client-only local mesh previews have no sim counterpart; delete them
-    // locally instead of sending a DeRez the sim would ignore.
-    if (selectionAllLocalPreview(mSelectedObjects))
+    // [GhostStudio] Delete on the manip proxy removes the SELECTED GHOST instance
+    // (the proxy is only an editing handle). After the stock-tool handoff, this
+    // normal selection-delete path is the only place a Delete key still reaches.
+    if (selectionHasGhostManipProxy(mSelectedObjects))
+    {
+        ALGhostStudio::instance().removeInstance(ALGhostStudio::instance().getSelected());
+        return;
+    }
+
+    // Local MESH previews have no sim counterpart; delete them locally instead of
+    // sending a DeRez the sim would ignore. A ghost manip proxy is client-only but
+    // not a mesh preview, so it never reaches deleteLocalPreviewSelection().
+    if (selectionAllLocalMeshPreview(mSelectedObjects))
     {
         deleteLocalPreviewSelection();
         return;
@@ -4462,7 +4524,12 @@ bool LLSelectMgr::confirmDelete(const LLSD& notification, const LLSD& response, 
 
 void LLSelectMgr::selectForceDelete()
 {
-    if (selectionAllLocalPreview(mSelectedObjects))
+    if (selectionHasGhostManipProxy(mSelectedObjects))
+    {
+        ALGhostStudio::instance().removeInstance(ALGhostStudio::instance().getSelected());
+        return;
+    }
+    if (selectionAllLocalMeshPreview(mSelectedObjects))
     {
         deleteLocalPreviewSelection();
         return;
@@ -4706,10 +4773,11 @@ void LLSelectMgr::selectDuplicate(const LLVector3& offset, bool select_copy)
         }
     }
 
-    // Client-only local previews: duplicate locally. The ObjectDuplicate send
-    // below is swallowed for an all-local selection (sendListToRegions gate),
-    // which would otherwise make Ctrl+D / shift-drag-copy a silent no-op.
-    if (selectionAllLocalPreview(mSelectedObjects))
+    // Local MESH previews: duplicate locally. The ObjectDuplicate send below is
+    // swallowed for an all-local selection (sendListToRegions gate), which would
+    // otherwise make Ctrl+D / shift-drag-copy a silent no-op. A ghost manip proxy
+    // is not a mesh preview and is not duplicated here (ghosts copy via the panel).
+    if (selectionAllLocalMeshPreview(mSelectedObjects))
     {
         // Snapshot the source roots first: spawning fires the manager's
         // units-changed signal, whose listeners must not invalidate this walk.
@@ -4806,7 +4874,7 @@ void LLSelectMgr::repeatDuplicate()
     }
 
     // duplicate objects in place
-    if (selectionAllLocalPreview(mSelectedObjects))
+    if (selectionAllLocalMeshPreview(mSelectedObjects))
     {
         // Client-only local previews: copy each in place locally -- the gated
         // ObjectDuplicate send below is swallowed for an all-local selection
