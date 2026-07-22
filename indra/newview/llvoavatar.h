@@ -103,12 +103,60 @@ public:
  **/
 
 public:
+    // [AvatarKind] What KIND of avatar this is -- fixed at construction and
+    // never changed. This exists because "uses the full avatar render path"
+    // and "is a real, server-backed resident" are DIFFERENT properties, and
+    // mIsDummy conflated them. Capability predicates below derive from this
+    // in one place instead of scattering type tests through the viewer.
+    //
+    // An enum rather than virtual predicates deliberately: a virtual call is
+    // unsafe during LLVOAvatar's own constructor (which is why the base ctor
+    // could not previously tell whether it should read resident render policy
+    // for this id). An immutable kind is readable from the base ctor onward.
+    // A mutable capability bitmask was also rejected -- it would permit
+    // nonsense combinations such as "UI avatar with resident identity".
+    enum EAvatarKind : U8
+    {
+        AVATAR_KIND_RESIDENT,   // another simulator-backed resident
+        AVATAR_KIND_SELF,       // the logged-in agent
+        AVATAR_KIND_CONTROL,    // animated-object skeleton (LLControlAvatar)
+        AVATAR_KIND_UI,         // off-world preview avatar (LLUIAvatar)
+        AVATAR_KIND_GHOST       // client-only scene clone (LLGhostAvatar)
+    };
+
     LLVOAvatar(const LLUUID &id, const LLPCode pcode, LLViewerRegion *regionp);
+
+    EAvatarKind         getAvatarKind() const { return mAvatarKind; }
+
+    // --- Rendering / appearance behaviour ---
+    bool usesAvatarSceneRenderPath() const;     // draws through the real scene avatar path
+    bool usesPreviewAppearancePath() const;     // the old "dummy" simplified path
+
+    // --- Identity and external-system behaviour ---
+    bool hasResidentIdentity() const;           // the id names an actual resident
+    bool acceptsSimulatorAvatarData() const;    // may receive/request sim avatar data
+    bool participatesInWorldPresence() const;   // appears in world/proximity enumeration
+    bool producesResidentEffects() const;       // footsteps, typing, voice, clouds
+    bool recordsAvatarRezMetrics() const;       // counted in rez/loading statistics
+
+    // --- Performance / resource accounting ---
+    // NOTE these predicates have DIFFERENT kind memberships on purpose; see the
+    // comments on each definition before "correcting" an apparent typo.
+    // Note also there is no GPU-metrics predicate: raw GPU aggregates measure
+    // every avatar, ghosts included. See the note above the definitions.
+    bool participatesInAvatarRenderBudget() const;      // autotune, impostor/rank accounting
+    bool participatesInAvatarMotionBudget() const;      // motion timestep scheduling
+    bool participatesInAvatarResourcePressure() const;  // releaseMeshData() threshold
+
     virtual void        markDead();
     static void         initClass(); // Initialize data that's only init'd once per class.
     static void         cleanupClass(); // Cleanup data that's only init'd once per class.
     virtual void        initInstance(); // Called after construction to initialize the class.
 protected:
+    // [AvatarKind] Subclasses pass their kind. The public 3-arg ctor above
+    // delegates here with AVATAR_KIND_RESIDENT.
+    LLVOAvatar(const LLUUID &id, const LLPCode pcode, LLViewerRegion *regionp, EAvatarKind kind);
+
     virtual             ~LLVOAvatar();
 
 /**                    Initialization
@@ -257,6 +305,12 @@ public:
 
     virtual bool    isControlAvatar() const { return mIsControlAvatar; } // True if this avatar is a control av (no associated user)
     virtual bool    isUIAvatar() const { return mIsUIAvatar; } // True if this avatar is a supplemental av used in some UI views (no associated user)
+    // [GhostStudio] True if this is a scene-lit clone (no associated user).
+    // Unlike control/UI avatars this one has mIsDummy == false, so it takes the
+    // REAL render path; every site that assumes a server-backed identity
+    // (world enumeration, name cache, mute state, autotune, sounds, sim
+    // requests) must test this instead of relying on mIsDummy.
+    virtual bool    isGhostAvatar() const { return mIsGhostAvatar; }
     virtual bool    isBuddy() const;
 
     // If this is an attachment, return the avatar it is attached to. Otherwise NULL.
@@ -532,6 +586,7 @@ protected:
     // If you think you need to access this outside LLVOAvatar, you probably want getOverallAppearance()
     VisualMuteSettings  getVisualMuteSettings()                     { return mVisuallyMuteSetting;  };
 
+
 public:
 
     // Overall Appearance is an output. Depending on whether the
@@ -616,9 +671,16 @@ private:
     // animated object status
     //--------------------------------------------------------------------
 public:
+    // [AvatarKind] MIGRATION: these three remain only so the new kind can be
+    // asserted against the old representation for one commit. They are due to
+    // be deleted; do NOT write new code against them -- ask for a capability.
     bool mIsControlAvatar;
     bool mIsUIAvatar;
+    bool mIsGhostAvatar;
     bool mEnableDefaultMotions;
+
+    // [AvatarKind] Immutable. Set by the constructor, never reassigned.
+    const EAvatarKind mAvatarKind;
 
     //--------------------------------------------------------------------
     // Morph masks
@@ -907,6 +969,12 @@ public:
     void            parseAppearanceMessage(LLMessageSystem* mesgsys, LLAppearanceMessageContents& msg);
     void            processAvatarAppearance(LLMessageSystem* mesgsys);
     void            applyParsedAppearanceMessage(LLAppearanceMessageContents& contents, bool slam_params);
+    // [GhostStudio] Copy shape + baked textures from another avatar BY VALUE.
+    // Never share the source's LLAppearanceMessageContents directly:
+    // applyParsedAppearanceMessage calls setWeight() on contents.mParams[i]
+    // (see llvoavatar.cpp), so a shared struct would mutate the SOURCE's
+    // LLVisualParam objects. This re-resolves every param against our own.
+    bool            copyAppearanceFrom(LLVOAvatar* source, bool slam_params = true);
     void            hideHair();
     void            hideSkirt();
     void            startAppearanceAnimation();

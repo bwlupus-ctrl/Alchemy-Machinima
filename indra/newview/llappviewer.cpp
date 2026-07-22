@@ -5303,6 +5303,22 @@ void LLAppViewer::idle()
         gAgent.updateAgentPosition(gFrameDTClamped, yaw, current_mouse.mX, current_mouse.mY);
     }
 
+    // [ObjectPath] client-side object drives (props on splines): advance and
+    // re-assert each enrolled object's rendered transform BEFORE
+    // gObjectList.update(), so the driven mount's new pose is consumed THIS
+    // frame by object interpolation, the seated-avatar root slave, the skeleton
+    // world-matrix solve and the moved-drawable list -- instead of one frame
+    // late. The old late call site (after updateSuspendState) left the object
+    // model at frame N while its drawable, the seated skeleton and the
+    // bone-lock camera all read frame N-1, which is the moving-mount camera
+    // jitter. dt_raw is this frame's raw elapsed delta (computed above); the
+    // mover re-clamps it to [0, 0.25]. Deliberately NOT gFrameDTClamped: that
+    // floors dt at 0.005s (its 200 FPS cap), which would run drives ~1.5x fast
+    // above 200 FPS. The mover can no longer read gFrameIntervalSeconds because
+    // that is set inside gObjectList.update() below. The mover self-gates on
+    // FreezeTime. Zero cost with no drives.
+    ALObjectPathMover::instance().update(dt_raw);
+
     {
         if (!(logoutRequestSent() && hasSavedFinalSnapshot()))
         {
@@ -5423,11 +5439,10 @@ void LLAppViewer::idle()
     // path camera) the same frame instead of leaving a stale override pose.
     LLActorMover::instance().updateSuspendState();
 
-    // [ObjectPath] client-side object drives (props on splines): advance and
-    // re-assert each enrolled object's rendered transform once per frame, at
-    // the same idle site as the actor state machine so a drive always lands
-    // before this frame's render. Zero cost with no drives.
-    ALObjectPathMover::instance().update();
+    // NOTE: ALObjectPathMover::update() was MOVED from here to just before
+    // gObjectList.update() above, to fix moving-mount camera jitter (the driven
+    // pose must be consumed by the same-frame object/skeleton sequence, not
+    // queued after it). See the comment at that call site.
 
     if (gAgentPilot.isPlaying() && gAgentPilot.getOverrideCamera())
     {

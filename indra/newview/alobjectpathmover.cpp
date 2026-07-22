@@ -14,7 +14,6 @@
 
 #include "llactormover.h"           // Path model + evalPathSpeed/evalPathYawOffset
 #include "llagent.h"                // agent <-> global conversion
-#include "llappviewer.h"            // gFrameIntervalSeconds
 #include "lldrawable.h"
 #include "llviewerobject.h"
 #include "llviewerobjectlist.h"     // gObjectList
@@ -184,16 +183,28 @@ void ALObjectPathMover::stopAll()
 // ---------------------------------------------------------------------------
 // per-frame drive
 // ---------------------------------------------------------------------------
-void ALObjectPathMover::update()
+void ALObjectPathMover::update(F32 frame_dt)
 {
     if (mDrives.empty())
     {
         return;     // default zero-cost path
     }
 
+    // Freeze-world: hold BOTH the arc clock and the pose. Because this now runs
+    // BEFORE gObjectList.update() (which still updates avatars while frozen),
+    // advancing here would let a seated avatar consume a moved mount even though
+    // the world is meant to be frozen. Returning early freezes mDist and the
+    // placement together, so nothing jumps on unfreeze.
+    if (LLPipeline::FreezeTime)
+    {
+        return;
+    }
+
     LLActorMover& mover = LLActorMover::instance();
-    // same frame clock + hitch cap the walks use, so a stall never teleports a prop
-    const F32 dt = llclamp(gFrameIntervalSeconds.value(), 0.f, 0.25f);
+    // hitch cap (0.25s) preserved so a stall never teleports a prop. dt is the
+    // caller's current-frame delta -- we can no longer read gFrameIntervalSeconds
+    // here, since this runs before LLViewerObjectList::update() computes it.
+    const F32 dt = llclamp(frame_dt, 0.f, 0.25f);
 
     for (auto it = mDrives.begin(); it != mDrives.end(); )
     {

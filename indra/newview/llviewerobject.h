@@ -868,6 +868,7 @@ public:
     // Flags for createObject
     static const S32 CO_FLAG_CONTROL_AVATAR = 1 << 0;
     static const S32 CO_FLAG_UI_AVATAR = 1 << 1;
+    static const S32 CO_FLAG_GHOST_AVATAR = 1 << 2; // [GhostStudio] scene-lit clone
 
 protected:
     LLPointer<LLControlAvatar> mControlAvatar;

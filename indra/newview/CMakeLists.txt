@@ -508,6 +508,7 @@ set(viewer_SOURCE_FILES
     llflyoutcombobtn.cpp
     llgesturelistener.cpp
     llgesturemgr.cpp
+    llghostavatar.cpp
     llgiveinventory.cpp
     llglsandbox.cpp
     llgltffolderitem.cpp
@@ -1324,6 +1325,7 @@ set(viewer_HEADER_FILES
     llflyoutcombobtn.h
     llgesturelistener.h
     llgesturemgr.h
+    llghostavatar.h
     llgiveinventory.h
     llgltffolderitem.h
     llgltffoldermodel.h

@@ -72,6 +72,7 @@
 #include "llrendersphere.h"
 #include "lltooldraganddrop.h"
 #include "lluiavatar.h"
+#include "llghostavatar.h"
 #include "llviewercamera.h"
 #include "llviewertexturelist.h"
 #include "llviewerinventory.h"
@@ -210,6 +211,12 @@ LLViewerObject *LLViewerObject::createObject(const LLUUID &id, const LLPCode pco
             LLUIAvatar *ui_avatar = new LLUIAvatar(id, pcode, regionp);
             ui_avatar->initInstance();
             res = ui_avatar;
+        }
+        else if (flags & CO_FLAG_GHOST_AVATAR)
+        {
+            LLGhostAvatar *ghost_avatar = new LLGhostAvatar(id, pcode, regionp);
+            ghost_avatar->initInstance();
+            res = ghost_avatar;
         }
         else
         {

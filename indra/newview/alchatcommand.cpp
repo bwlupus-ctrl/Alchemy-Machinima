@@ -32,6 +32,7 @@
 #include "aoengine.h"
 #include "alobjectpathmover.h"  // [ObjectPath] /objpath* harness (props on splines)
 #include "llactormover.h"       // [Pathing] /pathadd /pathwalk /pathclear /pathloop test harness
+#include "llghostavatar.h"      // [GhostStudio] /ghosttest /ghostclear milestone-1 harness
 #include "llagent.h"
 #include "llagentcamera.h"
 #include "llagentui.h"
@@ -392,6 +393,33 @@ bool ALChatCommand::parseCommand(std::string data)
                 LL_WARNS("ActorMover") << "/pathwalk: fewer than 2 waypoints; "
                                           "use /pathadd first" << LL_ENDL;
             }
+            return true;
+        }
+        // -------------------------------------------------------------------
+        // [GhostStudio] Scene-lit clone milestone-1 acceptance gate. Spawns
+        // two LLGhostAvatars from my avatar, poses them differently, and
+        // checks they hold DISTINCT matrix palettes for the SAME shared skin.
+        // That is the load-bearing proof for the entity architecture. Watch
+        // the log under the "GhostStudio" tag. Requires rigged mesh worn.
+        // -------------------------------------------------------------------
+        else if (cmd == "/ghosttest")
+        {
+            LLGhostAvatar::runPaletteIsolationTest();
+            return true;
+        }
+        else if (cmd == "/ghostdress")  // ONE dressed clone in front of me
+        {
+            LLGhostAvatar::spawnDressedGhost();
+            return true;
+        }
+        else if (cmd == "/ghostverify") // face-level check, run AFTER /ghostdress
+        {
+            LLGhostAvatar::verifyClonedAttachments();
+            return true;
+        }
+        else if (cmd == "/ghostclear")  // release the test ghosts
+        {
+            LLGhostAvatar::clearTestGhosts();
             return true;
         }
         else if (cmd == "/pathclear")   // stop + drop all my waypoints

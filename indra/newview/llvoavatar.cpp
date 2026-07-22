@@ -49,6 +49,7 @@
 #include "llagentwearables.h"
 #include "llanimationstates.h"
 #include "llactormover.h"   // [ActorMover] local ghost locomotion
+#include "alobjectpathmover.h"  // [ObjectPath] driven-object undamped seat sync
 #include "llavatarnamecache.h"
 #include "llavatarpropertiesprocessor.h"
 #include "llavatarrendernotifier.h"
@@ -661,9 +662,19 @@ void revoke_permissions_on_object(const LLUUID &object_id)
 //-----------------------------------------------------------------------------
 // LLVOAvatar()
 //-----------------------------------------------------------------------------
+// [AvatarKind] Public ctor: anything constructed without an explicit kind is
+// another simulator-backed resident.
 LLVOAvatar::LLVOAvatar(const LLUUID& id,
                        const LLPCode pcode,
                        LLViewerRegion* regionp) :
+    LLVOAvatar(id, pcode, regionp, AVATAR_KIND_RESIDENT)
+{
+}
+
+LLVOAvatar::LLVOAvatar(const LLUUID& id,
+                       const LLPCode pcode,
+                       LLViewerRegion* regionp,
+                       EAvatarKind kind) :
     LLAvatarAppearance(&gAgentWearables),
     LLViewerObject(id, pcode, regionp),
     mSpecialRenderMode(0),
@@ -726,8 +737,16 @@ LLVOAvatar::LLVOAvatar(const LLUUID& id,
     mCachedInMuteList(false),
     mIsControlAvatar(false),
     mIsUIAvatar(false),
-    mEnableDefaultMotions(true)
+    mIsGhostAvatar(false),
+    mEnableDefaultMotions(true),
+    mAvatarKind(kind)
 {
+    // [AvatarKind] The old "dummy" flag is now DERIVED, not authored. It means
+    // only "use the simplified preview appearance path" and is consumed by the
+    // llappearance layer; it is no longer an identity or world-membership test.
+    // Subclasses must not assign it.
+    mIsDummy = usesPreviewAppearancePath();
+
     LL_DEBUGS("AvatarRender") << "LLVOAvatar Constructor (0x" << this << ") id:" << mID << LL_ENDL;
 
     //VTResume();  // VTune
@@ -795,9 +814,119 @@ LLVOAvatar::LLVOAvatar(const LLUUID& id,
         LLSceneMonitor::getInstance()->freezeAvatar((LLCharacter*)this);
     }
 
-    mVisuallyMuteSetting = LLVOAvatar::VisualMuteSettings(LLRenderMuteList::getInstance()->getSavedVisualMuteSetting(getID()));
+    // [AvatarKind] Ghosts skip the saved render-policy lookup: their id is
+    // synthetic, so any hit would be a stranger's setting. This replaces the
+    // subclass-side undo that used to be needed because the base ctor could
+    // not tell what it was constructing.
+    //
+    // Deliberately keyed on GHOST alone rather than !hasResidentIdentity():
+    // control and UI avatars performed this lookup before, and commit 1 is
+    // meant to be behaviour-neutral for them. Whether they should also skip it
+    // is a separate question for a later commit.
+    if (mAvatarKind != AVATAR_KIND_GHOST)
+    {
+        mVisuallyMuteSetting = LLVOAvatar::VisualMuteSettings(LLRenderMuteList::getInstance()->getSavedVisualMuteSetting(getID()));
+    }
+    else
+    {
+        mVisuallyMuteSetting = LLVOAvatar::AV_RENDER_NORMALLY;
+    }
 
     sInstances.push_back(this);
+}
+
+//-----------------------------------------------------------------------------
+// [AvatarKind] Capability predicates.
+//
+// All policy lives HERE, derived from the immutable kind, so behaviour for a
+// new avatar kind is decided in one readable place instead of being spread as
+// type tests across the viewer. Call sites should ask what an avatar may DO,
+// never what class it is.
+//-----------------------------------------------------------------------------
+
+bool LLVOAvatar::usesAvatarSceneRenderPath() const
+{
+    // Ghosts render as real scene avatars -- that is the entire point of them.
+    return mAvatarKind == AVATAR_KIND_RESIDENT
+        || mAvatarKind == AVATAR_KIND_SELF
+        || mAvatarKind == AVATAR_KIND_GHOST;
+}
+
+bool LLVOAvatar::usesPreviewAppearancePath() const
+{
+    // Exactly the old mIsDummy population: control + UI avatars.
+    return mAvatarKind == AVATAR_KIND_CONTROL
+        || mAvatarKind == AVATAR_KIND_UI;
+}
+
+bool LLVOAvatar::hasResidentIdentity() const
+{
+    return mAvatarKind == AVATAR_KIND_RESIDENT
+        || mAvatarKind == AVATAR_KIND_SELF;
+}
+
+bool LLVOAvatar::acceptsSimulatorAvatarData() const
+{
+    return hasResidentIdentity();
+}
+
+bool LLVOAvatar::participatesInWorldPresence() const
+{
+    return hasResidentIdentity();
+}
+
+bool LLVOAvatar::producesResidentEffects() const
+{
+    return hasResidentIdentity();
+}
+
+bool LLVOAvatar::recordsAvatarRezMetrics() const
+{
+    return hasResidentIdentity();
+}
+
+bool LLVOAvatar::participatesInAvatarRenderBudget() const
+{
+    // CONTROL is EXCLUDED here, unlike the motion/resource predicates below.
+    // That is not an oversight: the existing autotune and render-info paths
+    // already exclude control avatars explicitly (llvoavatar.cpp autotune
+    // guard and visibility accounting, llavatarrenderinfoaccountant.cpp), so
+    // including them here would silently change animesh behaviour the moment
+    // those exclusions are replaced by this predicate.
+    //
+    // NOTE this means resident/autotune/impostor ACCOUNTING, not "costs GPU
+    // time" -- a ghost certainly does. Ghost Studio must impose its own clone
+    // budget rather than relying on resident render policy to throttle it.
+    return mAvatarKind == AVATAR_KIND_RESIDENT
+        || mAvatarKind == AVATAR_KIND_SELF;
+}
+
+// NOTE: there is deliberately NO "participatesInAvatarGPUMetrics" predicate.
+// The raw GPU-time aggregates must keep measuring EVERY avatar, ghosts
+// included: a ghost consumes real GPU time, and the avatar total is subtracted
+// from frame time to estimate non-avatar cost (llperfstats.cpp). Excluding
+// ghosts there would not isolate them from resident policy -- it would
+// reclassify their cost as SCENE cost, skewing draw-distance tuning and still
+// tightening resident ART limits by another route. Ghosts are excluded at the
+// points where resident policy ACTS, via participatesInAvatarRenderBudget().
+
+bool LLVOAvatar::participatesInAvatarMotionBudget() const
+{
+    // Animated objects contribute to motion scheduling today; keep that. A
+    // ghost's pose is externally driven, so it does not.
+    return mAvatarKind == AVATAR_KIND_RESIDENT
+        || mAvatarKind == AVATAR_KIND_SELF
+        || mAvatarKind == AVATAR_KIND_CONTROL;
+}
+
+bool LLVOAvatar::participatesInAvatarResourcePressure() const
+{
+    // Preserves LLControlAvatar behaviour and the existing UI-avatar exemption
+    // in releaseMeshData(); additionally exempts ghosts so a local crowd can
+    // never push REAL avatars over the mesh-release threshold.
+    return mAvatarKind == AVATAR_KIND_RESIDENT
+        || mAvatarKind == AVATAR_KIND_SELF
+        || mAvatarKind == AVATAR_KIND_CONTROL;
 }
 
 std::string LLVOAvatar::avString() const
@@ -1229,6 +1358,15 @@ void LLVOAvatar::cleanupClass()
 // virtual
 void LLVOAvatar::initInstance()
 {
+    // [AvatarKind] MIGRATION GUARD. Runs after the subclass constructor body,
+    // so it can confirm the new immutable kind agrees with the old booleans it
+    // is replacing. When these have held across self / other residents /
+    // animesh / UI previews / ghosts, the old booleans can be deleted.
+    llassert(mIsDummy == usesPreviewAppearancePath());
+    llassert(mIsControlAvatar == (mAvatarKind == AVATAR_KIND_CONTROL));
+    llassert(mIsUIAvatar == (mAvatarKind == AVATAR_KIND_UI));
+    llassert(mIsGhostAvatar == (mAvatarKind == AVATAR_KIND_GHOST));
+
     //-------------------------------------------------------------------------
     // register motions
     //-------------------------------------------------------------------------
@@ -2798,7 +2936,19 @@ void LLVOAvatar::idleUpdate(LLAgent &agent, const F64 &time)
             // if this object hasn't already been updated by another avatar...
             if (drawablep) // && !drawablep->isState(LLDrawable::EARLY_MOVE))
             {
-                if (root_object->isSelected())
+                // [ObjectPath] A path-driven object is placed UNDAMPED by
+                // ALObjectPathMover (exact analytic position each frame). This
+                // seated-avatar early-move would otherwise re-issue it DAMPED --
+                // updateMoveDampedAsync clears MOVE_UNDAMPED and sets EARLY_MOVE,
+                // so the damped move WINS and the object renders with a ~60ms
+                // interpolation lag against its authored path. That lag is the
+                // rider/mount shift the operator sees. Match the isSelected()
+                // branch (undamped) for objects under active drive, so the seat
+                // consumes the mover's exact transform. Server-driven vehicles
+                // and stationary sit targets are NOT driving, so they keep the
+                // damping that smooths their jittery network updates.
+                if (root_object->isSelected()
+                    || ALObjectPathMover::instance().isDriving(root_object->getID()))
                 {
                     gPipeline.updateMoveNormalAsync(drawablep);
                 }
@@ -10219,6 +10369,84 @@ void LLVOAvatar::processAvatarAppearance( LLMessageSystem* mesgsys )
     {
         resetSkeleton(false);
     }
+}
+
+// [GhostStudio] Copy a source avatar's appearance onto this one, BY VALUE.
+//
+// The hazard this exists to avoid: applyParsedAppearanceMessage() below calls
+// param->setWeight() / setAnimationTarget() on contents.mParams[i]. Those are
+// pointers into whichever avatar PARSED the message. Handing a clone the
+// source's mLastProcessedAppearance would therefore drive the SOURCE's visual
+// params -- silently deforming the real avatar every time we spawn a clone.
+//
+// So we build our own contents and re-resolve each param against our own
+// param list by id. Weights, TEs and hover are plain values and copy fine.
+bool LLVOAvatar::copyAppearanceFrom(LLVOAvatar* source, bool slam_params)
+{
+    if (!source || source == this)
+    {
+        return false;
+    }
+    if (source->mLastProcessedAppearance.isNull())
+    {
+        // Source has never received an appearance message; nothing to clone.
+        // Callers must retry -- without this a clone renders invisible.
+        LL_WARNS("Avatar") << "copyAppearanceFrom: source " << source->getID()
+                           << " has no processed appearance yet" << LL_ENDL;
+        return false;
+    }
+
+    const LLAppearanceMessageContents& src = *source->mLastProcessedAppearance;
+
+    LLPointer<LLAppearanceMessageContents> mine(new LLAppearanceMessageContents);
+    mine->mTEContents           = src.mTEContents;
+    mine->mAppearanceVersion    = src.mAppearanceVersion;
+    mine->mParamAppearanceVersion = src.mParamAppearanceVersion;
+    mine->mCOFVersion           = src.mCOFVersion;
+    mine->mHoverOffset          = src.mHoverOffset;
+    mine->mHoverOffsetWasSet    = src.mHoverOffsetWasSet;
+
+    // Re-resolve params against OUR skeleton/param list. Param ids come from
+    // avatar_lad.xml and are identical on every avatar, so an id lookup is a
+    // faithful remap -- but the LLVisualParam objects are per-avatar.
+    mine->mParams.reserve(src.mParams.size());
+    mine->mParamWeights.reserve(src.mParamWeights.size());
+    size_t unresolved = 0;
+    for (size_t i = 0; i < src.mParams.size() && i < src.mParamWeights.size(); ++i)
+    {
+        const LLVisualParam* src_param = src.mParams[i];
+        if (!src_param)
+        {
+            continue;
+        }
+        LLVisualParam* my_param = getVisualParam(src_param->getID());
+        if (!my_param)
+        {
+            unresolved++;
+            continue;
+        }
+        llassert(my_param != src_param); // must never alias the source
+        mine->mParams.push_back(my_param);
+        mine->mParamWeights.push_back(src.mParamWeights[i]);
+    }
+    if (unresolved)
+    {
+        LL_WARNS("Avatar") << "copyAppearanceFrom: " << unresolved
+                           << " params did not resolve on the clone" << LL_ENDL;
+    }
+
+    mLastProcessedAppearance = mine;
+
+    // slam_params: this is a fresh avatar, so interpolating from default
+    // toward the target would show a visible morph. Slam instead. This also
+    // sets mFirstAppearanceMessageReceived, without which we render invisible.
+    applyParsedAppearanceMessage(*mine, slam_params);
+
+    if (getOverallAppearance() != AOA_NORMAL)
+    {
+        resetSkeleton(false);
+    }
+    return true;
 }
 
 void LLVOAvatar::applyParsedAppearanceMessage(LLAppearanceMessageContents& contents, bool slam_params)

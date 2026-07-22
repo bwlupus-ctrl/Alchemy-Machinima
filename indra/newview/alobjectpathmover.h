@@ -77,10 +77,17 @@ public:
     bool isDriving(const LLUUID& root_id) const { return mDrives.count(root_id) != 0; }
 
     // ---- per-frame drive ----
-    // called once from the main idle loop (llappviewer, next to the actor
-    // mover's state machine): advances every drive and re-asserts the
-    // rendered transform. Zero cost with no drives.
-    void update();
+    // called once from the main idle loop (llappviewer): advances every drive
+    // and re-asserts the rendered transform. Zero cost with no drives.
+    //
+    // dt is the current frame's clamped delta, passed IN rather than fetched
+    // from gFrameIntervalSeconds, because this now runs BEFORE
+    // LLViewerObjectList::update() (which is where gFrameIntervalSeconds is
+    // computed). Running early is deliberate: it lets the object move land in
+    // this frame's object/drawable/seated-avatar/skeleton sequence instead of
+    // one frame late, which was the source of the bone-lock camera jitter on
+    // driven props.
+    void update(F32 dt);
 
 private:
     ALObjectPathMover() = default;
