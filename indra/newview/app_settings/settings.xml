@@ -3474,6 +3474,39 @@
       <key>Value</key>
       <integer>1</integer>
     </map>
+    <key>GhostDeferredDebugLog</key>
+    <map>
+      <key>Comment</key>
+      <string>[GhostDeferred] Log per-frame Ghost Studio deferred-proxy P0/P1 queue and render-invariant counters (proxies built/culled/submitted, batch accept/reject, invariant violations). Diagnostics only; off by default.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>GhostDeferredContaminationTest</key>
+    <map>
+      <key>Comment</key>
+      <string>[GhostDeferred] One-shot G-buffer contamination test control (0 = idle, 1 = arm, 2 = cancel). Captures the deferred G-buffer with the ghost deferred submission OFF vs ON and reports PASS/FAIL/INCONCLUSIVE. Diagnostics only.</string>
+      <key>Persist</key>
+      <integer>0</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>GhostDeferredDiffMaskPad</key>
+    <map>
+      <key>Comment</key>
+      <string>[GhostDeferred] Pixel padding added around each ghost proxy's screen-space bounds when masking it out of the G-buffer contamination diff (conservative, avoids rasterization edge false-positives).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>2</integer>
+    </map>
     <key>PathShowOnionSkin</key>
     <map>
       <key>Comment</key>

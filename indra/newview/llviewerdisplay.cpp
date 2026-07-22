@@ -929,6 +929,17 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
                 gPipeline.rebuildPools();
                 stop_glerror();
             }
+
+            // [GhostDeferred/P0] Harvest the ghost draw batches HERE -- right after
+            // the world stateSort + final pool rebuild -- so the frame-local
+            // references are ready BEFORE the deferred pass (the scene-lit ghost
+            // proxy submission needs them then). Moved up from its old home just
+            // before render_ui(). The collector reads the wearers' SPATIAL-GROUP
+            // DRAW MAPS directly (geometry-scoped, not the cull results), so it is
+            // valid here and immune to render_hud_attachments() repopulating the
+            // cull maps; the raw LLDrawInfo*/LLFace* are still consumed same-frame
+            // only (before clearReferences()). No-op with zero cost when idle.
+            LLActorMover::instance().collectGhostBatches();
         }
 
         LLSceneMonitor::getInstance()->fetchQueryResult();
@@ -1077,13 +1088,9 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
 
         LLAppViewer::instance()->pingMainloopTimeout("Display:RenderUI");
 
-        // [ActorMover] snapshot each ghosted actor's rigged batches + attachment
-        // faces for this frame's ghost draws in render_ui(). [R2-6] the collector
-        // reads the wearers' SPATIAL-GROUP DRAW MAPS directly (never the cull
-        // results), so it is immune to render_hud_attachments() repopulating the
-        // cull maps AND keeps ghosts alive while the source avatar is off-frame /
-        // occluded / impostored. No-op with zero cost unless ghosts are active.
-        LLActorMover::instance().collectGhostBatches();
+        // [GhostDeferred/P0] collectGhostBatches() moved earlier -- to just after
+        // the world stateSort/rebuildPools block above -- so the harvest is ready
+        // before the deferred pass. (Was here, right before render_ui().)
 
         if (!for_snapshot)
         {
