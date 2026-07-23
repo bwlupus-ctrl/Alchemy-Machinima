@@ -533,6 +533,7 @@ void LLAgentListener::startFollowPilot(LLSD const & event_data)
                 LLViewerObject * cur_object = gObjectList.getObject(cur_index++);
                 if (cur_object &&
                     cur_object->asAvatar() &&
+                    !cur_object->asAvatar()->isGhostAvatar() &&
                     cur_object->asAvatar()->getFullname() == target_name)
                 {   // Found avatar with matching name, extract id and break out of loop
                     target_id = cur_object->getID();
@@ -815,7 +816,7 @@ void LLAgentListener::getAgentScreenPos(LLSD const& event_data)
         for (LLCharacter* character : LLCharacter::sInstances)
         {
             LLVOAvatar* avatar = (LLVOAvatar*)character;
-            if (!avatar->isDead() && (avatar->getID() == avatar_id))
+            if (!avatar->isDead() && !avatar->isGhostAvatar() && (avatar->getID() == avatar_id))
             {
                 render_pos = avatar->getRenderPosition();
                 break;
