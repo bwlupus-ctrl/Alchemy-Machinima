@@ -993,10 +993,17 @@ void LLCloneFidelityAudit::doLateAudit()
 
     // SOURCE_ONLY_DROPPED: live records never claimed by a retained early record.
     // BUT suppress a live record whose VB+range matches a RETAINED early -- it is
-    // a deliberately deduped twin (e.g. PASS_GLTF_GLOW_RIGGED duplicate geometry
-    // sharing a base batch's VB/range), already accounted for by the retained
-    // batch and its DROP_DEDUP report. Without this, every clone whose source has
-    // PBR emissive/glow content would never report a clean PASS (false FAIL).
+    // a deliberately deduped twin (e.g. a PASS_GLTF_GLOW_RIGGED draw sharing a base
+    // batch's VB/range) that the collector's pass-blind dedup already recorded via
+    // its DROP_DEDUP report. Without this suppression the SAME twin is counted
+    // TWICE (DROP_DEDUP + SOURCE_ONLY_DROPPED); this removes only the duplicate.
+    // NOTE: it does NOT let emissive/glow content reach a clean PASS -- DROP_DEDUP
+    // still (correctly) keeps total_diffs >= 1, because dropping a distinct glow
+    // pass is a GENUINE fidelity loss: the clone's glow sweep draws only glow-pass
+    // batches (llactormover.cpp ~3819), so a base+glow avatar that retains base and
+    // drops the glow pass renders without its emissive glow. That FAIL is a TRUE
+    // positive -- fixed by glow-completion in the collector (retain semantically-
+    // distinct passes), not by the audit.
     for (const LiveRecord& rec : live_records)
     {
         if (rec.mMatched) { continue; }
