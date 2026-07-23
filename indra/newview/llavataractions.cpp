@@ -201,6 +201,8 @@ void LLAvatarActions::removeFriendsDialog(const uuid_vec_t& ids)
 // static
 void LLAvatarActions::offerTeleport(const LLUUID& invitee)
 {
+    if (LLGhostAvatar::isGhostId(invitee))   // client-only clone: not a resident
+        return;
     if (invitee.isNull())
         return;
 
@@ -233,6 +235,8 @@ static void on_avatar_name_cache_start_im(const LLUUID& agent_id,
 // static
 void LLAvatarActions::startIM(const LLUUID& id)
 {
+    if (LLGhostAvatar::isGhostId(id))   // client-only clone: not a resident
+        return;
     if (id.isNull() || gAgent.getID() == id)
         return;
 
@@ -273,6 +277,8 @@ static void on_avatar_name_cache_start_call(const LLUUID& agent_id,
 // static
 void LLAvatarActions::startCall(const LLUUID& id)
 {
+    if (LLGhostAvatar::isGhostId(id))   // client-only clone: not a resident
+        return;
     if (id.isNull())
     {
         return;
@@ -387,6 +393,8 @@ void LLAvatarActions::startConference(const uuid_vec_t& ids, const LLUUID& float
 // static
 void LLAvatarActions::showProfile(const LLUUID& avatar_id)
 {
+    if (LLGhostAvatar::isGhostId(avatar_id))   // client-only clone: no server profile request
+        return;
     if (avatar_id.notNull())
     {
         if (gSkinSettings.getBOOL("LegacyProfile"))
@@ -627,6 +635,8 @@ void LLAvatarActions::hideProfile(const LLUUID& avatar_id)
 // static
 void LLAvatarActions::showOnMap(const LLUUID& id)
 {
+    if (LLGhostAvatar::isGhostId(id))   // client-only clone: not a resident to map/track
+        return;
     LLAvatarName av_name;
     if (!LLAvatarNameCache::get(id, &av_name))
     {
@@ -641,6 +651,8 @@ void LLAvatarActions::showOnMap(const LLUUID& id)
 // static
 void LLAvatarActions::pay(const LLUUID& id)
 {
+    if (LLGhostAvatar::isGhostId(id))   // client-only clone: never pay a synthetic id
+        return;
     LLNotification::Params params("DoNotDisturbModePay");
     params.functor.function(boost::bind(&LLAvatarActions::handlePay, _1, _2, id));
 
@@ -719,6 +731,8 @@ void LLAvatarActions::teleport_request_callback(const LLSD& notification, const 
 // static
 void LLAvatarActions::teleportRequest(const LLUUID& id)
 {
+    if (LLGhostAvatar::isGhostId(id))   // client-only clone: not a resident
+        return;
     LLSD notification;
     notification["uuid"] = id;
 // [RLVa:KB] - Checked: RLVa-1.5.0
@@ -840,6 +854,8 @@ void LLAvatarActions::csr(const LLUUID& id, std::string name)
 //static
 void LLAvatarActions::share(const LLUUID& id)
 {
+    if (LLGhostAvatar::isGhostId(id))   // client-only clone: not a resident
+        return;
 // [RLVa:KB] - @share
     if ( (RlvActions::isRlvEnabled()) && (!RlvActions::canGiveInventory(id)) )
     {
@@ -1362,6 +1378,8 @@ bool LLAvatarActions::canShareSelectedItems(LLInventoryPanel* inv_panel /* = NUL
 // static
 bool LLAvatarActions::toggleBlock(const LLUUID& id)
 {
+    if (LLGhostAvatar::isGhostId(id))   // client-only clone: nothing to block
+        return false;
     LLAvatarName av_name;
     LLAvatarNameCache::get(id, &av_name);
 
@@ -1382,6 +1400,8 @@ bool LLAvatarActions::toggleBlock(const LLUUID& id)
 // static
 void LLAvatarActions::toggleMute(const LLUUID& id, U32 flags)
 {
+    if (LLGhostAvatar::isGhostId(id))   // client-only clone: nothing to mute
+        return;
     LLAvatarName av_name;
     LLAvatarNameCache::get(id, &av_name);
 
@@ -1441,6 +1461,8 @@ bool LLAvatarActions::canOfferTeleport(const uuid_vec_t& ids)
 
 void LLAvatarActions::inviteToGroup(const LLUUID& id)
 {
+    if (LLGhostAvatar::isGhostId(id))   // client-only clone: not a resident to invite
+        return;
     LLFloaterGroupPicker* widget = LLFloaterReg::showTypedInstance<LLFloaterGroupPicker>("group_picker", LLSD(id));
     if (widget)
     {
