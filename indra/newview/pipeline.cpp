@@ -4729,8 +4729,10 @@ bool LLPipeline::wasGhostDeferredSubmittedThisFrame(const LLUUID& instance_id) c
 
 void LLPipeline::renderGhostDeferredOpaqueMasked(const LLCamera& camera)
 {
-    static LLCachedControl<bool> enabled(gSavedSettings, "GhostDeferredEnable", false);
-    if (!enabled)
+    static LLCachedControl<bool> user_enabled(gSavedSettings, "GhostDeferredEnable", false);
+    // The contamination test can force submission off/on for its OFF/ON captures
+    // without touching the user's setting; NONE = honor the user setting.
+    if (!ghostDeferredSubmissionEnabled(user_enabled()))
     {
         return;     // OFF issues no GL op -> stock deferred path is byte-identical
     }

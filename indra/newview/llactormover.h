@@ -567,6 +567,9 @@ public:
         U64 mStaleQueueSkips         = 0;
         U64 mActualDrawCalls         = 0;   // MUST remain 0 throughout P0
         U64 mInvariantViolations     = 0;
+        U64 mContaminationPass         = 0;
+        U64 mContaminationFail         = 0;
+        U64 mContaminationInconclusive = 0;
         void reset(U32 frame)
         {
             *this = GhostDeferredCounters();

@@ -5408,6 +5408,9 @@ void LLActorMover::emitGhostDeferredDebug() const
         << " incompleteBounds=" << c.mIncompleteBounds
         << " staleSkips=" << c.mStaleQueueSkips
         << " drawCalls=" << c.mActualDrawCalls
+        << " invariantViol=" << c.mInvariantViolations
+        << " contam(P/F/I)=" << c.mContaminationPass << "/"
+        << c.mContaminationFail << "/" << c.mContaminationInconclusive
         << LL_ENDL;
     if (c.mActualDrawCalls != 0)
     {

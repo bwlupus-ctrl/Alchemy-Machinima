@@ -1074,6 +1074,12 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
                     &LLActorMover::instance().ghostDeferredCounters().mInvariantViolations);
                 gPipeline.renderGhostDeferredOpaqueMasked(ghost_camera);
                 ghost_invariant.finish();
+
+                // [GhostDeferred] G-buffer OFF-vs-ON contamination test (armed via
+                // GhostDeferredContaminationTest). deferredScreen is still bound here.
+                LLGhostDeferredContaminationTest::instance().tick(
+                    ghost_camera, LLActorMover::GHOST_VIEW_WORLD_MAIN,
+                    gPipeline.mRT->deferredScreen);
             }
             // Per-frame counter log AFTER submission (gated on GhostDeferredDebugLog).
             LLActorMover::instance().emitGhostDeferredDebug();

@@ -151,6 +151,10 @@ public:
     //get Y resolution
     U32 getHeight() const { return mResY; }
 
+    // [GhostDeferred] Raw framebuffer object name. Diagnostics/readback only;
+    // callers must preserve and restore framebuffer bindings.
+    U32 getFBO() const { return mFBO; }
+
     LLTexUnit::eTextureType getUsage(void) const { return mUsage; }
 
     U32 getTexture(U32 attachment = 0) const;
