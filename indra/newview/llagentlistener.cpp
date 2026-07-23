@@ -771,7 +771,7 @@ void LLAgentListener::getNearbyAvatarsList(LLSD const& event_data)
     for (LLCharacter* character : LLCharacter::sInstances)
     {
         LLVOAvatar* avatar = (LLVOAvatar*)character;
-        if (avatar && !avatar->isDead() && !avatar->isControlAvatar() && !avatar->isSelf())
+        if (avatar && !avatar->isDead() && !avatar->isControlAvatar() && !avatar->isSelf() && !avatar->isGhostAvatar())
         {
             if ((dist_vec_squared(avatar->getPositionGlobal(), agent_pos) <= radius))
             {

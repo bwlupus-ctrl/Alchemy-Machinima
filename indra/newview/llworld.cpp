@@ -1524,7 +1524,7 @@ bool LLWorld::getAvatar(const LLUUID& idAvatar, LLVector3d& posAvatar) const
     for (const LLCharacter* pCharacter : LLCharacter::sInstances)
     {
         const LLVOAvatar* pAvatar = static_cast<const LLVOAvatar*>(pCharacter);
-        if ( (!pAvatar->isDead()) && (!pAvatar->mIsDummy) && (!pAvatar->isOrphaned()) && (idAvatar == pAvatar->getID()) )
+        if ( (!pAvatar->isDead()) && (!pAvatar->mIsDummy) && (!pAvatar->isGhostAvatar()) && (!pAvatar->isOrphaned()) && (idAvatar == pAvatar->getID()) )
         {
             posAvatar = pAvatar->getPositionGlobal();
             return true;

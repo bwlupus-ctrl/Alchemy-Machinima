@@ -9035,6 +9035,12 @@ bool LLVOAvatar::hasFirstFullAttachmentData() const
 
 bool LLVOAvatar::isTooComplex() const
 {
+    // A client-only ghost clone is never too-complex (it must render through the
+    // real path). Checked FIRST, before the isRlvSilhouette branch below.
+    if (isGhostAvatar())
+    {
+        return false;
+    }
     bool too_complex;
     static LLCachedControl<S32> complexity_render_mode(gSavedSettings, "RenderAvatarComplexityMode");
     bool render_friend =  (isBuddy() && complexity_render_mode > AV_RENDER_LIMIT_BY_COMPLEXITY);
@@ -10447,9 +10453,10 @@ void LLVOAvatar::applyParsedAppearanceMessage(LLAppearanceMessageContents& conte
 
         const F32 LOADING_TIMEOUT_SECONDS = 60.f;
         // this isn't really a problem if we already have a non-default shape
-        if (visualParamWeightsAreDefault() && mRuthTimer.getElapsedTimeF32() > LOADING_TIMEOUT_SECONDS)
+        if (!isGhostAvatar() && visualParamWeightsAreDefault() && mRuthTimer.getElapsedTimeF32() > LOADING_TIMEOUT_SECONDS)
         {
             // re-request appearance, hoping that it comes back with a shape next time
+            // (never for a client-only ghost -- its id is synthetic, no server object)
             LL_INFOS() << "Re-requesting AvatarAppearance for object: "  << getID() << LL_ENDL;
             LLAvatarPropertiesProcessor::getInstance()->sendAvatarTexturesRequest(getID());
             mRuthTimer.reset();
@@ -12459,7 +12466,9 @@ F32 LLVOAvatar::getAverageGPURenderTime()
     for (LLCharacter* character : LLCharacter::sInstances)
     {
         LLVOAvatar* avatar = (LLVOAvatar*)character;
-        if (!avatar->isTooSlow())
+        // isTooSlow() now returns false for ghosts, so exclude them explicitly or
+        // a client-only clone would skew the average avatar GPU time.
+        if (!avatar->isGhostAvatar() && !avatar->isTooSlow())
         {
             ret += avatar->getGPURenderTime();
             ++count;

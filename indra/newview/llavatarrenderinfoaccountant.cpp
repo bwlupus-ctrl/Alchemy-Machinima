@@ -230,6 +230,7 @@ void LLAvatarRenderInfoAccountant::avatarRenderInfoReportCoro(std::string url, U
     {
         LLVOAvatar* avatar = (LLVOAvatar*)character;
         if (!avatar->isDead() &&                                // Not dead yet
+            !avatar->isGhostAvatar() &&                         // Not a client-only clone (never report a synthetic id to the sim)
             !avatar->isControlAvatar() &&                       // Not part of an animated object
             avatar->getRezzedStatus() >= 2 &&                   // Mostly rezzed (maybe without baked textures downloaded)
             avatar->getObjectHost() == regionp->getHost())      // Ensure it's on the same region
