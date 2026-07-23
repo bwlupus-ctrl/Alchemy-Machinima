@@ -4922,6 +4922,170 @@ public:
     ScopedGhostTransform(const ScopedGhostTransform&) = delete;
     ScopedGhostTransform& operator=(const ScopedGhostTransform&) = delete;
 };
+
+// [GhostDeferred] SINGLE execution-domain classifier for a harvested rigged
+// pass, shared by the G-buffer submission (which counts required solids + draws
+// the G-buffer ones) and the forward pass (which draws its assigned stages).
+// One classifier keeps the two phases' notion of "solid" identical -- the domain
+// drift that produced the wardrobe fallback lives entirely in disagreement here.
+enum class EGhostBatchPhase : U8
+{
+    GBUFFER_SOLID,              // drawn into the G-buffer this frame
+    FORWARD_FULLBRIGHT,         // post-deferred forward (gDeferredFullbright)
+    FORWARD_FULLBRIGHT_SHINY,   // post-deferred forward env/reflection
+    FORWARD_FULLBRIGHT_MASKED,  // post-deferred forward, alpha-mask cutoff
+    BLEND,                      // rigged alpha-blend (later slice)
+    GLOW,                       // GLTF additive emissive (overlay)
+    UNSUPPORTED_SOLID,          // an overlay-solid pass no ghost path can cover
+};
+
+EGhostBatchPhase classifyGhostBatchPhase(U32 pass)
+{
+    switch (pass)
+    {
+    case LLRenderPass::PASS_SIMPLE_RIGGED:
+    case LLRenderPass::PASS_ALPHA_MASK_RIGGED:
+    case LLRenderPass::PASS_BUMP_RIGGED:
+    case LLRenderPass::PASS_SHINY_RIGGED:   // anomalous -> normalized to simple
+    case LLRenderPass::PASS_GLTF_PBR_RIGGED:
+    case LLRenderPass::PASS_GLTF_PBR_ALPHA_MASK_RIGGED:
+        return EGhostBatchPhase::GBUFFER_SOLID;
+
+    case LLRenderPass::PASS_FULLBRIGHT_RIGGED:
+        return EGhostBatchPhase::FORWARD_FULLBRIGHT;
+    case LLRenderPass::PASS_FULLBRIGHT_SHINY_RIGGED:
+        return EGhostBatchPhase::FORWARD_FULLBRIGHT_SHINY;
+    case LLRenderPass::PASS_FULLBRIGHT_ALPHA_MASK_RIGGED:
+        return EGhostBatchPhase::FORWARD_FULLBRIGHT_MASKED;
+
+    default:
+        // Legacy material passes (material/specmap/normmap/normspec + mask/
+        // emissive) enter the G-buffer via ghostMaterialShaderIndex.
+        if (ghostMaterialShaderIndex(pass) >= 0)
+        {
+            return EGhostBatchPhase::GBUFFER_SOLID;
+        }
+        if (ghost_pass_is_blend(pass))  { return EGhostBatchPhase::BLEND; }
+        if (ghost_pass_is_glow(pass))   { return EGhostBatchPhase::GLOW; }
+        return EGhostBatchPhase::UNSUPPORTED_SOLID;
+    }
+}
+
+// [GhostDeferred] LLDrawPoolBump::pushBumpBatch (lldrawpoolbump.cpp) minus
+// applyModelMatrix and minus all file-static bump-pool state (shiny/diffuse_
+// channel/shader-level). The caller has bound gDeferredBumpProgram's rigged
+// variant, enabled DIFFUSE_MAP + BUMP_MAP, bound the bump map (bindBumpMap) and
+// uploaded the palette. Returns true iff the drawRange was issued.
+bool pushGhostBumpBatch(LLDrawInfo& params, S32 diffuse_channel)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
+
+    if (!params.mCount || params.mVertexBuffer.isNull() || diffuse_channel < 0)
+    {
+        return false;
+    }
+
+    if (params.mTexture.notNull())
+    {
+        gGL.getTexUnit(diffuse_channel)->bindFast(params.mTexture);
+    }
+    else
+    {
+        gGL.getTexUnit(diffuse_channel)->unbind(LLTexUnit::TT_TEXTURE);
+    }
+
+    bool tex_setup = false;
+    if (params.mTextureMatrix)
+    {
+        gGL.getTexUnit(diffuse_channel)->activate();
+        gGL.matrixMode(LLRender::MM_TEXTURE);
+        gGL.loadMatrix((GLfloat*)params.mTextureMatrix->mMatrix);
+        gGL.matrixMode(LLRender::MM_MODELVIEW);
+        ++gPipeline.mTextureMatrixOps;
+        tex_setup = true;
+    }
+
+    // Deliberately no LLRenderPass::applyModelMatrix(params).
+    params.mVertexBuffer->setBuffer();
+    params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart,
+                                    params.mEnd, params.mCount, params.mOffset);
+
+    if (tex_setup)
+    {
+        gGL.getTexUnit(diffuse_channel)->activate();
+        gGL.matrixMode(LLRender::MM_TEXTURE);
+        gGL.loadIdentity();
+        gGL.matrixMode(LLRender::MM_MODELVIEW);
+    }
+    return true;
+}
+
+// [GhostDeferred] fullbright-shiny rigged draw for one batch: the diffuse bind +
+// texture matrix + drawRange, minus applyModelMatrix and minus LLDrawPoolBump's
+// file-static shiny/channel state. The caller has bound gDeferredFullbrightShiny
+// rigged + set up exposure / reflection-probe-or-cube env / SHINY_ORIGIN (all in
+// CAMERA space, before the clone transform). `indexed` selects the vertex
+// texture-index attribute path (channel 0 diffuse base) vs a scalar diffuse bind.
+bool pushGhostFullbrightShinyBatch(LLDrawInfo& params, S32 diffuse_channel, bool indexed)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
+
+    if (!params.mCount || params.mVertexBuffer.isNull())
+    {
+        return false;
+    }
+
+    bool tex_setup = false;
+    if (indexed)
+    {
+        // multi-texture: the vertex texture_index attribute selects per vertex
+        for (U32 i = 0; i < params.mTextureList.size(); ++i)
+        {
+            if (params.mTextureList[i].notNull())
+            {
+                gGL.getTexUnit(i)->bindFast(params.mTextureList[i]);
+            }
+        }
+    }
+    else
+    {
+        if (diffuse_channel < 0)
+        {
+            return false;   // scalar path needs a real diffuse sampler
+        }
+        if (params.mTexture.notNull())
+        {
+            gGL.getTexUnit(diffuse_channel)->bindFast(params.mTexture);
+        }
+        else
+        {
+            gGL.getTexUnit(diffuse_channel)->unbind(LLTexUnit::TT_TEXTURE);
+        }
+        if (params.mTextureMatrix)
+        {
+            gGL.getTexUnit(diffuse_channel)->activate();
+            gGL.matrixMode(LLRender::MM_TEXTURE);
+            gGL.loadMatrix((GLfloat*)params.mTextureMatrix->mMatrix);
+            gGL.matrixMode(LLRender::MM_MODELVIEW);
+            ++gPipeline.mTextureMatrixOps;
+            tex_setup = true;
+        }
+    }
+
+    // Deliberately no LLRenderPass::applyModelMatrix(params).
+    params.mVertexBuffer->setBuffer();
+    params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart,
+                                    params.mEnd, params.mCount, params.mOffset);
+
+    if (tex_setup)
+    {
+        gGL.getTexUnit(diffuse_channel)->activate();
+        gGL.matrixMode(LLRender::MM_TEXTURE);
+        gGL.loadIdentity();
+        gGL.matrixMode(LLRender::MM_MODELVIEW);
+    }
+    return true;
+}
 } // anonymous namespace
 
 GhostCoverageMask LLPipeline::getGhostDeferredCoverageThisFrame(const LLUUID& instance_id) const
@@ -4955,6 +5119,17 @@ void LLPipeline::renderGhostDeferredOpaqueMasked(const LLCamera& camera)
         mGhostDeferredCoverageFrame = frame;
         mGhostDeferredCoverage.clear();
     }
+    // [Coverage] PENDING solid-completion progress rebuilds each frame alongside
+    // the coverage map. A clone's solid faces draw across TWO phases (here in the
+    // G-buffer, plus the post-deferred forward pass for fullbright/fullbright-
+    // shiny/mask); this map accumulates required-vs-drawn per instance and the
+    // FINALIZE forward stage promotes RIGGED_SOLID only when every required solid
+    // batch drew. Reset here and NOT from the forward pass (which only consumes it).
+    if (mGhostSubmissionProgressFrame != frame)
+    {
+        mGhostSubmissionProgressFrame = frame;
+        mGhostSubmissionProgress.clear();
+    }
 
     // Preserve the actual incoming colour mask (renderGeomDeferred exits with
     // (true,false)); restore through gGL so its cache stays synced with GL.
@@ -4987,6 +5162,9 @@ void LLPipeline::renderGhostDeferredOpaqueMasked(const LLCamera& camera)
     // Restore the incoming active texture unit at exit -- pushGhostBatch, the
     // texture-matrix setup, and LLFetchedGLTFMaterial::bind() all activate units.
     const U32 saved_texture_unit = gGL.getCurrentTexUnitIndex();
+    // Disable the bump shader's samplers at teardown if it drew (stock renderDeferred
+    // does; the invariant checker does not track individual texture bindings).
+    bool bump_shader_used = false;
 
     for (const LLActorMover::GhostProxy& proxy : queue.mProxies)
     {
@@ -4997,40 +5175,78 @@ void LLPipeline::renderGhostDeferredOpaqueMasked(const LLCamera& camera)
 
         ScopedGhostTransform transform(proxy);
 
-        bool proxy_submitted = false;
-        // [Coverage] all-eligible-success rule: the RIGGED_SOLID coverage bit is
-        // set only when EVERY deferred-eligible batch of this clone actually drew.
-        // Partial success keeps the bit clear -> the overlay falls back to the
-        // full fullbright body (the deferred pixels are simply overdrawn) instead
-        // of leaving the failed batches as holes.
-        bool any_solid_draw = false;
-        bool all_solid_ok = true;
+        // [Coverage] per-instance cross-phase progress. RIGGED_SOLID completeness
+        // is decided by the FINALIZE forward stage (NOT here) -- a clone's solid
+        // faces may still be pending in the fullbright/shiny forward pass. Every
+        // overlay-solid batch is counted required wherever it draws; a G-buffer
+        // solid draws now, a forward solid is recorded as an expected stage.
+        GhostSubmissionProgress& submission = mGhostSubmissionProgress[proxy.mInstanceId];
+        GhostCategoryProgress& solid = submission.mRiggedSolid;
+        solid.mClassified = true;
+
         LLGLSLShader* last_shader = nullptr;
         LLFetchedGLTFMaterial* last_gltf_material = nullptr;
         LLViewerTexture* last_gltf_texture = nullptr;
+        S32 bump_diffuse_channel = -1;
+        S32 bump_map_channel = -1;
 
         for (const LLActorMover::GhostBatch& batch : *proxy.mBatches)
         {
             LLDrawInfo* di = batch.mInfo;
-            if (!di)
+
+            // ---- classify the execution phase ONCE (shared with the forward pass
+            // via classifyGhostBatchPhase, so the two never disagree about what is
+            // "solid"). Forward-solid passes are counted required here but DRAWN in
+            // the post-deferred forward pass; blend/glow belong to other categories;
+            // an unsupported solid fails the category (keeps the hole-proof rule).
+            switch (classifyGhostBatchPhase(batch.mPass))
             {
-                continue;   // no draw info: the overlay could not draw it either
+            case EGhostBatchPhase::BLEND:
+            case EGhostBatchPhase::GLOW:
+                continue;   // not part of solid completeness
+
+            case EGhostBatchPhase::FORWARD_FULLBRIGHT:
+                ++solid.mRequired;
+                submission.mExpectedForwardSolidStages |= GHOST_FORWARD_SOLID_FULLBRIGHT;
+                continue;
+            case EGhostBatchPhase::FORWARD_FULLBRIGHT_SHINY:
+                ++solid.mRequired;
+                submission.mExpectedForwardSolidStages |= GHOST_FORWARD_SOLID_SHINY;
+                continue;
+            case EGhostBatchPhase::FORWARD_FULLBRIGHT_MASKED:
+                ++solid.mRequired;
+                submission.mExpectedForwardSolidStages |= GHOST_FORWARD_SOLID_MASKED;
+                continue;
+
+            case EGhostBatchPhase::UNSUPPORTED_SOLID:
+                ++solid.mRequired;
+                solid.mFailed = true;   // overlay-solid, no ghost path can cover it
+                continue;
+
+            case EGhostBatchPhase::GBUFFER_SOLID:
+                break;                  // draw it into the G-buffer below
             }
 
-            // ---- classify ELIGIBILITY first (pass whitelist), then validate ----
-            // Only deferred-eligible (rigged opaque/masked) batches count toward
-            // category completeness. Blend/glow passes skip penalty-free (other
-            // coverage categories); an overlay-SOLID pass deferred cannot cover
-            // (fullbright/shiny/bump) BLOCKS the bit -- see the default case.
+            // ---- GBUFFER_SOLID: draw into the G-buffer this frame ----
+            ++solid.mRequired;
+            if (!di)
+            {
+                // a null draw-info on a solid batch cannot claim completeness
+                solid.mFailed = true;
+                continue;
+            }
+
             LLGLSLShader* shader = nullptr;
             bool legacy_textured = false;
             bool legacy_material = false;
             bool gltf_scalar = false;
             bool gltf_indexed = false;
+            bool bump_deferred = false;
 
             switch (batch.mPass)
             {
             case LLRenderPass::PASS_SIMPLE_RIGGED:
+            case LLRenderPass::PASS_SHINY_RIGGED:   // anomalous residue -> deferred simple
                 shader = gDeferredDiffuseProgram.mRiggedVariant;
                 legacy_textured = true;
                 break;
@@ -5038,6 +5254,13 @@ void LLPipeline::renderGhostDeferredOpaqueMasked(const LLCamera& camera)
             case LLRenderPass::PASS_ALPHA_MASK_RIGGED:
                 shader = gDeferredDiffuseAlphaMaskProgram.mRiggedVariant;
                 legacy_textured = true;
+                break;
+
+            case LLRenderPass::PASS_BUMP_RIGGED:
+                // bump writes normal + diffuse into the G-buffer (its own pool's
+                // renderDeferred path); own draw branch, NOT legacy_textured.
+                shader = gDeferredBumpProgram.mRiggedVariant;
+                bump_deferred = true;
                 break;
 
             case LLRenderPass::PASS_GLTF_PBR_RIGGED:
@@ -5052,9 +5275,7 @@ void LLPipeline::renderGhostDeferredOpaqueMasked(const LLCamera& camera)
                 {
                     if (!di->mGLTFMaterial)
                     {
-                        // eligible but undrawable (stale uniforms otherwise):
-                        // category incomplete -> overlay keeps the full body
-                        all_solid_ok = false;
+                        solid.mFailed = true;   // null material would draw stale
                         continue;
                     }
                     shader = gDeferredPBROpaqueProgram.mRiggedVariant;
@@ -5064,35 +5285,19 @@ void LLPipeline::renderGhostDeferredOpaqueMasked(const LLCamera& camera)
 
             default:
             {
-                // Legacy material passes (material/specmap/normmap/normspec, +mask/
-                // emissive). Excluded passes return -1: penalty-free ONLY when the
-                // overlay draws them in ANOTHER category (blend/glow). A pass the
-                // overlay classifies SOLID that deferred cannot cover (fullbright/
-                // shiny/bump/...) must block the RIGGED_SOLID bit -- suppression and
-                // coverage share one domain, or the suppressed solid sweep would
-                // leave those faces rendering NOWHERE (the hole class this whole
-                // slice exists to eliminate).
+                // classifyGhostBatchPhase() guaranteed GBUFFER_SOLID here, so this
+                // is a legacy material pass with a valid index.
                 const S32 material_index = ghostMaterialShaderIndex(batch.mPass);
-                if (material_index < 0)
-                {
-                    if (!ghost_pass_is_blend(batch.mPass)
-                        && !ghost_pass_is_glow(batch.mPass))
-                    {
-                        all_solid_ok = false;   // overlay-solid, deferred-uncoverable
-                    }
-                    continue;
-                }
                 shader = gDeferredMaterialProgram[material_index].mRiggedVariant;
                 legacy_material = true;
                 break;
             }
             }
 
-            // ---- eligible from here on: any bail marks the category incomplete ----
             if (di->mVertexBuffer.isNull() || !di->mCount
                 || !di->mAvatar || !di->mSkinInfo)
             {
-                all_solid_ok = false;
+                solid.mFailed = true;
                 continue;
             }
 
@@ -5106,15 +5311,15 @@ void LLPipeline::renderGhostDeferredOpaqueMasked(const LLCamera& camera)
                         << "indexed PBR rigged shader unavailable; multi-material PBR "
                            "clone batches will be skipped" << LL_ENDL;
                 }
-                all_solid_ok = false;
+                solid.mFailed = true;
                 continue;
             }
 
             if (shader != last_shader)
             {
                 // Legacy material shaders need the deferred pool's bind path (sets
-                // the deferred uniforms/samplers); simple/PBR shaders bind directly
-                // as their stock pools do.
+                // the deferred uniforms/samplers); simple/PBR/bump shaders bind
+                // directly as their stock pools do.
                 if (legacy_material)
                 {
                     bindDeferredShader(*shader);
@@ -5127,13 +5332,23 @@ void LLPipeline::renderGhostDeferredOpaqueMasked(const LLCamera& camera)
                 // Program-local caches: reset at every shader switch.
                 last_gltf_material = nullptr;
                 last_gltf_texture = nullptr;
+                bump_diffuse_channel = -1;
+                bump_map_channel = -1;
+                if (bump_deferred)
+                {
+                    // enable the bump shader's two samplers once per activation;
+                    // disabled at teardown (see bump_shader_used below).
+                    bump_diffuse_channel = shader->enableTexture(LLViewerShaderMgr::DIFFUSE_MAP);
+                    bump_map_channel     = shader->enableTexture(LLViewerShaderMgr::BUMP_MAP);
+                    bump_shader_used = true;
+                }
             }
 
             // Correctness-first cut: upload the skin palette for every batch (also
             // avoids any palette-dedup cache crossing a shader switch).
             if (!LLRenderPass::uploadMatrixPalette(*di))
             {
-                all_solid_ok = false;
+                solid.mFailed = true;
                 continue;
             }
 
@@ -5148,6 +5363,23 @@ void LLPipeline::renderGhostDeferredOpaqueMasked(const LLCamera& camera)
                     shader->setMinimumAlpha(di->mAlphaMaskCutoff);
                 }
                 drew = pushGhostBatch(*di, true);
+            }
+            else if (bump_deferred)
+            {
+                if (bump_diffuse_channel < 0 || bump_map_channel < 0)
+                {
+                    solid.mFailed = true;
+                    continue;
+                }
+                // stock deferred bump uses the batch alpha-mask cutoff + generated
+                // bump map (mBump + source texture select it; bindBumpMap resolves).
+                shader->setMinimumAlpha(di->mAlphaMaskCutoff);
+                if (!LLDrawPoolBump::bindBumpMap(*di, bump_map_channel))
+                {
+                    solid.mFailed = true;
+                    continue;
+                }
+                drew = pushGhostBumpBatch(*di, bump_diffuse_channel);
             }
             else if (legacy_material)
             {
@@ -5168,40 +5400,418 @@ void LLPipeline::renderGhostDeferredOpaqueMasked(const LLCamera& camera)
 
             if (!drew)
             {
-                all_solid_ok = false;
+                solid.mFailed = true;
                 continue;
             }
 
             ++counters.mActualDrawCalls;
             ++counters.mRiggedSolidDrawCalls;
-            any_solid_draw = true;
-
-            if (!proxy_submitted)
+            ++solid.mDrawn;
+            if (!submission.mAnyDrawSubmitted)
             {
-                proxy_submitted = true;
-                ++counters.mProxiesSubmitted;   // aggregate: >=1 deferred draw
+                submission.mAnyDrawSubmitted = true;
+                ++counters.mProxiesSubmitted;   // aggregate: >=1 draw in ANY phase
             }
         }
+        // [Coverage] NO finalize here -- RIGGED_SOLID is settled by the FINALIZE
+        // forward stage once the fullbright/shiny forward draws have run.
+    }
 
-        // [Coverage] record the category as covered only on FULL success (see the
-        // all-eligible-success note above). Failed instances stay absent from the
-        // map, indistinguishable from never-submitted -- the overlay's zero-
-        // coverage fallback preserves the pre-slice behavior exactly.
-        if (any_solid_draw && all_solid_ok)
-        {
-            GhostCoverageMask& coverage = mGhostDeferredCoverage[proxy.mInstanceId];
-            if (!(coverage & GHOST_COVERAGE_RIGGED_SOLID))
-            {
-                coverage |= GHOST_COVERAGE_RIGGED_SOLID;
-                ++counters.mRiggedSolidInstancesSubmitted;
-            }
-        }
+    // Disable the bump shader's samplers if it drew (stock renderDeferred does
+    // this before unbinding; the invariant checker does not track individual
+    // texture bindings, so leaving them could leak a texture into a later pass).
+    if (bump_shader_used && gDeferredBumpProgram.mRiggedVariant)
+    {
+        gDeferredBumpProgram.mRiggedVariant->bind();
+        gDeferredBumpProgram.mRiggedVariant->disableTexture(LLViewerShaderMgr::DIFFUSE_MAP);
+        gDeferredBumpProgram.mRiggedVariant->disableTexture(LLViewerShaderMgr::BUMP_MAP);
     }
 
     LLVertexBuffer::unbind();
     LLGLSLShader::unbind();
 
     gGL.getTexUnit(saved_texture_unit)->activate();
+
+    gGL.matrixMode(LLRender::MM_MODELVIEW);
+    gGLLastMatrix = nullptr;
+    gGL.loadMatrix(gGLModelView);
+    gGL.syncMatrices();
+}
+
+void LLPipeline::finalizeGhostRiggedSolidCoverage()
+{
+    // Promote RIGGED_SOLID for every instance whose solid faces ALL drew this
+    // frame -- across both phases (G-buffer + fullbright/shiny forward). Iterates
+    // the progress map directly (its keys are this frame's submitted instances).
+    // Monotonic: a bit is only ever SET here, never cleared, so no observer sees
+    // premature or retracted coverage.
+    LLActorMover::GhostDeferredCounters& counters =
+        LLActorMover::instance().ghostDeferredCounters();
+
+    for (auto& entry : mGhostSubmissionProgress)
+    {
+        GhostSubmissionProgress& submission = entry.second;
+        GhostCategoryProgress& solid = submission.mRiggedSolid;
+
+        if (solid.mFinalized)
+        {
+            continue;   // idempotent (FINALIZE could be reached more than once)
+        }
+        solid.mFinalized = true;
+
+        // Every forward-solid stage the instance expected must have actually run
+        // (a stage marks itself completed even when its batches fail, so a missing
+        // completion bit means the stage entry point never executed -> incomplete).
+        const bool stages_complete =
+            (submission.mCompletedForwardSolidStages
+             & submission.mExpectedForwardSolidStages)
+            == submission.mExpectedForwardSolidStages;
+
+        const bool complete = solid.mClassified
+            && !solid.mFailed
+            && solid.mRequired > 0
+            && solid.mDrawn == solid.mRequired
+            && stages_complete;
+
+        if (!complete)
+        {
+            continue;   // absent from coverage -> overlay keeps the full body
+        }
+
+        GhostCoverageMask& coverage = mGhostDeferredCoverage[entry.first];
+        if (!(coverage & GHOST_COVERAGE_RIGGED_SOLID))
+        {
+            coverage |= GHOST_COVERAGE_RIGGED_SOLID;
+            ++counters.mRiggedSolidInstancesSubmitted;
+        }
+    }
+}
+
+bool LLPipeline::ghostPostDeferredSolidsPending(const LLCamera& camera) const
+{
+    // Same guards as renderGhostPostDeferred's drawing stages (world view + this
+    // frame's queue) plus "some instance expects a forward-solid stage". When the
+    // toggle is off the G-buffer pass returns before stamping the progress frame,
+    // so the frame check fails here and the caller changes NO state (byte-identical).
+    if (gCubeSnapshot
+        || LLPipeline::sReflectionRender
+        || LLPipeline::sRenderingHUDs
+        || LLViewerCamera::sCurCameraID != LLViewerCamera::CAMERA_WORLD)
+    {
+        return false;
+    }
+    if (mGhostSubmissionProgressFrame != LLFrameTimer::getFrameCount())
+    {
+        return false;
+    }
+    if (!LLActorMover::instance().hasValidGhostDeferredQueueThisFrame(
+            camera, LLActorMover::GHOST_VIEW_WORLD_MAIN))
+    {
+        return false;
+    }
+    const U32 all_forward_solid = GHOST_FORWARD_SOLID_FULLBRIGHT
+                                | GHOST_FORWARD_SOLID_SHINY
+                                | GHOST_FORWARD_SOLID_MASKED;
+    for (const auto& entry : mGhostSubmissionProgress)
+    {
+        if (entry.second.mExpectedForwardSolidStages & all_forward_solid)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+void LLPipeline::renderGhostPostDeferred(const LLCamera& camera, EGhostForwardStage stage)
+{
+    // ---- world-view guards. renderDeferredLighting also runs for reflection
+    // probes / cube snapshots / HUDs, where no world ghost queue was built this
+    // frame -- submitting there would draw world clones into a probe and spam the
+    // strict-accessor warn/assert. The explicit view guard is REQUIRED: a same-
+    // frame cube render can reuse the same LLViewerCamera address, so the pointer/
+    // frame checks alone can pass. ----
+    if (gCubeSnapshot
+        || LLPipeline::sReflectionRender
+        || LLPipeline::sRenderingHUDs
+        || LLViewerCamera::sCurCameraID != LLViewerCamera::CAMERA_WORLD)
+    {
+        return;
+    }
+    if (mGhostSubmissionProgressFrame != LLFrameTimer::getFrameCount())
+    {
+        return;     // this frame's G-buffer ghost pass produced no progress
+    }
+    LLActorMover& mover = LLActorMover::instance();
+    if (!mover.hasValidGhostDeferredQueueThisFrame(camera, LLActorMover::GHOST_VIEW_WORLD_MAIN))
+    {
+        return;     // SILENT probe (the strict accessor would warn + assert)
+    }
+
+    // FINALIZE is bookkeeping only -- no GL op, no queue walk.
+    if (stage == EGhostForwardStage::FINALIZE)
+    {
+        finalizeGhostRiggedSolidCoverage();
+        return;
+    }
+
+    // Map the stage to its progress bit, batch phase and forward shader.
+    U32 stage_bit = GHOST_FORWARD_SOLID_NONE;
+    EGhostBatchPhase want_phase = EGhostBatchPhase::FORWARD_FULLBRIGHT;
+    LLGLSLShader* shader = nullptr;
+    bool is_shiny = false;
+    bool is_masked = false;
+    switch (stage)
+    {
+    case EGhostForwardStage::FULLBRIGHT_OPAQUE:
+        stage_bit = GHOST_FORWARD_SOLID_FULLBRIGHT;
+        want_phase = EGhostBatchPhase::FORWARD_FULLBRIGHT;
+        shader = gDeferredFullbrightProgram.mRiggedVariant;
+        break;
+    case EGhostForwardStage::FULLBRIGHT_MASKED:
+        stage_bit = GHOST_FORWARD_SOLID_MASKED;
+        want_phase = EGhostBatchPhase::FORWARD_FULLBRIGHT_MASKED;
+        shader = gDeferredFullbrightAlphaMaskProgram.mRiggedVariant;
+        is_masked = true;
+        break;
+    case EGhostForwardStage::FULLBRIGHT_SHINY:
+        stage_bit = GHOST_FORWARD_SOLID_SHINY;
+        want_phase = EGhostBatchPhase::FORWARD_FULLBRIGHT_SHINY;
+        shader = gDeferredFullbrightShinyProgram.mRiggedVariant;
+        is_shiny = true;
+        break;
+    case EGhostForwardStage::FINALIZE:
+        return;     // handled above
+    }
+
+    // Issue NO GL op if no instance expects this stage (keeps the OFF path cheap).
+    bool any_expected = false;
+    for (const auto& entry : mGhostSubmissionProgress)
+    {
+        if (entry.second.mExpectedForwardSolidStages & stage_bit)
+        {
+            any_expected = true;
+            break;
+        }
+    }
+    if (!any_expected)
+    {
+        return;
+    }
+
+    const LLActorMover::GhostProxyQueue& queue =
+        mover.getGhostDeferredQueue(camera, LLActorMover::GHOST_VIEW_WORLD_MAIN);
+    LLActorMover::GhostDeferredCounters& counters = mover.ghostDeferredCounters();
+
+    // Helper: mark this stage completed for every visible instance that expected
+    // it -- EVEN on shader/batch failure, so FINALIZE can tell "stage ran + failed"
+    // from "stage never ran". Absent/culled/unexpected instances are untouched.
+    auto mark_stage_complete = [&](bool force_fail)
+    {
+        for (const LLActorMover::GhostProxy& proxy : queue.mProxies)
+        {
+            if (!proxy.mFrustumVisible || !proxy.mBatches || proxy.mBatches->empty())
+            {
+                continue;
+            }
+            auto it = mGhostSubmissionProgress.find(proxy.mInstanceId);
+            if (it == mGhostSubmissionProgress.end()
+                || !(it->second.mExpectedForwardSolidStages & stage_bit))
+            {
+                continue;
+            }
+            if (force_fail)
+            {
+                it->second.mRiggedSolid.mFailed = true;
+            }
+            it->second.mCompletedForwardSolidStages |= stage_bit;
+        }
+    };
+
+    // Save the non-RAII state the stages touch (LLGL* guards restore enable state
+    // only, not blend factors / active unit / colour mask).
+    const U32 saved_texture_unit = gGL.getCurrentTexUnitIndex();
+    GLboolean saved_color_mask[4] = { GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE };
+    glGetBooleanv(GL_COLOR_WRITEMASK, saved_color_mask);
+
+    if (!shader || !shader->isComplete())
+    {
+        // Stage cannot run: record it as attempted-and-failed so the instance
+        // falls back to the full overlay rather than claiming completeness.
+        mark_stage_complete(/*force_fail=*/true);
+        return;
+    }
+
+    // ---- stage GL state. Fullbright solids write depth (they extend the shared
+    // opaque depth buffer for later stock alpha); opaque/masked do not blend,
+    // shiny blends BT_ALPHA (matches stock renderFullbrightShiny). ----
+    LLGLDepthTest depth_state(GL_TRUE, GL_TRUE, GL_LEQUAL);
+    LLGLEnable cull_state(GL_CULL_FACE);
+    LLGLDisable blend_off(is_shiny ? 0 : GL_BLEND);
+    LLGLEnable  blend_on(is_shiny ? GL_BLEND : 0);
+    gGL.setColorMask(true, false);      // stock post-deferred: RGB, no FB alpha
+    if (is_shiny)
+    {
+        gGL.setSceneBlendType(LLRender::BT_ALPHA);
+    }
+
+    // camera modelview must be active for the shiny origin / env matrix (computed
+    // BEFORE any ScopedGhostTransform, exactly like stock beginFullbrightShiny).
+    gGL.matrixMode(LLRender::MM_MODELVIEW);
+    gGLLastMatrix = nullptr;
+    gGL.loadMatrix(gGLModelView);
+
+    shader->bind();
+
+    const S32 exposure_channel = shader->enableTexture(LLShaderMgr::EXPOSURE_MAP);
+    if (exposure_channel >= 0)
+    {
+        gGL.getTexUnit(exposure_channel)->bind(&mExposureMap);
+    }
+
+    // shiny-only: exposure + SHINY_ORIGIN + reflection-probe-or-cube environment,
+    // all in CAMERA space before the clone transforms.
+    S32 shiny_diffuse_channel = 0;   // indexed shaders use channel 0 diffuse base
+    S32 shiny_env_channel = -1;
+    LLCubeMap* shiny_cube = nullptr;
+    bool shiny_probe_path = false;
+    if (is_shiny)
+    {
+        LLMatrix4 cam_mv;
+        cam_mv.initRows(LLVector4(gGLModelView + 0), LLVector4(gGLModelView + 4),
+                        LLVector4(gGLModelView + 8), LLVector4(gGLModelView + 12));
+        LLVector3 so = LLVector3(gShinyOrigin) * cam_mv;
+        LLVector4 so4(so, gShinyOrigin.mV[3]);
+        shader->uniform4fv(LLViewerShaderMgr::SHINY_ORIGIN, 1, so4.mV);
+
+        shiny_probe_path = LLPipeline::sReflectionProbesEnabled;
+        if (shiny_probe_path)
+        {
+            bindReflectionProbes(*shader);      // sets the env matrix (camera space)
+        }
+        else
+        {
+            shiny_cube = gSky.mVOSkyp ? gSky.mVOSkyp->getCubeMap() : nullptr;
+            if (shiny_cube)
+            {
+                shiny_env_channel =
+                    shader->enableTexture(LLViewerShaderMgr::ENVIRONMENT_MAP, LLTexUnit::TT_CUBE_MAP);
+                shiny_diffuse_channel = shader->enableTexture(LLViewerShaderMgr::DIFFUSE_MAP);
+                if (shiny_env_channel >= 0)
+                {
+                    shiny_cube->enableTexture(shiny_env_channel);
+                    gGL.getTexUnit(shiny_env_channel)->bind(shiny_cube);
+                }
+            }
+            // stock beginFullbrightShiny sets the env matrix whenever probes are
+            // disabled, even if the sky cube is momentarily unavailable.
+            setEnvMat(*shader);
+        }
+    }
+
+    for (const LLActorMover::GhostProxy& proxy : queue.mProxies)
+    {
+        if (!proxy.mFrustumVisible || !proxy.mBatches || proxy.mBatches->empty())
+        {
+            continue;
+        }
+        auto it = mGhostSubmissionProgress.find(proxy.mInstanceId);
+        if (it == mGhostSubmissionProgress.end()
+            || !(it->second.mExpectedForwardSolidStages & stage_bit))
+        {
+            continue;   // this instance has no batch for this stage
+        }
+        GhostSubmissionProgress& submission = it->second;
+        GhostCategoryProgress& solid = submission.mRiggedSolid;
+
+        {
+            ScopedGhostTransform transform(proxy);
+
+            for (const LLActorMover::GhostBatch& batch : *proxy.mBatches)
+            {
+                if (classifyGhostBatchPhase(batch.mPass) != want_phase)
+                {
+                    continue;
+                }
+                LLDrawInfo* di = batch.mInfo;
+                if (!di || di->mVertexBuffer.isNull() || !di->mCount
+                    || !di->mAvatar || !di->mSkinInfo)
+                {
+                    solid.mFailed = true;
+                    continue;
+                }
+                if (!LLRenderPass::uploadMatrixPalette(*di))
+                {
+                    solid.mFailed = true;
+                    continue;
+                }
+
+                bool drew = false;
+                if (is_shiny)
+                {
+                    const bool indexed = di->mTextureList.size() > 1
+                        && LLGLSLShader::sIndexedTextureChannels > 1;
+                    drew = pushGhostFullbrightShinyBatch(
+                        *di, indexed ? 0 : shiny_diffuse_channel, indexed);
+                }
+                else
+                {
+                    if (is_masked)
+                    {
+                        shader->setMinimumAlpha(di->mAlphaMaskCutoff);
+                    }
+                    drew = pushGhostBatch(*di, true);
+                }
+
+                if (!drew)
+                {
+                    solid.mFailed = true;
+                    continue;
+                }
+
+                ++counters.mActualDrawCalls;
+                ++counters.mRiggedSolidDrawCalls;
+                ++solid.mDrawn;
+                if (!submission.mAnyDrawSubmitted)
+                {
+                    submission.mAnyDrawSubmitted = true;
+                    ++counters.mProxiesSubmitted;
+                }
+            }
+        }   // ScopedGhostTransform restores the camera modelview
+
+        submission.mCompletedForwardSolidStages |= stage_bit;
+    }
+
+    // ---- teardown: unbind every sampler the stage touched (the invariant checker
+    // does not track individual texture bindings) + restore saved state. ----
+    if (is_shiny)
+    {
+        if (shiny_probe_path)
+        {
+            unbindReflectionProbes(*shader);
+        }
+        else if (shiny_cube)
+        {
+            shiny_cube->disable();
+            shiny_cube->restoreMatrix();
+            if (shiny_env_channel >= 0)
+            {
+                shader->disableTexture(LLViewerShaderMgr::ENVIRONMENT_MAP, LLTexUnit::TT_CUBE_MAP);
+            }
+            shader->disableTexture(LLViewerShaderMgr::DIFFUSE_MAP);
+        }
+    }
+    if (exposure_channel >= 0)
+    {
+        shader->disableTexture(LLShaderMgr::EXPOSURE_MAP);
+    }
+
+    LLVertexBuffer::unbind();
+    LLGLSLShader::unbind();
+
+    gGL.getTexUnit(saved_texture_unit)->activate();
+    gGL.setColorMask(saved_color_mask[0] != GL_FALSE, saved_color_mask[3] != GL_FALSE);
+    gGL.setSceneBlendType(LLRender::BT_ALPHA);      // leave standard blend state
 
     gGL.matrixMode(LLRender::MM_MODELVIEW);
     gGLLastMatrix = nullptr;
@@ -13240,8 +13850,50 @@ void LLPipeline::renderDeferredLighting()
                           LLPipeline::RENDER_TYPE_WATEREXCLUSION,
                           END_RENDER_TYPES);
 
+        // [GhostDeferred] Solid Completion Rescue: draw the clone's fullbright /
+        // fullbright-shiny / fullbright-mask rigged faces (which cannot enter the
+        // G-buffer) here in the post-deferred forward pass, so metallic-gold /
+        // fullbright wardrobes render scene-lit instead of forcing the whole clone
+        // to the fallback overlay. Solids run BEFORE stock post-deferred (opaque
+        // order; each writes depth) so world alpha still composites correctly over
+        // them. (Two-hook early-testing layout; the later alpha slice moves these
+        // to true stock pool boundaries.)
+        const LLCamera& ghost_camera = *LLViewerCamera::getInstance();
+        if (ghostPostDeferredSolidsPending(ghost_camera))
+        {
+            // The local-light accumulation above exits with BT_ADD blend factors,
+            // mScreenTriangleVB still bound, and a non-null gGLLastMatrix. The
+            // forward stages END at the stock post-deferred canonical state
+            // (BT_ALPHA, unbound VB, camera modelview, gGLLastMatrix=null). Set
+            // that canonical state HERE, before the invariant snapshot, so the
+            // stages return to exactly what was snapshotted (else the invariant
+            // reports a false leak on every local-light frame). Guarded by the
+            // pending check so an OFF / no-clone frame changes NO state.
+            gGL.setSceneBlendType(LLRender::BT_ALPHA);
+            LLVertexBuffer::unbind();
+            gGL.matrixMode(LLRender::MM_MODELVIEW);
+            gGLLastMatrix = nullptr;
+            gGL.loadMatrix(gGLModelView);
+            gGL.syncMatrices();
+
+            LLScopedGhostRenderInvariant ghost_invariant(
+                "renderGhostPostDeferredSolids",
+                &LLActorMover::instance().ghostDeferredCounters().mInvariantViolations);
+            renderGhostPostDeferred(ghost_camera, EGhostForwardStage::FULLBRIGHT_OPAQUE);
+            renderGhostPostDeferred(ghost_camera, EGhostForwardStage::FULLBRIGHT_SHINY);
+            renderGhostPostDeferred(ghost_camera, EGhostForwardStage::FULLBRIGHT_MASKED);
+            ghost_invariant.finish();
+        }
+
         renderGeomPostDeferred(*LLViewerCamera::getInstance());
         popRenderTypeMask();
+
+        // [GhostDeferred] FINALIZE (bookkeeping only): promote RIGGED_SOLID for
+        // clones whose G-buffer + forward solid draws all succeeded, so the
+        // overlay suppresses exactly the covered solids. Runs UNCONDITIONALLY (no
+        // GL op, self-guarded) -- a clone with only G-buffer solids (no fullbright
+        // content) has no pending forward stage but must still be finalized.
+        renderGhostPostDeferred(*LLViewerCamera::getInstance(), EGhostForwardStage::FINALIZE);
     }
 
     screen_target->flush();

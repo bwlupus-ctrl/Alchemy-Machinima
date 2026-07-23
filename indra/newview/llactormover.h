@@ -603,6 +603,12 @@ public:
     // (and counts) on a stale/mismatched queue; returns the queue regardless so a
     // caller that ignores the stamp still gets an empty/last queue, never garbage.
     const GhostProxyQueue& getGhostDeferredQueue(const LLCamera& camera, U32 expected_view_stamp) const;
+    // [GhostDeferred] SILENT queue-validity probe for the post-deferred forward
+    // pass, which runs from renderDeferredLighting -- also entered for reflection
+    // probes / cube snapshots where no world queue was built. Same checks as the
+    // strict accessor but NO warn / assert / stale-skip counter, so a probe frame
+    // simply skips the ghost forward draw instead of spamming the log.
+    bool hasValidGhostDeferredQueueThisFrame(const LLCamera& camera, U32 expected_view_stamp) const;
     GhostDeferredCounters& ghostDeferredCounters() { return mGhostDeferredCounters; }
     // Per-frame counter log (gated on GhostDeferredDebugLog). Call once per frame
     // AFTER the deferred submission so submitted/draw-call counts are final.

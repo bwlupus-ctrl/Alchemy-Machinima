@@ -361,6 +361,27 @@ public:
     // lit clones). Explicit camera so the hero-probe mirror pass can reuse it. No-op
     // unless GhostDeferredEnable is set; wrap in LLScopedGhostRenderInvariant.
     void renderGhostDeferredOpaqueMasked(const LLCamera& camera);
+    // [GhostDeferred] POST-deferred forward stages for the passes that cannot enter
+    // the G-buffer: fullbright / fullbright-shiny / fullbright-mask rigged clone
+    // faces (so metallic-gold / fullbright wardrobes render scene-lit instead of
+    // forcing the whole clone to the fallback overlay). One shared staged entry
+    // point invoked at stock-equivalent post-deferred boundaries; FINALIZE settles
+    // the cross-phase RIGGED_SOLID bit. Guarded to the world view only; wrap the
+    // drawing stages in LLScopedGhostRenderInvariant.
+    enum class EGhostForwardStage : U8
+    {
+        FULLBRIGHT_OPAQUE,
+        FULLBRIGHT_SHINY,
+        FULLBRIGHT_MASKED,
+        FINALIZE,
+    };
+    void renderGhostPostDeferred(const LLCamera& camera, EGhostForwardStage stage);
+    // [GhostDeferred] True iff a fullbright/shiny/mask forward-solid stage will
+    // actually draw this frame (world view, valid queue, >=1 expected stage). The
+    // call site uses this to establish the stock canonical post-deferred GL state
+    // BEFORE the invariant snapshot ONLY when needed, so the OFF path stays
+    // byte-identical and the invariant snapshots exactly what the stages restore.
+    bool ghostPostDeferredSolidsPending(const LLCamera& camera) const;
     // [GhostDeferred] Which render categories of `instance_id` the deferred pass
     // actually drew THIS frame (GHOST_COVERAGE_NONE on a stale frame / no draw).
     // The overlay colors only the uncovered categories, so the scene-lit opaque
@@ -574,6 +595,49 @@ private:
     // instance with no successful category is absent (full overlay fallback).
     U32 mGhostDeferredCoverageFrame = 0;
     std::map<LLUUID, GhostCoverageMask> mGhostDeferredCoverage;
+
+    // [GhostDeferred] PENDING per-instance solid-completion progress. A clone's
+    // solid faces now draw across TWO phases (G-buffer: simple/material/pbr/bump/
+    // shiny-normalized; post-deferred forward: fullbright/fullbright-shiny/mask),
+    // so RIGGED_SOLID cannot be owned by either phase alone. This map accumulates
+    // required-vs-drawn counts + which forward stages each instance expects; the
+    // FINALIZE stage promotes it into mGhostDeferredCoverage ONLY when every
+    // required solid batch drew in its phase (monotonic -- never set-then-clear).
+    // Kept SEPARATE from mGhostDeferredCoverage so no observer sees premature
+    // success. Rebuilt each frame alongside the coverage map.
+    struct GhostCategoryProgress
+    {
+        U32  mRequired  = 0;
+        U32  mDrawn     = 0;
+        bool mClassified = false;
+        bool mFailed     = false;
+        bool mFinalized  = false;
+    };
+    // Which forward-solid stages an instance still needs (bitmask -> idempotent:
+    // a stage entry point called twice cannot double-complete).
+    enum EGhostForwardSolidStageMask : U32
+    {
+        GHOST_FORWARD_SOLID_NONE       = 0,
+        GHOST_FORWARD_SOLID_FULLBRIGHT = 1u << 0,
+        GHOST_FORWARD_SOLID_SHINY      = 1u << 1,
+        GHOST_FORWARD_SOLID_MASKED     = 1u << 2,
+    };
+    struct GhostSubmissionProgress
+    {
+        GhostCategoryProgress mRiggedSolid;
+        GhostCategoryProgress mRiggedBlend;   // reserved for the blend slice
+        U32  mExpectedForwardSolidStages  = GHOST_FORWARD_SOLID_NONE;
+        U32  mCompletedForwardSolidStages = GHOST_FORWARD_SOLID_NONE;
+        // preserves mProxiesSubmitted's ">=1 draw in ANY ghost phase" meaning
+        bool mAnyDrawSubmitted = false;
+    };
+    U32 mGhostSubmissionProgressFrame = 0;
+    std::map<LLUUID, GhostSubmissionProgress> mGhostSubmissionProgress;
+    // Promote fully-covered instances' RIGGED_SOLID bit (called from the FINALIZE
+    // forward stage, after every required G-buffer + forward solid draw). Iterates
+    // mGhostSubmissionProgress directly (its keys are this frame's submitted
+    // instance ids), so pipeline.h needs no LLActorMover queue type.
+    void finalizeGhostRiggedSolidCoverage();
 public:
     enum {GPU_CLASS_MAX = 3 };
 

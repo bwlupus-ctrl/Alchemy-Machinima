@@ -1081,8 +1081,10 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
                     ghost_camera, LLActorMover::GHOST_VIEW_WORLD_MAIN,
                     gPipeline.mRT->deferredScreen);
             }
-            // Per-frame counter log AFTER submission (gated on GhostDeferredDebugLog).
-            LLActorMover::instance().emitGhostDeferredDebug();
+            // [GhostDeferred] the per-frame counter log moved to AFTER
+            // renderDeferredLighting() (below), so it captures the post-deferred
+            // forward-solid draw counts + the FINALIZE coverage decisions, not
+            // just the G-buffer phase.
         }
 
         {
@@ -1106,6 +1108,11 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
         {
             gPipeline.renderDeferredLighting();
         }
+
+        // [GhostDeferred] Per-frame counter log (gated on GhostDeferredDebugLog),
+        // AFTER lighting so the post-deferred forward-solid draws + FINALIZE
+        // coverage are counted. Cheap no-op when the log is off.
+        LLActorMover::instance().emitGhostDeferredDebug();
 
         LLPipeline::sUnderWaterRender = false;
 

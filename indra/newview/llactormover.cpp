@@ -5440,6 +5440,16 @@ LLActorMover::getGhostDeferredQueue(const LLCamera& camera, U32 expected_view_st
     return mGhostDeferredQueue;
 }
 
+bool LLActorMover::hasValidGhostDeferredQueueThisFrame(const LLCamera& camera,
+                                                       U32 expected_view_stamp) const
+{
+    // Same identity as getGhostDeferredQueue but observational: NO warn/assert/
+    // counter. The forward pass probes this before touching the strict accessor.
+    return mGhostDeferredQueue.mFrameStamp == LLFrameTimer::getFrameCount()
+        && mGhostDeferredQueue.mViewStamp == expected_view_stamp
+        && mGhostDeferredQueue.mCameraIdentity == &camera;
+}
+
 void LLActorMover::emitGhostDeferredDebug() const
 {
     static LLCachedControl<bool> dbg(gSavedSettings, "GhostDeferredDebugLog", false);
