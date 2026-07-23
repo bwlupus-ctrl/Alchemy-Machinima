@@ -4674,6 +4674,204 @@ void pushGhostGLTFBatch(LLDrawInfo& params, LLFetchedGLTFMaterial*& last_mat,
     teardown_ghost_texture_matrix(params);
 }
 
+// Legacy-material rigged pass -> gDeferredMaterialProgram permutation index, or -1.
+// index = (has_normal?8:0)|(has_specular?4:0)|diffuse_alpha_mode; alpha modes here:
+// 0 opaque, 2 mask, 3 emissive (1=blend is the forward path, excluded). Verified
+// against LLDrawPoolMaterials + llviewershadermgr.
+S32 ghostMaterialShaderIndex(U32 pass)
+{
+    switch (pass)
+    {
+    case LLRenderPass::PASS_MATERIAL_RIGGED:                return 0;
+    case LLRenderPass::PASS_MATERIAL_ALPHA_MASK_RIGGED:     return 2;
+    case LLRenderPass::PASS_MATERIAL_ALPHA_EMISSIVE_RIGGED: return 3;
+    case LLRenderPass::PASS_SPECMAP_RIGGED:                 return 4;
+    case LLRenderPass::PASS_SPECMAP_MASK_RIGGED:            return 6;
+    case LLRenderPass::PASS_SPECMAP_EMISSIVE_RIGGED:        return 7;
+    case LLRenderPass::PASS_NORMMAP_RIGGED:                 return 8;
+    case LLRenderPass::PASS_NORMMAP_MASK_RIGGED:            return 10;
+    case LLRenderPass::PASS_NORMMAP_EMISSIVE_RIGGED:        return 11;
+    case LLRenderPass::PASS_NORMSPEC_RIGGED:                return 12;
+    case LLRenderPass::PASS_NORMSPEC_MASK_RIGGED:           return 14;
+    case LLRenderPass::PASS_NORMSPEC_EMISSIVE_RIGGED:       return 15;
+    default:                                               return -1;
+    }
+}
+
+// Scalar part of LLDrawPoolMaterials::renderDeferred for one harvested batch, minus
+// applyModelMatrix. The caller binds the shader (via bindDeferredShader) + uploads
+// the palette. Defensive white/flat-normal fallbacks: harvested draw infos can
+// outlive a texture transition.
+bool pushGhostMaterialBatch(LLDrawInfo& params, LLGLSLShader& shader)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
+
+    if (!params.mCount || params.mVertexBuffer.isNull())
+    {
+        return false;
+    }
+
+    const GLint intensity  = shader.getUniformLocation(LLShaderMgr::ENVIRONMENT_INTENSITY);
+    const GLint brightness = shader.getUniformLocation(LLShaderMgr::EMISSIVE_BRIGHTNESS);
+    const GLint min_alpha  = shader.getUniformLocation(LLShaderMgr::MINIMUM_ALPHA);
+    const GLint specular   = shader.getUniformLocation(LLShaderMgr::SPECULAR_COLOR);
+
+    if (intensity >= 0)  { glUniform1f(intensity, params.mEnvIntensity); }
+    if (brightness >= 0) { glUniform1f(brightness, params.mFullbright ? 1.f : 0.f); }
+    if (min_alpha >= 0)  { glUniform1f(min_alpha, params.mAlphaMaskCutoff); }
+    if (specular >= 0)   { glUniform4fv(specular, 1, params.mSpecColor.mV); }
+
+    const GLint diffuse_channel  = shader.enableTexture(LLShaderMgr::DIFFUSE_MAP);
+    const GLint specular_channel = shader.enableTexture(LLShaderMgr::SPECULAR_MAP);
+    const GLint normal_channel   = shader.enableTexture(LLShaderMgr::BUMP_MAP);
+
+    if (diffuse_channel >= 0)
+    {
+        if (params.mTexture.notNull())
+        {
+            gGL.getTexUnit(diffuse_channel)->bindFast(params.mTexture);
+        }
+        else
+        {
+            gGL.getTexUnit(diffuse_channel)->unbindFast(LLTexUnit::TT_TEXTURE);
+        }
+    }
+    if (specular_channel >= 0)
+    {
+        LLViewerTexture* tex = params.mSpecularMap.notNull()
+            ? params.mSpecularMap.get() : LLViewerFetchedTexture::sWhiteImagep.get();
+        gGL.getTexUnit(specular_channel)->bindFast(tex);
+    }
+    if (normal_channel >= 0)
+    {
+        LLViewerTexture* tex = params.mNormalMap.notNull()
+            ? params.mNormalMap.get() : LLViewerFetchedTexture::sFlatNormalImagep.get();
+        gGL.getTexUnit(normal_channel)->bindFast(tex);
+    }
+
+    setup_ghost_texture_matrix(params);
+
+    // Deliberately no LLRenderPass::applyModelMatrix(params).
+    params.mVertexBuffer->setBuffer();
+    params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart,
+                                    params.mEnd, params.mCount, params.mOffset);
+
+    teardown_ghost_texture_matrix(params);
+    return true;
+}
+
+// LLRenderPass::pushGLTFBatchIndexed (lldrawpool.cpp) minus applyModelMatrix.
+void pushGhostGLTFBatchIndexed(LLDrawInfo& params, LLRenderPass::eGLTFIndexedMaps maps)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
+
+    if (!params.mCount || params.mVertexBuffer.isNull()
+        || params.mGLTFMaterialList.size() < 2)
+    {
+        return;
+    }
+
+    const bool want_emissive = (maps == LLRenderPass::GLTF_MAPS_FULL || maps == LLRenderPass::GLTF_MAPS_GLOW);
+    const bool want_full     = (maps == LLRenderPass::GLTF_MAPS_FULL);
+
+    const S32 N = LLGLSLShader::sIndexedGLTFChannels;
+    llassert((S32)params.mGLTFMaterialList.size() <= N);
+    const S32 n = llmin((S32)params.mGLTFMaterialList.size(), N);
+
+    LLGLSLShader* shader = LLGLSLShader::sCurBoundShaderPtr;
+
+    F32 roughness[8] = { 0.f };
+    F32 metallic[8]  = { 0.f };
+    F32 min_alpha[8] = { 0.f };
+    F32 emissive[3 * 8] = { 0.f };
+    F32 bc_xform[8 * 8] = { 0.f };
+    F32 nm_xform[8 * 8] = { 0.f };
+    F32 mr_xform[8 * 8] = { 0.f };
+    F32 em_xform[8 * 8] = { 0.f };
+
+    bool double_sided = false;
+
+    for (S32 s = 0; s < n; ++s)
+    {
+        LLFetchedGLTFMaterial* mat = params.mGLTFMaterialList[s].get();
+        if (mat == nullptr)
+        {
+            min_alpha[s] = -1.f;
+            continue;
+        }
+
+        double_sided = double_sided || mat->mDoubleSided;
+
+        LLViewerTexture* base = mat->mBaseColorTexture.notNull() ? mat->mBaseColorTexture.get() : LLViewerFetchedTexture::sWhiteImagep.get();
+        gGL.getTexUnit(s)->bindFast(base);
+
+        min_alpha[s] = (mat->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_MASK) ? mat->mAlphaCutoff : -1.f;
+
+        LLGLTFMaterial::TextureTransform::Pack packed;
+        mat->mTextureTransform[LLGLTFMaterial::GLTF_TEXTURE_INFO_BASE_COLOR].getPacked(packed);
+        memcpy(&bc_xform[8 * s], packed, sizeof(packed));
+
+        if (!want_emissive) { continue; }
+
+        LLViewerTexture* em = mat->mEmissiveTexture.notNull() ? mat->mEmissiveTexture.get() : LLViewerFetchedTexture::sWhiteImagep.get();
+        gGL.getTexUnit(3 * N + s)->bindFast(em);
+
+        emissive[3 * s + 0] = mat->mEmissiveColor.mV[0];
+        emissive[3 * s + 1] = mat->mEmissiveColor.mV[1];
+        emissive[3 * s + 2] = mat->mEmissiveColor.mV[2];
+
+        mat->mTextureTransform[LLGLTFMaterial::GLTF_TEXTURE_INFO_EMISSIVE].getPacked(packed);
+        memcpy(&em_xform[8 * s], packed, sizeof(packed));
+
+        if (!want_full) { continue; }
+
+        LLViewerTexture* norm = (mat->mNormalTexture.notNull() && mat->mNormalTexture->getDiscardLevel() <= 4) ? mat->mNormalTexture.get() : LLViewerFetchedTexture::sFlatNormalImagep.get();
+        LLViewerTexture* orm  = mat->mMetallicRoughnessTexture.notNull() ? mat->mMetallicRoughnessTexture.get() : LLViewerFetchedTexture::sWhiteImagep.get();
+
+        gGL.getTexUnit(N + s)->bindFast(norm);
+        gGL.getTexUnit(2 * N + s)->bindFast(orm);
+
+        roughness[s] = mat->mRoughnessFactor;
+        metallic[s]  = mat->mMetallicFactor;
+
+        mat->mTextureTransform[LLGLTFMaterial::GLTF_TEXTURE_INFO_NORMAL].getPacked(packed);
+        memcpy(&nm_xform[8 * s], packed, sizeof(packed));
+        mat->mTextureTransform[LLGLTFMaterial::GLTF_TEXTURE_INFO_METALLIC_ROUGHNESS].getPacked(packed);
+        memcpy(&mr_xform[8 * s], packed, sizeof(packed));
+    }
+
+    static const LLStaticHashedString sMinAlpha("gltf_minimum_alpha");
+    static const LLStaticHashedString sBcXform("gltf_basecolor_transform");
+    shader->uniform1fv(sMinAlpha, n, min_alpha);
+    shader->uniform4fv(sBcXform, 2 * n, bc_xform);
+
+    if (want_emissive)
+    {
+        static const LLStaticHashedString sEmissive("gltf_emissive_color");
+        static const LLStaticHashedString sEmXform("gltf_emissive_transform");
+        shader->uniform3fv(sEmissive, n, emissive);
+        shader->uniform4fv(sEmXform, 2 * n, em_xform);
+    }
+
+    if (want_full)
+    {
+        static const LLStaticHashedString sRoughness("gltf_roughness_factor");
+        static const LLStaticHashedString sMetallic("gltf_metallic_factor");
+        static const LLStaticHashedString sNmXform("gltf_normal_transform");
+        static const LLStaticHashedString sMrXform("gltf_mr_transform");
+        shader->uniform1fv(sRoughness, n, roughness);
+        shader->uniform1fv(sMetallic, n, metallic);
+        shader->uniform4fv(sNmXform, 2 * n, nm_xform);
+        shader->uniform4fv(sMrXform, 2 * n, mr_xform);
+    }
+
+    LLGLDisable cull_face(double_sided ? GL_CULL_FACE : 0);
+
+    // Deliberately no LLRenderPass::applyModelMatrix(params).
+    params.mVertexBuffer->setBuffer();
+    params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
+}
+
 // Composes view * T(foot) * R(rotation) * S(scale) * T(-pivot) onto the
 // modelview for one clone (matches drawGeometryGhost). Invalidates gGLLastMatrix
 // per placement so the batch matrix cache cannot skip the reload.
@@ -4806,7 +5004,9 @@ void LLPipeline::renderGhostDeferredOpaqueMasked(const LLCamera& camera)
 
             LLGLSLShader* shader = nullptr;
             bool legacy_textured = false;
+            bool legacy_material = false;
             bool gltf_scalar = false;
+            bool gltf_indexed = false;
 
             switch (batch.mPass)
             {
@@ -4822,28 +5022,64 @@ void LLPipeline::renderGhostDeferredOpaqueMasked(const LLCamera& camera)
 
             case LLRenderPass::PASS_GLTF_PBR_RIGGED:
             case LLRenderPass::PASS_GLTF_PBR_ALPHA_MASK_RIGGED:
-                if (!di->mGLTFMaterial || di->mGLTFMaterialList.size() > 1)
+                if (di->mGLTFMaterialList.size() > 1)
                 {
-                    // first-light: scalar single-material PBR only (a null
-                    // material would draw with stale uniforms).
-                    continue;
+                    // multi-material -> indexed PBR (its own palette + slot arrays).
+                    shader = gDeferredPBROpaqueIndexedProgram.mRiggedVariant;
+                    gltf_indexed = true;
                 }
-                shader = gDeferredPBROpaqueProgram.mRiggedVariant;
-                gltf_scalar = true;
+                else
+                {
+                    if (!di->mGLTFMaterial)
+                    {
+                        continue;   // a null material would draw with stale uniforms
+                    }
+                    shader = gDeferredPBROpaqueProgram.mRiggedVariant;
+                    gltf_scalar = true;
+                }
                 break;
 
             default:
-                continue;
+            {
+                // Legacy material passes (material/specmap/normmap/normspec, +mask/
+                // emissive). Excluded passes (blend/glow/...) return -1 -> skip.
+                const S32 material_index = ghostMaterialShaderIndex(batch.mPass);
+                if (material_index < 0)
+                {
+                    continue;
+                }
+                shader = gDeferredMaterialProgram[material_index].mRiggedVariant;
+                legacy_material = true;
+                break;
+            }
             }
 
             if (!shader || !shader->isComplete())
             {
+                if (gltf_indexed)
+                {
+                    // Indexed PBR shader is optional in the loader; a multi-material
+                    // batch can't be drawn through the scalar path, so skip + note it.
+                    LL_WARNS_ONCE("GhostDeferred")
+                        << "indexed PBR rigged shader unavailable; multi-material PBR "
+                           "clone batches will be skipped" << LL_ENDL;
+                }
                 continue;
             }
 
             if (shader != last_shader)
             {
-                shader->bind();
+                // Legacy material shaders need the deferred pool's bind path (sets
+                // the deferred uniforms/samplers); simple/PBR shaders bind directly
+                // as their stock pools do.
+                if (legacy_material)
+                {
+                    bindDeferredShader(*shader);
+                }
+                else
+                {
+                    shader->bind();
+                }
                 last_shader = shader;
                 // Program-local caches: reset at every shader switch.
                 last_gltf_material = nullptr;
@@ -4868,12 +5104,24 @@ void LLPipeline::renderGhostDeferredOpaqueMasked(const LLCamera& camera)
                 }
                 pushGhostBatch(*di, true);
             }
+            else if (legacy_material)
+            {
+                if (!pushGhostMaterialBatch(*di, *shader))
+                {
+                    continue;
+                }
+            }
             else if (gltf_scalar)
             {
                 // Stock PBR deferred rendering enables framebuffer sRGB; scope it
                 // to this individual PBR draw.
                 LLGLEnable framebuffer_srgb(GL_FRAMEBUFFER_SRGB);
                 pushGhostGLTFBatch(*di, last_gltf_material, last_gltf_texture);
+            }
+            else if (gltf_indexed)
+            {
+                LLGLEnable framebuffer_srgb(GL_FRAMEBUFFER_SRGB);
+                pushGhostGLTFBatchIndexed(*di, LLRenderPass::GLTF_MAPS_FULL);
             }
 
             ++counters.mActualDrawCalls;

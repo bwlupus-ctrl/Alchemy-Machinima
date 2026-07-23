@@ -5412,11 +5412,9 @@ void LLActorMover::emitGhostDeferredDebug() const
         << " contam(P/F/I)=" << c.mContaminationPass << "/"
         << c.mContaminationFail << "/" << c.mContaminationInconclusive
         << LL_ENDL;
-    if (c.mActualDrawCalls != 0)
-    {
-        LL_WARNS("GhostDeferred") << "P0 INVARIANT VIOLATED: actualDrawCalls should be 0 but is "
-            << c.mActualDrawCalls << LL_ENDL;
-    }
+    // (The old "actualDrawCalls should be 0" P0-inert assertion is gone: now that
+    // P1 submits the clone into the deferred pass, a non-zero draw count is the
+    // expected, correct state.)
 }
 
 // ---------------------------------------------------------------------------
