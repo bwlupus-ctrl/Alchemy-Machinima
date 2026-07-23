@@ -41,6 +41,7 @@
 class LLVOAvatar;
 class LLDrawInfo;
 class LLFace;
+class LLCamera;     // [GhostDeferred] proxy-queue build/cull takes an explicit view
 
 class LLActorMover
 {
@@ -494,6 +495,97 @@ public:
     };
     const std::vector<GhostStaticFace>* ghostStaticFacesFor(const LLUUID& wearer_id) const;
 
+    // -----------------------------------------------------------------------
+    // [GhostDeferred] Scene-lit clone proxy queue (P0 harness). A frame-local,
+    // view-tagged list of the enabled LIVE studio ghosts to be submitted into the
+    // DEFERRED pass (so clones get real lighting/shadows + mirror coverage instead
+    // of the current post-tonemap overlay). P0 builds + culls + counts the queue
+    // but issues NO draw calls; P1 fills the deferred submission. Records reference
+    // the frame-local harvest (mGhostBatches/mGhostStaticFaces) -- never copies --
+    // and are valid only for the frame they were built in (assert the stamp).
+    // See doc/SCENE_LIT_CLONE_P0_IMPL_BLUEPRINT.md.
+    // -----------------------------------------------------------------------
+    enum class EGhostProxyPose : U8 { LIVE, FROZEN };
+
+    // View identity for the queue so a mirror/probe pass can't consume a queue
+    // built for the world view. (Longer term: a real render-view cookie.)
+    enum : U32 { GHOST_VIEW_WORLD_MAIN = 1, GHOST_VIEW_TRANSITION = 2,
+                 GHOST_VIEW_HERO_PROBE_BASE = 0x100 };
+
+    struct GhostProxy
+    {
+        LLUUID mInstanceId;
+        LLUUID mSourceId;
+        LLUUID mWearerId;
+        LLVOAvatar* mSourceAvatar = nullptr;        // non-owning; valid only for mFrameStamp
+        const std::vector<GhostBatch>* mBatches = nullptr;          // frame-local refs
+        const std::vector<GhostStaticFace>* mStaticFaces = nullptr; // (never copies)
+        // Placement components: modelview = view * T(mFootAgent) * R(mRotation)
+        //                       * S(mScale) * T(-mPivotFootAgent). (P1 builds the
+        // GL matrix from these; P0 only needs them for the bounds transform.)
+        LLVector3    mFootAgent;                     // ghost spot (agent space)
+        LLQuaternion mRotation;
+        F32          mScale = 1.f;
+        LLVector3    mPivotFootAgent;                // source live foot (root - pelvisToFoot)
+        // Agent-space AABB of the source anim-extents after the placement.
+        LLVector3    mWorldBoundsCenter;
+        LLVector3    mWorldBoundsHalfExtent;
+        EGhostProxyPose mPose = EGhostProxyPose::LIVE;
+        bool mFrustumVisible = false;
+        U32  mFrameStamp = 0;
+        U32  mViewStamp  = 0;
+    };
+
+    struct GhostProxyQueue
+    {
+        std::vector<GhostProxy> mProxies;
+        U32 mFrameStamp = 0;
+        U32 mViewStamp  = 0;
+        const LLCamera* mCameraIdentity = nullptr;
+        void clear()
+        {
+            mProxies.clear();
+            mFrameStamp = 0;
+            mViewStamp  = 0;
+            mCameraIdentity = nullptr;
+        }
+    };
+
+    struct GhostDeferredCounters
+    {
+        U32 mFrameStamp = 0;
+        U64 mLiveInstancesConsidered = 0;
+        U64 mFrozenInstancesRejected = 0;
+        U64 mUnresolvedSources       = 0;
+        U64 mProxiesBuilt            = 0;
+        U64 mProxiesFrustumCulled    = 0;
+        U64 mProxiesVisible          = 0;
+        U64 mProxiesSubmitted        = 0;
+        U64 mRiggedBatchesReferenced = 0;
+        U64 mStaticFacesReferenced   = 0;
+        U64 mIncompleteBounds        = 0;
+        U64 mStaleQueueSkips         = 0;
+        U64 mActualDrawCalls         = 0;   // MUST remain 0 throughout P0
+        U64 mInvariantViolations     = 0;
+        void reset(U32 frame)
+        {
+            *this = GhostDeferredCounters();
+            mFrameStamp = frame;
+        }
+    };
+
+    // Build the frame-local proxy queue for `camera` (world view stamp). Enumerates
+    // enabled LIVE studio ghosts, resolves sources, references their harvested
+    // batches, computes placement bounds, frustum-culls, and updates counters.
+    // Issues NO draw calls (P0). Call AFTER collectGhostBatches(), BEFORE the
+    // deferred pass. Zero cost when no studio ghost is enabled.
+    void buildGhostDeferredQueue(const LLCamera& camera, U32 view_stamp);
+    // Validated accessor for the P1 deferred-submission consumer. Warns + asserts
+    // (and counts) on a stale/mismatched queue; returns the queue regardless so a
+    // caller that ignores the stamp still gets an empty/last queue, never garbage.
+    const GhostProxyQueue& getGhostDeferredQueue(const LLCamera& camera, U32 expected_view_stamp) const;
+    GhostDeferredCounters& ghostDeferredCounters() { return mGhostDeferredCounters; }
+
     // [GhostStudio] optional per-ghost placement + FX overrides for the model
     // ghost draw. Default-constructed = byte-identical to the classic path-node
     // ghost (pure translation, live pose, no FX). The placement composes
@@ -691,6 +783,14 @@ private:
     // [R2-2] per-wearer NON-RIGGED worn-attachment faces (collar/jewelry/flexi),
     // collected alongside the batches each frame; same lifetime rules
     std::map<LLUUID, std::vector<GhostStaticFace> > mGhostStaticFaces;
+
+    // [GhostDeferred/P0] frame-local proxy queue + diagnostics counters, built by
+    // buildGhostDeferredQueue() and (P1) consumed by the deferred submission.
+    void computeProxyBounds(GhostProxy& proxy, LLVOAvatar* av);
+    void emitGhostDeferredDebug() const;
+    GhostProxyQueue mGhostDeferredQueue;
+    // mutable: the const validated accessor counts stale-queue skips.
+    mutable GhostDeferredCounters mGhostDeferredCounters;
 
     // is this actor's cached ghost snapshot stale (needs a regen)?
     static bool ghostImpostorStale(LLVOAvatar* av, const GhostImpostor& gi);

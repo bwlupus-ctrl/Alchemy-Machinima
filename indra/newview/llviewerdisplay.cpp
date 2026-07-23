@@ -1054,6 +1054,12 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
             }
 
             gGL.setColorMask(true, true);
+            // [GhostDeferred/P0] Build the frame-local ghost proxy queue (enumerate
+            // + placement bounds + frustum cull + counters; NO draw calls) BEFORE
+            // the world deferred pass. The P1 deferred submission will consume it
+            // right after renderGeomDeferred via the same explicit-camera API.
+            LLActorMover::instance().buildGhostDeferredQueue(
+                *LLViewerCamera::getInstance(), LLActorMover::GHOST_VIEW_WORLD_MAIN);
             gPipeline.renderGeomDeferred(*LLViewerCamera::getInstance(), true);
         }
 

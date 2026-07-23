@@ -5218,6 +5218,208 @@ void LLActorMover::collectGhostBatches()
 }
 
 // ---------------------------------------------------------------------------
+// [GhostDeferred/P0] Build the frame-local proxy queue: enumerate enabled LIVE
+// studio ghosts, reference their harvested batches, compute placement bounds,
+// frustum-cull against `camera`, and update diagnostics counters. NO draw calls
+// (P0). The deferred submission (P1) consumes the queue via getGhostDeferredQueue;
+// the mirror pass will call this with its own camera + view stamp.
+void LLActorMover::buildGhostDeferredQueue(const LLCamera& camera, U32 view_stamp)
+{
+    const U32 frame = LLFrameTimer::getFrameCount();
+    if (mGhostDeferredCounters.mFrameStamp != frame)
+    {
+        mGhostDeferredCounters.reset(frame);
+    }
+
+    mGhostDeferredQueue.clear();
+    mGhostDeferredQueue.mFrameStamp     = frame;
+    mGhostDeferredQueue.mViewStamp      = view_stamp;
+    mGhostDeferredQueue.mCameraIdentity = &camera;
+
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    if (!studio.anyEnabled())
+    {
+        emitGhostDeferredDebug();
+        return;     // near-zero cost when idle (no source/harvest/cull work)
+    }
+
+    // The frustum test is observational; the API is non-const, so cast locally.
+    LLCamera& cull_cam = const_cast<LLCamera&>(camera);
+
+    for (const ALGhostStudio::Instance& inst : studio.getInstances())
+    {
+        if (!inst.mEnabled)
+        {
+            continue;
+        }
+        // P0/P1 handle LIVE ghosts only; frozen-pose support is a later phase (P3).
+        if (inst.mPose == ALGhostStudio::POSE_FROZEN)
+        {
+            ++mGhostDeferredCounters.mFrozenInstancesRejected;
+            continue;
+        }
+        ++mGhostDeferredCounters.mLiveInstancesConsidered;
+
+        LLVOAvatar* av = resolve_actor(inst.mSource);
+        if (!av || av->isDead())
+        {
+            ++mGhostDeferredCounters.mUnresolvedSources;
+            continue;
+        }
+        const std::vector<GhostBatch>* batches = ghostBatchesFor(av->getID());
+        const std::vector<GhostStaticFace>* statics = ghostStaticFacesFor(av->getID());
+        if ((!batches || batches->empty()) && (!statics || statics->empty()))
+        {
+            // No harvested geometry this frame (source never built nearby, etc.).
+            ++mGhostDeferredCounters.mUnresolvedSources;
+            continue;
+        }
+
+        GhostProxy proxy;
+        proxy.mInstanceId   = inst.mId;
+        proxy.mSourceId     = inst.mSource;
+        proxy.mWearerId     = av->getID();
+        proxy.mSourceAvatar = av;
+        proxy.mBatches      = batches;
+        proxy.mStaticFaces  = statics;
+        proxy.mFootAgent    = gAgent.getPosAgentFromGlobal(inst.mFootGlobal);
+        proxy.mRotation     = inst.mRotation;
+        proxy.mScale        = llclamp(inst.mScale, 0.05f, 10.f);
+        const LLVector3 live_root = av->getRenderPosition();
+        proxy.mPivotFootAgent = LLVector3(live_root.mV[VX], live_root.mV[VY],
+                                          live_root.mV[VZ] - av->getPelvisToFoot());
+        proxy.mPose        = EGhostProxyPose::LIVE;
+        proxy.mFrameStamp  = frame;
+        proxy.mViewStamp   = view_stamp;
+
+        if (batches) { mGhostDeferredCounters.mRiggedBatchesReferenced += batches->size(); }
+        if (statics) { mGhostDeferredCounters.mStaticFacesReferenced   += statics->size(); }
+
+        computeProxyBounds(proxy, av);
+        ++mGhostDeferredCounters.mProxiesBuilt;
+
+        // CPU frustum cull the placed bounds (no occlusion query, no spatial DB).
+        LLVector4a center, half;
+        center.load3(proxy.mWorldBoundsCenter.mV);
+        half.load3(proxy.mWorldBoundsHalfExtent.mV);
+        proxy.mFrustumVisible = cull_cam.AABBInFrustum(center, half) != 0;
+        if (proxy.mFrustumVisible)
+        {
+            ++mGhostDeferredCounters.mProxiesVisible;
+        }
+        else
+        {
+            ++mGhostDeferredCounters.mProxiesFrustumCulled;
+        }
+
+        mGhostDeferredQueue.mProxies.push_back(proxy);
+    }
+
+    emitGhostDeferredDebug();
+}
+
+// Transform the source avatar's animated extents by the clone placement
+// (T(foot)*R*S*T(-pivot), matching drawGeometryGhost) into an agent-space AABB.
+void LLActorMover::computeProxyBounds(GhostProxy& proxy, LLVOAvatar* av)
+{
+    const LLVector3* ext = av->getLastAnimExtents();    // [min, max], agent space
+    const LLVector3 mn = ext[0];
+    const LLVector3 mx = ext[1];
+    // Degenerate / not-yet-built extents: fall back to a coarse avatar-sized box
+    // at the ghost foot so the proxy still culls sanely (and flag it).
+    if (!mn.isFinite() || !mx.isFinite()
+        || mn.mV[VX] > mx.mV[VX] || mn.mV[VY] > mx.mV[VY] || mn.mV[VZ] > mx.mV[VZ]
+        || (mx - mn).magVecSquared() < 0.0001f)
+    {
+        ++mGhostDeferredCounters.mIncompleteBounds;
+        const F32 h = 2.0f * proxy.mScale;
+        proxy.mWorldBoundsCenter     = proxy.mFootAgent + LLVector3(0.f, 0.f, 0.5f * h);
+        proxy.mWorldBoundsHalfExtent = LLVector3(0.5f * h, 0.5f * h, 0.5f * h);
+        return;
+    }
+
+    LLVector3 pmin, pmax;
+    for (S32 c = 0; c < 8; ++c)
+    {
+        const LLVector3 corner(
+            (c & 1) ? mx.mV[VX] : mn.mV[VX],
+            (c & 2) ? mx.mV[VY] : mn.mV[VY],
+            (c & 4) ? mx.mV[VZ] : mn.mV[VZ]);
+        // p' = foot + R * (scale * (corner - pivot)). Row-vector LL rotation
+        // (v * quat) matches the GL modelview T(foot)*R*S*T(-pivot) (see the
+        // LL->GL matrix bridge note in drawGeometryGhost).
+        LLVector3 v = (corner - proxy.mPivotFootAgent) * proxy.mScale;
+        v = v * proxy.mRotation;
+        v += proxy.mFootAgent;
+        if (c == 0)
+        {
+            pmin = pmax = v;
+        }
+        else
+        {
+            pmin.mV[VX] = llmin(pmin.mV[VX], v.mV[VX]);
+            pmin.mV[VY] = llmin(pmin.mV[VY], v.mV[VY]);
+            pmin.mV[VZ] = llmin(pmin.mV[VZ], v.mV[VZ]);
+            pmax.mV[VX] = llmax(pmax.mV[VX], v.mV[VX]);
+            pmax.mV[VY] = llmax(pmax.mV[VY], v.mV[VY]);
+            pmax.mV[VZ] = llmax(pmax.mV[VZ], v.mV[VZ]);
+        }
+    }
+    proxy.mWorldBoundsCenter     = (pmin + pmax) * 0.5f;
+    proxy.mWorldBoundsHalfExtent = (pmax - pmin) * 0.5f;
+}
+
+const LLActorMover::GhostProxyQueue&
+LLActorMover::getGhostDeferredQueue(const LLCamera& camera, U32 expected_view_stamp) const
+{
+    const U32 frame = LLFrameTimer::getFrameCount();
+    const bool valid = mGhostDeferredQueue.mFrameStamp == frame
+                    && mGhostDeferredQueue.mViewStamp == expected_view_stamp
+                    && mGhostDeferredQueue.mCameraIdentity == &camera;
+    if (!valid)
+    {
+        ++mGhostDeferredCounters.mStaleQueueSkips;
+        LL_WARNS("GhostDeferred") << "stale/mismatched ghost proxy queue: built frame="
+            << mGhostDeferredQueue.mFrameStamp << " current=" << frame
+            << " built view=" << mGhostDeferredQueue.mViewStamp
+            << " expected=" << expected_view_stamp
+            << " built cam=" << (const void*)mGhostDeferredQueue.mCameraIdentity
+            << " cur cam=" << (const void*)&camera << LL_ENDL;
+        llassert(false);
+    }
+    return mGhostDeferredQueue;
+}
+
+void LLActorMover::emitGhostDeferredDebug() const
+{
+    static LLCachedControl<bool> dbg(gSavedSettings, "GhostDeferredDebugLog", false);
+    if (!dbg)
+    {
+        return;
+    }
+    const GhostDeferredCounters& c = mGhostDeferredCounters;
+    LL_INFOS("GhostDeferred")
+        << "frame " << c.mFrameStamp
+        << " live=" << c.mLiveInstancesConsidered
+        << " frozenRej=" << c.mFrozenInstancesRejected
+        << " unresolved=" << c.mUnresolvedSources
+        << " built=" << c.mProxiesBuilt
+        << " visible=" << c.mProxiesVisible
+        << " culled=" << c.mProxiesFrustumCulled
+        << " riggedRefs=" << c.mRiggedBatchesReferenced
+        << " staticRefs=" << c.mStaticFacesReferenced
+        << " incompleteBounds=" << c.mIncompleteBounds
+        << " staleSkips=" << c.mStaleQueueSkips
+        << " drawCalls=" << c.mActualDrawCalls
+        << LL_ENDL;
+    if (c.mActualDrawCalls != 0)
+    {
+        LL_WARNS("GhostDeferred") << "P0 INVARIANT VIOLATED: actualDrawCalls should be 0 but is "
+            << c.mActualDrawCalls << LL_ENDL;
+    }
+}
+
+// ---------------------------------------------------------------------------
 // [GhostStudio] frame-lifetime batch access for the studio (freeze snapshot +
 // per-instance draw). Null when the pipeline is not rendering that body.
 const std::vector<LLActorMover::GhostBatch>* LLActorMover::ghostBatchesFor(const LLUUID& wearer_id) const
