@@ -109,6 +109,13 @@ LLAvatarTracker::~LLAvatarTracker()
 
 void LLAvatarTracker::track(const LLUUID& avatar_id, const std::string& name)
 {
+    // Never track a client-only ghost clone: its id is synthetic, so TrackAgent
+    // would send a bogus PreyID to the simulator.
+    LLViewerObject* track_obj = gObjectList.findObject(avatar_id);
+    if (track_obj && track_obj->asAvatar() && track_obj->asAvatar()->isGhostAvatar())
+    {
+        return;
+    }
     deleteTrackingData();
     mTrackedAgentValid = false;
     mTrackingData = new LLTrackingData(avatar_id, name);

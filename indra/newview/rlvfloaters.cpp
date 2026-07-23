@@ -81,6 +81,8 @@ std::string rlvGetItemNameFromObjID(const LLUUID& idObj, bool fIncludeAttachPt =
     const LLViewerObject* pObj = gObjectList.findObject(idObj);
     if ( (pObj) && (pObj->isAvatar()) )
     {
+        if (((LLVOAvatar*)pObj)->isGhostAvatar())   // client-only clone: no name-cache server request
+            return ((LLVOAvatar*)pObj)->getFullname();
         LLAvatarName avName;
         if (LLAvatarNameCache::get(pObj->getID(), &avName))
             return avName.getCompleteName();

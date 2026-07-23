@@ -55,7 +55,12 @@ LLVOAvatar* LLNearbyVoiceModeration::getVOAvatarFromId(const LLUUID& agent_id)
 
     if (obj && obj->isAvatar())
     {
-        return (LLVOAvatar*)obj;
+        LLVOAvatar* av = (LLVOAvatar*)obj;
+        if (av->isGhostAvatar())   // client-only clone: never a voice-moderation target
+        {
+            return NULL;
+        }
+        return av;
     }
     else
     {
