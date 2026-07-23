@@ -1249,11 +1249,19 @@ void ALFloaterSceneExplorer::reconcile()
             continue;
 
         LLVOAvatar* avatarp = obj->asAvatar();
-        // Control avatars (animesh) and UI/preview avatars have no associated
-        // user and aren't real scene avatars. The animesh object itself still
-        // appears via the normal object / attachment path below.
-        if (avatarp && (avatarp->isControlAvatar() || avatarp->isUIAvatar()))
+        // Control avatars (animesh), UI/preview avatars, and client-only ghost
+        // clones have no associated user and aren't real scene avatars (a ghost's
+        // synthetic id would otherwise trigger a server name-cache lookup). The
+        // animesh object itself still appears via the normal object path below.
+        if (avatarp && (avatarp->isControlAvatar() || avatarp->isUIAvatar() || avatarp->isGhostAvatar()))
             continue;
+        // A client-only ghost's cloned attachments are not scene objects either.
+        if (obj->isAttachment())
+        {
+            const LLVOAvatar* anc = obj->getAvatarAncestor();
+            if (anc && anc->isGhostAvatar())
+                continue;
+        }
 
         const bool is_avatar = (avatarp != nullptr);
         const bool is_attachment = obj->isAttachment();
