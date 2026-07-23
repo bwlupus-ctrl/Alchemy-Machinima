@@ -31,6 +31,7 @@
 #include "alfloaterprogressview.h"
 #include "fsyspath.h"
 #include "llactormover.h"   // [ActorMover] heading preview lines
+#include "llghostdeferreddiagnostics.h"  // [GhostDeferred] render-state invariant check
 
 #include "hexdump.h"
 #include "llagent.h"
@@ -1054,13 +1055,28 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
             }
 
             gGL.setColorMask(true, true);
-            // [GhostDeferred/P0] Build the frame-local ghost proxy queue (enumerate
-            // + placement bounds + frustum cull + counters; NO draw calls) BEFORE
-            // the world deferred pass. The P1 deferred submission will consume it
-            // right after renderGeomDeferred via the same explicit-camera API.
+
+            LLCamera& ghost_camera = *LLViewerCamera::getInstance();
+
+            // [GhostDeferred] Build the frame-local ghost proxy queue (enumerate +
+            // placement bounds + frustum cull + counters; NO draw calls) BEFORE the
+            // world deferred pass, then submit the clones into the G-buffer AFTER it
+            // (before the flush/lighting). The submission is wrapped in a render-
+            // state invariant check that fires a log verdict if it leaked GL state.
             LLActorMover::instance().buildGhostDeferredQueue(
-                *LLViewerCamera::getInstance(), LLActorMover::GHOST_VIEW_WORLD_MAIN);
-            gPipeline.renderGeomDeferred(*LLViewerCamera::getInstance(), true);
+                ghost_camera, LLActorMover::GHOST_VIEW_WORLD_MAIN);
+
+            gPipeline.renderGeomDeferred(ghost_camera, true);
+
+            {
+                LLScopedGhostRenderInvariant ghost_invariant(
+                    "renderGhostDeferredOpaqueMasked",
+                    &LLActorMover::instance().ghostDeferredCounters().mInvariantViolations);
+                gPipeline.renderGhostDeferredOpaqueMasked(ghost_camera);
+                ghost_invariant.finish();
+            }
+            // Per-frame counter log AFTER submission (gated on GhostDeferredDebugLog).
+            LLActorMover::instance().emitGhostDeferredDebug();
         }
 
         {

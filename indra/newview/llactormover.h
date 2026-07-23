@@ -585,6 +585,9 @@ public:
     // caller that ignores the stamp still gets an empty/last queue, never garbage.
     const GhostProxyQueue& getGhostDeferredQueue(const LLCamera& camera, U32 expected_view_stamp) const;
     GhostDeferredCounters& ghostDeferredCounters() { return mGhostDeferredCounters; }
+    // Per-frame counter log (gated on GhostDeferredDebugLog). Call once per frame
+    // AFTER the deferred submission so submitted/draw-call counts are final.
+    void emitGhostDeferredDebug() const;
 
     // [GhostStudio] optional per-ghost placement + FX overrides for the model
     // ghost draw. Default-constructed = byte-identical to the classic path-node
@@ -787,7 +790,6 @@ private:
     // [GhostDeferred/P0] frame-local proxy queue + diagnostics counters, built by
     // buildGhostDeferredQueue() and (P1) consumed by the deferred submission.
     void computeProxyBounds(GhostProxy& proxy, LLVOAvatar* av);
-    void emitGhostDeferredDebug() const;
     GhostProxyQueue mGhostDeferredQueue;
     // mutable: the const validated accessor counts stale-queue skips.
     mutable GhostDeferredCounters mGhostDeferredCounters;

@@ -43,8 +43,10 @@
 #include "llrendertarget.h"
 #include "llreflectionmapmanager.h"
 #include "llheroprobemanager.h"
+#include "lluuid.h"                 // [GhostDeferred] submitted-instance set key
 
 #include <stack>
+#include <set>                      // [GhostDeferred] per-frame submitted-instance set
 
 class LLViewerTexture;
 class LLFace;
@@ -353,6 +355,13 @@ public:
     void checkReferences(LLSpatialGroup* group);
 
     void renderGeomDeferred(LLCamera& camera, bool do_occlusion = false);
+    // [GhostDeferred] submit Ghost Studio clones into the deferred G-buffer (scene-
+    // lit clones). Explicit camera so the hero-probe mirror pass can reuse it. No-op
+    // unless GhostDeferredEnable is set; wrap in LLScopedGhostRenderInvariant.
+    void renderGhostDeferredOpaqueMasked(const LLCamera& camera);
+    // True if `instance_id` drew at least one deferred clone batch THIS frame (the
+    // overlay uses this to avoid double-drawing it as a fullbright overlay).
+    bool wasGhostDeferredSubmittedThisFrame(const LLUUID& instance_id) const;
     void renderGeomPostDeferred(LLCamera& camera);
     void renderGeomShadow(LLCamera& camera);
     // [BDMerge A5.4-1a] Velocity / motion-vector geometry pass. Re-rasterizes the
@@ -554,6 +563,11 @@ private:
     void hideDrawable( LLDrawable *pDrawable );
     void unhideDrawable( LLDrawable *pDrawable );
     void skipRenderingShadows();
+
+    // [GhostDeferred] instances that successfully drew into the deferred G-buffer
+    // this frame (for overlay double-draw suppression). Rebuilt each frame.
+    U32 mGhostDeferredSubmittedFrame = 0;
+    std::set<LLUUID> mGhostDeferredSubmittedInstances;
 public:
     enum {GPU_CLASS_MAX = 3 };
 

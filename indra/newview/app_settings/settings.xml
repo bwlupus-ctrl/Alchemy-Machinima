@@ -3507,6 +3507,17 @@
       <key>Value</key>
       <integer>2</integer>
     </map>
+    <key>GhostDeferredEnable</key>
+    <map>
+      <key>Comment</key>
+      <string>[GhostDeferred] EXPERIMENTAL: submit Ghost Studio CLONE-style clones into the deferred G-buffer so they receive real scene lighting (rigged opaque+masked only for now) instead of the fullbright post-tonemap overlay. Off by default; wrap the submission in the render-state invariant check. Toggling off returns to stock rendering.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
     <key>PathShowOnionSkin</key>
     <map>
       <key>Comment</key>

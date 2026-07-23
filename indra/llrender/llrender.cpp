@@ -1219,6 +1219,15 @@ const glm::mat4& LLRender::getProjectionMatrix()
     return mMatrix[MM_PROJECTION][mMatIdx[MM_PROJECTION]];
 }
 
+// [GhostDeferred] read any cached matrix (incl. texture matrices) for state
+// diagnostics -- core profile does not expose GL_TEXTURE_MATRIX, so the CPU
+// cache is the source of truth.
+const glm::mat4& LLRender::getMatrix(eMatrixMode mode) const
+{
+    llassert(mode < NUM_MATRIX_MODES);
+    return mMatrix[mode][mMatIdx[mode]];
+}
+
 void LLRender::translateUI(F32 x, F32 y, F32 z)
 {
     if (mUIOffset.empty())

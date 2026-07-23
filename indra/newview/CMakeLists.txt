@@ -270,6 +270,7 @@ set(viewer_SOURCE_FILES
     llcallingcard.cpp
     llcameraoperator.cpp
     llactormover.cpp
+    llghostdeferreddiagnostics.cpp
     alghostmanipproxy.cpp
     alghoststudio.cpp
     alobjectpathmover.cpp
@@ -1082,6 +1083,7 @@ set(viewer_HEADER_FILES
     llcallingcard.h
     llcameraoperator.h
     llactormover.h
+    llghostdeferreddiagnostics.h
     alghostmanipproxy.h
     alghoststudio.h
     alobjectpathmover.h

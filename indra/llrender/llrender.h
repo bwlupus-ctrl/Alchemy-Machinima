@@ -404,6 +404,8 @@ public:
 
     const glm::mat4& getModelviewMatrix();
     const glm::mat4& getProjectionMatrix();
+    // [GhostDeferred] read any cached matrix by mode (for render-state diagnostics)
+    const glm::mat4& getMatrix(eMatrixMode mode) const;
 
     void syncMatrices();
     void syncLightState();

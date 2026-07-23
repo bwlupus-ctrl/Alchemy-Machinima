@@ -109,6 +109,11 @@
 #include "llworld.h"
 #include "llcubemap.h"
 #include "llviewershadermgr.h"
+#include "llactormover.h"               // [GhostDeferred] clone proxy queue
+#include "llfetchedgltfmaterial.h"      // [GhostDeferred] GLTF clone batches
+#include "llviewertexture.h"            // [GhostDeferred] fallback textures
+#include "llghostdeferreddiagnostics.h" // [GhostDeferred] (invariant checker fwd use)
+#include <cstring>                      // [GhostDeferred] memcpy (GLTF indexed)
 #include "llviewerstats.h"
 #include "llviewerjoystick.h"
 #include "llviewerdisplay.h"
@@ -4547,6 +4552,349 @@ void LLPipeline::renderHighlights()
 
 //debug use
 U32 LLPipeline::sCurRenderPoolType = 0 ;
+
+// ===========================================================================
+// [GhostDeferred] Scene-lit Ghost Studio clone submission into the deferred
+// G-buffer. See doc/SCENE_LIT_CLONE_P1_DRAW_RECIPE.md. First-light cut: rigged
+// opaque+masked only (PASS_SIMPLE_RIGGED, PASS_ALPHA_MASK_RIGGED, scalar
+// PASS_GLTF_PBR[_ALPHA_MASK]_RIGGED); multi-material (indexed) PBR is skipped.
+// The pushGhost* variants are the stock single-batch helpers with the
+// applyModelMatrix() call REMOVED -- that call would reload gGLModelView and
+// destroy the clone's T(foot)*R*S*T(-pivot) placement.
+// ===========================================================================
+namespace
+{
+void setup_ghost_texture_matrix(LLDrawInfo& params)
+{
+    if (params.mTextureMatrix)
+    {
+        gGL.getTexUnit(0)->activate();
+        gGL.matrixMode(LLRender::MM_TEXTURE);
+        gGL.loadMatrix((GLfloat*)params.mTextureMatrix->mMatrix);
+        ++gPipeline.mTextureMatrixOps;
+    }
+}
+
+void teardown_ghost_texture_matrix(LLDrawInfo& params)
+{
+    if (params.mTextureMatrix)
+    {
+        gGL.matrixMode(LLRender::MM_TEXTURE0);
+        gGL.loadIdentity();
+        gGL.matrixMode(LLRender::MM_MODELVIEW);
+    }
+}
+
+// pushBatch (lldrawpool.cpp) minus applyModelMatrix.
+void pushGhostBatch(LLDrawInfo& params, bool batch_textures)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
+
+    if (!params.mCount || params.mVertexBuffer.isNull())
+    {
+        return;
+    }
+
+    bool tex_setup = false;
+
+    if (batch_textures && params.mTextureList.size() > 1)
+    {
+        for (U32 i = 0; i < params.mTextureList.size(); ++i)
+        {
+            if (params.mTextureList[i].notNull())
+            {
+                gGL.getTexUnit(i)->bindFast(params.mTextureList[i]);
+            }
+        }
+    }
+    else
+    {
+        if (params.mTexture.notNull())
+        {
+            gGL.getTexUnit(0)->bindFast(params.mTexture);
+
+            if (params.mTextureMatrix)
+            {
+                tex_setup = true;
+                gGL.getTexUnit(0)->activate();
+                gGL.matrixMode(LLRender::MM_TEXTURE);
+                gGL.loadMatrix((GLfloat*)params.mTextureMatrix->mMatrix);
+                ++gPipeline.mTextureMatrixOps;
+            }
+        }
+        else
+        {
+            gGL.getTexUnit(0)->unbindFast(LLTexUnit::TT_TEXTURE);
+        }
+    }
+
+    // Deliberately no LLRenderPass::applyModelMatrix(params).
+    params.mVertexBuffer->setBuffer();
+    params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart,
+                                    params.mEnd, params.mCount, params.mOffset);
+
+    if (tex_setup)
+    {
+        gGL.matrixMode(LLRender::MM_TEXTURE0);
+        gGL.loadIdentity();
+        gGL.matrixMode(LLRender::MM_MODELVIEW);
+    }
+}
+
+// pushGLTFBatch (lldrawpool.cpp) minus applyModelMatrix (scalar/single-material).
+void pushGhostGLTFBatch(LLDrawInfo& params, LLFetchedGLTFMaterial*& last_mat,
+                        LLViewerTexture*& last_tex)
+{
+    if (!params.mCount || params.mVertexBuffer.isNull())
+    {
+        return;
+    }
+
+    LLFetchedGLTFMaterial* mat = params.mGLTFMaterial.get();
+    if (mat)
+    {
+        LLViewerTexture* tex = params.mTexture.get();
+        if (mat != last_mat || tex != last_tex)
+        {
+            mat->bind(params.mTexture);
+            last_mat = mat;
+            last_tex = tex;
+        }
+    }
+
+    LLGLDisable cull_face(mat && mat->mDoubleSided ? GL_CULL_FACE : 0);
+
+    setup_ghost_texture_matrix(params);
+
+    // Deliberately no LLRenderPass::applyModelMatrix(params).
+    params.mVertexBuffer->setBuffer();
+    params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart,
+                                    params.mEnd, params.mCount, params.mOffset);
+
+    teardown_ghost_texture_matrix(params);
+}
+
+// Composes view * T(foot) * R(rotation) * S(scale) * T(-pivot) onto the
+// modelview for one clone (matches drawGeometryGhost). Invalidates gGLLastMatrix
+// per placement so the batch matrix cache cannot skip the reload.
+class ScopedGhostTransform
+{
+public:
+    explicit ScopedGhostTransform(const LLActorMover::GhostProxy& proxy)
+    {
+        gGL.matrixMode(LLRender::MM_MODELVIEW);
+        gGL.pushMatrix();
+
+        gGL.translatef(proxy.mFootAgent.mV[VX], proxy.mFootAgent.mV[VY],
+                       proxy.mFootAgent.mV[VZ]);
+
+        if (!proxy.mRotation.isIdentity())
+        {
+            LLMatrix4 rotation(proxy.mRotation);
+            gGL.multMatrix((GLfloat*)rotation.mMatrix);
+        }
+
+        if (proxy.mScale != 1.f)
+        {
+            gGL.scalef(proxy.mScale, proxy.mScale, proxy.mScale);
+        }
+
+        gGL.translatef(-proxy.mPivotFootAgent.mV[VX], -proxy.mPivotFootAgent.mV[VY],
+                       -proxy.mPivotFootAgent.mV[VZ]);
+
+        gGLLastMatrix = nullptr;
+        gGL.syncMatrices();
+    }
+
+    ~ScopedGhostTransform()
+    {
+        gGL.matrixMode(LLRender::MM_MODELVIEW);
+        gGL.popMatrix();
+        gGLLastMatrix = nullptr;
+        gGL.syncMatrices();
+    }
+
+    ScopedGhostTransform(const ScopedGhostTransform&) = delete;
+    ScopedGhostTransform& operator=(const ScopedGhostTransform&) = delete;
+};
+} // anonymous namespace
+
+bool LLPipeline::wasGhostDeferredSubmittedThisFrame(const LLUUID& instance_id) const
+{
+    const U32 frame = LLFrameTimer::getFrameCount();
+    return mGhostDeferredSubmittedFrame == frame
+        && mGhostDeferredSubmittedInstances.find(instance_id)
+               != mGhostDeferredSubmittedInstances.end();
+}
+
+void LLPipeline::renderGhostDeferredOpaqueMasked(const LLCamera& camera)
+{
+    static LLCachedControl<bool> enabled(gSavedSettings, "GhostDeferredEnable", false);
+    if (!enabled)
+    {
+        return;     // OFF issues no GL op -> stock deferred path is byte-identical
+    }
+
+    LLActorMover& mover = LLActorMover::instance();
+    const LLActorMover::GhostProxyQueue& queue =
+        mover.getGhostDeferredQueue(camera, LLActorMover::GHOST_VIEW_WORLD_MAIN);
+    LLActorMover::GhostDeferredCounters& counters = mover.ghostDeferredCounters();
+
+    const U32 frame = LLFrameTimer::getFrameCount();
+    if (mGhostDeferredSubmittedFrame != frame)
+    {
+        mGhostDeferredSubmittedFrame = frame;
+        mGhostDeferredSubmittedInstances.clear();
+    }
+
+    // Preserve the actual incoming colour mask (renderGeomDeferred exits with
+    // (true,false)); restore through gGL so its cache stays synced with GL.
+    GLboolean saved_color_mask[4] = { GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE };
+    glGetBooleanv(GL_COLOR_WRITEMASK, saved_color_mask);
+
+    struct ScopedGhostColorMask
+    {
+        explicit ScopedGhostColorMask(const GLboolean (&saved)[4])
+        {
+            for (S32 i = 0; i < 4; ++i) { mSaved[i] = saved[i]; }
+            gGL.setColorMask(true, true);
+        }
+        ~ScopedGhostColorMask()
+        {
+            gGL.setColorMask(mSaved[0] != GL_FALSE, mSaved[1] != GL_FALSE,
+                             mSaved[2] != GL_FALSE, mSaved[3] != GL_FALSE);
+        }
+        GLboolean mSaved[4];
+    } color_mask_scope(saved_color_mask);
+
+    LLGLDepthTest depth_state(GL_TRUE, GL_TRUE, GL_LEQUAL);   // (enabled, write, func)
+    LLGLDisable blend_state(GL_BLEND);
+    LLGLEnable cull_state(GL_CULL_FACE);
+
+    gGL.matrixMode(LLRender::MM_MODELVIEW);
+    gGLLastMatrix = nullptr;
+    gGL.loadMatrix(gGLModelView);
+
+    // Restore the incoming active texture unit at exit -- pushGhostBatch, the
+    // texture-matrix setup, and LLFetchedGLTFMaterial::bind() all activate units.
+    const U32 saved_texture_unit = gGL.getCurrentTexUnitIndex();
+
+    for (const LLActorMover::GhostProxy& proxy : queue.mProxies)
+    {
+        if (!proxy.mFrustumVisible || !proxy.mBatches || proxy.mBatches->empty())
+        {
+            continue;
+        }
+
+        ScopedGhostTransform transform(proxy);
+
+        bool proxy_submitted = false;
+        LLGLSLShader* last_shader = nullptr;
+        LLFetchedGLTFMaterial* last_gltf_material = nullptr;
+        LLViewerTexture* last_gltf_texture = nullptr;
+
+        for (const LLActorMover::GhostBatch& batch : *proxy.mBatches)
+        {
+            LLDrawInfo* di = batch.mInfo;
+            if (!di || di->mVertexBuffer.isNull() || !di->mCount
+                || !di->mAvatar || !di->mSkinInfo)
+            {
+                continue;
+            }
+
+            LLGLSLShader* shader = nullptr;
+            bool legacy_textured = false;
+            bool gltf_scalar = false;
+
+            switch (batch.mPass)
+            {
+            case LLRenderPass::PASS_SIMPLE_RIGGED:
+                shader = gDeferredDiffuseProgram.mRiggedVariant;
+                legacy_textured = true;
+                break;
+
+            case LLRenderPass::PASS_ALPHA_MASK_RIGGED:
+                shader = gDeferredDiffuseAlphaMaskProgram.mRiggedVariant;
+                legacy_textured = true;
+                break;
+
+            case LLRenderPass::PASS_GLTF_PBR_RIGGED:
+            case LLRenderPass::PASS_GLTF_PBR_ALPHA_MASK_RIGGED:
+                if (!di->mGLTFMaterial || di->mGLTFMaterialList.size() > 1)
+                {
+                    // first-light: scalar single-material PBR only (a null
+                    // material would draw with stale uniforms).
+                    continue;
+                }
+                shader = gDeferredPBROpaqueProgram.mRiggedVariant;
+                gltf_scalar = true;
+                break;
+
+            default:
+                continue;
+            }
+
+            if (!shader || !shader->isComplete())
+            {
+                continue;
+            }
+
+            if (shader != last_shader)
+            {
+                shader->bind();
+                last_shader = shader;
+                // Program-local caches: reset at every shader switch.
+                last_gltf_material = nullptr;
+                last_gltf_texture = nullptr;
+            }
+
+            // Correctness-first cut: upload the skin palette for every batch (also
+            // avoids any palette-dedup cache crossing a shader switch).
+            if (!LLRenderPass::uploadMatrixPalette(*di))
+            {
+                continue;
+            }
+
+            if (legacy_textured)
+            {
+                // Masked passes need the per-batch cutoff uploaded to the bound
+                // shader (stock pushRiggedMaskBatches does this); otherwise the
+                // draw uses a stale MINIMUM_ALPHA from an earlier batch.
+                if (batch.mPass == LLRenderPass::PASS_ALPHA_MASK_RIGGED)
+                {
+                    shader->setMinimumAlpha(di->mAlphaMaskCutoff);
+                }
+                pushGhostBatch(*di, true);
+            }
+            else if (gltf_scalar)
+            {
+                // Stock PBR deferred rendering enables framebuffer sRGB; scope it
+                // to this individual PBR draw.
+                LLGLEnable framebuffer_srgb(GL_FRAMEBUFFER_SRGB);
+                pushGhostGLTFBatch(*di, last_gltf_material, last_gltf_texture);
+            }
+
+            ++counters.mActualDrawCalls;
+
+            if (!proxy_submitted)
+            {
+                proxy_submitted = true;
+                ++counters.mProxiesSubmitted;
+                mGhostDeferredSubmittedInstances.insert(proxy.mInstanceId);
+            }
+        }
+    }
+
+    LLVertexBuffer::unbind();
+    LLGLSLShader::unbind();
+
+    gGL.getTexUnit(saved_texture_unit)->activate();
+
+    gGL.matrixMode(LLRender::MM_MODELVIEW);
+    gGLLastMatrix = nullptr;
+    gGL.loadMatrix(gGLModelView);
+    gGL.syncMatrices();
+}
 
 void LLPipeline::renderGeomDeferred(LLCamera& camera, bool do_occlusion)
 {

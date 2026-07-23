@@ -5239,7 +5239,6 @@ void LLActorMover::buildGhostDeferredQueue(const LLCamera& camera, U32 view_stam
     ALGhostStudio& studio = ALGhostStudio::instance();
     if (!studio.anyEnabled())
     {
-        emitGhostDeferredDebug();
         return;     // near-zero cost when idle (no source/harvest/cull work)
     }
 
@@ -5314,8 +5313,6 @@ void LLActorMover::buildGhostDeferredQueue(const LLCamera& camera, U32 view_stam
 
         mGhostDeferredQueue.mProxies.push_back(proxy);
     }
-
-    emitGhostDeferredDebug();
 }
 
 // Transform the source avatar's animated extents by the clone placement
@@ -5506,6 +5503,19 @@ void LLActorMover::renderStudioGhosts()
     for (const StudioItem& item : items)
     {
         const ALGhostStudio::Instance& inst = *item.mInst;
+
+        // [GhostDeferred] when the scene-lit deferred submission is on, a CLONE-
+        // style instance that successfully drew into the G-buffer this frame must
+        // NOT also be redrawn as a fullbright overlay. Skip only that specific
+        // instance -- frozen / culled / palette-miss / non-clone / non-submitted
+        // clones keep the overlay path (a global return would wrongly hide them).
+        static LLCachedControl<bool> ghost_deferred_enabled(gSavedSettings, "GhostDeferredEnable", false);
+        if (ghost_deferred_enabled
+            && inst.mStyle == GHOST_STYLE_CLONE
+            && gPipeline.wasGhostDeferredSubmittedThisFrame(inst.mId))
+        {
+            continue;
+        }
 
         // tint: the source's stable path hue by default, or the instance's own
         // authored hue (pastel-bright so every style's tint pull reads)
