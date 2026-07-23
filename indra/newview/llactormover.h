@@ -38,11 +38,15 @@
 
 #include <map>
 #include <vector>
+#include <functional>       // [CloneFidelity] shared source-walk callbacks
 
 class LLVOAvatar;
 class LLDrawInfo;
 class LLFace;
 class LLCamera;     // [GhostDeferred] proxy-queue build/cull takes an explicit view
+class LLSpatialGroup;   // [CloneFidelity] shared source-walk callback arg
+class LLViewerObject;   // [CloneFidelity] shared source-walk callback arg
+template <class T> class LLPointer;
 
 class LLActorMover
 {
@@ -458,6 +462,23 @@ public:
     // clears the caches when ghosts are off. Collected LLDrawInfo* / LLFace*
     // stay valid for the frame (owned by spatial groups / drawables) and are
     // never cached across frames.
+    // [CloneFidelity] ONE read-only enumeration of a source avatar's ghost-
+    // eligible geometry -- the attachment walk (skip HUD, root + children, skip
+    // dead), deduped spatial groups, non-rigged static faces, and every rigged
+    // draw-map entry across kRiggedPasses. Used by BOTH collectGhostBatches (its
+    // callback keeps the existing VB+range dedup + bucketing) and the Clone
+    // Fidelity Audit (its callbacks snapshot/compare), so the two can never drift
+    // apart. Passes the OWNING LLPointer<LLDrawInfo> so the audit can pin it;
+    // the collector still just takes draw_info.get(). Issues no draw calls.
+    using ghost_rigged_source_cb_t =
+        std::function<void(LLVOAvatar* wearer, LLSpatialGroup* group, U32 pass,
+                           const LLPointer<LLDrawInfo>& draw_info)>;
+    using ghost_static_source_cb_t =
+        std::function<void(LLVOAvatar* wearer, LLViewerObject* object, LLFace* face)>;
+    void walkGhostSourceGeometry(LLVOAvatar* avatar,
+                                 const ghost_rigged_source_cb_t& rigged_cb,
+                                 const ghost_static_source_cb_t& static_cb);
+
     void collectGhostBatches();
 
     // One snapshotted rigged draw batch for the true-3D model ghost: the frame-

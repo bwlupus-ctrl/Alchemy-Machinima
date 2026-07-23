@@ -18,6 +18,7 @@
 #include "llfetchedgltfmaterial.h"  // static-face PBR base-colour texture resolution
 
 #include "alghoststudio.h"          // [GhostStudio] free-standing ghost instances
+#include "llclonefidelityaudit.h"   // [CloneFidelity] early-capture hooks in the harvest
 #include "altoolghostedit.h"        // [R2-3] selected-ghost ring gates on the edit tool
 #include "llagent.h"                // gAgent global<->agent coord conversion (pathing)
 #include "llanimationstates.h"      // ANIM_AGENT_WALK
@@ -4987,6 +4988,130 @@ void LLActorMover::updateGhostImpostors()
 // them at draw time went blank whenever a HUD was worn -- this decouples the
 // enumeration from that timing. One sweep over each rigged pass, bucketed per
 // actor and de-duped by buffer range.
+// [CloneFidelity] the rigged draw-map passes a ghost harvests -- moved to file
+// scope so collectGhostBatches AND the shared walk share ONE list (the Clone
+// Fidelity Audit walks the exact same source domain). Order preserved from the
+// original in-function array.
+namespace
+{
+constexpr U32 kRiggedPasses[] = {
+    LLRenderPass::PASS_SIMPLE_RIGGED,
+    LLRenderPass::PASS_FULLBRIGHT_RIGGED,
+    LLRenderPass::PASS_FULLBRIGHT_SHINY_RIGGED,
+    LLRenderPass::PASS_SHINY_RIGGED,
+    LLRenderPass::PASS_BUMP_RIGGED,
+    LLRenderPass::PASS_MATERIAL_RIGGED,
+    LLRenderPass::PASS_MATERIAL_ALPHA_RIGGED,
+    LLRenderPass::PASS_MATERIAL_ALPHA_MASK_RIGGED,
+    LLRenderPass::PASS_SPECMAP_RIGGED,
+    LLRenderPass::PASS_SPECMAP_BLEND_RIGGED,
+    LLRenderPass::PASS_SPECMAP_MASK_RIGGED,
+    LLRenderPass::PASS_NORMMAP_RIGGED,
+    LLRenderPass::PASS_NORMMAP_BLEND_RIGGED,
+    LLRenderPass::PASS_NORMMAP_MASK_RIGGED,
+    LLRenderPass::PASS_NORMSPEC_RIGGED,
+    LLRenderPass::PASS_NORMSPEC_BLEND_RIGGED,
+    LLRenderPass::PASS_NORMSPEC_MASK_RIGGED,
+    LLRenderPass::PASS_MATERIAL_ALPHA_EMISSIVE_RIGGED,
+    LLRenderPass::PASS_SPECMAP_EMISSIVE_RIGGED,
+    LLRenderPass::PASS_NORMMAP_EMISSIVE_RIGGED,
+    LLRenderPass::PASS_NORMSPEC_EMISSIVE_RIGGED,
+    LLRenderPass::PASS_ALPHA_RIGGED,
+    LLRenderPass::PASS_ALPHA_MASK_RIGGED,
+    LLRenderPass::PASS_FULLBRIGHT_ALPHA_MASK_RIGGED,
+    LLRenderPass::PASS_GLTF_PBR_RIGGED,
+    LLRenderPass::PASS_GLTF_PBR_ALPHA_MASK_RIGGED,
+    LLRenderPass::PASS_GLTF_GLOW_RIGGED,
+};
+} // anonymous namespace
+
+// [CloneFidelity] ONE read-only walk of a source avatar's ghost-eligible
+// geometry, mirroring collectGhostBatches's enumeration EXACTLY (same order,
+// same eligibility). rigged_cb fires per surviving rigged draw-map entry (the
+// caller applies any dedup); static_cb fires per non-rigged attachment face.
+// No draw calls, no dedup here -- callers decide what to keep.
+void LLActorMover::walkGhostSourceGeometry(LLVOAvatar* av,
+                                           const ghost_rigged_source_cb_t& rigged_cb,
+                                           const ghost_static_source_cb_t& static_cb)
+{
+    if (!av || av->isDead())
+    {
+        return;
+    }
+
+    std::set<LLSpatialGroup*> groups;
+
+    for (const auto& ap_pair : av->mAttachmentPoints)
+    {
+        LLViewerJointAttachment* ap = ap_pair.second;
+        if (!ap || ap->getIsHUDAttachment())
+        {
+            continue;   // HUDs are screen chrome, never body geometry
+        }
+        for (const LLPointer<LLViewerObject>& attached : ap->mAttachedObjects)
+        {
+            std::vector<LLViewerObject*> objs;
+            if (attached.notNull())
+            {
+                objs.push_back(attached.get());
+                for (LLViewerObject* child : attached->getChildren())
+                {
+                    objs.push_back(child);
+                }
+            }
+            for (LLViewerObject* obj : objs)
+            {
+                if (!obj || obj->isDead() || obj->mDrawable.isNull()
+                    || obj->mDrawable->isDead())
+                {
+                    continue;
+                }
+                LLDrawable* drawable = obj->mDrawable.get();
+                if (LLSpatialGroup* group = drawable->getSpatialGroup())
+                {
+                    groups.insert(group);
+                }
+
+                const S32 count = drawable->getNumFaces();
+                for (S32 face_index = 0; face_index < count; ++face_index)
+                {
+                    LLFace* face = drawable->getFace(face_index);
+                    if (!face || face->isState(LLFace::RIGGED)
+                        || !face->getVertexBuffer()
+                        || face->getIndicesCount() == 0)
+                    {
+                        continue;   // rigged faces come via the batch sweep below
+                    }
+                    static_cb(av, obj, face);
+                }
+            }
+        }
+    }
+
+    for (LLSpatialGroup* group : groups)
+    {
+        for (U32 pass : kRiggedPasses)
+        {
+            auto found = group->mDrawMap.find(pass);   // find(): never insert
+            if (found == group->mDrawMap.end())
+            {
+                continue;
+            }
+            for (const LLPointer<LLDrawInfo>& draw_info : found->second)
+            {
+                LLDrawInfo* di = draw_info.get();
+                if (!di || di->mAvatar.isNull()
+                    || di->mSkinInfo.isNull()
+                    || di->mVertexBuffer.isNull())
+                {
+                    continue;
+                }
+                rigged_cb(av, group, pass, draw_info);
+            }
+        }
+    }
+}
+
 void LLActorMover::collectGhostBatches()
 {
     mGhostBatches.clear();
@@ -5059,44 +5184,6 @@ void LLActorMover::collectGhostBatches()
         return;
     }
 
-    static const U32 kRiggedPasses[] = {
-        LLRenderPass::PASS_SIMPLE_RIGGED,
-        LLRenderPass::PASS_FULLBRIGHT_RIGGED,
-        LLRenderPass::PASS_FULLBRIGHT_SHINY_RIGGED,
-        LLRenderPass::PASS_SHINY_RIGGED,
-        LLRenderPass::PASS_BUMP_RIGGED,
-        LLRenderPass::PASS_MATERIAL_RIGGED,
-        LLRenderPass::PASS_MATERIAL_ALPHA_RIGGED,
-        LLRenderPass::PASS_MATERIAL_ALPHA_MASK_RIGGED,
-        LLRenderPass::PASS_SPECMAP_RIGGED,
-        LLRenderPass::PASS_SPECMAP_BLEND_RIGGED,
-        LLRenderPass::PASS_SPECMAP_MASK_RIGGED,
-        LLRenderPass::PASS_NORMMAP_RIGGED,
-        LLRenderPass::PASS_NORMMAP_BLEND_RIGGED,
-        LLRenderPass::PASS_NORMMAP_MASK_RIGGED,
-        LLRenderPass::PASS_NORMSPEC_RIGGED,
-        LLRenderPass::PASS_NORMSPEC_BLEND_RIGGED,
-        LLRenderPass::PASS_NORMSPEC_MASK_RIGGED,
-        // [R2-2] legacy EMISSIVE-mode materials are BASE geometry passes (a
-        // face whose material uses diffuse-alpha-mode EMISSIVE renders ONLY
-        // here) -- missing them dropped whole faces from the clone
-        LLRenderPass::PASS_MATERIAL_ALPHA_EMISSIVE_RIGGED,
-        LLRenderPass::PASS_SPECMAP_EMISSIVE_RIGGED,
-        LLRenderPass::PASS_NORMMAP_EMISSIVE_RIGGED,
-        LLRenderPass::PASS_NORMSPEC_EMISSIVE_RIGGED,
-        LLRenderPass::PASS_ALPHA_RIGGED,
-        LLRenderPass::PASS_ALPHA_MASK_RIGGED,
-        LLRenderPass::PASS_FULLBRIGHT_ALPHA_MASK_RIGGED,
-        LLRenderPass::PASS_GLTF_PBR_RIGGED,
-        LLRenderPass::PASS_GLTF_PBR_ALPHA_MASK_RIGGED,
-        // [R2-2] PBR glow: DUPLICATE geometry carrying the emissive map; only
-        // the clone's additive sweep draws it (see ghost_pass_is_glow) so an
-        // emissive-driven iris keeps its colour. Deliberately still excluded:
-        // PASS_GLOW_RIGGED (legacy glow is a bloom intensity riding the
-        // EMISSIVE vertex attribute, not surface colour), the INVISIBLE
-        // passes (water exclusion), and PASS_POST_BUMP_RIGGED (cosmetic).
-        LLRenderPass::PASS_GLTF_GLOW_RIGGED,
-    };
     // [R2-6] ONE attachment walk per wanted wearer harvests BOTH collections
     // straight from the SPATIAL-GROUP DRAW MAPS -- never the frame's cull
     // results. The cull-result render maps are just aggregations of visible
@@ -5114,142 +5201,92 @@ void LLActorMover::collectGhostBatches()
     // instances are unaffected -- that is what freezing is for), and the
     // source's geometry must have been built once since login (seen nearby)
     // for its draw maps to exist at all.
+    // [CloneFidelity] bracket the harvest so an armed audit can snapshot the
+    // exact batches this frame produced (no-op unless armed).
+    LLCloneFidelityAudit::instance().beginEarlyCapture(LLFrameTimer::getFrameCount());
+
     for (LLVOAvatar* av : wanted)
     {
         std::vector<GhostBatch>& bucket = mGhostBatches[av->getID()];
         std::vector<GhostStaticFace>& faces = mGhostStaticFaces[av->getID()];
-        std::set<LLSpatialGroup*> groups;   // attachment drawables' groups, deduped
 
-        for (const auto& ap_pair : av->mAttachmentPoints)
-        {
-            LLViewerJointAttachment* ap = ap_pair.second;
-            if (!ap || ap->getIsHUDAttachment())
+        // The harvest now rides the SHARED read-only walk (walkGhostSourceGeometry)
+        // so the Clone Fidelity Audit inspects the identical source domain. The
+        // rigged callback keeps the ORIGINAL VB+range dedup + bucketing verbatim;
+        // the static callback keeps the ORIGINAL alpha classification verbatim.
+        walkGhostSourceGeometry(av,
+            [&](LLVOAvatar* wearer, LLSpatialGroup* group, U32 pass,
+                const LLPointer<LLDrawInfo>& draw_info)
             {
-                continue;   // HUDs are screen chrome, never body geometry
-            }
-            for (const LLPointer<LLViewerObject>& attached : ap->mAttachedObjects)
+                // [R2-6] everything in an attachment group belongs to THIS wearer
+                // by construction (animesh included -- those draw infos carry the
+                // attachment's own control avatar as mAvatar), so no owner check.
+                LLDrawInfo* di = draw_info.get();
+                bool dup = false;
+                for (const GhostBatch& b : bucket)
+                {
+                    if (b.mInfo->mVertexBuffer.get() == di->mVertexBuffer.get()
+                        && b.mInfo->mStart == di->mStart && b.mInfo->mEnd == di->mEnd
+                        && b.mInfo->mOffset == di->mOffset)
+                    {
+                        dup = true;
+                        break;
+                    }
+                }
+                if (!dup)
+                {
+                    bucket.push_back({ di, pass });
+                }
+                // [CloneFidelity] raw source truth + whether the VB+range dedup
+                // retained THIS entry (so the audit can report DROP_DEDUP).
+                LLCloneFidelityAudit::instance().captureEarlyRigged(
+                    wearer, group, pass, draw_info, !dup);
+            },
+            [&](LLVOAvatar* wearer, LLViewerObject* obj, LLFace* face)
             {
-                // the attachment root plus every child link
-                std::vector<LLViewerObject*> objs;
-                if (attached.notNull())
+                // ---- [R2-2] NON-RIGGED faces (collar / jewelry / flexi): they
+                // never carry LLFace::mAvatar, so no rigged pass owns them --
+                // per-face alpha classification mirroring the real pools (GLTF
+                // mode wins; legacy mask from the material; the alpha POOL marks
+                // its faces blended).
+                GhostStaticFace gf;
+                gf.mFace = face;
+                gf.mObjectId = obj->getID();
+                const LLTextureEntry* te = face->getTextureEntry();
+                LLGLTFMaterial* gmat = te ? te->getGLTFRenderMaterial() : nullptr;
+                if (gmat)
                 {
-                    objs.push_back(attached.get());
-                    for (LLViewerObject* child : attached->getChildren())
+                    gf.mDoubleSided = gmat->mDoubleSided;
+                    if (gmat->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_MASK)
                     {
-                        objs.push_back(child);
+                        gf.mAlphaKind = 1;
+                        gf.mCutoff = gmat->mAlphaCutoff;
+                    }
+                    else if (gmat->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_BLEND)
+                    {
+                        gf.mAlphaKind = 2;
                     }
                 }
-                for (LLViewerObject* obj : objs)
+                else if (te)
                 {
-                    if (!obj || obj->isDead() || obj->mDrawable.isNull()
-                        || obj->mDrawable->isDead())
+                    const LLMaterial* mat = te->getMaterialParams().get();
+                    if (mat && mat->getDiffuseAlphaMode() == LLMaterial::DIFFUSE_ALPHA_MODE_MASK)
                     {
-                        continue;
+                        gf.mAlphaKind = 1;
+                        gf.mCutoff = mat->getAlphaMaskCutoff() * (1.f / 255.f);
                     }
-                    LLDrawable* drawable = obj->mDrawable.get();
-
-                    // rigged batches live in this drawable's spatial group's
-                    // draw maps (inside the attachment's bridge partition)
-                    if (LLSpatialGroup* group = drawable->getSpatialGroup())
+                    else if (face->getPoolType() == LLDrawPool::POOL_ALPHA
+                             || te->getColor().mV[VW] < 0.999f)
                     {
-                        groups.insert(group);
-                    }
-
-                    // ---- [R2-2] NON-RIGGED faces (collar / jewelry / flexi):
-                    // they never carry LLFace::mAvatar, so no rigged pass owns
-                    // them -- collected per face with real-render alpha
-                    // classification (GLTF mode wins; legacy mask from the
-                    // material; the alpha POOL marks its faces blended)
-                    const S32 n = drawable->getNumFaces();
-                    for (S32 f = 0; f < n; ++f)
-                    {
-                        LLFace* face = drawable->getFace(f);
-                        if (!face || face->isState(LLFace::RIGGED)
-                            || !face->getVertexBuffer() || face->getIndicesCount() == 0)
-                        {
-                            continue;   // rigged faces came via the batch sweep
-                        }
-                        GhostStaticFace gf;
-                        gf.mFace = face;
-                        gf.mObjectId = obj->getID();
-                        // alpha classification, mirroring the real pools: GLTF
-                        // mode wins; legacy mask comes from the material; the
-                        // alpha POOL marks everything it owns as blended
-                        const LLTextureEntry* te = face->getTextureEntry();
-                        LLGLTFMaterial* gmat = te ? te->getGLTFRenderMaterial() : nullptr;
-                        if (gmat)
-                        {
-                            gf.mDoubleSided = gmat->mDoubleSided;
-                            if (gmat->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_MASK)
-                            {
-                                gf.mAlphaKind = 1;
-                                gf.mCutoff = gmat->mAlphaCutoff;
-                            }
-                            else if (gmat->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_BLEND)
-                            {
-                                gf.mAlphaKind = 2;
-                            }
-                        }
-                        else if (te)
-                        {
-                            const LLMaterial* mat = te->getMaterialParams().get();
-                            if (mat && mat->getDiffuseAlphaMode() == LLMaterial::DIFFUSE_ALPHA_MODE_MASK)
-                            {
-                                gf.mAlphaKind = 1;
-                                gf.mCutoff = mat->getAlphaMaskCutoff() * (1.f / 255.f);
-                            }
-                            else if (face->getPoolType() == LLDrawPool::POOL_ALPHA
-                                     || te->getColor().mV[VW] < 0.999f)
-                            {
-                                gf.mAlphaKind = 2;
-                            }
-                        }
-                        faces.push_back(gf);
+                        gf.mAlphaKind = 2;
                     }
                 }
-            }
-        }
-
-        // [R2-6] rigged batches out of the deduped groups' draw maps.
-        // Everything in an attachment group belongs to THIS wearer by
-        // construction (the animesh case included: those draw infos carry the
-        // attachment's own control avatar as mAvatar, and the draw uploads
-        // per-batch palettes), so bucketing needs no owner resolution.
-        for (LLSpatialGroup* group : groups)
-        {
-            for (U32 pass : kRiggedPasses)
-            {
-                auto dit = group->mDrawMap.find(pass);      // find(): never insert
-                if (dit == group->mDrawMap.end())
-                {
-                    continue;
-                }
-                for (const LLPointer<LLDrawInfo>& dip : dit->second)
-                {
-                    LLDrawInfo* di = dip.get();
-                    if (!di || di->mAvatar.isNull()
-                        || di->mSkinInfo.isNull() || di->mVertexBuffer.isNull())
-                    {
-                        continue;
-                    }
-                    bool dup = false;
-                    for (const GhostBatch& b : bucket)
-                    {
-                        if (b.mInfo->mVertexBuffer.get() == di->mVertexBuffer.get()
-                            && b.mInfo->mStart == di->mStart && b.mInfo->mEnd == di->mEnd
-                            && b.mInfo->mOffset == di->mOffset)
-                        {
-                            dup = true;
-                            break;
-                        }
-                    }
-                    if (!dup)
-                    {
-                        bucket.push_back({ di, pass });
-                    }
-                }
-            }
-        }
+                faces.push_back(gf);
+                // [CloneFidelity] snapshot the harvested static face by VALUE
+                // (pass the alpha classification directly -- no pointer retained).
+                LLCloneFidelityAudit::instance().captureEarlyStatic(
+                    wearer, obj, face, gf.mAlphaKind, gf.mCutoff, gf.mDoubleSided);
+            });
 
         // keep both maps miss-cheap
         if (bucket.empty())
@@ -5261,6 +5298,8 @@ void LLActorMover::collectGhostBatches()
             mGhostStaticFaces.erase(av->getID());
         }
     }
+
+    LLCloneFidelityAudit::instance().endEarlyCapture();
 }
 
 // ---------------------------------------------------------------------------

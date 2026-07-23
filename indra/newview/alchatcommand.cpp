@@ -33,6 +33,7 @@
 #include "alobjectpathmover.h"  // [ObjectPath] /objpath* harness (props on splines)
 #include "llactormover.h"       // [Pathing] /pathadd /pathwalk /pathclear /pathloop test harness
 #include "llghostavatar.h"      // [GhostStudio] /ghosttest /ghostclear milestone-1 harness
+#include "llclonefidelityaudit.h"   // [CloneFidelity] /clonefidelity source-vs-clone audit
 #include "llagent.h"
 #include "llagentcamera.h"
 #include "llagentui.h"
@@ -420,6 +421,22 @@ bool ALChatCommand::parseCommand(std::string data)
         else if (cmd == "/ghostclear")  // release the test ghosts
         {
             LLGhostAvatar::clearTestGhosts();
+            return true;
+        }
+        else if (cmd == "/clonefidelity")   // [CloneFidelity] source-vs-clone data audit
+        {
+            // /clonefidelity            -> selected, else nearest enabled clone
+            // /clonefidelity all        -> every enabled clone instance
+            // /clonefidelity <uuid>     -> a specific instance
+            std::string argument;
+            input >> argument;
+            std::vector<LLUUID> targets;
+            if (!LLCloneFidelityAudit::instance().selectTargets(argument, targets))
+            {
+                LLCloneFidelityAudit::report("No enabled Clone-style instance matched the request.");
+                return true;
+            }
+            LLCloneFidelityAudit::instance().arm(targets);
             return true;
         }
         else if (cmd == "/pathclear")   // stop + drop all my waypoints

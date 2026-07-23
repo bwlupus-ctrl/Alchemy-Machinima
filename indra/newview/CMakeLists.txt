@@ -270,6 +270,7 @@ set(viewer_SOURCE_FILES
     llcallingcard.cpp
     llcameraoperator.cpp
     llactormover.cpp
+    llclonefidelityaudit.cpp
     llghostdeferreddiagnostics.cpp
     alghostmanipproxy.cpp
     alghoststudio.cpp
@@ -1083,6 +1084,7 @@ set(viewer_HEADER_FILES
     llcallingcard.h
     llcameraoperator.h
     llactormover.h
+    llclonefidelityaudit.h
     llghostcoverage.h
     llghostdeferreddiagnostics.h
     alghostmanipproxy.h

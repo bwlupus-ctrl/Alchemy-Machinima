@@ -31,6 +31,7 @@
 #include "alfloaterprogressview.h"
 #include "fsyspath.h"
 #include "llactormover.h"   // [ActorMover] heading preview lines
+#include "llclonefidelityaudit.h"   // [CloneFidelity] late source-vs-clone audit hook
 #include "llghostdeferreddiagnostics.h"  // [GhostDeferred] render-state invariant check
 
 #include "hexdump.h"
@@ -1126,6 +1127,15 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
         // [GhostDeferred/P0] collectGhostBatches() moved earlier -- to just after
         // the world stateSort/rebuildPools block above -- so the harvest is ready
         // before the deferred pass. (Was here, right before render_ui().)
+
+        // [CloneFidelity] run an armed source-vs-clone data audit HERE -- world +
+        // deferred + post rendering are done, but sNoDelete is still true (set
+        // false just below, after render_ui) so the source's live draw maps still
+        // own their LLDrawInfo. Never consume on a snapshot frame. No-op unless armed.
+        if (!for_snapshot)
+        {
+            LLCloneFidelityAudit::instance().runLateAuditIfPending();
+        }
 
         if (!for_snapshot)
         {
