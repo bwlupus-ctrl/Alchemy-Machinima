@@ -34,6 +34,7 @@
 #include "v4color.h"        // actorPathColor()
 #include "llquaternion.h"
 #include "m4math.h"         // frozen attachment matrices (GhostDrawParams)
+#include "llghostcoverage.h" // [GhostDeferred] per-category clone coverage mask
 
 #include <map>
 #include <vector>
@@ -566,6 +567,21 @@ public:
         U64 mIncompleteBounds        = 0;
         U64 mStaleQueueSkips         = 0;
         U64 mActualDrawCalls         = 0;   // MUST remain 0 throughout P0
+        // [Coverage] per-category accounting: draw calls per category, plus how
+        // many instances reached FULL category coverage this frame (the coverage
+        // bit -- draw counts alone cannot prove suppression state). Slice 1
+        // populates only the RIGGED_SOLID pair; the blend slice and static-face
+        // slice fill in theirs when they land.
+        U64 mRiggedSolidDrawCalls = 0;
+        U64 mRiggedBlendDrawCalls = 0;
+        U64 mRiggedGlowDrawCalls  = 0;
+        U64 mStaticSolidDrawCalls = 0;
+        U64 mStaticBlendDrawCalls = 0;
+        U64 mRiggedSolidInstancesSubmitted = 0;
+        U64 mRiggedBlendInstancesSubmitted = 0;
+        U64 mRiggedGlowInstancesSubmitted  = 0;
+        U64 mStaticSolidInstancesSubmitted = 0;
+        U64 mStaticBlendInstancesSubmitted = 0;
         U64 mInvariantViolations     = 0;
         U64 mContaminationPass         = 0;
         U64 mContaminationFail         = 0;
@@ -630,6 +646,15 @@ public:
         // the identity tint (a clone should match the avatar), but a custom hue
         // is an explicit art direction and gets mixed into the clone too.
         bool       mTintCustom = false;
+        // [GhostDeferred] CLONE-only per-category coverage: which categories the
+        // deferred pass drew this frame (mDeferredCoverage) vs which categories
+        // the harvested geometry actually CONTAINS (mPresentCoverage). The draw
+        // colors only present & ~covered; covered solids still depth-PRIME so the
+        // uncovered translucent layers self-occlude against the body silhouette
+        // (the UI-phase overlay has no world depth). Both NONE (the default) =
+        // no coverage info -> the classic full draw, byte-identical.
+        GhostCoverageMask mDeferredCoverage = GHOST_COVERAGE_NONE;
+        GhostCoverageMask mPresentCoverage  = GHOST_COVERAGE_NONE;
     };
 
 private:

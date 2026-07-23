@@ -3449,35 +3449,11 @@ bool ghost_pass_is_mask(U32 pass)
     }
 }
 
-bool ghost_pass_is_blend(U32 pass)
-{
-    switch (pass)
-    {
-    case LLRenderPass::PASS_ALPHA_RIGGED:
-    case LLRenderPass::PASS_MATERIAL_ALPHA_RIGGED:
-    case LLRenderPass::PASS_SPECMAP_BLEND_RIGGED:
-    case LLRenderPass::PASS_NORMMAP_BLEND_RIGGED:
-    case LLRenderPass::PASS_NORMSPEC_BLEND_RIGGED:
-        return true;
-    default:
-        return false;
-    }
-}
-
-// [R2-2] GLOW batches are DUPLICATES of base-pass geometry (a face with PBR
-// emissive renders in its base pass AND again, additively, in the glow pass),
-// so they are excluded from every sweep except the clone's dedicated additive
-// emissive sweep -- otherwise the body would double-draw. Only the GLTF glow
-// pass is collected: PBR emissive is real surface COLOUR (emissive map x
-// emissive colour -- the missing iris on emissive-driven eyes); legacy
-// PASS_GLOW_RIGGED is a bloom intensity whose per-vertex glow amount lives in
-// the EMISSIVE vertex attribute this shader does not read, so honoring it
-// faithfully is out of scope (its faces' base colour already draws via their
-// base pass).
-bool ghost_pass_is_glow(U32 pass)
-{
-    return pass == LLRenderPass::PASS_GLTF_GLOW_RIGGED;
-}
+// (ghost_pass_is_blend / ghost_pass_is_glow moved OUT of this anonymous
+// namespace -- see below the namespace close. The deferred submission's
+// coverage accounting in pipeline.cpp needs the SAME classification, and a
+// duplicated pass list there would be exactly the coverage/suppression domain
+// drift the coverage design exists to prevent. Declared in llghostcoverage.h.)
 
 // [R2-2] Indexed (multi-material) batches: how many slots does this batch
 // carry? 1 = scalar (mGLTFMaterial / mTexture as usual). >1 = the vertex
@@ -4258,6 +4234,17 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         apply_program(shader);
     };
 
+    // [GhostDeferred] CLONE overlay mask: the categories that still need
+    // overlay COLOR (present & ~deferred-covered). Callers without coverage
+    // info leave both fields NONE -> ALL (the classic full draw, including
+    // every non-clone style and the path/pose ghost callers). Covered solids
+    // still depth-PRIME below: they are exactly the occluders the uncovered
+    // translucent layers need (this UI-phase overlay has no world depth).
+    const GhostCoverageMask overlay_mask =
+        (style == GHOST_STYLE_CLONE && gp.mPresentCoverage != GHOST_COVERAGE_NONE)
+            ? (GhostCoverageMask)(gp.mPresentCoverage & ~gp.mDeferredCoverage)
+            : (GhostCoverageMask)GHOST_COVERAGE_ALL;
+
     // --- pass 1: prime depth only (single-layer silhouette), no colour ---
     // Masked batches cutoff-discard here too, so the depth silhouette matches
     // the real body -- no more solid halos around hair sheets / lace. The clone
@@ -4267,6 +4254,9 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     // flat ghost). Wireframe stays fully unmasked: hidden-line wants the whole
     // mesh's edges, holes included. [R2-2] the non-rigged attachment faces
     // prime alongside the batches so collar and body occlude each other right.
+    // [GhostDeferred] the prime deliberately IGNORES overlay_mask: a deferred-
+    // covered solid category is exactly the occluder the remaining overlay
+    // categories need, so every present solid still primes depth here.
     {
         LLGLDepthTest depth(GL_TRUE, GL_TRUE, GL_LESS);
         LLGLDisable   blend(GL_BLEND);
@@ -4310,20 +4300,40 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         // order is snapshot order, not a depth sort). Sweep 3 [R2-2]: ADDITIVE
         // emissive -- PBR faces whose visible colour lives in the emissive map
         // (stylized eyes) get it back; black emissive adds nothing.
+        // [GhostDeferred] each sweep runs only for the categories that still
+        // need overlay color (overlay_mask); a deferred-covered category keeps
+        // its depth prime above but is never re-shaded fullbright here. Color
+        // writes come back on UNCONDITIONALLY (the prime turned them off, and
+        // the solid block that used to restore them can now be skipped).
+        gGL.setColorMask(true, true);
+        if (overlay_mask & (GHOST_COVERAGE_RIGGED_SOLID | GHOST_COVERAGE_STATIC_SOLID))
         {
             LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
             LLGLDisable   blend(GL_BLEND);
-            gGL.setColorMask(true, true);
-            draw_batches(SWEEP_SOLID, true, true);
-            draw_static(SWEEP_SOLID, true, true);
+            if (overlay_mask & GHOST_COVERAGE_RIGGED_SOLID)
+            {
+                draw_batches(SWEEP_SOLID, true, true);
+            }
+            if (overlay_mask & GHOST_COVERAGE_STATIC_SOLID)
+            {
+                draw_static(SWEEP_SOLID, true, true);
+            }
         }
+        if (overlay_mask & (GHOST_COVERAGE_RIGGED_BLEND | GHOST_COVERAGE_STATIC_BLEND))
         {
             LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
             LLGLEnable    blend(GL_BLEND);
             gGL.setSceneBlendType(LLRender::BT_ALPHA);
-            draw_batches(SWEEP_BLEND, true, true);
-            draw_static(SWEEP_BLEND, true, true);
+            if (overlay_mask & GHOST_COVERAGE_RIGGED_BLEND)
+            {
+                draw_batches(SWEEP_BLEND, true, true);
+            }
+            if (overlay_mask & GHOST_COVERAGE_STATIC_BLEND)
+            {
+                draw_static(SWEEP_BLEND, true, true);
+            }
         }
+        if (overlay_mask & GHOST_COVERAGE_RIGGED_GLOW)
         {
             LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
             LLGLEnable    blend(GL_BLEND);
@@ -4423,6 +4433,42 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     return (S32)(batches.size() + (static_faces ? static_faces->size() : 0));
 }
 } // anonymous namespace
+
+// ---------------------------------------------------------------------------
+// [GhostDeferred] Overlay sweep classification of a harvested rigged pass.
+// EXTERNAL linkage on purpose (declared in llghostcoverage.h): the deferred
+// submission's coverage accounting (pipeline.cpp) must use the exact same
+// classification the overlay sweeps use, or the two domains drift and a pass
+// suppressed by coverage could be one the deferred pass never drew.
+bool ghost_pass_is_blend(U32 pass)
+{
+    switch (pass)
+    {
+    case LLRenderPass::PASS_ALPHA_RIGGED:
+    case LLRenderPass::PASS_MATERIAL_ALPHA_RIGGED:
+    case LLRenderPass::PASS_SPECMAP_BLEND_RIGGED:
+    case LLRenderPass::PASS_NORMMAP_BLEND_RIGGED:
+    case LLRenderPass::PASS_NORMSPEC_BLEND_RIGGED:
+        return true;
+    default:
+        return false;
+    }
+}
+
+// [R2-2] GLOW batches are DUPLICATES of base-pass geometry (a face with PBR
+// emissive renders in its base pass AND again, additively, in the glow pass),
+// so they are excluded from every sweep except the clone's dedicated additive
+// emissive sweep -- otherwise the body would double-draw. Only the GLTF glow
+// pass is collected: PBR emissive is real surface COLOUR (emissive map x
+// emissive colour -- the missing iris on emissive-driven eyes); legacy
+// PASS_GLOW_RIGGED is a bloom intensity whose per-vertex glow amount lives in
+// the EMISSIVE vertex attribute this shader does not read, so honoring it
+// faithfully is out of scope (its faces' base colour already draws via their
+// base pass).
+bool ghost_pass_is_glow(U32 pass)
+{
+    return pass == LLRenderPass::PASS_GLTF_GLOW_RIGGED;
+}
 
 // ---------------------------------------------------------------------------
 void LLActorMover::renderHeadingPreview()
@@ -5251,6 +5297,13 @@ void LLActorMover::buildGhostDeferredQueue(const LLCamera& camera, U32 view_stam
         {
             continue;
         }
+        // [Coverage] only CLONE-style instances belong in the deferred queue:
+        // overlay suppression is clone-only, so submitting any other style would
+        // draw it scene-lit AND again as its styled overlay (double draw).
+        if (inst.mStyle != GHOST_STYLE_CLONE)
+        {
+            continue;
+        }
         // P0/P1 handle LIVE ghosts only; frozen-pose support is a later phase (P3).
         if (inst.mPose == ALGhostStudio::POSE_FROZEN)
         {
@@ -5408,6 +5461,18 @@ void LLActorMover::emitGhostDeferredDebug() const
         << " incompleteBounds=" << c.mIncompleteBounds
         << " staleSkips=" << c.mStaleQueueSkips
         << " drawCalls=" << c.mActualDrawCalls
+        // [Coverage] per-category draws + FULLY-covered instance counts
+        // (rs=rigged solid, rb=rigged blend, rg=rigged glow, ss=static solid,
+        // sb=static blend). Draw counts alone can't prove suppression state;
+        // the instance counts show which clones actually earned their bit.
+        << " catDraws(rs/rb/rg/ss/sb)=" << c.mRiggedSolidDrawCalls
+        << "/" << c.mRiggedBlendDrawCalls << "/" << c.mRiggedGlowDrawCalls
+        << "/" << c.mStaticSolidDrawCalls << "/" << c.mStaticBlendDrawCalls
+        << " catInst(rs/rb/rg/ss/sb)=" << c.mRiggedSolidInstancesSubmitted
+        << "/" << c.mRiggedBlendInstancesSubmitted
+        << "/" << c.mRiggedGlowInstancesSubmitted
+        << "/" << c.mStaticSolidInstancesSubmitted
+        << "/" << c.mStaticBlendInstancesSubmitted
         << " invariantViol=" << c.mInvariantViolations
         << " contam(P/F/I)=" << c.mContaminationPass << "/"
         << c.mContaminationFail << "/" << c.mContaminationInconclusive
@@ -5461,6 +5526,9 @@ void LLActorMover::renderStudioGhosts()
         const std::vector<GhostBatch>* mBatches;
         const std::vector<GhostStaticFace>* mStatic;
         LLVector3   mFootAgent;
+        // [GhostDeferred] which overlay categories this clone's harvested
+        // geometry actually CONTAINS (zero for non-clone styles -- unused)
+        GhostCoverageMask mPresent = GHOST_COVERAGE_NONE;
     };
     std::vector<StudioItem> items;
     for (const ALGhostStudio::Instance& inst : studio.getInstances())
@@ -5480,8 +5548,41 @@ void LLActorMover::renderStudioGhosts()
         {
             continue;
         }
+        // [GhostDeferred] classify what the clone's geometry contains, so the
+        // suppression below can compare against the pipeline's coverage and the
+        // draw can color only the uncovered categories (no rescan inside).
+        GhostCoverageMask present = GHOST_COVERAGE_NONE;
+        if (inst.mStyle == GHOST_STYLE_CLONE)
+        {
+            if (batches)
+            {
+                for (const GhostBatch& gb : *batches)
+                {
+                    if (ghost_pass_is_glow(gb.mPass))
+                    {
+                        present |= GHOST_COVERAGE_RIGGED_GLOW;
+                    }
+                    else if (ghost_pass_is_blend(gb.mPass))
+                    {
+                        present |= GHOST_COVERAGE_RIGGED_BLEND;
+                    }
+                    else
+                    {
+                        present |= GHOST_COVERAGE_RIGGED_SOLID;
+                    }
+                }
+            }
+            if (statics)
+            {
+                for (const GhostStaticFace& gf : *statics)
+                {
+                    present |= (gf.mAlphaKind == 2) ? GHOST_COVERAGE_STATIC_BLEND
+                                                    : GHOST_COVERAGE_STATIC_SOLID;
+                }
+            }
+        }
         items.push_back({ &inst, av, batches ? batches : &sNoBatches, statics,
-                          gAgent.getPosAgentFromGlobal(inst.mFootGlobal) });
+                          gAgent.getPosAgentFromGlobal(inst.mFootGlobal), present });
     }
     if (items.empty())
     {
@@ -5505,17 +5606,22 @@ void LLActorMover::renderStudioGhosts()
     {
         const ALGhostStudio::Instance& inst = *item.mInst;
 
-        // [GhostDeferred] when the scene-lit deferred submission is on, a CLONE-
-        // style instance that successfully drew into the G-buffer this frame must
-        // NOT also be redrawn as a fullbright overlay. Skip only that specific
-        // instance -- frozen / culled / palette-miss / non-clone / non-submitted
-        // clones keep the overlay path (a global return would wrongly hide them).
-        static LLCachedControl<bool> ghost_deferred_enabled(gSavedSettings, "GhostDeferredEnable", false);
-        if (ghost_deferred_enabled
-            && inst.mStyle == GHOST_STYLE_CLONE
-            && gPipeline.wasGhostDeferredSubmittedThisFrame(inst.mId))
+        // [GhostDeferred] per-CATEGORY suppression: ask the pipeline which
+        // categories of this clone the deferred pass drew THIS frame. The query
+        // is unconditional (no saved-setting check) -- a frame-valid nonzero
+        // mask is authoritative, zero naturally covers submission disabled, AND
+        // a contamination-test forced submission still suppresses correctly.
+        // Skip the overlay entirely only when EVERY present category is covered;
+        // otherwise drawGeometryGhost colors just the uncovered categories.
+        // Frozen / culled / failed clones read zero coverage -> full overlay.
+        GhostCoverageMask coverage = GHOST_COVERAGE_NONE;
+        if (inst.mStyle == GHOST_STYLE_CLONE)
         {
-            continue;
+            coverage = gPipeline.getGhostDeferredCoverageThisFrame(inst.mId);
+            if ((item.mPresent & ~coverage) == GHOST_COVERAGE_NONE)
+            {
+                continue;
+            }
         }
 
         // tint: the source's stable path hue by default, or the instance's own
@@ -5555,6 +5661,9 @@ void LLActorMover::renderStudioGhosts()
         // stable per-instance FX phase from the id, so a crowd of ghosts
         // shimmers/glitches out of sync instead of strobing as one
         gp.mPhase = (F32)(inst.mId.mData[0] | (inst.mId.mData[1] << 8)) * (F_TWO_PI / 65536.f);
+        // [GhostDeferred] hand the coverage picture to the draw (clone-only)
+        gp.mDeferredCoverage = coverage;
+        gp.mPresentCoverage  = item.mPresent;
 
         drawGeometryGhost(item.mAv, *item.mBatches, item.mFootAgent, tint,
                           llclamp(inst.mAlpha, 0.f, 1.f), inst.mStyle, gp,

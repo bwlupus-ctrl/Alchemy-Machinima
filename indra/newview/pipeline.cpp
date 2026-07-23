@@ -4586,13 +4586,15 @@ void teardown_ghost_texture_matrix(LLDrawInfo& params)
 }
 
 // pushBatch (lldrawpool.cpp) minus applyModelMatrix.
-void pushGhostBatch(LLDrawInfo& params, bool batch_textures)
+// Returns true iff the drawRange was actually issued (the caller's per-category
+// coverage accounting depends on knowing every eligible batch really drew).
+bool pushGhostBatch(LLDrawInfo& params, bool batch_textures)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
 
     if (!params.mCount || params.mVertexBuffer.isNull())
     {
-        return;
+        return false;
     }
 
     bool tex_setup = false;
@@ -4639,15 +4641,17 @@ void pushGhostBatch(LLDrawInfo& params, bool batch_textures)
         gGL.loadIdentity();
         gGL.matrixMode(LLRender::MM_MODELVIEW);
     }
+    return true;
 }
 
 // pushGLTFBatch (lldrawpool.cpp) minus applyModelMatrix (scalar/single-material).
-void pushGhostGLTFBatch(LLDrawInfo& params, LLFetchedGLTFMaterial*& last_mat,
+// Returns true iff the drawRange was actually issued.
+bool pushGhostGLTFBatch(LLDrawInfo& params, LLFetchedGLTFMaterial*& last_mat,
                         LLViewerTexture*& last_tex)
 {
     if (!params.mCount || params.mVertexBuffer.isNull())
     {
-        return;
+        return false;
     }
 
     LLFetchedGLTFMaterial* mat = params.mGLTFMaterial.get();
@@ -4672,6 +4676,7 @@ void pushGhostGLTFBatch(LLDrawInfo& params, LLFetchedGLTFMaterial*& last_mat,
                                     params.mEnd, params.mCount, params.mOffset);
 
     teardown_ghost_texture_matrix(params);
+    return true;
 }
 
 // Legacy-material rigged pass -> gDeferredMaterialProgram permutation index, or -1.
@@ -4761,14 +4766,15 @@ bool pushGhostMaterialBatch(LLDrawInfo& params, LLGLSLShader& shader)
 }
 
 // LLRenderPass::pushGLTFBatchIndexed (lldrawpool.cpp) minus applyModelMatrix.
-void pushGhostGLTFBatchIndexed(LLDrawInfo& params, LLRenderPass::eGLTFIndexedMaps maps)
+// Returns true iff the drawRange was actually issued.
+bool pushGhostGLTFBatchIndexed(LLDrawInfo& params, LLRenderPass::eGLTFIndexedMaps maps)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
 
     if (!params.mCount || params.mVertexBuffer.isNull()
         || params.mGLTFMaterialList.size() < 2)
     {
-        return;
+        return false;
     }
 
     const bool want_emissive = (maps == LLRenderPass::GLTF_MAPS_FULL || maps == LLRenderPass::GLTF_MAPS_GLOW);
@@ -4870,6 +4876,7 @@ void pushGhostGLTFBatchIndexed(LLDrawInfo& params, LLRenderPass::eGLTFIndexedMap
     // Deliberately no LLRenderPass::applyModelMatrix(params).
     params.mVertexBuffer->setBuffer();
     params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
+    return true;
 }
 
 // Composes view * T(foot) * R(rotation) * S(scale) * T(-pivot) onto the
@@ -4917,12 +4924,14 @@ public:
 };
 } // anonymous namespace
 
-bool LLPipeline::wasGhostDeferredSubmittedThisFrame(const LLUUID& instance_id) const
+GhostCoverageMask LLPipeline::getGhostDeferredCoverageThisFrame(const LLUUID& instance_id) const
 {
-    const U32 frame = LLFrameTimer::getFrameCount();
-    return mGhostDeferredSubmittedFrame == frame
-        && mGhostDeferredSubmittedInstances.find(instance_id)
-               != mGhostDeferredSubmittedInstances.end();
+    if (mGhostDeferredCoverageFrame != LLFrameTimer::getFrameCount())
+    {
+        return GHOST_COVERAGE_NONE;     // stale frame (or submission never ran)
+    }
+    auto it = mGhostDeferredCoverage.find(instance_id);
+    return it != mGhostDeferredCoverage.end() ? it->second : GHOST_COVERAGE_NONE;
 }
 
 void LLPipeline::renderGhostDeferredOpaqueMasked(const LLCamera& camera)
@@ -4941,10 +4950,10 @@ void LLPipeline::renderGhostDeferredOpaqueMasked(const LLCamera& camera)
     LLActorMover::GhostDeferredCounters& counters = mover.ghostDeferredCounters();
 
     const U32 frame = LLFrameTimer::getFrameCount();
-    if (mGhostDeferredSubmittedFrame != frame)
+    if (mGhostDeferredCoverageFrame != frame)
     {
-        mGhostDeferredSubmittedFrame = frame;
-        mGhostDeferredSubmittedInstances.clear();
+        mGhostDeferredCoverageFrame = frame;
+        mGhostDeferredCoverage.clear();
     }
 
     // Preserve the actual incoming colour mask (renderGeomDeferred exits with
@@ -4989,6 +4998,13 @@ void LLPipeline::renderGhostDeferredOpaqueMasked(const LLCamera& camera)
         ScopedGhostTransform transform(proxy);
 
         bool proxy_submitted = false;
+        // [Coverage] all-eligible-success rule: the RIGGED_SOLID coverage bit is
+        // set only when EVERY deferred-eligible batch of this clone actually drew.
+        // Partial success keeps the bit clear -> the overlay falls back to the
+        // full fullbright body (the deferred pixels are simply overdrawn) instead
+        // of leaving the failed batches as holes.
+        bool any_solid_draw = false;
+        bool all_solid_ok = true;
         LLGLSLShader* last_shader = nullptr;
         LLFetchedGLTFMaterial* last_gltf_material = nullptr;
         LLViewerTexture* last_gltf_texture = nullptr;
@@ -4996,12 +5012,16 @@ void LLPipeline::renderGhostDeferredOpaqueMasked(const LLCamera& camera)
         for (const LLActorMover::GhostBatch& batch : *proxy.mBatches)
         {
             LLDrawInfo* di = batch.mInfo;
-            if (!di || di->mVertexBuffer.isNull() || !di->mCount
-                || !di->mAvatar || !di->mSkinInfo)
+            if (!di)
             {
-                continue;
+                continue;   // no draw info: the overlay could not draw it either
             }
 
+            // ---- classify ELIGIBILITY first (pass whitelist), then validate ----
+            // Only deferred-eligible (rigged opaque/masked) batches count toward
+            // category completeness. Blend/glow passes skip penalty-free (other
+            // coverage categories); an overlay-SOLID pass deferred cannot cover
+            // (fullbright/shiny/bump) BLOCKS the bit -- see the default case.
             LLGLSLShader* shader = nullptr;
             bool legacy_textured = false;
             bool legacy_material = false;
@@ -5032,7 +5052,10 @@ void LLPipeline::renderGhostDeferredOpaqueMasked(const LLCamera& camera)
                 {
                     if (!di->mGLTFMaterial)
                     {
-                        continue;   // a null material would draw with stale uniforms
+                        // eligible but undrawable (stale uniforms otherwise):
+                        // category incomplete -> overlay keeps the full body
+                        all_solid_ok = false;
+                        continue;
                     }
                     shader = gDeferredPBROpaqueProgram.mRiggedVariant;
                     gltf_scalar = true;
@@ -5042,16 +5065,35 @@ void LLPipeline::renderGhostDeferredOpaqueMasked(const LLCamera& camera)
             default:
             {
                 // Legacy material passes (material/specmap/normmap/normspec, +mask/
-                // emissive). Excluded passes (blend/glow/...) return -1 -> skip.
+                // emissive). Excluded passes return -1: penalty-free ONLY when the
+                // overlay draws them in ANOTHER category (blend/glow). A pass the
+                // overlay classifies SOLID that deferred cannot cover (fullbright/
+                // shiny/bump/...) must block the RIGGED_SOLID bit -- suppression and
+                // coverage share one domain, or the suppressed solid sweep would
+                // leave those faces rendering NOWHERE (the hole class this whole
+                // slice exists to eliminate).
                 const S32 material_index = ghostMaterialShaderIndex(batch.mPass);
                 if (material_index < 0)
                 {
+                    if (!ghost_pass_is_blend(batch.mPass)
+                        && !ghost_pass_is_glow(batch.mPass))
+                    {
+                        all_solid_ok = false;   // overlay-solid, deferred-uncoverable
+                    }
                     continue;
                 }
                 shader = gDeferredMaterialProgram[material_index].mRiggedVariant;
                 legacy_material = true;
                 break;
             }
+            }
+
+            // ---- eligible from here on: any bail marks the category incomplete ----
+            if (di->mVertexBuffer.isNull() || !di->mCount
+                || !di->mAvatar || !di->mSkinInfo)
+            {
+                all_solid_ok = false;
+                continue;
             }
 
             if (!shader || !shader->isComplete())
@@ -5064,6 +5106,7 @@ void LLPipeline::renderGhostDeferredOpaqueMasked(const LLCamera& camera)
                         << "indexed PBR rigged shader unavailable; multi-material PBR "
                            "clone batches will be skipped" << LL_ENDL;
                 }
+                all_solid_ok = false;
                 continue;
             }
 
@@ -5090,9 +5133,11 @@ void LLPipeline::renderGhostDeferredOpaqueMasked(const LLCamera& camera)
             // avoids any palette-dedup cache crossing a shader switch).
             if (!LLRenderPass::uploadMatrixPalette(*di))
             {
+                all_solid_ok = false;
                 continue;
             }
 
+            bool drew = false;
             if (legacy_textured)
             {
                 // Masked passes need the per-batch cutoff uploaded to the bound
@@ -5102,35 +5147,53 @@ void LLPipeline::renderGhostDeferredOpaqueMasked(const LLCamera& camera)
                 {
                     shader->setMinimumAlpha(di->mAlphaMaskCutoff);
                 }
-                pushGhostBatch(*di, true);
+                drew = pushGhostBatch(*di, true);
             }
             else if (legacy_material)
             {
-                if (!pushGhostMaterialBatch(*di, *shader))
-                {
-                    continue;
-                }
+                drew = pushGhostMaterialBatch(*di, *shader);
             }
             else if (gltf_scalar)
             {
                 // Stock PBR deferred rendering enables framebuffer sRGB; scope it
                 // to this individual PBR draw.
                 LLGLEnable framebuffer_srgb(GL_FRAMEBUFFER_SRGB);
-                pushGhostGLTFBatch(*di, last_gltf_material, last_gltf_texture);
+                drew = pushGhostGLTFBatch(*di, last_gltf_material, last_gltf_texture);
             }
             else if (gltf_indexed)
             {
                 LLGLEnable framebuffer_srgb(GL_FRAMEBUFFER_SRGB);
-                pushGhostGLTFBatchIndexed(*di, LLRenderPass::GLTF_MAPS_FULL);
+                drew = pushGhostGLTFBatchIndexed(*di, LLRenderPass::GLTF_MAPS_FULL);
+            }
+
+            if (!drew)
+            {
+                all_solid_ok = false;
+                continue;
             }
 
             ++counters.mActualDrawCalls;
+            ++counters.mRiggedSolidDrawCalls;
+            any_solid_draw = true;
 
             if (!proxy_submitted)
             {
                 proxy_submitted = true;
-                ++counters.mProxiesSubmitted;
-                mGhostDeferredSubmittedInstances.insert(proxy.mInstanceId);
+                ++counters.mProxiesSubmitted;   // aggregate: >=1 deferred draw
+            }
+        }
+
+        // [Coverage] record the category as covered only on FULL success (see the
+        // all-eligible-success note above). Failed instances stay absent from the
+        // map, indistinguishable from never-submitted -- the overlay's zero-
+        // coverage fallback preserves the pre-slice behavior exactly.
+        if (any_solid_draw && all_solid_ok)
+        {
+            GhostCoverageMask& coverage = mGhostDeferredCoverage[proxy.mInstanceId];
+            if (!(coverage & GHOST_COVERAGE_RIGGED_SOLID))
+            {
+                coverage |= GHOST_COVERAGE_RIGGED_SOLID;
+                ++counters.mRiggedSolidInstancesSubmitted;
             }
         }
     }

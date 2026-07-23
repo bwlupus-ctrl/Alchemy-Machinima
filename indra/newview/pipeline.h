@@ -43,10 +43,12 @@
 #include "llrendertarget.h"
 #include "llreflectionmapmanager.h"
 #include "llheroprobemanager.h"
-#include "lluuid.h"                 // [GhostDeferred] submitted-instance set key
+#include "lluuid.h"                 // [GhostDeferred] coverage-map key
+#include "llghostcoverage.h"        // [GhostDeferred] per-category coverage mask
 
 #include <stack>
-#include <set>                      // [GhostDeferred] per-frame submitted-instance set
+#include <set>
+#include <map>                      // [GhostDeferred] per-frame instance->coverage map
 
 class LLViewerTexture;
 class LLFace;
@@ -359,9 +361,11 @@ public:
     // lit clones). Explicit camera so the hero-probe mirror pass can reuse it. No-op
     // unless GhostDeferredEnable is set; wrap in LLScopedGhostRenderInvariant.
     void renderGhostDeferredOpaqueMasked(const LLCamera& camera);
-    // True if `instance_id` drew at least one deferred clone batch THIS frame (the
-    // overlay uses this to avoid double-drawing it as a fullbright overlay).
-    bool wasGhostDeferredSubmittedThisFrame(const LLUUID& instance_id) const;
+    // [GhostDeferred] Which render categories of `instance_id` the deferred pass
+    // actually drew THIS frame (GHOST_COVERAGE_NONE on a stale frame / no draw).
+    // The overlay colors only the uncovered categories, so the scene-lit opaque
+    // body is not double-drawn while blended/glow/static faces still render.
+    GhostCoverageMask getGhostDeferredCoverageThisFrame(const LLUUID& instance_id) const;
     void renderGeomPostDeferred(LLCamera& camera);
     void renderGeomShadow(LLCamera& camera);
     // [BDMerge A5.4-1a] Velocity / motion-vector geometry pass. Re-rasterizes the
@@ -564,10 +568,12 @@ private:
     void unhideDrawable( LLDrawable *pDrawable );
     void skipRenderingShadows();
 
-    // [GhostDeferred] instances that successfully drew into the deferred G-buffer
-    // this frame (for overlay double-draw suppression). Rebuilt each frame.
-    U32 mGhostDeferredSubmittedFrame = 0;
-    std::set<LLUUID> mGhostDeferredSubmittedInstances;
+    // [GhostDeferred] per-instance coverage: which render CATEGORIES drew into
+    // the deferred G-buffer this frame (overlay suppression is per-category,
+    // never all-or-nothing -- see llghostcoverage.h). Rebuilt each frame; an
+    // instance with no successful category is absent (full overlay fallback).
+    U32 mGhostDeferredCoverageFrame = 0;
+    std::map<LLUUID, GhostCoverageMask> mGhostDeferredCoverage;
 public:
     enum {GPU_CLASS_MAX = 3 };
 

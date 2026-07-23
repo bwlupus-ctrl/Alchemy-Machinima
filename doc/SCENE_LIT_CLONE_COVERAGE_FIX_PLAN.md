@@ -18,11 +18,13 @@ head + PBR clothing now render scene-lit. Remaining issues DIAGNOSED by Codex (`
 "the whole instance drew," so blended + static faces get neither deferred nor overlay rendering.
 
 ## THE FULL FIX (what the user chose) — do via Codex loop, slice by slice
-1. **Coverage-aware suppression (foundation).** Replace the single per-instance `mGhostDeferredSubmittedInstances`
-   bit with per-CATEGORY coverage (e.g. `rigged_opaque`, `static`, `blend`). The overlay then renders
-   ONLY the categories the deferred pass did NOT cover (no double-draw of the lit opaque body; no holes).
-   Touches: pipeline.cpp submitted-tracking, llactormover.cpp renderStudioGhosts + drawGeometryGhost
-   (it already has SWEEP_SOLID/BLEND/GLOW subsets — draw only the uncovered subsets).
+1. **Coverage-aware suppression (foundation). ✅ DONE 2026-07-22 (Codex-designed, 0 must-fix).**
+   Five categories (`RIGGED_SOLID/BLEND/GLOW`, `STATIC_SOLID/BLEND`) in `llghostcoverage.h`; frame-
+   stamped `map<LLUUID,GhostCoverageMask>` in LLPipeline; ALL-ELIGIBLE-SUCCESS rule (bit only when
+   every overlay-solid batch deferred-drew — fullbright/shiny/bump block it, partial failure = full
+   fullbright fallback, never holes); prime always covers present solids; overlay colors only
+   `present & ~covered`; deferred queue now clone-style-only; per-category debug counters.
+   `ghost_pass_is_blend/glow` exported (one classification domain). AWAITING in-world test.
 2. **Blend slice (P5) — the proper scene-lit fix for hair/sheer clothing.** A forward-alpha deferred
    submission for BLENDED rigged faces (PASS_ALPHA_RIGGED, *_MATERIAL_ALPHA_RIGGED, *_BLEND_RIGGED, PBR
    ALPHA_MODE_BLEND), drawn AFTER renderDeferredLighting (forward-lit + depth-sorted), so blended layers
@@ -38,6 +40,8 @@ After 1-3, blend/hair/static all render (scene-lit), no holes.
 ## Follow-ons (separate projects, already designed)
 - **Locked/persistent clone** (fixes B + C properly + independence): OWNED snapshot — deep-copy VB +
   material VALUES + palette + COPY mutable BOM textures. Design in `doc/` (Codex B). L proof / XL full.
+  **RE-CONFIRMED in-world 2026-07-22 (screenshots, 21:37 exe): PBR UV misalign on helm/mask surfaces,
+  head bake smooth/featureless (live BOM not frozen), head-worn object textures off — all symptom B/C.**
 - **Non-self source-residency pin** (impostored/off-camera non-self): transient per-source-UUID pin
   gating isImpostor/shouldImpostor/computeUpdatePeriod/LOD. Design in Codex A consult.
 - **System-avatar body** (classic bodies / mesh-head-only): the LLDrawPoolAvatar renderSkinned path.

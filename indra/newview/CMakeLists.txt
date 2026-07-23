@@ -1083,6 +1083,7 @@ set(viewer_HEADER_FILES
     llcallingcard.h
     llcameraoperator.h
     llactormover.h
+    llghostcoverage.h
     llghostdeferreddiagnostics.h
     alghostmanipproxy.h
     alghoststudio.h
