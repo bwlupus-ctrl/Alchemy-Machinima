@@ -39,6 +39,7 @@
 #include "alpanelprofilelegacy.h"
 #include "llaccordionctrl.h"
 #include "llagent.h"
+#include "llghostavatar.h"      // LLGhostAvatar::isGhostId (client-only clone guard)
 #include "llappviewer.h"        // for gLastVersionChannel
 #include "llcachename.h"
 #include "llcallingcard.h"      // for LLAvatarTracker
@@ -113,6 +114,10 @@ void LLAvatarActions::requestFriendshipDialog(const LLUUID& id, const std::strin
         LLNotificationsUtil::add("AddSelfFriend");
         return;
     }
+    if (LLGhostAvatar::isGhostId(id))
+    {   // client-only ghost clone: synthetic id, never a friendship target
+        return;
+    }
 
     LLSD args;
     args["NAME"] = LLSLURL("agent", id, "completename").getSLURLString();
@@ -136,6 +141,10 @@ void LLAvatarActions::requestFriendshipDialog(const LLUUID& id)
 {
     if(id.isNull())
     {
+        return;
+    }
+    if (LLGhostAvatar::isGhostId(id))
+    {   // client-only ghost clone: no name-cache lookup, no friendship offer
         return;
     }
 

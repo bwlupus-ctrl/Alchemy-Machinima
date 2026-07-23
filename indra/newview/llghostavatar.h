@@ -94,6 +94,12 @@ public:
     virtual bool isImpostor() { return false; }
     virtual bool isBuddy() const { return false; }
 
+    // True if `id` resolves to a live client-only ghost clone. Convenience for the
+    // many "don't treat this UUID as a resident" guards across the viewer (pay,
+    // friendship, tracking, etc.) -- resolves via gObjectList so callers need only
+    // this header.
+    static bool isGhostId(const LLUUID& id);
+
     // ---------------------------------------------------------------------
     // MILESTONE 1 ACCEPTANCE GATE (/ghosttest)
     //

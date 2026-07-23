@@ -140,6 +140,17 @@ void LLGhostAvatar::setGhostPosition(const LLVector3& pos_agent)
     ghostSlamPosition(pos_agent);
 }
 
+//static
+bool LLGhostAvatar::isGhostId(const LLUUID& id)
+{
+    if (id.isNull())
+    {
+        return false;
+    }
+    LLViewerObject* obj = gObjectList.findObject(id);
+    return obj && obj->asAvatar() && obj->asAvatar()->isGhostAvatar();
+}
+
 bool LLGhostAvatar::cloneAppearanceFrom(LLVOAvatar* source)
 {
     return copyAppearanceFrom(source, true);

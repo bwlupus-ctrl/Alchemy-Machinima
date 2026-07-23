@@ -46,6 +46,7 @@
 #include "llstatusbar.h"
 #include "llviewerobject.h"
 #include "llviewerobjectlist.h"
+#include "llghostavatar.h"      // LLGhostAvatar::isGhostId (client-only clone guard)
 #include "llviewerregion.h"
 #include "llviewerwindow.h"
 #include "llbutton.h"
@@ -403,6 +404,10 @@ void LLFloaterPay::payDirectly(money_callback callback,
                                const LLUUID& target_id,
                                bool is_group)
 {
+    // A client-only ghost clone has a synthetic id -- never open a pay dialog for it.
+    if (!is_group && LLGhostAvatar::isGhostId(target_id))
+        return;
+
     LLFloaterPay *floater = LLFloaterReg::showTypedInstance<LLFloaterPay>("pay_resident", LLSD(target_id));
     if (!floater)
         return;
