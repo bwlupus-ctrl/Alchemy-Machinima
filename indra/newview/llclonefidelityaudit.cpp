@@ -427,13 +427,16 @@ bool bindingDiffers(const GhostAuditBinding& a, const GhostAuditBinding& b, std:
 bool colorBindingDiffers(const GhostAuditBinding& a, const GhostAuditBinding& b, std::string& why)
 {
     bool diff = false;
-    if (!a.mColor.sameBinding(b.mColor))  { why += "color "; diff = true; }
-    if (a.mAlphaCutoff != b.mAlphaCutoff) { why += "cutoff "; diff = true; }
-    // UV is deliberately NOT compared for statics: the static ghost overlay
-    // composes face->mTextureMatrix * KHR while the stock batch uses the
-    // material's KHR transform -- structurally different inputs whose hashes
-    // would false-flag even when the effective UV matches. (A future refinement
-    // could compare the composed effective UV.)
+    if (!a.mColor.sameBinding(b.mColor)) { why += "color "; diff = true; }
+    // COLOUR ONLY. The static (non-rigged) overlay resolves only the colour map;
+    // normal/spec/emissive are the source's data the unlit overlay ignores (the
+    // approximation gap, not a data divergence). UV + cutoff are also excluded:
+    // the ghost overlay's effective UV (face->mTextureMatrix * KHR) and cutoff
+    // (only meaningful on masked faces) do not share the stock batch's
+    // representation, so comparing them false-flags every GLTF/masked static
+    // face even when the bound colour texture is identical. The decisive
+    // question for a static clone -- "does it show the right colour texture?" --
+    // is fully answered by mColor.
     return diff;
 }
 
@@ -988,18 +991,36 @@ void LLCloneFidelityAudit::doLateAudit()
         }
     }
 
-    // SOURCE_ONLY_DROPPED: live records never claimed by a retained early record
+    // SOURCE_ONLY_DROPPED: live records never claimed by a retained early record.
+    // BUT suppress a live record whose VB+range matches a RETAINED early -- it is
+    // a deliberately deduped twin (e.g. PASS_GLTF_GLOW_RIGGED duplicate geometry
+    // sharing a base batch's VB/range), already accounted for by the retained
+    // batch and its DROP_DEDUP report. Without this, every clone whose source has
+    // PBR emissive/glow content would never report a clean PASS (false FAIL).
     for (const LiveRecord& rec : live_records)
     {
-        if (!rec.mMatched)
+        if (rec.mMatched) { continue; }
+
+        bool dedup_twin = false;
+        for (const GhostAuditBatch* r : retained_early)
         {
-            ++dropped;
-            diff_lines.push_back(llformat("SOURCE_ONLY_DROPPED pass=%u", rec.mValues.mPass));
-            LL_INFOS("CloneFidelity") << "instance-src=" << shortId(rec.mValues.mWearerId)
-                << " kind=rigged status=SOURCE_ONLY_DROPPED pass=" << rec.mValues.mPass
-                << " late_di=" << rec.mValues.mAddress
-                << " material=" << rec.mValues.mMaterialKind << LL_ENDL;
+            if (r->mWearerId == rec.mValues.mWearerId
+                && r->mVertexBuffer == rec.mValues.mVertexBuffer
+                && r->mStart == rec.mValues.mStart && r->mEnd == rec.mValues.mEnd
+                && r->mOffset == rec.mValues.mOffset)
+            {
+                dedup_twin = true;
+                break;
+            }
         }
+        if (dedup_twin) { continue; }   // deduped duplicate geometry, not omitted
+
+        ++dropped;
+        diff_lines.push_back(llformat("SOURCE_ONLY_DROPPED pass=%u", rec.mValues.mPass));
+        LL_INFOS("CloneFidelity") << "instance-src=" << shortId(rec.mValues.mWearerId)
+            << " kind=rigged status=SOURCE_ONLY_DROPPED pass=" << rec.mValues.mPass
+            << " late_di=" << rec.mValues.mAddress
+            << " material=" << rec.mValues.mMaterialKind << LL_ENDL;
     }
 
     // ---- static faces (COLOUR is the only thing the static overlay resolves) --
