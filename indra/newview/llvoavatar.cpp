@@ -2720,7 +2720,8 @@ void LLVOAvatar::idleUpdate(LLAgent &agent, const F64 &time)
         && !isUIAvatar()
         && !isControlAvatar()
         && !isSelf()
-        && !isBuddy())
+        && !isBuddy()
+        && !isGhostAvatar())   // a client-only clone is not a resident to filter
     {
         if (mNameText)
         {
@@ -4068,7 +4069,8 @@ bool LLVOAvatar::isVisuallyMuted()
     // * if on the "always draw normally" list, draw them normally
     // * if on the "always visually mute" list, mute them
     // * check against the render cost and attachment limits
-    if (!isSelf())
+    // * a client-only Ghost Studio clone is never visually muted
+    if (!isSelf() && !isGhostAvatar())
     {
         if (mVisuallyMuteSetting == AV_ALWAYS_RENDER)
         {
@@ -8905,7 +8907,8 @@ bool LLVOAvatar::updateIsFullyLoaded()
 
 void LLVOAvatar::updateRuthTimer(bool loading)
 {
-    if (isSelf() || !loading)
+    // A ghost's id is synthetic -- never emit a server avatar-textures request for it.
+    if (isSelf() || isGhostAvatar() || !loading)
     {
         return;
     }
@@ -9028,7 +9031,7 @@ bool LLVOAvatar::isTooComplex() const
     {
         too_complex = true;
     }
-    else if (isSelf() || render_friend || mVisuallyMuteSetting == AV_ALWAYS_RENDER)
+    else if (isSelf() || isGhostAvatar() || render_friend || mVisuallyMuteSetting == AV_ALWAYS_RENDER)
 // [/RLVa:KB]
 //  if (isSelf() || render_friend || mVisuallyMuteSetting == AV_ALWAYS_RENDER)
     {
@@ -9075,6 +9078,12 @@ bool LLVOAvatar::isTooSlow() const
         return mTooSlow;
     }
 
+    // A client-only ghost clone is never throttled as too-slow.
+    if (isGhostAvatar())
+    {
+        return false;
+    }
+
     static LLCachedControl<S32> complexity_render_mode(gSavedSettings, "RenderAvatarComplexityMode");
     static LLCachedControl<bool> friends_only(gSavedSettings, "RenderAvatarFriendsOnly", false);
     bool is_friend = isBuddy();
@@ -9100,6 +9109,11 @@ bool LLVOAvatar::isTooSlow() const
 void LLVOAvatar::updateTooSlow()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_AVATAR;
+    // A client-only ghost clone never participates in ART / too-slow accounting.
+    if (isGhostAvatar())
+    {
+        return;
+    }
     static LLCachedControl<S32> complexity_render_mode(gSavedSettings, "RenderAvatarComplexityMode");
     static LLCachedControl<bool> allowSelfImpostor(gSavedSettings, "AllowSelfImpostor");
 
@@ -11145,7 +11159,7 @@ void LLVOAvatar::cullAvatarsByPixelArea()
     for (LLCharacter* character : LLCharacter::sInstances)
     {
         LLVOAvatar* inst = (LLVOAvatar*)character;
-        bool culled = !inst->isSelf() && !inst->isFullyBaked();
+        bool culled = !inst->isSelf() && !inst->isGhostAvatar() && !inst->isFullyBaked();
 
         if (inst->mCulled != culled)
         {
@@ -11156,6 +11170,10 @@ void LLVOAvatar::cullAvatarsByPixelArea()
 
         if (inst->isSelf())
         {
+            inst->setVisibilityRank(1);
+        }
+        else if (inst->isGhostAvatar())
+        {   // a client-only clone never consumes an impostor rank slot
             inst->setVisibilityRank(1);
         }
         else if (inst->mDrawable.notNull() && inst->mDrawable->isVisible())
@@ -11560,7 +11578,7 @@ void LLVOAvatar::idleUpdateRenderComplexity()
     // Render Complexity
     calculateUpdateRenderComplexity(); // Update mVisualComplexity if needed
 
-    bool autotune = LLPerfStats::tunables.userAutoTuneEnabled && !mIsControlAvatar && !isSelf();
+    bool autotune = LLPerfStats::tunables.userAutoTuneEnabled && !mIsControlAvatar && !isSelf() && !isGhostAvatar();
     if (autotune && !isDead())
     {
         F32 radius = sRenderDistance * sRenderDistance;
@@ -11599,7 +11617,7 @@ void LLVOAvatar::updateNearbyAvatarCount()
         for (LLCharacter* character : LLCharacter::sInstances)
         {
             LLVOAvatar* avatar = (LLVOAvatar*)character;
-            if (!avatar->isDead() && !avatar->isControlAvatar())
+            if (!avatar->isDead() && !avatar->isControlAvatar() && !avatar->isGhostAvatar())
             {
                 if ((dist_vec_squared(avatar->getPositionGlobal(), gAgent.getPositionGlobal()) <= radius) ||
                     (dist_vec_squared(avatar->getPositionGlobal(), gAgentCamera.getCameraPositionGlobal()) <= radius))
@@ -12139,7 +12157,7 @@ LLVOAvatar::AvatarOverallAppearance LLVOAvatar::getOverallAppearance() const
     // * if on the "always visually mute" list, show as jellydoll
     // * if explicitly muted (blocked), show as invisible
     // * check against the render cost and attachment limits - if too complex, show as jellydoll
-    if (isSelf())
+    if (isSelf() || isGhostAvatar())
     {
         result = AOA_NORMAL;
     }

@@ -1354,7 +1354,7 @@ void LLWorld::getAvatars(uuid_vec_t* avatar_ids, std::vector<LLVector3d>* positi
     for (LLCharacter* character : LLCharacter::sInstances)
     {
         LLVOAvatar* avatar = (LLVOAvatar*)character;
-        if (!avatar->isDead() && !avatar->mIsDummy && !avatar->isOrphaned())
+        if (!avatar->isDead() && !avatar->mIsDummy && !avatar->isGhostAvatar() && !avatar->isOrphaned())
         {
             LLVector3d pos_global = avatar->getPositionGlobal();
             LLUUID uuid = avatar->getID();
@@ -1414,7 +1414,7 @@ void LLWorld::getAvatars(pos_map_t* umap, const LLVector3d& relative_to, F32 rad
     {
         LLVOAvatar* pVOAvatar = static_cast<LLVOAvatar*>(instance);
 
-        if (!pVOAvatar->isDead() && !pVOAvatar->mIsDummy && !pVOAvatar->isOrphaned())
+        if (!pVOAvatar->isDead() && !pVOAvatar->mIsDummy && !pVOAvatar->isGhostAvatar() && !pVOAvatar->isOrphaned())
         {
             LLVector3d pos_global = pVOAvatar->getPositionGlobal();
             LLUUID uuid = pVOAvatar->getID();
@@ -1460,7 +1460,7 @@ void LLWorld::getAvatars(region_gpos_map_t* umap, const LLVector3d& relative_to,
     {
         LLVOAvatar* pVOAvatar = static_cast<LLVOAvatar*>(instance);
 
-        if (!pVOAvatar->isDead() && !pVOAvatar->mIsDummy && !pVOAvatar->isOrphaned())
+        if (!pVOAvatar->isDead() && !pVOAvatar->mIsDummy && !pVOAvatar->isGhostAvatar() && !pVOAvatar->isOrphaned())
         {
             LLUUID uuid = pVOAvatar->getID();
             auto region = pVOAvatar->getRegion();
@@ -1500,7 +1500,7 @@ F32 LLWorld::getNearbyAvatarsAndMaxGPUTime(std::vector<LLVOAvatar*> &valid_nearb
     for (LLCharacter* character : LLCharacter::sInstances)
     {
         LLVOAvatar* avatar = (LLVOAvatar*)character;
-        if (!avatar->isDead() && !avatar->isControlAvatar())
+        if (!avatar->isDead() && !avatar->isControlAvatar() && !avatar->isGhostAvatar())
         {
             if ((dist_vec_squared(avatar->getPositionGlobal(), gAgent.getPositionGlobal()) <= radius) ||
                 (dist_vec_squared(avatar->getPositionGlobal(), gAgentCamera.getCameraPositionGlobal()) <= radius))
