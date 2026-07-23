@@ -4471,6 +4471,20 @@ bool ghost_pass_is_glow(U32 pass)
     return pass == LLRenderPass::PASS_GLTF_GLOW_RIGGED;
 }
 
+// Sweep-class of a rigged pass. The three overlay sweeps (SOLID / BLEND / GLOW)
+// and the deferred coverage accounting each draw a DISJOINT partition of the
+// harvested batches, so one VB+range may legitimately appear once PER class --
+// most importantly a PBR-emissive face draws in its base SOLID pass AND again,
+// additively, in the GLOW pass. Composed from the shared is_glow/is_blend
+// predicates so it can never drift from the sweeps or the coverage domain.
+// (Local to this TU -- unlike is_glow/is_blend it is not shared via the header.)
+static int ghost_pass_sweep_class(U32 pass)
+{
+    if (ghost_pass_is_glow(pass))  { return 2; }
+    if (ghost_pass_is_blend(pass)) { return 1; }
+    return 0;   // solid: opaque + cutoff-masked
+}
+
 // ---------------------------------------------------------------------------
 void LLActorMover::renderHeadingPreview()
 {
@@ -5222,12 +5236,21 @@ void LLActorMover::collectGhostBatches()
                 // by construction (animesh included -- those draw infos carry the
                 // attachment's own control avatar as mAvatar), so no owner check.
                 LLDrawInfo* di = draw_info.get();
+                // Dedup is per SWEEP-CLASS, not pass-blind: a VB+range twin is a
+                // true duplicate only WITHIN the same sweep (SOLID/BLEND/GLOW). A
+                // different-class twin -- notably the PASS_GLTF_GLOW_RIGGED additive
+                // draw sharing a base batch's VB/range -- is REAL geometry the clone's
+                // glow sweep must draw. The old pass-blind dedup dropped it, so
+                // emissive/glow content rendered WITHOUT its glow (the Clone Fidelity
+                // Audit flagged exactly this as DROP_DEDUP). Same-class twins still
+                // collapse to the first seen, so no sweep ever double-draws a slice.
                 bool dup = false;
                 for (const GhostBatch& b : bucket)
                 {
                     if (b.mInfo->mVertexBuffer.get() == di->mVertexBuffer.get()
                         && b.mInfo->mStart == di->mStart && b.mInfo->mEnd == di->mEnd
-                        && b.mInfo->mOffset == di->mOffset)
+                        && b.mInfo->mOffset == di->mOffset
+                        && ghost_pass_sweep_class(b.mPass) == ghost_pass_sweep_class(pass))
                     {
                         dup = true;
                         break;
