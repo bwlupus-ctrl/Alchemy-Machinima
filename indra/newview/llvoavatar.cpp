@@ -993,7 +993,7 @@ bool LLVOAvatar::areAllNearbyInstancesBaked(S32& grey_avatars)
     for (LLCharacter* character : LLCharacter::sInstances)
     {
         LLVOAvatar* inst = (LLVOAvatar*)character;
-        if (!inst->isDead() && inst->mHasGrey && !inst->isFullyBaked())
+        if (!inst->isDead() && !inst->isGhostAvatar() && inst->mHasGrey && !inst->isFullyBaked())
         {
             ++grey_avatars;
         }
@@ -1015,7 +1015,7 @@ void LLVOAvatar::getNearbyRezzedStats(std::vector<S32>& counts, F32& avg_cloud_t
     for (LLCharacter* character : LLCharacter::sInstances)
     {
         LLVOAvatar* inst = (LLVOAvatar*)character;
-        if (inst && !inst->isUIAvatar() && !inst->isSelf())
+        if (inst && !inst->isUIAvatar() && !inst->isSelf() && !inst->isGhostAvatar())
         {
             if (inst->isControlAvatar())
             {
@@ -1078,6 +1078,7 @@ void LLVOAvatar::dumpBakedStatus()
     for (LLCharacter* character : LLCharacter::sInstances)
     {
         LLVOAvatar* inst = (LLVOAvatar*)character;
+        if (inst->isGhostAvatar()) continue;   // client-only clone, not a resident
         LL_INFOS() << "Avatar ";
 
         LLNameValue* firstname = inst->getNVPair("FirstName");
@@ -3413,6 +3414,12 @@ void LLVOAvatar::idleUpdateNameTag(const LLVector3& root_pos_last)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_AVATAR;
 
+    // A client-only ghost clone has no resident identity -- no name tag.
+    if (isGhostAvatar())
+    {
+        return;
+    }
+
     // update chat bubble
     //--------------------------------------------------------------------
     // draw text label over character's head
@@ -4458,7 +4465,7 @@ void LLVOAvatar::updateFootstepSounds()
     const LLUUID AGENT_FOOTSTEP_ANIMS[] = {ANIM_AGENT_WALK, ANIM_AGENT_RUN, ANIM_AGENT_LAND};
     const S32 NUM_AGENT_FOOTSTEP_ANIMS = LL_ARRAY_SIZE(AGENT_FOOTSTEP_ANIMS);
 
-    if ( gAudiop && isAnyAnimationSignaled(AGENT_FOOTSTEP_ANIMS, NUM_AGENT_FOOTSTEP_ANIMS) )
+    if ( gAudiop && !isGhostAvatar() && isAnyAnimationSignaled(AGENT_FOOTSTEP_ANIMS, NUM_AGENT_FOOTSTEP_ANIMS) )
     {
         bool playSound = false;
         LLVector3 foot_pos_agent;
@@ -4513,6 +4520,12 @@ void LLVOAvatar::updateFootstepSounds()
 // ------------------------------------------------------------------------
 void LLVOAvatar::computeUpdatePeriod()
 {
+    // A client-only ghost clone always updates every frame (never impostor-throttled).
+    if (isGhostAvatar())
+    {
+        mUpdatePeriod = 1;
+        return;
+    }
     bool visually_muted = isVisuallyMuted();
     if (mDrawable.notNull()
         && isVisible()
@@ -4755,7 +4768,7 @@ void LLVOAvatar::updateOrientation(LLAgent& agent, F32 speed, F32 delta_time)
 // ------------------------------------------------------------------------
 void LLVOAvatar::updateTimeStep()
 {
-    if (!isSelf() && !isUIAvatar()) // ie, non-self avatars, and animated objects will be affected.
+    if (!isSelf() && !isUIAvatar() && !isGhostAvatar()) // ie, non-self avatars, and animated objects will be affected.
     {
         // Note that sInstances counts animated objects and
         // standard avatars in the same bucket. Is this desirable?
@@ -6431,7 +6444,7 @@ bool LLVOAvatar::processSingleAnimationStateChange( const LLUUID& anim_id, bool 
     {
         if (anim_id == ANIM_AGENT_TYPE)
         {
-            if (gAudiop && gSavedSettings.getBOOL("AlchemyPlayTypingSound"))
+            if (gAudiop && !isGhostAvatar() && gSavedSettings.getBOOL("AlchemyPlayTypingSound"))
             {
                 LLVector3d char_pos_global = gAgent.getPosGlobalFromAgent(getCharacterPosition());
                 if (LLViewerParcelMgr::getInstance()->canHearSound(char_pos_global)
@@ -8815,7 +8828,7 @@ void LLVOAvatar::logPendingPhasesAllAvatars()
     for (LLCharacter* character : LLCharacter::sInstances)
     {
         LLVOAvatar* avatar = (LLVOAvatar*)character;
-        if (!avatar->isDead())
+        if (!avatar->isDead() && !avatar->isGhostAvatar())
         {
             avatar->logPendingPhases();
         }
@@ -11136,7 +11149,7 @@ S32 LLVOAvatar::getUnbakedPixelAreaRank()
         }
 
         LLVOAvatar* avatar = (LLVOAvatar*)character;
-        if (!avatar->isDead() && !avatar->isFullyBaked())
+        if (!avatar->isDead() && !avatar->isGhostAvatar() && !avatar->isFullyBaked())
         {
             rank++;
         }
@@ -11475,7 +11488,7 @@ bool LLVOAvatar::isImpostor()
 
 bool LLVOAvatar::shouldImpostor(const F32 rank_factor)
 {
-    if (isSelf())
+    if (isSelf() || isGhostAvatar())
     {
         return false;
     }
@@ -12413,6 +12426,7 @@ F32 LLVOAvatar::getTotalGPURenderTime()
 
     for (LLCharacter* character : LLCharacter::sInstances)
     {
+        if (((LLVOAvatar*)character)->isGhostAvatar()) continue;
         ret += ((LLVOAvatar*)character)->getGPURenderTime();
     }
 
@@ -12427,6 +12441,7 @@ F32 LLVOAvatar::getMaxGPURenderTime()
 
     for (LLCharacter* character : LLCharacter::sInstances)
     {
+        if (((LLVOAvatar*)character)->isGhostAvatar()) continue;
         ret = llmax(((LLVOAvatar*)character)->getGPURenderTime(), ret);
     }
 

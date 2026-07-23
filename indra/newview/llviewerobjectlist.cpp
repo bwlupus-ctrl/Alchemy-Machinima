@@ -968,7 +968,7 @@ void LLViewerObjectList::update(LLAgent &agent)
                     idle_list[idle_count] = objectp;
                 }
                 ++idle_count;
-                if (objectp->isAvatar())
+                if (objectp->isAvatar() && !((LLVOAvatar*)objectp)->isGhostAvatar())
                 {
                     mNumAvatars++;
                 }

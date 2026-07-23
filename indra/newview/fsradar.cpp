@@ -325,6 +325,11 @@ void FSRadar::updateRadarList()
         // Try to get the avatar's viewer object - we will need it anyway later
         LLVOAvatar* avVo = static_cast<LLVOAvatar*>(gObjectList.findObject(avId));
 
+        if (avVo && avVo->isGhostAvatar())
+        {
+            continue;   // client-only scene-lit clone, never a radar resident
+        }
+
         static LLUICachedControl<bool> sFSShowDummyAVsinRadar("FSShowDummyAVsinRadar", false);
         if (!sFSShowDummyAVsinRadar && avVo && avVo->mIsDummy)
         {
