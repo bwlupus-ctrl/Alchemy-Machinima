@@ -481,7 +481,12 @@ void LLAgentListener::getAutoPilot(const LLSD& event_data) const
 
     reply["target_global"] = ll_sd_from_vector3d(mAgent.getAutoPilotTargetGlobal());
 
-    reply["leader_id"] = mAgent.getAutoPilotLeaderID();
+    {   // Never expose a client-only ghost clone as the autopilot leader.
+        const LLUUID leader = mAgent.getAutoPilotLeaderID();
+        LLViewerObject* leader_obj = leader.notNull() ? gObjectList.findObject(leader) : nullptr;
+        const bool leader_ghost = leader_obj && leader_obj->asAvatar() && leader_obj->asAvatar()->isGhostAvatar();
+        reply["leader_id"] = leader_ghost ? LLUUID::null : leader;
+    }
 
     reply["stop_distance"] = mAgent.getAutoPilotStopDistance();
 
@@ -490,7 +495,7 @@ void LLAgentListener::getAutoPilot(const LLSD& event_data) const
         mFollowTarget.notNull())
     {   // Get an actual distance from the target object we were following
         LLViewerObject * target = gObjectList.findObject(mFollowTarget);
-        if (target)
+        if (target && !(target->asAvatar() && target->asAvatar()->isGhostAvatar()))
         {   // Found the target AV, return the actual distance to them as well as their ID
             LLVector3 difference = target->getPositionRegion() - mAgent.getPositionAgent();
             reply["target_distance"] = difference.length();
@@ -553,10 +558,15 @@ void LLAgentListener::startFollowPilot(LLSD const & event_data)
         stop_distance = (F32)event_data["stop_distance"].asReal();
     }
 
-    if (!gObjectList.findObject(target_id))
+    LLViewerObject* target_obj = gObjectList.findObject(target_id);
+    if (!target_obj)
     {
         std::string target_info = event_data.has("leader_id") ? event_data["leader_id"] : event_data["avatar_name"];
         return response.error(stringize("Target ", std::quoted(target_info), " was not found"));
+    }
+    if (target_obj->asAvatar() && target_obj->asAvatar()->isGhostAvatar())
+    {   // A client-only ghost clone is not a followable resident.
+        return response.error("Target is a client-only ghost clone and cannot be followed");
     }
 
     mAgent.setFlying(allow_flying);
@@ -595,6 +605,12 @@ void LLAgentListener::lookAt(LLSD const & event_data) const
     {
         LLVector3 target_position = ll_vector3_from_sd(event_data["position"]);
         object = findObjectClosestTo(target_position);
+    }
+
+    // Never look at a client-only ghost clone (via obj_uuid or nearest-position).
+    if (object && object->asAvatar() && object->asAvatar()->isGhostAvatar())
+    {
+        object = NULL;
     }
 
     S32 look_at_type = (S32) LOOKAT_TARGET_NONE;
