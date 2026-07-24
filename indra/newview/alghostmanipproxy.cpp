@@ -236,6 +236,10 @@ void ALGhostManipProxy::pullProxyToInstance()
     }
     // Write fields DIRECTLY (no mTransformRevision bump) -- a bump would make the
     // next non-drag tick push straight back to the proxy, fighting the drag.
+    if (inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+    {
+        inst->mChaosHasBase = false;
+    }
 
     // STRETCH drag: derive a UNIFORM ghost scale from the proxy box height, and
     // KEEP the drag-start foot/rotation so the feet stay planted. Stock scale is
@@ -244,6 +248,10 @@ void ALGhostManipProxy::pullProxyToInstance()
     // only (never writes the proxy mid-drag), so it doesn't fight LLManipScale.
     if (LLToolMgr::getInstance()->getCurrentTool() == LLToolCompScale::getInstance())
     {
+        if (inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+        {
+            return; // entity scale remains exclusively on the outer transform
+        }
         const F32 s = llclamp(mProxy->getScale().mV[VZ] / PROXY_HEIGHT, 0.05f, 10.f);
         inst->mScale      = s;
         inst->mFootGlobal = mDragStartFoot;
@@ -268,6 +276,10 @@ void ALGhostManipProxy::pullProxyToInstance()
         // uses the SCALED box height).
         const F32 h = PROXY_HEIGHT * llclamp(inst->mScale, 0.05f, 10.f);
         inst->mFootGlobal = footFromProxyCenter(mProxy->getPositionGlobal(), rotation, h);
+    }
+    if (inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+    {
+        ALGhostStudio::instance().applyEntityTransform(inst->mId);
     }
 }
 
@@ -425,6 +437,10 @@ void ALGhostManipProxy::tick()
         if (inst->mTransformRevision != mSeenRevision)
         {
             pushInstanceToProxy();
+            if (inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+            {
+                studio.applyEntityTransform(inst->mId);
+            }
             mSeenRevision = inst->mTransformRevision;
         }
     }

@@ -529,7 +529,7 @@
              class="panel_ghost_studio"
              filename="panel_ghost_studio.xml"
              follows="left|top|right"
-             height="440"
+             height="534"
              layout="topleft"
              left="0"
              name="ghost_studio_panel"

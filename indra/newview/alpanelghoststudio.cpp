@@ -11,6 +11,7 @@
 
 #include "alpanelghoststudio.h"
 
+#include "alcompassdial.h"          // live direct-manipulation heading control
 #include "alghoststudio.h"
 #include "altoolghostedit.h"        // [R2-3] persistent in-world edit mode
 #include "altoolghostplace.h"
@@ -20,8 +21,11 @@
 #include "llbutton.h"
 #include "llcheckboxctrl.h"
 #include "llcombobox.h"
+#include "llflyoutbutton.h"
 #include "lldirectorcast.h"         // source picker = the cast
 #include "lljoint.h"
+#include "lllineeditor.h"
+#include "llghostavatar.h"
 #include "llscrolllistctrl.h"
 #include "llsliderctrl.h"
 #include "llspinctrl.h"
@@ -50,6 +54,30 @@ const char* style_name(S32 style)
     default: return "Ghost";
     }
 }
+
+const char* kind_name(ALGhostStudio::EBackingKind kind)
+{
+    return kind == ALGhostStudio::BACKING_ENTITY_CLONE ? "Entity" : "Overlay";
+}
+
+const char* state_name(const ALGhostStudio::Instance& inst)
+{
+    switch (inst.mState)
+    {
+    case ALGhostStudio::STATE_SPAWNING:       return "spawning";
+    case ALGhostStudio::STATE_SOURCE_MISSING: return "source-missing";
+    case ALGhostStudio::STATE_LOCKED:         return "locked";
+    case ALGhostStudio::STATE_TEARING_DOWN:   return "teardown";
+    case ALGhostStudio::STATE_ERROR:           return "error";
+    default:
+        if (inst.mKind == ALGhostStudio::BACKING_ENTITY_CLONE &&
+            inst.mDriveMode == ALGhostStudio::DRIVE_FROZEN)
+        {
+            return "frozen";
+        }
+        return inst.mPose == ALGhostStudio::POSE_FROZEN ? "frozen" : "live";
+    }
+}
 } // anonymous namespace
 
 ALPanelGhostStudio::ALPanelGhostStudio() = default;
@@ -63,15 +91,23 @@ bool ALPanelGhostStudio::postBuild()
     mHint          = getChild<LLTextBox>("studio_hint");
     mList         = getChild<LLScrollListCtrl>("ghost_list");
     mSourceCombo  = getChild<LLComboBox>("source_combo");
-    mAddBtn       = getChild<LLButton>("btn_ghost_add");
+    mAddBtn       = getChild<LLFlyoutButton>("btn_ghost_add");
     mDupBtn       = getChild<LLButton>("btn_ghost_dup");
     mDelBtn       = getChild<LLButton>("btn_ghost_del");
+    mRefreshBtn   = getChild<LLButton>("btn_ghost_refresh");
+    mTypeText     = getChild<LLTextBox>("ghost_type");
+    mNameEdit     = getChild<LLLineEditor>("ghost_name");
 
     mPosX      = getChild<LLSpinCtrl>("pos_x_spinner");
     mPosY      = getChild<LLSpinCtrl>("pos_y_spinner");
     mPosZ      = getChild<LLSpinCtrl>("pos_z_spinner");
+    mHeadingDial = getChild<ALCompassDial>("heading_dial");
     mYawSpin   = getChild<LLSpinCtrl>("yaw_spinner");
     mScaleSpin = getChild<LLSpinCtrl>("scale_spinner");
+    mChaosCheck = getChild<LLCheckBoxCtrl>("chaos_check");
+    mChaosSlider = getChild<LLSliderCtrl>("chaos_slider");
+    mDriveModeCombo = getChild<LLComboBox>("drive_mode_combo");
+    mDirectedAnimEdit = getChild<LLLineEditor>("directed_anim_editor");
     mPlaceBtn  = getChild<LLButton>("btn_place");
     mToActorBtn = getChild<LLButton>("btn_to_actor");
     mToMeBtn   = getChild<LLButton>("btn_to_me");
@@ -85,6 +121,7 @@ bool ALPanelGhostStudio::postBuild()
     mPixelSlider    = getChild<LLSliderCtrl>("pixel_slider");
     mGlitchSlider   = getChild<LLSliderCtrl>("glitch_slider");
     mBrightnessSlider = getChild<LLSliderCtrl>("brightness_slider");
+    mEntityLookCombo = getChild<LLComboBox>("entity_look_combo");
 
     mFreezeBtn  = getChild<LLButton>("btn_freeze");
     mLiveBtn    = getChild<LLButton>("btn_live");
@@ -102,14 +139,24 @@ bool ALPanelGhostStudio::postBuild()
     mList->setCommitCallback([this](LLUICtrl*, const LLSD&) { onListSelect(); });
     mList->setDoubleClickCallback([this]() { onListDoubleClick(); });
     mAddBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickAdd(); });
+    mNameEdit->setCommitCallback([this](LLUICtrl*, const LLSD&) { onNameCommit(); });
     mDupBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickDuplicate(); });
     mDelBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickDelete(); });
+    mRefreshBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickRefresh(); });
 
     mPosX->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPosCommit(); });
     mPosY->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPosCommit(); });
     mPosZ->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPosCommit(); });
+    // ALCompassDial commits on mouse-down and every hover while captured, so
+    // this is deliberately the live-drag callback (same idiom as Actor Mover).
+    mHeadingDial->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onHeadingDialCommit(); });
     mYawSpin->setCommitCallback([this](LLUICtrl*, const LLSD&) { onYawCommit(); });
     mScaleSpin->setCommitCallback([this](LLUICtrl*, const LLSD&) { onScaleCommit(); });
+    mChaosCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onChaosCommit(); });
+    mChaosSlider->setCommitCallback([this](LLUICtrl*, const LLSD&) { onChaosCommit(); });
+    mDriveModeCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onDriveModeCommit(); });
+    mDirectedAnimEdit->setCommitCallback([this](LLUICtrl*, const LLSD&) { onDirectedAnimCommit(); });
     mPlaceBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickPlace(); });
     mToActorBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickToActor(); });
     mToMeBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickToMe(); });
@@ -123,6 +170,7 @@ bool ALPanelGhostStudio::postBuild()
     mPixelSlider->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPixelCommit(); });
     mGlitchSlider->setCommitCallback([this](LLUICtrl*, const LLSD&) { onGlitchCommit(); });
     mBrightnessSlider->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBrightnessCommit(); });
+    mEntityLookCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onEntityLookCommit(); });
 
     mFreezeBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickFreeze(); });
     mLiveBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickLive(); });
@@ -159,6 +207,10 @@ std::string ALPanelGhostStudio::sourceName(const LLUUID& id)
             return m->mLastName;
         }
     }
+    if (LLGhostAvatar::isGhostId(id))
+    {
+        return std::string("Entity clone ") + id.asString().substr(0, 8);
+    }
     if (LLAvatarName av_name; LLAvatarNameCache::get(id, &av_name))
     {
         return av_name.getCompleteName();
@@ -176,6 +228,7 @@ LLUUID ALPanelGhostStudio::selectedInstance() const
 void ALPanelGhostStudio::draw()
 {
     ALGhostStudio& studio = ALGhostStudio::instance();
+    studio.refreshLifecycleStates();
 
     // keep the master check honest against external state
     if (mShowAllCheck->get() != studio.getShowAll())
@@ -271,7 +324,10 @@ void ALPanelGhostStudio::refreshList()
     for (const ALGhostStudio::Instance& inst : studio.getInstances())
     {
         sig += inst.mId.asString();
+        sig += inst.mName;
         sig += inst.mEnabled ? '+' : '-';
+        sig += kind_name(inst.mKind);
+        sig += state_name(inst);
         sig += style_name(inst.mStyle);
         sig += (inst.mPose == ALGhostStudio::POSE_FROZEN) ? 'F' : 'L';
         sig += sourceName(inst.mSource);
@@ -291,12 +347,20 @@ void ALPanelGhostStudio::refreshList()
         row["value"] = inst.mId;
         row["columns"][0]["column"] = "on";
         row["columns"][0]["value"] = inst.mEnabled ? "\xE2\x97\x8F" : "\xE2\x97\x8B";  // filled / hollow dot
-        row["columns"][1]["column"] = "source";
-        row["columns"][1]["value"] = sourceName(inst.mSource);
-        row["columns"][2]["column"] = "style";
-        row["columns"][2]["value"] = style_name(inst.mStyle);
-        row["columns"][3]["column"] = "pose";
-        row["columns"][3]["value"] = (inst.mPose == ALGhostStudio::POSE_FROZEN)
+        row["columns"][1]["column"] = "name";
+        row["columns"][1]["value"] = inst.mName;
+        row["columns"][2]["column"] = "kind";
+        row["columns"][2]["value"] = kind_name(inst.mKind);
+        row["columns"][3]["column"] = "state";
+        row["columns"][3]["value"] = state_name(inst);
+        row["columns"][4]["column"] = "source";
+        row["columns"][4]["value"] = inst.mSourceLabel.empty()
+            ? sourceName(inst.mSource) : inst.mSourceLabel;
+        row["columns"][5]["column"] = "style";
+        row["columns"][5]["value"] = inst.mKind == ALGhostStudio::BACKING_ENTITY_CLONE
+            ? std::string("Scene-lit") : std::string(style_name(inst.mStyle));
+        row["columns"][6]["column"] = "pose";
+        row["columns"][6]["value"] = (inst.mPose == ALGhostStudio::POSE_FROZEN)
             ? std::string("FROZEN") : std::string("live");
         mList->addElement(row, ADD_BOTTOM);
     }
@@ -312,39 +376,65 @@ void ALPanelGhostStudio::refreshDetail()
     const LLUUID sel = selectedInstance();
     ALGhostStudio::Instance* inst = studio.getInstance(sel);
     const bool have = inst != nullptr;
+    const bool overlay = have && inst->mKind == ALGhostStudio::BACKING_OVERLAY;
 
     // enables (the add row is always live; everything else needs a selection)
-    mDupBtn->setEnabled(have);
+    mDupBtn->setEnabled(overlay);
     mDelBtn->setEnabled(have);
+    mNameEdit->setEnabled(have);
     mPosX->setEnabled(have);
     mPosY->setEnabled(have);
     mPosZ->setEnabled(have);
+    mHeadingDial->setEnabled(have);
     mYawSpin->setEnabled(have);
     mScaleSpin->setEnabled(have);
-    mPlaceBtn->setEnabled(have);
-    mToActorBtn->setEnabled(have);
-    mToMeBtn->setEnabled(have);
-    mStyleCombo->setEnabled(have);
-    mActorTintCheck->setEnabled(have);
-    mHueSlider->setEnabled(have && !mActorTintCheck->get());
-    mAlphaSlider->setEnabled(have);
-    mShimmerSpeedSlider->setEnabled(have);
-    mShimmerAmountSlider->setEnabled(have);
-    mPixelSlider->setEnabled(have);
-    mGlitchSlider->setEnabled(have);
-    mBrightnessSlider->setEnabled(have);
-    mFreezeBtn->setEnabled(have);
-    mLiveBtn->setEnabled(have && inst->mPose == ALGhostStudio::POSE_FROZEN);
-    mArrayCount->setEnabled(have);
-    mArraySpacing->setEnabled(have);
-    mArrayLineBtn->setEnabled(have);
-    mArrayRingBtn->setEnabled(have);
+    const bool entity = have && inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE;
+    mRefreshBtn->setVisible(entity);
+    mRefreshBtn->setEnabled(entity);
+    std::string type = "Type: No selection";
+    if (overlay)
+    {
+        type = "Type: Overlay ghost";
+    }
+    else if (entity)
+    {
+        type = std::string("Type: Entity clone \xC2\xB7 ") + state_name(*inst);
+    }
+    if (mTypeText->getText() != type)
+    {
+        mTypeText->setText(type);
+    }
+    mChaosCheck->setEnabled(entity);
+    mChaosSlider->setEnabled(entity && inst->mChaosEnabled);
+    mEntityLookCombo->setEnabled(entity);
+    mDriveModeCombo->setEnabled(entity);
+    mDirectedAnimEdit->setEnabled(entity &&
+        inst->mDriveMode == ALGhostStudio::DRIVE_DIRECTED);
+    mPlaceBtn->setEnabled(overlay);
+    mToActorBtn->setEnabled(overlay);
+    mToMeBtn->setEnabled(overlay);
+    mStyleCombo->setEnabled(overlay);
+    mActorTintCheck->setEnabled(overlay);
+    mHueSlider->setEnabled(overlay && !mActorTintCheck->get());
+    mAlphaSlider->setEnabled(overlay);
+    mShimmerSpeedSlider->setEnabled(overlay);
+    mShimmerAmountSlider->setEnabled(overlay);
+    mPixelSlider->setEnabled(overlay);
+    mGlitchSlider->setEnabled(overlay);
+    mBrightnessSlider->setEnabled(overlay);
+    mFreezeBtn->setEnabled(overlay);
+    mLiveBtn->setEnabled(overlay && inst->mPose == ALGhostStudio::POSE_FROZEN);
+    mArrayCount->setEnabled(overlay);
+    mArraySpacing->setEnabled(overlay);
+    mArrayLineBtn->setEnabled(overlay);
+    mArrayRingBtn->setEnabled(overlay);
 
     if (!have)
     {
         if (mShownFor.notNull())
         {
             mShownFor.setNull();
+            mNameEdit->setText(std::string());
             mPoseStatus->setText(std::string("Select a ghost"));
         }
         return;
@@ -360,13 +450,32 @@ void ALPanelGhostStudio::refreshDetail()
         mPosY->setValue(agent_pos.mV[VY]);
         mPosZ->setValue(agent_pos.mV[VZ]);
     }
+    if (!mScaleSpin->hasFocus())
+    {
+        mScaleSpin->setValue(inst->mScale);
+        mChaosCheck->set(inst->mChaosEnabled);
+        mChaosSlider->setValue(inst->mChaosAmount);
+        mEntityLookCombo->setValue(inst->mLook);
+    }
+    if (entity && !mDriveModeCombo->hasFocus())
+    {
+        mDriveModeCombo->setValue(inst->mDriveMode);
+    }
+    if (entity && !mDirectedAnimEdit->hasFocus())
+    {
+        mDirectedAnimEdit->setText(inst->mDirectedAnim.asString());
+    }
 
     // the rest loads on selection change only (never over in-progress edits)
     if (sel != mShownFor)
     {
         mShownFor = sel;
+        mNameEdit->setText(inst->mName);
+        mHeadingDial->setValue(inst->getYaw() * RAD_TO_DEG);
         mYawSpin->setValue(inst->getYaw() * RAD_TO_DEG);
         mScaleSpin->setValue(inst->mScale);
+        mDriveModeCombo->setValue(inst->mDriveMode);
+        mDirectedAnimEdit->setText(inst->mDirectedAnim.asString());
         mStyleCombo->setValue(inst->mStyle);
         mActorTintCheck->set(inst->mUseActorTint);
         mHueSlider->setValue(inst->mHue);
@@ -383,6 +492,10 @@ void ALPanelGhostStudio::refreshDetail()
     if (inst->mPose == ALGhostStudio::POSE_FROZEN)
     {
         pose = "FROZEN pose held";
+    }
+    else if (inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+    {
+        pose = "Scene-lit entity; overlay style controls unavailable";
     }
     else
     {
@@ -432,20 +545,34 @@ void ALPanelGhostStudio::onListDoubleClick()
     if (ALGhostStudio::Instance* inst =
             ALGhostStudio::instance().getInstance(selectedInstance()))
     {
-        inst->mEnabled = !inst->mEnabled;
+        ALGhostStudio::instance().setInstanceEnabled(inst->mId, !inst->mEnabled);
     }
 }
 
 void ALPanelGhostStudio::onClickAdd()
 {
     const LLUUID source = mSourceCombo->getSelectedValue().asUUID();
-    if (ALGhostStudio::Instance* inst = ALGhostStudio::instance().addInstance(source))
+    ALGhostStudio::Instance* inst = nullptr;
+    if (mAddBtn->getValue().asInteger() == ALGhostStudio::BACKING_ENTITY_CLONE)
+    {
+        inst = ALGhostStudio::instance().spawnEntityClone(source, sourceName(source));
+    }
+    else
+    {
+        inst = ALGhostStudio::instance().addInstance(source);
+    }
+    if (inst)
     {
         const LLUUID id = inst->mId;    // list rebuild invalidates the pointer
         ALGhostStudio::instance().setSelected(id);
         refreshList();
         mList->selectByID(id);
     }
+}
+
+void ALPanelGhostStudio::onNameCommit()
+{
+    ALGhostStudio::instance().renameInstance(selectedInstance(), mNameEdit->getText());
 }
 
 void ALPanelGhostStudio::onClickDuplicate()
@@ -466,6 +593,11 @@ void ALPanelGhostStudio::onClickDelete()
     mShownFor.setNull();
 }
 
+void ALPanelGhostStudio::onClickRefresh()
+{
+    ALGhostStudio::instance().refreshEntityClone(selectedInstance());
+}
+
 // ---------------------------------------------------------------------------
 // placement
 // ---------------------------------------------------------------------------
@@ -478,6 +610,7 @@ void ALPanelGhostStudio::onPosCommit()
                                   (F32)mPosY->getValue().asReal(),
                                   (F32)mPosZ->getValue().asReal());
         inst->setFootGlobal(gAgent.getPosGlobalFromAgent(agent_pos));
+        ALGhostStudio::instance().applyEntityTransform(inst->mId);
     }
 }
 
@@ -486,7 +619,43 @@ void ALPanelGhostStudio::onYawCommit()
     if (ALGhostStudio::Instance* inst =
             ALGhostStudio::instance().getInstance(selectedInstance()))
     {
-        inst->setYaw((F32)mYawSpin->getValue().asReal() * DEG_TO_RAD);
+        const F32 yaw_degrees = (F32)mYawSpin->getValue().asReal();
+        mHeadingDial->setValue(yaw_degrees);
+        inst->setYaw(yaw_degrees * DEG_TO_RAD);
+        if (inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+        {
+            ALGhostStudio::instance().applyEntityTransform(inst->mId);
+        }
+    }
+}
+
+void ALPanelGhostStudio::onHeadingDialCommit()
+{
+    if (ALGhostStudio::Instance* inst =
+            ALGhostStudio::instance().getInstance(selectedInstance()))
+    {
+        const F32 yaw_degrees = (F32)mHeadingDial->getValue().asReal();
+        mYawSpin->setValue(yaw_degrees);
+        // setYaw immediately updates mRotation and mTransformRevision. Overlay
+        // rendering consumes mRotation directly; entity clones additionally
+        // need their local LLGhostAvatar transform pushed on every drag tick.
+        inst->setYaw(yaw_degrees * DEG_TO_RAD);
+        if (inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+        {
+            ALGhostStudio::instance().applyEntityTransform(inst->mId);
+        }
+    }
+}
+
+void ALPanelGhostStudio::onChaosCommit()
+{
+    if (ALGhostStudio::Instance* inst =
+            ALGhostStudio::instance().getInstance(selectedInstance()))
+    {
+        const F32 amount = mChaosCheck->get()
+            ? (F32)mChaosSlider->getValue().asReal() : 0.f;
+        ALGhostStudio::instance().setInstanceChaos(inst->mId, amount);
+        mChaosSlider->setEnabled(mChaosCheck->get());
     }
 }
 
@@ -495,8 +664,41 @@ void ALPanelGhostStudio::onScaleCommit()
     if (ALGhostStudio::Instance* inst =
             ALGhostStudio::instance().getInstance(selectedInstance()))
     {
-        inst->setScale(llclamp((F32)mScaleSpin->getValue().asReal(), 0.05f, 10.f));
+        ALGhostStudio::instance().setInstanceScale(
+            inst->mId, llclamp((F32)mScaleSpin->getValue().asReal(), 0.05f, 10.f));
     }
+}
+
+void ALPanelGhostStudio::onDriveModeCommit()
+{
+    ALGhostStudio::Instance* inst =
+        ALGhostStudio::instance().getInstance(selectedInstance());
+    if (!inst || inst->mKind != ALGhostStudio::BACKING_ENTITY_CLONE)
+    {
+        return;
+    }
+    const ALGhostStudio::EDriveMode mode =
+        (ALGhostStudio::EDriveMode)mDriveModeCombo->getValue().asInteger();
+    LLUUID anim(mDirectedAnimEdit->getText());
+    ALGhostStudio::instance().setInstanceDriveMode(inst->mId, mode, anim);
+}
+
+void ALPanelGhostStudio::onDirectedAnimCommit()
+{
+    ALGhostStudio::Instance* inst =
+        ALGhostStudio::instance().getInstance(selectedInstance());
+    if (!inst || inst->mKind != ALGhostStudio::BACKING_ENTITY_CLONE ||
+        inst->mDriveMode != ALGhostStudio::DRIVE_DIRECTED)
+    {
+        return;
+    }
+    LLUUID anim(mDirectedAnimEdit->getText());
+    if (anim.isNull())
+    {
+        return;
+    }
+    ALGhostStudio::instance().setInstanceDriveMode(
+        inst->mId, ALGhostStudio::DRIVE_DIRECTED, anim);
 }
 
 void ALPanelGhostStudio::onClickPlace()
@@ -683,6 +885,16 @@ void ALPanelGhostStudio::onBrightnessCommit()
             ALGhostStudio::instance().getInstance(selectedInstance()))
     {
         inst->mBrightness = llclamp((F32)mBrightnessSlider->getValue().asReal(), 0.05f, 1.5f);
+    }
+}
+
+void ALPanelGhostStudio::onEntityLookCommit()
+{
+    if (ALGhostStudio::Instance* inst =
+            ALGhostStudio::instance().getInstance(selectedInstance()))
+    {
+        ALGhostStudio::instance().setInstanceLook(
+            inst->mId, (ALGhostStudio::EGhostLook)mEntityLookCombo->getValue().asInteger());
     }
 }
 

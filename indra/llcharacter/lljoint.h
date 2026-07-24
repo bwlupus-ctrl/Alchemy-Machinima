@@ -303,4 +303,3 @@ public:
     bool aboveJointScaleThreshold(const LLVector3& scale) const;
 };
 #endif // LL_LLJOINT_H
-

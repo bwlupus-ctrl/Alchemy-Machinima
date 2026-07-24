@@ -79,6 +79,7 @@
 #include "llviewershadermgr.h"
 #include "llvoavatar.h"
 #include "llcontrolavatar.h"
+#include "llghostavatar.h"
 #include "llvoavatarself.h"
 #include "llvocache.h"
 #include "llmaterialmgr.h"
@@ -1609,6 +1610,19 @@ bool LLVOVolume::calcLOD()
     else
     {
         cur_detail = computeLODDetail(ll_round(distance, 0.01f), ll_round(radius, 0.01f), lod_factor);
+    }
+
+    // Ghost attachment prims are synthetic local copies. In particular, their
+    // synthetic LLControlAvatar has independently computed distance/extents,
+    // so the normal rigged branch above can choose a coarser LOD than the
+    // identical source animesh. Follow the corresponding live source prim's
+    // rendered LOD instead. This preserves normal distance-based LOD/culling
+    // behaviour and is restricted to recorded, mIsLocalOnly ghost clones.
+    S32 source_lod = -1;
+    if (isLocalOnly() &&
+        LLGhostAvatar::getClonedSourceLOD(this, source_lod))
+    {
+        cur_detail = source_lod;
     }
 
     if (gPipeline.hasRenderDebugMask(LLPipeline::RENDER_DEBUG_TRIANGLE_COUNT) && mDrawable->getFace(0))
@@ -5452,6 +5466,31 @@ void LLVolumeGeometryManager::freeFaces()
     }
 }
 
+static LLClientOuterTransform* resolve_outer_transform(LLFace* facep)
+{
+    LLViewerObject* object = facep ? facep->getViewerObject() : nullptr;
+    if (object && object->getClientOuterTransform())
+    {
+        return object->getClientOuterTransform();
+    }
+
+    LLVOAvatar* skinning_avatar = facep ? facep->mAvatar : nullptr;
+    if (LLControlAvatar* control =
+            dynamic_cast<LLControlAvatar*>(skinning_avatar))
+    {
+        LLVOAvatar* wearer = control->getAttachedAvatar();
+        if (wearer && wearer->hasClientOuterTransform())
+        {
+            return wearer->getClientOuterTransformHandle();
+        }
+    }
+    if (skinning_avatar && skinning_avatar->hasClientOuterTransform())
+    {
+        return skinning_avatar->getClientOuterTransformHandle();
+    }
+    return nullptr;
+}
+
 void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep, U32 type)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_VOLUME;
@@ -5516,6 +5555,7 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
     }
 
     const LLMatrix4* model_mat = NULL;
+    LLClientOuterTransform* outer_transform = resolve_outer_transform(facep);
 
     LLDrawable* drawable = facep->getDrawable();
 
@@ -5625,7 +5665,8 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
         }
     }
 
-    if (index < FACE_DO_NOT_BATCH_TEXTURES && idx >= 0)
+    if (index < FACE_DO_NOT_BATCH_TEXTURES && idx >= 0 &&
+        draw_vec[idx]->mOuterTransform.get() == outer_transform)
     {
         if (gltf_indexed)
         { //indexed GLTF PBR: batch by material slot (parallel to mTextureList)
@@ -5706,6 +5747,7 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
         (!mat || legacy_indexed || (info->mShiny == shiny)) && // need to break batches when a material is shared, but legacy settings are different
         info->mTextureMatrix == tex_mat &&
         info->mModelMatrix == model_mat &&
+        info->mOuterTransform.get() == outer_transform &&
         info->mShaderMask == shader_mask &&
         info->mAvatar == facep->mAvatar &&
         info->getSkinHash() == facep->getSkinHash())
@@ -5750,6 +5792,7 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
         draw_vec.push_back(draw_info);
         draw_info->mTextureMatrix = tex_mat;
         draw_info->mModelMatrix = model_mat;
+        draw_info->mOuterTransform = outer_transform;
         // [BDMerge A5.4-1a] velocity pass prev-object-matrix source (mirror BD
         // llvovolume.cpp:5574). Rigid only; rigged faces (model_mat == null) get
         // their previous transform from the palette cache in Phase 1b.

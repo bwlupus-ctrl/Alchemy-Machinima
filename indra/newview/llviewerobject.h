@@ -45,6 +45,7 @@
 #include "llbbox.h"
 #include "llrigginginfo.h"
 #include "llreflectionmap.h"
+#include "llclientoutertransform.h"
 
 namespace LL
 {
@@ -151,6 +152,15 @@ public:
     virtual LLVOAvatar* asAvatar();
 
     LLVOAvatar* getAvatarAncestor();
+
+    LLClientOuterTransform* getClientOuterTransform() const
+    {
+        return mClientOuterTransform.get();
+    }
+    void setClientOuterTransform(LLClientOuterTransform* transform)
+    {
+        mClientOuterTransform = transform;
+    }
 
     static void initVOClasses();
     static void cleanupVOClasses();
@@ -802,6 +812,9 @@ public:
     bool            mIsLocalOnly;
     bool            isLocalOnly() const { return mIsLocalOnly; }
 
+    // Viewer-only render ownership. Never serialized or sent to the simulator.
+    LLPointer<LLClientOuterTransform> mClientOuterTransform;
+
     // [GhostStudio] WHICH KIND of client-only object this is. isLocalOnly() only
     // says "no sim counterpart" -- that is true for BOTH a local mesh preview and
     // a Ghost Studio manipulation proxy, which must NOT share Local Mesh delete/
@@ -1138,4 +1151,3 @@ public:
 
     virtual void updateDrawable(bool force_damped);
 };
-

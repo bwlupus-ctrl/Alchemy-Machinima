@@ -263,11 +263,18 @@ public:
     // (world enumeration, name cache, mute state, autotune, sounds, sim
     // requests) must test this instead of relying on mIsDummy.
     virtual bool    isGhostAvatar() const { return mIsGhostAvatar; }
+    virtual F32     getUniformScale() const { return 1.f; }
     virtual bool    isBuddy() const;
 
     // If this is an attachment, return the avatar it is attached to. Otherwise NULL.
     virtual const LLVOAvatar *getAttachedAvatar() const { return NULL; }
     virtual LLVOAvatar *getAttachedAvatar() { return NULL; }
+
+    bool hasClientOuterTransform() const;
+    const LLMatrix4& getClientOuterTransformMatrix() const;
+    const LLMatrix4& getClientOuterTransformInverse() const;
+    U32 getClientOuterTransformRevision() const;
+    LLClientOuterTransform* getClientOuterTransformHandle() const;
 
 
 private: //aligned members
@@ -1315,4 +1322,3 @@ void dump_sequential_xml(const std::string outprefix, const LLSD& content);
 void dump_visual_param(LLFile* file, LLVisualParam* viewer_param, F32 value);
 
 #endif // LL_VOAVATAR_H
-

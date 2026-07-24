@@ -29,6 +29,9 @@
 
 #include "llvoavatar.h"
 
+class LLVOVolume;
+class ALGhostStudio;
+
 // [GhostStudio] A client-only avatar that renders through the REAL scene path.
 //
 // Both existing client-only avatars (LLControlAvatar, LLUIAvatar) set
@@ -60,6 +63,7 @@ public:
     // Ghosts are placed by fiat, never by the simulator. Requires a live
     // region: setPositionAgent() dereferences getRegion() unguarded.
     void setGhostPosition(const LLVector3& pos_agent);
+    void setGhostRotation(const LLQuaternion& rotation);
 
     // LLVOAvatar::slamPosition() MINUS its opening gAgent.setPositionAgent()
     // (llvoavatar.cpp:4038), which would teleport the real agent onto the ghost.
@@ -82,6 +86,11 @@ public:
     // is additive on joint scale, so re-slamming appearance afterwards would
     // corrupt proportions). Returns the number of attachment roots duplicated.
     S32 cloneAttachmentsFrom(LLVOAvatar* source);
+    bool clonedAttachmentsComplete() const
+    {
+        return mCloneFailures == 0
+            && mClonedLinksets.size() == static_cast<size_t>(mCloneExpectedRoots);
+    }
 
     // Detach + destroy everything cloneAttachmentsFrom() created.
     void releaseClonedAttachments();
@@ -89,7 +98,18 @@ public:
     // Deferred death, mirroring LLControlAvatar's discipline: never markDead()
     // from inside a graphics-pipeline traversal.
     void markForDeath();
+    void markDead() override;
     virtual void idleUpdate(LLAgent &agent, const F64 &time);
+
+    void setEntityCloneVisible(bool visible) { mEntityCloneVisible = visible; }
+    bool isEntityCloneVisible() const { return mEntityCloneVisible; }
+
+    // Viewer-local entity controls. These only alter this synthetic avatar's
+    // skeleton/motion controller; neither path touches simulator object state.
+    void setEntityScale(F32 scale);
+    F32 getUniformScale() const override { return mEntityScale; }
+    void setEntityDriveMode(S32 mode, const LLUUID& directed_anim);
+    void setEntityLook(S32 look, F32 alpha);
 
     virtual bool isImpostor() { return false; }
     virtual bool isBuddy() const { return false; }
@@ -115,22 +135,39 @@ public:
     // genuine FAIL.
     static bool runPaletteIsolationTest();
 
-    // MILESTONE 2 (/ghostdress): spawn ONE ghost in front of the agent with
-    // appearance AND duplicated attachments. Separate from the palette gate
-    // so the visual test stays cheap to iterate on.
-    static bool spawnDressedGhost();
-
     // (/ghostverify) Face-level acceptance check for cloned attachments.
     // MUST be a separate, later pass: cloning only SCHEDULES geometry work, so
     // checking faces in the same frame sees zero faces and looks like failure.
     // Reports PASS / FAIL / PENDING / INCONCLUSIVE as distinct outcomes.
-    static void verifyClonedAttachments();
+    static void verifyClonedAttachments(bool include_test_harness = false);
 
-    // Destroy every ghost spawned by the test harness.
-    static void clearTestGhosts();
+    // If volume is one of this ghost's client-only attachment prims, return
+    // the live simulator-known source prim's current rendered LOD.
+    static bool getClonedSourceLOD(const LLVOVolume* volume, S32& source_lod);
+
+    // Destroy every ghost spawned by the palette-isolation test harness.
+    static S32 clearTestHarnessGhosts();
 
 private:
+    void updateEntityOuterTransform();
+    void stampEntityOuterTransform(LLViewerObject* object);
+    void clearClonedObjectAnimations();
+
     bool mMarkedForDeath;
+    bool mEntityCloneVisible;
+    F32 mEntityScale = 1.f;
+    S32 mEntityDriveMode = 0; // ALGhostStudio::DRIVE_MIRROR (avoid header cycle)
+    S32 mEntityLook = 0;
+    F32 mEntityLookAlpha = 1.f;
+    LLUUID mEntityDirectedAnim;
+    // Holding the pause handle keeps LLCharacter::updateMotions() from
+    // automatically unpausing on the next visible frame.
+    LLAnimPauseRequest mEntityPauseRequest;
+    std::vector<LLAnimPauseRequest> mEntityControlPauseRequests;
+    // Live avatar whose simulator-driven animation state this client-only
+    // entity mirrors. The UUID is resolved through gObjectList each frame so
+    // the ghost never owns or extends the source avatar's lifetime.
+    LLUUID mAnimationSourceId;
 
     // The client-only linksets we attached.
     //
@@ -143,6 +180,11 @@ private:
     {
         LLUUID              mRoot;
         std::vector<LLUUID> mChildren;
+        // Simulator-known source ids corresponding one-for-one to the clone
+        // ids above. Used only to mirror ObjectAnimation state; UUIDs avoid
+        // extending the source objects' lifetimes.
+        LLUUID              mSourceRoot;
+        std::vector<LLUUID> mSourceChildren;
     };
     std::vector<ClonedLinkset> mClonedLinksets;
 

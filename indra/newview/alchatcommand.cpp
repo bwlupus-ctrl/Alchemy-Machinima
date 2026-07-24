@@ -30,6 +30,7 @@
 
 // viewer includes
 #include "aoengine.h"
+#include "alghoststudio.h"
 #include "alobjectpathmover.h"  // [ObjectPath] /objpath* harness (props on splines)
 #include "llactormover.h"       // [Pathing] /pathadd /pathwalk /pathclear /pathloop test harness
 #include "llghostavatar.h"      // [GhostStudio] /ghosttest /ghostclear milestone-1 harness
@@ -410,17 +411,292 @@ bool ALChatCommand::parseCommand(std::string data)
         }
         else if (cmd == "/ghostdress")  // ONE dressed clone in front of me
         {
-            LLGhostAvatar::spawnDressedGhost();
+            ALGhostStudio::Instance* inst =
+                ALGhostStudio::instance().spawnEntityClone(LLUUID::null, "You");
+            if (inst)
+            {
+                ALGhostStudio::instance().setSelected(inst->mId);
+                LL_INFOS("GhostStudio") << "/ghostdress: Studio entity clone "
+                                        << inst->mId << " ready" << LL_ENDL;
+            }
             return true;
         }
-        else if (cmd == "/ghostverify") // face-level check, run AFTER /ghostdress
+        else if (cmd == "/ghostverify") // "test" also includes harness ghosts
         {
-            LLGhostAvatar::verifyClonedAttachments();
+            std::string scope;
+            input >> scope;
+            LLGhostAvatar::verifyClonedAttachments(scope == "test");
             return true;
         }
-        else if (cmd == "/ghostclear")  // release the test ghosts
+        else if (cmd == "/ghostscale")
         {
-            LLGhostAvatar::clearTestGhosts();
+            F32 factor = 0.f;
+            std::string scope;
+            input >> factor >> scope;
+            if (!input || factor < 0.05f || factor > 10.f ||
+                (!scope.empty() && scope != "all" && scope != "selected"))
+            {
+                LL_WARNS("GhostStudio") << "usage: /ghostscale <0.05..10> [all|selected]"
+                                        << LL_ENDL;
+                return true;
+            }
+
+            S32 changed = 0;
+            ALGhostStudio& studio = ALGhostStudio::instance();
+            if (scope == "all")
+            {
+                std::vector<LLUUID> ids;
+                for (const ALGhostStudio::Instance& inst : studio.getInstances())
+                {
+                    if (inst.mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+                    {
+                        ids.push_back(inst.mId);
+                    }
+                }
+                for (const LLUUID& id : ids)
+                {
+                    changed += studio.setInstanceScale(id, factor) ? 1 : 0;
+                }
+            }
+            else
+            {
+                // Scale the Director-selected entity clone if one is selected;
+                // otherwise fall back to ALL entity clones. A chat command has no
+                // way to pick a list row, and the common case is a single
+                // /ghostdress clone that was never row-selected (mSelected null).
+                const LLUUID sel = studio.getSelected();
+                const ALGhostStudio::Instance* inst = studio.getInstance(sel);
+                if (inst && inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+                {
+                    changed = studio.setInstanceScale(sel, factor) ? 1 : 0;
+                }
+                else
+                {
+                    std::vector<LLUUID> ids;
+                    for (const ALGhostStudio::Instance& i : studio.getInstances())
+                    {
+                        if (i.mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+                        {
+                            ids.push_back(i.mId);
+                        }
+                    }
+                    for (const LLUUID& id : ids)
+                    {
+                        changed += studio.setInstanceScale(id, factor) ? 1 : 0;
+                    }
+                }
+            }
+            LL_INFOS("GhostStudio") << "/ghostscale " << factor << " "
+                                    << (scope == "all" ? "all" : "selected")
+                                    << ": scaled " << changed << " entity clone(s)"
+                                    << LL_ENDL;
+            return true;
+        }
+        else if (cmd == "/ghostrefresh")
+        {
+            std::string scope;
+            std::string extra;
+            input >> scope >> extra;
+            if ((!scope.empty() && scope != "all" && scope != "selected") ||
+                !extra.empty())
+            {
+                LL_WARNS("GhostStudio") << "usage: /ghostrefresh [all|selected]"
+                                        << LL_ENDL;
+                return true;
+            }
+
+            ALGhostStudio& studio = ALGhostStudio::instance();
+            std::vector<LLUUID> ids;
+            const ALGhostStudio::Instance* selected =
+                studio.getInstance(studio.getSelected());
+            if (scope != "all" && selected &&
+                selected->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+            {
+                ids.push_back(selected->mId);
+            }
+            else
+            {
+                for (const ALGhostStudio::Instance& inst : studio.getInstances())
+                {
+                    if (inst.mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+                    {
+                        ids.push_back(inst.mId);
+                    }
+                }
+            }
+            S32 refreshed = 0;
+            for (const LLUUID& id : ids)
+            {
+                refreshed += studio.refreshEntityClone(id) ? 1 : 0;
+            }
+            LL_INFOS("GhostStudio") << "/ghostrefresh "
+                                    << (scope == "all" ? "all" : "selected")
+                                    << ": refreshed " << refreshed << " of "
+                                    << ids.size() << " entity clone(s)" << LL_ENDL;
+            return true;
+        }
+        else if (cmd == "/ghostchaos")
+        {
+            F32 amount = -1.f;
+            std::string scope;
+            input >> amount >> scope;
+            if (!input || amount < 0.f || amount > 1.f ||
+                (!scope.empty() && scope != "all" && scope != "selected"))
+            {
+                LL_WARNS("GhostStudio") << "usage: /ghostchaos <0..1> [all|selected]"
+                                        << LL_ENDL;
+                return true;
+            }
+            ALGhostStudio& studio = ALGhostStudio::instance();
+            std::vector<LLUUID> ids;
+            const ALGhostStudio::Instance* selected =
+                studio.getInstance(studio.getSelected());
+            if (scope != "all" && selected &&
+                selected->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+            {
+                ids.push_back(selected->mId);
+            }
+            else
+            {
+                for (const ALGhostStudio::Instance& inst : studio.getInstances())
+                {
+                    if (inst.mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+                    {
+                        ids.push_back(inst.mId);
+                    }
+                }
+            }
+            S32 changed = 0;
+            for (const LLUUID& id : ids)
+            {
+                changed += studio.setInstanceChaos(id, amount) ? 1 : 0;
+            }
+            LL_INFOS("GhostStudio") << "/ghostchaos " << amount << ": varied "
+                                    << changed << " entity clone(s)" << LL_ENDL;
+            return true;
+        }
+        else if (cmd == "/ghostanim")
+        {
+            std::string argument;
+            std::string scope;
+            input >> argument >> scope;
+            if (argument.empty() ||
+                (!scope.empty() && scope != "all" && scope != "selected"))
+            {
+                LL_WARNS("GhostStudio") << "usage: /ghostanim <anim_uuid|mirror|freeze> "
+                                          "[all|selected]" << LL_ENDL;
+                return true;
+            }
+
+            ALGhostStudio::EDriveMode mode = ALGhostStudio::DRIVE_DIRECTED;
+            LLUUID anim;
+            if (argument == "mirror")
+            {
+                mode = ALGhostStudio::DRIVE_MIRROR;
+            }
+            else if (argument == "freeze")
+            {
+                mode = ALGhostStudio::DRIVE_FROZEN;
+            }
+            else
+            {
+                anim.set(argument, false);
+                if (anim.isNull())
+                {
+                    LL_WARNS("GhostStudio") << "usage: /ghostanim <anim_uuid|mirror|freeze> "
+                                              "[all|selected]" << LL_ENDL;
+                    return true;
+                }
+            }
+
+            S32 changed = 0;
+            ALGhostStudio& studio = ALGhostStudio::instance();
+            if (scope == "all")
+            {
+                std::vector<LLUUID> ids;
+                for (const ALGhostStudio::Instance& inst : studio.getInstances())
+                {
+                    if (inst.mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+                    {
+                        ids.push_back(inst.mId);
+                    }
+                }
+                for (const LLUUID& id : ids)
+                {
+                    changed += studio.setInstanceDriveMode(id, mode, anim) ? 1 : 0;
+                }
+            }
+            else
+            {
+                // Drive the Director-selected entity clone if one is selected;
+                // otherwise fall back to ALL entity clones (same reasoning as
+                // /ghostscale -- a chat command can't pick a list row).
+                const LLUUID sel = studio.getSelected();
+                const ALGhostStudio::Instance* inst = studio.getInstance(sel);
+                if (inst && inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+                {
+                    changed = studio.setInstanceDriveMode(sel, mode, anim) ? 1 : 0;
+                }
+                else
+                {
+                    std::vector<LLUUID> ids;
+                    for (const ALGhostStudio::Instance& i : studio.getInstances())
+                    {
+                        if (i.mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+                        {
+                            ids.push_back(i.mId);
+                        }
+                    }
+                    for (const LLUUID& id : ids)
+                    {
+                        changed += studio.setInstanceDriveMode(id, mode, anim) ? 1 : 0;
+                    }
+                }
+            }
+            LL_INFOS("GhostStudio") << "/ghostanim " << argument << " "
+                                    << (scope == "all" ? "all" : "selected")
+                                    << ": updated " << changed << " entity clone(s)"
+                                    << LL_ENDL;
+            return true;
+        }
+        else if (cmd == "/ghostclear")
+        {
+            std::string scope;
+            input >> scope;
+            if (scope.empty() || scope == "selected")
+            {
+                const LLUUID selected = ALGhostStudio::instance().getSelected();
+                const ALGhostStudio::Instance* inst =
+                    ALGhostStudio::instance().getInstance(selected);
+                if (inst && inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+                {
+                    ALGhostStudio::instance().removeInstance(selected);
+                    LL_INFOS("GhostStudio") << "/ghostclear selected: released 1 entity clone"
+                                            << LL_ENDL;
+                }
+                else
+                {
+                    LL_WARNS("GhostStudio") << "/ghostclear selected: select an Entity ghost"
+                                            << LL_ENDL;
+                }
+            }
+            else if (scope == "all")
+            {
+                const S32 entities = ALGhostStudio::instance().removeEntityClones();
+                const S32 tests = LLGhostAvatar::clearTestHarnessGhosts();
+                LL_INFOS("GhostStudio") << "/ghostclear all: released " << entities
+                                        << " entity clone(s), " << tests
+                                        << " harness ghost(s); overlays preserved" << LL_ENDL;
+            }
+            else if (scope == "test")
+            {
+                LLGhostAvatar::clearTestHarnessGhosts();
+            }
+            else
+            {
+                LL_WARNS("GhostStudio") << "usage: /ghostclear [all|selected|test]"
+                                        << LL_ENDL;
+            }
             return true;
         }
         else if (cmd == "/clonefidelity")   // [CloneFidelity] source-vs-clone data audit

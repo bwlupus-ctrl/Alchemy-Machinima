@@ -1026,4 +1026,3 @@ void LLJoint::clampRotation(LLQuaternion old_rot, LLQuaternion new_rot)
 }
 
 // End
-

@@ -57,6 +57,8 @@
 #include "llviewertexture.h"
 
 S32 LLDrawPool::sNumDrawPools = 0;
+static const LLClientOuterTransform* sLastOuterTransform = nullptr;
+static U32 sLastOuterTransformRevision = 0;
 
 //=============================
 // Draw Pool Implementation
@@ -723,14 +725,37 @@ void LLRenderPass::pushEmissiveBatchesIndexed(U32 type, bool rigged)
 
 void LLRenderPass::applyModelMatrix(const LLDrawInfo& params)
 {
-    applyModelMatrix(params.mModelMatrix);
+    LLClientOuterTransform* outer = params.mOuterTransform.get();
+    const U32 revision = outer ? outer->mRevision : 0;
+    if (params.mModelMatrix != gGLLastMatrix ||
+        outer != sLastOuterTransform ||
+        revision != sLastOuterTransformRevision ||
+        (outer && !params.mModelMatrix))
+    {
+        gGLLastMatrix = params.mModelMatrix;
+        sLastOuterTransform = outer;
+        sLastOuterTransformRevision = revision;
+        gGL.matrixMode(LLRender::MM_MODELVIEW);
+        gGL.loadMatrix(gGLModelView);
+        if (outer && outer->mEnabled && !is_approx_equal(outer->mScale, 1.f))
+        {
+            gGL.multMatrix((GLfloat*)outer->mCurrent.mMatrix);
+        }
+        if (params.mModelMatrix)
+        {
+            gGL.multMatrix((const GLfloat*)params.mModelMatrix->mMatrix);
+        }
+        gPipeline.mMatrixOpCount++;
+    }
 }
 
 void LLRenderPass::applyModelMatrix(const LLMatrix4* model_matrix)
 {
-    if (model_matrix != gGLLastMatrix)
+    if (model_matrix != gGLLastMatrix || sLastOuterTransform)
     {
         gGLLastMatrix = model_matrix;
+        sLastOuterTransform = nullptr;
+        sLastOuterTransformRevision = 0;
         gGL.matrixMode(LLRender::MM_MODELVIEW);
         gGL.loadMatrix(gGLModelView);
         if (model_matrix)
@@ -739,6 +764,13 @@ void LLRenderPass::applyModelMatrix(const LLMatrix4* model_matrix)
         }
         gPipeline.mMatrixOpCount++;
     }
+}
+
+void LLRenderPass::invalidateModelMatrixCache()
+{
+    gGLLastMatrix = nullptr;
+    sLastOuterTransform = nullptr;
+    sLastOuterTransformRevision = 0;
 }
 
 // [BDMerge A5.4-1a] Bind a velocity program + upload the shared per-pass
@@ -1571,4 +1603,3 @@ void LLRenderPass::pushRiggedGLTFBatchIndexed(LLDrawInfo& params, const LLVOAvat
         pushGLTFBatchIndexed(params, maps);
     }
 }
-

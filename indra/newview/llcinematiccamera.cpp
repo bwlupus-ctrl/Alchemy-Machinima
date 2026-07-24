@@ -12,6 +12,7 @@
 #include "llcinematiccamera.h"
 
 #include <cmath>
+#include <typeinfo>
 
 #include "llcameraoperator.h"
 #include "llappviewer.h"            // gFrameIntervalSeconds
@@ -23,6 +24,7 @@
 #include "llviewercamera.h"
 #include "llviewercontrol.h"        // gSavedSettings, LLCachedControl
 #include "llviewerobject.h"
+#include "llghostavatar.h"         // temporary GhostCineScale RTTI diagnostic
 #include "llvoavatar.h"
 #include "llvoavatarself.h"         // gAgentAvatarp, isAgentAvatarValid()
 #include "m3math.h"
@@ -33,6 +35,28 @@ constexpr F32 PHASE_WRAP = 4096.f;  // seconds of pattern clock before wrap
 
 inline F32 cc_frac(F32 x)               { return x - floorf(x); }
 inline F32 cc_lerp(F32 a, F32 b, F32 u) { return a + (b - a) * u; }
+
+LLVector3 cc_subjectBase(LLVOAvatar* av)
+{
+    if (LLJoint* root = av->getRootJoint())
+    {
+        LLVector3 foot = root->getWorldPosition();
+        foot.mV[VZ] -= av->getPelvisToFoot();
+        return foot;
+    }
+    return av->getPositionAgent();
+}
+
+LLVector3 cc_scaleAboutSubjectBase(LLVOAvatar* av, const LLVector3& point)
+{
+    const F32 scale = av->getUniformScale();
+    if (scale == 1.f)
+    {
+        return point;
+    }
+    const LLVector3 base = cc_subjectBase(av);
+    return base + (point - base) * scale;
+}
 
 // small periodic value noise (same construction as the camera operator)
 F32 cc_hash(F32 p)
@@ -200,6 +224,7 @@ bool LLCinematicCamera::resolveAnchor(LLVector3& pos, LLQuaternion& rot, bool le
     {
         rot = cc_levelHorizon(rot);
     }
+    pos = cc_scaleAboutSubjectBase(av, pos);
     return true;
 }
 
@@ -544,8 +569,20 @@ LLVector3 LLCinematicCamera::patternTwoShot(LLVOAvatar* target, LLVector3& focus
     const LLVector3 perp(-line.mV[VY] * s, line.mV[VX] * s, 0.f);
 
     const LLVector3 mid = (a + b) * 0.5f;
-    focus_io = mid + LLVector3(0.f, 0.f, (F32)height);
-    return focus_io + perp * llmax(sep * (F32)pad, (F32)min_d);
+    const F32 self_scale = self->getUniformScale();
+    const F32 target_scale = target ? target->getUniformScale() : 1.f;
+    const F32 framing_scale = llmax(self_scale, target_scale);
+    if (self_scale == 1.f && target_scale == 1.f)
+    {
+        focus_io = mid + LLVector3(0.f, 0.f, (F32)height);
+    }
+    else
+    {
+        // Midpoint the two bodies' individually-scaled head-height proxies.
+        focus_io = mid + LLVector3(0.f, 0.f,
+                                  (F32)height * 0.5f * (self_scale + target_scale));
+    }
+    return focus_io + perp * llmax(sep * (F32)pad, (F32)min_d * framing_scale);
 }
 
 // walk-and-talk: camera ahead of the subject looking back, backpedaling as
@@ -654,6 +691,7 @@ LLVector3 LLCinematicCamera::patternOTS(LLVOAvatar* target, LLVector3& focus_io)
     {
         shoulder = j->getWorldPosition();
     }
+    shoulder = cc_scaleAboutSubjectBase(self, shoulder);
 
     const F32 yaw = cc_avatarYaw(self);
     const LLVector3 fwd(cosf(yaw), sinf(yaw), 0.f);
@@ -666,19 +704,22 @@ LLVector3 LLCinematicCamera::patternOTS(LLVOAvatar* target, LLVector3& focus_io)
     {
         if (LLJoint* th = target->getJoint("mHead"))
         {
-            focus_io = th->getWorldPosition();
+            focus_io = cc_scaleAboutSubjectBase(target, th->getWorldPosition());
         }
         else
         {
-            focus_io = target->getPositionAgent() + LLVector3(0.f, 0.f, 1.5f);
+            focus_io = cc_scaleAboutSubjectBase(
+                target, target->getPositionAgent() + LLVector3(0.f, 0.f, 1.5f));
         }
     }
     else
     {
-        focus_io = shoulder + fwd * 3.f;
+        focus_io = shoulder + fwd * 3.f * self->getUniformScale();
     }
 
-    return shoulder - fwd * (F32)back + right * s * (F32)out + LLVector3(0.f, 0.f, (F32)up);
+    const F32 scale = self->getUniformScale();
+    return shoulder - fwd * (F32)back * scale + right * s * (F32)out * scale
+                    + LLVector3(0.f, 0.f, (F32)up * scale);
 }
 
 // ---------------------------------------------------------------------------
@@ -938,6 +979,19 @@ void LLCinematicCamera::updateCamera()
     {
         return;
     }
+    const bool log_ghost_scale = (gFrameCount % 30) == 0;
+    if (log_ghost_scale)
+    {
+        LL_INFOS("GhostCineScale")
+            << "resolve mode=" << (S32)mode
+            << " id=" << av->getID()
+            << " ghost=" << av->isGhostAvatar()
+            << " llghost=" << (dynamic_cast<LLGhostAvatar*>(av) != nullptr)
+            << " type=" << typeid(*av).name()
+            << " scale=" << av->getUniformScale()
+            << " base=" << cc_subjectBase(av)
+            << LL_ENDL;
+    }
 
     // fresh activation (mode was off for a few frames): restart the pattern
     // clock so one-shot moves (dolly zoom, push-in, overhead) begin at their
@@ -1024,6 +1078,51 @@ void LLCinematicCamera::updateCamera()
         case MODE_FLOATING_ECU: pos = patternFloatingECU(av, focus, mPhase, mode_fov_mul); break;
         case MODE_TILT_WHIP:    pos = patternTiltWhip(av, center, mPhase, focus); break;
         default:              return;
+    }
+
+    // Entity-clone scale is a render-only outer matrix, so both logical joint
+    // positions and pattern meter offsets are still scale-1 here. Reproduce
+    // that matrix for camera geometry about the same root/foot pivot. Keep the
+    // scale-1 branch completely untouched.
+    const LLVector3 pos_before_scale = pos;
+    const LLVector3 focus_before_scale = focus;
+    const F32 subject_scale = av->getUniformScale();
+    if (subject_scale != 1.f)
+    {
+        switch ((S32)mode)
+        {
+            case MODE_OTS:
+            case MODE_TWO_SHOT:
+                // These multi-subject modes scale each body's geometry inside
+                // their generators; a second A-pivot transform would distort
+                // the real separation between the actors.
+                break;
+            case MODE_CRASH_ZOOM:
+            case MODE_SLOW_ZOOM:
+                // Tripod position is an absolute captured camera location.
+                focus = cc_scaleAboutSubjectBase(av, focus);
+                break;
+            default:
+                focus = cc_scaleAboutSubjectBase(av, focus);
+                pos = cc_scaleAboutSubjectBase(av, pos);
+                break;
+        }
+    }
+    if (log_ghost_scale)
+    {
+        LL_INFOS("GhostCineScale")
+            << "scale-block mode=" << (S32)mode
+            << " id=" << av->getID()
+            << " ghost=" << av->isGhostAvatar()
+            << " llghost=" << (dynamic_cast<LLGhostAvatar*>(av) != nullptr)
+            << " type=" << typeid(*av).name()
+            << " scale=" << subject_scale
+            << " base=" << cc_subjectBase(av)
+            << " pos-before=" << pos_before_scale
+            << " focus-before=" << focus_before_scale
+            << " pos-after=" << pos
+            << " focus-after=" << focus
+            << LL_ENDL;
     }
 
     if (!have_rot)

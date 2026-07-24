@@ -28,6 +28,7 @@
 #include "llfile.h"                 // LLFile::mkdir/remove, ll*fstream
 #include "llfloaterreg.h"
 #include "llflycamrecorder.h"
+#include "llghostavatar.h"
 #include "llkeyframemotion.h"       // priority readout (signaled-anim list)
 #include "lllineeditor.h"
 #include "llmenugl.h"
@@ -788,6 +789,10 @@ std::string LLFloaterDirector::castMemberName(const LLUUID& id)
         m && !m->mLastName.empty())
     {
         return m->mLastName;
+    }
+    if (LLGhostAvatar::isGhostId(id))
+    {
+        return "Entity clone " + id.asString().substr(0, 8);
     }
     if (LLAvatarName av_name; LLAvatarNameCache::get(id, &av_name))
     {

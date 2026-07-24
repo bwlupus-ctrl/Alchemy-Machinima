@@ -27,6 +27,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "lldrawpoolavatar.h"
+#include "llghostavatar.h"
 #include "llskinningutil.h"
 #include "llrender.h"
 
@@ -66,6 +67,24 @@ static bool is_deferred_render = false;
 static bool is_post_deferred_render = false;
 
 extern bool gUseGLPick;
+
+// Entity clones deliberately use the normal avatar/rigged-mesh pools, whose
+// faces can remain enrolled after their object drawables are FORCE_INVISIBLE.
+// Honor the viewer-local state at the pool entry point as well.  An animated
+// attachment renders through its LLControlAvatar, so inherit the state from
+// that control avatar's attached (owning) ghost.
+static bool is_hidden_entity_clone(const LLVOAvatar* avatarp)
+{
+    if (!avatarp)
+    {
+        return false;
+    }
+
+    const LLVOAvatar* owner = avatarp->isGhostAvatar()
+        ? avatarp : avatarp->getAttachedAvatar();
+    return owner && owner->isGhostAvatar()
+        && !static_cast<const LLGhostAvatar*>(owner)->isEntityCloneVisible();
+}
 
 F32 CLOTHING_GRAVITY_EFFECT = 0.7f;
 F32 CLOTHING_ACCEL_FORCE_FACTOR = 0.2f;
@@ -141,11 +160,24 @@ void LLDrawPoolAvatar::prerender()
     sShaderLevel = mShaderLevel;
 }
 
+namespace
+{
+std::vector<LLMatrix4>& avatar_modelview_overrides()
+{
+    static std::vector<LLMatrix4> overrides;
+    return overrides;
+}
+}
+
 LLMatrix4& LLDrawPoolAvatar::getModelView()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_AVATAR;
 
     static LLMatrix4 ret;
+    if (!avatar_modelview_overrides().empty())
+    {
+        return avatar_modelview_overrides().back();
+    }
 
     ret.initRows(LLVector4(gGLModelView+0),
                  LLVector4(gGLModelView+4),
@@ -153,6 +185,20 @@ LLMatrix4& LLDrawPoolAvatar::getModelView()
                  LLVector4(gGLModelView+12));
 
     return ret;
+}
+
+void LLDrawPoolAvatar::pushModelViewOverride(const LLMatrix4& modelview)
+{
+    avatar_modelview_overrides().push_back(modelview);
+}
+
+void LLDrawPoolAvatar::popModelViewOverride()
+{
+    llassert(!avatar_modelview_overrides().empty());
+    if (!avatar_modelview_overrides().empty())
+    {
+        avatar_modelview_overrides().pop_back();
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -374,7 +420,8 @@ void LLDrawPoolAvatar::renderShadow(S32 pass)
     }
     LLVOAvatar *avatarp = (LLVOAvatar *)facep->getDrawable()->getVObj().get();
 
-    if (avatarp->isDead() || avatarp->isUIAvatar() || avatarp->mDrawable.isNull())
+    if (avatarp->isDead() || avatarp->isUIAvatar() || avatarp->mDrawable.isNull()
+        || is_hidden_entity_clone(avatarp))
     {
         return;
     }
@@ -712,7 +759,8 @@ void LLDrawPoolAvatar::renderVelocity(S32 pass)
     }
     LLVOAvatar* avatarp = (LLVOAvatar*)facep->getDrawable()->getVObj().get();
 
-    if (!avatarp || avatarp->isDead() || avatarp->isUIAvatar() || avatarp->mDrawable.isNull())
+    if (!avatarp || avatarp->isDead() || avatarp->isUIAvatar() || avatarp->mDrawable.isNull()
+        || is_hidden_entity_clone(avatarp))
     {
         return;
     }
@@ -796,7 +844,8 @@ void LLDrawPoolAvatar::renderAvatars(LLVOAvatar* single_avatar, S32 pass)
         avatarp = (LLVOAvatar *)facep->getDrawable()->getVObj().get();
     }
 
-    if (avatarp->isDead() || avatarp->mDrawable.isNull())
+    if (avatarp->isDead() || avatarp->mDrawable.isNull()
+        || is_hidden_entity_clone(avatarp))
     {
         return;
     }
@@ -950,5 +999,3 @@ LLColor3 LLDrawPoolAvatar::getDebugColor() const
 {
     return LLColor3(0.f, 1.f, 0.f);
 }
-
-

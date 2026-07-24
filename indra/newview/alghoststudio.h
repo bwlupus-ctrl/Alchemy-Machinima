@@ -46,6 +46,8 @@
 #include <utility>
 #include <vector>
 
+class LLGhostAvatar;
+
 class ALGhostStudio
 {
 public:
@@ -55,6 +57,25 @@ public:
     {
         POSE_LIVE   = 0,    // skins from the source's live palette every frame
         POSE_FROZEN = 1,    // skins from the snapshot captured at freeze time
+    };
+
+    enum EBackingKind : S32 { BACKING_OVERLAY = 0, BACKING_ENTITY_CLONE };
+    enum ELifecycleState : S32
+    {
+        STATE_SPAWNING = 0, STATE_READY, STATE_SOURCE_MISSING, STATE_LOCKED,
+        STATE_TEARING_DOWN, STATE_ERROR
+    };
+
+    // How a client-only ENTITY clone is animated, INDEPENDENT of its source
+    // avatar. MIRROR = copy the source's live animation state (default; the
+    // current behaviour). DIRECTED = play mDirectedAnim on the clone's OWN
+    // motion controller only, ignoring the source. FROZEN = hold the current
+    // pose. Ignored for overlay instances.
+    enum EDriveMode : S32 { DRIVE_MIRROR = 0, DRIVE_DIRECTED, DRIVE_FROZEN };
+    enum EGhostLook : S32
+    {
+        LOOK_NORMAL = 0, LOOK_APPARITION, LOOK_HOLOGRAM, LOOK_CHROME,
+        LOOK_TOON, LOOK_SILHOUETTE
     };
 
     // Frozen matrix palettes, keyed by (DRAWING avatar id, skin hash). The
@@ -67,8 +88,17 @@ public:
     struct Instance
     {
         LLUUID      mId;                // instance key (minted at Add)
+        std::string mName;              // session-only display name; not an identity key
         LLUUID      mSource;            // cast member id; null = "my avatar"
+        EBackingKind mKind = BACKING_OVERLAY;
+        LLUUID      mEntityId;          // weak runtime id; never owns the clone
+        std::string mSourceLabel;       // cached UI label
+        ELifecycleState mState = STATE_READY;
         bool        mEnabled = true;
+
+        // ---- entity-clone animation drive (Track B; ignored for overlays) ----
+        EDriveMode  mDriveMode = DRIVE_MIRROR;
+        LLUUID      mDirectedAnim;       // anim asset played in DRIVE_DIRECTED
 
         // ---- placement ----
         LLVector3d  mFootGlobal;        // ghost FOOT position, global coords
@@ -77,6 +107,12 @@ public:
         // full 3-axis editing (the manip proxy) writes mRotation directly.
         LLQuaternion mRotation;
         F32         mScale = 1.f;       // uniform, pivoted at the foot (feet stay planted)
+        bool        mChaosEnabled = false;
+        F32         mChaosAmount = 0.f;
+        bool        mChaosHasBase = false;
+        LLVector3d  mChaosBaseFoot;
+        LLQuaternion mChaosBaseRotation;
+        F32         mChaosBaseScale = 1.f;
 
         // [ManipProxy] bumped on EXTERNAL transform edits (panel numeric, array
         // helpers). The in-world manip proxy PULL writes mFootGlobal/mRotation
@@ -98,6 +134,7 @@ public:
         void setYaw(F32 yaw_rad)
         {
             mRotation = LLQuaternion(yaw_rad, LLVector3::z_axis);
+            mChaosHasBase = false;
             ++mTransformRevision;
         }
         // External foot / full-transform edits (bump the revision so the in-world
@@ -105,17 +142,20 @@ public:
         void setFootGlobal(const LLVector3d& foot)
         {
             mFootGlobal = foot;
+            mChaosHasBase = false;
             ++mTransformRevision;
         }
         void setTransform(const LLVector3d& foot, const LLQuaternion& rot)
         {
             mFootGlobal = foot;
             mRotation   = rot;
+            mChaosHasBase = false;
             ++mTransformRevision;
         }
         void setScale(F32 scale)
         {
             mScale = scale;
+            mChaosHasBase = false;
             ++mTransformRevision;    // re-syncs the manip proxy box to the new size
         }
 
@@ -128,6 +168,8 @@ public:
         // tonemap overlay, so a clone reads FULLBRIGHT in a night scene --
         // dial ~0.3-0.5 to sit it into dark sets. 1 = as authored.
         F32         mBrightness = 1.f;  // 0.05..1.5
+        EGhostLook  mLook = LOOK_NORMAL;
+        F32         mLookAlpha = 0.42f;
 
         // ---- cheap creative FX (each defaults OFF = byte-identical output) --
         F32         mShimmerSpeed = 1.f;      // Hz (only matters when intensity > 0)
@@ -156,7 +198,7 @@ public:
     // (session-only by design: a persisted hidden-everything would read as
     // "the studio is broken" next session)
     bool getShowAll() const { return mShowAll; }
-    void setShowAll(bool on) { mShowAll = on; }
+    void setShowAll(bool on);
     // the render/collect gate: master on AND at least one enabled instance
     bool anyEnabled() const;
 
@@ -175,9 +217,22 @@ public:
     // not resolvable in world. Duplicate offsets the copy one step sideways so
     // it never lands invisibly inside the original.
     Instance* addInstance(const LLUUID& source);
+    Instance* spawnEntityClone(const LLUUID& source, const std::string& source_label);
     Instance* duplicateInstance(const LLUUID& id);
+    bool      renameInstance(const LLUUID& id, const std::string& name);
+    bool      setInstanceEnabled(const LLUUID& id, bool enabled);
+    bool      setInstanceScale(const LLUUID& id, F32 scale);
+    bool      applyEntityTransform(const LLUUID& id);
+    bool      refreshEntityClone(const LLUUID& id);   // re-pull source appearance + worn attachments onto the clone
+    bool      setInstanceChaos(const LLUUID& id, F32 amount);
+    bool      setInstanceLook(const LLUUID& id, EGhostLook look);
+    LLGhostAvatar* resolveEntityClone(const LLUUID& id) const;
+    bool      setInstanceDriveMode(const LLUUID& id, EDriveMode mode,
+                                   const LLUUID& directed_anim = LLUUID::null);
+    void      refreshLifecycleStates();
     void      removeInstance(const LLUUID& id);
     void      removeAll();
+    S32       removeEntityClones();
     Instance* getInstance(const LLUUID& id);
     const std::vector<Instance>& getInstances() const { return mInstances; }
     std::vector<Instance>&       getInstances()       { return mInstances; }
@@ -204,6 +259,7 @@ public:
     void getWantedSources(uuid_vec_t& out) const;
 
 private:
+    std::string makeDefaultName() const;
     ALGhostStudio() = default;
 
     std::vector<Instance> mInstances;

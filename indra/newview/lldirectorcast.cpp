@@ -11,6 +11,8 @@
 
 #include "lldirectorcast.h"
 
+#include "alghoststudio.h"
+#include "llghostavatar.h"          // LLGhostAvatar complete type for resolveEntityClone() upcast
 #include "llactormover.h"           // startAll/stopAll/placeAt (ACTION, marks)
 #include "lleventtimer.h"           // one-shot countdown timer
 #include "llsdutil_math.h"          // ll_sd_from_vector3 (scene marks)
@@ -114,6 +116,22 @@ LLVOAvatar* LLDirectorCast::resolve(const LLUUID& id)
     }
     LLViewerObject* obj = gObjectList.findObject(id);
     LLVOAvatar* av = obj ? obj->asAvatar() : nullptr;
+    if (av && av->isGhostAvatar())
+    {
+        // Director subjects are the one intentional targeting exception for
+        // client-only entity clones. Return the runtime clone itself before
+        // any resident/name based fallback can substitute its appearance
+        // source. General autopilot, listener lookAt and resident actions keep
+        // their ghost exclusions.
+        return av->isDead() ? nullptr : av;
+    }
+    if (!av)
+    {
+        // Stable Studio instance ids are client-only actor handles. This
+        // bypasses resident/name-cache paths and resolves only via the local
+        // Ghost Studio registry.
+        av = ALGhostStudio::instance().resolveEntityClone(id);
+    }
     if (!av || av->isDead())
     {
         return nullptr;

@@ -5355,7 +5355,7 @@ void LLActorMover::buildGhostDeferredQueue(const LLCamera& camera, U32 view_stam
 
     for (const ALGhostStudio::Instance& inst : studio.getInstances())
     {
-        if (!inst.mEnabled)
+        if (inst.mKind != ALGhostStudio::BACKING_OVERLAY || !inst.mEnabled)
         {
             continue;
         }
@@ -5605,7 +5605,7 @@ void LLActorMover::renderStudioGhosts()
     std::vector<StudioItem> items;
     for (const ALGhostStudio::Instance& inst : studio.getInstances())
     {
-        if (!inst.mEnabled)
+        if (inst.mKind != ALGhostStudio::BACKING_OVERLAY || !inst.mEnabled)
         {
             continue;
         }
@@ -5754,7 +5754,8 @@ void LLActorMover::renderStudioGhosts()
     // with the UI hidden precisely because they are NOT gated like this).
     if (LLToolMgr::getInstance()->getCurrentTool() == ALToolGhostEdit::getInstance())
     {
-        if (ALGhostStudio::Instance* inst = studio.getInstance(studio.getSelected()))
+        if (ALGhostStudio::Instance* inst = studio.getInstance(studio.getSelected());
+            inst && inst->mKind == ALGhostStudio::BACKING_OVERLAY)
         {
             LLColor4 ring_tint;
             if (!inst->mUseActorTint)

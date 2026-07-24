@@ -881,6 +881,34 @@ LLVOAvatar::~LLVOAvatar()
     LL_DEBUGS() << "LLVOAvatar Destructor end" << LL_ENDL;
 }
 
+bool LLVOAvatar::hasClientOuterTransform() const
+{
+    LLClientOuterTransform* outer = getClientOuterTransform();
+    return mIsLocalOnly && outer && outer->mEnabled
+        && !is_approx_equal(outer->mScale, 1.f);
+}
+
+const LLMatrix4& LLVOAvatar::getClientOuterTransformMatrix() const
+{
+    return getClientOuterTransform()->mCurrent;
+}
+
+const LLMatrix4& LLVOAvatar::getClientOuterTransformInverse() const
+{
+    return getClientOuterTransform()->mInverse;
+}
+
+U32 LLVOAvatar::getClientOuterTransformRevision() const
+{
+    LLClientOuterTransform* outer = getClientOuterTransform();
+    return outer ? outer->mRevision : 0;
+}
+
+LLClientOuterTransform* LLVOAvatar::getClientOuterTransformHandle() const
+{
+    return getClientOuterTransform();
+}
+
 void LLVOAvatar::markDead()
 {
     if (mNameText)
@@ -1582,6 +1610,21 @@ void LLVOAvatar::calculateSpatialExtents(LLVector4a& newMin, LLVector4a& newMax)
                 //}
             }
         }
+    }
+
+    // Minimal Phase-1 culling support: enlarge/contract the complete native
+    // avatar-plus-attachments bounds by the same positive foot-pivoted scale.
+    if (hasClientOuterTransform())
+    {
+        const LLClientOuterTransform* outer = getClientOuterTransform();
+        LLVector3 scaled_min(newMin.getF32ptr());
+        LLVector3 scaled_max(newMax.getF32ptr());
+        scaled_min = outer->mFootPivot +
+            outer->mScale * (scaled_min - outer->mFootPivot);
+        scaled_max = outer->mFootPivot +
+            outer->mScale * (scaled_max - outer->mFootPivot);
+        newMin.load3(scaled_min.mV);
+        newMax.load3(scaled_max.mV);
     }
 
     // Update pixel area
@@ -5485,9 +5528,49 @@ bool LLVOAvatar::shouldAlphaMask()
 //-----------------------------------------------------------------------------
 // renderSkinned()
 //-----------------------------------------------------------------------------
+namespace
+{
+class LLScopedAvatarOuterModelView
+{
+public:
+    explicit LLScopedAvatarOuterModelView(const LLVOAvatar* avatar)
+    {
+        if (!avatar || !avatar->hasClientOuterTransform())
+        {
+            return;
+        }
+
+        mActive = true;
+        gGL.matrixMode(LLRender::MM_MODELVIEW);
+        gGL.pushMatrix();
+        gGL.loadMatrix(gGLModelView);
+        gGL.multMatrix((const GLfloat*)avatar->getClientOuterTransformMatrix().mMatrix);
+        mComposed = LLMatrix4(glm::value_ptr(gGL.getModelviewMatrix()));
+        LLDrawPoolAvatar::pushModelViewOverride(mComposed);
+        LLRenderPass::invalidateModelMatrixCache();
+    }
+
+    ~LLScopedAvatarOuterModelView()
+    {
+        if (mActive)
+        {
+            LLDrawPoolAvatar::popModelViewOverride();
+            gGL.matrixMode(LLRender::MM_MODELVIEW);
+            gGL.popMatrix();
+            LLRenderPass::invalidateModelMatrixCache();
+        }
+    }
+
+private:
+    bool mActive = false;
+    LLMatrix4 mComposed;
+};
+}
+
 U32 LLVOAvatar::renderSkinned()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_AVATAR;
+    LLScopedAvatarOuterModelView outer_modelview(this);
 
     U32 num_indices = 0;
 
@@ -5727,6 +5810,7 @@ U32 LLVOAvatar::renderTransparent(bool first_pass)
 //-----------------------------------------------------------------------------
 U32 LLVOAvatar::renderRigid()
 {
+    LLScopedAvatarOuterModelView outer_modelview(this);
     U32 num_indices = 0;
 
     if (!mIsBuilt)
@@ -10339,6 +10423,23 @@ bool LLVOAvatar::copyAppearanceFrom(LLVOAvatar* source, bool slam_params)
     // sets mFirstAppearanceMessageReceived, without which we render invisible.
     applyParsedAppearanceMessage(*mine, slam_params);
 
+    // A synthetic ghost never receives the follow-up texture callbacks under
+    // a simulator-known avatar id. Preserve the source avatar's already
+    // resolved baked bindings and loaded state explicitly. The fetched texture
+    // objects are cache-owned/shared; this neither copies pixels nor requests
+    // an upload, and useBakedTexture() only updates this avatar's local meshes.
+    for (U8 baked_index = 0; baked_index < mBakedTextureDatas.size(); ++baked_index)
+    {
+        LLViewerTexture* source_bake = source->getBakedTexture(baked_index);
+        if (!source_bake || source_bake->isMissingAsset())
+        {
+            continue;
+        }
+        const U8 texture_index = mBakedTextureDatas[baked_index].mTextureIndex;
+        setTEImage(texture_index, source_bake);
+        useBakedTexture(source_bake->getID());
+    }
+
     if (getOverallAppearance() != AOA_NORMAL)
     {
         resetSkeleton(false);
@@ -12501,4 +12602,3 @@ bool LLVOAvatar::isBuddy() const
     }
     return is_friend;
 }
-

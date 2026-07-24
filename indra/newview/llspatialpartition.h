@@ -100,6 +100,7 @@ public:
     const LLMatrix4* mNormalMapMatrix = nullptr;
     const LLMatrix4* mTextureMatrix = nullptr;
     const LLMatrix4* mModelMatrix = nullptr;
+    LLPointer<LLClientOuterTransform> mOuterTransform;
     // [BDMerge A5.4-1a] Points at the owning drawable's mLastVelocityMatrix. Used
     // only by the velocity pass: read as the previous object matrix, then the
     // current mModelMatrix is written back into it for next frame. Null (default)
@@ -803,4 +804,3 @@ extern const F32 SG_MAX_OBJ_RAD;
 
 
 #endif //LL_LLSPATIALPARTITION_H
-
