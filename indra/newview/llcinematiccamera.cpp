@@ -12,7 +12,6 @@
 #include "llcinematiccamera.h"
 
 #include <cmath>
-#include <typeinfo>
 
 #include "llcameraoperator.h"
 #include "llappviewer.h"            // gFrameIntervalSeconds
@@ -24,7 +23,6 @@
 #include "llviewercamera.h"
 #include "llviewercontrol.h"        // gSavedSettings, LLCachedControl
 #include "llviewerobject.h"
-#include "llghostavatar.h"         // temporary GhostCineScale RTTI diagnostic
 #include "llvoavatar.h"
 #include "llvoavatarself.h"         // gAgentAvatarp, isAgentAvatarValid()
 #include "m3math.h"
@@ -979,20 +977,6 @@ void LLCinematicCamera::updateCamera()
     {
         return;
     }
-    const bool log_ghost_scale = (gFrameCount % 30) == 0;
-    if (log_ghost_scale)
-    {
-        LL_INFOS("GhostCineScale")
-            << "resolve mode=" << (S32)mode
-            << " id=" << av->getID()
-            << " ghost=" << av->isGhostAvatar()
-            << " llghost=" << (dynamic_cast<LLGhostAvatar*>(av) != nullptr)
-            << " type=" << typeid(*av).name()
-            << " scale=" << av->getUniformScale()
-            << " base=" << cc_subjectBase(av)
-            << LL_ENDL;
-    }
-
     // fresh activation (mode was off for a few frames): restart the pattern
     // clock so one-shot moves (dolly zoom, push-in, overhead) begin at their
     // start pose, and let smoothing/operator re-seed instead of lerping from
@@ -1084,8 +1068,6 @@ void LLCinematicCamera::updateCamera()
     // positions and pattern meter offsets are still scale-1 here. Reproduce
     // that matrix for camera geometry about the same root/foot pivot. Keep the
     // scale-1 branch completely untouched.
-    const LLVector3 pos_before_scale = pos;
-    const LLVector3 focus_before_scale = focus;
     const F32 subject_scale = av->getUniformScale();
     if (subject_scale != 1.f)
     {
@@ -1108,23 +1090,6 @@ void LLCinematicCamera::updateCamera()
                 break;
         }
     }
-    if (log_ghost_scale)
-    {
-        LL_INFOS("GhostCineScale")
-            << "scale-block mode=" << (S32)mode
-            << " id=" << av->getID()
-            << " ghost=" << av->isGhostAvatar()
-            << " llghost=" << (dynamic_cast<LLGhostAvatar*>(av) != nullptr)
-            << " type=" << typeid(*av).name()
-            << " scale=" << subject_scale
-            << " base=" << cc_subjectBase(av)
-            << " pos-before=" << pos_before_scale
-            << " focus-before=" << focus_before_scale
-            << " pos-after=" << pos
-            << " focus-after=" << focus
-            << LL_ENDL;
-    }
-
     if (!have_rot)
     {
         rot = cc_lookAt(pos, focus);

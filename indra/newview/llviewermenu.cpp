@@ -6927,6 +6927,39 @@ class LLAvatarAddFriend : public view_listener_t
     }
 };
 
+class LLAvatarSetLocalScale : public view_listener_t
+{
+    bool handleEvent(const LLSD& userdata) override
+    {
+        const std::string value = userdata.asString();
+        const bool self = value.compare(0, 5, "self:") == 0;
+        LLVOAvatar* avatar = self ? gAgentAvatarp :
+            find_avatar_from_object(
+                LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
+        if (avatar)
+        {
+            avatar->setLocalScale((F32)atof(
+                self ? value.substr(5).c_str() : value.c_str()));
+        }
+        return true;
+    }
+};
+
+class LLAvatarCheckLocalScale : public view_listener_t
+{
+    bool handleEvent(const LLSD& userdata) override
+    {
+        const std::string value = userdata.asString();
+        const bool self = value.compare(0, 5, "self:") == 0;
+        LLVOAvatar* avatar = self ? gAgentAvatarp :
+            find_avatar_from_object(
+                LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
+        return avatar &&
+            is_approx_equal(avatar->getUniformScale(), (F32)atof(
+                self ? value.substr(5).c_str() : value.c_str()));
+    }
+};
+
 
 class LLAvatarToggleMyProfile : public view_listener_t
 {
@@ -10787,6 +10820,8 @@ void initialize_menus()
     view_listener_t::addMenu(new LLAvatarDebug(), "Avatar.Debug");
     view_listener_t::addMenu(new LLAvatarVisibleDebug(), "Avatar.VisibleDebug");
     view_listener_t::addMenu(new LLAvatarInviteToGroup(), "Avatar.InviteToGroup");
+    view_listener_t::addMenu(new LLAvatarSetLocalScale(), "Avatar.SetLocalScale");
+    view_listener_t::addMenu(new LLAvatarCheckLocalScale(), "Avatar.CheckLocalScale");
     commit.add("Avatar.Eject", boost::bind(&handle_avatar_eject, LLSD()));
     commit.add("Avatar.ShowInspector", boost::bind(&handle_avatar_show_inspector));
     view_listener_t::addMenu(new LLAvatarSendIM(), "Avatar.SendIM");

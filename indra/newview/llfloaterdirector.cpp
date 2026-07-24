@@ -191,6 +191,9 @@ bool LLFloaterDirector::postBuild()
     mCastHint = getChild<LLTextBox>("cast_hint");
     mRemoveBtn = getChild<LLButton>("btn_remove");
     mFocusBtn = getChild<LLButton>("btn_focus");
+    mLocalScaleSpinner = getChild<LLSpinCtrl>("local_scale_spinner");
+    mLocalScaleSpinner->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onCommitLocalScale(); });
     getChild<LLButton>("btn_add_you")->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onClickAddYou(); });
     mRemoveBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onCastRemove(); });
@@ -373,6 +376,7 @@ void LLFloaterDirector::onToggleLegend()
 void LLFloaterDirector::draw()
 {
     refreshCastList();
+    refreshLocalScale();
     refreshGroupControls();
     refreshTransport();
     refreshMoveTab();
@@ -966,6 +970,29 @@ LLUUID LLFloaterDirector::firstSelectedCastId() const
 {
     LLScrollListItem* item = mCastList->getFirstSelected();
     return item ? item->getValue().asUUID() : LLUUID::null;
+}
+
+void LLFloaterDirector::onCommitLocalScale()
+{
+    const F32 scale = (F32)mLocalScaleSpinner->getValue().asReal();
+    for (const LLUUID& id : selectedCastIds())
+    {
+        if (LLVOAvatar* avatar = LLDirectorCast::instance().resolve(id))
+        {
+            avatar->setLocalScale(scale);
+        }
+    }
+}
+
+void LLFloaterDirector::refreshLocalScale()
+{
+    LLVOAvatar* avatar =
+        LLDirectorCast::instance().resolve(firstSelectedCastId());
+    mLocalScaleSpinner->setEnabled(avatar != nullptr);
+    if (avatar && !mLocalScaleSpinner->hasFocus())
+    {
+        mLocalScaleSpinner->setValue(avatar->getUniformScale());
+    }
 }
 
 void LLFloaterDirector::onCastRightClick(LLUICtrl* ctrl, S32 x, S32 y)

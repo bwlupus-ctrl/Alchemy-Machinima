@@ -96,6 +96,8 @@ private:
     void onCastClearLocoAnim();
     void onCastCopyUUID();
     void onCastRemove();
+    void onCommitLocalScale();
+    void refreshLocalScale();
     // ---- groups ----
     void onCommitGroupAssign();         // tag the selected member(s) ("" / "(none)" = ungroup)
     void onClickGroup(bool start);      // Start/Stop every member of the picked group
@@ -172,6 +174,7 @@ private:
     LLButton*         mRemoveBtn = nullptr;
     LLButton*         mFocusBtn = nullptr;
     LLTextBox*        mCastHint = nullptr;
+    LLSpinCtrl*       mLocalScaleSpinner = nullptr;
     LLHandle<LLContextMenu> mCastMenuHandle;
     // per-row last-applied cell state, parallel to the list rows, so cells
     // are only re-set when something actually changed (v2 mover idiom)

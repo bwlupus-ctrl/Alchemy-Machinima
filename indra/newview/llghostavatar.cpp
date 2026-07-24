@@ -163,60 +163,9 @@ void LLGhostAvatar::setGhostRotation(const LLQuaternion& rotation)
     }
 }
 
-void LLGhostAvatar::updateEntityOuterTransform()
-{
-    LLClientOuterTransform* outer = getClientOuterTransform();
-    if (!outer || !mRoot)
-    {
-        return;
-    }
-
-    LLVector3 foot = mRoot->getWorldPosition();
-    foot.mV[VZ] -= getPelvisToFoot();
-    if (outer->mEnabled &&
-        is_approx_equal(outer->mScale, mEntityScale) &&
-        dist_vec_squared(outer->mFootPivot, foot) < F_APPROXIMATELY_ZERO)
-    {
-        return;
-    }
-
-    outer->mScale = mEntityScale;
-    outer->mFootPivot = foot;
-    outer->mEnabled = true;
-    outer->mCurrent.setIdentity();
-    outer->mInverse.setIdentity();
-    for (S32 axis = VX; axis <= VZ; ++axis)
-    {
-        outer->mCurrent.mMatrix[axis][axis] = mEntityScale;
-        outer->mCurrent.mMatrix[VW][axis] =
-            (1.f - mEntityScale) * foot.mV[axis];
-        const F32 inv_scale = 1.f / mEntityScale;
-        outer->mInverse.mMatrix[axis][axis] = inv_scale;
-        outer->mInverse.mMatrix[VW][axis] =
-            (1.f - inv_scale) * foot.mV[axis];
-    }
-    ++outer->mRevision;
-    setNeedsExtentUpdate(true);
-    LLRenderPass::invalidateModelMatrixCache();
-}
-
-void LLGhostAvatar::stampEntityOuterTransform(LLViewerObject* object)
-{
-    if (!object || object->isDead())
-    {
-        return;
-    }
-    object->setClientOuterTransform(getClientOuterTransform());
-    for (LLViewerObject* child : object->getChildren())
-    {
-        stampEntityOuterTransform(child);
-    }
-}
-
 void LLGhostAvatar::setEntityScale(F32 scale)
 {
-    mEntityScale = llclamp(scale, 0.05f, 10.f);
-    updateEntityOuterTransform();
+    setLocalScale(scale);
 }
 
 void LLGhostAvatar::setEntityLook(S32 look, F32 alpha)
@@ -926,7 +875,8 @@ S32 LLGhostAvatar::cloneAttachmentsFrom(LLVOAvatar* source)
             // Every descendant carries the same explicit render owner. This
             // covers static children and animesh without relying on joint-scale
             // inheritance (which LLXform intentionally drops).
-            stampEntityOuterTransform(dst_root);
+            // setLocalScale()/the base idle update stamps the shared outer
+            // transform on every attachment descendant.
 
             // -- 8. Insurance, not the fix.
             force_rebuild(dst_root);
@@ -1127,7 +1077,6 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
     }
 
     LLVOAvatar::idleUpdate(agent, time);
-    updateEntityOuterTransform();
 }
 
 // ---------------------------------------------------------------------------

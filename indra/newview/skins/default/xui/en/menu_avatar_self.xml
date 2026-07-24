@@ -253,6 +253,35 @@
     </menu_item_call>
   </context_menu>
   <menu_item_separator/>
+  <context_menu
+   label="Local Scale"
+   name="Local Scale">
+    <menu_item_check label="0.25x" name="Self Local Scale 025">
+      <menu_item_check.on_click function="Avatar.SetLocalScale" parameter="self:0.25" />
+      <menu_item_check.on_check function="Avatar.CheckLocalScale" parameter="self:0.25" />
+    </menu_item_check>
+    <menu_item_check label="0.5x" name="Self Local Scale 050">
+      <menu_item_check.on_click function="Avatar.SetLocalScale" parameter="self:0.5" />
+      <menu_item_check.on_check function="Avatar.CheckLocalScale" parameter="self:0.5" />
+    </menu_item_check>
+    <menu_item_check label="1x (Default)" name="Self Local Scale 100">
+      <menu_item_check.on_click function="Avatar.SetLocalScale" parameter="self:1.0" />
+      <menu_item_check.on_check function="Avatar.CheckLocalScale" parameter="self:1.0" />
+    </menu_item_check>
+    <menu_item_check label="2x" name="Self Local Scale 200">
+      <menu_item_check.on_click function="Avatar.SetLocalScale" parameter="self:2.0" />
+      <menu_item_check.on_check function="Avatar.CheckLocalScale" parameter="self:2.0" />
+    </menu_item_check>
+    <menu_item_check label="5x" name="Self Local Scale 500">
+      <menu_item_check.on_click function="Avatar.SetLocalScale" parameter="self:5.0" />
+      <menu_item_check.on_check function="Avatar.CheckLocalScale" parameter="self:5.0" />
+    </menu_item_check>
+    <menu_item_check label="10x" name="Self Local Scale 1000">
+      <menu_item_check.on_click function="Avatar.SetLocalScale" parameter="self:10.0" />
+      <menu_item_check.on_check function="Avatar.CheckLocalScale" parameter="self:10.0" />
+    </menu_item_check>
+  </context_menu>
+  <menu_item_separator/>
   <menu_item_call
     label="Sit / stand"
     layout="topleft"
