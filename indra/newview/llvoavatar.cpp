@@ -884,174 +884,8 @@ LLVOAvatar::~LLVOAvatar()
 bool LLVOAvatar::hasClientOuterTransform() const
 {
     LLClientOuterTransform* outer = getClientOuterTransform();
-    return outer && outer->mEnabled
+    return mIsLocalOnly && outer && outer->mEnabled
         && !is_approx_equal(outer->mScale, 1.f);
-}
-
-static void log_scaled_cull_drawable(LLViewerObject* object,
-                                     const LLClientOuterTransform* outer)
-{
-    if (!object || !outer || !outer->mEnabled || !object->mDrawable ||
-        (gFrameCount % 30) != 0)
-    {
-        return;
-    }
-
-    LLDrawable* drawable = object->mDrawable;
-    const LLVector4a* after = drawable->getSpatialExtents();
-    LLVector3 after_min(after[0].getF32ptr());
-    LLVector3 after_max(after[1].getF32ptr());
-    const F32 inv_scale = 1.f / outer->mScale;
-    LLVector3 before_min = outer->mFootPivot +
-        inv_scale * (after_min - outer->mFootPivot);
-    LLVector3 before_max = outer->mFootPivot +
-        inv_scale * (after_max - outer->mFootPivot);
-    LLSpatialGroup* group = drawable->getSpatialGroup();
-    const bool occluded = group &&
-        group->isOcclusionState(LLSpatialGroup::OCCLUDED);
-    LLVOAvatar* avatar = dynamic_cast<LLVOAvatar*>(object);
-    const std::string object_name = avatar ?
-        avatar->getDebugName() : object->getAttachmentItemName();
-
-    LL_INFOS("ScaleCull")
-        << "id=" << object->getID()
-        << " name=\"" << object_name << "\""
-        << " rigged=" << drawable->isState(
-               LLDrawable::RIGGED | LLDrawable::RIGGED_CHILD)
-        << " attachment=" << object->isAttachment()
-        << " scale=" << outer->mScale
-        << " pivot=" << outer->mFootPivot
-        << " before=[" << before_min << "," << before_max << "]"
-        << " after=[" << after_min << "," << after_max << "]"
-        << " bin_radius=" << drawable->getBinRadius()
-        << " visible=" << drawable->isVisible()
-        << " culled=" << !drawable->isVisible()
-        << " occluded=" << occluded
-        << LL_ENDL;
-}
-
-void LLVOAvatar::stampLocalScaleTransform(LLViewerObject* object,
-                                         LLClientOuterTransform* transform,
-                                         bool force_extent_update)
-{
-    if (!object || object->isDead())
-    {
-        return;
-    }
-    const bool transform_changed =
-        object->getClientOuterTransform() != transform;
-    if (transform_changed)
-    {
-        object->setClientOuterTransform(transform);
-    }
-    if (object->mDrawable.notNull())
-    {
-        if (transform_changed)
-        {
-            // registerFace() resolves the outer transform into LLDrawInfo.
-            // Rebuild only when that binding changes; later scale/pivot edits
-            // are observed through the already-bound transform pointer.
-            gPipeline.markRebuild(object->mDrawable,
-                                  LLDrawable::REBUILD_ALL);
-        }
-        log_scaled_cull_drawable(object, transform);
-        if (transform_changed || force_extent_update)
-        {
-            gPipeline.markPartitionMove(object->mDrawable);
-        }
-    }
-    for (LLViewerObject* child : object->getChildren())
-    {
-        stampLocalScaleTransform(child, transform, force_extent_update);
-    }
-}
-
-void LLVOAvatar::updateLocalScaleTransform()
-{
-    LLClientOuterTransform* outer = getClientOuterTransform();
-    if (!outer || !mRoot)
-    {
-        return;
-    }
-
-    const bool enabled = !is_approx_equal(mLocalScale, 1.f);
-    const bool enabled_changed = outer->mEnabled != enabled;
-    LLVector3 foot = mRoot->getWorldPosition();
-    foot.mV[VZ] -= getPelvisToFoot();
-    const bool changed = enabled_changed ||
-        !is_approx_equal(outer->mScale, mLocalScale) ||
-        dist_vec_squared(outer->mFootPivot, foot) >= F_APPROXIMATELY_ZERO;
-
-    if (changed)
-    {
-        outer->mScale = mLocalScale;
-        outer->mFootPivot = foot;
-        outer->mEnabled = enabled;
-        outer->mCurrent.setIdentity();
-        outer->mInverse.setIdentity();
-        if (enabled)
-        {
-            const F32 inv_scale = 1.f / mLocalScale;
-            for (S32 axis = VX; axis <= VZ; ++axis)
-            {
-                outer->mCurrent.mMatrix[axis][axis] = mLocalScale;
-                outer->mCurrent.mMatrix[VW][axis] =
-                    (1.f - mLocalScale) * foot.mV[axis];
-                outer->mInverse.mMatrix[axis][axis] = inv_scale;
-                outer->mInverse.mMatrix[VW][axis] =
-                    (1.f - inv_scale) * foot.mV[axis];
-            }
-        }
-        ++outer->mRevision;
-        setNeedsExtentUpdate(true);
-        if (mDrawable.notNull())
-        {
-            if (enabled_changed)
-            {
-                // The avatar drawable keeps the resolved outer-transform
-                // pointer in its draw infos. Both nullptr -> transform and
-                // transform -> disabled require face re-registration.
-                gPipeline.markRebuild(mDrawable, LLDrawable::REBUILD_ALL);
-            }
-            gPipeline.markPartitionMove(mDrawable);
-        }
-        LLRenderPass::invalidateModelMatrixCache();
-    }
-
-    // Attachments can arrive after scale was set. Keep their render owner and
-    // independently culled spatial bridges synchronized with the avatar.
-    LLClientOuterTransform* stamp = enabled ? outer : nullptr;
-    log_scaled_cull_drawable(this, stamp);
-    for (attachment_map_t::iterator iter = mAttachmentPoints.begin();
-         iter != mAttachmentPoints.end(); ++iter)
-    {
-        LLViewerJointAttachment* attachment = iter->second;
-        if (!attachment || !attachment->getValid())
-        {
-            continue;
-        }
-        for (LLViewerJointAttachment::attachedobjs_vec_t::iterator obj =
-                 attachment->mAttachedObjects.begin();
-             obj != attachment->mAttachedObjects.end(); ++obj)
-        {
-            stampLocalScaleTransform(obj->get(), stamp, changed);
-        }
-    }
-}
-
-void LLVOAvatar::setLocalScale(F32 scale)
-{
-    const F32 clamped = llclamp(scale, 0.05f, 10.f);
-    if (is_approx_equal(clamped, mLocalScale))
-    {
-        return;
-    }
-    mLocalScale = clamped;
-    if (!getClientOuterTransform())
-    {
-        setClientOuterTransform(new LLClientOuterTransform);
-    }
-    updateLocalScaleTransform();
 }
 
 const LLMatrix4& LLVOAvatar::getClientOuterTransformMatrix() const
@@ -1562,21 +1396,6 @@ void LLVOAvatar::onShift(const LLVector4a& shift_vector)
     mLastAnimExtents[1] += shift;
 }
 
-const LLVector3* LLVOAvatar::getLastAnimExtents() const
-{
-    LLClientOuterTransform* outer = getClientOuterTransform();
-    if (!outer || !outer->mEnabled || is_approx_equal(outer->mScale, 1.f))
-    {
-        return mLastAnimExtents;
-    }
-
-    mScaledAnimExtents[0] = outer->mFootPivot +
-        outer->mScale * (mLastAnimExtents[0] - outer->mFootPivot);
-    mScaledAnimExtents[1] = outer->mFootPivot +
-        outer->mScale * (mLastAnimExtents[1] - outer->mFootPivot);
-    return mScaledAnimExtents;
-}
-
 void LLVOAvatar::updateSpatialExtents(LLVector4a& newMin, LLVector4a &newMax)
 {
     if (mDrawable.isNull())
@@ -1793,6 +1612,21 @@ void LLVOAvatar::calculateSpatialExtents(LLVector4a& newMin, LLVector4a& newMax)
         }
     }
 
+    // Minimal Phase-1 culling support: enlarge/contract the complete native
+    // avatar-plus-attachments bounds by the same positive foot-pivoted scale.
+    if (hasClientOuterTransform())
+    {
+        const LLClientOuterTransform* outer = getClientOuterTransform();
+        LLVector3 scaled_min(newMin.getF32ptr());
+        LLVector3 scaled_max(newMax.getF32ptr());
+        scaled_min = outer->mFootPivot +
+            outer->mScale * (scaled_min - outer->mFootPivot);
+        scaled_max = outer->mFootPivot +
+            outer->mScale * (scaled_max - outer->mFootPivot);
+        newMin.load3(scaled_min.mV);
+        newMax.load3(scaled_max.mV);
+    }
+
     // Update pixel area
     LLVector4a center, size;
     center.setAdd(newMin, newMax);
@@ -1800,17 +1634,6 @@ void LLVOAvatar::calculateSpatialExtents(LLVector4a& newMin, LLVector4a& newMax)
 
     size.setSub(newMax,newMin);
     size.mul(0.5f);
-
-    LLClientOuterTransform* outer = getClientOuterTransform();
-    if (outer && outer->mEnabled &&
-        !is_approx_equal(outer->mScale, 1.f))
-    {
-        LLVector3 scaled_center(center.getF32ptr());
-        scaled_center = outer->mFootPivot +
-            outer->mScale * (scaled_center - outer->mFootPivot);
-        center.load3(scaled_center.mV);
-        size.mul(outer->mScale);
-    }
 
     F32 pixel_area = LLPipeline::calcPixelArea(center, size, *LLViewerCamera::getInstance());
     setCorrectedPixelArea(pixel_area);
@@ -2925,10 +2748,6 @@ void LLVOAvatar::dumpAnimationState()
 //------------------------------------------------------------------------
 void LLVOAvatar::idleUpdate(LLAgent &agent, const F64 &time)
 {
-    if (!is_approx_equal(mLocalScale, 1.f))
-    {
-        updateLocalScaleTransform();
-    }
     LL_PROFILE_ZONE_SCOPED_CATEGORY_AVATAR;
 
     if (LLApp::isExiting())
@@ -2999,17 +2818,7 @@ void LLVOAvatar::idleUpdate(LLAgent &agent, const F64 &time)
         lastRecalibrationFrame = thisFrame;
     }
 
-    if (hasClientOuterTransform())
-    {
-        // LLDrawable scales these extents about the client's foot pivot.  The
-        // stock fallback in updateSpatialExtents() only translates the last
-        // pose's box by the pelvis delta; scaling amplifies any pose error in
-        // that cached box and can cull the avatar while it moves or animates.
-        // Keep the throttled stock path below byte-for-byte for unscaled
-        // avatars, and charge exact pose extents only to locally scaled ones.
-        mNeedsExtentUpdate = true;
-    }
-    else if ((mLastAnimExtents[0]==LLVector3())||
+    if ((mLastAnimExtents[0]==LLVector3())||
         (mLastAnimExtents[1])==LLVector3())
     {
         mNeedsExtentUpdate = true;
@@ -3391,9 +3200,8 @@ void LLVOAvatar::idleUpdateMisc(bool detailed_update)
             }
             else
             {
-                const LLVector3* render_extents = getLastAnimExtents();
-                ext[0].load3(render_extents[0].mV);
-                ext[1].load3(render_extents[1].mV);
+                ext[0].load3(mLastAnimExtents[0].mV);
+                ext[1].load3(mLastAnimExtents[1].mV);
                 // Expensive. Just call this once per frame, in updateSpatialExtents();
                 //calculateSpatialExtents(ext[0], ext[1]);
                 LLVector4a diff;

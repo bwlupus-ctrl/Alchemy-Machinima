@@ -189,35 +189,6 @@
     </menu_item_call>
     <menu_item_separator />
     <context_menu
-     label="Local Scale"
-     name="Local Scale">
-      <menu_item_check label="0.25x" name="Local Scale 025">
-        <menu_item_check.on_click function="Avatar.SetLocalScale" parameter="0.25" />
-        <menu_item_check.on_check function="Avatar.CheckLocalScale" parameter="0.25" />
-      </menu_item_check>
-      <menu_item_check label="0.5x" name="Local Scale 050">
-        <menu_item_check.on_click function="Avatar.SetLocalScale" parameter="0.5" />
-        <menu_item_check.on_check function="Avatar.CheckLocalScale" parameter="0.5" />
-      </menu_item_check>
-      <menu_item_check label="1x (Default)" name="Local Scale 100">
-        <menu_item_check.on_click function="Avatar.SetLocalScale" parameter="1.0" />
-        <menu_item_check.on_check function="Avatar.CheckLocalScale" parameter="1.0" />
-      </menu_item_check>
-      <menu_item_check label="2x" name="Local Scale 200">
-        <menu_item_check.on_click function="Avatar.SetLocalScale" parameter="2.0" />
-        <menu_item_check.on_check function="Avatar.CheckLocalScale" parameter="2.0" />
-      </menu_item_check>
-      <menu_item_check label="5x" name="Local Scale 500">
-        <menu_item_check.on_click function="Avatar.SetLocalScale" parameter="5.0" />
-        <menu_item_check.on_check function="Avatar.CheckLocalScale" parameter="5.0" />
-      </menu_item_check>
-      <menu_item_check label="10x" name="Local Scale 1000">
-        <menu_item_check.on_click function="Avatar.SetLocalScale" parameter="10.0" />
-        <menu_item_check.on_check function="Avatar.CheckLocalScale" parameter="10.0" />
-      </menu_item_check>
-    </context_menu>
-    <menu_item_separator />
-    <context_menu
      label="Attachments Alpha"
      name="Attachments Alpha">
       <menu_item_check

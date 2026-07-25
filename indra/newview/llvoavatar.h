@@ -263,10 +263,7 @@ public:
     // (world enumeration, name cache, mute state, autotune, sounds, sim
     // requests) must test this instead of relying on mIsDummy.
     virtual bool    isGhostAvatar() const { return mIsGhostAvatar; }
-    virtual F32     getUniformScale() const { return mLocalScale; }
-    // Viewer-local cosmetic scale. This is the sole mutation entry point;
-    // it never changes simulator object state.
-    void            setLocalScale(F32 scale);
+    virtual F32     getUniformScale() const { return 1.f; }
     virtual bool    isBuddy() const;
 
     // If this is an attachment, return the avatar it is attached to. Otherwise NULL.
@@ -282,12 +279,6 @@ public:
 
 private: //aligned members
     LLVector4a  mImpostorExtents[2];
-
-    F32 mLocalScale = 1.f;
-    void updateLocalScaleTransform();
-    void stampLocalScaleTransform(LLViewerObject* object,
-                                  LLClientOuterTransform* transform,
-                                  bool force_extent_update);
 
     //--------------------------------------------------------------------
     // Updates
@@ -704,9 +695,7 @@ public:
 //  bool        mNeedsImpostorUpdate;
     S32         mLastImpostorUpdateReason;
     F32SecondsImplicit mLastImpostorUpdateFrameTime;
-    // mLastAnimExtents remains the animation-space cache.  Consumers which
-    // participate in visibility/LOD get the foot-pivoted render extents.
-    const LLVector3*  getLastAnimExtents() const;
+    const LLVector3*  getLastAnimExtents() const { return mLastAnimExtents; }
     void        setNeedsExtentUpdate(bool val) { mNeedsExtentUpdate = val; }
 
 private:
@@ -720,7 +709,6 @@ private:
     F32         mImpostorDistance;
     F32         mImpostorPixelArea;
     LLVector3   mLastAnimExtents[2];
-    mutable LLVector3 mScaledAnimExtents[2];
     LLVector3   mLastAnimBasePos;
 
     //--------------------------------------------------------------------

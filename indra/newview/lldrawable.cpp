@@ -1063,27 +1063,10 @@ void LLDrawable::updateSpatialExtents()
         LLVector4a extents[2] = { exts[0], exts[1] };
 
         mVObjp->updateSpatialExtents(extents[0], extents[1]);
-        LLClientOuterTransform* outer = mVObjp->getClientOuterTransform();
-        if (outer && outer->mEnabled &&
-            !is_approx_equal(outer->mScale, 1.f))
-        {
-            LLVector3 scaled_min(extents[0].getF32ptr());
-            LLVector3 scaled_max(extents[1].getF32ptr());
-            scaled_min = outer->mFootPivot +
-                outer->mScale * (scaled_min - outer->mFootPivot);
-            scaled_max = outer->mFootPivot +
-                outer->mScale * (scaled_max - outer->mFootPivot);
-            extents[0].load3(scaled_min.mV);
-            extents[1].load3(scaled_max.mV);
-        }
         setSpatialExtents(extents[0], extents[1]);
-        updateBinRadius();
     }
 
-    if (!mVObjp)
-    {
-        updateBinRadius();
-    }
+    updateBinRadius();
 
     if (mSpatialBridge.notNull())
     {
@@ -1096,14 +1079,7 @@ void LLDrawable::updateBinRadius()
 {
     if (mVObjp.notNull())
     {
-        F32 radius = mVObjp->getBinRadius();
-        LLClientOuterTransform* outer = mVObjp->getClientOuterTransform();
-        if (outer && outer->mEnabled &&
-            !is_approx_equal(outer->mScale, 1.f))
-        {
-            radius *= outer->mScale;
-        }
-        setBinRadius(llmin(radius, 256.f));
+        setBinRadius(llmin(mVObjp->getBinRadius(), 256.f));
     }
     else
     {
@@ -1408,21 +1384,6 @@ void LLSpatialBridge::updateSpatialExtents()
         newMin.setMin(newMin, min);
         newMax.setMax(newMax, max);
     }
-    LLClientOuterTransform* outer =
-        mDrawable->getVObj() ?
-        mDrawable->getVObj()->getClientOuterTransform() : nullptr;
-    if (outer && outer->mEnabled &&
-        !is_approx_equal(outer->mScale, 1.f))
-    {
-        LLVector3 scaled_min(newMin.getF32ptr());
-        LLVector3 scaled_max(newMax.getF32ptr());
-        scaled_min = outer->mFootPivot +
-            outer->mScale * (scaled_min - outer->mFootPivot);
-        scaled_max = outer->mFootPivot +
-            outer->mScale * (scaled_max - outer->mFootPivot);
-        newMin.load3(scaled_min.mV);
-        newMax.load3(scaled_max.mV);
-    }
     setSpatialExtents(newMin, newMax);
 
     LLVector4a diagonal;
@@ -1437,16 +1398,7 @@ void LLSpatialBridge::updateSpatialExtents()
 
 void LLSpatialBridge::updateBinRadius()
 {
-    F32 radius = mOctree->getSize()[0] * 0.5f;
-    LLClientOuterTransform* outer =
-        mDrawable->getVObj() ?
-        mDrawable->getVObj()->getClientOuterTransform() : nullptr;
-    if (outer && outer->mEnabled &&
-        !is_approx_equal(outer->mScale, 1.f))
-    {
-        radius *= outer->mScale;
-    }
-    setBinRadius(llmin(radius, 256.f));
+    setBinRadius(llmin( mOctree->getSize()[0]*0.5f, 256.f));
 }
 
 LLCamera LLSpatialBridge::transformCamera(LLCamera& camera)
@@ -1864,3 +1816,4 @@ void LLHUDBridge::shiftPos(const LLVector4a& vec)
 {
     //don't shift hud bridges on region crossing
 }
+

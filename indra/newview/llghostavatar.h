@@ -107,6 +107,7 @@ public:
     // Viewer-local entity controls. These only alter this synthetic avatar's
     // skeleton/motion controller; neither path touches simulator object state.
     void setEntityScale(F32 scale);
+    F32 getUniformScale() const override { return mEntityScale; }
     void setEntityDriveMode(S32 mode, const LLUUID& directed_anim);
     void setEntityLook(S32 look, F32 alpha);
 
@@ -148,10 +149,13 @@ public:
     static S32 clearTestHarnessGhosts();
 
 private:
+    void updateEntityOuterTransform();
+    void stampEntityOuterTransform(LLViewerObject* object);
     void clearClonedObjectAnimations();
 
     bool mMarkedForDeath;
     bool mEntityCloneVisible;
+    F32 mEntityScale = 1.f;
     S32 mEntityDriveMode = 0; // ALGhostStudio::DRIVE_MIRROR (avoid header cycle)
     S32 mEntityLook = 0;
     F32 mEntityLookAlpha = 1.f;

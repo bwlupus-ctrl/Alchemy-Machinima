@@ -1589,12 +1589,6 @@ bool LLVOVolume::calcLOD()
 
     mLODAdjustedDistance = distance;
 
-    LLVOAvatar* scaled_avatar = getAvatar();
-    const F32 local_scale = scaled_avatar ?
-        scaled_avatar->getUniformScale() : 1.f;
-    const F32 apparent_distance = is_approx_equal(local_scale, 1.f) ?
-        distance : distance / local_scale;
-
     static LLCachedControl<S32> debug_selection_lods(gSavedSettings, "DebugSelectionLODs", 0);
     if (sMachinimaForceMaxLOD)
     {
@@ -1615,8 +1609,7 @@ bool LLVOVolume::calcLOD()
     }
     else
     {
-        cur_detail = computeLODDetail(ll_round(apparent_distance, 0.01f),
-                                     ll_round(radius, 0.01f), lod_factor);
+        cur_detail = computeLODDetail(ll_round(distance, 0.01f), ll_round(radius, 0.01f), lod_factor);
     }
 
     // Ghost attachment prims are synthetic local copies. In particular, their
@@ -1630,12 +1623,6 @@ bool LLVOVolume::calcLOD()
         LLGhostAvatar::getClonedSourceLOD(this, source_lod))
     {
         cur_detail = source_lod;
-        if (!is_approx_equal(local_scale, 1.f))
-        {
-            cur_detail = llmax(cur_detail, computeLODDetail(
-                ll_round(apparent_distance, 0.01f),
-                ll_round(radius, 0.01f), lod_factor));
-        }
     }
 
     if (gPipeline.hasRenderDebugMask(LLPipeline::RENDER_DEBUG_TRIANGLE_COUNT) && mDrawable->getFace(0))
@@ -5482,12 +5469,9 @@ void LLVolumeGeometryManager::freeFaces()
 static LLClientOuterTransform* resolve_outer_transform(LLFace* facep)
 {
     LLViewerObject* object = facep ? facep->getViewerObject() : nullptr;
-    LLClientOuterTransform* object_transform =
-        object ? object->getClientOuterTransform() : nullptr;
-    if (object_transform && object_transform->mEnabled &&
-        !is_approx_equal(object_transform->mScale, 1.f))
+    if (object && object->getClientOuterTransform())
     {
-        return object_transform;
+        return object->getClientOuterTransform();
     }
 
     LLVOAvatar* skinning_avatar = facep ? facep->mAvatar : nullptr;

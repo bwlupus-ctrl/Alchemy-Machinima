@@ -252,29 +252,6 @@
      name="group_assign_combo"
      tool_tip="Group tag for the selected member(s): type a new name or pick an existing one, Enter commits. Empty ungroups"
      width="136" />
-    <text
-     follows="left|bottom"
-     height="16"
-     layout="topleft"
-     left="8"
-     top="390"
-     name="local_scale_lbl"
-     width="72">
-        Local Scale
-    </text>
-    <spinner
-     decimal_digits="2"
-     follows="left|bottom"
-     height="20"
-     increment="0.05"
-     layout="topleft"
-     left="82"
-     min_val="0.05"
-     max_val="10"
-     top="387"
-     name="local_scale_spinner"
-     tool_tip="Viewer-local cosmetic scale for the selected cast avatar(s); never sent to the simulator"
-     width="106" />
     <check_box
      control_name="ActorMoverShowHeading"
      follows="left|bottom"
@@ -282,7 +259,7 @@
      label="Show path"
      layout="topleft"
      left="8"
-     top="413"
+     top="390"
      name="show_heading_check"
      tool_tip="Show the in-world path preview for each cast actor. With a walkable path: the thick outlined spline with direction chevrons and numbered node markers (start green, end red, dwell nodes ringed). With no path: the thick straight heading ray along the planned bearing (m). Client-side only; tracks the heading dial live"
      width="170" />
@@ -292,7 +269,7 @@
      label="+ You"
      layout="topleft"
      left="8"
-     top="431"
+     top="408"
      name="btn_add_you"
      tool_tip="Add your own avatar to the cast"
      width="54" />
@@ -302,7 +279,7 @@
      label="Remove"
      layout="topleft"
      left="66"
-     top="431"
+     top="408"
      name="btn_remove"
      width="56" />
     <button
@@ -311,7 +288,7 @@
      label="Focus"
      layout="topleft"
      left="126"
-     top="431"
+     top="408"
      name="btn_focus"
      tool_tip="Frame the selected cast member in the camera"
      width="62" />
