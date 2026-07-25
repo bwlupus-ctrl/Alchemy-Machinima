@@ -5231,10 +5231,76 @@
       <key>Value</key>
       <real>0.0</real>
     </map>
+    <key>BDMergeCineModeAuto</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge] Auto-arm capture mode when the viewer can tell you are filming (see the BDMergeCineModeOn* switches). Arms instantly and releases after BDMergeCineModeReleaseDelay seconds of no filming signal, so a brief UI toggle does not thrash texture resolution. The manual BDMergeCaptureModePin always overrides this.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>BDMergeCineModeOnHideUI</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge] Treat a hidden interface as "filming" for capture-mode auto-arming.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>BDMergeCineModeOnFlycam</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge] Treat an active joystick flycam as "filming" for capture-mode auto-arming.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>BDMergeCineModeOnCinematicCam</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge] Treat an active Cinematic Camera as "filming" for capture-mode auto-arming.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>BDMergeCineModeOnAction</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge] Treat a running Director ACTION as "filming" for capture-mode auto-arming.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>BDMergeCineModeReleaseDelay</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge] Seconds of no filming signal before capture mode releases. Arming is instant; releasing is delayed so a momentary UI toggle or flycam blip does not cause a texture-resolution round trip.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>5.0</real>
+    </map>
     <key>BDMergeCaptureModePin</key>
     <map>
       <key>Comment</key>
-      <string>[BDMerge G5.2] Capture mode: pin scene textures at loaded resolution - holds the discard bias at its floor so no bias-driven downrez, unload, backgrounded dump, or draw-distance shrink occurs during a take. Disables a memory safety valve by design; intended for capture sessions.</string>
+      <string>[BDMerge G5.2] Capture mode: pin scene textures at loaded resolution - holds the discard bias at its floor so no bias-driven downrez, unload, backgrounded dump, or draw-distance shrink occurs during a take. Disables a memory safety valve by design; intended for capture sessions. Forces capture mode on regardless of the BDMergeCineMode* auto-arming.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>

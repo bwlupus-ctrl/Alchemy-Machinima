@@ -111,6 +111,12 @@ protected:
 public:
     static void initClass();
     static void updateClass();
+
+    // [BDMerge] True while the viewer believes a take is in progress (manual
+    // capture pin, or auto-armed by hide-UI / flycam / cinematic cam / Director
+    // ACTION). Resolved once per frame in updateClass(); callers must not
+    // re-derive it. Drives the discard-bias pin and full-resolution textures.
+    static bool isCaptureModeActive();
     static bool isSystemMemoryLow();
     static bool isSystemMemoryCritical();
     static F32 getSystemMemoryBudgetFactor();

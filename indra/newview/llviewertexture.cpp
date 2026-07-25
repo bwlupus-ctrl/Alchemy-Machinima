@@ -61,6 +61,10 @@
 #include "lltexturemanagerbridge.h"
 #include "llmediaentry.h"
 #include "llvovolume.h"
+// [BDMerge] capture-mode auto-arming reads these "am I filming?" signals
+#include "llviewerjoystick.h"      // flycam override camera
+#include "llcinematiccamera.h"     // cinematic camera active
+#include "lldirectorcast.h"        // Director ACTION running
 #include "llviewermedia.h"
 #include "lltexturecache.h"
 #include "llviewerwindow.h"
@@ -472,8 +476,100 @@ void LLViewerTexture::initClass()
 }
 
 //static
+// [BDMerge] Capture mode: "am I filming?" resolved ONCE per frame.
+//
+// Evaluated here rather than at the per-texture sites because those run for
+// every texture every frame -- polling four subsystems per texture would be
+// pure waste. The two full-res checks just read sCaptureModeActive.
+//
+// HYSTERESIS is the important part. Arming upgrades every visible texture to
+// full resolution (a fetch burst); disarming lets them downrez again. A mode
+// that flapped -- because you toggled the UI for a second, or the flycam
+// blipped -- would thrash texture state continuously. So it arms instantly
+// (you want fidelity the moment you start filming) and releases only after a
+// quiet period.
+static bool  sCaptureModeActive = false;
+static F32   sCaptureModeReleaseAt = 0.f;
+
+//static
+bool LLViewerTexture::isCaptureModeActive()
+{
+    return sCaptureModeActive;
+}
+
+static void update_capture_mode()
+{
+    // Manual pin always wins and is instantaneous in both directions.
+    static LLCachedControl<bool> manual_pin(gSavedSettings, "BDMergeCaptureModePin", false);
+    if (manual_pin)
+    {
+        sCaptureModeActive = true;
+        sCaptureModeReleaseAt = 0.f;
+        return;
+    }
+
+    static LLCachedControl<bool> auto_arm(gSavedSettings, "BDMergeCineModeAuto", true);
+    if (!auto_arm)
+    {
+        sCaptureModeActive = false;
+        sCaptureModeReleaseAt = 0.f;
+        return;
+    }
+
+    // Each signal is individually opt-out: hiding the UI or flying the flycam
+    // does not always mean "filming", so the operator decides which count.
+    static LLCachedControl<bool> on_hide_ui(gSavedSettings, "BDMergeCineModeOnHideUI", true);
+    static LLCachedControl<bool> on_flycam(gSavedSettings, "BDMergeCineModeOnFlycam", true);
+    static LLCachedControl<bool> on_cinecam(gSavedSettings, "BDMergeCineModeOnCinematicCam", true);
+    static LLCachedControl<bool> on_action(gSavedSettings, "BDMergeCineModeOnAction", true);
+
+    bool filming = false;
+    if (on_hide_ui && !gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI))
+    {
+        filming = true;
+    }
+    if (!filming && on_flycam && LLViewerJoystick::getInstance()->getOverrideCamera())
+    {
+        filming = true;
+    }
+    if (!filming && on_cinecam && LLCinematicCamera::instance().isActive())
+    {
+        filming = true;
+    }
+    if (!filming && on_action && LLDirectorCast::instance().isRunning())
+    {
+        filming = true;
+    }
+
+    static LLCachedControl<F32> release_delay(gSavedSettings, "BDMergeCineModeReleaseDelay", 5.f);
+    const F32 now = (F32)LLTimer::getElapsedSeconds();
+
+    if (filming)
+    {
+        // Arm immediately, and cancel any pending release.
+        sCaptureModeActive = true;
+        sCaptureModeReleaseAt = 0.f;
+    }
+    else if (sCaptureModeActive)
+    {
+        // Start (or continue) the release countdown rather than dropping out
+        // the instant a signal blinks off.
+        if (sCaptureModeReleaseAt == 0.f)
+        {
+            sCaptureModeReleaseAt = now + llmax((F32)release_delay, 0.f);
+        }
+        else if (now >= sCaptureModeReleaseAt)
+        {
+            sCaptureModeActive = false;
+            sCaptureModeReleaseAt = 0.f;
+        }
+    }
+}
+
 void LLViewerTexture::updateClass()
 {
+    update_capture_mode();
+
     LL_PROFILE_ZONE_SCOPED_CATEGORY_TEXTURE;
     sCurrentTime = gFrameTimeSeconds;
 
@@ -615,8 +711,7 @@ void LLViewerTexture::updateClass()
     // budget (full detected VRAM, 20% headroom) and the G5.1 decoded RAM
     // pool absorb the larger working set. This disables a memory safety
     // valve by design - it is a capture tool, default off.
-    static LLCachedControl<bool> capture_pin(gSavedSettings, "BDMergeCaptureModePin", false);
-    if (capture_pin)
+    if (sCaptureModeActive)
     {
         sDesiredDiscardBias = 1.f;
     }
@@ -1769,7 +1864,10 @@ void LLViewerFetchedTexture::processTextureStats()
     {
         updateVirtualSize();
 
+        // [BDMerge] Capture mode implies full resolution -- see the matching
+        // comment in LLViewerLODTexture::processTextureStats().
         static LLCachedControl<bool> textures_fullres(gSavedSettings,"TextureLoadFullRes", false);
+        const bool want_fullres = textures_fullres || LLViewerTexture::isCaptureModeActive();
 
         U32 max_tex_res = MAX_IMAGE_SIZE_DEFAULT;
         if (mBoostLevel < LLGLTexture::BOOST_HIGH)
@@ -1781,7 +1879,7 @@ void LLViewerFetchedTexture::processTextureStats()
             mMaxVirtualSize = llmin(mMaxVirtualSize, (F32)(max_tex_res * max_tex_res));
         }
 
-        if (textures_fullres)
+        if (want_fullres)
         {
             mDesiredDiscardLevel = 0;
         }
@@ -3077,7 +3175,19 @@ void LLViewerLODTexture::processTextureStats()
 
     bool did_downscale = false;
 
+    // [BDMerge] Capture mode implies full resolution. The G5.2 pin holds the
+    // MEMORY-PRESSURE discard bias at its floor, but the screen-space downrez
+    // below is derived from on-screen pixel area and ignores bias entirely --
+    // so without this a texture that is small in frame still gets scaleDown()'d
+    // mid-take, and must be re-fetched, re-decoded and re-uploaded the moment
+    // the camera pushes in. That is a hitch the pin alone does not close.
+    //
+    // Folding it into the capture pin rather than leaving TextureLoadFullRes as
+    // a separate switch is deliberate: full-res on a crowded region is genuinely
+    // expensive, so it should be armed with a take and released with it, not
+    // left on while browsing. TextureLoadFullRes still works standalone.
     static LLCachedControl<bool> textures_fullres(gSavedSettings,"TextureLoadFullRes", false);
+    const bool want_fullres = textures_fullres || LLViewerTexture::isCaptureModeActive();
 
     F32 max_tex_res = MAX_IMAGE_SIZE_DEFAULT;
     if (mBoostLevel < LLGLTexture::BOOST_HIGH)
@@ -3089,7 +3199,7 @@ void LLViewerLODTexture::processTextureStats()
         mMaxVirtualSize = llmin(mMaxVirtualSize, max_tex_res * max_tex_res);
     }
 
-    if (textures_fullres)
+    if (want_fullres)
     {
         mDesiredDiscardLevel = 0;
     }
