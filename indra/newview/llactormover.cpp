@@ -2637,6 +2637,29 @@ const F32 GAZE_HEAD_YAW_MAX   = 72.f * DEG_TO_RAD;  // combined body-relative ya
 const F32 GAZE_HEAD_PITCH_MAX = 45.f * DEG_TO_RAD;  // combined body-relative pitch clamp
 const F32 GAZE_EYE_YAW_MAX    = 35.f * DEG_TO_RAD;  // per spec
 const F32 GAZE_EYE_PITCH_MAX  = 25.f * DEG_TO_RAD;  // per spec
+
+// Joint world positions do not include a ghost avatar's client-only outer
+// render scale.  Match LLGhostAvatar::updateEntityOuterTransform() (and the
+// cinematic-camera equivalent) exactly: uniform scale about the foot, not the
+// root/pelvis.  Keep the common scale-1 path as a literal no-op.
+LLVector3 gazeRenderedJointPosition(LLVOAvatar* av, LLJoint* joint)
+{
+    const LLVector3 point = joint->getWorldPosition();
+    const F32 scale = av->getUniformScale();
+    if (scale == 1.f)
+    {
+        return point;
+    }
+
+    LLJoint* root = av->getRootJoint();
+    if (!root)
+    {
+        return point;
+    }
+    LLVector3 foot = root->getWorldPosition();
+    foot.mV[VZ] -= av->getPelvisToFoot();
+    return foot + (point - foot) * scale;
+}
 } // anonymous namespace
 
 void LLActorMover::applyGaze(LLVOAvatar* av)
@@ -2729,7 +2752,9 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         return;                 // no head/root to drive (animesh without them)
     }
 
-    const LLVector3 headPos = head->getWorldPosition();
+    // Aim from the head where it is actually rendered.  Ghost scale is an
+    // outer draw transform and is intentionally absent from joint world data.
+    const LLVector3 headPos = gazeRenderedJointPosition(av, head);
 
     // ---- resolve the LIVE desired look direction (world / agent frame) --------
     // A direction along the current travel (path tangent, look-ahead) is the
@@ -2782,7 +2807,9 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     // aim at the target's head (chest-ish); guard a rootless one
                     if (LLJoint* th = tgt->getJoint("mHead"))
                     {
-                        target   = th->getWorldPosition();
+                        // Cast targets may themselves be scaled ghosts; both
+                        // ends of this rendered-space ray must use draw space.
+                        target   = gazeRenderedJointPosition(tgt, th);
                         usePoint = true;
                     }
                 }
