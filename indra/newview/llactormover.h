@@ -332,6 +332,8 @@ public:
     void   setGazePointGlobal(const LLUUID& actor_id, const LLVector3d& p);
     void   setGazeHeadEyeBlend(const LLUUID& actor_id, F32 v);       // 0 eyes-only .. 1 full
     F32    getGazeHeadEyeBlend(const LLUUID& actor_id) const;
+    void   setGazeTorsoAmount(const LLUUID& actor_id, F32 v);        // 0 still chest .. 1 full share
+    F32    getGazeTorsoAmount(const LLUUID& actor_id) const;
     void   setGazeIntensity(const LLUUID& actor_id, F32 v);          // 0..1
     F32    getGazeIntensity(const LLUUID& actor_id) const;
     void   setGazeSmoothing(const LLUUID& actor_id, F32 v);          // 0 snappy .. 1 very smooth
@@ -802,12 +804,17 @@ private:
         LLUUID     mCastTarget;             // cast member (mode GAZE_CAST)
         LLVector3d mPoint;                  // fixed point, global (mode GAZE_POINT)
         F32        mHeadEyeBlend  = 0.7f;   // 0 = eyes only, 1 = full head+neck+torso
+        F32        mTorsoAmount   = 0.25f;  // torso share; 0 = still chest, 1 = full aim
         F32        mIntensity     = 1.f;    // overall weight 0..1
         F32        mSmoothing     = 0.5f;   // 0 = snappy, 1 = very smooth
         // runtime (paint carries these; not authored)
         F32        mEnv           = 0.f;    // ease-in/out envelope 0..1
         bool       mDirValid      = false;  // mSmoothDir seeded yet
         LLVector3  mSmoothDir;              // smoothed world look direction from the head
+        bool       mBodyAimValid  = false;  // held body aim seeded yet
+        F32        mBodyAimPitch  = 0.f;    // accepted root-relative aim, radians
+        F32        mBodyAimYaw    = 0.f;
+        F32        mBehindEnv     = 1.f;    // smooth Release-policy weight
         U32        mLastFrame     = 0xFFFFFFFF;  // per-frame temporal-advance guard
     };
     // per-frame gaze solve helpers (file-scope math lives in the cpp)

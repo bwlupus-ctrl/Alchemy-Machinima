@@ -149,7 +149,7 @@
         </layout_panel>
 
         <!-- Pose and animation -->
-        <layout_panel auto_resize="false" height="302" layout="topleft" name="pose_section">
+        <layout_panel auto_resize="false" height="326" layout="topleft" name="pose_section">
           <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="pose_lbl" right="-8" top="8" width="358">Pose &amp; Animation</text>
           <button follows="left|top" height="22" label="Grab pose now" layout="topleft" left="8" name="btn_freeze" top="28"
            tool_tip="FREEZE: snapshot the source's current pose into this ghost (worn mesh + attachment placement). The ghost holds it while the live body keeps animating. Known limits: flexi tails/skirts keep their live physics motion, and legacy system-mesh eyeballs are not part of the ghost" width="126" />
@@ -202,6 +202,8 @@
            tool_tip="Client-only post-blend head, neck and eye tracking toward the render camera. Continues while the clone animation is frozen; camera-on-head feedback interlocks suppress it" width="116" />
           <button follows="left|top" height="22" label="Enable selected" layout="topleft" left="134" name="btn_lens_gaze_selection" top="272"
            tool_tip="Enable camera gaze for every selected entity clone; overlay ghosts are ignored" width="116" />
+          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0.25" label="Torso" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="lens_gaze_torso" right="-8" top="300"
+           tool_tip="Torso share for selected entity clones. 0 keeps the chest still; 1 lets the torso take the full gaze turn" width="358" />
         </layout_panel>
 
         <!-- Array -->

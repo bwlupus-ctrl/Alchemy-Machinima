@@ -121,6 +121,7 @@ bool ALPanelGhostStudio::postBuild()
     mAnimSyncBtn = getChild<LLButton>("btn_anim_sync");
     mLensGazeCheck = getChild<LLCheckBoxCtrl>("lens_gaze_check");
     mLensGazeSelectionBtn = getChild<LLButton>("btn_lens_gaze_selection");
+    mLensGazeTorsoSlider = getChild<LLSliderCtrl>("lens_gaze_torso");
     mAnimMetadataText = getChild<LLTextBox>("anim_metadata_text");
     mLookSection = getChild<LLView>("look_section");
     mPlaceBtn  = getChild<LLButton>("btn_place");
@@ -208,6 +209,8 @@ bool ALPanelGhostStudio::postBuild()
         [this](LLUICtrl*, const LLSD&) { onLensGazeToggle(); });
     mLensGazeSelectionBtn->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onClickLensGazeSelection(); });
+    mLensGazeTorsoSlider->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onLensGazeTorsoCommit(); });
     mPlaceBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickPlace(); });
     mToActorBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickToActor(); });
     mToMeBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickToMe(); });
@@ -586,6 +589,7 @@ void ALPanelGhostStudio::refreshDetail()
              selected->mEntityId.notNull());
     }
     mLensGazeSelectionBtn->setEnabled(have_selected_entity);
+    mLensGazeTorsoSlider->setEnabled(have_selected_entity);
     mPlaceBtn->setEnabled(overlay);
     mToActorBtn->setEnabled(overlay);
     mToMeBtn->setEnabled(overlay);
@@ -680,6 +684,11 @@ void ALPanelGhostStudio::refreshDetail()
             inst->mEntityId.notNull() &&
             mover.isGazeEnabled(inst->mEntityId) &&
             mover.getGazeTargetMode(inst->mEntityId) == LLActorMover::GAZE_CAMERA);
+        if (!mLensGazeTorsoSlider->hasMouseCapture())
+        {
+            mLensGazeTorsoSlider->setValue(
+                mover.getGazeTorsoAmount(inst->mEntityId));
+        }
     }
 
     if (directed)
@@ -1169,6 +1178,23 @@ void ALPanelGhostStudio::onClickLensGazeSelection()
         }
         mover.setGazeTargetMode(inst->mEntityId, LLActorMover::GAZE_CAMERA);
         mover.setGazeEnabled(inst->mEntityId, true);
+    }
+}
+
+void ALPanelGhostStudio::onLensGazeTorsoCommit()
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    LLActorMover& mover = LLActorMover::instance();
+    const F32 amount = llclamp(
+        (F32)mLensGazeTorsoSlider->getValue().asReal(), 0.f, 1.f);
+    for (const LLUUID& id : selectedInstances())
+    {
+        const ALGhostStudio::Instance* inst = studio.getInstance(id);
+        if (inst && inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE &&
+            inst->mEntityId.notNull())
+        {
+            mover.setGazeTorsoAmount(inst->mEntityId, amount);
+        }
     }
 }
 

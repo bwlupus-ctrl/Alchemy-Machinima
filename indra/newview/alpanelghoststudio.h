@@ -92,6 +92,7 @@ private:
     void onClickAnimSync();
     void onLensGazeToggle();
     void onClickLensGazeSelection();
+    void onLensGazeTorsoCommit();
     void onClickPlace();            // arm the one-shot in-world placement tool
     void onClickToActor();          // snap to the source's current feet
     void onClickToMe();             // snap to my avatar's current feet
@@ -181,6 +182,7 @@ private:
     LLButton*         mAnimSyncBtn = nullptr;
     LLCheckBoxCtrl*   mLensGazeCheck = nullptr;
     LLButton*         mLensGazeSelectionBtn = nullptr;
+    LLSliderCtrl*     mLensGazeTorsoSlider = nullptr;
     LLTextBox*        mAnimMetadataText = nullptr;
     LLView*           mLookSection = nullptr;
     LLButton*         mPlaceBtn = nullptr;

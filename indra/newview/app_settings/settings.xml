@@ -22252,6 +22252,55 @@
     <key>Value</key>
     <real>0.5</real>
   </map>
+  <key>BDMergeGazeDeadZone</key>
+  <map>
+    <key>Comment</key><string>Body-chain gaze dead zone in degrees; eyes continue tracking.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>3.0</real>
+  </map>
+  <key>BDMergeGazeBehindPolicy</key>
+  <map>
+    <key>Comment</key><string>Gaze target-behind policy: 0 hold at clamp, 1 ease release.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>BDMergeGazeBehindAngle</key>
+  <map>
+    <key>Comment</key><string>Absolute body-relative yaw in degrees where Release policy disengages gaze.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>120.0</real>
+  </map>
+  <key>BDMergeGazeHeadYawMax</key>
+  <map>
+    <key>Comment</key><string>Maximum gaze head-chain yaw in degrees.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>72.0</real>
+  </map>
+  <key>BDMergeGazeHeadPitchMax</key>
+  <map>
+    <key>Comment</key><string>Maximum gaze head-chain pitch in degrees.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>45.0</real>
+  </map>
+  <key>BDMergeGazeEyeYawMax</key>
+  <map>
+    <key>Comment</key><string>Maximum gaze eye yaw in degrees.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>35.0</real>
+  </map>
+  <key>BDMergeGazeEyePitchMax</key>
+  <map>
+    <key>Comment</key><string>Maximum gaze eye pitch in degrees.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>25.0</real>
+  </map>
   <!-- </FSPoser> -->
 </map>
 </llsd>

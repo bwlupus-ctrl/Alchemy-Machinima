@@ -789,6 +789,17 @@ F32 LLActorMover::getGazeHeadEyeBlend(const LLUUID& actor_id) const
     return it != mGazes.end() ? it->second.mHeadEyeBlend : 0.7f;
 }
 
+void LLActorMover::setGazeTorsoAmount(const LLUUID& actor_id, F32 v)
+{
+    mGazes[path_key(actor_id)].mTorsoAmount = llclamp(v, 0.f, 1.f);
+}
+
+F32 LLActorMover::getGazeTorsoAmount(const LLUUID& actor_id) const
+{
+    auto it = mGazes.find(path_key(actor_id));
+    return it != mGazes.end() ? it->second.mTorsoAmount : 0.25f;
+}
+
 void LLActorMover::setGazeIntensity(const LLUUID& actor_id, F32 v)
 {
     mGazes[path_key(actor_id)].mIntensity = llclamp(v, 0.f, 1.f);
@@ -2631,12 +2642,7 @@ const F32 GAZE_TAU_MIN        = 0.04f;   // dir smoothing time constant, s (snap
 const F32 GAZE_TAU_MAX        = 0.50f;   // (very smooth)
 const F32 GAZE_LOOKAHEAD      = 6.0f;    // tangent look-ahead distance, m
 const F32 GAZE_MIN_DIST       = 0.25f;   // ignore a target closer than this to the head
-const F32 GAZE_TORSO_LAG      = 0.25f;   // torso share of the combined head aim
 const F32 GAZE_NECK_LAG       = 0.50f;   // neck vs head split of the remaining aim
-const F32 GAZE_HEAD_YAW_MAX   = 72.f * DEG_TO_RAD;  // combined body-relative yaw clamp
-const F32 GAZE_HEAD_PITCH_MAX = 45.f * DEG_TO_RAD;  // combined body-relative pitch clamp
-const F32 GAZE_EYE_YAW_MAX    = 35.f * DEG_TO_RAD;  // per spec
-const F32 GAZE_EYE_PITCH_MAX  = 25.f * DEG_TO_RAD;  // per spec
 
 // Joint world positions do not include a ghost avatar's client-only outer
 // render scale.  Match LLGhostAvatar::updateEntityOuterTransform() (and the
@@ -2709,6 +2715,7 @@ void LLActorMover::applyGaze(LLVOAvatar* av)
         // ease-out frame while the camera depends on this head pose.
         g.mEnv = 0.f;
         g.mDirValid = false;
+        g.mBodyAimValid = false;
         return;
     }
     const bool needs_move = (g.mTarget == GAZE_TANGENT);
@@ -2733,6 +2740,7 @@ void LLActorMover::applyGaze(LLVOAvatar* av)
     if (!active && g.mEnv <= 0.001f)
     {
         g.mDirValid = false;
+        g.mBodyAimValid = false;
         return;
     }
     if (av->isDead() || !av->getRootJoint())
@@ -2868,8 +2876,6 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     // the body chain (torso/neck/head) so blend=0 is eyes-only.
     const F32 env_eased = g.mEnv * g.mEnv * (3.f - 2.f * g.mEnv);    // smoothstep
     const F32 env_i     = env_eased * g.mIntensity;
-    const F32 wEye      = env_i;
-    const F32 wBody     = env_i * g.mHeadEyeBlend;
 
     const LLQuaternion rootWorld = root->getWorldRotation();
     const LLQuaternion invRoot   = ~rootWorld;
@@ -2895,14 +2901,67 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     const LLQuaternion targetHeadWorld(look, left, up);
     LLQuaternion       head_rot_local = targetHeadWorld * invRoot;   // root-relative
 
+    static LLCachedControl<F32> head_yaw_max_deg(
+        gSavedSettings, "BDMergeGazeHeadYawMax", 72.f);
+    static LLCachedControl<F32> head_pitch_max_deg(
+        gSavedSettings, "BDMergeGazeHeadPitchMax", 45.f);
+    static LLCachedControl<F32> dead_zone_deg(
+        gSavedSettings, "BDMergeGazeDeadZone", 3.f);
+    static LLCachedControl<S32> behind_policy(
+        gSavedSettings, "BDMergeGazeBehindPolicy", 0);
+    static LLCachedControl<F32> behind_angle_deg(
+        gSavedSettings, "BDMergeGazeBehindAngle", 120.f);
+
+    F32 raw_roll = 0.f, raw_pitch = 0.f, raw_yaw = 0.f;
+    head_rot_local.getEulerAngles(&raw_roll, &raw_pitch, &raw_yaw);
+
+    // Release has its own smooth envelope so it never fights the authored
+    // enable envelope and can re-engage through the same eased transition.
+    const bool behind = behind_policy == 1 &&
+        fabsf(raw_yaw) > llclamp((F32)behind_angle_deg, 0.f, 180.f) * DEG_TO_RAD;
+    if (advance)
+    {
+        const F32 step = (GAZE_EASE_TIME > 0.f) ? dt / GAZE_EASE_TIME : 1.f;
+        g.mBehindEnv = llclamp(g.mBehindEnv + (behind ? -step : step), 0.f, 1.f);
+    }
+    if (behind_policy != 1)
+    {
+        g.mBehindEnv = 1.f;
+    }
+    const F32 behind_eased =
+        g.mBehindEnv * g.mBehindEnv * (3.f - 2.f * g.mBehindEnv);
+    const F32 wEye = env_i * behind_eased;
+    const F32 dead_zone = llmax((F32)dead_zone_deg, 0.f) * DEG_TO_RAD;
+    if (!g.mBodyAimValid)
+    {
+        // Straight ahead is the initial held pose. A target outside the zone is
+        // accepted immediately; one inside it never starts a body correction.
+        g.mBodyAimPitch = 0.f;
+        g.mBodyAimYaw = 0.f;
+        g.mBodyAimValid = true;
+    }
+    const F32 pitch_delta = raw_pitch - g.mBodyAimPitch;
+    const F32 yaw_delta = raw_yaw - g.mBodyAimYaw;
+    if (sqrtf(pitch_delta * pitch_delta + yaw_delta * yaw_delta) > dead_zone)
+    {
+        g.mBodyAimPitch = raw_pitch;
+        g.mBodyAimYaw = raw_yaw;
+    }
+    const F32 wBody = env_i * g.mHeadEyeBlend * behind_eased;
+
     // clamp yaw AND pitch to human head+neck+torso capacity and zero the roll, so
     // a target behind the actor eases to the max and HOLDS there (no neck-wrap, no
     // snap) -- the "give up gracefully" behavior.
     {
+        const F32 head_yaw_max =
+            llclamp((F32)head_yaw_max_deg, 0.f, 180.f) * DEG_TO_RAD;
+        const F32 head_pitch_max =
+            llclamp((F32)head_pitch_max_deg, 0.f, 180.f) * DEG_TO_RAD;
         F32 roll = 0.f, pitch = 0.f, yaw = 0.f;
-        head_rot_local.getEulerAngles(&roll, &pitch, &yaw);
-        yaw   = llclamp(yaw,   -GAZE_HEAD_YAW_MAX,   GAZE_HEAD_YAW_MAX);
-        pitch = llclamp(pitch, -GAZE_HEAD_PITCH_MAX, GAZE_HEAD_PITCH_MAX);
+        pitch = g.mBodyAimPitch;
+        yaw = g.mBodyAimYaw;
+        yaw   = llclamp(yaw,   -head_yaw_max,   head_yaw_max);
+        pitch = llclamp(pitch, -head_pitch_max, head_pitch_max);
         head_rot_local.setEulerAngles(0.f, pitch, yaw);
     }
 
@@ -2911,11 +2970,14 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         // torso takes a small share (large turns lean the chest). Root-relative
         // approximation as in the built-in; nlerp from the anim pose so the walk's
         // torso sway still reads at partial weight.
-        if (LLJoint* torso = av->getJoint("mTorso"))
+        if (g.mTorsoAmount > 0.f)
         {
-            const LLQuaternion torso_target =
-                nlerp(GAZE_TORSO_LAG, LLQuaternion::DEFAULT, head_rot_local);
-            torso->setRotation(nlerp(wBody, torso->getRotation(), torso_target));
+            if (LLJoint* torso = av->getJoint("mTorso"))
+            {
+                const LLQuaternion torso_target =
+                    nlerp(g.mTorsoAmount, LLQuaternion::DEFAULT, head_rot_local);
+                torso->setRotation(nlerp(wBody, torso->getRotation(), torso_target));
+            }
         }
 
         // neck + head split, converted into the neck's parent-local frame exactly
@@ -2937,6 +2999,14 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     // -- the full angle when blend=0 (eyes-only), near zero when the head turned.
     if (wEye > 0.001f)
     {
+        static LLCachedControl<F32> eye_yaw_max_deg(
+            gSavedSettings, "BDMergeGazeEyeYawMax", 35.f);
+        static LLCachedControl<F32> eye_pitch_max_deg(
+            gSavedSettings, "BDMergeGazeEyePitchMax", 25.f);
+        const F32 eye_yaw_max =
+            llclamp((F32)eye_yaw_max_deg, 0.f, 180.f) * DEG_TO_RAD;
+        const F32 eye_pitch_max =
+            llclamp((F32)eye_pitch_max_deg, 0.f, 180.f) * DEG_TO_RAD;
         const LLQuaternion headWorld = head->getWorldRotation();
         auto applyEye = [&](LLJoint* eye)
         {
@@ -2957,8 +3027,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             tgt = tgt * ~headWorld;                 // head-local
             F32 roll = 0.f, pitch = 0.f, yaw = 0.f;
             tgt.getEulerAngles(&roll, &pitch, &yaw);
-            yaw   = llclamp(yaw,   -GAZE_EYE_YAW_MAX,   GAZE_EYE_YAW_MAX);
-            pitch = llclamp(pitch, -GAZE_EYE_PITCH_MAX, GAZE_EYE_PITCH_MAX);
+            yaw   = llclamp(yaw,   -eye_yaw_max,   eye_yaw_max);
+            pitch = llclamp(pitch, -eye_pitch_max, eye_pitch_max);
             tgt.setEulerAngles(0.f, pitch, yaw);
             eye->setRotation(nlerp(wEye, eye->getRotation(), tgt));
         };
