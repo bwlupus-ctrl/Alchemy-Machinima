@@ -2999,7 +2999,17 @@ void LLVOAvatar::idleUpdate(LLAgent &agent, const F64 &time)
         lastRecalibrationFrame = thisFrame;
     }
 
-    if ((mLastAnimExtents[0]==LLVector3())||
+    if (hasClientOuterTransform())
+    {
+        // LLDrawable scales these extents about the client's foot pivot.  The
+        // stock fallback in updateSpatialExtents() only translates the last
+        // pose's box by the pelvis delta; scaling amplifies any pose error in
+        // that cached box and can cull the avatar while it moves or animates.
+        // Keep the throttled stock path below byte-for-byte for unscaled
+        // avatars, and charge exact pose extents only to locally scaled ones.
+        mNeedsExtentUpdate = true;
+    }
+    else if ((mLastAnimExtents[0]==LLVector3())||
         (mLastAnimExtents[1])==LLVector3())
     {
         mNeedsExtentUpdate = true;

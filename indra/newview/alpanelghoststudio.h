@@ -21,8 +21,11 @@
 #define AL_ALPANELGHOSTSTUDIO_H
 
 #include "llpanel.h"
+#include "alghoststudio.h"
 
 #include "lluuid.h"
+#include "v3dmath.h"
+#include "llquaternion.h"
 
 #include <string>
 #include <vector>
@@ -51,11 +54,13 @@ public:
 private:
     // ---- refreshers (draw-rate, all change-diffed) ----
     void refreshSourceCombo();      // "You" + cast members (rebuilt on cast change)
+    void refreshLookTargetCombo();  // camera/me + cast + other ghosts
     void refreshList();             // instance rows (rebuilt on composed-sig change)
     void refreshDetail();           // selected-instance widgets + enables
     void refreshStatus();           // bottom status line
 
     LLUUID selectedInstance() const;    // list selection -> instance id (null = none)
+    std::vector<LLUUID> selectedInstances() const;
 
     // ---- list + CRUD ----
     void onListSelect();
@@ -63,6 +68,7 @@ private:
     void onClickAdd();
     void onNameCommit();
     void onClickDuplicate();
+    void onClickDuplicateInPlace();
     void onClickDelete();
     void onClickRefresh();
 
@@ -72,11 +78,22 @@ private:
     void onYawCommit();
     void onScaleCommit();
     void onChaosCommit();
+    void onAnimSpeedCommit();
+    void onClickAnimPause();
+    void onClickAnimResume();
     void onDriveModeCommit();
     void onDirectedAnimCommit();
     void onClickPlace();            // arm the one-shot in-world placement tool
     void onClickToActor();          // snap to the source's current feet
     void onClickToMe();             // snap to my avatar's current feet
+    void onClickDrop();
+    void onClickAlignFeet();
+    void onClickUpright();
+    void onClickCopyTransform();
+    void onClickPasteTransform();
+    void onLookTargetCommit();
+    void onClickFaceNow();
+    void onKeepFacingCommit();
     void exitPlaceMode();           // drop the transient tool if it is ours
 
     // ---- [R2-3] in-world edit mode (persistent ALToolGhostEdit) ----
@@ -100,7 +117,9 @@ private:
     void onClickLive();             // "Follow live" -> drop the snapshot
 
     // ---- array helper ----
-    void onClickArray(bool ring);
+    void onClickArray(ALGhostStudio::EFormation formation);
+    void onClickBuildArray();
+    void onFormationCommit();
 
     // ---- master toggle ----
     void onShowAllToggle();
@@ -111,6 +130,7 @@ private:
     // ---- change-diffing state ----
     std::string mListSig;           // composed instance-list signature last built
     std::string mSourceSig;         // cast signature the source combo was built from
+    std::string mLookTargetSig;
     LLUUID      mShownFor;          // instance the detail widgets were last loaded for
     bool        mEditMode = false;  // [R2-3] our transient edit tool is armed
     bool        mHintEdit = false;  // which hint string the header line shows
@@ -136,11 +156,23 @@ private:
     LLSpinCtrl*       mScaleSpin = nullptr;
     LLCheckBoxCtrl*   mChaosCheck = nullptr;
     LLSliderCtrl*     mChaosSlider = nullptr;
+    LLSpinCtrl*       mAnimSpeedSpin = nullptr;
+    LLButton*         mAnimPauseBtn = nullptr;
+    LLButton*         mAnimResumeBtn = nullptr;
     LLComboBox*       mDriveModeCombo = nullptr;
     LLLineEditor*     mDirectedAnimEdit = nullptr;
     LLButton*         mPlaceBtn = nullptr;
     LLButton*         mToActorBtn = nullptr;
     LLButton*         mToMeBtn = nullptr;
+    LLButton*         mDropBtn = nullptr;
+    LLButton*         mAlignFeetBtn = nullptr;
+    LLButton*         mUprightBtn = nullptr;
+    LLButton*         mDupInPlaceBtn = nullptr;
+    LLButton*         mCopyTransformBtn = nullptr;
+    LLButton*         mPasteTransformBtn = nullptr;
+    LLComboBox*       mLookTargetCombo = nullptr;
+    LLButton*         mFaceNowBtn = nullptr;
+    LLCheckBoxCtrl*   mKeepFacingCheck = nullptr;
 
     LLComboBox*       mStyleCombo = nullptr;
     LLCheckBoxCtrl*   mActorTintCheck = nullptr;
@@ -161,6 +193,14 @@ private:
     LLSpinCtrl*       mArraySpacing = nullptr;
     LLButton*         mArrayLineBtn = nullptr;
     LLButton*         mArrayRingBtn = nullptr;
+    LLComboBox*       mFormationCombo = nullptr;
+    LLSpinCtrl*       mFormationParam = nullptr;
+    LLButton*         mArrayBuildBtn = nullptr;
+
+    bool              mHasTransformClipboard = false;
+    LLVector3d        mClipboardFoot;
+    LLQuaternion      mClipboardRotation;
+    F32               mClipboardScale = 1.f;
 
     LLTextBox*        mStatusText = nullptr;
 };

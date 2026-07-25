@@ -21,9 +21,11 @@
 #include "llvoavatar.h"
 #include "llviewerobjectlist.h"
 #include "llviewerregion.h"
+#include "llviewercamera.h"
 
 #include <algorithm>
 #include <cstdint>
+#include <cmath>
 
 // ---------------------------------------------------------------------------
 ALGhostStudio& ALGhostStudio::instance()
@@ -220,6 +222,7 @@ ALGhostStudio::Instance* ALGhostStudio::spawnEntityClone(
     committed->mState = STATE_READY;
     ghost->setGhostRotation(committed->mRotation);
     ghost->setEntityScale(committed->mScale);
+    ghost->setAnimTimeFactor(committed->mAnimSpeed);
     ghost->setEntityDriveMode(committed->mDriveMode, committed->mDirectedAnim);
     ghost->setEntityLook(committed->mLook, committed->mLookAlpha);
     set_entity_clone_visible(ghost, mShowAll && committed->mEnabled);
@@ -291,6 +294,11 @@ bool ALGhostStudio::refreshEntityClone(const LLUUID& id)
     const bool was_subject_b = cast.getSubjectB() == old_runtime_id;
     inst->mEntityId = replacement->getID();
     replacement->setEntityScale(inst->mScale);
+    replacement->setAnimTimeFactor(
+        llclamp(inst->mAnimSpeed *
+                    (1.f + (seeded_unit(inst->mId, 5) * 2.f - 1.f) *
+                               0.15f * inst->mChaosAmount),
+                0.05f, 4.f));
     replacement->setEntityDriveMode(inst->mDriveMode, inst->mDirectedAnim);
     replacement->setEntityLook(inst->mLook, inst->mLookAlpha);
     set_entity_clone_visible(replacement, mShowAll && inst->mEnabled);
@@ -342,6 +350,47 @@ ALGhostStudio::Instance* ALGhostStudio::duplicateInstance(const LLUUID& id)
     copy.mFootGlobal += LLVector3d(-sinf(yaw), cosf(yaw), 0.0);
     mInstances.push_back(copy);
     return &mInstances.back();
+}
+
+ALGhostStudio::Instance* ALGhostStudio::duplicateInstanceInPlace(const LLUUID& id)
+{
+    Instance* src = getInstance(id);
+    if (!src)
+    {
+        return nullptr;
+    }
+    const Instance proto = *src;
+    if (proto.mKind == BACKING_OVERLAY)
+    {
+        Instance copy = proto;
+        copy.mId.generate();
+        copy.mName = makeDefaultName();
+        mInstances.push_back(copy);
+        return &mInstances.back();
+    }
+
+    // Entity records cannot share mEntityId: create a fresh local clone, then
+    // transfer the authored instance state while preserving its runtime keys.
+    Instance* copy = spawnEntityClone(proto.mSource, proto.mSourceLabel);
+    if (!copy)
+    {
+        return nullptr;
+    }
+    const LLUUID new_id = copy->mId;
+    const LLUUID entity_id = copy->mEntityId;
+    const ELifecycleState state = copy->mState;
+    const std::string new_name = copy->mName; // spawn already called makeDefaultName()
+    *copy = proto;
+    copy->mId = new_id;
+    copy->mEntityId = entity_id;
+    copy->mState = state;
+    copy->mName = new_name;
+    copy->setTransform(proto.mFootGlobal, proto.mRotation);
+    copy->setScale(proto.mScale);
+    applyEntityTransform(copy->mId);
+    setInstanceScale(copy->mId, copy->mScale);
+    setInstanceAnimSpeed(copy->mId, copy->mAnimSpeed);
+    return copy;
 }
 
 bool ALGhostStudio::renameInstance(const LLUUID& id, const std::string& name)
@@ -411,6 +460,54 @@ bool ALGhostStudio::setInstanceScale(const LLUUID& id, F32 scale)
     return true;
 }
 
+bool ALGhostStudio::setInstanceAnimSpeed(const LLUUID& id, F32 speed)
+{
+    assert_main_thread();
+    Instance* inst = getInstance(id);
+    if (!inst || inst->mKind != BACKING_ENTITY_CLONE)
+    {
+        return false;
+    }
+    inst->mAnimSpeed = llclamp(speed, 0.05f, 4.f);
+    LLGhostAvatar* ghost = resolveEntityClone(id);
+    if (!ghost)
+    {
+        inst->mState = STATE_ERROR;
+        return false;
+    }
+    const F32 chaos_factor =
+        1.f + (seeded_unit(inst->mId, 5) * 2.f - 1.f) *
+                  0.15f * inst->mChaosAmount;
+    ghost->setAnimTimeFactor(
+        llclamp(inst->mAnimSpeed * chaos_factor, 0.05f, 4.f));
+    return true;
+}
+
+bool ALGhostStudio::setInstancePaused(const LLUUID& id, bool paused)
+{
+    Instance* inst = getInstance(id);
+    if (!inst || inst->mKind != BACKING_ENTITY_CLONE)
+    {
+        return false;
+    }
+    if (paused)
+    {
+        if (inst->mDriveMode != DRIVE_FROZEN)
+        {
+            inst->mResumeDriveMode = inst->mDriveMode;
+            inst->mResumeDirectedAnim = inst->mDirectedAnim;
+        }
+        return setInstanceDriveMode(id, DRIVE_FROZEN);
+    }
+    if (inst->mDriveMode != DRIVE_FROZEN)
+    {
+        return true;
+    }
+    const EDriveMode resume_mode = inst->mResumeDriveMode == DRIVE_FROZEN
+        ? DRIVE_MIRROR : inst->mResumeDriveMode;
+    return setInstanceDriveMode(id, resume_mode, inst->mResumeDirectedAnim);
+}
+
 LLGhostAvatar* ALGhostStudio::resolveEntityClone(const LLUUID& id) const
 {
     const Instance* match = nullptr;
@@ -444,6 +541,98 @@ bool ALGhostStudio::applyEntityTransform(const LLUUID& id)
     ghost->setGhostPosition(gAgent.getPosAgentFromGlobal(inst->mFootGlobal));
     ghost->setGhostRotation(inst->mRotation);
     return true;
+}
+
+bool ALGhostStudio::aimInstanceAt(const LLUUID& id,
+                                  const LLVector3d& target_global)
+{
+    assert_main_thread();
+    Instance* inst = getInstance(id);
+    if (!inst)
+    {
+        return false;
+    }
+    const LLVector3d delta = target_global - inst->mFootGlobal;
+    if (delta.mdV[VX] * delta.mdV[VX] + delta.mdV[VY] * delta.mdV[VY] < 0.000001)
+    {
+        return false; // coincident horizontally: retain the last meaningful yaw
+    }
+    inst->setYaw(atan2f((F32)delta.mdV[VY], (F32)delta.mdV[VX]));
+    return inst->mKind != BACKING_ENTITY_CLONE || applyEntityTransform(id);
+}
+
+bool ALGhostStudio::faceInstance(const LLUUID& id)
+{
+    Instance* inst = getInstance(id);
+    if (!inst)
+    {
+        return false;
+    }
+
+    LLVector3d target;
+    switch (inst->mLookTarget)
+    {
+    case LOOK_TARGET_CAMERA:
+        target = gAgent.getPosGlobalFromAgent(
+            LLViewerCamera::getInstance()->getOrigin());
+        break;
+    case LOOK_TARGET_ME:
+    case LOOK_TARGET_ACTOR:
+    {
+        LLVector3 foot;
+        const LLUUID actor = inst->mLookTarget == LOOK_TARGET_ME
+            ? LLUUID::null : inst->mLookTargetId;
+        if (!source_foot_agent(actor, foot))
+        {
+            return false;
+        }
+        target = gAgent.getPosGlobalFromAgent(foot);
+        break;
+    }
+    case LOOK_TARGET_GHOST:
+    {
+        const Instance* other = getInstance(inst->mLookTargetId);
+        if (!other || other->mId == id)
+        {
+            return false;
+        }
+        target = other->mFootGlobal;
+        break;
+    }
+    default:
+        return false;
+    }
+    return aimInstanceAt(id, target);
+}
+
+void ALGhostStudio::setLookTarget(const LLUUID& id, ELookTarget target,
+                                  const LLUUID& target_id, bool keep_facing)
+{
+    if (Instance* inst = getInstance(id))
+    {
+        inst->mLookTarget = target;
+        inst->mLookTargetId = target_id;
+        inst->mKeepFacing = keep_facing;
+    }
+}
+
+void ALGhostStudio::updateLookAt()
+{
+    assert_main_thread();
+    // faceInstance does not mutate the vector, but setYaw bumps transform
+    // revisions; IDs keep this loop robust if implementation later changes.
+    std::vector<LLUUID> tracking;
+    for (const Instance& inst : mInstances)
+    {
+        if (inst.mKeepFacing)
+        {
+            tracking.push_back(inst.mId);
+        }
+    }
+    for (const LLUUID& id : tracking)
+    {
+        faceInstance(id);
+    }
 }
 
 bool ALGhostStudio::setInstanceChaos(const LLUUID& id, F32 amount)
@@ -483,7 +672,9 @@ bool ALGhostStudio::setInstanceChaos(const LLUUID& id, F32 amount)
         return false;
     }
     ghost->setEntityScale(inst->mScale);
-    return applyEntityTransform(id);
+    const bool transformed = applyEntityTransform(id);
+    setInstanceAnimSpeed(id, inst->mAnimSpeed);
+    return transformed;
 }
 
 bool ALGhostStudio::setInstanceLook(const LLUUID& id, EGhostLook look)
@@ -719,7 +910,8 @@ void ALGhostStudio::unfreezeInstance(const LLUUID& id)
 // ---------------------------------------------------------------------------
 // array helper
 // ---------------------------------------------------------------------------
-S32 ALGhostStudio::makeArray(const LLUUID& id, S32 count, F32 spacing, bool ring)
+S32 ALGhostStudio::makeArray(const LLUUID& id, S32 count, F32 spacing,
+                             EFormation formation, F32 parameter)
 {
     Instance* src = getInstance(id);
     if (!src || count < 2 || spacing < 0.05f)
@@ -729,7 +921,77 @@ S32 ALGhostStudio::makeArray(const LLUUID& id, S32 count, F32 spacing, bool ring
     // capture by value: push_back below reallocates and would dangle `src`
     const Instance proto = *src;
     S32 made = 0;
-    if (ring)
+
+    // Preserve the original overlay Line/Ring implementation literally:
+    // transform values, revision counts, naming order and floating-point
+    // operation order remain byte-identical to the pre-enum helper.
+    if (proto.mKind == BACKING_OVERLAY &&
+        (formation == FORMATION_LINE || formation == FORMATION_RING))
+    {
+        if (formation == FORMATION_RING)
+        {
+            const F32 step = F_TWO_PI / (F32)count;
+            const F32 radius = spacing / (2.f * sinf(step * 0.5f));
+            for (S32 i = 1; i < count; ++i)
+            {
+                Instance copy = proto;
+                copy.mId.generate();
+                copy.mName = makeDefaultName();
+                const F32 proto_yaw = proto.getYaw();
+                const F32 a = proto_yaw + step * (F32)i;
+                copy.mFootGlobal += LLVector3d(cosf(a) - cosf(proto_yaw),
+                                               sinf(a) - sinf(proto_yaw), 0.0) * (F64)radius;
+                copy.setYaw(a);
+                mInstances.push_back(copy);
+                ++made;
+            }
+        }
+        else
+        {
+            const F32 proto_yaw = proto.getYaw();
+            const LLVector3d dir(cosf(proto_yaw), sinf(proto_yaw), 0.0);
+            for (S32 i = 1; i < count; ++i)
+            {
+                Instance copy = proto;
+                copy.mId.generate();
+                copy.mName = makeDefaultName();
+                copy.mFootGlobal += dir * (F64)(spacing * (F32)i);
+                mInstances.push_back(copy);
+                ++made;
+            }
+        }
+        return made;
+    }
+
+    auto append = [this, &proto, &made](const LLVector3d& foot, F32 yaw,
+                                        bool author_yaw = true)
+    {
+        Instance* copy = duplicateInstanceInPlace(proto.mId);
+        if (!copy)
+        {
+            return;
+        }
+        copy->setFootGlobal(foot);
+        if (author_yaw)
+        {
+            copy->setYaw(yaw);
+        }
+        if (copy->mKind == BACKING_ENTITY_CLONE)
+        {
+            applyEntityTransform(copy->mId);
+        }
+        ++made;
+    };
+    const F32 proto_yaw = proto.getYaw();
+    const LLVector3d forward(cosf(proto_yaw), sinf(proto_yaw), 0.0);
+    const LLVector3d left(-sinf(proto_yaw), cosf(proto_yaw), 0.0);
+
+    // Facing policy: Line/Grid/Staircase/Scatter inherit the prototype's full
+    // rotation; Ring/Arc and Spiral face radially outward; V members angle
+    // along their arm; Tunnel's parallel rows face inward at each other.
+    // Slot zero is always the untouched prototype, even where that makes it
+    // the intentional exception to the formation's facing rule.
+    if (formation == FORMATION_RING)
     {
         // ring of `count` TOTAL ghosts centred on the prototype; the prototype
         // occupies slot 0, so it stays put and count-1 copies fill the circle.
@@ -738,32 +1000,97 @@ S32 ALGhostStudio::makeArray(const LLUUID& id, S32 count, F32 spacing, bool ring
         const F32 radius = spacing / (2.f * sinf(step * 0.5f));
         for (S32 i = 1; i < count; ++i)
         {
-            Instance copy = proto;
-            copy.mId.generate();
-            copy.mName = makeDefaultName();
-            const F32 proto_yaw = proto.getYaw();
             const F32 a = proto_yaw + step * (F32)i;
-            copy.mFootGlobal += LLVector3d(cosf(a) - cosf(proto_yaw),
-                                           sinf(a) - sinf(proto_yaw), 0.0) * (F64)radius;
+            const LLVector3d foot = proto.mFootGlobal +
+                LLVector3d(cosf(a) - cosf(proto_yaw),
+                           sinf(a) - sinf(proto_yaw), 0.0) * (F64)radius;
             // each ghost faces outward from the ring centre, like a crowd
-            copy.setYaw(a);
-            mInstances.push_back(copy);
-            ++made;
+            append(foot, a);
         }
     }
-    else
+    else if (formation == FORMATION_LINE)
     {
         // line of `count` total along the prototype's facing direction
-        const F32 proto_yaw = proto.getYaw();
-        const LLVector3d dir(cosf(proto_yaw), sinf(proto_yaw), 0.0);
         for (S32 i = 1; i < count; ++i)
         {
-            Instance copy = proto;
-            copy.mId.generate();
-            copy.mName = makeDefaultName();
-            copy.mFootGlobal += dir * (F64)(spacing * (F32)i);
-            mInstances.push_back(copy);
-            ++made;
+            append(proto.mFootGlobal + forward * (F64)(spacing * (F32)i),
+                   proto_yaw, false);
+        }
+    }
+    else if (formation == FORMATION_ARC)
+    {
+        const F32 sweep = (parameter > 0.f ? parameter : 120.f) * DEG_TO_RAD;
+        const F32 step = sweep / (F32)llmax(1, count - 1);
+        const F32 radius = spacing / (2.f * sinf(llmax(0.001f, step * 0.5f)));
+        for (S32 i = 1; i < count; ++i)
+        {
+            const F32 a = proto_yaw - sweep * 0.5f + step * (F32)i;
+            const F32 a0 = proto_yaw - sweep * 0.5f;
+            append(proto.mFootGlobal + LLVector3d(cosf(a) - cosf(a0),
+                   sinf(a) - sinf(a0), 0.0) * (F64)radius, a);
+        }
+    }
+    else if (formation == FORMATION_GRID)
+    {
+        const S32 cols = (S32)ceilf(sqrtf((F32)count));
+        for (S32 i = 1; i < count; ++i)
+        {
+            const S32 row = i / cols, col = i % cols;
+            append(proto.mFootGlobal + forward * (F64)(row * spacing) +
+                   left * (F64)(col * spacing), proto_yaw, false);
+        }
+    }
+    else if (formation == FORMATION_V)
+    {
+        const F32 half = (parameter > 0.f ? parameter : 60.f) * DEG_TO_RAD * 0.5f;
+        for (S32 i = 1; i < count; ++i)
+        {
+            const F32 side = (i & 1) ? 1.f : -1.f;
+            const S32 rank = (i + 1) / 2;
+            const F32 arm_yaw = proto_yaw + F_PI + side * half;
+            append(proto.mFootGlobal + LLVector3d(cosf(arm_yaw), sinf(arm_yaw), 0.0)
+                   * (F64)(rank * spacing), proto_yaw + side * half);
+        }
+    }
+    else if (formation == FORMATION_SPIRAL)
+    {
+        const F32 golden = 2.39996323f;
+        for (S32 i = 1; i < count; ++i)
+        {
+            const F32 a = proto_yaw + golden * (F32)i;
+            const F32 r = spacing * sqrtf((F32)i);
+            append(proto.mFootGlobal + LLVector3d(cosf(a), sinf(a), 0.0) * (F64)r, a);
+        }
+    }
+    else if (formation == FORMATION_STAIRCASE)
+    {
+        const F32 rise = parameter > 0.f ? parameter : spacing * 0.5f;
+        for (S32 i = 1; i < count; ++i)
+            append(proto.mFootGlobal + forward * (F64)(spacing * i) +
+                   LLVector3d(0.0, 0.0, rise * i), proto_yaw, false);
+    }
+    else if (formation == FORMATION_TUNNEL)
+    {
+        for (S32 i = 1; i < count; ++i)
+        {
+            const F32 side = (i & 1) ? 1.f : -1.f;
+            const S32 rank = (i + 1) / 2;
+            append(proto.mFootGlobal + forward * (F64)(rank * spacing) +
+                   left * (F64)(side * spacing * 0.5f),
+                   proto_yaw - side * F_PI_BY_TWO);
+        }
+    }
+    else if (formation == FORMATION_SCATTER)
+    {
+        const F32 radius = parameter > 0.f ? parameter : spacing * sqrtf((F32)count);
+        for (S32 i = 1; i < count; ++i)
+        {
+            // Same UUID-seeded FNV helper as entity chaos; channels include
+            // the slot, so rebuilds from the same prototype are reproducible.
+            const F32 a = F_TWO_PI * seeded_unit(proto.mId, 100u + i * 2u);
+            const F32 r = radius * sqrtf(seeded_unit(proto.mId, 101u + i * 2u));
+            append(proto.mFootGlobal + LLVector3d(cosf(a), sinf(a), 0.0) * (F64)r,
+                   proto_yaw, false);
         }
     }
     return made;

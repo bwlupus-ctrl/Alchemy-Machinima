@@ -74,6 +74,14 @@ public:
         MODE_TURNTABLE    = 32, // subject-centered orbit, height eases (showcase crane)
         MODE_FLOATING_ECU = 33, // drifting intimate face close-up, narrow lens
         MODE_TILT_WHIP    = 34, // percussive vertical pitch whips (impact accent)
+        MODE_BODY_HELIX   = 35, // slow feet-to-face orbiting reveal (introduction)
+        MODE_DESCENT      = 36, // above-head descent to the boots (menace)
+        MODE_PARALLAX_SLIDE=37, // straight lateral truck past the subject (depth)
+        MODE_FIGURE_EIGHT = 38, // reversing two-lobe orbit (dance energy)
+        MODE_DETAIL_SWEEP = 39, // close costume-height drift (admiration)
+        MODE_STEP_ORBIT   = 40, // held angular steps around the subject (staccato)
+        MODE_CABLE_CAM    = 41, // fast straight chord pass (sports energy)
+        MODE_BREATHING_HOLD=42, // nearly locked frame with subtle life (intimacy)
     };
 
     static LLCinematicCamera& instance();
@@ -144,6 +152,14 @@ private:
     LLVector3 patternTurntable(const LLVector3& center, F32 phase);
     LLVector3 patternFloatingECU(LLVOAvatar* av, const LLVector3& focus, F32 phase, F32& fov_mul);
     LLVector3 patternTiltWhip(LLVOAvatar* av, const LLVector3& center, F32 phase, LLVector3& focus_io);
+    LLVector3 patternBodyHelix(LLVOAvatar* av, const LLVector3& center, F32 phase, LLVector3& focus_io);
+    LLVector3 patternDescent(LLVOAvatar* av, const LLVector3& center, F32 phase, LLVector3& focus_io);
+    LLVector3 patternParallaxSlide(LLVOAvatar* av, const LLVector3& center, F32 phase);
+    LLVector3 patternFigureEight(LLVOAvatar* av, const LLVector3& center, F32 phase);
+    LLVector3 patternDetailSweep(LLVOAvatar* av, const LLVector3& center, F32 phase, LLVector3& focus_io, F32& fov_mul);
+    LLVector3 patternStepOrbit(LLVOAvatar* av, const LLVector3& center, F32 phase);
+    LLVector3 patternCableCam(LLVOAvatar* av, const LLVector3& center, F32 phase);
+    LLVector3 patternBreathingHold(LLVOAvatar* av, const LLVector3& center, F32 phase);
 
     // ---- state ----
     U32         mLastUpdateFrame = 0;   // fresh-activation detection (phase reset)

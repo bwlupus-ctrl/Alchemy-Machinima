@@ -146,7 +146,7 @@ bool LLCinematicCamera::isActive() const
 {
     static LLCachedControl<bool> enabled(gSavedSettings, "CinematicCamEnabled", false);
     static LLCachedControl<S32>  mode(gSavedSettings, "CinematicCamMode", 1);
-    if (!enabled || (S32)mode <= MODE_OFF || (S32)mode > MODE_TILT_WHIP)
+    if (!enabled || (S32)mode <= MODE_OFF || (S32)mode > MODE_BREATHING_HOLD)
     {
         return false;
     }
@@ -962,6 +962,185 @@ LLVector3 LLCinematicCamera::patternTiltWhip(LLVOAvatar* av, const LLVector3& ce
     return center + LLVector3(cosf(yaw) * d, sinf(yaw) * d, (F32)height);
 }
 
+// slow body-scale introduction: orbit at a constant radius while both camera
+// and gaze travel from the feet to the actual head joint, holding on the face
+LLVector3 LLCinematicCamera::patternBodyHelix(LLVOAvatar* av, const LLVector3& center,
+                                              F32 phase, LLVector3& focus_io)
+{
+    static LLCachedControl<F32> radius(gSavedSettings, "CinematicCamBodyHelixRadius", 2.4f);
+    static LLCachedControl<F32> revolutions(gSavedSettings, "CinematicCamBodyHelixRevolutions", 1.25f);
+    static LLCachedControl<F32> duration(gSavedSettings, "CinematicCamBodyHelixDuration", 14.f);
+    static LLCachedControl<F32> start_offset(gSavedSettings, "CinematicCamBodyHelixStartOffset", 0.08f);
+    static LLCachedControl<F32> end_offset(gSavedSettings, "CinematicCamBodyHelixEndOffset", 0.f);
+
+    const LLVector3 frame_off = center - av->getPositionAgent();
+    const LLVector3 feet = cc_subjectBase(av) + frame_off;
+    LLVector3 head = feet + LLVector3(0.f, 0.f, 1.75f);
+    if (LLJoint* joint = av->getJoint("mHead"))
+    {
+        head = joint->getWorldPosition() + frame_off;
+    }
+    const F32 u = cc_progress(phase, duration, 0);
+    const F32 a = cc_avatarYaw(av) + (F32)revolutions * F_TWO_PI * u;
+    const F32 z = cc_lerp(feet.mV[VZ] + (F32)start_offset,
+                          head.mV[VZ] + (F32)end_offset, u);
+    focus_io = LLVector3(cc_lerp(feet.mV[VX], head.mV[VX], u),
+                         cc_lerp(feet.mV[VY], head.mV[VY], u), z);
+    return focus_io + LLVector3(cosf(a) * llmax((F32)radius, 0.3f),
+                                sinf(a) * llmax((F32)radius, 0.3f), 0.f);
+}
+
+// menace reveal: a fixed-heading reverse pedestal from above the actual head
+// down to the feet, with camera and gaze remaining level throughout
+LLVector3 LLCinematicCamera::patternDescent(LLVOAvatar* av, const LLVector3& center,
+                                            F32 phase, LLVector3& focus_io)
+{
+    static LLCachedControl<F32> distance(gSavedSettings, "CinematicCamDescentDistance", 2.2f);
+    static LLCachedControl<F32> above_head(gSavedSettings, "CinematicCamDescentAboveHead", 0.45f);
+    static LLCachedControl<F32> foot_offset(gSavedSettings, "CinematicCamDescentFootOffset", 0.12f);
+    static LLCachedControl<F32> duration(gSavedSettings, "CinematicCamDescentDuration", 9.f);
+    static LLCachedControl<F32> heading(gSavedSettings, "CinematicCamDescentHeading", 0.f);
+
+    const LLVector3 frame_off = center - av->getPositionAgent();
+    const LLVector3 feet = cc_subjectBase(av) + frame_off;
+    LLVector3 head = feet + LLVector3(0.f, 0.f, 1.75f);
+    if (LLJoint* joint = av->getJoint("mHead"))
+    {
+        head = joint->getWorldPosition() + frame_off;
+    }
+    const F32 u = cc_progress(phase, duration, 0);
+    const F32 z = cc_lerp(head.mV[VZ] + (F32)above_head,
+                          feet.mV[VZ] + (F32)foot_offset, u);
+    focus_io = LLVector3(cc_lerp(head.mV[VX], feet.mV[VX], u),
+                         cc_lerp(head.mV[VY], feet.mV[VY], u), z);
+    const F32 yaw = cc_avatarYaw(av) + (F32)heading * DEG_TO_RAD;
+    return focus_io + LLVector3(cosf(yaw) * llmax((F32)distance, 0.3f),
+                                sinf(yaw) * llmax((F32)distance, 0.3f), 0.f);
+}
+
+// one-shot lateral truck: a straight rail perpendicular to the chosen heading
+LLVector3 LLCinematicCamera::patternParallaxSlide(LLVOAvatar* av, const LLVector3& center, F32 phase)
+{
+    static LLCachedControl<F32> length(gSavedSettings, "CinematicCamParallaxLength", 8.f);
+    static LLCachedControl<F32> distance(gSavedSettings, "CinematicCamParallaxDistance", 3.f);
+    static LLCachedControl<F32> height(gSavedSettings, "CinematicCamParallaxHeight", 1.2f);
+    static LLCachedControl<F32> duration(gSavedSettings, "CinematicCamParallaxDuration", 10.f);
+    static LLCachedControl<F32> heading(gSavedSettings, "CinematicCamParallaxHeading", 0.f);
+
+    const F32 u = cc_progress(phase, duration, 0);
+    const F32 yaw = cc_avatarYaw(av) + (F32)heading * DEG_TO_RAD;
+    const LLVector3 away(cosf(yaw), sinf(yaw), 0.f);
+    const LLVector3 rail(-sinf(yaw), cosf(yaw), 0.f);
+    return center + away * llmax((F32)distance, 0.3f)
+                  + rail * ((u - 0.5f) * (F32)length)
+                  + LLVector3(0.f, 0.f, (F32)height);
+}
+
+// dance loop: horizontal lemniscate with opposite parallax on each lobe
+LLVector3 LLCinematicCamera::patternFigureEight(LLVOAvatar* av, const LLVector3& center, F32 phase)
+{
+    static LLCachedControl<F32> radius(gSavedSettings, "CinematicCamFigureEightRadius", 3.f);
+    static LLCachedControl<F32> height(gSavedSettings, "CinematicCamFigureEightHeight", 1.2f);
+    static LLCachedControl<F32> period(gSavedSettings, "CinematicCamFigureEightPeriod", 10.f);
+    static LLCachedControl<F32> heading(gSavedSettings, "CinematicCamFigureEightHeading", 0.f);
+
+    const F32 t = phase * F_TWO_PI / llmax((F32)period, 0.5f);
+    const F32 yaw = cc_avatarYaw(av) + (F32)heading * DEG_TO_RAD;
+    const LLVector3 fwd(cosf(yaw), sinf(yaw), 0.f);
+    const LLVector3 side(-sinf(yaw), cosf(yaw), 0.f);
+    // Offset the lemniscate's crossover in front of the subject so the
+    // mathematically central crossing never drives the camera through them.
+    return center + fwd * ((F32)radius * (1.f + 0.5f * sinf(2.f * t)))
+                  + side * ((F32)radius * sinf(t))
+                  + LLVector3(0.f, 0.f, (F32)height);
+}
+
+// costume insert: narrow close framing drifting laterally across a selectable
+// body-height band derived from the feet-to-head span
+LLVector3 LLCinematicCamera::patternDetailSweep(LLVOAvatar* av, const LLVector3& center,
+                                                F32 phase, LLVector3& focus_io, F32& fov_mul)
+{
+    static LLCachedControl<F32> distance(gSavedSettings, "CinematicCamDetailDistance", 0.9f);
+    static LLCachedControl<F32> length(gSavedSettings, "CinematicCamDetailLength", 1.2f);
+    static LLCachedControl<F32> band(gSavedSettings, "CinematicCamDetailBand", 0.68f);
+    static LLCachedControl<F32> duration(gSavedSettings, "CinematicCamDetailDuration", 12.f);
+    static LLCachedControl<F32> fov(gSavedSettings, "CinematicCamDetailFov", 0.65f);
+
+    const LLVector3 frame_off = center - av->getPositionAgent();
+    const LLVector3 feet = cc_subjectBase(av) + frame_off;
+    LLVector3 head = feet + LLVector3(0.f, 0.f, 1.75f);
+    if (LLJoint* joint = av->getJoint("mHead"))
+    {
+        head = joint->getWorldPosition() + frame_off;
+    }
+    focus_io = feet + (head - feet) * llclamp((F32)band, 0.f, 1.f);
+    const F32 yaw = cc_avatarYaw(av);
+    const LLVector3 away(cosf(yaw), sinf(yaw), 0.f);
+    const LLVector3 side(-sinf(yaw), cosf(yaw), 0.f);
+    const F32 u = cc_progress(phase, duration, 0);
+    fov_mul = llclamp((F32)fov, 0.1f, 1.5f);
+    return focus_io + away * llmax((F32)distance, 0.25f)
+                    + side * ((u - 0.5f) * (F32)length);
+}
+
+// stop-motion orbit: advance during the first part of each step, then hold
+LLVector3 LLCinematicCamera::patternStepOrbit(LLVOAvatar* av, const LLVector3& center, F32 phase)
+{
+    static LLCachedControl<F32> radius(gSavedSettings, "CinematicCamStepOrbitRadius", 3.f);
+    static LLCachedControl<F32> height(gSavedSettings, "CinematicCamStepOrbitHeight", 1.2f);
+    static LLCachedControl<F32> period(gSavedSettings, "CinematicCamStepOrbitPeriod", 12.f);
+    static LLCachedControl<S32> steps(gSavedSettings, "CinematicCamStepOrbitSteps", 12);
+    static LLCachedControl<F32> hold(gSavedSettings, "CinematicCamStepOrbitHold", 0.7f);
+    static LLCachedControl<F32> heading(gSavedSettings, "CinematicCamStepOrbitHeading", 0.f);
+
+    const S32 count = llclamp((S32)steps, 2, 72);
+    const F32 step_phase = cc_frac(phase / llmax((F32)period, 0.5f)) * count;
+    const F32 idx = floorf(step_phase);
+    const F32 move_fraction = llmax(1.f - llclamp((F32)hold, 0.f, 0.95f), 0.05f);
+    const F32 move = llclamp(cc_frac(step_phase) / move_fraction, 0.f, 1.f);
+    const F32 eased = move * move * (3.f - 2.f * move);
+    const F32 a = cc_avatarYaw(av) + (F32)heading * DEG_TO_RAD
+                + (idx + eased) * F_TWO_PI / count;
+    return center + LLVector3(cosf(a) * llmax((F32)radius, 0.3f),
+                              sinf(a) * llmax((F32)radius, 0.3f), (F32)height);
+}
+
+// drone/sports pass: a fast one-shot straight chord with look-at supplying
+// the continuous yaw needed to keep the subject framed
+LLVector3 LLCinematicCamera::patternCableCam(LLVOAvatar* av, const LLVector3& center, F32 phase)
+{
+    static LLCachedControl<F32> length(gSavedSettings, "CinematicCamCableLength", 14.f);
+    static LLCachedControl<F32> miss(gSavedSettings, "CinematicCamCableMissDistance", 2.f);
+    static LLCachedControl<F32> height(gSavedSettings, "CinematicCamCableHeight", 1.6f);
+    static LLCachedControl<F32> duration(gSavedSettings, "CinematicCamCableDuration", 5.f);
+    static LLCachedControl<F32> heading(gSavedSettings, "CinematicCamCableHeading", 0.f);
+
+    const F32 u = cc_progress(phase, duration, 0);
+    const F32 yaw = cc_avatarYaw(av) + (F32)heading * DEG_TO_RAD;
+    const LLVector3 path(cosf(yaw), sinf(yaw), 0.f);
+    const LLVector3 side(-sinf(yaw), cosf(yaw), 0.f);
+    return center + path * ((u - 0.5f) * (F32)length)
+                  + side * (F32)miss + LLVector3(0.f, 0.f, (F32)height);
+}
+
+// dialogue hold: deterministic millimetric breathing, no wandering noise
+LLVector3 LLCinematicCamera::patternBreathingHold(LLVOAvatar* av, const LLVector3& center, F32 phase)
+{
+    static LLCachedControl<F32> distance(gSavedSettings, "CinematicCamBreathingDistance", 2.2f);
+    static LLCachedControl<F32> height(gSavedSettings, "CinematicCamBreathingHeight", 1.4f);
+    static LLCachedControl<F32> amplitude(gSavedSettings, "CinematicCamBreathingAmplitude", 0.025f);
+    static LLCachedControl<F32> period(gSavedSettings, "CinematicCamBreathingPeriod", 6.f);
+    static LLCachedControl<F32> heading(gSavedSettings, "CinematicCamBreathingHeading", 0.f);
+
+    const F32 t = phase * F_TWO_PI / llmax((F32)period, 1.f);
+    const F32 yaw = cc_avatarYaw(av) + (F32)heading * DEG_TO_RAD;
+    const LLVector3 away(cosf(yaw), sinf(yaw), 0.f);
+    const LLVector3 side(-sinf(yaw), cosf(yaw), 0.f);
+    return center + away * (llmax((F32)distance, 0.3f) + (F32)amplitude * sinf(t))
+                  + side * ((F32)amplitude * 0.45f * sinf(t * 0.5f))
+                  + LLVector3(0.f, 0.f, (F32)height + (F32)amplitude * 0.35f * cosf(t));
+}
+
 // ---------------------------------------------------------------------------
 void LLCinematicCamera::updateCamera()
 {
@@ -1061,6 +1240,14 @@ void LLCinematicCamera::updateCamera()
         case MODE_TURNTABLE:    pos = patternTurntable(center, mPhase); break;
         case MODE_FLOATING_ECU: pos = patternFloatingECU(av, focus, mPhase, mode_fov_mul); break;
         case MODE_TILT_WHIP:    pos = patternTiltWhip(av, center, mPhase, focus); break;
+        case MODE_BODY_HELIX:    pos = patternBodyHelix(av, center, mPhase, focus); break;
+        case MODE_DESCENT:       pos = patternDescent(av, center, mPhase, focus); break;
+        case MODE_PARALLAX_SLIDE:pos = patternParallaxSlide(av, center, mPhase); break;
+        case MODE_FIGURE_EIGHT:  pos = patternFigureEight(av, center, mPhase); break;
+        case MODE_DETAIL_SWEEP:  pos = patternDetailSweep(av, center, mPhase, focus, mode_fov_mul); break;
+        case MODE_STEP_ORBIT:    pos = patternStepOrbit(av, center, mPhase); break;
+        case MODE_CABLE_CAM:     pos = patternCableCam(av, center, mPhase); break;
+        case MODE_BREATHING_HOLD:pos = patternBreathingHold(av, center, mPhase); break;
         default:              return;
     }
 

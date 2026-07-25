@@ -77,6 +77,17 @@ public:
         LOOK_NORMAL = 0, LOOK_APPARITION, LOOK_HOLOGRAM, LOOK_CHROME,
         LOOK_TOON, LOOK_SILHOUETTE
     };
+    enum ELookTarget : S32
+    {
+        LOOK_TARGET_CAMERA = 0, LOOK_TARGET_ME, LOOK_TARGET_ACTOR,
+        LOOK_TARGET_GHOST
+    };
+    enum EFormation : S32
+    {
+        FORMATION_LINE = 0, FORMATION_RING, FORMATION_ARC, FORMATION_GRID,
+        FORMATION_V, FORMATION_SPIRAL, FORMATION_STAIRCASE, FORMATION_TUNNEL,
+        FORMATION_SCATTER
+    };
 
     // Frozen matrix palettes, keyed by (DRAWING avatar id, skin hash). The
     // drawing avatar is each batch's own mAvatar -- the wearer for body mesh,
@@ -99,6 +110,9 @@ public:
         // ---- entity-clone animation drive (Track B; ignored for overlays) ----
         EDriveMode  mDriveMode = DRIVE_MIRROR;
         LLUUID      mDirectedAnim;       // anim asset played in DRIVE_DIRECTED
+        F32         mAnimSpeed = 1.f;    // per-clone multiplier, before Chaos
+        EDriveMode  mResumeDriveMode = DRIVE_MIRROR;
+        LLUUID      mResumeDirectedAnim;
 
         // ---- placement ----
         LLVector3d  mFootGlobal;        // ghost FOOT position, global coords
@@ -107,6 +121,9 @@ public:
         // full 3-axis editing (the manip proxy) writes mRotation directly.
         LLQuaternion mRotation;
         F32         mScale = 1.f;       // uniform, pivoted at the foot (feet stay planted)
+        ELookTarget mLookTarget = LOOK_TARGET_CAMERA;
+        LLUUID      mLookTargetId;      // actor/cast id or Ghost Studio instance id
+        bool        mKeepFacing = false;
         bool        mChaosEnabled = false;
         F32         mChaosAmount = 0.f;
         bool        mChaosHasBase = false;
@@ -219,10 +236,20 @@ public:
     Instance* addInstance(const LLUUID& source);
     Instance* spawnEntityClone(const LLUUID& source, const std::string& source_label);
     Instance* duplicateInstance(const LLUUID& id);
+    Instance* duplicateInstanceInPlace(const LLUUID& id);
     bool      renameInstance(const LLUUID& id, const std::string& name);
     bool      setInstanceEnabled(const LLUUID& id, bool enabled);
     bool      setInstanceScale(const LLUUID& id, F32 scale);
+    bool      setInstanceAnimSpeed(const LLUUID& id, F32 speed);
+    bool      setInstancePaused(const LLUUID& id, bool paused);
     bool      applyEntityTransform(const LLUUID& id);
+    // Yaw-only client transform. target_global and mFootGlobal share the
+    // global frame; entity clones are pushed, overlays consume mRotation.
+    bool      aimInstanceAt(const LLUUID& id, const LLVector3d& target_global);
+    bool      faceInstance(const LLUUID& id);
+    void      setLookTarget(const LLUUID& id, ELookTarget target,
+                            const LLUUID& target_id, bool keep_facing);
+    void      updateLookAt();
     bool      refreshEntityClone(const LLUUID& id);   // re-pull source appearance + worn attachments onto the clone
     bool      setInstanceChaos(const LLUUID& id, F32 amount);
     bool      setInstanceLook(const LLUUID& id, EGhostLook look);
@@ -248,10 +275,10 @@ public:
     void unfreezeInstance(const LLUUID& id);
 
     // ---- array helper ----
-    // Duplicate the instance into a LINE (along the ghost's yaw direction) or
-    // a RING (centred on the ghost) of `count` total ghosts spaced `spacing`
-    // metres apart. Returns how many new instances were created.
-    S32 makeArray(const LLUUID& id, S32 count, F32 spacing, bool ring);
+    // `parameter` is degrees for Arc/V, rise metres for Staircase, and radius
+    // metres for Scatter. Zero selects the shape's natural default.
+    S32 makeArray(const LLUUID& id, S32 count, F32 spacing,
+                  EFormation formation, F32 parameter = 0.f);
 
     // ---- render-side queries ----
     // raw source ids (may include null = self) of enabled instances; the batch

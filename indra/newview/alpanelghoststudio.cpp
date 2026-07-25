@@ -32,6 +32,7 @@
 #include "lltextbox.h"
 #include "lltoolmgr.h"
 #include "llviewercontrol.h"
+#include "llworld.h"
 #include "llvoavatar.h"
 #include "llvoavatarself.h"         // gAgentAvatarp ("To me" snap)
 
@@ -106,11 +107,23 @@ bool ALPanelGhostStudio::postBuild()
     mScaleSpin = getChild<LLSpinCtrl>("scale_spinner");
     mChaosCheck = getChild<LLCheckBoxCtrl>("chaos_check");
     mChaosSlider = getChild<LLSliderCtrl>("chaos_slider");
+    mAnimSpeedSpin = getChild<LLSpinCtrl>("anim_speed_spinner");
+    mAnimPauseBtn = getChild<LLButton>("btn_anim_pause");
+    mAnimResumeBtn = getChild<LLButton>("btn_anim_resume");
     mDriveModeCombo = getChild<LLComboBox>("drive_mode_combo");
     mDirectedAnimEdit = getChild<LLLineEditor>("directed_anim_editor");
     mPlaceBtn  = getChild<LLButton>("btn_place");
     mToActorBtn = getChild<LLButton>("btn_to_actor");
     mToMeBtn   = getChild<LLButton>("btn_to_me");
+    mDropBtn = getChild<LLButton>("btn_drop_ground");
+    mAlignFeetBtn = getChild<LLButton>("btn_align_feet");
+    mUprightBtn = getChild<LLButton>("btn_reset_upright");
+    mDupInPlaceBtn = getChild<LLButton>("btn_duplicate_in_place");
+    mCopyTransformBtn = getChild<LLButton>("btn_copy_transform");
+    mPasteTransformBtn = getChild<LLButton>("btn_paste_transform");
+    mLookTargetCombo = getChild<LLComboBox>("look_target_combo");
+    mFaceNowBtn = getChild<LLButton>("btn_face_now");
+    mKeepFacingCheck = getChild<LLCheckBoxCtrl>("keep_facing_check");
 
     mStyleCombo     = getChild<LLComboBox>("style_combo");
     mActorTintCheck = getChild<LLCheckBoxCtrl>("actor_tint_check");
@@ -131,6 +144,9 @@ bool ALPanelGhostStudio::postBuild()
     mArraySpacing = getChild<LLSpinCtrl>("array_spacing_spinner");
     mArrayLineBtn = getChild<LLButton>("btn_array_line");
     mArrayRingBtn = getChild<LLButton>("btn_array_ring");
+    mFormationCombo = getChild<LLComboBox>("array_formation_combo");
+    mFormationParam = getChild<LLSpinCtrl>("array_parameter_spinner");
+    mArrayBuildBtn = getChild<LLButton>("btn_array_build");
 
     mStatusText = getChild<LLTextBox>("studio_status");
 
@@ -155,11 +171,26 @@ bool ALPanelGhostStudio::postBuild()
     mScaleSpin->setCommitCallback([this](LLUICtrl*, const LLSD&) { onScaleCommit(); });
     mChaosCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onChaosCommit(); });
     mChaosSlider->setCommitCallback([this](LLUICtrl*, const LLSD&) { onChaosCommit(); });
+    mAnimSpeedSpin->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAnimSpeedCommit(); });
+    mAnimPauseBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickAnimPause(); });
+    mAnimResumeBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickAnimResume(); });
     mDriveModeCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onDriveModeCommit(); });
     mDirectedAnimEdit->setCommitCallback([this](LLUICtrl*, const LLSD&) { onDirectedAnimCommit(); });
     mPlaceBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickPlace(); });
     mToActorBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickToActor(); });
     mToMeBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickToMe(); });
+    mDropBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickDrop(); });
+    mAlignFeetBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickAlignFeet(); });
+    mUprightBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickUpright(); });
+    mDupInPlaceBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickDuplicateInPlace(); });
+    mCopyTransformBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickCopyTransform(); });
+    mPasteTransformBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickPasteTransform(); });
+    mLookTargetCombo->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onLookTargetCommit(); });
+    mFaceNowBtn->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onClickFaceNow(); });
+    mKeepFacingCheck->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onKeepFacingCommit(); });
 
     mStyleCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onStyleCommit(); });
     mActorTintCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onActorTintToggle(); });
@@ -175,8 +206,11 @@ bool ALPanelGhostStudio::postBuild()
     mFreezeBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickFreeze(); });
     mLiveBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickLive(); });
 
-    mArrayLineBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickArray(false); });
-    mArrayRingBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickArray(true); });
+    mArrayLineBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickArray(ALGhostStudio::FORMATION_LINE); });
+    mArrayRingBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickArray(ALGhostStudio::FORMATION_RING); });
+    mFormationCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onFormationCommit(); });
+    mArrayBuildBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickBuildArray(); });
+    onFormationCommit();
 
     mShowAllCheck->set(ALGhostStudio::instance().getShowAll());
     return true;
@@ -224,6 +258,16 @@ LLUUID ALPanelGhostStudio::selectedInstance() const
     return item ? item->getValue().asUUID() : LLUUID::null;
 }
 
+std::vector<LLUUID> ALPanelGhostStudio::selectedInstances() const
+{
+    std::vector<LLUUID> ids;
+    for (LLScrollListItem* item : mList->getAllSelected())
+    {
+        ids.push_back(item->getValue().asUUID());
+    }
+    return ids;
+}
+
 // ---------------------------------------------------------------------------
 void ALPanelGhostStudio::draw()
 {
@@ -261,6 +305,7 @@ void ALPanelGhostStudio::draw()
 
     refreshSourceCombo();
     refreshList();
+    refreshLookTargetCombo();
 
     // [R2-3] mirror the SHARED selection (the in-world edit tool writes it;
     // both panel hosts follow). selectByID is programmatic -- no commit loop.
@@ -312,6 +357,44 @@ void ALPanelGhostStudio::refreshSourceCombo()
     if (!prev.isDefined() || !mSourceCombo->setSelectedByValue(prev, true))
     {
         mSourceCombo->selectFirstItem();    // "You"
+    }
+}
+
+void ALPanelGhostStudio::refreshLookTargetCombo()
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    std::string sig;
+    for (const LLDirectorCast::CastMember& m : LLDirectorCast::instance().getCast())
+    {
+        sig += m.mId.asString() + m.mLastName;
+    }
+    for (const ALGhostStudio::Instance& inst : studio.getInstances())
+    {
+        sig += inst.mId.asString() + inst.mName;
+    }
+    if (sig == mLookTargetSig)
+    {
+        return;
+    }
+    mLookTargetSig = sig;
+    const LLSD previous = mLookTargetCombo->getSelectedValue();
+    mLookTargetCombo->clearRows();
+    mLookTargetCombo->add("Camera", "camera");
+    mLookTargetCombo->add("Me", "me");
+    for (const LLDirectorCast::CastMember& m : LLDirectorCast::instance().getCast())
+    {
+        mLookTargetCombo->add("Actor: " + sourceName(m.mId),
+                              "actor:" + m.mId.asString());
+    }
+    for (const ALGhostStudio::Instance& inst : studio.getInstances())
+    {
+        mLookTargetCombo->add("Ghost: " + inst.mName,
+                              "ghost:" + inst.mId.asString());
+    }
+    if (!previous.isDefined() ||
+        !mLookTargetCombo->setSelectedByValue(previous, true))
+    {
+        mLookTargetCombo->selectFirstItem();
     }
 }
 
@@ -388,6 +471,9 @@ void ALPanelGhostStudio::refreshDetail()
     mHeadingDial->setEnabled(have);
     mYawSpin->setEnabled(have);
     mScaleSpin->setEnabled(have);
+    mLookTargetCombo->setEnabled(have);
+    mFaceNowBtn->setEnabled(have);
+    mKeepFacingCheck->setEnabled(have);
     const bool entity = have && inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE;
     mRefreshBtn->setVisible(entity);
     mRefreshBtn->setEnabled(entity);
@@ -406,6 +492,9 @@ void ALPanelGhostStudio::refreshDetail()
     }
     mChaosCheck->setEnabled(entity);
     mChaosSlider->setEnabled(entity && inst->mChaosEnabled);
+    mAnimSpeedSpin->setEnabled(entity);
+    mAnimPauseBtn->setEnabled(entity);
+    mAnimResumeBtn->setEnabled(entity);
     mEntityLookCombo->setEnabled(entity);
     mDriveModeCombo->setEnabled(entity);
     mDirectedAnimEdit->setEnabled(entity &&
@@ -428,6 +517,19 @@ void ALPanelGhostStudio::refreshDetail()
     mArraySpacing->setEnabled(overlay);
     mArrayLineBtn->setEnabled(overlay);
     mArrayRingBtn->setEnabled(overlay);
+    mDropBtn->setEnabled(have);
+    mAlignFeetBtn->setEnabled(have);
+    mUprightBtn->setEnabled(have);
+    mDupInPlaceBtn->setEnabled(have);
+    mCopyTransformBtn->setEnabled(have);
+    mPasteTransformBtn->setEnabled(have && mHasTransformClipboard);
+    mArrayCount->setEnabled(have);
+    mArraySpacing->setEnabled(have);
+    mArrayLineBtn->setEnabled(have);
+    mArrayRingBtn->setEnabled(have);
+    mFormationCombo->setEnabled(have);
+    mFormationParam->setEnabled(have);
+    mArrayBuildBtn->setEnabled(have);
 
     if (!have)
     {
@@ -455,8 +557,22 @@ void ALPanelGhostStudio::refreshDetail()
         mScaleSpin->setValue(inst->mScale);
         mChaosCheck->set(inst->mChaosEnabled);
         mChaosSlider->setValue(inst->mChaosAmount);
+        if (!mAnimSpeedSpin->hasFocus())
+        {
+            mAnimSpeedSpin->setValue(inst->mAnimSpeed);
+        }
         mEntityLookCombo->setValue(inst->mLook);
     }
+    if (!mYawSpin->hasFocus() && !mHeadingDial->hasMouseCapture())
+    {
+        // Aim commands, continuous tracking, and the in-world manip proxy can
+        // all change heading outside these controls. Mirror every draw (while
+        // preserving an active edit) so the dial and exact spinner never lie.
+        const F32 degrees = inst->getYaw() * RAD_TO_DEG;
+        mHeadingDial->setValue(degrees);
+        mYawSpin->setValue(degrees);
+    }
+    mKeepFacingCheck->set(inst->mKeepFacing);
     if (entity && !mDriveModeCombo->hasFocus())
     {
         mDriveModeCombo->setValue(inst->mDriveMode);
@@ -474,6 +590,7 @@ void ALPanelGhostStudio::refreshDetail()
         mHeadingDial->setValue(inst->getYaw() * RAD_TO_DEG);
         mYawSpin->setValue(inst->getYaw() * RAD_TO_DEG);
         mScaleSpin->setValue(inst->mScale);
+        mAnimSpeedSpin->setValue(inst->mAnimSpeed);
         mDriveModeCombo->setValue(inst->mDriveMode);
         mDirectedAnimEdit->setText(inst->mDirectedAnim.asString());
         mStyleCombo->setValue(inst->mStyle);
@@ -485,6 +602,14 @@ void ALPanelGhostStudio::refreshDetail()
         mPixelSlider->setValue(inst->mPixelSize);
         mGlitchSlider->setValue(inst->mGlitch);
         mBrightnessSlider->setValue(inst->mBrightness);
+        std::string target = "camera";
+        if (inst->mLookTarget == ALGhostStudio::LOOK_TARGET_ME)
+            target = "me";
+        else if (inst->mLookTarget == ALGhostStudio::LOOK_TARGET_ACTOR)
+            target = "actor:" + inst->mLookTargetId.asString();
+        else if (inst->mLookTarget == ALGhostStudio::LOOK_TARGET_GHOST)
+            target = "ghost:" + inst->mLookTargetId.asString();
+        mLookTargetCombo->setValue(target);
     }
 
     // pose status: what the ghost is doing, and why a freeze might not bite
@@ -587,6 +712,18 @@ void ALPanelGhostStudio::onClickDuplicate()
     }
 }
 
+void ALPanelGhostStudio::onClickDuplicateInPlace()
+{
+    if (ALGhostStudio::Instance* inst =
+            ALGhostStudio::instance().duplicateInstanceInPlace(selectedInstance()))
+    {
+        const LLUUID id = inst->mId;
+        ALGhostStudio::instance().setSelected(id);
+        refreshList();
+        mList->selectByID(id);
+    }
+}
+
 void ALPanelGhostStudio::onClickDelete()
 {
     ALGhostStudio::instance().removeInstance(selectedInstance());
@@ -647,6 +784,62 @@ void ALPanelGhostStudio::onHeadingDialCommit()
     }
 }
 
+void ALPanelGhostStudio::onLookTargetCommit()
+{
+    ALGhostStudio::Instance* inst =
+        ALGhostStudio::instance().getInstance(selectedInstance());
+    if (!inst)
+    {
+        return;
+    }
+    const std::string value = mLookTargetCombo->getValue().asString();
+    ALGhostStudio::ELookTarget target = ALGhostStudio::LOOK_TARGET_CAMERA;
+    LLUUID target_id;
+    if (value == "me")
+    {
+        target = ALGhostStudio::LOOK_TARGET_ME;
+    }
+    else if (value.rfind("actor:", 0) == 0)
+    {
+        target = ALGhostStudio::LOOK_TARGET_ACTOR;
+        target_id.set(value.substr(6), false);
+    }
+    else if (value.rfind("ghost:", 0) == 0)
+    {
+        target = ALGhostStudio::LOOK_TARGET_GHOST;
+        target_id.set(value.substr(6), false);
+    }
+    ALGhostStudio::instance().setLookTarget(
+        inst->mId, target, target_id, inst->mKeepFacing);
+}
+
+void ALPanelGhostStudio::onClickFaceNow()
+{
+    onLookTargetCommit();
+    if (ALGhostStudio::Instance* inst =
+            ALGhostStudio::instance().getInstance(selectedInstance()))
+    {
+        ALGhostStudio::instance().faceInstance(inst->mId);
+        const F32 degrees = inst->getYaw() * RAD_TO_DEG;
+        mHeadingDial->setValue(degrees);
+        mYawSpin->setValue(degrees);
+    }
+}
+
+void ALPanelGhostStudio::onKeepFacingCommit()
+{
+    onLookTargetCommit();
+    if (ALGhostStudio::Instance* inst =
+            ALGhostStudio::instance().getInstance(selectedInstance()))
+    {
+        inst->mKeepFacing = mKeepFacingCheck->get();
+        if (inst->mKeepFacing)
+        {
+            onClickFaceNow();
+        }
+    }
+}
+
 void ALPanelGhostStudio::onChaosCommit()
 {
     if (ALGhostStudio::Instance* inst =
@@ -666,6 +859,35 @@ void ALPanelGhostStudio::onScaleCommit()
     {
         ALGhostStudio::instance().setInstanceScale(
             inst->mId, llclamp((F32)mScaleSpin->getValue().asReal(), 0.05f, 10.f));
+    }
+}
+
+void ALPanelGhostStudio::onAnimSpeedCommit()
+{
+    const F32 speed =
+        llclamp((F32)mAnimSpeedSpin->getValue().asReal(), 0.05f, 4.f);
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    for (const LLUUID& id : selectedInstances())
+    {
+        studio.setInstanceAnimSpeed(id, speed);
+    }
+}
+
+void ALPanelGhostStudio::onClickAnimPause()
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    for (const LLUUID& id : selectedInstances())
+    {
+        studio.setInstancePaused(id, true);
+    }
+}
+
+void ALPanelGhostStudio::onClickAnimResume()
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    for (const LLUUID& id : selectedInstances())
+    {
+        studio.setInstancePaused(id, false);
     }
 }
 
@@ -743,6 +965,83 @@ void ALPanelGhostStudio::onClickToMe()
     LLVector3 foot = gAgentAvatarp->getRootJoint()->getWorldPosition();
     foot.mV[VZ] -= gAgentAvatarp->getPelvisToFoot();
     inst->setFootGlobal(gAgent.getPosGlobalFromAgent(foot));
+}
+
+void ALPanelGhostStudio::onClickDrop()
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    for (const LLUUID& id : selectedInstances())
+    {
+        if (ALGhostStudio::Instance* inst = studio.getInstance(id))
+        {
+            LLVector3d foot = inst->mFootGlobal;
+            foot.mdV[VZ] = LLWorld::getInstance()->resolveLandHeightGlobal(foot);
+            inst->setFootGlobal(foot);
+            if (inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+                studio.applyEntityTransform(id);
+        }
+    }
+}
+
+void ALPanelGhostStudio::onClickAlignFeet()
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    ALGhostStudio::Instance* anchor = studio.getInstance(selectedInstance());
+    if (!anchor) return;
+    const F64 z = anchor->mFootGlobal.mdV[VZ];
+    for (const LLUUID& id : selectedInstances())
+    {
+        if (ALGhostStudio::Instance* inst = studio.getInstance(id))
+        {
+            LLVector3d foot = inst->mFootGlobal;
+            foot.mdV[VZ] = z;
+            inst->setFootGlobal(foot);
+            if (inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+                studio.applyEntityTransform(id);
+        }
+    }
+}
+
+void ALPanelGhostStudio::onClickUpright()
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    for (const LLUUID& id : selectedInstances())
+    {
+        if (ALGhostStudio::Instance* inst = studio.getInstance(id))
+        {
+            inst->setYaw(inst->getYaw());
+            if (inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+                studio.applyEntityTransform(id);
+        }
+    }
+}
+
+void ALPanelGhostStudio::onClickCopyTransform()
+{
+    if (ALGhostStudio::Instance* inst =
+            ALGhostStudio::instance().getInstance(selectedInstance()))
+    {
+        mClipboardFoot = inst->mFootGlobal;
+        mClipboardRotation = inst->mRotation;
+        mClipboardScale = inst->mScale;
+        mHasTransformClipboard = true;
+    }
+}
+
+void ALPanelGhostStudio::onClickPasteTransform()
+{
+    if (!mHasTransformClipboard) return;
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    for (const LLUUID& id : selectedInstances())
+    {
+        if (ALGhostStudio::Instance* inst = studio.getInstance(id))
+        {
+            inst->setTransform(mClipboardFoot, mClipboardRotation);
+            studio.setInstanceScale(id, mClipboardScale);
+            if (inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+                studio.applyEntityTransform(id);
+        }
+    }
 }
 
 void ALPanelGhostStudio::exitPlaceMode()
@@ -924,7 +1223,7 @@ void ALPanelGhostStudio::onClickLive()
 // ---------------------------------------------------------------------------
 // array helper + master toggle
 // ---------------------------------------------------------------------------
-void ALPanelGhostStudio::onClickArray(bool ring)
+void ALPanelGhostStudio::onClickArray(ALGhostStudio::EFormation formation)
 {
     const LLUUID sel = selectedInstance();
     if (sel.isNull())
@@ -934,7 +1233,28 @@ void ALPanelGhostStudio::onClickArray(bool ring)
     ALGhostStudio::instance().makeArray(sel,
                                         mArrayCount->getValue().asInteger(),
                                         (F32)mArraySpacing->getValue().asReal(),
-                                        ring);
+                                        formation,
+                                        (F32)mFormationParam->getValue().asReal());
+}
+
+void ALPanelGhostStudio::onClickBuildArray()
+{
+    onClickArray((ALGhostStudio::EFormation)mFormationCombo->getValue().asInteger());
+}
+
+void ALPanelGhostStudio::onFormationCommit()
+{
+    const ALGhostStudio::EFormation formation =
+        (ALGhostStudio::EFormation)mFormationCombo->getValue().asInteger();
+    const char* label = "Parameter";
+    F32 value = 0.f;
+    if (formation == ALGhostStudio::FORMATION_ARC) { label = "Sweep"; value = 120.f; }
+    else if (formation == ALGhostStudio::FORMATION_V) { label = "Spread"; value = 60.f; }
+    else if (formation == ALGhostStudio::FORMATION_STAIRCASE) { label = "Rise"; value = 0.75f; }
+    else if (formation == ALGhostStudio::FORMATION_SCATTER) { label = "Radius"; value = 5.f; }
+    mFormationParam->setLabel(std::string(label));
+    mFormationParam->setValue(value);
+    mFormationParam->setVisible(value > 0.f);
 }
 
 void ALPanelGhostStudio::onShowAllToggle()

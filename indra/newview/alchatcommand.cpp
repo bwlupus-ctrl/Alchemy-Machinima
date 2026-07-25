@@ -421,6 +421,94 @@ bool ALChatCommand::parseCommand(std::string data)
             }
             return true;
         }
+        else if (cmd == "/ghostlook")
+        {
+            std::string target_arg;
+            std::string mode_arg;
+            std::string scope_arg;
+            std::string extra;
+            input >> target_arg >> mode_arg >> scope_arg >> extra;
+            const bool off = target_arg == "off";
+            bool all = scope_arg == "all";
+            if (off && mode_arg == "all" && scope_arg.empty())
+            {
+                all = true;
+                mode_arg.clear();
+            }
+            const bool keep = mode_arg == "keep";
+            const bool once = mode_arg.empty() || mode_arg == "once";
+            if (target_arg.empty() || (!off && !keep && !once) ||
+                (!scope_arg.empty() && !all) || !extra.empty())
+            {
+                LL_WARNS("GhostStudio")
+                    << "usage: /ghostlook <camera|me|actor_uuid|ghost_uuid|off> "
+                       "[once|keep] [all]" << LL_ENDL;
+                return true;
+            }
+
+            ALGhostStudio& studio = ALGhostStudio::instance();
+            std::vector<LLUUID> ids;
+            if (all)
+            {
+                for (const ALGhostStudio::Instance& inst : studio.getInstances())
+                {
+                    ids.push_back(inst.mId);
+                }
+            }
+            else if (studio.getInstance(studio.getSelected()))
+            {
+                ids.push_back(studio.getSelected());
+            }
+
+            ALGhostStudio::ELookTarget target = ALGhostStudio::LOOK_TARGET_CAMERA;
+            LLUUID target_id;
+            bool valid_target = off || target_arg == "camera";
+            if (target_arg == "me")
+            {
+                target = ALGhostStudio::LOOK_TARGET_ME;
+                valid_target = true;
+            }
+            else if (!valid_target)
+            {
+                target_id.set(target_arg, false);
+                if (target_id.notNull())
+                {
+                    target = studio.getInstance(target_id)
+                        ? ALGhostStudio::LOOK_TARGET_GHOST
+                        : ALGhostStudio::LOOK_TARGET_ACTOR;
+                    valid_target = true;
+                }
+            }
+            if (!valid_target || ids.empty())
+            {
+                LL_WARNS("GhostStudio")
+                    << (ids.empty() ? "/ghostlook: select a ghost or use all"
+                                    : "/ghostlook: invalid target")
+                    << LL_ENDL;
+                return true;
+            }
+
+            S32 changed = 0;
+            for (const LLUUID& id : ids)
+            {
+                ALGhostStudio::Instance* inst = studio.getInstance(id);
+                if (off)
+                {
+                    inst->mKeepFacing = false;
+                    ++changed;
+                }
+                else
+                {
+                    studio.setLookTarget(id, target, target_id, keep);
+                    changed += studio.faceInstance(id) ? 1 : 0;
+                }
+            }
+            LL_INFOS("GhostStudio") << "/ghostlook " << target_arg << " "
+                                    << (off ? "off" : (keep ? "keep" : "once"))
+                                    << ": updated " << changed << " ghost(s)"
+                                    << LL_ENDL;
+            return true;
+        }
         else if (cmd == "/ghostverify") // "test" also includes harness ghosts
         {
             std::string scope;

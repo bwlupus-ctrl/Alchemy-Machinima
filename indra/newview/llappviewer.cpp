@@ -66,6 +66,7 @@
 #include "llviewerjoystick.h"
 #include "llactormover.h"    // TP-away walk suspend/resume state machine (idle tick)
 #include "alobjectpathmover.h"  // [ObjectPath] per-frame object drives (idle tick)
+#include "alghoststudio.h"      // per-instance Keep facing transforms (idle tick)
 #include "altoolghostedit.h"    // [GhostStudio] per-frame manip-proxy sync (idle tick)
 #include "llcinematiccamera.h"
 #include "llflycamrecorder.h"
@@ -5319,6 +5320,7 @@ void LLAppViewer::idle()
     // that is set inside gObjectList.update() below. The mover self-gates on
     // FreezeTime. Zero cost with no drives.
     ALObjectPathMover::instance().update(dt_raw);
+    ALGhostStudio::instance().updateLookAt();
 
     {
         if (!(logoutRequestSent() && hasSavedFinalSnapshot()))
