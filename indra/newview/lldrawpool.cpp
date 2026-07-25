@@ -52,7 +52,6 @@
 #include "llglslshader.h"
 #include "llglcommonfunc.h"
 #include "llvoavatar.h"
-#include "llghostavatar.h"
 #include "llviewershadermgr.h"
 #include "llfetchedgltfmaterial.h"
 #include "llviewertexture.h"
@@ -1020,12 +1019,6 @@ void LLRenderPass::pushBatch(LLDrawInfo& params, bool texture, bool batch_textur
     {
         return;
     }
-    if (params.mAvatar && params.mAvatar->isGhostAvatar())
-    {
-        static_cast<LLGhostAvatar*>(params.mAvatar.get())
-            ->recordSitRiggedBatch(params.mCount);
-    }
-
     applyModelMatrix(params);
 
     bool tex_setup = false;
@@ -1081,12 +1074,6 @@ void LLRenderPass::pushUntexturedBatch(LLDrawInfo& params)
     {
         return;
     }
-    if (params.mAvatar && params.mAvatar->isGhostAvatar())
-    {
-        static_cast<LLGhostAvatar*>(params.mAvatar.get())
-            ->recordSitRiggedBatch(params.mCount);
-    }
-
     applyModelMatrix(params);
 
     params.mVertexBuffer->setBuffer();
@@ -1111,11 +1098,6 @@ bool LLRenderPass::uploadMatrixPalette(LLVOAvatar* avatar, LLMeshSkinInfo* skinI
     }
     const LLVOAvatar::MatrixPaletteCache& mpc = avatar->updateSkinInfoMatrixPalette(skinInfo);
     U32 count = static_cast<U32>(mpc.mMatrixPalette.size());
-    if (avatar->isGhostAvatar())
-    {
-        static_cast<LLGhostAvatar*>(avatar)->recordSitRiggedPalette(count != 0);
-    }
-
     if (count == 0)
     {
         //skin info not loaded yet, don't render
@@ -1146,20 +1128,11 @@ bool LLRenderPass::uploadMatrixPalette(LLVOAvatar* avatar, LLMeshSkinInfo* skinI
 
     if (avatar == lastAvatar && skinInfo->mHash == lastMeshId)
     {
-        if (avatar->isGhostAvatar())
-        {
-            static_cast<LLGhostAvatar*>(avatar)
-                ->recordSitRiggedPalette(!skipLastSkin);
-        }
         return !skipLastSkin;
     }
 
     const LLVOAvatar::MatrixPaletteCache& mpc = avatar->updateSkinInfoMatrixPalette(skinInfo);
     U32 count = static_cast<U32>(mpc.mMatrixPalette.size());
-    if (avatar->isGhostAvatar())
-    {
-        static_cast<LLGhostAvatar*>(avatar)->recordSitRiggedPalette(count != 0);
-    }
     // skipLastSkin -> skin info not loaded yet, don't render
     skipLastSkin = !bool(count);
     lastAvatar = avatar;
@@ -1192,20 +1165,11 @@ bool LLRenderPass::uploadMatrixPalette(LLVOAvatar* avatar, LLMeshSkinInfo* skinI
 
     if (avatar == lastAvatar && skinInfo->mHash == lastMeshId && lastAvatarShader == LLGLSLShader::sCurBoundShaderPtr)
     {
-        if (avatar->isGhostAvatar())
-        {
-            static_cast<LLGhostAvatar*>(avatar)
-                ->recordSitRiggedPalette(!skipLastSkin);
-        }
         return !skipLastSkin;
     }
 
     const LLVOAvatar::MatrixPaletteCache& mpc = avatar->updateSkinInfoMatrixPalette(skinInfo);
     U32 count = static_cast<U32>(mpc.mMatrixPalette.size());
-    if (avatar->isGhostAvatar())
-    {
-        static_cast<LLGhostAvatar*>(avatar)->recordSitRiggedPalette(count != 0);
-    }
     // skipLastSkin -> skin info not loaded yet, don't render
     skipLastSkin = !bool(count);
     lastAvatar = avatar;

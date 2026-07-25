@@ -108,6 +108,7 @@ public:
     // skeleton/motion controller; neither path touches simulator object state.
     void setEntityScale(F32 scale);
     F32 getUniformScale() const override { return mEntityScale; }
+    void setEntityPhysicsEnabled(bool enabled);
     void setEntityDriveMode(S32 mode, const LLUUID& directed_anim);
     void setEntityLoopMode(S32 mode);
     void restartEntityAnimation();
@@ -150,21 +151,17 @@ public:
     // Destroy every ghost spawned by the palette-isolation test harness.
     static S32 clearTestHarnessGhosts();
 
-    void recordSitRenderProbe(const char* verdict, S32 pass,
-                              S32 pool_faces, U32 drawn_indices = 0);
-    void recordSitRiggedBatch(U32 indices);
-    void recordSitRiggedPalette(bool valid);
-
 private:
-    void beginSitRenderProbeFrame();
     void updateEntityOuterTransform();
     void stampEntityOuterTransform(LLViewerObject* object);
     void clearClonedObjectAnimations();
-    void diagnoseSourceSitTransition(LLVOAvatar* source);
+    void synchronizeCloneAnimations(
+        const std::map<LLUUID, S32>& desired_animations);
 
     bool mMarkedForDeath;
     bool mEntityCloneVisible;
     F32 mEntityScale = 1.f;
+    bool mEntityPhysicsEnabled = true;
     S32 mEntityDriveMode = 0; // ALGhostStudio::DRIVE_MIRROR (avoid header cycle)
     S32 mEntityLoopMode = 0;  // ALGhostStudio::LOOP_RETRIGGER
     S32 mEntityLook = 0;
@@ -181,23 +178,11 @@ private:
     // entity mirrors. The UUID is resolved through gObjectList each frame so
     // the ghost never owns or extends the source avatar's lifetime.
     LLUUID mAnimationSourceId;
-    bool mSourceSitStateKnown = false;
-    bool mLastSourceSitting = false;
-    U32 mGhostSitLastLogFrame = 0;
-    U32 mGhostSitRenderFrame = 0;
-    U32 mGhostSitPoolEntries = 0;
-    U32 mGhostSitSkinnedCalls = 0;
-    U32 mGhostSitDrawnIndices = 0;
-    U32 mGhostSitRiggedBatches = 0;
-    U32 mGhostSitRiggedIndices = 0;
-    U64 mGhostSitRiggedBatchesCumulative = 0;
-    U64 mGhostSitRiggedIndicesCumulative = 0;
-    U32 mGhostSitRiggedPaletteValid = 0;
-    U32 mGhostSitRiggedPaletteInvalid = 0;
-    S32 mGhostSitLastPass = -1;
-    S32 mGhostSitPoolFaces = 0;
-    std::string mGhostSitRenderVerdict = "not_seen";
-    std::string mGhostSitRenderVerdictPath = "none";
+    // Positive-isolation ledger for avatar animations.  Neither map is the
+    // inherited simulator animation state; synchronization can only call the
+    // LLCharacter motion-controller API on this clone.
+    std::map<LLUUID, S32> mCloneDesiredAnimations;
+    std::map<LLUUID, S32> mClonePlayingAnimations;
 
     // The client-only linksets we attached.
     //

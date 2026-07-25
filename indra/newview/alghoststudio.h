@@ -42,6 +42,7 @@
 #include "llquaternion.h"   // per-instance orientation
 
 #include <map>
+#include <functional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -63,7 +64,7 @@ public:
     enum ELifecycleState : S32
     {
         STATE_SPAWNING = 0, STATE_READY, STATE_SOURCE_MISSING, STATE_LOCKED,
-        STATE_TEARING_DOWN, STATE_ERROR
+        STATE_TEARING_DOWN, STATE_ERROR, STATE_RECOVERABLE
     };
 
     // How a client-only ENTITY clone is animated, INDEPENDENT of its source
@@ -116,10 +117,15 @@ public:
         EDriveMode  mDriveMode = DRIVE_MIRROR;
         LLUUID      mDirectedAnim;       // anim asset played in DRIVE_DIRECTED
         F32         mAnimSpeed = 1.f;    // per-clone multiplier, before Chaos
+        bool        mPhysicsEnabled = true;
         ELoopMode   mLoopMode = LOOP_RETRIGGER;
         bool        mRestartOnResume = false;
         EDriveMode  mResumeDriveMode = DRIVE_MIRROR;
         LLUUID      mResumeDirectedAnim;
+        U8          mPendingFreezeFrames = 0;
+        bool        mWasDirectorSubjectA = false;
+        bool        mWasDirectorSubjectB = false;
+        bool        mWasCinematicFollow = false;
 
         // ---- placement ----
         LLVector3d  mFootGlobal;        // ghost FOOT position, global coords
@@ -268,6 +274,7 @@ public:
     bool      setInstanceEnabled(const LLUUID& id, bool enabled);
     bool      setInstanceScale(const LLUUID& id, F32 scale);
     bool      setInstanceAnimSpeed(const LLUUID& id, F32 speed);
+    bool      setInstancePhysicsEnabled(const LLUUID& id, bool enabled);
     bool      setInstancePaused(const LLUUID& id, bool paused);
     bool      setInstanceLoopMode(const LLUUID& id, ELoopMode mode);
     bool      restartInstanceAnimation(const LLUUID& id);
@@ -347,8 +354,18 @@ private:
                              F32 parameter) const;
     void updateFreezeStrips(F64 now);
     void updateFormationMotion(F64 now);
+    LLGhostAvatar* createEntityRuntime(Instance& inst, S32& attachments);
+    void applyEntityRuntimeState(Instance& inst, LLGhostAvatar* ghost);
+    void onEntityRuntimeReplaced(Instance& inst, const LLUUID& new_runtime,
+                                 LLGhostAvatar* new_ghost = nullptr,
+                                 bool removing_instance = false);
+    void finishPendingRuntimeFreezes();
     std::string makeDefaultName() const;
-    ALGhostStudio() = default;
+    ALGhostStudio();
+
+    using runtime_consumer_t =
+        std::function<void(const LLUUID&, const LLUUID&, const LLUUID&, bool)>;
+    std::vector<runtime_consumer_t> mRuntimeConsumers;
 
     std::vector<Instance> mInstances;
     bool mShowAll = true;

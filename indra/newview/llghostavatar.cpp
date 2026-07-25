@@ -37,6 +37,7 @@
 #include "llmeshrepository.h"
 #include "llskinningutil.h"
 #include "llviewerregion.h"
+#include "llviewertextureanim.h"
 #include "llvolumemgr.h"
 #include "llgltfmaterial.h"
 #include "llfetchedgltfmaterial.h"
@@ -220,6 +221,32 @@ void LLGhostAvatar::setEntityScale(F32 scale)
     updateEntityOuterTransform();
 }
 
+void LLGhostAvatar::setEntityPhysicsEnabled(bool enabled)
+{
+    if (enabled == mEntityPhysicsEnabled)
+    {
+        // The member defaults on, but default motions are deliberately
+        // disabled. Ensure a fresh clone actually starts its physics motion.
+        if (enabled && !isMotionActive(ANIM_AGENT_PHYSICS_MOTION))
+        {
+            LLCharacter::startMotion(ANIM_AGENT_PHYSICS_MOTION);
+        }
+        return;
+    }
+
+    mEntityPhysicsEnabled = enabled;
+    if (enabled)
+    {
+        // Do not call startDefaultMotions(): head/eye/noise/breathe motions
+        // would fight the clone-owned mirrored or directed animation.
+        LLCharacter::startMotion(ANIM_AGENT_PHYSICS_MOTION);
+    }
+    else
+    {
+        LLCharacter::stopMotion(ANIM_AGENT_PHYSICS_MOTION, true);
+    }
+}
+
 void LLGhostAvatar::setEntityLook(S32 look, F32 alpha)
 {
     // Clone-scoped render-style hook.  The enum/state is intentionally kept on
@@ -248,6 +275,43 @@ void LLGhostAvatar::clearClonedObjectAnimations()
     }
 }
 
+void LLGhostAvatar::synchronizeCloneAnimations(
+    const signaled_animation_map_t& desired_animations)
+{
+    // This is intentionally narrower than LLVOAvatar's animation-state
+    // machinery: it performs a pure ledger diff and can only start/stop
+    // motions in this synthetic avatar's own controller.  It has no agent,
+    // simulator, sound, notification, sit, AO, or avatar-state branches.
+    for (auto playing = mClonePlayingAnimations.begin();
+         playing != mClonePlayingAnimations.end();)
+    {
+        const auto desired = desired_animations.find(playing->first);
+        if (desired == desired_animations.end() ||
+            desired->second != playing->second)
+        {
+            LLCharacter::stopMotion(playing->first, true);
+            playing = mClonePlayingAnimations.erase(playing);
+        }
+        else
+        {
+            ++playing;
+        }
+    }
+
+    for (const auto& desired : desired_animations)
+    {
+        const auto playing = mClonePlayingAnimations.find(desired.first);
+        if (playing == mClonePlayingAnimations.end())
+        {
+            if (LLCharacter::startMotion(desired.first))
+            {
+                mClonePlayingAnimations[desired.first] = desired.second;
+            }
+        }
+    }
+    mCloneDesiredAnimations = desired_animations;
+}
+
 void LLGhostAvatar::setEntityDriveMode(S32 mode, const LLUUID& directed_anim)
 {
     mode = llclamp(mode, (S32)ALGhostStudio::DRIVE_MIRROR,
@@ -265,13 +329,12 @@ void LLGhostAvatar::setEntityDriveMode(S32 mode, const LLUUID& directed_anim)
     if (mEntityDriveMode == ALGhostStudio::DRIVE_DIRECTED &&
         mEntityDirectedAnim.notNull())
     {
-        stopMotion(mEntityDirectedAnim, true);
+        LLCharacter::stopMotion(mEntityDirectedAnim, true);
     }
     if (mEntityDriveMode == ALGhostStudio::DRIVE_MIRROR &&
         mode != ALGhostStudio::DRIVE_MIRROR)
     {
-        mSignaledAnimations.clear();
-        processAnimationStateChanges();
+        synchronizeCloneAnimations(signaled_animation_map_t());
     }
 
     mEntityDriveMode = mode;
@@ -279,16 +342,12 @@ void LLGhostAvatar::setEntityDriveMode(S32 mode, const LLUUID& directed_anim)
     mEntityDirectedWasActive = false;
     if (mode == ALGhostStudio::DRIVE_DIRECTED)
     {
-        if (!mSignaledAnimations.empty())
-        {
-            mSignaledAnimations.clear();
-            processAnimationStateChanges();
-        }
+        synchronizeCloneAnimations(signaled_animation_map_t());
         clearClonedObjectAnimations();
     }
     if (mode == ALGhostStudio::DRIVE_DIRECTED && directed_anim.notNull())
     {
-        startMotion(directed_anim);
+        LLCharacter::startMotion(directed_anim);
         mEntityDirectedStarted = true;
     }
     else if (mode == ALGhostStudio::DRIVE_FROZEN)
@@ -319,8 +378,8 @@ void LLGhostAvatar::restartEntityAnimation()
     {
         if (mEntityDirectedAnim.notNull())
         {
-            stopMotion(mEntityDirectedAnim, true);
-            startMotion(mEntityDirectedAnim, 0.f);
+            LLCharacter::stopMotion(mEntityDirectedAnim, true);
+            LLCharacter::startMotion(mEntityDirectedAnim, 0.f);
             mEntityDirectedStarted = true;
             mEntityDirectedWasActive = false;
         }
@@ -333,20 +392,16 @@ void LLGhostAvatar::restartEntityAnimation()
 
     // Only the clone-owned mirrored ledger is cut. The source avatar is
     // resolved nowhere on this path and its controller remains untouched.
-    const signaled_animation_map_t desired = mSignaledAnimations;
-    for (const auto& playing : mPlayingAnimations)
+    const signaled_animation_map_t desired = mCloneDesiredAnimations;
+    for (const auto& playing : mClonePlayingAnimations)
     {
         if (desired.find(playing.first) != desired.end())
         {
-            stopMotion(playing.first, true);
+            LLCharacter::stopMotion(playing.first, true);
         }
     }
-    for (const auto& signaled : desired)
-    {
-        mPlayingAnimations.erase(signaled.first);
-    }
-    mSignaledAnimations = desired;
-    processAnimationStateChanges();
+    mClonePlayingAnimations.clear();
+    synchronizeCloneAnimations(desired);
 }
 
 //static
@@ -399,6 +454,63 @@ bool LLGhostAvatar::cloneAppearanceFrom(LLVOAvatar* source)
 
 namespace
 {
+    // Mirror the simulator-delivered texture-animation object state onto a
+    // client-only clone. LLViewerTextureAnim registers itself with the global
+    // per-frame updater, so copying these semantic fields is enough for the
+    // viewer to animate the clone without a script or an ObjectUpdate.
+    void copy_texture_animation(LLVOVolume* dst, const LLVOVolume* src)
+    {
+        if (src->mTextureAnimp)
+        {
+            if (!dst->mTextureAnimp)
+            {
+                dst->mTextureAnimp = new LLViewerTextureAnim(dst);
+            }
+            else
+            {
+                dst->mTextureAnimp->reset();
+            }
+
+            dst->mTextureAnimp->mMode = src->mTextureAnimp->mMode;
+            dst->mTextureAnimp->mFace = src->mTextureAnimp->mFace;
+            dst->mTextureAnimp->mSizeX = src->mTextureAnimp->mSizeX;
+            dst->mTextureAnimp->mSizeY = src->mTextureAnimp->mSizeY;
+            dst->mTextureAnimp->mStart = src->mTextureAnimp->mStart;
+            dst->mTextureAnimp->mLength = src->mTextureAnimp->mLength;
+            dst->mTextureAnimp->mRate = src->mTextureAnimp->mRate;
+            dst->mTexAnimMode = 0;
+            return;
+        }
+
+        // Match LLVOVolume's absent-TextureAnim-block path. This matters when
+        // an existing destination is re-copied after the source animation was
+        // stopped: retaining either the animator or a face texture matrix
+        // would leave stale UV animation/render state on the clone.
+        if (!dst->mTextureAnimp)
+        {
+            return;
+        }
+
+        delete dst->mTextureAnimp;
+        dst->mTextureAnimp = nullptr;
+        dst->mTexAnimMode = 0;
+
+        if (dst->mDrawable)
+        {
+            for (S32 i = 0; i < dst->mDrawable->getNumFaces(); ++i)
+            {
+                LLFace* face = dst->mDrawable->getFace(i);
+                if (face && face->mTextureMatrix)
+                {
+                    delete face->mTextureMatrix;
+                    face->mTextureMatrix = nullptr;
+                }
+            }
+            gPipeline.markTextured(dst->mDrawable);
+        }
+        dst->faceMappingChanged();
+    }
+
     // Duplicate one prim's renderable state onto a fresh client-only volume.
     // Returns false if the source has no volume yet (asset still loading) --
     // there is nothing faithful to copy in that case.
@@ -536,6 +648,8 @@ namespace
                 dst->setTEGLTFMaterialOverride(i, ovp);
             }
         }
+
+        copy_texture_animation(dst, src);
         dst->markForUpdate();
         return true;
     }
@@ -1101,33 +1215,26 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
         return;
     }
 
-    // AvatarAnimation is delivered only for simulator-known avatar UUIDs, so a
-    // client-only ghost's mSignaledAnimations would otherwise stay empty and
-    // its disabled-default-motion skeleton would remain in bind pose. Mirror
-    // the source's already-received state before LLVOAvatar::idleUpdate() runs
-    // updateMotions(). processAnimationStateChanges() is entirely viewer-local:
-    // it starts/stops assets in this ghost's own LLMotionController.
+    // AvatarAnimation is delivered only for simulator-known avatar UUIDs.
+    // Mirror the source's already-received state into the clone-only ledger
+    // before LLVOAvatar::idleUpdate() runs updateMotions().
     if (mEntityDriveMode == ALGhostStudio::DRIVE_MIRROR)
     {
         LLViewerObject* source_obj = gObjectList.findObject(mAnimationSourceId);
         LLVOAvatar* source = source_obj ? source_obj->asAvatar() : nullptr;
-        diagnoseSourceSitTransition(source);
         if (source && !source->isDead())
         {
-            // Ground-sit animations are not pose-only in LLVOAvatar:
-            // SIT_GROUND_CONSTRAINED makes processSingleAnimationStateChange()
-            // call sitDown(true), adopting structural ground-sit state and its
-            // pelvis/root geometry. A client-only ghost is never simulator
-            // parented, so do not let either ground-sit signal enter its motion
-            // state. Prim sits use ordinary animations and remain mirrored.
-            std::map<LLUUID, S32> mirrored_animations =
+            // The clone-only synchronizer makes this filter unnecessary for
+            // simulator safety.  Retain it solely as a behavioral choice:
+            // ghosts do not adopt ground-sit poses, while ordinary prim-sit
+            // animations continue to mirror.
+            signaled_animation_map_t mirrored_animations =
                 source->mSignaledAnimations;
             mirrored_animations.erase(ANIM_AGENT_SIT_GROUND);
             mirrored_animations.erase(ANIM_AGENT_SIT_GROUND_CONSTRAINED);
-            if (mSignaledAnimations != mirrored_animations)
+            if (mCloneDesiredAnimations != mirrored_animations)
             {
-                mSignaledAnimations.swap(mirrored_animations);
-                processAnimationStateChanges();
+                synchronizeCloneAnimations(mirrored_animations);
             }
         }
     }
@@ -1149,7 +1256,7 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
                 // A baked-loop asset cannot be mutated per instance because
                 // its keyframe data is shared. Stop this clone's canonical
                 // motion at one duration instead.
-                stopMotion(mEntityDirectedAnim, true);
+                LLCharacter::stopMotion(mEntityDirectedAnim, true);
                 active = false;
             }
         }
@@ -1157,7 +1264,7 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
             (mEntityLoopMode == ALGhostStudio::LOOP_RETRIGGER ||
              !mEntityDirectedStarted))
         {
-            startMotion(mEntityDirectedAnim);
+            LLCharacter::startMotion(mEntityDirectedAnim);
             mEntityDirectedStarted = true;
         }
         mEntityDirectedWasActive = active;
@@ -1211,209 +1318,6 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
 
     LLVOAvatar::idleUpdate(agent, time);
     updateEntityOuterTransform();
-}
-
-void LLGhostAvatar::diagnoseSourceSitTransition(LLVOAvatar* source)
-{
-    if (!source || source->isDead())
-    {
-        mSourceSitStateKnown = false;
-        return;
-    }
-
-    const bool sitting = source->isSitting();
-    const bool transitioned =
-        !mSourceSitStateKnown || sitting != mLastSourceSitting;
-    mSourceSitStateKnown = true;
-    mLastSourceSitting = sitting;
-
-    if (!transitioned &&
-        (!mEntityCloneVisible ||
-         gFrameCount - mGhostSitLastLogFrame < 30))
-    {
-        return;
-    }
-    mGhostSitLastLogFrame = gFrameCount;
-
-    LLDrawable* avatar_drawable = mDrawable.get();
-    LLDrawable* sample_drawable = nullptr;
-    S32 resident_linksets = 0;
-    S32 resident_objects = 0;
-    S32 attachment_faces = 0;
-    S32 rigged_faces = 0;
-    S32 rigged_vb_faces = 0;
-    S32 rigged_skin_valid = 0;
-    S32 rigged_skin_invalid = 0;
-    for (const ClonedLinkset& linkset : mClonedLinksets)
-    {
-        bool root_resident = false;
-        std::vector<LLUUID> ids = linkset.mChildren;
-        ids.insert(ids.begin(), linkset.mRoot);
-        for (const LLUUID& id : ids)
-        {
-            LLViewerObject* object = gObjectList.findObject(id);
-            if (!object || object->isDead())
-            {
-                continue;
-            }
-            ++resident_objects;
-            root_resident = root_resident || id == linkset.mRoot;
-            if (!sample_drawable && object->mDrawable.notNull())
-            {
-                sample_drawable = object->mDrawable;
-            }
-            LLVOVolume* volume = dynamic_cast<LLVOVolume*>(object);
-            if (!volume || volume->mDrawable.isNull())
-            {
-                continue;
-            }
-            const bool rigged = volume->isRiggedMesh();
-            const LLMeshSkinInfo* skin = rigged ? volume->getSkinInfo() : nullptr;
-            if (rigged)
-            {
-                if (skin && !skin->mJointNames.empty())
-                {
-                    ++rigged_skin_valid;
-                }
-                else
-                {
-                    ++rigged_skin_invalid;
-                }
-            }
-            const S32 face_count = volume->mDrawable->getNumFaces();
-            attachment_faces += face_count;
-            if (rigged)
-            {
-                rigged_faces += face_count;
-                for (S32 face_index = 0; face_index < face_count; ++face_index)
-                {
-                    LLFace* face = volume->mDrawable->getFace(face_index);
-                    rigged_vb_faces +=
-                        face && face->getVertexBuffer() ? 1 : 0;
-                }
-            }
-        }
-        resident_linksets += root_resident ? 1 : 0;
-    }
-
-    const bool force_invisible =
-        avatar_drawable &&
-        avatar_drawable->isState(LLDrawable::FORCE_INVISIBLE);
-    const bool sample_force_invisible =
-        sample_drawable &&
-        sample_drawable->isState(LLDrawable::FORCE_INVISIBLE);
-    const bool culled =
-        !avatar_drawable || !avatar_drawable->getSpatialGroup() ||
-        !avatar_drawable->getSpatialGroup()->isVisible();
-    const LLVector3 root_world =
-        mRoot ? mRoot->getWorldPosition() : LLVector3::zero;
-
-    LL_INFOS("GhostSit")
-        << "source_sitting=" << sitting
-        << " sample_kind=" << (transitioned ? "transition" : "periodic")
-        << " clone_enabled=" << mEntityCloneVisible
-        << " avatar_force_invisible=" << force_invisible
-        << " sample_attachment_force_invisible=" << sample_force_invisible
-        << " root_world=" << root_world
-        << " drawable_visible="
-        << (avatar_drawable && avatar_drawable->isVisible())
-        << " culled=" << culled
-        << " impostor=" << isImpostor()
-        << " pixel_area=" << getPixelArea()
-        << " fully_loaded=" << isFullyLoaded()
-        << " built=" << mIsBuilt
-        << " appearance=" << getOverallAppearance()
-        << " too_slow=" << isTooSlow()
-        << " linksets=" << mClonedLinksets.size()
-        << " resident_linksets=" << resident_linksets
-        << " resident_objects=" << resident_objects
-        << " attachment_faces=" << attachment_faces
-        << " rigged_faces=" << rigged_faces
-        << " rigged_vb_faces=" << rigged_vb_faces
-        << " rigged_skin_valid=" << rigged_skin_valid
-        << " rigged_skin_invalid=" << rigged_skin_invalid
-        << " render_frame=" << mGhostSitRenderFrame
-        << " render_age=" << (gFrameCount - mGhostSitRenderFrame)
-        << " pool_entries=" << mGhostSitPoolEntries
-        << " pool_faces=" << mGhostSitPoolFaces
-        << " skinned_calls=" << mGhostSitSkinnedCalls
-        << " drawn_indices=" << mGhostSitDrawnIndices
-        << " rigged_batches_drawn=" << mGhostSitRiggedBatches
-        << " rigged_indices_drawn=" << mGhostSitRiggedIndices
-        << " rigged_batches_drawn_cumulative="
-        << mGhostSitRiggedBatchesCumulative
-        << " rigged_indices_drawn_cumulative="
-        << mGhostSitRiggedIndicesCumulative
-        << " rigged_counters_scope=per_frame"
-        << " rigged_cumulative_scope=clone_lifetime"
-        << " counter_attribution=this_clone"
-        << " counter_avatar_id=" << getID()
-        << " rigged_palette_valid=" << mGhostSitRiggedPaletteValid
-        << " rigged_palette_invalid=" << mGhostSitRiggedPaletteInvalid
-        << " last_pass=" << mGhostSitLastPass
-        << " render_verdict=" << mGhostSitRenderVerdict
-        << " render_verdict_path=" << mGhostSitRenderVerdictPath
-        << " verdict_attribution=this_clone"
-        << " verdict_avatar_id=" << getID()
-        << " verdict_counter_frame=" << mGhostSitRenderFrame
-        << LL_ENDL;
-}
-
-void LLGhostAvatar::beginSitRenderProbeFrame()
-{
-    if (mGhostSitRenderFrame == gFrameCount)
-    {
-        return;
-    }
-
-    mGhostSitRenderFrame = gFrameCount;
-    mGhostSitPoolEntries = 0;
-    mGhostSitSkinnedCalls = 0;
-    mGhostSitDrawnIndices = 0;
-    mGhostSitRiggedBatches = 0;
-    mGhostSitRiggedIndices = 0;
-    mGhostSitRiggedPaletteValid = 0;
-    mGhostSitRiggedPaletteInvalid = 0;
-    mGhostSitLastPass = -1;
-    mGhostSitPoolFaces = 0;
-    mGhostSitRenderVerdict = "not_seen";
-    mGhostSitRenderVerdictPath = "none";
-}
-
-void LLGhostAvatar::recordSitRenderProbe(const char* verdict, S32 pass,
-                                         S32 pool_faces, U32 drawn_indices)
-{
-    beginSitRenderProbeFrame();
-    if (verdict && strcmp(verdict, "pool_entered") == 0)
-    {
-        ++mGhostSitPoolEntries;
-    }
-    mGhostSitLastPass = pass;
-    mGhostSitPoolFaces = llmax(mGhostSitPoolFaces, pool_faces);
-    mGhostSitRenderVerdict = verdict ? verdict : "unknown";
-    mGhostSitRenderVerdictPath = "classic_avatar_pool";
-    if (verdict &&
-        (strcmp(verdict, "drew_skinned") == 0 ||
-         strcmp(verdict, "skinned_zero_indices") == 0))
-    {
-        ++mGhostSitSkinnedCalls;
-        mGhostSitDrawnIndices += drawn_indices;
-    }
-}
-
-void LLGhostAvatar::recordSitRiggedBatch(U32 indices)
-{
-    beginSitRenderProbeFrame();
-    ++mGhostSitRiggedBatches;
-    mGhostSitRiggedIndices += indices;
-    ++mGhostSitRiggedBatchesCumulative;
-    mGhostSitRiggedIndicesCumulative += indices;
-}
-
-void LLGhostAvatar::recordSitRiggedPalette(bool valid)
-{
-    beginSitRenderProbeFrame();
-    valid ? ++mGhostSitRiggedPaletteValid : ++mGhostSitRiggedPaletteInvalid;
 }
 
 // ---------------------------------------------------------------------------

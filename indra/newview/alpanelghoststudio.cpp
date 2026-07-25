@@ -71,6 +71,7 @@ const char* state_name(const ALGhostStudio::Instance& inst)
     case ALGhostStudio::STATE_LOCKED:         return "locked";
     case ALGhostStudio::STATE_TEARING_DOWN:   return "teardown";
     case ALGhostStudio::STATE_ERROR:           return "error";
+    case ALGhostStudio::STATE_RECOVERABLE:     return "recoverable";
     default:
         if (inst.mKind == ALGhostStudio::BACKING_ENTITY_CLONE &&
             inst.mDriveMode == ALGhostStudio::DRIVE_FROZEN)
@@ -109,6 +110,7 @@ bool ALPanelGhostStudio::postBuild()
     mChaosCheck = getChild<LLCheckBoxCtrl>("chaos_check");
     mChaosSlider = getChild<LLSliderCtrl>("chaos_slider");
     mAnimSpeedSpin = getChild<LLSpinCtrl>("anim_speed_spinner");
+    mPhysicsCheck = getChild<LLCheckBoxCtrl>("physics_check");
     mAnimPauseBtn = getChild<LLButton>("btn_anim_pause");
     mAnimResumeBtn = getChild<LLButton>("btn_anim_resume");
     mDriveModeCombo = getChild<LLComboBox>("drive_mode_combo");
@@ -117,6 +119,8 @@ bool ALPanelGhostStudio::postBuild()
     mAnimationLibraryRefreshBtn = getChild<LLButton>("btn_anim_library_refresh");
     mLoopModeCombo = getChild<LLComboBox>("anim_loop_mode_combo");
     mAnimSyncBtn = getChild<LLButton>("btn_anim_sync");
+    mLensGazeCheck = getChild<LLCheckBoxCtrl>("lens_gaze_check");
+    mLensGazeSelectionBtn = getChild<LLButton>("btn_lens_gaze_selection");
     mAnimMetadataText = getChild<LLTextBox>("anim_metadata_text");
     mLookSection = getChild<LLView>("look_section");
     mPlaceBtn  = getChild<LLButton>("btn_place");
@@ -190,6 +194,7 @@ bool ALPanelGhostStudio::postBuild()
     mChaosCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onChaosCommit(); });
     mChaosSlider->setCommitCallback([this](LLUICtrl*, const LLSD&) { onChaosCommit(); });
     mAnimSpeedSpin->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAnimSpeedCommit(); });
+    mPhysicsCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPhysicsCommit(); });
     mAnimPauseBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickAnimPause(); });
     mAnimResumeBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickAnimResume(); });
     mDriveModeCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onDriveModeCommit(); });
@@ -199,6 +204,10 @@ bool ALPanelGhostStudio::postBuild()
         [this](LLUICtrl*, const LLSD&) { populateAnimationLibrary(); });
     mLoopModeCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLoopModeCommit(); });
     mAnimSyncBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickAnimSync(); });
+    mLensGazeCheck->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onLensGazeToggle(); });
+    mLensGazeSelectionBtn->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onClickLensGazeSelection(); });
     mPlaceBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickPlace(); });
     mToActorBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickToActor(); });
     mToMeBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickToMe(); });
@@ -298,7 +307,6 @@ std::vector<LLUUID> ALPanelGhostStudio::selectedInstances() const
 void ALPanelGhostStudio::draw()
 {
     ALGhostStudio& studio = ALGhostStudio::instance();
-    studio.refreshLifecycleStates();
 
     // keep the master check honest against external state
     if (mShowAllCheck->get() != studio.getShowAll())
@@ -555,6 +563,7 @@ void ALPanelGhostStudio::refreshDetail()
     mChaosCheck->setEnabled(entity);
     mChaosSlider->setEnabled(entity && inst->mChaosEnabled);
     mAnimSpeedSpin->setEnabled(entity);
+    mPhysicsCheck->setEnabled(entity);
     mAnimPauseBtn->setEnabled(entity);
     mAnimResumeBtn->setEnabled(entity);
     mEntityLookCombo->setEnabled(entity);
@@ -567,6 +576,16 @@ void ALPanelGhostStudio::refreshDetail()
     mAnimMetadataText->setVisible(directed);
     mLoopModeCombo->setEnabled(entity);
     mAnimSyncBtn->setEnabled(entity);
+    mLensGazeCheck->setEnabled(entity && inst->mEntityId.notNull());
+    bool have_selected_entity = false;
+    for (const LLUUID& id : selectedInstances())
+    {
+        const ALGhostStudio::Instance* selected = studio.getInstance(id);
+        have_selected_entity = have_selected_entity ||
+            (selected && selected->mKind == ALGhostStudio::BACKING_ENTITY_CLONE &&
+             selected->mEntityId.notNull());
+    }
+    mLensGazeSelectionBtn->setEnabled(have_selected_entity);
     mPlaceBtn->setEnabled(overlay);
     mToActorBtn->setEnabled(overlay);
     mToMeBtn->setEnabled(overlay);
@@ -632,6 +651,7 @@ void ALPanelGhostStudio::refreshDetail()
         {
             mAnimSpeedSpin->setValue(inst->mAnimSpeed);
         }
+        mPhysicsCheck->set(inst->mPhysicsEnabled);
         mEntityLookCombo->setValue(inst->mLook);
     }
     if (!mYawSpin->hasFocus() && !mHeadingDial->hasMouseCapture())
@@ -653,6 +673,14 @@ void ALPanelGhostStudio::refreshDetail()
         mDirectedAnimEdit->setText(inst->mDirectedAnim.asString());
     }
     mLoopModeCombo->setValue(inst->mLoopMode);
+    if (entity)
+    {
+        LLActorMover& mover = LLActorMover::instance();
+        mLensGazeCheck->set(
+            inst->mEntityId.notNull() &&
+            mover.isGazeEnabled(inst->mEntityId) &&
+            mover.getGazeTargetMode(inst->mEntityId) == LLActorMover::GAZE_CAMERA);
+    }
 
     if (directed)
     {
@@ -710,6 +738,7 @@ void ALPanelGhostStudio::refreshDetail()
         mYawSpin->setValue(inst->getYaw() * RAD_TO_DEG);
         mScaleSpin->setValue(inst->mScale);
         mAnimSpeedSpin->setValue(inst->mAnimSpeed);
+        mPhysicsCheck->set(inst->mPhysicsEnabled);
         mDriveModeCombo->setValue(inst->mDriveMode);
         mDirectedAnimEdit->setText(inst->mDirectedAnim.asString());
         mStyleCombo->setValue(inst->mStyle);
@@ -1019,6 +1048,16 @@ void ALPanelGhostStudio::onAnimSpeedCommit()
     }
 }
 
+void ALPanelGhostStudio::onPhysicsCommit()
+{
+    const bool enabled = mPhysicsCheck->get();
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    for (const LLUUID& id : selectedInstances())
+    {
+        studio.setInstancePhysicsEnabled(id, enabled);
+    }
+}
+
 void ALPanelGhostStudio::onClickAnimPause()
 {
     ALGhostStudio& studio = ALGhostStudio::instance();
@@ -1099,6 +1138,37 @@ void ALPanelGhostStudio::onClickAnimSync()
     for (const LLUUID& id : selectedInstances())
     {
         studio.restartInstanceAnimation(id);
+    }
+}
+
+void ALPanelGhostStudio::onLensGazeToggle()
+{
+    ALGhostStudio::Instance* inst =
+        ALGhostStudio::instance().getInstance(selectedInstance());
+    if (!inst || inst->mKind != ALGhostStudio::BACKING_ENTITY_CLONE ||
+        inst->mEntityId.isNull())
+    {
+        return;
+    }
+    LLActorMover& mover = LLActorMover::instance();
+    mover.setGazeTargetMode(inst->mEntityId, LLActorMover::GAZE_CAMERA);
+    mover.setGazeEnabled(inst->mEntityId, mLensGazeCheck->get());
+}
+
+void ALPanelGhostStudio::onClickLensGazeSelection()
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    LLActorMover& mover = LLActorMover::instance();
+    for (const LLUUID& id : selectedInstances())
+    {
+        const ALGhostStudio::Instance* inst = studio.getInstance(id);
+        if (!inst || inst->mKind != ALGhostStudio::BACKING_ENTITY_CLONE ||
+            inst->mEntityId.isNull())
+        {
+            continue;
+        }
+        mover.setGazeTargetMode(inst->mEntityId, LLActorMover::GAZE_CAMERA);
+        mover.setGazeEnabled(inst->mEntityId, true);
     }
 }
 

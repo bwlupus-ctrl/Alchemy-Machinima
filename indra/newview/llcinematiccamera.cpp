@@ -142,6 +142,16 @@ bool LLCinematicCamera::isFollowTarget(const LLUUID& id)
     return id.notNull() && sCinematicFollowTarget == id;
 }
 
+//static
+void LLCinematicCamera::onRuntimeTargetReplaced(const LLUUID& old_id,
+                                                 const LLUUID& new_id)
+{
+    if (old_id.notNull() && sCinematicFollowTarget == old_id)
+    {
+        sCinematicFollowTarget = new_id;
+    }
+}
+
 bool LLCinematicCamera::isActive() const
 {
     static LLCachedControl<bool> enabled(gSavedSettings, "CinematicCamEnabled", false);
@@ -151,6 +161,18 @@ bool LLCinematicCamera::isActive() const
         return false;
     }
     return resolveTarget() != nullptr;
+}
+
+bool LLCinematicCamera::isActiveBoneLockTarget(const LLUUID& avatar_id) const
+{
+    static LLCachedControl<bool> enabled(gSavedSettings, "CinematicCamEnabled", false);
+    static LLCachedControl<S32>  mode(gSavedSettings, "CinematicCamMode", 1);
+    if (avatar_id.isNull() || !enabled || (S32)mode != MODE_BONE_LOCK)
+    {
+        return false;
+    }
+    LLVOAvatar* target = resolveTarget();
+    return target && !target->isDead() && target->getID() == avatar_id;
 }
 
 LLVOAvatar* LLCinematicCamera::resolveTarget() const
@@ -1156,19 +1178,25 @@ void LLCinematicCamera::updateCamera()
     {
         return;
     }
-    // fresh activation (mode was off for a few frames): restart the pattern
-    // clock so one-shot moves (dolly zoom, push-in, overhead) begin at their
-    // start pose, and let smoothing/operator re-seed instead of lerping from
-    // a stale pose
-    if (gFrameCount > mLastUpdateFrame + 3)
+    const S32 current_mode = (S32)mode;
+    const LLUUID current_target = av->getID();
+    // Every mode and resolved-target change is a camera cut. Restart pattern,
+    // tripod, smoothing, velocity, and operator state so one-shot modes begin
+    // at their authored start pose. No mode intentionally preserves phase
+    // continuity across a cut.
+    if (gFrameCount > mLastUpdateFrame + 3 ||
+        current_mode != mLastMode || current_target != mLastTargetId)
     {
         mPhase = 0.f;
         mHavePose = false;
         mWasActive = false;
-        // tripod modes (crash/slow zoom) shoot from wherever the camera was
-        // when the mode engaged
         mTripodPos = LLViewerCamera::getInstance()->getOrigin();
+        mPrevPos = mTripodPos;
+        mPrevRot = LLViewerCamera::getInstance()->getQuaternion();
+        LLCameraOperator::instance().reset();
     }
+    mLastMode = current_mode;
+    mLastTargetId = current_target;
     mLastUpdateFrame = gFrameCount;
 
     F32 dt = llclamp(gFrameIntervalSeconds.value(), 0.0005f, 0.25f);

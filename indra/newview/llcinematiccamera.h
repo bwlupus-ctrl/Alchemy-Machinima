@@ -91,9 +91,14 @@ public:
     // same avatar clears it. Null = stock behavior (selection / self).
     static void toggleFollowTarget(const LLUUID& id);
     static bool isFollowTarget(const LLUUID& id);
+    static void onRuntimeTargetReplaced(const LLUUID& old_id,
+                                        const LLUUID& new_id);
 
     // True when the system should own the render camera this frame.
     bool isActive() const;
+
+    // True only while Bone Lock is actively mounted on this exact avatar.
+    bool isActiveBoneLockTarget(const LLUUID& avatar_id) const;
 
     // Anchor transform for external riders (Flycam Orbit): the resolved
     // target's CinematicCamJoint world pose in agent region coordinates.
@@ -163,6 +168,8 @@ private:
 
     // ---- state ----
     U32         mLastUpdateFrame = 0;   // fresh-activation detection (phase reset)
+    S32         mLastMode = MODE_OFF;
+    LLUUID      mLastTargetId;
     LLVector3   mTripodPos = LLVector3::zero;   // camera pos captured at activation (zoom modes)
     bool        mWasActive = false;
     F32         mPhase = 0.f;           // wrapped pattern clock, seconds*speed

@@ -844,32 +844,14 @@ void LLDrawPoolAvatar::renderAvatars(LLVOAvatar* single_avatar, S32 pass)
         avatarp = (LLVOAvatar *)facep->getDrawable()->getVObj().get();
     }
 
-    LLGhostAvatar* ghostp = avatarp && avatarp->isGhostAvatar()
-        ? static_cast<LLGhostAvatar*>(avatarp) : nullptr;
-    auto sit_probe = [ghostp, pass, this](const char* verdict,
-                                          U32 drawn_indices = 0)
-    {
-        if (ghostp)
-        {
-            ghostp->recordSitRenderProbe(
-                verdict, pass, static_cast<S32>(mDrawFace.size()),
-                drawn_indices);
-        }
-    };
-    sit_probe("pool_entered");
-
     if (avatarp->isDead() || avatarp->mDrawable.isNull()
         || is_hidden_entity_clone(avatarp))
     {
-        sit_probe(avatarp->isDead() ? "skip_dead" :
-                  avatarp->mDrawable.isNull() ? "skip_no_drawable" :
-                  "skip_clone_disabled");
         return;
     }
 
     if (!single_avatar && !avatarp->isFullyLoaded() )
     {
-        sit_probe("skip_not_fully_loaded");
         if (pass==0 && (!gPipeline.hasRenderType(LLPipeline::RENDER_TYPE_PARTICLES) || LLViewerPartSim::getMaxPartCount() <= 0))
         {
             // debug code to draw a sphere in place of avatar
@@ -901,7 +883,6 @@ void LLDrawPoolAvatar::renderAvatars(LLVOAvatar* single_avatar, S32 pass)
         && !avatarp->isSelf()
         && !avatarp->isBuddy())
     {
-        sit_probe("skip_friends_only");
         return;
     }
 
@@ -912,20 +893,17 @@ void LLDrawPoolAvatar::renderAvatars(LLVOAvatar* single_avatar, S32 pass)
           || (LLVOAvatar::AOA_NORMAL != avatarp->getOverallAppearance() && !avatarp->needsImpostorUpdate()) ) && pass != 0)
 //        || (LLVOAvatar::AV_DO_NOT_RENDER == avatarp->getVisualMuteSettings() && !avatarp->needsImpostorUpdate()) ) && pass != 0)
     { //don't draw anything but the impostor for impostored avatars
-        sit_probe("skip_appearance_or_impostor");
         return;
     }
 
     if (pass == 0 && !impostor && LLPipeline::sUnderWaterRender)
     { //don't draw foot shadows under water
-        sit_probe("skip_underwater_foot_shadow");
         return;
     }
 
     LLVOAvatar *attached_av = avatarp->getAttachedAvatar();
     if (attached_av && (LLVOAvatar::AOA_NORMAL != attached_av->getOverallAppearance() || !gPipeline.hasRenderType(LLPipeline::RENDER_TYPE_AVATAR)))
     {
-        sit_probe("skip_attached_avatar_appearance");
         // Animesh attachment of a jellydolled or invisible parent - don't show
         return;
     }
@@ -953,7 +931,6 @@ void LLDrawPoolAvatar::renderAvatars(LLVOAvatar* single_avatar, S32 pass)
             }
             avatarp->renderImpostor(avatarp->getMutedAVColor(), sDiffuseChannel);
         }
-        sit_probe(impostor ? "drew_impostor" : "pass0_visible_list");
         return;
     }
 
@@ -961,7 +938,6 @@ void LLDrawPoolAvatar::renderAvatars(LLVOAvatar* single_avatar, S32 pass)
     {
         // render rigid meshes (eyeballs) first
         avatarp->renderRigid();
-        sit_probe("drew_rigid");
         return;
     }
 
@@ -992,9 +968,7 @@ void LLDrawPoolAvatar::renderAvatars(LLVOAvatar* single_avatar, S32 pass)
 
     if( !single_avatar || (avatarp == single_avatar) )
     {
-        const U32 indices = avatarp->renderSkinned();
-        sit_probe(indices ? "drew_skinned" : "skinned_zero_indices",
-                  indices);
+        avatarp->renderSkinned();
     }
 }
 

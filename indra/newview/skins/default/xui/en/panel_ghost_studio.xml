@@ -21,7 +21,7 @@
     <panel
      background_visible="false"
      follows="left|top|right"
-     height="1284"
+     height="1338"
      layout="topleft"
      left="0"
      min_width="330"
@@ -31,7 +31,7 @@
       <layout_stack
        animate="false"
        follows="left|top|right"
-       height="1284"
+       height="1338"
        layout="topleft"
        left="0"
        name="ghost_studio_sections"
@@ -149,7 +149,7 @@
         </layout_panel>
 
         <!-- Pose and animation -->
-        <layout_panel auto_resize="false" height="248" layout="topleft" name="pose_section">
+        <layout_panel auto_resize="false" height="302" layout="topleft" name="pose_section">
           <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="pose_lbl" right="-8" top="8" width="358">Pose &amp; Animation</text>
           <button follows="left|top" height="22" label="Grab pose now" layout="topleft" left="8" name="btn_freeze" top="28"
            tool_tip="FREEZE: snapshot the source's current pose into this ghost (worn mesh + attachment placement). The ghost holds it while the live body keeps animating. Known limits: flexi tails/skirts keep their live physics motion, and legacy system-mesh eyeballs are not part of the ghost" width="126" />
@@ -177,6 +177,8 @@
           </combo_box>
           <spinner decimal_digits="2" follows="left|top" height="22" increment="0.05" initial_value="1" label="Anim Speed" label_width="72" layout="topleft" left="158" max_val="4" min_val="0.05" name="anim_speed_spinner" top="106"
            tool_tip="Per-clone animation speed relative to scene tempo. Chaos adds a stable variation of up to plus/minus 15 percent" width="144" />
+          <check_box follows="left|top" height="18" initial_value="true" label="Physics" layout="topleft" left="306" name="physics_check" top="108"
+           tool_tip="Breast, belly and butt physics for each selected entity clone. Physics is calculated separately per clone; disable it for large crowds to reduce CPU cost" width="62" />
           <combo_box follows="left|top" height="22" layout="topleft" left="8" name="anim_loop_mode_combo" top="134"
            tool_tip="Loop re-triggers the clone-owned motion on completion; Play once lets it stop at the end. This does not rewrite baked asset metadata" width="142">
             <combo_box.item label="Loop (re-trigger)" name="anim_loop_retrigger" value="0" />
@@ -195,6 +197,11 @@
           <line_editor follows="left|top|right" height="22" label="Animation UUID" layout="topleft" left="8" max_length_bytes="36" name="directed_anim_editor" right="-8" top="190" visible="false"
            tool_tip="Animation asset UUID played only on the selected entity clone; direct UUID paste remains supported" width="358" />
           <text follows="left|top|right" height="34" layout="topleft" left="8" name="anim_metadata_text" right="-8" text_color="LtGray_50" top="216" visible="false" width="358">Metadata pending...</text>
+          <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="lens_gaze_label" right="-8" top="252" width="358">Look at the lens</text>
+          <check_box follows="left|top" height="18" label="This actor" layout="topleft" left="8" name="lens_gaze_check" top="276"
+           tool_tip="Client-only post-blend head, neck and eye tracking toward the render camera. Continues while the clone animation is frozen; camera-on-head feedback interlocks suppress it" width="116" />
+          <button follows="left|top" height="22" label="Enable selected" layout="topleft" left="134" name="btn_lens_gaze_selection" top="272"
+           tool_tip="Enable camera gaze for every selected entity clone; overlay ghosts are ignored" width="116" />
         </layout_panel>
 
         <!-- Array -->

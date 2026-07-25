@@ -311,10 +311,9 @@ public:
     // head-vs-eyes blend, overall intensity, and a smoothing time constant, plus
     // an ease-in/out envelope so enabling/disabling/releasing never pops.
     //
-    // Gaze is only PAINTED while the actor is under an active, non-suspended Move
-    // (a walk or a placeAt hold) -- so it composes with walk-and-talk and eases
-    // cleanly out to the anim pose the moment the walk ends / suspends / the actor
-    // derezzes / gaze is disabled, then stops touching the joints entirely. With
+    // Tangent gaze is PAINTED only during an active, non-suspended Move. Camera,
+    // cast and point gaze are locomotion-independent. It eases cleanly out when
+    // inactive / derezzed / disabled, then stops touching joints entirely. With
     // no gaze configured for an avatar this is a single map-miss no-op (the walk /
     // AO plays byte-identically to today). Config is session-only, keyed by the
     // resolved actor id, and persists across stop/start like the path.

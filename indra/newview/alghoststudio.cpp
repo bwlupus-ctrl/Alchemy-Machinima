@@ -15,6 +15,7 @@
 #include "llactormover.h"           // GhostBatch access for the freeze snapshot
 #include "llagent.h"                // agent <-> global conversion
 #include "lldirectorcast.h"         // source resolution (cast id / null = self)
+#include "llcinematiccamera.h"
 #include "lljoint.h"
 #include "lldrawable.h"          // FORCE_INVISIBLE (entity-clone show/hide)
 #include "llspatialpartition.h"     // LLDrawInfo (freeze reads each batch's avatar+skin)
@@ -92,6 +93,191 @@ F32 seeded_unit(const LLUUID& id, U32 channel)
 }
 } // anonymous namespace
 
+ALGhostStudio::ALGhostStudio()
+{
+    // Runtime UUID consumers enroll here. Replacement and removal always walk
+    // this registry, so adding a new consumer cannot require editing every
+    // refresh/death path.
+    mRuntimeConsumers.emplace_back(
+        [this](const LLUUID& stable_id, const LLUUID& old_id,
+               const LLUUID& new_id, bool removing_instance)
+        {
+            LLDirectorCast& cast = LLDirectorCast::instance();
+            Instance* inst = getInstance(stable_id);
+            const bool subject_a =
+                (old_id.notNull() && cast.getSubjectA() == old_id) ||
+                (inst && inst->mWasDirectorSubjectA);
+            const bool subject_b =
+                (old_id.notNull() && cast.getSubjectB() == old_id) ||
+                (inst && inst->mWasDirectorSubjectB);
+            if (old_id.notNull())
+            {
+                cast.remove(old_id);
+            }
+            if (new_id.notNull())
+            {
+                cast.add(new_id);
+            }
+            if (subject_a)
+            {
+                cast.setSubjectA(new_id);
+            }
+            if (subject_b)
+            {
+                cast.setSubjectB(new_id);
+            }
+            if (inst)
+            {
+                inst->mWasDirectorSubjectA =
+                    !removing_instance && subject_a;
+                inst->mWasDirectorSubjectB =
+                    !removing_instance && subject_b;
+            }
+        });
+    mRuntimeConsumers.emplace_back(
+        [this](const LLUUID& stable_id, const LLUUID&, const LLUUID&,
+               bool removing_instance)
+        {
+            // Panel/tool selection is stable-ID based. It survives replacement
+            // and is cleared by the same transaction on final removal.
+            if (removing_instance && mSelected == stable_id)
+            {
+                mSelected.setNull();
+            }
+        });
+    mRuntimeConsumers.emplace_back(
+        [this](const LLUUID& stable_id, const LLUUID& old_id,
+               const LLUUID& new_id, bool removing_instance)
+        {
+            Instance* inst = getInstance(stable_id);
+            const bool followed =
+                LLCinematicCamera::isFollowTarget(old_id) ||
+                (inst && inst->mWasCinematicFollow);
+            if (followed)
+            {
+                LLCinematicCamera::onRuntimeTargetReplaced(old_id, new_id);
+                if (old_id.isNull() && new_id.notNull())
+                {
+                    LLCinematicCamera::toggleFollowTarget(new_id);
+                }
+            }
+            if (inst)
+            {
+                inst->mWasCinematicFollow =
+                    !removing_instance && followed;
+            }
+        });
+}
+
+LLGhostAvatar* ALGhostStudio::createEntityRuntime(Instance& inst,
+                                                  S32& attachments)
+{
+    LLViewerRegion* region = gAgent.getRegion();
+    LLVOAvatar* source = LLDirectorCast::instance().resolve(inst.mSource);
+    if (!region || !source)
+    {
+        return nullptr;
+    }
+
+    LLGhostAvatar* ghost = (LLGhostAvatar*)gObjectList.createObjectViewer(
+        LL_PCODE_LEGACY_AVATAR, region, LLViewerObject::CO_FLAG_GHOST_AVATAR);
+    if (!ghost || !ghost->cloneAppearanceFrom(source))
+    {
+        if (ghost)
+        {
+            ghost->markForDeath();
+        }
+        return nullptr;
+    }
+    attachments = ghost->cloneAttachmentsFrom(source);
+    if (!ghost->clonedAttachmentsComplete())
+    {
+        ghost->releaseClonedAttachments();
+        ghost->markForDeath();
+        return nullptr;
+    }
+    return ghost;
+}
+
+void ALGhostStudio::applyEntityRuntimeState(Instance& inst,
+                                             LLGhostAvatar* ghost)
+{
+    ghost->setGhostPosition(gAgent.getPosAgentFromGlobal(inst.mFootGlobal));
+    ghost->setGhostRotation(inst.mRotation);
+    ghost->setEntityScale(inst.mScale);
+    const F32 chaos_factor =
+        1.f + (seeded_unit(inst.mId, 5) * 2.f - 1.f) *
+                  0.15f * inst.mChaosAmount;
+    ghost->setAnimTimeFactor(
+        llclamp(inst.mAnimSpeed * chaos_factor, 0.05f, 4.f));
+    ghost->setEntityPhysicsEnabled(inst.mPhysicsEnabled);
+    ghost->setEntityLoopMode(inst.mLoopMode);
+    ghost->setEntityLook(inst.mLook, inst.mLookAlpha);
+    set_entity_clone_visible(ghost, mShowAll && inst.mEnabled);
+
+    // A fresh skeleton has no evaluated pose to hold. Let its stored resume
+    // mode evaluate first, then finish the requested frozen state from the
+    // model update after two viewer frames.
+    if (inst.mDriveMode == DRIVE_FROZEN)
+    {
+        const EDriveMode resume = inst.mResumeDriveMode == DRIVE_FROZEN
+            ? DRIVE_MIRROR : inst.mResumeDriveMode;
+        ghost->setEntityDriveMode(resume, inst.mResumeDirectedAnim);
+        inst.mPendingFreezeFrames = 2;
+    }
+    else
+    {
+        ghost->setEntityDriveMode(inst.mDriveMode, inst.mDirectedAnim);
+        inst.mPendingFreezeFrames = 0;
+    }
+}
+
+void ALGhostStudio::onEntityRuntimeReplaced(Instance& inst,
+                                             const LLUUID& new_runtime,
+                                             LLGhostAvatar* new_ghost,
+                                             bool removing_instance)
+{
+    const LLUUID old_runtime = inst.mEntityId;
+    if (new_ghost)
+    {
+        applyEntityRuntimeState(inst, new_ghost);
+    }
+    inst.mEntityId = new_runtime;
+    for (const runtime_consumer_t& consumer : mRuntimeConsumers)
+    {
+        consumer(inst.mId, old_runtime, new_runtime, removing_instance);
+    }
+    if (new_runtime.notNull())
+    {
+        if (LLDirectorCast::CastMember* member =
+                LLDirectorCast::instance().getMember(new_runtime))
+        {
+            member->mLastName = inst.mName;
+        }
+    }
+}
+
+void ALGhostStudio::finishPendingRuntimeFreezes()
+{
+    for (Instance& inst : mInstances)
+    {
+        if (!inst.mPendingFreezeFrames)
+        {
+            continue;
+        }
+        LLGhostAvatar* ghost = resolveEntityClone(inst.mId);
+        if (!ghost)
+        {
+            inst.mPendingFreezeFrames = 0;
+            continue;
+        }
+        if (--inst.mPendingFreezeFrames == 0)
+        {
+            ghost->setEntityDriveMode(DRIVE_FROZEN, LLUUID::null);
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // master visibility
 // ---------------------------------------------------------------------------
@@ -166,9 +352,8 @@ ALGhostStudio::Instance* ALGhostStudio::spawnEntityClone(
     const LLUUID& source_id, const std::string& source_label)
 {
     assert_main_thread();
-    LLViewerRegion* region = gAgent.getRegion();
     LLVOAvatar* source = LLDirectorCast::instance().resolve(source_id);
-    if (!region || !source)
+    if (!gAgent.getRegion() || !source)
     {
         LL_WARNS("GhostStudio") << "entity spawn: source/region unavailable" << LL_ENDL;
         return nullptr;
@@ -182,58 +367,25 @@ ALGhostStudio::Instance* ALGhostStudio::spawnEntityClone(
     record.mKind = BACKING_ENTITY_CLONE;
     record.mState = STATE_SPAWNING;
     record.mStyle = 1; // informational: normal scene-lit clone
+    const LLVector3 pos = source->getPositionAgent() + gAgent.getAtAxis() * 2.5f;
+    record.mFootGlobal = gAgent.getPosGlobalFromAgent(pos);
+    record.mRotation = source->getRotation();
     mInstances.push_back(record);
     const LLUUID stable_id = record.mId;
 
-    LLGhostAvatar* ghost = (LLGhostAvatar*)gObjectList.createObjectViewer(
-        LL_PCODE_LEGACY_AVATAR, region, LLViewerObject::CO_FLAG_GHOST_AVATAR);
-    if (!ghost || !ghost->cloneAppearanceFrom(source))
+    Instance* committed = getInstance(stable_id);
+    S32 attachments = 0;
+    LLGhostAvatar* ghost = committed
+        ? createEntityRuntime(*committed, attachments) : nullptr;
+    if (!ghost)
     {
-        if (ghost)
-        {
-            ghost->markForDeath();
-        }
         removeInstance(stable_id);
         LL_WARNS("GhostStudio") << "entity spawn rolled back" << LL_ENDL;
         return nullptr;
     }
 
-    const LLVector3 pos = source->getPositionAgent() + gAgent.getAtAxis() * 2.5f;
-    ghost->setGhostPosition(pos);
-    const S32 attachments = ghost->cloneAttachmentsFrom(source);
-    if (!ghost->clonedAttachmentsComplete())
-    {
-        ghost->releaseClonedAttachments();
-        ghost->markForDeath();
-        removeInstance(stable_id);
-        LL_WARNS("GhostStudio") << "entity spawn rolled back: attachment clone incomplete"
-                                << LL_ENDL;
-        return nullptr;
-    }
-    Instance* committed = getInstance(stable_id);
-    if (!committed)
-    {
-        ghost->releaseClonedAttachments();
-        ghost->markForDeath();
-        return nullptr;
-    }
-    committed->mEntityId = ghost->getID();
-    committed->mFootGlobal = gAgent.getPosGlobalFromAgent(pos);
-    committed->mRotation = source->getRotation();
+    onEntityRuntimeReplaced(*committed, ghost->getID(), ghost);
     committed->mState = STATE_READY;
-    ghost->setGhostRotation(committed->mRotation);
-    ghost->setEntityScale(committed->mScale);
-    ghost->setAnimTimeFactor(committed->mAnimSpeed);
-    ghost->setEntityDriveMode(committed->mDriveMode, committed->mDirectedAnim);
-    ghost->setEntityLoopMode(committed->mLoopMode);
-    ghost->setEntityLook(committed->mLook, committed->mLookAlpha);
-    set_entity_clone_visible(ghost, mShowAll && committed->mEnabled);
-    LLDirectorCast::instance().add(committed->mEntityId);
-    if (LLDirectorCast::CastMember* member =
-            LLDirectorCast::instance().getMember(committed->mEntityId))
-    {
-        member->mLastName = committed->mName;
-    }
     LL_INFOS("GhostStudio") << "entity instance " << stable_id
                             << " committed runtime=" << committed->mEntityId
                             << " attachments=" << attachments << LL_ENDL;
@@ -253,81 +405,35 @@ bool ALGhostStudio::refreshEntityClone(const LLUUID& id)
     {
         return false;
     }
-    LLGhostAvatar* old_ghost = resolveEntityClone(id);
     LLVOAvatar* source = LLDirectorCast::instance().resolve(inst->mSource);
-    LLViewerRegion* region = gAgent.getRegion();
-    if (!old_ghost || old_ghost->isDead() || !source || !region)
+    LLGhostAvatar* old_ghost = resolveEntityClone(id);
+    if (!source || !gAgent.getRegion())
     {
-        inst->mState = STATE_SOURCE_MISSING;
+        inst->mState = old_ghost ? STATE_SOURCE_MISSING : STATE_RECOVERABLE;
         LL_WARNS("GhostStudio") << "refreshEntityClone: ghost or source unavailable for "
                                 << id << LL_ENDL;
         return false;
     }
 
-    LLGhostAvatar* replacement = (LLGhostAvatar*)gObjectList.createObjectViewer(
-        LL_PCODE_LEGACY_AVATAR, region, LLViewerObject::CO_FLAG_GHOST_AVATAR);
-    if (!replacement || !replacement->cloneAppearanceFrom(source))
+    S32 attachments = 0;
+    LLGhostAvatar* replacement = createEntityRuntime(*inst, attachments);
+    if (!replacement)
     {
-        if (replacement)
-        {
-            replacement->markForDeath();
-        }
-        inst->mState = STATE_ERROR;
-        LL_WARNS("GhostStudio") << "refreshEntityClone: appearance re-clone failed for "
-                                << id << LL_ENDL;
-        return false;
-    }
-    const S32 attachments = replacement->cloneAttachmentsFrom(source);
-    if (!replacement->clonedAttachmentsComplete())
-    {
-        replacement->releaseClonedAttachments();
-        replacement->markForDeath();
-        inst->mState = STATE_ERROR;
+        inst->mState = old_ghost ? STATE_ERROR : STATE_RECOVERABLE;
         LL_WARNS("GhostStudio")
             << "refreshEntityClone: replacement attachment clone incomplete for "
             << id << "; existing clone preserved" << LL_ENDL;
         return false;
     }
 
-    // Commit the replacement runtime object to the existing stable record.
     const LLUUID old_runtime_id = inst->mEntityId;
-    LLDirectorCast& cast = LLDirectorCast::instance();
-    const bool was_subject_a = cast.getSubjectA() == old_runtime_id;
-    const bool was_subject_b = cast.getSubjectB() == old_runtime_id;
-    inst->mEntityId = replacement->getID();
-    replacement->setEntityScale(inst->mScale);
-    replacement->setAnimTimeFactor(
-        llclamp(inst->mAnimSpeed *
-                    (1.f + (seeded_unit(inst->mId, 5) * 2.f - 1.f) *
-                               0.15f * inst->mChaosAmount),
-                0.05f, 4.f));
-    replacement->setEntityDriveMode(inst->mDriveMode, inst->mDirectedAnim);
-    replacement->setEntityLook(inst->mLook, inst->mLookAlpha);
-    set_entity_clone_visible(replacement, mShowAll && inst->mEnabled);
-    applyEntityTransform(id);
-
-    cast.remove(old_runtime_id);
-    cast.add(inst->mEntityId);
-    // Director stores entity subjects by their runtime object UUID. A
-    // transactional refresh replaces that UUID, so transfer the subject role
-    // after remove() clears the old one; otherwise resolveTarget() silently
-    // falls back to the unscaled agent avatar.
-    if (was_subject_a)
+    onEntityRuntimeReplaced(*inst, replacement->getID(), replacement);
+    if (old_ghost)
     {
-        cast.setSubjectA(inst->mEntityId);
+        set_entity_clone_visible(old_ghost, false);
+        old_ghost->releaseClonedAttachments();
+        old_ghost->markForDeath();
     }
-    if (was_subject_b)
-    {
-        cast.setSubjectB(inst->mEntityId);
-    }
-    if (LLDirectorCast::CastMember* member =
-            LLDirectorCast::instance().getMember(inst->mEntityId))
-    {
-        member->mLastName = inst->mName;
-    }
-    set_entity_clone_visible(old_ghost, false);
-    old_ghost->releaseClonedAttachments();
-    old_ghost->markForDeath();
 
     inst->mState = STATE_READY;
     LL_INFOS("GhostStudio") << "refreshEntityClone: replaced entity clone " << id
@@ -387,13 +493,15 @@ ALGhostStudio::Instance* ALGhostStudio::duplicateInstanceInPlace(const LLUUID& i
     copy->mEntityId = entity_id;
     copy->mState = state;
     copy->mName = new_name;
+    copy->mWasDirectorSubjectA = false;
+    copy->mWasDirectorSubjectB = false;
+    copy->mWasCinematicFollow = false;
     copy->setTransform(proto.mFootGlobal, proto.mRotation);
     copy->setScale(proto.mScale);
-    applyEntityTransform(copy->mId);
-    setInstanceScale(copy->mId, copy->mScale);
-    setInstanceAnimSpeed(copy->mId, copy->mAnimSpeed);
-    setInstanceDriveMode(copy->mId, copy->mDriveMode, copy->mDirectedAnim);
-    setInstanceLoopMode(copy->mId, copy->mLoopMode);
+    if (LLGhostAvatar* ghost = resolveEntityClone(copy->mId))
+    {
+        applyEntityRuntimeState(*copy, ghost);
+    }
     return copy;
 }
 
@@ -431,8 +539,8 @@ bool ALGhostStudio::setInstanceEnabled(const LLUUID& id, bool enabled)
             dynamic_cast<LLGhostAvatar*>(gObjectList.findObject(inst->mEntityId));
         if (!ghost || ghost->isDead())
         {
-            inst->mState = STATE_ERROR;
-            inst->mEntityId.setNull();
+            onEntityRuntimeReplaced(*inst, LLUUID::null);
+            inst->mState = STATE_RECOVERABLE;
             return false;
         }
         set_entity_clone_visible(ghost, mShowAll && enabled);
@@ -484,6 +592,25 @@ bool ALGhostStudio::setInstanceAnimSpeed(const LLUUID& id, F32 speed)
                   0.15f * inst->mChaosAmount;
     ghost->setAnimTimeFactor(
         llclamp(inst->mAnimSpeed * chaos_factor, 0.05f, 4.f));
+    return true;
+}
+
+bool ALGhostStudio::setInstancePhysicsEnabled(const LLUUID& id, bool enabled)
+{
+    assert_main_thread();
+    Instance* inst = getInstance(id);
+    if (!inst || inst->mKind != BACKING_ENTITY_CLONE)
+    {
+        return false;
+    }
+    inst->mPhysicsEnabled = enabled;
+    LLGhostAvatar* ghost = resolveEntityClone(id);
+    if (!ghost)
+    {
+        inst->mState = STATE_ERROR;
+        return false;
+    }
+    ghost->setEntityPhysicsEnabled(enabled);
     return true;
 }
 
@@ -685,6 +812,8 @@ void ALGhostStudio::updateLookAt()
 void ALGhostStudio::updatePerFrame()
 {
     assert_main_thread();
+    refreshLifecycleStates();
+    finishPendingRuntimeFreezes();
     if (mFreezeStrips.empty() && !mHasMotion)
     {
         updateLookAt();
@@ -942,8 +1071,12 @@ void ALGhostStudio::refreshLifecycleStates()
             dynamic_cast<LLGhostAvatar*>(gObjectList.findObject(inst.mEntityId));
         if (!ghost || ghost->isDead())
         {
-            inst.mEntityId.setNull();
-            inst.mState = STATE_ERROR;
+            if (inst.mEntityId.notNull())
+            {
+                onEntityRuntimeReplaced(inst, LLUUID::null);
+            }
+            inst.mPendingFreezeFrames = 0;
+            inst.mState = STATE_RECOVERABLE;
         }
         else
         {
@@ -963,26 +1096,23 @@ void ALGhostStudio::removeInstance(const LLUUID& id)
     }
     inst->mState = STATE_TEARING_DOWN;
     inst->mEnabled = false;
-    if (mSelected == id)
-    {
-        mSelected.setNull();
-    }
-
-    // Director transport and actor-reference teardown hooks are intentionally
-    // empty until those systems enroll Studio ids (ideas #2+).
-    if (inst->mKind == BACKING_ENTITY_CLONE && inst->mEntityId.notNull())
+    if (inst->mKind == BACKING_ENTITY_CLONE)
     {
         const LLUUID runtime_id = inst->mEntityId;
-        LLDirectorCast::instance().remove(runtime_id);
         LLGhostAvatar* ghost =
             dynamic_cast<LLGhostAvatar*>(gObjectList.findObject(runtime_id));
+        onEntityRuntimeReplaced(*inst, LLUUID::null, nullptr, true);
         if (ghost && !ghost->isDead())
         {
             set_entity_clone_visible(ghost, false);
             ghost->releaseClonedAttachments();
             ghost->markForDeath();
         }
-        inst->mEntityId.setNull();
+    }
+    else if (mSelected == id)
+    {
+        // Overlay instances have no runtime transaction.
+        mSelected.setNull();
     }
     mInstances.erase(
         std::remove_if(mInstances.begin(), mInstances.end(),

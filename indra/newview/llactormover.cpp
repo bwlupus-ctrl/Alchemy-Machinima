@@ -30,6 +30,7 @@
 #include "llfloaterreg.h"           // heading preview only draws with the floater open
 #include "llframetimer.h"           // per-frame idempotency for applyOverride()
 #include "llmaterial.h"             // legacy alpha-mode classification (static ghost faces)
+#include "llcinematiccamera.h"      // camera-gaze feedback interlock
 #include "llmotion.h"               // LLMotion::setPriorityOverride (custom-anim priority)
 #include "llgl.h"
 #include "llglstates.h"             // LLGLSUIDefault (heading preview)
@@ -854,12 +855,14 @@ bool LLActorMover::getGazeStatus(const LLUUID& actor_id, std::string& out) const
             break;
     }
 
-    // is it actually painting right now (under an active, non-suspended Move)?
+    // Tangent needs a live Move; the point-based modes paint while enabled.
     auto mit = mMoves.find(key);
-    const bool painting = mit != mMoves.end() && !mit->second.mSuspended;
+    const bool painting =
+        g.mTarget != GAZE_TANGENT ||
+        (mit != mMoves.end() && !mit->second.mSuspended);
     if (!painting)
     {
-        out = llformat("Gaze armed \xE2\x80\x94 will look at %s when the walk starts",
+        out = llformat("Gaze armed \xE2\x80\x94 will look at %s when movement starts",
                        tgt.c_str());
     }
     else
@@ -2649,10 +2652,8 @@ void LLActorMover::applyGaze(LLVOAvatar* av)
     }
     Gaze& g = git->second;
 
-    // gaze PAINTS only while enabled AND the actor is under an active, non-
-    // suspended Move (a walk or a placeAt hold). Anything else -> ease out and
-    // release. This is what makes it compose with walk-and-talk and release
-    // cleanly on walk end / suspend / derez / disable.
+    // Tangent gaze genuinely needs locomotion. Camera/cast/point gaze does not,
+    // so a stationary or frozen actor can keep tracking its target.
     const Move* mv = nullptr;
     if (g.mEnabled)
     {
@@ -2662,7 +2663,33 @@ void LLActorMover::applyGaze(LLVOAvatar* av)
             mv = &mit->second;
         }
     }
-    const bool active = (mv != nullptr);
+    bool camera_safe = true;
+    if (g.mTarget == GAZE_CAMERA)
+    {
+        // Never let a head chase a camera rigidly mounted on that same head.
+        camera_safe =
+            !LLCinematicCamera::instance().isActiveBoneLockTarget(av->getID());
+
+        // BD cinematic head tracking also feeds self head pose into camera
+        // focus/up. It is a milder loop, but the safe behavior is still release.
+        static LLCachedControl<bool> use_head_camera(
+            gSavedSettings, "UseCinematicCamera", false);
+        if (use_head_camera && isAgentAvatarValid() &&
+            av->getID() == gAgentAvatarp->getID())
+        {
+            camera_safe = false;
+        }
+    }
+    if (!camera_safe)
+    {
+        // Safety interlock is intentionally hard: do not write even an
+        // ease-out frame while the camera depends on this head pose.
+        g.mEnv = 0.f;
+        g.mDirValid = false;
+        return;
+    }
+    const bool needs_move = (g.mTarget == GAZE_TANGENT);
+    const bool active = g.mEnabled && camera_safe && (!needs_move || mv);
 
     // advance the envelope + direction smoothing once per frame; the joint set is
     // re-asserted on every call (same idempotent idiom as applyOverride)
@@ -2729,7 +2756,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
 
     LLVector3 dir(0.f, 0.f, 0.f);
     bool      haveDir = false;
-    if (mv)                     // only chase a live target while active
+    if (g.mEnabled)
     {
         LLVector3 target(0.f, 0.f, 0.f);
         bool usePoint = false;

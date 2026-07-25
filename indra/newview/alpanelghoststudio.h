@@ -82,6 +82,7 @@ private:
     void onScaleCommit();
     void onChaosCommit();
     void onAnimSpeedCommit();
+    void onPhysicsCommit();
     void onClickAnimPause();
     void onClickAnimResume();
     void onDriveModeCommit();
@@ -89,6 +90,8 @@ private:
     void onAnimationLibraryCommit();
     void onLoopModeCommit();
     void onClickAnimSync();
+    void onLensGazeToggle();
+    void onClickLensGazeSelection();
     void onClickPlace();            // arm the one-shot in-world placement tool
     void onClickToActor();          // snap to the source's current feet
     void onClickToMe();             // snap to my avatar's current feet
@@ -167,6 +170,7 @@ private:
     LLCheckBoxCtrl*   mChaosCheck = nullptr;
     LLSliderCtrl*     mChaosSlider = nullptr;
     LLSpinCtrl*       mAnimSpeedSpin = nullptr;
+    LLCheckBoxCtrl*   mPhysicsCheck = nullptr;
     LLButton*         mAnimPauseBtn = nullptr;
     LLButton*         mAnimResumeBtn = nullptr;
     LLComboBox*       mDriveModeCombo = nullptr;
@@ -175,6 +179,8 @@ private:
     LLButton*         mAnimationLibraryRefreshBtn = nullptr;
     LLComboBox*       mLoopModeCombo = nullptr;
     LLButton*         mAnimSyncBtn = nullptr;
+    LLCheckBoxCtrl*   mLensGazeCheck = nullptr;
+    LLButton*         mLensGazeSelectionBtn = nullptr;
     LLTextBox*        mAnimMetadataText = nullptr;
     LLView*           mLookSection = nullptr;
     LLButton*         mPlaceBtn = nullptr;
