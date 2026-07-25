@@ -31,7 +31,12 @@
 #define NON_INDEXED 2
 #define NON_INDEXED_NO_COLOR 3
 
+#ifdef HAS_VISIBLE_DIFFUSE
+layout(location = 0) out vec4 frag_color;
+layout(location = 1) out vec4 visible_diffuse;
+#else
 out vec4 frag_color;
+#endif
 
 uniform mat3 env_mat;
 uniform vec3 sun_dir;
@@ -315,5 +320,11 @@ void main()
 
     color.rgb *= final_scale;
     frag_color = max(color, vec4(0));
+#ifdef HAS_VISIBLE_DIFFUSE
+#ifdef FOR_IMPOSTOR
+    visible_diffuse = vec4(0.0);
+#else
+    visible_diffuse = vec4(max(diffuse_linear.rgb, vec3(0)), final_alpha);
+#endif
+#endif
 }
-

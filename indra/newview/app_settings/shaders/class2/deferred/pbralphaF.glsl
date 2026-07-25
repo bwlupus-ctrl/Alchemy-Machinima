@@ -45,7 +45,12 @@ uniform vec3 sun_dir;
 uniform vec3 moon_dir;
 uniform int classic_mode;
 
+#ifdef HAS_VISIBLE_DIFFUSE
+layout(location = 0) out vec4 frag_color;
+layout(location = 1) out vec4 visible_diffuse;
+#else
 out vec4 frag_color;
+#endif
 
 in vec3 vary_fragcoord;
 
@@ -218,6 +223,9 @@ void main()
     if (classic_mode > 0)
         final_scale = 1.1;
     frag_color = max(vec4(color.rgb * final_scale,a), vec4(0));
+#ifdef HAS_VISIBLE_DIFFUSE
+    visible_diffuse = vec4(max(diffuseColor, vec3(0)), a);
+#endif
 }
 
 #else

@@ -1194,6 +1194,13 @@ void settings_setup_listeners()
     setting_setup_signal_listener(gSavedSettings, "RenderHeroProbeResolution", handleHeroProbeResolutionChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderShadowDetail", handleSetShaderChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderDeferredSSAO", handleSetShaderChanged);
+    // Toggling the sidecar changes BOTH the shader set (the seed program is
+    // only created when it is on) and the screen target's attachment count.
+    // handleSetShaderChanged reloads shaders and reallocates the render
+    // targets, which is exactly what both halves need. Without a listener the
+    // setting only took effect on the next resize -- and in the window between
+    // toggle and resize the bridge published an unwritten attachment. (M4)
+    setting_setup_signal_listener(gSavedSettings, "RenderVisibleDiffuseSidecar", handleSetShaderChanged);
 // [SL:KB] - Patch: Settings-RenderResolutionMultiplier | Checked: Catznip-5.4
     setting_setup_signal_listener(gSavedSettings, "RenderResolutionMultiplier", handleRenderResolutionDivisorChanged);
 // [/SL:KB]

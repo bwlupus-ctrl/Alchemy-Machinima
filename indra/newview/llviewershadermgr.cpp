@@ -172,6 +172,7 @@ LLGLSLShader            gHazeProgram;
 LLGLSLShader            gHazeWaterProgram;
 LLGLSLShader            gDeferredBlurLightProgram;
 LLGLSLShader            gDeferredSoftenProgram;
+LLGLSLShader            gVisibleDiffuseSeedProgram;
 LLGLSLShader            gDeferredShadowProgram;
 LLGLSLShader            gDeferredSkinnedShadowProgram;
 LLGLSLShader            gDeferredShadowCubeProgram;
@@ -313,10 +314,15 @@ static bool make_rigged_variant(LLGLSLShader& shader, LLGLSLShader& riggedShader
 static void add_common_permutations(LLGLSLShader* shader)
 {
     static LLCachedControl<bool> emissive(gSavedSettings, "RenderEnableEmissiveBuffer", false);
+    static LLCachedControl<bool> visible_diffuse(gSavedSettings, "RenderVisibleDiffuseSidecar", false);
 
     if (emissive)
     {
         shader->addPermutation("HAS_EMISSIVE", "1");
+    }
+    if (visible_diffuse)
+    {
+        shader->addPermutation("HAS_VISIBLE_DIFFUSE", "1");
     }
 }
 
@@ -1181,6 +1187,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gDeferredSunProgram.unload();
         gDeferredBlurLightProgram.unload();
         gDeferredSoftenProgram.unload();
+        gVisibleDiffuseSeedProgram.unload();
         gDeferredShadowProgram.unload();
         gDeferredSkinnedShadowProgram.unload();
         gDeferredShadowCubeProgram.unload();
@@ -2377,6 +2384,45 @@ bool LLViewerShaderMgr::loadShadersDeferred()
             LL_WARNS("ShaderLoading") << "Indexed legacy glow shader failed to load; multi-material glow falls back to scalar." << LL_ENDL;
             gDeferredEmissiveIndexedProgram.unload();
             gDeferredSkinnedEmissiveIndexedProgram.unload();
+        }
+    }
+
+    if (success)
+    {
+        static LLCachedControl<bool> visible_diffuse(gSavedSettings, "RenderVisibleDiffuseSidecar", false);
+        if (visible_diffuse)
+        {
+            gVisibleDiffuseSeedProgram.mName = "Visible Diffuse Seed Shader";
+            gVisibleDiffuseSeedProgram.mShaderFiles.clear();
+            gVisibleDiffuseSeedProgram.clearPermutations();
+            gVisibleDiffuseSeedProgram.mFeatures.isDeferred = true;
+            gVisibleDiffuseSeedProgram.mFeatures.hasFullGBuffer = true;
+            gVisibleDiffuseSeedProgram.mShaderFiles.push_back(make_pair("deferred/softenLightV.glsl", GL_VERTEX_SHADER));
+            gVisibleDiffuseSeedProgram.mShaderFiles.push_back(make_pair("deferred/visibleDiffuseSeedF.glsl", GL_FRAGMENT_SHADER));
+            gVisibleDiffuseSeedProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+
+            // NOT folded into `success`, and deliberately not asserted. This
+            // program is OPTIONAL: it exists only when the visible-diffuse
+            // sidecar is enabled, and the whole feature is designed to degrade
+            // to feature-off. Gating `success` on it would abort the rest of
+            // the load chain -- gDeferredSoftenProgram is created immediately
+            // below -- and a missing REQUIRED program crashes at bind time
+            // (llglslshader.cpp bind: ASSERT (mProgramObject != 0)). That is
+            // exactly the CTD this feature already shipped once.
+            //
+            // Every dispatch site gates on isComplete(), so a failure here is
+            // contained to "no sidecar this session".
+            if (!gVisibleDiffuseSeedProgram.createShader())
+            {
+                LL_WARNS("ShaderLoading") << "Visible-diffuse seed shader failed to load; "
+                                             "the sidecar is disabled for this session."
+                                          << LL_ENDL;
+                gVisibleDiffuseSeedProgram.unload();
+            }
+        }
+        else
+        {
+            gVisibleDiffuseSeedProgram.unload();
         }
     }
 
@@ -4456,4 +4502,3 @@ LLViewerShaderMgr::shader_iter LLViewerShaderMgr::endShaders() const
 {
     return mShaderList.end();
 }
-

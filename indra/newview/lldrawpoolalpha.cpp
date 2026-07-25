@@ -582,6 +582,16 @@ void LLDrawPoolAlpha::renderRiggedPbrEmissives(std::vector<LLDrawInfo*>& emissiv
 void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, bool rigged, AttachmentFilter filter)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
+    // Visible-diffuse sidecar. The guard is armed by renderGeomPostDeferred and
+    // is authoritative: adjust it rather than calling glColorMaski directly,
+    // because a raw indexed call would be silently reverted to the guard's
+    // value by the next global mask/blend change. When the guard is not armed
+    // every call below is a no-op.
+    const bool publish_visible_diffuse = !depth_only && gGL.indexedDrawBufferGuardActive();
+    if (publish_visible_diffuse)
+    {
+        gGL.setIndexedDrawBufferGuardMask(true, true, true, true);
+    }
     bool initialized_lighting = false;
     bool light_enabled = true;
 
@@ -804,6 +814,25 @@ void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, bool rigged, Attach
                 bool tex_setup = TexSetup(&params, (mat != nullptr));
 
                 {
+                    // Set the guarded indexed blend BEFORE the global call, not
+                    // after: the guard reasserts it automatically if the global
+                    // call reaches the driver, and leaves it alone if the call
+                    // is cache-skipped. Either way attachment 1 ends up correct,
+                    // which the previous assert-after-every-draw could not
+                    // promise (H3).
+                    if (publish_visible_diffuse)
+                    {
+                        if (params.mBlendFuncDst == LLRender::BF_ONE_MINUS_SOURCE_ALPHA)
+                        {
+                            gGL.setIndexedDrawBufferGuardBlend(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA,
+                                                               GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+                        }
+                        else
+                        {
+                            // Additive/custom faces are emitters, not occluders. (H5)
+                            gGL.setIndexedDrawBufferGuardBlend(GL_ZERO, GL_ONE, GL_ZERO, GL_ONE);
+                        }
+                    }
                     gGL.blendFunc((LLRender::eBlendFactor) params.mBlendFuncSrc, (LLRender::eBlendFactor) params.mBlendFuncDst, mAlphaSFactor, mAlphaDFactor);
 
                     bool reset_minimum_alpha = false;
@@ -867,6 +896,18 @@ void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, bool rigged, Attach
             {
                 gPipeline.enableLightsDynamic();
 
+                // M3: the emissive sub-passes below run single-output shaders
+                // (renderEmissives / renderPbrEmissives / renderRiggedEmissives /
+                // renderRiggedPbrEmissives all declare only frag_color). With
+                // attachment 1 still write-enabled they write UNDEFINED values
+                // to it (H1) -- and because the glow blend below multiplies the
+                // destination by zero, an undefined source that happens to be
+                // NaN poisons the RGB permanently (NaN * 0 = NaN), not just the
+                // exactness channel. Close the guard across the whole emissive
+                // block; these faces are emitters and have no diffuse to
+                // contribute anyway (H5).
+                gGL.setIndexedDrawBufferGuardMask(false, false, false, false);
+
                 // install glow-accumulating blend mode
                 // don't touch color, add to alpha (glow)
                 gGL.blendFunc(LLRender::BF_ZERO, LLRender::BF_ONE, LLRender::BF_ONE, LLRender::BF_ONE);
@@ -899,6 +940,12 @@ void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, bool rigged, Attach
                     light_enabled = true;
                     renderRiggedPbrEmissives(pbr_rigged_emissives);
                     rebind = true;
+                }
+
+                // reopen the sidecar for any subsequent diffuse-bearing draws
+                if (publish_visible_diffuse)
+                {
+                    gGL.setIndexedDrawBufferGuardMask(true, true, true, true);
                 }
 
                 // restore our alpha blend mode

@@ -32,6 +32,7 @@ uniform mat4 modelview_projection_matrix;   // current, JITTERED (raster positio
 uniform mat4 modelview_matrix;              // current camera*object modelview (jitter-free)
 uniform mat4 projection_matrix;             // current, JITTERED (skin raster path)
 uniform mat4 projection_matrix_unjittered;  // current projection without T2x jitter (velocity)
+uniform mat4 last_projection_matrix_unjittered; // previous un-jittered projection
 uniform mat4 last_modelview_matrix;         // previous frame camera modelview
 uniform mat4 last_object_matrix;            // previous frame object matrix
 uniform mat4 texture_matrix0;
@@ -63,11 +64,11 @@ void main()
 
     vary_cur_clip = projection_matrix_unjittered * mv_pos;          // un-jittered
     mat4 last_mat = getLastObjectSkinnedTransform();
-    vary_last_clip = projection_matrix_unjittered * last_modelview_matrix * last_mat * vec4(position.xyz, 1.0);
+    vary_last_clip = last_projection_matrix_unjittered * last_modelview_matrix * last_mat * vec4(position.xyz, 1.0);
 #else
     gl_Position = modelview_projection_matrix * vec4(position.xyz, 1.0);   // jittered raster
 
     vary_cur_clip  = projection_matrix_unjittered * modelview_matrix * vec4(position.xyz, 1.0);
-    vary_last_clip = projection_matrix_unjittered * last_modelview_matrix * last_object_matrix * vec4(position.xyz, 1.0);
+    vary_last_clip = last_projection_matrix_unjittered * last_modelview_matrix * last_object_matrix * vec4(position.xyz, 1.0);
 #endif
 }

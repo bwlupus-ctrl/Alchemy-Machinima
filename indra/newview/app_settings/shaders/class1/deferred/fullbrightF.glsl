@@ -25,7 +25,12 @@
 
 /*[EXTRA_CODE_HERE]*/
 
+#ifdef HAS_VISIBLE_DIFFUSE
+layout(location = 0) out vec4 frag_color;
+layout(location = 1) out vec4 visible_diffuse;
+#else
 out vec4 frag_color;
+#endif
 
 #if !defined(HAS_DIFFUSE_LOOKUP)
 uniform sampler2D diffuseMap;
@@ -79,8 +84,10 @@ void main()
     vec3 pos = vary_position;
 
     color.a = final_alpha;
+    vec3 visible_diffuse_color = color.rgb;
 #ifndef IS_HUD
     color.rgb = srgb_to_linear(color.rgb);
+    visible_diffuse_color = color.rgb;
 #ifdef IS_ALPHA
 
     vec3 sunlit;
@@ -96,5 +103,25 @@ void main()
 #endif
 
     frag_color = max(color, vec4(0));
+#ifdef HAS_VISIBLE_DIFFUSE
+    // A legacy fullbright surface has NO diffuse-lighting response. Its colour
+    // is unlit OUTPUT, not diffuse reflectance -- publishing it as albedo tells
+    // a GI consumer that a glowing red candle is a near-perfect red diffuse
+    // REFLECTOR, so it bounces red light in proportion to whatever illuminates
+    // it, while the consumer separately gathers the emitted red from the
+    // backbuffer.
+    //
+    // Zero diffuse with K from coverage is the same statement the seed already
+    // makes about metals (visibleDiffuseSeedF.glsl: diffuse *= 1.0 - orm.b):
+    // it is not a missing measurement, it is this renderer's declared BRDF for
+    // the surface class. K=0 ("no answer") would be more cautious but hands the
+    // pixel back to the incumbent estimate, which is derived from a backbuffer
+    // that CONTAINS the emission and would reconstruct the same bad albedo.
+    //
+    // NOTE: legacy fullbright gives no independent emission/reflectance
+    // parameters, so treating its texture as reflectance would be inventing a
+    // BRDF. PBR handles emit-and-reflect correctly and is unaffected -- see
+    // pbralphaF.glsl, which publishes diffuseColor and never colorEmissive.
+    visible_diffuse = vec4(vec3(0.0), final_alpha);
+#endif
 }
-

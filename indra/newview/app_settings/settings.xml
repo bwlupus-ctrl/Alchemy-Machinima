@@ -5352,6 +5352,50 @@
       <key>Value</key>
       <integer>0</integer>
     </map>
+    <key>BDMergeInventoryFullPreload</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge Inventory 6] Enables the wider AIS inventory preload profile. Only applies while the preload sweep is active.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>BDMergePreloadPoolSizeAIS</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge Inventory 6b] Coroutine pool size for AIS inventory preload. Only applies while the recursive preload sweep is actually running (started and not yet complete). Floored at 2 and still subject to the stock cap of 50 concurrent fetches with one slot reserved for non-fetch actions.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>U32</string>
+      <key>Value</key>
+      <integer>35</integer>
+    </map>
+    <key>BDMergePreloadBatchSizeAIS3</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge Inventory 6b] Number of folders packed into an AIS category subset preload request. Only applies while the recursive preload sweep is actually running (started and not yet complete). Still clamped to the stock range of 1-40.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>U32</string>
+      <key>Value</key>
+      <integer>40</integer>
+    </map>
+    <key>BDMergePreloadIdleMs</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge Inventory 6b] Per-idle AIS inventory preload fetch budget in milliseconds (stock is 6 ms). Only applies while the recursive preload sweep is actually running (started and not yet complete), and only after STATE_WEARABLES_WAIT. Clamped to 1-100 ms.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>U32</string>
+      <key>Value</key>
+      <integer>25</integer>
+    </map>
     <key>BDMergeMeshPoolFloorMB</key>
     <map>
       <key>Comment</key>
@@ -12555,6 +12599,17 @@
     <string>Boolean</string>
     <key>Value</key>
     <integer>1</integer>
+  </map>
+  <key>RenderVisibleDiffuseSidecar</key>
+  <map>
+    <key>Comment</key>
+    <string>Publish the visible linear diffuse colour and exactness sidecar for external frame consumers.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>Boolean</string>
+    <key>Value</key>
+    <integer>0</integer>
   </map>
   <key>RenderHDRIExposure</key>
   <map>

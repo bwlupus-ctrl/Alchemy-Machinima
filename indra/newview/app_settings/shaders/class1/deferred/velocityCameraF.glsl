@@ -34,9 +34,9 @@
 // camera-induced motion reprojected from scene depth; the geometry pass then
 // overwrites covered pixels with true per-object motion.
 //
-// Treats every pixel as a static world point: correct for the world and sky,
-// correct-under-camera-motion for avatars (their own limb/body motion still
-// reads zero until Phase 1b gives them real skinned velocity).
+// Scene-depth pixels are static world points. Clear/far depth is sky, where a
+// finite reconstructed point would incorrectly acquire camera translation; it
+// is therefore reprojected as a direction (w=0), giving rotation-only motion.
 //
 // Same un-jittered convention as velocityF.glsl (pitfall 1): reconstruct with
 // the JITTERED inverse projection (matches the rasterized depth), but reproject
@@ -55,6 +55,7 @@ uniform mat4 inv_proj;                      // current JITTERED projection inver
 uniform mat4 inv_modelview;                 // current camera modelview inverse (auto-fed on draw)
 uniform mat4 last_modelview_matrix;         // previous frame camera modelview
 uniform mat4 projection_matrix_unjittered;  // current projection without T2x jitter
+uniform mat4 last_projection_matrix_unjittered; // previous un-jittered projection
 
 void main()
 {
@@ -65,12 +66,19 @@ void main()
     vec4 view_pos = inv_proj * ndc;
     view_pos /= view_pos.w;
 
-    // same world point as seen by the PREVIOUS frame's camera
-    vec4 last_view_pos = last_modelview_matrix * (inv_modelview * view_pos);
+    // A far-clear sample has no finite world position. Reproject its direction
+    // with w=0 so camera translation cannot move the sky.
+    bool is_sky = depth >= 0.999999;
+    if (is_sky)
+    {
+        view_pos.w = 0.0;
+    }
+    vec4 world_pos = inv_modelview * view_pos;
+    vec4 last_view_pos = last_modelview_matrix * world_pos;
 
-    // both endpoints through the un-jittered projection (velocityF convention)
+    // Each endpoint uses its own un-jittered projection.
     vec4 cur_clip  = projection_matrix_unjittered * view_pos;
-    vec4 last_clip = projection_matrix_unjittered * last_view_pos;
+    vec4 last_clip = last_projection_matrix_unjittered * last_view_pos;
 
     vec2 cur_ndc  = cur_clip.xy  / cur_clip.w;
     vec2 last_ndc = last_clip.xy / last_clip.w;

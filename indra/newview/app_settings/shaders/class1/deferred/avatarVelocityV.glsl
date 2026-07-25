@@ -34,6 +34,7 @@
 
 uniform mat4 projection_matrix;             // current, JITTERED (raster position)
 uniform mat4 projection_matrix_unjittered;  // current projection without T2x jitter (velocity)
+uniform mat4 last_projection_matrix_unjittered; // previous un-jittered projection
 uniform vec4 lastMatrixPalette[45];
 
 in vec3 position;
@@ -78,5 +79,5 @@ void main()
     gl_Position   = projection_matrix * cur_view;              // jittered raster
 
     vary_cur_clip  = projection_matrix_unjittered * cur_view;  // un-jittered velocity
-    vary_last_clip = projection_matrix_unjittered * last_view;
+    vary_last_clip = last_projection_matrix_unjittered * last_view;
 }

@@ -467,6 +467,46 @@ public:
     void blendFunc(eBlendFactor color_sfactor, eBlendFactor color_dfactor,
                eBlendFactor alpha_sfactor, eBlendFactor alpha_dfactor);
 
+    // ---- indexed draw-buffer guard --------------------------------------
+    // A GLOBAL glColorMask/glBlendFunc resets the per-attachment (indexed)
+    // state of EVERY draw buffer. A feature that needs an auxiliary colour
+    // attachment to hold its own mask/blend across a multi-pool pass cannot
+    // defend that state with reasserts at its own call sites, because the
+    // offending global calls live inside arbitrary pool and helper code that
+    // runs in between (hazards H2 and H3, doc/RESHADE_BRIDGE_CONTRACT.md).
+    //
+    // While the guard is active LLRender re-applies the indexed state
+    // immediately after any global call that actually reached the driver.
+    // The reassert lives inside the state-changed branch, so it costs nothing
+    // on the cached/skipped path -- which also means it is not fooled by
+    // blendFunc's caching: a skipped call did not touch the driver and so did
+    // not clobber anything.
+    //
+    // Requires GL 3.0 (glColorMaski) and GL 4.0 (glBlendFuncSeparatei);
+    // indexedDrawBufferGuardSupported() reports whether both resolved.
+    static bool indexedDrawBufferGuardSupported();
+
+    // Arm the guard on `index` with the given write mask. Only the owner of
+    // the pass arms it.
+    void setIndexedDrawBufferGuard(U32 index, bool r, bool g, bool b, bool a);
+    // Disarm and restore the attachment to the global state.
+    void clearIndexedDrawBufferGuard();
+
+    bool indexedDrawBufferGuardActive() const { return mIndexedGuardActive; }
+
+    // Adjust the guarded state mid-pass. These are NO-OPS when the guard is
+    // not armed, so pools and helpers that participate in the feature can
+    // call them unconditionally: when the feature is off they do nothing and
+    // touch no GL state, which is what keeps the gate-off path byte-identical
+    // to stock.
+    void setIndexedDrawBufferGuardMask(bool r, bool g, bool b, bool a);
+    // Indexed blend for the guarded attachment (raw GL enums).
+    void setIndexedDrawBufferGuardBlend(U32 src_rgb, U32 dst_rgb, U32 src_a, U32 dst_a);
+    void clearIndexedDrawBufferGuardBlend();
+    // Re-apply the guarded indexed state. Called automatically after every
+    // global mask/blend change; public for explicit use after an FBO bind.
+    void reassertIndexedDrawBuffer();
+
     LLLightState* getLight(U32 index);
     void setAmbientLightColor(const LLColor4& color);
 
@@ -536,6 +576,13 @@ private:
     eBlendFactor mCurrBlendAlphaSFactor;
     eBlendFactor mCurrBlendAlphaDFactor;
 
+    // see setIndexedDrawBufferGuard()
+    bool mIndexedGuardActive      = false;
+    U32  mIndexedGuardIndex       = 0;
+    bool mIndexedGuardMask[4]     = { false, false, false, false };
+    bool mIndexedGuardBlendActive = false;
+    U32  mIndexedGuardBlend[4]    = { 0, 0, 0, 0 }; // src_rgb, dst_rgb, src_a, dst_a
+
     std::vector<LLVector4a> mUIOffset;
     std::vector<LLVector4a> mUIScale;
 
@@ -558,6 +605,43 @@ extern glm::mat4 gGLDeltaModelView;
 extern glm::mat4 gGLInverseDeltaModelView;
 
 extern thread_local LLRender gGL;
+
+// RAII wrapper for LLRender's indexed draw-buffer guard. Arms the guard CLOSED
+// (attachment write-disabled) for the lifetime of the scope and guarantees it
+// is disarmed on every exit path, so an early return or a throw cannot leave a
+// stray indexed override on the context for the next pass to inherit.
+//
+// Constructing with active == false does nothing at all -- no GL calls, no
+// state -- which is what lets callers construct it unconditionally and keeps
+// the feature-off path identical to stock.
+class LLScopedIndexedDrawBufferGuard
+{
+public:
+    LLScopedIndexedDrawBufferGuard(bool active, U32 index)
+        : mActive(active)
+    {
+        if (mActive)
+        {
+            gGL.setIndexedDrawBufferGuard(index, false, false, false, false);
+        }
+    }
+
+    ~LLScopedIndexedDrawBufferGuard()
+    {
+        if (mActive)
+        {
+            gGL.clearIndexedDrawBufferGuard();
+        }
+    }
+
+    bool active() const { return mActive; }
+
+    LLScopedIndexedDrawBufferGuard(const LLScopedIndexedDrawBufferGuard&) = delete;
+    LLScopedIndexedDrawBufferGuard& operator=(const LLScopedIndexedDrawBufferGuard&) = delete;
+
+private:
+    bool mActive;
+};
 
 // This rotation matrix moves the default OpenGL reference frame
 // (-Z at, Y up) to Cory's favorite reference frame (X at, Z up)

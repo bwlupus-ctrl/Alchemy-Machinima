@@ -1334,6 +1334,132 @@ void LLRender::setColorMask(bool writeColorR, bool writeColorG, bool writeColorB
                     writeColorG ? GL_TRUE : GL_FALSE,
                     writeColorB ? GL_TRUE : GL_FALSE,
                     writeAlpha ? GL_TRUE : GL_FALSE);
+
+        // that call just reset the mask on EVERY draw buffer
+        reassertIndexedDrawBuffer();
+    }
+}
+
+// static
+bool LLRender::indexedDrawBufferGuardSupported()
+{
+    return glColorMaski != nullptr && glBlendFuncSeparatei != nullptr;
+}
+
+void LLRender::setIndexedDrawBufferGuard(U32 index, bool r, bool g, bool b, bool a)
+{
+    if (!indexedDrawBufferGuardSupported())
+    {
+        // Callers must gate on indexedDrawBufferGuardSupported() before they
+        // create the attachment at all; arming here would silently promise
+        // containment we cannot deliver.
+        llassert(false);
+        return;
+    }
+
+    // Single-owner by design: there is no guard stack, and the RAII wrapper's
+    // destructor CLEARS the guard rather than restoring an outer one. Silently
+    // overwriting an active guard would therefore leave the outer pass
+    // unguarded from the inner scope's exit onward -- the sidecar would look
+    // protected while haze/glow draws corrupted attachment 1. If nesting is
+    // ever genuinely needed, add a save/restore stack; do not drop this assert.
+    llassert(!mIndexedGuardActive);
+
+    mIndexedGuardActive  = true;
+    mIndexedGuardIndex   = index;
+    mIndexedGuardMask[0] = r;
+    mIndexedGuardMask[1] = g;
+    mIndexedGuardMask[2] = b;
+    mIndexedGuardMask[3] = a;
+
+    reassertIndexedDrawBuffer();
+}
+
+void LLRender::setIndexedDrawBufferGuardMask(bool r, bool g, bool b, bool a)
+{
+    if (!mIndexedGuardActive)
+    {
+        return;
+    }
+
+    mIndexedGuardMask[0] = r;
+    mIndexedGuardMask[1] = g;
+    mIndexedGuardMask[2] = b;
+    mIndexedGuardMask[3] = a;
+
+    reassertIndexedDrawBuffer();
+}
+
+void LLRender::setIndexedDrawBufferGuardBlend(U32 src_rgb, U32 dst_rgb, U32 src_a, U32 dst_a)
+{
+    if (!mIndexedGuardActive)
+    {
+        return;
+    }
+
+    mIndexedGuardBlendActive = true;
+    mIndexedGuardBlend[0]    = src_rgb;
+    mIndexedGuardBlend[1]    = dst_rgb;
+    mIndexedGuardBlend[2]    = src_a;
+    mIndexedGuardBlend[3]    = dst_a;
+
+    reassertIndexedDrawBuffer();
+}
+
+void LLRender::clearIndexedDrawBufferGuardBlend()
+{
+    if (!mIndexedGuardActive)
+    {
+        return;
+    }
+
+    mIndexedGuardBlendActive = false;
+}
+
+void LLRender::clearIndexedDrawBufferGuard()
+{
+    if (!mIndexedGuardActive)
+    {
+        return;
+    }
+
+    const U32 index = mIndexedGuardIndex;
+
+    mIndexedGuardActive      = false;
+    mIndexedGuardBlendActive = false;
+
+    // Hand the attachment back to the global state, so nothing downstream
+    // inherits an indexed override it never asked for.
+    glColorMaski(index,
+                 mCurrColorMask[0] ? GL_TRUE : GL_FALSE,
+                 mCurrColorMask[1] ? GL_TRUE : GL_FALSE,
+                 mCurrColorMask[2] ? GL_TRUE : GL_FALSE,
+                 mCurrColorMask[3] ? GL_TRUE : GL_FALSE);
+    glBlendFuncSeparatei(index,
+                         sGLBlendFactor[mCurrBlendColorSFactor],
+                         sGLBlendFactor[mCurrBlendColorDFactor],
+                         sGLBlendFactor[mCurrBlendAlphaSFactor],
+                         sGLBlendFactor[mCurrBlendAlphaDFactor]);
+}
+
+void LLRender::reassertIndexedDrawBuffer()
+{
+    if (!mIndexedGuardActive)
+    {
+        return;
+    }
+
+    glColorMaski(mIndexedGuardIndex,
+                 mIndexedGuardMask[0] ? GL_TRUE : GL_FALSE,
+                 mIndexedGuardMask[1] ? GL_TRUE : GL_FALSE,
+                 mIndexedGuardMask[2] ? GL_TRUE : GL_FALSE,
+                 mIndexedGuardMask[3] ? GL_TRUE : GL_FALSE);
+
+    if (mIndexedGuardBlendActive)
+    {
+        glBlendFuncSeparatei(mIndexedGuardIndex,
+                             mIndexedGuardBlend[0], mIndexedGuardBlend[1],
+                             mIndexedGuardBlend[2], mIndexedGuardBlend[3]);
     }
 }
 
@@ -1381,6 +1507,9 @@ void LLRender::blendFunc(eBlendFactor sfactor, eBlendFactor dfactor)
         mCurrBlendAlphaDFactor = dfactor;
         flush();
         glBlendFunc(sGLBlendFactor[sfactor], sGLBlendFactor[dfactor]);
+
+        // global blend -> every draw buffer, including any guarded one
+        reassertIndexedDrawBuffer();
     }
 }
 
@@ -1403,6 +1532,9 @@ void LLRender::blendFunc(eBlendFactor color_sfactor, eBlendFactor color_dfactor,
 
         glBlendFuncSeparate(sGLBlendFactor[color_sfactor], sGLBlendFactor[color_dfactor],
                            sGLBlendFactor[alpha_sfactor], sGLBlendFactor[alpha_dfactor]);
+
+        // global blend -> every draw buffer, including any guarded one
+        reassertIndexedDrawBuffer();
     }
 }
 

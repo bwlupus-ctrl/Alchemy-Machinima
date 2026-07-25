@@ -32,13 +32,46 @@ public:
     // work. Safe to call every frame.
     void gatherFrame();
 
+    // Renderer-side facts accumulated while producing this frame. These stay
+    // explicit: neither coverage nor a reset may be inferred from texture data.
+    void noteMotionCoverage(U32 bits);
+    void noteProjectionChange();
+    // Visible-diffuse sidecar readiness. TWO stages, both required, because
+    // either one alone is satisfiable while the buffer is garbage:
+    //
+    //   Seeded   - the classifying seed pass actually ran this frame. Without
+    //              it every deferred-opaque pixel is unclassified, so the K
+    //              channel is meaningless even if forward surfaces wrote fine.
+    //              This is NOT implied by the setting or by the attachment
+    //              existing: the seed program is optional and degrades to
+    //              feature-off if it fails to compile on this driver.
+    //   Resolved - the forward pool loop then completed over that same
+    //              attachment on the main view.
+    //
+    // Validity must be asserted by the producer, never inferred from the
+    // existence of a texture (contract v2 §4).
+    void noteVisibleDiffuseSeeded();
+    void noteVisibleDiffuseResolved();
+
     // The struct handed out to the add-on via SLReShade_GetFrame().
     const SLReShadeFrame& getFrameData() const { return mFrame; }
 
 private:
     LLReShadeBridge();
+    void noteResetEvent(U32 flags);
 
     SLReShadeFrame mFrame;
+    SLReShadeTexture mLastTextures[8];
+    U64 mRenderTargetGeneration;
+    U32 mPendingMotionCoverage;
+    bool mPendingVisibleDiffuseSeeded;
+    bool mPendingVisibleDiffuseResolved;
+    U32 mPendingResetFlags;
+    U32 mResetEventCounter;
+    bool mEverHadValidFrame;
+    bool mLastFrameValid;
+    bool mLastHDR;
+    bool mLastSnapshot;
 };
 
 #endif // LL_LLRESHADEBRIDGE_H

@@ -81,6 +81,7 @@
 #include "lllightconstants.h"
 #include "llmeshrepository.h"
 #include "llpipelinelistener.h"
+#include "llreshadebridge.h"
 #include "llresmgr.h"
 #include "llselectmgr.h"
 #include "llsky.h"
@@ -360,6 +361,10 @@ LLPipeline gPipeline;
 const LLMatrix4* gGLLastMatrix = NULL;
 
 static LLStaticHashedString sTint("tint");
+static LLStaticHashedString sLastProjectionMatrixUnjittered("last_projection_matrix_unjittered");
+static F32 sLastVelocityProjMat[16] =
+    { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
+static bool sHasLastVelocityProjection = false;
 static LLStaticHashedString sAmbiance("ambiance");
 static LLStaticHashedString sAlphaScale("alpha_scale");
 static LLStaticHashedString sNormMat("norm_mat");
@@ -1069,6 +1074,37 @@ bool LLPipeline::allocateScreenBufferInternal(U32 resX, U32 resY)
     GLuint screenFormat = hdr ? GL_RGBA16F : GL_RGBA;
 
     if (!mRT->screen.allocate(resX, resY, GL_RGBA16F)) return false;
+
+    // Visible-diffuse sidecar: a second colour attachment capturing forward
+    // surfaces' diffuse in the same draw calls as the beauty pass.
+    //
+    // MAIN VIEW ONLY. mRT follows the reflection-probe/hero swap, so without
+    // this check the aux and hero packs also get the attachment -- and they
+    // then pass the getCurrentBoundTarget() == &mRT->screen identity test in
+    // renderGeomPostDeferred, letting probe renders write the published
+    // sidecar. (S1)
+    //
+    // The whole feature rests on indexed draw-buffer state: glColorMaski is
+    // GL 3.0, glBlendFuncSeparatei is GL 4.0. Both are resolved as function
+    // pointers and are null on older contexts, so calling them would be a
+    // null-deref crash rather than a degraded image. Refuse the attachment
+    // instead: no attachment => every downstream gate reads false => the
+    // feature is simply off. (S5)
+    static LLCachedControl<bool> visible_diffuse(gSavedSettings, "RenderVisibleDiffuseSidecar", false);
+    if (visible_diffuse && mRT == &mMainRT)
+    {
+        if (!LLRender::indexedDrawBufferGuardSupported())
+        {
+            LL_WARNS_ONCE("Pipeline")
+                << "RenderVisibleDiffuseSidecar is enabled but this GL context lacks "
+                   "glColorMaski (GL 3.0) and/or glBlendFuncSeparatei (GL 4.0); "
+                   "the sidecar is disabled." << LL_ENDL;
+        }
+        else if (!mRT->screen.addColorAttachment(GL_SRGB8_ALPHA8))
+        {
+            return false;
+        }
+    }
 
     mRT->deferredScreen.shareDepthBuffer(mRT->screen);
 
@@ -5983,6 +6019,53 @@ void LLPipeline::renderGeomVelocity()
     mVelocityMap.bindTarget();
     mVelocityMap.clear(GL_COLOR_BUFFER_BIT);
 
+    bool projection_discontinuity = !sHasLastVelocityProjection;
+    if (sHasLastVelocityProjection)
+    {
+        F32 delta_squared = 0.f;
+        F32 magnitude_squared = 0.f;
+        for (U32 i = 0; i < 16; ++i)
+        {
+            const F32 delta = mVelocityProjMat[i] - sLastVelocityProjMat[i];
+            delta_squared += delta * delta;
+            magnitude_squared += llmax(mVelocityProjMat[i] * mVelocityProjMat[i],
+                                       sLastVelocityProjMat[i] * sLastVelocityProjMat[i]);
+        }
+        // A >=10% relative Frobenius jump is a discontinuous lens/viewport
+        // step. Smooth FOV pulls remain well below this per frame and retain
+        // history; the true previous projection still makes their motion valid.
+        projection_discontinuity =
+            delta_squared > 0.01f * llmax(magnitude_squared, 0.000001f);
+    }
+    const F32* last_projection =
+        sHasLastVelocityProjection ? sLastVelocityProjMat : mVelocityProjMat;
+    if (projection_discontinuity)
+    {
+        // Missing history falls back to current projection; a large single-frame
+        // jump uses the true previous endpoint but tells consumers to reset.
+        LLReShadeBridge::instance().noteProjectionChange();
+    }
+
+    // This uniform is intentionally named rather than added to the global
+    // reserved-uniform table: all affected programs are local to this pass,
+    // and uploading once here persists across their later draw-pool binds.
+    LLGLSLShader* velocity_programs[] =
+    {
+        &gVelocityProgram, &gVelocityAlphaProgram,
+        &gVelocitySkinnedProgram, &gVelocityAlphaSkinnedProgram,
+        &gAvatarVelocityProgram, &gVelocityCameraProgram
+    };
+    for (LLGLSLShader* shader : velocity_programs)
+    {
+        if (shader->isComplete())
+        {
+            shader->bind();
+            shader->uniformMatrix4fv(sLastProjectionMatrixUnjittered,
+                                     1, GL_FALSE, last_projection);
+            shader->unbind();
+        }
+    }
+
     gGL.setColorMask(true, true);
     LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL); // test against scene depth, no write
 
@@ -6012,6 +6095,9 @@ void LLPipeline::renderGeomVelocity()
         mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
 
         gVelocityCameraProgram.unbind();
+        LLReShadeBridge::instance().noteMotionCoverage(
+            SLRESHADE_MOTION_COVERAGE_CAMERA_DEPTH |
+            SLRESHADE_MOTION_COVERAGE_SKY);
     }
 
     sVelocityRender = true;
@@ -6030,6 +6116,15 @@ void LLPipeline::renderGeomVelocity()
     }
 
     sVelocityRender = false;
+
+    // These are the categories for which the geometry loop above has live
+    // velocity hooks. Coverage is "attempted", not inferred from pixel values.
+    LLReShadeBridge::instance().noteMotionCoverage(
+        SLRESHADE_MOTION_COVERAGE_RIGID |
+        SLRESHADE_MOTION_COVERAGE_RIGGED_MESH |
+        SLRESHADE_MOTION_COVERAGE_CLASSIC_AVATAR |
+        SLRESHADE_MOTION_COVERAGE_ALPHA_TEST |
+        SLRESHADE_MOTION_COVERAGE_FULLBRIGHT);
 
     gGLLastMatrix = NULL;
     gGL.matrixMode(LLRender::MM_MODELVIEW);
@@ -6053,6 +6148,39 @@ void LLPipeline::renderGeomPostDeferred(LLCamera& camera)
     U32 cur_type = 0;
 
     LLGLEnable cull(GL_CULL_FACE);
+
+    // Visible-diffuse sidecar. renderGeomPostDeferred has other callers
+    // (impostors, HUDs, reflection/hero probes), so gate on target identity
+    // rather than on the setting alone (H4), and additionally exclude probe
+    // snapshots and HUD renders outright (S1) -- the sidecar describes the
+    // main view, and a probe pass writing it would publish the probe's view
+    // as the player's.
+    static LLCachedControl<bool> visible_diffuse(gSavedSettings, "RenderVisibleDiffuseSidecar", false);
+    const bool publish_visible_diffuse =
+        visible_diffuse && mRT == &mMainRT &&
+        // The seed program is optional and may have failed to compile on this
+        // driver. Without it nothing classified the deferred-opaque pixels, so
+        // writing forward surfaces into the attachment would produce a buffer
+        // that is correct in the minority of pixels and unwritten in the rest.
+        // Match the seed pass's own predicate exactly, or the two disagree and
+        // the readiness latch is asserted for a frame that was never seeded.
+        gVisibleDiffuseSeedProgram.isComplete() &&
+        !gCubeSnapshot && !LLPipeline::sRenderingHUDs && !sImpostorRender &&
+        LLRenderTarget::getCurrentBoundTarget() == &mRT->screen &&
+        mRT->screen.getNumTextures() > 1;
+
+    // Arm the indexed guard CLOSED (attachment 1 write-disabled) for the whole
+    // pass. From here on nothing writes the sidecar unless it explicitly opens
+    // the guard, and -- crucially -- every global glColorMask/glBlendFunc
+    // issued by any pool or helper in between is followed by an automatic
+    // reassert inside LLRender. That is what contains doAtmospherics /
+    // doWaterHaze (M1), the glow pool (M2) and the alpha pool's emissive
+    // sub-passes (M3), none of which are reachable from this function's own
+    // call sites.
+    LLScopedIndexedDrawBufferGuard sidecar_guard(publish_visible_diffuse, 1);
+
+    LLGLEnable visible_diffuse_srgb(
+        publish_visible_diffuse ? GL_FRAMEBUFFER_SRGB : 0);
 
     bool done_atmospherics = LLPipeline::sRenderingHUDs; //skip atmospherics on huds
     bool done_water_haze = done_atmospherics;
@@ -6127,6 +6255,22 @@ void LLPipeline::renderGeomPostDeferred(LLCamera& camera)
             for( S32 i = 0; i < poolp->getNumPostDeferredPasses(); i++ )
             {
                 LLVertexBuffer::unbind();
+                const bool contributes_diffuse =
+                    cur_type == LLDrawPool::POOL_FULLBRIGHT ||
+                    cur_type == LLDrawPool::POOL_FULLBRIGHT_ALPHA_MASK ||
+                    cur_type == LLDrawPool::POOL_ALPHA_PRE_WATER ||
+                    cur_type == LLDrawPool::POOL_ALPHA_POST_WATER;
+                // Open the guard only for the pools that actually resolve
+                // visible diffuse. Everything else -- including whatever
+                // global state beginPostDeferredPass issues, which no longer
+                // needs a manual reassert after it -- runs with attachment 1
+                // write-disabled.
+                if (contributes_diffuse)
+                {
+                    gGL.setIndexedDrawBufferGuardMask(true, true, true, true);
+                    gGL.setIndexedDrawBufferGuardBlend(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA,
+                                                       GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+                }
                 poolp->beginPostDeferredPass(i);
                 for (iter2 = iter1; iter2 != mPools.end(); iter2++)
                 {
@@ -6139,6 +6283,8 @@ void LLPipeline::renderGeomPostDeferred(LLCamera& camera)
                     p->renderPostDeferred(i);
                 }
                 poolp->endPostDeferredPass(i);
+                gGL.setIndexedDrawBufferGuardMask(false, false, false, false);
+                gGL.clearIndexedDrawBufferGuardBlend();
                 LLVertexBuffer::unbind();
 
                 if (gDebugGL || gDebugPipeline)
@@ -6180,6 +6326,15 @@ void LLPipeline::renderGeomPostDeferred(LLCamera& camera)
     {
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
+
+    if (publish_visible_diffuse)
+    {
+        // Assert validity only now, having actually completed the forward pool
+        // loop over the main view's sidecar attachment. The bridge must never
+        // infer this from the attachment merely existing. (M4)
+        LLReShadeBridge::instance().noteVisibleDiffuseResolved();
+    }
+    // sidecar_guard disarms the indexed state here.
 }
 
 void LLPipeline::renderGeomShadow(LLCamera& camera)
@@ -13505,9 +13660,67 @@ void LLPipeline::renderDeferredLighting()
         }
 
         screen_target->bindTarget();
+        static LLCachedControl<bool> visible_diffuse(gSavedSettings, "RenderVisibleDiffuseSidecar", false);
+        // isComplete() is NOT optional. Without it a shader that fails to
+        // compile still reaches bindDeferredShader(), which asserts on
+        // mProgramObject == 0 and takes the viewer down at world init -- which
+        // is exactly what happened: visibleDiffuseSeedF.glsl failed to compile
+        // and the crash was the ASSERT, not the shader. Same guard the velocity
+        // camera-fallback pass already uses (gVelocityCameraProgram.isComplete()).
+        // A missing program must degrade to "sidecar not published", never to a
+        // crash, because a shader can always fail on someone else's driver.
+        const bool publish_visible_diffuse =
+            visible_diffuse &&
+            gVisibleDiffuseSeedProgram.isComplete() &&
+            // Mirror renderGeomPostDeferred's predicate EXACTLY. Today the
+            // main-view restriction is implied, because only mMainRT is given a
+            // second attachment -- but the two predicates feed the two halves
+            // of one readiness latch, and if they ever diverge the latch can be
+            // seeded by one render invocation and resolved by another, which
+            // publishes VALID for a frame that was never coherently produced.
+            // Stating it explicitly costs nothing and removes the coupling to
+            // an allocation detail elsewhere in the file. (S1)
+            mRT == &mMainRT &&
+            !gCubeSnapshot && !LLPipeline::sRenderingHUDs && !sImpostorRender &&
+            screen_target == &mRT->screen &&
+            LLRenderTarget::getCurrentBoundTarget() == &mRT->screen &&
+            screen_target->getNumTextures() > 1;
+        if (publish_visible_diffuse)
+        {
+            glColorMaski(1, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+        }
         // clear color buffer here - zeroing alpha (glow) is important or it will accumulate against sky
         glClearColor(0, 0, 0, 0);
         screen_target->clear(GL_COLOR_BUFFER_BIT);
+
+        if (publish_visible_diffuse)
+        {
+            // Raw indexed masks are safe HERE, without the LLRender guard used
+            // by the pool loop, because this window contains no global
+            // glColorMask/glBlendFunc: bindDeferredShader and
+            // unbindDeferredShader were both audited and issue neither, and the
+            // only draw between them is ours.
+            //
+            // INVARIANT: if either of those ever starts issuing a global mask
+            // or blend call, attachment 0 is re-enabled here and the seed pass
+            // writes its classification into the BEAUTY buffer. Route this
+            // block through LLScopedIndexedDrawBufferGuard if that changes.
+            LLGLDisable blend(GL_BLEND);
+            LLGLDepthTest depth(GL_FALSE);
+            LLGLEnable srgb(GL_FRAMEBUFFER_SRGB);
+            glColorMaski(0, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+            glColorMaski(1, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+            bindDeferredShader(gVisibleDiffuseSeedProgram);
+            mScreenTriangleVB->setBuffer();
+            mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+            unbindDeferredShader(gVisibleDiffuseSeedProgram);
+            glColorMaski(0, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+            glColorMaski(1, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+
+            // Stage 1 of the readiness latch: deferred-opaque pixels are now
+            // classified. renderGeomPostDeferred supplies stage 2. (M4)
+            LLReShadeBridge::instance().noteVisibleDiffuseSeeded();
+        }
 
         if (RenderDeferredAtmospheric)
         {  // apply sunlight contribution
@@ -13916,8 +14129,19 @@ void LLPipeline::renderDeferredLighting()
         {
             gGLLastModelView[i] = gGLModelView[i];
             gGLLastProjection[i] = gGLProjection[i];
+            // Snapshot the un-jittered velocity projection at the same scene
+            // boundary as the previous modelview.
+            sLastVelocityProjMat[i] = mVelocityProjMat[i];
         }
+        sHasLastVelocityProjection = true;
     }
+    // NOTE: deliberately no else-branch. Cube/probe passes do not advance the
+    // main-view history, so there is nothing to invalidate -- the snapshot from
+    // the last main-view frame is still the correct previous projection. An
+    // earlier version cleared the latch here, but reflection probes update
+    // continuously, so that published SLRESHADE_RESET_PROJECTION_CHANGE on
+    // essentially every frame and left temporal consumers (TAA, denoising)
+    // permanently reset.
     gGL.setColorMask(true, true);
 }
 

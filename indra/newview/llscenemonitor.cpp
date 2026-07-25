@@ -433,7 +433,13 @@ void LLSceneMonitor::calcDiffAggregate()
     LLGLDepthTest depth(true, false, GL_ALWAYS);
     if(!mDebugViewerVisible)
     {
-        glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+        // gGL, not raw glColorMask: a raw call bypasses LLRender's cache (so
+        // the next gGL.setColorMask with matching cached factors is skipped and
+        // the mask silently stays wrong) and also bypasses the indexed
+        // draw-buffer guard's reassert. This path is not currently inside the
+        // post-deferred window, but it is the only remaining raw bypass in the
+        // viewer and there is no reason to keep it.
+        gGL.setColorMask(false, false);
     }
 
     LLGLSLShader* cur_shader = NULL;
@@ -464,7 +470,7 @@ void LLSceneMonitor::calcDiffAggregate()
 
     if(!mDebugViewerVisible)
     {
-        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+        gGL.setColorMask(true, true);
     }
 #endif
 }
