@@ -150,7 +150,13 @@ public:
     // Destroy every ghost spawned by the palette-isolation test harness.
     static S32 clearTestHarnessGhosts();
 
+    void recordSitRenderProbe(const char* verdict, S32 pass,
+                              S32 pool_faces, U32 drawn_indices = 0);
+    void recordSitRiggedBatch(U32 indices);
+    void recordSitRiggedPalette(bool valid);
+
 private:
+    void beginSitRenderProbeFrame();
     void updateEntityOuterTransform();
     void stampEntityOuterTransform(LLViewerObject* object);
     void clearClonedObjectAnimations();
@@ -177,7 +183,21 @@ private:
     LLUUID mAnimationSourceId;
     bool mSourceSitStateKnown = false;
     bool mLastSourceSitting = false;
-    LLFrameTimer mGhostSitLogTimer;
+    U32 mGhostSitLastLogFrame = 0;
+    U32 mGhostSitRenderFrame = 0;
+    U32 mGhostSitPoolEntries = 0;
+    U32 mGhostSitSkinnedCalls = 0;
+    U32 mGhostSitDrawnIndices = 0;
+    U32 mGhostSitRiggedBatches = 0;
+    U32 mGhostSitRiggedIndices = 0;
+    U64 mGhostSitRiggedBatchesCumulative = 0;
+    U64 mGhostSitRiggedIndicesCumulative = 0;
+    U32 mGhostSitRiggedPaletteValid = 0;
+    U32 mGhostSitRiggedPaletteInvalid = 0;
+    S32 mGhostSitLastPass = -1;
+    S32 mGhostSitPoolFaces = 0;
+    std::string mGhostSitRenderVerdict = "not_seen";
+    std::string mGhostSitRenderVerdictPath = "none";
 
     // The client-only linksets we attached.
     //
