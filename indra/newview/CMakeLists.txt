@@ -274,6 +274,7 @@ set(viewer_SOURCE_FILES
     llghostdeferreddiagnostics.cpp
     alghostmanipproxy.cpp
     alghoststudio.cpp
+    alghostanimassetindex.cpp
     alobjectpathmover.cpp
     alpanelghoststudio.cpp
     alpanelpropmover.cpp
@@ -1089,6 +1090,7 @@ set(viewer_HEADER_FILES
     llghostdeferreddiagnostics.h
     alghostmanipproxy.h
     alghoststudio.h
+    alghostanimassetindex.h
     alobjectpathmover.h
     alpanelghoststudio.h
     alpanelpropmover.h

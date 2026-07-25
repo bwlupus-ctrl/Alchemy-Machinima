@@ -12,6 +12,7 @@
 #include "alpanelghoststudio.h"
 
 #include "alcompassdial.h"          // live direct-manipulation heading control
+#include "alghostanimassetindex.h"
 #include "alghoststudio.h"
 #include "altoolghostedit.h"        // [R2-3] persistent in-world edit mode
 #include "altoolghostplace.h"
@@ -112,6 +113,11 @@ bool ALPanelGhostStudio::postBuild()
     mAnimResumeBtn = getChild<LLButton>("btn_anim_resume");
     mDriveModeCombo = getChild<LLComboBox>("drive_mode_combo");
     mDirectedAnimEdit = getChild<LLLineEditor>("directed_anim_editor");
+    mAnimationLibraryCombo = getChild<LLComboBox>("animation_library_combo");
+    mLoopModeCombo = getChild<LLComboBox>("anim_loop_mode_combo");
+    mAnimSyncBtn = getChild<LLButton>("btn_anim_sync");
+    mAnimMetadataText = getChild<LLTextBox>("anim_metadata_text");
+    mLookSection = getChild<LLView>("look_section");
     mPlaceBtn  = getChild<LLButton>("btn_place");
     mToActorBtn = getChild<LLButton>("btn_to_actor");
     mToMeBtn   = getChild<LLButton>("btn_to_me");
@@ -147,12 +153,23 @@ bool ALPanelGhostStudio::postBuild()
     mFormationCombo = getChild<LLComboBox>("array_formation_combo");
     mFormationParam = getChild<LLSpinCtrl>("array_parameter_spinner");
     mArrayBuildBtn = getChild<LLButton>("btn_array_build");
+    mStripCount = getChild<LLSpinCtrl>("strip_count_spinner");
+    mStripInterval = getChild<LLSpinCtrl>("strip_interval_spinner");
+    mStripStartBtn = getChild<LLButton>("btn_strip_start");
+    mStripCancelBtn = getChild<LLButton>("btn_strip_cancel");
+    mStripStatus = getChild<LLTextBox>("strip_status");
+    mMotionCombo = getChild<LLComboBox>("formation_motion_combo");
+    mMotionSpeed = getChild<LLSpinCtrl>("formation_motion_speed");
+    mMotionAmplitude = getChild<LLSpinCtrl>("formation_motion_amplitude");
+    mMotionApplyBtn = getChild<LLButton>("btn_formation_motion_apply");
 
     mStatusText = getChild<LLTextBox>("studio_status");
 
     mShowAllCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onShowAllToggle(); });
     mEditModeCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onToggleEditMode(); });
     mList->setCommitCallback([this](LLUICtrl*, const LLSD&) { onListSelect(); });
+    mList->setMouseUpCallback(
+        [this](LLUICtrl*, S32 x, S32 y, MASK mask) { onListMouseUp(x, y, mask); });
     mList->setDoubleClickCallback([this]() { onListDoubleClick(); });
     mAddBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickAdd(); });
     mNameEdit->setCommitCallback([this](LLUICtrl*, const LLSD&) { onNameCommit(); });
@@ -176,6 +193,9 @@ bool ALPanelGhostStudio::postBuild()
     mAnimResumeBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickAnimResume(); });
     mDriveModeCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onDriveModeCommit(); });
     mDirectedAnimEdit->setCommitCallback([this](LLUICtrl*, const LLSD&) { onDirectedAnimCommit(); });
+    mAnimationLibraryCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAnimationLibraryCommit(); });
+    mLoopModeCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLoopModeCommit(); });
+    mAnimSyncBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickAnimSync(); });
     mPlaceBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickPlace(); });
     mToActorBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickToActor(); });
     mToMeBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickToMe(); });
@@ -210,6 +230,9 @@ bool ALPanelGhostStudio::postBuild()
     mArrayRingBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickArray(ALGhostStudio::FORMATION_RING); });
     mFormationCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onFormationCommit(); });
     mArrayBuildBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickBuildArray(); });
+    mStripStartBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickStartStrip(); });
+    mStripCancelBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickCancelStrip(); });
+    mMotionApplyBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onMotionCommit(); });
     onFormationCommit();
 
     mShowAllCheck->set(ALGhostStudio::instance().getShowAll());
@@ -306,6 +329,7 @@ void ALPanelGhostStudio::draw()
     refreshSourceCombo();
     refreshList();
     refreshLookTargetCombo();
+    refreshAnimationLibrary();
 
     // [R2-3] mirror the SHARED selection (the in-world edit tool writes it;
     // both panel hosts follow). selectByID is programmatic -- no commit loop.
@@ -398,6 +422,40 @@ void ALPanelGhostStudio::refreshLookTargetCombo()
     }
 }
 
+void ALPanelGhostStudio::refreshAnimationLibrary()
+{
+    static LLFrameTimer refresh_timer;
+    if (!mAnimationLibrarySig.empty() &&
+        refresh_timer.getElapsedTimeF32() < 2.f)
+    {
+        return;
+    }
+    refresh_timer.reset();
+    const auto& entries = ALGhostAnimAssetIndex::instance().refreshInventory();
+    std::string signature;
+    for (const auto& entry : entries)
+    {
+        signature += entry.mAssetId.asString();
+        signature += entry.mName;
+    }
+    if (signature == mAnimationLibrarySig)
+    {
+        return;
+    }
+    const LLSD selected = mAnimationLibraryCombo->getSelectedValue();
+    mAnimationLibraryCombo->removeall();
+    mAnimationLibraryCombo->add("Choose inventory animation...", LLUUID::null);
+    for (const auto& entry : entries)
+    {
+        mAnimationLibraryCombo->add(entry.mName, entry.mAssetId);
+    }
+    if (!selected.isUndefined())
+    {
+        mAnimationLibraryCombo->setSelectedByValue(selected, true);
+    }
+    mAnimationLibrarySig = signature;
+}
+
 void ALPanelGhostStudio::refreshList()
 {
     ALGhostStudio& studio = ALGhostStudio::instance();
@@ -475,6 +533,9 @@ void ALPanelGhostStudio::refreshDetail()
     mFaceNowBtn->setEnabled(have);
     mKeepFacingCheck->setEnabled(have);
     const bool entity = have && inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE;
+    const bool directed = entity &&
+        inst->mDriveMode == ALGhostStudio::DRIVE_DIRECTED;
+    mLookSection->setVisible(!entity);
     mRefreshBtn->setVisible(entity);
     mRefreshBtn->setEnabled(entity);
     std::string type = "Type: No selection";
@@ -497,8 +558,13 @@ void ALPanelGhostStudio::refreshDetail()
     mAnimResumeBtn->setEnabled(entity);
     mEntityLookCombo->setEnabled(entity);
     mDriveModeCombo->setEnabled(entity);
-    mDirectedAnimEdit->setEnabled(entity &&
-        inst->mDriveMode == ALGhostStudio::DRIVE_DIRECTED);
+    mDirectedAnimEdit->setVisible(directed);
+    mDirectedAnimEdit->setEnabled(directed);
+    mAnimationLibraryCombo->setVisible(directed);
+    mAnimationLibraryCombo->setEnabled(directed);
+    mAnimMetadataText->setVisible(directed);
+    mLoopModeCombo->setEnabled(entity);
+    mAnimSyncBtn->setEnabled(entity);
     mPlaceBtn->setEnabled(overlay);
     mToActorBtn->setEnabled(overlay);
     mToMeBtn->setEnabled(overlay);
@@ -530,6 +596,9 @@ void ALPanelGhostStudio::refreshDetail()
     mFormationCombo->setEnabled(have);
     mFormationParam->setEnabled(have);
     mArrayBuildBtn->setEnabled(have);
+    mStripStartBtn->setEnabled(have);
+    mStripCancelBtn->setEnabled(mActiveStrip != 0);
+    mMotionApplyBtn->setEnabled(have);
 
     if (!have)
     {
@@ -580,6 +649,54 @@ void ALPanelGhostStudio::refreshDetail()
     if (entity && !mDirectedAnimEdit->hasFocus())
     {
         mDirectedAnimEdit->setText(inst->mDirectedAnim.asString());
+    }
+    mLoopModeCombo->setValue(inst->mLoopMode);
+
+    if (directed)
+    {
+        ALGhostAnimAssetIndex& index = ALGhostAnimAssetIndex::instance();
+        if (inst->mDirectedAnim.notNull())
+        {
+            mAnimationLibraryCombo->setValue(inst->mDirectedAnim);
+            index.requestMetadata(inst->mDirectedAnim);
+        }
+        const auto* info = index.find(inst->mDirectedAnim);
+        std::string metadata = "Metadata unavailable";
+        if (inst->mDirectedAnim.isNull())
+        {
+            metadata = "Choose an owned inventory animation or paste a UUID";
+        }
+        else if (info && info->mAvailability == ALGhostAnimAssetIndex::AVAILABLE_PENDING)
+        {
+            metadata = "Metadata pending...";
+        }
+        else if (info && info->mAvailability == ALGhostAnimAssetIndex::AVAILABLE_READY)
+        {
+            metadata = llformat(
+                "%.2fs | asset loop %s %.2f-%.2f | ease %.2f/%.2f | "
+                "priority %d | %d joints",
+                info->mDuration, info->mLoop ? "yes" : "no",
+                info->mLoopIn, info->mLoopOut, info->mEaseIn, info->mEaseOut,
+                info->mPriority, (S32)info->mJoints.size());
+            if (!info->mHandPoseName.empty())
+            {
+                metadata += " | hand " + info->mHandPoseName;
+            }
+            if (!info->mEmoteName.empty())
+            {
+                metadata += " | emote " + info->mEmoteName;
+            }
+            if (!info->mJoints.empty())
+            {
+                metadata += "\nJoints: ";
+                for (const std::string& joint : info->mJoints)
+                {
+                    if (metadata.back() != ' ') metadata += ", ";
+                    metadata += joint;
+                }
+            }
+        }
+        mAnimMetadataText->setText(metadata);
     }
 
     // the rest loads on selection change only (never over in-progress edits)
@@ -653,6 +770,16 @@ void ALPanelGhostStudio::refreshStatus()
     {
         mStatusText->setText(txt);
     }
+    const std::string strip = studio.freezeStripStatus();
+    if (mStripStatus->getText() != strip)
+    {
+        mStripStatus->setText(strip);
+    }
+    if (mActiveStrip && strip.find(llformat("Strip %u:", mActiveStrip)) != 0)
+    {
+        mActiveStrip = 0;
+        mStripCancelBtn->setEnabled(false);
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -663,6 +790,23 @@ void ALPanelGhostStudio::onListSelect()
     // [R2-3] the list drives the SHARED selection (tool + both hosts follow);
     // refreshDetail() loads the widgets on the next draw
     ALGhostStudio::instance().setSelected(selectedInstance());
+}
+
+void ALPanelGhostStudio::onListMouseUp(S32 x, S32, MASK mask)
+{
+    if (mask != MASK_NONE || mList->getColumnIndexFromOffset(x) != 0)
+    {
+        return;
+    }
+
+    if (ALGhostStudio::Instance* inst =
+            ALGhostStudio::instance().getInstance(selectedInstance()))
+    {
+        ALGhostStudio::instance().setInstanceEnabled(inst->mId, !inst->mEnabled);
+        // The enabled bit is part of mListSig, so this rebuilds the dot now
+        // while preserving the selected instance by UUID.
+        refreshList();
+    }
 }
 
 void ALPanelGhostStudio::onListDoubleClick()
@@ -921,6 +1065,39 @@ void ALPanelGhostStudio::onDirectedAnimCommit()
     }
     ALGhostStudio::instance().setInstanceDriveMode(
         inst->mId, ALGhostStudio::DRIVE_DIRECTED, anim);
+}
+
+void ALPanelGhostStudio::onAnimationLibraryCommit()
+{
+    const LLUUID asset_id =
+        mAnimationLibraryCombo->getSelectedValue().asUUID();
+    if (asset_id.isNull())
+    {
+        return;
+    }
+    mDirectedAnimEdit->setText(asset_id.asString());
+    onDirectedAnimCommit();
+    ALGhostAnimAssetIndex::instance().requestMetadata(asset_id);
+}
+
+void ALPanelGhostStudio::onLoopModeCommit()
+{
+    const auto mode = (ALGhostStudio::ELoopMode)
+        mLoopModeCombo->getValue().asInteger();
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    for (const LLUUID& id : selectedInstances())
+    {
+        studio.setInstanceLoopMode(id, mode);
+    }
+}
+
+void ALPanelGhostStudio::onClickAnimSync()
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    for (const LLUUID& id : selectedInstances())
+    {
+        studio.restartInstanceAnimation(id);
+    }
 }
 
 void ALPanelGhostStudio::onClickPlace()
@@ -1255,6 +1432,36 @@ void ALPanelGhostStudio::onFormationCommit()
     mFormationParam->setLabel(std::string(label));
     mFormationParam->setValue(value);
     mFormationParam->setVisible(value > 0.f);
+}
+
+void ALPanelGhostStudio::onClickStartStrip()
+{
+    mActiveStrip = ALGhostStudio::instance().startFreezeStrip(
+        selectedInstance(), mStripCount->getValue().asInteger(),
+        (F32)mStripInterval->getValue().asReal(),
+        (F32)mArraySpacing->getValue().asReal(),
+        (ALGhostStudio::EFormation)mFormationCombo->getValue().asInteger(),
+        (F32)mFormationParam->getValue().asReal());
+    mStripCancelBtn->setEnabled(mActiveStrip != 0);
+}
+
+void ALPanelGhostStudio::onClickCancelStrip()
+{
+    if (mActiveStrip)
+    {
+        ALGhostStudio::instance().cancelFreezeStrip(mActiveStrip);
+        mActiveStrip = 0;
+    }
+    mStripCancelBtn->setEnabled(false);
+}
+
+void ALPanelGhostStudio::onMotionCommit()
+{
+    ALGhostStudio::instance().setFormationMotion(
+        selectedInstances(),
+        (ALGhostStudio::EMotion)mMotionCombo->getValue().asInteger(),
+        (F32)mMotionSpeed->getValue().asReal(),
+        (F32)mMotionAmplitude->getValue().asReal());
 }
 
 void ALPanelGhostStudio::onShowAllToggle()

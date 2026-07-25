@@ -109,6 +109,8 @@ public:
     void setEntityScale(F32 scale);
     F32 getUniformScale() const override { return mEntityScale; }
     void setEntityDriveMode(S32 mode, const LLUUID& directed_anim);
+    void setEntityLoopMode(S32 mode);
+    void restartEntityAnimation();
     void setEntityLook(S32 look, F32 alpha);
 
     virtual bool isImpostor() { return false; }
@@ -152,14 +154,19 @@ private:
     void updateEntityOuterTransform();
     void stampEntityOuterTransform(LLViewerObject* object);
     void clearClonedObjectAnimations();
+    void diagnoseSourceSitTransition(LLVOAvatar* source);
 
     bool mMarkedForDeath;
     bool mEntityCloneVisible;
     F32 mEntityScale = 1.f;
     S32 mEntityDriveMode = 0; // ALGhostStudio::DRIVE_MIRROR (avoid header cycle)
+    S32 mEntityLoopMode = 0;  // ALGhostStudio::LOOP_RETRIGGER
     S32 mEntityLook = 0;
     F32 mEntityLookAlpha = 1.f;
     LLUUID mEntityDirectedAnim;
+    bool mEntityDirectedStarted = false;
+    bool mEntityDirectedWasActive = false;
+    F32 mEntityDirectedStartTime = 0.f;
     // Holding the pause handle keeps LLCharacter::updateMotions() from
     // automatically unpausing on the next visible frame.
     LLAnimPauseRequest mEntityPauseRequest;
@@ -168,6 +175,9 @@ private:
     // entity mirrors. The UUID is resolved through gObjectList each frame so
     // the ghost never owns or extends the source avatar's lifetime.
     LLUUID mAnimationSourceId;
+    bool mSourceSitStateKnown = false;
+    bool mLastSourceSitting = false;
+    LLFrameTimer mGhostSitLogTimer;
 
     // The client-only linksets we attached.
     //

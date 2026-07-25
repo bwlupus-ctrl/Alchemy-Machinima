@@ -72,6 +72,7 @@ public:
     // motion controller only, ignoring the source. FROZEN = hold the current
     // pose. Ignored for overlay instances.
     enum EDriveMode : S32 { DRIVE_MIRROR = 0, DRIVE_DIRECTED, DRIVE_FROZEN };
+    enum ELoopMode : S32 { LOOP_RETRIGGER = 0, LOOP_PLAY_ONCE };
     enum EGhostLook : S32
     {
         LOOK_NORMAL = 0, LOOK_APPARITION, LOOK_HOLOGRAM, LOOK_CHROME,
@@ -87,6 +88,10 @@ public:
         FORMATION_LINE = 0, FORMATION_RING, FORMATION_ARC, FORMATION_GRID,
         FORMATION_V, FORMATION_SPIRAL, FORMATION_STAIRCASE, FORMATION_TUNNEL,
         FORMATION_SCATTER
+    };
+    enum EMotion : S32
+    {
+        MOTION_OFF = 0, MOTION_ORBIT, MOTION_SPIN, MOTION_BREATHE, MOTION_RIPPLE
     };
 
     // Frozen matrix palettes, keyed by (DRAWING avatar id, skin hash). The
@@ -111,6 +116,8 @@ public:
         EDriveMode  mDriveMode = DRIVE_MIRROR;
         LLUUID      mDirectedAnim;       // anim asset played in DRIVE_DIRECTED
         F32         mAnimSpeed = 1.f;    // per-clone multiplier, before Chaos
+        ELoopMode   mLoopMode = LOOP_RETRIGGER;
+        bool        mRestartOnResume = false;
         EDriveMode  mResumeDriveMode = DRIVE_MIRROR;
         LLUUID      mResumeDirectedAnim;
 
@@ -130,6 +137,18 @@ public:
         LLVector3d  mChaosBaseFoot;
         LLQuaternion mChaosBaseRotation;
         F32         mChaosBaseScale = 1.f;
+
+        // Authored transform retained while procedural formation motion is on.
+        EMotion     mMotion = MOTION_OFF;
+        F32         mMotionSpeed = 0.2f;     // cycles/second
+        F32         mMotionAmplitude = 1.f; // metres, or radial fraction for breathe
+        bool        mMotionHasBase = false;
+        LLVector3d  mMotionBaseFoot;
+        LLQuaternion mMotionBaseRotation;
+        F32         mMotionBaseScale = 1.f;
+        LLVector3d  mMotionCentre;
+        S32         mMotionSlot = 0;
+        F64         mMotionStart = 0.0;
 
         // [ManipProxy] bumped on EXTERNAL transform edits (panel numeric, array
         // helpers). The in-world manip proxy PULL writes mFootGlobal/mRotation
@@ -151,6 +170,7 @@ public:
         void setYaw(F32 yaw_rad)
         {
             mRotation = LLQuaternion(yaw_rad, LLVector3::z_axis);
+            if (mMotionHasBase) mMotionBaseRotation = mRotation;
             mChaosHasBase = false;
             ++mTransformRevision;
         }
@@ -159,6 +179,7 @@ public:
         void setFootGlobal(const LLVector3d& foot)
         {
             mFootGlobal = foot;
+            if (mMotionHasBase) mMotionBaseFoot = foot;
             mChaosHasBase = false;
             ++mTransformRevision;
         }
@@ -166,12 +187,18 @@ public:
         {
             mFootGlobal = foot;
             mRotation   = rot;
+            if (mMotionHasBase)
+            {
+                mMotionBaseFoot = foot;
+                mMotionBaseRotation = rot;
+            }
             mChaosHasBase = false;
             ++mTransformRevision;
         }
         void setScale(F32 scale)
         {
             mScale = scale;
+            if (mMotionHasBase) mMotionBaseScale = scale;
             mChaosHasBase = false;
             ++mTransformRevision;    // re-syncs the manip proxy box to the new size
         }
@@ -242,6 +269,8 @@ public:
     bool      setInstanceScale(const LLUUID& id, F32 scale);
     bool      setInstanceAnimSpeed(const LLUUID& id, F32 speed);
     bool      setInstancePaused(const LLUUID& id, bool paused);
+    bool      setInstanceLoopMode(const LLUUID& id, ELoopMode mode);
+    bool      restartInstanceAnimation(const LLUUID& id);
     bool      applyEntityTransform(const LLUUID& id);
     // Yaw-only client transform. target_global and mFootGlobal share the
     // global frame; entity clones are pushed, overlays consume mRotation.
@@ -250,6 +279,7 @@ public:
     void      setLookTarget(const LLUUID& id, ELookTarget target,
                             const LLUUID& target_id, bool keep_facing);
     void      updateLookAt();
+    void      updatePerFrame();
     bool      refreshEntityClone(const LLUUID& id);   // re-pull source appearance + worn attachments onto the clone
     bool      setInstanceChaos(const LLUUID& id, F32 amount);
     bool      setInstanceLook(const LLUUID& id, EGhostLook look);
@@ -280,18 +310,53 @@ public:
     S32 makeArray(const LLUUID& id, S32 count, F32 spacing,
                   EFormation formation, F32 parameter = 0.f);
 
+    // Captures are scheduled on updatePerFrame(), one at t0, then at real-time
+    // interval boundaries. Starting another strip is allowed; each job owns
+    // its source id and output names independently.
+    U32  startFreezeStrip(const LLUUID& source_id, S32 count, F32 interval,
+                          F32 spacing, EFormation formation,
+                          F32 parameter = 0.f);
+    bool cancelFreezeStrip(U32 strip_id);
+    std::string freezeStripStatus() const;
+
+    // Enables/reconfigures one motion group. OFF restores every member's
+    // authored baseline. Invalid/deleted ids are ignored.
+    S32 setFormationMotion(const std::vector<LLUUID>& ids, EMotion motion,
+                           F32 speed, F32 amplitude);
+
     // ---- render-side queries ----
     // raw source ids (may include null = self) of enabled instances; the batch
     // collector resolves + de-dupes them into its wanted set
     void getWantedSources(uuid_vec_t& out) const;
 
 private:
+    struct FreezeStrip
+    {
+        U32 mId = 0;
+        LLUUID mSourceId;
+        S32 mCount = 0;
+        S32 mCaptured = 0;
+        F32 mInterval = 0.f;
+        F32 mSpacing = 1.5f;
+        EFormation mFormation = FORMATION_LINE;
+        F32 mParameter = 0.f;
+        F64 mNextCapture = 0.0;
+    };
+    LLVector3d formationSlot(const Instance& proto, S32 slot, S32 count,
+                             F32 spacing, EFormation formation,
+                             F32 parameter) const;
+    void updateFreezeStrips(F64 now);
+    void updateFormationMotion(F64 now);
     std::string makeDefaultName() const;
     ALGhostStudio() = default;
 
     std::vector<Instance> mInstances;
     bool mShowAll = true;
     LLUUID mSelected;       // [R2-3] shared edit selection (null = none)
+    std::vector<FreezeStrip> mFreezeStrips;
+    U32 mNextStripId = 1;
+    std::string mLastStripStatus;
+    bool mHasMotion = false;
 };
 
 #endif // AL_ALGHOSTSTUDIO_H

@@ -22,6 +22,7 @@
 #include "llviewerobjectlist.h"
 #include "llviewerregion.h"
 #include "llviewercamera.h"
+#include "lltimer.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -224,6 +225,7 @@ ALGhostStudio::Instance* ALGhostStudio::spawnEntityClone(
     ghost->setEntityScale(committed->mScale);
     ghost->setAnimTimeFactor(committed->mAnimSpeed);
     ghost->setEntityDriveMode(committed->mDriveMode, committed->mDirectedAnim);
+    ghost->setEntityLoopMode(committed->mLoopMode);
     ghost->setEntityLook(committed->mLook, committed->mLookAlpha);
     set_entity_clone_visible(ghost, mShowAll && committed->mEnabled);
     LLDirectorCast::instance().add(committed->mEntityId);
@@ -390,6 +392,8 @@ ALGhostStudio::Instance* ALGhostStudio::duplicateInstanceInPlace(const LLUUID& i
     applyEntityTransform(copy->mId);
     setInstanceScale(copy->mId, copy->mScale);
     setInstanceAnimSpeed(copy->mId, copy->mAnimSpeed);
+    setInstanceDriveMode(copy->mId, copy->mDriveMode, copy->mDirectedAnim);
+    setInstanceLoopMode(copy->mId, copy->mLoopMode);
     return copy;
 }
 
@@ -505,7 +509,50 @@ bool ALGhostStudio::setInstancePaused(const LLUUID& id, bool paused)
     }
     const EDriveMode resume_mode = inst->mResumeDriveMode == DRIVE_FROZEN
         ? DRIVE_MIRROR : inst->mResumeDriveMode;
-    return setInstanceDriveMode(id, resume_mode, inst->mResumeDirectedAnim);
+    const bool restart = inst->mRestartOnResume;
+    inst->mRestartOnResume = false;
+    const bool resumed =
+        setInstanceDriveMode(id, resume_mode, inst->mResumeDirectedAnim);
+    if (resumed && restart)
+    {
+        restartInstanceAnimation(id);
+    }
+    return resumed;
+}
+
+bool ALGhostStudio::setInstanceLoopMode(const LLUUID& id, ELoopMode mode)
+{
+    Instance* inst = getInstance(id);
+    LLGhostAvatar* ghost = inst ? resolveEntityClone(id) : nullptr;
+    if (!inst || inst->mKind != BACKING_ENTITY_CLONE || !ghost)
+    {
+        return false;
+    }
+    inst->mLoopMode = (ELoopMode)llclamp((S32)mode,
+        (S32)LOOP_RETRIGGER, (S32)LOOP_PLAY_ONCE);
+    ghost->setEntityLoopMode(inst->mLoopMode);
+    return true;
+}
+
+bool ALGhostStudio::restartInstanceAnimation(const LLUUID& id)
+{
+    Instance* inst = getInstance(id);
+    if (!inst || inst->mKind != BACKING_ENTITY_CLONE)
+    {
+        return false;
+    }
+    if (inst->mDriveMode == DRIVE_FROZEN)
+    {
+        inst->mRestartOnResume = true;
+        return true;
+    }
+    LLGhostAvatar* ghost = resolveEntityClone(id);
+    if (!ghost)
+    {
+        return false;
+    }
+    ghost->restartEntityAnimation();
+    return true;
 }
 
 LLGhostAvatar* ALGhostStudio::resolveEntityClone(const LLUUID& id) const
@@ -635,6 +682,173 @@ void ALGhostStudio::updateLookAt()
     }
 }
 
+void ALGhostStudio::updatePerFrame()
+{
+    assert_main_thread();
+    if (mFreezeStrips.empty() && !mHasMotion)
+    {
+        updateLookAt();
+        return;
+    }
+    const F64 now = LLTimer::getTotalSeconds();
+    if (!mFreezeStrips.empty())
+    {
+        updateFreezeStrips(now);
+    }
+    if (mHasMotion)
+    {
+        updateFormationMotion(now);
+    }
+
+    // Precedence: procedural motion owns position. Spin owns yaw; otherwise
+    // keep-facing is last and owns yaw. Chaos is folded into motion below as a
+    // stable additive variation, so the two never overwrite each other.
+    std::vector<LLUUID> tracking;
+    for (const Instance& inst : mInstances)
+    {
+        if (inst.mKeepFacing && inst.mMotion != MOTION_SPIN)
+        {
+            tracking.push_back(inst.mId);
+        }
+    }
+    for (const LLUUID& id : tracking)
+    {
+        faceInstance(id);
+    }
+}
+
+S32 ALGhostStudio::setFormationMotion(const std::vector<LLUUID>& ids,
+                                      EMotion motion, F32 speed, F32 amplitude)
+{
+    assert_main_thread();
+    LLVector3d centre;
+    S32 valid = 0;
+    for (const LLUUID& id : ids)
+    {
+        if (Instance* inst = getInstance(id))
+        {
+            const LLVector3d foot = inst->mMotionHasBase
+                ? inst->mMotionBaseFoot
+                : (inst->mChaosHasBase ? inst->mChaosBaseFoot : inst->mFootGlobal);
+            centre += foot;
+            ++valid;
+        }
+    }
+    if (!valid) return 0;
+    centre /= (F64)valid;
+    const F64 now = LLTimer::getTotalSeconds();
+    S32 slot = 0;
+    for (const LLUUID& id : ids)
+    {
+        Instance* inst = getInstance(id);
+        if (!inst) continue;
+        if (motion == MOTION_OFF)
+        {
+            if (inst->mMotionHasBase)
+            {
+                inst->mFootGlobal = inst->mMotionBaseFoot;
+                inst->mRotation = inst->mMotionBaseRotation;
+                inst->mScale = inst->mMotionBaseScale;
+                inst->mMotionHasBase = false;
+                inst->mMotion = MOTION_OFF;
+                ++inst->mTransformRevision;
+                if (inst->mChaosEnabled)
+                {
+                    setInstanceChaos(id, inst->mChaosAmount);
+                    continue;
+                }
+                if (inst->mKind == BACKING_ENTITY_CLONE)
+                {
+                    if (LLGhostAvatar* ghost = resolveEntityClone(id))
+                        ghost->setEntityScale(inst->mScale);
+                    applyEntityTransform(id);
+                }
+            }
+            continue;
+        }
+        if (!inst->mMotionHasBase)
+        {
+            inst->mMotionBaseFoot = inst->mChaosHasBase
+                ? inst->mChaosBaseFoot : inst->mFootGlobal;
+            inst->mMotionBaseRotation = inst->mChaosHasBase
+                ? inst->mChaosBaseRotation : inst->mRotation;
+            inst->mMotionBaseScale = inst->mChaosHasBase
+                ? inst->mChaosBaseScale : inst->mScale;
+            inst->mMotionHasBase = true;
+        }
+        inst->mMotion = motion;
+        inst->mMotionSpeed = llclamp(speed, 0.f, 10.f);
+        inst->mMotionAmplitude = llclamp(amplitude, 0.f, 100.f);
+        inst->mMotionCentre = centre;
+        inst->mMotionSlot = slot++;
+        inst->mMotionStart = now;
+    }
+    mHasMotion = std::any_of(mInstances.begin(), mInstances.end(),
+        [](const Instance& i) { return i.mMotion != MOTION_OFF; });
+    return valid;
+}
+
+void ALGhostStudio::updateFormationMotion(F64 now)
+{
+    mHasMotion = false;
+    for (Instance& inst : mInstances)
+    {
+        if (inst.mMotion == MOTION_OFF || !inst.mMotionHasBase) continue;
+        mHasMotion = true;
+        const F32 phase = F_TWO_PI * inst.mMotionSpeed *
+                          (F32)(now - inst.mMotionStart);
+        const LLVector3d radial = inst.mMotionBaseFoot - inst.mMotionCentre;
+        inst.mFootGlobal = inst.mMotionBaseFoot;
+        inst.mRotation = inst.mMotionBaseRotation;
+        inst.mScale = inst.mMotionBaseScale;
+        if (inst.mMotion == MOTION_ORBIT)
+        {
+            const F32 a = phase * inst.mMotionAmplitude;
+            const F64 c = cosf(a), s = sinf(a);
+            inst.mFootGlobal = inst.mMotionCentre +
+                LLVector3d(radial.mdV[VX] * c - radial.mdV[VY] * s,
+                           radial.mdV[VX] * s + radial.mdV[VY] * c,
+                           radial.mdV[VZ]);
+        }
+        else if (inst.mMotion == MOTION_SPIN)
+        {
+            inst.mRotation = LLQuaternion(phase * inst.mMotionAmplitude,
+                LLVector3::z_axis) * inst.mMotionBaseRotation;
+        }
+        else if (inst.mMotion == MOTION_BREATHE)
+        {
+            inst.mFootGlobal = inst.mMotionCentre +
+                radial * (F64)(1.f + inst.mMotionAmplitude * sinf(phase));
+        }
+        else if (inst.mMotion == MOTION_RIPPLE)
+        {
+            inst.mFootGlobal.mdV[VZ] += inst.mMotionAmplitude *
+                sinf(phase - (F32)inst.mMotionSlot * 0.7f);
+        }
+        if (inst.mChaosEnabled)
+        {
+            inst.mFootGlobal += LLVector3d(
+                (seeded_unit(inst.mId, 3) * 2.f - 1.f) * 0.35f * inst.mChaosAmount,
+                (seeded_unit(inst.mId, 4) * 2.f - 1.f) * 0.35f * inst.mChaosAmount, 0.0);
+            if (inst.mMotion != MOTION_SPIN)
+            {
+                const F32 yaw = (seeded_unit(inst.mId, 1) * 2.f - 1.f) *
+                                15.f * DEG_TO_RAD * inst.mChaosAmount;
+                inst.mRotation = LLQuaternion(yaw, LLVector3::z_axis) * inst.mRotation;
+            }
+            inst.mScale = llclamp(inst.mMotionBaseScale *
+                (1.f + (seeded_unit(inst.mId, 2) * 2.f - 1.f) *
+                 0.12f * inst.mChaosAmount), 0.05f, 10.f);
+        }
+        if (inst.mKind == BACKING_ENTITY_CLONE)
+        {
+            if (LLGhostAvatar* ghost = resolveEntityClone(inst.mId))
+                ghost->setEntityScale(inst.mScale);
+            applyEntityTransform(inst.mId);
+        }
+    }
+}
+
 bool ALGhostStudio::setInstanceChaos(const LLUUID& id, F32 amount)
 {
     Instance* inst = getInstance(id);
@@ -709,6 +923,7 @@ bool ALGhostStudio::setInstanceDriveMode(const LLUUID& id, EDriveMode mode,
     inst->mDriveMode = mode;
     inst->mDirectedAnim = mode == DRIVE_DIRECTED ? directed_anim : LLUUID::null;
     ghost->setEntityDriveMode(mode, inst->mDirectedAnim);
+    ghost->setEntityLoopMode(inst->mLoopMode);
     return true;
 }
 
@@ -904,6 +1119,178 @@ void ALGhostStudio::unfreezeInstance(const LLUUID& id)
         inst->mPose = POSE_LIVE;
         inst->mFrozenPalettes.clear();
         inst->mFrozenAttachMats.clear();
+    }
+}
+
+U32 ALGhostStudio::startFreezeStrip(const LLUUID& source_id, S32 count,
+                                    F32 interval, F32 spacing,
+                                    EFormation formation, F32 parameter)
+{
+    assert_main_thread();
+    if (!getInstance(source_id) || count < 1)
+    {
+        return 0;
+    }
+    FreezeStrip job;
+    job.mId = mNextStripId++;
+    job.mSourceId = source_id;
+    job.mCount = llclamp(count, 1, 64);
+    job.mInterval = llclamp(interval, 0.01f, 60.f);
+    job.mSpacing = llmax(spacing, 0.05f);
+    job.mFormation = formation;
+    job.mParameter = parameter;
+    job.mNextCapture = LLTimer::getTotalSeconds(); // first pose on next frame
+    mFreezeStrips.push_back(job);
+    mLastStripStatus = llformat("Strip %u: capturing 0/%d", job.mId, job.mCount);
+    return job.mId;
+}
+
+bool ALGhostStudio::cancelFreezeStrip(U32 strip_id)
+{
+    const auto found = std::find_if(mFreezeStrips.begin(), mFreezeStrips.end(),
+        [strip_id](const FreezeStrip& j) { return j.mId == strip_id; });
+    if (found == mFreezeStrips.end()) return false;
+    mLastStripStatus = llformat("Strip %u cancelled at %d/%d",
+        found->mId, found->mCaptured, found->mCount);
+    mFreezeStrips.erase(found);
+    return true;
+}
+
+std::string ALGhostStudio::freezeStripStatus() const
+{
+    if (!mFreezeStrips.empty())
+    {
+        const FreezeStrip& job = mFreezeStrips.back();
+        return llformat("Strip %u: capturing %d/%d",
+            job.mId, job.mCaptured, job.mCount);
+    }
+    return mLastStripStatus;
+}
+
+LLVector3d ALGhostStudio::formationSlot(const Instance& p, S32 slot, S32 count,
+                                        F32 spacing, EFormation formation,
+                                        F32 parameter) const
+{
+    const F32 yaw = p.getYaw();
+    const LLVector3d forward(cosf(yaw), sinf(yaw), 0.0);
+    const LLVector3d left(-sinf(yaw), cosf(yaw), 0.0);
+    if (formation == FORMATION_LINE)
+        return p.mFootGlobal + forward * (F64)(spacing * slot);
+    if (formation == FORMATION_RING)
+    {
+        const F32 step = F_TWO_PI / (F32)llmax(2, count);
+        const F32 radius = spacing / (2.f * sinf(step * .5f));
+        const F32 a = yaw + step * slot;
+        return p.mFootGlobal + LLVector3d(cosf(a) - cosf(yaw),
+            sinf(a) - sinf(yaw), 0.0) * (F64)radius;
+    }
+    if (formation == FORMATION_ARC)
+    {
+        const F32 sweep = (parameter > 0.f ? parameter : 120.f) * DEG_TO_RAD;
+        const F32 step = sweep / (F32)llmax(1, count - 1);
+        const F32 radius = spacing / (2.f * sinf(llmax(.001f, step * .5f)));
+        const F32 a0 = yaw - sweep * .5f, a = a0 + step * slot;
+        return p.mFootGlobal + LLVector3d(cosf(a) - cosf(a0),
+            sinf(a) - sinf(a0), 0.0) * (F64)radius;
+    }
+    if (formation == FORMATION_GRID)
+    {
+        const S32 cols = (S32)ceilf(sqrtf((F32)count));
+        return p.mFootGlobal + forward * (F64)(spacing * (slot / cols)) +
+               left * (F64)(spacing * (slot % cols));
+    }
+    if (formation == FORMATION_V)
+    {
+        const F32 half = (parameter > 0.f ? parameter : 60.f) * DEG_TO_RAD * .5f;
+        const F32 side = (slot & 1) ? 1.f : -1.f;
+        const F32 rank = (F32)((slot + 1) / 2);
+        const LLVector3d dir(cosf(yaw + side * half), sinf(yaw + side * half), 0.0);
+        return p.mFootGlobal + dir * (F64)(spacing * rank);
+    }
+    if (formation == FORMATION_SPIRAL)
+    {
+        const F32 a = yaw + slot * 0.8f;
+        const F32 r = spacing * sqrtf((F32)slot);
+        return p.mFootGlobal + LLVector3d(cosf(a), sinf(a), 0.0) * (F64)r;
+    }
+    if (formation == FORMATION_STAIRCASE)
+    {
+        const F32 rise = parameter > 0.f ? parameter : .75f;
+        return p.mFootGlobal + forward * (F64)(spacing * slot) +
+               LLVector3d(0.0, 0.0, rise * slot);
+    }
+    if (formation == FORMATION_TUNNEL)
+    {
+        const F32 side = (slot & 1) ? 1.f : -1.f;
+        return p.mFootGlobal + forward * (F64)(spacing * ((slot + 1) / 2)) +
+               left * (F64)(side * spacing);
+    }
+    const F32 radius = parameter > 0.f ? parameter : spacing * count * .5f;
+    const F32 a = F_TWO_PI * seeded_unit(p.mId, 100u + (U32)slot);
+    const F32 r = radius * sqrtf(seeded_unit(p.mId, 200u + (U32)slot));
+    return p.mFootGlobal + LLVector3d(cosf(a), sinf(a), 0.0) * (F64)r;
+}
+
+void ALGhostStudio::updateFreezeStrips(F64 now)
+{
+    for (auto it = mFreezeStrips.begin(); it != mFreezeStrips.end(); )
+    {
+        FreezeStrip& job = *it;
+        Instance* source = getInstance(job.mSourceId);
+        LLVOAvatar* source_avatar =
+            source ? LLDirectorCast::instance().resolve(source->mSource) : nullptr;
+        if (!source || !source_avatar || source_avatar->isDead())
+        {
+            mLastStripStatus = llformat("Strip %u stopped: source missing (%d/%d kept)",
+                job.mId, job.mCaptured, job.mCount);
+            it = mFreezeStrips.erase(it);
+            continue;
+        }
+        if (now < job.mNextCapture)
+        {
+            ++it;
+            continue;
+        }
+        const Instance proto = *source;
+        Instance* snap = duplicateInstanceInPlace(job.mSourceId);
+        if (!snap)
+        {
+            mLastStripStatus = llformat("Strip %u stopped: duplicate failed (%d/%d kept)",
+                job.mId, job.mCaptured, job.mCount);
+            it = mFreezeStrips.erase(it);
+            continue;
+        }
+        const LLUUID snap_id = snap->mId;
+        snap->setFootGlobal(formationSlot(proto, job.mCaptured, job.mCount,
+            job.mSpacing, job.mFormation, job.mParameter));
+        renameInstance(snap_id, llformat("Strip %u \xC2\xB7 %d/%d",
+            job.mId, job.mCaptured + 1, job.mCount));
+        const bool held = snap->mKind == BACKING_ENTITY_CLONE
+            ? setInstancePaused(snap_id, true) : freezeInstance(snap_id);
+        if (!held)
+        {
+            removeInstance(snap_id);
+            mLastStripStatus = llformat("Strip %u waiting for a renderable pose (%d/%d)",
+                job.mId, job.mCaptured, job.mCount);
+            // Retry rather than advancing: batch collection can lag duplication.
+            job.mNextCapture = now + 0.05;
+            ++it;
+            continue;
+        }
+        if (snap->mKind == BACKING_ENTITY_CLONE) applyEntityTransform(snap_id);
+        ++job.mCaptured;
+        mLastStripStatus = llformat("Strip %u: capturing %d/%d",
+            job.mId, job.mCaptured, job.mCount);
+        // Never "catch up" missed deadlines with captures on adjacent frames:
+        // successive poses must remain separated by the authored real interval.
+        job.mNextCapture = now + job.mInterval;
+        if (job.mCaptured >= job.mCount)
+        {
+            mLastStripStatus = llformat("Strip %u complete: %d/%d",
+                job.mId, job.mCaptured, job.mCount);
+            it = mFreezeStrips.erase(it);
+        }
+        else ++it;
     }
 }
 

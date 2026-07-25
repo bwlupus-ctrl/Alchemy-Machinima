@@ -21,7 +21,7 @@
     <panel
      background_visible="false"
      follows="left|top|right"
-     height="1098"
+     height="1284"
      layout="topleft"
      left="0"
      min_width="330"
@@ -31,7 +31,7 @@
       <layout_stack
        animate="false"
        follows="left|top|right"
-       height="1098"
+       height="1284"
        layout="topleft"
        left="0"
        name="ghost_studio_sections"
@@ -75,7 +75,7 @@
         </layout_panel>
 
         <!-- Placement -->
-        <layout_panel auto_resize="false" height="330" layout="topleft" name="placement_section">
+        <layout_panel auto_resize="false" height="282" layout="topleft" name="placement_section">
           <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="place_lbl" right="-8" top="8" width="358">Placement</text>
           <text follows="left|top" font="SansSerifSmallBold" height="18" layout="topleft" left="8" name="ghost_type" top="29" width="174">Type: No selection</text>
           <line_editor follows="left|top|right" height="22" label="Name" layout="topleft" left="188" max_length_bytes="63" name="ghost_name" right="-8" top="25"
@@ -149,7 +149,7 @@
         </layout_panel>
 
         <!-- Pose and animation -->
-        <layout_panel auto_resize="false" height="194" layout="topleft" name="pose_section">
+        <layout_panel auto_resize="false" height="248" layout="topleft" name="pose_section">
           <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="pose_lbl" right="-8" top="8" width="358">Pose &amp; Animation</text>
           <button follows="left|top" height="22" label="Grab pose now" layout="topleft" left="8" name="btn_freeze" top="28"
            tool_tip="FREEZE: snapshot the source's current pose into this ghost (worn mesh + attachment placement). The ghost holds it while the live body keeps animating. Known limits: flexi tails/skirts keep their live physics motion, and legacy system-mesh eyeballs are not part of the ghost" width="126" />
@@ -175,14 +175,24 @@
             <combo_box.item label="Toon*" name="look_toon" value="4" />
             <combo_box.item label="Silhouette*" name="look_silhouette" value="5" />
           </combo_box>
-          <line_editor follows="left|top|right" height="22" label="Animation UUID" layout="topleft" left="158" max_length_bytes="36" name="directed_anim_editor" right="-8" top="106"
-           tool_tip="Animation asset UUID played only on the selected entity clone" width="208" />
-          <spinner decimal_digits="2" follows="left|top" height="22" increment="0.05" initial_value="1" label="Anim Speed" label_width="72" layout="topleft" left="8" max_val="4" min_val="0.05" name="anim_speed_spinner" top="136"
+          <spinner decimal_digits="2" follows="left|top" height="22" increment="0.05" initial_value="1" label="Anim Speed" label_width="72" layout="topleft" left="158" max_val="4" min_val="0.05" name="anim_speed_spinner" top="106"
            tool_tip="Per-clone animation speed relative to scene tempo. Chaos adds a stable variation of up to plus/minus 15 percent" width="144" />
-          <button follows="left|top" height="22" label="Pause" layout="topleft" left="164" name="btn_anim_pause" top="136"
-           tool_tip="Hold each selected entity clone at its current motion time. This is the existing Frozen drive state" width="72" />
-          <button follows="left|top" height="22" label="Resume" layout="topleft" left="242" name="btn_anim_resume" top="136"
-           tool_tip="Resume each selected clone in the Mirror or Directed mode it used before pausing" width="78" />
+          <combo_box follows="left|top" height="22" layout="topleft" left="8" name="anim_loop_mode_combo" top="134"
+           tool_tip="Loop re-triggers the clone-owned motion on completion; Play once lets it stop at the end. This does not rewrite baked asset metadata" width="142">
+            <combo_box.item label="Loop (re-trigger)" name="anim_loop_retrigger" value="0" />
+            <combo_box.item label="Play once" name="anim_play_once" value="1" />
+          </combo_box>
+          <button follows="left|top" height="22" label="Pause" layout="topleft" left="158" name="btn_anim_pause" top="134"
+           tool_tip="Hold each selected entity clone at its current motion time. This is the existing Frozen drive state" width="62" />
+          <button follows="left|top" height="22" label="Resume" layout="topleft" left="224" name="btn_anim_resume" top="134"
+           tool_tip="Resume each selected clone in the Mirror or Directed mode it used before pausing" width="66" />
+          <button follows="left|top" height="22" label="Sync" layout="topleft" left="294" name="btn_anim_sync" top="134"
+           tool_tip="Restart all selected clones together without changing speed, pause or drive mode" width="62" />
+          <combo_box follows="left|top|right" height="22" layout="topleft" left="8" name="animation_library_combo" right="-8" top="162" visible="false"
+           tool_tip="Animations in your own inventory only. Metadata loads asynchronously" width="358" />
+          <line_editor follows="left|top|right" height="22" label="Animation UUID" layout="topleft" left="8" max_length_bytes="36" name="directed_anim_editor" right="-8" top="190" visible="false"
+           tool_tip="Animation asset UUID played only on the selected entity clone; direct UUID paste remains supported" width="358" />
+          <text follows="left|top|right" height="34" layout="topleft" left="8" name="anim_metadata_text" right="-8" text_color="LtGray_50" top="216" visible="false" width="358">Metadata pending...</text>
         </layout_panel>
 
         <!-- Array -->
@@ -211,6 +221,35 @@
            tool_tip="Arc sweep / V spread in degrees, staircase rise or scatter radius in metres" width="130" />
           <button follows="left|top" height="22" label="Build" layout="topleft" left="264" name="btn_array_build" top="58"
            tool_tip="Build the selected formation; the selected prototype remains slot zero" width="70" />
+        </layout_panel>
+
+        <!-- Time and formation motion -->
+        <layout_panel auto_resize="false" height="180" layout="topleft" name="motion_section">
+          <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="motion_section_label" right="-8" top="8" width="358">Freeze Strip &amp; Formation Motion</text>
+          <spinner decimal_digits="0" follows="left|top" height="18" increment="1" initial_value="8" label="Frames" label_width="44" layout="topleft" left="8" max_val="64" min_val="1" name="strip_count_spinner" top="30"
+           tool_tip="Number of successive real-time pose snapshots" width="98" />
+          <spinner decimal_digits="2" follows="left|top" height="18" increment="0.05" initial_value="0.25" label="Interval" label_width="48" layout="topleft" left="112" max_val="60" min_val="0.01" name="strip_interval_spinner" top="30"
+           tool_tip="Real seconds between captures. Formation and spacing come from the Array section" width="110" />
+          <button follows="left|top" height="22" label="Capture" layout="topleft" left="228" name="btn_strip_start" top="28"
+           tool_tip="Capture successive poses into the selected Array formation" width="64" />
+          <button follows="left|top" height="22" label="Cancel" layout="topleft" left="298" name="btn_strip_cancel" top="28"
+           tool_tip="Stop this panel's active strip and keep snapshots already captured" width="60" />
+          <text follows="left|top|right" height="18" layout="topleft" left="8" name="strip_status" right="-8" text_color="LtGray_50" top="56" width="358">No strip capture</text>
+          <combo_box follows="left|top" height="22" layout="topleft" left="8" name="formation_motion_combo" top="82" width="112"
+           tool_tip="Continuous transform motion for the current multi-selection; Off restores authored placement">
+            <combo_box.item label="Off" name="motion_off" value="0" />
+            <combo_box.item label="Orbit" name="motion_orbit" value="1" />
+            <combo_box.item label="Spin" name="motion_spin" value="2" />
+            <combo_box.item label="Breathe" name="motion_breathe" value="3" />
+            <combo_box.item label="Ripple" name="motion_ripple" value="4" />
+          </combo_box>
+          <spinner decimal_digits="2" follows="left|top" height="18" increment="0.05" initial_value="0.2" label="Speed" label_width="38" layout="topleft" left="126" max_val="10" min_val="0" name="formation_motion_speed" top="84"
+           tool_tip="Cycles per second" width="102" />
+          <spinner decimal_digits="2" follows="left|top" height="18" increment="0.1" initial_value="1" label="Amp" label_width="30" layout="topleft" left="234" max_val="100" min_val="0" name="formation_motion_amplitude" top="84"
+           tool_tip="Orbit multiplier, breathe radial fraction, or ripple height in metres" width="94" />
+          <button follows="left|top" height="22" label="Apply to selection" layout="topleft" left="8" name="btn_formation_motion_apply" top="112"
+           tool_tip="Snapshot the selected ghosts' authored transforms and enable this group motion; choose Off to restore them" width="134" />
+          <text follows="left|top|right" height="42" layout="topleft" left="8" name="motion_precedence_help" right="-8" text_color="LtGray_50" top="138" width="358">Motion owns position. Keep-facing owns yaw except Spin. Chaos remains a stable additive variation.</text>
         </layout_panel>
 
         <!-- Status -->

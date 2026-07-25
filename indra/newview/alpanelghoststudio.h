@@ -57,6 +57,7 @@ private:
     void refreshLookTargetCombo();  // camera/me + cast + other ghosts
     void refreshList();             // instance rows (rebuilt on composed-sig change)
     void refreshDetail();           // selected-instance widgets + enables
+    void refreshAnimationLibrary();
     void refreshStatus();           // bottom status line
 
     LLUUID selectedInstance() const;    // list selection -> instance id (null = none)
@@ -64,6 +65,7 @@ private:
 
     // ---- list + CRUD ----
     void onListSelect();
+    void onListMouseUp(S32 x, S32 y, MASK mask);
     void onListDoubleClick();       // toggles the row's enable
     void onClickAdd();
     void onNameCommit();
@@ -83,6 +85,9 @@ private:
     void onClickAnimResume();
     void onDriveModeCommit();
     void onDirectedAnimCommit();
+    void onAnimationLibraryCommit();
+    void onLoopModeCommit();
+    void onClickAnimSync();
     void onClickPlace();            // arm the one-shot in-world placement tool
     void onClickToActor();          // snap to the source's current feet
     void onClickToMe();             // snap to my avatar's current feet
@@ -120,6 +125,9 @@ private:
     void onClickArray(ALGhostStudio::EFormation formation);
     void onClickBuildArray();
     void onFormationCommit();
+    void onClickStartStrip();
+    void onClickCancelStrip();
+    void onMotionCommit();
 
     // ---- master toggle ----
     void onShowAllToggle();
@@ -131,6 +139,7 @@ private:
     std::string mListSig;           // composed instance-list signature last built
     std::string mSourceSig;         // cast signature the source combo was built from
     std::string mLookTargetSig;
+    std::string mAnimationLibrarySig;
     LLUUID      mShownFor;          // instance the detail widgets were last loaded for
     bool        mEditMode = false;  // [R2-3] our transient edit tool is armed
     bool        mHintEdit = false;  // which hint string the header line shows
@@ -161,6 +170,11 @@ private:
     LLButton*         mAnimResumeBtn = nullptr;
     LLComboBox*       mDriveModeCombo = nullptr;
     LLLineEditor*     mDirectedAnimEdit = nullptr;
+    LLComboBox*       mAnimationLibraryCombo = nullptr;
+    LLComboBox*       mLoopModeCombo = nullptr;
+    LLButton*         mAnimSyncBtn = nullptr;
+    LLTextBox*        mAnimMetadataText = nullptr;
+    LLView*           mLookSection = nullptr;
     LLButton*         mPlaceBtn = nullptr;
     LLButton*         mToActorBtn = nullptr;
     LLButton*         mToMeBtn = nullptr;
@@ -196,6 +210,16 @@ private:
     LLComboBox*       mFormationCombo = nullptr;
     LLSpinCtrl*       mFormationParam = nullptr;
     LLButton*         mArrayBuildBtn = nullptr;
+    LLSpinCtrl*       mStripCount = nullptr;
+    LLSpinCtrl*       mStripInterval = nullptr;
+    LLButton*         mStripStartBtn = nullptr;
+    LLButton*         mStripCancelBtn = nullptr;
+    LLTextBox*        mStripStatus = nullptr;
+    LLComboBox*       mMotionCombo = nullptr;
+    LLSpinCtrl*       mMotionSpeed = nullptr;
+    LLSpinCtrl*       mMotionAmplitude = nullptr;
+    LLButton*         mMotionApplyBtn = nullptr;
+    U32               mActiveStrip = 0;
 
     bool              mHasTransformClipboard = false;
     LLVector3d        mClipboardFoot;

@@ -275,6 +275,7 @@ void LLGhostAvatar::setEntityDriveMode(S32 mode, const LLUUID& directed_anim)
 
     mEntityDriveMode = mode;
     mEntityDirectedAnim = directed_anim;
+    mEntityDirectedWasActive = false;
     if (mode == ALGhostStudio::DRIVE_DIRECTED)
     {
         if (!mSignaledAnimations.empty())
@@ -287,6 +288,7 @@ void LLGhostAvatar::setEntityDriveMode(S32 mode, const LLUUID& directed_anim)
     if (mode == ALGhostStudio::DRIVE_DIRECTED && directed_anim.notNull())
     {
         startMotion(directed_anim);
+        mEntityDirectedStarted = true;
     }
     else if (mode == ALGhostStudio::DRIVE_FROZEN)
     {
@@ -302,6 +304,48 @@ void LLGhostAvatar::setEntityDriveMode(S32 mode, const LLUUID& directed_anim)
             }
         }
     }
+}
+
+void LLGhostAvatar::setEntityLoopMode(S32 mode)
+{
+    mEntityLoopMode = llclamp(mode, (S32)ALGhostStudio::LOOP_RETRIGGER,
+                                   (S32)ALGhostStudio::LOOP_PLAY_ONCE);
+}
+
+void LLGhostAvatar::restartEntityAnimation()
+{
+    if (mEntityDriveMode == ALGhostStudio::DRIVE_DIRECTED)
+    {
+        if (mEntityDirectedAnim.notNull())
+        {
+            stopMotion(mEntityDirectedAnim, true);
+            startMotion(mEntityDirectedAnim, 0.f);
+            mEntityDirectedStarted = true;
+            mEntityDirectedWasActive = false;
+        }
+        return;
+    }
+    if (mEntityDriveMode != ALGhostStudio::DRIVE_MIRROR)
+    {
+        return;
+    }
+
+    // Only the clone-owned mirrored ledger is cut. The source avatar is
+    // resolved nowhere on this path and its controller remains untouched.
+    const signaled_animation_map_t desired = mSignaledAnimations;
+    for (const auto& playing : mPlayingAnimations)
+    {
+        if (desired.find(playing.first) != desired.end())
+        {
+            stopMotion(playing.first, true);
+        }
+    }
+    for (const auto& signaled : desired)
+    {
+        mPlayingAnimations.erase(signaled.first);
+    }
+    mSignaledAnimations = desired;
+    processAnimationStateChanges();
 }
 
 //static
@@ -1066,18 +1110,50 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
     {
         LLViewerObject* source_obj = gObjectList.findObject(mAnimationSourceId);
         LLVOAvatar* source = source_obj ? source_obj->asAvatar() : nullptr;
+        diagnoseSourceSitTransition(source);
         if (source && !source->isDead() &&
             mSignaledAnimations != source->mSignaledAnimations)
         {
             mSignaledAnimations = source->mSignaledAnimations;
             processAnimationStateChanges();
+
+            // SIT_GROUND_CONSTRAINED is both a pose and structural avatar
+            // state: processSingleAnimationStateChange() calls sitDown(true).
+            // A clone may mirror the pose, but it has no simulator seat parent
+            // and must retain its independently authored root/extent.
+            sitDown(false);
         }
     }
     else if (mEntityDriveMode == ALGhostStudio::DRIVE_DIRECTED &&
-             mEntityDirectedAnim.notNull() &&
-             !isMotionActive(mEntityDirectedAnim))
+             mEntityDirectedAnim.notNull())
     {
-        startMotion(mEntityDirectedAnim);
+        bool active = isMotionActive(mEntityDirectedAnim);
+        const F32 anim_time = getMotionController().getAnimTime();
+        if (active && !mEntityDirectedWasActive)
+        {
+            mEntityDirectedStartTime = anim_time;
+        }
+        if (active && mEntityLoopMode == ALGhostStudio::LOOP_PLAY_ONCE)
+        {
+            LLMotion* motion = findMotion(mEntityDirectedAnim);
+            if (motion && motion->getDuration() > 0.f &&
+                anim_time - mEntityDirectedStartTime >= motion->getDuration())
+            {
+                // A baked-loop asset cannot be mutated per instance because
+                // its keyframe data is shared. Stop this clone's canonical
+                // motion at one duration instead.
+                stopMotion(mEntityDirectedAnim, true);
+                active = false;
+            }
+        }
+        if (!active &&
+            (mEntityLoopMode == ALGhostStudio::LOOP_RETRIGGER ||
+             !mEntityDirectedStarted))
+        {
+            startMotion(mEntityDirectedAnim);
+            mEntityDirectedStarted = true;
+        }
+        mEntityDirectedWasActive = active;
     }
 
     // ObjectAnimation messages are indexed by simulator object UUID. Clone
@@ -1128,6 +1204,68 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
 
     LLVOAvatar::idleUpdate(agent, time);
     updateEntityOuterTransform();
+}
+
+void LLGhostAvatar::diagnoseSourceSitTransition(LLVOAvatar* source)
+{
+    if (!source || source->isDead())
+    {
+        mSourceSitStateKnown = false;
+        return;
+    }
+
+    const bool sitting = source->isSitting();
+    if (mSourceSitStateKnown && sitting == mLastSourceSitting)
+    {
+        return;
+    }
+    mSourceSitStateKnown = true;
+    mLastSourceSitting = sitting;
+
+    // State transitions are already sparse; retain a short guard for noisy
+    // sit/stand animation restarts from unusual animation overriders.
+    if (mGhostSitLogTimer.getStarted() &&
+        mGhostSitLogTimer.getElapsedTimeF32() < 0.25f)
+    {
+        return;
+    }
+    mGhostSitLogTimer.reset();
+
+    LLDrawable* avatar_drawable = mDrawable.get();
+    LLDrawable* sample_drawable = nullptr;
+    for (const ClonedLinkset& linkset : mClonedLinksets)
+    {
+        LLViewerObject* sample = gObjectList.findObject(linkset.mRoot);
+        if (sample && !sample->isDead() && sample->mDrawable.notNull())
+        {
+            sample_drawable = sample->mDrawable;
+            break;
+        }
+    }
+
+    const bool force_invisible =
+        avatar_drawable &&
+        avatar_drawable->isState(LLDrawable::FORCE_INVISIBLE);
+    const bool sample_force_invisible =
+        sample_drawable &&
+        sample_drawable->isState(LLDrawable::FORCE_INVISIBLE);
+    const bool culled =
+        !avatar_drawable || !avatar_drawable->getSpatialGroup() ||
+        !avatar_drawable->getSpatialGroup()->isVisible();
+    const LLVector3 root_world =
+        mRoot ? mRoot->getWorldPosition() : LLVector3::zero;
+
+    LL_INFOS("GhostSit")
+        << "source_sitting=" << sitting
+        << " clone_enabled=" << mEntityCloneVisible
+        << " avatar_force_invisible=" << force_invisible
+        << " sample_attachment_force_invisible=" << sample_force_invisible
+        << " root_world=" << root_world
+        << " drawable_visible="
+        << (avatar_drawable && avatar_drawable->isVisible())
+        << " culled=" << culled
+        << " impostor=" << isImpostor()
+        << LL_ENDL;
 }
 
 // ---------------------------------------------------------------------------

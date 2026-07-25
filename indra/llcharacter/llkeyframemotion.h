@@ -127,6 +127,10 @@ public:
         return 0;
     }
 
+    std::vector<std::string> getJointMotionNames() const;
+    const LLUUID& getEmoteID() const;
+    const std::string& getEmoteName() const;
+
     virtual LLMotionBlendType getBlendType() { return NORMAL_BLEND; }
 
     // called to determine when a motion should be activated/deactivated based on avatar pixel coverage
@@ -463,5 +467,4 @@ public:
 };
 
 #endif // LL_LLKEYFRAMEMOTION_H
-
 

@@ -460,6 +460,31 @@ LLMotion *LLKeyframeMotion::create(const LLUUID &id)
     return new LLKeyframeMotion(id);
 }
 
+std::vector<std::string> LLKeyframeMotion::getJointMotionNames() const
+{
+    std::vector<std::string> names;
+    if (mJointMotionList)
+    {
+        names.reserve(mJointMotionList->getNumJointMotions());
+        for (U32 i = 0; i < mJointMotionList->getNumJointMotions(); ++i)
+        {
+            names.push_back(mJointMotionList->getJointMotion(i)->mJointName);
+        }
+    }
+    return names;
+}
+
+const LLUUID& LLKeyframeMotion::getEmoteID() const
+{
+    return mJointMotionList ? mJointMotionList->mEmoteID : LLUUID::null;
+}
+
+const std::string& LLKeyframeMotion::getEmoteName() const
+{
+    static const std::string empty;
+    return mJointMotionList ? mJointMotionList->mEmoteName : empty;
+}
+
 //-----------------------------------------------------------------------------
 // getJointState()
 //-----------------------------------------------------------------------------
@@ -2596,4 +2621,3 @@ LLKeyframeMotion::JointConstraint::~JointConstraint()
 }
 
 // End
-

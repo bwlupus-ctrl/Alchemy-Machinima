@@ -5320,7 +5320,7 @@ void LLAppViewer::idle()
     // that is set inside gObjectList.update() below. The mover self-gates on
     // FreezeTime. Zero cost with no drives.
     ALObjectPathMover::instance().update(dt_raw);
-    ALGhostStudio::instance().updateLookAt();
+    ALGhostStudio::instance().updatePerFrame();
 
     {
         if (!(logoutRequestSent() && hasSavedFinalSnapshot()))
