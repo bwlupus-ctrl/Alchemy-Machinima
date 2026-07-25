@@ -38,6 +38,18 @@ ALGhostStudio& ALGhostStudio::instance()
 
 namespace
 {
+constexpr S32 ENTITY_PHYSICS_CROWD_THRESHOLD = 20;
+
+S32 entity_clone_count(const std::vector<ALGhostStudio::Instance>& instances)
+{
+    return (S32)std::count_if(
+        instances.begin(), instances.end(),
+        [](const ALGhostStudio::Instance& inst)
+        {
+            return inst.mKind == ALGhostStudio::BACKING_ENTITY_CLONE;
+        });
+}
+
 // the source's current rendered FOOT position (agent frame); false when the
 // source is unresolvable or has no skeleton yet. Same foot convention as the
 // path ghosts: root minus pelvisToFoot, so a ghost placed here stands exactly
@@ -365,6 +377,10 @@ ALGhostStudio::Instance* ALGhostStudio::spawnEntityClone(
     record.mSource = source_id;
     record.mSourceLabel = source_label;
     record.mKind = BACKING_ENTITY_CLONE;
+    // Physics is useful for hero clones but disproportionately costly for
+    // crowds. At the threshold, new clones start off and remain opt-in.
+    record.mPhysicsEnabled =
+        entity_clone_count(mInstances) < ENTITY_PHYSICS_CROWD_THRESHOLD;
     record.mState = STATE_SPAWNING;
     record.mStyle = 1; // informational: normal scene-lit clone
     const LLVector3 pos = source->getPositionAgent() + gAgent.getAtAxis() * 2.5f;
@@ -493,6 +509,10 @@ ALGhostStudio::Instance* ALGhostStudio::duplicateInstanceInPlace(const LLUUID& i
     copy->mEntityId = entity_id;
     copy->mState = state;
     copy->mName = new_name;
+    if (entity_clone_count(mInstances) > ENTITY_PHYSICS_CROWD_THRESHOLD)
+    {
+        copy->mPhysicsEnabled = false;
+    }
     copy->mWasDirectorSubjectA = false;
     copy->mWasDirectorSubjectB = false;
     copy->mWasCinematicFollow = false;

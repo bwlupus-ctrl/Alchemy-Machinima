@@ -43,6 +43,8 @@
 #include "llfetchedgltfmaterial.h"
 #include "llcontrolavatar.h"
 #include "llspatialpartition.h"
+
+#include <boost/unordered_map.hpp>   // clone-prim -> source-prim LOD index
 #include "llface.h"
 #include "lldrawable.h"
 #include "indra_constants.h"
@@ -56,6 +58,21 @@
 // destruction into static-destruction time, after pipeline/texture globals
 // are gone. Storing ids leaves lifetime entirely to gObjectList.
 static std::vector<LLUUID> sPaletteTestHarnessGhostIds;
+
+// Clone prim id -> the simulator-known SOURCE prim it was cloned from.
+//
+// getClonedSourceLOD() runs from LLVOVolume::calcLOD() for every local-only
+// prim whose LOD is re-evaluated, which for animating clones is close to every
+// frame. Searching every ghost's linkset graph for the answer is O(ghosts x
+// linksets x children) with a heap allocation per call -- at 50 clones that is
+// the only super-linear term in the clone path. The mapping never changes
+// between attach and detach, so record it once here instead of re-deriving it.
+//
+// Populated in cloneAttachmentsFrom() as each linkset record is built, and
+// erased in releaseClonedAttachments() (which every teardown path funnels
+// through, including the palette test harness). Entries are plain ids, so a
+// stale one simply fails to resolve and behaves exactly as a miss.
+static boost::unordered_map<LLUUID, LLUUID> sClonePrimToSourcePrim;
 
 LLGhostAvatar::LLGhostAvatar(const LLUUID& id, const LLPCode pcode, LLViewerRegion* regionp) :
     LLVOAvatar(id, pcode, regionp),
@@ -221,13 +238,56 @@ void LLGhostAvatar::setEntityScale(F32 scale)
     updateEntityOuterTransform();
 }
 
+void LLGhostAvatar::neutralizeEntityPhysicsParams()
+{
+    // Physics writes visual params, not pose rotations, so stopping the motion
+    // does not undo its last morph. These are the eight driven physics params
+    // in avatar_lad.xml, all centered on their default weight.
+    static const S32 physics_driven_param_ids[] =
+    {
+        1200, 1201, 1202, 1203, 1204, 1205, 1206, 1207
+    };
+    for (S32 id : physics_driven_param_ids)
+    {
+        if (LLVisualParam* param = getVisualParam(id))
+        {
+            setVisualParamWeight(param, param->getDefaultWeight());
+        }
+    }
+    updateVisualParams();
+}
+
+void LLGhostAvatar::setEntityCloneVisible(bool visible)
+{
+    if (visible == mEntityCloneVisible)
+    {
+        return;
+    }
+
+    mEntityCloneVisible = visible;
+    if (visible)
+    {
+        if (mEntityPhysicsEnabled &&
+            !isMotionActive(ANIM_AGENT_PHYSICS_MOTION))
+        {
+            LLCharacter::startMotion(ANIM_AGENT_PHYSICS_MOTION);
+        }
+    }
+    else
+    {
+        LLCharacter::stopMotion(ANIM_AGENT_PHYSICS_MOTION, true);
+        neutralizeEntityPhysicsParams();
+    }
+}
+
 void LLGhostAvatar::setEntityPhysicsEnabled(bool enabled)
 {
     if (enabled == mEntityPhysicsEnabled)
     {
         // The member defaults on, but default motions are deliberately
         // disabled. Ensure a fresh clone actually starts its physics motion.
-        if (enabled && !isMotionActive(ANIM_AGENT_PHYSICS_MOTION))
+        if (enabled && mEntityCloneVisible &&
+            !isMotionActive(ANIM_AGENT_PHYSICS_MOTION))
         {
             LLCharacter::startMotion(ANIM_AGENT_PHYSICS_MOTION);
         }
@@ -235,7 +295,7 @@ void LLGhostAvatar::setEntityPhysicsEnabled(bool enabled)
     }
 
     mEntityPhysicsEnabled = enabled;
-    if (enabled)
+    if (enabled && mEntityCloneVisible)
     {
         // Do not call startDefaultMotions(): head/eye/noise/breathe motions
         // would fight the clone-owned mirrored or directed animation.
@@ -244,6 +304,10 @@ void LLGhostAvatar::setEntityPhysicsEnabled(bool enabled)
     else
     {
         LLCharacter::stopMotion(ANIM_AGENT_PHYSICS_MOTION, true);
+        if (!enabled)
+        {
+            neutralizeEntityPhysicsParams();
+        }
     }
 }
 
@@ -1112,6 +1176,18 @@ S32 LLGhostAvatar::cloneAttachmentsFrom(LLVOAvatar* source)
             {
                 record.mSourceChildren.push_back(c->getID());
             }
+            // Index this linkset for getClonedSourceLOD(). Children are paired
+            // positionally with mSourceChildren, exactly as the search path
+            // did; a short source list simply leaves the tail unindexed, which
+            // resolves as a miss just like the old code's bounds check.
+            sClonePrimToSourcePrim[record.mRoot] = record.mSourceRoot;
+            for (size_t i = 0; i < record.mChildren.size() &&
+                               i < record.mSourceChildren.size(); ++i)
+            {
+                sClonePrimToSourcePrim[record.mChildren[i]] =
+                    record.mSourceChildren[i];
+            }
+
             mClonedLinksets.push_back(record);
             cloned++;
 
@@ -1174,6 +1250,17 @@ void LLGhostAvatar::releaseClonedAttachments()
             root->mDrawable->mXform.setParent(NULL);
         }
         root->markDead();
+    }
+    // Drop this ghost's entries from the shared clone->source index before the
+    // records that name them go away. Erase by id (not clear()) so other live
+    // ghosts keep theirs.
+    for (const ClonedLinkset& linkset : mClonedLinksets)
+    {
+        sClonePrimToSourcePrim.erase(linkset.mRoot);
+        for (const LLUUID& child : linkset.mChildren)
+        {
+            sClonePrimToSourcePrim.erase(child);
+        }
     }
     mClonedLinksets.clear();
 
@@ -2065,56 +2152,26 @@ bool LLGhostAvatar::getClonedSourceLOD(const LLVOVolume* volume, S32& source_lod
         return false;
     }
 
-    const LLUUID clone_id = volume->getID();
-    std::vector<LLUUID> ghost_ids = sPaletteTestHarnessGhostIds;
-    for (const ALGhostStudio::Instance& inst : ALGhostStudio::instance().getInstances())
+    // One hash probe instead of scanning every ghost's linkset graph. The
+    // index is maintained by cloneAttachmentsFrom()/releaseClonedAttachments();
+    // an id that is not a cloned prim simply misses, exactly as the old search
+    // fell through to `return false`.
+    const auto it = sClonePrimToSourcePrim.find(volume->getID());
+    if (it == sClonePrimToSourcePrim.end() || it->second.isNull())
     {
-        if (inst.mKind == ALGhostStudio::BACKING_ENTITY_CLONE && inst.mEntityId.notNull())
-        {
-            ghost_ids.push_back(inst.mEntityId);
-        }
+        return false;
     }
-    for (const LLUUID& ghost_id : ghost_ids)
+
+    LLVOVolume* source =
+        dynamic_cast<LLVOVolume*>(gObjectList.findObject(it->second));
+    if (!source || source->isDead())
     {
-        LLGhostAvatar* ghost =
-            dynamic_cast<LLGhostAvatar*>(gObjectList.findObject(ghost_id));
-        if (!ghost || ghost->isDead())
-        {
-            continue;
-        }
-
-        for (const ClonedLinkset& linkset : ghost->mClonedLinksets)
-        {
-            LLUUID source_id;
-            if (linkset.mRoot == clone_id)
-            {
-                source_id = linkset.mSourceRoot;
-            }
-            else
-            {
-                for (size_t i = 0; i < linkset.mChildren.size(); ++i)
-                {
-                    if (linkset.mChildren[i] == clone_id &&
-                        i < linkset.mSourceChildren.size())
-                    {
-                        source_id = linkset.mSourceChildren[i];
-                        break;
-                    }
-                }
-            }
-
-            LLVOVolume* source = source_id.notNull()
-                ? dynamic_cast<LLVOVolume*>(gObjectList.findObject(source_id))
-                : nullptr;
-            if (source && !source->isDead())
-            {
-                source_lod = source->getLOD();
-                return source_lod >= 0 &&
-                       source_lod < LLVolumeLODGroup::NUM_LODS;
-            }
-        }
+        // Source derezzed or the entry is stale: same outcome as a miss.
+        return false;
     }
-    return false;
+
+    source_lod = source->getLOD();
+    return source_lod >= 0 && source_lod < LLVolumeLODGroup::NUM_LODS;
 }
 
 //static

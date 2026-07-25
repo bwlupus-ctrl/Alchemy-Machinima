@@ -105,6 +105,7 @@ public:
                 mJointName(joint_name),
                 mMotionDirectionVec(motion_direction_vec),
                 mParamDriver(NULL),
+                mDriverParam(NULL),
                 mParamControllers(controllers),
                 mCharacter(character),
                 mLastTime(0),
@@ -190,6 +191,7 @@ private:
         LLVector3 mPosition_world;
 
         LLViewerVisualParam *mParamDriver;
+        LLDriverParam *mDriverParam;
         const controller_map_t mParamControllers;
 
         LLPointer<LLJointState> mJointState;
@@ -227,6 +229,13 @@ bool LLPhysicsMotion::initialize()
         if (mParamDriver == NULL)
         {
                 LL_INFOS() << "Failure reading in  [ " << mParamDriverName << " ]" << LL_ENDL;
+                return false;
+        }
+        mDriverParam = dynamic_cast<LLDriverParam *>(mParamDriver);
+        if (mDriverParam == NULL)
+        {
+                LL_WARNS() << "Physics parameter is not a driver [ "
+                           << mParamDriverName << " ]" << LL_ENDL;
                 return false;
         }
 
@@ -663,21 +672,20 @@ bool LLPhysicsMotion::onUpdate(F32 time)
                                    0.0f,
                                    1.0f);
 
-        LLDriverParam *driver_param = dynamic_cast<LLDriverParam *>(mParamDriver);
-        llassert_always(driver_param);
-        if (driver_param)
+        llassert_always(mDriverParam);
+        if (mDriverParam)
         {
             // If this is one of our "hidden" driver params, then make sure it's
             // the default value.
-            if ((driver_param->getGroup() != VISUAL_PARAM_GROUP_TWEAKABLE) &&
-                (driver_param->getGroup() != VISUAL_PARAM_GROUP_TWEAKABLE_NO_TRANSMIT))
+            if ((mDriverParam->getGroup() != VISUAL_PARAM_GROUP_TWEAKABLE) &&
+                (mDriverParam->getGroup() != VISUAL_PARAM_GROUP_TWEAKABLE_NO_TRANSMIT))
             {
-                mCharacter->setVisualParamWeight(driver_param, 0);
+                mCharacter->setVisualParamWeight(mDriverParam, 0);
             }
-            S32 num_driven = driver_param->getDrivenParamsCount();
+            S32 num_driven = mDriverParam->getDrivenParamsCount();
             for (S32 i = 0; i < num_driven; ++i)
             {
-                const LLViewerVisualParam *driven_param = driver_param->getDrivenParam(i);
+                const LLViewerVisualParam *driven_param = mDriverParam->getDrivenParam(i);
                 setParamValue(driven_param,position_new_local_clamped, behavior_maxeffect);
             }
         }

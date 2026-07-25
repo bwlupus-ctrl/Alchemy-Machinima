@@ -101,7 +101,7 @@ public:
     void markDead() override;
     virtual void idleUpdate(LLAgent &agent, const F64 &time);
 
-    void setEntityCloneVisible(bool visible) { mEntityCloneVisible = visible; }
+    void setEntityCloneVisible(bool visible);
     bool isEntityCloneVisible() const { return mEntityCloneVisible; }
 
     // Viewer-local entity controls. These only alter this synthetic avatar's
@@ -152,6 +152,7 @@ public:
     static S32 clearTestHarnessGhosts();
 
 private:
+    void neutralizeEntityPhysicsParams();
     void updateEntityOuterTransform();
     void stampEntityOuterTransform(LLViewerObject* object);
     void clearClonedObjectAnimations();

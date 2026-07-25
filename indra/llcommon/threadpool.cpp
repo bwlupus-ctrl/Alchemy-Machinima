@@ -24,6 +24,7 @@
 #include "stringize.h"
 
 #include <boost/fiber/algo/round_robin.hpp>
+#include <algorithm>    // std::min (idle backoff clamp)
 
 /*****************************************************************************
 *   Custom fiber scheduler for worker threads
@@ -33,28 +34,109 @@
 // anticipate doing so. So a worker thread that's simply waiting for incoming
 // tasks should really sleep a little. Override the default fiber scheduler to
 // implement that.
+// [BDMerge] Was: suspend_until() slept a flat 1ms and notify() did nothing, so
+// every idle worker woke 1000x/second forever (~33k context switches/sec across
+// the viewer's pool threads, with timeBeginPeriod(1) making 1ms timers real),
+// AND freshly posted work waited up to 1ms before any worker noticed it.
+//
+// This version waits on an auto-reset event instead, with a bounded backoff.
+//
+// Why an EVENT and not a condition_variable: notify() can fire between a fiber
+// becoming ready and the worker entering its wait. A condvar would drop that
+// wakeup (the classic lost-wakeup race) and the work would sit until the next
+// timeout -- an intermittent latency spike that is miserable to diagnose. A
+// Windows auto-reset event REMEMBERS a SetEvent() that arrives before the wait,
+// so the race closes itself with no lock and no predicate. notify() is also
+// noexcept and may be called from arbitrary threads, which rules out anything
+// that can throw or block.
+//
+// LIVENESS: the timeout is always bounded (<= BACKOFF_MAX_MS), so even a
+// completely missed notification costs latency, never a hang -- including at
+// shutdown, where ThreadPoolBase::close() closes the queue and then joins.
 struct sleepy_robin: public boost::fibers::algo::round_robin
 {
-    virtual void suspend_until( std::chrono::steady_clock::time_point const&) noexcept
+    static constexpr DWORD BACKOFF_MIN_MS = 1;
+    static constexpr DWORD BACKOFF_MAX_MS = 16;
+
+#if LL_WINDOWS
+    sleepy_robin():
+        // auto-reset, initially unsignaled
+        mWake(CreateEvent(NULL, FALSE, FALSE, NULL)),
+        mBackoffMs(BACKOFF_MIN_MS)
+    {}
+
+    ~sleepy_robin()
+    {
+        if (mWake)
+        {
+            CloseHandle(mWake);
+        }
+    }
+#endif
+
+    virtual void suspend_until( std::chrono::steady_clock::time_point const& deadline) noexcept
     {
 #if LL_WINDOWS
-        // round_robin holds a std::condition_variable, and
-        // round_robin::suspend_until() calls
-        // std::condition_variable::wait_until(). On Windows, that call seems
-        // busier than it ought to be. Try just sleeping.
-        Sleep(1);
+        if (! mWake)
+        {
+            // Event creation failed: fall back to the historical behavior
+            // rather than spinning.
+            Sleep(BACKOFF_MIN_MS);
+            return;
+        }
+
+        // Respect the caller's deadline when it has one. boost passes
+        // time_point::max() to mean "no deadline", in which case we simply use
+        // the backoff -- we are never permitted to wait unboundedly, because
+        // that would make a missed notification a hang instead of a delay.
+        DWORD timeout_ms = mBackoffMs;
+        if (deadline != std::chrono::steady_clock::time_point::max())
+        {
+            const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
+                deadline - std::chrono::steady_clock::now()).count();
+            const DWORD clamped = (remaining <= 0)
+                ? BACKOFF_MIN_MS
+                : (DWORD)std::min<long long>(remaining, (long long)mBackoffMs);
+            timeout_ms = clamped;
+        }
+
+        if (WaitForSingleObject(mWake, timeout_ms) == WAIT_OBJECT_0)
+        {
+            // Real work arrived: go back to being maximally responsive.
+            mBackoffMs = BACKOFF_MIN_MS;
+        }
+        else
+        {
+            // Idle timeout: back off geometrically so a quiet pool costs
+            // almost nothing, but never past the cap (see LIVENESS above).
+            mBackoffMs = std::min<DWORD>(mBackoffMs * 2, BACKOFF_MAX_MS);
+        }
 #else
         // currently unused other than windows, but might as well have something here
         // different units than Sleep(), but we actually just want to sleep for any de-minimis duration
+        (void)deadline;
         usleep(1);
 #endif
     }
 
     virtual void notify() noexcept
     {
-        // Since our Sleep() call above will wake up on its own, we need not
-        // take any special action to wake it.
+#if LL_WINDOWS
+        if (mWake)
+        {
+            // Safe if no one is waiting yet: an auto-reset event stays
+            // signaled until a wait consumes it, which is precisely what
+            // closes the lost-wakeup race described above.
+            SetEvent(mWake);
+        }
+#endif
     }
+
+#if LL_WINDOWS
+private:
+    HANDLE mWake;
+    DWORD  mBackoffMs;
+#endif
 };
 
 /*****************************************************************************
