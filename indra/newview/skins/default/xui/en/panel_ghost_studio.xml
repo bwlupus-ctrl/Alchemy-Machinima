@@ -188,8 +188,10 @@
            tool_tip="Resume each selected clone in the Mirror or Directed mode it used before pausing" width="66" />
           <button follows="left|top" height="22" label="Sync" layout="topleft" left="294" name="btn_anim_sync" top="134"
            tool_tip="Restart all selected clones together without changing speed, pause or drive mode" width="62" />
-          <combo_box follows="left|top|right" height="22" layout="topleft" left="8" name="animation_library_combo" right="-8" top="162" visible="false"
-           tool_tip="Animations in your own inventory only. Metadata loads asynchronously" width="358" />
+          <combo_box follows="left|top|right" height="22" layout="topleft" left="8" name="animation_library_combo" right="-76" top="162" visible="false"
+           tool_tip="Animations in your own inventory only. Metadata loads asynchronously. Use Refresh after adding animations to inventory" width="290" />
+          <button follows="top|right" height="22" label="Refresh" layout="topleft" name="btn_anim_library_refresh" right="-8" top="162" visible="false"
+           tool_tip="Re-scan your inventory for animations. The list is not polled automatically" width="64" />
           <line_editor follows="left|top|right" height="22" label="Animation UUID" layout="topleft" left="8" max_length_bytes="36" name="directed_anim_editor" right="-8" top="190" visible="false"
            tool_tip="Animation asset UUID played only on the selected entity clone; direct UUID paste remains supported" width="358" />
           <text follows="left|top|right" height="34" layout="topleft" left="8" name="anim_metadata_text" right="-8" text_color="LtGray_50" top="216" visible="false" width="358">Metadata pending...</text>

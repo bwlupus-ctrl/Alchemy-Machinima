@@ -58,6 +58,7 @@ private:
     void refreshList();             // instance rows (rebuilt on composed-sig change)
     void refreshDetail();           // selected-instance widgets + enables
     void refreshAnimationLibrary();
+    void populateAnimationLibrary();   // explicit inventory re-scan (Refresh)
     void refreshStatus();           // bottom status line
 
     LLUUID selectedInstance() const;    // list selection -> instance id (null = none)
@@ -139,7 +140,7 @@ private:
     std::string mListSig;           // composed instance-list signature last built
     std::string mSourceSig;         // cast signature the source combo was built from
     std::string mLookTargetSig;
-    std::string mAnimationLibrarySig;
+    bool        mAnimationLibraryPopulated = false;  // filled once; Refresh re-scans
     LLUUID      mShownFor;          // instance the detail widgets were last loaded for
     bool        mEditMode = false;  // [R2-3] our transient edit tool is armed
     bool        mHintEdit = false;  // which hint string the header line shows
@@ -171,6 +172,7 @@ private:
     LLComboBox*       mDriveModeCombo = nullptr;
     LLLineEditor*     mDirectedAnimEdit = nullptr;
     LLComboBox*       mAnimationLibraryCombo = nullptr;
+    LLButton*         mAnimationLibraryRefreshBtn = nullptr;
     LLComboBox*       mLoopModeCombo = nullptr;
     LLButton*         mAnimSyncBtn = nullptr;
     LLTextBox*        mAnimMetadataText = nullptr;

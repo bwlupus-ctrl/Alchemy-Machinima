@@ -114,6 +114,7 @@ bool ALPanelGhostStudio::postBuild()
     mDriveModeCombo = getChild<LLComboBox>("drive_mode_combo");
     mDirectedAnimEdit = getChild<LLLineEditor>("directed_anim_editor");
     mAnimationLibraryCombo = getChild<LLComboBox>("animation_library_combo");
+    mAnimationLibraryRefreshBtn = getChild<LLButton>("btn_anim_library_refresh");
     mLoopModeCombo = getChild<LLComboBox>("anim_loop_mode_combo");
     mAnimSyncBtn = getChild<LLButton>("btn_anim_sync");
     mAnimMetadataText = getChild<LLTextBox>("anim_metadata_text");
@@ -194,6 +195,8 @@ bool ALPanelGhostStudio::postBuild()
     mDriveModeCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onDriveModeCommit(); });
     mDirectedAnimEdit->setCommitCallback([this](LLUICtrl*, const LLSD&) { onDirectedAnimCommit(); });
     mAnimationLibraryCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAnimationLibraryCommit(); });
+    mAnimationLibraryRefreshBtn->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { populateAnimationLibrary(); });
     mLoopModeCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLoopModeCommit(); });
     mAnimSyncBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickAnimSync(); });
     mPlaceBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickPlace(); });
@@ -422,26 +425,25 @@ void ALPanelGhostStudio::refreshLookTargetCombo()
     }
 }
 
+// draw() path: fill the list ONCE, the first time the Directed-mode library
+// actually becomes visible. There is deliberately no polling -- inventory
+// rarely changes, and populateAnimationLibrary() walks the WHOLE inventory
+// (collectDescendentsIf from the root, then sorts), which cost a visible
+// microstutter when it ran per-frame. The operator re-scans with Refresh.
 void ALPanelGhostStudio::refreshAnimationLibrary()
 {
-    static LLFrameTimer refresh_timer;
-    if (!mAnimationLibrarySig.empty() &&
-        refresh_timer.getElapsedTimeF32() < 2.f)
+    if (mAnimationLibraryPopulated || !mAnimationLibraryCombo->isInVisibleChain())
     {
         return;
     }
-    refresh_timer.reset();
+    populateAnimationLibrary();
+}
+
+// Explicit re-scan: the Refresh button, and the one-shot fill above.
+void ALPanelGhostStudio::populateAnimationLibrary()
+{
+    mAnimationLibraryPopulated = true;
     const auto& entries = ALGhostAnimAssetIndex::instance().refreshInventory();
-    std::string signature;
-    for (const auto& entry : entries)
-    {
-        signature += entry.mAssetId.asString();
-        signature += entry.mName;
-    }
-    if (signature == mAnimationLibrarySig)
-    {
-        return;
-    }
     const LLSD selected = mAnimationLibraryCombo->getSelectedValue();
     mAnimationLibraryCombo->removeall();
     mAnimationLibraryCombo->add("Choose inventory animation...", LLUUID::null);
@@ -453,7 +455,6 @@ void ALPanelGhostStudio::refreshAnimationLibrary()
     {
         mAnimationLibraryCombo->setSelectedByValue(selected, true);
     }
-    mAnimationLibrarySig = signature;
 }
 
 void ALPanelGhostStudio::refreshList()
@@ -561,6 +562,7 @@ void ALPanelGhostStudio::refreshDetail()
     mDirectedAnimEdit->setVisible(directed);
     mDirectedAnimEdit->setEnabled(directed);
     mAnimationLibraryCombo->setVisible(directed);
+    mAnimationLibraryRefreshBtn->setVisible(directed);
     mAnimationLibraryCombo->setEnabled(directed);
     mAnimMetadataText->setVisible(directed);
     mLoopModeCombo->setEnabled(entity);
