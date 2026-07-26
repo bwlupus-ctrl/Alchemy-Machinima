@@ -274,7 +274,18 @@ typedef struct SLReShadeFrameV11Tail
     SLReShadeTexture motion_meta;         /* words 8..11                            */
     SLReShadeTexture surface_coverage;    /* words 12..15                           */
 
-    uint32_t reserved[4];                 /* words 16..19  future MINOR growth      */
+    /* Word 16 is a modulo-2^32 counter incremented once per reset event. Unlike
+     * history_reset_flags (word 1), which is TRANSIENT and cleared after each
+     * publish, this is monotonic: a consumer that samples at its own rate
+     * detects any event it slept through by comparing the value with the one it
+     * last saw. It was being written as reserved[0] while the header still
+     * described the whole block as "future growth" -- a stealth field, which is
+     * how a consumer ends up reading a live counter as padding, or a later
+     * change hands out word 16 twice.
+     * Naming it changes NO offsets and NO size, so this stays binary-compatible
+     * with every shipped writer and reader; the static_assert below is unmoved. */
+    uint32_t reset_event_counter;         /* word 16                                */
+    uint32_t reserved[3];                 /* words 17..19  future MINOR growth      */
     SLReShadeTexture visible_diffuse;     /* words 20..23                           */
 } SLReShadeFrameV11Tail;
 

@@ -365,7 +365,9 @@ void LLReShadeBridge::gatherFrame()
     // PROVIDER_OWNED is an add-on policy and is not observable by the viewer.
     // Tail word 16 is a modulo-2^32 reset-event counter. Unlike the transient
     // flags, a sampling reader detects any event by comparing counter values.
-    tail.reserved[0] = mResetEventCounter;
+    // Named in the ABI header as of S6 -- it was previously written through
+    // reserved[0] while the header still called that block "future growth".
+    tail.reset_event_counter = mResetEventCounter;
     memcpy(f.reserved, &tail, sizeof(tail));
 
     mEverHadValidFrame |= valid;
