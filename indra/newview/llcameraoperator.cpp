@@ -193,6 +193,158 @@ Profile getProfile(S32 s)
     return q;
 }
 
+
+// ---------------------------------------------------------------------------
+// LOCOMOTION -- what the operator is physically DOING, as distinct from Persona
+// (what RIG they are holding). A shoulder rig can be walking or driving, so the
+// two axes are genuinely orthogonal.
+//
+// Locomotion REPLACES the Profile axis rather than stacking on top of it.
+// Three multiplicative axes over the same ~40 settings produces corners nobody
+// can debug or predict. Profile therefore stays live ONLY in LOCO_LEGACY, which
+// is the default -- so behaviour is unchanged for anyone who never picks a mode.
+//
+// These are absolute physical targets, resolved BEFORE Persona and master
+// intensity. They are deliberately NOT written into the user's settings: a mode
+// must never overwrite authored tuning, or Auto would mutate persistent
+// settings every time the camera changed speed and the UI could no longer tell
+// authored values from generated ones.
+// ---------------------------------------------------------------------------
+enum ELocomotion
+{
+    LOCO_LEGACY = 0,    // Profile axis stays in charge; stock behaviour
+    LOCO_CREEP,
+    LOCO_WALK,
+    LOCO_RUN,
+    LOCO_DRIVE,
+    LOCO_FLOAT,
+    LOCO_UNSTEADY,
+    LOCO_COUNT
+};
+
+struct Locomotion
+{
+    F32 idleAmp, panTiltFreq, rollFreq, hiContent;
+    // NOTE: no tremorDamp here. hiContent replaces the ENTIRE tremor-damping
+    // curve rather than scaling it, so a separate damping term would be dead
+    // weight that the blend still had to carry.
+    F32 smoothing, energyGain, onsetGain, settleGain, drag, motionCalm;
+    F32 breathFreq, breathAmount;
+    F32 walkCadence, cadenceDrive, fwdBias, latBias;
+    F32 stepBob, lateralStep, stepRoll, gaitCouple;
+    F32 recomposeAmt, recomposeInterval;
+    // SLICE 2 -- carried so the tables are complete and the settings land in one
+    // pass, but NOTHING READS THESE YET. They need new simulation layers.
+    F32 suspHeave, suspFreq, roadBuzz, roadFreq, turnLean;
+};
+
+Locomotion getLocomotion(S32 m)
+{
+    // Physical intent, not vibes:
+    //  Walk ~1.8-2 steps/s, cm-scale vertical displacement.
+    //  Run  ~2.7-3 steps/s, several cm -- deliberately BELOW action-game bob.
+    //  Drive zeroes gait entirely; a seated operator has no footfall. Its
+    //       character comes from suspension heave + road buzz (slice 2).
+    //  Creep damps everything EXCEPT breath, so breath reads proportionally
+    //       more -- held tension rather than shake.
+    //  Float removes gait and high-frequency content: cable cam, drone, vest.
+    //  Unsteady is intoxication/panic/injury/dream POV. Its instability is
+    //       low-frequency phase-offset sway and roll, NOT random shake.
+    switch (m)
+    {
+        case LOCO_CREEP:    return { 0.32f, 0.34f, 0.18f, 0.18f,
+                                     1.08f, 0.45f, 0.42f, 0.85f, 0.004f, 1.45f,
+                                     0.20f, 1.80f,
+                                     0.72f, 0.12f, 0.85f, 0.12f,
+                                     0.004f, 0.003f, 0.10f, 0.65f,
+                                     0.12f, 11.0f,
+                                     0.000f, 0.00f, 0.0000f, 0.0f, 0.00f };
+        case LOCO_WALK:     return { 0.85f, 0.62f, 0.34f, 0.65f,
+                                     0.98f, 1.35f, 1.10f, 1.35f, 0.010f, 0.62f,
+                                     0.25f, 1.25f,
+                                     1.00f, 0.32f, 1.00f, 0.25f,
+                                     0.017f, 0.009f, 0.38f, 1.35f,
+                                     0.28f, 7.5f,
+                                     0.000f, 0.00f, 0.0000f, 0.0f, 0.00f };
+        case LOCO_RUN:      return { 1.55f, 1.05f, 0.72f, 1.45f,
+                                     0.82f, 2.80f, 2.35f, 2.20f, 0.017f, 0.18f,
+                                     0.38f, 1.65f,
+                                     1.48f, 0.62f, 1.35f, 0.42f,
+                                     0.043f, 0.021f, 0.92f, 2.60f,
+                                     0.18f, 4.5f,
+                                     0.000f, 0.00f, 0.0000f, 0.0f, 0.00f };
+        case LOCO_DRIVE:    return { 0.48f, 0.78f, 1.35f, 1.70f,
+                                     0.94f, 1.10f, 0.72f, 1.55f, 0.012f, 0.78f,
+                                     0.22f, 0.55f,
+                                     0.00f, 0.00f, 0.00f, 0.00f,
+                                     0.000f, 0.000f, 0.00f, 0.00f,
+                                     0.08f, 10.0f,
+                                     0.018f, 1.15f, 0.0035f, 8.5f, 2.20f };
+        case LOCO_FLOAT:    return { 0.28f, 0.18f, 0.12f, 0.06f,
+                                     1.10f, 0.35f, 0.25f, 0.70f, 0.003f, 1.20f,
+                                     0.18f, 0.70f,
+                                     0.00f, 0.00f, 0.00f, 0.00f,
+                                     0.000f, 0.000f, 0.00f, 0.00f,
+                                     0.12f, 14.0f,
+                                     0.004f, 0.22f, 0.0000f, 0.0f, 0.15f };
+        case LOCO_UNSTEADY: return { 1.15f, 0.42f, 0.24f, 0.28f,
+                                     1.04f, 0.90f, 0.65f, 1.20f, 0.009f, 0.45f,
+                                     0.21f, 2.10f,
+                                     0.45f, 0.08f, 0.25f, 0.12f,
+                                     0.006f, 0.012f, 0.75f, 0.35f,
+                                     0.42f, 5.5f,
+                                     0.006f, 0.38f, 0.0000f, 0.0f, 1.40f };
+        default: break;
+    }
+    // LOCO_LEGACY has no block -- callers must not ask for one. Neutral values
+    // so a future miscall degrades to "stock-ish" rather than to zero.
+    return { 1.f, 0.6f, 0.3f, 1.f,
+             1.f, 1.f, 1.f, 1.f, 0.010f, 1.f,
+             0.25f, 1.5f,
+             1.f, 0.25f, 1.f, 0.25f,
+             0.015f, 0.008f, 0.35f, 1.f,
+             0.35f, 7.f,
+             0.f, 0.f, 0.f, 0.f, 0.f };
+}
+
+// Blend two blocks field by field. Written out EXPLICITLY rather than looping
+// over the struct as raw floats: a reinterpret_cast walk assumes every member
+// is an F32 with no padding, which no assertion can actually guarantee, and a
+// future non-float field would be silently interpolated as though its bit
+// pattern were a float. Verbose, but adding a field forces a decision here
+// instead of failing quietly.
+Locomotion lerpLocomotion(const Locomotion& a, const Locomotion& b, F32 t)
+{
+    Locomotion r;
+#define VC_LERP_FIELD(f) r.f = vc_lerp(a.f, b.f, t)
+    VC_LERP_FIELD(idleAmp);      VC_LERP_FIELD(panTiltFreq);
+    VC_LERP_FIELD(rollFreq);     VC_LERP_FIELD(hiContent);
+    VC_LERP_FIELD(smoothing);
+    VC_LERP_FIELD(energyGain);   VC_LERP_FIELD(onsetGain);
+    VC_LERP_FIELD(settleGain);   VC_LERP_FIELD(drag);
+    VC_LERP_FIELD(motionCalm);   VC_LERP_FIELD(breathFreq);
+    VC_LERP_FIELD(breathAmount); VC_LERP_FIELD(walkCadence);
+    VC_LERP_FIELD(cadenceDrive); VC_LERP_FIELD(fwdBias);
+    VC_LERP_FIELD(latBias);      VC_LERP_FIELD(stepBob);
+    VC_LERP_FIELD(lateralStep);  VC_LERP_FIELD(stepRoll);
+    VC_LERP_FIELD(gaitCouple);   VC_LERP_FIELD(recomposeAmt);
+    VC_LERP_FIELD(recomposeInterval);
+    VC_LERP_FIELD(suspHeave);    VC_LERP_FIELD(suspFreq);
+    VC_LERP_FIELD(roadBuzz);     VC_LERP_FIELD(roadFreq);
+    VC_LERP_FIELD(turnLean);
+#undef VC_LERP_FIELD
+    return r;
+}
+
+
+// Transition state for the locomotion cross-fade. File scope rather than
+// members because Locomotion is a private type in this translation unit and
+// LLCameraOperator is a singleton, so the two are equivalent.
+//   sModeSource : the block a transition started FROM
+//   sModeLive   : the block actually produced last frame
+Locomotion sModeSource = getLocomotion(LOCO_LEGACY);
+Locomotion sModeLive   = getLocomotion(LOCO_LEGACY);
+
 } // anonymous namespace
 
 // ---------------------------------------------------------------------------
@@ -208,8 +360,28 @@ void LLCameraOperator::reset()
     mVecX = mVecY = 0.f;
     mOnsetEnv = mSettleEnv = 0.f;
     mLatchX = mLatchY = 0.f;
-    // phases are left running -- restarting them would pop the idle motion;
-    // they are seamless by construction (wrapped, periodic lattice)
+
+    // Phases are reset ONLY under a locomotion mode.
+    //
+    // Zeroing them makes takes repeatable: replaying the same recorded path
+    // with the same seed otherwise started at a different point in the noise,
+    // so a re-shoot did not match the take it was meant to match. reset() only
+    // fires at cuts, flycam toggles, playback starts and CineCam mode/target
+    // changes -- all already discontinuities -- so nothing pops.
+    //
+    // But it IS a behaviour change, and LEGACY promises stock behaviour. Legacy
+    // therefore keeps the original "leave the phases running" semantics, and
+    // determinism arrives with the locomotion feature the director opted into.
+    static LLCachedControl<S32> reset_loco(gSavedSettings, "FlycamOperatorLocomotionMode", 0);
+    if (reset_loco != LOCO_LEGACY)
+    {
+        mPhaseXY = mPhaseRoll = mPhaseBreath = 0.f;
+        mPhaseGait = mPhaseSettle = mPhaseRecompose = 0.f;
+    }
+
+    mModeBlend = 1.f;
+    mModeCurrent = -1;
+    sModeSource = sModeLive = getLocomotion(LOCO_LEGACY);
 }
 
 LLCameraOperatorOutput LLCameraOperator::update(const LLCameraOperatorInput& input)
@@ -268,10 +440,64 @@ LLCameraOperatorOutput LLCameraOperator::update(const LLCameraOperatorInput& inp
     static LLCachedControl<F32> refLinear(gSavedSettings, "FlycamOperatorRefLinearSpeed", 3.f);    // m/s
     static LLCachedControl<F32> refAngular(gSavedSettings, "FlycamOperatorRefAngularSpeed", 60.f); // deg/s
 
+    // ---- locomotion + per-DOF authority (live) ----------------------------
+    static LLCachedControl<S32> locoMode(gSavedSettings, "FlycamOperatorLocomotionMode", 0);
+    static LLCachedControl<F32> modeBlendTime(gSavedSettings, "FlycamOperatorModeBlendTime", 0.85f);
+    static LLCachedControl<F32> gainSurge(gSavedSettings, "FlycamOperatorGainSurge", 1.f);
+    static LLCachedControl<F32> gainSway(gSavedSettings,  "FlycamOperatorGainSway",  1.f);
+    static LLCachedControl<F32> gainHeave(gSavedSettings, "FlycamOperatorGainHeave", 1.f);
+    static LLCachedControl<F32> gainRoll(gSavedSettings,  "FlycamOperatorGainRoll",  1.f);
+    static LLCachedControl<F32> gainPitch(gSavedSettings, "FlycamOperatorGainPitch", 1.f);
+    static LLCachedControl<F32> gainYaw(gSavedSettings,   "FlycamOperatorGainYaw",   1.f);
+    static LLCachedControl<F32> gainFov(gSavedSettings,   "FlycamOperatorGainFOV",   1.f);
+
     const Persona P = getPersona(llclamp((S32)style, 0, 8));
     const Profile Q = getProfile(llclamp((S32)profile, 0, 7));
     const F32 infl = vc_sat(profileInfluence);
     auto vc_infl = [infl](F32 m) { return vc_lerp(1.f, m, infl); };
+
+    // Locomotion REPLACES Profile. LOCO_LEGACY (0, the default) leaves Profile
+    // in charge, so existing users see no change whatsoever.
+    const S32 loco = llclamp((S32)locoMode, 0, (S32)LOCO_COUNT - 1);
+    const bool loco_active = (loco != LOCO_LEGACY);
+
+    // Cross-fade the parameter block on a mode change so switching mid-shot
+    // does not snap. Quintic smoothstep: zero first and second derivative at
+    // both ends, so the transition has no visible velocity discontinuity.
+    if (loco_active && loco != mModeCurrent)
+    {
+        // Source is the block we were ACTUALLY producing last frame, not the
+        // previous mode's raw table. Retargeting mid-blend (Walk->Run, then
+        // Run->Float halfway) must continue from the live mixture, or the
+        // parameters snap back to an unblended table on the frame the second
+        // change lands.
+        sModeSource = (mModeCurrent >= 0) ? sModeLive : getLocomotion(loco);
+        mModeCurrent = loco;
+        mModeBlend = 0.f;
+    }
+    else if (!loco_active)
+    {
+        // LEGACY is a HARD CUT, deliberately: there is no locomotion block to
+        // blend from or to -- Profile is a different axis with different
+        // semantics, and synthesising a pseudo-block for it would be inventing
+        // numbers. Documented in the setting's Comment.
+        mModeCurrent = -1;
+        mModeBlend = 1.f;
+    }
+
+    Locomotion L = getLocomotion(loco);
+    if (loco_active && mModeBlend < 1.f)
+    {
+        const F32 blend_time = llmax((F32)modeBlendTime, 0.01f);
+        mModeBlend = vc_sat(mModeBlend + input.mDeltaTime / blend_time);
+        const F32 s = mModeBlend;
+        const F32 smooth = s * s * s * (s * (s * 6.f - 15.f) + 10.f);
+        L = lerpLocomotion(sModeSource, L, smooth);
+    }
+    if (loco_active)
+    {
+        sModeLive = L;   // what we actually produced, for a mid-blend retarget
+    }
 
     const F32 dt = llclamp(input.mDeltaTime, 0.0005f, 0.25f);
 
@@ -287,7 +513,13 @@ LLCameraOperatorOutput LLCameraOperator::update(const LLCameraOperatorInput& inp
     const F32 rawSpd = llmin(coherentRaw + divergentRaw, REACT_MAX);
 
     // ---- framerate-independent smoothing -----------------------------------
-    const F32 k = vc_retain(P.smoothing * vc_infl(Q.smoothMul) * smoothingTrim, dt);
+    // Locomotion supplies an ABSOLUTE smoothing target; Profile supplies a
+    // MULTIPLIER. Hence the branch rather than one blended expression -- mixing
+    // an absolute and a relative term is exactly the combinatorial mush this
+    // design set out to avoid.
+    const F32 k = vc_retain(P.smoothing *
+                            (loco_active ? L.smoothing : vc_infl(Q.smoothMul)) *
+                            smoothingTrim, dt);
     const F32 prevSpeed = mSpeed;
     mSpeed = vc_lerp(rawSpd, mSpeed, k);
     mVecX  = vc_lerp(vx, mVecX, k);
@@ -310,22 +542,36 @@ LLCameraOperatorOutput LLCameraOperator::update(const LLCameraOperatorInput& inp
     // ---- phase accumulators (wrap-safe, pop-free on slider changes) --------
     const F32 divergent = llmax(mSpeed - coherent, 0.f);
     const F32 adv = dt * llmax((F32)timeSpeed, 0.f);
-    const F32 gaitRate = P.walkRate * walkCadence * (1.f + vc_sat(divergent) * cadenceDrive);
-    mPhaseXY        = vc_wrap(mPhaseXY        + adv * transFreq  * P.freqMul);
-    mPhaseRoll      = vc_wrap(mPhaseRoll      + adv * rollFreq   * P.freqMul);
-    mPhaseBreath    = vc_wrap(mPhaseBreath    + adv * breathFreq * P.freqMul);
+    // Locomotion supplies absolute rates; LEGACY keeps the authored settings.
+    const F32 aCadence   = loco_active ? L.walkCadence  : (F32)walkCadence;
+    const F32 aCadDrive  = loco_active ? L.cadenceDrive : (F32)cadenceDrive;
+    const F32 aPanTiltHz = loco_active ? L.panTiltFreq  : (F32)transFreq;
+    const F32 aRollHz    = loco_active ? L.rollFreq     : (F32)rollFreq;
+    const F32 aBreathHz  = loco_active ? L.breathFreq   : (F32)breathFreq;
+    const F32 aRecompInt = loco_active ? L.recomposeInterval : (F32)recomposeInterval;
+
+    const F32 gaitRate = P.walkRate * aCadence * (1.f + vc_sat(divergent) * aCadDrive);
+    mPhaseXY        = vc_wrap(mPhaseXY        + adv * aPanTiltHz * P.freqMul);
+    mPhaseRoll      = vc_wrap(mPhaseRoll      + adv * aRollHz    * P.freqMul);
+    mPhaseBreath    = vc_wrap(mPhaseBreath    + adv * aBreathHz  * P.freqMul);
     mPhaseGait      = vc_wrap(mPhaseGait      + adv * gaitRate);
     mPhaseSettle    = vc_wrap(mPhaseSettle    + adv * settleFreq);
-    mPhaseRecompose = vc_wrap(mPhaseRecompose + adv / llmax((F32)recomposeInterval, 0.5f));
+    mPhaseRecompose = vc_wrap(mPhaseRecompose + adv / llmax(aRecompInt, 0.5f));
 
     // ---- reactive gains -----------------------------------------------------
     const F32 R = reactivity;
-    const F32 eEnergy = P.energyGain * vc_infl(Q.energyMul) * R * energyTrim;
-    const F32 eOnset  = P.onsetGain  * vc_infl(Q.onsetMul)  * R * onsetAmount  * 0.012f * FRAC_TO_RAD;
-    const F32 eSettle = P.settleGain * vc_infl(Q.settleMul) * R * settleAmount * 0.010f * FRAC_TO_RAD;
-    const F32 eDrag   = P.drag       * vc_infl(Q.dragMul)   * R * dragAmount   * FRAC_TO_RAD;
-    const F32 eWalk   = P.walkCouple * vc_infl(Q.walkMul)   * R * gaitCoupling;
-    const F32 eCalm   = P.motionCalm * vc_infl(Q.calmMul)   * motionCalmTrim;
+    // Locomotion replaces the Profile term in each coefficient. Persona (the
+    // RIG) still multiplies, because a shoulder rig walking and a gimbal
+    // walking really are different -- that is the one axis pairing that stays
+    // meaningful. See the ELocomotion comment block.
+    const F32 eEnergy = P.energyGain * (loco_active ? L.energyGain : vc_infl(Q.energyMul)) * R * energyTrim;
+    const F32 eOnset  = P.onsetGain  * (loco_active ? L.onsetGain  : vc_infl(Q.onsetMul))  * R * onsetAmount  * 0.012f * FRAC_TO_RAD;
+    const F32 eSettle = P.settleGain * (loco_active ? L.settleGain : vc_infl(Q.settleMul)) * R * settleAmount * 0.010f * FRAC_TO_RAD;
+    // Drag is an absolute physical quantity in the locomotion table (not a
+    // multiplier), so it substitutes for P.drag as well.
+    const F32 eDrag   = (loco_active ? L.drag : P.drag * vc_infl(Q.dragMul)) * R * dragAmount * FRAC_TO_RAD;
+    const F32 eWalk   = P.walkCouple * (loco_active ? L.gaitCouple : vc_infl(Q.walkMul)) * R * gaitCoupling;
+    const F32 eCalm   = (loco_active ? L.motionCalm : P.motionCalm * vc_infl(Q.calmMul)) * motionCalmTrim;
 
     const F32 react = llmin(1.f + mSpeed * eEnergy, REACT_MAX);
 
@@ -347,13 +593,19 @@ LLCameraOperatorOutput LLCameraOperator::update(const LLCameraOperatorInput& inp
     const F32 panLat = vc_sat(fabsf(mVecX) * 1.5f);
 
     F32 gait = 0.f;
-    const F32 gaitDrive = (divergent * forwardWalkBias + coherent * lateralWalkBias) * eWalk;
+    const F32 aFwdBias = loco_active ? L.fwdBias : (F32)forwardWalkBias;
+    const F32 aLatBias = loco_active ? L.latBias : (F32)lateralWalkBias;
+    const F32 gaitDrive = (divergent * aFwdBias + coherent * aLatBias) * eWalk;
     gait = vc_smoothstep(0.12f, 0.85f, gaitDrive);
     if (forceWalk) gait = llmax(gait, 1.f);
 
     // ---- idle tremor character ----------------------------------------------
     const F32 calm = vc_sat(mSpeed * eCalm);
-    const F32 hi     = vc_lerp(1.4f, 0.2f, vc_sat(tremorDamping)) * P.hiMul * (1.f - calm);
+    // hiContent is an absolute high-frequency weight in the locomotion table,
+    // so it substitutes for the tremor-damping curve rather than scaling it.
+    const F32 hi     = (loco_active ? L.hiContent
+                                    : vc_lerp(1.4f, 0.2f, vc_sat(tremorDamping)))
+                       * P.hiMul * (1.f - calm);
     const F32 hiRoll = hi * (1.f - vc_sat(rollSmoothness) * 0.85f);
     const F32 latSmooth = vc_sat(lateralSmoothness + panLat * lateralPanBoost * (1.f - lateralSmoothness));
     const F32 hiX = hi * (1.f - latSmooth * 0.85f);
@@ -368,7 +620,8 @@ LLCameraOperatorOutput LLCameraOperator::update(const LLCameraOperatorInput& inp
     const F32 sr  = vc_fbm(mPhaseRoll + sd + 57.1f, hiRoll);
     const F32 sbz = vc_fbm(mPhaseBreath + sd + 83.9f, hi);
 
-    const F32 mIdle = master * idleIntensity * P.ampMul;
+    const F32 aIdle = loco_active ? L.idleAmp : (F32)idleIntensity;
+    const F32 mIdle = master * aIdle * P.ampMul;
 
     // per-axis reactive amplification of idle wander
     const F32 reactX = 1.f + (react - 1.f) * motionPan;
@@ -377,21 +630,27 @@ LLCameraOperatorOutput LLCameraOperator::update(const LLCameraOperatorInput& inp
     const F32 reactB = 1.f + (react - 1.f) * motionBreath;
 
     // idle wander is true camera rotation (deg settings -> radians)
+    // NOTE: panAmount/tiltAmount/rollAmount stay AUTHORED even under a
+    // locomotion mode. The table's idleAmp already sets how much the mode
+    // moves (via mIdle); these three remain the director's framing preference
+    // for how that budget is split across the axes.
     F32 yaw   = sx * panAmount  * DEG_TO_RAD * P.transMul * mIdle * reactX;
     F32 pitch = sy * tiltAmount * DEG_TO_RAD * P.transMul * mIdle * reactY;
     F32 roll  = sr * rollAmount * DEG_TO_RAD * P.rollMul  * mIdle * reactR;
 
     // breathing: true FOV pulse + coupled chest-rise translation
-    const F32 breath = sbz * (breathAmount * 0.01f) * P.breathMul * mIdle * reactB;
+    const F32 aBreathAmt = loco_active ? L.breathAmount : (F32)breathAmount;
+    const F32 breath = sbz * (aBreathAmt * 0.01f) * P.breathMul * mIdle * reactB;
     out.mFovMul = 1.f + breath;
     F32 liftZ = breath * breathLift * 0.15f;    // meters of chest rise
 
     // sparse recompose nudges (eased retarget of the framing center)
-    if (recomposeAmount > 1e-4f)
+    const F32 aRecompAmt = loco_active ? L.recomposeAmt : (F32)recomposeAmount;
+    if (aRecompAmt > 1e-4f)
     {
         F32 rcx, rcy;
-        vc_recompose(mPhaseRecompose, sd, recomposeInterval, rcx, rcy);
-        const F32 rcScale = 2.f * recomposeAmount * DEG_TO_RAD * P.transMul * master * idleIntensity;
+        vc_recompose(mPhaseRecompose, sd, aRecompInt, rcx, rcy);
+        const F32 rcScale = 2.f * aRecompAmt * DEG_TO_RAD * P.transMul * master * aIdle;
         yaw   += rcx * rcScale;
         pitch += rcy * rcScale;
     }
@@ -415,10 +674,42 @@ LLCameraOperatorOutput LLCameraOperator::update(const LLCameraOperatorInput& inp
         const F32 vbase  = -cosf(foot);
         const F32 vshape = vbase * (0.78f + 0.22f * vc_sat(-vbase));
         const F32 hbase  = sinf(stride);
-        bobZ  = -vshape * stepBob * gait * master;          // up axis (Z)
-        swayY =  hbase * lateralStep * gait * master;       // left axis (Y)
-        roll += hbase * stepRoll * DEG_TO_RAD * gait * master;
-        out.mFovMul += vbase * stepBob * 0.15f * gait;
+        // Drive and Float zero these outright -- a seated or flying operator
+        // has no footfall -- which is why they must come from the table and not
+        // from the user's authored gait settings.
+        const F32 aStepBob   = loco_active ? L.stepBob     : (F32)stepBob;
+        const F32 aLatStep   = loco_active ? L.lateralStep : (F32)lateralStep;
+        const F32 aStepRoll  = loco_active ? L.stepRoll    : (F32)stepRoll;
+        bobZ  = -vshape * aStepBob * gait * master;         // up axis (Z)
+        swayY =  hbase * aLatStep * gait * master;          // left axis (Y)
+        roll += hbase * aStepRoll * DEG_TO_RAD * gait * master;
+        out.mFovMul += vbase * aStepBob * 0.15f * gait;
+    }
+
+    // ---- per-DOF authority, applied BEFORE the clamps ----------------------
+    // Deliberately not fed back into the simulation: scaling an INPUT changes
+    // the character of the motion, because envelopes, latching and gait
+    // coupling all react to it. A director asking for "no roll" means "remove
+    // the roll I can see", not "re-simulate as though the operator never
+    // rolled".
+    //
+    // But it goes BEFORE the clamps, not after: the clamps are safety limits
+    // that downstream code relies on, and a gain of 2 applied afterwards would
+    // silently produce 20 degrees of rotation and a metre of translation past
+    // caps of 10 degrees and 0.5 m. Gains exaggerate within the envelope; they
+    // do not raise the ceiling.
+    yaw   *= gainYaw;
+    pitch *= gainPitch;
+    roll  *= gainRoll;
+    swayY *= gainSway;
+    bobZ  *= gainHeave;
+    liftZ *= gainHeave;
+    // FOV is a MULTIPLIER, so it scales about 1.0 -- scaling it directly would
+    // drive the FOV toward zero rather than toward neutral. Bypassed entirely
+    // at unity so the untouched path stays bit-identical.
+    if (gainFov != 1.f)
+    {
+        out.mFovMul = 1.f + (out.mFovMul - 1.f) * gainFov;
     }
 
     // ---- outputs, with sanity clamps (no overscan needed: real camera) ------
@@ -430,5 +721,22 @@ LLCameraOperatorOutput LLCameraOperator::update(const LLCameraOperatorInput& inp
     out.mPosOffset = LLVector3(0.f,
                                llclamp(swayY, -0.5f, 0.5f),
                                llclamp(bobZ + liftZ, -0.5f, 0.5f));
+
+    // ---- unused-gain note --------------------------------------------------
+    // FINAL output gains, applied after the clamps. Deliberately NOT fed back
+    // into the simulation: scaling an input would change the character of the
+    // motion (envelopes, latching, gait coupling all react to it), whereas the
+    // director asking for "no roll" means exactly "remove the roll I am seeing",
+    // not "re-simulate as though the operator never rolled".
+    //
+    // 0 is a hard disable; values above 1 exaggerate on purpose. FOV is scaled
+    // about 1.0 because it is a multiplier, not an offset -- scaling it directly
+    // would drive the FOV toward zero rather than toward neutral.
+    // Surge has no producer yet: the simulation always emits X = 0, so the
+    // control is structurally in place but cannot do anything until a
+    // surge-generating layer exists (suspension/road buzz, slice 2). Referenced
+    // here so the setting is not silently dead and the compiler does not warn.
+    (void)gainSurge;
+
     return out;
 }

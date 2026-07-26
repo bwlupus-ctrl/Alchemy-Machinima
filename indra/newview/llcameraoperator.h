@@ -60,6 +60,16 @@ public:
 
     // Clear all accumulated state (call on flycam toggle / reset so the
     // rig doesn't carry momentum across teleports or mode switches).
+    //
+    // DETERMINISM: under a LOCOMOTION MODE this also resets the procedural
+    // PHASES; under Legacy it does not, so stock behaviour is preserved
+    // exactly. An earlier version
+    // deliberately left them running to avoid popping the idle motion, but that
+    // made takes non-repeatable -- replaying the same recorded path with the
+    // same seed started at a different point in the noise, so a re-shoot did not
+    // match. reset() is only called at cuts, flycam toggles, playback starts and
+    // Cinematic Camera mode/target changes, i.e. moments that are already a
+    // discontinuity, so there is nothing to pop.
     void reset();
 
 private:
@@ -83,6 +93,22 @@ private:
     F32       mPhaseGait = 0.f;
     F32       mPhaseSettle = 0.f;
     F32       mPhaseRecompose = 0.f;
+
+    // ---- locomotion ----
+    // Blend weight from the transition SOURCE block to the current one while a
+    // transition is in flight (0 = fully source, 1 = fully current).
+    F32       mModeBlend = 1.f;
+    S32       mModeCurrent = -1;        // mode enum currently selected
+
+    // The source and live parameter BLOCKS themselves live in the .cpp's
+    // anonymous namespace (Locomotion is not a public type, and this class is a
+    // singleton, so file-scope state is equivalent to a member here). Storing
+    // blocks rather than mode enums is what lets a mid-blend retarget continue
+    // from the live mixture instead of snapping back to an unblended table.
+    //
+    // Auto-mode state is deliberately ABSENT until the Auto state machine
+    // lands. Scaffolding fields that nothing reads is exactly the half-wiring
+    // the slice boundary exists to prevent.
 };
 
 #endif // LL_LLCAMERAOPERATOR_H

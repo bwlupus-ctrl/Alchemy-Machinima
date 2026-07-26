@@ -2143,7 +2143,106 @@
       <key>Value</key>
       <real>0.25</real>
     </map>
-    <key>FlycamOperatorMaster</key>
+    <key>FlycamOperatorLocomotionMode</key>
+  <map>
+    <key>Comment</key>
+    <string>Handheld operator LOCOMOTION -- what the operator is physically doing, as distinct from Operator Style which is what rig they are holding. 0 Legacy (the Motion Profile axis stays in charge; stock behaviour), 1 Creep, 2 Walk, 3 Run, 4 Drive, 5 Float, 6 Unsteady. Selecting any mode other than Legacy REPLACES the Motion Profile axis rather than stacking with it. Modes never overwrite your authored settings.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>S32</string>
+    <key>Value</key>
+    <integer>0</integer>
+  </map>
+  <key>FlycamOperatorModeBlendTime</key>
+  <map>
+    <key>Comment</key>
+    <string>Seconds to cross-fade the handheld operator between locomotion modes. Quintic smoothstep, so a change mid-shot has no visible velocity discontinuity. Lower is snappier; 0 is effectively an instant cut.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>0.85</real>
+  </map>
+  <key>FlycamOperatorGainSurge</key>
+  <map>
+    <key>Comment</key>
+    <string>Handheld operator authority over forward/back translation (camera at axis). FINAL output gain, applied after the simulation, so it removes what you can see rather than re-simulating as though the operator never moved that way. 0 disables this axis entirely; 1 is normal; above 1 exaggerates.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>1.0</real>
+  </map>
+  <key>FlycamOperatorGainSway</key>
+  <map>
+    <key>Comment</key>
+    <string>Handheld operator authority over left/right translation (camera left axis). FINAL output gain, applied after the simulation, so it removes what you can see rather than re-simulating as though the operator never moved that way. 0 disables this axis entirely; 1 is normal; above 1 exaggerates.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>1.0</real>
+  </map>
+  <key>FlycamOperatorGainHeave</key>
+  <map>
+    <key>Comment</key>
+    <string>Handheld operator authority over up/down translation (camera up axis). FINAL output gain, applied after the simulation, so it removes what you can see rather than re-simulating as though the operator never moved that way. 0 disables this axis entirely; 1 is normal; above 1 exaggerates.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>1.0</real>
+  </map>
+  <key>FlycamOperatorGainRoll</key>
+  <map>
+    <key>Comment</key>
+    <string>Handheld operator authority over roll about the view axis. FINAL output gain, applied after the simulation, so it removes what you can see rather than re-simulating as though the operator never moved that way. 0 disables this axis entirely; 1 is normal; above 1 exaggerates.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>1.0</real>
+  </map>
+  <key>FlycamOperatorGainPitch</key>
+  <map>
+    <key>Comment</key>
+    <string>Handheld operator authority over pitch about the left axis. FINAL output gain, applied after the simulation, so it removes what you can see rather than re-simulating as though the operator never moved that way. 0 disables this axis entirely; 1 is normal; above 1 exaggerates.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>1.0</real>
+  </map>
+  <key>FlycamOperatorGainYaw</key>
+  <map>
+    <key>Comment</key>
+    <string>Handheld operator authority over yaw about the up axis. FINAL output gain, applied after the simulation, so it removes what you can see rather than re-simulating as though the operator never moved that way. 0 disables this axis entirely; 1 is normal; above 1 exaggerates.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>1.0</real>
+  </map>
+  <key>FlycamOperatorGainFOV</key>
+  <map>
+    <key>Comment</key>
+    <string>Handheld operator authority over the breathing FOV multiplier. Scaled about 1.0 because it is a multiplier, not an offset -- 0 pins the FOV to neutral rather than collapsing it to zero.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>1.0</real>
+  </map>
+  <key>FlycamOperatorMaster</key>
     <map>
       <key>Comment</key>
       <string>Master intensity for all camera operator motion (0-2)</string>
