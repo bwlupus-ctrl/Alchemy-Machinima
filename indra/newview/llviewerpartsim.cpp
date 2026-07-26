@@ -702,6 +702,59 @@ void LLViewerPartSim::updateSimulation()
             bool upd = true;
             LLViewerObject* vobj = mViewerPartSources[i]->mSourceObjectp;
 
+            // [BDMerge FilmClean] Viewer EFFECT particles are UI, not scene
+            // content: the sparkle spiral around an avatar on a script touch or
+            // an inventory offer, and the selection beam. They are spawned by
+            // LLHUDEffectSpiral (llhudeffecttrail.cpp) which registers a real
+            // LLViewerPartSourceSpiral with this simulator -- so they render
+            // through the ordinary particle pool and completely BYPASS the
+            // RENDER_DEBUG_FEATURE_UI gate that hides LLHUDObject::renderAll().
+            // Hiding the UI to film therefore hid the effect objects but left
+            // their particles spraying over the shot.
+            //
+            // Gate on source TYPE, not owner: effects raised by OTHER avatars
+            // arrive over the network and spawn here too, so an owner-based
+            // test would only suppress our own.
+            //
+            // LL_PART_SOURCE_SCRIPT is deliberately NOT included -- that is
+            // in-world llParticleSystem content, i.e. the set dressing we are
+            // filming.
+            //
+            // ⚠️ THE TYPE ENUM IS INVERTED IN STOCK CODE. Verified:
+            //   LLViewerPartSourceSpiral ctor passes LL_PART_SOURCE_CHAT
+            //                                       (llviewerpartsource.cpp:581)
+            //   LLViewerPartSourceChat   ctor passes LL_PART_SOURCE_SPIRAL
+            //                                       (llviewerpartsource.cpp:838)
+            // Both values are listed below, so this gate is correct TODAY only
+            // because it covers the pair. Do NOT "tidy" one of them away, and if
+            // the constructors are ever corrected, re-verify this block.
+            //
+            // setDead() rather than merely skipping update(): LLViewerPartSourceChat
+            // owns its own ~2s lifetime and calls setDead() from INSIDE update().
+            // Pausing its update would freeze that timer, so every object-chat
+            // event during a hidden-UI take would accumulate a permanently-live
+            // source, and un-hiding the UI would fire the whole retained backlog
+            // at once. Killing them is also simply what we want -- the loop's
+            // isDead() check immediately below reclaims the entry.
+            //
+            // Particles ALREADY emitted are unaffected: mViewerPartGroups
+            // updateParticles() still runs, so they finish their own lifetimes
+            // and fade out instead of popping.
+            static LLCachedControl<bool> hide_effect_particles(
+                gSavedSettings, "BDMergeHideEffectParticlesWithUI", true);
+            if (hide_effect_particles &&
+                !gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI))
+            {
+                const U32 src_type = mViewerPartSources[i]->getType();
+                if (src_type == LLViewerPartSource::LL_PART_SOURCE_SPIRAL ||
+                    src_type == LLViewerPartSource::LL_PART_SOURCE_BEAM ||
+                    src_type == LLViewerPartSource::LL_PART_SOURCE_CHAT)
+                {
+                    mViewerPartSources[i]->setDead();
+                    upd = false;
+                }
+            }
+
             if (vobj && vobj->isAvatar() && ((LLVOAvatar*)vobj)->isInMuteList())
             {
                 upd = false;

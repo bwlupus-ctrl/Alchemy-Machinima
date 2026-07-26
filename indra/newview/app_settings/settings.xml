@@ -12600,6 +12600,17 @@
     <key>Value</key>
     <integer>1</integer>
   </map>
+  <key>BDMergeHideEffectParticlesWithUI</key>
+  <map>
+    <key>Comment</key>
+    <string>Suppress viewer-generated particle effects while the UI is hidden, for clean machinima capture. Covers TWO separate sources: (1) HUD viewer effects spawned by LLHUDEffectSpiral - the sparkle spiral when an object is clicked or inventory is offered, and the selection beam on right-click; these are real scene particles, so they bypass the UI render gate. (2) Object-chat particles (LLViewerPartSourceChat, shown when EffectScriptChatParticles is on), which do NOT come from HUD effects - suppressing them is a deliberate wider policy for filming. Applies to every avatar's effects, not just your own. In-world llParticleSystem content is never affected.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>Boolean</string>
+    <key>Value</key>
+    <integer>1</integer>
+  </map>
   <key>RenderVisibleDiffuseSidecar</key>
   <map>
     <key>Comment</key>
