@@ -24,6 +24,61 @@ rule exists to stop.
 with presets/resets. If part of it genuinely must wait, say so BEFORE starting, not after
 committing.
 
+## ⛔ RULES EARNED ON 2026-07-25 (a long, expensive night)
+
+Six failures from one session. Each cost the user real time; each is preventable.
+
+### 1. Shared render state — review the BEAUTY PASS and the FEATURE-OFF path, not just your feature
+The only regression that reached the user's screen: `LLGLEnable(GL_BLEND)` was added to
+`LLDrawPoolFullbright::renderPostDeferred` to make a sidecar channel deterministic. That pool sets
+blend FACTORS but never the enable, and **the beauty pass was relying on inheriting blend-disabled**.
+Opaque fullbright surfaces with alpha in their textures went see-through. Four review rounds passed
+it, because every round reasoned about the sidecar correctly and nobody asked what else depended on
+that state.
+
+**Rule:** any change to global/shared GL state (`gGL.setColorMask`, `blendFunc`, `GL_BLEND`,
+draw-buffer state, render-target attachments) must be reviewed explicitly against (a) the beauty
+pass, and (b) the path where the feature is switched OFF. Prove the off-path is inert; do not assume
+it. Ask the reviewer for that specifically — a per-change review will not find it on its own.
+
+### 2. Do not hand the user a chain of one-click guesses
+Over one evening: "enable Motion flip Y" (derived from ABI flag NAMES instead of the algebra — it
+was wrong), then "set SL_ALBEDO_TO_LINEAR", then "it's just RTGI gain tuning". Each cost an in-world
+trip. The user broke the case themselves by switching off RTGI Diffuse.
+
+**Rule:** build the instrument, then bisect. Hand over ONE discriminating test with its outcomes
+stated in advance, not a sequence of hunches. If you are guessing, say the word "guess".
+
+### 3. Do not declare a root cause you cannot support
+"H3 confirmed." "The provider write is corrupting it." "Tuning dominates." Three confident calls,
+all wrong. The third was overturned by the user pushing a sweep further than suggested.
+
+**Rule:** separate what the code PROVES, what documentation IMPLIES, and what is INFERENCE — and
+label them. Proprietary internals (iMMERSE, closed shaders) can never be more than inference.
+
+### 4. Check the instrument before the subject
+An entire theory was built on a debug view that was contaminated — it was reading through an active
+RTGI result, and it called a proprietary accessor whose behaviour is not in this repo.
+
+**Rule:** before trusting a diagnostic view, establish what it actually samples and what could
+corrupt it. A wrong instrument produces confident wrong answers faster than no instrument.
+
+### 5. Verify before adding more
+The session ended with the sidecar, forward coverage, water, particle suppression and the whole
+camera-operator feature committed, built, and **never once seen working**. Volume of committed code
+was being optimised over things the user could check.
+
+**Rule:** unproven work is a liability, not progress. Prefer finishing and verifying one thing over
+starting the next. Track explicitly what is BUILT-BUT-UNTESTED and surface that list unprompted.
+
+### 6. Mechanical edits get verified by counting, not by compiling
+A textual edit to strip one field from six positional aggregate initialisers left two rows at 26 and
+28 values instead of 27 — one pattern matched a row another pattern had already rewritten. It would
+have compiled and shipped scrambled parameters.
+
+**Rule:** after any scripted/positional edit, verify by COUNTING and by cross-checking values against
+the source of truth. "It compiled" proves nothing about positional data.
+
 ## ⛔ MANDATORY WORKING AGREEMENT — CONSULT CODEX (user directive, 2026-07-21)
 
 **For this project, from 2026-07-21 onward: every code change must be reviewed with Codex, and
@@ -151,7 +206,13 @@ cmake --build build-Darwin-xcode-os --config Release
 
 Configuration types: `Debug`, `OptDebug` (debug build, release libs), `RelWithDebInfo` (default), `Release`.
 
-The viewer executable lands at `build-<OS>-<preset>/newview/<CONFIG>/` (e.g., `SecondLifeViewer.exe` on Windows, `SecondLife.app` on macOS).
+The viewer executable lands at `build-<OS>-<preset>/newview/<CONFIG>/`. On Windows this fork builds **`AlchemyTest.exe`**, NOT `SecondLifeViewer.exe`:
+
+    build-Windows-vs2026-os/newview/Release/AlchemyTest.exe
+
+**Always report that full path in a build report.** The user launches from it.
+
+**The running viewer holds the link lock.** `LNK1104: cannot open file ...AlchemyTest.exe` means the client is open, not that the build is broken. Poll and retry rather than failing.
 
 ### Tests
 
