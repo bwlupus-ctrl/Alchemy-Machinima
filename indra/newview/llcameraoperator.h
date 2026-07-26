@@ -100,6 +100,22 @@ private:
     F32       mModeBlend = 1.f;
     S32       mModeCurrent = -1;        // mode enum currently selected
 
+    // Vehicle layers (Drive, and weakly Float/Unsteady). Separate phases so
+    // suspension and road buzz are independent oscillators rather than two
+    // views of one -- a real vehicle's body motion and its tyre/road texture
+    // are not phase-locked.
+    F32       mPhaseSusp = 0.f;
+    F32       mPhaseRoad = 0.f;
+
+    // AUTO locomotion. mAutoResolved is the mode Auto has actually committed
+    // to; mAutoCandidate is one it is considering, and mAutoCandidateTime is
+    // how long that candidate has held its threshold. A transition only commits
+    // once the dwell elapses, which is what stops Auto flickering across a
+    // threshold in the middle of a take.
+    S32       mAutoResolved = -1;
+    S32       mAutoCandidate = -1;
+    F32       mAutoCandidateTime = 0.f;
+
     // The source and live parameter BLOCKS themselves live in the .cpp's
     // anonymous namespace (Locomotion is not a public type, and this class is a
     // singleton, so file-scope state is equivalent to a member here). Storing

@@ -211,6 +211,13 @@ const std::vector<std::string>& ALPanelCineCamParams::sharedSettings()
         // fails to round-trip, which is worse than not exposing it.
         "FlycamOperatorLocomotionMode",
         "FlycamOperatorModeBlendTime",
+        "FlycamOperatorGainSurge",
+        "FlycamOperatorGainSway",
+        "FlycamOperatorGainHeave",
+        "FlycamOperatorGainRoll",
+        "FlycamOperatorGainPitch",
+        "FlycamOperatorGainYaw",
+        "FlycamOperatorGainFOV",
         "CinematicCamSmoothing",
         "CinematicCamDutchAngle",
         "CinematicCamFrameOffsetUp",

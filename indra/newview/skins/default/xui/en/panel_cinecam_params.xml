@@ -5,7 +5,7 @@
      standalone Cinematic Camera floater and the Director Console's Camera
      tab; every control is settings-backed so instances stay in sync. -->
 <panel
- height="286"
+ height="441"
  layout="topleft"
  name="panel_cinecam_params"
  background_visible="false"
@@ -150,6 +150,7 @@
         <combo_box.item label="Drive" name="loco_drive" value="4" />
         <combo_box.item label="Float" name="loco_float" value="5" />
         <combo_box.item label="Unsteady" name="loco_unsteady" value="6" />
+        <combo_box.item label="Auto (speed)" name="loco_auto" value="100" />
     </combo_box>
     <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="2" layout="topleft" left_pad="1" top_delta="2" name="reset_FlycamOperatorLocomotionMode" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorLocomotionMode" />
     <spinner
@@ -169,6 +170,136 @@
      tool_tip="Seconds to cross-fade between locomotion modes. Changing mode mid-shot ramps instead of snapping."
      width="105" />
     <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_FlycamOperatorModeBlendTime" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorModeBlendTime" />
+    <text
+     follows="left|top"
+     halign="left"
+     height="14"
+     layout="topleft"
+     left="12"
+     top_pad="8"
+     name="operator_dof_label"
+     width="300">
+     Operator authority (0 = axis off, 1 = normal, 2 = exaggerate)
+    </text>
+    <slider
+     control_name="FlycamOperatorGainSurge"
+     decimal_digits="2"
+     follows="left|top"
+     height="16"
+     increment="0.05"
+     label="Surge"
+     label_width="46"
+     layout="topleft"
+     left="12"
+     max_val="2"
+     min_val="0"
+     top_pad="3"
+     name="FlycamOperatorGainSurge"
+     tool_tip="Forward/back translation. Currently produced only by the Drive road-buzz layer."
+     width="163" />
+    <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_FlycamOperatorGainSurge" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorGainSurge" />
+    <slider
+     control_name="FlycamOperatorGainSway"
+     decimal_digits="2"
+     follows="left|top"
+     height="16"
+     increment="0.05"
+     label="Sway"
+     label_width="46"
+     layout="topleft"
+     left="12"
+     max_val="2"
+     min_val="0"
+     top_pad="3"
+     name="FlycamOperatorGainSway"
+     tool_tip="Left/right translation, including footfall sway."
+     width="163" />
+    <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_FlycamOperatorGainSway" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorGainSway" />
+    <slider
+     control_name="FlycamOperatorGainHeave"
+     decimal_digits="2"
+     follows="left|top"
+     height="16"
+     increment="0.05"
+     label="Heave"
+     label_width="46"
+     layout="topleft"
+     left="12"
+     max_val="2"
+     min_val="0"
+     top_pad="3"
+     name="FlycamOperatorGainHeave"
+     tool_tip="Up/down translation: step bob, breath lift, suspension."
+     width="163" />
+    <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_FlycamOperatorGainHeave" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorGainHeave" />
+    <slider
+     control_name="FlycamOperatorGainRoll"
+     decimal_digits="2"
+     follows="left|top"
+     height="16"
+     increment="0.05"
+     label="Roll"
+     label_width="46"
+     layout="topleft"
+     left="12"
+     max_val="2"
+     min_val="0"
+     top_pad="3"
+     name="FlycamOperatorGainRoll"
+     tool_tip="Roll about the view axis, including heel-strike roll and turn lean."
+     width="163" />
+    <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_FlycamOperatorGainRoll" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorGainRoll" />
+    <slider
+     control_name="FlycamOperatorGainPitch"
+     decimal_digits="2"
+     follows="left|top"
+     height="16"
+     increment="0.05"
+     label="Pitch"
+     label_width="46"
+     layout="topleft"
+     left="12"
+     max_val="2"
+     min_val="0"
+     top_pad="3"
+     name="FlycamOperatorGainPitch"
+     tool_tip="Pitch (tilt) wander."
+     width="163" />
+    <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_FlycamOperatorGainPitch" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorGainPitch" />
+    <slider
+     control_name="FlycamOperatorGainYaw"
+     decimal_digits="2"
+     follows="left|top"
+     height="16"
+     increment="0.05"
+     label="Yaw"
+     label_width="46"
+     layout="topleft"
+     left="12"
+     max_val="2"
+     min_val="0"
+     top_pad="3"
+     name="FlycamOperatorGainYaw"
+     tool_tip="Yaw (pan) wander."
+     width="163" />
+    <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_FlycamOperatorGainYaw" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorGainYaw" />
+    <slider
+     control_name="FlycamOperatorGainFOV"
+     decimal_digits="2"
+     follows="left|top"
+     height="16"
+     increment="0.05"
+     label="FOV"
+     label_width="46"
+     layout="topleft"
+     left="12"
+     max_val="2"
+     min_val="0"
+     top_pad="3"
+     name="FlycamOperatorGainFOV"
+     tool_tip="Breathing FOV. Scaled about 1.0, so 0 pins the FOV to neutral rather than collapsing it."
+     width="163" />
+    <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_FlycamOperatorGainFOV" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorGainFOV" />
     <slider
      control_name="CinematicCamSmoothing"
      decimal_digits="2"
@@ -268,7 +399,7 @@
     <!-- ============ per-mode parameter panels ============ -->
     <!-- All panels occupy the same rect; the floater class shows exactly one. -->
 
-    <panel name="panel_mode_bone" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_bone" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Bone Lock (GoPro on a joint)
@@ -333,7 +464,7 @@
         <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBoneAimRoll" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBoneAimRoll" />
     </panel>
 
-    <panel name="panel_mode_orbit" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_orbit" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Orbit (circle the subject)
@@ -356,7 +487,7 @@
         <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamOrbitBob" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamOrbitBob" />
     </panel>
 
-    <panel name="panel_mode_hover" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_hover" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Fly Hover (drone wander)
@@ -379,7 +510,7 @@
         <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamHoverHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamHoverHeight" />
     </panel>
 
-    <panel name="panel_mode_sweep" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_sweep" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Sweep (linear dolly pass)
@@ -413,7 +544,7 @@
         <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamSweepPingPong" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamSweepPingPong" />
     </panel>
 
-    <panel name="panel_mode_crane" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_crane" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Crane (slow orbit, easing height)
@@ -440,7 +571,7 @@
         <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamCraneRisePeriod" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamCraneRisePeriod" />
     </panel>
 
-    <panel name="panel_mode_vertigo" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_vertigo" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Dolly Zoom (Vertigo: background stretches)
@@ -475,7 +606,7 @@
         <button follows="left|top" height="20" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamVertigoEndMode" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamVertigoEndMode" />
     </panel>
 
-    <panel name="panel_mode_push" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_push" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Push-In (slow creep to close-up)
@@ -510,7 +641,7 @@
         <button follows="left|top" height="20" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamPushEndMode" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamPushEndMode" />
     </panel>
 
-    <panel name="panel_mode_hero" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_hero" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Low Hero (low-angle drifting arc)
@@ -537,7 +668,7 @@
         <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamHeroHeading" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamHeroHeading" />
     </panel>
 
-    <panel name="panel_mode_overhead" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_overhead" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Overhead (God's-eye rise with spin)
@@ -568,7 +699,7 @@
         <button follows="left|top" height="20" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamOverheadEndMode" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamOverheadEndMode" />
     </panel>
 
-    <panel name="panel_mode_ots" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_ots" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Over-the-Shoulder (dialogue)
@@ -594,7 +725,7 @@
         <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamOTSUp" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamOTSUp" />
     </panel>
 
-    <panel name="panel_mode_crash" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_crash" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Crash Zoom (snap zoom from a tripod)
@@ -612,7 +743,7 @@
         </text>
     </panel>
 
-    <panel name="panel_mode_slowzoom" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_slowzoom" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Slow Zoom (Kubrick creep, position frozen)
@@ -630,7 +761,7 @@
         </text>
     </panel>
 
-    <panel name="panel_mode_whip" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_whip" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Whip Arc (violent sub-second arc)
@@ -657,7 +788,7 @@
         <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamWhipHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamWhipHeight" />
     </panel>
 
-    <panel name="panel_mode_arc" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_arc" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Arc Move (eased partial orbit)
@@ -692,7 +823,7 @@
         <button follows="left|top" height="20" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamArcEndMode" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamArcEndMode" />
     </panel>
 
-    <panel name="panel_mode_reveal" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_reveal" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Reveal Rise (over the shoulder to the horizon)
@@ -719,7 +850,7 @@
         <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamRevealDuration" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamRevealDuration" />
     </panel>
 
-    <panel name="panel_mode_pull" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_pull" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Pull-Back (eased retreat and rise)
@@ -746,7 +877,7 @@
         <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamPullHeading" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamPullHeading" />
     </panel>
 
-    <panel name="panel_mode_twoshot" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_twoshot" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Two-Shot (dialogue master, you + target)
@@ -772,7 +903,7 @@
         <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamTwoShotHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamTwoShotHeight" />
     </panel>
 
-    <panel name="panel_mode_lead" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_lead" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Lead Follow (backpedal walk-and-talk)
@@ -791,7 +922,7 @@
         <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamLeadSway" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamLeadSway" />
     </panel>
 
-    <panel name="panel_mode_ecu" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_ecu" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             ECU Eyes (locked face micro-frame)
@@ -810,7 +941,7 @@
         <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamECUDrift" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamECUDrift" />
     </panel>
 
-    <panel name="panel_mode_long" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_long" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Long Lens (distant compressed telephoto)
@@ -837,7 +968,7 @@
         <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamLongDrift" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamLongDrift" />
     </panel>
 
-    <panel name="panel_mode_spiral" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_spiral" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Spiral (orbit tightening and rising)
@@ -868,7 +999,7 @@
         <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamSpiralDuration" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamSpiralDuration" />
     </panel>
 
-    <panel name="panel_mode_pedestal" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_pedestal" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Pedestal Rise (boots-to-face introduction)
@@ -895,7 +1026,7 @@
         <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamPedestalHeading" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamPedestalHeading" />
     </panel>
 
-    <panel name="panel_mode_barrel" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_barrel" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Barrel Roll (held frame, rolling)
@@ -927,7 +1058,7 @@
         <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBarrelOscillate" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBarrelOscillate" />
     </panel>
 
-    <panel name="panel_mode_cork" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_cork" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Corkscrew (rising orbit while rolling)
@@ -970,7 +1101,7 @@
         <button follows="left|top" height="20" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamCorkEndMode" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamCorkEndMode" />
     </panel>
 
-    <panel name="panel_mode_pendulum" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_pendulum" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Pendulum (eased horizontal swing)
@@ -997,7 +1128,7 @@
         <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamPendulumHeading" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamPendulumHeading" />
     </panel>
 
-    <panel name="panel_mode_contra" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_contra" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Contra-Orbit (orbit while the FOV warps)
@@ -1028,7 +1159,7 @@
         <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamContraWarpPeriod" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamContraWarpPeriod" />
     </panel>
 
-    <panel name="panel_mode_fisheye" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_fisheye" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Fisheye Lunge (wide push to the face)
@@ -1063,7 +1194,7 @@
         <button follows="left|top" height="20" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamFisheyeEndMode" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamFisheyeEndMode" />
     </panel>
 
-    <panel name="panel_mode_skimmer" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_skimmer" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Floor Skimmer (ground-level lateral track)
@@ -1090,7 +1221,7 @@
         <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamSkimmerHeading" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamSkimmerHeading" />
     </panel>
 
-    <panel name="panel_mode_boost" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_boost" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Boost Rise (accelerating vertical launch)
@@ -1125,7 +1256,7 @@
         <button follows="left|top" height="20" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBoostEndMode" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBoostEndMode" />
     </panel>
 
-    <panel name="panel_mode_boom" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_boom" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Boom Over (jib arc over the subject)
@@ -1160,7 +1291,7 @@
         <button follows="left|top" height="20" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBoomEndMode" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBoomEndMode" />
     </panel>
 
-    <panel name="panel_mode_topspin" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_topspin" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Top Spin (locked overhead, spinning)
@@ -1182,7 +1313,7 @@
         </text>
     </panel>
 
-    <panel name="panel_mode_turntable" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_turntable" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Turntable Crane (orbit, easing height)
@@ -1209,7 +1340,7 @@
         <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamTurntablePeriod" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamTurntablePeriod" />
     </panel>
 
-    <panel name="panel_mode_float" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_float" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Floating Close-Up (drifting intimate face)
@@ -1232,7 +1363,7 @@
         <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamFloatFov" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamFloatFov" />
     </panel>
 
-    <panel name="panel_mode_tiltwhip" left="0" top="162" width="320" height="98"
+    <panel name="panel_mode_tiltwhip" left="0" top="317" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">
             Tilt Whip (percussive vertical whips)
@@ -1259,7 +1390,7 @@
         <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamTiltWhipSnap" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamTiltWhipSnap" />
     </panel>
 
-    <panel name="panel_mode_bodyhelix" left="0" top="162" width="320" height="98" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+    <panel name="panel_mode_bodyhelix" left="0" top="317" width="320" height="98" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">Body Helix Reveal (feet to face)</text>
         <spinner control_name="CinematicCamBodyHelixRadius" decimal_digits="1" follows="left|top" height="16" increment="0.1" label="Radius" label_width="40" layout="topleft" left="12" max_val="15" min_val="0.3" top_pad="6" name="CinematicCamBodyHelixRadius" tool_tip="Constant orbit radius (m)" width="91" />
         <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBodyHelixRadius" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBodyHelixRadius" />
@@ -1273,7 +1404,7 @@
         <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBodyHelixEndOffset" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBodyHelixEndOffset" />
     </panel>
 
-    <panel name="panel_mode_descent" left="0" top="162" width="320" height="98" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+    <panel name="panel_mode_descent" left="0" top="317" width="320" height="98" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">Descent (reverse pedestal)</text>
         <spinner control_name="CinematicCamDescentDistance" decimal_digits="1" follows="left|top" height="16" increment="0.1" label="Dist" label_width="28" layout="topleft" left="12" max_val="15" min_val="0.3" top_pad="6" name="CinematicCamDescentDistance" tool_tip="Distance from subject (m)" width="79" /><button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamDescentDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamDescentDistance" />
         <spinner control_name="CinematicCamDescentAboveHead" decimal_digits="2" follows="left|top" height="16" increment="0.05" label="Above" label_width="38" layout="topleft" left_pad="6" max_val="5" min_val="0" top_delta="0" name="CinematicCamDescentAboveHead" tool_tip="Start above derived head height (m)" width="89" /><button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamDescentAboveHead" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamDescentAboveHead" />
@@ -1282,7 +1413,7 @@
         <spinner control_name="CinematicCamDescentHeading" decimal_digits="0" follows="left|top" height="16" increment="5" label="Head" label_width="34" layout="topleft" left_pad="6" max_val="180" min_val="-180" top_delta="0" name="CinematicCamDescentHeading" tool_tip="Facing-relative heading (deg)" width="85" /><button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamDescentHeading" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamDescentHeading" />
     </panel>
 
-    <panel name="panel_mode_parallax" left="0" top="162" width="320" height="98" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+    <panel name="panel_mode_parallax" left="0" top="317" width="320" height="98" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">Parallax Slide (straight truck)</text>
         <spinner control_name="CinematicCamParallaxLength" decimal_digits="1" follows="left|top" height="16" increment="0.5" label="Length" label_width="42" layout="topleft" left="12" max_val="50" min_val="0.1" top_pad="6" name="CinematicCamParallaxLength" tool_tip="Total rail length (m)" width="93" /><button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamParallaxLength" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamParallaxLength" />
         <spinner control_name="CinematicCamParallaxDistance" decimal_digits="1" follows="left|top" height="16" increment="0.25" label="Dist" label_width="28" layout="topleft" left_pad="6" max_val="20" min_val="0.3" top_delta="0" name="CinematicCamParallaxDistance" tool_tip="Rail distance from subject (m)" width="79" /><button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamParallaxDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamParallaxDistance" />
@@ -1291,7 +1422,7 @@
         <spinner control_name="CinematicCamParallaxHeading" decimal_digits="0" follows="left|top" height="16" increment="5" label="Head" label_width="34" layout="topleft" left_pad="6" max_val="180" min_val="-180" top_delta="0" name="CinematicCamParallaxHeading" tool_tip="Facing-relative rail heading (deg)" width="85" /><button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamParallaxHeading" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamParallaxHeading" />
     </panel>
 
-    <panel name="panel_mode_figure8" left="0" top="162" width="320" height="98" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+    <panel name="panel_mode_figure8" left="0" top="317" width="320" height="98" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">Figure-8 / Lemniscate</text>
         <spinner control_name="CinematicCamFigureEightRadius" decimal_digits="1" follows="left|top" height="16" increment="0.1" label="Radius" label_width="40" layout="topleft" left="12" max_val="20" min_val="0.3" top_pad="6" name="CinematicCamFigureEightRadius" tool_tip="Figure-8 lobe radius (m)" width="91" /><button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamFigureEightRadius" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamFigureEightRadius" />
         <spinner control_name="CinematicCamFigureEightHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1" label="Ht" label_width="20" layout="topleft" left_pad="6" max_val="10" min_val="-2" top_delta="0" name="CinematicCamFigureEightHeight" tool_tip="Camera height (m)" width="71" /><button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamFigureEightHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamFigureEightHeight" />
@@ -1299,7 +1430,7 @@
         <spinner control_name="CinematicCamFigureEightHeading" decimal_digits="0" follows="left|top" height="16" increment="5" label="Head" label_width="34" layout="topleft" left_pad="6" max_val="180" min_val="-180" top_delta="0" name="CinematicCamFigureEightHeading" tool_tip="Facing-relative figure-8 axis (deg)" width="85" /><button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamFigureEightHeading" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamFigureEightHeading" />
     </panel>
 
-    <panel name="panel_mode_detail" left="0" top="162" width="320" height="98" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+    <panel name="panel_mode_detail" left="0" top="317" width="320" height="98" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">Detail Sweep (costume insert)</text>
         <spinner control_name="CinematicCamDetailDistance" decimal_digits="2" follows="left|top" height="16" increment="0.05" label="Dist" label_width="28" layout="topleft" left="12" max_val="5" min_val="0.25" top_pad="6" name="CinematicCamDetailDistance" tool_tip="Close camera distance (m)" width="79" /><button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamDetailDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamDetailDistance" />
         <spinner control_name="CinematicCamDetailLength" decimal_digits="1" follows="left|top" height="16" increment="0.1" label="Drift" label_width="32" layout="topleft" left_pad="6" max_val="10" min_val="0" top_delta="0" name="CinematicCamDetailLength" tool_tip="Total lateral drift (m)" width="83" /><button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamDetailLength" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamDetailLength" />
@@ -1308,7 +1439,7 @@
         <spinner control_name="CinematicCamDetailFov" decimal_digits="2" follows="left|top" height="16" increment="0.05" label="Zoom x" label_width="44" layout="topleft" left_pad="6" max_val="1.5" min_val="0.1" top_delta="0" name="CinematicCamDetailFov" tool_tip="FOV multiplier; below 1 is narrow" width="95" /><button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamDetailFov" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamDetailFov" />
     </panel>
 
-    <panel name="panel_mode_steporbit" left="0" top="162" width="320" height="98" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+    <panel name="panel_mode_steporbit" left="0" top="317" width="320" height="98" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">Step Orbit (held stop-motion)</text>
         <spinner control_name="CinematicCamStepOrbitRadius" decimal_digits="1" follows="left|top" height="16" increment="0.1" label="Radius" label_width="40" layout="topleft" left="12" max_val="20" min_val="0.3" top_pad="6" name="CinematicCamStepOrbitRadius" tool_tip="Orbit radius (m)" width="91" /><button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamStepOrbitRadius" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamStepOrbitRadius" />
         <spinner control_name="CinematicCamStepOrbitHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1" label="Ht" label_width="20" layout="topleft" left_pad="6" max_val="10" min_val="-2" top_delta="0" name="CinematicCamStepOrbitHeight" tool_tip="Camera height (m)" width="71" /><button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamStepOrbitHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamStepOrbitHeight" />
@@ -1318,7 +1449,7 @@
         <spinner control_name="CinematicCamStepOrbitHeading" decimal_digits="0" follows="left|top" height="16" increment="5" label="Head" label_width="34" layout="topleft" left_pad="6" max_val="180" min_val="-180" top_delta="0" name="CinematicCamStepOrbitHeading" tool_tip="Starting heading (deg)" width="85" /><button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamStepOrbitHeading" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamStepOrbitHeading" />
     </panel>
 
-    <panel name="panel_mode_cable" left="0" top="162" width="320" height="98" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+    <panel name="panel_mode_cable" left="0" top="317" width="320" height="98" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">Cable Cam / Fly-by</text>
         <spinner control_name="CinematicCamCableLength" decimal_digits="1" follows="left|top" height="16" increment="0.5" label="Length" label_width="42" layout="topleft" left="12" max_val="100" min_val="1" top_pad="6" name="CinematicCamCableLength" tool_tip="Straight pass length (m)" width="93" /><button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamCableLength" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamCableLength" />
         <spinner control_name="CinematicCamCableMissDistance" decimal_digits="1" follows="left|top" height="16" increment="0.25" label="Miss" label_width="30" layout="topleft" left_pad="6" max_val="20" min_val="-20" top_delta="0" name="CinematicCamCableMissDistance" tool_tip="Side offset of chord from subject (m)" width="81" /><button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamCableMissDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamCableMissDistance" />
@@ -1327,7 +1458,7 @@
         <spinner control_name="CinematicCamCableHeading" decimal_digits="0" follows="left|top" height="16" increment="5" label="Head" label_width="34" layout="topleft" left_pad="6" max_val="180" min_val="-180" top_delta="0" name="CinematicCamCableHeading" tool_tip="Facing-relative path heading (deg)" width="85" /><button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamCableHeading" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamCableHeading" />
     </panel>
 
-    <panel name="panel_mode_breathing" left="0" top="162" width="320" height="98" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+    <panel name="panel_mode_breathing" left="0" top="317" width="320" height="98" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="296" name="lbl" font="SansSerifBold">Breathing Hold (locked but alive)</text>
         <spinner control_name="CinematicCamBreathingDistance" decimal_digits="1" follows="left|top" height="16" increment="0.1" label="Dist" label_width="28" layout="topleft" left="12" max_val="20" min_val="0.3" top_pad="6" name="CinematicCamBreathingDistance" tool_tip="Held distance (m)" width="79" /><button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBreathingDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBreathingDistance" />
         <spinner control_name="CinematicCamBreathingHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1" label="Ht" label_width="20" layout="topleft" left_pad="6" max_val="10" min_val="-2" top_delta="0" name="CinematicCamBreathingHeight" tool_tip="Held camera height (m)" width="71" /><button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBreathingHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBreathingHeight" />

@@ -873,7 +873,7 @@
              width="374">
                 <panel
                  background_visible="false"
-                 height="508"
+                 height="663"
                  layout="topleft"
                  left="0"
                  top="0"
@@ -883,7 +883,7 @@
                      class="panel_cinecam_params"
                      filename="panel_cinecam_params.xml"
                      follows="left|top"
-                     height="286"
+                     height="441"
                      layout="topleft"
                      left="0"
                      top="0"
@@ -896,7 +896,7 @@
                      height="214"
                      layout="topleft"
                      left="6"
-                     top="290"
+                     top="445"
                      name="flycam_orbit_embedded"
                      width="320" />
                 </panel>

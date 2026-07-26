@@ -2242,6 +2242,94 @@
     <key>Value</key>
     <real>1.0</real>
   </map>
+  <key>FlycamOperatorAutoWalkEnter</key>
+  <map>
+    <key>Comment</key>
+    <string>Auto locomotion: normalised linear speed above which Creep becomes Walk. Normalised against FlycamOperatorRefLinearSpeed. Auto uses LINEAR speed only, so a fast pan from a standing camera never reads as running.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>0.24</real>
+  </map>
+  <key>FlycamOperatorAutoWalkExit</key>
+  <map>
+    <key>Comment</key>
+    <string>Auto locomotion: normalised linear speed below which Walk drops back to Creep. Deliberately lower than the enter threshold -- the gap is the hysteresis band that stops Auto flickering when you hover at a crossover.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>0.14</real>
+  </map>
+  <key>FlycamOperatorAutoRunEnter</key>
+  <map>
+    <key>Comment</key>
+    <string>Auto locomotion: normalised linear speed above which Walk becomes Run.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>0.82</real>
+  </map>
+  <key>FlycamOperatorAutoRunExit</key>
+  <map>
+    <key>Comment</key>
+    <string>Auto locomotion: normalised linear speed below which Run drops back to Walk.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>0.62</real>
+  </map>
+  <key>FlycamOperatorAutoWalkEnterDwell</key>
+  <map>
+    <key>Comment</key>
+    <string>Auto locomotion: seconds the Creep-to-Walk threshold must be held CONTINUOUSLY before the change commits. Any frame that falls back resets the timer.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>0.65</real>
+  </map>
+  <key>FlycamOperatorAutoWalkExitDwell</key>
+  <map>
+    <key>Comment</key>
+    <string>Auto locomotion: seconds the Walk-to-Creep threshold must be held before the change commits. Longer than the enter dwell so a brief stop does not drop gait.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>1.10</real>
+  </map>
+  <key>FlycamOperatorAutoRunEnterDwell</key>
+  <map>
+    <key>Comment</key>
+    <string>Auto locomotion: seconds the Walk-to-Run threshold must be held before committing.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>0.55</real>
+  </map>
+  <key>FlycamOperatorAutoRunExitDwell</key>
+  <map>
+    <key>Comment</key>
+    <string>Auto locomotion: seconds the Run-to-Walk threshold must be held before committing.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>0.90</real>
+  </map>
   <key>FlycamOperatorMaster</key>
     <map>
       <key>Comment</key>

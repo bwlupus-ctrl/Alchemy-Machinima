@@ -219,7 +219,12 @@ enum ELocomotion
     LOCO_DRIVE,
     LOCO_FLOAT,
     LOCO_UNSTEADY,
-    LOCO_COUNT
+    LOCO_COUNT,
+    // Sentinel, not a block: Auto RESOLVES to Creep/Walk/Run at runtime.
+    // Deliberately excluded from Auto: Drive, Float and Unsteady, because
+    // camera speed cannot tell whether the rig is in a car, on a drone, or
+    // carried by someone who has been drinking.
+    LOCO_AUTO = 100
 };
 
 struct Locomotion
@@ -377,7 +382,11 @@ void LLCameraOperator::reset()
     {
         mPhaseXY = mPhaseRoll = mPhaseBreath = 0.f;
         mPhaseGait = mPhaseSettle = mPhaseRecompose = 0.f;
+        mPhaseSusp = mPhaseRoad = 0.f;
     }
+    mAutoResolved = -1;
+    mAutoCandidate = -1;
+    mAutoCandidateTime = 0.f;
 
     mModeBlend = 1.f;
     mModeCurrent = -1;
@@ -442,6 +451,17 @@ LLCameraOperatorOutput LLCameraOperator::update(const LLCameraOperatorInput& inp
 
     // ---- locomotion + per-DOF authority (live) ----------------------------
     static LLCachedControl<S32> locoMode(gSavedSettings, "FlycamOperatorLocomotionMode", 0);
+    // Auto thresholds are normalised against RefLinearSpeed. Every one of them
+    // is a runtime setting: they are feel-critical, and the director cannot
+    // rebuild to try a different walk/run crossover.
+    static LLCachedControl<F32> autoWalkOn(gSavedSettings,  "FlycamOperatorAutoWalkEnter",  0.24f);
+    static LLCachedControl<F32> autoWalkOff(gSavedSettings, "FlycamOperatorAutoWalkExit",   0.14f);
+    static LLCachedControl<F32> autoRunOn(gSavedSettings,   "FlycamOperatorAutoRunEnter",   0.82f);
+    static LLCachedControl<F32> autoRunOff(gSavedSettings,  "FlycamOperatorAutoRunExit",    0.62f);
+    static LLCachedControl<F32> autoWalkOnT(gSavedSettings, "FlycamOperatorAutoWalkEnterDwell", 0.65f);
+    static LLCachedControl<F32> autoWalkOffT(gSavedSettings,"FlycamOperatorAutoWalkExitDwell",  1.10f);
+    static LLCachedControl<F32> autoRunOnT(gSavedSettings,  "FlycamOperatorAutoRunEnterDwell",  0.55f);
+    static LLCachedControl<F32> autoRunOffT(gSavedSettings, "FlycamOperatorAutoRunExitDwell",   0.90f);
     static LLCachedControl<F32> modeBlendTime(gSavedSettings, "FlycamOperatorModeBlendTime", 0.85f);
     static LLCachedControl<F32> gainSurge(gSavedSettings, "FlycamOperatorGainSurge", 1.f);
     static LLCachedControl<F32> gainSway(gSavedSettings,  "FlycamOperatorGainSway",  1.f);
@@ -458,7 +478,59 @@ LLCameraOperatorOutput LLCameraOperator::update(const LLCameraOperatorInput& inp
 
     // Locomotion REPLACES Profile. LOCO_LEGACY (0, the default) leaves Profile
     // in charge, so existing users see no change whatsoever.
-    const S32 loco = llclamp((S32)locoMode, 0, (S32)LOCO_COUNT - 1);
+    S32 loco = (S32)locoMode;
+    if (loco == LOCO_AUTO)
+    {
+        // Auto uses LINEAR speed only, never the combined linear+angular metric:
+        // a fast pan from a standing camera must not read as running.
+        const F32 linNorm = input.mLinearVel.magVec() / llmax((F32)refLinear, 0.01f);
+
+        if (mAutoResolved < 0)
+        {
+            mAutoResolved = LOCO_WALK;   // neutral start; dwell decides from here
+        }
+
+        S32 want = mAutoResolved;
+        F32 dwell = 0.f;
+        if (mAutoResolved == LOCO_CREEP && linNorm > autoWalkOn)      { want = LOCO_WALK;  dwell = autoWalkOnT; }
+        else if (mAutoResolved == LOCO_WALK && linNorm < autoWalkOff) { want = LOCO_CREEP; dwell = autoWalkOffT; }
+        else if (mAutoResolved == LOCO_WALK && linNorm > autoRunOn)   { want = LOCO_RUN;   dwell = autoRunOnT; }
+        else if (mAutoResolved == LOCO_RUN && linNorm < autoRunOff)   { want = LOCO_WALK;  dwell = autoRunOffT; }
+
+        if (want != mAutoResolved)
+        {
+            // The candidate must hold its threshold for the whole dwell. Any
+            // frame that falls back resets the timer, so hovering on a
+            // threshold cannot ratchet its way across.
+            if (want != mAutoCandidate)
+            {
+                mAutoCandidate = want;
+                mAutoCandidateTime = 0.f;
+            }
+            mAutoCandidateTime += input.mDeltaTime;
+            // Do not start a new transition while one is still blending, or a
+            // fast accel/decel could chain-trigger mid-fade.
+            if (mAutoCandidateTime >= dwell && mModeBlend >= 1.f)
+            {
+                mAutoResolved = want;
+                mAutoCandidate = -1;
+                mAutoCandidateTime = 0.f;
+            }
+        }
+        else
+        {
+            mAutoCandidate = -1;
+            mAutoCandidateTime = 0.f;
+        }
+        loco = mAutoResolved;
+    }
+    else
+    {
+        mAutoResolved = -1;
+        mAutoCandidate = -1;
+        mAutoCandidateTime = 0.f;
+    }
+    loco = llclamp(loco, 0, (S32)LOCO_COUNT - 1);
     const bool loco_active = (loco != LOCO_LEGACY);
 
     // Cross-fade the parameter block on a mode change so switching mid-shot
@@ -554,6 +626,11 @@ LLCameraOperatorOutput LLCameraOperator::update(const LLCameraOperatorInput& inp
     mPhaseXY        = vc_wrap(mPhaseXY        + adv * aPanTiltHz * P.freqMul);
     mPhaseRoll      = vc_wrap(mPhaseRoll      + adv * aRollHz    * P.freqMul);
     mPhaseBreath    = vc_wrap(mPhaseBreath    + adv * aBreathHz  * P.freqMul);
+    // Vehicle layers advance on their OWN phases, so suspension and road buzz
+    // stay independent oscillators. Real body motion and tyre texture are not
+    // phase-locked, and locking them reads as a single artificial wobble.
+    mPhaseSusp      = vc_wrap(mPhaseSusp + adv * (loco_active ? L.suspFreq : 0.f));
+    mPhaseRoad      = vc_wrap(mPhaseRoad + adv * (loco_active ? L.roadFreq : 0.f));
     mPhaseGait      = vc_wrap(mPhaseGait      + adv * gaitRate);
     mPhaseSettle    = vc_wrap(mPhaseSettle    + adv * settleFreq);
     mPhaseRecompose = vc_wrap(mPhaseRecompose + adv / llmax(aRecompInt, 0.5f));
@@ -686,6 +763,30 @@ LLCameraOperatorOutput LLCameraOperator::update(const LLCameraOperatorInput& inp
         out.mFovMul += vbase * aStepBob * 0.15f * gait;
     }
 
+    // ---- vehicle layers (Drive; weakly Float/Unsteady) ----------------------
+    // Drive zeroes gait entirely -- a seated operator has no footfall -- so its
+    // whole character comes from here. Suspension is a slow body heave; road
+    // buzz is a fast, small, high-frequency texture on BOTH heave and surge
+    // (tyre noise reaches the operator through the seat and the chassis, not
+    // only vertically). Turn lean is the operator's mass being thrown sideways
+    // in a corner, so it follows SIGNED yaw rate rather than yaw magnitude.
+    F32 surgeX = 0.f;
+    if (loco_active && (L.suspHeave > 0.f || L.roadBuzz > 0.f || L.turnLean != 0.f))
+    {
+        const F32 sSusp = vc_fbm(mPhaseSusp + sd + 11.7f, 0.25f);
+        const F32 sRoad = vc_fbm(mPhaseRoad + sd + 67.3f, 1.6f);
+
+        bobZ   += sSusp * L.suspHeave * master;
+        bobZ   += sRoad * L.roadBuzz * master;
+        surgeX += sRoad * L.roadBuzz * 0.6f * master;
+
+        // Signed yaw rate, normalised, so a left corner leans the opposite way
+        // to a right corner instead of both leaning the same direction.
+        const F32 yawRate = input.mAngularVel.mV[VZ] /
+                            llmax((F32)refAngular * DEG_TO_RAD, 0.01f);
+        roll += llclamp(yawRate, -1.f, 1.f) * L.turnLean * DEG_TO_RAD * master;
+    }
+
     // ---- per-DOF authority, applied BEFORE the clamps ----------------------
     // Deliberately not fed back into the simulation: scaling an INPUT changes
     // the character of the motion, because envelopes, latching and gait
@@ -701,6 +802,7 @@ LLCameraOperatorOutput LLCameraOperator::update(const LLCameraOperatorInput& inp
     yaw   *= gainYaw;
     pitch *= gainPitch;
     roll  *= gainRoll;
+    surgeX *= gainSurge;
     swayY *= gainSway;
     bobZ  *= gainHeave;
     liftZ *= gainHeave;
@@ -718,7 +820,7 @@ LLCameraOperatorOutput LLCameraOperator::update(const LLCameraOperatorInput& inp
     out.mPitch = llclamp(pitch, -rotCap, rotCap);
     out.mRoll  = llclamp(roll,  -rotCap, rotCap);
     out.mFovMul = llclamp(out.mFovMul, 0.8f, 1.25f);
-    out.mPosOffset = LLVector3(0.f,
+    out.mPosOffset = LLVector3(llclamp(surgeX, -0.5f, 0.5f),
                                llclamp(swayY, -0.5f, 0.5f),
                                llclamp(bobZ + liftZ, -0.5f, 0.5f));
 
@@ -732,11 +834,5 @@ LLCameraOperatorOutput LLCameraOperator::update(const LLCameraOperatorInput& inp
     // 0 is a hard disable; values above 1 exaggerate on purpose. FOV is scaled
     // about 1.0 because it is a multiplier, not an offset -- scaling it directly
     // would drive the FOV toward zero rather than toward neutral.
-    // Surge has no producer yet: the simulation always emits X = 0, so the
-    // control is structurally in place but cannot do anything until a
-    // surge-generating layer exists (suspension/road buzz, slice 2). Referenced
-    // here so the setting is not silently dead and the compiler does not warn.
-    (void)gainSurge;
-
     return out;
 }
