@@ -127,7 +127,19 @@ void main()
     // present -- it is a binary cutout, not a blend. Publishing K = final_alpha
     // there reported a fully-known opaque pixel as only partially known.
     // Blended fullbright still reports its true fractional coverage.
-#ifdef HAS_ALPHA_MASK
+// S2 + S4. Blending is DISABLED for this pool (LLDrawPoolSimple leaves it off
+// and LLDrawPoolFullbright only changes factors), so a surviving opaque
+// fullbright fragment OVERWRITES the beauty pixel completely -- whatever its
+// texture alpha happens to be. Publishing K = final_alpha there contradicted
+// attachment 0, which had already treated the pixel as fully opaque, and it
+// made K draw-order dependent because the overwrite is unblended.
+// Alpha-MASK fragments that survive their discard are likewise binary.
+// Only genuinely alpha-BLENDED fullbright carries fractional coverage.
+//
+// ⛔ The other way to make this deterministic -- enabling GL_BLEND for the pool
+// -- was tried and caused a visible regression: opaque surfaces with alpha in
+// their textures went see-through. Do not go near the global blend state.
+#if defined(HAS_ALPHA_MASK) || !defined(IS_ALPHA)
     float sl_known_coverage = 1.0;
 #else
     float sl_known_coverage = final_alpha;

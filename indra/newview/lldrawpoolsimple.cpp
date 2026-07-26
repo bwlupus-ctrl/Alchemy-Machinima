@@ -190,13 +190,37 @@ void LLDrawPoolFullbright::renderPostDeferred(S32 pass)
         shader = &gDeferredFullbrightProgram;
     }
 
-    // S2: this pool selected BT_ALPHA blend FACTORS but never enabled GL_BLEND
-    // itself, so whether blending actually happened depended on whatever state
-    // the previously-drawn pool happened to leave behind. For the beauty buffer
-    // that was merely sloppy; for the visible-diffuse sidecar it made the
-    // exactness channel's accumulation non-deterministic, because K's union
-    // depends on the blend being live. Make it explicit.
-    LLGLEnable fullbright_blend(GL_BLEND);
+    // ⛔ DO NOT add LLGLEnable(GL_BLEND) here. It was tried as a fix for S2 and
+    // caused a VISIBLE RENDERING REGRESSION: opaque fullbright surfaces whose
+    // textures carry an alpha channel started blending, so geometry that was
+    // never transparent became see-through. Reported in-world within minutes.
+    //
+    // THE INVARIANT: this pool arrives with GL_BLEND *disabled* (inherited --
+    // it sets blend FACTORS only, never the enable), so a surviving fragment
+    // OVERWRITES attachment 0 regardless of its texture alpha. fullbrightF.glsl
+    // depends on that: it publishes sidecar K = 1 for opaque and alpha-mask
+    // permutations precisely because the beauty write is an unblended
+    // overwrite. Genuinely blended fullbright goes through the ALPHA pool and
+    // keeps its fractional coverage.
+    //
+    // S2 is therefore RESOLVED in the shader, not here. Do not reach for
+    // glEnablei / indexed blend enable either -- the guard does not track
+    // per-attachment enable bits, and nothing needs it to.
+    //
+    // ⚠️ Making the invariant EXPLICIT was considered and REJECTED, and the
+    // reason is worth keeping: GL_BLEND is NOT provably disabled on every entry
+    // path. The MAIN VIEW is safe -- pipeline.cpp wraps renderGeomPostDeferred()
+    // in LLGLDisable(GL_BLEND) -- but the HUD (render_hud_attachments), the
+    // avatar preview/profile path and the impostor path have no such guard and
+    // inherit ambient state. So adding LLGLDisable(GL_BLEND) here would NOT be a
+    // no-op: it could change HUD/preview/impostor rendering, which is the exact
+    // mirror of the regression above. Routing is confirmed safe -- genuinely
+    // blended faces are classified into POOL_ALPHA, never here (llvovolume.cpp
+    // batch generation; canRenderAsMask rejects blended/fractional-alpha/glow)
+    // -- but that justifies the shader's K = 1, not touching the enable.
+    //
+    // If this is ever revisited: the missing piece is an explicit blend state at
+    // the HUD/preview/impostor CALL SITES, not here.
 
     gGL.setSceneBlendType(LLRender::BT_ALPHA);
 
