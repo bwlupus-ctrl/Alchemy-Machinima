@@ -205,6 +205,12 @@ const std::vector<std::string>& ALPanelCineCamParams::sharedSettings()
         "CinematicCamUseSelected",
         "CinematicCamLookAtHead",
         "CinematicCamUseOperator",
+        // Handheld operator locomotion. Listed here so Reset All and the preset
+        // save/load cover them like every other shared control -- a control the
+        // panel exposes but the preset system does not know about silently
+        // fails to round-trip, which is worse than not exposing it.
+        "FlycamOperatorLocomotionMode",
+        "FlycamOperatorModeBlendTime",
         "CinematicCamSmoothing",
         "CinematicCamDutchAngle",
         "CinematicCamFrameOffsetUp",

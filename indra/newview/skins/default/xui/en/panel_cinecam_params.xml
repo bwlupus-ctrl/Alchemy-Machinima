@@ -5,7 +5,7 @@
      standalone Cinematic Camera floater and the Director Console's Camera
      tab; every control is settings-backed so instances stay in sync. -->
 <panel
- height="262"
+ height="286"
  layout="topleft"
  name="panel_cinecam_params"
  background_visible="false"
@@ -133,6 +133,42 @@
      tool_tip="Dutch (tilt) angle in deg, applied to every mode. 0 = level"
      width="97" />
     <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamDutchAngle" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamDutchAngle" />
+    <combo_box
+     control_name="FlycamOperatorLocomotionMode"
+     follows="left|top"
+     height="20"
+     layout="topleft"
+     left="12"
+     top_pad="5"
+     name="FlycamOperatorLocomotionMode"
+     tool_tip="What the operator is physically DOING, as distinct from the rig they are holding. Legacy keeps the old Motion Profile behaviour. Selecting a mode replaces that axis; it never overwrites your tuned settings."
+     width="132">
+        <combo_box.item label="Legacy" name="loco_legacy" value="0" />
+        <combo_box.item label="Creep" name="loco_creep" value="1" />
+        <combo_box.item label="Walk" name="loco_walk" value="2" />
+        <combo_box.item label="Run" name="loco_run" value="3" />
+        <combo_box.item label="Drive" name="loco_drive" value="4" />
+        <combo_box.item label="Float" name="loco_float" value="5" />
+        <combo_box.item label="Unsteady" name="loco_unsteady" value="6" />
+    </combo_box>
+    <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="2" layout="topleft" left_pad="1" top_delta="2" name="reset_FlycamOperatorLocomotionMode" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorLocomotionMode" />
+    <spinner
+     control_name="FlycamOperatorModeBlendTime"
+     decimal_digits="2"
+     follows="left|top"
+     height="16"
+     increment="0.05"
+     label="Blend (s)"
+     label_width="56"
+     layout="topleft"
+     left_pad="10"
+     max_val="5"
+     min_val="0"
+     top_delta="2"
+     name="FlycamOperatorModeBlendTime"
+     tool_tip="Seconds to cross-fade between locomotion modes. Changing mode mid-shot ramps instead of snapping."
+     width="105" />
+    <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_FlycamOperatorModeBlendTime" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorModeBlendTime" />
     <slider
      control_name="CinematicCamSmoothing"
      decimal_digits="2"

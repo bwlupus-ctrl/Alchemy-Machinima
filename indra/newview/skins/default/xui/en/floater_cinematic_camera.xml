@@ -4,7 +4,7 @@
 <floater
  legacy_header_height="18"
  can_resize="false"
- height="286"
+ height="310"
  layout="topleft"
  name="cinematic_camera"
  title="Cinematic Camera"
@@ -20,5 +20,5 @@
      top="20"
      name="cinecam_params"
      width="320"
-     height="262" />
+     height="286" />
 </floater>
