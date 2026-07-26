@@ -2,6 +2,28 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## ⛔ SHIP FEATURES WHOLE, NOT IN SLICES (user directive, 2026-07-25)
+
+**If it is logical to batch work together for a feature to be COMPLETE, and doing so is not a major
+shift that risks crashing the client, then it gets coded together. In one go.**
+
+Do not split a feature into "engine now, UI later" or "core now, the parts that make it usable
+later". A feature the user cannot reach, select, or see is NOT delivered, however much code exists
+behind it. Slicing is for changes that are genuinely risky to land at once -- render-state changes,
+anything that can take the client down, anything needing an in-world A/B between steps. It is NOT a
+way to book progress.
+
+**What triggered this:** the handheld-operator locomotion feature was shipped as an engine with no
+controls, so the only way to select a mode was Debug Settings. Then the vehicle physics that give
+Drive its entire character were deferred to a later slice, so Drive selected and ran but felt like
+nothing. Three separate commits and three review rounds were spent on what should have been one
+delivery, and the user was left unable to use any of it in between. That is the failure mode this
+rule exists to stop.
+
+**Applies to the whole feature surface:** simulation + settings + UI + the wiring that registers it
+with presets/resets. If part of it genuinely must wait, say so BEFORE starting, not after
+committing.
+
 ## ⛔ MANDATORY WORKING AGREEMENT — CONSULT CODEX (user directive, 2026-07-21)
 
 **For this project, from 2026-07-21 onward: every code change must be reviewed with Codex, and
