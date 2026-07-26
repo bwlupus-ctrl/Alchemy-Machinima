@@ -30,7 +30,8 @@
 
 #include "alfloaterprogressview.h"
 #include "fsyspath.h"
-#include "llactormover.h"   // [ActorMover] heading preview lines
+#include "llactormover.h"
+#include "alghoststudio.h"   // [ActorMover] heading preview lines
 #include "llclonefidelityaudit.h"   // [CloneFidelity] late source-vs-clone audit hook
 #include "llghostdeferreddiagnostics.h"  // [GhostDeferred] render-state invariant check
 
@@ -1792,6 +1793,9 @@ void render_ui_3d()
         // [ActorMover] in-world heading preview lines (client-side only;
         // no-op unless ActorMoverShowHeading is on and the floater is open)
         LLActorMover::instance().renderHeadingPreview();
+        // Formation placement preview -- same UI pass, same gating discipline
+        // (returns immediately unless a formation is actually staged).
+        ALGhostStudio::instance().renderFormationPreview();
     }
     else
     {

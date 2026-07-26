@@ -23,6 +23,7 @@
 #include "llcheckboxctrl.h"
 #include "llcombobox.h"
 #include "llflyoutbutton.h"
+#include "llf32uictrl.h"
 #include "lldirectorcast.h"         // source picker = the cast
 #include "lljoint.h"
 #include "lllineeditor.h"
@@ -30,12 +31,15 @@
 #include "llscrolllistctrl.h"
 #include "llsliderctrl.h"
 #include "llspinctrl.h"
+#include "lltabcontainer.h"
 #include "lltextbox.h"
 #include "lltoolmgr.h"
 #include "llviewercontrol.h"
 #include "llworld.h"
 #include "llvoavatar.h"
 #include "llvoavatarself.h"         // gAgentAvatarp ("To me" snap)
+
+#include <utility>
 
 // both the standalone Ghost Studio floater and the Director Console Ghosts tab
 // embed this via <panel class="panel_ghost_studio" filename="panel_ghost_studio.xml"/>
@@ -122,8 +126,15 @@ bool ALPanelGhostStudio::postBuild()
     mLensGazeCheck = getChild<LLCheckBoxCtrl>("lens_gaze_check");
     mLensGazeSelectionBtn = getChild<LLButton>("btn_lens_gaze_selection");
     mLensGazeTorsoSlider = getChild<LLSliderCtrl>("lens_gaze_torso");
+    mLensGazeTargetMode = getChild<LLComboBox>("lens_gaze_target_mode");
+    mLensGazeCastTarget = getChild<LLComboBox>("lens_gaze_cast_target");
+    mLensGazeHeadEyeSlider = getChild<LLSliderCtrl>("lens_gaze_head_eye");
+    mLensGazeIntensitySlider = getChild<LLSliderCtrl>("lens_gaze_intensity");
+    mLensGazeSmoothingSlider = getChild<LLSliderCtrl>("lens_gaze_smoothing");
+    mLensGazeStatus = getChild<LLTextBox>("lens_gaze_status");
     mAnimMetadataText = getChild<LLTextBox>("anim_metadata_text");
     mLookSection = getChild<LLView>("look_section");
+    mEntityStyleHint = getChild<LLTextBox>("entity_style_hint");
     mPlaceBtn  = getChild<LLButton>("btn_place");
     mToActorBtn = getChild<LLButton>("btn_to_actor");
     mToMeBtn   = getChild<LLButton>("btn_to_me");
@@ -171,6 +182,19 @@ bool ALPanelGhostStudio::postBuild()
 
     mStatusText = getChild<LLTextBox>("studio_status");
 
+    // XUI groups each tab beside the section it owns for maintainability.
+    // Reinsert the last three panels in the requested visible order.
+    LLTabContainer* tabs = getChild<LLTabContainer>("ghost_studio_tabs");
+    LLPanel* pose_tab = getChild<LLPanel>("pose_tab");
+    LLPanel* style_tab = getChild<LLPanel>("style_tab");
+    LLPanel* crowd_tab = getChild<LLPanel>("crowd_tab");
+    tabs->removeTabPanel(style_tab);
+    tabs->removeTabPanel(pose_tab);
+    tabs->removeTabPanel(crowd_tab);
+    tabs->addTabPanel(pose_tab);
+    tabs->addTabPanel(style_tab);
+    tabs->addTabPanel(crowd_tab);
+
     mShowAllCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onShowAllToggle(); });
     mEditModeCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onToggleEditMode(); });
     mList->setCommitCallback([this](LLUICtrl*, const LLSD&) { onListSelect(); });
@@ -211,6 +235,18 @@ bool ALPanelGhostStudio::postBuild()
         [this](LLUICtrl*, const LLSD&) { onClickLensGazeSelection(); });
     mLensGazeTorsoSlider->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onLensGazeTorsoCommit(); });
+    mLensGazeTargetMode->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onLensGazeSettingsCommit(); });
+    mLensGazeCastTarget->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onLensGazeSettingsCommit(); });
+    mLensGazeHeadEyeSlider->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onLensGazeSettingsCommit(); });
+    mLensGazeIntensitySlider->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onLensGazeSettingsCommit(); });
+    mLensGazeSmoothingSlider->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onLensGazeSettingsCommit(); });
+    mLensGazeTargetMode->setValue(LLActorMover::GAZE_CAMERA);
+    populateLensGazeCastTargets();
     mPlaceBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickPlace(); });
     mToActorBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickToActor(); });
     mToMeBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickToMe(); });
@@ -244,10 +280,50 @@ bool ALPanelGhostStudio::postBuild()
     mArrayLineBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickArray(ALGhostStudio::FORMATION_LINE); });
     mArrayRingBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickArray(ALGhostStudio::FORMATION_RING); });
     mFormationCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onFormationCommit(); });
+    // count / spacing / parameter also change where clones land, so each one
+    // restages the preview.
+    mArrayCount->setCommitCallback([this](LLUICtrl*, const LLSD&) { refreshFormationPreview(); });
+    mArraySpacing->setCommitCallback([this](LLUICtrl*, const LLSD&) { refreshFormationPreview(); });
+    mFormationParam->setCommitCallback([this](LLUICtrl*, const LLSD&) { refreshFormationPreview(); });
     mArrayBuildBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickBuildArray(); });
     mStripStartBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickStartStrip(); });
     mStripCancelBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickCancelStrip(); });
     mMotionApplyBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onMotionCommit(); });
+
+    // Every reset reads the target's XUI initial_value and invokes that
+    // target's existing commit callback. Future numeric controls need only
+    // one table row here and one XUI button.
+    static const std::pair<const char*, const char*> reset_controls[] =
+    {
+        { "reset_yaw", "yaw_spinner" },
+        { "reset_scale", "scale_spinner" },
+        { "reset_anim_speed", "anim_speed_spinner" },
+        { "reset_array_count", "array_count_spinner" },
+        { "reset_array_spacing", "array_spacing_spinner" },
+        { "reset_array_parameter", "array_parameter_spinner" },
+        { "reset_strip_count", "strip_count_spinner" },
+        { "reset_strip_interval", "strip_interval_spinner" },
+        { "reset_motion_speed", "formation_motion_speed" },
+        { "reset_motion_amplitude", "formation_motion_amplitude" },
+        { "reset_hue", "hue_slider" },
+        { "reset_alpha", "alpha_slider" },
+        { "reset_pixel", "pixel_slider" },
+        { "reset_shimmer_speed", "shimmer_speed_slider" },
+        { "reset_shimmer_amount", "shimmer_amount_slider" },
+        { "reset_glitch", "glitch_slider" },
+        { "reset_brightness", "brightness_slider" },
+        { "reset_chaos", "chaos_slider" },
+        { "reset_lens_gaze_torso", "lens_gaze_torso" },
+        { "reset_lens_gaze_head_eye", "lens_gaze_head_eye" },
+        { "reset_lens_gaze_intensity", "lens_gaze_intensity" },
+        { "reset_lens_gaze_smoothing", "lens_gaze_smoothing" }
+    };
+    for (const auto& entry : reset_controls)
+    {
+        const std::string target_name(entry.second);
+        getChild<LLButton>(entry.first)->setCommitCallback(
+            [this, target_name](LLUICtrl*, const LLSD&) { onResetNumeric(target_name); });
+    }
     onFormationCommit();
 
     mShowAllCheck->set(ALGhostStudio::instance().getShowAll());
@@ -395,6 +471,23 @@ void ALPanelGhostStudio::refreshSourceCombo()
     if (!prev.isDefined() || !mSourceCombo->setSelectedByValue(prev, true))
     {
         mSourceCombo->selectFirstItem();    // "You"
+    }
+    populateLensGazeCastTargets();
+}
+
+void ALPanelGhostStudio::populateLensGazeCastTargets()
+{
+    const LLSD previous = mLensGazeCastTarget->getSelectedValue();
+    mLensGazeCastTarget->clearRows();
+    for (const LLDirectorCast::CastMember& member :
+         LLDirectorCast::instance().getCast())
+    {
+        mLensGazeCastTarget->add(sourceName(member.mId), LLSD(member.mId));
+    }
+    if (!previous.isDefined() ||
+        !mLensGazeCastTarget->setSelectedByValue(previous, true))
+    {
+        mLensGazeCastTarget->selectFirstItem();
     }
 }
 
@@ -547,7 +640,9 @@ void ALPanelGhostStudio::refreshDetail()
     const bool entity = have && inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE;
     const bool directed = entity &&
         inst->mDriveMode == ALGhostStudio::DRIVE_DIRECTED;
-    mLookSection->setVisible(!entity);
+    const bool show_style_controls = !entity;
+    mLookSection->setVisible(show_style_controls);
+    mEntityStyleHint->setVisible(!show_style_controls);
     mRefreshBtn->setVisible(entity);
     mRefreshBtn->setEnabled(entity);
     std::string type = "Type: No selection";
@@ -590,6 +685,12 @@ void ALPanelGhostStudio::refreshDetail()
     }
     mLensGazeSelectionBtn->setEnabled(have_selected_entity);
     mLensGazeTorsoSlider->setEnabled(have_selected_entity);
+    mLensGazeTargetMode->setEnabled(have_selected_entity);
+    mLensGazeCastTarget->setEnabled(have_selected_entity &&
+        mLensGazeTargetMode->getValue().asInteger() == LLActorMover::GAZE_CAST);
+    mLensGazeHeadEyeSlider->setEnabled(have_selected_entity);
+    mLensGazeIntensitySlider->setEnabled(have_selected_entity);
+    mLensGazeSmoothingSlider->setEnabled(have_selected_entity);
     mPlaceBtn->setEnabled(overlay);
     mToActorBtn->setEnabled(overlay);
     mToMeBtn->setEnabled(overlay);
@@ -680,15 +781,35 @@ void ALPanelGhostStudio::refreshDetail()
     if (entity)
     {
         LLActorMover& mover = LLActorMover::instance();
-        mLensGazeCheck->set(
-            inst->mEntityId.notNull() &&
-            mover.isGazeEnabled(inst->mEntityId) &&
-            mover.getGazeTargetMode(inst->mEntityId) == LLActorMover::GAZE_CAMERA);
+        mLensGazeCheck->set(inst->mEntityId.notNull() &&
+            mover.isGazeEnabled(inst->mEntityId));
+        mLensGazeTargetMode->setValue(
+            mover.getGazeTargetMode(inst->mEntityId));
+        mLensGazeCastTarget->setValue(
+            mover.getGazeCastTarget(inst->mEntityId));
         if (!mLensGazeTorsoSlider->hasMouseCapture())
         {
             mLensGazeTorsoSlider->setValue(
                 mover.getGazeTorsoAmount(inst->mEntityId));
         }
+        if (!mLensGazeHeadEyeSlider->hasMouseCapture())
+        {
+            mLensGazeHeadEyeSlider->setValue(
+                mover.getGazeHeadEyeBlend(inst->mEntityId));
+        }
+        if (!mLensGazeIntensitySlider->hasMouseCapture())
+        {
+            mLensGazeIntensitySlider->setValue(
+                mover.getGazeIntensity(inst->mEntityId));
+        }
+        if (!mLensGazeSmoothingSlider->hasMouseCapture())
+        {
+            mLensGazeSmoothingSlider->setValue(
+                mover.getGazeSmoothing(inst->mEntityId));
+        }
+        std::string gaze_status;
+        mover.getGazeStatus(inst->mEntityId, gaze_status);
+        mLensGazeStatus->setText(gaze_status);
     }
 
     if (directed)
@@ -862,7 +983,19 @@ void ALPanelGhostStudio::onClickAdd()
 {
     const LLUUID source = mSourceCombo->getSelectedValue().asUUID();
     ALGhostStudio::Instance* inst = nullptr;
-    if (mAddBtn->getValue().asInteger() == ALGhostStudio::BACKING_ENTITY_CLONE)
+
+    // LLFlyoutButton::onActionButtonClick() calls mList->deselect() BEFORE committing
+    // (llflyoutbutton.cpp:61-66), so a plain click on the main button leaves nothing
+    // selected and LLComboBox::getValue() returns an UNDEFINED LLSD (llcombobox.cpp:432).
+    // asInteger() on that is 0, which is BACKING_OVERLAY -- so reading the integer alone
+    // can never see the default action, no matter what the XML value= says. Undefined is
+    // the "default action" signal; only an explicit flyout pick carries a real kind.
+    const LLSD kind_value = mAddBtn->getValue();
+    const S32  kind       = kind_value.isUndefined()
+        ? (S32)ALGhostStudio::BACKING_ENTITY_CLONE
+        : kind_value.asInteger();
+
+    if (kind == ALGhostStudio::BACKING_ENTITY_CLONE)
     {
         inst = ALGhostStudio::instance().spawnEntityClone(source, sourceName(source));
     }
@@ -886,31 +1019,57 @@ void ALPanelGhostStudio::onNameCommit()
 
 void ALPanelGhostStudio::onClickDuplicate()
 {
-    if (ALGhostStudio::Instance* inst =
-            ALGhostStudio::instance().duplicateInstance(selectedInstance()))
+    const std::vector<LLUUID> selected = selectedInstances();
+    std::vector<LLUUID> duplicates;
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    for (const LLUUID& id : selected)
     {
-        const LLUUID id = inst->mId;
-        ALGhostStudio::instance().setSelected(id);
+        if (ALGhostStudio::Instance* inst = studio.duplicateInstance(id))
+        {
+            duplicates.push_back(inst->mId);
+        }
+    }
+    if (!duplicates.empty())
+    {
+        studio.setSelected(duplicates.front());
         refreshList();
-        mList->selectByID(id);
+        mList->deselectAllItems(true);
+        mList->selectMultiple(duplicates);
     }
 }
 
 void ALPanelGhostStudio::onClickDuplicateInPlace()
 {
-    if (ALGhostStudio::Instance* inst =
-            ALGhostStudio::instance().duplicateInstanceInPlace(selectedInstance()))
+    const std::vector<LLUUID> selected = selectedInstances();
+    std::vector<LLUUID> duplicates;
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    for (const LLUUID& id : selected)
     {
-        const LLUUID id = inst->mId;
-        ALGhostStudio::instance().setSelected(id);
+        if (ALGhostStudio::Instance* inst = studio.duplicateInstanceInPlace(id))
+        {
+            duplicates.push_back(inst->mId);
+        }
+    }
+    if (!duplicates.empty())
+    {
+        studio.setSelected(duplicates.front());
         refreshList();
-        mList->selectByID(id);
+        mList->deselectAllItems(true);
+        mList->selectMultiple(duplicates);
     }
 }
 
 void ALPanelGhostStudio::onClickDelete()
 {
-    ALGhostStudio::instance().removeInstance(selectedInstance());
+    const std::vector<LLUUID> selected = selectedInstances();
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    for (const LLUUID& id : selected)
+    {
+        studio.removeInstance(id);
+    }
+    studio.setSelected(LLUUID::null);
+    refreshList();
+    mList->deselectAllItems(true);
     mShownFor.setNull();
 }
 
@@ -1152,16 +1311,19 @@ void ALPanelGhostStudio::onClickAnimSync()
 
 void ALPanelGhostStudio::onLensGazeToggle()
 {
-    ALGhostStudio::Instance* inst =
-        ALGhostStudio::instance().getInstance(selectedInstance());
-    if (!inst || inst->mKind != ALGhostStudio::BACKING_ENTITY_CLONE ||
-        inst->mEntityId.isNull())
-    {
-        return;
-    }
+    ALGhostStudio& studio = ALGhostStudio::instance();
     LLActorMover& mover = LLActorMover::instance();
-    mover.setGazeTargetMode(inst->mEntityId, LLActorMover::GAZE_CAMERA);
-    mover.setGazeEnabled(inst->mEntityId, mLensGazeCheck->get());
+    const S32 mode = mLensGazeTargetMode->getValue().asInteger();
+    for (const LLUUID& id : selectedInstances())
+    {
+        const ALGhostStudio::Instance* inst = studio.getInstance(id);
+        if (inst && inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE &&
+            inst->mEntityId.notNull())
+        {
+            mover.setGazeTargetMode(inst->mEntityId, mode);
+            mover.setGazeEnabled(inst->mEntityId, mLensGazeCheck->get());
+        }
+    }
 }
 
 void ALPanelGhostStudio::onClickLensGazeSelection()
@@ -1176,8 +1338,40 @@ void ALPanelGhostStudio::onClickLensGazeSelection()
         {
             continue;
         }
-        mover.setGazeTargetMode(inst->mEntityId, LLActorMover::GAZE_CAMERA);
+        mover.setGazeTargetMode(inst->mEntityId,
+            mLensGazeTargetMode->getValue().asInteger());
         mover.setGazeEnabled(inst->mEntityId, true);
+    }
+}
+
+void ALPanelGhostStudio::onLensGazeSettingsCommit()
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    LLActorMover& mover = LLActorMover::instance();
+    const S32 mode = llclamp(
+        mLensGazeTargetMode->getValue().asInteger(),
+        (S32)LLActorMover::GAZE_TANGENT, (S32)LLActorMover::GAZE_POINT);
+    const LLUUID cast_target =
+        mLensGazeCastTarget->getSelectedValue().asUUID();
+    const F32 head_eye = llclamp(
+        (F32)mLensGazeHeadEyeSlider->getValue().asReal(), 0.f, 1.f);
+    const F32 intensity = llclamp(
+        (F32)mLensGazeIntensitySlider->getValue().asReal(), 0.f, 1.f);
+    const F32 smoothing = llclamp(
+        (F32)mLensGazeSmoothingSlider->getValue().asReal(), 0.f, 1.f);
+    for (const LLUUID& id : selectedInstances())
+    {
+        const ALGhostStudio::Instance* inst = studio.getInstance(id);
+        if (!inst || inst->mKind != ALGhostStudio::BACKING_ENTITY_CLONE ||
+            inst->mEntityId.isNull())
+        {
+            continue;
+        }
+        mover.setGazeTargetMode(inst->mEntityId, mode);
+        mover.setGazeCastTarget(inst->mEntityId, cast_target);
+        mover.setGazeHeadEyeBlend(inst->mEntityId, head_eye);
+        mover.setGazeIntensity(inst->mEntityId, intensity);
+        mover.setGazeSmoothing(inst->mEntityId, smoothing);
     }
 }
 
@@ -1517,6 +1711,25 @@ void ALPanelGhostStudio::onClickBuildArray()
     onClickArray((ALGhostStudio::EFormation)mFormationCombo->getValue().asInteger());
 }
 
+void ALPanelGhostStudio::refreshFormationPreview()
+{
+    // Stage the EXACT arguments a build would use, so the in-world preview and
+    // makeArray() can never disagree. Cleared when nothing is selected, which
+    // is also what stops the overlay drawing at all.
+    const LLUUID sel = selectedInstance();
+    if (sel.isNull() || !mArrayCount || !mArraySpacing || !mFormationCombo || !mFormationParam)
+    {
+        ALGhostStudio::instance().clearFormationPreview();
+        return;
+    }
+    ALGhostStudio::instance().setFormationPreview(
+        sel,
+        mArrayCount->getValue().asInteger(),
+        (F32)mArraySpacing->getValue().asReal(),
+        (ALGhostStudio::EFormation)mFormationCombo->getValue().asInteger(),
+        (F32)mFormationParam->getValue().asReal());
+}
+
 void ALPanelGhostStudio::onFormationCommit()
 {
     const ALGhostStudio::EFormation formation =
@@ -1530,6 +1743,7 @@ void ALPanelGhostStudio::onFormationCommit()
     mFormationParam->setLabel(std::string(label));
     mFormationParam->setValue(value);
     mFormationParam->setVisible(value > 0.f);
+    refreshFormationPreview();
 }
 
 void ALPanelGhostStudio::onClickStartStrip()
@@ -1565,4 +1779,21 @@ void ALPanelGhostStudio::onMotionCommit()
 void ALPanelGhostStudio::onShowAllToggle()
 {
     ALGhostStudio::instance().setShowAll(mShowAllCheck->get());
+}
+
+void ALPanelGhostStudio::onResetNumeric(const std::string& target_name)
+{
+    // getChild<T> manufactures a fallback widget of T on a miss, so T must be
+    // constructible by the factory -- LLF32UICtrl's constructor is protected, so
+    // asking for it directly fails to compile. Look the child up as the generic
+    // LLUICtrl and narrow it instead; a miss or a non-numeric target then simply
+    // does nothing rather than resetting the wrong control.
+    LLUICtrl* ctrl = findChild<LLUICtrl>(target_name);
+    LLF32UICtrl* target = dynamic_cast<LLF32UICtrl*>(ctrl);
+    if (!target || !target->getEnabled())
+    {
+        return;
+    }
+    target->setValue(target->getInitialValue());
+    target->onCommit();
 }

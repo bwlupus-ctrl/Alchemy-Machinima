@@ -82,7 +82,28 @@ public:
     enum ELookTarget : S32
     {
         LOOK_TARGET_CAMERA = 0, LOOK_TARGET_ME, LOOK_TARGET_ACTOR,
-        LOOK_TARGET_GHOST
+        LOOK_TARGET_GHOST,
+        // A bare world position, held in mLookPointGlobal / mTurnPointGlobal.
+        // The only target that is not an object -- this is what "set a world
+        // point" needed and what nothing could express before.
+        LOOK_TARGET_POINT
+    };
+
+    // TURN-TO carries its own target, independent of the look-at target, and is
+    // RATE-LIMITED where look-at snaps.
+    //
+    // ⚠️ THEY ARE NOT INDEPENDENT OUTPUT CHANNELS YET. Both ultimately write the
+    // instance's BODY yaw (mRotation) -- look-at via faceInstance/aimInstanceAt,
+    // turn via stepTurn -- so they cannot both apply at once. The precedence is
+    // explicit and enforced in stepAllTurns()/updatePerFrame(): if an instance
+    // has a turn target, TURN WINS and keep-facing is skipped for it.
+    // A true "face one way, glance another" needs look-at to drive HEAD/EYES
+    // instead of the body. That is a separate piece of work and is NOT done.
+    enum ETurnMode : S32
+    {
+        TURN_MODE_OFF = 0,   // body facing is whatever placement/formation set
+        TURN_MODE_ONCE,      // rotate to the target once, then hold
+        TURN_MODE_TRACK      // keep facing a moving target
     };
     enum EFormation : S32
     {
@@ -136,7 +157,23 @@ public:
         F32         mScale = 1.f;       // uniform, pivoted at the foot (feet stay planted)
         ELookTarget mLookTarget = LOOK_TARGET_CAMERA;
         LLUUID      mLookTargetId;      // actor/cast id or Ghost Studio instance id
+        LLVector3d  mLookPointGlobal;   // used when mLookTarget == LOOK_TARGET_POINT
         bool        mKeepFacing = false;
+
+        // ---- body turn (independent of look-at above) ----
+        ETurnMode   mTurnMode = TURN_MODE_OFF;
+        ELookTarget mTurnTarget = LOOK_TARGET_CAMERA;
+        LLUUID      mTurnTargetId;
+        LLVector3d  mTurnPointGlobal;   // used when mTurnTarget == LOOK_TARGET_POINT
+        // TURN_MODE_ONCE clears itself once it has settled, so it does not keep
+        // fighting the director if they hand-rotate the clone afterwards.
+        bool        mTurnSettled = false;
+        // Where the clone WAS when it settled. stepTurn() re-arms whenever the
+        // foot has moved since. Checked at the choke point rather than in the
+        // setters, because formation motion, chaos and the overlay duplication
+        // paths all write mFootGlobal DIRECTLY and would each have to remember
+        // to re-arm -- exactly the kind of cooperation that rots.
+        LLVector3d  mTurnSettledFoot;
         bool        mChaosEnabled = false;
         F32         mChaosAmount = 0.f;
         bool        mChaosHasBase = false;
@@ -298,6 +335,9 @@ public:
     void      removeAll();
     S32       removeEntityClones();
     Instance* getInstance(const LLUUID& id);
+    // const overload: the target resolver and the formation preview are both
+    // read-only and must not need a mutable studio to look an instance up.
+    const Instance* getInstance(const LLUUID& id) const;
     const std::vector<Instance>& getInstances() const { return mInstances; }
     std::vector<Instance>&       getInstances()       { return mInstances; }
 
@@ -331,6 +371,66 @@ public:
     S32 setFormationMotion(const std::vector<LLUUID>& ids, EMotion motion,
                            F32 speed, F32 amplitude);
 
+    // ---- body turn ----
+    // Set an instance's TURN target. Independent of setLookTarget(); calling
+    // one never disturbs the other.
+    void setTurnTarget(const LLUUID& id, ETurnMode mode, ELookTarget target,
+                       const LLUUID& target_id,
+                       const LLVector3d& point_global = LLVector3d());
+    // Rate-limited step toward the turn target. Returns false when there is
+    // nothing to do. Driven from updatePerFrame().
+    bool stepTurn(const LLUUID& id, F32 dt);
+    // Resolve any target kind to a world position. Shared by look and turn.
+    bool resolveTargetGlobal(const Instance& inst, ELookTarget target,
+                             const LLUUID& target_id,
+                             const LLVector3d& point_global,
+                             LLVector3d& out) const;
+
+    // ONE definition of where a formation puts slot N, and which way it faces.
+    //
+    // These used to be TWO implementations -- formationSlot() and the inline
+    // per-formation code in makeArray() -- and they DISAGREED: V extended
+    // forward vs backward, Spiral stepped 0.8 rad vs the golden angle,
+    // Staircase defaulted 0.75m vs spacing*0.5, Tunnel was spacing vs
+    // spacing*0.5 each side, Scatter's radius and seed channels both differed.
+    // That is why placement felt erratic, and it is why a preview built on the
+    // old helper would have drawn one thing and placed another.
+    //
+    // makeArray() was the authoritative one (it is what actually places
+    // clones), so this matches makeArray's behaviour exactly and makeArray now
+    // consumes it. Existing arrays are unchanged.
+    struct FormationSlot
+    {
+        LLVector3d mFoot;
+        F32        mYaw = 0.f;
+        // false = inherit the prototype's full rotation rather than authoring a
+        // yaw (Line/Grid/Staircase/Scatter). Ring/Arc/Spiral face outward, V
+        // angles along its arm, Tunnel faces inward.
+        bool       mAuthorYaw = true;
+    };
+    // ---- formation preview ----
+    // Every slot a makeArray() with these arguments WOULD produce, including
+    // slot 0 (the prototype itself). Same code path as the real build, so the
+    // preview cannot disagree with the result. Empty if the id is unknown or
+    // the arguments are rejected by the same guards makeArray uses.
+    void formationPreviewSlots(const LLUUID& id, S32 count, F32 spacing,
+                               EFormation formation, F32 parameter,
+                               std::vector<FormationSlot>& out) const;
+
+    // Draw the pending formation in-world: a marker + facing tick at every slot
+    // the build WOULD produce, plus an enclosing perimeter. Uses the same slot
+    // function makeArray() uses, so it cannot show something different from
+    // what it places. Client-side UI-pass overlay, same idiom as
+    // LLActorMover::renderHeadingPreview(). Returns immediately when the
+    // preview setting is off or no Ghost Studio floater is open.
+    void renderFormationPreview();
+
+    // The prototype + arguments the panel currently has staged. Set by the
+    // panel as its controls change; read by renderFormationPreview().
+    void setFormationPreview(const LLUUID& proto_id, S32 count, F32 spacing,
+                             EFormation formation, F32 parameter);
+    void clearFormationPreview() { mPreviewProto.setNull(); }
+
     // ---- render-side queries ----
     // raw source ids (may include null = self) of enabled instances; the batch
     // collector resolves + de-dupes them into its wanted set
@@ -349,9 +449,20 @@ private:
         F32 mParameter = 0.f;
         F64 mNextCapture = 0.0;
     };
+    FormationSlot formationSlotAt(const Instance& proto, S32 slot, S32 count,
+                                  F32 spacing, EFormation formation,
+                                  F32 parameter) const;
     LLVector3d formationSlot(const Instance& proto, S32 slot, S32 count,
                              F32 spacing, EFormation formation,
                              F32 parameter) const;
+    // staged formation preview args (see setFormationPreview)
+    LLUUID      mPreviewProto;
+    S32         mPreviewCount = 0;
+    F32         mPreviewSpacing = 1.5f;
+    EFormation  mPreviewFormation = FORMATION_LINE;
+    F32         mPreviewParameter = 0.f;
+
+    void stepAllTurns();
     void updateFreezeStrips(F64 now);
     void updateFormationMotion(F64 now);
     LLGhostAvatar* createEntityRuntime(Instance& inst, S32& attachments);

@@ -35,6 +35,7 @@ class LLCheckBoxCtrl;
 class LLComboBox;
 class LLLineEditor;
 class LLFlyoutButton;
+class LLF32UICtrl;
 class LLScrollListCtrl;
 class LLSliderCtrl;
 class LLSpinCtrl;
@@ -93,6 +94,8 @@ private:
     void onLensGazeToggle();
     void onClickLensGazeSelection();
     void onLensGazeTorsoCommit();
+    void onLensGazeSettingsCommit();
+    void populateLensGazeCastTargets();
     void onClickPlace();            // arm the one-shot in-world placement tool
     void onClickToActor();          // snap to the source's current feet
     void onClickToMe();             // snap to my avatar's current feet
@@ -130,12 +133,15 @@ private:
     void onClickArray(ALGhostStudio::EFormation formation);
     void onClickBuildArray();
     void onFormationCommit();
+    // restage the in-world placement preview from the current controls
+    void refreshFormationPreview();
     void onClickStartStrip();
     void onClickCancelStrip();
     void onMotionCommit();
 
     // ---- master toggle ----
     void onShowAllToggle();
+    void onResetNumeric(const std::string& target_name);
 
     // cached display name for a source id ("You" for null/self)
     static std::string sourceName(const LLUUID& id);
@@ -183,8 +189,15 @@ private:
     LLCheckBoxCtrl*   mLensGazeCheck = nullptr;
     LLButton*         mLensGazeSelectionBtn = nullptr;
     LLSliderCtrl*     mLensGazeTorsoSlider = nullptr;
+    LLComboBox*       mLensGazeTargetMode = nullptr;
+    LLComboBox*       mLensGazeCastTarget = nullptr;
+    LLSliderCtrl*     mLensGazeHeadEyeSlider = nullptr;
+    LLSliderCtrl*     mLensGazeIntensitySlider = nullptr;
+    LLSliderCtrl*     mLensGazeSmoothingSlider = nullptr;
+    LLTextBox*        mLensGazeStatus = nullptr;
     LLTextBox*        mAnimMetadataText = nullptr;
     LLView*           mLookSection = nullptr;
+    LLTextBox*        mEntityStyleHint = nullptr;
     LLButton*         mPlaceBtn = nullptr;
     LLButton*         mToActorBtn = nullptr;
     LLButton*         mToMeBtn = nullptr;

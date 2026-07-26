@@ -3734,7 +3734,40 @@
       <key>Value</key>
       <integer>2</integer>
     </map>
-    <key>GhostDeferredEnable</key>
+    <key>GhostStudioTurnRate</key>
+  <map>
+    <key>Comment</key>
+    <string>Ghost Studio body-turn speed in degrees per second. How fast a clone rotates toward its turn target. Body turn is rate-limited so it reads as a deliberate move; look-at still snaps.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>180.0</real>
+  </map>
+  <key>GhostStudioTurnEase</key>
+  <map>
+    <key>Comment</key>
+    <string>Ghost Studio body-turn ease band, in radians. Within this much of the target the clone decelerates into position instead of stopping dead. Larger = a longer, softer settle.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>0.25</real>
+  </map>
+  <key>GhostStudioShowFormationPreview</key>
+  <map>
+    <key>Comment</key>
+    <string>Draw an in-world preview of where a formation will place clones -- numbered slot markers and an enclosing perimeter -- before you commit it. Costs nothing when Ghost Studio is closed or no prototype is selected.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>Boolean</string>
+    <key>Value</key>
+    <integer>1</integer>
+  </map>
+  <key>GhostDeferredEnable</key>
     <map>
       <key>Comment</key>
       <string>[GhostDeferred] EXPERIMENTAL: submit Ghost Studio CLONE-style clones into the deferred G-buffer so they receive real scene lighting (rigged opaque+masked only for now) instead of the fullbright post-tonemap overlay. Off by default; wrap the submission in the render-state invariant check. Toggling off returns to stock rendering.</string>

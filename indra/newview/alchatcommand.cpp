@@ -47,6 +47,7 @@
 #include "llstartup.h"
 #include "lltrans.h"
 #include "llviewercontrol.h"
+#include "llviewercamera.h"
 #include "llviewermessage.h"
 #include "llviewernetwork.h"
 #include "llviewerobjectlist.h"
@@ -421,6 +422,108 @@ bool ALChatCommand::parseCommand(std::string data)
             }
             return true;
         }
+        else if (cmd == "/ghostturn")
+        {
+            // Turn the BODY. Deliberately separate from /ghostlook: a clone can
+            // face one way and glance another (over-the-shoulder). Rate-limited
+            // by GhostStudioTurnRate; look-at still snaps.
+            //   /ghostturn <camera|me|actor_uuid|ghost_uuid|here|off> [track]
+            // "here" uses the CAMERA's current position as a bare world point,
+            // which is the fastest way to set a world target while filming.
+            ALGhostStudio& studio = ALGhostStudio::instance();
+            std::istringstream& args = input;   // shared command stream
+            // "track" and "all" are INDEPENDENT words in any order, so
+            // "track all ghosts" is expressible. Previously they shared one
+            // slot and 'all' silently forced ONCE.
+            std::string target_arg, w;
+            args >> target_arg;
+            LLStringUtil::toLower(target_arg);
+            bool want_track = false, want_all = false, bad_word = false;
+            while (args >> w)
+            {
+                LLStringUtil::toLower(w);
+                if (w == "track")    want_track = true;
+                else if (w == "all") want_all = true;
+                else                 bad_word = true;   // never silently ignored
+            }
+            if (bad_word)
+            {
+                LL_INFOS("GhostStudio")
+                    << "/ghostturn: unknown option; expected 'track' and/or 'all'" << LL_ENDL;
+                return true;
+            }
+
+            ALGhostStudio::ELookTarget target = ALGhostStudio::LOOK_TARGET_CAMERA;
+            LLUUID target_id;
+            LLVector3d point;
+            bool ok = true;
+            bool off = (target_arg == "off");
+            if (target_arg.empty())
+            {
+                LL_INFOS("GhostStudio")
+                    << "usage: /ghostturn <camera|me|actor_uuid|ghost_uuid|here|off> [track] [all]"
+                    << LL_ENDL;
+                ok = false;
+            }
+            else if (off) { }
+            else if (target_arg == "camera") { target = ALGhostStudio::LOOK_TARGET_CAMERA; }
+            else if (target_arg == "me")     { target = ALGhostStudio::LOOK_TARGET_ME; }
+            else if (target_arg == "here")
+            {
+                target = ALGhostStudio::LOOK_TARGET_POINT;
+                point = gAgent.getPosGlobalFromAgent(
+                    LLViewerCamera::getInstance()->getOrigin());
+            }
+            else if (LLUUID::validate(target_arg))
+            {
+                target_id.set(target_arg);
+                // A Ghost Studio instance id wins; otherwise treat it as an actor.
+                target = studio.getInstance(target_id)
+                    ? ALGhostStudio::LOOK_TARGET_GHOST
+                    : ALGhostStudio::LOOK_TARGET_ACTOR;
+            }
+            else
+            {
+                LL_INFOS("GhostStudio") << "/ghostturn: invalid target" << LL_ENDL;
+                ok = false;
+            }
+
+            if (ok)
+            {
+                const ALGhostStudio::ETurnMode mode =
+                    off ? ALGhostStudio::TURN_MODE_OFF
+                        : (want_track ? ALGhostStudio::TURN_MODE_TRACK
+                                      : ALGhostStudio::TURN_MODE_ONCE);
+                // Same selection rule as /ghostlook: the selected ghost, or
+                // every instance when "all" is given as the mode word.
+                std::vector<LLUUID> ids;
+                if (want_all)
+                {
+                    for (const ALGhostStudio::Instance& inst : studio.getInstances())
+                    {
+                        ids.push_back(inst.mId);
+                    }
+                }
+                else if (studio.getInstance(studio.getSelected()))
+                {
+                    ids.push_back(studio.getSelected());
+                }
+                if (ids.empty())
+                {
+                    LL_INFOS("GhostStudio")
+                        << "/ghostturn: select a ghost, or pass 'all'" << LL_ENDL;
+                    return true;
+                }
+                for (const LLUUID& id : ids)
+                {
+                    studio.setTurnTarget(id, mode, target, target_id, point);
+                }
+                LL_INFOS("GhostStudio") << "/ghostturn " << target_arg << " "
+                    << (off ? "off" : (want_track ? "track" : "once"))
+                    << " -> " << (S32)ids.size() << " ghost(s)" << LL_ENDL;
+            }
+            return true;
+        }
         else if (cmd == "/ghostlook")
         {
             std::string target_arg;
@@ -499,8 +602,14 @@ bool ALChatCommand::parseCommand(std::string data)
                 }
                 else
                 {
+                    // The look TARGET is always stored. faceInstance() may
+                    // legitimately decline to aim the body -- it does so while a
+                    // turn target is armed, since turn owns body yaw -- so the
+                    // count must not be conditional on it, or the command would
+                    // report "updated 0" after doing exactly what was asked.
                     studio.setLookTarget(id, target, target_id, keep);
-                    changed += studio.faceInstance(id) ? 1 : 0;
+                    studio.faceInstance(id);
+                    ++changed;
                 }
             }
             LL_INFOS("GhostStudio") << "/ghostlook " << target_arg << " "

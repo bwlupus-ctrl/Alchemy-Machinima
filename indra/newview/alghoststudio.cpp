@@ -23,6 +23,8 @@
 #include "llviewerobjectlist.h"
 #include "llviewerregion.h"
 #include "llviewercamera.h"
+#include "llfloaterreg.h"
+#include "llviewercontrol.h"
 #include "lltimer.h"
 
 #include <algorithm>
@@ -755,6 +757,52 @@ bool ALGhostStudio::aimInstanceAt(const LLUUID& id,
     return inst->mKind != BACKING_ENTITY_CLONE || applyEntityTransform(id);
 }
 
+bool ALGhostStudio::resolveTargetGlobal(const Instance& inst, ELookTarget target,
+                                        const LLUUID& target_id,
+                                        const LLVector3d& point_global,
+                                        LLVector3d& out) const
+{
+    // ONE resolver for both look-at and body-turn. They stay independent by
+    // each passing their OWN target fields, not by having separate code.
+    switch (target)
+    {
+    case LOOK_TARGET_CAMERA:
+        out = gAgent.getPosGlobalFromAgent(
+            LLViewerCamera::getInstance()->getOrigin());
+        return true;
+    case LOOK_TARGET_ME:
+    case LOOK_TARGET_ACTOR:
+    {
+        LLVector3 foot;
+        const LLUUID actor = (target == LOOK_TARGET_ME) ? LLUUID::null : target_id;
+        if (!source_foot_agent(actor, foot))
+        {
+            return false;
+        }
+        out = gAgent.getPosGlobalFromAgent(foot);
+        return true;
+    }
+    case LOOK_TARGET_GHOST:
+    {
+        const Instance* other = getInstance(target_id);
+        if (!other || other->mId == inst.mId)
+        {
+            return false;
+        }
+        out = other->mFootGlobal;
+        return true;
+    }
+    case LOOK_TARGET_POINT:
+        // A bare world position. The TARGET TYPE is the validity signal -- a
+        // global (0,0,0) is a legitimate coordinate and is NOT the same thing
+        // as a region origin, so rejecting it would silently drop a valid shot.
+        out = point_global;
+        return true;
+    default:
+        return false;
+    }
+}
+
 bool ALGhostStudio::faceInstance(const LLUUID& id)
 {
     Instance* inst = getInstance(id);
@@ -762,41 +810,105 @@ bool ALGhostStudio::faceInstance(const LLUUID& id)
     {
         return false;
     }
-
+    // Turn owns the body yaw when armed. Enforced HERE, at the one function
+    // that aims the body at the look target, so every caller is covered --
+    // the per-frame loops, "Face now", the keep-facing checkbox and
+    // /ghostlook -- instead of each remembering the rule.
+    if (inst->mTurnMode != TURN_MODE_OFF)
+    {
+        return false;
+    }
     LLVector3d target;
-    switch (inst->mLookTarget)
+    if (!resolveTargetGlobal(*inst, inst->mLookTarget, inst->mLookTargetId,
+                             inst->mLookPointGlobal, target))
     {
-    case LOOK_TARGET_CAMERA:
-        target = gAgent.getPosGlobalFromAgent(
-            LLViewerCamera::getInstance()->getOrigin());
-        break;
-    case LOOK_TARGET_ME:
-    case LOOK_TARGET_ACTOR:
-    {
-        LLVector3 foot;
-        const LLUUID actor = inst->mLookTarget == LOOK_TARGET_ME
-            ? LLUUID::null : inst->mLookTargetId;
-        if (!source_foot_agent(actor, foot))
-        {
-            return false;
-        }
-        target = gAgent.getPosGlobalFromAgent(foot);
-        break;
-    }
-    case LOOK_TARGET_GHOST:
-    {
-        const Instance* other = getInstance(inst->mLookTargetId);
-        if (!other || other->mId == id)
-        {
-            return false;
-        }
-        target = other->mFootGlobal;
-        break;
-    }
-    default:
         return false;
     }
     return aimInstanceAt(id, target);
+}
+
+void ALGhostStudio::setTurnTarget(const LLUUID& id, ETurnMode mode,
+                                  ELookTarget target, const LLUUID& target_id,
+                                  const LLVector3d& point_global)
+{
+    if (Instance* inst = getInstance(id))
+    {
+        inst->mTurnMode = mode;
+        inst->mTurnTarget = target;
+        inst->mTurnTargetId = target_id;
+        inst->mTurnPointGlobal = point_global;
+        // Re-arm: a fresh target must turn even if a previous ONCE had settled.
+        inst->mTurnSettled = false;
+    }
+}
+
+bool ALGhostStudio::stepTurn(const LLUUID& id, F32 dt)
+{
+    Instance* inst = getInstance(id);
+    if (!inst || inst->mTurnMode == TURN_MODE_OFF)
+    {
+        return false;
+    }
+    // ONCE stops asking once it has arrived, so hand-rotating the clone
+    // afterwards is not immediately undone on the next frame.
+    if (inst->mTurnMode == TURN_MODE_ONCE && inst->mTurnSettled)
+    {
+        // Re-arm if the clone has MOVED since it settled: the bearing to the
+        // target is then different and the old facing is stale. Detected here
+        // rather than in the setters because formation motion, chaos and the
+        // overlay duplication paths all write mFootGlobal directly.
+        if (inst->mFootGlobal == inst->mTurnSettledFoot)
+        {
+            return false;
+        }
+        inst->mTurnSettled = false;
+    }
+
+    LLVector3d target;
+    if (!resolveTargetGlobal(*inst, inst->mTurnTarget, inst->mTurnTargetId,
+                             inst->mTurnPointGlobal, target))
+    {
+        return false;
+    }
+    const LLVector3d delta = target - inst->mFootGlobal;
+    if (delta.mdV[VX] * delta.mdV[VX] + delta.mdV[VY] * delta.mdV[VY] < 0.000001)
+    {
+        return false;   // coincident horizontally: keep the last meaningful yaw
+    }
+
+    static LLCachedControl<F32> turn_rate(gSavedSettings, "GhostStudioTurnRate", 180.f);
+    static LLCachedControl<F32> turn_ease(gSavedSettings, "GhostStudioTurnEase", 0.25f);
+
+    const F32 want = atan2f((F32)delta.mdV[VY], (F32)delta.mdV[VX]);
+    const F32 have = inst->getYaw();
+    // Shortest signed arc, so a turn never takes the long way round.
+    F32 diff = want - have;
+    while (diff >  F_PI) diff -= F_TWO_PI;
+    while (diff < -F_PI) diff += F_TWO_PI;
+
+    if (fabsf(diff) < 0.0015f)          // ~0.086 deg
+    {
+        inst->setYaw(want);
+        inst->mTurnSettled = true;
+        inst->mTurnSettledFoot = inst->mFootGlobal;
+        return inst->mKind != BACKING_ENTITY_CLONE || applyEntityTransform(id);
+    }
+
+    // Rate limit, then ease IN toward the target over the last stretch so the
+    // clone decelerates into frame instead of stopping dead -- a hard stop is
+    // the thing that reads as a bug.
+    // A configured rate of 0 means STOPPED, not "creep at 1 deg/s".
+    const F32 rate = llmax(0.f, (F32)turn_rate);
+    if (rate <= 0.f)
+    {
+        return false;
+    }
+    const F32 max_step = rate * DEG_TO_RAD * llclamp(dt, 0.f, 0.25f);
+    const F32 ease_band = llmax(0.01f, (F32)turn_ease);
+    const F32 eased = llmin(1.f, fabsf(diff) / ease_band);
+    F32 step = llmin(max_step * eased, fabsf(diff));
+    inst->setYaw(have + (diff > 0.f ? step : -step));
+    return inst->mKind != BACKING_ENTITY_CLONE || applyEntityTransform(id);
 }
 
 void ALGhostStudio::setLookTarget(const LLUUID& id, ELookTarget target,
@@ -818,7 +930,10 @@ void ALGhostStudio::updateLookAt()
     std::vector<LLUUID> tracking;
     for (const Instance& inst : mInstances)
     {
-        if (inst.mKeepFacing)
+        // Turn owns the body when it is armed. Both write mRotation, so running
+        // keep-facing as well would just be overwritten by stepTurn a moment
+        // later -- worse, it would fight it every frame.
+        if (inst.mKeepFacing && inst.mTurnMode == TURN_MODE_OFF)
         {
             tracking.push_back(inst.mId);
         }
@@ -837,6 +952,7 @@ void ALGhostStudio::updatePerFrame()
     if (mFreezeStrips.empty() && !mHasMotion)
     {
         updateLookAt();
+        stepAllTurns();
         return;
     }
     const F64 now = LLTimer::getTotalSeconds();
@@ -855,7 +971,8 @@ void ALGhostStudio::updatePerFrame()
     std::vector<LLUUID> tracking;
     for (const Instance& inst : mInstances)
     {
-        if (inst.mKeepFacing && inst.mMotion != MOTION_SPIN)
+        if (inst.mKeepFacing && inst.mMotion != MOTION_SPIN
+            && inst.mTurnMode == TURN_MODE_OFF)
         {
             tracking.push_back(inst.mId);
         }
@@ -863,6 +980,27 @@ void ALGhostStudio::updatePerFrame()
     for (const LLUUID& id : tracking)
     {
         faceInstance(id);
+    }
+    stepAllTurns();
+}
+
+void ALGhostStudio::stepAllTurns()
+{
+    // Body turn runs AFTER look-at and after motion, so it is the last word on
+    // yaw for any instance that has a turn target -- except SPIN, which owns
+    // yaw outright and would otherwise fight it every frame.
+    const F32 dt = gFrameIntervalSeconds;
+    std::vector<LLUUID> turning;
+    for (const Instance& inst : mInstances)
+    {
+        if (inst.mTurnMode != TURN_MODE_OFF && inst.mMotion != MOTION_SPIN)
+        {
+            turning.push_back(inst.mId);
+        }
+    }
+    for (const LLUUID& id : turning)
+    {
+        stepTurn(id, dt);
     }
 }
 
@@ -1177,6 +1315,13 @@ ALGhostStudio::Instance* ALGhostStudio::getInstance(const LLUUID& id)
     return nullptr;
 }
 
+const ALGhostStudio::Instance* ALGhostStudio::getInstance(const LLUUID& id) const
+{
+    // Same lookup, const-correct. Delegating through a const_cast keeps ONE
+    // implementation rather than two that can drift.
+    return const_cast<ALGhostStudio*>(this)->getInstance(id);
+}
+
 // ---------------------------------------------------------------------------
 // FROZEN pose (the out-of-sync feature)
 // ---------------------------------------------------------------------------
@@ -1317,68 +1462,148 @@ std::string ALGhostStudio::freezeStripStatus() const
     return mLastStripStatus;
 }
 
+ALGhostStudio::FormationSlot ALGhostStudio::formationSlotAt(
+    const Instance& p, S32 slot, S32 count, F32 spacing,
+    EFormation formation, F32 parameter) const
+{
+    // THE single source of truth for formation geometry. makeArray() consumes
+    // this; so does the freeze strip; so does the in-world preview. If you
+    // change a formation, change it HERE and everything follows.
+    //
+    // Facing policy: Line/Grid/Staircase/Scatter inherit the prototype's full
+    // rotation (mAuthorYaw = false). Ring/Arc/Spiral face outward. V angles
+    // along its arm. Tunnel's parallel rows face inward at each other.
+    FormationSlot r;
+    const F32 yaw = p.getYaw();
+    const LLVector3d forward(cosf(yaw), sinf(yaw), 0.0);
+    const LLVector3d left(-sinf(yaw), cosf(yaw), 0.0);
+    r.mFoot = p.mFootGlobal;
+    r.mYaw = yaw;
+    r.mAuthorYaw = true;
+
+    if (slot <= 0)
+    {
+        // Slot 0 is always the untouched prototype, even where that makes it
+        // the intentional exception to the formation's own facing rule.
+        r.mAuthorYaw = false;
+        return r;
+    }
+
+    switch (formation)
+    {
+    case FORMATION_RING:
+    {
+        const F32 step = F_TWO_PI / (F32)llmax(2, count);
+        const F32 radius = spacing / (2.f * sinf(step * 0.5f));
+        const F32 a = yaw + step * (F32)slot;
+        r.mFoot += LLVector3d(cosf(a) - cosf(yaw), sinf(a) - sinf(yaw), 0.0) * (F64)radius;
+        r.mYaw = a;
+        return r;
+    }
+    case FORMATION_ARC:
+    {
+        const F32 sweep = (parameter > 0.f ? parameter : 120.f) * DEG_TO_RAD;
+        const F32 step = sweep / (F32)llmax(1, count - 1);
+        const F32 radius = spacing / (2.f * sinf(llmax(0.001f, step * 0.5f)));
+        const F32 a0 = yaw - sweep * 0.5f;
+        const F32 a = a0 + step * (F32)slot;
+        r.mFoot += LLVector3d(cosf(a) - cosf(a0), sinf(a) - sinf(a0), 0.0) * (F64)radius;
+        r.mYaw = a;
+        return r;
+    }
+    case FORMATION_GRID:
+    {
+        const S32 cols = llmax(1, (S32)ceilf(sqrtf((F32)count)));
+        r.mFoot += forward * (F64)(spacing * (F32)(slot / cols)) +
+                   left    * (F64)(spacing * (F32)(slot % cols));
+        r.mAuthorYaw = false;
+        return r;
+    }
+    case FORMATION_V:
+    {
+        const F32 half = (parameter > 0.f ? parameter : 60.f) * DEG_TO_RAD * 0.5f;
+        const F32 side = (slot & 1) ? 1.f : -1.f;
+        const S32 rank = (slot + 1) / 2;
+        // The ARM extends BEHIND the prototype (+F_PI) -- a V opens away from
+        // the point, like geese. The member still FACES forward along its arm.
+        const F32 arm_yaw = yaw + F_PI + side * half;
+        r.mFoot += LLVector3d(cosf(arm_yaw), sinf(arm_yaw), 0.0) * (F64)((F32)rank * spacing);
+        r.mYaw = yaw + side * half;
+        return r;
+    }
+    case FORMATION_SPIRAL:
+    {
+        // Golden angle: successive slots never line up into visible spokes.
+        const F32 golden = 2.39996323f;
+        const F32 a = yaw + golden * (F32)slot;
+        const F32 rad = spacing * sqrtf((F32)slot);
+        r.mFoot += LLVector3d(cosf(a), sinf(a), 0.0) * (F64)rad;
+        r.mYaw = a;
+        return r;
+    }
+    case FORMATION_STAIRCASE:
+    {
+        // parameter != 0 (not > 0) so a NEGATIVE rise gives a DESCENDING
+        // staircase. The old > 0 test made descending stairs impossible.
+        const F32 rise = (parameter != 0.f) ? parameter : spacing * 0.5f;
+        r.mFoot += forward * (F64)(spacing * (F32)slot) +
+                   LLVector3d(0.0, 0.0, (F64)(rise * (F32)slot));
+        r.mAuthorYaw = false;
+        return r;
+    }
+    case FORMATION_TUNNEL:
+    {
+        const F32 side = (slot & 1) ? 1.f : -1.f;
+        const S32 rank = (slot + 1) / 2;
+        r.mFoot += forward * (F64)((F32)rank * spacing) +
+                   left    * (F64)(side * spacing * 0.5f);
+        r.mYaw = yaw - side * F_PI_BY_TWO;   // rows face inward at each other
+        return r;
+    }
+    case FORMATION_SCATTER:
+    {
+        const F32 radius = parameter > 0.f ? parameter : spacing * sqrtf((F32)count);
+        // Seeded from the PROTOTYPE id, so a rebuild from the same prototype
+        // reproduces the same scatter. Rebuilding from a DIFFERENT prototype
+        // deliberately gives a different pattern.
+        const F32 a = F_TWO_PI * seeded_unit(p.mId, 100u + (U32)slot * 2u);
+        const F32 rad = radius * sqrtf(seeded_unit(p.mId, 101u + (U32)slot * 2u));
+        r.mFoot += LLVector3d(cosf(a), sinf(a), 0.0) * (F64)rad;
+        r.mAuthorYaw = false;
+        return r;
+    }
+    case FORMATION_LINE:
+    default:
+        r.mFoot += forward * (F64)(spacing * (F32)slot);
+        r.mAuthorYaw = false;
+        return r;
+    }
+}
+
 LLVector3d ALGhostStudio::formationSlot(const Instance& p, S32 slot, S32 count,
                                         F32 spacing, EFormation formation,
                                         F32 parameter) const
 {
-    const F32 yaw = p.getYaw();
-    const LLVector3d forward(cosf(yaw), sinf(yaw), 0.0);
-    const LLVector3d left(-sinf(yaw), cosf(yaw), 0.0);
-    if (formation == FORMATION_LINE)
-        return p.mFootGlobal + forward * (F64)(spacing * slot);
-    if (formation == FORMATION_RING)
+    return formationSlotAt(p, slot, count, spacing, formation, parameter).mFoot;
+}
+
+void ALGhostStudio::formationPreviewSlots(const LLUUID& id, S32 count, F32 spacing,
+                                          EFormation formation, F32 parameter,
+                                          std::vector<FormationSlot>& out) const
+{
+    out.clear();
+    const Instance* src = getInstance(id);
+    // Same guards makeArray() applies, so the preview appears exactly when a
+    // build would actually do something.
+    if (!src || count < 2 || spacing < 0.05f)
     {
-        const F32 step = F_TWO_PI / (F32)llmax(2, count);
-        const F32 radius = spacing / (2.f * sinf(step * .5f));
-        const F32 a = yaw + step * slot;
-        return p.mFootGlobal + LLVector3d(cosf(a) - cosf(yaw),
-            sinf(a) - sinf(yaw), 0.0) * (F64)radius;
+        return;
     }
-    if (formation == FORMATION_ARC)
+    out.reserve((size_t)count);
+    for (S32 i = 0; i < count; ++i)
     {
-        const F32 sweep = (parameter > 0.f ? parameter : 120.f) * DEG_TO_RAD;
-        const F32 step = sweep / (F32)llmax(1, count - 1);
-        const F32 radius = spacing / (2.f * sinf(llmax(.001f, step * .5f)));
-        const F32 a0 = yaw - sweep * .5f, a = a0 + step * slot;
-        return p.mFootGlobal + LLVector3d(cosf(a) - cosf(a0),
-            sinf(a) - sinf(a0), 0.0) * (F64)radius;
+        out.push_back(formationSlotAt(*src, i, count, spacing, formation, parameter));
     }
-    if (formation == FORMATION_GRID)
-    {
-        const S32 cols = (S32)ceilf(sqrtf((F32)count));
-        return p.mFootGlobal + forward * (F64)(spacing * (slot / cols)) +
-               left * (F64)(spacing * (slot % cols));
-    }
-    if (formation == FORMATION_V)
-    {
-        const F32 half = (parameter > 0.f ? parameter : 60.f) * DEG_TO_RAD * .5f;
-        const F32 side = (slot & 1) ? 1.f : -1.f;
-        const F32 rank = (F32)((slot + 1) / 2);
-        const LLVector3d dir(cosf(yaw + side * half), sinf(yaw + side * half), 0.0);
-        return p.mFootGlobal + dir * (F64)(spacing * rank);
-    }
-    if (formation == FORMATION_SPIRAL)
-    {
-        const F32 a = yaw + slot * 0.8f;
-        const F32 r = spacing * sqrtf((F32)slot);
-        return p.mFootGlobal + LLVector3d(cosf(a), sinf(a), 0.0) * (F64)r;
-    }
-    if (formation == FORMATION_STAIRCASE)
-    {
-        const F32 rise = parameter > 0.f ? parameter : .75f;
-        return p.mFootGlobal + forward * (F64)(spacing * slot) +
-               LLVector3d(0.0, 0.0, rise * slot);
-    }
-    if (formation == FORMATION_TUNNEL)
-    {
-        const F32 side = (slot & 1) ? 1.f : -1.f;
-        return p.mFootGlobal + forward * (F64)(spacing * ((slot + 1) / 2)) +
-               left * (F64)(side * spacing);
-    }
-    const F32 radius = parameter > 0.f ? parameter : spacing * count * .5f;
-    const F32 a = F_TWO_PI * seeded_unit(p.mId, 100u + (U32)slot);
-    const F32 r = radius * sqrtf(seeded_unit(p.mId, 200u + (U32)slot));
-    return p.mFootGlobal + LLVector3d(cosf(a), sinf(a), 0.0) * (F64)r;
 }
 
 void ALGhostStudio::updateFreezeStrips(F64 now)
@@ -1465,37 +1690,25 @@ S32 ALGhostStudio::makeArray(const LLUUID& id, S32 count, F32 spacing,
     if (proto.mKind == BACKING_OVERLAY &&
         (formation == FORMATION_LINE || formation == FORMATION_RING))
     {
-        if (formation == FORMATION_RING)
+        // Overlay ghosts keep their own copy/naming mechanics (push_back with a
+        // fresh id and default name, rather than duplicateInstanceInPlace), but
+        // the GEOMETRY now comes from formationSlotAt() like everything else.
+        // Keeping a second inline implementation here is exactly how the
+        // preview and the build drifted apart in the first place.
+        for (S32 i = 1; i < count; ++i)
         {
-            const F32 step = F_TWO_PI / (F32)count;
-            const F32 radius = spacing / (2.f * sinf(step * 0.5f));
-            for (S32 i = 1; i < count; ++i)
+            const FormationSlot s =
+                formationSlotAt(proto, i, count, spacing, formation, parameter);
+            Instance copy = proto;
+            copy.mId.generate();
+            copy.mName = makeDefaultName();
+            copy.mFootGlobal = s.mFoot;
+            if (s.mAuthorYaw)
             {
-                Instance copy = proto;
-                copy.mId.generate();
-                copy.mName = makeDefaultName();
-                const F32 proto_yaw = proto.getYaw();
-                const F32 a = proto_yaw + step * (F32)i;
-                copy.mFootGlobal += LLVector3d(cosf(a) - cosf(proto_yaw),
-                                               sinf(a) - sinf(proto_yaw), 0.0) * (F64)radius;
-                copy.setYaw(a);
-                mInstances.push_back(copy);
-                ++made;
+                copy.setYaw(s.mYaw);
             }
-        }
-        else
-        {
-            const F32 proto_yaw = proto.getYaw();
-            const LLVector3d dir(cosf(proto_yaw), sinf(proto_yaw), 0.0);
-            for (S32 i = 1; i < count; ++i)
-            {
-                Instance copy = proto;
-                copy.mId.generate();
-                copy.mName = makeDefaultName();
-                copy.mFootGlobal += dir * (F64)(spacing * (F32)i);
-                mInstances.push_back(copy);
-                ++made;
-            }
+            mInstances.push_back(copy);
+            ++made;
         }
         return made;
     }
@@ -1519,118 +1732,136 @@ S32 ALGhostStudio::makeArray(const LLUUID& id, S32 count, F32 spacing,
         }
         ++made;
     };
-    const F32 proto_yaw = proto.getYaw();
-    const LLVector3d forward(cosf(proto_yaw), sinf(proto_yaw), 0.0);
-    const LLVector3d left(-sinf(proto_yaw), cosf(proto_yaw), 0.0);
-
-    // Facing policy: Line/Grid/Staircase/Scatter inherit the prototype's full
-    // rotation; Ring/Arc and Spiral face radially outward; V members angle
-    // along their arm; Tunnel's parallel rows face inward at each other.
-    // Slot zero is always the untouched prototype, even where that makes it
-    // the intentional exception to the formation's facing rule.
-    if (formation == FORMATION_RING)
+    // Every formation now comes from formationSlotAt(), the SINGLE source of
+    // truth that the in-world preview also uses. Previously this function had
+    // its own inline geometry per formation and formationSlot() had a second,
+    // DIFFERENT one -- so a preview could never have matched the build.
+    for (S32 i = 1; i < count; ++i)
     {
-        // ring of `count` TOTAL ghosts centred on the prototype; the prototype
-        // occupies slot 0, so it stays put and count-1 copies fill the circle.
-        // Radius from the chord: spacing between neighbours on the circle.
-        const F32 step = F_TWO_PI / (F32)count;
-        const F32 radius = spacing / (2.f * sinf(step * 0.5f));
-        for (S32 i = 1; i < count; ++i)
-        {
-            const F32 a = proto_yaw + step * (F32)i;
-            const LLVector3d foot = proto.mFootGlobal +
-                LLVector3d(cosf(a) - cosf(proto_yaw),
-                           sinf(a) - sinf(proto_yaw), 0.0) * (F64)radius;
-            // each ghost faces outward from the ring centre, like a crowd
-            append(foot, a);
-        }
-    }
-    else if (formation == FORMATION_LINE)
-    {
-        // line of `count` total along the prototype's facing direction
-        for (S32 i = 1; i < count; ++i)
-        {
-            append(proto.mFootGlobal + forward * (F64)(spacing * (F32)i),
-                   proto_yaw, false);
-        }
-    }
-    else if (formation == FORMATION_ARC)
-    {
-        const F32 sweep = (parameter > 0.f ? parameter : 120.f) * DEG_TO_RAD;
-        const F32 step = sweep / (F32)llmax(1, count - 1);
-        const F32 radius = spacing / (2.f * sinf(llmax(0.001f, step * 0.5f)));
-        for (S32 i = 1; i < count; ++i)
-        {
-            const F32 a = proto_yaw - sweep * 0.5f + step * (F32)i;
-            const F32 a0 = proto_yaw - sweep * 0.5f;
-            append(proto.mFootGlobal + LLVector3d(cosf(a) - cosf(a0),
-                   sinf(a) - sinf(a0), 0.0) * (F64)radius, a);
-        }
-    }
-    else if (formation == FORMATION_GRID)
-    {
-        const S32 cols = (S32)ceilf(sqrtf((F32)count));
-        for (S32 i = 1; i < count; ++i)
-        {
-            const S32 row = i / cols, col = i % cols;
-            append(proto.mFootGlobal + forward * (F64)(row * spacing) +
-                   left * (F64)(col * spacing), proto_yaw, false);
-        }
-    }
-    else if (formation == FORMATION_V)
-    {
-        const F32 half = (parameter > 0.f ? parameter : 60.f) * DEG_TO_RAD * 0.5f;
-        for (S32 i = 1; i < count; ++i)
-        {
-            const F32 side = (i & 1) ? 1.f : -1.f;
-            const S32 rank = (i + 1) / 2;
-            const F32 arm_yaw = proto_yaw + F_PI + side * half;
-            append(proto.mFootGlobal + LLVector3d(cosf(arm_yaw), sinf(arm_yaw), 0.0)
-                   * (F64)(rank * spacing), proto_yaw + side * half);
-        }
-    }
-    else if (formation == FORMATION_SPIRAL)
-    {
-        const F32 golden = 2.39996323f;
-        for (S32 i = 1; i < count; ++i)
-        {
-            const F32 a = proto_yaw + golden * (F32)i;
-            const F32 r = spacing * sqrtf((F32)i);
-            append(proto.mFootGlobal + LLVector3d(cosf(a), sinf(a), 0.0) * (F64)r, a);
-        }
-    }
-    else if (formation == FORMATION_STAIRCASE)
-    {
-        const F32 rise = parameter > 0.f ? parameter : spacing * 0.5f;
-        for (S32 i = 1; i < count; ++i)
-            append(proto.mFootGlobal + forward * (F64)(spacing * i) +
-                   LLVector3d(0.0, 0.0, rise * i), proto_yaw, false);
-    }
-    else if (formation == FORMATION_TUNNEL)
-    {
-        for (S32 i = 1; i < count; ++i)
-        {
-            const F32 side = (i & 1) ? 1.f : -1.f;
-            const S32 rank = (i + 1) / 2;
-            append(proto.mFootGlobal + forward * (F64)(rank * spacing) +
-                   left * (F64)(side * spacing * 0.5f),
-                   proto_yaw - side * F_PI_BY_TWO);
-        }
-    }
-    else if (formation == FORMATION_SCATTER)
-    {
-        const F32 radius = parameter > 0.f ? parameter : spacing * sqrtf((F32)count);
-        for (S32 i = 1; i < count; ++i)
-        {
-            // Same UUID-seeded FNV helper as entity chaos; channels include
-            // the slot, so rebuilds from the same prototype are reproducible.
-            const F32 a = F_TWO_PI * seeded_unit(proto.mId, 100u + i * 2u);
-            const F32 r = radius * sqrtf(seeded_unit(proto.mId, 101u + i * 2u));
-            append(proto.mFootGlobal + LLVector3d(cosf(a), sinf(a), 0.0) * (F64)r,
-                   proto_yaw, false);
-        }
+        const FormationSlot s =
+            formationSlotAt(proto, i, count, spacing, formation, parameter);
+        append(s.mFoot, s.mYaw, s.mAuthorYaw);
     }
     return made;
+}
+
+void ALGhostStudio::setFormationPreview(const LLUUID& proto_id, S32 count,
+                                       F32 spacing, EFormation formation,
+                                       F32 parameter)
+{
+    mPreviewProto     = proto_id;
+    mPreviewCount     = count;
+    mPreviewSpacing   = spacing;
+    mPreviewFormation = formation;
+    mPreviewParameter = parameter;
+}
+
+void ALGhostStudio::renderFormationPreview()
+{
+    // Cost nothing unless the director is actually staging a formation. Same
+    // gating shape as renderHeadingPreview(): setting on, an operator floater
+    // open, and a valid prototype -- checked BEFORE any allocation.
+    static LLCachedControl<bool> show(gSavedSettings, "GhostStudioShowFormationPreview", true);
+    if (!show || mPreviewProto.isNull() || mPreviewCount < 2)
+    {
+        return;
+    }
+    bool operator_open = false;
+    for (const char* name : { "ghost_studio", "director" })
+    {
+        LLFloater* floaterp = LLFloaterReg::findInstance(name);
+        if (floaterp && floaterp->getVisible())
+        {
+            operator_open = true;
+            break;
+        }
+    }
+    if (!operator_open)
+    {
+        return;
+    }
+
+    std::vector<FormationSlot> slots;
+    formationPreviewSlots(mPreviewProto, mPreviewCount, mPreviewSpacing,
+                          mPreviewFormation, mPreviewParameter, slots);
+    if (slots.size() < 2)
+    {
+        return;
+    }
+
+    // Client-side overlay, exactly like the beacon/heading passes: UI shader,
+    // no texture, no depth write, so markers read over any ground.
+    LLGLSUIDefault gls_ui;
+    gUIProgram.bind();
+    gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
+
+    const F32 LIFT = 0.05f;             // sit just above the ground described
+    const F32 R    = 0.28f;             // slot marker radius, m
+    const F32 TICK = 0.55f;             // facing tick length, m
+    const LLColor4 col_slot(0.25f, 0.75f, 1.f, 0.85f);   // staged slots
+    const LLColor4 col_proto(1.f, 0.80f, 0.15f, 0.95f);  // slot 0 = prototype
+    const LLColor4 col_perim(0.25f, 0.75f, 1.f, 0.35f);
+
+    // centroid + max radius for the enclosing perimeter, computed from the
+    // SAME slots that will be built -- not from the formation's nominal shape,
+    // so Scatter's actual spread is what gets drawn.
+    LLVector3 centre(0.f, 0.f, 0.f);
+    std::vector<LLVector3> agent_pos;
+    agent_pos.reserve(slots.size());
+    for (const FormationSlot& s : slots)
+    {
+        const LLVector3 a = gAgent.getPosAgentFromGlobal(s.mFoot);
+        agent_pos.push_back(a);
+        centre += a;
+    }
+    centre *= 1.f / (F32)agent_pos.size();
+
+    F32 perim_r = 0.f;
+    for (const LLVector3& a : agent_pos)
+    {
+        const F32 dx = a.mV[VX] - centre.mV[VX];
+        const F32 dy = a.mV[VY] - centre.mV[VY];
+        perim_r = llmax(perim_r, sqrtf(dx * dx + dy * dy));
+    }
+    perim_r += R * 2.f;
+
+    auto ring = [](const LLVector3& c, F32 r, const LLColor4& col, S32 segs)
+    {
+        gGL.color4fv(col.mV);
+        gGL.begin(LLRender::LINES);
+        for (S32 i = 0; i < segs; ++i)
+        {
+            const F32 a0 = F_TWO_PI * (F32)i / (F32)segs;
+            const F32 a1 = F_TWO_PI * (F32)(i + 1) / (F32)segs;
+            gGL.vertex3f(c.mV[VX] + cosf(a0) * r, c.mV[VY] + sinf(a0) * r, c.mV[VZ]);
+            gGL.vertex3f(c.mV[VX] + cosf(a1) * r, c.mV[VY] + sinf(a1) * r, c.mV[VZ]);
+        }
+        gGL.end();
+    };
+
+    // enclosing perimeter -- the "where will they land" answer at a glance
+    LLVector3 pc = centre;
+    pc.mV[VZ] += LIFT;
+    ring(pc, perim_r, col_perim, 64);
+
+    for (size_t i = 0; i < agent_pos.size(); ++i)
+    {
+        LLVector3 a = agent_pos[i];
+        a.mV[VZ] += LIFT;
+        const LLColor4& col = (i == 0) ? col_proto : col_slot;
+        ring(a, R, col, 20);
+
+        // facing tick: which way that slot will END UP pointing. Slots that
+        // inherit the prototype's rotation still show it, because "they all
+        // face the same way" is itself information the director needs.
+        gGL.color4fv(col.mV);
+        gGL.begin(LLRender::LINES);
+        gGL.vertex3f(a.mV[VX], a.mV[VY], a.mV[VZ]);
+        gGL.vertex3f(a.mV[VX] + cosf(slots[i].mYaw) * TICK,
+                     a.mV[VY] + sinf(slots[i].mYaw) * TICK,
+                     a.mV[VZ]);
+        gGL.end();
+    }
 }
 
 // ---------------------------------------------------------------------------
