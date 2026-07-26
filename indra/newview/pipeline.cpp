@@ -1100,7 +1100,12 @@ bool LLPipeline::allocateScreenBufferInternal(U32 resX, U32 resY)
                    "glColorMaski (GL 3.0) and/or glBlendFuncSeparatei (GL 4.0); "
                    "the sidecar is disabled." << LL_ENDL;
         }
-        else if (!mRT->screen.addColorAttachment(GL_SRGB8_ALPHA8))
+        // Both attachments or neither. A partially allocated pair must never be
+        // published: the coverage mask is what tells the consumer WHICH pixels
+        // the sidecar is authoritative for, so a sidecar without coverage would
+        // fail closed at best and supersede the whole frame at worst.
+        else if (!mRT->screen.addColorAttachment(GL_SRGB8_ALPHA8) ||   // 1: sidecar
+                 !mRT->screen.addColorAttachment(GL_RG8))              // 2: coverage
         {
             return false;
         }
@@ -6167,7 +6172,7 @@ void LLPipeline::renderGeomPostDeferred(LLCamera& camera)
         gVisibleDiffuseSeedProgram.isComplete() &&
         !gCubeSnapshot && !LLPipeline::sRenderingHUDs && !sImpostorRender &&
         LLRenderTarget::getCurrentBoundTarget() == &mRT->screen &&
-        mRT->screen.getNumTextures() > 1;
+        mRT->screen.getNumTextures() > SL_COVERAGE_ATTACHMENT;
 
     // Arm the indexed guard CLOSED (attachment 1 write-disabled) for the whole
     // pass. From here on nothing writes the sidecar unless it explicitly opens
@@ -6177,7 +6182,12 @@ void LLPipeline::renderGeomPostDeferred(LLCamera& camera)
     // doWaterHaze (M1), the glow pool (M2) and the alpha pool's emissive
     // sub-passes (M3), none of which are reachable from this function's own
     // call sites.
-    LLScopedIndexedDrawBufferGuard sidecar_guard(publish_visible_diffuse, 1);
+    // ONE owner guarding BOTH attachments -- not two nested guards. A nested
+    // guard's destructor would clear the outer owner's state instead of
+    // restoring it, leaving the outer pass silently unguarded from that point.
+    static const U32 sSidecarGuarded[] = { SL_SIDECAR_ATTACHMENT, SL_COVERAGE_ATTACHMENT };
+    LLScopedIndexedDrawBufferGuard sidecar_guard(
+        publish_visible_diffuse, sSidecarGuarded, LL_ARRAY_SIZE(sSidecarGuarded));
 
     LLGLEnable visible_diffuse_srgb(
         publish_visible_diffuse ? GL_FRAMEBUFFER_SRGB : 0);
@@ -6259,7 +6269,12 @@ void LLPipeline::renderGeomPostDeferred(LLCamera& camera)
                     cur_type == LLDrawPool::POOL_FULLBRIGHT ||
                     cur_type == LLDrawPool::POOL_FULLBRIGHT_ALPHA_MASK ||
                     cur_type == LLDrawPool::POOL_ALPHA_PRE_WATER ||
-                    cur_type == LLDrawPool::POOL_ALPHA_POST_WATER;
+                    cur_type == LLDrawPool::POOL_ALPHA_POST_WATER ||
+                    // S3: water publishes zero diffuse at K=1 (specular-only
+                    // BRDF). Both the above-water and underwater programs
+                    // declare the extra outputs, so opening the guard here
+                    // cannot produce undefined writes.
+                    cur_type == LLDrawPool::POOL_WATER;
                 // Open the guard only for the pools that actually resolve
                 // visible diffuse. Everything else -- including whatever
                 // global state beginPostDeferredPass issues, which no longer
@@ -6267,8 +6282,23 @@ void LLPipeline::renderGeomPostDeferred(LLCamera& camera)
                 // write-disabled.
                 if (contributes_diffuse)
                 {
-                    gGL.setIndexedDrawBufferGuardMask(true, true, true, true);
-                    gGL.setIndexedDrawBufferGuardBlend(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA,
+                    gGL.setIndexedDrawBufferGuardMask(SL_SIDECAR_ATTACHMENT, true, true, true, true);
+                    gGL.setIndexedDrawBufferGuardBlend(SL_SIDECAR_ATTACHMENT, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA,
+                                                       GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+                    // Coverage: open the FORWARD channel (G) only. R is the
+                    // deferred coverage the seed pass wrote, and the forward
+                    // shaders emit vec2(0.0, alpha) -- leaving R writable would
+                    // let every forward fragment ZERO the seed's answer.
+                    gGL.setIndexedDrawBufferGuardMask(SL_COVERAGE_ATTACHMENT, false, true, false, false);
+
+                    // Coverage accumulates as a UNION, not a sum:
+                    //     Gout = Gsrc + Gdst * (1 - Gsrc)
+                    // GL_ONE_MINUS_SRC_COLOR supplies (1 - Gsrc) on the G
+                    // channel, so overlapping forward layers saturate toward 1
+                    // instead of adding past it.
+                    gGL.setIndexedDrawBufferGuardBlend(SL_COVERAGE_ATTACHMENT,
+                                                       GL_ONE, GL_ONE_MINUS_SRC_COLOR,
                                                        GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
                 }
                 poolp->beginPostDeferredPass(i);
@@ -6283,8 +6313,10 @@ void LLPipeline::renderGeomPostDeferred(LLCamera& camera)
                     p->renderPostDeferred(i);
                 }
                 poolp->endPostDeferredPass(i);
-                gGL.setIndexedDrawBufferGuardMask(false, false, false, false);
-                gGL.clearIndexedDrawBufferGuardBlend();
+                gGL.setIndexedDrawBufferGuardMask(SL_SIDECAR_ATTACHMENT, false, false, false, false);
+                gGL.clearIndexedDrawBufferGuardBlend(SL_SIDECAR_ATTACHMENT);
+                gGL.setIndexedDrawBufferGuardMask(SL_COVERAGE_ATTACHMENT, false, false, false, false);
+                gGL.clearIndexedDrawBufferGuardBlend(SL_COVERAGE_ATTACHMENT);
                 LLVertexBuffer::unbind();
 
                 if (gDebugGL || gDebugPipeline)
@@ -6333,8 +6365,9 @@ void LLPipeline::renderGeomPostDeferred(LLCamera& camera)
         // loop over the main view's sidecar attachment. The bridge must never
         // infer this from the attachment merely existing. (M4)
         LLReShadeBridge::instance().noteVisibleDiffuseResolved();
+        LLReShadeBridge::instance().noteSurfaceCoverageResolved();
     }
-    // sidecar_guard disarms the indexed state here.
+    // sidecar_guard disarms both attachments here.
 }
 
 void LLPipeline::renderGeomShadow(LLCamera& camera)
@@ -13684,10 +13717,16 @@ void LLPipeline::renderDeferredLighting()
             !gCubeSnapshot && !LLPipeline::sRenderingHUDs && !sImpostorRender &&
             screen_target == &mRT->screen &&
             LLRenderTarget::getCurrentBoundTarget() == &mRT->screen &&
-            screen_target->getNumTextures() > 1;
+            screen_target->getNumTextures() > SL_COVERAGE_ATTACHMENT;
         if (publish_visible_diffuse)
         {
-            glColorMaski(1, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+            // The sidecar must survive the beauty clear; coverage must NOT --
+            // it has to start at (0,0) every frame or last frame's forward
+            // coverage would mark pixels the sidecar no longer owns. The engine
+            // clear colour is glClearColor(1,0,1,1) elsewhere in the frame, so
+            // coverage is cleared explicitly here rather than trusted to it.
+            glColorMaski(SL_SIDECAR_ATTACHMENT,  GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+            glColorMaski(SL_COVERAGE_ATTACHMENT, GL_TRUE,  GL_TRUE,  GL_FALSE, GL_FALSE);
         }
         // clear color buffer here - zeroing alpha (glow) is important or it will accumulate against sky
         glClearColor(0, 0, 0, 0);
@@ -13709,17 +13748,21 @@ void LLPipeline::renderDeferredLighting()
             LLGLDepthTest depth(GL_FALSE);
             LLGLEnable srgb(GL_FRAMEBUFFER_SRGB);
             glColorMaski(0, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-            glColorMaski(1, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+            glColorMaski(SL_SIDECAR_ATTACHMENT,  GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+            glColorMaski(SL_COVERAGE_ATTACHMENT, GL_TRUE, GL_TRUE, GL_FALSE, GL_FALSE);
             bindDeferredShader(gVisibleDiffuseSeedProgram);
             mScreenTriangleVB->setBuffer();
             mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
             unbindDeferredShader(gVisibleDiffuseSeedProgram);
             glColorMaski(0, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-            glColorMaski(1, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+            glColorMaski(SL_SIDECAR_ATTACHMENT,  GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+            glColorMaski(SL_COVERAGE_ATTACHMENT, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 
-            // Stage 1 of the readiness latch: deferred-opaque pixels are now
-            // classified. renderGeomPostDeferred supplies stage 2. (M4)
+            // Stage 1 of both readiness latches: deferred-opaque pixels are now
+            // classified and coverage.r is defined. renderGeomPostDeferred
+            // supplies stage 2 for both. (M4)
             LLReShadeBridge::instance().noteVisibleDiffuseSeeded();
+            LLReShadeBridge::instance().noteSurfaceCoverageSeeded();
         }
 
         if (RenderDeferredAtmospheric)

@@ -27,7 +27,13 @@
 
 #define WATER_MINIMAL 1
 
+#ifdef HAS_VISIBLE_DIFFUSE
+layout(location = 0) out vec4 frag_color;
+layout(location = 1) out vec4 visible_diffuse;
+layout(location = 2) out vec2 surface_coverage;
+#else
 out vec4 frag_color;
+#endif
 
 #ifdef HAS_SUN_SHADOW
 float sampleDirectionalShadow(vec3 pos, vec3 norm, vec2 pos_screen);
@@ -341,5 +347,19 @@ void main()
     float spec = min(max(max(punctual.r, punctual.g), punctual.b), 0);
 
     frag_color = min(vec4(1),max(vec4(color.rgb, spec * water_mask), vec4(0)));
+#ifdef HAS_VISIBLE_DIFFUSE
+    // S3: water was previously OUTSIDE the sidecar's modified set, so the
+    // attachment kept whatever the seed pass wrote for the surface BEHIND the
+    // water -- i.e. it published SEABED ALBEDO at K=1. Confidently wrong is
+    // worse than absent.
+    //
+    // This renderer models water as specular/reflective only; it has no diffuse
+    // lobe. So zero diffuse with K=1 is a statement about the BRDF, exactly as
+    // the seed already does for metals -- a real answer, not a gap. Forward
+    // coverage is claimed so the consumer knows the sidecar owns these pixels
+    // and must not fall back to the seabed underneath.
+    visible_diffuse = vec4(vec3(0.0), 1.0);
+    surface_coverage = vec2(0.0, 1.0);
+#endif
 }
 

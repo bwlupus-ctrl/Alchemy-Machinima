@@ -34,6 +34,7 @@
 #ifdef HAS_VISIBLE_DIFFUSE
 layout(location = 0) out vec4 frag_color;
 layout(location = 1) out vec4 visible_diffuse;
+layout(location = 2) out vec2 surface_coverage;
 #else
 out vec4 frag_color;
 #endif
@@ -323,8 +324,12 @@ void main()
 #ifdef HAS_VISIBLE_DIFFUSE
 #ifdef FOR_IMPOSTOR
     visible_diffuse = vec4(0.0);
+    surface_coverage = vec2(0.0);
 #else
     visible_diffuse = vec4(max(diffuse_linear.rgb, vec3(0)), final_alpha);
+    // R = 0 is written but masked off by the pool; G claims forward coverage
+    // proportional to how much of this pixel this layer actually covers.
+    surface_coverage = vec2(0.0, final_alpha);
 #endif
 #endif
 }

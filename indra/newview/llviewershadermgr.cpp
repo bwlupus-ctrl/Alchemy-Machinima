@@ -311,6 +311,15 @@ static bool make_rigged_variant(LLGLSLShader& shader, LLGLSLShader& riggedShader
     return riggedShader.createShader();
 }
 
+// One reader for the sidecar gate. Programs that are permuted OUTSIDE
+// add_common_permutations() (water, underwater) use this so the setting is read
+// identically everywhere.
+static bool sl_visible_diffuse_sidecar()
+{
+    static LLCachedControl<bool> sl_sidecar(gSavedSettings, "RenderVisibleDiffuseSidecar", false);
+    return sl_sidecar;
+}
+
 static void add_common_permutations(LLGLSLShader* shader)
 {
     static LLCachedControl<bool> emissive(gSavedSettings, "RenderEnableEmissiveBuffer", false);
@@ -982,6 +991,18 @@ bool LLViewerShaderMgr::loadShadersWater()
             gWaterProgram.addPermutation("HAS_SUN_SHADOW", "1");
         }
 
+        // S3: without this the water shader declares only frag_color, so the
+        // sidecar attachment kept the seed pass's answer for the SEABED behind
+        // the water and published it as the water surface's albedo at K=1.
+        // Only the visible-diffuse permutation -- water has no emissive output,
+        // so add_common_permutations() would define an unused HAS_EMISSIVE.
+        // NOTE: gUnderWaterProgram is permuted in its OWN block below, not here.
+        // Its clearPermutations() runs later and would erase anything set now.
+        if (sl_visible_diffuse_sidecar())
+        {
+            gWaterProgram.addPermutation("HAS_VISIBLE_DIFFUSE", "1");
+        }
+
         gWaterProgram.mShaderGroup = LLGLSLShader::SG_WATER;
         gWaterProgram.mShaderLevel = mShaderLevel[SHADER_WATER];
         success = gWaterProgram.createShader();
@@ -1003,6 +1024,14 @@ bool LLViewerShaderMgr::loadShadersWater()
         if (LLPipeline::sRenderTransparentWater)
         {
             gUnderWaterProgram.addPermutation("TRANSPARENT_WATER", "1");
+        }
+        // MUST be after clearPermutations(). The underwater program shares
+        // POOL_WATER, which opens the sidecar and coverage attachments; without
+        // the extra output declarations this shader would write UNDEFINED values
+        // to them (hazard H1) -- the precise failure this exists to prevent.
+        if (sl_visible_diffuse_sidecar())
+        {
+            gUnderWaterProgram.addPermutation("HAS_VISIBLE_DIFFUSE", "1");
         }
         success = gUnderWaterProgram.createShader();
         llassert(success);

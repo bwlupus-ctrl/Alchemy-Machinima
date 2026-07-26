@@ -53,6 +53,14 @@ public:
     void noteVisibleDiffuseSeeded();
     void noteVisibleDiffuseResolved();
 
+    // Surface coverage (R = deferred/G-buffer, G = forward). Same two-stage
+    // shape and the same reasoning as visible diffuse above: the mask decides
+    // WHICH pixels the sidecar is authoritative for, so publishing a stale or
+    // half-written coverage mask as valid is worse than publishing none --
+    // the consumer would supersede albedo at pixels it was never meant to.
+    void noteSurfaceCoverageSeeded();
+    void noteSurfaceCoverageResolved();
+
     // The struct handed out to the add-on via SLReShade_GetFrame().
     const SLReShadeFrame& getFrameData() const { return mFrame; }
 
@@ -61,11 +69,16 @@ private:
     void noteResetEvent(U32 flags);
 
     SLReShadeFrame mFrame;
-    SLReShadeTexture mLastTextures[8];
+    // One slot per texture tracked for generation/resize detection in
+    // gatherFrame(); a static_assert there keeps the two in step.
+    static const U32 SL_RESHADE_TRACKED_TEXTURES = 9;
+    SLReShadeTexture mLastTextures[SL_RESHADE_TRACKED_TEXTURES];
     U64 mRenderTargetGeneration;
     U32 mPendingMotionCoverage;
     bool mPendingVisibleDiffuseSeeded;
     bool mPendingVisibleDiffuseResolved;
+    bool mPendingSurfaceCoverageSeeded;
+    bool mPendingSurfaceCoverageResolved;
     U32 mPendingResetFlags;
     U32 mResetEventCounter;
     bool mEverHadValidFrame;

@@ -190,6 +190,14 @@ void LLDrawPoolFullbright::renderPostDeferred(S32 pass)
         shader = &gDeferredFullbrightProgram;
     }
 
+    // S2: this pool selected BT_ALPHA blend FACTORS but never enabled GL_BLEND
+    // itself, so whether blending actually happened depended on whatever state
+    // the previously-drawn pool happened to leave behind. For the beauty buffer
+    // that was merely sloppy; for the visible-diffuse sidecar it made the
+    // exactness channel's accumulation non-deterministic, because K's union
+    // depends on the blend being live. Make it explicit.
+    LLGLEnable fullbright_blend(GL_BLEND);
+
     gGL.setSceneBlendType(LLRender::BT_ALPHA);
 
     // render static

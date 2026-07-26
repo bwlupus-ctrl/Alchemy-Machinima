@@ -30,6 +30,9 @@ uniform sampler2D depthMap;       // shared depth
 in vec2 vary_fragcoord;
 
 layout(location = 1) out vec4 visible_diffuse;
+// R = deferred/G-buffer coverage (this pass owns it), G = forward coverage
+// (owned by the forward pools, which is why they mask R off).
+layout(location = 2) out vec2 surface_coverage;
 
 void main()
 {
@@ -60,6 +63,7 @@ void main()
         // geometry drawn after this pass may still composite real diffuse over
         // the pixel and raise K.
         visible_diffuse = vec4(0.0, 0.0, 0.0, 0.0);
+        surface_coverage = vec2(0.0, 0.0);
         return;
     }
 
@@ -76,4 +80,6 @@ void main()
     }
 
     visible_diffuse = vec4(diffuse, 1.0);
+    // Deferred surface present here. G stays 0: forward draws own that channel.
+    surface_coverage = vec2(1.0, 0.0);
 }

@@ -590,7 +590,10 @@ void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, bool rigged, Attach
     const bool publish_visible_diffuse = !depth_only && gGL.indexedDrawBufferGuardActive();
     if (publish_visible_diffuse)
     {
-        gGL.setIndexedDrawBufferGuardMask(true, true, true, true);
+        gGL.setIndexedDrawBufferGuardMask(SL_SIDECAR_ATTACHMENT, true, true, true, true);
+        // Forward coverage channel only -- see the pool loop in pipeline.cpp:
+        // R belongs to the seed pass and these shaders write 0 into it.
+        gGL.setIndexedDrawBufferGuardMask(SL_COVERAGE_ATTACHMENT, false, true, false, false);
     }
     bool initialized_lighting = false;
     bool light_enabled = true;
@@ -824,13 +827,20 @@ void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, bool rigged, Attach
                     {
                         if (params.mBlendFuncDst == LLRender::BF_ONE_MINUS_SOURCE_ALPHA)
                         {
-                            gGL.setIndexedDrawBufferGuardBlend(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA,
+                            gGL.setIndexedDrawBufferGuardBlend(SL_SIDECAR_ATTACHMENT, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA,
+                                                               GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+                            gGL.setIndexedDrawBufferGuardBlend(SL_COVERAGE_ATTACHMENT,
+                                                               GL_ONE, GL_ONE_MINUS_SRC_COLOR,
                                                                GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
                         }
                         else
                         {
                             // Additive/custom faces are emitters, not occluders. (H5)
-                            gGL.setIndexedDrawBufferGuardBlend(GL_ZERO, GL_ONE, GL_ZERO, GL_ONE);
+                            // They must not claim forward coverage either, or the
+                            // consumer would treat an emitter's pixel as sidecar-
+                            // authoritative and read its zero diffuse as albedo.
+                            gGL.setIndexedDrawBufferGuardBlend(SL_SIDECAR_ATTACHMENT, GL_ZERO, GL_ONE, GL_ZERO, GL_ONE);
+                            gGL.setIndexedDrawBufferGuardBlend(SL_COVERAGE_ATTACHMENT, GL_ZERO, GL_ONE, GL_ZERO, GL_ONE);
                         }
                     }
                     gGL.blendFunc((LLRender::eBlendFactor) params.mBlendFuncSrc, (LLRender::eBlendFactor) params.mBlendFuncDst, mAlphaSFactor, mAlphaDFactor);
@@ -906,7 +916,8 @@ void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, bool rigged, Attach
                 // exactness channel. Close the guard across the whole emissive
                 // block; these faces are emitters and have no diffuse to
                 // contribute anyway (H5).
-                gGL.setIndexedDrawBufferGuardMask(false, false, false, false);
+                gGL.setIndexedDrawBufferGuardMask(SL_SIDECAR_ATTACHMENT, false, false, false, false);
+                gGL.setIndexedDrawBufferGuardMask(SL_COVERAGE_ATTACHMENT, false, false, false, false);
 
                 // install glow-accumulating blend mode
                 // don't touch color, add to alpha (glow)
@@ -945,7 +956,8 @@ void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, bool rigged, Attach
                 // reopen the sidecar for any subsequent diffuse-bearing draws
                 if (publish_visible_diffuse)
                 {
-                    gGL.setIndexedDrawBufferGuardMask(true, true, true, true);
+                    gGL.setIndexedDrawBufferGuardMask(SL_SIDECAR_ATTACHMENT, true, true, true, true);
+                    gGL.setIndexedDrawBufferGuardMask(SL_COVERAGE_ATTACHMENT, false, true, false, false);
                 }
 
                 // restore our alpha blend mode

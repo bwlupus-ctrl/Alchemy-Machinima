@@ -486,23 +486,31 @@ public:
     // indexedDrawBufferGuardSupported() reports whether both resolved.
     static bool indexedDrawBufferGuardSupported();
 
-    // Arm the guard on `index` with the given write mask. Only the owner of
-    // the pass arms it.
-    void setIndexedDrawBufferGuard(U32 index, bool r, bool g, bool b, bool a);
-    // Disarm and restore the attachment to the global state.
+    // Maximum attachments one owner may guard at once. Two today: the
+    // visible-diffuse sidecar (1) and its surface-coverage mask (2).
+    static const U32 MAX_INDEXED_GUARD_ATTACHMENTS = 2;
+
+    // Arm the guard over `count` attachments, all CLOSED. There is exactly ONE
+    // owner -- arming while already armed asserts. Multiple attachments are
+    // held by the SAME owner rather than by nested guards, because a nested
+    // guard's destructor would clear the outer owner's state instead of
+    // restoring it, silently leaving the outer pass unguarded.
+    void setIndexedDrawBufferGuard(const U32* indices, U32 count);
+    // Disarm and restore every guarded attachment to the global state.
     void clearIndexedDrawBufferGuard();
 
     bool indexedDrawBufferGuardActive() const { return mIndexedGuardActive; }
 
-    // Adjust the guarded state mid-pass. These are NO-OPS when the guard is
-    // not armed, so pools and helpers that participate in the feature can
-    // call them unconditionally: when the feature is off they do nothing and
-    // touch no GL state, which is what keeps the gate-off path byte-identical
-    // to stock.
-    void setIndexedDrawBufferGuardMask(bool r, bool g, bool b, bool a);
-    // Indexed blend for the guarded attachment (raw GL enums).
-    void setIndexedDrawBufferGuardBlend(U32 src_rgb, U32 dst_rgb, U32 src_a, U32 dst_a);
-    void clearIndexedDrawBufferGuardBlend();
+    // Adjust one guarded attachment mid-pass. These are NO-OPS when the guard
+    // is not armed, or when `index` is not one of the guarded attachments, so
+    // pools and helpers that participate in the feature can call them
+    // unconditionally: with the feature off they do nothing and touch no GL
+    // state, which is what keeps the gate-off path identical to stock.
+    void setIndexedDrawBufferGuardMask(U32 index, bool r, bool g, bool b, bool a);
+    // Indexed blend for one guarded attachment (raw GL enums).
+    void setIndexedDrawBufferGuardBlend(U32 index, U32 src_rgb, U32 dst_rgb,
+                                        U32 src_a, U32 dst_a);
+    void clearIndexedDrawBufferGuardBlend(U32 index);
     // Re-apply the guarded indexed state. Called automatically after every
     // global mask/blend change; public for explicit use after an FBO bind.
     void reassertIndexedDrawBuffer();
@@ -577,11 +585,20 @@ private:
     eBlendFactor mCurrBlendAlphaDFactor;
 
     // see setIndexedDrawBufferGuard()
-    bool mIndexedGuardActive      = false;
-    U32  mIndexedGuardIndex       = 0;
-    bool mIndexedGuardMask[4]     = { false, false, false, false };
-    bool mIndexedGuardBlendActive = false;
-    U32  mIndexedGuardBlend[4]    = { 0, 0, 0, 0 }; // src_rgb, dst_rgb, src_a, dst_a
+    struct IndexedDrawBufferState
+    {
+        U32  index        = 0;
+        bool mask[4]      = { false, false, false, false };
+        bool blend_active = false;
+        U32  blend[4]     = { 0, 0, 0, 0 }; // src_rgb, dst_rgb, src_a, dst_a
+    };
+
+    bool mIndexedGuardActive = false;
+    U32  mIndexedGuardCount  = 0;
+    IndexedDrawBufferState mIndexedGuardStates[MAX_INDEXED_GUARD_ATTACHMENTS];
+
+    // Returns nullptr when the guard is inactive or `index` is not guarded.
+    IndexedDrawBufferState* findIndexedGuardState(U32 index);
 
     std::vector<LLVector4a> mUIOffset;
     std::vector<LLVector4a> mUIScale;
@@ -617,12 +634,24 @@ extern thread_local LLRender gGL;
 class LLScopedIndexedDrawBufferGuard
 {
 public:
+    // Guards ONE attachment.
     LLScopedIndexedDrawBufferGuard(bool active, U32 index)
         : mActive(active)
     {
         if (mActive)
         {
-            gGL.setIndexedDrawBufferGuard(index, false, false, false, false);
+            gGL.setIndexedDrawBufferGuard(&index, 1);
+        }
+    }
+
+    // Guards SEVERAL attachments under a single owner. Do not nest guards to
+    // get this -- see setIndexedDrawBufferGuard().
+    LLScopedIndexedDrawBufferGuard(bool active, const U32* indices, U32 count)
+        : mActive(active)
+    {
+        if (mActive)
+        {
+            gGL.setIndexedDrawBufferGuard(indices, count);
         }
     }
 

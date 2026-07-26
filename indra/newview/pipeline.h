@@ -72,6 +72,16 @@ bool LLRayAABB(const LLVector3 &center, const LLVector3 &size, const LLVector3& 
 bool setup_hud_matrices(); // use whole screen to render hud
 bool setup_hud_matrices(const LLRect& screen_region); // specify portion of screen (in pixels) to render hud attachments from (for picking)
 
+// [ReShadeBridge] Extra colour attachments on the MAIN-VIEW mRT->screen target,
+// added only when RenderVisibleDiffuseSidecar is on. Attachment 0 is the beauty
+// buffer. Named because the indices appear in GLSL layout qualifiers, in the
+// LLRender indexed-guard calls, and in the bridge's publication code, and a bare
+// 1 or 2 in any of those places is unreadable and easy to transpose.
+//   1: GL_SRGB8_ALPHA8  RGB = visible linear diffuse, A = exactness K
+//   2: GL_RG8           R = deferred/G-buffer coverage, G = forward coverage
+static const U32 SL_SIDECAR_ATTACHMENT  = 1;
+static const U32 SL_COVERAGE_ATTACHMENT = 2;
+
 class LLPipeline
 {
 public:

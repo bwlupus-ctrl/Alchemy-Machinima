@@ -184,6 +184,24 @@ float3 SL_ColorHDR(float2 uv)    { return tex2D(SL_sColorHdr,SL_UV(uv)).rgb; }
 // SL_SemValid(SL_SEM_VALID_MOTION_META / _SURFACE_COVERAGE) first.
 float2 SL_MotionMeta(float2 uv)      { return tex2D(SL_sMotionMeta,      SL_UV(uv)).rg; }
 float2 SL_SurfaceCoverage(float2 uv) { return tex2D(SL_sSurfaceCoverage, SL_UV(uv)).rg; }
+
+// Coverage is PROVENANCE, not an extra alpha. .g answers "did forward geometry
+// composite diffuse into the sidecar at this pixel", i.e. is the sidecar
+// authoritative here. It is NOT a second opacity term: the sidecar's RGB was
+// already alpha-composited by the viewer, and its .a already carries accumulated
+// exactness. Multiplying or lerping a visible-diffuse result by either .g or K
+// double-applies alpha.
+bool SL_HasForwardCoverage(float2 uv)
+{
+    return SL_SemValid(SL_SEM_VALID_SURFACE_COVERAGE) &&
+           SL_SurfaceCoverage(uv).g > 0.0;
+}
+
+bool SL_HasDeferredCoverage(float2 uv)
+{
+    return SL_SemValid(SL_SEM_VALID_SURFACE_COVERAGE) &&
+           SL_SurfaceCoverage(uv).r > 0.0;
+}
 // v1.2 visible-diffuse sidecar. RGB = LINEAR diffuse (hardware sRGB decode
 // already applied -- never decode again), A = exactness K [0,1]. Gate use on
 // SL_SemValid(SL_SEM_VALID_VISIBLE_DIFFUSE) first; then gate per pixel on K.

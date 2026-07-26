@@ -49,7 +49,7 @@
 
 uniform int DebugMode <
     ui_type = "combo";
-    ui_items = "Normals (decoded)\0Normals (raw)\0Albedo\0ORM\0HDR color\0Motion\0Validity / tail\0Visible diffuse\0Exactness K\0";
+    ui_items = "Normals (decoded)\0Normals (raw)\0Albedo\0ORM\0HDR color\0Motion\0Validity / tail\0Visible diffuse\0Exactness K\0Surface coverage\0";
     ui_label = "Buffer";
 > = 0;
 
@@ -77,6 +77,24 @@ float3 sl_invalid_pattern(float2 uv)
 //                              semi-transparent forward layers)
 //   K = 1        green        fully known (metals belong HERE, black-diffuse)
 // 8-bit unorm makes the ==0/==1 compares exact (0/255, 255/255).
+// Surface-coverage view. Answers "which pixels is the sidecar authoritative
+// for" -- the input to the forward-only scoping gate. Deliberately different
+// hues from sl_k_heat so the two views cannot be confused at a glance:
+//   deferred only (R>0, G=0)  BLUE    G-buffer answered; sidecar NOT used here
+//   forward       (G>0)       YELLOW  forward composited; sidecar IS used here
+//   both                      WHITE   a forward layer over a deferred surface
+//   neither                   BLACK   sky / nothing written
+// Magenta/black stripes (sl_invalid_pattern) mean the semantic is INVALID --
+// a DIFFERENT state from "valid but zero", and the one that makes the gate's
+// fail-closed path visible instead of silent.
+float3 sl_coverage_view(float2 cov)
+{
+    float3 c = float3(0.02, 0.02, 0.02);
+    c += float3(0.10, 0.25, 0.85) * cov.r;
+    c += float3(0.85, 0.75, 0.10) * cov.g;
+    return c;
+}
+
 float3 sl_k_heat(float k)
 {
     if (k <= 0.0) return float3(0.05, 0.10, 0.45);
@@ -177,6 +195,15 @@ float3 PS_Debug(float4 vpos : SV_Position, float2 uv : TEXCOORD) : SV_Target
     else if (DebugMode == 8)
         c = SL_SemValid(SL_SEM_VALID_VISIBLE_DIFFUSE)
               ? sl_k_heat(SL_VisibleDiffuse(uv).a)
+              : sl_invalid_pattern(uv);
+    // Surface coverage: the provenance mask the forward-only scoping gate reads.
+    // Gate on ITS OWN bit, not VISIBLE_DIFFUSE's -- the whole point of this view
+    // is to show when coverage is missing while diffuse is present, which is
+    // precisely the case where PS_ProvideAlbedo fails closed and the sidecar
+    // silently stops being used anywhere.
+    else if (DebugMode == 9)
+        c = SL_SemValid(SL_SEM_VALID_SURFACE_COVERAGE)
+              ? sl_coverage_view(SL_SurfaceCoverage(uv))
               : sl_invalid_pattern(uv);
     else                     c = PS_TailStatus(uv);
 

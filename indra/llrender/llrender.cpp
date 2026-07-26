@@ -1346,12 +1346,29 @@ bool LLRender::indexedDrawBufferGuardSupported()
     return glColorMaski != nullptr && glBlendFuncSeparatei != nullptr;
 }
 
-void LLRender::setIndexedDrawBufferGuard(U32 index, bool r, bool g, bool b, bool a)
+LLRender::IndexedDrawBufferState* LLRender::findIndexedGuardState(U32 index)
+{
+    if (!mIndexedGuardActive)
+    {
+        return nullptr;
+    }
+
+    for (U32 i = 0; i < mIndexedGuardCount; ++i)
+    {
+        if (mIndexedGuardStates[i].index == index)
+        {
+            return &mIndexedGuardStates[i];
+        }
+    }
+    return nullptr;
+}
+
+void LLRender::setIndexedDrawBufferGuard(const U32* indices, U32 count)
 {
     if (!indexedDrawBufferGuardSupported())
     {
         // Callers must gate on indexedDrawBufferGuardSupported() before they
-        // create the attachment at all; arming here would silently promise
+        // create the attachments at all; arming here would silently promise
         // containment we cannot deliver.
         llassert(false);
         return;
@@ -1360,60 +1377,74 @@ void LLRender::setIndexedDrawBufferGuard(U32 index, bool r, bool g, bool b, bool
     // Single-owner by design: there is no guard stack, and the RAII wrapper's
     // destructor CLEARS the guard rather than restoring an outer one. Silently
     // overwriting an active guard would therefore leave the outer pass
-    // unguarded from the inner scope's exit onward -- the sidecar would look
-    // protected while haze/glow draws corrupted attachment 1. If nesting is
-    // ever genuinely needed, add a save/restore stack; do not drop this assert.
+    // unguarded from the inner scope's exit onward -- the buffers would look
+    // protected while haze/glow draws corrupted them. Guard SEVERAL
+    // attachments from one owner instead of nesting.
     llassert(!mIndexedGuardActive);
+    llassert(count > 0 && count <= MAX_INDEXED_GUARD_ATTACHMENTS);
 
-    mIndexedGuardActive  = true;
-    mIndexedGuardIndex   = index;
-    mIndexedGuardMask[0] = r;
-    mIndexedGuardMask[1] = g;
-    mIndexedGuardMask[2] = b;
-    mIndexedGuardMask[3] = a;
-
-    reassertIndexedDrawBuffer();
-}
-
-void LLRender::setIndexedDrawBufferGuardMask(bool r, bool g, bool b, bool a)
-{
-    if (!mIndexedGuardActive)
+    if (count == 0 || count > MAX_INDEXED_GUARD_ATTACHMENTS)
     {
         return;
     }
 
-    mIndexedGuardMask[0] = r;
-    mIndexedGuardMask[1] = g;
-    mIndexedGuardMask[2] = b;
-    mIndexedGuardMask[3] = a;
+    mIndexedGuardActive = true;
+    mIndexedGuardCount  = count;
+
+    for (U32 i = 0; i < count; ++i)
+    {
+        IndexedDrawBufferState& s = mIndexedGuardStates[i];
+        s.index        = indices[i];
+        s.mask[0]      = false;
+        s.mask[1]      = false;
+        s.mask[2]      = false;
+        s.mask[3]      = false;
+        s.blend_active = false;
+    }
 
     reassertIndexedDrawBuffer();
 }
 
-void LLRender::setIndexedDrawBufferGuardBlend(U32 src_rgb, U32 dst_rgb, U32 src_a, U32 dst_a)
+void LLRender::setIndexedDrawBufferGuardMask(U32 index, bool r, bool g, bool b, bool a)
 {
-    if (!mIndexedGuardActive)
+    IndexedDrawBufferState* s = findIndexedGuardState(index);
+    if (!s)
     {
         return;
     }
 
-    mIndexedGuardBlendActive = true;
-    mIndexedGuardBlend[0]    = src_rgb;
-    mIndexedGuardBlend[1]    = dst_rgb;
-    mIndexedGuardBlend[2]    = src_a;
-    mIndexedGuardBlend[3]    = dst_a;
+    s->mask[0] = r;
+    s->mask[1] = g;
+    s->mask[2] = b;
+    s->mask[3] = a;
 
     reassertIndexedDrawBuffer();
 }
 
-void LLRender::clearIndexedDrawBufferGuardBlend()
+void LLRender::setIndexedDrawBufferGuardBlend(U32 index, U32 src_rgb, U32 dst_rgb,
+                                              U32 src_a, U32 dst_a)
 {
-    if (!mIndexedGuardActive)
+    IndexedDrawBufferState* s = findIndexedGuardState(index);
+    if (!s)
     {
         return;
     }
 
-    mIndexedGuardBlendActive = false;
+    s->blend_active = true;
+    s->blend[0]     = src_rgb;
+    s->blend[1]     = dst_rgb;
+    s->blend[2]     = src_a;
+    s->blend[3]     = dst_a;
+
+    reassertIndexedDrawBuffer();
+}
+
+void LLRender::clearIndexedDrawBufferGuardBlend(U32 index)
+{
+    if (IndexedDrawBufferState* s = findIndexedGuardState(index))
+    {
+        s->blend_active = false;
+    }
 }
 
 void LLRender::clearIndexedDrawBufferGuard()
@@ -1423,23 +1454,28 @@ void LLRender::clearIndexedDrawBufferGuard()
         return;
     }
 
-    const U32 index = mIndexedGuardIndex;
+    const U32 count = mIndexedGuardCount;
 
-    mIndexedGuardActive      = false;
-    mIndexedGuardBlendActive = false;
+    mIndexedGuardActive = false;
+    mIndexedGuardCount  = 0;
 
-    // Hand the attachment back to the global state, so nothing downstream
-    // inherits an indexed override it never asked for.
-    glColorMaski(index,
-                 mCurrColorMask[0] ? GL_TRUE : GL_FALSE,
-                 mCurrColorMask[1] ? GL_TRUE : GL_FALSE,
-                 mCurrColorMask[2] ? GL_TRUE : GL_FALSE,
-                 mCurrColorMask[3] ? GL_TRUE : GL_FALSE);
-    glBlendFuncSeparatei(index,
-                         sGLBlendFactor[mCurrBlendColorSFactor],
-                         sGLBlendFactor[mCurrBlendColorDFactor],
-                         sGLBlendFactor[mCurrBlendAlphaSFactor],
-                         sGLBlendFactor[mCurrBlendAlphaDFactor]);
+    // Hand every guarded attachment back to the global state, so nothing
+    // downstream inherits an indexed override it never asked for.
+    for (U32 i = 0; i < count; ++i)
+    {
+        const U32 index = mIndexedGuardStates[i].index;
+
+        glColorMaski(index,
+                     mCurrColorMask[0] ? GL_TRUE : GL_FALSE,
+                     mCurrColorMask[1] ? GL_TRUE : GL_FALSE,
+                     mCurrColorMask[2] ? GL_TRUE : GL_FALSE,
+                     mCurrColorMask[3] ? GL_TRUE : GL_FALSE);
+        glBlendFuncSeparatei(index,
+                             sGLBlendFactor[mCurrBlendColorSFactor],
+                             sGLBlendFactor[mCurrBlendColorDFactor],
+                             sGLBlendFactor[mCurrBlendAlphaSFactor],
+                             sGLBlendFactor[mCurrBlendAlphaDFactor]);
+    }
 }
 
 void LLRender::reassertIndexedDrawBuffer()
@@ -1449,17 +1485,22 @@ void LLRender::reassertIndexedDrawBuffer()
         return;
     }
 
-    glColorMaski(mIndexedGuardIndex,
-                 mIndexedGuardMask[0] ? GL_TRUE : GL_FALSE,
-                 mIndexedGuardMask[1] ? GL_TRUE : GL_FALSE,
-                 mIndexedGuardMask[2] ? GL_TRUE : GL_FALSE,
-                 mIndexedGuardMask[3] ? GL_TRUE : GL_FALSE);
-
-    if (mIndexedGuardBlendActive)
+    for (U32 i = 0; i < mIndexedGuardCount; ++i)
     {
-        glBlendFuncSeparatei(mIndexedGuardIndex,
-                             mIndexedGuardBlend[0], mIndexedGuardBlend[1],
-                             mIndexedGuardBlend[2], mIndexedGuardBlend[3]);
+        const IndexedDrawBufferState& s = mIndexedGuardStates[i];
+
+        glColorMaski(s.index,
+                     s.mask[0] ? GL_TRUE : GL_FALSE,
+                     s.mask[1] ? GL_TRUE : GL_FALSE,
+                     s.mask[2] ? GL_TRUE : GL_FALSE,
+                     s.mask[3] ? GL_TRUE : GL_FALSE);
+
+        if (s.blend_active)
+        {
+            glBlendFuncSeparatei(s.index,
+                                 s.blend[0], s.blend[1],
+                                 s.blend[2], s.blend[3]);
+        }
     }
 }
 

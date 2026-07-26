@@ -23,7 +23,13 @@
  * $/LicenseInfo$
  */
 
+#ifdef HAS_VISIBLE_DIFFUSE
+layout(location = 0) out vec4 frag_color;
+layout(location = 1) out vec4 visible_diffuse;
+layout(location = 2) out vec2 surface_coverage;
+#else
 out vec4 frag_color;
+#endif
 
 uniform sampler2D bumpMap;
 uniform sampler2D exclusionTex;
@@ -84,4 +90,12 @@ void main()
     fb = applyWaterFogViewLinearNoClip(vary_position, fb);
 
     frag_color = max(fb, vec4(0));
+#ifdef HAS_VISIBLE_DIFFUSE
+    // Same BRDF statement as the above-water shader: this renderer gives water
+    // no diffuse lobe, so zero diffuse at K=1 is a real answer. Declared here
+    // primarily so this program cannot write UNDEFINED values to attachments
+    // 1 and 2 while the water pool has the guard open (hazard H1).
+    visible_diffuse = vec4(vec3(0.0), 1.0);
+    surface_coverage = vec2(0.0, 1.0);
+#endif
 }

@@ -422,8 +422,11 @@ uniform float SL_VISDIFF_K_THRESHOLD <
 // surface_coverage mask's job — which is also why this gate is
 // unconditionally superseded the moment SL_SEM_VALID_SURFACE_COVERAGE is set
 // (the explicit-coverage branch is checked first, the gate lives in its
-// `else`). The viewer does not publish coverage yet (llreshadebridge.cpp
-// never sets SL_SEM_VALID_SURFACE_COVERAGE); delete this define when it does.
+// `else`). The viewer NOW PUBLISHES coverage (llreshadebridge.cpp sets
+// SL_SEM_VALID_SURFACE_COVERAGE behind a two-stage seeded/resolved latch), so
+// this heuristic gate only runs on the non-forward fallback path, and only when
+// an older viewer leaves the coverage semantic invalid. It is retained solely
+// for that back-compatibility case.
 #ifndef SL_ALBEDO_FLAG_COVERAGE_GATE
 #define SL_ALBEDO_FLAG_COVERAGE_GATE 1
 #endif
@@ -445,7 +448,8 @@ bool sl_flag_covered(float2 uv)
 // fullbright and HUD pixels hold the clear value or the opaque surface BEHIND —
 // so per-pixel coverage matters, not just the frame-level bit.
 //   Per-pixel gate: the viewer's surface_coverage mask when published
-//   (SL_SEM_VALID_SURFACE_COVERAGE); until then, the G-buffer FLAG gate above.
+//   (SL_SEM_VALID_SURFACE_COVERAGE), which the viewer now publishes; the
+//   G-buffer FLAG gate above remains only for older viewers that do not.
 //   COEXIST uncovered ⇒ discard (Launchpad's estimate survives — the right
 //   fallback). OWNED has no incumbent to fall back to, so uncovered becomes
 //   the same deterministic black as invalid: no bounce light beats serving
@@ -466,16 +470,49 @@ void PS_ProvideAlbedo(in float4 vpos : SV_Position, in float2 uv : TEXCOORD,
     // Below-threshold pixels fall through to the existing gates: in COEXIST
     // they can still discard (incumbent estimate survives), in OWNED they
     // still resolve to G-buffer albedo or deterministic black.
-    if (SL_SemValid(SL_SEM_VALID_VISIBLE_DIFFUSE))
+    // FORWARD-ONLY SCOPING. The sidecar exists to repair pixels where forward
+    // geometry hides the G-buffer -- alpha, water, fullbright. It must NOT
+    // supersede albedo at ordinary deferred-opaque pixels, where the G-buffer
+    // answer was already correct.
+    //
+    // K cannot make that distinction: the deferred seed writes K=1 and forward
+    // opaque also reaches K=1, so NO threshold separates them -- not even 1.0,
+    // since the test is >=. The forward-coverage channel is the provenance
+    // signal that can.
+    //
+    // FAILS CLOSED. If VISIBLE_DIFFUSE is valid but SURFACE_COVERAGE is not
+    // (older viewer, or the coverage path failed this frame), the sidecar is
+    // used NOWHERE. Falling back to "sidecar everywhere" would silently restore
+    // whole-frame supersession -- the exact defect this gate exists to remove --
+    // and it would do so invisibly. The debug view makes the condition legible.
+    if (SL_SemValid(SL_SEM_VALID_VISIBLE_DIFFUSE) &&
+        SL_SemValid(SL_SEM_VALID_SURFACE_COVERAGE))
     {
-        float4 vd = SL_VisibleDiffuse(uv);   // POINT sampler (SL_Bridge.fxh)
-        // max() so a preset saved with an older build (or a hand-edited ini)
-        // that stored 0.0 cannot resurrect the K = 0 hole: the UI floor alone
-        // is not a guarantee, because the value is loaded from disk. (FX2)
-        if (vd.a >= max(SL_VISDIFF_K_THRESHOLD, SL_VISDIFF_K_MIN))
+        // Any quantized forward contribution means the viewer composited here,
+        // so its answer supersedes ours. Not >= 0.5, and NOT a lerp by coverage:
+        // the sidecar RGB is already composited (see SL_Bridge.fxh).
+        if (SL_SurfaceCoverage(uv).g > 0.0)
         {
-            o = vd.rgb;
+            float4 vd = SL_VisibleDiffuse(uv);   // POINT sampler (SL_Bridge.fxh)
+            // max() so a preset saved with an older build (or a hand-edited ini)
+            // that stored 0.0 cannot resurrect the K = 0 hole: the UI floor alone
+            // is not a guarantee, because the value is loaded from disk. (FX2)
+            if (vd.a >= max(SL_VISDIFF_K_THRESHOLD, SL_VISDIFF_K_MIN))
+            {
+                o = vd.rgb;
+                return;
+            }
+
+            // Forward-covered but below the exactness threshold: the incumbent
+            // estimate describes a surface that is HIDDEN behind this forward
+            // layer, so it is not a better answer. Fail closed rather than fall
+            // through to it.
+#if SL_MODE_OWNED
+            o = 0.0;
             return;
+#else
+            discard;
+#endif
         }
     }
 #if SL_MODE_OWNED

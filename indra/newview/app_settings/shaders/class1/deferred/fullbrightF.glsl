@@ -28,6 +28,7 @@
 #ifdef HAS_VISIBLE_DIFFUSE
 layout(location = 0) out vec4 frag_color;
 layout(location = 1) out vec4 visible_diffuse;
+layout(location = 2) out vec2 surface_coverage;
 #else
 out vec4 frag_color;
 #endif
@@ -122,6 +123,17 @@ void main()
     // parameters, so treating its texture as reflectance would be inventing a
     // BRDF. PBR handles emit-and-reflect correctly and is unaffected -- see
     // pbralphaF.glsl, which publishes diffuseColor and never colorEmissive.
-    visible_diffuse = vec4(vec3(0.0), final_alpha);
+    // S4: an ALPHA-MASK fragment that survived the discard above is fully
+    // present -- it is a binary cutout, not a blend. Publishing K = final_alpha
+    // there reported a fully-known opaque pixel as only partially known.
+    // Blended fullbright still reports its true fractional coverage.
+#ifdef HAS_ALPHA_MASK
+    float sl_known_coverage = 1.0;
+#else
+    float sl_known_coverage = final_alpha;
+#endif
+
+    visible_diffuse = vec4(vec3(0.0), sl_known_coverage);
+    surface_coverage = vec2(0.0, sl_known_coverage);
 #endif
 }

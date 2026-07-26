@@ -40,6 +40,8 @@ LLReShadeBridge::LLReShadeBridge()
     mPendingMotionCoverage(0),
     mPendingVisibleDiffuseSeeded(false),
     mPendingVisibleDiffuseResolved(false),
+    mPendingSurfaceCoverageSeeded(false),
+    mPendingSurfaceCoverageResolved(false),
     mPendingResetFlags(0),
     mResetEventCounter(0),
     mEverHadValidFrame(false),
@@ -77,6 +79,18 @@ void LLReShadeBridge::noteVisibleDiffuseResolved()
     // if the seed pass did not run, deferred-opaque pixels were never
     // classified and the exactness channel is meaningless there.
     mPendingVisibleDiffuseResolved = mPendingVisibleDiffuseSeeded;
+}
+
+void LLReShadeBridge::noteSurfaceCoverageSeeded()
+{
+    mPendingSurfaceCoverageSeeded = true;
+}
+
+void LLReShadeBridge::noteSurfaceCoverageResolved()
+{
+    // Mirrors visible diffuse: completing the forward loop cannot manufacture
+    // readiness if the seed never ran to define the deferred half of the mask.
+    mPendingSurfaceCoverageResolved = mPendingSurfaceCoverageSeeded;
 }
 
 void LLReShadeBridge::noteResetEvent(U32 flags)
@@ -217,9 +231,10 @@ void LLReShadeBridge::gatherFrame()
         // used throughout this file's callers.
         static LLCachedControl<bool> sidecar_on(gSavedSettings,
                                                 "RenderVisibleDiffuseSidecar", false);
-        if (sidecar_on && scr.getNumTextures() > 1)
+        if (sidecar_on && scr.getNumTextures() > SL_COVERAGE_ATTACHMENT)
         {
-            fill_texture(tail.visible_diffuse, scr, 1);
+            fill_texture(tail.visible_diffuse,   scr, SL_SIDECAR_ATTACHMENT);
+            fill_texture(tail.surface_coverage,  scr, SL_COVERAGE_ATTACHMENT);
         }
 
         // [BDMerge A5.4] velocity buffer -> f.motion. Only allocated when
@@ -250,14 +265,22 @@ void LLReShadeBridge::gatherFrame()
         }
     }
 
+    // Every published texture must appear here, or a resize/recreate of the
+    // missing one will not bump the generation counter and the add-on will keep
+    // copying from stale storage. The bound is derived from the array rather
+    // than hardcoded for exactly that reason -- it was literally 8 while the
+    // array grew to 8 entries, and the next addition would have been skipped
+    // silently. SL_RESHADE_TRACKED_TEXTURES sizes mLastTextures to match.
     const SLReShadeTexture textures[] =
     {
         f.color_hdr, f.depth, f.albedo, f.orm, f.normals, f.emissive, f.motion,
-        tail.visible_diffuse
+        tail.visible_diffuse, tail.surface_coverage
     };
+    static_assert(LL_ARRAY_SIZE(textures) == SL_RESHADE_TRACKED_TEXTURES,
+                  "mLastTextures must have one slot per published texture");
     bool dimensions_changed = false;
     bool target_changed = false;
-    for (U32 i = 0; i < 8; ++i)
+    for (U32 i = 0; i < LL_ARRAY_SIZE(textures); ++i)
     {
         if (!texture_equal(textures[i], mLastTextures[i]))
         {
@@ -321,6 +344,10 @@ void LLReShadeBridge::gatherFrame()
     {
         tail.semantic_valid_bits |= SLRESHADE_SEM_VALID_VISIBLE_DIFFUSE;
     }
+    if (texture_present(tail.surface_coverage) && mPendingSurfaceCoverageResolved)
+    {
+        tail.semantic_valid_bits |= SLRESHADE_SEM_VALID_SURFACE_COVERAGE;
+    }
     tail.history_reset_flags = mPendingResetFlags;
     SLReShadeV11_SetGeneration(&tail, mRenderTargetGeneration);
     tail.motion_encoding =
@@ -351,6 +378,8 @@ void LLReShadeBridge::gatherFrame()
     mPendingMotionCoverage = 0;
     mPendingVisibleDiffuseSeeded = false;
     mPendingVisibleDiffuseResolved = false;
+    mPendingSurfaceCoverageSeeded = false;
+    mPendingSurfaceCoverageResolved = false;
     mPendingResetFlags = 0;
 
     f.frame_counter++;
