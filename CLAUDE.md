@@ -2,6 +2,33 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## ⛔ ALL CLAUDE-WRITTEN CODE REQUIRES AN ADVERSARIAL CODEX REVIEW (user directive, 2026-07-25)
+
+**Every line of code Claude writes for this project goes through an ADVERSARIAL review by Codex
+before it is built, and before it is committed. No exceptions, no "this one is trivial".**
+
+Adversarial means Codex is asked to ATTACK the code, not to bless it:
+- Tell it what the change claims to do and ask it to find where that claim is FALSE.
+- Ask explicitly: "is this approach wrong?" and invite it to say so.
+- State your own reasoning so it can refute the reasoning, not just the syntax.
+- Name the specific things you are least sure of and ask it to check those first.
+- Never ask "does this look good" — that gets agreement, which is worthless.
+
+Then **re-defer after every fix** and loop until it returns 0 must-fix. A fix is code too; it gets
+the same treatment as the original.
+
+**This is not ceremony.** In one session it caught, among others: a `GL_BLEND` change that made
+opaque surfaces transparent in-world; a parameter table where 16 of 27 fields were never actually
+read, so a whole mode silently did nothing; two positional aggregate rows corrupted to 26 and 28
+values that would have compiled fine and shipped scrambled; a readiness latch that would have
+published garbage flagged VALID whenever an optional shader failed to compile; and a shader
+permutation added before `clearPermutations()`, which erased it and reintroduced the exact hazard
+the change existed to prevent.
+
+**Claude's own confidence is not evidence.** Multiple confidently-stated root causes in that same
+session were wrong and were overturned either by Codex or by the user. Review is what closes that
+gap.
+
 ## ⛔ SHIP FEATURES WHOLE, NOT IN SLICES (user directive, 2026-07-25)
 
 **If it is logical to batch work together for a feature to be COMPLETE, and doing so is not a major
