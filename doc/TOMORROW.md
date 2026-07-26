@@ -59,6 +59,50 @@ target/bone-lock resolution; `LLViewerObjectList` for what is nearby.
 
 ---
 
+## 2b. MUST-BUILD — "Turn to face an actor", and far easier world-point targeting
+
+User's ask, verbatim: *"Turn to face an actor is a must build feature for clones and making it FAR
+easier to set a world point. not only to look at but to turn to."*
+
+**Two distinct things.** Look-at (gaze/head) exists. What does NOT exist is turning the BODY, and
+there is no way to target a bare world POINT at all — only objects/avatars via right-click.
+
+### What already exists (verified, do not re-derive)
+- **`ActorMoverHeading`** — F32, degrees, "rel facing" (`llactormover.cpp:1565`). A static offset.
+- **`Move::mHeading`** — radians, and it is already derived from a direction vector at
+  `llactormover.cpp:1763`: `mv.mHeading = atan2f(at.mV[VY], at.mV[VX])`. **This is the exact call
+  needed for turn-to-face** — swap `at` for `(target_pos - actor_pos)` normalised.
+  `:1654` also sets `mv.mHeading = yaw`, and `:1783-1799` shows heading being reused/offset by PI.
+- **`mv.mSpeed = 0, mDistance = 0, mEndMode = 0`** is already an established "pinned hold" (:1763-66)
+  — i.e. **a Move that only sets facing, without walking, is already an expressible thing.** A
+  turn-to-face is a hold with a computed heading.
+- **Ghost placement carries `mRotation`** (quaternion) and composes it into the modelview at
+  `llactormover.cpp:3898-3906` (`modelview = view * T(foot) * R(mRotation) * S(s) * T(-pivot)`).
+- **`renderHeadingPreview()`** (`:4624`) already draws a heading beacon, gated by
+  `ActorMoverShowHeading` — so there is a visual affordance to extend rather than invent.
+- **Target picking already exists** via the right-click **Director** submenu, on all three of
+  `menu_avatar_other.xml`, `menu_attachment_other.xml`, `menu_object.xml`:
+  Add to Cast / Set Subject A / Set Subject B / Cinematic Cam Follow / Actor Mover Target /
+  Set Mark Here / Reset to Mark.
+- **A world-point picking TOOL already exists**: `altoolpathedit.cpp` + `alpanelpatheditor.cpp`
+  (`ALToolPathEdit`, the in-world path node editor). **That is the obvious basis for "set a world
+  point" instead of building a new picker.**
+
+### What to design with Codex (then ship WHOLE — engine + settings + UI + preset wiring)
+1. **Turn-to-face target**: continuous (keeps facing a moving actor) vs one-shot (turn once, hold).
+   Probably both, since a locked stare and a single turn are different shots.
+2. **Turn RATE and easing** — an instant snap reads as a bug. Needs a degrees/sec limit and probably
+   a settle, reusing the operator's easing vocabulary rather than a new one.
+3. **What can be a target**: another cast member, Subject A/B, an object/animesh, or a bare WORLD
+   POINT. The last is the piece with no mechanism today.
+4. **Separate look-at from turn-to** — a clone should be able to look one way and face another
+   (over-the-shoulder glances). Do not collapse them into one target.
+5. **World-point UX**: extend `ALToolPathEdit`-style click-to-place, plus a "use current camera
+   position/focus" shortcut, plus numeric entry in the panel. Marks (`Set Mark Here`) already store
+   positions — consider whether a Mark IS the world-point primitive rather than adding a parallel one.
+6. **Interaction with pathing** — while an actor walks a path its heading comes from the path
+   tangent (`:1763`). Turn-to-face must define who wins, and what happens when the path ends.
+
 ## 3. Still open from last session
 
 - **Motion ghosting** — unresolved. **NOT the flip settings** (X=true, Y=false is algebraically
