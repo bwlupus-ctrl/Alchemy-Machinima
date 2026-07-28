@@ -66,6 +66,7 @@ constexpr char TAB_ICON_PROPS[]   = "Command_Build_Icon";
 constexpr char TAB_ICON_ANIMATE[] = "Command_Poser_Icon";
 constexpr char TAB_ICON_CAMERA[]  = "Command_View_Icon";
 constexpr char TAB_ICON_TAKES[]   = "Command_Snapshot_Icon";
+constexpr char TAB_ICON_TEMPORAL[] = "Command_Environments_Icon"; // day-cycle/time metaphor (no clock asset ships)
 
 // scene files live beside the cinematic presets, same idiom
 constexpr char SCENE_SUBDIR[]  = "director_scenes";
@@ -170,6 +171,7 @@ bool LLFloaterDirector::postBuild()
         { "animate_tab", TAB_ICON_ANIMATE },
         { "camera_tab",  TAB_ICON_CAMERA },
         { "takes_tab",   TAB_ICON_TAKES },
+        { "temporal_tab", TAB_ICON_TEMPORAL },
     };
     for (const auto& t : tab_icons)
     {
@@ -570,6 +572,17 @@ const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()
         "ActorMoverSync",
         "ActorMoverUseCustomAnim",
         "ActorMoverCustomAnim",
+        // Temporal Capture (World Time Scale): requested mode / scale / drive
+        // gates only -- NOT effective scale, paused state, or Freeze World, which
+        // is runtime-only and independently owned (see the brief, scene-save note)
+        "TemporalMode",
+        "TemporalWorldScale",
+        "TemporalOutputFPS",
+        "TemporalDriveAnimation",
+        "TemporalDriveObjects",
+        "TemporalDriveTextureAnim",
+        "TemporalDriveParticles",
+        "TemporalDriveCamera",
     };
     return settings;
 }

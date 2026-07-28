@@ -513,8 +513,9 @@
 
         <!-- ============ Ghosts tab ============ -->
         <!-- The shared Ghost Studio panel (panel_ghost_studio.xml): the SAME
-             panel the standalone Ghost Studio floater hosts, so the console
-             is a superset. Self-contained (it carries its own cast-source
+             panel the standalone Ghost Studio floater hosts, so every overlay
+             look (Ghost through Prism) is mirrored here automatically and the
+             console remains a superset. Self-contained (it carries its own cast-source
              picker); nothing to feed it from the console. -->
         <panel
          follows="all"
@@ -927,6 +928,34 @@
              top="6"
              name="flycam_recorder_embedded"
              width="320" />
+        </panel>
+
+        <!-- ============ Time tab (Temporal Capture) ============ -->
+        <!-- Bottom of the rail. The shared Temporal Capture panel
+             (panel_temporal_capture.xml): the SAME panel the standalone floater
+             hosts, so the console is a superset. Self-contained + settings-backed
+             (Temporal*). "World Time Scale" slows/speeds all local cinematic
+             dynamics together while the grid stays real. Panel name kept as
+             "temporal_tab" so the icon map + tab persistence stay wired. -->
+        <panel
+         follows="all"
+         background_visible="false"
+         height="550"
+         label="Time"
+         layout="topleft"
+         name="temporal_tab"
+         top="0"
+         width="374">
+            <panel
+             class="panel_temporal_capture"
+             filename="panel_temporal_capture.xml"
+             follows="left|top|right"
+             height="360"
+             layout="topleft"
+             left="0"
+             name="temporal_capture_panel"
+             top="8"
+             width="344" />
         </panel>
     </tab_container>
 

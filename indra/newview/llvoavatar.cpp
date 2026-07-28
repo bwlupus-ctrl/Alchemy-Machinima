@@ -2787,7 +2787,7 @@ void LLVOAvatar::idleUpdate(LLAgent &agent, const F64 &time)
     if (!(gPipeline.hasRenderType(mIsControlAvatar ? LLPipeline::RENDER_TYPE_CONTROL_AV : LLPipeline::RENDER_TYPE_AVATAR))
         && !disable_all_render_types && !isSelf())
     {
-        if (!mIsControlAvatar)
+        if (!mIsControlAvatar && !isGhostAvatar())
         {
             idleUpdateNameTag(idleCalcNameTagPosition(mLastRootPos));
         }
@@ -2914,11 +2914,19 @@ void LLVOAvatar::idleUpdate(LLAgent &agent, const F64 &time)
         updateMouselookHeadBoneScale();
     }
 
+    const bool is_ghost = isGhostAvatar();
     static LLUICachedControl<bool> visualizers_in_calls("ShowVoiceVisualizersInCalls", false);
-    bool voice_enabled = (visualizers_in_calls || LLVoiceClient::getInstance()->inProximalChannel()) &&
+    bool voice_enabled = !is_ghost &&
+                         (visualizers_in_calls || LLVoiceClient::getInstance()->inProximalChannel()) &&
                          LLVoiceClient::getInstance()->getVoiceEnabled(mID);
 
-    LLVector3 hud_name_pos = idleCalcNameTagPosition(mLastRootPos);
+    // Ghosts have neither voice visualizers nor name tags, so neither consumer
+    // observes the position and the camera-relative calculation is discarded.
+    LLVector3 hud_name_pos;
+    if (!is_ghost)
+    {
+        hud_name_pos = idleCalcNameTagPosition(mLastRootPos);
+    }
 
     idleUpdateVoiceVisualizer(voice_enabled, hud_name_pos);
     idleUpdateMisc( detailed_update );
@@ -2960,7 +2968,8 @@ void LLVOAvatar::idleUpdate(LLAgent &agent, const F64 &time)
         compl_upd_freq = 100;
     }
 
-    if ((LLFrameTimer::getFrameCount() + mID.mData[0]) % compl_upd_freq == 0)
+    if (!is_ghost &&
+        (LLFrameTimer::getFrameCount() + mID.mData[0]) % compl_upd_freq == 0)
     {
         // DEPRECATED
         // replace with LLPipeline::profileAvatar?

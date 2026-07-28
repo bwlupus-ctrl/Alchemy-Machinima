@@ -13,7 +13,8 @@
  * selected instance's transform: selecting it and switching to the stock
  * translate/rotate tool gives the ghost the familiar 3-axis gizmos, and a
  * per-frame tick() syncs the proxy <-> Instance (the Instance stays
- * authoritative). Uniform scale stays on the panel numeric for now.
+ * authoritative). Uniform scale is supported by the stock Stretch gizmo and
+ * the synchronized panel numeric control.
  *
  * SAFETY: the proxy is mIsLocalOnly + LOCAL_OBJECT_GHOST_MANIP_PROXY, so
  * llselectmgr suppresses all sim traffic and never routes it into LLLocalMeshMgr
@@ -30,6 +31,7 @@
 #include "llquaternion.h"
 #include "lluuid.h"
 #include "stdtypes.h"
+#include "v3math.h"
 #include "v3dmath.h"
 
 class LLTool;
@@ -62,6 +64,10 @@ public:
     void teardown(bool restore_toolset = true);
 
     bool isActive() const { return mEditMode; }
+    // True once selectProxy() has deliberately handed the transient picker to
+    // the stock build toolset. Before that handoff, a deselect means the user
+    // replaced the picker and edit mode should terminate.
+    bool hasToolHandoff() const { return mSavedToolset != nullptr; }
     // True if `object` IS our proxy (for pick/command policy callers).
     bool owns(const LLViewerObject* object) const;
 
@@ -96,6 +102,7 @@ private:
     LLTool*     mSavedTool    = nullptr;
 
     U64  mSeenRevision = 0;
+    U64  mSeenGroupRevision = 0;
     bool mEditMode = false;
     bool mDragging = false;
 
@@ -103,6 +110,14 @@ private:
     LLVector3d   mDragStartFoot;
     LLQuaternion mDragStartRotation;
     F32          mDragStartScale = 1.f;
+    LLVector3     mProxyLocalCenter{0.f, 0.f, 0.5f * PROXY_HEIGHT};
+    LLVector3     mProxyLocalDimensions{
+        PROXY_WIDTH, PROXY_DEPTH, PROXY_HEIGHT};
+    LLVector3     mDragLocalCenter{0.f, 0.f, 0.5f * PROXY_HEIGHT};
+    LLVector3     mDragLocalDimensions{
+        PROXY_WIDTH, PROXY_DEPTH, PROXY_HEIGHT};
+    bool          mDragStartMemberPinKnown = false;
+    bool          mDragStartMemberPinned = false;
 };
 
 #endif // AL_ALGHOSTMANIPPROXY_H

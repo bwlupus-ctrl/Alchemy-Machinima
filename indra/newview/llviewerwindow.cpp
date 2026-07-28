@@ -172,6 +172,7 @@
 #include "lltoolgrab.h"
 #include "lltoolmgr.h"
 #include "altoolghostedit.h"        // [GhostStudio] Esc exits edit mode post-handoff
+#include "altoolcrowdplace.h"       // [GhostStudio] world wheel rotates staged crowds
 #include "lltoolmorph.h"
 #include "lltoolpie.h"
 #include "lltoolselectland.h"
@@ -3579,6 +3580,19 @@ void LLViewerWindow::handleScrollWheel(LLScrollDelta delta)
     else if (LLView::sDebugMouseHandling)
     {
         LL_INFOS() << "Scroll Wheel not handled by view" << LL_ENDL;
+    }
+
+    // Ghost Studio's staged-crowd tool owns world-space wheel rotation after
+    // all UI layers decline it. Keep this narrow so existing media, pie, gun,
+    // mouselook, and camera wheel behavior is unchanged. A mouse-capturing
+    // tool was already dispatched above and cannot receive the event twice.
+    LLTool* current_tool = LLToolMgr::getInstance()->getCurrentTool();
+    if (current_tool == ALToolCrowdPlace::getInstance() &&
+        current_tool->handleScrollWheel(mCurrentMousePoint.mX,
+                                        mCurrentMousePoint.mY,
+                                        delta))
+    {
+        return;
     }
 
     // Zoom the camera in and out behavior

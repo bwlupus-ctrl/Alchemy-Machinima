@@ -28,6 +28,8 @@
 #include "llghostavatar.h"
 
 #include "alghoststudio.h"
+#include "alghostattachmentenumerator.h"
+#include "alghostmaterialresolver.h"
 #include "llagent.h"
 #include "llanimationstates.h"
 #include "llviewerobjectlist.h"
@@ -37,8 +39,10 @@
 #include "llmeshrepository.h"
 #include "llskinningutil.h"
 #include "llviewerregion.h"
+#include "llviewercontrol.h"
 #include "llviewertextureanim.h"
 #include "llvolumemgr.h"
+#include "llmaterial.h"
 #include "llgltfmaterial.h"
 #include "llfetchedgltfmaterial.h"
 #include "llcontrolavatar.h"
@@ -47,6 +51,7 @@
 #include <boost/unordered_map.hpp>   // clone-prim -> source-prim LOD index
 #include "llface.h"
 #include "lldrawable.h"
+#include "lldrawpool.h"
 #include "indra_constants.h"
 #include "pipeline.h"
 
@@ -157,12 +162,72 @@ void LLGhostAvatar::ghostSlamPosition(const LLVector3& pos_agent)
 
 void LLGhostAvatar::setGhostPosition(const LLVector3& pos_agent)
 {
+    // This API deliberately keeps its historical root-position contract.
+    // A direct root placement supersedes any Studio foot lock.
+    mDesiredGhostFootValid = false;
     if (!getRegion())
     {
         LL_WARNS("Avatar") << "setGhostPosition with no region; ignoring" << LL_ENDL;
         return;
     }
     ghostSlamPosition(pos_agent);
+}
+
+void LLGhostAvatar::setGhostFootPosition(const LLVector3& foot_agent)
+{
+    if (!foot_agent.isFinite())
+    {
+        LL_WARNS("Avatar")
+            << "setGhostFootPosition with a non-finite foot; ignoring"
+            << LL_ENDL;
+        return;
+    }
+    const LLVector3d desired_global =
+        gAgent.getPosGlobalFromAgent(foot_agent);
+    if (!desired_global.isFinite())
+    {
+        LL_WARNS("Avatar")
+            << "setGhostFootPosition produced a non-finite global foot; ignoring"
+            << LL_ENDL;
+        return;
+    }
+    mDesiredGhostFootGlobal = desired_global;
+    mDesiredGhostFootValid = true;
+    applyDesiredGhostFootPosition();
+    updateEntityOuterTransform();
+}
+
+void LLGhostAvatar::applyDesiredGhostFootPosition()
+{
+    if (!mDesiredGhostFootValid || !getRegion() || !mRoot)
+    {
+        return;
+    }
+
+    F32 pelvis_to_foot = getPelvisToFoot();
+    if (!llfinite(pelvis_to_foot))
+    {
+        pelvis_to_foot = 0.f;
+    }
+    LLVector3 root_agent =
+        gAgent.getPosAgentFromGlobal(mDesiredGhostFootGlobal);
+    root_agent.mV[VZ] += llmax(0.f, pelvis_to_foot);
+    if (!root_agent.isFinite())
+    {
+        return;
+    }
+
+    // Newly cloned appearance data can change pelvis-to-foot over several
+    // frames. Only slam when that derived root actually changes so the
+    // persistent foot lock does not enqueue redundant drawable moves forever.
+    if (dist_vec_squared(getPositionAgent(), root_agent) <=
+            F_APPROXIMATELY_ZERO &&
+        dist_vec_squared(mRoot->getWorldPosition(), root_agent) <=
+            F_APPROXIMATELY_ZERO)
+    {
+        return;
+    }
+    ghostSlamPosition(root_agent);
 }
 
 void LLGhostAvatar::setGhostRotation(const LLQuaternion& rotation)
@@ -191,7 +256,19 @@ void LLGhostAvatar::updateEntityOuterTransform()
     }
 
     LLVector3 foot = mRoot->getWorldPosition();
-    foot.mV[VZ] -= getPelvisToFoot();
+    // Same hazard as the overlay pivot (drawGeometryGhost): a non-standard or
+    // still-loading skeleton can report a negative or non-finite pelvis-to-foot.
+    // Used raw it skews the scale pivot (clone scales down through the ground) and
+    // can bake NaN into the outer matrix. Clamp to the feet-below-pelvis
+    // convention and bail on a non-finite placement so the driver never sees a
+    // degenerate transform.
+    F32 p2f = getPelvisToFoot();
+    if (!llfinite(p2f)) p2f = 0.f;
+    foot.mV[VZ] -= llmax(0.f, p2f);   // no upper cap: a giant custom skeleton is legit
+    if (!foot.isFinite())
+    {
+        return;
+    }
     if (outer->mEnabled &&
         is_approx_equal(outer->mScale, mEntityScale) &&
         dist_vec_squared(outer->mFootPivot, foot) < F_APPROXIMATELY_ZERO)
@@ -518,6 +595,80 @@ bool LLGhostAvatar::cloneAppearanceFrom(LLVOAvatar* source)
 
 namespace
 {
+    LLUUID volume_mesh_id(const LLVOVolume* volume)
+    {
+        const LLVolume* decoded = volume ? volume->getVolume() : nullptr;
+        return decoded ? decoded->getParams().getSculptID() : LLUUID::null;
+    }
+
+    std::string attachment_joint_name(LLVOVolume* volume)
+    {
+        if (!volume)
+        {
+            return "<missing>";
+        }
+
+        const S32 point =
+            ATTACHMENT_ID_FROM_STATE(volume->getAttachmentState());
+        LLVOAvatar* avatar = volume->getAvatarAncestor();
+        if (avatar)
+        {
+            LLVOAvatar::attachment_map_t::const_iterator found =
+                avatar->mAttachmentPoints.find(point);
+            if (found != avatar->mAttachmentPoints.end() && found->second)
+            {
+                return found->second->getName();
+            }
+        }
+        return llformat("%d", point);
+    }
+
+    bool has_rigged_face(const LLVOVolume* volume)
+    {
+        if (!volume || volume->mDrawable.isNull())
+        {
+            return false;
+        }
+        for (S32 face_index = 0;
+             face_index < volume->mDrawable->getNumFaces(); ++face_index)
+        {
+            LLFace* face = volume->mDrawable->getFace(face_index);
+            if (face && face->isState(LLFace::RIGGED))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void log_ghost_rig(LLVOVolume* clone, LLVOVolume* source)
+    {
+        LLVOAvatar* source_avatar =
+            source ? source->getAvatarAncestor() : nullptr;
+        LL_INFOS("GhostStudio")
+            << "GHOSTRIG clone=" << (clone ? clone->getID() : LLUUID::null)
+            << " src=" << (source ? source->getID() : LLUUID::null)
+            << " phase=copy_pre_cav"
+            << " clone_isRoot=" << (clone && clone->isRootEdit())
+            << " clone_root="
+            << (clone ? clone->getRootEdit()->getID() : LLUUID::null)
+            << " clone_isMesh=" << (clone && clone->isMesh())
+            << " clone_hasSkin=" << (clone && clone->getSkinInfo() != nullptr)
+            << " clone_isRigged=" << (clone && clone->isRiggedMesh())
+            << " clone_isAnimesh=" << (clone && clone->isAnimatedObject())
+            << " clone_hasCav="
+            << (clone && clone->getControlAvatar() != nullptr)
+            << " src_isMesh=" << (source && source->isMesh())
+            << " src_hasSkin=" << (source && source->getSkinInfo() != nullptr)
+            << " src_isAnimesh=" << (source && source->isAnimatedObject())
+            << " src_is_ghost="
+            << (source_avatar && source_avatar->isGhostAvatar())
+            << " clone_mesh_uuid=" << volume_mesh_id(clone)
+            << " src_mesh_uuid=" << volume_mesh_id(source)
+            << " attach_joint=" << attachment_joint_name(clone)
+            << LL_ENDL;
+    }
+
     // Mirror the simulator-delivered texture-animation object state onto a
     // client-only clone. LLViewerTextureAnim registers itself with the global
     // per-frame updater, so copying these semantic fields is enough for the
@@ -602,9 +753,27 @@ namespace
         //
         // Safe for a client-only object: setParameterEntry -> parameterChanged
         // only sends an ObjectExtraParams message when (local_origin &&
-        // !isLocalOnly()) (llviewerobject.cpp:6566). We pass local_origin=false
+        // !isLocalOnly()) (llviewerobject.cpp:6578). We pass local_origin=false
         // AND the clone is mIsLocalOnly, so nothing is ever sent to the sim.
-        if (const LLSculptParams* src_sculpt = src->getSculptParams())
+        const LLVolumeParams& src_params = src_vol->getParams();
+        const bool source_is_mesh =
+            (src_params.getSculptType() & LL_SCULPT_TYPE_MASK) ==
+                LL_SCULPT_TYPE_MESH;
+        if (source_is_mesh)
+        {
+            // The decoded volume is the state we are about to clone.  Derive
+            // its mesh marker from those same params rather than conditionally
+            // trusting a second accessor: if the source extra-param is
+            // temporarily unavailable during cache/update churn, silently
+            // omitting it is permanent for a client-only object because no
+            // later ObjectUpdate will repair the clone.
+            LLSculptParams mesh_marker;
+            mesh_marker.setSculptTexture(src_params.getSculptID(),
+                                         src_params.getSculptType());
+            dst->setParameterEntry(LLNetworkData::PARAMS_SCULPT,
+                                   mesh_marker, false);
+        }
+        else if (const LLSculptParams* src_sculpt = src->getSculptParams())
         {
             dst->setParameterEntry(LLNetworkData::PARAMS_SCULPT, *src_sculpt, false);
         }
@@ -621,7 +790,57 @@ namespace
         // asset (LLVolume + skin info) from cache: no re-download, no re-decode.
         // The drawable and a real LOD must exist first or setVolume builds a
         // placeholder cube instead (lllocalmesh.cpp:1559).
-        dst->setVolume(src_vol->getParams(), LLVolumeLODGroup::NUM_LODS - 1);
+        dst->setVolume(src_params, LLVolumeLODGroup::NUM_LODS - 1);
+
+        // setVolume normally finds this same repository-owned skin through the
+        // mesh cache.  Do not leave correctness dependent on that side effect:
+        // a source that is already drawing rigged has the exact immutable skin
+        // descriptor this clone needs.  notifySkinInfoLoaded() is the normal
+        // repository callback, and because the linkset is already attached it
+        // also schedules geometry plus attachment-joint overrides against THIS
+        // ghost.  If the source skin is still loading, setVolume registered the
+        // clone for the ordinary asynchronous callback instead.
+        if (const LLMeshSkinInfo* src_skin = src->getSkinInfo())
+        {
+            if (src_skin->mMeshID != src_params.getSculptID())
+            {
+                LL_WARNS("GhostStudio")
+                    << "copy_prim_state: source " << src->getID()
+                    << " has skin " << src_skin->mMeshID
+                    << " but volume mesh " << src_params.getSculptID()
+                    << "; refusing an incoherent clone" << LL_ENDL;
+                return false;
+            }
+            if (dst->getSkinInfo() != src_skin)
+            {
+                dst->notifySkinInfoLoaded(src_skin);
+            }
+            if (dst->getSkinInfo() != src_skin)
+            {
+                LL_WARNS("GhostStudio")
+                    << "copy_prim_state: clone " << dst->getID()
+                    << " did not retain source skin " << src_skin->mMeshID
+                    << LL_ENDL;
+                return false;
+            }
+        }
+
+        static LLCachedControl<bool> use_source_resolved_materials(
+            gSavedSettings,
+            "GhostUnifiedSourceResolvedMaterials",
+            false);
+        if (use_source_resolved_materials)
+        {
+            const ALGhostResolvedMaterialObject material_snapshot =
+                ALGhostMaterialResolver::capture(src);
+            if (!ALGhostMaterialResolver::apply(dst, material_snapshot))
+            {
+                return false;
+            }
+            copy_texture_animation(dst, src);
+            dst->markForUpdate();
+            return true;
+        }
 
         const U8 num_tes = src->getNumTEs();
         S32 source_pbr_faces = 0;
@@ -784,6 +1003,8 @@ namespace
         LLXform* expect_xform = target ? target->getXform() : nullptr;
         LLSpatialBridge* bridge = dst_root->mDrawable.notNull()
             ? dst_root->mDrawable->getSpatialBridge() : nullptr;
+        const bool control_bridge =
+            dynamic_cast<LLControlAVBridge*>(bridge) != nullptr;
 
         const bool joint_ok  = (xform_parent && xform_parent == expect_xform);
         // An attached animated object intentionally skins to its private
@@ -801,6 +1022,9 @@ namespace
             << " listed=" << listed
             << " JOINT_PARENT_OK=" << joint_ok
             << " root_bridge=" << (void*)bridge
+            << " control_bridge=" << control_bridge
+            << " animated=" << dst_root->isAnimatedObject()
+            << " cav=" << (dst_root->getControlAvatar() != nullptr)
             << " children=" << dst_children.size()
             << LL_ENDL;
 
@@ -866,6 +1090,136 @@ namespace
         }
     }
 
+    bool finalize_control_avatar(LLVOVolume* root,
+                                 const std::vector<LLVOVolume*>& children)
+    {
+        if (!root || root->isDead())
+        {
+            return false;
+        }
+
+        bool contains_skin = root->getSkinInfo() != nullptr;
+        for (LLVOVolume* child : children)
+        {
+            contains_skin =
+                contains_skin || (child && child->getSkinInfo() != nullptr);
+        }
+
+        const bool animated = root->isAnimatedObject();
+
+        // Geometry rebuilds normally make this decision, but this client-only
+        // linkset has just changed from an ordinary attachment into an animated
+        // object after it was attached. Decide synchronously now that every
+        // prim's extended-mesh and skin state is present.
+        root->updateControlAvatar();
+        LLControlAvatar* cav = root->getControlAvatar();
+        const bool cav_expected = animated && contains_skin;
+
+        LLSpatialBridge* bridge =
+            root->mDrawable.notNull() ? root->mDrawable->getSpatialBridge()
+                                      : nullptr;
+        bool control_bridge = dynamic_cast<LLControlAVBridge*>(bridge) != nullptr;
+
+        if (cav_expected && cav && root->mDrawable.notNull())
+        {
+            // addChild() attached the root before copy_prim_state() installed
+            // its animated-object extra parameter, so setupDrawable() initially
+            // created an LLAvatarBridge. getSpatialPartition() is the normal
+            // bridge validator (lldrawable.cpp:1192); invoke it here instead of
+            // depending on a later partition-queue pass that a client-only
+            // object may never enter.
+            root->mDrawable->getSpatialPartition();
+            bridge = root->mDrawable->getSpatialBridge();
+            control_bridge =
+                dynamic_cast<LLControlAVBridge*>(bridge) != nullptr;
+
+            // The control avatar was created from the now-final linkset. Match
+            // it after the correct bridge exists so its world transform and
+            // palette origin agree with the attachment root on the first draw.
+            cav->matchVolumeTransform();
+        }
+
+        LL_INFOS("GhostStudio")
+            << "GHOSTCAV root=" << root->getID()
+            << " animated=" << animated
+            << " contains_skin=" << contains_skin
+            << " cav_expected=" << cav_expected
+            << " cav=" << (cav != nullptr)
+            << " cav_playing=" << (cav && cav->mPlaying)
+            << " control_bridge=" << control_bridge
+            << " children=" << children.size()
+            << LL_ENDL;
+
+        if (cav_expected)
+        {
+            return cav && cav->mPlaying && control_bridge;
+        }
+        return cav == nullptr;
+    }
+
+    const char* legacy_alpha_mode_name(U8 mode)
+    {
+        switch (mode)
+        {
+            case LLMaterial::DIFFUSE_ALPHA_MODE_BLEND: return "blend";
+            case LLMaterial::DIFFUSE_ALPHA_MODE_MASK:  return "mask";
+            case LLMaterial::DIFFUSE_ALPHA_MODE_NONE:  return "none";
+            default:                                   return "emissive";
+        }
+    }
+
+    std::string face_alpha_mode(const LLTextureEntry* te)
+    {
+        if (!te)
+        {
+            return "missing";
+        }
+        if (const LLGLTFMaterial* gltf = te->getGLTFRenderMaterial())
+        {
+            return llformat("pbr-%s", gltf->getAlphaMode());
+        }
+        const LLMaterial* material = te->getMaterialParams().get();
+        return material
+            ? legacy_alpha_mode_name(material->getDiffuseAlphaMode())
+            : "none";
+    }
+
+    F32 face_alpha_cutoff(const LLTextureEntry* te)
+    {
+        if (!te)
+        {
+            return 0.f;
+        }
+        if (const LLGLTFMaterial* gltf = te->getGLTFRenderMaterial())
+        {
+            return gltf->mAlphaCutoff;
+        }
+        const LLMaterial* material = te->getMaterialParams().get();
+        return material
+            ? material->getAlphaMaskCutoff() * (1.f / 255.f)
+            : 0.f;
+    }
+
+    const char* pool_name(U32 pool)
+    {
+        switch (pool)
+        {
+            case LLDrawPool::POOL_SIMPLE:                return "simple";
+            case LLDrawPool::POOL_FULLBRIGHT:            return "fullbright";
+            case LLDrawPool::POOL_MATERIALS:             return "materials";
+            case LLDrawPool::POOL_GLTF_PBR:              return "pbr";
+            case LLDrawPool::POOL_GLTF_PBR_ALPHA_MASK:   return "pbr-mask";
+            case LLDrawPool::POOL_ALPHA_MASK:            return "mask";
+            case LLDrawPool::POOL_FULLBRIGHT_ALPHA_MASK: return "fb-mask";
+            case LLDrawPool::POOL_AVATAR:                return "avatar";
+            case LLDrawPool::POOL_CONTROL_AV:            return "control-av";
+            case LLDrawPool::POOL_ALPHA_PRE_WATER:       return "alpha-pre";
+            case LLDrawPool::POOL_ALPHA_POST_WATER:      return "alpha-post";
+            case LLDrawPool::POOL_ALPHA:                 return "alpha";
+            default:                                     return "other";
+        }
+    }
+
     void log_texture_face(LLVOVolume* source, LLVOVolume* clone,
                           LLFace* clone_face, S32 face_index)
     {
@@ -879,17 +1233,28 @@ namespace
         const LLTextureEntry* clone_te =
             te_index < clone->getNumTEs() ? clone->getTE(te_index) : nullptr;
         LLFace* source_face =
-            source && source->mDrawable.notNull()
-            && face_index < source->mDrawable->getNumFaces()
+            source && source->mDrawable.notNull() &&
+            face_index < source->mDrawable->getNumFaces()
                 ? source->mDrawable->getFace(face_index) : nullptr;
-        LLViewerTexture* source_texture = source_face ? source_face->getTexture() : nullptr;
-        LLViewerTexture* clone_texture = clone_face->getTexture();
+        LLViewerTexture* source_texture =
+            source && te_index < source->getNumTEs()
+                ? source->getTEImage(te_index) : nullptr;
+        LLViewerTexture* clone_texture =
+            te_index < clone->getNumTEs()
+                ? clone->getTEImage(te_index) : nullptr;
 
-        const bool baked_magic = clone_te &&
+        const bool source_baked_magic = source_te &&
+            LLAvatarAppearanceDefines::LLAvatarAppearanceDictionary::isBakedImageId(
+                source_te->getID());
+        const bool clone_baked_magic = clone_te &&
             LLAvatarAppearanceDefines::LLAvatarAppearanceDictionary::isBakedImageId(
                 clone_te->getID());
+        LLViewerTexture* source_resolved_bake =
+            source_baked_magic
+                ? source->getBakedTextureForMagicId(source_te->getID()) : nullptr;
         LLViewerTexture* resolved_bake =
-            baked_magic ? clone->getBakedTextureForMagicId(clone_te->getID()) : nullptr;
+            clone_baked_magic
+                ? clone->getBakedTextureForMagicId(clone_te->getID()) : nullptr;
 
         const LLFetchedGLTFMaterial* fetched = clone_te
             ? dynamic_cast<const LLFetchedGLTFMaterial*>(
@@ -903,6 +1268,15 @@ namespace
         LLViewerTexture* source_base_color =
             source_fetched && source_fetched->mBaseColorTexture.notNull()
                 ? source_fetched->mBaseColorTexture.get() : nullptr;
+        const bool drawable_invisible =
+            clone->mDrawable.notNull() &&
+            clone->mDrawable->isState(LLDrawable::INVISIBLE |
+                                      LLDrawable::FORCE_INVISIBLE);
+        const bool in_draw_pass = clone_face->mDrawInfo != nullptr;
+        const bool draw_ready =
+            in_draw_pass && clone_face->getVertexBuffer() != nullptr &&
+            clone_face->getGeomCount() > 0 &&
+            clone_face->getIndicesCount() > 0 && !drawable_invisible;
 
         LL_INFOS("GhostStudio")
             << "GHOSTTEX src_obj=" << (source ? source->getID() : LLUUID::null)
@@ -912,24 +1286,63 @@ namespace
             << " clone_te=" << (clone_te ? clone_te->getID() : LLUUID::null)
             << " src_face_tex=" << (source_texture ? source_texture->getID() : LLUUID::null)
             << " clone_face_tex=" << (clone_texture ? clone_texture->getID() : LLUUID::null)
+            << " same_binding=" << (source_texture == clone_texture)
             << " gl=" << (clone_texture && clone_texture->hasGLTexture())
             << " discard=" << (clone_texture ? clone_texture->getDiscardLevel() : -99)
             << " missing=" << (clone_texture && clone_texture->isMissingAsset())
             << " src_material="
-            << (source ? source->getRenderMaterialID(te_index) : LLUUID::null)
+            << (source_te ? source->getRenderMaterialID(te_index) : LLUUID::null)
             << " src_base_color="
             << (source_base_color ? source_base_color->getID() : LLUUID::null)
             << " src_base_gl="
             << (source_base_color && source_base_color->hasGLTexture())
-            << " material=" << clone->getRenderMaterialID(te_index)
+            << " material="
+            << (clone_te ? clone->getRenderMaterialID(te_index) : LLUUID::null)
             << " base_color=" << (base_color ? base_color->getID() : LLUUID::null)
             << " base_gl=" << (base_color && base_color->hasGLTexture())
             << " base_discard=" << (base_color ? base_color->getDiscardLevel() : -99)
-            << " baked_magic=" << baked_magic
+            << " src_baked_magic=" << source_baked_magic
+            << " src_baked_resolved="
+            << (source_resolved_bake
+                    ? source_resolved_bake->getID() : LLUUID::null)
+            << " src_baked_default="
+            << (source_resolved_bake &&
+                source_resolved_bake->getID() == IMG_DEFAULT)
+            << " baked_magic=" << clone_baked_magic
             << " baked_resolved="
             << (resolved_bake ? resolved_bake->getID() : LLUUID::null)
             << " baked_default="
             << (resolved_bake && resolved_bake->getID() == IMG_DEFAULT)
+            << " binding_default="
+            << (clone_texture && clone_texture->getID() == IMG_DEFAULT)
+            << " src_alpha_mode=" << face_alpha_mode(source_te)
+            << " src_alpha_cutoff=" << face_alpha_cutoff(source_te)
+            << " src_can_render_as_mask="
+            << (source_face && source_face->canRenderAsMask())
+            << " src_color_alpha="
+            << (source_te ? source_te->getColor().mV[3] : -1.f)
+            << " src_fullbright=" << (source_te && source_te->getFullbright())
+            << " src_pool="
+            << (source_face ? pool_name(source_face->getPoolType()) : "missing")
+            << " src_in_draw_pass="
+            << (source_face && source_face->mDrawInfo != nullptr)
+            << " alpha_mode=" << face_alpha_mode(clone_te)
+            << " alpha_cutoff=" << face_alpha_cutoff(clone_te)
+            << " can_render_as_mask=" << clone_face->canRenderAsMask()
+            << " alpha_mask_policy_same="
+            << (!source_face ||
+                source_face->canRenderAsMask() ==
+                    clone_face->canRenderAsMask())
+            << " color_alpha=" << (clone_te ? clone_te->getColor().mV[3] : -1.f)
+            << " fullbright=" << (clone_te && clone_te->getFullbright())
+            << " pool=" << pool_name(clone_face->getPoolType())
+            << "(" << clone_face->getPoolType() << ")"
+            << " in_draw_pass=" << in_draw_pass
+            << " draw_ready=" << draw_ready
+            << " drawable_invisible=" << drawable_invisible
+            << " vb=" << (clone_face->getVertexBuffer() != nullptr)
+            << " geom=" << clone_face->getGeomCount()
+            << " indices=" << clone_face->getIndicesCount()
             << LL_ENDL;
     }
 }
@@ -944,30 +1357,38 @@ S32 LLGhostAvatar::cloneAttachmentsFrom(LLVOAvatar* source)
     if (!region)
     {
         LL_WARNS("GhostStudio") << "cloneAttachmentsFrom: ghost has no region" << LL_ENDL;
+        ++mCloneFailures;
+        return 0;
+    }
+
+    static LLCachedControl<bool> exclude_temporary(
+        gSavedSettings, "GhostUnifiedExcludeTemporaryAttachments", false);
+    const ALGhostAttachmentPlan plan =
+        ALGhostAttachmentEnumerator::enumerateWorldRoots(
+            source,
+            exclude_temporary
+                ? ALGhostTempAttachmentPolicy::EXCLUDE
+                : ALGhostTempAttachmentPolicy::INCLUDE,
+            /*emit_log=*/true);
+    if (!plan.mValidSource)
+    {
+        ++mCloneFailures;
         return 0;
     }
 
     S32 cloned = 0;
-    for (const auto& ap : source->mAttachmentPoints)
+    mCloneExpectedRoots += plan.expectedRoots();
+    for (const ALGhostAttachmentRoot& root_entry : plan.mRoots)
     {
-        LLViewerJointAttachment* attachment = ap.second;
-        if (!attachment)
+        LLViewerObject* src_obj = root_entry.mRoot.get();
+        if (!src_obj || src_obj->isDead())
         {
+            LL_WARNS("GhostStudio")
+                << "captured attachment root disappeared during clone"
+                << LL_ENDL;
+            mCloneFailures++;
             continue;
         }
-        for (LLViewerObject* src_obj : attachment->mAttachedObjects)
-        {
-            if (!src_obj || src_obj->isDead())
-            {
-                continue;   // dead entries are legitimately ignorable
-            }
-
-            // Count EVERY LIVE root, BEFORE the type check. Counting only the
-            // ones we can handle would make PASS mean "everything supported was
-            // cloned" rather than "the outfit was cloned" -- an unsupported
-            // root would vanish from both the expected and the failed tallies
-            // and a surviving volume attachment could still report PASS.
-            mCloneExpectedRoots++;
 
             LLVOVolume* src_root = dynamic_cast<LLVOVolume*>(src_obj);
             if (!src_root)
@@ -1008,11 +1429,14 @@ S32 LLGhostAvatar::cloneAttachmentsFrom(LLVOAvatar* source)
             std::vector<LLVOVolume*> src_children;
             std::vector<LLVOVolume*> dst_children;
             bool alloc_ok = true;
-            for (LLViewerObject* src_child : src_root->getChildren())
+            for (const LLPointer<LLViewerObject>& src_child_ptr :
+                    root_entry.mChildren)
             {
+                LLViewerObject* src_child = src_child_ptr.get();
                 if (!src_child || src_child->isDead())
                 {
-                    continue;   // dead entries are legitimately ignorable
+                    alloc_ok = false;
+                    break;
                 }
                 LLVOVolume* src_cv = dynamic_cast<LLVOVolume*>(src_child);
                 if (!src_cv)
@@ -1109,12 +1533,16 @@ S32 LLGhostAvatar::cloneAttachmentsFrom(LLVOAvatar* source)
             //       escape both the pending and the not-rigged counters.
             //       PASS has to mean the whole thing cloned.
             bool copy_ok = copy_prim_state(dst_root, src_root);
+            log_ghost_rig(dst_root, src_root);
             size_t failed_child = 0;
             if (copy_ok)
             {
                 for (size_t ci = 0; ci < dst_children.size(); ++ci)
                 {
-                    if (!copy_prim_state(dst_children[ci], src_children[ci]))
+                    const bool child_copy_ok =
+                        copy_prim_state(dst_children[ci], src_children[ci]);
+                    log_ghost_rig(dst_children[ci], src_children[ci]);
+                    if (!child_copy_ok)
                     {
                         copy_ok = false;
                         failed_child = ci + 1;
@@ -1146,22 +1574,39 @@ S32 LLGhostAvatar::cloneAttachmentsFrom(LLVOAvatar* source)
                 continue;
             }
 
+            // The linkset was attached before its simulator-delivered animated
+            // flag and skin state were copied. Finalize the control avatar and
+            // bridge only after the entire state graph exists.
+            if (!finalize_control_avatar(dst_root, dst_children))
+            {
+                LL_WARNS("GhostStudio")
+                    << "control-avatar finalization failed for "
+                    << src_root->getID()
+                    << "; discarding the whole linkset" << LL_ENDL;
+                dst_root->setAttachmentState(0);
+                for (LLVOVolume* c : dst_children)
+                {
+                    c->setAttachmentState(0);
+                }
+                removeChild(dst_root);
+                dst_root->markDead();
+                mCloneFailures++;
+                continue;
+            }
+
             // Every descendant carries the same explicit render owner. This
             // covers static children and animesh without relying on joint-scale
             // inheritance (which LLXform intentionally drops).
             stampEntityOuterTransform(dst_root);
 
-            // -- 8. Insurance, not the fix.
+            // -- 8. Rebuild only after the final skinning avatar and spatial
+            //       bridge are known. Faces created earlier must not retain the
+            //       ordinary attachment owner or static classification.
             force_rebuild(dst_root);
             for (LLVOVolume* c : dst_children)
             {
                 force_rebuild(c);
             }
-
-            // The normal geometry-rebuild hook may run before every cloned
-            // child's skin has arrived. Decide once more now, after the full
-            // linkset, sculpt/skin state, and extended-mesh flags exist.
-            dst_root->updateControlAvatar();
 
             ClonedLinkset record;
             record.mRoot = dst_root->getID();
@@ -1198,7 +1643,6 @@ S32 LLGhostAvatar::cloneAttachmentsFrom(LLVOAvatar* source)
             {
                 mCloneFailures++;
             }
-        }
     }
 
     if (cloned > 0)
@@ -1263,6 +1707,7 @@ void LLGhostAvatar::releaseClonedAttachments()
         }
     }
     mClonedLinksets.clear();
+    mRigHealedLogged.clear();
 
     // Reset the transactional counters WITH the roots they describe. Clearing
     // the roots but keeping the expected/failure counts would leave a later,
@@ -1272,6 +1717,137 @@ void LLGhostAvatar::releaseClonedAttachments()
     // then describe different transactions.)
     mCloneExpectedRoots = 0;
     mCloneFailures      = 0;
+}
+
+std::string LLGhostAvatar::getRigDiagnosticText() const
+{
+    std::string text =
+        "       id       mesh skin rig anim cav attach\n"
+        "  face te diffuse  bind     magic/default alpha/cut  fb pool        pass/ready\n";
+    S32 prim_index = 0;
+
+    auto append_prim = [&text, &prim_index](const LLUUID& clone_id,
+                                            const LLUUID& source_id)
+    {
+        LLVOVolume* clone = dynamic_cast<LLVOVolume*>(
+            gObjectList.findObject(clone_id));
+        LLVOVolume* source = dynamic_cast<LLVOVolume*>(
+            gObjectList.findObject(source_id));
+        const std::string clone_short =
+            clone_id.asString().substr(0, 8);
+        const std::string source_short =
+            source_id.asString().substr(0, 8);
+
+        text += llformat(
+            "%03d C  %s   %d    %d    %d   %d   %d  %s\n",
+            prim_index, clone_short.c_str(),
+            clone && clone->isMesh(),
+            clone && clone->getSkinInfo() != nullptr,
+            clone && clone->isRiggedMesh(),
+            clone && clone->isAnimatedObject(),
+            clone && clone->getControlAvatar() != nullptr,
+            attachment_joint_name(clone).c_str());
+        text += llformat(
+            "    S  %s   %d    %d    %d   %d   %d  %s\n",
+            source_short.c_str(),
+            source && source->isMesh(),
+            source && source->getSkinInfo() != nullptr,
+            source && source->isRiggedMesh(),
+            source && source->isAnimatedObject(),
+            source && source->getControlAvatar() != nullptr,
+            attachment_joint_name(source).c_str());
+
+        if (clone && clone->mDrawable.notNull())
+        {
+            for (S32 face_index = 0;
+                 face_index < clone->mDrawable->getNumFaces(); ++face_index)
+            {
+                LLFace* face = clone->mDrawable->getFace(face_index);
+                if (!face)
+                {
+                    continue;
+                }
+
+                const U8 te_index = face->getTEOffset();
+                const LLTextureEntry* te =
+                    te_index < clone->getNumTEs()
+                        ? clone->getTE(te_index) : nullptr;
+                LLViewerTexture* binding =
+                    te_index < clone->getNumTEs()
+                        ? clone->getTEImage(te_index) : nullptr;
+                LLViewerTexture* source_binding =
+                    source && te_index < source->getNumTEs()
+                        ? source->getTEImage(te_index) : nullptr;
+                const bool magic = te &&
+                    LLAvatarAppearanceDefines::LLAvatarAppearanceDictionary::
+                        isBakedImageId(te->getID());
+                LLViewerTexture* resolved =
+                    magic
+                        ? clone->getBakedTextureForMagicId(te->getID())
+                        : nullptr;
+                const bool resolved_default =
+                    resolved && resolved->getID() == IMG_DEFAULT;
+                const bool binding_default =
+                    binding && binding->getID() == IMG_DEFAULT;
+                const bool drawable_invisible =
+                    clone->mDrawable->isState(
+                        LLDrawable::INVISIBLE |
+                        LLDrawable::FORCE_INVISIBLE);
+                const bool in_draw_pass = face->mDrawInfo != nullptr;
+                const bool draw_ready =
+                    in_draw_pass && face->getVertexBuffer() != nullptr &&
+                    face->getGeomCount() > 0 &&
+                    face->getIndicesCount() > 0 && !drawable_invisible;
+                const std::string diffuse_short =
+                    te ? te->getID().asString().substr(0, 8) : "missing ";
+                const std::string binding_short =
+                    binding ? binding->getID().asString().substr(0, 8)
+                            : "missing ";
+                const std::string source_binding_short =
+                    source_binding
+                        ? source_binding->getID().asString().substr(0, 8)
+                        : "missing ";
+                const LLTextureEntry* source_te =
+                    source && te_index < source->getNumTEs()
+                        ? source->getTE(te_index) : nullptr;
+
+                text += llformat(
+                    "  F%03d %02d %-8s %-8s %d/%d%d %-9s %.2f %d %-11s %d/%d"
+                    " src=%s same=%d sa=%s/%.2f a=%.2f\n",
+                    face_index, (S32)te_index,
+                    diffuse_short.c_str(), binding_short.c_str(),
+                    magic, resolved_default, binding_default,
+                    face_alpha_mode(te).c_str(), face_alpha_cutoff(te),
+                    te && te->getFullbright(),
+                    pool_name(face->getPoolType()),
+                    in_draw_pass, draw_ready,
+                    source_binding_short.c_str(),
+                    binding == source_binding,
+                    face_alpha_mode(source_te).c_str(),
+                    face_alpha_cutoff(source_te),
+                    te ? te->getColor().mV[3] : -1.f);
+            }
+        }
+        ++prim_index;
+    };
+
+    for (const ClonedLinkset& linkset : mClonedLinksets)
+    {
+        append_prim(linkset.mRoot, linkset.mSourceRoot);
+        for (size_t i = 0; i < linkset.mChildren.size(); ++i)
+        {
+            append_prim(
+                linkset.mChildren[i],
+                i < linkset.mSourceChildren.size()
+                    ? linkset.mSourceChildren[i] : LLUUID::null);
+        }
+    }
+
+    if (prim_index == 0)
+    {
+        text += "No cloned attachment prims recorded.";
+    }
+    return text;
 }
 
 void LLGhostAvatar::markForDeath()
@@ -1378,13 +1954,31 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
         {
             object_signaled_animation_map_t::const_iterator found =
                 object_anims.find(source_id);
-            const signaled_animation_map_t empty;
-            const signaled_animation_map_t& source_map =
-                found != object_anims.end() ? found->second : empty;
-            signaled_animation_map_t& clone_map = object_anims[clone_id];
-            if (clone_map != source_map)
+            if (found == object_anims.end() || found->second.empty())
             {
-                clone_map = source_map;
+                // Missing and empty both mean "no requested animations"; do not
+                // leave an empty synthetic-prim entry in the process-wide map.
+                object_signaled_animation_map_t::iterator clone =
+                    object_anims.find(clone_id);
+                if (clone != object_anims.end())
+                {
+                    // Erasing an already-empty entry changes no animation state.
+                    changed = !clone->second.empty() || changed;
+                    object_anims.erase(clone);
+                }
+                return;
+            }
+
+            object_signaled_animation_map_t::iterator clone =
+                object_anims.find(clone_id);
+            if (clone == object_anims.end())
+            {
+                object_anims.emplace(clone_id, found->second);
+                changed = true;
+            }
+            else if (clone->second != found->second)
+            {
+                clone->second = found->second;
                 changed = true;
             }
         };
@@ -1404,6 +1998,45 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
     }
 
     LLVOAvatar::idleUpdate(agent, time);
+
+    // A client-only prim has no later simulator ObjectUpdate to repair it.
+    // Record the first frame on which each clone nevertheless has both skin
+    // and at least one rigged face, so a delayed repository acquisition is
+    // distinguishable from a prim that remains permanently static.
+    for (const ClonedLinkset& linkset : mClonedLinksets)
+    {
+        auto log_healed_once = [this](const LLUUID& clone_id,
+                                      const LLUUID& source_id)
+        {
+            LLVOVolume* clone = dynamic_cast<LLVOVolume*>(
+                gObjectList.findObject(clone_id));
+            if (!clone || clone->isDead() ||
+                mRigHealedLogged.find(clone_id) != mRigHealedLogged.end() ||
+                !clone->getSkinInfo() || !has_rigged_face(clone))
+            {
+                return;
+            }
+
+            LLVOVolume* source = dynamic_cast<LLVOVolume*>(
+                gObjectList.findObject(source_id));
+            log_ghost_rig(clone, source);
+            mRigHealedLogged.insert(clone_id);
+        };
+
+        log_healed_once(linkset.mRoot, linkset.mSourceRoot);
+        const size_t count = llmin(linkset.mChildren.size(),
+                                   linkset.mSourceChildren.size());
+        for (size_t i = 0; i < count; ++i)
+        {
+            log_healed_once(linkset.mChildren[i],
+                            linkset.mSourceChildren[i]);
+        }
+    }
+
+    // Re-derive root height after skeleton/appearance evaluation. The desired
+    // Studio coordinate is the feet, not whatever transient pelvis height the
+    // clone happened to report on its spawn frame.
+    applyDesiredGhostFootPosition();
     updateEntityOuterTransform();
 }
 
@@ -1812,6 +2445,8 @@ bool LLGhostAvatar::recheckStructure(LLGhostAvatar* ghost,
         ? vroot->mDrawable->getSpatialBridge() : nullptr;
 
     bool topology_ok = (root_bridge != nullptr);
+    S32 children_with_bridge = 0;
+    S32 children_bad_parent = 0;
     for (const LLUUID& cid : linkset.mChildren)
     {
         LLViewerObject* c = gObjectList.findObject(cid);
@@ -1821,11 +2456,15 @@ bool LLGhostAvatar::recheckStructure(LLGhostAvatar* ghost,
         }
         // A child must own NO bridge of its own, and must hang off the root's
         // drawable. Both are readable without provoking a repair.
-        if (c->mDrawable->getSpatialBridge() != nullptr
-            || c->mDrawable->getParent() != vroot->mDrawable)
+        if (c->mDrawable->getSpatialBridge() != nullptr)
         {
+            ++children_with_bridge;
             topology_ok = false;
-            break;
+        }
+        if (c->mDrawable->getParent() != vroot->mDrawable)
+        {
+            ++children_bad_parent;
+            topology_ok = false;
         }
     }
 
@@ -1838,6 +2477,14 @@ bool LLGhostAvatar::recheckStructure(LLGhostAvatar* ghost,
             << " listed=" << listed
             << " attach_ok=" << attach_ok
             << " topology_ok=" << topology_ok
+            << " joint_ok=" << (xform_parent && xform_parent == expect_xform)
+            << " root_bridge=" << (void*)root_bridge
+            << " control_bridge="
+            << (dynamic_cast<LLControlAVBridge*>(root_bridge) != nullptr)
+            << " animated=" << vroot->isAnimatedObject()
+            << " cav=" << (vroot->getControlAvatar() != nullptr)
+            << " children_with_bridge=" << children_with_bridge
+            << " children_bad_parent=" << children_bad_parent
             << " (structure degraded since cloning)" << LL_ENDL;
     }
     return attach_ok && topology_ok;
@@ -1903,6 +2550,9 @@ void LLGhostAvatar::verifyClonedAttachments(bool include_test_harness)
         S32 skinned_prims = 0, skinned_prims_unrigged = 0;
         S32 missing_roots = 0, missing_children = 0, reparented_children = 0;
         S32 structure_now_bad = 0;
+        S32 material_pending = 0, material_mismatches = 0;
+        S32 material_unmanaged = 0;
+        S32 effective_alpha_divergences = 0;
 
         for (const LLGhostAvatar::ClonedLinkset& linkset : ghost->mClonedLinksets)
         {
@@ -2005,15 +2655,47 @@ void LLGhostAvatar::verifyClonedAttachments(bool include_test_harness)
                             ? clone_rig_avatar->mDrawable->mDistanceWRTCamera : -1.f)
                     << LL_ENDL;
 
+                static LLCachedControl<bool> verify_resolved_materials(
+                    gSavedSettings,
+                    "GhostUnifiedSourceResolvedMaterials",
+                    false);
+                if (verify_resolved_materials)
+                {
+                    if (vol->getGhostResolvedMaterialBindingCount() == 0)
+                    {
+                        // The setting may have been enabled after this clone
+                        // was created. Absence of a snapshot is not corruption.
+                        ++material_unmanaged;
+                    }
+                    else
+                    {
+                        const ALGhostMaterialResolver::VerifyStatus status =
+                            ALGhostMaterialResolver::verifyBindings(
+                                source_vol, vol);
+                        if (status ==
+                            ALGhostMaterialResolver::VerifyStatus::PENDING)
+                        {
+                            ++material_pending;
+                        }
+                        else if (status ==
+                                 ALGhostMaterialResolver::VerifyStatus::FAIL)
+                        {
+                            ++material_mismatches;
+                        }
+                    }
+                }
+
                 if (vol->mDrawable.isNull())
                 {
                     prims_pending++;   // geometry not built yet -- NOT a failure
                     continue;
                 }
 
-                // Only a prim WITH skin info is required to be rigged; static
-                // prims in the same linkset are legitimately unrigged.
-                const bool expect_rigged = (vol->getSkinInfo() != nullptr);
+                // Source skin is the expectation. Reading the clone here would
+                // declare the exact missing-skin failure class legitimately
+                // static and allow a false PASS.
+                const bool expect_rigged =
+                    source_vol && source_vol->getSkinInfo() != nullptr;
                 // Normal attachments skin to the ghost. Animated-object
                 // linksets skin to their own control avatar by design.
                 LLVOAvatar* expected_rig_avatar =
@@ -2032,6 +2714,15 @@ void LLGhostAvatar::verifyClonedAttachments(bool include_test_harness)
                     non_null_faces++;
                     faces_total++;
                     log_texture_face(source_vol, vol, face, f);
+                    LLFace* source_face =
+                        source_vol && source_vol->mDrawable.notNull() &&
+                        f < source_vol->mDrawable->getNumFaces()
+                            ? source_vol->mDrawable->getFace(f) : nullptr;
+                    if (source_face &&
+                        source_face->canRenderAsMask() != face->canRenderAsMask())
+                    {
+                        ++effective_alpha_divergences;
+                    }
                     if (face->isState(LLFace::RIGGED))
                     {
                         faces_rigged++;
@@ -2086,6 +2777,11 @@ void LLGhostAvatar::verifyClonedAttachments(bool include_test_harness)
             << " rigged_control_avatar=" << faces_control_avatar
             << " skinned_prims=" << skinned_prims
             << " skinned_prims_NOT_rigged=" << skinned_prims_unrigged
+            << " material_mismatches=" << material_mismatches
+            << " material_pending=" << material_pending
+            << " material_unmanaged=" << material_unmanaged
+            << " effective_alpha_divergences="
+            << effective_alpha_divergences
             << LL_ENDL;
 
         // Completeness gates PASS. Checked BEFORE the face verdict: a clone
@@ -2113,8 +2809,27 @@ void LLGhostAvatar::verifyClonedAttachments(bool include_test_harness)
         if (prims_pending > 0)
         {
             LL_INFOS("GhostStudio")
-                << "GHOSTVERIFY: PENDING -- " << prims_pending << " prim(s) have no geometry "
-                   "yet. Not a failure; wait and re-run /ghostverify." << LL_ENDL;
+                << "GHOSTVERIFY: PENDING -- " << prims_pending
+                << " prim(s) have no geometry yet. Wait for geometry and "
+                   "re-run /ghostverify."
+                << LL_ENDL;
+        }
+        else if (material_mismatches > 0)
+        {
+            LL_WARNS("GhostStudio")
+                << "GHOSTVERIFY: FAIL -- " << material_mismatches
+                << " prim material snapshot mismatch(es)."
+                << LL_ENDL;
+        }
+        else if (material_pending > 0 || material_unmanaged > 0)
+        {
+            LL_INFOS("GhostStudio")
+                << "GHOSTVERIFY: PENDING -- " << material_pending
+                << " prim(s) have unresolved captured channels and "
+                << material_unmanaged
+                << " prim(s) predate material capture. Retry/respawn after "
+                   "source loading completes, then re-run /ghostverify."
+                << LL_ENDL;
         }
         else if (skinned_prims == 0)
         {
@@ -2125,15 +2840,20 @@ void LLGhostAvatar::verifyClonedAttachments(bool include_test_harness)
         else if (skinned_prims_unrigged == 0 && faces_wrong_avatar == 0)
         {
             LL_INFOS("GhostStudio")
-                << "GHOSTVERIFY: PASS -- every skinned prim has rigged faces and every "
-                   "rigged face skins to THIS ghost." << LL_ENDL;
+                << "GHOSTVERIFY: PASS (structure/rig/material scope) -- every "
+                   "skinned prim has rigged faces, every rigged face skins to "
+                   "THIS ghost, and no enabled captured-material check failed. "
+                   "Effective alpha-mask divergence and GHOSTTEX draw enrollment "
+                   "remain diagnostic, not PASS gates."
+                << LL_ENDL;
         }
         else
         {
             LL_WARNS("GhostStudio")
                 << "GHOSTVERIFY: FAIL -- " << skinned_prims_unrigged
                 << " skinned prim(s) produced no rigged face; " << faces_wrong_avatar
-                << " rigged face(s) bound to the WRONG avatar." << LL_ENDL;
+                << " rigged face(s) bound to the WRONG avatar."
+                << LL_ENDL;
         }
     }
 

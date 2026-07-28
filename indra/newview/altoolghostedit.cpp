@@ -13,6 +13,7 @@
 
 #include "indra_constants.h"        // KEY_DELETE / KEY_BACKSPACE / KEY_ESCAPE
 #include "alghoststudio.h"
+#include "altoolghostplace.h"
 #include "llagent.h"                // global <-> agent (pick projection)
 #include "lltoolmgr.h"
 #include "llviewercamera.h"         // projectPosAgentToScreen (screen-space pick)
@@ -28,16 +29,49 @@ ALToolGhostEdit::ALToolGhostEdit()
 {
 }
 
+bool ALToolGhostEdit::beginEditFor(const LLUUID& owner_id)
+{
+    if (owner_id.isNull() ||
+        (mOwnerId.notNull() && mOwnerId != owner_id) ||
+        ALGhostStudio::instance().getCrowdPlacementDraft().mActive)
+    {
+        return false;
+    }
+    if (ALToolGhostPlace::instanceExists() &&
+        ALToolGhostPlace::getInstance()->armedOwner().notNull())
+    {
+        return false;
+    }
+    mOwnerId = owner_id;
+    return true;
+}
+
+bool ALToolGhostEdit::stopEditModeFor(
+    const LLUUID& owner_id, bool restore_toolset)
+{
+    if (owner_id.isNull() || mOwnerId != owner_id)
+    {
+        return false;
+    }
+    stopEditMode(restore_toolset);
+    return true;
+}
+
 // ---------------------------------------------------------------------------
 LLUUID ALToolGhostEdit::pickInstance(S32 x, S32 y) const
 {
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    if (!studio.getShowAll())
+    {
+        return LLUUID::null;
+    }
     // screen-space pick like the path tool's node pick: the ghosts are overlay
     // draws, not scene objects, so project each enabled instance's FOOT and a
     // MID-BODY point (foot + 1 m, easier to grab) and take the nearest in radius
     LLViewerCamera* cam = LLViewerCamera::getInstance();
     LLUUID best;
     F32 best_d2 = GHOST_PICK_PX * GHOST_PICK_PX;
-    for (const ALGhostStudio::Instance& inst : ALGhostStudio::instance().getInstances())
+    for (const ALGhostStudio::Instance& inst : studio.getInstances())
     {
         if (!inst.mEnabled)
         {
@@ -92,13 +126,32 @@ bool ALToolGhostEdit::handleKey(KEY key, MASK mask)
     ALGhostStudio& studio = ALGhostStudio::instance();
     if ((key == KEY_DELETE || key == KEY_BACKSPACE) && studio.getSelected().notNull())
     {
-        studio.removeInstance(studio.getSelected());    // also clears the selection
+        LLUUID delete_id = studio.getSelected();
+        // Expanded members are an individual-positioning view. Deleting one
+        // must never silently invoke removeInstance()'s whole-group semantics;
+        // an explicitly selected header, however, is the whole authoring unit.
+        if (const ALGhostGroupModel::Group* group =
+                studio.groupForMember(delete_id))
+        {
+            if (group->mEditMembers && delete_id != group->mId)
+            {
+                return true;
+            }
+            if (delete_id == group->mId)
+            {
+                if (group->mMembers.empty())
+                {
+                    return true;
+                }
+                delete_id = group->mMembers.front().mInstanceId;
+            }
+        }
+        studio.removeInstance(delete_id);    // also clears the selection
         return true;
     }
     if (key == KEY_ESCAPE)
     {
         stopEditMode();
-        LLToolMgr::getInstance()->clearTransientTool();
         return true;
     }
     return false;
@@ -107,6 +160,14 @@ bool ALToolGhostEdit::handleKey(KEY key, MASK mask)
 // ---------------------------------------------------------------------------
 void ALToolGhostEdit::handleSelect()
 {
+    // The singleton is only meaningful after one panel has acquired it.
+    // Refuse an accidental unowned activation rather than creating a session
+    // that either panel could later destroy.
+    if (mOwnerId.isNull())
+    {
+        mEditModeActive = false;
+        return;
+    }
     mEditModeActive = true;
     mManipProxy.begin();
     gViewerWindow->setCursor(UI_CURSOR_TOOLTRANSLATE);
@@ -114,11 +175,15 @@ void ALToolGhostEdit::handleSelect()
 
 void ALToolGhostEdit::handleDeselect()
 {
-    // DO NOT tear the proxy down here. Switching to the stock toolset (the
-    // intentional gizmo handoff) deselects this transient tool and fires
-    // handleDeselect while editing legitimately continues. Only reflect a real
-    // exit -- the explicit stopEditMode() path (panel toggle / Esc) clears it.
-    if (!mManipProxy.isActive())
+    // selectProxy() records the saved toolset before its intentional handoff,
+    // so that deselect must keep editing alive. If no handoff has happened,
+    // another tool replaced the picker itself; treat that as a real departure
+    // and never let the next proxy tick reinstall us over the user's choice.
+    if (mManipProxy.isActive() && !mManipProxy.hasToolHandoff())
+    {
+        stopEditMode(/*restore_toolset*/ false);
+    }
+    else if (!mManipProxy.isActive())
     {
         mEditModeActive = false;
     }
@@ -126,6 +191,23 @@ void ALToolGhostEdit::handleDeselect()
 
 void ALToolGhostEdit::stopEditMode(bool restore_toolset)
 {
+    LLToolMgr* tool_mgr = LLToolMgr::getInstance();
+    const bool picker_is_transient =
+        tool_mgr && tool_mgr->usingTransientTool() &&
+        tool_mgr->getCurrentTool() == this;
+    // Clear ownership before teardown: restoring a tool can synchronously
+    // invoke selection callbacks, and none of them may inherit the old claim.
+    mOwnerId.setNull();
     mEditModeActive = false;
     mManipProxy.teardown(restore_toolset);
+    // State B has no stock-gizmo handoff to replace the transient picker.
+    // Clear it here for every terminal path (including master-hide from the
+    // non-owner panel), while preserving any different tool installed
+    // reentrantly during teardown.
+    if (picker_is_transient &&
+        tool_mgr->usingTransientTool() &&
+        tool_mgr->getCurrentTool() == this)
+    {
+        tool_mgr->clearTransientTool();
+    }
 }

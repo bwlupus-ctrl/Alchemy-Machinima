@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- Standalone Temporal Capture floater (World Time Scale). A thin host: the
+     controls are the shared ALPanelTemporalCapture (panel_temporal_capture.xml),
+     the SAME panel the Director Console Temporal tab embeds, so the two can never
+     drift. See doc/TEMPORAL_CAPTURE_WORLD_TIME_SCALE_BRIEF.md. -->
+<floater
+ legacy_header_height="18"
+ can_resize="true"
+ height="358"
+ min_height="320"
+ min_width="356"
+ layout="topleft"
+ name="floater_temporal_capture"
+ title="TEMPORAL CAPTURE"
+ save_rect="true"
+ single_instance="true"
+ width="356">
+    <panel
+     class="panel_temporal_capture"
+     filename="panel_temporal_capture.xml"
+     follows="all"
+     height="332"
+     layout="topleft"
+     left="6"
+     top="22"
+     name="temporal_capture_panel"
+     width="344" />
+</floater>

@@ -29,23 +29,138 @@
 
 namespace
 {
-// The proxy volume is a UNIT cube; object scale gives it world dimensions. Its
-// local CENTER sits height/2 above its local foot, so the ghost-foot <-> proxy-
-// center conversion rotates that offset by the instance orientation (pitch/roll
-// safe). Height is the canonical manip bound, NOT the avatar's pelvisToFoot --
-// Ghost Studio rendering pivots the real geometry at its own live/frozen foot.
-LLVector3d proxyCenterFromFoot(const LLVector3d& foot_global,
-                               const LLQuaternion& rotation, F32 height)
+// The proxy volume is a UNIT cube. For an individual clone, local_center is the
+// middle of the canonical foot-anchored avatar box. For a collapsed group it is
+// the centre of the union of every member's rotated/scaled avatar box in GROUP
+// LOCAL space. Keeping this conversion explicit is what lets a bounds-centred
+// stock gizmo drive a group whose authoring pivot is somewhere else.
+LLVector3d proxyCenterFromPivot(const LLVector3d& pivot_global,
+                                const LLQuaternion& rotation,
+                                const LLVector3& local_center, F32 scale)
 {
-    const LLVector3 world_offset = LLVector3(0.f, 0.f, 0.5f * height) * rotation;
-    return foot_global + LLVector3d(world_offset);
+    LLVector3 world_offset = local_center * scale;
+    world_offset *= rotation;
+    return pivot_global + LLVector3d(world_offset);
 }
 
-LLVector3d footFromProxyCenter(const LLVector3d& center_global,
-                               const LLQuaternion& rotation, F32 height)
+LLVector3d pivotFromProxyCenter(const LLVector3d& center_global,
+                                const LLQuaternion& rotation,
+                                const LLVector3& local_center, F32 scale)
 {
-    const LLVector3 world_offset = LLVector3(0.f, 0.f, 0.5f * height) * rotation;
+    LLVector3 world_offset = local_center * scale;
+    world_offset *= rotation;
     return center_global - LLVector3d(world_offset);
+}
+
+bool groupLocalBounds(const ALGhostGroupModel::Group& group,
+                      F32 avatar_width, F32 avatar_depth, F32 avatar_height,
+                      LLVector3& center, LLVector3& dimensions)
+{
+    bool have_corner = false;
+    LLVector3 minimum;
+    LLVector3 maximum;
+    for (const ALGhostGroupModel::Member& member : group.mMembers)
+    {
+        if (!member.mLocal.isFinite())
+        {
+            return false;
+        }
+        const LLVector3 local_foot(
+            (F32)member.mLocal.mFoot.mdV[VX],
+            (F32)member.mLocal.mFoot.mdV[VY],
+            (F32)member.mLocal.mFoot.mdV[VZ]);
+        if (!local_foot.isFinite())
+        {
+            return false;
+        }
+        for (S32 x = 0; x < 2; ++x)
+        {
+            for (S32 y = 0; y < 2; ++y)
+            {
+                for (S32 z = 0; z < 2; ++z)
+                {
+                    LLVector3 corner(
+                        (x ? 0.5f : -0.5f) * avatar_width,
+                        (y ? 0.5f : -0.5f) * avatar_depth,
+                        z ? avatar_height : 0.f);
+                    corner *= member.mLocal.mScale;
+                    corner *= member.mLocal.mRotation;
+                    corner += local_foot;
+                    if (!corner.isFinite())
+                    {
+                        return false;
+                    }
+                    if (!have_corner)
+                    {
+                        minimum = maximum = corner;
+                        have_corner = true;
+                    }
+                    else
+                    {
+                        minimum.setVec(
+                            llmin(minimum.mV[VX], corner.mV[VX]),
+                            llmin(minimum.mV[VY], corner.mV[VY]),
+                            llmin(minimum.mV[VZ], corner.mV[VZ]));
+                        maximum.setVec(
+                            llmax(maximum.mV[VX], corner.mV[VX]),
+                            llmax(maximum.mV[VY], corner.mV[VY]),
+                            llmax(maximum.mV[VZ], corner.mV[VZ]));
+                    }
+                }
+            }
+        }
+    }
+    if (!have_corner)
+    {
+        return false;
+    }
+    center = (minimum + maximum) * 0.5f;
+    dimensions = maximum - minimum;
+    return center.isFinite() && dimensions.isFinite() &&
+           dimensions.mV[VX] > 0.f && dimensions.mV[VY] > 0.f &&
+           dimensions.mV[VZ] > 0.f;
+}
+
+F32 uniformScaleFromProxy(const LLVector3& proxy_dimensions,
+                          const LLVector3& local_dimensions,
+                          F32 start_scale)
+{
+    F32 result = start_scale;
+    F32 largest_relative_change = -1.f;
+    for (S32 axis = VX; axis <= VZ; ++axis)
+    {
+        const F32 base = local_dimensions.mV[axis];
+        const F32 candidate = base > 0.f
+            ? proxy_dimensions.mV[axis] / base : start_scale;
+        if (!llfinite(candidate) || candidate <= 0.f)
+        {
+            continue;
+        }
+        const F32 relative_change =
+            fabsf(candidate - start_scale) / llmax(0.0001f, start_scale);
+        if (relative_change > largest_relative_change)
+        {
+            largest_relative_change = relative_change;
+            result = candidate;
+        }
+    }
+    return result;
+}
+
+ALGhostStudio::Instance* backingInstanceForUnit(
+    ALGhostStudio& studio, const LLUUID& unit_id)
+{
+    if (ALGhostStudio::Instance* inst = studio.getInstance(unit_id))
+    {
+        return inst;
+    }
+    const ALGhostGroupModel::Group* group =
+        studio.groupForMember(unit_id);
+    if (!group || group->mId != unit_id || group->mMembers.empty())
+    {
+        return nullptr;
+    }
+    return studio.getInstance(group->mMembers.front().mInstanceId);
 }
 } // anonymous namespace
 
@@ -60,6 +175,7 @@ void ALGhostManipProxy::begin()
 {
     mEditMode = true;
     mSeenRevision = 0;      // force the first-tick push
+    mSeenGroupRevision = 0;
 }
 
 bool ALGhostManipProxy::owns(const LLViewerObject* object) const
@@ -194,6 +310,7 @@ void ALGhostManipProxy::enterPickerState()
     destroyProxy();
     mInstanceId.setNull();
     mSeenRevision = 0;
+    mSeenGroupRevision = 0;
 
     // Hand the in-world ghost picker back so the user can select another ghost.
     // The departure detector treats ALToolGhostEdit as an editing tool, so this
@@ -208,19 +325,52 @@ void ALGhostManipProxy::pushInstanceToProxy()
     {
         return;
     }
-    const ALGhostStudio::Instance* inst = ALGhostStudio::instance().getInstance(mInstanceId);
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    const ALGhostStudio::Instance* inst =
+        backingInstanceForUnit(studio, mInstanceId);
     if (!inst)
     {
         return;
     }
-    // The proxy box tracks the ghost's UNIFORM scale so the gizmo and selection
-    // bounds always MATCH the rendered ghost -- a size mismatch (e.g. after a
-    // panel scale change) buries the manip handles inside the body.
-    const F32 s = llclamp(inst->mScale, 0.05f, 10.f);
-    mProxy->setScale(LLVector3(PROXY_WIDTH * s, PROXY_DEPTH * s, PROXY_HEIGHT * s), false);
-    mProxy->setRotation(inst->mRotation, false);
+    LLVector3d foot;
+    LLQuaternion rotation;
+    F32 unit_scale = 1.f;
+    if (!studio.getUnitTransform(
+            mInstanceId, foot, rotation, unit_scale))
+    {
+        return;
+    }
+
+    const ALGhostGroupModel::Group* group =
+        studio.groupForMember(mInstanceId);
+    const bool whole_group =
+        group && (mInstanceId == group->mId || !group->mEditMembers);
+    LLVector3 local_center(0.f, 0.f, 0.5f * PROXY_HEIGHT);
+    LLVector3 local_dimensions(PROXY_WIDTH, PROXY_DEPTH, PROXY_HEIGHT);
+    if (whole_group &&
+        !groupLocalBounds(*group, PROXY_WIDTH, PROXY_DEPTH, PROXY_HEIGHT,
+                          local_center, local_dimensions))
+    {
+        return;
+    }
+
+    // Individual/member proxy bounds keep the avatar scale limits. A collapsed
+    // group uses its authoring world scale directly: each member's own resolved
+    // scale is constrained by transformGroup(), but the group-world factor is
+    // not itself an avatar scale and must not be clamped to [0.05, 10].
+    const F32 s = whole_group
+        ? unit_scale : llclamp(unit_scale, 0.05f, 10.f);
+    if (!llfinite(s) || s <= 0.f)
+    {
+        return;
+    }
+    mProxyLocalCenter = local_center;
+    mProxyLocalDimensions = local_dimensions;
+    mProxy->setScale(local_dimensions * s, false);
+    mProxy->setRotation(rotation, false);
     mProxy->setPositionGlobal(
-        proxyCenterFromFoot(inst->mFootGlobal, inst->mRotation, PROXY_HEIGHT * s), false);
+        proxyCenterFromPivot(foot, rotation, local_center, s), false);
+    mSeenGroupRevision = group ? group->mRevision : 0;
 }
 
 void ALGhostManipProxy::pullProxyToInstance()
@@ -229,7 +379,9 @@ void ALGhostManipProxy::pullProxyToInstance()
     {
         return;
     }
-    ALGhostStudio::Instance* inst = ALGhostStudio::instance().getInstance(mInstanceId);
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    ALGhostStudio::Instance* inst =
+        backingInstanceForUnit(studio, mInstanceId);
     if (!inst)
     {
         return;
@@ -240,19 +392,38 @@ void ALGhostManipProxy::pullProxyToInstance()
     {
         inst->mChaosHasBase = false;
     }
+    ALGhostGroupModel::Group* group =
+        studio.groupForMember(mInstanceId);
+    const bool whole_group =
+        group && (mInstanceId == group->mId || !group->mEditMembers);
 
-    // STRETCH drag: derive a UNIFORM ghost scale from the proxy box height, and
-    // KEEP the drag-start foot/rotation so the feet stay planted. Stock scale is
-    // per-axis + center-pivot; we deliberately do NOT follow that wander here --
-    // endDrag() re-normalises the proxy back to a planted uniform box. This reads
-    // only (never writes the proxy mid-drag), so it doesn't fight LLManipScale.
+    // STRETCH drag: derive one uniform factor from whichever proxy axis changed
+    // most relative to its LOCAL base dimension. Individuals/member edits keep
+    // their drag-start feet planted. Collapsed groups likewise keep their
+    // authored pivot fixed, matching the numeric scale control. This reads only
+    // (never writes the proxy mid-drag), so it doesn't fight LLManipScale.
     if (LLToolMgr::getInstance()->getCurrentTool() == LLToolCompScale::getInstance())
     {
-        if (inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+        if (inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE && !group)
         {
             return; // entity scale remains exclusively on the outer transform
         }
-        const F32 s = llclamp(mProxy->getScale().mV[VZ] / PROXY_HEIGHT, 0.05f, 10.f);
+        const F32 requested_scale = uniformScaleFromProxy(
+            mProxy->getScale(), mDragLocalDimensions, mDragStartScale);
+        if (whole_group)
+        {
+            studio.transformGroup(
+                mInstanceId, mDragStartFoot,
+                mDragStartRotation, requested_scale);
+            return;
+        }
+        const F32 s = llclamp(requested_scale, 0.05f, 10.f);
+        if (group)
+        {
+            studio.transformUnit(
+                mInstanceId, mDragStartFoot, mDragStartRotation, s);
+            return;
+        }
         inst->mScale      = s;
         inst->mFootGlobal = mDragStartFoot;
         inst->mRotation   = mDragStartRotation;
@@ -261,6 +432,38 @@ void ALGhostManipProxy::pullProxyToInstance()
 
     // TRANSLATE / ROTATE drag: position + rotation; scale unchanged.
     const LLQuaternion rotation = mProxy->getRotation();
+    if (group)
+    {
+        if (whole_group)
+        {
+            LLVector3d pivot = mDragStartFoot;
+            if (LLToolMgr::getInstance()->getCurrentTool() !=
+                LLToolCompRotate::getInstance())
+            {
+                // Translation follows the proxy centre; rotation uses the
+                // authored group pivot, exactly like the numeric yaw control.
+                pivot = pivotFromProxyCenter(
+                    mProxy->getPositionGlobal(), rotation,
+                    mDragLocalCenter, mDragStartScale);
+            }
+            studio.transformGroup(
+                mInstanceId, pivot, rotation, mDragStartScale);
+        }
+        else
+        {
+            LLVector3d foot = mDragStartFoot;
+            if (LLToolMgr::getInstance()->getCurrentTool() !=
+                LLToolCompRotate::getInstance())
+            {
+                foot = pivotFromProxyCenter(
+                    mProxy->getPositionGlobal(), rotation,
+                    mDragLocalCenter, mDragStartScale);
+            }
+            studio.transformUnit(
+                mInstanceId, foot, rotation, inst->mScale);
+        }
+        return;
+    }
     inst->mRotation = rotation;
     if (LLToolMgr::getInstance()->getCurrentTool() == LLToolCompRotate::getInstance())
     {
@@ -274,12 +477,13 @@ void ALGhostManipProxy::pullProxyToInstance()
     {
         // TRANSLATE: the foot follows the box centre (the center<->foot conversion
         // uses the SCALED box height).
-        const F32 h = PROXY_HEIGHT * llclamp(inst->mScale, 0.05f, 10.f);
-        inst->mFootGlobal = footFromProxyCenter(mProxy->getPositionGlobal(), rotation, h);
+        inst->mFootGlobal = pivotFromProxyCenter(
+            mProxy->getPositionGlobal(), rotation,
+            mDragLocalCenter, llclamp(inst->mScale, 0.05f, 10.f));
     }
     if (inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
     {
-        ALGhostStudio::instance().applyEntityTransform(inst->mId);
+        studio.applyEntityTransform(inst->mId);
     }
 }
 
@@ -302,12 +506,38 @@ bool ALGhostManipProxy::manipHasMouseCapture() const
 void ALGhostManipProxy::beginDrag()
 {
     mDragging = true;
+    mDragLocalCenter = mProxyLocalCenter;
+    mDragLocalDimensions = mProxyLocalDimensions;
+    mDragStartMemberPinKnown = false;
+    mDragStartMemberPinned = false;
     // Snapshot the pre-drag transform so a cancelled drag can restore it.
-    if (const ALGhostStudio::Instance* inst = ALGhostStudio::instance().getInstance(mInstanceId))
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    if (const ALGhostStudio::Instance* inst =
+            backingInstanceForUnit(studio, mInstanceId))
     {
-        mDragStartFoot     = inst->mFootGlobal;
-        mDragStartRotation = inst->mRotation;
-        mDragStartScale    = inst->mScale;
+        if (!studio.getUnitTransform(
+                mInstanceId, mDragStartFoot,
+                mDragStartRotation, mDragStartScale))
+        {
+            mDragStartFoot = inst->mFootGlobal;
+            mDragStartRotation = inst->mRotation;
+            mDragStartScale = inst->mScale;
+        }
+        if (const ALGhostGroupModel::Group* group =
+                studio.groupForMember(mInstanceId);
+            group && group->mEditMembers &&
+            mInstanceId != group->mId)
+        {
+            for (const ALGhostGroupModel::Member& member : group->mMembers)
+            {
+                if (member.mInstanceId == inst->mId)
+                {
+                    mDragStartMemberPinKnown = true;
+                    mDragStartMemberPinned = member.mPinned;
+                    break;
+                }
+            }
+        }
     }
 }
 
@@ -321,17 +551,82 @@ void ALGhostManipProxy::endDrag(bool commit)
     if (commit)
     {
         pullProxyToInstance();      // capture the final transform
+        ALGhostStudio& studio = ALGhostStudio::instance();
+        if (ALGhostStudio::Instance* inst =
+                backingInstanceForUnit(studio, mInstanceId))
+        {
+            // The live drag deliberately writes an ungrouped overlay directly so
+            // a revision push cannot fight the stock manipulator. Commit the final
+            // absolute values through the studio once the drag is over so every
+            // backing kind gets the normal revision-bearing transform path.
+            const ALGhostGroupModel::Group* group =
+                studio.groupForMember(mInstanceId);
+            const bool whole_group =
+                group && (mInstanceId == group->mId ||
+                          !group->mEditMembers);
+            if (whole_group)
+            {
+                LLVector3d foot;
+                LLQuaternion rotation;
+                F32 scale = 1.f;
+                if (studio.getUnitTransform(
+                        mInstanceId, foot, rotation, scale))
+                {
+                    studio.transformGroup(
+                        mInstanceId, foot, rotation, scale);
+                }
+            }
+            else
+            {
+                studio.transformUnit(
+                    mInstanceId, inst->mFootGlobal,
+                    inst->mRotation, inst->mScale);
+            }
+            mSeenRevision = inst->mTransformRevision;
+        }
         pushInstanceToProxy();      // re-normalise the proxy: a planted UNIFORM box
                                     // matching the ghost (undoes a Stretch drag's
                                     // per-axis / center-pivot wander on the proxy)
     }
-    else if (ALGhostStudio::Instance* inst = ALGhostStudio::instance().getInstance(mInstanceId))
+    else
     {
+        ALGhostStudio& studio = ALGhostStudio::instance();
+        ALGhostStudio::Instance* inst =
+            backingInstanceForUnit(studio, mInstanceId);
+        if (!inst)
+        {
+            mDragStartMemberPinKnown = false;
+            return;
+        }
         // Cancel: restore the pre-drag transform + scale (setTransform bumps the
         // revision, so the next tick pushes it all back onto the proxy).
-        inst->mScale = mDragStartScale;
-        inst->setTransform(mDragStartFoot, mDragStartRotation);
+        const ALGhostGroupModel::Group* group =
+            studio.groupForMember(mInstanceId);
+        const bool whole_group =
+            group && (mInstanceId == group->mId ||
+                      !group->mEditMembers);
+        if (whole_group)
+        {
+            studio.transformGroup(
+                mInstanceId, mDragStartFoot,
+                mDragStartRotation, mDragStartScale);
+        }
+        else
+        {
+            studio.transformUnit(
+                mInstanceId, mDragStartFoot,
+                mDragStartRotation, mDragStartScale);
+        }
+        if (mDragStartMemberPinKnown)
+        {
+            // transformUnit() deliberately pins a member as soon as it is
+            // edited. A cancelled drag must be observationally neutral, so
+            // restore the pin bit that existed before the first live update.
+            studio.setGroupMemberPinned(
+                mInstanceId, mDragStartMemberPinned);
+        }
     }
+    mDragStartMemberPinKnown = false;
 }
 
 // -----------------------------------------------------------------------------
@@ -340,6 +635,15 @@ void ALGhostManipProxy::tick()
     if (!mEditMode)
     {
         teardown();
+        return;
+    }
+    if (!ALGhostStudio::instance().getShowAll())
+    {
+        // Master hide means there is no visible/pickable edit target. Tear the
+        // proxy and stock gizmo down immediately, including when visibility was
+        // changed by the other panel or an external caller.
+        ALToolGhostEdit::getInstance()->stopEditMode(
+            /*restore_toolset*/ true);
         return;
     }
 
@@ -381,6 +685,7 @@ void ALGhostManipProxy::tick()
         mInstanceId = selected;
         destroyProxy();
         mSeenRevision = 0;
+        mSeenGroupRevision = 0;
     }
 
     // Region temporarily unavailable (e.g. a region cross in flight): an
@@ -398,7 +703,8 @@ void ALGhostManipProxy::tick()
     // in edit mode but hand the in-world picker back (State B) so the user can pick
     // another ghost. Only an explicit stop (toggle off / Esc / departure) tears
     // edit mode down.
-    ALGhostStudio::Instance* inst = selected.notNull() ? studio.getInstance(selected) : nullptr;
+    ALGhostStudio::Instance* inst = selected.notNull()
+        ? backingInstanceForUnit(studio, selected) : nullptr;
     if (!inst)
     {
         enterPickerState();
@@ -434,7 +740,11 @@ void ALGhostManipProxy::tick()
         {
             endDrag(true);
         }
-        if (inst->mTransformRevision != mSeenRevision)
+        const ALGhostGroupModel::Group* group =
+            studio.groupForMember(inst->mId);
+        const U64 group_revision = group ? group->mRevision : 0;
+        if (inst->mTransformRevision != mSeenRevision ||
+            group_revision != mSeenGroupRevision)
         {
             pushInstanceToProxy();
             if (inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
@@ -482,6 +792,7 @@ void ALGhostManipProxy::teardown(bool restore_toolset)
     mSavedTool    = nullptr;
     mInstanceId.setNull();
     mSeenRevision = 0;
+    mSeenGroupRevision = 0;
 
     // Restore the pre-edit toolset only for an explicit exit. On a departure
     // (the user already switched away from gBasicToolset) restoring would

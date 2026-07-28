@@ -867,9 +867,23 @@ bool ALChatCommand::parseCommand(std::string data)
                     ALGhostStudio::instance().getInstance(selected);
                 if (inst && inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
                 {
-                    ALGhostStudio::instance().removeInstance(selected);
-                    LL_INFOS("GhostStudio") << "/ghostclear selected: released 1 entity clone"
-                                            << LL_ENDL;
+                    const ALGhostGroupModel::Group* group =
+                        ALGhostStudio::instance().groupForMember(selected);
+                    if (group)
+                    {
+                        LL_WARNS("GhostStudio")
+                            << "/ghostclear selected: the selected clone belongs "
+                               "to a group; delete the group explicitly in "
+                               "Ghost Studio, or ungroup it first"
+                            << LL_ENDL;
+                    }
+                    else
+                    {
+                        ALGhostStudio::instance().removeInstance(selected);
+                        LL_INFOS("GhostStudio")
+                            << "/ghostclear selected: released 1 entity clone"
+                            << LL_ENDL;
+                    }
                 }
                 else
                 {

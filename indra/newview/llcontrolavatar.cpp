@@ -584,8 +584,18 @@ void LLControlAvatar::updateAnimations()
     {
         LLVOVolume *volp = *vol_it;
         //LL_INFOS("AnimatedObjects") << "updating anim for vol " << volp->getID() << " root " << mRootVolp->getID() << LL_ENDL;
-        signaled_animation_map_t& signaled_animations = LLObjectSignaledAnimationMap::instance().getMap()[volp->getID()];
-        for (std::map<LLUUID,S32>::iterator anim_it = signaled_animations.begin();
+        object_signaled_animation_map_t& object_animations =
+            LLObjectSignaledAnimationMap::instance().getMap();
+        object_signaled_animation_map_t::const_iterator found =
+            object_animations.find(volp->getID());
+        if (found == object_animations.end())
+        {
+            // No entry and an empty entry both contribute no animations; avoid
+            // manufacturing empty process-wide state while merely reading it.
+            continue;
+        }
+        const signaled_animation_map_t& signaled_animations = found->second;
+        for (signaled_animation_map_t::const_iterator anim_it = signaled_animations.begin();
              anim_it != signaled_animations.end();
              ++anim_it)
         {

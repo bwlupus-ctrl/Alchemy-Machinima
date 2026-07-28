@@ -4369,7 +4369,23 @@ void LLSelectMgr::selectDelete()
     // normal selection-delete path is the only place a Delete key still reaches.
     if (selectionHasGhostManipProxy(mSelectedObjects))
     {
-        ALGhostStudio::instance().removeInstance(ALGhostStudio::instance().getSelected());
+        ALGhostStudio& studio = ALGhostStudio::instance();
+        const LLUUID selected = studio.getSelected();
+        const ALGhostGroupModel::Group* group =
+            studio.groupForMember(selected);
+        if (!group)
+        {
+            studio.removeInstance(selected);
+        }
+        else if (!group->mEditMembers)
+        {
+            studio.removeInstance(selected);
+        }
+        else if (selected == group->mId && !group->mMembers.empty())
+        {
+            studio.removeInstance(
+                group->mMembers.front().mInstanceId);
+        }
         return;
     }
 
@@ -4533,7 +4549,23 @@ void LLSelectMgr::selectForceDelete()
 {
     if (selectionHasGhostManipProxy(mSelectedObjects))
     {
-        ALGhostStudio::instance().removeInstance(ALGhostStudio::instance().getSelected());
+        ALGhostStudio& studio = ALGhostStudio::instance();
+        const LLUUID selected = studio.getSelected();
+        const ALGhostGroupModel::Group* group =
+            studio.groupForMember(selected);
+        if (!group)
+        {
+            studio.removeInstance(selected);
+        }
+        else if (!group->mEditMembers)
+        {
+            studio.removeInstance(selected);
+        }
+        else if (selected == group->mId && !group->mMembers.empty())
+        {
+            studio.removeInstance(
+                group->mMembers.front().mInstanceId);
+        }
         return;
     }
     if (selectionAllLocalMeshPreview(mSelectedObjects))
@@ -9292,4 +9324,3 @@ bool LLCheckIdenticalFunctor<class LLFace *>::same(class LLFace* const & a, clas
     (void)tolerance;                                                                \
     return a == b;                                                                  \
 }
-

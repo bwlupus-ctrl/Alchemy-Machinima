@@ -270,14 +270,23 @@ set(viewer_SOURCE_FILES
     llcallingcard.cpp
     llcameraoperator.cpp
     llactormover.cpp
+    alghostattachmentenumerator.cpp
+    alghostmaterialresolver.cpp
+    alghostspawnengine.cpp
     llclonefidelityaudit.cpp
     llghostdeferreddiagnostics.cpp
+    alformationsolver.cpp
+    alghostgroupmodel.cpp
+    alghostinteractionstate.cpp
     alghostmanipproxy.cpp
+    alghostnameplates.cpp
     alghoststudio.cpp
     alghostanimassetindex.cpp
+    alworldoverlayviz.cpp
     alobjectpathmover.cpp
     alpanelghoststudio.cpp
     alpanelpropmover.cpp
+    altoolcrowdplace.cpp
     altoolghostedit.cpp
     altoolghostplace.cpp
     altoolpathedit.cpp
@@ -285,6 +294,9 @@ set(viewer_SOURCE_FILES
     lldirectorcast.cpp
     llfloateractormover.cpp
     llfloaterdirector.cpp
+    alfloatertemporalcapture.cpp
+    alpaneltemporalcapture.cpp
+    llpresentationtime.cpp
     alpanelactormover.cpp
     alpanelanimpreview.cpp
     alpanelcinecamparams.cpp
@@ -1085,15 +1097,24 @@ set(viewer_HEADER_FILES
     llcallingcard.h
     llcameraoperator.h
     llactormover.h
+    alghostattachmentenumerator.h
+    alghostmaterialresolver.h
+    alghostspawnengine.h
     llclonefidelityaudit.h
     llghostcoverage.h
     llghostdeferreddiagnostics.h
+    alformationsolver.h
+    alghostgroupmodel.h
+    alghostinteractionstate.h
     alghostmanipproxy.h
+    alghostnameplates.h
     alghoststudio.h
     alghostanimassetindex.h
+    alworldoverlayviz.h
     alobjectpathmover.h
     alpanelghoststudio.h
     alpanelpropmover.h
+    altoolcrowdplace.h
     altoolghostedit.h
     altoolghostplace.h
     altoolpathedit.h
@@ -1101,6 +1122,10 @@ set(viewer_HEADER_FILES
     lldirectorcast.h
     llfloateractormover.h
     llfloaterdirector.h
+    alfloatertemporalcapture.h
+    alpaneltemporalcapture.h
+    llpresentationtime.h
+    lltemporalframecontext.h
     alpanelactormover.h
     alpanelanimpreview.h
     alpanelcinecamparams.h
@@ -2465,6 +2490,9 @@ if (BUILD_TESTING)
   # This creates a separate test project per file listed.
 
   SET(viewer_TEST_SOURCE_FILES
+    alformationsolver.cpp
+    alghostgroupmodel.cpp
+    alghostinteractionstate.cpp
     alsceneexplorerpredicate.cpp
     llagentaccess.cpp
     lldateutil.cpp

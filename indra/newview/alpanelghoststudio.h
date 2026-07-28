@@ -24,6 +24,7 @@
 #include "alghoststudio.h"
 
 #include "lluuid.h"
+#include "llframetimer.h"
 #include "v3dmath.h"
 #include "llquaternion.h"
 
@@ -34,12 +35,12 @@ class LLButton;
 class LLCheckBoxCtrl;
 class LLComboBox;
 class LLLineEditor;
-class LLFlyoutButton;
 class LLF32UICtrl;
 class LLScrollListCtrl;
 class LLSliderCtrl;
 class LLSpinCtrl;
 class LLTextBox;
+class LLTextEditor;
 class ALCompassDial;
 
 class ALPanelGhostStudio final : public LLPanel
@@ -61,9 +62,19 @@ private:
     void refreshAnimationLibrary();
     void populateAnimationLibrary();   // explicit inventory re-scan (Refresh)
     void refreshStatus();           // bottom status line
+    void refreshRigDiagnostics();   // selected entity clone/source prim state
 
     LLUUID selectedInstance() const;    // list selection -> instance id (null = none)
+    LLUUID selectedListValue() const;   // raw row value (group id for headers)
+    LLUUID selectedUnitId() const;      // group header id, otherwise instance id
     std::vector<LLUUID> selectedInstances() const;
+    std::vector<LLUUID> selectedUnitIds() const;
+    bool selectedUnitTransform(LLVector3d& foot, LLQuaternion& rotation,
+                               F32& scale, bool& collapsed_group) const;
+    bool applySelectedUnitTransform(const LLVector3d& foot,
+                                    const LLQuaternion& rotation, F32 scale);
+    bool applyUnitTransform(const LLUUID& unit_id, const LLVector3d& foot,
+                            const LLQuaternion& rotation, F32 scale);
 
     // ---- list + CRUD ----
     void onListSelect();
@@ -122,22 +133,48 @@ private:
     void onShimmerAmountCommit();
     void onPixelCommit();
     void onGlitchCommit();
+    void onDistortCommit();
+    void onDistortAmountCommit();
     void onBrightnessCommit();      // [R2-1] night-scene output dimmer
+    void onEffectFpsCommit();
     void onEntityLookCommit();
 
     // ---- pose ----
     void onClickFreeze();           // "Grab pose now" -> FROZEN snapshot
     void onClickLive();             // "Follow live" -> drop the snapshot
 
-    // ---- array helper ----
+    // ---- crowd placement + legacy freeze-strip layout ----
     void onClickArray(ALGhostStudio::EFormation formation);
     void onClickBuildArray();
+    void onClickCrowdConfirm();
+    void onClickCrowdUnpin();
+    void onClickCrowdCancel();
     void onFormationCommit();
-    // restage the in-world placement preview from the current controls
-    void refreshFormationPreview();
+    void captureFormationParameter();
+    void configureFormationParameter(ALGhostStudio::EFormation formation);
+    void importFormationParameters(
+        const ALGhostStudio::FormationSpec& spec);
+    bool formationSupportsFreezeStrip(
+        ALGhostStudio::EFormation formation) const;
+    ALGhostStudio::FormationSpec capturePlacementSpec() const;
+    void updateOwnedCrowdPlacement();
+    void refreshCrowdPlacement();
+    void releaseOwnedCrowdPlacement();
     void onClickStartStrip();
     void onClickCancelStrip();
     void onMotionCommit();
+    void onClickPickFacingTarget();
+    void onCrowdFacingPointPicked(const LLUUID& prototype_id, bool accepted,
+                                  const LLVector3d& point_global);
+    void syncCrowdFacingPointPrototype();
+    void onClickGroup();
+    void onClickUngroup();
+    void onLockModeCommit();
+    void onGroupEditMembersCommit();
+    void onGroupMemberPinnedCommit();
+    void onClickGroupMemberReset();
+    void onNameplateModeCommit();
+    void onPoseRateCommit();
 
     // ---- master toggle ----
     void onShowAllToggle();
@@ -148,10 +185,16 @@ private:
 
     // ---- change-diffing state ----
     std::string mListSig;           // composed instance-list signature last built
-    std::string mSourceSig;         // cast signature the source combo was built from
+    // Cast signature the source combo was built from. Seeded to a sentinel that no
+    // real signature can equal (a real one is "" for an empty cast, or ends in '|'),
+    // so refreshSourceCombo() builds at least once -- otherwise a fresh login (empty
+    // cast, sig == "") would early-return and never add the default "You" entry,
+    // leaving the source dropdown blank.
+    std::string mSourceSig{"<unbuilt>"};
     std::string mLookTargetSig;
     bool        mAnimationLibraryPopulated = false;  // filled once; Refresh re-scans
     LLUUID      mShownFor;          // instance the detail widgets were last loaded for
+    U64         mObservedSelectionRevision = 0;
     bool        mEditMode = false;  // [R2-3] our transient edit tool is armed
     bool        mHintEdit = false;  // which hint string the header line shows
 
@@ -161,7 +204,8 @@ private:
     LLTextBox*        mHint = nullptr;              // [R2-3] swaps in edit mode
     LLScrollListCtrl* mList = nullptr;
     LLComboBox*       mSourceCombo = nullptr;
-    LLFlyoutButton*   mAddBtn = nullptr;
+    LLComboBox*       mCloneTypeCombo = nullptr;
+    LLButton*         mAddBtn = nullptr;
     LLButton*         mDupBtn = nullptr;
     LLButton*         mDelBtn = nullptr;
     LLButton*         mRefreshBtn = nullptr;
@@ -219,12 +263,18 @@ private:
     LLSliderCtrl*     mShimmerAmountSlider = nullptr;
     LLSliderCtrl*     mPixelSlider = nullptr;
     LLSliderCtrl*     mGlitchSlider = nullptr;
+    LLComboBox*       mDistortCombo = nullptr;
+    LLSliderCtrl*     mDistortAmountSlider = nullptr;
     LLSliderCtrl*     mBrightnessSlider = nullptr;    // [R2-1]
+    LLSpinCtrl*       mEffectFps = nullptr;
     LLComboBox*       mEntityLookCombo = nullptr;
 
     LLButton*         mFreezeBtn = nullptr;
     LLButton*         mLiveBtn = nullptr;
     LLTextBox*        mPoseStatus = nullptr;
+    LLTextEditor*     mRigDiagnostics = nullptr;
+    LLFrameTimer      mRigDiagnosticsTimer;
+    LLUUID            mRigDiagnosticsSelection;
 
     LLSpinCtrl*       mArrayCount = nullptr;
     LLSpinCtrl*       mArraySpacing = nullptr;
@@ -232,7 +282,32 @@ private:
     LLButton*         mArrayRingBtn = nullptr;
     LLComboBox*       mFormationCombo = nullptr;
     LLSpinCtrl*       mFormationParam = nullptr;
+    LLButton*         mFormationParamReset = nullptr;
+    LLSpinCtrl*       mFormationSeed = nullptr;
+    LLSpinCtrl*       mFormationJitter = nullptr;
+    LLComboBox*       mFormationGuideShape = nullptr;
+    LLSpinCtrl*       mFormationGuideSize = nullptr;
+    LLSpinCtrl*       mFormationEdgeGap = nullptr;
+    LLSpinCtrl*       mBrigadeColumns = nullptr;
+    LLSpinCtrl*       mBrigadeRows = nullptr;
+    LLSpinCtrl*       mBrigadeFileSpacing = nullptr;
+    LLSpinCtrl*       mBrigadeRankSpacing = nullptr;
+    LLComboBox*       mFormationFacing = nullptr;
+    LLCheckBoxCtrl*   mFormationTerrain = nullptr;
+    LLComboBox*       mCrowdCopiesAs = nullptr;
+    LLComboBox*       mCrowdCreateMode = nullptr;
+    LLComboBox*       mLockMode = nullptr;
+    LLButton*         mPickFacingTarget = nullptr;
     LLButton*         mArrayBuildBtn = nullptr;
+    LLButton*         mCrowdConfirmBtn = nullptr;
+    LLButton*         mCrowdUnpinBtn = nullptr;
+    LLButton*         mCrowdCancelBtn = nullptr;
+    LLTextBox*        mCrowdPlacementStatus = nullptr;
+    LLTextBox*        mCrowdInstructions = nullptr;
+    LLComboBox*       mNameplateMode = nullptr;
+    LLCheckBoxCtrl*   mGroupEditMembersCheck = nullptr;
+    LLCheckBoxCtrl*   mGroupMemberPinnedCheck = nullptr;
+    LLButton*         mGroupMemberResetBtn = nullptr;
     LLSpinCtrl*       mStripCount = nullptr;
     LLSpinCtrl*       mStripInterval = nullptr;
     LLButton*         mStripStartBtn = nullptr;
@@ -242,7 +317,35 @@ private:
     LLSpinCtrl*       mMotionSpeed = nullptr;
     LLSpinCtrl*       mMotionAmplitude = nullptr;
     LLButton*         mMotionApplyBtn = nullptr;
+    LLButton*         mGroupBtn = nullptr;
+    LLButton*         mUngroupBtn = nullptr;
+    LLSpinCtrl*       mPoseRate = nullptr;
     U32               mActiveStrip = 0;
+
+    LLUUID            mPlacementOwner;
+    U64               mLastCrowdDraftRevision = 0;
+    bool              mApplyingCrowdDraft = false;
+    bool              mSawOwnedCrowdDraft = false;
+    std::string       mLastCrowdMessage;
+    ALGhostStudio::EFormation mConfiguredFormation =
+        ALGhostStudio::FORMATION_LINE;
+    U32               mFormationGridColumns = 0;
+    U32               mBrigadeColumnCount = 5;
+    U32               mBrigadeRowCount = 4;
+    F32               mBrigadeFileGap = 1.5f;
+    F32               mBrigadeRankGap = 1.5f;
+    F32               mFormationArcSweep = 120.f;
+    F32               mFormationLaneGap = 2.f;
+    F32               mFormationChevronAngle = 90.f;
+    F32               mFormationHorseshoeOpening = 90.f;
+    F32               mFormationSpiralTurns = 2.f;
+    F32               mFormationAspectRatio = 1.f;
+    U32               mFormationRayCount = 8;
+    U32               mFormationZigzagColumns = 4;
+    F32               mFormationStaggerOffset = 0.5f;
+    LLUUID            mCrowdFacingPrototype;
+    LLVector3d        mCrowdFacingPointGlobal;
+    bool              mCrowdFacingPointValid = false;
 
     bool              mHasTransformClipboard = false;
     LLVector3d        mClipboardFoot;

@@ -383,6 +383,7 @@ public:
         FULLBRIGHT_OPAQUE,
         FULLBRIGHT_SHINY,
         FULLBRIGHT_MASKED,
+        RIGGED_BLEND,
         FINALIZE,
     };
     void renderGhostPostDeferred(const LLCamera& camera, EGhostForwardStage stage);
@@ -392,6 +393,10 @@ public:
     // BEFORE the invariant snapshot ONLY when needed, so the OFF path stays
     // byte-identical and the invariant snapshots exactly what the stages restore.
     bool ghostPostDeferredSolidsPending(const LLCamera& camera) const;
+    // [GhostDeferred] True iff this frame contains at least one harvested rigged
+    // blend category. Read-only probe: the caller uses it to avoid constructing
+    // the GL-state invariant on the disabled/no-work path.
+    bool ghostPostDeferredBlendPending(const LLCamera& camera) const;
     // [GhostDeferred] Which render categories of `instance_id` the deferred pass
     // actually drew THIS frame (GHOST_COVERAGE_NONE on a stale frame / no draw).
     // The overlay colors only the uncovered categories, so the scene-lit opaque
@@ -632,12 +637,19 @@ private:
         GHOST_FORWARD_SOLID_SHINY      = 1u << 1,
         GHOST_FORWARD_SOLID_MASKED     = 1u << 2,
     };
+    enum EGhostForwardBlendStageMask : U32
+    {
+        GHOST_FORWARD_BLEND_NONE   = 0,
+        GHOST_FORWARD_BLEND_RIGGED = 1u << 0,
+    };
     struct GhostSubmissionProgress
     {
         GhostCategoryProgress mRiggedSolid;
-        GhostCategoryProgress mRiggedBlend;   // reserved for the blend slice
+        GhostCategoryProgress mRiggedBlend;
         U32  mExpectedForwardSolidStages  = GHOST_FORWARD_SOLID_NONE;
         U32  mCompletedForwardSolidStages = GHOST_FORWARD_SOLID_NONE;
+        U32  mExpectedForwardBlendStages  = GHOST_FORWARD_BLEND_NONE;
+        U32  mCompletedForwardBlendStages = GHOST_FORWARD_BLEND_NONE;
         // preserves mProxiesSubmitted's ">=1 draw in ANY ghost phase" meaning
         bool mAnyDrawSubmitted = false;
     };
@@ -648,6 +660,10 @@ private:
     // mGhostSubmissionProgress directly (its keys are this frame's submitted
     // instance ids), so pipeline.h needs no LLActorMover queue type.
     void finalizeGhostRiggedSolidCoverage();
+    // [GhostDeferred] Replay the harvested rigged-alpha category through the real
+    // forward-alpha shaders. Called only through renderGhostPostDeferred after its
+    // world/view/frame guards have passed.
+    void renderGhostRiggedBlend(const LLCamera& camera);
 public:
     enum {GPU_CLASS_MAX = 3 };
 

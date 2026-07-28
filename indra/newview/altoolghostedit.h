@@ -50,11 +50,18 @@ public:
     ALGhostManipProxy& getManipProxy() { return mManipProxy; }
 
     // Edit-mode is an EXPLICIT state, NOT "this tool is current" (selecting a
-    // ghost hands off to the stock translate tool). The panel reads this to keep
-    // the toggle lit, and calls stopEditMode() to leave.
+    // ghost hands off to the stock translate tool). Ownership is equally
+    // explicit: Ghost Studio has two panel hosts, and hiding one host must not
+    // tear down the other host's singleton edit session.
+    bool beginEditFor(const LLUUID& owner_id);
+    bool stopEditModeFor(const LLUUID& owner_id,
+                         bool restore_toolset = true);
     bool isEditModeActive() const { return mEditModeActive; }
+    const LLUUID& editOwner() const { return mOwnerId; }
     // restore_toolset: true for an explicit exit (panel toggle / Esc) restores the
     // pre-edit tool; false when the user already switched tools (departure).
+    // This unscoped form is reserved for terminal tool events such as Esc,
+    // master-hide, and deliberate departure from the edit toolset.
     void stopEditMode(bool restore_toolset = true);
 
 private:
@@ -62,6 +69,7 @@ private:
     LLUUID pickInstance(S32 x, S32 y) const;
 
     ALGhostManipProxy mManipProxy;
+    LLUUID            mOwnerId;
     bool              mEditModeActive = false;
 };
 

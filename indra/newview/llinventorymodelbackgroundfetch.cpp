@@ -744,9 +744,19 @@ void LLInventoryModelBackgroundFetch::bulkFetchViaAis()
     }
 
     static LLCachedControl<U32> ais_pool(gSavedSettings, "PoolSizeAIS", 20);
+    static LLCachedControl<bool> full_preload(gSavedSettings, "BDMergeInventoryFullPreload", false);
+    static LLCachedControl<U32> preload_pool(gSavedSettings, "BDMergePreloadPoolSizeAIS", 35);
+    static LLCachedControl<U32> preload_idle_ms(gSavedSettings, "BDMergePreloadIdleMs", 25);
+    // The wide profile applies only while a recursive sweep is genuinely underway: it must have
+    // been started (login kicks it off) and not yet latched complete. Without the started test a
+    // plain on-demand folder fetch would also run wide, which is not what the settings promise.
+    const bool preload_active = full_preload && inventoryFetchStarted() && !isEverythingFetched();
+    // Floor the preload pool at 2 so a configured 0 cannot wrap through the unsigned subtract
+    // below and land on maximum concurrency - the one setting mistake AIS punishes hardest.
+    const U32 pool_size = preload_active ? llmax((U32)preload_pool, (U32)2) : (U32)ais_pool;
     // Don't have too many requests at once, AIS throttles
     // Reserve one request for actions outside of fetch (like renames)
-    const U32 max_concurrent_fetches = llclamp(ais_pool - 1, 1, 50);
+    const U32 max_concurrent_fetches = llclamp(pool_size - 1, 1, 50);
 
     if ((U32)mFetchCount >= max_concurrent_fetches)
     {
@@ -755,8 +765,10 @@ void LLInventoryModelBackgroundFetch::bulkFetchViaAis()
 
     // Don't loop for too long (in case of large, fully loaded inventory)
     F64 curent_time = LLTimer::getTotalSeconds();
+    // Post-wearables the stock budget is 6 ms per idle tick; before that it stays 1 s either way.
+    // The preload budget is clamped to 1-100 ms so a mistyped setting cannot stall login frames.
     const F64 max_time = LLStartUp::getStartupState() > STATE_WEARABLES_WAIT
-        ? 0.006f // 6 ms
+        ? (preload_active ? llclamp((U32)preload_idle_ms, (U32)1, (U32)100) / 1000.f : 0.006f)
         : 1.f;
     const F64 end_time = curent_time + max_time;
     S32 last_fetch_count = mFetchCount;
@@ -881,7 +893,13 @@ void LLInventoryModelBackgroundFetch::bulkFetchViaAis(const FetchQueueInfo& fetc
 
                     // Top limit is 'as many as you can put into url'
                     static LLCachedControl<S32> ais_batch(gSavedSettings, "BatchSizeAIS3", 20);
-                    S32 batch_limit = llclamp(ais_batch(), 1, 40);
+                    static LLCachedControl<bool> full_preload(gSavedSettings, "BDMergeInventoryFullPreload", false);
+                    static LLCachedControl<U32> preload_batch(gSavedSettings, "BDMergePreloadBatchSizeAIS3", 40);
+                    // Same activity test as the pool/idle-budget path above.
+                    const bool preload_active = full_preload && inventoryFetchStarted() && !isEverythingFetched();
+                    const S32 batch_limit = preload_active
+                        ? static_cast<S32>(llclamp(preload_batch(), 1U, 40U))
+                        : llclamp(ais_batch(), 1, 40);
 
                     if (categories)
                     {

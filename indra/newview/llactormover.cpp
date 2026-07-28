@@ -8,6 +8,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "llpresentationtime.h"    // [Temporal Capture]
 
 #include "llactormover.h"
 
@@ -17,6 +18,7 @@
 #include "alobjectpathmover.h"      // heading preview also draws enrolled PROP paths
 #include "llfetchedgltfmaterial.h"  // static-face PBR base-colour texture resolution
 
+#include "alghostattachmentenumerator.h"
 #include "alghoststudio.h"          // [GhostStudio] free-standing ghost instances
 #include "llclonefidelityaudit.h"   // [CloneFidelity] early-capture hooks in the harvest
 #include "altoolghostedit.h"        // [R2-3] selected-ghost ring gates on the edit tool
@@ -1878,7 +1880,22 @@ bool LLActorMover::applyOverride(LLVOAvatar* av)
     if (mv.mLastFrame != frame)
     {
         mv.mLastFrame = frame;
-        const F32 dt = llclamp(gFrameIntervalSeconds.value(), 0.f, 0.25f);
+        // [Temporal Capture] Animation drive couples actor gait (sGlobalTimeFactor)
+        // with actor TRAVERSAL: advance the path/segment clock on the presentation
+        // delta so a walking actor stays foot-locked. Capped at the SAME 0.25s hitch
+        // cap the stock path uses below, so the path/ping-pong evaluator never gets
+        // an out-of-range step. Coupling with gait is exact while the per-frame delta
+        // stays under the cap (normal operation at any scale); it degrades only on a
+        // genuine stall, no worse than stock. 0x -> 0 holds.
+        F32 dt;
+        if (LLPresentationTime::drives(LLTemporalFeature::ANIMATION))
+        {
+            dt = llclamp(LLPresentationTime::presentationDelta(), 0.f, 0.25f);
+        }
+        else
+        {
+            dt = llclamp(gFrameIntervalSeconds.value(), 0.f, 0.25f);
+        }
 
         if (mv.mIsPath)
         {
@@ -2729,7 +2746,17 @@ void LLActorMover::applyGaze(LLVOAvatar* av)
     if (advance)
     {
         g.mLastFrame = frame;
-        dt = llclamp(gFrameIntervalSeconds.value(), 0.f, 0.25f);
+        // [Temporal Capture] Animation drive: ease gaze on the presentation clock so
+        // head aim slows with the body/world, capped at the same 0.25s hitch cap as
+        // the stock path. 0x -> 0 holds the envelope.
+        if (LLPresentationTime::drives(LLTemporalFeature::ANIMATION))
+        {
+            dt = llclamp(LLPresentationTime::presentationDelta(), 0.f, 0.25f);
+        }
+        else
+        {
+            dt = llclamp(gFrameIntervalSeconds.value(), 0.f, 0.25f);
+        }
         const F32 step = (GAZE_EASE_TIME > 0.f) ? dt / GAZE_EASE_TIME : 1.f;
         g.mEnv = llclamp(g.mEnv + (active ? step : -step), 0.f, 1.f);
     }
@@ -2934,18 +2961,29 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     const F32 dead_zone = llmax((F32)dead_zone_deg, 0.f) * DEG_TO_RAD;
     if (!g.mBodyAimValid)
     {
-        // Straight ahead is the initial held pose. A target outside the zone is
-        // accepted immediately; one inside it never starts a body correction.
+        // Straight ahead is the initial held pose. A target outside the zone
+        // starts the chase; one inside it never starts a body correction.
         g.mBodyAimPitch = 0.f;
         g.mBodyAimYaw = 0.f;
         g.mBodyAimValid = true;
     }
     const F32 pitch_delta = raw_pitch - g.mBodyAimPitch;
-    const F32 yaw_delta = raw_yaw - g.mBodyAimYaw;
-    if (sqrtf(pitch_delta * pitch_delta + yaw_delta * yaw_delta) > dead_zone)
+    const F32 yaw_delta = llsimple_angle(raw_yaw - g.mBodyAimYaw);
+    const F32 aim_error =
+        sqrtf(pitch_delta * pitch_delta + yaw_delta * yaw_delta);
+    if (advance && aim_error > dead_zone)
     {
-        g.mBodyAimPitch = raw_pitch;
-        g.mBodyAimYaw = raw_yaw;
+        // Chase only the error outside the deadband. Pulling the destination
+        // back to its edge suppresses small jitter without repeatedly crossing
+        // the threshold, while the exponential step avoids quantizing real
+        // motion into dead-zone-sized snaps.
+        const F32 tau =
+            GAZE_TAU_MIN + (GAZE_TAU_MAX - GAZE_TAU_MIN) * g.mSmoothing;
+        const F32 a = 1.f - expf(-dt / llmax(tau, 0.01f));
+        const F32 chase = a * (aim_error - dead_zone) / aim_error;
+        g.mBodyAimPitch += pitch_delta * chase;
+        g.mBodyAimYaw =
+            llsimple_angle(g.mBodyAimYaw + yaw_delta * chase);
     }
     const F32 wBody = env_i * g.mHeadEyeBlend * behind_eased;
 
@@ -3541,6 +3579,29 @@ enum EGhostStyle : S32
     GHOST_STYLE_HOLOGRAM  = 2,  // animated cyan hologram (scanlines + rim + flicker)
     GHOST_STYLE_WIREFRAME = 3,  // hidden-line wireframe
     GHOST_STYLE_XRAY      = 4,  // rim-lit x-ray (hologram shader, rim-only params)
+    GHOST_STYLE_THERMAL   = 5,
+    GHOST_STYLE_NEON      = 6,
+    GHOST_STYLE_SILHOUETTE= 7,
+    GHOST_STYLE_TOON      = 8,
+    GHOST_STYLE_CHROME    = 9,
+    GHOST_STYLE_DISSOLVE  = 10,
+    GHOST_STYLE_NEGATIVE  = 11,
+    GHOST_STYLE_GOLD      = 12,
+    GHOST_STYLE_NIGHT     = 13,
+    GHOST_STYLE_BLUEPRINT = 14,
+    GHOST_STYLE_ECTOPLASM = 15,
+    GHOST_STYLE_FROST     = 16,
+    GHOST_STYLE_PRISM     = 17,
+    GHOST_STYLE_THERMAL_SCOPE = 18,
+    GHOST_STYLE_WALLHACK  = 19,
+    GHOST_STYLE_NV_TUBE   = 20,
+    GHOST_STYLE_DAMAGE    = 21,
+    GHOST_STYLE_KILLCAM   = 22,
+    GHOST_STYLE_OIL_SLICK = 23,
+    GHOST_STYLE_VAPORWAVE = 24,
+    GHOST_STYLE_HALFTONE  = 25,
+    GHOST_STYLE_SONAR     = 26,
+    GHOST_STYLE_HOLO_ECHO = 27,
 };
 
 // custom uniforms of the actor-ghost FX shader (actorghostF.glsl); hashed once
@@ -3549,6 +3610,9 @@ static LLStaticHashedString sGhostParams("ghostParams");
 static LLStaticHashedString sGhostAux("ghostAux");
 static LLStaticHashedString sGhostFx("ghostFx");
 static LLStaticHashedString sGhostSlot("ghostSlot");
+static LLStaticHashedString sGhostLook("ghostLook");
+static LLStaticHashedString sGhostDistort("ghostDistort");
+static LLStaticHashedString sGhostDistortParams("ghostDistortParams");
 
 // ---------------------------------------------------------------------------
 // Per-batch alpha semantics: how does the REAL render treat this rigged pass's
@@ -3812,7 +3876,8 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     // attachment faces (collar/jewelry/flexi) through their own render matrix.
     LLGLSLShader* fx = gActorGhostProgram.mRiggedVariant;
     const bool have_fx = fx && fx->mProgramObject;
-    if (!have_fx && (style == GHOST_STYLE_HOLOGRAM || style == GHOST_STYLE_XRAY))
+    if (!have_fx && style != GHOST_STYLE_GHOST && style != GHOST_STYLE_CLONE
+        && style != GHOST_STYLE_WIREFRAME)
     {
         style = GHOST_STYLE_GHOST;
     }
@@ -3836,11 +3901,32 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     // the default params (yaw 0, scale 1) this collapses to the classic pure
     // translation T(foot - live_foot).
     const LLVector3 live_root = av->getRenderPosition();
-    const F32       p2f       = av->getPelvisToFoot();
+    // getPelvisToFoot() can return a negative, absurd, or non-finite value for a
+    // non-standard or still-loading skeleton (e.g. a tiny "special skeleton"
+    // avatar). Used raw it drops the scale pivot ABOVE the mesh, so scaling
+    // stretches the clone DOWN through the ground and, at the limit, bakes
+    // non-finite vertices into the modelview that hard-lock the GPU. Clamp it to
+    // the feet-below-pelvis convention the rest of this file already uses
+    // (capture_root_above) so scaling grows the clone upward like every other one.
+    F32 p2f = av->getPelvisToFoot();
+    if (!llfinite(p2f)) p2f = 0.f;
+    p2f = llmax(0.f, p2f);      // feet-below-pelvis convention (capture_root_above);
+                                // NO upper cap -- a giant custom skeleton is
+                                // legitimately tall and the source draws at natural
+                                // size (scale rides the separate S(scale) below)
     LLVector3 pivot = gp.mHavePivot
         ? gp.mPivotFootAgent
         : LLVector3(live_root.mV[VX], live_root.mV[VY], live_root.mV[VZ] - p2f);
     const F32 scale = llclamp(gp.mScale, 0.05f, 10.f);
+
+    // Final backstop: a non-finite pivot or placement (dead/degenerate source
+    // skeleton, corrupt instance transform, non-finite frozen anchor) would put
+    // NaN into the modelview and TDR the driver. Drop the ghost for this frame
+    // instead -- the caller falls back to the billboard/stick card.
+    if (!pivot.isFinite() || !foot.isFinite())
+    {
+        return 0;
+    }
 
     // ---- per-program setup, shared by the rigged and static sweeps -----------
     // frag_color = color * texture(diffuseMap): a white texture makes the output
@@ -3850,7 +3936,11 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     // (re)applied to whichever variant a sweep binds.
     LLColor4  style_color(1.f, 1.f, 1.f, alpha);    // set per style below
     LLVector4 style_params(0.f, 0.f, 0.f, 6.f);     // ghostParams per style
-    const F32 ghost_now = (F32)LLFrameTimer::getElapsedSeconds();
+    const F32 ghost_real_time = (F32)LLFrameTimer::getElapsedSeconds();
+    const F32 effect_fps = llclamp(gp.mEffectFps, 0.f, 30.f);
+    const F32 ghost_now = effect_fps > 0.f
+        ? floorf(ghost_real_time * effect_fps) / effect_fps
+        : ghost_real_time;
     auto apply_program = [&](LLGLSLShader* sh)
     {
         sh->bind();
@@ -3864,6 +3954,10 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             sh->uniform4f(sGhostFx, gp.mShimmerSpeed, gp.mShimmerIntensity,
                           gp.mGlitch, llclamp(gp.mBrightness, 0.05f, 1.5f));
             sh->uniform1i(sGhostSlot, -1);
+            sh->uniform1i(sGhostLook, style);
+            sh->uniform1i(sGhostDistort, gp.mDistort);
+            sh->uniform4f(sGhostDistortParams,
+                          llclamp(gp.mDistortAmount, 0.f, 1.f), 0.5f, 0.5f, 0.f);
         }
         // [R2-4] park the diffuse_color GENERIC at white: buffers WITHOUT a
         // COLOR array (PBR) read the generic, whose GL boot default is BLACK
@@ -3918,8 +4012,9 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     //                render alpha-blends), GLOW ([R2-2] the clone's additive
     //                emissive re-draws -- glow batches are DUPLICATE geometry,
     //                so every other subset excludes them), or ALL (solid+blend).
-    // clone_tex   -- bind every batch's own resolved colour map + per-batch
-    //                clone colour (the clone colour sweeps).
+    // texture_rgb -- bind every batch's colour map and expose its RGB.
+    // clone_color -- additionally replace the style tint with the authored
+    //                clone factors. Separate so textured FX retain their tint.
     // alpha_aware -- honor the real render's alpha semantics: masked batches
     //                bind their texture and cutoff-discard (ghostAux.x), blend
     //                batches bind their texture so its alpha shapes the blend.
@@ -3929,12 +4024,12 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     // texture-RGB mix for ghostAux.y: the clone wants the texture's colours,
     // every other style wants the flat tint even when a masked/blended batch
     // has its real texture bound for its ALPHA channel
-    auto draw_batches = [&](S32 subset, bool clone_tex, bool alpha_aware)
+    auto draw_batches = [&](S32 subset, bool texture_rgb, bool clone_color, bool alpha_aware)
     {
         const LLVOAvatar* lastAvatar = nullptr;
         U64  lastMeshId = 0;
         bool skipLastSkin = false;
-        const F32 tex_mix = clone_tex ? 1.f : 0.f;
+        const F32 tex_mix = texture_rgb ? 1.f : 0.f;
         F32  cur_cutoff = -1.f;     // force the first ghostAux upload per sweep
         bool tex_mat_on = false;    // a non-identity texture_matrix0 is loaded
         for (const LLActorMover::GhostBatch& gb : batches)
@@ -4005,7 +4100,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             // sample texture RGB keep the single unfiltered draw.
             const S32 slot_count = ghost_batch_slot_count(di);
             const bool per_slot = have_fx && slot_count > 1
-                && (clone_tex || (alpha_aware && is_mask))
+                && (texture_rgb || (alpha_aware && is_mask))
                 && di->mVertexBuffer->hasDataType(LLVertexBuffer::TYPE_TEXTURE_INDEX);
             const S32 draws = per_slot ? slot_count : 1;
 
@@ -4064,7 +4159,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 else
                 {
                     // scalar path (the common case, unchanged semantics)
-                    if (clone_tex || (alpha_aware && have_fx && (is_mask || is_blend)))
+                    if (texture_rgb || (alpha_aware && have_fx && (is_mask || is_blend)))
                     {
                         tex = ghost_batch_texture(di);
                     }
@@ -4079,7 +4174,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 gGL.getTexUnit(0)->bind(
                     tex ? tex : (LLViewerTexture*)LLViewerFetchedTexture::sWhiteImagep);
 
-                if (clone_tex)
+                if (clone_color)
                 {
                     // per-draw clone colour: near-white so the texture reads
                     // as-is; an unresolvable texture shades MID-GREY (white
@@ -4205,7 +4300,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     // keeps the LIVE matrix -- flexi is always live (its verts are CPU-deformed
     // in the shared buffer every frame; documented limitation). Legacy editor
     // tints ride the vertex colours (R2-4), not a per-face constant.
-    auto draw_static = [&](S32 subset, bool clone_tex, bool alpha_aware)
+    auto draw_static = [&](S32 subset, bool texture_rgb, bool clone_color, bool alpha_aware)
     {
         if (!static_faces || static_faces->empty() || subset == SWEEP_GLOW)
         {
@@ -4234,7 +4329,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             LLViewerTexture* ftex = nullptr;
             const LLTextureEntry* te = face->getTextureEntry();
             LLGLTFMaterial* gmat = te ? te->getGLTFRenderMaterial() : nullptr;
-            if (clone_tex || (alpha_aware && have_fx && gf.mAlphaKind != 0))
+            if (texture_rgb || (alpha_aware && have_fx && gf.mAlphaKind != 0))
             {
                 // [R3] Mirror ghost_batch_texture's rule for rigged batches. On
                 // a PBR face the colour map is the MATERIAL's base-colour
@@ -4260,7 +4355,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             }
             gGL.getTexUnit(0)->bind(
                 ftex ? ftex : (LLViewerTexture*)LLViewerFetchedTexture::sWhiteImagep);
-            if (clone_tex)
+            if (clone_color)
             {
                 F32 r = 0.98f, g = 0.98f, b = 0.98f, a = 1.f;
                 if (!ftex && !(vb->getTypeMask() & LLVertexBuffer::MAP_COLOR))
@@ -4297,7 +4392,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             {
                 static_shader->uniform4f(sGhostAux,
                     (alpha_aware && gf.mAlphaKind == 1) ? gf.mCutoff : 0.f,
-                    clone_tex ? 1.f : 0.f, gp.mPixelSize, gp.mPhase);
+                    texture_rgb ? 1.f : 0.f, gp.mPixelSize, gp.mPhase);
             }
             // per-face UV transform (SL texture animation / GLTF KHR)
             {
@@ -4395,14 +4490,15 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         gGL.setColorMask(false, false);
         if (style == GHOST_STYLE_WIREFRAME)
         {
-            draw_batches(SWEEP_ALL, false, false);
-            draw_static(SWEEP_ALL, false, false);
+            draw_batches(SWEEP_ALL, false, false, false);
+            draw_static(SWEEP_ALL, false, false, false);
         }
         else
         {
-            const S32 prime_subset = (style == GHOST_STYLE_CLONE) ? SWEEP_SOLID : SWEEP_ALL;
-            draw_batches(prime_subset, false, true);
-            draw_static(prime_subset, false, true);
+            const S32 prime_subset =
+                (style == GHOST_STYLE_WIREFRAME) ? SWEEP_ALL : SWEEP_SOLID;
+            draw_batches(prime_subset, false, false, true);
+            draw_static(prime_subset, false, false, true);
         }
         if (style == GHOST_STYLE_WIREFRAME)
         {
@@ -4437,11 +4533,11 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             LLGLDisable   blend(GL_BLEND);
             if (overlay_mask & GHOST_COVERAGE_RIGGED_SOLID)
             {
-                draw_batches(SWEEP_SOLID, true, true);
+                draw_batches(SWEEP_SOLID, true, true, true);
             }
             if (overlay_mask & GHOST_COVERAGE_STATIC_SOLID)
             {
-                draw_static(SWEEP_SOLID, true, true);
+                draw_static(SWEEP_SOLID, true, true, true);
             }
         }
         if (overlay_mask & (GHOST_COVERAGE_RIGGED_BLEND | GHOST_COVERAGE_STATIC_BLEND))
@@ -4451,11 +4547,11 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             gGL.setSceneBlendType(LLRender::BT_ALPHA);
             if (overlay_mask & GHOST_COVERAGE_RIGGED_BLEND)
             {
-                draw_batches(SWEEP_BLEND, true, true);
+                draw_batches(SWEEP_BLEND, true, true, true);
             }
             if (overlay_mask & GHOST_COVERAGE_STATIC_BLEND)
             {
-                draw_static(SWEEP_BLEND, true, true);
+                draw_static(SWEEP_BLEND, true, true, true);
             }
         }
         if (overlay_mask & GHOST_COVERAGE_RIGGED_GLOW)
@@ -4463,7 +4559,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
             LLGLEnable    blend(GL_BLEND);
             gGL.setSceneBlendType(LLRender::BT_ADD);
-            draw_batches(SWEEP_GLOW, true, true);
+            draw_batches(SWEEP_GLOW, true, true, true);
             gGL.setSceneBlendType(LLRender::BT_ALPHA);  // leave standard state
         }
         break;
@@ -4483,8 +4579,8 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                         llmin(1.f, alpha * 1.5f));
         gGL.diffuseColor4fv(style_color.mV);
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        draw_batches(SWEEP_ALL, false, false);
-        draw_static(SWEEP_ALL, false, false);
+        draw_batches(SWEEP_ALL, false, false, false);
+        draw_static(SWEEP_ALL, false, false, false);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         break;
     }
@@ -4521,8 +4617,47 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         }
         gGL.diffuseColor4fv(style_color.mV);
         shader->uniform4fv(sGhostParams, 1, style_params.mV);
-        draw_batches(SWEEP_ALL, false, true);
-        draw_static(SWEEP_ALL, false, true);
+        draw_batches(SWEEP_SOLID, true, false, true);
+        draw_static(SWEEP_SOLID, true, false, true);
+        break;
+    }
+    case GHOST_STYLE_THERMAL:
+    case GHOST_STYLE_NEON:
+    case GHOST_STYLE_SILHOUETTE:
+    case GHOST_STYLE_TOON:
+    case GHOST_STYLE_CHROME:
+    case GHOST_STYLE_DISSOLVE:
+    case GHOST_STYLE_NEGATIVE:
+    case GHOST_STYLE_GOLD:
+    case GHOST_STYLE_NIGHT:
+    case GHOST_STYLE_BLUEPRINT:
+    case GHOST_STYLE_ECTOPLASM:
+    case GHOST_STYLE_FROST:
+    case GHOST_STYLE_PRISM:
+    case GHOST_STYLE_THERMAL_SCOPE:
+    case GHOST_STYLE_WALLHACK:
+    case GHOST_STYLE_NV_TUBE:
+    case GHOST_STYLE_DAMAGE:
+    case GHOST_STYLE_KILLCAM:
+    case GHOST_STYLE_OIL_SLICK:
+    case GHOST_STYLE_VAPORWAVE:
+    case GHOST_STYLE_HALFTONE:
+    case GHOST_STYLE_SONAR:
+    case GHOST_STYLE_HOLO_ECHO:
+    {
+        // Toolkit looks share one shader and one clean front-surface sweep.
+        // This prevents cosmetic/alpha layers from double-blending while still
+        // resolving every indexed material slot for texture-driven looks.
+        LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
+        LLGLEnable blend(GL_BLEND);
+        gGL.setSceneBlendType(LLRender::BT_ALPHA);
+        gGL.setColorMask(true, true);
+        style_color.set(tint.mV[VX], tint.mV[VY], tint.mV[VZ], alpha);
+        style_params = LLVector4(0.f, 1.f, 0.f, 8.f);
+        gGL.diffuseColor4fv(style_color.mV);
+        shader->uniform4fv(sGhostParams, 1, style_params.mV);
+        draw_batches(SWEEP_SOLID, true, false, true);
+        draw_static(SWEEP_SOLID, true, false, true);
         break;
     }
     case GHOST_STYLE_GHOST:
@@ -4541,8 +4676,8 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                         1.f - t + tint.mV[VZ] * t,
                         alpha);
         gGL.diffuseColor4fv(style_color.mV);
-        draw_batches(SWEEP_ALL, false, true);
-        draw_static(SWEEP_ALL, false, true);
+        draw_batches(SWEEP_SOLID, false, false, true);
+        draw_static(SWEEP_SOLID, false, false, true);
         break;
     }
     }
@@ -4654,6 +4789,8 @@ void LLActorMover::renderHeadingPreview()
     static LLCachedControl<bool> use_model(gSavedSettings, "PathGhostUseModel", true);
     static LLCachedControl<bool> use_impostor(gSavedSettings, "PathGhostUseImpostor", true);
     static LLCachedControl<S32>  ghost_style(gSavedSettings, "PathGhostStyle", 0);
+    static LLCachedControl<S32>  ghost_distort(gSavedSettings, "PathGhostDistort", 0);
+    static LLCachedControl<F32>  ghost_distort_amount(gSavedSettings, "PathGhostDistortAmount", 0.5f);
     const F32 dist = llmax((F32)distance, 0.1f);
 
     // same beacon-style local overlay as renderObjectBeacons(): UI shader, no
@@ -4961,9 +5098,13 @@ void LLActorMover::renderHeadingPreview()
                 auto bit = mGhostBatches.find(g.mAv->getID());
                 if (bit != mGhostBatches.end() && !bit->second.empty())
                 {
+                    LLActorMover::GhostDrawParams path_gp;
+                    path_gp.mEffectFps = (F32)gSavedSettings.getS32("PathGhostEffectFps");
+                    path_gp.mDistort = (S32)ghost_distort;
+                    path_gp.mDistortAmount = (F32)ghost_distort_amount;
                     drew = drawGeometryGhost(g.mAv, bit->second, g.mFoot, g.mTint,
                                              GHOST_ALPHA, (S32)ghost_style,
-                                             LLActorMover::GhostDrawParams(),
+                                             path_gp,
                                              ghostStaticFacesFor(g.mAv->getID()));
                 }
                 if (drew == 0)
@@ -5179,23 +5320,22 @@ void LLActorMover::walkGhostSourceGeometry(LLVOAvatar* av,
 
     std::set<LLSpatialGroup*> groups;
 
-    for (const auto& ap_pair : av->mAttachmentPoints)
+    static LLCachedControl<bool> exclude_temporary(
+        gSavedSettings, "GhostUnifiedExcludeTemporaryAttachments", false);
+    ALGhostAttachmentEnumerator::visitWorldRoots(
+            av,
+            exclude_temporary
+                ? ALGhostTempAttachmentPolicy::EXCLUDE
+                : ALGhostTempAttachmentPolicy::INCLUDE,
+            [&](LLViewerObject* attached, S32, bool)
     {
-        LLViewerJointAttachment* ap = ap_pair.second;
-        if (!ap || ap->getIsHUDAttachment())
+        std::vector<LLViewerObject*> objs;
+        if (attached)
         {
-            continue;   // HUDs are screen chrome, never body geometry
-        }
-        for (const LLPointer<LLViewerObject>& attached : ap->mAttachedObjects)
-        {
-            std::vector<LLViewerObject*> objs;
-            if (attached.notNull())
+            objs.push_back(attached);
+            for (LLViewerObject* child : attached->getChildren())
             {
-                objs.push_back(attached.get());
-                for (LLViewerObject* child : attached->getChildren())
-                {
-                    objs.push_back(child);
-                }
+                objs.push_back(child);
             }
             for (LLViewerObject* obj : objs)
             {
@@ -5224,7 +5364,7 @@ void LLActorMover::walkGhostSourceGeometry(LLVOAvatar* av,
                 }
             }
         }
-    }
+    });
 
     for (LLSpatialGroup* group : groups)
     {
@@ -5252,9 +5392,6 @@ void LLActorMover::walkGhostSourceGeometry(LLVOAvatar* av,
 
 void LLActorMover::collectGhostBatches()
 {
-    mGhostBatches.clear();
-    mGhostStaticFaces.clear();
-
     // Two independent reasons to collect: the PATH-NODE ghost preview (its
     // classic gate: setting trio + an operator floater up) and the GHOST
     // STUDIO (enabled instances render floater-or-not -- they are scene
@@ -5276,7 +5413,22 @@ void LLActorMover::collectGhostBatches()
     const bool studio = ALGhostStudio::instance().anyEnabled();
     if (!path_ghosts && !studio)
     {
+        // Preserve the zero-cost teardown path and release retained keys when
+        // neither feature can consume their capacity.
+        mGhostBatches.clear();
+        mGhostStaticFaces.clear();
         return;
+    }
+
+    // Keep per-wearer vector capacity across active frames; the pointers
+    // themselves remain strictly frame-local.
+    for (auto& entry : mGhostBatches)
+    {
+        entry.second.clear();
+    }
+    for (auto& entry : mGhostStaticFaces)
+    {
+        entry.second.clear();
     }
 
     // the bodies the ghost passes will draw this frame: roster members with a
@@ -5317,6 +5469,37 @@ void LLActorMover::collectGhostBatches()
             }
         }
     }
+    // Retain capacity only for sources wanted this frame. This bounds the maps
+    // when roster, path, or studio membership changes without delaying removal.
+    auto source_is_wanted = [&wanted](const LLUUID& id)
+    {
+        return std::find_if(wanted.begin(), wanted.end(),
+                            [&id](LLVOAvatar* av) { return av->getID() == id; })
+            != wanted.end();
+    };
+    for (auto it = mGhostBatches.begin(); it != mGhostBatches.end();)
+    {
+        if (source_is_wanted(it->first))
+        {
+            ++it;
+        }
+        else
+        {
+            it = mGhostBatches.erase(it);
+        }
+    }
+    for (auto it = mGhostStaticFaces.begin(); it != mGhostStaticFaces.end();)
+    {
+        if (source_is_wanted(it->first))
+        {
+            ++it;
+        }
+        else
+        {
+            it = mGhostStaticFaces.erase(it);
+        }
+    }
+
     if (wanted.empty())
     {
         return;
@@ -5479,7 +5662,9 @@ void LLActorMover::buildGhostDeferredQueue(const LLCamera& camera, U32 view_stam
 
     for (const ALGhostStudio::Instance& inst : studio.getInstances())
     {
-        if (inst.mKind != ALGhostStudio::BACKING_OVERLAY || !inst.mEnabled)
+        if (inst.mKind != ALGhostStudio::BACKING_OVERLAY ||
+            !inst.mEnabled ||
+            inst.mRenderIntent == ALGhostStudio::RENDER_FORCE_FORWARD)
         {
             continue;
         }
@@ -5492,6 +5677,15 @@ void LLActorMover::buildGhostDeferredQueue(const LLCamera& camera, U32 view_stam
         }
         // P0/P1 handle LIVE ghosts only; frozen-pose support is a later phase (P3).
         if (inst.mPose == ALGhostStudio::POSE_FROZEN)
+        {
+            ++mGhostDeferredCounters.mFrozenInstancesRejected;
+            continue;
+        }
+        // [Cadence] pose-rate-limited clones hold a stop-motion snapshot that only
+        // the forward overlay replays (mCadencePalettes). The deferred G-buffer
+        // can't consume that snapshot, so reject them here (like frozen) instead of
+        // letting covered geometry update every frame and defeat the stutter.
+        if (inst.mPoseRateHz > 0.f)
         {
             ++mGhostDeferredCounters.mFrozenInstancesRejected;
             continue;
@@ -5521,11 +5715,29 @@ void LLActorMover::buildGhostDeferredQueue(const LLCamera& camera, U32 view_stam
         proxy.mBatches      = batches;
         proxy.mStaticFaces  = statics;
         proxy.mFootAgent    = gAgent.getPosAgentFromGlobal(inst.mFootGlobal);
-        proxy.mRotation     = inst.mRotation;
+        // The harvested draw geometry is already in the source avatar's world
+        // frame. Store only source->instance delta for the deferred clone pass,
+        // matching the forward overlay path below. Feeding it the absolute
+        // formation yaw double-rotated the sidecar geometry; its coverage mask
+        // then suppressed the correctly placed overlay, making the crowd vanish.
+        proxy.mRotation     = ~av->getRotation() * inst.mRotation;
         proxy.mScale        = llclamp(inst.mScale, 0.05f, 10.f);
         const LLVector3 live_root = av->getRenderPosition();
+        // Same non-standard / still-loading skeleton hazard as the forward overlay
+        // (drawGeometryGhost): a raw pelvis-to-foot can come back negative or
+        // non-finite, which skews the pivot and bakes NaN into the proxy bounds
+        // and, once submitted, into the deferred GPU modelview (ScopedGhostTransform)
+        // -> driver TDR. Sanitize to the feet-below-pelvis convention (no upper cap),
+        // then skip the proxy entirely on a non-finite placement.
+        F32 p2f = av->getPelvisToFoot();
+        if (!llfinite(p2f)) p2f = 0.f;
         proxy.mPivotFootAgent = LLVector3(live_root.mV[VX], live_root.mV[VY],
-                                          live_root.mV[VZ] - av->getPelvisToFoot());
+                                          live_root.mV[VZ] - llmax(0.f, p2f));
+        if (!proxy.mPivotFootAgent.isFinite() || !proxy.mFootAgent.isFinite())
+        {
+            ++mGhostDeferredCounters.mUnresolvedSources;
+            continue;
+        }
         proxy.mPose        = EGhostProxyPose::LIVE;
         proxy.mFrameStamp  = frame;
         proxy.mViewStamp   = view_stamp;
@@ -5727,7 +5939,8 @@ void LLActorMover::renderStudioGhosts()
         GhostCoverageMask mPresent = GHOST_COVERAGE_NONE;
     };
     std::vector<StudioItem> items;
-    for (const ALGhostStudio::Instance& inst : studio.getInstances())
+    const F64 pose_now = LLTimer::getTotalSeconds();
+    for (ALGhostStudio::Instance& inst : studio.getInstances())
     {
         if (inst.mKind != ALGhostStudio::BACKING_OVERLAY || !inst.mEnabled)
         {
@@ -5743,6 +5956,10 @@ void LLActorMover::renderStudioGhosts()
         if (!batches && !statics)
         {
             continue;
+        }
+        if (inst.mPoseRateHz > 0.f)
+        {
+            studio.refreshPoseCadence(inst.mId, pose_now);
         }
         // [GhostDeferred] classify what the clone's geometry contains, so the
         // suppression below can compare against the pipeline's coverage and the
@@ -5834,7 +6051,12 @@ void LLActorMover::renderStudioGhosts()
         }
 
         GhostDrawParams gp;
-        gp.mRotation = inst.mRotation;
+        // Collected overlay vertices are already in the live source avatar's
+        // world orientation. Instance rotation is absolute (the same contract
+        // entity clones and the editor use), so apply only the delta from the
+        // source's current orientation. Applying the absolute yaw directly
+        // double-rotated overlays whenever look-at/formation facing was active.
+        gp.mRotation = ~item.mAv->getRotation() * inst.mRotation;
         gp.mScale    = inst.mScale;
         if (inst.mPose == ALGhostStudio::POSE_FROZEN && !inst.mFrozenPalettes.empty())
         {
@@ -5848,11 +6070,20 @@ void LLActorMover::renderStudioGhosts()
                 gp.mFrozenAttachMats = &inst.mFrozenAttachMats;
             }
         }
+        else if (inst.mPoseRateHz > 0.f && !inst.mCadencePalettes.empty())
+        {
+            gp.mHavePivot = true;
+            gp.mPivotFootAgent = inst.mCadenceFootAgent;
+            gp.mFrozenPalettes = &inst.mCadencePalettes;
+        }
         gp.mShimmerSpeed     = inst.mShimmerSpeed;
         gp.mShimmerIntensity = inst.mShimmerIntensity;
         gp.mPixelSize        = inst.mPixelSize;
         gp.mGlitch           = inst.mGlitch;
+        gp.mDistort          = inst.mDistort;
+        gp.mDistortAmount    = inst.mDistortAmount;
         gp.mBrightness       = inst.mBrightness;      // [R2-1] night-scene dimmer
+        gp.mEffectFps        = inst.mEffectFps;
         gp.mTintCustom       = !inst.mUseActorTint;   // hue slider reaches the clone
         // stable per-instance FX phase from the id, so a crowd of ghosts
         // shimmers/glitches out of sync instead of strobing as one

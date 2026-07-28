@@ -25,6 +25,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "llpresentationtime.h"    // [Temporal Capture]
 
 #include "llviewerobject.h"
 
@@ -64,6 +65,7 @@
 #include "llcontrolavatar.h"
 #include "lldrawable.h"
 #include "llface.h"
+#include "llfetchedgltfmaterial.h"
 #include "llfloaterinspect.h"
 #include "llfloatertools.h"
 #include "llfollowcam.h"
@@ -115,6 +117,27 @@
 #include "rlvcommon.h"
 #include "rlvlocks.h"
 // [/RLVa:KB]
+
+struct LLViewerObject::GhostResolvedMaterialState
+{
+    struct Binding
+    {
+        bool mActive = false;
+        bool mReady = false;
+        LLSD mSemantic;
+        LLMaterialID mLegacyMaterialId;
+        LLUUID mRenderMaterialId;
+        LLPointer<LLViewerTexture> mDiffuse;
+        LLPointer<LLViewerTexture> mNormal;
+        LLPointer<LLViewerTexture> mSpecular;
+        LLPointer<LLViewerTexture> mBaseColor;
+        LLPointer<LLViewerTexture> mPbrNormal;
+        LLPointer<LLViewerTexture> mMetallicRoughness;
+        LLPointer<LLViewerTexture> mEmissive;
+    };
+    std::vector<Binding> mBindings;
+    std::map<LLUUID, LLPointer<LLViewerTexture>> mBakedTextures;
+};
 
 //#define DEBUG_UPDATE_TYPE
 
@@ -2500,7 +2523,19 @@ void LLViewerObject::idleUpdate(LLAgent &agent, const F64 &frame_time)
             F32 dt_raw = (F32)((F64Seconds)frame_time - mLastInterpUpdateSecs).value();
             F32 dt = time_dilation * dt_raw;
 
-            applyAngularVelocity(dt);
+            // [Temporal Capture] Objects drive: scale ONLY the local target-omega
+            // integrator so prim spin slows/speeds with the world clock. The shared
+            // dt (linear extrapolation below) stays on wall time -- simulator-driven
+            // linear/physical motion is a later pillar. Capped so a hitch at fast
+            // scale can't produce a huge single rotation step; 0x -> 0 holds spin.
+            F32 omega_dt = dt;
+            if (LLPresentationTime::drives(LLTemporalFeature::OBJECTS))
+            {
+                // presentation-scaled, capped at the uniform 0.25s subsystem hitch
+                // cap so a stall can't produce a huge single rotation step
+                omega_dt = llmin((F32)LLPresentationTime::presentationDelta(), 0.25f);
+            }
+            applyAngularVelocity(omega_dt);
 
             if (isAttachment())
             {
@@ -5090,11 +5125,221 @@ void LLViewerObject::sendTEUpdate() const
     msg->sendReliable( regionp->getHost() );
 }
 
+void LLViewerObject::setGhostResolvedBakedTexture(
+    const LLUUID& semantic_magic_id,
+    LLViewerTexture* texture)
+{
+    if (!LLAvatarAppearanceDefines::LLAvatarAppearanceDictionary::
+            isBakedImageId(semantic_magic_id) ||
+        !texture ||
+        texture->getID() == IMG_DEFAULT ||
+        texture->getID() == semantic_magic_id ||
+        texture->isMissingAsset())
+    {
+        return;
+    }
+    if (!mGhostResolvedMaterialState)
+    {
+        mGhostResolvedMaterialState =
+            std::make_unique<GhostResolvedMaterialState>();
+    }
+    mGhostResolvedMaterialState->mBakedTextures[semantic_magic_id] =
+        texture;
+}
+
+LLViewerTexture* LLViewerObject::getGhostResolvedBakedTexture(
+    const LLUUID& semantic_magic_id) const
+{
+    static LLCachedControl<bool> enabled(
+        gSavedSettings, "GhostUnifiedSourceResolvedMaterials", false);
+    if (!enabled)
+    {
+        return nullptr;
+    }
+    if (!mGhostResolvedMaterialState)
+    {
+        return nullptr;
+    }
+    auto found =
+        mGhostResolvedMaterialState->mBakedTextures.find(
+            semantic_magic_id);
+    return found ==
+               mGhostResolvedMaterialState->mBakedTextures.end()
+        ? nullptr : found->second.get();
+}
+
+void LLViewerObject::setGhostResolvedMaterialBinding(
+    U8 te,
+    const LLTextureEntry& semantic,
+    const LLUUID& render_material_id,
+    bool ready,
+    LLViewerTexture* diffuse,
+    LLViewerTexture* normal,
+    LLViewerTexture* specular,
+    LLViewerTexture* base_color,
+    LLViewerTexture* pbr_normal,
+    LLViewerTexture* metallic_roughness,
+    LLViewerTexture* emissive)
+{
+    if (!mGhostResolvedMaterialState)
+    {
+        mGhostResolvedMaterialState =
+            std::make_unique<GhostResolvedMaterialState>();
+    }
+    if (mGhostResolvedMaterialState->mBindings.size() <= te)
+    {
+        mGhostResolvedMaterialState->mBindings.resize(te + 1);
+    }
+    GhostResolvedMaterialState::Binding& binding =
+        mGhostResolvedMaterialState->mBindings[te];
+    binding.mActive = true;
+    binding.mReady = ready;
+    binding.mSemantic = semantic.asLLSD();
+    binding.mLegacyMaterialId = semantic.getMaterialID();
+    binding.mRenderMaterialId = render_material_id;
+    binding.mDiffuse = diffuse;
+    binding.mNormal = normal;
+    binding.mSpecular = specular;
+    binding.mBaseColor = base_color;
+    binding.mPbrNormal = pbr_normal;
+    binding.mMetallicRoughness = metallic_roughness;
+    binding.mEmissive = emissive;
+}
+
+bool LLViewerObject::hasGhostResolvedMaterialBinding(U8 te) const
+{
+    static LLCachedControl<bool> enabled(
+        gSavedSettings, "GhostUnifiedSourceResolvedMaterials", false);
+    return enabled &&
+           mGhostResolvedMaterialState &&
+           te < getNumTEs() &&
+           te < mGhostResolvedMaterialState->mBindings.size() &&
+           mGhostResolvedMaterialState->mBindings[te].mActive;
+}
+
+bool LLViewerObject::isGhostResolvedMaterialBindingPending(U8 te) const
+{
+    return hasGhostResolvedMaterialBinding(te) &&
+           !mGhostResolvedMaterialState->mBindings[te].mReady;
+}
+
+S32 LLViewerObject::getGhostResolvedMaterialBindingCount() const
+{
+    return mGhostResolvedMaterialState
+        ? static_cast<S32>(
+              mGhostResolvedMaterialState->mBindings.size())
+        : 0;
+}
+
+bool LLViewerObject::ghostResolvedMaterialSemanticMatches(U8 te) const
+{
+    if (!hasGhostResolvedMaterialBinding(te) || te >= getNumTEs())
+    {
+        return false;
+    }
+    const GhostResolvedMaterialState::Binding& binding =
+        mGhostResolvedMaterialState->mBindings[te];
+    const LLTextureEntry* entry = getTE(te);
+    return entry &&
+           entry->asLLSD() == binding.mSemantic &&
+           entry->getMaterialID() == binding.mLegacyMaterialId &&
+           getRenderMaterialID(te) == binding.mRenderMaterialId;
+}
+
+bool LLViewerObject::ghostResolvedMaterialBindingMatches(U8 te) const
+{
+    if (!ghostResolvedMaterialSemanticMatches(te))
+    {
+        return false;
+    }
+    const GhostResolvedMaterialState::Binding& binding =
+        mGhostResolvedMaterialState->mBindings[te];
+    if (!binding.mReady)
+    {
+        return false;
+    }
+    const LLTextureEntry* entry = getTE(te);
+    if (mTEImages[te].get() != binding.mDiffuse.get() ||
+        mTENormalMaps[te].get() != binding.mNormal.get() ||
+        mTESpecularMaps[te].get() != binding.mSpecular.get())
+    {
+        return false;
+    }
+
+    LLFetchedGLTFMaterial* material =
+        dynamic_cast<LLFetchedGLTFMaterial*>(
+            entry->getGLTFRenderMaterial());
+    const bool expects_pbr =
+        binding.mRenderMaterialId.notNull() ||
+        binding.mBaseColor.notNull() ||
+        binding.mPbrNormal.notNull() ||
+        binding.mMetallicRoughness.notNull() ||
+        binding.mEmissive.notNull();
+    if (!material)
+    {
+        return !expects_pbr;
+    }
+    return material->mBaseColorTexture.get() ==
+               binding.mBaseColor.get() &&
+           material->mNormalTexture.get() ==
+               binding.mPbrNormal.get() &&
+           material->mMetallicRoughnessTexture.get() ==
+               binding.mMetallicRoughness.get() &&
+           material->mEmissiveTexture.get() ==
+               binding.mEmissive.get();
+}
+
+bool LLViewerObject::restoreGhostResolvedMaterialBinding(U8 te)
+{
+    static LLCachedControl<bool> enabled(
+        gSavedSettings, "GhostUnifiedSourceResolvedMaterials", false);
+    if (!enabled || !hasGhostResolvedMaterialBinding(te) ||
+        !ghostResolvedMaterialSemanticMatches(te) ||
+        isGhostResolvedMaterialBindingPending(te) ||
+        te >= getNumTEs())
+    {
+        return false;
+    }
+
+    const GhostResolvedMaterialState::Binding& binding =
+        mGhostResolvedMaterialState->mBindings[te];
+    mTEImages[te] = binding.mDiffuse;
+    mTENormalMaps[te] = binding.mNormal;
+    mTESpecularMaps[te] = binding.mSpecular;
+
+    LLTextureEntry* entry = getTE(te);
+    LLFetchedGLTFMaterial* material = entry
+        ? dynamic_cast<LLFetchedGLTFMaterial*>(
+              entry->getGLTFRenderMaterial())
+        : nullptr;
+    if (material)
+    {
+        material->mBaseColorTexture =
+            dynamic_cast<LLViewerFetchedTexture*>(
+                binding.mBaseColor.get());
+        material->mNormalTexture =
+            dynamic_cast<LLViewerFetchedTexture*>(
+                binding.mPbrNormal.get());
+        material->mMetallicRoughnessTexture =
+            dynamic_cast<LLViewerFetchedTexture*>(
+                binding.mMetallicRoughness.get());
+        material->mEmissiveTexture =
+            dynamic_cast<LLViewerFetchedTexture*>(
+                binding.mEmissive.get());
+    }
+    return true;
+}
+
 LLViewerTexture* LLViewerObject::getBakedTextureForMagicId(const LLUUID& id)
 {
     if (!LLAvatarAppearanceDefines::LLAvatarAppearanceDictionary::isBakedImageId(id))
     {
         return NULL;
+    }
+
+    if (LLViewerTexture* pinned = getGhostResolvedBakedTexture(id))
+    {
+        return pinned;
     }
 
     LLViewerObject *root = getRootEdit();
@@ -5153,6 +5398,14 @@ void LLViewerObject::setTE(const U8 te, const LLTextureEntry& texture_entry)
     }
 
     LLPrimitive::setTE(te, texture_entry);
+    // A TE with a registered source-resolved binding must get a clone-private
+    // render material before updateTEMaterialTextures writes fetched PBR
+    // channels. initRenderMaterial is a no-op when uniqueness is unnecessary.
+    if (hasGhostResolvedMaterialBinding(te) &&
+        getTE(te) && getTE(te)->getGLTFMaterial())
+    {
+        initRenderMaterial(te);
+    }
 
     const LLUUID& image_id = getTE(te)->getID();
     LLViewerTexture* bakedTexture = getBakedTextureForMagicId(image_id);
@@ -5168,10 +5421,18 @@ void LLViewerObject::updateTEMaterialTextures(U8 te)
     if (getTE(te)->getMaterialParams().notNull())
     {
         const LLUUID& norm_id = getTE(te)->getMaterialParams()->getNormalID();
-        mTENormalMaps[te] = LLViewerTextureManager::getFetchedTexture(norm_id, FTT_DEFAULT, true, LLGLTexture::BOOST_NONE, LLViewerTexture::LOD_TEXTURE);
+        LLViewerTexture* normal_texture =
+            hasGhostResolvedMaterialBinding(te)
+                ? getBakedTextureForMagicId(norm_id) : nullptr;
+        mTENormalMaps[te] = normal_texture ? normal_texture :
+            LLViewerTextureManager::getFetchedTexture(norm_id, FTT_DEFAULT, true, LLGLTexture::BOOST_NONE, LLViewerTexture::LOD_TEXTURE);
 
         const LLUUID& spec_id = getTE(te)->getMaterialParams()->getSpecularID();
-        mTESpecularMaps[te] = LLViewerTextureManager::getFetchedTexture(spec_id, FTT_DEFAULT, true, LLGLTexture::BOOST_NONE, LLViewerTexture::LOD_TEXTURE);
+        LLViewerTexture* specular_texture =
+            hasGhostResolvedMaterialBinding(te)
+                ? getBakedTextureForMagicId(spec_id) : nullptr;
+        mTESpecularMaps[te] = specular_texture ? specular_texture :
+            LLViewerTextureManager::getFetchedTexture(spec_id, FTT_DEFAULT, true, LLGLTexture::BOOST_NONE, LLViewerTexture::LOD_TEXTURE);
     }
 
     LLFetchedGLTFMaterial* mat = (LLFetchedGLTFMaterial*) getTE(te)->getGLTFRenderMaterial();
@@ -5231,6 +5492,7 @@ void LLViewerObject::updateTEMaterialTextures(U8 te)
         mat->mMetallicRoughnessTexture = fetch_texture(mat->mTextureId[LLGLTFMaterial::GLTF_TEXTURE_INFO_METALLIC_ROUGHNESS]);
         mat->mEmissiveTexture= fetch_texture(mat->mTextureId[LLGLTFMaterial::GLTF_TEXTURE_INFO_EMISSIVE]);
     }
+    restoreGhostResolvedMaterialBinding(te);
 }
 
 void LLViewerObject::refreshBakeTexture()
@@ -5600,7 +5862,10 @@ S32 LLViewerObject::initRenderMaterial(U8 te)
     if (!base_material) { return 0; }
     const LLGLTFMaterial* override_material = tep->getGLTFMaterialOverride();
     LLFetchedGLTFMaterial* render_material = nullptr;
-    bool need_render_material = override_material;
+    // A managed ghost binding must never write pinned channels back into a
+    // fetched base shared by source/world faces.
+    bool need_render_material =
+        override_material || hasGhostResolvedMaterialBinding(te);
     if (!need_render_material)
     {
         for (const LLUUID& texture_id : base_material->mTextureId)
@@ -5618,7 +5883,10 @@ S32 LLViewerObject::initRenderMaterial(U8 te)
         if (override_material) { render_material->applyOverride(*override_material); }
         render_material->clearFetchedTextures();
     }
-    return tep->setGLTFRenderMaterial(render_material);
+    const S32 result = tep->setGLTFRenderMaterial(render_material);
+    // Also covers asynchronous material-completion callbacks that re-init.
+    restoreGhostResolvedMaterialBinding(te);
+    return result;
 }
 
 S32 LLViewerObject::setTEGLTFMaterialOverride(U8 te, LLGLTFMaterial* override_mat)
@@ -7525,7 +7793,15 @@ void LLViewerObject::setRenderMaterialID(S32 te_in, const LLUUID& id, bool updat
             {
                 LLViewerObject* obj = gObjectList.findObject(obj_id);
                 if (!obj) { return; }
-                obj->initRenderMaterial(te);
+                if (obj->hasGhostResolvedMaterialBinding(te))
+                {
+                    obj->initRenderMaterial(te);
+                    obj->updateTEMaterialTextures(te);
+                }
+                else
+                {
+                    obj->initRenderMaterial(te);
+                }
             });
         }
     }

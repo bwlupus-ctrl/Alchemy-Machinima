@@ -29,6 +29,8 @@
 
 #include "llvoavatar.h"
 
+#include <set>
+
 class LLVOVolume;
 class ALGhostStudio;
 
@@ -62,7 +64,11 @@ public:
 
     // Ghosts are placed by fiat, never by the simulator. Requires a live
     // region: setPositionAgent() dereferences getRegion() unguarded.
+    // setGhostPosition retains the historical ROOT-position contract.
     void setGhostPosition(const LLVector3& pos_agent);
+    // Studio-authored transforms use the avatar's FOOT position. The desired
+    // foot remains authoritative while a newly loaded skeleton settles.
+    void setGhostFootPosition(const LLVector3& foot_agent);
     void setGhostRotation(const LLQuaternion& rotation);
 
     // LLVOAvatar::slamPosition() MINUS its opening gAgent.setPositionAgent()
@@ -148,10 +154,15 @@ public:
     // the live simulator-known source prim's current rendered LOD.
     static bool getClonedSourceLOD(const LLVOVolume* volume, S32& source_lod);
 
+    // Live per-prim clone/source rig state for the Ghost Studio diagnostic
+    // readout. This is viewer-local inspection only.
+    std::string getRigDiagnosticText() const;
+
     // Destroy every ghost spawned by the palette-isolation test harness.
     static S32 clearTestHarnessGhosts();
 
 private:
+    void applyDesiredGhostFootPosition();
     void neutralizeEntityPhysicsParams();
     void updateEntityOuterTransform();
     void stampEntityOuterTransform(LLViewerObject* object);
@@ -161,6 +172,9 @@ private:
 
     bool mMarkedForDeath;
     bool mEntityCloneVisible;
+    // Global coordinates survive agent-origin changes at region crossings.
+    LLVector3d mDesiredGhostFootGlobal;
+    bool mDesiredGhostFootValid = false;
     F32 mEntityScale = 1.f;
     bool mEntityPhysicsEnabled = true;
     S32 mEntityDriveMode = 0; // ALGhostStudio::DRIVE_MIRROR (avoid header cycle)
@@ -203,6 +217,7 @@ private:
         std::vector<LLUUID> mSourceChildren;
     };
     std::vector<ClonedLinkset> mClonedLinksets;
+    std::set<LLUUID> mRigHealedLogged;
 
     // Re-run the structural checks at VERIFY time. A member (not a free
     // helper) because it takes the private ClonedLinkset type.

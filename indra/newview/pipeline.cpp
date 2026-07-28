@@ -4748,7 +4748,8 @@ S32 ghostMaterialShaderIndex(U32 pass)
 // applyModelMatrix. The caller binds the shader (via bindDeferredShader) + uploads
 // the palette. Defensive white/flat-normal fallbacks: harvested draw infos can
 // outlive a texture transition.
-bool pushGhostMaterialBatch(LLDrawInfo& params, LLGLSLShader& shader)
+bool pushGhostMaterialBatch(LLDrawInfo& params, LLGLSLShader& shader,
+                            bool upload_alpha_cutoff = true)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
 
@@ -4764,7 +4765,7 @@ bool pushGhostMaterialBatch(LLDrawInfo& params, LLGLSLShader& shader)
 
     if (intensity >= 0)  { glUniform1f(intensity, params.mEnvIntensity); }
     if (brightness >= 0) { glUniform1f(brightness, params.mFullbright ? 1.f : 0.f); }
-    if (min_alpha >= 0)  { glUniform1f(min_alpha, params.mAlphaMaskCutoff); }
+    if (upload_alpha_cutoff && min_alpha >= 0) { glUniform1f(min_alpha, params.mAlphaMaskCutoff); }
     if (specular >= 0)   { glUniform4fv(specular, 1, params.mSpecColor.mV); }
 
     const GLint diffuse_channel  = shader.enableTexture(LLShaderMgr::DIFFUSE_MAP);
@@ -5243,6 +5244,13 @@ void LLPipeline::renderGhostDeferredOpaqueMasked(const LLCamera& camera)
             switch (classifyGhostBatchPhase(batch.mPass))
             {
             case EGhostBatchPhase::BLEND:
+                // The forward-alpha stage owns this category. Count every eligible
+                // batch here, before any forward draw is attempted, so partial
+                // shader/material/palette failures cannot claim coverage.
+                ++submission.mRiggedBlend.mRequired;
+                submission.mRiggedBlend.mClassified = true;
+                submission.mExpectedForwardBlendStages |= GHOST_FORWARD_BLEND_RIGGED;
+                continue;
             case EGhostBatchPhase::GLOW:
                 continue;   // not part of solid completeness
 
@@ -5563,6 +5571,365 @@ bool LLPipeline::ghostPostDeferredSolidsPending(const LLCamera& camera) const
     return false;
 }
 
+bool LLPipeline::ghostPostDeferredBlendPending(const LLCamera& camera) const
+{
+    // Keep this probe entirely read-only. In particular, the disabled path must
+    // not bind a shader, touch GL state, or force construction of the invariant.
+    if (gCubeSnapshot
+        || LLPipeline::sReflectionRender
+        || LLPipeline::sRenderingHUDs
+        || LLViewerCamera::sCurCameraID != LLViewerCamera::CAMERA_WORLD)
+    {
+        return false;
+    }
+    if (mGhostSubmissionProgressFrame != LLFrameTimer::getFrameCount())
+    {
+        return false;
+    }
+    if (!LLActorMover::instance().hasValidGhostDeferredQueueThisFrame(
+            camera, LLActorMover::GHOST_VIEW_WORLD_MAIN))
+    {
+        return false;
+    }
+    for (const auto& entry : mGhostSubmissionProgress)
+    {
+        if (entry.second.mExpectedForwardBlendStages & GHOST_FORWARD_BLEND_RIGGED)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+void LLPipeline::renderGhostRiggedBlend(const LLCamera& camera)
+{
+    // This function is reached only through renderGhostPostDeferred, after its
+    // world-camera, frame-stamp and queue-identity guards. Repeat the no-work
+    // check before touching GL so a disabled/no-blend frame is a true GL no-op.
+    bool any_expected = false;
+    for (const auto& entry : mGhostSubmissionProgress)
+    {
+        if (entry.second.mExpectedForwardBlendStages & GHOST_FORWARD_BLEND_RIGGED)
+        {
+            any_expected = true;
+            break;
+        }
+    }
+    if (!any_expected)
+    {
+        return;
+    }
+
+    LLActorMover& mover = LLActorMover::instance();
+    const LLActorMover::GhostProxyQueue& queue =
+        mover.getGhostDeferredQueue(camera, LLActorMover::GHOST_VIEW_WORLD_MAIN);
+    LLActorMover::GhostDeferredCounters& counters = mover.ghostDeferredCounters();
+
+    // renderGeomPostDeferred leaves the stock alpha blend factors active. Save the
+    // non-RAII state this stage changes and restore the same canonical post-deferred
+    // state at exit.
+    const U32 saved_texture_unit = gGL.getCurrentTexUnitIndex();
+    GLboolean saved_color_mask[4] = { GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE };
+    glGetBooleanv(GL_COLOR_WRITEMASK, saved_color_mask);
+
+    LLGLDepthTest depth_state(GL_TRUE, GL_FALSE, GL_LEQUAL);
+    LLGLEnable cull_state(GL_CULL_FACE);
+    LLGLEnable blend_state(GL_BLEND);
+    gGL.setColorMask(true, true);
+    gGL.setSceneBlendType(LLRender::BT_ALPHA);
+
+    gGL.matrixMode(LLRender::MM_MODELVIEW);
+    gGLLastMatrix = nullptr;
+    gGL.loadMatrix(gGLModelView);
+
+    // Alpha instances composite far-to-near. Preserve harvested draw-map order
+    // within each instance, matching the stock avatar-alpha behavior.
+    std::vector<const LLActorMover::GhostProxy*> sorted_proxies;
+    sorted_proxies.reserve(queue.mProxies.size());
+    for (const LLActorMover::GhostProxy& proxy : queue.mProxies)
+    {
+        if (proxy.mFrustumVisible && proxy.mBatches && !proxy.mBatches->empty())
+        {
+            sorted_proxies.push_back(&proxy);
+        }
+    }
+
+    const LLVector3 camera_origin = camera.getOrigin();
+    std::sort(sorted_proxies.begin(), sorted_proxies.end(),
+        [&camera_origin](const LLActorMover::GhostProxy* lhs,
+                         const LLActorMover::GhostProxy* rhs)
+        {
+            const F32 lhs_distance = (lhs->mWorldBoundsCenter - camera_origin).magVecSquared();
+            const F32 rhs_distance = (rhs->mWorldBoundsCenter - camera_origin).magVecSquared();
+            if (lhs_distance != rhs_distance)
+            {
+                return lhs_distance > rhs_distance;
+            }
+            return lhs->mInstanceId < rhs->mInstanceId;
+        });
+
+    LLGLSLShader* current_shader = nullptr;
+    LLFetchedGLTFMaterial* last_gltf_material = nullptr;
+    LLViewerTexture* last_gltf_texture = nullptr;
+
+    enum class EGhostBlendBatchKind : U8 { SIMPLE, FULLBRIGHT, MATERIAL, GLTF };
+
+    // Resolve the real forward-alpha shader + kind for a batch, or return false if
+    // Slice 1 cannot faithfully draw it (indexed PBR/legacy, non-blend GLTF,
+    // out-of-range shader mask, incomplete shader, invalid draw info). Used FIRST
+    // as a whole-category validation pass so a partial draw can never commit
+    // coverage and leave the bespoke sweep to double-alpha the batches already
+    // drawn -- and again in the draw pass, where it is guaranteed to succeed.
+    auto resolve_blend_shader = [](LLDrawInfo* di, LLGLSLShader*& out_shader,
+                                   EGhostBlendBatchKind& out_kind) -> bool
+    {
+        out_shader = nullptr;
+        out_kind = EGhostBlendBatchKind::SIMPLE;
+        if (!di || di->mVertexBuffer.isNull() || !di->mCount
+            || !di->mAvatar || !di->mSkinInfo)
+        {
+            return false;
+        }
+        if (di->mGLTFMaterial.notNull())
+        {
+            if (di->mGLTFMaterial->mAlphaMode != LLGLTFMaterial::ALPHA_MODE_BLEND
+                || di->mGLTFMaterialList.size() > 1)
+            {
+                return false;   // indexed / non-blend PBR: outside Slice 1
+            }
+            out_shader = gDeferredPBRAlphaProgram.mRiggedVariant;
+            out_kind = EGhostBlendBatchKind::GLTF;
+        }
+        else if (di->mMaterial.notNull())
+        {
+            // Indexed legacy material (mTextureList > 1) needs per-slot binds the
+            // scalar pushGhostMaterialBatch does not do -- fail rather than mirror
+            // wrong slots and falsely claim coverage.
+            if (di->mShaderMask >= LLMaterial::SHADER_COUNT
+                || di->mTextureList.size() > 1)
+            {
+                return false;
+            }
+            out_shader = gDeferredMaterialProgram[di->mShaderMask].mRiggedVariant;
+            out_kind = EGhostBlendBatchKind::MATERIAL;
+        }
+        else if (di->mFullbright)
+        {
+            out_shader = gDeferredFullbrightAlphaMaskAlphaProgram.mRiggedVariant;
+            out_kind = EGhostBlendBatchKind::FULLBRIGHT;
+        }
+        else
+        {
+            out_shader = gDeferredAlphaProgram.mRiggedVariant;
+        }
+        return out_shader && out_shader->isComplete();
+    };
+
+    for (const LLActorMover::GhostProxy* proxy_ptr : sorted_proxies)
+    {
+        const LLActorMover::GhostProxy& proxy = *proxy_ptr;
+        auto progress_it = mGhostSubmissionProgress.find(proxy.mInstanceId);
+        if (progress_it == mGhostSubmissionProgress.end()
+            || !(progress_it->second.mExpectedForwardBlendStages & GHOST_FORWARD_BLEND_RIGGED))
+        {
+            continue;
+        }
+
+        GhostSubmissionProgress& submission = progress_it->second;
+        GhostCategoryProgress& blend = submission.mRiggedBlend;
+
+        // Slice-1 conservative gate: the real forward blend may run only over a
+        // fully covered rigged body, and only when no uncovered static solid can
+        // later overwrite it from the UI fallback.
+        bool static_solid_present = false;
+        if (proxy.mStaticFaces)
+        {
+            for (const LLActorMover::GhostStaticFace& face : *proxy.mStaticFaces)
+            {
+                if (face.mAlphaKind != 2)
+                {
+                    static_solid_present = true;
+                    break;
+                }
+            }
+        }
+
+        const GhostCoverageMask covered = getGhostDeferredCoverageThisFrame(proxy.mInstanceId);
+        if (!(covered & GHOST_COVERAGE_RIGGED_SOLID)
+            || (static_solid_present && !(covered & GHOST_COVERAGE_STATIC_SOLID)))
+        {
+            blend.mFailed = true;
+            blend.mFinalized = true;
+            submission.mCompletedForwardBlendStages |= GHOST_FORWARD_BLEND_RIGGED;
+            continue;
+        }
+
+        // Whole-category validation BEFORE any draw (transactional): if a single
+        // eligible batch is unsupported, draw NONE and leave RIGGED_BLEND clear so
+        // the bespoke sweep stays the sole owner -- otherwise a partial draw here
+        // plus the fallback redraw would double-alpha the batches already drawn.
+        {
+            bool category_ok = true;
+            for (const LLActorMover::GhostBatch& batch : *proxy.mBatches)
+            {
+                if (classifyGhostBatchPhase(batch.mPass) != EGhostBatchPhase::BLEND)
+                {
+                    continue;
+                }
+                LLGLSLShader* probe_shader = nullptr;
+                EGhostBlendBatchKind probe_kind = EGhostBlendBatchKind::SIMPLE;
+                // Deterministic support check only (no GL): resolve the real shader
+                // + material kind. Palette readiness (which needs a bound shader) is
+                // validated separately in the pre-pass just below.
+                if (!resolve_blend_shader(batch.mInfo, probe_shader, probe_kind))
+                {
+                    category_ok = false;
+                    break;
+                }
+            }
+            if (!category_ok)
+            {
+                blend.mFailed = true;
+                blend.mFinalized = true;
+                submission.mCompletedForwardBlendStages |= GHOST_FORWARD_BLEND_RIGGED;
+                continue;
+            }
+        }
+
+        {
+            ScopedGhostTransform transform(proxy);
+
+            for (const LLActorMover::GhostBatch& batch : *proxy.mBatches)
+            {
+                if (classifyGhostBatchPhase(batch.mPass) != EGhostBatchPhase::BLEND)
+                {
+                    continue;
+                }
+
+                LLDrawInfo* di = batch.mInfo;
+                LLGLSLShader* shader = nullptr;
+                EGhostBlendBatchKind kind = EGhostBlendBatchKind::SIMPLE;
+                if (!resolve_blend_shader(di, shader, kind))
+                {
+                    // Validated above; defensive -- keep the category uncovered.
+                    blend.mFailed = true;
+                    continue;
+                }
+
+                if (shader != current_shader)
+                {
+                    // Reuse the complete lit-alpha environment the stock alpha pool
+                    // prepared earlier in renderGeomPostDeferred (gamma/water/sun/
+                    // shadows/reflection probes) instead of reconstructing it.
+                    bindDeferredShaderFast(*shader);
+                    // Forward blend must not discard low-alpha fragments; stock alpha
+                    // zeroes MINIMUM_ALPHA for blended draws (pushGhostMaterialBatch is
+                    // called with upload_alpha_cutoff=false so it cannot re-raise it).
+                    shader->setMinimumAlpha(0.f);
+                    current_shader = shader;
+                    last_gltf_material = nullptr;
+                    last_gltf_texture = nullptr;
+                }
+
+                // Fullbright alpha cancels exposure exactly as the stock alpha pool
+                // does when this shader becomes active.
+                if (kind == EGhostBlendBatchKind::FULLBRIGHT)
+                {
+                    const S32 exposure_channel = shader->enableTexture(LLShaderMgr::EXPOSURE_MAP);
+                    if (exposure_channel >= 0)
+                    {
+                        gGL.getTexUnit(exposure_channel)->bind(&mExposureMap);
+                    }
+                }
+
+                if (!LLRenderPass::uploadMatrixPalette(*di))
+                {
+                    blend.mFailed = true;
+                    continue;
+                }
+
+                // Match stock alpha: authored RGB factors, with glow suppressed from
+                // the framebuffer alpha channel. Glow remains independently owned by
+                // GHOST_COVERAGE_RIGGED_GLOW.
+                gGL.blendFunc(
+                    static_cast<LLRender::eBlendFactor>(di->mBlendFuncSrc),
+                    static_cast<LLRender::eBlendFactor>(di->mBlendFuncDst),
+                    LLRender::BF_ZERO,
+                    LLRender::BF_ONE_MINUS_SOURCE_ALPHA);
+
+                bool drew = false;
+                switch (kind)
+                {
+                case EGhostBlendBatchKind::GLTF:
+                    // Shader is deliberately bound before material->bind().
+                    drew = pushGhostGLTFBatch(*di, last_gltf_material, last_gltf_texture);
+                    break;
+
+                case EGhostBlendBatchKind::MATERIAL:
+                    // Alpha shaders retain the stock alpha floor prepared by
+                    // LLDrawPoolAlpha. Do not replace it with a mask cutoff.
+                    drew = pushGhostMaterialBatch(*di, *shader, /*upload_alpha_cutoff=*/false);
+                    break;
+
+                case EGhostBlendBatchKind::FULLBRIGHT:
+                case EGhostBlendBatchKind::SIMPLE:
+                    drew = pushGhostBatch(*di, true);
+                    break;
+                }
+
+                if (!drew)
+                {
+                    blend.mFailed = true;
+                    continue;
+                }
+
+                ++counters.mActualDrawCalls;
+                ++counters.mRiggedBlendDrawCalls;
+                ++blend.mDrawn;
+                if (!submission.mAnyDrawSubmitted)
+                {
+                    submission.mAnyDrawSubmitted = true;
+                    ++counters.mProxiesSubmitted;
+                }
+            }
+        }
+
+        submission.mCompletedForwardBlendStages |= GHOST_FORWARD_BLEND_RIGGED;
+        blend.mFinalized = true;
+
+        const bool stages_complete =
+            (submission.mCompletedForwardBlendStages & submission.mExpectedForwardBlendStages)
+            == submission.mExpectedForwardBlendStages;
+        const bool complete =
+            blend.mClassified && !blend.mFailed && blend.mRequired > 0
+            && blend.mDrawn == blend.mRequired && stages_complete;
+
+        if (complete)
+        {
+            GhostCoverageMask& coverage = mGhostDeferredCoverage[proxy.mInstanceId];
+            if (!(coverage & GHOST_COVERAGE_RIGGED_BLEND))
+            {
+                // Monotonic all-success commit. Until this exact point the bespoke
+                // SWEEP_BLEND remains authoritative and hole-safe.
+                coverage |= GHOST_COVERAGE_RIGGED_BLEND;
+                ++counters.mRiggedBlendInstancesSubmitted;
+            }
+        }
+    }
+
+    LLVertexBuffer::unbind();
+    LLGLSLShader::unbind();
+
+    gGL.getTexUnit(saved_texture_unit)->activate();
+    gGL.setColorMask(saved_color_mask[0] != GL_FALSE, saved_color_mask[3] != GL_FALSE);
+    gGL.setSceneBlendType(LLRender::BT_ALPHA);
+
+    gGL.matrixMode(LLRender::MM_MODELVIEW);
+    gGLLastMatrix = nullptr;
+    gGL.loadMatrix(gGLModelView);
+    gGL.syncMatrices();
+}
+
 void LLPipeline::renderGhostPostDeferred(const LLCamera& camera, EGhostForwardStage stage)
 {
     // ---- world-view guards. renderDeferredLighting also runs for reflection
@@ -5594,6 +5961,11 @@ void LLPipeline::renderGhostPostDeferred(const LLCamera& camera, EGhostForwardSt
         finalizeGhostRiggedSolidCoverage();
         return;
     }
+    if (stage == EGhostForwardStage::RIGGED_BLEND)
+    {
+        renderGhostRiggedBlend(camera);
+        return;
+    }
 
     // Map the stage to its progress bit, batch phase and forward shader.
     U32 stage_bit = GHOST_FORWARD_SOLID_NONE;
@@ -5620,6 +5992,8 @@ void LLPipeline::renderGhostPostDeferred(const LLCamera& camera, EGhostForwardSt
         shader = gDeferredFullbrightShinyProgram.mRiggedVariant;
         is_shiny = true;
         break;
+    case EGhostForwardStage::RIGGED_BLEND:
+        return;     // handled above
     case EGhostForwardStage::FINALIZE:
         return;     // handled above
     }
@@ -14142,14 +14516,31 @@ void LLPipeline::renderDeferredLighting()
         }
 
         renderGeomPostDeferred(*LLViewerCamera::getInstance());
-        popRenderTypeMask();
 
         // [GhostDeferred] FINALIZE (bookkeeping only): promote RIGGED_SOLID for
         // clones whose G-buffer + forward solid draws all succeeded, so the
         // overlay suppresses exactly the covered solids. Runs UNCONDITIONALLY (no
         // GL op, self-guarded) -- a clone with only G-buffer solids (no fullbright
-        // content) has no pending forward stage but must still be finalized.
-        renderGhostPostDeferred(*LLViewerCamera::getInstance(), EGhostForwardStage::FINALIZE);
+        // content) has no pending forward stage but must still be finalized. Must
+        // settle BEFORE the blend slice evaluates its RIGGED_SOLID prerequisite.
+        renderGhostPostDeferred(ghost_camera, EGhostForwardStage::FINALIZE);
+
+        // [GhostDeferred] Rigged forward-alpha parity. Stock post-deferred alpha
+        // (renderGeomPostDeferred, above) has already prepared the real alpha
+        // shaders and applied deferred lighting; replay the harvested blend batches
+        // at the ghost transform before the render-type mask is popped and the
+        // screen target is flushed. The read-only pending probe keeps a true GL
+        // no-op when submission is disabled or no blend category exists this frame.
+        if (ghostPostDeferredBlendPending(ghost_camera))
+        {
+            LLScopedGhostRenderInvariant ghost_blend_invariant(
+                "renderGhostPostDeferredRiggedBlend",
+                &LLActorMover::instance().ghostDeferredCounters().mInvariantViolations);
+            renderGhostPostDeferred(ghost_camera, EGhostForwardStage::RIGGED_BLEND);
+            ghost_blend_invariant.finish();
+        }
+
+        popRenderTypeMask();
     }
 
     screen_target->flush();

@@ -9,6 +9,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "llpresentationtime.h"    // [Temporal Capture]
 
 #include "alobjectpathmover.h"
 
@@ -204,7 +205,19 @@ void ALObjectPathMover::update(F32 frame_dt)
     // hitch cap (0.25s) preserved so a stall never teleports a prop. dt is the
     // caller's current-frame delta -- we can no longer read gFrameIntervalSeconds
     // here, since this runs before LLViewerObjectList::update() computes it.
-    const F32 dt = llclamp(frame_dt, 0.f, 0.25f);
+    // [Temporal Capture] Objects drive: advance the prop's path arc on the
+    // presentation clock (0x -> 0 holds the prop) so it slows with the world.
+    F32 dt;
+    if (LLPresentationTime::drives(LLTemporalFeature::OBJECTS))
+    {
+        // presentation-scaled, capped at the SAME 0.25s hitch cap the stock path
+        // uses, so the path/ping-pong evaluator never gets an out-of-range step
+        dt = llclamp((F32)LLPresentationTime::presentationDelta(), 0.f, 0.25f);
+    }
+    else
+    {
+        dt = llclamp(frame_dt, 0.f, 0.25f);   // stock hitch cap
+    }
 
     for (auto it = mDrives.begin(); it != mDrives.end(); )
     {

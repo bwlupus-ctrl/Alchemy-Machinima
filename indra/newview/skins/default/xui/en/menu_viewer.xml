@@ -118,6 +118,13 @@
          parameter="director" />
       </menu_item_call>
       <menu_item_call
+       label="Temporal Capture..."
+       name="temporal_capture_item_call">
+        <menu_item_call.on_click
+         function="Floater.Toggle"
+         parameter="temporal_capture" />
+      </menu_item_call>
+      <menu_item_call
        label="Ghost Studio..."
        name="ghost_studio_item_call">
         <menu_item_call.on_click

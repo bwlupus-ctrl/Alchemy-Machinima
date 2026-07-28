@@ -3759,7 +3759,7 @@
   <key>GhostStudioShowFormationPreview</key>
   <map>
     <key>Comment</key>
-    <string>Draw an in-world preview of where a formation will place clones -- numbered slot markers and an enclosing perimeter -- before you commit it. Costs nothing when Ghost Studio is closed or no prototype is selected.</string>
+    <string>Draw an in-world preview of the active crowd-placement draft -- numbered slot markers, guides, and an enclosing perimeter -- before you commit it. Costs nothing when no placement draft is active.</string>
     <key>Persist</key>
     <integer>1</integer>
     <key>Type</key>
@@ -3767,10 +3767,101 @@
     <key>Value</key>
     <integer>1</integer>
   </map>
+  <key>GhostStudioNameplateMode</key>
+  <map>
+    <key>Comment</key>
+    <string>Ghost Studio clone nameplates: 0 = off, 1 = smart (standalone clones, one centralized label per group, and the selected expanded member), 2 = all visible standalone/expanded clone labels plus centralized group labels.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>S32</string>
+    <key>Value</key>
+    <integer>1</integer>
+  </map>
+  <key>GhostStudioGuideWidthPixels</key>
+  <map>
+    <key>Comment</key>
+    <string>Target screen-space width, in pixels, for Ghost Studio crowd-placement guides and measurement lines.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>6.0</real>
+  </map>
+  <key>GhostStudioCrowdRotationStepDegrees</key>
+  <map>
+    <key>Comment</key>
+    <string>Ghost Studio crowd-placement mouse-wheel rotation step in degrees. The default matches the Second Life build rotation increment.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>5.625</real>
+  </map>
+  <key>GhostStudioCrowdHeightUnitsPerPixel</key>
+  <map>
+    <key>Comment</key>
+    <string>Ghost Studio crowd-placement height adjustment in region units per vertical mouse pixel while middle-mouse dragging.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>0.02</real>
+  </map>
+  <key>GhostStudioFormationPreviewScale</key>
+  <map>
+    <key>Comment</key><string>World scale multiplier for formation preview discs, arrows and labels.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>1</real>
+  </map>
+  <key>GhostStudioFormationPreviewHeight</key>
+  <map>
+    <key>Comment</key><string>Formation preview stalk height in metres.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>1.25</real>
+  </map>
+  <key>GhostStudioOverlayPalette</key>
+  <map>
+    <key>Comment</key>
+    <string>High-contrast colour palette for the in-world crowd-placement preview markers and numbers: 0 = neon green, 1 = neon yellow, 2 = cyan, 3 = white, 4 = magenta. The prototype highlight and the thick dark outline are always kept for legibility.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>S32</string>
+    <key>Value</key>
+    <integer>0</integer>
+  </map>
   <key>GhostDeferredEnable</key>
     <map>
       <key>Comment</key>
       <string>[GhostDeferred] EXPERIMENTAL: submit Ghost Studio CLONE-style clones into the deferred G-buffer so they receive real scene lighting (rigged opaque+masked only for now) instead of the fullbright post-tonemap overlay. Off by default; wrap the submission in the render-state invariant check. Toggling off returns to stock rendering.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>GhostUnifiedSourceResolvedMaterials</key>
+    <map>
+      <key>Comment</key>
+      <string>[GhostStudio] EXPERIMENTAL: entity clones retain valid source-resolved BoM/material texture bindings across refresh and rebuild. Off by default pending material/pass/topology acceptance.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>GhostUnifiedExcludeTemporaryAttachments</key>
+    <map>
+      <key>Comment</key>
+      <string>[GhostStudio] EXPERIMENTAL: exclude temporary world attachments in the shared source enumerator. Off preserves current Overlay and Entity behavior. HUD attachments are always excluded.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
@@ -3814,13 +3905,46 @@
     <key>PathGhostStyle</key>
     <map>
       <key>Comment</key>
-      <string>[ActorMover] Look of the true 3D model ghost (PathShowOnionSkin + PathGhostUseModel): 0 = Ghost (classic translucent flat tint, faintly pulled toward the actor hue), 1 = Clone (opaque UNLIT textured copy of the worn mesh -- fullbright-style; a scene-lit clone is future work), 2 = Hologram (cyan, animated scanlines + fresnel rim + subtle flicker, via the dedicated actor-ghost shader), 3 = Wireframe (thin hidden-line wireframe in a brighter actor tint), 4 = X-ray (rim-lit: body interior nearly clear, silhouette edges glow). Hologram/X-ray degrade to Ghost if the FX shader failed to load. Only affects the model ghost; the impostor/stick fallbacks are unstyled. Set from the style dropdown next to the Pose ghosts toggle (Path editor / Director Console).</string>
+      <string>[ActorMover] Overlay model-ghost look id: 0 Ghost, 1 Clone, 2 Hologram, 3 Wireframe, 4 X-ray, 5 Thermal, 6 Neon Outline, 7 Silhouette, 8 Toon/Ink, 9 Chrome, 10 Dissolve, 11 Negative, 12 Gold Statue, 13 Night-vision, 14 Blueprint, 15 Ectoplasm, 16 Frost/Ice, 17 Prism. FX looks degrade to Ghost if the actor-ghost shader fails to load. Only affects the harvested model overlay; impostor/stick fallbacks and entity clones are separate.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
       <string>S32</string>
       <key>Value</key>
       <integer>0</integer>
+    </map>
+    <key>PathGhostEffectFps</key>
+    <map>
+      <key>Comment</key>
+      <string>Shader animation cadence for Director/Path pose ghosts: 0 smooth, 1..30 quantized frames per second.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>PathGhostDistort</key>
+    <map>
+      <key>Comment</key>
+      <string>Independent path ghost distortion: 0 None, 1 Pixelate, 2 Voxel, 3 Lens, 4 Wave, 5 RGB Split, 6 Block Glitch, 7 Vertical Tear, 8 VHS.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>PathGhostDistortAmount</key>
+    <map>
+      <key>Comment</key>
+      <string>Strength of the independent path ghost distortion layer.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.5</real>
     </map>
     <key>ActorMoverPathZDebug</key>
     <map>
@@ -4295,6 +4419,94 @@
       <string>F32</string>
       <key>Value</key>
       <real>27.0</real>
+    </map>
+    <key>TemporalMode</key>
+    <map>
+      <key>Comment</key>
+      <string>[Temporal Capture] Presentation-clock mode for World Time Scale. 0 = Live (stock; presentation time == wall time); 1 = Manual scale (local cinematic dynamics advance at TemporalWorldScale). Other values reserved for later Temporal Capture pillars. See doc/TEMPORAL_CAPTURE_WORLD_TIME_SCALE_BRIEF.md.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>TemporalWorldScale</key>
+    <map>
+      <key>Comment</key>
+      <string>[Temporal Capture] World time scale for Manual mode: 0 = freeze (paused), 1 = realtime, up to 8x. Scales avatar/ghost animation, actor motion, object spin/paths, texture animation and particles together while network/UI/watchdog time stays real.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.0</real>
+    </map>
+    <key>TemporalOutputFPS</key>
+    <map>
+      <key>Comment</key>
+      <string>[Temporal Capture] Intended output frame rate, used only to display the recommended post speed-up (1 / scale) in the Temporal panel. Does not change capture.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>30.0</real>
+    </map>
+    <key>TemporalDriveAnimation</key>
+    <map>
+      <key>Comment</key>
+      <string>[Temporal Capture] When World Time Scale is active, scale skeletal animation (all avatars/animesh/animated objects via the global time factor) AND coupled actor/ghost world motion (actor-mover traversal, gaze, ghost turns) together, so a walking actor stays foot-locked. Inert while TemporalMode is Live.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>TemporalDriveObjects</key>
+    <map>
+      <key>Comment</key>
+      <string>[Temporal Capture] When World Time Scale is active, scale local object motion: target-omega prim spin and object-path (prop) drives. Inert while TemporalMode is Live.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>TemporalDriveTextureAnim</key>
+    <map>
+      <key>Comment</key>
+      <string>[Temporal Capture] When World Time Scale is active, scale llSetTextureAnim texture animation (flames, scrolling signs) on the presentation clock, per instance. Inert while TemporalMode is Live.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>TemporalDriveParticles</key>
+    <map>
+      <key>Comment</key>
+      <string>[Temporal Capture] When World Time Scale is active, scale the whole particle time domain (emission, aging, velocity, color/scale/glow fades) on the presentation clock. Inert while TemporalMode is Live.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>TemporalDriveCamera</key>
+    <map>
+      <key>Comment</key>
+      <string>[Temporal Capture] Reserved: drive the cinematic camera on the world clock. Deferred in this version -- the camera stays real-time (temporal isolation) so it can move at normal speed over a slowed world. Inert.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
     </map>
     <key>BDMergeFreezeWorld</key>
     <map>

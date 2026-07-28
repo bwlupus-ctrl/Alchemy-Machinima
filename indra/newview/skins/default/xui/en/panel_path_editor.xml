@@ -77,7 +77,7 @@
      name="path_readout"
      tool_tip="Total path length and the estimated time to walk it once (accounts for speed, per-node speed overrides, ease in/out and dwell)"
      use_ellipses="true"
-     width="150">
+     width="80">
         No path yet
     </text>
     <check_box
@@ -86,27 +86,102 @@
      height="14"
      label="Pose ghosts"
      layout="topleft"
-     left="160"
+     left="88"
      top="155"
      name="onion_skin_check"
      tool_tip="Show styled copies of the actor at every node of its path so you can read the staging without pressing ACTION. The look comes from the style dropdown alongside (true 3D body: ghost, clone, hologram, wireframe, x-ray); actors with no rigged mesh fall back to a frozen camera-facing avatar snapshot (impostor), or a stick figure if PathGhostUseImpostor is off. Client-side overlay; shows with the path preview."
-     width="96" />
+     width="82" />
     <combo_box
      control_name="PathGhostStyle"
      follows="top|right"
      height="18"
      layout="topleft"
-     left="258"
+     left="172"
      top="153"
      name="ghost_style_combo"
-     tool_tip="Look of the 3D pose ghost. Ghost: translucent tint. Clone: unlit textured copy of the worn mesh. Hologram: cyan scanlines + rim glow, animated. Wireframe: hidden-line mesh wire. X-ray: clear body, glowing silhouette edges."
-     width="96">
+     tool_tip="Look of the 3D pose ghost. The full overlay look set mirrors Ghost Studio and the Director Console."
+     width="60">
         <combo_box.item label="Ghost" name="gs_ghost" value="0" />
         <combo_box.item label="Clone" name="gs_clone" value="1" />
         <combo_box.item label="Hologram" name="gs_hologram" value="2" />
         <combo_box.item label="Wireframe" name="gs_wireframe" value="3" />
         <combo_box.item label="X-ray" name="gs_xray" value="4" />
+        <combo_box.item label="Thermal" name="gs_thermal" value="5" />
+        <combo_box.item label="Neon Outline" name="gs_neon" value="6" />
+        <combo_box.item label="Silhouette" name="gs_silhouette" value="7" />
+        <combo_box.item label="Toon/Ink" name="gs_toon" value="8" />
+        <combo_box.item label="Chrome" name="gs_chrome" value="9" />
+        <combo_box.item label="Dissolve" name="gs_dissolve" value="10" />
+        <combo_box.item label="Negative" name="gs_negative" value="11" />
+        <combo_box.item label="Gold Statue" name="gs_gold" value="12" />
+        <combo_box.item label="Night-vision" name="gs_night" value="13" />
+        <combo_box.item label="Blueprint" name="gs_blueprint" value="14" />
+        <combo_box.item label="Ectoplasm" name="gs_ectoplasm" value="15" />
+        <combo_box.item label="Frost/Ice" name="gs_frost" value="16" />
+        <combo_box.item label="Prism" name="gs_prism" value="17" />
+        <combo_box.item label="Thermal Scope" name="gs_thermal_scope" value="18" />
+        <combo_box.item label="Wallhack/ESP" name="gs_wallhack" value="19" />
+        <combo_box.item label="NV Tube" name="gs_nv_tube" value="20" />
+        <combo_box.item label="Damage" name="gs_damage" value="21" />
+        <combo_box.item label="Killcam" name="gs_killcam" value="22" />
+        <combo_box.item label="Oil Slick" name="gs_oil_slick" value="23" />
+        <combo_box.item label="Vaporwave" name="gs_vaporwave" value="24" />
+        <combo_box.item label="Halftone" name="gs_halftone" value="25" />
+        <combo_box.item label="Sonar" name="gs_sonar" value="26" />
+        <combo_box.item label="Holo Echo" name="gs_holo_echo" value="27" />
     </combo_box>
+    <combo_box
+     control_name="PathGhostDistort"
+     follows="top|right"
+     height="18"
+     layout="topleft"
+     left="234"
+     top="153"
+     name="ghost_distort_combo"
+     tool_tip="Independent distortion; stacks with every path-ghost look."
+     width="80">
+        <combo_box.item label="None" name="gd_none" value="0" />
+        <combo_box.item label="Pixelate" name="gd_pixel" value="1" />
+        <combo_box.item label="Voxel" name="gd_voxel" value="2" />
+        <combo_box.item label="Lens" name="gd_lens" value="3" />
+        <combo_box.item label="Wave" name="gd_wave" value="4" />
+        <combo_box.item label="RGB Split" name="gd_rgb" value="5" />
+        <combo_box.item label="Block" name="gd_block" value="6" />
+        <combo_box.item label="V-Tear" name="gd_vertical" value="7" />
+        <combo_box.item label="VHS" name="gd_vhs" value="8" />
+    </combo_box>
+    <spinner
+     control_name="PathGhostEffectFps"
+     decimal_digits="0"
+     follows="top|right"
+     height="18"
+     increment="1"
+     initial_value="0"
+     label="FX fps"
+     label_width="38"
+     layout="topleft"
+     left="234"
+     max_val="30"
+     min_val="0"
+     name="ghost_effect_fps"
+     tool_tip="Shader animation cadence for path ghosts. 0 is smooth; 1-30 is stop motion."
+     top="133"
+     width="120" />
+    <slider
+     control_name="PathGhostDistortAmount"
+     decimal_digits="2"
+     follows="top|right"
+     height="18"
+     increment="0.05"
+     initial_value="0.5"
+     layout="topleft"
+     left="316"
+     max_val="1"
+     min_val="0"
+     name="ghost_distort_amount"
+     tool_tip="Path-ghost distortion amount"
+     top="153"
+     width="38" />
 
     <button
      follows="left|top"

@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- Temporal Capture transport (ALPanelTemporalCapture, class
+     "panel_temporal_capture"): the World Time Scale control surface. Mode
+     (Live / Manual), the world-speed slider + spinner (0 = freeze .. 8x),
+     effective/recommended-post-speed readouts, the per-subsystem Drive
+     checkboxes, and Freeze/preset shortcuts. Embedded by BOTH the standalone
+     Temporal Capture floater and the Director Console Temporal tab, so the two
+     hosts render the identical transport from one source and can never drift.
+     Every parameter is settings-backed (control_name = Temporal*), so scene-save
+     and multiple live instances stay in lockstep with no fork.
+     See doc/TEMPORAL_CAPTURE_WORLD_TIME_SCALE_BRIEF.md. -->
+<panel
+ background_visible="false"
+ border="false"
+ height="360"
+ layout="topleft"
+ name="panel_temporal_capture"
+ width="340">
+    <text
+     follows="left|top"
+     font="SansSerifBold"
+     height="16"
+     layout="topleft"
+     left="10"
+     top="6"
+     name="header"
+     width="320">
+        World Time Scale
+    </text>
+
+    <text
+     follows="left|top"
+     height="16"
+     layout="topleft"
+     left="10"
+     top="30"
+     name="mode_lbl"
+     width="44">
+        Mode
+    </text>
+    <combo_box
+     control_name="TemporalMode"
+     follows="left|top"
+     height="20"
+     layout="topleft"
+     left="58"
+     top="28"
+     name="mode_combo"
+     tool_tip="Live keeps everything at real speed (stock). Manual scale advances the local cinematic clock at the world speed below, while network, UI and watchdogs stay real."
+     width="150">
+        <combo_box.item label="Live (realtime)" name="tm_live" value="0" />
+        <combo_box.item label="Manual scale" name="tm_manual" value="1" />
+    </combo_box>
+
+    <text
+     follows="left|top"
+     height="14"
+     layout="topleft"
+     left="10"
+     top="58"
+     name="speed_lbl"
+     width="88">
+        World speed
+    </text>
+    <slider
+     control_name="TemporalWorldScale"
+     decimal_digits="2"
+     follows="left|top"
+     height="16"
+     increment="0.01"
+     initial_value="1.0"
+     layout="topleft"
+     left="100"
+     max_val="8.0"
+     min_val="0.0"
+     show_text="false"
+     top="56"
+     name="scale_slider"
+     tool_tip="World time scale: 0 = freeze, 1 = realtime, up to 8x. Slows/speeds animation, actor motion, object spin/paths, texture animation and particles together."
+     width="164" />
+    <spinner
+     control_name="TemporalWorldScale"
+     decimal_digits="2"
+     follows="left|top"
+     height="16"
+     increment="0.05"
+     label=""
+     label_width="0"
+     layout="topleft"
+     left="270"
+     max_val="8.0"
+     min_val="0.0"
+     top="56"
+     name="scale_spinner"
+     tool_tip="World time scale (0 = freeze .. 8x)"
+     width="60" />
+
+    <!-- preset shortcuts: Freeze/0.25/0.5 engage Manual; Realtime returns to Live -->
+    <button
+     follows="left|top"
+     height="20"
+     label="Freeze"
+     layout="topleft"
+     left="10"
+     top="80"
+     name="btn_freeze"
+     tool_tip="Pause the cinematic clocks (0x). Note: this is NOT Freeze World -- object/drawable movement is not halted; use the snapshot floater's Freeze World for a full world halt."
+     width="58" />
+    <button
+     follows="left|top"
+     height="20"
+     label="0.25x"
+     layout="topleft"
+     left="72"
+     top="80"
+     name="btn_quarter"
+     width="52" />
+    <button
+     follows="left|top"
+     height="20"
+     label="0.5x"
+     layout="topleft"
+     left="128"
+     top="80"
+     name="btn_half"
+     width="52" />
+    <button
+     follows="left|top"
+     height="20"
+     label="1x"
+     layout="topleft"
+     left="184"
+     top="80"
+     name="btn_realtime"
+     tool_tip="Return to Live (realtime, stock behavior)"
+     width="52" />
+    <button
+     follows="left|top"
+     height="20"
+     label="2x"
+     layout="topleft"
+     left="240"
+     top="80"
+     name="btn_double"
+     width="52" />
+
+    <text
+     follows="left|top"
+     font="SansSerifBold"
+     height="14"
+     layout="topleft"
+     left="10"
+     top="108"
+     name="effective_text"
+     width="320">
+        Effective speed: 1.00x (live)
+    </text>
+    <text
+     follows="left|top"
+     height="14"
+     layout="topleft"
+     left="10"
+     top="126"
+     name="postspeed_text"
+     text_color="LtGray_50"
+     width="230">
+        Recommended post speed: 100%
+    </text>
+    <spinner
+     control_name="TemporalOutputFPS"
+     decimal_digits="0"
+     follows="left|top"
+     height="16"
+     increment="1"
+     label="Out FPS"
+     label_width="48"
+     layout="topleft"
+     left="236"
+     max_val="240"
+     min_val="1"
+     top="126"
+     name="output_fps_spinner"
+     tool_tip="Intended output frame rate. Used only to show the recommended post speed-up (1 / scale)."
+     width="94" />
+
+    <text
+     follows="left|top"
+     height="14"
+     layout="topleft"
+     left="10"
+     top="150"
+     name="drives_lbl"
+     width="320">
+        Drive these on the world clock:
+    </text>
+    <check_box
+     control_name="TemporalDriveAnimation"
+     follows="left|top"
+     height="16"
+     label="Animation &amp; actor motion"
+     layout="topleft"
+     left="16"
+     top="168"
+     name="drive_anim_check"
+     tool_tip="Skeletal animation (all avatars/animesh) plus actor-mover walking, gaze and ghost turns -- kept locked so a walking actor never foot-slides."
+     width="300" />
+    <check_box
+     control_name="TemporalDriveObjects"
+     follows="left|top"
+     height="16"
+     label="Object motion (spin, paths)"
+     layout="topleft"
+     left="16"
+     top="186"
+     name="drive_objects_check"
+     tool_tip="Local prim target-omega spin and object-path (prop) drives."
+     width="300" />
+    <check_box
+     control_name="TemporalDriveTextureAnim"
+     follows="left|top"
+     height="16"
+     label="Texture animation"
+     layout="topleft"
+     left="16"
+     top="204"
+     name="drive_texanim_check"
+     tool_tip="llSetTextureAnim surfaces: flames, scrolling signs, animated textures."
+     width="300" />
+    <check_box
+     control_name="TemporalDriveParticles"
+     follows="left|top"
+     height="16"
+     label="Particles"
+     layout="topleft"
+     left="16"
+     top="222"
+     name="drive_particles_check"
+     tool_tip="The whole particle time domain: emission, aging, velocity, color/scale/glow fades."
+     width="300" />
+    <check_box
+     control_name="TemporalDriveCamera"
+     enabled="false"
+     follows="left|top"
+     height="16"
+     label="Camera (stays real-time in this version)"
+     layout="topleft"
+     left="16"
+     top="240"
+     name="drive_camera_check"
+     tool_tip="Reserved. The camera deliberately stays real-time so it can move at normal speed over a slowed world (temporal isolation). Driving the camera on the world clock is a later addition."
+     width="320" />
+
+    <text
+     follows="left|top"
+     height="14"
+     layout="topleft"
+     left="10"
+     top="266"
+     name="status_text"
+     text_color="LtGray_50"
+     width="320">
+        Live
+    </text>
+    <text
+     follows="left|top"
+     height="40"
+     layout="topleft"
+     left="10"
+     top="286"
+     mouse_opaque="false"
+     name="temporal_hint"
+     text_color="LtGray_50"
+     word_wrap="true"
+     width="320">
+        Only local presentation is scaled. The grid connection, other residents and server-driven motion keep running at real speed.
+    </text>
+</panel>

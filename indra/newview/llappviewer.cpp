@@ -61,6 +61,7 @@
 #include "llmimetypes.h"
 #include "llslurl.h"
 #include "llstartup.h"
+#include "llpresentationtime.h"     // [Temporal Capture] presentation clock
 #include "llfocusmgr.h"
 #include "llurlfloaterdispatchhandler.h"
 #include "llviewerjoystick.h"
@@ -5013,6 +5014,12 @@ void LLAppViewer::idle()
 
     LLFrameTimer::updateFrameTime();
     LLFrameTimer::updateFrameCount();
+    // [Temporal Capture] Advance the presentation clock and freeze this
+    // iteration's immutable time context BEFORE any cinematic consumer (object
+    // path/ghost updates, gObjectList.update, particles, camera) runs later in
+    // idle() or in the following display(). Wall/network time is untouched.
+    // See doc/TEMPORAL_CAPTURE_WORLD_TIME_SCALE_BRIEF.md.
+    LLPresentationTime::instance().tick();
     LLEventTimer::updateClass();
     LLPerfStats::updateClass();
 

@@ -25,6 +25,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "llpresentationtime.h"    // [Temporal Capture]
 
 #include "llviewerpartsim.h"
 
@@ -662,7 +663,27 @@ void LLViewerPartSim::updateSimulation()
 
     static LLFrameTimer update_timer;
 
-    const F32 dt = llmin(update_timer.getElapsedTimeAndResetF32(), 0.1f);
+    // [Temporal Capture] Particles drive: advance the ENTIRE particle time domain
+    // (emission, source age, particle birth/age/max-age, velocity, wind, target,
+    // bounce, color/scale/glow fades AND the skip accounting below) on the
+    // presentation clock, so slow-mo and fast are coherent. Scale is applied ONCE
+    // here (single-owner rule); every downstream consumer -- source update(dt),
+    // group updateParticles(dt * visirate), mSkippedTime -- is byte-identical in
+    // structure, now in presentation units. The private wall timer is still reset
+    // every iteration, so 0x builds no thaw debt and leaving temporal mode never
+    // jumps. Capped at 0.1s/iteration exactly like stock (matches the shared
+    // clock's own per-frame cap). See doc/TEMPORAL_CAPTURE_WORLD_TIME_SCALE_BRIEF.md 4.4.
+    F32 dt = llmin(update_timer.getElapsedTimeAndResetF32(), 0.1f);
+    if (LLPresentationTime::drives(LLTemporalFeature::PARTICLES))
+    {
+        // Presentation-scaled interval, capped at the uniform 0.25s subsystem hitch
+        // cap (the sim is not built to integrate an arbitrarily large single step).
+        // Coupling with gait is exact while the per-frame delta stays under the cap
+        // (normal operation at any scale); it degrades only on a genuine stall, no
+        // worse than stock. 0x -> 0 holds; the private timer above is still reset
+        // (no thaw debt).
+        dt = llmin((F32)LLPresentationTime::presentationDelta(), 0.25f);
+    }
 
     if (!(gPipeline.hasRenderType(LLPipeline::RENDER_TYPE_PARTICLES)))
     {

@@ -28,6 +28,7 @@
 #pragma once
 
 #include <map>
+#include <memory>
 #include <boost/unordered_map.hpp>
 
 #include "llassetstorage.h"
@@ -415,6 +416,30 @@ public:
     LLViewerTexture     *getTEImage(const U8 te) const;
     LLViewerTexture     *getTENormalMap(const U8 te) const;
     LLViewerTexture     *getTESpecularMap(const U8 te) const;
+    // [GhostStudio] Debug-gated, viewer-local resolved material bindings.
+    // These never change semantic TE ids and never emit simulator updates.
+    void setGhostResolvedBakedTexture(const LLUUID& semantic_magic_id,
+                                      LLViewerTexture* texture);
+    LLViewerTexture* getGhostResolvedBakedTexture(
+        const LLUUID& semantic_magic_id) const;
+    void setGhostResolvedMaterialBinding(
+        U8 te,
+        const LLTextureEntry& semantic,
+        const LLUUID& render_material_id,
+        bool ready,
+        LLViewerTexture* diffuse,
+        LLViewerTexture* normal,
+        LLViewerTexture* specular,
+        LLViewerTexture* base_color,
+        LLViewerTexture* pbr_normal,
+        LLViewerTexture* metallic_roughness,
+        LLViewerTexture* emissive);
+    bool hasGhostResolvedMaterialBinding(U8 te) const;
+    S32 getGhostResolvedMaterialBindingCount() const;
+    bool isGhostResolvedMaterialBindingPending(U8 te) const;
+    bool ghostResolvedMaterialSemanticMatches(U8 te) const;
+    bool ghostResolvedMaterialBindingMatches(U8 te) const;
+    bool restoreGhostResolvedMaterialBinding(U8 te);
 
     void clearTEWaterExclusion(const U8 te);
 
@@ -800,6 +825,11 @@ public:
     LLPointer<LLViewerTexture> *mTEImages;
     LLPointer<LLViewerTexture> *mTENormalMaps;
     LLPointer<LLViewerTexture> *mTESpecularMaps;
+    struct GhostResolvedMaterialState;
+    // Lazily allocated only for debug-gated local ghost volumes. Keeping one
+    // null pointer here avoids adding vector/map storage to every world object.
+    std::unique_ptr<GhostResolvedMaterialState>
+        mGhostResolvedMaterialState;
 
     // true if user can select this object by clicking under any circumstances (even if pick_unselectable is true)
     // can likely be factored out

@@ -4,8 +4,21 @@ Investigation into keeping the **entire inventory resident in RAM** for the Alch
 fork on the 192GB / 9950X / RTX 5090 target, so inventory browsing/search is instant with no
 on-demand disk or server fetching during a session.
 
-**Status: READ-ONLY investigation.** No source edited, nothing built or committed. This file is
-the only artifact.
+> **STATUS: §6 IMPLEMENTED 2026-07-25 (gated `BDMergeInventoryFullPreload`, default OFF).** Built clean
+> (Release, exit 0); Codex review reached 0 must-fix on round 2. **In-world acceptance owed.** Deltas
+> from the plan below: (a) the activity predicate is `full_preload && inventoryFetchStarted() &&
+> !isEverythingFetched()` — the brief's `!isEverythingFetched()` alone means "not finished", not
+> "running", and would have applied the wide profile to ordinary on-demand fetches too; (b) the
+> preload pool is floored at 2, because `llclamp(pool_size - 1, 1, 50)` on a U32 turns a configured
+> `0` into **50** — maximum concurrency from the most conservative-looking input, the exact failure
+> §8 warns about (the stock `PoolSizeAIS` path has the same latent wrap and was deliberately left
+> alone, since changing it would alter gate-off behavior); (c) the per-idle budget is clamped to
+> 1–100 ms. §6a's separate completion callback was not added — the existing completion site already
+> logs. No UI, no startup changes. Sites: `llinventorymodelbackgroundfetch.cpp` (pool + idle budget
+> in `bulkFetchViaAis()`, batch size in the category-subset overload) + 4 settings.
+
+**Status of the original investigation: READ-ONLY.** Sections 1–5 and 7–8 below are preserved as
+written; they are the analysis that justifies the §6 design.
 
 ---
 

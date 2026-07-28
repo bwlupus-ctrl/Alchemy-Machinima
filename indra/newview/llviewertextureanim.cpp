@@ -28,6 +28,7 @@
 
 #include "llviewertextureanim.h"
 #include "llvovolume.h"
+#include "llpresentationtime.h"    // [Temporal Capture]
 
 #include "llmath.h"
 #include "llerror.h"
@@ -64,6 +65,15 @@ void LLViewerTextureAnim::reset()
 {
     LLTextureAnim::reset();
     mTimer.reset();
+    // [Temporal Capture] When temporal is driving this animation, a reset must also
+    // clear the accumulated presentation phase so the driven path restarts in step
+    // with the stock (wall) path, which reset() zeroes via the timer above. Guarded
+    // on the drive gate so the stock (not-driven) path stays byte-identical.
+    if (LLPresentationTime::drives(LLTemporalFeature::TEXTURE_ANIM))
+    {
+        mLastTime = 0.0;
+        mLastFrame = -1.f;
+    }
 }
 
 //static
@@ -123,13 +133,39 @@ S32 LLViewerTextureAnim::animateTextures(F32 &off_s, F32 &off_t,
     }
 
 
+    // [Temporal Capture] Texture-anim drive: advance this instance's phase on the
+    // presentation clock when driven, else exactly the stock wall path. Rebasing
+    // is PER INSTANCE (no shared global epoch) so nothing jumps on enter/leave:
+    //  - SMOOTH accumulates phase in mLastTime and resets its timer every frame,
+    //    so feeding presentation delta instead of wall delta is seamless both ways.
+    //  - Non-smooth is stock-absolute (elapsed * rate); when driven we accumulate
+    //    presentation phase in mLastTime (unused by the stock non-smooth path) and
+    //    rebase the wall timer to match via setAge(), so switching back to wall
+    //    time continues from the same frame.
+    // Gate OFF => byte-identical to stock. See TEMPORAL_CAPTURE...BRIEF.md 4.3.
+    const bool temporal_driven = LLPresentationTime::drives(LLTemporalFeature::TEXTURE_ANIM);
     F32 frame_counter;
     if (mMode & SMOOTH)
     {
-        frame_counter = mTimer.getElapsedTimeAndResetF32() * mRate + (F32)mLastTime;
+        const F32 wall_dphase = mTimer.getElapsedTimeAndResetF32();  // always resets
+        const F32 dphase = temporal_driven
+                               ? (F32)LLPresentationTime::presentationDelta()
+                               : wall_dphase;
+        frame_counter = dphase * mRate + (F32)mLastTime;
+    }
+    else if (temporal_driven && mRate != 0.f)
+    {
+        frame_counter = (F32)mLastTime + (F32)LLPresentationTime::presentationDelta() * mRate;
+        // keep the wall timer in sync so leaving temporal mode never jumps
+        mTimer.setAge((F64)frame_counter / (F64)mRate);
     }
     else
     {
+        // Stock non-smooth. Also the driven-but-rate==0 case: elapsed * 0 == 0 on
+        // BOTH the driven and the wall path, so there is no phase to preserve and no
+        // jump on leaving temporal mode -- routing rate 0 here (instead of the
+        // accumulate + setAge path, which cannot rebase a 0 rate) is the explicit
+        // zero-rate policy.
         frame_counter = mTimer.getElapsedTimeF32() * mRate;
     }
     mLastTime = frame_counter;

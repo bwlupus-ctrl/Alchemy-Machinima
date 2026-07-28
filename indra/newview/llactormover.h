@@ -664,7 +664,10 @@ public:
         F32        mShimmerIntensity = 0.f; // 0..1
         F32        mPixelSize = 0.f;        // screen px (0 = off)
         F32        mGlitch = 0.f;           // 0..1 slice offset + chroma split
+        S32        mDistort = 0;             // independent distortion selector
+        F32        mDistortAmount = 0.5f;    // 0..1 selected distortion strength
         F32        mPhase = 0.f;            // per-instance phase so FX don't sync up
+        F32        mEffectFps = 0.f;        // 0 smooth; 1..30 quantized ghostTime
         // [R2-1] output brightness multiplier (rides ghostFx.w; 1 = as-is).
         // The ghost is unlit in the post-tonemap overlay, so this is how a
         // clone sits into a night scene instead of glowing fullbright.

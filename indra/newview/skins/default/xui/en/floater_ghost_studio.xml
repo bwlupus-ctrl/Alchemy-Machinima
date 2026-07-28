@@ -5,21 +5,21 @@
 <floater
  legacy_header_height="18"
  can_resize="true"
- height="938"
+ height="794"
  min_height="520"
- min_width="400"
+ min_width="370"
  layout="topleft"
  name="floater_ghost_studio"
  title="GHOST STUDIO (LOCAL)"
- width="410">
+ width="520">
   <panel
    class="panel_ghost_studio"
    filename="panel_ghost_studio.xml"
    follows="all"
-   height="904"
+   height="760"
    layout="topleft"
    left="8"
    top="24"
    name="ghost_studio_panel"
-   width="394" />
+   width="504" />
 </floater>
