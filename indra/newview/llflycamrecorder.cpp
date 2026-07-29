@@ -560,6 +560,8 @@ void LLFlycamRecorder::updateCamera()
     static LLCachedControl<F32>  speed(gSavedSettings, "FlycamRecSpeed", 1.f);
     static LLCachedControl<S32>  loop_mode(gSavedSettings, "FlycamRecLoopMode", 0);
     static LLCachedControl<bool> use_operator(gSavedSettings, "FlycamRecUseOperator", false);
+    static LLCachedControl<S32> operator_locomotion(
+        gSavedSettings, "FlycamOperatorLocomotionMode", 0);
 
     if (mKeys.empty())
     {
@@ -609,20 +611,36 @@ void LLFlycamRecorder::updateCamera()
     {
         if (mHavePrev)
         {
-            LLMatrix3 axes(out_rot);
-            const LLVector3 world_vel = (out_pos - mPrevPosAgent) * (1.f / dt);
-            LLQuaternion dq = out_rot * ~mPrevRot;
-            F32 d_roll, d_pitch, d_yaw;
-            LLMatrix3(dq).getEulerAngles(&d_roll, &d_pitch, &d_yaw);
+            LLCameraOperatorOutput op;
+            if ((S32)operator_locomotion == 0)
+            {
+                // Legacy retains the exact variable-frame velocity path.
+                LLMatrix3 axes(out_rot);
+                const LLVector3 world_vel =
+                    (out_pos - mPrevPosAgent) * (1.f / dt);
+                LLQuaternion dq = out_rot * ~mPrevRot;
+                F32 d_roll, d_pitch, d_yaw;
+                LLMatrix3(dq).getEulerAngles(
+                    &d_roll, &d_pitch, &d_yaw);
 
-            LLCameraOperatorInput opin;
-            opin.mDeltaTime = dt;
-            opin.mLinearVel = LLVector3(world_vel * LLVector3(axes.mMatrix[0]),
-                                        world_vel * LLVector3(axes.mMatrix[1]),
-                                        world_vel * LLVector3(axes.mMatrix[2]));
-            opin.mAngularVel = LLVector3(d_roll, d_pitch, d_yaw) * (1.f / dt);
-
-            const LLCameraOperatorOutput op = LLCameraOperator::instance().update(opin);
+                LLCameraOperatorInput opin;
+                opin.mDeltaTime = dt;
+                opin.mLinearVel = LLVector3(
+                    world_vel * LLVector3(axes.mMatrix[0]),
+                    world_vel * LLVector3(axes.mMatrix[1]),
+                    world_vel * LLVector3(axes.mMatrix[2]));
+                opin.mAngularVel =
+                    LLVector3(d_roll, d_pitch, d_yaw) * (1.f / dt);
+                op = LLCameraOperator::instance().update(opin);
+            }
+            else
+            {
+                // Recorded sources provide absolute poses. The operator
+                // interpolates these at fixed tick boundaries before deriving
+                // velocities, removing render-FPS-dependent frame averages.
+                op = LLCameraOperator::instance().updateFromPose(
+                    dt, out_pos, out_rot);
+            }
             LLMatrix3 wobble(op.mRoll, op.mPitch, op.mYaw);
             mPrevPosAgent = out_pos;
             mPrevRot = out_rot;
@@ -638,6 +656,13 @@ void LLFlycamRecorder::updateCamera()
             mPrevPosAgent = out_pos;
             mPrevRot = out_rot;
             mHavePrev = true;
+            if ((S32)operator_locomotion != 0)
+            {
+                // Prime timestamped pose history at the playback cut. The
+                // output is intentionally unused on this first frame.
+                LLCameraOperator::instance().updateFromPose(
+                    dt, out_pos, out_rot);
+            }
         }
     }
 

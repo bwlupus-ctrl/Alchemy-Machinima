@@ -276,6 +276,7 @@ set(viewer_SOURCE_FILES
     llclonefidelityaudit.cpp
     llghostdeferreddiagnostics.cpp
     alformationsolver.cpp
+    alweathermodel.cpp
     alghostgroupmodel.cpp
     alghostinteractionstate.cpp
     alghostmanipproxy.cpp
@@ -300,6 +301,7 @@ set(viewer_SOURCE_FILES
     alpanelactormover.cpp
     alpanelanimpreview.cpp
     alpanelcinecamparams.cpp
+    alpanelweathersettings.cpp
     alpanelflycamorbit.cpp
     alpanelflycamrecorder.cpp
     alpanelpatheditor.cpp
@@ -1104,6 +1106,7 @@ set(viewer_HEADER_FILES
     llghostcoverage.h
     llghostdeferreddiagnostics.h
     alformationsolver.h
+    alweathermodel.h
     alghostgroupmodel.h
     alghostinteractionstate.h
     alghostmanipproxy.h
@@ -1129,6 +1132,7 @@ set(viewer_HEADER_FILES
     alpanelactormover.h
     alpanelanimpreview.h
     alpanelcinecamparams.h
+    alpanelweathersettings.h
     alpanelflycamorbit.h
     alpanelflycamrecorder.h
     alpanelpatheditor.h
@@ -2491,6 +2495,7 @@ if (BUILD_TESTING)
 
   SET(viewer_TEST_SOURCE_FILES
     alformationsolver.cpp
+    alweathermodel.cpp
     alghostgroupmodel.cpp
     alghostinteractionstate.cpp
     alsceneexplorerpredicate.cpp
@@ -2627,4 +2632,17 @@ if (BUILD_TESTING)
   )
   LL_ADD_INTEGRATION_TEST(lltextureinfo "${lltextureinfo_test_sources}" "${test_libs}" "${test_project}")
   #LL_ADD_INTEGRATION_TEST(lltextureinfodetails "" "${test_libs}" "${test_project}") test cases currently empty
+
+  set(llcameraoperator_test_sources
+    llcameraoperator.cpp
+    ../llxml/llcontrol.cpp
+    ../llxml/llxmltree.cpp
+    ../llxml/llxmlparser.cpp
+    ../llcommon/commoncontrol.cpp
+  )
+  LL_ADD_INTEGRATION_TEST(llcameraoperator
+    "${llcameraoperator_test_sources}"
+    "${test_libs}"
+    "${test_project}"
+  )
 endif ()

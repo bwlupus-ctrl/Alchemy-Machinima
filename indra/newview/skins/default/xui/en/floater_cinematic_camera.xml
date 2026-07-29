@@ -3,22 +3,34 @@
      (ALPanelCineCamParams), shared with the Director Console. -->
 <floater
  legacy_header_height="18"
- can_resize="false"
- height="465"
+ can_resize="true"
+ height="700"
+ min_height="420"
+ min_width="340"
  layout="topleft"
  name="cinematic_camera"
  title="Cinematic Camera"
  save_rect="true"
  single_instance="true"
- width="320">
-    <panel
-     class="panel_cinecam_params"
-     filename="panel_cinecam_params.xml"
+ width="340">
+    <scroll_container
      follows="all"
+     height="676"
      layout="topleft"
      left="0"
      top="20"
-     name="cinecam_params"
-     width="320"
-     height="441" />
+     name="cinecam_params_scroll"
+     opaque="false"
+     width="340">
+        <panel
+         class="panel_cinecam_params"
+         filename="panel_cinecam_params.xml"
+         follows="left|top"
+         height="1175"
+         layout="topleft"
+         left="0"
+         top="0"
+         name="cinecam_params"
+         width="320" />
+    </scroll_container>
 </floater>

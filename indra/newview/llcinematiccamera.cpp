@@ -1349,25 +1349,41 @@ void LLCinematicCamera::updateCamera()
     // ---- optional handheld texture on top ---------------------------------
     if (use_operator)
     {
+        static LLCachedControl<S32> operator_locomotion(
+            gSavedSettings, "FlycamOperatorLocomotionMode", 0);
         if (!mWasActive)
         {
             LLCameraOperator::instance().reset();
         }
-        LLMatrix3 axes(mSmRot);
-        const LLVector3 world_vel = (mSmPos - mPrevPos) * (1.f / dt);
-        // angular velocity from the frame-to-frame rotation delta
-        LLQuaternion dq = mSmRot * ~mPrevRot;
-        F32 d_roll, d_pitch, d_yaw;
-        LLMatrix3(dq).getEulerAngles(&d_roll, &d_pitch, &d_yaw);
+        LLCameraOperatorOutput op;
+        if ((S32)operator_locomotion == 0)
+        {
+            // Legacy retains the exact variable-frame velocity path.
+            LLMatrix3 axes(mSmRot);
+            const LLVector3 world_vel =
+                (mSmPos - mPrevPos) * (1.f / dt);
+            LLQuaternion dq = mSmRot * ~mPrevRot;
+            F32 d_roll, d_pitch, d_yaw;
+            LLMatrix3(dq).getEulerAngles(
+                &d_roll, &d_pitch, &d_yaw);
 
-        LLCameraOperatorInput opin;
-        opin.mDeltaTime = dt;
-        opin.mLinearVel = LLVector3(world_vel * LLVector3(axes.mMatrix[0]),
-                                    world_vel * LLVector3(axes.mMatrix[1]),
-                                    world_vel * LLVector3(axes.mMatrix[2]));
-        opin.mAngularVel = LLVector3(d_roll, d_pitch, d_yaw) * (1.f / dt);
-
-        const LLCameraOperatorOutput op = LLCameraOperator::instance().update(opin);
+            LLCameraOperatorInput opin;
+            opin.mDeltaTime = dt;
+            opin.mLinearVel = LLVector3(
+                world_vel * LLVector3(axes.mMatrix[0]),
+                world_vel * LLVector3(axes.mMatrix[1]),
+                world_vel * LLVector3(axes.mMatrix[2]));
+            opin.mAngularVel =
+                LLVector3(d_roll, d_pitch, d_yaw) * (1.f / dt);
+            op = LLCameraOperator::instance().update(opin);
+        }
+        else
+        {
+            // Procedural paths are sampled as absolute poses at fixed tick
+            // boundaries, rather than as render-frame average velocities.
+            op = LLCameraOperator::instance().updateFromPose(
+                dt, mSmPos, mSmRot);
+        }
         LLMatrix3 wobble(op.mRoll, op.mPitch, op.mYaw);
         out_rot = LLQuaternion(wobble) * out_rot;
         LLMatrix3 out_axes(out_rot);

@@ -160,6 +160,9 @@ public:
     // [BDMerge G3.3] per-projector volumetric light cones: additive pass, one
     // fullscreen cone per shadow-casting projector slot, in place on target.
     void renderProjectorVolumetric(LLRenderTarget* target);
+    // Viewer-native rain/lightning composite. Runs before HDR exposure and bloom
+    // so lightning participates in the same photographic response as scene lights.
+    void renderWeather(LLRenderTarget* target);
     // [BDMerge Froxel F0] hybrid froxel volumetrics: run the P1 media pass into the
     // Z-slice atlas and (optionally) the debug overlay. Fully gated on
     // BDMergeFroxelVolumetrics - a no-op (no alloc, no passes) when off.
@@ -932,6 +935,9 @@ public:
     // bilateral upsample composites it onto mRT->screen. Allocated on demand in
     // renderProjectorVolumetric, released in releaseGLBuffers/destroyGL.
     LLRenderTarget          mProjVolHalf;
+    // Half-resolution rain scratch. It is allocated only while weather rain is
+    // enabled and released with the other GL buffers.
+    LLRenderTarget          mWeatherRainHalf;
     // [BDMerge G3.3 Phase 3 item 4] true iff the half-res march this frame produced
     // a real shaft in mProjVolHalf (half-res path + at least one cone drawn), so the
     // bloom feed knows the texture is current and safe to sample.

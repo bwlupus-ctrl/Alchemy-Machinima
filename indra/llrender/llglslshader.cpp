@@ -94,6 +94,13 @@ bool shouldChange(const LLVector4& v1, const LLVector4& v2)
     return v1 != v2;
 }
 
+static bool is_sampler_type(GLenum type)
+{
+    return (type >= GL_SAMPLER_1D && type <= GL_SAMPLER_2D_RECT_SHADOW) ||
+           type == GL_SAMPLER_2D_MULTISAMPLE ||
+           type == GL_SAMPLER_CUBE_MAP_ARRAY;
+}
+
 //===============================
 // LLGLSL Shader implementation
 //===============================
@@ -762,21 +769,34 @@ void LLGLSLShader::mapUniform(const gl_uniform_data_t& gl_uniform)
             return;
         }
 
+        bool reserved_uniform = false;
+
         //find the index of this uniform
         for (S32 i = 0; i < (S32)LLShaderMgr::instance()->mReservedUniforms.size(); i++)
         {
-            if ((mUniform[i] == -1)
-                && (LLShaderMgr::instance()->mReservedUniforms[i] == name))
+            if (LLShaderMgr::instance()->mReservedUniforms[i] == name)
             {
-                //found it
-                mUniform[i] = location;
-                mTexture[i] = mapUniformTextureChannel(location, type, size);
-                if (mTexture[i] != -1)
+                reserved_uniform = true;
+                if (mUniform[i] == -1)
                 {
-                    LL_DEBUGS("GLSLTextureChannels") << name << " assigned to texture channel " << mTexture[i] << LL_ENDL;
+                    //found it
+                    mUniform[i] = location;
+                    mTexture[i] = mapUniformTextureChannel(location, type, size);
+                    if (mTexture[i] != -1)
+                    {
+                        LL_DEBUGS("GLSLTextureChannels") << name << " assigned to texture channel " << mTexture[i] << LL_ENDL;
+                    }
+                    return;
                 }
-                return;
             }
+        }
+
+        if (!reserved_uniform && is_sampler_type(type))
+        {
+            LL_WARNS("ShaderUniform") << "Shader '" << mName << "': sampler uniform '" << name
+                << "' is not a reserved uniform and was not assigned a texture channel; it will default to GL texture unit 0 "
+                << "and bind whatever occupies unit 0 (usually wrong). Add it to LLShaderMgr::mReservedUniforms "
+                << "(see WEATHER_RAIN_MAP)." << LL_ENDL;
         }
     }
 }
@@ -805,9 +825,7 @@ GLint LLGLSLShader::mapUniformTextureChannel(GLint location, GLenum type, GLint 
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_SHADER;
 
-    if ((type >= GL_SAMPLER_1D && type <= GL_SAMPLER_2D_RECT_SHADOW) ||
-        type == GL_SAMPLER_2D_MULTISAMPLE ||
-        type == GL_SAMPLER_CUBE_MAP_ARRAY)
+    if (is_sampler_type(type))
     {   //this here is a texture
         GLint ret = mActiveTextureChannels;
         if (size == 1)
@@ -1048,16 +1066,6 @@ void LLGLSLShader::unbind(void)
     sCurBoundShaderPtr = NULL;
 }
 
-S32 LLGLSLShader::bindTexture(const std::string& uniform, LLTexture* texture, LLTexUnit::eTextureType mode)
-{
-    LL_PROFILE_ZONE_SCOPED_CATEGORY_SHADER;
-
-    S32 channel = 0;
-    channel = getUniformLocation(uniform);
-
-    return bindTexture(channel, texture, mode);
-}
-
 S32 LLGLSLShader::bindTexture(S32 uniform, LLTexture* texture, LLTexUnit::eTextureType mode)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_SHADER;
@@ -1106,26 +1114,6 @@ S32 LLGLSLShader::bindTexture(S32 uniform, LLRenderTarget* texture, bool depth, 
     }
 
     return uniform;
-}
-
-S32 LLGLSLShader::bindTexture(const std::string& uniform, LLRenderTarget* texture, bool depth, LLTexUnit::eTextureFilterOptions mode)
-{
-    LL_PROFILE_ZONE_SCOPED_CATEGORY_SHADER;
-
-    S32 channel = 0;
-    channel = getUniformLocation(uniform);
-
-    return bindTexture(channel, texture, depth, mode);
-}
-
-S32 LLGLSLShader::unbindTexture(const std::string& uniform, LLTexUnit::eTextureType mode)
-{
-    LL_PROFILE_ZONE_SCOPED_CATEGORY_SHADER;
-
-    S32 channel = 0;
-    channel = getUniformLocation(uniform);
-
-    return unbindTexture(channel);
 }
 
 S32 LLGLSLShader::unbindTexture(S32 uniform, LLTexUnit::eTextureType mode)

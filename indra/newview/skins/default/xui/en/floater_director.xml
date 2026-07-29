@@ -874,7 +874,7 @@
              width="374">
                 <panel
                  background_visible="false"
-                 height="663"
+                 height="1397"
                  layout="topleft"
                  left="0"
                  top="0"
@@ -884,7 +884,7 @@
                      class="panel_cinecam_params"
                      filename="panel_cinecam_params.xml"
                      follows="left|top"
-                     height="441"
+                     height="1175"
                      layout="topleft"
                      left="0"
                      top="0"
@@ -897,7 +897,7 @@
                      height="214"
                      layout="topleft"
                      left="6"
-                     top="445"
+                     top="1179"
                      name="flycam_orbit_embedded"
                      width="320" />
                 </panel>
@@ -928,6 +928,49 @@
              top="6"
              name="flycam_recorder_embedded"
              width="320" />
+        </panel>
+
+        <!-- ============ Weather tab ============ -->
+        <!-- Shared with Lightbox: one settings surface owns all controls,
+             named presets, reset, manual strike, and deferred-path feedback. -->
+        <panel
+         follows="all"
+         background_visible="false"
+         height="550"
+         label="Weather"
+         layout="topleft"
+         name="weather_tab"
+         top="0"
+         width="374">
+            <scroll_container
+             follows="all"
+             height="526"
+             layout="topleft"
+             left="0"
+             top="4"
+             name="weather_scroll"
+             opaque="false"
+             width="374">
+                <panel
+                 background_visible="false"
+                 height="710"
+                 layout="topleft"
+                 left="0"
+                 top="0"
+                 name="weather_scroll_content"
+                 width="354">
+                    <panel
+                     class="panel_weather_settings"
+                     filename="panel_weather_settings.xml"
+                     follows="left|top"
+                     height="710"
+                     layout="topleft"
+                     left="2"
+                     top="0"
+                     name="weather_settings_shared"
+                     width="350" />
+                </panel>
+            </scroll_container>
         </panel>
 
         <!-- ============ Time tab (Temporal Capture) ============ -->

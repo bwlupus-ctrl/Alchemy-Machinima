@@ -612,6 +612,7 @@ public:
         FROXEL_JITTER,                     //  "froxel_jitter"
         FROXEL_FRAME,                      //  "froxel_frame"
 
+        WEATHER_RAIN_MAP,                  //  "weather_rain_map"
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

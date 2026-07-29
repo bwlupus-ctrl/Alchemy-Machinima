@@ -2146,13 +2146,24 @@
     <key>FlycamOperatorLocomotionMode</key>
   <map>
     <key>Comment</key>
-    <string>Handheld operator LOCOMOTION -- what the operator is physically doing, as distinct from Operator Style which is what rig they are holding. 0 Legacy (the Motion Profile axis stays in charge; stock behaviour), 1 Creep, 2 Walk, 3 Run, 4 Drive, 5 Float, 6 Unsteady. Selecting any mode other than Legacy REPLACES the Motion Profile axis rather than stacking with it. Modes never overwrite your authored settings.</string>
+    <string>Handheld operator LOCOMOTION -- what the operator is physically doing, as distinct from Operator Style which is what rig they are holding. 0 Legacy (the Motion Profile axis stays in charge; stock behaviour), 1 Creep, 2 Walk, 3 Run, 4 Drive, 5 Float, 6 Unsteady, 100 Auto. Selecting any mode other than Legacy REPLACES the Motion Profile axis rather than stacking with it. Modes never overwrite your authored settings.</string>
     <key>Persist</key>
     <integer>1</integer>
     <key>Type</key>
     <string>S32</string>
     <key>Value</key>
     <integer>0</integer>
+  </map>
+  <key>FlycamOperatorSimulationHz</key>
+  <map>
+    <key>Comment</key>
+    <string>Fixed simulation tick rate used by opted-in handheld locomotion modes. Legacy deliberately retains its original variable-frame update path. Render output is interpolated between completed ticks.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>120.0</real>
   </map>
   <key>FlycamOperatorModeBlendTime</key>
   <map>
@@ -22798,6 +22809,177 @@
     <key>Persist</key><integer>1</integer>
     <key>Type</key><string>F32</string>
     <key>Value</key><real>25.0</real>
+  </map>
+  <!-- Viewer-native cinematic weather. Master gate defaults off. -->
+  <key>AlchemyWeatherEnabled</key>
+  <map>
+    <key>Comment</key><string>Master gate for viewer-native cinematic rain and lightning. Default off.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>AlchemyWeatherRainEnabled</key>
+  <map>
+    <key>Comment</key><string>Enable depth-aware, world-anchored procedural rain.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>1</integer>
+  </map>
+  <key>AlchemyWeatherRainIntensity</key>
+  <map>
+    <key>Comment</key><string>Rain energy/intensity in the HDR scene.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.55</real>
+  </map>
+  <key>AlchemyWeatherRainDensity</key>
+  <map>
+    <key>Comment</key><string>Procedural rain population and spacing.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.65</real>
+  </map>
+  <key>AlchemyWeatherRainFallSpeed</key>
+  <map>
+    <key>Comment</key><string>Rain fall speed in meters per second.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>28.0</real>
+  </map>
+  <key>AlchemyWeatherRainMaxDistance</key>
+  <map>
+    <key>Comment</key><string>Maximum camera distance at which rain is marched.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>80.0</real>
+  </map>
+  <key>AlchemyWeatherRainSamples</key>
+  <map>
+    <key>Comment</key><string>Depth samples per pixel for rain; clamped to 4 through 24.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>U32</string>
+    <key>Value</key><integer>12</integer>
+  </map>
+  <key>AlchemyWeatherRainResolutionDivisor</key>
+  <map>
+    <key>Comment</key><string>Rain render resolution divisor; 1 is full, 2 is half, up to 4.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>U32</string>
+    <key>Value</key><integer>2</integer>
+  </map>
+  <key>AlchemyWeatherWindScale</key>
+  <map>
+    <key>Comment</key><string>Multiplier applied to the current simulator wind vector for rain slant.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>1.0</real>
+  </map>
+  <key>AlchemyWeatherRainColor</key>
+  <map>
+    <key>Comment</key><string>Linear RGB color of rain highlights.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Color3</string>
+    <key>Value</key>
+    <array><real>0.55</real><real>0.68</real><real>0.78</real></array>
+  </map>
+  <key>AlchemyWeatherEEPCoupling</key>
+  <map>
+    <key>Comment</key><string>How strongly EEP cloud coverage modulates rain and automatic lightning.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.35</real>
+  </map>
+  <key>AlchemyWeatherLightningEnabled</key>
+  <map>
+    <key>Comment</key><string>Enable scheduled and manually triggered lightning.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>1</integer>
+  </map>
+  <key>AlchemyWeatherLightningRate</key>
+  <map>
+    <key>Comment</key><string>Mean automatic lightning strikes per minute.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>1.5</real>
+  </map>
+  <key>AlchemyWeatherLightningFlashDuration</key>
+  <map>
+    <key>Comment</key><string>Duration of the primary and return-stroke scene flash.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.35</real>
+  </map>
+  <key>AlchemyWeatherLightningBoltDuration</key>
+  <map>
+    <key>Comment</key><string>Duration for which the procedural bolt is visible.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.18</real>
+  </map>
+  <key>AlchemyWeatherLightningMinDistance</key>
+  <map>
+    <key>Comment</key><string>Minimum lightning strike distance from the avatar.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>45.0</real>
+  </map>
+  <key>AlchemyWeatherLightningMaxDistance</key>
+  <map>
+    <key>Comment</key><string>Maximum lightning strike distance from the avatar.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>130.0</real>
+  </map>
+  <key>AlchemyWeatherLightningBoltHeight</key>
+  <map>
+    <key>Comment</key><string>Procedural lightning bolt height above terrain in meters.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>160.0</real>
+  </map>
+  <key>AlchemyWeatherLightningBoltWidth</key>
+  <map>
+    <key>Comment</key><string>Primary lightning core width in pixels.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>1.25</real>
+  </map>
+  <key>AlchemyWeatherLightningBrightness</key>
+  <map>
+    <key>Comment</key><string>HDR brightness of the lightning bolt and scene flash.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>4.0</real>
+  </map>
+  <key>AlchemyWeatherLightningAmbient</key>
+  <map>
+    <key>Comment</key><string>Minimum omnidirectional scene flash mixed with directional G-buffer lighting.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.15</real>
+  </map>
+  <key>AlchemyWeatherLightningColor</key>
+  <map>
+    <key>Comment</key><string>Linear RGB color of the lightning bolt and scene flash.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Color3</string>
+    <key>Value</key>
+    <array><real>0.72</real><real>0.82</real><real>1.0</real></array>
+  </map>
+  <key>AlchemyWeatherLightningSeed</key>
+  <map>
+    <key>Comment</key><string>Deterministic random seed for automatic strike timing and placement.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>U32</string>
+    <key>Value</key><integer>1597463007</integer>
+  </map>
+  <key>AlchemyWeatherLightningTrigger</key>
+  <map>
+    <key>Comment</key><string>Transient one-shot request for a manual lightning strike.</string>
+    <key>Persist</key><integer>0</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>0</integer>
   </map>
   <!-- </FSPoser> -->
 </map>

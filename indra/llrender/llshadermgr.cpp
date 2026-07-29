@@ -1799,6 +1799,7 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("froxel_jitter");
     mReservedUniforms.push_back("froxel_frame");
 
+    mReservedUniforms.push_back("weather_rain_map");
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 
     std::set<std::string> dupe_check;

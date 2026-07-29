@@ -4234,6 +4234,18 @@
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="1" max_val="4" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="fx_BDMergeProjectorVolumetricsBloomFeedAnamorphic_slider" control_name="BDMergeProjectorVolumetricsBloomFeedAnamorphic" enabled_control="BDMergeProjectorVolumetrics" tool_tip="Horizontal anamorphic stretch of the bloom-feed halo." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="fx_reset_BDMergeProjectorVolumetricsBloomFeedAnamorphic"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeProjectorVolumetricsBloomFeedAnamorphic" /></button>
 		</panel>
+		<panel label="Weather" layout="topleft" name="weather_settings" can_resize="false">
+			<panel
+			 class="panel_weather_settings"
+			 filename="panel_weather_settings.xml"
+			 follows="left|top|right"
+			 height="710"
+			 layout="topleft"
+			 left="10"
+			 name="weather_settings_shared"
+			 top="4"
+			 width="350" />
+		</panel>
 		<!-- [BDMerge G3.3 Batch 3] Selected Light quick panel: live per-projector
 		     controls that follow the currently-selected object. Controls enable
 		     only when a spotlight projector is selected; state is driven from

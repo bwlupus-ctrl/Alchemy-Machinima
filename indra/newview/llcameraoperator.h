@@ -23,7 +23,10 @@
 #ifndef LL_LLCAMERAOPERATOR_H
 #define LL_LLCAMERAOPERATOR_H
 
+#include <deque>
+
 #include "stdtypes.h"
+#include "llquaternion.h"
 #include "v3math.h"
 
 // Per-frame input: the flycam's real motion, camera-local.
@@ -58,6 +61,15 @@ public:
     // Reads all FlycamOperator* settings live.
     LLCameraOperatorOutput update(const LLCameraOperatorInput& input);
 
+    // Advance from an absolute, timestamped render-pose sample. Recorder and
+    // Cinematic Camera callers use this path so each fixed simulation tick can
+    // interpolate the pose at its own boundary and derive motion there. The
+    // live joystick deliberately uses update() instead: its device sample is
+    // held across all substeps in the render frame.
+    LLCameraOperatorOutput updateFromPose(F32 frame_dt,
+                                          const LLVector3& position,
+                                          const LLQuaternion& rotation);
+
     // Clear all accumulated state (call on flycam toggle / reset so the
     // rig doesn't carry momentum across teleports or mode switches).
     //
@@ -74,6 +86,13 @@ public:
 
 private:
     LLCameraOperator() = default;
+
+    // One simulation tick. update() routes Legacy directly here with the
+    // caller's variable dt; opted-in locomotion routes fixed-dt substeps here.
+    LLCameraOperatorOutput step(const LLCameraOperatorInput& input);
+    LLCameraOperatorOutput interpolateOutput() const;
+    void prepareFixedPath();
+    bool consumePoseTick(LLVector3& position, LLQuaternion& rotation);
 
     // ---- persistent state (the shader's FP32 state textures) ----
     // smoothed motion
@@ -116,15 +135,37 @@ private:
     S32       mAutoCandidate = -1;
     F32       mAutoCandidateTime = 0.f;
 
+    // Fixed-timestep state. Accumulated time is retained when a defensive
+    // per-render step cap is reached; it is never silently discarded.
+    F64       mSimAccumulator = 0.0;
+    F64       mFixedStep = 1.0 / 120.0;
+    bool      mFixedPathActive = false;
+    LLCameraOperatorOutput mPreviousSimOutput;
+    LLCameraOperatorOutput mCurrentSimOutput;
+
+    // Timestamped pose-input history for recorded/procedural camera sources.
+    struct RenderPoseSegment
+    {
+        LLVector3 mStartPosition;
+        LLQuaternion mStartRotation;
+        LLVector3 mEndPosition;
+        LLQuaternion mEndRotation;
+        F64 mDuration = 0.0;
+        F64 mConsumed = 0.0;
+    };
+    std::deque<RenderPoseSegment> mPendingPoseSegments;
+    bool       mHaveRenderPose = false;
+    bool       mHaveSimPose = false;
+    LLVector3  mPreviousRenderPosition = LLVector3::zero;
+    LLQuaternion mPreviousRenderRotation;
+    LLVector3  mLastSimPosition = LLVector3::zero;
+    LLQuaternion mLastSimRotation;
+
     // The source and live parameter BLOCKS themselves live in the .cpp's
     // anonymous namespace (Locomotion is not a public type, and this class is a
     // singleton, so file-scope state is equivalent to a member here). Storing
     // blocks rather than mode enums is what lets a mid-blend retarget continue
     // from the live mixture instead of snapping back to an unblended table.
-    //
-    // Auto-mode state is deliberately ABSENT until the Auto state machine
-    // lands. Scaffolding fields that nothing reads is exactly the half-wiring
-    // the slice boundary exists to prevent.
 };
 
 #endif // LL_LLCAMERAOPERATOR_H

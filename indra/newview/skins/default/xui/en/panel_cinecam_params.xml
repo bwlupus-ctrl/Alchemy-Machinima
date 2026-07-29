@@ -5,7 +5,7 @@
      standalone Cinematic Camera floater and the Director Console's Camera
      tab; every control is settings-backed so instances stay in sync. -->
 <panel
- height="441"
+ height="1175"
  layout="topleft"
  name="panel_cinecam_params"
  background_visible="false"
@@ -133,16 +133,20 @@
      tool_tip="Dutch (tilt) angle in deg, applied to every mode. 0 = level"
      width="97" />
     <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamDutchAngle" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamDutchAngle" />
+    <text follows="left|top" height="16" layout="topleft" left="12"
+     top_pad="5" name="operator_locomotion_label" width="68">
+        Locomotion
+    </text>
     <combo_box
      control_name="FlycamOperatorLocomotionMode"
      follows="left|top"
      height="20"
      layout="topleft"
-     left="12"
-     top_pad="5"
+     left_pad="2"
+     top_delta="-3"
      name="FlycamOperatorLocomotionMode"
      tool_tip="What the operator is physically DOING, as distinct from the rig they are holding. Legacy keeps the old Motion Profile behaviour. Selecting a mode replaces that axis; it never overwrites your tuned settings."
-     width="132">
+     width="116">
         <combo_box.item label="Legacy" name="loco_legacy" value="0" />
         <combo_box.item label="Creep" name="loco_creep" value="1" />
         <combo_box.item label="Walk" name="loco_walk" value="2" />
@@ -152,7 +156,7 @@
         <combo_box.item label="Unsteady" name="loco_unsteady" value="6" />
         <combo_box.item label="Auto (speed)" name="loco_auto" value="100" />
     </combo_box>
-    <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="2" layout="topleft" left_pad="1" top_delta="2" name="reset_FlycamOperatorLocomotionMode" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorLocomotionMode" />
+     <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="2" layout="topleft" left_pad="1" top_delta="2" name="reset_FlycamOperatorLocomotionMode" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorLocomotionMode" />
     <spinner
      control_name="FlycamOperatorModeBlendTime"
      decimal_digits="2"
@@ -162,14 +166,21 @@
      label="Blend (s)"
      label_width="56"
      layout="topleft"
-     left_pad="10"
+      left="12"
      max_val="5"
      min_val="0"
-     top_delta="2"
+      top_pad="4"
      name="FlycamOperatorModeBlendTime"
      tool_tip="Seconds to cross-fade between locomotion modes. Changing mode mid-shot ramps instead of snapping."
      width="105" />
     <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left_pad="1" top_delta="0" name="reset_FlycamOperatorModeBlendTime" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorModeBlendTime" />
+    <spinner control_name="FlycamOperatorSimulationHz" decimal_digits="0"
+     follows="left|top" height="16" increment="10" label="Simulation Hz"
+     label_width="78" layout="topleft" left_pad="8" max_val="240"
+     min_val="30" top_delta="0" name="FlycamOperatorSimulationHz"
+     tool_tip="Fixed simulation rate for opted-in locomotion modes. Legacy keeps its original variable-frame path."
+     width="127" />
+    <button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" left_pad="1" top_delta="0" name="reset_FlycamOperatorSimulationHz" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorSimulationHz" />
     <text
      follows="left|top"
      halign="left"
@@ -1465,5 +1476,126 @@
         <spinner control_name="CinematicCamBreathingAmplitude" decimal_digits="3" follows="left|top" height="16" increment="0.005" label="Drift" label_width="32" layout="topleft" left_pad="6" max_val="0.25" min_val="0" top_delta="0" name="CinematicCamBreathingAmplitude" tool_tip="Subtle drift amplitude (m)" width="89" /><button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBreathingAmplitude" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBreathingAmplitude" />
         <spinner control_name="CinematicCamBreathingPeriod" decimal_digits="1" follows="left|top" height="16" increment="0.5" label="Period" label_width="42" layout="topleft" left="12" max_val="60" min_val="1" top_pad="5" name="CinematicCamBreathingPeriod" tool_tip="Seconds per breathing cycle" width="93" /><button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBreathingPeriod" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBreathingPeriod" />
         <spinner control_name="CinematicCamBreathingHeading" decimal_digits="0" follows="left|top" height="16" increment="5" label="Head" label_width="34" layout="topleft" left_pad="6" max_val="180" min_val="-180" top_delta="0" name="CinematicCamBreathingHeading" tool_tip="Facing-relative heading (deg)" width="85" /><button follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" left_pad="1" top_delta="0" name="reset_CinematicCamBreathingHeading" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBreathingHeading" />
+    </panel>
+
+    <!-- Complete handheld editing surface. This panel is shared verbatim by
+         the standalone floater and Director Console, so every operator control
+         is reachable in both hosts and participates in the same presets/reset. -->
+    <panel name="panel_operator_tuning" left="0" top="445" width="320" height="730"
+     follows="left|top" background_visible="false" border="false" layout="topleft">
+        <text follows="left|top" height="16" layout="topleft" left="12" top="0"
+         width="296" font="SansSerifBold" name="operator_rig_title">Handheld rig / persona</text>
+        <check_box control_name="FlycamOperatorEnabled" follows="left|top" height="16"
+         label="Use on live flycam" layout="topleft" left="12" top="20"
+         name="FlycamOperatorEnabled" tool_tip="Apply this operator rig to the live joystick flycam."
+         width="145" />
+        <check_box control_name="FlycamOperatorForceWalk" follows="left|top" height="16"
+         label="Force gait" layout="topleft" left="164" top="20"
+         name="FlycamOperatorForceWalk" tool_tip="Keep the authored Legacy gait active even below its motion gate."
+         width="145" />
+        <combo_box control_name="FlycamOperatorStyle" follows="left|top" height="20"
+         layout="topleft" left="12" top="40" name="FlycamOperatorStyle"
+         tool_tip="Operator Style: the physical rig/persona, orthogonal to locomotion." width="145">
+            <combo_box.item label="Style: Custom" name="op_style_custom" value="0" />
+            <combo_box.item label="Style: Tripod / Sticks" name="op_style_tripod" value="1" />
+            <combo_box.item label="Style: Subtle Handheld" name="op_style_subtle" value="2" />
+            <combo_box.item label="Style: Documentary" name="op_style_doc" value="3" />
+            <combo_box.item label="Style: Run &amp; Gun" name="op_style_run" value="4" />
+            <combo_box.item label="Style: Shoulder Rig" name="op_style_shoulder" value="5" />
+            <combo_box.item label="Style: Gimbal Float" name="op_style_gimbal" value="6" />
+            <combo_box.item label="Style: Verite" name="op_style_verite" value="7" />
+            <combo_box.item label="Style: Breathing Only" name="op_style_breath" value="8" />
+        </combo_box>
+        <combo_box control_name="FlycamOperatorProfile" follows="left|top" height="20"
+         layout="topleft" left="164" top="40" name="FlycamOperatorProfile"
+         tool_tip="Legacy motion profile. Locomotion modes replace this axis." width="145">
+            <combo_box.item label="Profile: Natural" name="op_profile_natural" value="0" />
+            <combo_box.item label="Profile: Locked" name="op_profile_locked" value="1" />
+            <combo_box.item label="Profile: Follow" name="op_profile_follow" value="2" />
+            <combo_box.item label="Profile: Restless" name="op_profile_restless" value="3" />
+            <combo_box.item label="Profile: Composed" name="op_profile_composed" value="4" />
+            <combo_box.item label="Profile: Drift" name="op_profile_drift" value="5" />
+            <combo_box.item label="Profile: Snap" name="op_profile_snap" value="6" />
+            <combo_box.item label="Profile: March" name="op_profile_march" value="7" />
+        </combo_box>
+        <spinner control_name="FlycamOperatorMaster" decimal_digits="2" height="16"
+         increment="0.05" label="Master" label_width="72" layout="topleft"
+         left="12" top="64" min_val="0" max_val="2" name="FlycamOperatorMaster"
+         tool_tip="Master intensity for all handheld motion." width="145" />
+        <spinner control_name="FlycamOperatorProfileInfluence" decimal_digits="2" height="16"
+         increment="0.05" label="Profile mix" label_width="72" layout="topleft"
+         left="164" top="64" min_val="0" max_val="1" name="FlycamOperatorProfileInfluence"
+         tool_tip="How strongly the Legacy motion profile modifies the rig." width="145" />
+        <spinner control_name="FlycamOperatorSeed" decimal_digits="0" height="16"
+         increment="1" label="Seed" label_width="72" layout="topleft"
+         left="12" top="86" min_val="-1000000" max_val="1000000" name="FlycamOperatorSeed"
+         tool_tip="Deterministic procedural noise seed." width="145" />
+        <spinner control_name="FlycamOperatorTimeSpeed" decimal_digits="2" height="16"
+         increment="0.05" label="Time speed" label_width="72" layout="topleft"
+         left="164" top="86" min_val="0" max_val="4" name="FlycamOperatorTimeSpeed"
+         tool_tip="Global speed multiplier for procedural phases." width="145" />
+
+        <text follows="left|top" height="16" layout="topleft" left="12" top="112"
+         width="296" font="SansSerifBold" name="operator_reaction_title">Reaction and damping</text>
+        <spinner control_name="FlycamOperatorReactivity" decimal_digits="2" height="16" increment="0.05" label="Reactivity" label_width="72" layout="topleft" left="12" top="132" min_val="0" max_val="4" name="FlycamOperatorReactivity" tool_tip="Overall motion-response strength." width="145" />
+        <spinner control_name="FlycamOperatorIdleIntensity" decimal_digits="2" height="16" increment="0.05" label="Idle" label_width="72" layout="topleft" left="164" top="132" min_val="0" max_val="4" name="FlycamOperatorIdleIntensity" tool_tip="Legacy idle wander intensity." width="145" />
+        <spinner control_name="FlycamOperatorEnergyTrim" decimal_digits="2" height="16" increment="0.05" label="Energy" label_width="72" layout="topleft" left="12" top="154" min_val="0" max_val="4" name="FlycamOperatorEnergyTrim" tool_tip="Trim for speed-reactive energy." width="145" />
+        <spinner control_name="FlycamOperatorMotionCalm" decimal_digits="2" height="16" increment="0.05" label="Motion calm" label_width="72" layout="topleft" left="164" top="154" min_val="0" max_val="4" name="FlycamOperatorMotionCalm" tool_tip="How strongly motion calms high-frequency tremor." width="145" />
+        <spinner control_name="FlycamOperatorSmoothing" decimal_digits="2" height="16" increment="0.05" label="Smoothing" label_width="72" layout="topleft" left="12" top="176" min_val="0" max_val="2" name="FlycamOperatorSmoothing" tool_tip="Trim for the motion input EMA." width="145" />
+        <spinner control_name="FlycamOperatorTremorDamping" decimal_digits="2" height="16" increment="0.05" label="Tremor damp" label_width="72" layout="topleft" left="164" top="176" min_val="0" max_val="1" name="FlycamOperatorTremorDamping" tool_tip="Legacy high-frequency tremor damping." width="145" />
+        <spinner control_name="FlycamOperatorMotionPan" decimal_digits="2" height="16" increment="0.05" label="Motion pan" label_width="72" layout="topleft" left="12" top="198" min_val="0" max_val="2" name="FlycamOperatorMotionPan" tool_tip="Motion response on yaw/pan." width="145" />
+        <spinner control_name="FlycamOperatorMotionTilt" decimal_digits="2" height="16" increment="0.05" label="Motion tilt" label_width="72" layout="topleft" left="164" top="198" min_val="0" max_val="2" name="FlycamOperatorMotionTilt" tool_tip="Motion response on pitch/tilt." width="145" />
+        <spinner control_name="FlycamOperatorMotionRoll" decimal_digits="2" height="16" increment="0.05" label="Motion roll" label_width="72" layout="topleft" left="12" top="220" min_val="0" max_val="2" name="FlycamOperatorMotionRoll" tool_tip="Motion response on roll." width="145" />
+        <spinner control_name="FlycamOperatorMotionBreath" decimal_digits="2" height="16" increment="0.05" label="Motion breath" label_width="72" layout="topleft" left="164" top="220" min_val="0" max_val="2" name="FlycamOperatorMotionBreath" tool_tip="Motion response on the breathing pulse." width="145" />
+        <spinner control_name="FlycamOperatorOnset" decimal_digits="2" height="16" increment="0.05" label="Onset" label_width="72" layout="topleft" left="12" top="242" min_val="0" max_val="4" name="FlycamOperatorOnset" tool_tip="Acceleration whip amount." width="145" />
+        <spinner control_name="FlycamOperatorDrag" decimal_digits="2" height="16" increment="0.05" label="Drag" label_width="72" layout="topleft" left="164" top="242" min_val="0" max_val="4" name="FlycamOperatorDrag" tool_tip="Lead/lag framing drag amount." width="145" />
+        <spinner control_name="FlycamOperatorSettle" decimal_digits="2" height="16" increment="0.05" label="Settle" label_width="72" layout="topleft" left="12" top="264" min_val="0" max_val="4" name="FlycamOperatorSettle" tool_tip="Stop-bounce amount." width="145" />
+        <spinner control_name="FlycamOperatorSettleFreq" decimal_digits="2" height="16" increment="0.1" label="Settle Hz" label_width="72" layout="topleft" left="164" top="264" min_val="0" max_val="30" name="FlycamOperatorSettleFreq" tool_tip="Stop-bounce frequency." width="145" />
+        <spinner control_name="FlycamOperatorSettleDecay" decimal_digits="2" height="16" increment="0.01" label="Settle decay" label_width="72" layout="topleft" left="12" top="286" min_val="0" max_val="1" name="FlycamOperatorSettleDecay" tool_tip="Per-frame settle-envelope retention." width="145" />
+        <spinner control_name="FlycamOperatorRefLinearSpeed" decimal_digits="2" height="16" increment="0.1" label="Ref linear" label_width="72" layout="topleft" left="164" top="286" min_val="0.01" max_val="100" name="FlycamOperatorRefLinearSpeed" tool_tip="Linear speed normalizer in m/s; Auto thresholds use this." width="145" />
+        <spinner control_name="FlycamOperatorRefAngularSpeed" decimal_digits="1" height="16" increment="5" label="Ref angular" label_width="72" layout="topleft" left="12" top="308" min_val="1" max_val="720" name="FlycamOperatorRefAngularSpeed" tool_tip="Angular speed normalizer in degrees/s." width="145" />
+
+        <text follows="left|top" height="16" layout="topleft" left="12" top="334"
+         width="296" font="SansSerifBold" name="operator_framing_title">Idle, framing, and breathing</text>
+        <combo_box control_name="FlycamOperatorPanMode" follows="left|top" height="20" layout="topleft" left="12" top="354" name="FlycamOperatorPanMode" tool_tip="Procedural lateral wander character." width="145">
+            <combo_box.item label="Pan: Smooth fBm" name="op_pan_smooth" value="0" />
+            <combo_box.item label="Pan: Weave" name="op_pan_weave" value="1" />
+            <combo_box.item label="Pan: Raw fBm" name="op_pan_raw" value="2" />
+        </combo_box>
+        <spinner control_name="FlycamOperatorPanAmount" decimal_digits="2" height="16" increment="0.05" label="Pan amount" label_width="72" layout="topleft" left="164" top="356" min_val="0" max_val="10" name="FlycamOperatorPanAmount" tool_tip="Authored yaw wander in degrees." width="145" />
+        <spinner control_name="FlycamOperatorPanTiltFreq" decimal_digits="2" height="16" increment="0.05" label="Pan/tilt Hz" label_width="72" layout="topleft" left="12" top="380" min_val="0" max_val="20" name="FlycamOperatorPanTiltFreq" tool_tip="Legacy pan/tilt wander frequency." width="145" />
+        <spinner control_name="FlycamOperatorPanSmoothness" decimal_digits="2" height="16" increment="0.05" label="Pan smooth" label_width="72" layout="topleft" left="164" top="380" min_val="0" max_val="1" name="FlycamOperatorPanSmoothness" tool_tip="Lateral high-frequency smoothing." width="145" />
+        <spinner control_name="FlycamOperatorPanReactSmoothing" decimal_digits="2" height="16" increment="0.05" label="Pan react" label_width="72" layout="topleft" left="12" top="402" min_val="0" max_val="1" name="FlycamOperatorPanReactSmoothing" tool_tip="Extra lateral smoothing during pans." width="145" />
+        <spinner control_name="FlycamOperatorTiltAmount" decimal_digits="2" height="16" increment="0.05" label="Tilt amount" label_width="72" layout="topleft" left="164" top="402" min_val="0" max_val="10" name="FlycamOperatorTiltAmount" tool_tip="Authored pitch wander in degrees." width="145" />
+        <spinner control_name="FlycamOperatorRollAmount" decimal_digits="2" height="16" increment="0.05" label="Roll amount" label_width="72" layout="topleft" left="12" top="424" min_val="0" max_val="10" name="FlycamOperatorRollAmount" tool_tip="Authored roll wander in degrees." width="145" />
+        <spinner control_name="FlycamOperatorRollFreq" decimal_digits="2" height="16" increment="0.05" label="Roll Hz" label_width="72" layout="topleft" left="164" top="424" min_val="0" max_val="20" name="FlycamOperatorRollFreq" tool_tip="Legacy roll wander frequency." width="145" />
+        <spinner control_name="FlycamOperatorRollDamping" decimal_digits="2" height="16" increment="0.05" label="Roll damp" label_width="72" layout="topleft" left="12" top="446" min_val="0" max_val="1" name="FlycamOperatorRollDamping" tool_tip="High-frequency roll damping." width="145" />
+        <spinner control_name="FlycamOperatorBreathFreq" decimal_digits="2" height="16" increment="0.05" label="Breath Hz" label_width="72" layout="topleft" left="164" top="446" min_val="0" max_val="5" name="FlycamOperatorBreathFreq" tool_tip="Legacy breathing frequency." width="145" />
+        <spinner control_name="FlycamOperatorBreathAmount" decimal_digits="2" height="16" increment="0.1" label="Breath %" label_width="72" layout="topleft" left="12" top="468" min_val="0" max_val="20" name="FlycamOperatorBreathAmount" tool_tip="Legacy FOV breathing amplitude in percent." width="145" />
+        <spinner control_name="FlycamOperatorBreathLift" decimal_digits="2" height="16" increment="0.05" label="Breath lift" label_width="72" layout="topleft" left="164" top="468" min_val="-2" max_val="2" name="FlycamOperatorBreathLift" tool_tip="Vertical lift coupled to breathing." width="145" />
+        <spinner control_name="FlycamOperatorRecomposeAmount" decimal_digits="2" height="16" increment="0.05" label="Recompose" label_width="72" layout="topleft" left="12" top="490" min_val="0" max_val="10" name="FlycamOperatorRecomposeAmount" tool_tip="Legacy sparse reframing amount in degrees." width="145" />
+        <spinner control_name="FlycamOperatorRecomposeInterval" decimal_digits="1" height="16" increment="0.5" label="Recomp sec" label_width="72" layout="topleft" left="164" top="490" min_val="0.5" max_val="120" name="FlycamOperatorRecomposeInterval" tool_tip="Legacy sparse reframing interval." width="145" />
+
+        <text follows="left|top" height="16" layout="topleft" left="12" top="516"
+         width="296" font="SansSerifBold" name="operator_gait_title">Legacy gait tuning</text>
+        <spinner control_name="FlycamOperatorWalkCadence" decimal_digits="2" height="16" increment="0.05" label="Cadence" label_width="72" layout="topleft" left="12" top="536" min_val="0" max_val="10" name="FlycamOperatorWalkCadence" tool_tip="Legacy gait base cadence." width="145" />
+        <spinner control_name="FlycamOperatorCadenceDrive" decimal_digits="2" height="16" increment="0.05" label="Speed drive" label_width="72" layout="topleft" left="164" top="536" min_val="0" max_val="4" name="FlycamOperatorCadenceDrive" tool_tip="Legacy cadence increase with forward speed." width="145" />
+        <spinner control_name="FlycamOperatorForwardWalkBias" decimal_digits="2" height="16" increment="0.05" label="Forward gait" label_width="72" layout="topleft" left="12" top="558" min_val="0" max_val="4" name="FlycamOperatorForwardWalkBias" tool_tip="Forward-motion contribution to gait." width="145" />
+        <spinner control_name="FlycamOperatorLateralWalkBias" decimal_digits="2" height="16" increment="0.05" label="Lateral gait" label_width="72" layout="topleft" left="164" top="558" min_val="0" max_val="4" name="FlycamOperatorLateralWalkBias" tool_tip="Lateral-motion contribution to gait." width="145" />
+        <spinner control_name="FlycamOperatorStepBob" decimal_digits="3" height="16" increment="0.001" label="Step bob m" label_width="72" layout="topleft" left="12" top="580" min_val="0" max_val="0.5" name="FlycamOperatorStepBob" tool_tip="Legacy vertical footfall displacement in meters." width="145" />
+        <spinner control_name="FlycamOperatorLateralStep" decimal_digits="3" height="16" increment="0.001" label="Step sway m" label_width="72" layout="topleft" left="164" top="580" min_val="0" max_val="0.5" name="FlycamOperatorLateralStep" tool_tip="Legacy lateral footfall displacement in meters." width="145" />
+        <spinner control_name="FlycamOperatorStepRoll" decimal_digits="2" height="16" increment="0.05" label="Step roll" label_width="72" layout="topleft" left="12" top="602" min_val="0" max_val="10" name="FlycamOperatorStepRoll" tool_tip="Legacy heel-strike roll in degrees." width="145" />
+        <spinner control_name="FlycamOperatorGaitCoupling" decimal_digits="2" height="16" increment="0.05" label="Gait couple" label_width="72" layout="topleft" left="164" top="602" min_val="0" max_val="4" name="FlycamOperatorGaitCoupling" tool_tip="Overall gait coupling trim." width="145" />
+
+        <text follows="left|top" height="16" layout="topleft" left="12" top="628"
+         width="296" font="SansSerifBold" name="operator_auto_title">Auto locomotion (normalized speed / seconds)</text>
+        <spinner control_name="FlycamOperatorAutoWalkEnter" decimal_digits="2" height="16" increment="0.01" label="Walk enter" label_width="72" layout="topleft" left="12" top="648" min_val="0" max_val="4" name="FlycamOperatorAutoWalkEnter" tool_tip="Creep-to-Walk normalized linear-speed threshold." width="145" />
+        <spinner control_name="FlycamOperatorAutoWalkExit" decimal_digits="2" height="16" increment="0.01" label="Walk exit" label_width="72" layout="topleft" left="164" top="648" min_val="0" max_val="4" name="FlycamOperatorAutoWalkExit" tool_tip="Walk-to-Creep normalized linear-speed threshold." width="145" />
+        <spinner control_name="FlycamOperatorAutoRunEnter" decimal_digits="2" height="16" increment="0.01" label="Run enter" label_width="72" layout="topleft" left="12" top="670" min_val="0" max_val="4" name="FlycamOperatorAutoRunEnter" tool_tip="Walk-to-Run normalized linear-speed threshold." width="145" />
+        <spinner control_name="FlycamOperatorAutoRunExit" decimal_digits="2" height="16" increment="0.01" label="Run exit" label_width="72" layout="topleft" left="164" top="670" min_val="0" max_val="4" name="FlycamOperatorAutoRunExit" tool_tip="Run-to-Walk normalized linear-speed threshold." width="145" />
+        <spinner control_name="FlycamOperatorAutoWalkEnterDwell" decimal_digits="2" height="16" increment="0.05" label="Walk in sec" label_width="72" layout="topleft" left="12" top="692" min_val="0" max_val="10" name="FlycamOperatorAutoWalkEnterDwell" tool_tip="Continuous dwell before Creep becomes Walk." width="145" />
+        <spinner control_name="FlycamOperatorAutoWalkExitDwell" decimal_digits="2" height="16" increment="0.05" label="Walk out sec" label_width="72" layout="topleft" left="164" top="692" min_val="0" max_val="10" name="FlycamOperatorAutoWalkExitDwell" tool_tip="Continuous dwell before Walk becomes Creep." width="145" />
+        <spinner control_name="FlycamOperatorAutoRunEnterDwell" decimal_digits="2" height="16" increment="0.05" label="Run in sec" label_width="72" layout="topleft" left="12" top="714" min_val="0" max_val="10" name="FlycamOperatorAutoRunEnterDwell" tool_tip="Continuous dwell before Walk becomes Run." width="145" />
+        <spinner control_name="FlycamOperatorAutoRunExitDwell" decimal_digits="2" height="16" increment="0.05" label="Run out sec" label_width="72" layout="topleft" left="164" top="714" min_val="0" max_val="10" name="FlycamOperatorAutoRunExitDwell" tool_tip="Continuous dwell before Run becomes Walk." width="145" />
     </panel>
 </panel>

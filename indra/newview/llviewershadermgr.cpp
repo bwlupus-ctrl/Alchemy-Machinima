@@ -226,6 +226,9 @@ LLGLSLShader            gDeferredProjectorVolumetricProgram;
 LLGLSLShader            gDeferredProjectorVolumetricUpsampleProgram; // [BDMerge G3.3 P1 item 3]
 LLGLSLShader            gDeferredProjectorVolumetricTemporalProgram; // [BDMerge G3.3 Batch 1 A]
 LLGLSLShader            gDeferredProjectorVolumetricBloomFeedProgram; // [BDMerge G3.3 P3 item 4]
+LLGLSLShader            gDeferredWeatherRainProgram;
+LLGLSLShader            gDeferredWeatherRainUpsampleProgram;
+LLGLSLShader            gDeferredWeatherLightningProgram;
 LLGLSLShader            gDeferredPostNoDoFProgram;
 LLGLSLShader            gDeferredWLSkyProgram;
 LLGLSLShader            gEnvironmentMapProgram;
@@ -445,6 +448,9 @@ void LLViewerShaderMgr::finalizeShaderList()
     mShaderList.push_back(&gDeferredProjectorVolumetricUpsampleProgram); // [BDMerge G3.3 P1 item 3]
     mShaderList.push_back(&gDeferredProjectorVolumetricTemporalProgram); // [BDMerge G3.3 Batch 1 A]
     mShaderList.push_back(&gDeferredProjectorVolumetricBloomFeedProgram); // [BDMerge G3.3 P3 item 4]
+    mShaderList.push_back(&gDeferredWeatherRainProgram);
+    mShaderList.push_back(&gDeferredWeatherRainUpsampleProgram);
+    mShaderList.push_back(&gDeferredWeatherLightningProgram);
     mShaderList.push_back(&gFroxelMediaProgram); // [BDMerge Froxel F0]
     mShaderList.push_back(&gFroxelDebugProgram); // [BDMerge Froxel F0]
     mShaderList.push_back(&gFroxelIntegrateProgram); // [BDMerge Froxel F1]
@@ -1269,6 +1275,9 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gDeferredProjectorVolumetricUpsampleProgram.unload(); // [BDMerge G3.3 P1 item 3]
         gDeferredProjectorVolumetricTemporalProgram.unload(); // [BDMerge G3.3 Batch 1 A]
         gDeferredProjectorVolumetricBloomFeedProgram.unload(); // [BDMerge G3.3 P3 item 4]
+        gDeferredWeatherRainProgram.unload();
+        gDeferredWeatherRainUpsampleProgram.unload();
+        gDeferredWeatherLightningProgram.unload();
         gEnvironmentMapProgram.unload();
         gDeferredWLSkyProgram.unload();
         gDeferredWLCloudProgram.unload();
@@ -3160,6 +3169,50 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         if (!success)
         {
             LL_WARNS() << "Failed to create shader '" << gDeferredProjectorVolumetricBloomFeedProgram.mName << "', disabling!" << LL_ENDL;
+            success = true;
+        }
+
+        // Cinematic weather is an optional deferred subsystem. Each program
+        // fails soft so unsupported hardware keeps the rest of deferred rendering.
+        gDeferredWeatherRainProgram.mName = "Weather Rain Shader";
+        gDeferredWeatherRainProgram.mFeatures.isDeferred = true;
+        gDeferredWeatherRainProgram.mShaderFiles.clear();
+        gDeferredWeatherRainProgram.clearPermutations();
+        gDeferredWeatherRainProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gDeferredWeatherRainProgram.mShaderFiles.push_back(make_pair("deferred/weatherRainF.glsl", GL_FRAGMENT_SHADER));
+        gDeferredWeatherRainProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gDeferredWeatherRainProgram.createShader();
+        if (!success)
+        {
+            LL_WARNS() << "Failed to create shader '" << gDeferredWeatherRainProgram.mName << "', disabling weather rain." << LL_ENDL;
+            success = true;
+        }
+
+        gDeferredWeatherRainUpsampleProgram.mName = "Weather Rain Upsample Shader";
+        gDeferredWeatherRainUpsampleProgram.mFeatures.isDeferred = true;
+        gDeferredWeatherRainUpsampleProgram.mShaderFiles.clear();
+        gDeferredWeatherRainUpsampleProgram.clearPermutations();
+        gDeferredWeatherRainUpsampleProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gDeferredWeatherRainUpsampleProgram.mShaderFiles.push_back(make_pair("deferred/weatherRainUpsampleF.glsl", GL_FRAGMENT_SHADER));
+        gDeferredWeatherRainUpsampleProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gDeferredWeatherRainUpsampleProgram.createShader();
+        if (!success)
+        {
+            LL_WARNS() << "Failed to create shader '" << gDeferredWeatherRainUpsampleProgram.mName << "', disabling weather upsample." << LL_ENDL;
+            success = true;
+        }
+
+        gDeferredWeatherLightningProgram.mName = "Weather Lightning Shader";
+        gDeferredWeatherLightningProgram.mFeatures.isDeferred = true;
+        gDeferredWeatherLightningProgram.mShaderFiles.clear();
+        gDeferredWeatherLightningProgram.clearPermutations();
+        gDeferredWeatherLightningProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gDeferredWeatherLightningProgram.mShaderFiles.push_back(make_pair("deferred/weatherLightningF.glsl", GL_FRAGMENT_SHADER));
+        gDeferredWeatherLightningProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gDeferredWeatherLightningProgram.createShader();
+        if (!success)
+        {
+            LL_WARNS() << "Failed to create shader '" << gDeferredWeatherLightningProgram.mName << "', disabling weather lightning." << LL_ENDL;
             success = true;
         }
 

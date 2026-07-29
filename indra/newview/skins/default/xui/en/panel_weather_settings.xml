@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<panel
+ class="panel_weather_settings"
+ follows="left|top|right"
+ height="710"
+ layout="topleft"
+ name="panel_weather_settings"
+ width="350">
+    <string name="no_preset_label">No preset</string>
+    <text
+     follows="left|top|right"
+     height="30"
+     layout="topleft"
+     left="8"
+     name="weather_deferred_note"
+     top="4"
+     visible="false"
+     width="334"
+     word_wrap="true">
+        Weather requires Advanced Lighting Model (deferred rendering).
+    </text>
+    <panel
+     background_visible="false"
+     border="false"
+     follows="left|top|right"
+     height="670"
+     layout="topleft"
+     left="0"
+     name="weather_controls"
+     top="34"
+     width="350">
+        <check_box follows="left|top" height="18" left="8" top="2" width="334"
+         layout="topleft" label="Cinematic weather (viewer local)"
+         name="weather_enabled" control_name="AlchemyWeatherEnabled"
+         tool_tip="Viewer-native rain and lightning. This changes only your local render." />
+
+        <text follows="left|top" height="15" left="8" top="28" width="334"
+         layout="topleft" font="SansSerifBold" value="Rain" />
+        <check_box follows="left|top" height="18" left="10" top="50" width="332"
+         layout="topleft" label="Depth-aware rain" name="weather_rain_enabled"
+         control_name="AlchemyWeatherRainEnabled"
+         enabled_control="AlchemyWeatherEnabled" />
+
+        <text follows="left|top" height="15" left="8" top="76" width="122" layout="topleft" value="Intensity:" />
+        <slider follows="left|top" layout="topleft" height="20" top="72" left="132" width="206" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_rain_intensity" control_name="AlchemyWeatherRainIntensity" enabled_control="AlchemyWeatherEnabled" />
+        <text follows="left|top" height="15" left="8" top="100" width="122" layout="topleft" value="Density:" />
+        <slider follows="left|top" layout="topleft" height="20" top="96" left="132" width="206" min_val="0.02" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_rain_density" control_name="AlchemyWeatherRainDensity" enabled_control="AlchemyWeatherEnabled" />
+        <text follows="left|top" height="15" left="8" top="124" width="122" layout="topleft" value="Fall speed:" />
+        <slider follows="left|top" layout="topleft" height="20" top="120" left="132" width="206" min_val="1" max_val="80" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="weather_rain_speed" control_name="AlchemyWeatherRainFallSpeed" enabled_control="AlchemyWeatherEnabled" />
+        <text follows="left|top" height="15" left="8" top="148" width="122" layout="topleft" value="Draw distance:" />
+        <slider follows="left|top" layout="topleft" height="20" top="144" left="132" width="206" min_val="8" max_val="256" increment="4" decimal_digits="0" show_text="true" can_edit_text="true" name="weather_rain_distance" control_name="AlchemyWeatherRainMaxDistance" enabled_control="AlchemyWeatherEnabled" />
+        <text follows="left|top" height="15" left="8" top="172" width="122" layout="topleft" value="Ray samples:" />
+        <slider follows="left|top" layout="topleft" height="20" top="168" left="132" width="206" min_val="4" max_val="24" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="weather_rain_samples" control_name="AlchemyWeatherRainSamples" enabled_control="AlchemyWeatherEnabled" />
+        <text follows="left|top" height="15" left="8" top="196" width="122" layout="topleft" value="Resolution divisor:" />
+        <slider follows="left|top" layout="topleft" height="20" top="192" left="132" width="206" min_val="1" max_val="4" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="weather_rain_divisor" control_name="AlchemyWeatherRainResolutionDivisor" enabled_control="AlchemyWeatherEnabled" />
+        <text follows="left|top" height="15" left="8" top="220" width="122" layout="topleft" value="Wind response:" />
+        <slider follows="left|top" layout="topleft" height="20" top="216" left="132" width="206" min_val="0" max_val="8" increment="0.1" decimal_digits="1" show_text="true" can_edit_text="true" name="weather_wind_scale" control_name="AlchemyWeatherWindScale" enabled_control="AlchemyWeatherEnabled" />
+        <text follows="left|top" height="15" left="8" top="244" width="122" layout="topleft" value="EEP cloud coupling:" />
+        <slider follows="left|top" layout="topleft" height="20" top="240" left="132" width="206" min_val="0" max_val="1" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_eep_coupling" control_name="AlchemyWeatherEEPCoupling" enabled_control="AlchemyWeatherEnabled" />
+
+        <text follows="left|top" height="15" left="8" top="270" width="334"
+         layout="topleft" font="SansSerifBold" value="Lightning" />
+        <check_box follows="left|top" height="18" left="10" top="292" width="332"
+         layout="topleft" label="Automatic and manual lightning"
+         name="weather_lightning_enabled"
+         control_name="AlchemyWeatherLightningEnabled"
+         enabled_control="AlchemyWeatherEnabled" />
+
+        <text follows="left|top" height="15" left="8" top="318" width="122" layout="topleft" value="Strikes / minute:" />
+        <slider follows="left|top" layout="topleft" height="20" top="314" left="132" width="206" min_val="0" max_val="60" increment="0.1" decimal_digits="1" show_text="true" can_edit_text="true" name="weather_lightning_rate" control_name="AlchemyWeatherLightningRate" enabled_control="AlchemyWeatherEnabled" />
+        <text follows="left|top" height="15" left="8" top="342" width="122" layout="topleft" value="Flash duration:" />
+        <slider follows="left|top" layout="topleft" height="20" top="338" left="132" width="206" min_val="0.05" max_val="4" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_flash_duration" control_name="AlchemyWeatherLightningFlashDuration" enabled_control="AlchemyWeatherEnabled" />
+        <text follows="left|top" height="15" left="8" top="366" width="122" layout="topleft" value="Bolt duration:" />
+        <slider follows="left|top" layout="topleft" height="20" top="362" left="132" width="206" min_val="0.02" max_val="4" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_bolt_duration" control_name="AlchemyWeatherLightningBoltDuration" enabled_control="AlchemyWeatherEnabled" />
+        <text follows="left|top" height="15" left="8" top="390" width="122" layout="topleft" value="Ambient floor:" />
+        <slider follows="left|top" layout="topleft" height="20" top="386" left="132" width="206" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_lightning_ambient" control_name="AlchemyWeatherLightningAmbient" enabled_control="AlchemyWeatherEnabled" />
+        <text follows="left|top" height="15" left="8" top="414" width="122" layout="topleft" value="Brightness:" />
+        <slider follows="left|top" layout="topleft" height="20" top="410" left="132" width="206" min_val="0" max_val="32" increment="0.25" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_lightning_brightness" control_name="AlchemyWeatherLightningBrightness" enabled_control="AlchemyWeatherEnabled" />
+        <text follows="left|top" height="15" left="8" top="438" width="122" layout="topleft" value="Bolt width:" />
+        <slider follows="left|top" layout="topleft" height="20" top="434" left="132" width="206" min_val="0.25" max_val="8" increment="0.25" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_lightning_width" control_name="AlchemyWeatherLightningBoltWidth" enabled_control="AlchemyWeatherEnabled" />
+        <text follows="left|top" height="15" left="8" top="462" width="122" layout="topleft" value="Bolt height:" />
+        <slider follows="left|top" layout="topleft" height="20" top="458" left="132" width="206" min_val="16" max_val="512" increment="4" decimal_digits="0" show_text="true" can_edit_text="true" name="weather_lightning_height" control_name="AlchemyWeatherLightningBoltHeight" enabled_control="AlchemyWeatherEnabled" />
+        <text follows="left|top" height="15" left="8" top="486" width="122" layout="topleft" value="Minimum range:" />
+        <slider follows="left|top" layout="topleft" height="20" top="482" left="132" width="206" min_val="0" max_val="512" increment="4" decimal_digits="0" show_text="true" can_edit_text="true" name="weather_lightning_min" control_name="AlchemyWeatherLightningMinDistance" enabled_control="AlchemyWeatherEnabled" />
+        <text follows="left|top" height="15" left="8" top="510" width="122" layout="topleft" value="Maximum range:" />
+        <slider follows="left|top" layout="topleft" height="20" top="506" left="132" width="206" min_val="0" max_val="512" increment="4" decimal_digits="0" show_text="true" can_edit_text="true" name="weather_lightning_max" control_name="AlchemyWeatherLightningMaxDistance" enabled_control="AlchemyWeatherEnabled" />
+
+        <button follows="left|top" height="22" left="10" top="536" width="150"
+         layout="topleft" name="weather_trigger" label="Trigger lightning"
+         tool_tip="Trigger one deterministic strike immediately." />
+        <text follows="left|top|right" height="28" left="8" top="564" width="334"
+         layout="topleft" word_wrap="true"
+         value="Local-only; uses terrain depth, simulator wind, EEP clouds, deferred normals, and HDR exposure/bloom." />
+
+        <text follows="left|top" height="15" left="8" top="600" width="44"
+         layout="topleft" value="Preset:" />
+        <combo_box follows="left|top" height="20" left="54" top="596" width="138"
+         layout="topleft" name="weather_preset_combo"
+         tool_tip="Named presets capture the complete weather state, including Debug-only colors and seed." />
+        <button follows="left|top" height="20" left="198" top="596" width="52"
+         layout="topleft" label="Save" name="weather_preset_save" />
+        <button follows="left|top" height="20" left="256" top="596" width="44"
+         layout="topleft" label="Del" name="weather_preset_delete" />
+        <button follows="left|top" height="20" left="8" top="626" width="120"
+         layout="topleft" label="Reset All" name="weather_reset_all"
+         tool_tip="Reset every persistent weather setting to its built-in default." />
+    </panel>
+</panel>

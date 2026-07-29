@@ -272,6 +272,10 @@ extern LLGLSLShader         gDeferredProjectorVolumetricProgram;
 extern LLGLSLShader         gDeferredProjectorVolumetricUpsampleProgram; // [BDMerge G3.3 P1 item 3]
 extern LLGLSLShader         gDeferredProjectorVolumetricTemporalProgram; // [BDMerge G3.3 Batch 1 A]
 extern LLGLSLShader         gDeferredProjectorVolumetricBloomFeedProgram; // [BDMerge G3.3 P3 item 4]
+// Viewer-native cinematic weather: depth-aware precipitation and lightning.
+extern LLGLSLShader         gDeferredWeatherRainProgram;
+extern LLGLSLShader         gDeferredWeatherRainUpsampleProgram;
+extern LLGLSLShader         gDeferredWeatherLightningProgram;
 extern LLGLSLShader         gDeferredPostNoDoFProgram;
 extern LLGLSLShader         gExposureProgram;
 extern LLGLSLShader         gExposureProgramNoFade;

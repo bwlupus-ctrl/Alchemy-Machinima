@@ -27,14 +27,39 @@ constexpr F32 ONSET_KICK    = 5.f;
 constexpr F32 SETTLE_KICK   = 5.f;
 constexpr F32 REACT_MAX     = 4.f;
 constexpr F32 PHASE_WRAP    = 256.f;        // hash lattice period; wrap is seamless
+constexpr S32 MAX_FIXED_STEPS_PER_FRAME = 512;
+constexpr F64 FIXED_STEP_EPSILON = 1e-9;
 // The shader authored reactive magnitudes in viewport fractions; one full
 // viewport is roughly one radian of view angle, so fraction units convert
 // to camera radians with a factor of ~1.
 constexpr F32 FRAC_TO_RAD   = 1.0f;
 
-inline F32 vc_frac(F32 x)                   { return x - floorf(x); }
+inline F32 vc_finite(F32 value, F32 fallback)
+{
+    return std::isfinite(value) ? value : fallback;
+}
+
+inline F32 vc_safe(F32 value, F32 fallback, F32 minimum, F32 maximum)
+{
+    return llclamp(vc_finite(value, fallback), minimum, maximum);
+}
+
+inline F32 vc_mode_safe(F32 value, F32 fallback,
+                        F32 minimum, F32 maximum,
+                        bool locomotion_active)
+{
+    return locomotion_active
+        ? vc_safe(value, fallback, minimum, maximum)
+        : vc_finite(value, fallback);
+}
+
+inline F32 vc_frac(F32 x)
+{
+    x = vc_finite(x, 0.f);
+    return x - floorf(x);
+}
 inline F32 vc_lerp(F32 a, F32 b, F32 u)     { return a + (b - a) * u; }
-inline F32 vc_sat(F32 x)                    { return llclamp(x, 0.f, 1.f); }
+inline F32 vc_sat(F32 x)                    { return vc_safe(x, 0.f, 0.f, 1.f); }
 inline F32 vc_smoothstep(F32 e0, F32 e1, F32 x)
 {
     F32 t = vc_sat((x - e0) / llmax(e1 - e0, 1e-6f));
@@ -46,12 +71,30 @@ inline F32 vc_quintic(F32 u)                { return u * u * u * (u * (u * 6.f -
 // frametime-normalized EMA retain: per-frame retain authored @30fps -> dt
 inline F32 vc_retain(F32 perFrameRetain30, F32 dtS)
 {
-    F32 r   = llclamp(perFrameRetain30, 0.02f, 0.9995f);
+    F32 r   = vc_safe(perFrameRetain30, 0.85f, 0.02f, 0.9995f);
+    dtS = vc_safe(dtS, DT_REF, 0.0005f, 0.25f);
     F32 tau = -DT_REF / logf(r);
     return expf(-dtS / llmax(tau, 1e-4f));
 }
 
-inline F32 vc_wrap(F32 x)                   { return x - floorf(x / PHASE_WRAP) * PHASE_WRAP; }
+inline F32 vc_wrap(F32 x)
+{
+    x = vc_finite(x, 0.f);
+    return x - floorf(x / PHASE_WRAP) * PHASE_WRAP;
+}
+
+LLCameraOperatorOutput vc_lerpOutput(const LLCameraOperatorOutput& a,
+                                     const LLCameraOperatorOutput& b,
+                                     F32 t)
+{
+    LLCameraOperatorOutput out;
+    out.mPosOffset = a.mPosOffset + (b.mPosOffset - a.mPosOffset) * t;
+    out.mRoll = vc_lerp(a.mRoll, b.mRoll, t);
+    out.mPitch = vc_lerp(a.mPitch, b.mPitch, t);
+    out.mYaw = vc_lerp(a.mYaw, b.mYaw, t);
+    out.mFovMul = vc_lerp(a.mFovMul, b.mFovMul, t);
+    return out;
+}
 
 // ---------------------------------------------------------------------------
 // value noise / fBm -- periodic lattice hash, quintic (C2) interpolation
@@ -238,16 +281,17 @@ struct Locomotion
     F32 walkCadence, cadenceDrive, fwdBias, latBias;
     F32 stepBob, lateralStep, stepRoll, gaitCouple;
     F32 recomposeAmt, recomposeInterval;
-    // SLICE 2 -- carried so the tables are complete and the settings land in one
-    // pass, but NOTHING READS THESE YET. They need new simulation layers.
+    // Vehicle layers: suspension/body heave, tyre texture, and signed turn lean.
+    // All five fields are consumed by the Drive/Float/Unsteady layer below.
     F32 suspHeave, suspFreq, roadBuzz, roadFreq, turnLean;
 };
 
 Locomotion getLocomotion(S32 m)
 {
     // Physical intent, not vibes:
-    //  Walk ~1.8-2 steps/s, cm-scale vertical displacement.
-    //  Run  ~2.7-3 steps/s, several cm -- deliberately BELOW action-game bob.
+    //  At the default Documentary persona and normalised forward speed 1.0:
+    //  Walk ~2.0 steps/s, cm-scale vertical displacement.
+    //  Run  ~2.9 steps/s, several cm -- deliberately BELOW action-game bob.
     //  Drive zeroes gait entirely; a seated operator has no footfall. Its
     //       character comes from suspension heave + road buzz (slice 2).
     //  Creep damps everything EXCEPT breath, so breath reads proportionally
@@ -267,14 +311,14 @@ Locomotion getLocomotion(S32 m)
         case LOCO_WALK:     return { 0.85f, 0.62f, 0.34f, 0.65f,
                                      0.98f, 1.35f, 1.10f, 1.35f, 0.010f, 0.62f,
                                      0.25f, 1.25f,
-                                     1.00f, 0.32f, 1.00f, 0.25f,
+                                     0.83f, 0.32f, 1.00f, 0.25f,
                                      0.017f, 0.009f, 0.38f, 1.35f,
                                      0.28f, 7.5f,
                                      0.000f, 0.00f, 0.0000f, 0.0f, 0.00f };
         case LOCO_RUN:      return { 1.55f, 1.05f, 0.72f, 1.45f,
                                      0.82f, 2.80f, 2.35f, 2.20f, 0.017f, 0.18f,
                                      0.38f, 1.65f,
-                                     1.48f, 0.62f, 1.35f, 0.42f,
+                                     0.98f, 0.62f, 1.35f, 0.42f,
                                      0.043f, 0.021f, 0.92f, 2.60f,
                                      0.18f, 4.5f,
                                      0.000f, 0.00f, 0.0000f, 0.0f, 0.00f };
@@ -388,12 +432,297 @@ void LLCameraOperator::reset()
     mAutoCandidate = -1;
     mAutoCandidateTime = 0.f;
 
+    mSimAccumulator = 0.0;
+    mFixedStep = 1.0 / 120.0;
+    mFixedPathActive = false;
+    mPreviousSimOutput = LLCameraOperatorOutput();
+    mCurrentSimOutput = LLCameraOperatorOutput();
+    mPendingPoseSegments.clear();
+    mHaveRenderPose = false;
+    mHaveSimPose = false;
+    mPreviousRenderPosition = LLVector3::zero;
+    mPreviousRenderRotation.loadIdentity();
+    mLastSimPosition = LLVector3::zero;
+    mLastSimRotation.loadIdentity();
+
     mModeBlend = 1.f;
     mModeCurrent = -1;
     sModeSource = sModeLive = getLocomotion(LOCO_LEGACY);
 }
 
+LLCameraOperatorOutput LLCameraOperator::interpolateOutput() const
+{
+    const F32 alpha = (mFixedStep > 0.0)
+        ? vc_sat((F32)(mSimAccumulator / mFixedStep))
+        : 0.f;
+    return vc_lerpOutput(mPreviousSimOutput, mCurrentSimOutput, alpha);
+}
+
+void LLCameraOperator::prepareFixedPath()
+{
+    if (mFixedPathActive)
+    {
+        return;
+    }
+
+    // Returning from Legacy starts a new fixed-step timeline. Stale fractional
+    // time or sampled poses from an earlier opted-in take must not leak across
+    // the Legacy hard cut. Procedural phases remain governed by reset(), so
+    // merely selecting a mode does not invent an additional phase reset.
+    mSimAccumulator = 0.0;
+    mPreviousSimOutput = LLCameraOperatorOutput();
+    mCurrentSimOutput = LLCameraOperatorOutput();
+    mPendingPoseSegments.clear();
+    mHaveRenderPose = false;
+    mHaveSimPose = false;
+    mFixedPathActive = true;
+}
+
+bool LLCameraOperator::consumePoseTick(LLVector3& position,
+                                       LLQuaternion& rotation)
+{
+    F64 remaining = mFixedStep;
+    while (remaining > 0.0 && !mPendingPoseSegments.empty())
+    {
+        RenderPoseSegment& segment = mPendingPoseSegments.front();
+        const F64 available =
+            llmax(segment.mDuration - segment.mConsumed, 0.0);
+        if (available <= remaining)
+        {
+            position = segment.mEndPosition;
+            rotation = segment.mEndRotation;
+            remaining -= available;
+            mPendingPoseSegments.pop_front();
+            continue;
+        }
+
+        segment.mConsumed += remaining;
+        const F32 alpha = vc_sat(
+            (F32)(segment.mConsumed / segment.mDuration));
+        position = segment.mStartPosition +
+            (segment.mEndPosition - segment.mStartPosition) * alpha;
+        rotation = nlerp(alpha, segment.mStartRotation,
+                         segment.mEndRotation);
+        remaining = 0.0;
+    }
+
+    return remaining <= FIXED_STEP_EPSILON;
+}
+
 LLCameraOperatorOutput LLCameraOperator::update(const LLCameraOperatorInput& input)
+{
+    static LLCachedControl<S32> loco_mode(gSavedSettings,
+                                           "FlycamOperatorLocomotionMode",
+                                           LOCO_LEGACY);
+
+    // Legacy remains the original variable-step path. In particular, it does
+    // not touch the accumulator or interpolate output, preserving the existing
+    // finite-input output bits for users who have not opted into locomotion.
+    if ((S32)loco_mode == LOCO_LEGACY)
+    {
+        mFixedPathActive = false;
+        return step(input);
+    }
+
+    prepareFixedPath();
+
+    static LLCachedControl<F32> simulation_hz(gSavedSettings,
+                                               "FlycamOperatorSimulationHz",
+                                               120.f);
+    const F32 hz = vc_safe(simulation_hz, 120.f, 30.f, 240.f);
+    mFixedStep = 1.0 / (F64)hz;
+
+    LLCameraOperatorInput held = input;
+    held.mDeltaTime = vc_safe(
+        input.mDeltaTime, (F32)mFixedStep, 0.f, 0.25f);
+    if (!held.mLinearVel.isFinite())
+    {
+        held.mLinearVel = LLVector3::zero;
+    }
+    if (!held.mAngularVel.isFinite())
+    {
+        held.mAngularVel = LLVector3::zero;
+    }
+
+    mSimAccumulator += held.mDeltaTime;
+    S32 steps = 0;
+    held.mDeltaTime = (F32)mFixedStep;
+    while (mSimAccumulator + FIXED_STEP_EPSILON >= mFixedStep &&
+           steps < MAX_FIXED_STEPS_PER_FRAME)
+    {
+        mPreviousSimOutput = mCurrentSimOutput;
+        mCurrentSimOutput = step(held);
+        mSimAccumulator -= mFixedStep;
+        if (mSimAccumulator < 0.0 &&
+            mSimAccumulator > -FIXED_STEP_EPSILON)
+        {
+            mSimAccumulator = 0.0;
+        }
+        ++steps;
+    }
+    // A defensive cap protects the render thread from a pathological settings
+    // edit. Any remaining backlog stays in mSimAccumulator and is processed by
+    // later calls; take time is never silently thrown away.
+    return interpolateOutput();
+}
+
+LLCameraOperatorOutput LLCameraOperator::updateFromPose(
+    F32 frame_dt,
+    const LLVector3& position,
+    const LLQuaternion& rotation)
+{
+    static LLCachedControl<S32> loco_mode(gSavedSettings,
+                                           "FlycamOperatorLocomotionMode",
+                                           LOCO_LEGACY);
+    // Pose timestamps are timeline data, not merely a filter coefficient.
+    // Preserve finite hitch duration so the fixed-step cap can defer, rather
+    // than discard, its backlog.
+    const F32 safe_dt = llmax(vc_finite(frame_dt, DT_REF), 0.f);
+    const LLVector3 safe_position = position.isFinite()
+        ? position
+        : (mHaveRenderPose ? mPreviousRenderPosition : LLVector3::zero);
+    LLQuaternion safe_rotation = rotation.isFinite()
+        ? rotation
+        : (mHaveRenderPose ? mPreviousRenderRotation : LLQuaternion::DEFAULT);
+    const F32 rotation_magnitude = safe_rotation.normalize();
+    if (!std::isfinite(rotation_magnitude) || rotation_magnitude < 1e-6f)
+    {
+        safe_rotation = mHaveRenderPose
+            ? mPreviousRenderRotation
+            : LLQuaternion::DEFAULT;
+    }
+
+    // This fallback is intentionally equivalent to the old caller-side
+    // frame-to-frame velocity calculation. Production callers keep using
+    // update() explicitly for Legacy, but the public sampled API remains safe.
+    if ((S32)loco_mode == LOCO_LEGACY)
+    {
+        mFixedPathActive = false;
+        LLCameraOperatorInput input;
+        input.mDeltaTime = safe_dt;
+        if (mHaveRenderPose && safe_dt > 0.f)
+        {
+            LLMatrix3 axes(safe_rotation);
+            const LLVector3 world_vel =
+                (safe_position - mPreviousRenderPosition) * (1.f / safe_dt);
+            input.mLinearVel = LLVector3(
+                world_vel * LLVector3(axes.mMatrix[0]),
+                world_vel * LLVector3(axes.mMatrix[1]),
+                world_vel * LLVector3(axes.mMatrix[2]));
+            LLQuaternion dq = safe_rotation * ~mPreviousRenderRotation;
+            F32 roll, pitch, yaw;
+            LLMatrix3(dq).getEulerAngles(&roll, &pitch, &yaw);
+            input.mAngularVel = LLVector3(roll, pitch, yaw) * (1.f / safe_dt);
+        }
+        mPreviousRenderPosition = safe_position;
+        mPreviousRenderRotation = safe_rotation;
+        mHaveRenderPose = true;
+        return step(input);
+    }
+
+    prepareFixedPath();
+
+    static LLCachedControl<F32> simulation_hz(gSavedSettings,
+                                               "FlycamOperatorSimulationHz",
+                                               120.f);
+    const F32 hz = vc_safe(simulation_hz, 120.f, 30.f, 240.f);
+    mFixedStep = 1.0 / (F64)hz;
+
+    if (!mHaveRenderPose)
+    {
+        mPreviousRenderPosition = safe_position;
+        mPreviousRenderRotation = safe_rotation;
+        mLastSimPosition = safe_position;
+        mLastSimRotation = safe_rotation;
+        mHaveRenderPose = true;
+        mHaveSimPose = true;
+
+        // A pose sample has no velocity until a second pose defines a segment.
+        // In particular, do not advance a stationary tick here: at <= sim Hz
+        // that tick used to latch Auto=Creep, while at higher render rates it
+        // ran no tick and let the first real segment classify as Run. Deferring
+        // both time and classification makes take-start gait independent of
+        // render FPS. Live joystick input still enters through update(), where
+        // its first sample already contains real velocity.
+        return interpolateOutput();
+    }
+
+    if (safe_dt > 0.f)
+    {
+        RenderPoseSegment segment;
+        segment.mStartPosition = mPreviousRenderPosition;
+        segment.mStartRotation = mPreviousRenderRotation;
+        segment.mEndPosition = safe_position;
+        segment.mEndRotation = safe_rotation;
+        segment.mDuration = safe_dt;
+        mPendingPoseSegments.push_back(segment);
+        mSimAccumulator += safe_dt;
+    }
+    mPreviousRenderPosition = safe_position;
+    mPreviousRenderRotation = safe_rotation;
+
+    S32 steps = 0;
+    while (mSimAccumulator + FIXED_STEP_EPSILON >= mFixedStep &&
+           steps < MAX_FIXED_STEPS_PER_FRAME)
+    {
+        LLVector3 tick_position = mLastSimPosition;
+        LLQuaternion tick_rotation = mLastSimRotation;
+        if (!consumePoseTick(tick_position, tick_rotation))
+        {
+            // The accumulator and segment queue should represent the same
+            // unsimulated duration. Refuse to invent a pose if floating-point
+            // corruption ever breaks that invariant.
+            break;
+        }
+
+        LLCameraOperatorInput tick_input;
+        tick_input.mDeltaTime = (F32)mFixedStep;
+        if (mHaveSimPose)
+        {
+            LLMatrix3 axes(tick_rotation);
+            const LLVector3 world_vel =
+                (tick_position - mLastSimPosition) *
+                (1.f / (F32)mFixedStep);
+            tick_input.mLinearVel = LLVector3(
+                world_vel * LLVector3(axes.mMatrix[0]),
+                world_vel * LLVector3(axes.mMatrix[1]),
+                world_vel * LLVector3(axes.mMatrix[2]));
+
+            LLQuaternion dq = tick_rotation * ~mLastSimRotation;
+            F32 roll, pitch, yaw;
+            LLMatrix3(dq).getEulerAngles(&roll, &pitch, &yaw);
+            tick_input.mAngularVel =
+                LLVector3(roll, pitch, yaw) *
+                (1.f / (F32)mFixedStep);
+        }
+
+        // Fixed tick TIMES are independent of render FPS, but the pose at each
+        // tick is sampled from the render-frame polyline. Linear path segments
+        // are therefore bit-identical across rates; genuinely curved caller
+        // paths only converge as render sampling gets denser. True curved-path
+        // bit identity requires the caller to provide its continuous path, or
+        // poses already sampled at fixed simulation times.
+        mPreviousSimOutput = mCurrentSimOutput;
+        mCurrentSimOutput = step(tick_input);
+        mLastSimPosition = tick_position;
+        mLastSimRotation = tick_rotation;
+        mHaveSimPose = true;
+        mSimAccumulator -= mFixedStep;
+        if (mSimAccumulator < 0.0 &&
+            mSimAccumulator > -FIXED_STEP_EPSILON)
+        {
+            mSimAccumulator = 0.0;
+        }
+        ++steps;
+    }
+
+    // If the cap is reached, the queue retains the exact partially consumed
+    // render segment (plus any later segments). The next call resumes from the
+    // original polyline instead of rebasing deferred ticks onto its new pose.
+    return interpolateOutput();
+}
+
+LLCameraOperatorOutput LLCameraOperator::step(const LLCameraOperatorInput& input)
 {
     LLCameraOperatorOutput out;
 
@@ -483,19 +812,55 @@ LLCameraOperatorOutput LLCameraOperator::update(const LLCameraOperatorInput& inp
     {
         // Auto uses LINEAR speed only, never the combined linear+angular metric:
         // a fast pan from a standing camera must not read as running.
-        const F32 linNorm = input.mLinearVel.magVec() / llmax((F32)refLinear, 0.01f);
+        const F32 linNorm = vc_safe(input.mLinearVel.magVec(), 0.f, 0.f, 100000.f) /
+                            vc_safe(refLinear, 3.f, 0.01f, 10000.f);
 
         if (mAutoResolved < 0)
         {
-            mAutoResolved = LOCO_WALK;   // neutral start; dwell decides from here
+            // Entry/reset is a classification, not a transition. Starting all
+            // takes in Walk created a same-source Walk->Walk blend whose
+            // mModeBlend gate delayed the first real classification by over a
+            // second. Classify the current sample and begin in that gait.
+            if (linNorm >= vc_safe(autoRunOn, 0.82f, 0.f, 10.f))
+            {
+                mAutoResolved = LOCO_RUN;
+            }
+            else if (linNorm >= vc_safe(autoWalkOn, 0.24f, 0.f, 10.f))
+            {
+                mAutoResolved = LOCO_WALK;
+            }
+            else
+            {
+                mAutoResolved = LOCO_CREEP;
+            }
         }
 
         S32 want = mAutoResolved;
         F32 dwell = 0.f;
-        if (mAutoResolved == LOCO_CREEP && linNorm > autoWalkOn)      { want = LOCO_WALK;  dwell = autoWalkOnT; }
-        else if (mAutoResolved == LOCO_WALK && linNorm < autoWalkOff) { want = LOCO_CREEP; dwell = autoWalkOffT; }
-        else if (mAutoResolved == LOCO_WALK && linNorm > autoRunOn)   { want = LOCO_RUN;   dwell = autoRunOnT; }
-        else if (mAutoResolved == LOCO_RUN && linNorm < autoRunOff)   { want = LOCO_WALK;  dwell = autoRunOffT; }
+        if (mAutoResolved == LOCO_CREEP &&
+            linNorm > vc_safe(autoWalkOn, 0.24f, 0.f, 10.f))
+        {
+            want = LOCO_WALK;
+            dwell = vc_safe(autoWalkOnT, 0.65f, 0.f, 60.f);
+        }
+        else if (mAutoResolved == LOCO_WALK &&
+                 linNorm < vc_safe(autoWalkOff, 0.14f, 0.f, 10.f))
+        {
+            want = LOCO_CREEP;
+            dwell = vc_safe(autoWalkOffT, 1.10f, 0.f, 60.f);
+        }
+        else if (mAutoResolved == LOCO_WALK &&
+                 linNorm > vc_safe(autoRunOn, 0.82f, 0.f, 10.f))
+        {
+            want = LOCO_RUN;
+            dwell = vc_safe(autoRunOnT, 0.55f, 0.f, 60.f);
+        }
+        else if (mAutoResolved == LOCO_RUN &&
+                 linNorm < vc_safe(autoRunOff, 0.62f, 0.f, 10.f))
+        {
+            want = LOCO_WALK;
+            dwell = vc_safe(autoRunOffT, 0.90f, 0.f, 60.f);
+        }
 
         if (want != mAutoResolved)
         {
@@ -533,10 +898,53 @@ LLCameraOperatorOutput LLCameraOperator::update(const LLCameraOperatorInput& inp
     loco = llclamp(loco, 0, (S32)LOCO_COUNT - 1);
     const bool loco_active = (loco != LOCO_LEGACY);
 
+    // Debug Settings can bypass XUI limits. Sanitize every high-leverage input
+    // before it reaches an exponential, phase, quaternion, or final output.
+    // Finite Legacy values are deliberately not range-retuned: only non-finite
+    // recovery is shared with that byte-stable path.
+    const F32 safeMaster =
+        vc_mode_safe(master, 1.f, 0.f, 10.f, loco_active);
+    const F32 safeReactivity =
+        vc_mode_safe(reactivity, 1.f, 0.f, 10.f, loco_active);
+    const F32 safeMotionPan =
+        vc_mode_safe(motionPan, 1.f, 0.f, 10.f, loco_active);
+    const F32 safeMotionTilt =
+        vc_mode_safe(motionTilt, 1.f, 0.f, 10.f, loco_active);
+    const F32 safeMotionRoll =
+        vc_mode_safe(motionRoll, 1.f, 0.f, 10.f, loco_active);
+    const F32 safeMotionBreath =
+        vc_mode_safe(motionBreath, 1.f, 0.f, 10.f, loco_active);
+    const F32 safeSeed =
+        vc_mode_safe(seed, 0.f, -1000000.f, 1000000.f, loco_active);
+    const F32 safeGainSurge =
+        vc_mode_safe(gainSurge, 1.f, 0.f, 10.f, loco_active);
+    const F32 safeGainSway =
+        vc_mode_safe(gainSway, 1.f, 0.f, 10.f, loco_active);
+    const F32 safeGainHeave =
+        vc_mode_safe(gainHeave, 1.f, 0.f, 10.f, loco_active);
+    const F32 safeGainRoll =
+        vc_mode_safe(gainRoll, 1.f, 0.f, 10.f, loco_active);
+    const F32 safeGainPitch =
+        vc_mode_safe(gainPitch, 1.f, 0.f, 10.f, loco_active);
+    const F32 safeGainYaw =
+        vc_mode_safe(gainYaw, 1.f, 0.f, 10.f, loco_active);
+    const F32 safeGainFov =
+        vc_mode_safe(gainFov, 1.f, 0.f, 10.f, loco_active);
+
     // Cross-fade the parameter block on a mode change so switching mid-shot
     // does not snap. Quintic smoothstep: zero first and second derivative at
     // both ends, so the transition has no visible velocity discontinuity.
-    if (loco_active && loco != mModeCurrent)
+    if (loco_active && mModeCurrent < 0)
+    {
+        // First entry after reset is already the requested/resolved mode. There
+        // is no distinct source to fade from, so initialize the live block and
+        // leave the blend complete. Besides avoiding a no-op transition, this
+        // keeps Auto's dwell classifier un-gated from its first tick.
+        mModeCurrent = loco;
+        mModeBlend = 1.f;
+        sModeSource = sModeLive = getLocomotion(loco);
+    }
+    else if (loco_active && loco != mModeCurrent)
     {
         // Source is the block we were ACTUALLY producing last frame, not the
         // previous mode's raw table. Retargeting mid-blend (Walk->Run, then
@@ -560,7 +968,7 @@ LLCameraOperatorOutput LLCameraOperator::update(const LLCameraOperatorInput& inp
     Locomotion L = getLocomotion(loco);
     if (loco_active && mModeBlend < 1.f)
     {
-        const F32 blend_time = llmax((F32)modeBlendTime, 0.01f);
+        const F32 blend_time = vc_safe(modeBlendTime, 0.85f, 0.01f, 60.f);
         mModeBlend = vc_sat(mModeBlend + input.mDeltaTime / blend_time);
         const F32 s = mModeBlend;
         const F32 smooth = s * s * s * (s * (s * 6.f - 15.f) + 10.f);
@@ -571,27 +979,42 @@ LLCameraOperatorOutput LLCameraOperator::update(const LLCameraOperatorInput& inp
         sModeLive = L;   // what we actually produced, for a mid-blend retarget
     }
 
-    const F32 dt = llclamp(input.mDeltaTime, 0.0005f, 0.25f);
+    const F32 dt = vc_safe(input.mDeltaTime, DT_REF, 0.0005f, 0.25f);
 
     // ---- ground-truth speed metric (replaces MV estimation + AGC) ---------
-    const F32 linRef = llmax((F32)refLinear, 0.01f);
-    const F32 angRef = llmax((F32)refAngular, 1.f) * DEG_TO_RAD;
+    const F32 linRef = loco_active
+        ? vc_safe(refLinear, 3.f, 0.01f, 10000.f)
+        : llmax(vc_finite(refLinear, 3.f), 0.01f);
+    const F32 angRef = (loco_active
+        ? vc_safe(refAngular, 60.f, 1.f, 100000.f)
+        : llmax(vc_finite(refAngular, 60.f), 1.f)) * DEG_TO_RAD;
 
     // pan-plane flow equivalent: yaw+lateral => X, pitch+vertical => Y
-    const F32 vx = input.mAngularVel.mV[VZ] / angRef + input.mLinearVel.mV[VY] / linRef;
-    const F32 vy = input.mAngularVel.mV[VY] / angRef + input.mLinearVel.mV[VZ] / linRef;
+    const F32 vx = vc_mode_safe(
+        input.mAngularVel.mV[VZ] / angRef +
+        input.mLinearVel.mV[VY] / linRef,
+        0.f, -REACT_MAX, REACT_MAX, loco_active);
+    const F32 vy = vc_mode_safe(
+        input.mAngularVel.mV[VY] / angRef +
+        input.mLinearVel.mV[VZ] / linRef,
+        0.f, -REACT_MAX, REACT_MAX, loco_active);
     const F32 coherentRaw  = sqrtf(vx * vx + vy * vy);
-    const F32 divergentRaw = fabsf(input.mLinearVel.mV[VX]) / linRef;
-    const F32 rawSpd = llmin(coherentRaw + divergentRaw, REACT_MAX);
+    const F32 divergentRaw = vc_mode_safe(
+        fabsf(input.mLinearVel.mV[VX]) / linRef,
+        0.f, 0.f, REACT_MAX, loco_active);
+    const F32 rawSpd = vc_finite(
+        llmin(coherentRaw + divergentRaw, REACT_MAX), 0.f);
 
     // ---- framerate-independent smoothing -----------------------------------
     // Locomotion supplies an ABSOLUTE smoothing target; Profile supplies a
     // MULTIPLIER. Hence the branch rather than one blended expression -- mixing
     // an absolute and a relative term is exactly the combinatorial mush this
     // design set out to avoid.
-    const F32 k = vc_retain(P.smoothing *
-                            (loco_active ? L.smoothing : vc_infl(Q.smoothMul)) *
-                            smoothingTrim, dt);
+    const F32 k = vc_retain(
+        P.smoothing *
+        (loco_active ? L.smoothing : vc_infl(Q.smoothMul)) *
+        vc_mode_safe(smoothingTrim, 1.f, 0.f, 10.f, loco_active),
+        dt);
     const F32 prevSpeed = mSpeed;
     mSpeed = vc_lerp(rawSpd, mSpeed, k);
     mVecX  = vc_lerp(vx, mVecX, k);
@@ -600,7 +1023,9 @@ LLCameraOperatorOutput LLCameraOperator::update(const LLCameraOperatorInput& inp
     // ---- onset / settle envelopes ------------------------------------------
     const F32 accelN = (mSpeed - prevSpeed) * (DT_REF / dt);
     mOnsetEnv  = vc_sat(llmax(mOnsetEnv  * vc_retain(ONSET_DECAY, dt),  llmax(accelN, 0.f)  * ONSET_KICK));
-    mSettleEnv = vc_sat(llmax(mSettleEnv * vc_retain(settleDecay, dt),  llmax(-accelN, 0.f) * SETTLE_KICK));
+    mSettleEnv = vc_sat(llmax(
+        mSettleEnv * vc_retain(vc_safe(settleDecay, 0.85f, 0.f, 1.f), dt),
+        llmax(-accelN, 0.f) * SETTLE_KICK));
 
     // latched motion direction (settle bounce axis)
     const F32 coherent = sqrtf(mVecX * mVecX + mVecY * mVecY);
@@ -613,14 +1038,29 @@ LLCameraOperatorOutput LLCameraOperator::update(const LLCameraOperatorInput& inp
 
     // ---- phase accumulators (wrap-safe, pop-free on slider changes) --------
     const F32 divergent = llmax(mSpeed - coherent, 0.f);
-    const F32 adv = dt * llmax((F32)timeSpeed, 0.f);
+    const F32 safeTimeSpeed = loco_active
+        ? vc_safe(timeSpeed, 1.f, 0.f, 100.f)
+        : llmax(vc_finite(timeSpeed, 1.f), 0.f);
+    const F32 adv = dt * safeTimeSpeed;
     // Locomotion supplies absolute rates; LEGACY keeps the authored settings.
-    const F32 aCadence   = loco_active ? L.walkCadence  : (F32)walkCadence;
-    const F32 aCadDrive  = loco_active ? L.cadenceDrive : (F32)cadenceDrive;
-    const F32 aPanTiltHz = loco_active ? L.panTiltFreq  : (F32)transFreq;
-    const F32 aRollHz    = loco_active ? L.rollFreq     : (F32)rollFreq;
-    const F32 aBreathHz  = loco_active ? L.breathFreq   : (F32)breathFreq;
-    const F32 aRecompInt = loco_active ? L.recomposeInterval : (F32)recomposeInterval;
+    const F32 aCadence = vc_mode_safe(
+        loco_active ? L.walkCadence : (F32)walkCadence,
+        1.f, 0.f, 20.f, loco_active);
+    const F32 aCadDrive = vc_mode_safe(
+        loco_active ? L.cadenceDrive : (F32)cadenceDrive,
+        0.25f, 0.f, 20.f, loco_active);
+    const F32 aPanTiltHz = vc_mode_safe(
+        loco_active ? L.panTiltFreq : (F32)transFreq,
+        0.6f, 0.f, 100.f, loco_active);
+    const F32 aRollHz = vc_mode_safe(
+        loco_active ? L.rollFreq : (F32)rollFreq,
+        0.3f, 0.f, 100.f, loco_active);
+    const F32 aBreathHz = vc_mode_safe(
+        loco_active ? L.breathFreq : (F32)breathFreq,
+        0.25f, 0.f, 100.f, loco_active);
+    const F32 aRecompInt = vc_mode_safe(
+        loco_active ? L.recomposeInterval : (F32)recomposeInterval,
+        7.f, 0.5f, 10000.f, loco_active);
 
     const F32 gaitRate = P.walkRate * aCadence * (1.f + vc_sat(divergent) * aCadDrive);
     mPhaseXY        = vc_wrap(mPhaseXY        + adv * aPanTiltHz * P.freqMul);
@@ -636,19 +1076,35 @@ LLCameraOperatorOutput LLCameraOperator::update(const LLCameraOperatorInput& inp
     mPhaseRecompose = vc_wrap(mPhaseRecompose + adv / llmax(aRecompInt, 0.5f));
 
     // ---- reactive gains -----------------------------------------------------
-    const F32 R = reactivity;
+    const F32 R = safeReactivity;
     // Locomotion replaces the Profile term in each coefficient. Persona (the
     // RIG) still multiplies, because a shoulder rig walking and a gimbal
     // walking really are different -- that is the one axis pairing that stays
     // meaningful. See the ELocomotion comment block.
-    const F32 eEnergy = P.energyGain * (loco_active ? L.energyGain : vc_infl(Q.energyMul)) * R * energyTrim;
-    const F32 eOnset  = P.onsetGain  * (loco_active ? L.onsetGain  : vc_infl(Q.onsetMul))  * R * onsetAmount  * 0.012f * FRAC_TO_RAD;
-    const F32 eSettle = P.settleGain * (loco_active ? L.settleGain : vc_infl(Q.settleMul)) * R * settleAmount * 0.010f * FRAC_TO_RAD;
+    const F32 eEnergy = P.energyGain *
+        (loco_active ? L.energyGain : vc_infl(Q.energyMul)) * R *
+        vc_mode_safe(energyTrim, 1.f, 0.f, 10.f, loco_active);
+    const F32 eOnset = P.onsetGain *
+        (loco_active ? L.onsetGain : vc_infl(Q.onsetMul)) * R *
+        vc_mode_safe(onsetAmount, 1.f, 0.f, 10.f, loco_active) *
+        0.012f * FRAC_TO_RAD;
+    const F32 eSettle = P.settleGain *
+        (loco_active ? L.settleGain : vc_infl(Q.settleMul)) * R *
+        vc_mode_safe(settleAmount, 1.f, 0.f, 10.f, loco_active) *
+        0.010f * FRAC_TO_RAD;
     // Drag is an absolute physical quantity in the locomotion table (not a
     // multiplier), so it substitutes for P.drag as well.
-    const F32 eDrag   = (loco_active ? L.drag : P.drag * vc_infl(Q.dragMul)) * R * dragAmount * FRAC_TO_RAD;
-    const F32 eWalk   = P.walkCouple * (loco_active ? L.gaitCouple : vc_infl(Q.walkMul)) * R * gaitCoupling;
-    const F32 eCalm   = (loco_active ? L.motionCalm : P.motionCalm * vc_infl(Q.calmMul)) * motionCalmTrim;
+    const F32 eDrag =
+        (loco_active ? L.drag : P.drag * vc_infl(Q.dragMul)) * R *
+        vc_mode_safe(dragAmount, 1.f, 0.f, 10.f, loco_active) *
+        FRAC_TO_RAD;
+    const F32 eWalk = P.walkCouple *
+        (loco_active ? L.gaitCouple : vc_infl(Q.walkMul)) * R *
+        vc_mode_safe(gaitCoupling, 1.f, 0.f, 10.f, loco_active);
+    const F32 eCalm =
+        (loco_active ? L.motionCalm :
+                       P.motionCalm * vc_infl(Q.calmMul)) *
+        vc_mode_safe(motionCalmTrim, 1.f, 0.f, 10.f, loco_active);
 
     const F32 react = llmin(1.f + mSpeed * eEnergy, REACT_MAX);
 
@@ -684,9 +1140,16 @@ LLCameraOperatorOutput LLCameraOperator::update(const LLCameraOperatorInput& inp
                                     : vc_lerp(1.4f, 0.2f, vc_sat(tremorDamping)))
                        * P.hiMul * (1.f - calm);
     const F32 hiRoll = hi * (1.f - vc_sat(rollSmoothness) * 0.85f);
-    const F32 latSmooth = vc_sat(lateralSmoothness + panLat * lateralPanBoost * (1.f - lateralSmoothness));
+    const F32 safeLateralSmoothness = loco_active
+        ? vc_sat(lateralSmoothness)
+        : vc_finite(lateralSmoothness, 0.6f);
+    const F32 latSmooth = vc_sat(
+        safeLateralSmoothness +
+        panLat * vc_mode_safe(
+            lateralPanBoost, 0.5f, 0.f, 1.f, loco_active) *
+        (1.f - safeLateralSmoothness));
     const F32 hiX = hi * (1.f - latSmooth * 0.85f);
-    const F32 sd = seed * 13.f;
+    const F32 sd = safeSeed * 13.f;
 
     F32 sx;
     if ((S32)lateralMode == 1)      sx = vc_weave(mPhaseXY, sd);
@@ -697,29 +1160,40 @@ LLCameraOperatorOutput LLCameraOperator::update(const LLCameraOperatorInput& inp
     const F32 sr  = vc_fbm(mPhaseRoll + sd + 57.1f, hiRoll);
     const F32 sbz = vc_fbm(mPhaseBreath + sd + 83.9f, hi);
 
-    const F32 aIdle = loco_active ? L.idleAmp : (F32)idleIntensity;
-    const F32 mIdle = master * aIdle * P.ampMul;
+    const F32 aIdle = vc_mode_safe(
+        loco_active ? L.idleAmp : (F32)idleIntensity,
+        1.f, 0.f, 10.f, loco_active);
+    const F32 mIdle = safeMaster * aIdle * P.ampMul;
 
     // per-axis reactive amplification of idle wander
-    const F32 reactX = 1.f + (react - 1.f) * motionPan;
-    const F32 reactY = 1.f + (react - 1.f) * motionTilt;
-    const F32 reactR = 1.f + (react - 1.f) * 0.5f * motionRoll;   // roll half-weighted
-    const F32 reactB = 1.f + (react - 1.f) * motionBreath;
+    const F32 reactX = 1.f + (react - 1.f) * safeMotionPan;
+    const F32 reactY = 1.f + (react - 1.f) * safeMotionTilt;
+    const F32 reactR =
+        1.f + (react - 1.f) * 0.5f * safeMotionRoll; // roll half-weighted
+    const F32 reactB = 1.f + (react - 1.f) * safeMotionBreath;
 
     // idle wander is true camera rotation (deg settings -> radians)
     // NOTE: panAmount/tiltAmount/rollAmount stay AUTHORED even under a
     // locomotion mode. The table's idleAmp already sets how much the mode
     // moves (via mIdle); these three remain the director's framing preference
     // for how that budget is split across the axes.
-    F32 yaw   = sx * panAmount  * DEG_TO_RAD * P.transMul * mIdle * reactX;
-    F32 pitch = sy * tiltAmount * DEG_TO_RAD * P.transMul * mIdle * reactY;
-    F32 roll  = sr * rollAmount * DEG_TO_RAD * P.rollMul  * mIdle * reactR;
+    F32 yaw = sx * vc_mode_safe(
+                  panAmount, 0.6f, -100.f, 100.f, loco_active) *
+              DEG_TO_RAD * P.transMul * mIdle * reactX;
+    F32 pitch = sy * vc_mode_safe(
+                    tiltAmount, 0.6f, -100.f, 100.f, loco_active) *
+                DEG_TO_RAD * P.transMul * mIdle * reactY;
+    F32 roll = sr * vc_mode_safe(
+                   rollAmount, 0.5f, -100.f, 100.f, loco_active) *
+               DEG_TO_RAD * P.rollMul * mIdle * reactR;
 
     // breathing: true FOV pulse + coupled chest-rise translation
     const F32 aBreathAmt = loco_active ? L.breathAmount : (F32)breathAmount;
     const F32 breath = sbz * (aBreathAmt * 0.01f) * P.breathMul * mIdle * reactB;
     out.mFovMul = 1.f + breath;
-    F32 liftZ = breath * breathLift * 0.15f;    // meters of chest rise
+    F32 liftZ =
+        breath * vc_mode_safe(
+            breathLift, 0.2f, -10.f, 10.f, loco_active) * 0.15f;
 
     // sparse recompose nudges (eased retarget of the framing center)
     const F32 aRecompAmt = loco_active ? L.recomposeAmt : (F32)recomposeAmount;
@@ -727,20 +1201,23 @@ LLCameraOperatorOutput LLCameraOperator::update(const LLCameraOperatorInput& inp
     {
         F32 rcx, rcy;
         vc_recompose(mPhaseRecompose, sd, aRecompInt, rcx, rcy);
-        const F32 rcScale = 2.f * aRecompAmt * DEG_TO_RAD * P.transMul * master * aIdle;
+        const F32 rcScale =
+            2.f * aRecompAmt * DEG_TO_RAD * P.transMul *
+            safeMaster * aIdle;
         yaw   += rcx * rcScale;
         pitch += rcy * rcScale;
     }
 
     // additive reactive rotation, gated per axis
-    yaw   += (whipX + dragX) * master * motionPan;
-    pitch += (whipY + dragY) * master * motionTilt;
+    yaw   += (whipX + dragX) * safeMaster * safeMotionPan;
+    pitch += (whipY + dragY) * safeMaster * safeMotionTilt;
 
     // settle bounce along the axis of the motion that stopped
     const F32 wob = sinf(mPhaseSettle * F_TWO_PI) * settleW;
-    yaw   += wob * sDirX * master * motionPan;
-    pitch += wob * sDirY * master * motionTilt;
-    roll  += wob * 1.5f * (0.4f + 0.6f * fabsf(sDirX)) * master * motionRoll;
+    yaw   += wob * sDirX * safeMaster * safeMotionPan;
+    pitch += wob * sDirY * safeMaster * safeMotionTilt;
+    roll  += wob * 1.5f * (0.4f + 0.6f * fabsf(sDirX)) *
+             safeMaster * safeMotionRoll;
 
     // ---- gait: real head translation (figure-8) -----------------------------
     F32 bobZ = 0.f, swayY = 0.f;
@@ -757,9 +1234,9 @@ LLCameraOperatorOutput LLCameraOperator::update(const LLCameraOperatorInput& inp
         const F32 aStepBob   = loco_active ? L.stepBob     : (F32)stepBob;
         const F32 aLatStep   = loco_active ? L.lateralStep : (F32)lateralStep;
         const F32 aStepRoll  = loco_active ? L.stepRoll    : (F32)stepRoll;
-        bobZ  = -vshape * aStepBob * gait * master;         // up axis (Z)
-        swayY =  hbase * aLatStep * gait * master;          // left axis (Y)
-        roll += hbase * aStepRoll * DEG_TO_RAD * gait * master;
+        bobZ  = -vshape * aStepBob * gait * safeMaster; // up axis (Z)
+        swayY =  hbase * aLatStep * gait * safeMaster;  // left axis (Y)
+        roll += hbase * aStepRoll * DEG_TO_RAD * gait * safeMaster;
         out.mFovMul += vbase * aStepBob * 0.15f * gait;
     }
 
@@ -775,16 +1252,30 @@ LLCameraOperatorOutput LLCameraOperator::update(const LLCameraOperatorInput& inp
     {
         const F32 sSusp = vc_fbm(mPhaseSusp + sd + 11.7f, 0.25f);
         const F32 sRoad = vc_fbm(mPhaseRoad + sd + 67.3f, 1.6f);
+        const F32 vehicle_speed =
+            vc_safe(input.mLinearVel.magVec() / linRef,
+                    0.f, 0.f, REACT_MAX);
+        const F32 suspension_gate =
+            vc_smoothstep(0.01f, 0.70f, vehicle_speed);
+        const F32 road_gate =
+            vc_smoothstep(0.02f, 0.35f, vehicle_speed);
 
-        bobZ   += sSusp * L.suspHeave * master;
-        bobZ   += sRoad * L.roadBuzz * master;
-        surgeX += sRoad * L.roadBuzz * 0.6f * master;
+        // Road and suspension are motion-dependent. A separate, deliberately
+        // tiny low-frequency heave is the parked Drive idle-engine texture;
+        // tyre buzz and fore/aft chassis vibration are zero at rest.
+        const F32 idle_engine =
+            (loco == LOCO_DRIVE ? sSusp * L.roadBuzz * 0.06f : 0.f);
+        bobZ += (sSusp * L.suspHeave * suspension_gate +
+                 sRoad * L.roadBuzz * road_gate +
+                 idle_engine) * safeMaster;
+        surgeX += sRoad * L.roadBuzz * 0.6f *
+                  road_gate * safeMaster;
 
         // Signed yaw rate, normalised, so a left corner leans the opposite way
         // to a right corner instead of both leaning the same direction.
-        const F32 yawRate = input.mAngularVel.mV[VZ] /
-                            llmax((F32)refAngular * DEG_TO_RAD, 0.01f);
-        roll += llclamp(yawRate, -1.f, 1.f) * L.turnLean * DEG_TO_RAD * master;
+        const F32 yawRate = input.mAngularVel.mV[VZ] / angRef;
+        roll += vc_safe(yawRate, 0.f, -1.f, 1.f) *
+                L.turnLean * DEG_TO_RAD * safeMaster;
     }
 
     // ---- per-DOF authority, applied BEFORE the clamps ----------------------
@@ -799,40 +1290,30 @@ LLCameraOperatorOutput LLCameraOperator::update(const LLCameraOperatorInput& inp
     // silently produce 20 degrees of rotation and a metre of translation past
     // caps of 10 degrees and 0.5 m. Gains exaggerate within the envelope; they
     // do not raise the ceiling.
-    yaw   *= gainYaw;
-    pitch *= gainPitch;
-    roll  *= gainRoll;
-    surgeX *= gainSurge;
-    swayY *= gainSway;
-    bobZ  *= gainHeave;
-    liftZ *= gainHeave;
+    yaw   *= safeGainYaw;
+    pitch *= safeGainPitch;
+    roll  *= safeGainRoll;
+    surgeX *= safeGainSurge;
+    swayY *= safeGainSway;
+    bobZ  *= safeGainHeave;
+    liftZ *= safeGainHeave;
     // FOV is a MULTIPLIER, so it scales about 1.0 -- scaling it directly would
     // drive the FOV toward zero rather than toward neutral. Bypassed entirely
     // at unity so the untouched path stays bit-identical.
-    if (gainFov != 1.f)
+    if (safeGainFov != 1.f)
     {
-        out.mFovMul = 1.f + (out.mFovMul - 1.f) * gainFov;
+        out.mFovMul = 1.f + (out.mFovMul - 1.f) * safeGainFov;
     }
 
     // ---- outputs, with sanity clamps (no overscan needed: real camera) ------
     const F32 rotCap = 10.f * DEG_TO_RAD;
-    out.mYaw   = llclamp(yaw,   -rotCap, rotCap);
-    out.mPitch = llclamp(pitch, -rotCap, rotCap);
-    out.mRoll  = llclamp(roll,  -rotCap, rotCap);
-    out.mFovMul = llclamp(out.mFovMul, 0.8f, 1.25f);
-    out.mPosOffset = LLVector3(llclamp(surgeX, -0.5f, 0.5f),
-                               llclamp(swayY, -0.5f, 0.5f),
-                               llclamp(bobZ + liftZ, -0.5f, 0.5f));
-
-    // ---- unused-gain note --------------------------------------------------
-    // FINAL output gains, applied after the clamps. Deliberately NOT fed back
-    // into the simulation: scaling an input would change the character of the
-    // motion (envelopes, latching, gait coupling all react to it), whereas the
-    // director asking for "no roll" means exactly "remove the roll I am seeing",
-    // not "re-simulate as though the operator never rolled".
-    //
-    // 0 is a hard disable; values above 1 exaggerate on purpose. FOV is scaled
-    // about 1.0 because it is a multiplier, not an offset -- scaling it directly
-    // would drive the FOV toward zero rather than toward neutral.
+    out.mYaw = vc_safe(yaw, 0.f, -rotCap, rotCap);
+    out.mPitch = vc_safe(pitch, 0.f, -rotCap, rotCap);
+    out.mRoll = vc_safe(roll, 0.f, -rotCap, rotCap);
+    out.mFovMul = vc_safe(out.mFovMul, 1.f, 0.8f, 1.25f);
+    out.mPosOffset = LLVector3(
+        vc_safe(surgeX, 0.f, -0.5f, 0.5f),
+        vc_safe(swayY, 0.f, -0.5f, 0.5f),
+        vc_safe(bobZ + liftZ, 0.f, -0.5f, 0.5f));
     return out;
 }

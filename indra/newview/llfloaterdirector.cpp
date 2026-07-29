@@ -67,6 +67,7 @@ constexpr char TAB_ICON_ANIMATE[] = "Command_Poser_Icon";
 constexpr char TAB_ICON_CAMERA[]  = "Command_View_Icon";
 constexpr char TAB_ICON_TAKES[]   = "Command_Snapshot_Icon";
 constexpr char TAB_ICON_TEMPORAL[] = "Command_Environments_Icon"; // day-cycle/time metaphor (no clock asset ships)
+constexpr char TAB_ICON_WEATHER[]  = "Command_Water_Icon"; // rain/precipitation metaphor (distinct from Time's sky icon)
 
 // scene files live beside the cinematic presets, same idiom
 constexpr char SCENE_SUBDIR[]  = "director_scenes";
@@ -171,6 +172,7 @@ bool LLFloaterDirector::postBuild()
         { "animate_tab", TAB_ICON_ANIMATE },
         { "camera_tab",  TAB_ICON_CAMERA },
         { "takes_tab",   TAB_ICON_TAKES },
+        { "weather_tab", TAB_ICON_WEATHER },
         { "temporal_tab", TAB_ICON_TEMPORAL },
     };
     for (const auto& t : tab_icons)
