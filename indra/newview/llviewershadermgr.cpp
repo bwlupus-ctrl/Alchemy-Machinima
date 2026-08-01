@@ -227,8 +227,12 @@ LLGLSLShader            gDeferredProjectorVolumetricUpsampleProgram; // [BDMerge
 LLGLSLShader            gDeferredProjectorVolumetricTemporalProgram; // [BDMerge G3.3 Batch 1 A]
 LLGLSLShader            gDeferredProjectorVolumetricBloomFeedProgram; // [BDMerge G3.3 P3 item 4]
 LLGLSLShader            gDeferredWeatherRainProgram;
+LLGLSLShader            gDeferredWeatherRainOcclusionProgram;
 LLGLSLShader            gDeferredWeatherRainUpsampleProgram;
+LLGLSLShader            gDeferredWeatherSurfaceProgram;
+LLGLSLShader            gDeferredWeatherSurfaceOcclusionProgram;
 LLGLSLShader            gDeferredWeatherLightningProgram;
+LLGLSLShader            gDeferredWeatherLightningQualityProgram;
 LLGLSLShader            gDeferredPostNoDoFProgram;
 LLGLSLShader            gDeferredWLSkyProgram;
 LLGLSLShader            gEnvironmentMapProgram;
@@ -449,8 +453,23 @@ void LLViewerShaderMgr::finalizeShaderList()
     mShaderList.push_back(&gDeferredProjectorVolumetricTemporalProgram); // [BDMerge G3.3 Batch 1 A]
     mShaderList.push_back(&gDeferredProjectorVolumetricBloomFeedProgram); // [BDMerge G3.3 P3 item 4]
     mShaderList.push_back(&gDeferredWeatherRainProgram);
+    if (gSavedSettings.getBOOL("AlchemyWeatherRainOcclusion"))
+    {
+        mShaderList.push_back(&gDeferredWeatherRainOcclusionProgram);
+        mShaderList.push_back(&gDeferredWeatherSurfaceOcclusionProgram);
+    }
     mShaderList.push_back(&gDeferredWeatherRainUpsampleProgram);
+    mShaderList.push_back(&gDeferredWeatherSurfaceProgram);
     mShaderList.push_back(&gDeferredWeatherLightningProgram);
+    if (gSavedSettings.getBOOL(
+            "AlchemyWeatherLightningQualityEnabled") &&
+        gSavedSettings.getBOOL("RenderHDREnabled") &&
+        gGLManager.mGLVersion > 4.05f)
+    {
+        // Quality EEP parameters are uploaded explicitly by renderWeather().
+        // Keep it out of ongoing environment propagation while it is disabled.
+        mShaderList.push_back(&gDeferredWeatherLightningQualityProgram);
+    }
     mShaderList.push_back(&gFroxelMediaProgram); // [BDMerge Froxel F0]
     mShaderList.push_back(&gFroxelDebugProgram); // [BDMerge Froxel F0]
     mShaderList.push_back(&gFroxelIntegrateProgram); // [BDMerge Froxel F1]
@@ -1276,8 +1295,12 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gDeferredProjectorVolumetricTemporalProgram.unload(); // [BDMerge G3.3 Batch 1 A]
         gDeferredProjectorVolumetricBloomFeedProgram.unload(); // [BDMerge G3.3 P3 item 4]
         gDeferredWeatherRainProgram.unload();
+        gDeferredWeatherRainOcclusionProgram.unload();
         gDeferredWeatherRainUpsampleProgram.unload();
+        gDeferredWeatherSurfaceProgram.unload();
+        gDeferredWeatherSurfaceOcclusionProgram.unload();
         gDeferredWeatherLightningProgram.unload();
+        gDeferredWeatherLightningQualityProgram.unload();
         gEnvironmentMapProgram.unload();
         gDeferredWLSkyProgram.unload();
         gDeferredWLCloudProgram.unload();
@@ -3188,6 +3211,33 @@ bool LLViewerShaderMgr::loadShadersDeferred()
             success = true;
         }
 
+        const bool rain_occlusion =
+            gSavedSettings.getBOOL("AlchemyWeatherRainOcclusion");
+        if (rain_occlusion)
+        {
+            // Compile the occlusion path as a separate optional permutation.
+            // The baseline program stays available if this sampler-heavy
+            // variant exceeds a texture-unit/link limit or otherwise fails.
+            gDeferredWeatherRainOcclusionProgram.mName = "Weather Rain Occlusion Shader";
+            gDeferredWeatherRainOcclusionProgram.mFeatures.isDeferred = true;
+            gDeferredWeatherRainOcclusionProgram.mShaderFiles.clear();
+            gDeferredWeatherRainOcclusionProgram.clearPermutations();
+            gDeferredWeatherRainOcclusionProgram.addPermutation("WEATHER_RAIN_OCCLUSION", "1");
+            gDeferredWeatherRainOcclusionProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+            gDeferredWeatherRainOcclusionProgram.mShaderFiles.push_back(make_pair("deferred/weatherRainF.glsl", GL_FRAGMENT_SHADER));
+            gDeferredWeatherRainOcclusionProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+            success = gDeferredWeatherRainOcclusionProgram.createShader();
+            if (!success)
+            {
+                LL_WARNS() << "Failed to create shader '" << gDeferredWeatherRainOcclusionProgram.mName << "', using baseline weather rain." << LL_ENDL;
+                success = true;
+            }
+        }
+        else
+        {
+            gDeferredWeatherRainOcclusionProgram.unload();
+        }
+
         gDeferredWeatherRainUpsampleProgram.mName = "Weather Rain Upsample Shader";
         gDeferredWeatherRainUpsampleProgram.mFeatures.isDeferred = true;
         gDeferredWeatherRainUpsampleProgram.mShaderFiles.clear();
@@ -3202,6 +3252,42 @@ bool LLViewerShaderMgr::loadShadersDeferred()
             success = true;
         }
 
+        gDeferredWeatherSurfaceProgram.mName = "Weather Surface Response Shader";
+        gDeferredWeatherSurfaceProgram.mFeatures.isDeferred = true;
+        gDeferredWeatherSurfaceProgram.mShaderFiles.clear();
+        gDeferredWeatherSurfaceProgram.clearPermutations();
+        gDeferredWeatherSurfaceProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gDeferredWeatherSurfaceProgram.mShaderFiles.push_back(make_pair("deferred/weatherSurfaceF.glsl", GL_FRAGMENT_SHADER));
+        gDeferredWeatherSurfaceProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gDeferredWeatherSurfaceProgram.createShader();
+        if (!success)
+        {
+            LL_WARNS() << "Failed to create shader '" << gDeferredWeatherSurfaceProgram.mName << "', disabling weather surface response." << LL_ENDL;
+            success = true;
+        }
+
+        if (rain_occlusion)
+        {
+            gDeferredWeatherSurfaceOcclusionProgram.mName = "Weather Surface Occlusion Shader";
+            gDeferredWeatherSurfaceOcclusionProgram.mFeatures.isDeferred = true;
+            gDeferredWeatherSurfaceOcclusionProgram.mShaderFiles.clear();
+            gDeferredWeatherSurfaceOcclusionProgram.clearPermutations();
+            gDeferredWeatherSurfaceOcclusionProgram.addPermutation("WEATHER_RAIN_OCCLUSION", "1");
+            gDeferredWeatherSurfaceOcclusionProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+            gDeferredWeatherSurfaceOcclusionProgram.mShaderFiles.push_back(make_pair("deferred/weatherSurfaceF.glsl", GL_FRAGMENT_SHADER));
+            gDeferredWeatherSurfaceOcclusionProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+            success = gDeferredWeatherSurfaceOcclusionProgram.createShader();
+            if (!success)
+            {
+                LL_WARNS() << "Failed to create shader '" << gDeferredWeatherSurfaceOcclusionProgram.mName << "', using baseline weather surface response." << LL_ENDL;
+                success = true;
+            }
+        }
+        else
+        {
+            gDeferredWeatherSurfaceOcclusionProgram.unload();
+        }
+
         gDeferredWeatherLightningProgram.mName = "Weather Lightning Shader";
         gDeferredWeatherLightningProgram.mFeatures.isDeferred = true;
         gDeferredWeatherLightningProgram.mShaderFiles.clear();
@@ -3214,6 +3300,47 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         {
             LL_WARNS() << "Failed to create shader '" << gDeferredWeatherLightningProgram.mName << "', disabling weather lightning." << LL_ENDL;
             success = true;
+        }
+
+        if (gSavedSettings.getBOOL(
+                "AlchemyWeatherLightningQualityEnabled") &&
+            gSavedSettings.getBOOL("RenderHDREnabled") &&
+            gGLManager.mGLVersion > 4.05f)
+        {
+            // Compile the opt-in program as an independent permutation. The
+            // setting listener requests a shader reload on toggle, including
+            // preset/reset changes, so the default-off state pays no compile
+            // or resident-program cost.
+            gDeferredWeatherLightningQualityProgram.mName =
+                "Weather Lightning Quality Shader";
+            gDeferredWeatherLightningQualityProgram.mFeatures.isDeferred =
+                true;
+            gDeferredWeatherLightningQualityProgram.mShaderFiles.clear();
+            gDeferredWeatherLightningQualityProgram.clearPermutations();
+            gDeferredWeatherLightningQualityProgram.addPermutation(
+                "WEATHER_LIGHTNING_QUALITY", "1");
+            gDeferredWeatherLightningQualityProgram.mShaderFiles.push_back(
+                make_pair(
+                    "deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+            gDeferredWeatherLightningQualityProgram.mShaderFiles.push_back(
+                make_pair(
+                    "deferred/weatherLightningF.glsl", GL_FRAGMENT_SHADER));
+            gDeferredWeatherLightningQualityProgram.mShaderLevel =
+                mShaderLevel[SHADER_DEFERRED];
+            success =
+                gDeferredWeatherLightningQualityProgram.createShader();
+            if (!success)
+            {
+                LL_WARNS() << "Failed to create shader '"
+                           << gDeferredWeatherLightningQualityProgram.mName
+                           << "', using baseline weather lightning."
+                           << LL_ENDL;
+                success = true;
+            }
+        }
+        else
+        {
+            gDeferredWeatherLightningQualityProgram.unload();
         }
 
         gCASProgram.mName = "Contrast Adaptive Sharpening Shader";

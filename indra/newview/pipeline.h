@@ -452,12 +452,18 @@ public:
     void postDeferredGammaCorrect(LLRenderTarget* screen_target);
 
     void generateSunShadow(LLCamera& camera);
+    void generateWeatherRainOcclusion(LLCamera& camera);
     LLRenderTarget* getSunShadowTarget(U32 i);
     LLRenderTarget* getSpotShadowTarget(U32 i);
 
     void renderHighlight(const LLViewerObject* obj, F32 fade);
 
-    void renderShadow(const glm::mat4& view, const glm::mat4& proj, LLCamera& camera, LLCullResult& result, bool depth_clamp, bool do_cull = true);
+    void renderShadow(const glm::mat4& view, const glm::mat4& proj,
+                      LLCamera& camera, LLCullResult& result,
+                      bool depth_clamp, bool do_cull = true,
+                      bool include_rigged = true,
+                      bool include_alpha_blend = true,
+                      bool cull_faces = true);
     void renderSelectedFaces(const LLColor4& color);
     void renderHighlights();
     void renderDebug();
@@ -851,6 +857,10 @@ public:
     static bool             sNoAlpha;
     static bool             sUseFarClip;
     static bool             sShadowRender;
+    // Scoped true only while the rain-cover depth pass submits batches.
+    // LLRenderPass uses it to reject rigid avatar attachments that are not
+    // covered by the ordinary rigged/avatar render-type masks.
+    static bool             sRainOcclusionRender;
     // [BDMerge A5.4-1a] true only while the velocity/motion-vector geometry pass
     // is executing (renderGeomVelocity). Lets pool code and shaders distinguish
     // the velocity pass from the normal render if needed.
@@ -938,6 +948,14 @@ public:
     // Half-resolution rain scratch. It is allocated only while weather rain is
     // enabled and released with the other GL buffers.
     LLRenderTarget          mWeatherRainHalf;
+    // Lazy, depth-only vertical rain-cover map. The matrix/range and texture
+    // are published together only after a successful same-frame render.
+    LLRenderTarget          mWeatherRainOcclusion;
+    glm::mat4               mWeatherRainOcclusionMatrix = glm::mat4(1.f);
+    F32                     mWeatherRainOcclusionDepthRange = 1.f;
+    U32                     mWeatherRainOcclusionFrame = 0;
+    U32                     mWeatherRainOcclusionFailedResolution = 0;
+    bool                    mWeatherRainOcclusionValid = false;
     // [BDMerge G3.3 Phase 3 item 4] true iff the half-res march this frame produced
     // a real shaft in mProjVolHalf (half-res path + at least one cone drawn), so the
     // bloom feed knows the texture is current and safe to sample.
@@ -952,7 +970,8 @@ public:
     LLRenderTarget          mProjVolHistory[2];
     U32                     mProjVolHistoryIdx = 0;   // current write slot
     bool                    mProjVolHistoryValid = false; // false => no valid prev
-    F32                     mProjVolPrevViewProj[16]; // world->clip of the last resolve
+    F32                     mProjVolPrevViewProj[16] = {}; // world->clip of last resolve
+    F32                     mProjVolPrevModelview[16] = {};// world->view of last resolve
     // The shaft texture the upsample/bloom passes should sample this frame: the
     // temporal-resolved history slot when temporal is on, else &mProjVolHalf.
     LLRenderTarget*         mProjVolShaftSrc = nullptr;
@@ -1410,7 +1429,7 @@ public:
     static bool BDMergeProjectorVolumetricsHalfRes;
     static U32 BDMergeProjectorVolumetricsMinResolution;
     static F32 BDMergeProjectorVolumetricsMaxLuminance;
-    // [BDMerge G3.3 Batch A] look-neutral performance gates (both default OFF).
+    // [BDMerge G3.3 Batch A] look-neutral performance gates.
     static bool BDMergeProjectorVolumetricsFrustumClip;   // E1: frustum-clipped march
     static bool BDMergeProjectorVolumetricsShadowJitterTap;// E2: single IGN-jittered shadow tap
     // [BDMerge G3.3 Phase 2] global art-direction overrides for flagged shafts.
@@ -1430,9 +1449,9 @@ public:
     // [BDMerge G3.3 Batch 1 A] across-frame temporal reprojection accumulation.
     static bool BDMergeProjectorVolumetricsTemporal;     // A: enable (default on)
     static F32 BDMergeProjectorVolumetricsTemporalBlend; // A: history EMA weight
-    // [BDMerge G3.3 Batch B] temporal correctness (both default no-op).
-    static F32 BDMergeProjectorVolumetricsTemporalReject;   // R2: contrast-aware reject (0 = off)
-    static bool BDMergeProjectorVolumetricsTemporalBeamDepth;// R1: reproject beam, not wall (off)
+    // [BDMerge G3.3 Batch B] temporal correctness.
+    static F32 BDMergeProjectorVolumetricsTemporalReject;   // R2: contrast-aware reject
+    static bool BDMergeProjectorVolumetricsTemporalBeamDepth;// R1: reproject beam, not wall
     // [BDMerge G3.3 Batch 1 B] gobo-colored occluder shadows (stained-glass tint).
     static F32 BDMergeProjectorVolumetricsShadowTint;    // B: 0 = classic black shadow
     // [BDMerge G3.3 Rim] physical surface-coupled rim / wrap glow (auto-rim analog).

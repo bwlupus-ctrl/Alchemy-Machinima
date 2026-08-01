@@ -11,6 +11,7 @@
 
 #include "alpanelcinecamparams.h"
 
+#include "llcinematiccamera.h"
 #include "llbutton.h"
 #include "llcombobox.h"
 #include "lldir.h"
@@ -28,11 +29,44 @@ static LLPanelInjector<ALPanelCineCamParams> t_panel_cinecam_params("panel_cinec
 namespace
 {
 constexpr char PRESET_SUBDIR[] = "cinematic_presets";
+
+struct ShakePreset
+{
+    const char* mName;
+    F32 mSurge;
+    F32 mSway;
+    F32 mHeave;
+    F32 mRoll;
+    F32 mPitch;
+    F32 mYaw;
+    F32 mFov;
+    F32 mSmoothing;
+    S32 mLocomotion;
+    S32 mStyle;
+    S32 mProfile;
+};
+
+// Curated output-authority looks. Style supplies the rig's procedural detail;
+// locomotion supplies physical movement (including Drive suspension/road), and
+// these final gains decide which parts reach the frame. Index zero is the
+// combo's non-action placeholder.
+const ShakePreset SHAKE_PRESETS[] = {
+    { "",                 0.f,  0.f,  0.f,  0.f,  0.f,  0.f,  0.f, 0.35f,   0, 0, 0 },
+    { "Locked Tripod",    0.f,  0.f,  0.f,  0.f,  0.f,  0.f,  0.f, 0.65f,   0, 1, 1 },
+    { "Subtle Handheld", .35f, .45f, .35f, .30f, .40f, .35f, .20f, 0.45f,   0, 2, 4 },
+    { "Documentary",     .75f, .90f, .80f, .75f, .90f, .90f, .65f, 0.30f, 100, 3, 2 },
+    { "Shoulder Rig",    .65f, .90f, .75f, .80f, .70f, .65f, .35f, 0.38f,   2, 5, 4 },
+    { "Run-and-Gun",    1.15f,1.30f,1.40f,1.25f,1.35f,1.25f, .75f, 0.16f, 100, 4, 6 },
+    { "Vehicle / Drive",1.30f, .65f,1.25f, .80f, .55f, .45f, .20f, 0.28f,   4, 5, 2 },
+    { "Drone Float",     .35f, .35f, .45f, .12f, .25f, .30f, .08f, 0.75f,   5, 6, 5 },
+    { "Verite",          .90f,1.15f,1.00f,1.00f,1.10f,1.15f, .50f, 0.20f,   6, 7, 3 },
+    { "Heartbeat",       .10f, .15f, .45f, .10f, .25f, .15f,1.40f, 0.50f,   0, 8, 4 },
+};
 } // anonymous namespace
 
 // ---------------------------------------------------------------------------
-// One global commit callback behind every per-control reset button in the two
-// shared camera panels (this panel and panel_flycam_orbit). It resets just the
+// Global callbacks behind the per-control reset buttons in the shared camera
+// panels and the Frame tab. Reset restores just the
 // named setting to its built-in default, so XUI can wire a reset button with
 //   commit_callback.function="Machinima.ResetControl"
 //   commit_callback.parameter="<control_name>"
@@ -61,6 +95,12 @@ void alRegisterMachinimaResetControl()
             {
                 ctrl->resetToDefault(true);
             }
+        });
+    LLUICtrl::CommitCallbackRegistry::defaultRegistrar().add(
+        "Machinima.AutoFrameResolve",
+        [](LLUICtrl*, const LLSD&)
+        {
+            LLCinematicCamera::instance().requestAutoReframe();
         });
 }
 
@@ -191,6 +231,38 @@ const std::vector<ALPanelCineCamParams::ModeEntry>& ALPanelCineCamParams::modeTa
         { 42, "panel_mode_breathing",{ "CinematicCamBreathingDistance", "CinematicCamBreathingHeight",
                                        "CinematicCamBreathingAmplitude", "CinematicCamBreathingPeriod",
                                        "CinematicCamBreathingHeading" } },
+        { 43, "panel_mode_static_wide",
+              { "CinematicCamStaticWideHeading", "CinematicCamStaticWideDistance",
+                "CinematicCamStaticWideCameraUp", "CinematicCamStaticWideAimUp",
+                "CinematicCamStaticWideFov" } },
+        { 44, "panel_mode_static_medium",
+              { "CinematicCamStaticMediumHeading", "CinematicCamStaticMediumDistance",
+                "CinematicCamStaticMediumCameraUp", "CinematicCamStaticMediumAimUp",
+                "CinematicCamStaticMediumFov" } },
+        { 45, "panel_mode_static_close",
+              { "CinematicCamStaticCloseHeading", "CinematicCamStaticCloseDistance",
+                "CinematicCamStaticCloseCameraUp", "CinematicCamStaticCloseAimUp",
+                "CinematicCamStaticCloseFov" } },
+        { 46, "panel_mode_static_profile_l",
+              { "CinematicCamStaticProfileLHeading", "CinematicCamStaticProfileLDistance",
+                "CinematicCamStaticProfileLCameraUp", "CinematicCamStaticProfileLAimUp",
+                "CinematicCamStaticProfileLFov" } },
+        { 47, "panel_mode_static_profile_r",
+              { "CinematicCamStaticProfileRHeading", "CinematicCamStaticProfileRDistance",
+                "CinematicCamStaticProfileRCameraUp", "CinematicCamStaticProfileRAimUp",
+                "CinematicCamStaticProfileRFov" } },
+        { 48, "panel_mode_static_low",
+              { "CinematicCamStaticLowHeading", "CinematicCamStaticLowDistance",
+                "CinematicCamStaticLowCameraUp", "CinematicCamStaticLowAimUp",
+                "CinematicCamStaticLowFov" } },
+        { 49, "panel_mode_static_high",
+              { "CinematicCamStaticHighHeading", "CinematicCamStaticHighDistance",
+                "CinematicCamStaticHighCameraUp", "CinematicCamStaticHighAimUp",
+                "CinematicCamStaticHighFov" } },
+        { 50, "panel_mode_static_full",
+              { "CinematicCamStaticFullHeading", "CinematicCamStaticFullDistance",
+                "CinematicCamStaticFullCameraUp", "CinematicCamStaticFullAimUp",
+                "CinematicCamStaticFullFov" } },
     };
     return table;
 }
@@ -205,6 +277,19 @@ const std::vector<std::string>& ALPanelCineCamParams::sharedSettings()
         "CinematicCamUseSelected",
         "CinematicCamLookAtHead",
         "CinematicCamUseOperator",
+        "CinematicAutoFrameEnabled",
+        "CinematicAutoFrameFill",
+        "CinematicAutoFrameComposeLine",
+        "CinematicAutoFrameDistanceTrim",
+        // Non-destructive delivery frame and differential lens. Additive keys
+        // are included in named rigs without changing any legacy preset key.
+        "CinematicFrameAspectRatio",
+        "CinematicFrameCustomRatio",
+        "CinematicFrameFocalLengthMM",
+        "CinematicFrameGuideEnabled",
+        "CinematicFrameGuideOpacity",
+        "CinematicFrameGuideStyle",
+        "CinematicFrameLensEnabled",
         // Complete handheld operator surface. Every FlycamOperator* setting is
         // both visible in the shared panel and registered here, so named
         // presets and Reset All round-trip the whole rig without hidden state.
@@ -303,6 +388,15 @@ bool ALPanelCineCamParams::postBuild()
     mPresetCombo = getChild<LLComboBox>("preset_combo");
     mPresetCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPresetSelected(); });
 
+    // Only the Camera Shake page owns this optional curated-look combo; the
+    // shared controller is also instantiated for the Cinematic page.
+    mShakePresetCombo = findChild<LLComboBox>("shake_preset_combo");
+    if (mShakePresetCombo)
+    {
+        mShakePresetCombo->setCommitCallback(
+            [this](LLUICtrl*, const LLSD&) { onShakePresetSelected(); });
+    }
+
     // react to mode changes from the header combo AND from anywhere else
     // (debug settings, scripts, another instance of this panel): the
     // control's commit signal covers all of them
@@ -315,6 +409,34 @@ bool ALPanelCineCamParams::postBuild()
     updateModePanel();
     refreshPresetList();
     return true;
+}
+
+void ALPanelCineCamParams::onShakePresetSelected()
+{
+    if (!mShakePresetCombo)
+    {
+        return;
+    }
+    const S32 index = mShakePresetCombo->getValue().asInteger();
+    if (index <= 0 || index >= (S32)(sizeof(SHAKE_PRESETS) / sizeof(SHAKE_PRESETS[0])))
+    {
+        return;
+    }
+
+    const ShakePreset& preset = SHAKE_PRESETS[index];
+    gSavedSettings.setF32("FlycamOperatorGainSurge", preset.mSurge);
+    gSavedSettings.setF32("FlycamOperatorGainSway", preset.mSway);
+    gSavedSettings.setF32("FlycamOperatorGainHeave", preset.mHeave);
+    gSavedSettings.setF32("FlycamOperatorGainRoll", preset.mRoll);
+    gSavedSettings.setF32("FlycamOperatorGainPitch", preset.mPitch);
+    gSavedSettings.setF32("FlycamOperatorGainYaw", preset.mYaw);
+    gSavedSettings.setF32("FlycamOperatorGainFOV", preset.mFov);
+    gSavedSettings.setF32("CinematicCamSmoothing", preset.mSmoothing);
+    gSavedSettings.setS32("FlycamOperatorLocomotionMode", preset.mLocomotion);
+    gSavedSettings.setS32("FlycamOperatorStyle", preset.mStyle);
+    gSavedSettings.setS32("FlycamOperatorProfile", preset.mProfile);
+    LL_INFOS("CameraShake") << "Applied built-in shake preset '"
+                             << preset.mName << "'" << LL_ENDL;
 }
 
 void ALPanelCineCamParams::onVisibilityChange(bool new_visibility)
@@ -359,9 +481,12 @@ void ALPanelCineCamParams::updateModePanel()
     const S32 mode = gSavedSettings.getS32("CinematicCamMode");
     for (const ModeEntry& entry : modeTable())
     {
-        if (LLPanel* panel = findChild<LLPanel>(entry.mPanel))
+        if (entry.mPanel)
         {
-            panel->setVisible(entry.mMode == mode);
+            if (LLPanel* panel = findChild<LLPanel>(entry.mPanel))
+            {
+                panel->setVisible(entry.mMode == mode);
+            }
         }
     }
 }

@@ -1,6 +1,6 @@
 /**
  * @file lldirectorcast.h
- * @brief Director Console engine: the Cast, Subjects A/B, marks, ACTION/CUT.
+ * @brief Director Console engine: the Cast, Subjects A/B/C/D, marks, ACTION/CUT.
  *
  * $LicenseInfo:firstyear=2026&license=viewerlgpl$
  * Alchemy-Machinima fork
@@ -15,8 +15,8 @@
  *     the same membership.
  *   - LLCinematicCamera resolves Subject A ahead of its follow-target ->
  *     selected -> self chain, and Two-Shot/OTS use Subject B as the second
- *     body when set. Flycam Orbit rides resolveAnchor() and therefore
- *     Subject A automatically.
+ *     body when set. Switcher slots can explicitly address A/B/C/D. Flycam
+ *     Orbit rides resolveAnchor() and therefore Subject A automatically.
  *
  * ACTION/CUT is the shared transport: action() starts everything armed via
  * the persisted DirectorArm* settings (actor moves, cinematic camera,
@@ -76,16 +76,23 @@ public:
     // cached mLastName whenever a name is available.
     LLVOAvatar* resolve(const LLUUID& id);
 
-    // ---- Subjects A / B (ids into the cast; session-only) ----
+    // ---- Subjects A / B / C / D (ids into the cast; session-only) ----
     // A doubles as the CineCam/orbit anchor; B is the second body for
-    // Two-Shot/OTS. resolveSubject*() returns nullptr when unset or dead,
-    // which every consumer treats as "fall back to stock behavior".
+    // legacy Two-Shot/OTS. C/D are additional switcher-addressable marks.
+    // resolveSubject*() returns nullptr when unset or dead, which every
+    // consumer treats as "fall back to stock behavior".
     void setSubjectA(const LLUUID& id) { mSubjectA = id; }
     void setSubjectB(const LLUUID& id) { mSubjectB = id; }
+    void setSubjectC(const LLUUID& id) { mSubjectC = id; }
+    void setSubjectD(const LLUUID& id) { mSubjectD = id; }
     const LLUUID& getSubjectA() const { return mSubjectA; }
     const LLUUID& getSubjectB() const { return mSubjectB; }
+    const LLUUID& getSubjectC() const { return mSubjectC; }
+    const LLUUID& getSubjectD() const { return mSubjectD; }
     LLVOAvatar* resolveSubjectA();
     LLVOAvatar* resolveSubjectB();
+    LLVOAvatar* resolveSubjectC();
+    LLVOAvatar* resolveSubjectD();
 
     // ---- groups (session-only production tags) ----
     // Free-form label per member ("guards", "crowd B", ...) so console ops can
@@ -168,6 +175,13 @@ public:
     void action();
     void cut();
     bool isRunning() const { return mRunning; }
+    // True only while this ACTION owns the false->true transition of
+    // CinematicCamEnabled. Camera clients use this to avoid snapshotting the
+    // transport's temporary value as an operator-owned baseline.
+    bool ownsCameraEnable() const
+    {
+        return mRunning && mFiredCamera && !mCameraWasEnabled;
+    }
     bool isCountingDown() const;
     F32  countdownRemaining() const;    // seconds; 0 when not counting down
 
@@ -189,6 +203,8 @@ private:
 
     LLUUID mSubjectA;
     LLUUID mSubjectB;
+    LLUUID mSubjectC;
+    LLUUID mSubjectD;
 
     // transport state: what THIS action() run started, so cut() undoes
     // only that
@@ -198,6 +214,7 @@ private:
     bool mFiredPlay = false;
     bool mFiredCapture = false;
     bool mCameraWasEnabled = false;     // CinematicCamEnabled before action()
+    bool mCameraEnableTransient = false; // switcher lease: don't alter save value
 
     // countdown one-shot; non-null exactly while pending (the fire lambda
     // nulls it before the timer self-deletes, cancelCountdown() deletes it)

@@ -26,10 +26,9 @@
 
 class LLComboBox;
 
-// Registers the single global "Machinima.ResetControl" commit callback shared by
-// the per-control reset buttons in BOTH camera panels (this one and
-// panel_flycam_orbit). Idempotent; every camera-panel constructor calls it so the
-// callback is present before the panels' reset buttons are built, in either host.
+// Registers the global machinima reset/manual-reframe callbacks shared by the
+// camera and Frame panels. Idempotent; camera-panel construction makes them
+// available before the Director's embedded Frame controls are built.
 void alRegisterMachinimaResetControl();
 
 class ALPanelCineCamParams final : public LLPanel
@@ -80,6 +79,7 @@ private:
     void onClickSavePreset();
     bool savePresetCallback(const LLSD& notification, const LLSD& response);
     void onPresetSelected();
+    void onShakePresetSelected();
     void onClickDeletePreset();
     bool deletePresetCallback(const LLSD& notification, const LLSD& response,
                               const std::string name);
@@ -87,6 +87,7 @@ private:
     void applyPreset(const std::string& name);
 
     LLComboBox* mPresetCombo = nullptr;
+    LLComboBox* mShakePresetCombo = nullptr;
     boost::signals2::connection mModeConnection;
 };
 

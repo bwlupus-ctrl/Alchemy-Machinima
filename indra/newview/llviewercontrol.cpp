@@ -1194,6 +1194,8 @@ void settings_setup_listeners()
     setting_setup_signal_listener(gSavedSettings, "RenderHeroProbeResolution", handleHeroProbeResolutionChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderShadowDetail", handleSetShaderChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderDeferredSSAO", handleSetShaderChanged);
+    setting_setup_signal_listener(gSavedSettings, "AlchemyWeatherRainOcclusion", handleSetShaderChanged);
+    setting_setup_signal_listener(gSavedSettings, "AlchemyWeatherLightningQualityEnabled", handleSetShaderChanged);
     // Toggling the sidecar changes BOTH the shader set (the seed program is
     // only created when it is on) and the screen target's attachment count.
     // handleSetShaderChanged reloads shaders and reallocates the render
@@ -1400,4 +1402,3 @@ void test_cached_control()
 //There's no LLSD comparsion for LLCC yet. TEST_LLCC(LLSD, test_llsd);
 }
 #endif // TEST_CACHED_CONTROL
-

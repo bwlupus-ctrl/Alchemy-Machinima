@@ -1,0 +1,696 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- Broadcast-style Director camera switcher. ALPanelDirectorSwitcher owns the
+     twelve-slot bank/editor wiring; global scheduler/cut controls bind directly
+     to gSavedSettings so this panel can be embedded by any host. -->
+<panel
+ background_visible="false"
+ border="false"
+ height="640"
+ layout="topleft"
+ name="panel_director_switcher"
+ width="340">
+    <text
+     follows="left|top"
+     font="SansSerifBold"
+     height="16"
+     layout="topleft"
+     left="8"
+     name="switcher_title"
+     top="5"
+     width="124">
+        CAMERA SWITCHER
+    </text>
+    <check_box
+     control_name="DirectorSwitcherArmed"
+     follows="left|top"
+     height="18"
+     label="Armed"
+     layout="topleft"
+     left="140"
+     name="switcher_armed"
+     tool_tip="Master switcher arm. Off leaves the existing camera behavior untouched."
+     top="3"
+     width="72" />
+    <check_box
+     control_name="DirectorSwitcherAuto"
+     follows="left|top"
+     height="18"
+     label="Auto"
+     layout="topleft"
+     left="220"
+     name="switcher_auto"
+     tool_tip="Automatically cut among slots whose Use in auto checkbox is on."
+     top="3"
+     width="64" />
+
+    <text
+     follows="left|top|right"
+     height="16"
+     layout="topleft"
+     left="8"
+     name="switcher_program_status"
+     top="25"
+     use_ellipses="true"
+     width="324">
+        Disarmed — slot buttons select for editing only
+    </text>
+
+    <!-- 4 x 3 program buttons. A disabled slot remains manually punchable;
+         its checkbox only excludes it from automatic selection. -->
+    <button follows="left|top" height="24" is_toggle="true" label="1" layout="topleft" left="8"   name="switcher_slot_01" top="45" use_ellipses="true" width="77" />
+    <button follows="left|top" height="24" is_toggle="true" label="2" layout="topleft" left="89"  name="switcher_slot_02" top="45" use_ellipses="true" width="77" />
+    <button follows="left|top" height="24" is_toggle="true" label="3" layout="topleft" left="170" name="switcher_slot_03" top="45" use_ellipses="true" width="77" />
+    <button follows="left|top" height="24" is_toggle="true" label="4" layout="topleft" left="251" name="switcher_slot_04" top="45" use_ellipses="true" width="77" />
+    <button follows="left|top" height="24" is_toggle="true" label="5" layout="topleft" left="8"   name="switcher_slot_05" top="73" use_ellipses="true" width="77" />
+    <button follows="left|top" height="24" is_toggle="true" label="6" layout="topleft" left="89"  name="switcher_slot_06" top="73" use_ellipses="true" width="77" />
+    <button follows="left|top" height="24" is_toggle="true" label="7" layout="topleft" left="170" name="switcher_slot_07" top="73" use_ellipses="true" width="77" />
+    <button follows="left|top" height="24" is_toggle="true" label="8" layout="topleft" left="251" name="switcher_slot_08" top="73" use_ellipses="true" width="77" />
+    <button follows="left|top" height="24" is_toggle="true" label="9" layout="topleft" left="8"   name="switcher_slot_09" top="101" use_ellipses="true" width="77" />
+    <button follows="left|top" height="24" is_toggle="true" label="10" layout="topleft" left="89"  name="switcher_slot_10" top="101" use_ellipses="true" width="77" />
+    <button follows="left|top" height="24" is_toggle="true" label="11" layout="topleft" left="170" name="switcher_slot_11" top="101" use_ellipses="true" width="77" />
+    <button follows="left|top" height="24" is_toggle="true" label="12" layout="topleft" left="251" name="switcher_slot_12" top="101" use_ellipses="true" width="77" />
+
+    <text
+     follows="left|top"
+     font="SansSerifBold"
+     height="16"
+     layout="topleft"
+     left="8"
+     name="switcher_selected_slot"
+     top="132"
+     width="94">
+        Slot 1 setup
+    </text>
+    <button
+     follows="left|top"
+     height="18"
+     label="Reset slots"
+     layout="topleft"
+     left="232"
+     name="switcher_reset_slots"
+     tool_tip="Restore all 12 stock framing assignments and labels, re-enable their auto eligibility, set subjects back to Default/B, and clear every custom angle. Does not change Armed or Auto Director settings."
+     top="129"
+     width="96" />
+    <check_box
+     follows="left|top"
+     height="18"
+     label="Use in auto"
+     layout="topleft"
+     left="8"
+     name="switcher_slot_enabled"
+     tool_tip="Include this slot in Random and Sequence auto cuts. Manual punches still work when this is off."
+     top="151"
+     width="94" />
+    <combo_box
+     follows="left|top|right"
+     height="20"
+     layout="topleft"
+     left="105"
+     name="switcher_slot_mode"
+     tool_tip="Static framing or cinematic motion assigned to the selected slot. Tune that mode in the Cine Camera controls below."
+     top="149"
+     width="223" />
+    <text
+     follows="left|top"
+     height="16"
+     layout="topleft"
+     left="8"
+     name="switcher_slot_label_text"
+     top="176"
+     width="40">
+        Label
+    </text>
+    <line_editor
+     commit_on_focus_lost="true"
+     follows="left|top|right"
+     height="20"
+     layout="topleft"
+     left="50"
+     max_length_chars="40"
+     name="switcher_slot_label"
+     tool_tip="Operator label shown on the program button. Empty uses the assigned camera mode name."
+     top="172"
+     width="278" />
+
+    <text
+     follows="left|top"
+     height="16"
+     layout="topleft"
+     left="8"
+     name="switcher_primary_subject_text"
+     top="199"
+     width="48">
+        Subject
+    </text>
+    <combo_box
+     follows="left|top"
+     height="20"
+     layout="topleft"
+     left="58"
+     name="switcher_primary_subject"
+     tool_tip="Primary framing target. Default preserves the current Subject A, follow-target, selected-avatar, then self behavior."
+     top="195"
+     width="104" />
+    <text
+     follows="left|top"
+     height="16"
+     layout="topleft"
+     left="174"
+     name="switcher_secondary_subject_text"
+     top="199"
+     width="56">
+        Second
+    </text>
+    <combo_box
+     follows="left|top"
+     height="20"
+     layout="topleft"
+     left="232"
+     name="switcher_secondary_subject"
+     tool_tip="Second party for Over-the-Shoulder and Two-Shot. Defaults to Subject B."
+     top="195"
+     width="96" />
+
+    <check_box
+     follows="left|top"
+     height="18"
+     label="Custom angle"
+     layout="topleft"
+     left="8"
+     name="switcher_custom_enabled"
+     tool_tip="Use this slot's captured/fine-tuned angle for static modes. Motion modes remain unchanged."
+     top="224"
+     width="112" />
+    <button
+     follows="left|top|right"
+     height="22"
+     label="CAPTURE CURRENT VIEW"
+     layout="topleft"
+     left="128"
+     name="switcher_capture_current"
+     tool_tip="Store the camera you see now relative to this slot's chosen subject mark. Default uses the current CineCam subject."
+     top="222"
+     width="200" />
+    <text
+     follows="left|top|right"
+     height="16"
+     layout="topleft"
+     left="8"
+     name="switcher_custom_help"
+     top="247"
+     width="320">
+        Fine-tune the selected slot (subject-relative)
+    </text>
+    <spinner
+     decimal_digits="1"
+     follows="left|top"
+     height="18"
+     increment="1"
+     label="Yaw (deg)"
+     label_width="62"
+     layout="topleft"
+     left="8"
+     max_val="180"
+     min_val="-180"
+     name="switcher_custom_yaw"
+     tool_tip="Angle around the subject, relative to the subject's facing."
+     top="266"
+     width="142" />
+    <button follows="left|top" height="18" width="12" image_overlay="Refresh_Off"
+     image_top_pad="0" layout="topleft" left="152" top="266"
+     name="reset_switcher_custom_yaw" tool_tip="Reset yaw to 0 degrees" />
+    <spinner
+     decimal_digits="1"
+     follows="left|top"
+     height="18"
+     increment="1"
+     label="Pitch"
+     label_width="38"
+     layout="topleft"
+     left="177"
+     max_val="80"
+     min_val="-80"
+     name="switcher_custom_pitch"
+     tool_tip="Camera elevation around the focus point. Positive puts the camera above it."
+     top="266"
+     width="142" />
+    <button follows="left|top" height="18" width="12" image_overlay="Refresh_Off"
+     image_top_pad="0" layout="topleft" left="320" top="266"
+     name="reset_switcher_custom_pitch" tool_tip="Reset pitch to 0 degrees" />
+    <spinner
+     decimal_digits="2"
+     follows="left|top"
+     height="18"
+     increment="0.1"
+     label="Distance"
+     label_width="55"
+     layout="topleft"
+     left="8"
+     max_val="64"
+     min_val="0.3"
+     name="switcher_custom_distance"
+     tool_tip="Distance from the subject-relative focus point in meters."
+     top="290"
+     width="142" />
+    <button follows="left|top" height="18" width="12" image_overlay="Refresh_Off"
+     image_top_pad="0" layout="topleft" left="152" top="290"
+     name="reset_switcher_custom_distance" tool_tip="Reset distance to 3 meters" />
+    <spinner
+     decimal_digits="2"
+     follows="left|top"
+     height="18"
+     increment="0.05"
+     label="Height"
+     label_width="43"
+     layout="topleft"
+     left="177"
+     max_val="20"
+     min_val="-10"
+     name="switcher_custom_height"
+     tool_tip="Focus height above the subject's feet in meters, after global Frame Up."
+     top="290"
+     width="142" />
+    <button follows="left|top" height="18" width="12" image_overlay="Refresh_Off"
+     image_top_pad="0" layout="topleft" left="320" top="290"
+     name="reset_switcher_custom_height" tool_tip="Reset focus height to 1.3 meters" />
+    <spinner
+     decimal_digits="1"
+     follows="left|top"
+     height="18"
+     increment="1"
+     label="FOV (deg)"
+     label_width="62"
+     layout="topleft"
+     left="8"
+     max_val="175"
+     min_val="5"
+     name="switcher_custom_fov"
+     tool_tip="Absolute vertical field of view in degrees."
+     top="314"
+     width="142" />
+    <button follows="left|top" height="18" width="12" image_overlay="Refresh_Off"
+     image_top_pad="0" layout="topleft" left="152" top="314"
+     name="reset_switcher_custom_fov" tool_tip="Reset FOV to 60 degrees" />
+    <text
+     follows="left|top|right"
+     height="18"
+     layout="topleft"
+     left="177"
+     name="switcher_capture_status"
+     top="315"
+     use_ellipses="true"
+     width="151" />
+
+    <text
+     follows="left|top"
+     font="SansSerifBold"
+     height="16"
+     layout="topleft"
+     left="8"
+     name="switcher_auto_title"
+     top="344"
+     width="110">
+        AUTO DIRECTOR
+    </text>
+    <spinner
+     control_name="DirectorSwitcherIntervalSec"
+     decimal_digits="1"
+     follows="left|top"
+     height="16"
+     increment="0.5"
+     label="Every"
+     label_width="36"
+     layout="topleft"
+     left="8"
+     max_val="120"
+     min_val="0.25"
+     name="switcher_interval"
+     tool_tip="Seconds between automatic cuts."
+     top="363"
+     width="112" />
+    <button
+     commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorSwitcherIntervalSec"
+     follows="left|top"
+     height="16"
+     image_overlay="Refresh_Off"
+     layout="topleft"
+     left="121"
+     name="reset_DirectorSwitcherIntervalSec"
+     tool_tip="Reset to default"
+     top="363"
+     width="12" />
+    <spinner
+     control_name="DirectorSwitcherJitterSec"
+     decimal_digits="1"
+     follows="left|top"
+     height="16"
+     increment="0.1"
+     label="Jitter"
+     label_width="34"
+     layout="topleft"
+     left="141"
+     max_val="30"
+     min_val="0"
+     name="switcher_jitter"
+     tool_tip="Maximum deterministic plus/minus timing variation in seconds."
+     top="363"
+     width="100" />
+    <button
+     commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorSwitcherJitterSec"
+     follows="left|top"
+     height="16"
+     image_overlay="Refresh_Off"
+     layout="topleft"
+     left="242"
+     name="reset_DirectorSwitcherJitterSec"
+     tool_tip="Reset to default"
+     top="363"
+     width="12" />
+
+    <radio_group
+     control_name="DirectorSwitcherSequence"
+     follows="left|top"
+     height="18"
+     layout="topleft"
+     left="8"
+     name="switcher_selection_order"
+     top="386"
+     width="164">
+        <!-- LLSD boolean false stringifies as an empty value in LLRadioGroup. -->
+        <radio_item height="18" label="Random" layout="topleft" left="0" name="switcher_random" top="0" value="" width="76" />
+        <radio_item height="18" label="Sequence" layout="topleft" left="78" name="switcher_sequence" top="0" value="true" width="84" />
+    </radio_group>
+    <spinner
+     control_name="DirectorSwitcherSeed"
+     decimal_digits="0"
+     follows="left|top"
+     height="16"
+     increment="1"
+     label="Seed"
+     label_width="31"
+     layout="topleft"
+     left="178"
+     max_val="1000000"
+     min_val="0"
+     name="switcher_seed"
+     tool_tip="Deterministic random-selection and timing seed."
+     top="387"
+     width="137" />
+    <button
+     commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorSwitcherSeed"
+     follows="left|top"
+     height="16"
+     image_overlay="Refresh_Off"
+     layout="topleft"
+     left="316"
+     name="reset_DirectorSwitcherSeed"
+     tool_tip="Reset to default"
+     top="387"
+     width="12" />
+
+    <check_box
+     control_name="DirectorSwitcherEaseCuts"
+     follows="left|top"
+     height="18"
+     label="Ease cuts"
+     layout="topleft"
+     left="8"
+     name="switcher_ease"
+     tool_tip="Glide briefly into the next pose instead of making a hard cut."
+     top="415"
+     width="84" />
+    <slider
+     control_name="DirectorSwitcherEaseSec"
+     decimal_digits="2"
+     follows="left|top"
+     height="16"
+     increment="0.05"
+     label="Ease (s)"
+     label_width="48"
+     layout="topleft"
+     left="94"
+     max_val="10.0"
+     min_val="0"
+     name="switcher_ease_duration"
+     tool_tip="Pose-glide / bullet-time duration, up to 10s. An ease longer than the auto-cut interval chains into the next cut; bullet-time restarts per cut. For continuous slow-mo use Temporal Capture. 0 is a hard cut."
+     top="416"
+     width="214" />
+    <button
+     commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorSwitcherEaseSec"
+     follows="left|top"
+     height="16"
+     image_overlay="Refresh_Off"
+     layout="topleft"
+     left="309"
+     name="reset_DirectorSwitcherEaseSec"
+     tool_tip="Reset to default"
+     top="416"
+     width="12" />
+
+    <text follows="left|top" height="16" layout="topleft" left="8"
+     top="442" width="68">Cut curve</text>
+    <combo_box control_name="DirectorSwitcherEaseCurve" follows="left|top"
+     height="20" layout="topleft" left="78" name="switcher_ease_curve"
+     top="438" tool_tip="Curve latched for each camera pose and FOV ease."
+     width="130">
+        <combo_box.item label="Smootherstep" name="smooth" value="0" />
+        <combo_box.item label="Linear" name="linear" value="1" />
+        <combo_box.item label="Ease (CSS)" name="ease" value="2" />
+        <combo_box.item label="Ease In (CSS)" name="ease_in" value="3" />
+        <combo_box.item label="Ease Out (CSS)" name="ease_out" value="4" />
+        <combo_box.item label="Ease In-Out (CSS)" name="ease_inout" value="5" />
+        <combo_box.item label="Quad In" name="quad_in" value="6" />
+        <combo_box.item label="Quad Out" name="quad_out" value="7" />
+        <combo_box.item label="Quad In-Out" name="quad_inout" value="8" />
+        <combo_box.item label="Cubic In" name="cubic_in" value="9" />
+        <combo_box.item label="Cubic Out" name="cubic_out" value="10" />
+        <combo_box.item label="Cubic In-Out" name="cubic_inout" value="11" />
+        <combo_box.item label="Quart In" name="quart_in" value="12" />
+        <combo_box.item label="Quart Out" name="quart_out" value="13" />
+        <combo_box.item label="Quart In-Out" name="quart_inout" value="14" />
+        <combo_box.item label="Quint In" name="quint_in" value="15" />
+        <combo_box.item label="Quint Out" name="quint_out" value="16" />
+        <combo_box.item label="Quint In-Out" name="quint_inout" value="17" />
+        <combo_box.item label="Expo In" name="expo_in" value="18" />
+        <combo_box.item label="Expo Out" name="expo_out" value="19" />
+        <combo_box.item label="Expo In-Out" name="expo_inout" value="20" />
+        <combo_box.item label="Circ In" name="circ_in" value="21" />
+        <combo_box.item label="Circ Out" name="circ_out" value="22" />
+        <combo_box.item label="Circ In-Out" name="circ_inout" value="23" />
+        <combo_box.item label="Back In" name="back_in" value="24" />
+        <combo_box.item label="Back Out" name="back_out" value="25" />
+        <combo_box.item label="Back In-Out" name="back_inout" value="26" />
+        <combo_box.item label="Elastic In" name="elastic_in" value="27" />
+        <combo_box.item label="Elastic Out" name="elastic_out" value="28" />
+        <combo_box.item label="Elastic In-Out" name="elastic_inout" value="29" />
+        <combo_box.item label="Bounce In" name="bounce_in" value="30" />
+        <combo_box.item label="Bounce Out" name="bounce_out" value="31" />
+        <combo_box.item label="Bounce In-Out" name="bounce_inout" value="32" />
+        <combo_box.item label="Custom (bezier)" name="custom" value="100" />
+    </combo_box>
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorSwitcherEaseCurve" follows="left|top"
+     height="16" image_overlay="Refresh_Off" layout="topleft" left="210"
+     name="reset_DirectorSwitcherEaseCurve" tool_tip="Reset cut curve"
+     top="440" width="12" />
+    <spinner control_name="DirectorSwitcherEaseFeather" decimal_digits="2"
+     follows="left|top" height="16" increment="0.05" label="Feather"
+     label_width="42" layout="topleft" left="226" max_val="1" min_val="0"
+     name="EaseFeather" top="440"
+     tool_tip="Soften the start and end without changing the curve midpoint. 0 = off. Latched per take."
+     width="86" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorSwitcherEaseFeather" follows="left|top"
+     height="16" image_overlay="Refresh_Off" layout="topleft" left="316"
+     name="reset_DirectorSwitcherEaseFeather" tool_tip="Reset cut feather"
+     top="440" width="12" />
+    <spinner control_name="DirectorSwitcherEaseBezierX1" decimal_digits="2"
+     follows="left|top" height="18" increment="0.01" label="X1"
+     label_width="20" layout="topleft" left="8" max_val="1" min_val="0"
+     name="switcher_ease_bezier_x1" top="464" width="140" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorSwitcherEaseBezierX1" follows="left|top"
+     height="16" image_overlay="Refresh_Off" layout="topleft" left="150"
+     name="reset_DirectorSwitcherEaseBezierX1" tool_tip="Reset X1" top="465" width="12" />
+    <spinner control_name="DirectorSwitcherEaseBezierY1" decimal_digits="2"
+     follows="left|top" height="18" increment="0.01" label="Y1"
+     label_width="20" layout="topleft" left="170" max_val="3" min_val="-2"
+     name="switcher_ease_bezier_y1" top="464" width="140" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorSwitcherEaseBezierY1" follows="left|top"
+     height="16" image_overlay="Refresh_Off" layout="topleft" left="316"
+     name="reset_DirectorSwitcherEaseBezierY1" tool_tip="Reset Y1" top="465" width="12" />
+    <spinner control_name="DirectorSwitcherEaseBezierX2" decimal_digits="2"
+     follows="left|top" height="18" increment="0.01" label="X2"
+     label_width="20" layout="topleft" left="8" max_val="1" min_val="0"
+     name="switcher_ease_bezier_x2" top="488" width="140" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorSwitcherEaseBezierX2" follows="left|top"
+     height="16" image_overlay="Refresh_Off" layout="topleft" left="150"
+     name="reset_DirectorSwitcherEaseBezierX2" tool_tip="Reset X2" top="489" width="12" />
+    <spinner control_name="DirectorSwitcherEaseBezierY2" decimal_digits="2"
+     follows="left|top" height="18" increment="0.01" label="Y2"
+     label_width="20" layout="topleft" left="170" max_val="3" min_val="-2"
+     name="switcher_ease_bezier_y2" top="488" width="140" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorSwitcherEaseBezierY2" follows="left|top"
+     height="16" image_overlay="Refresh_Off" layout="topleft" left="316"
+     name="reset_DirectorSwitcherEaseBezierY2" tool_tip="Reset Y2" top="489" width="12" />
+
+    <check_box
+     control_name="DirectorSwitcherEaseFreeze"
+     follows="left|top"
+     height="18"
+     label="Slow / freeze world"
+     layout="topleft"
+     left="8"
+     name="switcher_ease_freeze"
+     tool_tip="During an eased cut, pulse the existing World Time Scale down and back. Off leaves world timing unchanged."
+     top="516"
+     width="148" />
+    <check_box
+     control_name="DirectorSwitcherOverridesFlycam"
+     follows="left|top"
+     height="18"
+     label="Override flycam"
+     layout="topleft"
+     left="174"
+     name="switcher_overrides_flycam"
+     tool_tip="When on, the armed switcher takes the camera from a live flycam. Turn off to let flycam keep control until it exits."
+     top="516"
+     width="136" />
+    <button
+     commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorSwitcherOverridesFlycam"
+     follows="left|top"
+     height="16"
+     image_overlay="Refresh_Off"
+     layout="topleft"
+     left="316"
+     name="reset_DirectorSwitcherOverridesFlycam"
+     tool_tip="Reset to default"
+     top="516"
+     width="12" />
+    <slider
+     control_name="DirectorSwitcherEaseTimeFactor"
+     decimal_digits="2"
+     follows="left|top"
+     height="16"
+     increment="0.01"
+     label="World factor"
+     label_width="66"
+     layout="topleft"
+     left="8"
+     max_val="1"
+     min_val="0"
+     name="switcher_ease_time_factor"
+     tool_tip="Slowest world speed at the middle of the ease. 0 fully freezes; 1 is normal. Existing manual World Time Scale is preserved and restored."
+     top="540"
+     width="300" />
+    <button
+     commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorSwitcherEaseTimeFactor"
+     follows="left|top"
+     height="16"
+     image_overlay="Refresh_Off"
+     layout="topleft"
+     left="309"
+     name="reset_DirectorSwitcherEaseTimeFactor"
+     tool_tip="Reset to default"
+     top="540"
+     width="12" />
+
+    <text follows="left|top" height="16" layout="topleft" left="8"
+     top="566" width="68">Freeze curve</text>
+    <combo_box control_name="DirectorSwitcherFreezeCurve" follows="left|top"
+     height="20" layout="topleft" left="78" name="switcher_freeze_curve"
+     top="562" tool_tip="Curve latched for each half of the world-slowdown pulse."
+     width="130">
+        <combo_box.item label="Smootherstep" name="smooth" value="0" />
+        <combo_box.item label="Linear" name="linear" value="1" />
+        <combo_box.item label="Ease (CSS)" name="ease" value="2" />
+        <combo_box.item label="Ease In (CSS)" name="ease_in" value="3" />
+        <combo_box.item label="Ease Out (CSS)" name="ease_out" value="4" />
+        <combo_box.item label="Ease In-Out (CSS)" name="ease_inout" value="5" />
+        <combo_box.item label="Quad In" name="quad_in" value="6" />
+        <combo_box.item label="Quad Out" name="quad_out" value="7" />
+        <combo_box.item label="Quad In-Out" name="quad_inout" value="8" />
+        <combo_box.item label="Cubic In" name="cubic_in" value="9" />
+        <combo_box.item label="Cubic Out" name="cubic_out" value="10" />
+        <combo_box.item label="Cubic In-Out" name="cubic_inout" value="11" />
+        <combo_box.item label="Quart In" name="quart_in" value="12" />
+        <combo_box.item label="Quart Out" name="quart_out" value="13" />
+        <combo_box.item label="Quart In-Out" name="quart_inout" value="14" />
+        <combo_box.item label="Quint In" name="quint_in" value="15" />
+        <combo_box.item label="Quint Out" name="quint_out" value="16" />
+        <combo_box.item label="Quint In-Out" name="quint_inout" value="17" />
+        <combo_box.item label="Expo In" name="expo_in" value="18" />
+        <combo_box.item label="Expo Out" name="expo_out" value="19" />
+        <combo_box.item label="Expo In-Out" name="expo_inout" value="20" />
+        <combo_box.item label="Circ In" name="circ_in" value="21" />
+        <combo_box.item label="Circ Out" name="circ_out" value="22" />
+        <combo_box.item label="Circ In-Out" name="circ_inout" value="23" />
+        <combo_box.item label="Back In" name="back_in" value="24" />
+        <combo_box.item label="Back Out" name="back_out" value="25" />
+        <combo_box.item label="Back In-Out" name="back_inout" value="26" />
+        <combo_box.item label="Elastic In" name="elastic_in" value="27" />
+        <combo_box.item label="Elastic Out" name="elastic_out" value="28" />
+        <combo_box.item label="Elastic In-Out" name="elastic_inout" value="29" />
+        <combo_box.item label="Bounce In" name="bounce_in" value="30" />
+        <combo_box.item label="Bounce Out" name="bounce_out" value="31" />
+        <combo_box.item label="Bounce In-Out" name="bounce_inout" value="32" />
+        <combo_box.item label="Custom (bezier)" name="custom" value="100" />
+    </combo_box>
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorSwitcherFreezeCurve" follows="left|top"
+     height="16" image_overlay="Refresh_Off" layout="topleft" left="210"
+     name="reset_DirectorSwitcherFreezeCurve" tool_tip="Reset freeze curve"
+     top="564" width="12" />
+    <spinner control_name="DirectorSwitcherFreezeFeather" decimal_digits="2"
+     follows="left|top" height="16" increment="0.05" label="Feather"
+     label_width="42" layout="topleft" left="226" max_val="1" min_val="0"
+     name="FreezeFeather" top="564"
+     tool_tip="Soften each half-ramp start and end without changing its midpoint. 0 = off. Latched per take."
+     width="86" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorSwitcherFreezeFeather" follows="left|top"
+     height="16" image_overlay="Refresh_Off" layout="topleft" left="316"
+     name="reset_DirectorSwitcherFreezeFeather" tool_tip="Reset freeze feather"
+     top="564" width="12" />
+    <spinner control_name="DirectorSwitcherFreezeBezierX1" decimal_digits="2"
+     follows="left|top" height="18" increment="0.01" label="X1"
+     label_width="20" layout="topleft" left="8" max_val="1" min_val="0"
+     name="switcher_freeze_bezier_x1" top="588" width="140" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorSwitcherFreezeBezierX1" follows="left|top"
+     height="16" image_overlay="Refresh_Off" layout="topleft" left="150"
+     name="reset_DirectorSwitcherFreezeBezierX1" tool_tip="Reset X1" top="589" width="12" />
+    <spinner control_name="DirectorSwitcherFreezeBezierY1" decimal_digits="2"
+     follows="left|top" height="18" increment="0.01" label="Y1"
+     label_width="20" layout="topleft" left="170" max_val="3" min_val="-2"
+     name="switcher_freeze_bezier_y1" top="588" width="140" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorSwitcherFreezeBezierY1" follows="left|top"
+     height="16" image_overlay="Refresh_Off" layout="topleft" left="316"
+     name="reset_DirectorSwitcherFreezeBezierY1" tool_tip="Reset Y1" top="589" width="12" />
+    <spinner control_name="DirectorSwitcherFreezeBezierX2" decimal_digits="2"
+     follows="left|top" height="18" increment="0.01" label="X2"
+     label_width="20" layout="topleft" left="8" max_val="1" min_val="0"
+     name="switcher_freeze_bezier_x2" top="612" width="140" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorSwitcherFreezeBezierX2" follows="left|top"
+     height="16" image_overlay="Refresh_Off" layout="topleft" left="150"
+     name="reset_DirectorSwitcherFreezeBezierX2" tool_tip="Reset X2" top="613" width="12" />
+    <spinner control_name="DirectorSwitcherFreezeBezierY2" decimal_digits="2"
+     follows="left|top" height="18" increment="0.01" label="Y2"
+     label_width="20" layout="topleft" left="170" max_val="3" min_val="-2"
+     name="switcher_freeze_bezier_y2" top="612" width="140" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorSwitcherFreezeBezierY2" follows="left|top"
+     height="16" image_overlay="Refresh_Off" layout="topleft" left="316"
+     name="reset_DirectorSwitcherFreezeBezierY2" tool_tip="Reset Y2" top="613" width="12" />
+</panel>

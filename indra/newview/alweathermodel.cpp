@@ -26,6 +26,7 @@ namespace ALWeatherModel
         constexpr F64 FIXED_SIMULATION_HZ = 120.0;
         constexpr F64 FIXED_STEP_SECONDS = 1.0 / FIXED_SIMULATION_HZ;
         constexpr F64 FIXED_STEP_EPSILON = 1e-9;
+        constexpr U64 VISUAL_HASH_SALT = 0xd1b54a32d192ed03ULL;
 
         F64 finiteOr(F64 value, F64 fallback)
         {
@@ -35,6 +36,28 @@ namespace ALWeatherModel
         F64 clampFinite(F64 value, F64 fallback, F64 low, F64 high)
         {
             return std::clamp(finiteOr(value, fallback), low, high);
+        }
+
+        F64 qualityAfterglowStart(F64 flash_duration_seconds)
+        {
+            return std::min(0.12, flash_duration_seconds * 0.45);
+        }
+
+        U64 mixVisualKey(U64 value)
+        {
+            // SplitMix64 finalizer. This is a stateless visual lane: it must
+            // never consume the scheduler/placement PRNG sequence.
+            value ^= value >> 30;
+            value *= 0xbf58476d1ce4e5b9ULL;
+            value ^= value >> 27;
+            value *= 0x94d049bb133111ebULL;
+            return value ^ (value >> 31);
+        }
+
+        F64 unitFromVisualKey(U64 value)
+        {
+            return static_cast<F64>(mixVisualKey(value) >> 11) *
+                   (1.0 / 9007199254740992.0);
         }
     }
 
@@ -63,6 +86,9 @@ namespace ALWeatherModel
         output.mBoltHeightMeters = clampFinite(
             input.mBoltHeightMeters, 160.0, 16.0,
             MAX_BOLT_HEIGHT_METERS);
+        output.mQualityAfterglowStrength = clampFinite(
+            input.mQualityAfterglowStrength, 0.35, 0.0,
+            MAX_QUALITY_AFTERGLOW_STRENGTH);
         if (output.mSeed == 0)
         {
             output.mSeed = FALLBACK_SEED;
@@ -85,6 +111,7 @@ namespace ALWeatherModel
         mScheduledRatePerMinute = 0.0;
         mStrikeStartTime = 0.0;
         mStrikeBase = Position();
+        mStrikeDistanceMeters = 0.0;
         mBoltHeightMeters = 0.0;
         mStrikeId = 0;
         mHasStrike = false;
@@ -189,6 +216,7 @@ namespace ALWeatherModel
         mStrikeBase.mX = anchor.mX + std::cos(angle) * radius;
         mStrikeBase.mY = anchor.mY + std::sin(angle) * radius;
         mStrikeBase.mZ = anchor.mZ;
+        mStrikeDistanceMeters = radius;
         mBoltHeightMeters = config.mBoltHeightMeters;
         mStrikeStartTime = strike_time;
         mHasStrike = true;
@@ -282,6 +310,92 @@ namespace ALWeatherModel
         return static_cast<F32>(std::clamp(envelope * flicker, 0.0, 1.0));
     }
 
+    F32 Controller::qualityBoltPulse(F64 age_seconds, F64 duration_seconds,
+                                     U64 strike_key, U32& stroke_index)
+    {
+        stroke_index = 0;
+        if (!(age_seconds >= 0.0) || age_seconds >= duration_seconds ||
+            !(duration_seconds > 0.0) ||
+            !std::isfinite(age_seconds) || !std::isfinite(duration_seconds))
+        {
+            return 0.f;
+        }
+
+        // Four return-stroke lanes stay in ordered absolute-time windows. Their
+        // jitter is keyed by the event rather than drawn from the controller
+        // PRNG, so enabling quality cannot change any future strike time or
+        // position. Absolute millisecond windows keep a long artist-selected
+        // bolt duration from stretching return strokes into multi-second gaps.
+        F64 starts[4] = {
+            0.0,
+            0.050 + (unitFromVisualKey(strike_key + 1ULL) - 0.5) * 0.012,
+            0.108 + (unitFromVisualKey(strike_key + 2ULL) - 0.5) * 0.018,
+            0.164 + (unitFromVisualKey(strike_key + 3ULL) - 0.5) * 0.022
+        };
+        const F64 amplitudes[4] = { 1.0, 0.82, 0.60, 0.38 };
+        const F64 decay_seconds[4] = { 0.012, 0.014, 0.017, 0.020 };
+        F64 pulse = static_cast<F64>(
+            boltPulse(age_seconds, duration_seconds)) * 0.38;
+        for (U32 stroke = 0; stroke < 4; ++stroke)
+        {
+            if (age_seconds >= starts[stroke])
+            {
+                stroke_index = stroke;
+                const F64 stroke_age =
+                    age_seconds - starts[stroke];
+                const F64 stroke_pulse =
+                    amplitudes[stroke] *
+                    std::exp(-stroke_age / decay_seconds[stroke]);
+                pulse = std::max(pulse, stroke_pulse);
+            }
+        }
+
+        // Even a jittered late return stroke must approach the artist-selected
+        // bolt cutoff continuously. Use at most the final 20 ms; for the
+        // minimum 20 ms duration the whole pulse becomes its smooth envelope.
+        const F64 terminal_fade_seconds =
+            std::min(duration_seconds, 0.020);
+        const F64 terminal_t = std::clamp(
+            (duration_seconds - age_seconds) / terminal_fade_seconds,
+            0.0, 1.0);
+        const F64 terminal_envelope =
+            terminal_t * terminal_t * (3.0 - 2.0 * terminal_t);
+        return static_cast<F32>(
+            std::clamp(pulse * terminal_envelope, 0.0, 1.0));
+    }
+
+    F32 Controller::afterglowPulse(F64 age_seconds,
+                                   F64 flash_duration_seconds,
+                                   F64 strength)
+    {
+        if (!(age_seconds >= 0.0) || !(flash_duration_seconds > 0.0) ||
+            !(strength > 0.0) ||
+            age_seconds >= flash_duration_seconds + QUALITY_AFTERGLOW_SECONDS ||
+            !std::isfinite(age_seconds) ||
+            !std::isfinite(flash_duration_seconds) ||
+            !std::isfinite(strength))
+        {
+            return 0.f;
+        }
+
+        const F64 start = qualityAfterglowStart(flash_duration_seconds);
+        if (age_seconds < start ||
+            age_seconds >= start + QUALITY_AFTERGLOW_SECONDS)
+        {
+            return 0.f;
+        }
+        const F64 elapsed = age_seconds - start;
+        const F64 remaining =
+            start + QUALITY_AFTERGLOW_SECONDS - age_seconds;
+        const F64 rise_t = std::clamp(elapsed / 0.025, 0.0, 1.0);
+        const F64 end_t = std::clamp(remaining / 0.050, 0.0, 1.0);
+        const F64 rise = rise_t * rise_t * (3.0 - 2.0 * rise_t);
+        const F64 end_fade = end_t * end_t * (3.0 - 2.0 * end_t);
+        return static_cast<F32>(std::clamp(
+            strength * rise * end_fade * std::exp(-elapsed * 8.0),
+            0.0, 1.0));
+    }
+
     Frame Controller::makeFrame(F64 now_seconds, const Config& config,
                                 bool strike_started) const
     {
@@ -294,10 +408,30 @@ namespace ALWeatherModel
         const F64 age = now_seconds - mStrikeStartTime;
         frame.mFlash = flashPulse(age, config.mFlashDurationSeconds);
         frame.mBolt = boltPulse(age, config.mBoltDurationSeconds);
-        frame.mActive = frame.mFlash > 0.f || frame.mBolt > 0.f;
+        if (config.mQualityEnabled)
+        {
+            const U64 strike_key = mixVisualKey(
+                mConfiguredSeed ^
+                (mStrikeId * 0x9e3779b97f4a7c15ULL) ^
+                VISUAL_HASH_SALT);
+            frame.mQualityBolt = qualityBoltPulse(
+                age, config.mBoltDurationSeconds,
+                strike_key, frame.mStrokeIndex);
+            frame.mAfterglow = afterglowPulse(
+                age, config.mFlashDurationSeconds,
+                config.mQualityAfterglowStrength);
+            frame.mColorVariation = static_cast<F32>(
+                unitFromVisualKey(strike_key + 0x632be59bd9b4e019ULL) *
+                    2.0 - 1.0);
+            frame.mVisualSeed = static_cast<U32>(
+                mixVisualKey(strike_key + 0x8cb92baa3f3d8dd7ULL) & 0xffffULL);
+        }
+        frame.mActive = frame.mFlash > 0.f || frame.mBolt > 0.f ||
+                        frame.mAfterglow > 0.f;
         frame.mStrikeStarted = strike_started && frame.mActive;
         frame.mStrikeTime = mStrikeStartTime;
         frame.mStrikeBase = mStrikeBase;
+        frame.mStrikeDistanceMeters = mStrikeDistanceMeters;
         frame.mBoltHeightMeters = mBoltHeightMeters;
         frame.mStrikeId = mStrikeId;
         return frame;
@@ -410,10 +544,18 @@ namespace ALWeatherModel
 
         const F64 sample_time = interpolatedTime();
         Frame frame = makeFrame(sample_time, config, started);
+        F64 visible_duration = std::max(
+            config.mFlashDurationSeconds, config.mBoltDurationSeconds);
+        if (config.mQualityEnabled &&
+            config.mQualityAfterglowStrength > 0.0)
+        {
+            visible_duration = std::max(
+                visible_duration,
+                qualityAfterglowStart(config.mFlashDurationSeconds) +
+                    QUALITY_AFTERGLOW_SECONDS);
+        }
         if (!frame.mActive && mHasStrike &&
-            sample_time - mStrikeStartTime >=
-                std::max(config.mFlashDurationSeconds,
-                         config.mBoltDurationSeconds))
+            sample_time - mStrikeStartTime >= visible_duration)
         {
             mHasStrike = false;
         }

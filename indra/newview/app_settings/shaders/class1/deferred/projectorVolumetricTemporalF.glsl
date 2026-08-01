@@ -25,9 +25,8 @@
  * [BDMerge G3.3 Batch 1 A] Projector-volumetric TEMPORAL REPROJECTION resolve.
  * Runs in the half-res domain between the cone march (into projectionMap) and the
  * bilateral upsample. For each half-res pixel it:
- *   1. reprojects the current pixel's scene surface into the PREVIOUS frame's
- *      screen (via world position -> prev world->clip) and samples the previous
- *      accumulation (projvol_history),
+ *   1. reprojects the current pixel's beam point (or legacy scene surface) into
+ *      the PREVIOUS frame's screen and samples the previous accumulation,
  *   2. rejects that history on camera cuts (reprojected UV off-screen) and
  *      disocclusion (large depth delta vs. the stored previous depth),
  *   3. clamps the surviving history to the current frame's 3x3 neighborhood
@@ -57,6 +56,7 @@ uniform sampler2D projvol_history;
 uniform vec2  projvol_half_res;        // dimensions of the half-res targets
 uniform mat4  projvol_inv_modelview;   // view -> agent(world)
 uniform mat4  projvol_prev_viewproj;   // world -> previous-frame clip
+uniform mat4  projvol_prev_modelview;  // world -> previous-frame view
 uniform float projvol_temporal_blend;  // EMA history weight (0 => pure current)
 
 // [BDMerge G3.3 Batch B - R2] Contrast-aware history rejection. The neighborhood
@@ -68,12 +68,10 @@ uniform float projvol_temporal_blend;  // EMA history weight (0 => pure current)
 // snap to the current frame (trail killed). 0 = off (legacy Batch-1 behavior).
 uniform float projvol_temporal_reject;
 
-// [BDMerge G3.3 Batch B - R1] Beam-depth reprojection gate. 0 (default) = the legacy
+// [BDMerge G3.3 Batch B - R1] Beam-depth reprojection gate. 0 = the legacy
 // surface-based reprojection and surface-depth disocclusion, byte-identical to today.
-// !=0 = reproject and disocclusion-test using the airborne BEAM distance the march
-// wrote into the current shaft's alpha (Sum(w*t)/Sum(w)) instead of the opaque
-// surface behind it, and store that beam distance in alpha for next frame - so the
-// mid-air shaft tracks correctly under camera motion and stops ghosting.
+// !=0 recovers the airborne BEAM distance from the march's luminance-premultiplied
+// first moment, then reprojects that beam point instead of the opaque surface.
 uniform int   projvol_temporal_beam_depth;
 
 // deferredUtil.glsl - view-space position reconstruction from the full-res depth.
@@ -83,33 +81,42 @@ void main()
 {
     vec2 tc = vary_fragcoord.xy;                 // [0,1] half-res UV
 
-    // Current frame's raw shaft + this pixel's scene view position/depth.
-    vec3  cur   = texture(projectionMap, tc).rgb;
-    vec3  vpos  = getPosition(tc).xyz;
-    float d_cur = length(vpos);
+    // Current frame's raw shaft/moment + this pixel's scene view position/depth.
+    vec4  cur_sample = texture(projectionMap, tc);
+    vec3  cur        = cur_sample.rgb;
+    vec3  vpos       = getPosition(tc).xyz;
+    float d_cur      = length(vpos);
 
     // [BDMerge G3.3 Batch B - R1] Choose the point we reproject / disocclusion-test /
     // store. Legacy (gate off): the opaque SURFACE position - byte-identical below.
-    // Gate on: reconstruct the airborne BEAM's current view-space position from the
-    // scatter-weighted mean distance the march wrote to alpha - beam_vpos = view-ray
-    // dir * beam_dist - so history tracks the mid-air shaft, not the wall behind it.
+    // Gate on: recover mean beam distance = first moment / shaft luminance, then
+    // reconstruct its current view-space point. Empty pixels fall back to the
+    // opaque surface so they reproject like the wall rather than the camera origin.
     vec3  reproj_vpos = vpos;   // point reprojected into the previous frame
     float d_test      = d_cur;  // distance used for the disocclusion compare
     float d_store     = d_cur;  // distance stored in alpha for next frame
     if (projvol_temporal_beam_depth != 0)
     {
-        float beam_dist_cur = texture(projectionMap, tc).a;
-        // View-ray direction = normalize(vpos); reuse d_cur to avoid a 2nd sqrt and
-        // to guard the degenerate (no-surface) pixel where length(vpos) == 0.
-        vec3  vdir  = (d_cur > 1e-5) ? (vpos / d_cur) : vec3(0.0);
-        reproj_vpos = vdir * beam_dist_cur;
-        d_test      = beam_dist_cur;
-        d_store     = beam_dist_cur;
+        const float luma_eps = 1e-5;
+        float cur_luma = dot(cur, vec3(0.2126, 0.7152, 0.0722));
+        float beam_dist = (cur_luma >= luma_eps)
+                        ? (cur_sample.a / max(cur_luma, luma_eps))
+                        : d_cur;
+        vec3 vdir = (d_cur > luma_eps) ? (vpos / d_cur) : vec3(0.0);
+        reproj_vpos = vdir * beam_dist;
+        d_store     = beam_dist;
     }
 
     // ---- reproject into the previous frame ---------------------------------
     vec3 wpos     = (projvol_inv_modelview * vec4(reproj_vpos, 1.0)).xyz;
     vec4 prevclip = projvol_prev_viewproj * vec4(wpos, 1.0);
+    if (projvol_temporal_beam_depth != 0)
+    {
+        // hist.a was measured in the previous camera's view space. Compare it
+        // against this reprojected point in that same space so camera translation
+        // does not look like disocclusion.
+        d_test = length((projvol_prev_modelview * vec4(wpos, 1.0)).xyz);
+    }
 
     float validity = projvol_temporal_blend; // 0 when C++ has no valid history
     vec2  prevuv   = vec2(0.0);
@@ -129,8 +136,8 @@ void main()
 
     vec4 hist = (validity > 0.0) ? texture(projvol_history, prevuv) : vec4(0.0);
 
-    // Disocclusion: if the surface depth moved a lot vs. the stored previous depth
-    // at the reprojected texel, the history belongs to a different surface -> drop.
+    // Disocclusion: if the reprojected point's depth differs too much from the
+    // stored previous depth, the history belongs to different geometry -> drop.
     // [R1] d_test is the surface distance when the beam-depth gate is off (legacy)
     // and the beam distance when on; hist.a stores whichever the previous frame wrote.
     if (validity > 0.0)
@@ -168,8 +175,8 @@ void main()
     // magnitude (scale-invariant for a dim or a bright beam). Where they agree
     // (steady beam) change ~0 and the weight is untouched -> full denoise. Where a
     // feature is moving through, change rises toward 1 and the weight is pulled down
-    // exponentially -> the pixel snaps to the current frame instead of trailing. At
-    // reject == 0 (default) this is an exact no-op (the shipped Batch-1 blend).
+    // exponentially -> the pixel snaps to the current frame instead of trailing.
+    // At reject == 0 this is an exact no-op (the shipped Batch-1 blend).
     if (projvol_temporal_reject > 0.0)
     {
         float lc = dot(cur,    vec3(0.2126, 0.7152, 0.0722));

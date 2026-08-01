@@ -20,7 +20,7 @@ class LLComboBox;
 class ALPanelWeatherSettings final : public LLPanel
 {
 public:
-    ALPanelWeatherSettings() = default;
+    ALPanelWeatherSettings();
     ~ALPanelWeatherSettings() override = default;
 
     bool postBuild() override;
@@ -33,6 +33,7 @@ private:
     static std::string presetPath(const std::string& name);
 
     void updateDeferredAvailability();
+    void updateControlGroup();
     void onTriggerStrike();
     void onClickResetAll();
     bool resetAllCallback(const LLSD& notification, const LLSD& response);
@@ -48,6 +49,7 @@ private:
                               const std::string name);
 
     LLComboBox* mPresetCombo = nullptr;
+    LLComboBox* mControlGroupCombo = nullptr;
 };
 
 #endif // AL_ALPANELWEATHERSETTINGS_H

@@ -40,10 +40,21 @@ namespace tut
         {
             ensure(message, std::isfinite(frame.mFlash) &&
                             std::isfinite(frame.mBolt) &&
+                            std::isfinite(frame.mQualityBolt) &&
+                            std::isfinite(frame.mAfterglow) &&
+                            std::isfinite(frame.mColorVariation) &&
                             std::isfinite(frame.mStrikeTime) &&
                             frame.mFlash >= 0.f && frame.mFlash <= 1.f &&
                             frame.mBolt >= 0.f && frame.mBolt <= 1.f &&
+                            frame.mQualityBolt >= 0.f &&
+                            frame.mQualityBolt <= 1.f &&
+                            frame.mAfterglow >= 0.f &&
+                            frame.mAfterglow <= 1.f &&
+                            frame.mColorVariation >= -1.f &&
+                            frame.mColorVariation <= 1.f &&
+                            frame.mStrokeIndex <= 3 &&
                             isFinite(frame.mStrikeBase) &&
+                            std::isfinite(frame.mStrikeDistanceMeters) &&
                             std::isfinite(frame.mBoltHeightMeters));
         }
 
@@ -103,10 +114,17 @@ namespace tut
                    actual.mStrikeStarted == expected.mStrikeStarted &&
                    actual.mFlash == expected.mFlash &&
                    actual.mBolt == expected.mBolt &&
+                   actual.mQualityBolt == expected.mQualityBolt &&
+                   actual.mAfterglow == expected.mAfterglow &&
+                   actual.mColorVariation == expected.mColorVariation &&
+                   actual.mStrokeIndex == expected.mStrokeIndex &&
+                   actual.mVisualSeed == expected.mVisualSeed &&
                    actual.mStrikeTime == expected.mStrikeTime &&
                    actual.mStrikeBase.mX == expected.mStrikeBase.mX &&
                    actual.mStrikeBase.mY == expected.mStrikeBase.mY &&
                    actual.mStrikeBase.mZ == expected.mStrikeBase.mZ &&
+                   actual.mStrikeDistanceMeters ==
+                       expected.mStrikeDistanceMeters &&
                    actual.mBoltHeightMeters == expected.mBoltHeightMeters &&
                    actual.mStrikeId == expected.mStrikeId);
         }
@@ -132,6 +150,8 @@ namespace tut
         input.mMaxDistanceMeters = -42.0;
         input.mBoltHeightMeters =
             -std::numeric_limits<F64>::infinity();
+        input.mQualityAfterglowStrength =
+            std::numeric_limits<F64>::quiet_NaN();
         input.mSeed = 0;
 
         const Config safe = sanitizeConfig(input);
@@ -152,6 +172,11 @@ namespace tut
         ensure("height finite and bounded",
                safe.mBoltHeightMeters >= 16.0 &&
                safe.mBoltHeightMeters <= MAX_BOLT_HEIGHT_METERS);
+        ensure("quality afterglow finite and bounded",
+               std::isfinite(safe.mQualityAfterglowStrength) &&
+               safe.mQualityAfterglowStrength >= 0.0 &&
+               safe.mQualityAfterglowStrength <=
+                   MAX_QUALITY_AFTERGLOW_STRENGTH);
         ensure("zero seed replaced", safe.mSeed != 0);
     }
 
@@ -190,6 +215,10 @@ namespace tut
             ensure("strike id deterministic", a.mStrikeId == b.mStrikeId);
             ensure("flash deterministic", a.mFlash == b.mFlash);
             ensure("bolt deterministic", a.mBolt == b.mBolt);
+            ensure("quality bolt deterministic",
+                   a.mQualityBolt == b.mQualityBolt);
+            ensure("afterglow deterministic",
+                   a.mAfterglow == b.mAfterglow);
             ensure("x deterministic",
                    a.mStrikeBase.mX == b.mStrikeBase.mX);
             ensure("y deterministic",
@@ -492,5 +521,115 @@ namespace tut
         ensure("rate edit preserved strike z",
                edited_strike.mStrikeBase.mZ ==
                    steady_strike.mStrikeBase.mZ);
+    }
+
+    // Quality animation uses an independent stateless hash lane. Enabling it
+    // may extend the visible tail, but must not consume scheduler PRNG values
+    // or alter baseline pulse/placement decisions.
+    template<> template<>
+    void weather_model_object::test<15>()
+    {
+        Controller baseline;
+        Controller quality;
+        Controller replay;
+        Config baseline_config = enabledConfig();
+        baseline_config.mRatePerMinute = 0.0;
+        Config quality_config = baseline_config;
+        quality_config.mQualityEnabled = true;
+        quality_config.mQualityAfterglowStrength = 0.35;
+
+        ensure("baseline trigger accepted",
+               baseline.trigger(10.0, baseline_config, anchor()));
+        ensure("quality trigger accepted",
+               quality.trigger(10.0, quality_config, anchor()));
+        ensure("quality replay trigger accepted",
+               replay.trigger(10.0, quality_config, anchor()));
+
+        const Frame baseline_start =
+            baseline.update(10.0, baseline_config, anchor());
+        const Frame quality_start =
+            quality.update(10.0, quality_config, anchor());
+        const Frame replay_start =
+            replay.update(10.0, quality_config, anchor());
+        ensure("quality keeps baseline flash",
+               quality_start.mFlash == baseline_start.mFlash);
+        ensure("quality keeps baseline bolt",
+               quality_start.mBolt == baseline_start.mBolt);
+        ensure("quality keeps baseline position",
+               quality_start.mStrikeBase.mX == baseline_start.mStrikeBase.mX &&
+               quality_start.mStrikeBase.mY == baseline_start.mStrikeBase.mY &&
+               quality_start.mStrikeDistanceMeters ==
+                   baseline_start.mStrikeDistanceMeters);
+        ensure("quality pulse begins",
+               quality_start.mQualityBolt > 0.f);
+        ensureSameFrame("quality visual lane deterministic",
+                        quality_start, replay_start);
+
+        const Frame baseline_tail =
+            baseline.update(10.36, baseline_config, anchor());
+        const Frame quality_tail =
+            quality.update(10.36, quality_config, anchor());
+        ensure("baseline still expires at original duration",
+               !baseline_tail.mActive);
+        ensure("quality afterglow extends active tail",
+               quality_tail.mActive && quality_tail.mAfterglow > 0.f);
+        ensureFiniteFrame("quality tail finite", quality_tail);
+
+        const Frame quality_expired =
+            quality.update(10.43, quality_config, anchor());
+        ensure("quality tail ends within 0.30 seconds of its onset",
+               !quality_expired.mActive);
+
+        ensure("second baseline trigger accepted",
+               baseline.trigger(20.0, baseline_config, anchor()));
+        ensure("second quality trigger accepted",
+               quality.trigger(20.0, quality_config, anchor()));
+        const Frame baseline_second =
+            baseline.update(20.0, baseline_config, anchor());
+        const Frame quality_second =
+            quality.update(20.0, quality_config, anchor());
+        ensure("quality consumed no placement PRNG",
+               quality_second.mStrikeBase.mX ==
+                   baseline_second.mStrikeBase.mX &&
+               quality_second.mStrikeBase.mY ==
+                   baseline_second.mStrikeBase.mY);
+
+        Controller short_bolt;
+        Controller long_bolt;
+        Config short_config = quality_config;
+        short_config.mFlashDurationSeconds = 0.05;
+        short_config.mBoltDurationSeconds = 0.02;
+        Config long_config = quality_config;
+        long_config.mFlashDurationSeconds = 4.0;
+        long_config.mBoltDurationSeconds = 4.0;
+        ensure("short quality trigger accepted",
+               short_bolt.trigger(30.0, short_config, anchor()));
+        ensure("long quality trigger accepted",
+               long_bolt.trigger(30.0, long_config, anchor()));
+        short_bolt.update(30.0, short_config, anchor());
+        long_bolt.update(30.0, long_config, anchor());
+        const Frame short_at_sixty_ms =
+            short_bolt.update(30.06, short_config, anchor());
+        const Frame long_at_sixty_ms =
+            long_bolt.update(30.06, long_config, anchor());
+        ensure("short bolt has no stretched return stroke",
+               short_at_sixty_ms.mQualityBolt == 0.f);
+        ensure("long bolt uses millisecond return-stroke timing",
+               long_at_sixty_ms.mStrokeIndex == 1 &&
+               long_at_sixty_ms.mQualityBolt > 0.f);
+
+        Controller terminal_bolt;
+        ensure("terminal-envelope trigger accepted",
+               terminal_bolt.trigger(40.0, short_config, anchor()));
+        terminal_bolt.update(40.0, short_config, anchor());
+        const Frame just_before_cutoff =
+            terminal_bolt.update(40.0199, short_config, anchor());
+        const Frame at_cutoff =
+            terminal_bolt.update(40.0200, short_config, anchor());
+        ensure("quality bolt smoothly approaches its cutoff",
+               just_before_cutoff.mQualityBolt > 0.f &&
+               just_before_cutoff.mQualityBolt < 0.01f);
+        ensure("quality bolt is zero at its cutoff",
+               at_cutoff.mQualityBolt == 0.f);
     }
 }

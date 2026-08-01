@@ -44,6 +44,8 @@
 #include "aoengine.h"
 #include "llagent.h"
 #include "llanimationstates.h"
+#include "llcameraoperator.h"
+#include "llcinematiccamera.h"
 #include "llfloatercamera.h"
 #include "llfloaterreg.h"
 #include "llhudmanager.h"
@@ -1774,6 +1776,93 @@ void LLAgentCamera::updateCamera()
     LLViewerCamera::instance().mXAxis = LLVector3(mat.mMatrix[0]);
     LLViewerCamera::instance().mYAxis = LLVector3(mat.mMatrix[1]);
     LLViewerCamera::instance().mZAxis = LLVector3(mat.mMatrix[2]);
+
+    // Camera Shake is applied only to the final render-camera pose. The agent
+    // camera's resolved position, focus, collision, movement, and simulator
+    // state remain untouched.
+    static LLCachedControl<bool> apply_active(
+        gSavedSettings, "CameraShakeApplyActive", false);
+    // Only step/apply on frames where the agent camera pose was actually
+    // re-resolved this frame. After flycam exit the viewer freezes the camera
+    // (getCameraNeedsUpdate()==false) to hold the POV until the avatar moves;
+    // shaking there would compound onto our own prior output and the camera
+    // would drift/tumble away. When updates resume, the driver_was_preempted
+    // gap check below reset()s the operator cleanly (no onset spike).
+    if (apply_active && LLViewerJoystick::getInstance()->getCameraNeedsUpdate())
+    {
+        const bool joystick_flycam_active =
+            LLViewerJoystick::getInstance()->getOverrideCamera();
+        const bool cinematic_camera_driving =
+            LLCinematicCamera::instance().isActive();
+        const bool mouselook_active =
+            cameraMouselook() || mCameraMode == CAMERA_MODE_MOUSELOOK ||
+            (mCameraAnimating && mLastCameraMode == CAMERA_MODE_MOUSELOOK);
+        const bool customize_avatar_active =
+            cameraCustomizeAvatar() ||
+            (mCameraAnimating &&
+             mLastCameraMode == CAMERA_MODE_CUSTOMIZE_AVATAR);
+        const bool agent_camera_driving =
+            !joystick_flycam_active && !cinematic_camera_driving &&
+            !mouselook_active && !customize_avatar_active;
+
+        enum ECameraShakeDriver
+        {
+            CAMERA_SHAKE_DRIVER_NONE,
+            CAMERA_SHAKE_DRIVER_AGENT,
+            CAMERA_SHAKE_DRIVER_FLYCAM,
+            CAMERA_SHAKE_DRIVER_CINEMATIC,
+            CAMERA_SHAKE_DRIVER_MOUSELOOK,
+            CAMERA_SHAKE_DRIVER_CUSTOMIZE
+        };
+        const ECameraShakeDriver current_driver = cinematic_camera_driving
+            ? CAMERA_SHAKE_DRIVER_CINEMATIC
+            : joystick_flycam_active
+                ? CAMERA_SHAKE_DRIVER_FLYCAM
+                : mouselook_active
+                    ? CAMERA_SHAKE_DRIVER_MOUSELOOK
+                    : customize_avatar_active
+                        ? CAMERA_SHAKE_DRIVER_CUSTOMIZE
+                        : CAMERA_SHAKE_DRIVER_AGENT;
+        static ECameraShakeDriver sLastDriver = CAMERA_SHAKE_DRIVER_NONE;
+        static U32 sLastDriverFrame = 0;
+        const bool driver_was_preempted =
+            sLastDriverFrame != 0 && gFrameCount > sLastDriverFrame + 1;
+        if (sLastDriver == CAMERA_SHAKE_DRIVER_NONE ||
+            current_driver != sLastDriver || driver_was_preempted)
+        {
+            LLCameraOperator::instance().reset();
+        }
+        sLastDriver = current_driver;
+        sLastDriverFrame = gFrameCount;
+
+        if (apply_active && agent_camera_driving)
+        {
+            LLViewerCamera* cam = LLViewerCamera::getInstance();
+            LLVector3 out_pos = cam->getOrigin();
+            LLQuaternion out_rot = cam->getQuaternion();
+            const F32 dt = llmax(gFrameIntervalSeconds.value(), 0.0005f);
+            const LLCameraOperatorOutput op =
+                LLCameraOperator::instance().updateFromPose(
+                    dt, out_pos, out_rot);
+
+            LLMatrix3 wobble(op.mRoll, op.mPitch, op.mYaw);
+            out_rot = LLQuaternion(wobble) * out_rot;
+            LLMatrix3 out_axes(out_rot);
+            out_pos += LLVector3(out_axes.mMatrix[0]) * op.mPosOffset.mV[VX]
+                     + LLVector3(out_axes.mMatrix[1]) * op.mPosOffset.mV[VY]
+                     + LLVector3(out_axes.mMatrix[2]) * op.mPosOffset.mV[VZ];
+
+            // NOTE: FOV breathing (op.mFovMul) is deliberately NOT applied on the
+            // agent camera. LLViewerCamera::setView() broadcasts a reliable
+            // AgentFOV message on every change, so a per-frame breathing FOV would
+            // flood the simulator. Position + rotation are the handheld effect;
+            // the agent camera keeps its authoritative FOV untouched.
+            cam->setOrigin(out_pos);
+            cam->mXAxis = LLVector3(out_axes.mMatrix[0]);
+            cam->mYAxis = LLVector3(out_axes.mMatrix[1]);
+            cam->mZAxis = LLVector3(out_axes.mMatrix[2]);
+        }
+    }
 }
 
 void LLAgentCamera::updateLastCamera()
@@ -3429,4 +3518,3 @@ void LLAgentCamera::loadCameraPosition()
 }
 
 // EOF
-

@@ -31,6 +31,32 @@ static LLPanelInjector<ALPanelWeatherSettings>
 namespace
 {
 constexpr char PRESET_SUBDIR[] = "weather_presets";
+
+void registerWeatherResetControl()
+{
+    static bool registered = false;
+    if (registered)
+    {
+        return;
+    }
+    registered = true;
+    LLUICtrl::CommitCallbackRegistry::defaultRegistrar().add(
+        "Weather.ResetControl",
+        [](LLUICtrl*, const LLSD& param)
+        {
+            if (LLControlVariable* control =
+                    gSavedSettings.getControl(param.asString()))
+            {
+                control->resetToDefault(true);
+            }
+        });
+}
+}
+
+ALPanelWeatherSettings::ALPanelWeatherSettings()
+{
+    // XUI commit callbacks are resolved while the panel's children are built.
+    registerWeatherResetControl();
 }
 
 const std::vector<std::string>& ALPanelWeatherSettings::settings()
@@ -46,8 +72,32 @@ const std::vector<std::string>& ALPanelWeatherSettings::settings()
         "AlchemyWeatherRainMaxDistance",
         "AlchemyWeatherRainSamples",
         "AlchemyWeatherRainResolutionDivisor",
+        "AlchemyWeatherRainLayers",
+        "AlchemyWeatherRainVirtualShutter",
+        "AlchemyWeatherRainNearEmphasis",
+        "AlchemyWeatherRainGustStrength",
+        "AlchemyWeatherShelterFade",
+        "AlchemyWeatherShelterHeight",
+        "AlchemyWeatherRainOcclusion",
+        "AlchemyWeatherRainOcclusionResolution",
+        "AlchemyWeatherRainOcclusionExtent",
+        "AlchemyWeatherRainOcclusionBias",
+        "AlchemyWeatherRainOcclusionSoftness",
         "AlchemyWeatherWindScale",
         "AlchemyWeatherRainColor",
+        "AlchemyWeatherSplashEnabled",
+        "AlchemyWeatherSplashDensity",
+        "AlchemyWeatherSplashRingSize",
+        "AlchemyWeatherSplashLifetime",
+        "AlchemyWeatherSplashUpThreshold",
+        "AlchemyWeatherSplashMaxDistance",
+        "AlchemyWeatherWetnessEnabled",
+        "AlchemyWeatherWetnessStrength",
+        "AlchemyWeatherMistEnabled",
+        "AlchemyWeatherMistStrength",
+        "AlchemyWeatherMistHeight",
+        "AlchemyWeatherLensDropsEnabled",
+        "AlchemyWeatherLensDropsStrength",
         "AlchemyWeatherEEPCoupling",
         "AlchemyWeatherLightningEnabled",
         "AlchemyWeatherLightningRate",
@@ -61,12 +111,25 @@ const std::vector<std::string>& ALPanelWeatherSettings::settings()
         "AlchemyWeatherLightningAmbient",
         "AlchemyWeatherLightningColor",
         "AlchemyWeatherLightningSeed",
+        "AlchemyWeatherLightningQualityEnabled",
+        "AlchemyWeatherLightningQualityTier",
+        "AlchemyWeatherLightningSheetEnabled",
+        "AlchemyWeatherLightningSheetStrength",
+        "AlchemyWeatherLightningCoronaStrength",
+        "AlchemyWeatherLightningWetGlintEnabled",
+        "AlchemyWeatherLightningWetGlintStrength",
+        "AlchemyWeatherLightningDistanceGrading",
+        "AlchemyWeatherLightningAfterglowStrength",
+        "AlchemyWeatherLightningEnergyCeiling",
     };
     return names;
 }
 
 bool ALPanelWeatherSettings::postBuild()
 {
+    mControlGroupCombo = getChild<LLComboBox>("weather_control_group");
+    mControlGroupCombo->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { updateControlGroup(); });
     getChild<LLButton>("weather_trigger")->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onTriggerStrike(); });
     getChild<LLButton>("weather_reset_all")->setCommitCallback(
@@ -79,6 +142,7 @@ bool ALPanelWeatherSettings::postBuild()
     mPresetCombo = getChild<LLComboBox>("weather_preset_combo");
     mPresetCombo->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onPresetSelected(); });
+    updateControlGroup();
     refreshPresetList();
     updateDeferredAvailability();
     return true;
@@ -99,6 +163,28 @@ void ALPanelWeatherSettings::onVisibilityChange(bool new_visibility)
         updateDeferredAvailability();
     }
     LLPanel::onVisibilityChange(new_visibility);
+}
+
+void ALPanelWeatherSettings::updateControlGroup()
+{
+    const std::string selected = mControlGroupCombo
+        ? mControlGroupCombo->getSelectedValue().asString() : "rain";
+    if (LLPanel* rain = findChild<LLPanel>("weather_rain_group"))
+    {
+        rain->setVisible(selected == "rain");
+    }
+    if (LLPanel* surface = findChild<LLPanel>("weather_surface_group"))
+    {
+        surface->setVisible(selected == "surface");
+    }
+    if (LLPanel* occlusion = findChild<LLPanel>("weather_occlusion_group"))
+    {
+        occlusion->setVisible(selected == "occlusion");
+    }
+    if (LLPanel* lightning = findChild<LLPanel>("weather_lightning_group"))
+    {
+        lightning->setVisible(selected == "lightning");
+    }
 }
 
 void ALPanelWeatherSettings::updateDeferredAvailability()

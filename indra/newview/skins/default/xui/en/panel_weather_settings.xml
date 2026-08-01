@@ -7,101 +7,256 @@
  name="panel_weather_settings"
  width="350">
     <string name="no_preset_label">No preset</string>
-    <text
-     follows="left|top|right"
-     height="30"
-     layout="topleft"
-     left="8"
-     name="weather_deferred_note"
-     top="4"
-     visible="false"
-     width="334"
+    <text follows="left|top|right" height="30" layout="topleft" left="8"
+     name="weather_deferred_note" top="4" visible="false" width="334"
      word_wrap="true">
         Weather requires Advanced Lighting Model (deferred rendering).
     </text>
-    <panel
-     background_visible="false"
-     border="false"
-     follows="left|top|right"
-     height="670"
-     layout="topleft"
-     left="0"
-     name="weather_controls"
-     top="34"
+    <panel background_visible="false" border="false" follows="left|top|right"
+     height="670" layout="topleft" left="0" name="weather_controls" top="34"
      width="350">
         <check_box follows="left|top" height="18" left="8" top="2" width="334"
          layout="topleft" label="Cinematic weather (viewer local)"
          name="weather_enabled" control_name="AlchemyWeatherEnabled"
          tool_tip="Viewer-native rain and lightning. This changes only your local render." />
 
-        <text follows="left|top" height="15" left="8" top="28" width="334"
-         layout="topleft" font="SansSerifBold" value="Rain" />
-        <check_box follows="left|top" height="18" left="10" top="50" width="332"
-         layout="topleft" label="Depth-aware rain" name="weather_rain_enabled"
-         control_name="AlchemyWeatherRainEnabled"
-         enabled_control="AlchemyWeatherEnabled" />
+        <text follows="left|top" height="15" left="8" top="31" width="82"
+         layout="topleft" value="Controls:" />
+        <combo_box follows="left|top" height="20" left="92" top="27" width="170"
+         layout="topleft" name="weather_control_group" value="rain"
+         tool_tip="Only the selected control group is shown; all settings remain live and preset-backed.">
+            <combo_box.item label="Rain volume" name="weather_group_rain" value="rain" />
+            <combo_box.item label="Surface response" name="weather_group_surface" value="surface" />
+            <combo_box.item label="Cover / occlusion" name="weather_group_occlusion" value="occlusion" />
+            <combo_box.item label="Lightning" name="weather_group_lightning" value="lightning" />
+        </combo_box>
 
-        <text follows="left|top" height="15" left="8" top="76" width="122" layout="topleft" value="Intensity:" />
-        <slider follows="left|top" layout="topleft" height="20" top="72" left="132" width="206" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_rain_intensity" control_name="AlchemyWeatherRainIntensity" enabled_control="AlchemyWeatherEnabled" />
-        <text follows="left|top" height="15" left="8" top="100" width="122" layout="topleft" value="Density:" />
-        <slider follows="left|top" layout="topleft" height="20" top="96" left="132" width="206" min_val="0.02" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_rain_density" control_name="AlchemyWeatherRainDensity" enabled_control="AlchemyWeatherEnabled" />
-        <text follows="left|top" height="15" left="8" top="124" width="122" layout="topleft" value="Fall speed:" />
-        <slider follows="left|top" layout="topleft" height="20" top="120" left="132" width="206" min_val="1" max_val="80" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="weather_rain_speed" control_name="AlchemyWeatherRainFallSpeed" enabled_control="AlchemyWeatherEnabled" />
-        <text follows="left|top" height="15" left="8" top="148" width="122" layout="topleft" value="Draw distance:" />
-        <slider follows="left|top" layout="topleft" height="20" top="144" left="132" width="206" min_val="8" max_val="256" increment="4" decimal_digits="0" show_text="true" can_edit_text="true" name="weather_rain_distance" control_name="AlchemyWeatherRainMaxDistance" enabled_control="AlchemyWeatherEnabled" />
-        <text follows="left|top" height="15" left="8" top="172" width="122" layout="topleft" value="Ray samples:" />
-        <slider follows="left|top" layout="topleft" height="20" top="168" left="132" width="206" min_val="4" max_val="24" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="weather_rain_samples" control_name="AlchemyWeatherRainSamples" enabled_control="AlchemyWeatherEnabled" />
-        <text follows="left|top" height="15" left="8" top="196" width="122" layout="topleft" value="Resolution divisor:" />
-        <slider follows="left|top" layout="topleft" height="20" top="192" left="132" width="206" min_val="1" max_val="4" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="weather_rain_divisor" control_name="AlchemyWeatherRainResolutionDivisor" enabled_control="AlchemyWeatherEnabled" />
-        <text follows="left|top" height="15" left="8" top="220" width="122" layout="topleft" value="Wind response:" />
-        <slider follows="left|top" layout="topleft" height="20" top="216" left="132" width="206" min_val="0" max_val="8" increment="0.1" decimal_digits="1" show_text="true" can_edit_text="true" name="weather_wind_scale" control_name="AlchemyWeatherWindScale" enabled_control="AlchemyWeatherEnabled" />
-        <text follows="left|top" height="15" left="8" top="244" width="122" layout="topleft" value="EEP cloud coupling:" />
-        <slider follows="left|top" layout="topleft" height="20" top="240" left="132" width="206" min_val="0" max_val="1" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_eep_coupling" control_name="AlchemyWeatherEEPCoupling" enabled_control="AlchemyWeatherEnabled" />
+        <!-- These four same-position panels are auto-hidden by
+             ALPanelWeatherSettings::updateControlGroup(). -->
+        <panel background_visible="false" border="false" follows="left|top|right"
+         height="500" layout="topleft" left="0" name="weather_rain_group"
+         top="56" visible="true" width="350">
+            <check_box follows="left|top" height="18" left="10" top="0" width="332"
+             layout="topleft" label="Depth-aware volumetric rain"
+             name="weather_rain_enabled" control_name="AlchemyWeatherRainEnabled"
+             enabled_control="AlchemyWeatherEnabled" />
 
-        <text follows="left|top" height="15" left="8" top="270" width="334"
-         layout="topleft" font="SansSerifBold" value="Lightning" />
-        <check_box follows="left|top" height="18" left="10" top="292" width="332"
-         layout="topleft" label="Automatic and manual lightning"
-         name="weather_lightning_enabled"
-         control_name="AlchemyWeatherLightningEnabled"
-         enabled_control="AlchemyWeatherEnabled" />
+            <text follows="left|top" height="15" left="8" top="28" width="122" layout="topleft" value="Intensity:" />
+            <slider follows="left|top" layout="topleft" height="20" top="24" left="132" width="186" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_rain_intensity" control_name="AlchemyWeatherRainIntensity" enabled_control="AlchemyWeatherEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="24" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_rain_intensity_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherRainIntensity" />
+            <text follows="left|top" height="15" left="8" top="52" width="122" layout="topleft" value="Density:" />
+            <slider follows="left|top" layout="topleft" height="20" top="48" left="132" width="186" min_val="0.02" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_rain_density" control_name="AlchemyWeatherRainDensity" enabled_control="AlchemyWeatherEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="48" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_rain_density_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherRainDensity" />
+            <text follows="left|top" height="15" left="8" top="76" width="122" layout="topleft" value="Fall speed:" />
+            <slider follows="left|top" layout="topleft" height="20" top="72" left="132" width="186" min_val="1" max_val="80" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="weather_rain_speed" control_name="AlchemyWeatherRainFallSpeed" enabled_control="AlchemyWeatherEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="72" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_rain_speed_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherRainFallSpeed" />
+            <text follows="left|top" height="15" left="8" top="100" width="122" layout="topleft" value="Draw distance:" />
+            <slider follows="left|top" layout="topleft" height="20" top="96" left="132" width="186" min_val="8" max_val="256" increment="4" decimal_digits="0" show_text="true" can_edit_text="true" name="weather_rain_distance" control_name="AlchemyWeatherRainMaxDistance" enabled_control="AlchemyWeatherEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="96" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_rain_distance_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherRainMaxDistance" />
+            <text follows="left|top" height="15" left="8" top="124" width="122" layout="topleft" value="Ray samples:" />
+            <slider follows="left|top" layout="topleft" height="20" top="120" left="132" width="186" min_val="4" max_val="24" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="weather_rain_samples" control_name="AlchemyWeatherRainSamples" enabled_control="AlchemyWeatherEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="120" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_rain_samples_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherRainSamples" />
+            <text follows="left|top" height="15" left="8" top="148" width="122" layout="topleft" value="Resolution divisor:" />
+            <slider follows="left|top" layout="topleft" height="20" top="144" left="132" width="186" min_val="1" max_val="4" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="weather_rain_divisor" control_name="AlchemyWeatherRainResolutionDivisor" enabled_control="AlchemyWeatherEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="144" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_rain_divisor_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherRainResolutionDivisor" />
+            <text follows="left|top" height="15" left="8" top="172" width="122" layout="topleft" value="Wind response:" />
+            <slider follows="left|top" layout="topleft" height="20" top="168" left="132" width="186" min_val="0" max_val="8" increment="0.1" decimal_digits="1" show_text="true" can_edit_text="true" name="weather_wind_scale" control_name="AlchemyWeatherWindScale" enabled_control="AlchemyWeatherEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="168" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_wind_scale_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherWindScale" />
+            <text follows="left|top" height="15" left="8" top="196" width="122" layout="topleft" value="EEP coupling:" />
+            <slider follows="left|top" layout="topleft" height="20" top="192" left="132" width="186" min_val="0" max_val="1" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_eep_coupling" control_name="AlchemyWeatherEEPCoupling" enabled_control="AlchemyWeatherEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="192" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_eep_coupling_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherEEPCoupling" />
+            <text follows="left|top" height="15" left="8" top="220" width="122" layout="topleft" value="Depth layers:" />
+            <slider follows="left|top" layout="topleft" height="20" top="216" left="132" width="186" min_val="1" max_val="3" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="weather_rain_layers" control_name="AlchemyWeatherRainLayers" enabled_control="AlchemyWeatherEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="216" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_rain_layers_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherRainLayers" />
+            <text follows="left|top" height="15" left="8" top="244" width="122" layout="topleft" value="Virtual shutter:" />
+            <slider follows="left|top" layout="topleft" height="20" top="240" left="132" width="186" min_val="0.005" max_val="0.12" increment="0.005" decimal_digits="3" show_text="true" can_edit_text="true" name="weather_rain_shutter" control_name="AlchemyWeatherRainVirtualShutter" enabled_control="AlchemyWeatherEnabled" tool_tip="Seconds of virtual exposure; streak length is fall speed multiplied by this interval." />
+            <button follows="left|top" layout="topleft" height="18" top="240" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_rain_shutter_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherRainVirtualShutter" />
+            <text follows="left|top" height="15" left="8" top="268" width="122" layout="topleft" value="Near emphasis:" />
+            <slider follows="left|top" layout="topleft" height="20" top="264" left="132" width="186" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_rain_near" control_name="AlchemyWeatherRainNearEmphasis" enabled_control="AlchemyWeatherEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="264" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_rain_near_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherRainNearEmphasis" />
+            <text follows="left|top" height="15" left="8" top="292" width="122" layout="topleft" value="Gust strength:" />
+            <slider follows="left|top" layout="topleft" height="20" top="288" left="132" width="186" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_rain_gust" control_name="AlchemyWeatherRainGustStrength" enabled_control="AlchemyWeatherEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="288" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_rain_gust_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherRainGustStrength" />
+        </panel>
 
-        <text follows="left|top" height="15" left="8" top="318" width="122" layout="topleft" value="Strikes / minute:" />
-        <slider follows="left|top" layout="topleft" height="20" top="314" left="132" width="206" min_val="0" max_val="60" increment="0.1" decimal_digits="1" show_text="true" can_edit_text="true" name="weather_lightning_rate" control_name="AlchemyWeatherLightningRate" enabled_control="AlchemyWeatherEnabled" />
-        <text follows="left|top" height="15" left="8" top="342" width="122" layout="topleft" value="Flash duration:" />
-        <slider follows="left|top" layout="topleft" height="20" top="338" left="132" width="206" min_val="0.05" max_val="4" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_flash_duration" control_name="AlchemyWeatherLightningFlashDuration" enabled_control="AlchemyWeatherEnabled" />
-        <text follows="left|top" height="15" left="8" top="366" width="122" layout="topleft" value="Bolt duration:" />
-        <slider follows="left|top" layout="topleft" height="20" top="362" left="132" width="206" min_val="0.02" max_val="4" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_bolt_duration" control_name="AlchemyWeatherLightningBoltDuration" enabled_control="AlchemyWeatherEnabled" />
-        <text follows="left|top" height="15" left="8" top="390" width="122" layout="topleft" value="Ambient floor:" />
-        <slider follows="left|top" layout="topleft" height="20" top="386" left="132" width="206" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_lightning_ambient" control_name="AlchemyWeatherLightningAmbient" enabled_control="AlchemyWeatherEnabled" />
-        <text follows="left|top" height="15" left="8" top="414" width="122" layout="topleft" value="Brightness:" />
-        <slider follows="left|top" layout="topleft" height="20" top="410" left="132" width="206" min_val="0" max_val="32" increment="0.25" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_lightning_brightness" control_name="AlchemyWeatherLightningBrightness" enabled_control="AlchemyWeatherEnabled" />
-        <text follows="left|top" height="15" left="8" top="438" width="122" layout="topleft" value="Bolt width:" />
-        <slider follows="left|top" layout="topleft" height="20" top="434" left="132" width="206" min_val="0.25" max_val="8" increment="0.25" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_lightning_width" control_name="AlchemyWeatherLightningBoltWidth" enabled_control="AlchemyWeatherEnabled" />
-        <text follows="left|top" height="15" left="8" top="462" width="122" layout="topleft" value="Bolt height:" />
-        <slider follows="left|top" layout="topleft" height="20" top="458" left="132" width="206" min_val="16" max_val="512" increment="4" decimal_digits="0" show_text="true" can_edit_text="true" name="weather_lightning_height" control_name="AlchemyWeatherLightningBoltHeight" enabled_control="AlchemyWeatherEnabled" />
-        <text follows="left|top" height="15" left="8" top="486" width="122" layout="topleft" value="Minimum range:" />
-        <slider follows="left|top" layout="topleft" height="20" top="482" left="132" width="206" min_val="0" max_val="512" increment="4" decimal_digits="0" show_text="true" can_edit_text="true" name="weather_lightning_min" control_name="AlchemyWeatherLightningMinDistance" enabled_control="AlchemyWeatherEnabled" />
-        <text follows="left|top" height="15" left="8" top="510" width="122" layout="topleft" value="Maximum range:" />
-        <slider follows="left|top" layout="topleft" height="20" top="506" left="132" width="206" min_val="0" max_val="512" increment="4" decimal_digits="0" show_text="true" can_edit_text="true" name="weather_lightning_max" control_name="AlchemyWeatherLightningMaxDistance" enabled_control="AlchemyWeatherEnabled" />
+        <panel background_visible="false" border="false" follows="left|top|right"
+         height="500" layout="topleft" left="0" name="weather_surface_group"
+         top="56" visible="false" width="350">
+            <check_box follows="left|top" height="18" left="10" top="0" width="332"
+             layout="topleft" label="Procedural surface splashes"
+             name="weather_splash_enabled" control_name="AlchemyWeatherSplashEnabled"
+             enabled_control="AlchemyWeatherEnabled" />
+            <text follows="left|top" height="15" left="8" top="28" width="122" layout="topleft" value="Splash density:" />
+            <slider follows="left|top" layout="topleft" height="20" top="24" left="132" width="186" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_splash_density" control_name="AlchemyWeatherSplashDensity" enabled_control="AlchemyWeatherSplashEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="24" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_splash_density_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherSplashEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherSplashDensity" />
+            <text follows="left|top" height="15" left="8" top="52" width="122" layout="topleft" value="Ring radius:" />
+            <slider follows="left|top" layout="topleft" height="20" top="48" left="132" width="186" min_val="0.04" max_val="1.5" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_splash_size" control_name="AlchemyWeatherSplashRingSize" enabled_control="AlchemyWeatherSplashEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="48" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_splash_size_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherSplashEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherSplashRingSize" />
+            <text follows="left|top" height="15" left="8" top="76" width="122" layout="topleft" value="Lifetime:" />
+            <slider follows="left|top" layout="topleft" height="20" top="72" left="132" width="186" min_val="0.08" max_val="2" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_splash_lifetime" control_name="AlchemyWeatherSplashLifetime" enabled_control="AlchemyWeatherSplashEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="72" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_splash_lifetime_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherSplashEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherSplashLifetime" />
+            <text follows="left|top" height="15" left="8" top="100" width="122" layout="topleft" value="Up threshold:" />
+            <slider follows="left|top" layout="topleft" height="20" top="96" left="132" width="186" min_val="0" max_val="0.98" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_splash_up" control_name="AlchemyWeatherSplashUpThreshold" enabled_control="AlchemyWeatherEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="96" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_splash_up_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherSplashUpThreshold" />
+            <text follows="left|top" height="15" left="8" top="124" width="122" layout="topleft" value="Impact range:" />
+            <slider follows="left|top" layout="topleft" height="20" top="120" left="132" width="186" min_val="4" max_val="128" increment="2" decimal_digits="0" show_text="true" can_edit_text="true" name="weather_splash_range" control_name="AlchemyWeatherSplashMaxDistance" enabled_control="AlchemyWeatherSplashEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="120" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_splash_range_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherSplashEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherSplashMaxDistance" />
 
-        <button follows="left|top" height="22" left="10" top="536" width="150"
-         layout="topleft" name="weather_trigger" label="Trigger lightning"
-         tool_tip="Trigger one deterministic strike immediately." />
-        <text follows="left|top|right" height="28" left="8" top="564" width="334"
+            <check_box follows="left|top" height="18" left="10" top="152" width="332"
+             layout="topleft" label="Wet-surface Fresnel sheen"
+             name="weather_wetness_enabled" control_name="AlchemyWeatherWetnessEnabled"
+             enabled_control="AlchemyWeatherEnabled" />
+            <text follows="left|top" height="15" left="8" top="180" width="122" layout="topleft" value="Wetness:" />
+            <slider follows="left|top" layout="topleft" height="20" top="176" left="132" width="186" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_wetness_strength" control_name="AlchemyWeatherWetnessStrength" enabled_control="AlchemyWeatherWetnessEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="176" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_wetness_strength_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherWetnessEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherWetnessStrength" />
+
+            <check_box follows="left|top" height="18" left="10" top="208" width="332"
+             layout="topleft" label="Near-ground rain mist"
+             name="weather_mist_enabled" control_name="AlchemyWeatherMistEnabled"
+             enabled_control="AlchemyWeatherEnabled" />
+            <text follows="left|top" height="15" left="8" top="236" width="122" layout="topleft" value="Mist strength:" />
+            <slider follows="left|top" layout="topleft" height="20" top="232" left="132" width="186" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_mist_strength" control_name="AlchemyWeatherMistStrength" enabled_control="AlchemyWeatherMistEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="232" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_mist_strength_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherMistEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherMistStrength" />
+            <text follows="left|top" height="15" left="8" top="260" width="122" layout="topleft" value="Mist height:" />
+            <slider follows="left|top" layout="topleft" height="20" top="256" left="132" width="186" min_val="0.25" max_val="12" increment="0.25" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_mist_height" control_name="AlchemyWeatherMistHeight" enabled_control="AlchemyWeatherMistEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="256" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_mist_height_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherMistEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherMistHeight" />
+
+            <check_box follows="left|top" height="18" left="10" top="288" width="332"
+             layout="topleft" label="Camera-lens drop caustics (POV)"
+             name="weather_lens_enabled" control_name="AlchemyWeatherLensDropsEnabled"
+             enabled_control="AlchemyWeatherEnabled" />
+            <text follows="left|top" height="15" left="8" top="316" width="122" layout="topleft" value="Lens strength:" />
+            <slider follows="left|top" layout="topleft" height="20" top="312" left="132" width="186" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_lens_strength" control_name="AlchemyWeatherLensDropsStrength" enabled_control="AlchemyWeatherLensDropsEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="312" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_lens_strength_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherLensDropsEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherLensDropsStrength" />
+            <text follows="left|top|right" height="44" left="8" top="350" width="334"
+             layout="topleft" word_wrap="true"
+             value="Surface response is stateless and G-buffer driven. Lens drops are additive caustic silhouettes, not scene-color refraction." />
+        </panel>
+
+        <panel background_visible="false" border="false" follows="left|top|right"
+         height="500" layout="topleft" left="0" name="weather_occlusion_group"
+         top="56" visible="false" width="350">
+            <check_box follows="left|top" height="18" left="10" top="0" width="332"
+             layout="topleft" label="Per-pixel vertical rain cover"
+             name="weather_rain_occlusion" control_name="AlchemyWeatherRainOcclusion"
+             enabled_control="AlchemyWeatherEnabled"
+             tool_tip="Render a top-down depth map so roofs and overhangs shelter individual rain and surface points." />
+            <text follows="left|top" height="15" left="8" top="28" width="122" layout="topleft" value="Map resolution:" />
+            <slider follows="left|top" layout="topleft" height="20" top="24" left="132" width="186" min_val="256" max_val="1024" increment="256" decimal_digits="0" show_text="true" can_edit_text="true" name="weather_rain_occlusion_resolution" control_name="AlchemyWeatherRainOcclusionResolution" enabled_control="AlchemyWeatherRainOcclusion" />
+            <button follows="left|top" layout="topleft" height="18" top="24" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_rain_occlusion_resolution_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherRainOcclusion" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherRainOcclusionResolution" />
+            <text follows="left|top" height="15" left="8" top="52" width="122" layout="topleft" value="Map radius:" />
+            <slider follows="left|top" layout="topleft" height="20" top="48" left="132" width="186" min_val="32" max_val="320" increment="8" decimal_digits="0" show_text="true" can_edit_text="true" name="weather_rain_occlusion_extent" control_name="AlchemyWeatherRainOcclusionExtent" enabled_control="AlchemyWeatherRainOcclusion" tool_tip="Half-width in meters. Keep this larger than rain draw distance plus a border gutter." />
+            <button follows="left|top" layout="topleft" height="18" top="48" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_rain_occlusion_extent_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherRainOcclusion" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherRainOcclusionExtent" />
+            <text follows="left|top" height="15" left="8" top="76" width="122" layout="topleft" value="Vertical bias:" />
+            <slider follows="left|top" layout="topleft" height="20" top="72" left="132" width="186" min_val="0" max_val="2" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_rain_occlusion_bias" control_name="AlchemyWeatherRainOcclusionBias" enabled_control="AlchemyWeatherRainOcclusion" />
+            <button follows="left|top" layout="topleft" height="18" top="72" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_rain_occlusion_bias_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherRainOcclusion" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherRainOcclusionBias" />
+            <text follows="left|top" height="15" left="8" top="100" width="122" layout="topleft" value="Vertical softness:" />
+            <slider follows="left|top" layout="topleft" height="20" top="96" left="132" width="186" min_val="0.001" max_val="4" increment="0.001" decimal_digits="3" show_text="true" can_edit_text="true" name="weather_rain_occlusion_softness" control_name="AlchemyWeatherRainOcclusionSoftness" enabled_control="AlchemyWeatherRainOcclusion" />
+            <button follows="left|top" layout="topleft" height="18" top="96" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_rain_occlusion_softness_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherRainOcclusion" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherRainOcclusionSoftness" />
+
+            <text follows="left|top|right" height="58" left="8" top="132" width="334"
+             layout="topleft" word_wrap="true"
+             value="The map is camera-centered and world-texel snapped. Outside its bounds, invalid data, unsupported glass, and unavailable shaders fail open." />
+
+            <check_box follows="left|top" height="18" left="10" top="208" width="332"
+             layout="topleft" label="Camera-ray fallback / lens cover"
+             name="weather_shelter_fade" control_name="AlchemyWeatherShelterFade"
+             enabled_control="AlchemyWeatherEnabled"
+             tool_tip="One upward ray fades the whole pass when the map is unavailable and controls camera-space lens drops when the map is active." />
+            <text follows="left|top" height="15" left="8" top="240" width="122" layout="topleft" value="Fallback height:" />
+            <slider follows="left|top" layout="topleft" height="20" top="236" left="132" width="186" min_val="8" max_val="256" increment="4" decimal_digits="0" show_text="true" can_edit_text="true" name="weather_shelter_height" control_name="AlchemyWeatherShelterHeight" enabled_control="AlchemyWeatherShelterFade" />
+            <button follows="left|top" layout="topleft" height="18" top="236" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_shelter_height_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherShelterFade" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherShelterHeight" />
+        </panel>
+
+        <panel background_visible="false" border="false" follows="left|top|right"
+         height="520" layout="topleft" left="0" name="weather_lightning_group"
+         top="56" visible="false" width="350">
+            <check_box follows="left|top" height="18" left="10" top="0" width="332"
+             layout="topleft" label="Automatic and manual lightning"
+             name="weather_lightning_enabled"
+             control_name="AlchemyWeatherLightningEnabled"
+             enabled_control="AlchemyWeatherEnabled" />
+            <text follows="left|top" height="15" left="8" top="28" width="122" layout="topleft" value="Strikes / minute:" />
+            <slider follows="left|top" layout="topleft" height="20" top="24" left="132" width="186" min_val="0" max_val="60" increment="0.1" decimal_digits="1" show_text="true" can_edit_text="true" name="weather_lightning_rate" control_name="AlchemyWeatherLightningRate" enabled_control="AlchemyWeatherEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="24" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_lightning_rate_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherLightningRate" />
+            <text follows="left|top" height="15" left="8" top="52" width="122" layout="topleft" value="Flash duration:" />
+            <slider follows="left|top" layout="topleft" height="20" top="48" left="132" width="186" min_val="0.05" max_val="4" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_flash_duration" control_name="AlchemyWeatherLightningFlashDuration" enabled_control="AlchemyWeatherEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="48" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_flash_duration_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherLightningFlashDuration" />
+            <text follows="left|top" height="15" left="8" top="76" width="122" layout="topleft" value="Bolt duration:" />
+            <slider follows="left|top" layout="topleft" height="20" top="72" left="132" width="186" min_val="0.02" max_val="4" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_bolt_duration" control_name="AlchemyWeatherLightningBoltDuration" enabled_control="AlchemyWeatherEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="72" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_bolt_duration_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherLightningBoltDuration" />
+            <text follows="left|top" height="15" left="8" top="100" width="122" layout="topleft" value="Ambient floor:" />
+            <slider follows="left|top" layout="topleft" height="20" top="96" left="132" width="186" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_lightning_ambient" control_name="AlchemyWeatherLightningAmbient" enabled_control="AlchemyWeatherEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="96" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_lightning_ambient_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherLightningAmbient" />
+            <text follows="left|top" height="15" left="8" top="124" width="122" layout="topleft" value="Brightness:" />
+            <slider follows="left|top" layout="topleft" height="20" top="120" left="132" width="186" min_val="0" max_val="32" increment="0.25" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_lightning_brightness" control_name="AlchemyWeatherLightningBrightness" enabled_control="AlchemyWeatherEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="120" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_lightning_brightness_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherLightningBrightness" />
+            <text follows="left|top" height="15" left="8" top="148" width="122" layout="topleft" value="Bolt width:" />
+            <slider follows="left|top" layout="topleft" height="20" top="144" left="132" width="186" min_val="0.25" max_val="8" increment="0.25" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_lightning_width" control_name="AlchemyWeatherLightningBoltWidth" enabled_control="AlchemyWeatherEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="144" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_lightning_width_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherLightningBoltWidth" />
+            <text follows="left|top" height="15" left="8" top="172" width="122" layout="topleft" value="Bolt height:" />
+            <slider follows="left|top" layout="topleft" height="20" top="168" left="132" width="186" min_val="16" max_val="512" increment="4" decimal_digits="0" show_text="true" can_edit_text="true" name="weather_lightning_height" control_name="AlchemyWeatherLightningBoltHeight" enabled_control="AlchemyWeatherEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="168" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_lightning_height_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherLightningBoltHeight" />
+            <text follows="left|top" height="15" left="8" top="196" width="122" layout="topleft" value="Minimum range:" />
+            <slider follows="left|top" layout="topleft" height="20" top="192" left="132" width="186" min_val="0" max_val="512" increment="4" decimal_digits="0" show_text="true" can_edit_text="true" name="weather_lightning_min" control_name="AlchemyWeatherLightningMinDistance" enabled_control="AlchemyWeatherEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="192" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_lightning_min_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherLightningMinDistance" />
+            <text follows="left|top" height="15" left="8" top="220" width="122" layout="topleft" value="Maximum range:" />
+            <slider follows="left|top" layout="topleft" height="20" top="216" left="132" width="186" min_val="0" max_val="512" increment="4" decimal_digits="0" show_text="true" can_edit_text="true" name="weather_lightning_max" control_name="AlchemyWeatherLightningMaxDistance" enabled_control="AlchemyWeatherEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="216" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_lightning_max_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherLightningMaxDistance" />
+            <button follows="left|top" height="22" left="10" top="246" width="150"
+             layout="topleft" name="weather_trigger" label="Trigger lightning"
+             tool_tip="Trigger one deterministic strike immediately." />
+            <check_box follows="left|top" height="18" left="10" top="276" width="332"
+             layout="topleft" label="Cinematic HDR lightning quality"
+             name="weather_lightning_quality_enabled"
+             control_name="AlchemyWeatherLightningQualityEnabled"
+             enabled_control="AlchemyWeatherEnabled" />
+            <text follows="left|top" height="15" left="8" top="304" width="122" layout="topleft" value="Quality tier:" />
+            <slider follows="left|top" layout="topleft" height="20" top="300" left="132" width="186" min_val="1" max_val="3" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="weather_lightning_quality_tier" control_name="AlchemyWeatherLightningQualityTier" enabled_control="AlchemyWeatherLightningQualityEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="300" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_lightning_quality_tier_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherLightningQualityEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherLightningQualityTier" />
+            <check_box follows="left|top" height="18" left="10" top="324" width="332"
+             layout="topleft" label="Cloud-shaped sheet illumination"
+             name="weather_lightning_sheet_enabled"
+             control_name="AlchemyWeatherLightningSheetEnabled"
+             enabled_control="AlchemyWeatherLightningQualityEnabled" />
+            <text follows="left|top" height="15" left="8" top="352" width="122" layout="topleft" value="Sheet strength:" />
+            <slider follows="left|top" layout="topleft" height="20" top="348" left="132" width="186" min_val="0" max_val="2" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_lightning_sheet_strength" control_name="AlchemyWeatherLightningSheetStrength" enabled_control="AlchemyWeatherLightningQualityEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="348" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_lightning_sheet_strength_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherLightningQualityEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherLightningSheetStrength" />
+            <text follows="left|top" height="15" left="8" top="376" width="122" layout="topleft" value="Corona strength:" />
+            <slider follows="left|top" layout="topleft" height="20" top="372" left="132" width="186" min_val="0" max_val="2" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_lightning_corona_strength" control_name="AlchemyWeatherLightningCoronaStrength" enabled_control="AlchemyWeatherLightningQualityEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="372" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_lightning_corona_strength_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherLightningQualityEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherLightningCoronaStrength" />
+            <check_box follows="left|top" height="18" left="10" top="396" width="332"
+             layout="topleft" label="Rain-wet surface lightning glint"
+             name="weather_lightning_wet_glint_enabled"
+             control_name="AlchemyWeatherLightningWetGlintEnabled"
+             enabled_control="AlchemyWeatherLightningQualityEnabled" />
+            <text follows="left|top" height="15" left="8" top="424" width="122" layout="topleft" value="Wet glint:" />
+            <slider follows="left|top" layout="topleft" height="20" top="420" left="132" width="186" min_val="0" max_val="2" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_lightning_wet_glint_strength" control_name="AlchemyWeatherLightningWetGlintStrength" enabled_control="AlchemyWeatherLightningQualityEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="420" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_lightning_wet_glint_strength_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherLightningQualityEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherLightningWetGlintStrength" />
+            <text follows="left|top" height="15" left="8" top="448" width="122" layout="topleft" value="Distance grade:" />
+            <slider follows="left|top" layout="topleft" height="20" top="444" left="132" width="186" min_val="0" max_val="1" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_lightning_distance_grading" control_name="AlchemyWeatherLightningDistanceGrading" enabled_control="AlchemyWeatherLightningQualityEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="444" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_lightning_distance_grading_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherLightningQualityEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherLightningDistanceGrading" />
+            <text follows="left|top" height="15" left="8" top="472" width="122" layout="topleft" value="Afterglow:" />
+            <slider follows="left|top" layout="topleft" height="20" top="468" left="132" width="186" min_val="0" max_val="1" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="weather_lightning_afterglow" control_name="AlchemyWeatherLightningAfterglowStrength" enabled_control="AlchemyWeatherLightningQualityEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="468" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_lightning_afterglow_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherLightningQualityEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherLightningAfterglowStrength" />
+            <text follows="left|top" height="15" left="8" top="496" width="122" layout="topleft" value="HDR peak ceiling:" />
+            <slider follows="left|top" layout="topleft" height="20" top="492" left="132" width="186" min_val="1" max_val="128" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="weather_lightning_energy_ceiling" control_name="AlchemyWeatherLightningEnergyCeiling" enabled_control="AlchemyWeatherLightningQualityEnabled" />
+            <button follows="left|top" layout="topleft" height="18" top="492" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="weather_lightning_energy_ceiling_reset" tool_tip="Reset to default" enabled_control="AlchemyWeatherLightningQualityEnabled" commit_callback.function="Weather.ResetControl" commit_callback.parameter="AlchemyWeatherLightningEnergyCeiling" />
+        </panel>
+
+        <text follows="left|top|right" height="28" left="8" top="580" width="334"
          layout="topleft" word_wrap="true"
-         value="Local-only; uses terrain depth, simulator wind, EEP clouds, deferred normals, and HDR exposure/bloom." />
-
-        <text follows="left|top" height="15" left="8" top="600" width="44"
+         value="Local-only; presentation-time deterministic; composited before HDR exposure, bloom, and tonemapping." />
+        <text follows="left|top" height="15" left="8" top="620" width="44"
          layout="topleft" value="Preset:" />
-        <combo_box follows="left|top" height="20" left="54" top="596" width="138"
+        <combo_box follows="left|top" height="20" left="54" top="616" width="138"
          layout="topleft" name="weather_preset_combo"
          tool_tip="Named presets capture the complete weather state, including Debug-only colors and seed." />
-        <button follows="left|top" height="20" left="198" top="596" width="52"
+        <button follows="left|top" height="20" left="198" top="616" width="52"
          layout="topleft" label="Save" name="weather_preset_save" />
-        <button follows="left|top" height="20" left="256" top="596" width="44"
+        <button follows="left|top" height="20" left="256" top="616" width="44"
          layout="topleft" label="Del" name="weather_preset_delete" />
-        <button follows="left|top" height="20" left="8" top="626" width="120"
+        <button follows="left|top" height="20" left="8" top="646" width="120"
          layout="topleft" label="Reset All" name="weather_reset_all"
          tool_tip="Reset every persistent weather setting to its built-in default." />
     </panel>

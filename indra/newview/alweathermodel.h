@@ -20,6 +20,8 @@ namespace ALWeatherModel
     constexpr F64 MAX_DISTANCE_METERS = 512.0;
     constexpr F64 MAX_BOLT_HEIGHT_METERS = 512.0;
     constexpr F64 MAX_DURATION_SECONDS = 4.0;
+    constexpr F64 MAX_QUALITY_AFTERGLOW_STRENGTH = 1.0;
+    constexpr F64 QUALITY_AFTERGLOW_SECONDS = 0.30;
 
     struct Position
     {
@@ -37,6 +39,8 @@ namespace ALWeatherModel
         F64  mMinDistanceMeters = 45.0;
         F64  mMaxDistanceMeters = 130.0;
         F64  mBoltHeightMeters = 160.0;
+        bool mQualityEnabled = false;
+        F64  mQualityAfterglowStrength = 0.35;
         U64  mSeed = 0x416c6368656d79ULL; // "Alchemy", and never a zero PRNG state.
     };
 
@@ -46,8 +50,14 @@ namespace ALWeatherModel
         bool     mStrikeStarted = false;
         F32      mFlash = 0.f;
         F32      mBolt = 0.f;
+        F32      mQualityBolt = 0.f;
+        F32      mAfterglow = 0.f;
+        F32      mColorVariation = 0.f;
+        U32      mStrokeIndex = 0;
+        U32      mVisualSeed = 0;
         F64      mStrikeTime = 0.0;
         Position mStrikeBase;
+        F64      mStrikeDistanceMeters = 0.0;
         F64      mBoltHeightMeters = 0.0;
         U64      mStrikeId = 0;
     };
@@ -78,6 +88,10 @@ namespace ALWeatherModel
     private:
         static F32 flashPulse(F64 age_seconds, F64 duration_seconds);
         static F32 boltPulse(F64 age_seconds, F64 duration_seconds);
+        static F32 qualityBoltPulse(F64 age_seconds, F64 duration_seconds,
+                                    U64 strike_key, U32& stroke_index);
+        static F32 afterglowPulse(F64 age_seconds, F64 flash_duration_seconds,
+                                  F64 strength);
 
         U64 nextRandomU64();
         F64 nextUnit();
@@ -106,6 +120,7 @@ namespace ALWeatherModel
         F64      mScheduledRatePerMinute = 0.0;
         F64      mStrikeStartTime = 0.0;
         Position mStrikeBase;
+        F64      mStrikeDistanceMeters = 0.0;
         F64      mBoltHeightMeters = 0.0;
         U64      mStrikeId = 0;
         bool     mHasStrike = false;

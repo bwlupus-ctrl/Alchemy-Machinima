@@ -58,6 +58,12 @@ Actor Mover floater is open:
 | F7 | Flycam take play/pause (no-op without a loaded take) | `LLFlycamRecorder::togglePlayback()` |
 | F8 | Set marks | `LLDirectorCast::setMarks()` |
 
+When the **Director Console itself is visible** and
+`DirectorSwitcherArmed=true`, unmodified top-row **1–9** punch switcher slots
+1–9. Disabled slots remain manually punchable; their enabled flag controls
+auto-director eligibility only. Actor Mover by itself does not reserve number
+keys, and a disarmed/hidden switcher leaves normal nearby-chat typing intact.
+
 **Documented deviation:** F2 (console toggle) works even with no operator
 floater open — a toggle that could only ever *close* the console would be
 pointless. It still honors `DirectorHotkeysEnabled`, and gestures / focused-UI
@@ -80,10 +86,12 @@ always eats its key once registered, so a gated-off Director key would still
 swallow F3 for the whole session.
 
 Instead there is one surgical hook in `LLViewerWindow::handleKey`
-(`llviewerwindow.cpp`, directly above the menu-accelerator dispatch):
+(`llviewerwindow.cpp`, immediately after gesture dispatch):
 **after** focused-UI / tool / gesture handling — so all of those pre-empt us —
-and **before** menu accelerators — so we could never shadow F1 anyway (we
-don't bind it). When the set is gated off the hook returns false without side
-effects and every key keeps its normal meaning. F-key auto-repeat is already
-suppressed upstream (`llviewerinput.cpp:1206`), so holding F3 cannot re-fire
-ACTION.
+and **before** printable-key auto-chat and the later unmodified-accelerator
+pass. Earlier menu navigation/modified accelerators also retain precedence.
+That placement is required for armed number punches; the number-key gate is
+deliberately stricter than the F-key gate. When the set is gated off the hook
+returns false without side effects and every key keeps its normal meaning. The
+new number-punch path consumes repeat keydowns without re-firing. F2–F8 retain
+their pre-switcher repeat routing, preserving default-disarmed behavior.

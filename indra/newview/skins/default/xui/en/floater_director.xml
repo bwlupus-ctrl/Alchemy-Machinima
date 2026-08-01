@@ -10,13 +10,13 @@
  can_resize="true"
  height="650"
  min_height="560"
- min_width="658"
+ min_width="660"
  layout="topleft"
  name="floater_director"
  title="Director Console"
  save_rect="true"
  single_instance="true"
- width="658">
+ width="1020">
 
     <!-- ============ transport bar ============ -->
     <button
@@ -179,7 +179,7 @@
      height="18"
      label="?"
      layout="topleft"
-     left="632"
+     left="994"
      top="51"
      name="btn_help"
      tool_tip="Show a legend for the cast icons, A/B subjects, marks and path colors"
@@ -305,7 +305,7 @@
      tab_width="80"
      tab_group="1"
      tab_position="left"
-     width="454">
+     width="816">
 
         <!-- ============ Move tab ============ -->
         <panel
@@ -574,7 +574,7 @@
         <panel
          follows="all"
          background_visible="false"
-         height="360"
+         height="550"
          label="Animate"
          layout="topleft"
          name="animate_tab"
@@ -797,7 +797,7 @@
         <panel
          follows="all"
          background_visible="false"
-         height="360"
+         height="550"
          label="Camera"
          layout="topleft"
          name="camera_tab"
@@ -863,44 +863,250 @@
              top="25"
              name="btn_clear_b"
              width="52" />
+            <text
+             follows="left|top"
+             height="14"
+             layout="topleft"
+             left="10"
+             top="48"
+             name="subject_c_text"
+             tool_tip="Subject C: an additional camera-switcher target mark"
+             use_ellipses="true"
+             width="140">
+                C:
+            </text>
+            <button
+             follows="left|top"
+             height="18"
+             label="Set from selection"
+             layout="topleft"
+             left="152"
+             top="45"
+             name="btn_set_c"
+             width="120" />
+            <button
+             follows="left|top"
+             height="18"
+             label="Clear"
+             layout="topleft"
+             left="276"
+             top="45"
+             name="btn_clear_c"
+             width="52" />
+            <text
+             follows="left|top"
+             height="14"
+             layout="topleft"
+             left="10"
+             top="68"
+             name="subject_d_text"
+             tool_tip="Subject D: an additional camera-switcher target mark"
+             use_ellipses="true"
+             width="140">
+                D:
+            </text>
+            <button
+             follows="left|top"
+             height="18"
+             label="Set from selection"
+             layout="topleft"
+             left="152"
+             top="65"
+             name="btn_set_d"
+             width="120" />
+            <button
+             follows="left|top"
+             height="18"
+             label="Clear"
+             layout="topleft"
+             left="276"
+             top="65"
+             name="btn_clear_d"
+             width="52" />
             <scroll_container
              follows="all"
-             height="312"
+             height="460"
              layout="topleft"
              left="0"
-             top="48"
-             name="camera_scroll"
+             top="88"
+             name="camera_flow_scroll"
              opaque="false"
+             size="15"
              width="374">
-                <panel
-                 background_visible="false"
-                 height="1397"
+                <flow_grid
+                 card_width="340"
+                 column_gap="12"
+                 follows="all"
+                 height="8"
                  layout="topleft"
                  left="0"
+                 max_columns="4"
+                 name="camera_flow_grid"
+                 pad="8"
+                 row_gap="12"
                  top="0"
-                 name="camera_scroll_content"
                  width="354">
                     <panel
-                     class="panel_cinecam_params"
-                     filename="panel_cinecam_params.xml"
+                     background_visible="false"
+                     border="true"
                      follows="left|top"
-                     height="1175"
+                     height="676"
                      layout="topleft"
                      left="0"
+                     name="camera_switcher_card"
                      top="0"
-                     name="cinecam_params_embedded"
-                     width="320" />
+                     width="340">
+                        <text
+                         follows="left|top|right"
+                         font="SansSerifBold"
+                         height="16"
+                         layout="topleft"
+                         left="8"
+                         name="camera_switcher_card_title"
+                         top="6"
+                         width="324">
+                            Switcher
+                        </text>
+                        <panel
+                         class="panel_director_switcher"
+                         filename="panel_director_switcher.xml"
+                         follows="left|top|right"
+                         height="640"
+                         layout="topleft"
+                         left="0"
+                         name="director_switcher_embedded"
+                         top="28"
+                         width="340" />
+                    </panel>
                     <panel
-                     class="panel_flycam_orbit"
-                     filename="panel_flycam_orbit.xml"
+                     background_visible="false"
+                     border="true"
                      follows="left|top"
-                     height="214"
+                     height="456"
                      layout="topleft"
-                     left="6"
-                     top="1179"
-                     name="flycam_orbit_embedded"
-                     width="320" />
-                </panel>
+                     left="0"
+                     name="camera_cinematic_card"
+                     top="0"
+                     width="340">
+                        <text
+                         follows="left|top|right"
+                         font="SansSerifBold"
+                         height="16"
+                         layout="topleft"
+                         left="8"
+                         name="camera_cinematic_card_title"
+                         top="6"
+                         width="324">
+                            Cinematic
+                        </text>
+                        <panel
+                         class="panel_cinecam_params"
+                         filename="panel_cinecam_params.xml"
+                         follows="left|top|right"
+                         height="420"
+                         layout="topleft"
+                         left="8"
+                         name="cinecam_params_embedded"
+                         top="28"
+                         width="320" />
+                    </panel>
+                    <panel
+                     background_visible="false"
+                     border="true"
+                     follows="left|top"
+                     height="250"
+                     layout="topleft"
+                     left="0"
+                     name="camera_flycam_orbit_card"
+                     top="0"
+                     width="340">
+                        <text
+                         follows="left|top|right"
+                         font="SansSerifBold"
+                         height="16"
+                         layout="topleft"
+                         left="8"
+                         name="camera_flycam_orbit_card_title"
+                         top="6"
+                         width="324">
+                            Flycam Orbit
+                        </text>
+                        <panel
+                         class="panel_flycam_orbit"
+                         filename="panel_flycam_orbit.xml"
+                         follows="left|top|right"
+                         height="214"
+                         layout="topleft"
+                         left="8"
+                         name="flycam_orbit_embedded"
+                         top="28"
+                         width="320" />
+                    </panel>
+                    <panel
+                     background_visible="false"
+                     border="true"
+                     follows="left|top"
+                     height="794"
+                     layout="topleft"
+                     left="0"
+                     name="camera_frame_card"
+                     top="0"
+                     width="340">
+                        <text
+                         follows="left|top|right"
+                         font="SansSerifBold"
+                         height="16"
+                         layout="topleft"
+                         left="8"
+                         name="camera_frame_card_title"
+                         top="6"
+                         width="324">
+                            Frame
+                        </text>
+                        <panel
+                         class="panel_cinecam_frame"
+                         filename="panel_cinecam_frame.xml"
+                         follows="left|top|right"
+                         height="758"
+                         layout="topleft"
+                         left="0"
+                         name="cinecam_frame_embedded"
+                         top="28"
+                         width="340" />
+                    </panel>
+                    <panel
+                     background_visible="false"
+                     border="true"
+                     follows="left|top"
+                     height="1361"
+                     layout="topleft"
+                     left="0"
+                     name="camera_shake_card"
+                     top="0"
+                     width="340">
+                        <text
+                         follows="left|top|right"
+                         font="SansSerifBold"
+                         height="16"
+                         layout="topleft"
+                         left="8"
+                         name="camera_shake_card_title"
+                         top="6"
+                         width="324">
+                            Camera Shake
+                        </text>
+                        <panel
+                         class="panel_cinecam_params"
+                         filename="panel_cinecam_operator.xml"
+                         follows="left|top|right"
+                         height="1325"
+                         layout="topleft"
+                         left="0"
+                         name="cinecam_operator_embedded"
+                         top="28"
+                         width="340" />
+                    </panel>
+                </flow_grid>
             </scroll_container>
         </panel>
 
@@ -928,6 +1134,118 @@
              top="6"
              name="flycam_recorder_embedded"
              width="320" />
+        </panel>
+
+        <!-- ============ Projector volumetrics tab ============ -->
+        <!-- Director-console mirror of the temporal-stability controls in the
+             Lightbox Proj Shafts panel. All controls bind existing settings. -->
+        <panel
+         follows="all"
+         background_visible="false"
+         height="550"
+         label="Shafts"
+         layout="topleft"
+         name="projector_volumetrics_tab"
+         top="0"
+         width="374">
+            <text
+             follows="left|top"
+             font="SansSerifBold"
+             height="16"
+             layout="topleft"
+             left="10"
+             top="12"
+             value="Projector Volumetrics"
+             width="330" />
+            <check_box
+             control_name="BDMergeProjectorVolumetrics"
+             follows="left|top"
+             height="18"
+             label="Enable volumetric projector cones"
+             layout="topleft"
+             left="12"
+             top="38"
+             width="330" />
+            <check_box
+             control_name="BDMergeProjectorVolumetricsHalfRes"
+             enabled_control="BDMergeProjectorVolumetrics"
+             follows="left|top"
+             height="18"
+             label="Half-res march (required for temporal)"
+             layout="topleft"
+             left="12"
+             top="64"
+             width="330" />
+            <check_box
+             control_name="BDMergeProjectorVolumetricsTemporal"
+             enabled_control="BDMergeProjectorVolumetrics"
+             follows="left|top"
+             height="18"
+             label="Temporal accumulation"
+             layout="topleft"
+             left="12"
+             top="90"
+             width="330" />
+            <text
+             follows="left|top"
+             height="16"
+             layout="topleft"
+             left="12"
+             top="122"
+             value="Temporal blend:"
+             width="120" />
+            <slider
+             can_edit_text="true"
+             control_name="BDMergeProjectorVolumetricsTemporalBlend"
+             decimal_digits="2"
+             enabled_control="BDMergeProjectorVolumetricsTemporal"
+             follows="left|top"
+             height="20"
+             increment="0.01"
+             layout="topleft"
+             left="136"
+             max_val="0.98"
+             min_val="0"
+             name="director_projvol_temporal_blend"
+             show_text="true"
+             top="118"
+             width="190" />
+            <text
+             follows="left|top"
+             height="16"
+             layout="topleft"
+             left="12"
+             top="154"
+             value="Temporal reject:"
+             width="120" />
+            <slider
+             can_edit_text="true"
+             control_name="BDMergeProjectorVolumetricsTemporalReject"
+             decimal_digits="1"
+             enabled_control="BDMergeProjectorVolumetricsTemporal"
+             follows="left|top"
+             height="20"
+             increment="0.1"
+             layout="topleft"
+             left="136"
+             max_val="8"
+             min_val="0"
+             name="director_projvol_temporal_reject"
+             show_text="true"
+             tool_tip="Reduces history where the current and reprojected shaft disagree."
+             top="150"
+             width="190" />
+            <check_box
+             control_name="BDMergeProjectorVolumetricsTemporalBeamDepth"
+             enabled_control="BDMergeProjectorVolumetricsTemporal"
+             follows="left|top"
+             height="18"
+             label="Track airborne beam depth"
+             layout="topleft"
+             left="12"
+             tool_tip="Reproject from the shaft's luminance-weighted mean distance instead of the wall."
+             top="184"
+             width="330" />
         </panel>
 
         <!-- ============ Weather tab ============ -->
@@ -1008,7 +1326,7 @@
      height="14"
      layout="topleft"
      left="8"
-     top="440"
+     top="632"
      name="status_strip"
      width="548">
         0 moving
@@ -1018,8 +1336,8 @@
      halign="right"
      height="14"
      layout="topleft"
-     left="576"
-     top="440"
+     left="938"
+     top="632"
      name="rec_indicator"
      tool_tip="Recorder capture indicator: red while a take is being captured"
      width="74">
@@ -1069,7 +1387,7 @@ Groups: the dot-suffix after a name is the member's group tag (set in the Group 
 
 Paths: each actor's in-world path preview and its numbered nodes are drawn in a stable per-actor color, so overlapping routes stay readable.
 
-Hotkeys (while this console or the Actor Mover is open): F2 toggle console &#183; F3 ACTION/CUT &#183; F4 CUT &#183; F5 reset to marks &#183; F6 pose ghosts &#183; F7 take play/pause &#183; F8 set marks. Disable via DirectorHotkeysEnabled.
+Hotkeys: F2 toggle console &#183; F3 ACTION/CUT &#183; F4 CUT &#183; F5 reset to marks &#183; F6 pose ghosts &#183; F7 take play/pause &#183; F8 set marks. While this console is visible and the switcher is armed, 1&#8211;9 punch slots 1&#8211;9. Disable via DirectorHotkeysEnabled.
         </text>
         <button
          follows="left|top"

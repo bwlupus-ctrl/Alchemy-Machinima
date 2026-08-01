@@ -59,6 +59,7 @@ public:
         CAMERA_SPOT_SHADOW5,
         CAMERA_WATER0,
         CAMERA_WATER1,
+        CAMERA_WEATHER_RAIN_OCCLUSION,
         NUM_CAMERAS
     } eCameraID;
 

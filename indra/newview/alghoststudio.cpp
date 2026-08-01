@@ -235,6 +235,12 @@ ALGhostStudio::ALGhostStudio()
             const bool subject_b =
                 (old_id.notNull() && cast.getSubjectB() == old_id) ||
                 (inst && inst->mWasDirectorSubjectB);
+            const bool subject_c =
+                (old_id.notNull() && cast.getSubjectC() == old_id) ||
+                (inst && inst->mWasDirectorSubjectC);
+            const bool subject_d =
+                (old_id.notNull() && cast.getSubjectD() == old_id) ||
+                (inst && inst->mWasDirectorSubjectD);
             if (old_id.notNull())
             {
                 cast.remove(old_id);
@@ -251,12 +257,24 @@ ALGhostStudio::ALGhostStudio()
             {
                 cast.setSubjectB(new_id);
             }
+            if (subject_c)
+            {
+                cast.setSubjectC(new_id);
+            }
+            if (subject_d)
+            {
+                cast.setSubjectD(new_id);
+            }
             if (inst)
             {
                 inst->mWasDirectorSubjectA =
                     !removing_instance && subject_a;
                 inst->mWasDirectorSubjectB =
                     !removing_instance && subject_b;
+                inst->mWasDirectorSubjectC =
+                    !removing_instance && subject_c;
+                inst->mWasDirectorSubjectD =
+                    !removing_instance && subject_d;
             }
         });
     mRuntimeConsumers.emplace_back(
@@ -757,6 +775,8 @@ ALGhostStudio::Instance* ALGhostStudio::duplicateInstanceSnapshotInPlace(
     }
     copy->mWasDirectorSubjectA = false;
     copy->mWasDirectorSubjectB = false;
+    copy->mWasDirectorSubjectC = false;
+    copy->mWasDirectorSubjectD = false;
     copy->mWasCinematicFollow = false;
     copy->setTransform(proto.mFootGlobal, proto.mRotation);
     copy->setScale(proto.mScale);

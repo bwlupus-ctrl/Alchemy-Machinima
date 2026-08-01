@@ -69,6 +69,7 @@
 #include "alobjectpathmover.h"  // [ObjectPath] per-frame object drives (idle tick)
 #include "alghoststudio.h"      // per-instance Keep facing transforms (idle tick)
 #include "altoolghostedit.h"    // [GhostStudio] per-frame manip-proxy sync (idle tick)
+#include "aldirectorswitcher.h" // presentation-time camera switch schedule
 #include "llcinematiccamera.h"
 #include "llflycamrecorder.h"
 #include "llpathcamera.h"    // per-node path camera source (authored actor+camera TAKE)
@@ -5459,6 +5460,12 @@ void LLAppViewer::idle()
     // gObjectList.update() above, to fix moving-mount camera jitter (the driven
     // pose must be consumed by the same-frame object/skeleton sequence, not
     // queued after it). See the comment at that call site.
+
+    // [Director Switcher] Resolve program for this frozen presentation frame
+    // before camera-owner arbitration. Inert while disarmed. Higher-priority
+    // pilot/recorder/path cameras still win below.
+    ALDirectorSwitcher::instance().tick(
+        LLPresentationTime::currentFrame().presentation_time);
 
     if (gAgentPilot.isPlaying() && gAgentPilot.getOverrideCamera())
     {

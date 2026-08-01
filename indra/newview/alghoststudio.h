@@ -319,6 +319,8 @@ public:
         U8          mPendingFreezeFrames = 0;
         bool        mWasDirectorSubjectA = false;
         bool        mWasDirectorSubjectB = false;
+        bool        mWasDirectorSubjectC = false;
+        bool        mWasDirectorSubjectD = false;
         bool        mWasCinematicFollow = false;
 
         // ---- placement ----

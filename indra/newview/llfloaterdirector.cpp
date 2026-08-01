@@ -17,6 +17,7 @@
 #include "alpanelanimpreview.h"     // embedded shared preview pane + own-avatar controls
 #include "alpanelcinecamparams.h"   // embedded shared panel (scene preset hooks)
 #include "alpanelpatheditor.h"      // embedded shared Actor Pathing editor
+#include "aldirectorswitcher.h"
 #include "llactormover.h"
 #include "llavatarnamecache.h"
 #include "llbutton.h"
@@ -25,6 +26,7 @@
 #include "lldir.h"                  // gDirUtilp (scene files)
 #include "lldirectorcast.h"
 #include "lldiriterator.h"          // scene file listing
+#include "llcinematiccamera.h"
 #include "llfile.h"                 // LLFile::mkdir/remove, ll*fstream
 #include "llfloaterreg.h"
 #include "llflycamrecorder.h"
@@ -33,6 +35,7 @@
 #include "lllineeditor.h"
 #include "llmenugl.h"
 #include "llnotificationsutil.h"    // scene delete confirm
+#include "llpresentationtime.h"
 #include "llscrolllistctrl.h"
 #include "llsdserialize.h"          // scene LLSD XML files
 #include "llselectmgr.h"
@@ -66,6 +69,7 @@ constexpr char TAB_ICON_PROPS[]   = "Command_Build_Icon";
 constexpr char TAB_ICON_ANIMATE[] = "Command_Poser_Icon";
 constexpr char TAB_ICON_CAMERA[]  = "Command_View_Icon";
 constexpr char TAB_ICON_TAKES[]   = "Command_Snapshot_Icon";
+constexpr char TAB_ICON_SHAFTS[]  = "Command_PersonalLighting_Icon";
 constexpr char TAB_ICON_TEMPORAL[] = "Command_Environments_Icon"; // day-cycle/time metaphor (no clock asset ships)
 constexpr char TAB_ICON_WEATHER[]  = "Command_Water_Icon"; // rain/precipitation metaphor (distinct from Time's sky icon)
 
@@ -76,6 +80,60 @@ constexpr S32  SCENE_VERSION   = 1;
 // the assign combo's explicit "ungroup" row: discoverable equivalent of
 // committing an empty name (which still works)
 constexpr char GROUP_NONE_LABEL[] = "(none)";
+
+enum SubjectMark : S32
+{
+    SUBJECT_A,
+    SUBJECT_B,
+    SUBJECT_C,
+    SUBJECT_D,
+};
+
+LLUUID subject_mark_id(const LLDirectorCast& cast, S32 subject)
+{
+    switch (subject)
+    {
+        case ALDirectorSwitcher::SUBJECT_A: return cast.getSubjectA();
+        case ALDirectorSwitcher::SUBJECT_B: return cast.getSubjectB();
+        case ALDirectorSwitcher::SUBJECT_C: return cast.getSubjectC();
+        case ALDirectorSwitcher::SUBJECT_D: return cast.getSubjectD();
+        default: return LLUUID::null;
+    }
+}
+
+void clear_subject(LLDirectorCast& cast, S32 subject)
+{
+    switch (subject)
+    {
+        case SUBJECT_A: cast.setSubjectA(LLUUID::null); break;
+        case SUBJECT_B: cast.setSubjectB(LLUUID::null); break;
+        case SUBJECT_C: cast.setSubjectC(LLUUID::null); break;
+        case SUBJECT_D: cast.setSubjectD(LLUUID::null); break;
+        default: break;
+    }
+}
+
+void assign_subject(LLDirectorCast& cast, S32 subject, const LLUUID& id)
+{
+    if (subject < SUBJECT_A || subject > SUBJECT_D)
+    {
+        return;
+    }
+    // One cast member carries at most one subject mark. With C/D empty this
+    // produces exactly the existing A/B reassignment behavior.
+    if (cast.getSubjectA() == id) cast.setSubjectA(LLUUID::null);
+    if (cast.getSubjectB() == id) cast.setSubjectB(LLUUID::null);
+    if (cast.getSubjectC() == id) cast.setSubjectC(LLUUID::null);
+    if (cast.getSubjectD() == id) cast.setSubjectD(LLUUID::null);
+    switch (subject)
+    {
+        case SUBJECT_A: cast.setSubjectA(id); break;
+        case SUBJECT_B: cast.setSubjectB(id); break;
+        case SUBJECT_C: cast.setSubjectC(id); break;
+        case SUBJECT_D: cast.setSubjectD(id); break;
+        default: break;
+    }
+}
 
 // Stable per-group tint for cast rows: hash the name to a hue, keep it a
 // readable pastel (low saturation, full value) so the text stays legible on
@@ -100,15 +158,7 @@ constexpr char GLYPH_PLAYING[] = "\xE2\x96\xB6";    // BLACK RIGHT-POINTING TRIA
 // CinematicCamMode value -> display name (matches the mode combo labels)
 const char* cinecam_mode_name(S32 mode)
 {
-    static const char* names[] = {
-        "off", "Bone Lock", "Orbit", "Fly Hover", "Sweep", "Crane",
-        "Dolly Zoom", "Push-In", "Low Hero", "Overhead", "Over-the-Shoulder",
-        "Crash Zoom", "Slow Zoom", "Whip Arc", "Arc Move", "Reveal Rise",
-        "Pull-Back", "Two-Shot", "Lead Follow", "ECU Eyes", "Long Lens",
-        "Spiral", "Pedestal Rise",
-    };
-    constexpr S32 count = (S32)(sizeof(names) / sizeof(names[0]));
-    return (mode >= 0 && mode < count) ? names[mode] : "?";
+    return LLCinematicCamera::modeName(mode);
 }
 } // anonymous namespace
 
@@ -132,6 +182,13 @@ LLFloaterDirector::~LLFloaterDirector()
         menu->die();
         mAnimMenuHandle.markDead();
     }
+}
+
+void LLFloaterDirector::onClose(bool app_quitting)
+{
+    // Closing can merely hide this reusable floater, so its child panel may
+    // remain alive. Explicitly release a live bullet-time cut here as well.
+    ALDirectorSwitcher::instance().cancelEaseWorldTime();
 }
 
 bool LLFloaterDirector::postBuild()
@@ -172,6 +229,7 @@ bool LLFloaterDirector::postBuild()
         { "animate_tab", TAB_ICON_ANIMATE },
         { "camera_tab",  TAB_ICON_CAMERA },
         { "takes_tab",   TAB_ICON_TAKES },
+        { "projector_volumetrics_tab", TAB_ICON_SHAFTS },
         { "weather_tab", TAB_ICON_WEATHER },
         { "temporal_tab", TAB_ICON_TEMPORAL },
     };
@@ -305,14 +363,24 @@ bool LLFloaterDirector::postBuild()
     // ---- Camera tab ----
     mSubjectAText = getChild<LLTextBox>("subject_a_text");
     mSubjectBText = getChild<LLTextBox>("subject_b_text");
+    mSubjectCText = getChild<LLTextBox>("subject_c_text");
+    mSubjectDText = getChild<LLTextBox>("subject_d_text");
     mSetABtn = getChild<LLButton>("btn_set_a");
     mSetBBtn = getChild<LLButton>("btn_set_b");
+    mSetCBtn = getChild<LLButton>("btn_set_c");
+    mSetDBtn = getChild<LLButton>("btn_set_d");
     mClearABtn = getChild<LLButton>("btn_clear_a");
     mClearBBtn = getChild<LLButton>("btn_clear_b");
-    mSetABtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSetSubjectFromSelection(true); });
-    mSetBBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSetSubjectFromSelection(false); });
-    mClearABtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickClearSubject(true); });
-    mClearBBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickClearSubject(false); });
+    mClearCBtn = getChild<LLButton>("btn_clear_c");
+    mClearDBtn = getChild<LLButton>("btn_clear_d");
+    mSetABtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSetSubjectFromSelection(SUBJECT_A); });
+    mSetBBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSetSubjectFromSelection(SUBJECT_B); });
+    mSetCBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSetSubjectFromSelection(SUBJECT_C); });
+    mSetDBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSetSubjectFromSelection(SUBJECT_D); });
+    mClearABtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickClearSubject(SUBJECT_A); });
+    mClearBBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickClearSubject(SUBJECT_B); });
+    mClearCBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickClearSubject(SUBJECT_C); });
+    mClearDBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickClearSubject(SUBJECT_D); });
     // embedded shared params panel: scene files read its selected preset and
     // apply presets through it on load
     mCineCamPanel = findChild<ALPanelCineCamParams>("cinecam_params_embedded");
@@ -556,6 +624,16 @@ const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()
         "DirectorArmRecorderPlay",
         "DirectorArmRecorderCapture",
         "DirectorActionDelay",
+        // Switcher program data. Armed/live slot stay transient: loading a
+        // scene is data application and must never seize the live camera.
+        "DirectorSwitcherAuto",
+        "DirectorSwitcherBank",
+        "DirectorSwitcherEaseCuts",
+        "DirectorSwitcherEaseSec",
+        "DirectorSwitcherIntervalSec",
+        "DirectorSwitcherJitterSec",
+        "DirectorSwitcherSeed",
+        "DirectorSwitcherSequence",
         // Flycam Orbit rig
         "FlycamOrbitEnabled",
         "FlycamOrbitLevel",
@@ -565,6 +643,19 @@ const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()
         "FlycamOrbitOffsetLeft",
         "FlycamOrbitZoom",
         "FlycamOrbitSmoothing",
+        // Cinematic target format, lens, and non-destructive screen guide
+        "CinematicAutoFrameEnabled",
+        "CinematicAutoFrameFill",
+        "CinematicAutoFrameComposeLine",
+        "CinematicAutoFrameDistanceTrim",
+        "CinematicCamFrameOffsetUp",
+        "CinematicFrameAspectRatio",
+        "CinematicFrameCustomRatio",
+        "CinematicFrameFocalLengthMM",
+        "CinematicFrameGuideEnabled",
+        "CinematicFrameGuideOpacity",
+        "CinematicFrameGuideStyle",
+        "CinematicFrameLensEnabled",
         // Move-tab (Actor Mover) parameters
         "ActorMoverSpeed",
         "ActorMoverDistance",
@@ -749,7 +840,12 @@ void LLFloaterDirector::loadScene(const std::string& name)
         return;
     }
 
-    // a loaded scene starts from a clean transport
+    // A loaded scene starts from a clean transport and a released switcher.
+    // Armed is deliberately not scene data: loading must not seize a camera.
+    gSavedSettings.setBOOL("DirectorSwitcherArmed", false);
+    ALDirectorSwitcher::instance().tick(
+        LLPresentationTime::currentFrame().presentation_time);
+
     LLDirectorCast& cast = LLDirectorCast::instance();
     if (cast.isRunning() || cast.isCountingDown())
     {
@@ -906,6 +1002,8 @@ void LLFloaterDirector::refreshCastList()
         std::string ab;
         if (cast.getSubjectA() == id) ab = "A";
         else if (cast.getSubjectB() == id) ab = "B";
+        else if (cast.getSubjectC() == id) ab = "C";
+        else if (cast.getSubjectD() == id) ab = "D";
         const std::string mark = (m && m->mHasMark) ? ICON_MARK : "";
 
         if (state.mIcon != icon)
@@ -1035,17 +1133,7 @@ void LLFloaterDirector::onCastSetSubject(bool subject_a)
         return;
     }
     LLDirectorCast& cast = LLDirectorCast::instance();
-    if (subject_a)
-    {
-        // a body can only be one subject; taking A drops a stale B
-        if (cast.getSubjectB() == id) cast.setSubjectB(LLUUID::null);
-        cast.setSubjectA(id);
-    }
-    else
-    {
-        if (cast.getSubjectA() == id) cast.setSubjectA(LLUUID::null);
-        cast.setSubjectB(id);
-    }
+    assign_subject(cast, subject_a ? SUBJECT_A : SUBJECT_B, id);
 }
 
 void LLFloaterDirector::onCastSetMarkHere()
@@ -1763,7 +1851,7 @@ LLUUID LLFloaterDirector::avatarFromSelection()
     return LLUUID::null;
 }
 
-void LLFloaterDirector::onClickSetSubjectFromSelection(bool subject_a)
+void LLFloaterDirector::onClickSetSubjectFromSelection(S32 subject)
 {
     const LLUUID id = avatarFromSelection();
     if (id.isNull())
@@ -1772,28 +1860,12 @@ void LLFloaterDirector::onClickSetSubjectFromSelection(bool subject_a)
     }
     LLDirectorCast& cast = LLDirectorCast::instance();
     cast.add(id);       // subjects are ids into the cast; no-op if present
-    if (subject_a)
-    {
-        if (cast.getSubjectB() == id) cast.setSubjectB(LLUUID::null);
-        cast.setSubjectA(id);
-    }
-    else
-    {
-        if (cast.getSubjectA() == id) cast.setSubjectA(LLUUID::null);
-        cast.setSubjectB(id);
-    }
+    assign_subject(cast, subject, id);
 }
 
-void LLFloaterDirector::onClickClearSubject(bool subject_a)
+void LLFloaterDirector::onClickClearSubject(S32 subject)
 {
-    if (subject_a)
-    {
-        LLDirectorCast::instance().setSubjectA(LLUUID::null);
-    }
-    else
-    {
-        LLDirectorCast::instance().setSubjectB(LLUUID::null);
-    }
+    clear_subject(LLDirectorCast::instance(), subject);
 }
 
 void LLFloaterDirector::refreshCameraTab()
@@ -1801,20 +1873,30 @@ void LLFloaterDirector::refreshCameraTab()
     LLDirectorCast& cast = LLDirectorCast::instance();
     const LLUUID a = cast.getSubjectA();
     const LLUUID b = cast.getSubjectB();
+    const LLUUID c = cast.getSubjectC();
+    const LLUUID d = cast.getSubjectD();
 
     mSubjectAText->setText("A: " + (a.notNull() ? castMemberName(a)
                                                 : std::string("\xE2\x80\x94")));
     mSubjectBText->setText("B: " + (b.notNull() ? castMemberName(b)
-                                                : std::string("\xE2\x80\x94")));
+                                                 : std::string("\xE2\x80\x94")));
+    mSubjectCText->setText("C: " + (c.notNull() ? castMemberName(c)
+                                                 : std::string("\xE2\x80\x94")));
+    mSubjectDText->setText("D: " + (d.notNull() ? castMemberName(d)
+                                                 : std::string("\xE2\x80\x94")));
 
     const bool have_sel_av = avatarFromSelection().notNull();
-    mSetABtn->setEnabled(have_sel_av);
-    mSetBBtn->setEnabled(have_sel_av);
+    for (LLButton* button : { mSetABtn, mSetBBtn, mSetCBtn, mSetDBtn })
+    {
+        button->setEnabled(have_sel_av);
+    }
     const std::string set_tip = have_sel_av
         ? std::string("Make the selected avatar this subject (adds it to the cast)")
         : std::string("Select an avatar or animesh in world first");
     setToolTipIfChanged(mSetABtn, set_tip);
     setToolTipIfChanged(mSetBBtn, set_tip);
+    setToolTipIfChanged(mSetCBtn, set_tip);
+    setToolTipIfChanged(mSetDBtn, set_tip);
 
     mClearABtn->setEnabled(a.notNull());
     setToolTipIfChanged(mClearABtn, a.notNull()
@@ -1824,6 +1906,14 @@ void LLFloaterDirector::refreshCameraTab()
     setToolTipIfChanged(mClearBBtn, b.notNull()
         ? std::string("Clear Subject B; Two-Shot/OTS fall back to you + target")
         : std::string("Subject B is not set"));
+    mClearCBtn->setEnabled(c.notNull());
+    setToolTipIfChanged(mClearCBtn, c.notNull()
+        ? std::string("Clear Subject C")
+        : std::string("Subject C is not set"));
+    mClearDBtn->setEnabled(d.notNull());
+    setToolTipIfChanged(mClearDBtn, d.notNull()
+        ? std::string("Clear Subject D")
+        : std::string("Subject D is not set"));
 }
 
 // ---------------------------------------------------------------------------
@@ -1848,13 +1938,24 @@ void LLFloaterDirector::refreshStatusStrip()
     }
 
     std::string cam;
-    if (cam_enabled && (S32)cam_mode > 0)
+    const ALDirectorSwitcher& switcher = ALDirectorSwitcher::instance();
+    const bool switching = switcher.isDrivingCamera();
+    const S32 effective_mode =
+        switching ? switcher.activeMode() : (S32)cam_mode;
+    if (cam_enabled && effective_mode > 0)
     {
-        // name the framing target: Subject A wins (mirrors resolveTarget()),
-        // then the selection when that targeting mode is on, else you
+        // Name the framing target. A live per-slot mark wins while switching;
+        // an empty/dead mark mirrors CineCam's fallback to the legacy chain.
         static LLCachedControl<bool> use_selected(gSavedSettings, "CinematicCamUseSelected", false);
         std::string target = "you";
-        if (cast.getSubjectA().notNull())
+        const LLUUID slot_subject = switching
+            ? subject_mark_id(cast, switcher.activePrimarySubject())
+            : LLUUID::null;
+        if (slot_subject.notNull() && cast.resolve(slot_subject))
+        {
+            target = castMemberName(slot_subject);
+        }
+        else if (cast.getSubjectA().notNull())
         {
             target = castMemberName(cast.getSubjectA());
         }
@@ -1863,7 +1964,12 @@ void LLFloaterDirector::refreshStatusStrip()
             const LLUUID sel = avatarFromSelection();
             target = sel.notNull() ? castMemberName(sel) : std::string("selection");
         }
-        cam = llformat("CineCam: %s \xE2\x86\x92 %s", cinecam_mode_name(cam_mode), target.c_str());
+        cam = switching
+            ? llformat("Switcher %d: %s \xE2\x86\x92 %s",
+                       switcher.activeSlot() + 1,
+                       cinecam_mode_name(effective_mode), target.c_str())
+            : llformat("CineCam: %s \xE2\x86\x92 %s",
+                       cinecam_mode_name(effective_mode), target.c_str());
     }
     else
     {

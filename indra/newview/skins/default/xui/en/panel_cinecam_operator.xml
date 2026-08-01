@@ -1,0 +1,392 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- Camera Shake authority and rig-choice page. Persisted setting names retain
+     FlycamOperator* for compatibility; only the user-facing language changes. -->
+<panel
+ background_visible="false"
+ border="false"
+ height="1325"
+ layout="topleft"
+ name="panel_cinecam_operator"
+ width="340">
+    <panel.string name="no_preset_label">-none-</panel.string>
+    <text follows="left|top" font="SansSerifBold" height="16"
+     layout="topleft" left="12" top="8" width="316">CAMERA SHAKE AUTHORITY</text>
+    <text follows="left|top" height="30" layout="topleft" left="12"
+     top="27" width="316" word_wrap="true">
+        Authority is how much shake reaches each axis: 0 off, 1 natural, 2 exaggerated.
+    </text>
+
+    <check_box control_name="CameraShakeApplyActive" follows="left|top" height="16"
+     label="Apply to active camera" layout="topleft" left="12" top="61"
+     name="CameraShakeApplyActive"
+     tool_tip="One switch: apply Camera Shake to whichever camera you are using — third-person mouse cam, joystick flycam, or the cinematic camera. Per-camera toggles below still work when this is off."
+     width="288" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="CameraShakeApplyActive" follows="left|top" height="16"
+     image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="301"
+     name="reset_CameraShakeApplyActive" tool_tip="Reset to default" top="61" width="12" />
+
+    <panel background_visible="false" border="false" height="1301"
+     layout="topleft" left="0" mouse_opaque="false" name="camera_shake_controls" top="24" width="340">
+    <text follows="left|top" height="16" layout="topleft" left="12"
+     top="61" width="86">Shake preset</text>
+    <combo_box follows="left|top" height="20" layout="topleft" left="100"
+     name="shake_preset_combo" top="57"
+     tool_tip="Curated one-click looks. Applying one changes the controls below; your saved named rigs remain separate."
+     width="216">
+        <combo_box.item label="Choose a look..." name="shake_none" value="0" />
+        <combo_box.item label="Locked Tripod" name="shake_locked" value="1" />
+        <combo_box.item label="Subtle Handheld" name="shake_subtle" value="2" />
+        <combo_box.item label="Documentary" name="shake_documentary" value="3" />
+        <combo_box.item label="Shoulder Rig" name="shake_shoulder" value="4" />
+        <combo_box.item label="Run-and-Gun" name="shake_run_gun" value="5" />
+        <combo_box.item label="Vehicle / Drive" name="shake_vehicle" value="6" />
+        <combo_box.item label="Drone Float" name="shake_drone" value="7" />
+        <combo_box.item label="Verite" name="shake_verite" value="8" />
+        <combo_box.item label="Heartbeat" name="shake_heartbeat" value="9" />
+    </combo_box>
+
+    <combo_box control_name="FlycamOperatorLocomotionMode" follows="left|top"
+     height="20" layout="topleft" left="12" name="shake_locomotion_mode"
+     top="84" tool_tip="What the camera carrier is physically doing. Auto follows camera translation speed."
+     width="304">
+        <combo_box.item label="Motion: Legacy / authored" name="loco_legacy" value="0" />
+        <combo_box.item label="Motion: Creep" name="loco_creep" value="1" />
+        <combo_box.item label="Motion: Walk" name="loco_walk" value="2" />
+        <combo_box.item label="Motion: Run" name="loco_run" value="3" />
+        <combo_box.item label="Motion: Drive" name="loco_drive" value="4" />
+        <combo_box.item label="Motion: Float" name="loco_float" value="5" />
+        <combo_box.item label="Motion: Unsteady" name="loco_unsteady" value="6" />
+        <combo_box.item label="Motion: Auto from speed" name="loco_auto" value="100" />
+    </combo_box>
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="FlycamOperatorLocomotionMode" follows="left|top"
+     height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft"
+     left="320" name="reset_FlycamOperatorLocomotionMode" tool_tip="Reset to Legacy"
+     top="86" width="12" />
+    <combo_box control_name="FlycamOperatorStyle" follows="left|top" height="20"
+     layout="topleft" left="12" name="shake_style" top="108"
+     tool_tip="The physical rig character, independent of locomotion."
+     width="304">
+        <combo_box.item label="Rig: Custom" name="style_custom" value="0" />
+        <combo_box.item label="Rig: Tripod / sticks" name="style_tripod" value="1" />
+        <combo_box.item label="Rig: Subtle handheld" name="style_subtle" value="2" />
+        <combo_box.item label="Rig: Documentary" name="style_documentary" value="3" />
+        <combo_box.item label="Rig: Run-and-gun" name="style_run_gun" value="4" />
+        <combo_box.item label="Rig: Shoulder" name="style_shoulder" value="5" />
+        <combo_box.item label="Rig: Gimbal float" name="style_gimbal" value="6" />
+        <combo_box.item label="Rig: Verite" name="style_verite" value="7" />
+        <combo_box.item label="Rig: Breathing only" name="style_breath" value="8" />
+    </combo_box>
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="FlycamOperatorStyle" follows="left|top" height="16"
+     image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="320"
+     name="reset_FlycamOperatorStyle" tool_tip="Reset rig style" top="110" width="12" />
+    <combo_box control_name="FlycamOperatorProfile" follows="left|top" height="20"
+     layout="topleft" left="12" name="shake_profile" top="132"
+     tool_tip="Performance feel used by Legacy motion; explicit locomotion modes supply their own physical profile."
+     width="304">
+        <combo_box.item label="Feel: Natural" name="profile_natural" value="0" />
+        <combo_box.item label="Feel: Locked" name="profile_locked" value="1" />
+        <combo_box.item label="Feel: Follow" name="profile_follow" value="2" />
+        <combo_box.item label="Feel: Restless" name="profile_restless" value="3" />
+        <combo_box.item label="Feel: Composed" name="profile_composed" value="4" />
+        <combo_box.item label="Feel: Drift" name="profile_drift" value="5" />
+        <combo_box.item label="Feel: Snap" name="profile_snap" value="6" />
+        <combo_box.item label="Feel: March" name="profile_march" value="7" />
+    </combo_box>
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="FlycamOperatorProfile" follows="left|top" height="16"
+     image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="320"
+     name="reset_FlycamOperatorProfile" tool_tip="Reset motion feel" top="134" width="12" />
+
+    <text follows="left|top" font="SansSerifBold" height="16"
+     layout="topleft" left="12" name="operator_rig_title" top="156"
+     width="304">Handheld rig / persona</text>
+    <check_box control_name="FlycamOperatorEnabled" follows="left|top" height="16"
+     label="Use on live flycam" layout="topleft" left="12" top="176"
+     name="FlycamOperatorEnabled" tool_tip="Apply this operator rig to the live joystick flycam."
+     width="135" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="FlycamOperatorEnabled" follows="left|top" height="16"
+     image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="149"
+     name="reset_FlycamOperatorEnabled" tool_tip="Reset to default" top="176" width="12" />
+    <check_box control_name="FlycamOperatorForceWalk" follows="left|top" height="16"
+     label="Force gait" layout="topleft" left="164" top="176"
+     name="FlycamOperatorForceWalk" tool_tip="Keep the authored Legacy gait active even below its motion gate."
+     width="135" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="FlycamOperatorForceWalk" follows="left|top" height="16"
+     image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="301"
+     name="reset_FlycamOperatorForceWalk" tool_tip="Reset to default" top="176" width="12" />
+
+    <text follows="left|top" font="SansSerifBold" height="16"
+     layout="topleft" left="12" top="204" width="316">TRANSLATION</text>
+    <slider control_name="FlycamOperatorGainSurge" decimal_digits="2"
+     follows="left|top" height="18" increment="0.05" label="Surge - forward/back"
+     label_width="126" layout="topleft" left="12" max_val="2" min_val="0"
+     name="FlycamOperatorGainSurge" top="224"
+     tool_tip="Forward/back travel, including Drive road movement." width="304" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorGainSurge"
+     follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft"
+     left="320" name="reset_FlycamOperatorGainSurge" tool_tip="Reset surge authority" top="225" width="12" />
+    <slider control_name="FlycamOperatorGainSway" decimal_digits="2"
+     follows="left|top" height="18" increment="0.05" label="Sway - left/right"
+     label_width="126" layout="topleft" left="12" max_val="2" min_val="0"
+     name="FlycamOperatorGainSway" top="247"
+     tool_tip="Side-to-side body and footfall movement." width="304" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorGainSway"
+     follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft"
+     left="320" name="reset_FlycamOperatorGainSway" tool_tip="Reset sway authority" top="248" width="12" />
+    <slider control_name="FlycamOperatorGainHeave" decimal_digits="2"
+     follows="left|top" height="18" increment="0.05" label="Heave - up/down"
+     label_width="126" layout="topleft" left="12" max_val="2" min_val="0"
+     name="FlycamOperatorGainHeave" top="270"
+     tool_tip="Step bob, breathing lift, and vehicle suspension." width="304" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorGainHeave"
+     follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft"
+     left="320" name="reset_FlycamOperatorGainHeave" tool_tip="Reset heave authority" top="271" width="12" />
+
+    <text follows="left|top" font="SansSerifBold" height="16"
+     layout="topleft" left="12" top="300" width="316">ROTATION</text>
+    <slider control_name="FlycamOperatorGainRoll" decimal_digits="2"
+     follows="left|top" height="18" increment="0.05" label="Roll - horizon tilt"
+     label_width="126" layout="topleft" left="12" max_val="2" min_val="0"
+     name="FlycamOperatorGainRoll" top="320"
+     tool_tip="Rotation around the lens axis: shoulder lean and heel strikes." width="304" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorGainRoll"
+     follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft"
+     left="320" name="reset_FlycamOperatorGainRoll" tool_tip="Reset roll authority" top="321" width="12" />
+    <slider control_name="FlycamOperatorGainPitch" decimal_digits="2"
+     follows="left|top" height="18" increment="0.05" label="Pitch - look up/down"
+     label_width="126" layout="topleft" left="12" max_val="2" min_val="0"
+     name="FlycamOperatorGainPitch" top="343"
+     tool_tip="Vertical aim wander and reactive tilt." width="304" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorGainPitch"
+     follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft"
+     left="320" name="reset_FlycamOperatorGainPitch" tool_tip="Reset pitch authority" top="344" width="12" />
+    <slider control_name="FlycamOperatorGainYaw" decimal_digits="2"
+     follows="left|top" height="18" increment="0.05" label="Yaw - look left/right"
+     label_width="126" layout="topleft" left="12" max_val="2" min_val="0"
+     name="FlycamOperatorGainYaw" top="366"
+     tool_tip="Horizontal aim wander and reactive pan." width="304" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorGainYaw"
+     follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft"
+     left="320" name="reset_FlycamOperatorGainYaw" tool_tip="Reset yaw authority" top="367" width="12" />
+
+    <text follows="left|top" font="SansSerifBold" height="16"
+     layout="topleft" left="12" top="396" width="316">LENS</text>
+    <slider control_name="FlycamOperatorGainFOV" decimal_digits="2"
+     follows="left|top" height="18" increment="0.05" label="FOV - lens breathing"
+     label_width="126" layout="topleft" left="12" max_val="2" min_val="0"
+     name="FlycamOperatorGainFOV" top="416"
+     tool_tip="Breathing zoom authority. Zero pins the multiplier to neutral; it never collapses the FOV." width="304" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorGainFOV"
+     follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft"
+     left="320" name="reset_FlycamOperatorGainFOV" tool_tip="Reset FOV authority" top="417" width="12" />
+
+    <text follows="left|top" font="SansSerifBold" height="16"
+     layout="topleft" left="12" top="446" width="316">FEEL</text>
+    <slider control_name="CinematicCamSmoothing" decimal_digits="2"
+     follows="left|top" height="18" increment="0.01" label="Smoothing (seconds)"
+     label_width="126" layout="topleft" left="12" max_val="2" min_val="0"
+     name="CinematicCamSmoothing" top="466"
+     tool_tip="How slowly the cinematic camera follows its resolved pose. Zero is rigid; higher values glide." width="304" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamSmoothing"
+     follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft"
+     left="320" name="reset_CinematicCamSmoothing" tool_tip="Reset smoothing" top="467" width="12" />
+    <spinner control_name="CinematicCamFrameOffsetUp" decimal_digits="2"
+     follows="left|top" height="18" increment="0.05" label="Frame up (meters)"
+     label_width="126" layout="topleft" left="12" max_val="3" min_val="-3"
+     name="CinematicCamFrameOffsetUp" top="490"
+     tool_tip="Raise or lower the subject framing point. Not used by Bone Lock." width="304" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamFrameOffsetUp"
+     follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft"
+     left="320" name="reset_CinematicCamFrameOffsetUp" tool_tip="Reset frame-up offset" top="491" width="12" />
+
+    <text follows="left|top" height="16" layout="topleft" left="12"
+     name="preset_lbl" top="526" width="52">My rig</text>
+    <combo_box follows="left|top" height="20" layout="topleft" left="64"
+     name="preset_combo" top="522"
+     tool_tip="Your saved full camera rigs. These are separate from the curated Shake preset looks."
+     width="124" />
+    <button follows="left|top" height="20" label="Save" layout="topleft"
+     left="194" name="btn_preset_save" top="522"
+     tool_tip="Save the complete current cinematic camera rig" width="60" />
+    <button follows="left|top" height="20" label="Del" layout="topleft"
+     left="260" name="btn_preset_delete" top="522"
+     tool_tip="Delete the selected saved rig" width="54" />
+
+    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
+     left="12" name="operator_reaction_title" top="556" width="304">Reaction &amp; authority</text>
+    <spinner control_name="FlycamOperatorMaster" decimal_digits="2" height="16"
+     increment="0.05" label="Master" label_width="72" layout="topleft"
+     left="12" top="576" min_val="0" max_val="2" name="FlycamOperatorMaster"
+     tool_tip="Master intensity for all handheld motion." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorMaster" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="149" name="reset_FlycamOperatorMaster" tool_tip="Reset to default" top="576" width="12" />
+    <spinner control_name="FlycamOperatorReactivity" decimal_digits="2" height="16"
+     increment="0.05" label="Reactivity" label_width="72" layout="topleft"
+     left="164" top="576" min_val="0" max_val="4" name="FlycamOperatorReactivity"
+     tool_tip="Overall motion-response strength." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorReactivity" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="301" name="reset_FlycamOperatorReactivity" tool_tip="Reset to default" top="576" width="12" />
+    <spinner control_name="FlycamOperatorProfileInfluence" decimal_digits="2" height="16"
+     increment="0.05" label="Profile mix" label_width="72" layout="topleft"
+     left="12" top="596" min_val="0" max_val="1" name="FlycamOperatorProfileInfluence"
+     tool_tip="How strongly the Legacy motion profile modifies the rig." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorProfileInfluence" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="149" name="reset_FlycamOperatorProfileInfluence" tool_tip="Reset to default" top="596" width="12" />
+    <spinner control_name="FlycamOperatorTimeSpeed" decimal_digits="2" height="16"
+     increment="0.05" label="Time speed" label_width="72" layout="topleft"
+     left="164" top="596" min_val="0" max_val="4" name="FlycamOperatorTimeSpeed"
+     tool_tip="Global speed multiplier for procedural phases." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorTimeSpeed" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="301" name="reset_FlycamOperatorTimeSpeed" tool_tip="Reset to default" top="596" width="12" />
+    <spinner control_name="FlycamOperatorSmoothing" decimal_digits="2" height="16"
+     increment="0.05" label="Smoothing" label_width="72" layout="topleft"
+     left="12" top="616" min_val="0" max_val="2" name="FlycamOperatorSmoothing"
+     tool_tip="Trim for the motion input EMA." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorSmoothing" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="149" name="reset_FlycamOperatorSmoothing" tool_tip="Reset to default" top="616" width="12" />
+    <spinner control_name="FlycamOperatorIdleIntensity" decimal_digits="2" height="16"
+     increment="0.05" label="Idle" label_width="72" layout="topleft"
+     left="164" top="616" min_val="0" max_val="4" name="FlycamOperatorIdleIntensity"
+     tool_tip="Legacy idle wander intensity." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorIdleIntensity" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="301" name="reset_FlycamOperatorIdleIntensity" tool_tip="Reset to default" top="616" width="12" />
+    <spinner control_name="FlycamOperatorEnergyTrim" decimal_digits="2" height="16"
+     increment="0.05" label="Energy" label_width="72" layout="topleft"
+     left="12" top="636" min_val="0" max_val="4" name="FlycamOperatorEnergyTrim"
+     tool_tip="Trim for speed-reactive energy." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorEnergyTrim" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="149" name="reset_FlycamOperatorEnergyTrim" tool_tip="Reset to default" top="636" width="12" />
+    <spinner control_name="FlycamOperatorOnset" decimal_digits="2" height="16"
+     increment="0.05" label="Onset" label_width="72" layout="topleft"
+     left="164" top="636" min_val="0" max_val="4" name="FlycamOperatorOnset"
+     tool_tip="Acceleration whip amount." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorOnset" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="301" name="reset_FlycamOperatorOnset" tool_tip="Reset to default" top="636" width="12" />
+    <spinner control_name="FlycamOperatorDrag" decimal_digits="2" height="16"
+     increment="0.05" label="Drag" label_width="72" layout="topleft"
+     left="12" top="656" min_val="0" max_val="4" name="FlycamOperatorDrag"
+     tool_tip="Lead/lag framing drag amount." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorDrag" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="149" name="reset_FlycamOperatorDrag" tool_tip="Reset to default" top="656" width="12" />
+    <spinner control_name="FlycamOperatorSeed" decimal_digits="0" height="16"
+     increment="1" label="Seed" label_width="72" layout="topleft"
+     left="164" top="656" min_val="-1000000" max_val="1000000" name="FlycamOperatorSeed"
+     tool_tip="Deterministic procedural noise seed." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorSeed" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="301" name="reset_FlycamOperatorSeed" tool_tip="Reset to default" top="656" width="12" />
+
+    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
+     left="12" name="operator_motion_title" top="676" width="304">Motion feel</text>
+    <spinner control_name="FlycamOperatorMotionCalm" decimal_digits="2" height="16" increment="0.05" label="Motion calm" label_width="72" layout="topleft" left="12" top="696" min_val="0" max_val="4" name="FlycamOperatorMotionCalm" tool_tip="How strongly motion calms high-frequency tremor." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorMotionCalm" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="149" name="reset_FlycamOperatorMotionCalm" tool_tip="Reset to default" top="696" width="12" />
+    <spinner control_name="FlycamOperatorMotionPan" decimal_digits="2" height="16" increment="0.05" label="Motion pan" label_width="72" layout="topleft" left="164" top="696" min_val="0" max_val="2" name="FlycamOperatorMotionPan" tool_tip="Motion response on yaw/pan." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorMotionPan" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="301" name="reset_FlycamOperatorMotionPan" tool_tip="Reset to default" top="696" width="12" />
+    <spinner control_name="FlycamOperatorMotionTilt" decimal_digits="2" height="16" increment="0.05" label="Motion tilt" label_width="72" layout="topleft" left="12" top="716" min_val="0" max_val="2" name="FlycamOperatorMotionTilt" tool_tip="Motion response on pitch/tilt." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorMotionTilt" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="149" name="reset_FlycamOperatorMotionTilt" tool_tip="Reset to default" top="716" width="12" />
+    <spinner control_name="FlycamOperatorMotionRoll" decimal_digits="2" height="16" increment="0.05" label="Motion roll" label_width="72" layout="topleft" left="164" top="716" min_val="0" max_val="2" name="FlycamOperatorMotionRoll" tool_tip="Motion response on roll." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorMotionRoll" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="301" name="reset_FlycamOperatorMotionRoll" tool_tip="Reset to default" top="716" width="12" />
+    <spinner control_name="FlycamOperatorMotionBreath" decimal_digits="2" height="16" increment="0.05" label="Motion breath" label_width="72" layout="topleft" left="12" top="736" min_val="0" max_val="2" name="FlycamOperatorMotionBreath" tool_tip="Motion response on the breathing pulse." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorMotionBreath" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="149" name="reset_FlycamOperatorMotionBreath" tool_tip="Reset to default" top="736" width="12" />
+
+    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
+     left="12" name="operator_settle_title" top="756" width="304">Settle &amp; damping</text>
+    <spinner control_name="FlycamOperatorTremorDamping" decimal_digits="2" height="16" increment="0.05" label="Tremor damp" label_width="72" layout="topleft" left="12" top="776" min_val="0" max_val="1" name="FlycamOperatorTremorDamping" tool_tip="Legacy high-frequency tremor damping." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorTremorDamping" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="149" name="reset_FlycamOperatorTremorDamping" tool_tip="Reset to default" top="776" width="12" />
+    <spinner control_name="FlycamOperatorSettle" decimal_digits="2" height="16" increment="0.05" label="Settle" label_width="72" layout="topleft" left="164" top="776" min_val="0" max_val="4" name="FlycamOperatorSettle" tool_tip="Stop-bounce amount." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorSettle" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="301" name="reset_FlycamOperatorSettle" tool_tip="Reset to default" top="776" width="12" />
+    <spinner control_name="FlycamOperatorSettleFreq" decimal_digits="2" height="16" increment="0.1" label="Settle Hz" label_width="72" layout="topleft" left="12" top="796" min_val="0" max_val="30" name="FlycamOperatorSettleFreq" tool_tip="Stop-bounce frequency." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorSettleFreq" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="149" name="reset_FlycamOperatorSettleFreq" tool_tip="Reset to default" top="796" width="12" />
+    <spinner control_name="FlycamOperatorSettleDecay" decimal_digits="2" height="16" increment="0.01" label="Settle decay" label_width="72" layout="topleft" left="164" top="796" min_val="0" max_val="1" name="FlycamOperatorSettleDecay" tool_tip="Per-frame settle-envelope retention." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorSettleDecay" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="301" name="reset_FlycamOperatorSettleDecay" tool_tip="Reset to default" top="796" width="12" />
+
+    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
+     left="12" name="operator_pan_title" top="816" width="304">Pan / tilt</text>
+    <combo_box control_name="FlycamOperatorPanMode" follows="left|top" height="20" layout="topleft" left="12" top="836" name="FlycamOperatorPanMode" tool_tip="Procedural lateral wander character." width="135">
+        <combo_box.item label="Pan: Smooth fBm" name="op_pan_smooth" value="0" />
+        <combo_box.item label="Pan: Weave" name="op_pan_weave" value="1" />
+        <combo_box.item label="Pan: Raw fBm" name="op_pan_raw" value="2" />
+    </combo_box>
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorPanMode" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="149" name="reset_FlycamOperatorPanMode" tool_tip="Reset to default" top="838" width="12" />
+    <spinner control_name="FlycamOperatorPanAmount" decimal_digits="2" height="16" increment="0.05" label="Pan amount" label_width="72" layout="topleft" left="164" top="836" min_val="0" max_val="10" name="FlycamOperatorPanAmount" tool_tip="Authored yaw wander in degrees." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorPanAmount" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="301" name="reset_FlycamOperatorPanAmount" tool_tip="Reset to default" top="836" width="12" />
+    <spinner control_name="FlycamOperatorPanSmoothness" decimal_digits="2" height="16" increment="0.05" label="Pan smooth" label_width="72" layout="topleft" left="12" top="856" min_val="0" max_val="1" name="FlycamOperatorPanSmoothness" tool_tip="Lateral high-frequency smoothing." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorPanSmoothness" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="149" name="reset_FlycamOperatorPanSmoothness" tool_tip="Reset to default" top="856" width="12" />
+    <spinner control_name="FlycamOperatorPanReactSmoothing" decimal_digits="2" height="16" increment="0.05" label="Pan react" label_width="72" layout="topleft" left="164" top="856" min_val="0" max_val="1" name="FlycamOperatorPanReactSmoothing" tool_tip="Extra lateral smoothing during pans." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorPanReactSmoothing" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="301" name="reset_FlycamOperatorPanReactSmoothing" tool_tip="Reset to default" top="856" width="12" />
+    <spinner control_name="FlycamOperatorPanTiltFreq" decimal_digits="2" height="16" increment="0.05" label="Pan/tilt Hz" label_width="72" layout="topleft" left="12" top="876" min_val="0" max_val="20" name="FlycamOperatorPanTiltFreq" tool_tip="Legacy pan/tilt wander frequency." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorPanTiltFreq" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="149" name="reset_FlycamOperatorPanTiltFreq" tool_tip="Reset to default" top="876" width="12" />
+    <spinner control_name="FlycamOperatorTiltAmount" decimal_digits="2" height="16" increment="0.05" label="Tilt amount" label_width="72" layout="topleft" left="164" top="876" min_val="0" max_val="10" name="FlycamOperatorTiltAmount" tool_tip="Authored pitch wander in degrees." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorTiltAmount" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="301" name="reset_FlycamOperatorTiltAmount" tool_tip="Reset to default" top="876" width="12" />
+
+    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
+     left="12" name="operator_roll_title" top="896" width="304">Roll detail</text>
+    <spinner control_name="FlycamOperatorRollAmount" decimal_digits="2" height="16" increment="0.05" label="Roll amount" label_width="72" layout="topleft" left="12" top="916" min_val="0" max_val="10" name="FlycamOperatorRollAmount" tool_tip="Authored roll wander in degrees." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorRollAmount" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="149" name="reset_FlycamOperatorRollAmount" tool_tip="Reset to default" top="916" width="12" />
+    <spinner control_name="FlycamOperatorRollFreq" decimal_digits="2" height="16" increment="0.05" label="Roll Hz" label_width="72" layout="topleft" left="164" top="916" min_val="0" max_val="20" name="FlycamOperatorRollFreq" tool_tip="Legacy roll wander frequency." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorRollFreq" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="301" name="reset_FlycamOperatorRollFreq" tool_tip="Reset to default" top="916" width="12" />
+    <spinner control_name="FlycamOperatorRollDamping" decimal_digits="2" height="16" increment="0.05" label="Roll damp" label_width="72" layout="topleft" left="12" top="936" min_val="0" max_val="1" name="FlycamOperatorRollDamping" tool_tip="High-frequency roll damping." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorRollDamping" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="149" name="reset_FlycamOperatorRollDamping" tool_tip="Reset to default" top="936" width="12" />
+    <spinner control_name="FlycamOperatorStepRoll" decimal_digits="2" height="16" increment="0.05" label="Step roll" label_width="72" layout="topleft" left="164" top="936" min_val="0" max_val="10" name="FlycamOperatorStepRoll" tool_tip="Legacy heel-strike roll in degrees." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorStepRoll" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="301" name="reset_FlycamOperatorStepRoll" tool_tip="Reset to default" top="936" width="12" />
+
+    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
+     left="12" name="operator_reference_title" top="956" width="304">Reference speeds</text>
+    <spinner control_name="FlycamOperatorRefLinearSpeed" decimal_digits="2" height="16" increment="0.1" label="Ref linear" label_width="72" layout="topleft" left="12" top="976" min_val="0.01" max_val="100" name="FlycamOperatorRefLinearSpeed" tool_tip="Linear speed normalizer in m/s; Auto thresholds use this." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorRefLinearSpeed" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="149" name="reset_FlycamOperatorRefLinearSpeed" tool_tip="Reset to default" top="976" width="12" />
+    <spinner control_name="FlycamOperatorRefAngularSpeed" decimal_digits="1" height="16" increment="5" label="Ref angular" label_width="72" layout="topleft" left="164" top="976" min_val="1" max_val="720" name="FlycamOperatorRefAngularSpeed" tool_tip="Angular speed normalizer in degrees/s." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorRefAngularSpeed" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="301" name="reset_FlycamOperatorRefAngularSpeed" tool_tip="Reset to default" top="976" width="12" />
+
+    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
+     left="12" name="operator_breathing_title" top="996" width="304">Breathing</text>
+    <spinner control_name="FlycamOperatorBreathAmount" decimal_digits="2" height="16" increment="0.1" label="Breath %" label_width="72" layout="topleft" left="12" top="1016" min_val="0" max_val="20" name="FlycamOperatorBreathAmount" tool_tip="Legacy FOV breathing amplitude in percent." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorBreathAmount" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="149" name="reset_FlycamOperatorBreathAmount" tool_tip="Reset to default" top="1016" width="12" />
+    <spinner control_name="FlycamOperatorBreathFreq" decimal_digits="2" height="16" increment="0.05" label="Breath Hz" label_width="72" layout="topleft" left="164" top="1016" min_val="0" max_val="5" name="FlycamOperatorBreathFreq" tool_tip="Legacy breathing frequency." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorBreathFreq" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="301" name="reset_FlycamOperatorBreathFreq" tool_tip="Reset to default" top="1016" width="12" />
+    <spinner control_name="FlycamOperatorBreathLift" decimal_digits="2" height="16" increment="0.05" label="Breath lift" label_width="72" layout="topleft" left="12" top="1036" min_val="-2" max_val="2" name="FlycamOperatorBreathLift" tool_tip="Vertical lift coupled to breathing." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorBreathLift" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="149" name="reset_FlycamOperatorBreathLift" tool_tip="Reset to default" top="1036" width="12" />
+
+    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
+     left="12" name="operator_gait_title" top="1056" width="304">Legacy gait tuning</text>
+    <spinner control_name="FlycamOperatorWalkCadence" decimal_digits="2" height="16" increment="0.05" label="Cadence" label_width="72" layout="topleft" left="12" top="1076" min_val="0" max_val="10" name="FlycamOperatorWalkCadence" tool_tip="Legacy gait base cadence." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorWalkCadence" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="149" name="reset_FlycamOperatorWalkCadence" tool_tip="Reset to default" top="1076" width="12" />
+    <spinner control_name="FlycamOperatorCadenceDrive" decimal_digits="2" height="16" increment="0.05" label="Speed drive" label_width="72" layout="topleft" left="164" top="1076" min_val="0" max_val="4" name="FlycamOperatorCadenceDrive" tool_tip="Legacy cadence increase with forward speed." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorCadenceDrive" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="301" name="reset_FlycamOperatorCadenceDrive" tool_tip="Reset to default" top="1076" width="12" />
+    <spinner control_name="FlycamOperatorForwardWalkBias" decimal_digits="2" height="16" increment="0.05" label="Forward gait" label_width="72" layout="topleft" left="12" top="1096" min_val="0" max_val="4" name="FlycamOperatorForwardWalkBias" tool_tip="Forward-motion contribution to gait." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorForwardWalkBias" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="149" name="reset_FlycamOperatorForwardWalkBias" tool_tip="Reset to default" top="1096" width="12" />
+    <spinner control_name="FlycamOperatorLateralWalkBias" decimal_digits="2" height="16" increment="0.05" label="Lateral gait" label_width="72" layout="topleft" left="164" top="1096" min_val="0" max_val="4" name="FlycamOperatorLateralWalkBias" tool_tip="Lateral-motion contribution to gait." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorLateralWalkBias" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="301" name="reset_FlycamOperatorLateralWalkBias" tool_tip="Reset to default" top="1096" width="12" />
+    <spinner control_name="FlycamOperatorLateralStep" decimal_digits="3" height="16" increment="0.001" label="Step sway m" label_width="72" layout="topleft" left="12" top="1116" min_val="0" max_val="0.5" name="FlycamOperatorLateralStep" tool_tip="Legacy lateral footfall displacement in meters." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorLateralStep" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="149" name="reset_FlycamOperatorLateralStep" tool_tip="Reset to default" top="1116" width="12" />
+    <spinner control_name="FlycamOperatorGaitCoupling" decimal_digits="2" height="16" increment="0.05" label="Gait couple" label_width="72" layout="topleft" left="164" top="1116" min_val="0" max_val="4" name="FlycamOperatorGaitCoupling" tool_tip="Overall gait coupling trim." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorGaitCoupling" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="301" name="reset_FlycamOperatorGaitCoupling" tool_tip="Reset to default" top="1116" width="12" />
+    <spinner control_name="FlycamOperatorStepBob" decimal_digits="3" height="16" increment="0.001" label="Step bob m" label_width="72" layout="topleft" left="12" top="1136" min_val="0" max_val="0.5" name="FlycamOperatorStepBob" tool_tip="Legacy vertical footfall displacement in meters." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorStepBob" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="149" name="reset_FlycamOperatorStepBob" tool_tip="Reset to default" top="1136" width="12" />
+
+    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
+     left="12" name="operator_auto_title" top="1156" width="304">Auto locomotion dwell</text>
+    <spinner control_name="FlycamOperatorAutoWalkEnter" decimal_digits="2" height="16" increment="0.01" label="Walk enter" label_width="72" layout="topleft" left="12" top="1176" min_val="0" max_val="4" name="FlycamOperatorAutoWalkEnter" tool_tip="Creep-to-Walk normalized linear-speed threshold." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorAutoWalkEnter" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="149" name="reset_FlycamOperatorAutoWalkEnter" tool_tip="Reset to default" top="1176" width="12" />
+    <spinner control_name="FlycamOperatorAutoWalkExit" decimal_digits="2" height="16" increment="0.01" label="Walk exit" label_width="72" layout="topleft" left="164" top="1176" min_val="0" max_val="4" name="FlycamOperatorAutoWalkExit" tool_tip="Walk-to-Creep normalized linear-speed threshold." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorAutoWalkExit" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="301" name="reset_FlycamOperatorAutoWalkExit" tool_tip="Reset to default" top="1176" width="12" />
+    <spinner control_name="FlycamOperatorAutoWalkEnterDwell" decimal_digits="2" height="16" increment="0.05" label="Walk in sec" label_width="72" layout="topleft" left="12" top="1196" min_val="0" max_val="10" name="FlycamOperatorAutoWalkEnterDwell" tool_tip="Continuous dwell before Creep becomes Walk." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorAutoWalkEnterDwell" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="149" name="reset_FlycamOperatorAutoWalkEnterDwell" tool_tip="Reset to default" top="1196" width="12" />
+    <spinner control_name="FlycamOperatorAutoWalkExitDwell" decimal_digits="2" height="16" increment="0.05" label="Walk out sec" label_width="72" layout="topleft" left="164" top="1196" min_val="0" max_val="10" name="FlycamOperatorAutoWalkExitDwell" tool_tip="Continuous dwell before Walk becomes Creep." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorAutoWalkExitDwell" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="301" name="reset_FlycamOperatorAutoWalkExitDwell" tool_tip="Reset to default" top="1196" width="12" />
+    <spinner control_name="FlycamOperatorAutoRunEnter" decimal_digits="2" height="16" increment="0.01" label="Run enter" label_width="72" layout="topleft" left="12" top="1216" min_val="0" max_val="4" name="FlycamOperatorAutoRunEnter" tool_tip="Walk-to-Run normalized linear-speed threshold." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorAutoRunEnter" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="149" name="reset_FlycamOperatorAutoRunEnter" tool_tip="Reset to default" top="1216" width="12" />
+    <spinner control_name="FlycamOperatorAutoRunExit" decimal_digits="2" height="16" increment="0.01" label="Run exit" label_width="72" layout="topleft" left="164" top="1216" min_val="0" max_val="4" name="FlycamOperatorAutoRunExit" tool_tip="Run-to-Walk normalized linear-speed threshold." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorAutoRunExit" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="301" name="reset_FlycamOperatorAutoRunExit" tool_tip="Reset to default" top="1216" width="12" />
+    <spinner control_name="FlycamOperatorAutoRunEnterDwell" decimal_digits="2" height="16" increment="0.05" label="Run in sec" label_width="72" layout="topleft" left="12" top="1236" min_val="0" max_val="10" name="FlycamOperatorAutoRunEnterDwell" tool_tip="Continuous dwell before Walk becomes Run." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorAutoRunEnterDwell" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="149" name="reset_FlycamOperatorAutoRunEnterDwell" tool_tip="Reset to default" top="1236" width="12" />
+    <spinner control_name="FlycamOperatorAutoRunExitDwell" decimal_digits="2" height="16" increment="0.05" label="Run out sec" label_width="72" layout="topleft" left="164" top="1236" min_val="0" max_val="10" name="FlycamOperatorAutoRunExitDwell" tool_tip="Continuous dwell before Run becomes Walk." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorAutoRunExitDwell" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="301" name="reset_FlycamOperatorAutoRunExitDwell" tool_tip="Reset to default" top="1236" width="12" />
+
+    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
+     left="12" name="operator_recompose_title" top="1256" width="304">Recompose</text>
+    <spinner control_name="FlycamOperatorRecomposeAmount" decimal_digits="2" height="16" increment="0.05" label="Recompose" label_width="72" layout="topleft" left="12" top="1276" min_val="0" max_val="10" name="FlycamOperatorRecomposeAmount" tool_tip="Legacy sparse reframing amount in degrees." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorRecomposeAmount" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="149" name="reset_FlycamOperatorRecomposeAmount" tool_tip="Reset to default" top="1276" width="12" />
+    <spinner control_name="FlycamOperatorRecomposeInterval" decimal_digits="1" height="16" increment="0.5" label="Recomp sec" label_width="72" layout="topleft" left="164" top="1276" min_val="0.5" max_val="120" name="FlycamOperatorRecomposeInterval" tool_tip="Legacy sparse reframing interval." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorRecomposeInterval" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="301" name="reset_FlycamOperatorRecomposeInterval" tool_tip="Reset to default" top="1276" width="12" />
+
+    <!-- Required by the shared panel controller; mode resets stay on Cinematic. -->
+    <button height="1" layout="topleft" left="0" name="btn_reset_mode"
+     top="1300" visible="false" width="1" />
+    <button height="1" layout="topleft" left="0" name="btn_reset_all"
+     top="1300" visible="false" width="1" />
+    </panel>
+</panel>

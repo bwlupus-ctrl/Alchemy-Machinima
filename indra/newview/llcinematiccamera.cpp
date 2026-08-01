@@ -13,11 +13,15 @@
 
 #include <cmath>
 
+#include "alcameracurve.h"
+#include "aldirectorswitcher.h"
 #include "llcameraoperator.h"
 #include "llappviewer.h"            // gFrameIntervalSeconds
-#include "lldirectorcast.h"         // [Director] Subject A/B
+#include "lldirectorcast.h"         // [Director] Subject A/B/C/D
 #include "lljoint.h"
 #include "llmath.h"
+#include "llpanel.h"
+#include "llpresentationtime.h"
 #include "llselectmgr.h"
 #include "llviewerobjectlist.h"     // gObjectList (locked follow target)
 #include "llviewercamera.h"
@@ -30,9 +34,191 @@
 namespace
 {
 constexpr F32 PHASE_WRAP = 4096.f;  // seconds of pattern clock before wrap
+constexpr F32 AUTO_FRAME_MIN_DISTANCE = 0.3f;
+constexpr F32 AUTO_FRAME_MAX_DISTANCE = 64.f;
+constexpr F32 AUTO_FRAME_CROWN = 0.18f;
+constexpr F32 AUTO_FRAME_EYE_BAND = 0.18f;
+
+// The shared Frame panel is embedded directly by the Director Console. Keep
+// the mode-2-only timing row synchronized in every live panel instance.
+class ALCineCamFramePanel final : public LLPanel
+{
+public:
+    bool postBuild() override
+    {
+        if (LLControlVariable* control =
+                gSavedSettings.getControl("CinematicAutoFrameSettleMode"))
+        {
+            mSettleModeConnection = control->getCommitSignal()->connect(
+                [this](LLControlVariable*, const LLSD&, const LLSD&)
+                {
+                    updateSettleTimeEnabled();
+                });
+        }
+        if (LLControlVariable* control =
+                gSavedSettings.getControl("CinematicAutoFrameEnabled"))
+        {
+            mAutoFrameEnabledConnection = control->getCommitSignal()->connect(
+                [this](LLControlVariable*, const LLSD&, const LLSD&)
+                {
+                    updateSettleTimeEnabled();
+                });
+        }
+        if (LLControlVariable* control =
+                gSavedSettings.getControl("CinematicAutoFrameSettleCurve"))
+        {
+            mSettleCurveConnection = control->getCommitSignal()->connect(
+                [this](LLControlVariable*, const LLSD&, const LLSD&)
+                {
+                    updateSettleTimeEnabled();
+                });
+        }
+        updateSettleTimeEnabled();
+        return true;
+    }
+
+private:
+    void updateSettleTimeEnabled()
+    {
+        const bool enabled =
+            gSavedSettings.getBOOL("CinematicAutoFrameEnabled") &&
+            gSavedSettings.getS32("CinematicAutoFrameSettleMode") == 2;
+        getChild<LLView>("auto_frame_settle_seconds")->setEnabled(enabled);
+        getChild<LLView>("reset_CinematicAutoFrameSettleSeconds")
+            ->setEnabled(enabled);
+        const bool custom_curve =
+            gSavedSettings.getBOOL("CinematicAutoFrameEnabled") &&
+            gSavedSettings.getS32("CinematicAutoFrameSettleCurve") ==
+                ALCameraCurve::CUSTOM_BEZIER;
+        const char* curve_spinners[] = {
+            "auto_frame_settle_bezier_x1",
+            "auto_frame_settle_bezier_y1",
+            "auto_frame_settle_bezier_x2",
+            "auto_frame_settle_bezier_y2",
+        };
+        for (const char* name : curve_spinners)
+        {
+            getChild<LLView>(name)->setEnabled(custom_curve);
+        }
+    }
+
+    boost::signals2::scoped_connection mSettleModeConnection;
+    boost::signals2::scoped_connection mAutoFrameEnabledConnection;
+    boost::signals2::scoped_connection mSettleCurveConnection;
+};
+
+static LLPanelInjector<ALCineCamFramePanel> sCineCamFramePanel(
+    "panel_cinecam_frame");
 
 inline F32 cc_frac(F32 x)               { return x - floorf(x); }
 inline F32 cc_lerp(F32 a, F32 b, F32 u) { return a + (b - a) * u; }
+inline F32 cc_smootherstep(F32 u)
+{
+    u = llclamp(u, 0.f, 1.f);
+    return u * u * u * (u * (u * 6.f - 15.f) + 10.f);
+}
+
+// Preserve the mode-authored vertical FOV at the native window gate, then add
+// the image-plane field change caused by mounting the same focal length behind
+// a target gate with a different width. The virtual film back is 24 mm high,
+// so its width is 24 * aspect and its half-height is 12 mm:
+//
+//   p_out = tan(vfov_plain / 2) + (12 / focal_mm) * (target / window - 1)
+//   vfov_out = 2 * atan(p_out)
+//
+// This differential form is exactly identity at target == window and retains
+// every cinematic mode's existing zoom/FOV authorship instead of replacing it.
+bool cc_targetFrameAspect(F32& target_aspect)
+{
+    static LLCachedControl<F32> configured_aspect(
+        gSavedSettings, "CinematicFrameAspectRatio", 0.f);
+    static LLCachedControl<F32> custom_aspect(
+        gSavedSettings, "CinematicFrameCustomRatio", 2.35f);
+
+    target_aspect = configured_aspect;
+    if (target_aspect == 0.f)
+    {
+        return false;
+    }
+    if (target_aspect < 0.f)
+    {
+        target_aspect = custom_aspect;
+    }
+    return true;
+}
+
+F32 cc_applyFrameLens(F32 plain_fov, LLViewerCamera* cam)
+{
+    static LLCachedControl<bool> lens_enabled(
+        gSavedSettings, "CinematicFrameLensEnabled", false);
+    if (!lens_enabled)
+    {
+        return plain_fov; // hard default-off identity path
+    }
+
+    static LLCachedControl<F32> focal_length_mm(
+        gSavedSettings, "CinematicFrameFocalLengthMM", 50.f);
+
+    F32 target_aspect = 0.f;
+    if (!cc_targetFrameAspect(target_aspect))
+    {
+        return plain_fov; // Off / Native is the original path byte-for-byte
+    }
+
+    const F32 window_aspect = cam->getAspect();
+    const F32 focal_mm = focal_length_mm;
+    if (!std::isfinite(plain_fov) || !std::isfinite(target_aspect) ||
+        !std::isfinite(window_aspect) || !std::isfinite(focal_mm) ||
+        target_aspect <= 0.f || window_aspect <= 0.f || focal_mm <= 0.f)
+    {
+        const F32 fallback = std::isfinite(plain_fov)
+            ? plain_fov : cam->getDefaultFOV();
+        return llclamp(fallback, cam->getMinView(), cam->getMaxView());
+    }
+
+    // Avoid a tan/atan round trip at the native gate: this is an exact
+    // identity for Custom == window and a stable identity for decimal labels
+    // such as 1.78 on a 16:9 window.
+    if (fabsf(target_aspect - window_aspect) <=
+        0.0001f * llmax(target_aspect, window_aspect))
+    {
+        return llclamp(plain_fov, cam->getMinView(), cam->getMaxView());
+    }
+
+    const F32 projected_half_height =
+        tanf(plain_fov * 0.5f) +
+        (12.f / focal_mm) * (target_aspect / window_aspect - 1.f);
+    const F32 framed_fov = 2.f * atanf(projected_half_height);
+    if (!std::isfinite(projected_half_height) || projected_half_height <= 0.f ||
+        !std::isfinite(framed_fov))
+    {
+        return llclamp(plain_fov, cam->getMinView(), cam->getMaxView());
+    }
+    return llclamp(framed_fov, cam->getMinView(), cam->getMaxView());
+}
+
+// Vertical FOV of the pixels that survive the delivery-frame crop. A wider
+// target aspect letterboxes the rendered view and therefore retains only the
+// window_aspect/target_aspect fraction of its image-plane half-height. A
+// narrower target pillarboxes and retains the full vertical field.
+F32 cc_retainedFrameFov(F32 plain_fov, LLViewerCamera* cam)
+{
+    const F32 rendered_fov = cc_applyFrameLens(plain_fov, cam);
+    const F32 window_aspect = cam->getAspect();
+    F32 target_aspect = window_aspect;
+    cc_targetFrameAspect(target_aspect);
+    if (!std::isfinite(rendered_fov) || !std::isfinite(window_aspect) ||
+        !std::isfinite(target_aspect) || window_aspect <= 0.f ||
+        target_aspect <= 0.f)
+    {
+        return rendered_fov;
+    }
+    const F32 retained_height = llmin(1.f, window_aspect / target_aspect);
+    const F32 framed_fov = 2.f * atanf(
+        tanf(rendered_fov * 0.5f) * retained_height);
+    return std::isfinite(framed_fov) && framed_fov > 0.f
+        ? framed_fov : rendered_fov;
+}
 
 LLVector3 cc_subjectBase(LLVOAvatar* av)
 {
@@ -54,6 +240,168 @@ LLVector3 cc_scaleAboutSubjectBase(LLVOAvatar* av, const LLVector3& point)
     }
     const LLVector3 base = cc_subjectBase(av);
     return base + (point - base) * scale;
+}
+
+bool cc_jointPoint(LLVOAvatar* av, const char* name, LLVector3& point)
+{
+    LLJoint* joint = av->getJoint(name);
+    if (!joint)
+    {
+        return false;
+    }
+    point = cc_scaleAboutSubjectBase(av, joint->getWorldPosition());
+    return point.isFinite();
+}
+
+bool cc_jointMidpoint(LLVOAvatar* av, const char* left_name,
+                      const char* right_name, LLVector3& point)
+{
+    LLVector3 left;
+    LLVector3 right;
+    if (!cc_jointPoint(av, left_name, left) ||
+        !cc_jointPoint(av, right_name, right))
+    {
+        return false;
+    }
+    point = (left + right) * 0.5f;
+    return point.isFinite();
+}
+
+enum EAutoFrameShot
+{
+    AUTO_SHOT_FULL,
+    AUTO_SHOT_MEDIUM,
+    AUTO_SHOT_CLOSE,
+    AUTO_SHOT_EYES,
+    AUTO_SHOT_PRIMARY_FACE,
+    AUTO_SHOT_NONE
+};
+
+EAutoFrameShot cc_autoFrameShot(S32 mode)
+{
+    switch (mode)
+    {
+        case LLCinematicCamera::MODE_BONE_LOCK:
+        case LLCinematicCamera::MODE_CRANE:
+        case LLCinematicCamera::MODE_DOLLY_ZOOM:
+        case LLCinematicCamera::MODE_PUSH_IN:
+        case LLCinematicCamera::MODE_OVERHEAD:
+        case LLCinematicCamera::MODE_REVEAL:
+        case LLCinematicCamera::MODE_PULL_BACK:
+        case LLCinematicCamera::MODE_SPIRAL:
+        case LLCinematicCamera::MODE_PEDESTAL:
+        case LLCinematicCamera::MODE_CORKSCREW:
+        case LLCinematicCamera::MODE_FISHEYE_LUNGE:
+        case LLCinematicCamera::MODE_BOOST_RISE:
+        case LLCinematicCamera::MODE_TILT_WHIP:
+        case LLCinematicCamera::MODE_BODY_HELIX:
+        case LLCinematicCamera::MODE_DESCENT:
+        case LLCinematicCamera::MODE_BREATHING_HOLD:
+            return AUTO_SHOT_NONE;
+        case LLCinematicCamera::MODE_ECU_EYES:
+        case LLCinematicCamera::MODE_FLOATING_ECU:
+            return AUTO_SHOT_EYES;
+        case LLCinematicCamera::MODE_OTS:
+        case LLCinematicCamera::MODE_TWO_SHOT:
+            return AUTO_SHOT_PRIMARY_FACE;
+        case LLCinematicCamera::MODE_CRASH_ZOOM:
+        case LLCinematicCamera::MODE_SLOW_ZOOM:
+        case LLCinematicCamera::MODE_DETAIL_SWEEP:
+        case LLCinematicCamera::MODE_STATIC_CLOSE:
+        case LLCinematicCamera::MODE_STATIC_PROFILE_L:
+        case LLCinematicCamera::MODE_STATIC_PROFILE_R:
+            return AUTO_SHOT_CLOSE;
+        case LLCinematicCamera::MODE_LOW_HERO:
+        case LLCinematicCamera::MODE_WHIP_ARC:
+        case LLCinematicCamera::MODE_ARC:
+        case LLCinematicCamera::MODE_LEAD_FOLLOW:
+        case LLCinematicCamera::MODE_BARREL_ROLL:
+        case LLCinematicCamera::MODE_PENDULUM:
+        case LLCinematicCamera::MODE_PARALLAX_SLIDE:
+        case LLCinematicCamera::MODE_STATIC_MEDIUM:
+        case LLCinematicCamera::MODE_STATIC_LOW:
+        case LLCinematicCamera::MODE_STATIC_HIGH:
+            return AUTO_SHOT_MEDIUM;
+        default:
+            return AUTO_SHOT_FULL;
+    }
+}
+
+bool cc_autoFrameAnchors(LLVOAvatar* av, S32 mode, LLVector3& top,
+                         LLVector3& bottom, bool& eye_level)
+{
+    const EAutoFrameShot shot = cc_autoFrameShot(mode);
+    const F32 subject_scale = av->getUniformScale();
+    eye_level = shot == AUTO_SHOT_EYES;
+    if (shot == AUTO_SHOT_NONE || !std::isfinite(subject_scale) ||
+        subject_scale <= 0.01f)
+    {
+        return false;
+    }
+
+    if (shot == AUTO_SHOT_EYES)
+    {
+        LLVector3 left_eye;
+        LLVector3 right_eye;
+        F32 eye_band = AUTO_FRAME_EYE_BAND * subject_scale;
+        if (cc_jointPoint(av, "mEyeLeft", left_eye) &&
+            cc_jointPoint(av, "mEyeRight", right_eye))
+        {
+            top = (left_eye + right_eye) * 0.5f;
+            // Eye separation is the skeleton's available face-scale measure;
+            // turn it into a compact vertical eye band with sane limits.
+            eye_band = llclamp(
+                (left_eye - right_eye).magVec() * 1.5f,
+                0.12f * subject_scale, 0.24f * subject_scale);
+        }
+        else if (!cc_jointPoint(av, "mHead", top))
+        {
+            return false;
+        }
+        bottom = top - LLVector3(0.f, 0.f, eye_band);
+        return bottom.isFinite();
+    }
+
+    if (!cc_jointPoint(av, "mHead", top))
+    {
+        return false;
+    }
+    top.mV[VZ] += AUTO_FRAME_CROWN * subject_scale;
+
+    if (shot == AUTO_SHOT_FULL)
+    {
+        if (!cc_jointMidpoint(av, "mAnkleLeft", "mAnkleRight", bottom))
+        {
+            bottom = cc_subjectBase(av);
+        }
+    }
+    else if (shot == AUTO_SHOT_MEDIUM)
+    {
+        LLVector3 hips;
+        LLVector3 knees;
+        if (cc_jointMidpoint(av, "mHipLeft", "mHipRight", hips) &&
+            cc_jointMidpoint(av, "mKneeLeft", "mKneeRight", knees))
+        {
+            bottom = (hips + knees) * 0.5f;
+        }
+        else if (!cc_jointPoint(av, "mPelvis", bottom))
+        {
+            return false;
+        }
+    }
+    else
+    {
+        if (!cc_jointMidpoint(av, "mCollarLeft", "mCollarRight", bottom) &&
+            !cc_jointPoint(av, "mChest", bottom) &&
+            !cc_jointMidpoint(av, "mShoulderLeft", "mShoulderRight", bottom))
+        {
+            return false;
+        }
+    }
+    const F32 height = top.mV[VZ] - bottom.mV[VZ];
+    return top.isFinite() && bottom.isFinite() && height > 0.01f &&
+        ((shot != AUTO_SHOT_FULL && shot != AUTO_SHOT_MEDIUM) ||
+         height >= 0.3f * subject_scale);
 }
 
 // small periodic value noise (same construction as the camera operator)
@@ -127,6 +475,42 @@ LLCinematicCamera& LLCinematicCamera::instance()
     return sInstance;
 }
 
+//static
+F32 LLCinematicCamera::applyFrameLens(F32 plain_fov, LLViewerCamera* cam)
+{
+    return cc_applyFrameLens(plain_fov, cam);
+}
+
+void LLCinematicCamera::requestAutoReframe()
+{
+    ++mAutoFrameRequestSerial;
+}
+
+//static
+const char* LLCinematicCamera::modeName(S32 mode)
+{
+    static const char* const names[] = {
+        "Off", "Bone Lock", "Orbit", "Fly Hover", "Sweep", "Crane",
+        "Dolly Zoom", "Push-In", "Low Hero", "Overhead",
+        "Over-the-Shoulder", "Crash Zoom", "Slow Zoom", "Whip Arc",
+        "Arc Move", "Reveal Rise", "Pull-Back", "Two-Shot",
+        "Lead Follow", "ECU Eyes", "Long Lens", "Spiral",
+        "Pedestal Rise", "Barrel Roll", "Corkscrew", "Pendulum",
+        "Contra-Orbit", "Fisheye Lunge", "Floor Skimmer",
+        "Boost Rise", "Boom Over", "Top Spin", "Turntable Crane",
+        "Floating Close-Up", "Tilt Whip", "Body Helix Reveal",
+        "Descent Pedestal", "Parallax Slide", "Figure-8",
+        "Detail Sweep", "Step Orbit", "Cable Cam Fly-by",
+        "Breathing Hold", "Static Wide", "Static Medium",
+        "Static Close", "Static Profile Left", "Static Profile Right",
+        "Static Low Hero", "Static High Angle", "Static Full Body",
+    };
+    constexpr S32 count = (S32)(sizeof(names) / sizeof(names[0]));
+    static_assert(count == MODE_STATIC_FULL + 1,
+                  "Every persisted CineCam mode needs one stable label");
+    return mode >= 0 && mode < count ? names[mode] : "Unknown";
+}
+
 // session-only locked follow subject
 static LLUUID sCinematicFollowTarget;
 
@@ -156,7 +540,14 @@ bool LLCinematicCamera::isActive() const
 {
     static LLCachedControl<bool> enabled(gSavedSettings, "CinematicCamEnabled", false);
     static LLCachedControl<S32>  mode(gSavedSettings, "CinematicCamMode", 1);
-    if (!enabled || (S32)mode <= MODE_OFF || (S32)mode > MODE_BREATHING_HOLD)
+    if (!enabled)
+    {
+        return false;
+    }
+    const ALDirectorSwitcher& switcher = ALDirectorSwitcher::instance();
+    const S32 effective_mode =
+        switcher.isDrivingCamera() ? switcher.activeMode() : (S32)mode;
+    if (effective_mode <= MODE_OFF || effective_mode > MODE_STATIC_FULL)
     {
         return false;
     }
@@ -167,7 +558,14 @@ bool LLCinematicCamera::isActiveBoneLockTarget(const LLUUID& avatar_id) const
 {
     static LLCachedControl<bool> enabled(gSavedSettings, "CinematicCamEnabled", false);
     static LLCachedControl<S32>  mode(gSavedSettings, "CinematicCamMode", 1);
-    if (avatar_id.isNull() || !enabled || (S32)mode != MODE_BONE_LOCK)
+    if (avatar_id.isNull() || !enabled)
+    {
+        return false;
+    }
+    const ALDirectorSwitcher& switcher = ALDirectorSwitcher::instance();
+    const S32 effective_mode =
+        switcher.isDrivingCamera() ? switcher.activeMode() : (S32)mode;
+    if (effective_mode != MODE_BONE_LOCK)
     {
         return false;
     }
@@ -177,9 +575,28 @@ bool LLCinematicCamera::isActiveBoneLockTarget(const LLUUID& avatar_id) const
 
 LLVOAvatar* LLCinematicCamera::resolveTarget() const
 {
+    const ALDirectorSwitcher& switcher = ALDirectorSwitcher::instance();
+    if (switcher.isDrivingCamera())
+    {
+        const S32 subject = switcher.activePrimarySubject();
+        if (subject != ALDirectorSwitcher::SUBJECT_DEFAULT)
+        {
+            // A missing/dead per-slot mark falls through to the exact legacy
+            // target chain rather than dropping camera ownership.
+            if (LLVOAvatar* marked = resolveMarkedTarget(subject))
+            {
+                return marked;
+            }
+        }
+    }
+    return resolveDefaultTarget();
+}
+
+LLVOAvatar* LLCinematicCamera::resolveDefaultTarget() const
+{
     // [Director] Subject A beats everything while set and alive; unset (or
     // out-of-world) falls through to the stock chain, so an empty cast is
-    // byte-identical to pre-Director behavior
+    // byte-identical to pre-Director behavior.
     if (LLVOAvatar* subject = LLDirectorCast::instance().resolveSubjectA())
     {
         return subject;
@@ -214,11 +631,42 @@ LLVOAvatar* LLCinematicCamera::resolveTarget() const
     return isAgentAvatarValid() ? (LLVOAvatar*)gAgentAvatarp : nullptr;
 }
 
+LLVOAvatar* LLCinematicCamera::resolveMarkedTarget(S32 subject) const
+{
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    switch (subject)
+    {
+        case ALDirectorSwitcher::SUBJECT_A: return cast.resolveSubjectA();
+        case ALDirectorSwitcher::SUBJECT_B: return cast.resolveSubjectB();
+        case ALDirectorSwitcher::SUBJECT_C: return cast.resolveSubjectC();
+        case ALDirectorSwitcher::SUBJECT_D: return cast.resolveSubjectD();
+        default: return nullptr;
+    }
+}
+
+LLVOAvatar* LLCinematicCamera::resolveSecondaryTarget() const
+{
+    const ALDirectorSwitcher& switcher = ALDirectorSwitcher::instance();
+    if (switcher.isDrivingCamera())
+    {
+        if (LLVOAvatar* marked =
+                resolveMarkedTarget(switcher.activeSecondarySubject()))
+        {
+            return marked;
+        }
+    }
+    // Legacy A-over-B dialogue behavior and fail-soft fallback.
+    return LLDirectorCast::instance().resolveSubjectB();
+}
+
 // anchor transform for external riders (Flycam Orbit): same target/joint
 // resolution as Bone Lock, without the mount/aim trim
 bool LLCinematicCamera::resolveAnchor(LLVector3& pos, LLQuaternion& rot, bool level_horizon) const
 {
-    LLVOAvatar* av = resolveTarget();
+    // Flycam Orbit is an external rider, not a switcher-owned CineCam shot.
+    // Preserve its legacy A/follow/selected/self anchor while slots target
+    // their own marks inside the cinematic-camera path.
+    LLVOAvatar* av = resolveDefaultTarget();
     if (!av)
     {
         return false;
@@ -399,6 +847,77 @@ F32 cc_progress(F32 phase, F32 duration, S32 end_mode)
 }
 } // anonymous namespace
 
+bool LLCinematicCamera::captureCurrentSwitcherView(
+    S32 subject, F32& yaw_offset_deg, F32& pitch_deg, F32& distance_m,
+    F32& height_m, F32& fov_deg) const
+{
+    LLVOAvatar* av =
+        subject == ALDirectorSwitcher::SUBJECT_DEFAULT
+            ? resolveTarget() : resolveMarkedTarget(subject);
+    if (!av)
+    {
+        av = resolveDefaultTarget();
+    }
+    LLViewerCamera* cam = LLViewerCamera::getInstance();
+    if (!av || av->isDead() || !cam)
+    {
+        return false;
+    }
+
+    const LLVector3 render_pos = cam->getOrigin();
+    LLVector3 at = cam->getAtAxis();
+    const F32 render_fov = cam->getView();
+    const F32 subject_scale = av->getUniformScale();
+    if (!render_pos.isFinite() || !at.isFinite() ||
+        !std::isfinite(render_fov) || !std::isfinite(subject_scale) ||
+        subject_scale < 0.01f || at.magVecSquared() < 1e-8f)
+    {
+        return false;
+    }
+    at.normVec();
+
+    // Static-shot geometry is authored before the existing clone-scale pass.
+    // Invert that pass so a capture of a scaled subject reapplies only once.
+    const LLVector3 subject_base = cc_subjectBase(av);
+    const LLVector3 logical_pos =
+        subject_base + (render_pos - subject_base) * (1.f / subject_scale);
+    static LLCachedControl<F32> frame_up(
+        gSavedSettings, "CinematicCamFrameOffsetUp", 0.f);
+    const LLVector3 rig_base =
+        subject_base + LLVector3(0.f, 0.f, (F32)frame_up);
+    const LLVector3 horizontal(
+        logical_pos.mV[VX] - rig_base.mV[VX],
+        logical_pos.mV[VY] - rig_base.mV[VY], 0.f);
+    const F32 horizontal_distance = horizontal.magVec();
+
+    // Pitch is the camera's elevation around its focus point. The render
+    // camera's at-axis points the opposite way (camera -> focus).
+    const F32 at_horizontal =
+        sqrtf(at.mV[VX] * at.mV[VX] + at.mV[VY] * at.mV[VY]);
+    const F32 pitch = llclamp(
+        -atan2f(at.mV[VZ], at_horizontal),
+        -80.f * DEG_TO_RAD, 80.f * DEG_TO_RAD);
+    const F32 cos_pitch = llmax(cosf(pitch), 0.173648f);
+    const F32 distance = horizontal_distance / cos_pitch;
+
+    F32 yaw = horizontal_distance > 0.001f
+        ? atan2f(horizontal.mV[VY], horizontal.mV[VX])
+        : atan2f(-at.mV[VY], -at.mV[VX]);
+    yaw = (yaw - cc_avatarYaw(av)) * RAD_TO_DEG;
+    while (yaw > 180.f) yaw -= 360.f;
+    while (yaw < -180.f) yaw += 360.f;
+
+    yaw_offset_deg = llclamp(yaw, -180.f, 180.f);
+    pitch_deg = pitch * RAD_TO_DEG;
+    distance_m = llclamp(distance, 0.3f, 64.f);
+    height_m = llclamp(
+        logical_pos.mV[VZ] - rig_base.mV[VZ] -
+            sinf(pitch) * distance_m,
+        -10.f, 20.f);
+    fov_deg = llclamp(render_fov * RAD_TO_DEG, 5.f, 175.f);
+    return true;
+}
+
 // Vertigo shot: camera travels between two distances along a bearing fixed to
 // the subject's facing while the FOV compensates so the SUBJECT keeps constant
 // angular size -- the background stretches or compresses around them.
@@ -574,9 +1093,10 @@ LLVector3 LLCinematicCamera::patternTwoShot(LLVOAvatar* target, LLVector3& focus
     static LLCachedControl<F32> min_d(gSavedSettings, "CinematicCamTwoShotMinDist", 2.5f);
     static LLCachedControl<F32> height(gSavedSettings, "CinematicCamTwoShotHeight", 1.4f);
 
-    // [Director] Subject B supplies the second body when set and alive;
-    // otherwise the stock self+target pairing
-    LLVOAvatar* second = LLDirectorCast::instance().resolveSubjectB();
+    // A switcher slot's secondary mark supplies the second body. Outside the
+    // switcher (or when that mark is unavailable), legacy Subject B supplies
+    // it; otherwise this falls back to the stock self+target pairing.
+    LLVOAvatar* second = resolveSecondaryTarget();
     LLVOAvatar* self = second ? second
                               : (isAgentAvatarValid() ? (LLVOAvatar*)gAgentAvatarp : target);
     const F32 s = ((S32)side != 0) ? 1.f : -1.f;
@@ -699,9 +1219,10 @@ LLVector3 LLCinematicCamera::patternOTS(LLVOAvatar* target, LLVector3& focus_io)
     static LLCachedControl<F32> out(gSavedSettings, "CinematicCamOTSOut", 0.22f);
     static LLCachedControl<F32> up(gSavedSettings, "CinematicCamOTSUp", 0.12f);
 
-    // [Director] Subject B's shoulder anchors the shot when set and alive
-    // (B looking at A); otherwise the stock behind-my-shoulder framing
-    LLVOAvatar* second = LLDirectorCast::instance().resolveSubjectB();
+    // A switcher slot's secondary mark supplies the shoulder. Outside the
+    // switcher (or when that mark is unavailable), legacy Subject B anchors
+    // the shot (B looking at A); otherwise use stock behind-my-shoulder framing.
+    LLVOAvatar* second = resolveSecondaryTarget();
     LLVOAvatar* self = second ? second
                               : (isAgentAvatarValid() ? (LLVOAvatar*)gAgentAvatarp : target);
 
@@ -1163,6 +1684,608 @@ LLVector3 LLCinematicCamera::patternBreathingHold(LLVOAvatar* av, const LLVector
                   + LLVector3(0.f, 0.f, (F32)height + (F32)amplitude * 0.35f * cosf(t));
 }
 
+// Fixed, subject-relative switcher coverage. These authored framings have no
+// hidden clock; camera life remains available as the existing Breathing Hold
+// bank assignment. Tight/OTS/Two-Shot deliberately reuse modes 19/10/17.
+LLVector3 LLCinematicCamera::patternStaticShot(
+    LLVOAvatar* av, const LLVector3& center, S32 mode,
+    LLVector3& focus_io, F32& fov_mul)
+{
+    // Preserve the global frame offset already folded into center.
+    const LLVector3 base =
+        cc_subjectBase(av) + (center - av->getPositionAgent());
+    F32 yaw = cc_avatarYaw(av);
+    F32 distance = 2.5f;
+    F32 camera_z = 1.45f;
+    F32 aim_z = 1.35f;
+
+    ALDirectorSwitcher::Slot custom;
+    if (ALDirectorSwitcher::instance().activeCustomAngle(custom))
+    {
+        const F32 custom_yaw =
+            yaw + custom.mCustomYawOffsetDeg * DEG_TO_RAD;
+        const F32 custom_pitch = custom.mCustomPitchDeg * DEG_TO_RAD;
+        const F32 cos_pitch = cosf(custom_pitch);
+        const F32 distance =
+            llclamp(custom.mCustomDistanceM, 0.3f, 64.f);
+        focus_io = base + LLVector3(
+            0.f, 0.f, llclamp(custom.mCustomHeightM, -10.f, 20.f));
+        fov_mul = llclamp(
+            custom.mCustomFovDeg * DEG_TO_RAD /
+                llmax(LLViewerCamera::getInstance()->getDefaultFOV(),
+                      1.f * DEG_TO_RAD),
+            0.05f, 4.f);
+        return focus_io + LLVector3(
+            cosf(custom_yaw) * cos_pitch * distance,
+            sinf(custom_yaw) * cos_pitch * distance,
+            sinf(custom_pitch) * distance);
+    }
+
+    switch (mode)
+    {
+        case MODE_STATIC_WIDE:
+        {
+            static LLCachedControl<F32> heading(
+                gSavedSettings, "CinematicCamStaticWideHeading", 15.f);
+            static LLCachedControl<F32> shot_distance(
+                gSavedSettings, "CinematicCamStaticWideDistance", 5.5f);
+            static LLCachedControl<F32> camera_up(
+                gSavedSettings, "CinematicCamStaticWideCameraUp", 1.30f);
+            static LLCachedControl<F32> aim_up(
+                gSavedSettings, "CinematicCamStaticWideAimUp", 1.05f);
+            static LLCachedControl<F32> shot_fov(
+                gSavedSettings, "CinematicCamStaticWideFov", 1.10f);
+            yaw += (F32)heading * DEG_TO_RAD;
+            distance = (F32)shot_distance;
+            camera_z = (F32)camera_up;
+            aim_z = (F32)aim_up;
+            fov_mul = llclamp((F32)shot_fov, 0.05f, 4.f);
+            break;
+        }
+        case MODE_STATIC_MEDIUM:
+        {
+            static LLCachedControl<F32> heading(
+                gSavedSettings, "CinematicCamStaticMediumHeading", 15.f);
+            static LLCachedControl<F32> shot_distance(
+                gSavedSettings, "CinematicCamStaticMediumDistance", 2.2f);
+            static LLCachedControl<F32> camera_up(
+                gSavedSettings, "CinematicCamStaticMediumCameraUp", 1.45f);
+            static LLCachedControl<F32> aim_up(
+                gSavedSettings, "CinematicCamStaticMediumAimUp", 1.35f);
+            static LLCachedControl<F32> shot_fov(
+                gSavedSettings, "CinematicCamStaticMediumFov", 0.82f);
+            yaw += (F32)heading * DEG_TO_RAD;
+            distance = (F32)shot_distance;
+            camera_z = (F32)camera_up;
+            aim_z = (F32)aim_up;
+            fov_mul = llclamp((F32)shot_fov, 0.05f, 4.f);
+            break;
+        }
+        case MODE_STATIC_CLOSE:
+        {
+            static LLCachedControl<F32> heading(
+                gSavedSettings, "CinematicCamStaticCloseHeading", -10.f);
+            static LLCachedControl<F32> shot_distance(
+                gSavedSettings, "CinematicCamStaticCloseDistance", 1.25f);
+            static LLCachedControl<F32> camera_up(
+                gSavedSettings, "CinematicCamStaticCloseCameraUp", 0.f);
+            static LLCachedControl<F32> aim_up(
+                gSavedSettings, "CinematicCamStaticCloseAimUp", 0.f);
+            static LLCachedControl<F32> shot_fov(
+                gSavedSettings, "CinematicCamStaticCloseFov", 0.70f);
+            yaw += (F32)heading * DEG_TO_RAD;
+            distance = llmax((F32)shot_distance, 0.3f);
+            fov_mul = llclamp((F32)shot_fov, 0.05f, 4.f);
+            // A close-up is head-authored regardless of the global chest/head
+            // preference. Camera/Aim Up remain tunable offsets from that live
+            // joint; zero preserves the authored framing. Fall back to a
+            // stable anatomical height when the joint is unavailable.
+            LLVector3 head_anchor = base + LLVector3(0.f, 0.f, 1.55f);
+            if (LLJoint* head = av->getJoint("mHead"))
+            {
+                head_anchor = head->getWorldPosition() +
+                    (center - av->getPositionAgent());
+            }
+            focus_io = head_anchor +
+                LLVector3(0.f, 0.f, (F32)aim_up);
+            return head_anchor +
+                LLVector3(cosf(yaw) * distance,
+                          sinf(yaw) * distance, (F32)camera_up);
+        }
+        case MODE_STATIC_PROFILE_L:
+        case MODE_STATIC_PROFILE_R:
+        {
+            static LLCachedControl<F32> heading_l(
+                gSavedSettings, "CinematicCamStaticProfileLHeading", 90.f);
+            static LLCachedControl<F32> distance_l(
+                gSavedSettings, "CinematicCamStaticProfileLDistance", 2.f);
+            static LLCachedControl<F32> camera_up_l(
+                gSavedSettings, "CinematicCamStaticProfileLCameraUp", 0.f);
+            static LLCachedControl<F32> aim_up_l(
+                gSavedSettings, "CinematicCamStaticProfileLAimUp", 0.f);
+            static LLCachedControl<F32> fov_l(
+                gSavedSettings, "CinematicCamStaticProfileLFov", 0.75f);
+            static LLCachedControl<F32> heading_r(
+                gSavedSettings, "CinematicCamStaticProfileRHeading", -90.f);
+            static LLCachedControl<F32> distance_r(
+                gSavedSettings, "CinematicCamStaticProfileRDistance", 2.f);
+            static LLCachedControl<F32> camera_up_r(
+                gSavedSettings, "CinematicCamStaticProfileRCameraUp", 0.f);
+            static LLCachedControl<F32> aim_up_r(
+                gSavedSettings, "CinematicCamStaticProfileRAimUp", 0.f);
+            static LLCachedControl<F32> fov_r(
+                gSavedSettings, "CinematicCamStaticProfileRFov", 0.75f);
+            const bool left_profile = mode == MODE_STATIC_PROFILE_L;
+            yaw += (left_profile ? (F32)heading_l : (F32)heading_r) *
+                   DEG_TO_RAD;
+            distance = llmax(
+                left_profile ? (F32)distance_l : (F32)distance_r, 0.3f);
+            camera_z =
+                left_profile ? (F32)camera_up_l : (F32)camera_up_r;
+            aim_z = left_profile ? (F32)aim_up_l : (F32)aim_up_r;
+            fov_mul = llclamp(
+                left_profile ? (F32)fov_l : (F32)fov_r, 0.05f, 4.f);
+            LLVector3 head_anchor = base + LLVector3(0.f, 0.f, 1.55f);
+            if (LLJoint* head = av->getJoint("mHead"))
+            {
+                head_anchor = head->getWorldPosition() +
+                    (center - av->getPositionAgent());
+            }
+            focus_io = head_anchor + LLVector3(0.f, 0.f, aim_z);
+            return head_anchor +
+                LLVector3(cosf(yaw) * distance,
+                          sinf(yaw) * distance, camera_z);
+        }
+        case MODE_STATIC_LOW:
+        {
+            static LLCachedControl<F32> heading(
+                gSavedSettings, "CinematicCamStaticLowHeading", 10.f);
+            static LLCachedControl<F32> shot_distance(
+                gSavedSettings, "CinematicCamStaticLowDistance", 2.3f);
+            static LLCachedControl<F32> camera_up(
+                gSavedSettings, "CinematicCamStaticLowCameraUp", 0.28f);
+            static LLCachedControl<F32> aim_up(
+                gSavedSettings, "CinematicCamStaticLowAimUp", 1.25f);
+            static LLCachedControl<F32> shot_fov(
+                gSavedSettings, "CinematicCamStaticLowFov", 0.90f);
+            yaw += (F32)heading * DEG_TO_RAD;
+            distance = (F32)shot_distance;
+            camera_z = (F32)camera_up;
+            aim_z = (F32)aim_up;
+            fov_mul = llclamp((F32)shot_fov, 0.05f, 4.f);
+            break;
+        }
+        case MODE_STATIC_HIGH:
+        {
+            static LLCachedControl<F32> heading(
+                gSavedSettings, "CinematicCamStaticHighHeading", 10.f);
+            static LLCachedControl<F32> shot_distance(
+                gSavedSettings, "CinematicCamStaticHighDistance", 2.4f);
+            static LLCachedControl<F32> camera_up(
+                gSavedSettings, "CinematicCamStaticHighCameraUp", 3.0f);
+            static LLCachedControl<F32> aim_up(
+                gSavedSettings, "CinematicCamStaticHighAimUp", 1.35f);
+            static LLCachedControl<F32> shot_fov(
+                gSavedSettings, "CinematicCamStaticHighFov", 0.85f);
+            yaw += (F32)heading * DEG_TO_RAD;
+            distance = (F32)shot_distance;
+            camera_z = (F32)camera_up;
+            aim_z = (F32)aim_up;
+            fov_mul = llclamp((F32)shot_fov, 0.05f, 4.f);
+            break;
+        }
+        case MODE_STATIC_FULL:
+        {
+            static LLCachedControl<F32> heading(
+                gSavedSettings, "CinematicCamStaticFullHeading", 0.f);
+            static LLCachedControl<F32> shot_distance(
+                gSavedSettings, "CinematicCamStaticFullDistance", 4.0f);
+            static LLCachedControl<F32> camera_up(
+                gSavedSettings, "CinematicCamStaticFullCameraUp", 1.05f);
+            static LLCachedControl<F32> aim_up(
+                gSavedSettings, "CinematicCamStaticFullAimUp", 0.95f);
+            static LLCachedControl<F32> shot_fov(
+                gSavedSettings, "CinematicCamStaticFullFov", 0.95f);
+            yaw += (F32)heading * DEG_TO_RAD;
+            distance = (F32)shot_distance;
+            camera_z = (F32)camera_up;
+            aim_z = (F32)aim_up;
+            fov_mul = llclamp((F32)shot_fov, 0.05f, 4.f);
+            break;
+        }
+        default:
+            break;
+    }
+
+    focus_io = base + LLVector3(0.f, 0.f, aim_z);
+    distance = llmax(distance, 0.3f);
+    return base + LLVector3(cosf(yaw) * distance,
+                            sinf(yaw) * distance, camera_z);
+}
+
+// Solve only at authored boundaries, then replace the generated rig's radius
+// and vertical composition while retaining its current orbit direction. This
+// is deliberately downstream of every pattern and clone-scale transform, and
+// upstream of smoothing/operator/shake.
+void LLCinematicCamera::applyAutoReframe(
+    LLVOAvatar* av, S32 mode, F32 plain_fov, bool force_solve,
+    bool allow_glide,
+    LLVector3& pos, LLVector3& focus)
+{
+    static LLCachedControl<bool> enabled(
+        gSavedSettings, "CinematicAutoFrameEnabled", false);
+    static LLCachedControl<F32> fill_setting(
+        gSavedSettings, "CinematicAutoFrameFill", 0.85f);
+    static LLCachedControl<F32> compose_setting(
+        gSavedSettings, "CinematicAutoFrameComposeLine", 0.33f);
+    static LLCachedControl<F32> distance_trim(
+        gSavedSettings, "CinematicAutoFrameDistanceTrim", 0.f);
+    static LLCachedControl<F32> frame_up(
+        gSavedSettings, "CinematicCamFrameOffsetUp", 0.f);
+    static LLCachedControl<bool> lens_enabled(
+        gSavedSettings, "CinematicFrameLensEnabled", false);
+    static LLCachedControl<F32> aspect(
+        gSavedSettings, "CinematicFrameAspectRatio", 0.f);
+    static LLCachedControl<F32> custom_aspect(
+        gSavedSettings, "CinematicFrameCustomRatio", 2.35f);
+    static LLCachedControl<F32> focal_mm(
+        gSavedSettings, "CinematicFrameFocalLengthMM", 50.f);
+
+    if (!enabled || mode == MODE_BONE_LOCK)
+    {
+        mAutoFrameHaveSolve = false;
+        mAutoFrameSettleActive = false;
+        mAutoFrameHaveApplied = false;
+        mAutoFrameLastEnabled = enabled;
+        return; // strict disabled path: do not read or write rig geometry
+    }
+
+    static LLCachedControl<S32> settle_mode_setting(
+        gSavedSettings, "CinematicAutoFrameSettleMode", 2);
+    static LLCachedControl<F32> settle_seconds_setting(
+        gSavedSettings, "CinematicAutoFrameSettleSeconds", 0.70f);
+    static LLCachedControl<F32> settle_max_ratio_setting(
+        gSavedSettings, "CinematicAutoFrameSettleMaxRatio", 0.f);
+    static LLCachedControl<S32> settle_curve_setting(
+        gSavedSettings, "CinematicAutoFrameSettleCurve", 0);
+    static LLCachedControl<F32> settle_feather_setting(
+        gSavedSettings, "CinematicAutoFrameSettleFeather", 0.f);
+    static LLCachedControl<F32> settle_bezier_x1_setting(
+        gSavedSettings, "CinematicAutoFrameSettleBezierX1", 0.42f);
+    static LLCachedControl<F32> settle_bezier_y1_setting(
+        gSavedSettings, "CinematicAutoFrameSettleBezierY1", 0.f);
+    static LLCachedControl<F32> settle_bezier_x2_setting(
+        gSavedSettings, "CinematicAutoFrameSettleBezierX2", 0.58f);
+    static LLCachedControl<F32> settle_bezier_y2_setting(
+        gSavedSettings, "CinematicAutoFrameSettleBezierY2", 1.f);
+    const S32 settle_mode = llclamp((S32)settle_mode_setting, 0, 2);
+    const F32 settle_seconds = (F32)settle_seconds_setting;
+    const F32 settle_max_ratio = (F32)settle_max_ratio_setting;
+
+    const F32 legacy_frame_up = std::isfinite((F32)frame_up)
+        ? (F32)frame_up : 0.f;
+    const auto apply_legacy_frame_up = [&]()
+    {
+        focus.mV[VZ] += legacy_frame_up;
+        if (mode != MODE_CRASH_ZOOM && mode != MODE_SLOW_ZOOM)
+        {
+            pos.mV[VZ] += legacy_frame_up;
+        }
+    };
+
+    LLViewerCamera* cam = LLViewerCamera::getInstance();
+    const F32 window_aspect = cam->getAspect();
+    const F32 base_fov = cam->getDefaultFOV();
+    const F32 signature_fill = std::isfinite((F32)fill_setting)
+        ? (F32)fill_setting : 0.f;
+    const F32 signature_compose = std::isfinite((F32)compose_setting)
+        ? (F32)compose_setting : 0.f;
+    const F32 signature_aspect = std::isfinite((F32)aspect)
+        ? (F32)aspect : 0.f;
+    const F32 signature_custom_aspect = std::isfinite((F32)custom_aspect)
+        ? (F32)custom_aspect : 0.f;
+    const F32 signature_focal = std::isfinite((F32)focal_mm)
+        ? (F32)focal_mm : 0.f;
+    const F32 signature_window_aspect = std::isfinite(window_aspect)
+        ? window_aspect : 0.f;
+    const F32 signature_base_fov = std::isfinite(base_fov)
+        ? ll_round(base_fov, 0.0001f) : 0.f;
+    const bool settings_changed =
+        !mAutoFrameLastEnabled ||
+        mAutoFrameLastLensEnabled != (bool)lens_enabled ||
+        mAutoFrameLastFill != signature_fill ||
+        mAutoFrameLastCompose != signature_compose ||
+        mAutoFrameLastAspect != signature_aspect ||
+        mAutoFrameLastCustomAspect != signature_custom_aspect ||
+        mAutoFrameLastFocalMM != signature_focal ||
+        mAutoFrameLastWindowAspect != signature_window_aspect ||
+        mAutoFrameLastBaseFOV != signature_base_fov ||
+        mAutoFrameSolvedRequestSerial != mAutoFrameRequestSerial;
+
+    if (force_solve || settings_changed)
+    {
+        // Capture this before acknowledging the request serial below.
+        const bool manual_reframe =
+            mAutoFrameSolvedRequestSerial != mAutoFrameRequestSerial;
+        mAutoFrameLastEnabled = true;
+        mAutoFrameLastLensEnabled = lens_enabled;
+        mAutoFrameLastFill = signature_fill;
+        mAutoFrameLastCompose = signature_compose;
+        mAutoFrameLastAspect = signature_aspect;
+        mAutoFrameLastCustomAspect = signature_custom_aspect;
+        mAutoFrameLastFocalMM = signature_focal;
+        mAutoFrameLastWindowAspect = signature_window_aspect;
+        mAutoFrameLastBaseFOV = signature_base_fov;
+        mAutoFrameSolvedRequestSerial = mAutoFrameRequestSerial;
+        mAutoFrameHaveSolve = false;
+
+        LLVector3 top;
+        LLVector3 bottom;
+        bool eye_level = false;
+        const F32 framed_fov = cc_retainedFrameFov(plain_fov, cam);
+        const F32 tan_half_fov = tanf(framed_fov * 0.5f);
+        if (!std::isfinite((F32)fill_setting) ||
+            !std::isfinite((F32)compose_setting))
+        {
+            apply_legacy_frame_up();
+            return;
+        }
+        const F32 compose = llclamp((F32)compose_setting, 0.02f, 0.90f);
+        // A top anchor at compose leaves only (1-compose) of the frame below
+        // it. Reserve two percent at the bottom so Full/Wide never crop feet.
+        const F32 available_fill = llmax(0.08f, 0.98f - compose);
+        const F32 fill = llmin(
+            llclamp((F32)fill_setting, 0.10f, 0.98f), available_fill);
+        LLVector3 rig_direction = pos - focus;
+        const F32 old_distance = rig_direction.normVec();
+
+        if (!cc_autoFrameAnchors(av, mode, top, bottom, eye_level) ||
+            !std::isfinite(framed_fov) || framed_fov <= 0.f ||
+            !std::isfinite(tan_half_fov) || tan_half_fov <= 0.f ||
+            !rig_direction.isFinite() || old_distance <= 0.001f ||
+            fabsf(rig_direction.mV[VZ]) > 0.95f)
+        {
+            apply_legacy_frame_up();
+            return; // fail soft: leave this frame's existing authored rig
+        }
+        const F32 height = top.mV[VZ] - bottom.mV[VZ];
+        if (!std::isfinite(height) || height <= 0.01f)
+        {
+            apply_legacy_frame_up();
+            return;
+        }
+
+        const F32 solved_distance = llclamp(
+            (height / (2.f * fill)) / tan_half_fov,
+            AUTO_FRAME_MIN_DISTANCE, AUTO_FRAME_MAX_DISTANCE);
+        if (!std::isfinite(solved_distance))
+        {
+            apply_legacy_frame_up();
+            return;
+        }
+
+        const LLVector3 base = cc_subjectBase(av);
+        if (!base.isFinite())
+        {
+            apply_legacy_frame_up();
+            return;
+        }
+        mAutoFrameDistance = solved_distance;
+        mAutoFrameEyeLevel = eye_level;
+        if (eye_level)
+        {
+            LLVector3 horizontal(
+                rig_direction.mV[VX], rig_direction.mV[VY], 0.f);
+            if (!horizontal.isFinite() || horizontal.normVec() <= 0.001f)
+            {
+                apply_legacy_frame_up();
+                return;
+            }
+            const F32 projected_top = 1.f - 2.f * compose;
+            mAutoFrameEyeAimSlope = projected_top * tan_half_fov;
+            mAutoFrameFocusXOffset = top.mV[VX] - base.mV[VX];
+            mAutoFrameFocusYOffset = top.mV[VY] - base.mV[VY];
+            mAutoFrameEyeZOffset = top.mV[VZ] - base.mV[VZ];
+            mAutoFrameFocusZOffset =
+                mAutoFrameEyeZOffset - solved_distance * mAutoFrameEyeAimSlope;
+        }
+        else
+        {
+            LLVector3 solved_focus = focus;
+            LLVector3 solved_pos = focus + rig_direction * solved_distance;
+            const LLQuaternion solved_rot = cc_lookAt(solved_pos, solved_focus);
+            const LLMatrix3 axes(solved_rot);
+            const LLVector3 at(axes.mMatrix[0]);
+            const LLVector3 up(axes.mMatrix[2]);
+            const LLVector3 to_top = top - solved_pos;
+            const F32 depth = to_top * at;
+            const F32 image_up = to_top * up;
+            const F32 projected_top = 1.f - 2.f * compose;
+            const F32 denominator =
+                up.mV[VZ] - projected_top * tan_half_fov * at.mV[VZ];
+            if (!std::isfinite(depth) || depth <= 0.01f ||
+                !std::isfinite(image_up) || !std::isfinite(denominator) ||
+                fabsf(denominator) <= 0.001f)
+            {
+                apply_legacy_frame_up();
+                return;
+            }
+            const F32 vertical_shift =
+                (image_up - projected_top * tan_half_fov * depth) /
+                denominator;
+            const F32 post_shift_depth =
+                depth - vertical_shift * at.mV[VZ];
+            if (!std::isfinite(vertical_shift) ||
+                fabsf(vertical_shift) > AUTO_FRAME_MAX_DISTANCE ||
+                !std::isfinite(post_shift_depth) ||
+                post_shift_depth < llmax(0.05f, 0.25f * solved_distance))
+            {
+                apply_legacy_frame_up();
+                return;
+            }
+            solved_focus.mV[VZ] += vertical_shift;
+            solved_pos.mV[VZ] += vertical_shift;
+            if (!solved_focus.isFinite() || !solved_pos.isFinite())
+            {
+                apply_legacy_frame_up();
+                return;
+            }
+            mAutoFrameFocusXOffset =
+                solved_focus.mV[VX] - base.mV[VX];
+            mAutoFrameFocusYOffset =
+                solved_focus.mV[VY] - base.mV[VY];
+            mAutoFrameFocusZOffset =
+                solved_focus.mV[VZ] - base.mV[VZ];
+        }
+        mAutoFrameHaveSolve = true;
+        if (settle_mode == 0 || !allow_glide)
+        {
+            // Mode Off and stale camera-owner re-entry both use today's snap.
+            mAutoFrameSettleActive = false;
+        }
+        else if (force_solve || manual_reframe)
+        {
+            F32 from = mAutoFrameHaveApplied
+                ? mAutoFrameAppliedDistance : old_distance;
+            if (!std::isfinite(from) || from <= 0.f)
+            {
+                from = solved_distance;
+            }
+            if (settle_max_ratio > 1.f)
+            {
+                from = llclamp(
+                    from, solved_distance / settle_max_ratio,
+                    solved_distance * settle_max_ratio);
+            }
+            mAutoFrameSettleFromDistance = from;
+            mAutoFrameSettleStartPhase = force_solve ? 0.f : mPhase;
+            mAutoFrameSettleModeLatched = settle_mode;
+            mAutoFrameSettleDurationLatched = llclamp(
+                settle_seconds, 0.05f, 10.f);
+            mAutoFrameSettleCurveLatched = ALCameraCurve::sanitizeId(
+                (S32)settle_curve_setting);
+            mAutoFrameSettleBezierLatched[0] = ALCameraCurve::sanitizeX(
+                (F32)settle_bezier_x1_setting, 0.42f);
+            mAutoFrameSettleBezierLatched[1] = ALCameraCurve::sanitizeY(
+                (F32)settle_bezier_y1_setting, 0.f);
+            mAutoFrameSettleBezierLatched[2] = ALCameraCurve::sanitizeX(
+                (F32)settle_bezier_x2_setting, 0.58f);
+            mAutoFrameSettleBezierLatched[3] = ALCameraCurve::sanitizeY(
+                (F32)settle_bezier_y2_setting, 1.f);
+            mAutoFrameSettleFeatherLatched =
+                std::isfinite((F32)settle_feather_setting)
+                ? llclamp((F32)settle_feather_setting, 0.f, 1.f)
+                : 0.f;
+            mAutoFrameSettleActive = settle_mode != 2 ||
+                (std::isfinite(settle_seconds) && settle_seconds > 0.05f);
+        }
+    }
+
+    if (!mAutoFrameHaveSolve)
+    {
+        apply_legacy_frame_up();
+        return;
+    }
+
+    const F32 effective_distance_trim =
+        std::isfinite((F32)distance_trim) ? (F32)distance_trim : 0.f;
+    F32 w = 1.f;
+    if (mAutoFrameSettleActive && settle_mode != 0)
+    {
+        bool settle_complete = false;
+        if (mAutoFrameSettleModeLatched == 1)
+        {
+            // Finish with the switcher's own freeze-safe wall-clock ease.
+            if (mEaseActive && mEaseDuration > 0.f)
+            {
+                const F32 u = (F32)(
+                    ALDirectorSwitcher::instance().cutEaseElapsedSeconds() /
+                    mEaseDuration);
+                w = (!std::isfinite(u) || u >= 1.f || u < 0.f)
+                    ? 1.f
+                    : ALCameraCurve::evalFeathered(
+                        mEaseCurveId, u,
+                        mEaseBezier[0], mEaseBezier[1],
+                        mEaseBezier[2], mEaseBezier[3], mEaseFeather);
+                settle_complete = !std::isfinite(u) || u >= 1.f;
+            }
+            // A hard cut or legacy path has no ease and therefore snaps.
+            settle_complete = settle_complete || !mEaseActive;
+        }
+        else
+        {
+            // Post-cut settle is a closed function of presentation phase.
+            const F32 elapsed = mPhase - mAutoFrameSettleStartPhase;
+            w = elapsed < 0.f
+                ? 1.f
+                : ALCameraCurve::evalFeathered(
+                    mAutoFrameSettleCurveLatched,
+                    llmin(elapsed / mAutoFrameSettleDurationLatched, 1.f),
+                    mAutoFrameSettleBezierLatched[0],
+                    mAutoFrameSettleBezierLatched[1],
+                    mAutoFrameSettleBezierLatched[2],
+                    mAutoFrameSettleBezierLatched[3],
+                    mAutoFrameSettleFeatherLatched);
+            settle_complete = elapsed >= mAutoFrameSettleDurationLatched;
+        }
+        if (settle_complete)
+        {
+            mAutoFrameSettleActive = false;
+        }
+    }
+    else if (settle_mode == 0)
+    {
+        mAutoFrameSettleActive = false;
+    }
+    const F32 blended = !mAutoFrameSettleActive || w == 1.f
+        ? mAutoFrameDistance
+        : expf(cc_lerp(logf(mAutoFrameSettleFromDistance),
+                       logf(mAutoFrameDistance), w));
+    const F32 effective_distance = llclamp(
+        blended + effective_distance_trim,
+        AUTO_FRAME_MIN_DISTANCE, AUTO_FRAME_MAX_DISTANCE);
+    const F32 vertical_trim = legacy_frame_up;
+    const LLVector3 base = cc_subjectBase(av);
+    if (!std::isfinite(effective_distance) || !base.isFinite())
+    {
+        apply_legacy_frame_up();
+        return;
+    }
+
+    if (mAutoFrameEyeLevel)
+    {
+        LLVector3 horizontal(pos.mV[VX] - focus.mV[VX],
+                             pos.mV[VY] - focus.mV[VY], 0.f);
+        if (!horizontal.isFinite() || horizontal.normVec() <= 0.001f)
+        {
+            apply_legacy_frame_up();
+            return;
+        }
+        const F32 eye_z = base.mV[VZ] + mAutoFrameEyeZOffset + vertical_trim;
+        focus = base + LLVector3(
+            mAutoFrameFocusXOffset, mAutoFrameFocusYOffset,
+            mAutoFrameEyeZOffset -
+                effective_distance * mAutoFrameEyeAimSlope + vertical_trim);
+        pos = LLVector3(focus.mV[VX], focus.mV[VY], eye_z) +
+            horizontal * effective_distance;
+    }
+    else
+    {
+        LLVector3 rig_direction = pos - focus;
+        if (!rig_direction.isFinite() || rig_direction.normVec() <= 0.001f)
+        {
+            apply_legacy_frame_up();
+            return;
+        }
+        focus = base + LLVector3(
+            mAutoFrameFocusXOffset, mAutoFrameFocusYOffset,
+            mAutoFrameFocusZOffset + vertical_trim);
+        pos = focus + rig_direction * effective_distance;
+    }
+    mAutoFrameAppliedDistance = blended;
+    mAutoFrameHaveApplied = true;
+}
+
 // ---------------------------------------------------------------------------
 void LLCinematicCamera::updateCamera()
 {
@@ -1171,22 +2294,100 @@ void LLCinematicCamera::updateCamera()
     static LLCachedControl<bool> bonelock_bypass(gSavedSettings, "CinematicCamBoneLockBypassSmoothing", true);
     static LLCachedControl<bool> look_at_head(gSavedSettings, "CinematicCamLookAtHead", true);
     static LLCachedControl<bool> use_operator(gSavedSettings, "CinematicCamUseOperator", false);
+    static LLCachedControl<bool> apply_active(gSavedSettings, "CameraShakeApplyActive", false);
     static LLCachedControl<F32>  frame_up(gSavedSettings, "CinematicCamFrameOffsetUp", 0.f);
+    static LLCachedControl<bool> auto_frame_enabled(
+        gSavedSettings, "CinematicAutoFrameEnabled", false);
 
     LLVOAvatar* av = resolveTarget();
     if (!av)
     {
         return;
     }
-    const S32 current_mode = (S32)mode;
+
+    const ALDirectorSwitcher& switcher = ALDirectorSwitcher::instance();
+    const bool switcher_driving = switcher.isDrivingCamera();
+    const S32 current_mode =
+        switcher_driving ? switcher.activeMode() : (S32)mode;
+    const bool auto_frame_toggled =
+        current_mode != MODE_BONE_LOCK &&
+        (bool)auto_frame_enabled != mAutoFrameLastEnabled;
+    const U64 switcher_serial =
+        switcher_driving ? switcher.cutSerial() : 0;
+    const F64 presentation_sample =
+        LLPresentationTime::currentFrame().presentation_time;
+    // Presentation time is normally guaranteed by the frame context. Fail
+    // closed if a corrupt sample arrives: hold the last authored phase rather
+    // than feeding NaN/negative values into camera geometry or easing.
+    const F64 presentation_time =
+        std::isfinite(presentation_sample) && presentation_sample >= 0.0
+            ? presentation_sample
+            : mSwitcherPhaseAnchor + (F64)mPhase;
     const LLUUID current_target = av->getID();
-    // Every mode and resolved-target change is a camera cut. Restart pattern,
-    // tripod, smoothing, velocity, and operator state so one-shot modes begin
-    // at their authored start pose. No mode intentionally preserves phase
-    // continuity across a cut.
-    if (gFrameCount > mLastUpdateFrame + 3 ||
-        current_mode != mLastMode || current_target != mLastTargetId)
+    const bool fresh_activation =
+        gFrameCount > mLastUpdateFrame + 3;
+    const bool mode_changed =
+        current_mode != mLastMode;
+    const bool target_changed =
+        current_target != mLastTargetId;
+    const bool serial_changed =
+        switcher_serial != mLastSwitcherCutSerial;
+    const bool stale_reentry =
+        mLastUpdateFrame != 0 && fresh_activation;
+    if (switcher_driving)
     {
+        if (serial_changed)
+        {
+            // A real take retains its exact boundary even if the render thread
+            // first observes it after a hitch.
+            mSwitcherPhaseAnchor = switcher.activeSince();
+        }
+        else if (mode_changed || target_changed)
+        {
+            // A target/mode edit is a new authored shot even without a bank
+            // punch. Restart it on this deterministic presentation sample.
+            mSwitcherPhaseAnchor = presentation_time;
+        }
+        // A fresh re-entry after recorder/path/pilot pre-emption deliberately
+        // keeps the existing take anchor and resumes at its current phase.
+    }
+    // Every mode and resolved-target change is a camera cut. Restart pattern,
+    // tripod, smoothing, velocity, and operator state. A switcher serial also
+    // makes two different slots carrying the same mode a real cut.
+    if (fresh_activation || mode_changed || target_changed || serial_changed)
+    {
+        const F32 ease_seconds =
+            switcher_driving && serial_changed
+                ? switcher.cutEaseSeconds() : 0.f;
+        const F64 cut_age =
+            presentation_time - switcher.activeSince();
+        const F64 ease_elapsed =
+            switcher.cutEaseElapsedSeconds();
+        // Never glide back from a stale pose after a higher-priority camera
+        // pre-empted CineCam. First activation is allowed to ease from the
+        // currently presented agent camera; a later >3-frame gap is not.
+        if (ease_seconds > 0.f && cut_age >= 0.0 &&
+            cut_age < ease_seconds && ease_elapsed >= 0.0 &&
+            ease_elapsed < ease_seconds && !stale_reentry)
+        {
+            LLViewerCamera* cam = LLViewerCamera::getInstance();
+            mEaseActive = true;
+            mEaseDuration = ease_seconds;
+            mEaseCurveId = switcher.cutEaseCurve();
+            mEaseFeather = switcher.cutEaseFeather();
+            const F32* cut_bezier = switcher.cutEaseBezier();
+            for (S32 i = 0; i < 4; ++i)
+            {
+                mEaseBezier[i] = cut_bezier[i];
+            }
+            mEaseFromPos = cam->getOrigin();
+            mEaseFromRot = cam->getQuaternion();
+            mEaseFromFov = cam->getView();
+        }
+        else
+        {
+            mEaseActive = false;
+        }
         mPhase = 0.f;
         mHavePose = false;
         mWasActive = false;
@@ -1197,13 +2398,26 @@ void LLCinematicCamera::updateCamera()
     }
     mLastMode = current_mode;
     mLastTargetId = current_target;
+    mLastSwitcherCutSerial = switcher_serial;
     mLastUpdateFrame = gFrameCount;
 
     F32 dt = llclamp(gFrameIntervalSeconds.value(), 0.0005f, 0.25f);
-    mPhase += dt;
-    if (mPhase > PHASE_WRAP)
+    if (switcher_driving)
     {
-        mPhase -= PHASE_WRAP;
+        // Absolute presentation age removes render-frame grouping from a
+        // switcher-authored motion shot. Legacy CineCam retains its exact
+        // gFrameIntervalSeconds accumulator below.
+        const F64 age =
+            llmax(0.0, presentation_time - mSwitcherPhaseAnchor);
+        mPhase = (F32)fmod(age, (F64)PHASE_WRAP);
+    }
+    else
+    {
+        mPhase += dt;
+        if (mPhase > PHASE_WRAP)
+        {
+            mPhase -= PHASE_WRAP;
+        }
     }
 
     // the point patterns frame: head when available, else chest height
@@ -1219,7 +2433,7 @@ void LLCinematicCamera::updateCamera()
 
     // global frame offset: raise/lower the point every target-framing mode
     // circles around and aims at. Bone lock has its own mount offsets.
-    if ((S32)mode != MODE_BONE_LOCK)
+    if (current_mode != MODE_BONE_LOCK && !auto_frame_enabled)
     {
         const LLVector3 frame_off(0.f, 0.f, (F32)frame_up);
         focus += frame_off;
@@ -1232,7 +2446,7 @@ void LLCinematicCamera::updateCamera()
     F32 mode_fov_mul = 1.f;     // dolly zoom writes this
     F32 mode_roll = 0.f;        // overhead spin writes this (radians)
 
-    switch ((S32)mode)
+    switch (current_mode)
     {
         case MODE_BONE_LOCK:  patternBoneLock(av, mPhase, pos, rot, have_rot); break;
         case MODE_ORBIT:      pos = patternOrbit(center, mPhase); break;
@@ -1276,6 +2490,17 @@ void LLCinematicCamera::updateCamera()
         case MODE_STEP_ORBIT:    pos = patternStepOrbit(av, center, mPhase); break;
         case MODE_CABLE_CAM:     pos = patternCableCam(av, center, mPhase); break;
         case MODE_BREATHING_HOLD:pos = patternBreathingHold(av, center, mPhase); break;
+        case MODE_STATIC_WIDE:
+        case MODE_STATIC_MEDIUM:
+        case MODE_STATIC_CLOSE:
+        case MODE_STATIC_PROFILE_L:
+        case MODE_STATIC_PROFILE_R:
+        case MODE_STATIC_LOW:
+        case MODE_STATIC_HIGH:
+        case MODE_STATIC_FULL:
+            pos = patternStaticShot(
+                av, center, current_mode, focus, mode_fov_mul);
+            break;
         default:              return;
     }
 
@@ -1286,7 +2511,7 @@ void LLCinematicCamera::updateCamera()
     const F32 subject_scale = av->getUniformScale();
     if (subject_scale != 1.f)
     {
-        switch ((S32)mode)
+        switch (current_mode)
         {
             case MODE_OTS:
             case MODE_TWO_SHOT:
@@ -1304,6 +2529,18 @@ void LLCinematicCamera::updateCamera()
                 pos = cc_scaleAboutSubjectBase(av, pos);
                 break;
         }
+    }
+    applyAutoReframe(
+        av, current_mode,
+        LLViewerCamera::getInstance()->getDefaultFOV() * mode_fov_mul,
+        fresh_activation || mode_changed || target_changed || serial_changed,
+        !stale_reentry,
+        pos, focus);
+    if (auto_frame_toggled)
+    {
+        // Toggling the assist is a discrete rig change. Do not leak the old
+        // auto/authored smoothed pose into the newly selected base.
+        mHavePose = false;
     }
     if (!have_rot)
     {
@@ -1327,7 +2564,8 @@ void LLCinematicCamera::updateCamera()
     // rubber-band against a MOVING mount (the dominant Bone Lock jitter). Auto-
     // bypass smoothing for Bone Lock (snap) unless the operator opts back in;
     // every other mode smooths exactly as before.
-    const bool bypass_smoothing = ((S32)mode == MODE_BONE_LOCK) && bonelock_bypass;
+    const bool bypass_smoothing =
+        (current_mode == MODE_BONE_LOCK) && bonelock_bypass;
     const F32 tau = bypass_smoothing ? 0.f : llmax((F32)smoothing, 0.f);
     if (!mHavePose || tau < 1e-3f)
     {
@@ -1344,13 +2582,49 @@ void LLCinematicCamera::updateCamera()
 
     LLVector3 out_pos = mSmPos;
     LLQuaternion out_rot = mSmRot;
+    bool easing_this_frame = false;
+    F32 ease_weight = 1.f;
+    if (mEaseActive)
+    {
+        // Cut blends share the switcher's unscaled per-cut timer. A full
+        // Temporal freeze therefore cannot deadlock the visual camera ease.
+        const F64 elapsed = switcher.cutEaseElapsedSeconds();
+        const F32 u = mEaseDuration > 0.f
+            ? (F32)(elapsed / mEaseDuration) : 1.f;
+        if (u >= 1.f || u < 0.f)
+        {
+            mEaseActive = false;
+        }
+        else
+        {
+            easing_this_frame = true;
+            ease_weight = ALCameraCurve::evalFeathered(
+                mEaseCurveId, u,
+                mEaseBezier[0], mEaseBezier[1],
+                mEaseBezier[2], mEaseBezier[3], mEaseFeather);
+            out_pos = mEaseFromPos +
+                (mSmPos - mEaseFromPos) * ease_weight;
+            out_rot = nlerp(ease_weight, mEaseFromRot, mSmRot);
+        }
+    }
+    const LLVector3 base_pos = out_pos;
+    const LLQuaternion base_rot = out_rot;
     F32 fov_mul = 1.f;
 
     // ---- optional handheld texture on top ---------------------------------
-    if (use_operator)
+    if (use_operator || apply_active)
     {
         static LLCachedControl<S32> operator_locomotion(
             gSavedSettings, "FlycamOperatorLocomotionMode", 0);
+        if (apply_active)
+        {
+            static U32 sLastOperatorFrame = 0;
+            if (sLastOperatorFrame == 0 || gFrameCount > sLastOperatorFrame + 1)
+            {
+                LLCameraOperator::instance().reset();
+            }
+            sLastOperatorFrame = gFrameCount;
+        }
         if (!mWasActive)
         {
             LLCameraOperator::instance().reset();
@@ -1359,10 +2633,10 @@ void LLCinematicCamera::updateCamera()
         if ((S32)operator_locomotion == 0)
         {
             // Legacy retains the exact variable-frame velocity path.
-            LLMatrix3 axes(mSmRot);
+            LLMatrix3 axes(base_rot);
             const LLVector3 world_vel =
-                (mSmPos - mPrevPos) * (1.f / dt);
-            LLQuaternion dq = mSmRot * ~mPrevRot;
+                (base_pos - mPrevPos) * (1.f / dt);
+            LLQuaternion dq = base_rot * ~mPrevRot;
             F32 d_roll, d_pitch, d_yaw;
             LLMatrix3(dq).getEulerAngles(
                 &d_roll, &d_pitch, &d_yaw);
@@ -1382,7 +2656,7 @@ void LLCinematicCamera::updateCamera()
             // Procedural paths are sampled as absolute poses at fixed tick
             // boundaries, rather than as render-frame average velocities.
             op = LLCameraOperator::instance().updateFromPose(
-                dt, mSmPos, mSmRot);
+                dt, base_pos, base_rot);
         }
         LLMatrix3 wobble(op.mRoll, op.mPitch, op.mYaw);
         out_rot = LLQuaternion(wobble) * out_rot;
@@ -1393,14 +2667,39 @@ void LLCinematicCamera::updateCamera()
         fov_mul = op.mFovMul;
     }
 
-    mPrevPos = mSmPos;
-    mPrevRot = mSmRot;
+    mPrevPos = base_pos;
+    mPrevRot = base_rot;
     mWasActive = true;
 
     // ---- write the render camera -------------------------------------------
     LLViewerCamera* cam = LLViewerCamera::getInstance();
     LLMatrix3 final_axes(out_rot);
-    cam->setView(cam->getDefaultFOV() * mode_fov_mul * fov_mul);
+    F32 final_fov = cam->getDefaultFOV() * mode_fov_mul * fov_mul;
+    // Aspect-aware lens is applied BEFORE the cut ease so both ends of the
+    // blend live in the same (lensed) space. mEaseFromFov (= cam->getView())
+    // is already lens-transformed; applying the lens AFTER the lerp re-lensed
+    // the "from" end and popped the FOV by the full lens amount at the start
+    // of every eased cut (the "zoom" seen only with aspect-aware lens on).
+    // cc_applyFrameLens is identity when the lens is disabled, so with the
+    // feature off this is byte-for-byte the previous behavior.
+    final_fov = cc_applyFrameLens(final_fov, cam);
+    if (easing_this_frame)
+    {
+        final_fov = cc_lerp(mEaseFromFov, final_fov, ease_weight);
+    }
+    if (easing_this_frame)
+    {
+        // A short eased lens move is local camera presentation; broadcasting
+        // every intermediate FOV to the simulator would create message churn.
+        cam->setViewNoBroadcast(
+            llclamp(final_fov, cam->getMinView(), cam->getMaxView()));
+    }
+    else
+    {
+        // Hard cuts and the final eased value use the normal path so simulator
+        // interest calculations receive the settled lens.
+        cam->setView(final_fov);
+    }
     cam->setOrigin(out_pos);
     cam->mXAxis = LLVector3(final_axes.mMatrix[0]);
     cam->mYAxis = LLVector3(final_axes.mMatrix[1]);

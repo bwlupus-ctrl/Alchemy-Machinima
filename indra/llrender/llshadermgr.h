@@ -515,6 +515,7 @@ public:
         PROJVOL_SHADOW_TINT,               //  "projvol_shadow_tint"  (B)
         PROJVOL_HISTORY,                   //  "projvol_history"      (A, sampler)
         PROJVOL_PREV_VIEWPROJ,             //  "projvol_prev_viewproj"(A)
+        PROJVOL_PREV_MODELVIEW,            //  "projvol_prev_modelview"(A)
         PROJVOL_TEMPORAL_BLEND,            //  "projvol_temporal_blend"(A)
 
         // [BDMerge G3.3 Batch B] temporal correctness (R2 contrast reject, R1 beam depth)
@@ -613,6 +614,7 @@ public:
         FROXEL_FRAME,                      //  "froxel_frame"
 
         WEATHER_RAIN_MAP,                  //  "weather_rain_map"
+        WEATHER_RAIN_OCCLUSION_MAP,        //  "weather_rain_occlusion_map"
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

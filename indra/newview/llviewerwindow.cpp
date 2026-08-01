@@ -33,6 +33,8 @@
 #include "llviewerprecompiledheaders.h"
 #include "llviewerwindow.h"
 
+#include <cmath>
+
 
 // system library includes
 #include <stdio.h>
@@ -244,6 +246,7 @@ extern bool gDisplaySwapBuffers;
 extern bool gDepthDirty;
 extern bool gResizeScreenTexture;
 extern bool gCubeSnapshot;
+extern bool gSnapshot;
 extern bool gSnapshotNoPost;
 
 LLViewerWindow  *gViewerWindow = NULL;
@@ -252,6 +255,99 @@ LLFrameTimer    gAwayTimer;
 LLFrameTimer    gAwayTriggerTimer;
 
 bool            gShowOverlayTitle = false;
+
+namespace
+{
+// Drawn only in LLViewerWindow::draw() for the live UI composite. It is
+// deliberately absent from snapshot renders and is placed before mRootView so
+// the framing aid covers the world without obscuring Director controls.
+void drawCinematicFrameGuide(S32 width, S32 height)
+{
+    static LLCachedControl<bool> guide_enabled(
+        gSavedSettings, "CinematicFrameGuideEnabled", false);
+    if (!guide_enabled || width <= 0 || height <= 0)
+    {
+        return;
+    }
+
+    static LLCachedControl<F32> configured_aspect(
+        gSavedSettings, "CinematicFrameAspectRatio", 0.f);
+    static LLCachedControl<F32> custom_aspect(
+        gSavedSettings, "CinematicFrameCustomRatio", 2.35f);
+    static LLCachedControl<S32> guide_style(
+        gSavedSettings, "CinematicFrameGuideStyle", 0);
+    static LLCachedControl<F32> guide_opacity(
+        gSavedSettings, "CinematicFrameGuideOpacity", 0.65f);
+
+    F32 target_aspect = configured_aspect;
+    if (target_aspect < 0.f)
+    {
+        target_aspect = custom_aspect;
+    }
+    if (!std::isfinite(target_aspect) || target_aspect <= 0.f)
+    {
+        return;
+    }
+
+    const F32 window_aspect = (F32)width / (F32)height;
+    if (!std::isfinite(window_aspect) || window_aspect <= 0.f)
+    {
+        return;
+    }
+
+    LLRect frame(0, height, width, 0);
+    if (target_aspect > window_aspect)
+    {
+        const S32 frame_height = llclamp(ll_round((F32)width / target_aspect), 1, height);
+        frame.mBottom = (height - frame_height) / 2;
+        frame.mTop = frame.mBottom + frame_height;
+    }
+    else
+    {
+        const S32 frame_width = llclamp(ll_round((F32)height * target_aspect), 1, width);
+        frame.mLeft = (width - frame_width) / 2;
+        frame.mRight = frame.mLeft + frame_width;
+    }
+
+    // Native/as-near-native formats produce no useful guide and no draw call.
+    if (frame.getWidth() >= width - 1 && frame.getHeight() >= height - 1)
+    {
+        return;
+    }
+
+    const S32 style = llclamp((S32)guide_style, 0, 2);
+    const F32 opacity = llclamp((F32)guide_opacity, 0.f, 1.f);
+    if (style == 2)
+    {
+        const LLColor4 line_color(1.f, 1.f, 1.f, 1.f);
+        if (frame.getWidth() == width)
+        {
+            gl_line_2d(0, frame.mBottom, width, frame.mBottom, line_color);
+            gl_line_2d(0, frame.mTop, width, frame.mTop, line_color);
+        }
+        else
+        {
+            gl_line_2d(frame.mLeft, 0, frame.mLeft, height, line_color);
+            gl_line_2d(frame.mRight, 0, frame.mRight, height, line_color);
+        }
+        return;
+    }
+
+    // Dim is intentionally gentler than Solid at the same user opacity.
+    const F32 alpha = style == 0 ? opacity * 0.55f : opacity;
+    const LLColor4 bar_color(0.f, 0.f, 0.f, alpha);
+    if (frame.getWidth() == width)
+    {
+        gl_rect_2d(LLRect(0, frame.mBottom, width, 0), bar_color, true);
+        gl_rect_2d(LLRect(0, height, width, frame.mTop), bar_color, true);
+    }
+    else
+    {
+        gl_rect_2d(LLRect(0, height, frame.mLeft, 0), bar_color, true);
+        gl_rect_2d(LLRect(frame.mRight, height, width, 0), bar_color, true);
+    }
+}
+} // anonymous namespace
 
 LLViewerObject*  gDebugRaycastObject = NULL;
 LLVOPartGroup* gDebugRaycastParticle = NULL;
@@ -3053,6 +3149,14 @@ void LLViewerWindow::draw()
             stop_glerror();
         }
 
+        // UI-only, live-composite framing aid. getIndicatorsVisible() covers
+        // both mUIVisible and the RENDER_DEBUG_FEATURE_UI mask; gSnapshot keeps
+        // the guide out of every capture buffer even when "Render UI" is on.
+        if (!gSnapshot && getIndicatorsVisible())
+        {
+            drawCinematicFrameGuide(getWindowWidthScaled(), getWindowHeightScaled());
+        }
+
         // Draw all nested UI views.
         // No translation needed, this view is glued to 0,0
         mRootView->draw();
@@ -3424,6 +3528,18 @@ bool LLViewerWindow::handleKey(KEY key, MASK mask)
         return true;
     }
 
+    // [Director] Transport plus switcher number punches. Gestures and focused
+    // UI/tools above retain precedence. This must run before printable-key
+    // auto-chat so an armed, visible switcher can reserve 1..9; its fast gate
+    // returns false everywhere else and ordinary typing remains untouched.
+    if (ALDirectorHotkeys::handleKey(
+            key, mask, gKeyboard->getKeyRepeated(key),
+            keyboard_focus != nullptr))
+    {
+        LLViewerEventRecorder::instance().logKeyEvent(key, mask);
+        return true;
+    }
+
     // If "Pressing letter keys starts local chat" option is selected, we are not in mouselook,
     // no view has keyboard focus, this is a printable character key (and no modifier key is
     // pressed except shift), then give focus to nearby chat (STORM-560)
@@ -3462,18 +3578,6 @@ bool LLViewerWindow::handleKey(KEY key, MASK mask)
             ALChatBar::startChat(nullptr);
             return TRUE;
         }
-    }
-
-    // [Director] machinima F-key transport (unmodified F2..F8, see
-    // doc/DIRECTOR_HOTKEYS.md): dispatched AFTER gestures -- a user gesture
-    // bound to the same key always wins -- and BEFORE the menu accelerators.
-    // Returns false fast unless DirectorHotkeysEnabled and (except the F2
-    // console toggle) a Director Console / Actor Mover floater is open, so
-    // the keys never hijack normal use.
-    if (ALDirectorHotkeys::handleKey(key, mask))
-    {
-        LLViewerEventRecorder::instance().logKeyEvent(key, mask);
-        return true;
     }
 
     // give menus a chance to handle unmodified accelerator keys

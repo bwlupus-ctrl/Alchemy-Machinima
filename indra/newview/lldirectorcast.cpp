@@ -11,10 +11,12 @@
 
 #include "lldirectorcast.h"
 
+#include "aldirectorswitcher.h"
 #include "alghoststudio.h"
 #include "llghostavatar.h"          // LLGhostAvatar complete type for resolveEntityClone() upcast
 #include "llactormover.h"           // startAll/stopAll/placeAt (ACTION, marks)
 #include "lleventtimer.h"           // one-shot countdown timer
+#include "llpresentationtime.h"
 #include "llsdutil_math.h"          // ll_sd_from_vector3 (scene marks)
 #include "llflycamrecorder.h"       // armed recorder playback/capture
 #include "llviewercontrol.h"        // gSavedSettings, LLCachedControl
@@ -67,6 +69,14 @@ void LLDirectorCast::remove(const LLUUID& id)
     if (mSubjectB == id)
     {
         mSubjectB.setNull();
+    }
+    if (mSubjectC == id)
+    {
+        mSubjectC.setNull();
+    }
+    if (mSubjectD == id)
+    {
+        mSubjectD.setNull();
     }
     // leaving the cast also leaves the start queue, and may retire the group
     cancelPendingStart(id);
@@ -157,6 +167,16 @@ LLVOAvatar* LLDirectorCast::resolveSubjectA()
 LLVOAvatar* LLDirectorCast::resolveSubjectB()
 {
     return mSubjectB.notNull() ? resolve(mSubjectB) : nullptr;
+}
+
+LLVOAvatar* LLDirectorCast::resolveSubjectC()
+{
+    return mSubjectC.notNull() ? resolve(mSubjectC) : nullptr;
+}
+
+LLVOAvatar* LLDirectorCast::resolveSubjectD()
+{
+    return mSubjectD.notNull() ? resolve(mSubjectD) : nullptr;
 }
 
 // ---------------------------------------------------------------------------
@@ -487,6 +507,8 @@ LLSD LLDirectorCast::sceneData() const
     data["cast"] = cast_arr;
     data["subject_a"] = mSubjectA;
     data["subject_b"] = mSubjectB;
+    data["subject_c"] = mSubjectC;
+    data["subject_d"] = mSubjectD;
     // per-group start delays, only for groups that still exist (the members
     // above carry the tags; this map just annotates them)
     LLSD delays = LLSD::emptyMap();
@@ -513,6 +535,8 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     mIds.clear();
     mSubjectA.setNull();
     mSubjectB.setNull();
+    mSubjectC.setNull();
+    mSubjectD.setNull();
 
     const LLSD& cast_arr = data["cast"];
     for (LLSD::array_const_iterator it = cast_arr.beginArray();
@@ -543,6 +567,8 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     // subjects only survive when they point into the loaded cast
     const LLUUID a = data["subject_a"].asUUID();
     const LLUUID b = data["subject_b"].asUUID();
+    const LLUUID c = data["subject_c"].asUUID();
+    const LLUUID d = data["subject_d"].asUUID();
     if (contains(a))
     {
         mSubjectA = a;
@@ -550,6 +576,14 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     if (contains(b))
     {
         mSubjectB = b;
+    }
+    if (contains(c))
+    {
+        mSubjectC = c;
+    }
+    if (contains(d))
+    {
+        mSubjectD = d;
     }
 
     // group start delays (absent in pre-delay scenes); only names some loaded
@@ -634,6 +668,14 @@ void LLDirectorCast::fireAction()
     mFiredCamera = false;
     mFiredPlay = false;
     mFiredCapture = false;
+    mCameraEnableTransient = false;
+
+    // Synchronize a just-toggled arm/disarm before either owner snapshots the
+    // effective camera control. This closes both ACTION->arm and arm->ACTION
+    // ordering windows within one UI frame.
+    ALDirectorSwitcher& switcher = ALDirectorSwitcher::instance();
+    switcher.tick(
+        LLPresentationTime::currentFrame().presentation_time);
 
     if (arm_moves)
     {
@@ -650,10 +692,28 @@ void LLDirectorCast::fireAction()
         // enable the cinematic camera; orbit is untouched (it rides its own
         // enable + resolveAnchor()). Remember the prior state so CUT
         // restores it instead of hammering it off.
-        mCameraWasEnabled = gSavedSettings.getBOOL("CinematicCamEnabled");
-        if (!mCameraWasEnabled)
+        const bool camera_enabled =
+            gSavedSettings.getBOOL("CinematicCamEnabled");
+        bool switcher_baseline = false;
+        mCameraEnableTransient =
+            switcher.cameraEnableBaseline(switcher_baseline);
+        mCameraWasEnabled =
+            mCameraEnableTransient
+                ? switcher_baseline : camera_enabled;
+        if (!camera_enabled)
         {
-            gSavedSettings.setBOOL("CinematicCamEnabled", true);
+            if (mCameraEnableTransient)
+            {
+                if (LLControlVariable* control =
+                        gSavedSettings.getControl("CinematicCamEnabled"))
+                {
+                    control->setValue(LLSD(true), false);
+                }
+            }
+            else
+            {
+                gSavedSettings.setBOOL("CinematicCamEnabled", true);
+            }
         }
         mFiredCamera = true;
     }
@@ -676,6 +736,10 @@ void LLDirectorCast::fireAction()
     }
 
     mRunning = true;
+    // An armed switcher owns the effective CineCam program but cooperates with
+    // this transport gate. Run after mRunning is published so a switcher first
+    // armed on this ACTION can identify the transport-owned enable snapshot.
+    switcher.onDirectorAction();
     LL_INFOS("DirectorCast") << "ACTION: moves " << mFiredMoves
                              << " camera " << mFiredCamera
                              << " play " << mFiredPlay
@@ -689,6 +753,9 @@ void LLDirectorCast::cut()
     // so a CUT pressed while only group-Start waves are pending (transport
     // never "running") still disarms them
     cancelPendingStarts();
+    // CUT is also the switcher's emergency camera release, even when no other
+    // Director subsystem currently marks the transport running.
+    ALDirectorSwitcher::instance().onDirectorCut();
     if (!mRunning)
     {
         return;
@@ -701,7 +768,18 @@ void LLDirectorCast::cut()
     {
         // only un-enable what ACTION enabled: a camera the operator had
         // running before ACTION keeps running after CUT
-        gSavedSettings.setBOOL("CinematicCamEnabled", false);
+        if (mCameraEnableTransient)
+        {
+            if (LLControlVariable* control =
+                    gSavedSettings.getControl("CinematicCamEnabled"))
+            {
+                control->setValue(LLSD(false), false);
+            }
+        }
+        else
+        {
+            gSavedSettings.setBOOL("CinematicCamEnabled", false);
+        }
     }
     if (mFiredPlay)
     {

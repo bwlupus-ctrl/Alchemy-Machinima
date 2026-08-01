@@ -11,6 +11,7 @@
 
 #include "aldirectorhotkeys.h"
 
+#include "aldirectorswitcher.h"
 #include "indra_constants.h"        // KEY_F2..KEY_F8, MASK_NONE
 #include "lldirectorcast.h"         // ACTION/CUT transport, marks
 #include "llfloater.h"
@@ -29,13 +30,16 @@ bool floater_open(const char* name)
 }
 } // anonymous namespace
 
-bool ALDirectorHotkeys::handleKey(KEY key, MASK mask)
+bool ALDirectorHotkeys::handleKey(
+    KEY key, MASK mask, bool repeated, bool keyboard_focus)
 {
-    // cheap rejects first -- this runs on every keydown. Unmodified F2..F8
-    // only (F1 stays Help; the KEY_F* constants are contiguous). Modified
+    // Cheap rejects first -- this runs on every keydown. Unmodified F2..F8
+    // and top-row ASCII 1..9 only. Modified
     // combos (Ctrl/Alt/Shift) all fall through untouched, so Ctrl+Alt+F1-F9
     // (render feature toggles) and Alt+F4 (OS close) are never shadowed.
-    if (mask != MASK_NONE || key < KEY_F2 || key > KEY_F8)
+    const bool function_key = key >= KEY_F2 && key <= KEY_F8;
+    const bool number_key = key >= (KEY)'1' && key <= (KEY)'9';
+    if (mask != MASK_NONE || (!function_key && !number_key))
     {
         return false;
     }
@@ -43,6 +47,29 @@ bool ALDirectorHotkeys::handleKey(KEY key, MASK mask)
     if (!enabled)
     {
         return false;
+    }
+
+    // Number punches are intentionally narrower than transport: only a
+    // visible Director Console and an armed switcher reserve them. Actor Mover
+    // alone never steals chat digits. Repeats are consumed but cut only once.
+    if (number_key)
+    {
+        // Printable input is delivered through handleUnicodeCharHere(), so a
+        // line editor can legitimately decline this earlier keydown event.
+        // Treat any keyboard focus as authoritative instead of stealing the
+        // digit before its Unicode event arrives.
+        if (keyboard_focus ||
+            !floater_open("director") ||
+            !gSavedSettings.getBOOL("DirectorSwitcherArmed"))
+        {
+            return false;
+        }
+        if (!repeated)
+        {
+            ALDirectorSwitcher::instance().punch(
+                (S32)(key - (KEY)'1'));
+        }
+        return true;
     }
 
     // F2 (console toggle) is the ONE key that also works with no operator
@@ -61,7 +88,6 @@ bool ALDirectorHotkeys::handleKey(KEY key, MASK mask)
     {
         return false;
     }
-
     LLDirectorCast& cast = LLDirectorCast::instance();
     switch (key)
     {

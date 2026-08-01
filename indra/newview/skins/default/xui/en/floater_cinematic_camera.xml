@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
-<!-- Thin shell: all content lives in panel_cinecam_params.xml
-     (ALPanelCineCamParams), shared with the Director Console. -->
+<!-- Thin shell: the same Cinematic and Camera Shake panels used by the Director
+     Console, kept on separate pages so neither surface loses controls. -->
 <floater
  legacy_header_height="18"
  can_resize="true"
@@ -13,24 +13,94 @@
  save_rect="true"
  single_instance="true"
  width="340">
-    <scroll_container
+    <tab_container
      follows="all"
      height="676"
      layout="topleft"
      left="0"
      top="20"
-     name="cinecam_params_scroll"
-     opaque="false"
+     name="cinecam_tabs"
+     tab_height="24"
      width="340">
         <panel
-         class="panel_cinecam_params"
-         filename="panel_cinecam_params.xml"
-         follows="left|top"
-         height="1175"
+         background_visible="false"
+         follows="all"
+         height="652"
+         label="Cinematic"
          layout="topleft"
          left="0"
          top="0"
-         name="cinecam_params"
-         width="320" />
-    </scroll_container>
+         name="cinecam_tab"
+         width="340">
+            <scroll_container
+             follows="all"
+             height="644"
+             layout="topleft"
+             left="0"
+             top="4"
+             name="cinecam_params_scroll"
+             opaque="false"
+             width="340">
+                <panel
+                 background_visible="false"
+                 height="436"
+                 layout="topleft"
+                 left="0"
+                 top="0"
+                 name="cinecam_params_content"
+                 width="320">
+                    <panel
+                     class="panel_cinecam_params"
+                     filename="panel_cinecam_params.xml"
+                     follows="left|top"
+                     height="420"
+                     layout="topleft"
+                     left="0"
+                     top="8"
+                     name="cinecam_params"
+                     width="320" />
+                </panel>
+            </scroll_container>
+        </panel>
+        <panel
+         background_visible="false"
+         follows="all"
+         height="652"
+         label="Camera Shake"
+         layout="topleft"
+         left="0"
+         top="0"
+         name="operator_tab"
+         width="340">
+            <scroll_container
+             follows="all"
+             height="644"
+             layout="topleft"
+             left="0"
+             top="4"
+             name="camera_shake_scroll"
+             opaque="false"
+             width="340">
+                <panel
+                 background_visible="false"
+                 height="1341"
+                 layout="topleft"
+                 left="0"
+                 top="0"
+                 name="camera_shake_content"
+                 width="320">
+                    <panel
+                     class="panel_cinecam_params"
+                     filename="panel_cinecam_operator.xml"
+                     follows="left|top"
+                     height="1325"
+                     layout="topleft"
+                     left="0"
+                     top="8"
+                     name="cinecam_operator"
+                     width="340" />
+                </panel>
+            </scroll_container>
+        </panel>
+    </tab_container>
 </floater>

@@ -54,6 +54,7 @@
 #include "llglheaders.h"
 #include "llrender.h"
 #include "llrender2dutils.h" // [F8] gl_rect_2d, for renderCompositionGuideOverlay()
+#include "llsmoothstep.h"
 #include "llstartup.h"
 #include "llwindow.h"   // swapBuffers()
 
@@ -176,6 +177,55 @@ bool gShiftFrame = false;
 namespace
 {
     ALWeatherModel::Controller sWeatherController;
+
+    struct WeatherShelterExposure
+    {
+        void reset()
+        {
+            mExposure = 1.f;
+            mLastPresentationTime = 0.0;
+            mInitialized = false;
+        }
+
+        F32 update(F64 presentation_time, F32 target)
+        {
+            target = llclamp(target, 0.f, 1.f);
+            if (!std::isfinite(presentation_time))
+            {
+                reset();
+                return target;
+            }
+            if (!mInitialized || presentation_time < mLastPresentationTime)
+            {
+                mExposure = target;
+                mLastPresentationTime = presentation_time;
+                mInitialized = true;
+                return mExposure;
+            }
+
+            // Exact exponential integration for a constant target makes the
+            // ease independent of frame subdivision and presentation-time only.
+            constexpr F64 RESPONSE_SECONDS = 0.2;
+            const F64 elapsed = llclamp(
+                presentation_time - mLastPresentationTime, 0.0, 1.0);
+            const F32 blend = static_cast<F32>(
+                1.0 - std::exp(-elapsed / RESPONSE_SECONDS));
+            mExposure = llclamp(
+                mExposure + (target - mExposure) * blend, 0.f, 1.f);
+            if (std::abs(target - mExposure) <= 0.001f)
+            {
+                mExposure = target;
+            }
+            mLastPresentationTime = presentation_time;
+            return mExposure;
+        }
+
+        F32 mExposure = 1.f;
+        F64 mLastPresentationTime = 0.0;
+        bool mInitialized = false;
+    };
+
+    WeatherShelterExposure sWeatherShelterExposure;
 }
 
 //cached settings
@@ -420,6 +470,7 @@ bool    LLPipeline::sBakeSunlight = false;
 bool    LLPipeline::sNoAlpha = false;
 bool    LLPipeline::sUseFarClip = true;
 bool    LLPipeline::sShadowRender = false;
+bool    LLPipeline::sRainOcclusionRender = false;
 bool    LLPipeline::sRenderGlow = false;
 bool    LLPipeline::sReflectionRender = false;
 bool    LLPipeline::sDistortionRender = false;
@@ -963,6 +1014,12 @@ void LLPipeline::resizeScreenTexture()
             releaseScreenBuffers();
             releaseSunShadowTargets();
             releaseSpotShadowTargets();
+            mWeatherRainOcclusion.release();
+            mWeatherRainOcclusionValid = false;
+            mWeatherRainOcclusionFrame = 0;
+            mWeatherRainOcclusionFailedResolution = 0;
+            mWeatherRainOcclusionDepthRange = 1.f;
+            mWeatherRainOcclusionMatrix = glm::mat4(1.f);
             allocateScreenBuffer(resX,resY);
             gResizeScreenTexture = false;
         }
@@ -1621,6 +1678,12 @@ void LLPipeline::releaseGLBuffers()
 
     mProjVolHalf.release(); // [BDMerge G3.3 Phase 1 item 3]
     mWeatherRainHalf.release();
+    mWeatherRainOcclusion.release();
+    mWeatherRainOcclusionValid = false;
+    mWeatherRainOcclusionFrame = 0;
+    mWeatherRainOcclusionFailedResolution = 0;
+    mWeatherRainOcclusionDepthRange = 1.f;
+    mWeatherRainOcclusionMatrix = glm::mat4(1.f);
     mProjVolHistory[0].release(); // [BDMerge G3.3 Batch 1 A] temporal history
     mProjVolHistory[1].release();
     mProjVolHistoryValid = false;
@@ -11481,10 +11544,33 @@ void LLPipeline::renderVolumetric(LLRenderTarget* src, LLRenderTarget* dst)
 
 void LLPipeline::renderWeather(LLRenderTarget* target)
 {
+    static bool sLightningSheetSnapshotValid = false;
+    static U64 sLightningSheetStrikeId = 0;
+    static F64 sLightningSheetStrikeTime = 0.0;
+    static U64 sLightningSheetSeed = 0;
+    static F32 sLightningSheetCoverage = 0.f;
+    static F32 sLightningSheetDensity1 = 1.f;
+    static F32 sLightningSheetDensity2 = 1.f;
+    static F32 sLightningSheetVariance = 0.f;
+    static F32 sLightningSheetScale = 0.42f;
+    static LLVector2 sLightningSheetBaseOffset(0.f, 0.f);
+    static LLVector2 sLightningSheetScrollRate(0.f, 0.f);
+
     static LLCachedControl<bool> enabled(gSavedSettings, "AlchemyWeatherEnabled", false);
     if (!enabled())
     {
         sWeatherController.reset();
+        sWeatherShelterExposure.reset();
+        sLightningSheetSnapshotValid = false;
+        mWeatherRainOcclusionValid = false;
+        mWeatherRainOcclusionFrame = 0;
+        mWeatherRainOcclusionFailedResolution = 0;
+        mWeatherRainOcclusionDepthRange = 1.f;
+        mWeatherRainOcclusionMatrix = glm::mat4(1.f);
+        if (mWeatherRainOcclusion.getWidth() != 0)
+        {
+            mWeatherRainOcclusion.release();
+        }
         return;
     }
     if (gCubeSnapshot || !target || !mScreenTriangleVB)
@@ -11504,6 +11590,32 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
     static LLCachedControl<F32> wind_scale_setting(gSavedSettings, "AlchemyWeatherWindScale", 1.f);
     static LLCachedControl<LLColor3> rain_color_setting(gSavedSettings, "AlchemyWeatherRainColor", LLColor3(0.55f, 0.68f, 0.78f));
     static LLCachedControl<F32> eep_coupling_setting(gSavedSettings, "AlchemyWeatherEEPCoupling", 0.35f);
+    static LLCachedControl<U32> rain_layers_setting(gSavedSettings, "AlchemyWeatherRainLayers", 3U);
+    static LLCachedControl<F32> rain_shutter_setting(gSavedSettings, "AlchemyWeatherRainVirtualShutter", 0.04f);
+    static LLCachedControl<F32> rain_near_setting(gSavedSettings, "AlchemyWeatherRainNearEmphasis", 0.65f);
+    static LLCachedControl<F32> rain_gust_setting(gSavedSettings, "AlchemyWeatherRainGustStrength", 0.35f);
+    static LLCachedControl<bool> shelter_fade_setting(gSavedSettings, "AlchemyWeatherShelterFade", true);
+    static LLCachedControl<F32> shelter_height_setting(gSavedSettings, "AlchemyWeatherShelterHeight", 48.f);
+    static LLCachedControl<bool> rain_occlusion_setting(
+        gSavedSettings, "AlchemyWeatherRainOcclusion", false);
+    static LLCachedControl<F32> rain_occlusion_bias_setting(
+        gSavedSettings, "AlchemyWeatherRainOcclusionBias", 0.12f);
+    static LLCachedControl<F32> rain_occlusion_softness_setting(
+        gSavedSettings, "AlchemyWeatherRainOcclusionSoftness", 0.35f);
+
+    static LLCachedControl<bool> splash_enabled(gSavedSettings, "AlchemyWeatherSplashEnabled", true);
+    static LLCachedControl<F32> splash_density_setting(gSavedSettings, "AlchemyWeatherSplashDensity", 0.65f);
+    static LLCachedControl<F32> splash_size_setting(gSavedSettings, "AlchemyWeatherSplashRingSize", 0.28f);
+    static LLCachedControl<F32> splash_lifetime_setting(gSavedSettings, "AlchemyWeatherSplashLifetime", 0.65f);
+    static LLCachedControl<F32> splash_up_setting(gSavedSettings, "AlchemyWeatherSplashUpThreshold", 0.55f);
+    static LLCachedControl<F32> splash_distance_setting(gSavedSettings, "AlchemyWeatherSplashMaxDistance", 48.f);
+    static LLCachedControl<bool> wetness_enabled(gSavedSettings, "AlchemyWeatherWetnessEnabled", true);
+    static LLCachedControl<F32> wetness_strength_setting(gSavedSettings, "AlchemyWeatherWetnessStrength", 0.35f);
+    static LLCachedControl<bool> mist_enabled(gSavedSettings, "AlchemyWeatherMistEnabled", false);
+    static LLCachedControl<F32> mist_strength_setting(gSavedSettings, "AlchemyWeatherMistStrength", 0.25f);
+    static LLCachedControl<F32> mist_height_setting(gSavedSettings, "AlchemyWeatherMistHeight", 2.5f);
+    static LLCachedControl<bool> lens_enabled(gSavedSettings, "AlchemyWeatherLensDropsEnabled", false);
+    static LLCachedControl<F32> lens_strength_setting(gSavedSettings, "AlchemyWeatherLensDropsStrength", 0.25f);
 
     static LLCachedControl<bool> lightning_enabled(gSavedSettings, "AlchemyWeatherLightningEnabled", true);
     static LLCachedControl<F32> lightning_rate_setting(gSavedSettings, "AlchemyWeatherLightningRate", 1.5f);
@@ -11517,16 +11629,53 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
     static LLCachedControl<F32> lightning_ambient_setting(gSavedSettings, "AlchemyWeatherLightningAmbient", 0.15f);
     static LLCachedControl<LLColor3> lightning_color_setting(gSavedSettings, "AlchemyWeatherLightningColor", LLColor3(0.72f, 0.82f, 1.f));
     static LLCachedControl<U32> lightning_seed_setting(gSavedSettings, "AlchemyWeatherLightningSeed", 1597463007U);
+    static LLCachedControl<bool> lightning_quality_enabled_setting(
+        gSavedSettings, "AlchemyWeatherLightningQualityEnabled", false);
+    static LLCachedControl<U32> lightning_quality_tier_setting(
+        gSavedSettings, "AlchemyWeatherLightningQualityTier", 2U);
+    static LLCachedControl<bool> lightning_sheet_enabled_setting(
+        gSavedSettings, "AlchemyWeatherLightningSheetEnabled", false);
+    static LLCachedControl<F32> lightning_sheet_strength_setting(
+        gSavedSettings, "AlchemyWeatherLightningSheetStrength", 0.85f);
+    static LLCachedControl<F32> lightning_corona_strength_setting(
+        gSavedSettings, "AlchemyWeatherLightningCoronaStrength", 0.65f);
+    static LLCachedControl<bool> lightning_wet_glint_enabled_setting(
+        gSavedSettings, "AlchemyWeatherLightningWetGlintEnabled", false);
+    static LLCachedControl<F32> lightning_wet_glint_strength_setting(
+        gSavedSettings, "AlchemyWeatherLightningWetGlintStrength", 0.75f);
+    static LLCachedControl<F32> lightning_distance_grading_setting(
+        gSavedSettings, "AlchemyWeatherLightningDistanceGrading", 0.8f);
+    static LLCachedControl<F32> lightning_afterglow_strength_setting(
+        gSavedSettings, "AlchemyWeatherLightningAfterglowStrength", 0.35f);
+    static LLCachedControl<F32> lightning_energy_ceiling_setting(
+        gSavedSettings, "AlchemyWeatherLightningEnergyCeiling", 64.f);
+    static LLCachedControl<bool> hdr_enabled_setting(
+        gSavedSettings, "RenderHDREnabled");
 
     const auto finite_clamp = [](F32 value, F32 fallback, F32 low, F32 high)
     {
         return llclamp(std::isfinite(value) ? value : fallback, low, high);
     };
 
+    const bool use_lightning_quality =
+        lightning_quality_enabled_setting() &&
+        hdr_enabled_setting() &&
+        gGLManager.mGLVersion > 4.05f &&
+        gDeferredWeatherLightningQualityProgram.isComplete();
+
     F32 cloud_factor = 1.f;
-    if (LLSettingsSky::ptr_t sky = LLEnvironment::instance().getCurrentSky())
+    F32 lightning_cloud_coverage = 0.f;
+    F32 lightning_cloud_density1 = 1.f;
+    F32 lightning_cloud_density2 = 1.f;
+    F32 lightning_cloud_variance = 0.f;
+    F32 lightning_cloud_scale = 0.42f;
+    LLVector2 lightning_cloud_offset(0.f, 0.f);
+    LLSettingsSky::ptr_t weather_sky =
+        LLEnvironment::instance().getCurrentSky();
+    if (weather_sky)
     {
-        const F32 cloud = finite_clamp(sky->getCloudShadow(), 1.f, 0.f, 1.f);
+        const F32 cloud = finite_clamp(
+            weather_sky->getCloudShadow(), 1.f, 0.f, 1.f);
         const F32 coupling = finite_clamp(eep_coupling_setting, 0.35f, 0.f, 1.f);
         cloud_factor = lerp(1.f, cloud, coupling);
     }
@@ -11561,6 +11710,11 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
                      static_cast<F32>(lightning_config.mMinDistanceMeters), 512.f);
     lightning_config.mBoltHeightMeters =
         finite_clamp(bolt_height_setting, 160.f, 16.f, 512.f);
+    lightning_config.mQualityEnabled = use_lightning_quality;
+    lightning_config.mQualityAfterglowStrength = use_lightning_quality
+        ? finite_clamp(
+            lightning_afterglow_strength_setting, 0.35f, 0.f, 1.f)
+        : 0.f;
     lightning_config.mSeed = lightning_seed_setting();
 
     if (gSavedSettings.getBOOL("AlchemyWeatherLightningTrigger"))
@@ -11570,19 +11724,241 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
     }
     ALWeatherModel::Frame weather =
         sWeatherController.update(now, lightning_config, anchor);
+    const bool lightning_sheet_active =
+        use_lightning_quality && weather.mActive &&
+        weather_sky &&
+        lightning_sheet_enabled_setting() &&
+        finite_clamp(
+            lightning_sheet_strength_setting, 0.85f, 0.f, 2.f) > 0.f;
+    if (lightning_sheet_active)
+    {
+        if (!sLightningSheetSnapshotValid ||
+            weather.mStrikeId != sLightningSheetStrikeId ||
+            weather.mStrikeTime != sLightningSheetStrikeTime ||
+            lightning_config.mSeed != sLightningSheetSeed)
+        {
+            const LLColor3 density1 = weather_sky->getCloudPosDensity1();
+            const LLColor3 density2 = weather_sky->getCloudPosDensity2();
+            sLightningSheetCoverage = finite_clamp(
+                weather_sky->getCloudShadow(), 0.f, 0.f, 1.f);
+            sLightningSheetDensity1 =
+                finite_clamp(density1.mV[2], 1.f, 0.f, 3.f);
+            sLightningSheetDensity2 =
+                finite_clamp(density2.mV[2], 1.f, 0.f, 1.f);
+            sLightningSheetVariance = finite_clamp(
+                weather_sky->getCloudVariance(), 0.f, 0.f, 1.f);
+            sLightningSheetScale = finite_clamp(
+                weather_sky->getCloudScale(), 0.42f, 0.001f, 3.f);
+            sLightningSheetBaseOffset.set(
+                finite_clamp(
+                    density1.mV[0], 0.f, -65536.f, 65536.f),
+                finite_clamp(
+                    density1.mV[1], 0.f, -65536.f, 65536.f));
+            sLightningSheetScrollRate = weather_sky->getCloudScrollRate();
+            if (LLEnvironment::instance().isCloudScrollPaused())
+            {
+                sLightningSheetScrollRate.set(0.f, 0.f);
+            }
+            else
+            {
+                if (LLEnvironment::instance().isCloudScrollXLocked())
+                {
+                    sLightningSheetScrollRate.mV[0] = 0.f;
+                }
+                if (LLEnvironment::instance().isCloudScrollYLocked())
+                {
+                    sLightningSheetScrollRate.mV[1] = 0.f;
+                }
+            }
+            sLightningSheetScrollRate.mV[0] = finite_clamp(
+                sLightningSheetScrollRate.mV[0], 0.f, -50.f, 50.f);
+            sLightningSheetScrollRate.mV[1] = finite_clamp(
+                sLightningSheetScrollRate.mV[1], 0.f, -50.f, 50.f);
+            sLightningSheetStrikeId = weather.mStrikeId;
+            sLightningSheetStrikeTime = weather.mStrikeTime;
+            sLightningSheetSeed = lightning_config.mSeed;
+            sLightningSheetSnapshotValid = true;
+        }
+
+        lightning_cloud_coverage = sLightningSheetCoverage;
+        lightning_cloud_density1 = sLightningSheetDensity1;
+        lightning_cloud_density2 = sLightningSheetDensity2;
+        lightning_cloud_variance = sLightningSheetVariance;
+        lightning_cloud_scale = sLightningSheetScale;
+        lightning_cloud_offset = sLightningSheetBaseOffset;
+
+        // Snapshot the EEP proxy and effective scroll rate once per strike,
+        // then integrate against strike presentation age. Mid-flash EEP edits,
+        // pause changes, and lock changes cannot introduce a sheet phase jump.
+        const F64 cloud_time =
+            std::isfinite(now) && std::isfinite(weather.mStrikeTime)
+                ? std::max(0.0, now - weather.mStrikeTime)
+                : 0.0;
+        const F64 scroll_x = std::fmod(
+            cloud_time * sLightningSheetScrollRate.mV[0] / 100.0,
+            65536.0);
+        const F64 scroll_y = std::fmod(
+            cloud_time * sLightningSheetScrollRate.mV[1] / 100.0,
+            65536.0);
+        lightning_cloud_offset.mV[0] = finite_clamp(
+            lightning_cloud_offset.mV[0] -
+                static_cast<F32>(scroll_x),
+            0.f, -65536.f, 65536.f);
+        lightning_cloud_offset.mV[1] = finite_clamp(
+            lightning_cloud_offset.mV[1] +
+                static_cast<F32>(scroll_y),
+            0.f, -65536.f, 65536.f);
+    }
     const F32 weather_flash =
         finite_clamp(weather.mFlash, 0.f, 0.f, 1.f);
     const F32 weather_bolt =
         finite_clamp(weather.mBolt, 0.f, 0.f, 1.f);
+    const F32 weather_quality_bolt =
+        finite_clamp(weather.mQualityBolt, 0.f, 0.f, 1.f);
+    const F32 weather_afterglow =
+        finite_clamp(weather.mAfterglow, 0.f, 0.f, 1.f);
+    const F32 weather_color_variation =
+        finite_clamp(weather.mColorVariation, 0.f, -1.f, 1.f);
 
-    const F32 rain_intensity = rain_enabled()
+    const F32 base_rain_intensity = rain_enabled()
         ? finite_clamp(rain_intensity_setting, 0.55f, 0.f, 1.f) * cloud_factor
         : 0.f;
+    const bool splash_active =
+        splash_enabled() &&
+        finite_clamp(splash_density_setting, 0.65f, 0.f, 1.f) > 0.f;
+    const bool wetness_active =
+        wetness_enabled() &&
+        finite_clamp(wetness_strength_setting, 0.35f, 0.f, 1.f) > 0.f;
+    const bool lightning_wet_glint_active =
+        use_lightning_quality && weather.mActive &&
+        lightning_wet_glint_enabled_setting() &&
+        finite_clamp(
+            lightning_wet_glint_strength_setting, 0.75f, 0.f, 2.f) > 0.f &&
+        wetness_active && base_rain_intensity > 0.f;
+    const bool mist_active =
+        mist_enabled() &&
+        finite_clamp(mist_strength_setting, 0.25f, 0.f, 1.f) > 0.f;
+    const bool lens_active =
+        lens_enabled() &&
+        finite_clamp(lens_strength_setting, 0.25f, 0.f, 1.f) > 0.f;
+    const bool surface_active =
+        splash_active || wetness_active || mist_active || lens_active;
+
+    // A cover map is consumable only in the frame that produced it. This
+    // prevents a camera teleport, origin shift, disabled producer, or failed
+    // allocation from ever sampling stale world-space coverage.
+    const bool rain_occlusion_current =
+        rain_occlusion_setting() &&
+        mWeatherRainOcclusionValid &&
+        mWeatherRainOcclusionFrame == gFrameCount &&
+        mWeatherRainOcclusion.getWidth() != 0 &&
+        std::isfinite(mWeatherRainOcclusionDepthRange) &&
+        mWeatherRainOcclusionDepthRange > 0.f;
+    const bool use_rain_occlusion =
+        rain_occlusion_current &&
+        gDeferredWeatherRainOcclusionProgram.isComplete() &&
+        gDeferredWeatherRainOcclusionProgram.getTextureChannel(
+            LLShaderMgr::WEATHER_RAIN_OCCLUSION_MAP) >= 0;
+    const bool use_surface_occlusion =
+        rain_occlusion_current &&
+        gDeferredWeatherSurfaceOcclusionProgram.isComplete() &&
+        gDeferredWeatherSurfaceOcclusionProgram.getTextureChannel(
+            LLShaderMgr::WEATHER_RAIN_OCCLUSION_MAP) >= 0;
+    const bool use_lightning_occlusion =
+        lightning_wet_glint_active &&
+        rain_occlusion_current &&
+        gDeferredWeatherLightningQualityProgram.getTextureChannel(
+            LLShaderMgr::WEATHER_RAIN_OCCLUSION_MAP) >= 0;
+
+    // The camera ray is a coarse whole-pass fallback and the one appropriate
+    // exposure source for camera-space lens drops. A valid map keeps all world
+    // effects spatially correct instead of globally suppressing doorway views.
+    const bool needs_coarse_fallback =
+        !use_rain_occlusion ||
+        (surface_active && !use_surface_occlusion) ||
+        (lightning_wet_glint_active && !use_lightning_occlusion);
+    const bool needs_camera_shelter =
+        needs_coarse_fallback || (lens_active && use_surface_occlusion);
+    F32 exposed = 1.f;
+    if (base_rain_intensity > 0.f && shelter_fade_setting() &&
+        needs_camera_shelter)
+    {
+        const F32 shelter_height =
+            finite_clamp(shelter_height_setting, 48.f, 8.f, 256.f);
+        const LLVector3 camera_position =
+            LLViewerCamera::getInstance()->getOrigin();
+        F32 target_exposed = 1.f;
+        if (camera_position.isFinite())
+        {
+            LLVector4a ray_start;
+            LLVector4a ray_end;
+            ray_start.set(
+                camera_position.mV[VX], camera_position.mV[VY],
+                camera_position.mV[VZ]);
+            ray_end.set(
+                camera_position.mV[VX], camera_position.mV[VY],
+                camera_position.mV[VZ] + shelter_height);
+
+            LLVector4a intersection;
+            S32 face_hit = -1;
+            LLViewerObject* occluder = lineSegmentIntersectInWorld(
+                ray_start, ray_end,
+                /*pick_transparent*/ false,
+                /*pick_rigged*/ false,
+                /*pick_unselectable*/ true,
+                /*pick_reflection_probe*/ false,
+                &face_hit, &intersection);
+
+            // Rigged attachments are not picked. Reject a returned self avatar
+            // or non-rigged self attachment too; a failed/rejected hit is sky.
+            LLVOAvatar* hit_avatar =
+                occluder ? occluder->asAvatar() : nullptr;
+            if (occluder && !hit_avatar)
+            {
+                hit_avatar = occluder->getAvatar();
+            }
+            if (occluder && (!hit_avatar || !hit_avatar->isSelf()))
+            {
+                LLVector4a clearance;
+                clearance.setSub(intersection, ray_start);
+                const F32 hit_distance = clearance.getLength3().getF32();
+                if (std::isfinite(hit_distance))
+                {
+                    // A normal nearby roof fully shelters the camera. Only
+                    // soften the configured range boundary's upper 20%.
+                    target_exposed = llsmoothstep(
+                        shelter_height * 0.8f, shelter_height, hit_distance);
+                }
+            }
+        }
+        exposed = sWeatherShelterExposure.update(now, target_exposed);
+    }
+    else
+    {
+        // Disabling this optional gate is bit-for-bit factor 1 and raycast-free.
+        sWeatherShelterExposure.reset();
+    }
+    const F32 rain_pass_intensity =
+        base_rain_intensity * (use_rain_occlusion ? 1.f : exposed);
+    const F32 surface_pass_intensity =
+        base_rain_intensity * (use_surface_occlusion ? 1.f : exposed);
+    LLGLSLShader& rain_program = use_rain_occlusion
+        ? gDeferredWeatherRainOcclusionProgram
+        : gDeferredWeatherRainProgram;
+    LLGLSLShader& surface_program = use_surface_occlusion
+        ? gDeferredWeatherSurfaceOcclusionProgram
+        : gDeferredWeatherSurfaceProgram;
+    LLGLSLShader& lightning_program = use_lightning_quality
+        ? gDeferredWeatherLightningQualityProgram
+        : gDeferredWeatherLightningProgram;
     const bool draw_rain =
-        rain_intensity > 0.f && gDeferredWeatherRainProgram.isComplete();
+        rain_pass_intensity > 0.f && rain_program.isComplete();
+    const bool draw_surface =
+        surface_pass_intensity > 0.f &&
+        surface_active && surface_program.isComplete();
     const bool draw_lightning =
-        weather.mActive && gDeferredWeatherLightningProgram.isComplete();
-    if (!draw_rain && !draw_lightning)
+        weather.mActive && lightning_program.isComplete();
+    if (!draw_rain && !draw_surface && !draw_lightning)
     {
         return;
     }
@@ -11608,9 +11984,39 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
     static const LLStaticHashedString sFallSpeed("weather_fall_speed");
     static const LLStaticHashedString sMaxDistance("weather_max_distance");
     static const LLStaticHashedString sLightning("weather_lightning");
-    static const LLStaticHashedString sFrame("weather_frame");
+    static const LLStaticHashedString sVirtualShutter("weather_virtual_shutter");
+    static const LLStaticHashedString sNearEmphasis("weather_near_emphasis");
+    static const LLStaticHashedString sGustStrength("weather_gust_strength");
+    static const LLStaticHashedString sLayers("weather_layers");
     static const LLStaticHashedString sSamples("weather_samples");
     static const LLStaticHashedString sRainMapRes("weather_rain_map_res");
+    static const LLStaticHashedString sSurfaceColor("weather_surface_color");
+    static const LLStaticHashedString sSurfaceScreenRes("weather_screen_res");
+    static const LLStaticHashedString sGroundHeight("weather_ground_height");
+    static const LLStaticHashedString sSplashEnabled("weather_splash_enabled");
+    static const LLStaticHashedString sSplashDensity("weather_splash_density");
+    static const LLStaticHashedString sSplashRingSize("weather_splash_ring_size");
+    static const LLStaticHashedString sSplashLifetime("weather_splash_lifetime");
+    static const LLStaticHashedString sSplashUpThreshold("weather_splash_up_threshold");
+    static const LLStaticHashedString sSplashMaxDistance("weather_splash_max_distance");
+    static const LLStaticHashedString sWetnessEnabled("weather_wetness_enabled");
+    static const LLStaticHashedString sWetnessStrength("weather_wetness_strength");
+    static const LLStaticHashedString sMistEnabled("weather_mist_enabled");
+    static const LLStaticHashedString sMistStrength("weather_mist_strength");
+    static const LLStaticHashedString sMistHeight("weather_mist_height");
+    static const LLStaticHashedString sLensEnabled("weather_lens_enabled");
+    static const LLStaticHashedString sLensStrength("weather_lens_strength");
+    static const LLStaticHashedString sLensExposure("weather_lens_exposure");
+    static const LLStaticHashedString sRainOcclusionMatrix(
+        "weather_rain_occlusion_matrix");
+    static const LLStaticHashedString sRainOcclusionDepthRange(
+        "weather_rain_occlusion_depth_range");
+    static const LLStaticHashedString sRainOcclusionBias(
+        "weather_rain_occlusion_bias");
+    static const LLStaticHashedString sRainOcclusionSoftness(
+        "weather_rain_occlusion_softness");
+    static const LLStaticHashedString sRainOcclusionEnabled(
+        "weather_rain_occlusion_enabled");
 
     if (draw_rain)
     {
@@ -11652,12 +12058,37 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
             gGL.setSceneBlendType(LLRender::BT_ADD);
             gGL.setColorMask(true, false);
 
-            bindDeferredShader(gDeferredWeatherRainProgram);
+            bindDeferredShader(rain_program);
+            S32 rain_occlusion_channel = -1;
+            if (use_rain_occlusion)
+            {
+                rain_occlusion_channel = rain_program.bindTexture(
+                    LLShaderMgr::WEATHER_RAIN_OCCLUSION_MAP,
+                    &mWeatherRainOcclusion, true, LLTexUnit::TFO_POINT);
+                rain_program.uniformMatrix4fv(
+                    sRainOcclusionMatrix, 1, false,
+                    glm::value_ptr(mWeatherRainOcclusionMatrix));
+                rain_program.uniform1f(
+                    sRainOcclusionDepthRange,
+                    mWeatherRainOcclusionDepthRange);
+                rain_program.uniform1f(
+                    sRainOcclusionBias,
+                    finite_clamp(
+                        rain_occlusion_bias_setting, 0.12f, 0.f, 2.f));
+                rain_program.uniform1f(
+                    sRainOcclusionSoftness,
+                    finite_clamp(
+                        rain_occlusion_softness_setting, 0.35f,
+                        0.001f, 4.f));
+                rain_program.uniform1i(
+                    sRainOcclusionEnabled,
+                    rain_occlusion_channel >= 0 ? 1 : 0);
+            }
             // getPosition() comes from deferredUtil and normally receives inv_proj
             // from the live GL projection.  Override it with the projection that
             // produced the sampled depth so view and world reconstruction use one
             // coherent current-frame camera pair.
-            gDeferredWeatherRainProgram.uniformMatrix4fv(
+            rain_program.uniformMatrix4fv(
                 LLShaderMgr::INVERSE_PROJECTION_MATRIX, 1, false,
                 glm::value_ptr(inverse_projection));
             const F32 wind_scale =
@@ -11671,28 +12102,42 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
                 finite_clamp(rain_color_raw.mV[1], 0.68f, 0.f, 4.f);
             const F32 rain_b =
                 finite_clamp(rain_color_raw.mV[2], 0.78f, 0.f, 4.f);
-            gDeferredWeatherRainProgram.uniformMatrix4fv(
+            rain_program.uniformMatrix4fv(
                 sInvModelview, 1, false, glm::value_ptr(inverse_modelview));
-            gDeferredWeatherRainProgram.uniform3f(sWind, wind_x, wind_y, 0.f);
-            gDeferredWeatherRainProgram.uniform3f(sRainColor, rain_r, rain_g, rain_b);
-            gDeferredWeatherRainProgram.uniform1f(
+            rain_program.uniform3f(sWind, wind_x, wind_y, 0.f);
+            rain_program.uniform3f(sRainColor, rain_r, rain_g, rain_b);
+            rain_program.uniform1f(
                 sTime, static_cast<F32>(std::fmod(now, 3600.0)));
-            gDeferredWeatherRainProgram.uniform1f(sIntensity, rain_intensity);
-            gDeferredWeatherRainProgram.uniform1f(
+            rain_program.uniform1f(sIntensity, rain_pass_intensity);
+            rain_program.uniform1f(
                 sDensity, finite_clamp(rain_density_setting, 0.65f, 0.02f, 1.f));
-            gDeferredWeatherRainProgram.uniform1f(
+            rain_program.uniform1f(
                 sFallSpeed, finite_clamp(rain_fall_speed_setting, 28.f, 1.f, 80.f));
-            gDeferredWeatherRainProgram.uniform1f(
+            rain_program.uniform1f(
                 sMaxDistance, finite_clamp(rain_distance_setting, 80.f, 8.f, 256.f));
-            gDeferredWeatherRainProgram.uniform1f(sLightning, weather_flash);
-            gDeferredWeatherRainProgram.uniform1f(
-                sFrame, static_cast<F32>(LLFrameTimer::getFrameCount() % 4096U));
-            gDeferredWeatherRainProgram.uniform1i(
+            rain_program.uniform1f(sLightning, weather_flash);
+            rain_program.uniform1f(
+                sVirtualShutter,
+                finite_clamp(rain_shutter_setting, 0.04f, 0.005f, 0.12f));
+            rain_program.uniform1f(
+                sNearEmphasis,
+                finite_clamp(rain_near_setting, 0.65f, 0.f, 1.f));
+            rain_program.uniform1f(
+                sGustStrength,
+                finite_clamp(rain_gust_setting, 0.35f, 0.f, 1.f));
+            rain_program.uniform1i(
+                sLayers, static_cast<S32>(llclamp(rain_layers_setting(), 1U, 3U)));
+            rain_program.uniform1i(
                 sSamples, static_cast<S32>(llclamp(rain_samples_setting(), 4U, 24U)));
 
             mScreenTriangleVB->setBuffer();
             mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
-            unbindDeferredShader(gDeferredWeatherRainProgram);
+            if (rain_occlusion_channel >= 0)
+            {
+                rain_program.unbindTexture(
+                    LLShaderMgr::WEATHER_RAIN_OCCLUSION_MAP);
+            }
+            unbindDeferredShader(rain_program);
         }
         rain_target->flush();
 
@@ -11728,6 +12173,124 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
         }
     }
 
+    if (draw_surface)
+    {
+        target->bindTarget();
+        {
+            LLGLDepthTest no_depth(GL_FALSE);
+            LLGLEnable blend(GL_BLEND);
+            LLGLDisable no_scissor(GL_SCISSOR_TEST);
+            gGL.setSceneBlendType(LLRender::BT_ADD);
+            gGL.setColorMask(true, false);
+
+            bindDeferredShader(surface_program);
+            S32 surface_occlusion_channel = -1;
+            if (use_surface_occlusion)
+            {
+                surface_occlusion_channel = surface_program.bindTexture(
+                    LLShaderMgr::WEATHER_RAIN_OCCLUSION_MAP,
+                    &mWeatherRainOcclusion, true, LLTexUnit::TFO_POINT);
+                surface_program.uniformMatrix4fv(
+                    sRainOcclusionMatrix, 1, false,
+                    glm::value_ptr(mWeatherRainOcclusionMatrix));
+                surface_program.uniform1f(
+                    sRainOcclusionDepthRange,
+                    mWeatherRainOcclusionDepthRange);
+                surface_program.uniform1f(
+                    sRainOcclusionBias,
+                    finite_clamp(
+                        rain_occlusion_bias_setting, 0.12f, 0.f, 2.f));
+                surface_program.uniform1f(
+                    sRainOcclusionSoftness,
+                    finite_clamp(
+                        rain_occlusion_softness_setting, 0.35f,
+                        0.001f, 4.f));
+                surface_program.uniform1i(
+                    sRainOcclusionEnabled,
+                    surface_occlusion_channel >= 0 ? 1 : 0);
+                surface_program.uniform1f(
+                    sLensExposure,
+                    finite_clamp(exposed, 1.f, 0.f, 1.f));
+            }
+            surface_program.uniformMatrix4fv(
+                LLShaderMgr::INVERSE_PROJECTION_MATRIX, 1, false,
+                glm::value_ptr(inverse_projection));
+            const LLColor3 rain_color_raw = rain_color_setting;
+            const F32 rain_r =
+                finite_clamp(rain_color_raw.mV[0], 0.55f, 0.f, 4.f);
+            const F32 rain_g =
+                finite_clamp(rain_color_raw.mV[1], 0.68f, 0.f, 4.f);
+            const F32 rain_b =
+                finite_clamp(rain_color_raw.mV[2], 0.78f, 0.f, 4.f);
+
+            surface_program.uniformMatrix4fv(
+                sInvModelview, 1, false, glm::value_ptr(inverse_modelview));
+            surface_program.uniform3f(
+                sSurfaceColor, rain_r, rain_g, rain_b);
+            surface_program.uniform2f(
+                sSurfaceScreenRes, static_cast<F32>(target->getWidth()),
+                static_cast<F32>(target->getHeight()));
+            surface_program.uniform1f(
+                sTime, static_cast<F32>(std::fmod(now, 3600.0)));
+            surface_program.uniform1f(
+                sIntensity, surface_pass_intensity);
+            surface_program.uniform1f(
+                sLightning, weather_flash);
+            surface_program.uniform1f(
+                sGustStrength,
+                finite_clamp(rain_gust_setting, 0.35f, 0.f, 1.f));
+            surface_program.uniform1f(
+                sGroundHeight, finite_clamp(anchor_ground, 0.f, -4096.f, 4096.f));
+
+            surface_program.uniform1i(
+                sSplashEnabled, splash_active ? 1 : 0);
+            surface_program.uniform1f(
+                sSplashDensity,
+                finite_clamp(splash_density_setting, 0.65f, 0.f, 1.f));
+            surface_program.uniform1f(
+                sSplashRingSize,
+                finite_clamp(splash_size_setting, 0.28f, 0.04f, 1.5f));
+            surface_program.uniform1f(
+                sSplashLifetime,
+                finite_clamp(splash_lifetime_setting, 0.65f, 0.08f, 2.f));
+            surface_program.uniform1f(
+                sSplashUpThreshold,
+                finite_clamp(splash_up_setting, 0.55f, 0.f, 0.98f));
+            surface_program.uniform1f(
+                sSplashMaxDistance,
+                finite_clamp(splash_distance_setting, 48.f, 4.f, 128.f));
+
+            surface_program.uniform1i(
+                sWetnessEnabled, wetness_active ? 1 : 0);
+            surface_program.uniform1f(
+                sWetnessStrength,
+                finite_clamp(wetness_strength_setting, 0.35f, 0.f, 1.f));
+            surface_program.uniform1i(
+                sMistEnabled, mist_active ? 1 : 0);
+            surface_program.uniform1f(
+                sMistStrength,
+                finite_clamp(mist_strength_setting, 0.25f, 0.f, 1.f));
+            surface_program.uniform1f(
+                sMistHeight,
+                finite_clamp(mist_height_setting, 2.5f, 0.25f, 12.f));
+            surface_program.uniform1i(
+                sLensEnabled, lens_active ? 1 : 0);
+            surface_program.uniform1f(
+                sLensStrength,
+                finite_clamp(lens_strength_setting, 0.25f, 0.f, 1.f));
+
+            mScreenTriangleVB->setBuffer();
+            mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+            if (surface_occlusion_channel >= 0)
+            {
+                surface_program.unbindTexture(
+                    LLShaderMgr::WEATHER_RAIN_OCCLUSION_MAP);
+            }
+            unbindDeferredShader(surface_program);
+        }
+        target->flush();
+    }
+
     if (draw_lightning)
     {
         LLVector3 strike_base(
@@ -11743,6 +12306,154 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
         LLVector3 strike_top = strike_base;
         strike_top.mV[VZ] += static_cast<F32>(weather.mBoltHeightMeters);
 
+        // CPU-project a conservative bolt AABB once, so most fragments avoid
+        // the quality tier's bounded but expensive segment search.
+        F32 bolt_grade = 1.f;
+        F32 surface_grade = 1.f;
+        F32 sheet_grade = 1.f;
+        F32 bolt_min_x = 2.f;
+        F32 bolt_min_y = 2.f;
+        F32 bolt_max_x = -1.f;
+        F32 bolt_max_y = -1.f;
+        bool bolt_bounds_valid = false;
+        bool bolt_bounds_fullscreen = false;
+        if (use_lightning_quality)
+        {
+            // Distance is renderer/camera state rather than weather simulation
+            // state. Use the free-camera position for machinima, with the
+            // model's area-uniform placement radius as a finite fallback.
+            F32 strike_distance = finite_clamp(
+                static_cast<F32>(weather.mStrikeDistanceMeters),
+                static_cast<F32>(lightning_config.mMinDistanceMeters),
+                0.f, 65536.f);
+            const LLVector3 camera_position =
+                LLViewerCamera::getInstance()->getOrigin();
+            if (camera_position.isFinite() && strike_base.isFinite())
+            {
+                const F32 dx =
+                    strike_base.mV[VX] - camera_position.mV[VX];
+                const F32 dy =
+                    strike_base.mV[VY] - camera_position.mV[VY];
+                const F32 camera_distance = std::hypot(dx, dy);
+                if (std::isfinite(camera_distance))
+                {
+                    strike_distance = camera_distance;
+                }
+            }
+            const F32 grade_near = finite_clamp(
+                static_cast<F32>(lightning_config.mMinDistanceMeters),
+                45.f, 0.f, 512.f);
+            const F32 grade_far = finite_clamp(
+                static_cast<F32>(lightning_config.mMaxDistanceMeters),
+                130.f, grade_near, 512.f);
+            F32 distance_character = 0.f;
+            const F32 squared_interval =
+                grade_far * grade_far - grade_near * grade_near;
+            if (squared_interval > 1.0e-4f)
+            {
+                distance_character = llclamp(
+                    (strike_distance * strike_distance -
+                     grade_near * grade_near) / squared_interval,
+                    0.f, 1.f);
+            }
+            else
+            {
+                distance_character =
+                    strike_distance > grade_far ? 1.f : 0.f;
+            }
+            distance_character = llsmoothstep(
+                0.f, 1.f, distance_character);
+            const F32 distance_strength = finite_clamp(
+                lightning_distance_grading_setting, 0.8f, 0.f, 1.f);
+            const F32 near_character = 1.f - distance_character;
+            bolt_grade = lerp(
+                1.f, near_character * near_character, distance_strength);
+            surface_grade = lerp(
+                1.f, lerp(1.f, 0.25f, distance_character),
+                distance_strength);
+            sheet_grade = lerp(
+                1.f, lerp(1.f, 0.42f, distance_character),
+                distance_strength);
+
+            const F32 bolt_height =
+                llmax(strike_top.mV[VZ] - strike_base.mV[VZ], 1.f);
+            // Includes the worst fixed-depth subfork reach (including its
+            // small below-base tail) and the return-stroke shimmer multiplier,
+            // with a numerical guard band.
+            const F32 lateral_extent = bolt_height * 0.32f;
+            for (S32 x_side = -1; x_side <= 1; x_side += 2)
+            {
+                for (S32 y_side = -1; y_side <= 1; y_side += 2)
+                {
+                    for (S32 z_side = 0; z_side <= 1; ++z_side)
+                    {
+                        const glm::vec4 world_corner(
+                            strike_base.mV[VX] +
+                                static_cast<F32>(x_side) * lateral_extent,
+                            strike_base.mV[VY] +
+                                static_cast<F32>(y_side) * lateral_extent,
+                            z_side ? strike_top.mV[VZ] :
+                                     strike_base.mV[VZ] -
+                                         bolt_height * 0.06f,
+                            1.f);
+                        const glm::vec4 clip =
+                            view_projection * world_corner;
+                        if (!std::isfinite(clip.x) ||
+                            !std::isfinite(clip.y) ||
+                            !std::isfinite(clip.w))
+                        {
+                            continue;
+                        }
+                        if (!(clip.w > 1.0e-4f))
+                        {
+                            bolt_bounds_fullscreen = true;
+                            continue;
+                        }
+                        const F32 uv_x =
+                            (clip.x / clip.w) * 0.5f + 0.5f;
+                        const F32 uv_y =
+                            (clip.y / clip.w) * 0.5f + 0.5f;
+                        if (!std::isfinite(uv_x) || !std::isfinite(uv_y))
+                        {
+                            continue;
+                        }
+                        bolt_min_x = llmin(bolt_min_x, uv_x);
+                        bolt_min_y = llmin(bolt_min_y, uv_y);
+                        bolt_max_x = llmax(bolt_max_x, uv_x);
+                        bolt_max_y = llmax(bolt_max_y, uv_y);
+                        bolt_bounds_valid = true;
+                    }
+                }
+            }
+            if (bolt_bounds_fullscreen)
+            {
+                bolt_min_x = -0.25f;
+                bolt_min_y = -0.25f;
+                bolt_max_x = 1.25f;
+                bolt_max_y = 1.25f;
+            }
+            else if (bolt_bounds_valid)
+            {
+                // Four corona sigmas leave less than 0.04% of a Gaussian
+                // outside the rectangle and prevent a visible hard cutoff at
+                // the maximum eight-pixel bolt width.
+                const F32 quality_width = finite_clamp(
+                    bolt_width_setting, 1.25f, 0.25f, 8.f);
+                const F32 padding_pixels =
+                    llmax(16.f, quality_width * 5.5f * 4.f);
+                const F32 expand_x =
+                    padding_pixels /
+                    llmax(static_cast<F32>(target->getWidth()), 1.f);
+                const F32 expand_y =
+                    padding_pixels /
+                    llmax(static_cast<F32>(target->getHeight()), 1.f);
+                bolt_min_x -= expand_x;
+                bolt_min_y -= expand_y;
+                bolt_max_x += expand_x;
+                bolt_max_y += expand_y;
+            }
+        }
+
         static const LLStaticHashedString sWorldToView("weather_world_to_view");
         static const LLStaticHashedString sViewProjection("weather_view_projection");
         static const LLStaticHashedString sStrikeBase("weather_strike_base");
@@ -11756,6 +12467,25 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
         static const LLStaticHashedString sAmbient("weather_lightning_ambient");
         static const LLStaticHashedString sSeed("weather_lightning_seed");
         static const LLStaticHashedString sFarClip("weather_far_clip");
+        static const LLStaticHashedString sViewToWorld("weather_view_to_world");
+        static const LLStaticHashedString sBoltBounds("weather_bolt_bounds");
+        static const LLStaticHashedString sCloudParams("weather_cloud_params");
+        static const LLStaticHashedString sCloudOffset("weather_cloud_offset");
+        static const LLStaticHashedString sDistanceGrade("weather_distance_grade");
+        static const LLStaticHashedString sCloudScale("weather_cloud_scale");
+        static const LLStaticHashedString sQualityBolt("weather_quality_bolt");
+        static const LLStaticHashedString sAfterglow("weather_lightning_afterglow");
+        static const LLStaticHashedString sColorVariation("weather_color_variation");
+        static const LLStaticHashedString sSheetStrength("weather_sheet_strength");
+        static const LLStaticHashedString sCoronaStrength("weather_corona_strength");
+        static const LLStaticHashedString sWetGlintStrength("weather_wet_glint_strength");
+        static const LLStaticHashedString sWetness("weather_wetness");
+        static const LLStaticHashedString sWetExposure("weather_wet_exposure");
+        static const LLStaticHashedString sEnergyCeiling("weather_lightning_energy_ceiling");
+        static const LLStaticHashedString sQualityTier("weather_quality_tier");
+        static const LLStaticHashedString sStrokeIndex("weather_stroke_index");
+        static const LLStaticHashedString sSheetEnabled("weather_sheet_enabled");
+        static const LLStaticHashedString sWetGlintEnabled("weather_wet_glint_enabled");
 
         target->bindTarget();
         {
@@ -11765,8 +12495,20 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
             gGL.setSceneBlendType(LLRender::BT_ADD);
             gGL.setColorMask(true, false);
 
-            bindDeferredShader(gDeferredWeatherLightningProgram);
-            gDeferredWeatherLightningProgram.uniformMatrix4fv(
+            bindDeferredShader(lightning_program);
+            S32 lightning_occlusion_channel = -1;
+            if (use_lightning_quality && use_lightning_occlusion)
+            {
+                lightning_occlusion_channel =
+                    lightning_program.bindTexture(
+                        LLShaderMgr::WEATHER_RAIN_OCCLUSION_MAP,
+                        &mWeatherRainOcclusion, true,
+                        LLTexUnit::TFO_POINT);
+            }
+            const bool lightning_occlusion_bound =
+                lightning_occlusion_channel >= 0;
+
+            lightning_program.uniformMatrix4fv(
                 LLShaderMgr::INVERSE_PROJECTION_MATRIX, 1, false,
                 glm::value_ptr(inverse_projection));
             const LLColor3 lightning_color_raw = lightning_color_setting;
@@ -11776,40 +12518,148 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
                 finite_clamp(lightning_color_raw.mV[1], 0.82f, 0.f, 4.f);
             const F32 lightning_b =
                 finite_clamp(lightning_color_raw.mV[2], 1.f, 0.f, 4.f);
-            gDeferredWeatherLightningProgram.uniformMatrix4fv(
+            lightning_program.uniformMatrix4fv(
                 sWorldToView, 1, false, glm::value_ptr(modelview));
-            gDeferredWeatherLightningProgram.uniformMatrix4fv(
+            lightning_program.uniformMatrix4fv(
                 sViewProjection, 1, false, glm::value_ptr(view_projection));
-            gDeferredWeatherLightningProgram.uniform3fv(
+            lightning_program.uniform3fv(
                 sStrikeBase, 1, strike_base.mV);
-            gDeferredWeatherLightningProgram.uniform3fv(
+            lightning_program.uniform3fv(
                 sStrikeTop, 1, strike_top.mV);
-            gDeferredWeatherLightningProgram.uniform3f(
+            lightning_program.uniform3f(
                 sLightningColor, lightning_r, lightning_g, lightning_b);
-            gDeferredWeatherLightningProgram.uniform2f(
+            lightning_program.uniform2f(
                 sScreenRes, static_cast<F32>(target->getWidth()),
                 static_cast<F32>(target->getHeight()));
-            gDeferredWeatherLightningProgram.uniform1f(sFlash, weather_flash);
-            gDeferredWeatherLightningProgram.uniform1f(sBolt, weather_bolt);
-            gDeferredWeatherLightningProgram.uniform1f(
+            lightning_program.uniform1f(sFlash, weather_flash);
+            lightning_program.uniform1f(sBolt, weather_bolt);
+            lightning_program.uniform1f(
                 sWidth, finite_clamp(bolt_width_setting, 1.25f, 0.25f, 8.f));
-            gDeferredWeatherLightningProgram.uniform1f(
+            lightning_program.uniform1f(
                 sBrightness,
                 finite_clamp(lightning_brightness_setting, 4.f, 0.f, 32.f));
-            gDeferredWeatherLightningProgram.uniform1f(
+            lightning_program.uniform1f(
                 sAmbient,
                 finite_clamp(lightning_ambient_setting, 0.15f, 0.f, 1.f));
-            gDeferredWeatherLightningProgram.uniform1f(
-                sSeed, static_cast<F32>(weather.mStrikeId % 65521ULL));
-            gDeferredWeatherLightningProgram.uniform1f(
+            lightning_program.uniform1f(
+                sSeed,
+                use_lightning_quality
+                    ? static_cast<F32>(weather.mVisualSeed)
+                    : static_cast<F32>(weather.mStrikeId % 65521ULL));
+            lightning_program.uniform1f(
                 sFarClip,
                 finite_clamp(
                     LLViewerCamera::getInstance()->getFar(),
                     RenderFarClip, 1.f, 4096.f));
 
+            if (use_lightning_quality)
+            {
+                lightning_program.uniformMatrix4fv(
+                    sViewToWorld, 1, false,
+                    glm::value_ptr(inverse_modelview));
+                lightning_program.uniform4f(
+                    sBoltBounds,
+                    bolt_min_x, bolt_min_y, bolt_max_x, bolt_max_y);
+                lightning_program.uniform4f(
+                    sCloudParams,
+                    lightning_cloud_coverage,
+                    lightning_cloud_density1,
+                    lightning_cloud_density2,
+                    lightning_cloud_variance);
+                lightning_program.uniform2f(
+                    sCloudOffset,
+                    lightning_cloud_offset.mV[0],
+                    lightning_cloud_offset.mV[1]);
+                lightning_program.uniform3f(
+                    sDistanceGrade,
+                    bolt_grade, surface_grade, sheet_grade);
+                lightning_program.uniform1f(
+                    sCloudScale, lightning_cloud_scale);
+                lightning_program.uniform1f(
+                    sQualityBolt, weather_quality_bolt);
+                lightning_program.uniform1f(
+                    sAfterglow, weather_afterglow);
+                lightning_program.uniform1f(
+                    sColorVariation, weather_color_variation);
+                lightning_program.uniform1f(
+                    sSheetStrength,
+                    finite_clamp(
+                        lightning_sheet_strength_setting, 0.85f, 0.f, 2.f));
+                lightning_program.uniform1f(
+                    sCoronaStrength,
+                    finite_clamp(
+                        lightning_corona_strength_setting, 0.65f, 0.f, 2.f));
+                lightning_program.uniform1f(
+                    sWetGlintStrength,
+                    finite_clamp(
+                        lightning_wet_glint_strength_setting,
+                        0.75f, 0.f, 2.f));
+                lightning_program.uniform1f(
+                    sWetness,
+                    lightning_wet_glint_active
+                        ? base_rain_intensity *
+                            finite_clamp(
+                                wetness_strength_setting, 0.35f, 0.f, 1.f)
+                        : 0.f);
+                lightning_program.uniform1f(
+                    sWetExposure,
+                    lightning_occlusion_bound ? 1.f : exposed);
+                lightning_program.uniform1f(
+                    sSplashUpThreshold,
+                    finite_clamp(splash_up_setting, 0.55f, 0.f, 0.98f));
+                lightning_program.uniform1f(
+                    sSplashMaxDistance,
+                    finite_clamp(
+                        splash_distance_setting, 48.f, 4.f, 128.f));
+                lightning_program.uniform1f(
+                    sEnergyCeiling,
+                    finite_clamp(
+                        lightning_energy_ceiling_setting, 64.f, 1.f, 128.f));
+                lightning_program.uniform1i(
+                    sQualityTier,
+                    static_cast<S32>(
+                        llclamp(lightning_quality_tier_setting(), 1U, 3U)));
+                lightning_program.uniform1i(
+                    sStrokeIndex,
+                    static_cast<S32>(llclamp(weather.mStrokeIndex, 0U, 3U)));
+                lightning_program.uniform1i(
+                    sSheetEnabled,
+                    lightning_sheet_active ? 1 : 0);
+                lightning_program.uniform1i(
+                    sWetGlintEnabled,
+                    lightning_wet_glint_active ? 1 : 0);
+                lightning_program.uniform1i(
+                    sRainOcclusionEnabled,
+                    lightning_occlusion_bound ? 1 : 0);
+                if (lightning_occlusion_bound)
+                {
+                    lightning_program.uniformMatrix4fv(
+                        sRainOcclusionMatrix, 1, false,
+                        glm::value_ptr(mWeatherRainOcclusionMatrix));
+                    lightning_program.uniform1f(
+                        sRainOcclusionDepthRange,
+                        mWeatherRainOcclusionDepthRange);
+                    lightning_program.uniform1f(
+                        sRainOcclusionBias,
+                        finite_clamp(
+                            rain_occlusion_bias_setting,
+                            0.12f, 0.f, 2.f));
+                    lightning_program.uniform1f(
+                        sRainOcclusionSoftness,
+                        finite_clamp(
+                            rain_occlusion_softness_setting,
+                            0.35f, 0.001f, 4.f));
+                }
+            }
+
             mScreenTriangleVB->setBuffer();
             mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
-            unbindDeferredShader(gDeferredWeatherLightningProgram);
+            if (lightning_occlusion_channel >= 0)
+            {
+                lightning_program.unbindTexture(
+                    LLShaderMgr::WEATHER_RAIN_OCCLUSION_MAP);
+            }
+            unbindDeferredShader(lightning_program);
         }
         target->flush();
     }
@@ -12636,6 +13486,7 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
         // Disable scissor for the clear so a stale rect can't leave last frame's
         // shaft in the border and let it accumulate.
         LLGLDisable no_scissor(GL_SCISSOR_TEST);
+        gGL.setColorMask(true, true); // alpha moment must start at exactly zero
         glClearColor(0.f, 0.f, 0.f, 0.f);
         march_target->clear(GL_COLOR_BUFFER_BIT);
     }
@@ -12646,7 +13497,9 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
     // to the full target for each cone that cannot be safely bounded.
     LLGLEnable    scissor_test(BDMergeProjectorVolumetricsScissor ? GL_SCISSOR_TEST : GL_NONE);
     gGL.setSceneBlendType(LLRender::BT_ADD); // GL_ONE, GL_ONE - additive accumulation over slots
-    gGL.setColorMask(true, false);
+    // Only the half-res temporal beam-depth path transports an additive first
+    // distance moment in alpha. Direct scene / non-temporal paths stay rgb-only.
+    gGL.setColorMask(true, temporal && BDMergeProjectorVolumetricsTemporalBeamDepth);
 
     // [Phase 1 item 3] union of all marched cone rects (march-target pixel space)
     // so the upsample pass only touches pixels a shaft could have reached.
@@ -12664,15 +13517,15 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
     gDeferredProjectorVolumetricProgram.uniform1i(LLShaderMgr::PROJVOL_DITHER, (S32)llclamp(BDMergeProjectorVolumetricsDither, (U32)0, (U32)2));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FRAME, (F32)(LLFrameTimer::getFrameCount() % 1024u));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_MAX, BDMergeProjectorVolumetricsMaxLuminance);
-    // [BDMerge G3.3 Batch A] look-neutral performance gates (both default off ->
-    // no-op). E1 frustum clip refines [t0,t1] against the projector's frustum (the
+    // [BDMerge G3.3 Batch A] look-neutral performance gates. E1 frustum clip
+    // (default on) refines [t0,t1] against the projector's frustum (the
     // per-cone planes are uploaded in setupSpotLightVolumetric); E2 replaces the
     // shadow sub-tap loop with one IGN-jittered tap. E4 (luminance early-out) needs
     // no uniform - it is provably invisible via the existing projvol_max clamp.
     gDeferredProjectorVolumetricProgram.uniform1i(LLShaderMgr::PROJVOL_FRUSTUM_CLIP, BDMergeProjectorVolumetricsFrustumClip ? 1 : 0);
     gDeferredProjectorVolumetricProgram.uniform1i(LLShaderMgr::PROJVOL_SHADOW_JITTER_TAP, BDMergeProjectorVolumetricsShadowJitterTap ? 1 : 0);
     // [BDMerge G3.3 Batch B - R1] Beam-depth reprojection: the march writes its
-    // scatter-weighted mean sample distance to the output ALPHA only when this is 1.
+    // luminance-premultiplied first distance moment to ALPHA only when this is 1.
     // Upload 1 ONLY on the temporal path (which requires halfres, so the march writes
     // to mProjVolHalf - never the additive scene buffer). On the direct/non-halfres
     // path `temporal` is false here, so the gate stays 0 and alpha stays 0 - the
@@ -12966,6 +13819,7 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
         const U32 prev = cur ^ 1u;
         LLRenderTarget& dst      = mProjVolHistory[cur];
         LLRenderTarget& histprev = mProjVolHistory[prev];
+        const glm::mat4 viewproj = proj * mat;
 
         dst.bindTarget();
         {
@@ -12999,7 +13853,33 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
             // sample's screen position last frame). Meaningless until history valid,
             // so the EMA weight is forced to 0 that first frame.
             gDeferredProjectorVolumetricTemporalProgram.uniformMatrix4fv(LLShaderMgr::PROJVOL_PREV_VIEWPROJ, 1, false, mProjVolPrevViewProj);
-            const F32 blend = mProjVolHistoryValid ? llclamp(BDMergeProjectorVolumetricsTemporalBlend, 0.f, 0.98f) : 0.f;
+            // Current world points must also be measured in the previous camera's
+            // view space for beam-depth disocclusion comparisons.
+            gDeferredProjectorVolumetricTemporalProgram.uniformMatrix4fv(LLShaderMgr::PROJVOL_PREV_MODELVIEW, 1, false, mProjVolPrevModelview);
+
+            // Unconditional hard-cut fail-safe: use the velocity pass's >=10%
+            // relative-Frobenius discontinuity test, here on projector-volumetric
+            // view-projection. A cut gets one current-only resolve, then becomes
+            // the valid history endpoint for the following frame.
+            bool projection_discontinuity = false;
+            if (mProjVolHistoryValid)
+            {
+                const F32* current_viewproj = glm::value_ptr(viewproj);
+                F32 delta_squared = 0.f;
+                F32 magnitude_squared = 0.f;
+                for (U32 i = 0; i < 16; ++i)
+                {
+                    const F32 delta = current_viewproj[i] - mProjVolPrevViewProj[i];
+                    delta_squared += delta * delta;
+                    magnitude_squared += llmax(current_viewproj[i] * current_viewproj[i],
+                                               mProjVolPrevViewProj[i] * mProjVolPrevViewProj[i]);
+                }
+                projection_discontinuity =
+                    delta_squared > 0.01f * llmax(magnitude_squared, 0.000001f);
+            }
+            const F32 blend = (mProjVolHistoryValid && !projection_discontinuity)
+                            ? llclamp(BDMergeProjectorVolumetricsTemporalBlend, 0.f, 0.98f)
+                            : 0.f;
             gDeferredProjectorVolumetricTemporalProgram.uniform1f(LLShaderMgr::PROJVOL_TEMPORAL_BLEND, blend);
             // [BDMerge G3.3 Batch B] R2 contrast-aware reject (0 = no-op) + R1 beam-depth
             // reprojection gate (must match the march-side upload above: on this path
@@ -13019,8 +13899,8 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
         // Persist this frame's world->clip for next frame's reprojection; advance
         // the ping-pong (next frame reads the slot we just wrote); the resolved slot
         // is now the shaft source; history is valid from here on.
-        const glm::mat4 viewproj = proj * mat;
         memcpy(mProjVolPrevViewProj, glm::value_ptr(viewproj), sizeof(mProjVolPrevViewProj));
+        memcpy(mProjVolPrevModelview, glm::value_ptr(mat), sizeof(mProjVolPrevModelview));
         mProjVolShaftSrc     = &dst;
         mProjVolHistoryIdx   = prev;
         mProjVolHistoryValid = true;
@@ -15585,7 +16465,362 @@ glm::mat4 look(const LLVector3 pos, const LLVector3 dir, const LLVector3 up)
     return glm::make_mat4(ret);
 }
 
-void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj, LLCamera& shadow_cam, LLCullResult& result, bool depth_clamp, bool do_cull)
+void LLPipeline::generateWeatherRainOcclusion(LLCamera& camera)
+{
+    static LLCachedControl<bool> weather_enabled(
+        gSavedSettings, "AlchemyWeatherEnabled", false);
+    static LLCachedControl<bool> occlusion_enabled(
+        gSavedSettings, "AlchemyWeatherRainOcclusion", false);
+
+    // The default-off path is only two cached-control checks: do not touch
+    // producer state or inspect any other setting or shader when disabled.
+    if (!weather_enabled() || !occlusion_enabled())
+    {
+        return;
+    }
+
+    const auto release_map = [this]()
+    {
+        mWeatherRainOcclusionValid = false;
+        mWeatherRainOcclusionFrame = 0;
+        mWeatherRainOcclusionFailedResolution = 0;
+        mWeatherRainOcclusionDepthRange = 1.f;
+        mWeatherRainOcclusionMatrix = glm::mat4(1.f);
+        if (mWeatherRainOcclusion.getWidth() != 0)
+        {
+            mWeatherRainOcclusion.release();
+        }
+    };
+
+    static LLCachedControl<bool> rain_enabled(
+        gSavedSettings, "AlchemyWeatherRainEnabled", true);
+    static LLCachedControl<F32> rain_intensity(
+        gSavedSettings, "AlchemyWeatherRainIntensity", 0.55f);
+    static LLCachedControl<U32> resolution_setting(
+        gSavedSettings, "AlchemyWeatherRainOcclusionResolution", 512U);
+    static LLCachedControl<F32> extent_setting(
+        gSavedSettings, "AlchemyWeatherRainOcclusionExtent", 128.f);
+    static LLCachedControl<F32> rain_distance_setting(
+        gSavedSettings, "AlchemyWeatherRainMaxDistance", 80.f);
+    static LLCachedControl<F32> shelter_height_setting(
+        gSavedSettings, "AlchemyWeatherShelterHeight", 48.f);
+    static LLCachedControl<bool> debug_occlusion(
+        gSavedSettings, "AlchemyWeatherRainOcclusionDebug", false);
+
+    const bool weather_consumers =
+        (gDeferredWeatherRainOcclusionProgram.isComplete() &&
+         gDeferredWeatherRainOcclusionProgram.getTextureChannel(
+             LLShaderMgr::WEATHER_RAIN_OCCLUSION_MAP) >= 0) ||
+        (gDeferredWeatherSurfaceOcclusionProgram.isComplete() &&
+         gDeferredWeatherSurfaceOcclusionProgram.getTextureChannel(
+             LLShaderMgr::WEATHER_RAIN_OCCLUSION_MAP) >= 0);
+    const bool shadow_programs =
+        gDeferredShadowProgram.isComplete() &&
+        gDeferredShadowAlphaMaskProgram.isComplete() &&
+        gDeferredShadowFullbrightAlphaMaskProgram.isComplete() &&
+        gDeferredTreeShadowProgram.isComplete() &&
+        gDeferredShadowGLTFAlphaMaskProgram.isComplete() &&
+        gDeferredShadowCubeProgram.isComplete();
+    const F32 configured_intensity = rain_intensity();
+    if (!rain_enabled() ||
+        !std::isfinite(configured_intensity) ||
+        !(configured_intensity > 0.f) ||
+        !sRenderDeferred || gCubeSnapshot ||
+        !weather_consumers || !shadow_programs)
+    {
+        release_map();
+        return;
+    }
+
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_PIPELINE;
+    LL_PROFILE_GPU_ZONE("generateWeatherRainOcclusion");
+
+    const U32 requested_resolution =
+        llclamp(resolution_setting(), 256U, 1024U);
+    if (mWeatherRainOcclusion.getWidth() == 0 &&
+        mWeatherRainOcclusionFailedResolution == requested_resolution)
+    {
+        return;
+    }
+    if (mWeatherRainOcclusion.getWidth() != requested_resolution ||
+        mWeatherRainOcclusion.getHeight() != requested_resolution)
+    {
+        release_map();
+        if (!mWeatherRainOcclusion.allocate(
+                requested_resolution, requested_resolution, 0,
+                true, false, LLTexUnit::TT_TEXTURE,
+                LLTexUnit::TMG_NONE, LLRenderTarget::DEPTH_FMT_24))
+        {
+            release_map();
+            mWeatherRainOcclusionFailedResolution = requested_resolution;
+            gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
+            return;
+        }
+        mWeatherRainOcclusionFailedResolution = 0;
+
+        // Manual sampler2D comparisons require raw depth, never a shadow
+        // compare sampler. Keep the dedicated target isolated from sun-map
+        // filtering/compare state.
+        gGL.getTexUnit(0)->bind(&mWeatherRainOcclusion, true);
+        gGL.getTexUnit(0)->setTextureFilteringOption(LLTexUnit::TFO_POINT);
+        gGL.getTexUnit(0)->setTextureAddressMode(LLTexUnit::TAM_CLAMP);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE);
+        gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
+    }
+
+    const F32 extent_raw = extent_setting();
+    const F32 extent = llclamp(
+        std::isfinite(extent_raw) ? extent_raw : 128.f, 32.f, 320.f);
+    const U32 map_resolution = mWeatherRainOcclusion.getWidth();
+    if (map_resolution == 0)
+    {
+        release_map();
+        return;
+    }
+
+    // Snap in global space so an agent-coordinate origin shift at a region
+    // crossing cannot move the world-aligned texel grid.
+    LLVector3d center_global =
+        gAgent.getPosGlobalFromAgent(camera.getOrigin());
+    if (!center_global.isFinite())
+    {
+        release_map();
+        return;
+    }
+    const F64 world_texel =
+        (2.0 * static_cast<F64>(extent)) /
+        static_cast<F64>(map_resolution);
+    center_global.mdV[VX] =
+        std::floor(center_global.mdV[VX] / world_texel + 0.5) *
+        world_texel;
+    center_global.mdV[VY] =
+        std::floor(center_global.mdV[VY] / world_texel + 0.5) *
+        world_texel;
+    center_global.mdV[VZ] =
+        std::floor(center_global.mdV[VZ] + 0.5);
+    const LLVector3 center_agent =
+        gAgent.getPosAgentFromGlobal(center_global);
+    if (!center_agent.isFinite())
+    {
+        release_map();
+        return;
+    }
+
+    const F32 rain_distance_raw = rain_distance_setting();
+    const F32 rain_distance = llclamp(
+        std::isfinite(rain_distance_raw) ? rain_distance_raw : 80.f,
+        8.f, 256.f);
+    const F32 shelter_height_raw = shelter_height_setting();
+    const F32 shelter_height = llclamp(
+        std::isfinite(shelter_height_raw) ? shelter_height_raw : 48.f,
+        8.f, 256.f);
+    const F32 vertical_half = llclamp(
+        llmax(extent, llmax(rain_distance, shelter_height)) + 32.f,
+        64.f, 512.f);
+    const F32 near_clip = 0.1f;
+    const F32 far_clip = near_clip + vertical_half * 2.f;
+    const F32 depth_range = far_clip - near_clip;
+    LLVector3 top_origin = center_agent;
+    top_origin.mV[VZ] += vertical_half;
+
+    const glm::mat4 view = look(
+        top_origin, LLVector3(0.f, 0.f, -1.f),
+        LLVector3(0.f, 1.f, 0.f));
+    const glm::mat4 projection = glm::ortho(
+        -extent, extent, -extent, extent, near_clip, far_clip);
+    const glm::mat4 view_projection = projection * view;
+
+    const glm::mat4 saved_modelview = get_current_modelview();
+    const glm::mat4 saved_projection = get_current_projection();
+    const glm::mat4 saved_last_modelview = get_last_modelview();
+    const glm::mat4 saved_last_projection = get_last_projection();
+    const LLViewerCamera::eCameraID saved_camera_id =
+        LLViewerCamera::sCurCameraID;
+    S32 saved_viewport[4];
+    std::memcpy(saved_viewport, gGLViewport, sizeof(saved_viewport));
+    GLboolean saved_color_mask[4];
+    glGetBooleanv(GL_COLOR_WRITEMASK, saved_color_mask);
+    LLGLSLShader* saved_shader = LLGLSLShader::sCurBoundShaderPtr;
+
+    pushRenderTypeMask();
+    andRenderTypeMask(
+        LLPipeline::RENDER_TYPE_TERRAIN,
+        LLPipeline::RENDER_TYPE_SIMPLE,
+        LLPipeline::RENDER_TYPE_ALPHA,
+        LLPipeline::RENDER_TYPE_ALPHA_PRE_WATER,
+        LLPipeline::RENDER_TYPE_ALPHA_POST_WATER,
+        LLPipeline::RENDER_TYPE_GLTF_PBR,
+        LLPipeline::RENDER_TYPE_FULLBRIGHT,
+        LLPipeline::RENDER_TYPE_BUMP,
+        LLPipeline::RENDER_TYPE_VOLUME,
+        LLPipeline::RENDER_TYPE_TREE,
+        LLPipeline::RENDER_TYPE_PASS_ALPHA_MASK,
+        LLPipeline::RENDER_TYPE_PASS_FULLBRIGHT_ALPHA_MASK,
+        LLPipeline::RENDER_TYPE_PASS_SIMPLE,
+        LLPipeline::RENDER_TYPE_PASS_BUMP,
+        LLPipeline::RENDER_TYPE_PASS_FULLBRIGHT,
+        LLPipeline::RENDER_TYPE_PASS_SHINY,
+        LLPipeline::RENDER_TYPE_PASS_FULLBRIGHT_SHINY,
+        LLPipeline::RENDER_TYPE_PASS_MATERIAL,
+        LLPipeline::RENDER_TYPE_PASS_MATERIAL_ALPHA_MASK,
+        LLPipeline::RENDER_TYPE_PASS_MATERIAL_ALPHA_EMISSIVE,
+        LLPipeline::RENDER_TYPE_PASS_SPECMAP,
+        LLPipeline::RENDER_TYPE_PASS_SPECMAP_MASK,
+        LLPipeline::RENDER_TYPE_PASS_SPECMAP_EMISSIVE,
+        LLPipeline::RENDER_TYPE_PASS_NORMMAP,
+        LLPipeline::RENDER_TYPE_PASS_NORMMAP_MASK,
+        LLPipeline::RENDER_TYPE_PASS_NORMMAP_EMISSIVE,
+        LLPipeline::RENDER_TYPE_PASS_NORMSPEC,
+        LLPipeline::RENDER_TYPE_PASS_NORMSPEC_MASK,
+        LLPipeline::RENDER_TYPE_PASS_NORMSPEC_EMISSIVE,
+        LLPipeline::RENDER_TYPE_PASS_GLTF_PBR,
+        LLPipeline::RENDER_TYPE_PASS_GLTF_PBR_ALPHA_MASK,
+        END_RENDER_TYPES);
+
+    LLGLDisable no_blend(GL_BLEND);
+    LLGLDisable no_scissor(GL_SCISSOR_TEST);
+    LLGLEnable depth_clamp(GL_DEPTH_CLAMP);
+    LLGLDepthTest depth_test(GL_TRUE, GL_TRUE, GL_LESS);
+    set_current_modelview(view);
+    set_current_projection(projection);
+    LLViewerCamera::sCurCameraID =
+        LLViewerCamera::CAMERA_WEATHER_RAIN_OCCLUSION;
+
+    mWeatherRainOcclusion.bindTarget();
+    gGLViewport[0] = 0;
+    gGLViewport[1] = 0;
+    gGLViewport[2] = static_cast<S32>(map_resolution);
+    gGLViewport[3] = static_cast<S32>(map_resolution);
+    mWeatherRainOcclusion.clear(GL_DEPTH_BUFFER_BIT);
+
+    LLCamera shadow_camera = camera;
+    shadow_camera.setOrigin(top_origin);
+    shadow_camera.lookDir(
+        LLVector3(0.f, 0.f, -1.f),
+        LLVector3(0.f, 1.f, 0.f));
+    shadow_camera.setNear(near_clip);
+    shadow_camera.setFar(far_clip);
+    LLViewerCamera::updateFrustumPlanes(
+        shadow_camera, true, false, true);
+
+    static LLCullResult rain_occlusion_result;
+    const bool saved_rain_occlusion_render = sRainOcclusionRender;
+    sRainOcclusionRender = true;
+    // Unrigged opaque + alpha-mask world geometry only. Ordinary alpha blend
+    // has no reliable "stops rain" material semantic; rigid worn attachments
+    // are rejected centrally while this scoped flag is true.
+    renderShadow(
+        view, projection, shadow_camera, rain_occlusion_result,
+        true, true, false, false, false);
+    sRainOcclusionRender = saved_rain_occlusion_render;
+
+    // Publish the map only when stateSort built at least one caster batch for
+    // a pass renderShadow submitted. A cleared D24 map is all-far and the
+    // shader intentionally interprets that as exposed, so treating an empty
+    // map as valid would suppress the coarse camera-ray fallback and fail open.
+    static const U32 caster_types[] = {
+        LLRenderPass::PASS_SIMPLE,
+        LLRenderPass::PASS_FULLBRIGHT,
+        LLRenderPass::PASS_SHINY,
+        LLRenderPass::PASS_BUMP,
+        LLRenderPass::PASS_FULLBRIGHT_SHINY,
+        LLRenderPass::PASS_MATERIAL,
+        LLRenderPass::PASS_MATERIAL_ALPHA_EMISSIVE,
+        LLRenderPass::PASS_SPECMAP,
+        LLRenderPass::PASS_SPECMAP_EMISSIVE,
+        LLRenderPass::PASS_NORMMAP,
+        LLRenderPass::PASS_NORMMAP_EMISSIVE,
+        LLRenderPass::PASS_NORMSPEC,
+        LLRenderPass::PASS_NORMSPEC_EMISSIVE,
+        LLRenderPass::PASS_GLTF_PBR,
+        LLRenderPass::PASS_ALPHA_MASK,
+        LLRenderPass::PASS_FULLBRIGHT_ALPHA_MASK,
+        LLRenderPass::PASS_MATERIAL_ALPHA_MASK,
+        LLRenderPass::PASS_SPECMAP_MASK,
+        LLRenderPass::PASS_NORMMAP_MASK,
+        LLRenderPass::PASS_NORMSPEC_MASK,
+        LLRenderPass::PASS_GLTF_PBR_ALPHA_MASK
+    };
+    U32 caster_batches = 0;
+    for (U32 type : caster_types)
+    {
+        caster_batches += rain_occlusion_result.getRenderMapSize(type);
+    }
+
+    // Diagnostic readback is deliberately expensive but completely gated and
+    // throttled. It distinguishes cull starvation from submitted geometry that
+    // nevertheless left the depth target at its all-far clear value.
+    if (debug_occlusion() && (gFrameCount & 63U) == 0)
+    {
+        static std::vector<F32> depth_samples;
+        depth_samples.assign(
+            static_cast<size_t>(map_resolution) * map_resolution, 1.f);
+        glReadPixels(
+            0, 0,
+            static_cast<GLsizei>(map_resolution),
+            static_cast<GLsizei>(map_resolution),
+            GL_DEPTH_COMPONENT, GL_FLOAT, depth_samples.data());
+        const GLenum gl_error = glGetError();
+        F32 depth_min = 1.f;
+        F32 depth_max = 0.f;
+        for (F32 depth : depth_samples)
+        {
+            if (std::isfinite(depth))
+            {
+                depth_min = llmin(depth_min, depth);
+                depth_max = llmax(depth_max, depth);
+            }
+        }
+        LL_INFOS("Weather")
+            << "Rain occlusion: caster_batches=" << caster_batches
+            << ", target_width=" << map_resolution
+            << ", depth_range=" << depth_range
+            << ", depth_min=" << depth_min
+            << ", depth_max=" << depth_max
+            << ", gl_error=" << static_cast<U32>(gl_error)
+            << LL_ENDL;
+    }
+
+    // LLRenderTarget::flush uses gGLViewport when returning to the default
+    // framebuffer, so restore the global array before popping the target.
+    std::memcpy(gGLViewport, saved_viewport, sizeof(saved_viewport));
+    mWeatherRainOcclusion.flush();
+    glViewport(
+        saved_viewport[0], saved_viewport[1],
+        saved_viewport[2], saved_viewport[3]);
+
+    set_current_modelview(saved_modelview);
+    set_current_projection(saved_projection);
+    set_last_modelview(saved_last_modelview);
+    set_last_projection(saved_last_projection);
+    LLViewerCamera::sCurCameraID = saved_camera_id;
+    popRenderTypeMask();
+    gGL.setColorMask(
+        saved_color_mask[0] != GL_FALSE,
+        saved_color_mask[1] != GL_FALSE,
+        saved_color_mask[2] != GL_FALSE,
+        saved_color_mask[3] != GL_FALSE);
+    if (saved_shader)
+    {
+        saved_shader->bind();
+    }
+    else
+    {
+        LLGLSLShader::unbind();
+    }
+
+    mWeatherRainOcclusionMatrix = view_projection;
+    mWeatherRainOcclusionDepthRange = depth_range;
+    mWeatherRainOcclusionFrame = gFrameCount;
+    mWeatherRainOcclusionValid = caster_batches > 0;
+}
+
+void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj,
+                              LLCamera& shadow_cam, LLCullResult& result,
+                              bool depth_clamp, bool do_cull,
+                              bool include_rigged,
+                              bool include_alpha_blend,
+                              bool cull_faces)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_PIPELINE; //LL_RECORD_BLOCK_TIME(FTM_SHADOW_RENDER);
     LL_PROFILE_GPU_ZONE("renderShadow");
@@ -15614,7 +16849,9 @@ void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj, LLCa
         LLRenderPass::PASS_NORMSPEC_EMISSIVE
     };
 
-    LLGLEnable cull(GL_CULL_FACE);
+    LLGLState cull(
+        GL_CULL_FACE,
+        cull_faces ? LLGLState::ENABLED_STATE : LLGLState::DISABLED_STATE);
 
     //enable depth clamping if available
     LLGLEnable clamp_depth(depth_clamp ? GL_DEPTH_CLAMP : 0);
@@ -15655,8 +16892,9 @@ void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj, LLCa
     };
 
 
+    const int pass_count = include_rigged ? 2 : 1;
     LLVertexBuffer::unbind();
-    for (int j = 0; j < 2; ++j) // 0 -- static, 1 -- rigged
+    for (int j = 0; j < pass_count; ++j) // 0 -- static, 1 -- rigged
     {
         bool rigged = j == 1;
         gDeferredShadowProgram.bind(rigged);
@@ -15702,7 +16940,7 @@ void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj, LLCa
         const S32 sun_up = LLEnvironment::instance().getIsSunUp() ? 1 : 0;
         U32 target_width = LLRenderTarget::sCurResX;
 
-        for (int i = 0; i < 2; ++i)
+        for (int i = 0; i < pass_count; ++i)
         {
             bool rigged = i == 1;
 
@@ -15715,6 +16953,7 @@ void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj, LLCa
                 renderMaskedObjects(LLRenderPass::PASS_ALPHA_MASK, true, true, rigged);
             }
 
+            if (include_alpha_blend)
             {
                 LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("shadow alpha blend");
                 LL_PROFILE_GPU_ZONE("shadow alpha blend");
@@ -15764,7 +17003,7 @@ void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj, LLCa
             }
         }
 
-        for (int i = 0; i < 2; ++i)
+        for (int i = 0; i < pass_count; ++i)
         {
             bool rigged = i == 1;
             gDeferredShadowGLTFAlphaMaskProgram.bind(rigged);

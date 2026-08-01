@@ -1948,7 +1948,19 @@ void LLViewerJoystick::moveFlycam(bool reset)
 
     LLMatrix3 mat(sFlycamRotation);
 
-    LLViewerCamera::getInstance()->setView(sFlycamZoom * orbit_fov_mul);
+    static LLCachedControl<bool> operator_enabled(
+        gSavedSettings, "FlycamOperatorEnabled", false);
+    static LLCachedControl<bool> apply_active(
+        gSavedSettings, "CameraShakeApplyActive", false);
+    LLViewerCamera* cam = LLViewerCamera::getInstance();
+    const F32 plain_fov = sFlycamZoom * orbit_fov_mul;
+    // A resolved Flycam Orbit is the bone-mounted cinematic rider; the
+    // operator flag is the other cinematic flycam driver. A free standalone
+    // flycam has neither, so its FOV write remains exactly the original value.
+    const bool cinematic_driven = orbit_active || operator_enabled;
+    cam->setView(cinematic_driven
+        ? LLCinematicCamera::applyFrameLens(plain_fov, cam)
+        : plain_fov);
 
     // [phoenix port] Procedural handheld camera operator (native port of the
     // VirtualCinema Handheld ReShade design). Fed the flycam's own per-frame
@@ -1957,9 +1969,17 @@ void LLViewerJoystick::moveFlycam(bool reset)
     // drifts and disabling the effect snaps cleanly back. Re-grafted onto the
     // upstream 7.1.9.2516 flycam (agent-space LLVector3 position; dt taken
     // from gFrameIntervalSeconds because the upstream tail has no local time).
-    static LLCachedControl<bool> operator_enabled(gSavedSettings, "FlycamOperatorEnabled", false);
-    if (operator_enabled)
+    if (operator_enabled || apply_active)
     {
+        if (apply_active)
+        {
+            static U32 sLastOperatorFrame = 0;
+            if (sLastOperatorFrame == 0 || gFrameCount > sLastOperatorFrame + 1)
+            {
+                LLCameraOperator::instance().reset();
+            }
+            sLastOperatorFrame = gFrameCount;
+        }
         const F32 op_dt = llmax(gFrameIntervalSeconds.value(), 0.0005f);
         const F32 inv_t = 1.f / op_dt;
         LLCameraOperatorInput opin;
@@ -1982,7 +2002,8 @@ void LLViewerJoystick::moveFlycam(bool reset)
                              + LLVector3(shaken.mMatrix[1]) * op.mPosOffset.mV[VY]
                              + LLVector3(shaken.mMatrix[2]) * op.mPosOffset.mV[VZ];
 
-        LLViewerCamera::getInstance()->setView(sFlycamZoom * orbit_fov_mul * op.mFovMul);
+        cam->setView(LLCinematicCamera::applyFrameLens(
+            plain_fov * op.mFovMul, cam));
         LLViewerCamera::getInstance()->setOrigin(shaken_pos);
         LLViewerCamera::getInstance()->mXAxis = LLVector3(shaken.mMatrix[0]);
         LLViewerCamera::getInstance()->mYAxis = LLVector3(shaken.mMatrix[1]);

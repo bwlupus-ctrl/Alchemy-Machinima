@@ -1725,6 +1725,46 @@
     <key>CinematicCamBreathingAmplitude</key><map><key>Comment</key><string>[Cinematic] Breathing Hold: subtle drift amplitude (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.025</real></map>
     <key>CinematicCamBreathingPeriod</key><map><key>Comment</key><string>[Cinematic] Breathing Hold: seconds per breathing cycle.</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>6</real></map>
     <key>CinematicCamBreathingHeading</key><map><key>Comment</key><string>[Cinematic] Breathing Hold: facing-relative heading (deg).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0</real></map>
+    <key>CinematicCamStaticWideHeading</key><map><key>Comment</key><string>[Cinematic] Static Wide: facing-relative heading (deg).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>15</real></map>
+    <key>CinematicCamStaticWideDistance</key><map><key>Comment</key><string>[Cinematic] Static Wide: camera distance from the subject (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>5.5</real></map>
+    <key>CinematicCamStaticWideCameraUp</key><map><key>Comment</key><string>[Cinematic] Static Wide: camera height above the subject base (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>1.3</real></map>
+    <key>CinematicCamStaticWideAimUp</key><map><key>Comment</key><string>[Cinematic] Static Wide: aim height above the subject base (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>1.05</real></map>
+    <key>CinematicCamStaticWideFov</key><map><key>Comment</key><string>[Cinematic] Static Wide: FOV multiplier.</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>1.1</real></map>
+    <key>CinematicCamStaticMediumHeading</key><map><key>Comment</key><string>[Cinematic] Static Medium: facing-relative heading (deg).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>15</real></map>
+    <key>CinematicCamStaticMediumDistance</key><map><key>Comment</key><string>[Cinematic] Static Medium: camera distance from the subject (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>2.2</real></map>
+    <key>CinematicCamStaticMediumCameraUp</key><map><key>Comment</key><string>[Cinematic] Static Medium: camera height above the subject base (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>1.45</real></map>
+    <key>CinematicCamStaticMediumAimUp</key><map><key>Comment</key><string>[Cinematic] Static Medium: aim height above the subject base (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>1.35</real></map>
+    <key>CinematicCamStaticMediumFov</key><map><key>Comment</key><string>[Cinematic] Static Medium: FOV multiplier.</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.82</real></map>
+    <key>CinematicCamStaticCloseHeading</key><map><key>Comment</key><string>[Cinematic] Static Close: facing-relative heading (deg).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>-10</real></map>
+    <key>CinematicCamStaticCloseDistance</key><map><key>Comment</key><string>[Cinematic] Static Close: camera distance from the head (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>1.25</real></map>
+    <key>CinematicCamStaticCloseCameraUp</key><map><key>Comment</key><string>[Cinematic] Static Close: camera vertical offset from the live head joint (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0</real></map>
+    <key>CinematicCamStaticCloseAimUp</key><map><key>Comment</key><string>[Cinematic] Static Close: aim vertical offset from the live head joint (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0</real></map>
+    <key>CinematicCamStaticCloseFov</key><map><key>Comment</key><string>[Cinematic] Static Close: FOV multiplier.</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.7</real></map>
+    <key>CinematicCamStaticProfileLHeading</key><map><key>Comment</key><string>[Cinematic] Static Profile Left: facing-relative heading (deg).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>90</real></map>
+    <key>CinematicCamStaticProfileLDistance</key><map><key>Comment</key><string>[Cinematic] Static Profile Left: camera distance from the head (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>2</real></map>
+    <key>CinematicCamStaticProfileLCameraUp</key><map><key>Comment</key><string>[Cinematic] Static Profile Left: camera vertical offset from the live head joint (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0</real></map>
+    <key>CinematicCamStaticProfileLAimUp</key><map><key>Comment</key><string>[Cinematic] Static Profile Left: aim vertical offset from the live head joint (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0</real></map>
+    <key>CinematicCamStaticProfileLFov</key><map><key>Comment</key><string>[Cinematic] Static Profile Left: FOV multiplier.</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.75</real></map>
+    <key>CinematicCamStaticProfileRHeading</key><map><key>Comment</key><string>[Cinematic] Static Profile Right: facing-relative heading (deg).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>-90</real></map>
+    <key>CinematicCamStaticProfileRDistance</key><map><key>Comment</key><string>[Cinematic] Static Profile Right: camera distance from the head (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>2</real></map>
+    <key>CinematicCamStaticProfileRCameraUp</key><map><key>Comment</key><string>[Cinematic] Static Profile Right: camera vertical offset from the live head joint (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0</real></map>
+    <key>CinematicCamStaticProfileRAimUp</key><map><key>Comment</key><string>[Cinematic] Static Profile Right: aim vertical offset from the live head joint (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0</real></map>
+    <key>CinematicCamStaticProfileRFov</key><map><key>Comment</key><string>[Cinematic] Static Profile Right: FOV multiplier.</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.75</real></map>
+    <key>CinematicCamStaticLowHeading</key><map><key>Comment</key><string>[Cinematic] Static Low Hero: facing-relative heading (deg).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>10</real></map>
+    <key>CinematicCamStaticLowDistance</key><map><key>Comment</key><string>[Cinematic] Static Low Hero: camera distance from the subject (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>2.3</real></map>
+    <key>CinematicCamStaticLowCameraUp</key><map><key>Comment</key><string>[Cinematic] Static Low Hero: camera height above the subject base (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.28</real></map>
+    <key>CinematicCamStaticLowAimUp</key><map><key>Comment</key><string>[Cinematic] Static Low Hero: aim height above the subject base (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>1.25</real></map>
+    <key>CinematicCamStaticLowFov</key><map><key>Comment</key><string>[Cinematic] Static Low Hero: FOV multiplier.</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.9</real></map>
+    <key>CinematicCamStaticHighHeading</key><map><key>Comment</key><string>[Cinematic] Static High Angle: facing-relative heading (deg).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>10</real></map>
+    <key>CinematicCamStaticHighDistance</key><map><key>Comment</key><string>[Cinematic] Static High Angle: camera distance from the subject (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>2.4</real></map>
+    <key>CinematicCamStaticHighCameraUp</key><map><key>Comment</key><string>[Cinematic] Static High Angle: camera height above the subject base (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>3</real></map>
+    <key>CinematicCamStaticHighAimUp</key><map><key>Comment</key><string>[Cinematic] Static High Angle: aim height above the subject base (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>1.35</real></map>
+    <key>CinematicCamStaticHighFov</key><map><key>Comment</key><string>[Cinematic] Static High Angle: FOV multiplier.</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.85</real></map>
+    <key>CinematicCamStaticFullHeading</key><map><key>Comment</key><string>[Cinematic] Static Full Body: facing-relative heading (deg).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0</real></map>
+    <key>CinematicCamStaticFullDistance</key><map><key>Comment</key><string>[Cinematic] Static Full Body: camera distance from the subject (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>4</real></map>
+    <key>CinematicCamStaticFullCameraUp</key><map><key>Comment</key><string>[Cinematic] Static Full Body: camera height above the subject base (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>1.05</real></map>
+    <key>CinematicCamStaticFullAimUp</key><map><key>Comment</key><string>[Cinematic] Static Full Body: aim height above the subject base (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.95</real></map>
+    <key>CinematicCamStaticFullFov</key><map><key>Comment</key><string>[Cinematic] Static Full Body: FOV multiplier.</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.95</real></map>
     <key>CinematicCamCraneRadius</key>
     <map>
       <key>Comment</key>
@@ -1779,6 +1819,226 @@
       <string>F32</string>
       <key>Value</key>
       <real>0.0</real>
+    </map>
+    <key>CinematicAutoFrameEnabled</key>
+    <map>
+      <key>Comment</key>
+      <string>Enable discrete skeleton Auto-Reframe for cinematic and Director shots; off leaves the authored camera rig exactly unchanged</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>CinematicAutoFrameFill</key>
+    <map>
+      <key>Comment</key>
+      <string>Target fraction of retained delivery-frame height occupied by the active shot's skeleton extent; constrained by the compose line so the bottom anchor remains visible</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.85</real>
+    </map>
+    <key>CinematicAutoFrameComposeLine</key>
+    <map>
+      <key>Comment</key>
+      <string>Vertical delivery-frame line for the shot's top skeleton anchor, from 0 at top to 1 at bottom</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.33</real>
+    </map>
+    <key>CinematicAutoFrameDistanceTrim</key>
+    <map>
+      <key>Comment</key>
+      <string>Manual dolly trim in meters added to the held skeleton-fit distance; persists across Auto-Reframe solves</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+    </map>
+    <key>CinematicAutoFrameSettleMode</key>
+    <map>
+      <key>Comment</key>
+      <string>Auto-Reframe fit-distance transition: 0 snaps, 1 finishes with the Director cut ease, and 2 settles in its own presentation-time window after the cut</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>2</integer>
+    </map>
+    <key>CinematicAutoFrameSettleCurve</key>
+    <map>
+      <key>Comment</key>
+      <string>Auto-Reframe post-cut settle easing curve id; 0 is legacy Smootherstep, 1..32 are stable presets, and 100 is the custom cubic bezier</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>CinematicAutoFrameSettleFeather</key>
+    <map>
+      <key>Comment</key>
+      <string>Auto-Reframe settle edge feather, clamped to 0..1 and latched per settle; 0 preserves the selected curve exactly</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+    </map>
+    <key>CinematicAutoFrameSettleBezierX1</key>
+    <map>
+      <key>Comment</key>
+      <string>Custom Auto-Reframe settle cubic-bezier X1 control point, sanitized to 0..1</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.42</real>
+    </map>
+    <key>CinematicAutoFrameSettleBezierY1</key>
+    <map>
+      <key>Comment</key>
+      <string>Custom Auto-Reframe settle cubic-bezier Y1 control point, sanitized to -2..3</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+    </map>
+    <key>CinematicAutoFrameSettleBezierX2</key>
+    <map>
+      <key>Comment</key>
+      <string>Custom Auto-Reframe settle cubic-bezier X2 control point, sanitized to 0..1</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.58</real>
+    </map>
+    <key>CinematicAutoFrameSettleBezierY2</key>
+    <map>
+      <key>Comment</key>
+      <string>Custom Auto-Reframe settle cubic-bezier Y2 control point, sanitized to -2..3</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.0</real>
+    </map>
+    <key>CinematicAutoFrameSettleSeconds</key>
+    <map>
+      <key>Comment</key>
+      <string>Presentation-time window in seconds for post-cut Auto-Reframe distance settling; runtime range 0.05 to 10.0 and values at or below 0.05 snap</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.70</real>
+    </map>
+    <key>CinematicAutoFrameSettleMaxRatio</key>
+    <map>
+      <key>Comment</key>
+      <string>Optional Auto-Reframe settle amplitude bound relative to the new fit distance; 0 is unbounded and values greater than 1 limit the settled tail</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+    </map>
+    <key>CinematicFrameAspectRatio</key>
+    <map>
+      <key>Comment</key>
+      <string>Machinima target frame aspect ratio; 0 uses the native window with no frame transform or guide, and -1 uses CinematicFrameCustomRatio</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+    </map>
+    <key>CinematicFrameCustomRatio</key>
+    <map>
+      <key>Comment</key>
+      <string>Custom machinima target frame width divided by height, used when CinematicFrameAspectRatio is -1</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>2.35</real>
+    </map>
+    <key>CinematicFrameFocalLengthMM</key>
+    <map>
+      <key>Comment</key>
+      <string>Focal length in millimeters for the differential 24 mm film-back frame lens; lower values make format changes widen or tighten the rendered field more strongly</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>50.0</real>
+    </map>
+    <key>CinematicFrameGuideEnabled</key>
+    <map>
+      <key>Comment</key>
+      <string>Show the non-destructive target-frame guide over the world view while the viewer UI is visible; never rendered into snapshots</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>CinematicFrameGuideOpacity</key>
+    <map>
+      <key>Comment</key>
+      <string>Opacity of the machinima frame guide bars or dimming from 0 transparent to 1 opaque</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.65</real>
+    </map>
+    <key>CinematicFrameGuideStyle</key>
+    <map>
+      <key>Comment</key>
+      <string>Machinima frame guide style: 0 dimmed translucent bars, 1 solid black bars, 2 thin guide lines</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>CinematicFrameLensEnabled</key>
+    <map>
+      <key>Comment</key>
+      <string>Enable deterministic aspect-aware lens reframing for the cinematic camera; off preserves the existing vertical-FOV path exactly</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
     </map>
     <key>CinematicCamHoverDistance</key>
     <map>
@@ -1988,6 +2248,28 @@
       <string>Boolean</string>
       <key>Value</key>
       <integer>0</integer>
+    </map>
+    <key>CameraShakeApplyActive</key>
+    <map>
+      <key>Comment</key>
+      <string>Apply Camera Shake to whichever camera is active: third-person mouse cam, joystick flycam, or cinematic camera</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>FlycamOperatorReactCeiling</key>
+    <map>
+      <key>Comment</key>
+      <string>Camera Shake reactive gain ceiling: caps how much moving/turning amplifies the handheld wander, across ALL presets. 1.0 = no reactive amplification (calmest), 4.0 = legacy. Default 2.5.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>2.5</real>
     </map>
     <key>CinematicCamUseSelected</key>
     <map>
@@ -4092,13 +4374,295 @@
     <key>DirectorHotkeysEnabled</key>
     <map>
       <key>Comment</key>
-      <string>[Director] Enable the machinima F-key transport (unmodified keys; see doc/DIRECTOR_HOTKEYS.md for the F1-F12 audit): F2 toggle Director Console, F3 ACTION (CUT while counting down / running), F4 CUT, F5 Reset to marks, F6 Pose ghosts on/off, F7 flycam take play/pause, F8 Set marks. Except F2, the keys fire only while the Director Console or Actor Mover floater is open, so they can never hijack normal use; a user gesture bound to the same key and Ctrl/Alt/Shift-modified combos (e.g. Ctrl+Alt+F1 hide UI) always win regardless. On by default because unmodified F2-F12 carry no viewer bindings.</string>
+      <string>[Director] Enable the machinima hotkeys (see doc/DIRECTOR_HOTKEYS.md): F2 toggle Director Console, F3 ACTION/CUT, F4 CUT, F5 Reset to marks, F6 Pose ghosts, F7 take play/pause, F8 Set marks; while the Director Console is visible and the switcher armed, 1-9 punch slots 1-9. Focused UI, tools, gestures, and modified combos win. On by default; strict visibility/arm gates leave ordinary number typing untouched.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
       <string>Boolean</string>
       <key>Value</key>
       <integer>1</integer>
+    </map>
+    <key>DirectorSwitcherArmed</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director Switcher] Session-only live arm for CineCam program selection. Starts off on every launch; disarming restores only camera enable state still owned by the switcher.</string>
+      <key>Persist</key>
+      <integer>0</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>DirectorSwitcherAuto</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director Switcher] Automatically punch enabled bank slots on the presentation-time schedule.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>DirectorSwitcherBank</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director Switcher] Versioned 12-slot bank. Each slot stores enabled/mode/label, compact subject/subject2 mark selectors, plus optional subject-relative custom_enable, yaw_offset_deg, pitch_deg, distance_m, height_m, and fov fields. Primary subject 0 uses the existing CineCam target chain; secondary defaults to B; custom is off by default; enabled controls auto eligibility only.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>LLSD</string>
+      <key>Value</key>
+      <map>
+        <key>version</key>
+        <integer>1</integer>
+        <key>slots</key>
+        <array>
+          <map><key>enabled</key><boolean>true</boolean><key>mode</key><integer>43</integer><key>label</key><string>Wide</string><key>subject</key><integer>0</integer><key>subject2</key><integer>2</integer></map>
+          <map><key>enabled</key><boolean>true</boolean><key>mode</key><integer>44</integer><key>label</key><string>Medium</string><key>subject</key><integer>0</integer><key>subject2</key><integer>2</integer></map>
+          <map><key>enabled</key><boolean>true</boolean><key>mode</key><integer>45</integer><key>label</key><string>Close</string><key>subject</key><integer>0</integer><key>subject2</key><integer>2</integer></map>
+          <map><key>enabled</key><boolean>true</boolean><key>mode</key><integer>19</integer><key>label</key><string>Tight</string><key>subject</key><integer>0</integer><key>subject2</key><integer>2</integer></map>
+          <map><key>enabled</key><boolean>true</boolean><key>mode</key><integer>10</integer><key>label</key><string>OTS</string><key>subject</key><integer>0</integer><key>subject2</key><integer>2</integer></map>
+          <map><key>enabled</key><boolean>true</boolean><key>mode</key><integer>17</integer><key>label</key><string>Two-shot</string><key>subject</key><integer>0</integer><key>subject2</key><integer>2</integer></map>
+          <map><key>enabled</key><boolean>true</boolean><key>mode</key><integer>46</integer><key>label</key><string>Profile L</string><key>subject</key><integer>0</integer><key>subject2</key><integer>2</integer></map>
+          <map><key>enabled</key><boolean>true</boolean><key>mode</key><integer>47</integer><key>label</key><string>Profile R</string><key>subject</key><integer>0</integer><key>subject2</key><integer>2</integer></map>
+          <map><key>enabled</key><boolean>true</boolean><key>mode</key><integer>48</integer><key>label</key><string>Low hero</string><key>subject</key><integer>0</integer><key>subject2</key><integer>2</integer></map>
+          <map><key>enabled</key><boolean>true</boolean><key>mode</key><integer>49</integer><key>label</key><string>High angle</string><key>subject</key><integer>0</integer><key>subject2</key><integer>2</integer></map>
+          <map><key>enabled</key><boolean>true</boolean><key>mode</key><integer>50</integer><key>label</key><string>Full</string><key>subject</key><integer>0</integer><key>subject2</key><integer>2</integer></map>
+          <map><key>enabled</key><boolean>true</boolean><key>mode</key><integer>2</integer><key>label</key><string>Orbit</string><key>subject</key><integer>0</integer><key>subject2</key><integer>2</integer></map>
+        </array>
+      </map>
+    </map>
+    <key>DirectorSwitcherEaseCuts</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director Switcher] Glide camera pose and FOV for a bounded duration after a punch. Off means a hard cut.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>DirectorSwitcherEaseFreeze</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director Switcher] During an eased cut, temporarily pulse the existing Temporal Capture world-time scale down and back. A 0 factor combines Temporal animation/world drives with Freeze World while an unscaled cut timer keeps the camera ease and restore live. Restores the operator's exact prior temporal/freeze state on every exit.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>DirectorSwitcherFreezeCurve</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director Switcher] Global-slowdown half-pulse easing curve id; 0 is legacy Smootherstep, 1..32 are stable presets, and 100 is the custom cubic bezier.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>DirectorSwitcherFreezeFeather</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director Switcher] Global-slowdown half-pulse edge feather, clamped to 0..1 and latched per take; 0 preserves the selected curve exactly.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+    </map>
+    <key>DirectorSwitcherFreezeBezierX1</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director Switcher] Custom global-slowdown cubic-bezier X1 control point, sanitized to 0..1.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.42</real>
+    </map>
+    <key>DirectorSwitcherFreezeBezierY1</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director Switcher] Custom global-slowdown cubic-bezier Y1 control point, sanitized to -2..3.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+    </map>
+    <key>DirectorSwitcherFreezeBezierX2</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director Switcher] Custom global-slowdown cubic-bezier X2 control point, sanitized to 0..1.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.58</real>
+    </map>
+    <key>DirectorSwitcherFreezeBezierY2</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director Switcher] Custom global-slowdown cubic-bezier Y2 control point, sanitized to -2..3.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.0</real>
+    </map>
+    <key>DirectorSwitcherEaseSec</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director Switcher] One-shot pose/FOV ease (and bullet-time) duration in seconds, clamped to 0..10.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.25</real>
+    </map>
+    <key>DirectorSwitcherEaseCurve</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director Switcher] Cut pose/FOV easing curve id; 0 is legacy Smootherstep, 1..32 are stable presets, and 100 is the custom cubic bezier.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>DirectorSwitcherEaseFeather</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director Switcher] Cut pose/FOV edge feather, clamped to 0..1 and latched per take; 0 preserves the selected curve exactly.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+    </map>
+    <key>DirectorSwitcherEaseBezierX1</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director Switcher] Custom cut-ease cubic-bezier X1 control point, sanitized to 0..1.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.42</real>
+    </map>
+    <key>DirectorSwitcherEaseBezierY1</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director Switcher] Custom cut-ease cubic-bezier Y1 control point, sanitized to -2..3.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+    </map>
+    <key>DirectorSwitcherEaseBezierX2</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director Switcher] Custom cut-ease cubic-bezier X2 control point, sanitized to 0..1.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.58</real>
+    </map>
+    <key>DirectorSwitcherEaseBezierY2</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director Switcher] Custom cut-ease cubic-bezier Y2 control point, sanitized to -2..3.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.0</real>
+    </map>
+    <key>DirectorSwitcherEaseTimeFactor</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director Switcher] Minimum world-speed multiplier at the midpoint of an eased cut, clamped to 0..1. 0 uses full Freeze World; 1 is normal speed. Composes with an existing Temporal Capture manual scale.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.15</real>
+    </map>
+    <key>DirectorSwitcherIntervalSec</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director Switcher] Base presentation-time interval between automatic cuts.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>8.0</real>
+    </map>
+    <key>DirectorSwitcherJitterSec</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director Switcher] Deterministic plus/minus timing variation; model clamps to 45 percent of interval so boundaries stay ordered.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+    </map>
+    <key>DirectorSwitcherOverridesFlycam</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director Switcher] Allow the armed switcher to take camera ownership from a live joystick flycam. Off makes the switcher yield and restore its pre-arm CineCam enable baseline until flycam exits.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>DirectorSwitcherSeed</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director Switcher] Seed for stateless timing and random-program lanes.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>U32</string>
+      <key>Value</key>
+      <integer>1337</integer>
+    </map>
+    <key>DirectorSwitcherSequence</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director Switcher] Auto order: false=random deterministic permutation, true=next enabled slot sequence.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
     </map>
     <key>AvatarAxisDeadZone0</key>
     <map>
@@ -13376,13 +13940,13 @@
   <key>BDMergeProjectorVolumetricsFrustumClip</key>
   <map>
       <key>Comment</key>
-      <string>[BDMerge G3.3 Batch A - E1] Bound each projector shaft's raymarch by the light's actual frustum (4 side planes + near) instead of only its sphere of influence. For narrow cones this tightens the marched interval several-fold, so the same sample budget gives a cleaner shaft (or the budget can be lowered for free). Look-neutral: the clipped interval is a strict superset of the lit region and falls back to the sphere bounds if degenerate. Default off (A/B baseline).</string>
+      <string>[BDMerge G3.3 Batch A - E1] Bound each projector shaft's raymarch by the light's actual frustum (4 side planes + near) instead of only its sphere of influence. For narrow cones this tightens the marched interval several-fold, so the same sample budget gives a cleaner shaft (or the budget can be lowered for free). Look-neutral: the clipped interval is a strict superset of the lit region and falls back to the sphere bounds if degenerate. Default on.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
       <string>Boolean</string>
       <key>Value</key>
-      <integer>0</integer>
+      <integer>1</integer>
   </map>
   <key>BDMergeProjectorVolumetricsShadowJitterTap</key>
   <map>
@@ -13545,35 +14109,35 @@
   <key>BDMergeProjectorVolumetricsTemporalBlend</key>
   <map>
       <key>Comment</key>
-      <string>[BDMerge G3.3 Batch 1] Temporal accumulation history weight / EMA blend (0.0-0.98; default 0.85). Higher = more history retained = smoother and more stable but slower to react to change; lower = more responsive but noisier. Only active when Temporal is on.</string>
+      <string>[BDMerge G3.3 Batch 1] Temporal accumulation history weight / EMA blend (0.0-0.98; default 0.75). Higher = more history retained = smoother and more stable but slower to react to change; lower = more responsive but noisier. Only active when Temporal is on.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
       <string>F32</string>
       <key>Value</key>
-      <real>0.85</real>
+      <real>0.75</real>
   </map>
   <key>BDMergeProjectorVolumetricsTemporalReject</key>
   <map>
       <key>Comment</key>
-      <string>[BDMerge G3.3 Batch B] Contrast-aware temporal anti-ghost strength (0.0-8.0; default 0.0 = off/legacy). Reduces the temporal history weight in proportion to how much the beam is changing frame-to-frame at each pixel, so a steady shaft still denoises but moving/high-contrast features snap to the current frame instead of leaving a trail. Higher = more aggressive ghost suppression (and slightly noisier on motion); 0 = off (ghosting bounded only by the neighborhood clamp). Only active when Temporal is on.</string>
+      <string>[BDMerge G3.3 Batch B] Contrast-aware temporal anti-ghost strength (0.0-8.0; default 3.5). Reduces the temporal history weight in proportion to how much the beam is changing frame-to-frame at each pixel, so a steady shaft still denoises but moving/high-contrast features snap to the current frame instead of leaving a trail. Higher = more aggressive ghost suppression (and slightly noisier on motion); 0 = off (ghosting bounded only by the neighborhood clamp). Only active when Temporal is on.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
       <string>F32</string>
       <key>Value</key>
-      <real>0.0</real>
+      <real>3.5</real>
   </map>
   <key>BDMergeProjectorVolumetricsTemporalBeamDepth</key>
   <map>
       <key>Comment</key>
-      <string>[BDMerge G3.3 Batch B] Reproject the BEAM, not the wall behind it (default off = legacy surface-based reprojection). The projector shaft is airborne, so under camera motion the mid-air scatter and the opaque surface behind it move differently; reprojecting temporal history off the surface depth lands it wrong and the beam ghosts/trails. When on, the march writes its scatter-weighted mean sample distance into the half-res target's alpha and the temporal pass reprojects and disocclusion-tests with THAT, so the shaft tracks correctly and stops ghosting under motion. Only active when Temporal is on (which requires Half-res). Off = byte-identical to the shipped Batch-1 temporal.</string>
+      <string>[BDMerge G3.3 Batch B] Reproject the BEAM, not the wall behind it (default on). The projector shaft is airborne, so under camera motion the mid-air scatter and the opaque surface behind it move differently. The march writes an overlap-safe luminance-premultiplied first distance moment into the half-res target's alpha; the temporal pass recovers the mean beam distance and reprojects/disocclusion-tests with that point. Only active when Temporal is on (which requires Half-res). Off retains the legacy surface-based temporal path.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
       <string>Boolean</string>
       <key>Value</key>
-      <integer>0</integer>
+      <integer>1</integer>
   </map>
   <key>BDMergeProjectorVolumetricsShadowTint</key>
   <map>
@@ -22867,6 +23431,90 @@
     <key>Type</key><string>U32</string>
     <key>Value</key><integer>2</integer>
   </map>
+  <key>AlchemyWeatherRainLayers</key>
+  <map>
+    <key>Comment</key><string>Number of procedural near, middle, and far rain populations.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>U32</string>
+    <key>Value</key><integer>3</integer>
+  </map>
+  <key>AlchemyWeatherRainVirtualShutter</key>
+  <map>
+    <key>Comment</key><string>Virtual camera exposure interval used to derive rain streak length from fall speed.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.04</real>
+  </map>
+  <key>AlchemyWeatherRainNearEmphasis</key>
+  <map>
+    <key>Comment</key><string>Additional size and energy assigned to near-field rain streaks.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.65</real>
+  </map>
+  <key>AlchemyWeatherRainGustStrength</key>
+  <map>
+    <key>Comment</key><string>Bounded world-space gust modulation shared by rain and surface impacts.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.35</real>
+  </map>
+  <key>AlchemyWeatherShelterFade</key>
+  <map>
+    <key>Comment</key><string>Fade rain and surface response when one upward camera ray finds nearby cover.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>1</integer>
+  </map>
+  <key>AlchemyWeatherShelterHeight</key>
+  <map>
+    <key>Comment</key><string>Maximum upward camera-ray distance in meters used to detect weather shelter.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>48.0</real>
+  </map>
+  <key>AlchemyWeatherRainOcclusion</key>
+  <map>
+    <key>Comment</key><string>Render a camera-centered top-down depth map for per-pixel vertical rain cover. Default off to preserve existing weather cost and output.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>AlchemyWeatherRainOcclusionDebug</key>
+  <map>
+    <key>Comment</key><string>Log throttled rain-cover caster counts, target dimensions, depth range, depth extrema, and GL errors for runtime diagnosis.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>AlchemyWeatherRainOcclusionResolution</key>
+  <map>
+    <key>Comment</key><string>Rain-cover depth-map resolution per side.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>U32</string>
+    <key>Value</key><integer>512</integer>
+  </map>
+  <key>AlchemyWeatherRainOcclusionExtent</key>
+  <map>
+    <key>Comment</key><string>Rain-cover map half-extent (radius) in meters around the render camera.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>128.0</real>
+  </map>
+  <key>AlchemyWeatherRainOcclusionBias</key>
+  <map>
+    <key>Comment</key><string>Vertical rain-cover comparison bias in meters.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.12</real>
+  </map>
+  <key>AlchemyWeatherRainOcclusionSoftness</key>
+  <map>
+    <key>Comment</key><string>Vertical transition width in meters between sheltered and exposed rain.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.35</real>
+  </map>
   <key>AlchemyWeatherWindScale</key>
   <map>
     <key>Comment</key><string>Multiplier applied to the current simulator wind vector for rain slant.</string>
@@ -22881,6 +23529,97 @@
     <key>Type</key><string>Color3</string>
     <key>Value</key>
     <array><real>0.55</real><real>0.68</real><real>0.78</real></array>
+  </map>
+  <key>AlchemyWeatherSplashEnabled</key>
+  <map>
+    <key>Comment</key><string>Enable deterministic screen-space rain impacts on up-facing deferred surfaces.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>1</integer>
+  </map>
+  <key>AlchemyWeatherSplashDensity</key>
+  <map>
+    <key>Comment</key><string>Probability of a splash event in each world-space surface cell.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.65</real>
+  </map>
+  <key>AlchemyWeatherSplashRingSize</key>
+  <map>
+    <key>Comment</key><string>Maximum splash ring radius in meters.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.28</real>
+  </map>
+  <key>AlchemyWeatherSplashLifetime</key>
+  <map>
+    <key>Comment</key><string>Lifetime in presentation seconds for a procedural surface impact.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.65</real>
+  </map>
+  <key>AlchemyWeatherSplashUpThreshold</key>
+  <map>
+    <key>Comment</key><string>Minimum dot product with world up for splash and wet-sheen eligibility.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.55</real>
+  </map>
+  <key>AlchemyWeatherSplashMaxDistance</key>
+  <map>
+    <key>Comment</key><string>Maximum camera distance for procedural surface impacts.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>48.0</real>
+  </map>
+  <key>AlchemyWeatherWetnessEnabled</key>
+  <map>
+    <key>Comment</key><string>Enable a bounded Fresnel wet-surface sheen on up-facing deferred surfaces.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>1</integer>
+  </map>
+  <key>AlchemyWeatherWetnessStrength</key>
+  <map>
+    <key>Comment</key><string>Strength of the additive wet-surface sheen.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.35</real>
+  </map>
+  <key>AlchemyWeatherMistEnabled</key>
+  <map>
+    <key>Comment</key><string>Enable subtle bounded near-ground rain mist.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>AlchemyWeatherMistStrength</key>
+  <map>
+    <key>Comment</key><string>HDR-safe additive strength of near-ground rain mist.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.25</real>
+  </map>
+  <key>AlchemyWeatherMistHeight</key>
+  <map>
+    <key>Comment</key><string>Vertical extent in meters of rain mist around the local terrain anchor.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>2.5</real>
+  </map>
+  <key>AlchemyWeatherLensDropsEnabled</key>
+  <map>
+    <key>Comment</key><string>Enable optional additive camera-lens rain caustics. Default off.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>AlchemyWeatherLensDropsStrength</key>
+  <map>
+    <key>Comment</key><string>Strength and population of optional camera-lens rain caustics.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.25</real>
   </map>
   <key>AlchemyWeatherEEPCoupling</key>
   <map>
@@ -22973,6 +23712,76 @@
     <key>Persist</key><integer>1</integer>
     <key>Type</key><string>U32</string>
     <key>Value</key><integer>1597463007</integer>
+  </map>
+  <key>AlchemyWeatherLightningQualityEnabled</key>
+  <map>
+    <key>Comment</key><string>Enable the optional HDR cinematic lightning permutation. Default off.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>AlchemyWeatherLightningQualityTier</key>
+  <map>
+    <key>Comment</key><string>Cinematic lightning geometry tier: 1 high, 2 very high, 3 machinima.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>U32</string>
+    <key>Value</key><integer>2</integer>
+  </map>
+  <key>AlchemyWeatherLightningSheetEnabled</key>
+  <map>
+    <key>Comment</key><string>Enable procedural EEP-coupled cloud sheet illumination. Default off.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>AlchemyWeatherLightningSheetStrength</key>
+  <map>
+    <key>Comment</key><string>Strength of the cloud-shaped sheet-lightning lobe.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.85</real>
+  </map>
+  <key>AlchemyWeatherLightningCoronaStrength</key>
+  <map>
+    <key>Comment</key><string>Strength of the wide colored bolt corona that feeds HDR bloom.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.65</real>
+  </map>
+  <key>AlchemyWeatherLightningWetGlintEnabled</key>
+  <map>
+    <key>Comment</key><string>Enable the optional lightning glint on rain-wet up-facing deferred surfaces. Default off.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>AlchemyWeatherLightningWetGlintStrength</key>
+  <map>
+    <key>Comment</key><string>Strength of the bounded lightning wet-surface specular glint.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.75</real>
+  </map>
+  <key>AlchemyWeatherLightningDistanceGrading</key>
+  <map>
+    <key>Comment</key><string>Blend from uniform strikes to near-bolt and distant-sheet cinematic grading.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.8</real>
+  </map>
+  <key>AlchemyWeatherLightningAfterglowStrength</key>
+  <map>
+    <key>Comment</key><string>Strength of the deterministic bounded cloud and scene afterglow.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.35</real>
+  </map>
+  <key>AlchemyWeatherLightningEnergyCeiling</key>
+  <map>
+    <key>Comment</key><string>Hue-preserving linear-HDR peak ceiling for the quality lightning delta.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>64.0</real>
   </map>
   <key>AlchemyWeatherLightningTrigger</key>
   <map>

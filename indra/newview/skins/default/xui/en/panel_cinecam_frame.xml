@@ -1,0 +1,329 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- Non-destructive aspect/lens framing controls for the Director Console. -->
+<panel
+ background_visible="false"
+ border="false"
+ height="758"
+ layout="topleft"
+ name="panel_cinecam_frame"
+ class="panel_cinecam_frame"
+ width="340">
+    <text follows="left|top" font="SansSerifBold" height="16"
+     layout="topleft" left="12" top="8" width="316">
+        CINEMATIC FRAME
+    </text>
+    <text follows="left|top" height="32" layout="topleft" left="12"
+     top="28" width="316" word_wrap="true">
+        Choose the format you will crop to in post. Lens mode widens the live view; it never crops or changes captures.
+    </text>
+
+    <text follows="left|top" height="16" layout="topleft" left="12"
+     top="68" width="92">Target format</text>
+    <combo_box control_name="CinematicFrameAspectRatio" follows="left|top"
+     height="20" layout="topleft" left="106" name="frame_aspect_ratio"
+     top="64" tool_tip="Your intended delivery frame. Off / Native preserves today's camera and draws no guide."
+     width="190">
+        <combo_box.item label="Off / Native" name="aspect_native" value="0" />
+        <combo_box.item label="16:9  (1.78)" name="aspect_16_9" value="1.7777778" />
+        <combo_box.item label="Flat  (1.85:1)" name="aspect_185" value="1.85" />
+        <combo_box.item label="Univisium  (2.00:1)" name="aspect_200" value="2.0" />
+        <combo_box.item label="CinemaScope  (2.35:1)" name="aspect_235" value="2.35" />
+        <combo_box.item label="Scope  (2.39:1)" name="aspect_239" value="2.39" />
+        <combo_box.item label="4:3  (1.33)" name="aspect_4_3" value="1.3333333" />
+        <combo_box.item label="Square  (1:1)" name="aspect_1_1" value="1.0" />
+        <combo_box.item label="Vertical  (9:16)" name="aspect_9_16" value="0.5625" />
+        <combo_box.item label="Custom" name="aspect_custom" value="-1" />
+    </combo_box>
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="CinematicFrameAspectRatio" follows="left|top"
+     height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft"
+     left="304" name="reset_CinematicFrameAspectRatio" tool_tip="Reset target format"
+     top="66" width="12" />
+
+    <spinner control_name="CinematicFrameCustomRatio" decimal_digits="3"
+     follows="left|top" height="20" increment="0.01" label="Custom W/H"
+     label_width="92" layout="topleft" left="12" max_val="4" min_val="0.25"
+     name="frame_custom_ratio" tool_tip="Width divided by height; used only when Target format is Custom."
+     top="92" width="284" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="CinematicFrameCustomRatio" follows="left|top"
+     height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft"
+     left="304" name="reset_CinematicFrameCustomRatio" tool_tip="Reset custom ratio"
+     top="94" width="12" />
+
+    <text follows="left|top" font="SansSerifBold" height="16"
+     layout="topleft" left="12" top="128" width="316">ASPECT-AWARE LENS</text>
+    <check_box control_name="CinematicFrameLensEnabled" follows="left|top"
+     height="18" label="Reframe as a lens / gate change" layout="topleft"
+     left="12" name="frame_lens_enabled" top="148"
+     tool_tip="Only affects the cinematic/director camera. Off is exactly the original vertical-FOV path."
+     width="284" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="CinematicFrameLensEnabled" follows="left|top"
+     height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft"
+     left="304" name="reset_CinematicFrameLensEnabled" tool_tip="Turn lens mode off"
+     top="149" width="12" />
+    <spinner control_name="CinematicFrameFocalLengthMM" decimal_digits="0"
+     enabled_control="CinematicFrameLensEnabled" follows="left|top" height="20"
+     increment="1" label="Base lens (mm)" label_width="104" layout="topleft"
+     left="12" max_val="300" min_val="8" name="frame_focal_length"
+     tool_tip="24 mm-high virtual film back. Wide lenses react more strongly to a format change; long lenses react gently."
+     top="174" width="284" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="CinematicFrameFocalLengthMM"
+     enabled_control="CinematicFrameLensEnabled" follows="left|top" height="16"
+     image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="304"
+     name="reset_CinematicFrameFocalLengthMM" tool_tip="Reset base lens to 50 mm"
+     top="176" width="12" />
+    <text follows="left|top" height="30" layout="topleft" left="12"
+     top="202" width="316" word_wrap="true">
+        Wider formats reveal a wider field like an anamorphic gate. Your mode's authored zoom remains the starting lens.
+    </text>
+
+    <text follows="left|top" font="SansSerifBold" height="16"
+     layout="topleft" left="12" top="242" width="316">SKELETON AUTO-REFRAME</text>
+    <check_box control_name="CinematicAutoFrameEnabled" follows="left|top"
+     height="18" label="Fit and place from avatar joints" layout="topleft"
+     left="12" name="auto_frame_enabled" top="262"
+     tool_tip="Solves only on shot, subject, lens, aspect, or Auto-Reframe changes. Off preserves the authored rig exactly."
+     width="284" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="CinematicAutoFrameEnabled" follows="left|top"
+     height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft"
+     left="304" name="reset_CinematicAutoFrameEnabled" tool_tip="Turn Auto-Reframe off"
+     top="263" width="12" />
+    <slider can_edit_text="true" control_name="CinematicAutoFrameFill"
+     decimal_digits="2" enabled_control="CinematicAutoFrameEnabled"
+     follows="left|top" height="20" increment="0.01" label="Skeleton fill"
+     label_width="92" layout="topleft" left="12" max_val="0.98" min_val="0.10"
+     name="auto_frame_fill" show_text="true" top="288"
+     tool_tip="Target fraction of kept frame height. Smart fit reduces it when necessary to keep the bottom anchor visible."
+     width="284" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="CinematicAutoFrameFill"
+     enabled_control="CinematicAutoFrameEnabled" follows="left|top" height="16"
+     image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="304"
+     name="reset_CinematicAutoFrameFill" tool_tip="Reset skeleton fill to 0.85"
+     top="290" width="12" />
+    <slider can_edit_text="true" control_name="CinematicAutoFrameComposeLine"
+     decimal_digits="2" enabled_control="CinematicAutoFrameEnabled"
+     follows="left|top" height="20" increment="0.01" label="Top line"
+     label_width="92" layout="topleft" left="12" max_val="0.90" min_val="0.02"
+     name="auto_frame_compose" show_text="true" top="316"
+     tool_tip="Place the top joint anchor vertically: 0 is frame top, 1 is frame bottom; 0.33 is upper third."
+     width="284" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="CinematicAutoFrameComposeLine"
+     enabled_control="CinematicAutoFrameEnabled" follows="left|top" height="16"
+     image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="304"
+     name="reset_CinematicAutoFrameComposeLine" tool_tip="Reset top line to upper third"
+     top="318" width="12" />
+    <spinner control_name="CinematicAutoFrameDistanceTrim" decimal_digits="2"
+     enabled_control="CinematicAutoFrameEnabled" follows="left|top" height="20"
+     increment="0.05" label="Dolly trim (m)" label_width="104" layout="topleft"
+     left="12" max_val="20" min_val="-20" name="auto_frame_distance_trim"
+     tool_tip="Added to the solved distance and retained across re-solves."
+     top="344" width="284" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="CinematicAutoFrameDistanceTrim"
+     enabled_control="CinematicAutoFrameEnabled" follows="left|top" height="16"
+     image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="304"
+     name="reset_CinematicAutoFrameDistanceTrim" tool_tip="Clear dolly trim"
+     top="346" width="12" />
+    <spinner control_name="CinematicCamFrameOffsetUp" decimal_digits="2"
+     enabled_control="CinematicAutoFrameEnabled" follows="left|top" height="20"
+     increment="0.05" label="Vertical trim (m)" label_width="104" layout="topleft"
+     left="12" max_val="20" min_val="-20" name="auto_frame_vertical_trim"
+     tool_tip="Added vertically after the solve and retained across re-solves."
+     top="372" width="284" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="CinematicCamFrameOffsetUp"
+     enabled_control="CinematicAutoFrameEnabled" follows="left|top" height="16"
+     image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="304"
+     name="reset_CinematicAutoFrameVerticalTrim" tool_tip="Clear vertical trim"
+     top="374" width="12" />
+    <button commit_callback.function="Machinima.AutoFrameResolve"
+     enabled_control="CinematicAutoFrameEnabled" follows="left|top" height="22"
+     label="Re-solve now" layout="topleft" left="12" name="auto_frame_resolve"
+     tool_tip="Freeze a fresh skeleton measurement at the next presentation frame."
+     top="402" width="128" />
+
+    <text follows="left|top" height="16" layout="topleft" left="12"
+     top="438" width="92">Distance settle</text>
+    <combo_box control_name="CinematicAutoFrameSettleMode"
+     enabled_control="CinematicAutoFrameEnabled" follows="left|top" height="20"
+     layout="topleft" left="106" name="auto_frame_settle_mode" top="434"
+     tool_tip="Off snaps to each new fit. Finish with cut follows the switcher ease. Post-cut settle uses its own presentation-time window."
+     width="190">
+        <combo_box.item label="Off" name="settle_off" value="0" />
+        <combo_box.item label="Finish with cut" name="settle_with_cut" value="1" />
+        <combo_box.item label="Post-cut settle" name="settle_post_cut" value="2" />
+    </combo_box>
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="CinematicAutoFrameSettleMode"
+     enabled_control="CinematicAutoFrameEnabled" follows="left|top" height="16"
+     image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="304"
+     name="reset_CinematicAutoFrameSettleMode" tool_tip="Reset distance settle to Post-cut settle"
+     top="436" width="12" />
+    <slider can_edit_text="true" control_name="CinematicAutoFrameSettleSeconds"
+     decimal_digits="2" follows="left|top" height="20" increment="0.05"
+     label="Settle time (s)" label_width="104" layout="topleft" left="12"
+     max_val="10" min_val="0.05" name="auto_frame_settle_seconds"
+     show_text="true" top="462"
+     tool_tip="Post-cut mode only. Presentation-time duration of the distance drift, up to 10 seconds; 0.05 seconds behaves as a snap."
+     width="284" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="CinematicAutoFrameSettleSeconds"
+     follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0"
+     layout="topleft" left="304" name="reset_CinematicAutoFrameSettleSeconds"
+     tool_tip="Reset settle time to 0.70 seconds" top="464" width="12" />
+    <spinner control_name="CinematicAutoFrameSettleMaxRatio" decimal_digits="2"
+     enabled_control="CinematicAutoFrameEnabled" follows="left|top" height="20"
+     increment="0.10" label="Settle max ratio" label_width="104" layout="topleft"
+     left="12" max_val="20" min_val="0" name="auto_frame_settle_max_ratio"
+     tool_tip="0 is unbounded. Above 1, limits the distance ratio left for the settle; the excess moves during the cut ease."
+     top="490" width="284" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="CinematicAutoFrameSettleMaxRatio"
+     enabled_control="CinematicAutoFrameEnabled" follows="left|top" height="16"
+     image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="304"
+     name="reset_CinematicAutoFrameSettleMaxRatio" tool_tip="Reset settle ratio to unbounded"
+     top="492" width="12" />
+
+    <text follows="left|top" height="16" layout="topleft" left="12"
+     top="522" width="92">Settle curve</text>
+    <combo_box control_name="CinematicAutoFrameSettleCurve"
+     enabled_control="CinematicAutoFrameEnabled" follows="left|top" height="20"
+     layout="topleft" left="106" name="auto_frame_settle_curve" top="518"
+     tool_tip="Curve latched when a post-cut Auto-Reframe settle is armed."
+     width="190">
+        <combo_box.item label="Smootherstep" name="smooth" value="0" />
+        <combo_box.item label="Linear" name="linear" value="1" />
+        <combo_box.item label="Ease (CSS)" name="ease" value="2" />
+        <combo_box.item label="Ease In (CSS)" name="ease_in" value="3" />
+        <combo_box.item label="Ease Out (CSS)" name="ease_out" value="4" />
+        <combo_box.item label="Ease In-Out (CSS)" name="ease_inout" value="5" />
+        <combo_box.item label="Quad In" name="quad_in" value="6" />
+        <combo_box.item label="Quad Out" name="quad_out" value="7" />
+        <combo_box.item label="Quad In-Out" name="quad_inout" value="8" />
+        <combo_box.item label="Cubic In" name="cubic_in" value="9" />
+        <combo_box.item label="Cubic Out" name="cubic_out" value="10" />
+        <combo_box.item label="Cubic In-Out" name="cubic_inout" value="11" />
+        <combo_box.item label="Quart In" name="quart_in" value="12" />
+        <combo_box.item label="Quart Out" name="quart_out" value="13" />
+        <combo_box.item label="Quart In-Out" name="quart_inout" value="14" />
+        <combo_box.item label="Quint In" name="quint_in" value="15" />
+        <combo_box.item label="Quint Out" name="quint_out" value="16" />
+        <combo_box.item label="Quint In-Out" name="quint_inout" value="17" />
+        <combo_box.item label="Expo In" name="expo_in" value="18" />
+        <combo_box.item label="Expo Out" name="expo_out" value="19" />
+        <combo_box.item label="Expo In-Out" name="expo_inout" value="20" />
+        <combo_box.item label="Circ In" name="circ_in" value="21" />
+        <combo_box.item label="Circ Out" name="circ_out" value="22" />
+        <combo_box.item label="Circ In-Out" name="circ_inout" value="23" />
+        <combo_box.item label="Back In" name="back_in" value="24" />
+        <combo_box.item label="Back Out" name="back_out" value="25" />
+        <combo_box.item label="Back In-Out" name="back_inout" value="26" />
+        <combo_box.item label="Elastic In" name="elastic_in" value="27" />
+        <combo_box.item label="Elastic Out" name="elastic_out" value="28" />
+        <combo_box.item label="Elastic In-Out" name="elastic_inout" value="29" />
+        <combo_box.item label="Bounce In" name="bounce_in" value="30" />
+        <combo_box.item label="Bounce Out" name="bounce_out" value="31" />
+        <combo_box.item label="Bounce In-Out" name="bounce_inout" value="32" />
+        <combo_box.item label="Custom (bezier)" name="custom" value="100" />
+    </combo_box>
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="CinematicAutoFrameSettleCurve"
+     enabled_control="CinematicAutoFrameEnabled" follows="left|top" height="16"
+     image_overlay="Refresh_Off" layout="topleft" left="304"
+     name="reset_CinematicAutoFrameSettleCurve" tool_tip="Reset settle curve"
+     top="520" width="12" />
+    <spinner control_name="CinematicAutoFrameSettleBezierX1" decimal_digits="2"
+     follows="left|top" height="18" increment="0.01" label="X1"
+     label_width="20" layout="topleft" left="12" max_val="1" min_val="0"
+     name="auto_frame_settle_bezier_x1" top="544" width="136" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="CinematicAutoFrameSettleBezierX1" follows="left|top"
+     height="16" image_overlay="Refresh_Off" layout="topleft" left="150"
+     name="reset_CinematicAutoFrameSettleBezierX1" tool_tip="Reset X1" top="545" width="12" />
+    <spinner control_name="CinematicAutoFrameSettleBezierY1" decimal_digits="2"
+     follows="left|top" height="18" increment="0.01" label="Y1"
+     label_width="20" layout="topleft" left="170" max_val="3" min_val="-2"
+     name="auto_frame_settle_bezier_y1" top="544" width="126" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="CinematicAutoFrameSettleBezierY1" follows="left|top"
+     height="16" image_overlay="Refresh_Off" layout="topleft" left="304"
+     name="reset_CinematicAutoFrameSettleBezierY1" tool_tip="Reset Y1" top="545" width="12" />
+    <spinner control_name="CinematicAutoFrameSettleBezierX2" decimal_digits="2"
+     follows="left|top" height="18" increment="0.01" label="X2"
+     label_width="20" layout="topleft" left="12" max_val="1" min_val="0"
+     name="auto_frame_settle_bezier_x2" top="568" width="136" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="CinematicAutoFrameSettleBezierX2" follows="left|top"
+     height="16" image_overlay="Refresh_Off" layout="topleft" left="150"
+     name="reset_CinematicAutoFrameSettleBezierX2" tool_tip="Reset X2" top="569" width="12" />
+    <spinner control_name="CinematicAutoFrameSettleBezierY2" decimal_digits="2"
+     follows="left|top" height="18" increment="0.01" label="Y2"
+     label_width="20" layout="topleft" left="170" max_val="3" min_val="-2"
+     name="auto_frame_settle_bezier_y2" top="568" width="126" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="CinematicAutoFrameSettleBezierY2" follows="left|top"
+     height="16" image_overlay="Refresh_Off" layout="topleft" left="304"
+     name="reset_CinematicAutoFrameSettleBezierY2" tool_tip="Reset Y2" top="569" width="12" />
+    <slider can_edit_text="true" control_name="CinematicAutoFrameSettleFeather"
+     decimal_digits="2" enabled_control="CinematicAutoFrameEnabled"
+     follows="left|top" height="20" increment="0.01" label="Feather"
+     label_width="92" layout="topleft" left="12" max_val="1" min_val="0"
+     name="SettleFeather" show_text="true" top="590"
+     tool_tip="Soften the settle start and end without changing the selected curve midpoint. Latched per settle."
+     width="284" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="CinematicAutoFrameSettleFeather"
+     enabled_control="CinematicAutoFrameEnabled" follows="left|top" height="16"
+     image_overlay="Refresh_Off" layout="topleft" left="304"
+     name="reset_CinematicAutoFrameSettleFeather" tool_tip="Reset settle feather"
+     top="592" width="12" />
+
+    <text follows="left|top" font="SansSerifBold" height="16"
+     layout="topleft" left="12" top="622" width="316">FRAMING GUIDE</text>
+    <check_box control_name="CinematicFrameGuideEnabled" follows="left|top"
+     height="18" label="Show format guide" layout="topleft" left="12"
+     name="frame_guide_enabled" top="642"
+     tool_tip="Screen-only preview. Automatically hidden with the UI and excluded from snapshots."
+     width="284" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="CinematicFrameGuideEnabled" follows="left|top"
+     height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft"
+     left="304" name="reset_CinematicFrameGuideEnabled" tool_tip="Turn the guide off"
+     top="643" width="12" />
+    <text follows="left|top" height="16" layout="topleft" left="12"
+     top="672" width="74">Guide style</text>
+    <combo_box control_name="CinematicFrameGuideStyle"
+     enabled_control="CinematicFrameGuideEnabled" follows="left|top" height="20"
+     layout="topleft" left="106" name="frame_guide_style" top="668" width="190">
+        <combo_box.item label="Dimmed bars" name="guide_dim" value="0" />
+        <combo_box.item label="Solid black bars" name="guide_solid" value="1" />
+        <combo_box.item label="Thin guide lines" name="guide_lines" value="2" />
+    </combo_box>
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="CinematicFrameGuideStyle"
+     enabled_control="CinematicFrameGuideEnabled" follows="left|top" height="16"
+     image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="304"
+     name="reset_CinematicFrameGuideStyle" tool_tip="Reset guide style"
+     top="670" width="12" />
+    <slider can_edit_text="true" control_name="CinematicFrameGuideOpacity"
+     decimal_digits="2" enabled_control="CinematicFrameGuideEnabled"
+     follows="left|top" height="20" increment="0.05" label="Bar opacity"
+     label_width="92" layout="topleft" left="12" max_val="1" min_val="0"
+     name="frame_guide_opacity" show_text="true" top="698" width="284" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="CinematicFrameGuideOpacity"
+     enabled_control="CinematicFrameGuideEnabled" follows="left|top" height="16"
+     image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="304"
+     name="reset_CinematicFrameGuideOpacity" tool_tip="Reset guide opacity"
+     top="700" width="12" />
+    <text follows="left|top" height="30" layout="topleft" left="12"
+     top="728" width="316" word_wrap="true">
+        Guide only: no crop, no capture-size change, and no pixels written to the snapshot buffer.
+    </text>
+</panel>

@@ -773,7 +773,8 @@ void LLViewerOctreeGroup::setVisible()
 {
     mVisible[LLViewerCamera::sCurCameraID] = LLViewerOctreeEntryData::getCurrentFrame();
 
-    if(LLViewerCamera::sCurCameraID < LLViewerCamera::CAMERA_WATER0)
+    if (LLViewerCamera::sCurCameraID != LLViewerCamera::CAMERA_WATER0 &&
+        LLViewerCamera::sCurCameraID != LLViewerCamera::CAMERA_WATER1)
     {
         mAnyVisible = LLViewerOctreeEntryData::getCurrentFrame();
     }

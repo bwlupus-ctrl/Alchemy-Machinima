@@ -164,7 +164,10 @@ set(viewer_SOURCE_FILES
     alclassifieditem.cpp
     alderenderlist.cpp
     aldirectorhotkeys.cpp
+    aldirectorswitcher.cpp
+    aldirectorswitchermodel.cpp
     aldroptarget.cpp
+    alflowgrid.cpp
     alfloaterblocked.cpp
     alfloaterdirectory.cpp
     alfloaterevent.cpp
@@ -301,6 +304,7 @@ set(viewer_SOURCE_FILES
     alpanelactormover.cpp
     alpanelanimpreview.cpp
     alpanelcinecamparams.cpp
+    alpaneldirectorswitcher.cpp
     alpanelweathersettings.cpp
     alpanelflycamorbit.cpp
     alpanelflycamrecorder.cpp
@@ -992,7 +996,10 @@ set(viewer_HEADER_FILES
     alclassifieditem.h
     alderenderlist.h
     aldirectorhotkeys.h
+    aldirectorswitcher.h
+    aldirectorswitchermodel.h
     aldroptarget.h
+    alflowgrid.h
     alfloaterblocked.h
     alfloaterdirectory.h
     alfloaterevent.h
@@ -1132,6 +1139,7 @@ set(viewer_HEADER_FILES
     alpanelactormover.h
     alpanelanimpreview.h
     alpanelcinecamparams.h
+    alpaneldirectorswitcher.h
     alpanelweathersettings.h
     alpanelflycamorbit.h
     alpanelflycamrecorder.h
@@ -2495,6 +2503,7 @@ if (BUILD_TESTING)
 
   SET(viewer_TEST_SOURCE_FILES
     alformationsolver.cpp
+    aldirectorswitchermodel.cpp
     alweathermodel.cpp
     alghostgroupmodel.cpp
     alghostinteractionstate.cpp

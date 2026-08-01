@@ -836,6 +836,8 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
                 { //for some reason, ATI 4800 series will error out if you
                   //try to generate a shadow before the first frame is through
                     gPipeline.generateSunShadow(*LLViewerCamera::getInstance());
+                    gPipeline.generateWeatherRainOcclusion(
+                        *LLViewerCamera::getInstance());
                 }
 
                 LLVertexBuffer::unbind();

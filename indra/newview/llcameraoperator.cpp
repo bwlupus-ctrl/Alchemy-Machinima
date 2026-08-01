@@ -777,6 +777,12 @@ LLCameraOperatorOutput LLCameraOperator::step(const LLCameraOperatorInput& input
     // normalization references for the ground-truth speed metric
     static LLCachedControl<F32> refLinear(gSavedSettings, "FlycamOperatorRefLinearSpeed", 3.f);    // m/s
     static LLCachedControl<F32> refAngular(gSavedSettings, "FlycamOperatorRefAngularSpeed", 60.f); // deg/s
+    // Reactive gain ceiling: the cap on how much sustained motion (moving +
+    // turning) amplifies the handheld wander. Every Style saturates to this same
+    // cap during fast motion, so it -- not the per-persona energy -- governs the
+    // "violent while moving/turning" feel across ALL presets. Live-tunable:
+    // 1.0 = no reactive amplification (calmest), 4.0 = legacy behavior.
+    static LLCachedControl<F32> reactCeiling(gSavedSettings, "FlycamOperatorReactCeiling", 2.5f);
 
     // ---- locomotion + per-DOF authority (live) ----------------------------
     static LLCachedControl<S32> locoMode(gSavedSettings, "FlycamOperatorLocomotionMode", 0);
@@ -1106,7 +1112,11 @@ LLCameraOperatorOutput LLCameraOperator::step(const LLCameraOperatorInput& input
                        P.motionCalm * vc_infl(Q.calmMul)) *
         vc_mode_safe(motionCalmTrim, 1.f, 0.f, 10.f, loco_active);
 
-    const F32 react = llmin(1.f + mSpeed * eEnergy, REACT_MAX);
+    // Cap the reactive gain at the (live, per-user) ceiling, itself bounded by
+    // the hard REACT_MAX safety limit. Lowering this is the global "calm the
+    // move/turn violence across every preset" control.
+    const F32 react_ceiling = llclamp((F32)reactCeiling, 1.f, REACT_MAX);
+    const F32 react = llmin(1.f + mSpeed * eEnergy, react_ceiling);
 
     F32 mdirX = 0.f, mdirY = 0.f;
     if (coherent > 1e-4f) { mdirX = mVecX / coherent; mdirY = mVecY / coherent; }

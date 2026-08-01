@@ -2,8 +2,9 @@
  * @file llcinematiccamera.h
  * @brief Automated cinematic camera: bone-lock (GoPro) and motion patterns.
  *
- * Takes over the render camera (highest-priority branch in the idle camera
- * dispatch) and drives it from one of several cinematic sources:
+ * Takes over the render camera in the idle camera dispatch (below pilot,
+ * recorder playback, and actor path cameras; above joystick/agent camera)
+ * and drives it from one of several cinematic sources:
  *
  *   Bone Lock  -- rigidly attach the camera to an avatar skeleton joint,
  *                 like a GoPro strapped to that bone, with local position
@@ -31,6 +32,7 @@
 #include "llquaternion.h"
 
 class LLVOAvatar;
+class LLViewerCamera;
 
 class LLCinematicCamera
 {
@@ -82,9 +84,27 @@ public:
         MODE_STEP_ORBIT   = 40, // held angular steps around the subject (staccato)
         MODE_CABLE_CAM    = 41, // fast straight chord pass (sports energy)
         MODE_BREATHING_HOLD=42, // nearly locked frame with subtle life (intimacy)
+        // Director Switcher fixed framings. Appended: persisted values 0..42
+        // remain stable.
+        MODE_STATIC_WIDE    = 43,
+        MODE_STATIC_MEDIUM  = 44,
+        MODE_STATIC_CLOSE   = 45,
+        MODE_STATIC_PROFILE_L=46,
+        MODE_STATIC_PROFILE_R=47,
+        MODE_STATIC_LOW     = 48,
+        MODE_STATIC_HIGH    = 49,
+        MODE_STATIC_FULL    = 50,
     };
+    static_assert(MODE_BREATHING_HOLD == 42,
+                  "Persisted legacy CineCam mode values must not move");
+    static_assert(MODE_STATIC_WIDE == 43 && MODE_STATIC_FULL == 50,
+                  "Switcher static modes must remain appended");
 
     static LLCinematicCamera& instance();
+
+    // Shared aspect-aware Frame lens used by cinematic camera owners. Identity
+    // when the lens is disabled or the target frame is Native.
+    static F32 applyFrameLens(F32 plain_fov, LLViewerCamera* cam);
 
     // Session-only locked follow subject (right-click avatar > Cinematic Cam
     // Follow). Beats the selection-based targeting while set; toggling the
@@ -93,6 +113,10 @@ public:
     static bool isFollowTarget(const LLUUID& id);
     static void onRuntimeTargetReplaced(const LLUUID& old_id,
                                         const LLUUID& new_id);
+
+    // Stable display label shared by the CineCam panel, Director status, and
+    // Director Switcher. Unknown values return "Unknown".
+    static const char* modeName(S32 mode);
 
     // True when the system should own the render camera this frame.
     bool isActive() const;
@@ -106,6 +130,17 @@ public:
     // Returns false when no target avatar resolves.
     bool resolveAnchor(LLVector3& pos, LLQuaternion& rot, bool level_horizon) const;
 
+    // Snapshot the currently rendered camera as a subject-relative static rig.
+    // FOV is returned in degrees. False means no valid subject/camera pose.
+    bool captureCurrentSwitcherView(S32 subject,
+                                     F32& yaw_offset_deg, F32& pitch_deg,
+                                     F32& distance_m, F32& height_m,
+                                     F32& fov_deg) const;
+
+    // Queue one deterministic skeleton fit at the next cinematic-camera
+    // sample. Used by the Frame tab's explicit Re-solve button.
+    void requestAutoReframe();
+
     // Compute and write this frame's camera. Call from the idle camera
     // dispatch INSTEAD of gAgentCamera.updateCamera() when isActive().
     void updateCamera();
@@ -114,6 +149,9 @@ private:
     LLCinematicCamera() = default;
 
     LLVOAvatar* resolveTarget() const;
+    LLVOAvatar* resolveDefaultTarget() const;
+    LLVOAvatar* resolveMarkedTarget(S32 subject) const;
+    LLVOAvatar* resolveSecondaryTarget() const;
 
     // pattern generators: produce a desired camera position and the point
     // to frame, in agent region coordinates
@@ -165,9 +203,15 @@ private:
     LLVector3 patternStepOrbit(LLVOAvatar* av, const LLVector3& center, F32 phase);
     LLVector3 patternCableCam(LLVOAvatar* av, const LLVector3& center, F32 phase);
     LLVector3 patternBreathingHold(LLVOAvatar* av, const LLVector3& center, F32 phase);
+    LLVector3 patternStaticShot(LLVOAvatar* av, const LLVector3& center,
+                                S32 mode, LLVector3& focus_io,
+                                F32& fov_mul);
+    void applyAutoReframe(LLVOAvatar* av, S32 mode, F32 plain_fov,
+                          bool force_solve, bool allow_glide, LLVector3& pos,
+                          LLVector3& focus);
 
     // ---- state ----
-    U32         mLastUpdateFrame = 0;   // fresh-activation detection (phase reset)
+    U32         mLastUpdateFrame = 0;   // fresh-activation pose/state detection
     S32         mLastMode = MODE_OFF;
     LLUUID      mLastTargetId;
     LLVector3   mTripodPos = LLVector3::zero;   // camera pos captured at activation (zoom modes)
@@ -181,6 +225,51 @@ private:
     // for feeding the camera operator with velocities
     LLVector3   mPrevPos = LLVector3::zero;
     LLQuaternion mPrevRot;
+    // Director Switcher one-shot transition envelope. Legacy CineCam paths
+    // never set a switcher cut serial and therefore never enter this branch.
+    U64          mLastSwitcherCutSerial = 0;
+    F64          mSwitcherPhaseAnchor = 0.0;
+    bool         mEaseActive = false;
+    F32          mEaseDuration = 0.f;
+    S32          mEaseCurveId = 0;
+    F32          mEaseBezier[4] = { 0.42f, 0.f, 0.58f, 1.f };
+    F32          mEaseFeather = 0.f;
+    LLVector3    mEaseFromPos = LLVector3::zero;
+    LLQuaternion mEaseFromRot;
+    F32          mEaseFromFov = 0.f;
+    // Skeleton Auto-Reframe: a solved subject-relative rig held between
+    // discrete changes. Manual trims are read live and never stored here.
+    bool         mAutoFrameHaveSolve = false;
+    F32          mAutoFrameSettleFromDistance = 0.f; // pre-trim distance captured at the last boundary
+    F32          mAutoFrameSettleStartPhase = 0.f;   // mPhase at settle start
+    S32          mAutoFrameSettleModeLatched = 0;
+    F32          mAutoFrameSettleDurationLatched = 0.f;
+    S32          mAutoFrameSettleCurveLatched = 0;
+    F32          mAutoFrameSettleBezierLatched[4] = {
+        0.42f, 0.f, 0.58f, 1.f
+    };
+    F32          mAutoFrameSettleFeatherLatched = 0.f;
+    bool         mAutoFrameSettleActive = false;     // false == latched/settled
+    F32          mAutoFrameAppliedDistance = 0.f;    // pre-trim distance actually applied last frame
+    bool         mAutoFrameHaveApplied = false;
+    bool         mAutoFrameEyeLevel = false;
+    bool         mAutoFrameLastEnabled = false;
+    bool         mAutoFrameLastLensEnabled = false;
+    F32          mAutoFrameDistance = 0.f;
+    F32          mAutoFrameFocusZOffset = 0.f;
+    F32          mAutoFrameFocusXOffset = 0.f;
+    F32          mAutoFrameFocusYOffset = 0.f;
+    F32          mAutoFrameEyeZOffset = 0.f;
+    F32          mAutoFrameEyeAimSlope = 0.f;
+    F32          mAutoFrameLastFill = 0.f;
+    F32          mAutoFrameLastCompose = 0.f;
+    F32          mAutoFrameLastAspect = 0.f;
+    F32          mAutoFrameLastCustomAspect = 0.f;
+    F32          mAutoFrameLastFocalMM = 0.f;
+    F32          mAutoFrameLastWindowAspect = 0.f;
+    F32          mAutoFrameLastBaseFOV = 0.f;
+    U32          mAutoFrameRequestSerial = 0;
+    U32          mAutoFrameSolvedRequestSerial = 0;
 };
 
 #endif // LL_LLCINEMATICCAMERA_H

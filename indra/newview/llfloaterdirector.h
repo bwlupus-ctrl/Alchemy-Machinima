@@ -46,6 +46,7 @@ public:
     ~LLFloaterDirector() override;
     bool postBuild() override;
     void onOpen(const LLSD& key) override;
+    void onClose(bool app_quitting) override;
     void draw() override;
     // Esc = CUT while the transport is running or counting down; stock
     // floater behavior otherwise
@@ -132,8 +133,8 @@ private:
 
     // ---- Camera tab ----
     static LLUUID avatarFromSelection();
-    void onClickSetSubjectFromSelection(bool subject_a);
-    void onClickClearSubject(bool subject_a);
+    void onClickSetSubjectFromSelection(S32 subject);
+    void onClickClearSubject(S32 subject);
     void refreshCameraTab();
 
     // ---- Takes tab ----
@@ -214,10 +215,16 @@ private:
     // Camera tab
     LLTextBox* mSubjectAText = nullptr;
     LLTextBox* mSubjectBText = nullptr;
+    LLTextBox* mSubjectCText = nullptr;
+    LLTextBox* mSubjectDText = nullptr;
     LLButton*  mSetABtn = nullptr;
     LLButton*  mSetBBtn = nullptr;
+    LLButton*  mSetCBtn = nullptr;
+    LLButton*  mSetDBtn = nullptr;
     LLButton*  mClearABtn = nullptr;
     LLButton*  mClearBBtn = nullptr;
+    LLButton*  mClearCBtn = nullptr;
+    LLButton*  mClearDBtn = nullptr;
 
     // Animate tab
     LLTextBox*        mAnimateHeader = nullptr;

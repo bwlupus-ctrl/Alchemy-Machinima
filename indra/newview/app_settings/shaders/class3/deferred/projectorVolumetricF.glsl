@@ -81,18 +81,15 @@ uniform int   projvol_dither;     // item 2: 0=off(centre) 1=static bluenoise 2=
 uniform float projvol_frame;      // item 2: temporal seed (frame counter, wrapped)
 uniform float projvol_max;        // item 1: HDR headroom clamp (large in linear HDR)
 
-// [BDMerge G3.3 Batch A] look-neutral performance gates (all default to a no-op).
-uniform int   projvol_frustum_clip;       // E1: 0 = sphere bounds (default); !=0 = frustum-clipped [t0,t1]
+// [BDMerge G3.3 Batch A] look-neutral performance gates.
+uniform int   projvol_frustum_clip;       // E1: 0 = sphere bounds; !=0 = frustum-clipped [t0,t1] (default)
 uniform vec4  projvol_frustum_planes[6];  // E1: view-space frustum planes, inside>=0: 0=L 1=R 2=B 3=T 4=near 5=far
 uniform int   projvol_shadow_jitter_tap;  // E2: 0 = sub-tap loop (default); !=0 = one IGN-jittered shadow tap
 
-// [BDMerge G3.3 Batch B - R1] Beam-depth reprojection gate. 0 (default) = alpha of
-// the output stays 0, exactly as before. !=0 = write the scatter-weighted mean
-// sample distance (Sum(w*t)/Sum(w)) into alpha so the temporal pass can reproject
-// the airborne shaft instead of the opaque surface behind it. C++ only ever uploads
-// this as 1 on the temporal (half-res) path, where the march writes to mProjVolHalf;
-// on the direct/non-half-res path it stays 0 so the ADDITIVE scene composite (whose
-// alpha must stay 0) is never corrupted.
+// [BDMerge G3.3 Batch B - R1] Beam-depth reprojection gate. 0 = alpha stays 0.
+// !=0 writes a luminance-premultiplied first distance moment into alpha so additive
+// overlap across cones remains correct. C++ only uploads 1 on the temporal half-res
+// path; direct scene composite / non-temporal paths keep alpha masked and unchanged.
 uniform int   projvol_temporal_beam_depth;
 
 // [BDMerge G3.3 Batch 1 B] Gobo-colored occluder shadows. 0 = classic hard black
@@ -342,9 +339,9 @@ void main()
 
     vec3 accum = vec3(0.0);
 
-    // [BDMerge G3.3 Batch B - R1] Scatter-weighted mean sample distance. Only
-    // accumulated when the beam-depth gate is on; otherwise these stay 0 and cost
-    // nothing beyond the loop's existing work (byte-identical output path).
+    // [BDMerge G3.3 Batch B - R1] Luminance-weighted first distance moment.
+    // Keeping it premultiplied makes GL_ONE,GL_ONE overlap across cones correct;
+    // the temporal resolve divides the summed moment by summed shaft luminance.
     float depth_w = 0.0;
     float w_sum   = 0.0;
 
@@ -470,22 +467,18 @@ void main()
         // occluded. At projvol_shadow_tint == 0 this reduces exactly to vis*cookie
         // (the classic crisp black occluder shadow).
         vec3 scatter = mix(cookie * projvol_shadow_tint, cookie, vis);
-        accum += atten * phase * scatter * edge_feather * density;
+        vec3 scatter_sample = atten * phase * scatter * edge_feather * density;
+        accum += scatter_sample;
 
-        // [BDMerge G3.3 Batch B - R1] Reproject the BEAM, not the wall. Accumulate a
-        // scatter-weighted mean sample distance: weight is this sample's scalar
-        // in-scatter contribution (atten*phase*edge_feather*density - the luminance-
-        // ish factor already multiplying the vec3 cookie above, a consistent scalar
-        // proxy for how much this sample brightens the shaft). t is the distance
-        // along the normalized ray (spos = d*t, so |spos| == t), matching how the
-        // temporal pass measures length(vpos). Gated: default path does no extra
-        // work and the loop result is unchanged. Placed before the E4 early-out so a
-        // clamped-out tail still contributes to the mean over the samples taken.
+        // Reproject the BEAM, not the wall. The RGB composite applies projector
+        // color after the march, so include that same color scale before taking
+        // luminance. The remaining dt/scatter/godray factors are applied below.
         if (projvol_temporal_beam_depth != 0)
         {
-            float w_beam = atten * phase * edge_feather * density;
-            depth_w += w_beam * t;
-            w_sum   += w_beam;
+            float sample_luma = dot(scatter_sample * color,
+                                    vec3(0.2126, 0.7152, 0.0722));
+            depth_w += sample_luma * t;
+            w_sum   += sample_luma;
         }
 
         // [BDMerge G3.3 Batch A - E4] Luminance early-out (no gate - provably
@@ -512,7 +505,10 @@ void main()
     // the whole accumulated (texture-only) shaft. `color` is the linear light
     // diffuse already lerped toward the art-direction tint in C++, so the shaft
     // base is the true light color and the tint layers on top of it.
-    vec3 shaft = accum * dt * PROJVOL_SCATTER * godray_multiplier * color;
+    float march_scale = dt * PROJVOL_SCATTER * godray_multiplier;
+    vec3 shaft = accum * march_scale * color;
+    depth_w *= march_scale;
+    w_sum   *= march_scale;
 
     // [BDMerge G3.3 Rim] Surface-coupled rim / wrap glow at the opaque surface that
     // capped the march. Everything here is the projector's REAL light on the REAL
@@ -592,7 +588,17 @@ void main()
                 // Carry the light's chroma (E's cookie + `color`); the scalar terms drive
                 // brightness only, so it reads as colored light instead of clipping to a
                 // white sticker edge. Added into the additive HDR shaft -> rides bloom-feed.
-                shaft += E * (geom * gate * PROJVOL_RIM_SCALE) * color;
+                vec3 rim = E * (geom * gate * PROJVOL_RIM_SCALE) * color;
+                shaft += rim;
+                if (projvol_temporal_beam_depth != 0)
+                {
+                    // The rim shares the shaft RGB target but lives at the opaque
+                    // surface, so include its first moment at t_surface. Rim-only
+                    // pixels then fall back naturally to surface reprojection.
+                    float rim_luma = dot(rim, vec3(0.2126, 0.7152, 0.0722));
+                    depth_w += rim_luma * t_surface;
+                    w_sum   += rim_luma;
+                }
             }
         }
     }
@@ -604,16 +610,17 @@ void main()
     // the tight display-space clamp the old post-tonemap placement needed.
     shaft = clamp(shaft, vec3(0.0), vec3(projvol_max));
 
-    // [BDMerge G3.3 Batch B - R1] Scatter-weighted mean beam distance for temporal
-    // reprojection. Fall back to the opaque surface distance when the shaft is empty
-    // (no in-scatter accumulated) so a beam-free pixel reprojects like the wall.
-    float beam_dist = (w_sum > 1e-5) ? (depth_w / w_sum) : t_surface;
+    // Keep the stored first moment consistent with the SAME clamped shaft
+    // luminance the temporal pass divides by. The mean distance itself is
+    // clamp-independent; empty shafts reproject at the opaque surface.
+    float mean_dist = (w_sum > 1e-5) ? (depth_w / w_sum) : t_surface;
+    float beam_moment = dot(shaft, vec3(0.2126, 0.7152, 0.0722)) * mean_dist;
+    beam_moment = min(beam_moment, 60000.0); // defensive RGBA16F firefly bound
 
     // Output ONLY the shaft delta - additive GL_ONE,GL_ONE onto the scene
     // buffer, so the pass never samples what it writes (no feedback).
-    // [BDMerge G3.3 Batch B - R1] Alpha carries the mean beam distance ONLY when the
-    // gate is on (temporal/half-res path -> mProjVolHalf). On the direct/non-half-res
-    // path C++ leaves this uniform at 0, so alpha stays 0 and the ADDITIVE scene
-    // composite is never corrupted (byte-identical to today at default settings).
-    frag_color = vec4(shaft, (projvol_temporal_beam_depth != 0) ? beam_dist : 0.0);
+    // Alpha carries luminance(clamped shaft) * mean_distance.
+    // Additive blending therefore sums overlap-safe first moments; the temporal
+    // pass divides by luminance(sum(rgb)). Direct/non-temporal paths keep alpha 0.
+    frag_color = vec4(shaft, (projvol_temporal_beam_depth != 0) ? beam_moment : 0.0);
 }

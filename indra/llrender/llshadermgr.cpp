@@ -1716,6 +1716,7 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("projvol_shadow_tint");
     mReservedUniforms.push_back("projvol_history");
     mReservedUniforms.push_back("projvol_prev_viewproj");
+    mReservedUniforms.push_back("projvol_prev_modelview");
     mReservedUniforms.push_back("projvol_temporal_blend");
 
     // [BDMerge G3.3 Batch B] temporal correctness (R2 contrast reject, R1 beam depth)
@@ -1800,6 +1801,7 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("froxel_frame");
 
     mReservedUniforms.push_back("weather_rain_map");
+    mReservedUniforms.push_back("weather_rain_occlusion_map");
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 
     std::set<std::string> dupe_check;
@@ -1813,4 +1815,3 @@ void LLShaderMgr::initAttribsAndUniforms()
         dupe_check.insert(mReservedUniforms[i]);
     }
 }
-

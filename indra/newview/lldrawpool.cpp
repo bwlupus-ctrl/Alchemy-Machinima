@@ -411,6 +411,12 @@ void LLFacePool::LLOverrideFaceColor::setColor(F32 r, F32 g, F32 b, F32 a)
 //=============================
 // Render Pass Implementation
 //=============================
+static bool skip_rain_occlusion_attachment(const LLDrawInfo* params)
+{
+    return LLPipeline::sRainOcclusionRender &&
+           params && params->mAttachedToAvatar;
+}
+
 LLRenderPass::LLRenderPass(const U32 type)
 : LLDrawPool(type)
 {
@@ -430,7 +436,7 @@ void LLRenderPass::renderGroup(LLSpatialGroup* group, U32 type, bool texture)
     for (LLSpatialGroup::drawmap_elem_t::iterator k = draw_info.begin(); k != draw_info.end(); ++k)
     {
         LLDrawInfo *pparams = *k;
-        if (pparams)
+        if (pparams && !skip_rain_occlusion_attachment(pparams))
         {
             pushBatch(*pparams, texture);
         }
@@ -470,6 +476,10 @@ void LLRenderPass::pushBatches(U32 type, bool texture, bool batch_textures)
             LLDrawInfo* pparams = *i;
             LLCullResult::increment_iterator(i, end);
 
+            if (skip_rain_occlusion_attachment(pparams))
+            {
+                continue;
+            }
             pushBatch(*pparams, texture, batch_textures);
         }
     }
@@ -489,6 +499,10 @@ void LLRenderPass::pushUntexturedBatches(U32 type)
         LLDrawInfo* pparams = *i;
         LLCullResult::increment_iterator(i, end);
 
+        if (skip_rain_occlusion_attachment(pparams))
+        {
+            continue;
+        }
         pushUntexturedBatch(*pparams);
     }
 }
@@ -550,6 +564,10 @@ void LLRenderPass::pushMaskBatches(U32 type, bool texture, bool batch_textures)
     {
         LLDrawInfo* pparams = *i;
         LLCullResult::increment_iterator(i, end);
+        if (skip_rain_occlusion_attachment(pparams))
+        {
+            continue;
+        }
         if (pparams->mMaterialSlotList.size() > 1)
         { // multi-material legacy batch -- drawn by pushMaskBatchesIndexed
             continue;
@@ -605,6 +623,10 @@ void LLRenderPass::pushMaskBatchesIndexed(U32 type, bool rigged)
         LLDrawInfo& params = **i;
         LLCullResult::increment_iterator(i, end);
 
+        if (skip_rain_occlusion_attachment(&params))
+        {
+            continue;
+        }
         if (params.mMaterialSlotList.size() < 2)
         {
             continue;
@@ -1233,6 +1255,10 @@ void LLRenderPass::pushGLTFBatches(U32 type)
         LLDrawInfo& params = **i;
         LLCullResult::increment_iterator(i, end);
 
+        if (skip_rain_occlusion_attachment(&params))
+        {
+            continue;
+        }
         pushGLTFBatch(params, lastMat, lastTex);
     }
 }
@@ -1248,6 +1274,10 @@ void LLRenderPass::pushUntexturedGLTFBatches(U32 type)
         LLDrawInfo& params = **i;
         LLCullResult::increment_iterator(i, end);
 
+        if (skip_rain_occlusion_attachment(&params))
+        {
+            continue;
+        }
         pushUntexturedGLTFBatch(params);
     }
 }
@@ -1267,6 +1297,10 @@ void LLRenderPass::pushGLTFBatchesScalar(U32 type)
         LLDrawInfo& params = **i;
         LLCullResult::increment_iterator(i, end);
 
+        if (skip_rain_occlusion_attachment(&params))
+        {
+            continue;
+        }
         if (params.mGLTFMaterialList.size() > 1)
         { // multi-material batch -- handled by the indexed sweep
             continue;
@@ -1288,6 +1322,10 @@ void LLRenderPass::pushGLTFBatchesIndexed(U32 type, eGLTFIndexedMaps maps)
         LLDrawInfo& params = **i;
         LLCullResult::increment_iterator(i, end);
 
+        if (skip_rain_occlusion_attachment(&params))
+        {
+            continue;
+        }
         if (params.mGLTFMaterialList.size() < 2)
         { // single-material batch -- handled by the scalar sweep
             continue;
