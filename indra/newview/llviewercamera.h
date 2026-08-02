@@ -60,6 +60,7 @@ public:
         CAMERA_WATER0,
         CAMERA_WATER1,
         CAMERA_WEATHER_RAIN_OCCLUSION,
+        CAMERA_PRISM_LENS,
         NUM_CAMERAS
     } eCameraID;
 

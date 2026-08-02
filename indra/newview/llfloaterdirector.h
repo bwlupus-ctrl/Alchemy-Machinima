@@ -135,6 +135,7 @@ private:
     static LLUUID avatarFromSelection();
     void onClickSetSubjectFromSelection(S32 subject);
     void onClickClearSubject(S32 subject);
+    void onClickSetLookAtCamera(bool selected);
     void refreshCameraTab();
 
     // ---- Takes tab ----
@@ -182,6 +183,7 @@ private:
         std::string mName;      // includes the "(away)" / group suffixes
         std::string mAB;
         std::string mMark;
+        std::string mLook;
         bool        mInWorld = true;
     };
     std::vector<CastRowState> mRowStates;
@@ -225,6 +227,8 @@ private:
     LLButton*  mClearBBtn = nullptr;
     LLButton*  mClearCBtn = nullptr;
     LLButton*  mClearDBtn = nullptr;
+    LLButton*  mLookAtSetBtn = nullptr;
+    LLButton*  mLookAtClearBtn = nullptr;
 
     // Animate tab
     LLTextBox*        mAnimateHeader = nullptr;

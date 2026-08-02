@@ -5062,6 +5062,11 @@ bool LLVOAvatar::updateCharacter(LLAgent &agent)
         return false;
     }
 
+    // [Director] remove last frame's render-only camera-facing pose before any
+    // root-orientation or motion update consumes it.
+    LLActorMover& actor_mover = LLActorMover::instance();
+    actor_mover.restoreDirectorLookAtPose(this);
+
     bool visible = isVisible();
 
     // For fading out the names above heads, only let the timer
@@ -5087,6 +5092,10 @@ bool LLVOAvatar::updateCharacter(LLAgent &agent)
     if (!needs_update && !isSelf())
     {
         updateMotions(LLCharacter::HIDDEN_UPDATE);
+        // Director still has to process release gates on LOD-skipped frames;
+        // otherwise a deselection/safety change can leave its root and local
+        // turn motion owned until the next detailed impostor update.
+        actor_mover.applyDirectorLookAt(this);
         return false;
     }
 
@@ -5158,11 +5167,13 @@ bool LLVOAvatar::updateCharacter(LLAgent &agent)
         updateMotions(LLCharacter::NORMAL_UPDATE);
     }
 
-    // [ActorMover] procedural gaze (look-at while walking): layer the per-actor
-    // head/neck/torso/eye override on top of the pose the motion controller just
-    // produced. Must run AFTER updateMotions (unlike applyOverride, which paints
-    // the root pre-motion). A no-op for any avatar with no gaze configured.
-    LLActorMover::instance().applyGaze(this);
+    // [Director/ActorMover] arbitrate the post-motion look-at layer. Director gets
+    // first refusal for selected real cast avatars; Actor Mover is skipped when
+    // Director paints, so the result is animation-to-camera, never gaze-to-gaze.
+    if (!actor_mover.applyDirectorLookAt(this))
+    {
+        actor_mover.applyGaze(this);
+    }
 
     // Special handling for sitting on ground.
     if (!getParent() && (isSitting() || was_sit_ground_constrained))

@@ -222,9 +222,6 @@ const std::vector<ALPanelCineCamParams::ModeEntry>& ALPanelCineCamParams::modeTa
         { 39, "panel_mode_detail",   { "CinematicCamDetailDistance", "CinematicCamDetailLength",
                                        "CinematicCamDetailBand", "CinematicCamDetailDuration",
                                        "CinematicCamDetailFov" } },
-        { 40, "panel_mode_steporbit",{ "CinematicCamStepOrbitRadius", "CinematicCamStepOrbitHeight",
-                                       "CinematicCamStepOrbitPeriod", "CinematicCamStepOrbitSteps",
-                                       "CinematicCamStepOrbitHold", "CinematicCamStepOrbitHeading" } },
         { 41, "panel_mode_cable",    { "CinematicCamCableLength", "CinematicCamCableMissDistance",
                                        "CinematicCamCableHeight", "CinematicCamCableDuration",
                                        "CinematicCamCableHeading" } },
@@ -277,6 +274,10 @@ const std::vector<std::string>& ALPanelCineCamParams::sharedSettings()
         "CinematicCamUseSelected",
         "CinematicCamLookAtHead",
         "CinematicCamUseOperator",
+        "CinematicCamMotionStartMode",
+        "CinematicCamMotionStartOffsetDeg",
+        "CinematicCamMotionDirection",
+        "CinematicCamMotionSeed",
         "CinematicAutoFrameEnabled",
         "CinematicAutoFrameFill",
         "CinematicAutoFrameComposeLine",
@@ -380,13 +381,22 @@ bool ALPanelCineCamParams::postBuild()
         [this](LLUICtrl*, const LLSD&) { onClickResetMode(); });
     getChild<LLButton>("btn_reset_all")->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onClickResetAll(); });
-    getChild<LLButton>("btn_preset_save")->setCommitCallback(
-        [this](LLUICtrl*, const LLSD&) { onClickSavePreset(); });
-    getChild<LLButton>("btn_preset_delete")->setCommitCallback(
-        [this](LLUICtrl*, const LLSD&) { onClickDeletePreset(); });
+    if (LLButton* preset_save = findChild<LLButton>("btn_preset_save"))
+    {
+        preset_save->setCommitCallback(
+            [this](LLUICtrl*, const LLSD&) { onClickSavePreset(); });
+    }
+    if (LLButton* preset_delete = findChild<LLButton>("btn_preset_delete"))
+    {
+        preset_delete->setCommitCallback(
+            [this](LLUICtrl*, const LLSD&) { onClickDeletePreset(); });
+    }
 
-    mPresetCombo = getChild<LLComboBox>("preset_combo");
-    mPresetCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPresetSelected(); });
+    mPresetCombo = findChild<LLComboBox>("preset_combo");
+    if (mPresetCombo)
+    {
+        mPresetCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPresetSelected(); });
+    }
 
     // Only the Camera Shake page owns this optional curated-look combo; the
     // shared controller is also instantiated for the Cinematic page.

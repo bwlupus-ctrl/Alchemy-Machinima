@@ -373,6 +373,8 @@ bool LLFloaterDirector::postBuild()
     mClearBBtn = getChild<LLButton>("btn_clear_b");
     mClearCBtn = getChild<LLButton>("btn_clear_c");
     mClearDBtn = getChild<LLButton>("btn_clear_d");
+    mLookAtSetBtn = getChild<LLButton>("btn_look_at_set");
+    mLookAtClearBtn = getChild<LLButton>("btn_look_at_clear");
     mSetABtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSetSubjectFromSelection(SUBJECT_A); });
     mSetBBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSetSubjectFromSelection(SUBJECT_B); });
     mSetCBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSetSubjectFromSelection(SUBJECT_C); });
@@ -381,6 +383,10 @@ bool LLFloaterDirector::postBuild()
     mClearBBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickClearSubject(SUBJECT_B); });
     mClearCBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickClearSubject(SUBJECT_C); });
     mClearDBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickClearSubject(SUBJECT_D); });
+    mLookAtSetBtn->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onClickSetLookAtCamera(true); });
+    mLookAtClearBtn->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onClickSetLookAtCamera(false); });
     // embedded shared params panel: scene files read its selected preset and
     // apply presets through it on load
     mCineCamPanel = findChild<ALPanelCineCamParams>("cinecam_params_embedded");
@@ -624,6 +630,15 @@ const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()
         "DirectorArmRecorderPlay",
         "DirectorArmRecorderCapture",
         "DirectorActionDelay",
+        // Render-only real-avatar gaze (per-member selection lives in cast data)
+        "DirectorLookAtCameraEnabled",
+        "DirectorLookAtCameraMode",
+        "DirectorLookAtCameraStrength",
+        "DirectorLookAtCameraHeadEye",
+        "DirectorLookAtCameraTorso",
+        "DirectorLookAtCameraTorsoAmount",
+        "DirectorLookAtCameraSmoothing",
+        "DirectorLookAtCameraEaseTime",
         // Switcher program data. Armed/live slot stay transient: loading a
         // scene is data application and must never seize the live camera.
         "DirectorSwitcherAuto",
@@ -957,6 +972,8 @@ void LLFloaterDirector::refreshCastList()
             row["columns"][3]["column"] = "mark";
             row["columns"][3]["type"] = "icon";
             row["columns"][3]["value"] = "";
+            row["columns"][4]["column"] = "look";
+            row["columns"][4]["value"] = "";
             mCastList->addElement(row, ADD_BOTTOM);
         }
         if (prev_sel.notNull())
@@ -970,6 +987,7 @@ void LLFloaterDirector::refreshCastList()
     const S32 name_col = mCastList->getColumn("name")->mIndex;
     const S32 ab_col = mCastList->getColumn("ab")->mIndex;
     const S32 mark_col = mCastList->getColumn("mark")->mIndex;
+    const S32 look_col = mCastList->getColumn("look")->mIndex;
 
     LLActorMover& mover = LLActorMover::instance();
     for (size_t i = 0; i < items.size(); ++i)
@@ -1005,6 +1023,7 @@ void LLFloaterDirector::refreshCastList()
         else if (cast.getSubjectC() == id) ab = "C";
         else if (cast.getSubjectD() == id) ab = "D";
         const std::string mark = (m && m->mHasMark) ? ICON_MARK : "";
+        const std::string look = cast.isLookAtCamera(id) ? "L" : "";
 
         if (state.mIcon != icon)
         {
@@ -1045,6 +1064,14 @@ void LLFloaterDirector::refreshCastList()
                 cell->setValue(mark);
             }
             state.mMark = mark;
+        }
+        if (state.mLook != look)
+        {
+            if (auto* cell = dynamic_cast<LLScrollListText*>(item->getColumn(look_col)))
+            {
+                cell->setText(look);
+            }
+            state.mLook = look;
         }
     }
 
@@ -1868,6 +1895,15 @@ void LLFloaterDirector::onClickClearSubject(S32 subject)
     clear_subject(LLDirectorCast::instance(), subject);
 }
 
+void LLFloaterDirector::onClickSetLookAtCamera(bool selected)
+{
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    for (const LLUUID& id : selectedCastIds())
+    {
+        cast.setLookAtCamera(id, selected);
+    }
+}
+
 void LLFloaterDirector::refreshCameraTab()
 {
     LLDirectorCast& cast = LLDirectorCast::instance();
@@ -1914,6 +1950,15 @@ void LLFloaterDirector::refreshCameraTab()
     setToolTipIfChanged(mClearDBtn, d.notNull()
         ? std::string("Clear Subject D")
         : std::string("Subject D is not set"));
+
+    const bool have_cast_selection = !selectedCastIds().empty();
+    mLookAtSetBtn->setEnabled(have_cast_selection);
+    mLookAtClearBtn->setEnabled(have_cast_selection);
+    const std::string look_tip = have_cast_selection
+        ? std::string("Change the camera-gaze flag for the selected cast row(s); only real resident avatars are rendered with the override")
+        : std::string("Select one or more cast rows first");
+    setToolTipIfChanged(mLookAtSetBtn, look_tip);
+    setToolTipIfChanged(mLookAtClearBtn, look_tip);
 }
 
 // ---------------------------------------------------------------------------

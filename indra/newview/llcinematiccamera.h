@@ -81,7 +81,6 @@ public:
         MODE_PARALLAX_SLIDE=37, // straight lateral truck past the subject (depth)
         MODE_FIGURE_EIGHT = 38, // reversing two-lobe orbit (dance energy)
         MODE_DETAIL_SWEEP = 39, // close costume-height drift (admiration)
-        MODE_STEP_ORBIT   = 40, // held angular steps around the subject (staccato)
         MODE_CABLE_CAM    = 41, // fast straight chord pass (sports energy)
         MODE_BREATHING_HOLD=42, // nearly locked frame with subtle life (intimacy)
         // Director Switcher fixed framings. Appended: persisted values 0..42
@@ -116,6 +115,7 @@ public:
 
     // Stable display label shared by the CineCam panel, Director status, and
     // Director Switcher. Unknown values return "Unknown".
+    static S32 migrateLegacyMode(S32 mode);
     static const char* modeName(S32 mode);
 
     // True when the system should own the render camera this frame.
@@ -123,6 +123,14 @@ public:
 
     // True only while Bone Lock is actively mounted on this exact avatar.
     bool isActiveBoneLockTarget(const LLUUID& avatar_id) const;
+
+    // True while a non-Bone-Lock shot is actively framing this avatar from its
+    // head joint. Render-only joint overrides must not feed that camera input.
+    bool isActiveHeadFramingTarget(const LLUUID& avatar_id) const;
+
+    // True only while Flycam Orbit is the active camera driver and this avatar
+    // resolves as its external-rider anchor.
+    bool isActiveOrbitAnchor(const LLUUID& avatar_id) const;
 
     // Anchor transform for external riders (Flycam Orbit): the resolved
     // target's CinematicCamJoint world pose in agent region coordinates.
@@ -152,6 +160,12 @@ private:
     LLVOAvatar* resolveDefaultTarget() const;
     LLVOAvatar* resolveMarkedTarget(S32 subject) const;
     LLVOAvatar* resolveSecondaryTarget() const;
+    void captureMotionStart(LLVOAvatar* av, const LLVector3& center,
+                            S32 mode, S32 switcher_slot, U64 shot_index);
+    F32 motionStartAzimuth(F32 classic_azimuth) const
+    {
+        return mMotionStartClassic ? classic_azimuth : mMotionStartAzimuth;
+    }
 
     // pattern generators: produce a desired camera position and the point
     // to frame, in agent region coordinates
@@ -200,7 +214,6 @@ private:
     LLVector3 patternParallaxSlide(LLVOAvatar* av, const LLVector3& center, F32 phase);
     LLVector3 patternFigureEight(LLVOAvatar* av, const LLVector3& center, F32 phase);
     LLVector3 patternDetailSweep(LLVOAvatar* av, const LLVector3& center, F32 phase, LLVector3& focus_io, F32& fov_mul);
-    LLVector3 patternStepOrbit(LLVOAvatar* av, const LLVector3& center, F32 phase);
     LLVector3 patternCableCam(LLVOAvatar* av, const LLVector3& center, F32 phase);
     LLVector3 patternBreathingHold(LLVOAvatar* av, const LLVector3& center, F32 phase);
     LLVector3 patternStaticShot(LLVOAvatar* av, const LLVector3& center,
@@ -218,6 +231,13 @@ private:
     bool        mWasActive = false;
     F32         mPhase = 0.f;           // wrapped pattern clock, seconds*speed
     F32         mPrevTime = 0.f;
+    // Shared per-shot motion-start basis. Captured once after the subject
+    // center resolves so CameraRelative never samples a moving camera mid-shot.
+    bool        mMotionStartCaptured = false;
+    bool        mMotionStartClassic = true;
+    F32         mMotionStartAzimuth = 0.f;
+    F32         mMotionDir = 1.f;
+    U64         mMotionShotIndex = 0;
     // smoothed pose
     bool        mHavePose = false;
     LLVector3   mSmPos = LLVector3::zero;

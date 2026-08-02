@@ -20,9 +20,11 @@
 
 #include "alghostattachmentenumerator.h"
 #include "alghoststudio.h"          // [GhostStudio] free-standing ghost instances
+#include "aoengine.h"               // self Director turns use the enabled AO turn state
 #include "llclonefidelityaudit.h"   // [CloneFidelity] early-capture hooks in the harvest
 #include "altoolghostedit.h"        // [R2-3] selected-ghost ring gates on the edit tool
 #include "llagent.h"                // gAgent global<->agent coord conversion (pathing)
+#include "llagentcamera.h"          // cameraMouselook gaze feedback interlock
 #include "llanimationstates.h"      // ANIM_AGENT_WALK
 #include "llappviewer.h"            // gFrameIntervalSeconds
 #include "llcontrolavatar.h"        // animesh attachments bucket under the wearer (model ghost)
@@ -2660,6 +2662,14 @@ const F32 GAZE_TAU_MAX        = 0.50f;   // (very smooth)
 const F32 GAZE_LOOKAHEAD      = 6.0f;    // tangent look-ahead distance, m
 const F32 GAZE_MIN_DIST       = 0.25f;   // ignore a target closer than this to the head
 const F32 GAZE_NECK_LAG       = 0.50f;   // neck vs head split of the remaining aim
+// Stock LLEyeMotion constrains the final head-local eye quaternion to this
+// cone. Director cameras can leave simultaneous yaw and pitch residuals after
+// the head clamp, so its per-axis gaze limits also need this total-angle cap.
+const F32 GAZE_DIRECTOR_EYE_ROT_MAX = F_PI_BY_TWO * 0.3f;
+const F32 DIRECTOR_BODY_TURN_TAU = 0.22f;
+const F32 DIRECTOR_BODY_TURN_RATE = 180.f * DEG_TO_RAD;
+const F32 DIRECTOR_BODY_TURN_START = 2.f * DEG_TO_RAD;
+const F32 DIRECTOR_BODY_TURN_STOP = 0.75f * DEG_TO_RAD;
 
 // Joint world positions do not include a ghost avatar's client-only outer
 // render scale.  Match LLGhostAvatar::updateEntityOuterTransform() (and the
@@ -2682,6 +2692,55 @@ LLVector3 gazeRenderedJointPosition(LLVOAvatar* av, LLJoint* joint)
     LLVector3 foot = root->getWorldPosition();
     foot.mV[VZ] -= av->getPelvisToFoot();
     return foot + (point - foot) * scale;
+}
+
+// Camera modes that consume the rendered head feed gaze back into the camera.
+// Preserve the legacy Actor Mover gates; the additional feedback interlocks
+// are Director-only so a disabled Director remains byte-identical.
+bool gazeCameraSafe(LLVOAvatar* av, bool director_look_at)
+{
+    if (!av || LLCinematicCamera::instance().isActiveBoneLockTarget(av->getID()))
+    {
+        return false;
+    }
+    if (director_look_at &&
+        ((av->isSelf() && gAgentCamera.cameraMouselook()) ||
+         LLCinematicCamera::instance().isActiveHeadFramingTarget(av->getID()) ||
+         LLCinematicCamera::instance().isActiveOrbitAnchor(av->getID())))
+    {
+        return false;
+    }
+    static LLCachedControl<bool> use_head_camera(
+        gSavedSettings, "UseCinematicCamera", false);
+    return !(use_head_camera && isAgentAvatarValid() &&
+             av->getID() == gAgentAvatarp->getID());
+}
+
+bool currentAnimatedGazeDirection(LLVOAvatar* av, LLVector3& direction)
+{
+    direction.clearVec();
+    S32 count = 0;
+    auto add_joint_direction = [&](const char* name)
+    {
+        if (LLJoint* joint = av->getJoint(name))
+        {
+            direction += LLVector3(1.f, 0.f, 0.f) * joint->getWorldRotation();
+            ++count;
+        }
+    };
+
+    add_joint_direction("mEyeLeft");
+    add_joint_direction("mEyeRight");
+    if (!count)
+    {
+        add_joint_direction("mFaceEyeAltLeft");
+        add_joint_direction("mFaceEyeAltRight");
+    }
+    if (!count)
+    {
+        add_joint_direction("mHead");
+    }
+    return count && direction.normVec() > 1e-4f;
 }
 } // anonymous namespace
 
@@ -2712,19 +2771,7 @@ void LLActorMover::applyGaze(LLVOAvatar* av)
     bool camera_safe = true;
     if (g.mTarget == GAZE_CAMERA)
     {
-        // Never let a head chase a camera rigidly mounted on that same head.
-        camera_safe =
-            !LLCinematicCamera::instance().isActiveBoneLockTarget(av->getID());
-
-        // BD cinematic head tracking also feeds self head pose into camera
-        // focus/up. It is a milder loop, but the safe behavior is still release.
-        static LLCachedControl<bool> use_head_camera(
-            gSavedSettings, "UseCinematicCamera", false);
-        if (use_head_camera && isAgentAvatarValid() &&
-            av->getID() == gAgentAvatarp->getID())
-        {
-            camera_safe = false;
-        }
+        camera_safe = gazeCameraSafe(av, false);
     }
     if (!camera_safe)
     {
@@ -2733,6 +2780,8 @@ void LLActorMover::applyGaze(LLVOAvatar* av)
         g.mEnv = 0.f;
         g.mDirValid = false;
         g.mBodyAimValid = false;
+        g.mAppliedValid = false;
+        g.mAppliedSlewing = false;
         return;
     }
     const bool needs_move = (g.mTarget == GAZE_TANGENT);
@@ -2768,6 +2817,8 @@ void LLActorMover::applyGaze(LLVOAvatar* av)
     {
         g.mDirValid = false;
         g.mBodyAimValid = false;
+        g.mAppliedValid = false;
+        g.mAppliedSlewing = false;
         return;
     }
     if (av->isDead() || !av->getRootJoint())
@@ -2775,10 +2826,386 @@ void LLActorMover::applyGaze(LLVOAvatar* av)
         return;                 // never paint a dead / rootless actor
     }
 
-    gazePaint(av, g, mv, dt, advance);
+    gazePaint(av, g, mv, dt, advance, false);
 }
 
-void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bool advance)
+void LLActorMover::captureDirectorLookAtPose(LLVOAvatar* av, DirectorGaze& runtime)
+{
+    auto capture = [&](const char* name, DirectorJointPose& pose)
+    {
+        LLJoint* joint = av->getJoint(name);
+        pose.mValid = joint != nullptr;
+        if (joint)
+        {
+            pose.mRotation = joint->getRotation();
+        }
+    };
+
+    runtime.mRoot.mValid = false;
+    runtime.mTorso.mValid = false;
+    runtime.mNeck.mValid = false;
+    runtime.mHead.mValid = false;
+    runtime.mEyeLeft.mValid = false;
+    runtime.mEyeRight.mValid = false;
+    runtime.mAltEyeLeft.mValid = false;
+    runtime.mAltEyeRight.mValid = false;
+
+    if (runtime.mMode == 1)
+    {
+        capture("mRoot", runtime.mRoot);
+        return;
+    }
+
+    if (runtime.mGaze.mTorsoAmount > 0.f)
+    {
+        capture("mTorso", runtime.mTorso);
+    }
+    LLJoint* neck = av->getJoint("mNeck");
+    if (neck && neck->getParent())
+    {
+        capture("mNeck", runtime.mNeck);
+        capture("mHead", runtime.mHead);
+    }
+    capture("mEyeLeft", runtime.mEyeLeft);
+    capture("mEyeRight", runtime.mEyeRight);
+    capture("mFaceEyeAltLeft", runtime.mAltEyeLeft);
+    capture("mFaceEyeAltRight", runtime.mAltEyeRight);
+}
+
+void LLActorMover::restoreDirectorLookAtPose(LLVOAvatar* av, DirectorGaze& runtime)
+{
+    if (!av)
+    {
+        return;
+    }
+    auto restore = [&](const char* name, DirectorJointPose& pose)
+    {
+        if (pose.mValid)
+        {
+            if (LLJoint* joint = av->getJoint(name))
+            {
+                joint->setRotation(pose.mRotation);
+            }
+            pose.mValid = false;
+        }
+    };
+    restore("mRoot", runtime.mRoot);
+    restore("mTorso", runtime.mTorso);
+    restore("mNeck", runtime.mNeck);
+    restore("mHead", runtime.mHead);
+    restore("mEyeLeft", runtime.mEyeLeft);
+    restore("mEyeRight", runtime.mEyeRight);
+    restore("mFaceEyeAltLeft", runtime.mAltEyeLeft);
+    restore("mFaceEyeAltRight", runtime.mAltEyeRight);
+}
+
+void LLActorMover::stopDirectorTurnAnimation(LLVOAvatar* av, DirectorGaze& runtime)
+{
+    // override() owns AO state even though Director starts/stops the returned
+    // replacement locally. Always balance the canonical start before dropping
+    // the runtime, including the null-replacement fallback case.
+    if (runtime.mTurnAOOverrideActive && runtime.mTurnSourceAnim.notNull())
+    {
+        AOEngine::instance().override(runtime.mTurnSourceAnim, false);
+    }
+
+    // The AO route can only belong to self. If roster resolution disappeared
+    // during teardown, retain the ability to stop the exact local motion that
+    // Director started rather than orphaning a looping replacement.
+    if (!av && runtime.mTurnAOOverrideActive && isAgentAvatarValid())
+    {
+        av = gAgentAvatarp;
+    }
+
+    if (av && runtime.mOwnsTurnAnim && runtime.mTurnAnim.notNull())
+    {
+        // A simulator animation can take over the same canonical motion after
+        // Director started it. Remote avatars relinquish ownership in that
+        // case; self must still stop Director's canonical local motion because
+        // the AO represents the simulator signal with its replacement motion.
+        const LLUUID turn_anim = runtime.mTurnAnim;
+        if (av->isSelf() || !av->isAnyAnimationSignaled(&turn_anim, 1))
+        {
+            // Qualifying the base call is essential for self: LLVOAvatar's wrapper
+            // can consult the AO and send animation requests, while this feature is
+            // strictly a local motion-controller visual.
+            av->LLCharacter::stopMotion(turn_anim, true);
+        }
+    }
+    runtime.mTurnAnim.setNull();
+    runtime.mTurnSourceAnim.setNull();
+    runtime.mOwnsTurnAnim = false;
+    runtime.mTurnAOOverrideActive = false;
+}
+
+void LLActorMover::updateDirectorTurnAnimation(LLVOAvatar* av, DirectorGaze& runtime,
+                                                S32 direction)
+{
+    const LLUUID& desired = direction > 0
+        ? ANIM_AGENT_TURNLEFT : ANIM_AGENT_TURNRIGHT;
+    const bool use_ao = av->isSelf() &&
+        gSavedPerAccountSettings.getBOOL("AlchemyAOEnable") &&
+        gSavedPerAccountSettings.getBOOL("UseAOStands");
+
+    if (runtime.mTurnSourceAnim == desired &&
+        runtime.mTurnAOOverrideActive == use_ao)
+    {
+        const LLUUID& opposite = direction > 0
+            ? ANIM_AGENT_TURNRIGHT : ANIM_AGENT_TURNLEFT;
+        if (runtime.mTurnAnim.notNull() &&
+            !av->isMotionActive(runtime.mTurnAnim) &&
+            !av->isMotionActive(opposite))
+        {
+            runtime.mOwnsTurnAnim =
+                av->LLCharacter::startMotion(runtime.mTurnAnim);
+        }
+        return;
+    }
+
+    stopDirectorTurnAnimation(av, runtime);
+    runtime.mTurnSourceAnim = desired;
+    runtime.mTurnAnim = desired;
+
+    if (use_ao)
+    {
+        // Mark the AO transaction active even when no replacement is returned:
+        // override() may still update its state machine, and the built-in
+        // fallback must balance that start on every exit path.
+        runtime.mTurnAOOverrideActive = true;
+        const LLUUID replacement = AOEngine::instance().override(desired, true);
+        if (replacement.notNull())
+        {
+            runtime.mTurnAnim = replacement;
+        }
+    }
+
+    const LLUUID& opposite = direction > 0
+        ? ANIM_AGENT_TURNRIGHT : ANIM_AGENT_TURNLEFT;
+
+    // Do not take ownership of a turn motion already active for another reason;
+    // otherwise clearing Director could stop a simulator- or AO-owned turn.
+    // If a remote simulator still owns the old direction after we relinquish,
+    // wait for it to stop before starting the new one so the pair never blends.
+    // Failure to start is deliberately soft: the root-yaw turn still completes.
+    if (!av->isMotionActive(runtime.mTurnAnim) &&
+        !av->isMotionActive(opposite))
+    {
+        runtime.mOwnsTurnAnim =
+            av->LLCharacter::startMotion(runtime.mTurnAnim);
+    }
+}
+
+bool LLActorMover::applyDirectorBodyTurn(LLVOAvatar* av, DirectorGaze& runtime)
+{
+    LLJoint* root = av->getRootJoint();
+    LLVector3 to_camera = gAgentCamera.getCameraPositionAgent() - root->getWorldPosition();
+    to_camera.mV[VZ] = 0.f;
+    if (to_camera.magVecSquared() <= 1e-4f)
+    {
+        stopDirectorTurnAnimation(av, runtime);
+        runtime.mBodyYawValid = false;
+        return true;
+    }
+
+    const F32 target_yaw = atan2f(to_camera.mV[VY], to_camera.mV[VX]);
+    if (!runtime.mBodyYawValid)
+    {
+        const LLVector3 at = LLVector3(1.f, 0.f, 0.f) * root->getWorldRotation();
+        runtime.mBodyYaw = atan2f(at.mV[VY], at.mV[VX]);
+        runtime.mBodyYawValid = true;
+    }
+
+    const U32 frame = LLFrameTimer::getFrameCount();
+    if (runtime.mBodyLastFrame != frame)
+    {
+        runtime.mBodyLastFrame = frame;
+        const F32 dt = LLPresentationTime::drives(LLTemporalFeature::ANIMATION)
+            ? llclamp(LLPresentationTime::presentationDelta(), 0.f, 0.25f)
+            : llclamp(gFrameIntervalSeconds.value(), 0.f, 0.25f);
+        const F32 error = llsimple_angle(target_yaw - runtime.mBodyYaw);
+        const F32 alpha = 1.f - expf(-dt / DIRECTOR_BODY_TURN_TAU);
+        const F32 max_step = DIRECTOR_BODY_TURN_RATE * dt;
+        const F32 step = llclamp(error * alpha, -max_step, max_step);
+        runtime.mBodyYaw = llsimple_angle(runtime.mBodyYaw + step);
+    }
+
+    F32 remaining = llsimple_angle(target_yaw - runtime.mBodyYaw);
+    if (fabsf(remaining) <= DIRECTOR_BODY_TURN_STOP)
+    {
+        runtime.mBodyYaw = target_yaw;
+        remaining = 0.f;
+    }
+
+    const F32 anim_threshold = runtime.mTurnAnim.notNull()
+        ? DIRECTOR_BODY_TURN_STOP : DIRECTOR_BODY_TURN_START;
+    if (fabsf(remaining) > anim_threshold)
+    {
+        updateDirectorTurnAnimation(av, runtime, remaining > 0.f ? 1 : -1);
+    }
+    else
+    {
+        stopDirectorTurnAnimation(av, runtime);
+    }
+
+    captureDirectorLookAtPose(av, runtime);
+    LLQuaternion upright_yaw;
+    upright_yaw.setEulerAngles(0.f, 0.f, runtime.mBodyYaw);
+    root->setWorldRotation(upright_yaw);
+    return true;
+}
+
+void LLActorMover::restoreDirectorLookAtPose(LLVOAvatar* av)
+{
+    if (!av || mDirectorGazes.empty())
+    {
+        return;
+    }
+    auto it = mDirectorGazes.find(av->getID());
+    if (it != mDirectorGazes.end())
+    {
+        // Undo last frame before motions run. A motion that does not key these
+        // joints therefore starts from its real animation pose, not our paint.
+        restoreDirectorLookAtPose(av, it->second);
+    }
+}
+
+void LLActorMover::clearDirectorLookAtRuntime(const LLUUID& avatar_id)
+{
+    auto it = mDirectorGazes.find(avatar_id);
+    if (it == mDirectorGazes.end())
+    {
+        return;
+    }
+    LLVOAvatar* av = LLDirectorCast::instance().resolve(avatar_id);
+    stopDirectorTurnAnimation(av, it->second);
+    restoreDirectorLookAtPose(av, it->second);
+    mDirectorGazes.erase(it);
+}
+
+void LLActorMover::clearAllDirectorLookAtRuntime()
+{
+    for (auto& entry : mDirectorGazes)
+    {
+        LLVOAvatar* av = LLDirectorCast::instance().resolve(entry.first);
+        stopDirectorTurnAnimation(av, entry.second);
+        restoreDirectorLookAtPose(av, entry.second);
+    }
+    mDirectorGazes.clear();
+}
+
+bool LLActorMover::applyDirectorLookAt(LLVOAvatar* av)
+{
+    static LLCachedControl<bool> enabled(
+        gSavedSettings, "DirectorLookAtCameraEnabled", false);
+
+    if (!enabled)
+    {
+        clearAllDirectorLookAtRuntime();
+        return false;
+    }
+    if (!av)
+    {
+        return false;
+    }
+    if (av->isDead() || av->isGhostAvatar() ||
+        av->isControlAvatar() || av->isUIAvatar() ||
+        !av->getRootJoint() || !av->getJoint("mHead"))
+    {
+        clearDirectorLookAtRuntime(av->getID());
+        return false;
+    }
+
+    if (!LLDirectorCast::instance().isLookAtCamera(av->getID()) ||
+        !gazeCameraSafe(av, true))
+    {
+        clearDirectorLookAtRuntime(av->getID());
+        return false;
+    }
+
+    static LLCachedControl<F32> strength(
+        gSavedSettings, "DirectorLookAtCameraStrength", 1.f);
+    static LLCachedControl<F32> head_eye(
+        gSavedSettings, "DirectorLookAtCameraHeadEye", 1.f);
+    static LLCachedControl<bool> add_torso(
+        gSavedSettings, "DirectorLookAtCameraTorso", false);
+    static LLCachedControl<F32> torso_amount(
+        gSavedSettings, "DirectorLookAtCameraTorsoAmount", 0.18f);
+    static LLCachedControl<F32> smoothing(
+        gSavedSettings, "DirectorLookAtCameraSmoothing", 0.12f);
+    static LLCachedControl<F32> ease_time_setting(
+        gSavedSettings, "DirectorLookAtCameraEaseTime", 0.15f);
+    static LLCachedControl<S32> mode_setting(
+        gSavedSettings, "DirectorLookAtCameraMode", 0);
+
+    const S32 mode = (S32)mode_setting == 1 ? 1 : 0;
+    auto runtime_it = mDirectorGazes.find(av->getID());
+    if (runtime_it != mDirectorGazes.end() && runtime_it->second.mMode != mode)
+    {
+        // Mode changes are a hard ownership handoff: restore the prior paint and
+        // stop any locally owned turn before seeding the newly selected mode.
+        clearDirectorLookAtRuntime(av->getID());
+    }
+    if (mode == 1 && av->isSitting())
+    {
+        // A seated root is slaved to its seat, including intentional pitch and
+        // roll. Release any prior body-turn paint/animation and leave it alone.
+        clearDirectorLookAtRuntime(av->getID());
+        return true;
+    }
+    if (mode == 1)
+    {
+        DirectorGaze& runtime = mDirectorGazes[av->getID()];
+        runtime.mMode = 1;
+        return applyDirectorBodyTurn(av, runtime);
+    }
+
+    DirectorGaze& runtime = mDirectorGazes[av->getID()];
+    Gaze& gaze = runtime.mGaze;
+    gaze.mEnabled = true;
+    gaze.mTarget = GAZE_CAMERA;
+    gaze.mHeadEyeBlend = llclamp((F32)head_eye, 0.f, 1.f);
+    gaze.mTorsoAmount = add_torso
+        ? llclamp((F32)torso_amount, 0.f, 1.f) : 0.f;
+    runtime.mTargetStrength = llclamp((F32)strength, 0.f, 1.f);
+    if (!runtime.mStrengthValid)
+    {
+        // Activation is already weighted by the zero-seeded envelope. Seed the
+        // strength at its authored value so strength zero is truly motionless.
+        gaze.mIntensity = runtime.mTargetStrength;
+        runtime.mStrengthValid = true;
+    }
+    gaze.mSmoothing = llclamp((F32)smoothing, 0.f, 1.f);
+    const F32 ease_time = llclamp((F32)ease_time_setting, 0.f, 1.f);
+
+    const U32 frame = LLFrameTimer::getFrameCount();
+    const bool advance = gaze.mLastFrame != frame;
+    F32 dt = 0.f;
+    if (advance)
+    {
+        gaze.mLastFrame = frame;
+        dt = LLPresentationTime::drives(LLTemporalFeature::ANIMATION)
+            ? llclamp(LLPresentationTime::presentationDelta(), 0.f, 0.25f)
+            : llclamp(gFrameIntervalSeconds.value(), 0.f, 0.25f);
+        const F32 env_step =
+            (ease_time > 0.f) ? dt / ease_time : 1.f;
+        gaze.mEnv = llclamp(gaze.mEnv + env_step, 0.f, 1.f);
+        const F32 strength_alpha =
+            1.f - expf(-dt / llmax(ease_time, 0.01f));
+        gaze.mIntensity +=
+            (runtime.mTargetStrength - gaze.mIntensity) * strength_alpha;
+    }
+
+    if (!gaze.mDirValid)
+    {
+        gaze.mDirValid = currentAnimatedGazeDirection(av, gaze.mSmoothDir);
+    }
+    captureDirectorLookAtPose(av, runtime);
+    gazePaint(av, gaze, nullptr, dt, advance, true);
+    return true;
+}
+
+void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bool advance,
+                            bool constrain_eye_cone)
 {
     LLJoint* head = av->getJoint("mHead");
     LLJoint* root = av->getJoint("mRoot");
@@ -2932,6 +3359,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         gSavedSettings, "BDMergeGazeHeadYawMax", 72.f);
     static LLCachedControl<F32> head_pitch_max_deg(
         gSavedSettings, "BDMergeGazeHeadPitchMax", 45.f);
+    static LLCachedControl<F32> head_slew_rate_deg(
+        gSavedSettings, "BDMergeGazeHeadSlewRate", 480.f);
     static LLCachedControl<F32> dead_zone_deg(
         gSavedSettings, "BDMergeGazeDeadZone", 3.f);
     static LLCachedControl<S32> behind_policy(
@@ -2995,12 +3424,66 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             llclamp((F32)head_yaw_max_deg, 0.f, 180.f) * DEG_TO_RAD;
         const F32 head_pitch_max =
             llclamp((F32)head_pitch_max_deg, 0.f, 180.f) * DEG_TO_RAD;
-        F32 roll = 0.f, pitch = 0.f, yaw = 0.f;
-        pitch = g.mBodyAimPitch;
-        yaw = g.mBodyAimYaw;
-        yaw   = llclamp(yaw,   -head_yaw_max,   head_yaw_max);
-        pitch = llclamp(pitch, -head_pitch_max, head_pitch_max);
-        head_rot_local.setEulerAngles(0.f, pitch, yaw);
+        const F32 target_yaw = llclamp(
+            g.mBodyAimYaw, -head_yaw_max, head_yaw_max);
+        const F32 target_pitch = llclamp(
+            g.mBodyAimPitch, -head_pitch_max, head_pitch_max);
+        if (!g.mAppliedValid)
+        {
+            // Activation starts at today's target pose; never slew in from a
+            // stale or arbitrary rotation.
+            g.mAppliedYaw = target_yaw;
+            g.mAppliedPitch = target_pitch;
+            g.mAppliedValid = true;
+            g.mAppliedSlewing = false;
+        }
+        else if (advance)
+        {
+            F32 yaw_delta = llsimple_angle(target_yaw - g.mAppliedYaw);
+            F32 pitch_delta = llsimple_angle(
+                target_pitch - g.mAppliedPitch);
+            constexpr F32 APPLIED_SLEW_TRIGGER = 90.f * DEG_TO_RAD;
+            if (!g.mAppliedSlewing &&
+                sqrtf(yaw_delta * yaw_delta + pitch_delta * pitch_delta) >
+                    APPLIED_SLEW_TRIGGER)
+            {
+                // The cone's behind seam is a ~144-degree target jump. Keep
+                // ordinary in-cone tracking byte-identical by entering the
+                // limiter only for a discontinuity this large.
+                g.mAppliedSlewing = true;
+            }
+
+            if (g.mAppliedSlewing)
+            {
+                const F32 max_step = llmax((F32)head_slew_rate_deg, 0.f) *
+                                     DEG_TO_RAD * dt;
+                g.mAppliedYaw = llsimple_angle(
+                    g.mAppliedYaw +
+                    llclamp(yaw_delta, -max_step, max_step));
+                g.mAppliedPitch = llsimple_angle(
+                    g.mAppliedPitch +
+                    llclamp(pitch_delta, -max_step, max_step));
+
+                yaw_delta = llsimple_angle(target_yaw - g.mAppliedYaw);
+                pitch_delta = llsimple_angle(
+                    target_pitch - g.mAppliedPitch);
+                if (fabsf(yaw_delta) <= 1e-5f &&
+                    fabsf(pitch_delta) <= 1e-5f)
+                {
+                    g.mAppliedYaw = target_yaw;
+                    g.mAppliedPitch = target_pitch;
+                    g.mAppliedSlewing = false;
+                }
+            }
+            else
+            {
+                // Preserve the old result exactly for normal gaze motion.
+                g.mAppliedYaw = target_yaw;
+                g.mAppliedPitch = target_pitch;
+            }
+        }
+        head_rot_local.setEulerAngles(
+            0.f, g.mAppliedPitch, g.mAppliedYaw);
     }
 
     if (wBody > 0.001f)
@@ -3068,6 +3551,14 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             yaw   = llclamp(yaw,   -eye_yaw_max,   eye_yaw_max);
             pitch = llclamp(pitch, -eye_pitch_max, eye_pitch_max);
             tgt.setEulerAngles(0.f, pitch, yaw);
+            if (constrain_eye_cone)
+            {
+                // Match stock LLEyeMotion's total-angle safety cone. Without
+                // this, 35 degrees of yaw plus 25 degrees of pitch produces a
+                // roughly 43-degree rotation that swings Bento-weighted eyes
+                // visibly around their socket pivots.
+                tgt.constrain(GAZE_DIRECTOR_EYE_ROT_MAX);
+            }
             eye->setRotation(nlerp(wEye, eye->getRotation(), tgt));
         };
         applyEye(av->getJoint("mEyeLeft"));

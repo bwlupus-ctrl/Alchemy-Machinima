@@ -350,6 +350,16 @@ public:
     // is guarded; it drives whatever of mHead/mNeck/mTorso/mEye* exist).
     void   applyGaze(LLVOAvatar* av);
 
+    // Director Console camera-facing pose for selected REAL cast avatars. Restore the
+    // prior frame's captured animation pose before updateMotions(), then call
+    // applyDirectorLookAt() after it. A true return gives Director ownership of
+    // look-at pose for the frame, so Actor Mover gaze must be skipped for that avatar.
+    void   restoreDirectorLookAtPose(LLVOAvatar* av);
+    bool   applyDirectorLookAt(LLVOAvatar* av);
+    // Cast lifecycle hooks restore any outstanding pose and prune smoothing.
+    void   clearDirectorLookAtRuntime(const LLUUID& avatar_id);
+    void   clearAllDirectorLookAtRuntime();
+
     // stable per-actor overlay color derived from the actor id (path ribbon +
     // interior nodes tint to this hue; the panel shows it as a read-only swatch)
     static LLColor4 actorPathColor(const LLUUID& actor_id);
@@ -817,11 +827,49 @@ private:
         bool       mBodyAimValid  = false;  // held body aim seeded yet
         F32        mBodyAimPitch  = 0.f;    // accepted root-relative aim, radians
         F32        mBodyAimYaw    = 0.f;
+        bool       mAppliedValid  = false;  // cone-clamped pose seeded yet
+        bool       mAppliedSlewing = false; // traversing a large clamp seam
+        F32        mAppliedPitch  = 0.f;    // actually applied head-chain aim
+        F32        mAppliedYaw    = 0.f;
         F32        mBehindEnv     = 1.f;    // smooth Release-policy weight
         U32        mLastFrame     = 0xFFFFFFFF;  // per-frame temporal-advance guard
     };
+    struct DirectorJointPose
+    {
+        bool         mValid = false;
+        LLQuaternion mRotation;
+    };
+    struct DirectorGaze
+    {
+        Gaze             mGaze;
+        F32              mTargetStrength = 0.f;
+        bool             mStrengthValid = false;
+        S32              mMode = 0;
+        DirectorJointPose mRoot;
+        DirectorJointPose mTorso;
+        DirectorJointPose mNeck;
+        DirectorJointPose mHead;
+        DirectorJointPose mEyeLeft;
+        DirectorJointPose mEyeRight;
+        DirectorJointPose mAltEyeLeft;
+        DirectorJointPose mAltEyeRight;
+        bool             mBodyYawValid = false;
+        F32              mBodyYaw = 0.f;
+        U32              mBodyLastFrame = 0xFFFFFFFF;
+        LLUUID           mTurnAnim;       // exact built-in/AO UUID Director started
+        LLUUID           mTurnSourceAnim; // canonical TURNLEFT/RIGHT AO state
+        bool             mOwnsTurnAnim = false;
+        bool             mTurnAOOverrideActive = false;
+    };
     // per-frame gaze solve helpers (file-scope math lives in the cpp)
-    void gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bool advance);
+    void gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bool advance,
+                   bool constrain_eye_cone);
+    void captureDirectorLookAtPose(LLVOAvatar* av, DirectorGaze& runtime);
+    void restoreDirectorLookAtPose(LLVOAvatar* av, DirectorGaze& runtime);
+    bool applyDirectorBodyTurn(LLVOAvatar* av, DirectorGaze& runtime);
+    void updateDirectorTurnAnimation(LLVOAvatar* av, DirectorGaze& runtime,
+                                     S32 direction);
+    void stopDirectorTurnAnimation(LLVOAvatar* av, DirectorGaze& runtime);
 
     // ---- Pose-ghost impostor cache (session-only) -----------------------------
     // The pixel data itself lives in each actor's own LLVOAvatar::mImpostor
@@ -866,6 +914,7 @@ private:
     std::map<LLUUID, EditHistory> mHistory;   // per-actor bounded undo/redo stacks
     std::map<LLUUID, Follow> mFollows;  // follower key -> leader relationship (session-only)
     std::map<LLUUID, Gaze> mGazes;      // per-actor look-at config + runtime (session-only)
+    std::map<LLUUID, DirectorGaze> mDirectorGazes; // render-only real-cast camera gaze runtime
 
     // P2 edit selection: the path key under edit + the selected node index
     LLUUID mEditActor;      // resolved path key (null = nothing being edited)

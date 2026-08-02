@@ -1709,12 +1709,6 @@
     <key>CinematicCamDetailBand</key><map><key>Comment</key><string>[Cinematic] Detail Sweep: normalized feet-to-head focus band.</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.68</real></map>
     <key>CinematicCamDetailDuration</key><map><key>Comment</key><string>[Cinematic] Detail Sweep: one-shot duration (s).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>12</real></map>
     <key>CinematicCamDetailFov</key><map><key>Comment</key><string>[Cinematic] Detail Sweep: FOV multiplier.</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.65</real></map>
-    <key>CinematicCamStepOrbitRadius</key><map><key>Comment</key><string>[Cinematic] Step Orbit: radius (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>3</real></map>
-    <key>CinematicCamStepOrbitHeight</key><map><key>Comment</key><string>[Cinematic] Step Orbit: camera height (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>1.2</real></map>
-    <key>CinematicCamStepOrbitPeriod</key><map><key>Comment</key><string>[Cinematic] Step Orbit: seconds per revolution.</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>12</real></map>
-    <key>CinematicCamStepOrbitSteps</key><map><key>Comment</key><string>[Cinematic] Step Orbit: angular steps per revolution.</string><key>Persist</key><integer>1</integer><key>Type</key><string>S32</string><key>Value</key><integer>12</integer></map>
-    <key>CinematicCamStepOrbitHold</key><map><key>Comment</key><string>[Cinematic] Step Orbit: fraction of each step spent holding.</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.7</real></map>
-    <key>CinematicCamStepOrbitHeading</key><map><key>Comment</key><string>[Cinematic] Step Orbit: facing-relative start heading (deg).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0</real></map>
     <key>CinematicCamCableLength</key><map><key>Comment</key><string>[Cinematic] Cable Cam: straight pass length (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>14</real></map>
     <key>CinematicCamCableMissDistance</key><map><key>Comment</key><string>[Cinematic] Cable Cam: chord side offset (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>2</real></map>
     <key>CinematicCamCableHeight</key><map><key>Comment</key><string>[Cinematic] Cable Cam: pass height (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>1.6</real></map>
@@ -1806,6 +1800,50 @@
       <integer>1</integer>
       <key>Type</key>
       <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>CinematicCamMotionStartMode</key>
+    <map>
+      <key>Comment</key>
+      <string>Shared motion start azimuth: 0 Classic/Absolute, 1 SubjectFacing, 2 CameraRelative, 3 Explicit, 4 seeded Random</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>CinematicCamMotionStartOffsetDeg</key>
+    <map>
+      <key>Comment</key>
+      <string>Motion start azimuth offset in degrees for SubjectFacing, or absolute region azimuth for Explicit</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+    </map>
+    <key>CinematicCamMotionDirection</key>
+    <map>
+      <key>Comment</key>
+      <string>Shared rotational/lateral motion direction: 0 Auto, 1 CW/reverse, 2 CCW/forward, 3 seeded Random</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>CinematicCamMotionSeed</key>
+    <map>
+      <key>Comment</key>
+      <string>Deterministic motion start seed; 0 auto-derives from mode and switcher slot/shot identity</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
       <key>Value</key>
       <integer>0</integer>
     </map>
@@ -4294,6 +4332,94 @@
       <key>Value</key>
       <integer>-1</integer>
     </map>
+    <key>DirectorLookAtCameraEnabled</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Master gate for rendering flagged real cast avatars looking at the local camera. Client-side pose and local-motion paint only; never changes simulator, network, movement, or signaled animation state.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>DirectorLookAtCameraMode</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Render-only camera-facing mode for flagged real cast avatars. 0 = Gaze (head/eyes), 1 = Turn body.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>DirectorLookAtCameraStrength</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Blend weight for the render-only real-cast head and eye camera gaze (0..1).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.0</real>
+    </map>
+    <key>DirectorLookAtCameraHeadEye</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Head and eye share for the render-only real-cast camera gaze (0 = eyes only, 1 = full head and neck contribution).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.0</real>
+    </map>
+    <key>DirectorLookAtCameraTorso</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Add a slight upper-torso contribution to the render-only real-cast camera gaze. Off keeps the override to head, neck, and eyes.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>DirectorLookAtCameraTorsoAmount</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Torso share for the render-only real-cast camera gaze (0..1). DirectorLookAtCameraTorso remains the default-off master gate.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.18</real>
+    </map>
+    <key>DirectorLookAtCameraSmoothing</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Direction smoothing for the render-only real-cast camera gaze (0 = snappy, 1 = very smooth).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.12</real>
+    </map>
+    <key>DirectorLookAtCameraEaseTime</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Ease-in and strength response time for the render-only real-cast camera gaze, in seconds (0..1).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.15</real>
+    </map>
     <key>AnimExplorerCaptureAll</key>
     <map>
       <key>Comment</key>
@@ -6489,7 +6615,7 @@
       <key>Type</key>
       <string>Boolean</string>
       <key>Value</key>
-      <integer>1</integer>
+      <integer>0</integer>
     </map>
     <key>BDMergeTexSpikeLogInterval</key>
     <map>
@@ -9974,6 +10100,17 @@
       <string>Boolean</string>
       <key>Value</key>
       <integer>1</integer>
+    </map>
+    <key>MachinimaDebugLogging</key>
+    <map>
+      <key>Comment</key>
+      <string>Emit verbose machinima / BD-merge diagnostic logging (Ghost Studio, Cinematic and Director camera, clone audit, weather, etc.). Off by default for a clean log; turn on when diagnosing an issue.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
     </map>
     <key>Marker</key>
     <map>
@@ -23360,6 +23497,13 @@
     <key>Type</key><string>F32</string>
     <key>Value</key><real>45.0</real>
   </map>
+  <key>BDMergeGazeHeadSlewRate</key>
+  <map>
+    <key>Comment</key><string>Maximum applied gaze head-chain yaw/pitch slew rate in degrees per second for large discontinuities.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>480.0</real>
+  </map>
   <key>BDMergeGazeEyeYawMax</key>
   <map>
     <key>Comment</key><string>Maximum gaze eye yaw in degrees.</string>
@@ -23787,6 +23931,20 @@
   <map>
     <key>Comment</key><string>Transient one-shot request for a manual lightning strike.</string>
     <key>Persist</key><integer>0</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>PrismLensEnabled</key>
+  <map>
+    <key>Comment</key><string>Enable the render-only Prism Lens projection and target spike. Default off.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>PrismLensDebug</key>
+  <map>
+    <key>Comment</key><string>Blit the Prism Lens auxiliary beauty buffer into its fixed debug rectangle.</string>
+    <key>Persist</key><integer>1</integer>
     <key>Type</key><string>Boolean</string>
     <key>Value</key><integer>0</integer>
   </map>

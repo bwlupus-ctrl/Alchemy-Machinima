@@ -36,6 +36,7 @@
 #include "lluuid.h"
 #include "v3math.h"
 
+#include <set>
 #include <string>
 #include <vector>
 
@@ -68,6 +69,13 @@ public:
     const uuid_vec_t& getIds() const { return mIds; }
     CastMember*       getMember(const LLUUID& id);
     const CastMember* getMember(const LLUUID& id) const;
+
+    // ---- render-only real-avatar camera gaze selection ----
+    // A subset of the cast, shared by the Camera-tab multi-select widget and
+    // the post-animation render hook. Session/scene data only; it is never
+    // copied to an avatar, animation message, or simulator update.
+    void setLookAtCamera(const LLUUID& id, bool selected);
+    bool isLookAtCamera(const LLUUID& id) const;
 
     // ---- resolution ----
     // null id = my avatar; a stale id (actor left the region) resolves to
@@ -200,6 +208,7 @@ private:
 
     std::vector<CastMember> mCast;
     uuid_vec_t              mIds;       // mirrors mCast order
+    std::set<LLUUID>        mLookAtCameraIds;
 
     LLUUID mSubjectA;
     LLUUID mSubjectB;

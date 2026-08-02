@@ -117,6 +117,10 @@ bool ALPanelDirectorSwitcher::postBuild()
          mode <= LLCinematicCamera::MODE_STATIC_FULL;
          ++mode)
     {
+        if (LLCinematicCamera::migrateLegacyMode(mode) != mode)
+        {
+            continue;
+        }
         mSlotMode->add(LLCinematicCamera::modeName(mode), LLSD(mode));
     }
     mPrimarySubject->add(

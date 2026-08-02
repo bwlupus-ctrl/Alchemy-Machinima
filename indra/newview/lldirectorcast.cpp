@@ -59,8 +59,10 @@ void LLDirectorCast::remove(const LLUUID& id)
         return;
     }
     const std::string group = it->mGroup;
+    LLActorMover::instance().clearDirectorLookAtRuntime(id);
     mCast.erase(it);
     mIds.erase(std::find(mIds.begin(), mIds.end(), id));
+    mLookAtCameraIds.erase(id);
     // a subject that leaves the cast stops being a subject
     if (mSubjectA == id)
     {
@@ -113,6 +115,28 @@ LLDirectorCast::CastMember* LLDirectorCast::getMember(const LLUUID& id)
 const LLDirectorCast::CastMember* LLDirectorCast::getMember(const LLUUID& id) const
 {
     return const_cast<LLDirectorCast*>(this)->getMember(id);
+}
+
+void LLDirectorCast::setLookAtCamera(const LLUUID& id, bool selected)
+{
+    if (!contains(id))
+    {
+        return;
+    }
+    if (selected)
+    {
+        mLookAtCameraIds.insert(id);
+    }
+    else
+    {
+        mLookAtCameraIds.erase(id);
+        LLActorMover::instance().clearDirectorLookAtRuntime(id);
+    }
+}
+
+bool LLDirectorCast::isLookAtCamera(const LLUUID& id) const
+{
+    return mLookAtCameraIds.find(id) != mLookAtCameraIds.end();
 }
 
 // ---------------------------------------------------------------------------
@@ -502,6 +526,7 @@ LLSD LLDirectorCast::sceneData() const
         }
         e["loco_anim"] = m.mLocoAnim;
         e["group"] = m.mGroup;
+        e["look_at_camera"] = isLookAtCamera(m.mId);
         cast_arr.append(e);
     }
     data["cast"] = cast_arr;
@@ -530,9 +555,11 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     // problem (the console cuts before loading). Queued staggered starts and
     // group delays belong to the outgoing cast, so both reset here.
     cancelPendingStarts();
+    LLActorMover::instance().clearAllDirectorLookAtRuntime();
     mGroupDelays.clear();
     mCast.clear();
     mIds.clear();
+    mLookAtCameraIds.clear();
     mSubjectA.setNull();
     mSubjectB.setNull();
     mSubjectC.setNull();
@@ -559,6 +586,10 @@ void LLDirectorCast::applySceneData(const LLSD& data)
         m.mGroup = e["group"].asString();   // absent in pre-group scenes -> ""
         mCast.push_back(m);
         mIds.push_back(m.mId);
+        if (e["look_at_camera"].asBoolean()) // absent in older scenes -> false
+        {
+            mLookAtCameraIds.insert(m.mId);
+        }
         // refresh the cached name when the actor is in world; a resolve
         // failure just leaves the member "(away)" -- never dropped
         resolve(m.mId);

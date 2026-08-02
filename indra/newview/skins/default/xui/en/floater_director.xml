@@ -205,7 +205,7 @@
         <columns
          label="Actor"
          name="name"
-         width="92" />
+         width="72" />
         <columns
          label="AB"
          name="ab"
@@ -214,6 +214,10 @@
          label="M"
          name="mark"
          width="24" />
+        <columns
+         label="L"
+         name="look"
+         width="20" />
     </scroll_list>
     <text
      follows="left|top"
@@ -923,12 +927,145 @@
              top="65"
              name="btn_clear_d"
              width="52" />
+            <check_box
+             control_name="DirectorLookAtCameraEnabled"
+             follows="left|top"
+             height="18"
+             label="Look at camera"
+             layout="topleft"
+             left="10"
+             top="89"
+             name="look_at_camera_enabled"
+             tool_tip="Render flagged real cast avatars looking at this viewer's camera. Local visual override only: no simulator, animation signal, or network state is changed"
+             width="126" />
+            <button
+             follows="left|top"
+             height="18"
+             label="Set selected"
+             layout="topleft"
+             left="144"
+             top="87"
+             name="btn_look_at_set"
+             width="88" />
+            <button
+             follows="left|top"
+             height="18"
+             label="Clear selected"
+             layout="topleft"
+             left="236"
+             top="87"
+             name="btn_look_at_clear"
+             width="96" />
+            <combo_box
+             control_name="DirectorLookAtCameraMode"
+             follows="left|top"
+             height="20"
+             layout="topleft"
+             left="10"
+             top="109"
+             name="look_at_camera_mode"
+             tool_tip="Gaze keeps the current head/eye behavior. Turn body eases the rendered avatar root toward the camera and locally layers a turn animation"
+             width="322">
+                <combo_box.item label="Gaze (head/eyes)" name="look_at_mode_gaze" value="0" />
+                <combo_box.item label="Turn body" name="look_at_mode_body" value="1" />
+            </combo_box>
+            <spinner
+             control_name="DirectorLookAtCameraStrength"
+             decimal_digits="2"
+             follows="left|top"
+             height="18"
+             increment="0.05"
+             label="Strength"
+             label_width="50"
+             layout="topleft"
+             left="10"
+             max_val="1"
+             min_val="0"
+             top="133"
+             name="look_at_camera_strength"
+             tool_tip="Blend weight for the local head and eye camera gaze"
+             width="112" />
+            <check_box
+             control_name="DirectorLookAtCameraTorso"
+             follows="left|top"
+             height="18"
+             label="Torso enabled"
+             layout="topleft"
+             left="144"
+             top="133"
+             name="look_at_camera_torso"
+             tool_tip="Master gate for the torso amount; off keeps the effect to head, neck, and eyes"
+             width="130" />
+            <slider
+             control_name="DirectorLookAtCameraHeadEye"
+             decimal_digits="2"
+             follows="left|top"
+             height="18"
+             increment="0.05"
+             label="Head / eyes"
+             label_width="100"
+             layout="topleft"
+             left="10"
+             max_val="1"
+             min_val="0"
+             top="157"
+             name="look_at_camera_head_eye"
+             tool_tip="0 uses eyes only; 1 gives the head and neck their full share"
+             width="322" />
+            <slider
+             control_name="DirectorLookAtCameraTorsoAmount"
+             decimal_digits="2"
+             follows="left|top"
+             height="18"
+             increment="0.05"
+             label="Torso amount"
+             label_width="100"
+             layout="topleft"
+             left="10"
+             max_val="1"
+             min_val="0"
+             top="179"
+             name="look_at_camera_torso_amount"
+             tool_tip="Torso share when Torso enabled is checked; 0 keeps the chest still and 1 gives it the full gaze turn"
+             width="322" />
+            <slider
+             control_name="DirectorLookAtCameraSmoothing"
+             decimal_digits="2"
+             follows="left|top"
+             height="18"
+             increment="0.01"
+             label="Smoothing"
+             label_width="100"
+             layout="topleft"
+             left="10"
+             max_val="1"
+             min_val="0"
+             top="201"
+             name="look_at_camera_smoothing"
+             tool_tip="0 is snappy; 1 is very smooth"
+             width="322" />
+            <slider
+             control_name="DirectorLookAtCameraEaseTime"
+             decimal_digits="2"
+             follows="left|top"
+             height="18"
+             increment="0.01"
+             label="Responsiveness"
+             label_width="100"
+             layout="topleft"
+             left="10"
+             max_val="1"
+             min_val="0"
+             top="223"
+             name="look_at_camera_ease_time"
+             tool_tip="Ease time in seconds; lower values react faster to activation and strength changes"
+             width="322" />
             <scroll_container
              follows="all"
-             height="460"
+             height="300"
              layout="topleft"
              left="0"
-             top="88"
+             top="248"
              name="camera_flow_scroll"
              opaque="false"
              size="15"
@@ -1382,6 +1519,8 @@ Status column: a walking figure means the actor is moving, a green dot means idl
 AB column: A marks Subject A and B marks Subject B, the bodies the cinematic camera frames. Set them from the cast right-click menu, the Camera tab, or by double-clicking a cast row (sets Subject A).
 
 M column: a flag means a mark (a saved position) is set for that actor.
+
+L column: L marks a cast member flagged for the Camera tab's local Look at camera override. The master toggle must also be on; ghosts and animesh are never affected.
 
 Groups: the dot-suffix after a name is the member's group tag (set in the Group box under the list); the Move tab's Start/Stop group drive every member of a group at once.
 

@@ -62,6 +62,7 @@
 #include "llmemory.h"
 #include "llparcel.h"
 #include "llperfstats.h"
+#include "llprismlens.h"
 #include "llrender.h"
 #include "llscenemonitor.h"
 #include "llsdjson.h"
@@ -909,6 +910,10 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
 
         LLGLState::checkStates();
 
+        // The Prism Lens spike owns an isolated cull/sort/render and restores
+        // the main camera and global renderer state before the main stateSort.
+        LLPrismLens::renderAuxiliaryView();
+
         ///////////////////////////////////
         //
         // StateSort
@@ -1112,6 +1117,8 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
         {
             gPipeline.renderDeferredLighting();
         }
+
+        LLPrismLens::compositeDebug();
 
         // [GhostDeferred] Per-frame counter log (gated on GhostDeferredDebugLog),
         // AFTER lighting so the post-deferred forward-solid draws + FINALIZE

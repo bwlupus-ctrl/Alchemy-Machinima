@@ -125,6 +125,8 @@ public:
     //attempt to allocate screen buffers at resX, resY
     //returns true if allocation successful, false otherwise
     bool allocateScreenBufferInternal(U32 resX, U32 resY);
+    bool allocatePrismLensBuffer(U32 width, U32 height);
+    void releasePrismLensBuffer();
     bool allocateShadowBuffer(U32 resX, U32 resY);
 
     // rebuild all LLVOVolume render batches
@@ -871,6 +873,7 @@ public:
     static bool             sDistortionRender;
     static bool             sImpostorRender;
     static bool             sImpostorRenderAlphaDepthPass;
+    static bool             sPrismLensRender;
     static bool             sUnderWaterRender;
     static bool             sRenderGlow;
     static bool             sTextureBindTest;
@@ -923,6 +926,9 @@ public:
 
     // Auxillary render target pack scaled to the hero probe's per-face size.
     RenderTargetPack mHeroProbeRT;
+
+    // Minimal deferred pack used only by the scoped Prism Lens auxiliary view.
+    RenderTargetPack mPrismLensRT;
 
     // currently used render target pack
     RenderTargetPack* mRT;

@@ -15,17 +15,21 @@
 
 #include "alcameracurve.h"
 #include "aldirectorswitcher.h"
+#include "llagentpilot.h"
 #include "llcameraoperator.h"
 #include "llappviewer.h"            // gFrameIntervalSeconds
 #include "lldirectorcast.h"         // [Director] Subject A/B/C/D
+#include "llflycamrecorder.h"
 #include "lljoint.h"
 #include "llmath.h"
 #include "llpanel.h"
+#include "llpathcamera.h"
 #include "llpresentationtime.h"
 #include "llselectmgr.h"
 #include "llviewerobjectlist.h"     // gObjectList (locked follow target)
 #include "llviewercamera.h"
 #include "llviewercontrol.h"        // gSavedSettings, LLCachedControl
+#include "llviewerjoystick.h"
 #include "llviewerobject.h"
 #include "llvoavatar.h"
 #include "llvoavatarself.h"         // gAgentAvatarp, isAgentAvatarValid()
@@ -487,6 +491,13 @@ void LLCinematicCamera::requestAutoReframe()
 }
 
 //static
+S32 LLCinematicCamera::migrateLegacyMode(S32 mode)
+{
+    // Step Orbit was persisted as 40 before being folded back into Orbit.
+    return mode == 40 ? MODE_ORBIT : mode;
+}
+
+//static
 const char* LLCinematicCamera::modeName(S32 mode)
 {
     static const char* const names[] = {
@@ -500,7 +511,7 @@ const char* LLCinematicCamera::modeName(S32 mode)
         "Boost Rise", "Boom Over", "Top Spin", "Turntable Crane",
         "Floating Close-Up", "Tilt Whip", "Body Helix Reveal",
         "Descent Pedestal", "Parallax Slide", "Figure-8",
-        "Detail Sweep", "Step Orbit", "Cable Cam Fly-by",
+        "Detail Sweep", "Unknown", "Cable Cam Fly-by",
         "Breathing Hold", "Static Wide", "Static Medium",
         "Static Close", "Static Profile Left", "Static Profile Right",
         "Static Low Hero", "Static High Angle", "Static Full Body",
@@ -508,6 +519,7 @@ const char* LLCinematicCamera::modeName(S32 mode)
     constexpr S32 count = (S32)(sizeof(names) / sizeof(names[0]));
     static_assert(count == MODE_STATIC_FULL + 1,
                   "Every persisted CineCam mode needs one stable label");
+    mode = migrateLegacyMode(mode);
     return mode >= 0 && mode < count ? names[mode] : "Unknown";
 }
 
@@ -540,13 +552,19 @@ bool LLCinematicCamera::isActive() const
 {
     static LLCachedControl<bool> enabled(gSavedSettings, "CinematicCamEnabled", false);
     static LLCachedControl<S32>  mode(gSavedSettings, "CinematicCamMode", 1);
+    const S32 configured_mode = mode;
+    const S32 migrated_mode = migrateLegacyMode(configured_mode);
+    if (migrated_mode != configured_mode)
+    {
+        gSavedSettings.setS32("CinematicCamMode", migrated_mode);
+    }
     if (!enabled)
     {
         return false;
     }
     const ALDirectorSwitcher& switcher = ALDirectorSwitcher::instance();
     const S32 effective_mode =
-        switcher.isDrivingCamera() ? switcher.activeMode() : (S32)mode;
+        switcher.isDrivingCamera() ? switcher.activeMode() : migrated_mode;
     if (effective_mode <= MODE_OFF || effective_mode > MODE_STATIC_FULL)
     {
         return false;
@@ -570,6 +588,50 @@ bool LLCinematicCamera::isActiveBoneLockTarget(const LLUUID& avatar_id) const
         return false;
     }
     LLVOAvatar* target = resolveTarget();
+    return target && !target->isDead() && target->getID() == avatar_id;
+}
+
+bool LLCinematicCamera::isActiveHeadFramingTarget(const LLUUID& avatar_id) const
+{
+    static LLCachedControl<bool> enabled(gSavedSettings, "CinematicCamEnabled", false);
+    static LLCachedControl<S32>  mode(gSavedSettings, "CinematicCamMode", 1);
+    static LLCachedControl<bool> look_at_head(gSavedSettings, "CinematicCamLookAtHead", true);
+    if (avatar_id.isNull() || !enabled || !look_at_head)
+    {
+        return false;
+    }
+    const ALDirectorSwitcher& switcher = ALDirectorSwitcher::instance();
+    const S32 effective_mode =
+        switcher.isDrivingCamera() ? switcher.activeMode() : (S32)mode;
+    if (effective_mode <= MODE_OFF || effective_mode > MODE_STATIC_FULL ||
+        effective_mode == MODE_BONE_LOCK)
+    {
+        return false;
+    }
+    LLVOAvatar* target = resolveTarget();
+    return target && !target->isDead() && target->getID() == avatar_id;
+}
+
+bool LLCinematicCamera::isActiveOrbitAnchor(const LLUUID& avatar_id) const
+{
+    static LLCachedControl<bool> orbit_enabled(
+        gSavedSettings, "FlycamOrbitEnabled", false);
+    if (avatar_id.isNull() || !orbit_enabled ||
+        !LLViewerJoystick::getInstance()->getOverrideCamera())
+    {
+        return false;
+    }
+
+    // Mirror the idle camera-owner precedence. An engaged flycam is not the
+    // active driver while any higher-priority camera owns this frame.
+    if ((gAgentPilot.isPlaying() && gAgentPilot.getOverrideCamera()) ||
+        LLFlycamRecorder::instance().isPlaybackActive() ||
+        LLPathCamera::instance().isActive() || isActive())
+    {
+        return false;
+    }
+
+    LLVOAvatar* target = resolveDefaultTarget();
     return target && !target->isDead() && target->getID() == avatar_id;
 }
 
@@ -746,7 +808,8 @@ LLVector3 LLCinematicCamera::patternOrbit(const LLVector3& center, F32 phase)
     static LLCachedControl<F32> height(gSavedSettings, "CinematicCamOrbitHeight", 0.5f);
     static LLCachedControl<F32> bob(gSavedSettings, "CinematicCamOrbitBob", 0.f);
 
-    const F32 a = phase * speed * DEG_TO_RAD;
+    const F32 a = motionStartAzimuth(0.f) +
+                  mMotionDir * phase * speed * DEG_TO_RAD;
     return center + LLVector3(cosf(a) * radius,
                               sinf(a) * radius,
                               height + bob * sinf(a * 2.7f));
@@ -762,7 +825,8 @@ LLVector3 LLCinematicCamera::patternHover(const LLVector3& center, F32 phase)
     // a fly: azimuth drifts on noise, elevation and range breathe on
     // decorrelated noise, plus fine jitter
     const F32 t = phase * speed;
-    const F32 az = t * 0.9f + cc_fbm(t * 0.7f) * 3.f;
+    const F32 az = motionStartAzimuth(0.f) +
+                   mMotionDir * (t * 0.9f + cc_fbm(t * 0.7f) * 3.f);
     const F32 el = cc_fbm(t * 0.55f + 31.7f) * 0.6f;
     const F32 rr = distance * (1.f + 0.25f * cc_fbm(t * 0.8f + 57.1f) * wander);
     LLVector3 p(cosf(az) * cosf(el) * rr,
@@ -782,7 +846,7 @@ LLVector3 LLCinematicCamera::patternSweep(const LLVector3& center, F32 phase)
     static LLCachedControl<F32> height(gSavedSettings, "CinematicCamSweepHeight", 0.5f);
     static LLCachedControl<bool> pingpong(gSavedSettings, "CinematicCamSweepPingPong", true);
 
-    const F32 h = heading * DEG_TO_RAD;
+    const F32 h = motionStartAzimuth(0.f) + heading * DEG_TO_RAD;
     const LLVector3 dir(cosf(h), sinf(h), 0.f);         // travel direction
     const LLVector3 perp(-sinf(h), cosf(h), 0.f);       // offset from subject
 
@@ -798,6 +862,10 @@ LLVector3 LLCinematicCamera::patternSweep(const LLVector3& center, F32 phase)
     {
         t = cc_frac(s);
     }
+    if (mMotionDir < 0.f)
+    {
+        t = 1.f - t;
+    }
     return center + perp * distance + dir * ((t - 0.5f) * len) + LLVector3(0.f, 0.f, height);
 }
 
@@ -809,7 +877,8 @@ LLVector3 LLCinematicCamera::patternCrane(const LLVector3& center, F32 phase)
     static LLCachedControl<F32> max_h(gSavedSettings, "CinematicCamCraneMaxHeight", 4.f);
     static LLCachedControl<F32> rise_period(gSavedSettings, "CinematicCamCraneRisePeriod", 14.f);
 
-    const F32 a = phase * speed * DEG_TO_RAD;
+    const F32 a = motionStartAzimuth(0.f) +
+                  mMotionDir * phase * speed * DEG_TO_RAD;
     const F32 u = 0.5f + 0.5f * sinf(phase * F_TWO_PI / llmax((F32)rise_period, 1.f));
     return center + LLVector3(cosf(a) * radius, sinf(a) * radius, cc_lerp(min_h, max_h, u));
 }
@@ -845,7 +914,143 @@ F32 cc_progress(F32 phase, F32 duration, S32 end_mode)
     const F32 u = cc_progress_raw(phase, duration, end_mode);
     return u * u * (3.f - 2.f * u);     // smoothstep ease in/out
 }
+
+U64 cc_motionHash(S32 seed, S32 mode, S32 slot, U64 shot_index, U64 lane)
+{
+    // Addressed SplitMix64 lanes keep every choice a pure function of the
+    // authored seed and shot identity. No mutable RNG state is consumed.
+    U64 value = seed != 0
+        ? static_cast<U64>(static_cast<U32>(seed))
+        : 0x6a09e667f3bcc909ULL;
+    value ^= static_cast<U64>(static_cast<U32>(mode)) *
+             0x9e3779b97f4a7c15ULL;
+    value ^= static_cast<U64>(static_cast<U32>(slot)) *
+             0xbf58476d1ce4e5b9ULL;
+    value ^= shot_index * 0x94d049bb133111ebULL;
+    value ^= lane * 0xd6e8feb86659fd93ULL;
+    value += 0x9e3779b97f4a7c15ULL;
+    value = (value ^ (value >> 30)) * 0xbf58476d1ce4e5b9ULL;
+    value = (value ^ (value >> 27)) * 0x94d049bb133111ebULL;
+    return value ^ (value >> 31);
+}
+
+F32 cc_motionUnit(S32 seed, S32 mode, S32 slot, U64 shot_index, U64 lane)
+{
+    const U64 hash = cc_motionHash(seed, mode, slot, shot_index, lane);
+    return static_cast<F32>((hash >> 40) & 0x00ffffffULL) / 16777216.f;
+}
 } // anonymous namespace
+
+void LLCinematicCamera::captureMotionStart(LLVOAvatar* av,
+                                            const LLVector3& center,
+                                            S32 mode, S32 switcher_slot,
+                                            U64 shot_index)
+{
+    static LLCachedControl<S32> start_mode_setting(
+        gSavedSettings, "CinematicCamMotionStartMode", 2);
+    static LLCachedControl<F32> offset_deg_setting(
+        gSavedSettings, "CinematicCamMotionStartOffsetDeg", 0.f);
+    static LLCachedControl<S32> direction_setting(
+        gSavedSettings, "CinematicCamMotionDirection", 0);
+    static LLCachedControl<S32> seed_setting(
+        gSavedSettings, "CinematicCamMotionSeed", 0);
+
+    const S32 start_mode = llclamp((S32)start_mode_setting, 0, 4);
+    const S32 direction = llclamp((S32)direction_setting, 0, 3);
+    const S32 seed = seed_setting;
+    const F32 offset_deg = std::isfinite((F32)offset_deg_setting)
+        ? (F32)offset_deg_setting : 0.f;
+
+    LLVector3 camera_delta = mTripodPos - center;
+    camera_delta.mV[VZ] = 0.f;
+    const bool have_camera_azimuth = camera_delta.isFinite() &&
+        camera_delta.magVecSquared() > 1e-6f;
+    const F32 camera_azimuth = have_camera_azimuth
+        ? atan2f(camera_delta.mV[VY], camera_delta.mV[VX]) : 0.f;
+    const F32 subject_azimuth = cc_avatarYaw(av);
+
+    mMotionStartClassic = start_mode == 0;
+    switch (start_mode)
+    {
+        case 1: // SubjectFacing
+            mMotionStartAzimuth =
+                subject_azimuth + offset_deg * DEG_TO_RAD;
+            break;
+        case 2: // CameraRelative
+            if (have_camera_azimuth)
+            {
+                mMotionStartAzimuth = camera_azimuth;
+            }
+            else
+            {
+                // Camera exactly above/below center has no horizontal azimuth.
+                // Classic is the only stable, backwards-compatible fallback.
+                mMotionStartClassic = true;
+                mMotionStartAzimuth = 0.f;
+            }
+            break;
+        case 3: // Explicit region azimuth
+            mMotionStartAzimuth = offset_deg * DEG_TO_RAD;
+            break;
+        case 4: // Random, deterministically addressed by this shot
+            mMotionStartAzimuth =
+                cc_motionUnit(seed, mode, switcher_slot, shot_index, 0ULL) *
+                F_TWO_PI;
+            break;
+        case 0: // Classic/Absolute
+        default:
+            mMotionStartAzimuth = 0.f;
+            break;
+    }
+    if (!std::isfinite(mMotionStartAzimuth))
+    {
+        mMotionStartClassic = true;
+        mMotionStartAzimuth = 0.f;
+    }
+
+    switch (direction)
+    {
+        case 1: // CW
+            mMotionDir = -1.f;
+            break;
+        case 2: // CCW
+            mMotionDir = 1.f;
+            break;
+        case 3: // Random
+            mMotionDir =
+                (cc_motionHash(seed, mode, switcher_slot, shot_index, 1ULL) &
+                 1ULL) != 0ULL ? 1.f : -1.f;
+            break;
+        case 0: // Auto
+        default:
+        {
+            // Classic+Auto is the legacy + direction exactly. Otherwise head
+            // toward the pre-shot view by its shortest arc. CameraRelative is
+            // already there, so continue away from the subject's frontal axis.
+            mMotionDir = 1.f;
+            if (!mMotionStartClassic && have_camera_azimuth)
+            {
+                const F32 toward_camera =
+                    llsimple_angle(camera_azimuth - mMotionStartAzimuth);
+                if (fabsf(toward_camera) > 1e-4f)
+                {
+                    mMotionDir = toward_camera < 0.f ? -1.f : 1.f;
+                }
+                else
+                {
+                    const F32 facing_side = llsimple_angle(
+                        mMotionStartAzimuth - subject_azimuth);
+                    if (fabsf(facing_side) > 1e-4f)
+                    {
+                        mMotionDir = facing_side < 0.f ? -1.f : 1.f;
+                    }
+                }
+            }
+            break;
+        }
+    }
+    mMotionStartCaptured = true;
+}
 
 bool LLCinematicCamera::captureCurrentSwitcherView(
     S32 subject, F32& yaw_offset_deg, F32& pitch_deg, F32& distance_m,
@@ -972,7 +1177,9 @@ LLVector3 LLCinematicCamera::patternLowHero(LLVOAvatar* av, const LLVector3& cen
     static LLCachedControl<F32> heading(gSavedSettings, "CinematicCamHeroHeading", 0.f);   // deg from facing
 
     const F32 w = F_TWO_PI / llmax((F32)period, 1.f);
-    const F32 yaw = cc_avatarYaw(av) + (heading + 0.5f * arc * sinf(phase * w)) * DEG_TO_RAD;
+    const F32 yaw = motionStartAzimuth(cc_avatarYaw(av)) +
+                    ((F32)heading + mMotionDir * 0.5f * (F32)arc *
+                     sinf(phase * w)) * DEG_TO_RAD;
     const F32 d = llmax((F32)distance, 0.3f) * (1.f - 0.12f * sinf(phase * w * 0.5f));
     return center + LLVector3(cosf(yaw) * d, sinf(yaw) * d, (F32)height);
 }
@@ -988,9 +1195,12 @@ LLVector3 LLCinematicCamera::patternOverhead(const LLVector3& center, F32 phase,
     static LLCachedControl<S32> end_mode(gSavedSettings, "CinematicCamOverheadEndMode", 0); // hold
 
     const F32 u = cc_progress(phase, duration, end_mode);
-    roll_out = spin * phase * DEG_TO_RAD;
+    roll_out = mMotionDir * spin * phase * DEG_TO_RAD;
     // tiny lateral epsilon keeps the straight-down look-at well-defined
-    return center + LLVector3(0.02f, 0.f, llmax(cc_lerp((F32)h_start, (F32)h_end, u), 0.5f));
+    const F32 a = motionStartAzimuth(0.f);
+    return center + LLVector3(
+        cosf(a) * 0.02f, sinf(a) * 0.02f,
+        llmax(cc_lerp((F32)h_start, (F32)h_end, u), 0.5f));
 }
 
 // snap zoom with a slight overshoot from a tripod position captured at
@@ -1030,7 +1240,13 @@ LLVector3 LLCinematicCamera::patternWhipArc(LLVOAvatar* av, const LLVector3& cen
 
     F32 u = llclamp(phase / llmax((F32)duration, 0.05f), 0.f, 1.f);
     u = u * u * (3.f - 2.f * u); u = u * u * (3.f - 2.f * u);   // double smoothstep: hard whip
-    const F32 yaw = cc_avatarYaw(av) + cc_lerp((F32)from_deg, (F32)to_deg, u) * DEG_TO_RAD;
+    if (mMotionDir < 0.f)
+    {
+        u = 1.f - u;
+    }
+    const F32 yaw = motionStartAzimuth(cc_avatarYaw(av)) +
+                    cc_lerp((F32)from_deg, (F32)to_deg, u) *
+                    DEG_TO_RAD;
     return center + LLVector3(cosf(yaw) * distance, sinf(yaw) * distance, (F32)height);
 }
 
@@ -1044,8 +1260,14 @@ LLVector3 LLCinematicCamera::patternArc(LLVOAvatar* av, const LLVector3& center,
     static LLCachedControl<F32> height(gSavedSettings, "CinematicCamArcHeight", 1.3f);
     static LLCachedControl<S32> end_mode(gSavedSettings, "CinematicCamArcEndMode", 0);     // hold
 
-    const F32 u = cc_progress(phase, duration, end_mode);
-    const F32 yaw = cc_avatarYaw(av) + cc_lerp((F32)from_deg, (F32)to_deg, u) * DEG_TO_RAD;
+    F32 u = cc_progress(phase, duration, end_mode);
+    if (mMotionDir < 0.f)
+    {
+        u = 1.f - u;
+    }
+    const F32 yaw = motionStartAzimuth(cc_avatarYaw(av)) +
+                    cc_lerp((F32)from_deg, (F32)to_deg, u) *
+                    DEG_TO_RAD;
     return center + LLVector3(cosf(yaw) * distance, sinf(yaw) * distance, (F32)height);
 }
 
@@ -1187,7 +1409,8 @@ LLVector3 LLCinematicCamera::patternSpiral(const LLVector3& center, F32 phase)
     static LLCachedControl<F32> duration(gSavedSettings, "CinematicCamSpiralDuration", 12.f);
 
     const F32 u = cc_progress(phase, duration, 0);
-    const F32 a = phase * speed * DEG_TO_RAD;
+    const F32 a = motionStartAzimuth(0.f) +
+                  mMotionDir * phase * speed * DEG_TO_RAD;
     const F32 r = cc_lerp((F32)r_start, llmax((F32)r_end, 0.3f), u);
     return center + LLVector3(cosf(a) * r, sinf(a) * r, cc_lerp((F32)h_start, (F32)h_end, u));
 }
@@ -1282,14 +1505,15 @@ LLVector3 LLCinematicCamera::patternBarrelRoll(LLVOAvatar* av, const LLVector3& 
     if (oscillate)
     {
         const F32 w = F_TWO_PI / llmax((F32)roll_period, 0.1f);
-        roll_out = (F32)roll_amp * sinf(phase * w) * DEG_TO_RAD;
+        roll_out = mMotionDir * (F32)roll_amp *
+                   sinf(phase * w) * DEG_TO_RAD;
     }
     else
     {
-        roll_out = (F32)roll_speed * phase * DEG_TO_RAD;
+        roll_out = mMotionDir * (F32)roll_speed * phase * DEG_TO_RAD;
     }
 
-    const F32 yaw = cc_avatarYaw(av);
+    const F32 yaw = motionStartAzimuth(cc_avatarYaw(av));
     return center + LLVector3(cosf(yaw) * llmax((F32)distance, 0.3f),
                              sinf(yaw) * llmax((F32)distance, 0.3f), (F32)height);
 }
@@ -1309,9 +1533,10 @@ LLVector3 LLCinematicCamera::patternCorkscrew(const LLVector3& center, F32 phase
 
     const F32 u = cc_progress(phase, duration, end_mode);
     const F32 revs = (F32)turns * u;                    // revolutions completed
-    const F32 a = revs * F_TWO_PI;
+    const F32 a = motionStartAzimuth(0.f) +
+                  mMotionDir * revs * F_TWO_PI;
     const F32 r = cc_lerp((F32)r_start, llmax((F32)r_end, 0.3f), u);
-    roll_out = revs * (F32)roll_per_turn * DEG_TO_RAD;
+    roll_out = mMotionDir * revs * (F32)roll_per_turn * DEG_TO_RAD;
     return center + LLVector3(cosf(a) * r, sinf(a) * r, cc_lerp((F32)h_start, (F32)h_end, u));
 }
 
@@ -1326,8 +1551,10 @@ LLVector3 LLCinematicCamera::patternPendulum(LLVOAvatar* av, const LLVector3& ce
     static LLCachedControl<F32> heading(gSavedSettings, "CinematicCamPendulumHeading", 0.f);// deg, arc facing
 
     const F32 w = F_TWO_PI / llmax((F32)period, 0.5f);
-    const F32 ang = (F32)swing * sinf(phase * w);       // eased at the extremes
-    const F32 yaw = cc_avatarYaw(av) + (heading + ang) * DEG_TO_RAD;
+    const F32 ang = mMotionDir * (F32)swing *
+                    sinf(phase * w);                    // eased at the extremes
+    const F32 yaw = motionStartAzimuth(cc_avatarYaw(av)) +
+                    ((F32)heading + ang) * DEG_TO_RAD;
     return center + LLVector3(cosf(yaw) * llmax((F32)radius, 0.3f),
                              sinf(yaw) * llmax((F32)radius, 0.3f), (F32)height);
 }
@@ -1343,7 +1570,8 @@ LLVector3 LLCinematicCamera::patternContraOrbit(const LLVector3& center, F32 pha
     static LLCachedControl<F32> fov_end(gSavedSettings, "CinematicCamContraFovEnd", 1.5f);
     static LLCachedControl<F32> warp_period(gSavedSettings, "CinematicCamContraWarpPeriod", 8.f); // s
 
-    const F32 a = phase * speed * DEG_TO_RAD;
+    const F32 a = motionStartAzimuth(0.f) +
+                  mMotionDir * phase * speed * DEG_TO_RAD;
     const F32 w = F_TWO_PI / llmax((F32)warp_period, 0.5f);
     const F32 t = 0.5f + 0.5f * sinf(phase * w);
     fov_mul = llclamp(cc_lerp((F32)fov_start, (F32)fov_end, t), 0.05f, 4.f);
@@ -1380,14 +1608,18 @@ LLVector3 LLCinematicCamera::patternFloorSkimmer(LLVOAvatar* av, const LLVector3
     static LLCachedControl<F32> speed(gSavedSettings, "CinematicCamSkimmerSpeed", 1.5f);    // m/s
     static LLCachedControl<F32> heading(gSavedSettings, "CinematicCamSkimmerHeading", 0.f); // deg
 
-    const F32 h = heading * DEG_TO_RAD;
+    const F32 h = motionStartAzimuth(0.f) + heading * DEG_TO_RAD;
     const LLVector3 dir(cosf(h), sinf(h), 0.f);
     const LLVector3 perp(-sinf(h), cosf(h), 0.f);
 
     const F32 len = llmax((F32)length, 0.1f);
     const F32 s = phase * llmax((F32)speed, 0.01f) / len;
     const F32 c = cc_frac(s * 0.5f) * 2.f;              // 0..2
-    const F32 t = (c < 1.f) ? c : 2.f - c;              // triangle 0..1..0 (ping-pong)
+    F32 t = (c < 1.f) ? c : 2.f - c;                    // triangle 0..1..0 (ping-pong)
+    if (mMotionDir < 0.f)
+    {
+        t = 1.f - t;
+    }
     return center + perp * llmax((F32)distance, 0.3f) + dir * ((t - 0.5f) * len)
                   + LLVector3(0.f, 0.f, (F32)height);
 }
@@ -1424,8 +1656,8 @@ LLVector3 LLCinematicCamera::patternBoomOver(LLVOAvatar* av, const LLVector3& ce
 
     const F32 u = cc_progress(phase, duration, end_mode);
     const F32 half = 0.5f * (F32)span * DEG_TO_RAD;
-    const F32 phi = cc_lerp(-half, half, u);            // -span/2 .. +span/2
-    const F32 ax = axis * DEG_TO_RAD;
+    const F32 phi = mMotionDir * cc_lerp(-half, half, u); // reverse side/travel together
+    const F32 ax = motionStartAzimuth(0.f) + axis * DEG_TO_RAD;
     const LLVector3 dir(cosf(ax), sinf(ax), 0.f);
     return center + dir * ((F32)radius * sinf(phi)) + LLVector3(0.f, 0.f, (F32)apex * cosf(phi));
 }
@@ -1438,8 +1670,9 @@ LLVector3 LLCinematicCamera::patternTopSpin(const LLVector3& center, F32 phase, 
     static LLCachedControl<F32> speed(gSavedSettings, "CinematicCamTopSpinSpeed", 30.f);    // deg/s
     static LLCachedControl<F32> offset(gSavedSettings, "CinematicCamTopSpinOffset", 0.f);   // small radius
 
-    const F32 a = phase * speed * DEG_TO_RAD;
-    roll_out = a;                                       // spin the straight-down view
+    const F32 spin = mMotionDir * phase * speed * DEG_TO_RAD;
+    const F32 a = motionStartAzimuth(0.f) + spin;
+    roll_out = spin;                                    // spin the straight-down view
     // a tiny lateral epsilon keeps the look-straight-down orientation well
     // defined even with Offset 0
     const F32 r = (F32)offset;
@@ -1456,7 +1689,8 @@ LLVector3 LLCinematicCamera::patternTurntable(const LLVector3& center, F32 phase
     static LLCachedControl<F32> max_h(gSavedSettings, "CinematicCamTurntableMaxHeight", 3.f);
     static LLCachedControl<F32> period(gSavedSettings, "CinematicCamTurntablePeriod", 20.f);// s
 
-    const F32 a = phase * speed * DEG_TO_RAD;
+    const F32 a = motionStartAzimuth(0.f) +
+                  mMotionDir * phase * speed * DEG_TO_RAD;
     const F32 u = 0.5f + 0.5f * sinf(phase * F_TWO_PI / llmax((F32)period, 1.f));
     return center + LLVector3(cosf(a) * radius, sinf(a) * radius, cc_lerp((F32)min_h, (F32)max_h, u));
 }
@@ -1524,7 +1758,8 @@ LLVector3 LLCinematicCamera::patternBodyHelix(LLVOAvatar* av, const LLVector3& c
         head = joint->getWorldPosition() + frame_off;
     }
     const F32 u = cc_progress(phase, duration, 0);
-    const F32 a = cc_avatarYaw(av) + (F32)revolutions * F_TWO_PI * u;
+    const F32 a = motionStartAzimuth(cc_avatarYaw(av)) +
+                  mMotionDir * (F32)revolutions * F_TWO_PI * u;
     const F32 z = cc_lerp(feet.mV[VZ] + (F32)start_offset,
                           head.mV[VZ] + (F32)end_offset, u);
     focus_io = LLVector3(cc_lerp(feet.mV[VX], head.mV[VX], u),
@@ -1556,7 +1791,8 @@ LLVector3 LLCinematicCamera::patternDescent(LLVOAvatar* av, const LLVector3& cen
                           feet.mV[VZ] + (F32)foot_offset, u);
     focus_io = LLVector3(cc_lerp(head.mV[VX], feet.mV[VX], u),
                          cc_lerp(head.mV[VY], feet.mV[VY], u), z);
-    const F32 yaw = cc_avatarYaw(av) + (F32)heading * DEG_TO_RAD;
+    const F32 yaw = motionStartAzimuth(cc_avatarYaw(av)) +
+                    mMotionDir * (F32)heading * DEG_TO_RAD;
     return focus_io + LLVector3(cosf(yaw) * llmax((F32)distance, 0.3f),
                                 sinf(yaw) * llmax((F32)distance, 0.3f), 0.f);
 }
@@ -1570,8 +1806,13 @@ LLVector3 LLCinematicCamera::patternParallaxSlide(LLVOAvatar* av, const LLVector
     static LLCachedControl<F32> duration(gSavedSettings, "CinematicCamParallaxDuration", 10.f);
     static LLCachedControl<F32> heading(gSavedSettings, "CinematicCamParallaxHeading", 0.f);
 
-    const F32 u = cc_progress(phase, duration, 0);
-    const F32 yaw = cc_avatarYaw(av) + (F32)heading * DEG_TO_RAD;
+    F32 u = cc_progress(phase, duration, 0);
+    if (mMotionDir < 0.f)
+    {
+        u = 1.f - u;
+    }
+    const F32 yaw = motionStartAzimuth(cc_avatarYaw(av)) +
+                    (F32)heading * DEG_TO_RAD;
     const LLVector3 away(cosf(yaw), sinf(yaw), 0.f);
     const LLVector3 rail(-sinf(yaw), cosf(yaw), 0.f);
     return center + away * llmax((F32)distance, 0.3f)
@@ -1587,8 +1828,10 @@ LLVector3 LLCinematicCamera::patternFigureEight(LLVOAvatar* av, const LLVector3&
     static LLCachedControl<F32> period(gSavedSettings, "CinematicCamFigureEightPeriod", 10.f);
     static LLCachedControl<F32> heading(gSavedSettings, "CinematicCamFigureEightHeading", 0.f);
 
-    const F32 t = phase * F_TWO_PI / llmax((F32)period, 0.5f);
-    const F32 yaw = cc_avatarYaw(av) + (F32)heading * DEG_TO_RAD;
+    const F32 t = mMotionDir * phase * F_TWO_PI /
+                  llmax((F32)period, 0.5f);
+    const F32 yaw = motionStartAzimuth(cc_avatarYaw(av)) +
+                    (F32)heading * DEG_TO_RAD;
     const LLVector3 fwd(cosf(yaw), sinf(yaw), 0.f);
     const LLVector3 side(-sinf(yaw), cosf(yaw), 0.f);
     // Offset the lemniscate's crossover in front of the subject so the
@@ -1617,35 +1860,17 @@ LLVector3 LLCinematicCamera::patternDetailSweep(LLVOAvatar* av, const LLVector3&
         head = joint->getWorldPosition() + frame_off;
     }
     focus_io = feet + (head - feet) * llclamp((F32)band, 0.f, 1.f);
-    const F32 yaw = cc_avatarYaw(av);
+    const F32 yaw = motionStartAzimuth(cc_avatarYaw(av));
     const LLVector3 away(cosf(yaw), sinf(yaw), 0.f);
     const LLVector3 side(-sinf(yaw), cosf(yaw), 0.f);
-    const F32 u = cc_progress(phase, duration, 0);
+    F32 u = cc_progress(phase, duration, 0);
+    if (mMotionDir < 0.f)
+    {
+        u = 1.f - u;
+    }
     fov_mul = llclamp((F32)fov, 0.1f, 1.5f);
     return focus_io + away * llmax((F32)distance, 0.25f)
                     + side * ((u - 0.5f) * (F32)length);
-}
-
-// stop-motion orbit: advance during the first part of each step, then hold
-LLVector3 LLCinematicCamera::patternStepOrbit(LLVOAvatar* av, const LLVector3& center, F32 phase)
-{
-    static LLCachedControl<F32> radius(gSavedSettings, "CinematicCamStepOrbitRadius", 3.f);
-    static LLCachedControl<F32> height(gSavedSettings, "CinematicCamStepOrbitHeight", 1.2f);
-    static LLCachedControl<F32> period(gSavedSettings, "CinematicCamStepOrbitPeriod", 12.f);
-    static LLCachedControl<S32> steps(gSavedSettings, "CinematicCamStepOrbitSteps", 12);
-    static LLCachedControl<F32> hold(gSavedSettings, "CinematicCamStepOrbitHold", 0.7f);
-    static LLCachedControl<F32> heading(gSavedSettings, "CinematicCamStepOrbitHeading", 0.f);
-
-    const S32 count = llclamp((S32)steps, 2, 72);
-    const F32 step_phase = cc_frac(phase / llmax((F32)period, 0.5f)) * count;
-    const F32 idx = floorf(step_phase);
-    const F32 move_fraction = llmax(1.f - llclamp((F32)hold, 0.f, 0.95f), 0.05f);
-    const F32 move = llclamp(cc_frac(step_phase) / move_fraction, 0.f, 1.f);
-    const F32 eased = move * move * (3.f - 2.f * move);
-    const F32 a = cc_avatarYaw(av) + (F32)heading * DEG_TO_RAD
-                + (idx + eased) * F_TWO_PI / count;
-    return center + LLVector3(cosf(a) * llmax((F32)radius, 0.3f),
-                              sinf(a) * llmax((F32)radius, 0.3f), (F32)height);
 }
 
 // drone/sports pass: a fast one-shot straight chord with look-at supplying
@@ -1658,8 +1883,13 @@ LLVector3 LLCinematicCamera::patternCableCam(LLVOAvatar* av, const LLVector3& ce
     static LLCachedControl<F32> duration(gSavedSettings, "CinematicCamCableDuration", 5.f);
     static LLCachedControl<F32> heading(gSavedSettings, "CinematicCamCableHeading", 0.f);
 
-    const F32 u = cc_progress(phase, duration, 0);
-    const F32 yaw = cc_avatarYaw(av) + (F32)heading * DEG_TO_RAD;
+    F32 u = cc_progress(phase, duration, 0);
+    if (mMotionDir < 0.f)
+    {
+        u = 1.f - u;
+    }
+    const F32 yaw = motionStartAzimuth(cc_avatarYaw(av)) +
+                    (F32)heading * DEG_TO_RAD;
     const LLVector3 path(cosf(yaw), sinf(yaw), 0.f);
     const LLVector3 side(-sinf(yaw), cosf(yaw), 0.f);
     return center + path * ((u - 0.5f) * (F32)length)
@@ -2356,6 +2586,9 @@ void LLCinematicCamera::updateCamera()
     // makes two different slots carrying the same mode a real cut.
     if (fresh_activation || mode_changed || target_changed || serial_changed)
     {
+        const bool motion_shot_changed = mode_changed || target_changed ||
+            serial_changed || (!switcher_driving && fresh_activation) ||
+            !mMotionStartCaptured;
         const F32 ease_seconds =
             switcher_driving && serial_changed
                 ? switcher.cutEaseSeconds() : 0.f;
@@ -2394,6 +2627,13 @@ void LLCinematicCamera::updateCamera()
         mTripodPos = LLViewerCamera::getInstance()->getOrigin();
         mPrevPos = mTripodPos;
         mPrevRot = LLViewerCamera::getInstance()->getQuaternion();
+        if (motion_shot_changed)
+        {
+            mMotionStartCaptured = false;
+            mMotionShotIndex = switcher_driving
+                ? static_cast<U64>(llround(switcher.activeSince() * 1000.0))
+                : mMotionShotIndex + 1;
+        }
         LLCameraOperator::instance().reset();
     }
     mLastMode = current_mode;
@@ -2438,6 +2678,13 @@ void LLCinematicCamera::updateCamera()
         const LLVector3 frame_off(0.f, 0.f, (F32)frame_up);
         focus += frame_off;
         center += frame_off;
+    }
+
+    if (!mMotionStartCaptured)
+    {
+        captureMotionStart(av, center, current_mode,
+                           switcher_driving ? switcher.activeSlot() : -1,
+                           mMotionShotIndex);
     }
 
     LLVector3 pos;
@@ -2487,7 +2734,6 @@ void LLCinematicCamera::updateCamera()
         case MODE_PARALLAX_SLIDE:pos = patternParallaxSlide(av, center, mPhase); break;
         case MODE_FIGURE_EIGHT:  pos = patternFigureEight(av, center, mPhase); break;
         case MODE_DETAIL_SWEEP:  pos = patternDetailSweep(av, center, mPhase, focus, mode_fov_mul); break;
-        case MODE_STEP_ORBIT:    pos = patternStepOrbit(av, center, mPhase); break;
         case MODE_CABLE_CAM:     pos = patternCableCam(av, center, mPhase); break;
         case MODE_BREATHING_HOLD:pos = patternBreathingHold(av, center, mPhase); break;
         case MODE_STATIC_WIDE:

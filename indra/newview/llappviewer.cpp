@@ -737,6 +737,8 @@ public:
 
 namespace
 {
+    void applyMachinimaDebugLogging();
+
     // Polls one skinned fonts.xml path; on a detected mtime change,
     // schedules a font reload through the same idle-tick mechanism the
     // AlchemyUIFontOverrides setting listener uses. We don't re-parse
@@ -817,6 +819,13 @@ bool LLAppViewer::init()
         // quit immediately
         return false;
     }
+
+    applyMachinimaDebugLogging();
+    gSavedSettings.getControl("MachinimaDebugLogging")->getSignal()->connect(
+        [](LLControlVariable*, const LLSD&, const LLSD&)
+        {
+            applyMachinimaDebugLogging();
+        });
 
     LL_INFOS("InitInfo") << "Configuration initialized." << LL_ENDL ;
 
@@ -2366,6 +2375,41 @@ void errorHandler(const std::string& title_string, const std::string& message_st
         else
         {
             OSMessageBox(message_string, title_string.empty() ? LLTrans::getString("MBFatalError") : title_string, OSMB_OK);
+        }
+    }
+}
+
+namespace
+{
+    void applyMachinimaDebugLogging()
+    {
+        static const char* const machinima_tags[] =
+        {
+            "GhostStudio",
+            "GhostDeferred",
+            "GhostDeferredContamination",
+            "CloneFidelity",
+            "CinematicCam",
+            "CameraShake",
+            "DirectorCast",
+            "Director",
+            "ActorMover",
+            "ActorPath",
+            "ObjectPath",
+            "Weather",
+            "HeroBeam",
+            "NSpotDbg",
+            "BDMerge",
+            "BDMergeTexSpike",
+            "AOEngine"
+        };
+
+        const LLError::ELevel level = gSavedSettings.getBOOL("MachinimaDebugLogging")
+            ? LLError::LEVEL_INFO
+            : LLError::LEVEL_WARN;
+        for (const char* tag : machinima_tags)
+        {
+            LLError::setTagLevel(tag, level);
         }
     }
 }

@@ -760,6 +760,7 @@ set(viewer_SOURCE_FILES
     llpreviewscript.cpp
     llpreviewsound.cpp
     llpreviewtexture.cpp
+    llprismlens.cpp
     llproductinforequest.cpp
     llprogressview.cpp
     llrecentpeople.cpp
@@ -1585,6 +1586,7 @@ set(viewer_HEADER_FILES
     llpreviewscript.h
     llpreviewsound.h
     llpreviewtexture.h
+    llprismlens.h
     llproductinforequest.h
     llprogressview.h
     llrecentpeople.h

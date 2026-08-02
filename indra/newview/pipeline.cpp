@@ -476,6 +476,7 @@ bool    LLPipeline::sReflectionRender = false;
 bool    LLPipeline::sDistortionRender = false;
 bool    LLPipeline::sImpostorRender = false;
 bool    LLPipeline::sImpostorRenderAlphaDepthPass = false;
+bool    LLPipeline::sPrismLensRender = false;
 bool    LLPipeline::sUnderWaterRender = false;
 bool    LLPipeline::sTextureBindTest = false;
 bool    LLPipeline::sRenderAttachedLights = true;
@@ -1320,6 +1321,56 @@ bool LLPipeline::allocateScreenBufferInternal(U32 resX, U32 resY)
     return true;
 }
 
+bool LLPipeline::allocatePrismLensBuffer(U32 width, U32 height)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_DISPLAY;
+
+    width = llclamp(width, 64u, 2048u);
+    height = llclamp(height, 64u, 2048u);
+
+    RenderTargetPack& rt = mPrismLensRT;
+    const bool needs_deferred_light = RenderDeferredSSAO || RenderShadowDetail > 0;
+    if (rt.width == width && rt.height == height &&
+        rt.deferredScreen.isComplete() && rt.screen.isComplete() &&
+        (!needs_deferred_light || rt.deferredLight.isComplete()))
+    {
+        return true;
+    }
+
+    releasePrismLensBuffer();
+    rt.width = width;
+    rt.height = height;
+
+    if (!rt.deferredScreen.allocate(width, height, GL_SRGB8_ALPHA8, true) ||
+        !addDeferredAttachments(rt.deferredScreen) ||
+        !rt.screen.allocate(width, height, GL_RGBA16F))
+    {
+        releasePrismLensBuffer();
+        return false;
+    }
+
+    rt.deferredScreen.shareDepthBuffer(rt.screen);
+
+    if (needs_deferred_light &&
+        !rt.deferredLight.allocate(width, height, GL_RGBA16F))
+    {
+        releasePrismLensBuffer();
+        return false;
+    }
+
+    return true;
+}
+
+void LLPipeline::releasePrismLensBuffer()
+{
+    RenderTargetPack& rt = mPrismLensRT;
+    rt.screen.release();
+    rt.deferredScreen.release();
+    rt.deferredLight.release();
+    rt.width = 0;
+    rt.height = 0;
+}
+
 // must be even to avoid a stripe in the horizontal shadow blur
 inline U32 BlurHappySize(U32 x, F32 scale) { return U32( x * scale + 16.0f) & ~0xF; }
 
@@ -1779,6 +1830,7 @@ void LLPipeline::releaseScreenBuffers()
     release_pack(mMainRT);
     release_pack(mAuxillaryRT);
     release_pack(mHeroProbeRT);
+    releasePrismLensBuffer();
 }
 
 void LLPipeline::releaseSunShadowTarget(U32 index)
@@ -15099,7 +15151,10 @@ void LLPipeline::bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_
 
     shader.uniform3fv(LLShaderMgr::DEFERRED_SUN_DIR, 1, mTransformedSunDir.mV);
     shader.uniform3fv(LLShaderMgr::DEFERRED_MOON_DIR, 1, mTransformedMoonDir.mV);
-    shader.uniform2f(LLShaderMgr::DEFERRED_SHADOW_RES, (GLfloat)mRT->shadow[0].getWidth(), (GLfloat)mRT->shadow[0].getHeight());
+    LLRenderTarget* sun_shadow = getSunShadowTarget(0);
+    shader.uniform2f(LLShaderMgr::DEFERRED_SHADOW_RES,
+                     (GLfloat)sun_shadow->getWidth(),
+                     (GLfloat)sun_shadow->getHeight());
     shader.uniform2f(LLShaderMgr::DEFERRED_PROJ_SHADOW_RES, (GLfloat)mSpotShadow[0].getWidth(), (GLfloat)mSpotShadow[0].getHeight());
     shader.uniform1f(LLShaderMgr::DEFERRED_DEPTH_CUTOFF, RenderEdgeDepthCutoff);
     shader.uniform1f(LLShaderMgr::DEFERRED_NORM_CUTOFF, RenderEdgeNormCutoff);
@@ -15785,12 +15840,13 @@ void LLPipeline::renderDeferredLighting()
     // reads gGLLastModelView == the PREVIOUS frame's camera). Guarded off by default
     // and never in cube snapshots / reflection probes. [A5.4-3] Motion blur
     // consumes the buffer, so it also forces the pass.
-    if ((BDMergeVelocityBuffer || BDMergeMotionBlur) && !gCubeSnapshot)
+    if ((BDMergeVelocityBuffer || BDMergeMotionBlur) &&
+        !gCubeSnapshot && !sPrismLensRender)
     {
         renderGeomVelocity();
     }
 
-    if (!gCubeSnapshot)
+    if (!gCubeSnapshot && !sPrismLensRender)
     {
         // this is the end of the 3D scene render, grab a copy of the modelview and projection
         // matrix for use in off-by-one-frame effects in the next frame
@@ -17274,7 +17330,7 @@ void LLPipeline::renderHighlight(const LLViewerObject* obj, F32 fade)
 LLRenderTarget* LLPipeline::getSunShadowTarget(U32 i)
 {
     llassert(i < 4);
-    return &mRT->shadow[i];
+    return sPrismLensRender ? &mMainRT.shadow[i] : &mRT->shadow[i];
 }
 
 LLRenderTarget* LLPipeline::getSpotShadowTarget(U32 i)

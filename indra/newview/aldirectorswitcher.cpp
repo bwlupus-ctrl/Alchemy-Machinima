@@ -123,6 +123,7 @@ std::vector<ALDirectorSwitcher::Slot> ALDirectorSwitcher::defaultBank()
 //static
 S32 ALDirectorSwitcher::sanitizeMode(S32 mode)
 {
+    mode = LLCinematicCamera::migrateLegacyMode(mode);
     return (mode > LLCinematicCamera::MODE_OFF &&
             mode <= LLCinematicCamera::MODE_STATIC_FULL)
         ? mode : LLCinematicCamera::MODE_ORBIT;
