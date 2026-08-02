@@ -4892,7 +4892,18 @@ void LLVOAvatar::updateRootPositionAndRotation(LLAgent& agent, F32 speed, bool w
         }
 
         root_pos = gAgent.getPosGlobalFromAgent(getRenderPosition());
-        root_pos.mdV[VZ] += getVisualParamWeight(AVATAR_HOVER);
+        // [GhostClone] A ghost clone's object position is ALREADY its intended
+        // render root (LLGhostAvatar::ghostSlamPosition stores foot + pelvisToFoot).
+        // The stock bbox-center + hover adjustments below move the root to a point
+        // that the per-frame ghost foot-lock then re-slams back down -- but static
+        // attachment drawables are baked at that stale HIGHER root, so unrigged head
+        // items (crown, glasses) render floating above the head. Skip the
+        // adjustments for ghosts so the derived root matches where the body renders
+        // and static attachments bake at the correct root.
+        if (!isGhostAvatar())
+        {
+            root_pos.mdV[VZ] += getVisualParamWeight(AVATAR_HOVER);
+        }
 
         LLVector3 normal;
         resolveHeightGlobal(root_pos, ground_under_pelvis, normal);
@@ -4914,11 +4925,18 @@ void LLVOAvatar::updateRootPositionAndRotation(LLAgent& agent, F32 speed, bool w
         //computeBodySize();
 
         // correct for the fact that the pelvis is not necessarily the center
-        // of the agent's physical representation
-        root_pos.mdV[VZ] -= (0.5f * mBodySize.mV[VZ]) - mPelvisToFoot;
+        // of the agent's physical representation ([GhostClone] skip for ghosts:
+        // their object position is already the intended root -- see note above)
+        if (!isGhostAvatar())
+        {
+            root_pos.mdV[VZ] -= (0.5f * mBodySize.mV[VZ]) - mPelvisToFoot;
+        }
         if (!isSitting() && !was_sit_ground_constrained)
         {
-            root_pos += LLVector3d(getHoverOffset());
+            if (!isGhostAvatar())   // [GhostClone] no extra hover on clones (see note above)
+            {
+                root_pos += LLVector3d(getHoverOffset());
+            }
             if (getOverallAppearance() == AOA_JELLYDOLL)
             {
                 F32 offz = -0.5f * (getScale()[VZ] - mBodySize.mV[VZ]);
