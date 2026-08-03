@@ -86,6 +86,55 @@ uniform int   projvol_frustum_clip;       // E1: 0 = sphere bounds; !=0 = frustu
 uniform vec4  projvol_frustum_planes[6];  // E1: view-space frustum planes, inside>=0: 0=L 1=R 2=B 3=T 4=near 5=far
 uniform int   projvol_shadow_jitter_tap;  // E2: 0 = sub-tap loop (default); !=0 = one IGN-jittered shadow tap
 
+// [BDMerge G3.3 ConservativeShadow] Volume-march shadow sampler gate. The AIRBORNE
+// march samples historically reused the SURFACE spot-shadow helper
+// (sampleSpotShadow), whose receiver bias, wide lit+shadowed PCF averaging,
+// soft-shadow fill floor, sun-cascade camera fade and beyond-shadow_clip.w
+// "fully lit" rule are all built for lit receiver SURFACES - for a sample
+// floating in mid-air inside an occluder's shadow cone each of those is a leak,
+// and together they can paint a bright filament straight through the middle of
+// an opaque occluder when viewer, occluder and light line up. !=0 (OPT-IN
+// hero-shaft experiment - the root cause is unconfirmed, and the conservative
+// kernel is deliberately harder-edged than the legacy wide penumbra) switches
+// the march to the conservative volume sampler in shadowUtil.glsl and enables
+// the on-axis numerical guards below; 0 (the default) keeps the legacy surface
+// sampler byte-identically, so normal soft-shadow shafts are unchanged.
+// [Round-2 review fix] The gate, the on-axis guards, the conservative shadow
+// dispatch and the guarded normalize are all compiled in/out behind the
+// PROJVOL_CONSERVATIVE_SHADOW permutation (llviewershadermgr.cpp keys it off
+// BDMergeProjectorVolumetricsConservativeShadow at shader-build time; toggling
+// the setting rebuilds shaders - same pattern as PROJVOL_DUST_ENABLE below).
+// With the lever OFF this program carries NO extra uniform and NO runtime
+// branches: the default march is instruction-identical to the legacy path, not
+// merely equivalent. The runtime uniform is kept INSIDE the permutation as a
+// belt-and-suspenders default-off (an unset uniform reads 0 = legacy behavior
+// across the toggle/rebuild window).
+#ifdef PROJVOL_CONSERVATIVE_SHADOW
+uniform int   projvol_conservative_shadow;
+#endif
+
+// [BDMerge G3.3 Dust] Baked 64^3 seamlessly-tileable dust volume (linear DATA,
+// seed 0xD057C1A5: R = macro haze, G = sparse motes, B = fine turbulence,
+// A = mote phase). Adds recognizable particulate breakup to the shaft density on
+// top of (or instead of) the procedural fbm noise medium. All levers default OFF
+// (projvol_dust 0) so the shipped look is byte-identical until enabled.
+// [Review fix] The sampler + ALL dust code are compiled in/out behind the
+// PROJVOL_DUST_ENABLE permutation (llviewershadermgr.cpp keys it off
+// BDMergeProjectorVolumetricsDust at shader-build time; toggling the setting
+// rebuilds shaders). A declared sampler is assigned a fragment texture unit at
+// shader-map time whether or not the runtime gate is up - in this already
+// sampler-heavy program that idle slot could exceed a mid-range GPU's unit
+// limit, so with Dust off the sampler must not exist at all. The runtime gate
+// (projvol_dust) is kept INSIDE the permutation for the asset-missing /
+// bind-failed / intensity-0 cases.
+#ifdef PROJVOL_DUST_ENABLE
+uniform int       projvol_dust;           // runtime gate: 0 = off (asset missing/failed)
+uniform float     projvol_dust_intensity; // master particulate amount (~0..2, CPU-clamped finite)
+uniform float     projvol_dust_scale;     // world scale (cycles/metre, CPU-clamped finite)
+uniform vec3      projvol_dust_wind;      // drift m/s (unit dust-wind dir * DustDrift, CPU-folded/clamped)
+uniform sampler3D projvol_dust_map;       // the 64^3 RGBA8 volume (GL_REPEAT/LINEAR)
+#endif
+
 // [BDMerge G3.3 Batch B - R1] Beam-depth reprojection gate. 0 = alpha stays 0.
 // !=0 writes a luminance-premultiplied first distance moment into alpha so additive
 // overlap across cones remains correct. C++ only uploads 1 on the temporal half-res
@@ -229,6 +278,26 @@ vec3 projGoboTexture(float light_distance, vec2 projected_uv)
 }
 // shadowUtil.glsl
 float sampleSpotShadow(vec3 pos, vec3 norm, int index, vec2 pos_screen);
+#ifdef PROJVOL_CONSERVATIVE_SHADOW
+// [ConservativeShadow] volume-march variant: no receiver bias, out-of-map = 0,
+// tight PCF, occluded-center leak clamp, no sun-cascade fade (shadowUtil.glsl).
+float sampleSpotShadowConservative(vec3 pos, int index);
+#endif
+
+// [BDMerge G3.3 Dust] Dust-volume fetch, adapted from the generated asset's
+// dust_volume_sampling.glsl helper (sampleDustVolume3D). Correct units: advect
+// the WORLD position in metres first, then convert metres to texture cycles.
+// The volume is seamlessly periodic on all axes, so fract() keeps the lookup
+// coordinate well-conditioned far from the region origin while GL_REPEAT makes
+// the wrap itself seamless. projvol_time is the same continuous-seconds clock
+// the fbm noise scroll uses.
+#ifdef PROJVOL_DUST_ENABLE
+vec4 projvolSampleDust(vec3 world_pos, float cycles_per_metre)
+{
+    vec3 uvw = fract((world_pos + projvol_dust_wind * projvol_time) * cycles_per_metre);
+    return texture(projvol_dust_map, uvw);
+}
+#endif
 
 void main()
 {
@@ -321,7 +390,18 @@ void main()
     float dt        = march_len / max(float(godray_res), 1.0); // physical step length
 
     // [Phase 1 item 2] blue-noise (interleaved gradient) march-start offset.
-    // Static per pixel => no crawl under camera motion; optional frame rotation.
+    // Static per pixel-quad => no crawl under camera motion; optional frame rotation.
+    // [BDMerge G3.3 DitherQuad] ONE offset per 2x2 pixel QUAD (IGN input quantized
+    // with floor(frag*0.5)) instead of fully per-pixel. A per-pixel random march
+    // start DECORRELATES the expensive raymarch across neighboring lanes: adjacent
+    // pixels march at different depths, so every step issues incoherent shadow-map
+    // reads (12-32 of them per step with soft projector shadows), divergent
+    // clipProjectedLightVars() clips and a less coherent luminance early-out - that
+    // warp divergence, not the hash cost, is what tanked FPS whenever the dither
+    // lever left 0. Sharing the offset across each hardware 2x2 quad keeps the
+    // march cache/lane-coherent while the dither/temporal averaging hides the
+    // coarser pattern. Setting semantics are unchanged: 0 = off (centred 0.5),
+    // 1 = static, 2 = animated (same golden-ratio per-frame walk).
     float roffset;
     if (projvol_dither == 0)
     {
@@ -329,13 +409,22 @@ void main()
     }
     else
     {
-        float ign = interleavedGradientNoise(gl_FragCoord.xy);
+        float ign = interleavedGradientNoise(floor(gl_FragCoord.xy * 0.5));
         if (projvol_dither == 2)
         {
             ign = fract(ign + projvol_frame * 0.61803399); // golden-ratio temporal walk
         }
         roffset = ign;
     }
+
+    // [BDMerge G3.3 Dust] loop-invariant gate: at the shipped defaults
+    // (permutation compiled out / projvol_dust == 0) every dust branch below is
+    // skipped and the march is byte-identical to today.
+#ifdef PROJVOL_DUST_ENABLE
+    bool dust_active = (projvol_dust != 0 && projvol_dust_intensity > 0.0);
+#else
+    const bool dust_active = false; // dust compiled out - folds every dust branch away
+#endif
 
     vec3 accum = vec3(0.0);
 
@@ -378,6 +467,25 @@ void main()
             edge_feather = smoothstep(0.0, projvol_feather, edge);
         }
 
+#ifdef PROJVOL_CONSERVATIVE_SHADOW
+        // [BDMerge G3.3 ConservativeShadow] Numerical guards for the axis-aligned
+        // failure case (viewer + occluder + light collinear). proj_tc.w is the
+        // projector-projected w (clipProjectedLightVars divides only .xyz), so
+        // w <= 1e-5 means the sample sits at/behind the projector's eye plane and
+        // the projected cookie/footprint coords are meaningless (NaN/inf can even
+        // PASS the [0,1] range tests above, since comparisons with NaN are false).
+        // light_dist2 <= 1e-8 is the on-axis singularity: the sample essentially
+        // AT the light center, where normalize() below explodes. Both are gated
+        // behind the permutation + runtime gate, so with the lever off this block
+        // does not exist and the legacy path is instruction-identical.
+        float light_dist2 = dot(lv, lv); // lv = C - spos (unnormalized, from clip vars)
+        if (projvol_conservative_shadow != 0 &&
+            (proj_tc.w <= 1e-5 || light_dist2 <= 1e-8))
+        {
+            continue;
+        }
+#endif
+
         // Volumetric self-shadowing: sample THIS projector's own shadow map.
         // No surface normal for an airborne sample, so pass 0 (the norm*offset
         // bias term is negligible in the shaft - accepted approximation).
@@ -386,12 +494,40 @@ void main()
         // into sharp god-ray bands instead of being blurred by the coarse march.
         float vis;
         // [BDMerge G3.3 Batch A - E2] One IGN-jittered shadow tap instead of N
-        // sub-taps. spos = d*(t0+(i+roffset)*dt) already carries the per-pixel
-        // interleaved-gradient offset ALONG the step, so a single tap here is
-        // decorrelated exactly like the sub-taps and the dither/temporal path
-        // averages it - at up to 4x fewer shadow fetches. When the jitter gate is
-        // on it overrides ShadowSamples>1. Gate off (default) => the condition is
-        // exactly `projvol_shadow_samples <= 1` and both legacy paths are unchanged.
+        // sub-taps. spos = d*(t0+(i+roffset)*dt) already carries the per-quad
+        // (2x2, see DitherQuad above) interleaved-gradient offset ALONG the step,
+        // so a single tap here is decorrelated exactly like the sub-taps and the
+        // dither/temporal path averages it - at up to 4x fewer shadow fetches.
+        // When the jitter gate is on it overrides ShadowSamples>1. Gate off
+        // (default) => the condition is exactly `projvol_shadow_samples <= 1` and
+        // both legacy paths are unchanged.
+        // [ConservativeShadow] When the conservative gate is compiled in AND on
+        // (opt-in, default off), all airborne taps go through
+        // sampleSpotShadowConservative instead of the surface sampler - same tap
+        // layout/averaging, leak-proof kernel. With the permutation off the
+        // whole branch does not exist and the legacy dispatch below compiles
+        // exactly as shipped.
+#ifdef PROJVOL_CONSERVATIVE_SHADOW
+        if (projvol_conservative_shadow != 0)
+        {
+            if (projvol_shadow_jitter_tap != 0 || projvol_shadow_samples <= 1)
+            {
+                vis = sampleSpotShadowConservative(spos, proj_shadow_idx);
+            }
+            else
+            {
+                vis = 0.0;
+                for (int s = 0; s < projvol_shadow_samples; ++s)
+                {
+                    float ts   = t + (float(s) - float(projvol_shadow_samples - 1) * 0.5) * (dt / float(projvol_shadow_samples));
+                    vec3  sp   = d * ts;
+                    vis       += sampleSpotShadowConservative(sp, proj_shadow_idx);
+                }
+                vis /= float(projvol_shadow_samples);
+            }
+        }
+        else
+#endif
         if (projvol_shadow_jitter_tap != 0 || projvol_shadow_samples <= 1)
         {
             vis = sampleSpotShadow(spos, vec3(0.0), proj_shadow_idx, tc);
@@ -422,7 +558,7 @@ void main()
         // fold into one scalar that scales the in-scatter. Defaults keep this at
         // exactly projvol_density (1.0) -> a flat, uniform cone (the shipped look).
         float density = projvol_density;
-        if (projvol_noise_strength > 0.0 || projvol_fog_strength > 0.0)
+        if (projvol_noise_strength > 0.0 || projvol_fog_strength > 0.0 || dust_active)
         {
             // Agent-space (world, Z-up) position of this airborne sample.
             vec3 wpos = (projvol_inv_modelview * vec4(spos, 1.0)).xyz;
@@ -447,13 +583,52 @@ void main()
                 float hf   = projvol_fog_ground_density * exp(-max(h, 0.0) / max(projvol_fog_falloff, 0.01));
                 density   *= mix(1.0, hf, projvol_fog_strength);
             }
+
+            // [BDMerge G3.3 Dust] Baked-volume particulate breakup (composition
+            // adapted from the asset's applyCinematicDust helper, README starting
+            // values baked in: mote threshold 0.78, softness 0.06, amount 0.35,
+            // brightness 2.0). Two frequency reads per the asset README: R (macro
+            // haze) + B-adjacent breakup at the base scale, and G (sparse motes)
+            // at 5x the base scale so individual motes stay small and readable
+            // without a second texture. World-anchored + wind-advected, so the
+            // motes hang in the air and drift instead of crawling with the camera.
+#ifdef PROJVOL_DUST_ENABLE
+            if (dust_active)
+            {
+                vec4  dmac  = projvolSampleDust(wpos, projvol_dust_scale);
+                vec4  dfine = projvolSampleDust(wpos, projvol_dust_scale * 5.0);
+                // Macro haze: broad breakup of the uniform cone, centred near 1.
+                float cloud = mix(1.0, 0.65 + dmac.r * 0.70,
+                                  clamp(projvol_dust_intensity, 0.0, 1.0));
+                // Sparse motes: thresholded G so ~4% of space carries bright grains.
+                float motes = smoothstep(0.78, 0.84, dfine.g);
+                float particulate = 1.0 + motes * (0.35 * projvol_dust_intensity) * 2.0;
+                // [Review fix] cheap belt-and-suspenders guard (one clamp, no
+                // branch): the CPU clamps the dust levers to finite ranges, so
+                // the combined factor is provably bounded (< 4.6 at the caps) -
+                // but a non-finite value slipping in from any future upload path
+                // must not be able to poison the march with Inf/NaN density.
+                density *= clamp(cloud * particulate, 0.0, 16.0);
+            }
+#endif
         }
 
         // Per-sample Henyey-Greenstein phase. Because the light is LOCAL the
         // scatter geometry varies per step: Ldir is the light's travel
         // direction at this sample, Vdir points back to the camera. Forward
         // scatter (g>0) glows brightly when the camera looks toward the light.
+        // [ConservativeShadow] permutation-gated: normalize via inversesqrt of
+        // the already-guarded squared distance (the continue above rejected
+        // <= 1e-8), so the on-axis sample can never produce a NaN direction.
+        // spos - C == -lv. With the permutation off the select does not exist
+        // and the legacy path compiles the exact original normalize().
+#ifdef PROJVOL_CONSERVATIVE_SHADOW
+        vec3  Ldir  = (projvol_conservative_shadow != 0)
+                    ? (-lv * inversesqrt(max(light_dist2, 1e-8)))
+                    : normalize(spos - C);
+#else
         vec3  Ldir  = normalize(spos - C);
+#endif
         vec3  Vdir  = -d;
         float cosT  = dot(Ldir, Vdir);
         float g     = projvol_g;

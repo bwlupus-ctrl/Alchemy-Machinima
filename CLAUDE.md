@@ -29,6 +29,20 @@ the change existed to prevent.
 session were wrong and were overturned either by Codex or by the user. Review is what closes that
 gap.
 
+## ⛔ INVOKING CODEX — ALWAYS via `--prompt-file`, NEVER a command-line prompt (confirmed 2026-08-02)
+
+Codex broke for ~2 weeks with `exit 2` and `/usr/bin/bash: -c: line N: ... misuse of shell built-ins (wrong syntax, missing arguments)`. **Root cause: the prompt was passed on the command line.** Multi-line prompts and shell metacharacters (`;` `(` `)` `:` backslashes) get eaten by `bash -c`. The `codex:codex-rescue` agent forwards the prompt on the command line, so it hits this for any non-trivial prompt — that is exactly what broke recently.
+
+**The reliable invocation — write the prompt to a FILE, then run this ONE clean command:**
+```
+node "C:/Users/xianw/.claude/plugins/cache/openai-codex/codex/1.0.6/scripts/codex-companion.mjs" task --prompt-file "I:/alchemy-machinima/<name>.txt" --cwd "I:\alchemy-machinima"
+```
+- Write the prompt (Write tool) to a file **inside the repo** — Codex reads only within its workspace — reference it by absolute path, and delete it after.
+- Launch via a single `run_in_background` Bash call: it stays foreground in that shell and notifies on completion. Do NOT add `--background` (it detaches and looks lost). Do NOT wrap it in a `seq`/`sleep` poll loop.
+- **Role (user directive 2026-08-03): Codex IMPLEMENTS (`--write`) to conserve Anthropic usage** — it runs on the ChatGPT plan, off Anthropic's meter, so implementation that used to go to Fable now goes to Codex. The adversarial REVIEW is done by an **Opus sub-agent** (independent context) — NOT Codex, NOT Fable (Fable is retired for this loop). Claude still does the BUILD; Codex must NEVER build. Codex-written code still gets an adversarial Opus review before build, looped to 0 must-fix. (This retires the earlier "read-only advisor" framing, which existed only while Codex was broken; it works now via `--prompt-file`.) Give Codex a precise `--prompt-file` brief plus an explicit OFF-LIMITS file list.
+- The command line must contain NO prompt text and NO metacharacters — that is the whole point. Never pass the prompt inline; never route a multi-line or `;`-containing prompt through `codex:codex-rescue`.
+- Success = exit 0 **and** a real diagnosis in the output (not merely exit 0). If unsure, check `status` / `result --cwd "I:\alchemy-machinima"`.
+
 ## ⛔ SHIP FEATURES WHOLE, NOT IN SLICES (user directive, 2026-07-25)
 
 **If it is logical to batch work together for a feature to be COMPLETE, and doing so is not a major

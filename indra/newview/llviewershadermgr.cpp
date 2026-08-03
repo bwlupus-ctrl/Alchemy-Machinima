@@ -3131,6 +3131,30 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gDeferredProjectorVolumetricProgram.mShaderFiles.clear();
         gDeferredProjectorVolumetricProgram.clearPermutations();
         gDeferredProjectorVolumetricProgram.addPermutation("SPOT_SHADOW", "1");
+        // [BDMerge G3.3 Dust / review fix] Dust is a compile-time permutation:
+        // with the lever OFF the sampler3D projvol_dust_map (and all dust code)
+        // does not exist in the program, so no fragment texture unit is consumed
+        // in this already sampler-heavy shader. Toggling the setting rebuilds
+        // shaders (handleSetShaderChanged listener in llviewercontrol.cpp) -
+        // same settings-driven pattern as GODRAYS_FADE above.
+        if (gSavedSettings.getBOOL("BDMergeProjectorVolumetricsDust"))
+        {
+            gDeferredProjectorVolumetricProgram.addPermutation("PROJVOL_DUST_ENABLE", "1");
+        }
+        // [BDMerge G3.3 ConservativeShadow / round-2 review fix] The conservative
+        // airborne-shadow experiment is likewise a compile-time permutation: with
+        // the lever OFF (default) the gate uniform, the on-axis guards, the
+        // conservative shadow dispatch and the guarded normalize do not exist in
+        // the program at all, so the default-off march is instruction-identical
+        // to the legacy path (zero cost) rather than merely equivalent. Toggling
+        // the setting rebuilds shaders (handleSetShaderChanged listener in
+        // llviewercontrol.cpp), and the define feeds the program-binary cache
+        // key through mDefines (LLGLSLShader::hash), so both permutations cache
+        // and rebuild correctly.
+        if (gSavedSettings.getBOOL("BDMergeProjectorVolumetricsConservativeShadow"))
+        {
+            gDeferredProjectorVolumetricProgram.addPermutation("PROJVOL_CONSERVATIVE_SHADOW", "1");
+        }
         gDeferredProjectorVolumetricProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
         gDeferredProjectorVolumetricProgram.mShaderFiles.push_back(make_pair("deferred/projectorVolumetricF.glsl", GL_FRAGMENT_SHADER));
         gDeferredProjectorVolumetricProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];

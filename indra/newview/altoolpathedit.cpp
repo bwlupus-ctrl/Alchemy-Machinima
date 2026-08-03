@@ -206,7 +206,10 @@ bool ALToolPathEdit::handleHover(S32 x, S32 y, MASK mask)
         gViewerWindow->setCursor(UI_CURSOR_TOOLGRAB);
         return true;
     }
-    gViewerWindow->setCursor(UI_CURSOR_CROSS);
+    // not dragging: track the node under the cursor for the hover highlight and
+    // show the grab cursor when a click would pick one up
+    mHoverNode = pickNode(x, y, targetActor());
+    gViewerWindow->setCursor(mHoverNode >= 0 ? UI_CURSOR_TOOLGRAB : UI_CURSOR_CROSS);
     return true;
 }
 
@@ -276,6 +279,7 @@ void ALToolPathEdit::handleDeselect()
         setMouseCapture(false);
     }
     mDragNode = -1;
+    mHoverNode = -1;
     mDragDidSnapshot = false;
     mWalkToArmed = false;       // never leave a pending walk-to armed off-tool
 }

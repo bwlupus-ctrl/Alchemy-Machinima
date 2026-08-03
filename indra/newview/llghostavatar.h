@@ -117,6 +117,10 @@ public:
     void setEntityPhysicsEnabled(bool enabled);
     void setEntityDriveMode(S32 mode, const LLUUID& directed_anim);
     void setEntityLoopMode(S32 mode);
+    // Retime the clone AND each animesh attachment's control avatar. Each animesh
+    // is a separate LLControlAvatar with its own motion controller, so the wearer's
+    // LLCharacter::setAnimTimeFactor alone never reaches them (multi-animesh desync).
+    void setEntityAnimTimeFactor(F32 factor);
     void restartEntityAnimation();
     void setEntityLook(S32 look, F32 alpha);
 
@@ -163,6 +167,12 @@ public:
 
 private:
     void applyDesiredGhostFootPosition();
+    // While Actor Mover drives this ghost (applyOverride() returned true) it
+    // writes the skeleton ROOT JOINT only -- chase the viewer-object/drawable
+    // to that moving root (same ghostSlamPosition contract as the foot lock)
+    // so culling / pixel-area LOD / picking follow the walk. Never touches the
+    // stored authored foot (mDesiredGhostFoot*).
+    void syncGhostObjectToMovingRoot();
     void neutralizeEntityPhysicsParams();
     void updateEntityOuterTransform();
     void stampEntityOuterTransform(LLViewerObject* object);
@@ -179,6 +189,7 @@ private:
     bool mEntityPhysicsEnabled = true;
     S32 mEntityDriveMode = 0; // ALGhostStudio::DRIVE_MIRROR (avoid header cycle)
     S32 mEntityLoopMode = 0;  // ALGhostStudio::LOOP_RETRIGGER
+    F32 mEntityAnimTimeFactor = 1.f; // clone anim-speed; re-applied to animesh control avatars
     S32 mEntityLook = 0;
     F32 mEntityLookAlpha = 1.f;
     LLUUID mEntityDirectedAnim;

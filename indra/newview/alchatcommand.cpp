@@ -630,10 +630,12 @@ bool ALChatCommand::parseCommand(std::string data)
             F32 factor = 0.f;
             std::string scope;
             input >> factor >> scope;
-            if (!input || factor < 0.05f || factor > 10.f ||
+            if (!input || factor < GHOST_SCALE_MIN || factor > GHOST_SCALE_MAX ||
                 (!scope.empty() && scope != "all" && scope != "selected"))
             {
-                LL_WARNS("GhostStudio") << "usage: /ghostscale <0.05..10> [all|selected]"
+                LL_WARNS("GhostStudio") << "usage: /ghostscale <"
+                                        << GHOST_SCALE_MIN << ".."
+                                        << GHOST_SCALE_MAX << "> [all|selected]"
                                         << LL_ENDL;
                 return true;
             }

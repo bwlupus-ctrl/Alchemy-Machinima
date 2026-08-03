@@ -26,6 +26,11 @@
  *                ALPHA channel). tex.a always scales the output alpha; opaque
  *                batches are bound to plain white (tex.a == 1), so this only
  *                bites where the real render also honors the alpha channel.
+ *                TEXTURE alpha always participates; per-VERTEX alpha joins it
+ *                only when ghostUseVertexAlpha != 0 (alpha-pool / PBR draws)
+ *                -- legacy non-alpha-pool faces bake SHININESS, not opacity,
+ *                into vertex alpha (shiny "None" == 0), so honoring it there
+ *                wiped every face whose material lacked a spec/normal map.
  *
  * Uniforms the ghost draw feeds per style (see drawGeometryGhost):
  *   ghostTime   -- seconds, the frame clock; drives the scroll + flicker.
@@ -54,6 +59,10 @@ uniform vec4 ghostParams;
 uniform vec4 ghostAux;
 uniform vec4 ghostFx;
 uniform int ghostLook;
+// 1 = vertex-colour ALPHA is real opacity (alpha-pool / PBR draws) and
+// multiplies the texture alpha; 0 = legacy non-alpha-pool face whose vertex
+// alpha bakes SHININESS, not opacity (RGB tint still always applies).
+uniform int ghostUseVertexAlpha;
 // Independent, orthogonal distortion layer. x=strength, yz=lens center.
 uniform int ghostDistort;
 uniform vec4 ghostDistortParams;
@@ -235,12 +244,14 @@ void main()
         tex.b = texture(diffuseMap, uv - split).b;
     }
 
-    // [R2-4] per-vertex colour: the editor's TE tint (rgb) and transparency
-    // (a) on legacy faces, folded into the sample so every consumer below --
-    // clone RGB, the flat-tint styles' alpha, and the mask discard -- sees it
-    // exactly like the real render does. White (the parked generic) for PBR
-    // and untinted faces = byte-identical.
-    tex *= vary_vertex_color;
+    // [R2-4] per-vertex colour, split by channel semantics:
+    // RGB is always authored tint/base-colour and must always be honored.
+    // Legacy non-alpha-pool vertex alpha holds shininess, not opacity.
+    tex.rgb *= vary_vertex_color.rgb;
+    if (ghostUseVertexAlpha != 0)
+    {
+        tex.a *= vary_vertex_color.a;
+    }
 
     // alpha-mask cutoff, exactly like the real render's masked passes. With
     // ghostAux.x == 0 no texel can be below the cutoff, so the branch is free

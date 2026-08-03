@@ -1302,8 +1302,8 @@ void ALPanelGhostStudio::refreshDetail()
         LLVector3::x_axis * unit_rotation;
     const F32 unit_yaw_degrees =
         atan2f(unit_forward.mV[VY], unit_forward.mV[VX]) * RAD_TO_DEG;
-    F32 scale_minimum = 0.05f;
-    F32 scale_maximum = 10.f;
+    F32 scale_minimum = GHOST_SCALE_MIN;
+    F32 scale_maximum = GHOST_SCALE_MAX;
     const bool have_group_scale_limits =
         !collapsed_group ||
         studio.getGroupScaleLimits(

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
 <floater
-  height="452"
+  height="492"
   layout="topleft"
   name="prefs_graphics_advanced"
   help_topic="Preferences_Graphics_Advanced"
@@ -611,6 +611,17 @@
     Low
   </text>
 
+  <check_box
+    control_name="BDMergeMachinimaHighLOD"
+    follows="left|top"
+    height="16"
+    label="Machinima High LOD (force max object detail)"
+    layout="topleft"
+    left="30"
+    top_delta="16"
+    width="400"
+    tool_tip="Filming toggle (memory heavy). Forces every object to max detail regardless of distance/zoom (no wide-shot LOD loss, no popping), uncaps Object LOD past 4.0, and keeps distant/complex avatars fully 3D (no impostors). Enable BEFORE rolling camera so high-LOD meshes fetch; turn OFF to restore normal LOD/impostors and lower memory use." />
+
   <slider
     control_name="RenderFlexTimeFactor"
     follows="left|top"
@@ -654,7 +665,7 @@
   </text>
    <view_border
       bevel_style="in"
-      height="377"
+      height="417"
       layout="topleft"
       left="385"
       name="vert_border"
@@ -1154,8 +1165,8 @@
       layout="topleft"
       left="13"
       name="horiz_border"
-      top="415"
-      top_delta="5"
+      top="455"
+      top_delta="45"
       width="774"/>
   <button
     follows="top|left"

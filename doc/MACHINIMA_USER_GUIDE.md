@@ -1,24 +1,44 @@
-# Machinima Feature Guide
+# Absolute Cinema SL — Machinima Feature Guide
 
 > ### ⚠️ Independent & unaffiliated
 >
-> This is an independent, **AI "vibe-coded"** project (built with heavy AI assistance). It is **not a TPV-compliant viewer** and is **not
+> **Absolute Cinema SL** is an independent, **AI "vibe-coded"** project (built with heavy AI assistance). It is **not a TPV-compliant viewer** and is **not
 > affiliated with, endorsed by, or supported by** Alchemy, Firestorm, Black Dragon,
 > or Linden Lab. All product names and trademarks belong to their respective owners.
 
-A creator's guide to the machinima toolset in this viewer. It covers the camera
-system, the Director Console, actor and prop motion, clones, weather, and the
+> ### ⚠️ No warranty — use at your own risk
+>
+> **Absolute Cinema SL is provided "AS IS", without warranty of any kind**, express
+> or implied, including without limitation any warranty of merchantability, fitness
+> for a particular purpose, title, or non-infringement. The creator makes **no
+> guarantee** that it is stable, secure, error-free, or suitable for any purpose.
+>
+> **To the fullest extent permitted by law, the creator accepts no liability** for
+> any damage or loss arising from downloading, installing, or using this software —
+> including without limitation damage to your computer, hardware, software, or data;
+> loss of Second Life inventory, currency, or account access; or **suspension or
+> termination of your Second Life account.** This is a third-party viewer that is
+> **not TPV-compliant and not approved by Linden Lab**; using it may violate the
+> Second Life Terms of Service, and any consequences are **your sole responsibility.**
+> By downloading, installing, or using it, you accept these terms.
+
+A creator's guide to the machinima toolset in **Absolute Cinema SL**. It covers the
+camera system, the Director Console, actor and prop motion, clones, weather, and the
 capture helpers — what each feature does and how to reach it.
 
 > **Open beta build.** Features are usable but still settling. If something
 > misbehaves, see [Reporting bugs](#reporting-bugs) at the end — there is a
 > logging switch that makes bug reports far more useful.
+>
+> *This beta may still show "Alchemy Test" in the window title and login screen
+> while the in-client branding is being finalized — everything in this guide still
+> applies.*
 
 ## About this viewer
 
-**What it is.** A viewer built for **machinima production in Second Life** — it
-hands the creator far more control over cameras, timing, staging, actors, and
-look than a standard viewer.
+**What it is.** **Absolute Cinema SL** is a viewer built for **machinima production
+in Second Life** — it hands the creator far more control over cameras, timing,
+staging, actors, and look than a standard viewer.
 
 **Lineage.** Based on the **Alchemy** viewer, with features borrowed from
 **Firestorm** and **Black Dragon**.
@@ -31,6 +51,67 @@ viewer. Installing or testing it will **not** touch your existing viewer's setti
 **ReShade.** Supports **ReShade** integration — explicitly the **iMMERSE V3**
 shader suite — by publishing the viewer's frame data to an external ReShade
 add-on (see [Render extras](#10-render-extras), `RenderVisibleDiffuseSidecar`).
+
+## Feature summary — what Absolute Cinema SL adds
+
+Everything below is **added by Absolute Cinema SL** on top of stock Alchemy. Each
+item links to its full how-to.
+
+**Cameras & framing**
+- **[Cinematic Camera](#31-cinematic-camera)** — a bank of premade cinematic camera
+  moves (orbits, dollies, cranes, sweeps) you can trigger and tune.
+- **[Motion Start](#32-motion-start-how-moves-begin)** — choose *where* and *which
+  direction* a moving shot begins (seed / start angle / CW–CCW), instead of every
+  move starting the same way.
+- **[Director Camera Switcher](#33-director-camera-switcher)** — a 12-slot camera bank
+  with 1–9 hotkeys, A/B/C/D subject marks, auto-director sequencing, and hard-cut /
+  ease / bullet-time transitions.
+- **[Camera Operator / Camera Shake](#34-camera-operator--camera-shake)** — handheld
+  operator simulation with locomotion styles and shake presets.
+- **[Frame & Lens](#35-frame--lens)** — aspect-ratio-as-lens FOV plus non-destructive
+  letterbox framing guides.
+- **[Auto-Reframe](#36-auto-reframe)** — skeleton-aware automatic subject framing.
+- **[Flycam Recorder & Orbit](#37-flycam-recorder--orbit)** — record, play back, and
+  scrub camera paths.
+
+**Direction & timing**
+- **[Director Console](#2-the-director-console)** — one hub for every machinima
+  control, with a reflowing layout, plus the
+  **[Anim](#anim-tab--animation-inspector--player)** (animation inspector/player) and
+  **[Takes](#takes-tab)** tabs.
+- **[Temporal Capture](#5-temporal-capture-world-time-scale)** — slow, speed up, or
+  freeze world time for bullet-time and precise timing.
+- **[Look-At / Gaze](#4-look-at--gaze)** — aim an avatar's gaze and head at a target,
+  now with a smooth turn-through instead of a 180° snap.
+
+**Staging & actors**
+- **[Actor Mover](#actors--actor-mover)** — drive avatars along 3D waypoint paths,
+  with dance modes.
+- **[Prop Mover](#props--prop-mover)** — the same motion-path control for objects.
+- **[Ghost Studio](#7-ghost-studio-clones)** — spawn scene-lit avatar clones and crowds.
+
+**Look & atmosphere**
+- **[Weather](#8-weather-rain-lightning)** — 3D rain, splashes, surface wetness, and
+  fractal lightning.
+- **[Volumetric Light](#9-volumetric-light)** — sun god-rays and projector light shafts,
+  with expanded quality controls.
+- **[Lightbox — expanded](#10-render-extras)** — 8 tonemappers (**AMD LPM** is the new
+  default), colour-grade LUTs, and CAS/DLS sharpening.
+- **Projector shadows raised 2 → 6** — more set lights can cast shadows at once.
+- **[ReShade + iMMERSE V3](#10-render-extras)** — publishes frame data to an external
+  ReShade add-on for advanced post.
+
+**Under the hood**
+- **RAM caches** — decoded-texture and decoded-mesh pools cut stutter (see
+  [Performance](#performance--resource-usage)).
+- **10-bit SDR output + dither** for smoother gradients on capable displays.
+- **[Debug-logging master switch](#reporting-bugs)** — quiet logs for beta, one toggle
+  to turn diagnostics back on.
+- **Separate `AlchemyMachinima` profile** — never touches your other viewers.
+
+*In development (not yet usable): **Prism Lens** — a designated-prim magnifier /
+telescope lens. The render foundation is in place, but there is nothing to point at a
+prim with yet.*
 
 ## Performance & resource usage
 
@@ -64,6 +145,8 @@ are **default-off** and only cost you when you enable them.
 ---
 
 ## Contents
+
+- **[Feature summary — what Absolute Cinema SL adds](#feature-summary--what-absolute-cinema-sl-adds)**
 
 1. [Getting around](#1-getting-around)
 2. [The Director Console](#2-the-director-console)
@@ -475,7 +558,7 @@ Silhouette, Toon-Ink, and more. Each clone also has an **animation-speed** spinn
 |---|---|
 | `/ghostdress` | Clone the targeted avatar |
 | `/ghosttest` | Spawn a test clone |
-| `/ghostscale <0.05..10> [all\|selected]` | Resize clone(s) |
+| `/ghostscale <0.05..150> [all\|selected]` | Resize clone(s) |
 | `/ghostturn [track\|all\|off\|camera\|me\|here]` | Turn clone(s) to face a target |
 | `/ghostlook [off\|camera\|me] [once\|keep] [all]` | Head/eye look-at for clone(s) |
 | `/ghostanim <uuid\|mirror\|freeze> [all\|selected]` | Drive clone animation |

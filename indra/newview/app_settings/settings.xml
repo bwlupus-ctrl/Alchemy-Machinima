@@ -6466,7 +6466,7 @@
     <key>BDMergeMeshPoolFraction</key>
     <map>
       <key>Comment</key>
-      <string>[BDMerge G5.1-2b] Fraction of detected physical RAM the decoded-mesh pool may use when BDMergeMeshPoolMaxMB is 0 (auto). Clamped 0.01-0.5.</string>
+      <string>[BDMerge G5.1-2b] Fraction of physical RAM (after the BDMergePoolReserveMB headroom) the decoded-mesh pool may use when BDMergeMeshPoolMaxMB is 0 (auto). Clamped 0.01-0.5.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
@@ -6551,10 +6551,21 @@
       <key>Value</key>
       <integer>1</integer>
     </map>
+    <key>BDMergePoolReserveMB</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge G5.2] Headroom in MB reserved for the OS and the viewer's own (non-pool) working set before the auto-sized decoded texture/mesh pools take their fraction. The pools size to a fraction of (physical RAM - this reserve), NOT of total RAM, so low-RAM machines are not starved; negligible on large-RAM machines. Shared by BDMergeTexPool and BDMergeMeshPool.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>U32</string>
+      <key>Value</key>
+      <integer>6144</integer>
+    </map>
     <key>BDMergeTexPoolFraction</key>
     <map>
       <key>Comment</key>
-      <string>[BDMerge G5.1] Fraction of detected physical RAM the decoded-texture pool may use when BDMergeTexPoolMaxMB is 0 (auto). Clamped 0.05-0.9.</string>
+      <string>[BDMerge G5.1] Fraction of physical RAM (after the BDMergePoolReserveMB headroom) the decoded-texture pool may use when BDMergeTexPoolMaxMB is 0 (auto). Clamped 0.05-0.9.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
@@ -14096,6 +14107,17 @@
       <key>Value</key>
       <integer>0</integer>
   </map>
+  <key>BDMergeProjectorVolumetricsConservativeShadow</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 ConservativeShadow] OPT-IN hero-shaft experiment (default OFF). The default legacy path samples the lit-surface spot-shadow helper for the AIRBORNE march samples, keeping every normal soft-shadow projector's wide 12/Vogel-tap penumbra - byte-identical to the shipped look. That helper's receiver bias, wide lit+shadowed PCF averaging, soft-shadow fill floor and sun-cascade fade/far-clip rules are the leading (UNCONFIRMED) suspects for the bright hero filament through the CENTER of an opaque occluder when viewer, occluder and light line up. Enable ONLY to test that hero-shaft case: ON switches the airborne march taps to a tight, deliberately harder-edged leak-proof 5-tap kernel (out-of-map = occluded, no bias, occluded-center majority clamp) plus on-axis numerical guards - which visibly hardens ALL marching projectors' volumetric shadows, so it must not be the default. Toggling rebuilds shaders: the conservative path is a compile-time shader permutation, so OFF compiles the legacy march unchanged (zero cost).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+  </map>
   <key>BDMergeProjectorVolumetricsTint</key>
   <map>
       <key>Comment</key>
@@ -14209,6 +14231,50 @@
       <string>F32</string>
       <key>Value</key>
       <real>0.0</real>
+  </map>
+  <key>BDMergeProjectorVolumetricsDust</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 Dust] Enable the baked 64^3 seamlessly-tileable dust volume in the projector-volumetric march (default OFF = byte-identical shipped look, and the dust sampler/code are compiled OUT of the shader entirely - zero sampler-slot or uniform cost). Toggling rebuilds shaders (PROJVOL_DUST_ENABLE permutation). Adds recognizable particulate breakup - broad macro haze plus sparse bright motes hanging in the shaft - on top of (or instead of) the procedural fbm noise medium, world-anchored and wind-advected so it drifts instead of crawling with the camera. Loads app_settings/dust/dust_volume_64_rgba8.ktx lazily on first enable; if the asset is missing or fails validation/upload the effect cleanly stays off. Tune with DustIntensity/DustScale/DustDrift.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+  </map>
+  <key>BDMergeProjectorVolumetricsDustIntensity</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 Dust] Master particulate amount for the baked dust volume (0.0-2.0; default 1.0). Scales both the macro-haze breakup of the cone (fully mixed in by 1.0) and the brightness of the sparse motes. 0 disables the dust sampling entirely even when BDMergeProjectorVolumetricsDust is on. Only active when Dust is enabled.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.0</real>
+  </map>
+  <key>BDMergeProjectorVolumetricsDustScale</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 Dust] World scale of the macro dust haze in texture cycles per metre (default 0.5; asset sweet spot 0.35-0.75). Higher = smaller/denser structure. The sparse motes are automatically sampled at 5x this scale so individual grains stay small and readable. The volume tiles seamlessly, so any scale is safe. Only active when Dust is enabled.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.5</real>
+  </map>
+  <key>BDMergeProjectorVolumetricsDustDrift</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 Dust] Drift speed of the dust volume in metres/second (default 0.05 = barely-alive hang; 0 = frozen). Direction comes from the shared air-wind Azimuth/Elevation/Inverted (BDMergeFroxelWind*, the same direction the fbm beam noise drifts with) so all participating media move as one coherent air. Only active when Dust is enabled.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.05</real>
   </map>
   <key>BDMergeProjectorVolumetricsBloomFeed</key>
   <map>

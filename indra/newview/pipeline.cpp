@@ -344,6 +344,13 @@ F32 LLPipeline::BDMergeProjectorVolumetricsRimPower;
 F32 LLPipeline::BDMergeProjectorVolumetricsRimThreshold;
 F32 LLPipeline::BDMergeProjectorVolumetricsRimWrap;
 F32 LLPipeline::BDMergeProjectorVolumetricsRimSoftness;
+// [BDMerge G3.3 ConservativeShadow] airborne-march shadow sampler A/B gate (default on).
+bool LLPipeline::BDMergeProjectorVolumetricsConservativeShadow;
+// [BDMerge G3.3 Dust] baked 64^3 dust-volume particulate breakup (default off).
+bool LLPipeline::BDMergeProjectorVolumetricsDust;
+F32 LLPipeline::BDMergeProjectorVolumetricsDustIntensity;
+F32 LLPipeline::BDMergeProjectorVolumetricsDustScale;
+F32 LLPipeline::BDMergeProjectorVolumetricsDustDrift;
 // [BDMerge Froxel F0] hybrid froxel volumetrics grid (master gate default OFF).
 bool LLPipeline::BDMergeFroxelVolumetrics;
 U32  LLPipeline::BDMergeFroxelGridX;
@@ -810,6 +817,12 @@ void LLPipeline::init()
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsRimThreshold");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsRimWrap");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsRimSoftness");
+    // [BDMerge G3.3 ConservativeShadow + Dust]
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsConservativeShadow");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsDust");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsDustIntensity");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsDustScale");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsDustDrift");
     // [BDMerge Froxel F0] hybrid froxel volumetrics grid
     connectRefreshCachedSettingsSafe("BDMergeFroxelVolumetrics");
     connectRefreshCachedSettingsSafe("BDMergeFroxelGridX");
@@ -1633,6 +1646,12 @@ void LLPipeline::refreshCachedSettings()
     BDMergeProjectorVolumetricsRimThreshold = gSavedSettings.getF32("BDMergeProjectorVolumetricsRimThreshold");
     BDMergeProjectorVolumetricsRimWrap = gSavedSettings.getF32("BDMergeProjectorVolumetricsRimWrap");
     BDMergeProjectorVolumetricsRimSoftness = gSavedSettings.getF32("BDMergeProjectorVolumetricsRimSoftness");
+    // [BDMerge G3.3 ConservativeShadow + Dust]
+    BDMergeProjectorVolumetricsConservativeShadow = gSavedSettings.getBOOL("BDMergeProjectorVolumetricsConservativeShadow");
+    BDMergeProjectorVolumetricsDust = gSavedSettings.getBOOL("BDMergeProjectorVolumetricsDust");
+    BDMergeProjectorVolumetricsDustIntensity = gSavedSettings.getF32("BDMergeProjectorVolumetricsDustIntensity");
+    BDMergeProjectorVolumetricsDustScale = gSavedSettings.getF32("BDMergeProjectorVolumetricsDustScale");
+    BDMergeProjectorVolumetricsDustDrift = gSavedSettings.getF32("BDMergeProjectorVolumetricsDustDrift");
     // [BDMerge Froxel F0] hybrid froxel volumetrics grid
     BDMergeFroxelVolumetrics = gSavedSettings.getBOOL("BDMergeFroxelVolumetrics");
     BDMergeFroxelGridX = gSavedSettings.getU32("BDMergeFroxelGridX");
@@ -1720,6 +1739,15 @@ void LLPipeline::releaseGLBuffers()
         LLImageGL::deleteTextures(1, &mSMAASearchMap);
         mSMAASearchMap = 0;
     }
+
+    // [BDMerge G3.3 Dust] drop the dust volume with the other GL textures and
+    // clear the attempted flag so a fresh GL context lazily reloads it.
+    if (mProjVolDustMap)
+    {
+        LLImageGL::deleteTextures(1, &mProjVolDustMap);
+        mProjVolDustMap = 0;
+    }
+    mProjVolDustLoadAttempted = false;
 
     releaseLUTBuffers();
 
@@ -2294,6 +2322,214 @@ void LLPipeline::setupGradingLUT()
             }
         }
     }
+}
+
+// [BDMerge G3.3 Dust] Lazy loader for the baked 64^3 RGBA8 dust volume shipped at
+// app_settings/dust/dust_volume_64_rgba8.ktx (seed 0xD057C1A5; linear DATA, no
+// sRGB: R = macro haze, G = sparse motes, B = fine turbulence, A = mote phase).
+// KTX 1 is parsed inline - the 12-byte identifier, the 13 U32 header words, the
+// key/value blob, then one U32 image size + tightly packed payload - and REJECTED
+// unless it is exactly the shipped layout (native-endian GL_UNSIGNED_BYTE /
+// GL_RGBA / GL_RGBA8 / typeSize 1 / base format GL_RGBA, 64x64x64, single mip).
+// Every seek/read is bounds-checked against the real file length (a corruptible
+// bytesOfKeyValueData can never seek outside [header_end, file_end]), and the GL
+// upload itself is verified with an explicit glGetError() check. On ANY failure
+// the texture is deleted and mProjVolDustMap stays 0, so the effect degrades to
+// clean OFF: renderProjectorVolumetric only raises projvol_dust while
+// mProjVolDustMap is live and verifiably bound, so a missing/corrupt asset (or a
+// failed upload) yields the byte-identical shipped look, never partial dust or a
+// sample of an incomplete texture.
+void LLPipeline::loadProjVolDustMap()
+{
+    if (mProjVolDustMap != 0 || mProjVolDustLoadAttempted)
+    {
+        return;
+    }
+    mProjVolDustLoadAttempted = true; // one disk attempt per GL context
+
+    const std::string path =
+        gDirUtilp->getExpandedFilename(LL_PATH_APP_SETTINGS, "dust", "dust_volume_64_rgba8.ktx");
+
+    LLFILE* file = LLFile::fopen(path, LLFILE_MODE("rb"));
+    if (!file)
+    {
+        LL_WARNS() << "[BDMerge Dust] dust volume not found: " << path << LL_ENDL;
+        return;
+    }
+
+    const U32 dim = 64;
+    const U32 expected_bytes = dim * dim * dim * 4u; // tightly packed RGBA8
+    bool ok = false;
+    std::vector<U8> texels;
+    do
+    {
+        // [Review fix] File length FIRST, so every seek/read below is bounds-
+        // checked against it. The legit asset is ~1 MB; reject anything past a
+        // generous cap (also covers files too large for the CRT's long ftell).
+        const long max_file_bytes = 64L * 1024L * 1024L;
+        long fsize = -1;
+        if (fseek(file, 0, SEEK_END) == 0)
+        {
+            fsize = ftell(file);
+        }
+        if (fsize < 0 || fsize > max_file_bytes || fseek(file, 0, SEEK_SET) != 0)
+        {
+            LL_WARNS() << "[BDMerge Dust] implausible KTX file size (" << fsize
+                       << " bytes): " << path << LL_ENDL;
+            break;
+        }
+
+        // KTX 1 identifier + header. Header fields (all U32, written native
+        // little-endian by the generator): 0 endianness, 1 glType, 2 glTypeSize,
+        // 3 glFormat, 4 glInternalFormat, 5 glBaseInternalFormat, 6 pixelWidth,
+        // 7 pixelHeight, 8 pixelDepth, 9 numberOfArrayElements, 10 numberOfFaces,
+        // 11 numberOfMipmapLevels, 12 bytesOfKeyValueData.
+        const U8 ktx_magic[12] = { 0xAB, 'K', 'T', 'X', ' ', '1', '1', 0xBB, '\r', '\n', 0x1A, '\n' };
+        U8 magic[12];
+        if (fread(magic, 1, sizeof(magic), file) != sizeof(magic) ||
+            memcmp(magic, ktx_magic, sizeof(magic)) != 0)
+        {
+            LL_WARNS() << "[BDMerge Dust] not a KTX 1 file: " << path << LL_ENDL;
+            break;
+        }
+        U32 hdr[13];
+        if (fread(hdr, sizeof(U32), 13, file) != 13)
+        {
+            LL_WARNS() << "[BDMerge Dust] truncated KTX header: " << path << LL_ENDL;
+            break;
+        }
+        if (hdr[0] != 0x04030201u ||               // native endianness only
+            hdr[1] != GL_UNSIGNED_BYTE ||          // glType
+            hdr[2] != 1 ||                         // glTypeSize (1 byte per component -
+                                                   //  anything else implies endian swap)
+            hdr[3] != GL_RGBA ||                   // glFormat
+            hdr[4] != GL_RGBA8 ||                  // glInternalFormat
+            hdr[5] != GL_RGBA ||                   // glBaseInternalFormat (must match glFormat)
+            hdr[6] != dim || hdr[7] != dim || hdr[8] != dim ||
+            hdr[9] != 0 ||                         // not an array texture
+            hdr[10] != 1 ||                        // not a cube map
+            hdr[11] > 1)                           // single mip (0 = unspecified is fine)
+        {
+            LL_WARNS() << "[BDMerge Dust] unsupported KTX layout (want native-endian RGBA8 "
+                       << dim << "^3, 1 mip): " << path << LL_ENDL;
+            break;
+        }
+        // [Review fix] hdr[12] (bytesOfKeyValueData) comes straight from the file.
+        // Unchecked, a huge value cast to signed long went NEGATIVE and fseek'd
+        // BACKWARD into the header, where a crafted image-size word could pass the
+        // size check and upload header bytes as texels. Require the whole layout -
+        // key/value blob + image-size word + payload - to fit inside the measured
+        // file before seeking (U64 math, no overflow), which also guarantees the
+        // (long) cast below is a small positive value.
+        const U64 header_end = 12u + 13u * sizeof(U32); // magic + header = 64 bytes
+        const U64 layout_end = header_end + (U64)hdr[12] + sizeof(U32) + (U64)expected_bytes;
+        if (layout_end > (U64)fsize)
+        {
+            LL_WARNS() << "[BDMerge Dust] KTX key/value size " << hdr[12]
+                       << " overruns the file (" << fsize << " bytes): " << path << LL_ENDL;
+            break;
+        }
+        if (fseek(file, (long)hdr[12], SEEK_CUR) != 0) // skip key/value metadata
+        {
+            LL_WARNS() << "[BDMerge Dust] truncated KTX key/value data: " << path << LL_ENDL;
+            break;
+        }
+        U32 image_size = 0;
+        if (fread(&image_size, sizeof(U32), 1, file) != 1 || image_size != expected_bytes)
+        {
+            LL_WARNS() << "[BDMerge Dust] unexpected KTX image size " << image_size
+                       << " (want " << expected_bytes << "): " << path << LL_ENDL;
+            break;
+        }
+        texels.resize(expected_bytes);
+        if (fread(texels.data(), 1, expected_bytes, file) != expected_bytes)
+        {
+            LL_WARNS() << "[BDMerge Dust] truncated KTX payload: " << path << LL_ENDL;
+            break;
+        }
+        ok = true;
+    } while (false);
+    fclose(file);
+
+    if (!ok)
+    {
+        return;
+    }
+
+    // GL_TEXTURE_3D per the asset README: RGBA8, REPEAT on all three axes (the
+    // volume tiles seamlessly, matching the shader's fract()-wrapped lookups) and
+    // plain LINEAR min/mag (single mip level -> bindManual reports no mips, so
+    // TFO_BILINEAR resolves to non-mipmapped GL_LINEAR and stays complete).
+    //
+    // [Review fix] The upload is VERIFIED: stop_glerror() is inert unless
+    // gDebugGL, so a failed glTexImage3D (out of memory, driver rejection) used
+    // to leave mProjVolDustMap nonzero-but-incomplete - and dust_on keys on the
+    // handle alone, so the march would sample an incomplete texture. Any
+    // create/bind/upload failure now deletes the texture and zeroes the handle
+    // so dust_on stays false (clean OFF; mProjVolDustLoadAttempted remains set,
+    // one attempt per GL context).
+    //
+    // [Round-2 fix] The BIND and the SAMPLER-STATE setup are verified too, not
+    // just the upload: bindManual() returns false only for an invalid texture-
+    // unit index - after glBindTexture it returns true WITHOUT checking GL
+    // errors (llrender.cpp) - and the filter/address calls used to run after
+    // the last error check. The stale-error drain now precedes the bind: in its
+    // old position (between bind and upload) it silently swallowed a failed
+    // bind's error, after which glTexImage3D would have uploaded into whatever
+    // 3D texture was ALREADY bound on unit 0. ANY error at any stage unbinds,
+    // deletes and zeroes the handle so dust stays cleanly off.
+    LLImageGL::generateTextures(1, &mProjVolDustMap);
+    // Drain any stale error (bounded - GL_CONTEXT_LOST can repeat forever) so the
+    // checks below attribute only OUR bind/upload/state calls, independent of
+    // gDebugGL.
+    for (S32 drain = 0; drain < 8 && glGetError() != GL_NO_ERROR; ++drain)
+    {
+    }
+    if (mProjVolDustMap == 0 ||
+        !gGL.getTexUnit(0)->bindManual(LLTexUnit::TT_TEXTURE_3D, mProjVolDustMap) ||
+        glGetError() != GL_NO_ERROR) // explicit post-bind check - bindManual never fails on GL errors
+    {
+        LL_WARNS() << "[BDMerge Dust] could not create/bind a GL_TEXTURE_3D for the dust volume"
+                   << " - dust stays off" << LL_ENDL;
+        if (mProjVolDustMap != 0)
+        {
+            // unbind first: a failed glBindTexture still updated LLTexUnit's
+            // currency cache, and the deleted name must not linger there.
+            gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE_3D);
+            LLImageGL::deleteTextures(1, &mProjVolDustMap);
+            mProjVolDustMap = 0;
+        }
+        return;
+    }
+    glTexImage3D(LLTexUnit::getInternalType(LLTexUnit::TT_TEXTURE_3D), 0, GL_RGBA8,
+                 dim, dim, dim, 0, GL_RGBA, GL_UNSIGNED_BYTE, texels.data());
+    const GLenum upload_err = glGetError();
+    if (upload_err != GL_NO_ERROR)
+    {
+        LL_WARNS() << "[BDMerge Dust] glTexImage3D failed (0x" << std::hex << (U32)upload_err
+                   << std::dec << ") - dust stays off" << LL_ENDL;
+        gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE_3D);
+        LLImageGL::deleteTextures(1, &mProjVolDustMap);
+        mProjVolDustMap = 0;
+        return;
+    }
+    gGL.getTexUnit(0)->setTextureFilteringOption(LLTexUnit::TFO_BILINEAR);
+    gGL.getTexUnit(0)->setTextureAddressMode(LLTexUnit::TAM_WRAP);
+    // [Round-2 fix] Verify the filter/address setup as well: an error here would
+    // leave the volume with wrong/incomplete sampler state, and these calls used
+    // to run after the last error check.
+    const GLenum state_err = glGetError();
+    gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE_3D);
+    if (state_err != GL_NO_ERROR)
+    {
+        LL_WARNS() << "[BDMerge Dust] dust volume sampler-state setup failed (0x"
+                   << std::hex << (U32)state_err << std::dec << ") - dust stays off" << LL_ENDL;
+        LLImageGL::deleteTextures(1, &mProjVolDustMap);
+        mProjVolDustMap = 0;
+        return;
+    }
+
+    LL_INFOS() << "[BDMerge Dust] loaded " << dim << "^3 dust volume: " << path << LL_ENDL;
 }
 
 
@@ -13559,6 +13795,15 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
     bool union_full  = false; // a cone needed the full-screen fallback
     U32  cones_drawn = 0;
 
+    // [BDMerge G3.3 Dust] Lazy-load the baked dust volume the first frame the
+    // lever is on (a no-op afterwards; one disk attempt per GL context). Done
+    // BEFORE binding the march program because the loader parks on texture
+    // unit 0, which bindDeferredShader is about to reassign anyway.
+    if (BDMergeProjectorVolumetricsDust)
+    {
+        loadProjVolDustMap();
+    }
+
     bindDeferredShader(gDeferredProjectorVolumetricProgram); // binds the full per-slot shadow set
 
     // Shared (per-frame) uniforms - GODRAY_RES is uploaded per cone below because
@@ -13629,6 +13874,131 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FOG_GROUND, llmax(BDMergeProjectorVolumetricsFogGroundDensity, 0.f));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FOG_FALLOFF, llmax(BDMergeProjectorVolumetricsFogFalloff, 0.01f));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FOG_BASE, BDMergeProjectorVolumetricsFogBase);
+
+    // [BDMerge G3.3 ConservativeShadow] Airborne-march shadow sampler A/B gate.
+    // [Review fix] OPT-IN, default OFF: the conservative sampler replaces the
+    // wide 12/Vogel-tap penumbra of EVERY marching projector with a tight 5-tap
+    // kernel, and the hero-shaft root cause is UNCONFIRMED - so it must not be a
+    // default-on global change. OFF (default) = the legacy lit-surface sampler,
+    // byte-identical to the shipped look for all normal soft-shadow shafts.
+    // ON (hero-shaft experiment) = the conservative volume sampler in
+    // shadowUtil.glsl plus the shader's on-axis numerical guards, for in-world
+    // A/B of the shaft leaking through an occluder's center.
+    // [Round-2 fix] Conservative-shadow is now a compile-time PERMUTATION
+    // (PROJVOL_CONSERVATIVE_SHADOW, mirroring the Dust permutation below): with
+    // the lever OFF the uniform and every conservative branch are compiled OUT,
+    // so the default-off march is instruction-identical to the legacy path, not
+    // merely equivalent. Only upload the runtime gate when the lever is on (the
+    // uniform does not exist in the OFF program). An ON-permutation program
+    // whose gate somehow went un-uploaded reads the GL default 0 and falls back
+    // to the legacy branch - fail-safe across the toggle/rebuild window.
+    if (BDMergeProjectorVolumetricsConservativeShadow)
+    {
+        gDeferredProjectorVolumetricProgram.uniform1i(LLShaderMgr::PROJVOL_CONSERVATIVE_SHADOW, 1);
+    }
+
+    // [BDMerge G3.3 Dust] Baked 64^3 dust-volume particulate breakup. The shader
+    // gate (projvol_dust) is only raised while the volume is actually live in GL
+    // AND verifiably bound this pass, so a missing/corrupt asset - or a failed
+    // channel/bind - degrades to exactly the shipped look instead of sampling an
+    // unbound unit into the density. Wind: the same shared
+    // Azimuth/Elevation/Inverted air direction the fbm beam noise drifts with
+    // (bdmerge_dust_wind_dir - one coherent air), scaled by DustDrift (m/s) and
+    // folded on the CPU; the shader advects world-space metres with projvol_time
+    // (continuous seconds, uploaded above), matching the asset's
+    // sampleDustVolume3D reference helper units.
+    //
+    // [Review fix - sampler slot] Dust is now a compile-time PERMUTATION of
+    // projectorVolumetricF.glsl (PROJVOL_DUST_ENABLE, keyed off the same setting
+    // in llviewershadermgr.cpp; toggling it rebuilds shaders via
+    // handleSetShaderChanged). With Dust OFF the program contains no sampler3D at
+    // all - no fragment texture unit is consumed - and everything below except
+    // the one gate upload (a no-op on the compiled-out uniform) is skipped, so
+    // dust-off costs neither a sampler slot nor per-pass uniform work.
+    //
+    // [Review fix - Inf/NaN] The three dust levers are persisted F32s: sanitize
+    // to finite, documented ranges on upload so an extreme/corrupt value can
+    // never reach the shader (wind*time or world*scale -> Inf -> fract(Inf) =
+    // NaN poisoning the march, unbounded intensity -> unbounded density).
+    F32 dust_intensity = BDMergeProjectorVolumetricsDustIntensity;
+    // [Round-2 fix] cap = 2.0, matching the declared settings.xml range (0.0-2.0)
+    // and the shader's documented ~0..2 domain - the code used to allow 4.0,
+    // letting a hand-edited settings file push past the tuned range.
+    dust_intensity = llfinite(dust_intensity) ? llclamp(dust_intensity, 0.f, 2.f) : 0.f;
+    bool dust_on = BDMergeProjectorVolumetricsDust &&
+                   mProjVolDustMap != 0 &&
+                   dust_intensity > 0.f;
+    if (dust_on)
+    {
+        // Filtering/wrap (LINEAR + REPEAT) are texture-object state set at load.
+        // Drain stale errors BEFORE enableTexture(), because it activates the
+        // sampler's unit and updates the cached active-unit index even when that
+        // activation fails. The checks below must attribute that error to this
+        // dust bind instead of letting bindManual() trust a stale cache entry.
+        for (S32 drain = 0; drain < 8 && glGetError() != GL_NO_ERROR; ++drain)
+        {
+        }
+        S32 dust_channel = gDeferredProjectorVolumetricProgram.enableTexture(LLShaderMgr::PROJVOL_DUST_MAP, LLTexUnit::TT_TEXTURE_3D);
+        const GLenum activation_err = glGetError();
+        bool bind_failed = activation_err != GL_NO_ERROR;
+        if (!bind_failed && dust_channel < 0)
+        {
+            // Sampler not present in this program (permutation off / rebuild in
+            // flight): gate the effect off this pass but KEEP the loaded volume -
+            // the rebuilt shader picks it up next frame.
+            dust_on = false;
+        }
+        else if (!bind_failed)
+        {
+            // [Round-2 fix] bindManual() == true is NOT a successful GL bind: it
+            // returns false only for an invalid texture-unit index and never
+            // checks GL errors after glBindTexture (llrender.cpp). Verify with an
+            // explicit glGetError(): an invalidated texture name or driver bind
+            // error must never leave dust_on true sampling an unbound/incomplete
+            // texture.
+            bool bound = gGL.getTexUnit(dust_channel)->bindManual(LLTexUnit::TT_TEXTURE_3D, mProjVolDustMap);
+            const GLenum bind_err = glGetError();
+            bind_failed = !bound || bind_err != GL_NO_ERROR;
+        }
+        if (bind_failed)
+        {
+            // Activation or bind failure: never march with the gate up over a dead
+            // sampler. Release the handle so every later dust_on test is false
+            // (clean OFF until the GL context is rebuilt; the loader is
+            // one-attempt-per-context by design). disableTexture first so the
+            // unit's currency cache cannot keep pointing at the deleted name.
+            LL_WARNS_ONCE() << "[BDMerge Dust] dust volume bind failed - disabling dust" << LL_ENDL;
+            gDeferredProjectorVolumetricProgram.disableTexture(LLShaderMgr::PROJVOL_DUST_MAP, LLTexUnit::TT_TEXTURE_3D);
+            LLImageGL::deleteTextures(1, &mProjVolDustMap);
+            mProjVolDustMap = 0;
+            dust_on = false;
+        }
+    }
+    gDeferredProjectorVolumetricProgram.uniform1i(LLShaderMgr::PROJVOL_DUST, dust_on ? 1 : 0);
+    if (dust_on)
+    {
+        gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_DUST_INTENSITY, dust_intensity);
+
+        F32 dust_scale = BDMergeProjectorVolumetricsDustScale;
+        dust_scale = llfinite(dust_scale) ? llclamp(dust_scale, 0.f, 64.f) : 0.5f;
+        gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_DUST_SCALE, dust_scale);
+
+        F32 drift = BDMergeProjectorVolumetricsDustDrift;
+        drift = llfinite(drift) ? llclamp(drift, -10.f, 10.f) : 0.f;
+        F32 wdir[3];
+        bdmerge_dust_wind_dir(wdir); // unit dir from Azimuth/Elevation/Inverted
+        F32 wx = wdir[0] * drift;
+        F32 wy = wdir[1] * drift;
+        F32 wz = wdir[2] * drift;
+        if (!llfinite(wx) || !llfinite(wy) || !llfinite(wz))
+        {
+            // The direction comes from sinf/cosf of the shared (persisted) froxel
+            // wind Azimuth/Elevation - a corrupt value there is NaN through a
+            // different door. Frozen dust beats a NaN-poisoned march.
+            wx = wy = wz = 0.f;
+        }
+        gDeferredProjectorVolumetricProgram.uniform3f(LLShaderMgr::PROJVOL_DUST_WIND, wx, wy, wz);
+    }
 
     gDeferredProjectorVolumetricProgram.enableTexture(LLShaderMgr::DEFERRED_PROJECTION);
 
@@ -13851,6 +14221,10 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
         glScissor(0, 0, (GLsizei)march_target->getWidth(), (GLsizei)march_target->getHeight());
     }
 
+    if (dust_on)
+    {
+        gDeferredProjectorVolumetricProgram.disableTexture(LLShaderMgr::PROJVOL_DUST_MAP, LLTexUnit::TT_TEXTURE_3D);
+    }
     gDeferredProjectorVolumetricProgram.disableTexture(LLShaderMgr::DEFERRED_PROJECTION);
     unbindDeferredShader(gDeferredProjectorVolumetricProgram);
 

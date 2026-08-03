@@ -55,6 +55,10 @@ public:
     // tool hands the camera back. A sky-miss stays armed for another try.
     void armWalkTo() { mWalkToArmed = true; }
 
+    // node currently under the cursor (-1 = none); read by the path overlay in
+    // render_ui_3d so the hovered node highlights while editing
+    S32 getHoverNode() const { return mHoverNode; }
+
 private:
     // the actor whose path we edit: the shared edit-selection actor
     LLUUID targetActor() const;
@@ -73,6 +77,7 @@ private:
     void onMenuInsertAfter();
 
     S32  mDragNode = -1;         // node being dragged (-1 = none)
+    S32  mHoverNode = -1;        // node under the cursor (-1 = none); drives hover highlight
     bool mDragDidSnapshot = false;  // pushed the pre-drag undo yet (coalesce a drag to one entry)
     bool mWalkToArmed = false;      // next ground click is a "walk to here"
     LLHandle<LLContextMenu> mMenuHandle;

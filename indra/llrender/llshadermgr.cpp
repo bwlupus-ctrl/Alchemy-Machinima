@@ -1736,6 +1736,16 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("projvol_frustum_planes");
     mReservedUniforms.push_back("projvol_shadow_jitter_tap");
 
+    // [BDMerge G3.3 ConservativeShadow] airborne-march shadow sampler A/B gate
+    mReservedUniforms.push_back("projvol_conservative_shadow");
+
+    // [BDMerge G3.3 Dust] baked 64^3 dust-volume particulate breakup
+    mReservedUniforms.push_back("projvol_dust");
+    mReservedUniforms.push_back("projvol_dust_intensity");
+    mReservedUniforms.push_back("projvol_dust_scale");
+    mReservedUniforms.push_back("projvol_dust_wind");
+    mReservedUniforms.push_back("projvol_dust_map");
+
     // [BDMerge Batch 2] Feature 1: soft shadows
     mReservedUniforms.push_back("soft_shadow_enable");
     mReservedUniforms.push_back("soft_shadow_scale");

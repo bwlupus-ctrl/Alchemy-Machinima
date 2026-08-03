@@ -12,6 +12,8 @@
 *.png binary
 *.tga binary
 *.tif binary
+*.ktx binary
+*.dds binary
 
 # Viewer resources
 *.db2 binary

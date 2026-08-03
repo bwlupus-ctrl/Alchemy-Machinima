@@ -77,7 +77,9 @@
           <button follows="left|top" height="18" label="↺" layout="topleft" left="150" name="reset_yaw" top="82" tool_tip="Reset yaw to default" width="18" />
           <compass_dial clockwise="false" follows="left|top" height="54" layout="topleft" left="154" name="heading_dial" show_readout="false" top="72"
            tool_tip="Ghost heading: drag the needle to rotate the selected ghost live; mouse wheel trims 5 degrees per click" width="54" />
-          <spinner decimal_digits="4" follows="left|top" height="18" increment="0.01" initial_value="1.0" label="Scale" label_width="36" layout="topleft" left="214" max_val="10" min_val="0.05" name="scale_spinner" top="82"
+          <!-- scale_spinner min_val/max_val: keep in sync with GHOST_SCALE_MIN / GHOST_SCALE_MAX in alghoststudio.h
+               (ALPanelGhostStudio re-applies the C++ constants over these on every refresh via setMinValue/setMaxValue) -->
+          <spinner decimal_digits="4" follows="left|top" height="18" increment="0.01" initial_value="1.0" label="Scale" label_width="36" layout="topleft" left="214" max_val="150" min_val="0.05" name="scale_spinner" top="82"
            tool_tip="Uniform size or group scale factor; the live tooltip reports the exact allowed group range" width="94" />
           <button follows="left|top" height="18" label="↺" layout="topleft" left="310" name="reset_scale" top="82" tool_tip="Reset scale to default" width="18" />
           <button follows="left|top" height="22" label="Place (click ground)" layout="topleft" left="8" name="btn_place" top="132"

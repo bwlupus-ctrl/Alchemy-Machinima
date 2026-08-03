@@ -97,9 +97,9 @@ bool group_scale_limits(
             return false;
         }
         minimum_scale = llmax(
-            minimum_scale, 0.05f / member.mLocal.mScale);
+            minimum_scale, GHOST_SCALE_MIN / member.mLocal.mScale);
         maximum_scale = llmin(
-            maximum_scale, 10.f / member.mLocal.mScale);
+            maximum_scale, GHOST_SCALE_MAX / member.mLocal.mScale);
     }
     for (size_t a = 0; a + 1 < group.mMembers.size(); ++a)
     {
@@ -170,7 +170,7 @@ F32 seeded_unit(const LLUUID& id, U32 channel)
 bool valid_crowd_source(
     const ALGhostStudio::Instance& source, std::string* reason = nullptr)
 {
-    auto reject = [reason](const char* text)
+    auto reject = [reason](const std::string& text)
     {
         if (reason)
         {
@@ -197,10 +197,11 @@ bool valid_crowd_source(
             "The prototype rotation is invalid; reset its transform and stage again.");
     }
     if (!llfinite(source.mScale) ||
-        source.mScale < 0.05f || source.mScale > 10.f)
+        source.mScale < GHOST_SCALE_MIN || source.mScale > GHOST_SCALE_MAX)
     {
-        return reject(
-            "The prototype scale must be between 0.05 and 10.");
+        return reject(llformat(
+            "The prototype scale must be between %g and %g.",
+            GHOST_SCALE_MIN, GHOST_SCALE_MAX));
     }
     if (source.mMotion != ALGhostStudio::MOTION_OFF ||
         source.mMotionHasBase || source.mChaosEnabled ||
@@ -376,7 +377,7 @@ void ALGhostStudio::applyEntityRuntimeState(Instance& inst,
     const F32 chaos_factor =
         1.f + (seeded_unit(inst.mId, 5) * 2.f - 1.f) *
                   0.15f * inst.mChaosAmount;
-    ghost->setAnimTimeFactor(
+    ghost->setEntityAnimTimeFactor(
         llclamp(inst.mAnimSpeed * chaos_factor, 0.05f, 4.f));
     ghost->setEntityPhysicsEnabled(inst.mPhysicsEnabled);
     ghost->setEntityLoopMode(inst.mLoopMode);
@@ -416,6 +417,17 @@ void ALGhostStudio::onEntityRuntimeReplaced(Instance& inst,
         applyEntityRuntimeState(inst, new_ghost);
     }
     inst.mEntityId = new_runtime;
+    // [GhostWalk] Actor Mover keys walks / paths / suspend-resume state by the
+    // RUNTIME uuid: migrate them to the replacement (or park them across a
+    // despawn, or drop them on final removal) BEFORE the consumer walk, so any
+    // observer a consumer pumps -- the Director-cast add/remove below -- already
+    // sees the mover consistent under the new id. Without this, a refreshed or
+    // despawn-recovered WALKING clone left its walk permanently suspended under
+    // the dead uuid, unreachable by RESUME_NEAR and the Path tab alike. Runs
+    // AFTER applyEntityRuntimeState so the fresh runtime's drive mode is set
+    // before the migration restarts a live walk's loco anim on it.
+    LLActorMover::instance().onActorRuntimeReplaced(
+        stable_id, old_runtime, new_runtime, removing_instance);
     for (const runtime_consumer_t& consumer : mRuntimeConsumers)
     {
         consumer(stable_id, old_runtime, new_runtime, removing_instance);
@@ -1008,7 +1020,7 @@ bool ALGhostStudio::setInstanceScale(const LLUUID& id, F32 scale)
     {
         return false;
     }
-    scale = llclamp(scale, 0.05f, 10.f);
+    scale = llclamp(scale, GHOST_SCALE_MIN, GHOST_SCALE_MAX);
     return transformUnit(id, inst->mFootGlobal, inst->mRotation, scale);
 }
 
@@ -1107,7 +1119,7 @@ bool ALGhostStudio::setInstanceAnimSpeed(const LLUUID& id, F32 speed)
     const F32 chaos_factor =
         1.f + (seeded_unit(inst->mId, 5) * 2.f - 1.f) *
                   0.15f * inst->mChaosAmount;
-    ghost->setAnimTimeFactor(
+    ghost->setEntityAnimTimeFactor(
         llclamp(inst->mAnimSpeed * chaos_factor, 0.05f, 4.f));
     return true;
 }
@@ -1499,7 +1511,7 @@ bool ALGhostStudio::nameplateAnchor(
                 if (anchor_agent.isFinite())
                 {
                     anchor_agent.mV[VZ] +=
-                        0.16f * llclamp(inst.mScale, 0.05f, 10.f);
+                        0.16f * llclamp(inst.mScale, GHOST_SCALE_MIN, GHOST_SCALE_MAX);
                     return anchor_agent.isFinite();
                 }
             }
@@ -1573,11 +1585,11 @@ bool ALGhostStudio::nameplateAnchor(
     if (have_head)
     {
         LLVector3 offset = (source_head - source_foot) *
-                           llclamp(inst.mScale, 0.05f, 10.f);
+                           llclamp(inst.mScale, GHOST_SCALE_MIN, GHOST_SCALE_MAX);
         offset *= source_to_instance;
         anchor_agent = placed_foot + offset;
         anchor_agent.mV[VZ] +=
-            0.16f * llclamp(inst.mScale, 0.05f, 10.f);
+            0.16f * llclamp(inst.mScale, GHOST_SCALE_MIN, GHOST_SCALE_MAX);
         return anchor_agent.isFinite();
     }
 
@@ -1594,7 +1606,7 @@ bool ALGhostStudio::nameplateAnchor(
                   (extents[0].mV[VY] + extents[1].mV[VY]) * 0.5f,
                   extents[1].mV[VZ]);
     LLVector3 offset = (top - source_foot) *
-                       llclamp(inst.mScale, 0.05f, 10.f);
+                       llclamp(inst.mScale, GHOST_SCALE_MIN, GHOST_SCALE_MAX);
     offset *= source_to_instance;
     anchor_agent = placed_foot + offset;
     anchor_agent.mV[VZ] += 0.12f;
@@ -2018,7 +2030,7 @@ void ALGhostStudio::updateFormationMotion(F64 now)
             }
             inst.mScale = llclamp(inst.mMotionBaseScale *
                 (1.f + (seeded_unit(inst.mId, 2) * 2.f - 1.f) *
-                 0.12f * inst.mChaosAmount), 0.05f, 10.f);
+                 0.12f * inst.mChaosAmount), GHOST_SCALE_MIN, GHOST_SCALE_MAX);
         }
         if (inst.mKind == BACKING_ENTITY_CLONE)
         {
@@ -2058,7 +2070,8 @@ bool ALGhostStudio::setInstanceChaos(const LLUUID& id, F32 amount)
         0.0);
     inst->mFootGlobal = inst->mChaosBaseFoot + jitter;
     inst->mRotation = LLQuaternion(yaw, LLVector3::z_axis) * inst->mChaosBaseRotation;
-    inst->mScale = llclamp(inst->mChaosBaseScale * scale_factor, 0.05f, 10.f);
+    inst->mScale = llclamp(inst->mChaosBaseScale * scale_factor,
+                           GHOST_SCALE_MIN, GHOST_SCALE_MAX);
     ++inst->mTransformRevision;
 
     LLGhostAvatar* ghost = resolveEntityClone(id);
@@ -2466,7 +2479,7 @@ bool ALGhostStudio::applyGroupTransforms(
         if (!inst || inst->mGroupId != group_id ||
             !mGroups.resolveMember(member.mInstanceId, world) ||
             !world.isFinite() ||
-            world.mScale < 0.05f || world.mScale > 10.f ||
+            world.mScale < GHOST_SCALE_MIN || world.mScale > GHOST_SCALE_MAX ||
             inst->mMotion != MOTION_OFF || inst->mMotionHasBase ||
             inst->mChaosEnabled || inst->mChaosHasBase)
         {
@@ -2609,7 +2622,7 @@ bool ALGhostStudio::transformUnit(const LLUUID& id, const LLVector3d& foot,
     {
         return false;
     }
-    const F32 clamped_scale = llclamp(scale, 0.05f, 10.f);
+    const F32 clamped_scale = llclamp(scale, GHOST_SCALE_MIN, GHOST_SCALE_MAX);
     ALGhostGroupModel::Group* group = groupForMember(id);
     if (!group)
     {
@@ -2637,7 +2650,8 @@ bool ALGhostStudio::transformUnit(const LLUUID& id, const LLVector3d& foot,
 
     if (group->mMode == ALGhostGroupModel::MODE_RIGID)
     {
-        const F32 desired_ratio = clamped_scale / llmax(0.05f, anchor->mScale);
+        const F32 desired_ratio =
+            clamped_scale / llmax(GHOST_SCALE_MIN, anchor->mScale);
         F32 minimum_ratio = 0.f;
         F32 maximum_ratio = 1.0e30f;
         F32 minimum_pair = 1.0e30f;
@@ -2647,9 +2661,11 @@ bool ALGhostStudio::transformUnit(const LLUUID& id, const LLVector3d& foot,
             if (const Instance* member = getInstance(member_id))
             {
                 minimum_ratio = llmax(
-                    minimum_ratio, 0.05f / llmax(0.05f, member->mScale));
+                    minimum_ratio,
+                    GHOST_SCALE_MIN / llmax(GHOST_SCALE_MIN, member->mScale));
                 maximum_ratio = llmin(
-                    maximum_ratio, 10.f / llmax(0.05f, member->mScale));
+                    maximum_ratio,
+                    GHOST_SCALE_MAX / llmax(GHOST_SCALE_MIN, member->mScale));
                 feet.push_back(member->mFootGlobal);
             }
         }
@@ -4038,7 +4054,7 @@ bool ALGhostStudio::resolveCrowdPlacement()
             !llfinite(slot_rotation_norm) ||
             fabsf(slot_rotation_norm - 1.f) > 0.001f ||
             !llfinite(slot.mScale) ||
-            slot.mScale < 0.05f || slot.mScale > 10.f)
+            slot.mScale < GHOST_SCALE_MIN || slot.mScale > GHOST_SCALE_MAX)
         {
             draft.mSlots.clear();
             validation.mMessage =
@@ -4205,7 +4221,7 @@ ALGhostStudio::PlacementCommitResult ALGhostStudio::commitCrowdPlacement(
             !slot.mRotation.isFinite() || !llfinite(rotation_norm) ||
             fabsf(rotation_norm - 1.f) > 0.001f ||
             !llfinite(slot.mScale) ||
-            slot.mScale < 0.05f || slot.mScale > 10.f)
+            slot.mScale < GHOST_SCALE_MIN || slot.mScale > GHOST_SCALE_MAX)
         {
             return false;
         }

@@ -535,6 +535,16 @@ public:
         PROJVOL_FRUSTUM_PLANES,            //  "projvol_frustum_planes"   (E1 vec4[6])
         PROJVOL_SHADOW_JITTER_TAP,         //  "projvol_shadow_jitter_tap"(E2 gate)
 
+        // [BDMerge G3.3 ConservativeShadow] airborne-march shadow sampler A/B gate
+        PROJVOL_CONSERVATIVE_SHADOW,       //  "projvol_conservative_shadow" (default on)
+
+        // [BDMerge G3.3 Dust] baked 64^3 dust-volume particulate breakup (default off)
+        PROJVOL_DUST,                      //  "projvol_dust"           (gate)
+        PROJVOL_DUST_INTENSITY,            //  "projvol_dust_intensity"
+        PROJVOL_DUST_SCALE,                //  "projvol_dust_scale"     (cycles/metre)
+        PROJVOL_DUST_WIND,                 //  "projvol_dust_wind"      (unit dir * DustDrift, CPU-folded)
+        PROJVOL_DUST_MAP,                  //  "projvol_dust_map"       (sampler3D)
+
         // [BDMerge Batch 2] Feature 1: soft (contact-hardening + filled) shadows
         SOFT_SHADOW_ENABLE,                //  "soft_shadow_enable"
         SOFT_SHADOW_SCALE,                 //  "soft_shadow_scale"   (penumbra rate)

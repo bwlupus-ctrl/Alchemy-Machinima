@@ -50,6 +50,18 @@
 #include <utility>
 #include <vector>
 
+// Single source of truth for the Ghost Studio clone scale range (the outer
+// render scale applied to a clone / ghost instance). Change the max HERE and
+// every clamp/bound/validation/spinner limit follows: llghostavatar.cpp
+// (setEntityScale -- the chokepoint that actually applies the scale),
+// alghoststudio.cpp (instance/chaos/group-limit/import clamps),
+// alghostmanipproxy.cpp (drag-scale), alchatcommand.cpp (/ghostscale) and
+// alpanelghoststudio.cpp (scale spinner bounds). panel_ghost_studio.xml's
+// scale_spinner and doc/MACHINIMA_USER_GUIDE.md cannot reference C++
+// constants -- keep those two in sync by hand.
+constexpr F32 GHOST_SCALE_MIN = 0.05f;
+constexpr F32 GHOST_SCALE_MAX = 150.f;
+
 class LLGhostAvatar;
 class ALGhostNameplates;
 struct ALGhostCloneRequest;

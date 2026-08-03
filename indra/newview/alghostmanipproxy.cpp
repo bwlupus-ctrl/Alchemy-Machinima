@@ -357,9 +357,10 @@ void ALGhostManipProxy::pushInstanceToProxy()
     // Individual/member proxy bounds keep the avatar scale limits. A collapsed
     // group uses its authoring world scale directly: each member's own resolved
     // scale is constrained by transformGroup(), but the group-world factor is
-    // not itself an avatar scale and must not be clamped to [0.05, 10].
+    // not itself an avatar scale and must not be clamped to
+    // [GHOST_SCALE_MIN, GHOST_SCALE_MAX].
     const F32 s = whole_group
-        ? unit_scale : llclamp(unit_scale, 0.05f, 10.f);
+        ? unit_scale : llclamp(unit_scale, GHOST_SCALE_MIN, GHOST_SCALE_MAX);
     if (!llfinite(s) || s <= 0.f)
     {
         return;
@@ -417,7 +418,7 @@ void ALGhostManipProxy::pullProxyToInstance()
                 mDragStartRotation, requested_scale);
             return;
         }
-        const F32 s = llclamp(requested_scale, 0.05f, 10.f);
+        const F32 s = llclamp(requested_scale, GHOST_SCALE_MIN, GHOST_SCALE_MAX);
         if (group)
         {
             studio.transformUnit(
@@ -479,7 +480,8 @@ void ALGhostManipProxy::pullProxyToInstance()
         // uses the SCALED box height).
         inst->mFootGlobal = pivotFromProxyCenter(
             mProxy->getPositionGlobal(), rotation,
-            mDragLocalCenter, llclamp(inst->mScale, 0.05f, 10.f));
+            mDragLocalCenter,
+            llclamp(inst->mScale, GHOST_SCALE_MIN, GHOST_SCALE_MAX));
     }
     if (inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
     {

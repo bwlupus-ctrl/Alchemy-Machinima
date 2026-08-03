@@ -106,6 +106,12 @@ public:
     void createGLBuffers();
     void createLUTBuffers();
     void setupGradingLUT();
+    // [BDMerge G3.3 Dust] lazily load the baked 64^3 RGBA8 dust volume
+    // (app_settings/dust/dust_volume_64_rgba8.ktx) into mProjVolDustMap as a
+    // GL_TEXTURE_3D (REPEAT/LINEAR). Cheap to call every frame: it returns
+    // immediately once loaded, and mProjVolDustLoadAttempted limits a missing/
+    // corrupt asset to ONE disk attempt per GL context.
+    void loadProjVolDustMap();
 
     //allocate the largest screen buffer possible up to resX, resY
     //returns true if full size buffer allocated, false if some other size is allocated
@@ -1290,6 +1296,14 @@ protected:
     U32       mCGLut{};
     LLVector4 mCGLutSize{};
 
+    // [BDMerge G3.3 Dust] 64^3 tileable dust volume (GL_TEXTURE_3D, RGBA8),
+    // lazily loaded from app_settings/dust the first frame beam dust is enabled.
+    // Released in releaseGLBuffers; the attempted flag stops a missing/corrupt
+    // file from re-hitting the disk every frame (reset with the GL buffers so a
+    // new GL context retries).
+    U32  mProjVolDustMap{};
+    bool mProjVolDustLoadAttempted{ false };
+
 public:
     std::vector<LLFace*>        mHighlightFaces;    // highlight faces on physical objects
 protected:
@@ -1466,6 +1480,16 @@ public:
     static F32 BDMergeProjectorVolumetricsRimThreshold;  // ignore incident light dimmer than this
     static F32 BDMergeProjectorVolumetricsRimWrap;       // directional wrap (0 = back-only, 1 = broad)
     static F32 BDMergeProjectorVolumetricsRimSoftness;   // [F4] avatar skin softness (0 = hard outline)
+    // [BDMerge G3.3 ConservativeShadow] airborne-march shadow sampler A/B gate.
+    // TRUE (default) = conservative volume sampler (fixes the hero shaft leaking
+    // through an occluder's center); FALSE = legacy surface sampler, byte-identical
+    // to the shipped look, kept for in-world comparison of the unconfirmed cause.
+    static bool BDMergeProjectorVolumetricsConservativeShadow;
+    // [BDMerge G3.3 Dust] baked 64^3 dust-volume particulate breakup (default off).
+    static bool BDMergeProjectorVolumetricsDust;          // gate (default off)
+    static F32 BDMergeProjectorVolumetricsDustIntensity; // particulate amount
+    static F32 BDMergeProjectorVolumetricsDustScale;     // world scale (cycles/metre)
+    static F32 BDMergeProjectorVolumetricsDustDrift;     // drift speed (m/s)
     // [BDMerge Froxel F0] hybrid froxel volumetrics grid (master gate default OFF ->
     // no alloc, no passes, no debug; the whole subsystem is a no-op at defaults).
     static bool BDMergeFroxelVolumetrics;   // master gate (default off)

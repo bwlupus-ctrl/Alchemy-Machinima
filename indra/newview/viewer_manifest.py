@@ -104,6 +104,9 @@ class ViewerManifest(LLManifest):
                 # ... and the entire color grading LUT directory
                 self.path("colorlut")
 
+                # ... and the baked projector-volumetric dust volume
+                self.path("dust")
+
                 # <FS:AR> Poser Presets
                 self.path("poses")
 

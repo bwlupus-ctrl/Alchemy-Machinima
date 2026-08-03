@@ -32,6 +32,8 @@
 #include "fsyspath.h"
 #include "llactormover.h"
 #include "alghoststudio.h"   // [ActorMover] heading preview lines
+#include "altoolpathedit.h"  // [ActorMover] path-edit tool owns the live edit overlay
+#include "lltoolmgr.h"       // current-tool check for the path-edit overlay
 #include "llclonefidelityaudit.h"   // [CloneFidelity] late source-vs-clone audit hook
 #include "llghostdeferreddiagnostics.h"  // [GhostDeferred] render-state invariant check
 
@@ -1802,6 +1804,18 @@ void render_ui_3d()
         // [ActorMover] in-world heading preview lines (client-side only;
         // no-op unless ActorMoverShowHeading is on and the floater is open)
         LLActorMover::instance().renderHeadingPreview();
+        // [ActorMover] While the path-edit tool is active, ALWAYS draw the edit
+        // actor's path overlay -- ribbon + every node from the first one, plus
+        // hover/selection highlight -- independent of the Show-path toggle, roster
+        // membership, and node count, so you always see what you are marking. Still
+        // under the UI-visibility gate above, so it hides when filming (UI hidden).
+        if (LLToolMgr::getInstance()->getCurrentTool() ==
+            (LLTool*)ALToolPathEdit::getInstance())
+        {
+            LLActorMover& am = LLActorMover::instance();
+            am.renderActorPathOverlay(am.getEditActor(), true,
+                                      ALToolPathEdit::getInstance()->getHoverNode());
+        }
         // Formation placement preview -- same UI pass, same gating discipline
         // (returns immediately unless a formation is actually staged).
         ALGhostStudio::instance().renderFormationPreview();

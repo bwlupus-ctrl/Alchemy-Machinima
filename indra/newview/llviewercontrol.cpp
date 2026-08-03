@@ -1196,6 +1196,20 @@ void settings_setup_listeners()
     setting_setup_signal_listener(gSavedSettings, "RenderDeferredSSAO", handleSetShaderChanged);
     setting_setup_signal_listener(gSavedSettings, "AlchemyWeatherRainOcclusion", handleSetShaderChanged);
     setting_setup_signal_listener(gSavedSettings, "AlchemyWeatherLightningQualityEnabled", handleSetShaderChanged);
+    // [BDMerge G3.3 Dust / review fix] the dust sampler + sampling code are a
+    // compile-time permutation of projectorVolumetricF.glsl (PROJVOL_DUST_ENABLE,
+    // added in llviewershadermgr.cpp) so Dust off costs no fragment texture unit;
+    // toggling the lever must therefore rebuild shaders. handleSetShaderChanged
+    // also refreshes the pipeline's cached settings, keeping the runtime gate and
+    // the compiled permutation in step within the same commit.
+    setting_setup_signal_listener(gSavedSettings, "BDMergeProjectorVolumetricsDust", handleSetShaderChanged);
+    // [BDMerge G3.3 ConservativeShadow / round-2 review fix] the conservative
+    // airborne-shadow gate is likewise a compile-time permutation of
+    // projectorVolumetricF.glsl (PROJVOL_CONSERVATIVE_SHADOW, added in
+    // llviewershadermgr.cpp) so the default-off march carries no extra uniform
+    // or runtime branches; toggling the lever must therefore rebuild shaders,
+    // exactly like Dust above.
+    setting_setup_signal_listener(gSavedSettings, "BDMergeProjectorVolumetricsConservativeShadow", handleSetShaderChanged);
     // Toggling the sidecar changes BOTH the shader set (the seed program is
     // only created when it is on) and the screen target's attachment count.
     // handleSetShaderChanged reloads shaders and reallocates the render

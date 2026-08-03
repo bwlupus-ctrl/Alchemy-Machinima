@@ -422,6 +422,122 @@ float sampleSpotShadow(vec3 pos, vec3 norm, int index, vec2 pos_screen)
 #endif
 }
 
+// [BDMerge G3.3 ConservativeShadow] Volume-march spot-shadow sampler for the
+// AIRBORNE raymarch samples of projectorVolumetricF. The surface pipeline above
+// (sampleSpotShadow -> pcfSpotShadow) is built for lit RECEIVER SURFACES and has
+// four separate mechanisms that each read "lit" for a point that is actually
+// inside an occluder's shadow volume:
+//   1. receiver depth bias (spot_shadow_bias) pushes the compare depth past thin
+//      occluders,
+//   2. the wide PCF kernel averages lit+shadowed taps, so silhouette texels leak
+//      partial light into fully-occluded space,
+//   3. the soft-shadow fill floor lifts any partially-lit result toward
+//      soft_shadow_fill,
+//   4. the sun-cascade terms: an additive camera-distance fade keyed to
+//      shadow_clip (which is the SUN cascade split vector, amplified by the /w
+//      weight near the far split) and an unconditional "fully lit" for samples
+//      beyond shadow_clip.w.
+// For a mid-air sample the sum of those paints a bright filament straight through
+// the CENTER of an opaque occluder when viewer, occluder and light line up. This
+// sampler is deliberately conservative instead:
+//   - no receiver bias (an airborne sample has no surface to acne against),
+//   - a degenerate projection (w <= 1e-5) or a sample outside the shadow map's
+//     [0,1] footprint returns OCCLUDED (0.0), never lit,
+//   - depth refs beyond the shadow far plane are clamped to 1.0 (matching the
+//     hardware ref-clamp the legacy path relies on) so the beam segment past the
+//     projector's far clip still resolves against real occluders instead of
+//     truncating,
+//   - a tight 5-tap 1-texel plus-pattern PCF for edge antialiasing only,
+//   - the leak clamp: a mostly-occluded CENTER (center < 0.5) stays black unless
+//     a strong majority (>= 3 of 4) of its edge taps are lit - a true silhouette
+//     edge. One or two leaking edge taps can never light an occluded sample,
+//   - no camera-distance fade or far-clip auto-lit: the spot map is light-space
+//     and valid regardless of camera distance (same rationale as the BD
+//     nonpcfShadowAtPos note below).
+float pcfSpotShadowConservative(sampler2DShadow shadowMap, vec4 stc)
+{
+#if defined(SPOT_SHADOW)
+    if (stc.w <= 1e-5)
+    {
+        return 0.0; // at/behind the shadow camera plane - projection is invalid
+    }
+    stc.xyz /= stc.w;
+    if (stc.x < 0.0 || stc.x > 1.0 ||
+        stc.y < 0.0 || stc.y > 1.0 ||
+        stc.z < 0.0)
+    {
+        return 0.0; // outside the map footprint / nearer than the shadow near plane
+    }
+    stc.z = min(stc.z, 1.0); // beyond-far ref clamps like the hardware compare
+
+    float center = texture(shadowMap, stc.xyz);
+
+    vec2  texel = 1.0 / proj_shadow_res;
+    float e0 = texture(shadowMap, vec3(stc.xy + vec2( texel.x, 0.0), stc.z));
+    float e1 = texture(shadowMap, vec3(stc.xy + vec2(-texel.x, 0.0), stc.z));
+    float e2 = texture(shadowMap, vec3(stc.xy + vec2(0.0,  texel.y), stc.z));
+    float e3 = texture(shadowMap, vec3(stc.xy + vec2(0.0, -texel.y), stc.z));
+    float pcf = (center + e0 + e1 + e2 + e3) * 0.2;
+
+    // Leak clamp: an occluded center with a minority of lit edge taps is the
+    // exact signature of PCF bleed through a silhouette - clamp it to black
+    // instead of letting it light the middle of the occluder's shadow volume.
+    // [Review fix] The old `pcf < 0.30` test did NOT enforce that: center
+    // occluded + TWO lit neighbors gives pcf = 0.4 and passed, preserving the
+    // filament. Enforce a strict consensus rule on the neighbors themselves.
+    // [Round-2 fix] The consensus must be a DISCRETE count of lit taps, not the
+    // fractional sum: these taps are LINEARLY-FILTERED shadow compares, so
+    // summing them against 3.0 measured coverage mass - center 0.49 + three 0.9
+    // neighbors + one 0.0 sums to 2.7 and was wrongly blacked out, darkening a
+    // genuinely lit penumbra. Count each edge tap as lit at >= 0.5 and require
+    // COUNT >= 3: when the center tap is occluded (< 0.5) the sample stays
+    // black unless at least 3 of the 4 edge taps are lit (a true silhouette
+    // edge crossing) - one or two leaking edge taps still can never light an
+    // occluded sample.
+    float lit_neighbors = step(0.5, e0) + step(0.5, e1) + step(0.5, e2) + step(0.5, e3);
+    if (center < 0.5 && lit_neighbors < 2.5) // < 2.5 == integer count <= 2
+    {
+        return 0.0;
+    }
+    return pcf;
+#else
+    return 0.0;
+#endif
+}
+
+float sampleSpotShadowConservative(vec3 pos, int index)
+{
+#if defined(SPOT_SHADOW)
+    // No norm * spot_shadow_offset receiver nudge and no shadow_clip camera-space
+    // early-out/fade/weighting - just the sample projected straight into this
+    // projector's own map. [BDMerge NSpot] same 6-slot dispatch as above.
+    vec4 spos = vec4(pos, 1.0);
+    if (index == 0)
+    {
+        return pcfSpotShadowConservative(shadowMap4, shadow_matrix[4] * spos);
+    }
+    else if (index == 1)
+    {
+        return pcfSpotShadowConservative(shadowMap5, shadow_matrix[5] * spos);
+    }
+    else if (index == 2)
+    {
+        return pcfSpotShadowConservative(shadowMap6, shadow_matrix[6] * spos);
+    }
+    else if (index == 3)
+    {
+        return pcfSpotShadowConservative(shadowMap7, shadow_matrix[7] * spos);
+    }
+    else if (index == 4)
+    {
+        return pcfSpotShadowConservative(shadowMap8, shadow_matrix[8] * spos);
+    }
+    return pcfSpotShadowConservative(shadowMap9, shadow_matrix[9] * spos);
+#else
+    return 1.0;
+#endif
+}
+
 
 // [BDMerge G3.2] Donor: Black Dragon (NiranV Dean) shadowUtil.glsl - cheap
 // non-PCF cascade sampling for the volumetric raymarch (Tofu Buzzard lineage).

@@ -111,6 +111,7 @@ void BDMergeMeshPool::refreshSettings()
     static LLCachedControl<F32> pool_fraction(gSavedSettings, "BDMergeMeshPoolFraction", 0.1f);
     static LLCachedControl<U32> pool_max_mb(gSavedSettings, "BDMergeMeshPoolMaxMB", 0);
     static LLCachedControl<U32> pool_floor_mb(gSavedSettings, "BDMergeMeshPoolFloorMB", 256);
+    static LLCachedControl<U32> pool_reserve_mb(gSavedSettings, "BDMergePoolReserveMB", 6144);
 
     bool enable = pool_enable;
     U64 budget;
@@ -119,10 +120,21 @@ void BDMergeMeshPool::refreshSettings()
         budget = U64(pool_max_mb) * 1024u * 1024u;
     }
     else
-    {
-        const U64 phys_bytes = U64(gSysMemory.getPhysicalMemoryKB().value()) * 1024u;
-        const F32 fraction = llclamp((F32)pool_fraction, 0.01f, 0.5f);
-        budget = llmax(U64(phys_bytes * fraction), U64(pool_floor_mb) * 1024u * 1024u);
+    { // Fraction of RAM left AFTER the shared OS/viewer reserve, not of total RAM
+      // (see BDMergeTexPool::refreshSettings for the rationale). Big rig: the reserve
+      // is negligible; small rig: the pool shrinks hard instead of starving the box.
+        const U64 phys_bytes    = U64(gSysMemory.getPhysicalMemoryKB().value()) * 1024u;
+        const U64 reserve_bytes = U64(pool_reserve_mb) * 1024u * 1024u;
+        // llmax() against phys/4 keeps the sizing monotonic across the reserve
+        // boundary -- see BDMergeTexPool::refreshSettings for the full rationale.
+        const U64 headroom_bytes = (phys_bytes > reserve_bytes)
+                                       ? (phys_bytes - reserve_bytes)
+                                       : U64(0);
+        const U64 avail_bytes   = llmax(headroom_bytes, phys_bytes / 4u);
+        const F32 fraction      = llclamp((F32)pool_fraction, 0.01f, 0.5f);
+        U64 want = U64((F64)avail_bytes * (F64)fraction);
+        want = llmax(want, U64(pool_floor_mb) * 1024u * 1024u);
+        budget = llmin(want, avail_bytes);
     }
     sBudgetBytes.store(budget, std::memory_order_relaxed);
 

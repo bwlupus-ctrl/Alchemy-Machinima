@@ -30,6 +30,7 @@
 #include "alghoststudio.h"
 #include "alghostattachmentenumerator.h"
 #include "alghostmaterialresolver.h"
+#include "llactormover.h"          // walk ownership arbitration: applyOverride() vs the foot-lock
 #include "llagent.h"
 #include "llanimationstates.h"
 #include "llviewerobjectlist.h"
@@ -230,6 +231,47 @@ void LLGhostAvatar::applyDesiredGhostFootPosition()
     ghostSlamPosition(root_agent);
 }
 
+void LLGhostAvatar::syncGhostObjectToMovingRoot()
+{
+    // Actor Mover owns the skeleton root while it drives this ghost, but
+    // applyOverride() writes the ROOT JOINT only (llactormover.cpp:1929) --
+    // deliberately for a real puppeteered avatar, whose sim-true object
+    // position must stay untouched. A ghost has NO sim-true position: its
+    // culling, pixel-area LOD, picking, nametag anchor and render-position
+    // queries all evaluate off the viewer-object/drawable (getRenderPosition()
+    // returns mDrawable's position for a root avatar). Left at the authored
+    // foot, a ghost walked tens of metres away is mis-culled and mis-LODed.
+    // Chase the CURRENT moving root with the same object + drawable +
+    // child-matrix contract as the foot lock (ghostSlamPosition), but WITHOUT
+    // touching the stored authored foot (mDesiredGhostFoot*): the walk is
+    // transient, and stopping it must still return the clone to its authored
+    // Studio placement via the ordinary foot lock.
+    if (!getRegion() || !mRoot)
+    {
+        return;
+    }
+    const LLVector3 root_agent = mRoot->getWorldPosition();
+    if (!root_agent.isFinite())
+    {
+        return;
+    }
+    // Same redundant-move guard as the foot lock above: a mover HOLD (placeAt
+    // pin, dwell, arrival settle) repaints the same root every frame -- do not
+    // enqueue drawable moves forever while effectively stationary. Compared
+    // against the OBJECT position, so slow walks self-limit: drift accumulates
+    // to at most ~sqrt(F_APPROXIMATELY_ZERO) (~3 mm) before a sync fires.
+    if (dist_vec_squared(getPositionAgent(), root_agent) <=
+            F_APPROXIMATELY_ZERO)
+    {
+        return;
+    }
+    // Reuses ghostSlamPosition wholesale: the root-joint re-set is idempotent
+    // (applyOverride just wrote the same world position) and the trailing
+    // updateWorldMatrixChildren() re-propagates attachments after the
+    // post-motion re-assert, exactly like the authored slam path.
+    ghostSlamPosition(root_agent);
+}
+
 void LLGhostAvatar::setGhostRotation(const LLQuaternion& rotation)
 {
     if (!mRoot)
@@ -311,7 +353,7 @@ void LLGhostAvatar::stampEntityOuterTransform(LLViewerObject* object)
 
 void LLGhostAvatar::setEntityScale(F32 scale)
 {
-    mEntityScale = llclamp(scale, 0.05f, 10.f);
+    mEntityScale = llclamp(scale, GHOST_SCALE_MIN, GHOST_SCALE_MAX);
     updateEntityOuterTransform();
 }
 
@@ -511,6 +553,31 @@ void LLGhostAvatar::setEntityLoopMode(S32 mode)
 {
     mEntityLoopMode = llclamp(mode, (S32)ALGhostStudio::LOOP_RETRIGGER,
                                    (S32)ALGhostStudio::LOOP_PLAY_ONCE);
+}
+
+void LLGhostAvatar::setEntityAnimTimeFactor(F32 factor)
+{
+    mEntityAnimTimeFactor = factor;
+    // The clone's own (wearer) motion controller.
+    LLCharacter::setAnimTimeFactor(factor);
+
+    // Each animesh attachment is a SEPARATE LLControlAvatar with its own motion
+    // controller, so the wearer's time factor never reaches it -- without this loop
+    // only the wearer (and any mesh drawn through it) responds to the anim-speed
+    // spinner and multi-animesh clones desync. Mirrors the pause traversal in
+    // setEntityDriveMode (the pattern that already works). Dedup guards the unusual
+    // shared/root-edit case.
+    std::set<LLControlAvatar*> seen;
+    for (const ClonedLinkset& linkset : mClonedLinksets)
+    {
+        LLVOVolume* root =
+            dynamic_cast<LLVOVolume*>(gObjectList.findObject(linkset.mRoot));
+        LLControlAvatar* control = root ? root->getControlAvatar() : nullptr;
+        if (control && !control->isDead() && seen.insert(control).second)
+        {
+            control->setAnimTimeFactor(factor);
+        }
+    }
 }
 
 void LLGhostAvatar::restartEntityAnimation()
@@ -1997,6 +2064,31 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
       }
     }
 
+    // Re-assert the Studio anim-speed on EVERY animesh control avatar, every
+    // frame, in every drive mode. Animesh control avatars are created LAZILY:
+    // skin can arrive frames after the clone spawned (finalize accepts an
+    // animated linkset with no control avatar yet), and the geometry rebuild
+    // then builds the control avatar at the default 1x (llvovolume.cpp:6103);
+    // a sim ObjectAnimation refresh routed through updateControlAvatar() above
+    // can likewise (re)create one mid-session. A creation-event-gated re-stamp
+    // misses the lazy path, leaving that animesh at normal speed while the
+    // wearer runs the Studio speed. setAnimTimeFactor is a bare assignment, so
+    // the unconditional re-assert is cheaper than tracking creation events.
+    if (mEntityAnimTimeFactor != 1.f)
+    {
+        for (const ClonedLinkset& linkset : mClonedLinksets)
+        {
+            LLVOVolume* linkset_root = dynamic_cast<LLVOVolume*>(
+                gObjectList.findObject(linkset.mRoot));
+            LLControlAvatar* control =
+                linkset_root ? linkset_root->getControlAvatar() : nullptr;
+            if (control && !control->isDead())
+            {
+                control->setAnimTimeFactor(mEntityAnimTimeFactor);
+            }
+        }
+    }
+
     LLVOAvatar::idleUpdate(agent, time);
 
     // A client-only prim has no later simulator ObjectUpdate to repair it.
@@ -2036,7 +2128,40 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
     // Re-derive root height after skeleton/appearance evaluation. The desired
     // Studio coordinate is the feet, not whatever transient pelvis height the
     // clone happened to report on its spawn frame.
-    applyDesiredGhostFootPosition();
+    //
+    // Ownership arbitration (fixes the ee120ac86a7 walk regression): while Actor
+    // Mover is actively driving this ghost along a path it OWNS the root, so
+    // re-assert its (per-frame idempotent, cached) moving root and SKIP the
+    // authored-foot slam -- otherwise the body snaps back to the stationary
+    // authored position while the attachments, already baked at the moving root,
+    // keep traveling. applyOverride() returns false for a stationary / suspended /
+    // dead actor, so a non-walking ghost still gets the persistent foot-lock and
+    // keeps its unrigged-attachment-float fix.
+    if (!LLActorMover::instance().applyOverride(this))
+    {
+        applyDesiredGhostFootPosition();
+
+        // Actor Mover owns the WEARER's motion-controller time factor while it
+        // drives this ghost (gait cadence keyed to ground speed) and resets it
+        // to 1x when the walk stops / suspends / arrives (llactormover.cpp
+        // stop()/stopAll()/enterSuspend()/arrival). Those resets know nothing
+        // of the Studio anim-speed, so a 2x clone would come back from a walk
+        // with its body stuck at 1x while its animesh (re-stamped above) stay
+        // at 2x. The mover is not driving on this branch, so re-assert the
+        // Studio speed -- a bare assignment, idempotent per frame. During an
+        // active walk (the branch below) the gait cadence deliberately wins:
+        // never fight Actor Mover mid-walk.
+        LLCharacter::setAnimTimeFactor(mEntityAnimTimeFactor);
+    }
+    else
+    {
+        // Actor Mover drove the root this frame: chase the viewer-object /
+        // drawable to the CURRENT moving root so culling, pixel-area LOD and
+        // picking follow the walk instead of evaluating at the stale authored
+        // foot. Leaves mDesiredGhostFoot* untouched -- when the walk ends the
+        // foot lock above restores the authored Studio placement.
+        syncGhostObjectToMovingRoot();
+    }
     updateEntityOuterTransform();
 }
 

@@ -23,6 +23,7 @@
 #include "aoengine.h"               // self Director turns use the enabled AO turn state
 #include "llclonefidelityaudit.h"   // [CloneFidelity] early-capture hooks in the harvest
 #include "altoolghostedit.h"        // [R2-3] selected-ghost ring gates on the edit tool
+#include "altoolpathedit.h"         // path edit tool owns the edit actor's overlay while active
 #include "llagent.h"                // gAgent global<->agent coord conversion (pathing)
 #include "llagentcamera.h"          // cameraMouselook gaze feedback interlock
 #include "llanimationstates.h"      // ANIM_AGENT_WALK
@@ -1844,6 +1845,37 @@ bool LLActorMover::getProgress(const LLUUID& actor_id, F32& traveled, F32& total
 }
 
 // ---------------------------------------------------------------------------
+namespace
+{
+// [GhostWalk] Where a ghost clone's suspend/resume anchor belongs: the
+// AUTHORED Studio placement (Instance::mFootGlobal) -- the one spot a
+// despawned clone's replacement respawns at (applyEntityRuntimeState re-applies
+// exactly this foot to the fresh runtime). The live object position is the
+// WRONG anchor the moment any walk has moved the clone: start()/placeAt()
+// replace the Move (mHasTrueGlobal = false), and a seed from
+// getPositionGlobal() would then anchor at the mover-owned moved/hold position
+// (LLGhostAvatar::syncGhostObjectToMovingRoot chases the moving root), so a
+// later despawn->respawn lands the walked distance away from the anchor and
+// the RESUME_NEAR test refuses the auto-resume. A ghost with no studio
+// instance (e.g. a test-harness spawn) keeps the previous live-position seed;
+// the ~pelvis-to-foot offset between the authored FOOT and the respawned
+// object position is far inside RESUME_NEAR_METERS.
+LLVector3d ghost_walk_anchor_global(LLVOAvatar* av)
+{
+    for (const ALGhostStudio::Instance& inst :
+             ALGhostStudio::instance().getInstances())
+    {
+        if (inst.mKind == ALGhostStudio::BACKING_ENTITY_CLONE &&
+            inst.mEntityId.notNull() && inst.mEntityId == av->getID())
+        {
+            return inst.mFootGlobal;
+        }
+    }
+    return av->getPositionGlobal();
+}
+} // anonymous namespace
+
+// ---------------------------------------------------------------------------
 bool LLActorMover::applyOverride(LLVOAvatar* av)
 {
     if (mMoves.empty() || !av)
@@ -1873,6 +1905,23 @@ bool LLActorMover::applyOverride(LLVOAvatar* av)
         // frame): never paint a dead actor and never advance the clock, but keep
         // the Move so updateSuspendState() can suspend rather than destroy it.
         return false;
+    }
+
+    // [GhostWalk] Seed the suspend/resume anchor at the AUTHORED Studio
+    // placement, never the live object position: a ghost's object position is
+    // mover-owned from the first driven frame on, and every start()/placeAt()
+    // replaces the Move (mHasTrueGlobal = false) -- so by the time a SECOND
+    // walk (or a Reset-to-Marks hold) starts, the live position is wherever
+    // the previous walk left the clone, and anchoring there breaks the
+    // despawn->respawn RESUME_NEAR test (a recovered clone respawns at the
+    // authored placement, not at the old walk's endpoint). The TP-jump probe
+    // in updateSuspendState() is skipped for ghosts; this anchor only feeds
+    // that respawn test. Real avatars are untouched: their anchor keeps
+    // tracking the sim-true position in updateSuspendState().
+    if (!mv.mHasTrueGlobal && av->isGhostAvatar())
+    {
+        mv.mLastTrueGlobal = ghost_walk_anchor_global(av);
+        mv.mHasTrueGlobal  = true;
     }
 
     // advance the path clock only once per frame; later calls in the same
@@ -2041,6 +2090,36 @@ void LLActorMover::updateSuspendState()
                     enterSuspend(key, mv, av);
                 }
             }
+            else if (av->isGhostAvatar())
+            {
+                mv.mUnresolvedFrames = 0;
+                // [GhostWalk] A ghost clone's object position is MOVER-OWNED
+                // while it walks (LLGhostAvatar::syncGhostObjectToMovingRoot
+                // chases the moving root every frame so culling/LOD/picking
+                // follow), so it is no longer "frozen during a walk": a
+                // walk-start snap to a distant first path node, a sync-to-take
+                // scrub seek, or a follower joining a far leader can all move
+                // it > TP_JUMP_METERS in ONE frame. None of those are
+                // teleports -- and a client-only ghost can never BE
+                // sim-teleported -- so the TP probe below has nothing real to
+                // catch and would only false-suspend live ghost walks: skip
+                // it, and never refresh the anchor from the walking position.
+                // The anchor is the AUTHORED Studio placement -- the spot a
+                // despawned clone's replacement respawns at -- so the
+                // RESUME_NEAR test below can auto-resume it there. This runs
+                // BEFORE the avatar update, so for a Move started this frame
+                // it is normally the FIRST seeder (applyOverride() carries
+                // the identical seed for whichever runs first); reading the
+                // live position here instead would re-open the restart-after-
+                // a-walk hole this seed exists to close. The unresolvable/
+                // debounce path above still suspends a despawned ghost
+                // exactly as before.
+                if (!mv.mHasTrueGlobal)
+                {
+                    mv.mLastTrueGlobal = ghost_walk_anchor_global(av);
+                    mv.mHasTrueGlobal = true;
+                }
+            }
             else
             {
                 mv.mUnresolvedFrames = 0;
@@ -2203,6 +2282,251 @@ void LLActorMover::cancelSuspended(const LLUUID& actor_id)
         av->setAnimTimeFactor(1.f);
     }
     mMoves.erase(it);
+}
+
+// ===========================================================================
+// [GhostWalk] Entity-clone runtime replacement: rekey per-actor state so a
+// refreshed / despawn-recovered clone keeps its walk, path, follows and gaze
+// instead of leaking them under the dead runtime uuid. See the header
+// contract on onActorRuntimeReplaced().
+// ===========================================================================
+void LLActorMover::onActorRuntimeReplaced(const LLUUID& stable_id,
+                                          const LLUUID& old_id,
+                                          const LLUUID& new_id,
+                                          bool removing_instance)
+{
+    if (stable_id.isNull())
+    {
+        return;
+    }
+    // The key that actually holds this instance's records: the runtime being
+    // replaced when the caller still has one, else the key parked at the last
+    // despawn (the walk suspended under it when that runtime died). Both are
+    // concrete runtime uuids, so they ARE the path_key the records live under.
+    auto parked = mParkedWalkKeys.find(stable_id);
+    LLUUID from = old_id;
+    if (from.isNull() && parked != mParkedWalkKeys.end())
+    {
+        from = parked->second;
+    }
+
+    if (removing_instance)
+    {
+        // deliberate removal: this runtime uuid can never resolve again, so a
+        // kept walk would suspend forever, unreachable -- drop it like a stop
+        if (parked != mParkedWalkKeys.end())
+        {
+            mParkedWalkKeys.erase(parked);
+        }
+        if (from.notNull())
+        {
+            dropActor(from);
+        }
+        return;
+    }
+
+    if (new_id.isNull())
+    {
+        // despawn with the instance kept (RECOVERABLE): leave the records in
+        // place -- the move suspends under `from` via the unresolvable
+        // debounce -- and PARK the key so the recovery replacement can claim
+        // it. Parking only when something is actually keyed there keeps the
+        // map from accreting entries for clones that never walked.
+        if (from.notNull() &&
+            (mMoves.count(from) || mPaths.count(from) ||
+             mFollows.count(from) || mGazes.count(from) ||
+             mHistory.count(from)))
+        {
+            mParkedWalkKeys[stable_id] = from;
+        }
+        else if (parked != mParkedWalkKeys.end())
+        {
+            mParkedWalkKeys.erase(parked);
+        }
+        return;
+    }
+
+    // live replacement / recovery: the new runtime takes over the records
+    if (parked != mParkedWalkKeys.end())
+    {
+        mParkedWalkKeys.erase(parked);
+    }
+    migrateActor(from, new_id);
+}
+
+void LLActorMover::migrateActor(const LLUUID& old_id, const LLUUID& new_id)
+{
+    if (old_id.isNull() || new_id.isNull() || old_id == new_id)
+    {
+        return;
+    }
+
+    // ---- the Move: ALL suspend/resume state (mSuspended, mUnresolvedFrames,
+    //      mHasTrueGlobal, mLastTrueGlobal, mSuspendTrueGlobal) rides the
+    //      struct wholesale, so a suspended walk stays suspended at the same
+    //      anchor + progress and a live walk keeps its clock/pose caches ----
+    auto mit = mMoves.find(old_id);
+    const bool had_move = (mit != mMoves.end());
+    if (had_move)
+    {
+        Move mv = mit->second;
+        mMoves.erase(mit);
+
+        // the doomed old body may still be alive for the rest of this frame
+        // (a live refresh replaces first, kills after): silence its loco /
+        // dwell anim exactly like enterSuspend()/stop() would, so the corpse
+        // doesn't keep cycling until its deferred death lands
+        if (LLVOAvatar* old_av = resolve_actor(old_id))
+        {
+            if (!old_av->isDead())
+            {
+                if (mv.mAnim.notNull() && old_av->findMotion(mv.mAnim))
+                {
+                    old_av->stopMotion(mv.mAnim);
+                }
+                if (mv.mDwellAnim.notNull() &&
+                    old_av->findMotion(mv.mDwellAnim))
+                {
+                    old_av->stopMotion(mv.mDwellAnim);
+                }
+                old_av->setAnimTimeFactor(1.f);
+            }
+        }
+
+        // a LIVE (non-suspended) move keeps walking straight through the
+        // swap, but its anims died with the old body: restart them on the new
+        // one, the same treatment resumeMove() gives a returning actor. A
+        // SUSPENDED move is deliberately left untouched -- the RESUME_NEAR
+        // test in updateSuspendState() / the Path tab own its resumption (and
+        // resumeMove() restarts the anims there).
+        if (!mv.mSuspended)
+        {
+            LLVOAvatar* new_av = resolve_actor(new_id);
+            if (new_av && !new_av->isDead() && new_av->getRootJoint())
+            {
+                // a legacy straight move already settled at its endpoint
+                // carries over as the settled stand it was showing
+                const bool legacy_settled =
+                    !mv.mIsPath && mv.mEndMode == 0 &&
+                    mv.mSpeed * mv.mT >= mv.mDistance;
+                if (mv.mDwellNode >= 0)
+                {
+                    // mid-dwell: the loco anim is stopped by design while
+                    // holding at the node; carry the node's dwell anim over
+                    // (the dwell-complete path restarts the walk itself)
+                    if (mv.mDwellAnim.notNull())
+                    {
+                        new_av->startMotion(mv.mDwellAnim);
+                    }
+                }
+                else if (!mv.mArrived && !legacy_settled && mv.mAnim.notNull())
+                {
+                    new_av->startMotion(mv.mAnim);
+                    apply_custom_anim_priority(new_av, mv.mAnim);
+                    new_av->setAnimTimeFactor(llclamp(mv.mSpeed, 0.05f, 10.f)
+                                              / llmax(mv.mNominal, 0.5f));
+                }
+            }
+        }
+
+        mMoves[new_id] = mv;
+    }
+
+    // ---- authored path + its undo history + gaze config -------------------
+    auto pit = mPaths.find(old_id);
+    if (pit != mPaths.end())
+    {
+        mPaths[new_id] = std::move(pit->second);
+        mPaths.erase(pit);
+    }
+    auto hit = mHistory.find(old_id);
+    if (hit != mHistory.end())
+    {
+        mHistory[new_id] = std::move(hit->second);
+        mHistory.erase(hit);
+    }
+    auto git = mGazes.find(old_id);
+    if (git != mGazes.end())
+    {
+        mGazes[new_id] = git->second;
+        mGazes.erase(git);
+    }
+
+    // ---- follow relationships: this actor as a FOLLOWER, and as any other
+    //      follower's LEADER (a procession must keep riding the replaced
+    //      leader under its new key, or every follower holds forever) -------
+    auto fit = mFollows.find(old_id);
+    if (fit != mFollows.end())
+    {
+        mFollows[new_id] = fit->second;
+        mFollows.erase(fit);
+    }
+    for (auto& fpair : mFollows)
+    {
+        if (fpair.second.mLeader == old_id)
+        {
+            fpair.second.mLeader = new_id;
+        }
+    }
+
+    // NOT migrated on purpose: mDirectorGazes (captured joint poses belong to
+    // the OLD skeleton; the Director-cast consumer's remove(old) hook restores
+    // and prunes them, and the new body starts clean) and the frame-local
+    // ghost batch/static-face harvests (rebuilt every frame from live wanted
+    // sources). The impostor snapshot metadata is per-BODY, so the old entry
+    // is dropped and the new body regenerates on demand.
+    mGhostImpostors.erase(old_id);
+
+    // the path editor keeps pointing at the same logical actor; assign
+    // directly (setEditActor() would reset the node selection)
+    if (mEditActor == old_id)
+    {
+        mEditActor = new_id;
+    }
+
+    LL_INFOS("ActorMover") << "runtime replaced: migrated actor state "
+                           << old_id << " -> " << new_id
+                           << (had_move ? " (move carried over)" : "")
+                           << LL_ENDL;
+}
+
+void LLActorMover::dropActor(const LLUUID& actor_id)
+{
+    if (actor_id.isNull())
+    {
+        return;
+    }
+    auto it = mMoves.find(actor_id);
+    if (it != mMoves.end())
+    {
+        // guarded anim stop, mirrors cancelSuspended(): the body is usually
+        // already dead or dying here, but never leave a looping walk behind
+        if (LLVOAvatar* av = resolve_actor(actor_id))
+        {
+            if (it->second.mAnim.notNull() && av->findMotion(it->second.mAnim))
+            {
+                av->stopMotion(it->second.mAnim);
+            }
+            if (it->second.mDwellAnim.notNull() &&
+                av->findMotion(it->second.mDwellAnim))
+            {
+                av->stopMotion(it->second.mDwellAnim);
+            }
+            av->setAnimTimeFactor(1.f);
+        }
+        mMoves.erase(it);
+    }
+    mPaths.erase(actor_id);
+    mHistory.erase(actor_id);
+    mGazes.erase(actor_id);
+    // as a follower only: followers OF a removed actor keep the documented
+    // graceful leader-gone hold, exactly as if the leader had derezzed
+    mFollows.erase(actor_id);
+    mGhostImpostors.erase(actor_id);
+    if (mEditActor == actor_id)
+    {
+        setEditActor(LLUUID::null);     // clears the node selection with it
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -4104,6 +4428,7 @@ static LLStaticHashedString sGhostSlot("ghostSlot");
 static LLStaticHashedString sGhostLook("ghostLook");
 static LLStaticHashedString sGhostDistort("ghostDistort");
 static LLStaticHashedString sGhostDistortParams("ghostDistortParams");
+static LLStaticHashedString sGhostUseVertexAlpha("ghostUseVertexAlpha");
 
 // ---------------------------------------------------------------------------
 // Per-batch alpha semantics: how does the REAL render treat this rigged pass's
@@ -4408,7 +4733,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     LLVector3 pivot = gp.mHavePivot
         ? gp.mPivotFootAgent
         : LLVector3(live_root.mV[VX], live_root.mV[VY], live_root.mV[VZ] - p2f);
-    const F32 scale = llclamp(gp.mScale, 0.05f, 10.f);
+    const F32 scale = llclamp(gp.mScale, GHOST_SCALE_MIN, GHOST_SCALE_MAX);
 
     // Final backstop: a non-finite pivot or placement (dead/degenerate source
     // skeleton, corrupt instance transform, non-finite frozen anchor) would put
@@ -4449,6 +4774,10 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             sh->uniform1i(sGhostDistort, gp.mDistort);
             sh->uniform4f(sGhostDistortParams,
                           llclamp(gp.mDistortAmount, 0.f, 1.f), 0.5f, 0.5f, 0.f);
+            // vertex-alpha semantics default OFF (legacy-safe) on every bind
+            // so a program switch / empty sweep never inherits the prior
+            // draw's per-batch upload
+            sh->uniform1i(sGhostUseVertexAlpha, 0);
         }
         // [R2-4] park the diffuse_color GENERIC at white: buffers WITHOUT a
         // COLOR array (PBR) read the generic, whose GL boot default is BLACK
@@ -4570,6 +4899,19 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             }
 
             const bool is_mask = ghost_pass_is_mask(gb.mPass);
+
+            // vertex-colour ALPHA is real opacity only where the stock
+            // pipeline honors it: the alpha pool (blend passes) and PBR.
+            // Legacy non-alpha-pool faces bake SHININESS there (shiny "None"
+            // == 0), which discarded masked faces / blended styled ones to
+            // nothing unless the material happened to carry a spec/normal map.
+            if (have_fx)
+            {
+                const bool use_vertex_alpha = is_blend
+                    || di->mGLTFMaterial.notNull()
+                    || !di->mGLTFMaterialList.empty();
+                shader->uniform1i(sGhostUseVertexAlpha, use_vertex_alpha ? 1 : 0);
+            }
 
             // [R2-5] double-sided GLTF unculls for this batch, exactly like
             // the real render; indexed batches uncull when ANY slot is
@@ -4881,6 +5223,12 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             }
             if (have_fx)
             {
+                // same channel-semantics gate as the rigged sweep, per face:
+                // isInAlphaPool() matches llface's vertex-alpha bake gate
+                // (covers all three alpha pools); a PBR face's vertex alpha
+                // is always real opacity
+                static_shader->uniform1i(sGhostUseVertexAlpha,
+                    (face->isInAlphaPool() || gmat != nullptr) ? 1 : 0);
                 static_shader->uniform4f(sGhostAux,
                     (alpha_aware && gf.mAlphaKind == 1) ? gf.mCutoff : 0.f,
                     texture_rgb ? 1.f : 0.f, gp.mPixelSize, gp.mPhase);
@@ -5339,10 +5687,20 @@ void LLActorMover::renderHeadingPreview()
     {
         roster.push_back(LLUUID::null);     // my avatar
     }
+    // While the in-world path edit tool is active it draws the edit actor's path
+    // overlay itself (with hover/selection feedback via renderActorPathOverlay,
+    // called from render_ui_3d), so skip that actor here to avoid a double-draw.
+    // Non-edit actors preview normally.
+    const bool path_edit_tool_active =
+        (LLToolMgr::getInstance()->getCurrentTool() == (LLTool*)ALToolPathEdit::getInstance());
     for (const LLUUID& id : roster)
     {
         LLVOAvatar* av = resolve_actor(id);
         if (!av || !av->getRootJoint())
+        {
+            continue;
+        }
+        if (path_edit_tool_active && av->getID() == getEditActor())
         {
             continue;
         }
@@ -5641,6 +5999,107 @@ void LLActorMover::renderHeadingPreview()
             }
         }
         gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);   // leave UI state untextured
+    }
+
+    gGL.setLineWidth(1.f);
+    gGL.flush();
+}
+
+// ---------------------------------------------------------------------------
+// Lean per-actor path overlay used by the in-world path edit tool (called from
+// render_ui_3d while the tool is active). Draws the actor's spline ribbon +
+// chevrons (>= 2 nodes) and numbered node markers (from the FIRST node), a
+// breathing highlight on the edit-selected node and a steady highlight on the
+// hovered node. Independent of the roster / floater / >=2-node / Show-path gating
+// in renderHeadingPreview(), so editing always shows what is being marked. Zero
+// cost when the actor has no path.
+void LLActorMover::renderActorPathOverlay(const LLUUID& actor_id, bool editing, S32 hover_node)
+{
+    auto pit = mPaths.find(actor_id);
+    if (pit == mPaths.end() || pit->second.mNodes.empty())
+    {
+        return;                         // nothing marked yet
+    }
+    Path& path = pit->second;
+    if (path.mDirty)
+    {
+        path.rebuild();
+    }
+
+    // same beacon-style client overlay as renderHeadingPreview(): UI shader, no
+    // texture, no depth writes -- a pure client-side indicator over any ground.
+    LLGLSUIDefault gls_ui;
+    gUIProgram.bind();
+    gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
+
+    LLViewerCamera* cam = LLViewerCamera::getInstance();
+    const LLVector3 bb_right = -cam->getLeftAxis();
+    const LLVector3 bb_up    = cam->getUpAxis();
+
+    auto blend = [](const LLColor4& a, const LLColor4& b, F32 t) -> LLColor4
+    {
+        return LLColor4(a.mV[VX] * (1.f - t) + b.mV[VX] * t,
+                        a.mV[VY] * (1.f - t) + b.mV[VY] * t,
+                        a.mV[VZ] * (1.f - t) + b.mV[VZ] * t,
+                        a.mV[VW] * (1.f - t) + b.mV[VW] * t);
+    };
+    const LLColor4 actor_col = actorPathColor(actor_id);
+    LLColor4 col_line  = actor_col;                                                col_line.mV[VW]  = 0.9f;
+    LLColor4 col_chev  = blend(actor_col, LLColor4(1.f, 1.f, 1.f, 1.f), 0.45f);    col_chev.mV[VW]  = 0.95f;
+    LLColor4 col_start = blend(actor_col, LLColor4(0.3f, 1.f, 0.35f, 1.f), 0.55f); col_start.mV[VW] = 0.98f;
+    LLColor4 col_end   = blend(actor_col, LLColor4(1.f, 0.28f, 0.2f, 1.f), 0.55f); col_end.mV[VW]   = 0.98f;
+    LLColor4 col_mid   = actor_col;                                                col_mid.mV[VW]   = 0.95f;
+    const LLColor4 col_num(1.f, 1.f, 1.f, 1.f);
+
+    const F32 now   = (F32)LLFrameTimer::getElapsedSeconds();
+    const F32 pulse = 0.5f + 0.5f * sinf(now * 3.2f);
+
+    const S32 n = (S32)path.mNodes.size();
+    const bool loop = (path.mEndMode == 1);
+    const S32 sel = (getEditActor() == actor_id) ? getEditNode() : -1;
+
+    // walkable path: spline ribbon + forward chevrons
+    if (n >= 2)
+    {
+        const F32 total = llmax(path.mTotalLength, 0.01f);
+        const S32 steps = llclamp((S32)ceilf(total / 0.35f), 1, 4096);
+        std::vector<LLVector3> pts;
+        pts.reserve(steps + 1);
+        for (S32 i = 0; i <= steps; ++i)
+        {
+            LLVector3d gp, gt;
+            path.evalAtDistance(total * (F32)i / (F32)steps, gp, gt);
+            LLVector3 a = gAgent.getPosAgentFromGlobal(gp);
+            a.mV[VZ] += PATH_RIBBON_LIFT;
+            pts.push_back(a);
+        }
+        drawThickLine(pts, 0.11f, col_line);
+        drawChevrons(pts, col_chev);
+    }
+
+    // numbered node markers -- from a single node, so the first placed waypoint is
+    // visible immediately
+    for (S32 i = 0; i < n; ++i)
+    {
+        LLVector3 base = gAgent.getPosAgentFromGlobal(path.mNodes[i].mPosGlobal);
+        base.mV[VZ] += NODE_BASE_LIFT;
+        const bool is_start = (i == 0);
+        const bool is_end   = (i == n - 1) && !loop;
+        const LLColor4& c = is_start ? col_start : (is_end ? col_end : col_mid);
+
+        if (editing && i == hover_node && i != sel)
+        {
+            drawSelectedHighlight(base, LLColor4(1.f, 1.f, 1.f, 1.f), 0.35f);
+        }
+        if (i == sel)
+        {
+            drawSelectedHighlight(base, c, pulse);
+        }
+        drawNodeMarker(base, c, path.mNodes[i].mDwell > 0.f);
+
+        LLVector3 num_at = base;
+        num_at.mV[VZ] += NODE_STICK_H + 0.06f;
+        drawNumber(i + 1, num_at, NODE_NUM_H, bb_right, bb_up, col_num);
     }
 
     gGL.setLineWidth(1.f);
@@ -6212,7 +6671,7 @@ void LLActorMover::buildGhostDeferredQueue(const LLCamera& camera, U32 view_stam
         // formation yaw double-rotated the sidecar geometry; its coverage mask
         // then suppressed the correctly placed overlay, making the crowd vanish.
         proxy.mRotation     = ~av->getRotation() * inst.mRotation;
-        proxy.mScale        = llclamp(inst.mScale, 0.05f, 10.f);
+        proxy.mScale        = llclamp(inst.mScale, GHOST_SCALE_MIN, GHOST_SCALE_MAX);
         const LLVector3 live_root = av->getRenderPosition();
         // Same non-standard / still-loading skeleton hazard as the forward overlay
         // (drawGeometryGhost): a raw pelvis-to-foot can come back negative or
