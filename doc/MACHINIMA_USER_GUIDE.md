@@ -109,8 +109,10 @@ item links to its full how-to.
   to turn diagnostics back on.
 - **Separate `AlchemyMachinima` profile** — never touches your other viewers.
 
-- **[Prism Lens](#10-render-extras)** — use the Director Camera tab to designate
-  up to three rectangular planar prim faces as local magnifier/telescope windows.
+- **[Prism — lenses & camera feeds](#101-prism--magnifier-lenses--camera-feeds)** —
+  designate prim faces as surface-locked magnifier windows, or place a marker prim
+  as a camera and show its live view on other prim faces (a render-to-texture
+  monitor). Up to three captures fanning to sixteen faces, from the Director Camera tab.
 
 ## Performance & resource usage
 
@@ -690,16 +692,55 @@ god-rays live in the render settings (`RenderVolumetricLighting…`).
 - **10-bit output** — `RenderGLContext10bitSDR` (on by default) uses a 10-bit SDR
   framebuffer where supported; `RenderDitherEnabled` dithers the final output to
   hide banding on 8/10-bit displays.
-- **Prism Lenses** — the Director Camera tab can locally designate up to three
-  rectangular planar prim faces as surface-locked magnifiers. `PrismLensEnabled`
-  is the master render toggle; Zoom and Quality apply to all lenses. One retained
-  scheduled visible lens view is refreshed per frame (the most overdue wins,
-  with starvation prevention), so the expensive work is bounded to one extra
-  scene render per frame. Turning the master off releases Prism render targets
-  while keeping the list for later re-enable. Off by default.
 - **Animation Override (AO)** — a built-in AO engine. Command `/ao` (see
   `AlchemyChatCommandAnimationOverride`), with its own panel; overrides stands,
   walks, sits, etc.
+
+### 10.1 Prism — magnifier lenses & camera feeds
+
+Prism turns designated **prim faces** into live render surfaces — either a
+**magnifier lens** or a **camera-feed monitor**. It renders locally on your
+machine (nothing is sent to the region, and it does not use a reflection probe).
+Master toggle: **`PrismLensEnabled`** (off by default). You can have up to **three
+captures** (lenses and/or cameras, mixed) driving up to **sixteen display faces**;
+no matter how many faces, only **one** extra scene render happens per frame, so the
+cost stays bounded. Manage it all from **Director → Camera → Manage Prism…** — a
+floater with a capture list and **Capture / Displays / Performance** tabs. Prism
+captures and displays are saved with the Director scene.
+
+**Magnifier lens.** Select one flat, rectangular, non-rigged prim face and click
+**Add lens**. That face then shows a surface-locked, magnified view of whatever is
+behind it — it fills and follows the face as you orbit. **Zoom** and **Quality**
+apply to all lenses. A lens's face is both its aperture and its screen, so it has
+one fixed display.
+
+**Camera feed (a render-to-texture monitor).** One prim is the camera; *other* prim
+faces are the screens:
+
+1. Select one ordinary prim and click **Add camera**.
+2. Aim it — rotate the marker so its **local −Z** points at the subject (local **+Y**
+   is image-up) and move it to frame the shot. On the **Capture** tab set the field
+   of view (fixed degrees, or **Follow projector**), near/far clip, eye offset, and
+   output aspect (16:9 / 4:3 / 1:1 / custom).
+3. Edit a *different* static prim, enable **Select Face** in the build tools, select
+   one flat face, then on the **Displays** tab choose **Fit / Fill / Stretch** and
+   click **Add selected face**. Repeat for more monitors — one camera feeds many
+   faces with no extra scene render.
+
+> The camera marker prim is **not** hidden from its own feed — park it out of shot
+> or make it transparent so it doesn't appear on the monitors.
+
+**Picture rate & performance.** Each capture runs at **Automatic** or a fixed
+**Target FPS** (1–30), inherited by all of its faces. **Adaptive performance** (on
+by default) protects a chosen main-view target (30 / 45 / 60 FPS) by lowering
+capture cadence/resolution — or briefly pausing capture while holding the last
+image — when the frame rate dips. GPU timing isn't available, so a target FPS is a
+best-effort protection goal, not a guarantee; the expensive part is that one extra
+scene render. Turning the master off frees all Prism video memory but keeps your
+capture/display list for next time.
+
+Key settings: `PrismLensEnabled` (master), `PrismLensZoom`, `PrismLensResolutionScale`
+(quality), `PrismAdaptivePerformance`, `PrismProtectedMainFPS`.
 
 ---
 
@@ -738,6 +779,7 @@ god-rays live in the render settings (`RenderVolumetricLighting…`).
 | `AlchemyWeatherEnabled` | Weather |
 | `DirectorHotkeysEnabled` | Director hotkeys |
 | `AlchemyChatCommandEnable` | Chat commands |
+| `PrismLensEnabled` | Prism lenses & camera feeds |
 
 ---
 
