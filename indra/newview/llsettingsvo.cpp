@@ -38,6 +38,8 @@
 #include "v3colorutil.h"
 
 #include "llglslshader.h"
+#include "llplane.h"
+#include "llprismlens.h"
 #include "llviewershadermgr.h"
 
 #include "llagent.h"
@@ -1134,20 +1136,34 @@ void LLSettingsVOWater::applySpecial(void *ptarget, bool force)
 
         glm::vec4 mirrorPlane(enorm, -glm::dot(ep, enorm));
 
+        // Prism Slice 1 reuses the mirror fragment predicate for the mandatory
+        // behind-lens clip. Its plane is agent-space and keeps the non-negative
+        // half-space pointing away from the eye. This uniform cache is rebuilt
+        // once on aux entry and again after the scoped main-view restore.
+        glm::vec4 activeClipPlane = mirrorPlane;
+        bool clip_enabled = gPipeline.mHeroProbeManager.isMirrorPass();
+        if (LLPipeline::sPrismLensRender)
+        {
+            LLPlane prism_plane;
+            if (LLPrismLens::getActiveClipPlane(prism_plane))
+            {
+                norm = glm::vec3(prism_plane[0], prism_plane[1], prism_plane[2]);
+                p = norm * -prism_plane[3];
+                enorm = mul_mat4_vec3(invtrans, norm);
+                enorm = glm::normalize(enorm);
+                ep = mul_mat4_vec3(mat, p);
+                activeClipPlane = glm::vec4(enorm, -glm::dot(ep, enorm));
+                clip_enabled = true;
+            }
+        }
+
         LLDrawPoolAlpha::sWaterPlane = waterPlane;
 
         shader->uniform4fv(LLShaderMgr::WATER_WATERPLANE, waterPlane.mV);
-        shader->uniform4fv(LLShaderMgr::CLIP_PLANE, glm::value_ptr(mirrorPlane));
+        shader->uniform4fv(LLShaderMgr::CLIP_PLANE, glm::value_ptr(activeClipPlane));
         LLVector4 light_direction = env.getClampedLightNorm();
 
-        if (gPipeline.mHeroProbeManager.isMirrorPass())
-        {
-            shader->uniform1f(LLShaderMgr::MIRROR_FLAG, 1);
-        }
-        else
-        {
-            shader->uniform1f(LLShaderMgr::MIRROR_FLAG, 0);
-        }
+        shader->uniform1f(LLShaderMgr::MIRROR_FLAG, clip_enabled ? 1.f : 0.f);
 
         F32 waterFogKS = 1.f / llmax(light_direction.mV[2], WATER_FOG_LIGHT_CLAMP);
 

@@ -148,6 +148,7 @@ LLGLSLShader            gPostScreenSpaceReflectionProgram;
 
 // Deferred rendering shaders
 LLGLSLShader            gDeferredImpostorProgram;
+LLGLSLShader            gPrismLensProgram;
 LLGLSLShader            gDeferredDiffuseProgram;
 LLGLSLShader            gDeferredDiffuseAlphaMaskProgram;
 LLGLSLShader            gDeferredSkinnedDiffuseAlphaMaskProgram;
@@ -442,6 +443,7 @@ void LLViewerShaderMgr::finalizeShaderList()
     mShaderList.push_back(&gHazeProgram);
     mShaderList.push_back(&gHazeWaterProgram);
     mShaderList.push_back(&gDeferredSoftenProgram);
+    mShaderList.push_back(&gPrismLensProgram);
     // [BDMerge G3.2] atmospherics uniforms (blue_density etc.) are pushed to
     // registered shaders only - without this the volumetric shader computes
     // haze_density/(blue_density+haze_density) = 0/0 = NaN and blacks the frame
@@ -1317,6 +1319,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gDeferredSkinnedFullbrightAlphaMaskAlphaProgram.unload();
 
         gDeferredHighlightProgram.unload();
+        gPrismLensProgram.unload();
 
         gNormalMapGenProgram.unload();
         gDeferredGenBrdfLutProgram.unload();
@@ -1366,6 +1369,17 @@ bool LLViewerShaderMgr::loadShadersDeferred()
     }
 
     bool success = true;
+
+    gPrismLensProgram.mName = "Prism Lens Composite Shader";
+    gPrismLensProgram.mShaderFiles.clear();
+    gPrismLensProgram.clearPermutations();
+    gPrismLensProgram.mShaderFiles.push_back(make_pair("deferred/prismLensV.glsl", GL_VERTEX_SHADER));
+    gPrismLensProgram.mShaderFiles.push_back(make_pair("deferred/prismLensF.glsl", GL_FRAGMENT_SHADER));
+    gPrismLensProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+    if (!gPrismLensProgram.createShader())
+    {
+        LL_WARNS("Shader") << "Prism Lens composite shader failed to load; Prism Lens disabled. Deferred rendering unaffected." << LL_ENDL;
+    }
 
     if (success)
     {

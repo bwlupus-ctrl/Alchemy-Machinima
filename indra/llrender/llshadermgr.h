@@ -112,6 +112,7 @@ public:
         BUMP_MAP2,                          //  "bumpMap2"
         ENVIRONMENT_MAP,                    //  "environmentMap"
         SCENE_MAP,                          //  "sceneMap"
+        PRISM_LENS_MAP,                     //  "prismLensMap"
         SCENE_DEPTH,                        //  "sceneDepth"
         REFLECTION_PROBES,                  //  "reflectionProbes"
         IRRADIANCE_PROBES,                  //  "irradianceProbes"

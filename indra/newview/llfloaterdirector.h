@@ -29,6 +29,7 @@ class ALPanelAnimPreview;
 class ALPanelCineCamParams;
 class ALPanelPathEditor;
 class LLButton;
+class LLCheckBoxCtrl;
 class LLComboBox;
 class LLContextMenu;
 class LLLineEditor;
@@ -136,6 +137,10 @@ private:
     void onClickSetSubjectFromSelection(S32 subject);
     void onClickClearSubject(S32 subject);
     void onClickSetLookAtCamera(bool selected);
+    void onClickDesignatePrismLens();
+    void onClickRemovePrismLens();
+    void onClickClearPrismLenses();
+    void refreshPrismLensList();
     void refreshCameraTab();
 
     // ---- Takes tab ----
@@ -229,6 +234,12 @@ private:
     LLButton*  mClearDBtn = nullptr;
     LLButton*  mLookAtSetBtn = nullptr;
     LLButton*  mLookAtClearBtn = nullptr;
+    LLCheckBoxCtrl* mPrismEnabledCheck = nullptr;
+    LLScrollListCtrl* mPrismLensList = nullptr;
+    LLButton*  mPrismDesignateBtn = nullptr;
+    LLButton*  mPrismRemoveBtn = nullptr;
+    LLButton*  mPrismClearAllBtn = nullptr;
+    U32        mPrismRegistryRevision = 0;
 
     // Animate tab
     LLTextBox*        mAnimateHeader = nullptr;

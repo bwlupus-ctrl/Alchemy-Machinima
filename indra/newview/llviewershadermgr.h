@@ -227,6 +227,7 @@ extern LLGLSLShader         gPostScreenSpaceReflectionProgram;
 
 // Deferred rendering shaders
 extern LLGLSLShader         gDeferredImpostorProgram;
+extern LLGLSLShader         gPrismLensProgram;
 extern LLGLSLShader         gDeferredDiffuseProgram;
 extern LLGLSLShader         gDeferredDiffuseAlphaMaskProgram;
 extern LLGLSLShader         gDeferredNonIndexedDiffuseAlphaMaskProgram;

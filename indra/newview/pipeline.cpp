@@ -85,6 +85,7 @@
 #include "llmeshrepository.h"
 #include "llpipelinelistener.h"
 #include "llpresentationtime.h"
+#include "llprismlens.h"
 #include "llreshadebridge.h"
 #include "llresmgr.h"
 #include "llselectmgr.h"
@@ -1338,8 +1339,11 @@ bool LLPipeline::allocatePrismLensBuffer(U32 width, U32 height)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DISPLAY;
 
-    width = llclamp(width, 64u, 2048u);
-    height = llclamp(height, 64u, 2048u);
+    // Three retained lenses are deliberately bounded to a 1024-per-axis scratch.
+    // At the old 2048 limit this pack plus three RGBA16F outputs could exceed
+    // 250 MiB before driver overhead.
+    width = llclamp(width, 64u, 1024u);
+    height = llclamp(height, 64u, 1024u);
 
     RenderTargetPack& rt = mPrismLensRT;
     const bool needs_deferred_light = RenderDeferredSSAO || RenderShadowDetail > 0;
@@ -1374,6 +1378,36 @@ bool LLPipeline::allocatePrismLensBuffer(U32 width, U32 height)
     return true;
 }
 
+bool LLPipeline::allocatePrismLensOutput(U32 slot, U32 width, U32 height)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_DISPLAY;
+
+    if (slot >= LLPrismLens::MAX_LENSES)
+    {
+        return false;
+    }
+
+    width = llclamp(width, 64u, 1024u);
+    height = llclamp(height, 64u, 1024u);
+    LLRenderTarget& output = mPrismLensOutput[slot];
+    if (output.isComplete() && output.getWidth() >= width && output.getHeight() >= height)
+    {
+        return true;
+    }
+
+    // Retained beauties grow by bucket and do not shrink during a designation's
+    // lifetime. This prevents camera motion from churning GL allocations.
+    const U32 capacity_width = llmax(width, output.getWidth());
+    const U32 capacity_height = llmax(height, output.getHeight());
+    output.release();
+    if (!output.allocate(capacity_width, capacity_height, GL_RGBA16F))
+    {
+        output.release();
+        return false;
+    }
+    return true;
+}
+
 void LLPipeline::releasePrismLensBuffer()
 {
     RenderTargetPack& rt = mPrismLensRT;
@@ -1382,6 +1416,22 @@ void LLPipeline::releasePrismLensBuffer()
     rt.deferredLight.release();
     rt.width = 0;
     rt.height = 0;
+}
+
+void LLPipeline::releasePrismLensOutput(U32 slot)
+{
+    if (slot < LLPrismLens::MAX_LENSES)
+    {
+        mPrismLensOutput[slot].release();
+    }
+}
+
+void LLPipeline::releasePrismLensOutputs()
+{
+    for (U32 slot = 0; slot < LLPrismLens::MAX_LENSES; ++slot)
+    {
+        releasePrismLensOutput(slot);
+    }
 }
 
 // must be even to avoid a stripe in the horizontal shadow blur
@@ -1859,6 +1909,7 @@ void LLPipeline::releaseScreenBuffers()
     release_pack(mAuxillaryRT);
     release_pack(mHeroProbeRT);
     releasePrismLensBuffer();
+    releasePrismLensOutputs();
 }
 
 void LLPipeline::releaseSunShadowTarget(U32 index)
@@ -3486,7 +3537,13 @@ void LLPipeline::updateCull(LLCamera& camera, LLCullResult& result)
 
     bool water_clip = isWaterClip();
 
-    if (water_clip)
+    if (sPrismLensRender)
+    {
+        // The Prism caller installs its behind-lens user plane before culling.
+        // Preserve it here: replacing it with the water plane (or disabling it)
+        // defeats both the coarse correctness guard and its submission savings.
+    }
+    else if (water_clip)
     {
 
         LLVector3 pnorm;
@@ -16205,6 +16262,151 @@ void LLPipeline::renderDeferredLighting()
         }
 
         popRenderTypeMask();
+    }
+
+    // Composite every current visible Prism face from its independently retained
+    // linear-HDR beauty immediately before the main screen flush. Fixed-
+    // function depth provides opaque foreground occlusion; transparent pool
+    // ordering remains explicitly out of scope for this slice.
+    LLPrismLens::CompositeState prism_states[LLPrismLens::MAX_LENSES];
+    const U32 prism_state_count = gPrismLensProgram.isComplete()
+        ? LLPrismLens::getCompositeStates(screen_target, prism_states,
+                                          LLPrismLens::MAX_LENSES)
+        : 0;
+    if (prism_state_count > 0)
+    {
+        struct ScopedPrismCompositeRestore
+        {
+            ScopedPrismCompositeRestore()
+                : mSavedShader(LLGLSLShader::sCurBoundShaderPtr),
+                  mSavedMatrixMode(gGL.getMatrixMode()),
+                  mSavedScissorEnabled(glIsEnabled(GL_SCISSOR_TEST))
+            {
+                glGetIntegerv(GL_SCISSOR_BOX, mSavedScissorBox);
+                glGetBooleanv(GL_COLOR_WRITEMASK, mSavedColorMask);
+            }
+
+            ~ScopedPrismCompositeRestore()
+            {
+                if (mFaceMatrixPushed)
+                {
+                    gGL.matrixMode(LLRender::MM_MODELVIEW);
+                    gGL.popMatrix();
+                }
+                gGL.matrixMode(mSavedMatrixMode);
+                gGL.syncMatrices();
+
+                gPrismLensProgram.disableTexture(LLShaderMgr::PRISM_LENS_MAP);
+                LLVertexBuffer::unbind();
+                if (mSavedShader && mSavedShader->isComplete())
+                {
+                    mSavedShader->bind();
+                }
+                else
+                {
+                    LLGLSLShader::unbind();
+                }
+
+                glScissor(mSavedScissorBox[0], mSavedScissorBox[1],
+                          mSavedScissorBox[2], mSavedScissorBox[3]);
+                if (mSavedScissorEnabled)
+                {
+                    glEnable(GL_SCISSOR_TEST);
+                }
+                else
+                {
+                    glDisable(GL_SCISSOR_TEST);
+                }
+                gGL.setColorMask(mSavedColorMask[0] != GL_FALSE,
+                                 mSavedColorMask[1] != GL_FALSE,
+                                 mSavedColorMask[2] != GL_FALSE,
+                                 mSavedColorMask[3] != GL_FALSE);
+            }
+
+            void pushFaceMatrix(LLDrawable* drawable)
+            {
+                gGL.matrixMode(LLRender::MM_MODELVIEW);
+                gGL.pushMatrix();
+                mFaceMatrixPushed = true;
+
+                // Match LLVolumeGeometryManager::registerFace() and
+                // LLRenderPass::applyModelMatrix(): face vertices are in the
+                // drawable space selected below, and the object matrix must be
+                // applied to the camera model-view -- never to the matrix left
+                // behind by the preceding deferred draw.
+                gGL.loadMatrix(gGLModelView);
+                if (drawable->isState(LLDrawable::ANIMATED_CHILD))
+                {
+                    gGL.multMatrix((GLfloat*)drawable->getWorldMatrix().mMatrix);
+                }
+                else if (drawable->isActive())
+                {
+                    gGL.multMatrix((GLfloat*)drawable->getRenderMatrix().mMatrix);
+                }
+                else
+                {
+                    gGL.multMatrix((GLfloat*)drawable->getRegion()->mRenderMatrix.mMatrix);
+                }
+                gGL.syncMatrices();
+            }
+
+            LLGLSLShader* mSavedShader;
+            LLRender::eMatrixMode mSavedMatrixMode;
+            GLboolean mSavedScissorEnabled;
+            GLint mSavedScissorBox[4];
+            GLboolean mSavedColorMask[4];
+            bool mFaceMatrixPushed = false;
+        };
+
+        for (U32 prism_index = 0; prism_index < prism_state_count; ++prism_index)
+        {
+            const LLPrismLens::CompositeState& prism_state = prism_states[prism_index];
+            if (prism_state.mSlot >= LLPrismLens::MAX_LENSES || !prism_state.mFace)
+            {
+                continue;
+            }
+
+            // One complete restore scope per face guarantees one model-view pop
+            // per push even when all three lenses composite in the same frame.
+            ScopedPrismCompositeRestore scoped_composite_restore;
+            LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
+            LLGLDisable blend(GL_BLEND);
+            LLGLDisable cull(GL_CULL_FACE); // MVP is deliberately two-sided.
+            gGL.setColorMask(true, true);
+            glEnable(GL_SCISSOR_TEST);
+            glScissor(prism_state.mScissor[0], prism_state.mScissor[1],
+                      prism_state.mScissor[2], prism_state.mScissor[3]);
+
+            gPrismLensProgram.bind();
+            const S32 prism_channel =
+                gPrismLensProgram.enableTexture(LLShaderMgr::PRISM_LENS_MAP);
+            if (prism_channel >= 0)
+            {
+                mPrismLensOutput[prism_state.mSlot].bindTexture(
+                    0, prism_channel, LLTexUnit::TFO_BILINEAR);
+
+                static const LLStaticHashedString sSurfaceOrigin("surfaceOrigin");
+                static const LLStaticHashedString sSurfaceUDual("surfaceUDual");
+                static const LLStaticHashedString sSurfaceVDual("surfaceVDual");
+                static const LLStaticHashedString sUvScale("uvScale");
+                static const LLStaticHashedString sUvOffset("uvOffset");
+                static const LLStaticHashedString sEdgeFeather("edgeFeather");
+                gPrismLensProgram.uniform3fv(sSurfaceOrigin, 1, prism_state.mSurfaceOrigin);
+                gPrismLensProgram.uniform3fv(sSurfaceUDual, 1, prism_state.mSurfaceUDual);
+                gPrismLensProgram.uniform3fv(sSurfaceVDual, 1, prism_state.mSurfaceVDual);
+                gPrismLensProgram.uniform2fv(sUvScale, 1, prism_state.mUvScale);
+                gPrismLensProgram.uniform2fv(sUvOffset, 1, prism_state.mUvOffset);
+                gPrismLensProgram.uniform1f(sEdgeFeather, prism_state.mEdgeFeather);
+
+                LLDrawable* lens_drawable = prism_state.mFace->getDrawable();
+                if (lens_drawable &&
+                    (lens_drawable->isActive() || lens_drawable->getRegion()))
+                {
+                    scoped_composite_restore.pushFaceMatrix(lens_drawable);
+                    prism_state.mFace->renderIndexed();
+                }
+            }
+        }
     }
 
     screen_target->flush();

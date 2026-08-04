@@ -109,9 +109,8 @@ item links to its full how-to.
   to turn diagnostics back on.
 - **Separate `AlchemyMachinima` profile** — never touches your other viewers.
 
-*In development (not yet usable): **Prism Lens** — a designated-prim magnifier /
-telescope lens. The render foundation is in place, but there is nothing to point at a
-prim with yet.*
+- **[Prism Lens](#10-render-extras)** — use the Director Camera tab to designate
+  up to three rectangular planar prim faces as local magnifier/telescope windows.
 
 ## Performance & resource usage
 
@@ -691,8 +690,13 @@ god-rays live in the render settings (`RenderVolumetricLighting…`).
 - **10-bit output** — `RenderGLContext10bitSDR` (on by default) uses a 10-bit SDR
   framebuffer where supported; `RenderDitherEnabled` dithers the final output to
   hide banding on 8/10-bit displays.
-- **Prism Lens** — `PrismLensEnabled` (experimental) renders geometry behind a
-  designated prim at a different zoom/FOV. Off by default.
+- **Prism Lenses** — the Director Camera tab can locally designate up to three
+  rectangular planar prim faces as surface-locked magnifiers. `PrismLensEnabled`
+  is the master render toggle; Zoom and Quality apply to all lenses. One retained
+  scheduled visible lens view is refreshed per frame (the most overdue wins,
+  with starvation prevention), so the expensive work is bounded to one extra
+  scene render per frame. Turning the master off releases Prism render targets
+  while keeping the list for later re-enable. Off by default.
 - **Animation Override (AO)** — a built-in AO engine. Command `/ao` (see
   `AlchemyChatCommandAnimationOverride`), with its own panel; overrides stands,
   walks, sits, etc.

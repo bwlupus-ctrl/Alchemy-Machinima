@@ -1,23 +1,31 @@
-> **Status (2026-08-01): AUTHORITATIVE version — supersedes the initial sketch.**
-> This is the reviewed deep-research report (GPT), which corrected real errors in the first draft. Claude spot-verified its load-bearing architectural claims against the current tree:
+> **Status (updated 2026-08-03): HISTORICAL RESEARCH WITH IMPLEMENTED ADDENDUM.**
+> This reviewed report corrected real errors in the first draft and remains the
+> rationale/provenance for the renderer. Its original single-lens MVP scope and
+> estimates are historical. The fixed-three-slot Phase 2 contract below and
+> `PRISM_LENS_SURFACE_FIT_DEEP_RESEARCH.md` describe the current working tree.
+> Load-bearing architectural claims were spot-verified against the tree:
 > - `RenderTargetPack` `mMainRT`/`mAuxillaryRT`/`mHeroProbeRT` + `RenderTargetPack* mRT` — `pipeline.h:918-928` ✓ (the real alternate-camera precedent, NOT `mWaterDis`).
 > - `renderDeferredLighting()` reads the `LLViewerCamera::getInstance()` singleton (e.g. `pipeline.cpp:12776`, `:14347`) ✓ → a private `LLCamera` alone is insufficient; need a scoped singleton/global-matrix mutation (like `cubeSnapshot()`).
 > - `mirrorClip()` + `clipPlane` discard — `class1/deferred/globalF.glsl:32-39` ✓ → reusable behind-lens clip mechanism.
 >
-> Feature remains QUEUED — after the camera look-at/turn-body build + the Absolute Cinema SL rebrand.
+> The capped-three, surface-fit implementation is now present in the working
+> tree. It has been statically/adversarially reviewed but intentionally not built
+> as part of this coding task.
 
 ---
 
 # Prism / Magnifying-Glass Lens Prim — Deep Research Report
 
 **Date:** 2026-08-01
-**Scope:** Feasibility and implementation path against the current `I:\alchemy-machinima` fork, with illustrative C++/GLSL. This is not a production patch.
+**Scope:** Historical feasibility/implementation research against the
+`I:\alchemy-machinima` fork, followed by the current implementation contract.
 
 ## Executive verdict
 
 The feature is feasible in the current OpenGL deferred pipeline, and Tier 1 is the right direction. The cheapest correct first implementation is **not** a stencil pass and is **not** a lone `LLRenderTarget` copied from `mWaterDis`. It is:
 
-1. A dedicated, minimal deferred target pack for one lens.
+1. One dedicated, minimal deferred scratch pack shared by the scheduled lens,
+   plus one retained HDR output for each of three fixed slots.
 2. A second scene render from the **same eye point**, using a cropped/off-axis projection centered on the lens's projected footprint.
 3. A clip plane at the lens surface, so geometry between the camera and glass cannot reappear inside the magnified image.
 4. A composite made by drawing the actual designated face into `mMainRT.screen`, with `GL_LEQUAL` depth testing and depth writes disabled.
@@ -25,7 +33,10 @@ The feature is feasible in the current OpenGL deferred pipeline, and Tier 1 is t
 
 This produces a convincing machinima magnifier/telescope window with correct opaque depth occlusion. Full physical refraction is a different feature: it requires per-ray bending and object-distance-dependent imaging, not an offset camera.
 
-The expected implementation size is medium-to-large: roughly **4–7 engineering days** for a robust single-face MVP and **another 3–6 days** for transparent ordering, multiple lenses, polish, and interaction testing. A full thin-lens/refraction model is a separate research/implementation phase.
+The original planning estimate was **4–7 engineering days** for a robust
+single-face MVP and **another 3–6 days** for transparent ordering, multiple
+lenses, polish, and interaction testing. It is retained as historical planning
+context, not current status. A full thin-lens/refraction model remains separate.
 
 ## Important corrections to the original brief
 
@@ -105,7 +116,9 @@ At designation time require exactly one selected world object and one selected T
 
 Resolve each frame through `gObjectList.findObject(id)` (`llviewerobjectlist.h:266-278`). Clear or mark inactive when the object is dead, absent, a HUD attachment, lacks the face, is back-facing, or projects below a small pixel threshold. Do not retain raw `LLFace*` across frames.
 
-For the MVP, support one planar volume face and one lens. Curved/nonplanar prim surfaces need a defined optical surface and cannot use one exact clip plane.
+The implemented scope supports up to three rectangular planar volume faces.
+Curved/nonplanar prim surfaces still need a defined optical surface and cannot
+use one exact clip plane.
 
 ### Render targets
 
@@ -371,7 +384,11 @@ Opaque foreground occlusion is correct immediately. Transparent foreground corre
 | DoF/motion blur | Main pass once, document limitation | They use main depth/velocity and cannot infer the alternate depth inside the lens. Correct lens-local DoF/velocity would need auxiliary metadata and a depth-aware composite. |
 | Volumetrics/weather | Skip initially | Several paths are main-view/global-history systems. Add after isolation tests. |
 
-At 960×540, a minimal HDR G-buffer plus beauty/depth/light is on the order of tens of MB, not hundreds. Geometry submission and skinning/draw overhead—not target memory—will usually dominate. A narrow crop cull and one-lens cap are the most valuable controls.
+At 960×540, a minimal HDR G-buffer plus beauty/depth/light is on the order of
+tens of MB, not hundreds. Geometry submission and skinning/draw overhead—not
+target memory—will usually dominate. The implemented controls are a 1024-axis
+target cap and at most one scheduled auxiliary scene render per viewer frame;
+lenses two and three reuse retained outputs between their updates.
 
 ### 3. Same-eye zoom versus offset eye
 
@@ -451,19 +468,23 @@ This is the real Temporal Capture requirement: **same already-frozen state, no d
 - `PrismLensEnabled` — Bool, default false.
 - `PrismLensZoom` — F32, default 2.0, clamp 1.0–8.0.
 - `PrismLensResolutionScale` — F32, default 1.0, clamp 0.25–2.0, explicitly relative to projected lens pixels.
-- `PrismLensMaxLenses` — S32, default 1, hard cap 2 initially.
-- `PrismLensIncludeAtmosphere` — Bool, default false until isolated scratch exists.
-- `PrismLensDebug` — Bool, default false; shows face id, projected rect, target size, auxiliary CPU/GPU time, and rejection reason.
+- Lens count is a fixed local implementation cap of **3** (`MAX_LENSES`), not
+  a user setting. This keeps render-target ownership and the worst-case VRAM
+  budget explicit.
+- `PrismLensDebug` — Bool, default false; blits the most recently refreshed
+  retained beauty for visual diagnosis. Face metadata and GPU timing remain
+  future instrumentation.
 
 Director UI:
 
-- **Designate selected face**
-- **Clear lens**
-- Enabled toggle
-- Zoom and resolution-scale sliders
-- Read-only object name / UUID / face index / current target size
+- Fixed registry list showing lens slot, object UUID prefix, and face index
+- **Add selected**, **Remove highlighted**, and **Clear all**
+- Independent enabled toggle (registry edits never turn the effect on or off)
+- Shared zoom and resolution-scale sliders
 
-Reject ambiguous multi-object or multi-face selection with a notification. Do not silently choose the first face.
+Reject ambiguous multi-object or multi-face selection with a specific disabled-
+control reason/tooltip; if selection races between refresh and click, report the
+same reason by notification. Never silently choose the first face.
 
 ## Phased implementation and acceptance tests
 
@@ -506,8 +527,11 @@ Acceptance scenes:
 
 ### Phase 2 — polish and scale (2–4 days)
 
-- Up to two lenses rendered serially through one reusable target pack.
-- Per-lens update culling, resolution hysteresis, edge/art masks, material tint/reflection overlay.
+- Hard limit of three fixed registry slots, one shared deferred scratch, and
+  three retained RGBA16F beauty outputs. At most one overdue visible lens is
+  refreshed per viewer frame; all valid retained outputs composite.
+- Per-lens visibility preparation, bucketed 64–1024 targets, failure backoff,
+  edge/art masks, and material tint/reflection overlay.
 - Ghost Studio lens-view queue.
 - GPU timer queries and an explicit budget warning; never silently reduce main quality.
 

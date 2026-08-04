@@ -43,6 +43,7 @@
 #include "llrendertarget.h"
 #include "llreflectionmapmanager.h"
 #include "llheroprobemanager.h"
+#include "llprismlens.h"
 #include "lluuid.h"                 // [GhostDeferred] coverage-map key
 #include "llghostcoverage.h"        // [GhostDeferred] per-category coverage mask
 
@@ -132,7 +133,10 @@ public:
     //returns true if allocation successful, false otherwise
     bool allocateScreenBufferInternal(U32 resX, U32 resY);
     bool allocatePrismLensBuffer(U32 width, U32 height);
+    bool allocatePrismLensOutput(U32 slot, U32 width, U32 height);
     void releasePrismLensBuffer();
+    void releasePrismLensOutput(U32 slot);
+    void releasePrismLensOutputs();
     bool allocateShadowBuffer(U32 resX, U32 resY);
 
     // rebuild all LLVOVolume render batches
@@ -933,8 +937,9 @@ public:
     // Auxillary render target pack scaled to the hero probe's per-face size.
     RenderTargetPack mHeroProbeRT;
 
-    // Minimal deferred pack used only by the scoped Prism Lens auxiliary view.
+    // Shared scratch deferred pack plus fixed, independently retained HDR outputs.
     RenderTargetPack mPrismLensRT;
+    LLRenderTarget mPrismLensOutput[LLPrismLens::MAX_LENSES];
 
     // currently used render target pack
     RenderTargetPack* mRT;

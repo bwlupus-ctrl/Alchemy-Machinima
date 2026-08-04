@@ -21,6 +21,7 @@
 #include "llactormover.h"
 #include "llavatarnamecache.h"
 #include "llbutton.h"
+#include "llcheckboxctrl.h"
 #include "llclipboard.h"
 #include "llcombobox.h"
 #include "lldir.h"                  // gDirUtilp (scene files)
@@ -36,6 +37,7 @@
 #include "llmenugl.h"
 #include "llnotificationsutil.h"    // scene delete confirm
 #include "llpresentationtime.h"
+#include "llprismlens.h"
 #include "llscrolllistctrl.h"
 #include "llsdserialize.h"          // scene LLSD XML files
 #include "llselectmgr.h"
@@ -72,6 +74,13 @@ constexpr char TAB_ICON_TAKES[]   = "Command_Snapshot_Icon";
 constexpr char TAB_ICON_SHAFTS[]  = "Command_PersonalLighting_Icon";
 constexpr char TAB_ICON_TEMPORAL[] = "Command_Environments_Icon"; // day-cycle/time metaphor (no clock asset ships)
 constexpr char TAB_ICON_WEATHER[]  = "Command_Water_Icon"; // rain/precipitation metaphor (distinct from Time's sky icon)
+
+void showPrismTip(const std::string& message)
+{
+    LLSD args;
+    args["MESSAGE"] = message;
+    LLNotificationsUtil::add("SystemMessageTip", args);
+}
 
 // scene files live beside the cinematic presets, same idiom
 constexpr char SCENE_SUBDIR[]  = "director_scenes";
@@ -375,6 +384,11 @@ bool LLFloaterDirector::postBuild()
     mClearDBtn = getChild<LLButton>("btn_clear_d");
     mLookAtSetBtn = getChild<LLButton>("btn_look_at_set");
     mLookAtClearBtn = getChild<LLButton>("btn_look_at_clear");
+    mPrismEnabledCheck = getChild<LLCheckBoxCtrl>("prism_lens_enabled");
+    mPrismLensList = getChild<LLScrollListCtrl>("prism_lens_list");
+    mPrismDesignateBtn = getChild<LLButton>("btn_prism_designate");
+    mPrismRemoveBtn = getChild<LLButton>("btn_prism_remove");
+    mPrismClearAllBtn = getChild<LLButton>("btn_prism_clear_all");
     mSetABtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSetSubjectFromSelection(SUBJECT_A); });
     mSetBBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSetSubjectFromSelection(SUBJECT_B); });
     mSetCBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSetSubjectFromSelection(SUBJECT_C); });
@@ -387,6 +401,12 @@ bool LLFloaterDirector::postBuild()
         [this](LLUICtrl*, const LLSD&) { onClickSetLookAtCamera(true); });
     mLookAtClearBtn->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onClickSetLookAtCamera(false); });
+    mPrismDesignateBtn->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onClickDesignatePrismLens(); });
+    mPrismRemoveBtn->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onClickRemovePrismLens(); });
+    mPrismClearAllBtn->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onClickClearPrismLenses(); });
     // embedded shared params panel: scene files read its selected preset and
     // apply presets through it on load
     mCineCamPanel = findChild<ALPanelCineCamParams>("cinecam_params_embedded");
@@ -1904,6 +1924,99 @@ void LLFloaterDirector::onClickSetLookAtCamera(bool selected)
     }
 }
 
+void LLFloaterDirector::onClickDesignatePrismLens()
+{
+    std::string reason;
+    const LLPrismLens::EDesignationResult result =
+        LLPrismLens::designateSelectedFace(&reason);
+    switch (result)
+    {
+        case LLPrismLens::EDesignationResult::ADDED:
+            showPrismTip(llformat("Added Prism lens (%u of %u).",
+                                  LLPrismLens::designationCount(),
+                                  LLPrismLens::MAX_LENSES));
+            break;
+        case LLPrismLens::EDesignationResult::ALREADY_EXISTS:
+            showPrismTip("That face is already a Prism lens.");
+            break;
+        case LLPrismLens::EDesignationResult::AT_CAPACITY:
+            showPrismTip("Prism lens limit reached. Remove one before adding another.");
+            break;
+        case LLPrismLens::EDesignationResult::INVALID_SELECTION:
+            showPrismTip("Could not add Prism lens: " + reason);
+            break;
+        case LLPrismLens::EDesignationResult::ELIGIBLE:
+            break;
+    }
+}
+
+void LLFloaterDirector::onClickRemovePrismLens()
+{
+    const LLSD selected = mPrismLensList->getSelectedValue();
+    if (!selected.isInteger())
+    {
+        return;
+    }
+    const U32 slot = static_cast<U32>(selected.asInteger());
+    if (LLPrismLens::removeDesignation(slot))
+    {
+        showPrismTip("Removed highlighted Prism lens.");
+    }
+}
+
+void LLFloaterDirector::onClickClearPrismLenses()
+{
+    const U32 count = LLPrismLens::designationCount();
+    if (count == 0)
+    {
+        return;
+    }
+    LLPrismLens::clearDesignations();
+    showPrismTip(llformat("Cleared %u Prism %s.", count,
+                          count == 1 ? "lens" : "lenses"));
+}
+
+void LLFloaterDirector::refreshPrismLensList()
+{
+    const U32 revision = LLPrismLens::designationRevision();
+    if (revision == mPrismRegistryRevision)
+    {
+        return;
+    }
+
+    const LLSD previous_selection = mPrismLensList->getSelectedValue();
+    mPrismLensList->deleteAllItems();
+    for (U32 slot = 0; slot < LLPrismLens::MAX_LENSES; ++slot)
+    {
+        LLPrismLens::Designation designation;
+        if (!LLPrismLens::getDesignation(slot, designation))
+        {
+            continue;
+        }
+
+        LLSD row;
+        // LLScrollListCtrl compares scalar values. An LLSD map stringifies to
+        // an empty value and makes selectByValue() restore the wrong row.
+        row["value"] = static_cast<LLSD::Integer>(slot);
+        row["columns"][0]["column"] = "lens";
+        row["columns"][0]["value"] = llformat(
+            "Lens %u  |  %s  |  face %d", slot + 1,
+            designation.mObjectId.asString().substr(0, 8).c_str(),
+            designation.mTextureEntry);
+        mPrismLensList->addElement(row, ADD_BOTTOM);
+    }
+
+    if (previous_selection.isDefined())
+    {
+        mPrismLensList->selectByValue(previous_selection);
+    }
+    if (mPrismLensList->getNumSelected() == 0)
+    {
+        mPrismLensList->selectFirstItem();
+    }
+    mPrismRegistryRevision = revision;
+}
+
 void LLFloaterDirector::refreshCameraTab()
 {
     LLDirectorCast& cast = LLDirectorCast::instance();
@@ -1959,6 +2072,36 @@ void LLFloaterDirector::refreshCameraTab()
         : std::string("Select one or more cast rows first");
     setToolTipIfChanged(mLookAtSetBtn, look_tip);
     setToolTipIfChanged(mLookAtClearBtn, look_tip);
+
+    refreshPrismLensList();
+    const U32 prism_count = LLPrismLens::designationCount();
+    const std::string prism_label =
+        llformat("Prism lenses %u/%u", prism_count, LLPrismLens::MAX_LENSES);
+    if (mPrismEnabledCheck->getLabel() != prism_label)
+    {
+        mPrismEnabledCheck->setLabel(LLStringExplicit(prism_label));
+    }
+
+    std::string prism_add_reason;
+    const LLPrismLens::EDesignationResult prism_add_status =
+        LLPrismLens::selectedFaceStatus(&prism_add_reason);
+    const bool can_designate_lens =
+        prism_add_status == LLPrismLens::EDesignationResult::ELIGIBLE;
+    mPrismDesignateBtn->setEnabled(can_designate_lens);
+    setToolTipIfChanged(mPrismDesignateBtn, can_designate_lens
+        ? std::string("Add the exactly-one selected world face to the local Prism registry")
+        : prism_add_reason);
+
+    const bool can_remove_lens = mPrismLensList->getNumSelected() == 1;
+    mPrismRemoveBtn->setEnabled(can_remove_lens);
+    setToolTipIfChanged(mPrismRemoveBtn, can_remove_lens
+        ? std::string("Remove the highlighted local Prism lens")
+        : std::string("Highlight a Prism lens in the list first"));
+
+    mPrismClearAllBtn->setEnabled(prism_count > 0);
+    setToolTipIfChanged(mPrismClearAllBtn, prism_count > 0
+        ? std::string("Clear all local Prism lens designations")
+        : std::string("No Prism lenses are designated"));
 }
 
 // ---------------------------------------------------------------------------
