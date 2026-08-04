@@ -1335,34 +1335,44 @@ bool LLPipeline::allocateScreenBufferInternal(U32 resX, U32 resY)
     return true;
 }
 
-bool LLPipeline::allocatePrismLensBuffer(U32 width, U32 height)
+bool LLPipeline::allocatePrismLensBuffer(U32 slot, U32 width, U32 height)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DISPLAY;
 
-    // Three retained lenses are deliberately bounded to a 1024-per-axis scratch.
-    // At the old 2048 limit this pack plus three RGBA16F outputs could exceed
-    // 250 MiB before driver overhead.
+    if (slot >= LLPrismLens::MAX_CAPTURES)
+    {
+        return false;
+    }
+
+    // Each of the three bounded captures owns one exact-size scratch pack.
+    // Normalized deferred UVs therefore always address the pixels rendered for
+    // that capture; an oversized physical texture cannot expose stale regions.
     width = llclamp(width, 64u, 1024u);
     height = llclamp(height, 64u, 1024u);
 
-    RenderTargetPack& rt = mPrismLensRT;
+    RenderTargetPack& rt = mPrismLensRT[slot];
+    LLRenderTarget& water_dis = mPrismLensWaterDis[slot];
+    LLRenderTarget& water_exclusion = mPrismLensWaterExclusionMask[slot];
     const bool needs_deferred_light = RenderDeferredSSAO || RenderShadowDetail > 0;
     if (rt.width == width && rt.height == height &&
         rt.deferredScreen.isComplete() && rt.screen.isComplete() &&
-        (!needs_deferred_light || rt.deferredLight.isComplete()))
+        (!needs_deferred_light || rt.deferredLight.isComplete()) &&
+        water_dis.isComplete() && water_exclusion.isComplete())
     {
         return true;
     }
 
-    releasePrismLensBuffer();
+    releasePrismLensBuffer(slot);
     rt.width = width;
     rt.height = height;
 
     if (!rt.deferredScreen.allocate(width, height, GL_SRGB8_ALPHA8, true) ||
         !addDeferredAttachments(rt.deferredScreen) ||
-        !rt.screen.allocate(width, height, GL_RGBA16F))
+        !rt.screen.allocate(width, height, GL_RGBA16F) ||
+        !water_dis.allocate(width, height, GL_RGBA16F, true) ||
+        !water_exclusion.allocate(width, height, GL_R8, true))
     {
-        releasePrismLensBuffer();
+        releasePrismLensBuffer(slot);
         return false;
     }
 
@@ -1371,7 +1381,7 @@ bool LLPipeline::allocatePrismLensBuffer(U32 width, U32 height)
     if (needs_deferred_light &&
         !rt.deferredLight.allocate(width, height, GL_RGBA16F))
     {
-        releasePrismLensBuffer();
+        releasePrismLensBuffer(slot);
         return false;
     }
 
@@ -1382,45 +1392,190 @@ bool LLPipeline::allocatePrismLensOutput(U32 slot, U32 width, U32 height)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DISPLAY;
 
-    if (slot >= LLPrismLens::MAX_LENSES)
+    constexpr U32 PRISM_OUTPUT_CAPACITY = 1024;
+
+    if (slot >= LLPrismLens::MAX_CAPTURES || width == 0 || height == 0 ||
+        width > PRISM_OUTPUT_CAPACITY || height > PRISM_OUTPUT_CAPACITY)
     {
         return false;
     }
 
-    width = llclamp(width, 64u, 1024u);
-    height = llclamp(height, 64u, 1024u);
     LLRenderTarget& output = mPrismLensOutput[slot];
-    if (output.isComplete() && output.getWidth() >= width && output.getHeight() >= height)
+    if (output.isComplete())
     {
-        return true;
+        // Outputs are lifetime-fixed at maximum capacity. The producer owns
+        // the logical copy extent and publishes its texture-region transform.
+        return output.getWidth() == PRISM_OUTPUT_CAPACITY &&
+               output.getHeight() == PRISM_OUTPUT_CAPACITY;
     }
 
-    // Retained beauties grow by bucket and do not shrink during a designation's
-    // lifetime. This prevents camera motion from churning GL allocations.
-    const U32 capacity_width = llmax(width, output.getWidth());
-    const U32 capacity_height = llmax(height, output.getHeight());
-    output.release();
-    if (!output.allocate(capacity_width, capacity_height, GL_RGBA16F))
+    // Allocate once, lazily, before this capture can own a valid publication.
+    // There is no release-before-allocate path, so a subsequent logical-size
+    // change can never destroy a retained frame shared by sibling displays.
+    return output.allocate(PRISM_OUTPUT_CAPACITY, PRISM_OUTPUT_CAPACITY,
+                           GL_RGBA16F) &&
+           output.isComplete() &&
+           output.getWidth() == PRISM_OUTPUT_CAPACITY &&
+           output.getHeight() == PRISM_OUTPUT_CAPACITY;
+}
+
+bool LLPipeline::setPrismLensLogicalExtent(U32 width, U32 height)
+{
+    constexpr U32 PRISM_MAX_LOGICAL_EXTENT = 1024;
+    RenderTargetPack* prism_rt = nullptr;
+    for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
     {
-        output.release();
+        if (mRT == &mPrismLensRT[slot])
+        {
+            prism_rt = &mPrismLensRT[slot];
+            break;
+        }
+    }
+    if (width == 0 || height == 0 ||
+        width > PRISM_MAX_LOGICAL_EXTENT ||
+        height > PRISM_MAX_LOGICAL_EXTENT ||
+        !prism_rt || width != prism_rt->width || height != prism_rt->height)
+    {
+        clearPrismLensLogicalExtent();
         return false;
     }
+
+    mPrismLensLogicalWidth = width;
+    mPrismLensLogicalHeight = height;
     return true;
 }
 
-void LLPipeline::releasePrismLensBuffer()
+void LLPipeline::clearPrismLensLogicalExtent()
 {
-    RenderTargetPack& rt = mPrismLensRT;
+    mPrismLensLogicalWidth = 0;
+    mPrismLensLogicalHeight = 0;
+}
+
+bool LLPipeline::getPrismLensLogicalExtent(U32& width, U32& height) const
+{
+    bool prism_rt = false;
+    for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
+    {
+        if (mRT == &mPrismLensRT[slot])
+        {
+            prism_rt = true;
+            break;
+        }
+    }
+    if (!sPrismLensRender || !prism_rt ||
+        mPrismLensLogicalWidth == 0 || mPrismLensLogicalHeight == 0)
+    {
+        return false;
+    }
+
+    width = mPrismLensLogicalWidth;
+    height = mPrismLensLogicalHeight;
+    return true;
+}
+
+LLRenderTarget& LLPipeline::getWaterDisTarget()
+{
+    if (sPrismLensRender)
+    {
+        for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
+        {
+            if (mRT == &mPrismLensRT[slot])
+            {
+                return mPrismLensWaterDis[slot];
+            }
+        }
+    }
+    return mWaterDis;
+}
+
+LLRenderTarget& LLPipeline::getWaterExclusionMaskTarget()
+{
+    if (sPrismLensRender)
+    {
+        for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
+        {
+            if (mRT == &mPrismLensRT[slot])
+            {
+                return mPrismLensWaterExclusionMask[slot];
+            }
+        }
+    }
+    return mWaterExclusionMask;
+}
+
+void LLPipeline::applyPrismLensLogicalViewport()
+{
+    U32 width = 0;
+    U32 height = 0;
+    if (!getPrismLensLogicalExtent(width, height))
+    {
+        return;
+    }
+
+    LLRenderTarget* target = LLRenderTarget::getCurrentBoundTarget();
+    LLRenderTarget& water_dis = getWaterDisTarget();
+    LLRenderTarget& water_exclusion = getWaterExclusionMaskTarget();
+    if (!target ||
+        (target != &mRT->deferredScreen &&
+         target != &mRT->deferredLight &&
+         target != &mRT->screen &&
+         target != &water_dis &&
+         target != &water_exclusion) ||
+        width > target->getWidth() || height > target->getHeight())
+    {
+        return;
+    }
+
+    gGLViewport[0] = 0;
+    gGLViewport[1] = 0;
+    gGLViewport[2] = static_cast<S32>(width);
+    gGLViewport[3] = static_cast<S32>(height);
+    LLRenderTarget::sCurResX = width;
+    LLRenderTarget::sCurResY = height;
+    glViewport(0, 0, static_cast<GLsizei>(width),
+               static_cast<GLsizei>(height));
+    glEnable(GL_SCISSOR_TEST);
+    glScissor(0, 0, static_cast<GLsizei>(width),
+              static_cast<GLsizei>(height));
+}
+
+void LLPipeline::bindPrismLensTarget(LLRenderTarget& target)
+{
+    target.bindTarget();
+    applyPrismLensLogicalViewport();
+}
+
+void LLPipeline::releasePrismLensBuffer(U32 slot)
+{
+    if (slot >= LLPrismLens::MAX_CAPTURES)
+    {
+        return;
+    }
+    RenderTargetPack& rt = mPrismLensRT[slot];
     rt.screen.release();
     rt.deferredScreen.release();
     rt.deferredLight.release();
+    mPrismLensWaterDis[slot].release();
+    mPrismLensWaterExclusionMask[slot].release();
     rt.width = 0;
     rt.height = 0;
+    if (mRT == &rt)
+    {
+        clearPrismLensLogicalExtent();
+    }
+}
+
+void LLPipeline::releasePrismLensBuffers()
+{
+    for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
+    {
+        releasePrismLensBuffer(slot);
+    }
 }
 
 void LLPipeline::releasePrismLensOutput(U32 slot)
 {
-    if (slot < LLPrismLens::MAX_LENSES)
+    if (slot < LLPrismLens::MAX_CAPTURES)
     {
         mPrismLensOutput[slot].release();
     }
@@ -1428,7 +1583,7 @@ void LLPipeline::releasePrismLensOutput(U32 slot)
 
 void LLPipeline::releasePrismLensOutputs()
 {
-    for (U32 slot = 0; slot < LLPrismLens::MAX_LENSES; ++slot)
+    for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
     {
         releasePrismLensOutput(slot);
     }
@@ -1908,8 +2063,9 @@ void LLPipeline::releaseScreenBuffers()
     release_pack(mMainRT);
     release_pack(mAuxillaryRT);
     release_pack(mHeroProbeRT);
-    releasePrismLensBuffer();
+    releasePrismLensBuffers();
     releasePrismLensOutputs();
+    LLPrismLens::onRenderTargetsReleased();
 }
 
 void LLPipeline::releaseSunShadowTarget(U32 index)
@@ -3537,18 +3693,27 @@ void LLPipeline::updateCull(LLCamera& camera, LLCullResult& result)
 
     bool water_clip = isWaterClip();
 
-    if (sPrismLensRender)
+    LLPlane prism_clip_plane;
+    const bool prism_surface_clip =
+        sPrismLensRender &&
+        LLPrismLens::getActiveClipPlane(prism_clip_plane);
+
+    if (prism_surface_clip)
     {
-        // The Prism caller installs its behind-lens user plane before culling.
-        // Preserve it here: replacing it with the water plane (or disabling it)
-        // defeats both the coarse correctness guard and its submission savings.
+        // Surface Lens uses its destination as an optical aperture, so retain
+        // the caller-installed cull plane. getActiveClipPlane() is the fragment
+        // predicate (keeps >= 0), while LLCamera culling keeps the opposite sign;
+        // renderAuxiliaryView() has already installed that required negation.
+        // Camera Feed reports no Prism plane and follows water clipping below.
     }
     else if (water_clip)
     {
 
         LLVector3 pnorm;
 
-        F32 water_height = LLEnvironment::instance().getWaterHeight();
+        // Prism's scoped override is the source-eye region height. The same
+        // value also feeds alpha grouping, water shaders, and fog uniforms.
+        const F32 water_height = getRenderWaterHeight();
 
         if (sUnderWaterRender)
         {
@@ -6702,9 +6867,12 @@ void LLPipeline::renderGeomDeferred(LLCamera& camera, bool do_occlusion)
 
         LLGLState::checkStates();
 
-        if (LLViewerShaderMgr::instance()->mShaderLevel[LLViewerShaderMgr::SHADER_DEFERRED] > 1)
+        if (LLViewerShaderMgr::instance()->mShaderLevel[LLViewerShaderMgr::SHADER_DEFERRED] > 1 &&
+            !sPrismLensRender)
         {
-            //update reflection probe uniform
+            // Probe selection writes camera-space CPU data and the shared UBO.
+            // Prism stages a default-probe-only UBO in its outer state scope;
+            // never replace the main-eye selection from the auxiliary camera.
             mReflectionMapManager.updateUniforms();
             mHeroProbeManager.updateUniforms();
         }
@@ -6753,6 +6921,7 @@ void LLPipeline::renderGeomDeferred(LLCamera& camera, bool do_occlusion)
                         if ( !p->getSkipRenderFlag() ) { p->renderDeferred(i); }
                     }
                     poolp->endDeferredPass(i);
+                    applyPrismLensLogicalViewport();
                     LLVertexBuffer::unbind();
 
                     LLGLState::checkStates();
@@ -7044,6 +7213,7 @@ void LLPipeline::renderGeomPostDeferred(LLCamera& camera)
             doWaterHaze();
             done_water_haze = true;
         }
+        applyPrismLensLogicalViewport();
 
         pool_set_t::iterator iter2 = iter1;
         if (hasRenderType(poolp->getType()) && poolp->getNumPostDeferredPasses() > 0)
@@ -7104,6 +7274,9 @@ void LLPipeline::renderGeomPostDeferred(LLCamera& camera)
                     p->renderPostDeferred(i);
                 }
                 poolp->endPostDeferredPass(i);
+                // A pool may have temporarily bound and flushed an auxiliary
+                // FBO; reassert the active Prism viewport and scissor.
+                applyPrismLensLogicalViewport();
                 gGL.setIndexedDrawBufferGuardMask(SL_SIDECAR_ATTACHMENT, false, false, false, false);
                 gGL.clearIndexedDrawBufferGuardBlend(SL_SIDECAR_ATTACHMENT);
                 gGL.setIndexedDrawBufferGuardMask(SL_COVERAGE_ATTACHMENT, false, false, false, false);
@@ -8941,6 +9114,83 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
         return;
     }
 
+    if (sPrismLensRender)
+    {
+        // Build an independent source-eye list. Main-view entries were moved
+        // into mPrismSavedNearbyLights at scope entry, and their drawable
+        // NEARBY_LIGHT bits deliberately remain untouched. In particular, do
+        // not call setVisible() or advance fades: both are persistent main-view
+        // state, and a dense main list must not consume the source list's cap.
+        mNearbyLights.clear();
+        static LLCachedControl<S32> prism_local_light_count(
+            gSavedSettings, "RenderLocalLightCount", 256);
+        static LLCachedControl<F32> prism_light_scale(
+            gSavedSettings, "AlchemyGlobalLightScale", 1.f);
+        if (prism_local_light_count < 1)
+        {
+            return;
+        }
+
+        const LLVector3 cam_pos = camera.getOrigin();
+        const F32 max_dist = sRenderDeferred
+            ? llmin(RenderFarClip, camera.getFar())
+            : llmin(llmin(RenderFarClip, camera.getFar()), LIGHT_MAX_RADIUS * 4.f);
+
+        for (LLDrawable* drawable : mLights)
+        {
+            LLVOVolume* light = drawable ? drawable->getVOVolume() : nullptr;
+            if (!light || !drawable->isState(LLDrawable::LIGHT) ||
+                light->isHUDAttachment())
+            {
+                continue;
+            }
+
+            if (light->isAttachment())
+            {
+                if (!sRenderAttachedLights)
+                {
+                    continue;
+                }
+                LLVOAvatar* avatar = light->getAvatar();
+                if (!bdmerge_should_render_light(true, avatar == gAgentAvatarp) ||
+                    (avatar && (avatar->isTooComplex() || avatar->isInMuteList() ||
+                                avatar->isTooSlow())))
+                {
+                    continue;
+                }
+            }
+            else if (!bdmerge_should_render_light(false, false))
+            {
+                continue;
+            }
+
+            const F32 light_radius = light->getLightRadius() * 1.5f;
+            const LLColor3 light_color =
+                light->getLightLinearColor() * (F32)prism_light_scale;
+            if (light_radius <= 0.001f ||
+                light_color.magVecSquared() < 0.001f)
+            {
+                continue;
+            }
+            LLVector4a center;
+            center.load3(drawable->getPositionAgent().mV);
+            LLVector4a radius;
+            radius.splat(light_radius);
+            if (camera.AABBInFrustumNoFarClip(center, radius) == 0)
+            {
+                continue;
+            }
+
+            const F32 dist = calc_light_dist(light, cam_pos, max_dist);
+            if (dist < max_dist)
+            {
+                // Fully visible avoids setupHWLights' in-place fade-clock write.
+                mNearbyLights.insert(Light(drawable, dist, LIGHT_FADE_TIME));
+            }
+        }
+        return;
+    }
+
     static LLCachedControl<S32> local_light_count(gSavedSettings, "RenderLocalLightCount", 256);
 
     if (local_light_count >= 1)
@@ -9108,6 +9358,198 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
             ((LLViewerOctreeEntryData*) light->drawable)->setVisible();
         }
     }
+}
+
+bool LLPipeline::beginPrismAuxiliaryState()
+{
+    if (mPrismAuxiliaryStateActive)
+    {
+        LL_WARNS("PrismLens")
+            << "Rejected nested Prism auxiliary renderer state scope" << LL_ENDL;
+        return false;
+    }
+
+    mPrismAuxiliaryStateActive = true;
+    mPrismSavedNearbyLights = mNearbyLights;
+    // No inherited main-eye entries in the auxiliary list. Main drawable bits
+    // remain as-is and are ignored by calcNearbyLights' Prism-only builder.
+    mNearbyLights.clear();
+    mPrismSavedLightMask = mLightMask;
+    mPrismSavedLightMovingMask = mLightMovingMask;
+    gGL.getLightStateSnapshot(mPrismSavedGLLights, mPrismSavedGLAmbient);
+    for (U32 i = 0; i < 8; ++i)
+    {
+        mPrismSavedHWLightColors[i] = mHWLightColors[i];
+    }
+    mPrismSavedSunDiffuse = mSunDiffuse;
+    mPrismSavedMoonDiffuse = mMoonDiffuse;
+    mPrismSavedSunDir = mSunDir;
+    mPrismSavedMoonDir = mMoonDir;
+    mPrismSavedPoissonOffset = mPoissonOffset;
+    for (U32 i = 0; i < MAX_SPOT_SHADOWS; ++i)
+    {
+        mPrismSavedShadowSpotLight[i] = mShadowSpotLight[i];
+        mPrismSavedTargetShadowSpotLight[i] = mTargetShadowSpotLight[i];
+        mPrismSavedSpotLightFade[i] = mSpotLightFade[i];
+    }
+
+    // Probe selection is camera-space state. Build the UBO once from the main
+    // eye if it has not been initialized yet, then stage an auxiliary view that
+    // contains only the global/default probe. This keeps remote geometry lit
+    // without allowing a source-eye probe/hero selection to replace the main
+    // view's UBO. Dynamic/local probes and hero mirrors resume after the scope.
+    mPrismSavedProbeDataValid = false;
+    mPrismProbeUBOStaged = false;
+    mPrismAuxiliaryWaterHeightValid = false;
+    if (sReflectionProbesEnabled)
+    {
+        GLint saved_uniform_buffer = 0;
+        glGetIntegerv(GL_UNIFORM_BUFFER_BINDING, &saved_uniform_buffer);
+        if (mReflectionMapManager.mUBO == 0)
+        {
+            // beginPrismAuxiliaryState() is called before sPrismLensRender and
+            // before the camera is replaced, so this is a main-eye initialization.
+            mReflectionMapManager.updateUniforms();
+        }
+
+        if (mReflectionMapManager.mUBO != 0)
+        {
+            mPrismSavedProbeData = mReflectionMapManager.mProbeData;
+            mPrismSavedProbeDataValid = true;
+        }
+        glBindBuffer(GL_UNIFORM_BUFFER, saved_uniform_buffer);
+    }
+
+    return true;
+}
+
+void LLPipeline::activatePrismAuxiliaryProbeState()
+{
+    if (!mPrismAuxiliaryStateActive || !mPrismSavedProbeDataValid ||
+        mReflectionMapManager.mUBO == 0)
+    {
+        return;
+    }
+
+    LLReflectionMapManager::ReflectionProbeData prism_probe_data =
+        mPrismSavedProbeData;
+    prism_probe_data.refmapCount = llmin(prism_probe_data.refmapCount, 1);
+    prism_probe_data.heroProbeCount = 0;
+
+    // Re-express the global/default probe in the auxiliary camera space without
+    // touching LLReflectionMap's main-eye depth/index/last-bind bookkeeping.
+    // Local probes are intentionally omitted: selecting them safely would
+    // mutate that shared bookkeeping and double the per-capture UBO work.
+    if (LLReflectionMap* default_probe = mReflectionMapManager.mDefaultProbe)
+    {
+        LLMatrix4a modelview;
+        LLVector4a camera_origin;
+        modelview.loadu(gGLModelView);
+        modelview.affineTransform(default_probe->mOrigin, camera_origin);
+        prism_probe_data.refSphere[0].set(camera_origin.getF32ptr());
+        prism_probe_data.refSphere[0].mV[3] = default_probe->mRadius;
+        prism_probe_data.refParams[0].mV[3] =
+            camera_origin.getF32ptr()[2] - default_probe->mRadius;
+    }
+
+    GLint saved_uniform_buffer = 0;
+    glGetIntegerv(GL_UNIFORM_BUFFER_BINDING, &saved_uniform_buffer);
+    glBindBuffer(GL_UNIFORM_BUFFER, mReflectionMapManager.mUBO);
+    glBufferSubData(GL_UNIFORM_BUFFER, 0,
+                    sizeof(LLReflectionMapManager::ReflectionProbeData),
+                    &prism_probe_data);
+    glBindBuffer(GL_UNIFORM_BUFFER, saved_uniform_buffer);
+    mPrismProbeUBOStaged = true;
+}
+
+void LLPipeline::setPrismAuxiliaryWaterHeight(const LLVector3& eye)
+{
+    if (!mPrismAuxiliaryStateActive)
+    {
+        LL_WARNS("PrismLens")
+            << "Ignored water-height override outside the auxiliary state scope"
+            << LL_ENDL;
+        return;
+    }
+
+    F32 water_height = LLEnvironment::instance().getWaterHeight();
+    if (LLViewerRegion* camera_region =
+            LLWorld::instance().getRegionFromPosAgent(eye))
+    {
+        water_height = camera_region->getWaterHeight();
+    }
+
+    mPrismAuxiliaryWaterHeight = water_height;
+    mPrismAuxiliaryWaterHeightValid = true;
+    sUnderWaterRender = eye.mV[VZ] < water_height;
+}
+
+F32 LLPipeline::getRenderWaterHeight() const
+{
+    if (sPrismLensRender && mPrismAuxiliaryWaterHeightValid)
+    {
+        return mPrismAuxiliaryWaterHeight;
+    }
+    return LLEnvironment::instance().getWaterHeight();
+}
+
+void LLPipeline::endPrismAuxiliaryState()
+{
+    if (!mPrismAuxiliaryStateActive)
+    {
+        return;
+    }
+
+    // Discard the temporary source-eye set and restore the main-eye membership.
+    // The Prism-only builder never touches drawable NEARBY_LIGHT bits, so leave
+    // those bits exactly as they were for the complete transaction.
+    mNearbyLights = mPrismSavedNearbyLights;
+
+    for (U32 i = 0; i < MAX_SPOT_SHADOWS; ++i)
+    {
+        mShadowSpotLight[i] = mPrismSavedShadowSpotLight[i];
+        mTargetShadowSpotLight[i] = mPrismSavedTargetShadowSpotLight[i];
+        mSpotLightFade[i] = mPrismSavedSpotLightFade[i];
+    }
+    mPoissonOffset = mPrismSavedPoissonOffset;
+
+    if (mPrismProbeUBOStaged && mPrismSavedProbeDataValid &&
+        mReflectionMapManager.mUBO != 0)
+    {
+        GLint saved_uniform_buffer = 0;
+        glGetIntegerv(GL_UNIFORM_BUFFER_BINDING, &saved_uniform_buffer);
+        glBindBuffer(GL_UNIFORM_BUFFER, mReflectionMapManager.mUBO);
+        glBufferSubData(GL_UNIFORM_BUFFER, 0,
+                        sizeof(LLReflectionMapManager::ReflectionProbeData),
+                        &mPrismSavedProbeData);
+        glBindBuffer(GL_UNIFORM_BUFFER, saved_uniform_buffer);
+    }
+
+    // setupHWLights() transformed positions into the auxiliary modelview and
+    // advanced fade clocks. Restore both the pipeline cache and LLRender's
+    // complete light records; the hash bump forces fresh uniforms on next bind.
+    gGL.restoreLightStateSnapshot(mPrismSavedGLLights, mPrismSavedGLAmbient);
+    for (U32 i = 0; i < 8; ++i)
+    {
+        mHWLightColors[i] = mPrismSavedHWLightColors[i];
+    }
+    mSunDiffuse = mPrismSavedSunDiffuse;
+    mMoonDiffuse = mPrismSavedMoonDiffuse;
+    mSunDir = mPrismSavedSunDir;
+    mMoonDir = mPrismSavedMoonDir;
+    mLightMask = mPrismSavedLightMask;
+    mLightMovingMask = mPrismSavedLightMovingMask;
+
+    mPrismSavedNearbyLights.clear();
+    for (U32 i = 0; i < MAX_SPOT_SHADOWS; ++i)
+    {
+        mPrismSavedShadowSpotLight[i] = nullptr;
+        mPrismSavedTargetShadowSpotLight[i] = nullptr;
+    }
+    mPrismSavedProbeDataValid = false;
+    mPrismProbeUBOStaged = false;
+    mPrismAuxiliaryWaterHeightValid = false;
+    mPrismAuxiliaryStateActive = false;
 }
 
 void LLPipeline::setupHWLights()
@@ -15369,6 +15811,11 @@ void LLPipeline::bindShadowMaps(LLGLSLShader& shader)
     }
 }
 
+void LLPipeline::clearPrismLensDirtyScreenShaderTracking()
+{
+    mPrismLensDirtyScreenShaders.clear();
+}
+
 void LLPipeline::bindDeferredShaderFast(LLGLSLShader& shader)
 {
     if (shader.mCanBindFast)
@@ -15377,6 +15824,39 @@ void LLPipeline::bindDeferredShaderFast(LLGLSLShader& shader)
         bindLightFunc(shader);
         bindShadowMaps(shader);
         bindReflectionProbes(shader);
+
+        auto dirty_it = mPrismLensDirtyScreenShaders.end();
+        bool update_screen_extent = sPrismLensRender;
+        if (!update_screen_extent && !mPrismLensDirtyScreenShaders.empty())
+        {
+            dirty_it = mPrismLensDirtyScreenShaders.find(&shader);
+            update_screen_extent = dirty_it != mPrismLensDirtyScreenShaders.end();
+        }
+        if (update_screen_extent)
+        {
+            U32 render_width = mRT->deferredScreen.getWidth();
+            U32 render_height = mRT->deferredScreen.getHeight();
+            getPrismLensLogicalExtent(render_width, render_height);
+            if (shader.getUniformLocation(LLShaderMgr::VIEWPORT) != -1)
+            {
+                shader.uniform4f(LLShaderMgr::VIEWPORT,
+                                 static_cast<F32>(gGLViewport[0]),
+                                 static_cast<F32>(gGLViewport[1]),
+                                 static_cast<F32>(gGLViewport[2]),
+                                 static_cast<F32>(gGLViewport[3]));
+            }
+            shader.uniform2f(LLShaderMgr::DEFERRED_SCREEN_RES,
+                             static_cast<F32>(render_width),
+                             static_cast<F32>(render_height));
+            if (sPrismLensRender)
+            {
+                mPrismLensDirtyScreenShaders.insert(&shader);
+            }
+            else
+            {
+                mPrismLensDirtyScreenShaders.erase(dirty_it);
+            }
+        }
     }
     else
     { //wasn't previously bound, use slow path
@@ -15560,7 +16040,20 @@ void LLPipeline::bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_
     F32 shadow_bias_error = RenderShadowBiasError * fabsf(LLViewerCamera::getInstance()->getOrigin().mV[2])/3000.f;
     F32 shadow_bias       = RenderShadowBias + shadow_bias_error;
 
-    shader.uniform2f(LLShaderMgr::DEFERRED_SCREEN_RES, (GLfloat)deferred_target->getWidth(), (GLfloat)deferred_target->getHeight());
+    U32 deferred_width = deferred_target->getWidth();
+    U32 deferred_height = deferred_target->getHeight();
+    getPrismLensLogicalExtent(deferred_width, deferred_height);
+    shader.uniform2f(LLShaderMgr::DEFERRED_SCREEN_RES,
+                     static_cast<F32>(deferred_width),
+                     static_cast<F32>(deferred_height));
+    if (sPrismLensRender)
+    {
+        mPrismLensDirtyScreenShaders.insert(&shader);
+    }
+    else if (!mPrismLensDirtyScreenShaders.empty())
+    {
+        mPrismLensDirtyScreenShaders.erase(&shader);
+    }
     shader.uniform1f(LLShaderMgr::DEFERRED_NEAR_CLIP, LLViewerCamera::getInstance()->getNear()*2.f);
     shader.uniform1f (LLShaderMgr::DEFERRED_SHADOW_OFFSET, RenderShadowOffset); //*shadow_offset_error);
     shader.uniform1f(LLShaderMgr::DEFERRED_SHADOW_BIAS, shadow_bias);
@@ -15692,7 +16185,7 @@ void LLPipeline::renderDeferredLighting()
         if ((RenderDeferredSSAO && !gCubeSnapshot) || RenderShadowDetail > 0)
         {
             LL_PROFILE_GPU_ZONE("sun program");
-            deferred_light_target->bindTarget();
+            bindPrismLensTarget(*deferred_light_target);
             {  // paint shadow/SSAO light map (direct lighting lightmap)
                 LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("renderDeferredLighting - sun shadow");
 
@@ -15703,9 +16196,12 @@ void LLPipeline::renderDeferredLighting()
                 deferred_light_target->clear(GL_COLOR_BUFFER_BIT);
                 glClearColor(0, 0, 0, 0);
 
+                U32 sun_width = deferred_light_target->getWidth();
+                U32 sun_height = deferred_light_target->getHeight();
+                getPrismLensLogicalExtent(sun_width, sun_height);
                 sun_shader.uniform2f(LLShaderMgr::DEFERRED_SCREEN_RES,
-                                              (GLfloat)deferred_light_target->getWidth(),
-                                              (GLfloat)deferred_light_target->getHeight());
+                                     static_cast<F32>(sun_width),
+                                     static_cast<F32>(sun_height));
 
                 {
                     LLGLDisable   blend(GL_BLEND);
@@ -15724,7 +16220,7 @@ void LLPipeline::renderDeferredLighting()
             LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("renderDeferredLighting - soften shadow");
             LL_PROFILE_GPU_ZONE("soften shadow");
             // blur lightmap
-            screen_target->bindTarget();
+            bindPrismLensTarget(*screen_target);
             glClearColor(1, 1, 1, 1);
             screen_target->clear(GL_COLOR_BUFFER_BIT);
             glClearColor(0, 0, 0, 0);
@@ -15773,7 +16269,7 @@ void LLPipeline::renderDeferredLighting()
 
             bindDeferredShader(gDeferredBlurLightProgram, screen_target);
 
-            deferred_light_target->bindTarget();
+            bindPrismLensTarget(*deferred_light_target);
 
             gDeferredBlurLightProgram.uniform2f(sDelta, 0.f, 1.f);
 
@@ -15787,7 +16283,7 @@ void LLPipeline::renderDeferredLighting()
             unbindDeferredShader(gDeferredBlurLightProgram);
         }
 
-        screen_target->bindTarget();
+        bindPrismLensTarget(*screen_target);
         static LLCachedControl<bool> visible_diffuse(gSavedSettings, "RenderVisibleDiffuseSidecar", false);
         // isComplete() is NOT optional. Without it a shader that fails to
         // compile still reaches bindDeferredShader(), which asserts on
@@ -15908,7 +16404,7 @@ void LLPipeline::renderDeferredLighting()
             gGL.setSceneBlendType(LLRender::BT_ADD);
             LLSettingsSky::ptr_t        psky        = LLEnvironment::instance().getCurrentSky();
 
-            if (!gCubeSnapshot)
+            if (!gCubeSnapshot && !sPrismLensRender)
             {
                 for (U32 i = 0; i < MAX_SPOT_SHADOWS; i++)
                 {
@@ -16002,7 +16498,12 @@ void LLPipeline::renderDeferredLighting()
                     {  // draw box if camera is outside box
                         if (volume->isLightSpotlight() && bdmerge_should_render_projector()) // [BDMerge A5.6] projector toggle: falls back to a regular box light below when off
                         {
-                            drawablep->getVOVolume()->updateSpotLightPriority();
+                            // Priority is persistent LLVOVolume state used by
+                            // next-frame main-view shadow-slot assignment.
+                            if (!sPrismLensRender)
+                            {
+                                drawablep->getVOVolume()->updateSpotLightPriority();
+                            }
                             spot_lights.push_back(drawablep);
                             continue;
                         }
@@ -16021,7 +16522,10 @@ void LLPipeline::renderDeferredLighting()
                     {
                         if (volume->isLightSpotlight() && bdmerge_should_render_projector()) // [BDMerge A5.6] projector toggle: falls back to a fullscreen point light below when off
                         {
-                            drawablep->getVOVolume()->updateSpotLightPriority();
+                            if (!sPrismLensRender)
+                            {
+                                drawablep->getVOVolume()->updateSpotLightPriority();
+                            }
                             fullscreen_spot_lights.push_back(drawablep);
                             continue;
                         }
@@ -16268,10 +16772,12 @@ void LLPipeline::renderDeferredLighting()
     // linear-HDR beauty immediately before the main screen flush. Fixed-
     // function depth provides opaque foreground occlusion; transparent pool
     // ordering remains explicitly out of scope for this slice.
-    LLPrismLens::CompositeState prism_states[LLPrismLens::MAX_LENSES];
+    LLPrismLens::CompositeState prism_states[LLPrismLens::MAX_DISPLAY_BINDINGS];
     const U32 prism_state_count = gPrismLensProgram.isComplete()
-        ? LLPrismLens::getCompositeStates(screen_target, prism_states,
-                                          LLPrismLens::MAX_LENSES)
+        ? llmin(LLPrismLens::getCompositeStates(
+                    screen_target, prism_states,
+                    LLPrismLens::MAX_DISPLAY_BINDINGS),
+                LLPrismLens::MAX_DISPLAY_BINDINGS)
         : 0;
     if (prism_state_count > 0)
     {
@@ -16350,6 +16856,17 @@ void LLPipeline::renderDeferredLighting()
                 gGL.syncMatrices();
             }
 
+            void popFaceMatrix()
+            {
+                if (mFaceMatrixPushed)
+                {
+                    gGL.matrixMode(LLRender::MM_MODELVIEW);
+                    gGL.popMatrix();
+                    mFaceMatrixPushed = false;
+                    gGL.syncMatrices();
+                }
+            }
+
             LLGLSLShader* mSavedShader;
             LLRender::eMatrixMode mSavedMatrixMode;
             GLboolean mSavedScissorEnabled;
@@ -16358,44 +16875,82 @@ void LLPipeline::renderDeferredLighting()
             bool mFaceMatrixPushed = false;
         };
 
-        for (U32 prism_index = 0; prism_index < prism_state_count; ++prism_index)
+        // One complete restore scope covers the batch. getCompositeStates()
+        // groups siblings by capture slot, so all displays of one feed can
+        // share a texture bind while retaining per-face matrices and uniforms.
+        ScopedPrismCompositeRestore scoped_composite_restore;
+        LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
+        LLGLDisable blend(GL_BLEND);
+        LLGLDisable cull(GL_CULL_FACE); // Displays are deliberately two-sided.
+        gGL.setColorMask(true, true);
+        glEnable(GL_SCISSOR_TEST);
+
+        gPrismLensProgram.bind();
+        const S32 prism_channel =
+            gPrismLensProgram.enableTexture(LLShaderMgr::PRISM_LENS_MAP);
+        if (prism_channel >= 0)
         {
-            const LLPrismLens::CompositeState& prism_state = prism_states[prism_index];
-            if (prism_state.mSlot >= LLPrismLens::MAX_LENSES || !prism_state.mFace)
+            static const LLStaticHashedString sSurfaceOrigin("surfaceOrigin");
+            static const LLStaticHashedString sSurfaceUDual("surfaceUDual");
+            static const LLStaticHashedString sSurfaceVDual("surfaceVDual");
+            static const LLStaticHashedString sDisplayToCaptureScale(
+                "displayToCaptureScale");
+            static const LLStaticHashedString sDisplayToCaptureOffset(
+                "displayToCaptureOffset");
+            static const LLStaticHashedString sRetainedOrientationScale(
+                "retainedOrientationScale");
+            static const LLStaticHashedString sRetainedOrientationOffset(
+                "retainedOrientationOffset");
+            static const LLStaticHashedString sTextureRegionScale(
+                "textureRegionScale");
+            static const LLStaticHashedString sTextureRegionOffset(
+                "textureRegionOffset");
+            static const LLStaticHashedString sLetterbox("letterbox");
+            static const LLStaticHashedString sBarColorLinear("barColorLinear");
+            static const LLStaticHashedString sEdgeFeather("edgeFeather");
+
+            U32 bound_capture_slot = LLPrismLens::MAX_CAPTURES;
+            for (U32 prism_index = 0; prism_index < prism_state_count;
+                 ++prism_index)
             {
-                continue;
-            }
+                const LLPrismLens::CompositeState& prism_state =
+                    prism_states[prism_index];
+                if (prism_state.mCaptureSlot >= LLPrismLens::MAX_CAPTURES ||
+                    !prism_state.mFace ||
+                    prism_state.mScissor[2] <= 0 ||
+                    prism_state.mScissor[3] <= 0 ||
+                    !mPrismLensOutput[prism_state.mCaptureSlot].isComplete())
+                {
+                    continue;
+                }
 
-            // One complete restore scope per face guarantees one model-view pop
-            // per push even when all three lenses composite in the same frame.
-            ScopedPrismCompositeRestore scoped_composite_restore;
-            LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
-            LLGLDisable blend(GL_BLEND);
-            LLGLDisable cull(GL_CULL_FACE); // MVP is deliberately two-sided.
-            gGL.setColorMask(true, true);
-            glEnable(GL_SCISSOR_TEST);
-            glScissor(prism_state.mScissor[0], prism_state.mScissor[1],
-                      prism_state.mScissor[2], prism_state.mScissor[3]);
+                if (bound_capture_slot != prism_state.mCaptureSlot)
+                {
+                    mPrismLensOutput[prism_state.mCaptureSlot].bindTexture(
+                        0, prism_channel, LLTexUnit::TFO_BILINEAR);
+                    bound_capture_slot = prism_state.mCaptureSlot;
+                }
 
-            gPrismLensProgram.bind();
-            const S32 prism_channel =
-                gPrismLensProgram.enableTexture(LLShaderMgr::PRISM_LENS_MAP);
-            if (prism_channel >= 0)
-            {
-                mPrismLensOutput[prism_state.mSlot].bindTexture(
-                    0, prism_channel, LLTexUnit::TFO_BILINEAR);
-
-                static const LLStaticHashedString sSurfaceOrigin("surfaceOrigin");
-                static const LLStaticHashedString sSurfaceUDual("surfaceUDual");
-                static const LLStaticHashedString sSurfaceVDual("surfaceVDual");
-                static const LLStaticHashedString sUvScale("uvScale");
-                static const LLStaticHashedString sUvOffset("uvOffset");
-                static const LLStaticHashedString sEdgeFeather("edgeFeather");
+                glScissor(prism_state.mScissor[0], prism_state.mScissor[1],
+                          prism_state.mScissor[2], prism_state.mScissor[3]);
                 gPrismLensProgram.uniform3fv(sSurfaceOrigin, 1, prism_state.mSurfaceOrigin);
                 gPrismLensProgram.uniform3fv(sSurfaceUDual, 1, prism_state.mSurfaceUDual);
                 gPrismLensProgram.uniform3fv(sSurfaceVDual, 1, prism_state.mSurfaceVDual);
-                gPrismLensProgram.uniform2fv(sUvScale, 1, prism_state.mUvScale);
-                gPrismLensProgram.uniform2fv(sUvOffset, 1, prism_state.mUvOffset);
+                gPrismLensProgram.uniform2fv(sDisplayToCaptureScale, 1,
+                                             prism_state.mDisplayToCaptureScale);
+                gPrismLensProgram.uniform2fv(sDisplayToCaptureOffset, 1,
+                                             prism_state.mDisplayToCaptureOffset);
+                gPrismLensProgram.uniform2fv(sRetainedOrientationScale, 1,
+                                             prism_state.mRetainedOrientationScale);
+                gPrismLensProgram.uniform2fv(sRetainedOrientationOffset, 1,
+                                             prism_state.mRetainedOrientationOffset);
+                gPrismLensProgram.uniform2fv(sTextureRegionScale, 1,
+                                             prism_state.mTextureRegionScale);
+                gPrismLensProgram.uniform2fv(sTextureRegionOffset, 1,
+                                             prism_state.mTextureRegionOffset);
+                gPrismLensProgram.uniform1i(sLetterbox, prism_state.mLetterbox);
+                gPrismLensProgram.uniform3fv(sBarColorLinear, 1,
+                                             prism_state.mBarColorLinear);
                 gPrismLensProgram.uniform1f(sEdgeFeather, prism_state.mEdgeFeather);
 
                 LLDrawable* lens_drawable = prism_state.mFace->getDrawable();
@@ -16404,6 +16959,7 @@ void LLPipeline::renderDeferredLighting()
                 {
                     scoped_composite_restore.pushFaceMatrix(lens_drawable);
                     prism_state.mFace->renderIndexed();
+                    scoped_composite_restore.popFaceMatrix();
                 }
             }
         }
@@ -16462,12 +17018,16 @@ void LLPipeline::doAtmospherics()
             LLGLDepthTest depth(GL_TRUE, GL_TRUE, GL_ALWAYS);
 
             LLRenderTarget& src = gPipeline.mRT->screen;
-            LLRenderTarget& dst = gPipeline.mWaterDis;
+            LLRenderTarget& dst = getWaterDisTarget();
 
+            U32 source_width = src.getWidth();
+            U32 source_height = src.getHeight();
+            getPrismLensLogicalExtent(source_width, source_height);
             src.flush();
-            dst.copyContents(src, 0, 0, src.getWidth(), src.getHeight(), 0, 0, dst.getWidth(), dst.getHeight(),
+            dst.copyContents(src, 0, 0, source_width, source_height,
+                             0, 0, dst.getWidth(), dst.getHeight(),
                              GL_DEPTH_BUFFER_BIT, GL_NEAREST);
-            mRT->screen.bindTarget();
+            bindPrismLensTarget(mRT->screen);
         }
 
         LLGLEnable blend(GL_BLEND);
@@ -16478,7 +17038,7 @@ void LLPipeline::doAtmospherics()
         LLGLSLShader& haze_shader = gHazeProgram;
 
         LL_PROFILE_GPU_ZONE("haze");
-        bindDeferredShader(haze_shader, nullptr, &mWaterDis);
+        bindDeferredShader(haze_shader, nullptr, &getWaterDisTarget());
 
         LLEnvironment& environment = LLEnvironment::instance();
         haze_shader.uniform1i(LLShaderMgr::SUN_UP_FACTOR, environment.getIsSunUp() ? 1 : 0);
@@ -16513,12 +17073,16 @@ void LLPipeline::doWaterHaze()
             LLGLDepthTest depth(GL_TRUE, GL_TRUE, GL_ALWAYS);
 
             LLRenderTarget& src = gPipeline.mRT->screen;
-            LLRenderTarget& dst = gPipeline.mWaterDis;
+            LLRenderTarget& dst = getWaterDisTarget();
 
+            U32 source_width = src.getWidth();
+            U32 source_height = src.getHeight();
+            getPrismLensLogicalExtent(source_width, source_height);
             src.flush();
-            dst.copyContents(src, 0, 0, src.getWidth(), src.getHeight(), 0, 0, dst.getWidth(), dst.getHeight(),
-                    GL_DEPTH_BUFFER_BIT, GL_NEAREST);
-            mRT->screen.bindTarget();
+            dst.copyContents(src, 0, 0, source_width, source_height,
+                             0, 0, dst.getWidth(), dst.getHeight(),
+                             GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+            bindPrismLensTarget(mRT->screen);
         }
 
         LLGLEnable blend(GL_BLEND);
@@ -16530,14 +17094,15 @@ void LLPipeline::doWaterHaze()
         LLGLSLShader& haze_shader = gHazeWaterProgram;
 
         LL_PROFILE_GPU_ZONE("haze");
-        bindDeferredShader(haze_shader, nullptr, &mWaterDis);
+        bindDeferredShader(haze_shader, nullptr, &getWaterDisTarget());
 
         haze_shader.uniform4fv(LLShaderMgr::WATER_WATERPLANE, 1, LLDrawPoolAlpha::sWaterPlane.mV);
 
         static LLStaticHashedString above_water_str("above_water");
         haze_shader.uniform1i(above_water_str, sUnderWaterRender ? -1 : 1);
 
-        haze_shader.bindTexture(LLShaderMgr::WATER_EXCLUSIONTEX, &mWaterExclusionMask);
+        haze_shader.bindTexture(LLShaderMgr::WATER_EXCLUSIONTEX,
+                                &getWaterExclusionMaskTarget());
 
         if (LLPipeline::sUnderWaterRender)
         {
@@ -16571,12 +17136,16 @@ void LLPipeline::doWaterHaze()
 
 void LLPipeline::doWaterExclusionMask()
 {
-    mWaterExclusionMask.bindTarget();
+    LLRenderTarget& exclusion = getWaterExclusionMaskTarget();
+    bindPrismLensTarget(exclusion);
     glClearColor(1, 1, 1, 1);
-    mWaterExclusionMask.clear();
+    exclusion.clear();
     mWaterExclusionPool->render();
 
-    mWaterExclusionMask.flush();
+    exclusion.flush();
+    // flush() restores the preceding Prism screen FBO; reassert the active
+    // viewport and scissor for subsequent pools.
+    applyPrismLensLogicalViewport();
     glClearColor(0, 0, 0, 0);
 }
 
@@ -16680,7 +17249,8 @@ void LLPipeline::setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep)
     // shadow. mTargetShadowSpotLight[] is rebuilt from scratch each frame (reset
     // to NULL in renderDeferredLighting), so simply not re-adding it here frees
     // the slot for other projectors via the normal fade-out path.
-    if (!gCubeSnapshot && !isProjectorShadowSuppressed(volume))
+    if (!gCubeSnapshot && !sPrismLensRender &&
+        !isProjectorShadowSuppressed(volume))
     {
         LLDrawable* potential = drawablep;
         //determine if this light is higher priority than one of the existing spot shadows
@@ -16969,11 +17539,15 @@ void LLPipeline::setEnvMat(LLGLSLShader& shader)
 
 void LLPipeline::bindReflectionProbes(LLGLSLShader& shader)
 {
+    static const LLStaticHashedString sPrismAuxiliary("prism_auxiliary");
+    shader.uniform1i(sPrismAuxiliary, sPrismLensRender ? 1 : 0);
+
     if (!sReflectionProbesEnabled)
     {
         return;
     }
 
+    const bool prism_auxiliary = sPrismLensRender;
     S32 channel = shader.enableTexture(LLShaderMgr::REFLECTION_PROBES, LLTexUnit::TT_CUBE_MAP_ARRAY);
     bool bound = false;
     if (channel > -1 && mReflectionMapManager.mTexture.notNull())
@@ -16989,7 +17563,7 @@ void LLPipeline::bindReflectionProbes(LLGLSLShader& shader)
         bound = true;
     }
 
-    if (RenderMirrors)
+    if (RenderMirrors && !prism_auxiliary)
     {
         channel = shader.enableTexture(LLShaderMgr::HERO_PROBE, LLTexUnit::TT_CUBE_MAP_ARRAY);
         if (channel > -1 && mHeroProbeManager.mTexture.notNull())
@@ -17000,38 +17574,59 @@ void LLPipeline::bindReflectionProbes(LLGLSLShader& shader)
     }
 
 
-    if (bound)
+    if (bound &&
+        (!prism_auxiliary ||
+         (mPrismSavedProbeDataValid && mReflectionMapManager.mUBO != 0)))
     {
+        // On an auxiliary no-UBO allocation failure, never let setUniforms()
+        // lazily run updateUniforms() from the source camera. The explicit
+        // Prism shader guard still suppresses SSR/hero; probe lighting simply
+        // degrades for this failed capture instead of contaminating main state.
         mReflectionMapManager.setUniforms();
 
         setEnvMat(shader);
     }
 
-    // reflection probe shaders generally sample the scene map as well for SSR
-    channel = shader.enableTexture(LLShaderMgr::SCENE_MAP);
-    if (channel > -1)
+    // The shared scene map belongs to the main camera. Sampling it from a
+    // remote G-buffer produces unrelated rays and advancing its Poisson phase
+    // makes the main view's temporal sequence depend on capture cadence.
+    if (!prism_auxiliary)
     {
-        gGL.getTexUnit(channel)->bind(&mSceneMap);
+        channel = shader.enableTexture(LLShaderMgr::SCENE_MAP);
+        if (channel > -1)
+        {
+            gGL.getTexUnit(channel)->bind(&mSceneMap);
+        }
     }
 
-
-    shader.uniform1f(LLShaderMgr::DEFERRED_SSR_ITR_COUNT, (GLfloat)RenderScreenSpaceReflectionIterations);
+    shader.uniform1f(LLShaderMgr::DEFERRED_SSR_ITR_COUNT,
+                     prism_auxiliary ? 0.f :
+                         static_cast<GLfloat>(RenderScreenSpaceReflectionIterations));
     shader.uniform1f(LLShaderMgr::DEFERRED_SSR_DIST_BIAS, RenderScreenSpaceReflectionDistanceBias);
     shader.uniform1f(LLShaderMgr::DEFERRED_SSR_RAY_STEP, RenderScreenSpaceReflectionRayStep);
     shader.uniform1f(LLShaderMgr::DEFERRED_SSR_GLOSSY_SAMPLES, (GLfloat)RenderScreenSpaceReflectionGlossySamples);
     shader.uniform1f(LLShaderMgr::DEFERRED_SSR_REJECT_BIAS, RenderScreenSpaceReflectionDepthRejectBias);
-    mPoissonOffset++;
+    if (!prism_auxiliary)
+    {
+        mPoissonOffset++;
 
-    if (mPoissonOffset > 128 - RenderScreenSpaceReflectionGlossySamples)
-        mPoissonOffset = 0;
+        if (mPoissonOffset > 128 - RenderScreenSpaceReflectionGlossySamples)
+        {
+            mPoissonOffset = 0;
+        }
+    }
 
-    shader.uniform1f(LLShaderMgr::DEFERRED_SSR_NOISE_SINE, (GLfloat)mPoissonOffset);
+    shader.uniform1f(LLShaderMgr::DEFERRED_SSR_NOISE_SINE,
+                     prism_auxiliary ? 0.f : static_cast<GLfloat>(mPoissonOffset));
     shader.uniform1f(LLShaderMgr::DEFERRED_SSR_ADAPTIVE_STEP_MULT, RenderScreenSpaceReflectionAdaptiveStepMultiplier);
 
-    channel = shader.enableTexture(LLShaderMgr::SCENE_DEPTH);
-    if (channel > -1)
+    if (!prism_auxiliary)
     {
-        gGL.getTexUnit(channel)->bind(&mSceneMap, true);
+        channel = shader.enableTexture(LLShaderMgr::SCENE_DEPTH);
+        if (channel > -1)
+        {
+            gGL.getTexUnit(channel)->bind(&mSceneMap, true);
+        }
     }
 
 

@@ -7,9 +7,11 @@
  can_resize="true"
  height="794"
  min_height="520"
- min_width="370"
+ min_width="520"
  layout="topleft"
  name="floater_ghost_studio"
+ save_rect="true"
+ single_instance="true"
  title="GHOST STUDIO (LOCAL)"
  width="520">
   <panel

@@ -1,5 +1,11 @@
 # Prism Lens three-instance integration brief for Claude
 
+> **Superseded (2026-08-04):** Do not integrate from this document. It describes
+> the earlier Lens-only/shared-scratch design and its 60-66 MiB estimate is no
+> longer true. Use `doc/PRISM_CAMERA_FEED_CLAUDE_HANDOFF.md` for the implemented
+> three-capture Camera Feed + Surface Lens architecture, exact-size per-capture
+> scratch packs, sixteen display bindings, and current validation status.
+
 **Date:** 2026-08-03
 
 **Repository:** `I:\alchemy-machinima` (`develop`)

@@ -247,6 +247,7 @@
 #include "llcallbacklist.h"
 #include "lldeferredsounds.h"
 #include "pipeline.h"
+#include "llprismlens.h"
 #include "llgesturemgr.h"
 #include "llsky.h"
 #include "llvlcomposition.h"
@@ -6044,6 +6045,11 @@ void LLAppViewer::disconnectViewer()
     // must not survive a session; clear it on logout/relog (this runs before
     // reconnecting to a new session and again on quit).
     LLPipeline::clearVolumetricShafts();
+
+    // Prism capture/display definitions are viewer-local session state. Never
+    // carry object UUID bindings into a different account or relog session;
+    // saved Director scene files remain available for an explicit reload.
+    LLPrismLens::clearDesignations();
 
     // save inventory if appropriate
     if (gInventory.isInventoryUsable()

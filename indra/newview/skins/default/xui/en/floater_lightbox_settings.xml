@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <floater
-	width="400"
+	width="420"
 	height="860"
 	layout="topleft"
 	min_height="500"
-	min_width="365"
+	min_width="420"
 	name="floater_lightbox_settings"
 	positioning="cascading"
 	title="LIGHTBOX WORK IN PROGRESS"
@@ -20,7 +20,7 @@
 		name="lightbox_tab_container"
 		tab_position="top"
 		tab_min_width="70"
-		width="400">
+		width="420">
 		<!--Image Panel-->
 		<panel
 			label="Image"
@@ -866,9 +866,29 @@
 		</panel>
 		<!--Rendering Panel-->
 		<panel
+			follows="all"
 			label="Rendering"
 			layout="topleft"
 			name="render_settings">
+			<scroll_container
+				follows="all"
+				height="806"
+				layout="topleft"
+				left="0"
+				name="render_settings_scroll"
+				opaque="false"
+				reserve_scroll_corner="false"
+				top="0"
+				width="420">
+				<panel
+					background_visible="false"
+					follows="left|top|right"
+					height="566"
+					layout="topleft"
+					left="0"
+					name="render_settings_scroll_content"
+					top="0"
+					width="400">
 			<!--Probe Detail-->
 			<text
 				follows="left|top"
@@ -1707,6 +1727,8 @@
 				layout="topleft"
 				word_wrap="true"
 				value="Note: the Preferences quality preset rewrites these on change - re-apply here after moving the quality slider, or stay off the preset slider during shoots." />
+				</panel>
+			</scroll_container>
 		</panel>
 		<!--Shadows/SSAO Panel-->
 		<panel
@@ -4070,7 +4092,11 @@
 		</panel>
 
 		<!--[BDMerge G3.3] Projector Shafts tab - all volumetric-cone levers-->
-		<panel label="Proj Shafts" layout="topleft" name="projshaft_settings" can_resize="false">
+		<panel follows="all" label="Proj Shafts" layout="topleft" name="projshaft_settings" can_resize="false">
+			<scroll_container follows="all" height="806" layout="topleft" left="0"
+			 name="projshaft_settings_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="420">
+				<panel background_visible="false" follows="left|top|right" height="1135" layout="topleft" left="0"
+				 name="projshaft_settings_scroll_content" top="0" width="400">
 			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Projector Shafts (Set Lights)" />
 			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" label="Enable volumetric projector cones" control_name="BDMergeProjectorVolumetrics" />
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Brightness:" />
@@ -4168,12 +4194,18 @@
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ps_reset_BDMergeSoftShadowFill"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeSoftShadowFill" /></button>
 			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" label="Also soften sun/moon shadows" control_name="BDMergeSoftShadowSun" enabled_control="BDMergeSoftProjectorShadows" tool_tip="Apply the same contact-hardening + fill to the sun/moon cascade shadows for a consistent look." />
 			<check_box follows="left|top" height="16" left="12" top_pad="8" width="360" layout="topleft" label="Gobo anisotropic/mip filtering (anti-alias)" control_name="BDMergeGoboAnisotropic" tool_tip="Trilinear-mip + anisotropic filtering on projector cookies plus a screen-space LOD clamp, so gobos stay crisp at grazing angles / distance instead of aliasing. Default on." />
+				</panel>
+			</scroll_container>
 		</panel>
 		<!--[BDMerge Froxel F5] Froxel Air tab - hybrid froxel volumetrics (world air
 		    medium) + the projector-shaft Rim Glow levers. Same compact slider+reset
 		    pattern as the Proj Shafts tab; all controls are XML-bound (control_name)
 		    with the generic LightBox.ResetControlDefault reset handler - no C++.-->
-		<panel label="Froxel Air" layout="topleft" name="froxel_settings" can_resize="false">
+		<panel follows="all" label="Froxel Air" layout="topleft" name="froxel_settings" can_resize="false">
+			<scroll_container follows="all" height="806" layout="topleft" left="0"
+			 name="froxel_settings_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="420">
+				<panel background_visible="false" follows="left|top|right" height="674" layout="topleft" left="0"
+				 name="froxel_settings_scroll_content" top="0" width="400">
 			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Froxel Air (world volumetric medium)" />
 			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" label="Enable froxel volumetrics (master)" control_name="BDMergeFroxelVolumetrics" tool_tip="Master switch for the hybrid froxel air volumetrics." />
 			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" label="Inject projectors into the grid" control_name="BDMergeFroxelLights" enabled_control="BDMergeFroxelVolumetrics" tool_tip="Inject volumetric projectors into the froxel grid instead of rendering per-cone shafts." />
@@ -4237,8 +4269,14 @@
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Bloom anamorphic:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="1" max_val="4" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="fx_BDMergeProjectorVolumetricsBloomFeedAnamorphic_slider" control_name="BDMergeProjectorVolumetricsBloomFeedAnamorphic" enabled_control="BDMergeProjectorVolumetrics" tool_tip="Horizontal anamorphic stretch of the bloom-feed halo." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="fx_reset_BDMergeProjectorVolumetricsBloomFeedAnamorphic"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeProjectorVolumetricsBloomFeedAnamorphic" /></button>
+				</panel>
+			</scroll_container>
 		</panel>
-		<panel label="Weather" layout="topleft" name="weather_settings" can_resize="false">
+		<panel follows="all" label="Weather" layout="topleft" name="weather_settings" can_resize="false">
+			<scroll_container follows="all" height="806" layout="topleft" left="0"
+			 name="weather_settings_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="420">
+				<panel background_visible="false" follows="left|top|right" height="724" layout="topleft" left="0"
+				 name="weather_settings_scroll_content" top="0" width="400">
 			<panel
 			 class="panel_weather_settings"
 			 filename="panel_weather_settings.xml"
@@ -4249,6 +4287,8 @@
 			 name="weather_settings_shared"
 			 top="4"
 			 width="350" />
+				</panel>
+			</scroll_container>
 		</panel>
 		<!-- [BDMerge G3.3 Batch 3] Selected Light quick panel: live per-projector
 		     controls that follow the currently-selected object. Controls enable

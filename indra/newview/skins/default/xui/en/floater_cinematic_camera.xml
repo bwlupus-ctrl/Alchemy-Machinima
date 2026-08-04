@@ -6,13 +6,13 @@
  can_resize="true"
  height="700"
  min_height="420"
- min_width="340"
+ min_width="360"
  layout="topleft"
  name="cinematic_camera"
  title="Cinematic Camera"
  save_rect="true"
  single_instance="true"
- width="340">
+ width="360">
     <tab_container
      follows="all"
      height="676"
@@ -21,7 +21,7 @@
      top="20"
      name="cinecam_tabs"
      tab_height="24"
-     width="340">
+     width="360">
         <panel
          background_visible="false"
          follows="all"
@@ -31,7 +31,7 @@
          left="0"
          top="0"
          name="cinecam_tab"
-         width="340">
+         width="360">
             <scroll_container
              follows="all"
              height="644"
@@ -40,7 +40,7 @@
              top="4"
              name="cinecam_params_scroll"
              opaque="false"
-             width="340">
+             width="360">
                 <panel
                  background_visible="false"
                  height="436"
@@ -71,7 +71,7 @@
          left="0"
          top="0"
          name="operator_tab"
-         width="340">
+         width="360">
             <scroll_container
              follows="all"
              height="644"
@@ -80,7 +80,7 @@
              top="4"
              name="camera_shake_scroll"
              opaque="false"
-             width="340">
+             width="360">
                 <panel
                  background_visible="false"
                  height="1341"
@@ -88,7 +88,7 @@
                  left="0"
                  top="0"
                  name="camera_shake_content"
-                 width="320">
+                 width="340">
                     <panel
                      class="panel_cinecam_params"
                      filename="panel_cinecam_operator.xml"

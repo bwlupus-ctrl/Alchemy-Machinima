@@ -4,6 +4,11 @@
 > tree. The capped-three-lens addendum at the end of this document supersedes the
 > original single-lens scope statements; the surface-fit math and safety rules
 > remain normative.
+>
+> **2026-08-04 extension:** the registry now supports three capture producers
+> shared across Surface Lens and Camera Feed, plus sixteen display bindings. See
+> `PRISM_VIRTUAL_CAMERA_SURFACE_DEEP_RESEARCH.md` for the normative camera-feed,
+> fan-out, cadence, manager, and performance contract.
 
 Codebase: `I:\alchemy-machinima` (branch `develop`). **Historical starting
 point:** Slice 1 used one designated face and screen-AABB sampling; the original
@@ -33,8 +38,9 @@ capped-three addendum are now implemented, so descriptions of that mapping as
   5. DO NOT touch clone/overlay/`actorghostF.glsl`/`LLActorMover` (Ghost Studio — unrelated).
   6. Disabled steady state / no designation ⇒ early return, no aux, no
      composite. The enabled-to-disabled transition releases Prism targets once.
-- Current scope is **up to three lenses, opaque-correct**. Transparency and
-  physical refraction remain outside this slice.
+- Current scope is **up to three capture producers and sixteen display bindings,
+  opaque-correct**. Transparency and physical refraction remain outside this
+  slice.
 
 ---
 
@@ -214,7 +220,8 @@ because a temporarily missing object may no longer be selectable in-world.
 
 The implementation uses:
 
-- one shared deferred scratch `RenderTargetPack`;
+- three lazily allocated, exact-size capture scratch `RenderTargetPack`s;
+- matching exact-size Prism water color/depth and exclusion targets;
 - three fixed, non-movable `GL_RGBA16F` retained beauty outputs;
 - one explicit active-slot index for the fragment clip plane;
 - current-frame surface/face preparation for every visible lens;
@@ -233,20 +240,19 @@ Each update follows this publication boundary:
 
 1. Prepare all current faces from the saved main camera/matrices.
 2. Select one overdue slot and its own bucketed logical output extent.
-3. Grow the shared physical scratch immediately when that scheduled slot needs
-   more room; shrink only after sustained under-use.
+3. Allocate or reuse that capture slot's exact-size scratch/water pack.
 4. Enter `ScopedPrismRenderState` and the active-slot guard.
-5. Render its complete deferred auxiliary view into shared scratch.
+5. Render its complete deferred auxiliary view into its own scratch pack.
 6. After deferred lighting flushes scratch, copy/downsample into that slot's
    logical persistent output while still inside the state scope.
 7. Close the scope, restoring camera/matrices/viewport/targets/uniform caches.
 8. Only then publish the new retained output generation.
 
 The composite resolves each real face again, binds the matching slot output,
-uses one matrix-push/pop restore scope per face, and draws before tonemap. A
-growth-only output can be larger than the most recent copied region; host UVs map
-the logical region to texel centers so bilinear sampling cannot bleed into stale
-capacity pixels.
+uses one matrix-push/pop restore scope per face, and draws before tonemap. Each
+retained output has fixed 1024-square capacity; host UVs map the published logical
+region to texel centers so bilinear sampling cannot bleed into stale capacity
+pixels.
 
 ### Performance and memory bounds
 
@@ -260,20 +266,22 @@ lighting. The defensible performance statement is therefore:
 
 Target dimensions use discrete buckets `64, 128, 256, 512, 1024`, and 1024 is a
 hard per-axis cap. The Director exposes the global resolution scale as
-“Quality all.” Retained beauties grow by bucket and do not shrink until their
-slot is removed, avoiding per-frame allocation churn. The shared scratch grows
-immediately for the scheduled lens's logical request and requires 120
-consecutive scheduled updates with a smaller request before shrinking.
-Rendering uses that retained physical extent and downsamples to the scheduled
-slot's independent logical
-output, so a 1024 lens neither forces the other two outputs to grow nor makes
-visibility changes and bucket-boundary camera jitter recreate the complete
-deferred pack every frame.
+“Quality all.” Each capture owns a lazily allocated deferred/water pack whose
+physical extent exactly equals that capture's bucketed logical extent. Matching
+those extents is required because the deferred shaders sample normalized screen
+textures; rendering a smaller logical viewport inside a larger scratch target
+would read stale texels. Separate packs prevent alternating mixed-size captures
+from reallocating one shared pack. Retained beauties have fixed 1024-square
+capacity and publish an independent logical subregion. A capture that transitions
+to zero display consumers keeps its definition/slot but releases its owned GPU
+targets; rebinding a display regenerates them lazily.
 
-At 2048², one Prism deferred pack plus three RGBA16F outputs could consume about
-240–264 MiB. The 1024 cap bounds the same target set to roughly 60–66 MiB before
-driver overhead. The one-update scheduler bounds the dominant CPU and draw cost;
-lower resolution alone would not bound cull/state-sort work.
+At the 1024-square cap, one exact deferred/water pack is approximately 53–59 MiB
+depending on enabled attachments. Three packs are approximately 159–177 MiB;
+adding three fixed RGBA16F retained outputs brings the hard target-storage bound
+to roughly 183–207 MiB before driver/FBO overhead. Typical use is lower because
+packs are lazy and exact-size. The one-update scheduler bounds the dominant CPU
+and draw cost; lower resolution alone would not bound cull/state-sort work.
 
 ### Adversarial corrections incorporated
 
@@ -296,8 +304,8 @@ lower resolution alone would not bound cull/state-sort work.
   invalidates only that slot; scratch-resize failure resets the failed requested
   capacity; both use retry backoff so a large failed slot cannot permanently
   starve smaller lenses.
-- Debug mode displays the most recently refreshed retained slot, never the shared
-  scratch (which only contains the last update).
+- Debug mode displays the most recently refreshed retained slot, never a capture's
+  transient deferred scratch.
 
 ### Adversarial acceptance matrix
 

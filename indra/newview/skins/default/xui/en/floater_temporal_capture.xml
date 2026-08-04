@@ -7,7 +7,7 @@
  legacy_header_height="18"
  can_resize="true"
  height="358"
- min_height="320"
+ min_height="358"
  min_width="356"
  layout="topleft"
  name="floater_temporal_capture"

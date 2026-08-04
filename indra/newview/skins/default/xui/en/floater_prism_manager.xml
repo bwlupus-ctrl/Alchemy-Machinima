@@ -1,0 +1,697 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<floater
+ can_close="true"
+ can_minimize="true"
+ can_resize="true"
+ height="680"
+ layout="topleft"
+ min_height="520"
+ min_width="720"
+ name="prism_manager"
+ save_rect="true"
+ title="Prism Manager"
+ width="900">
+    <!-- The summary, capture registry, and status stay fixed. Only the form
+         documents inside their own tabs scroll. Lists retain their own wheel. -->
+    <panel
+     background_visible="true"
+     follows="left|top|right"
+     height="74"
+     layout="topleft"
+     left="10"
+     name="summary_panel"
+     top="8"
+     width="880">
+        <check_box
+         control_name="PrismLensEnabled"
+         follows="left|top"
+         height="18"
+         label="Enable Prism"
+         layout="topleft"
+         left="10"
+         name="prism_enabled"
+         tool_tip="Master render toggle. Captures and displays remain editable while disabled."
+         top="8"
+         width="120" />
+        <text
+         follows="left|top|right"
+         font="SansSerifBold"
+         height="18"
+         layout="topleft"
+         left="142"
+         name="prism_summary"
+         top="8"
+         use_ellipses="true"
+         width="720">
+            Prism 0/3 captures | 0/16 displays
+        </text>
+        <text
+         follows="left|top|right"
+         height="16"
+         layout="topleft"
+         left="10"
+         name="global_performance"
+         top="31"
+         use_ellipses="true"
+         width="852">
+            Presented - FPS | render p95 - ms | scale - | admitted - attempts/s
+        </text>
+        <text
+         follows="left|top|right"
+         height="16"
+         layout="topleft"
+         left="10"
+         name="global_reason"
+         text_color="LtGray"
+         top="51"
+         use_ellipses="true"
+         width="852">
+            Performance controller is starting.
+        </text>
+    </panel>
+
+    <panel
+     background_visible="true"
+     follows="left|top|right"
+     height="150"
+     layout="topleft"
+     left="10"
+     name="captures_panel"
+     top="88"
+     width="880">
+        <text
+         follows="left|top"
+         font="SansSerifBold"
+         height="16"
+         layout="topleft"
+         left="10"
+         name="captures_heading"
+         top="6"
+         width="250">
+            Captures (maximum 3 producers)
+        </text>
+        <scroll_list
+         column_padding="3"
+         draw_heading="true"
+         follows="left|top|right"
+         height="92"
+         layout="topleft"
+         left="10"
+         multi_select="false"
+         name="capture_list"
+         tool_tip="One producer renders one retained picture regardless of how many faces display it."
+         top="24"
+         width="860">
+            <columns label="#" name="number" width="24" />
+            <columns label="Type" name="type" width="56" />
+            <columns label="Health" name="health" width="104" />
+            <columns label="Output" name="output" width="76" />
+            <columns label="Activity" name="activity" width="78" />
+            <columns label="Faces" name="displays" width="48" />
+            <columns label="Scale" name="scale" width="54" />
+            <columns label="Requested / Entitled / Observed FPS" name="rate" width="180" />
+        </scroll_list>
+        <button
+         follows="left|bottom"
+         height="22"
+         label="Add camera"
+         layout="topleft"
+         left="10"
+         name="add_camera"
+         top="121"
+         width="100" />
+        <button
+         follows="left|bottom"
+         height="22"
+         label="Add lens"
+         layout="topleft"
+         left="116"
+         name="add_lens"
+         top="121"
+         width="100" />
+        <button
+         follows="left|bottom"
+         height="22"
+         label="Remove capture"
+         layout="topleft"
+         left="222"
+         name="remove_capture"
+         top="121"
+         width="120" />
+        <text
+         follows="left|right|bottom"
+         height="18"
+         layout="topleft"
+         left="354"
+         name="capture_hint"
+         text_color="LtGray"
+         top="124"
+         use_ellipses="true"
+         width="516">
+            Add Camera uses one selected object. Add Lens uses one selected world face.
+        </text>
+    </panel>
+
+    <tab_container
+     follows="all"
+     height="397"
+     layout="topleft"
+     left="10"
+     name="detail_tabs"
+     tab_position="top"
+     top="244"
+     width="880">
+        <panel
+         border="true"
+         follows="all"
+         height="373"
+         label="Capture"
+         layout="topleft"
+         left="0"
+         name="capture_tab"
+         top="0"
+         width="878">
+            <scroll_container
+             follows="all"
+             height="356"
+             layout="topleft"
+             left="4"
+             name="capture_settings_scroll"
+             opaque="false"
+             reserve_scroll_corner="false"
+             size="15"
+             top="4"
+             width="864">
+                <panel
+                 follows="left|top|right"
+                 height="620"
+                 layout="topleft"
+                 left="0"
+                 name="capture_settings_document"
+                 top="0"
+                 width="847">
+                    <text
+                     follows="left|top|right"
+                     font="SansSerifBold"
+                     height="18"
+                     layout="topleft"
+                     left="10"
+                     name="capture_title"
+                     top="8"
+                     use_ellipses="true"
+                     width="820">
+                        No capture selected
+                    </text>
+                    <layout_stack
+                     animate="false"
+                     follows="left|top|right"
+                     height="580"
+                     layout="topleft"
+                     left="10"
+                     name="capture_mode_stack"
+                     orientation="vertical"
+                     top="34"
+                     width="820">
+                        <layout_panel
+                         auto_resize="false"
+                         follows="left|top|right"
+                         height="286"
+                         layout="topleft"
+                         name="camera_settings_panel">
+                            <text
+                             follows="left|top|right"
+                             height="18"
+                             layout="topleft"
+                             left="0"
+                             name="camera_source"
+                             top="2"
+                             use_ellipses="true"
+                             width="800">
+                                Camera source: unbound
+                            </text>
+                            <button
+                             follows="left|top"
+                             height="22"
+                             label="Set selected camera"
+                             layout="topleft"
+                             left="0"
+                             name="set_camera"
+                             top="25"
+                             width="146" />
+                            <button
+                             follows="left|top"
+                             height="22"
+                             label="Place eye in front"
+                             layout="topleft"
+                             left="152"
+                             name="place_eye_in_front"
+                             top="25"
+                             width="136" />
+                            <text
+                             follows="left|top|right"
+                             height="30"
+                             layout="topleft"
+                             left="302"
+                             name="marker_hint"
+                             text_color="LtGray"
+                             top="24"
+                             width="498"
+                             word_wrap="true">
+                                Marker convention: local -Z looks forward and local +Y is up. Use a transparent marker or move the eye beyond visible housing.
+                            </text>
+                            <text follows="left|top" height="16" layout="topleft" left="0" name="fov_label" top="64" width="110">Field of view</text>
+                            <combo_box follows="left|top" height="22" layout="topleft" left="116" name="fov_mode" top="60" width="150">
+                                <combo_box.item label="Fixed vertical FOV" name="fov_fixed" value="fixed" />
+                                <combo_box.item label="Follow projector" name="fov_projector" value="projector" />
+                            </combo_box>
+                            <spinner
+                             decimal_digits="1"
+                             follows="left|top"
+                             height="22"
+                             increment="1"
+                             label="Degrees"
+                             label_width="52"
+                             layout="topleft"
+                             left="280"
+                             max_val="175"
+                             min_val="5"
+                             name="vertical_fov"
+                             top="60"
+                             width="130" />
+                            <spinner
+                             decimal_digits="3"
+                             follows="left|top"
+                             height="22"
+                             increment="0.01"
+                             label="Near clip"
+                             label_width="64"
+                             layout="topleft"
+                             left="0"
+                             max_val="10"
+                             min_val="0.01"
+                             name="near_clip"
+                             top="94"
+                             width="150" />
+                            <spinner
+                             decimal_digits="1"
+                             follows="left|top"
+                             height="22"
+                             increment="1"
+                             label="Far clip"
+                             label_width="56"
+                             layout="topleft"
+                             left="164"
+                             max_val="512"
+                             min_val="0.2"
+                             name="far_clip"
+                             top="94"
+                             width="150" />
+                            <text follows="left|top" height="16" layout="topleft" left="0" name="eye_offset_label" top="132" width="150">Local eye offset (metres)</text>
+                            <spinner decimal_digits="3" follows="left|top" height="22" increment="0.01" label="X" label_width="16" layout="topleft" left="0" max_val="64" min_val="-64" name="eye_offset_x" top="150" width="112" />
+                            <spinner decimal_digits="3" follows="left|top" height="22" increment="0.01" label="Y" label_width="16" layout="topleft" left="120" max_val="64" min_val="-64" name="eye_offset_y" top="150" width="112" />
+                            <spinner decimal_digits="3" follows="left|top" height="22" increment="0.01" label="Z" label_width="16" layout="topleft" left="240" max_val="64" min_val="-64" name="eye_offset_z" top="150" width="112" />
+                            <text follows="left|top" height="16" layout="topleft" left="0" name="aspect_label" top="190" width="110">Output aspect</text>
+                            <combo_box follows="left|top" height="22" layout="topleft" left="116" name="output_aspect" top="186" width="100">
+                                <combo_box.item label="16:9" name="aspect_16_9" value="16:9" />
+                                <combo_box.item label="4:3" name="aspect_4_3" value="4:3" />
+                                <combo_box.item label="1:1" name="aspect_1_1" value="1:1" />
+                                <combo_box.item label="Custom" name="aspect_custom" value="custom" />
+                            </combo_box>
+                            <spinner
+                             decimal_digits="3"
+                             follows="left|top"
+                             height="22"
+                             increment="0.01"
+                             label="Custom W/H"
+                             label_width="78"
+                             layout="topleft"
+                             left="230"
+                             max_val="4"
+                             min_val="0.25"
+                             name="custom_aspect"
+                             top="186"
+                             width="150" />
+                            <text
+                             follows="left|top|right"
+                             height="42"
+                             layout="topleft"
+                             left="0"
+                             name="camera_safety_note"
+                             text_color="LtGray"
+                             top="226"
+                             width="800"
+                             word_wrap="true">
+                                The source is sampled from its live render transform. Prism does not hide marker geometry automatically and does not use reflection probes.
+                            </text>
+                        </layout_panel>
+                        <layout_panel
+                         auto_resize="false"
+                         follows="left|top|right"
+                         height="105"
+                         layout="topleft"
+                         name="lens_settings_panel">
+                            <text follows="left|top" font="SansSerifBold" height="18" layout="topleft" left="0" name="lens_heading" top="2" width="220">Surface Lens settings</text>
+                            <spinner
+                             control_name="PrismLensZoom"
+                             decimal_digits="2"
+                             follows="left|top"
+                             height="22"
+                             increment="0.10"
+                             label="Lens zoom (all lenses)"
+                             label_width="132"
+                             layout="topleft"
+                             left="0"
+                             max_val="8"
+                             min_val="1"
+                             name="lens_zoom"
+                             top="28"
+                             width="220" />
+                            <text
+                             follows="left|top|right"
+                             height="44"
+                             layout="topleft"
+                             left="0"
+                             name="lens_invariant_note"
+                             text_color="LtGray"
+                             top="58"
+                             width="800"
+                             word_wrap="true">
+                                A Lens owns exactly one aperture face. Its mapping is fixed; remove the capture to remove that required face.
+                            </text>
+                        </layout_panel>
+                        <layout_panel
+                         auto_resize="false"
+                         follows="left|top|right"
+                         height="180"
+                         layout="topleft"
+                         name="rate_settings_panel">
+                            <text follows="left|top" font="SansSerifBold" height="18" layout="topleft" left="0" name="rate_heading" top="2" width="220">Picture update rate</text>
+                            <combo_box follows="left|top" height="22" layout="topleft" left="0" name="rate_mode" top="26" width="128">
+                                <combo_box.item label="Automatic" name="rate_automatic" value="automatic" />
+                                <combo_box.item label="Target FPS" name="rate_target" value="target" />
+                            </combo_box>
+                            <spinner
+                             decimal_digits="3"
+                             follows="left|top"
+                             height="22"
+                             increment="1"
+                             label="Target FPS"
+                             label_width="68"
+                             layout="topleft"
+                             left="142"
+                             max_val="30"
+                             min_val="1"
+                             name="target_fps"
+                             top="26"
+                             width="150" />
+                            <combo_box follows="left|top" height="22" label="Preset" layout="topleft" left="306" name="rate_preset" top="26" width="110">
+                                <combo_box.item label="5" name="rate_5" value="5" />
+                                <combo_box.item label="10" name="rate_10" value="10" />
+                                <combo_box.item label="12" name="rate_12" value="12" />
+                                <combo_box.item label="15" name="rate_15" value="15" />
+                                <combo_box.item label="20" name="rate_20" value="20" />
+                                <combo_box.item label="23.976" name="rate_23976" value="23.976" />
+                                <combo_box.item label="24" name="rate_24" value="24" />
+                                <combo_box.item label="25" name="rate_25" value="25" />
+                                <combo_box.item label="29.97" name="rate_2997" value="29.97" />
+                                <combo_box.item label="30" name="rate_30" value="30" />
+                            </combo_box>
+                            <text
+                             follows="left|top|right"
+                             height="36"
+                             layout="topleft"
+                             left="0"
+                             name="rate_explanation"
+                             text_color="LtGray"
+                             top="58"
+                             width="800"
+                             word_wrap="true">
+                                This is the producer's requested ceiling. Every linked face samples the same retained texture and rate; Adaptive may deliver less.
+                            </text>
+                            <text
+                             follows="left|top|right"
+                             font="SansSerifBold"
+                             height="20"
+                             layout="topleft"
+                             left="0"
+                             name="rate_readout"
+                             top="104"
+                             use_ellipses="true"
+                             width="800">
+                                Requested / Entitled / Observed: -
+                            </text>
+                            <text
+                             follows="left|top|right"
+                             height="34"
+                             layout="topleft"
+                             left="0"
+                             name="rate_cost_note"
+                             text_color="LtGray"
+                             top="134"
+                             width="800"
+                             word_wrap="true">
+                                Lower picture FPS saves auxiliary scene renders. Display faces still composite the retained picture during the normal main frame.
+                            </text>
+                        </layout_panel>
+                        <layout_panel auto_resize="true" follows="all" height="1" layout="topleft" name="capture_document_spacer" />
+                    </layout_stack>
+                </panel>
+            </scroll_container>
+        </panel>
+
+        <panel
+         border="true"
+         follows="all"
+         height="373"
+         label="Displays"
+         layout="topleft"
+         left="0"
+         name="displays_tab"
+         top="0"
+         width="878">
+            <!-- Keep the face actions and mapping editor visible at every saved
+                 floater height. Only the display list is allowed to grow. -->
+            <layout_stack
+             animate="false"
+             border_size="6"
+             follows="all"
+             height="343"
+             layout="topleft"
+             left="8"
+             name="displays_layout_stack"
+             orientation="vertical"
+             top="8"
+             width="852">
+                <layout_panel
+                 auto_resize="true"
+                 follows="all"
+                 height="210"
+                 layout="topleft"
+                 min_dim="48"
+                 name="display_list_layout"
+                 user_resize="false">
+                    <scroll_list
+                     column_padding="3"
+                     draw_heading="true"
+                     follows="all"
+                     height="210"
+                     layout="topleft"
+                     left="0"
+                     multi_select="false"
+                     name="display_list"
+                     tool_tip="Display rows inherit their capture's one picture update rate."
+                     top="0"
+                     width="852">
+                        <columns label="Health" name="display_health" width="92" />
+                        <columns label="Visibility" name="visibility" width="88" />
+                        <columns label="Face" name="face" width="142" />
+                        <columns label="Mapping" name="mapping" width="78" />
+                        <columns label="Picture FPS (read only)" name="picture_rate" width="190" />
+                    </scroll_list>
+                </layout_panel>
+                <layout_panel
+                 auto_resize="false"
+                 follows="left|right"
+                 height="24"
+                 layout="topleft"
+                 min_dim="24"
+                 name="display_actions"
+                 user_resize="false">
+                    <button follows="left|top" height="22" label="Add selected face" layout="topleft" left="0" name="add_display" top="0" width="126" />
+                    <combo_box follows="left|top" height="22" layout="topleft" left="132" name="new_display_fit" top="0" width="86">
+                        <combo_box.item label="Fit" name="new_fit" value="fit" />
+                        <combo_box.item label="Fill" name="new_fill" value="fill" />
+                        <combo_box.item label="Stretch" name="new_stretch" value="stretch" />
+                    </combo_box>
+                    <button follows="left|top" height="22" label="Remove" layout="topleft" left="224" name="remove_display" top="0" width="82" />
+                    <button follows="left|top" height="22" label="Locate" layout="topleft" left="312" name="locate_display" top="0" width="76" />
+                    <text follows="left|top|right" height="18" layout="topleft" left="400" name="display_actions_hint" text_color="LtGray" top="3" use_ellipses="true" width="442">Select one flat world face, then Add selected face. No extra scene render.</text>
+                </layout_panel>
+                <layout_panel
+                 auto_resize="false"
+                 background_visible="true"
+                 follows="left|right"
+                 height="96"
+                 layout="topleft"
+                 min_dim="96"
+                 name="display_settings_panel"
+                 user_resize="false">
+                    <text follows="left|top|right" font="SansSerifBold" height="18" layout="topleft" left="8" name="display_source_rate" top="6" use_ellipses="true" width="836">Select a capture to view its displays.</text>
+                    <combo_box follows="left|top" height="22" label="Mapping" layout="topleft" left="8" name="display_fit" top="32" width="110">
+                        <combo_box.item label="Fit" name="display_fit_item" value="fit" />
+                        <combo_box.item label="Fill" name="display_fill_item" value="fill" />
+                        <combo_box.item label="Stretch" name="display_stretch_item" value="stretch" />
+                    </combo_box>
+                    <spinner decimal_digits="2" follows="left|top" height="22" increment="0.05" label="Anchor X" label_width="56" layout="topleft" left="130" max_val="1" min_val="0" name="anchor_x" top="32" width="120" />
+                    <spinner decimal_digits="2" follows="left|top" height="22" increment="0.05" label="Y" label_width="16" layout="topleft" left="258" max_val="1" min_val="0" name="anchor_y" top="32" width="82" />
+                    <text follows="left|top" height="16" layout="topleft" left="354" name="bar_color_label" top="36" width="58">Bar RGB</text>
+                    <spinner decimal_digits="2" follows="left|top" height="22" increment="0.05" label="R" label_width="14" layout="topleft" left="416" max_val="1" min_val="0" name="bar_red" top="32" width="76" />
+                    <spinner decimal_digits="2" follows="left|top" height="22" increment="0.05" label="G" label_width="14" layout="topleft" left="498" max_val="1" min_val="0" name="bar_green" top="32" width="76" />
+                    <spinner decimal_digits="2" follows="left|top" height="22" increment="0.05" label="B" label_width="14" layout="topleft" left="580" max_val="1" min_val="0" name="bar_blue" top="32" width="76" />
+                    <text follows="left|top|right" height="28" layout="topleft" left="8" name="display_settings_note" text_color="LtGray" top="62" width="836" word_wrap="true">Fit bars preserve the capture aspect; Fill crops by anchor; Stretch maps the complete picture. These controls never own an FPS schedule.</text>
+                </layout_panel>
+            </layout_stack>
+        </panel>
+
+        <panel
+         border="true"
+         follows="all"
+         height="373"
+         label="Performance"
+         layout="topleft"
+         left="0"
+         name="performance_tab"
+         top="0"
+         width="878">
+            <scroll_container
+             follows="all"
+             height="356"
+             layout="topleft"
+             left="4"
+             name="performance_settings_scroll"
+             opaque="false"
+             reserve_scroll_corner="false"
+             size="15"
+             top="4"
+             width="864">
+                <panel
+                 follows="left|top|right"
+                 height="400"
+                 layout="topleft"
+                 left="0"
+                 name="performance_settings_document"
+                 top="0"
+                 width="847">
+                    <text follows="left|top" font="SansSerifBold" height="18" layout="topleft" left="10" name="performance_heading" top="10" width="250">Adaptive performance</text>
+                    <check_box
+                     control_name="PrismAdaptivePerformance"
+                     follows="left|top"
+                     height="18"
+                     label="Protect the main view"
+                     layout="topleft"
+                     left="10"
+                     name="adaptive_performance"
+                     tool_tip="Reduce Prism scale/cadence or suspend captures to protect the selected main-view target."
+                     top="38"
+                     width="190" />
+                    <combo_box
+                     control_name="PrismProtectedMainFPS"
+                     follows="left|top"
+                     height="22"
+                     label="Main-view target"
+                     layout="topleft"
+                     left="10"
+                     name="protected_main_fps"
+                     top="70"
+                     width="180">
+                        <combo_box.item label="30 FPS" name="protected_30" value="30" />
+                        <combo_box.item label="45 FPS" name="protected_45" value="45" />
+                        <combo_box.item label="60 FPS" name="protected_60" value="60" />
+                    </combo_box>
+                    <combo_box
+                     control_name="PrismCaptureRefreshCeilingHz"
+                     follows="left|top"
+                     height="22"
+                     label="Total capture budget"
+                     layout="topleft"
+                     left="10"
+                     name="total_capture_budget"
+                     tool_tip="Aggregate auxiliary attempts per second across all producers; this is not a camera's picture FPS. Zero means a protected 30 attempts/s while Adaptive is on, and Every Frame only while Adaptive is off."
+                     top="104"
+                     width="220">
+                        <combo_box.item label="Adaptive 30 / Manual every frame" name="budget_every_frame" value="0" />
+                        <combo_box.item label="5 attempts/s" name="budget_5" value="5" />
+                        <combo_box.item label="10 attempts/s" name="budget_10" value="10" />
+                        <combo_box.item label="15 attempts/s" name="budget_15" value="15" />
+                        <combo_box.item label="20 attempts/s" name="budget_20" value="20" />
+                        <combo_box.item label="30 attempts/s" name="budget_30" value="30" />
+                    </combo_box>
+                    <spinner
+                     control_name="PrismLensResolutionScale"
+                     decimal_digits="2"
+                     follows="left|top"
+                     height="22"
+                     increment="0.25"
+                     label="Quality ceiling"
+                     label_width="92"
+                     layout="topleft"
+                     left="10"
+                     max_val="2"
+                     min_val="0.25"
+                     name="quality_ceiling"
+                     top="138"
+                     width="180" />
+                    <text
+                     follows="left|top|right"
+                     height="54"
+                     layout="topleft"
+                     left="10"
+                     name="budget_explanation"
+                     text_color="LtGray"
+                     top="180"
+                     width="820"
+                     word_wrap="true">
+                        Adaptive protects presented main-view FPS and fairly water-fills the total budget across eligible producers. A per-capture Target FPS remains a ceiling; Entitled and Observed may be lower.
+                    </text>
+                    <text
+                     follows="left|top|right"
+                     height="54"
+                     layout="topleft"
+                     left="10"
+                     name="performance_limit_note"
+                     text_color="LtGray"
+                     top="246"
+                     width="820"
+                     word_wrap="true">
+                        Adaptive reacts to presented FPS only: below the selected target it reduces Prism cadence/scale and may suspend auxiliary updates. It cannot attribute frame time to Prism or guarantee the target in an already slower scene.
+                    </text>
+                    <text
+                     follows="left|top|right"
+                     height="54"
+                     layout="topleft"
+                     left="10"
+                     name="performance_cost_note"
+                     text_color="LtGray"
+                     top="312"
+                     width="820"
+                     word_wrap="true">
+                        One camera feeding many faces still performs one scheduled scene render. Each visible face adds a smaller main-view composite cost, so fan-out is bounded at sixteen displays.
+                    </text>
+                </panel>
+            </scroll_container>
+        </panel>
+    </tab_container>
+
+    <text
+     follows="left|right|bottom"
+     height="20"
+     layout="topleft"
+     left="12"
+     name="status_text"
+     text_color="LtGray"
+     top="650"
+     use_ellipses="true"
+     width="876">
+        Ready.
+    </text>
+</floater>

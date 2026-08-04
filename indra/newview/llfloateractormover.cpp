@@ -10,6 +10,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "llfloateractormover.h"
+#include "alscrollfocus.h"
 
 #include "llactormover.h"
 #include "alpanelactormover.h"
@@ -35,6 +36,13 @@ bool LLFloaterActorMover::postBuild()
     // list above stays this floater's own presentation
     mMoverPanel = findChild<ALPanelActorMover>("actor_mover_panel");
     mPathPanel = findChild<ALPanelPathEditor>("path_editor");
+
+    LLScrollContainer* move_scroll = getChild<LLScrollContainer>("move_scroll");
+    LLView* move_document = getChildView("move_scroll_content");
+    ALScrollFocus::install(move_scroll, move_document, move_document);
+    LLScrollContainer* path_scroll = getChild<LLScrollContainer>("path_scroll");
+    LLView* path_document = getChildView("path_scroll_content");
+    ALScrollFocus::install(path_scroll, path_document, path_document);
     return true;
 }
 

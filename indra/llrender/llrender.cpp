@@ -1602,6 +1602,22 @@ LLLightState* LLRender::getLight(U32 index)
     return NULL;
 }
 
+void LLRender::getLightStateSnapshot(LLRender::light_state_snapshot_t& state,
+                                     LLColor4& ambient) const
+{
+    state = mLightState;
+    ambient = mAmbientLightColor;
+}
+
+void LLRender::restoreLightStateSnapshot(
+    const LLRender::light_state_snapshot_t& state,
+    const LLColor4& ambient)
+{
+    mLightState = state;
+    mAmbientLightColor = ambient;
+    ++mLightHash;
+}
+
 void LLRender::setAmbientLightColor(const LLColor4& color)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_PIPELINE;

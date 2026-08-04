@@ -116,6 +116,15 @@ public:
     typedef std::array<F32, 4>                                      altitude_list_t;
     typedef std::vector<F32>                                        altitudes_vect_t;
 
+    // Movable backing store for the cached sky/water uniform maps. Auxiliary
+    // camera renders can swap the main-view maps out, build source-eye maps in
+    // their place, and restore the exact main maps without rebuilding them.
+    struct ShaderUniformState
+    {
+        std::array<LLShaderUniforms, LLGLSLShader::SG_COUNT> mWater;
+        std::array<LLShaderUniforms, LLGLSLShader::SG_COUNT> mSky;
+    };
+
     ~LLEnvironment();
 
     bool                        canEdit() const;
@@ -138,6 +147,7 @@ public:
 
     // prepare settings to be applied to shaders (call whenever settings are updated)
     void                        updateSettingsUniforms();
+    void                        swapShaderUniformState(ShaderUniformState& state);
 
     void                        setSelectedEnvironment(EnvSelection_t env, LLSettingsBase::Seconds transition = TRANSITION_DEFAULT, bool forced = false);
     EnvSelection_t              getSelectedEnvironment() const                  { return mSelectedEnvironment; }
@@ -523,4 +533,3 @@ private:
 };
 
 #endif // LL_ENVIRONMENT_H
-

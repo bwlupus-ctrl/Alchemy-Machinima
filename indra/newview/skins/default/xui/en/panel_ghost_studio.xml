@@ -12,7 +12,7 @@
 
         <!-- Instances -->
         <panel follows="left|top|right" height="214" layout="topleft" left="0" name="instances_section" top="0" width="500">
-          <text follows="left|top" font="SansSerifBold" height="18" layout="topleft" left="8" name="studio_header" top="5" width="160">Instances</text>
+          <text follows="left|top" font="SansSerifBold" height="18" layout="topleft" left="8" name="studio_header" top="5" width="90">Instances</text>
           <check_box follows="top|right" height="18" initial_value="true" label="Show ghosts" layout="topleft" left="252" name="show_all_check" top="5"
            tool_tip="Master visibility: hide every ghost at once without losing the per-ghost enables. Session-only" width="112" />
           <text follows="left|top|right" height="28" layout="topleft" left="8" mouse_opaque="false" name="studio_hint" right="-124" text_color="LtGray_50" top="25" width="242">

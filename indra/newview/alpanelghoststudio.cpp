@@ -10,6 +10,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "alpanelghoststudio.h"
+#include "alscrollfocus.h"
 
 #include "alcompassdial.h"          // live direct-manipulation heading control
 #include "alghostanimassetindex.h"
@@ -396,6 +397,14 @@ bool ALPanelGhostStudio::postBuild()
     tabs->addTabPanel(pose_tab);
     tabs->addTabPanel(style_tab);
     tabs->addTabPanel(crowd_tab);
+
+    // The shared panel is hosted both standalone and in Director. Keep Tab
+    // focus visible in either viewport without giving the host another wheel
+    // owner around these tab-local documents.
+    ALScrollFocus::install(this, "place_scroll", "place_scroll_body");
+    ALScrollFocus::install(this, "style_scroll", "style_scroll_body");
+    ALScrollFocus::install(this, "pose_scroll", "pose_scroll_body");
+    ALScrollFocus::install(this, "crowd_scroll", "crowd_scroll_body");
 
     mShowAllCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onShowAllToggle(); });
     mEditModeCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onToggleEditMode(); });

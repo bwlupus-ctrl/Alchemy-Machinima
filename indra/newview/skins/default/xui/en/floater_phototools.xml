@@ -20,7 +20,7 @@
     width="360"
     height="330"
     layout="topleft"
-    min_height="280"
+    min_height="330"
     min_width="330"
     name="floater_phototools"
     positioning="cascading"

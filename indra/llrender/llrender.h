@@ -515,7 +515,15 @@ public:
     // global mask/blend change; public for explicit use after an FBO bind.
     void reassertIndexedDrawBuffer();
 
+    using light_state_snapshot_t = std::array<LLLightState, LL_NUM_LIGHT_UNITS>;
     LLLightState* getLight(U32 index);
+    // Exact CPU-side hardware-light cache transaction for auxiliary views.
+    // Restoring bumps the light hash so the next shader sync cannot retain
+    // uniforms uploaded while the auxiliary camera was active.
+    void getLightStateSnapshot(light_state_snapshot_t& state,
+                               LLColor4& ambient) const;
+    void restoreLightStateSnapshot(const light_state_snapshot_t& state,
+                                   const LLColor4& ambient);
     void setAmbientLightColor(const LLColor4& color);
 
     void setLineWidth(F32 width);

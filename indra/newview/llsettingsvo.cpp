@@ -1101,12 +1101,15 @@ void LLSettingsVOWater::applySpecial(void *ptarget, bool force)
     LLShaderUniforms* shader = &((LLShaderUniforms*)ptarget)[group];
 
     {
-        F32 water_height = env.getWaterHeight();
-
-        if (LLViewerCamera::instance().cameraUnderWater())
-        { // when the camera is under water, use the water height at the camera position
-            LLViewerRegion* region = LLWorld::instance().getRegionFromPosAgent(LLViewerCamera::instance().getOrigin());
-            if (region)
+        // A Prism camera feed returns its scoped source-region height regardless
+        // of whether the eye is above or below water, so plane and fog depth use
+        // one value. Preserve the stock main-eye neighboring-region correction.
+        F32 water_height = gPipeline.getRenderWaterHeight();
+        if (!LLPipeline::sPrismLensRender &&
+            LLViewerCamera::instance().cameraUnderWater())
+        {
+            if (LLViewerRegion* region = LLWorld::instance().getRegionFromPosAgent(
+                    LLViewerCamera::instance().getOrigin()))
             {
                 water_height = region->getWaterHeight();
             }
@@ -1138,8 +1141,9 @@ void LLSettingsVOWater::applySpecial(void *ptarget, bool force)
 
         // Prism Slice 1 reuses the mirror fragment predicate for the mandatory
         // behind-lens clip. Its plane is agent-space and keeps the non-negative
-        // half-space pointing away from the eye. This uniform cache is rebuilt
-        // once on aux entry and again after the scoped main-view restore.
+        // half-space pointing away from the eye. The source cache is built once
+        // on auxiliary entry; the scoped renderer swaps the exact main cache
+        // and main water plane back without a second rebuild.
         glm::vec4 activeClipPlane = mirrorPlane;
         bool clip_enabled = gPipeline.mHeroProbeManager.isMirrorPass();
         if (LLPipeline::sPrismLensRender)

@@ -6,10 +6,12 @@
  legacy_header_height="18"
  can_resize="true"
  height="452"
- min_height="330"
+ min_height="452"
  min_width="380"
  layout="topleft"
  name="floater_prop_mover"
+ save_rect="true"
+ single_instance="true"
  title="PROP MOVER (LOCAL)"
  width="380">
   <panel

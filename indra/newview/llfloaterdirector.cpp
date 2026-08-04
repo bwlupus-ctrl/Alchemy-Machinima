@@ -10,6 +10,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "llfloaterdirector.h"
+#include "alscrollfocus.h"
 
 #include "indra_constants.h"        // KEY_ESCAPE / MASK_NONE, MASK_ALT
 
@@ -75,16 +76,9 @@ constexpr char TAB_ICON_SHAFTS[]  = "Command_PersonalLighting_Icon";
 constexpr char TAB_ICON_TEMPORAL[] = "Command_Environments_Icon"; // day-cycle/time metaphor (no clock asset ships)
 constexpr char TAB_ICON_WEATHER[]  = "Command_Water_Icon"; // rain/precipitation metaphor (distinct from Time's sky icon)
 
-void showPrismTip(const std::string& message)
-{
-    LLSD args;
-    args["MESSAGE"] = message;
-    LLNotificationsUtil::add("SystemMessageTip", args);
-}
-
 // scene files live beside the cinematic presets, same idiom
 constexpr char SCENE_SUBDIR[]  = "director_scenes";
-constexpr S32  SCENE_VERSION   = 1;
+constexpr S32  SCENE_VERSION   = 3;
 
 // the assign combo's explicit "ungroup" row: discoverable equivalent of
 // committing an empty name (which still works)
@@ -169,6 +163,7 @@ const char* cinecam_mode_name(S32 mode)
 {
     return LLCinematicCamera::modeName(mode);
 }
+
 } // anonymous namespace
 
 LLFloaterDirector::LLFloaterDirector(const LLSD& key)
@@ -369,6 +364,15 @@ bool LLFloaterDirector::postBuild()
     // selected/pasted anim + its source object each draw.
     mAnimPreviewPanel = findChild<ALPanelAnimPreview>("anim_preview_panel");
 
+    // Move and Animate are fixed-height documents inside resizable tabs. Keep
+    // keyboard-focused controls visible at the Director's saved/minimum size.
+    LLScrollContainer* move_scroll = getChild<LLScrollContainer>("move_scroll");
+    LLView* move_document = getChildView("move_scroll_content");
+    ALScrollFocus::install(move_scroll, move_document, move_document);
+    LLScrollContainer* animate_scroll = getChild<LLScrollContainer>("animate_scroll");
+    LLView* animate_document = getChildView("animate_scroll_content");
+    ALScrollFocus::install(animate_scroll, animate_document, animate_document);
+
     // ---- Camera tab ----
     mSubjectAText = getChild<LLTextBox>("subject_a_text");
     mSubjectBText = getChild<LLTextBox>("subject_b_text");
@@ -384,11 +388,8 @@ bool LLFloaterDirector::postBuild()
     mClearDBtn = getChild<LLButton>("btn_clear_d");
     mLookAtSetBtn = getChild<LLButton>("btn_look_at_set");
     mLookAtClearBtn = getChild<LLButton>("btn_look_at_clear");
-    mPrismEnabledCheck = getChild<LLCheckBoxCtrl>("prism_lens_enabled");
-    mPrismLensList = getChild<LLScrollListCtrl>("prism_lens_list");
-    mPrismDesignateBtn = getChild<LLButton>("btn_prism_designate");
-    mPrismRemoveBtn = getChild<LLButton>("btn_prism_remove");
-    mPrismClearAllBtn = getChild<LLButton>("btn_prism_clear_all");
+    mPrismSummaryText = getChild<LLTextBox>("prism_summary");
+    mPrismManageBtn = getChild<LLButton>("btn_prism_manage");
     mSetABtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSetSubjectFromSelection(SUBJECT_A); });
     mSetBBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSetSubjectFromSelection(SUBJECT_B); });
     mSetCBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSetSubjectFromSelection(SUBJECT_C); });
@@ -401,12 +402,8 @@ bool LLFloaterDirector::postBuild()
         [this](LLUICtrl*, const LLSD&) { onClickSetLookAtCamera(true); });
     mLookAtClearBtn->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onClickSetLookAtCamera(false); });
-    mPrismDesignateBtn->setCommitCallback(
-        [this](LLUICtrl*, const LLSD&) { onClickDesignatePrismLens(); });
-    mPrismRemoveBtn->setCommitCallback(
-        [this](LLUICtrl*, const LLSD&) { onClickRemovePrismLens(); });
-    mPrismClearAllBtn->setCommitCallback(
-        [this](LLUICtrl*, const LLSD&) { onClickClearPrismLenses(); });
+    mPrismManageBtn->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onClickManagePrism(); });
     // embedded shared params panel: scene files read its selected preset and
     // apply presets through it on load
     mCineCamPanel = findChild<ALPanelCineCamParams>("cinecam_params_embedded");
@@ -711,6 +708,9 @@ const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()
         "TemporalDriveTextureAnim",
         "TemporalDriveParticles",
         "TemporalDriveCamera",
+        // Surface Lens appearance is creative scene intent. Adaptive controls,
+        // aggregate budget, master enable and debug remain global preferences.
+        "PrismLensZoom",
     };
     return settings;
 }
@@ -783,8 +783,10 @@ void LLFloaterDirector::commitSceneName()
     {
         return;     // empty name = cancel, nothing written
     }
-    saveScene(name);
-    refreshSceneList(name);
+    if (saveScene(name))
+    {
+        refreshSceneList(name);
+    }
 }
 
 void LLFloaterDirector::onClickSceneDelete()
@@ -816,11 +818,14 @@ void LLFloaterDirector::onClickSceneDelete()
         });
 }
 
-void LLFloaterDirector::saveScene(const std::string& name)
+bool LLFloaterDirector::saveScene(const std::string& name)
 {
     // engine data (cast, marks, loco anims, subjects) ...
     LLSD scene = LLDirectorCast::instance().sceneData();
     scene["version"] = SCENE_VERSION;
+    const LLSD prism = LLPrismLens::sceneData();
+    scene["prism_captures"] = prism["prism_captures"];
+    scene["prism_displays"] = prism["prism_displays"];
 
     // ... plus everything settings-backed
     LLSD settings = LLSD::emptyMap();
@@ -846,15 +851,53 @@ void LLFloaterDirector::saveScene(const std::string& name)
     }
 
     const std::string path = scenePath(name);
-    llofstream out(path.c_str());
+    // Serialize beside the destination, then replace it only after the stream
+    // has flushed and closed cleanly. This keeps the previous scene intact on
+    // disk-full, serialization, close, or replacement failure.
+    const std::string temp_path = path + "." +
+        LLUUID::generateNewID().asString() + ".tmp";
+    const auto report_save_failure = [&name]()
+    {
+        LLNotificationsUtil::add(
+            "GenericAlert",
+            LLSD().with("MESSAGE", llformat(
+                "Unable to save Director scene '%s'. The previous saved scene, if any, was left unchanged.",
+                name.c_str())));
+    };
+    llofstream out(temp_path.c_str());
     if (!out.is_open())
     {
-        LL_WARNS("Director") << "Cannot write scene file " << path << LL_ENDL;
-        return;
+        LL_WARNS("Director") << "Cannot open temporary scene file "
+                             << temp_path << LL_ENDL;
+        LLFile::remove(temp_path, ENOENT);
+        report_save_failure();
+        return false;
     }
-    LLSDSerialize::toPrettyXML(scene, out);
+
+    const S32 serialized_count = LLSDSerialize::toPrettyXML(scene, out);
+    out.flush();
+    const bool write_succeeded = serialized_count > 0 && out.good();
     out.close();
+    if (!write_succeeded || out.fail())
+    {
+        LL_WARNS("Director") << "Failed writing temporary scene file "
+                             << temp_path << LL_ENDL;
+        LLFile::remove(temp_path, ENOENT);
+        report_save_failure();
+        return false;
+    }
+
+    if (LLFile::rename(temp_path, path) != 0)
+    {
+        LL_WARNS("Director") << "Cannot replace scene file " << path
+                             << " with completed temporary file" << LL_ENDL;
+        LLFile::remove(temp_path, ENOENT);
+        report_save_failure();
+        return false;
+    }
+
     LL_INFOS("Director") << "Saved scene '" << name << "'" << LL_ENDL;
+    return true;
 }
 
 void LLFloaterDirector::loadScene(const std::string& name)
@@ -867,12 +910,55 @@ void LLFloaterDirector::loadScene(const std::string& name)
         return;
     }
     LLSD scene;
-    LLSDSerialize::fromXML(scene, in);
+    const S32 parsed_count = LLSDSerialize::fromXML(scene, in);
+    // EOF/failbit is a normal parser end condition for some stream readers;
+    // badbit alone identifies a genuine underlying read failure.
+    const bool stream_bad = in.bad();
     in.close();
-    if (!scene.isMap())
+    if (parsed_count == LLSDParser::PARSE_FAILURE || stream_bad || !scene.isMap())
     {
         LL_WARNS("Director") << "Malformed scene file " << path << LL_ENDL;
+        LLNotificationsUtil::add(
+            "SystemMessageTip",
+            LLSD().with("MESSAGE", "Scene was not loaded: the scene file is malformed or incomplete."));
         return;
+    }
+
+    const bool has_version = scene.has("version");
+    const bool malformed_version = has_version && !scene["version"].isInteger();
+    const S32 version = has_version && !malformed_version
+        ? scene["version"].asInteger() : 1;
+    if (malformed_version)
+    {
+        LL_WARNS("Director") << "Scene '" << name
+                             << "' has a non-integer version; preserving live "
+                                "Prism configuration and loading only tolerant "
+                                "legacy scene fields" << LL_ENDL;
+    }
+    else if (version == 3)
+    {
+        // Validate and atomically replace Prism before mutating transport, cast,
+        // settings, or CineCam state. A malformed payload leaves the live scene
+        // and retained Prism outputs wholly untouched.
+        std::string prism_reason;
+        if (!LLPrismLens::applySceneData(scene, &prism_reason))
+        {
+            LL_WARNS("Director") << "Rejected Prism data in scene '" << name
+                                 << "': " << prism_reason << LL_ENDL;
+            LLSD args;
+            args["MESSAGE"] = "Scene was not loaded: " + prism_reason;
+            LLNotificationsUtil::add("SystemMessageTip", args);
+            return;
+        }
+    }
+    else if (version != 1)
+    {
+        // No version-2 schema was ever shipped. Preserve the current registry
+        // for unsupported/future files while allowing their legacy scene data
+        // to load through its existing tolerant paths.
+        LL_WARNS("Director") << "Scene '" << name << "' uses unsupported version "
+                             << version << "; preserving live Prism configuration"
+                             << LL_ENDL;
     }
 
     // A loaded scene starts from a clean transport and a released switcher.
@@ -1924,97 +2010,9 @@ void LLFloaterDirector::onClickSetLookAtCamera(bool selected)
     }
 }
 
-void LLFloaterDirector::onClickDesignatePrismLens()
+void LLFloaterDirector::onClickManagePrism()
 {
-    std::string reason;
-    const LLPrismLens::EDesignationResult result =
-        LLPrismLens::designateSelectedFace(&reason);
-    switch (result)
-    {
-        case LLPrismLens::EDesignationResult::ADDED:
-            showPrismTip(llformat("Added Prism lens (%u of %u).",
-                                  LLPrismLens::designationCount(),
-                                  LLPrismLens::MAX_LENSES));
-            break;
-        case LLPrismLens::EDesignationResult::ALREADY_EXISTS:
-            showPrismTip("That face is already a Prism lens.");
-            break;
-        case LLPrismLens::EDesignationResult::AT_CAPACITY:
-            showPrismTip("Prism lens limit reached. Remove one before adding another.");
-            break;
-        case LLPrismLens::EDesignationResult::INVALID_SELECTION:
-            showPrismTip("Could not add Prism lens: " + reason);
-            break;
-        case LLPrismLens::EDesignationResult::ELIGIBLE:
-            break;
-    }
-}
-
-void LLFloaterDirector::onClickRemovePrismLens()
-{
-    const LLSD selected = mPrismLensList->getSelectedValue();
-    if (!selected.isInteger())
-    {
-        return;
-    }
-    const U32 slot = static_cast<U32>(selected.asInteger());
-    if (LLPrismLens::removeDesignation(slot))
-    {
-        showPrismTip("Removed highlighted Prism lens.");
-    }
-}
-
-void LLFloaterDirector::onClickClearPrismLenses()
-{
-    const U32 count = LLPrismLens::designationCount();
-    if (count == 0)
-    {
-        return;
-    }
-    LLPrismLens::clearDesignations();
-    showPrismTip(llformat("Cleared %u Prism %s.", count,
-                          count == 1 ? "lens" : "lenses"));
-}
-
-void LLFloaterDirector::refreshPrismLensList()
-{
-    const U32 revision = LLPrismLens::designationRevision();
-    if (revision == mPrismRegistryRevision)
-    {
-        return;
-    }
-
-    const LLSD previous_selection = mPrismLensList->getSelectedValue();
-    mPrismLensList->deleteAllItems();
-    for (U32 slot = 0; slot < LLPrismLens::MAX_LENSES; ++slot)
-    {
-        LLPrismLens::Designation designation;
-        if (!LLPrismLens::getDesignation(slot, designation))
-        {
-            continue;
-        }
-
-        LLSD row;
-        // LLScrollListCtrl compares scalar values. An LLSD map stringifies to
-        // an empty value and makes selectByValue() restore the wrong row.
-        row["value"] = static_cast<LLSD::Integer>(slot);
-        row["columns"][0]["column"] = "lens";
-        row["columns"][0]["value"] = llformat(
-            "Lens %u  |  %s  |  face %d", slot + 1,
-            designation.mObjectId.asString().substr(0, 8).c_str(),
-            designation.mTextureEntry);
-        mPrismLensList->addElement(row, ADD_BOTTOM);
-    }
-
-    if (previous_selection.isDefined())
-    {
-        mPrismLensList->selectByValue(previous_selection);
-    }
-    if (mPrismLensList->getNumSelected() == 0)
-    {
-        mPrismLensList->selectFirstItem();
-    }
-    mPrismRegistryRevision = revision;
+    LLFloaterReg::showInstance("prism_manager");
 }
 
 void LLFloaterDirector::refreshCameraTab()
@@ -2073,35 +2071,44 @@ void LLFloaterDirector::refreshCameraTab()
     setToolTipIfChanged(mLookAtSetBtn, look_tip);
     setToolTipIfChanged(mLookAtClearBtn, look_tip);
 
-    refreshPrismLensList();
-    const U32 prism_count = LLPrismLens::designationCount();
-    const std::string prism_label =
-        llformat("Prism lenses %u/%u", prism_count, LLPrismLens::MAX_LENSES);
-    if (mPrismEnabledCheck->getLabel() != prism_label)
+    const U64 prism_configuration_revision = LLPrismLens::configurationRevision();
+    const U64 prism_runtime_revision = LLPrismLens::runtimeRevision();
+    if (!mHavePrismSummary ||
+        prism_configuration_revision != mPrismConfigurationRevision ||
+        prism_runtime_revision != mPrismRuntimeRevision)
     {
-        mPrismEnabledCheck->setLabel(LLStringExplicit(prism_label));
+        const LLPrismLens::RegistrySnapshot snapshot = LLPrismLens::registrySnapshot();
+        U32 capture_attention = 0;
+        U32 display_attention = 0;
+        U32 updating = 0;
+        for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+        {
+            const LLPrismLens::CaptureDefinition& capture = snapshot.mCaptures[index];
+            capture_attention += capture.mRuntime.mHealth != LLPrismLens::ECaptureHealth::READY;
+            updating += capture.mRuntime.mActivity == LLPrismLens::EActivityState::LIVE ||
+                        capture.mRuntime.mActivity == LLPrismLens::EActivityState::THROTTLED;
+        }
+        for (U32 index = 0; index < snapshot.mDisplayCount; ++index)
+        {
+            display_attention += snapshot.mDisplays[index].mRuntime.mHealth !=
+                LLPrismLens::EDisplayHealth::READY;
+        }
+        const bool needs_attention = capture_attention != 0 || display_attention != 0;
+
+        mPrismSummaryText->setText(llformat(
+            "Prism %u/%u captures | %u/%u faces | %u live%s",
+            snapshot.mCaptureCount, LLPrismLens::MAX_CAPTURES,
+            snapshot.mDisplayCount, LLPrismLens::MAX_DISPLAY_BINDINGS,
+            updating, needs_attention ? " | attention" : ""));
+        setToolTipIfChanged(mPrismSummaryText, llformat(
+            "%u captures and %u display bindings; attention: %u capture%s, %u display%s. Open Prism Manager for sources, faces, optics, picture FPS, and adaptive performance.",
+            snapshot.mCaptureCount, snapshot.mDisplayCount,
+            capture_attention, capture_attention == 1 ? "" : "s",
+            display_attention, display_attention == 1 ? "" : "s"));
+        mPrismConfigurationRevision = prism_configuration_revision;
+        mPrismRuntimeRevision = prism_runtime_revision;
+        mHavePrismSummary = true;
     }
-
-    std::string prism_add_reason;
-    const LLPrismLens::EDesignationResult prism_add_status =
-        LLPrismLens::selectedFaceStatus(&prism_add_reason);
-    const bool can_designate_lens =
-        prism_add_status == LLPrismLens::EDesignationResult::ELIGIBLE;
-    mPrismDesignateBtn->setEnabled(can_designate_lens);
-    setToolTipIfChanged(mPrismDesignateBtn, can_designate_lens
-        ? std::string("Add the exactly-one selected world face to the local Prism registry")
-        : prism_add_reason);
-
-    const bool can_remove_lens = mPrismLensList->getNumSelected() == 1;
-    mPrismRemoveBtn->setEnabled(can_remove_lens);
-    setToolTipIfChanged(mPrismRemoveBtn, can_remove_lens
-        ? std::string("Remove the highlighted local Prism lens")
-        : std::string("Highlight a Prism lens in the list first"));
-
-    mPrismClearAllBtn->setEnabled(prism_count > 0);
-    setToolTipIfChanged(mPrismClearAllBtn, prism_count > 0
-        ? std::string("Clear all local Prism lens designations")
-        : std::string("No Prism lenses are designated"));
 }
 
 // ---------------------------------------------------------------------------

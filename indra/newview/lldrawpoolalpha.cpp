@@ -617,8 +617,7 @@ void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, bool rigged, Attach
         end = gPipeline.endAlphaGroups();
     }
 
-    LLEnvironment& env = LLEnvironment::instance();
-    F32 water_height = env.getWaterHeight();
+    const F32 water_height = gPipeline.getRenderWaterHeight();
 
     bool above_water = getType() == LLDrawPool::POOL_ALPHA_POST_WATER;
     if (LLPipeline::sUnderWaterRender)

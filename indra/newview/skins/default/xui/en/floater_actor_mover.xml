@@ -2,11 +2,13 @@
 <floater
  legacy_header_height="18"
  can_resize="true"
- height="1310"
+ height="700"
  min_height="440"
  min_width="390"
  layout="topleft"
  name="floater_actor_mover"
+ save_rect="true"
+ single_instance="true"
  title="ACTOR MOVER (LOCAL)"
  width="390">
   <scroll_list
@@ -64,41 +66,109 @@
    name="show_heading_check"
    tool_tip="Show the in-world path preview for each roster actor. With a walkable path: the thick outlined spline with direction chevrons and numbered node markers (start green, end red, dwell nodes ringed). With no path: the thick straight heading arrow along the planned bearing for the configured distance. Client-side only; updates live."
    width="276" />
-  <!-- shared Actor Mover transport: same panel the Director Console Move tab
-       embeds (scope, heading compass dial, Speed/Distance/Cadence, End behavior,
-       custom walk anim, Walk/Stop). The roster list above stays this floater's
-       own presentation; the floater feeds the panel its selection each draw. -->
-  <panel
-   class="panel_actor_mover"
-   filename="panel_actor_mover.xml"
-   follows="left|top|right"
-   height="360"
+  <!-- Move and Path are independent scroll documents. The roster remains
+       sticky, and each embedded list/preview keeps its own wheel handling. -->
+  <tab_container
+   follows="all"
+   height="500"
    layout="topleft"
    left="6"
-   top_pad="6"
-   name="actor_mover_panel"
-   width="374" />
-  <!-- shared Actor Pathing editor: same panel the Director Console Path tab
-       embeds. Targets the roster row selected above. -->
-  <text
-   follows="left|top"
-   font="SansSerifBold"
-   height="14"
-   layout="topleft"
-   left="12"
-   top_pad="8"
-   name="path_section_lbl"
-   width="276">
-    Path (waypoints)
-  </text>
-  <panel
-   class="panel_path_editor"
-   filename="panel_path_editor.xml"
-   follows="left|top|right"
-   height="716"
-   layout="topleft"
-   left="6"
-   top_pad="4"
-   name="path_editor"
-   width="360" />
+   name="actor_mover_tabs"
+   tab_height="24"
+   top="190"
+   width="378">
+    <panel
+     background_visible="false"
+     follows="all"
+     height="476"
+     label="Move"
+     layout="topleft"
+     name="move_tab"
+     width="378">
+      <scroll_container
+       follows="all"
+       height="472"
+       layout="topleft"
+       left="0"
+       name="move_scroll"
+       opaque="false"
+       reserve_scroll_corner="false"
+       top="0"
+       width="378">
+        <panel
+         background_visible="false"
+         follows="left|top|right"
+         height="376"
+         layout="topleft"
+         left="0"
+         name="move_scroll_content"
+         top="0"
+         width="360">
+          <!-- Shared Actor Mover transport: the same panel Director embeds. -->
+          <panel
+           class="panel_actor_mover"
+           filename="panel_actor_mover.xml"
+           follows="left|top|right"
+           height="360"
+           layout="topleft"
+           left="0"
+           name="actor_mover_panel"
+           top="8"
+           width="360" />
+        </panel>
+      </scroll_container>
+    </panel>
+    <panel
+     background_visible="false"
+     follows="all"
+     height="476"
+     label="Path"
+     layout="topleft"
+     name="path_tab"
+     width="378">
+      <scroll_container
+       follows="all"
+       height="472"
+       layout="topleft"
+       left="0"
+       name="path_scroll"
+       opaque="false"
+       reserve_scroll_corner="false"
+       top="0"
+       width="378">
+        <panel
+         background_visible="false"
+         follows="left|top|right"
+         height="750"
+         layout="topleft"
+         left="0"
+         name="path_scroll_content"
+         top="0"
+         width="360">
+          <text
+           follows="left|top"
+           font="SansSerifBold"
+           height="14"
+           layout="topleft"
+           left="6"
+           top="6"
+           name="path_section_lbl"
+           width="348">
+            Path (waypoints)
+          </text>
+          <!-- Shared Actor Pathing editor: the same panel Director embeds. -->
+          <panel
+           class="panel_path_editor"
+           filename="panel_path_editor.xml"
+           follows="left|top|right"
+           height="716"
+           layout="topleft"
+           left="0"
+           name="path_editor"
+           top="26"
+           width="360" />
+        </panel>
+      </scroll_container>
+    </panel>
+  </tab_container>
 </floater>

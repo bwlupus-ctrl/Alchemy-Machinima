@@ -298,6 +298,7 @@ set(viewer_SOURCE_FILES
     lldirectorcast.cpp
     llfloateractormover.cpp
     llfloaterdirector.cpp
+    llfloaterprismmanager.cpp
     alfloatertemporalcapture.cpp
     alpaneltemporalcapture.cpp
     llpresentationtime.cpp
@@ -1122,6 +1123,7 @@ set(viewer_HEADER_FILES
     alghoststudio.h
     alghostanimassetindex.h
     alworldoverlayviz.h
+    alscrollfocus.h
     alobjectpathmover.h
     alpanelghoststudio.h
     alpanelpropmover.h
@@ -1133,6 +1135,7 @@ set(viewer_HEADER_FILES
     lldirectorcast.h
     llfloateractormover.h
     llfloaterdirector.h
+    llfloaterprismmanager.h
     alfloatertemporalcapture.h
     alpaneltemporalcapture.h
     llpresentationtime.h

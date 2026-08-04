@@ -29,6 +29,7 @@
 #include "llenvironment.h"
 
 #include <algorithm>
+#include <utility>
 
 #include "llagent.h"
 #include "llviewercontrol.h" // for gSavedSettings
@@ -1634,6 +1635,22 @@ extern bool gCubeSnapshot;
 void LLEnvironment::update(const LLViewerCamera * cam)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_ENVIRONMENT; //LL_RECORD_BLOCK_TIME(FTM_ENVIRONMENT_UPDATE);
+    // Prism's synchronous uniform transaction infers which forced dirty bits
+    // were cleared by shader binds. A frame-wide environment sweep must not run
+    // inside that transaction or overwrite both the inference and source maps.
+    llassert(!LLPipeline::sPrismLensRender);
+    if (LLPipeline::sPrismLensRender)
+    {
+        static bool warned = false;
+        if (!warned)
+        {
+            LL_WARNS("ENVIRONMENT")
+                << "Ignored frame environment sweep during Prism auxiliary render"
+                << LL_ENDL;
+            warned = true;
+        }
+        return;
+    }
     //F32Seconds now(LLDate::now().secondsSinceEpoch());
     if (!gCubeSnapshot)
     {
@@ -1749,6 +1766,18 @@ void LLEnvironment::updateSettingsUniforms()
     else
     {
         LL_WARNS("ENVIRONMENT") << "Failed to update GL variable for sky settings, environment is not properly set" << LL_ENDL;
+    }
+}
+
+void LLEnvironment::swapShaderUniformState(ShaderUniformState& state)
+{
+    // LLShaderUniforms owns vectors, so std::swap moves their backing storage
+    // without rebuilding or copying the cached uniform values.
+    for (S32 group = 0; group < LLGLSLShader::SG_COUNT; ++group)
+    {
+        using std::swap;
+        swap(mWaterUniforms[group], state.mWater[group]);
+        swap(mSkyUniforms[group], state.mSky[group]);
     }
 }
 
@@ -3666,4 +3695,3 @@ namespace
     }
 
 }
-

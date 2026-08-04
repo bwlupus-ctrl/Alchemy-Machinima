@@ -109,6 +109,7 @@
 #include "llfloaterfixedenvironment.h"
 #include "llfloateractormover.h"
 #include "llfloaterdirector.h"
+#include "llfloaterprismmanager.h"
 #include "alfloatertemporalcapture.h"
 #include "llfloaterfonttest.h"
 #include "llfloaterforgetuser.h"
@@ -522,6 +523,7 @@ void LLViewerFloaterReg::registerFloaters()
     LLFloaterReg::add("flycam_orbit", "floater_flycam_orbit.xml", &LLFloaterReg::build<LLFloater>);
     LLFloaterReg::add("actor_mover", "floater_actor_mover.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterActorMover>);
     LLFloaterReg::add("director", "floater_director.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterDirector>);
+    LLFloaterReg::add("prism_manager", "floater_prism_manager.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterPrismManager>);
     LLFloaterReg::add("temporal_capture", "floater_temporal_capture.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<ALFloaterTemporalCapture>);
     // ghost_studio is a thin shell around panel_ghost_studio.xml
     // (ALPanelGhostStudio), shared with the Director Console Ghosts tab

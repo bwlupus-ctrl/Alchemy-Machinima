@@ -29,7 +29,6 @@ class ALPanelAnimPreview;
 class ALPanelCineCamParams;
 class ALPanelPathEditor;
 class LLButton;
-class LLCheckBoxCtrl;
 class LLComboBox;
 class LLContextMenu;
 class LLLineEditor;
@@ -75,7 +74,7 @@ private:
     void onClickSceneSave();            // reveal the inline name editor / commit
     void commitSceneName();             // editor commit (Enter) or second Save
     void onClickSceneDelete();
-    void saveScene(const std::string& name);
+    bool saveScene(const std::string& name);
     void loadScene(const std::string& name);
 
     // ---- tabs ----
@@ -137,10 +136,7 @@ private:
     void onClickSetSubjectFromSelection(S32 subject);
     void onClickClearSubject(S32 subject);
     void onClickSetLookAtCamera(bool selected);
-    void onClickDesignatePrismLens();
-    void onClickRemovePrismLens();
-    void onClickClearPrismLenses();
-    void refreshPrismLensList();
+    void onClickManagePrism();
     void refreshCameraTab();
 
     // ---- Takes tab ----
@@ -234,12 +230,11 @@ private:
     LLButton*  mClearDBtn = nullptr;
     LLButton*  mLookAtSetBtn = nullptr;
     LLButton*  mLookAtClearBtn = nullptr;
-    LLCheckBoxCtrl* mPrismEnabledCheck = nullptr;
-    LLScrollListCtrl* mPrismLensList = nullptr;
-    LLButton*  mPrismDesignateBtn = nullptr;
-    LLButton*  mPrismRemoveBtn = nullptr;
-    LLButton*  mPrismClearAllBtn = nullptr;
-    U32        mPrismRegistryRevision = 0;
+    LLTextBox* mPrismSummaryText = nullptr;
+    LLButton*  mPrismManageBtn = nullptr;
+    U64        mPrismConfigurationRevision = 0;
+    U64        mPrismRuntimeRevision = 0;
+    bool       mHavePrismSummary = false;
 
     // Animate tab
     LLTextBox*        mAnimateHeader = nullptr;

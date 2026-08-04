@@ -24002,7 +24002,7 @@
   </map>
   <key>PrismLensEnabled</key>
   <map>
-    <key>Comment</key><string>Master render toggle for up to three local, render-only Prism Lens face magnifiers. Default off; registry editing is independent.</string>
+    <key>Comment</key><string>Master render toggle for up to three local Prism capture producers (Surface Lens or Camera Feed). Default off; registry editing is independent.</string>
     <key>Persist</key><integer>1</integer>
     <key>Type</key><string>Boolean</string>
     <key>Value</key><integer>0</integer>
@@ -24016,7 +24016,7 @@
   </map>
   <key>PrismLensResolutionScale</key>
   <map>
-    <key>Comment</key><string>Resolution of all Prism Lens auxiliary views relative to projected face footprint. Runtime-clamped to 0.25 through 2.0; bucketed targets are capped at 1024 per axis.</string>
+    <key>Comment</key><string>User quality ceiling shared by all Prism auxiliary captures. Runtime-clamped to 0.25 through 2.0; logical output axes are capped at 1024 pixels.</string>
     <key>Persist</key><integer>1</integer>
     <key>Type</key><string>F32</string>
     <key>Value</key><real>1.0</real>
@@ -24034,6 +24034,27 @@
     <key>Persist</key><integer>1</integer>
     <key>Type</key><string>Boolean</string>
     <key>Value</key><integer>0</integer>
+  </map>
+  <key>PrismAdaptivePerformance</key>
+  <map>
+    <key>Comment</key><string>Protect the selected main-view frame-rate target by adapting aggregate Prism capture cadence and logical resolution.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>1</integer>
+  </map>
+  <key>PrismProtectedMainFPS</key>
+  <map>
+    <key>Comment</key><string>Main-view FPS target protected by Prism Adaptive Performance. Valid choices are 30, 45, and 60; invalid typed values use 30.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>30.0</real>
+  </map>
+  <key>PrismCaptureRefreshCeilingHz</key>
+  <map>
+    <key>Comment</key><string>Total auxiliary capture-attempt budget shared fairly across all producers. Valid choices are 5, 10, 15, 20, and 30; zero means Every Frame in Manual mode.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>30.0</real>
   </map>
   <!-- </FSPoser> -->
 </map>

@@ -30,6 +30,7 @@
 
 #include "llviewerprecompiledheaders.h"
 #include "alfloaterlightbox.h"
+#include "alscrollfocus.h"
 
 #include "bdmergemeshpool.h"
 #include "bdmergetexpool.h"
@@ -69,6 +70,11 @@ ALFloaterLightBox::~ALFloaterLightBox()
 
 bool ALFloaterLightBox::postBuild()
 {
+    ALScrollFocus::install(this, "render_settings_scroll", "render_settings_scroll_content");
+    ALScrollFocus::install(this, "projshaft_settings_scroll", "projshaft_settings_scroll_content");
+    ALScrollFocus::install(this, "froxel_settings_scroll", "froxel_settings_scroll_content");
+    ALScrollFocus::install(this, "weather_settings_scroll", "weather_settings_scroll_content");
+
     populateLUTCombo();
     updateTonemapper();
     updateCAS();

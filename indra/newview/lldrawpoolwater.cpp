@@ -116,7 +116,7 @@ void LLDrawPoolWater::beginPostDeferredPass(S32 pass)
         LLGLDepthTest depth(GL_TRUE, GL_TRUE, GL_ALWAYS);
 
         LLRenderTarget& src = gPipeline.mRT->screen;
-        LLRenderTarget& dst = gPipeline.mWaterDis;
+        LLRenderTarget& dst = gPipeline.getWaterDisTarget();
 
         dst.copyContents(src, 0, 0, src.getWidth(), src.getHeight(), 0, 0, dst.getWidth(), dst.getHeight(),
                     GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
@@ -183,7 +183,9 @@ void LLDrawPoolWater::renderPostDeferred(S32 pass)
         shader = &gWaterProgram;
     }
 
-    gPipeline.bindDeferredShader(*shader, nullptr, &gPipeline.mWaterDis);
+    LLRenderTarget& water_dis = gPipeline.getWaterDisTarget();
+    LLRenderTarget& water_exclusion = gPipeline.getWaterExclusionMaskTarget();
+    gPipeline.bindDeferredShader(*shader, nullptr, &water_dis);
 
     LLViewerTexture* tex_a = mWaterNormp[0];
     LLViewerTexture* tex_b = mWaterNormp[1];
@@ -210,20 +212,20 @@ void LLDrawPoolWater::renderPostDeferred(S32 pass)
         shader->bindTexture(LLViewerShaderMgr::BUMP_MAP2, tex_b);
     }
 
-    shader->bindTexture(LLShaderMgr::WATER_EXCLUSIONTEX, &gPipeline.mWaterExclusionMask);
+    shader->bindTexture(LLShaderMgr::WATER_EXCLUSIONTEX, &water_exclusion);
 
     shader->uniform1f(LLShaderMgr::BLEND_FACTOR, blend_factor);
 
     F32      fog_density = pwater->getModifiedWaterFogDensity(underwater);
 
-    shader->bindTexture(LLShaderMgr::WATER_SCREENTEX, &gPipeline.mWaterDis);
+    shader->bindTexture(LLShaderMgr::WATER_SCREENTEX, &water_dis);
 
     if (mShaderLevel == 1)
     {
         fog_color.mV[VALPHA] = (F32)(log(fog_density) / log(2));
     }
 
-    F32 water_height = environment.getWaterHeight();
+    const F32 water_height = gPipeline.getRenderWaterHeight();
     F32 camera_height = LLViewerCamera::getInstance()->getOrigin().mV[2];
     shader->uniform1f(LLShaderMgr::WATER_WATERHEIGHT, camera_height - water_height);
     shader->uniform1f(LLShaderMgr::WATER_TIME, phase_time);

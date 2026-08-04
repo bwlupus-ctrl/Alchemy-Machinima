@@ -39,6 +39,7 @@
 #include "lldrawpoolalpha.h"
 #include "lldrawpoolmaterials.h"
 #include "llgl.h"
+#include "llrender.h"
 #include "lldrawable.h"
 #include "llrendertarget.h"
 #include "llreflectionmapmanager.h"
@@ -132,9 +133,20 @@ public:
     //attempt to allocate screen buffers at resX, resY
     //returns true if allocation successful, false otherwise
     bool allocateScreenBufferInternal(U32 resX, U32 resY);
-    bool allocatePrismLensBuffer(U32 width, U32 height);
+    bool allocatePrismLensBuffer(U32 slot, U32 width, U32 height);
     bool allocatePrismLensOutput(U32 slot, U32 width, U32 height);
-    void releasePrismLensBuffer();
+    // A Prism scratch pack always has exactly the scheduled capture's logical
+    // dimensions. These helpers keep viewport and shader state coherent after
+    // nested target binds; they never authorize an oversized logical subrect.
+    bool setPrismLensLogicalExtent(U32 width, U32 height);
+    void clearPrismLensLogicalExtent();
+    bool getPrismLensLogicalExtent(U32& width, U32& height) const;
+    void applyPrismLensLogicalViewport();
+    void bindPrismLensTarget(LLRenderTarget& target);
+    LLRenderTarget& getWaterDisTarget();
+    LLRenderTarget& getWaterExclusionMaskTarget();
+    void releasePrismLensBuffer(U32 slot);
+    void releasePrismLensBuffers();
     void releasePrismLensOutput(U32 slot);
     void releasePrismLensOutputs();
     bool allocateShadowBuffer(U32 resX, U32 resY);
@@ -431,6 +443,10 @@ public:
     // bind shadow maps
     // if setup is true, wil lset texture compare mode function and filtering options
     void bindShadowMaps(LLGLSLShader& shader);
+    // Shader-program destruction invalidates variant addresses retained only as
+    // values in the Prism screen-uniform restoration set. RT-only resets must
+    // not call this: live programs can still require a main-view reapply.
+    void clearPrismLensDirtyScreenShaderTracking();
     void bindDeferredShaderFast(LLGLSLShader& shader);
     void bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_target = nullptr, LLRenderTarget* depth_target = nullptr);
     void setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep);
@@ -503,6 +519,15 @@ public:
 
     void calcNearbyLights(LLCamera& camera);
     void setupHWLights();
+    // Snapshot the main-view lighting/probe state before an auxiliary Prism
+    // render and restore it afterward. These calls must be paired by RAII;
+    // they intentionally remain separate from sPrismLensRender so the main
+    // camera state can be captured before the auxiliary flag is installed.
+    bool beginPrismAuxiliaryState();
+    void activatePrismAuxiliaryProbeState();
+    void setPrismAuxiliaryWaterHeight(const LLVector3& eye);
+    F32 getRenderWaterHeight() const;
+    void endPrismAuxiliaryState();
     void setupAvatarLights(bool for_edit = false);
     void enableLights(U32 mask);
     void enableLightsDynamic();
@@ -937,9 +962,19 @@ public:
     // Auxillary render target pack scaled to the hero probe's per-face size.
     RenderTargetPack mHeroProbeRT;
 
-    // Shared scratch deferred pack plus fixed, independently retained HDR outputs.
-    RenderTargetPack mPrismLensRT;
-    LLRenderTarget mPrismLensOutput[LLPrismLens::MAX_LENSES];
+    // Three exact-size, capture-owned deferred scratch packs prevent normalized
+    // screen UVs from sampling stale texels outside a smaller logical subrect.
+    // Outputs remain independently retained; display bindings own no targets.
+    RenderTargetPack mPrismLensRT[LLPrismLens::MAX_CAPTURES];
+    LLRenderTarget mPrismLensWaterDis[LLPrismLens::MAX_CAPTURES];
+    LLRenderTarget mPrismLensWaterExclusionMask[LLPrismLens::MAX_CAPTURES];
+    LLRenderTarget mPrismLensOutput[LLPrismLens::MAX_CAPTURES];
+    U32 mPrismLensLogicalWidth = 0;
+    U32 mPrismLensLogicalHeight = 0;
+    // Deferred shaders whose screen-space uniforms were last written by an
+    // auxiliary capture. Each is restored once on its next main-view bind;
+    // the ordinary fast path remains a zero-set-lookup branch when empty.
+    std::set<LLGLSLShader*> mPrismLensDirtyScreenShaders;
 
     // currently used render target pack
     RenderTargetPack* mRT;
@@ -1195,6 +1230,30 @@ protected:
     LLDrawable::ordered_drawable_set_t  mLights;
     light_set_t                     mNearbyLights; // lights near camera
     LLColor4                        mHWLightColors[8];
+
+    // Main-view state retained while the one scheduled Prism capture owns the
+    // shared renderer. The nearby set owns LLPointer references, which keeps
+    // every drawable alive until its NEARBY_LIGHT bit can be restored safely.
+    bool                            mPrismAuxiliaryStateActive = false;
+    light_set_t                     mPrismSavedNearbyLights;
+    LLPointer<LLDrawable>           mPrismSavedShadowSpotLight[MAX_SPOT_SHADOWS];
+    LLPointer<LLDrawable>           mPrismSavedTargetShadowSpotLight[MAX_SPOT_SHADOWS];
+    F32                             mPrismSavedSpotLightFade[MAX_SPOT_SHADOWS] = {};
+    U32                             mPrismSavedLightMask = 0;
+    U32                             mPrismSavedLightMovingMask = 0;
+    LLRender::light_state_snapshot_t mPrismSavedGLLights;
+    LLColor4                        mPrismSavedGLAmbient;
+    LLColor4                        mPrismSavedHWLightColors[8];
+    LLColor4                        mPrismSavedSunDiffuse;
+    LLColor4                        mPrismSavedMoonDiffuse;
+    LLVector4                       mPrismSavedSunDir;
+    LLVector4                       mPrismSavedMoonDir;
+    S32                             mPrismSavedPoissonOffset = 0;
+    bool                            mPrismSavedProbeDataValid = false;
+    bool                            mPrismProbeUBOStaged = false;
+    bool                            mPrismAuxiliaryWaterHeightValid = false;
+    F32                             mPrismAuxiliaryWaterHeight = 0.f;
+    LLReflectionMapManager::ReflectionProbeData mPrismSavedProbeData;
 
     /////////////////////////////////////////////
     //

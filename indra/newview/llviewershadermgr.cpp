@@ -804,6 +804,11 @@ void LLViewerShaderMgr::setShaders()
 
 void LLViewerShaderMgr::unloadShaders()
 {
+    // A completed auxiliary Prism pass can retain shader addresses solely to
+    // restore main-view screen uniforms on their next bind. Program unload
+    // makes that tracking obsolete; clear it before variant storage changes.
+    gPipeline.clearPrismLensDirtyScreenShaderTracking();
+
     while (!LLGLSLShader::sInstances.empty())
     {
         LLGLSLShader* shader = *(LLGLSLShader::sInstances.begin());

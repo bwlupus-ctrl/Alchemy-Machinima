@@ -34,6 +34,9 @@ uniform samplerCubeArray   irradianceProbes;
 
 uniform sampler2D sceneMap;
 uniform int cube_snapshot;
+// Explicit auxiliary-pass guard. SSR iterationCount==0 is not sufficient:
+// callers still enter the trace path, and hero sampling ignores heroProbeCount.
+uniform int prism_auxiliary;
 uniform float max_probe_lod;
 
 uniform bool transparent_surface;
@@ -756,7 +759,7 @@ void doProbeSample(inout vec3 ambenv, inout vec3 glossenv,
     glossenv = sampleProbes(pos, normalize(refnormpersp), lod);
 
 #if defined(SSR)
-    if (cube_snapshot != 1 && glossiness >= 0.9)
+    if (prism_auxiliary == 0 && cube_snapshot != 1 && glossiness >= 0.9)
     {
         vec4 ssr = vec4(0);
         if (transparent)
@@ -774,7 +777,10 @@ void doProbeSample(inout vec3 ambenv, inout vec3 glossenv,
     }
 #endif
 
-    tapHeroProbe(glossenv, pos, norm, glossiness);
+    if (prism_auxiliary == 0)
+    {
+        tapHeroProbe(glossenv, pos, norm, glossiness);
+    }
 }
 
 void sampleReflectionProbes(inout vec3 ambenv, inout vec3 glossenv,
@@ -874,7 +880,7 @@ void sampleReflectionProbesLegacy(inout vec3 ambenv, inout vec3 glossenv, inout 
     }
 
 #if defined(SSR)
-    if (cube_snapshot != 1)
+    if (prism_auxiliary == 0 && cube_snapshot != 1)
     {
         vec4 ssr = vec4(0);
 
@@ -893,8 +899,11 @@ void sampleReflectionProbesLegacy(inout vec3 ambenv, inout vec3 glossenv, inout 
     }
 #endif
 
-    tapHeroProbe(glossenv, pos, norm, glossiness);
-    tapHeroProbe(legacyenv, pos, norm, 1.0);
+    if (prism_auxiliary == 0)
+    {
+        tapHeroProbe(glossenv, pos, norm, glossiness);
+        tapHeroProbe(legacyenv, pos, norm, 1.0);
+    }
 
     glossenv = clamp(glossenv, vec3(0), vec3(10));
 }
@@ -920,4 +929,3 @@ void applyGlossEnv(inout vec3 color, vec3 glossenv, vec4 spec, vec3 pos, vec3 no
     reflected_color *= (envIntensity*fresnel);
     color = mix(color.rgb, reflected_color*0.5, envIntensity);
  }
-

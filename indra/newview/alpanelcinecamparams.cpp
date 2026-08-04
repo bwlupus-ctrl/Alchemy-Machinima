@@ -10,6 +10,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "alpanelcinecamparams.h"
+#include "alscrollfocus.h"
 
 #include "llcinematiccamera.h"
 #include "llbutton.h"
@@ -62,6 +63,7 @@ const ShakePreset SHAKE_PRESETS[] = {
     { "Verite",          .90f,1.15f,1.00f,1.00f,1.10f,1.15f, .50f, 0.20f,   6, 7, 3 },
     { "Heartbeat",       .10f, .15f, .45f, .10f, .25f, .15f,1.40f, 0.50f,   0, 8, 4 },
 };
+
 } // anonymous namespace
 
 // ---------------------------------------------------------------------------
@@ -377,6 +379,10 @@ ALPanelCineCamParams::~ALPanelCineCamParams()
 
 bool ALPanelCineCamParams::postBuild()
 {
+    // Both the standalone floater and Director place this shared panel in a
+    // fixed-height scroll document. Make keyboard Tab reveal focused controls.
+    ALScrollFocus::installAncestor(this);
+
     getChild<LLButton>("btn_reset_mode")->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onClickResetMode(); });
     getChild<LLButton>("btn_reset_all")->setCommitCallback(
