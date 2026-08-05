@@ -1335,44 +1335,102 @@ bool LLPipeline::allocateScreenBufferInternal(U32 resX, U32 resY)
     return true;
 }
 
-bool LLPipeline::allocatePrismLensBuffer(U32 slot, U32 width, U32 height)
+// Release every GL target owned by one Prism scratch pool entry and zero its
+// size key so acquirePrismLensScratch treats it as empty. File-local so no
+// caller outside the acquire/release pair can partially tear down an entry.
+static void release_prism_scratch_entry(LLPipeline::PrismLensScratch& entry)
+{
+    entry.rt.screen.release();
+    entry.rt.deferredScreen.release();
+    entry.rt.deferredLight.release();
+    entry.waterDis.release();
+    entry.waterExclusionMask.release();
+    entry.rt.width = 0;
+    entry.rt.height = 0;
+    entry.width = 0;
+    entry.height = 0;
+    entry.lastUsedFrame = 0;
+}
+
+bool LLPipeline::acquirePrismLensScratch(U32 width, U32 height)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DISPLAY;
 
-    if (slot >= LLPrismLens::MAX_CAPTURES)
+    // Option B (reworked): bounded pool of EXACT-SIZE auxiliary deferred
+    // scratch packs keyed by (width,height). The shared deferred fullscreen
+    // shaders sample the G-buffer with normalized [0,1] UVs (softenLightV.glsl
+    // -> deferredUtil.glsl), so the physical target size MUST equal the render
+    // size -- a sub-rect of a larger shared target would be sampled shrunk and
+    // polluted by a sibling capture's stale texels. Packs are reused across
+    // frames by size (no per-frame realloc for a steady capture set) and the
+    // pool is bounded to MAX_CAPTURES entries with LRU eviction.
+    constexpr U32 MAX_SCRATCH_EXTENT = 1024;
+
+    // Never leave the active pointer aimed at an entry this call may release
+    // or evict below; it is re-set only on success.
+    mActivePrismLensScratch = nullptr;
+
+    if (width == 0 || height == 0 ||
+        width > MAX_SCRATCH_EXTENT || height > MAX_SCRATCH_EXTENT)
     {
         return false;
     }
 
-    // Each of the three bounded captures owns one exact-size scratch pack.
-    // Normalized deferred UVs therefore always address the pixels rendered for
-    // that capture; an oversized physical texture cannot expose stale regions.
-    width = llclamp(width, 64u, 1024u);
-    height = llclamp(height, 64u, 1024u);
-
-    RenderTargetPack& rt = mPrismLensRT[slot];
-    LLRenderTarget& water_dis = mPrismLensWaterDis[slot];
-    LLRenderTarget& water_exclusion = mPrismLensWaterExclusionMask[slot];
     const bool needs_deferred_light = RenderDeferredSSAO || RenderShadowDetail > 0;
-    if (rt.width == width && rt.height == height &&
-        rt.deferredScreen.isComplete() && rt.screen.isComplete() &&
-        (!needs_deferred_light || rt.deferredLight.isComplete()) &&
-        water_dis.isComplete() && water_exclusion.isComplete())
+    auto pack_complete = [needs_deferred_light](const PrismLensScratch& entry)
     {
-        return true;
+        return entry.rt.deferredScreen.isComplete() &&
+               entry.rt.screen.isComplete() &&
+               (!needs_deferred_light || entry.rt.deferredLight.isComplete()) &&
+               entry.waterDis.isComplete() &&
+               entry.waterExclusionMask.isComplete();
+    };
+
+    // Reuse an existing exact-size pack when its targets are all live.
+    for (PrismLensScratch& entry : mPrismLensScratchPool)
+    {
+        if (entry.width == width && entry.height == height && pack_complete(entry))
+        {
+            entry.lastUsedFrame = gFrameCount;
+            mActivePrismLensScratch = &entry;
+            return true;
+        }
     }
 
-    releasePrismLensBuffer(slot);
-    rt.width = width;
-    rt.height = height;
+    // No match: recycle an empty/incomplete entry first; if every entry is
+    // live, evict the least-recently-used pack.
+    PrismLensScratch* target = nullptr;
+    for (PrismLensScratch& entry : mPrismLensScratchPool)
+    {
+        if (entry.width == 0 || entry.height == 0 || !pack_complete(entry))
+        {
+            target = &entry;
+            break;
+        }
+    }
+    if (!target)
+    {
+        for (PrismLensScratch& entry : mPrismLensScratchPool)
+        {
+            if (!target || entry.lastUsedFrame < target->lastUsedFrame)
+            {
+                target = &entry;
+            }
+        }
+    }
 
+    release_prism_scratch_entry(*target);
+
+    // Allocate at EXACTLY the capture's bucketed size: physical == render, so
+    // normalized-UV sampling addresses only texels this capture wrote.
+    RenderTargetPack& rt = target->rt;
     if (!rt.deferredScreen.allocate(width, height, GL_SRGB8_ALPHA8, true) ||
         !addDeferredAttachments(rt.deferredScreen) ||
         !rt.screen.allocate(width, height, GL_RGBA16F) ||
-        !water_dis.allocate(width, height, GL_RGBA16F, true) ||
-        !water_exclusion.allocate(width, height, GL_R8, true))
+        !target->waterDis.allocate(width, height, GL_RGBA16F, true) ||
+        !target->waterExclusionMask.allocate(width, height, GL_R8, true))
     {
-        releasePrismLensBuffer(slot);
+        release_prism_scratch_entry(*target);
         return false;
     }
 
@@ -1381,10 +1439,16 @@ bool LLPipeline::allocatePrismLensBuffer(U32 slot, U32 width, U32 height)
     if (needs_deferred_light &&
         !rt.deferredLight.allocate(width, height, GL_RGBA16F))
     {
-        releasePrismLensBuffer(slot);
+        release_prism_scratch_entry(*target);
         return false;
     }
 
+    rt.width = width;
+    rt.height = height;
+    target->width = width;
+    target->height = height;
+    target->lastUsedFrame = gFrameCount;
+    mActivePrismLensScratch = target;
     return true;
 }
 
@@ -1419,158 +1483,41 @@ bool LLPipeline::allocatePrismLensOutput(U32 slot, U32 width, U32 height)
            output.getHeight() == PRISM_OUTPUT_CAPACITY;
 }
 
-bool LLPipeline::setPrismLensLogicalExtent(U32 width, U32 height)
-{
-    constexpr U32 PRISM_MAX_LOGICAL_EXTENT = 1024;
-    RenderTargetPack* prism_rt = nullptr;
-    for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
-    {
-        if (mRT == &mPrismLensRT[slot])
-        {
-            prism_rt = &mPrismLensRT[slot];
-            break;
-        }
-    }
-    if (width == 0 || height == 0 ||
-        width > PRISM_MAX_LOGICAL_EXTENT ||
-        height > PRISM_MAX_LOGICAL_EXTENT ||
-        !prism_rt || width != prism_rt->width || height != prism_rt->height)
-    {
-        clearPrismLensLogicalExtent();
-        return false;
-    }
-
-    mPrismLensLogicalWidth = width;
-    mPrismLensLogicalHeight = height;
-    return true;
-}
-
-void LLPipeline::clearPrismLensLogicalExtent()
-{
-    mPrismLensLogicalWidth = 0;
-    mPrismLensLogicalHeight = 0;
-}
-
-bool LLPipeline::getPrismLensLogicalExtent(U32& width, U32& height) const
-{
-    bool prism_rt = false;
-    for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
-    {
-        if (mRT == &mPrismLensRT[slot])
-        {
-            prism_rt = true;
-            break;
-        }
-    }
-    if (!sPrismLensRender || !prism_rt ||
-        mPrismLensLogicalWidth == 0 || mPrismLensLogicalHeight == 0)
-    {
-        return false;
-    }
-
-    width = mPrismLensLogicalWidth;
-    height = mPrismLensLogicalHeight;
-    return true;
-}
-
 LLRenderTarget& LLPipeline::getWaterDisTarget()
 {
-    if (sPrismLensRender)
+    if (sPrismLensRender && mActivePrismLensScratch &&
+        mRT == &mActivePrismLensScratch->rt)
     {
-        for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
-        {
-            if (mRT == &mPrismLensRT[slot])
-            {
-                return mPrismLensWaterDis[slot];
-            }
-        }
+        return mActivePrismLensScratch->waterDis;
     }
     return mWaterDis;
 }
 
 LLRenderTarget& LLPipeline::getWaterExclusionMaskTarget()
 {
-    if (sPrismLensRender)
+    if (sPrismLensRender && mActivePrismLensScratch &&
+        mRT == &mActivePrismLensScratch->rt)
     {
-        for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
-        {
-            if (mRT == &mPrismLensRT[slot])
-            {
-                return mPrismLensWaterExclusionMask[slot];
-            }
-        }
+        return mActivePrismLensScratch->waterExclusionMask;
     }
     return mWaterExclusionMask;
 }
 
-void LLPipeline::applyPrismLensLogicalViewport()
-{
-    U32 width = 0;
-    U32 height = 0;
-    if (!getPrismLensLogicalExtent(width, height))
-    {
-        return;
-    }
-
-    LLRenderTarget* target = LLRenderTarget::getCurrentBoundTarget();
-    LLRenderTarget& water_dis = getWaterDisTarget();
-    LLRenderTarget& water_exclusion = getWaterExclusionMaskTarget();
-    if (!target ||
-        (target != &mRT->deferredScreen &&
-         target != &mRT->deferredLight &&
-         target != &mRT->screen &&
-         target != &water_dis &&
-         target != &water_exclusion) ||
-        width > target->getWidth() || height > target->getHeight())
-    {
-        return;
-    }
-
-    gGLViewport[0] = 0;
-    gGLViewport[1] = 0;
-    gGLViewport[2] = static_cast<S32>(width);
-    gGLViewport[3] = static_cast<S32>(height);
-    LLRenderTarget::sCurResX = width;
-    LLRenderTarget::sCurResY = height;
-    glViewport(0, 0, static_cast<GLsizei>(width),
-               static_cast<GLsizei>(height));
-    glEnable(GL_SCISSOR_TEST);
-    glScissor(0, 0, static_cast<GLsizei>(width),
-              static_cast<GLsizei>(height));
-}
-
 void LLPipeline::bindPrismLensTarget(LLRenderTarget& target)
 {
+    // Prism scratch packs are exact-size, so bindTarget's own full-size
+    // viewport is already correct; no logical sub-rect override remains.
     target.bindTarget();
-    applyPrismLensLogicalViewport();
-}
-
-void LLPipeline::releasePrismLensBuffer(U32 slot)
-{
-    if (slot >= LLPrismLens::MAX_CAPTURES)
-    {
-        return;
-    }
-    RenderTargetPack& rt = mPrismLensRT[slot];
-    rt.screen.release();
-    rt.deferredScreen.release();
-    rt.deferredLight.release();
-    mPrismLensWaterDis[slot].release();
-    mPrismLensWaterExclusionMask[slot].release();
-    rt.width = 0;
-    rt.height = 0;
-    if (mRT == &rt)
-    {
-        clearPrismLensLogicalExtent();
-    }
 }
 
 void LLPipeline::releasePrismLensBuffers()
 {
-    for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
+    for (PrismLensScratch& entry : mPrismLensScratchPool)
     {
-        releasePrismLensBuffer(slot);
+        release_prism_scratch_entry(entry);
     }
+    // The pool is gone; nothing may keep rendering into a released entry.
+    mActivePrismLensScratch = nullptr;
 }
 
 void LLPipeline::releasePrismLensOutput(U32 slot)
@@ -2089,6 +2036,10 @@ void LLPipeline::releaseSpotShadowTargets()
         for (U32 i = 0; i < MAX_SPOT_SHADOWS; i++)
         {
             mSpotShadow[i].release();
+            // [Prism spot shadows Stage 2] the dedicated aux maps track
+            // mSpotShadow's lifetime (resize + GL teardown both land here);
+            // generatePrismSpotShadows lazily re-allocates on next use.
+            mPrismSpotShadow[i].release();
         }
     }
 }
@@ -6921,7 +6872,6 @@ void LLPipeline::renderGeomDeferred(LLCamera& camera, bool do_occlusion)
                         if ( !p->getSkipRenderFlag() ) { p->renderDeferred(i); }
                     }
                     poolp->endDeferredPass(i);
-                    applyPrismLensLogicalViewport();
                     LLVertexBuffer::unbind();
 
                     LLGLState::checkStates();
@@ -7213,7 +7163,6 @@ void LLPipeline::renderGeomPostDeferred(LLCamera& camera)
             doWaterHaze();
             done_water_haze = true;
         }
-        applyPrismLensLogicalViewport();
 
         pool_set_t::iterator iter2 = iter1;
         if (hasRenderType(poolp->getType()) && poolp->getNumPostDeferredPasses() > 0)
@@ -7274,9 +7223,6 @@ void LLPipeline::renderGeomPostDeferred(LLCamera& camera)
                     p->renderPostDeferred(i);
                 }
                 poolp->endPostDeferredPass(i);
-                // A pool may have temporarily bound and flushed an auxiliary
-                // FBO; reassert the active Prism viewport and scissor.
-                applyPrismLensLogicalViewport();
                 gGL.setIndexedDrawBufferGuardMask(SL_SIDECAR_ATTACHMENT, false, false, false, false);
                 gGL.clearIndexedDrawBufferGuardBlend(SL_SIDECAR_ATTACHMENT);
                 gGL.setIndexedDrawBufferGuardMask(SL_COVERAGE_ATTACHMENT, false, false, false, false);
@@ -9176,13 +9122,16 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
             center.load3(drawable->getPositionAgent().mV);
             LLVector4a radius;
             radius.splat(light_radius);
-            if (camera.AABBInFrustumNoFarClip(center, radius) == 0)
+
+            // Spotlights/projectors inside or near the auxiliary camera frustum must never be culled by eye-near clipping.
+            const bool is_spot = light->isLightSpotlight();
+            if (!is_spot && camera.AABBInFrustumNoFarClip(center, radius) == 0)
             {
                 continue;
             }
 
             const F32 dist = calc_light_dist(light, cam_pos, max_dist);
-            if (dist < max_dist)
+            if (dist < max_dist || is_spot)
             {
                 // Fully visible avoids setupHWLights' in-place fade-clock write.
                 mNearbyLights.insert(Light(drawable, dist, LIGHT_FADE_TIME));
@@ -9391,6 +9340,13 @@ bool LLPipeline::beginPrismAuxiliaryState()
         mPrismSavedShadowSpotLight[i] = mShadowSpotLight[i];
         mPrismSavedTargetShadowSpotLight[i] = mTargetShadowSpotLight[i];
         mPrismSavedSpotLightFade[i] = mSpotLightFade[i];
+        // [Prism spot shadows Stage 1] the aux pass re-expresses the projector
+        // sampling matrices with the aux camera's inverse view
+        mPrismSavedSunShadowMatrix[i] = mSunShadowMatrix[i + 4];
+        // [Prism spot shadows Stage 2] the aux generation pass rewrites the
+        // per-slot projector view/projection for freshly selected projectors
+        mPrismSavedShadowModelview[i] = mShadowModelview[i + 4];
+        mPrismSavedShadowProjection[i] = mShadowProjection[i + 4];
     }
 
     // Probe selection is camera-space state. Build the UBO once from the main
@@ -9510,6 +9466,13 @@ void LLPipeline::endPrismAuxiliaryState()
         mShadowSpotLight[i] = mPrismSavedShadowSpotLight[i];
         mTargetShadowSpotLight[i] = mPrismSavedTargetShadowSpotLight[i];
         mSpotLightFade[i] = mPrismSavedSpotLightFade[i];
+        // [Prism spot shadows Stage 1] restore the main-view projector sampling
+        // matrices before the main stateSort / deferred lighting consume them
+        mSunShadowMatrix[i + 4] = mPrismSavedSunShadowMatrix[i];
+        // [Prism spot shadows Stage 2] restore the main-view per-slot projector
+        // view/projection matrices likewise
+        mShadowModelview[i + 4] = mPrismSavedShadowModelview[i];
+        mShadowProjection[i + 4] = mPrismSavedShadowProjection[i];
     }
     mPoissonOffset = mPrismSavedPoissonOffset;
 
@@ -15834,9 +15797,10 @@ void LLPipeline::bindDeferredShaderFast(LLGLSLShader& shader)
         }
         if (update_screen_extent)
         {
+            // Prism scratch packs are exact-size, so the bound deferred
+            // target's physical dimensions ARE the render dimensions.
             U32 render_width = mRT->deferredScreen.getWidth();
             U32 render_height = mRT->deferredScreen.getHeight();
-            getPrismLensLogicalExtent(render_width, render_height);
             if (shader.getUniformLocation(LLShaderMgr::VIEWPORT) != -1)
             {
                 shader.uniform4f(LLShaderMgr::VIEWPORT,
@@ -16042,7 +16006,6 @@ void LLPipeline::bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_
 
     U32 deferred_width = deferred_target->getWidth();
     U32 deferred_height = deferred_target->getHeight();
-    getPrismLensLogicalExtent(deferred_width, deferred_height);
     shader.uniform2f(LLShaderMgr::DEFERRED_SCREEN_RES,
                      static_cast<F32>(deferred_width),
                      static_cast<F32>(deferred_height));
@@ -16079,7 +16042,11 @@ void LLPipeline::bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_
     shader.uniform2f(LLShaderMgr::DEFERRED_SHADOW_RES,
                      (GLfloat)sun_shadow->getWidth(),
                      (GLfloat)sun_shadow->getHeight());
-    shader.uniform2f(LLShaderMgr::DEFERRED_PROJ_SHADOW_RES, (GLfloat)mSpotShadow[0].getWidth(), (GLfloat)mSpotShadow[0].getHeight());
+    // [Prism spot shadows Stage 2] getSpotShadowTarget redirects to the
+    // dedicated aux maps while sPrismLensRender is set (harmless if the sizes
+    // match, correct if they ever diverge); the main path is unchanged.
+    LLRenderTarget* spot_shadow = getSpotShadowTarget(0);
+    shader.uniform2f(LLShaderMgr::DEFERRED_PROJ_SHADOW_RES, (GLfloat)spot_shadow->getWidth(), (GLfloat)spot_shadow->getHeight());
     shader.uniform1f(LLShaderMgr::DEFERRED_DEPTH_CUTOFF, RenderEdgeDepthCutoff);
     shader.uniform1f(LLShaderMgr::DEFERRED_NORM_CUTOFF, RenderEdgeNormCutoff);
 
@@ -16198,7 +16165,6 @@ void LLPipeline::renderDeferredLighting()
 
                 U32 sun_width = deferred_light_target->getWidth();
                 U32 sun_height = deferred_light_target->getHeight();
-                getPrismLensLogicalExtent(sun_width, sun_height);
                 sun_shader.uniform2f(LLShaderMgr::DEFERRED_SCREEN_RES,
                                      static_cast<F32>(sun_width),
                                      static_cast<F32>(sun_height));
@@ -16908,6 +16874,7 @@ void LLPipeline::renderDeferredLighting()
             static const LLStaticHashedString sLetterbox("letterbox");
             static const LLStaticHashedString sBarColorLinear("barColorLinear");
             static const LLStaticHashedString sEdgeFeather("edgeFeather");
+            static const LLStaticHashedString sPrismLensOptics("prismLensOptics");
 
             U32 bound_capture_slot = LLPrismLens::MAX_CAPTURES;
             for (U32 prism_index = 0; prism_index < prism_state_count;
@@ -16952,6 +16919,7 @@ void LLPipeline::renderDeferredLighting()
                 gPrismLensProgram.uniform3fv(sBarColorLinear, 1,
                                              prism_state.mBarColorLinear);
                 gPrismLensProgram.uniform1f(sEdgeFeather, prism_state.mEdgeFeather);
+                gPrismLensProgram.uniform4fv(sPrismLensOptics, 1, prism_state.mOpticsParams);
 
                 LLDrawable* lens_drawable = prism_state.mFace->getDrawable();
                 if (lens_drawable &&
@@ -17022,7 +16990,6 @@ void LLPipeline::doAtmospherics()
 
             U32 source_width = src.getWidth();
             U32 source_height = src.getHeight();
-            getPrismLensLogicalExtent(source_width, source_height);
             src.flush();
             dst.copyContents(src, 0, 0, source_width, source_height,
                              0, 0, dst.getWidth(), dst.getHeight(),
@@ -17077,7 +17044,6 @@ void LLPipeline::doWaterHaze()
 
             U32 source_width = src.getWidth();
             U32 source_height = src.getHeight();
-            getPrismLensLogicalExtent(source_width, source_height);
             src.flush();
             dst.copyContents(src, 0, 0, source_width, source_height,
                              0, 0, dst.getWidth(), dst.getHeight(),
@@ -17143,9 +17109,9 @@ void LLPipeline::doWaterExclusionMask()
     mWaterExclusionPool->render();
 
     exclusion.flush();
-    // flush() restores the preceding Prism screen FBO; reassert the active
-    // viewport and scissor for subsequent pools.
-    applyPrismLensLogicalViewport();
+    // flush() rebinds the preceding FBO, and bindTarget() installs that
+    // target's full-size viewport -- with exact-size Prism scratch packs the
+    // restored viewport is already correct, so no reassert is needed.
     glClearColor(0, 0, 0, 0);
 }
 
@@ -18507,7 +18473,10 @@ LLRenderTarget* LLPipeline::getSunShadowTarget(U32 i)
 LLRenderTarget* LLPipeline::getSpotShadowTarget(U32 i)
 {
     llassert(i < MAX_SPOT_SHADOWS);
-    return &mSpotShadow[i];
+    // [Prism spot shadows Stage 2] the aux capture samples its own dedicated
+    // maps; the main-view maps must survive untouched for the main deferred
+    // lighting that runs after the aux pass (parallel to getSunShadowTarget).
+    return sPrismLensRender ? &mPrismSpotShadow[i] : &mSpotShadow[i];
 }
 
 // helper class for disabling occlusion culling for the current stack frame
@@ -19527,6 +19496,408 @@ void LLPipeline::generateSunShadow(LLCamera& camera)
     {
         gAgentAvatarp->updateAttachmentVisibility(gAgentCamera.getCameraMode());
     }
+}
+
+// [Prism spot shadows Stage 2] Generate projector/spot shadow maps for the
+// Prism auxiliary capture (surface lens + camera feed). This is a contained
+// mirror of generateSunShadow's spot-shadow loop (same frustum math, same
+// guards, same renderShadow call) with exactly four differences:
+//  - depth renders into the DEDICATED mPrismSpotShadow[] targets, never into
+//    mSpotShadow[] (the main view consumes those maps after this aux pass, at
+//    the main stateSort / deferred lighting later in the same frame);
+//  - the sampling matrix embeds the AUX camera's inverse view, so the shader's
+//    aux view-space positions project into the map correctly;
+//  - projector selection is STATELESS: it iterates mLights with the same
+//    validity filter as calcNearbyLights' Prism-only branch and ranks locally
+//    by distance. It never calls updateSpotLightPriority(), which mutates the
+//    persistent (unsaved) LLVOVolume::mSpotLightPriority;
+//  - it runs from LLPrismLens::renderAuxiliaryView, immediately BEFORE the aux
+//    updateCull/stateSort. renderShadow runs its own stateSort per map, so the
+//    aux scene stateSort must come after to rebuild the aux draw maps.
+// Main-view byte-identity: every shared scalar/matrix mutated here
+// (mShadowSpotLight[], mSpotLightFade[], mShadowModelview[4..9],
+// mShadowProjection[4..9], mSunShadowMatrix[4..9]) was saved by
+// beginPrismAuxiliaryState and is restored by endPrismAuxiliaryState, which
+// fires (via ScopedPrismRenderState's dtor) before the main stateSort.
+void LLPipeline::generatePrismSpotShadows(LLCamera& camera)
+{
+    // Match the main-view projector-shadow gate (generateSunShadow's
+    // "gen_shadow"): if the user's spot shadows are globally off, the feed
+    // shows none either. Never runs outside the aux scope or in a snapshot.
+    if (!sRenderDeferred || RenderShadowDetail <= 1 || !sPrismLensRender || gCubeSnapshot)
+    {
+        return;
+    }
+
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_PIPELINE;
+    LL_PROFILE_GPU_ZONE("generatePrismSpotShadows");
+
+    LLDisableOcclusionCulling no_occlusion;
+
+    // Aux camera state to re-install before returning: the aux
+    // updateCull/stateSort run right after this, so the depth passes below
+    // must not leave their matrices/viewport/camera-id behind.
+    const glm::mat4 saved_proj = get_current_projection();
+    const glm::mat4 saved_view = get_current_modelview();
+    const glm::mat4 last_modelview = get_last_modelview();
+    const glm::mat4 last_projection = get_last_projection();
+    const glm::mat4 inv_view_aux = glm::inverse(saved_view);
+    S32 saved_viewport[4];
+    for (U32 v = 0; v < 4; ++v)
+    {
+        saved_viewport[v] = gGLViewport[v];
+    }
+    const U32 saved_cur_res_x = LLRenderTarget::sCurResX;
+    const U32 saved_cur_res_y = LLRenderTarget::sCurResY;
+    const LLViewerCamera::eCameraID saved_camera_id = LLViewerCamera::sCurCameraID;
+
+    // --- Stateless projector selection ------------------------------------
+    // Same admission filter as calcNearbyLights' Prism branch (is-light, not
+    // HUD, attachment toggles, radius/color), narrowed to spotlights and the
+    // per-projector cast-shadows opt-out. Ranked nearest-first with a pointer
+    // tie-break so the choice is deterministic frame to frame.
+    struct PrismSpotShadowCandidate
+    {
+        F32 dist;
+        LLDrawable* drawable;
+    };
+    std::vector<PrismSpotShadowCandidate> candidates;
+    static LLCachedControl<S32> prism_local_light_count(
+        gSavedSettings, "RenderLocalLightCount", 256);
+    static LLCachedControl<F32> prism_light_scale(
+        gSavedSettings, "AlchemyGlobalLightScale", 1.f);
+    const U32 num_spots = bdmergeMaxSpotShadows(); // [BDMerge NSpot]
+    if (prism_local_light_count >= 1)
+    {
+        const LLVector3 cam_pos = camera.getOrigin();
+        const F32 max_dist = llmin(RenderFarClip, camera.getFar());
+        for (LLDrawable* drawable : mLights)
+        {
+            LLVOVolume* light = drawable ? drawable->getVOVolume() : nullptr;
+            if (!light || !drawable->isState(LLDrawable::LIGHT) ||
+                light->isHUDAttachment())
+            {
+                continue;
+            }
+            if (!light->isLightSpotlight())
+            { // only projectors cast spot shadows
+                continue;
+            }
+            if (light->isAttachment())
+            {
+                if (!sRenderAttachedLights)
+                {
+                    continue;
+                }
+                LLVOAvatar* avatar = light->getAvatar();
+                if (!bdmerge_should_render_light(true, avatar == gAgentAvatarp) ||
+                    (avatar && (avatar->isTooComplex() || avatar->isInMuteList() ||
+                                avatar->isTooSlow())))
+                {
+                    continue;
+                }
+            }
+            else if (!bdmerge_should_render_light(false, false))
+            {
+                continue;
+            }
+            const F32 light_radius = light->getLightRadius() * 1.5f;
+            const LLColor3 light_color =
+                light->getLightLinearColor() * (F32)prism_light_scale;
+            if (light_radius <= 0.001f ||
+                light_color.magVecSquared() < 0.001f)
+            {
+                continue;
+            }
+            if (isProjectorShadowSuppressed(light))
+            { // per-projector "cast shadows" opt-out applies in the feed too
+                continue;
+            }
+            candidates.push_back(
+                { calc_light_dist(light, cam_pos, max_dist), drawable });
+        }
+        std::sort(candidates.begin(), candidates.end(),
+                  [](const PrismSpotShadowCandidate& a,
+                     const PrismSpotShadowCandidate& b)
+                  {
+                      if (a.dist < b.dist) return true;
+                      if (b.dist < a.dist) return false;
+                      return a.drawable < b.drawable;
+                  });
+        if (candidates.size() > num_spots)
+        {
+            candidates.resize(num_spots);
+        }
+    }
+    const U32 chosen = static_cast<U32>(candidates.size());
+
+    // Same shadow render-type mask generateSunShadow pushes.
+    pushRenderTypeMask();
+    andRenderTypeMask(LLPipeline::RENDER_TYPE_SIMPLE,
+                    LLPipeline::RENDER_TYPE_ALPHA,
+                    LLPipeline::RENDER_TYPE_ALPHA_PRE_WATER,
+                    LLPipeline::RENDER_TYPE_ALPHA_POST_WATER,
+                    LLPipeline::RENDER_TYPE_GRASS,
+                    LLPipeline::RENDER_TYPE_GLTF_PBR,
+                    LLPipeline::RENDER_TYPE_FULLBRIGHT,
+                    LLPipeline::RENDER_TYPE_BUMP,
+                    LLPipeline::RENDER_TYPE_VOLUME,
+                    LLPipeline::RENDER_TYPE_AVATAR,
+                    LLPipeline::RENDER_TYPE_CONTROL_AV,
+                    LLPipeline::RENDER_TYPE_TREE,
+                    LLPipeline::RENDER_TYPE_TERRAIN,
+                    LLPipeline::RENDER_TYPE_WATER,
+                    LLPipeline::RENDER_TYPE_VOIDWATER,
+                    LLPipeline::RENDER_TYPE_PASS_ALPHA,
+                    LLPipeline::RENDER_TYPE_PASS_ALPHA_MASK,
+                    LLPipeline::RENDER_TYPE_PASS_FULLBRIGHT_ALPHA_MASK,
+                    LLPipeline::RENDER_TYPE_PASS_GRASS,
+                    LLPipeline::RENDER_TYPE_PASS_SIMPLE,
+                    LLPipeline::RENDER_TYPE_PASS_BUMP,
+                    LLPipeline::RENDER_TYPE_PASS_FULLBRIGHT,
+                    LLPipeline::RENDER_TYPE_PASS_SHINY,
+                    LLPipeline::RENDER_TYPE_PASS_FULLBRIGHT_SHINY,
+                    LLPipeline::RENDER_TYPE_PASS_MATERIAL,
+                    LLPipeline::RENDER_TYPE_PASS_MATERIAL_ALPHA,
+                    LLPipeline::RENDER_TYPE_PASS_MATERIAL_ALPHA_MASK,
+                    LLPipeline::RENDER_TYPE_PASS_MATERIAL_ALPHA_EMISSIVE,
+                    LLPipeline::RENDER_TYPE_PASS_SPECMAP,
+                    LLPipeline::RENDER_TYPE_PASS_SPECMAP_BLEND,
+                    LLPipeline::RENDER_TYPE_PASS_SPECMAP_MASK,
+                    LLPipeline::RENDER_TYPE_PASS_SPECMAP_EMISSIVE,
+                    LLPipeline::RENDER_TYPE_PASS_NORMMAP,
+                    LLPipeline::RENDER_TYPE_PASS_NORMMAP_BLEND,
+                    LLPipeline::RENDER_TYPE_PASS_NORMMAP_MASK,
+                    LLPipeline::RENDER_TYPE_PASS_NORMMAP_EMISSIVE,
+                    LLPipeline::RENDER_TYPE_PASS_NORMSPEC,
+                    LLPipeline::RENDER_TYPE_PASS_NORMSPEC_BLEND,
+                    LLPipeline::RENDER_TYPE_PASS_NORMSPEC_MASK,
+                    LLPipeline::RENDER_TYPE_PASS_NORMSPEC_EMISSIVE,
+                    LLPipeline::RENDER_TYPE_PASS_ALPHA_MASK_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_FULLBRIGHT_ALPHA_MASK_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_SIMPLE_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_BUMP_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_FULLBRIGHT_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_SHINY_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_FULLBRIGHT_SHINY_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_MATERIAL_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_MATERIAL_ALPHA_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_MATERIAL_ALPHA_MASK_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_MATERIAL_ALPHA_EMISSIVE_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_SPECMAP_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_SPECMAP_BLEND_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_SPECMAP_MASK_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_SPECMAP_EMISSIVE_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_NORMMAP_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_NORMMAP_BLEND_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_NORMMAP_MASK_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_NORMMAP_EMISSIVE_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_NORMSPEC_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_NORMSPEC_BLEND_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_NORMSPEC_MASK_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_NORMSPEC_EMISSIVE_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_GLTF_PBR,
+                    LLPipeline::RENDER_TYPE_PASS_GLTF_PBR_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_GLTF_PBR_ALPHA_MASK,
+                    LLPipeline::RENDER_TYPE_PASS_GLTF_PBR_ALPHA_MASK_RIGGED,
+                    END_RENDER_TYPES);
+
+    gGL.setColorMask(false, false);
+
+    // The aux scope runs with GL_SCISSOR_TEST enabled and a box of the capture
+    // dimensions (renderAuxiliaryView); a spot map larger than the capture
+    // would be partially cleared/rendered. The main view generates shadows
+    // with scissor off - match it, then restore the aux scope's state.
+    const bool saved_scissor_enabled = (glIsEnabled(GL_SCISSOR_TEST) == GL_TRUE);
+    if (saved_scissor_enabled)
+    {
+        glDisable(GL_SCISSOR_TEST);
+    }
+
+    // same [-1,1] -> [0,1] bias matrix generateSunShadow builds for spot slots
+    glm::mat4 trans(0.5f, 0.0f, 0.0f, 0.0f,
+                    0.0f, 0.5f, 0.0f, 0.0f,
+                    0.0f, 0.0f, 0.5f, 0.0f,
+                    0.5f, 0.5f, 0.5f, 1.0f);
+
+    // sized MAX_SPOT_SHADOWS: the main-view equivalent was once [2] and slot 3+
+    // stomped past the array (the NSpot fix2 hard crash) - do not shrink this
+    static LLCullResult aux_result[MAX_SPOT_SHADOWS];
+
+    for (U32 i = 0; i < MAX_SPOT_SHADOWS; i++)
+    {
+        if (i >= chosen || i >= num_spots)
+        { // absent projector: setupSpotLight must resolve s_idx == -1
+          // (unshadowed) instead of matching a stale main-view assignment
+            mShadowSpotLight[i] = NULL;
+            continue;
+        }
+
+        if (mSpotShadow[i].getWidth() == 0)
+        { // main-view slot not allocated yet this frame (deferred realloc);
+          // no resolution to mirror - skip (crash guard, mirrors main loop)
+            mShadowSpotLight[i] = NULL;
+            continue;
+        }
+
+        // Lazy allocation at mSpotShadow's current resolution (tracks the
+        // BDMergeProjectorShadowResolution / autoscale reallocation for free).
+        if (mPrismSpotShadow[i].getWidth() != mSpotShadow[i].getWidth() ||
+            mPrismSpotShadow[i].getHeight() != mSpotShadow[i].getHeight())
+        {
+            mPrismSpotShadow[i].release();
+            if (mPrismSpotShadow[i].allocate(mSpotShadow[i].getWidth(),
+                                             mSpotShadow[i].getHeight(), 0, true))
+            {
+                // shadow-compare sampler state (mirrors allocateShadowBuffer's
+                // spot shadow setup; shadowUtil samples these as sampler2DShadow)
+                gGL.getTexUnit(0)->bind(&mPrismSpotShadow[i], true);
+                gGL.getTexUnit(0)->setTextureFilteringOption(LLTexUnit::TFO_ANISOTROPIC);
+                gGL.getTexUnit(0)->setTextureAddressMode(LLTexUnit::TAM_CLAMP);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+                gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
+            }
+        }
+        if (mPrismSpotShadow[i].getWidth() == 0)
+        { // allocation failed; leave the slot unshadowed this frame
+            mShadowSpotLight[i] = NULL;
+            continue;
+        }
+
+        set_current_modelview(saved_view);
+        set_current_projection(saved_proj);
+
+        LLDrawable* drawable = candidates[i].drawable;
+        LLVOVolume* volume = drawable->getVOVolume(); // validated in selection
+
+        // --- projector frustum: exact mirror of generateSunShadow's spot loop ---
+        LLVector3 params = volume->getSpotLightParams();
+        F32 fov = params.mV[0];
+
+        //get agent->light space matrix (modelview)
+        LLVector3 center = drawable->getPositionAgent();
+        LLQuaternion quat = volume->getRenderRotation();
+
+        //get near clip plane
+        LLVector3 scale = volume->getScale();
+        LLVector3 at_axis(0, 0, -scale.mV[2] * 0.5f);
+        at_axis *= quat;
+
+        LLVector3 np = center + at_axis;
+        at_axis.normVec();
+
+        // degenerate-projector guards: a bad fov/scale/transform must skip the
+        // slot rather than feed NaN into the matrices or renderShadow
+        const F32 tan_half_fov = tanf(fov * 0.5f);
+        if (!std::isfinite(fov) || fov <= 0.f ||
+            !std::isfinite(tan_half_fov) ||
+            fabsf(tan_half_fov) < F_APPROXIMATELY_ZERO ||
+            scale.mV[VX] < F_APPROXIMATELY_ZERO ||
+            scale.mV[VY] < F_APPROXIMATELY_ZERO ||
+            scale.mV[VZ] < F_APPROXIMATELY_ZERO ||
+            !center.isFinite() || !quat.isFinite())
+        {
+            mShadowSpotLight[i] = NULL;
+            continue;
+        }
+
+        //get origin that has given fov for plane np, at_axis, and given scale
+        F32 dist = (scale.mV[1] * 0.5f) / tan_half_fov;
+
+        LLVector3 origin = np - at_axis * dist;
+
+        //get perspective matrix
+        F32 near_clip = dist + 0.01f;
+        F32 width = scale.mV[VX];
+        F32 height = scale.mV[VY];
+        F32 far_clip = dist + volume->getLightRadius() * 1.5f;
+
+        F32 fovy = fov; // radians
+        F32 aspect = width / height;
+
+        if (!std::isfinite(dist) || !origin.isFinite() ||
+            !std::isfinite(far_clip) || far_clip <= near_clip ||
+            !std::isfinite(aspect) || aspect <= 0.f)
+        {
+            mShadowSpotLight[i] = NULL;
+            continue;
+        }
+
+        LLMatrix4 mat(quat, LLVector4(origin, 1.f));
+
+        glm::mat4 view = glm::make_mat4((F32*)mat.mMatrix);
+
+        view = glm::inverse(view);
+
+        glm::mat4 proj = glm::perspective(fovy, aspect, near_clip, far_clip);
+
+        mShadowSpotLight[i] = drawable;
+        mSpotLightFade[i] = 1.f; // fully shadowed, no fade-in (transient; restored)
+
+        set_current_modelview(view);
+        set_current_projection(proj);
+
+        // the ONLY camera-dependent term: the AUX camera's inverse view
+        mSunShadowMatrix[i + 4] = trans * proj * view * inv_view_aux;
+
+        set_last_modelview(mShadowModelview[i + 4]);
+        set_last_projection(mShadowProjection[i + 4]);
+
+        mShadowModelview[i + 4] = view;
+        mShadowProjection[i + 4] = proj;
+
+        LLCamera shadow_cam = camera;
+        // the surface-lens keep-plane (setUserClipPlane) is aux-eye state; it
+        // must not cull the projector's shadow casters
+        shadow_cam.disableUserClipPlane();
+        shadow_cam.setFar(far_clip);
+        shadow_cam.setOrigin(origin);
+
+        LLViewerCamera::updateFrustumPlanes(shadow_cam, false, false, true);
+
+        mPrismSpotShadow[i].bindTarget();
+        mPrismSpotShadow[i].getViewport(gGLViewport);
+        mPrismSpotShadow[i].clear();
+
+        LLViewerCamera::sCurCameraID = (LLViewerCamera::eCameraID)(LLViewerCamera::CAMERA_SPOT_SHADOW0 + i);
+
+        RenderSpotLight = drawable;
+
+        renderShadow(view, proj, shadow_cam, aux_result[i], false);
+
+        RenderSpotLight = nullptr;
+
+        mPrismSpotShadow[i].flush();
+    }
+
+    gGL.setColorMask(true, true);
+
+    if (saved_scissor_enabled)
+    { // restore the aux scope's scissor state (box was never modified)
+        glEnable(GL_SCISSOR_TEST);
+    }
+
+    popRenderTypeMask();
+
+    // Re-install the aux camera state for the aux updateCull/stateSort that
+    // run immediately after this returns.
+    set_current_modelview(saved_view);
+    set_current_projection(saved_proj);
+    set_last_modelview(last_modelview);
+    set_last_projection(last_projection);
+    gGL.matrixMode(LLRender::MM_PROJECTION);
+    gGL.loadMatrix(glm::value_ptr(saved_proj));
+    gGL.matrixMode(LLRender::MM_MODELVIEW);
+    gGL.loadMatrix(glm::value_ptr(saved_view));
+    for (U32 v = 0; v < 4; ++v)
+    {
+        gGLViewport[v] = saved_viewport[v];
+    }
+    glViewport(gGLViewport[0], gGLViewport[1], gGLViewport[2], gGLViewport[3]);
+    LLRenderTarget::sCurResX = saved_cur_res_x;
+    LLRenderTarget::sCurResY = saved_cur_res_y;
+    LLViewerCamera::sCurCameraID = saved_camera_id;
 }
 
 void LLPipeline::renderGroups(LLRenderPass* pass, U32 type, bool texture)

@@ -115,6 +115,10 @@ private:
     LLSpinCtrl* mEyeZSpinner = nullptr;
     LLComboBox* mAspectCombo = nullptr;
     LLSpinCtrl* mCustomAspectSpinner = nullptr;
+    LLSpinCtrl* mChromaticAberrationSpinner = nullptr;
+    LLSpinCtrl* mFilmGrainSpinner = nullptr;
+    LLSpinCtrl* mCRTScanlinesSpinner = nullptr;
+    LLSpinCtrl* mExposureBiasSpinner = nullptr;
     LLComboBox* mRateModeCombo = nullptr;
     LLSpinCtrl* mTargetFpsSpinner = nullptr;
     LLComboBox* mRatePresetCombo = nullptr;

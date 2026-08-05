@@ -113,6 +113,14 @@ enum class EPerformanceState : U8
     TIMING_UNAVAILABLE
 };
 
+struct OpticsSettings
+{
+    F32 mChromaticAberration = 0.0f; // 0.0 to 1.0 (lens fringe)
+    F32 mFilmGrain = 0.0f;           // 0.0 to 1.0 (analog noise)
+    F32 mCRTScanlines = 0.0f;        // 0.0 to 1.0 (CRT monitor lines)
+    F32 mExposureBias = 0.0f;        // -4.0 to +4.0 EV
+};
+
 struct CameraSettings
 {
     EFovMode mFovMode = EFovMode::FIXED;
@@ -121,6 +129,7 @@ struct CameraSettings
     F32 mFarClip = 256.f;
     LLVector3 mLocalEyeOffset;
     F32 mOutputAspect = 16.f / 9.f;
+    OpticsSettings mOptics;
 };
 
 struct CaptureRateSettings
@@ -274,6 +283,10 @@ struct CompositeState
 
     S32 mScissor[4] = { 0, 0, 0, 0 };
     F32 mEdgeFeather = 0.f;
+
+    // Option C: Cinematic optics parameters passed to compositor
+    // x: Chromatic Aberration, y: Film Grain, z: CRT Scanlines, w: Exposure Bias
+    F32 mOpticsParams[4] = { 0.f, 0.f, 0.f, 0.f };
 };
 
 // Viewer-local registry. No call writes prim, TE, or material data and no call

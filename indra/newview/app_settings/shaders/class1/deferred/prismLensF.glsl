@@ -14,6 +14,13 @@ uniform int letterbox;
 uniform vec3 barColorLinear;
 uniform float edgeFeather;
 
+// Option C: Cinematic lens & post-processing parameters
+// x: Chromatic Aberration (0.0 to 1.0)
+// y: Film Grain (0.0 to 1.0)
+// z: CRT Scanlines (0.0 to 1.0)
+// w: Exposure Bias EV (-4.0 to +4.0)
+uniform vec4 prismLensOptics;
+
 in vec2 prism_uv;
 
 out vec4 frag_color;
@@ -47,7 +54,45 @@ void main()
         vec2 texture_uv = oriented_uv * textureRegionScale +
                           textureRegionOffset;
 
+        vec4 col;
+        // Chromatic Aberration (Radial dispersion offset)
+        if (prismLensOptics.x > 0.001)
+        {
+            vec2 dist = (oriented_uv - vec2(0.5)) * prismLensOptics.x * 0.015;
+            vec2 r_uv = clamp(oriented_uv + dist, vec2(0.0), vec2(1.0)) * textureRegionScale + textureRegionOffset;
+            vec2 b_uv = clamp(oriented_uv - dist, vec2(0.0), vec2(1.0)) * textureRegionScale + textureRegionOffset;
+            float r = texture(prismLensMap, r_uv).r;
+            float g = texture(prismLensMap, texture_uv).g;
+            float b = texture(prismLensMap, b_uv).b;
+            float a = texture(prismLensMap, texture_uv).a;
+            col = vec4(r, g, b, a);
+        }
+        else
+        {
+            col = texture(prismLensMap, texture_uv);
+        }
+
+        // Exposure EV Bias Adjustment
+        if (abs(prismLensOptics.w) > 0.001)
+        {
+            col.rgb *= exp2(prismLensOptics.w);
+        }
+
+        // CRT Scanlines
+        if (prismLensOptics.z > 0.001)
+        {
+            float scanline = sin(oriented_uv.y * 600.0) * 0.5 + 0.5;
+            col.rgb *= mix(1.0, scanline * 0.4 + 0.6, prismLensOptics.z);
+        }
+
+        // Film Grain Noise
+        if (prismLensOptics.y > 0.001)
+        {
+            float grain = (fract(sin(dot(oriented_uv, vec2(12.9898, 78.233))) * 43758.5453) - 0.5) * prismLensOptics.y * 0.15;
+            col.rgb += vec3(grain);
+        }
+
         // Preserve the auxiliary beauty alpha as well as RGB.
-        frag_color = texture(prismLensMap, texture_uv);
+        frag_color = col;
     }
 }

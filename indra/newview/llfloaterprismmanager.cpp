@@ -222,6 +222,10 @@ bool LLFloaterPrismManager::postBuild()
     mEyeZSpinner = getChild<LLSpinCtrl>("eye_offset_z");
     mAspectCombo = getChild<LLComboBox>("output_aspect");
     mCustomAspectSpinner = getChild<LLSpinCtrl>("custom_aspect");
+    mChromaticAberrationSpinner = getChild<LLSpinCtrl>("chromatic_aberration");
+    mFilmGrainSpinner = getChild<LLSpinCtrl>("film_grain");
+    mCRTScanlinesSpinner = getChild<LLSpinCtrl>("crt_scanlines");
+    mExposureBiasSpinner = getChild<LLSpinCtrl>("exposure_bias");
     mRateModeCombo = getChild<LLComboBox>("rate_mode");
     mTargetFpsSpinner = getChild<LLSpinCtrl>("target_fps");
     mRatePresetCombo = getChild<LLComboBox>("rate_preset");
@@ -267,6 +271,10 @@ bool LLFloaterPrismManager::postBuild()
     mEyeZSpinner->setCommitCallback(camera_commit);
     mAspectCombo->setCommitCallback(camera_commit);
     mCustomAspectSpinner->setCommitCallback(camera_commit);
+    mChromaticAberrationSpinner->setCommitCallback(camera_commit);
+    mFilmGrainSpinner->setCommitCallback(camera_commit);
+    mCRTScanlinesSpinner->setCommitCallback(camera_commit);
+    mExposureBiasSpinner->setCommitCallback(camera_commit);
 
     const auto rate_commit = [this](LLUICtrl*, const LLSD&)
     {
@@ -604,6 +612,11 @@ void LLFloaterPrismManager::refreshCaptureEditor()
         mAspectCombo->setValue(aspect_value);
         mCustomAspectSpinner->setValue(aspect);
         mCustomAspectSpinner->setEnabled(aspect_value == "custom");
+
+        mChromaticAberrationSpinner->setValue(capture->mCamera.mOptics.mChromaticAberration);
+        mFilmGrainSpinner->setValue(capture->mCamera.mOptics.mFilmGrain);
+        mCRTScanlinesSpinner->setValue(capture->mCamera.mOptics.mCRTScanlines);
+        mExposureBiasSpinner->setValue(capture->mCamera.mOptics.mExposureBias);
     }
 
     mRateModeCombo->setValue(capture->mRate.mMode == LLPrismLens::EOutputRateMode::TARGET_FPS
@@ -937,6 +950,11 @@ void LLFloaterPrismManager::onCommitCameraSettings()
     else if (aspect == "4:3") settings.mOutputAspect = 4.f / 3.f;
     else if (aspect == "1:1") settings.mOutputAspect = 1.f;
     else settings.mOutputAspect = static_cast<F32>(mCustomAspectSpinner->getValue().asReal());
+
+    settings.mOptics.mChromaticAberration = static_cast<F32>(mChromaticAberrationSpinner->getValue().asReal());
+    settings.mOptics.mFilmGrain = static_cast<F32>(mFilmGrainSpinner->getValue().asReal());
+    settings.mOptics.mCRTScanlines = static_cast<F32>(mCRTScanlinesSpinner->getValue().asReal());
+    settings.mOptics.mExposureBias = static_cast<F32>(mExposureBiasSpinner->getValue().asReal());
 
     std::string reason;
     if (LLPrismLens::setCameraSettings(capture->mHandle, settings, &reason))

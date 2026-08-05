@@ -212,12 +212,12 @@
                      orientation="vertical"
                      top="34"
                      width="820">
-                        <layout_panel
-                         auto_resize="false"
-                         follows="left|top|right"
-                         height="286"
-                         layout="topleft"
-                         name="camera_settings_panel">
+                         <layout_panel
+                          auto_resize="false"
+                          follows="left|top|right"
+                          height="336"
+                          layout="topleft"
+                          name="camera_settings_panel">
                             <text
                              follows="left|top|right"
                              height="18"
@@ -331,6 +331,11 @@
                              name="custom_aspect"
                              top="186"
                              width="150" />
+                            <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="0" name="optics_heading" top="226" width="220">Cinematic optics &amp; FX</text>
+                            <spinner decimal_digits="2" follows="left|top" height="22" increment="0.01" label="Chromatic ab." label_width="88" layout="topleft" left="0" max_val="1" min_val="0" name="chromatic_aberration" top="246" width="150" />
+                            <spinner decimal_digits="2" follows="left|top" height="22" increment="0.01" label="Film grain" label_width="68" layout="topleft" left="164" max_val="1" min_val="0" name="film_grain" top="246" width="140" />
+                            <spinner decimal_digits="2" follows="left|top" height="22" increment="0.01" label="CRT lines" label_width="64" layout="topleft" left="318" max_val="1" min_val="0" name="crt_scanlines" top="246" width="136" />
+                            <spinner decimal_digits="2" follows="left|top" height="22" increment="0.1" label="Exposure EV" label_width="74" layout="topleft" left="468" max_val="4" min_val="-4" name="exposure_bias" top="246" width="146" />
                             <text
                              follows="left|top|right"
                              height="42"
@@ -338,7 +343,7 @@
                              left="0"
                              name="camera_safety_note"
                              text_color="LtGray"
-                             top="226"
+                             top="280"
                              width="800"
                              word_wrap="true">
                                 The source is sampled from its live render transform. Prism does not hide marker geometry automatically and does not use reflection probes.

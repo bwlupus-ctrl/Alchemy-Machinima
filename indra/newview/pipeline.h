@@ -133,19 +133,18 @@ public:
     //attempt to allocate screen buffers at resX, resY
     //returns true if allocation successful, false otherwise
     bool allocateScreenBufferInternal(U32 resX, U32 resY);
-    bool allocatePrismLensBuffer(U32 slot, U32 width, U32 height);
+    // Prism Option B (reworked): acquire an EXACT-SIZE auxiliary deferred
+    // scratch pack for one capture render. Selects (or allocates) the pool
+    // entry whose physical size equals the requested render size and points
+    // mActivePrismLensScratch at it. Exact-size is mandatory: the shared
+    // deferred fullscreen shaders sample the G-buffer with normalized [0,1]
+    // UVs (softenLightV.glsl -> deferredUtil.glsl), so any physical/render
+    // size mismatch mis-addresses the entire lighting pass.
+    bool acquirePrismLensScratch(U32 width, U32 height);
     bool allocatePrismLensOutput(U32 slot, U32 width, U32 height);
-    // A Prism scratch pack always has exactly the scheduled capture's logical
-    // dimensions. These helpers keep viewport and shader state coherent after
-    // nested target binds; they never authorize an oversized logical subrect.
-    bool setPrismLensLogicalExtent(U32 width, U32 height);
-    void clearPrismLensLogicalExtent();
-    bool getPrismLensLogicalExtent(U32& width, U32& height) const;
-    void applyPrismLensLogicalViewport();
     void bindPrismLensTarget(LLRenderTarget& target);
     LLRenderTarget& getWaterDisTarget();
     LLRenderTarget& getWaterExclusionMaskTarget();
-    void releasePrismLensBuffer(U32 slot);
     void releasePrismLensBuffers();
     void releasePrismLensOutput(U32 slot);
     void releasePrismLensOutputs();
@@ -480,6 +479,15 @@ public:
     void postDeferredGammaCorrect(LLRenderTarget* screen_target);
 
     void generateSunShadow(LLCamera& camera);
+    // [Prism spot shadows Stage 2] Generate projector/spot shadow maps for the
+    // Prism auxiliary capture into the dedicated mPrismSpotShadow[] targets.
+    // Called only from LLPrismLens::renderAuxiliaryView, inside the auxiliary
+    // state scope, immediately before the auxiliary updateCull/stateSort.
+    // Selection is stateless (iterates mLights; never touches the persistent
+    // LLVOVolume spot-light priority); every shared shadow scalar/matrix it
+    // mutates is saved by beginPrismAuxiliaryState and restored by
+    // endPrismAuxiliaryState, keeping the main view byte-identical.
+    void generatePrismSpotShadows(LLCamera& camera);
     void generateWeatherRainOcclusion(LLCamera& camera);
     LLRenderTarget* getSunShadowTarget(U32 i);
     LLRenderTarget* getSpotShadowTarget(U32 i);
@@ -962,15 +970,32 @@ public:
     // Auxillary render target pack scaled to the hero probe's per-face size.
     RenderTargetPack mHeroProbeRT;
 
-    // Three exact-size, capture-owned deferred scratch packs prevent normalized
-    // screen UVs from sampling stale texels outside a smaller logical subrect.
-    // Outputs remain independently retained; display bindings own no targets.
-    RenderTargetPack mPrismLensRT[LLPrismLens::MAX_CAPTURES];
-    LLRenderTarget mPrismLensWaterDis[LLPrismLens::MAX_CAPTURES];
-    LLRenderTarget mPrismLensWaterExclusionMask[LLPrismLens::MAX_CAPTURES];
+    // Option B (reworked): bounded pool of EXACT-SIZE auxiliary deferred
+    // scratch packs, reused across frames keyed by (width,height). Exact-size
+    // => physical == render, so the shared deferred fullscreen shaders'
+    // normalized-UV G-buffer sampling is correct and no sub-rect/logical-extent
+    // trick is needed. Captures sharing a size share one pack (VRAM win);
+    // packs persist across frames (no realloc churn). Retained outputs stay
+    // per-slot so display faces keep showing live feeds concurrently.
+    struct PrismLensScratch
+    {
+        U32              width  = 0;
+        U32              height = 0;
+        U32              lastUsedFrame = 0;      // LRU key (gFrameCount)
+        RenderTargetPack rt;
+        LLRenderTarget   waterDis;
+        LLRenderTarget   waterExclusionMask;
+    };
+    PrismLensScratch  mPrismLensScratchPool[LLPrismLens::MAX_CAPTURES];
+    PrismLensScratch* mActivePrismLensScratch = nullptr;   // set only during a prism aux render
     LLRenderTarget mPrismLensOutput[LLPrismLens::MAX_CAPTURES];
-    U32 mPrismLensLogicalWidth = 0;
-    U32 mPrismLensLogicalHeight = 0;
+
+    // Auxiliary render path binds through this; null whenever no acquired
+    // scratch pack is active (callers must bail rather than render).
+    RenderTargetPack* getActivePrismLensScratchPack()
+    {
+        return mActivePrismLensScratch ? &mActivePrismLensScratch->rt : nullptr;
+    }
     // Deferred shaders whose screen-space uniforms were last written by an
     // auxiliary capture. Each is restored once on its next main-view bind;
     // the ordinary fast path remains a zero-set-lookup branch when empty.
@@ -984,6 +1009,15 @@ public:
     static constexpr U32    MAX_SPOT_SHADOWS = 6;
     static constexpr U32    MAX_SHADOW_MATS = 4 + MAX_SPOT_SHADOWS;
     LLRenderTarget          mSpotShadow[MAX_SPOT_SHADOWS];
+    // [Prism spot shadows Stage 2] Dedicated projector shadow maps for the Prism
+    // auxiliary capture. mSpotShadow[] content is consumed by the MAIN view
+    // after the aux pass runs (main stateSort / deferred lighting come later in
+    // the same frame), so aux generation must never render into it; these
+    // targets are the aux-only equivalents. Allocated lazily inside
+    // generatePrismSpotShadows at mSpotShadow's resolution; released alongside
+    // mSpotShadow in releaseSpotShadowTargets. getSpotShadowTarget redirects
+    // here while sPrismLensRender is set.
+    LLRenderTarget          mPrismSpotShadow[MAX_SPOT_SHADOWS];
 
     LLRenderTarget          mPbrBrdfLut;
     LLRenderTarget          mWaterExclusionMask;
@@ -1239,6 +1273,16 @@ protected:
     LLPointer<LLDrawable>           mPrismSavedShadowSpotLight[MAX_SPOT_SHADOWS];
     LLPointer<LLDrawable>           mPrismSavedTargetShadowSpotLight[MAX_SPOT_SHADOWS];
     F32                             mPrismSavedSpotLightFade[MAX_SPOT_SHADOWS] = {};
+    // [Prism spot shadows Stage 1] The aux pass re-expresses the projector
+    // sampling matrices (mSunShadowMatrix[4..9]) with the aux camera's inverse
+    // view; the main-view values are held here and restored before the main
+    // stateSort consumes them (endPrismAuxiliaryState fires first).
+    glm::mat4                       mPrismSavedSunShadowMatrix[MAX_SPOT_SHADOWS];
+    // [Prism spot shadows Stage 2] The aux generation pass also rewrites the
+    // per-slot projector view/projection (mShadowModelview/mShadowProjection
+    // [4..9]) for the projectors it renders; saved/restored the same way.
+    glm::mat4                       mPrismSavedShadowModelview[MAX_SPOT_SHADOWS];
+    glm::mat4                       mPrismSavedShadowProjection[MAX_SPOT_SHADOWS];
     U32                             mPrismSavedLightMask = 0;
     U32                             mPrismSavedLightMovingMask = 0;
     LLRender::light_state_snapshot_t mPrismSavedGLLights;

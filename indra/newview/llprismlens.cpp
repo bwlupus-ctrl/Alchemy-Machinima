@@ -2799,12 +2799,21 @@ public:
             settings.mFarClip >= settings.mNearClip + 0.1f;
         const bool valid_aspect = std::isfinite(settings.mOutputAspect) &&
             settings.mOutputAspect >= 0.25f && settings.mOutputAspect <= 4.f;
-        if (!finite_offset || !valid_fov || !valid_near || !valid_far || !valid_aspect)
+        const bool valid_optics =
+            std::isfinite(settings.mOptics.mChromaticAberration) &&
+            settings.mOptics.mChromaticAberration >= 0.f && settings.mOptics.mChromaticAberration <= 1.f &&
+            std::isfinite(settings.mOptics.mFilmGrain) &&
+            settings.mOptics.mFilmGrain >= 0.f && settings.mOptics.mFilmGrain <= 1.f &&
+            std::isfinite(settings.mOptics.mCRTScanlines) &&
+            settings.mOptics.mCRTScanlines >= 0.f && settings.mOptics.mCRTScanlines <= 1.f &&
+            std::isfinite(settings.mOptics.mExposureBias) &&
+            settings.mOptics.mExposureBias >= -4.f && settings.mOptics.mExposureBias <= 4.f;
+        if (!finite_offset || !valid_fov || !valid_near || !valid_far || !valid_aspect || !valid_optics)
         {
             if (reason)
             {
                 *reason = "Camera settings require finite FOV 5-175 degrees, near 0.01-10 m, "
-                          "far 0.2-512 m (at least near+0.1), finite offset, and aspect 0.25-4.";
+                          "far 0.2-512 m (at least near+0.1), finite offset, aspect 0.25-4, and valid optics.";
             }
             return false;
         }
@@ -2947,7 +2956,9 @@ public:
         if (capture.mDisplayCount == 0)
         {
             gPipeline.releasePrismLensOutput(capture_slot);
-            gPipeline.releasePrismLensBuffer(capture_slot);
+            // Scratch packs are pooled, not per-slot; releasing frees the whole
+            // pool and surviving captures lazily re-acquire on their next render.
+            gPipeline.releasePrismLensBuffers();
             capture.mHasOutput = false;
             capture.mOutputWidth = 0;
             capture.mOutputHeight = 0;
@@ -3168,6 +3179,10 @@ public:
                 offset.append(capture.mCamera.mLocalEyeOffset.mV[VZ]);
                 item["local_eye_offset"] = offset;
                 item["output_aspect"] = capture.mCamera.mOutputAspect;
+                item["chromatic_aberration"] = capture.mCamera.mOptics.mChromaticAberration;
+                item["film_grain"] = capture.mCamera.mOptics.mFilmGrain;
+                item["crt_scanlines"] = capture.mCamera.mOptics.mCRTScanlines;
+                item["exposure_bias"] = capture.mCamera.mOptics.mExposureBias;
             }
             result["prism_captures"].append(item);
         }
@@ -3345,6 +3360,28 @@ public:
                     static_cast<F32>(item["local_eye_offset"][1].asReal()),
                     static_cast<F32>(item["local_eye_offset"][2].asReal()));
                 parsed.mCamera.mOutputAspect = static_cast<F32>(item["output_aspect"].asReal());
+
+                if (item.has("chromatic_aberration") && is_numeric(item["chromatic_aberration"]))
+                {
+                    parsed.mCamera.mOptics.mChromaticAberration =
+                        static_cast<F32>(item["chromatic_aberration"].asReal());
+                }
+                if (item.has("film_grain") && is_numeric(item["film_grain"]))
+                {
+                    parsed.mCamera.mOptics.mFilmGrain =
+                        static_cast<F32>(item["film_grain"].asReal());
+                }
+                if (item.has("crt_scanlines") && is_numeric(item["crt_scanlines"]))
+                {
+                    parsed.mCamera.mOptics.mCRTScanlines =
+                        static_cast<F32>(item["crt_scanlines"].asReal());
+                }
+                if (item.has("exposure_bias") && is_numeric(item["exposure_bias"]))
+                {
+                    parsed.mCamera.mOptics.mExposureBias =
+                        static_cast<F32>(item["exposure_bias"].asReal());
+                }
+
                 std::string camera_reason;
                 if (!validCameraSettings(parsed.mCamera, &camera_reason)) return fail(camera_reason);
             }
@@ -3688,7 +3725,9 @@ private:
     {
         if (slot >= LLPrismLens::MAX_CAPTURES || !mLenses[slot].mOccupied) return;
         gPipeline.releasePrismLensOutput(slot);
-        gPipeline.releasePrismLensBuffer(slot);
+        // Scratch packs are pooled, not per-slot; releasing frees the whole
+        // pool and surviving captures lazily re-acquire on their next render.
+        gPipeline.releasePrismLensBuffers();
         PrismInstance& capture = mLenses[slot];
         capture.mHasOutput = false;
         capture.mOutputWidth = 0;
@@ -3716,7 +3755,9 @@ private:
             mLastRenderedSlot = -1;
         }
         gPipeline.releasePrismLensOutput(slot);
-        gPipeline.releasePrismLensBuffer(slot);
+        // Scratch packs are pooled, not per-slot; releasing frees the whole
+        // pool and surviving captures lazily re-acquire on their next render.
+        gPipeline.releasePrismLensBuffers();
         for (PrismDisplay& display : mDisplays)
         {
             if (display.mOccupied && display.mCaptureSlot == slot)
@@ -4438,7 +4479,10 @@ void renderAuxiliaryView()
             registry.deferRetry(slot, 1);
             return;
         }
-        if (!gPipeline.allocatePrismLensBuffer(slot, render_width, render_height))
+        // Acquire an EXACT-SIZE scratch pack (physical == render) from the
+        // size-keyed pool; the deferred fullscreen shaders sample the G-buffer
+        // with normalized [0,1] UVs, so no sub-rect/logical-extent is allowed.
+        if (!gPipeline.acquirePrismLensScratch(render_width, render_height))
         {
             registry.deferRetry(slot, 30);
             return;
@@ -4446,12 +4490,13 @@ void renderAuxiliaryView()
         LLPipeline::sPrismLensRender = true;
         LLPipeline::sUseOcclusion = 0;
         LLViewerCamera::sCurCameraID = LLViewerCamera::CAMERA_PRISM_LENS;
-        gPipeline.mRT = &gPipeline.mPrismLensRT[slot];
-        if (!gPipeline.setPrismLensLogicalExtent(render_width, render_height))
+        LLPipeline::RenderTargetPack* scratch_rt = gPipeline.getActivePrismLensScratchPack();
+        if (!scratch_rt)
         {
             registry.deferRetry(slot, 5);
             return;
         }
+        gPipeline.mRT = scratch_rt;
 
         const PrismInstance* capture = registry.capture(slot);
         if (!capture)
@@ -4650,12 +4695,84 @@ void renderAuxiliaryView()
         // target, and projection validation alone must not contaminate the
         // conservative no-aux reference used only to veto recovery.
         prismAdaptiveController().noteAuxiliaryWork();
+
+        // [Prism spot shadows] Projector/spot shadows for this capture. Gated
+        // exactly like the main view's spot shadows: nothing here runs when
+        // spot shadows are globally off. This block must stay BEFORE the aux
+        // updateCull/stateSort below: shadow generation runs its own stateSort
+        // per map, so the aux scene stateSort has to come after it to rebuild
+        // the aux draw maps. All shared shadow state mutated in this block was
+        // saved by beginPrismAuxiliaryState (via ScopedPrismRenderState) and is
+        // restored by endPrismAuxiliaryState before the frame's main stateSort,
+        // keeping the main view byte-identical.
+        if (LLPipeline::sRenderDeferred && LLPipeline::RenderShadowDetail > 1)
+        {
+            // --- [Prism spot shadows Stage 1] re-express resident MAIN-view
+            // maps in aux view space. A spot shadow map's content is rendered
+            // from the projector's own frustum and is therefore camera-
+            // independent; the only camera-dependent term in the sampling
+            // matrix is the eye's inverse view. Rebuild mSunShadowMatrix[i+4]
+            // from the persisted per-slot light view/projection with the AUX
+            // camera's inverse view so a projector holding a main-view slot
+            // shadows correctly in the feed at zero extra render cost.
+            {
+                const glm::mat4 inv_view_aux =
+                    glm::inverse(get_current_modelview());
+                // same [-1,1] -> [0,1] bias matrix generateSunShadow builds
+                const glm::mat4 shadow_bias(0.5f, 0.0f, 0.0f, 0.0f,
+                                            0.0f, 0.5f, 0.0f, 0.0f,
+                                            0.0f, 0.0f, 0.5f, 0.0f,
+                                            0.5f, 0.5f, 0.5f, 1.0f);
+                // runtime slot count (same clamp as pipeline.cpp's
+                // bdmergeMaxSpotShadows, which is file-local there)
+                static LLCachedControl<U32> max_spot_shadows(
+                    gSavedSettings, "BDMergeMaxSpotShadows", 2);
+                const U32 num_spots = llclamp(
+                    (U32)max_spot_shadows, 2u, LLPipeline::MAX_SPOT_SHADOWS);
+                for (U32 i = 0; i < num_spots; ++i)
+                {
+                    if (gPipeline.mShadowSpotLight[i].notNull() &&
+                        gPipeline.mSpotShadow[i].getWidth() > 0)
+                    {
+                        gPipeline.mSunShadowMatrix[i + 4] =
+                            shadow_bias * gPipeline.mShadowProjection[i + 4] *
+                            gPipeline.mShadowModelview[i + 4] * inv_view_aux;
+                    }
+                }
+            }
+
+            // --- [Prism spot shadows Stage 2] generate dedicated aux shadow
+            // maps (gPipeline.mPrismSpotShadow[]) for statelessly selected feed
+            // projectors, so projectors WITHOUT a main-view slot cast shadows
+            // too. This subsumes Stage 1's slots: it reassigns every slot it
+            // fills (fresh map + aux-correct matrices) and nulls the rest so
+            // absent projectors resolve unshadowed. The call restores the aux
+            // matrices, viewport, and camera id before returning.
+            gPipeline.generatePrismSpotShadows(LLViewerCamera::instance());
+        }
+
         static LLCullResult prism_cull;
         prism_cull.clear();
         gPipeline.updateCull(LLViewerCamera::instance(), prism_cull);
         gPipeline.stateSort(LLViewerCamera::instance(), prism_cull);
 
-        LLPipeline::RenderTargetPack& rt = gPipeline.mPrismLensRT[slot];
+        // Rebuild the source-eye local-light set for this aux frame. The aux
+        // path otherwise never (re)populates mNearbyLights before the deferred
+        // local-light loop in renderDeferredLighting() consumes it:
+        // beginPrismAuxiliaryState() cleared it, and calcNearbyLights' only
+        // other caller (renderGeomPostDeferred) runs at the TAIL of
+        // renderDeferredLighting(), i.e. AFTER the loop. Without this rebuild,
+        // no point/spot/projector light renders in the feed at all (the
+        // sPrismLensRender branch of calcNearbyLights was effectively dead for
+        // lighting). sPrismLensRender is true here, so this takes that branch
+        // (source-eye set; no NEARBY_LIGHT-bit or fade-clock mutation);
+        // endPrismAuxiliaryState() restores the main-view set, so the main view
+        // stays byte-identical.
+        gPipeline.calcNearbyLights(LLViewerCamera::instance());
+
+        // scratch_rt was validated non-null right after the acquire above and
+        // the pool cannot be released while this scoped render is running.
+        LLPipeline::RenderTargetPack& rt = *scratch_rt;
         gPipeline.bindPrismLensTarget(rt.deferredScreen);
         glClearColor(0.f, 0.f, 0.f, 0.f);
         rt.deferredScreen.clear();
@@ -4747,6 +4864,11 @@ U32 getCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
                         sizeof(state.mSurfaceUDual));
             std::memcpy(state.mSurfaceVDual, frame.mSurfaceVDual.mV,
                         sizeof(state.mSurfaceVDual));
+
+            state.mOpticsParams[0] = capture->mCamera.mOptics.mChromaticAberration;
+            state.mOpticsParams[1] = capture->mCamera.mOptics.mFilmGrain;
+            state.mOpticsParams[2] = capture->mCamera.mOptics.mCRTScanlines;
+            state.mOpticsParams[3] = capture->mCamera.mOptics.mExposureBias;
 
             std::memcpy(state.mRetainedOrientationScale, output_uv_scale,
                         sizeof(state.mRetainedOrientationScale));
