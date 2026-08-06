@@ -585,7 +585,7 @@
                      width="852">
                         <panel
                          follows="left|top|right"
-                         height="140"
+                         height="172"
                          layout="topleft"
                          left="0"
                          name="effects_document"
@@ -606,6 +606,10 @@
                             <slider decimal_digits="2" follows="left|top" height="18" increment="0.05" label="Vignette" label_width="88" layout="topleft" left="8" max_val="1" min_val="0" name="effect_vignette" tool_tip="CRT-style darkening toward the screen edges" top="112" width="266" />
                             <slider decimal_digits="2" follows="left|top" height="18" increment="0.05" label="Dropout" label_width="88" layout="topleft" left="284" max_val="1" min_val="0" name="effect_dropout" tool_tip="Momentary signal loss that darkens the whole picture" top="112" width="266" />
                             <slider decimal_digits="2" follows="left|top" height="18" increment="0.05" label="Brightness" label_width="88" layout="topleft" left="560" max_val="1" min_val="-1" name="effect_brightness" tool_tip="Simple linear gain for this display face; separate from the camera's exposure optic" top="112" width="266" />
+                            <check_box follows="left|top" height="16" label="Flip H" layout="topleft" left="8" name="effect_flip_h" tool_tip="Mirror this display's picture left to right" top="141" width="120" />
+                            <check_box follows="left|top" height="16" label="Flip V" layout="topleft" left="140" name="effect_flip_v" tool_tip="Mirror this display's picture top to bottom" top="141" width="120" />
+                            <check_box follows="left|top" height="16" label="Rotate 90" layout="topleft" left="284" name="effect_rotate90" tool_tip="Quarter-turn the sampled feed; use for portrait monitors (non-square faces show it stretched)" top="141" width="130" />
+                            <slider decimal_digits="2" follows="left|top" height="18" increment="0.05" label="Sheen" label_width="88" layout="topleft" left="560" max_val="1" min_val="0" name="effect_sheen" tool_tip="Environmental sheen: a glossy Fresnel reflection of the room over the feed; 0 leaves the picture untouched" top="139" width="266" />
                         </panel>
                     </scroll_container>
                 </layout_panel>

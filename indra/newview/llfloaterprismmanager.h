@@ -177,6 +177,10 @@ private:
     LLSliderCtrl* mEffectInterlaceSlider = nullptr;
     LLSliderCtrl* mEffectDropoutSlider = nullptr;
     LLSliderCtrl* mEffectBrightnessSlider = nullptr;
+    LLCheckBoxCtrl* mEffectFlipHCheck = nullptr;
+    LLCheckBoxCtrl* mEffectFlipVCheck = nullptr;
+    LLCheckBoxCtrl* mEffectRotate90Check = nullptr;
+    LLSliderCtrl* mEffectSheenSlider = nullptr;
 };
 
 #endif // LL_LLFLOATERPRISMMANAGER_H

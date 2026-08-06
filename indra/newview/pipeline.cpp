@@ -16958,7 +16958,11 @@ void LLPipeline::renderDeferredLighting()
             static const LLStaticHashedString sScreenEffect1("screenEffect1");
             static const LLStaticHashedString sScreenEffect2("screenEffect2");
             static const LLStaticHashedString sScreenEffect3("screenEffect3");
+            static const LLStaticHashedString sScreenEffect4("screenEffect4");
             static const LLStaticHashedString sScreenEffectTime("screenEffectTime");
+            static const LLStaticHashedString sPrismEnvSheenSky("prismEnvSheenSky");
+            static const LLStaticHashedString sPrismEnvSheenGround(
+                "prismEnvSheenGround");
 
             // Animated screen effects advance on the shared frame clock, and
             // the fmodf wrap keeps the uniform small so long sessions never
@@ -16966,6 +16970,37 @@ void LLPipeline::renderDeferredLighting()
             // The clock is capture-independent, so upload it once per batch.
             gPrismLensProgram.uniform1f(sScreenEffectTime,
                                         fmodf(gFrameTimeSeconds, 3600.f));
+
+            // Environmental sheen palette (Feature B). A two-color hemisphere
+            // (sky/ground) approximating the room environment for the glossy
+            // Fresnel reflection in prismLensF.glsl. Derived from the live sky
+            // ambient/horizon so the sheen tracks the scene mood (warm at
+            // sunset, cool/dim at night). This is global to the batch (not
+            // per-display, like the screen-effect clock), so it is uploaded
+            // once here rather than through the CompositeState builders; the
+            // per-display strength lives in screenEffect4.w. Only the shader's
+            // sheen>0 branch reads these, so they never affect the default
+            // (byte-identical) composite. Constants are creative tuning.
+            {
+                const LLSettingsSky::ptr_t psky =
+                    LLEnvironment::instance().getCurrentSky();
+                LLColor3 sheen_sky(0.f, 0.f, 0.f);
+                LLColor3 sheen_ground(0.f, 0.f, 0.f);
+                if (psky)
+                {
+                    const LLColor3 ambient = psky->getAmbientColor();
+                    const LLColor3 horizon = psky->getBlueHorizon();
+                    sheen_sky = ambient * 1.5f + horizon * 0.4f;
+                    sheen_ground = ambient * 0.5f;
+                }
+                const F32 sheen_sky_v[3] = {
+                    sheen_sky.mV[0], sheen_sky.mV[1], sheen_sky.mV[2] };
+                const F32 sheen_ground_v[3] = {
+                    sheen_ground.mV[0], sheen_ground.mV[1], sheen_ground.mV[2] };
+                gPrismLensProgram.uniform3fv(sPrismEnvSheenSky, 1, sheen_sky_v);
+                gPrismLensProgram.uniform3fv(sPrismEnvSheenGround, 1,
+                                             sheen_ground_v);
+            }
 
             U32 bound_capture_slot = LLPrismLens::MAX_CAPTURES;
             for (U32 prism_index = 0; prism_index < prism_state_count;
@@ -17015,6 +17050,7 @@ void LLPipeline::renderDeferredLighting()
                 gPrismLensProgram.uniform4fv(sScreenEffect1, 1, prism_state.mScreenEffect1);
                 gPrismLensProgram.uniform4fv(sScreenEffect2, 1, prism_state.mScreenEffect2);
                 gPrismLensProgram.uniform4fv(sScreenEffect3, 1, prism_state.mScreenEffect3);
+                gPrismLensProgram.uniform4fv(sScreenEffect4, 1, prism_state.mScreenEffect4);
 
                 LLDrawable* lens_drawable = prism_state.mFace->getDrawable();
                 if (lens_drawable &&

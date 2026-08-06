@@ -9,6 +9,7 @@
 
 #include "alscrollfocus.h"
 #include "llbutton.h"
+#include "llcheckboxctrl.h"
 #include "llcombobox.h"
 #include "llnotificationsutil.h"
 #include "llpanel.h"
@@ -306,6 +307,10 @@ bool LLFloaterPrismManager::postBuild()
     mEffectInterlaceSlider = getChild<LLSliderCtrl>("effect_interlace");
     mEffectDropoutSlider = getChild<LLSliderCtrl>("effect_dropout");
     mEffectBrightnessSlider = getChild<LLSliderCtrl>("effect_brightness");
+    mEffectFlipHCheck = getChild<LLCheckBoxCtrl>("effect_flip_h");
+    mEffectFlipVCheck = getChild<LLCheckBoxCtrl>("effect_flip_v");
+    mEffectRotate90Check = getChild<LLCheckBoxCtrl>("effect_rotate90");
+    mEffectSheenSlider = getChild<LLSliderCtrl>("effect_sheen");
 
     mCaptureList->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onCaptureSelectionChanged(); });
@@ -385,6 +390,10 @@ bool LLFloaterPrismManager::postBuild()
     mEffectInterlaceSlider->setCommitCallback(effects_commit);
     mEffectDropoutSlider->setCommitCallback(effects_commit);
     mEffectBrightnessSlider->setCommitCallback(effects_commit);
+    mEffectFlipHCheck->setCommitCallback(effects_commit);
+    mEffectFlipVCheck->setCommitCallback(effects_commit);
+    mEffectRotate90Check->setCommitCallback(effects_commit);
+    mEffectSheenSlider->setCommitCallback(effects_commit);
 
     mPresetCleanButton->setCommitCallback([this](LLUICtrl*, const LLSD&)
         { onApplyEffectsPreset(LLPrismLens::ScreenEffects()); });
@@ -1319,6 +1328,10 @@ LLPrismLens::ScreenEffects LLFloaterPrismManager::effectsFromUI() const
     effects.mInterlace     = static_cast<F32>(mEffectInterlaceSlider->getValue().asReal());
     effects.mDropout       = static_cast<F32>(mEffectDropoutSlider->getValue().asReal());
     effects.mBrightness    = static_cast<F32>(mEffectBrightnessSlider->getValue().asReal());
+    effects.mFlipH         = mEffectFlipHCheck->getValue().asBoolean();
+    effects.mFlipV         = mEffectFlipVCheck->getValue().asBoolean();
+    effects.mRotate90      = mEffectRotate90Check->getValue().asBoolean();
+    effects.mSheen         = static_cast<F32>(mEffectSheenSlider->getValue().asReal());
     effects.clampAndValidate();
     return effects;
 }
@@ -1340,6 +1353,10 @@ void LLFloaterPrismManager::setUIFromEffects(const LLPrismLens::ScreenEffects& e
     mEffectInterlaceSlider->setValue(effects.mInterlace);
     mEffectDropoutSlider->setValue(effects.mDropout);
     mEffectBrightnessSlider->setValue(effects.mBrightness);
+    mEffectFlipHCheck->setValue(effects.mFlipH);
+    mEffectFlipVCheck->setValue(effects.mFlipV);
+    mEffectRotate90Check->setValue(effects.mRotate90);
+    mEffectSheenSlider->setValue(effects.mSheen);
 }
 
 const LLPrismLens::CaptureDefinition* LLFloaterPrismManager::selectedCapture() const

@@ -3559,6 +3559,10 @@ public:
             effects_sd["interlace"]      = fx.mInterlace;
             effects_sd["dropout"]        = fx.mDropout;
             effects_sd["brightness"]     = fx.mBrightness;
+            effects_sd["flip_h"]         = fx.mFlipH;
+            effects_sd["flip_v"]         = fx.mFlipV;
+            effects_sd["rotate90"]       = fx.mRotate90;
+            effects_sd["sheen"]          = fx.mSheen;
             item["screen_effects"] = effects_sd;
             result["prism_displays"].append(item);
         }
@@ -3818,6 +3822,27 @@ public:
                 read_effect("interlace",      fx.mInterlace);
                 read_effect("dropout",        fx.mDropout);
                 read_effect("brightness",     fx.mBrightness);
+                read_effect("sheen",          fx.mSheen);
+                // Orientation flags round-trip as LLSD booleans, but tolerate a
+                // numeric encoding too. Absent keys keep the struct default
+                // (false), so older scenes load bit-identical.
+                const auto read_flag = [&effects_sd, &is_numeric](
+                    const char* key, bool& destination)
+                {
+                    if (!effects_sd.has(key)) return;
+                    const LLSD& value = effects_sd[key];
+                    if (value.isBoolean())
+                    {
+                        destination = value.asBoolean();
+                    }
+                    else if (is_numeric(value))
+                    {
+                        destination = value.asReal() != 0.0;
+                    }
+                };
+                read_flag("flip_h",   fx.mFlipH);
+                read_flag("flip_v",   fx.mFlipV);
+                read_flag("rotate90", fx.mRotate90);
                 fx.clampAndValidate();
             }
             std::string display_reason;
@@ -5292,6 +5317,14 @@ U32 getCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
             state.mScreenEffect3[1] = effects.mDropout;
             state.mScreenEffect3[2] = effects.mBrightness;
             state.mScreenEffect3[3] = 0.f; // Reserved.
+            // Feature A (orientation) + Feature B (sheen). Flip/rotate are
+            // booleans encoded as 0/1; sheen is the 0..1 reflectivity. All zero
+            // (the default) is a strict shader no-op, so an untouched display
+            // stays bit-identical.
+            state.mScreenEffect4[0] = effects.mFlipH ? 1.f : 0.f;
+            state.mScreenEffect4[1] = effects.mFlipV ? 1.f : 0.f;
+            state.mScreenEffect4[2] = effects.mRotate90 ? 1.f : 0.f;
+            state.mScreenEffect4[3] = effects.mSheen;
 
             std::memcpy(state.mRetainedOrientationScale, output_uv_scale,
                         sizeof(state.mRetainedOrientationScale));
@@ -5497,6 +5530,12 @@ U32 getAuxCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
             state.mScreenEffect3[1] = effects.mDropout;
             state.mScreenEffect3[2] = effects.mBrightness;
             state.mScreenEffect3[3] = 0.f; // Reserved.
+            // Feature A (orientation) + Feature B (sheen); twin of the main
+            // builder above so the recursive feed matches the main composite.
+            state.mScreenEffect4[0] = effects.mFlipH ? 1.f : 0.f;
+            state.mScreenEffect4[1] = effects.mFlipV ? 1.f : 0.f;
+            state.mScreenEffect4[2] = effects.mRotate90 ? 1.f : 0.f;
+            state.mScreenEffect4[3] = effects.mSheen;
 
             std::memcpy(state.mRetainedOrientationScale, output_uv_scale,
                         sizeof(state.mRetainedOrientationScale));

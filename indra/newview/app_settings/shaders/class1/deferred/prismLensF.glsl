@@ -28,13 +28,24 @@ uniform vec4 prismLensOptics;
 // screenEffect1: x sepia, y static noise, z vertical roll, w roll speed
 // screenEffect2: x tracking, y flicker, z chroma bleed, w vignette
 // screenEffect3: x interlace, y dropout, z brightness, w reserved
+// screenEffect4: x flip-H, y flip-V, z rotate-90, w environmental sheen (0..1)
 uniform vec4 screenEffect0;
 uniform vec4 screenEffect1;
 uniform vec4 screenEffect2;
 uniform vec4 screenEffect3;
+uniform vec4 screenEffect4;
 uniform float screenEffectTime;
 
+// Environmental sheen palette (Feature B). Uploaded once per composite batch
+// from the live sky/ambient; a Fresnel-weighted mix of these two colors is
+// added over the feed only while screenEffect4.w > 0, so both are inert at the
+// sheen-0 default.
+uniform vec3 prismEnvSheenSky;    // reflected color toward the up hemisphere
+uniform vec3 prismEnvSheenGround; // reflected color toward the down hemisphere
+
 in vec2 prism_uv;
+in vec3 prism_eye_pos;
+in vec3 prism_eye_normal;
 
 out vec4 frag_color;
 
@@ -71,6 +82,30 @@ void main()
     {
         vec2 oriented_uv = logical_uv * retainedOrientationScale +
                            retainedOrientationOffset;
+
+        // -----------------------------------------------------------------
+        // Feature A: per-display screen-axis orientation. Rewrites the
+        // sampling UV BEFORE every distortion block and the fetch, so it
+        // composes cleanly with the effects below. Each branch gates on its
+        // flag, so all-off leaves oriented_uv untouched (bit-identical).
+        // Order is rotate, then horizontal, then vertical mirror.
+        // -----------------------------------------------------------------
+        if (screenEffect4.z > 0.5)
+        {
+            // Quarter-turn about the UV center. Non-square displays show the
+            // turned feed stretched to the face, which is the intended
+            // "portrait monitor" behavior.
+            vec2 centered = oriented_uv - vec2(0.5);
+            oriented_uv = vec2(0.5) + vec2(-centered.y, centered.x);
+        }
+        if (screenEffect4.x > 0.5)
+        {
+            oriented_uv.x = 1.0 - oriented_uv.x;
+        }
+        if (screenEffect4.y > 0.5)
+        {
+            oriented_uv.y = 1.0 - oriented_uv.y;
+        }
 
         // -----------------------------------------------------------------
         // Per-display UV-space distortions. Each block rewrites oriented_uv
@@ -241,6 +276,32 @@ void main()
         if (abs(screenEffect3.z) > 0.001)
         {
             col.rgb *= (1.0 + screenEffect3.z);
+        }
+
+        // -----------------------------------------------------------------
+        // Feature B: environmental sheen. A Fresnel-weighted environment
+        // reflection is added OVER the finished picture for a glossy-panel
+        // look. The environment is approximated by a two-color hemisphere
+        // (sky/ground) sampled along the reflected view vector, tinted by the
+        // live scene lighting on the CPU side - a deliberately cheap stand-in
+        // for a full reflection-probe cube fetch (see the .cpp note). Gated on
+        // screenEffect4.w, and the final mix(col, col + X, 0.0) is an exact
+        // identity, so sheen 0 is bit-identical to the pre-sheen composite.
+        // -----------------------------------------------------------------
+        if (screenEffect4.w > 0.001)
+        {
+            vec3 N = normalize(prism_eye_normal);
+            vec3 Vd = normalize(-prism_eye_pos); // fragment -> camera, eye space
+            // Displays are two-sided; face the normal toward the viewer.
+            if (dot(N, Vd) < 0.0)
+            {
+                N = -N;
+            }
+            float fresnel = pow(1.0 - max(dot(N, Vd), 0.0), 5.0);
+            vec3 refl = reflect(-Vd, N);
+            float hemi = clamp(refl.y * 0.5 + 0.5, 0.0, 1.0);
+            vec3 env = mix(prismEnvSheenGround, prismEnvSheenSky, hemi);
+            col.rgb = mix(col.rgb, col.rgb + env * fresnel, screenEffect4.w);
         }
 
         // Preserve the auxiliary beauty alpha as well as RGB.

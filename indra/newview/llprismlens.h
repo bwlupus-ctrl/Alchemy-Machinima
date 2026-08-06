@@ -230,6 +230,18 @@ struct ScreenEffects
     // camera's whole picture); both may coexist on the same face.
     F32 mBrightness     = 0.f;
 
+    // Feature A - per-display screen-axis orientation. Applied to the sampling
+    // UV before every other effect and the fetch, so all three are a strict
+    // no-op when unset (false/false/false leaves the composite bit-identical).
+    bool mFlipH         = false; // Mirror the picture left<->right
+    bool mFlipV         = false; // Mirror the picture top<->bottom
+    bool mRotate90      = false; // Quarter-turn the sampled feed in UV space
+
+    // Feature B - environmental sheen / reflectivity, 0..1 with 0 = OFF. Adds a
+    // Fresnel-weighted environment reflection over the feed for a glossy-panel
+    // look. Strictly gated (> 0.001) in the shader, so 0 is bit-identical.
+    F32 mSheen          = 0.f;
+
     void clampAndValidate()
     {
         mScanlines     = llclamp(mScanlines, 0.f, 1.f);
@@ -247,6 +259,8 @@ struct ScreenEffects
         mInterlace     = llclamp(mInterlace, 0.f, 1.f);
         mDropout       = llclamp(mDropout, 0.f, 1.f);
         mBrightness    = llclamp(mBrightness, -1.f, 1.f);
+        mSheen         = llclamp(mSheen, 0.f, 1.f);
+        // mFlipH / mFlipV / mRotate90 are bools; nothing to clamp.
     }
 
     bool isZero() const
@@ -255,7 +269,8 @@ struct ScreenEffects
                mSepia == 0.f && mStatic == 0.f && mVerticalRoll == 0.f &&
                mTracking == 0.f && mFlicker == 0.f && mChromaBleed == 0.f &&
                mVignette == 0.f && mInterlace == 0.f && mDropout == 0.f &&
-               mBrightness == 0.f;
+               mBrightness == 0.f && !mFlipH && !mFlipV && !mRotate90 &&
+               mSheen == 0.f;
     }
 };
 
@@ -353,6 +368,8 @@ struct CompositeState
     F32 mScreenEffect1[4] = { 0.f, 0.f, 0.f, 0.f }; // Sepia, Static, VerticalRoll, RollSpeed
     F32 mScreenEffect2[4] = { 0.f, 0.f, 0.f, 0.f }; // Tracking, Flicker, ChromaBleed, Vignette
     F32 mScreenEffect3[4] = { 0.f, 0.f, 0.f, 0.f }; // Interlace, Dropout, Brightness, Reserved
+    // Feature A + B orientation/sheen pack. All-zero is a strict shader no-op.
+    F32 mScreenEffect4[4] = { 0.f, 0.f, 0.f, 0.f }; // FlipH, FlipV, Rotate90, Sheen
 };
 
 // Viewer-local registry. No call writes prim, TE, or material data and no call
