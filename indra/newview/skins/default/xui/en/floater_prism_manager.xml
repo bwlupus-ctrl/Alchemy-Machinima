@@ -3,13 +3,13 @@
  can_close="true"
  can_minimize="true"
  can_resize="true"
- height="680"
+ height="724"
  layout="topleft"
  min_height="520"
  min_width="720"
  name="prism_manager"
  save_rect="true"
- title="Prism Manager"
+ title="Virtual Cam Manager"
  width="900">
     <!-- The summary, capture registry, and status stay fixed. Only the form
          documents inside their own tabs scroll. Lists retain their own wheel. -->
@@ -26,24 +26,24 @@
          control_name="PrismLensEnabled"
          follows="left|top"
          height="18"
-         label="Enable Prism"
+         label="Enable Virtual Cam"
          layout="topleft"
          left="10"
          name="prism_enabled"
          tool_tip="Master render toggle. Captures and displays remain editable while disabled."
          top="8"
-         width="120" />
+         width="140" />
         <text
          follows="left|top|right"
          font="SansSerifBold"
          height="18"
          layout="topleft"
-         left="142"
+         left="160"
          name="prism_summary"
          top="8"
          use_ellipses="true"
-         width="720">
-            Prism 0/3 captures | 0/16 displays
+         width="700">
+            VCam 0/3 captures | 0/16 displays
         </text>
         <text
          follows="left|top|right"
@@ -128,13 +128,14 @@
          left="116"
          name="add_lens"
          top="121"
-         width="100" />
+         visible="false"
+         width="0" />
         <button
          follows="left|bottom"
          height="22"
          label="Remove capture"
          layout="topleft"
-         left="222"
+         left="116"
          name="remove_capture"
          top="121"
          width="120" />
@@ -154,7 +155,7 @@
 
     <tab_container
      follows="all"
-     height="397"
+     height="441"
      layout="topleft"
      left="10"
      name="detail_tabs"
@@ -164,7 +165,7 @@
         <panel
          border="true"
          follows="all"
-         height="373"
+         height="417"
          label="Capture"
          layout="topleft"
          left="0"
@@ -173,7 +174,7 @@
          width="878">
             <scroll_container
              follows="all"
-             height="356"
+             height="400"
              layout="topleft"
              left="4"
              name="capture_settings_scroll"
@@ -467,7 +468,7 @@
         <panel
          border="true"
          follows="all"
-         height="373"
+         height="417"
          label="Displays"
          layout="topleft"
          left="0"
@@ -475,12 +476,13 @@
          top="0"
          width="878">
             <!-- Keep the face actions and mapping editor visible at every saved
-                 floater height. Only the display list is allowed to grow. -->
+                 floater height. The display list and the screen-effects panel
+                 (which scrolls internally) are the only rows allowed to flex. -->
             <layout_stack
              animate="false"
              border_size="6"
              follows="all"
-             height="343"
+             height="387"
              layout="topleft"
              left="8"
              name="displays_layout_stack"
@@ -555,13 +557,65 @@
                     <spinner decimal_digits="2" follows="left|top" height="22" increment="0.05" label="B" label_width="14" layout="topleft" left="580" max_val="1" min_val="0" name="bar_blue" top="32" width="76" />
                     <text follows="left|top|right" height="28" layout="topleft" left="8" name="display_settings_note" text_color="LtGray" top="62" width="836" word_wrap="true">Fit bars preserve the capture aspect; Fill crops by anchor; Stretch maps the complete picture. These controls never own an FPS schedule.</text>
                 </layout_panel>
+                <layout_panel
+                 auto_resize="true"
+                 background_visible="true"
+                 follows="all"
+                 height="190"
+                 layout="topleft"
+                 min_dim="88"
+                 name="display_effects_panel"
+                 user_resize="false">
+                    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="8" name="effects_heading" top="4" width="340">Per-screen TV effects (selected display)</text>
+                    <button follows="left|top" height="20" label="Reset (Clean)" layout="topleft" left="8" name="preset_clean" tool_tip="Zero every screen effect on this display face" top="22" width="96" />
+                    <button follows="left|top" height="20" label="Old CRT" layout="topleft" left="110" name="preset_crt" tool_tip="Scanlines, vignette, and a gentle flicker" top="22" width="76" />
+                    <button follows="left|top" height="20" label="Broken TV" layout="topleft" left="192" name="preset_broken" tool_tip="Rolling monochrome picture with static and dropouts" top="22" width="84" />
+                    <button follows="left|top" height="20" label="VHS Tape" layout="topleft" left="282" name="preset_vhs" tool_tip="Tracking tears, chroma bleed, and interlace shimmer" top="22" width="80" />
+                    <button follows="left|top" height="20" label="Security Feed" layout="topleft" left="368" name="preset_cctv" tool_tip="Grayscale, coarse pixels, scanlines, and vignette" top="22" width="100" />
+                    <scroll_container
+                     follows="all"
+                     height="140"
+                     layout="topleft"
+                     left="0"
+                     name="effects_scroll"
+                     opaque="false"
+                     reserve_scroll_corner="false"
+                     size="15"
+                     top="46"
+                     width="852">
+                        <panel
+                         follows="left|top|right"
+                         height="140"
+                         layout="topleft"
+                         left="0"
+                         name="effects_document"
+                         top="0"
+                         width="830">
+                            <slider decimal_digits="2" follows="left|top" height="18" increment="0.05" label="Scanlines" label_width="88" layout="topleft" left="8" max_val="1" min_val="0" name="effect_scanlines" tool_tip="Per-display scanline strength; 0 leaves the picture untouched" top="4" width="266" />
+                            <slider decimal_digits="2" follows="left|top" height="18" increment="0.05" label="Line Density" label_width="88" layout="topleft" left="284" max_val="1" min_val="0" name="effect_scanline_count" tool_tip="Scanline pitch, from coarse to fine; only visible while Scanlines is above 0" top="4" width="266" />
+                            <slider decimal_digits="2" follows="left|top" height="18" increment="0.05" label="Pixelate" label_width="88" layout="topleft" left="560" max_val="1" min_val="0" name="effect_pixelate" tool_tip="Quantize the picture into low-resolution blocks" top="4" width="266" />
+                            <slider decimal_digits="2" follows="left|top" height="18" increment="0.05" label="Grayscale" label_width="88" layout="topleft" left="8" max_val="1" min_val="0" name="effect_grayscale" tool_tip="Desaturate toward a monochrome picture" top="31" width="266" />
+                            <slider decimal_digits="2" follows="left|top" height="18" increment="0.05" label="Sepia Tint" label_width="88" layout="topleft" left="284" max_val="1" min_val="0" name="effect_sepia" tool_tip="Blend toward a warm archival sepia tone" top="31" width="266" />
+                            <slider decimal_digits="2" follows="left|top" height="18" increment="0.05" label="Chroma Bleed" label_width="88" layout="topleft" left="560" max_val="1" min_val="0" name="effect_chroma_bleed" tool_tip="Horizontal color fringing, as on a worn composite signal" top="31" width="266" />
+                            <slider decimal_digits="2" follows="left|top" height="18" increment="0.05" label="Vertical Roll" label_width="88" layout="topleft" left="8" max_val="1" min_val="0" name="effect_vertical_roll" tool_tip="Lost V-sync: the picture rolls with a dark band at the seam" top="58" width="266" />
+                            <slider decimal_digits="2" follows="left|top" height="18" increment="0.05" label="Roll Speed" label_width="88" layout="topleft" left="284" max_val="1" min_val="0" name="effect_roll_speed" tool_tip="How fast the vertical roll travels; only matters while Vertical Roll is above 0" top="58" width="266" />
+                            <slider decimal_digits="2" follows="left|top" height="18" increment="0.05" label="VHS Tracking" label_width="88" layout="topleft" left="560" max_val="1" min_val="0" name="effect_tracking" tool_tip="Horizontal tearing on random scan rows, like bad tape tracking" top="58" width="266" />
+                            <slider decimal_digits="2" follows="left|top" height="18" increment="0.05" label="Static Noise" label_width="88" layout="topleft" left="8" max_val="1" min_val="0" name="effect_static" tool_tip="Animated analog snow mixed over the picture" top="85" width="266" />
+                            <slider decimal_digits="2" follows="left|top" height="18" increment="0.05" label="Flicker" label_width="88" layout="topleft" left="284" max_val="1" min_val="0" name="effect_flicker" tool_tip="Whole-picture brightness pulsing" top="85" width="266" />
+                            <slider decimal_digits="2" follows="left|top" height="18" increment="0.05" label="Interlace" label_width="88" layout="topleft" left="560" max_val="1" min_val="0" name="effect_interlace" tool_tip="Alternating field-line shimmer" top="85" width="266" />
+                            <slider decimal_digits="2" follows="left|top" height="18" increment="0.05" label="Vignette" label_width="88" layout="topleft" left="8" max_val="1" min_val="0" name="effect_vignette" tool_tip="CRT-style darkening toward the screen edges" top="112" width="266" />
+                            <slider decimal_digits="2" follows="left|top" height="18" increment="0.05" label="Dropout" label_width="88" layout="topleft" left="284" max_val="1" min_val="0" name="effect_dropout" tool_tip="Momentary signal loss that darkens the whole picture" top="112" width="266" />
+                            <slider decimal_digits="2" follows="left|top" height="18" increment="0.05" label="Brightness" label_width="88" layout="topleft" left="560" max_val="1" min_val="-1" name="effect_brightness" tool_tip="Simple linear gain for this display face; separate from the camera's exposure optic" top="112" width="266" />
+                        </panel>
+                    </scroll_container>
+                </layout_panel>
             </layout_stack>
         </panel>
 
         <panel
          border="true"
          follows="all"
-         height="373"
+         height="417"
          label="Performance"
          layout="topleft"
          left="0"
@@ -570,7 +624,7 @@
          width="878">
             <scroll_container
              follows="all"
-             height="356"
+             height="400"
              layout="topleft"
              left="4"
              name="performance_settings_scroll"
@@ -694,7 +748,7 @@
      left="12"
      name="status_text"
      text_color="LtGray"
-     top="650"
+     top="694"
      use_ellipses="true"
      width="876">
         Ready.

@@ -118,6 +118,13 @@
          parameter="director" />
       </menu_item_call>
       <menu_item_call
+       label="Virtual Cam..."
+       name="vcam_manager_item_call">
+        <menu_item_call.on_click
+         function="Floater.Toggle"
+         parameter="prism_manager" />
+      </menu_item_call>
+      <menu_item_call
        label="Temporal Capture..."
        name="temporal_capture_item_call">
         <menu_item_call.on_click

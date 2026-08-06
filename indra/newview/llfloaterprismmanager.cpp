@@ -15,6 +15,7 @@
 #include "llscrollcontainer.h"
 #include "llscrolllistctrl.h"
 #include "llselectmgr.h"
+#include "llsliderctrl.h"
 #include "llspinctrl.h"
 #include "lltextbox.h"
 #include "llviewermenu.h"
@@ -176,6 +177,52 @@ void setActionState(LLUICtrl* control, bool enabled, const std::string& tooltip)
         control->setToolTip(tooltip);
     }
 }
+
+// Named per-display screen-effect presets. Values are creative starting
+// points, not limits; every knob remains individually adjustable afterwards.
+// "Clean" is the default-constructed struct (every effect a shader no-op).
+LLPrismLens::ScreenEffects screenEffectsPresetCRT()
+{
+    LLPrismLens::ScreenEffects effects;
+    effects.mScanlines = 0.6f;
+    effects.mScanlineCount = 0.5f;
+    effects.mVignette = 0.4f;
+    effects.mFlicker = 0.15f;
+    return effects;
+}
+
+LLPrismLens::ScreenEffects screenEffectsPresetBrokenTV()
+{
+    LLPrismLens::ScreenEffects effects;
+    effects.mGrayscale = 1.0f;
+    effects.mStatic = 0.35f;
+    effects.mVerticalRoll = 0.5f;
+    effects.mRollSpeed = 0.3f;
+    effects.mScanlines = 0.8f;
+    effects.mDropout = 0.4f;
+    return effects;
+}
+
+LLPrismLens::ScreenEffects screenEffectsPresetVHS()
+{
+    LLPrismLens::ScreenEffects effects;
+    effects.mTracking = 0.45f;
+    effects.mChromaBleed = 0.6f;
+    effects.mInterlace = 0.3f;
+    effects.mFlicker = 0.2f;
+    return effects;
+}
+
+LLPrismLens::ScreenEffects screenEffectsPresetCCTV()
+{
+    LLPrismLens::ScreenEffects effects;
+    effects.mGrayscale = 1.0f;
+    effects.mScanlines = 0.4f;
+    effects.mStatic = 0.15f;
+    effects.mVignette = 0.5f;
+    effects.mPixelate = 0.2f;
+    return effects;
+}
 }
 
 LLFloaterPrismManager::LLFloaterPrismManager(const LLSD& key)
@@ -237,6 +284,29 @@ bool LLFloaterPrismManager::postBuild()
     mBarGreenSpinner = getChild<LLSpinCtrl>("bar_green");
     mBarBlueSpinner = getChild<LLSpinCtrl>("bar_blue");
 
+    mEffectsScroll = getChild<LLScrollContainer>("effects_scroll");
+    mEffectsDocument = getChild<LLPanel>("effects_document");
+    mPresetCleanButton = getChild<LLButton>("preset_clean");
+    mPresetCRTButton = getChild<LLButton>("preset_crt");
+    mPresetBrokenButton = getChild<LLButton>("preset_broken");
+    mPresetVHSButton = getChild<LLButton>("preset_vhs");
+    mPresetCCTVButton = getChild<LLButton>("preset_cctv");
+    mEffectScanlinesSlider = getChild<LLSliderCtrl>("effect_scanlines");
+    mEffectScanlineCountSlider = getChild<LLSliderCtrl>("effect_scanline_count");
+    mEffectPixelateSlider = getChild<LLSliderCtrl>("effect_pixelate");
+    mEffectGrayscaleSlider = getChild<LLSliderCtrl>("effect_grayscale");
+    mEffectSepiaSlider = getChild<LLSliderCtrl>("effect_sepia");
+    mEffectStaticSlider = getChild<LLSliderCtrl>("effect_static");
+    mEffectVerticalRollSlider = getChild<LLSliderCtrl>("effect_vertical_roll");
+    mEffectRollSpeedSlider = getChild<LLSliderCtrl>("effect_roll_speed");
+    mEffectTrackingSlider = getChild<LLSliderCtrl>("effect_tracking");
+    mEffectFlickerSlider = getChild<LLSliderCtrl>("effect_flicker");
+    mEffectChromaBleedSlider = getChild<LLSliderCtrl>("effect_chroma_bleed");
+    mEffectVignetteSlider = getChild<LLSliderCtrl>("effect_vignette");
+    mEffectInterlaceSlider = getChild<LLSliderCtrl>("effect_interlace");
+    mEffectDropoutSlider = getChild<LLSliderCtrl>("effect_dropout");
+    mEffectBrightnessSlider = getChild<LLSliderCtrl>("effect_brightness");
+
     mCaptureList->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onCaptureSelectionChanged(); });
     mDisplayList->setCommitCallback(
@@ -295,6 +365,37 @@ bool LLFloaterPrismManager::postBuild()
     mBarRedSpinner->setCommitCallback(display_commit);
     mBarGreenSpinner->setCommitCallback(display_commit);
     mBarBlueSpinner->setCommitCallback(display_commit);
+
+    const auto effects_commit = [this](LLUICtrl*, const LLSD&)
+    {
+        onCommitDisplayEffects();
+    };
+    mEffectScanlinesSlider->setCommitCallback(effects_commit);
+    mEffectScanlineCountSlider->setCommitCallback(effects_commit);
+    mEffectPixelateSlider->setCommitCallback(effects_commit);
+    mEffectGrayscaleSlider->setCommitCallback(effects_commit);
+    mEffectSepiaSlider->setCommitCallback(effects_commit);
+    mEffectStaticSlider->setCommitCallback(effects_commit);
+    mEffectVerticalRollSlider->setCommitCallback(effects_commit);
+    mEffectRollSpeedSlider->setCommitCallback(effects_commit);
+    mEffectTrackingSlider->setCommitCallback(effects_commit);
+    mEffectFlickerSlider->setCommitCallback(effects_commit);
+    mEffectChromaBleedSlider->setCommitCallback(effects_commit);
+    mEffectVignetteSlider->setCommitCallback(effects_commit);
+    mEffectInterlaceSlider->setCommitCallback(effects_commit);
+    mEffectDropoutSlider->setCommitCallback(effects_commit);
+    mEffectBrightnessSlider->setCommitCallback(effects_commit);
+
+    mPresetCleanButton->setCommitCallback([this](LLUICtrl*, const LLSD&)
+        { onApplyEffectsPreset(LLPrismLens::ScreenEffects()); });
+    mPresetCRTButton->setCommitCallback([this](LLUICtrl*, const LLSD&)
+        { onApplyEffectsPreset(screenEffectsPresetCRT()); });
+    mPresetBrokenButton->setCommitCallback([this](LLUICtrl*, const LLSD&)
+        { onApplyEffectsPreset(screenEffectsPresetBrokenTV()); });
+    mPresetVHSButton->setCommitCallback([this](LLUICtrl*, const LLSD&)
+        { onApplyEffectsPreset(screenEffectsPresetVHS()); });
+    mPresetCCTVButton->setCommitCallback([this](LLUICtrl*, const LLSD&)
+        { onApplyEffectsPreset(screenEffectsPresetCCTV()); });
 
     installDocumentFocusReveal();
     setStatus("Ready. Select a capture or add one from the current world selection.");
@@ -428,7 +529,7 @@ void LLFloaterPrismManager::refreshPerformance()
 
     const LLPrismLens::PerformanceSnapshot& p = mPerformanceSnapshot;
     mSummaryText->setText(llformat(
-        "Prism %u/%u captures | %u/%u displays | %s",
+        "VCam %u/%u captures | %u/%u displays | %s",
         mRegistrySnapshot.mCaptureCount, LLPrismLens::MAX_CAPTURES,
         mRegistrySnapshot.mDisplayCount, LLPrismLens::MAX_DISPLAY_BINDINGS,
         performanceStateText(p.mState).c_str()));
@@ -640,6 +741,32 @@ void LLFloaterPrismManager::refreshDisplayEditor()
     mBarRedSpinner->setEnabled(editable);
     mBarGreenSpinner->setEnabled(editable);
     mBarBlueSpinner->setEnabled(editable);
+
+    // Screen effects run at composite time on every display binding, so
+    // unlike the Camera-Feed-only mapping controls above they stay editable
+    // for a Surface Lens's aperture display as well.
+    const bool effects_editable = capture && display;
+    mPresetCleanButton->setEnabled(effects_editable);
+    mPresetCRTButton->setEnabled(effects_editable);
+    mPresetBrokenButton->setEnabled(effects_editable);
+    mPresetVHSButton->setEnabled(effects_editable);
+    mPresetCCTVButton->setEnabled(effects_editable);
+    mEffectScanlinesSlider->setEnabled(effects_editable);
+    mEffectScanlineCountSlider->setEnabled(effects_editable);
+    mEffectPixelateSlider->setEnabled(effects_editable);
+    mEffectGrayscaleSlider->setEnabled(effects_editable);
+    mEffectSepiaSlider->setEnabled(effects_editable);
+    mEffectStaticSlider->setEnabled(effects_editable);
+    mEffectVerticalRollSlider->setEnabled(effects_editable);
+    mEffectRollSpeedSlider->setEnabled(effects_editable);
+    mEffectTrackingSlider->setEnabled(effects_editable);
+    mEffectFlickerSlider->setEnabled(effects_editable);
+    mEffectChromaBleedSlider->setEnabled(effects_editable);
+    mEffectVignetteSlider->setEnabled(effects_editable);
+    mEffectInterlaceSlider->setEnabled(effects_editable);
+    mEffectDropoutSlider->setEnabled(effects_editable);
+    mEffectBrightnessSlider->setEnabled(effects_editable);
+
     refreshDisplayRateReadout();
     if (!capture || !display)
     {
@@ -651,6 +778,7 @@ void LLFloaterPrismManager::refreshDisplayEditor()
     mBarRedSpinner->setValue(display->mSettings.mBarColorLinear[0]);
     mBarGreenSpinner->setValue(display->mSettings.mBarColorLinear[1]);
     mBarBlueSpinner->setValue(display->mSettings.mBarColorLinear[2]);
+    setUIFromEffects(display->mSettings.mEffects);
 }
 
 void LLFloaterPrismManager::refreshDisplayRateReadout()
@@ -726,6 +854,40 @@ void LLFloaterPrismManager::refreshSelectionActions()
     setActionState(mNewDisplayFitCombo, can_add_display, can_add_display
         ? "Initial mapping for the new display face"
         : add_display_reason);
+
+    // Surface the Add-Display reject reason on the status line so a greyed
+    // "Add selected face" is actionable without hovering for the tooltip --
+    // but deduplicated: this method polls ~4x/sec, and re-issuing the same
+    // reason every tick would clobber transient success/error messages set by
+    // the button handlers. Show the reason once on change only; clear the
+    // tracker when the action is allowed (or no Camera Feed capture is
+    // selected) so a later identical rejection is displayed again.
+    if (capture && capture->mMode == LLPrismLens::ECaptureMode::CAMERA_FEED &&
+        !can_add_display && !add_display_reason.empty())
+    {
+        if (add_display_reason != mLastSelectionActionStatus)
+        {
+            // If a success handler just forced this refresh, its confirmation
+            // is on the status line and the SAME selection now re-evaluates as
+            // rejected (the face Add just linked is "already a Prism
+            // display"). Consume the one-shot flag: record the reason for
+            // deduplication but let the confirmation stand. A reject on a
+            // FRESH selection differs from the tracker and still surfaces.
+            if (!mSuppressSelectionRejectOnce)
+            {
+                setStatus(add_display_reason);
+            }
+            mLastSelectionActionStatus = add_display_reason;
+        }
+    }
+    else
+    {
+        mLastSelectionActionStatus.clear();
+    }
+    // The suppress flag lives for exactly one refresh: the handler that sets
+    // it triggers this method synchronously via invalidateRegistrySnapshot(),
+    // so it can never leak into a later, user-driven poll.
+    mSuppressSelectionRejectOnce = false;
     setActionState(mPlaceEyeButton,
         capture && capture->mMode == LLPrismLens::ECaptureMode::CAMERA_FEED &&
             !capture->mCameraObjectId.isNull(),
@@ -748,6 +910,7 @@ void LLFloaterPrismManager::installDocumentFocusReveal()
 {
     ALScrollFocus::install(mCaptureScroll, mCaptureDocument, mCaptureDocument);
     ALScrollFocus::install(mPerformanceScroll, mPerformanceDocument, mPerformanceDocument);
+    ALScrollFocus::install(mEffectsScroll, mEffectsDocument, mEffectsDocument);
 }
 
 void LLFloaterPrismManager::revealDocumentView(
@@ -814,6 +977,12 @@ void LLFloaterPrismManager::onAddCamera()
         mSelectedCapture = capture;
         mSelectedDisplay = LLPrismLens::DisplayHandle();
         setStatus("Added a Camera Feed capture from the selected object.");
+        // The new Camera Feed is now the selected capture while the selection
+        // is still the camera OBJECT (not a display face), so the synchronous
+        // refresh below would immediately surface an Add-Display reject over
+        // this confirmation. Swallow that one surfacing (see the flag's
+        // declaration for the full contract).
+        mSuppressSelectionRejectOnce = true;
         invalidateRegistrySnapshot();
         revealDocumentView(mCaptureTitle, mCaptureDocument, mCaptureScroll);
         return;
@@ -1018,6 +1187,11 @@ void LLFloaterPrismManager::onAddDisplay()
     {
         mSelectedDisplay = display;
         setStatus("Linked the selected face to this capture; no extra scene render was created.");
+        // The still-selected face is now a bound display, so the synchronous
+        // refresh below would immediately surface its DUPLICATE reject over
+        // this confirmation. Swallow that one surfacing (see the flag's
+        // declaration for the full contract).
+        mSuppressSelectionRejectOnce = true;
         invalidateRegistrySnapshot();
         return;
     }
@@ -1088,6 +1262,84 @@ void LLFloaterPrismManager::onCommitDisplaySettings()
     }
     setStatus("Display settings were rejected: " + reason);
     refreshDisplayEditor();
+}
+
+void LLFloaterPrismManager::onCommitDisplayEffects()
+{
+    const LLPrismLens::DisplayDefinition* display = selectedDisplay();
+    if (!display)
+    {
+        return;
+    }
+
+    // Effects piggyback on the display's settings record: copy the current
+    // mapping fields untouched and replace only the effects pack, so this
+    // never fights the Camera-Feed-only mapping commit above.
+    LLPrismLens::DisplaySettings settings = display->mSettings;
+    settings.mEffects = effectsFromUI();
+
+    std::string reason;
+    if (LLPrismLens::setDisplaySettings(mSelectedDisplay, settings, &reason))
+    {
+        setStatus("Updated only this face's screen effects; the shared capture was not re-rendered.");
+        invalidateRegistrySnapshot();
+        return;
+    }
+    setStatus("Screen effects were rejected: " + reason);
+    refreshDisplayEditor();
+}
+
+void LLFloaterPrismManager::onApplyEffectsPreset(const LLPrismLens::ScreenEffects& preset)
+{
+    const LLPrismLens::DisplayDefinition* display = selectedDisplay();
+    if (!display)
+    {
+        setStatus("Select a display first, then apply a screen-effects preset to it.");
+        return;
+    }
+    setUIFromEffects(preset);
+    onCommitDisplayEffects();
+}
+
+LLPrismLens::ScreenEffects LLFloaterPrismManager::effectsFromUI() const
+{
+    LLPrismLens::ScreenEffects effects;
+    effects.mScanlines     = static_cast<F32>(mEffectScanlinesSlider->getValue().asReal());
+    effects.mScanlineCount = static_cast<F32>(mEffectScanlineCountSlider->getValue().asReal());
+    effects.mPixelate      = static_cast<F32>(mEffectPixelateSlider->getValue().asReal());
+    effects.mGrayscale     = static_cast<F32>(mEffectGrayscaleSlider->getValue().asReal());
+    effects.mSepia         = static_cast<F32>(mEffectSepiaSlider->getValue().asReal());
+    effects.mStatic        = static_cast<F32>(mEffectStaticSlider->getValue().asReal());
+    effects.mVerticalRoll  = static_cast<F32>(mEffectVerticalRollSlider->getValue().asReal());
+    effects.mRollSpeed     = static_cast<F32>(mEffectRollSpeedSlider->getValue().asReal());
+    effects.mTracking      = static_cast<F32>(mEffectTrackingSlider->getValue().asReal());
+    effects.mFlicker       = static_cast<F32>(mEffectFlickerSlider->getValue().asReal());
+    effects.mChromaBleed   = static_cast<F32>(mEffectChromaBleedSlider->getValue().asReal());
+    effects.mVignette      = static_cast<F32>(mEffectVignetteSlider->getValue().asReal());
+    effects.mInterlace     = static_cast<F32>(mEffectInterlaceSlider->getValue().asReal());
+    effects.mDropout       = static_cast<F32>(mEffectDropoutSlider->getValue().asReal());
+    effects.mBrightness    = static_cast<F32>(mEffectBrightnessSlider->getValue().asReal());
+    effects.clampAndValidate();
+    return effects;
+}
+
+void LLFloaterPrismManager::setUIFromEffects(const LLPrismLens::ScreenEffects& effects)
+{
+    mEffectScanlinesSlider->setValue(effects.mScanlines);
+    mEffectScanlineCountSlider->setValue(effects.mScanlineCount);
+    mEffectPixelateSlider->setValue(effects.mPixelate);
+    mEffectGrayscaleSlider->setValue(effects.mGrayscale);
+    mEffectSepiaSlider->setValue(effects.mSepia);
+    mEffectStaticSlider->setValue(effects.mStatic);
+    mEffectVerticalRollSlider->setValue(effects.mVerticalRoll);
+    mEffectRollSpeedSlider->setValue(effects.mRollSpeed);
+    mEffectTrackingSlider->setValue(effects.mTracking);
+    mEffectFlickerSlider->setValue(effects.mFlicker);
+    mEffectChromaBleedSlider->setValue(effects.mChromaBleed);
+    mEffectVignetteSlider->setValue(effects.mVignette);
+    mEffectInterlaceSlider->setValue(effects.mInterlace);
+    mEffectDropoutSlider->setValue(effects.mDropout);
+    mEffectBrightnessSlider->setValue(effects.mBrightness);
 }
 
 const LLPrismLens::CaptureDefinition* LLFloaterPrismManager::selectedCapture() const

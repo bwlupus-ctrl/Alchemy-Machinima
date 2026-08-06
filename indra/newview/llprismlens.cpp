@@ -37,6 +37,7 @@
 #include <cstring>
 #include <functional>
 #include <limits>
+#include <map>
 #include <set>
 #include <string>
 #include <vector>
@@ -61,6 +62,15 @@ constexpr F32 CLIP_EPSILON = 1e-5f;
 constexpr F32 SURFACE_UV_EPSILON = 1e-5f;
 constexpr F32 SURFACE_CORNER_EPSILON = 1e-4f;
 constexpr F32 MAX_SURFACE_EDGE_COS = 0.052336f; // sin(3 degrees)
+// Determinant floor for inverting a face's relative transform in the geometry
+// fallback. Deliberately far below any legal prim scale product (0.01^3 = 1e-6)
+// so tiny-but-valid objects are never misclassified as non-invertible; it only
+// screens out genuinely collapsed/singular transforms before glm::inverse.
+constexpr F32 SURFACE_MATRIX_MIN_DETERMINANT = 1e-12f;
+// Geometry-fallback OBB: boundary-edge directions within ~0.08 degrees of an
+// already-evaluated candidate axis produce the same oriented rectangle (a
+// quad's two parallel sides), so they are skipped as duplicates.
+constexpr F32 OBB_PARALLEL_AXIS_COS = 0.999999f;
 constexpr F32 MIN_CULL_HALF_ANGLE = 0.0005f;
 constexpr F32 MIN_CULL_VERTICAL_HALF_ANGLE = 0.0436332f; // half of LLCamera's 5 degrees
 constexpr F32 MAX_CULL_VERTICAL_HALF_ANGLE = 1.5271631f; // half of LLCamera's 175 degrees
@@ -619,23 +629,345 @@ bool assignRectangularSurfaceFrame(const LLVector3& surface_origin,
     return true;
 }
 
+// UV-independent FALLBACK used only when a face's geometric UVs cannot supply
+// a trustworthy affine rectangle (typical for mesh faces with atlassed, sheared
+// or collapsed UVs). Derives a MINIMUM-AREA oriented bounding rectangle from
+// the flat face geometry itself, in SURFACE space: every unique BOUNDARY-edge
+// direction (edges used by exactly one triangle -- a quad's shared diagonal is
+// interior and never considered) seeds a candidate in-plane U axis, the plane
+// normal completes each frame, and the candidate whose vertex extents enclose
+// the smallest area wins. The minimum-area rectangle of a convex polygon has a
+// side collinear with a hull edge, so a flat quad screen yields its true
+// side-aligned rectangle rather than a diagonal-anchored, oversized one.
+// Planarity was already enforced by validateSurfaceGeometry, so coplanar input
+// is a precondition here; residual out-of-plane slack is flattened by the axis
+// projection, never amplified.
+bool deriveGeometricRectangularSurface(const LLVolumeFace& volume_face,
+                                       const std::vector<LLVector3>& surface_positions,
+                                       const LLMatrix4& surface_matrix,
+                                       const LLMatrix4& model_matrix,
+                                       LocalSurfaceBasis& local_basis,
+                                       PrismFrame& frame,
+                                       std::string& reject_reason)
+{
+    if (surface_positions.size() < 3 || !volume_face.mIndices ||
+        volume_face.mNumIndices < 3)
+    {
+        reject_reason = "designated face has too little geometry for a display rectangle";
+        return false;
+    }
+
+    // Centroid of the surface-space vertex set (positions were already checked
+    // finite by the caller's gather loop).
+    LLVector3 centroid;
+    centroid.setZero();
+    for (const LLVector3& position : surface_positions)
+    {
+        centroid += position;
+    }
+    centroid *= 1.f / static_cast<F32>(surface_positions.size());
+
+    // Single pass over the index buffer: the surface-space plane normal comes
+    // from the first non-degenerate triangle (mirrors the world-space
+    // plane-finding loop in validateSurfaceGeometry); an undirected edge-use
+    // census identifies BOUNDARY edges (used by exactly one triangle) as the
+    // minimum-area OBB axis candidates; and the longest edge is still tracked,
+    // purely as the last-resort axis for boundary-less topology (for example a
+    // doubled two-sided sheet where every edge is shared by two triangles).
+    LLVector3 plane_normal;
+    bool found_plane = false;
+    LLVector3 longest_edge;
+    F32 longest_edge_squared = 0.f;
+    // Undirected edge (min index in the high half-word, max in the low) -> the
+    // number of triangles that use it. Ordered map so candidate iteration -- and
+    // therefore equal-area tie-breaking on symmetric screens -- is deterministic.
+    std::map<U32, U32> edge_use_counts;
+    for (S32 i = 0; i + 2 < volume_face.mNumIndices; i += 3)
+    {
+        const U16 ia = volume_face.mIndices[i];
+        const U16 ib = volume_face.mIndices[i + 1];
+        const U16 ic = volume_face.mIndices[i + 2];
+        if (ia >= surface_positions.size() || ib >= surface_positions.size() ||
+            ic >= surface_positions.size())
+        {
+            reject_reason = "designated volume face contains an invalid triangle index";
+            return false;
+        }
+        const LLVector3& pa = surface_positions[ia];
+        const LLVector3& pb = surface_positions[ib];
+        const LLVector3& pc = surface_positions[ic];
+        if (!found_plane)
+        {
+            LLVector3 normal = (pb - pa) % (pc - pa);
+            if (normal.normVec() > F_ALMOST_ZERO)
+            {
+                plane_normal = normal;
+                found_plane = true;
+            }
+        }
+        const U16 corners[3] = { ia, ib, ic };
+        for (S32 corner = 0; corner < 3; ++corner)
+        {
+            const U16 ea = corners[corner];
+            const U16 eb = corners[(corner + 1) % 3];
+            const U32 edge_key = (static_cast<U32>(llmin(ea, eb)) << 16) |
+                                 static_cast<U32>(llmax(ea, eb));
+            ++edge_use_counts[edge_key];
+        }
+        const LLVector3 edges[3] = { pb - pa, pc - pb, pa - pc };
+        for (const LLVector3& edge : edges)
+        {
+            const F32 length_squared = edge.magVecSquared();
+            if (length_squared > longest_edge_squared)
+            {
+                longest_edge_squared = length_squared;
+                longest_edge = edge;
+            }
+        }
+    }
+    if (!found_plane)
+    {
+        reject_reason = "designated face is degenerate";
+        return false;
+    }
+
+    // A seed direction projected into the plane gives U; V = n x U; then U is
+    // re-orthonormalized as V x n so tiny planarity slack cannot skew the
+    // pair. Every normalization is guarded -- no divide by zero, no NaN.
+    const auto build_plane_axes = [&plane_normal](LLVector3 seed,
+                                                  LLVector3& u_axis,
+                                                  LLVector3& v_axis) -> bool
+    {
+        u_axis = seed - plane_normal * (seed * plane_normal);
+        if (u_axis.normVec() <= F_ALMOST_ZERO)
+        {
+            return false;
+        }
+        v_axis = plane_normal % u_axis;
+        if (v_axis.normVec() <= F_ALMOST_ZERO)
+        {
+            return false;
+        }
+        u_axis = v_axis % plane_normal;
+        return u_axis.normVec() > F_ALMOST_ZERO;
+    };
+
+    // Vertex extents about the centroid along an oriented axis pair.
+    const auto project_extents = [&surface_positions, &centroid](
+        const LLVector3& u_axis, const LLVector3& v_axis,
+        F32& u_min, F32& u_max, F32& v_min, F32& v_max)
+    {
+        u_min = std::numeric_limits<F32>::max();
+        u_max = -std::numeric_limits<F32>::max();
+        v_min = std::numeric_limits<F32>::max();
+        v_max = -std::numeric_limits<F32>::max();
+        for (const LLVector3& position : surface_positions)
+        {
+            const LLVector3 offset = position - centroid;
+            const F32 u = offset * u_axis;
+            const F32 v = offset * v_axis;
+            u_min = llmin(u_min, u);
+            u_max = llmax(u_max, u);
+            v_min = llmin(v_min, v);
+            v_max = llmax(v_max, v);
+        }
+    };
+
+    // Minimum-area oriented bounding rectangle, restricted to axes parallel to
+    // boundary edges. Interior edges (a quad's shared diagonal is used by two
+    // triangles) never become candidates, so the canonical 2-triangle screen
+    // quad recovers its true side-aligned rectangle instead of the rotated,
+    // oversized one its diagonal used to anchor.
+    LLVector3 best_u_axis;
+    LLVector3 best_v_axis;
+    F32 best_u_min = 0.f;
+    F32 best_u_max = 0.f;
+    F32 best_v_min = 0.f;
+    F32 best_v_max = 0.f;
+    F32 best_area = std::numeric_limits<F32>::max();
+    bool found_candidate = false;
+    std::vector<LLVector3> tried_axes;
+    for (const auto& edge_use : edge_use_counts)
+    {
+        if (edge_use.second != 1)
+        {
+            continue; // interior or non-manifold edge -- not a boundary side
+        }
+        const U16 ea = static_cast<U16>(edge_use.first >> 16);
+        const U16 eb = static_cast<U16>(edge_use.first & 0xFFFFu);
+        const LLVector3 edge_vector = surface_positions[eb] - surface_positions[ea];
+        // In-plane direction of this boundary edge (degenerate edges and edges
+        // perpendicular to the plane project to nothing and are skipped).
+        LLVector3 direction =
+            edge_vector - plane_normal * (edge_vector * plane_normal);
+        if (direction.normVec() <= F_ALMOST_ZERO)
+        {
+            continue;
+        }
+        // Undirected duplicate-direction skip: parallel boundary edges (the
+        // opposite sides of a quad) would re-derive the identical rectangle.
+        bool duplicate = false;
+        for (const LLVector3& tried : tried_axes)
+        {
+            if (fabsf(tried * direction) >= OBB_PARALLEL_AXIS_COS)
+            {
+                duplicate = true;
+                break;
+            }
+        }
+        if (duplicate)
+        {
+            continue;
+        }
+        tried_axes.push_back(direction);
+
+        LLVector3 u_cand;
+        LLVector3 v_cand;
+        if (!build_plane_axes(direction, u_cand, v_cand))
+        {
+            continue;
+        }
+        F32 u_min = 0.f;
+        F32 u_max = 0.f;
+        F32 v_min = 0.f;
+        F32 v_max = 0.f;
+        project_extents(u_cand, v_cand, u_min, u_max, v_min, v_max);
+        const F32 area = (u_max - u_min) * (v_max - v_min);
+        if (!std::isfinite(area))
+        {
+            continue;
+        }
+        if (!found_candidate || area < best_area)
+        {
+            found_candidate = true;
+            best_area = area;
+            best_u_axis = u_cand;
+            best_v_axis = v_cand;
+            best_u_min = u_min;
+            best_u_max = u_max;
+            best_v_min = v_min;
+            best_v_max = v_max;
+        }
+    }
+
+    if (!found_candidate)
+    {
+        // Degenerate boundary topology (no edge used by exactly one triangle,
+        // or every boundary edge projected to nothing): fall back to the
+        // previous longest-edge behavior so such faces keep working, with the
+        // same guards -- never NaN, never divide-by-zero.
+        if (longest_edge_squared <= F_ALMOST_ZERO * F_ALMOST_ZERO)
+        {
+            reject_reason = "designated face has no usable edge for a display axis";
+            return false;
+        }
+        if (!build_plane_axes(longest_edge, best_u_axis, best_v_axis))
+        {
+            reject_reason = "designated face has a degenerate in-plane axis frame";
+            return false;
+        }
+        project_extents(best_u_axis, best_v_axis,
+                        best_u_min, best_u_max, best_v_min, best_v_max);
+    }
+
+    const LLVector3 surface_origin =
+        centroid + best_u_axis * best_u_min + best_v_axis * best_v_min;
+    const LLVector3 surface_u_edge = best_u_axis * (best_u_max - best_u_min);
+    const LLVector3 surface_v_edge = best_v_axis * (best_v_max - best_v_min);
+
+    // WORLD basis: transform the surface-space frame exactly the way the
+    // cached replay path does -- corner points through the full transform,
+    // edges as differences of transformed points.
+    const LLVector3 world_surface_origin = surface_origin * model_matrix;
+    const LLVector3 world_surface_u_edge =
+        (surface_origin + surface_u_edge) * model_matrix - world_surface_origin;
+    const LLVector3 world_surface_v_edge =
+        (surface_origin + surface_v_edge) * model_matrix - world_surface_origin;
+
+    // LOCAL basis: map the frame back through inverse(surface_matrix) so the
+    // surface-geometry cache can replay it against a fresh relative transform.
+    // LLMatrix4::invert() only handles rotation+translation and the relative
+    // xform bakes scale in, so use a full glm inverse with a determinant guard.
+    const glm::mat4 surface_glm = glm::make_mat4(&surface_matrix.mMatrix[0][0]);
+    const F32 surface_determinant = glm::determinant(surface_glm);
+    if (!std::isfinite(surface_determinant) ||
+        fabsf(surface_determinant) <= SURFACE_MATRIX_MIN_DETERMINANT)
+    {
+        reject_reason = "designated face's surface transform is not invertible";
+        return false;
+    }
+    const glm::mat4 local_from_surface = glm::inverse(surface_glm);
+    bool local_valid = true;
+    const auto to_local =
+        [&local_from_surface, &local_valid](const LLVector3& point)
+    {
+        const glm::vec4 local = local_from_surface *
+            glm::vec4(point.mV[VX], point.mV[VY], point.mV[VZ], 1.f);
+        if (!std::isfinite(local.w) || fabsf(local.w) <= F_ALMOST_ZERO)
+        {
+            local_valid = false;
+            return LLVector3();
+        }
+        return LLVector3(local.x / local.w, local.y / local.w, local.z / local.w);
+    };
+    local_basis.mOrigin = to_local(surface_origin);
+    local_basis.mUEdge =
+        to_local(surface_origin + surface_u_edge) - local_basis.mOrigin;
+    local_basis.mVEdge =
+        to_local(surface_origin + surface_v_edge) - local_basis.mOrigin;
+    if (!local_valid || !local_basis.mOrigin.isFinite() ||
+        !local_basis.mUEdge.isFinite() || !local_basis.mVEdge.isFinite())
+    {
+        reject_reason = "designated face contains a non-finite local surface basis";
+        return false;
+    }
+
+    // The shared frame checks (finiteness, non-degenerate edges, world-edge
+    // orthogonality) still gate the fallback result.
+    return assignRectangularSurfaceFrame(
+        surface_origin, surface_u_edge, surface_v_edge,
+        world_surface_origin, world_surface_u_edge, world_surface_v_edge,
+        frame, reject_reason);
+}
+
 bool deriveRectangularSurface(const LLVolumeFace& volume_face,
                               const std::vector<LLVector3>& surface_positions,
                               const std::vector<LLVector3>& world_positions,
+                              const LLMatrix4& surface_matrix,
+                              const LLMatrix4& model_matrix,
                               F32 fit_tolerance,
                               LocalSurfaceBasis& local_basis,
                               PrismFrame& frame,
                               std::string& reject_reason)
 {
-    // Use the volume face's raw geometric UVs only to derive an affine position
-    // basis. The shared VB texcoord0 stream is deliberately not consumed because
-    // it may contain TE repeat/offset/rotation or animated texture transforms.
-    if (!volume_face.mTexCoords ||
-        surface_positions.size() != static_cast<size_t>(volume_face.mNumVertices) ||
+    // Structural sanity: the caller-built position mirrors must match the
+    // volume face's vertex count no matter which derivation path runs below.
+    if (surface_positions.size() != static_cast<size_t>(volume_face.mNumVertices) ||
         world_positions.size() != surface_positions.size())
     {
-        reject_reason = "designated face has no geometric UV parameterization";
+        reject_reason = "designated face vertex mirrors are inconsistent";
         return false;
+    }
+
+    // PRIMARY path: use the volume face's raw geometric UVs to derive an affine
+    // position basis. The shared VB texcoord0 stream is deliberately not
+    // consumed because it may contain TE repeat/offset/rotation or animated
+    // texture transforms. Every reject below that stems from UV QUALITY --
+    // missing, non-finite, degenerate, non-spanning, or non-affine UVs -- now
+    // routes to the UV-independent geometry fallback instead of refusing the
+    // face outright (this is what admits typical mesh display faces). Faces
+    // whose UVs pass the affine fit -- all prim box faces and cleanly mapped
+    // mesh screens -- never reach the fallback and keep the historical
+    // UV-derived basis bit-for-bit.
+    const auto geometry_fallback = [&]() -> bool
+    {
+        return deriveGeometricRectangularSurface(
+            volume_face, surface_positions, surface_matrix, model_matrix,
+            local_basis, frame, reject_reason);
+    };
+    if (!volume_face.mTexCoords)
+    {
+        return geometry_fallback();
     }
 
     F32 uv_min_x = std::numeric_limits<F32>::max();
@@ -647,8 +979,7 @@ bool deriveRectangularSurface(const LLVolumeFace& volume_face,
         const LLVector2& uv = volume_face.mTexCoords[i];
         if (!std::isfinite(uv.mV[VX]) || !std::isfinite(uv.mV[VY]))
         {
-            reject_reason = "designated face has invalid geometric UVs";
-            return false;
+            return geometry_fallback();
         }
         uv_min_x = llmin(uv_min_x, uv.mV[VX]);
         uv_min_y = llmin(uv_min_y, uv.mV[VY]);
@@ -660,8 +991,7 @@ bool deriveRectangularSurface(const LLVolumeFace& volume_face,
     const F32 uv_height = uv_max_y - uv_min_y;
     if (uv_width <= SURFACE_UV_EPSILON || uv_height <= SURFACE_UV_EPSILON)
     {
-        reject_reason = "designated face has degenerate geometric UVs";
-        return false;
+        return geometry_fallback();
     }
 
     S32 basis_b = -1;
@@ -689,8 +1019,7 @@ bool deriveRectangularSurface(const LLVolumeFace& volume_face,
     }
     if (basis_b < 0 || basis_c < 0)
     {
-        reject_reason = "designated face UVs do not span a surface";
-        return false;
+        return geometry_fallback();
     }
 
     const LLVector2 delta_b = volume_face.mTexCoords[basis_b] - uv_a;
@@ -726,7 +1055,14 @@ bool deriveRectangularSurface(const LLVolumeFace& volume_face,
     const LLVector3 world_surface_u_edge = world_per_u * uv_width;
     const LLVector3 world_surface_v_edge = world_per_v * uv_height;
 
-    bool has_corner[4] = { false, false, false, false };
+    // Affine-fit DECISION: the surface basis above is derived from only three
+    // vertices (0, basis_b, basis_c). Confirm that affine UV->position map
+    // predicts EVERY vertex within tolerance; otherwise a non-affine / atlassed /
+    // sheared-UV mesh face would silently map the feed skewed onto the surface.
+    // A failed fit is no longer a hard reject: such faces fall back to the
+    // UV-independent oriented bounding quad instead, so a flat mesh face with
+    // arbitrary UVs still yields a valid display rectangle. A passing fit keeps
+    // the UV-derived basis exactly as before.
     for (S32 i = 0; i < volume_face.mNumVertices; ++i)
     {
         const LLVector2& uv = volume_face.mTexCoords[i];
@@ -739,23 +1075,8 @@ bool deriveRectangularSurface(const LLVolumeFace& volume_face,
         if ((predicted - surface_positions[i]).magVec() > fit_tolerance ||
             (predicted_world - world_positions[i]).magVec() > fit_tolerance)
         {
-            reject_reason = "designated face is not an affine rectangular UV surface";
-            return false;
+            return geometry_fallback();
         }
-
-        const bool at_min_u = fabsf(normalized_u) <= SURFACE_CORNER_EPSILON;
-        const bool at_max_u = fabsf(normalized_u - 1.f) <= SURFACE_CORNER_EPSILON;
-        const bool at_min_v = fabsf(normalized_v) <= SURFACE_CORNER_EPSILON;
-        const bool at_max_v = fabsf(normalized_v - 1.f) <= SURFACE_CORNER_EPSILON;
-        has_corner[0] |= at_min_u && at_min_v;
-        has_corner[1] |= at_max_u && at_min_v;
-        has_corner[2] |= at_min_u && at_max_v;
-        has_corner[3] |= at_max_u && at_max_v;
-    }
-    if (!has_corner[0] || !has_corner[1] || !has_corner[2] || !has_corner[3])
-    {
-        reject_reason = "Prism lens surface-fit requires a four-corner rectangular UV face";
-        return false;
     }
 
     const LLVector3 local_a(volume_face.mPositions[0].getF32ptr());
@@ -873,7 +1194,7 @@ bool selectedFaceIdentity(LLUUID& object_id, S32& te,
     if (volume_object->isRiggedMesh() || volume_object->isAnimatedObject() ||
         face->isState(LLFace::RIGGED))
     {
-        return reject("Prism lens requires a static (non-rigged) prim face");
+        return reject("requires a static, flat face (prim or mesh)");
     }
 
     object_id = object->getID();
@@ -1067,7 +1388,7 @@ ESurfaceValidation validateSurfaceGeometry(
     if (object->isRiggedMesh() || object->isAnimatedObject() ||
         face->isState(LLFace::RIGGED))
     {
-        reject_reason = "Prism lens requires a static (non-rigged) prim face";
+        reject_reason = "requires a static, flat face (prim or mesh)";
         return ESurfaceValidation::INVALID;
     }
 
@@ -1218,6 +1539,7 @@ ESurfaceValidation validateSurfaceGeometry(
 
     LocalSurfaceBasis local_basis;
     if (!deriveRectangularSurface(volume_face, surface_positions, world_positions,
+                                  surface_matrix, *model_matrix,
                                   planar_tolerance, local_basis, frame, reject_reason))
     {
         return ESurfaceValidation::INVALID;
@@ -2329,7 +2651,7 @@ public:
         }
         if (object->isRiggedMesh() || face->isState(LLFace::RIGGED))
         {
-            rejectSlot(slot, "Prism lens requires a static (non-rigged) prim face");
+            rejectSlot(slot, "requires a static, flat face (prim or mesh)");
             return nullptr;
         }
         frame.mResolvedFace = face;
@@ -2924,6 +3246,10 @@ public:
         }
         if (!validDisplaySettings(settings, reason)) return false;
         mDisplays[slot].mSettings = settings;
+        // Screen effects are creative strengths, not a schedule or mapping:
+        // out-of-range values are silently clamped rather than rejected so a
+        // stale UI can never wedge a display into an uneditable state.
+        mDisplays[slot].mSettings.mEffects.clampAndValidate();
         ++mRevision;
         if (reason) reason->clear();
         return true;
@@ -3213,6 +3539,27 @@ public:
             color.append(display.mSettings.mBarColorLinear[1]);
             color.append(display.mSettings.mBarColorLinear[2]);
             item["bar_color_linear"] = color;
+            // Per-display TV screen effects. The block is optional on read:
+            // an absent (pre-effects) block loads as all defaults, so older
+            // scenes round-trip clean.
+            const LLPrismLens::ScreenEffects& fx = display.mSettings.mEffects;
+            LLSD effects_sd = LLSD::emptyMap();
+            effects_sd["scanlines"]      = fx.mScanlines;
+            effects_sd["scanline_count"] = fx.mScanlineCount;
+            effects_sd["pixelate"]       = fx.mPixelate;
+            effects_sd["grayscale"]      = fx.mGrayscale;
+            effects_sd["sepia"]          = fx.mSepia;
+            effects_sd["static"]         = fx.mStatic;
+            effects_sd["vertical_roll"]  = fx.mVerticalRoll;
+            effects_sd["roll_speed"]     = fx.mRollSpeed;
+            effects_sd["tracking"]       = fx.mTracking;
+            effects_sd["flicker"]        = fx.mFlicker;
+            effects_sd["chroma_bleed"]   = fx.mChromaBleed;
+            effects_sd["vignette"]       = fx.mVignette;
+            effects_sd["interlace"]      = fx.mInterlace;
+            effects_sd["dropout"]        = fx.mDropout;
+            effects_sd["brightness"]     = fx.mBrightness;
+            item["screen_effects"] = effects_sd;
             result["prism_displays"].append(item);
         }
         return result;
@@ -3434,6 +3781,44 @@ public:
             {
                 parsed.mSettings.mBarColorLinear[component] =
                     static_cast<F32>(item["bar_color_linear"][component].asReal());
+            }
+            // Optional per-display screen-effects block. It loads clean and
+            // never rejects the scene: an absent block, an absent key, or a
+            // non-numeric/non-finite value each fall back to the struct
+            // default for that knob, and everything is clamped afterwards.
+            if (item.has("screen_effects") && item["screen_effects"].isMap())
+            {
+                const LLSD& effects_sd = item["screen_effects"];
+                LLPrismLens::ScreenEffects& fx = parsed.mSettings.mEffects;
+                const auto read_effect = [&effects_sd, &is_numeric](
+                    const char* key, F32& destination)
+                {
+                    if (effects_sd.has(key) && is_numeric(effects_sd[key]))
+                    {
+                        const F32 value =
+                            static_cast<F32>(effects_sd[key].asReal());
+                        if (std::isfinite(value))
+                        {
+                            destination = value;
+                        }
+                    }
+                };
+                read_effect("scanlines",      fx.mScanlines);
+                read_effect("scanline_count", fx.mScanlineCount);
+                read_effect("pixelate",       fx.mPixelate);
+                read_effect("grayscale",      fx.mGrayscale);
+                read_effect("sepia",          fx.mSepia);
+                read_effect("static",         fx.mStatic);
+                read_effect("vertical_roll",  fx.mVerticalRoll);
+                read_effect("roll_speed",     fx.mRollSpeed);
+                read_effect("tracking",       fx.mTracking);
+                read_effect("flicker",        fx.mFlicker);
+                read_effect("chroma_bleed",   fx.mChromaBleed);
+                read_effect("vignette",       fx.mVignette);
+                read_effect("interlace",      fx.mInterlace);
+                read_effect("dropout",        fx.mDropout);
+                read_effect("brightness",     fx.mBrightness);
+                fx.clampAndValidate();
             }
             std::string display_reason;
             if (!validDisplaySettings(parsed.mSettings, &display_reason))
@@ -4869,6 +5254,28 @@ U32 getCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
             state.mOpticsParams[1] = capture->mCamera.mOptics.mFilmGrain;
             state.mOpticsParams[2] = capture->mCamera.mOptics.mCRTScanlines;
             state.mOpticsParams[3] = capture->mCamera.mOptics.mExposureBias;
+
+            // Per-display TV screen effects, packed as four vec4 uniforms for
+            // the composite shader. A default ScreenEffects packs all zeros
+            // and every shader block gates on > 0.001, so an untouched
+            // display composites bit-identical to a build without effects.
+            const ScreenEffects& effects = display->mSettings.mEffects;
+            state.mScreenEffect0[0] = effects.mScanlines;
+            state.mScreenEffect0[1] = effects.mScanlineCount;
+            state.mScreenEffect0[2] = effects.mPixelate;
+            state.mScreenEffect0[3] = effects.mGrayscale;
+            state.mScreenEffect1[0] = effects.mSepia;
+            state.mScreenEffect1[1] = effects.mStatic;
+            state.mScreenEffect1[2] = effects.mVerticalRoll;
+            state.mScreenEffect1[3] = effects.mRollSpeed;
+            state.mScreenEffect2[0] = effects.mTracking;
+            state.mScreenEffect2[1] = effects.mFlicker;
+            state.mScreenEffect2[2] = effects.mChromaBleed;
+            state.mScreenEffect2[3] = effects.mVignette;
+            state.mScreenEffect3[0] = effects.mInterlace;
+            state.mScreenEffect3[1] = effects.mDropout;
+            state.mScreenEffect3[2] = effects.mBrightness;
+            state.mScreenEffect3[3] = 0.f; // Reserved.
 
             std::memcpy(state.mRetainedOrientationScale, output_uv_scale,
                         sizeof(state.mRetainedOrientationScale));

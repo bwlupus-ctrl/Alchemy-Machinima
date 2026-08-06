@@ -1106,29 +1106,29 @@
              control_name="PrismLensEnabled"
              follows="left|top"
              height="18"
-             label="Enable Prism"
+             label="Enable Virtual Cam"
              layout="topleft"
              left="10"
              top="247"
              name="prism_lens_enabled"
              tool_tip="Master render toggle. Captures and displays remain editable while disabled."
-             width="108" />
+             width="138" />
             <text
              follows="left|top|right"
              height="18"
              layout="topleft"
-             left="120"
+             left="150"
              name="prism_summary"
              top="249"
-             tool_tip="Open Prism Manager for camera sources, faces, optics, picture FPS, and adaptive performance."
+             tool_tip="Open Virtual Cam Manager for camera sources, faces, optics, picture FPS, and adaptive performance."
              use_ellipses="true"
-             width="148">
-                Prism 0/3 captures | 0/16 faces
+             width="118">
+                VCam 0/3 captures | 0/16 faces
             </text>
             <button
              follows="right|top"
              height="22"
-             label="Manage Prism..."
+             label="Manage VCam..."
              layout="topleft"
              left="272"
              top="245"

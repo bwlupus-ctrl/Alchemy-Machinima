@@ -21,9 +21,29 @@ uniform float edgeFeather;
 // w: Exposure Bias EV (-4.0 to +4.0)
 uniform vec4 prismLensOptics;
 
+// Per-display TV/CRT screen effect packs. Every effect block below gates on
+// its strength being > 0.001, so an all-zero pack (the default) leaves this
+// shader's output bit-identical to the pre-effects composite.
+// screenEffect0: x scanlines, y scanline density, z pixelate, w grayscale
+// screenEffect1: x sepia, y static noise, z vertical roll, w roll speed
+// screenEffect2: x tracking, y flicker, z chroma bleed, w vignette
+// screenEffect3: x interlace, y dropout, z brightness, w reserved
+uniform vec4 screenEffect0;
+uniform vec4 screenEffect1;
+uniform vec4 screenEffect2;
+uniform vec4 screenEffect3;
+uniform float screenEffectTime;
+
 in vec2 prism_uv;
 
 out vec4 frag_color;
+
+// Shared hash for the animated screen effects. Deliberately a separate helper
+// so the committed film-grain block below stays byte-for-byte untouched.
+float tv_hash(vec2 p)
+{
+    return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453123);
+}
 
 void main()
 {
@@ -51,14 +71,56 @@ void main()
     {
         vec2 oriented_uv = logical_uv * retainedOrientationScale +
                            retainedOrientationOffset;
+
+        // -----------------------------------------------------------------
+        // Per-display UV-space distortions. Each block rewrites oriented_uv
+        // in place BEFORE the committed sampling below and is a strict no-op
+        // at strength 0, so untouched displays sample identically.
+        // -----------------------------------------------------------------
+
+        // Pixelation: quantize the sampling grid into ever larger blocks.
+        if (screenEffect0.z > 0.001)
+        {
+            float blocks = mix(512.0, 16.0, screenEffect0.z);
+            oriented_uv = floor(oriented_uv * blocks) / blocks;
+        }
+
+        // Unstable V-sync vertical roll. The moving seam position is kept so
+        // the post-sample stage can darken the classic sync band at the tear
+        // instead of merely scrolling the picture.
+        float roll_seam = 0.0;
+        if (screenEffect1.z > 0.001)
+        {
+            float roll_rate = mix(0.1, 1.5, screenEffect1.w);
+            roll_seam = fract(screenEffectTime * roll_rate * screenEffect1.z);
+            oriented_uv.y = fract(oriented_uv.y + roll_seam);
+        }
+
+        // VHS tracking: horizontal tear/jitter on randomly gated scan rows.
+        if (screenEffect2.x > 0.001)
+        {
+            float row = floor(oriented_uv.y * 180.0);
+            float tear_noise = tv_hash(vec2(row, floor(screenEffectTime * 18.0)));
+            float tear_gate = step(0.92 - screenEffect2.x * 0.25, tear_noise);
+            float jitter = (tear_noise - 0.5) * 0.06 * screenEffect2.x * tear_gate;
+            oriented_uv.x = clamp(oriented_uv.x + jitter, 0.0, 1.0);
+        }
+
         vec2 texture_uv = oriented_uv * textureRegionScale +
                           textureRegionOffset;
 
         vec4 col;
-        // Chromatic Aberration (Radial dispersion offset)
-        if (prismLensOptics.x > 0.001)
+        // Chromatic Aberration (Radial dispersion offset). The guard is
+        // widened for the per-display chroma bleed, which rides the same
+        // three-tap fetch as a horizontal fringe; at screenEffect2.z == 0 the
+        // committed radial-only math runs byte-identical.
+        if (prismLensOptics.x > 0.001 || screenEffect2.z > 0.001)
         {
             vec2 dist = (oriented_uv - vec2(0.5)) * prismLensOptics.x * 0.015;
+            if (screenEffect2.z > 0.001)
+            {
+                dist.x += screenEffect2.z * 0.012;
+            }
             vec2 r_uv = clamp(oriented_uv + dist, vec2(0.0), vec2(1.0)) * textureRegionScale + textureRegionOffset;
             vec2 b_uv = clamp(oriented_uv - dist, vec2(0.0), vec2(1.0)) * textureRegionScale + textureRegionOffset;
             float r = texture(prismLensMap, r_uv).r;
@@ -90,6 +152,95 @@ void main()
         {
             float grain = (fract(sin(dot(oriented_uv, vec2(12.9898, 78.233))) * 43758.5453) - 0.5) * prismLensOptics.y * 0.15;
             col.rgb += vec3(grain);
+        }
+
+        // -----------------------------------------------------------------
+        // Per-display post-sample screen effects. Applied AFTER the committed
+        // per-camera optics above; every block gates at > 0.001 so a zeroed
+        // ScreenEffects pack leaves col untouched. Alpha (the pre-tonemap
+        // Prism glow channel) is deliberately never modified.
+        // -----------------------------------------------------------------
+
+        // Grayscale desaturation (Rec. 709 luma).
+        if (screenEffect0.w > 0.001)
+        {
+            float luma = dot(col.rgb, vec3(0.2126, 0.7152, 0.0722));
+            col.rgb = mix(col.rgb, vec3(luma), screenEffect0.w);
+        }
+
+        // Sepia tone blend.
+        if (screenEffect1.x > 0.001)
+        {
+            float sepia_luma = dot(col.rgb, vec3(0.2126, 0.7152, 0.0722));
+            vec3 sepia_color = vec3(sepia_luma * 1.2, sepia_luma * 0.95,
+                                    sepia_luma * 0.65);
+            col.rgb = mix(col.rgb, sepia_color, screenEffect1.x);
+        }
+
+        // Per-display parametric scanlines. Deliberately its own block: the
+        // fixed-density per-camera optics scanline above stays untouched and
+        // both may layer.
+        if (screenEffect0.x > 0.001)
+        {
+            float sl_density = mix(200.0, 1200.0, screenEffect0.y);
+            float sl_wave = sin(oriented_uv.y * sl_density * 3.14159265) * 0.5 + 0.5;
+            col.rgb *= mix(1.0, sl_wave * 0.45 + 0.55, screenEffect0.x);
+        }
+
+        // Interlace field line shimmer: alternate fields dim on a 30 Hz beat.
+        if (screenEffect3.x > 0.001)
+        {
+            float field = step(0.5, fract(screenEffectTime * 30.0));
+            float line_even = step(0.5, fract(oriented_uv.y * 240.0));
+            float interlace_dim = abs(field - line_even);
+            col.rgb *= mix(1.0, 0.75 + 0.25 * interlace_dim, screenEffect3.x);
+        }
+
+        // Analog hash static noise.
+        if (screenEffect1.y > 0.001)
+        {
+            float static_noise = tv_hash(oriented_uv * 100.0 +
+                vec2(screenEffectTime * 23.1, screenEffectTime * 47.3));
+            col.rgb = mix(col.rgb, vec3(static_noise), screenEffect1.y * 0.45);
+        }
+
+        // Brightness flicker: whole-picture pulse re-rolled 24 times a second.
+        if (screenEffect2.y > 0.001)
+        {
+            float flick = tv_hash(vec2(floor(screenEffectTime * 24.0), 1.0));
+            col.rgb *= (1.0 - screenEffect2.y * 0.3 * flick);
+        }
+
+        // Momentary signal dropout darkening.
+        if (screenEffect3.y > 0.001)
+        {
+            float drop_time = floor(screenEffectTime * 6.0);
+            float drop_occ = step(0.93 - screenEffect3.y * 0.15,
+                                  tv_hash(vec2(drop_time, 7.0)));
+            col.rgb *= (1.0 - drop_occ * screenEffect3.y * 0.7);
+        }
+
+        // Dark V-sync band centred on the vertical-roll seam computed in the
+        // UV stage, so the roll reads as a sync loss instead of a scroll.
+        if (screenEffect1.z > 0.001)
+        {
+            float band = smoothstep(0.0, 0.06,
+                abs(fract(oriented_uv.y - roll_seam + 0.5) - 0.5));
+            col.rgb *= mix(1.0 - 0.85 * screenEffect1.z, 1.0, band);
+        }
+
+        // Vignette CRT edge darkening.
+        if (screenEffect2.w > 0.001)
+        {
+            vec2 v_coord = (oriented_uv - vec2(0.5)) * 2.0;
+            float v_dist = dot(v_coord, v_coord);
+            col.rgb *= clamp(1.0 - v_dist * 0.45 * screenEffect2.w, 0.0, 1.0);
+        }
+
+        // Per-display linear brightness gain (-1..+1); 0 is exact identity.
+        if (abs(screenEffect3.z) > 0.001)
+        {
+            col.rgb *= (1.0 + screenEffect3.z);
         }
 
         // Preserve the auxiliary beauty alpha as well as RGB.

@@ -201,11 +201,70 @@ struct ActionStatus
     bool allowed() const { return mResult == ERegistryResult::OK; }
 };
 
+// Per-display TV/CRT screen effects, applied at composite time only inside
+// prismLensF.glsl on the already-retained capture picture. No extra render
+// pass, target, or allocation is involved. Every knob is a strict no-op at 0
+// (the shader gates each effect block at > 0.001), so a default-constructed
+// struct leaves the composite bit-identical to a build without this feature.
+// mScanlineCount and mRollSpeed are shaping parameters that only matter while
+// their gating strength (mScanlines / mVerticalRoll) is non-zero, which is
+// why they carry non-zero defaults and are excluded from isZero().
+struct ScreenEffects
+{
+    F32 mScanlines      = 0.f;  // 0..1 scanline blend strength
+    F32 mScanlineCount  = 0.5f; // 0..1 line density (0.5 = mid density)
+    F32 mPixelate       = 0.f;  // 0..1 block quantization strength
+    F32 mGrayscale      = 0.f;  // 0..1 luma desaturation
+    F32 mSepia          = 0.f;  // 0..1 sepia tone blend
+    F32 mStatic         = 0.f;  // 0..1 analog hash noise strength
+    F32 mVerticalRoll   = 0.f;  // 0..1 V-sync roll band strength
+    F32 mRollSpeed      = 0.2f; // 0..1 roll speed rate
+    F32 mTracking       = 0.f;  // 0..1 VHS horizontal tear/jitter
+    F32 mFlicker        = 0.f;  // 0..1 brightness flicker strength
+    F32 mChromaBleed    = 0.f;  // 0..1 horizontal color fringe
+    F32 mVignette       = 0.f;  // 0..1 CRT edge darkening
+    F32 mInterlace      = 0.f;  // 0..1 field line shimmer
+    F32 mDropout        = 0.f;  // 0..1 signal dropout darkening
+    // Simple per-display linear gain, -1..+1 with 0 = unchanged. Deliberately
+    // distinct from the per-capture exposure OPTIC (an EV bias applied to the
+    // camera's whole picture); both may coexist on the same face.
+    F32 mBrightness     = 0.f;
+
+    void clampAndValidate()
+    {
+        mScanlines     = llclamp(mScanlines, 0.f, 1.f);
+        mScanlineCount = llclamp(mScanlineCount, 0.f, 1.f);
+        mPixelate      = llclamp(mPixelate, 0.f, 1.f);
+        mGrayscale     = llclamp(mGrayscale, 0.f, 1.f);
+        mSepia         = llclamp(mSepia, 0.f, 1.f);
+        mStatic        = llclamp(mStatic, 0.f, 1.f);
+        mVerticalRoll  = llclamp(mVerticalRoll, 0.f, 1.f);
+        mRollSpeed     = llclamp(mRollSpeed, 0.f, 1.f);
+        mTracking      = llclamp(mTracking, 0.f, 1.f);
+        mFlicker       = llclamp(mFlicker, 0.f, 1.f);
+        mChromaBleed   = llclamp(mChromaBleed, 0.f, 1.f);
+        mVignette      = llclamp(mVignette, 0.f, 1.f);
+        mInterlace     = llclamp(mInterlace, 0.f, 1.f);
+        mDropout       = llclamp(mDropout, 0.f, 1.f);
+        mBrightness    = llclamp(mBrightness, -1.f, 1.f);
+    }
+
+    bool isZero() const
+    {
+        return mScanlines == 0.f && mPixelate == 0.f && mGrayscale == 0.f &&
+               mSepia == 0.f && mStatic == 0.f && mVerticalRoll == 0.f &&
+               mTracking == 0.f && mFlicker == 0.f && mChromaBleed == 0.f &&
+               mVignette == 0.f && mInterlace == 0.f && mDropout == 0.f &&
+               mBrightness == 0.f;
+    }
+};
+
 struct DisplaySettings
 {
     EFitMode mFitMode = EFitMode::FIT;
     F32 mAnchor[2] = { 0.5f, 0.5f };
     F32 mBarColorLinear[3] = { 0.f, 0.f, 0.f };
+    ScreenEffects mEffects; // Per-display TV screen effects.
 };
 
 struct CaptureDefinition
@@ -287,6 +346,13 @@ struct CompositeState
     // Option C: Cinematic optics parameters passed to compositor
     // x: Chromatic Aberration, y: Film Grain, z: CRT Scanlines, w: Exposure Bias
     F32 mOpticsParams[4] = { 0.f, 0.f, 0.f, 0.f };
+
+    // Per-display TV/CRT screen effect uniform packs (4x vec4). All-zero is
+    // a strict shader no-op; see ScreenEffects.
+    F32 mScreenEffect0[4] = { 0.f, 0.f, 0.f, 0.f }; // Scanlines, ScanlineCount, Pixelate, Grayscale
+    F32 mScreenEffect1[4] = { 0.f, 0.f, 0.f, 0.f }; // Sepia, Static, VerticalRoll, RollSpeed
+    F32 mScreenEffect2[4] = { 0.f, 0.f, 0.f, 0.f }; // Tracking, Flicker, ChromaBleed, Vignette
+    F32 mScreenEffect3[4] = { 0.f, 0.f, 0.f, 0.f }; // Interlace, Dropout, Brightness, Reserved
 };
 
 // Viewer-local registry. No call writes prim, TE, or material data and no call

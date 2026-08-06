@@ -16875,6 +16875,18 @@ void LLPipeline::renderDeferredLighting()
             static const LLStaticHashedString sBarColorLinear("barColorLinear");
             static const LLStaticHashedString sEdgeFeather("edgeFeather");
             static const LLStaticHashedString sPrismLensOptics("prismLensOptics");
+            static const LLStaticHashedString sScreenEffect0("screenEffect0");
+            static const LLStaticHashedString sScreenEffect1("screenEffect1");
+            static const LLStaticHashedString sScreenEffect2("screenEffect2");
+            static const LLStaticHashedString sScreenEffect3("screenEffect3");
+            static const LLStaticHashedString sScreenEffectTime("screenEffectTime");
+
+            // Animated screen effects advance on the shared frame clock, and
+            // the fmodf wrap keeps the uniform small so long sessions never
+            // lose float precision (the FROXEL_TIME / PROJVOL_TIME pattern).
+            // The clock is capture-independent, so upload it once per batch.
+            gPrismLensProgram.uniform1f(sScreenEffectTime,
+                                        fmodf(gFrameTimeSeconds, 3600.f));
 
             U32 bound_capture_slot = LLPrismLens::MAX_CAPTURES;
             for (U32 prism_index = 0; prism_index < prism_state_count;
@@ -16920,6 +16932,10 @@ void LLPipeline::renderDeferredLighting()
                                              prism_state.mBarColorLinear);
                 gPrismLensProgram.uniform1f(sEdgeFeather, prism_state.mEdgeFeather);
                 gPrismLensProgram.uniform4fv(sPrismLensOptics, 1, prism_state.mOpticsParams);
+                gPrismLensProgram.uniform4fv(sScreenEffect0, 1, prism_state.mScreenEffect0);
+                gPrismLensProgram.uniform4fv(sScreenEffect1, 1, prism_state.mScreenEffect1);
+                gPrismLensProgram.uniform4fv(sScreenEffect2, 1, prism_state.mScreenEffect2);
+                gPrismLensProgram.uniform4fv(sScreenEffect3, 1, prism_state.mScreenEffect3);
 
                 LLDrawable* lens_drawable = prism_state.mFace->getDrawable();
                 if (lens_drawable &&
