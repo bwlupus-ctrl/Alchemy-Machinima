@@ -11,6 +11,7 @@
 
 #include "aldirectorhotkeys.h"
 
+#include "aldirectoranimswitcher.h" // Alt+1..9 animation switchboard punches
 #include "aldirectorswitcher.h"
 #include "indra_constants.h"        // KEY_F2..KEY_F8, MASK_NONE
 #include "lldirectorcast.h"         // ACTION/CUT transport, marks
@@ -39,6 +40,28 @@ bool ALDirectorHotkeys::handleKey(
     // (render feature toggles) and Alt+F4 (OS close) are never shadowed.
     const bool function_key = key >= KEY_F2 && key <= KEY_F8;
     const bool number_key = key >= (KEY)'1' && key <= (KEY)'9';
+
+    // Animation Switchboard: Alt+1..9 punch. Handled BEFORE the bare-key gate
+    // below, which rejects every modified combo. Only consumes Alt+digit when
+    // the switchboard is armed and the Director Console is open and unfocused;
+    // otherwise it falls through so Alt combos keep their normal meaning. Does
+    // not collide with the bare 1..9 camera-switcher punches.
+    if (mask == MASK_ALT && number_key &&
+        gSavedSettings.getBOOL("DirectorHotkeysEnabled"))
+    {
+        if (!keyboard_focus && floater_open("director") &&
+            gSavedSettings.getBOOL("DirectorAnimSwitcherArmed"))
+        {
+            if (!repeated)
+            {
+                ALDirectorAnimSwitcher::instance().punch(
+                    (S32)(key - (KEY)'1'));
+            }
+            return true;
+        }
+        // not armed / focused: do not consume; fall through to the gate.
+    }
+
     if (mask != MASK_NONE || (!function_key && !number_key))
     {
         return false;

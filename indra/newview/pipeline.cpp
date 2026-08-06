@@ -9406,6 +9406,29 @@ void LLPipeline::activatePrismAuxiliaryProbeState()
         prism_probe_data.refSphere[0].mV[3] = default_probe->mRadius;
         prism_probe_data.refParams[0].mV[3] =
             camera_origin.getF32ptr()[2] - default_probe->mRadius;
+
+        // The reflection-probe manager renders probe cube faces AFTER display() with
+        // gCubeSnapshot on; that render's updateUniforms leaves mProbeData's ambiance/
+        // radiance scale in the cube-snapshot pass state (ambscale = 0 on an ambiance/
+        // irradiance pass, radscale = 0.5). The aux runs BEFORE the main-view
+        // updateUniforms that corrects it, snapshots that stale struct, and the
+        // re-expression above overwrites only the probe's position -- so the feed's
+        // single default probe inherits a diffuse-ambient scale that toggles 0<->full
+        // across the probe refresh schedule, flickering PBR ambient (visible only when
+        // the sky/probe ambient is bright: midday / high Reflection Probe Ambiance).
+        // Force the two scale fields to the stable, fully-converged (non-ambiance-pass)
+        // values so the feed is steady regardless of which probe pass the previous frame
+        // ended on. Mirrors LLReflectionMapManager::updateUniforms with
+        // ambscale = radscale = mResetFade. Feed-only: edits the aux's local
+        // prism_probe_data copy, never the main-eye mProbeData, so the main view and
+        // VCam-off stay byte-identical.
+        static LLCachedControl<bool> should_auto_adjust(gSavedSettings, "RenderSkyAutoAdjustLegacy", false);
+        const F32 minimum_ambiance =
+            LLEnvironment::instance().getCurrentSky()->getReflectionProbeAmbiance(should_auto_adjust);
+        const F32 stable_scale = llmax(0.f, mReflectionMapManager.mResetFade);
+        prism_probe_data.refParams[0].mV[0] =
+            llmax(minimum_ambiance, default_probe->getAmbiance()) * stable_scale;
+        prism_probe_data.refParams[0].mV[1] = stable_scale;
     }
 
     GLint saved_uniform_buffer = 0;
@@ -14128,8 +14151,46 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
 // target is needed (it still reads depthMap - a separate texture - to clamp the
 // march at the first opaque surface). Cost scales with N x resolution; N is
 // naturally capped by BDMergeMaxSpotShadows and resolution is the primary lever.
-void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
+void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target, bool aux_direct)
 {
+    // [Prism camera feed] The Prism auxiliary (VCam) capture calls this pass
+    // BEFORE the main view every frame (LLPrismLens::renderAuxiliaryView). This
+    // function mutates shared main-view members - mProjVolHalfValid,
+    // mProjVolShaftSrc, and CRITICALLY mProjVolHistoryValid, which the main view's
+    // OWN call reads (below, at the temporal resolve) to gate its temporal
+    // reprojection. If the aux left those reset, the main view would silently lose
+    // its projector-volumetric temporal accumulation (noisier main-view shafts when
+    // BDMergeProjectorVolumetricsTemporal is on). Snapshot the three at entry and
+    // restore them at EVERY exit: this RAII guard's destructor fires on the
+    // early-out return below AND on the normal end, so no exit path can leak the
+    // aux's mutations into the main view. Completely inert when aux_direct is false
+    // (the main-view call), so that path stays byte-identical to before.
+    struct ProjVolAuxStateGuard
+    {
+        bool             mActive;
+        bool*            mHalfValidPtr;
+        LLRenderTarget** mShaftSrcPtr;
+        bool*            mHistoryValidPtr;
+        bool             mHalfValid;
+        LLRenderTarget*  mShaftSrc;
+        bool             mHistoryValid;
+        ProjVolAuxStateGuard(bool active, bool* halfv, LLRenderTarget** shaft, bool* histv)
+        :   mActive(active), mHalfValidPtr(halfv), mShaftSrcPtr(shaft),
+            mHistoryValidPtr(histv), mHalfValid(*halfv), mShaftSrc(*shaft),
+            mHistoryValid(*histv)
+        {}
+        ~ProjVolAuxStateGuard()
+        {
+            if (mActive)
+            {
+                *mHalfValidPtr    = mHalfValid;
+                *mShaftSrcPtr     = mShaftSrc;
+                *mHistoryValidPtr = mHistoryValid;
+            }
+        }
+    } projvol_aux_guard(aux_direct, &mProjVolHalfValid, &mProjVolShaftSrc,
+                        &mProjVolHistoryValid);
+
     // [Phase 3 item 4] Invalidate the bloom-feed source each frame up front: it is
     // only re-validated below if the half-res path actually marches a shaft, so a
     // disabled/empty frame can never let the feed sample a stale mProjVolHalf.
@@ -14162,7 +14223,13 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target)
     // onto the scene. Big fill-rate win (quarter the marched fragments) for the
     // common 2+ flagged-projector case. Falls back to the fullscreen path if the
     // half-res target can't be allocated or the scene is too small to halve.
-    bool halfres = BDMergeProjectorVolumetricsHalfRes &&
+    // [Prism camera feed] The aux capture FORCES the direct fullscreen march
+    // (halfres=false, which also forces temporal=false below): the shafts land
+    // straight onto `target` (== the aux rt.screen) and NONE of the shared
+    // half-res / history buffers (mProjVolHalf, mProjVolHistory) are touched, so
+    // the aux run stays isolated from the main view's projector-volumetric state.
+    bool halfres = !aux_direct &&
+                   BDMergeProjectorVolumetricsHalfRes &&
                    gDeferredProjectorVolumetricUpsampleProgram.isComplete() &&
                    target->getWidth() >= 8 && target->getHeight() >= 8;
     if (halfres)
@@ -16738,11 +16805,23 @@ void LLPipeline::renderDeferredLighting()
     // linear-HDR beauty immediately before the main screen flush. Fixed-
     // function depth provides opaque foreground occlusion; transparent pool
     // ordering remains explicitly out of scope for this slice.
+    // [Prism camera feed - recursive mirror] During the Prism aux (VCam) capture
+    // (sPrismLensRender), select the auxiliary composite path so the monitor faces
+    // show the PREVIOUS frame's retained feed while this aux frame is being drawn -
+    // a 1-frame-lagged recursive tunnel. Outside the aux (the main view, the only
+    // time sPrismLensRender is false here) this calls getCompositeStates exactly as
+    // before, so the main-view composite is byte-identical. getAuxCompositeStates
+    // is itself gated on sPrismLensRender and on the bound target being the active
+    // aux pack screen, so it can never affect the main view even if reached.
     LLPrismLens::CompositeState prism_states[LLPrismLens::MAX_DISPLAY_BINDINGS];
     const U32 prism_state_count = gPrismLensProgram.isComplete()
-        ? llmin(LLPrismLens::getCompositeStates(
-                    screen_target, prism_states,
-                    LLPrismLens::MAX_DISPLAY_BINDINGS),
+        ? llmin(sPrismLensRender
+                    ? LLPrismLens::getAuxCompositeStates(
+                          screen_target, prism_states,
+                          LLPrismLens::MAX_DISPLAY_BINDINGS)
+                    : LLPrismLens::getCompositeStates(
+                          screen_target, prism_states,
+                          LLPrismLens::MAX_DISPLAY_BINDINGS),
                 LLPrismLens::MAX_DISPLAY_BINDINGS)
         : 0;
     if (prism_state_count > 0)

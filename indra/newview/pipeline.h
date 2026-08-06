@@ -182,7 +182,15 @@ public:
     void renderVolumetric(LLRenderTarget* src, LLRenderTarget* dst);
     // [BDMerge G3.3] per-projector volumetric light cones: additive pass, one
     // fullscreen cone per shadow-casting projector slot, in place on target.
-    void renderProjectorVolumetric(LLRenderTarget* target);
+    // [Prism camera feed] aux_direct=true is the Prism auxiliary (VCam) capture
+    // path (called from LLPrismLens::renderAuxiliaryView): it FORCES the direct
+    // fullscreen march straight onto `target` (no half-res / temporal shared
+    // buffers) and SNAPSHOTS+RESTORES the shared main-view state members
+    // (mProjVolHalfValid / mProjVolShaftSrc / mProjVolHistoryValid) so the aux run
+    // - which precedes the main view every frame - cannot disturb the main view's
+    // projector-volumetric temporal accumulation. Default false = the unchanged
+    // main-view call, byte-identical to before.
+    void renderProjectorVolumetric(LLRenderTarget* target, bool aux_direct = false);
     // Viewer-native rain/lightning composite. Runs before HDR exposure and bloom
     // so lightning participates in the same photographic response as scene lights.
     void renderWeather(LLRenderTarget* target);

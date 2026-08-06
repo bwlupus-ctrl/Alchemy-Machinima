@@ -1494,6 +1494,18 @@ bool LLVOVolume::calcLOD()
     F32 distance;
     F32 lod_factor = LLVOVolume::sLODFactor;
 
+    // Ghost entity clones apply a render-only outer scale (LLClientOuterTransform, up to
+    // GHOST_SCALE_MAX) at draw time, but LOD is otherwise computed from unscaled native
+    // geometry -- so a large clone is driven at its 1x LOD and pops. Resolve the clone's own
+    // scale here (a scaled clone prim is stamped directly); the skinning-avatar case is handled
+    // inside the rigged branch below. outer_scale tracks the effective clone scale for the
+    // source-LOD gate further down. All paths are guarded so scale-1 / non-clone content stays
+    // byte-identical.
+    const LLClientOuterTransform* own_outer = getClientOuterTransform();
+    const F32 own_scale = (own_outer && own_outer->mEnabled && !is_approx_equal(own_outer->mScale, 1.f))
+                          ? own_outer->mScale : 1.f;
+    F32 outer_scale = own_scale;
+
     if (mDrawable->isState(LLDrawable::RIGGED))
     {
         LLVOAvatar* avatar = getAvatar();
@@ -1526,6 +1538,26 @@ bool LLVOVolume::calcLOD()
             radius = diag.magVec(); // preserve old BinRadius behavior - 2x off
             LL_DEBUGS("DynamicBox") << avatar->getDebugName() << " diag " << diag << " radius " << radius << LL_ENDL;
         }
+
+        if (avatar->hasClientOuterTransform())
+        {
+            // getLastAnimExtents() is already outer-scaled in
+            // LLVOAvatar::calculateSpatialExtents, so 'radius' above already reflects the clone
+            // scale -- do NOT scale it again (that would apply the scale squared). Just record
+            // the avatar's scale for the source-LOD gate below.
+            const LLClientOuterTransform* av_outer = avatar->getClientOuterTransformHandle();
+            if (av_outer && av_outer->mEnabled)
+            {
+                outer_scale = av_outer->mScale;
+            }
+        }
+        else if (!is_approx_equal(own_scale, 1.f))
+        {
+            // e.g. a cloned animesh riding a synthetic control avatar that is not stamped: its
+            // animated box is native, so apply the clone prim's own scale to the LOD radius.
+            radius *= own_scale;
+        }
+
         if (distance <= 0.f || radius <= 0.f)
         {
             return false;
@@ -1535,6 +1567,14 @@ bool LLVOVolume::calcLOD()
     {
         distance = mDrawable->mDistanceWRTCamera;
         radius = getVolume() ? getVolume()->mLODScaleBias.scaledVec(getScale()).length() : getScale().length();
+
+        // Non-rigged clone prim: extents are native, so scale the LOD radius by the clone's own
+        // outer scale (guarded; own_scale == 1 for normal prims -> no-op, byte-identical).
+        if (!is_approx_equal(own_scale, 1.f))
+        {
+            radius *= own_scale;
+        }
+
         if (distance <= 0.f || radius <= 0.f)
         {
             return false;
@@ -1618,8 +1658,11 @@ bool LLVOVolume::calcLOD()
     // identical source animesh. Follow the corresponding live source prim's
     // rendered LOD instead. This preserves normal distance-based LOD/culling
     // behaviour and is restricted to recorded, mIsLocalOnly ghost clones.
+    // Exception: when the clone is scaled up (outer_scale != 1), pinning it to the
+    // distant source's coarse LOD is exactly what makes a large clone pop -- skip the
+    // override and let the now scale-aware radius above drive LOD instead.
     S32 source_lod = -1;
-    if (isLocalOnly() &&
+    if (isLocalOnly() && is_approx_equal(outer_scale, 1.f) &&
         LLGhostAvatar::getClonedSourceLOD(this, source_lod))
     {
         cur_detail = source_lod;

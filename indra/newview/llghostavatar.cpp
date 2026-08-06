@@ -336,6 +336,37 @@ void LLGhostAvatar::updateEntityOuterTransform()
     ++outer->mRevision;
     setNeedsExtentUpdate(true);
     LLRenderPass::invalidateModelMatrixCache();
+
+    // setNeedsExtentUpdate above recomputes the BODY box this frame, but the worn
+    // attachments live in separate spatial bridges that are NOT otherwise told the
+    // outer scale changed -- their scaled culling box (LLSpatialBridge::updateSpatialExtents)
+    // is only rebuilt when the bridge is incidentally marked moved (animation / motion /
+    // octree churn). A single large TYPED scale jump then leaves the bridge's cull box
+    // stale/mispositioned while the geometry already renders scaled, so the attachments
+    // get culled and the whole clone vanishes; a gradual drag churns the bridge enough to
+    // converge. Force the attachment drawables + their bridges to re-extent this frame so
+    // a typed jump behaves like a drag. Only reached on a real scale/pivot change (guarded
+    // above), so there is no per-frame cost for a static clone.
+    for (const auto& ap : mAttachmentPoints)
+    {
+        LLViewerJointAttachment* attachment = ap.second;
+        if (!attachment)
+        {
+            continue;
+        }
+        for (LLViewerObject* obj : attachment->mAttachedObjects)
+        {
+            if (!obj || obj->isDead() || obj->mDrawable.isNull())
+            {
+                continue;
+            }
+            gPipeline.markMoved(obj->mDrawable, false);
+            if (LLSpatialBridge* bridge = obj->mDrawable->getSpatialBridge())
+            {
+                gPipeline.markMoved(bridge, false);
+            }
+        }
+    }
 }
 
 void LLGhostAvatar::stampEntityOuterTransform(LLViewerObject* object)

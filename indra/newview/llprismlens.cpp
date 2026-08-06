@@ -5165,6 +5165,22 @@ void renderAuxiliaryView()
         rt.deferredScreen.flush();
         gPipeline.renderDeferredLighting();
 
+        // [Prism camera feed - projector volumetric rays] Inject the projector
+        // volumetric shafts into THIS aux capture. renderProjectorVolumetric only
+        // runs inside the main renderFinalize(), which the aux never calls, so the
+        // feed otherwise shows lit projector cones with no visible airborne shaft.
+        // All prerequisites are already in place here: the aux view matrices
+        // (get_current_modelview/projection), the aux G-buffer depth/normals in
+        // mRT->deferredScreen (mRT == this scratch pack), the aux projector list
+        // (mShadowSpotLight[]) + shadow maps (generatePrismSpotShadows, via
+        // getSpotShadowTarget's sPrismLensRender redirect), and the source-eye
+        // nearby-light set (calcNearbyLights). aux_direct=true forces the direct
+        // fullscreen march straight onto rt.screen and snapshots+restores the
+        // shared main-view volumetric state, so this aux pass - which precedes the
+        // main view - cannot disturb the main view's temporal accumulation. No
+        // feedProjectorVolumetricBloom() here: the aux builds no HDR bloom pyramid.
+        gPipeline.renderProjectorVolumetric(&rt.screen, /*aux_direct=*/true);
+
         // renderDeferredLighting() flushes the scratch HDR screen. Copy the
         // finished beauty while all copy-related GL mutations remain covered by
         // the complete state scope; publish only after that scope closes.
@@ -5361,6 +5377,195 @@ U32 getCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
             state.mEdgeFeather = frame.mEdgeFeather;
             // Keep all resolved LLFace pointers in their display frames until
             // next preparation; pipeline consumes the whole returned batch now.
+            ++state_count;
+        }
+    }
+    return state_count;
+}
+
+// [Prism camera feed - recursive mirror] Auxiliary-capture twin of
+// getCompositeStates. It runs ONLY inside the Prism aux (VCam) render
+// (sPrismLensRender == true), letting the display faces composite the PREVIOUS
+// frame's retained feed (mPrismLensOutput[slot]) while the aux is drawing the
+// current frame - so a camera aimed at its own monitor produces a stable,
+// 1-frame-lagged infinite tunnel.
+//
+// Kept as a SEPARATE function (not a flag on getCompositeStates) so the main-view
+// composite path stays byte-identical: the pipeline calls this one instead only
+// when sPrismLensRender is set. Differences from getCompositeStates:
+//   * Gate requires sPrismLensRender TRUE and the bound target to be the ACTIVE
+//     AUX pack screen (gPipeline.mRT->screen, which during the aux is the scratch
+//     pack, never mMainRT.screen). It can therefore never touch the main view.
+//   * Scissor is the FULL aux target extent, not the main-view lens rect
+//     (frame.mLensRect / mMainViewport are main-view screen coords, meaningless in
+//     the aux camera's viewport). The real face geometry (renderIndexed) plus the
+//     aux depth test bound the touched pixels; the scissor is only an outer clip.
+//   * The retained texture the shader samples (mPrismLensOutput[capture_slot]) is
+//     the PREVIOUS publication - copyContents into it happens AFTER this aux render
+//     - so this is never a read-after-write against the in-progress rt.screen, and
+//     the recursion is a fixed, bounded, 1-frame-lagged source (no runaway/flare).
+// Everything else (surface basis, orientation, texture region, optics, effects,
+// aspect fit) is identical to getCompositeStates, so the feed's monitor matches
+// the main view's monitor exactly, one frame delayed.
+//
+// Known constraint (surfaced for review): the display frames are prepared against
+// the MAIN camera frustum (renderAuxiliaryView prepares them before the aux
+// render; re-preparing them here against the aux frustum would overwrite the
+// main-view frame data the later main composite consumes, breaking byte-identical
+// main). A monitor visible in the aux but NOT in the main view is therefore not
+// prepared this frame and does not recurse until it is also main-visible.
+U32 getAuxCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
+                          U32 capacity)
+{
+    if (!states || capacity == 0 || !prismEnabled() ||
+        !LLPipeline::sPrismLensRender ||
+        screen_target != &gPipeline.mRT->screen ||
+        LLRenderTarget::getCurrentBoundTarget() != screen_target)
+    {
+        return 0;
+    }
+
+    PrismLensRegistry& registry = PrismLensRegistry::instance();
+    U32 state_count = 0;
+    for (U32 capture_slot = 0;
+         capture_slot < MAX_CAPTURES && state_count < capacity; ++capture_slot)
+    {
+        const PrismInstance* capture = registry.capture(capture_slot);
+        if (!capture || !capture->mHasOutput) continue;
+        LLRenderTarget& output = gPipeline.mPrismLensOutput[capture_slot];
+        U32 output_width = 0;
+        U32 output_height = 0;
+        F32 output_uv_scale[2];
+        F32 output_uv_offset[2];
+        if (!output.isComplete() ||
+            !registry.getOutputRegion(capture_slot, output_width, output_height) ||
+            !registry.getOutputOrientation(capture_slot, output_uv_scale, output_uv_offset) ||
+            output_width > output.getWidth() || output_height > output.getHeight())
+        {
+            continue;
+        }
+
+        for (U32 display_slot = 0;
+             display_slot < MAX_DISPLAY_BINDINGS && state_count < capacity;
+             ++display_slot)
+        {
+            const PrismDisplay* display = registry.display(display_slot);
+            if (!display || display->mCaptureSlot != capture_slot ||
+                display->mCaptureGeneration != capture->mHandle.mGeneration)
+            {
+                continue;
+            }
+            const PrismFrame& frame = display->mFrame;
+            if (!frame.mPrepared || frame.mFrame != gFrameCount ||
+                frame.mMainViewport[2] <= 0 || frame.mMainViewport[3] <= 0)
+            {
+                continue;
+            }
+            LLFace* face = registry.resolveDisplayFaceForComposite(display_slot);
+            if (!face) continue;
+
+            CompositeState& state = states[state_count];
+            state = CompositeState();
+            state.mCaptureSlot = capture_slot;
+            state.mFace = face;
+            std::memcpy(state.mSurfaceOrigin, frame.mSurfaceOrigin.mV,
+                        sizeof(state.mSurfaceOrigin));
+            std::memcpy(state.mSurfaceUDual, frame.mSurfaceUDual.mV,
+                        sizeof(state.mSurfaceUDual));
+            std::memcpy(state.mSurfaceVDual, frame.mSurfaceVDual.mV,
+                        sizeof(state.mSurfaceVDual));
+
+            state.mOpticsParams[0] = capture->mCamera.mOptics.mChromaticAberration;
+            state.mOpticsParams[1] = capture->mCamera.mOptics.mFilmGrain;
+            state.mOpticsParams[2] = capture->mCamera.mOptics.mCRTScanlines;
+            state.mOpticsParams[3] = capture->mCamera.mOptics.mExposureBias;
+
+            const ScreenEffects& effects = display->mSettings.mEffects;
+            state.mScreenEffect0[0] = effects.mScanlines;
+            state.mScreenEffect0[1] = effects.mScanlineCount;
+            state.mScreenEffect0[2] = effects.mPixelate;
+            state.mScreenEffect0[3] = effects.mGrayscale;
+            state.mScreenEffect1[0] = effects.mSepia;
+            state.mScreenEffect1[1] = effects.mStatic;
+            state.mScreenEffect1[2] = effects.mVerticalRoll;
+            state.mScreenEffect1[3] = effects.mRollSpeed;
+            state.mScreenEffect2[0] = effects.mTracking;
+            state.mScreenEffect2[1] = effects.mFlicker;
+            state.mScreenEffect2[2] = effects.mChromaBleed;
+            state.mScreenEffect2[3] = effects.mVignette;
+            state.mScreenEffect3[0] = effects.mInterlace;
+            state.mScreenEffect3[1] = effects.mDropout;
+            state.mScreenEffect3[2] = effects.mBrightness;
+            state.mScreenEffect3[3] = 0.f; // Reserved.
+
+            std::memcpy(state.mRetainedOrientationScale, output_uv_scale,
+                        sizeof(state.mRetainedOrientationScale));
+            std::memcpy(state.mRetainedOrientationOffset, output_uv_offset,
+                        sizeof(state.mRetainedOrientationOffset));
+            state.mTextureRegionScale[0] = static_cast<F32>(output_width - 1u) /
+                                           static_cast<F32>(output.getWidth());
+            state.mTextureRegionScale[1] = static_cast<F32>(output_height - 1u) /
+                                           static_cast<F32>(output.getHeight());
+            state.mTextureRegionOffset[0] = 0.5f / static_cast<F32>(output.getWidth());
+            state.mTextureRegionOffset[1] = 0.5f / static_cast<F32>(output.getHeight());
+
+            const F32 display_u = frame.mWorldSurfaceUEdge.magVec();
+            const F32 display_v = frame.mWorldSurfaceVEdge.magVec();
+            const F32 display_aspect = display_v > F_ALMOST_ZERO
+                ? display_u / display_v : 1.f;
+            const F32 capture_aspect = capture->mMode == ECaptureMode::CAMERA_FEED
+                ? capture->mCamera.mOutputAspect
+                : static_cast<F32>(output_width) / static_cast<F32>(output_height);
+            const F32 anchor_x = display->mSettings.mAnchor[0];
+            const F32 anchor_y = display->mSettings.mAnchor[1];
+            if (capture->mMode == ECaptureMode::CAMERA_FEED &&
+                std::isfinite(display_aspect) && std::isfinite(capture_aspect) &&
+                display_aspect > F_ALMOST_ZERO && capture_aspect > F_ALMOST_ZERO)
+            {
+                if (display->mSettings.mFitMode == EFitMode::FIT)
+                {
+                    state.mLetterbox = 1;
+                    if (display_aspect > capture_aspect)
+                    {
+                        const F32 fraction = capture_aspect / display_aspect;
+                        state.mDisplayToCaptureScale[0] = 1.f / fraction;
+                        state.mDisplayToCaptureOffset[0] =
+                            -anchor_x * (1.f - fraction) / fraction;
+                    }
+                    else
+                    {
+                        const F32 fraction = display_aspect / capture_aspect;
+                        state.mDisplayToCaptureScale[1] = 1.f / fraction;
+                        state.mDisplayToCaptureOffset[1] =
+                            -anchor_y * (1.f - fraction) / fraction;
+                    }
+                }
+                else if (display->mSettings.mFitMode == EFitMode::FILL)
+                {
+                    if (display_aspect > capture_aspect)
+                    {
+                        const F32 crop = capture_aspect / display_aspect;
+                        state.mDisplayToCaptureScale[1] = crop;
+                        state.mDisplayToCaptureOffset[1] = anchor_y * (1.f - crop);
+                    }
+                    else
+                    {
+                        const F32 crop = display_aspect / capture_aspect;
+                        state.mDisplayToCaptureScale[0] = crop;
+                        state.mDisplayToCaptureOffset[0] = anchor_x * (1.f - crop);
+                    }
+                }
+            }
+            std::memcpy(state.mBarColorLinear, display->mSettings.mBarColorLinear,
+                        sizeof(state.mBarColorLinear));
+
+            // Full aux-target scissor (see header note): the main-view lens-rect
+            // scissor math is invalid in the aux camera's viewport.
+            state.mScissor[0] = 0;
+            state.mScissor[1] = 0;
+            state.mScissor[2] = static_cast<S32>(screen_target->getWidth());
+            state.mScissor[3] = static_cast<S32>(screen_target->getHeight());
+            state.mEdgeFeather = frame.mEdgeFeather;
             ++state_count;
         }
     }

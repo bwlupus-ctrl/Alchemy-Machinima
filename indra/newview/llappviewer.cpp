@@ -69,6 +69,7 @@
 #include "alobjectpathmover.h"  // [ObjectPath] per-frame object drives (idle tick)
 #include "alghoststudio.h"      // per-instance Keep facing transforms (idle tick)
 #include "altoolghostedit.h"    // [GhostStudio] per-frame manip-proxy sync (idle tick)
+#include "aldirectoranimswitcher.h" // presentation-time animation switchboard
 #include "aldirectorswitcher.h" // presentation-time camera switch schedule
 #include "llcinematiccamera.h"
 #include "llflycamrecorder.h"
@@ -5510,6 +5511,11 @@ void LLAppViewer::idle()
     // before camera-owner arbitration. Inert while disarmed. Higher-priority
     // pilot/recorder/path cameras still win below.
     ALDirectorSwitcher::instance().tick(
+        LLPresentationTime::currentFrame().presentation_time);
+
+    // [Anim Switchboard] Resolve the directed-animation program for this same
+    // frozen presentation frame. Inert while disarmed.
+    ALDirectorAnimSwitcher::instance().tick(
         LLPresentationTime::currentFrame().presentation_time);
 
     if (gAgentPilot.isPlaying() && gAgentPilot.getOverrideCamera())

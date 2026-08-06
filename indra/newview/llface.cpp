@@ -54,6 +54,7 @@
 #include "llviewershadermgr.h"
 #include "llviewertexture.h"
 #include "llvoavatar.h"
+#include "llcontrolavatar.h"
 #include "llsculptidsize.h"
 #include "llmeshrepository.h"
 #include "llskinningutil.h"
@@ -2313,6 +2314,36 @@ F32 LLFace::getTextureVirtualSize()
     return face_area;
 }
 
+// Ghost entity clones share a post-skin outer transform (LLClientOuterTransform) via their
+// object and/or skinning avatar. Mirrors resolve_outer_transform() in llvovolume.cpp so face
+// pixel-area culling can account for the rendered (scaled) footprint. Returns null for normal
+// content, leaving calcPixelArea byte-identical.
+static LLClientOuterTransform* face_resolve_outer_transform(LLFace* facep)
+{
+    LLViewerObject* object = facep ? facep->getViewerObject() : nullptr;
+    if (object && object->getClientOuterTransform())
+    {
+        return object->getClientOuterTransform();
+    }
+
+    LLVOAvatar* skinning_avatar = facep ? facep->mAvatar : nullptr;
+    if (LLControlAvatar* control = dynamic_cast<LLControlAvatar*>(skinning_avatar))
+    {
+        if (LLVOAvatar* wearer = control->getAttachedAvatar())
+        {
+            if (wearer->hasClientOuterTransform())
+            {
+                return wearer->getClientOuterTransformHandle();
+            }
+        }
+    }
+    if (skinning_avatar && skinning_avatar->hasClientOuterTransform())
+    {
+        return skinning_avatar->getClientOuterTransformHandle();
+    }
+    return nullptr;
+}
+
 bool LLFace::calcPixelArea(F32& cos_angle_to_view_dir, F32& radius)
 {
     constexpr F32 PIXEL_AREA_UPDATE_PERIOD = 0.1f;
@@ -2412,6 +2443,25 @@ bool LLFace::calcPixelArea(F32& cos_angle_to_view_dir, F32& radius)
         size.setSub(mExtents[1], mExtents[0]);
     }
     size.mul(0.5f);
+
+    // Ghost entity clones render at an outer scale about a world-space foot pivot, but the
+    // extents above (native mExtents / joint-derived mRiggedExtents) are unscaled -- so faces on
+    // a large clone evaluate their 1x pixel area and cross the ~8px force-cull, blinking. Scale
+    // the size and remap the center through the foot pivot so the cull and distance use the
+    // rendered footprint. Guarded -> null for normal content, so calcPixelArea is byte-identical.
+    if (LLClientOuterTransform* outer = face_resolve_outer_transform(this))
+    {
+        if (outer->mEnabled && !is_approx_equal(outer->mScale, 1.f))
+        {
+            LLVector3 scaled_center(center.getF32ptr());
+            scaled_center = outer->mFootPivot + outer->mScale * (scaled_center - outer->mFootPivot);
+            center.load3(scaled_center.mV);
+
+            LLVector4a scale_vec;
+            scale_vec.splat(outer->mScale);
+            size.mul(scale_vec);
+        }
+    }
 
     LLViewerCamera* camera = LLViewerCamera::getInstance();
 

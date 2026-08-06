@@ -163,6 +163,7 @@ set(viewer_SOURCE_FILES
     alcheatcodes.cpp
     alclassifieditem.cpp
     alderenderlist.cpp
+    aldirectoranimswitcher.cpp
     aldirectorhotkeys.cpp
     aldirectorswitcher.cpp
     aldirectorswitchermodel.cpp
@@ -305,6 +306,7 @@ set(viewer_SOURCE_FILES
     alpanelactormover.cpp
     alpanelanimpreview.cpp
     alpanelcinecamparams.cpp
+    alpaneldirectoranimswitcher.cpp
     alpaneldirectorswitcher.cpp
     alpanelweathersettings.cpp
     alpanelflycamorbit.cpp
@@ -997,6 +999,7 @@ set(viewer_HEADER_FILES
     alchatcommand.h
     alclassifieditem.h
     alderenderlist.h
+    aldirectoranimswitcher.h
     aldirectorhotkeys.h
     aldirectorswitcher.h
     aldirectorswitchermodel.h
@@ -1143,6 +1146,7 @@ set(viewer_HEADER_FILES
     alpanelactormover.h
     alpanelanimpreview.h
     alpanelcinecamparams.h
+    alpaneldirectoranimswitcher.h
     alpaneldirectorswitcher.h
     alpanelweathersettings.h
     alpanelflycamorbit.h

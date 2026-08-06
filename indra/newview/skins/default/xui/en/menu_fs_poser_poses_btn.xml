@@ -32,4 +32,12 @@
      name="load_all">
         <on_click function="Pose.Menu" parameter="all"/>
     </menu_item_call>
+    <menu_item_separator
+     layout="topleft" />
+    <menu_item_check
+     control_name="FSPoserLoadBlackDragonFormat"
+     label="Black Dragon format"
+     layout="topleft"
+     tool_tip="Interpret loaded poses as Black Dragon format (swaps pitch/yaw on load)"
+     name="load_as_black_dragon" />
 </toggleable_menu>

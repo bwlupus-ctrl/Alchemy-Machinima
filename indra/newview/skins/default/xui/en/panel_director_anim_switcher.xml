@@ -1,0 +1,313 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- Director Animation Switchboard. ALPanelDirectorAnimSwitcher owns the
+     twelve-slot bank/editor wiring; the arm/auto/scheduler controls bind
+     directly to gSavedSettings so this panel can be embedded by any host.
+     All settings default off: disarmed leaves every avatar untouched. -->
+<panel
+ background_visible="false"
+ border="false"
+ height="336"
+ layout="topleft"
+ name="panel_director_anim_switcher"
+ width="340">
+    <text
+     follows="left|top"
+     font="SansSerifBold"
+     height="16"
+     layout="topleft"
+     left="8"
+     name="anim_switcher_title"
+     top="5"
+     width="140">
+        ANIM SWITCHBOARD
+    </text>
+    <check_box
+     control_name="DirectorAnimSwitcherArmed"
+     follows="left|top"
+     height="18"
+     label="Armed"
+     layout="topleft"
+     left="150"
+     name="anim_switcher_armed"
+     tool_tip="Master switchboard arm. Off leaves all avatars untouched; slot buttons then only select for editing."
+     top="3"
+     width="72" />
+    <check_box
+     control_name="DirectorAnimSwitcherAuto"
+     follows="left|top"
+     height="18"
+     label="Auto"
+     layout="topleft"
+     left="232"
+     name="anim_switcher_auto"
+     tool_tip="Automatically punch slots whose Use in auto checkbox is on, on the interval below."
+     top="3"
+     width="64" />
+
+    <text
+     follows="left|top|right"
+     height="16"
+     layout="topleft"
+     left="8"
+     name="anim_program_status"
+     top="25"
+     use_ellipses="true"
+     width="324">
+        Disarmed - slot buttons select for editing only
+    </text>
+
+    <!-- 4 x 3 program buttons. A disabled slot remains manually punchable;
+         its Use in auto checkbox only excludes it from automatic selection. -->
+    <button follows="left|top" height="24" is_toggle="true" label="1" layout="topleft" left="8"   name="anim_slot_01" top="45" use_ellipses="true" width="77" />
+    <button follows="left|top" height="24" is_toggle="true" label="2" layout="topleft" left="89"  name="anim_slot_02" top="45" use_ellipses="true" width="77" />
+    <button follows="left|top" height="24" is_toggle="true" label="3" layout="topleft" left="170" name="anim_slot_03" top="45" use_ellipses="true" width="77" />
+    <button follows="left|top" height="24" is_toggle="true" label="4" layout="topleft" left="251" name="anim_slot_04" top="45" use_ellipses="true" width="77" />
+    <button follows="left|top" height="24" is_toggle="true" label="5" layout="topleft" left="8"   name="anim_slot_05" top="73" use_ellipses="true" width="77" />
+    <button follows="left|top" height="24" is_toggle="true" label="6" layout="topleft" left="89"  name="anim_slot_06" top="73" use_ellipses="true" width="77" />
+    <button follows="left|top" height="24" is_toggle="true" label="7" layout="topleft" left="170" name="anim_slot_07" top="73" use_ellipses="true" width="77" />
+    <button follows="left|top" height="24" is_toggle="true" label="8" layout="topleft" left="251" name="anim_slot_08" top="73" use_ellipses="true" width="77" />
+    <button follows="left|top" height="24" is_toggle="true" label="9" layout="topleft" left="8"   name="anim_slot_09" top="101" use_ellipses="true" width="77" />
+    <button follows="left|top" height="24" is_toggle="true" label="10" layout="topleft" left="89"  name="anim_slot_10" top="101" use_ellipses="true" width="77" />
+    <button follows="left|top" height="24" is_toggle="true" label="11" layout="topleft" left="170" name="anim_slot_11" top="101" use_ellipses="true" width="77" />
+    <button follows="left|top" height="24" is_toggle="true" label="12" layout="topleft" left="251" name="anim_slot_12" top="101" use_ellipses="true" width="77" />
+
+    <text
+     follows="left|top"
+     font="SansSerifBold"
+     height="16"
+     layout="topleft"
+     left="8"
+     name="anim_selected_slot"
+     top="132"
+     width="120">
+        Slot 1 setup
+    </text>
+    <button
+     follows="left|top"
+     height="18"
+     label="Reset slot"
+     layout="topleft"
+     left="250"
+     name="anim_slot_reset"
+     tool_tip="Clear this slot's animation, label, target, priority, speed and flags back to defaults. Does not change Armed or Auto."
+     top="129"
+     width="80" />
+
+    <text
+     follows="left|top"
+     height="16"
+     layout="topleft"
+     left="8"
+     name="anim_slot_uuid_text"
+     top="153"
+     width="70">
+        Anim UUID
+    </text>
+    <line_editor
+     commit_on_focus_lost="true"
+     follows="left|top"
+     height="20"
+     layout="topleft"
+     left="80"
+     max_length_chars="36"
+     name="anim_slot_uuid"
+     tool_tip="Paste an animation asset UUID, drag an animation from inventory onto this panel, or use From Explorer."
+     top="151"
+     width="160" />
+    <button
+     follows="left|top"
+     height="20"
+     label="From Explorer"
+     layout="topleft"
+     left="244"
+     name="anim_from_explorer"
+     tool_tip="Copy the animation currently selected in the Animation Explorer floater into this slot."
+     top="151"
+     width="88" />
+
+    <text
+     follows="left|top"
+     height="16"
+     layout="topleft"
+     left="8"
+     name="anim_slot_label_text"
+     top="177"
+     width="40">
+        Label
+    </text>
+    <line_editor
+     commit_on_focus_lost="true"
+     follows="left|top|right"
+     height="20"
+     layout="topleft"
+     left="50"
+     max_length_chars="40"
+     name="anim_slot_label"
+     tool_tip="Operator label shown on the program button. Empty falls back to the animation id."
+     top="175"
+     width="282" />
+
+    <text
+     follows="left|top"
+     height="16"
+     layout="topleft"
+     left="8"
+     name="anim_slot_target_text"
+     top="201"
+     width="44">
+        Target
+    </text>
+    <combo_box
+     follows="left|top"
+     height="20"
+     layout="topleft"
+     left="54"
+     name="anim_slot_target"
+     tool_tip="Who this slot drives. Cast = every cast avatar (self when the cast is empty); Self = my avatar only; Ghosts = ghost clones only."
+     top="197"
+     width="108">
+        <combo_box.item label="Cast" name="cast" value="0" />
+        <combo_box.item label="Self" name="self" value="1" />
+        <combo_box.item label="Ghosts" name="ghosts" value="2" />
+    </combo_box>
+    <text
+     follows="left|top"
+     height="16"
+     layout="topleft"
+     left="170"
+     name="anim_slot_priority_text"
+     top="201"
+     width="48">
+        Priority
+    </text>
+    <combo_box
+     follows="left|top"
+     height="20"
+     layout="topleft"
+     left="220"
+     name="anim_slot_priority"
+     tool_tip="Motion priority override for the self path (ignored by ghost clones). Default keeps the animation's authored priority."
+     top="197"
+     width="112">
+        <combo_box.item label="Default" name="default" value="-1" />
+        <combo_box.item label="Low (0)" name="p0" value="0" />
+        <combo_box.item label="Medium (1)" name="p1" value="1" />
+        <combo_box.item label="High (2)" name="p2" value="2" />
+        <combo_box.item label="Higher (3)" name="p3" value="3" />
+        <combo_box.item label="Highest (4)" name="p4" value="4" />
+        <combo_box.item label="Priority 5" name="p5" value="5" />
+        <combo_box.item label="Priority 6" name="p6" value="6" />
+        <combo_box.item label="Additive (7)" name="p7" value="7" />
+    </combo_box>
+
+    <spinner
+     decimal_digits="2"
+     follows="left|top"
+     height="18"
+     increment="0.1"
+     label="Speed"
+     label_width="44"
+     layout="topleft"
+     left="8"
+     max_val="5"
+     min_val="0.1"
+     name="anim_slot_speed"
+     tool_tip="Playback speed for ghost clones (ignored by the self path). 1.0 is normal."
+     top="225"
+     width="150" />
+    <check_box
+     follows="left|top"
+     height="18"
+     label="Loop"
+     layout="topleft"
+     left="168"
+     name="anim_slot_loop"
+     tool_tip="Ghost clones: loop the animation (retrigger) versus play it once."
+     top="225"
+     width="60" />
+    <check_box
+     follows="left|top"
+     height="18"
+     label="Snap on cut"
+     layout="topleft"
+     left="232"
+     name="anim_slot_snap"
+     tool_tip="Self path: stop the previous animation immediately on a cut instead of easing it out."
+     top="225"
+     width="100" />
+
+    <check_box
+     follows="left|top"
+     height="18"
+     label="Use in auto"
+     layout="topleft"
+     left="8"
+     name="anim_slot_enabled"
+     tool_tip="Include this slot in automatic cuts. Manual punches still work when this is off."
+     top="249"
+     width="110" />
+    <text
+     follows="left|top|right"
+     height="16"
+     layout="topleft"
+     left="124"
+     name="anim_import_status"
+     top="250"
+     use_ellipses="true"
+     width="208" />
+
+    <text
+     follows="left|top"
+     font="SansSerifBold"
+     height="16"
+     layout="topleft"
+     left="8"
+     name="anim_auto_title"
+     top="275"
+     width="120">
+        AUTO DIRECTOR
+    </text>
+    <spinner
+     control_name="DirectorAnimSwitcherIntervalSec"
+     decimal_digits="1"
+     follows="left|top"
+     height="16"
+     increment="0.5"
+     label="Every"
+     label_width="36"
+     layout="topleft"
+     left="8"
+     max_val="120"
+     min_val="0.25"
+     name="anim_interval"
+     tool_tip="Seconds between automatic cuts."
+     top="295"
+     width="120" />
+    <spinner
+     control_name="DirectorAnimSwitcherJitterSec"
+     decimal_digits="1"
+     follows="left|top"
+     height="16"
+     increment="0.1"
+     label="Jitter"
+     label_width="34"
+     layout="topleft"
+     left="140"
+     max_val="30"
+     min_val="0"
+     name="anim_jitter"
+     tool_tip="Maximum deterministic plus/minus timing variation in seconds."
+     top="295"
+     width="108" />
+    <check_box
+     control_name="DirectorAnimSwitcherSequence"
+     follows="left|top"
+     height="18"
+     label="Sequence"
+     layout="topleft"
+     left="256"
+     name="anim_sequence"
+     tool_tip="On: cut slots in order. Off: deterministic random selection."
+     top="296"
+     width="80" />
+</panel>

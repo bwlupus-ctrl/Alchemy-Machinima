@@ -1384,6 +1384,42 @@ void LLSpatialBridge::updateSpatialExtents()
         newMin.setMin(newMin, min);
         newMax.setMax(newMax, max);
     }
+
+    // Ghost entity clones apply a render-only outer scale about a world-space foot pivot
+    // (LLClientOuterTransform). This bridge's octree bounds come from unscaled native geometry,
+    // so a large clone's attachment is frustum/occlusion-culled by its tiny native box (whole
+    // attachments blink off). Remap the finished world-space box through the same foot pivot so
+    // culling and mRadius below track the rendered size. Mirrors LLVOAvatar::calculateSpatialExtents;
+    // guarded so scale-1 / non-clone bridges stay byte-identical.
+    const LLClientOuterTransform* outer = nullptr;
+    if (mDrawable)
+    {
+        if (LLViewerObject* vobj = mDrawable->getVObj())
+        {
+            outer = vobj->getClientOuterTransform();
+            if (!outer || !outer->mEnabled)
+            {
+                outer = nullptr;
+                if (LLVOAvatar* avatar = vobj->getAvatar())
+                {
+                    if (avatar->hasClientOuterTransform())
+                    {
+                        outer = avatar->getClientOuterTransformHandle();
+                    }
+                }
+            }
+        }
+    }
+    if (outer && outer->mEnabled && !is_approx_equal(outer->mScale, 1.f))
+    {
+        LLVector3 scaled_min(newMin.getF32ptr());
+        LLVector3 scaled_max(newMax.getF32ptr());
+        scaled_min = outer->mFootPivot + outer->mScale * (scaled_min - outer->mFootPivot);
+        scaled_max = outer->mFootPivot + outer->mScale * (scaled_max - outer->mFootPivot);
+        newMin.load3(scaled_min.mV);
+        newMax.load3(scaled_max.mV);
+    }
+
     setSpatialExtents(newMin, newMax);
 
     LLVector4a diagonal;

@@ -411,6 +411,16 @@ void onRenderTargetsReleased();
 U32 getCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
                        U32 capacity);
 
+// [Prism camera feed - recursive mirror] Auxiliary-capture twin of
+// getCompositeStates. Runs ONLY inside the Prism aux (VCam) render
+// (sPrismLensRender == true) and only into the active aux pack screen, letting
+// display faces composite the PREVIOUS frame's retained feed while the aux draws
+// the current frame - a stable, 1-frame-lagged recursive mirror. Kept separate so
+// the main-view composite path (getCompositeStates) stays byte-identical; the
+// pipeline selects this variant only when sPrismLensRender is set.
+U32 getAuxCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
+                          U32 capacity);
+
 // Plane whose non-negative half-space is behind the lens, in agent space.
 bool getActiveClipPlane(LLPlane& plane);
 

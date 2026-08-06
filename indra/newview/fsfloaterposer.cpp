@@ -51,6 +51,8 @@
 #include "llwindow.h"
 #include "v4color.h"
 
+#include <utility>
+
 namespace
 {
 constexpr char             POSE_INTERNAL_FORMAT_FILE_MASK[]    = "*.xml";
@@ -1296,6 +1298,11 @@ bool FSFloaterPoser::loadPoseFromXml(LLVOAvatar* avatar, const std::string& pose
                          loadMethod == ROT_POS_AND_SCALES || loadMethod == SELECTIVE;
     bool loadSelective = loadMethod == SELECTIVE || loadMethod == SELECTIVE_ROT;
 
+    // Optional Black Dragon import: BD saves bone rotations as Euler [roll, yaw, pitch]
+    // (VX, VZ, VY) while Firestorm expects [roll, pitch, yaw] (VX, VY, VZ). When enabled,
+    // swap Y/Z on each rotation as it loads. Off by default -> FS load is byte-identical.
+    const bool load_as_black_dragon = gSavedSettings.getBOOL("FSPoserLoadBlackDragonFormat");
+
     try
     {
         LLSD         pose;
@@ -1379,7 +1386,16 @@ bool FSFloaterPoser::loadPoseFromXml(LLVOAvatar* avatar, const std::string& pose
                 mPoserAnimator.loadJointPosition(avatar, poserJoint, loadPositionsAndScalesAsDeltas, vec3);
 
                 if (loadRotations && control_map.has("rotation"))
+                {
                     vec3.setValue(control_map["rotation"]);
+                    if (load_as_black_dragon)
+                    {
+                        // BD Euler [roll, yaw, pitch] (VX, VZ, VY) -> FS [roll, pitch, yaw]
+                        // (VX, VY, VZ). Rotation only; positions/scales are unswizzled and
+                        // already load correctly on the version<=3 non-delta path.
+                        std::swap(vec3.mV[VY], vec3.mV[VZ]);
+                    }
+                }
                 else
                     vec3.clear();
 

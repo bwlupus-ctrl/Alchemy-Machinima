@@ -91,6 +91,10 @@ public:
     bool postBuild() override;
     void addAnimation(const LLUUID& id, const LLUUID& playedBy, F64 time); // called from RecentAnimationList
 
+    // Currently selected animation asset id. Consumed by the Director
+    // Animation Switchboard's "From Explorer" import (null when nothing picked).
+    const LLUUID& getSelectedAnimId() const { return mCurrentAnimationID; }
+
     // The preview pane + its mouse-drag-to-rotate handling + the own-avatar
     // Stop / Stop-and-Revoke / Blacklist / Capture-all controls now live in the
     // shared ALPanelAnimPreview (panel_anim_preview.xml), embedded below; this
