@@ -139,6 +139,16 @@
          name="remove_capture"
          top="121"
          width="120" />
+        <button
+         follows="left|bottom"
+         height="22"
+         label="New virtual cam"
+         layout="topleft"
+         left="242"
+         name="btn_new_virtual"
+         tool_tip="Create a prim-free virtual camera at your current view. Needs no rezzed object; works in no-rez parcels."
+         top="121"
+         width="106" />
         <text
          follows="left|right|bottom"
          height="18"
@@ -185,7 +195,7 @@
              width="864">
                 <panel
                  follows="left|top|right"
-                 height="620"
+                 height="736"
                  layout="topleft"
                  left="0"
                  name="capture_settings_document"
@@ -206,7 +216,7 @@
                     <layout_stack
                      animate="false"
                      follows="left|top|right"
-                     height="580"
+                     height="696"
                      layout="topleft"
                      left="10"
                      name="capture_mode_stack"
@@ -216,7 +226,7 @@
                          <layout_panel
                           auto_resize="false"
                           follows="left|top|right"
-                          height="336"
+                          height="452"
                           layout="topleft"
                           name="camera_settings_panel">
                             <text
@@ -349,6 +359,15 @@
                              word_wrap="true">
                                 The source is sampled from its live render transform. Prism does not hide marker geometry automatically and does not use reflection probes.
                             </text>
+                            <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="0" name="camera_guide_heading" top="328" width="300">Camera guide (render-only frustum gizmo)</text>
+                            <check_box follows="left|top" height="16" label="Show camera guide" layout="topleft" left="0" name="show_guide" tool_tip="Draw a client-side wireframe frustum gizmo at this camera's world transform. No prim is rezzed; nothing is drawn while the UI is hidden (filming)." top="348" width="200" />
+                            <check_box follows="left|top" height="16" label="Rule of thirds" layout="topleft" left="8" name="guide_thirds" tool_tip="Subdivide the framing gate into a 3x3 rule-of-thirds grid" top="370" width="140" />
+                            <check_box follows="left|top" height="16" label="Up / roll" layout="topleft" left="152" name="guide_uproll" tool_tip="Draw an up/roll nub on the top edge of the gate so tilt reads" top="370" width="100" />
+                            <check_box follows="left|top" height="16" label="Center crosshair" layout="topleft" left="264" name="guide_crosshair" tool_tip="Draw a small crosshair at the gate centre" top="370" width="150" />
+                            <check_box follows="left|top" height="16" label="Clip range markers" layout="topleft" left="424" name="guide_clipmarkers" tool_tip="Draw the near-clip rectangle so the depth range reads" top="370" width="180" />
+                            <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="0" name="virtual_camera_heading" top="396" width="300">Virtual camera (prim-free)</text>
+                            <check_box follows="left|top" height="16" label="Virtual camera (no prim)" layout="topleft" left="0" name="virtual_camera" tool_tip="Anchor this camera to a stored world transform instead of an in-world object. No prim is rezzed; works in no-rez parcels. Use 'Snap to my view' to place it." top="416" width="200" />
+                            <button follows="left|top" height="22" label="Snap to my view" layout="topleft" left="210" name="btn_snap_view" tool_tip="Store your current camera position and orientation as this virtual camera's transform" top="412" width="150" />
                         </layout_panel>
                         <layout_panel
                          auto_resize="false"
@@ -532,15 +551,16 @@
                     </combo_box>
                     <button follows="left|top" height="22" label="Remove" layout="topleft" left="224" name="remove_display" top="0" width="82" />
                     <button follows="left|top" height="22" label="Locate" layout="topleft" left="312" name="locate_display" top="0" width="76" />
-                    <text follows="left|top|right" height="18" layout="topleft" left="400" name="display_actions_hint" text_color="LtGray" top="3" use_ellipses="true" width="442">Select one flat world face, then Add selected face. No extra scene render.</text>
+                    <button follows="left|top" height="22" label="Add virtual screen" layout="topleft" left="396" name="add_virtual_screen" tool_tip="Create a prim-free virtual screen for this feed at your current view. Needs no rezzed object; works in no-rez parcels." top="0" width="150" />
+                    <text follows="left|top|right" height="18" layout="topleft" left="552" name="display_actions_hint" text_color="LtGray" top="3" use_ellipses="true" width="290">Add a face, or a prim-free virtual screen. No extra scene render.</text>
                 </layout_panel>
                 <layout_panel
                  auto_resize="false"
                  background_visible="true"
                  follows="left|right"
-                 height="96"
+                 height="140"
                  layout="topleft"
-                 min_dim="96"
+                 min_dim="140"
                  name="display_settings_panel"
                  user_resize="false">
                     <text follows="left|top|right" font="SansSerifBold" height="18" layout="topleft" left="8" name="display_source_rate" top="6" use_ellipses="true" width="836">Select a capture to view its displays.</text>
@@ -556,6 +576,15 @@
                     <spinner decimal_digits="2" follows="left|top" height="22" increment="0.05" label="G" label_width="14" layout="topleft" left="498" max_val="1" min_val="0" name="bar_green" top="32" width="76" />
                     <spinner decimal_digits="2" follows="left|top" height="22" increment="0.05" label="B" label_width="14" layout="topleft" left="580" max_val="1" min_val="0" name="bar_blue" top="32" width="76" />
                     <text follows="left|top|right" height="28" layout="topleft" left="8" name="display_settings_note" text_color="LtGray" top="62" width="836" word_wrap="true">Fit bars preserve the capture aspect; Fill crops by anchor; Stretch maps the complete picture. These controls never own an FPS schedule.</text>
+                    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="8" name="virtual_screen_heading" top="96" width="300">Virtual screen (prim-free, selected display)</text>
+                    <slider decimal_digits="2" follows="left|top" height="18" increment="0.05" label="Height (m)" label_width="70" layout="topleft" left="8" max_val="20" min_val="0.10" name="screen_height" tool_tip="Height of the selected virtual screen in metres; width follows the aspect below" top="114" width="250" />
+                    <combo_box follows="left|top" height="22" layout="topleft" left="266" name="screen_aspect" tool_tip="Screen aspect; width = height x aspect. Custom keeps the current ratio while resizing." top="112" width="96">
+                        <combo_box.item label="16:9" name="screen_aspect_16_9" value="16:9" />
+                        <combo_box.item label="4:3" name="screen_aspect_4_3" value="4:3" />
+                        <combo_box.item label="1:1" name="screen_aspect_1_1" value="1:1" />
+                        <combo_box.item label="Custom" name="screen_aspect_custom" value="custom" />
+                    </combo_box>
+                    <button follows="left|top" height="22" label="Reposition to my view" layout="topleft" left="372" name="reposition_screen" tool_tip="Move the selected virtual screen a few metres in front of your current view, facing you" top="112" width="190" />
                 </layout_panel>
                 <layout_panel
                  auto_resize="true"

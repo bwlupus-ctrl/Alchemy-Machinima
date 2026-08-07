@@ -1804,6 +1804,11 @@ void render_ui_3d()
         // [ActorMover] in-world heading preview lines (client-side only;
         // no-op unless ActorMoverShowHeading is on and the floater is open)
         LLActorMover::instance().renderHeadingPreview();
+        // [Prism] render-only camera frustum guides (client-side only; cheap
+        // early-out unless PrismCameraGuideEnable is on AND some camera feed has
+        // its per-camera guide toggled). Under the same UI-visibility gate so it
+        // hides while filming.
+        LLPrismLens::renderCameraGuides();
         // [ActorMover] While the path-edit tool is active, ALWAYS draw the edit
         // actor's path overlay -- ribbon + every node from the first one, plus
         // hover/selection highlight -- independent of the Show-path toggle, roster

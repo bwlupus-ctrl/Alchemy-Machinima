@@ -1832,6 +1832,52 @@ public:
         return LLPrismLens::ERegistryResult::OK;
     }
 
+    // Prim-free camera. Mirrors addCamera's slot/handle/generation/revision
+    // bookkeeping and runtime init, but skips the object identity and
+    // eligibility checks: the source is a stored transform, not a selected
+    // in-world object. mCameraObjectId is left null and mCamera.mVirtual is set.
+    LLPrismLens::ERegistryResult addVirtualCamera(
+        LLPrismLens::CaptureHandle* handle, const LLVector3& pos,
+        const LLQuaternion& rot, std::string* reason)
+    {
+        if (count() >= LLPrismLens::MAX_CAPTURES)
+        {
+            if (reason) *reason = "Maximum of 3 Prism captures reached.";
+            return LLPrismLens::ERegistryResult::AT_CAPACITY;
+        }
+        LLPrismLens::CameraSettings camera; // defaults (FIXED fov, etc.)
+        camera.mVirtual = true;
+        camera.mVirtualPos = pos;
+        camera.mVirtualRot = rot;
+        std::string camera_reason;
+        if (!validCameraSettings(camera, &camera_reason))
+        {
+            if (reason) *reason = camera_reason;
+            return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
+        }
+        const S32 slot = freeCaptureSlot();
+        U64 generation = 0;
+        if (slot < 0 || !allocateGeneration(generation))
+        {
+            if (reason) *reason = "Prism capture capacity or handle generation exhausted.";
+            return LLPrismLens::ERegistryResult::AT_CAPACITY;
+        }
+        PrismInstance capture;
+        capture.mOccupied = true;
+        capture.mHandle.mId.generate();
+        capture.mHandle.mGeneration = generation;
+        capture.mMode = LLPrismLens::ECaptureMode::CAMERA_FEED;
+        capture.mCameraObjectId.setNull(); // objectless: virtual transform only
+        capture.mCamera = camera;
+        capture.mRuntime.mActivity = LLPrismLens::EActivityState::IDLE;
+        capture.mNextDueTime = LLTimer::getTotalSeconds();
+        mLenses[slot] = capture;
+        ++mRevision;
+        if (handle) *handle = capture.mHandle;
+        if (reason) reason->clear();
+        return LLPrismLens::ERegistryResult::OK;
+    }
+
     LLPrismLens::ERegistryResult addLens(LLPrismLens::CaptureHandle* handle,
                                          std::string* reason)
     {
@@ -1923,6 +1969,69 @@ public:
         display.mObjectId = object_id;
         display.mTE = te;
         display.mSettings.mFitMode = fit;
+        mDisplays[display_slot] = display;
+        ++mLenses[capture_slot].mDisplayCount;
+        ++mRevision;
+        if (handle) *handle = display.mHandle;
+        if (reason) reason->clear();
+        return LLPrismLens::ERegistryResult::OK;
+    }
+
+    // Prim-free screen. Mirrors addDisplay's capacity / slot / handle /
+    // generation / revision bookkeeping, but takes a stored world transform +
+    // size instead of a selected face: no selection status, no face identity, no
+    // surface-geometry validation. mObjectId stays null, mTE stays -1, and
+    // mSettings.mVirtual is set. A virtual display counts toward the capture's
+    // mDisplayCount exactly like a real binding.
+    LLPrismLens::ERegistryResult addVirtualDisplay(
+        const LLPrismLens::CaptureHandle& capture_handle,
+        const LLVector3& pos, const LLQuaternion& rot, F32 width, F32 height,
+        LLPrismLens::DisplayHandle* handle, std::string* reason)
+    {
+        const S32 capture_slot = findCapture(capture_handle);
+        if (capture_slot < 0)
+        {
+            if (reason) *reason = "That capture no longer exists.";
+            return LLPrismLens::ERegistryResult::STALE_HANDLE;
+        }
+        if (mLenses[capture_slot].mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
+        {
+            if (reason) *reason = "A surface lens owns exactly one display face.";
+            return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
+        }
+        if (displayCount() >= LLPrismLens::MAX_DISPLAY_BINDINGS)
+        {
+            if (reason) *reason = "Maximum of 16 Prism display faces reached.";
+            return LLPrismLens::ERegistryResult::AT_CAPACITY;
+        }
+        LLPrismLens::DisplaySettings settings; // defaults (FIT, etc.)
+        settings.mVirtual = true;
+        settings.mPos = pos;
+        settings.mRot = rot;
+        settings.mWidth = width;
+        settings.mHeight = height;
+        std::string settings_reason;
+        if (!validDisplaySettings(settings, &settings_reason))
+        {
+            if (reason) *reason = settings_reason;
+            return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
+        }
+        const S32 display_slot = freeDisplaySlot();
+        U64 generation = 0;
+        if (display_slot < 0 || !allocateGeneration(generation))
+        {
+            if (reason) *reason = "Prism display capacity or handle generation exhausted.";
+            return LLPrismLens::ERegistryResult::AT_CAPACITY;
+        }
+        PrismDisplay display;
+        display.mOccupied = true;
+        display.mHandle.mId.generate();
+        display.mHandle.mGeneration = generation;
+        display.mCaptureSlot = static_cast<U32>(capture_slot);
+        display.mCaptureGeneration = mLenses[capture_slot].mHandle.mGeneration;
+        display.mObjectId.setNull(); // faceless: virtual transform only
+        display.mTE = -1;
+        display.mSettings = settings;
         mDisplays[display_slot] = display;
         ++mLenses[capture_slot].mDisplayCount;
         ++mRevision;
@@ -2371,6 +2480,56 @@ public:
         return true;
     }
 
+    // Synthesize a virtual screen's surface basis + world rectangle into `frame`
+    // from a stored transform + size. Returns false for a non-finite or
+    // degenerate record. Everything is world/agent space -- the same space the
+    // quad positions and the composite modelview use. The dual basis uses the
+    // SAME general formula as solveSurfaceBasis (623-625), which for an
+    // orthogonal rectangle reduces to UDual = u_edge/|u_edge|^2 and
+    // VDual = v_edge/|v_edge|^2, so a virtual screen maps its feed identically to
+    // a real rectangular face.
+    static bool synthesizeVirtualDisplayFrame(
+        const LLPrismLens::DisplaySettings& settings, PrismFrame& frame)
+    {
+        if (!settings.mPos.isFinite() || !settings.mRot.isFinite() ||
+            !std::isfinite(settings.mWidth) || !std::isfinite(settings.mHeight) ||
+            settings.mWidth <= F_ALMOST_ZERO || settings.mHeight <= F_ALMOST_ZERO)
+        {
+            return false;
+        }
+        // right = local +X, up = local +Y in agent space (the camera-guide
+        // convention). The rectangle lies in the right/up plane, centred on mPos.
+        const LLVector3 right = LLVector3::x_axis * settings.mRot;
+        const LLVector3 up = LLVector3::y_axis * settings.mRot;
+        const F32 half_w = settings.mWidth * 0.5f;
+        const F32 half_h = settings.mHeight * 0.5f;
+        const LLVector3 tl = settings.mPos - right * half_w + up * half_h;
+        const LLVector3 tr = settings.mPos + right * half_w + up * half_h;
+        const LLVector3 bl = settings.mPos - right * half_w - up * half_h;
+        const LLVector3 u_edge = tr - tl; // rightward, |u_edge| == width
+        const LLVector3 v_edge = bl - tl; // downward,  |v_edge| == height
+        const F32 uu = u_edge * u_edge;
+        const F32 vv = v_edge * v_edge;
+        const F32 uv = u_edge * v_edge;
+        const F32 dual_determinant = uu * vv - uv * uv;
+        if (!std::isfinite(uu) || !std::isfinite(vv) || !std::isfinite(uv) ||
+            uu <= SURFACE_UV_EPSILON * SURFACE_UV_EPSILON ||
+            vv <= SURFACE_UV_EPSILON * SURFACE_UV_EPSILON ||
+            dual_determinant <= uu * vv * SURFACE_UV_EPSILON)
+        {
+            return false;
+        }
+        // A virtual screen's surface space IS its world/agent space, so the
+        // surface and world packs share the same origin and edges.
+        frame.mSurfaceOrigin = tl;
+        frame.mSurfaceUDual = (u_edge * vv - v_edge * uv) / dual_determinant;
+        frame.mSurfaceVDual = (v_edge * uu - u_edge * uv) / dual_determinant;
+        frame.mWorldSurfaceOrigin = tl;
+        frame.mWorldSurfaceUEdge = u_edge;
+        frame.mWorldSurfaceVEdge = v_edge;
+        return true;
+    }
+
     bool prepareDisplayFrame(PrismDisplay& display, const S32 viewport[4],
                              const glm::mat4& main_projection,
                              const glm::mat4& main_modelview)
@@ -2383,42 +2542,71 @@ public:
         std::memcpy(frame.mMainViewport, viewport, sizeof(frame.mMainViewport));
         makeDebugRect(viewport, frame.mDebugRect);
 
-        LLViewerObject* object = gObjectList.findObject(display.mObjectId);
-        LLVOVolume* volume = object ? dynamic_cast<LLVOVolume*>(object) : nullptr;
-        if (!object)
-        {
-            display.mRuntime.mHealth = LLPrismLens::EDisplayHealth::OFFLINE;
-            display.mRuntime.mVisibility = LLPrismLens::EDisplayVisibility::UNKNOWN;
-            display.mRuntime.mHealthReason = "Display object is outside the local object list.";
-            display.mRuntime.mVisibilityReason = "Visibility is unknown while the object is offline.";
-            return false;
-        }
-        if (object->isDead() || !volume || object->isHUDAttachment() ||
-            volume->isRiggedMesh() || volume->isAnimatedObject())
-        {
-            display.mRuntime.mHealth = LLPrismLens::EDisplayHealth::INVALID;
-            display.mRuntime.mVisibility = LLPrismLens::EDisplayVisibility::UNKNOWN;
-            display.mRuntime.mHealthReason = "Display must remain a live, static, non-HUD volume face.";
-            display.mRuntime.mVisibilityReason = "Invalid display geometry is not composited.";
-            return false;
-        }
-
+        // Resolved at composite time. For a real display it is the prim face; a
+        // virtual (prim-free) display has none and leaves this null, which is
+        // exactly what a virtual CompositeState expects.
         SurfaceGeometry geometry;
-        std::string validation_reason;
-        const ESurfaceValidation validation = validateSurfaceGeometry(
-            volume, display.mTE, frame, display.mSurfaceCache,
-            geometry, validation_reason);
-        if (validation != ESurfaceValidation::VALID)
+        if (display.mSettings.mVirtual)
         {
-            display.mRuntime.mHealth = validation == ESurfaceValidation::TRANSIENT
-                ? LLPrismLens::EDisplayHealth::OFFLINE
-                : LLPrismLens::EDisplayHealth::INVALID;
-            display.mRuntime.mVisibility = LLPrismLens::EDisplayVisibility::UNKNOWN;
-            display.mRuntime.mHealthReason = validation_reason;
-            display.mRuntime.mVisibilityReason = "Display geometry is not currently compositable.";
-            return false;
+            // Prim-free screen: synthesize the surface basis + world rectangle
+            // from the stored transform/size instead of reading a face. All of
+            // the following is in world/agent space -- the SAME space the quad
+            // positions and the composite modelview use -- so the shader's
+            // prism_uv = (position - surfaceOrigin) . UDual is correct. There is
+            // no object lookup and no surface-geometry validation.
+            if (!synthesizeVirtualDisplayFrame(display.mSettings, frame))
+            {
+                display.mRuntime.mHealth = LLPrismLens::EDisplayHealth::INVALID;
+                display.mRuntime.mVisibility = LLPrismLens::EDisplayVisibility::UNKNOWN;
+                display.mRuntime.mHealthReason = "Virtual screen transform or size is not usable.";
+                display.mRuntime.mVisibilityReason = "Invalid virtual screen is not composited.";
+                return false;
+            }
+        }
+        else
+        {
+            LLViewerObject* object = gObjectList.findObject(display.mObjectId);
+            LLVOVolume* volume = object ? dynamic_cast<LLVOVolume*>(object) : nullptr;
+            if (!object)
+            {
+                display.mRuntime.mHealth = LLPrismLens::EDisplayHealth::OFFLINE;
+                display.mRuntime.mVisibility = LLPrismLens::EDisplayVisibility::UNKNOWN;
+                display.mRuntime.mHealthReason = "Display object is outside the local object list.";
+                display.mRuntime.mVisibilityReason = "Visibility is unknown while the object is offline.";
+                return false;
+            }
+            if (object->isDead() || !volume || object->isHUDAttachment() ||
+                volume->isRiggedMesh() || volume->isAnimatedObject())
+            {
+                display.mRuntime.mHealth = LLPrismLens::EDisplayHealth::INVALID;
+                display.mRuntime.mVisibility = LLPrismLens::EDisplayVisibility::UNKNOWN;
+                display.mRuntime.mHealthReason = "Display must remain a live, static, non-HUD volume face.";
+                display.mRuntime.mVisibilityReason = "Invalid display geometry is not composited.";
+                return false;
+            }
+
+            std::string validation_reason;
+            const ESurfaceValidation validation = validateSurfaceGeometry(
+                volume, display.mTE, frame, display.mSurfaceCache,
+                geometry, validation_reason);
+            if (validation != ESurfaceValidation::VALID)
+            {
+                display.mRuntime.mHealth = validation == ESurfaceValidation::TRANSIENT
+                    ? LLPrismLens::EDisplayHealth::OFFLINE
+                    : LLPrismLens::EDisplayHealth::INVALID;
+                display.mRuntime.mVisibility = LLPrismLens::EDisplayVisibility::UNKNOWN;
+                display.mRuntime.mHealthReason = validation_reason;
+                display.mRuntime.mVisibilityReason = "Display geometry is not currently compositable.";
+                return false;
+            }
         }
 
+        // Shared main-view projection for BOTH real and virtual displays: the
+        // synthesized world rectangle projects through the identical corner /
+        // frustum-clip / lens-rect / target-size machinery, so a virtual screen
+        // gets real frustum culling and target sizing for free. (Its composite
+        // scissor is still the full target -- see getCompositeStates -- but the
+        // lens rect it computes here is only used for output sizing.)
         const glm::mat4 view_projection = main_projection * main_modelview;
         const LLVector3 corners[4] =
         {
@@ -2538,43 +2726,61 @@ public:
         LLViewerObject* source_object = gObjectList.findObject(capture.mCameraObjectId);
         LLVOVolume* source = source_object
             ? dynamic_cast<LLVOVolume*>(source_object) : nullptr;
-        if (capture.mCameraObjectId.isNull())
-        {
-            capture.mRuntime.mHealth = LLPrismLens::ECaptureHealth::UNBOUND_SOURCE;
-            capture.mRuntime.mReason = "No camera source is bound.";
-            return false;
-        }
-        if (!source_object)
-        {
-            capture.mRuntime.mHealth = LLPrismLens::ECaptureHealth::SOURCE_OFFLINE;
-            capture.mRuntime.mReason = "Camera source is outside the local object list.";
-            return false;
-        }
-        if (source_object->isDead() || !source || source_object->isHUDAttachment() ||
-            source->isRiggedMesh() || source->isAnimatedObject() ||
-            !source_object->getRenderPosition().isFinite() ||
-            !source_object->getRenderRotation().isFinite())
-        {
-            capture.mRuntime.mHealth = LLPrismLens::ECaptureHealth::INVALID_SOURCE;
-            capture.mRuntime.mReason = "Camera source is no longer a finite, static, non-HUD volume.";
-            return false;
-        }
+        // A virtual (prim-free) camera derives everything from its stored
+        // transform, so none of the object-required health returns apply and the
+        // effective FOV is always the fixed vertical FOV (FOLLOW_PROJECTOR is
+        // forbidden -- there is no spotlight object to read). The non-virtual
+        // path below is byte-identical to before.
         F32 vertical_fov = capture.mCamera.mFixedVerticalFovRad;
-        if (capture.mCamera.mFovMode == LLPrismLens::EFovMode::FOLLOW_PROJECTOR)
+        if (capture.mCamera.mVirtual)
         {
-            if (!source->isLightSpotlight())
+            if (!capture.mCamera.mVirtualPos.isFinite() ||
+                !capture.mCamera.mVirtualRot.isFinite())
             {
                 capture.mRuntime.mHealth = LLPrismLens::ECaptureHealth::INVALID_SOURCE;
-                capture.mRuntime.mReason = "Follow Projector source is not a spotlight projector.";
+                capture.mRuntime.mReason = "Virtual camera transform is not finite.";
                 return false;
             }
-            vertical_fov = source->getSpotLightParams().mV[VX];
-            if (!std::isfinite(vertical_fov) || vertical_fov < 5.f * DEG_TO_RAD ||
-                vertical_fov > 175.f * DEG_TO_RAD)
+        }
+        else
+        {
+            if (capture.mCameraObjectId.isNull())
+            {
+                capture.mRuntime.mHealth = LLPrismLens::ECaptureHealth::UNBOUND_SOURCE;
+                capture.mRuntime.mReason = "No camera source is bound.";
+                return false;
+            }
+            if (!source_object)
+            {
+                capture.mRuntime.mHealth = LLPrismLens::ECaptureHealth::SOURCE_OFFLINE;
+                capture.mRuntime.mReason = "Camera source is outside the local object list.";
+                return false;
+            }
+            if (source_object->isDead() || !source || source_object->isHUDAttachment() ||
+                source->isRiggedMesh() || source->isAnimatedObject() ||
+                !source_object->getRenderPosition().isFinite() ||
+                !source_object->getRenderRotation().isFinite())
             {
                 capture.mRuntime.mHealth = LLPrismLens::ECaptureHealth::INVALID_SOURCE;
-                capture.mRuntime.mReason = "Projector FOV is outside the supported 5-175 degree range.";
+                capture.mRuntime.mReason = "Camera source is no longer a finite, static, non-HUD volume.";
                 return false;
+            }
+            if (capture.mCamera.mFovMode == LLPrismLens::EFovMode::FOLLOW_PROJECTOR)
+            {
+                if (!source->isLightSpotlight())
+                {
+                    capture.mRuntime.mHealth = LLPrismLens::ECaptureHealth::INVALID_SOURCE;
+                    capture.mRuntime.mReason = "Follow Projector source is not a spotlight projector.";
+                    return false;
+                }
+                vertical_fov = source->getSpotLightParams().mV[VX];
+                if (!std::isfinite(vertical_fov) || vertical_fov < 5.f * DEG_TO_RAD ||
+                    vertical_fov > 175.f * DEG_TO_RAD)
+                {
+                    capture.mRuntime.mHealth = LLPrismLens::ECaptureHealth::INVALID_SOURCE;
+                    capture.mRuntime.mReason = "Projector FOV is outside the supported 5-175 degree range.";
+                    return false;
+                }
             }
         }
         capture.mRuntime.mHealth = LLPrismLens::ECaptureHealth::READY;
@@ -3139,6 +3345,34 @@ public:
             }
             return false;
         }
+        // Prim-free virtual camera: the stored transform must be finite and the
+        // orientation a (near-)unit quaternion. FOLLOW_PROJECTOR has no spotlight
+        // object to read when objectless, so it is rejected here; every mutation
+        // site soft-corrects to FIXED before calling this, so a user never hits
+        // the rejection. Non-virtual captures skip this block entirely.
+        if (settings.mVirtual)
+        {
+            if (settings.mFovMode == LLPrismLens::EFovMode::FOLLOW_PROJECTOR)
+            {
+                if (reason) *reason = "A virtual camera cannot use Follow Projector; use a fixed vertical FOV.";
+                return false;
+            }
+            if (!settings.mVirtualPos.isFinite() || !settings.mVirtualRot.isFinite())
+            {
+                if (reason) *reason = "A virtual camera requires a finite stored position and orientation.";
+                return false;
+            }
+            const F32 q_mag = std::sqrt(
+                settings.mVirtualRot.mQ[VX] * settings.mVirtualRot.mQ[VX] +
+                settings.mVirtualRot.mQ[VY] * settings.mVirtualRot.mQ[VY] +
+                settings.mVirtualRot.mQ[VZ] * settings.mVirtualRot.mQ[VZ] +
+                settings.mVirtualRot.mQ[VS] * settings.mVirtualRot.mQ[VS]);
+            if (!std::isfinite(q_mag) || std::fabs(q_mag - 1.f) > 1e-3f)
+            {
+                if (reason) *reason = "A virtual camera orientation must be a unit quaternion.";
+                return false;
+            }
+        }
         return true;
     }
 
@@ -3158,8 +3392,18 @@ public:
             if (reason) *reason = "Surface Lens captures do not use camera optics.";
             return false;
         }
-        if (!validCameraSettings(settings, reason)) return false;
-        if (settings.mFovMode == LLPrismLens::EFovMode::FOLLOW_PROJECTOR)
+        // A virtual (prim-free) camera has no spotlight object to follow, so a
+        // stale FOLLOW_PROJECTOR selection is soft-corrected to FIXED here rather
+        // than rejected. For a non-virtual capture `corrected` == `settings`, so
+        // the object-anchored path stays byte-identical.
+        LLPrismLens::CameraSettings corrected = settings;
+        if (corrected.mVirtual)
+        {
+            corrected.mFovMode = LLPrismLens::EFovMode::FIXED;
+        }
+        if (!validCameraSettings(corrected, reason)) return false;
+        if (!corrected.mVirtual &&
+            corrected.mFovMode == LLPrismLens::EFovMode::FOLLOW_PROJECTOR)
         {
             LLVOVolume* source = dynamic_cast<LLVOVolume*>(
                 gObjectList.findObject(capture.mCameraObjectId));
@@ -3169,7 +3413,7 @@ public:
                 return false;
             }
         }
-        capture.mCamera = settings;
+        capture.mCamera = corrected;
         suppressOutput(static_cast<U32>(slot));
         ++mRevision;
         if (reason) reason->clear();
@@ -3228,6 +3472,35 @@ public:
             if (!std::isfinite(value) || value < 0.f || value > 1.f)
             {
                 if (reason) *reason = "Display bar color components must be between 0 and 1.";
+                return false;
+            }
+        }
+        // Prim-free virtual screen: the stored transform must be finite, the
+        // orientation a (near-)unit quaternion, and the size positive-finite so a
+        // corrupt persisted record is caught here instead of drawing a degenerate
+        // quad. A non-virtual display skips this block entirely, so the real-face
+        // path is unchanged.
+        if (settings.mVirtual)
+        {
+            if (!settings.mPos.isFinite() || !settings.mRot.isFinite())
+            {
+                if (reason) *reason = "A virtual screen requires a finite stored position and orientation.";
+                return false;
+            }
+            const F32 q_mag = std::sqrt(
+                settings.mRot.mQ[VX] * settings.mRot.mQ[VX] +
+                settings.mRot.mQ[VY] * settings.mRot.mQ[VY] +
+                settings.mRot.mQ[VZ] * settings.mRot.mQ[VZ] +
+                settings.mRot.mQ[VS] * settings.mRot.mQ[VS]);
+            if (!std::isfinite(q_mag) || std::fabs(q_mag - 1.f) > 1e-3f)
+            {
+                if (reason) *reason = "A virtual screen orientation must be a unit quaternion.";
+                return false;
+            }
+            if (!std::isfinite(settings.mWidth) || !std::isfinite(settings.mHeight) ||
+                settings.mWidth <= F_ALMOST_ZERO || settings.mHeight <= F_ALMOST_ZERO)
+            {
+                if (reason) *reason = "A virtual screen requires a positive, finite width and height.";
                 return false;
             }
         }
@@ -3509,6 +3782,30 @@ public:
                 item["film_grain"] = capture.mCamera.mOptics.mFilmGrain;
                 item["crt_scanlines"] = capture.mCamera.mOptics.mCRTScanlines;
                 item["exposure_bias"] = capture.mCamera.mOptics.mExposureBias;
+                // Render-only camera guide (frustum gizmo). Optional on read so
+                // pre-guide scenes round-trip clean; absent keys keep defaults.
+                item["show_guide"]       = capture.mCamera.mShowGuide;
+                item["guide_thirds"]     = capture.mCamera.mGuideThirds;
+                item["guide_uproll"]     = capture.mCamera.mGuideUpRoll;
+                item["guide_crosshair"]  = capture.mCamera.mGuideCrosshair;
+                item["guide_clipmarkers"] = capture.mCamera.mGuideClipMarkers;
+                // Prim-free virtual camera. Optional on read so pre-virtual
+                // scenes round-trip clean. camera_id above is already null for a
+                // virtual capture (a legal persisted state), so it round-trips.
+                // No quat<->LLSD helper exists here; hand-serialize pos (3-array)
+                // and rot (4-array x,y,z,w), mirroring local_eye_offset above.
+                item["virtual"] = capture.mCamera.mVirtual;
+                LLSD virtual_pos = LLSD::emptyArray();
+                virtual_pos.append(capture.mCamera.mVirtualPos.mV[VX]);
+                virtual_pos.append(capture.mCamera.mVirtualPos.mV[VY]);
+                virtual_pos.append(capture.mCamera.mVirtualPos.mV[VZ]);
+                item["virtual_pos"] = virtual_pos;
+                LLSD virtual_rot = LLSD::emptyArray();
+                virtual_rot.append(capture.mCamera.mVirtualRot.mQ[VX]);
+                virtual_rot.append(capture.mCamera.mVirtualRot.mQ[VY]);
+                virtual_rot.append(capture.mCamera.mVirtualRot.mQ[VZ]);
+                virtual_rot.append(capture.mCamera.mVirtualRot.mQ[VS]);
+                item["virtual_rot"] = virtual_rot;
             }
             result["prism_captures"].append(item);
         }
@@ -3564,6 +3861,29 @@ public:
             effects_sd["rotate90"]       = fx.mRotate90;
             effects_sd["sheen"]          = fx.mSheen;
             item["screen_effects"] = effects_sd;
+            // Prim-free virtual screen. Optional on read so pre-virtual scenes
+            // round-trip clean. display_id/display_te above are already written
+            // as null / -1 for a virtual screen (a legal persisted state that the
+            // reader accepts only when "virtual" is true). No quat<->LLSD helper
+            // exists here, so hand-serialize pos (3-array) and rot (4-array
+            // x,y,z,w), mirroring the camera's virtual serialization.
+            item["virtual"] = display.mSettings.mVirtual;
+            if (display.mSettings.mVirtual)
+            {
+                LLSD virtual_pos = LLSD::emptyArray();
+                virtual_pos.append(display.mSettings.mPos.mV[VX]);
+                virtual_pos.append(display.mSettings.mPos.mV[VY]);
+                virtual_pos.append(display.mSettings.mPos.mV[VZ]);
+                item["virtual_pos"] = virtual_pos;
+                LLSD virtual_rot = LLSD::emptyArray();
+                virtual_rot.append(display.mSettings.mRot.mQ[VX]);
+                virtual_rot.append(display.mSettings.mRot.mQ[VY]);
+                virtual_rot.append(display.mSettings.mRot.mQ[VZ]);
+                virtual_rot.append(display.mSettings.mRot.mQ[VS]);
+                item["virtual_rot"] = virtual_rot;
+                item["width"] = display.mSettings.mWidth;
+                item["height"] = display.mSettings.mHeight;
+            }
             result["prism_displays"].append(item);
         }
         return result;
@@ -3733,6 +4053,49 @@ public:
                         static_cast<F32>(item["exposure_bias"].asReal());
                 }
 
+                // Render-only camera guide flags. Optional/tolerant: an absent
+                // key keeps the struct default, so old scenes load unchanged and
+                // are never rejected by the required-field check above.
+                if (item.has("show_guide"))
+                    parsed.mCamera.mShowGuide = item["show_guide"].asBoolean();
+                if (item.has("guide_thirds"))
+                    parsed.mCamera.mGuideThirds = item["guide_thirds"].asBoolean();
+                if (item.has("guide_uproll"))
+                    parsed.mCamera.mGuideUpRoll = item["guide_uproll"].asBoolean();
+                if (item.has("guide_crosshair"))
+                    parsed.mCamera.mGuideCrosshair = item["guide_crosshair"].asBoolean();
+                if (item.has("guide_clipmarkers"))
+                    parsed.mCamera.mGuideClipMarkers = item["guide_clipmarkers"].asBoolean();
+
+                // Prim-free virtual camera. Optional/tolerant: absent keys keep
+                // the struct default (non-virtual), so old scenes load unchanged
+                // and are never rejected by the required-field check above. The
+                // camera_id may legally be null for a virtual capture (see the
+                // "Null UUID is intentionally unbound" path above).
+                if (item.has("virtual"))
+                    parsed.mCamera.mVirtual = item["virtual"].asBoolean();
+                if (item.has("virtual_pos") && is_numeric_array(item["virtual_pos"], 3))
+                {
+                    parsed.mCamera.mVirtualPos.setVec(
+                        static_cast<F32>(item["virtual_pos"][0].asReal()),
+                        static_cast<F32>(item["virtual_pos"][1].asReal()),
+                        static_cast<F32>(item["virtual_pos"][2].asReal()));
+                }
+                if (item.has("virtual_rot") && is_numeric_array(item["virtual_rot"], 4))
+                {
+                    // Assign components directly (no re-normalization) so a
+                    // corrupt persisted quaternion is caught by the unit-length
+                    // check in validCameraSettings below rather than masked.
+                    parsed.mCamera.mVirtualRot.mQ[VX] = static_cast<F32>(item["virtual_rot"][0].asReal());
+                    parsed.mCamera.mVirtualRot.mQ[VY] = static_cast<F32>(item["virtual_rot"][1].asReal());
+                    parsed.mCamera.mVirtualRot.mQ[VZ] = static_cast<F32>(item["virtual_rot"][2].asReal());
+                    parsed.mCamera.mVirtualRot.mQ[VS] = static_cast<F32>(item["virtual_rot"][3].asReal());
+                }
+                // A virtual camera cannot follow a projector; soft-correct a
+                // stale mode to FIXED so the scene loads instead of failing.
+                if (parsed.mCamera.mVirtual)
+                    parsed.mCamera.mFovMode = LLPrismLens::EFovMode::FIXED;
+
                 std::string camera_reason;
                 if (!validCameraSettings(parsed.mCamera, &camera_reason)) return fail(camera_reason);
             }
@@ -3743,13 +4106,24 @@ public:
              it != displays_data.endArray(); ++it)
         {
             const LLSD& item = *it;
+            // A prim-free virtual screen carries a stored transform + size
+            // instead of an object/TE identity, so the object-identity fields are
+            // required ONLY for a real (face-bound) display. Everything else is
+            // common to both.
+            const bool is_virtual = item.isMap() && item.has("virtual") &&
+                                    item["virtual"].asBoolean();
             if (!item.isMap() || !item.has("binding_id") || !item.has("capture_id") ||
-                !item.has("display_id") || !item.has("display_te") ||
                 !item.has("fit") || !item.has("anchor") ||
-                !item.has("bar_color_linear") || !item["display_te"].isInteger() ||
+                !item.has("bar_color_linear") ||
                 !item["anchor"].isArray() || item["anchor"].size() != 2 ||
                 !item["bar_color_linear"].isArray() ||
                 item["bar_color_linear"].size() != 3)
+            {
+                return fail("A Prism display is missing required version-3 fields.");
+            }
+            if (!is_virtual &&
+                (!item.has("display_id") || !item.has("display_te") ||
+                 !item["display_te"].isInteger()))
             {
                 return fail("A Prism display is missing required version-3 fields.");
             }
@@ -3761,19 +4135,51 @@ public:
             ParsedDisplay parsed;
             parsed.mId = item["binding_id"].asUUID();
             parsed.mCaptureId = item["capture_id"].asUUID();
-            parsed.mObjectId = item["display_id"].asUUID();
-            parsed.mTE = item["display_te"].asInteger();
             if (parsed.mId.isNull() || !binding_ids.insert(parsed.mId).second)
                 return fail("Prism binding IDs must be nonnull and unique.");
             if (parsed.mCaptureId.isNull() || !capture_ids.count(parsed.mCaptureId))
                 return fail("A Prism display references an unknown capture.");
-            if (parsed.mObjectId.isNull() || parsed.mTE < 0 ||
-                parsed.mTE >= static_cast<S32>(LLTEContents::MAX_TES))
-                return fail("Prism display object/face identity is invalid.");
-            const std::string identity = parsed.mObjectId.asString() + ":" +
-                                         llformat("%d", parsed.mTE);
-            if (!display_identities.insert(identity).second)
-                return fail("A display face may be bound to only one Prism capture.");
+            if (is_virtual)
+            {
+                // Prim-free screen: parse the transform + size and leave the face
+                // identity null / -1. No object/TE requirement and no
+                // face-uniqueness check (a virtual screen binds no face).
+                if (!item.has("virtual_pos") || !is_numeric_array(item["virtual_pos"], 3) ||
+                    !item.has("virtual_rot") || !is_numeric_array(item["virtual_rot"], 4) ||
+                    !item.has("width") || !is_numeric(item["width"]) ||
+                    !item.has("height") || !is_numeric(item["height"]))
+                {
+                    return fail("A virtual Prism screen is missing its transform or size.");
+                }
+                parsed.mObjectId.setNull();
+                parsed.mTE = -1;
+                parsed.mSettings.mVirtual = true;
+                parsed.mSettings.mPos.setVec(
+                    static_cast<F32>(item["virtual_pos"][0].asReal()),
+                    static_cast<F32>(item["virtual_pos"][1].asReal()),
+                    static_cast<F32>(item["virtual_pos"][2].asReal()));
+                // Assign quaternion components directly (no re-normalization) so a
+                // corrupt persisted orientation is caught by the unit-length check
+                // in validDisplaySettings below rather than masked.
+                parsed.mSettings.mRot.mQ[VX] = static_cast<F32>(item["virtual_rot"][0].asReal());
+                parsed.mSettings.mRot.mQ[VY] = static_cast<F32>(item["virtual_rot"][1].asReal());
+                parsed.mSettings.mRot.mQ[VZ] = static_cast<F32>(item["virtual_rot"][2].asReal());
+                parsed.mSettings.mRot.mQ[VS] = static_cast<F32>(item["virtual_rot"][3].asReal());
+                parsed.mSettings.mWidth = static_cast<F32>(item["width"].asReal());
+                parsed.mSettings.mHeight = static_cast<F32>(item["height"].asReal());
+            }
+            else
+            {
+                parsed.mObjectId = item["display_id"].asUUID();
+                parsed.mTE = item["display_te"].asInteger();
+                if (parsed.mObjectId.isNull() || parsed.mTE < 0 ||
+                    parsed.mTE >= static_cast<S32>(LLTEContents::MAX_TES))
+                    return fail("Prism display object/face identity is invalid.");
+                const std::string identity = parsed.mObjectId.asString() + ":" +
+                                             llformat("%d", parsed.mTE);
+                if (!display_identities.insert(identity).second)
+                    return fail("A display face may be bound to only one Prism capture.");
+            }
             const std::string fit = item["fit"].asString();
             if (fit == "fit") parsed.mSettings.mFitMode = LLPrismLens::EFitMode::FIT;
             else if (fit == "fill") parsed.mSettings.mFitMode = LLPrismLens::EFitMode::FILL;
@@ -4680,6 +5086,12 @@ ERegistryResult addCameraCaptureFromSelectedObject(CaptureHandle* capture,
     return PrismLensRegistry::instance().addCamera(capture, reason);
 }
 
+ERegistryResult addVirtualCamera(CaptureHandle* capture, const LLVector3& pos,
+                                 const LLQuaternion& rot, std::string* reason)
+{
+    return PrismLensRegistry::instance().addVirtualCamera(capture, pos, rot, reason);
+}
+
 ERegistryResult addSurfaceLensFromSelectedFace(CaptureHandle* capture,
                                                 std::string* reason)
 {
@@ -4690,6 +5102,15 @@ ERegistryResult addSelectedDisplay(const CaptureHandle& capture, EFitMode fit,
                                    DisplayHandle* binding, std::string* reason)
 {
     return PrismLensRegistry::instance().addDisplay(capture, fit, binding, reason);
+}
+
+ERegistryResult addVirtualDisplay(const CaptureHandle& capture,
+                                  const LLVector3& pos, const LLQuaternion& rot,
+                                  F32 width, F32 height, DisplayHandle* binding,
+                                  std::string* reason)
+{
+    return PrismLensRegistry::instance().addVirtualDisplay(
+        capture, pos, rot, width, height, binding, reason);
 }
 
 bool setSelectedCamera(const CaptureHandle& capture, std::string* reason)
@@ -4739,6 +5160,222 @@ U64 runtimeRevision()
 RegistrySnapshot registrySnapshot()
 {
     return PrismLensRegistry::instance().snapshot();
+}
+
+// Render-only camera guides. A Blender-style wireframe "frustum gizmo" drawn
+// client-side each frame at every CAMERA_FEED capture whose per-camera guide is
+// enabled: an apex camera body, four edge lines out to a framing gate sized by
+// the camera's vertical FOV and output aspect, plus four independently
+// toggleable aids (rule-of-thirds, up/roll nub, center crosshair, near-clip
+// marker). No rezzed prim, no render target, no shader, no allocation. This
+// mirrors the client-side overlay discipline of LLActorMover's camera gizmo:
+// UI shader, no texture, no depth test, vertices fed straight to gGL in
+// world/agent coordinates (render_ui_3d has already set the world modelview).
+// The whole thing early-outs cheaply when the global kill-switch is off or no
+// camera has its guide on, so the default-off path adds no measurable cost.
+void renderCameraGuides()
+{
+    // Global kill-switch (default ON). When off this is the only work done.
+    static LLCachedControl<bool> guide_enable(gSavedSettings, "PrismCameraGuideEnable", true);
+    if (!guide_enable)
+    {
+        return;
+    }
+
+    const RegistrySnapshot snapshot = registrySnapshot();
+
+    // Cheap early-out: nothing to draw unless at least one CAMERA_FEED capture
+    // has its per-camera guide enabled. No GL state is touched until then.
+    bool any_guide = false;
+    for (U32 i = 0; i < snapshot.mCaptureCount; ++i)
+    {
+        const CaptureDefinition& def = snapshot.mCaptures[i];
+        if (def.mMode == ECaptureMode::CAMERA_FEED && def.mCamera.mShowGuide)
+        {
+            any_guide = true;
+            break;
+        }
+    }
+    if (!any_guide)
+    {
+        return;
+    }
+
+    const LLColor4 col(0.96f, 0.65f, 0.14f, 1.f); // amber
+
+    // Same beacon-style local overlay as LLActorMover::renderHeadingPreview():
+    // UI shader, no texture, no depth writes -- strictly a client-side overlay.
+    LLGLSUIDefault gls_ui;
+    gUIProgram.bind();
+    gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
+
+    for (U32 i = 0; i < snapshot.mCaptureCount; ++i)
+    {
+        const CaptureDefinition& def = snapshot.mCaptures[i];
+        if (def.mMode != ECaptureMode::CAMERA_FEED || !def.mCamera.mShowGuide)
+        {
+            continue;
+        }
+
+        // Resolve the world transform. A virtual (prim-free) camera draws at its
+        // stored transform with no object lookup; an object-anchored camera reads
+        // its live render transform. Both then feed the identical frustum draw.
+        LLQuaternion rotation;
+        LLVector3 eye;
+        if (def.mCamera.mVirtual)
+        {
+            rotation = def.mCamera.mVirtualRot;
+            eye = def.mCamera.mVirtualPos; // no mLocalEyeOffset for virtual cams
+        }
+        else
+        {
+            LLViewerObject* obj = gObjectList.findObject(def.mCameraObjectId);
+            if (!obj || obj->isDead() || obj->isHUDAttachment())
+            {
+                continue;
+            }
+            // Mirror the CAMERA_FEED render-path transform derivation (the SL
+            // camera marker looks down local -Z, local +Y is up).
+            rotation = obj->getRenderRotation();
+            eye = obj->getRenderPosition() +
+                def.mCamera.mLocalEyeOffset * rotation;
+        }
+        LLVector3 forward = LLVector3(0.f, 0.f, -1.f) * rotation;
+        LLVector3 up = LLVector3::y_axis * rotation;
+        LLVector3 right = forward % up;
+        if (!eye.isFinite() || !forward.isFinite() || !up.isFinite() ||
+            forward.normVec() <= F_ALMOST_ZERO || up.normVec() <= F_ALMOST_ZERO ||
+            right.normVec() <= F_ALMOST_ZERO)
+        {
+            continue;
+        }
+        up = right % forward; // re-orthonormalize
+        up.normVec();
+
+        // FOV: prefer the effective (last-run) vertical FOV, but a freshly-added
+        // capture has not run yet (effective == 0), so fall back to the authored
+        // fixed FOV; the guide must still draw for a new camera.
+        F32 vfov = def.mRuntime.mEffectiveVerticalFovRad;
+        if (!std::isfinite(vfov) || vfov < 5.f * DEG_TO_RAD)
+        {
+            vfov = def.mCamera.mFixedVerticalFovRad;
+        }
+        const F32 aspect = def.mCamera.mOutputAspect;
+        const F32 near_clip = def.mCamera.mNearClip;
+        const F32 far_clip = def.mCamera.mFarClip; // user's configured range; NOT
+                                                   // clamped to the main camera.
+        if (!std::isfinite(vfov) || !std::isfinite(aspect) ||
+            !std::isfinite(near_clip) || !std::isfinite(far_clip) ||
+            vfov < 5.f * DEG_TO_RAD || vfov > 175.f * DEG_TO_RAD ||
+            aspect <= 0.f || near_clip <= 0.f || far_clip <= near_clip)
+        {
+            continue;
+        }
+
+        const F32 tan_half = tanf(vfov * 0.5f);
+        // Draw the framing gate at a readable distance, not the raw far clip:
+        // the far clip can be hundreds of metres (capture depth), which would
+        // make the gizmo an unreadable region-sized box. Framing (aspect /
+        // thirds / crosshair) is distance-independent, so clamp the gate to a
+        // sensible reference distance; a nearer far clip is honoured as-is.
+        const F32 gate_dist = llmin(far_clip, 24.f);
+        const F32 hh_far = gate_dist * tan_half;  // gate half-height
+        const F32 hw_far = hh_far * aspect;       // gate half-width (real aspect)
+        const LLVector3 gate_c = eye + forward * gate_dist;
+        const LLVector3 tl = gate_c - right * hw_far + up * hh_far;
+        const LLVector3 tr = gate_c + right * hw_far + up * hh_far;
+        const LLVector3 bl = gate_c - right * hw_far - up * hh_far;
+        const LLVector3 br = gate_c + right * hw_far - up * hh_far;
+
+        gGL.setLineWidth(2.f);
+        gGL.begin(LLRender::LINES);
+        gGL.color4fv(col.mV);
+
+        // Apex -> far gate corners (four frustum edges).
+        gGL.vertex3fv(eye.mV); gGL.vertex3fv(tl.mV);
+        gGL.vertex3fv(eye.mV); gGL.vertex3fv(tr.mV);
+        gGL.vertex3fv(eye.mV); gGL.vertex3fv(bl.mV);
+        gGL.vertex3fv(eye.mV); gGL.vertex3fv(br.mV);
+        // Far gate rectangle.
+        gGL.vertex3fv(tl.mV); gGL.vertex3fv(tr.mV);
+        gGL.vertex3fv(tr.mV); gGL.vertex3fv(br.mV);
+        gGL.vertex3fv(br.mV); gGL.vertex3fv(bl.mV);
+        gGL.vertex3fv(bl.mV); gGL.vertex3fv(tl.mV);
+
+        // Rule-of-thirds grid: two verticals + two horizontals subdividing the
+        // gate into 3x3, from lerped gate corners at 1/3 and 2/3.
+        if (def.mCamera.mGuideThirds)
+        {
+            const LLVector3 t13 = lerp(tl, tr, 1.f / 3.f);
+            const LLVector3 t23 = lerp(tl, tr, 2.f / 3.f);
+            const LLVector3 b13 = lerp(bl, br, 1.f / 3.f);
+            const LLVector3 b23 = lerp(bl, br, 2.f / 3.f);
+            gGL.vertex3fv(t13.mV); gGL.vertex3fv(b13.mV);
+            gGL.vertex3fv(t23.mV); gGL.vertex3fv(b23.mV);
+            const LLVector3 l13 = lerp(tl, bl, 1.f / 3.f);
+            const LLVector3 l23 = lerp(tl, bl, 2.f / 3.f);
+            const LLVector3 r13 = lerp(tr, br, 1.f / 3.f);
+            const LLVector3 r23 = lerp(tr, br, 2.f / 3.f);
+            gGL.vertex3fv(l13.mV); gGL.vertex3fv(r13.mV);
+            gGL.vertex3fv(l23.mV); gGL.vertex3fv(r23.mV);
+        }
+
+        // Center crosshair: two short lines through the gate centre.
+        if (def.mCamera.mGuideCrosshair)
+        {
+            const F32 cx = hw_far * 0.12f;
+            const F32 cy = hh_far * 0.12f;
+            gGL.vertex3fv((gate_c - right * cx).mV);
+            gGL.vertex3fv((gate_c + right * cx).mV);
+            gGL.vertex3fv((gate_c - up * cy).mV);
+            gGL.vertex3fv((gate_c + up * cy).mV);
+        }
+
+        // Near-clip rectangle marker so the depth range reads (the far rect is
+        // the gate already).
+        if (def.mCamera.mGuideClipMarkers)
+        {
+            const F32 hh_near = near_clip * tan_half;
+            const F32 hw_near = hh_near * aspect;
+            const LLVector3 nc = eye + forward * near_clip;
+            const LLVector3 ntl = nc - right * hw_near + up * hh_near;
+            const LLVector3 ntr = nc + right * hw_near + up * hh_near;
+            const LLVector3 nbl = nc - right * hw_near - up * hh_near;
+            const LLVector3 nbr = nc + right * hw_near - up * hh_near;
+            gGL.vertex3fv(ntl.mV); gGL.vertex3fv(ntr.mV);
+            gGL.vertex3fv(ntr.mV); gGL.vertex3fv(nbr.mV);
+            gGL.vertex3fv(nbr.mV); gGL.vertex3fv(nbl.mV);
+            gGL.vertex3fv(nbl.mV); gGL.vertex3fv(ntl.mV);
+        }
+        gGL.end();
+
+        // Filled triangles: apex camera-body diamond, plus the optional up/roll
+        // nub on the gate's top edge.
+        gGL.begin(LLRender::TRIANGLES);
+        gGL.color4fv(col.mV);
+        const F32 body = llmax(0.06f, hh_far * 0.05f); // camera-body half-size
+        const LLVector3 a0 = eye + right * body;
+        const LLVector3 a1 = eye + up * body;
+        const LLVector3 a2 = eye - right * body;
+        const LLVector3 a3 = eye - up * body;
+        gGL.vertex3fv(a0.mV); gGL.vertex3fv(a1.mV); gGL.vertex3fv(a2.mV);
+        gGL.vertex3fv(a0.mV); gGL.vertex3fv(a2.mV); gGL.vertex3fv(a3.mV);
+
+        if (def.mCamera.mGuideUpRoll)
+        {
+            const LLVector3 tc = (tl + tr) * 0.5f; // gate top-edge centre
+            const F32 nub_w = hw_far * 0.06f;
+            const F32 nub_h = hh_far * 0.12f;
+            const LLVector3 nub_apex = tc + up * nub_h;
+            const LLVector3 nub_l = tc - right * nub_w;
+            const LLVector3 nub_r = tc + right * nub_w;
+            gGL.vertex3fv(nub_l.mV); gGL.vertex3fv(nub_r.mV); gGL.vertex3fv(nub_apex.mV);
+        }
+        gGL.end();
+    }
+
+    gGL.flush();
+    gGL.setLineWidth(1.f);
 }
 
 PerformanceSnapshot performanceSnapshot()
@@ -4918,19 +5555,36 @@ void renderAuxiliaryView()
         glm::mat4 prism_modelview;
         if (capture->mMode == ECaptureMode::CAMERA_FEED)
         {
-            LLViewerObject* source_object = gObjectList.findObject(capture->mCameraObjectId);
-            LLVOVolume* source = source_object
-                ? dynamic_cast<LLVOVolume*>(source_object) : nullptr;
-            if (!source_object || !source || source_object->isDead() ||
-                source_object->isHUDAttachment() || source->isRiggedMesh() ||
-                source->isAnimatedObject())
+            LLQuaternion rotation;
+            LLVector3 camera_eye;
+            if (capture->mCamera.mVirtual)
             {
-                registry.deferRetry(slot, 5);
-                return;
+                // Prim-free: the eye/orientation come from the stored transform,
+                // not from an in-world object. mVirtualPos is in AGENT space --
+                // the SAME space source_object->getRenderPosition() returns (it
+                // resolves to getPositionAgent()), so it drops straight into the
+                // agent-space lens camera below with no conversion. No object
+                // lookup, no early-out, and no mLocalEyeOffset add (offset is an
+                // object-rig convenience only).
+                rotation = capture->mCamera.mVirtualRot;
+                camera_eye = capture->mCamera.mVirtualPos;
             }
-            const LLQuaternion rotation = source_object->getRenderRotation();
-            const LLVector3 camera_eye = source_object->getRenderPosition() +
-                capture->mCamera.mLocalEyeOffset * rotation;
+            else
+            {
+                LLViewerObject* source_object = gObjectList.findObject(capture->mCameraObjectId);
+                LLVOVolume* source = source_object
+                    ? dynamic_cast<LLVOVolume*>(source_object) : nullptr;
+                if (!source_object || !source || source_object->isDead() ||
+                    source_object->isHUDAttachment() || source->isRiggedMesh() ||
+                    source->isAnimatedObject())
+                {
+                    registry.deferRetry(slot, 5);
+                    return;
+                }
+                rotation = source_object->getRenderRotation();
+                camera_eye = source_object->getRenderPosition() +
+                    capture->mCamera.mLocalEyeOffset * rotation;
+            }
             LLVector3 forward = LLVector3(0.f, 0.f, -1.f) * rotation;
             LLVector3 up = LLVector3::y_axis * rotation;
             LLVector3 right = forward % up;
@@ -5275,13 +5929,36 @@ U32 getCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
             {
                 continue;
             }
-            LLFace* face = registry.resolveDisplayFaceForComposite(display_slot);
-            if (!face) continue;
+            // A prim-free virtual screen has no face to resolve; the pipeline
+            // draws its stored world quad instead. A real display resolves and
+            // requires a live face exactly as before.
+            const bool is_virtual = display->mSettings.mVirtual;
+            LLFace* face = nullptr;
+            if (!is_virtual)
+            {
+                face = registry.resolveDisplayFaceForComposite(display_slot);
+                if (!face) continue;
+            }
 
             CompositeState& state = states[state_count];
             state = CompositeState();
             state.mCaptureSlot = capture_slot;
             state.mFace = face;
+            state.mVirtual = is_virtual;
+            if (is_virtual)
+            {
+                // World/agent-space quad corners TL, TR, BR, BL from the frame's
+                // synthesized rectangle. Drawn under the base world modelview
+                // (see pipeline.cpp), matching the surface uniforms below.
+                const LLVector3 tl = frame.mWorldSurfaceOrigin;
+                const LLVector3 tr = frame.mWorldSurfaceOrigin + frame.mWorldSurfaceUEdge;
+                const LLVector3 br = tr + frame.mWorldSurfaceVEdge;
+                const LLVector3 bl = frame.mWorldSurfaceOrigin + frame.mWorldSurfaceVEdge;
+                std::memcpy(state.mVirtualCorners[0], tl.mV, sizeof(state.mVirtualCorners[0]));
+                std::memcpy(state.mVirtualCorners[1], tr.mV, sizeof(state.mVirtualCorners[1]));
+                std::memcpy(state.mVirtualCorners[2], br.mV, sizeof(state.mVirtualCorners[2]));
+                std::memcpy(state.mVirtualCorners[3], bl.mV, sizeof(state.mVirtualCorners[3]));
+            }
             const F32 inv_width = 1.f / static_cast<F32>(frame.mMainViewport[2]);
             const F32 inv_height = 1.f / static_cast<F32>(frame.mMainViewport[3]);
             std::memcpy(state.mSurfaceOrigin, frame.mSurfaceOrigin.mV,
@@ -5387,26 +6064,41 @@ U32 getCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
             std::memcpy(state.mBarColorLinear, display->mSettings.mBarColorLinear,
                         sizeof(state.mBarColorLinear));
 
-            const F32 scale_x = static_cast<F32>(screen_target->getWidth()) * inv_width;
-            const F32 scale_y = static_cast<F32>(screen_target->getHeight()) * inv_height;
-            const S32 scissor_left = llclamp(ll_round(
-                static_cast<F32>(frame.mLensRect.mX - frame.mMainViewport[0]) * scale_x),
-                0, static_cast<S32>(screen_target->getWidth()) - 1);
-            const S32 scissor_bottom = llclamp(ll_round(
-                static_cast<F32>(frame.mLensRect.mY - frame.mMainViewport[1]) * scale_y),
-                0, static_cast<S32>(screen_target->getHeight()) - 1);
-            const S32 scissor_right = llclamp(ll_round(
-                static_cast<F32>(frame.mLensRect.mX - frame.mMainViewport[0] +
-                                 static_cast<S32>(frame.mLensRect.mWidth)) * scale_x),
-                scissor_left + 1, static_cast<S32>(screen_target->getWidth()));
-            const S32 scissor_top = llclamp(ll_round(
-                static_cast<F32>(frame.mLensRect.mY - frame.mMainViewport[1] +
-                                 static_cast<S32>(frame.mLensRect.mHeight)) * scale_y),
-                scissor_bottom + 1, static_cast<S32>(screen_target->getHeight()));
-            state.mScissor[0] = scissor_left;
-            state.mScissor[1] = scissor_bottom;
-            state.mScissor[2] = scissor_right - scissor_left;
-            state.mScissor[3] = scissor_top - scissor_bottom;
+            if (is_virtual)
+            {
+                // A virtual screen bounds its own pixels with the world quad
+                // geometry (plus the depth test), so it uses the full-target
+                // scissor as an outer clip -- the same approach the aux path uses
+                // for real faces. The main-view lens-rect projection is only used
+                // above for output sizing, not as the scissor here.
+                state.mScissor[0] = 0;
+                state.mScissor[1] = 0;
+                state.mScissor[2] = static_cast<S32>(screen_target->getWidth());
+                state.mScissor[3] = static_cast<S32>(screen_target->getHeight());
+            }
+            else
+            {
+                const F32 scale_x = static_cast<F32>(screen_target->getWidth()) * inv_width;
+                const F32 scale_y = static_cast<F32>(screen_target->getHeight()) * inv_height;
+                const S32 scissor_left = llclamp(ll_round(
+                    static_cast<F32>(frame.mLensRect.mX - frame.mMainViewport[0]) * scale_x),
+                    0, static_cast<S32>(screen_target->getWidth()) - 1);
+                const S32 scissor_bottom = llclamp(ll_round(
+                    static_cast<F32>(frame.mLensRect.mY - frame.mMainViewport[1]) * scale_y),
+                    0, static_cast<S32>(screen_target->getHeight()) - 1);
+                const S32 scissor_right = llclamp(ll_round(
+                    static_cast<F32>(frame.mLensRect.mX - frame.mMainViewport[0] +
+                                     static_cast<S32>(frame.mLensRect.mWidth)) * scale_x),
+                    scissor_left + 1, static_cast<S32>(screen_target->getWidth()));
+                const S32 scissor_top = llclamp(ll_round(
+                    static_cast<F32>(frame.mLensRect.mY - frame.mMainViewport[1] +
+                                     static_cast<S32>(frame.mLensRect.mHeight)) * scale_y),
+                    scissor_bottom + 1, static_cast<S32>(screen_target->getHeight()));
+                state.mScissor[0] = scissor_left;
+                state.mScissor[1] = scissor_bottom;
+                state.mScissor[2] = scissor_right - scissor_left;
+                state.mScissor[3] = scissor_top - scissor_bottom;
+            }
             state.mEdgeFeather = frame.mEdgeFeather;
             // Keep all resolved LLFace pointers in their display frames until
             // next preparation; pipeline consumes the whole returned batch now.
@@ -5494,13 +6186,33 @@ U32 getAuxCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
             {
                 continue;
             }
-            LLFace* face = registry.resolveDisplayFaceForComposite(display_slot);
-            if (!face) continue;
+            // Prim-free virtual screen: no face to resolve; draw the stored world
+            // quad. Mirror of the main builder so a virtual screen also works as
+            // a recursive-mirror surface. A real display resolves as before.
+            const bool is_virtual = display->mSettings.mVirtual;
+            LLFace* face = nullptr;
+            if (!is_virtual)
+            {
+                face = registry.resolveDisplayFaceForComposite(display_slot);
+                if (!face) continue;
+            }
 
             CompositeState& state = states[state_count];
             state = CompositeState();
             state.mCaptureSlot = capture_slot;
             state.mFace = face;
+            state.mVirtual = is_virtual;
+            if (is_virtual)
+            {
+                const LLVector3 tl = frame.mWorldSurfaceOrigin;
+                const LLVector3 tr = frame.mWorldSurfaceOrigin + frame.mWorldSurfaceUEdge;
+                const LLVector3 br = tr + frame.mWorldSurfaceVEdge;
+                const LLVector3 bl = frame.mWorldSurfaceOrigin + frame.mWorldSurfaceVEdge;
+                std::memcpy(state.mVirtualCorners[0], tl.mV, sizeof(state.mVirtualCorners[0]));
+                std::memcpy(state.mVirtualCorners[1], tr.mV, sizeof(state.mVirtualCorners[1]));
+                std::memcpy(state.mVirtualCorners[2], br.mV, sizeof(state.mVirtualCorners[2]));
+                std::memcpy(state.mVirtualCorners[3], bl.mV, sizeof(state.mVirtualCorners[3]));
+            }
             std::memcpy(state.mSurfaceOrigin, frame.mSurfaceOrigin.mV,
                         sizeof(state.mSurfaceOrigin));
             std::memcpy(state.mSurfaceUDual, frame.mSurfaceUDual.mV,

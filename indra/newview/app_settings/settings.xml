@@ -24095,6 +24095,13 @@
     <key>Type</key><string>Boolean</string>
     <key>Value</key><integer>0</integer>
   </map>
+  <key>PrismCameraGuideEnable</key>
+  <map>
+    <key>Comment</key><string>Global kill-switch for the render-only Prism camera guides (Blender-style wireframe frustum gizmo). When on, a gizmo draws for each Camera Feed capture whose per-camera guide is enabled; when off, no guide draws regardless of per-camera state. Client-side overlay only.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>1</integer>
+  </map>
   <key>PrismLensZoom</key>
   <map>
     <key>Comment</key><string>Prism Lens magnification. Runtime-clamped to 1.0 through 8.0.</string>

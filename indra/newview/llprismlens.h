@@ -8,6 +8,7 @@
 
 #include "stdtypes.h"
 #include "llmath.h"
+#include "llquaternion.h"
 #include "llsd.h"
 #include "lluuid.h"
 #include "v3math.h"
@@ -130,6 +131,36 @@ struct CameraSettings
     LLVector3 mLocalEyeOffset;
     F32 mOutputAspect = 16.f / 9.f;
     OpticsSettings mOptics;
+
+    // Render-only Blender-style camera "frustum gizmo", drawn client-side each
+    // frame at this camera's world transform. Pure overlay: no rezzed prim, no
+    // render target, no shader, no allocation. Default OFF so a default-
+    // constructed capture is byte-identical/inert. The four aids toggle
+    // independently, each gated by the master mShowGuide.
+    bool mShowGuide        = false; // master per-camera guide toggle
+    bool mGuideThirds      = true;  // rule-of-thirds grid on the framing gate
+    bool mGuideUpRoll      = true;  // up/roll nub on the gate's top edge
+    bool mGuideCrosshair   = false; // center crosshair at the gate centre
+    bool mGuideClipMarkers = true;  // near-clip rectangle marker
+
+    // Prim-free "virtual camera". When set, the capture derives its eye and
+    // orientation from the stored transform below instead of from an in-world
+    // object (mCameraObjectId is ignored / null), so it needs no rezzed prim and
+    // works in no-rez parcels. Default OFF so a default-constructed capture is
+    // byte-identical/inert and every existing object-anchored path is unchanged.
+    //
+    // COORDINATE SPACE: mVirtualPos is stored in AGENT space -- the exact same
+    // space the object render path reads via LLViewerObject::getRenderPosition()
+    // (which returns getPositionAgent()) and the same space that
+    // LLViewerCamera::getOrigin() returns. No conversion is needed on capture or
+    // on render; "Snap to my view" stores getOrigin() verbatim. mVirtualRot maps
+    // the camera's local axes to agent space with the render-path convention:
+    // forward = local -Z, up = local +Y (so (0,0,-1)*mVirtualRot == view
+    // forward and (0,1,0)*mVirtualRot == view up). mLocalEyeOffset is NOT applied
+    // to a virtual camera (offset is an object-rig convenience only).
+    bool         mVirtual  = false; // objectless: use stored transform, not mCameraObjectId
+    LLVector3    mVirtualPos;       // stored eye position, AGENT space
+    LLQuaternion mVirtualRot;       // stored orientation (fwd = local -Z, up = local +Y)
 };
 
 struct CaptureRateSettings
@@ -280,6 +311,29 @@ struct DisplaySettings
     F32 mAnchor[2] = { 0.5f, 0.5f };
     F32 mBarColorLinear[3] = { 0.f, 0.f, 0.f };
     ScreenEffects mEffects; // Per-display TV screen effects.
+
+    // Prim-free "virtual screen". When set, this display is a viewer-drawn quad
+    // at a stored world transform instead of a bound prim face, so it needs no
+    // rezzed object and works in no-rez parcels. The identity fields on the
+    // display (mObjectId / mTE) stay null / -1 and every face-driven code path is
+    // gated on mVirtual, so a real-face display is byte-identical to before.
+    //
+    // COORDINATE SPACE: mPos / the synthesized corners are stored in AGENT space,
+    // the exact same space the composite pass draws with (gGLModelView maps agent
+    // space -> eye), so the quad positions and the surface uniforms share one
+    // space and the shader's prism_uv = (position - surfaceOrigin) . UDual is
+    // space-invariant. mRot maps the screen's local axes to agent space with the
+    // convention right = local +X, up = local +Y (the same convention the camera
+    // guide uses); the quad lies in the right/up plane. These live in
+    // DisplaySettings (not the top-level display identity) so they flow through
+    // the existing setDisplaySettings / snapshot / persist paths for free, and so
+    // "Reposition to my view" and the size/aspect editor commit through the same
+    // display-settings path a real display already uses.
+    bool         mVirtual = false; // faceless: draw a quad at the stored transform
+    LLVector3    mPos;             // screen centre, AGENT space
+    LLQuaternion mRot;             // screen orientation (right = +X, up = +Y)
+    F32          mWidth  = 1.6f;   // metres (default ~16:9 with mHeight)
+    F32          mHeight = 0.9f;   // metres
 };
 
 struct CaptureDefinition
@@ -334,6 +388,16 @@ struct CompositeState
 {
     U32 mCaptureSlot = MAX_CAPTURES; // Output owner, never a display index.
     LLFace* mFace = nullptr; // Valid only for the current call/frame.
+    // Prim-free "virtual screen". When mVirtual is set, mFace is null and the
+    // pipeline draws mVirtualCorners (a world/agent-space quad: TL, TR, BR, BL)
+    // under gPrismLensProgram with the base world modelview instead of pushing a
+    // face matrix and calling renderIndexed(). The surface uniforms below are
+    // synthesized in the SAME world/agent space as the corners, so the composite
+    // shader is reused unchanged. Default false => a real-face state is
+    // byte-identical to before.
+    bool mVirtual = false;
+    F32 mVirtualCorners[4][3] = { { 0.f, 0.f, 0.f }, { 0.f, 0.f, 0.f },
+                                  { 0.f, 0.f, 0.f }, { 0.f, 0.f, 0.f } };
     F32 mSurfaceOrigin[3] = { 0.f, 0.f, 0.f };
     F32 mSurfaceUDual[3] = { 0.f, 0.f, 0.f };
     F32 mSurfaceVDual[3] = { 0.f, 0.f, 0.f };
@@ -380,11 +444,28 @@ ActionStatus addDisplaySelectionStatus(const CaptureHandle& capture);
 ActionStatus setCameraSelectionStatus(const CaptureHandle& capture);
 ERegistryResult addCameraCaptureFromSelectedObject(
     CaptureHandle* capture, std::string* reason = nullptr);
+// Prim-free camera: allocate a CAMERA_FEED capture anchored to a stored world
+// transform (AGENT space; forward = local -Z, up = local +Y) instead of an
+// in-world object. No selection, no rezzed prim, no eligibility check. The
+// capture's mCameraObjectId stays null and mCamera.mVirtual is set true.
+ERegistryResult addVirtualCamera(CaptureHandle* capture, const LLVector3& pos,
+                                 const LLQuaternion& rot,
+                                 std::string* reason = nullptr);
 ERegistryResult addSurfaceLensFromSelectedFace(
     CaptureHandle* capture, std::string* reason = nullptr);
 ERegistryResult addSelectedDisplay(const CaptureHandle& capture, EFitMode fit,
                                    DisplayHandle* binding,
                                    std::string* reason = nullptr);
+// Prim-free screen: allocate a faceless display bound to `capture`, drawn as a
+// viewer quad at the stored world transform (AGENT space; right = local +X, up =
+// local +Y) with width/height in metres, instead of a selected prim face. No
+// selection, no rezzed prim, no eligibility check. The display's mObjectId stays
+// null / mTE stays -1 and mSettings.mVirtual is set true. Counts toward the
+// capture's display total exactly like a real display binding.
+ERegistryResult addVirtualDisplay(const CaptureHandle& capture,
+                                  const LLVector3& pos, const LLQuaternion& rot,
+                                  F32 width, F32 height, DisplayHandle* binding,
+                                  std::string* reason = nullptr);
 bool setSelectedCamera(const CaptureHandle& capture,
                        std::string* reason = nullptr);
 bool setCameraSettings(const CaptureHandle& capture,
@@ -419,6 +500,15 @@ bool getDesignation(U32 slot, Designation& designation);
 
 // Prepare all visible lenses and render at most one off-axis view this frame.
 void renderAuxiliaryView();
+
+// Render-only camera guides: a Blender-style wireframe frustum gizmo drawn per
+// CAMERA_FEED capture that has its per-camera guide enabled. Client-side draw
+// only (gUIProgram / immediate-mode lines and triangles in world coordinates);
+// no prim, render target, shader, or allocation. Cheap early-out when the
+// global kill-switch is off or no camera has its guide on. Must be called from
+// the 2.5D UI overlay pass (render_ui_3d) after gUIProgram is bound and inside
+// the UI-visibility gate, so it hides while filming.
+void renderCameraGuides();
 
 // Pipeline/context teardown notification. Clears publication/runtime ownership
 // only; the caller has already released the GL targets.

@@ -19,6 +19,7 @@
 #include "llsliderctrl.h"
 #include "llspinctrl.h"
 #include "lltextbox.h"
+#include "llviewercamera.h"
 #include "llviewermenu.h"
 #include "llviewerobject.h"
 #include "llviewerobjectlist.h"
@@ -245,7 +246,10 @@ bool LLFloaterPrismManager::postBuild()
     mRemoveCaptureButton = getChild<LLButton>("remove_capture");
     mSetCameraButton = getChild<LLButton>("set_camera");
     mPlaceEyeButton = getChild<LLButton>("place_eye_in_front");
+    mSnapViewButton = getChild<LLButton>("btn_snap_view");
+    mNewVirtualButton = getChild<LLButton>("btn_new_virtual");
     mAddDisplayButton = getChild<LLButton>("add_display");
+    mAddVirtualScreenButton = getChild<LLButton>("add_virtual_screen");
     mRemoveDisplayButton = getChild<LLButton>("remove_display");
     mLocateDisplayButton = getChild<LLButton>("locate_display");
 
@@ -274,6 +278,12 @@ bool LLFloaterPrismManager::postBuild()
     mFilmGrainSpinner = getChild<LLSpinCtrl>("film_grain");
     mCRTScanlinesSpinner = getChild<LLSpinCtrl>("crt_scanlines");
     mExposureBiasSpinner = getChild<LLSpinCtrl>("exposure_bias");
+    mVirtualCameraCheck = getChild<LLCheckBoxCtrl>("virtual_camera");
+    mShowGuideCheck = getChild<LLCheckBoxCtrl>("show_guide");
+    mGuideThirdsCheck = getChild<LLCheckBoxCtrl>("guide_thirds");
+    mGuideUpRollCheck = getChild<LLCheckBoxCtrl>("guide_uproll");
+    mGuideCrosshairCheck = getChild<LLCheckBoxCtrl>("guide_crosshair");
+    mGuideClipMarkersCheck = getChild<LLCheckBoxCtrl>("guide_clipmarkers");
     mRateModeCombo = getChild<LLComboBox>("rate_mode");
     mTargetFpsSpinner = getChild<LLSpinCtrl>("target_fps");
     mRatePresetCombo = getChild<LLComboBox>("rate_preset");
@@ -284,6 +294,9 @@ bool LLFloaterPrismManager::postBuild()
     mBarRedSpinner = getChild<LLSpinCtrl>("bar_red");
     mBarGreenSpinner = getChild<LLSpinCtrl>("bar_green");
     mBarBlueSpinner = getChild<LLSpinCtrl>("bar_blue");
+    mScreenHeightSlider = getChild<LLSliderCtrl>("screen_height");
+    mScreenAspectCombo = getChild<LLComboBox>("screen_aspect");
+    mRepositionScreenButton = getChild<LLButton>("reposition_screen");
 
     mEffectsScroll = getChild<LLScrollContainer>("effects_scroll");
     mEffectsDocument = getChild<LLPanel>("effects_document");
@@ -326,8 +339,14 @@ bool LLFloaterPrismManager::postBuild()
         [this](LLUICtrl*, const LLSD&) { onSetCamera(); });
     mPlaceEyeButton->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onPlaceEyeInFront(); });
+    mSnapViewButton->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onSnapVirtualCameraToView(); });
+    mNewVirtualButton->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onNewVirtualCamera(); });
     mAddDisplayButton->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onAddDisplay(); });
+    mAddVirtualScreenButton->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onAddVirtualScreen(); });
     mRemoveDisplayButton->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onRemoveDisplay(); });
     mLocateDisplayButton->setCommitCallback(
@@ -350,6 +369,12 @@ bool LLFloaterPrismManager::postBuild()
     mFilmGrainSpinner->setCommitCallback(camera_commit);
     mCRTScanlinesSpinner->setCommitCallback(camera_commit);
     mExposureBiasSpinner->setCommitCallback(camera_commit);
+    mVirtualCameraCheck->setCommitCallback(camera_commit);
+    mShowGuideCheck->setCommitCallback(camera_commit);
+    mGuideThirdsCheck->setCommitCallback(camera_commit);
+    mGuideUpRollCheck->setCommitCallback(camera_commit);
+    mGuideCrosshairCheck->setCommitCallback(camera_commit);
+    mGuideClipMarkersCheck->setCommitCallback(camera_commit);
 
     const auto rate_commit = [this](LLUICtrl*, const LLSD&)
     {
@@ -370,6 +395,17 @@ bool LLFloaterPrismManager::postBuild()
     mBarRedSpinner->setCommitCallback(display_commit);
     mBarGreenSpinner->setCommitCallback(display_commit);
     mBarBlueSpinner->setCommitCallback(display_commit);
+    // Virtual-screen size/aspect commit through the same display-settings path,
+    // but via a dedicated handler that recomputes width = height * aspect. The
+    // reposition button restamps the stored transform from the current view.
+    const auto screen_size_commit = [this](LLUICtrl*, const LLSD&)
+    {
+        onCommitVirtualScreenSize();
+    };
+    mScreenHeightSlider->setCommitCallback(screen_size_commit);
+    mScreenAspectCombo->setCommitCallback(screen_size_commit);
+    mRepositionScreenButton->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onRepositionVirtualScreen(); });
 
     const auto effects_commit = [this](LLUICtrl*, const LLSD&)
     {
@@ -633,9 +669,12 @@ void LLFloaterPrismManager::rebuildDisplayList()
         }
         selected_still_present |= sameHandle(display.mHandle, mSelectedDisplay);
 
-        const std::string face = llformat("%s f%d",
-            display.mDisplayObjectId.asString().substr(0, 8).c_str(),
-            display.mDisplayTextureEntry);
+        const std::string face = display.mSettings.mVirtual
+            ? llformat("Virtual %.2gx%.2gm",
+                display.mSettings.mWidth, display.mSettings.mHeight)
+            : llformat("%s f%d",
+                display.mDisplayObjectId.asString().substr(0, 8).c_str(),
+                display.mDisplayTextureEntry);
         const std::string inherited = llformat("%s %u | %.1f FPS",
             captureModeText(capture->mMode).c_str(), capture->mSlot + 1,
             capture->mRuntime.mObservedPublicationHz);
@@ -727,6 +766,31 @@ void LLFloaterPrismManager::refreshCaptureEditor()
         mFilmGrainSpinner->setValue(capture->mCamera.mOptics.mFilmGrain);
         mCRTScanlinesSpinner->setValue(capture->mCamera.mOptics.mCRTScanlines);
         mExposureBiasSpinner->setValue(capture->mCamera.mOptics.mExposureBias);
+
+        mShowGuideCheck->setValue(capture->mCamera.mShowGuide);
+        mGuideThirdsCheck->setValue(capture->mCamera.mGuideThirds);
+        mGuideUpRollCheck->setValue(capture->mCamera.mGuideUpRoll);
+        mGuideCrosshairCheck->setValue(capture->mCamera.mGuideCrosshair);
+        mGuideClipMarkersCheck->setValue(capture->mCamera.mGuideClipMarkers);
+
+        // Prim-free virtual camera. When enabled, the object-source affordances
+        // are meaningless (there is no marker to bind, offset from, or place
+        // against) and FOLLOW_PROJECTOR is unavailable, so grey those out. The
+        // FOV spinner stays governed by the fixed/projector selection below.
+        const bool is_virtual = capture->mCamera.mVirtual;
+        mVirtualCameraCheck->setValue(is_virtual);
+        mFovModeCombo->setEnabled(!is_virtual);
+        mEyeXSpinner->setEnabled(!is_virtual);
+        mEyeYSpinner->setEnabled(!is_virtual);
+        mEyeZSpinner->setEnabled(!is_virtual);
+        mPlaceEyeButton->setEnabled(!is_virtual);
+        mSnapViewButton->setEnabled(true);
+        if (is_virtual)
+        {
+            // A virtual camera is always FIXED FOV, so keep its degree spinner
+            // live regardless of the (disabled) mode combo.
+            mVerticalFovSpinner->setEnabled(true);
+        }
     }
 
     mRateModeCombo->setValue(capture->mRate.mMode == LLPrismLens::EOutputRateMode::TARGET_FPS
@@ -776,6 +840,15 @@ void LLFloaterPrismManager::refreshDisplayEditor()
     mEffectDropoutSlider->setEnabled(effects_editable);
     mEffectBrightnessSlider->setEnabled(effects_editable);
 
+    // Prim-free virtual-screen editor. Its size/aspect/reposition controls are
+    // meaningful only for a virtual display, so they are enabled only then; for a
+    // real (face-bound) display they stay greyed. (The object-source Locate
+    // button is gated against virtual displays in refreshSelectionActions.)
+    const bool is_virtual = display && display->mSettings.mVirtual;
+    mScreenHeightSlider->setEnabled(editable && is_virtual);
+    mScreenAspectCombo->setEnabled(editable && is_virtual);
+    mRepositionScreenButton->setEnabled(editable && is_virtual);
+
     refreshDisplayRateReadout();
     if (!capture || !display)
     {
@@ -788,6 +861,22 @@ void LLFloaterPrismManager::refreshDisplayEditor()
     mBarGreenSpinner->setValue(display->mSettings.mBarColorLinear[1]);
     mBarBlueSpinner->setValue(display->mSettings.mBarColorLinear[2]);
     setUIFromEffects(display->mSettings.mEffects);
+
+    // Reflect the virtual screen's stored size + aspect. The aspect combo shows
+    // the nearest preset for the current width/height; a size/aspect commit then
+    // sets width = height * aspect, so a custom persisted aspect is preserved
+    // until the user deliberately picks a preset.
+    if (is_virtual)
+    {
+        mScreenHeightSlider->setValue(display->mSettings.mHeight);
+        const F32 aspect = display->mSettings.mHeight > F_ALMOST_ZERO
+            ? display->mSettings.mWidth / display->mSettings.mHeight : 16.f / 9.f;
+        std::string aspect_value = "16:9";
+        if (is_approx_equal(aspect, 4.f / 3.f)) aspect_value = "4:3";
+        else if (is_approx_equal(aspect, 1.f)) aspect_value = "1:1";
+        else if (!is_approx_equal(aspect, 16.f / 9.f)) aspect_value = "custom";
+        mScreenAspectCombo->setValue(aspect_value);
+    }
 }
 
 void LLFloaterPrismManager::refreshDisplayRateReadout()
@@ -863,6 +952,14 @@ void LLFloaterPrismManager::refreshSelectionActions()
     setActionState(mNewDisplayFitCombo, can_add_display, can_add_display
         ? "Initial mapping for the new display face"
         : add_display_reason);
+    // A virtual screen needs no face selection -- only a Camera Feed capture --
+    // so it is enabled whenever one is selected, even from the empty state.
+    const bool can_add_virtual_screen =
+        capture && capture->mMode == LLPrismLens::ECaptureMode::CAMERA_FEED;
+    setActionState(mAddVirtualScreenButton, can_add_virtual_screen,
+        can_add_virtual_screen
+            ? "Create a prim-free virtual screen for this feed at your current view"
+            : "Select a Camera Feed capture first");
 
     // Surface the Add-Display reject reason on the status line so a greyed
     // "Add selected face" is actionable without hovering for the tooltip --
@@ -910,9 +1007,14 @@ void LLFloaterPrismManager::refreshSelectionActions()
         !display ? "Select a display first"
                  : lens_display ? "A Lens owns its aperture display; remove the capture instead"
                                 : "Remove only this display binding");
-    setActionState(mLocateDisplayButton, display != nullptr,
-        display ? "Select this face in-world and frame its object"
-                : "Select a display first");
+    // A virtual (prim-free) screen has no in-world object to select or frame, so
+    // Locate is disabled for it; use "Reposition to my view" in the editor.
+    const bool locatable_display = display && !display->mSettings.mVirtual;
+    setActionState(mLocateDisplayButton, locatable_display,
+        !display ? "Select a display first"
+                 : display->mSettings.mVirtual
+                     ? "A virtual screen has no object to frame; use Reposition to my view"
+                     : "Select this face in-world and frame its object");
 }
 
 void LLFloaterPrismManager::installDocumentFocusReveal()
@@ -1104,6 +1206,90 @@ void LLFloaterPrismManager::onPlaceEyeInFront()
     setStatus("Could not place eye: " + reason);
 }
 
+// Capture the live viewer camera as a prim-free virtual-camera transform.
+//
+// COORDINATE SPACE: mVirtualPos is stored in AGENT space. The render path builds
+// a virtual camera's eye directly from mVirtualPos, and it consumes an
+// object-anchored camera's eye from LLViewerObject::getRenderPosition(), which
+// resolves to getPositionAgent() -- also AGENT space. LLViewerCamera::getOrigin()
+// likewise returns AGENT space (LLHeroProbeManager subtracts it from
+// getPositionAgent() directly). So getOrigin() drops in with NO conversion.
+//
+// mVirtualRot maps local axes to agent space with the render-path convention
+// forward = local -Z, up = local +Y. It is built from the camera's orthonormal
+// axes as matrix rows (right, up, -forward): with LLQuaternion(x,y,z) setting the
+// rows, (0,0,-1)*rot == forward and (0,1,0)*rot == up, exactly what the render
+// path re-derives. This is convention-independent, unlike getQuaternion(), whose
+// basis (X=at, Y=left, Z=up) differs from the -Z/+Y camera convention.
+static void prismCurrentViewTransform(LLVector3& pos, LLQuaternion& rot)
+{
+    const LLViewerCamera& cam = LLViewerCamera::instance();
+    pos = cam.getOrigin();
+    LLVector3 forward = cam.getAtAxis();
+    LLVector3 up = cam.getUpAxis();
+    LLVector3 right = forward % up;
+    // Re-orthonormalize defensively; the camera axes are already orthonormal.
+    up = right % forward;
+    forward.normVec();
+    up.normVec();
+    right.normVec();
+    rot = LLQuaternion(right, up, -forward); // constructor normalizes
+}
+
+void LLFloaterPrismManager::onSnapVirtualCameraToView()
+{
+    const LLPrismLens::CaptureDefinition* capture = selectedCapture();
+    if (!capture || capture->mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
+    {
+        return;
+    }
+    LLVector3 pos;
+    LLQuaternion rot;
+    prismCurrentViewTransform(pos, rot);
+
+    // Preserve every other camera setting; flip on virtual and store the view
+    // transform. FOLLOW_PROJECTOR is invalid for a virtual camera, so force
+    // FIXED here so the UI reflects it at once (the registry soft-corrects too).
+    LLPrismLens::CameraSettings settings = capture->mCamera;
+    settings.mVirtual = true;
+    settings.mVirtualPos = pos;
+    settings.mVirtualRot = rot;
+    settings.mFovMode = LLPrismLens::EFovMode::FIXED;
+    std::string reason;
+    if (LLPrismLens::setCameraSettings(capture->mHandle, settings, &reason))
+    {
+        setStatus("Snapped the virtual camera to your current view (no prim needed).");
+        invalidateRegistrySnapshot();
+        return;
+    }
+    setStatus("Could not snap virtual camera: " + reason);
+}
+
+void LLFloaterPrismManager::onNewVirtualCamera()
+{
+    LLVector3 pos;
+    LLQuaternion rot;
+    prismCurrentViewTransform(pos, rot);
+
+    LLPrismLens::CaptureHandle capture;
+    std::string reason;
+    const LLPrismLens::ERegistryResult result =
+        LLPrismLens::addVirtualCamera(&capture, pos, rot, &reason);
+    if (result == LLPrismLens::ERegistryResult::OK)
+    {
+        mSelectedCapture = capture;
+        mSelectedDisplay = LLPrismLens::DisplayHandle();
+        setStatus("Created a prim-free virtual camera at your current view.");
+        // Like onAddCamera(): the new capture is selected while the world
+        // selection is unchanged, so swallow one Add-Display reject surfacing.
+        mSuppressSelectionRejectOnce = true;
+        invalidateRegistrySnapshot();
+        revealDocumentView(mCaptureTitle, mCaptureDocument, mCaptureScroll);
+        return;
+    }
+    setStatus("Could not create virtual camera: " + reason);
+}
+
 void LLFloaterPrismManager::onCommitCameraSettings()
 {
     const LLPrismLens::CaptureDefinition* capture = selectedCapture();
@@ -1133,6 +1319,19 @@ void LLFloaterPrismManager::onCommitCameraSettings()
     settings.mOptics.mFilmGrain = static_cast<F32>(mFilmGrainSpinner->getValue().asReal());
     settings.mOptics.mCRTScanlines = static_cast<F32>(mCRTScanlinesSpinner->getValue().asReal());
     settings.mOptics.mExposureBias = static_cast<F32>(mExposureBiasSpinner->getValue().asReal());
+
+    settings.mShowGuide = mShowGuideCheck->getValue().asBoolean();
+    settings.mGuideThirds = mGuideThirdsCheck->getValue().asBoolean();
+    settings.mGuideUpRoll = mGuideUpRollCheck->getValue().asBoolean();
+    settings.mGuideCrosshair = mGuideCrosshairCheck->getValue().asBoolean();
+    settings.mGuideClipMarkers = mGuideClipMarkersCheck->getValue().asBoolean();
+
+    // Only the virtual FLAG comes from the UI here. mVirtualPos/mVirtualRot are
+    // authored by "Snap to my view" (or addVirtualCamera), so they are carried
+    // over unchanged from the current capture via the `settings` copy above --
+    // a plain settings commit must never zero the stored transform. FOLLOW_-
+    // PROJECTOR is soft-corrected to FIXED for a virtual camera in the registry.
+    settings.mVirtual = mVirtualCameraCheck->getValue().asBoolean();
 
     std::string reason;
     if (LLPrismLens::setCameraSettings(capture->mHandle, settings, &reason))
@@ -1207,6 +1406,52 @@ void LLFloaterPrismManager::onAddDisplay()
     setStatus("Could not add display: " + reason);
 }
 
+void LLFloaterPrismManager::onAddVirtualScreen()
+{
+    const LLPrismLens::CaptureDefinition* capture = selectedCapture();
+    if (!capture || capture->mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
+    {
+        setStatus("Select a Camera Feed capture first, then add a virtual screen.");
+        return;
+    }
+
+    // Place the screen a few metres in front of the current view, facing the
+    // viewer. prismCurrentViewTransform() returns the view origin and an
+    // orientation with right = local +X, up = local +Y, forward = local -Z, so
+    // the screen's right/up match the view axes and the feed reads upright and
+    // unmirrored from the viewer's position.
+    LLVector3 view_pos;
+    LLQuaternion rot;
+    prismCurrentViewTransform(view_pos, rot);
+    const F32 distance = 3.f; // metres in front of the view
+    const LLVector3 forward = LLVector3(0.f, 0.f, -1.f) * rot; // view forward
+    const LLVector3 pos = view_pos + forward * distance;
+
+    // Default the screen to the capture's output aspect at a 0.9 m height.
+    const F32 height = 0.9f;
+    F32 aspect = capture->mCamera.mOutputAspect;
+    if (!std::isfinite(aspect) || aspect <= 0.f) aspect = 16.f / 9.f;
+    const F32 width = height * aspect;
+
+    LLPrismLens::DisplayHandle display;
+    std::string reason;
+    const LLPrismLens::ERegistryResult result = LLPrismLens::addVirtualDisplay(
+        capture->mHandle, pos, rot, width, height, &display, &reason);
+    if (result == LLPrismLens::ERegistryResult::OK)
+    {
+        mSelectedDisplay = display;
+        setStatus("Created a prim-free virtual screen at your current view (no prim needed).");
+        // The selected Camera Feed capture is unchanged, so the synchronous
+        // refresh below would re-surface any "select a face" Add-Display reject
+        // over this confirmation. Swallow that one surfacing (same contract as
+        // onAddDisplay / onNewVirtualCamera).
+        mSuppressSelectionRejectOnce = true;
+        invalidateRegistrySnapshot();
+        return;
+    }
+    setStatus("Could not add virtual screen: " + reason);
+}
+
 void LLFloaterPrismManager::onRemoveDisplay()
 {
     const LLPrismLens::DisplayDefinition* display = selectedDisplay();
@@ -1271,6 +1516,75 @@ void LLFloaterPrismManager::onCommitDisplaySettings()
     }
     setStatus("Display settings were rejected: " + reason);
     refreshDisplayEditor();
+}
+
+void LLFloaterPrismManager::onCommitVirtualScreenSize()
+{
+    const LLPrismLens::DisplayDefinition* display = selectedDisplay();
+    if (!display || !display->mSettings.mVirtual)
+    {
+        return;
+    }
+
+    // Aspect-locked sizing: the slider sets the height and the combo the aspect,
+    // and width = height * aspect. Copy the current settings first so the stored
+    // transform, fit, bar color, and effects are all preserved (a "custom"
+    // aspect preserves the current width/height ratio while only rescaling).
+    LLPrismLens::DisplaySettings settings = display->mSettings;
+    F32 height = static_cast<F32>(mScreenHeightSlider->getValue().asReal());
+    if (!std::isfinite(height) || height <= 0.f) height = settings.mHeight;
+    const std::string aspect = mScreenAspectCombo->getValue().asString();
+    F32 ratio;
+    if (aspect == "16:9") ratio = 16.f / 9.f;
+    else if (aspect == "4:3") ratio = 4.f / 3.f;
+    else if (aspect == "1:1") ratio = 1.f;
+    else ratio = settings.mHeight > F_ALMOST_ZERO
+        ? settings.mWidth / settings.mHeight : 16.f / 9.f;
+    settings.mHeight = height;
+    settings.mWidth = height * ratio;
+
+    std::string reason;
+    if (LLPrismLens::setDisplaySettings(display->mHandle, settings, &reason))
+    {
+        setStatus("Resized the virtual screen; the shared capture was not re-rendered.");
+        invalidateRegistrySnapshot();
+        return;
+    }
+    setStatus("Virtual screen size was rejected: " + reason);
+    refreshDisplayEditor();
+}
+
+void LLFloaterPrismManager::onRepositionVirtualScreen()
+{
+    const LLPrismLens::DisplayDefinition* display = selectedDisplay();
+    if (!display || !display->mSettings.mVirtual)
+    {
+        return;
+    }
+
+    // Restamp the stored transform from the current view, a few metres in front,
+    // facing the viewer -- same placement rule as onAddVirtualScreen(). Preserve
+    // the screen's size, fit, and effects by copying the current settings first.
+    LLVector3 view_pos;
+    LLQuaternion rot;
+    prismCurrentViewTransform(view_pos, rot);
+    const F32 distance = 3.f;
+    const LLVector3 forward = LLVector3(0.f, 0.f, -1.f) * rot;
+    const LLVector3 pos = view_pos + forward * distance;
+
+    LLPrismLens::DisplaySettings settings = display->mSettings;
+    settings.mVirtual = true;
+    settings.mPos = pos;
+    settings.mRot = rot;
+
+    std::string reason;
+    if (LLPrismLens::setDisplaySettings(display->mHandle, settings, &reason))
+    {
+        setStatus("Repositioned the virtual screen to your current view.");
+        invalidateRegistrySnapshot();
+        return;
+    }
+    setStatus("Could not reposition virtual screen: " + reason);
 }
 
 void LLFloaterPrismManager::onCommitDisplayEffects()

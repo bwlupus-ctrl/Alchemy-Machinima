@@ -54,13 +54,18 @@ private:
     void onRemoveCapture();
     void onSetCamera();
     void onPlaceEyeInFront();
+    void onSnapVirtualCameraToView();
+    void onNewVirtualCamera();
     void onCommitCameraSettings();
     void onCommitRateSettings();
     void onRatePresetChanged();
     void onAddDisplay();
+    void onAddVirtualScreen();
     void onRemoveDisplay();
     void onLocateDisplay();
     void onCommitDisplaySettings();
+    void onCommitVirtualScreenSize();
+    void onRepositionVirtualScreen();
     void onCommitDisplayEffects();
     void onApplyEffectsPreset(const LLPrismLens::ScreenEffects& preset);
     LLPrismLens::ScreenEffects effectsFromUI() const;
@@ -113,9 +118,16 @@ private:
     LLButton* mRemoveCaptureButton = nullptr;
     LLButton* mSetCameraButton = nullptr;
     LLButton* mPlaceEyeButton = nullptr;
+    LLButton* mSnapViewButton = nullptr;
+    LLButton* mNewVirtualButton = nullptr;
     LLButton* mAddDisplayButton = nullptr;
+    LLButton* mAddVirtualScreenButton = nullptr;
     LLButton* mRemoveDisplayButton = nullptr;
     LLButton* mLocateDisplayButton = nullptr;
+    // Prim-free virtual-screen editor controls (shown for a virtual display).
+    LLButton* mRepositionScreenButton = nullptr;
+    LLSliderCtrl* mScreenHeightSlider = nullptr;
+    LLComboBox* mScreenAspectCombo = nullptr;
 
     LLScrollContainer* mCaptureScroll = nullptr;
     LLPanel* mCaptureDocument = nullptr;
@@ -142,6 +154,14 @@ private:
     LLSpinCtrl* mFilmGrainSpinner = nullptr;
     LLSpinCtrl* mCRTScanlinesSpinner = nullptr;
     LLSpinCtrl* mExposureBiasSpinner = nullptr;
+    // Prim-free virtual-camera toggle (stored transform instead of a prim).
+    LLCheckBoxCtrl* mVirtualCameraCheck = nullptr;
+    // Render-only camera guide (frustum gizmo) toggles.
+    LLCheckBoxCtrl* mShowGuideCheck = nullptr;
+    LLCheckBoxCtrl* mGuideThirdsCheck = nullptr;
+    LLCheckBoxCtrl* mGuideUpRollCheck = nullptr;
+    LLCheckBoxCtrl* mGuideCrosshairCheck = nullptr;
+    LLCheckBoxCtrl* mGuideClipMarkersCheck = nullptr;
     LLComboBox* mRateModeCombo = nullptr;
     LLSpinCtrl* mTargetFpsSpinner = nullptr;
     LLComboBox* mRatePresetCombo = nullptr;

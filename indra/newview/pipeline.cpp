@@ -16901,6 +16901,20 @@ void LLPipeline::renderDeferredLighting()
                 gGL.syncMatrices();
             }
 
+            // Prim-free virtual screen: push the BASE world model-view with NO
+            // face matrix applied. The quad vertices are already in world/agent
+            // space (the same space gGLModelView maps to eye space), so unlike
+            // pushFaceMatrix() there is no per-object multiply. popFaceMatrix()
+            // restores it exactly as for a real face.
+            void pushWorldMatrix()
+            {
+                gGL.matrixMode(LLRender::MM_MODELVIEW);
+                gGL.pushMatrix();
+                mFaceMatrixPushed = true;
+                gGL.loadMatrix(gGLModelView);
+                gGL.syncMatrices();
+            }
+
             void popFaceMatrix()
             {
                 if (mFaceMatrixPushed)
@@ -17008,8 +17022,10 @@ void LLPipeline::renderDeferredLighting()
             {
                 const LLPrismLens::CompositeState& prism_state =
                     prism_states[prism_index];
+                // A prim-free virtual screen has no face; it is drawn as a
+                // world-space quad below. Only a real-face state requires mFace.
                 if (prism_state.mCaptureSlot >= LLPrismLens::MAX_CAPTURES ||
-                    !prism_state.mFace ||
+                    (!prism_state.mFace && !prism_state.mVirtual) ||
                     prism_state.mScissor[2] <= 0 ||
                     prism_state.mScissor[3] <= 0 ||
                     !mPrismLensOutput[prism_state.mCaptureSlot].isComplete())
@@ -17052,12 +17068,39 @@ void LLPipeline::renderDeferredLighting()
                 gPrismLensProgram.uniform4fv(sScreenEffect3, 1, prism_state.mScreenEffect3);
                 gPrismLensProgram.uniform4fv(sScreenEffect4, 1, prism_state.mScreenEffect4);
 
-                LLDrawable* lens_drawable = prism_state.mFace->getDrawable();
-                if (lens_drawable &&
-                    (lens_drawable->isActive() || lens_drawable->getRegion()))
+                if (prism_state.mFace)
                 {
-                    scoped_composite_restore.pushFaceMatrix(lens_drawable);
-                    prism_state.mFace->renderIndexed();
+                    LLDrawable* lens_drawable = prism_state.mFace->getDrawable();
+                    if (lens_drawable &&
+                        (lens_drawable->isActive() || lens_drawable->getRegion()))
+                    {
+                        scoped_composite_restore.pushFaceMatrix(lens_drawable);
+                        prism_state.mFace->renderIndexed();
+                        scoped_composite_restore.popFaceMatrix();
+                    }
+                }
+                else if (prism_state.mVirtual)
+                {
+                    // Prim-free virtual screen: two triangles from the stored
+                    // world-space corners (TL, TR, BR, BL), drawn under the base
+                    // world model-view with the SAME gPrismLensProgram bound. The
+                    // vertex shader reads only `position` (gGL immediate mode
+                    // supplies it as ATTRIBUTE_POSITION) and derives prism_uv from
+                    // the world-space surface uniforms already uploaded above, so
+                    // no shader change is needed. The batch runs under
+                    // LLGLDisable cull(GL_CULL_FACE), so the quad is two-sided --
+                    // matching a real display face.
+                    const F32 (&c)[4][3] = prism_state.mVirtualCorners;
+                    scoped_composite_restore.pushWorldMatrix();
+                    gGL.begin(LLRender::TRIANGLES);
+                    gGL.vertex3fv(c[0]); // TL
+                    gGL.vertex3fv(c[1]); // TR
+                    gGL.vertex3fv(c[2]); // BR
+                    gGL.vertex3fv(c[0]); // TL
+                    gGL.vertex3fv(c[2]); // BR
+                    gGL.vertex3fv(c[3]); // BL
+                    gGL.end();
+                    gGL.flush();
                     scoped_composite_restore.popFaceMatrix();
                 }
             }
