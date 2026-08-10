@@ -26,6 +26,8 @@
 
 #include "llviewerprecompiledheaders.h"
 
+#include <optional>
+
 #include "lldrawpoolalpha.h"
 
 #include "llglheaders.h"
@@ -161,6 +163,15 @@ void LLDrawPoolAlpha::renderPostDeferred(S32 pass)
     // prepare shaders
     llassert(LLPipeline::sRenderDeferred);
 
+    const bool interleave = LLPipeline::canUseInterleavedAlpha() &&
+                            getType() == LLDrawPool::POOL_ALPHA_POST_WATER;
+    if (interleave)
+    {
+        // postSort left the shared lists in legacy order; switch them to the
+        // interleaved order only for the consumer that performs the merge.
+        gPipeline.sortAlphaGroupsForInterleaving();
+    }
+
     emissive_shader = &gDeferredEmissiveProgram;
     prepare_alpha_shader(emissive_shader, false, water_sign);
 
@@ -206,27 +217,35 @@ void LLDrawPoolAlpha::renderPostDeferred(S32 pass)
     // (rigged first, then all non-rigged) and is byte-identical. PRE_WATER keeps the
     // stock order (rigged-first depth is needed for water fog); HUD is a single
     // non-rigged pass. See docs/BDMERGE_ALPHA_ATTACHMENT_SORT_BRIEF.md.
+    // The interleaved path (LL PR #5927, RenderInterleavedAlpha) takes precedence
+    // when its eligibility gate passes; both legacy orderings remain the fallback.
     static LLCachedControl<bool> attach_sort(gSavedSettings, "BDMergeAlphaAttachmentSort", false);
-    if (!LLPipeline::sRenderingHUDs)
+    if (interleave)
+    {
+        // single pass: depth-interleave whole avatars with the distance-sorted world
+        // alpha. canUseInterleavedAlpha() already limited this to the non-HUD world
+        // camera; HUD, cube, reflection, shadow keep the legacy paths below.
+        forwardRender(EAlphaStream::INTERLEAVED);
+    }
+    else if (!LLPipeline::sRenderingHUDs)
     {
         if (attach_sort && getType() == LLDrawPool::POOL_ALPHA_POST_WATER)
         {
-            forwardRender(false, ATTACHMENT_NONE);  // pass 1: SIM non-rigged
-            forwardRender(true);                    // pass 2: rigged
-            forwardRender(false, ATTACHMENT_ONLY);  // pass 3: worn attachment non-rigged
+            forwardRender(EAlphaStream::WORLD, ATTACHMENT_NONE);  // pass 1: SIM non-rigged
+            forwardRender(EAlphaStream::RIGGED);                  // pass 2: rigged
+            forwardRender(EAlphaStream::WORLD, ATTACHMENT_ONLY);  // pass 3: worn attachment non-rigged
         }
         else
         {
             // stock: first pass render rigged objects only (and to depth), then
             // the regular forward non-rigged pass.
-            forwardRender(true);
-            forwardRender();
+            forwardRender(EAlphaStream::RIGGED);   // first pass: rigged only, to depth
+            forwardRender(EAlphaStream::WORLD);    // second pass: regular non-rigged
         }
     }
     else
     {
-        // HUD: single non-rigged forward pass (stock)
-        forwardRender();
+        forwardRender(EAlphaStream::WORLD);        // HUD: single non-rigged pass
     }
 
     // final pass, render to depth for depth of field effects
@@ -250,8 +269,10 @@ void LLDrawPoolAlpha::renderPostDeferred(S32 pass)
     }
 }
 
-void LLDrawPoolAlpha::forwardRender(bool rigged, AttachmentFilter filter)
+void LLDrawPoolAlpha::forwardRender(EAlphaStream stream, AttachmentFilter filter)
 {
+    const bool rigged = (stream == EAlphaStream::RIGGED);
+
     gPipeline.enableLightsDynamic();
 
     LLGLSPipelineAlpha gls_pipeline_alpha;
@@ -267,7 +288,8 @@ void LLDrawPoolAlpha::forwardRender(bool rigged, AttachmentFilter filter)
         || getType() == LLDrawPoolAlpha::POOL_ALPHA_PRE_WATER; // needed for accurate water fog
 
 
-    LLGLDepthTest depth(GL_TRUE, write_depth ? GL_TRUE : GL_FALSE);
+    // in interleaved mode depth writes are decided per group inside renderAlpha
+    LLGLDepthTest depth(GL_TRUE, (write_depth && stream != EAlphaStream::INTERLEAVED) ? GL_TRUE : GL_FALSE);
 
     mColorSFactor = LLRender::BF_SOURCE_ALPHA;           // } regular alpha blend
     mColorDFactor = LLRender::BF_ONE_MINUS_SOURCE_ALPHA; // }
@@ -277,7 +299,7 @@ void LLDrawPoolAlpha::forwardRender(bool rigged, AttachmentFilter filter)
 
     // If the face is more than 90% transparent, then don't update the Depth buffer for Dof
     // We don't want the nearly invisible objects to cause of DoF effects
-    renderAlpha(getVertexDataMask() | LLVertexBuffer::MAP_TEXTURE_INDEX | LLVertexBuffer::MAP_TANGENT | LLVertexBuffer::MAP_TEXCOORD1 | LLVertexBuffer::MAP_TEXCOORD2, false, rigged, filter);
+    renderAlpha(getVertexDataMask() | LLVertexBuffer::MAP_TEXTURE_INDEX | LLVertexBuffer::MAP_TANGENT | LLVertexBuffer::MAP_TEXCOORD1 | LLVertexBuffer::MAP_TEXCOORD2, false, stream, filter);
 
     gGL.setColorMask(true, false);
 
@@ -579,9 +601,13 @@ void LLDrawPoolAlpha::renderRiggedPbrEmissives(std::vector<LLDrawInfo*>& emissiv
     }
 }
 
-void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, bool rigged, AttachmentFilter filter)
+void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, EAlphaStream stream, AttachmentFilter filter)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
+    const bool merged = (stream == EAlphaStream::INTERLEAVED);
+    // stream of the current group; flips per group in the interleaved walk
+    bool rigged = (stream == EAlphaStream::RIGGED);
+
     // Visible-diffuse sidecar. The guard is armed by renderGeomPostDeferred and
     // is authoritative: adjust it rather than calling glColorMaski directly,
     // because a raw indexed call would be silently reverted to the guard's
@@ -603,18 +629,21 @@ void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, bool rigged, Attach
     const LLGLSLShader* lastAvatarShader = nullptr;
     bool skipLastSkin = false;
 
-    LLCullResult::sg_iterator begin;
-    LLCullResult::sg_iterator end;
+    LLCullResult::sg_iterator iter = nullptr;
+    LLCullResult::sg_iterator iter_end = nullptr;
+    LLCullResult::sg_iterator rigged_iter = nullptr;
+    LLCullResult::sg_iterator rigged_end = nullptr;
 
-    if (rigged)
+    if (merged || rigged)
     {
-        begin = gPipeline.beginRiggedAlphaGroups();
-        end = gPipeline.endRiggedAlphaGroups();
+        rigged_iter = gPipeline.beginRiggedAlphaGroups();
+        rigged_end = gPipeline.endRiggedAlphaGroups();
     }
-    else
+
+    if (merged || !rigged)
     {
-        begin = gPipeline.beginAlphaGroups();
-        end = gPipeline.endAlphaGroups();
+        iter = gPipeline.beginAlphaGroups();
+        iter_end = gPipeline.endAlphaGroups();
     }
 
     const F32 water_height = gPipeline.getRenderWaterHeight();
@@ -626,10 +655,57 @@ void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, bool rigged, Attach
     }
 
 
-    for (LLCullResult::sg_iterator i = begin; i != end; ++i)
+    // depth-write conditions that apply to every group in this pass; in merged
+    // mode, stamped rigged groups additionally write depth (see below)
+    const bool write_depth_always = LLDrawPoolWater::sSkipScreenCopy ||
+                                    LLPipeline::sImpostorRenderAlphaDepthPass ||
+                                    getType() == LLDrawPoolAlpha::POOL_ALPHA_PRE_WATER;
+
+    // merged mode: per-group depth-write guard, re-emplaced only when the
+    // write state changes (one glDepthMask per run, not per group)
+    std::optional<LLGLDepthTest> depth_state;
+    bool depth_state_writes = false;
+
+    while (iter != iter_end || rigged_iter != rigged_end)
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_DRAWPOOL("renderAlpha - group");
-        LLSpatialGroup* group = *i;
+
+        if (merged)
+        { // take the farther of the two stream heads; an ensemble's groups
+          // share one avatar depth, so each avatar drains contiguously --
+          // rigged run first (ties go rigged), then its unrigged attachment
+          // groups, which composite over it
+            if (rigged_iter == rigged_end)
+            {
+                rigged = false;
+            }
+            else if (iter == iter_end)
+            {
+                rigged = true;
+            }
+            else
+            {
+                F32 rigged_depth = (*rigged_iter)->mAvatarDepth;
+                F32 world_depth = (*iter)->worldAlphaDepth();
+                if (rigged_depth != world_depth)
+                {
+                    rigged = rigged_depth > world_depth;
+                }
+                else
+                {
+                    // equal depth: keep each avatar's ensemble contiguous. Its
+                    // own rigged draws before its own unrigged; a plain world
+                    // group composites over it (rigged first); two coincident
+                    // avatars drain in the sorts' std::less identity order.
+                    const LLVOAvatar* world_av = (*iter)->mAvatarp;
+                    const LLVOAvatar* rigged_av = (*rigged_iter)->mAvatarp;
+                    rigged = !rigged_av || !world_av || world_av == rigged_av ||
+                             std::less<const LLVOAvatar*>()(rigged_av, world_av);
+                }
+            }
+        }
+
+        LLSpatialGroup* group = rigged ? *rigged_iter++ : *iter++;
         llassert(group);
         llassert(group->getSpatialPartition());
 
@@ -655,6 +731,21 @@ void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, bool rigged, Attach
                     {
                         continue;
                     }
+                }
+            }
+
+            // merged mode: stamped rigged groups write depth so attachment-order
+            // layering holds; an unstamped group has no defined position in the
+            // rigged order and must not depth-reject geometry behind it (it
+            // still blends). Non-merged passes keep the caller's depth state
+            // (set in forwardRender).
+            if (merged)
+            {
+                bool write_depth = write_depth_always || (rigged && group->mAvatarp != nullptr);
+                if (!depth_state || write_depth != depth_state_writes)
+                {
+                    depth_state.emplace(GL_TRUE, write_depth ? GL_TRUE : GL_FALSE);
+                    depth_state_writes = write_depth;
                 }
             }
 

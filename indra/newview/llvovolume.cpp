@@ -5925,29 +5925,35 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
             // global flag. The cutoff override must honor that same per-object/per-avatar
             // choice, otherwise an explicitly force-masked BLEND face keeps its meaningless
             // material cutoff (often 0) and the global cutoff slider appears to do nothing.
-            bool per_target_mask = false;
-            if (!force_mask)
-            {
-                LLViewerObject* vobj = facep->getViewerObject();
-                if (vobj)
-                {
-                    LLUUID objId = vobj->getRootEdit() ? vobj->getRootEdit()->getID() : LLUUID::null;
-                    LLUUID avId  = vobj->getAvatar() ? vobj->getAvatar()->getID() : LLUUID::null;
-                    per_target_mask = (LLPipeline::resolveAlphaMode(objId, avId) == 1);
-                }
-            }
-            // Apply the forced cutoff to any force-masked face EXCEPT one whose material
-            // is a genuine creator-set MASK material (DIFFUSE_ALPHA_MODE_MASK) - that one
-            // already carries a meaningful cutoff we respect. Every other case (no material,
-            // or a Blinn-Phong material in None / Blend / Emissive mode) has a meaningless
-            // stored cutoff (typically 0), which is exactly the "acts like cutoff 0" bug on
-            // force-masked mesh (e.g. rigged hair with a None-mode material).
+            LLViewerObject* vobj = facep->getViewerObject();
+            LLUUID objId = (vobj && vobj->getRootEdit()) ? vobj->getRootEdit()->getID() : LLUUID::null;
+            LLUUID avId  = (vobj && vobj->getAvatar()) ? vobj->getAvatar()->getID() : LLUUID::null;
+            bool per_target_mask = !force_mask && (LLPipeline::resolveAlphaMode(objId, avId) == 1);
+            // Per-target explicit cutoff chosen from the right-click "Mask Cutoff" submenu;
+            // -1 when the user hasn't picked one (falls back to the global cutoff below).
+            F32 pt_cutoff = per_target_mask ? LLPipeline::resolveAlphaMaskCutoff(objId, avId) : -1.f;
+
             if ((force_mask || per_target_mask)
                 && !gltf_mat
-                && (type == LLRenderPass::PASS_ALPHA_MASK || type == LLRenderPass::PASS_FULLBRIGHT_ALPHA_MASK)
-                && (!mat || mat->getDiffuseAlphaMode() != LLMaterial::DIFFUSE_ALPHA_MODE_MASK))
+                && (type == LLRenderPass::PASS_ALPHA_MASK || type == LLRenderPass::PASS_FULLBRIGHT_ALPHA_MASK))
             {
-                draw_info->mAlphaMaskCutoff = llclamp((F32)force_cutoff, 0.f, 1.f);
+                if (per_target_mask)
+                {
+                    // The user EXPLICITLY chose Force Mask on this target, so their cutoff
+                    // wins UNCONDITIONALLY - even over a genuine creator-set MASK material
+                    // whose stored cutoff is often ~0 (the "acts like cutoff 0" bug on
+                    // force-masked mesh, e.g. rigged hair). Use their picked value if set,
+                    // else the global default.
+                    F32 c = (pt_cutoff >= 0.f) ? pt_cutoff : (F32)force_cutoff;
+                    draw_info->mAlphaMaskCutoff = llclamp(c, 0.f, 1.f);
+                }
+                else if (!mat || mat->getDiffuseAlphaMode() != LLMaterial::DIFFUSE_ALPHA_MODE_MASK)
+                {
+                    // Global force-mask hammer: UNCHANGED behavior - only overrides faces
+                    // with a meaningless stored cutoff (no material, or None/Blend/Emissive);
+                    // a genuine MASK material keeps its own creator-set cutoff.
+                    draw_info->mAlphaMaskCutoff = llclamp((F32)force_cutoff, 0.f, 1.f);
+                }
             }
         }
         // if (type == LLRenderPass::PASS_ALPHA) // always populate the draw_info ptr

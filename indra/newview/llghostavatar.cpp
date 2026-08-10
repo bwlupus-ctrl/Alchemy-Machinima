@@ -1979,6 +1979,11 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
     // AvatarAnimation is delivered only for simulator-known avatar UUIDs.
     // Mirror the source's already-received state into the clone-only ledger
     // before LLVOAvatar::idleUpdate() runs updateMotions().
+    // GhostMirrorHoldOnSourceChange: keep the clone performing across a transient
+    // source change (outfit re-rez / de-rez / imposter / AO gap) instead of
+    // mirroring the momentary gap. Gates both the bento and animesh holds below.
+    static LLCachedControl<bool> hold_on_source_change(
+        gSavedSettings, "GhostMirrorHoldOnSourceChange", true);
     if (mEntityDriveMode == ALGhostStudio::DRIVE_MIRROR)
     {
         LLViewerObject* source_obj = gObjectList.findObject(mAnimationSourceId);
@@ -1993,7 +1998,15 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
                 source->mSignaledAnimations;
             mirrored_animations.erase(ANIM_AGENT_SIT_GROUND);
             mirrored_animations.erase(ANIM_AGENT_SIT_GROUND_CONSTRAINED);
-            if (mCloneDesiredAnimations != mirrored_animations)
+            // A source change (outfit swap, brief de-rez, out-of-view imposter, or
+            // AO gap) transiently empties the source's signaled set. With
+            // GhostMirrorHoldOnSourceChange on, mirroring that empty would stop the
+            // clone's whole bento performance, so HOLD the last mirror when the
+            // source momentarily contributes nothing. A genuine switch to a different
+            // animation is still non-empty and mirrors normally. Option off = faithful
+            // live mirror (an empty source set stops the clone too).
+            if ((!hold_on_source_change || !mirrored_animations.empty()) &&
+                mCloneDesiredAnimations != mirrored_animations)
             {
                 synchronizeCloneAnimations(mirrored_animations);
             }
@@ -2044,6 +2057,23 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
         if (!root || root->isDead() || !root->isAnimatedObject())
         {
             continue;
+        }
+
+        // Hold the clone's animesh when the SOURCE linkset is gone. A wearer's
+        // outfit change re-rezzes its animesh with fresh UUIDs, so the source-id
+        // lookups below would all miss and mirror_one would erase (stop) the
+        // clone's animation - freezing the mesh on a transient source change.
+        // Skipping keeps the last performance playing; a still-present source
+        // that genuinely stopped its animesh still mirrors the stop normally.
+        // Gated by GhostMirrorHoldOnSourceChange (off = faithful live mirror).
+        if (hold_on_source_change)
+        {
+            LLViewerObject* source_root =
+                gObjectList.findObject(linkset.mSourceRoot);
+            if (!source_root || source_root->isDead())
+            {
+                continue;
+            }
         }
 
         bool changed = false;

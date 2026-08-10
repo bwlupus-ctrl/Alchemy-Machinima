@@ -377,6 +377,20 @@ void LLControlAvatar::idleUpdate(LLAgent &agent, const F64 &time)
     else
     {
         LLVOAvatar::idleUpdate(agent,time);
+
+        // stamp the animesh bridge like LLVOAvatar::idleUpdateMisc stamps attachments.
+        // Worn animesh is skipped (the wearer stamps this bridge). Bridge fetched from the
+        // drawable -- mControlAVBridge can go stale.
+        if (mRootVolp && mRootVolp->mDrawable && !getAttachedAvatar())
+        {
+            LLSpatialBridge* bridge = mRootVolp->mDrawable->getSpatialBridge();
+            if (bridge)
+            {
+                bridge->mAvatarp = this;
+                bridge->mRenderOrder = 0;
+                bridge->mAvatarDepth = calcRiggedAlphaDepth();
+            }
+        }
     }
 }
 

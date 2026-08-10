@@ -255,6 +255,17 @@ public:
     // Object override wins if present (non-0); else avatar override; else 0.
     static S32   resolveAlphaMode(const LLUUID& objRootId, const LLUUID& avatarId);
 
+    // [BDMerge G2.3 per-target] Per-target Force-Mask alpha cutoff. A face routed
+    // to a mask pass by an EXPLICIT per-target Force Mask uses this value instead of
+    // the material's stored cutoff (which on MASK/None materials is often ~0, so
+    // masking does nothing). cutoff < 0 clears the override (falls back to the global
+    // BDMergeForceAlphaMaskCutoff). Setter re-bakes the target's geometry so the
+    // change is visible immediately. Keyed by object ROOT id or AVATAR id; session-only.
+    static void  setAlphaMaskCutoffOverride(const LLUUID& id, F32 cutoff);
+    static F32   getAlphaMaskCutoffOverride(const LLUUID& id); // -1 if unset
+    // Object override wins if present (>=0); else avatar override; else -1 (none).
+    static F32   resolveAlphaMaskCutoff(const LLUUID& objRootId, const LLUUID& avatarId);
+
     void applyFXAA(LLRenderTarget* src, LLRenderTarget* dst);
     void generateSMAABuffers(LLRenderTarget* src);
     void applySMAA(LLRenderTarget* src, LLRenderTarget* dst);
@@ -564,6 +575,7 @@ public:
     LLCullResult::sg_iterator endAlphaGroups();
     LLCullResult::sg_iterator beginRiggedAlphaGroups();
     LLCullResult::sg_iterator endRiggedAlphaGroups();
+    void sortAlphaGroupsForInterleaving();
 
     void addTrianglesDrawn(S32 index_count);
     void recordTrianglesDrawn();
@@ -579,6 +591,7 @@ public:
     bool hasAnyRenderType(const U32 type, ...) const;
 
     static bool isWaterClip();
+    static bool canUseInterleavedAlpha();
 
     void setRenderTypeMask(U32 type, ...);
     // This is equivalent to 'setRenderTypeMask'
@@ -1664,6 +1677,11 @@ public:
     // override map (0=Default, 1=Force Mask, 2=Force Blend). Keyed by object ROOT
     // id or AVATAR id. Not persisted; cleared on relog via clearVolumetricShafts().
     static std::map<LLUUID, S32> sAlphaModeOverride;
+
+    // [BDMerge G2.3 per-target] session-only per-object/per-avatar Force-Mask alpha
+    // cutoff override [0..1]. Keyed by object ROOT id or AVATAR id. Not persisted;
+    // cleared on relog alongside sAlphaModeOverride.
+    static std::map<LLUUID, F32> sAlphaMaskCutoffOverride;
 
     // [BDMerge G3.3 Batch 1 C] Session-only PER-PROJECTOR art-direction overrides.
     // When a flagged projector has an override, the render loop uses these values

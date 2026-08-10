@@ -892,6 +892,82 @@ namespace
         return find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject()) != nullptr;
     }
 
+    // [BDMerge G2.3 per-target] Right-click "Mask Cutoff" submenu. Sets an explicit
+    // per-target alpha-mask cutoff for a target already in Force Mask, and re-bakes its
+    // geometry so it takes immediately (setAlphaMaskCutoffOverride rebuilds inside). The
+    // value arrives as a float-string menu param ("0.33" etc); < 0 clears to the global
+    // default. Enabled only while the target's Alpha Mode is Force Mask (mode 1).
+    void handle_object_mask_cutoff(const LLSD& sdParam)
+    {
+        const F32 cutoff = (F32)sdParam.asReal();
+        LLObjectSelectionHandle hSel = LLSelectMgr::getInstance()->getSelection();
+        if (hSel.isNull())
+            return;
+        for (LLObjectSelection::root_iterator itObj = hSel->root_begin(), endObj = hSel->root_end();
+             itObj != endObj; ++itObj)
+        {
+            const LLSelectNode* pNode = *itObj;
+            LLViewerObject* pObj = (pNode) ? pNode->getObject() : nullptr;
+            if (pObj && pObj->getID().notNull())
+                LLPipeline::setAlphaMaskCutoffOverride(pObj->getID(), cutoff); // rebuild happens inside
+        }
+    }
+
+    bool check_object_mask_cutoff(const LLSD& sdParam)
+    {
+        const F32 value = (F32)sdParam.asReal();
+        LLViewerObject* pObj = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
+        if (!pObj)
+            return false;
+        LLUUID objId = pObj->getRootEdit() ? pObj->getRootEdit()->getID() : LLUUID::null;
+        LLUUID avId  = pObj->getAvatar() ? pObj->getAvatar()->getID() : LLUUID::null;
+        static LLCachedControl<F32> force_cutoff(gSavedSettings, "BDMergeForceAlphaMaskCutoff", 0.5f);
+        F32 eff = LLPipeline::resolveAlphaMaskCutoff(objId, avId);
+        if (eff < 0.f) eff = (F32)force_cutoff; // unset -> effective global default
+        F32 d = eff - value;
+        return (d < 0.001f && d > -0.001f);
+    }
+
+    bool enable_object_mask_cutoff()
+    {
+        // Only meaningful while the target is in Force Mask.
+        LLViewerObject* pObj = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
+        if (!pObj)
+            return false;
+        LLUUID objId = pObj->getRootEdit() ? pObj->getRootEdit()->getID() : LLUUID::null;
+        LLUUID avId  = pObj->getAvatar() ? pObj->getAvatar()->getID() : LLUUID::null;
+        return LLPipeline::resolveAlphaMode(objId, avId) == 1;
+    }
+
+    void handle_avatar_mask_cutoff(const LLSD& sdParam)
+    {
+        const F32 cutoff = (F32)sdParam.asReal();
+        LLVOAvatar* avatarp = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
+        if (avatarp && avatarp->getID().notNull())
+            LLPipeline::setAlphaMaskCutoffOverride(avatarp->getID(), cutoff); // rebuilds all attachments inside
+    }
+
+    bool check_avatar_mask_cutoff(const LLSD& sdParam)
+    {
+        const F32 value = (F32)sdParam.asReal();
+        LLVOAvatar* avatarp = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
+        if (!avatarp)
+            return false;
+        static LLCachedControl<F32> force_cutoff(gSavedSettings, "BDMergeForceAlphaMaskCutoff", 0.5f);
+        F32 eff = LLPipeline::getAlphaMaskCutoffOverride(avatarp->getID());
+        if (eff < 0.f) eff = (F32)force_cutoff;
+        F32 d = eff - value;
+        return (d < 0.001f && d > -0.001f);
+    }
+
+    bool enable_avatar_mask_cutoff()
+    {
+        LLVOAvatar* avatarp = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
+        if (!avatarp)
+            return false;
+        return LLPipeline::getAlphaModeOverride(avatarp->getID()) == 1;
+    }
+
 // [Cinematic] right-click avatar > lock as the Cinematic Camera follow subject
 // (session-only; clicking the same avatar again clears the lock)
     void handle_avatar_cinecam_follow(const LLSD&)
@@ -1108,6 +1184,13 @@ void ALViewerMenu::initialize_menus()
     commit.add("Avatar.AlphaMode", boost::bind(&handle_avatar_alpha_mode, _2));
     enable.add("Avatar.CheckAlphaMode", boost::bind(&check_avatar_alpha_mode, _2));
     enable.add("Avatar.EnableAlphaMode", boost::bind(&enable_avatar_alpha_mode));
+    // [BDMerge G2.3 per-target] per-object / per-avatar Force-Mask cutoff value
+    commit.add("Object.MaskCutoff", boost::bind(&handle_object_mask_cutoff, _2));
+    enable.add("Object.CheckMaskCutoff", boost::bind(&check_object_mask_cutoff, _2));
+    enable.add("Object.EnableMaskCutoff", boost::bind(&enable_object_mask_cutoff));
+    commit.add("Avatar.MaskCutoff", boost::bind(&handle_avatar_mask_cutoff, _2));
+    enable.add("Avatar.CheckMaskCutoff", boost::bind(&check_avatar_mask_cutoff, _2));
+    enable.add("Avatar.EnableMaskCutoff", boost::bind(&enable_avatar_mask_cutoff));
     // [Cinematic] locked follow subject (reuses the alpha-mode avatar resolution + enable)
     commit.add("Avatar.CineCamFollow", boost::bind(&handle_avatar_cinecam_follow, _2));
     enable.add("Avatar.CheckCineCamFollow", boost::bind(&check_avatar_cinecam_follow, _2));

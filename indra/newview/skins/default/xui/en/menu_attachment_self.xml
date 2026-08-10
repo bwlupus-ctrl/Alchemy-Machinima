@@ -119,6 +119,45 @@
             function="Object.EnableAlphaMode" />
       </menu_item_check>
     </context_menu>
+    <context_menu
+        label="Mask Cutoff"
+        name="Mask Cutoff">
+      <menu_item_check label="0.10" name="Object Mask Cutoff 010">
+        <menu_item_check.on_click function="Object.MaskCutoff" parameter="0.10" />
+        <menu_item_check.on_check function="Object.CheckMaskCutoff" parameter="0.10" />
+        <menu_item_check.on_enable function="Object.EnableMaskCutoff" />
+      </menu_item_check>
+      <menu_item_check label="0.25" name="Object Mask Cutoff 025">
+        <menu_item_check.on_click function="Object.MaskCutoff" parameter="0.25" />
+        <menu_item_check.on_check function="Object.CheckMaskCutoff" parameter="0.25" />
+        <menu_item_check.on_enable function="Object.EnableMaskCutoff" />
+      </menu_item_check>
+      <menu_item_check label="0.33" name="Object Mask Cutoff 033">
+        <menu_item_check.on_click function="Object.MaskCutoff" parameter="0.33" />
+        <menu_item_check.on_check function="Object.CheckMaskCutoff" parameter="0.33" />
+        <menu_item_check.on_enable function="Object.EnableMaskCutoff" />
+      </menu_item_check>
+      <menu_item_check label="0.50" name="Object Mask Cutoff 050">
+        <menu_item_check.on_click function="Object.MaskCutoff" parameter="0.50" />
+        <menu_item_check.on_check function="Object.CheckMaskCutoff" parameter="0.50" />
+        <menu_item_check.on_enable function="Object.EnableMaskCutoff" />
+      </menu_item_check>
+      <menu_item_check label="0.66" name="Object Mask Cutoff 066">
+        <menu_item_check.on_click function="Object.MaskCutoff" parameter="0.66" />
+        <menu_item_check.on_check function="Object.CheckMaskCutoff" parameter="0.66" />
+        <menu_item_check.on_enable function="Object.EnableMaskCutoff" />
+      </menu_item_check>
+      <menu_item_check label="0.75" name="Object Mask Cutoff 075">
+        <menu_item_check.on_click function="Object.MaskCutoff" parameter="0.75" />
+        <menu_item_check.on_check function="Object.CheckMaskCutoff" parameter="0.75" />
+        <menu_item_check.on_enable function="Object.EnableMaskCutoff" />
+      </menu_item_check>
+      <menu_item_check label="0.90" name="Object Mask Cutoff 090">
+        <menu_item_check.on_click function="Object.MaskCutoff" parameter="0.90" />
+        <menu_item_check.on_check function="Object.CheckMaskCutoff" parameter="0.90" />
+        <menu_item_check.on_enable function="Object.EnableMaskCutoff" />
+      </menu_item_check>
+    </context_menu>
   </context_menu>
     <menu_item_separator layout="topleft" />
 

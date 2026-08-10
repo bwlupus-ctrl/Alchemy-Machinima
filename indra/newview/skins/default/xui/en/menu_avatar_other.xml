@@ -228,6 +228,45 @@
           function="Avatar.EnableAlphaMode" />
       </menu_item_check>
     </context_menu>
+    <context_menu
+        label="Mask Cutoff"
+        name="Mask Cutoff">
+      <menu_item_check label="0.10" name="Avatar Mask Cutoff 010">
+        <menu_item_check.on_click function="Avatar.MaskCutoff" parameter="0.10" />
+        <menu_item_check.on_check function="Avatar.CheckMaskCutoff" parameter="0.10" />
+        <menu_item_check.on_enable function="Avatar.EnableMaskCutoff" />
+      </menu_item_check>
+      <menu_item_check label="0.25" name="Avatar Mask Cutoff 025">
+        <menu_item_check.on_click function="Avatar.MaskCutoff" parameter="0.25" />
+        <menu_item_check.on_check function="Avatar.CheckMaskCutoff" parameter="0.25" />
+        <menu_item_check.on_enable function="Avatar.EnableMaskCutoff" />
+      </menu_item_check>
+      <menu_item_check label="0.33" name="Avatar Mask Cutoff 033">
+        <menu_item_check.on_click function="Avatar.MaskCutoff" parameter="0.33" />
+        <menu_item_check.on_check function="Avatar.CheckMaskCutoff" parameter="0.33" />
+        <menu_item_check.on_enable function="Avatar.EnableMaskCutoff" />
+      </menu_item_check>
+      <menu_item_check label="0.50" name="Avatar Mask Cutoff 050">
+        <menu_item_check.on_click function="Avatar.MaskCutoff" parameter="0.50" />
+        <menu_item_check.on_check function="Avatar.CheckMaskCutoff" parameter="0.50" />
+        <menu_item_check.on_enable function="Avatar.EnableMaskCutoff" />
+      </menu_item_check>
+      <menu_item_check label="0.66" name="Avatar Mask Cutoff 066">
+        <menu_item_check.on_click function="Avatar.MaskCutoff" parameter="0.66" />
+        <menu_item_check.on_check function="Avatar.CheckMaskCutoff" parameter="0.66" />
+        <menu_item_check.on_enable function="Avatar.EnableMaskCutoff" />
+      </menu_item_check>
+      <menu_item_check label="0.75" name="Avatar Mask Cutoff 075">
+        <menu_item_check.on_click function="Avatar.MaskCutoff" parameter="0.75" />
+        <menu_item_check.on_check function="Avatar.CheckMaskCutoff" parameter="0.75" />
+        <menu_item_check.on_enable function="Avatar.EnableMaskCutoff" />
+      </menu_item_check>
+      <menu_item_check label="0.90" name="Avatar Mask Cutoff 090">
+        <menu_item_check.on_click function="Avatar.MaskCutoff" parameter="0.90" />
+        <menu_item_check.on_check function="Avatar.CheckMaskCutoff" parameter="0.90" />
+        <menu_item_check.on_enable function="Avatar.EnableMaskCutoff" />
+      </menu_item_check>
+    </context_menu>
   </context_menu>
   <context_menu
    label="Actions"

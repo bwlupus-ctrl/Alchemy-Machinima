@@ -393,6 +393,7 @@ std::set<LLUUID> LLPipeline::sVolumetricShaftObjects;
 std::set<LLUUID> LLPipeline::sNoShadowProjectors; // [BDMerge Batch 3] cast-shadows opt-out
 std::set<LLUUID> LLPipeline::sHeroProjectors;     // [BDMerge F4] Hero Beam per-cone opt-in
 std::map<LLUUID, S32> LLPipeline::sAlphaModeOverride; // [BDMerge G2.3 per-target] per-object/avatar alpha mode
+std::map<LLUUID, F32> LLPipeline::sAlphaMaskCutoffOverride; // [BDMerge G2.3 per-target] per-object/avatar Force-Mask cutoff
 S32 LLPipeline::RenderScreenSpaceReflectionIterations;
 F32 LLPipeline::RenderScreenSpaceReflectionRayStep;
 F32 LLPipeline::RenderScreenSpaceReflectionDistanceBias;
@@ -4729,6 +4730,19 @@ void renderSoundHighlights(LLDrawable *drawablep)
     }
 }
 
+bool LLPipeline::canUseInterleavedAlpha()
+{
+    static LLCachedControl<bool> interleaved_alpha(gSavedSettings, "RenderInterleavedAlpha", true);
+    return interleaved_alpha && !sRenderingHUDs && !sShadowRender && !gCubeSnapshot &&
+           LLViewerCamera::sCurCameraID == LLViewerCamera::CAMERA_WORLD;
+}
+
+void LLPipeline::sortAlphaGroupsForInterleaving()
+{
+    std::sort(sCull->beginAlphaGroups(), sCull->endAlphaGroups(), LLSpatialGroup::CompareWorldAlphaDepth());
+    std::sort(sCull->beginRiggedAlphaGroups(), sCull->endRiggedAlphaGroups(), LLSpatialGroup::CompareDepthRenderOrder());
+}
+
 void LLPipeline::postSort(LLCamera &camera)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_PIPELINE;
@@ -4800,11 +4814,23 @@ void LLPipeline::postSort(LLCamera &camera)
 
         if (hasRenderType(LLPipeline::RENDER_TYPE_PASS_ALPHA))
         {
+            LLSpatialBridge *bridge = group->getSpatialPartition()->asBridge();
+
+            // fan the attachment's stamp (LLVOAvatar::idleUpdateMisc) out from
+            // the bridge to every visible alpha group of the linkset; the shared
+            // mAvatarDepth keys the wearer's ensemble as one block in the
+            // interleaved walk
+            if (bridge && bridge->mAvatarp)
+            {
+                group->mAvatarp = bridge->mAvatarp;
+                group->mRenderOrder = bridge->mRenderOrder;
+                group->mAvatarDepth = bridge->mAvatarDepth;
+            }
+
             LLSpatialGroup::draw_map_t::iterator alpha = group->mDrawMap.find(LLRenderPass::PASS_ALPHA);
 
             if (alpha != group->mDrawMap.end())
             {  // store alpha groups for sorting
-                LLSpatialBridge *bridge = group->getSpatialPartition()->asBridge();
                 if (LLViewerCamera::sCurCameraID == LLViewerCamera::CAMERA_WORLD && !gCubeSnapshot)
                 {
                     if (bridge)
@@ -4849,10 +4875,10 @@ void LLPipeline::postSort(LLCamera &camera)
 
     if (!sShadowRender)
     {
-        // order alpha groups by distance
+        // Legacy order is the baseline for every consumer. Post-water replaces
+        // it with the interleaved order only when it actually uses the merge
+        // (LLDrawPoolAlpha::renderPostDeferred -> sortAlphaGroupsForInterleaving).
         std::sort(sCull->beginAlphaGroups(), sCull->endAlphaGroups(), LLSpatialGroup::CompareDepthGreater());
-
-        // order rigged alpha groups by avatar attachment order
         std::sort(sCull->beginRiggedAlphaGroups(), sCull->endRiggedAlphaGroups(), LLSpatialGroup::CompareRenderOrder());
     }
 
@@ -15013,6 +15039,7 @@ void LLPipeline::clearVolumetricShafts()
     sNoShadowProjectors.clear(); // [BDMerge Batch 3] cast-shadows opt-out is session-only too
     sHeroProjectors.clear();     // [BDMerge F4] Hero Beam flags are session-only too
     sAlphaModeOverride.clear();  // [BDMerge G2.3 per-target] alpha-mode overrides are session-only too
+    sAlphaMaskCutoffOverride.clear(); // [BDMerge G2.3 per-target] cutoff overrides are session-only too
 }
 
 // [BDMerge G3.3 Batch 3] Session-only per-projector "cast shadows" opt-OUT.
@@ -15145,6 +15172,45 @@ S32 LLPipeline::resolveAlphaMode(const LLUUID& objRootId, const LLUUID& avatarId
     if (objMode != 0)
         return objMode;
     return getAlphaModeOverride(avatarId);
+}
+
+// [BDMerge G2.3 per-target] Per-target Force-Mask cutoff. Rebuilds the target's
+// geometry so the newly-baked mAlphaMaskCutoff takes effect immediately (a mere
+// setting change never re-bakes existing draw batches - the historical "slider does
+// nothing" trap).
+void LLPipeline::setAlphaMaskCutoffOverride(const LLUUID& id, F32 cutoff)
+{
+    if (id.isNull())
+        return;
+    if (cutoff < 0.f)
+    {
+        auto it = sAlphaMaskCutoffOverride.find(id);
+        if (it != sAlphaMaskCutoffOverride.end())
+            sAlphaMaskCutoffOverride.erase(it);
+    }
+    else
+    {
+        sAlphaMaskCutoffOverride[id] = llclamp(cutoff, 0.f, 1.f);
+    }
+    bdmerge_rebuild_for_alpha_target(id);
+}
+
+F32 LLPipeline::getAlphaMaskCutoffOverride(const LLUUID& id)
+{
+    if (sAlphaMaskCutoffOverride.empty() || id.isNull())
+        return -1.f;
+    auto it = sAlphaMaskCutoffOverride.find(id);
+    return (it != sAlphaMaskCutoffOverride.end()) ? it->second : -1.f;
+}
+
+F32 LLPipeline::resolveAlphaMaskCutoff(const LLUUID& objRootId, const LLUUID& avatarId)
+{
+    if (sAlphaMaskCutoffOverride.empty())
+        return -1.f;
+    F32 objCut = getAlphaMaskCutoffOverride(objRootId);
+    if (objCut >= 0.f)
+        return objCut;
+    return getAlphaMaskCutoffOverride(avatarId);
 }
 
 // Match the light-source prim's own ID and its root-edit ID (the context menu

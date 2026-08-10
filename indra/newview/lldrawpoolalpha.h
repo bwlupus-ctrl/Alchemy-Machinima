@@ -70,13 +70,22 @@ public:
         ATTACHMENT_ONLY       // worn attachment only (mAttachedToAvatar == true)
     };
 
-    void forwardRender(bool rigged = false, AttachmentFilter filter = ATTACHMENT_ALL);
+    // which alpha stream(s) a pass draws
+    enum class EAlphaStream
+    {
+        WORLD,      // the distance-sorted alpha groups
+        RIGGED,     // the rigged alpha groups only (depth-writing prepass)
+        INTERLEAVED // both streams in one back-to-front walk; depth writes
+                    // decided per group inside renderAlpha
+    };
+
+    void forwardRender(EAlphaStream stream = EAlphaStream::WORLD, AttachmentFilter filter = ATTACHMENT_ALL);
     /*virtual*/ void prerender();
 
     void renderDebugAlpha();
 
     void renderGroupAlpha(LLSpatialGroup* group, U32 type, U32 mask, bool texture = true);
-    void renderAlpha(U32 mask, bool depth_only = false, bool rigged = false, AttachmentFilter filter = ATTACHMENT_ALL);
+    void renderAlpha(U32 mask, bool depth_only = false, EAlphaStream stream = EAlphaStream::WORLD, AttachmentFilter filter = ATTACHMENT_ALL);
     void renderAlphaHighlight();
 
     static bool sShowDebugAlpha;

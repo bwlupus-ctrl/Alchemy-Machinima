@@ -4032,6 +4032,17 @@
       <key>Value</key>
       <integer>1</integer>
     </map>
+    <key>GhostMirrorHoldOnSourceChange</key>
+    <map>
+      <key>Comment</key>
+      <string>[GhostStudio] In MIRROR drive mode, hold the clone's last bento + animesh animations when the source's animation state transiently vanishes (outfit swap re-rezzes animesh with new UUIDs, brief de-rez, out-of-view imposter, AO gap) instead of stopping the clone. A real switch to a different animation still mirrors normally. Off = faithful live mirror (a source change or full stop stops the clone too).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
     <key>GhostDeferredDebugLog</key>
     <map>
       <key>Comment</key>
@@ -13776,6 +13787,17 @@
       <string>F32</string>
       <key>Value</key>
       <real>0.5</real>
+    </map>
+    <key>RenderInterleavedAlpha</key>
+    <map>
+      <key>Comment</key>
+      <string>Depth-interleave rigged attachment alpha with the distance-sorted world alpha so transparent objects composite correctly both in front of and behind avatars. Disable to restore two-pass (all rigged first) order.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
     </map>
     <key>RenderDebugGLSession</key>
     <map>

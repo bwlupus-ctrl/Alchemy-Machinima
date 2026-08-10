@@ -210,6 +210,8 @@
            tool_tip="FREEZE: snapshot the source's current pose into this ghost (worn mesh + attachment placement). The ghost holds it while the live body keeps animating. Known limits: flexi tails/skirts keep their live physics motion, and legacy system-mesh eyeballs are not part of the ghost" width="126" />
           <button follows="left|top" height="22" label="Follow live" layout="topleft" left="140" name="btn_live" top="28"
            tool_tip="Drop the frozen pose; the ghost mirrors the source's live animation again" width="100" />
+          <check_box control_name="GhostMirrorHoldOnSourceChange" follows="left|top" height="18" label="Hold on source change" layout="topleft" left="248" name="mirror_hold_check" top="30"
+           tool_tip="MIRROR mode: keep clones playing their last bento + animesh animation through a transient source change (outfit re-rez, brief de-rez, out-of-view imposter, or AO gap) instead of stopping. A real switch to a different animation still mirrors normally. Off = faithful live mirror (a source change or full stop stops the clone too)." width="224" />
           <text follows="left|top|right" height="18" layout="topleft" left="8" name="pose_status" right="-8" text_color="LtGray_50" top="54" width="358">Select a ghost</text>
           <combo_box follows="left|top" height="22" layout="topleft" left="8" name="drive_mode_combo" top="78"
            tool_tip="Entity animation drive: mirror its source, play a local animation asset, or hold the current pose" width="118">
