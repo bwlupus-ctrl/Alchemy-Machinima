@@ -46,25 +46,6 @@ class LLTabContainer;
 class FSLoadPoseTimer;
 
 /// <summary>
-/// Describes how to load a pose file.
-/// </summary>
-typedef enum E_LoadPoseMethods
-{
-    ROTATIONS               = 1,
-    POSITIONS               = 2,
-    SCALES                  = 3,
-    ROTATIONS_AND_POSITIONS = 4,
-    ROTATIONS_AND_SCALES    = 5,
-    POSITIONS_AND_SCALES    = 6,
-    ROT_POS_AND_SCALES      = 7,
-    HAND_RIGHT              = 8,
-    HAND_LEFT               = 9,
-    FACE_ONLY               = 10,
-    SELECTIVE               = 11,
-    SELECTIVE_ROT           = 12,
-} E_LoadPoseMethods;
-
-/// <summary>
 /// Describes the columns of the avatars scroll-list.
 /// </summary>
 typedef enum E_Columns
