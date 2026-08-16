@@ -1710,6 +1710,25 @@ public:
     static bool  getVolumetricShaftOverride(const LLUUID& id, VolumetricShaftOverride& out);
     static bool  hasVolumetricShaftOverride(const LLUUID& id);
     static std::map<LLUUID, VolumetricShaftOverride> sVolumetricShaftOverrides;
+
+    // Client-only procedural cookie assignment. The simulator's projection
+    // parameters and texture asset are never changed by these overrides.
+    struct GoboOverride
+    {
+        S32 mPattern = -1;
+        S32 mAnimMode = 0;
+        F32 mSpeed = 1.f;
+        F32 mZoom = 1.f;
+        F32 mDispersion = 0.f;
+        // [Gobo v2] colored gel (white = no change) + per-pattern variation.
+        LLColor3  mTint = LLColor3(1.f, 1.f, 1.f);
+        LLVector4 mPatternParams = LLVector4(0.f, 0.f, 0.f, 0.f);
+    };
+    static void setGoboOverride(const LLUUID& id, const GoboOverride& ov);
+    static GoboOverride getGoboOverride(const LLUUID& id);
+    static bool hasGoboOverride(const LLUUID& id);
+    static void clearGoboOverride(const LLUUID& id);
+    static std::map<LLUUID, GoboOverride> sGoboOverrides;
     static S32 RenderScreenSpaceReflectionIterations;
     static F32 RenderScreenSpaceReflectionRayStep;
     static F32 RenderScreenSpaceReflectionDistanceBias;

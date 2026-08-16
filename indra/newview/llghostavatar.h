@@ -115,6 +115,7 @@ public:
     void setEntityScale(F32 scale);
     F32 getUniformScale() const override { return mEntityScale; }
     void setEntityPhysicsEnabled(bool enabled);
+    void setEntityEyeMotionEnabled(bool enabled);
     void setEntityDriveMode(S32 mode, const LLUUID& directed_anim);
     void setEntityLoopMode(S32 mode);
     // Retime the clone AND each animesh attachment's control avatar. Each animesh
@@ -173,6 +174,7 @@ private:
     // so culling / pixel-area LOD / picking follow the walk. Never touches the
     // stored authored foot (mDesiredGhostFoot*).
     void syncGhostObjectToMovingRoot();
+    void neutralizeEntityEyeParams();
     void neutralizeEntityPhysicsParams();
     void updateEntityOuterTransform();
     void stampEntityOuterTransform(LLViewerObject* object);
@@ -187,6 +189,7 @@ private:
     bool mDesiredGhostFootValid = false;
     F32 mEntityScale = 1.f;
     bool mEntityPhysicsEnabled = true;
+    bool mEntityEyeMotionEnabled = false;
     S32 mEntityDriveMode = 0; // ALGhostStudio::DRIVE_MIRROR (avoid header cycle)
     S32 mEntityLoopMode = 0;  // ALGhostStudio::LOOP_RETRIGGER
     F32 mEntityAnimTimeFactor = 1.f; // clone anim-speed; re-applied to animesh control avatars

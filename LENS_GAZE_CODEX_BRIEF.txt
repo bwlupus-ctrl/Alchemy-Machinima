@@ -1,0 +1,109 @@
+IMPLEMENTATION TASK — Lens Gaze to feature-complete (Phases 1-4 remaining work).
+
+Repo: I:\alchemy-machinima. You IMPLEMENT. Do NOT build, cmake, or run the viewer. Claude builds; an
+adversarial Opus review reviews before any build.
+
+=============================================================================
+READ FIRST — the blueprint is NORMATIVE
+=============================================================================
+1. doc/LENS_GAZE_ALLPHASES_DESIGN.md  <-- THE SPEC. Read ALL 639 lines. §4 Phase-1 torso lag (exact
+   math §4.2, composition order §4.3, knob §4.4), §5 Phase-2 clone blink (§5.2 pattern, §5.3 teardown),
+   §6 Phase-3 UI panel (§6.3 layout, §6.4 the full reflow table), §7 Phase-4 eyeline (§7.2), §8
+   settings, §9 tests, §11 OFF-LIMITS, §13 the file-by-file work order. Follow it exactly. Design WINS
+   over this brief (except "do not build").
+2. doc/LENS_GAZE_RESEARCH_FINDINGS.md — the original research (context; the blueprint corrects its
+   stale line refs).
+
+CRITICAL CONTEXT (verified): the 3-week-old research is STALE. Most of Phases 1 and 4 ALREADY SHIPPED
+— the dead zone (BDMergeGazeDeadZone), break-off (BDMergeGazeBehindPolicy/Angle), the slew limiter, and
+the R1 bone-lock feedback interlock (gazeCameraSafe + the hard-cut branch) are ALL in the current code.
+DO NOT re-implement them. The remaining work is only: Phase-1 torso lag, Phase-2 clone blink, Phase-3
+UI promotion, Phase-4 eyeline offset, + a pure-math helper and its test.
+
+=============================================================================
+SCOPE — the 4 remaining packages, per §13 work order (ship-whole, one delivery)
+=============================================================================
+NEW files:
+  indra/newview/algazemath.h                 pure header-only helpers: ALGazeMath::{chaseAlpha,
+                                             deadZoneChase, torsoChase, behindEnvStep, eyelineOffsetDir}
+                                             (§4.2, §7.2, §9.1)
+  indra/newview/alpanellensgaze.h/.cpp       the shared gaze panel class (§6.3)
+  indra/newview/skins/default/xui/en/panel_lens_gaze.xml   width 374, height 188 (§6.3)
+  indra/newview/tests/algazemath_test.cpp    TUT tests (§9.1) + CMake test registration
+
+MODIFY (only the §13-named change in each):
+  llactormover.h        Gaze += mTorsoAimPitch/mTorsoAimYaw (runtime), mEyelineYawDeg/mEyelinePitchDeg
+                        (authored); eyeline accessor decls
+  llactormover.cpp      eyeline accessors; Phase-2 ghost eye sync insert (~:3082); eye-motion teardown
+                        in dropActor + replaceRuntime; gazePaint: eyeline offset insert + rootWorld
+                        hoist (§7.2), torso chase + torso-application swap (§4.2) — ALL math via ALGazeMath
+  llghostavatar.h/.cpp  setEntityEyeMotionEnabled, neutralizeEntityEyeParams, mEntityEyeMotionEnabled,
+                        setEntityCloneVisible hook (§5.2)
+  floater_director.xml + floater_actor_mover.xml   embed panel_lens_gaze in BOTH Move tabs + the FULL
+                        §6.4 reflow table (6 wrapper heights + 10 shifted widgets across two hosts)
+  panel_path_editor.xml + alpanelpatheditor.h/.cpp   remove the old gaze block (§6.2)
+  app_settings/settings.xml   ONE new key: BDMergeGazeTorsoLagRatio (§4.4)
+  llfloaterdirector.cpp   feed ALPanelLensGaze::setSelectedActors in refreshMoveTab() (+ standalone)
+  CMakeLists.txt          new sources + the algazemath_test registration
+
+=============================================================================
+THE TRAPS — get these right
+=============================================================================
+1. R1 INTERLOCK IS OFF-LIMITS AND ALREADY CORRECT. gazeCameraSafe (:3024-3041) and the hard-cut branch
+   (:3095-3110) must NOT be edited — not the check order, not the split, not the no-paint return. It is
+   a deliberate HARD cut (any written frame moves the camera; the snap lands on a camera cut). The
+   entire feedback-oscillation risk is already solved — do not reopen it. Your applyGaze edits are
+   ADDITIVE only (the Phase-2 sync insert at ~:3082, the Phase-1 torso fields).
+
+2. EVERY-AVATAR SHARED PATH + NO-OP DEFAULT. gazePaint runs for EVERY avatar class and is shared by a
+   Director look-at subsystem (:3156-3529, read-only). Every new Gaze field must DEFAULT TO NO-OP:
+   BDMergeGazeTorsoLagRatio default 1.8 but ratio==1 is an EXACT-LEGACY escape hatch; eyeline default 0.
+   With defaults, the head chain and all existing behaviour (dead zone, break-off, slew, Director
+   look-at) must be UNCHANGED. The head chain dynamics (mBodyAim dead-zone chase, mApplied slew,
+   GAZE_NECK_LAG, eye stage) are OFF-LIMITS except the one enumerated torso-application swap (§4.2) and
+   the rootWorld hoist (§7.2).
+
+3. TORSO LAG = TORSO ONLY. The lag differential adds ONE extra first-order chase on the TORSO aim
+   (tau_extra = (ratio-1)*tau_user), so the head leads and the torso trails. The HEAD chain is
+   untouched -> zero head-feel regression. Neck/head residual and eyes-carry-residual self-correct by
+   construction (§4.1). Do the exact insertion/swap in §4.2.
+
+4. BLINK NEUTRALIZATION (§5.2). Stopping ANIM_AGENT_EYE mid-blink freezes the lids half-closed
+   (LLEyeMotion::onDeactivate resets joints only, not the blink visual params). So teardown MUST call
+   neutralizeEntityEyeParams. Teardown fires on: gaze disabled, dropActor, replaceRuntime, clone
+   destroyed — all enumerated in §5.3. Start ANIM_AGENT_EYE only (NEVER ANIM_AGENT_HEAD_ROT on clones).
+
+5. EYELINE PRE-SMOOTHING (§7.2). The eyeline angular offset is applied to the RAW desired direction
+   BEFORE smoothing, so head AND eyes go off-lens together — a head-only offset gets cancelled by the
+   eye residual. Per-actor, ±15deg yaw / ±10deg pitch, head-local frame.
+
+6. REFLOW — THE M1 LESSON. The new panel embeds in both Move tabs. A grown embedded panel MUST bump its
+   host wrapper heights or the bottom clips (this exact bug shipped in a prior delivery). Apply §6.4's
+   COMPLETE table: 6 wrapper heights + the 10 shifted widgets, across floater_director.xml AND
+   floater_actor_mover.xml. Verify by rect arithmetic that nothing clips in either host.
+
+7. PURE MATH TESTABLE. algazemath.h is header-only, renderer/viewer-independent (no LLPipeline/gGL/
+   singletons) so algazemath_test.cpp (TUT, the alcinelightrigmodel_test idiom) can test chaseAlpha /
+   deadZoneChase / torsoChase / behindEnvStep / eyelineOffsetDir per §9.1. Register the test in CMake.
+
+=============================================================================
+OFF-LIMITS (design §11 — verbatim intent)
+=============================================================================
+gazeCameraSafe + the hard-cut branch (unchanged); the Director look-at subsystem :3156-3529 + its
+arbitration in llvoavatar.cpp (read-only); the idle camera dispatch order in llappviewer.cpp (the
+avatar-before-camera one-frame lag is a free feedback damper — never "fix" it); never write
+gAgentCamera.mLookAt / LLHUDEffectLookAt / setAnimationData("LookAtPoint") / startMotion|stopMotion on
+REAL avatars / mSignaledAnimations; indra/llcharacter/* (consumed as-is, no priority-system edits); the
+head chain dynamics except the enumerated torso swap + rootWorld hoist; panel_actor_mover.xml /
+ALPanelActorMover contents (new sibling panel instead); Ghost Studio panel + ALGhostStudio (zero
+edits); setEntityPhysicsEnabled + physics-motion wiring; existing settings keys' names/defaults;
+sceneSettingsList (NO additions this delivery); GAZE_TANGENT's Move requirement. No version bumps.
+
+=============================================================================
+REPORT
+=============================================================================
+Every file created/modified with what changed. Confirm: ratio==1 and eyeline==0 are no-op (head chain +
+existing behaviour bitwise-unchanged); gazeCameraSafe/hard-cut UNTOUCHED (grep-confirm); torso-only lag;
+blink neutralized on all teardown paths; eyeline applied pre-smoothing; the reflow bumped ALL wrapper
+heights in both hosts (list them); algazemath is pure + test registered. Anything you think is wrong.
+Do not build.

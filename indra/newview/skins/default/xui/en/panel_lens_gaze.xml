@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<panel
+ background_visible="false"
+ border="false"
+ height="188"
+ layout="topleft"
+ name="panel_lens_gaze"
+ width="374">
+    <text
+     follows="left|top"
+     font="SansSerifSmallBold"
+     height="12"
+     layout="topleft"
+     left="6"
+     top="4"
+     name="gaze_lbl"
+     width="120">Look-at (gaze)</text>
+    <text
+     follows="left|top|right"
+     height="12"
+     layout="topleft"
+     left="182"
+     top="4"
+     name="gaze_status"
+     text_color="LtGray_50"
+     tool_tip="Shows the first selected actor's gaze state; commits apply to every selected actor"
+     use_ellipses="true"
+     width="186">Gaze off</text>
+    <check_box
+     follows="left|top"
+     height="16"
+     label="Enable"
+     layout="topleft"
+     left="6"
+     top="18"
+     name="gaze_enable_check"
+     tool_tip="Procedural look-at. Off is a no-op and the actor's own head motion plays."
+     width="80" />
+    <combo_box
+     follows="left|top|right"
+     height="20"
+     layout="topleft"
+     left="92"
+     top="18"
+     name="gaze_target_combo"
+     tool_tip="What the actor looks at"
+     width="276">
+        <combo_box.item label="Where it's going" name="gaze_tangent" value="0" />
+        <combo_box.item label="Camera" name="gaze_camera" value="1" />
+        <combo_box.item label="Cast member" name="gaze_cast" value="2" />
+        <combo_box.item label="Fixed point" name="gaze_point" value="3" />
+    </combo_box>
+    <combo_box
+     follows="left|top|right"
+     height="20"
+     layout="topleft"
+     left="6"
+     top="40"
+     name="gaze_cast_combo"
+     tool_tip="Cast member to look at"
+     visible="false"
+     width="362" />
+    <button
+     follows="left|top"
+     height="20"
+     label="Set point from camera"
+     layout="topleft"
+     left="6"
+     top="40"
+     name="btn_gaze_setpoint"
+     tool_tip="Capture the current camera position as the fixed point every selected actor looks at"
+     visible="false"
+     width="200" />
+    <slider decimal_digits="2" follows="left|top" height="16" increment="0.05"
+     initial_value="0.7" label="Head/eyes" label_width="66" layout="topleft"
+     left="6" max_val="1" min_val="0" name="gaze_blend_slider" top="62"
+     tool_tip="0 = eyes only; 1 = full head, neck and torso turn" width="172" />
+    <slider decimal_digits="2" follows="left|top|right" height="16" increment="0.05"
+     initial_value="0.25" label="Torso" label_width="52" layout="topleft"
+     left="182" max_val="1" min_val="0" name="gaze_torso_slider" top="62"
+     tool_tip="How much of the accepted gaze aim the torso shares" width="186" />
+    <slider decimal_digits="2" follows="left|top" height="16" increment="0.05"
+     initial_value="1.0" label="Intensity" label_width="62" layout="topleft"
+     left="6" max_val="1" min_val="0" name="gaze_intensity_slider" top="80"
+     tool_tip="How strongly gaze overrides the actor's animation pose" width="172" />
+    <slider decimal_digits="2" follows="left|top|right" height="16" increment="0.05"
+     initial_value="0.5" label="Smoothing" label_width="66" layout="topleft"
+     left="182" max_val="1" min_val="0" name="gaze_smoothing_slider" top="80"
+     tool_tip="0 = snappy; 1 = very smooth" width="186" />
+    <text follows="left|top" font="SansSerifSmallBold" height="12" layout="topleft"
+     left="6" top="100" name="gaze_feel_lbl" width="180">Tracking feel (all actors)</text>
+    <spinner
+     control_name="BDMergeGazeDeadZone" decimal_digits="1" follows="left|top"
+     height="20" increment="0.5" label="Dead zone (deg)" label_width="94"
+     layout="topleft" left="6" max_val="15" min_val="0"
+     name="gaze_deadzone_spinner" top="114"
+     tool_tip="Body-chain dead zone; eyes continue micro-tracking inside it"
+     width="150" />
+    <check_box
+     follows="left|top" height="16" label="Break off past" layout="topleft"
+     left="162" top="116" name="gaze_breakoff_check"
+     tool_tip="Ease gaze out when the target passes the angle at right"
+     width="110" />
+    <spinner
+     control_name="BDMergeGazeBehindAngle" decimal_digits="0" follows="left|top|right"
+     height="20" increment="5" label="" layout="topleft" left="274"
+     max_val="180" min_val="90" name="gaze_breakoff_spinner" top="114"
+     tool_tip="Body-relative yaw where Break off disengages gaze" width="94" />
+    <slider decimal_digits="1" follows="left|top" height="16" increment="0.5"
+     initial_value="0" label="Eyeline yaw" label_width="72" layout="topleft"
+     left="6" max_val="15" min_val="-15" name="gaze_eyeline_yaw_slider" top="138"
+     tool_tip="Actor-local left/right off-lens eyeline in degrees" width="172" />
+    <slider decimal_digits="1" follows="left|top|right" height="16" increment="0.5"
+     initial_value="0" label="Eyeline pitch" label_width="78" layout="topleft"
+     left="182" max_val="10" min_val="-10" name="gaze_eyeline_pitch_slider" top="138"
+     tool_tip="Actor-local up/down off-lens eyeline in degrees" width="186" />
+    <text
+     follows="left|top|right" height="24" layout="topleft" left="6" top="158"
+     name="gaze_hint" text_color="LtGray_50" width="362" word_wrap="true">Applies to the selected cast actors; empty selection = your avatar. Dead zone and break-off are global.</text>
+</panel>

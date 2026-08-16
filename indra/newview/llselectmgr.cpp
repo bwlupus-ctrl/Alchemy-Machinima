@@ -186,7 +186,8 @@ static bool selectionHasGhostManipProxy(LLObjectSelectionHandle selection)
 // tools treat it as a valid, fully agent-owned, editable object.
 static void synthesizeLocalPreviewNode(LLSelectNode* nodep, LLViewerObject* objectp)
 {
-    if (!nodep || !isLocalPreviewObject(objectp))
+    if (!nodep || !isLocalPreviewObject(objectp) ||
+        objectp->isCineRigEmitter())
     {
         return;
     }

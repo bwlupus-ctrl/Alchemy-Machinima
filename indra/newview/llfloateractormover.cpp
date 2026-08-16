@@ -14,6 +14,7 @@
 
 #include "llactormover.h"
 #include "alpanelactormover.h"
+#include "alpanellensgaze.h"
 #include "alpanelpatheditor.h"
 #include "llavatarnamecache.h"
 #include "lldirectorcast.h"         // group tag suffix (roster IS the cast)
@@ -183,14 +184,18 @@ void LLFloaterActorMover::draw()
     // ActorMoverSync -- Everyone drives startAll/stopAll and ignores this; else
     // it acts on exactly this set, so the buttons behave identically to the
     // console Move tab (which feeds its cast-list selection the same way).
+    uuid_vec_t sel;
+    if (const LLUUID id = selectedActor(); id.notNull())
+    {
+        sel.push_back(id);
+    }
     if (mMoverPanel)
     {
-        uuid_vec_t sel;
-        if (const LLUUID id = selectedActor(); id.notNull())
-        {
-            sel.push_back(id);
-        }
         mMoverPanel->setSelectedActors(sel);
+    }
+    if (ALPanelLensGaze* gaze = findChild<ALPanelLensGaze>("lens_gaze_panel"))
+    {
+        gaze->setSelectedActors(sel);
     }
 
     // point the shared path editor at the selected roster actor (implicit self

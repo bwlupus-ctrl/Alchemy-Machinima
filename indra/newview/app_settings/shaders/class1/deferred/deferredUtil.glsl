@@ -71,6 +71,16 @@ uniform int classic_mode;
 // Only the surface projector programs upload this (setupSpotLight); it stays 0
 // for every other consumer, keeping their sampling byte-identical.
 uniform int gobo_aniso;
+uniform float gobo_time;
+uniform int gobo_pattern;
+// x = animation mode, y = speed, z = zoom, w = surface-only dispersion.
+uniform vec4 gobo_anim_params;
+// [Gobo v2] Per-projector cookie color multiply. Default (1,1,1) = no change.
+uniform vec3 gobo_tint;
+// [Gobo v2] Per-pattern variation. Each component 0 = the pattern's built-in
+// default (so an override with zero params reproduces the v1 look exactly):
+// x = detail/count, y = thickness/tilt, z = softness, w = invert (>=0.5).
+uniform vec4 gobo_pattern_params;
 
 // light params
 uniform vec3 color; // light_color
@@ -95,6 +105,231 @@ float goboLod(vec2 tc, float base_lod)
     }
 #endif
     return base_lod;
+}
+
+float goboHash(vec2 p)
+{
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+float goboValueNoise(vec2 p)
+{
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(goboHash(i), goboHash(i + vec2(1.0, 0.0)), f.x),
+               mix(goboHash(i + vec2(0.0, 1.0)),
+                   goboHash(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+
+// Analytic library. `pp` = gobo_pattern_params (x detail/count, y thickness/tilt,
+// z softness, w invert). EVERY component 0 reproduces the pattern's v1 constants
+// exactly, so a default override renders byte-identically to the pre-v2 build.
+// Pattern ids 100+ stay reserved for a future PNG library (loader modeled on
+// loadProjVolDustMap(), shipped via viewer_manifest.py) with no caller change.
+vec4 proceduralGobo(int id, vec2 uv, vec4 pp)
+{
+    float pattern = 1.0;
+    float detail = exp2(pp.x);   // 1.0 at default; scales count/frequency
+    if (id == 0)
+    {
+        // Venetian blinds: soft horizontal slats.
+        float band = abs(fract(uv.y * 12.0 * detail) - 0.5);
+        float t = pp.y * 0.12;
+        float soft = pp.z * 0.15;
+        pattern = 1.0 - smoothstep(0.30 - t - soft, 0.40 - t + soft, band);
+    }
+    else if (id == 1)
+    {
+        // Multi-pane window with a frame and central mullions.
+        vec2 p = abs(fract(uv * 2.0 * detail) - 0.5);
+        float th = 0.43 - pp.y * 0.15;
+        float bars = max(step(th, p.x), step(th, p.y));
+        pattern = 1.0 - bars;
+    }
+    else if (id == 2)
+    {
+        // Crosshatched grate.
+        vec2 bars = abs(fract(uv * 10.0 * detail) - 0.5);
+        float th = 0.34 + pp.y * 0.10;
+        pattern = 1.0 - max(step(th, bars.x), step(th, bars.y));
+    }
+    else if (id == 3)
+    {
+        // Ceiling-fan blades around the hub (blade count via detail).
+        vec2 p = uv - vec2(0.5);
+        float radius = length(p);
+        float blade = abs(fract((atan(p.y, p.x) / 6.2831853) * 5.0 * detail) - 0.5);
+        pattern = (1.0 - smoothstep(0.13, 0.23, blade)) *
+                  smoothstep(0.06, 0.12, radius) * (1.0 - smoothstep(0.46, 0.50, radius));
+    }
+    else if (id == 4)
+    {
+        // Softbox square-cell grid.
+        vec2 cell = abs(fract(uv * 8.0 * detail) - 0.5);
+        float seam = max(cell.x, cell.y);
+        float soft = pp.z * 0.10;
+        pattern = 1.0 - smoothstep(0.38 - soft, 0.47 + soft, seam);
+    }
+    else if (id == 5)
+    {
+        // Organic foliage/dapple breakup from two value-noise octaves.
+        float sc = 8.0 * detail;
+        float n = goboValueNoise(uv * sc) * 0.65 +
+                  goboValueNoise(uv * sc * 2.125 + vec2(3.7, 9.2)) * 0.35;
+        float lo = 0.42 - pp.y * 0.2;
+        pattern = smoothstep(lo, lo + 0.20, n);
+    }
+    else if (id == 6)
+    {
+        // Cheap caustic-like interference field; UV motion supplies the scroll.
+        vec2 p = (uv - vec2(0.5)) * 9.0 * detail;
+        float a = sin(p.x + sin(p.y * 1.7));
+        float b = sin(p.y * 1.3 - sin(p.x * 1.9));
+        pattern = smoothstep(0.25, 0.82, abs(a + b) * 0.5);
+    }
+    else if (id == 7)
+    {
+        // Prison / warehouse heavy vertical bars.
+        float bar = abs(fract(uv.x * 6.0 * detail) - 0.5);
+        float soft = pp.z * 0.10;
+        pattern = 1.0 - smoothstep(0.24 - soft, 0.32 + soft, bar);
+    }
+    else if (id == 8)
+    {
+        // Cathedral arched window: rounded-top aperture with mullions.
+        float body = step(0.20, uv.x) * step(uv.x, 0.80) *
+                     step(0.10, uv.y) * step(uv.y, 0.65);
+        float arch = step(length((uv - vec2(0.5, 0.65)) / vec2(0.30, 0.35)), 1.0) *
+                     step(0.65, uv.y);
+        float shape = clamp(body + arch, 0.0, 1.0);
+        vec2 m = abs(fract(uv * vec2(3.0, 4.0) * detail) - 0.5);
+        float bars = max(step(0.42, m.x), step(0.42, m.y));
+        pattern = shape * (1.0 - bars);
+    }
+    else if (id == 9)
+    {
+        // Iris / vignette framing aperture (oval via thickness, soft edge).
+        float rad = 0.45 * exp2(-pp.x * 0.5);
+        float soft = 0.04 + pp.z * 0.40;
+        vec2 d = (uv - vec2(0.5)) * vec2(1.0 + pp.y, 1.0);
+        pattern = 1.0 - smoothstep(rad - soft, rad, length(d));
+    }
+    else if (id == 10)
+    {
+        // Dot-matrix / disco grid.
+        float count = 8.0 * detail;
+        vec2 cell = fract(uv * count) - 0.5;
+        float rad = 0.30 + pp.y * 0.15;
+        float soft = 0.05 + pp.z * 0.20;
+        pattern = 1.0 - smoothstep(rad, rad + soft, length(cell));
+    }
+    else if (id == 11)
+    {
+        // Concentric rings blending to radial starburst (blend via thickness).
+        float count = 8.0 * detail;
+        float rings = abs(fract(length(uv - vec2(0.5)) * count) - 0.5);
+        float ringp = 1.0 - smoothstep(0.22, 0.32, rings);
+        float ang = atan(uv.y - 0.5, uv.x - 0.5);
+        float sp = abs(fract(ang / 6.2831853 * max(count, 1.0)) - 0.5);
+        float spokep = 1.0 - smoothstep(0.22, 0.32, sp);
+        pattern = mix(ringp, spokep, clamp(pp.y, 0.0, 1.0));
+    }
+    else if (id == 12)
+    {
+        // Soft cloud / god-ray breakup (softer threshold than foliage).
+        float sc = 4.0 * detail;
+        float n = goboValueNoise(uv * sc) * 0.6 +
+                  goboValueNoise(uv * sc * 2.25 + vec2(5.0, 2.0)) * 0.4;
+        float lo = 0.35 - pp.y * 0.2;
+        pattern = smoothstep(lo, lo + 0.40, n);
+    }
+    pattern = clamp(pattern, 0.0, 1.0);
+    if (pp.w >= 0.5)
+    {
+        pattern = 1.0 - pattern; // negative cookie
+    }
+    return vec4(vec3(pattern), 1.0);
+}
+
+// UV-space animation modes: 1 rotate, 2 wind-sway, 3 pan, 4 pulse (osc zoom).
+// Modes 0/5/6 leave the UV unchanged (5/6 are intensity-only, see below).
+vec2 animatedGoboUV(vec2 uv)
+{
+    int mode = int(gobo_anim_params.x + 0.5);
+    float speed = gobo_anim_params.y;
+    float zoom = max(gobo_anim_params.z, 0.001);
+    if (mode == 4) // pulse/breathe oscillates the zoom about its base
+    {
+        zoom = max(zoom * (1.0 + 0.25 * sin(speed * gobo_time)), 0.001);
+    }
+    // Preserve the legacy texture coordinates bit-for-bit when nothing moves
+    // the UV (mode 0/5/6 with default zoom).
+    if (mode != 1 && mode != 2 && mode != 3 && zoom == 1.0)
+    {
+        return uv;
+    }
+    uv = (uv - vec2(0.5)) / zoom + vec2(0.5);
+    if (mode == 1) // continuous rotation
+    {
+        float angle = speed * gobo_time;
+        float c = cos(angle);
+        float s = sin(angle);
+        mat2 rotation = mat2(c, s, -s, c);
+        uv = rotation * (uv - vec2(0.5)) + vec2(0.5);
+    }
+    else if (mode == 2) // wind sway domain warp
+    {
+        vec2 phase = uv.yx * vec2(9.0, 7.0) +
+                     gobo_time * speed * vec2(1.0, 1.31);
+        uv += 0.018 * sin(phase);
+    }
+    else if (mode == 3) // pan / scroll along a fixed diagonal
+    {
+        uv += normalize(vec2(1.0, 0.35)) * speed * gobo_time * 0.1;
+    }
+    return uv;
+}
+
+// Intensity-space animation modes: 5 flicker (candle/fire), 6 strobe. Every
+// other mode returns 1.0, so this is a no-op unless flicker/strobe is chosen.
+float goboAnimIntensity()
+{
+    int mode = int(gobo_anim_params.x + 0.5);
+    float speed = max(abs(gobo_anim_params.y), 0.001);
+    if (mode == 5)
+    {
+        float n = goboValueNoise(vec2(gobo_time * speed * 3.0, 0.0));
+        return mix(0.6, 1.0, n);
+    }
+    if (mode == 6)
+    {
+        return step(fract(gobo_time * speed), 0.5);
+    }
+    return 1.0;
+}
+
+// Shared by surface lighting, froxel injection and the volumetric march. Tint
+// (default white) and intensity (default 1.0) keep the off-path byte-identical.
+vec4 sampleGobo(vec2 uv, float lod)
+{
+    vec2 animated_uv = animatedGoboUV(uv);
+    vec4 col;
+    if (gobo_pattern >= 0)
+    {
+        col = proceduralGobo(gobo_pattern, animated_uv, gobo_pattern_params);
+    }
+    else
+    {
+#ifndef FXAA_GLSL_120
+        col = textureLod(projectionMap, animated_uv, goboLod(animated_uv, lod));
+#else
+        col = texture(projectionMap, animated_uv);
+#endif
+    }
+    col.rgb *= gobo_tint;
+    col.rgb *= goboAnimIntensity();
+    return col;
 }
 
 uniform mat4 inv_proj;
@@ -222,11 +457,7 @@ float getDepth(vec2 pos_screen)
 
 vec4 getTexture2DLodAmbient(vec2 tc, float lod)
 {
-#ifndef FXAA_GLSL_120
-    vec4 ret = textureLod(projectionMap, tc, goboLod(tc, lod));
-#else
-    vec4 ret = texture(projectionMap, tc);
-#endif
+    vec4 ret = sampleGobo(tc, lod);
     ret.rgb = srgb_to_linear(ret.rgb);
 
     vec2 dist = tc-vec2(0.5);
@@ -238,11 +469,7 @@ vec4 getTexture2DLodAmbient(vec2 tc, float lod)
 
 vec4 getTexture2DLodDiffuse(vec2 tc, float lod)
 {
-#ifndef FXAA_GLSL_120
-    vec4 ret = textureLod(projectionMap, tc, goboLod(tc, lod));
-#else
-    vec4 ret = texture(projectionMap, tc);
-#endif
+    vec4 ret = sampleGobo(tc, lod);
     ret.rgb = srgb_to_linear(ret.rgb);
 
     vec2 dist = vec2(0.5) - abs(tc-vec2(0.5));
@@ -279,17 +506,23 @@ vec3 getProjectedLightDiffuseColor(float light_distance, vec2 projected_uv)
     float diff = clamp((light_distance - proj_focus)/proj_range, 0.0, 1.0);
     float lod = diff * proj_lod;
     vec4 plcol = getTexture2DLodDiffuse(projected_uv.xy, lod);
+    // Surface-only chromatic split. Volumetric consumers call the single-tap
+    // getTexture2DLodDiffuse funnel directly and never enter this branch.
+    float dispersion = max(gobo_anim_params.w, 0.0);
+    if (dispersion > 0.0)
+    {
+        vec2 radial = projected_uv - vec2(0.5);
+        vec4 red_sample = getTexture2DLodDiffuse(projected_uv + radial * dispersion, lod);
+        vec4 blue_sample = getTexture2DLodDiffuse(projected_uv - radial * dispersion, lod);
+        plcol.rgb = vec3(red_sample.r, plcol.g, blue_sample.b);
+    }
 
     return color.rgb * plcol.rgb * plcol.a;
 }
 
 vec4 texture2DLodSpecular(vec2 tc, float lod)
 {
-#ifndef FXAA_GLSL_120
-    vec4 ret = textureLod(projectionMap, tc, goboLod(tc, lod));
-#else
-    vec4 ret = texture(projectionMap, tc);
-#endif
+    vec4 ret = sampleGobo(tc, lod);
     ret.rgb = srgb_to_linear(ret.rgb);
 
     vec2 dist = vec2(0.5) - abs(tc-vec2(0.5));
@@ -682,4 +915,3 @@ void waterClip(vec3 pos)
     }
 
 }
-

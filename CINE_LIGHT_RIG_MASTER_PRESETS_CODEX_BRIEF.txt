@@ -1,0 +1,153 @@
+IMPLEMENTATION TASK — Cinematic Light Rig: master preset library + scale-aware geometry
++ per-control reset buttons + Director tab icon.
+
+Repo: I:\alchemy-machinima. You IMPLEMENT. Do NOT build, do NOT run cmake, do NOT run the viewer.
+Claude builds; an adversarial Opus review reviews your code before any build.
+
+=============================================================================
+READ FIRST (all repo-relative, all in your workspace)
+=============================================================================
+
+1. doc/CINE_LIGHT_RIG_MASTER_PRESETS_DESIGN.md   <-- THE SPEC. NORMATIVE. Read ALL of it.
+   Section A = scale-aware geometry (13 rules SA-0..SA-12). Section B = master library
+   (schema B.2, loader/fallback B.1, controller B.3, migration B.4, combo UI B.5, scene/reset B.6).
+   Section C = the curated slate (now TWENTY-ONE presets: the original 10 PLUS the
+   "Section C (expanded)" table 10-20). Section D = reset buttons (D.1) + tab icon (D.2).
+   Section 5 = the TUT test cluster. Section 6 = the file/function checklist. Section 9 = OFF-LIMITS.
+2. doc/CINE_LIGHT_RIG_MASTER_PRESETS_SEED.md   <-- the brief the spec answers (user decisions).
+3. doc/CINEMATIC_LIGHT_RIG_DEEP_DESIGN.md + doc/CINE_LIGHT_RIG_STATUS.md   <-- the base feature
+   (already built and compiling) and its finals you must not disturb.
+
+The design doc WINS wherever this brief and it differ, EXCEPT the "do not build" rule (absolute)
+and the preset-count correction below.
+
+=============================================================================
+CORRECTION TO THE SPEC — PRESET COUNT
+=============================================================================
+
+Section 6's checklist row for the preset file says "9 entries; Classic is compiled." That predates
+the user's expansion. The correct content is now:
+  - Classic 3-Point (master #0) stays COMPILED in C++ (classicSetup()), injected as master index 0
+    (bedrock fallback, per B.1) — NOT in the file.
+  - The bundled file app_settings/cine_light_rig_presets.xml carries the OTHER TWENTY masters,
+    indices 1-20, exactly as tabulated in Section C and "Section C (expanded)":
+    1 Rembrandt, 2 Paramount Butterfly, 3 Broadcast Interview, 4 Film Noir, 5 Silhouette,
+    6 Golden Hour, 7 Blue Hour Moon, 8 Neon Crossfire, 9 Firelight, 10 Loop, 11 Split,
+    12 Clamshell Beauty, 13 High Key, 14 Low Key Drama, 15 Uplight Horror, 16 Top Light,
+    17 Motivated Window, 18 Overcast Soft, 19 Teal & Orange, 20 Sci-Fi Cool.
+  - Transcribe every per-light value (yaw/pitch/profile/EV/beam/on x4 + radius) and the intent
+    string EXACTLY from the Section C tables. This is positional data: after writing the file,
+    VERIFY BY COUNTING and cross-check each row against the design table (CLAUDE.md rule 6). Every
+    profile index must be in [0,23], every beam index in [0,2]. A transcription slip here ships a
+    scrambled preset that compiles fine.
+
+=============================================================================
+SCOPE — SHIP WHOLE (one delivery)
+=============================================================================
+
+ALL of: scale-aware model math + its TUT cluster; the scale-aware controller geometry (foot-pivot
+centre, per-frame scale sample+smooth, emitter-box scaling); the master library (compiled Classic +
+bundled 20-entry file + loader + fallback + migration + generalized load/save/delete refusals);
+the grouped setup combo; the ~29 per-control reset buttons; the Director tab icon; the one new
+settings key; and the scene/reset wiring. Per the ship-whole rule, no slicing.
+
+=============================================================================
+FILES — create / modify EXACTLY per design Section 6
+=============================================================================
+
+CREATE:
+  indra/newview/app_settings/cine_light_rig_presets.xml   (schema B.2; the 20 file-borne masters)
+
+MODIFY (only the named change in each — see Section 6 table for the precise change):
+  indra/newview/alcinelightrigmodel.h        Globals::mSubjectScale (F32=1.f); SUBJECT_SCALE_MIN/MAX;
+                                             SCALED_RADIUS_FLOOR/CEIL; render() doc-comment nominal-EV rule
+  indra/newview/alcinelightrigmodel.cpp      sanitizeGlobals scale guards (SA-2); render() effective-radius
+                                             derivation (SA-8) with distance_ev reading NOMINAL radius (SA-9)
+  indra/newview/alcinelightrig.h             mSmoothedScale; MasterSetup/SetupEntry;
+                                             masterSetups()/findMasterSetup()/isMasterSetup()/setupNamesGrouped()
+                                             (replacing setupNames())
+  indra/newview/alcinelightrig.cpp           scaledPoint helper + centre/fallback/OffsetZ (SA-4/5); scale
+                                             sample+smooth in tick (SA-7); emitter box in applyFrame (SA-10);
+                                             master loader + Classic injection + migration (B.1-B.4);
+                                             generalized load/save/delete refuse-all-masters (B.3)
+  indra/newview/alpanelcinelightrig.h/.cpp   grouped combo via labeled separators (B.5); Delete gating +
+                                             Save refusal on ALL masters; registerCineLightRigResetControl()
+                                             (D.1); Reset All selects masterSetups()[0]
+  indra/newview/skins/default/xui/en/panel_cine_light_rig.xml   reset column + inline resets (D.1 map,
+                                             ~29 buttons); no panel width change
+  indra/newview/llfloaterdirector.cpp        TAB_ICON_LIGHTS + the cine_light_rig_tab icon-table row (D.2)
+  indra/newview/app_settings/settings.xml    ONE new key: CineLightRigScaleAware (BOOL, default TRUE)
+  indra/newview/tests/alcinelightrigmodel_test.cpp   the Section 5 scale cluster (tests 1-11)
+
+If a file needs a manifest entry to ship the new preset XML (design cites viewer_manifest.py:80 as
+the packaging idiom), add ONLY that entry. Verify whether it is needed; do not touch anything else.
+
+=============================================================================
+THE THINGS MOST LIKELY TO GO WRONG — get these right
+=============================================================================
+
+1. SCALE vs EXPOSURE (SA-9). Geometry scales; the inverse-square distance_ev term keeps reading the
+   NOMINAL radius, never the scaled one. Feeding scaled radius into distance_ev would add up to +7.2
+   stops of drift at 150x. The deferred shader normalizes distance by light size, so co-scaling the
+   orbit radius and the 2.2x/1.5x falloff radii keeps subject brightness bit-identical. TUT test 3
+   pins this; do not let it regress.
+
+2. THE s = 1 FAST PATH must be a BITWISE NO-OP. mSubjectScale defaults to 1.f. The entire existing
+   TUT suite must pass UNTOUCHED as the s=1 regression pin (test 1). Any reordering of the radius
+   math that changes s=1 output by one ULP is a bug. Keep a literal early-out for scale == 1.f.
+
+3. FOOT-PIVOT CENTRE (SA-4). Joint world positions do NOT include the clone's outer render scale
+   (proven: llactormover.cpp:2998-3001). Map the chest joint the way gazeRenderedJointPosition does
+   (foot + (point - foot) * scale), with a literal no-op when scale == 1.f. llactormover.cpp is
+   READ-ONLY precedent — copy the idiom, do not call into or edit it.
+
+4. DEGENERATE SCALE (SA-2). sanitizeGlobals must collapse s <= 0, NaN, +inf, FLT_MIN and any
+   subject-lost case to 1.f BEFORE any clamp, so degenerate input renders identically to s=1
+   (TUT test 8). Clamp valid scale to [0.05, 150] mirroring GHOST_SCALE_MIN/MAX by COMMENT
+   (alghoststudio.h is off-limits to include; mirror the constants with a comment naming them).
+
+5. MASTER-FILE ROBUSTNESS (B.1 fallback chain). File absent / truncated / wrong version / non-map /
+   duplicate names / a "Classic 3-Point" entry inside the file must ALL degrade to "compiled Classic
+   present + LL_WARNS", never a blank rig, never a crash. Compiled Classic is always master #0
+   regardless of the file.
+
+6. REFUSE ALL MASTER NAMES, not just "Classic 3-Point". saveSetup/deleteSetup and the panel Save/
+   Delete gating must refuse every master name AND the combo caption/separator strings (B.5/R6),
+   case-insensitively per B.4. A local must never shadow a master name.
+
+7. RESET BUTTONS (D.1): one registered CineLightRig.ResetControl commit callback, body
+   control->resetToDefault(true) on the per-button parameter setting key — mirror
+   registerWeatherResetControl (alpanelweathersettings.cpp:35-51) and the weather XUI button idiom
+   (panel_weather_settings.xml:46-61: image_overlay="Refresh_Off", 18x18, right-edge column). Use the
+   D.1 button map for exactly which controls get one (~29). Keep the existing Reset All.
+
+8. POSITIONAL TABLES again: the 20 file presets AND any constant tables you touch. Count and
+   cross-check against the design. "It compiles" proves nothing about positional data.
+
+=============================================================================
+OFF-LIMITS (design Section 9 — verbatim)
+=============================================================================
+
+Everything not named in Section 6 is off-limits. Explicitly, even where adjacent:
+pipeline.cpp in its entirety (the nine gate exemptions are final; this delivery needs no gate work);
+all GLSL; indra/llprimitive/* (the 20 m / [0,1] clamps are DESIGN INPUTS — SCALED_RADIUS_CEIL
+DERIVES from them, never "fixes" them); llvoavatar.* / llghostavatar.* / llclientoutertransform.h /
+llactormover.cpp / llcinematiccamera.cpp (READ-ONLY precedents); lldirectorcast.*; llcombobox.*
+(existing API only; NO BD-style labeled-separator port — use the existing combo API); alweathermodel.*
+and its test; alghoststudio.* (scale-range constants mirrored by COMMENT, not included);
+bdmerge_should_render_* bodies; llselectmgr.*; the applySceneData three-way split
+(alcinelightrig.cpp:1275-1324 semantics frozen); and BOTH version numbers (scene v1 and preset v1
+stay 1 — masters are a new separate file, neither existing format changes shape).
+
+=============================================================================
+STYLE / REPORT
+=============================================================================
+
+Match fork conventions (al*/AL*, .clang-format, .editorconfig). The pure model stays
+stdtypes.h-only / renderer-independent (no LLPipeline, no gGL, no viewer singletons) — that is why
+its TUT test exists; do not break it.
+
+When done, report: every file created/modified with what changed; the preset-count verification
+(you counted 20 file rows + compiled Classic = 21, and every profile/beam index is in range);
+anything in the design you could NOT implement and why; and anything in the design you believe is
+WRONG (say so plainly).

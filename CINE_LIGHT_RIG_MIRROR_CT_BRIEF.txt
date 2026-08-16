@@ -1,0 +1,131 @@
+IMPLEMENTATION TASK — Cinematic Light Rig: (1) fix Mirror to be a face-relative side-to-side flip;
+(2) add a per-Kelvin colour-temperature master preset set.
+
+Repo: I:\alchemy-machinima. You IMPLEMENT. Do NOT build, do NOT run cmake, do NOT run the viewer.
+Claude builds; an adversarial Opus review reviews before any build.
+
+Read for context: doc/CINE_LIGHT_RIG_MASTER_PRESETS_DESIGN.md (the shipped feature) and
+doc/CINE_LIGHT_RIG_STATUS.md. Both features are built and confirmed working in-world.
+
+=============================================================================
+PART 1 — MIRROR must flip SIDE-TO-SIDE (across the avatar's facing), not FRONT-TO-BACK
+=============================================================================
+
+DIAGNOSIS (established by reading the code):
+- computeLive (alcinelightrigmodel.cpp:458) does `yaw = mMirror ? -base.mYawDeg : base.mYawDeg`.
+  Negating yaw reflects the light across the WORLD X-axis (yaw 0).
+- The orbit is world/region-framed: off_x = r*cos(yaw), off_y = r*sin(yaw)
+  (alcinelightrigmodel.cpp:538-539) added to the emitter's GLOBAL position X/Y — so yaw 0 =
+  region-east, yaw 90 = region-north. The rig has no avatar-facing sense (by the base design).
+- Therefore mirror reflects across a FIXED WORLD axis. Whether that looks like a left/right cheek
+  swap or a front/back flip depends entirely on which way the avatar faces. Avatar facing world-Y:
+  a front-left light at yaw 45 mirrors to yaw -45, which relative to the face is front->BACK on the
+  same side. That is the reported bug.
+
+THE FIX: mirror must reflect across the avatar's FACING azimuth, not world zero:
+    mirrored_yaw = wrap180(2 * facing_azimuth_deg - base.mYawDeg)
+When facing_azimuth_deg == 0 this is exactly `-base.mYawDeg` (today's behaviour), so a
+world-aligned avatar and EVERY existing test are unchanged. Mirror-twice stays identity:
+2f - (2f - y) = y. Only MIRROR becomes face-aware; base yaw and Orbit Yaw stay world-relative
+(do NOT rotate the whole rig — the user explicitly wants only the mirror to change).
+
+IMPLEMENTATION:
+
+Model (alcinelightrigmodel.h / .cpp):
+- Add `F32 mFacingAzimuthDeg = 0.f;` to `Transforms`.
+- In `sanitizeTransforms`: if `!std::isfinite(mFacingAzimuthDeg)` set 0.f, then wrap180 it into
+  (-180,180]. (Any finite angle is valid; it is an azimuth.)
+- In `computeLive`, replace the mirror line with:
+    const F32 yaw = safe_transforms.mMirror
+        ? wrap180(2.f * safe_transforms.mFacingAzimuthDeg - base.mYawDeg)
+        : base.mYawDeg;
+  Keep the subsequent `wrap180(yaw + safe_transforms.mYawDeg)` (orbit applies after the reflect).
+- The default mFacingAzimuthDeg = 0 makes this bitwise-identical to the current `-y` mirror, so the
+  existing mirror-invariance tests pass UNTOUCHED. Do not alter those tests; ADD new ones (below).
+
+Controller (alcinelightrig.cpp):
+- The transforms fed to computeLive are built per-frame. After the anchor avatar is resolved in the
+  tick (the `LLDirectorCast::instance().resolve(mAnchor)` result, ~line 1010 region), compute the
+  facing azimuth in the SAME region frame the orbit uses and set it on the transforms:
+      LLVector3 fwd = LLVector3(1.f, 0.f, 0.f) * avatar->getRotation();
+      F32 facing = atan2f(fwd.mV[VY], fwd.mV[VX]) * RAD_TO_DEG;   // region frame: X=east, Y=north
+      if (!std::isfinite(facing)) facing = 0.f;
+      transforms.mFacingAzimuthDeg = facing;
+  If no avatar is resolved (subject lost), leave mFacingAzimuthDeg = 0 (mirror falls back to the
+  world-X reflection — acceptable degenerate, matches "no subject" everywhere else).
+- Sample facing LIVE per frame (consistent with the per-frame centre/scale sampling). Do NOT persist
+  it; it is ephemeral like subject scale — no settings key, no scene field.
+- VERIFY the rotation source: `avatar->getRotation()` must give the avatar BODY facing in the region
+  frame that off_x/off_y live in. If getRotation() is not the body facing (e.g. it returns identity
+  for an attachment-style object or the wrong frame), use the root-joint world rotation instead and
+  say which you used and why. This frame match is the one thing most likely to be subtly wrong — get
+  it right and state your reasoning.
+
+Tests (alcinelightrigmodel_test.cpp) — ADD (do not modify existing mirror tests):
+- facing = 0: mirror(y) == -y for a spread of y (bit-identical to the old behaviour).
+- facing = 90: mirror(45) == 135, mirror(135) == 45, mirror(-45) == -135 (reflect across 90).
+- mirror-twice identity at facing = 37 (a non-trivial angle): computeLive(mirror) twice == original.
+- non-finite / unwrapped facing sanitises (e.g. facing = 720 wraps; facing = NaN -> 0 -> plain -y).
+Each test must FAIL if the reflection reverts to `-y`; state that explicitly.
+
+=============================================================================
+PART 2 — Per-Kelvin colour-temperature master preset set (6 new masters)
+=============================================================================
+
+Add SIX presets to indra/newview/app_settings/cine_light_rig_presets.xml, indices 21-26, using the
+SAME schema (B.2) as the existing entries. They are a neutral, gently-modelled soft 3-point rendered
+entirely in one colour temperature — the temperature is the only variable. Template per preset
+(only the profile changes): all four lights use the SAME profile P; radius 1.6.
+
+  Key : yaw 35,  pitch 35, profile P, EV +0.5, beam 1 (Softbox), on
+  Fill: yaw -35, pitch 15, profile P, EV -1.5, beam 1,           on
+  Rim : yaw -150,pitch 40, profile P, EV -1.0, beam 1,           on
+  Bg  : yaw 150, pitch -10,profile P, EV -2.0, beam 1,           off
+
+  | idx | name             | P | profile_name |
+  | 21  | Candlelight 2700K| 0 | 2700K Incan  |
+  | 22  | Tungsten 3200K   | 1 | 3200K Tung   |
+  | 23  | Neutral 4500K    | 2 | 4500K Neut   |
+  | 24  | Daylight 5600K   | 3 | 5600K Day    |
+  | 25  | Cool 6500K       | 4 | 6500K Cool   |
+  | 26  | Moonlight 8000K  | 5 | 8000K Moon   |
+
+  intent strings (the `intent` field):
+  21 "Warm candle/incandescent wash — the whole shot at 2700K."
+  22 "Studio tungsten warmth — even 3200K key, fill and rim."
+  23 "True-neutral 4500K reference — balanced white."
+  24 "Clean 5600K daylight — neutral even coverage."
+  25 "Cool 6500K overcast — soft cold wrap."
+  26 "Cold 8000K moonlight — even blue-cool coverage."
+
+Each entry must set BOTH profile_idx (P) and profile_name (exact string above), and beam_idx 1 with
+beam_name "Softbox", per the schema. Every profile_idx is in [0,23]; beam 1 in [0,2]. After writing,
+VERIFY BY COUNTING: the file now has 26 entries (1-26); with compiled Classic = 27 masters. Cross-
+check each new row's values against the table above (CLAUDE.md rule 6 — positional data).
+
+No code change is needed for Part 2 beyond the file: the loader, grouping, refusals, and combo all
+generalise over masterSetups() already. Confirm the grouped combo and the save/delete refusals cover
+the six new names automatically (they should, via masterSetups()).
+
+=============================================================================
+OFF-LIMITS
+=============================================================================
+
+Everything off-limits in the master-presets brief still holds (design Section 9): pipeline.cpp, all
+GLSL, indra/llprimitive/*, llvoavatar.*/llghostavatar.*/llactormover.*/llcinematiccamera.* (READ-ONLY
+precedents — you READ getRotation() but do not edit them), lldirectorcast.* (consumed), llcombobox.*
+(existing API), alweathermodel.*+test, alghoststudio.*, bdmerge bodies, llselectmgr.*, the
+applySceneData three-way split, both version numbers. Do NOT change any EXISTING preset value (rows
+1-20) or the scale/master-library code beyond the two named touch-points (Transforms field + mirror
+line in the model; the facing computation in the controller tick).
+
+=============================================================================
+REPORT
+=============================================================================
+
+Part 1: what you changed in the model and controller; which rotation source you used for facing and
+why it is the correct region-frame body facing; confirmation the facing=0 path is bitwise-identical
+to the old mirror; the new tests and that each fails if reflection reverts to -y.
+Part 2: the 6 rows added; the count verification (26 file entries + compiled Classic = 27); every
+profile/beam index in range; that the combo/refusals cover them via masterSetups().
+Anything you believe is wrong. Do not build.

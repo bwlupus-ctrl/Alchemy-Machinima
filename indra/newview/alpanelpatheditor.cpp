@@ -101,15 +101,6 @@ bool ALPanelPathEditor::postBuild()
     mFollowOffset  = getChild<LLSpinCtrl>("follow_offset_spinner");
     mFollowStatus  = getChild<LLTextBox>("follow_status");
 
-    mGazeEnable    = getChild<LLCheckBoxCtrl>("gaze_enable_check");
-    mGazeTarget    = getChild<LLComboBox>("gaze_target_combo");
-    mGazeCast      = getChild<LLComboBox>("gaze_cast_combo");
-    mGazeSetPoint  = getChild<LLButton>("btn_gaze_setpoint");
-    mGazeBlend     = getChild<LLSliderCtrl>("gaze_blend_slider");
-    mGazeIntensity = getChild<LLSliderCtrl>("gaze_intensity_slider");
-    mGazeSmoothing = getChild<LLSliderCtrl>("gaze_smoothing_slider");
-    mGazeStatus    = getChild<LLTextBox>("gaze_status");
-
     mHint             = getChild<LLTextBox>("hint");
     mSuspendBanner    = getChild<LLPanel>("suspend_banner");
     mSuspendStatus    = getChild<LLTextBox>("suspend_status");
@@ -159,14 +150,6 @@ bool ALPanelPathEditor::postBuild()
     mFollowCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onFollowCommit(); });
     mStopFollowBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onStopFollow(); });
     mFollowOffset->setCommitCallback([this](LLUICtrl*, const LLSD&) { onFollowOffsetCommit(); });
-
-    mGazeEnable->setCommitCallback([this](LLUICtrl*, const LLSD&) { onGazeEnableToggle(); });
-    mGazeTarget->setCommitCallback([this](LLUICtrl*, const LLSD&) { onGazeTargetCommit(); });
-    mGazeCast->setCommitCallback([this](LLUICtrl*, const LLSD&) { onGazeCastCommit(); });
-    mGazeSetPoint->setCommitCallback([this](LLUICtrl*, const LLSD&) { onGazeSetPoint(); });
-    mGazeBlend->setCommitCallback([this](LLUICtrl*, const LLSD&) { onGazeBlendCommit(); });
-    mGazeIntensity->setCommitCallback([this](LLUICtrl*, const LLSD&) { onGazeIntensityCommit(); });
-    mGazeSmoothing->setCommitCallback([this](LLUICtrl*, const LLSD&) { onGazeSmoothingCommit(); });
 
     if (mColorSwatch)
     {
@@ -240,7 +223,6 @@ void ALPanelPathEditor::draw()
     refreshEditButtons();
     refreshCopyCombo();
     refreshChoreography();
-    refreshGaze();
 
     LLPanel::draw();
 }
@@ -1225,192 +1207,6 @@ void ALPanelPathEditor::onStopFollow()
     if (mActor.notNull())
     {
         LLActorMover::instance().clearFollow(mActor);
-    }
-}
-
-// ---------------------------------------------------------------------------
-// P3 look-at while walking (gaze). Reflects engine state and is reason-tooltipped;
-// the cast picker and Set-point button auto-hide to the relevant target mode.
-// ---------------------------------------------------------------------------
-void ALPanelPathEditor::refreshGaze()
-{
-    LLActorMover& m = LLActorMover::instance();
-    const bool have_actor = mActor.notNull();
-    const bool on   = have_actor && m.isGazeEnabled(mActor);
-    const S32  mode = have_actor ? m.getGazeTargetMode(mActor) : (S32)LLActorMover::GAZE_TANGENT;
-
-    mGazeEnable->setEnabled(have_actor);
-    mGazeEnable->setToolTip(have_actor
-        ? std::string("Procedural look-at while walking: the actor's eyes, head, neck and a little torso track a target, layered on the walk and eased in and out. Off is a no-op \xE2\x80\x94 the walk's own head motion plays.")
-        : std::string("Select a cast member first"));
-    if (mGazeEnable->getValue().asBoolean() != on)
-    {
-        mGazeEnable->set(on);
-    }
-
-    mGazeTarget->setEnabled(have_actor && on);
-    mGazeTarget->setToolTip(std::string("What the actor looks at: where it's going (the path tangent), the camera, another cast member, or a fixed point"));
-    if (!mGazeTarget->hasFocus() && mGazeTarget->getValue().asInteger() != mode)
-    {
-        mGazeTarget->setValue(mode);
-    }
-
-    // cast picker (target = cast member) and Set-point button (target = point)
-    // auto-hide to the active mode so the row stays uncluttered
-    refreshGazeCastCombo();
-    const bool cast_mode  = (mode == LLActorMover::GAZE_CAST);
-    const bool point_mode = (mode == LLActorMover::GAZE_POINT);
-    mGazeCast->setVisible(cast_mode);
-    mGazeCast->setEnabled(have_actor && on && cast_mode && mGazeCast->getItemCount() > 0);
-    mGazeCast->setToolTip(std::string("Cast member to look at"));
-    mGazeSetPoint->setVisible(point_mode);
-    mGazeSetPoint->setEnabled(have_actor && on && point_mode);
-    mGazeSetPoint->setToolTip(std::string("Capture the current camera position as the fixed point the actor looks at"));
-
-    const bool knobs = have_actor && on;
-    mGazeBlend->setEnabled(knobs);
-    mGazeIntensity->setEnabled(knobs);
-    mGazeSmoothing->setEnabled(knobs);
-    mGazeBlend->setToolTip(std::string("Head vs eyes: 0 = eyes only (head stays with the walk), 1 = full head, neck and torso turn"));
-    mGazeIntensity->setToolTip(std::string("How strongly the gaze overrides the walk's own head pose (0..1)"));
-    mGazeSmoothing->setToolTip(std::string("How softly the gaze eases toward the target (0 = snappy, 1 = very smooth)"));
-
-    const F32 blend = have_actor ? m.getGazeHeadEyeBlend(mActor) : 0.7f;
-    const F32 inten = have_actor ? m.getGazeIntensity(mActor)    : 1.f;
-    const F32 smoo  = have_actor ? m.getGazeSmoothing(mActor)    : 0.5f;
-    if (!mGazeBlend->hasFocus() &&
-        fabsf((F32)mGazeBlend->getValue().asReal() - blend) > 0.001f)
-    {
-        mGazeBlend->setValue(blend);
-    }
-    if (!mGazeIntensity->hasFocus() &&
-        fabsf((F32)mGazeIntensity->getValue().asReal() - inten) > 0.001f)
-    {
-        mGazeIntensity->setValue(inten);
-    }
-    if (!mGazeSmoothing->hasFocus() &&
-        fabsf((F32)mGazeSmoothing->getValue().asReal() - smoo) > 0.001f)
-    {
-        mGazeSmoothing->setValue(smoo);
-    }
-
-    std::string st;
-    m.getGazeStatus(mActor, st);
-    if (mGazeStatus->getValue().asString() != st)
-    {
-        mGazeStatus->setText(st);
-    }
-}
-
-void ALPanelPathEditor::refreshGazeCastCombo()
-{
-    if (!mGazeCast)
-    {
-        return;
-    }
-    const uuid_vec_t& ids = LLDirectorCast::instance().getIds();
-
-    // rebuild only when the cast membership or the target actor changes
-    std::string sig = "G" + mActor.asString();
-    for (const LLUUID& id : ids)
-    {
-        sig += id.asString();
-    }
-    if (sig != mGazeCastSig)
-    {
-        mGazeCastSig = sig;
-        mGazeCast->removeall();
-        for (const LLUUID& id : ids)
-        {
-            if (id != mActor)
-            {
-                mGazeCast->add(actorName(id), LLSD(id.asString()));
-            }
-        }
-        if (mGazeCast->getItemCount() == 0)
-        {
-            mGazeCast->add("(add another cast member)", LLSD(std::string()));
-        }
-    }
-
-    // reflect the stored target unless the user is mid-pick
-    if (!mGazeCast->hasFocus() && mActor.notNull())
-    {
-        const LLUUID cur = LLActorMover::instance().getGazeCastTarget(mActor);
-        if (cur.isNull())
-        {
-            mGazeCast->selectFirstItem();
-        }
-        else if (mGazeCast->getSelectedValue().asString() != cur.asString())
-        {
-            if (!mGazeCast->setSelectedByValue(LLSD(cur.asString()), true))
-            {
-                mGazeCast->selectFirstItem();
-            }
-        }
-    }
-}
-
-void ALPanelPathEditor::onGazeEnableToggle()
-{
-    if (mActor.notNull())
-    {
-        LLActorMover::instance().setGazeEnabled(mActor, mGazeEnable->get());
-    }
-}
-
-void ALPanelPathEditor::onGazeTargetCommit()
-{
-    if (mActor.notNull())
-    {
-        LLActorMover::instance().setGazeTargetMode(mActor, mGazeTarget->getValue().asInteger());
-    }
-}
-
-void ALPanelPathEditor::onGazeCastCommit()
-{
-    if (mActor.isNull())
-    {
-        return;
-    }
-    const std::string v = mGazeCast->getSelectedValue().asString();
-    LLActorMover::instance().setGazeCastTarget(mActor, v.empty() ? LLUUID::null : LLUUID(v));
-}
-
-void ALPanelPathEditor::onGazeSetPoint()
-{
-    if (mActor.isNull())
-    {
-        return;
-    }
-    // capture the current render-camera position as the fixed look point (global,
-    // like the per-node "Set camera here" capture)
-    LLViewerCamera* cam = LLViewerCamera::getInstance();
-    LLActorMover::instance().setGazePointGlobal(mActor,
-        gAgent.getPosGlobalFromAgent(cam->getOrigin()));
-}
-
-void ALPanelPathEditor::onGazeBlendCommit()
-{
-    if (mActor.notNull())
-    {
-        LLActorMover::instance().setGazeHeadEyeBlend(mActor, (F32)mGazeBlend->getValue().asReal());
-    }
-}
-
-void ALPanelPathEditor::onGazeIntensityCommit()
-{
-    if (mActor.notNull())
-    {
-        LLActorMover::instance().setGazeIntensity(mActor, (F32)mGazeIntensity->getValue().asReal());
-    }
-}
-
-void ALPanelPathEditor::onGazeSmoothingCommit()
-{
-    if (mActor.notNull())
-    {
-        LLActorMover::instance().setGazeSmoothing(mActor, (F32)mGazeSmoothing->getValue().asReal());
     }
 }
 

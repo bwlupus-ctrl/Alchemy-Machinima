@@ -39,10 +39,12 @@
 class FSVirtualTrackpad;
 class LLButton;
 class LLCheckBoxCtrl;
+class LLComboBox;
 class LLLineEditor;
 class LLScrollListCtrl;
 class LLSliderCtrl;
 class LLTabContainer;
+class LLTextBox;
 class FSLoadPoseTimer;
 
 /// <summary>
@@ -251,6 +253,11 @@ public:
     void onAnimPlay();
     void onAnimStop();
     void onAnimStopAll();
+    // Bridge the nearby-anim list into the Director Anim Switchboard: drop the
+    // selected animation into the switchboard slot chosen in the combo below.
+    void onAnimSendToSwitchboard();
+    void onPoseSendToSwitchboard();
+    void refreshSwitchboardSlotCombo();
 
     // UI Event Handlers
     void onAvatarsRefresh();
@@ -520,6 +527,13 @@ public:
     LLScrollListCtrl* mPosesScrollList{ nullptr };
     LLScrollListCtrl* mHandPresetsScrollList{ nullptr };
     LLScrollListCtrl* mAnimPlaybackScrollList{ nullptr };
+    LLComboBox*       mAnimSwitchboardSlotCombo{ nullptr };
+    LLButton*         mAnimToSwitchboardBtn{ nullptr };
+    LLTextBox*        mAnimSwitchboardStatus{ nullptr };
+    LLComboBox*       mPoseSwitchboardSlotCombo{ nullptr };
+    LLComboBox*       mPoseSwitchboardLoadMethodCombo{ nullptr };
+    LLButton*         mPoseToSwitchboardBtn{ nullptr };
+    LLTextBox*        mPoseSwitchboardStatus{ nullptr };
 
     // [BDMerge] target avatar/animesh id -> set of animation ids WE started locally,
     // so Stop / Stop All can reliably stop exactly what this floater played.

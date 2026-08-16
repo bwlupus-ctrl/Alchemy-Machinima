@@ -58,6 +58,7 @@ public:
     void onSelLightVolumetric();
     void onSelLightCaptureOverride();
     void onSelLightClearOverride();
+    void onSelGoboChanged();
 
     boost::signals2::scoped_connection mTonemapConnection;
     boost::signals2::scoped_connection mCASConnection;

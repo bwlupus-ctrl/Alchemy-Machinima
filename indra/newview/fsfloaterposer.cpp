@@ -25,12 +25,14 @@
  */
 
 #include "fsfloaterposer.h"
+#include "aldirectoranimswitcher.h"
 #include "fsposeranimator.h"
 #include "fsvirtualtrackpad.h"
 #include "llagent.h"
 #include "llappviewer.h"
 #include "llavatarnamecache.h"
 #include "llcheckboxctrl.h"
+#include "llcombobox.h"
 #include "llcommonutils.h"
 #include "llcontrolavatar.h"
 #include "lldiriterator.h"
@@ -43,6 +45,7 @@
 #include "llsliderctrl.h"
 #include "llstring.h"
 #include "lltabcontainer.h"
+#include "lltextbox.h"
 #include "lltoolcomp.h"
 #include "llviewercontrol.h"
 #include "llviewerobjectlist.h"
@@ -74,6 +77,19 @@ constexpr std::string_view POSER_UNLOCKPELVISINBVH_SAVE_KEY    = "FSPoserPelvisU
 constexpr std::string_view POSER_SHOWBONEHIGHLIGHTS_SAVE_KEY   = "FSManipShowJointMarkers";
 constexpr char             ICON_SAVE_OK[]                      = "icon_rotation_is_own_work";
 constexpr char             ICON_SAVE_FAILED[]                  = "icon_save_failed_button";
+
+std::string switchboardSlotOccupancy(
+    const ALDirectorAnimSwitcher::Slot& slot)
+{
+    if (!slot.mLabel.empty())
+        return slot.mLabel;
+    if (slot.mKind == ALDirectorAnimSwitcher::KIND_POSE)
+        return slot.mPoseName.empty()
+            ? "empty" : utf8str_symbol_truncate(slot.mPoseName, 20);
+    if (slot.mAnimID.notNull())
+        return slot.mAnimID.asString().substr(0, 8);
+    return "empty";
+}
 
 }  // namespace
 
@@ -166,6 +182,12 @@ bool FSFloaterPoser::postBuild()
     mPosesScrollList = getChild<LLScrollListCtrl>("poses_scroll");
     mPosesScrollList->setCommitOnSelectionChange(true);
     mPosesScrollList->setCommitCallback([this](LLUICtrl *, const LLSD &) { onPoseFileSelect(); });
+    mPoseSwitchboardSlotCombo = getChild<LLComboBox>("poser_pose_slot_combo");
+    mPoseSwitchboardLoadMethodCombo = getChild<LLComboBox>("poser_pose_load_method_combo");
+    mPoseToSwitchboardBtn = getChild<LLButton>("poser_pose_to_switchboard");
+    mPoseSwitchboardStatus = getChild<LLTextBox>("poser_pose_switchboard_status");
+    mPoseToSwitchboardBtn->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onPoseSendToSwitchboard(); });
 
     mToggleVisualManipulators = getChild<LLButton>("toggleVisualManipulators");
     mToggleVisualManipulators->setToggleState(true);
@@ -183,6 +205,11 @@ bool FSFloaterPoser::postBuild()
     getChild<LLButton>("poser_anim_stop")->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAnimStop(); });
     getChild<LLButton>("poser_anim_stopall")->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAnimStopAll(); });
     getChild<LLButton>("poser_anim_refresh")->setCommitCallback([this](LLUICtrl*, const LLSD&) { refreshAnimationList(); });
+    mAnimSwitchboardSlotCombo = getChild<LLComboBox>("poser_anim_slot_combo");
+    mAnimToSwitchboardBtn     = getChild<LLButton>("poser_anim_to_switchboard");
+    mAnimSwitchboardStatus    = getChild<LLTextBox>("poser_anim_switchboard_status");
+    mAnimToSwitchboardBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAnimSendToSwitchboard(); });
+    refreshSwitchboardSlotCombo();
 
     mPosXSlider = getChild<LLSliderCtrl>("av_position_inout");
     mPosYSlider = getChild<LLSliderCtrl>("av_position_leftright");
@@ -1074,6 +1101,9 @@ void FSFloaterPoser::onPoseMenuAction(const LLSD& param)
     else if (loadStyle == "selective_rot")
         loadType = SELECTIVE_ROT;
 
+    if (mPoseSwitchboardLoadMethodCombo)
+        mPoseSwitchboardLoadMethodCombo->setValue(LLSD((S32)loadType));
+
     mLoadPoseTimer->tryLoading(poseName, loadType);
     setLoadingProgress(true);
 }
@@ -1542,7 +1572,10 @@ void FSFloaterPoser::onToggleLoadSavePanel()
     reshape(poserFloaterWidth, poserFloaterHeight);
 
     if (loadSavePanelExpanded)
+    {
         refreshPoseScroll(mPosesScrollList);
+        refreshSwitchboardSlotCombo();
+    }
 }
 
 void FSFloaterPoser::onToggleMirrorChange()
@@ -2440,6 +2473,9 @@ void FSFloaterPoser::refreshAnimationList()
 
     if (prevSel.notNull())
         mAnimPlaybackScrollList->selectByValue(LLSD(prevSel));
+
+    // Keep the "send to slot" chooser's occupancy labels in sync with the bank.
+    refreshSwitchboardSlotCombo();
 }
 
 void FSFloaterPoser::onAnimPlay()
@@ -2498,6 +2534,144 @@ void FSFloaterPoser::onAnimStopAll()
             av->stopMotion(animId);
     }
     mLocallyPlayedAnims.clear();
+}
+
+// Populate both "send to slot" choosers with the twelve Switchboard slots,
+// showing each slot's operator label, pose basename or asset-id prefix.
+// loadBank() always returns exactly SLOT_COUNT entries.
+void FSFloaterPoser::refreshSwitchboardSlotCombo()
+{
+    if (!mAnimSwitchboardSlotCombo && !mPoseSwitchboardSlotCombo)
+        return;
+
+    const std::vector<ALDirectorAnimSwitcher::Slot> bank = ALDirectorAnimSwitcher::loadBank();
+
+    const auto populate = [&bank](LLComboBox* combo)
+    {
+        if (!combo)
+            return;
+
+        S32 prev = combo->getValue().asInteger(); // empty combo -> 0
+        combo->removeall();
+        for (S32 i = 0; i < ALDirectorAnimSwitcher::SLOT_COUNT; ++i)
+        {
+            const std::string label = i < (S32)bank.size()
+                ? switchboardSlotOccupancy(bank[i]) : "empty";
+            combo->add(
+                llformat("Slot %d: %s", i + 1, label.c_str()), LLSD(i));
+        }
+        if (prev < 0 || prev >= ALDirectorAnimSwitcher::SLOT_COUNT)
+            prev = 0;
+        combo->setValue(LLSD(prev));
+    };
+
+    populate(mAnimSwitchboardSlotCombo);
+    populate(mPoseSwitchboardSlotCombo);
+}
+
+// Bridge: drop the selected nearby animation into the chosen Switchboard slot.
+// Round-trips the shared bank so an open Switchboard panel reflects it on its
+// next draw() (the panel diffs loadBank() against its cached copy).
+void FSFloaterPoser::onAnimSendToSwitchboard()
+{
+    LLScrollListItem* sel = mAnimPlaybackScrollList ? mAnimPlaybackScrollList->getFirstSelected() : nullptr;
+    if (!sel)
+    {
+        if (mAnimSwitchboardStatus)
+            mAnimSwitchboardStatus->setText(LLStringExplicit("Select a nearby animation first"));
+        return;
+    }
+
+    const LLUUID animId = sel->getValue().asUUID();
+    if (animId.isNull())
+    {
+        if (mAnimSwitchboardStatus)
+            mAnimSwitchboardStatus->setText(LLStringExplicit("That row has no animation id"));
+        return;
+    }
+
+    S32 slot = mAnimSwitchboardSlotCombo ? mAnimSwitchboardSlotCombo->getValue().asInteger() : 0;
+    if (slot < 0 || slot >= ALDirectorAnimSwitcher::SLOT_COUNT)
+        slot = 0;
+
+    std::vector<ALDirectorAnimSwitcher::Slot> bank = ALDirectorAnimSwitcher::loadBank();
+    if (slot >= (S32)bank.size())
+    {
+        if (mAnimSwitchboardStatus)
+            mAnimSwitchboardStatus->setText(LLStringExplicit("Switchboard slot unavailable"));
+        return;
+    }
+    // Set the asset id; leave any existing operator label intact (the Switchboard
+    // falls back to the asset-id prefix when the label is empty).
+    bank[slot].mKind = ALDirectorAnimSwitcher::KIND_ANIM;
+    bank[slot].mAnimID = animId;
+    ALDirectorAnimSwitcher::saveBank(bank);
+
+    if (mAnimSwitchboardStatus)
+        mAnimSwitchboardStatus->setText(LLStringExplicit(llformat("Sent to Switchboard slot %d", slot + 1)));
+
+    // Reflect the new occupancy and keep the chosen slot selected.
+    refreshSwitchboardSlotCombo();
+    if (mAnimSwitchboardSlotCombo)
+        mAnimSwitchboardSlotCombo->setValue(LLSD(slot));
+}
+
+void FSFloaterPoser::onPoseSendToSwitchboard()
+{
+    LLScrollListItem* selected =
+        mPosesScrollList ? mPosesScrollList->getFirstSelected() : nullptr;
+    if (!selected)
+    {
+        if (mPoseSwitchboardStatus)
+            mPoseSwitchboardStatus->setText(
+                LLStringExplicit("Select a saved pose first"));
+        return;
+    }
+
+    std::string pose_name =
+        selected->getColumn(0)->getValue().asString();
+    LLStringUtil::trim(pose_name);
+    if (pose_name.empty())
+    {
+        if (mPoseSwitchboardStatus)
+            mPoseSwitchboardStatus->setText(
+                LLStringExplicit("That row has no pose name"));
+        return;
+    }
+
+    S32 slot = mPoseSwitchboardSlotCombo
+        ? mPoseSwitchboardSlotCombo->getValue().asInteger() : 0;
+    if (slot < 0 || slot >= ALDirectorAnimSwitcher::SLOT_COUNT)
+        slot = 0;
+
+    S32 load_method = mPoseSwitchboardLoadMethodCombo
+        ? mPoseSwitchboardLoadMethodCombo->getValue().asInteger()
+        : (S32)ROT_POS_AND_SCALES;
+    load_method = llclamp(
+        load_method, (S32)ROTATIONS, (S32)SELECTIVE_ROT);
+
+    std::vector<ALDirectorAnimSwitcher::Slot> bank =
+        ALDirectorAnimSwitcher::loadBank();
+    if (slot >= (S32)bank.size())
+    {
+        if (mPoseSwitchboardStatus)
+            mPoseSwitchboardStatus->setText(
+                LLStringExplicit("Switchboard slot unavailable"));
+        return;
+    }
+
+    bank[slot].mKind = ALDirectorAnimSwitcher::KIND_POSE;
+    bank[slot].mPoseName = pose_name;
+    bank[slot].mPoseLoadMethod = load_method;
+    ALDirectorAnimSwitcher::saveBank(bank);
+
+    if (mPoseSwitchboardStatus)
+        mPoseSwitchboardStatus->setText(LLStringExplicit(
+            llformat("Sent pose to slot %d", slot + 1)));
+
+    refreshSwitchboardSlotCombo();
+    if (mPoseSwitchboardSlotCombo)
+        mPoseSwitchboardSlotCombo->setValue(LLSD(slot));
 }
 
 void FSFloaterPoser::onAvatarSelect()

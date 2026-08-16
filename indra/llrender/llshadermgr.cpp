@@ -1759,6 +1759,13 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("soft_shadow_taps");
     // [BDMerge Batch 2] Feature 2: gobo anisotropic/mip filtering
     mReservedUniforms.push_back("gobo_aniso");
+    // [Cinematic Gobo] Per-projector procedural cookie and presentation-time UV motion.
+    mReservedUniforms.push_back("gobo_time");
+    mReservedUniforms.push_back("gobo_pattern");
+    mReservedUniforms.push_back("gobo_anim_params");
+    // [Gobo v2] colored gel tint + per-pattern variation params.
+    mReservedUniforms.push_back("gobo_tint");
+    mReservedUniforms.push_back("gobo_pattern_params");
 
     // [BDMerge A5.4-1a] velocity / motion-vector buffer (must stay in lockstep
     // with the enum block in llshadermgr.h)
@@ -1789,6 +1796,14 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("froxel_noise_speed");
     mReservedUniforms.push_back("froxel_wind"); // [F5] wind_dir * noise_speed
     mReservedUniforms.push_back("froxel_time");
+    // [Local Fog] Flattened eight-volume media arrays.
+    mReservedUniforms.push_back("localfog_center");
+    mReservedUniforms.push_back("localfog_extents");
+    mReservedUniforms.push_back("localfog_inv_rot");
+    mReservedUniforms.push_back("localfog_params");
+    mReservedUniforms.push_back("localfog_tint");
+    mReservedUniforms.push_back("localfog_noise");
+    mReservedUniforms.push_back("localfog_count");
     mReservedUniforms.push_back("froxel_debug_mode");
     mReservedUniforms.push_back("froxel_debug_slice");
 
@@ -1808,6 +1823,7 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("froxelLightHistory");
     mReservedUniforms.push_back("froxel_prev_modelview");
     mReservedUniforms.push_back("froxel_temporal_blend");
+    mReservedUniforms.push_back("froxel_temporal_reject");
     mReservedUniforms.push_back("froxel_jitter");
     mReservedUniforms.push_back("froxel_frame");
 

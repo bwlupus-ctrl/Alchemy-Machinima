@@ -856,11 +856,13 @@ public:
     {
         LOCAL_OBJECT_NONE = 0,          // a normal sim object, or an untyped client-only clone
         LOCAL_OBJECT_MESH_PREVIEW,      // an LLLocalMeshMgr preview
-        LOCAL_OBJECT_GHOST_MANIP_PROXY  // a Ghost Studio in-world manipulation proxy
+        LOCAL_OBJECT_GHOST_MANIP_PROXY, // a Ghost Studio in-world manipulation proxy
+        LOCAL_OBJECT_CINE_RIG_EMITTER   // a cinematic light-rig emitter
     };
     ELocalObjectKind mLocalObjectKind = LOCAL_OBJECT_NONE;
     bool            isLocalMeshPreview() const { return mLocalObjectKind == LOCAL_OBJECT_MESH_PREVIEW; }
     bool            isGhostManipProxy() const { return mLocalObjectKind == LOCAL_OBJECT_GHOST_MANIP_PROXY; }
+    bool            isCineRigEmitter() const { return mLocalObjectKind == LOCAL_OBJECT_CINE_RIG_EMITTER; }
 
 private:
     // Grabbed from UPDATE_FLAGS

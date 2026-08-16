@@ -1,0 +1,60 @@
+FIX ROUND — Cine Light Rig enhancements. Two MUST-FIX (both tiny, neither touches shipping logic) +
+one cosmetic nit. Do NOT build, cmake, or run the viewer. Locate by symbol/context, not line number.
+
+The Opus review found the SHIPPING CODE correct (colour math independently validated against
+blackbody physics; gobo field-threading clean; presets transcribed exactly). These are a clipped
+panel and one over-strict test assertion.
+
+=============================================================================
+M1 (MUST-FIX) — panel reflow clips the bottom in BOTH host wrappers
+=============================================================================
+panel_cine_light_rig.xml grew its root height to 1286, but the panel is embedded by filename in two
+wrapper floaters whose fixed heights were NOT updated, so the scroll range still ends at ~1136 and the
+bottom section is unreachable in both hosts — the NEW shadow fix-it button AND the existing "Reset all"
+button cannot be reached.
+
+FIX (four height values, two files) — keep the existing +10 content margin (embedded panel height + top
+4 + bottom 6 = content height):
+  - skins/default/xui/en/floater_cine_light_rig.xml:
+      the embedded panel `cine_light_rig_panel`   height 1130 -> 1286
+      the content panel  `cine_light_rig_content`  height 1140 -> 1296
+  - skins/default/xui/en/floater_director.xml:
+      the embedded panel `cine_light_rig_embedded`         height 1130 -> 1286
+      the content panel  `cine_light_rig_scroll_content`   height 1140 -> 1296
+Leave the scroll_container viewport heights (692 / 526) as-is — they scroll. After the change, the
+fix-it button and Reset all must sit inside the scrollable range in both hosts.
+
+=============================================================================
+M2 (MUST-FIX) — test<13> asserts exact 1.0 on a value that is 1 ULP low (TEST-ONLY; code is correct)
+=============================================================================
+tests/alcinelightrigmodel_test.cpp, in test<13>, two assertions:
+    ensure_equals("unit red saturates instead of wrapping",  composed.mProj[0].mSR, 1.f);   // ~:1338
+    ensure_equals("unit blue saturates instead of wrapping", composed.mProj[0].mSB, 1.f);   // ~:1343
+The emitted sRGB is linearChannelToSRGB(1.0f) = 0.99999994039f (exactly 1 ULP below 1.0), because
+saturation is clamped in LINEAR space then re-encoded to sRGB. ensure_equals on F32 is EXACT (no
+tolerance), so these throw and test<13> fails at runtime. The COLOUR CODE IS CORRECT — do NOT change
+the colour math, the transfer functions, or render(). Fix ONLY the two assertions to use the tolerance
+idiom already used ~45 lines above in this same test (the `std::fabs(...) <= 0.002f` / 2e-3 pattern):
+    ensure("unit red saturates instead of wrapping",  std::fabs(composed.mProj[0].mSR - 1.f) <= 2e-3f);
+    ensure("unit blue saturates instead of wrapping", std::fabs(composed.mProj[0].mSB - 1.f) <= 2e-3f);
+Keep the assertion messages. This preserves the intent (channel saturates rather than wraps) without
+the impossible exact-equality.
+
+=============================================================================
+N1 (NIT, optional — fix if trivial, else skip and say so)
+=============================================================================
+alpanelcinelightrig.cpp: the fix-it button label uses clamp(requested, 2, 6) so a mode-1 (Key-only)
+request of 1 with a hand-lowered BDMergeMaxSpotShadows reads "Allow 2 spot shadows" while the hint says
+"request 1". Cosmetic, reachable only with a hand-lowered setting. If trivial, floor the hint's request
+display at 2 so hint and button agree; otherwise leave and note it.
+
+=============================================================================
+OFF-LIMITS — unchanged
+=============================================================================
+Do NOT change: the colour math / transfer functions / masterTempGain / render() colour block (M2 is
+test-only); any gobo model/registry code (reviewed clean); any preset VALUE (transcription verified);
+pipeline.cpp, shaders, llprimitive, llvovolume, the texture system, version numbers. Only the four XUI
+heights (M1), the two test assertions (M2), and optionally the one label floor (N1).
+
+REPORT: the four heights changed; the two assertions changed (confirm colour code untouched); N1 done
+or skipped. Do not build.

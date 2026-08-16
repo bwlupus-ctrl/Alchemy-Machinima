@@ -558,6 +558,13 @@ public:
         SOFT_SHADOW_TAPS,                  //  "soft_shadow_taps"    (Vogel tap count)
         // [BDMerge Batch 2] Feature 2: gobo/cookie mip + anisotropic filtering
         GOBO_ANISO,                        //  "gobo_aniso"
+        // [Cinematic Gobo] Per-projector procedural cookie and presentation-time UV motion.
+        GOBO_TIME,                         //  "gobo_time"
+        GOBO_PATTERN,                      //  "gobo_pattern"
+        GOBO_ANIM_PARAMS,                  //  "gobo_anim_params"
+        // [Gobo v2] colored gel tint + per-pattern variation params.
+        GOBO_TINT,                         //  "gobo_tint"
+        GOBO_PATTERN_PARAMS,               //  "gobo_pattern_params"
 
         // [BDMerge A5.4-1a] velocity / motion-vector buffer. CURRENT_MODELVIEW and
         // MOTION_BLUR_STRENGTH are declared now for forward-compat (Phase 3 motion
@@ -592,6 +599,14 @@ public:
         FROXEL_NOISE_SPEED,                //  "froxel_noise_speed"
         FROXEL_WIND,                       //  "froxel_wind"          [F5] (wind_dir * noise_speed)
         FROXEL_TIME,                       //  "froxel_time"
+        // [Local Fog] Flattened eight-volume media arrays.
+        LOCALFOG_CENTER,                   //  "localfog_center"
+        LOCALFOG_EXTENTS,                  //  "localfog_extents"
+        LOCALFOG_INV_ROT,                  //  "localfog_inv_rot"
+        LOCALFOG_PARAMS,                   //  "localfog_params"
+        LOCALFOG_TINT,                     //  "localfog_tint"
+        LOCALFOG_NOISE,                    //  "localfog_noise"
+        LOCALFOG_COUNT,                    //  "localfog_count"
         FROXEL_DEBUG_MODE,                 //  "froxel_debug_mode"
         FROXEL_DEBUG_SLICE,                //  "froxel_debug_slice"
 
@@ -621,6 +636,7 @@ public:
         FROXEL_LIGHT_HISTORY,              //  "froxelLightHistory"   (sampler: prev resolved atlas)
         FROXEL_PREV_MODELVIEW,             //  "froxel_prev_modelview"
         FROXEL_TEMPORAL_BLEND,             //  "froxel_temporal_blend"
+        FROXEL_TEMPORAL_REJECT,            //  "froxel_temporal_reject"
         FROXEL_JITTER,                     //  "froxel_jitter"
         FROXEL_FRAME,                      //  "froxel_frame"
 

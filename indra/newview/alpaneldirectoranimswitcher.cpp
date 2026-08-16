@@ -12,6 +12,8 @@
 #include "alpaneldirectoranimswitcher.h"
 
 #include "animationexplorer.h"      // AnimationExplorer::getSelectedAnimId()
+#include "lldir.h"
+#include "lldiriterator.h"
 #include "llbutton.h"
 #include "llcheckboxctrl.h"
 #include "llcombobox.h"
@@ -21,8 +23,11 @@
 #include "llspinctrl.h"
 #include "llstring.h"
 #include "lltextbox.h"
+#include "lluri.h"
 #include "lluuid.h"
 #include "llviewercontrol.h"
+
+#include <algorithm>
 
 // The injector name must match class="panel_director_anim_switcher" in every
 // host. Without the Director Console embed nothing instantiates this panel.
@@ -32,6 +37,8 @@ static LLPanelInjector<ALPanelDirectorAnimSwitcher>
 namespace
 {
 constexpr S32 INVALID_SLOT = -1;
+constexpr char POSE_FILE_MASK[] = "*.xml";
+constexpr char POSE_SUBDIRECTORY[] = "poses";
 
 bool valid_slot(S32 slot)
 {
@@ -52,11 +59,17 @@ bool ALPanelDirectorAnimSwitcher::postBuild()
             [this, slot](LLUICtrl*, const LLSD&) { onSlotButton(slot); });
     }
 
+    mKindCombo = getChild<LLComboBox>("anim_slot_kind");
     mAnimUUID = getChild<LLLineEditor>("anim_slot_uuid");
+    mAnimUUIDText = getChild<LLTextBox>("anim_slot_uuid_text");
     mFromExplorer = getChild<LLButton>("anim_from_explorer");
+    mPoseNameCombo = getChild<LLComboBox>("anim_pose_name");
+    mPoseLoadMethodCombo = getChild<LLComboBox>("anim_pose_load_method");
+    mPoseNameText = getChild<LLTextBox>("anim_pose_name_text");
     mSlotLabel = getChild<LLLineEditor>("anim_slot_label");
     mTargetCombo = getChild<LLComboBox>("anim_slot_target");
     mPriorityCombo = getChild<LLComboBox>("anim_slot_priority");
+    mPriorityText = getChild<LLTextBox>("anim_slot_priority_text");
     mSpeedSpin = getChild<LLSpinCtrl>("anim_slot_speed");
     mLoopCheck = getChild<LLCheckBoxCtrl>("anim_slot_loop");
     mSnapCheck = getChild<LLCheckBoxCtrl>("anim_slot_snap");
@@ -66,8 +79,14 @@ bool ALPanelDirectorAnimSwitcher::postBuild()
     mProgramText = getChild<LLTextBox>("anim_program_status");
     mImportStatus = getChild<LLTextBox>("anim_import_status");
 
+    mKindCombo->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onSlotKind(); });
     mAnimUUID->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onAnimUUID(); });
+    mPoseNameCombo->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onPoseName(); });
+    mPoseLoadMethodCombo->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onPoseLoadMethod(); });
     mFromExplorer->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onFromExplorer(); });
     mSlotLabel->setCommitCallback(
@@ -131,7 +150,10 @@ bool ALPanelDirectorAnimSwitcher::banksEqual(const Bank& lhs, const Bank& rhs)
     for (size_t i = 0; i < lhs.size(); ++i)
     {
         if (lhs[i].mEnabled != rhs[i].mEnabled ||
+            lhs[i].mKind != rhs[i].mKind ||
             lhs[i].mAnimID != rhs[i].mAnimID ||
+            lhs[i].mPoseName != rhs[i].mPoseName ||
+            lhs[i].mPoseLoadMethod != rhs[i].mPoseLoadMethod ||
             lhs[i].mLabel != rhs[i].mLabel ||
             lhs[i].mTarget != rhs[i].mTarget ||
             lhs[i].mPriority != rhs[i].mPriority ||
@@ -152,11 +174,28 @@ std::string ALPanelDirectorAnimSwitcher::displayLabel(const Slot& slot)
     {
         return slot.mLabel;
     }
+    if (slot.mKind == ALDirectorAnimSwitcher::KIND_POSE)
+    {
+        return slot.mPoseName.empty()
+            ? "(empty)"
+            : utf8str_symbol_truncate(slot.mPoseName, 16);
+    }
     if (slot.mAnimID.notNull())
     {
         return slot.mAnimID.asString().substr(0, 8);
     }
     return "(empty)";
+}
+
+void ALPanelDirectorAnimSwitcher::onSlotKind()
+{
+    if (mRefreshing || !valid_slot(mSelectedSlot) ||
+        mBank.size() != (size_t)ALDirectorAnimSwitcher::SLOT_COUNT)
+    {
+        return;
+    }
+    mBank[mSelectedSlot].mKind = mKindCombo->getValue().asInteger();
+    saveBank();
 }
 
 void ALPanelDirectorAnimSwitcher::onSlotButton(S32 slot)
@@ -218,6 +257,30 @@ void ALPanelDirectorAnimSwitcher::onAnimUUID()
         return; // leave the stored id untouched on a typo
     }
     mBank[mSelectedSlot].mAnimID = id;
+    saveBank();
+}
+
+void ALPanelDirectorAnimSwitcher::onPoseName()
+{
+    if (mRefreshing || !valid_slot(mSelectedSlot) ||
+        mBank.size() != (size_t)ALDirectorAnimSwitcher::SLOT_COUNT)
+    {
+        return;
+    }
+    mBank[mSelectedSlot].mPoseName =
+        mPoseNameCombo->getValue().asString();
+    saveBank();
+}
+
+void ALPanelDirectorAnimSwitcher::onPoseLoadMethod()
+{
+    if (mRefreshing || !valid_slot(mSelectedSlot) ||
+        mBank.size() != (size_t)ALDirectorAnimSwitcher::SLOT_COUNT)
+    {
+        return;
+    }
+    mBank[mSelectedSlot].mPoseLoadMethod =
+        mPoseLoadMethodCombo->getValue().asInteger();
     saveBank();
 }
 
@@ -356,6 +419,43 @@ void ALPanelDirectorAnimSwitcher::refreshBank(bool force)
     mHaveProgramSnapshot = false;
 }
 
+void ALPanelDirectorAnimSwitcher::refreshPoseChoices(
+    const std::string& selected_pose)
+{
+    if (!mPoseNameCombo)
+    {
+        return;
+    }
+
+    std::vector<std::string> names;
+    const std::string dir = gDirUtilp->getExpandedFilename(
+        LL_PATH_USER_SETTINGS, POSE_SUBDIRECTORY);
+    std::string file;
+    LLDirIterator dir_iter(dir, POSE_FILE_MASK);
+    while (dir_iter.next(file))
+    {
+        const std::string path = gDirUtilp->add(dir, file);
+        names.push_back(gDirUtilp->getBaseFileName(
+            LLURI::unescape(path), true));
+    }
+    std::sort(names.begin(), names.end());
+    names.erase(std::unique(names.begin(), names.end()), names.end());
+
+    mPoseNameCombo->removeall();
+    mPoseNameCombo->add("(empty)", LLSD(std::string()));
+    for (const std::string& name : names)
+    {
+        mPoseNameCombo->add(name, LLSD(name));
+    }
+    if (!selected_pose.empty() &&
+        !std::binary_search(names.begin(), names.end(), selected_pose))
+    {
+        mPoseNameCombo->add(
+            selected_pose + " (missing)", LLSD(selected_pose));
+    }
+    mPoseNameCombo->setValue(LLSD(selected_pose));
+}
+
 void ALPanelDirectorAnimSwitcher::refreshButtons()
 {
     if (mBank.size() != (size_t)ALDirectorAnimSwitcher::SLOT_COUNT)
@@ -374,9 +474,11 @@ void ALPanelDirectorAnimSwitcher::refreshButtons()
         button->setLabel(LLStringExplicit(
             llformat("%d %s", slot + 1, label.c_str())));
         button->setToolTip(LLStringExplicit(llformat(
-            "Slot %d: %s. Click to select it; while armed, also punch it. "
+            "Slot %d (%s): %s. Click to select it; while armed, also punch it. "
             "Use in auto only controls automatic selection.",
-            slot + 1, label.c_str())));
+            slot + 1,
+            entry.mKind == ALDirectorAnimSwitcher::KIND_POSE ? "Pose" : "Anim",
+            label.c_str())));
     }
 }
 
@@ -392,8 +494,11 @@ void ALPanelDirectorAnimSwitcher::refreshEditor()
     mRefreshing = true;
     mSelectedSlotText->setText(
         LLStringExplicit(llformat("Slot %d setup", mSelectedSlot + 1)));
+    mKindCombo->setValue(LLSD(slot.mKind));
     mAnimUUID->setText(LLStringExplicit(
         slot.mAnimID.notNull() ? slot.mAnimID.asString() : std::string()));
+    refreshPoseChoices(slot.mPoseName);
+    mPoseLoadMethodCombo->setValue(LLSD(slot.mPoseLoadMethod));
     mSlotLabel->setText(LLStringExplicit(slot.mLabel));
     mTargetCombo->setValue(LLSD(slot.mTarget));
     mPriorityCombo->setValue(LLSD(slot.mPriority));
@@ -401,9 +506,26 @@ void ALPanelDirectorAnimSwitcher::refreshEditor()
     mLoopCheck->setValue(slot.mLoop);
     mSnapCheck->setValue(slot.mSnapOnCut);
     mSlotEnabled->setValue(slot.mEnabled);
-    // Priority and Snap apply to the self path; Speed and Loop apply to ghost
-    // clones. Both stay editable regardless of target so a slot can be authored
-    // before its subject is cast.
+    const bool is_anim = slot.mKind == ALDirectorAnimSwitcher::KIND_ANIM;
+    mAnimUUIDText->setVisible(is_anim);
+    mAnimUUID->setVisible(is_anim);
+    mAnimUUID->setEnabled(is_anim);
+    mFromExplorer->setVisible(is_anim);
+    mFromExplorer->setEnabled(is_anim);
+    mPriorityText->setVisible(is_anim);
+    mPriorityCombo->setVisible(is_anim);
+    mPriorityCombo->setEnabled(is_anim);
+    mSpeedSpin->setVisible(is_anim);
+    mSpeedSpin->setEnabled(is_anim);
+    mLoopCheck->setVisible(is_anim);
+    mLoopCheck->setEnabled(is_anim);
+    mSnapCheck->setVisible(is_anim);
+    mSnapCheck->setEnabled(is_anim);
+    mPoseNameText->setVisible(!is_anim);
+    mPoseNameCombo->setVisible(!is_anim);
+    mPoseNameCombo->setEnabled(!is_anim);
+    mPoseLoadMethodCombo->setVisible(!is_anim);
+    mPoseLoadMethodCombo->setEnabled(!is_anim);
     mRefreshing = false;
 }
 
@@ -470,6 +592,7 @@ bool ALPanelDirectorAnimSwitcher::handleDragAndDrop(
     if (drop && cargo_data)
     {
         LLInventoryItem* item = static_cast<LLInventoryItem*>(cargo_data);
+        mBank[mSelectedSlot].mKind = ALDirectorAnimSwitcher::KIND_ANIM;
         mBank[mSelectedSlot].mAnimID = item->getAssetUUID();
         if (mBank[mSelectedSlot].mLabel.empty())
         {

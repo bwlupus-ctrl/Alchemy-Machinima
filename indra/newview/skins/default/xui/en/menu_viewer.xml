@@ -90,6 +90,13 @@
          parameter="cinematic_camera" />
       </menu_item_call>
       <menu_item_call
+       label="Cinematic Light Rig..."
+       name="cine_light_rig_item_call">
+        <menu_item_call.on_click
+         function="Floater.Toggle"
+         parameter="cine_light_rig" />
+      </menu_item_call>
+      <menu_item_call
        label="Flycam Recorder..."
        name="flycam_recorder_item_call">
         <menu_item_call.on_click

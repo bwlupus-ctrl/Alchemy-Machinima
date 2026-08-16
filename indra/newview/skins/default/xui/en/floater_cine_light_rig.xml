@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<floater
+ can_resize="true"
+ height="720"
+ layout="topleft"
+ min_height="420"
+ min_width="370"
+ name="cine_light_rig"
+ save_rect="true"
+ single_instance="true"
+ title="Cinematic Light Rig"
+ width="390">
+    <scroll_container
+     follows="all"
+     height="692"
+     layout="topleft"
+     left="0"
+     name="cine_light_rig_scroll"
+     opaque="false"
+     top="24"
+     width="390">
+        <panel
+         background_visible="false"
+         height="1374"
+         layout="topleft"
+         left="0"
+         name="cine_light_rig_content"
+         top="0"
+         width="370">
+            <panel
+             class="panel_cine_light_rig"
+             filename="panel_cine_light_rig.xml"
+             follows="left|top"
+             height="1364"
+             layout="topleft"
+             left="8"
+             name="cine_light_rig_panel"
+             top="4"
+             width="350" />
+        </panel>
+    </scroll_container>
+</floater>

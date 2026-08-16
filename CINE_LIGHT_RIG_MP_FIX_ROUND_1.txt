@@ -1,0 +1,108 @@
+FIX ROUND (master presets + scale) — findings from four Opus adversarial slices.
+
+Repo: I:\alchemy-machinima. Do NOT build, do NOT run cmake, do NOT run the viewer. Apply ALL items
+in ONE pass. The review found ZERO must-fix; these are test-quality should-fixes + nits. Locate by
+symbol/context, not line number.
+
+The design-doc corrections (SA-12, SA-4 cite, SA-2 subnormal note, §5 descriptions) are being done
+separately by Claude — do NOT edit doc/*.md.
+
+=============================================================================
+SHOULD-FIX (test quality — a test that passes with its target broken)
+=============================================================================
+
+--- F1. sub-test 10 (sanitize pins) asserts against the model's OWN symbols, so a co-edit is invisible
+
+  In alcinelightrigmodel_test.cpp, the scale cluster's sanitize sub-test asserts the clamp outputs
+  `== SUBJECT_SCALE_MIN` / `== SUBJECT_SCALE_MAX`. Because those are the same symbols the code clamps
+  to, changing SUBJECT_SCALE_MIN to e.g. 0.03f leaves the test passing (0.01 clamps to 0.03, asserted
+  against 0.03). The mirror-drift contract (must track GHOST_SCALE_MIN/MAX = 0.05/150) is unguarded.
+
+  FIX: assert the clamp outputs against LITERALS 0.05f and 150.f (purity forbids including the ghost
+  header, so a literal is the intended mechanism). Add a short comment: "literals intentionally pin
+  the GHOST_SCALE_MIN/MAX mirror (alghoststudio.h) — do not replace with the model symbol."
+
+--- F2. sub-test 4 (attenuation-ratio) is algebraically tautological — passes with the ceiling removed
+
+  The current assertion cross-multiplies |offset|/mLightRadius against the s=1 value. Since both
+  mOffX and mLightRadius are effective_radius x const, that ratio is an identity for ANY
+  effective_radius — it holds even if SCALED_RADIUS_CEIL is removed (verified: s=150 -> effective
+  225, mLightRadius 495, ratio still equal). It cannot fail on a ceiling defect.
+
+  FIX: replace (or augment) it with an assertion that actually FAILS when the ceiling is removed or
+  wrong. Assert the effective orbit at s=150 (nominal 1.5) is the ceiling, via an INDEPENDENT literal
+  bound, not the SCALED_RADIUS_CEIL symbol: e.g. proj mOffX (== effective_radius at yaw0/pitch0) is
+  >= 9.0f AND <= 9.1f, and mLightRadius >= 19.9f AND <= 20.0f. That fails both a removed ceiling
+  (225 / 495) and a too-conservative one (9.0 -> 19.8 < 19.9). Keep the attenuation-ratio check only
+  if you also keep this literal ceiling pin; do not leave the ratio as the sole "ceiling" guard.
+
+=============================================================================
+NITS (worth fixing; skip any that would destabilise and say so)
+=============================================================================
+
+--- N1. sub-test 2 (proportionality): proj mOffY/mOffZ assertions are vacuous
+  The setup uses yaw=0/pitch=0, so proj mOffY and mOffZ are 0 and "0 == 0*scale" proves nothing.
+  FIX: give that sub-test's setup a NON-zero yaw and pitch (e.g. key yaw 40, pitch 30) so proj
+  mOffX/mOffY/mOffZ are all non-zero and the x-scale proportionality has teeth on every axis. Keep
+  the omni and mLightRadius assertions.
+
+--- N2. Ceiling/floor "exact" asserts are circular except the 20 m anchor
+  sub-tests 5/6/7 assert mOffX == SCALED_RADIUS_CEIL / SCALED_RADIUS_FLOOR — the same symbols the
+  code clamps to, so a wrong CONSTANT VALUE is undetectable. Only `mLightRadius <= 20.f` is
+  independent, and it does not pin maximality (a 9.0 ceiling gives 19.8 <= 20 and passes).
+  FIX: add ONE independent literal maximality pin at s=150: `mLightRadius >= 19.9f` (already covered
+  if you did F2's mLightRadius bound — then just ensure it lives where the ceiling is tested). The
+  floor's 0.1 is a design guess with no independent anchor — leave it, do not invent one.
+
+--- N3. Fallback centre path lacks the finiteness gate the chest path has
+  In alcinelightrig.cpp, when mChest is absent the centre uses
+  scaledPoint(av, getRenderPosition()+{0,0,1.2}, s) with no isFinite check, while the chest path
+  gates on have_joint = centre.isFinite(). scaledPoint self-guards its pivot, so this is safe today,
+  but match the chest path's rigor: wrap the fallback centre in an isFinite check and fall back
+  sanely (e.g. keep the previous smoothed centre / skip the frame) if non-finite.
+
+--- N4. Combo caption literals duplicated byte-for-byte across two TUs (real maintenance hazard)
+  The "— Built-in —" / "— My setups —" caption strings appear as separate literals in
+  alpanelcinelightrig.cpp (~36-39) AND alcinelightrig.cpp (~49-52). They MUST stay byte-identical
+  (the controller's Save/list refusal filters match the panel's displayed text); an edit to one
+  silently diverges them.
+  FIX: define each caption ONCE as a shared constant (a header both TUs include, or expose the
+  controller's constants and have the panel reference them) and reference it from both the display
+  side and the isSetupDecorationName refusal side. No behaviour change — same bytes, single source.
+
+--- N5. Stray leading separator above the first "— Built-in —" caption
+  refreshSetupList calls addLabeledSeparator on a just-cleared combo, so addSeparator emits a
+  divider as row 0, above the first caption. Cosmetic.
+  FIX: suppress the leading divider (only emit the separator line BETWEEN groups, not before the
+  first). Keep the "— My setups —" divider between groups.
+
+--- N6. Subnormal-scale guard strengthens SA-2 but is undocumented in code
+  sanitizeGlobals collapses subject_scale <= FLT_MIN to 1.0 (beyond SA-2's `!isfinite || <=0`).
+  This is intentional and safer (avoids denormal geometry) and is unreachable in practice (GHOST
+  scale is clamped to [0.05,150] at source). KEEP the guard.
+  FIX: add a one-line comment at that condition: "subnormal (<=FLT_MIN) collapses to nominal 1.0 —
+  intentional strengthening of SA-2 to avoid denormal geometry; GHOST_SCALE clamps make it
+  unreachable in practice." No code change beyond the comment.
+
+Explicitly LEAVE (do not touch): the dead `std::min(safe_radius, SCALED_RADIUS_FLOOR)` branch
+(harmless, safe_radius >= 0.5 > 0.1) unless a one-word comment is trivial; the dir re-scan on
+refresh (pre-existing, not per-frame); the kill-switch having no UI (by design, SA-3).
+
+=============================================================================
+OFF-LIMITS — unchanged from the build brief
+=============================================================================
+
+Everything in the master-presets Codex brief's OFF-LIMITS list (design Section 9) still holds:
+pipeline.cpp, all GLSL, indra/llprimitive/* (the 20m/[0,1] clamps are design inputs — do NOT change
+SCALED_RADIUS_CEIL's derivation), llvoavatar/llghostavatar/llactormover/llcinematiccamera
+(read-only precedents), lldirectorcast, llcombobox (existing API only), alweathermodel + test,
+alghoststudio, bdmerge bodies, llselectmgr, the applySceneData three-way split, both version numbers.
+Do NOT change any preset VALUE in cine_light_rig_presets.xml (all 80 rows verified correct).
+
+=============================================================================
+REPORT
+=============================================================================
+
+For each F1-F2, N1-N6: what changed and where, or why not. For F1/F2/N1/N2, state explicitly that
+the strengthened test now FAILS if its target is regressed (name the regression and the failing
+assertion). Do not build.

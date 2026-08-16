@@ -296,6 +296,16 @@
      name="btn_focus"
      tool_tip="Frame the selected cast member in the camera"
      width="62" />
+    <button
+     follows="left|bottom"
+     height="22"
+     label="+ Animesh"
+     layout="topleft"
+     left="8"
+     top="434"
+     name="btn_add_animesh"
+     tool_tip="Add the in-world-selected animesh object(s) to the cast, so the Switchboard and Move tools can drive them. (Right-click an animesh &gt; Director &gt; Add to Cast does one at a time.)"
+     width="180" />
 
     <!-- ============ left-rail tabs ============ -->
     <tab_container
@@ -334,7 +344,7 @@
                 <panel
                  background_visible="false"
                  follows="left|top|right"
-                 height="554"
+                 height="746"
                  layout="topleft"
                  left="0"
                  name="move_scroll_content"
@@ -356,6 +366,16 @@
              name="actor_mover_panel"
              top="0"
              width="354" />
+            <panel
+             class="panel_lens_gaze"
+             filename="panel_lens_gaze.xml"
+             follows="left|top|right"
+             height="188"
+             layout="topleft"
+             left="0"
+             name="lens_gaze_panel"
+             top="364"
+             width="354" />
             <!-- console-only group transport: Start/Stop every member of a
                  cast group at once (members are tagged via the Group box under
                  the cast list). Calls LLActorMover start()/stop() per member;
@@ -366,7 +386,7 @@
              height="16"
              layout="topleft"
              left="10"
-             top="369"
+             top="561"
              name="group_run_lbl"
              width="44">
                 Group:
@@ -377,7 +397,7 @@
              label="Group"
              layout="topleft"
              left="56"
-             top="366"
+             top="558"
              name="group_run_combo"
              tool_tip="The group Start/Stop act on"
              width="112" />
@@ -387,7 +407,7 @@
              label="Start group"
              layout="topleft"
              left="172"
-             top="366"
+             top="558"
              name="btn_group_start"
              width="86" />
             <button
@@ -396,7 +416,7 @@
              label="Stop group"
              layout="topleft"
              left="262"
-             top="366"
+             top="558"
              name="btn_group_stop"
              width="92" />
             <!-- Groups MANAGEMENT: every group at a glance (member count +
@@ -411,7 +431,7 @@
              height="14"
              layout="topleft"
              left="10"
-             top="392"
+             top="584"
              name="groups_lbl"
              width="120">
                 Groups
@@ -423,7 +443,7 @@
              height="76"
              layout="topleft"
              left="10"
-             top="408"
+             top="600"
              name="groups_list"
              tool_tip="Every group with its member count and start delay. Select a row to highlight its members in the cast list and load the delay / rename fields below"
              width="344">
@@ -453,7 +473,7 @@
              min_val="0"
              name="group_delay_spinner"
              tool_tip="Start delay for the selected group (s): ACTION and Start group launch its members this many seconds late (staggered starts). 0 = immediate. Saved with the scene"
-             top="490"
+             top="682"
              width="130" />
             <button
              follows="left|top"
@@ -461,7 +481,7 @@
              label="Dissolve"
              layout="topleft"
              left="254"
-             top="488"
+             top="680"
              name="btn_group_dissolve"
              tool_tip="Clear the selected group: every member is untagged (nobody is removed from the cast); its delay is dropped"
              width="100" />
@@ -474,7 +494,7 @@
              max_length_chars="32"
              name="group_rename_editor"
              tool_tip="New name for the selected group; Enter or Rename commits. Renaming onto an existing group merges them"
-             top="516"
+             top="708"
              width="238" />
             <button
              follows="left|top"
@@ -482,7 +502,7 @@
              label="Rename"
              layout="topleft"
              left="254"
-             top="515"
+             top="707"
              name="btn_group_rename"
              tool_tip="Rename the selected group to the name on the left (retags every member)"
              width="100" />
@@ -491,11 +511,11 @@
         </panel>
 
         <!-- ============ Path tab ============ -->
-        <!-- The shared path editor is 716 tall (its Look-at / Gaze section
-             sits at the very bottom). At the console's default height the tab
+        <!-- The shared path editor is taller than the console's default tab
+             viewport. At the console's default height the tab
              viewport is shorter than that, so the editor is wrapped in a
-             scroll_container (same idiom as the Camera tab) - every control,
-             gaze included, is reachable without resizing the floater. -->
+             scroll_container (same idiom as the Camera tab), so every path
+             control remains reachable without resizing the floater. -->
         <panel
          follows="all"
          background_visible="false"
@@ -516,7 +536,7 @@
              width="374">
                 <panel
                  background_visible="false"
-                 height="732"
+                 height="620"
                  layout="topleft"
                  left="0"
                  top="0"
@@ -526,7 +546,7 @@
                      class="panel_path_editor"
                      filename="panel_path_editor.xml"
                      follows="left|top|right"
-                     height="716"
+                     height="604"
                      layout="topleft"
                      left="0"
                      name="path_editor"
@@ -1492,6 +1512,47 @@
              width="330" />
         </panel>
 
+        <!-- ============ Cinematic light rig tab ============ -->
+        <panel
+         follows="all"
+         background_visible="false"
+         height="550"
+         label="Lights"
+         layout="topleft"
+         name="cine_light_rig_tab"
+         top="0"
+         width="374">
+            <scroll_container
+             follows="all"
+             height="526"
+             layout="topleft"
+             left="0"
+             name="cine_light_rig_scroll"
+             opaque="false"
+             top="4"
+             width="374">
+                <panel
+                 background_visible="false"
+                 height="1374"
+                 layout="topleft"
+                 left="0"
+                 name="cine_light_rig_scroll_content"
+                 top="0"
+                 width="354">
+                    <panel
+                     class="panel_cine_light_rig"
+                     filename="panel_cine_light_rig.xml"
+                     follows="left|top"
+                     height="1364"
+                     layout="topleft"
+                     left="2"
+                     name="cine_light_rig_embedded"
+                     top="4"
+                     width="350" />
+                </panel>
+            </scroll_container>
+        </panel>
+
         <!-- ============ Weather tab ============ -->
         <!-- Shared with Lightbox: one settings surface owns all controls,
              named presets, reset, manual strike, and deferred-path feedback. -->
@@ -1530,6 +1591,47 @@
                      left="2"
                      top="0"
                      name="weather_settings_shared"
+                     width="350" />
+                </panel>
+            </scroll_container>
+        </panel>
+
+        <!-- ============ Atmospheric Volumes tab ============ -->
+        <panel
+         follows="all"
+         background_visible="false"
+         height="550"
+         label="Volumes"
+         layout="topleft"
+         name="atmospheric_volumes_tab"
+         top="0"
+         width="374">
+            <scroll_container
+             follows="all"
+             height="526"
+             layout="topleft"
+             left="0"
+             name="atmospheric_volumes_scroll"
+             opaque="false"
+             top="4"
+             width="374">
+                <panel
+                 background_visible="false"
+                 height="660"
+                 layout="topleft"
+                 left="0"
+                 name="atmospheric_volumes_scroll_content"
+                 top="0"
+                 width="354">
+                    <panel
+                     class="panel_atmospheric_volumes"
+                     filename="panel_atmospheric_volumes.xml"
+                     follows="left|top|right"
+                     height="650"
+                     layout="topleft"
+                     left="2"
+                     name="director_atmospheric_volumes_shared"
+                     top="0"
                      width="350" />
                 </panel>
             </scroll_container>

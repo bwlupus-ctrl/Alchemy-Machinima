@@ -85,6 +85,7 @@
 #include "llmeshrepository.h"
 #include "llpipelinelistener.h"
 #include "llpresentationtime.h"
+#include "allocalfogmanager.h"
 #include "llprismlens.h"
 #include "llreshadebridge.h"
 #include "llresmgr.h"
@@ -389,6 +390,7 @@ S32  LLPipeline::BDMergeMotionBlurStrength;
 bool LLPipeline::BDMergeMotionBlur; // [BDMerge A5.4-3]
 bool LLPipeline::sVelocityRender = false;
 std::map<LLUUID, LLPipeline::VolumetricShaftOverride> LLPipeline::sVolumetricShaftOverrides;
+std::map<LLUUID, LLPipeline::GoboOverride> LLPipeline::sGoboOverrides;
 std::set<LLUUID> LLPipeline::sVolumetricShaftObjects;
 std::set<LLUUID> LLPipeline::sNoShadowProjectors; // [BDMerge Batch 3] cast-shadows opt-out
 std::set<LLUUID> LLPipeline::sHeroProjectors;     // [BDMerge F4] Hero Beam per-cone opt-in
@@ -9131,7 +9133,9 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
                     continue;
                 }
             }
-            else if (!bdmerge_should_render_light(false, false))
+            // Rig emitters obey the rig controls, not the world-light toggle.
+            else if (!light->isCineRigEmitter() &&
+                     !bdmerge_should_render_light(false, false))
             {
                 continue;
             }
@@ -9219,7 +9223,9 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
                 }
             }
             // [BDMerge A5.6] independent world-light toggle (non-attachment lights had no toggle at all in stock)
-            else if (vobj && !bdmerge_should_render_light(false, false))
+            // Rig emitters obey the rig controls, not the world-light toggle.
+            else if (vobj && !vobj->isCineRigEmitter() &&
+                     !bdmerge_should_render_light(false, false))
             {
                 drawable->clearState(LLDrawable::NEARBY_LIGHT);
                 iter = mNearbyLights.erase(iter);
@@ -9311,7 +9317,9 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
                 }
             }
             // [BDMerge A5.6] independent world-light toggle
-            else if (!bdmerge_should_render_light(false, false))
+            // Rig emitters obey the rig controls, not the world-light toggle.
+            else if (!light->isCineRigEmitter() &&
+                     !bdmerge_should_render_light(false, false))
             {
                 continue;
             }
@@ -9688,7 +9696,9 @@ void LLPipeline::setupHWLights()
                 }
             }
             // [BDMerge A5.6] independent world-light toggle
-            else if (!bdmerge_should_render_light(false, false))
+            // Rig emitters obey the rig controls, not the world-light toggle.
+            else if (!light->isCineRigEmitter() &&
+                     !bdmerge_should_render_light(false, false))
             {
                 continue;
             }
@@ -9761,7 +9771,9 @@ void LLPipeline::setupHWLights()
 
             if (light->isLightSpotlight() // directional (spot-)light
                 && (LLPipeline::sRenderDeferred || RenderSpotLightsInNondeferred) // these are only rendered as GL spotlights if we're in deferred rendering mode *or* the setting forces them on
-                && bdmerge_should_render_projector()) // [BDMerge A5.6] projector toggle: falls back to omni light below when off
+                // Rig projectors obey the rig controls, not the projector toggle.
+                && (light->isCineRigEmitter() ||
+                    bdmerge_should_render_projector())) // [BDMerge A5.6] projector toggle: falls back to omni light below when off
             {
                 LLQuaternion quat = light->getRenderRotation();
                 LLVector3 at_axis(0,0,-1); // this matches deferred rendering's object light direction
@@ -13631,7 +13643,20 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
             };
             gFroxelMediaProgram.uniform3fv(LLShaderMgr::FROXEL_WIND, 1, wind3);
         }
-        gFroxelMediaProgram.uniform1f(LLShaderMgr::FROXEL_TIME, fmodf(gFrameTimeSeconds, 3600.f));
+        gFroxelMediaProgram.uniform1f(
+            LLShaderMgr::FROXEL_TIME,
+            static_cast<F32>(std::fmod(
+                LLPresentationTime::currentFrame().presentation_time, 3600.0)));
+        static LLCachedControl<bool> local_fog_enabled(
+            gSavedSettings, "BDMergeLocalFogVolumes", false);
+        if (local_fog_enabled)
+        {
+            ALLocalFogManager::instance().uploadToFroxel(gFroxelMediaProgram);
+        }
+        else
+        {
+            gFroxelMediaProgram.uniform1i(LLShaderMgr::LOCALFOG_COUNT, 0);
+        }
 
         mScreenTriangleVB->setBuffer();
         mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
@@ -13945,6 +13970,21 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
         {
             hist.bindTexture(0, hch, LLTexUnit::TFO_BILINEAR); // previous resolved, trilinear
         }
+        static LLCachedControl<F32> temporal_reject(
+            gSavedSettings, "BDMergeFroxelTemporalReject", 8.f);
+        static LLCachedControl<bool> local_fog_enabled(
+            gSavedSettings, "BDMergeLocalFogVolumes", false);
+        const F32 effective_reject = local_fog_enabled
+            ? llmax((F32)temporal_reject, 0.f) : 0.f;
+        S32 mch = -1;
+        if (effective_reject > 0.f)
+        {
+            mch = gFroxelTemporalProgram.enableTexture(LLShaderMgr::FROXEL_MEDIA);
+            if (mch > -1)
+            {
+                mFroxelMedia.bindTexture(0, mch, LLTexUnit::TFO_POINT);
+            }
+        }
 
         gFroxelTemporalProgram.uniform3fv(LLShaderMgr::FROXEL_GRID, 1, grid3);
         gFroxelTemporalProgram.uniform4fv(LLShaderMgr::FROXEL_ATLAS, 1, atlas4);
@@ -13956,6 +13996,8 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
         gFroxelTemporalProgram.uniformMatrix4fv(LLShaderMgr::FROXEL_PREV_MODELVIEW, 1, false, mFroxelPrevModelview);
         const F32 blend = mFroxelHistoryValid ? llclamp(BDMergeFroxelTemporalBlend, 0.f, 0.95f) : 0.f;
         gFroxelTemporalProgram.uniform1f(LLShaderMgr::FROXEL_TEMPORAL_BLEND, blend);
+        gFroxelTemporalProgram.uniform1f(
+            LLShaderMgr::FROXEL_TEMPORAL_REJECT, effective_reject);
 
         mScreenTriangleVB->setBuffer();
         mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
@@ -13967,6 +14009,10 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
         if (hch > -1)
         {
             gFroxelTemporalProgram.disableTexture(LLShaderMgr::FROXEL_LIGHT_HISTORY);
+        }
+        if (mch > -1)
+        {
+            gFroxelTemporalProgram.disableTexture(LLShaderMgr::FROXEL_MEDIA);
         }
         gFroxelTemporalProgram.unbind();
         dst.flush();
@@ -15036,6 +15082,7 @@ void LLPipeline::clearVolumetricShafts()
 {
     sVolumetricShaftObjects.clear();
     sVolumetricShaftOverrides.clear();
+    sGoboOverrides.clear();       // procedural cookies are session-only too
     sNoShadowProjectors.clear(); // [BDMerge Batch 3] cast-shadows opt-out is session-only too
     sHeroProjectors.clear();     // [BDMerge F4] Hero Beam flags are session-only too
     sAlphaModeOverride.clear();  // [BDMerge G2.3 per-target] alpha-mode overrides are session-only too
@@ -15263,6 +15310,48 @@ bool LLPipeline::getVolumetricShaftOverride(const LLUUID& id, VolumetricShaftOve
 bool LLPipeline::hasVolumetricShaftOverride(const LLUUID& id)
 {
     return !sVolumetricShaftOverrides.empty() && sVolumetricShaftOverrides.count(id) != 0;
+}
+
+// [Cinematic Gobo] Session-only projector cookie state. This map affects only
+// shader uploads; it never mutates an LLVOVolume or sends projection parameters.
+void LLPipeline::setGoboOverride(const LLUUID& id, const GoboOverride& input)
+{
+    if (id.isNull())
+    {
+        return;
+    }
+    GoboOverride ov = input;
+    ov.mPattern = llclamp(ov.mPattern, -1, 12);
+    ov.mAnimMode = llclamp(ov.mAnimMode, 0, 6);
+    ov.mSpeed = llclamp(ov.mSpeed, -8.f, 8.f);
+    ov.mZoom = llclamp(ov.mZoom, 0.1f, 8.f);
+    ov.mDispersion = llclamp(ov.mDispersion, 0.f, 0.1f);
+    // [Gobo v2] gel tint channels and variation params.
+    for (S32 c = 0; c < 3; ++c)
+    {
+        ov.mTint.mV[c] = llclamp(ov.mTint.mV[c], 0.f, 4.f);
+    }
+    ov.mPatternParams.mV[0] = llclamp(ov.mPatternParams.mV[0], -1.f, 1.f);
+    ov.mPatternParams.mV[1] = llclamp(ov.mPatternParams.mV[1], -1.f, 1.f);
+    ov.mPatternParams.mV[2] = llclamp(ov.mPatternParams.mV[2], 0.f, 1.f);
+    ov.mPatternParams.mV[3] = llclamp(ov.mPatternParams.mV[3], 0.f, 1.f);
+    sGoboOverrides[id] = ov;
+}
+
+LLPipeline::GoboOverride LLPipeline::getGoboOverride(const LLUUID& id)
+{
+    const auto found = sGoboOverrides.find(id);
+    return found != sGoboOverrides.end() ? found->second : GoboOverride();
+}
+
+bool LLPipeline::hasGoboOverride(const LLUUID& id)
+{
+    return !sGoboOverrides.empty() && sGoboOverrides.count(id) != 0;
+}
+
+void LLPipeline::clearGoboOverride(const LLUUID& id)
+{
+    sGoboOverrides.erase(id);
 }
 
 void LLPipeline::combineGlow(LLRenderTarget* src, LLRenderTarget* dst)
@@ -16559,7 +16648,9 @@ void LLPipeline::renderDeferredLighting()
                         }
                     }
                     // [BDMerge A5.6] independent world-light toggle
-                    else if (!bdmerge_should_render_light(false, false))
+                    // Rig emitters obey the rig controls, not the world-light toggle.
+                    else if (!volume->isCineRigEmitter() &&
+                             !bdmerge_should_render_light(false, false))
                     {
                         continue;
                     }
@@ -16595,7 +16686,10 @@ void LLPipeline::renderDeferredLighting()
                         camera->getOrigin().mV[1] > c[1] + s + 0.2f || camera->getOrigin().mV[1] < c[1] - s - 0.2f ||
                         camera->getOrigin().mV[2] > c[2] + s + 0.2f || camera->getOrigin().mV[2] < c[2] - s - 0.2f)
                     {  // draw box if camera is outside box
-                        if (volume->isLightSpotlight() && bdmerge_should_render_projector()) // [BDMerge A5.6] projector toggle: falls back to a regular box light below when off
+                        // Rig projectors retain their cone/cookie when the world projector toggle is off.
+                        if (volume->isLightSpotlight() &&
+                            (volume->isCineRigEmitter() ||
+                             bdmerge_should_render_projector())) // [BDMerge A5.6] projector toggle: falls back to a regular box light below when off
                         {
                             // Priority is persistent LLVOVolume state used by
                             // next-frame main-view shadow-slot assignment.
@@ -16619,7 +16713,10 @@ void LLPipeline::renderDeferredLighting()
                     }
                     else
                     {
-                        if (volume->isLightSpotlight() && bdmerge_should_render_projector()) // [BDMerge A5.6] projector toggle: falls back to a fullscreen point light below when off
+                        // Rig projectors retain their cone/cookie when the world projector toggle is off.
+                        if (volume->isLightSpotlight() &&
+                            (volume->isCineRigEmitter() ||
+                             bdmerge_should_render_projector())) // [BDMerge A5.6] projector toggle: falls back to a fullscreen point light below when off
                         {
                             if (!sPrismLensRender)
                             {
@@ -17523,6 +17620,22 @@ void LLPipeline::setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep)
     // focus LOD up to the screen-space minification LOD. Only the surface
     // projector programs get this; the volumetric march leaves it at 0.
     shader.uniform1i(LLShaderMgr::GOBO_ANISO, BDMergeGoboAnisotropic ? 1 : 0);
+
+    const GoboOverride gobo = getGoboOverride(volume->getID());
+    const F32 gobo_anim[4] = {
+        (F32)gobo.mAnimMode, gobo.mSpeed, gobo.mZoom, gobo.mDispersion
+    };
+    const F32 gobo_tint[3] = { gobo.mTint.mV[0], gobo.mTint.mV[1], gobo.mTint.mV[2] };
+    const F32 gobo_pp[4] = {
+        gobo.mPatternParams.mV[0], gobo.mPatternParams.mV[1],
+        gobo.mPatternParams.mV[2], gobo.mPatternParams.mV[3]
+    };
+    shader.uniform1f(LLShaderMgr::GOBO_TIME, static_cast<F32>(std::fmod(
+        LLPresentationTime::currentFrame().presentation_time, 3600.0)));
+    shader.uniform1i(LLShaderMgr::GOBO_PATTERN, gobo.mPattern);
+    shader.uniform4fv(LLShaderMgr::GOBO_ANIM_PARAMS, 1, gobo_anim);
+    shader.uniform3fv(LLShaderMgr::GOBO_TINT, 1, gobo_tint);
+    shader.uniform4fv(LLShaderMgr::GOBO_PATTERN_PARAMS, 1, gobo_pp);
 }
 
 // [BDMerge G3.3] Side-effect-free variant of setupSpotLight for the finalize-stage
@@ -17675,6 +17788,22 @@ void LLPipeline::setupSpotLightVolumetric(LLGLSLShader& shader, LLDrawable* draw
             shader.uniform1f(LLShaderMgr::PROJECTOR_AMBIENT_LOD, llclamp((proj_range-focus)/proj_range*lod_range, 0.f, 1.f));
         }
     }
+
+    const GoboOverride gobo = getGoboOverride(volume->getID());
+    const F32 gobo_anim[4] = {
+        (F32)gobo.mAnimMode, gobo.mSpeed, gobo.mZoom, gobo.mDispersion
+    };
+    const F32 gobo_tint[3] = { gobo.mTint.mV[0], gobo.mTint.mV[1], gobo.mTint.mV[2] };
+    const F32 gobo_pp[4] = {
+        gobo.mPatternParams.mV[0], gobo.mPatternParams.mV[1],
+        gobo.mPatternParams.mV[2], gobo.mPatternParams.mV[3]
+    };
+    shader.uniform1f(LLShaderMgr::GOBO_TIME, static_cast<F32>(std::fmod(
+        LLPresentationTime::currentFrame().presentation_time, 3600.0)));
+    shader.uniform1i(LLShaderMgr::GOBO_PATTERN, gobo.mPattern);
+    shader.uniform4fv(LLShaderMgr::GOBO_ANIM_PARAMS, 1, gobo_anim);
+    shader.uniform3fv(LLShaderMgr::GOBO_TINT, 1, gobo_tint);
+    shader.uniform4fv(LLShaderMgr::GOBO_PATTERN_PARAMS, 1, gobo_pp);
 }
 
 void LLPipeline::unbindDeferredShader(LLGLSLShader &shader)
@@ -19837,7 +19966,9 @@ void LLPipeline::generatePrismSpotShadows(LLCamera& camera)
                     continue;
                 }
             }
-            else if (!bdmerge_should_render_light(false, false))
+            // Rig emitters obey the rig controls, not the world-light toggle.
+            else if (!light->isCineRigEmitter() &&
+                     !bdmerge_should_render_light(false, false))
             {
                 continue;
             }

@@ -87,6 +87,7 @@ private:
     void refreshCastList();
     void onCastRightClick(LLUICtrl* ctrl, S32 x, S32 y);
     void onClickAddYou();
+    void onClickAddAnimesh();            // add in-world-selected animesh object(s) to the cast
     void onClickFocusActor();           // frame the selected member in the camera
     uuid_vec_t selectedCastIds() const;
     LLUUID     firstSelectedCastId() const;

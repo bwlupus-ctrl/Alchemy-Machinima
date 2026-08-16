@@ -17,9 +17,14 @@ Do NOT `git merge` anything as part of research — this is analysis only.
 | Fork branch | `develop` (local) |
 | Upstream target | `alchemy-upstream/develop` @ **`af0f3bd1beb`** (AlchemyViewer/Alchemy.git) |
 | Merge-base (last sync) | **`7c11d3f38bd`** "Add support for semaphore and memory object interop for dx12/vulkan to gl" |
-| Fork ahead / upstream ahead | **325** fork commits / **255** upstream commits |
+| Fork ahead / upstream ahead | **327** fork commits / **255** upstream commits |
 | Upstream churn since base | **502 files, +22,357 / −9,418** |
 | Files BOTH sides changed (conflict-prone) | **80** |
+
+> **Provenance boundary:** committed fork scope ends at `47af3df7b1a`. `stash@{0}`
+> (`80769c1956479`) contains reverted VCam/projector WIP, including `alprismcamdriver.*`, virtual
+> output-frame APIs, live-feed cookie remapping, rain work, and diagnostics. It carries the known
+> main-camera-moves-feed-shadow regression and is not part of the required committed re-port.
 
 Reproduce:
 ```bash
@@ -47,7 +52,7 @@ comm -12 fork_changed.txt up_changed.txt   # the 80
 
 ```
 llprismlens.cpp/.h   llcinematiccamera.cpp/.h   aldirectorswitcher.cpp
-alprismcamdriver.cpp   llghostavatar.cpp/.h   llcontrolavatar.cpp
+llghostavatar.cpp/.h   llcontrolavatar.cpp
 ```
 
 Therefore the merge risk is **NOT** git conflict resolution on these files. It is **semantic /
@@ -68,7 +73,7 @@ subsystem it threatens and a risk level.
 The deepest change. Textures are no longer bound through texture-unit state; render targets get
 immutable storage.
 - `6ff2cddb89c` Retire the texture unit: **LLTexUnit becomes ALTextureSlot**
-- `78eff87b09b` Delete the mutable texture path, take the resource out of the sampler
+- `78eff87a60b` Delete the mutable texture path, take the resource out of the sampler
 - `bcdcda3a082` Sample through **sampler objects** instead of texture state
 - `557ecd2eb17` Name the sampler at every bind site
 - `f07c65fd295` Give **render targets immutable storage**, size uploads from live geometry
@@ -76,8 +81,8 @@ immutable storage.
 - `39c1cab7c68` Take raw GL texture allocation out of newview
 - `a1a3933f1c6` LLImageGL thread-safe; `09b3b94a998` raise GL floor to 4.1
 - Files: `indra/llrender/llrender.*`, `llrendertarget.h`, `indra/newview/llviewertexture.*`
-- **Threatens:** VCam render-to-texture (`mPrismLensOutput[]` 1024² RTs, the camera-feed RT,
-  projector-cookie feed swap), ghost palette/impostor snapshots, the visible-diffuse ReShade
+- **Threatens:** committed VCam render-to-texture (`mPrismLensOutput[]` 1024² RTs), ghost
+  palette/impostor snapshots, the visible-diffuse ReShade
   sidecar, 10-bit RT format work. Any fork code that allocates a render target or binds a texture
   by unit is on the old contract.
 
@@ -158,13 +163,16 @@ immutable storage.
 - `llprismlens.cpp/.h` — capture/display registry, `mPrismLensOutput[slot]` (1024² retained RTs),
   `renderAuxiliaryView()` (prepare-all → `chooseRenderSlot` → `markProduced`), Kooima off-axis,
   virtual (prim-free) cameras. **Depends on: T1 (RTs), T2 (aux probe), T3 (projector shadows), T5 (prism shaders).**
-- `llcinematiccamera.cpp/.h` — `EMode`, `isActive()` owns the main render camera, `computeOutputFrame`/
-  `writeMainCamera`/`writeVirtualCameraOutput`.
-- `aldirectorswitcher.*`, `alprismcamdriver.*` — switcher-drives-VCam, follow/orbit/lock-on driver.
-- pipeline.cpp hooks: `activatePrismAuxiliaryProbeState`, `mPrismSpotShadow[]`, projector cookie feed
-  swap in `setupSpotLight`/`setupSpotLightVolumetric`.
-- Shaders: `prismLensF/V.glsl`, projector cookie remap in `deferredUtil.glsl` (fork added
-  `proj_cookie_region/orient`, `projCookieUv`).
+- `llcinematiccamera.cpp/.h` — committed surface includes `updateCamera`, `applyFrameLens`,
+  `resolveAnchor`, `captureCurrentSwitcherView`, and the `pattern*()` helpers.
+- `aldirectorswitcher.*` — committed switcher-to-VCam ownership and follow/orbit/lock-on behavior.
+- pipeline.cpp hooks: `activatePrismAuxiliaryProbeState`, `mPrismSpotShadow[]`, retained outputs, and
+  auxiliary composites.
+- Shaders: committed `prismLensF/V.glsl` plus the narrow `prism_auxiliary` containment delta in
+  `reflectionProbeF.glsl`.
+- **Excluded WIP:** `alprismcamdriver.*`, output-frame writer APIs, cookie feed swap, and
+  `proj_cookie_region/orient`/`projCookieUv()` live only in `stash@{0}`. Recover them, if desired,
+  only as a separate post-acceptance slice after resolving the recorded shadow regression.
 
 ### 4B. Entity clones (ghosts)
 - `llghostavatar.cpp/.h` — clone appearance/attachment cloning, animation mirror
@@ -246,8 +254,9 @@ GPT should pick C or D with justification and encode it in `MERGE_PLAYBOOK.md`.
    What is the new allocation/resize API and where must `mPrismLensOutput[]`/feed RT move to it?
 2. Does `activatePrismAuxiliaryProbeState` still have a probe state to contain after T2's SH-projection
    rewrite? What replaces the cube-snapshot ambscale path the PBR-flicker fix depended on?
-3. Are the fork's projector-cookie uniforms (`proj_cookie_region/orient`) and `mPrismSpotShadow[]`
-   compatible with T3's PCF/PCSS rewrite and T4 REVERSE_Z spot-shadow depth?
+3. Is the committed `mPrismSpotShadow[]` path compatible with T3's PCF/PCSS rewrite and T4 REVERSE_Z
+   spot-shadow depth? Separately, if the stash WIP is later accepted, re-derive its two-`vec4`
+   cookie affine contract (`xy=scale`, `zw=offset`, orient then region) from `stash@{0}`.
 4. Do `prismLensF/V.glsl` reference any uniform removed by T5? Do they need UB_LIGHTS/REVERSE_Z updates?
 
 **Clones**
@@ -314,6 +323,9 @@ CMakeLists.txt, viewer_manifest.py, menu_viewer.xml, strings.xml, floater_prefer
 textures.xml, + llagent, llappviewer, llenvironment, llviewercamera, llviewercontrol, llviewerdisplay,
 llviewermenu, llviewermessage, llviewerobject, llviewerwindow, llworld, llselectmgr, llmeshrepository, etc.
 
-**Fork-only feature files (0 upstream churn — adapt, don't merge):** llprismlens, llcinematiccamera,
-aldirectorswitcher, alprismcamdriver, llghostavatar, llcontrolavatar; shaders prismLensF/V,
+**Committed fork-only feature files (0 upstream churn — adapt, don't merge):** llprismlens,
+llcinematiccamera, aldirectorswitcher, llghostavatar, llcontrolavatar; shaders prismLensF/V,
 actorghostF/V, weatherRain/Surface/Lightning/RainUpsampleF.
+
+**Stash-only WIP (not committed scope):** alprismcamdriver, virtual-output refactors, and live-feed
+cookie remapping from `stash@{0}` / `80769c1956479`.

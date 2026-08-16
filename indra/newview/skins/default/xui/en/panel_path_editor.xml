@@ -10,7 +10,7 @@
 <panel
  background_visible="false"
  border="false"
- height="716"
+ height="604"
  layout="topleft"
  name="panel_path_editor"
  width="360">
@@ -692,127 +692,6 @@
      use_ellipses="true"
      width="172">
         Not following
-    </text>
-
-    <!-- Look-at while walking (procedural gaze): head / neck / eyes track a
-         target, layered on the walk and eased in / out. Target = where it's
-         going (path tangent), the camera, a cast member, or a fixed point.
-         The cast picker and Set-point button auto-hide to the active mode. -->
-    <text
-     follows="left|top"
-     font="SansSerifSmallBold"
-     height="12"
-     layout="topleft"
-     left="6"
-     top="600"
-     name="gaze_lbl"
-     width="200">
-        Look-at (gaze)
-    </text>
-    <check_box
-     follows="left|top"
-     height="16"
-     label="Enable"
-     layout="topleft"
-     left="6"
-     top="614"
-     name="gaze_enable_check"
-     tool_tip="Procedural look-at while walking. Off is a no-op."
-     width="80" />
-    <combo_box
-     follows="left|top"
-     height="20"
-     layout="topleft"
-     left="92"
-     top="614"
-     name="gaze_target_combo"
-     tool_tip="What the actor looks at"
-     width="262">
-        <combo_box.item label="Where it's going" name="gaze_tangent" value="0" />
-        <combo_box.item label="Camera" name="gaze_camera" value="1" />
-        <combo_box.item label="Cast member" name="gaze_cast" value="2" />
-        <combo_box.item label="Fixed point" name="gaze_point" value="3" />
-    </combo_box>
-    <combo_box
-     follows="left|top"
-     height="20"
-     layout="topleft"
-     left="6"
-     top="636"
-     name="gaze_cast_combo"
-     tool_tip="Cast member to look at"
-     visible="false"
-     width="348" />
-    <button
-     follows="left|top"
-     height="20"
-     label="Set point from camera"
-     layout="topleft"
-     left="6"
-     top="636"
-     name="btn_gaze_setpoint"
-     tool_tip="Capture the current camera position as the fixed point the actor looks at"
-     visible="false"
-     width="200" />
-    <slider
-     decimal_digits="2"
-     follows="left|top"
-     height="16"
-     increment="0.05"
-     initial_value="0.7"
-     label="Head/eyes"
-     label_width="66"
-     layout="topleft"
-     left="6"
-     max_val="1"
-     min_val="0"
-     name="gaze_blend_slider"
-     tool_tip="0 = eyes only (head stays with the walk); 1 = full head, neck and torso turn"
-     top="658"
-     width="172" />
-    <slider
-     decimal_digits="2"
-     follows="left|top"
-     height="16"
-     increment="0.05"
-     initial_value="1.0"
-     label="Intensity"
-     label_width="62"
-     layout="topleft"
-     left="182"
-     max_val="1"
-     min_val="0"
-     name="gaze_intensity_slider"
-     tool_tip="How strongly the gaze overrides the walk's own head pose (0..1)"
-     top="658"
-     width="172" />
-    <slider
-     decimal_digits="2"
-     follows="left|top"
-     height="16"
-     increment="0.05"
-     initial_value="0.5"
-     label="Smoothing"
-     label_width="66"
-     layout="topleft"
-     left="6"
-     max_val="1"
-     min_val="0"
-     name="gaze_smoothing_slider"
-     tool_tip="How softly the gaze eases toward the target (0 = snappy, 1 = very smooth)"
-     top="676"
-     width="172" />
-    <text
-     follows="left|top"
-     height="12"
-     layout="topleft"
-     left="182"
-     top="678"
-     name="gaze_status"
-     text_color="LtGray_50"
-     use_ellipses="true"
-     width="172">
-        Gaze off
     </text>
 
     <!-- TP-away suspend banner: shown only while the selected actor's walk is

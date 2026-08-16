@@ -1,0 +1,75 @@
+IMPLEMENTATION TASK — Cinematic Light Rig: a tracking-mode toggle (Skeleton vs Body-stable).
+
+Repo: I:\alchemy-machinima. You IMPLEMENT. Do NOT build, cmake, or run the viewer. Claude builds; an
+adversarial Opus review reviews before any build. Read doc/CINE_LIGHT_RIG_STATUS.md and
+doc/CINE_LIGHT_RIG_MASTER_PRESETS_DESIGN.md for the current architecture and its finals.
+
+=============================================================================
+WHAT & WHY
+=============================================================================
+The rig centres on the subject's CHEST JOINT (an animated bone), so an in-place animation that swings
+the torso drags the lights with it. Add a toggle so the operator can centre on a STABLE body position
+instead. User decision (fixed): two modes, default = Skeleton (unchanged behaviour).
+
+  - **Skeleton (mode 0, DEFAULT)** — current behaviour EXACTLY: centre = chest joint world position
+    (alcinelightrig.cpp:1092, `scaledPoint(avatar, chest->getWorldPosition(), subject_scale)`), with the
+    existing fallback to render-position when there is no chest joint. Lights follow the pose.
+  - **Body-stable (mode 1)** — centre = the avatar's render position + fixed chest height, IGNORING the
+    animated chest bone, so lights stay put while the subject animates in place. This is EXACTLY the
+    expression the existing no-chest fallback already uses (alcinelightrig.cpp:1098-1101:
+    `scaledPoint(avatar, getRenderPosition() + LLVector3(0,0,1.2f), subject_scale)`).
+
+=============================================================================
+THE CHANGE (controller-only; NO model/shader/pipeline; NO new math)
+=============================================================================
+1. SETTING: add `CineLightRigTrackMode` (S32, default 0) to settings.xml. 0 = Skeleton, 1 = Body-stable.
+
+2. CONTROLLER (alcinelightrig.cpp, the centre computation ~1088-1106): read the mode
+   (LLCachedControl<S32>, sanitize/clamp to [0,1]). Branch:
+   - Mode 0 (Skeleton): the current code path, UNCHANGED — read the chest joint, fall back to
+     render+1.2 if absent. Must be BITWISE-identical to today when the setting is 0 (default), so a
+     literal early branch that leaves the existing lines untouched is ideal.
+   - Mode 1 (Body-stable): SKIP the chest-joint read entirely and take the render-position path — i.e.
+     force `have_joint = false` (or otherwise route directly to the existing
+     `scaledPoint(avatar, getRenderPosition() + {0,0,1.2f}, subject_scale)` expression). Do NOT
+     duplicate the expression — reuse the existing fallback code so scaledPoint (foot-pivot scale),
+     OffsetZ (:1112), and damping (:1116+) all still apply identically in both modes. The ONLY
+     difference between the modes is whether the chest joint is consulted.
+   Sanitize: a non-{0,1} or out-of-range value -> 0 (Skeleton). Subject-lost / no avatar path unchanged.
+
+3. UI (panel_cine_light_rig.xml + alpanelcinelightrig.cpp): add a 2-option combo bound to
+   `CineLightRigTrackMode` with entries "Skeleton" (value 0) and "Body-stable" (value 1), placed in the
+   RIG section next to "Follow damping" (they are both tracking controls). Add its reset button (roster
+   34 -> 35). Tooltip: "Skeleton follows the pose (chest bone); Body-stable ignores in-place animation
+   and centres on the body position."
+
+4. REFLOW — DO NOT REPEAT THE M1 BUG. Adding a row grows the panel. You MUST update ALL THREE heights
+   in lockstep or the bottom clips in both hosts (this exact bug was just fixed):
+   - panel_cine_light_rig.xml root height 1286 -> 1286 + one row (~26 px; match the existing row stride).
+   - floater_cine_light_rig.xml: embedded panel `cine_light_rig_panel` height AND content panel
+     `cine_light_rig_content` height, +the same delta (keep the +10 content margin).
+   - floater_director.xml: `cine_light_rig_embedded` AND `cine_light_rig_scroll_content` heights,
+     +the same delta.
+   After the change, every control below the new row (shadow fix-it, Reset all) must still be reachable
+   in BOTH hosts. State the exact delta and the four heights you set.
+
+5. SCENE: add `CineLightRigTrackMode` to sceneSettingsList() in llfloaterdirector.cpp (round-trips like
+   every other key). Add it to the panel's settings() reset list.
+
+No model change, no TUT test (the centre computation is controller-side, avatar-dependent, not in the
+pure model). No version bump.
+
+=============================================================================
+OFF-LIMITS
+=============================================================================
+Only: the one centre-computation branch in alcinelightrig.cpp, the settings key, the UI control + its
+reflow, the sceneSettingsList/reset-list entries. Do NOT touch: the scale-aware scaledPoint/foot-pivot
+math, the mirror/facing code, the gobo/colour/preset code, pipeline.cpp, shaders, llprimitive, the
+avatar/joint classes (read-only), version numbers.
+
+=============================================================================
+REPORT
+=============================================================================
+The branch (confirm mode 0 is bitwise-identical to today); the setting; the UI control + the exact
+reflow deltas and the four heights (panel + 4 wrapper values); the scene/reset wiring. Confirm both
+modes still apply scaledPoint + OffsetZ + damping. Anything you think is wrong. Do not build.

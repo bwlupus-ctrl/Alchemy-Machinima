@@ -407,6 +407,15 @@ void LLGhostAvatar::neutralizeEntityPhysicsParams()
     updateVisualParams();
 }
 
+void LLGhostAvatar::neutralizeEntityEyeParams()
+{
+    // LLEyeMotion::onDeactivate restores joints but not a blink caught between
+    // frames. Reopen both lids explicitly before relinquishing the motion.
+    setVisualParamWeight("Blink_Left", 0.f);
+    setVisualParamWeight("Blink_Right", 0.f);
+    updateVisualParams();
+}
+
 void LLGhostAvatar::setEntityCloneVisible(bool visible)
 {
     if (visible == mEntityCloneVisible)
@@ -422,11 +431,41 @@ void LLGhostAvatar::setEntityCloneVisible(bool visible)
         {
             LLCharacter::startMotion(ANIM_AGENT_PHYSICS_MOTION);
         }
+        if (mEntityEyeMotionEnabled && !isMotionActive(ANIM_AGENT_EYE))
+        {
+            LLCharacter::startMotion(ANIM_AGENT_EYE);
+        }
     }
     else
     {
         LLCharacter::stopMotion(ANIM_AGENT_PHYSICS_MOTION, true);
         neutralizeEntityPhysicsParams();
+        LLCharacter::stopMotion(ANIM_AGENT_EYE, true);
+        neutralizeEntityEyeParams();
+    }
+}
+
+void LLGhostAvatar::setEntityEyeMotionEnabled(bool enabled)
+{
+    if (enabled == mEntityEyeMotionEnabled)
+    {
+        if (enabled && mEntityCloneVisible &&
+            !isMotionActive(ANIM_AGENT_EYE))
+        {
+            LLCharacter::startMotion(ANIM_AGENT_EYE);
+        }
+        return;
+    }
+
+    mEntityEyeMotionEnabled = enabled;
+    if (enabled && mEntityCloneVisible)
+    {
+        LLCharacter::startMotion(ANIM_AGENT_EYE);
+    }
+    else
+    {
+        LLCharacter::stopMotion(ANIM_AGENT_EYE, true);
+        neutralizeEntityEyeParams();
     }
 }
 

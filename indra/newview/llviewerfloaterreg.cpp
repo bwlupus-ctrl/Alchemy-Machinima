@@ -519,6 +519,7 @@ void LLViewerFloaterReg::registerFloaters()
     // cinematic_camera is a thin shell around panel_cinecam_params.xml
     // (ALPanelCineCamParams), shared with the Director Console
     LLFloaterReg::add("cinematic_camera", "floater_cinematic_camera.xml", &LLFloaterReg::build<LLFloater>);
+    LLFloaterReg::add("cine_light_rig", "floater_cine_light_rig.xml", &LLFloaterReg::build<LLFloater>);
     LLFloaterReg::add("flycam_recorder", "floater_flycam_recorder.xml", &LLFloaterReg::build<LLFloater>);
     LLFloaterReg::add("flycam_orbit", "floater_flycam_orbit.xml", &LLFloaterReg::build<LLFloater>);
     LLFloaterReg::add("actor_mover", "floater_actor_mover.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterActorMover>);

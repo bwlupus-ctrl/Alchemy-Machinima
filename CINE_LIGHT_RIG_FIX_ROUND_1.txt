@@ -1,0 +1,304 @@
+FIX ROUND 1 — Cinematic Light Rig. Findings from four independent adversarial reviews.
+
+Repo: I:\alchemy-machinima. You implemented this feature. Do NOT build, do NOT run cmake,
+do NOT run the viewer. Apply ALL findings below in ONE pass; the whole batch then goes back
+for re-review before anything is built.
+
+IMPORTANT: line numbers below were captured at review time and some files have changed since
+(the gizmo work moved things in alcinelightrig.cpp). LOCATE BY SYMBOL AND CONTEXT, not by
+line number. If a cited line does not contain what the finding describes, find the real site.
+
+If you believe a finding is WRONG, do not silently skip it — implement nothing for it and say
+so explicitly in your report with your reasoning. Reviewers are not infallible; two of these
+findings came with the reviewer's own caveats.
+
+=============================================================================
+MUST-FIX
+=============================================================================
+
+--- M1. DEG_TO_RAD is undeclared in the unit-test build; the TUT target cannot compile
+
+  indra/newview/alcinelightrigmodel.cpp uses DEG_TO_RAD (around lines 515, 516, 551).
+  Its includes are linden_common.h + own header + <algorithm> <cmath> <cstring> <limits>.
+  DEG_TO_RAD is defined ONLY in indra/llmath/llmath.h, which none of those reach.
+
+  It compiles in the viewer target because indra/newview/CMakeLists.txt applies
+  llviewerprecompiledheaders.h via target_precompile_headers, and that PCH includes llmath.h.
+  But alcinelightrigmodel.cpp is ALSO in viewer_TEST_SOURCE_FILES (CMakeLists.txt around 2525),
+  and LLAddBuildTest.cmake applies no PCH. So the test target fails to compile.
+
+  FIX: add a file-local constant next to the existing `constexpr F64 TWO_PI` (line ~32) and use
+  it. Do NOT add #include "llmath.h" — the model must stay renderer-independent and
+  dependency-light, which is the entire reason the TUT test can exist. The file already
+  defines its own TWO_PI for exactly this reason; follow that precedent.
+
+--- M2. The projector gate has NO rig exemption; "hide projectors" guts the rig
+
+  Six isCineRigEmitter() exemptions exist, all on the world-light gate
+  bdmerge_should_render_light. The SIBLING gate bdmerge_should_render_projector() has three
+  call sites with no exemption: pipeline.cpp ~9770, ~16682, ~16706.
+
+  Rig projector emitters carry a cookie (setLightTextureID(rigCookie())), so isLightSpotlight()
+  is true and they flow through that gate. With Render Projectors unchecked:
+    - they never enter spot_lights / fullscreen_spot_lights
+    - updateSpotLightPriority() is never called for them
+    - so they never reach the mTargetShadowSpotLight auction
+    - so mShadowSpotLight never holds a rig light
+    - so projector volumetrics (which iterate mShadowSpotLight slots) and froxel light
+      injection find nothing
+  Result: rig lights render as omnidirectional cookie-less point lights. No cone, no cookie,
+  no spot shadow, no shafts, no hero beams — while the rig UI still says the lights are on.
+
+  FIX: add the same `volume->isCineRigEmitter() ||` style exemption at all three call sites,
+  matching the shape of the existing six. Gate BODIES remain off-limits — call sites only.
+  Add a brief comment at each new site (and, while you are there, at the existing six) saying
+  why a rig emitter bypasses the toggle. See M9.
+
+--- M3. Dark emitters stay registered as lights and strip-mine the deferred light budget
+
+  applyFrame unconditionally calls setIsLight(true) then setLightIntensity(0) for lights whose
+  model state is off; setEmittersDark() zeroes intensity but never touches light membership.
+
+  In the pipeline, the main branch of calcNearbyLights inserts with no color/radius filter
+  (contrast the Prism branch, which DOES filter zero-color lights), and in
+  renderDeferredLighting the budget `count++` and `break` happen BEFORE the
+  col.magVecSquared() < 0.001f rejection. Emitters sit at the subject's chest, so they sort
+  nearest and are counted first.
+
+  Every one of these states produces dark-but-still-a-light emitters:
+    - rig power off (all 8)
+    - any individual light off (normal usage — a 3-point setup burns the BG slot)
+    - anchor unresolved, e.g. cast member despawned or mid-respawn (sustained; emitters also
+      freeze at the subject's last position and stay nearest-sorted indefinitely)
+    - non-finite presentation time (transient)
+
+  Concrete failure: user runs RenderLocalLightCount = 8, toggles rig power off mid-take —
+  every world light near the subject goes dark instead of the scene returning to ambient.
+
+  FIX, three parts:
+    (a) SUSTAINED states — power off, and anchor unresolved — must DESTROY the emitters, not
+        dark them. You already have this exact pattern: ensureEmitters destroys the omnis when
+        bounce is disabled. Reuse it. Re-create on the way back.
+    (b) PER-LIGHT off must call setIsLight(state.mOn) per emitter rather than always true.
+        Membership toggling is cheap: LLVOVolume::setIsLight is a no-op when unchanged.
+    (c) Transient states (non-finite time) may keep the current dark behaviour.
+  Do NOT "fix" this by changing the pipeline's count-before-filter ordering — that is stock
+  shared code and off-limits.
+
+--- M4. Shaft/Hero state is lost on scene load AND on any Enable toggle
+
+  mShaftEnabled[] / mHeroEnabled[] are controller-owned. They are absent from sceneData() and
+  from applySceneData(), and shutdown() zeroes them — and tick() calls shutdown() whenever
+  CineLightRigEnabled goes false.
+
+  Two user-visible losses:
+    - Enable Hero on KEY, save scene, restart, load scene: every setting returns, the hero look
+      does not. Load a "neutral" scene while shafts are on: shafts stay on, so what you see
+      matches neither the file nor a clean state.
+    - Uncheck Enable and re-check it: all Shaft/Hero checkboxes have silently cleared.
+
+  Note the inconsistency this creates: shutdown() deliberately does NOT clear mAnchor, and the
+  region-change path already re-applies Shaft/Hero correctly to new emitter UUIDs via
+  updateProjectorFlags(). So the state is treated as durable in one path and disposable in two.
+
+  FIX: serialise both arrays in sceneData()/applySceneData() alongside the anchor, and stop
+  shutdown() from zeroing them (destroy the emitters, keep the intent). applySceneData must
+  also CLEAR them when the loaded scene has none, so a load is not additive over current state.
+  Make reset-to-default still clear them.
+
+=============================================================================
+SHOULD-FIX
+=============================================================================
+
+--- S1. Emitter motion goes through the DAMPED drawable path; the light lags its own position
+
+  setPositionGlobal(position, false) — the bool is only force_damped, and updateDrawable then
+  auto-selects damped motion for an unselected root volume with zero velocity. mbCanSelect =
+  false guarantees never-selected, so rig emitters always take the damped path
+  (OBJECT_DAMPING_TIME_CONSTANT = 0.06). The interpolating branch requires isVisible(), which
+  calcNearbyLights guarantees by calling setVisible() on every nearby light each frame.
+
+  Effect: during orbit FX or with a moving subject, cookie and spot shadow trail behind the
+  computed position, and the projector's aim rotation lags the same way — on top of the
+  controller's own deliberate mSmoothedCentre damping, so the rig is damped twice.
+
+  The ghost-proxy precedent dodges this only accidentally (its proxy is selected while in use,
+  and selected objects skip damping).
+
+  FIX: force undamped movement for rig emitters. Note the reviewer proved the mechanism and the
+  time constant but inferred the on-screen severity — if you find a reason this damping is
+  actually desirable, say so instead of changing it.
+
+--- S2. Omni bounce clamps in the wrong order — bounce goes ~1 stop dark whenever the key clips
+
+  alcinelightrigmodel.cpp ~561: omni.mIntensity = intensity * bounceRatio, where `intensity`
+  has ALREADY been clamped to [0,1] by intensityFromEV.
+
+  The LSL computes omniIntens from the UNCLAMPED intensity and lets the client clamp downstream
+  (render_engine_v20.lsl:199). Worked example: raw = 4.0 (operator riding the ceiling).
+  Reference: projector clamps to 1.0, omni = 4.0 x 0.45 = 1.8 -> clamps to 1.0, so key:bounce
+  is 1:1. Port: projector 1.0, omni 0.45 — the bounce layer is ~1.15 stops dimmer than
+  reference, and only when the operator pushes exposure, which is exactly when they are
+  watching contrast.
+
+  FIX: compute the omni from the pre-headroom/pre-clamp value, then clamp: clamp(raw * ratio).
+  Give it its own clipped flag.
+
+--- S3. Omni ON gate drops the LSL's second threshold
+
+  alcinelightrigmodel.cpp ~565: omni.mOn = on && mBounceEnabled. Both LSL renderers gate the
+  omni separately: omniOn = on && (omniIntens > 0.001).
+
+  Two divergences: (a) total EV in (-9.97, -8.81) — projector on in both, omni off in LSL, on
+  in the port at ~1e-4 intensity; (b) mBounceRatio = 0 (sanitize permits it) — all four omnis
+  publish mOn = true at intensity 0.
+
+  This compounds M3: dark-but-on emitters are exactly what burns light budget.
+
+  FIX: gate on the pre-headroom value for the same headroom-invariance reason the projector
+  gate uses: on && bounceEnabled && (raw * bounceRatio > 0.001).
+
+--- S4. The FX fuzz test is tautological, and nothing pins the table VALUES
+
+  Two gaps in indra/newview/tests/alcinelightrigmodel_test.cpp:
+
+  (a) The 10k-sample loop (~467-487) asserts finite, |pitch| <= 85, profile in [0,24),
+      beam in [0,3) — every one of which is unconditionally enforced by copyCleanLights /
+      cleanLight on evalFX's OUTPUT path. If an effect computed profile 200 or pitch -400 the
+      sanitiser would clamp it and the test would still pass. It proves only that the sanitiser
+      sanitises. FIX: assert against the pre-sanitised value, or assert specific expected poses
+      at specific times for a sample of effects.
+  (b) The table block asserts only "name non-empty, RGB in [0,1], fov/falloff bounded". A
+      scrambled, shifted, or 23-rows-plus-a-duplicate table passes. This is the CLAUDE.md rule-6
+      corruption class. FIX: pin golden values — e.g. profile 12 == Congo Blue (0.05,0.05,1.00),
+      profile 23 == Pure White, beam 2 == (0.2, 0.5) — plus exact row counts for PROFILES (24),
+      BEAMS (3), FX_NAMES (33), FX_INTERVALS (33).
+
+  The design doc's own test plan (§4.3 item 18) has this same gap. Do not treat the spec as
+  cover here.
+
+--- S5. The seed spinner cannot represent the seed it edits
+
+  panel_cine_light_rig.xml ~185 binds an F32-backed <spinner> to the U32 key CineLightRigSeed
+  (settings.xml ~82, default 324508639). F32 has a 24-bit mantissa; at that magnitude the
+  quantum is 32, so the value displays as 324508640 and a single arrow click commits a value
+  that differs from the stored seed — silently rewriting the seed the whole determinism story
+  rests on. max_val="4294967295" is itself unrepresentable and rounds to 4294967296, which
+  overflows U32 toward 0.
+
+  Note the irony: sceneData() deliberately serialises the seed AS A STRING to dodge exactly
+  this precision trap, and then the UI reintroduces it.
+
+  FIX: use a widget that can represent every U32 exactly — a line_editor with validation is the
+  straightforward option — plus a "Randomize" button. Requirement: every U32 value must
+  round-trip through the UI unchanged. Whatever you choose, make the reset list and the scene
+  round-trip still work.
+
+--- S6. The Anchor combo is rewritten every frame and fights its own open dropdown
+
+  alpanelcinelightrig.cpp ~429: draw() calls updateAnchorList() every frame, and both the
+  unchanged-signature path and the post-rebuild path call mAnchorCombo->setValue(anchor) EVERY
+  FRAME. LLComboBox::setValue early-outs only when the currently selected item already matches,
+  so once the user opens the dropdown and highlights a different cast member, the next frame
+  snaps the selection back. Keyboard navigation is effectively broken.
+
+  Deviation from both precedents: ALPanelWeatherSettings::draw() only calls
+  updateDeferredAvailability(), and alpanelcinecamparams.cpp has no draw() override at all.
+  The signature short-circuit was built to avoid per-frame rebuilds and then defeated by
+  putting setValue on the short-circuit path too.
+
+  FIX: only setValue when the anchor actually changed, and never while the dropdown has focus
+  or is open.
+
+--- S7. The setup (preset) list does not lockstep between the two hosts
+
+  refreshSetupList() is called only from postBuild, onVisibilityChange, and the LOCAL instance's
+  save/delete/reset. Open both hosts, save setup "MoodA" in the floater: the Director tab does
+  not list it until hidden and reshown. Deleting leaves a stale name selectable in the other
+  host, where picking it fails silently.
+
+  The weather precedent has the identical gap, so this is inherited rather than a regression —
+  but the feature's claim is lockstep, so close it. FIX: notify sibling instances on
+  save/delete (a static registry of live panels, or refresh on the same poll the Shaft/Hero
+  checkboxes already use).
+
+--- S8. The gizmo's GL guard uses raw GL calls, deviating from the Prism precedent
+
+  The scoped guard uses glGetIntegerv(GL_TEXTURE_BINDING_2D) and glGetFloatv(GL_LINE_WIDTH) —
+  synchronous driver round-trips every gizmo frame — where LLPrismLens::renderCameraGuides()
+  queries nothing and simply resets to known defaults (gGL.setLineWidth(1.f)).
+
+  Worse: glBindTexture(GL_TEXTURE_2D, 0) deliberately desyncs LLTexUnit's binding cache for the
+  whole draw scope. It is self-consistent TODAY (nothing inside consults the cache, and the raw
+  binding is restored), but any future gGL.getTexUnit(0)->bind(...) inside that scope will
+  silently no-op or corrupt the restore. Prism achieves the same result inside the cache with
+  gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE).
+
+  FIX: follow the Prism precedent — no raw glGet round-trips, no cache-desyncing raw binds.
+  NOTE: the reviewer separately PROVED the current restore is correct on every exit path,
+  including the deferred-flush/destructor-order case. This is a hygiene and future-proofing fix,
+  not a live corruption bug. Do not destabilise a working restore while changing it.
+
+=============================================================================
+NITS — apply if cheap and low-risk; skip and say so if any would destabilise
+=============================================================================
+
+N1.  Stage Debut's fill latch hardcodes -0.8f where the ramp it latches evaluates to
+     -0.79999995 in F32. Every other latch in the file reuses the identical expression the live
+     branch computes (Explosion's last_decay/last_ember_base, Supernova's last_collapse). Make
+     this one match that discipline.
+N2.  blendLight's interpolated yaw is not re-wrapped, so it can return exactly -180.0 or 185.
+     Harmless today (render() re-cleans) but breaks bitwise comparison of a mid-blend pose
+     against its canonical equivalent. One wrap180() on the output.
+N3.  tick() does ~30 string-keyed gSavedSettings lookups plus 8 std::string concatenations per
+     frame. The file already uses LLCachedControl for two booleans; extend that to the rest.
+N4.  updateDerivedStatus() does ~14 string-concat getChild lookups plus setText/llformat
+     allocations per frame per visible instance. Cache the child pointers.
+N5.  ensureEmitters has no backoff: a persistently failing createEmitter would create and
+     markDead up to 8 objects per frame. Unreachable with the current fixed volume params;
+     add a simple backoff anyway.
+N6.  applySceneData arms mPendingFXPhase whenever the scene has an fx key; if the user changes
+     CineLightRigFX before the next tick, the saved phase applies to the wrong FX. One-frame
+     window. Bind the pending phase to the FX id it came from.
+N7.  sceneData writes light_rig["version"] = 1 but applySceneData never reads it. loadSetup DOES
+     enforce version == 1 for presets. Either check it or drop it.
+N8.  saveSetup's failure alert says "Enter a unique setup name before saving" even when the
+     failure was disk/IO. Distinguish the cases.
+N9.  In shadow mode 2 the "requested slots" hint counts only lights with On == true, but the
+     text asserts shafts also require a slot — a shaft on an Off light is neither counted nor
+     warned.
+N10. UI ranges are narrower than the model clamps (EV +/-12 in XUI vs +/-20 in the model;
+     radius 64 vs 512). A hand-edited preset with EV 15 loads and displays, then silently
+     clamps to 12 on the first spinner touch. Align them or document the intent.
+N11. llselectmgr.cpp ~195 (synthesizeLocalPreviewNode) still bi-partitions local-only objects,
+     so any future by-UUID selection path would label a rig emitter "(local mesh preview)" and
+     synthesize a fully-editable node. Unreachable while mbCanSelect stays false.
+     NOTE: llselectmgr.* was previously off-limits. Authorization is granted for THIS one
+     change only — an isCineRigEmitter() early-return or a three-way naming. Nothing else in
+     that file.
+N12. Neither the six existing gate exemptions nor the three new ones carry a comment explaining
+     why a rig emitter bypasses the toggle. Given this codebase's regression history is exactly
+     "nobody asked what the shared state was for", each should name its reason inline the way
+     the surrounding [BDMerge A5.6] lines do.
+
+=============================================================================
+OFF-LIMITS — unchanged, except the two grants noted above
+=============================================================================
+
+indra/llprimitive/* (the [0,1] intensity clamp and 20m radius clamp are DESIGN INPUTS, not
+bugs); all GLSL shaders; llpresentationtime.* / lltemporalframecontext.*; alweathermodel.* and
+its test; the BODIES of bdmerge_should_render_light / bdmerge_should_render_projector; the
+pipeline's count-before-filter ordering in renderDeferredLighting; llprismlens.* (precedent to
+copy, not a host to edit); lldirectorcast.* (consumed, not modified); alghostmanipproxy.* /
+lllocalmesh.* (templates).
+
+Grants for this round only: the three bdmerge_should_render_projector CALL sites (M2), and the
+single llselectmgr.cpp ternary (N11).
+
+=============================================================================
+REPORT
+=============================================================================
+
+For EACH finding M1-M4, S1-S8, N1-N12: what you changed and where, or why you did not change it.
+Then: anything you believe a reviewer got wrong, and anything you are unsure about.
+Do not build.

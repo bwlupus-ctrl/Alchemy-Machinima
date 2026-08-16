@@ -338,6 +338,10 @@ public:
     F32    getGazeIntensity(const LLUUID& actor_id) const;
     void   setGazeSmoothing(const LLUUID& actor_id, F32 v);          // 0 snappy .. 1 very smooth
     F32    getGazeSmoothing(const LLUUID& actor_id) const;
+    void   setGazeEyelineOffset(const LLUUID& actor_id, F32 yaw_degrees,
+                                F32 pitch_degrees);
+    F32    getGazeEyelineYaw(const LLUUID& actor_id) const;
+    F32    getGazeEyelinePitch(const LLUUID& actor_id) const;
     // one-line status for the panel (e.g. "Looking at Kestrel", "Gaze off",
     // "Gaze armed -- starts with the walk"). Always fills out; returns false only
     // when the actor id is null.
@@ -862,6 +866,8 @@ private:
         F32        mTorsoAmount   = 0.25f;  // torso share; 0 = still chest, 1 = full aim
         F32        mIntensity     = 1.f;    // overall weight 0..1
         F32        mSmoothing     = 0.5f;   // 0 = snappy, 1 = very smooth
+        F32        mEyelineYawDeg = 0.f;    // actor-local off-lens trim, +/-15 degrees
+        F32        mEyelinePitchDeg = 0.f;  // actor-local off-lens trim, +/-10 degrees
         // runtime (paint carries these; not authored)
         F32        mEnv           = 0.f;    // ease-in/out envelope 0..1
         bool       mDirValid      = false;  // mSmoothDir seeded yet
@@ -873,6 +879,8 @@ private:
         bool       mAppliedSlewing = false; // traversing a large clamp seam
         F32        mAppliedPitch  = 0.f;    // actually applied head-chain aim
         F32        mAppliedYaw    = 0.f;
+        F32        mTorsoAimPitch = 0.f;    // extra torso-only chase behind applied aim
+        F32        mTorsoAimYaw   = 0.f;
         F32        mBehindEnv     = 1.f;    // smooth Release-policy weight
         U32        mLastFrame     = 0xFFFFFFFF;  // per-frame temporal-advance guard
     };

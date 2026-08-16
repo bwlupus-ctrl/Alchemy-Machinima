@@ -12,6 +12,9 @@
 #include "aldirectoranimswitcher.h"
 
 #include "alghoststudio.h"      // ALGhostStudio::DRIVE_DIRECTED / LOOP_*
+#include "fsposeranimator.h"
+#include "llagent.h"
+#include "llcontrolavatar.h"
 #include "lldirectorcast.h"
 #include "llghostavatar.h"
 #include "lljoint.h"            // LLJoint priority range
@@ -20,11 +23,14 @@
 #include "llpresentationtime.h"
 #include "llstring.h"
 #include "llviewercontrol.h"
+#include "llviewerobject.h"
 #include "llvoavatar.h"
 #include "llvoavatarself.h"     // gAgentAvatarp
+#include "llvovolume.h"
 
 #include <cmath>
 #include <cstddef>
+#include <set>
 
 namespace
 {
@@ -78,6 +84,10 @@ S32 ALDirectorAnimSwitcher::sanitizeTarget(S32 target)
 void ALDirectorAnimSwitcher::sanitizeSlot(Slot& slot)
 {
     slot.mLabel = utf8str_symbol_truncate(slot.mLabel, 40);
+    slot.mKind = llclamp(slot.mKind, (S32)KIND_ANIM, (S32)KIND_POSE);
+    slot.mPoseName = utf8str_symbol_truncate(slot.mPoseName, 40);
+    slot.mPoseLoadMethod = llclamp(
+        slot.mPoseLoadMethod, (S32)ROTATIONS, (S32)SELECTIVE_ROT);
     slot.mTarget = sanitizeTarget(slot.mTarget);
     // Valid priorities are the contiguous range {-1} u [0,7]; -1 keeps the
     // asset-authored priority (LLJoint::USE_MOTION_PRIORITY).
@@ -113,6 +123,18 @@ std::vector<ALDirectorAnimSwitcher::Slot> ALDirectorAnimSwitcher::loadBank()
         if (item.has("anim"))
         {
             bank[i].mAnimID = item["anim"].asUUID();
+        }
+        if (item.has("kind"))
+        {
+            bank[i].mKind = item["kind"].asInteger();
+        }
+        if (item["pose"].isString())
+        {
+            bank[i].mPoseName = item["pose"].asString();
+        }
+        if (item.has("poseload"))
+        {
+            bank[i].mPoseLoadMethod = item["poseload"].asInteger();
         }
         if (item["label"].isString())
         {
@@ -162,7 +184,10 @@ void ALDirectorAnimSwitcher::saveBank(const std::vector<Slot>& input)
     {
         LLSD item = LLSD::emptyMap();
         item["enabled"] = slot.mEnabled;
+        item["kind"] = slot.mKind;
         item["anim"] = slot.mAnimID;
+        item["pose"] = slot.mPoseName;
+        item["poseload"] = slot.mPoseLoadMethod;
         item["label"] = slot.mLabel;
         item["target"] = slot.mTarget;
         item["priority"] = slot.mPriority;
@@ -172,6 +197,12 @@ void ALDirectorAnimSwitcher::saveBank(const std::vector<Slot>& input)
         data["slots"].append(item);
     }
     gSavedSettings.setLLSD("DirectorAnimSwitcherBank", data);
+}
+
+//static
+bool ALDirectorAnimSwitcher::slotHasPose(const Slot& slot)
+{
+    return slot.mKind == KIND_POSE && !slot.mPoseName.empty();
 }
 
 //static
@@ -235,11 +266,125 @@ std::vector<LLVOAvatar*> ALDirectorAnimSwitcher::getTargetAvatars(
     return targets;
 }
 
+bool ALDirectorAnimSwitcher::canPoseAvatar(LLVOAvatar* av) const
+{
+    if (!av || av->isDead() || av->getRegion() != gAgent.getRegion())
+    {
+        return false;
+    }
+    if (av->isSelf() || dynamic_cast<LLGhostAvatar*>(av))
+    {
+        return true;
+    }
+    if (LLControlAvatar* control = dynamic_cast<LLControlAvatar*>(av))
+    {
+        const LLVOVolume* root_volume = control->mRootVolp;
+        const LLViewerObject* root_edit =
+            root_volume ? root_volume->getRootEdit() : nullptr;
+        if (root_edit && root_edit->permYouOwner())
+        {
+            return true;
+        }
+    }
+
+    // This is the same explicit local-render permission used by the poser.
+    // It never sends an animation or pose request to the simulator.
+    static LLCachedControl<bool> pose_any_avatar(
+        gSavedSettings, "BDMergePoserAnyAvatar", false);
+    return pose_any_avatar;
+}
+
+void ALDirectorAnimSwitcher::releasePoseFromAvatar(LLVOAvatar* av)
+{
+    if (!av)
+    {
+        return;
+    }
+
+    const LLUUID id = av->getID();
+    if (!av->isDead() && mPoseAnimator.isPosingAvatar(av))
+    {
+        mPoseAnimator.stopPosingAvatar(av);
+    }
+    if (!av->isDead())
+    {
+        if (LLGhostAvatar* ghost = dynamic_cast<LLGhostAvatar*>(av))
+        {
+            ghost->setEntityDriveMode(
+                ALGhostStudio::DRIVE_MIRROR, LLUUID::null);
+        }
+    }
+    mPosedAvatars.erase(id);
+}
+
 void ALDirectorAnimSwitcher::applySlotToAvatar(
     LLVOAvatar* av, const Slot& slot, const Slot& prev)
 {
     if (!av || av->isDead())
     {
+        return;
+    }
+
+    if (slot.mKind == KIND_POSE)
+    {
+        if (!slotHasPose(slot) || !canPoseAvatar(av))
+        {
+            return;
+        }
+
+        LLGhostAvatar* ghost = dynamic_cast<LLGhostAvatar*>(av);
+        const bool board_already_posing =
+            mPosedAvatars.find(av->getID()) != mPosedAvatars.end();
+        const bool was_posing = mPoseAnimator.isPosingAvatar(av);
+        if (ghost)
+        {
+            // FROZEN suppresses mirror/directed re-driving. It pauses the
+            // controller, so a forced update below applies the loaded poser
+            // targets once before the frozen controller holds that result.
+            ghost->setEntityDriveMode(
+                ALGhostStudio::DRIVE_FROZEN, LLUUID::null);
+        }
+        if (!was_posing && !mPoseAnimator.tryPosingAvatar(av))
+        {
+            if (ghost)
+            {
+                ghost->setEntityDriveMode(
+                    ALGhostStudio::DRIVE_MIRROR, LLUUID::null);
+            }
+            LL_WARNS("DirectorAnimSwitcher")
+                << "Could not start posing avatar " << av->getID() << LL_ENDL;
+            return;
+        }
+
+        if (!mPoseAnimator.loadPoseFileOntoAvatar(
+                av, slot.mPoseName,
+                static_cast<E_LoadPoseMethods>(slot.mPoseLoadMethod)))
+        {
+            // Preserve a previously applied switchboard pose on a failed
+            // pose-to-pose cut. A newly acquired target is fully unwound.
+            if (!board_already_posing)
+            {
+                if (!was_posing && mPoseAnimator.isPosingAvatar(av))
+                {
+                    mPoseAnimator.stopPosingAvatar(av);
+                }
+                if (ghost)
+                {
+                    ghost->setEntityDriveMode(
+                        ALGhostStudio::DRIVE_MIRROR, LLUUID::null);
+                }
+            }
+            LL_WARNS("DirectorAnimSwitcher")
+                << "Could not load pose '" << slot.mPoseName
+                << "' onto avatar " << av->getID() << LL_ENDL;
+            return;
+        }
+
+        if (ghost)
+        {
+            ghost->updateMotions(LLCharacter::FORCE_UPDATE);
+        }
+        mPosedAvatars.insert(av->getID());
         return;
     }
 
@@ -263,7 +408,8 @@ void ALDirectorAnimSwitcher::applySlotToAvatar(
     }
 
     // SELF (or a real avatar the cast resolved -- local-only, for capture):
-    if (prev.mAnimID.notNull() && av->isMotionActive(prev.mAnimID))
+    if (prev.mKind == KIND_ANIM && prev.mAnimID.notNull() &&
+        av->isMotionActive(prev.mAnimID))
     {
         av->stopMotion(prev.mAnimID, prev.mSnapOnCut); // false = asset ease-out
     }
@@ -296,7 +442,36 @@ bool ALDirectorAnimSwitcher::applySlot(
     }
     const Slot& next = bank[slot];
     const Slot  prev = mActiveSlotConfig;
-    for (LLVOAvatar* av : getTargetAvatars(next.mTarget))
+    const std::vector<LLVOAvatar*> next_targets =
+        getTargetAvatars(next.mTarget);
+
+    std::set<LLUUID> next_pose_targets;
+    if (slotHasPose(next))
+    {
+        for (LLVOAvatar* av : next_targets)
+        {
+            if (av && !av->isDead() && canPoseAvatar(av))
+            {
+                next_pose_targets.insert(av->getID());
+            }
+        }
+    }
+
+    // A pose must not survive a cut to an animation/empty slot, nor remain on
+    // an avatar dropped by a target change.
+    const std::set<LLUUID> posed_before_cut = mPosedAvatars;
+    for (const LLUUID& id : posed_before_cut)
+    {
+        if (next_pose_targets.find(id) == next_pose_targets.end())
+        {
+            releasePoseFromAvatar(LLDirectorCast::instance().resolve(id));
+            // A vanished avatar cannot be resolved, but its stale tracking id
+            // must not keep stopAll() carrying dead state indefinitely.
+            mPosedAvatars.erase(id);
+        }
+    }
+
+    for (LLVOAvatar* av : next_targets)
     {
         applySlotToAvatar(av, next, prev);
     }
@@ -365,8 +540,20 @@ bool ALDirectorAnimSwitcher::punch(S32 slot)
 void ALDirectorAnimSwitcher::stopAll()
 {
     const Slot released; // null anim -> ghosts revert to mirror, self stops
+
+    const std::set<LLUUID> posed = mPosedAvatars;
+    for (const LLUUID& id : posed)
+    {
+        releasePoseFromAvatar(LLDirectorCast::instance().resolve(id));
+        mPosedAvatars.erase(id);
+    }
+
     for (LLVOAvatar* av : getTargetAvatars(mActiveSlotConfig.mTarget))
     {
+        if (mActiveSlotConfig.mKind != KIND_ANIM)
+        {
+            continue;
+        }
         if (LLGhostAvatar* ghost = dynamic_cast<LLGhostAvatar*>(av))
         {
             ghost->setEntityDriveMode(ALGhostStudio::DRIVE_MIRROR, LLUUID::null);

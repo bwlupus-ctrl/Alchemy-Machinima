@@ -17,7 +17,9 @@
 #include "alpanelactormover.h"      // embedded shared Actor Mover transport
 #include "alpanelanimpreview.h"     // embedded shared preview pane + own-avatar controls
 #include "alpanelcinecamparams.h"   // embedded shared panel (scene preset hooks)
+#include "alpanellensgaze.h"       // shared per-actor Lens Gaze controls
 #include "alpanelpatheditor.h"      // embedded shared Actor Pathing editor
+#include "alcinelightrig.h"
 #include "aldirectorswitcher.h"
 #include "llactormover.h"
 #include "llavatarnamecache.h"
@@ -25,6 +27,7 @@
 #include "llcheckboxctrl.h"
 #include "llclipboard.h"
 #include "llcombobox.h"
+#include "llcontrolavatar.h"        // animesh control-avatar resolution (Add Animesh to Cast)
 #include "lldir.h"                  // gDirUtilp (scene files)
 #include "lldirectorcast.h"
 #include "lldiriterator.h"          // scene file listing
@@ -49,6 +52,7 @@
 #include "lluri.h"                  // LLURI::escape scene filenames
 #include "llviewercontrol.h"        // gSavedSettings, LLCachedControl
 #include "llviewermenu.h"           // gMenuHolder, LLViewerMenuHolderGL
+#include "llviewerobject.h"         // getRootEdit/isAnimatedObject/getControlAvatar
 #include "llviewerobjectlist.h"     // gObjectList
 #include "llmotion.h"               // LLMotion::setPriorityOverride (play-local priority)
 #include "llvoavatar.h"
@@ -73,6 +77,7 @@ constexpr char TAB_ICON_ANIMATE[] = "Command_Poser_Icon";
 constexpr char TAB_ICON_CAMERA[]  = "Command_View_Icon";
 constexpr char TAB_ICON_TAKES[]   = "Command_Snapshot_Icon";
 constexpr char TAB_ICON_SHAFTS[]  = "Command_PersonalLighting_Icon";
+constexpr char TAB_ICON_LIGHTS[]  = "Command_Lightbox_Icon";
 constexpr char TAB_ICON_TEMPORAL[] = "Command_Environments_Icon"; // day-cycle/time metaphor (no clock asset ships)
 constexpr char TAB_ICON_WEATHER[]  = "Command_Water_Icon"; // rain/precipitation metaphor (distinct from Time's sky icon)
 
@@ -234,6 +239,7 @@ bool LLFloaterDirector::postBuild()
         { "camera_tab",  TAB_ICON_CAMERA },
         { "takes_tab",   TAB_ICON_TAKES },
         { "projector_volumetrics_tab", TAB_ICON_SHAFTS },
+        { "cine_light_rig_tab", TAB_ICON_LIGHTS },
         { "weather_tab", TAB_ICON_WEATHER },
         { "temporal_tab", TAB_ICON_TEMPORAL },
     };
@@ -259,6 +265,8 @@ bool LLFloaterDirector::postBuild()
     mFocusBtn = getChild<LLButton>("btn_focus");
     getChild<LLButton>("btn_add_you")->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onClickAddYou(); });
+    getChild<LLButton>("btn_add_animesh")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onClickAddAnimesh(); });
     mRemoveBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onCastRemove(); });
     mFocusBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickFocusActor(); });
     mCastList->setRightMouseDownCallback(
@@ -711,6 +719,57 @@ const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()
         // Surface Lens appearance is creative scene intent. Adaptive controls,
         // aggregate budget, master enable and debug remain global preferences.
         "PrismLensZoom",
+        // Client-only cinematic light rig. Anchor and FX phase are stored in
+        // the structured light_rig block; every persisted control is included
+        // here so a scene remains a complete settings snapshot.
+        "CineLightRigEnabled",
+        "CineLightRigPower",
+        "CineLightRigRadius",
+        "CineLightRigMasterEV",
+        "CineLightRigMasterTempMired",
+        "CineLightRigOffsetZ",
+        "CineLightRigHeadroomStops",
+        "CineLightRigBounceEnabled",
+        "CineLightRigBounceRatio",
+        "CineLightRigTransitionSec",
+        "CineLightRigDamping",
+        "CineLightRigTrackMode",
+        "CineLightRigCookieUUID",
+        "CineLightRigSeed",
+        "CineLightRigMirror",
+        "CineLightRigOrbitYaw",
+        "CineLightRigOrbitPitch",
+        "CineLightRigFX",
+        "CineLightRigShadowMode",
+        "CineLightRigGizmo",
+        "CineLightRigKeyYaw",
+        "CineLightRigKeyPitch",
+        "CineLightRigKeyProfile",
+        "CineLightRigKeyEV",
+        "CineLightRigKeyBeam",
+        "CineLightRigKeyGobo",
+        "CineLightRigKeyOn",
+        "CineLightRigFillYaw",
+        "CineLightRigFillPitch",
+        "CineLightRigFillProfile",
+        "CineLightRigFillEV",
+        "CineLightRigFillBeam",
+        "CineLightRigFillGobo",
+        "CineLightRigFillOn",
+        "CineLightRigRimYaw",
+        "CineLightRigRimPitch",
+        "CineLightRigRimProfile",
+        "CineLightRigRimEV",
+        "CineLightRigRimBeam",
+        "CineLightRigRimGobo",
+        "CineLightRigRimOn",
+        "CineLightRigBgYaw",
+        "CineLightRigBgPitch",
+        "CineLightRigBgProfile",
+        "CineLightRigBgEV",
+        "CineLightRigBgBeam",
+        "CineLightRigBgGobo",
+        "CineLightRigBgOn",
     };
     return settings;
 }
@@ -826,6 +885,7 @@ bool LLFloaterDirector::saveScene(const std::string& name)
     const LLSD prism = LLPrismLens::sceneData();
     scene["prism_captures"] = prism["prism_captures"];
     scene["prism_displays"] = prism["prism_displays"];
+    scene["light_rig"] = ALCineLightRig::instance().sceneData();
 
     // ... plus everything settings-backed
     LLSD settings = LLSD::emptyMap();
@@ -991,6 +1051,10 @@ void LLFloaterDirector::loadScene(const std::string& name)
             }
         }
     }
+
+    // Structured state carries the session-only anchor and the deterministic
+    // FX phase, plus a denormalized base setup for self-contained scenes.
+    ALCineLightRig::instance().applySceneData(scene["light_rig"]);
 
     // named preset first (its apply path writes CinematicCam* including the
     // mode), THEN the scene's explicit mode wins
@@ -1240,6 +1304,40 @@ void LLFloaterDirector::onClickAddYou()
     if (isAgentAvatarValid())
     {
         LLDirectorCast::instance().add(gAgentAvatarp->getID());
+    }
+}
+
+// Add every in-world-selected animesh object to the cast, resolving each linkset
+// to its control avatar (the same id the right-click Director > Add to Cast uses).
+// Non-animesh selections are skipped; add() is idempotent, so re-adds are no-ops.
+void LLFloaterDirector::onClickAddAnimesh()
+{
+    LLObjectSelectionHandle sel = LLSelectMgr::getInstance()->getSelection();
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    for (LLObjectSelection::valid_iterator it = sel->valid_begin(), end = sel->valid_end();
+         it != end; ++it)
+    {
+        LLViewerObject* obj = (*it)->getObject();
+        if (!obj)
+        {
+            continue;
+        }
+        LLViewerObject* root = obj->getRootEdit();
+        if (!root)
+        {
+            root = obj;
+        }
+        if (!root->isAnimatedObject())
+        {
+            continue;
+        }
+        if (LLControlAvatar* cav = root->getControlAvatar())
+        {
+            if (!cav->isDead() && cav->getID().notNull())
+            {
+                cast.add(cav->getID()); // idempotent
+            }
+        }
     }
 }
 
@@ -1593,9 +1691,14 @@ void LLFloaterDirector::refreshMoveTab()
     // drives startAll/stopAll, Selected acts on exactly this set, so the buttons
     // behave identically to the standalone floater (which feeds its roster
     // selection the same way).
+    const uuid_vec_t selected = selectedCastIds();
     if (mMoverPanel)
     {
-        mMoverPanel->setSelectedActors(selectedCastIds());
+        mMoverPanel->setSelectedActors(selected);
+    }
+    if (ALPanelLensGaze* gaze = findChild<ALPanelLensGaze>("lens_gaze_panel"))
+    {
+        gaze->setSelectedActors(selected);
     }
 }
 

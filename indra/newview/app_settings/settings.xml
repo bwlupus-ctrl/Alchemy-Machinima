@@ -2,6 +2,349 @@
 <llsd xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:noNamespaceSchemaLocation="llsd.xsd">
 <map>
+    <key>CineLightRigEnabled</key>
+    <map>
+      <key>Comment</key><string>Enable client-only prim-free cinematic light emitters</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigScaleAware</key>
+    <map>
+      <key>Comment</key><string>Scale cinematic light geometry to the resolved subject's uniform render scale</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>1</integer>
+    </map>
+    <key>CineLightRigPower</key>
+    <map>
+      <key>Comment</key><string>Master artistic power switch for the cinematic light rig</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>1</integer>
+    </map>
+    <key>CineLightRigRadius</key>
+    <map>
+      <key>Comment</key><string>Cinematic light orbit radius in metres</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.5</real>
+    </map>
+    <key>CineLightRigMasterEV</key>
+    <map>
+      <key>Comment</key><string>Master cinematic light exposure in stops</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
+    <key>CineLightRigMasterTempMired</key>
+    <map>
+      <key>Comment</key><string>Global white-balance trim in mireds (+warm/-cool) applied to all rig lights, preserving each light's gel</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
+    <key>CineLightRigOffsetZ</key>
+    <map>
+      <key>Comment</key><string>Vertical trim from the anchor avatar chest in metres</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
+    <key>CineLightRigHeadroomStops</key>
+    <map>
+      <key>Comment</key><string>Exposure stops reserved below the viewer light-intensity ceiling</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>2.0</real>
+    </map>
+    <key>CineLightRigBounceEnabled</key>
+    <map>
+      <key>Comment</key><string>Enable the four cinematic bounce-fill omni emitters</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>1</integer>
+    </map>
+    <key>CineLightRigBounceRatio</key>
+    <map>
+      <key>Comment</key><string>Bounce omni intensity as a fraction of its projector</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.45</real>
+    </map>
+    <key>CineLightRigTransitionSec</key>
+    <map>
+      <key>Comment</key><string>Cubic transition duration for setup and aim changes</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.9</real>
+    </map>
+    <key>CineLightRigDamping</key>
+    <map>
+      <key>Comment</key><string>Presentation-time anchor damping constant in seconds; zero follows rigidly</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
+    <key>CineLightRigTrackMode</key>
+    <map>
+      <key>Comment</key><string>Rig centre tracking mode: 0 follows the skeleton chest joint, 1 follows the stable body position</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigCookieUUID</key>
+    <map>
+      <key>Comment</key><string>Default projector cookie UUID for all cinematic rig projectors</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>String</string>
+      <key>Value</key><string>5748decc-f629-461c-9a36-a35a221fe21f</string>
+    </map>
+    <key>CineLightRigSeed</key>
+    <map>
+      <key>Comment</key><string>Deterministic counter-hash seed for cinematic light FX; valid range is 1..4294967295 and the model substitutes the default for invalid 0</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>324508639</integer>
+    </map>
+    <key>CineLightRigMirror</key>
+    <map>
+      <key>Comment</key><string>Mirror pristine light yaw before applying orbit transforms</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigOrbitYaw</key>
+    <map>
+      <key>Comment</key><string>Non-accumulating global cinematic light yaw transform in degrees</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
+    <key>CineLightRigOrbitPitch</key>
+    <map>
+      <key>Comment</key><string>Non-accumulating global cinematic light pitch transform in degrees</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
+    <key>CineLightRigFX</key>
+    <map>
+      <key>Comment</key><string>Active deterministic light effect; -1 means no effect</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>-1</integer>
+    </map>
+    <key>CineLightRigShadowMode</key>
+    <map>
+      <key>Comment</key><string>Rig shadow policy: 0 none, 1 key only, 2 all projectors compete</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>1</integer>
+    </map>
+    <key>CineLightRigGizmo</key>
+    <map>
+      <key>Comment</key><string>Show the display-only cinematic light aiming gizmo</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigKeyYaw</key>
+    <map>
+      <key>Comment</key><string>KEY pristine yaw in degrees</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>45.0</real>
+    </map>
+    <key>CineLightRigKeyPitch</key>
+    <map>
+      <key>Comment</key><string>KEY pristine pitch in degrees</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>35.0</real>
+    </map>
+    <key>CineLightRigKeyProfile</key>
+    <map>
+      <key>Comment</key><string>KEY colour-profile index</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>3</integer>
+    </map>
+    <key>CineLightRigKeyEV</key>
+    <map>
+      <key>Comment</key><string>KEY exposure in stops</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
+    <key>CineLightRigKeyBeam</key>
+    <map>
+      <key>Comment</key><string>KEY beam index</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>1</integer>
+    </map>
+    <key>CineLightRigKeyGobo</key>
+    <map>
+      <key>Comment</key><string>KEY gobo index into the bundled library (0 = default cookie)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigKeyOn</key>
+    <map>
+      <key>Comment</key><string>KEY base light switch</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>1</integer>
+    </map>
+    <key>CineLightRigFillYaw</key>
+    <map>
+      <key>Comment</key><string>FILL pristine yaw in degrees</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>-45.0</real>
+    </map>
+    <key>CineLightRigFillPitch</key>
+    <map>
+      <key>Comment</key><string>FILL pristine pitch in degrees</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>5.0</real>
+    </map>
+    <key>CineLightRigFillProfile</key>
+    <map>
+      <key>Comment</key><string>FILL colour-profile index</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>3</integer>
+    </map>
+    <key>CineLightRigFillEV</key>
+    <map>
+      <key>Comment</key><string>FILL exposure in stops</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>-2.0</real>
+    </map>
+    <key>CineLightRigFillBeam</key>
+    <map>
+      <key>Comment</key><string>FILL beam index</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>1</integer>
+    </map>
+    <key>CineLightRigFillGobo</key>
+    <map>
+      <key>Comment</key><string>FILL gobo index into the bundled library (0 = default cookie)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigFillOn</key>
+    <map>
+      <key>Comment</key><string>FILL base light switch</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>1</integer>
+    </map>
+    <key>CineLightRigRimYaw</key>
+    <map>
+      <key>Comment</key><string>RIM pristine yaw in degrees</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>-135.0</real>
+    </map>
+    <key>CineLightRigRimPitch</key>
+    <map>
+      <key>Comment</key><string>RIM pristine pitch in degrees</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>45.0</real>
+    </map>
+    <key>CineLightRigRimProfile</key>
+    <map>
+      <key>Comment</key><string>RIM colour-profile index</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>4</integer>
+    </map>
+    <key>CineLightRigRimEV</key>
+    <map>
+      <key>Comment</key><string>RIM exposure in stops</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>-0.5</real>
+    </map>
+    <key>CineLightRigRimBeam</key>
+    <map>
+      <key>Comment</key><string>RIM beam index</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigRimGobo</key>
+    <map>
+      <key>Comment</key><string>RIM gobo index into the bundled library (0 = default cookie)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigRimOn</key>
+    <map>
+      <key>Comment</key><string>RIM base light switch</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>1</integer>
+    </map>
+    <key>CineLightRigBgYaw</key>
+    <map>
+      <key>Comment</key><string>BG pristine yaw in degrees</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
+    <key>CineLightRigBgPitch</key>
+    <map>
+      <key>Comment</key><string>BG pristine pitch in degrees</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>-20.0</real>
+    </map>
+    <key>CineLightRigBgProfile</key>
+    <map>
+      <key>Comment</key><string>BG colour-profile index</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>3</integer>
+    </map>
+    <key>CineLightRigBgEV</key>
+    <map>
+      <key>Comment</key><string>BG exposure in stops</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
+    <key>CineLightRigBgBeam</key>
+    <map>
+      <key>Comment</key><string>BG beam index</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigBgGobo</key>
+    <map>
+      <key>Comment</key><string>BG gobo index into the bundled library (0 = default cookie)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigBgOn</key>
+    <map>
+      <key>Comment</key><string>BG base light switch</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
     <key>CinematicCamBoneAimPitch</key>
     <map>
       <key>Comment</key>
@@ -14518,6 +14861,28 @@
       <key>Value</key>
       <integer>0</integer>
   </map>
+  <key>BDMergeLocalFogVolumes</key>
+  <map>
+      <key>Comment</key>
+      <string>[Local Fog] Client-only atmospheric volume master. Default OFF uploads localfog_count=0, preserving the existing froxel medium exactly. Never creates or edits simulator objects.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+  </map>
+  <key>LocalFogBank</key>
+  <map>
+      <key>Comment</key>
+      <string>[Local Fog] Versioned client-only bank of up to eight atmospheric OBB or ellipsoid volumes.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>LLSD</string>
+      <key>Value</key>
+      <map />
+  </map>
   <key>BDMergeFroxelGridX</key>
   <map>
       <key>Comment</key>
@@ -14748,6 +15113,17 @@
       <string>F32</string>
       <key>Value</key>
       <real>0.9</real>
+  </map>
+  <key>BDMergeFroxelTemporalReject</key>
+  <map>
+      <key>Comment</key>
+      <string>[Local Fog] Density-gradient history rejection strength for froxel temporal accumulation. The upload is zero while local fog is disabled; 0 is an exact no-op.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>8.0</real>
   </map>
   <key>BDMergeFroxelDebug</key>
   <map>
@@ -23644,6 +24020,13 @@
     <key>Persist</key><integer>1</integer>
     <key>Type</key><string>F32</string>
     <key>Value</key><real>3.0</real>
+  </map>
+  <key>BDMergeGazeTorsoLagRatio</key>
+  <map>
+    <key>Comment</key><string>Torso trailing ratio for gaze: torso smoothing time vs head (1 = legacy rigid chain)</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>1.8</real>
   </map>
   <key>BDMergeGazeBehindPolicy</key>
   <map>

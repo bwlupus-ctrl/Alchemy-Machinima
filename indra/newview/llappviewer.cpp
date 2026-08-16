@@ -70,6 +70,8 @@
 #include "alghoststudio.h"      // per-instance Keep facing transforms (idle tick)
 #include "altoolghostedit.h"    // [GhostStudio] per-frame manip-proxy sync (idle tick)
 #include "aldirectoranimswitcher.h" // presentation-time animation switchboard
+#include "allocalfogmanager.h"      // client-only atmospheric volumes
+#include "alcinelightrig.h"         // client-only cinematic lights
 #include "aldirectorswitcher.h" // presentation-time camera switch schedule
 #include "llcinematiccamera.h"
 #include "llflycamrecorder.h"
@@ -5518,6 +5520,11 @@ void LLAppViewer::idle()
     ALDirectorAnimSwitcher::instance().tick(
         LLPresentationTime::currentFrame().presentation_time);
 
+    ALLocalFogManager::instance().tick(
+        LLPresentationTime::currentFrame().presentation_time);
+    ALCineLightRig::instance().tick(
+        LLPresentationTime::currentFrame().presentation_time);
+
     if (gAgentPilot.isPlaying() && gAgentPilot.getOverrideCamera())
     {
         gAgentPilot.moveCamera();
@@ -6046,6 +6053,10 @@ void LLAppViewer::disconnectViewer()
     {
         LLSelectMgr::getInstance()->deselectAll();
     }
+
+    // Local light emitters must leave mLights before the region/object list is
+    // torn down. This is idempotent on logout, relog, and final shutdown.
+    ALCineLightRig::instance().shutdown();
 
     // [BDMerge G3.3 Phase 2] Session-only projector volumetric-shaft opt-in set
     // must not survive a session; clear it on logout/relog (this runs before

@@ -43,6 +43,7 @@
 #include "lltextbox.h"
 #include "llcombobox.h"
 #include "llcheckboxctrl.h"
+#include "llcolorswatch.h"
 #include "llbutton.h"
 
 // [BDMerge G3.3 Batch 3] Selected Light quick panel plumbing.
@@ -60,6 +61,16 @@ ALFloaterLightBox::ALFloaterLightBox(const LLSD& key)
     mCommitCallbackRegistrar.add("LightBox.SelLightVolumetric", std::bind(&ALFloaterLightBox::onSelLightVolumetric, this));
     mCommitCallbackRegistrar.add("LightBox.SelLightCaptureOverride", std::bind(&ALFloaterLightBox::onSelLightCaptureOverride, this));
     mCommitCallbackRegistrar.add("LightBox.SelLightClearOverride", std::bind(&ALFloaterLightBox::onSelLightClearOverride, this));
+    mCommitCallbackRegistrar.add("LightBox.SelGoboPattern", std::bind(&ALFloaterLightBox::onSelGoboChanged, this));
+    mCommitCallbackRegistrar.add("LightBox.SelGoboAnimMode", std::bind(&ALFloaterLightBox::onSelGoboChanged, this));
+    mCommitCallbackRegistrar.add("LightBox.SelGoboSpeed", std::bind(&ALFloaterLightBox::onSelGoboChanged, this));
+    mCommitCallbackRegistrar.add("LightBox.SelGoboZoom", std::bind(&ALFloaterLightBox::onSelGoboChanged, this));
+    mCommitCallbackRegistrar.add("LightBox.SelGoboDispersion", std::bind(&ALFloaterLightBox::onSelGoboChanged, this));
+    mCommitCallbackRegistrar.add("LightBox.SelGoboTint", std::bind(&ALFloaterLightBox::onSelGoboChanged, this));
+    mCommitCallbackRegistrar.add("LightBox.SelGoboVar1", std::bind(&ALFloaterLightBox::onSelGoboChanged, this));
+    mCommitCallbackRegistrar.add("LightBox.SelGoboVar2", std::bind(&ALFloaterLightBox::onSelGoboChanged, this));
+    mCommitCallbackRegistrar.add("LightBox.SelGoboSoft", std::bind(&ALFloaterLightBox::onSelGoboChanged, this));
+    mCommitCallbackRegistrar.add("LightBox.SelGoboInvert", std::bind(&ALFloaterLightBox::onSelGoboChanged, this));
 }
 
 ALFloaterLightBox::~ALFloaterLightBox()
@@ -132,6 +143,16 @@ void ALFloaterLightBox::updateSelectedLightPanel()
     LLButton*       cap_btn = findChild<LLButton>("sl_capture");
     LLButton*       clr_btn = findChild<LLButton>("sl_clear");
     LLTextBox*      status  = findChild<LLTextBox>("sl_status");
+    LLComboBox*     gobo_pattern = findChild<LLComboBox>("sl_gobo");
+    LLComboBox*     gobo_anim = findChild<LLComboBox>("sl_gobo_animmode");
+    LLSliderCtrl*   gobo_speed = findChild<LLSliderCtrl>("sl_gobo_speed");
+    LLSliderCtrl*   gobo_zoom = findChild<LLSliderCtrl>("sl_gobo_zoom");
+    LLSliderCtrl*   gobo_dispersion = findChild<LLSliderCtrl>("sl_gobo_dispersion");
+    LLColorSwatchCtrl* gobo_tint = findChild<LLColorSwatchCtrl>("sl_gobo_tint");
+    LLSliderCtrl*   gobo_var1 = findChild<LLSliderCtrl>("sl_gobo_var1");
+    LLSliderCtrl*   gobo_var2 = findChild<LLSliderCtrl>("sl_gobo_var2");
+    LLSliderCtrl*   gobo_soft = findChild<LLSliderCtrl>("sl_gobo_soft");
+    LLCheckBoxCtrl* gobo_invert = findChild<LLCheckBoxCtrl>("sl_gobo_invert");
 
     LLViewerObject* pObj = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
     LLVOVolume* pVol = dynamic_cast<LLVOVolume*>(pObj);
@@ -140,6 +161,16 @@ void ALFloaterLightBox::updateSelectedLightPanel()
     cast_cb->setEnabled(is_projector);
     vol_cb->setEnabled(is_projector);
     cap_btn->setEnabled(is_projector);
+    if (gobo_pattern) gobo_pattern->setEnabled(is_projector);
+    if (gobo_anim) gobo_anim->setEnabled(is_projector);
+    if (gobo_speed) gobo_speed->setEnabled(is_projector);
+    if (gobo_zoom) gobo_zoom->setEnabled(is_projector);
+    if (gobo_dispersion) gobo_dispersion->setEnabled(is_projector);
+    if (gobo_tint) gobo_tint->setEnabled(is_projector);
+    if (gobo_var1) gobo_var1->setEnabled(is_projector);
+    if (gobo_var2) gobo_var2->setEnabled(is_projector);
+    if (gobo_soft) gobo_soft->setEnabled(is_projector);
+    if (gobo_invert) gobo_invert->setEnabled(is_projector);
 
     if (is_projector)
     {
@@ -147,7 +178,19 @@ void ALFloaterLightBox::updateSelectedLightPanel()
         // Checked = casts shadows (default), i.e. NOT in the opt-out set.
         cast_cb->set(!LLPipeline::isProjectorNoShadow(id));
         vol_cb->set(LLPipeline::isVolumetricShaftEnabled(id));
-        clr_btn->setEnabled(LLPipeline::hasVolumetricShaftOverride(id));
+        clr_btn->setEnabled(LLPipeline::hasVolumetricShaftOverride(id) ||
+                            LLPipeline::hasGoboOverride(id));
+        const LLPipeline::GoboOverride gobo = LLPipeline::getGoboOverride(id);
+        if (gobo_pattern) gobo_pattern->setValue(LLSD(gobo.mPattern));
+        if (gobo_anim) gobo_anim->setValue(LLSD(gobo.mAnimMode));
+        if (gobo_speed) gobo_speed->setValue(LLSD((F64)gobo.mSpeed));
+        if (gobo_zoom) gobo_zoom->setValue(LLSD((F64)gobo.mZoom));
+        if (gobo_dispersion) gobo_dispersion->setValue(LLSD((F64)gobo.mDispersion));
+        if (gobo_tint) gobo_tint->set(LLColor4(gobo.mTint), TRUE);
+        if (gobo_var1) gobo_var1->setValue(LLSD((F64)gobo.mPatternParams.mV[0]));
+        if (gobo_var2) gobo_var2->setValue(LLSD((F64)gobo.mPatternParams.mV[1]));
+        if (gobo_soft) gobo_soft->setValue(LLSD((F64)gobo.mPatternParams.mV[2]));
+        if (gobo_invert) gobo_invert->set(gobo.mPatternParams.mV[3] >= 0.5f);
         if (status)
         {
             LLSelectNode* node = LLSelectMgr::getInstance()->getSelection()->getFirstRootNode();
@@ -160,6 +203,11 @@ void ALFloaterLightBox::updateSelectedLightPanel()
         cast_cb->set(false);
         vol_cb->set(false);
         clr_btn->setEnabled(false);
+        if (gobo_pattern) gobo_pattern->setValue(LLSD(-1));
+        if (gobo_anim) gobo_anim->setValue(LLSD(0));
+        if (gobo_speed) gobo_speed->setValue(LLSD(1.0));
+        if (gobo_zoom) gobo_zoom->setValue(LLSD(1.0));
+        if (gobo_dispersion) gobo_dispersion->setValue(LLSD(0.0));
         if (status)
             status->setValue("Select a spotlight projector in-world to edit it here.");
     }
@@ -203,7 +251,55 @@ void ALFloaterLightBox::onSelLightClearOverride()
 {
     LLViewerObject* pObj = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
     if (pObj && pObj->getID().notNull())
+    {
         LLPipeline::clearVolumetricShaftOverride(pObj->getID());
+        LLPipeline::clearGoboOverride(pObj->getID());
+    }
+}
+
+void ALFloaterLightBox::onSelGoboChanged()
+{
+    LLViewerObject* pObj = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
+    LLVOVolume* pVol = dynamic_cast<LLVOVolume*>(pObj);
+    if (!pVol || !pVol->isLightSpotlight() || pObj->getID().isNull())
+    {
+        return;
+    }
+
+    LLComboBox* pattern = findChild<LLComboBox>("sl_gobo");
+    LLComboBox* anim = findChild<LLComboBox>("sl_gobo_animmode");
+    LLSliderCtrl* speed = findChild<LLSliderCtrl>("sl_gobo_speed");
+    LLSliderCtrl* zoom = findChild<LLSliderCtrl>("sl_gobo_zoom");
+    LLSliderCtrl* dispersion = findChild<LLSliderCtrl>("sl_gobo_dispersion");
+    if (!pattern || !anim || !speed || !zoom || !dispersion)
+    {
+        return;
+    }
+
+    LLColorSwatchCtrl* tint = findChild<LLColorSwatchCtrl>("sl_gobo_tint");
+    LLSliderCtrl* var1 = findChild<LLSliderCtrl>("sl_gobo_var1");
+    LLSliderCtrl* var2 = findChild<LLSliderCtrl>("sl_gobo_var2");
+    LLSliderCtrl* soft = findChild<LLSliderCtrl>("sl_gobo_soft");
+    LLCheckBoxCtrl* invert = findChild<LLCheckBoxCtrl>("sl_gobo_invert");
+
+    LLPipeline::GoboOverride gobo;
+    gobo.mPattern = pattern->getValue().asInteger();
+    gobo.mAnimMode = anim->getValue().asInteger();
+    gobo.mSpeed = static_cast<F32>(speed->getValue().asReal());
+    gobo.mZoom = static_cast<F32>(zoom->getValue().asReal());
+    gobo.mDispersion = static_cast<F32>(dispersion->getValue().asReal());
+    // Gobo v2: fresh GoboOverride defaults keep tint white / params zero if a
+    // control is absent, so nothing here can perturb the off-path.
+    if (tint)
+    {
+        const LLColor4 c = tint->get();
+        gobo.mTint = LLColor3(c.mV[0], c.mV[1], c.mV[2]);
+    }
+    if (var1) gobo.mPatternParams.mV[0] = static_cast<F32>(var1->getValue().asReal());
+    if (var2) gobo.mPatternParams.mV[1] = static_cast<F32>(var2->getValue().asReal());
+    if (soft) gobo.mPatternParams.mV[2] = static_cast<F32>(soft->getValue().asReal());
+    if (invert) gobo.mPatternParams.mV[3] = invert->get() ? 1.f : 0.f;
+    LLPipeline::setGoboOverride(pObj->getID(), gobo);
 }
 
 void ALFloaterLightBox::populateLUTCombo()

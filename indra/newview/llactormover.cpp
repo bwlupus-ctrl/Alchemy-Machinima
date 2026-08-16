@@ -11,6 +11,7 @@
 #include "llpresentationtime.h"    // [Temporal Capture]
 
 #include "llactormover.h"
+#include "algazemath.h"
 
 #include <algorithm>                // std::reverse (path reverse op)
 #include <set>                      // collectGhostBatches (wanted-actor set)
@@ -34,6 +35,7 @@
 #include "llflycamrecorder.h"       // sync-to-take: the recorder playhead is the clock
 #include "llfloaterreg.h"           // heading preview only draws with the floater open
 #include "llframetimer.h"           // per-frame idempotency for applyOverride()
+#include "llghostavatar.h"          // clone eye-motion lifecycle for procedural gaze
 #include "llmaterial.h"             // legacy alpha-mode classification (static ghost faces)
 #include "llcinematiccamera.h"      // camera-gaze feedback interlock
 #include "llmotion.h"               // LLMotion::setPriorityOverride (custom-anim priority)
@@ -825,6 +827,26 @@ F32 LLActorMover::getGazeSmoothing(const LLUUID& actor_id) const
 {
     auto it = mGazes.find(path_key(actor_id));
     return it != mGazes.end() ? it->second.mSmoothing : 0.5f;
+}
+
+void LLActorMover::setGazeEyelineOffset(const LLUUID& actor_id,
+                                        F32 yaw_degrees, F32 pitch_degrees)
+{
+    Gaze& gaze = mGazes[path_key(actor_id)];
+    gaze.mEyelineYawDeg = llclamp(yaw_degrees, -15.f, 15.f);
+    gaze.mEyelinePitchDeg = llclamp(pitch_degrees, -10.f, 10.f);
+}
+
+F32 LLActorMover::getGazeEyelineYaw(const LLUUID& actor_id) const
+{
+    auto it = mGazes.find(path_key(actor_id));
+    return it != mGazes.end() ? it->second.mEyelineYawDeg : 0.f;
+}
+
+F32 LLActorMover::getGazeEyelinePitch(const LLUUID& actor_id) const
+{
+    auto it = mGazes.find(path_key(actor_id));
+    return it != mGazes.end() ? it->second.mEyelinePitchDeg : 0.f;
 }
 
 bool LLActorMover::getGazeStatus(const LLUUID& actor_id, std::string& out) const
@@ -2310,6 +2332,17 @@ void LLActorMover::onActorRuntimeReplaced(const LLUUID& stable_id,
         from = parked->second;
     }
 
+    // A clone's eye motion owns blink visual params in addition to joints.
+    // Stop and neutralize it before any runtime key is parked, moved or erased.
+    if (from.notNull())
+    {
+        if (LLVOAvatar* avatar = resolve_actor(from);
+            avatar && avatar->isGhostAvatar())
+        {
+            static_cast<LLGhostAvatar*>(avatar)->setEntityEyeMotionEnabled(false);
+        }
+    }
+
     if (removing_instance)
     {
         // deliberate removal: this runtime uuid can never resolve again, so a
@@ -2519,6 +2552,11 @@ void LLActorMover::dropActor(const LLUUID& actor_id)
     mPaths.erase(actor_id);
     mHistory.erase(actor_id);
     mGazes.erase(actor_id);
+    if (LLVOAvatar* avatar = resolve_actor(actor_id);
+        avatar && avatar->isGhostAvatar())
+    {
+        static_cast<LLGhostAvatar*>(avatar)->setEntityEyeMotionEnabled(false);
+    }
     // as a follower only: followers OF a removed actor keep the documented
     // graceful leader-gone hold, exactly as if the leader had derezzed
     mFollows.erase(actor_id);
@@ -3081,6 +3119,14 @@ void LLActorMover::applyGaze(LLVOAvatar* av)
     }
     Gaze& g = git->second;
 
+    // Real avatars already run their stock eye motion. Synthetic clones do
+    // not run default motions, so opt only their eye/blink motion in while
+    // authored gaze is enabled (never ANIM_AGENT_HEAD_ROT).
+    if (av->isGhostAvatar())
+    {
+        static_cast<LLGhostAvatar*>(av)->setEntityEyeMotionEnabled(g.mEnabled);
+    }
+
     // Tangent gaze genuinely needs locomotion. Camera/cast/point gaze does not,
     // so a stationary or frozen actor can keep tracking its target.
     const Move* mv = nullptr;
@@ -3541,6 +3587,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     // Aim from the head where it is actually rendered.  Ghost scale is an
     // outer draw transform and is intentionally absent from joint world data.
     const LLVector3 headPos = gazeRenderedJointPosition(av, head);
+    const LLQuaternion rootWorld = root->getWorldRotation();
 
     // ---- resolve the LIVE desired look direction (world / agent frame) --------
     // A direction along the current travel (path tangent, look-ahead) is the
@@ -3620,6 +3667,14 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         }
         if (dir.magVecSquared() > 1e-6f)
         {
+            const F32 eyeline_yaw = g.mEyelineYawDeg * DEG_TO_RAD;
+            const F32 eyeline_pitch = g.mEyelinePitchDeg * DEG_TO_RAD;
+            if (fabsf(eyeline_yaw) + fabsf(eyeline_pitch) > 1e-4f)
+            {
+                const LLVector3 up_axis = LLVector3(0.f, 0.f, 1.f) * rootWorld;
+                dir = ALGazeMath::eyelineOffsetDir(
+                    dir, up_axis, eyeline_yaw, eyeline_pitch);
+            }
             dir.normVec();
             haveDir = true;
         }
@@ -3636,7 +3691,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         else if (advance)
         {
             const F32 tau = GAZE_TAU_MIN + (GAZE_TAU_MAX - GAZE_TAU_MIN) * g.mSmoothing;
-            const F32 a   = 1.f - expf(-dt / llmax(tau, 0.01f));
+            const F32 a   = ALGazeMath::chaseAlpha(dt, tau);
             g.mSmoothDir += (dir - g.mSmoothDir) * a;
             if (g.mSmoothDir.normVec() < 1e-4f)
             {
@@ -3655,7 +3710,6 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     const F32 env_eased = g.mEnv * g.mEnv * (3.f - 2.f * g.mEnv);    // smoothstep
     const F32 env_i     = env_eased * g.mIntensity;
 
-    const LLQuaternion rootWorld = root->getWorldRotation();
     const LLQuaternion invRoot   = ~rootWorld;
 
     LLVector3 look = g.mSmoothDir;      // unit world direction
@@ -3701,8 +3755,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         fabsf(raw_yaw) > llclamp((F32)behind_angle_deg, 0.f, 180.f) * DEG_TO_RAD;
     if (advance)
     {
-        const F32 step = (GAZE_EASE_TIME > 0.f) ? dt / GAZE_EASE_TIME : 1.f;
-        g.mBehindEnv = llclamp(g.mBehindEnv + (behind ? -step : step), 0.f, 1.f);
+        g.mBehindEnv = ALGazeMath::behindEnvStep(
+            g.mBehindEnv, behind, dt, GAZE_EASE_TIME);
     }
     if (behind_policy != 1)
     {
@@ -3732,11 +3786,9 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         // motion into dead-zone-sized snaps.
         const F32 tau =
             GAZE_TAU_MIN + (GAZE_TAU_MAX - GAZE_TAU_MIN) * g.mSmoothing;
-        const F32 a = 1.f - expf(-dt / llmax(tau, 0.01f));
-        const F32 chase = a * (aim_error - dead_zone) / aim_error;
-        g.mBodyAimPitch += pitch_delta * chase;
-        g.mBodyAimYaw =
-            llsimple_angle(g.mBodyAimYaw + yaw_delta * chase);
+        ALGazeMath::deadZoneChase(
+            g.mBodyAimPitch, g.mBodyAimYaw, raw_pitch, raw_yaw,
+            dead_zone, ALGazeMath::chaseAlpha(dt, tau));
     }
     const F32 wBody = env_i * g.mHeadEyeBlend * behind_eased;
 
@@ -3758,6 +3810,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             // stale or arbitrary rotation.
             g.mAppliedYaw = target_yaw;
             g.mAppliedPitch = target_pitch;
+            g.mTorsoAimYaw = target_yaw;
+            g.mTorsoAimPitch = target_pitch;
             g.mAppliedValid = true;
             g.mAppliedSlewing = false;
         }
@@ -3806,9 +3860,28 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 g.mAppliedPitch = target_pitch;
             }
         }
-        head_rot_local.setEulerAngles(
-            0.f, g.mAppliedPitch, g.mAppliedYaw);
+        static LLCachedControl<F32> torso_lag_ratio(
+            gSavedSettings, "BDMergeGazeTorsoLagRatio", 1.8f);
+        if (advance)
+        {
+            const F32 ratio = llclamp((F32)torso_lag_ratio, 1.f, 4.f);
+            const F32 tau_user =
+                GAZE_TAU_MIN + (GAZE_TAU_MAX - GAZE_TAU_MIN) * g.mSmoothing;
+            // At ratio one, mirror the actually-applied (possibly seam-slewed)
+            // head aim so the escape hatch is the exact legacy torso target.
+            const F32 torso_target_pitch =
+                ratio <= 1.001f ? g.mAppliedPitch : target_pitch;
+            const F32 torso_target_yaw =
+                ratio <= 1.001f ? g.mAppliedYaw : target_yaw;
+            ALGazeMath::torsoChase(
+                g.mTorsoAimPitch, g.mTorsoAimYaw,
+                torso_target_pitch, torso_target_yaw, ratio, dt, tau_user);
+        }
+        head_rot_local.setEulerAngles(0.f, g.mAppliedPitch, g.mAppliedYaw);
     }
+
+    LLQuaternion torso_aim_local;
+    torso_aim_local.setEulerAngles(0.f, g.mTorsoAimPitch, g.mTorsoAimYaw);
 
     if (wBody > 0.001f)
     {
@@ -3820,7 +3893,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             if (LLJoint* torso = av->getJoint("mTorso"))
             {
                 const LLQuaternion torso_target =
-                    nlerp(g.mTorsoAmount, LLQuaternion::DEFAULT, head_rot_local);
+                    nlerp(g.mTorsoAmount, LLQuaternion::DEFAULT, torso_aim_local);
                 torso->setRotation(nlerp(wBody, torso->getRotation(), torso_target));
             }
         }

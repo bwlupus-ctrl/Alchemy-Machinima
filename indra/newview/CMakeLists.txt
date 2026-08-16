@@ -164,6 +164,7 @@ set(viewer_SOURCE_FILES
     alclassifieditem.cpp
     alderenderlist.cpp
     aldirectoranimswitcher.cpp
+    allocalfogmanager.cpp
     aldirectorhotkeys.cpp
     aldirectorswitcher.cpp
     aldirectorswitchermodel.cpp
@@ -280,6 +281,8 @@ set(viewer_SOURCE_FILES
     llclonefidelityaudit.cpp
     llghostdeferreddiagnostics.cpp
     alformationsolver.cpp
+    alcinelightrig.cpp
+    alcinelightrigmodel.cpp
     alweathermodel.cpp
     alghostgroupmodel.cpp
     alghostinteractionstate.cpp
@@ -305,7 +308,10 @@ set(viewer_SOURCE_FILES
     llpresentationtime.cpp
     alpanelactormover.cpp
     alpanelanimpreview.cpp
+    alpanelatmosphericvolumes.cpp
+    alpanelcinelightrig.cpp
     alpanelcinecamparams.cpp
+    alpanellensgaze.cpp
     alpaneldirectoranimswitcher.cpp
     alpaneldirectorswitcher.cpp
     alpanelweathersettings.cpp
@@ -1000,6 +1006,7 @@ set(viewer_HEADER_FILES
     alclassifieditem.h
     alderenderlist.h
     aldirectoranimswitcher.h
+    allocalfogmanager.h
     aldirectorhotkeys.h
     aldirectorswitcher.h
     aldirectorswitchermodel.h
@@ -1118,6 +1125,8 @@ set(viewer_HEADER_FILES
     llghostcoverage.h
     llghostdeferreddiagnostics.h
     alformationsolver.h
+    alcinelightrig.h
+    alcinelightrigmodel.h
     alweathermodel.h
     alghostgroupmodel.h
     alghostinteractionstate.h
@@ -1145,7 +1154,11 @@ set(viewer_HEADER_FILES
     lltemporalframecontext.h
     alpanelactormover.h
     alpanelanimpreview.h
+    alpanelatmosphericvolumes.h
+    alpanelcinelightrig.h
     alpanelcinecamparams.h
+    algazemath.h
+    alpanellensgaze.h
     alpaneldirectoranimswitcher.h
     alpaneldirectorswitcher.h
     alpanelweathersettings.h
@@ -2512,6 +2525,7 @@ if (BUILD_TESTING)
 
   SET(viewer_TEST_SOURCE_FILES
     alformationsolver.cpp
+    alcinelightrigmodel.cpp
     aldirectorswitchermodel.cpp
     alweathermodel.cpp
     alghostgroupmodel.cpp
@@ -2582,6 +2596,14 @@ if (BUILD_TESTING)
   )
 
   LL_ADD_PROJECT_UNIT_TESTS(${VIEWER_BINARY_NAME} "${viewer_TEST_SOURCE_FILES}")
+
+  # ALGazeMath is deliberately header-only, so register its TUT directly
+  # instead of inventing a production .cpp solely for the per-source macro.
+  LL_ADD_INTEGRATION_TEST(algazemath
+    ""
+    "${test_libs}"
+    "${test_project}"
+  )
 
   #set(TEST_DEBUG on)
   LL_ADD_INTEGRATION_TEST(cppfeatures

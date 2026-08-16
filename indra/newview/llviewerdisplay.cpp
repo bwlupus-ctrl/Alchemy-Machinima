@@ -29,9 +29,11 @@
 #include "llviewerdisplay.h"
 
 #include "alfloaterprogressview.h"
+#include "alcinelightrig.h"
 #include "fsyspath.h"
 #include "llactormover.h"
 #include "alghoststudio.h"   // [ActorMover] heading preview lines
+#include "allocalfogmanager.h"
 #include "altoolpathedit.h"  // [ActorMover] path-edit tool owns the live edit overlay
 #include "lltoolmgr.h"       // current-tool check for the path-edit overlay
 #include "llclonefidelityaudit.h"   // [CloneFidelity] late source-vs-clone audit hook
@@ -1809,6 +1811,7 @@ void render_ui_3d()
         // its per-camera guide toggled). Under the same UI-visibility gate so it
         // hides while filming.
         LLPrismLens::renderCameraGuides();
+        ALCineLightRig::instance().renderGizmo();
         // [ActorMover] While the path-edit tool is active, ALWAYS draw the edit
         // actor's path overlay -- ribbon + every node from the first one, plus
         // hover/selection highlight -- independent of the Show-path toggle, roster
@@ -1824,6 +1827,7 @@ void render_ui_3d()
         // Formation placement preview -- same UI pass, same gating discipline
         // (returns immediately unless a formation is actually staged).
         ALGhostStudio::instance().renderFormationPreview();
+        ALLocalFogManager::instance().renderOverlay();
     }
     else
     {

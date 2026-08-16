@@ -98,7 +98,7 @@
         <panel
          background_visible="false"
          follows="left|top|right"
-         height="376"
+         height="568"
          layout="topleft"
          left="0"
          name="move_scroll_content"
@@ -114,6 +114,16 @@
            left="0"
            name="actor_mover_panel"
            top="8"
+           width="360" />
+          <panel
+           class="panel_lens_gaze"
+           filename="panel_lens_gaze.xml"
+           follows="left|top|right"
+           height="188"
+           layout="topleft"
+           left="0"
+           name="lens_gaze_panel"
+           top="372"
            width="360" />
         </panel>
       </scroll_container>
@@ -139,7 +149,7 @@
         <panel
          background_visible="false"
          follows="left|top|right"
-         height="750"
+         height="638"
          layout="topleft"
          left="0"
          name="path_scroll_content"
@@ -161,7 +171,7 @@
            class="panel_path_editor"
            filename="panel_path_editor.xml"
            follows="left|top|right"
-           height="716"
+           height="604"
            layout="topleft"
            left="0"
            name="path_editor"

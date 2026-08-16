@@ -70,8 +70,6 @@ private:
     void refreshEditButtons();              // P3 QOL: undo/redo/reverse/mirror/loop/walk enable
     void refreshCopyCombo();                // P3 QOL: cast picker for "copy path to"
     void refreshChoreography();             // P3 sync-to-take + follow-the-leader row
-    void refreshGaze();                     // P3 look-at while walking
-    void refreshGazeCastCombo();            // cast picker for gaze target = cast member
     void syncListSelectionFromEngine();     // engine edit node -> list row
 
     S32  listSelectedNode() const;          // selected row -> node index (-1 none)
@@ -110,17 +108,6 @@ private:
     void onFollowCommit();          // combo pick -> set/clear the follow relationship
     void onFollowOffsetCommit();
     void onStopFollow();
-
-    // P3 look-at while walking: enable, target mode, cast-member pick, capture a
-    // fixed point from the camera, and the head/eyes-blend / intensity / smoothing
-    // knobs. Each writes the LLActorMover gaze config for the target actor.
-    void onGazeEnableToggle();
-    void onGazeTargetCommit();
-    void onGazeCastCommit();
-    void onGazeSetPoint();
-    void onGazeBlendCommit();
-    void onGazeIntensityCommit();
-    void onGazeSmoothingCommit();
 
     // P3 per-node camera authoring: capture the live render camera into the
     // selected node, clear it, flip cut/ease, and static-preview its framing
@@ -207,17 +194,6 @@ private:
     LLSpinCtrl*        mFollowOffset = nullptr;
     LLTextBox*         mFollowStatus = nullptr;
     std::string        mFollowSig;   // cast+target+cycle signature (rebuild on change)
-
-    // P3 look-at while walking (gaze)
-    LLCheckBoxCtrl*    mGazeEnable = nullptr;
-    LLComboBox*        mGazeTarget = nullptr;
-    LLComboBox*        mGazeCast = nullptr;
-    LLButton*          mGazeSetPoint = nullptr;
-    LLSliderCtrl*      mGazeBlend = nullptr;
-    LLSliderCtrl*      mGazeIntensity = nullptr;
-    LLSliderCtrl*      mGazeSmoothing = nullptr;
-    LLTextBox*         mGazeStatus = nullptr;
-    std::string        mGazeCastSig;   // cast+target signature (rebuild the picker on change)
 
     // in-world placement hint (hidden while the suspend banner is up)
     LLTextBox*         mHint = nullptr;

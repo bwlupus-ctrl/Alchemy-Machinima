@@ -4290,6 +4290,13 @@
 				</panel>
 			</scroll_container>
 		</panel>
+		<panel follows="all" label="Atmos Volumes" layout="topleft" name="atmospheric_volumes_settings" can_resize="false">
+			<scroll_container follows="all" height="806" layout="topleft" left="0" name="atmospheric_volumes_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="420">
+				<panel background_visible="false" follows="left|top|right" height="660" layout="topleft" left="0" name="atmospheric_volumes_scroll_content" top="0" width="400">
+					<panel class="panel_atmospheric_volumes" filename="panel_atmospheric_volumes.xml" follows="left|top|right" height="650" layout="topleft" left="10" name="atmospheric_volumes_shared" top="4" width="350" />
+				</panel>
+			</scroll_container>
+		</panel>
 		<!-- [BDMerge G3.3 Batch 3] Selected Light quick panel: live per-projector
 		     controls that follow the currently-selected object. Controls enable
 		     only when a spotlight projector is selected; state is driven from
@@ -4308,9 +4315,70 @@
 			<button follows="left|top" height="22" left="12" top_pad="8" width="200" layout="topleft" name="sl_capture" label="Capture shaft override">
 				<button.commit_callback function="LightBox.SelLightCaptureOverride" />
 			</button>
-			<button follows="left|top" height="22" left="12" top_pad="6" width="200" layout="topleft" name="sl_clear" label="Clear shaft override">
+			<button follows="left|top" height="22" left="12" top_pad="6" width="200" layout="topleft" name="sl_clear" label="Clear light overrides">
 				<button.commit_callback function="LightBox.SelLightClearOverride" />
 			</button>
+			<text follows="left|top" height="15" left="8" top_pad="14" width="384" layout="topleft" font="SansSerifBold" value="Cinematic Gobo" />
+			<text follows="left|top" height="15" left="12" top_pad="6" width="120" layout="topleft" value="Pattern:" />
+			<combo_box follows="left|top" height="22" left="132" top_pad="-18" width="220" layout="topleft" name="sl_gobo">
+				<combo_box.item label="Off (texture)" value="-1" />
+				<combo_box.item label="Venetian blinds" value="0" />
+				<combo_box.item label="Window" value="1" />
+				<combo_box.item label="Grate" value="2" />
+				<combo_box.item label="Ceiling fan" value="3" />
+				<combo_box.item label="Honeycomb / softbox" value="4" />
+				<combo_box.item label="Foliage / dapple" value="5" />
+				<combo_box.item label="Water caustics" value="6" />
+					<combo_box.item label="Prison bars" value="7" />
+					<combo_box.item label="Arched window" value="8" />
+					<combo_box.item label="Iris / vignette" value="9" />
+					<combo_box.item label="Dot grid" value="10" />
+					<combo_box.item label="Rings / starburst" value="11" />
+					<combo_box.item label="Clouds" value="12" />
+				<combo_box.commit_callback function="LightBox.SelGoboPattern" />
+			</combo_box>
+			<text follows="left|top" height="15" left="12" top_pad="8" width="120" layout="topleft" value="Animation:" />
+			<combo_box follows="left|top" height="22" left="132" top_pad="-18" width="220" layout="topleft" name="sl_gobo_animmode">
+				<combo_box.item label="None" value="0" />
+				<combo_box.item label="Rotate" value="1" />
+				<combo_box.item label="Wind sway" value="2" />
+					<combo_box.item label="Pan / scroll" value="3" />
+					<combo_box.item label="Pulse / breathe" value="4" />
+					<combo_box.item label="Flicker" value="5" />
+					<combo_box.item label="Strobe" value="6" />
+				<combo_box.commit_callback function="LightBox.SelGoboAnimMode" />
+			</combo_box>
+			<text follows="left|top" height="15" left="12" top_pad="8" width="120" layout="topleft" value="Speed:" />
+			<slider follows="left|top" height="20" left="132" top_pad="-18" width="220" layout="topleft" name="sl_gobo_speed" min_val="-8" max_val="8" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true">
+				<slider.commit_callback function="LightBox.SelGoboSpeed" />
+			</slider>
+			<text follows="left|top" height="15" left="12" top_pad="8" width="120" layout="topleft" value="Zoom:" />
+			<slider follows="left|top" height="20" left="132" top_pad="-18" width="220" layout="topleft" name="sl_gobo_zoom" min_val="0.1" max_val="8" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true">
+				<slider.commit_callback function="LightBox.SelGoboZoom" />
+			</slider>
+			<text follows="left|top" height="15" left="12" top_pad="8" width="120" layout="topleft" value="RGB dispersion:" />
+			<slider follows="left|top" height="20" left="132" top_pad="-18" width="220" layout="topleft" name="sl_gobo_dispersion" min_val="0" max_val="0.1" increment="0.001" decimal_digits="3" show_text="true" can_edit_text="true">
+				<slider.commit_callback function="LightBox.SelGoboDispersion" />
+			</slider>
+			<text follows="left|top" height="15" left="12" top_pad="8" width="120" layout="topleft" value="Gel tint:" />
+			<color_swatch follows="left|top" height="24" left="132" top_pad="-16" width="60" layout="topleft" name="sl_gobo_tint" can_apply_immediately="true" tool_tip="Colored gel multiplied onto the cookie. White = no tint.">
+				<color_swatch.commit_callback function="LightBox.SelGoboTint" />
+			</color_swatch>
+			<text follows="left|top" height="15" left="12" top_pad="8" width="120" layout="topleft" value="Detail:" />
+			<slider follows="left|top" height="20" left="132" top_pad="-18" width="220" layout="topleft" name="sl_gobo_var1" min_val="-1" max_val="1" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" tool_tip="Pattern detail / count. 0 = default look.">
+				<slider.commit_callback function="LightBox.SelGoboVar1" />
+			</slider>
+			<text follows="left|top" height="15" left="12" top_pad="8" width="120" layout="topleft" value="Thickness / tilt:" />
+			<slider follows="left|top" height="20" left="132" top_pad="-18" width="220" layout="topleft" name="sl_gobo_var2" min_val="-1" max_val="1" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" tool_tip="Secondary variation (thickness / tilt / blend). 0 = default.">
+				<slider.commit_callback function="LightBox.SelGoboVar2" />
+			</slider>
+			<text follows="left|top" height="15" left="12" top_pad="8" width="120" layout="topleft" value="Softness:" />
+			<slider follows="left|top" height="20" left="132" top_pad="-18" width="220" layout="topleft" name="sl_gobo_soft" min_val="0" max_val="1" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" tool_tip="Edge softness. 0 = default.">
+				<slider.commit_callback function="LightBox.SelGoboSoft" />
+			</slider>
+			<check_box follows="left|top" height="16" left="12" top_pad="8" width="360" layout="topleft" name="sl_gobo_invert" label="Invert (negative cookie)">
+				<check_box.commit_callback function="LightBox.SelGoboInvert" />
+			</check_box>
 		</panel>
 	</tab_container>
 </floater>

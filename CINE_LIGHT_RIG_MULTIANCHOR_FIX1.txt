@@ -1,0 +1,72 @@
+FIX ROUND — Cine Light Rig multi-anchor. Two Opus slices: ZERO must-fix correctness bugs. These are
+test-quality + one cosmetic status fix + one confirm. Do NOT build, cmake, or run the viewer. Locate
+by symbol/context, not line number.
+
+The group math, SA-9 exposure freeze, dedupe, bounds-centre, and single-anchor structural fast path all
+verified sound. Nothing below changes shipping lighting behaviour.
+
+=============================================================================
+F1 (SHOULD-FIX, model test) — the §5.1 sanitizeGlobals tripwire is TAUTOLOGICAL
+=============================================================================
+tests/alcinelightrigmodel_test.cpp, the §5.1 test: it asserts
+sanitizeSubjectScale(scale) == sanitizeGlobals({.mSubjectScale=scale}).mSubjectScale. But
+sanitizeGlobals IS `output.mSubjectScale = sanitizeSubjectScale(globals.mSubjectScale)` — a
+self-comparison equal by construction. It can NEVER fail if someone changes sanitizeSubjectScale's
+rules (both sides move together). It does not guard the extraction as the design claims.
+
+FIX: replace the self-comparison with HARDCODED expected-value assertions that pin the actual clamp
+rules (V13), so a rule change fails the test:
+  ensure_equals("sanitize NaN -> 1",        sanitizeSubjectScale(nan), 1.f);   // non-finite
+  ensure_equals("sanitize 0 -> 1",          sanitizeSubjectScale(0.f), 1.f);   // <= 0
+  ensure_equals("sanitize FLT_MIN -> 1",    sanitizeSubjectScale(FLT_MIN), 1.f); // subnormal guard
+  ensure_equals("sanitize 0.04 -> 0.05",    sanitizeSubjectScale(0.04f), 0.05f); // lower clamp
+  ensure_equals("sanitize 151 -> 150",      sanitizeSubjectScale(151.f), 150.f); // upper clamp
+  ensure_equals("sanitize 1.5 passthrough", sanitizeSubjectScale(1.5f), 1.5f);
+Keep (or add) ONE assertion that sanitizeGlobals delegates (a single spot-check is fine), but the rule
+pins must be against literals, not against sanitizeGlobals.
+
+=============================================================================
+F2 (SHOULD-FIX, UI) — group status text LIES when the rig is disabled / powered off
+=============================================================================
+alcinelightrig.cpp: the !enabled -> shutdown() path, the power-off early return, and shutdown() itself
+all return WITHOUT clearing mLastResolvedGroupSlots. Repro: enable group, check members until status
+reads "2 of 2 lit", then uncheck master Enable (or Power): rig goes dark but the status keeps reading
+"2 of 2 lit" until re-ticked. Contradicts "the dark state is visible."
+
+FIX: set mLastResolvedGroupSlots = 0 on the disable path, the power-off early-return path, AND in
+shutdown(). So a dark rig reports 0 resolved. Cosmetic (no lighting effect), but make the status honest.
+
+=============================================================================
+F3 (CONFIRM, likely no change) — memberTrackPoint chest-non-finite fallback
+=============================================================================
+The reviewer flagged that memberTrackPoint (track_mode 0, mChest resolves but scaledPoint returns
+non-finite) FALLS THROUGH to render-pos+1.2, while the design prose (V5) says "skip (return)". VERIFY
+against the SHIPPED single-anchor behaviour: the pre-multianchor inline code did
+`if (chest) { centre=scaledPoint(...); have_joint=centre.isFinite(); } if (!have_joint) { centre=
+scaledPoint(render-pos+1.2); if(!centre.isFinite()) return; }` — i.e. it FELL THROUGH to render-pos on
+a non-finite chest and only returned if BOTH were non-finite. So the fall-through is CORRECT and the
+design prose is the thing that's wrong. CONFIRM memberTrackPoint reproduces exactly that (chest
+non-finite -> render-pos fallback -> skip only if that is ALSO non-finite). If it matches, NO code
+change — just confirm in your report. If the refactor made it skip-on-chest-nonfinite, fix it to fall
+through (to preserve single-anchor bitwise behaviour).
+
+=============================================================================
+NITS (optional — do if trivial, else skip and say so)
+=============================================================================
+N3. §5 coverage test cases {1.5,1,1.5} and {2,0.5,2} pass even with mSubjectScale removed from render
+    (the +1e-5 slack + no spread). Cases {1.5,1,3} and {0.5,2,1} DO discriminate, so the test is real,
+    but strengthen the two weak cases (add spread) so all four catch a scale-removal regression.
+N4. groupSubjectScale seeds maximum_scale = sanitizeSubjectScale(member_scales[0]) then the loop
+    re-includes i=0 — harmless idempotent double-sanitize; start the loop at i=1 or drop the seed.
+
+=============================================================================
+OFF-LIMITS — unchanged
+=============================================================================
+The group math (correct), scaledPoint, the intensity/EV chain + distance_ev, the mirror line,
+sanitizeGlobals semantics (only the TEST changes, not the function), the applySceneData split,
+lldirectorcast, pipeline/shaders/llprimitive, versions, settings.xml. Only: the one test (F1), the
+status-clear on 3 paths (F2), a confirm (F3), and the two optional nits.
+
+REPORT: F1 the new literal assertions (confirm they fail on a rule change); F2 the 3 paths cleared; F3
+whether memberTrackPoint matches the shipped fall-through (and any fix); N3/N4 done or skipped. Do not
+build.
