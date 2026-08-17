@@ -131,6 +131,10 @@ const char* FX_NAMES[FX_COUNT] = {
     "Will-o'-Wisp", "Hologram Glitch", "Signal Lamp", "Breathing Swell",
     "Arcane Orbit",
     "Rock With You",
+    "Boogie Floor", "Shootout", "Chopper Hunt", "Plasma Globe",
+    "Dimensional Rift", "Kawoosh", "Time Circuits", "Jacob's Ladder",
+    "Build & Drop", "Biolume Tide", "Mount Doom", "Vaporwave Sunset",
+    "Carousel Waltz", "Five Tones",
 };
 
 const F32 FX_INTERVALS[FX_COUNT] = {
@@ -141,6 +145,8 @@ const F32 FX_INTERVALS[FX_COUNT] = {
     0.12f, 0.05f, 0.05f, 0.20f, 0.25f, 0.10f, 0.125f, 0.10f,
     0.10f, 0.08f, 0.25f, 0.10f, 0.06f, 0.15f, 0.20f, 0.10f,
     0.10f,
+    0.125f, 0.05f, 0.10f, 0.05f, 0.10f, 0.10f, 0.10f, 0.05f,
+    0.10f, 0.20f, 0.20f, 0.25f, 0.10f, 0.15f,
 };
 
 F32 finiteOr(F32 value, F32 fallback)
@@ -534,11 +540,162 @@ void initializeFX(S32 fx, LightBase lights[LIGHT_COUNT])
         setLight(lights, 2, 90.f, 5.f, 14, -0.5f, 2, true);
         setLight(lights, 3, -90.f, 8.f, 16, -0.5f, 2, true);
         break;
+    case 49:
+        setLight(lights, 0, 0.f, -25.f, 15, -10.f, 0, true);
+        setLight(lights, 1, -120.f, -20.f, 16, -10.f, 0, true);
+        setLight(lights, 2, 120.f, -20.f, 22, -10.f, 0, true);
+        setLight(lights, 3, 180.f, 10.f, 18, -3.5f, 1, true);
+        break;
+    case 50:
+    {
+        static const F32 yaws[LIGHT_COUNT] = {
+            30.f, -60.f, 150.f, -120.f
+        };
+        static const F32 pitches[LIGHT_COUNT] = {
+            5.f, 0.f, 10.f, 0.f
+        };
+        for (S32 i = 0; i < LIGHT_COUNT; ++i)
+        {
+            setLight(lights, i, yaws[i], pitches[i], 23, -10.f, 2, true);
+        }
+        break;
+    }
+    case 51:
+        setLight(lights, 0, 0.f, 68.f, 3, -0.5f, 2, true);
+        setLight(lights, 2, 0.f, 75.f, 11, -10.f, 2, true);
+        setLight(lights, 3, 180.f, -15.f, 20, -3.f, 0, true);
+        break;
+    case 52:
+        setLight(lights, 0, 20.f, 10.f, 22, -1.f, 2, true);
+        setLight(lights, 1, -30.f, -5.f, 18, -1.2f, 2, true);
+        setLight(lights, 3, 180.f, 0.f, 12, -3.f, 1, true);
+        break;
+    case 53:
+        setLight(lights, 0, 180.f, 10.f, 19, -1.f, 1, true);
+        setLight(lights, 1, 180.f, 0.f, 22, -10.f, 0, false);
+        setLight(lights, 3, 0.f, -15.f, 8, -3.5f, 1, true);
+        break;
+    case 54:
+        setLight(lights, 0, 0.f, 10.f, 13, -10.f, 2, true);
+        setLight(lights, 1, 0.f, 0.f, 16, -10.f, 0, true);
+        setLight(lights, 3, 180.f, -10.f, 20, -3.f, 0, true);
+        break;
+    case 55:
+        setLight(lights, 0, 40.f, 30.f, 4, -10.f, 0, true);
+        setLight(lights, 1, -40.f, 30.f, 4, -10.f, 0, true);
+        setLight(lights, 2, 180.f, 45.f, 4, -10.f, 0, true);
+        setLight(lights, 3, 0.f, -30.f, 13, -10.f, 0, false);
+        break;
+    case 56:
+        setLight(lights, 0, 25.f, -30.f, 22, -10.f, 0, true);
+        setLight(lights, 3, 180.f, 20.f, 6, -4.f, 1, true);
+        break;
+    case 57:
+        setLight(lights, 0, 60.f, 25.f, 15, -10.f, 0, true);
+        setLight(lights, 1, -60.f, 25.f, 16, -10.f, 0, true);
+        setLight(lights, 2, 150.f, 30.f, 22, -10.f, 0, true);
+        setLight(lights, 3, -150.f, 30.f, 14, -10.f, 0, true);
+        break;
+    case 58:
+    {
+        static const F32 yaws[LIGHT_COUNT] = {
+            45.f, -45.f, 135.f, -135.f
+        };
+        static const S32 profiles[LIGHT_COUNT] = {
+            16, 14, 16, 14
+        };
+        for (S32 i = 0; i < LIGHT_COUNT; ++i)
+        {
+            setLight(lights, i, yaws[i], -10.f, profiles[i], -3.f, 1, true);
+        }
+        break;
+    }
+    case 59:
+        setLight(lights, 0, 10.f, -35.f, 19, -1.f, 1, true);
+        setLight(lights, 1, -30.f, -25.f, 13, -1.5f, 1, true);
+        setLight(lights, 3, 180.f, 20.f, 19, -3.5f, 0, true);
+        break;
+    case 60:
+        setLight(lights, 0, 180.f, 25.f, 17, 0.5f, 0, true);
+        setLight(lights, 2, -100.f, 12.f, 15, -1.5f, 2, true);
+        setLight(lights, 3, 0.f, -25.f, 22, -2.f, 1, true);
+        break;
+    case 61:
+        setLight(lights, 0, 0.f, 18.f, 0, -0.8f, 0, true);
+        setLight(lights, 1, 180.f, 18.f, 0, -0.8f, 0, true);
+        setLight(lights, 3, 0.f, -20.f, 12, -3.f, 1, true);
+        break;
+    case 62:
+        setLight(lights, 0, 0.f, 35.f, 10, -10.f, 2, true);
+        setLight(lights, 1, 40.f, 50.f, 10, -10.f, 0, true);
+        setLight(lights, 2, -40.f, 55.f, 10, -10.f, 0, true);
+        setLight(lights, 3, 180.f, 60.f, 10, -10.f, 0, true);
+        break;
     default:
         break;
     }
 }
 } // namespace
+
+bool easyRimOn(S32 presence)
+{
+    return presence != 0;
+}
+
+F32 easyRimEV(S32 presence)
+{
+    switch (std::clamp(presence, 0, 3))
+    {
+        case 1: return -2.5f;
+        case 2: return -1.f;
+        case 3: return 0.5f;
+        default: return 0.f;
+    }
+}
+
+bool easyBgOn(S32 presence)
+{
+    return presence != 0;
+}
+
+F32 easyBgEV(S32 presence)
+{
+    switch (std::clamp(presence, 0, 3))
+    {
+        case 1: return -3.5f;
+        case 2: return -2.f;
+        case 3: return -0.5f;
+        default: return 0.f;
+    }
+}
+
+S32 rimPresenceFromEV(bool on, F32 ev)
+{
+    if (!on)
+    {
+        return 0;
+    }
+    return ev < -1.75f ? 1 : ev < -0.25f ? 2 : 3;
+}
+
+S32 bgPresenceFromEV(bool on, F32 ev)
+{
+    if (!on)
+    {
+        return 0;
+    }
+    return ev < -2.75f ? 1 : ev < -1.25f ? 2 : 3;
+}
+
+F32 easyBrightnessClamp(F32 ev)
+{
+    return std::clamp(ev, -MAX_MASTER_EV, MAX_MASTER_EV);
+}
+
+F32 easyDramaClamp(F32 stops)
+{
+    return std::clamp(stops, 0.f, MAX_RATIO_STOPS);
+}
 
 Setup sanitizeSetup(const Setup& setup)
 {
@@ -1806,6 +1963,331 @@ void evalFX(S32 fx, U64 seed, F64 t_seconds,
         }
         break;
     }
+    case 49: // Boogie Floor
+    {
+        const F64 beatpos = positiveFmod(fs, 4.0) / 4.0;
+        const F64 env = (1.0 - beatpos) * (1.0 - beatpos);
+        const F32 push = positiveMod(step / 4, 4) == 0 ? 0.6f : 0.f;
+        static const S32 FLOOR[4] = { 15, 16, 22, 14 };
+        for (S32 i = 0; i < 3; ++i)
+        {
+            lights[i].mProfile = FLOOR[positiveMod(step / 16 + i, 4)];
+            lights[i].mEV = -2.5f +
+                (2.8f + push) * static_cast<F32>(env);
+        }
+        lights[3].mEV = -3.5f + 0.4f * static_cast<F32>(env);
+        break;
+    }
+    case 50: // Shootout
+    {
+        const U64 window = static_cast<U64>(step / 40);
+        const S64 local = step - static_cast<S64>(window) * 40;
+        if (unitHash(seed, fx, window, 0, 0) < 0.75f)
+        {
+            const S32 shooter = static_cast<S32>(4.f *
+                unitHash(seed, fx, window, 0, 1)) & 3;
+            const S32 rounds = 4 + static_cast<S32>(6.f *
+                unitHash(seed, fx, window, 0, 2));
+            const S64 start = static_cast<S64>(10.f *
+                unitHash(seed, fx, window, 0, 3));
+            const S64 k = local - start;
+            if (k >= 0 && k < rounds * 2 && (k & 1) == 0)
+            {
+                lights[shooter].mEV = 2.f + 0.4f *
+                    unitHash(seed, fx, counter, shooter, 4);
+                lights[shooter].mYawDeg = wrap180(
+                    lights[shooter].mYawDeg + 6.f *
+                    (unitHash(seed, fx, counter, shooter, 5) - 0.5f));
+            }
+            if (unitHash(seed, fx, window, 1, 0) < 0.5f)
+            {
+                const S32 replier = (shooter + 2) & 3;
+                const S64 j = local - 20 - static_cast<S64>(8.f *
+                    unitHash(seed, fx, window, 1, 1));
+                if (j >= 0 && j < 8 && (j & 1) == 0)
+                {
+                    lights[replier].mEV = 1.8f;
+                }
+            }
+        }
+        break;
+    }
+    case 51: // Chopper Hunt
+    {
+        const F64 a = positiveFmod(4.0 * fs, 360.0);
+        lights[0].mYawDeg = wrap180(static_cast<F32>(a + 25.f *
+            (valueNoise(seed, fx, fs * 0.3, 0, 0) - 0.5f)));
+        lights[0].mPitchDeg = 68.f + 12.f *
+            (valueNoise(seed, fx, fs * 0.35, 0, 1) - 0.5f);
+        F32 c = phaseCos(a * DEGREES_TO_RADIANS);
+        if (c < 0.f)
+        {
+            c = 0.f;
+        }
+        lights[0].mEV = -0.5f + 2.f * std::pow(c, 6.f);
+        if (step & 1)
+        {
+            lights[0].mEV -= 0.3f;
+        }
+        lights[2].mYawDeg = lights[0].mYawDeg;
+        lights[2].mEV = positiveMod(step, 10) == 0 ? 0.2f : -10.f;
+        break;
+    }
+    case 52: // Plasma Globe
+    {
+        for (S32 i = 0; i < 2; ++i)
+        {
+            lights[i].mYawDeg = 360.f *
+                valueNoise(seed, fx, fs * 0.6, i, 0) - 180.f;
+            lights[i].mPitchDeg = 60.f *
+                valueNoise(seed, fx, fs * 0.7, i, 1) - 20.f;
+            lights[i].mEV = -1.2f + 0.8f *
+                valueNoise(seed, fx, fs * 1.5, i, 2);
+            lights[i].mProfile = i == 0 ? 22 : 18;
+        }
+        const F32 r = unitHash(seed, fx, counter, 0, 3);
+        if (r > 0.94f)
+        {
+            const S32 j = r > 0.97f ? 1 : 0;
+            lights[j].mEV = 1.6f;
+            lights[j].mProfile = 23;
+        }
+        lights[3].mEV = -3.f + 0.3f * phaseSin(fs * 0.25);
+        break;
+    }
+    case 53: // Dimensional Rift
+        lights[0].mEV = -1.f + 0.6f * phaseSin(fs * 0.5) +
+            0.4f * phaseSin(fs * 0.13) + 0.5f *
+            (valueNoise(seed, fx, fs * 0.4, 0, 0) - 0.5f);
+        lights[0].mYawDeg = wrap180(180.f + 20.f *
+            (valueNoise(seed, fx, fs * 0.15, 0, 1) - 0.5f));
+        if (unitHash(seed, fx, counter, 0, 2) > 0.96f)
+        {
+            lights[1].mOn = true;
+            lights[1].mEV = 1.3f;
+            lights[3].mEV = -2.f;
+        }
+        break;
+    case 54: // Kawoosh
+    {
+        const F64 b = positiveFmod(fs, 120.0);
+        if (b < 56.0)
+        {
+            const S64 chev = static_cast<S64>(b / 8.0);
+            const F64 lk = positiveFmod(b, 8.0);
+            lights[0].mYawDeg = wrap180(-135.f +
+                45.f * static_cast<F32>(chev));
+            lights[0].mEV = lk < 3.0 ? 0.8f : -2.5f;
+        }
+        else if (b < 60.0)
+        {
+            lights[0].mEV = -10.f;
+            lights[1].mEV = 2.2f;
+            lights[1].mProfile = 23;
+        }
+        else if (b < 105.0)
+        {
+            lights[1].mProfile = 16;
+            lights[1].mEV = -0.6f + 0.5f *
+                (valueNoise(seed, fx, fs * 0.9, 1, 0) - 0.5f) +
+                0.2f * phaseSin(fs * 1.7);
+            lights[3].mEV = -2.5f;
+        }
+        else
+        {
+            lights[0].mEV = -10.f;
+            lights[1].mEV = -0.6f -
+                static_cast<F32>((b - 105.0) / 15.0) * 9.4f;
+        }
+        break;
+    }
+    case 55: // Time Circuits
+    {
+        const F64 b = positiveFmod(fs, 100.0);
+        if (b < 80.0)
+        {
+            const F64 p = 0.004 * b * b;
+            const bool gate = positiveFmod(p, 1.0) < 0.5;
+            const S64 active = positiveMod(
+                static_cast<S64>(p * 3.0), 3);
+            for (S32 i = 0; i < 3; ++i)
+            {
+                lights[i].mEV = gate && i == static_cast<S32>(active) ?
+                    0.9f : -10.f;
+            }
+        }
+        else if (b < 84.0)
+        {
+            for (S32 i = 0; i < 3; ++i)
+            {
+                lights[i].mEV = 2.5f;
+                lights[i].mProfile = 23;
+            }
+        }
+        else if (b < 95.0)
+        {
+            for (S32 i = 0; i < 3; ++i)
+            {
+                lights[i].mEV = -10.f;
+            }
+            lights[3].mOn = true;
+            lights[3].mEV = 0.5f -
+                static_cast<F32>(b - 84.0) * 0.55f;
+        }
+        break;
+    }
+    case 56: // Jacob's Ladder
+    {
+        const F64 b = positiveFmod(fs, 40.0);
+        if (b < 30.0)
+        {
+            const F64 u = b / 30.0;
+            lights[0].mPitchDeg = -30.f +
+                100.f * static_cast<F32>(u);
+            const F32 r = unitHash(seed, fx, counter, 0, 0);
+            lights[0].mEV = r > 0.3f ? 0.6f + 0.5f *
+                unitHash(seed, fx, counter, 0, 1) : -3.f;
+            lights[0].mProfile = r > 0.8f ? 23 : 22;
+            lights[3].mEV = -4.f + 1.2f * static_cast<F32>(u);
+        }
+        else
+        {
+            lights[0].mEV = -10.f;
+        }
+        break;
+    }
+    case 57: // Build & Drop
+    {
+        const F64 b = positiveFmod(fs, 160.0);
+        if (b < 80.0)
+        {
+            const F64 p = 0.003 * b * b;
+            const bool gate = positiveFmod(p, 1.0) < 0.5;
+            const F32 ev = -2.f +
+                static_cast<F32>(b / 80.0) * 3.f;
+            lights[0].mEV = gate ? ev : -10.f;
+            lights[1].mEV = gate ? -10.f : ev;
+            lights[2].mEV = lights[3].mEV = -10.f;
+        }
+        else if (b < 90.0)
+        {
+            for (LightBase& light : lights)
+            {
+                light.mEV = -10.f;
+            }
+        }
+        else
+        {
+            const bool on = positiveMod(step, 2) == 0;
+            const S32 profile = 7 + static_cast<S32>(
+                positiveMod(step / 2, 16));
+            for (LightBase& light : lights)
+            {
+                light.mProfile = profile;
+                light.mEV = on ? 1.5f : -10.f;
+            }
+        }
+        break;
+    }
+    case 58: // Biolume Tide
+    {
+        const F64 w = fs * 0.35;
+        for (S32 i = 0; i < LIGHT_COUNT; ++i)
+        {
+            F32 crest = phaseCos(w - static_cast<F64>(i) *
+                (TWO_PI / 4.0));
+            if (crest < 0.f)
+            {
+                crest = 0.f;
+            }
+            lights[i].mEV = -3.f + 1.6f * crest + 0.5f *
+                (valueNoise(seed, fx, fs * 0.8, i, 0) - 0.5f);
+            if (unitHash(seed, fx, counter, i, 1) > 0.985f)
+            {
+                lights[i].mEV = 0.8f;
+            }
+        }
+        break;
+    }
+    case 59: // Mount Doom
+    {
+        const F32 surge = valueNoise(seed, fx, fs * 0.06, 0, 0);
+        lights[0].mEV = -1.5f + 2.f * surge;
+        lights[1].mEV = -2.f + 1.5f *
+            valueNoise(seed, fx, fs * 0.3, 1, 0);
+        lights[3].mEV = -3.5f + surge;
+        if (unitHash(seed, fx, counter, 0, 1) > 0.95f)
+        {
+            lights[1].mEV = 0.9f;
+        }
+        break;
+    }
+    case 60: // Vaporwave Sunset
+    {
+        const F64 u = positiveFmod(fs, 160.0) / 160.0;
+        lights[0].mPitchDeg = 25.f - 30.f * static_cast<F32>(u);
+        lights[0].mEV = 0.5f - 0.8f * static_cast<F32>(u);
+        lights[0].mProfile = u < 0.33 ? 17 : u < 0.66 ? 15 : 18;
+        lights[2].mEV = -1.5f + 0.4f * phaseSin(fs * 0.8);
+        lights[3].mEV = -2.f + 0.6f * phaseSin(fs * 0.4);
+        if (positiveFmod(fs, 16.0) < 0.5)
+        {
+            lights[0].mEV -= 1.f;
+        }
+        break;
+    }
+    case 61: // Carousel Waltz
+    {
+        const F64 a = positiveFmod(6.0 * fs, 360.0);
+        lights[0].mYawDeg = wrap180(static_cast<F32>(a));
+        lights[1].mYawDeg = wrap180(static_cast<F32>(a + 180.0));
+        const F32 bob = phaseSin(fs * 0.9);
+        lights[0].mPitchDeg = 18.f + 6.f * bob;
+        lights[1].mPitchDeg = 18.f - 6.f * bob;
+        const F32 accent = positiveMod(step, 15) < 5 ? 0.5f : 0.f;
+        const F32 shimmer = 0.15f * phaseSin(fs * 3.1);
+        lights[0].mEV = lights[1].mEV = -0.8f + accent + shimmer;
+        break;
+    }
+    case 62: // Five Tones
+    {
+        const S64 b = positiveMod(step, 80);
+        const S32 note = static_cast<S32>(positiveMod(step / 4, 5));
+        static const S32 NOTES[5] = { 10, 13, 22, 7, 12 };
+        const bool gate = positiveMod(step, 4) < 3;
+        if (b < 20)
+        {
+            lights[0].mProfile = NOTES[note];
+            lights[0].mEV = gate ? -0.5f : -10.f;
+        }
+        else if (b < 40)
+        {
+            lights[0].mProfile = lights[1].mProfile = NOTES[note];
+            lights[0].mEV = lights[1].mEV = gate ? 1.f : -10.f;
+        }
+        else if (b < 48)
+        {
+            lights[3].mProfile = 20;
+            lights[3].mEV = -3.f;
+        }
+        else if (b < 68)
+        {
+            for (S32 i = 0; i < LIGHT_COUNT; ++i)
+            {
+                lights[i].mProfile = NOTES[positiveMod(note + i, 5)];
+                lights[i].mEV = gate ? 1.4f : -1.5f;
+            }
+        }
+        else
+        {
+            for (LightBase& light : lights)
+            {
+                light.mProfile = 23;
+                light.mEV = 2.4f - static_cast<F32>(b - 68) * 0.25f;
+            }
+        }
+        break;
+    }
     default:
         break;
     }
@@ -1863,9 +2345,14 @@ Setup classicSetup()
     Setup setup;
     std::memset(&setup, 0, sizeof(setup));
     setup.mRadius = 1.5f;
+    // Easy-native: Key anchored at EV 0, ratio-locked at 2 stops (Fill derives
+    // to -2, unchanged), Rim on the Subtle bucket (-1.0) so the compiled
+    // Classic rig opens in Easy Mode rather than being forced to Advanced.
+    setup.mRatioLock = true;
+    setup.mRatioStops = 2.f;
     setLight(setup.mLights, 0, 45.f, 35.f, 3, 0.f, 1, true);
     setLight(setup.mLights, 1, -45.f, 5.f, 3, -2.f, 1, true);
-    setLight(setup.mLights, 2, -135.f, 45.f, 4, -0.5f, 0, true);
+    setLight(setup.mLights, 2, -135.f, 45.f, 4, -1.0f, 0, true);
     setLight(setup.mLights, 3, 0.f, -20.f, 3, 0.f, 0, false);
     return setup;
 }

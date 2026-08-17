@@ -19,7 +19,7 @@ constexpr S32 PROFILE_COUNT = 24;
 constexpr S32 BEAM_COUNT = 3;
 constexpr S32 GOBO_COUNT = 8;
 constexpr S32 GEL_COUNT = 15;
-constexpr S32 FX_COUNT = 49;
+constexpr S32 FX_COUNT = 63;
 constexpr S32 GROUP_MAX_MEMBERS = 5;
 constexpr F32 PITCH_LIMIT_DEG = 85.f;
 constexpr F32 MIN_RADIUS = 0.5f;
@@ -109,6 +109,18 @@ Setup sanitizeSetup(const Setup& setup);
 Transforms sanitizeTransforms(const Transforms& transforms);
 Globals sanitizeGlobals(const Globals& globals);
 F32 sanitizeSubjectScale(F32 scale);
+
+// Easy Mode is a UI macro over the existing exposure settings. These pure
+// helpers are the single source of truth for its write values and read-back
+// buckets; they deliberately do not alter rendering or setup evaluation.
+bool easyRimOn(S32 presence);
+F32 easyRimEV(S32 presence);
+bool easyBgOn(S32 presence);
+F32 easyBgEV(S32 presence);
+S32 rimPresenceFromEV(bool on, F32 ev);
+S32 bgPresenceFromEV(bool on, F32 ev);
+F32 easyBrightnessClamp(F32 ev);
+F32 easyDramaClamp(F32 stops);
 
 void groupBoundsCentre(const F32 points[][3], S32 count,
                        F32 out_centre[3]);

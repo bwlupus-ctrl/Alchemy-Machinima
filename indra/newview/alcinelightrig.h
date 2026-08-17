@@ -54,6 +54,10 @@ public:
         std::string mIntent;
         ALCineLightRigModel::Setup mSetup;
         bool mGenre = false;
+        bool mHasMasterEV = false;
+        F32 mMasterEV = 0.f;
+        bool mHasMasterTempMired = false;
+        F32 mMasterTempMired = 0.f;
     };
 
     struct SetupEntry

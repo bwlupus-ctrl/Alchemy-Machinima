@@ -23,6 +23,7 @@ class LLCheckBoxCtrl;
 class LLLineEditor;
 class LLSpinCtrl;
 class LLTextBox;
+class LLUICtrl;
 
 class ALPanelCineLightRig final : public LLPanel
 {
@@ -42,6 +43,18 @@ private:
     void syncAnchorSelection();
     void syncGroupControls();
     void syncSeedEditor(bool force = false);
+    void syncEasyModeForSelected(bool force = false);
+    void syncEasyControls();
+    bool selectedIsEasyNative() const;
+    bool normalizeSelectedForEasy();
+    void onEasyModeCommit();
+    void onEasyBrightnessCommit();
+    void onEasyDramaCommit();
+    void onEasyRimCommit();
+    void onEasyBgCommit();
+    void onEasyWarmthCommit();
+    void onManualCommit();
+    void applyManualLock();
     void updateDerivedStatus();
     S32 computeRequestedShadowSlots() const;
     void refreshSetupList(const std::string& select_name = std::string(),
@@ -74,6 +87,13 @@ private:
     LLComboBox* mFXCombo = nullptr;
     LLLineEditor* mSeedEditor = nullptr;
     LLSpinCtrl* mFillEV = nullptr;
+    LLUICtrl* mEasyBrightness = nullptr;
+    LLUICtrl* mEasyDrama = nullptr;
+    LLComboBox* mEasyRim = nullptr;
+    LLComboBox* mEasyBg = nullptr;
+    LLUICtrl* mEasyWarmth = nullptr;
+    LLCheckBoxCtrl* mEasyModeToggle = nullptr;
+    std::vector<LLUICtrl*> mAdvancedDrivenControls;
     LLTextBox* mClipStatus[4] = {};
     LLCheckBoxCtrl* mShaftControls[4] = {};
     LLCheckBoxCtrl* mHeroControls[4] = {};
@@ -100,6 +120,9 @@ private:
     bool mSeedInitialized = false;
     bool mRadiusCueInitialized = false;
     bool mRadiusOverCeiling = false;
+    S32 mEasyModeSlot = -1;
+    bool mEasyModeActive = false;
+    bool mSyncingEasyControls = false;
 };
 
 #endif // AL_PANEL_CINE_LIGHT_RIG_H

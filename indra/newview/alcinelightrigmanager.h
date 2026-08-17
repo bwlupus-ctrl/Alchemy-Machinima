@@ -77,7 +77,7 @@ struct ALCineLightRigParamBlob
     Light mLights[ALCineLightRigModel::LIGHT_COUNT] = {
         { 45.f,  35.f, 3,  0.f, 1, 0, 0, 0.f, true  },
         {-45.f,   5.f, 3, -2.f, 1, 0, 0, 0.f, true  },
-        {-135.f, 45.f, 4, -0.5f, 0, 0, 0, 0.f, true },
+        {-135.f, 45.f, 4, -1.f, 0, 0, 0, 0.f, true },
         {  0.f, -20.f, 3,  0.f, 0, 0, 0, 0.f, false },
     };
 

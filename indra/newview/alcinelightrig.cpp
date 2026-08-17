@@ -440,13 +440,56 @@ bool setupFromLLSD(const LLSD& data, Setup& output)
     return true;
 }
 
-LLSD setupToLLSD(const Setup& input)
+struct OptionalSetupGlobals
+{
+    bool mHasMasterEV = false;
+    F32 mMasterEV = 0.f;
+    bool mHasMasterTempMired = false;
+    F32 mMasterTempMired = 0.f;
+};
+
+OptionalSetupGlobals optionalSetupGlobalsFromLLSD(const LLSD& data)
+{
+    OptionalSetupGlobals globals;
+    if (data.has("master_ev"))
+    {
+        globals.mHasMasterEV = true;
+        globals.mMasterEV = easyBrightnessClamp(
+            static_cast<F32>(data["master_ev"].asReal()));
+    }
+    if (data.has("master_temp_mired"))
+    {
+        globals.mHasMasterTempMired = true;
+        globals.mMasterTempMired = std::clamp(
+            static_cast<F32>(data["master_temp_mired"].asReal()),
+            MASTER_TEMP_MIRED_MIN, MASTER_TEMP_MIRED_MAX);
+    }
+    return globals;
+}
+
+void applyOptionalSetupGlobals(const OptionalSetupGlobals& globals)
+{
+    if (globals.mHasMasterEV)
+    {
+        gSavedSettings.setF32("CineLightRigMasterEV", globals.mMasterEV);
+    }
+    if (globals.mHasMasterTempMired)
+    {
+        gSavedSettings.setF32(
+            "CineLightRigMasterTempMired", globals.mMasterTempMired);
+    }
+}
+
+LLSD setupToLLSD(const Setup& input, const Globals& input_globals)
 {
     const Setup setup = sanitizeSetup(input);
+    const Globals globals = sanitizeGlobals(input_globals);
     LLSD data = LLSD::emptyMap();
     data["radius"] = setup.mRadius;
     data["ratio_lock"] = setup.mRatioLock;
     data["ratio_stops"] = setup.mRatioStops;
+    data["master_ev"] = globals.mMasterEV;
+    data["master_temp_mired"] = globals.mMasterTempMired;
     data["lights"] = LLSD::emptyArray();
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
     {
@@ -2022,7 +2065,10 @@ ALCineLightRig::masterSetups()
         loaded.push_back({
             CLASSIC_SETUP_NAME,
             "The LSL boot rig; neutral daylight coverage.",
-            classicSetup()
+            classicSetup(),
+            false,  // mGenre
+            true,   // mHasMasterEV: pin Master to 0 so Classic is Easy-native
+            0.f     // mMasterEV
         });
 
         const std::string path = gDirUtilp->getExpandedFilename(
@@ -2089,13 +2135,19 @@ ALCineLightRig::masterSetups()
                             << index << " ('" << name << "')" << LL_ENDL;
                         continue;
                     }
+                    const OptionalSetupGlobals setup_globals =
+                        optionalSetupGlobalsFromLLSD(item);
                     loaded.push_back({
                         name,
                         item["intent"].isString()
                             ? item["intent"].asString() : std::string(),
                         setup,
                         item["category"].isString() &&
-                            item["category"].asString() == "Genre / Mood"
+                            item["category"].asString() == "Genre / Mood",
+                        setup_globals.mHasMasterEV,
+                        setup_globals.mMasterEV,
+                        setup_globals.mHasMasterTempMired,
+                        setup_globals.mMasterTempMired
                     });
                 }
             }
@@ -2254,9 +2306,14 @@ ALCineLightRig::setupNamesGrouped() const
 bool ALCineLightRig::loadSetup(const std::string& name)
 {
     Setup setup;
+    OptionalSetupGlobals setup_globals;
     if (const MasterSetup* master = findMasterSetup(name))
     {
         setup = master->mSetup;
+        setup_globals.mHasMasterEV = master->mHasMasterEV;
+        setup_globals.mMasterEV = master->mMasterEV;
+        setup_globals.mHasMasterTempMired = master->mHasMasterTempMired;
+        setup_globals.mMasterTempMired = master->mMasterTempMired;
     }
     else
     {
@@ -2276,9 +2333,11 @@ bool ALCineLightRig::loadSetup(const std::string& name)
             LL_WARNS("CineLightRig") << "Malformed setup " << name << LL_ENDL;
             return false;
         }
+        setup_globals = optionalSetupGlobalsFromLLSD(preset);
     }
     stopFX();
     writeSetupToSettings(setup);
+    applyOptionalSetupGlobals(setup_globals);
     return true;
 }
 
@@ -2295,7 +2354,7 @@ bool ALCineLightRig::saveSetup(const std::string& name)
     Globals globals;
     Transforms transforms;
     readSettings(setup, globals, transforms);
-    LLSD preset = setupToLLSD(setup);
+    LLSD preset = setupToLLSD(setup, globals);
     preset["version"] = 1;
     preset["name"] = clean_name;
 
@@ -2357,7 +2416,7 @@ LLSD ALCineLightRig::sceneData() const
         data["shafts"].append(mShaftEnabled[i]);
         data["heroes"].append(mHeroEnabled[i]);
     }
-    data["base"] = setupToLLSD(setup);
+    data["base"] = setupToLLSD(setup, globals);
     return data;
 }
 
@@ -2440,6 +2499,8 @@ void ALCineLightRig::applySceneData(const LLSD& data)
         if (setupFromLLSD(data["base"], setup))
         {
             writeSetupToSettings(setup);
+            applyOptionalSetupGlobals(
+                optionalSetupGlobalsFromLLSD(data["base"]));
         }
     }
     if (data.has("seed"))

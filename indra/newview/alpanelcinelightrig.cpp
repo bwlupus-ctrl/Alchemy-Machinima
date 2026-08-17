@@ -31,6 +31,7 @@
 #include "pipeline.h"
 
 #include <algorithm>
+#include <cmath>
 
 static LLPanelInjector<ALPanelCineLightRig>
     t_panel_cine_light_rig("panel_cine_light_rig");
@@ -181,6 +182,25 @@ bool ALPanelCineLightRig::postBuild()
     mFXCombo = getChild<LLComboBox>("cine_fx_combo");
     mSeedEditor = getChild<LLLineEditor>("cine_seed");
     mFillEV = getChild<LLSpinCtrl>("cine_fill_ev");
+    mEasyBrightness = getChild<LLUICtrl>("cine_easy_brightness");
+    mEasyDrama = getChild<LLUICtrl>("cine_easy_drama");
+    mEasyRim = getChild<LLComboBox>("cine_easy_rim");
+    mEasyBg = getChild<LLComboBox>("cine_easy_bg");
+    mEasyWarmth = getChild<LLUICtrl>("cine_easy_warmth");
+    mEasyModeToggle = getChild<LLCheckBoxCtrl>("cine_easy_mode");
+    const char* const advanced_driven_names[] = {
+        "cine_master_ev", "cine_master_ev_reset",
+        "cine_key_ev", "cine_key_ev_reset",
+        "cine_fill_ev", "cine_fill_ev_reset",
+        "cine_rim_ev", "cine_rim_ev_reset",
+        "cine_bg_ev", "cine_bg_ev_reset",
+        "cine_ratio_lock", "cine_ratio_lock_reset",
+        "cine_ratio", "cine_ratio_reset",
+    };
+    for (const char* name : advanced_driven_names)
+    {
+        mAdvancedDrivenControls.push_back(getChild<LLUICtrl>(name));
+    }
     mShadowHint = getChild<LLTextBox>("cine_shadow_hint");
     mShadowFixIt = getChild<LLButton>("cine_shadow_fixit");
     mRadiusLabel = getChild<LLTextBox>("cine_radius_label");
@@ -238,6 +258,20 @@ bool ALPanelCineLightRig::postBuild()
         [this](LLUICtrl*, const LLSD&) { randomizeSeed(); });
     mShadowFixIt->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onClickShadowFixIt(); });
+    mEasyModeToggle->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onEasyModeCommit(); });
+    mEasyBrightness->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onEasyBrightnessCommit(); });
+    mEasyDrama->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onEasyDramaCommit(); });
+    mEasyRim->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onEasyRimCommit(); });
+    mEasyBg->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onEasyBgCommit(); });
+    mEasyWarmth->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onEasyWarmthCommit(); });
+    getChild<LLUICtrl>("cine_manual")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onManualCommit(); });
     for (S32 i = 0; i < ALCineLightRigModel::LIGHT_COUNT; ++i)
     {
         const std::string prefix =
@@ -627,6 +661,7 @@ void ALPanelCineLightRig::onSetupSelected()
         ALCineLightRigManager::instance().selected().loadSetup(name))
     {
         mSetupCombo->setValue(name);
+        syncEasyModeForSelected(true);
     }
 }
 
@@ -809,6 +844,250 @@ S32 ALPanelCineLightRig::computeRequestedShadowSlots() const
             LLPipeline::MAX_SPOT_SHADOWS));
 }
 
+bool ALPanelCineLightRig::selectedIsEasyNative() const
+{
+    if (std::fabs(gSavedSettings.getF32("CineLightRigKeyEV")) > 0.01f)
+    {
+        return false;
+    }
+
+    const auto is_bucket = [](F32 ev, bool rim)
+    {
+        for (S32 presence = 1; presence < 4; ++presence)
+        {
+            const F32 bucket = rim
+                ? ALCineLightRigModel::easyRimEV(presence)
+                : ALCineLightRigModel::easyBgEV(presence);
+            if (std::fabs(ev - bucket) <= 0.01f)
+            {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    return (!gSavedSettings.getBOOL("CineLightRigRimOn") ||
+            is_bucket(gSavedSettings.getF32("CineLightRigRimEV"), true)) &&
+           (!gSavedSettings.getBOOL("CineLightRigBgOn") ||
+            is_bucket(gSavedSettings.getF32("CineLightRigBgEV"), false));
+}
+
+bool ALPanelCineLightRig::normalizeSelectedForEasy()
+{
+    // Fold the key's own EV into Master so subject exposure is preserved while
+    // Key is anchored at 0. If the folded value cannot be represented within
+    // Master EV's +/-16 range, refuse the fold and leave the rig for Advanced
+    // (render would otherwise clamp Master and silently drop exposure).
+    const F32 key_ev = gSavedSettings.getF32("CineLightRigKeyEV");
+    const F32 folded = gSavedSettings.getF32("CineLightRigMasterEV") + key_ev;
+    if (std::fabs(folded) > 16.f + 0.01f)
+    {
+        return false;
+    }
+    gSavedSettings.setF32("CineLightRigMasterEV", folded);
+    gSavedSettings.setF32("CineLightRigKeyEV", 0.f);
+    gSavedSettings.setBOOL("CineLightRigKeyOn", true);
+    return true;
+}
+
+void ALPanelCineLightRig::syncEasyModeForSelected(bool force)
+{
+    const S32 selected = static_cast<S32>(
+        ALCineLightRigManager::instance().selectedSlot());
+    // Recompute the desired mode on every call, not just on a slot change: a
+    // Director scene or preset can replace the selected slot's settings in
+    // place. If that makes an active-Easy instance no longer Easy-native (e.g.
+    // an old scene restoring a non-zero Key EV), we must demote to Advanced so
+    // the disabled EV/Ratio controls re-enable and a later Brightness commit
+    // does not zero Key EV without folding it into Master.
+    const bool want_active =
+        gSavedSettings.getBOOL("CineLightRigEasyMode") &&
+        selectedIsEasyNative();
+    if (!force && selected == mEasyModeSlot && want_active == mEasyModeActive)
+    {
+        return;
+    }
+
+    mEasyModeSlot = selected;
+    mEasyModeActive = want_active;
+    if (mEasyModeActive)
+    {
+        // First show and an instance switch both enter Easy only for an
+        // already Easy-native instance (Key EV ~ 0), so this fold is a no-op
+        // here; explicit entry via the toggle is what folds a real Key EV.
+        // If it somehow cannot be represented, stay in Advanced.
+        if (!normalizeSelectedForEasy())
+        {
+            mEasyModeActive = false;
+        }
+    }
+}
+
+void ALPanelCineLightRig::onEasyModeCommit()
+{
+    if (mSyncingEasyControls)
+    {
+        return;
+    }
+    const bool desired = mEasyModeToggle->getValue().asBoolean();
+    // Record the user's preference even if this particular look cannot enter
+    // Easy, so other (Easy-native) instances still open in Easy.
+    gSavedSettings.setBOOL("CineLightRigEasyMode", desired);
+    mEasyModeSlot = static_cast<S32>(
+        ALCineLightRigManager::instance().selectedSlot());
+    mEasyModeActive = desired;
+    if (mEasyModeActive && !normalizeSelectedForEasy())
+    {
+        // Exposure would exceed Master EV's range (an extreme Advanced look);
+        // keep this instance in Advanced. syncEasyControls reflects it.
+        mEasyModeActive = false;
+    }
+    syncEasyControls();
+}
+
+void ALPanelCineLightRig::onEasyBrightnessCommit()
+{
+    if (mSyncingEasyControls || !mEasyModeActive)
+    {
+        return;
+    }
+    gSavedSettings.setF32(
+        "CineLightRigMasterEV",
+        ALCineLightRigModel::easyBrightnessClamp(
+            static_cast<F32>(mEasyBrightness->getValue().asReal())));
+    gSavedSettings.setF32("CineLightRigKeyEV", 0.f);
+    gSavedSettings.setBOOL("CineLightRigKeyOn", true);
+}
+
+void ALPanelCineLightRig::onEasyDramaCommit()
+{
+    if (mSyncingEasyControls || !mEasyModeActive)
+    {
+        return;
+    }
+    gSavedSettings.setBOOL("CineLightRigRatioLock", true);
+    gSavedSettings.setF32(
+        "CineLightRigRatio",
+        ALCineLightRigModel::easyDramaClamp(
+            static_cast<F32>(mEasyDrama->getValue().asReal())));
+    gSavedSettings.setBOOL("CineLightRigFillOn", true);
+}
+
+void ALPanelCineLightRig::onEasyRimCommit()
+{
+    if (mSyncingEasyControls || !mEasyModeActive)
+    {
+        return;
+    }
+    const S32 presence = std::clamp(
+        mEasyRim->getValue().asInteger(), 0, 3);
+    const bool on = ALCineLightRigModel::easyRimOn(presence);
+    gSavedSettings.setBOOL("CineLightRigRimOn", on);
+    if (on)
+    {
+        gSavedSettings.setF32(
+            "CineLightRigRimEV",
+            ALCineLightRigModel::easyRimEV(presence));
+    }
+}
+
+void ALPanelCineLightRig::onEasyBgCommit()
+{
+    if (mSyncingEasyControls || !mEasyModeActive)
+    {
+        return;
+    }
+    const S32 presence = std::clamp(
+        mEasyBg->getValue().asInteger(), 0, 3);
+    const bool on = ALCineLightRigModel::easyBgOn(presence);
+    gSavedSettings.setBOOL("CineLightRigBgOn", on);
+    if (on)
+    {
+        gSavedSettings.setF32(
+            "CineLightRigBgEV",
+            ALCineLightRigModel::easyBgEV(presence));
+    }
+}
+
+void ALPanelCineLightRig::onEasyWarmthCommit()
+{
+    if (mSyncingEasyControls || !mEasyModeActive)
+    {
+        return;
+    }
+    gSavedSettings.setF32(
+        "CineLightRigMasterTempMired",
+        std::clamp(static_cast<F32>(mEasyWarmth->getValue().asReal()),
+                   ALCineLightRigModel::MASTER_TEMP_MIRED_MIN,
+                   ALCineLightRigModel::MASTER_TEMP_MIRED_MAX));
+}
+
+void ALPanelCineLightRig::onManualCommit()
+{
+    // The check box is control_name-bound, so CineLightRigManual is already
+    // updated; just apply the side effects (force FX off + lock the selector).
+    applyManualLock();
+}
+
+void ALPanelCineLightRig::applyManualLock()
+{
+    const bool manual = gSavedSettings.getBOOL("CineLightRigManual");
+    if (manual && gSavedSettings.getS32("CineLightRigFX") != -1)
+    {
+        // Manual owns the pose; drop any running effect and hold it off.
+        gSavedSettings.setS32("CineLightRigFX", -1);
+    }
+    // Lock the effect selector while manual so an effect cannot silently take
+    // over per-light aim/exposure/colour again.
+    mFXCombo->setEnabled(!manual);
+    getChild<LLUICtrl>("cine_fx_stop")->setEnabled(!manual);
+}
+
+void ALPanelCineLightRig::syncEasyControls()
+{
+    mSyncingEasyControls = true;
+    mEasyModeToggle->setValue(mEasyModeActive);
+
+    const auto set_unfocused = [](LLUICtrl* control, const LLSD& value)
+    {
+        if (!control->hasFocus() &&
+            !gFocusMgr.childHasKeyboardFocus(control))
+        {
+            control->setValue(value);
+        }
+    };
+    set_unfocused(mEasyBrightness, LLSD(
+        ALCineLightRigModel::easyBrightnessClamp(
+            gSavedSettings.getF32("CineLightRigMasterEV"))));
+    const F32 drama = gSavedSettings.getBOOL("CineLightRigRatioLock")
+        ? gSavedSettings.getF32("CineLightRigRatio")
+        : gSavedSettings.getF32("CineLightRigKeyEV") -
+          gSavedSettings.getF32("CineLightRigFillEV");
+    set_unfocused(mEasyDrama, LLSD(
+        ALCineLightRigModel::easyDramaClamp(drama)));
+    set_unfocused(mEasyRim, LLSD(
+        ALCineLightRigModel::rimPresenceFromEV(
+            gSavedSettings.getBOOL("CineLightRigRimOn"),
+            gSavedSettings.getF32("CineLightRigRimEV"))));
+    set_unfocused(mEasyBg, LLSD(
+        ALCineLightRigModel::bgPresenceFromEV(
+            gSavedSettings.getBOOL("CineLightRigBgOn"),
+            gSavedSettings.getF32("CineLightRigBgEV"))));
+    set_unfocused(mEasyWarmth, LLSD(
+        gSavedSettings.getF32("CineLightRigMasterTempMired")));
+
+    mEasyBrightness->setEnabled(mEasyModeActive);
+    mEasyDrama->setEnabled(mEasyModeActive);
+    mEasyRim->setEnabled(mEasyModeActive);
+    mEasyBg->setEnabled(mEasyModeActive);
+    mEasyWarmth->setEnabled(mEasyModeActive);
+    for (LLUICtrl* control : mAdvancedDrivenControls)
+    {
+        control->setEnabled(!mEasyModeActive);
+    }
+    mSyncingEasyControls = false;
+}
+
 void ALPanelCineLightRig::onClickShadowFixIt()
 {
     const S32 requested = computeRequestedShadowSlots();
@@ -818,10 +1097,13 @@ void ALPanelCineLightRig::onClickShadowFixIt()
 
 void ALPanelCineLightRig::updateDerivedStatus()
 {
+    syncEasyModeForSelected();
+    syncEasyControls();
+    applyManualLock();
     ALCineLightRig& rig = ALCineLightRigManager::instance().selected();
     const bool ratio_locked =
         gSavedSettings.getBOOL("CineLightRigRatioLock");
-    mFillEV->setEnabled(!ratio_locked);
+    mFillEV->setEnabled(!mEasyModeActive && !ratio_locked);
     if (!mFillEV->hasFocus() && !gFocusMgr.childHasKeyboardFocus(mFillEV))
     {
         const F32 displayed_fill_ev = ratio_locked

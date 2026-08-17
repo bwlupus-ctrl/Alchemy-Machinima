@@ -357,7 +357,7 @@
       <key>Comment</key><string>RIM exposure in stops</string>
       <key>Persist</key><integer>1</integer>
       <key>Type</key><string>F32</string>
-      <key>Value</key><real>-0.5</real>
+      <key>Value</key><real>-1.0</real>
     </map>
     <key>CineLightRigRimBeam</key>
     <map>
@@ -453,6 +453,20 @@
     <key>CineLightRigBgOn</key>
     <map>
       <key>Comment</key><string>BG base light switch</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigEasyMode</key>
+    <map>
+      <key>Comment</key><string>Show the simplified cinematic light exposure controls; this is a UI preference and does not gate rendering</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>1</integer>
+    </map>
+    <key>CineLightRigManual</key>
+    <map>
+      <key>Comment</key><string>Manual mode: forces the light effect (FX) to None and locks the FX selector off so per-light aim, exposure and colour stay hand-controlled</string>
       <key>Persist</key><integer>1</integer>
       <key>Type</key><string>Boolean</string>
       <key>Value</key><integer>0</integer>

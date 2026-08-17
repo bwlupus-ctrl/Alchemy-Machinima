@@ -731,7 +731,8 @@ void cine_light_rig_model_object::test<6>()
 {
     const S32 random_fx[] = {
         1, 2, 5, 6, 9, 11, 13, 14, 17, 20, 25, 27, 30, 31,
-        33, 34, 35, 37, 41, 42, 43, 44, 48
+        33, 34, 35, 37, 41, 42, 43, 44, 48,
+        50, 51, 52, 53, 54, 56, 58, 59
     };
     for (S32 fx : random_fx)
     {
@@ -894,8 +895,8 @@ void cine_light_rig_model_object::test<9>()
 
     ensure_equals("profile row count", PROFILE_COUNT, 24);
     ensure_equals("beam row count", BEAM_COUNT, 3);
-    ensure_equals("FX name row count", FX_COUNT, 49);
-    ensure_equals("FX interval row count", FX_COUNT, 49);
+    ensure_equals("FX name row count", FX_COUNT, 63);
+    ensure_equals("FX interval row count", FX_COUNT, 63);
 
     for (S32 i = 0; i < PROFILE_COUNT; ++i)
     {
@@ -977,6 +978,10 @@ void cine_light_rig_model_object::test<9>()
         "Will-o'-Wisp", "Hologram Glitch", "Signal Lamp", "Breathing Swell",
         "Arcane Orbit",
         "Rock With You",
+        "Boogie Floor", "Shootout", "Chopper Hunt", "Plasma Globe",
+        "Dimensional Rift", "Kawoosh", "Time Circuits", "Jacob's Ladder",
+        "Build & Drop", "Biolume Tide", "Mount Doom", "Vaporwave Sunset",
+        "Carousel Waltz", "Five Tones",
     };
     for (S32 i = 0; i < FX_COUNT; ++i)
     {
@@ -991,6 +996,8 @@ void cine_light_rig_model_object::test<9>()
         0.12f, 0.05f, 0.05f, 0.20f, 0.25f, 0.10f, 0.125f, 0.10f,
         0.10f, 0.08f, 0.25f, 0.10f, 0.06f, 0.15f, 0.20f, 0.10f,
         0.10f,
+        0.125f, 0.05f, 0.10f, 0.05f, 0.10f, 0.10f, 0.10f, 0.05f,
+        0.10f, 0.20f, 0.20f, 0.25f, 0.10f, 0.15f,
     };
     for (S32 i = 0; i < FX_COUNT; ++i)
     {
@@ -2573,5 +2580,92 @@ void cine_light_rig_model_object::test<32>()
            update.mWrite);
     ensure_equals("auto-off restore returns to the captured baseline",
                   update.mValue, 2u);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<33>()
+{
+    set_test_name("Easy Mode four-way presence helpers round-trip");
+    for (S32 presence = 0; presence < 4; ++presence)
+    {
+        ensure_equals("rim write and read recover the same presence",
+            rimPresenceFromEV(easyRimOn(presence), easyRimEV(presence)),
+            presence);
+        ensure_equals("background write and read recover the same presence",
+            bgPresenceFromEV(easyBgOn(presence), easyBgEV(presence)),
+            presence);
+    }
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<34>()
+{
+    set_test_name("Easy Mode presence thresholds and dial clamps");
+    ensure_equals("rim off maps to Off", rimPresenceFromEV(false, 20.f), 0);
+    ensure_equals("rim -2.5 maps to Faint", rimPresenceFromEV(true, -2.5f), 1);
+    ensure_equals("rim below first midpoint stays Faint",
+                  rimPresenceFromEV(true, -1.751f), 1);
+    ensure_equals("rim first midpoint selects Subtle",
+                  rimPresenceFromEV(true, -1.75f), 2);
+    ensure_equals("rim -1 maps to Subtle", rimPresenceFromEV(true, -1.f), 2);
+    ensure_equals("rim second midpoint selects Strong",
+                  rimPresenceFromEV(true, -0.25f), 3);
+    ensure_equals("rim +0.5 maps to Strong", rimPresenceFromEV(true, 0.5f), 3);
+
+    ensure_equals("background off maps to Off",
+                  bgPresenceFromEV(false, 20.f), 0);
+    ensure_equals("background -3.5 maps to Faint",
+                  bgPresenceFromEV(true, -3.5f), 1);
+    ensure_equals("background below first midpoint stays Faint",
+                  bgPresenceFromEV(true, -2.751f), 1);
+    ensure_equals("background first midpoint selects Subtle",
+                  bgPresenceFromEV(true, -2.75f), 2);
+    ensure_equals("background -2 maps to Subtle",
+                  bgPresenceFromEV(true, -2.f), 2);
+    ensure_equals("background second midpoint selects Strong",
+                  bgPresenceFromEV(true, -1.25f), 3);
+    ensure_equals("background -0.5 maps to Strong",
+                  bgPresenceFromEV(true, -0.5f), 3);
+
+    ensure_equals("brightness clamps below -16",
+                  easyBrightnessClamp(-20.f), -16.f);
+    ensure_equals("brightness preserves an in-range value",
+                  easyBrightnessClamp(3.25f), 3.25f);
+    ensure_equals("brightness clamps above +16",
+                  easyBrightnessClamp(20.f), 16.f);
+    ensure_equals("drama clamps below zero", easyDramaClamp(-1.f), 0.f);
+    ensure_equals("drama preserves an in-range value",
+                  easyDramaClamp(2.75f), 2.75f);
+    ensure_equals("drama clamps above five", easyDramaClamp(8.f), 5.f);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<35>()
+{
+    set_test_name("Easy Brightness and Warmth remain per instance");
+    FakeRigSettings settings;
+    ALCineLightRigParamBlob instance_a = distinctiveBlob();
+    instance_a.mMasterEV = -1.25f;
+    instance_a.mMasterTempMired = 35.f;
+    seedSettingsIndependently(settings, instance_a);
+    instance_a = ALCineLightRigParamBlob::fromSettingsStore(settings);
+
+    ALCineLightRigParamBlob instance_b = instance_a;
+    instance_b.mMasterEV = 4.5f;
+    instance_b.mMasterTempMired = -70.f;
+    instance_b.toSettingsStore(settings);
+    instance_b = ALCineLightRigParamBlob::fromSettingsStore(settings);
+
+    instance_a.toSettingsStore(settings);
+    ensure_equals("returning to A restores A Brightness",
+                  settings.getF32("CineLightRigMasterEV"), -1.25f);
+    ensure_equals("returning to A restores A Warmth",
+                  settings.getF32("CineLightRigMasterTempMired"), 35.f);
+
+    instance_b.toSettingsStore(settings);
+    ensure_equals("returning to B restores B Brightness",
+                  settings.getF32("CineLightRigMasterEV"), 4.5f);
+    ensure_equals("returning to B restores B Warmth",
+                  settings.getF32("CineLightRigMasterTempMired"), -70.f);
 }
 } // namespace tut
