@@ -20,6 +20,7 @@ class LLSliderCtrl;
 class LLSpinCtrl;
 class LLTextBox;
 class LLView;
+class LLVOAvatar;
 
 class LLFloaterPrismManager final : public LLFloater
 {
@@ -38,6 +39,7 @@ private:
     void refreshSelectionActions();
     void refreshCaptureEditor();
     void refreshCaptureRuntimeReadouts();
+    void refreshBoneJointChoices(bool force);
     void refreshDisplayEditor();
     void refreshDisplayRateReadout();
     void rebuildCaptureList();
@@ -56,7 +58,7 @@ private:
     void onPlaceEyeInFront();
     void onSnapVirtualCameraToView();
     void onNewVirtualCamera();
-    void onCommitCameraSettings();
+    void onCommitCameraSettings(bool commit_bone_joint = false);
     void onCommitRateSettings();
     void onRatePresetChanged();
     void onAddDisplay();
@@ -85,6 +87,15 @@ private:
     U64 mConfigurationRevision = 0;
     U64 mRuntimeRevision = 0;
     U64 mPerformanceRevision = 0;
+    LLVOAvatar* mBoneJointAvatar = nullptr;
+    LLUUID mBoneJointAvatarId;
+    U32 mBoneJointSkeletonSerial = 0;
+    U8 mBoneJointAnchorSlot = LLPrismLens::BONE_ANCHOR_ME;
+    bool mBoneJointChoicesInitialized = false;
+    bool mBoneJointUsingAvatarSkeleton = false;
+    // Retains a scene's named selection while only the static fallback list is
+    // available, so first avatar resolve can restore a Bento/extra joint.
+    std::string mBoneJointPreferredValue;
     LLFrameTimer mRefreshTimer;
     LLFrameTimer mAgeRefreshTimer;
     // Last Add-Display reject reason surfaced through the status line by
@@ -132,6 +143,7 @@ private:
     LLScrollContainer* mCaptureScroll = nullptr;
     LLPanel* mCaptureDocument = nullptr;
     LLPanel* mCameraSettingsPanel = nullptr;
+    LLPanel* mBonePovPanel = nullptr;
     LLPanel* mLensSettingsPanel = nullptr;
     LLPanel* mRateSettingsPanel = nullptr;
     LLScrollContainer* mPerformanceScroll = nullptr;
@@ -156,6 +168,26 @@ private:
     LLSpinCtrl* mExposureBiasSpinner = nullptr;
     // Prim-free virtual-camera toggle (stored transform instead of a prim).
     LLCheckBoxCtrl* mVirtualCameraCheck = nullptr;
+    // Per-capture avatar/clone skeleton attachment (virtual cameras only).
+    LLCheckBoxCtrl* mBonePovEnabledCheck = nullptr;
+    LLComboBox* mBoneAnchorCombo = nullptr;
+    LLComboBox* mBoneJointCombo = nullptr;
+    LLComboBox* mBoneAimCombo = nullptr;
+    LLComboBox* mBoneRollCombo = nullptr;
+    LLSpinCtrl* mBoneOffsetXSpinner = nullptr;
+    LLSpinCtrl* mBoneOffsetYSpinner = nullptr;
+    LLSpinCtrl* mBoneOffsetZSpinner = nullptr;
+    LLSpinCtrl* mBoneTrimPitchSpinner = nullptr;
+    LLSpinCtrl* mBoneTrimYawSpinner = nullptr;
+    LLSpinCtrl* mBoneFovSpinner = nullptr;
+    LLSpinCtrl* mBoneSmoothingSpinner = nullptr;
+    LLCheckBoxCtrl* mBoneScaleAwareCheck = nullptr;
+    LLButton* mBoneOffsetResetButton = nullptr;
+    LLButton* mBoneTrimResetButton = nullptr;
+    LLButton* mBoneFovResetButton = nullptr;
+    LLButton* mBoneSmoothingResetButton = nullptr;
+    LLButton* mBoneAllResetButton = nullptr;
+    LLTextBox* mBoneStatusText = nullptr;
     // Render-only camera guide (frustum gizmo) toggles.
     LLCheckBoxCtrl* mShowGuideCheck = nullptr;
     LLCheckBoxCtrl* mGuideThirdsCheck = nullptr;

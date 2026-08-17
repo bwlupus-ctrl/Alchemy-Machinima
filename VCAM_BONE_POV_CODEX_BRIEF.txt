@@ -1,0 +1,108 @@
+IMPLEMENTATION TASK — Virtual Cam: bone-attached avatar/clone POV (first-person off the skeleton).
+
+Repo: I:\alchemy-machinima, branch feature/cine-light-rig. You IMPLEMENT. Do NOT build, cmake, or run
+the viewer. Claude builds; codex review adversarially reviews before any build. Locate by symbol/
+context, not line number.
+
+=============================================================================
+READ FIRST — the design is NORMATIVE (already Opus-adversarial-reviewed: ZERO must-fix)
+=============================================================================
+1. doc/VCAM_BONE_POV_DESIGN.md  <-- THE SPEC. Read ALL of it, INCLUDING the top "Review corrections
+   (Opus adversarial pass)" block, which is NORMATIVE and overrides the body where they conflict.
+   Sections: 0 summary; the hook/driver (A); joint+clone-scale (B); aim math (C); roll (D); smoothing/
+   FOV (E); UI/persistence (F); §5 tests; §6 files; §7 risks; §12 OFF-LIMITS. Follow it EXACTLY.
+2. doc/VCAM_BONE_POV_SEED.md — the fixed user decisions.
+
+USER DECISION (fixed): attach the prim-free Virtual Cam to a cast subject/clone and drive it from that
+subject's skeleton. Aim: BOTH full-follow AND stabilized, toggle, default full-follow. POV point:
+CONFIGURABLE JOINT (head/eye/neck/custom). Roll: BOTH horizon-lock AND inherit, toggle, default
+horizon-lock. Plus offset XYZ, aim trim, FOV, smoothing, clone-scale. One delivery.
+
+=============================================================================
+WHAT IT IS (build to the design's §A-§F)
+=============================================================================
+- A new driver (design §A: singleton `ALVCamBonePov` holding only transient smoothing state) ticked in
+  LLAppViewer::idle() IMMEDIATELY AFTER the light-rig tick (llappviewer.cpp ~5526) — which runs before
+  display() with the skeleton already posed. Each frame, when a capture is in bone-POV mode, it
+  computes eye position + orientation from the anchor subject's selected joint (+offsets/smoothing) and
+  writes the capture's virtual transform via a NEW runtime-only setter, BEFORE the capture render reads
+  it at llprismlens.cpp:5569-5570 (renderAuxiliaryView, driven from llviewerdisplay.cpp:919). The
+  render CONSUME path stays byte-identical.
+- Config is per-capture POD in CameraSettings; persisted as an additive `bone_pov` sub-map inside each
+  prism_captures item (rides the existing Director scene copy, llfloaterdirector.cpp:886-888). NO new
+  settings keys, NO SCENE_VERSION bump.
+
+=============================================================================
+THE TRAPS — from the design + the Opus review corrections. Get these right; the review WILL probe them.
+=============================================================================
+1. BASIS REMAP (highest). Head/eye/neck LOCAL basis is PROVEN X=forward, Y=left, Z=up
+   (llheadrotmotion.cpp:224, 245-247, 413-416; row-vector ctor llquaternion.cpp:95-103). Full-follow:
+   fwd=(1,0,0)*R_joint; up=(0,0,1)*R_joint; right=fwd%up; up=right%fwd; mVirtualRot=
+   LLQuaternion(right,up,-fwd) so (0,0,-1)*mVirtualRot==fwd. Match the existing "Snap to my view"
+   construction (llfloaterprismmanager.cpp:1236).
+2. CUSTOM JOINT (S1). The X=fwd/Z=up proof holds ONLY for spine-chain joints (head/eye/neck). A CUSTOM
+   joint has no such guarantee (its local +X runs down the bone). So: a custom joint DEFAULTS TO
+   STABILIZED (position-only) aim; full-follow on a custom joint is opt-in and documented best-effort.
+   Head/eye/neck get full-follow normally.
+3. LAZY JOINT ACCESSOR (S2). Use LLJoint::getWorldPosition()/getWorldRotation() (lazy-recompute,
+   lljoint.cpp:743/813). NEVER getLastWorldPosition/getLastWorldRotation (:752/823, cached/stale) — the
+   cached variant reads a one-frame-old pose despite correct tick ordering.
+4. FOV SETTER (S3). Drive mFixedVerticalFovRad; the per-frame capture prep republishes it into
+   mEffectiveVerticalFovRad (llprismlens.cpp:2734, 2788) which the render reads (:5601). Do NOT write
+   mEffectiveVerticalFovRad directly, and do NOT gate the recompute behind a config-revision bump.
+   Force EFovMode::FIXED (already mandatory for virtual cams, llprismlens.cpp:4096).
+5. HORIZON-LOCK (D + N1). right=fwd%worldUp; up=right%fwd; guard |fwd·worldUp|>1-1e-3. On degeneracy,
+   the PRIMARY fallback is HOLD LAST GOOD UP (not up0), so a straight-up look with a rolled head can't
+   collapse the basis. Default roll-mode = horizon-lock. Inherit-roll keeps up=(0,0,1)*R_joint.
+6. CLONE SCALE. position = scaledPoint(joint_world_pos, subject_scale) + (localOffset*scale)*R_joint,
+   reusing the finalized foot-pivot scaledPoint() (alcinelightrig.cpp:85-109) and getUniformScale()
+   (LLGhostAvatar override -> mEntityScale). Clones expose mHead/mEyeLeft/mEyeRight/mNeck (inherit
+   LLVOAvatar). Eye joint = average of mEyeLeft+mEyeRight. Do NOT re-derive the scale math.
+7. STABILIZED + TOGGLE HANDOFF. Stabilized drives ONLY mVirtualPos; mVirtualRot stays operator-owned
+   (no per-frame contention). Seed the orientation slerp on an aim-mode/anchor/joint toggle so there is
+   NO snap. Snap (mHave=false) on first frame / anchor change / joint change / mode change.
+8. ANCHOR LOSS. Unresolved anchor/joint => HOLD LAST transform; never emit stale/NaN; re-acquire snaps
+   fresh (no lerp from stale). No divide-by-zero.
+9. SETTER SAFETY. The only per-frame render consumers of mVirtualPos/mVirtualRot are
+   llprismlens.cpp:5569-5570 (aux) and :5227-5228 (guide); a new setVirtualCameraTransform() write-side
+   helper is safe and leaves consumption byte-identical.
+
+=============================================================================
+UI + TESTS
+=============================================================================
+- UI in the Prism Manager camera editor (llfloaterprismmanager.* + floater_prism_manager.xml): anchor
+  subject combo, joint combo (head/eye/neck/custom + custom-name field), aim-mode toggle, roll-mode
+  toggle, offset XYZ, aim trim (pitch/yaw), FOV, smoothing, enable/attach toggle, mini reset buttons
+  (match the light-rig Refresh_Off idiom). Reflow: if the editor grows, bump the floater height
+  accordingly (verify by rect arithmetic; the M1 lesson).
+- TESTS (§5): pure-helper math behind free functions so they need no viewer singletons — basis remap,
+  horizon-lock re-level (incl. degeneracy), clone-scale offset composition, exponential smoother step,
+  slerp. Each asserts an INDEPENDENT hand-computed value and FAILS on regression (NO tautological/self-
+  comparison tests). ADD (N4) one assertion mirroring the render's re-derivation (forward=(0,0,-1)*q;
+  up=(0,1,0)*q; right=fwd%up, llprismlens.cpp:5588-5589) so a render-side convention change trips it.
+  Put the tests in a new tests/alvcambonepov_test.cpp (add to CMake) or an existing model test target.
+
+=============================================================================
+FILES (per design §6; confirm/adjust)
+=============================================================================
+NEW: indra/newview/alvcambonepov.{h,cpp} (driver + pure math helpers), tests/alvcambonepov_test.cpp.
+MODIFY: llprismlens.{h,cpp} (CameraSettings bone_pov POD fields; setVirtualCameraTransform runtime
+setter; the additive bone_pov serialize/deserialize on prism_captures items — optional-on-read guards),
+llfloaterprismmanager.{h,cpp} + floater_prism_manager.xml (UI), llappviewer.cpp (tick the driver in
+idle() after the light-rig tick), CMakeLists.txt (new sources).
+NOT touched: the prism capture RENDER path + shaders (drive existing mVirtualPos/mVirtualRot/
+mFixedVerticalFovRad; do NOT change how they're consumed); pipeline/llprimitive; lldirectorcast.*
+(read-only roster); the cine light rig + lens-gaze subsystems (READ scaledPoint/getUniformScale as
+precedent, do NOT modify); SCENE_VERSION; settings.xml (ZERO new keys — persistence is the additive
+scene sub-map).
+
+=============================================================================
+REPORT
+=============================================================================
+Files created/modified with what changed. Confirm: the basis remap matches the proven X=fwd/Y=left/
+Z=up and the snap-to-view construction; custom joints default to stabilized; getWorldPosition/Rotation
+(not getLast*); FOV writes mFixedVerticalFovRad; horizon-lock holds-last-good-up on degeneracy;
+clone-scale reuses scaledPoint/getUniformScale; stabilized drives only mVirtualPos; anchor-loss holds-
+last (no NaN); persistence is an additive bone_pov sub-map with no version bump and no new settings
+keys; the render consume path is byte-identical; the §5 tests fail on regression. Note anything you
+think is wrong. Do not build.

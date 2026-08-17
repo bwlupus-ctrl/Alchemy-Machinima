@@ -29,7 +29,7 @@
 #include "llviewerdisplay.h"
 
 #include "alfloaterprogressview.h"
-#include "alcinelightrig.h"
+#include "alcinelightrigmanager.h"
 #include "fsyspath.h"
 #include "llactormover.h"
 #include "alghoststudio.h"   // [ActorMover] heading preview lines
@@ -1811,7 +1811,7 @@ void render_ui_3d()
         // its per-camera guide toggled). Under the same UI-visibility gate so it
         // hides while filming.
         LLPrismLens::renderCameraGuides();
-        ALCineLightRig::instance().renderGizmo();
+        ALCineLightRigManager::instance().renderGizmo();
         // [ActorMover] While the path-edit tool is active, ALWAYS draw the edit
         // actor's path overlay -- ribbon + every node from the first one, plus
         // hover/selection highlight -- independent of the Show-path toggle, roster

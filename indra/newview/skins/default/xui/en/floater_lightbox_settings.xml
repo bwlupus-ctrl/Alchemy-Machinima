@@ -2534,7 +2534,7 @@
 				left="190"
 				width="168"
 				min_val="2"
-				max_val="6"
+				max_val="10"
 				increment="1"
 				decimal_digits="0"
 				show_text="true"

@@ -1435,8 +1435,12 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("shadowMap7");
     mReservedUniforms.push_back("shadowMap8");
     mReservedUniforms.push_back("shadowMap9");
+    mReservedUniforms.push_back("shadowMap10");
+    mReservedUniforms.push_back("shadowMap11");
+    mReservedUniforms.push_back("shadowMap12");
+    mReservedUniforms.push_back("shadowMap13");
 
-    llassert(mReservedUniforms.size() == LLShaderMgr::DEFERRED_SHADOW5+1);
+    llassert(mReservedUniforms.size() == LLShaderMgr::DEFERRED_SHADOW13+1);
 
     mReservedUniforms.push_back("positionMap");
     mReservedUniforms.push_back("diffuseRect");
@@ -1757,6 +1761,7 @@ void LLShaderMgr::initAttribsAndUniforms()
     // the SOFT_SHADOW_VOGEL / SOFT_SHADOW_TAPS enum block in llshadermgr.h)
     mReservedUniforms.push_back("soft_shadow_vogel");
     mReservedUniforms.push_back("soft_shadow_taps");
+    mReservedUniforms.push_back("spot_shadow_softness");
     // [BDMerge Batch 2] Feature 2: gobo anisotropic/mip filtering
     mReservedUniforms.push_back("gobo_aniso");
     // [Cinematic Gobo] Per-projector procedural cookie and presentation-time UV motion.

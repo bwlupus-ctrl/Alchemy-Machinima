@@ -18,7 +18,8 @@ constexpr S32 LIGHT_COUNT = 4;
 constexpr S32 PROFILE_COUNT = 24;
 constexpr S32 BEAM_COUNT = 3;
 constexpr S32 GOBO_COUNT = 8;
-constexpr S32 FX_COUNT = 33;
+constexpr S32 GEL_COUNT = 15;
+constexpr S32 FX_COUNT = 49;
 constexpr S32 GROUP_MAX_MEMBERS = 5;
 constexpr F32 PITCH_LIMIT_DEG = 85.f;
 constexpr F32 MIN_RADIUS = 0.5f;
@@ -44,12 +45,15 @@ struct LightBase
     S32  mBeam = 0;
     bool mOn = false;
     S32  mGobo = 0;
+    S32  mGel = 0;
 };
 
 struct Setup
 {
     F32       mRadius = 1.5f;
     LightBase mLights[LIGHT_COUNT];
+    bool      mRatioLock = false;
+    F32       mRatioStops = 0.f;
 };
 
 struct Transforms
@@ -119,6 +123,16 @@ LightBase blendLight(const LightBase& start, const LightBase& target,
                      F32 eased);
 F32 intensityFromEV(F32 ev_total, F32 headroom_stops, bool* clipped);
 void masterTempGain(F32 mired_shift, F32 gain[3]);
+// Applies a named gel to linear RGB in place. Gel 0 returns without touching
+// the three channels, preserving the exact no-gel path.
+void applyGel(S32 index, F32 linear_rgb[3]);
+const char* gelName(S32 index);
+bool gelIsColourTemperature(S32 index);
+F32 gelMiredShift(S32 index);
+// Screen-plane offset used by the catchlight placement. Both the view-axis
+// distance and this radial offset scale with the finalized subject scale.
+void catchlightRadialOffset(F32 subject_scale, F32 angle_degrees,
+                            F32 out_right_up[2]);
 // Radius is nominal setup geometry. Subject scale changes spatial output only;
 // the distance-derived EV term always continues to read the nominal radius.
 void render(F32 radius, const LightBase live[LIGHT_COUNT],

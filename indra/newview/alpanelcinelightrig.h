@@ -21,6 +21,7 @@ class LLComboBox;
 class LLButton;
 class LLCheckBoxCtrl;
 class LLLineEditor;
+class LLSpinCtrl;
 class LLTextBox;
 
 class ALPanelCineLightRig final : public LLPanel
@@ -72,6 +73,7 @@ private:
     LLComboBox* mSetupCombo = nullptr;
     LLComboBox* mFXCombo = nullptr;
     LLLineEditor* mSeedEditor = nullptr;
+    LLSpinCtrl* mFillEV = nullptr;
     LLTextBox* mClipStatus[4] = {};
     LLCheckBoxCtrl* mShaftControls[4] = {};
     LLCheckBoxCtrl* mHeroControls[4] = {};
@@ -81,7 +83,7 @@ private:
     LLButton* mSetupDelete = nullptr;
     std::vector<LLUUID> mCastIds;
     std::vector<std::string> mCastNames;
-    LLUUID mDisplayedAnchor;
+    S32 mDisplayedSlot = -1;
     bool mDisplayedGroupEnabled = false;
     U32 mDisplayedGroupSlots = ~0u;
     U32 mDisplayedResolvedSlots = ~0u;

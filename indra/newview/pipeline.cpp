@@ -390,6 +390,7 @@ S32  LLPipeline::BDMergeMotionBlurStrength;
 bool LLPipeline::BDMergeMotionBlur; // [BDMerge A5.4-3]
 bool LLPipeline::sVelocityRender = false;
 std::map<LLUUID, LLPipeline::VolumetricShaftOverride> LLPipeline::sVolumetricShaftOverrides;
+std::map<LLUUID, F32> LLPipeline::sProjectorShadowSoftness;
 std::map<LLUUID, LLPipeline::GoboOverride> LLPipeline::sGoboOverrides;
 std::set<LLUUID> LLPipeline::sVolumetricShaftObjects;
 std::set<LLUUID> LLPipeline::sNoShadowProjectors; // [BDMerge Batch 3] cast-shadows opt-out
@@ -597,7 +598,8 @@ void LLPipeline::connectRefreshCachedSettingsSafe(const std::string name)
 static U32 bdmergeMaxSpotShadows()
 {
     static LLCachedControl<U32> max_spots(gSavedSettings, "BDMergeMaxSpotShadows", 2);
-    return llclamp((U32)max_spots, 2u, LLPipeline::MAX_SPOT_SHADOWS);
+    return LLPipeline::clampSpotShadowCount(
+        static_cast<U32>(max_spots), gGLManager.mNumTextureImageUnits);
 }
 
 void LLPipeline::init()
@@ -9371,16 +9373,17 @@ bool LLPipeline::beginPrismAuxiliaryState()
     mPrismSavedPoissonOffset = mPoissonOffset;
     for (U32 i = 0; i < MAX_SPOT_SHADOWS; ++i)
     {
+        const U32 map_index = spotShadowMapIndex(i);
         mPrismSavedShadowSpotLight[i] = mShadowSpotLight[i];
         mPrismSavedTargetShadowSpotLight[i] = mTargetShadowSpotLight[i];
         mPrismSavedSpotLightFade[i] = mSpotLightFade[i];
         // [Prism spot shadows Stage 1] the aux pass re-expresses the projector
         // sampling matrices with the aux camera's inverse view
-        mPrismSavedSunShadowMatrix[i] = mSunShadowMatrix[i + 4];
+        mPrismSavedSunShadowMatrix[i] = mSunShadowMatrix[map_index];
         // [Prism spot shadows Stage 2] the aux generation pass rewrites the
         // per-slot projector view/projection for freshly selected projectors
-        mPrismSavedShadowModelview[i] = mShadowModelview[i + 4];
-        mPrismSavedShadowProjection[i] = mShadowProjection[i + 4];
+        mPrismSavedShadowModelview[i] = mShadowModelview[map_index];
+        mPrismSavedShadowProjection[i] = mShadowProjection[map_index];
     }
 
     // Probe selection is camera-space state. Build the UBO once from the main
@@ -9520,16 +9523,17 @@ void LLPipeline::endPrismAuxiliaryState()
 
     for (U32 i = 0; i < MAX_SPOT_SHADOWS; ++i)
     {
+        const U32 map_index = spotShadowMapIndex(i);
         mShadowSpotLight[i] = mPrismSavedShadowSpotLight[i];
         mTargetShadowSpotLight[i] = mPrismSavedTargetShadowSpotLight[i];
         mSpotLightFade[i] = mPrismSavedSpotLightFade[i];
         // [Prism spot shadows Stage 1] restore the main-view projector sampling
         // matrices before the main stateSort / deferred lighting consume them
-        mSunShadowMatrix[i + 4] = mPrismSavedSunShadowMatrix[i];
+        mSunShadowMatrix[map_index] = mPrismSavedSunShadowMatrix[i];
         // [Prism spot shadows Stage 2] restore the main-view per-slot projector
         // view/projection matrices likewise
-        mShadowModelview[i + 4] = mPrismSavedShadowModelview[i];
-        mShadowProjection[i + 4] = mPrismSavedShadowProjection[i];
+        mShadowModelview[map_index] = mPrismSavedShadowModelview[i];
+        mShadowProjection[map_index] = mPrismSavedShadowProjection[i];
     }
     mPoissonOffset = mPrismSavedPoissonOffset;
 
@@ -15082,6 +15086,7 @@ void LLPipeline::clearVolumetricShafts()
 {
     sVolumetricShaftObjects.clear();
     sVolumetricShaftOverrides.clear();
+    sProjectorShadowSoftness.clear();
     sGoboOverrides.clear();       // procedural cookies are session-only too
     sNoShadowProjectors.clear(); // [BDMerge Batch 3] cast-shadows opt-out is session-only too
     sHeroProjectors.clear();     // [BDMerge F4] Hero Beam flags are session-only too
@@ -15310,6 +15315,40 @@ bool LLPipeline::getVolumetricShaftOverride(const LLUUID& id, VolumetricShaftOve
 bool LLPipeline::hasVolumetricShaftOverride(const LLUUID& id)
 {
     return !sVolumetricShaftOverrides.empty() && sVolumetricShaftOverrides.count(id) != 0;
+}
+
+void LLPipeline::setProjectorShadowSoftness(const LLUUID& id, F32 softness)
+{
+    if (id.isNull() || !std::isfinite(softness) || softness <= 0.f)
+    {
+        clearProjectorShadowSoftness(id);
+        return;
+    }
+    sProjectorShadowSoftness[id] = llclamp(softness, 0.f, 8.f);
+}
+
+void LLPipeline::clearProjectorShadowSoftness(const LLUUID& id)
+{
+    auto it = sProjectorShadowSoftness.find(id);
+    if (it != sProjectorShadowSoftness.end())
+    {
+        sProjectorShadowSoftness.erase(it);
+    }
+}
+
+bool LLPipeline::getProjectorShadowSoftness(const LLUUID& id, F32& out)
+{
+    if (sProjectorShadowSoftness.empty())
+    {
+        return false;
+    }
+    auto it = sProjectorShadowSoftness.find(id);
+    if (it == sProjectorShadowSoftness.end())
+    {
+        return false;
+    }
+    out = it->second;
+    return true;
 }
 
 // [Cinematic Gobo] Session-only projector cookie state. This map affects only
@@ -15982,12 +16021,14 @@ void LLPipeline::bindShadowMaps(LLGLSLShader& shader)
         }
     }
 
-    for (U32 i = 4; i < 4 + MAX_SPOT_SHADOWS; i++) // [BDMerge NSpot]
+    for (U32 spot_slot = 0; spot_slot < MAX_SPOT_SHADOWS; ++spot_slot) // [BDMerge NSpot]
     {
-        S32 channel = shader.enableTexture(LLShaderMgr::DEFERRED_SHADOW0 + i);
+        const U32 map_index = spotShadowMapIndex(spot_slot);
+        S32 channel = shader.enableTexture(
+            LLShaderMgr::DEFERRED_SHADOW0 + map_index);
         if (channel > -1)
         {
-            LLRenderTarget* shadow_target = getSpotShadowTarget(i - 4);
+            LLRenderTarget* shadow_target = getSpotShadowTarget(spot_slot);
             if (shadow_target && shadow_target->getWidth() > 0)
             {
                 gGL.getTexUnit(channel)->bind(shadow_target, true);
@@ -16257,6 +16298,19 @@ void LLPipeline::bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_
     // disk with a per-pixel spatial rotation. Tap count clamped to the shader max.
     shader.uniform1i(LLShaderMgr::SOFT_SHADOW_VOGEL, BDMergeSoftShadowVogel ? 1 : 0);
     shader.uniform1i(LLShaderMgr::SOFT_SHADOW_TAPS, llclamp(BDMergeSoftShadowTaps, 1, 32));
+    F32 spot_shadow_softness[MAX_SPOT_SHADOWS] = {};
+    for (U32 i = 0; i < MAX_SPOT_SHADOWS; ++i)
+    {
+        LLVOVolume* volume = mShadowSpotLight[i].notNull()
+            ? mShadowSpotLight[i]->getVOVolume() : nullptr;
+        if (volume)
+        {
+            getProjectorShadowSoftness(
+                volume->getID(), spot_shadow_softness[i]);
+        }
+    }
+    shader.uniform1fv(LLShaderMgr::SPOT_SHADOW_SOFTNESS,
+                      MAX_SPOT_SHADOWS, spot_shadow_softness);
 
     shader.uniform3fv(LLShaderMgr::DEFERRED_SUN_DIR, 1, mTransformedSunDir.mV);
     shader.uniform3fv(LLShaderMgr::DEFERRED_MOON_DIR, 1, mTransformedMoonDir.mV);
@@ -17562,13 +17616,27 @@ void LLPipeline::setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep)
         for (U32 i = 0; i < bdmergeMaxSpotShadows(); i++) // [BDMerge NSpot]
         {
             F32 pri = 0.f;
+            LLVOVolume* incumbent_volume = nullptr;
 
             if (mTargetShadowSpotLight[i].notNull())
             {
-                pri = mTargetShadowSpotLight[i]->getVOVolume()->getSpotLightPriority();
+                incumbent_volume =
+                    mTargetShadowSpotLight[i]->getVOVolume();
+                pri = incumbent_volume->getSpotLightPriority();
             }
 
-            if (m_pri > pri)
+            LLVOVolume* potential_volume = potential
+                ? potential->getVOVolume() : nullptr;
+            const bool potential_is_rig = potential_volume &&
+                potential_volume->isCineRigEmitter();
+            const bool incumbent_is_rig = incumbent_volume &&
+                incumbent_volume->isCineRigEmitter();
+            // Rig-vs-world priority is categorical. Numeric priority remains
+            // the exact tie-break used before when both lights are the same
+            // kind, keeping world-only auctions byte-identical.
+            const bool outranks = potential_is_rig != incumbent_is_rig
+                ? potential_is_rig : m_pri > pri;
+            if (outranks)
             {
                 LLDrawable* temp = mTargetShadowSpotLight[i];
                 mTargetShadowSpotLight[i] = potential;
@@ -19773,10 +19841,11 @@ void LLPipeline::generateSunShadow(LLCamera& camera)
             LLVector3 origin = np - at_axis * dist;
 
             LLMatrix4 mat(quat, LLVector4(origin, 1.f));
+            const U32 map_index = spotShadowMapIndex(i);
 
-            view[i + 4] = glm::make_mat4((F32*)mat.mMatrix);
+            view[map_index] = glm::make_mat4((F32*)mat.mMatrix);
 
-            view[i + 4] = glm::inverse(view[i + 4]);
+            view[map_index] = glm::inverse(view[map_index]);
 
             //get perspective matrix
             F32 near_clip = dist + 0.01f;
@@ -19787,7 +19856,7 @@ void LLPipeline::generateSunShadow(LLCamera& camera)
             F32 fovy = fov; // radians
             F32 aspect = width / height;
 
-            proj[i + 4] = glm::perspective(fovy, aspect, near_clip, far_clip);
+            proj[map_index] = glm::perspective(fovy, aspect, near_clip, far_clip);
 
             //translate and scale to from [-1, 1] to [0, 1]
             glm::mat4 trans(0.5f, 0.0f, 0.0f, 0.0f,
@@ -19795,16 +19864,17 @@ void LLPipeline::generateSunShadow(LLCamera& camera)
                             0.0f, 0.0f, 0.5f, 0.0f,
                             0.5f, 0.5f, 0.5f, 1.0f);
 
-            set_current_modelview(view[i + 4]);
-            set_current_projection(proj[i + 4]);
+            set_current_modelview(view[map_index]);
+            set_current_projection(proj[map_index]);
 
-            mSunShadowMatrix[i + 4] = trans * proj[i + 4] * view[i + 4] * inv_view;
+            mSunShadowMatrix[map_index] =
+                trans * proj[map_index] * view[map_index] * inv_view;
 
-            set_last_modelview(mShadowModelview[i + 4]);
-            set_last_projection(mShadowProjection[i + 4]);
+            set_last_modelview(mShadowModelview[map_index]);
+            set_last_projection(mShadowProjection[map_index]);
 
-            mShadowModelview[i + 4] = view[i + 4];
-            mShadowProjection[i + 4] = proj[i + 4];
+            mShadowModelview[map_index] = view[map_index];
+            mShadowProjection[map_index] = proj[map_index];
 
             if (!gCubeSnapshot) //skip updating spot shadow maps during cubemap updates
             {
@@ -19826,7 +19896,8 @@ void LLPipeline::generateSunShadow(LLCamera& camera)
 
                 RenderSpotLight = drawable;
 
-                renderShadow(view[i + 4], proj[i + 4], shadow_cam, result[i], false);
+                renderShadow(view[map_index], proj[map_index], shadow_cam,
+                             result[i], false);
 
                 RenderSpotLight = nullptr;
 
@@ -20202,6 +20273,7 @@ void LLPipeline::generatePrismSpotShadows(LLCamera& camera)
         view = glm::inverse(view);
 
         glm::mat4 proj = glm::perspective(fovy, aspect, near_clip, far_clip);
+        const U32 map_index = spotShadowMapIndex(i);
 
         mShadowSpotLight[i] = drawable;
         mSpotLightFade[i] = 1.f; // fully shadowed, no fade-in (transient; restored)
@@ -20210,13 +20282,13 @@ void LLPipeline::generatePrismSpotShadows(LLCamera& camera)
         set_current_projection(proj);
 
         // the ONLY camera-dependent term: the AUX camera's inverse view
-        mSunShadowMatrix[i + 4] = trans * proj * view * inv_view_aux;
+        mSunShadowMatrix[map_index] = trans * proj * view * inv_view_aux;
 
-        set_last_modelview(mShadowModelview[i + 4]);
-        set_last_projection(mShadowProjection[i + 4]);
+        set_last_modelview(mShadowModelview[map_index]);
+        set_last_projection(mShadowProjection[map_index]);
 
-        mShadowModelview[i + 4] = view;
-        mShadowProjection[i + 4] = proj;
+        mShadowModelview[map_index] = view;
+        mShadowProjection[map_index] = proj;
 
         LLCamera shadow_cam = camera;
         // the surface-lens keep-plane (setUserClipPlane) is aux-eye state; it

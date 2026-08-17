@@ -30,7 +30,7 @@
  * that projector's sphere of influence, shaped by its frustum + cookie and
  * self-shadowed by its own shadow map. Reuses the exact spotLightF /
  * deferredUtil projector math (proj_mat/proj_n/size/color/falloff/cookie) and
- * the NSpot per-slot shadow dispatch (sampleSpotShadow, shadowMap4-9).
+ * the NSpot per-slot shadow dispatch (sampleSpotShadow, shadowMap4-13).
  */
 
 #extension GL_ARB_texture_rectangle : enable

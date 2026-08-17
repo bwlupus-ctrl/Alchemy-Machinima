@@ -243,17 +243,8 @@
      tool_tip="Release every drive"
      width="80" />
 
-    <check_box
-     control_name="ActorMoverShowHeading"
-     follows="left|top"
-     height="16"
-     label="Show paths in world"
-     layout="topleft"
-     left="8"
-     top="372"
-     name="show_paths_check"
-     tool_tip="Draw every enrolled prop's path in world (ribbon, chevrons and numbered nodes, tinted per prop) while a mover floater is open. Shared with the avatar path preview"
-     width="200" />
+    <!-- "Show paths in world" promoted to the global Director top strip
+         (show_paths_global_check, next to Action fires). One ActorMoverShowHeading toggle. -->
 
     <text
      follows="left|top|right"

@@ -19,7 +19,7 @@
 #include "alpanelcinecamparams.h"   // embedded shared panel (scene preset hooks)
 #include "alpanellensgaze.h"       // shared per-actor Lens Gaze controls
 #include "alpanelpatheditor.h"      // embedded shared Actor Pathing editor
-#include "alcinelightrig.h"
+#include "alcinelightrigmanager.h"
 #include "aldirectorswitcher.h"
 #include "llactormover.h"
 #include "llavatarnamecache.h"
@@ -723,6 +723,7 @@ const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()
         // the structured light_rig block; every persisted control is included
         // here so a scene remains a complete settings snapshot.
         "CineLightRigEnabled",
+        "CineLightRigScaleAware",
         "CineLightRigPower",
         "CineLightRigRadius",
         "CineLightRigMasterEV",
@@ -885,7 +886,7 @@ bool LLFloaterDirector::saveScene(const std::string& name)
     const LLSD prism = LLPrismLens::sceneData();
     scene["prism_captures"] = prism["prism_captures"];
     scene["prism_displays"] = prism["prism_displays"];
-    scene["light_rig"] = ALCineLightRig::instance().sceneData();
+    scene["light_rig"] = ALCineLightRigManager::instance().sceneData();
 
     // ... plus everything settings-backed
     LLSD settings = LLSD::emptyMap();
@@ -1054,7 +1055,7 @@ void LLFloaterDirector::loadScene(const std::string& name)
 
     // Structured state carries the session-only anchor and the deterministic
     // FX phase, plus a denormalized base setup for self-contained scenes.
-    ALCineLightRig::instance().applySceneData(scene["light_rig"]);
+    ALCineLightRigManager::instance().applySceneData(scene["light_rig"]);
 
     // named preset first (its apply path writes CinematicCam* including the
     // mode), THEN the scene's explicit mode wins

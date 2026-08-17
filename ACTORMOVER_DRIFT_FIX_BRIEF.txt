@@ -1,0 +1,59 @@
+FIX — self-avatar heading-line drift (Move tab). Repo: I:\alchemy-machinima. You IMPLEMENT. Do NOT
+build/cmake/run. This is a targeted, DELICATE fix in core avatar code — change ONLY what is specified;
+normal (non-Actor-Mover-driven) avatar turning MUST stay byte-identical.
+
+=============================================================================
+ROOT CAUSE (traced and confirmed — do not re-derive)
+=============================================================================
+The Move heading line reads av->getRenderRotation() = the OBJECT/drawable rotation (llviewerobject.cpp
+:4599-4622), NOT the skeleton (mRoot). For the SELF avatar only, LLViewerObject::idleUpdate integrates
+angular velocity every frame (applyAngularVelocity, llviewerobject.cpp:2538; self-only path gated at
+llvoavatar.cpp:2880-2896). LLVOAvatar::updateOrientation latches mTurning and then sets
+AGENT_CONTROL_TURN_RIGHT/LEFT EVERY FRAME while mTurning (llvoavatar.cpp:~4755-4813). mTurning normally
+clears when the body finishes turning — but when a silently-active Actor Mover Move PINS mRoot each
+frame (LLActorMover::applyOverride -> root->setWorldRotation, llactormover.cpp:1999-2000, called from
+llvoavatar.cpp:5044 AFTER updateOrientation), the angle never closes, so mTurning stays latched forever,
+the sim keeps turning the agent, angular velocity stays nonzero, and the OBJECT rotation spins
+continuously (the line drifts on a timer / wraps 360) while the visible body stays put. The pinning Move
+is created without pressing Walk: a Reset-to-Marks "hold" (placeAt, zero-speed, invisible, never
+expires) or an ACTION-auto-started Loop walk (DirectorArmMoves default true).
+
+=============================================================================
+FIX 1 (PRIMARY) — don't feed the turn-loop while Actor Mover owns the avatar's root
+=============================================================================
+a) llactormover.h / llactormover.cpp: add a small const accessor
+     bool LLActorMover::isDriving(const LLUUID& id) const;
+   returning true iff this avatar currently has an ACTIVE (non-suspended) Move in mMoves for its key.
+   Use the SAME key scheme mMoves uses elsewhere (av->getID() for the resolved avatar; match the
+   existing find pattern in start()/stop()/applyOverride). "Active" = present in mMoves AND not in the
+   suspended state the code already tracks (mSuspended / the per-move suspend flag — mirror how
+   applyOverride/updateSuspendState decide a move is live). Declare it near the other public queries
+   (~llactormover.h:389). No behavior change from adding it.
+b) llvoavatar.cpp updateOrientation (~:4755-4814): gate BOTH
+     (i) the `mTurning = true` latch (~:4764-4767), and
+     (ii) the `setControlFlags(AGENT_CONTROL_TURN_RIGHT/LEFT)` block (~:4804-4814)
+   with `!LLActorMover::instance().isDriving(getID())`. When isDriving(getID()) is TRUE: do NOT latch
+   mTurning (force mTurning = false) and do NOT set the TURN control flags — so no perpetual turn stream
+   while the mover pins the root. When isDriving is FALSE: EXECUTE TODAY'S CODE VERBATIM (byte-identical
+   normal turning). Include llactormover.h in llvoavatar.cpp if needed.
+
+=============================================================================
+FIX 2 — make Stop reliable (so a stale-id hold can't survive)
+=============================================================================
+llactormover.cpp stop() (~:1721-1746): today it early-returns/no-ops when resolve_actor(actor_id)
+returns null, leaving the Move driving forever. Change it to ERASE the Move by key REGARDLESS of
+resolve: compute the key the same way it is stored (av ? av->getID() : the path/id key used at
+insertion), erase mMoves[key], and guard the anim-stop / avatar-side calls behind a null check on av.
+stopAll() (~:1748) already clears unconditionally — keep it. Net: Stop on any actor reliably clears its
+Move even if the avatar is momentarily unresolvable.
+
+=============================================================================
+OFF-LIMITS / VERIFY
+=============================================================================
+- Non-driven avatar turning (isDriving==false) MUST be byte-identical to today (the reviewer diffs
+  updateOrientation for the false branch). Do NOT change advancePath/applyOverride math, the mover
+  tick, gaze, or anything else.
+- No new settings, no scene/version changes. Do not touch the light rig, vcam, panel XML, shaders.
+- REPORT: the isDriving implementation + the exact key/suspend check it uses; the two gated sites in
+  updateOrientation and that the false-branch is verbatim; the stop() erase-by-key change; and confirm
+  Stop-Everyone still works. If a pure helper is factorable, add a TUT (non-tautological). Do not build.

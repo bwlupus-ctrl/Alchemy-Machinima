@@ -1,7 +1,17 @@
 # Cinematic Light Rig — status / resume point
 
-**Paused:** 2026-08-15 (usage limit).
-**NOT BUILT. NOT TESTED IN-WORLD.** No build has been attempted at any point.
+**Updated:** 2026-08-16.
+**BUILT (compiles + links clean). NOT YET TESTED IN-WORLD.**
+
+Latest milestones (2026-08-16):
+- Base rig + scale + mirror + enhancements + track-mode + master presets + gobos +
+  lens-gaze + **multi-anchor (group-as-unit)** all implemented and Opus-adversarial-reviewed
+  (multi-anchor: 0 must-fix; fix round F1/F2/F3 + N3/N4 applied and verified).
+- **Git baseline** committed: branch `feature/cine-light-rig`, commit `d12fa7a91e` —
+  full working-tree snapshot (111 files; excludes `.tmp.driveupload/` + build logs).
+- **Release build** `cmake --build build-Windows-vs2026-os --config Release` → exit 0,
+  no `LNK1104`/errors; produces valid `AlchemyTest.exe` (Alchemy Viewer 26.2.0.63033).
+- REMAINING: in-world smoke test; ReShade volumetric-fog decision (awaiting user).
 
 ---
 

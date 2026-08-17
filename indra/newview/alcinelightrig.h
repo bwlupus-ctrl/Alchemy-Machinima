@@ -21,6 +21,19 @@
 
 class LLViewerRegion;
 class LLVOVolume;
+class LLVOAvatar;
+
+enum class ALCineLightRigSlot : S32
+{
+    SELF = 0,
+    A,
+    B,
+    C,
+    D,
+    COUNT
+};
+
+struct ALCineLightRigParamBlob;
 
 class ALCineLightRig
 {
@@ -40,25 +53,36 @@ public:
         std::string mName;
         std::string mIntent;
         ALCineLightRigModel::Setup mSetup;
+        bool mGenre = false;
     };
 
     struct SetupEntry
     {
         std::string mName;
         bool mMaster = false;
+        bool mGenre = false;
     };
 
-    ALCineLightRig();
+    // Non-explicit so the manager's `mInstances{ {SLOT_SELF}, {SLOT_A}, ... }`
+    // aggregate init can construct each element in place from its braced slot
+    // (copy-list-initialization cannot call an explicit constructor).
+    ALCineLightRig(
+        ALCineLightRigSlot slot = ALCineLightRigSlot::SELF);
     ~ALCineLightRig();
 
-    static ALCineLightRig& instance();
-
     static const char BUILT_IN_SETUP_CAPTION[];
+    static const char GENRE_SETUP_CAPTION[];
     static const char LOCAL_SETUP_CAPTION[];
     static bool isSetupDecorationName(const std::string& name);
 
-    void tick(F64 presentation_time);
+    void tickSelected(F64 presentation_time, bool owns_shadows);
+    void tickFromBlob(const ALCineLightRigParamBlob& blob,
+                      F64 presentation_time, bool owns_shadows);
     void renderGizmo() const;
+
+    ALCineLightRigSlot slot() const { return mSlot; }
+    LLVOAvatar* resolveSlotAvatar() const;
+    LLUUID projectorId(S32 light) const;
 
     void setAnchor(const LLUUID& id);
     const LLUUID& getAnchor() const { return mAnchor; }
@@ -101,18 +125,38 @@ public:
     void shutdown();
 
 private:
-    bool ensureProjectors();
+    friend struct ALCineLightRigParamBlob;
+
+    bool ensureProjectors(const std::string& cookie_setting);
     bool ensureOmnis();
+    bool ensureCatchlight(const std::string& cookie_setting);
     bool createEmitter(LLViewerRegion* region, bool projector,
+                       const std::string& cookie_setting,
                        LLPointer<LLVOVolume>& output);
     void destroyEmitter(LLPointer<LLVOVolume>& emitter);
     void destroyOmnis();
+    void destroyCatchlight();
     void destroyEmitters();
     void setEmittersDark();
 
     void readSettings(ALCineLightRigModel::Setup& setup,
                       ALCineLightRigModel::Globals& globals,
                       ALCineLightRigModel::Transforms& transforms) const;
+    void readSettings(const ALCineLightRigParamBlob& blob,
+                      ALCineLightRigModel::Setup& setup,
+                      ALCineLightRigModel::Globals& globals,
+                      ALCineLightRigModel::Transforms& transforms) const;
+    void tickShared(
+        F64 presentation_time, bool owns_shadows, S32 fx_setting,
+        F32 offset_z_setting, F32 damping_setting, S32 track_mode_setting,
+        bool scale_aware_setting, S32 shadow_mode,
+        bool catchlight_enabled, F32 catchlight_ev, F32 catchlight_size,
+        F32 catchlight_angle, const F32 shadow_softness[
+            ALCineLightRigModel::LIGHT_COUNT],
+        const std::string& cookie_setting,
+        ALCineLightRigModel::Setup& setup,
+        ALCineLightRigModel::Globals& globals,
+        ALCineLightRigModel::Transforms& transforms);
     void writeSetupToSettings(const ALCineLightRigModel::Setup& setup) const;
     void updateTransition(const ALCineLightRigModel::LightBase target[
                               ALCineLightRigModel::LIGHT_COUNT],
@@ -122,8 +166,13 @@ private:
     void applyFrame(const ALCineLightRigModel::RigFrame& frame,
                     const LLVector3d& rig_centre,
                     const LLVector3d& aim_centre, F32 nominal_radius,
-                    F32 subject_scale);
-    void updateShadowPolicy();
+                    F32 subject_scale,
+                    const std::string& cookie_setting);
+    void applyCatchlight(LLVOAvatar* avatar, F32 subject_scale,
+                         F32 master_temp_mired, F32 ev, F32 size,
+                         F32 angle_degrees,
+                         const std::string& cookie_setting);
+    void updateShadowPolicy(S32 shadow_mode);
     void updateProjectorFlags();
 
     static std::string presetsDir();
@@ -133,8 +182,10 @@ private:
         ALCineLightRigModel::LIGHT_COUNT];
     LLPointer<LLVOVolume> mOmnis[
         ALCineLightRigModel::LIGHT_COUNT];
+    LLPointer<LLVOVolume> mCatchlight;
     LLViewerRegion* mRegion = nullptr;
 
+    ALCineLightRigSlot mSlot = ALCineLightRigSlot::SELF;
     LLUUID mAnchor;
     bool mGroupEnabled = false;
     U32 mGroupSlots = 0;
@@ -146,6 +197,7 @@ private:
     F64 mLastPresentationTime = -1.0;
     S32 mProjectorRetryTicks = 0;
     S32 mOmniRetryTicks = 0;
+    S32 mCatchlightRetryTicks = 0;
 
     ALCineLightRigModel::LightBase mTransitionStart[
         ALCineLightRigModel::LIGHT_COUNT];
@@ -166,6 +218,7 @@ private:
     bool mHaveSmoothedCentre = false;
     bool mShaftEnabled[ALCineLightRigModel::LIGHT_COUNT] = {};
     bool mHeroEnabled[ALCineLightRigModel::LIGHT_COUNT] = {};
+    F32 mShadowSoftness[ALCineLightRigModel::LIGHT_COUNT] = {};
     ALCineLightRigModel::RigFrame mLastFrame;
 };
 

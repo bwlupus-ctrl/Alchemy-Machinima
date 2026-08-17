@@ -119,7 +119,7 @@ void main()
     if (proj_shadow_idx >= 0)
     {
         // [BDMerge NSpot] Sample THIS projector's own shadow map directly via
-        // shadowUtil's indexed dispatch (shadowMap4-9 / shadow_matrix[4+idx]),
+        // shadowUtil's indexed dispatch (shadowMap4-13 / shadow_matrix[4+idx]),
         // instead of reading a pre-resolved channel of the packed screen-space
         // shadow buffer. The old packed path (shd.b / shd.a) had only 2 free
         // channels, hard-capping projector shadows at 2 (raising the slider

@@ -282,7 +282,9 @@ set(viewer_SOURCE_FILES
     llghostdeferreddiagnostics.cpp
     alformationsolver.cpp
     alcinelightrig.cpp
+    alcinelightrigmanager.cpp
     alcinelightrigmodel.cpp
+    alvcambonepov.cpp
     alweathermodel.cpp
     alghostgroupmodel.cpp
     alghostinteractionstate.cpp
@@ -1126,7 +1128,10 @@ set(viewer_HEADER_FILES
     llghostdeferreddiagnostics.h
     alformationsolver.h
     alcinelightrig.h
+    alcinelightrigmanager.h
     alcinelightrigmodel.h
+    alvcambonepov.h
+    alvcambonepovmath.h
     alweathermodel.h
     alghostgroupmodel.h
     alghostinteractionstate.h
@@ -2600,6 +2605,14 @@ if (BUILD_TESTING)
   # ALGazeMath is deliberately header-only, so register its TUT directly
   # instead of inventing a production .cpp solely for the per-source macro.
   LL_ADD_INTEGRATION_TEST(algazemath
+    ""
+    "${test_libs}"
+    "${test_project}"
+  )
+
+  # Bone POV math and selection normalization are pure/header-only, so their
+  # regression tests need no viewer singleton or avatar fixture.
+  LL_ADD_INTEGRATION_TEST(alvcambonepov
     ""
     "${test_libs}"
     "${test_project}"

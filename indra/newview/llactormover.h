@@ -389,6 +389,7 @@ public:
     void placeAt(const LLUUID& actor_id, const LLVector3& pos);
     bool anyMoving() const { return !mMoves.empty(); }
     bool isMoving(const LLUUID& id) const { return mMoves.count(id) != 0; }
+    bool isDriving(const LLUUID& id) const;
 
     // floater status readout: distance traveled along the CURRENT leg vs the
     // configured path length. Returns false when the actor is not moving.

@@ -27,6 +27,9 @@ constexpr F32 MAX_EV = 20.f;
 constexpr F32 MAX_MASTER_EV = 16.f;
 constexpr F32 MAX_HEADROOM = 16.f;
 constexpr F32 MAX_TRANSITION = 10.f;
+constexpr F32 MAX_RATIO_STOPS = 5.f;
+constexpr F32 MIN_DERIVED_EV = MIN_EV - MAX_RATIO_STOPS;
+constexpr F32 CATCHLIGHT_RADIAL_M = 0.10f;
 constexpr F64 MAX_FX_SECONDS = 1.0e12;
 constexpr F64 TWO_PI = 6.283185307179586476925286766559;
 constexpr F32 DEGREES_TO_RADIANS =
@@ -45,6 +48,14 @@ struct Beam
     const char* mName;
     F32 mFov;
     F32 mFalloff;
+};
+
+struct Gel
+{
+    const char* mName;
+    bool mColourTemperature;
+    F32 mMiredShift;
+    F32 mMultiplier[3];
 };
 
 const Profile PROFILES[PROFILE_COUNT] = {
@@ -80,6 +91,26 @@ const Beam BEAMS[BEAM_COUNT] = {
     { "Snoot", 0.2f, 0.5f },
 };
 
+// Temperature gels are relative mired trims around the same 6500 K pivot as
+// the rig master trim. Party/correction gels are linear-sRGB multipliers.
+const Gel GELS[GEL_COUNT] = {
+    { "None",          false,    0.f, { 1.00f, 1.00f, 1.00f } },
+    { "CTO",            true,  135.f, { 1.00f, 1.00f, 1.00f } },
+    { "1/2 CTO",        true,   70.f, { 1.00f, 1.00f, 1.00f } },
+    { "1/4 CTO",        true,   35.f, { 1.00f, 1.00f, 1.00f } },
+    { "CTB",            true, -110.f, { 1.00f, 1.00f, 1.00f } },
+    { "1/2 CTB",        true,  -70.f, { 1.00f, 1.00f, 1.00f } },
+    { "1/4 CTB",        true,  -35.f, { 1.00f, 1.00f, 1.00f } },
+    { "Plus Green",    false,    0.f, { 0.78f, 1.00f, 0.76f } },
+    { "Minus Green",   false,    0.f, { 1.00f, 0.72f, 1.00f } },
+    { "Bastard Amber", false,    0.f, { 1.00f, 0.55f, 0.18f } },
+    { "Steel Blue",    false,    0.f, { 0.22f, 0.48f, 1.00f } },
+    { "Congo Blue",    false,    0.f, { 0.015f, 0.020f, 0.55f } },
+    { "Primary Red",   false,    0.f, { 1.00f, 0.01f, 0.01f } },
+    { "Primary Green", false,    0.f, { 0.01f, 1.00f, 0.02f } },
+    { "Primary Blue",  false,    0.f, { 0.01f, 0.03f, 1.00f } },
+};
+
 const char* const GOBO_NAMES[GOBO_COUNT] = {
     "Default", "Venetian Blinds", "Window Panes", "Prison Bars",
     "Slats", "Grid", "Soft Dapple", "Branches",
@@ -94,7 +125,12 @@ const char* FX_NAMES[FX_COUNT] = {
     "Short Circuit", "Red Alert Pulse", "Aurora Borealis",
     "Cyber Scanner", "Shooting Star", "Elevator Fault", "Car Pass",
     "Explosion", "Supernova", "Stage Debut", "Swinging Lamp",
-    "Parachute Flare", "Villain Reveal",
+    "Parachute Flare", "Villain Reveal", "Neon Buzz", "Welding Arc",
+    "Candle Draft", "Sunrise Sweep", "Dying Bulb", "Rave Chase",
+    "Lighthouse", "Night Train", "Fireworks Finale", "Passing Clouds",
+    "Will-o'-Wisp", "Hologram Glitch", "Signal Lamp", "Breathing Swell",
+    "Arcane Orbit",
+    "Rock With You",
 };
 
 const F32 FX_INTERVALS[FX_COUNT] = {
@@ -102,7 +138,9 @@ const F32 FX_INTERVALS[FX_COUNT] = {
     0.10f, 0.10f, 0.20f, 0.10f, 0.10f, 0.15f, 0.05f, 0.10f,
     0.10f, 0.10f, 0.05f, 0.20f, 0.05f, 0.10f, 0.20f, 0.10f,
     0.05f, 0.10f, 0.07f, 0.08f, 0.08f, 0.15f, 0.07f, 0.12f,
-    0.12f,
+    0.12f, 0.05f, 0.05f, 0.20f, 0.25f, 0.10f, 0.125f, 0.10f,
+    0.10f, 0.08f, 0.25f, 0.10f, 0.06f, 0.15f, 0.20f, 0.10f,
+    0.10f,
 };
 
 F32 finiteOr(F32 value, F32 fallback)
@@ -121,17 +159,18 @@ F32 clampPitch(F32 value)
                       -PITCH_LIMIT_DEG, PITCH_LIMIT_DEG);
 }
 
-LightBase cleanLight(const LightBase& input)
+LightBase cleanLight(const LightBase& input, F32 min_ev = MIN_EV)
 {
     LightBase output;
     std::memset(&output, 0, sizeof(output));
     output.mYawDeg = wrap180(finiteOr(input.mYawDeg, 0.f));
     output.mPitchDeg = clampPitch(input.mPitchDeg);
     output.mProfile = std::clamp(input.mProfile, 0, PROFILE_COUNT - 1);
-    output.mEV = std::clamp(finiteOr(input.mEV, 0.f), MIN_EV, MAX_EV);
+    output.mEV = std::clamp(finiteOr(input.mEV, 0.f), min_ev, MAX_EV);
     output.mBeam = std::clamp(input.mBeam, 0, BEAM_COUNT - 1);
     output.mOn = input.mOn;
     output.mGobo = std::clamp(input.mGobo, 0, GOBO_COUNT - 1);
+    output.mGel = std::clamp(input.mGel, 0, GEL_COUNT - 1);
     return output;
 }
 
@@ -279,6 +318,7 @@ void copyCleanLights(const LightBase input[LIGHT_COUNT],
         output[i].mBeam = safe.mBeam;
         output[i].mOn = safe.mOn;
         output[i].mGobo = safe.mGobo;
+        output[i].mGel = safe.mGel;
     }
 }
 
@@ -416,6 +456,84 @@ void initializeFX(S32 fx, LightBase lights[LIGHT_COUNT])
         setLight(lights, 0, 0.f, -60.f, 4, -10.f, 0, false);
         setLight(lights, 1, 180.f, 25.f, 12, -10.f, 0, false);
         break;
+    case 33:
+        setLight(lights, 0, 60.f, 20.f, 15, 0.f, 0, true);
+        setLight(lights, 2, -120.f, 25.f, 16, -1.f, 0, true);
+        break;
+    case 34:
+        setLight(lights, 0, 30.f, -25.f, 6, -10.f, 0, true);
+        setLight(lights, 1, 10.f, -35.f, 13, -2.5f, 1, true);
+        break;
+    case 35:
+        setLight(lights, 0, 10.f, -20.f, 0, 0.f, 0, true);
+        setLight(lights, 1, -25.f, -10.f, 13, -2.f, 1, true);
+        break;
+    case 36:
+        setLight(lights, 0, 170.f, 2.f, 0, -2.5f, 0, true);
+        setLight(lights, 1, -10.f, 10.f, 8, -3.5f, 1, true);
+        setLight(lights, 3, 0.f, -20.f, 5, -3.f, 0, true);
+        break;
+    case 37:
+        setLight(lights, 0, 0.f, 65.f, 1, 0.3f, 0, true);
+        break;
+    case 38:
+    {
+        static const F32 yaws[LIGHT_COUNT] = {
+            45.f, -45.f, 135.f, -135.f
+        };
+        for (S32 i = 0; i < LIGHT_COUNT; ++i)
+        {
+            setLight(lights, i, yaws[i], 20.f, 7, -10.f, 0, true);
+        }
+        break;
+    }
+    case 39:
+        setLight(lights, 0, 0.f, 8.f, 23, -8.f, 2, true);
+        setLight(lights, 1, -20.f, 10.f, 8, -3.5f, 1, true);
+        break;
+    case 40:
+        setLight(lights, 0, 90.f, 15.f, 2, -10.f, 0, true);
+        lights[0].mGobo = 4;
+        setLight(lights, 1, 90.f, -15.f, 4, -10.f, 1, true);
+        break;
+    case 41:
+        setLight(lights, 0, 40.f, 60.f, 7, -10.f, 0, false);
+        setLight(lights, 1, -40.f, 60.f, 7, -10.f, 0, false);
+        setLight(lights, 3, 180.f, 30.f, 20, -3.f, 0, true);
+        break;
+    case 42:
+        setLight(lights, 0, 40.f, 55.f, 3, 0.5f, 0, true);
+        setLight(lights, 1, -40.f, 20.f, 4, -2.f, 1, true);
+        break;
+    case 43:
+        setLight(lights, 0, 0.f, 20.f, 21, -0.5f, 2, true);
+        setLight(lights, 1, 0.f, 10.f, 14, -3.f, 1, true);
+        break;
+    case 44:
+        setLight(lights, 0, 15.f, 10.f, 16, 0.f, 0, true);
+        setLight(lights, 1, -15.f, 5.f, 10, -10.f, 0, false);
+        break;
+    case 45:
+        setLight(lights, 0, 165.f, 5.f, 2, -10.f, 2, true);
+        setLight(lights, 3, 0.f, -20.f, 20, -2.5f, 0, true);
+        break;
+    case 46:
+        setLight(lights, 0, 45.f, 35.f, 1, 0.f, 1, true);
+        setLight(lights, 1, -45.f, 10.f, 1, -1.5f, 1, true);
+        setLight(lights, 2, -135.f, 40.f, 5, -1.5f, 0, true);
+        setLight(lights, 3, 0.f, -20.f, 1, -2.5f, 0, true);
+        break;
+    case 47:
+        setLight(lights, 0, 0.f, 15.f, 22, -0.2f, 0, true);
+        setLight(lights, 1, 180.f, 15.f, 16, -0.2f, 0, true);
+        setLight(lights, 3, 0.f, -20.f, 20, -2.5f, 0, true);
+        break;
+    case 48:
+        setLight(lights, 0, 0.f, 82.f, 4, 0.5f, 2, true);
+        setLight(lights, 1, -45.f, 10.f, 20, -10.f, 0, false);
+        setLight(lights, 2, 90.f, 5.f, 14, -0.5f, 2, true);
+        setLight(lights, 3, -90.f, 8.f, 16, -0.5f, 2, true);
+        break;
     default:
         break;
     }
@@ -432,6 +550,9 @@ Setup sanitizeSetup(const Setup& setup)
     {
         output.mLights[i] = cleanLight(setup.mLights[i]);
     }
+    output.mRatioLock = setup.mRatioLock;
+    output.mRatioStops = std::clamp(
+        finiteOr(setup.mRatioStops, 0.f), 0.f, MAX_RATIO_STOPS);
     return output;
 }
 
@@ -604,14 +725,22 @@ void computeLive(const Setup& setup, const Transforms& transforms,
         out[i].mBeam = base.mBeam;
         out[i].mOn = base.mOn;
         out[i].mGobo = base.mGobo;
+        out[i].mGel = base.mGel;
+    }
+    if (safe_setup.mRatioLock)
+    {
+        // Fill is derived from the already-sanitized key and ratio domains.
+        // Its lower bound is therefore MIN_EV - MAX_RATIO_STOPS, not the
+        // user-entered EV floor applied by sanitizeSetup().
+        out[1].mEV = out[0].mEV - safe_setup.mRatioStops;
     }
 }
 
 LightBase blendLight(const LightBase& start, const LightBase& target,
                      F32 eased)
 {
-    const LightBase safe_start = cleanLight(start);
-    const LightBase safe_target = cleanLight(target);
+    const LightBase safe_start = cleanLight(start, MIN_DERIVED_EV);
+    const LightBase safe_target = cleanLight(target, MIN_DERIVED_EV);
     if (!std::isfinite(eased) || eased <= 0.f)
     {
         return safe_start;
@@ -638,6 +767,8 @@ LightBase blendLight(const LightBase& start, const LightBase& target,
     output.mOn = safe_start.mOn || safe_target.mOn;
     output.mGobo = eased > 0.5f
         ? safe_target.mGobo : safe_start.mGobo;
+    output.mGel = eased > 0.5f
+        ? safe_target.mGel : safe_start.mGel;
     return output;
 }
 
@@ -693,6 +824,60 @@ void masterTempGain(F32 mired_shift, F32 gain[3])
                                           0.1, 10.0));
 }
 
+void applyGel(S32 index, F32 linear_rgb[3])
+{
+    if (!linear_rgb || index <= 0 || index >= GEL_COUNT)
+    {
+        return;
+    }
+    const Gel& gel = GELS[index];
+    F32 multiplier[3] = {
+        gel.mMultiplier[0], gel.mMultiplier[1], gel.mMultiplier[2]
+    };
+    if (gel.mColourTemperature)
+    {
+        masterTempGain(gel.mMiredShift, multiplier);
+    }
+    for (S32 channel = 0; channel < 3; ++channel)
+    {
+        linear_rgb[channel] = std::clamp(
+            finiteOr(linear_rgb[channel], 0.f) * multiplier[channel],
+            0.f, 1.f);
+    }
+}
+
+const char* gelName(S32 index)
+{
+    return GELS[std::clamp(index, 0, GEL_COUNT - 1)].mName;
+}
+
+bool gelIsColourTemperature(S32 index)
+{
+    return index > 0 && index < GEL_COUNT &&
+           GELS[index].mColourTemperature;
+}
+
+F32 gelMiredShift(S32 index)
+{
+    return index > 0 && index < GEL_COUNT &&
+           GELS[index].mColourTemperature
+        ? GELS[index].mMiredShift : 0.f;
+}
+
+void catchlightRadialOffset(F32 subject_scale, F32 angle_degrees,
+                            F32 out_right_up[2])
+{
+    if (!out_right_up)
+    {
+        return;
+    }
+    const F32 scale = sanitizeSubjectScale(subject_scale);
+    const F32 angle = wrap180(finiteOr(angle_degrees, 120.f)) *
+                      DEGREES_TO_RADIANS;
+    out_right_up[0] = std::cos(angle) * CATCHLIGHT_RADIAL_M * scale;
+    out_right_up[1] = std::sin(angle) * CATCHLIGHT_RADIAL_M * scale;
+}
+
 void render(F32 radius, const LightBase live[LIGHT_COUNT],
             const Globals& globals, RigFrame& out)
 {
@@ -718,7 +903,7 @@ void render(F32 radius, const LightBase live[LIGHT_COUNT],
 
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
     {
-        const LightBase light = cleanLight(live[i]);
+        const LightBase light = cleanLight(live[i], MIN_DERIVED_EV);
         const F32 yaw = light.mYawDeg * DEGREES_TO_RADIANS;
         const F32 pitch = light.mPitchDeg * DEGREES_TO_RADIANS;
         const F32 cos_pitch = std::cos(pitch);
@@ -745,6 +930,19 @@ void render(F32 radius, const LightBase live[LIGHT_COUNT],
                     srgbChannelToLinear(rgb[channel]) * temp_gain[channel],
                     0.f, 1.f);
                 rgb[channel] = linearChannelToSRGB(linear);
+            }
+        }
+        if (light.mGel != 0)
+        {
+            F32 linear_rgb[3] = {
+                srgbChannelToLinear(rgb[0]),
+                srgbChannelToLinear(rgb[1]),
+                srgbChannelToLinear(rgb[2])
+            };
+            applyGel(light.mGel, linear_rgb);
+            for (S32 channel = 0; channel < 3; ++channel)
+            {
+                rgb[channel] = linearChannelToSRGB(linear_rgb[channel]);
             }
         }
 
@@ -1308,6 +1506,303 @@ void evalFX(S32 fx, U64 seed, F64 t_seconds,
             const F32 fade = std::min(1.f,
                 static_cast<F32>((beat - 50.0) / 20.0));
             lights[1].mEV = -10.f + fade * 9.5f;
+        }
+        break;
+    }
+    case 33: // Neon Buzz
+    {
+        const F64 cycle = positiveFmod(fs, 160.0);
+        lights[2].mEV = -1.f + 0.05f * phaseSin(fs * 1.2);
+        if (cycle < 12.0)
+        {
+            lights[0].mEV = (step & 1) ? 0.5f : -10.f;
+        }
+        else
+        {
+            const F32 r = unitHash(seed, fx, counter, 0, 0);
+            if (r > 0.35f)
+            {
+                lights[0].mEV = 0.3f + 0.15f *
+                    unitHash(seed, fx, counter, 0, 1);
+            }
+            else if (r > 0.20f)
+            {
+                lights[0].mEV = -2.f;
+            }
+            else
+            {
+                lights[0].mEV = -10.f;
+            }
+        }
+        break;
+    }
+    case 34: // Welding Arc
+    {
+        const F64 work = positiveFmod(fs, 120.0);
+        if (work < 70.0)
+        {
+            const F32 r = unitHash(seed, fx, counter, 0, 0);
+            lights[0].mEV = r > 0.25f
+                ? 1.8f + 0.7f * unitHash(seed, fx, counter, 0, 1)
+                : -10.f;
+            lights[1].mEV = -2.5f + static_cast<F32>(
+                std::min(1.5, work / 70.0 * 1.5)) +
+                0.1f * unitHash(seed, fx, counter, 1, 0);
+        }
+        else
+        {
+            lights[0].mEV = -10.f;
+            lights[1].mEV = -1.f -
+                static_cast<F32>((work - 70.0) / 50.0) * 2.f;
+        }
+        break;
+    }
+    case 35: // Candle Draft
+    {
+        const F32 n = valueNoise(seed, fx, fs * 0.9, 0, 0);
+        lights[0].mEV = -0.4f + 0.8f * n;
+        lights[0].mPitchDeg = -20.f + 6.f *
+            (valueNoise(seed, fx, fs * 0.6, 0, 1) - 0.5f);
+        lights[0].mYawDeg = 10.f + 8.f *
+            (valueNoise(seed, fx, fs * 0.6, 0, 2) - 0.5f);
+        const F32 g = valueNoise(seed, fx, fs * 0.15, 0, 3);
+        if (g > 0.8f)
+        {
+            lights[0].mEV -= (g - 0.8f) * 7.5f;
+        }
+        lights[1].mEV = -2.f + 0.32f * n;
+        break;
+    }
+    case 36: // Sunrise Sweep
+    {
+        const F64 u = positiveFmod(fs, 240.0) / 240.0;
+        lights[0].mPitchDeg = 2.f + static_cast<F32>(u) * 48.f;
+        lights[0].mEV = -2.5f + static_cast<F32>(u) * 3.f;
+        lights[0].mProfile = u < 0.20 ? 0 : u < 0.45 ? 17 :
+            u < 0.70 ? 1 : 3;
+        lights[1].mEV = -3.5f + static_cast<F32>(u) * 2.5f;
+        lights[1].mProfile = u < 0.60 ? 8 : 4;
+        lights[3].mEV = -3.f + static_cast<F32>(u) * 2.f;
+        break;
+    }
+    case 37: // Dying Bulb
+    {
+        const F64 b = positiveFmod(fs, 200.0);
+        if (b < 120.0)
+        {
+            lights[0].mEV = 0.3f - static_cast<F32>(b / 120.0) * 0.9f +
+                0.1f * (valueNoise(seed, fx, fs * 0.5, 0, 0) - 0.5f);
+        }
+        else if (b < 170.0)
+        {
+            const F32 r = unitHash(seed, fx, counter, 0, 0);
+            if (r > 0.6f)
+            {
+                lights[0].mEV = -0.6f -
+                    static_cast<F32>((b - 120.0) / 50.0) * 1.5f;
+            }
+            else if (r > 0.3f)
+            {
+                lights[0].mEV = -3.f;
+            }
+            else
+            {
+                lights[0].mEV = -10.f;
+            }
+        }
+        else if (b < 172.0)
+        {
+            lights[0].mEV = 1.5f;
+            lights[0].mProfile = 23;
+        }
+        else if (b < 180.0)
+        {
+            lights[0].mProfile = 11;
+            lights[0].mEV = -4.f - static_cast<F32>(b - 172.0) * 0.75f;
+        }
+        else
+        {
+            lights[0].mOn = false;
+        }
+        break;
+    }
+    case 38: // Rave Chase
+    {
+        const S64 active = positiveMod(step, 4);
+        for (S32 i = 0; i < LIGHT_COUNT; ++i)
+        {
+            lights[i].mProfile = 7 + static_cast<S32>(
+                positiveMod(step, 16));
+            lights[i].mEV = i == active ? 1.f : -10.f;
+        }
+        if (positiveMod(step, 32) == 31)
+        {
+            for (LightBase& light : lights)
+            {
+                light.mEV = 1.2f;
+            }
+        }
+        break;
+    }
+    case 39: // Lighthouse
+    {
+        const F64 theta = positiveFmod(6.0 * fs, 360.0);
+        lights[0].mYawDeg = wrap180(static_cast<F32>(theta));
+        const F32 c = std::max(
+            0.f, phaseCos(theta * DEGREES_TO_RADIANS));
+        lights[0].mEV = -8.f + 9.5f * std::pow(c, 24.f);
+        break;
+    }
+    case 40: // Night Train
+    {
+        const F64 b = positiveFmod(fs, 100.0);
+        if (b < 70.0)
+        {
+            const F32 env = phaseSin((TWO_PI * 0.5) * b / 70.0);
+            const F64 w = positiveFmod(fs, 3.0);
+            lights[0].mEV = w < 1.5 ? -1.f + 2.f * env : -6.f;
+            lights[1].mEV = -3.5f + env;
+        }
+        else
+        {
+            lights[0].mOn = false;
+            lights[1].mOn = false;
+        }
+        break;
+    }
+    case 41: // Fireworks Finale
+    {
+        const U64 cycle = static_cast<U64>(step / 25);
+        const S64 local = step - static_cast<S64>(cycle) * 25;
+        for (S32 i = 0; i < 2; ++i)
+        {
+            if (unitHash(seed, fx, cycle, i, 0) < 0.7f)
+            {
+                const S64 offset = static_cast<S64>(
+                    unitHash(seed, fx, cycle, i, 1) * 10.f);
+                if (local >= offset)
+                {
+                    const F32 ev = 1.8f -
+                        static_cast<F32>(local - offset) * 0.28f;
+                    if (ev > -6.f)
+                    {
+                        lights[i].mOn = true;
+                        lights[i].mEV = ev;
+                        lights[i].mProfile = 7 + static_cast<S32>(16.f *
+                            unitHash(seed, fx, cycle, i, 2));
+                        lights[i].mYawDeg = wrap180(lights[i].mYawDeg +
+                            60.f * (unitHash(seed, fx, cycle, i, 3) - 0.5f));
+                    }
+                }
+            }
+        }
+        break;
+    }
+    case 42: // Passing Clouds
+    {
+        const F32 cover = valueNoise(seed, fx, fs * 0.05, 0, 0);
+        lights[0].mEV = 0.5f - cover * 2.2f;
+        if (cover > 0.8f)
+        {
+            lights[0].mProfile = 4;
+        }
+        lights[1].mEV = -2.f - cover * 0.5f;
+        break;
+    }
+    case 43: // Will-o'-Wisp
+        lights[0].mYawDeg = 360.f *
+            valueNoise(seed, fx, fs * 0.07, 0, 0) - 180.f;
+        lights[0].mPitchDeg = -10.f + 50.f *
+            valueNoise(seed, fx, fs * 0.09, 0, 1);
+        lights[0].mEV = -0.5f + 0.8f * phaseSin(fs * 0.5) +
+            0.4f * (valueNoise(seed, fx, fs * 0.3, 0, 2) - 0.5f);
+        lights[1].mYawDeg = lights[0].mYawDeg * 0.5f;
+        lights[1].mEV = -3.f + 0.3f * phaseSin(fs * 0.5);
+        break;
+    case 44: // Hologram Glitch
+    {
+        lights[0].mEV = 0.15f * phaseSin(fs * 3.0);
+        const F32 g = unitHash(seed, fx, counter, 0, 0);
+        if (g > 0.92f)
+        {
+            const F32 jump = 30.f *
+                (unitHash(seed, fx, counter, 0, 1) - 0.5f);
+            lights[0].mYawDeg += jump;
+            lights[0].mEV += 0.6f;
+            lights[1].mOn = true;
+            lights[1].mYawDeg = -15.f - jump;
+            lights[1].mEV = -0.5f;
+        }
+        else if (g < 0.04f)
+        {
+            lights[0].mOn = false;
+        }
+        break;
+    }
+    case 45: // Signal Lamp
+    {
+        static const U64 SOS_MASK =
+            (1ULL << 0) | (1ULL << 2) | (1ULL << 4) |
+            (7ULL << 8) | (7ULL << 12) | (7ULL << 16) |
+            (1ULL << 22) | (1ULL << 24) | (1ULL << 26);
+        const U64 b = static_cast<U64>(positiveMod(step, 36));
+        lights[0].mEV = ((SOS_MASK >> b) & 1ULL) ? 1.2f : -10.f;
+        break;
+    }
+    case 46: // Breathing Swell
+    {
+        const F32 s = phaseSin(fs * 0.157);
+        for (LightBase& light : lights)
+        {
+            light.mEV += 0.6f * s;
+        }
+        lights[0].mPitchDeg = 35.f + 2.f * s;
+        break;
+    }
+    case 47: // Arcane Orbit
+    {
+        lights[0].mYawDeg = wrap180(static_cast<F32>(
+            positiveFmod(7.2 * fs, 360.0)));
+        lights[1].mYawDeg = wrap180(static_cast<F32>(
+            positiveFmod(-7.2 * fs + 180.0, 360.0)));
+        const F32 base = -0.2f + 0.3f * phaseSin(fs * 0.3);
+        lights[0].mEV = lights[1].mEV = base;
+        const F64 d = positiveFmod(14.4 * fs, 180.0);
+        if (d < 10.0 || d > 170.0)
+        {
+            lights[0].mEV = base + 1.f;
+            lights[1].mEV = base + 1.f;
+        }
+        break;
+    }
+    case 48: // Rock With You
+    {
+        lights[0].mEV = 0.5f + 0.15f * phaseSin(fs * 0.157);
+
+        lights[2].mYawDeg = wrap180(static_cast<F32>(
+            positiveFmod(9.0 * fs, 360.0)));
+        lights[2].mPitchDeg = 5.f + 18.f * phaseSin(fs * 0.35);
+
+        lights[3].mYawDeg = wrap180(static_cast<F32>(
+            positiveFmod(-12.0 * fs + 180.0, 360.0)));
+        lights[3].mPitchDeg = 8.f + 14.f * phaseCos(fs * 0.27);
+
+        lights[2].mEV = -0.5f + 0.4f *
+            (valueNoise(seed, fx, fs * 0.8, 2, 0) - 0.5f);
+        lights[3].mEV = -0.5f + 0.4f *
+            (valueNoise(seed, fx, fs * 0.8, 3, 0) - 0.5f);
+
+        const F64 d = positiveFmod(21.0 * fs, 180.0);
+        if (d < 6.0 || d > 174.0)
+        {
+            lights[2].mEV += 0.8f;
+            lights[3].mEV += 0.8f;
+        }
+
+        if (positiveMod(step / 80, 2) == 1)
+        {
+            lights[2].mProfile = 16;
+            lights[3].mProfile = 14;
         }
         break;
     }

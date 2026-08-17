@@ -1027,8 +1027,34 @@ public:
 
     // [BDMerge NSpot] compile-time ceiling for projector shadows; runtime
     // count is BDMergeMaxSpotShadows (2 = stock)
-    static constexpr U32    MAX_SPOT_SHADOWS = 6;
+    static constexpr U32    MAX_SPOT_SHADOWS = 10;
+    static_assert(MAX_SPOT_SHADOWS == 10u,
+                  "shadowUtil.glsl's two 10-case spot dispatches must match MAX_SPOT_SHADOWS");
     static constexpr U32    MAX_SHADOW_MATS = 4 + MAX_SPOT_SHADOWS;
+    // Keep the legacy six-slot runtime path on constrained hardware, admit an
+    // eight-slot intermediate tier, and reserve the ten-slot ceiling for
+    // desktop-class 32-unit hardware.
+    static constexpr U32 maxSpotShadowsForTextureUnits(U32 texture_units)
+    {
+        const U32 hardware_max = texture_units >= 32u ? 10u
+            : texture_units >= 28u ? 8u : 6u;
+        return hardware_max < MAX_SPOT_SHADOWS
+            ? hardware_max : MAX_SPOT_SHADOWS;
+    }
+    static constexpr U32 clampSpotShadowCount(U32 requested,
+                                               U32 texture_units)
+    {
+        const U32 hardware_max =
+            maxSpotShadowsForTextureUnits(texture_units);
+        return requested < 2u ? 2u
+            : requested > hardware_max ? hardware_max : requested;
+    }
+    static constexpr U32 spotShadowMapIndex(U32 spot_slot)
+    {
+        // SINGLE SOURCE OF TRUTH for the C++ spot-slot -> shadowMap index.
+        // Both dispatches in deferred/shadowUtil.glsl MUST mirror this mapping.
+        return 4u + spot_slot;
+    }
     LLRenderTarget          mSpotShadow[MAX_SPOT_SHADOWS];
     // [Prism spot shadows Stage 2] Dedicated projector shadow maps for the Prism
     // auxiliary capture. mSpotShadow[] content is consumed by the MAIN view
@@ -1710,6 +1736,13 @@ public:
     static bool  getVolumetricShaftOverride(const LLUUID& id, VolumetricShaftOverride& out);
     static bool  hasVolumetricShaftOverride(const LLUUID& id);
     static std::map<LLUUID, VolumetricShaftOverride> sVolumetricShaftOverrides;
+
+    // Additive per-projector surface-shadow penumbra override. Missing/zero
+    // entries retain the existing global hard/soft-shadow behavior exactly.
+    static void setProjectorShadowSoftness(const LLUUID& id, F32 softness);
+    static void clearProjectorShadowSoftness(const LLUUID& id);
+    static bool getProjectorShadowSoftness(const LLUUID& id, F32& out);
+    static std::map<LLUUID, F32> sProjectorShadowSoftness;
 
     // Client-only procedural cookie assignment. The simulator's projection
     // parameters and texture asset are never changed by these overrides.

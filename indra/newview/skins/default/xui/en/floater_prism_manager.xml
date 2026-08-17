@@ -3,7 +3,7 @@
  can_close="true"
  can_minimize="true"
  can_resize="true"
- height="724"
+ height="844"
  layout="topleft"
  min_height="520"
  min_width="720"
@@ -165,7 +165,7 @@
 
     <tab_container
      follows="all"
-     height="441"
+     height="561"
      layout="topleft"
      left="10"
      name="detail_tabs"
@@ -175,7 +175,7 @@
         <panel
          border="true"
          follows="all"
-         height="417"
+          height="537"
          label="Capture"
          layout="topleft"
          left="0"
@@ -184,7 +184,7 @@
          width="878">
             <scroll_container
              follows="all"
-             height="400"
+              height="520"
              layout="topleft"
              left="4"
              name="capture_settings_scroll"
@@ -195,7 +195,7 @@
              width="864">
                 <panel
                  follows="left|top|right"
-                 height="736"
+                  height="1028"
                  layout="topleft"
                  left="0"
                  name="capture_settings_document"
@@ -216,7 +216,7 @@
                     <layout_stack
                      animate="false"
                      follows="left|top|right"
-                     height="696"
+                      height="988"
                      layout="topleft"
                      left="10"
                      name="capture_mode_stack"
@@ -226,7 +226,7 @@
                          <layout_panel
                           auto_resize="false"
                           follows="left|top|right"
-                          height="452"
+                           height="744"
                           layout="topleft"
                           name="camera_settings_panel">
                             <text
@@ -368,6 +368,51 @@
                             <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="0" name="virtual_camera_heading" top="396" width="300">Virtual camera (prim-free)</text>
                             <check_box follows="left|top" height="16" label="Virtual camera (no prim)" layout="topleft" left="0" name="virtual_camera" tool_tip="Anchor this camera to a stored world transform instead of an in-world object. No prim is rezzed; works in no-rez parcels. Use 'Snap to my view' to place it." top="416" width="200" />
                             <button follows="left|top" height="22" label="Snap to my view" layout="topleft" left="210" name="btn_snap_view" tool_tip="Store your current camera position and orientation as this virtual camera's transform" top="412" width="150" />
+                            <panel background_visible="true" follows="left|top|right" height="292" layout="topleft" left="0" name="bone_pov_panel" top="442" width="800">
+                                <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="8" name="bone_pov_heading" top="6" width="320">Skeleton POV (avatar / clone)</text>
+                                <check_box follows="left|top" height="16" label="Attach virtual camera to skeleton" layout="topleft" left="8" name="bone_pov_enabled" tool_tip="Drive this prim-free camera from a cast subject's posed skeleton" top="26" width="240" />
+                                <button follows="left|top" height="20" label="Reset attach" layout="topleft" left="260" name="bone_pov_reset_all" tool_tip="Restore every skeleton attachment option to its default" top="22" width="100" />
+
+                                <text follows="left|top" height="16" layout="topleft" left="8" name="bone_pov_anchor_label" top="50" width="140">Anchor subject</text>
+                                <text follows="left|top" height="16" layout="topleft" left="164" name="bone_pov_joint_label" top="50" width="336">POV joint</text>
+                                <combo_box follows="left|top" height="22" layout="topleft" left="8" name="bone_pov_anchor" top="66" width="140">
+                                    <combo_box.item label="Me" name="bone_anchor_me" value="me" />
+                                    <combo_box.item label="Subject A" name="bone_anchor_a" value="a" />
+                                    <combo_box.item label="Subject B" name="bone_anchor_b" value="b" />
+                                    <combo_box.item label="Subject C" name="bone_anchor_c" value="c" />
+                                    <combo_box.item label="Subject D" name="bone_anchor_d" value="d" />
+                                </combo_box>
+                                <combo_box follows="left|top" height="22" layout="topleft" left="164" name="bone_pov_joint" top="66" tool_tip="Pick Eyeline or any joint from the anchor avatar's skeleton. Off-spine joints default to Stabilized aim." width="336" />
+
+                                <text follows="left|top" height="16" layout="topleft" left="8" name="bone_pov_aim_label" top="96" width="140">Aim mode</text>
+                                <text follows="left|top" height="16" layout="topleft" left="164" name="bone_pov_roll_label" top="96" width="140">Roll mode</text>
+                                <combo_box follows="left|top" height="22" layout="topleft" left="8" name="bone_pov_aim" top="112" tool_tip="Full-follow drives orientation; Stabilized drives position only and leaves operator aim untouched" width="140">
+                                    <combo_box.item label="Full-follow" name="bone_aim_follow" value="full_follow" />
+                                    <combo_box.item label="Stabilized" name="bone_aim_stabilized" value="stabilized" />
+                                </combo_box>
+                                <combo_box follows="left|top" height="22" layout="topleft" left="164" name="bone_pov_roll" top="112" width="140">
+                                    <combo_box.item label="Horizon-lock" name="bone_roll_horizon" value="horizon_lock" />
+                                    <combo_box.item label="Inherit roll" name="bone_roll_inherit" value="inherit" />
+                                </combo_box>
+
+                                <text follows="left|top" height="16" layout="topleft" left="8" name="bone_pov_offset_label" top="142" width="240">Offset XYZ (metres, joint-local)</text>
+                                <spinner decimal_digits="3" follows="left|top" height="22" increment="0.01" label="X" label_width="16" layout="topleft" left="8" max_val="64" min_val="-64" name="bone_pov_offset_x" top="158" width="104" />
+                                <spinner decimal_digits="3" follows="left|top" height="22" increment="0.01" label="Y" label_width="16" layout="topleft" left="118" max_val="64" min_val="-64" name="bone_pov_offset_y" top="158" width="104" />
+                                <spinner decimal_digits="3" follows="left|top" height="22" increment="0.01" label="Z" label_width="16" layout="topleft" left="228" max_val="64" min_val="-64" name="bone_pov_offset_z" top="158" width="104" />
+                                <button follows="left|top" height="18" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="340" name="bone_pov_offset_reset" tool_tip="Reset XYZ offset" top="160" width="18" />
+
+                                <text follows="left|top" height="16" layout="topleft" left="8" name="bone_pov_trim_label" top="186" width="240">Aim trim (degrees)</text>
+                                <spinner decimal_digits="1" follows="left|top" height="22" increment="0.5" label="Pitch" label_width="36" layout="topleft" left="8" max_val="180" min_val="-180" name="bone_pov_trim_pitch" top="202" width="140" />
+                                <spinner decimal_digits="1" follows="left|top" height="22" increment="0.5" label="Yaw" label_width="30" layout="topleft" left="156" max_val="180" min_val="-180" name="bone_pov_trim_yaw" top="202" width="140" />
+                                <button follows="left|top" height="18" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="304" name="bone_pov_trim_reset" tool_tip="Reset pitch and yaw trim" top="204" width="18" />
+
+                                <spinner decimal_digits="1" follows="left|top" height="22" increment="1" label="FOV" label_width="28" layout="topleft" left="8" max_val="150" min_val="10" name="bone_pov_fov" tool_tip="Vertical field of view while attached" top="232" width="136" />
+                                <button follows="left|top" height="18" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="150" name="bone_pov_fov_reset" tool_tip="Reset FOV to 60 degrees" top="234" width="18" />
+                                <spinner decimal_digits="2" follows="left|top" height="22" increment="0.05" label="Smooth (s)" label_width="68" layout="topleft" left="184" max_val="10" min_val="0" name="bone_pov_smoothing" tool_tip="Exponential position and orientation damping; zero snaps" top="232" width="154" />
+                                <button follows="left|top" height="18" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="344" name="bone_pov_smoothing_reset" tool_tip="Reset smoothing to 0.15 seconds" top="234" width="18" />
+                                <check_box follows="left|top" height="16" label="Clone-scale aware" layout="topleft" left="382" name="bone_pov_scale_aware" tool_tip="Scale the joint point about the avatar foot and scale the local offset by the clone's uniform scale" top="235" width="170" />
+                                <text follows="left|top|right" height="28" layout="topleft" left="8" name="bone_pov_status" text_color="LtGray" top="260" use_ellipses="true" width="780">Skeleton attachment is disabled.</text>
+                            </panel>
                         </layout_panel>
                         <layout_panel
                          auto_resize="false"
@@ -487,7 +532,7 @@
         <panel
          border="true"
          follows="all"
-         height="417"
+         height="537"
          label="Displays"
          layout="topleft"
          left="0"
@@ -501,7 +546,7 @@
              animate="false"
              border_size="6"
              follows="all"
-             height="387"
+             height="507"
              layout="topleft"
              left="8"
              name="displays_layout_stack"
@@ -648,7 +693,7 @@
         <panel
          border="true"
          follows="all"
-         height="417"
+         height="537"
          label="Performance"
          layout="topleft"
          left="0"
@@ -657,7 +702,7 @@
          width="878">
             <scroll_container
              follows="all"
-             height="400"
+              height="520"
              layout="topleft"
              left="4"
              name="performance_settings_scroll"
@@ -668,7 +713,7 @@
              width="864">
                 <panel
                  follows="left|top|right"
-                 height="400"
+                  height="520"
                  layout="topleft"
                  left="0"
                  name="performance_settings_document"
@@ -781,7 +826,7 @@
      left="12"
      name="status_text"
      text_color="LtGray"
-     top="694"
+      top="814"
      use_ellipses="true"
      width="876">
         Ready.

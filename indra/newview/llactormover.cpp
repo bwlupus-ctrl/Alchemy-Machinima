@@ -1724,14 +1724,15 @@ void LLActorMover::stop(const LLUUID& actor_id)
     // start (group delay), so no Stop button can leave a surprise walk armed
     LLDirectorCast::instance().cancelPendingStart(actor_id);
     LLVOAvatar* av = resolve_actor(actor_id);
-    if (av)
+    const LLUUID key = av ? av->getID() : path_key(actor_id);
+    auto it = mMoves.find(key);
+    if (it != mMoves.end())
     {
-        auto it = mMoves.find(av->getID());
-        if (it != mMoves.end())
+        const LLUUID anim = it->second.mAnim;
+        const LLUUID dwell_anim = it->second.mDwellAnim;    // path dwell, if any
+        mMoves.erase(it);
+        if (av)
         {
-            const LLUUID anim = it->second.mAnim;
-            const LLUUID dwell_anim = it->second.mDwellAnim;    // path dwell, if any
-            mMoves.erase(it);
             if (anim.notNull())     // placeAt() holds carry no anim
             {
                 av->stopMotion(anim);
@@ -1999,6 +2000,12 @@ bool LLActorMover::applyOverride(LLVOAvatar* av)
     av->getRootJoint()->setWorldPosition(mv.mCurPos);
     av->getRootJoint()->setWorldRotation(mv.mCurRot);
     return true;
+}
+
+bool LLActorMover::isDriving(const LLUUID& id) const
+{
+    auto it = mMoves.find(id);
+    return it != mMoves.end() && !it->second.mSuspended;
 }
 
 // ===========================================================================

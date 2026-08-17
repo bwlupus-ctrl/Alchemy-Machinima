@@ -3383,7 +3383,18 @@ void LLVOVolume::updateSpotLightPriority()
     // big set lights dominate deterministically): the same two largest
     // in-frustum projectors keep their shadows regardless of camera motion.
     static LLCachedControl<bool> stable_spots(gSavedSettings, "BDMergeStableSpotShadows", false);
-    if (stable_spots)
+    if (isCineRigEmitter())
+    {
+        // [Cine rig] The rig's invisible projectors must hold their shadow slots
+        // deterministically and camera-independently. setupSpotLight gives rig
+        // emitters a categorical tier above world projectors; the numeric value
+        // therefore only orders rig emitters among themselves. World-size r^3
+        // preserves that ordering without losing small radius differences to a
+        // large floating-point base. Gated on isCineRigEmitter() => this is
+        // byte-identical for every non-rig projector.
+        mSpotLightPriority = r * r * r;
+    }
+    else if (stable_spots)
     {
         mSpotLightPriority = r * r * r;
     }

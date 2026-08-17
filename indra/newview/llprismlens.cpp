@@ -3336,12 +3336,31 @@ public:
             settings.mOptics.mCRTScanlines >= 0.f && settings.mOptics.mCRTScanlines <= 1.f &&
             std::isfinite(settings.mOptics.mExposureBias) &&
             settings.mOptics.mExposureBias >= -4.f && settings.mOptics.mExposureBias <= 4.f;
-        if (!finite_offset || !valid_fov || !valid_near || !valid_far || !valid_aspect || !valid_optics)
+        const LLPrismLens::BonePovSettings& bone = settings.mBonePov;
+        const bool valid_bone_pov =
+            bone.mAnchorSlot <= LLPrismLens::BONE_ANCHOR_D &&
+            (bone.mJointSelection == LLPrismLens::BONE_JOINT_EYELINE ||
+             bone.mJointSelection == LLPrismLens::BONE_JOINT_NAMED) &&
+            bone.mAimMode <= LLPrismLens::BONE_AIM_STABILIZED &&
+            bone.mRollMode <= LLPrismLens::BONE_ROLL_INHERIT &&
+            bone.mOffset.isFinite() &&
+            std::isfinite(bone.mTrimPitchDeg) &&
+            bone.mTrimPitchDeg >= -180.f && bone.mTrimPitchDeg <= 180.f &&
+            std::isfinite(bone.mTrimYawDeg) &&
+            bone.mTrimYawDeg >= -180.f && bone.mTrimYawDeg <= 180.f &&
+            std::isfinite(bone.mFovDeg) &&
+            bone.mFovDeg >= 10.f && bone.mFovDeg <= 150.f &&
+            std::isfinite(bone.mSmoothingSec) &&
+            bone.mSmoothingSec >= 0.f && bone.mSmoothingSec <= 10.f &&
+            bone.mCustomJoint.size() <= 128;
+        if (!finite_offset || !valid_fov || !valid_near || !valid_far ||
+            !valid_aspect || !valid_optics || !valid_bone_pov)
         {
             if (reason)
             {
                 *reason = "Camera settings require finite FOV 5-175 degrees, near 0.01-10 m, "
-                          "far 0.2-512 m (at least near+0.1), finite offset, aspect 0.25-4, and valid optics.";
+                          "far 0.2-512 m (at least near+0.1), finite offset, aspect 0.25-4, valid optics, "
+                          "and valid bone POV values (FOV 10-150, trim +/-180, smoothing 0-10).";
             }
             return false;
         }
@@ -3416,6 +3435,88 @@ public:
         capture.mCamera = corrected;
         suppressOutput(static_cast<U32>(slot));
         ++mRevision;
+        if (reason) reason->clear();
+        return true;
+    }
+
+    bool setVirtualCameraTransform(
+        const LLPrismLens::CaptureHandle& handle, const LLVector3& pos,
+        const LLQuaternion& rot, F32 vertical_fov_rad, std::string* reason)
+    {
+        const S32 slot = findCapture(handle);
+        if (slot < 0)
+        {
+            if (reason) *reason = "That capture handle is stale.";
+            return false;
+        }
+        PrismInstance& capture = mLenses[slot];
+        if (capture.mMode != LLPrismLens::ECaptureMode::CAMERA_FEED ||
+            !capture.mCamera.mVirtual)
+        {
+            if (reason) *reason = "Bone POV runtime transforms require a virtual Camera Feed.";
+            return false;
+        }
+        if (capture.mCamera.mFovMode != LLPrismLens::EFovMode::FIXED)
+        {
+            if (reason) *reason = "A virtual camera must use fixed vertical FOV.";
+            return false;
+        }
+
+        LLPrismLens::CameraSettings candidate = capture.mCamera;
+        candidate.mVirtualPos = pos;
+        candidate.mVirtualRot = rot;
+        candidate.mFixedVerticalFovRad = vertical_fov_rad;
+        if (!validCameraSettings(candidate, reason))
+        {
+            return false;
+        }
+
+        // Runtime-only: do not suppress retained output and do not bump the
+        // configuration revision. Capture prep republishes the fixed FOV into
+        // mEffectiveVerticalFovRad every frame.
+        capture.mCamera.mVirtualPos = pos;
+        capture.mCamera.mVirtualRot = rot;
+        capture.mCamera.mFixedVerticalFovRad = vertical_fov_rad;
+        ++mRuntimeRevision;
+        if (reason) reason->clear();
+        return true;
+    }
+
+    bool setVirtualCameraPosition(
+        const LLPrismLens::CaptureHandle& handle, const LLVector3& pos,
+        F32 vertical_fov_rad, std::string* reason)
+    {
+        const S32 slot = findCapture(handle);
+        if (slot < 0)
+        {
+            if (reason) *reason = "That capture handle is stale.";
+            return false;
+        }
+        PrismInstance& capture = mLenses[slot];
+        if (capture.mMode != LLPrismLens::ECaptureMode::CAMERA_FEED ||
+            !capture.mCamera.mVirtual)
+        {
+            if (reason) *reason = "Bone POV runtime positions require a virtual Camera Feed.";
+            return false;
+        }
+        if (capture.mCamera.mFovMode != LLPrismLens::EFovMode::FIXED)
+        {
+            if (reason) *reason = "A virtual camera must use fixed vertical FOV.";
+            return false;
+        }
+
+        LLPrismLens::CameraSettings candidate = capture.mCamera;
+        candidate.mVirtualPos = pos;
+        candidate.mFixedVerticalFovRad = vertical_fov_rad;
+        if (!validCameraSettings(candidate, reason))
+        {
+            return false;
+        }
+
+        // Deliberately omit mVirtualRot: stabilized aim is operator-owned.
+        capture.mCamera.mVirtualPos = pos;
+        capture.mCamera.mFixedVerticalFovRad = vertical_fov_rad;
+        ++mRuntimeRevision;
         if (reason) reason->clear();
         return true;
     }
@@ -3806,6 +3907,46 @@ public:
                 virtual_rot.append(capture.mCamera.mVirtualRot.mQ[VZ]);
                 virtual_rot.append(capture.mCamera.mVirtualRot.mQ[VS]);
                 item["virtual_rot"] = virtual_rot;
+
+                // Optional skeleton attachment. This additive sub-map rides the
+                // existing prism_captures Director scene round-trip; there is no
+                // scene-version or global-setting dependency.
+                const LLPrismLens::BonePovSettings& bone_settings =
+                    capture.mCamera.mBonePov;
+                LLSD bone = LLSD::emptyMap();
+                bone["enabled"] = bone_settings.mEnabled;
+                switch (bone_settings.mAnchorSlot)
+                {
+                    case LLPrismLens::BONE_ANCHOR_A: bone["anchor"] = "a"; break;
+                    case LLPrismLens::BONE_ANCHOR_B: bone["anchor"] = "b"; break;
+                    case LLPrismLens::BONE_ANCHOR_C: bone["anchor"] = "c"; break;
+                    case LLPrismLens::BONE_ANCHOR_D: bone["anchor"] = "d"; break;
+                    default: bone["anchor"] = "me"; break;
+                }
+                const LLPrismLens::NormalizedBonePovJointSelection joint =
+                    LLPrismLens::normalizeBonePovJointSelection(
+                        bone_settings.mJointSelection,
+                        bone_settings.mCustomJoint);
+                // Keep the original field vocabulary for reverse compatibility:
+                // old viewers treat every new named pick as their Custom mode.
+                bone["joint"] = joint.mTag == LLPrismLens::BONE_JOINT_EYELINE
+                    ? "eye" : "custom";
+                bone["custom_joint"] = joint.mName;
+                bone["aim"] = bone_settings.mAimMode == LLPrismLens::BONE_AIM_STABILIZED
+                    ? "stabilized" : "full_follow";
+                bone["roll"] = bone_settings.mRollMode == LLPrismLens::BONE_ROLL_INHERIT
+                    ? "inherit" : "horizon_lock";
+                LLSD bone_offset = LLSD::emptyArray();
+                bone_offset.append(bone_settings.mOffset.mV[VX]);
+                bone_offset.append(bone_settings.mOffset.mV[VY]);
+                bone_offset.append(bone_settings.mOffset.mV[VZ]);
+                bone["offset"] = bone_offset;
+                bone["trim_pitch_degrees"] = bone_settings.mTrimPitchDeg;
+                bone["trim_yaw_degrees"] = bone_settings.mTrimYawDeg;
+                bone["fov_degrees"] = bone_settings.mFovDeg;
+                bone["smoothing_seconds"] = bone_settings.mSmoothingSec;
+                bone["scale_aware"] = bone_settings.mScaleAware;
+                item["bone_pov"] = bone;
             }
             result["prism_captures"].append(item);
         }
@@ -4090,6 +4231,130 @@ public:
                     parsed.mCamera.mVirtualRot.mQ[VY] = static_cast<F32>(item["virtual_rot"][1].asReal());
                     parsed.mCamera.mVirtualRot.mQ[VZ] = static_cast<F32>(item["virtual_rot"][2].asReal());
                     parsed.mCamera.mVirtualRot.mQ[VS] = static_cast<F32>(item["virtual_rot"][3].asReal());
+                }
+
+                // Bone POV is additive and optional. Absent sub-map/fields keep
+                // the default-disabled, pointer-free struct so old scenes load
+                // unchanged. Present malformed fields are rejected rather than
+                // silently producing an invalid per-frame transform.
+                if (item.has("bone_pov"))
+                {
+                    const LLSD& bone = item["bone_pov"];
+                    if (!bone.isMap())
+                    {
+                        return fail("Prism bone_pov must be a map.");
+                    }
+                    LLPrismLens::BonePovSettings& settings =
+                        parsed.mCamera.mBonePov;
+                    if (bone.has("enabled"))
+                    {
+                        if (!bone["enabled"].isBoolean())
+                            return fail("Prism bone_pov enabled must be boolean.");
+                        settings.mEnabled = bone["enabled"].asBoolean();
+                    }
+                    if (bone.has("anchor"))
+                    {
+                        if (!bone["anchor"].isString())
+                            return fail("Prism bone_pov anchor must be a string.");
+                        const std::string anchor = bone["anchor"].asString();
+                        if (anchor == "me") settings.mAnchorSlot = LLPrismLens::BONE_ANCHOR_ME;
+                        else if (anchor == "a") settings.mAnchorSlot = LLPrismLens::BONE_ANCHOR_A;
+                        else if (anchor == "b") settings.mAnchorSlot = LLPrismLens::BONE_ANCHOR_B;
+                        else if (anchor == "c") settings.mAnchorSlot = LLPrismLens::BONE_ANCHOR_C;
+                        else if (anchor == "d") settings.mAnchorSlot = LLPrismLens::BONE_ANCHOR_D;
+                        else return fail("Unknown Prism bone_pov anchor.");
+                    }
+                    if (bone.has("custom_joint"))
+                    {
+                        if (!bone["custom_joint"].isString())
+                            return fail("Prism bone_pov custom_joint must be a string.");
+                        settings.mCustomJoint = bone["custom_joint"].asString();
+                    }
+                    if (bone.has("joint"))
+                    {
+                        if (!bone["joint"].isString())
+                            return fail("Prism bone_pov joint must be a string.");
+                        const std::string joint = bone["joint"].asString();
+                        U8 stored_selection = LLPrismLens::BONE_JOINT_EYELINE;
+                        if (joint == "head") stored_selection = LLPrismLens::BONE_JOINT_LEGACY_HEAD;
+                        else if (joint == "eye") stored_selection = LLPrismLens::BONE_JOINT_EYELINE;
+                        else if (joint == "neck") stored_selection = LLPrismLens::BONE_JOINT_LEGACY_NECK;
+                        else if (joint == "custom" || joint == "named")
+                            stored_selection = LLPrismLens::BONE_JOINT_NAMED;
+                        else return fail("Unknown Prism bone_pov joint.");
+
+                        const LLPrismLens::NormalizedBonePovJointSelection normalized =
+                            LLPrismLens::normalizeBonePovJointSelection(
+                                stored_selection, settings.mCustomJoint);
+                        settings.mJointSelection = normalized.mTag;
+                        settings.mCustomJoint = normalized.mName;
+                    }
+                    if (bone.has("aim"))
+                    {
+                        if (!bone["aim"].isString())
+                            return fail("Prism bone_pov aim must be a string.");
+                        const std::string aim = bone["aim"].asString();
+                        if (aim == "full_follow") settings.mAimMode = LLPrismLens::BONE_AIM_FULL_FOLLOW;
+                        else if (aim == "stabilized") settings.mAimMode = LLPrismLens::BONE_AIM_STABILIZED;
+                        else return fail("Unknown Prism bone_pov aim mode.");
+                    }
+                    else if (settings.mJointSelection ==
+                             LLPrismLens::BONE_JOINT_NAMED &&
+                             !LLPrismLens::isBonePovSpineJoint(
+                                 settings.mCustomJoint))
+                    {
+                        // An off-spine joint has no proven X-forward/Z-up frame.
+                        // Only an explicit persisted full_follow value opts in.
+                        settings.mAimMode = LLPrismLens::BONE_AIM_STABILIZED;
+                    }
+                    if (bone.has("roll"))
+                    {
+                        if (!bone["roll"].isString())
+                            return fail("Prism bone_pov roll must be a string.");
+                        const std::string roll = bone["roll"].asString();
+                        if (roll == "horizon_lock") settings.mRollMode = LLPrismLens::BONE_ROLL_HORIZON_LOCK;
+                        else if (roll == "inherit") settings.mRollMode = LLPrismLens::BONE_ROLL_INHERIT;
+                        else return fail("Unknown Prism bone_pov roll mode.");
+                    }
+                    if (bone.has("offset"))
+                    {
+                        if (!is_numeric_array(bone["offset"], 3))
+                            return fail("Prism bone_pov offset must be a numeric 3-array.");
+                        settings.mOffset.setVec(
+                            static_cast<F32>(bone["offset"][0].asReal()),
+                            static_cast<F32>(bone["offset"][1].asReal()),
+                            static_cast<F32>(bone["offset"][2].asReal()));
+                    }
+                    if (bone.has("trim_pitch_degrees"))
+                    {
+                        if (!is_numeric(bone["trim_pitch_degrees"]))
+                            return fail("Prism bone_pov pitch trim must be numeric.");
+                        settings.mTrimPitchDeg = static_cast<F32>(bone["trim_pitch_degrees"].asReal());
+                    }
+                    if (bone.has("trim_yaw_degrees"))
+                    {
+                        if (!is_numeric(bone["trim_yaw_degrees"]))
+                            return fail("Prism bone_pov yaw trim must be numeric.");
+                        settings.mTrimYawDeg = static_cast<F32>(bone["trim_yaw_degrees"].asReal());
+                    }
+                    if (bone.has("fov_degrees"))
+                    {
+                        if (!is_numeric(bone["fov_degrees"]))
+                            return fail("Prism bone_pov FOV must be numeric.");
+                        settings.mFovDeg = static_cast<F32>(bone["fov_degrees"].asReal());
+                    }
+                    if (bone.has("smoothing_seconds"))
+                    {
+                        if (!is_numeric(bone["smoothing_seconds"]))
+                            return fail("Prism bone_pov smoothing must be numeric.");
+                        settings.mSmoothingSec = static_cast<F32>(bone["smoothing_seconds"].asReal());
+                    }
+                    if (bone.has("scale_aware"))
+                    {
+                        if (!bone["scale_aware"].isBoolean())
+                            return fail("Prism bone_pov scale_aware must be boolean.");
+                        settings.mScaleAware = bone["scale_aware"].asBoolean();
+                    }
                 }
                 // A virtual camera cannot follow a projector; soft-correct a
                 // stale mode to FIXED so the scene loads instead of failing.
@@ -5124,6 +5389,23 @@ bool setCameraSettings(const CaptureHandle& capture,
     return PrismLensRegistry::instance().setCameraSettings(capture, settings, reason);
 }
 
+bool setVirtualCameraTransform(const CaptureHandle& capture,
+                               const LLVector3& pos,
+                               const LLQuaternion& rot,
+                               F32 vertical_fov_rad, std::string* reason)
+{
+    return PrismLensRegistry::instance().setVirtualCameraTransform(
+        capture, pos, rot, vertical_fov_rad, reason);
+}
+
+bool setVirtualCameraPosition(const CaptureHandle& capture,
+                              const LLVector3& pos,
+                              F32 vertical_fov_rad, std::string* reason)
+{
+    return PrismLensRegistry::instance().setVirtualCameraPosition(
+        capture, pos, vertical_fov_rad, reason);
+}
+
 bool setCaptureRateSettings(const CaptureHandle& capture,
                             const CaptureRateSettings& settings,
                             std::string* reason)
@@ -5791,8 +6073,9 @@ void renderAuxiliaryView()
                 // bdmergeMaxSpotShadows, which is file-local there)
                 static LLCachedControl<U32> max_spot_shadows(
                     gSavedSettings, "BDMergeMaxSpotShadows", 2);
-                const U32 num_spots = llclamp(
-                    (U32)max_spot_shadows, 2u, LLPipeline::MAX_SPOT_SHADOWS);
+                const U32 num_spots = LLPipeline::clampSpotShadowCount(
+                    static_cast<U32>(max_spot_shadows),
+                    gGLManager.mNumTextureImageUnits);
                 for (U32 i = 0; i < num_spots; ++i)
                 {
                     if (gPipeline.mShadowSpotLight[i].notNull() &&

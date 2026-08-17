@@ -4753,6 +4753,7 @@ void LLVOAvatar::updateOrientation(LLAgent& agent, F32 speed, F32 delta_time)
             pelvis_rot_threshold *= DEG_TO_RAD;
 
             F32 angle = angle_between( pelvisDir, fwdDir );
+            const bool actor_mover_driving = LLActorMover::instance().isDriving(getID());
 
             // The avatar's root is allowed to have a yaw that deviates widely
             // from the forward direction, but if roll or pitch are off even
@@ -4761,9 +4762,16 @@ void LLVOAvatar::updateOrientation(LLAgent& agent, F32 speed, F32 delta_time)
                && root_pitch < 5.f * DEG_TO_RAD)
             {
                 // smaller correction vector means pelvis follows prim direction more closely
-                if (!mTurning && angle > pelvis_rot_threshold*0.75f)
+                if (actor_mover_driving)
                 {
-                    mTurning = true;
+                    mTurning = false;
+                }
+                else
+                {
+                    if (!mTurning && angle > pelvis_rot_threshold*0.75f)
+                    {
+                        mTurning = true;
+                    }
                 }
 
                 // use tighter threshold when turning
@@ -4801,15 +4809,18 @@ void LLVOAvatar::updateOrientation(LLAgent& agent, F32 speed, F32 delta_time)
             fwdDir = leftDir % upDir;
             LLQuaternion wQv( fwdDir, leftDir, upDir );
 
-            if (isSelf() && mTurning)
+            if (!actor_mover_driving)
             {
-                if ((fwdDir % pelvisDir) * upDir > 0.f)
+                if (isSelf() && mTurning)
                 {
-                    gAgent.setControlFlags(AGENT_CONTROL_TURN_RIGHT);
-                }
-                else
-                {
-                    gAgent.setControlFlags(AGENT_CONTROL_TURN_LEFT);
+                    if ((fwdDir % pelvisDir) * upDir > 0.f)
+                    {
+                        gAgent.setControlFlags(AGENT_CONTROL_TURN_RIGHT);
+                    }
+                    else
+                    {
+                        gAgent.setControlFlags(AGENT_CONTROL_TURN_LEFT);
+                    }
                 }
             }
 

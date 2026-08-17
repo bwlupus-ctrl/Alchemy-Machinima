@@ -1,0 +1,82 @@
+FIX ROUND — Cine Light Rig MULTI-INSTANCE. A codex review of the uncommitted diff CONFIRMED the core
+invariants hold (lone-SELF verbatim tick, shadow interlock, 49-key blob routing, focus filter,
+lifecycle, off-limits). Four robustness findings remain. Do NOT build, cmake, or run the viewer.
+Locate by symbol/context, not line number. Do NOT disturb: the tickSelected verbatim body, tickFromBlob
+statement-parity, the §B.2a shadow interlock, the frozen applySceneData three-way split, or any
+alcinelightrigmodel/pipeline/lldirectorcast code.
+
+=============================================================================
+F1 (MUST-FIX) — Reset All can leave a stale, configured SELF rig rendering
+=============================================================================
+alpanelcinelightrig.cpp (the Reset All handler, ~:699 `manager.resetAllToSelf()`) +
+alcinelightrigmanager.cpp (resetAllToSelf). Repro: select Subject B, configure+enable SELF earlier,
+click Reset All while B is selected. The settings-reset applies to B's live buffer; resetAllToSelf
+disables B and loads SELF's UNTOUCHED blob — a previously enabled+configured SELF keeps rendering its
+old look. Reset All must be a true clean slate.
+
+FIX: make Reset All put the WHOLE system into the fresh-default state regardless of the selected slot:
+- reset the live settings buffer to defaults (as today), THEN write that default buffer into ALL FIVE
+  ParamBlobs (every instance defaulted: mEnabled=false and every field at its shipped default), i.e.
+  do not leave any instance's blob carrying an old configured look;
+- set mSelected = SELF and load SELF's (now-default) blob into the live keys;
+- clear any per-instance shadow suppression the manager added (so no stale projector stays suppressed).
+End-state: only SELF selected, all five blobs default/disabled, no rig renders a stale look. This is a
+user-button path, NOT the tick path, so it does not affect the R1 bitwise tick guarantee.
+
+=============================================================================
+F2 (MUST-FIX, §D) — malformed `instances` array must fall back to legacy migration, not half-apply
+=============================================================================
+alcinelightrigmanager.cpp applySceneData, the `restore(store)` failure branch (~:593-599). Today on a
+well-sized-but-malformed instances array (duplicate slot / bad entry) restore() fails and the code only
+LL_WARNS and returns — the already-applied legacy block stays on the previous selected slot AND
+previously-enabled non-selected blobs remain active (stale rigs render).
+
+FIX: route a restore() failure through the SAME legacy-migration path used when `instances` is ABSENT
+(the old-scene path): disable ALL slots except the one the legacy `data["anchor"]` migrates to
+(migrateAnchorToSlot), keep only that migrated legacy rig, set mSelected to it, and clear the others to
+default/disabled. So any malformed multi-instance block degrades to exactly the old-scene single-rig
+result — never a half-applied mixed state. (Absent array and failed-restore must reach identical
+end-states.)
+
+=============================================================================
+F3 (MUST-FIX) — blobMapWellFormed must TYPE-check, not just presence-check
+=============================================================================
+alcinelightrigmanager.cpp blobMapWellFormed (~:77-82). It checks key PRESENCE only, so a persisted
+store or scene with a scalar encoded at the wrong type (e.g. CineLightRigEnabled as Integer/String)
+passes, and fromLLSD().asBoolean() can SILENTLY enable a rig from garbage. Forward-facing hostile/old
+data must not enable rigs.
+
+FIX: validate the expected LLSD TYPE of every scalar (isBoolean for bools, isInteger for ints, isReal
+for F32 — accept isInteger-as-real where the writer may emit whole numbers, but reject strings/maps/
+undefined) and every array element (each instance entry isMap + its own scalars type-checked). Any
+mismatch ⇒ the whole block is CORRUPT ⇒ safe fallback (with F2, that means the legacy-migration path).
+Do not silently coerce. Keep the existing size/slot-range checks.
+
+=============================================================================
+F4 (SHOULD-FIX) — wire the 6-slot guard test to PRODUCTION arbitration
+=============================================================================
+tests/alcinelightrigmodel_test.cpp test<21> asserts `eligibleProjectorCount(enabled_mask, focus)==4`,
+but production (applyShadowSuppression) does NOT consume eligibleProjectorCount — so deleting the
+owns_shadows gate or breaking post-tick applyShadowSuppression leaves test 21 GREEN. The guard is
+disconnected (same class as a tautological test).
+
+FIX (either, prefer the first): factor the suppression DECISION into ONE pure helper that BOTH
+production and the test use — e.g. `suppressedSlotMask(enabledMask, focusSlot)` returning the mask of
+ENABLED, NON-focus slots (= enabledMask & ~(1<<focusSlot)). Have applyShadowSuppression drive its
+"which instances' projectors get force-suppressed" loop from that helper, and rewrite test<21> to
+assert the helper's mask over enabled_mask ∈ [1,31] (focus excluded; every other enabled slot present;
+disabled slots absent) AND that the focus contributes ≤4 ≤6. If factoring into production is too
+invasive, instead make test<21> assert projector-set membership after simulated ticks+focus hand-off.
+The test MUST fail if the gate or the post-tick suppression is removed. Keep it non-tautological
+(assert against an independently computed expected mask).
+
+=============================================================================
+OFF-LIMITS / REPORT
+=============================================================================
+Do not touch the verbatim tick body, tickFromBlob parity, the shadow interlock semantics, the frozen
+scene split, alcinelightrigmodel.*, pipeline/shaders/llprimitive, lldirectorcast.*, versions, or the
+panel/floater XML layout. REPORT: F1 the reset end-state (all five blobs defaulted + SELF selected +
+suppression cleared); F2 that failed-restore and absent-array reach identical legacy-migration
+end-states; F3 the per-type validation list; F4 the shared helper now consumed by production and the
+rewritten non-tautological test<21>. Confirm the other three §5 shadow/focus tests still hold. Do not
+build.

@@ -15,6 +15,7 @@
 
 #include <array>
 #include <string>
+#include <string_view>
 
 class LLFace;
 class LLPlane;
@@ -122,6 +123,86 @@ struct OpticsSettings
     F32 mExposureBias = 0.0f;        // -4.0 to +4.0 EV
 };
 
+constexpr U8 BONE_ANCHOR_ME = 0;
+constexpr U8 BONE_ANCHOR_A = 1;
+constexpr U8 BONE_ANCHOR_B = 2;
+constexpr U8 BONE_ANCHOR_C = 3;
+constexpr U8 BONE_ANCHOR_D = 4;
+
+// Current joint-selection tags. Values 0 and 2 remain reserved for normalizing
+// scenes written by the first Bone POV build (Head and Neck respectively).
+// NAMED deliberately keeps the old Custom value so an old viewer can consume a
+// new named selection through its existing custom_joint path.
+constexpr U8 BONE_JOINT_LEGACY_HEAD = 0;
+constexpr U8 BONE_JOINT_EYELINE = 1;
+constexpr U8 BONE_JOINT_LEGACY_NECK = 2;
+constexpr U8 BONE_JOINT_NAMED = 3;
+
+struct NormalizedBonePovJointSelection
+{
+    U8 mTag = BONE_JOINT_EYELINE;
+    std::string mName;
+};
+
+// Normalize both the old four-way selection and the current two-way tag. This
+// is intentionally pure so scene compatibility can be tested without an
+// avatar or viewer singleton.
+inline NormalizedBonePovJointSelection normalizeBonePovJointSelection(
+    U8 selection, const std::string& selected_name)
+{
+    switch (selection)
+    {
+        case BONE_JOINT_LEGACY_HEAD:
+            return { BONE_JOINT_NAMED, "mHead" };
+        case BONE_JOINT_EYELINE:
+            return { BONE_JOINT_EYELINE, std::string() };
+        case BONE_JOINT_LEGACY_NECK:
+            return { BONE_JOINT_NAMED, "mNeck" };
+        case BONE_JOINT_NAMED:
+            return { BONE_JOINT_NAMED, selected_name };
+        default:
+            return { BONE_JOINT_EYELINE, std::string() };
+    }
+}
+
+// These joints use the avatar's established X-forward/Z-up torso frame. Other
+// named joints default to position-only stabilized aim until the operator opts
+// into their best-effort local orientation.
+inline bool isBonePovSpineJoint(std::string_view name)
+{
+    return name == "mPelvis" || name == "mSpine1" || name == "mSpine2" ||
+           name == "mSpine3" || name == "mSpine4" || name == "mTorso" ||
+           name == "mChest" || name == "mNeck" || name == "mHead";
+}
+
+constexpr U8 BONE_AIM_FULL_FOLLOW = 0;
+constexpr U8 BONE_AIM_STABILIZED = 1;
+
+constexpr U8 BONE_ROLL_HORIZON_LOCK = 0;
+constexpr U8 BONE_ROLL_INHERIT = 1;
+
+// Persistent, pointer-free configuration for an optional skeleton attachment.
+// Named-joint full-follow is explicitly best-effort off the spine chain: an
+// arbitrary bone's +X can run down the bone, so the editor defaults a newly
+// selected off-spine joint to stabilized.
+struct BonePovSettings
+{
+    bool mEnabled = false;
+    U8 mAnchorSlot = BONE_ANCHOR_ME;
+    U8 mJointSelection = BONE_JOINT_EYELINE;
+    U8 mAimMode = BONE_AIM_FULL_FOLLOW;
+    U8 mRollMode = BONE_ROLL_HORIZON_LOCK;
+    bool mScaleAware = true;
+    LLVector3 mOffset;
+    F32 mTrimPitchDeg = 0.f;
+    F32 mTrimYawDeg = 0.f;
+    F32 mFovDeg = 60.f;
+    F32 mSmoothingSec = 0.15f;
+    // Existing custom_joint scene slot; now the selected name for every NAMED
+    // joint. Empty/unused for the synthetic EYELINE selection.
+    std::string mCustomJoint;
+};
+
 struct CameraSettings
 {
     EFovMode mFovMode = EFovMode::FIXED;
@@ -161,6 +242,10 @@ struct CameraSettings
     bool         mVirtual  = false; // objectless: use stored transform, not mCameraObjectId
     LLVector3    mVirtualPos;       // stored eye position, AGENT space
     LLQuaternion mVirtualRot;       // stored orientation (fwd = local -Z, up = local +Y)
+
+    // Optional avatar/clone bone driver. Default-disabled and pointer-free;
+    // transient smoothing/history lives in ALVCamBonePov, not in scene data.
+    BonePovSettings mBonePov;
 };
 
 struct CaptureRateSettings
@@ -471,6 +556,19 @@ bool setSelectedCamera(const CaptureHandle& capture,
 bool setCameraSettings(const CaptureHandle& capture,
                        const CameraSettings& settings,
                        std::string* reason = nullptr);
+// Runtime-only bone-driver writes. These update the existing virtual camera
+// fields and runtime revision without churning the configuration revision.
+bool setVirtualCameraTransform(const CaptureHandle& capture,
+                               const LLVector3& pos,
+                               const LLQuaternion& rot,
+                               F32 vertical_fov_rad,
+                               std::string* reason = nullptr);
+// Stabilized mode intentionally has no rotation parameter, making it impossible
+// for that path to contend with operator-owned mVirtualRot.
+bool setVirtualCameraPosition(const CaptureHandle& capture,
+                              const LLVector3& pos,
+                              F32 vertical_fov_rad,
+                              std::string* reason = nullptr);
 bool setCaptureRateSettings(const CaptureHandle& capture,
                             const CaptureRateSettings& settings,
                             std::string* reason = nullptr);

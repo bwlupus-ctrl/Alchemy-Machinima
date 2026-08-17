@@ -233,6 +233,10 @@ public:
         DEFERRED_SHADOW7,                   //  "shadowMap7"
         DEFERRED_SHADOW8,                   //  "shadowMap8"
         DEFERRED_SHADOW9,                   //  "shadowMap9"
+        DEFERRED_SHADOW10,                  //  "shadowMap10"
+        DEFERRED_SHADOW11,                  //  "shadowMap11"
+        DEFERRED_SHADOW12,                  //  "shadowMap12"
+        DEFERRED_SHADOW13,                  //  "shadowMap13"
         DEFERRED_POSITION,                  //  "positionMap"
         DEFERRED_DIFFUSE,                   //  "diffuseRect"
         DEFERRED_SPECULAR,                  //  "specularRect"
@@ -556,6 +560,7 @@ public:
         // lockstep with the mReservedUniforms push_back block in llshadermgr.cpp)
         SOFT_SHADOW_VOGEL,                 //  "soft_shadow_vogel"   (0 = fixed disk, 1 = Vogel)
         SOFT_SHADOW_TAPS,                  //  "soft_shadow_taps"    (Vogel tap count)
+        SPOT_SHADOW_SOFTNESS,              //  "spot_shadow_softness" (per shadow slot, 0 = global)
         // [BDMerge Batch 2] Feature 2: gobo/cookie mip + anisotropic filtering
         GOBO_ANISO,                        //  "gobo_aniso"
         // [Cinematic Gobo] Per-projector procedural cookie and presentation-time UV motion.

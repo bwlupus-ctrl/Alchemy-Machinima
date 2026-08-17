@@ -8,9 +8,11 @@
 #include "llfloaterprismmanager.h"
 
 #include "alscrollfocus.h"
+#include "alvcambonepov.h"
 #include "llbutton.h"
 #include "llcheckboxctrl.h"
 #include "llcombobox.h"
+#include "lljoint.h"
 #include "llnotificationsutil.h"
 #include "llpanel.h"
 #include "llscrollcontainer.h"
@@ -23,11 +25,29 @@
 #include "llviewermenu.h"
 #include "llviewerobject.h"
 #include "llviewerobjectlist.h"
+#include "llvoavatar.h"
+
+#include <cctype>
+#include <set>
+#include <vector>
 
 namespace
 {
 constexpr F32 SNAPSHOT_POLL_SECONDS = 0.25f;
 constexpr F32 AGE_REFRESH_SECONDS = 1.f;
+constexpr const char* BONE_EYELINE_VALUE = "__eyeline__";
+
+// Static standard-avatar fallback used until the selected cast subject has a
+// resolvable skeleton. The real hierarchy replaces this list on first resolve.
+constexpr const char* BONE_FALLBACK_JOINTS[] = {
+    "mPelvis", "mSpine1", "mSpine2", "mSpine3", "mSpine4", "mTorso", "mChest",
+    "mNeck", "mHead", "mSkull",
+    "mCollarLeft", "mShoulderLeft", "mElbowLeft", "mWristLeft",
+    "mCollarRight", "mShoulderRight", "mElbowRight", "mWristRight",
+    "mHipLeft", "mKneeLeft", "mAnkleLeft", "mFootLeft", "mToeLeft",
+    "mHipRight", "mKneeRight", "mAnkleRight", "mFootRight", "mToeRight",
+    "mEyeLeft", "mEyeRight"
+};
 
 bool sameHandle(const LLPrismLens::CaptureHandle& left,
                 const LLPrismLens::CaptureHandle& right)
@@ -160,6 +180,78 @@ LLPrismLens::EFitMode fitModeFromValue(const LLSD& value)
     return LLPrismLens::EFitMode::FIT;
 }
 
+LLSD boneAnchorValue(U8 slot)
+{
+    switch (slot)
+    {
+        case LLPrismLens::BONE_ANCHOR_A: return LLSD("a");
+        case LLPrismLens::BONE_ANCHOR_B: return LLSD("b");
+        case LLPrismLens::BONE_ANCHOR_C: return LLSD("c");
+        case LLPrismLens::BONE_ANCHOR_D: return LLSD("d");
+        default: return LLSD("me");
+    }
+}
+
+U8 boneAnchorFromValue(const LLSD& value)
+{
+    const std::string slot = value.asString();
+    if (slot == "a") return LLPrismLens::BONE_ANCHOR_A;
+    if (slot == "b") return LLPrismLens::BONE_ANCHOR_B;
+    if (slot == "c") return LLPrismLens::BONE_ANCHOR_C;
+    if (slot == "d") return LLPrismLens::BONE_ANCHOR_D;
+    return LLPrismLens::BONE_ANCHOR_ME;
+}
+
+std::string boneJointValue(const LLPrismLens::BonePovSettings& settings)
+{
+    const LLPrismLens::NormalizedBonePovJointSelection normalized =
+        LLPrismLens::normalizeBonePovJointSelection(
+            settings.mJointSelection, settings.mCustomJoint);
+    return normalized.mTag == LLPrismLens::BONE_JOINT_EYELINE
+        ? BONE_EYELINE_VALUE : normalized.mName;
+}
+
+std::string boneJointDisplayLabel(const std::string& joint_name)
+{
+    size_t offset = joint_name.size() > 1 && joint_name[0] == 'm' &&
+            std::isupper(static_cast<unsigned char>(joint_name[1]))
+        ? 1 : 0;
+    std::string label;
+    label.reserve(joint_name.size() - offset + 8);
+    for (size_t index = offset; index < joint_name.size(); ++index)
+    {
+        const unsigned char current = static_cast<unsigned char>(joint_name[index]);
+        const unsigned char previous = index > offset
+            ? static_cast<unsigned char>(joint_name[index - 1]) : 0;
+        if (!label.empty() &&
+            ((std::isupper(current) && (std::islower(previous) || std::isdigit(previous))) ||
+             (std::isdigit(current) && !std::isdigit(previous))))
+        {
+            label.push_back(' ');
+        }
+        label.push_back(static_cast<char>(current));
+    }
+    return label.empty() ? joint_name : label;
+}
+
+void collectJointHierarchy(LLJoint* joint, std::vector<std::string>& names,
+                           std::set<std::string>& seen)
+{
+    if (!joint)
+    {
+        return;
+    }
+    const std::string& name = joint->getName();
+    if (!name.empty() && seen.insert(name).second)
+    {
+        names.push_back(name);
+    }
+    for (LLJoint* child : joint->mChildren)
+    {
+        collectJointHierarchy(child, names, seen);
+    }
+}
+
 std::string fitModeValue(LLPrismLens::EFitMode mode)
 {
     switch (mode)
@@ -256,6 +348,7 @@ bool LLFloaterPrismManager::postBuild()
     mCaptureScroll = getChild<LLScrollContainer>("capture_settings_scroll");
     mCaptureDocument = getChild<LLPanel>("capture_settings_document");
     mCameraSettingsPanel = getChild<LLPanel>("camera_settings_panel");
+    mBonePovPanel = getChild<LLPanel>("bone_pov_panel");
     mLensSettingsPanel = getChild<LLPanel>("lens_settings_panel");
     mRateSettingsPanel = getChild<LLPanel>("rate_settings_panel");
     mPerformanceScroll = getChild<LLScrollContainer>("performance_settings_scroll");
@@ -279,6 +372,25 @@ bool LLFloaterPrismManager::postBuild()
     mCRTScanlinesSpinner = getChild<LLSpinCtrl>("crt_scanlines");
     mExposureBiasSpinner = getChild<LLSpinCtrl>("exposure_bias");
     mVirtualCameraCheck = getChild<LLCheckBoxCtrl>("virtual_camera");
+    mBonePovEnabledCheck = getChild<LLCheckBoxCtrl>("bone_pov_enabled");
+    mBoneAnchorCombo = getChild<LLComboBox>("bone_pov_anchor");
+    mBoneJointCombo = getChild<LLComboBox>("bone_pov_joint");
+    mBoneAimCombo = getChild<LLComboBox>("bone_pov_aim");
+    mBoneRollCombo = getChild<LLComboBox>("bone_pov_roll");
+    mBoneOffsetXSpinner = getChild<LLSpinCtrl>("bone_pov_offset_x");
+    mBoneOffsetYSpinner = getChild<LLSpinCtrl>("bone_pov_offset_y");
+    mBoneOffsetZSpinner = getChild<LLSpinCtrl>("bone_pov_offset_z");
+    mBoneTrimPitchSpinner = getChild<LLSpinCtrl>("bone_pov_trim_pitch");
+    mBoneTrimYawSpinner = getChild<LLSpinCtrl>("bone_pov_trim_yaw");
+    mBoneFovSpinner = getChild<LLSpinCtrl>("bone_pov_fov");
+    mBoneSmoothingSpinner = getChild<LLSpinCtrl>("bone_pov_smoothing");
+    mBoneScaleAwareCheck = getChild<LLCheckBoxCtrl>("bone_pov_scale_aware");
+    mBoneOffsetResetButton = getChild<LLButton>("bone_pov_offset_reset");
+    mBoneTrimResetButton = getChild<LLButton>("bone_pov_trim_reset");
+    mBoneFovResetButton = getChild<LLButton>("bone_pov_fov_reset");
+    mBoneSmoothingResetButton = getChild<LLButton>("bone_pov_smoothing_reset");
+    mBoneAllResetButton = getChild<LLButton>("bone_pov_reset_all");
+    mBoneStatusText = getChild<LLTextBox>("bone_pov_status");
     mShowGuideCheck = getChild<LLCheckBoxCtrl>("show_guide");
     mGuideThirdsCheck = getChild<LLCheckBoxCtrl>("guide_thirds");
     mGuideUpRollCheck = getChild<LLCheckBoxCtrl>("guide_uproll");
@@ -370,6 +482,93 @@ bool LLFloaterPrismManager::postBuild()
     mCRTScanlinesSpinner->setCommitCallback(camera_commit);
     mExposureBiasSpinner->setCommitCallback(camera_commit);
     mVirtualCameraCheck->setCommitCallback(camera_commit);
+    mBonePovEnabledCheck->setCommitCallback(camera_commit);
+    mBoneAnchorCombo->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            // Rebuild immediately for the newly selected subject. If its old
+            // joint is absent, Eyeline (the first entry) becomes the new pick.
+            refreshBoneJointChoices(true);
+            mBoneJointPreferredValue = mBoneJointCombo->getValue().asString();
+            onCommitCameraSettings(true);
+        });
+    mBoneAimCombo->setCommitCallback(camera_commit);
+    mBoneRollCombo->setCommitCallback(camera_commit);
+    mBoneOffsetXSpinner->setCommitCallback(camera_commit);
+    mBoneOffsetYSpinner->setCommitCallback(camera_commit);
+    mBoneOffsetZSpinner->setCommitCallback(camera_commit);
+    mBoneTrimPitchSpinner->setCommitCallback(camera_commit);
+    mBoneTrimYawSpinner->setCommitCallback(camera_commit);
+    mBoneFovSpinner->setCommitCallback(camera_commit);
+    mBoneSmoothingSpinner->setCommitCallback(camera_commit);
+    mBoneScaleAwareCheck->setCommitCallback(camera_commit);
+    mBoneJointCombo->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            const LLPrismLens::CaptureDefinition* capture = selectedCapture();
+            const std::string selected = mBoneJointCombo->getValue().asString();
+            const std::string previous = capture
+                ? boneJointValue(capture->mCamera.mBonePov) : std::string();
+            if (capture && selected != previous &&
+                selected != BONE_EYELINE_VALUE &&
+                !LLPrismLens::isBonePovSpineJoint(selected))
+            {
+                // Off-spine bones do not share the proven torso X-forward/Z-up
+                // frame. Default a newly picked one to position-only aim; the
+                // operator may explicitly opt back into Full-follow afterward.
+                mBoneAimCombo->setValue(LLSD("stabilized"));
+            }
+            mBoneJointPreferredValue = selected;
+            onCommitCameraSettings(true);
+        });
+    mBoneOffsetResetButton->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            mBoneOffsetXSpinner->setValue(0.f);
+            mBoneOffsetYSpinner->setValue(0.f);
+            mBoneOffsetZSpinner->setValue(0.f);
+            onCommitCameraSettings();
+        });
+    mBoneTrimResetButton->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            mBoneTrimPitchSpinner->setValue(0.f);
+            mBoneTrimYawSpinner->setValue(0.f);
+            onCommitCameraSettings();
+        });
+    mBoneFovResetButton->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            mBoneFovSpinner->setValue(60.f);
+            onCommitCameraSettings();
+        });
+    mBoneSmoothingResetButton->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            mBoneSmoothingSpinner->setValue(0.15f);
+            onCommitCameraSettings();
+        });
+    mBoneAllResetButton->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            const LLPrismLens::CaptureDefinition* capture = selectedCapture();
+            if (!capture || capture->mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
+            {
+                return;
+            }
+            LLPrismLens::CameraSettings settings = capture->mCamera;
+            settings.mBonePov = LLPrismLens::BonePovSettings();
+            std::string reason;
+            if (LLPrismLens::setCameraSettings(capture->mHandle, settings, &reason))
+            {
+                setStatus("Reset the skeleton attachment to defaults.");
+                invalidateRegistrySnapshot();
+            }
+            else
+            {
+                setStatus("Could not reset skeleton attachment: " + reason);
+            }
+        });
     mShowGuideCheck->setCommitCallback(camera_commit);
     mGuideThirdsCheck->setCommitCallback(camera_commit);
     mGuideUpRollCheck->setCommitCallback(camera_commit);
@@ -443,6 +642,9 @@ bool LLFloaterPrismManager::postBuild()
         { onApplyEffectsPreset(screenEffectsPresetCCTV()); });
 
     installDocumentFocusReveal();
+    // The control is useful before a cast subject resolves, and must never be
+    // empty. The real skeleton replaces this fallback during snapshot polling.
+    refreshBoneJointChoices(true);
     setStatus("Ready. Select a capture or add one from the current world selection.");
     pollSnapshots(true);
     return true;
@@ -502,12 +704,97 @@ void LLFloaterPrismManager::pollSnapshots(bool force)
         refreshPerformance();
     }
     refreshSelectionActions();
+    // Cast slots can resolve or swap avatars without changing Prism's own
+    // configuration revision, so independently watch the selected skeleton.
+    refreshBoneJointChoices(false);
 
     mRefreshTimer.reset();
     if (age_due)
     {
         mAgeRefreshTimer.reset();
     }
+}
+
+void LLFloaterPrismManager::refreshBoneJointChoices(bool force)
+{
+    if (!mBoneAnchorCombo || !mBoneJointCombo)
+    {
+        return;
+    }
+
+    const U8 anchor_slot = boneAnchorFromValue(mBoneAnchorCombo->getValue());
+    LLVOAvatar* avatar = ALVCamBonePov::resolveAnchorAvatar(anchor_slot);
+    LLJoint* root = avatar ? avatar->getRootJoint() : nullptr;
+    const bool using_avatar_skeleton = root != nullptr;
+    const LLUUID avatar_id = avatar ? avatar->getID() : LLUUID::null;
+    const U32 skeleton_serial = avatar ? avatar->getSkeletonSerialNum() : 0;
+    if (!force && mBoneJointChoicesInitialized &&
+        anchor_slot == mBoneJointAnchorSlot &&
+        avatar == mBoneJointAvatar &&
+        avatar_id == mBoneJointAvatarId &&
+        skeleton_serial == mBoneJointSkeletonSerial &&
+        using_avatar_skeleton == mBoneJointUsingAvatarSkeleton)
+    {
+        return;
+    }
+
+    const std::string current_value = mBoneJointCombo->getValue().asString();
+    // If a scene selected an extra joint while only the fallback was present,
+    // the combo temporarily displayed Eyeline. Prefer that retained selection
+    // when the real skeleton finally makes it available.
+    std::string preserve_value = current_value;
+    if (!mBoneJointPreferredValue.empty() &&
+        !mBoneJointCombo->valueExists(mBoneJointPreferredValue))
+    {
+        preserve_value = mBoneJointPreferredValue;
+    }
+
+    mBoneJointCombo->removeall();
+    mBoneJointCombo->add("Eye (eyeline)", LLSD(BONE_EYELINE_VALUE));
+
+    std::vector<std::string> joint_names;
+    std::set<std::string> seen;
+    if (using_avatar_skeleton)
+    {
+        // Pre-order traversal preserves the avatar's actual hierarchy order and
+        // naturally includes Bento/extra joints present on this skeleton.
+        collectJointHierarchy(root, joint_names, seen);
+    }
+    else
+    {
+        for (const char* name : BONE_FALLBACK_JOINTS)
+        {
+            if (seen.insert(name).second)
+            {
+                joint_names.emplace_back(name);
+            }
+        }
+    }
+    for (const std::string& name : joint_names)
+    {
+        mBoneJointCombo->add(boneJointDisplayLabel(name), LLSD(name));
+    }
+
+    if (!preserve_value.empty() &&
+        mBoneJointCombo->valueExists(preserve_value))
+    {
+        mBoneJointCombo->setValue(LLSD(preserve_value));
+    }
+    else
+    {
+        mBoneJointCombo->setValue(LLSD(BONE_EYELINE_VALUE));
+    }
+    if (mBoneJointPreferredValue.empty())
+    {
+        mBoneJointPreferredValue = mBoneJointCombo->getValue().asString();
+    }
+
+    mBoneJointAvatar = avatar;
+    mBoneJointAvatarId = avatar_id;
+    mBoneJointSkeletonSerial = skeleton_serial;
+    mBoneJointAnchorSlot = anchor_slot;
+    mBoneJointUsingAvatarSkeleton = using_avatar_skeleton;
+    mBoneJointChoicesInitialized = true;
 }
 
 void LLFloaterPrismManager::refreshConfiguration()
@@ -549,6 +836,7 @@ void LLFloaterPrismManager::refreshCaptureRuntimeReadouts()
         mCaptureTitle->setText(LLStringExplicit("No capture selected"));
         mCaptureTitle->setToolTip(std::string());
         mRateReadout->setText(LLStringExplicit("Requested / Entitled / Observed: -"));
+        mBoneStatusText->setText(LLStringExplicit(""));
         return;
     }
     mCaptureTitle->setText(llformat("%s %u | %s / %s / %s",
@@ -563,6 +851,7 @@ void LLFloaterPrismManager::refreshCaptureRuntimeReadouts()
         capture->mRuntime.mCadenceEntitlementHz,
         capture->mRuntime.mObservedPublicationHz,
         capture->mRuntime.mOutputAgeSeconds));
+    mBoneStatusText->setText(ALVCamBonePov::instance().status(capture->mHandle));
 }
 
 void LLFloaterPrismManager::refreshPerformance()
@@ -779,17 +1068,68 @@ void LLFloaterPrismManager::refreshCaptureEditor()
         // FOV spinner stays governed by the fixed/projector selection below.
         const bool is_virtual = capture->mCamera.mVirtual;
         mVirtualCameraCheck->setValue(is_virtual);
+        const LLPrismLens::BonePovSettings& bone = capture->mCamera.mBonePov;
+        mBonePovPanel->setVisible(is_virtual);
+        mBonePovEnabledCheck->setValue(bone.mEnabled);
+        mBoneAnchorCombo->setValue(boneAnchorValue(bone.mAnchorSlot));
+        mBoneJointPreferredValue = boneJointValue(bone);
+        refreshBoneJointChoices(false);
+        mBoneJointCombo->setValue(LLSD(
+            mBoneJointCombo->valueExists(mBoneJointPreferredValue)
+                ? mBoneJointPreferredValue : BONE_EYELINE_VALUE));
+        mBoneAimCombo->setValue(bone.mAimMode == LLPrismLens::BONE_AIM_STABILIZED
+            ? LLSD("stabilized") : LLSD("full_follow"));
+        mBoneRollCombo->setValue(bone.mRollMode == LLPrismLens::BONE_ROLL_INHERIT
+            ? LLSD("inherit") : LLSD("horizon_lock"));
+        mBoneOffsetXSpinner->setValue(bone.mOffset.mV[VX]);
+        mBoneOffsetYSpinner->setValue(bone.mOffset.mV[VY]);
+        mBoneOffsetZSpinner->setValue(bone.mOffset.mV[VZ]);
+        mBoneTrimPitchSpinner->setValue(bone.mTrimPitchDeg);
+        mBoneTrimYawSpinner->setValue(bone.mTrimYawDeg);
+        mBoneFovSpinner->setValue(bone.mFovDeg);
+        mBoneSmoothingSpinner->setValue(bone.mSmoothingSec);
+        mBoneScaleAwareCheck->setValue(bone.mScaleAware);
+        mBonePovEnabledCheck->setEnabled(is_virtual);
+        mBoneAnchorCombo->setEnabled(is_virtual);
+        mBoneJointCombo->setEnabled(is_virtual);
+        mBoneAimCombo->setEnabled(is_virtual);
+        mBoneRollCombo->setEnabled(is_virtual);
+        mBoneOffsetXSpinner->setEnabled(is_virtual);
+        mBoneOffsetYSpinner->setEnabled(is_virtual);
+        mBoneOffsetZSpinner->setEnabled(is_virtual);
+        mBoneTrimPitchSpinner->setEnabled(is_virtual);
+        mBoneTrimYawSpinner->setEnabled(is_virtual);
+        mBoneFovSpinner->setEnabled(is_virtual);
+        mBoneSmoothingSpinner->setEnabled(is_virtual);
+        mBoneScaleAwareCheck->setEnabled(is_virtual);
+        mBoneOffsetResetButton->setEnabled(is_virtual);
+        mBoneTrimResetButton->setEnabled(is_virtual);
+        mBoneFovResetButton->setEnabled(is_virtual);
+        mBoneSmoothingResetButton->setEnabled(is_virtual);
+        mBoneAllResetButton->setEnabled(is_virtual);
         mFovModeCombo->setEnabled(!is_virtual);
         mEyeXSpinner->setEnabled(!is_virtual);
         mEyeYSpinner->setEnabled(!is_virtual);
         mEyeZSpinner->setEnabled(!is_virtual);
         mPlaceEyeButton->setEnabled(!is_virtual);
         mSnapViewButton->setEnabled(true);
+        mSnapViewButton->setToolTip(std::string(
+            "Store your current camera position and orientation as this virtual camera's transform"));
         if (is_virtual)
         {
             // A virtual camera is always FIXED FOV, so keep its degree spinner
-            // live regardless of the (disabled) mode combo.
-            mVerticalFovSpinner->setEnabled(true);
+            // live unless an attached skeleton owns FOV through its dedicated
+            // control. Full-follow also owns orientation, so Snap is disabled;
+            // stabilized keeps Snap available for operator aim.
+            mVerticalFovSpinner->setEnabled(!bone.mEnabled);
+            const bool full_follow = bone.mEnabled &&
+                bone.mAimMode == LLPrismLens::BONE_AIM_FULL_FOLLOW;
+            mSnapViewButton->setEnabled(!full_follow);
+            mSnapViewButton->setToolTip(std::string(full_follow
+                ? "Full-follow owns camera orientation; switch Aim to Stabilized to snap operator aim"
+                : bone.mEnabled
+                    ? "Store your current orientation; the attached skeleton continues to own position"
+                    : "Store your current camera position and orientation as this virtual camera's transform"));
         }
     }
 
@@ -1252,13 +1592,20 @@ void LLFloaterPrismManager::onSnapVirtualCameraToView()
     // FIXED here so the UI reflects it at once (the registry soft-corrects too).
     LLPrismLens::CameraSettings settings = capture->mCamera;
     settings.mVirtual = true;
-    settings.mVirtualPos = pos;
+    const bool stabilized_bone = settings.mBonePov.mEnabled &&
+        settings.mBonePov.mAimMode == LLPrismLens::BONE_AIM_STABILIZED;
+    if (!stabilized_bone)
+    {
+        settings.mVirtualPos = pos;
+    }
     settings.mVirtualRot = rot;
     settings.mFovMode = LLPrismLens::EFovMode::FIXED;
     std::string reason;
     if (LLPrismLens::setCameraSettings(capture->mHandle, settings, &reason))
     {
-        setStatus("Snapped the virtual camera to your current view (no prim needed).");
+        setStatus(stabilized_bone
+            ? "Snapped operator aim; the attached skeleton continues to own camera position."
+            : "Snapped the virtual camera to your current view (no prim needed).");
         invalidateRegistrySnapshot();
         return;
     }
@@ -1290,7 +1637,7 @@ void LLFloaterPrismManager::onNewVirtualCamera()
     setStatus("Could not create virtual camera: " + reason);
 }
 
-void LLFloaterPrismManager::onCommitCameraSettings()
+void LLFloaterPrismManager::onCommitCameraSettings(bool commit_bone_joint)
 {
     const LLPrismLens::CaptureDefinition* capture = selectedCapture();
     if (!capture || capture->mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
@@ -1326,12 +1673,56 @@ void LLFloaterPrismManager::onCommitCameraSettings()
     settings.mGuideCrosshair = mGuideCrosshairCheck->getValue().asBoolean();
     settings.mGuideClipMarkers = mGuideClipMarkersCheck->getValue().asBoolean();
 
-    // Only the virtual FLAG comes from the UI here. mVirtualPos/mVirtualRot are
-    // authored by "Snap to my view" (or addVirtualCamera), so they are carried
-    // over unchanged from the current capture via the `settings` copy above --
-    // a plain settings commit must never zero the stored transform. FOLLOW_-
-    // PROJECTOR is soft-corrected to FIXED for a virtual camera in the registry.
+    // Only the virtual FLAG and bone configuration come from the UI here.
+    // mVirtualPos/mVirtualRot are authored by Snap or the runtime bone driver,
+    // so the settings copy carries them over; a config commit must not zero the
+    // last valid transform. The registry soft-corrects virtual FOV to FIXED.
     settings.mVirtual = mVirtualCameraCheck->getValue().asBoolean();
+
+    LLPrismLens::BonePovSettings& bone = settings.mBonePov;
+    bone.mEnabled = mBonePovEnabledCheck->getValue().asBoolean();
+    bone.mAnchorSlot = boneAnchorFromValue(mBoneAnchorCombo->getValue());
+    if (commit_bone_joint)
+    {
+        const std::string selected_joint =
+            mBoneJointCombo->getValue().asString();
+        if (selected_joint.empty() || selected_joint == BONE_EYELINE_VALUE)
+        {
+            bone.mJointSelection = LLPrismLens::BONE_JOINT_EYELINE;
+            bone.mCustomJoint.clear();
+        }
+        else
+        {
+            bone.mJointSelection = LLPrismLens::BONE_JOINT_NAMED;
+            bone.mCustomJoint = selected_joint;
+        }
+    }
+    bone.mAimMode = mBoneAimCombo->getValue().asString() == "stabilized"
+        ? LLPrismLens::BONE_AIM_STABILIZED
+        : LLPrismLens::BONE_AIM_FULL_FOLLOW;
+    bone.mRollMode = mBoneRollCombo->getValue().asString() == "inherit"
+        ? LLPrismLens::BONE_ROLL_INHERIT
+        : LLPrismLens::BONE_ROLL_HORIZON_LOCK;
+    bone.mOffset.set(
+        static_cast<F32>(mBoneOffsetXSpinner->getValue().asReal()),
+        static_cast<F32>(mBoneOffsetYSpinner->getValue().asReal()),
+        static_cast<F32>(mBoneOffsetZSpinner->getValue().asReal()));
+    bone.mTrimPitchDeg = static_cast<F32>(
+        mBoneTrimPitchSpinner->getValue().asReal());
+    bone.mTrimYawDeg = static_cast<F32>(
+        mBoneTrimYawSpinner->getValue().asReal());
+    bone.mFovDeg = static_cast<F32>(mBoneFovSpinner->getValue().asReal());
+    bone.mSmoothingSec = static_cast<F32>(
+        mBoneSmoothingSpinner->getValue().asReal());
+    bone.mScaleAware = mBoneScaleAwareCheck->getValue().asBoolean();
+    if (bone.mEnabled && settings.mVirtual)
+    {
+        // The bone control is the capture's vertical FOV while attached. The
+        // runtime driver writes this fixed field again each frame so capture
+        // prep republishes it without relying on a configuration-revision bump.
+        settings.mFovMode = LLPrismLens::EFovMode::FIXED;
+        settings.mFixedVerticalFovRad = bone.mFovDeg * DEG_TO_RAD;
+    }
 
     std::string reason;
     if (LLPrismLens::setCameraSettings(capture->mHandle, settings, &reason))

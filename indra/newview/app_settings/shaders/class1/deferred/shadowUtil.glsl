@@ -40,13 +40,17 @@ uniform sampler2DShadow shadowMap6;
 uniform sampler2DShadow shadowMap7;
 uniform sampler2DShadow shadowMap8;
 uniform sampler2DShadow shadowMap9;
+uniform sampler2DShadow shadowMap10;
+uniform sampler2DShadow shadowMap11;
+uniform sampler2DShadow shadowMap12;
+uniform sampler2DShadow shadowMap13;
 #endif
 
 uniform vec3 sun_dir;
 uniform vec3 moon_dir;
 uniform vec2 shadow_res;
 uniform vec2 proj_shadow_res;
-uniform mat4 shadow_matrix[10]; // [BDMerge NSpot] 4 sun + up to 6 spot
+uniform mat4 shadow_matrix[14]; // [BDMerge NSpot] 4 sun + up to 10 spot
 uniform vec4 shadow_clip;
 uniform float shadow_bias;
 uniform float shadow_offset;
@@ -79,6 +83,9 @@ uniform int   soft_shadow_sun;    // also apply contact-hardening+fill to the su
 // rotation is a pure function of screen position.
 uniform int   soft_shadow_vogel;  // 0 = fixed 12-tap Poisson (default), 1 = Vogel
 uniform int   soft_shadow_taps;   // Vogel tap count (clamped to SOFT_SHADOW_VOGEL_MAX)
+// Per projector-shadow slot. Zero is a strict sentinel for the existing
+// global behavior; positive values override only the penumbra growth scale.
+uniform float spot_shadow_softness[10];
 
 // 12-tap Poisson-ish disk for the widened soft-shadow PCF kernel.
 const vec2 SOFT_SHADOW_DISK[12] = vec2[12](
@@ -174,7 +181,7 @@ float pcfShadow(sampler2DShadow shadowMap, vec3 norm, vec4 stc, float bias_mul, 
 #endif
 }
 
-float pcfSpotShadow(sampler2DShadow shadowMap, vec4 stc, float bias_scale, vec2 pos_screen)
+float pcfSpotShadow(sampler2DShadow shadowMap, vec4 stc, float bias_scale, vec2 pos_screen, float projector_softness)
 {
 #if defined(SPOT_SHADOW)
     stc.xyz /= stc.w;
@@ -183,13 +190,17 @@ float pcfSpotShadow(sampler2DShadow shadowMap, vec4 stc, float bias_scale, vec2 
     // [BDMerge Batch 2] Feature 1 - soft projector shadows. Contact-hardening
     // penumbra: the PCF kernel radius grows with the receiver's normalized depth
     // (a lightweight proxy for occluder->receiver distance) times the per-light
-    // source-size term (soft_shadow_scale). Sharp at contact (stc.z small),
+    // source-size term (the per-projector override, or soft_shadow_scale).
+    // Sharp at contact (stc.z small),
     // softer far from the light. Plus an ambient fill floor so shadowed pixels
     // never crush to pure black. Gated: soft_shadow_enable == 0 falls through to
-    // the byte-identical classic 5-tap kernel below.
-    if (soft_shadow_enable != 0)
+    // the byte-identical classic 5-tap kernel below unless this projector has
+    // an explicit positive softness override.
+    if (soft_shadow_enable != 0 || projector_softness > 0.0)
     {
-        float pr = clamp(1.0 + soft_shadow_scale * clamp(stc.z, 0.0, 1.0),
+        float softness = projector_softness > 0.0
+                       ? projector_softness : soft_shadow_scale;
+        float pr = clamp(1.0 + softness * clamp(stc.z, 0.0, 1.0),
                          1.0, max(soft_shadow_max, 1.0));
         vec2 texel = pr / proj_shadow_res;
         texel.y *= 1.5;
@@ -375,36 +386,57 @@ float sampleSpotShadow(vec3 pos, vec3 norm, int index, vec2 pos_screen)
             float w = 1.0;
             w -= max(spos.z-far_split.z, 0.0)/transition_domain.z;
 
-            // [BDMerge NSpot] up to 6 projector shadow slots
+            // KEEP IN SYNC: this 10-case GLSL dispatch MUST mirror
+            // LLPipeline::spotShadowMapIndex(): spot slot s -> shadowMap[4 + s].
             if (index == 0)
             {
                 lpos = shadow_matrix[4]*spos;
-                shadow += pcfSpotShadow(shadowMap4, lpos, 0.8, spos.xy)*w;
+                shadow += pcfSpotShadow(shadowMap4, lpos, 0.8, spos.xy, spot_shadow_softness[0])*w;
             }
             else if (index == 1)
             {
                 lpos = shadow_matrix[5]*spos;
-                shadow += pcfSpotShadow(shadowMap5, lpos, 0.8, spos.xy)*w;
+                shadow += pcfSpotShadow(shadowMap5, lpos, 0.8, spos.xy, spot_shadow_softness[1])*w;
             }
             else if (index == 2)
             {
                 lpos = shadow_matrix[6]*spos;
-                shadow += pcfSpotShadow(shadowMap6, lpos, 0.8, spos.xy)*w;
+                shadow += pcfSpotShadow(shadowMap6, lpos, 0.8, spos.xy, spot_shadow_softness[2])*w;
             }
             else if (index == 3)
             {
                 lpos = shadow_matrix[7]*spos;
-                shadow += pcfSpotShadow(shadowMap7, lpos, 0.8, spos.xy)*w;
+                shadow += pcfSpotShadow(shadowMap7, lpos, 0.8, spos.xy, spot_shadow_softness[3])*w;
             }
             else if (index == 4)
             {
                 lpos = shadow_matrix[8]*spos;
-                shadow += pcfSpotShadow(shadowMap8, lpos, 0.8, spos.xy)*w;
+                shadow += pcfSpotShadow(shadowMap8, lpos, 0.8, spos.xy, spot_shadow_softness[4])*w;
+            }
+            else if (index == 5)
+            {
+                lpos = shadow_matrix[9]*spos;
+                shadow += pcfSpotShadow(shadowMap9, lpos, 0.8, spos.xy, spot_shadow_softness[5])*w;
+            }
+            else if (index == 6)
+            {
+                lpos = shadow_matrix[10]*spos;
+                shadow += pcfSpotShadow(shadowMap10, lpos, 0.8, spos.xy, spot_shadow_softness[6])*w;
+            }
+            else if (index == 7)
+            {
+                lpos = shadow_matrix[11]*spos;
+                shadow += pcfSpotShadow(shadowMap11, lpos, 0.8, spos.xy, spot_shadow_softness[7])*w;
+            }
+            else if (index == 8)
+            {
+                lpos = shadow_matrix[12]*spos;
+                shadow += pcfSpotShadow(shadowMap12, lpos, 0.8, spos.xy, spot_shadow_softness[8])*w;
             }
             else
             {
-                lpos = shadow_matrix[9]*spos;
-                shadow += pcfSpotShadow(shadowMap9, lpos, 0.8, spos.xy)*w;
+                lpos = shadow_matrix[13]*spos;
+                shadow += pcfSpotShadow(shadowMap13, lpos, 0.8, spos.xy, spot_shadow_softness[9])*w;
             }
             weight += w;
             shadow += max((pos.z+shadow_clip.z)/(shadow_clip.z-shadow_clip.w)*2.0-1.0, 0.0);
@@ -510,7 +542,9 @@ float sampleSpotShadowConservative(vec3 pos, int index)
 #if defined(SPOT_SHADOW)
     // No norm * spot_shadow_offset receiver nudge and no shadow_clip camera-space
     // early-out/fade/weighting - just the sample projected straight into this
-    // projector's own map. [BDMerge NSpot] same 6-slot dispatch as above.
+    // projector's own map.
+    // KEEP IN SYNC: this 10-case GLSL dispatch MUST mirror
+    // LLPipeline::spotShadowMapIndex(): spot slot s -> shadowMap[4 + s].
     vec4 spos = vec4(pos, 1.0);
     if (index == 0)
     {
@@ -532,7 +566,23 @@ float sampleSpotShadowConservative(vec3 pos, int index)
     {
         return pcfSpotShadowConservative(shadowMap8, shadow_matrix[8] * spos);
     }
-    return pcfSpotShadowConservative(shadowMap9, shadow_matrix[9] * spos);
+    else if (index == 5)
+    {
+        return pcfSpotShadowConservative(shadowMap9, shadow_matrix[9] * spos);
+    }
+    else if (index == 6)
+    {
+        return pcfSpotShadowConservative(shadowMap10, shadow_matrix[10] * spos);
+    }
+    else if (index == 7)
+    {
+        return pcfSpotShadowConservative(shadowMap11, shadow_matrix[11] * spos);
+    }
+    else if (index == 8)
+    {
+        return pcfSpotShadowConservative(shadowMap12, shadow_matrix[12] * spos);
+    }
+    return pcfSpotShadowConservative(shadowMap13, shadow_matrix[13] * spos);
 #else
     return 1.0;
 #endif

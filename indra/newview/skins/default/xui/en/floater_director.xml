@@ -173,6 +173,17 @@
      name="arm_capture_check"
      tool_tip="ACTION starts a fresh camera capture (replaces the current take); CUT stops it. Beats recorder play when both are armed"
      width="124" />
+    <check_box
+     control_name="ActorMoverShowHeading"
+     follows="left|top"
+     height="16"
+     label="Show paths"
+     layout="topleft"
+     left="520"
+     top="53"
+     name="show_paths_global_check"
+     tool_tip="Global: draw the in-world path/heading preview for cast actors and enrolled props while a mover/Director floater is open. Client-side overlay only."
+     width="110" />
     <button
      follows="right|top"
      font="SansSerifBold"
@@ -256,17 +267,8 @@
      name="group_assign_combo"
      tool_tip="Group tag for the selected member(s): type a new name or pick an existing one, Enter commits. Empty ungroups"
      width="136" />
-    <check_box
-     control_name="ActorMoverShowHeading"
-     follows="left|bottom"
-     height="16"
-     label="Show path"
-     layout="topleft"
-     left="8"
-     top="390"
-     name="show_heading_check"
-     tool_tip="Show the in-world path preview for each cast actor. With a walkable path: the thick outlined spline with direction chevrons and numbered node markers (start green, end red, dwell nodes ringed). With no path: the thick straight heading ray along the planned bearing (m). Client-side only; tracks the heading dial live"
-     width="170" />
+    <!-- "Show path" moved to the global top strip (show_paths_global_check),
+         next to Action fires; one toggle drives ActorMoverShowHeading for all tabs. -->
     <button
      follows="left|bottom"
      height="22"
@@ -1533,7 +1535,7 @@
              width="374">
                 <panel
                  background_visible="false"
-                 height="1374"
+                 height="1530"
                  layout="topleft"
                  left="0"
                  name="cine_light_rig_scroll_content"
@@ -1543,7 +1545,7 @@
                      class="panel_cine_light_rig"
                      filename="panel_cine_light_rig.xml"
                      follows="left|top"
-                     height="1364"
+                     height="1520"
                      layout="topleft"
                      left="2"
                      name="cine_light_rig_embedded"
