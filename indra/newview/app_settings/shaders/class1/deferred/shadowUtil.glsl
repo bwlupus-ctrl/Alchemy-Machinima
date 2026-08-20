@@ -103,11 +103,50 @@ const vec2 SOFT_SHADOW_DISK[12] = vec2[12](
     vec2( 0.0730, -0.9420)
 );
 
+const vec2 SPOT_BLOCKER_SEARCH_DISK[4] = vec2[4](
+    vec2( 0.7071,  0.7071), vec2(-0.7071,  0.7071),
+    vec2(-0.7071, -0.7071), vec2( 0.7071, -0.7071));
+
 // [Vogel A/B] Constant upper bound on the Vogel tap loop so it stays
 // constant-bounded (and unrollable); soft_shadow_taps selects how many of these
 // samples are actually summed. Golden angle (radians) drives the spiral.
 const int   SOFT_SHADOW_VOGEL_MAX   = 32;
 const float SOFT_SHADOW_GOLDEN_ANGLE = 2.3999632;
+
+// Cinematic Lighting 2.0 PCSS-lite blocker search.  A comparison sampler does
+// not expose raw blocker depth, so estimate receiver-minus-blocker separation by
+// summing shadow-test results across several evenly spaced depth deltas at each
+// of four nearby taps: the deeper an occluder sits toward the light, the more
+// tests report occlusion, so the normalized sum is a CONTINUOUS separation proxy
+// (0 at contact -> 1 far).  This replaces the earlier 5-level quantization, whose
+// hard bands produced visible penumbra-width contours on slanted receivers.
+// Moving an occluder onto the receiver still collapses the penumbra.  Spatial
+// only; no time-dependent noise is used.
+float estimateSpotBlockerGap(sampler2DShadow shadowMap, vec3 stc,
+                             float source_softness)
+{
+    vec2 search_texel = (1.5 + min(max(source_softness, 0.0), 8.0) * 0.5) /
+                        proj_shadow_res;
+    const int   GAP_STEPS = 6;
+    const float GAP_MAX_DELTA = 0.20;
+    float best_gap = 0.0;
+    for (int i = 0; i < 4; ++i)
+    {
+        vec2 uv = stc.xy + SPOT_BLOCKER_SEARCH_DISK[i] * search_texel;
+        if (texture(shadowMap, vec3(uv, stc.z)) < 0.5)
+        {
+            float sep = 0.0;
+            for (int s = 1; s <= GAP_STEPS; ++s)
+            {
+                float delta = GAP_MAX_DELTA * (float(s) / float(GAP_STEPS));
+                if (texture(shadowMap, vec3(uv, max(stc.z - delta, 0.0))) < 0.5)
+                    sep += 1.0;
+            }
+            best_gap = max(best_gap, sep / float(GAP_STEPS));
+        }
+    }
+    return best_gap;
+}
 
 float pcfShadow(sampler2DShadow shadowMap, vec3 norm, vec4 stc, float bias_mul, vec2 pos_screen, vec3 light_dir)
 {
@@ -187,12 +226,11 @@ float pcfSpotShadow(sampler2DShadow shadowMap, vec4 stc, float bias_scale, vec2 
     stc.xyz /= stc.w;
     stc.z += spot_shadow_bias * bias_scale;
 
-    // [BDMerge Batch 2] Feature 1 - soft projector shadows. Contact-hardening
-    // penumbra: the PCF kernel radius grows with the receiver's normalized depth
-    // (a lightweight proxy for occluder->receiver distance) times the per-light
-    // source-size term (the per-projector override, or soft_shadow_scale).
-    // Sharp at contact (stc.z small),
-    // softer far from the light. Plus an ambient fill floor so shadowed pixels
+    // [BDMerge Batch 2 / Cinematic Lighting 2.0] Soft projector shadows.
+    // A bounded blocker search estimates receiver-minus-occluder separation,
+    // then scales that gap by the per-light source-size term (the per-projector
+    // override, or soft_shadow_scale). Sharp at contact, softer as the receiver
+    // separates from the blocker. Plus an ambient fill floor so shadowed pixels
     // never crush to pure black. Gated: soft_shadow_enable == 0 falls through to
     // the byte-identical classic 5-tap kernel below unless this projector has
     // an explicit positive softness override.
@@ -200,8 +238,12 @@ float pcfSpotShadow(sampler2DShadow shadowMap, vec4 stc, float bias_scale, vec2 
     {
         float softness = projector_softness > 0.0
                        ? projector_softness : soft_shadow_scale;
-        float pr = clamp(1.0 + softness * clamp(stc.z, 0.0, 1.0),
-                         1.0, max(soft_shadow_max, 1.0));
+        float blocker_gap = estimateSpotBlockerGap(
+            shadowMap, stc.xyz, softness);
+        // estimateSpotBlockerGap already returns a continuous 0..1 separation.
+        float gap_scale = clamp(blocker_gap, 0.0, 1.0);
+        float pr = clamp(1.0 + softness * gap_scale,
+                          1.0, max(soft_shadow_max, 1.0));
         vec2 texel = pr / proj_shadow_res;
         texel.y *= 1.5;
         float shadow = 0.0;

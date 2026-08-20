@@ -12020,6 +12020,60 @@ void LLPipeline::applyCAS(LLRenderTarget* src, LLRenderTarget* dst)
     dst->flush();
 }
 
+void LLPipeline::renderCineFisheye(LLRenderTarget* src, LLRenderTarget* dst)
+{
+    if (!gCineFisheyeProgram.isComplete())
+    {
+        gPipeline.copyRenderTarget(src, dst);
+        return;
+    }
+
+    static LLCachedControl<F32> strength(
+        gSavedSettings, "CineFisheyeStrength", 1.2f);
+    static LLCachedControl<F32> strength2(
+        gSavedSettings, "CineFisheyeStrength2", 0.3f);
+    static LLCachedControl<F32> zoom(
+        gSavedSettings, "CineFisheyeZoom", 1.0f);
+    static LLCachedControl<F32> vignette_radius(
+        gSavedSettings, "CineFisheyeVignetteRadius", 0.92f);
+    static LLCachedControl<F32> vignette_soft(
+        gSavedSettings, "CineFisheyeVignetteSoft", 0.18f);
+    static LLCachedControl<F32> center_x(
+        gSavedSettings, "CineFisheyeCenterX", 0.0f);
+    static LLCachedControl<F32> center_y(
+        gSavedSettings, "CineFisheyeCenterY", 0.0f);
+
+    LL_PROFILE_GPU_ZONE("cine fisheye");
+
+    dst->bindTarget();
+    gCineFisheyeProgram.bind();
+
+    gCineFisheyeProgram.uniform2f(
+        LLShaderMgr::DEFERRED_SCREEN_RES,
+        (GLfloat)dst->getWidth(), (GLfloat)dst->getHeight());
+    gCineFisheyeProgram.uniform4f(
+        LLShaderMgr::FISHEYE_PARAMS,
+        llclamp((F32)strength(), 0.0f, 3.0f),
+        llclamp((F32)strength2(), 0.0f, 3.0f),
+        llclamp((F32)vignette_radius(), 0.2f, 1.5f),
+        llclamp((F32)vignette_soft(), 0.01f, 1.0f));
+    gCineFisheyeProgram.uniform4f(
+        LLShaderMgr::FISHEYE_PARAMS2,
+        llclamp((F32)center_x(), -0.5f, 0.5f),
+        llclamp((F32)center_y(), -0.5f, 0.5f),
+        llclamp((F32)zoom(), 0.5f, 2.0f),
+        0.0f);
+
+    gCineFisheyeProgram.bindTexture(
+        LLShaderMgr::DIFFUSE_MAP, src, false, LLTexUnit::TFO_BILINEAR);
+
+    mScreenTriangleVB->setBuffer();
+    mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+
+    gCineFisheyeProgram.unbind();
+    dst->flush();
+}
+
 void LLPipeline::applyFXAA(LLRenderTarget* src, LLRenderTarget* dst)
 {
     LL_PROFILE_GPU_ZONE("FXAA");
@@ -12318,6 +12372,58 @@ void LLPipeline::copyRenderTarget(LLRenderTarget* src, LLRenderTarget* dst)
     gDeferredPostNoDoFProgram.unbind();
 
     dst->flush();
+}
+
+// [Cine Outline Phase 1] native deferred normal/depth silhouette pass. It is
+// additive in place so the disabled path can be a true no-op without ping-pong.
+void LLPipeline::renderCineOutline(LLRenderTarget* dst)
+{
+    static LLCachedControl<bool> enabled(gSavedSettings, "CineOutlineEnabled", false);
+
+    if (!enabled() || gCubeSnapshot || gSnapshotNoPost ||
+        !gCineOutlineProgram.isComplete())
+    {
+        return;
+    }
+
+    static LLCachedControl<LLColor3> color(
+        gSavedSettings, "CineOutlineColor", LLColor3(1.0f, 0.04f, 0.04f));
+    static LLCachedControl<F32> intensity(
+        gSavedSettings, "CineOutlineIntensity", 8.0f);
+    static LLCachedControl<F32> glow(
+        gSavedSettings, "CineOutlineGlow", 1.0f);
+
+    LL_PROFILE_GPU_ZONE("renderCineOutline");
+
+    LLGLDepthTest depth(GL_FALSE);
+    LLGLEnable blend(GL_BLEND);
+    LLGLDisable cull(GL_CULL_FACE);
+    gGL.setSceneBlendType(LLRender::BT_ADD);
+
+    dst->bindTarget();
+    bindDeferredShader(gCineOutlineProgram);
+
+    gCineOutlineProgram.uniform2f(
+        LLShaderMgr::DEFERRED_SCREEN_RES,
+        (GLfloat)dst->getWidth(), (GLfloat)dst->getHeight());
+
+    const LLColor3& outline_color = color();
+    gCineOutlineProgram.uniform3f(
+        LLShaderMgr::OUTLINE_COLOR,
+        outline_color.mV[0], outline_color.mV[1], outline_color.mV[2]);
+    gCineOutlineProgram.uniform4f(
+        LLShaderMgr::OUTLINE_PARAMS,
+        1.5f, 1.0f, 1.0f, llclamp((F32)intensity(), 0.0f, 64.0f));
+    gCineOutlineProgram.uniform4f(
+        LLShaderMgr::OUTLINE_PARAMS2,
+        llclamp((F32)glow(), 0.0f, 1.0f), 0.0f, 0.0f, 0.0f);
+
+    mScreenTriangleVB->setBuffer();
+    mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+
+    unbindDeferredShader(gCineOutlineProgram);
+    dst->flush();
+    gGL.setSceneBlendType(LLRender::BT_ALPHA);
 }
 
 // [BDMerge G3.2] volumetric lighting / godrays pass. Donor: Black Dragon
@@ -15711,6 +15817,7 @@ void LLPipeline::renderFinalize()
         // fullscreen pass over the scene buffer. The legacy alpha-tagged prim-glow
         // signal is carried into the extract pass, so prim glow survives the
         // migration. compositeBloomHDR is preserved for standalone use cases.
+        renderCineOutline(&mRT->screen);
         generateBloomHDR(&mRT->screen);
     }
 
@@ -15750,6 +15857,7 @@ void LLPipeline::renderFinalize()
     // bloom process and composited back in after tonemapping.
     if (!hdr)
     {
+        renderCineOutline(&mRT->postPingMap);
         generateGlow(&mRT->postPingMap);
     }
 
@@ -15831,6 +15939,15 @@ void LLPipeline::renderFinalize()
         std::swap(sourceBuffer, targetBuffer);
     }
 // [/RLVa:KB]
+
+    static LLCachedControl<bool> fisheye_enabled(
+        gSavedSettings, "CineFisheyeEnabled", false);
+    if (fisheye_enabled && !gSnapshotNoPost &&
+        gCineFisheyeProgram.isComplete())
+    {
+        renderCineFisheye(sourceBuffer, targetBuffer);
+        std::swap(sourceBuffer, targetBuffer);
+    }
 
     if (RenderBufferVisualization > -1)
     {

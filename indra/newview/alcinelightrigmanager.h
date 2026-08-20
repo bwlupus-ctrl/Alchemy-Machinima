@@ -26,8 +26,15 @@ struct ALCineLightRigParamBlob
         S32 mBeam = 0;
         S32 mGobo = 0;
         S32 mGel = 0;
+        S32 mFlickerProgram = ALCineLightRigModel::FLICKER_NONE;
+        F32 mFlickerAmount = 0.f;
         F32 mShadowSoft = 0.f;
         bool mOn = false;
+        bool mFixtureMode = false;
+        F32 mKelvin = 5600.f;
+        S32 mGelSlot[ALCineLightRigModel::FIXTURE_GEL_SLOT_COUNT] = {};
+        F32 mSourceSizeM = 0.10f;
+        S32 mFixturePreset = 0;
     };
 
     // The complete selected-instance editing buffer. Keep this list in
@@ -45,6 +52,7 @@ struct ALCineLightRigParamBlob
     F32 mTransitionSec = 0.9f;                // CineLightRigTransitionSec
     F32 mDamping = 0.f;                       // CineLightRigDamping
     S32 mTrackMode = 0;                       // CineLightRigTrackMode
+    LLUUID mObjectTarget;                     // CineLightRigObjectTarget
     std::string mCookieUUID =
         "5748decc-f629-461c-9a36-a35a221fe21f"; // CineLightRigCookieUUID
     U32 mSeed = 324508639u;                   // CineLightRigSeed
@@ -60,25 +68,38 @@ struct ALCineLightRigParamBlob
     F32 mCatchlightEV = -0.5f;                // CineLightRigCatchlightEV
     F32 mCatchlightSize = 0.35f;              // CineLightRigCatchlightSize
     F32 mCatchlightAngle = 120.f;             // CineLightRigCatchlightAngle
-    // Per-light fields enumerate Yaw/Pitch/Profile/EV/Beam/Gobo/Gel/
-    // ShadowSoft/On for each of Key, Fill, Rim and Bg.
+    // Per-light fields enumerate Yaw/Pitch/Profile/EV/Beam/Gobo/Gel,
+    // fixture mode/preset/Kelvin/three gel slots/source size,
+    // Flicker/FlickerAmount/ShadowSoft/On for Key, Fill, Rim and Bg.
     // CineLightRigKeyYaw, CineLightRigKeyPitch, CineLightRigKeyProfile,
     // CineLightRigKeyEV, CineLightRigKeyBeam, CineLightRigKeyGobo,
-    // CineLightRigKeyGel, CineLightRigKeyShadowSoft, CineLightRigKeyOn;
+    // CineLightRigKeyGel, CineLightRigKeyFlicker,
+    // CineLightRigKeyFlickerAmount, CineLightRigKeyShadowSoft,
+    // CineLightRigKeyOn;
     // CineLightRigFillYaw, CineLightRigFillPitch, CineLightRigFillProfile,
     // CineLightRigFillEV, CineLightRigFillBeam, CineLightRigFillGobo,
-    // CineLightRigFillGel, CineLightRigFillShadowSoft, CineLightRigFillOn;
+    // CineLightRigFillGel, CineLightRigFillFlicker,
+    // CineLightRigFillFlickerAmount, CineLightRigFillShadowSoft,
+    // CineLightRigFillOn;
     // CineLightRigRimYaw, CineLightRigRimPitch, CineLightRigRimProfile,
     // CineLightRigRimEV, CineLightRigRimBeam, CineLightRigRimGobo,
-    // CineLightRigRimGel, CineLightRigRimShadowSoft, CineLightRigRimOn;
+    // CineLightRigRimGel, CineLightRigRimFlicker,
+    // CineLightRigRimFlickerAmount, CineLightRigRimShadowSoft,
+    // CineLightRigRimOn;
     // CineLightRigBgYaw, CineLightRigBgPitch, CineLightRigBgProfile,
     // CineLightRigBgEV, CineLightRigBgBeam, CineLightRigBgGobo,
-    // CineLightRigBgGel, CineLightRigBgShadowSoft, CineLightRigBgOn.
+    // CineLightRigBgGel, CineLightRigBgFlicker,
+    // CineLightRigBgFlickerAmount, CineLightRigBgShadowSoft,
+    // CineLightRigBgOn.
     Light mLights[ALCineLightRigModel::LIGHT_COUNT] = {
-        { 45.f,  35.f, 3,  0.f, 1, 0, 0, 0.f, true  },
-        {-45.f,   5.f, 3, -2.f, 1, 0, 0, 0.f, true  },
-        {-135.f, 45.f, 4, -1.f, 0, 0, 0, 0.f, true },
-        {  0.f, -20.f, 3,  0.f, 0, 0, 0, 0.f, false },
+        { 45.f,  35.f, 3,  0.f, 1, 0, 0,
+          ALCineLightRigModel::FLICKER_NONE, 0.f, 0.f, true  },
+        {-45.f,   5.f, 3, -2.f, 1, 0, 0,
+          ALCineLightRigModel::FLICKER_NONE, 0.f, 0.f, true  },
+        {-135.f, 45.f, 4, -1.f, 0, 0, 0,
+          ALCineLightRigModel::FLICKER_NONE, 0.f, 0.f, true },
+        {  0.f, -20.f, 3,  0.f, 0, 0, 0,
+          ALCineLightRigModel::FLICKER_NONE, 0.f, 0.f, false },
     };
 
     // Per-instance session state. Runtime-derived emitter/smoothing/transition
@@ -91,6 +112,7 @@ struct ALCineLightRigParamBlob
     F64 mFXPhase = 0.0;
     F64 mPendingFXPhase = -1.0;
     S32 mPendingFXId = -1;
+    LLSD mCueList;
 
     static ALCineLightRigParamBlob fromSettings(
         const ALCineLightRig* rig = nullptr);
@@ -119,6 +141,8 @@ struct ALCineLightRigParamBlob
         blob.mTransitionSec = settings.getF32("CineLightRigTransitionSec");
         blob.mDamping = settings.getF32("CineLightRigDamping");
         blob.mTrackMode = settings.getS32("CineLightRigTrackMode");
+        blob.mObjectTarget.set(
+            settings.getString("CineLightRigObjectTarget"), false);
         blob.mCookieUUID = settings.getString("CineLightRigCookieUUID");
         blob.mSeed = settings.getU32("CineLightRigSeed");
         blob.mMirror = settings.getBOOL("CineLightRigMirror");
@@ -152,6 +176,23 @@ struct ALCineLightRigParamBlob
             blob.mLights[i].mShadowSoft =
                 settings.getF32(prefix + "ShadowSoft");
             blob.mLights[i].mOn = settings.getBOOL(prefix + "On");
+            blob.mLights[i].mFlickerProgram =
+                settings.getS32(prefix + "Flicker");
+            blob.mLights[i].mFlickerAmount =
+                settings.getF32(prefix + "FlickerAmount");
+            blob.mLights[i].mFixtureMode =
+                settings.getBOOL(prefix + "FixtureMode");
+            blob.mLights[i].mKelvin = settings.getF32(prefix + "Kelvin");
+            for (S32 slot = 0;
+                 slot < ALCineLightRigModel::FIXTURE_GEL_SLOT_COUNT; ++slot)
+            {
+                blob.mLights[i].mGelSlot[slot] = settings.getS32(
+                    prefix + "GelSlot" + std::to_string(slot));
+            }
+            blob.mLights[i].mSourceSizeM =
+                settings.getF32(prefix + "SourceSizeM");
+            blob.mLights[i].mFixturePreset =
+                settings.getS32(prefix + "FixturePreset");
         }
         return blob;
     }
@@ -172,6 +213,8 @@ struct ALCineLightRigParamBlob
         settings.setF32("CineLightRigTransitionSec", mTransitionSec);
         settings.setF32("CineLightRigDamping", mDamping);
         settings.setS32("CineLightRigTrackMode", mTrackMode);
+        settings.setString(
+            "CineLightRigObjectTarget", mObjectTarget.asString());
         settings.setString("CineLightRigCookieUUID", mCookieUUID);
         settings.setU32("CineLightRigSeed", mSeed);
         settings.setBOOL("CineLightRigMirror", mMirror);
@@ -205,6 +248,20 @@ struct ALCineLightRigParamBlob
             settings.setF32(prefix + "ShadowSoft",
                             mLights[i].mShadowSoft);
             settings.setBOOL(prefix + "On", mLights[i].mOn);
+            settings.setS32(prefix + "Flicker", mLights[i].mFlickerProgram);
+            settings.setF32(
+                prefix + "FlickerAmount", mLights[i].mFlickerAmount);
+            settings.setBOOL(prefix + "FixtureMode", mLights[i].mFixtureMode);
+            settings.setF32(prefix + "Kelvin", mLights[i].mKelvin);
+            for (S32 slot = 0;
+                 slot < ALCineLightRigModel::FIXTURE_GEL_SLOT_COUNT; ++slot)
+            {
+                settings.setS32(prefix + "GelSlot" + std::to_string(slot),
+                                mLights[i].mGelSlot[slot]);
+            }
+            settings.setF32(prefix + "SourceSizeM", mLights[i].mSourceSizeM);
+            settings.setS32(
+                prefix + "FixturePreset", mLights[i].mFixturePreset);
         }
     }
 };
@@ -225,6 +282,7 @@ inline LLSD ALCineLightRigParamBlob::toLLSD() const
     data["CineLightRigTransitionSec"] = mTransitionSec;
     data["CineLightRigDamping"] = mDamping;
     data["CineLightRigTrackMode"] = mTrackMode;
+    data["CineLightRigObjectTarget"] = mObjectTarget;
     data["CineLightRigCookieUUID"] = mCookieUUID;
     // LLSD real exactly represents every U32 and avoids signed-S32 rollover.
     data["CineLightRigSeed"] = static_cast<F64>(mSeed);
@@ -253,6 +311,18 @@ inline LLSD ALCineLightRigParamBlob::toLLSD() const
         light["gel"] = mLights[i].mGel;
         light["shadow_soft"] = mLights[i].mShadowSoft;
         light["on"] = mLights[i].mOn;
+        light["flicker_program"] = mLights[i].mFlickerProgram;
+        light["flicker_amount"] = mLights[i].mFlickerAmount;
+        light["fixture_mode"] = mLights[i].mFixtureMode;
+        light["kelvin"] = mLights[i].mKelvin;
+        light["source_size_m"] = mLights[i].mSourceSizeM;
+        light["fixture_preset"] = mLights[i].mFixturePreset;
+        light["fixture_gel_slots"] = LLSD::emptyArray();
+        for (S32 slot = 0;
+             slot < ALCineLightRigModel::FIXTURE_GEL_SLOT_COUNT; ++slot)
+        {
+            light["fixture_gel_slots"].append(mLights[i].mGelSlot[slot]);
+        }
         data["lights"].append(light);
     }
     data["anchor"] = mAnchor;
@@ -268,6 +338,10 @@ inline LLSD ALCineLightRigParamBlob::toLLSD() const
     data["fx_phase"] = mFXPhase;
     data["pending_fx_phase"] = mPendingFXPhase;
     data["pending_fx_id"] = mPendingFXId;
+    if (mCueList.isMap())
+    {
+        data["cue_list"] = mCueList;
+    }
     return data;
 }
 
@@ -298,6 +372,8 @@ inline ALCineLightRigParamBlob ALCineLightRigParamBlob::fromLLSD(
     AL_CINE_READ_F32("CineLightRigTransitionSec", blob.mTransitionSec);
     AL_CINE_READ_F32("CineLightRigDamping", blob.mDamping);
     AL_CINE_READ_S32("CineLightRigTrackMode", blob.mTrackMode);
+    if (data.has("CineLightRigObjectTarget"))
+        blob.mObjectTarget = data["CineLightRigObjectTarget"].asUUID();
     if (data.has("CineLightRigCookieUUID"))
         blob.mCookieUUID = data["CineLightRigCookieUUID"].asString();
     if (data.has("CineLightRigSeed"))
@@ -343,6 +419,36 @@ inline ALCineLightRigParamBlob ALCineLightRigParamBlob::fromLLSD(
                     static_cast<F32>(light["shadow_soft"].asReal());
             if (light.has("on"))
                 blob.mLights[i].mOn = light["on"].asBoolean();
+            if (light.has("flicker_program"))
+                blob.mLights[i].mFlickerProgram =
+                    light["flicker_program"].asInteger();
+            if (light.has("flicker_amount"))
+                blob.mLights[i].mFlickerAmount =
+                    static_cast<F32>(light["flicker_amount"].asReal());
+            if (light.has("fixture_mode"))
+                blob.mLights[i].mFixtureMode =
+                    light["fixture_mode"].asBoolean();
+            if (light.has("kelvin"))
+                blob.mLights[i].mKelvin =
+                    static_cast<F32>(light["kelvin"].asReal());
+            if (light.has("source_size_m"))
+                blob.mLights[i].mSourceSizeM =
+                    static_cast<F32>(light["source_size_m"].asReal());
+            if (light.has("fixture_preset"))
+                blob.mLights[i].mFixturePreset =
+                    light["fixture_preset"].asInteger();
+            if (light["fixture_gel_slots"].isArray() &&
+                light["fixture_gel_slots"].size() ==
+                    ALCineLightRigModel::FIXTURE_GEL_SLOT_COUNT)
+            {
+                for (S32 slot = 0;
+                     slot < ALCineLightRigModel::FIXTURE_GEL_SLOT_COUNT;
+                     ++slot)
+                {
+                    blob.mLights[i].mGelSlot[slot] =
+                        light["fixture_gel_slots"][slot].asInteger();
+                }
+            }
         }
     }
     if (data.has("anchor")) blob.mAnchor = data["anchor"].asUUID();
@@ -367,6 +473,8 @@ inline ALCineLightRigParamBlob ALCineLightRigParamBlob::fromLLSD(
         blob.mPendingFXPhase = data["pending_fx_phase"].asReal();
     if (data.has("pending_fx_id"))
         blob.mPendingFXId = data["pending_fx_id"].asInteger();
+    if (data["cue_list"].isMap())
+        blob.mCueList = data["cue_list"];
     return blob;
 }
 

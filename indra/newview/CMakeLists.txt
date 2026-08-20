@@ -284,6 +284,7 @@ set(viewer_SOURCE_FILES
     alcinelightrig.cpp
     alcinelightrigmanager.cpp
     alcinelightrigmodel.cpp
+    alfloatercinelightcues.cpp
     alvcambonepov.cpp
     alweathermodel.cpp
     alghostgroupmodel.cpp
@@ -304,6 +305,9 @@ set(viewer_SOURCE_FILES
     lldirectorcast.cpp
     llfloateractormover.cpp
     llfloaterdirector.cpp
+    alfloateractorgaze.cpp
+    alfloatervirtualcam.cpp
+    alfloatergazecues.cpp
     llfloaterprismmanager.cpp
     alfloatertemporalcapture.cpp
     alpaneltemporalcapture.cpp
@@ -771,6 +775,7 @@ set(viewer_SOURCE_FILES
     llpreviewscript.cpp
     llpreviewsound.cpp
     llpreviewtexture.cpp
+    llprismgate.cpp
     llprismlens.cpp
     llproductinforequest.cpp
     llprogressview.cpp
@@ -1130,6 +1135,7 @@ set(viewer_HEADER_FILES
     alcinelightrig.h
     alcinelightrigmanager.h
     alcinelightrigmodel.h
+    alfloatercinelightcues.h
     alvcambonepov.h
     alvcambonepovmath.h
     alweathermodel.h
@@ -1152,6 +1158,9 @@ set(viewer_HEADER_FILES
     lldirectorcast.h
     llfloateractormover.h
     llfloaterdirector.h
+    alfloateractorgaze.h
+    alfloatervirtualcam.h
+    alfloatergazecues.h
     llfloaterprismmanager.h
     alfloatertemporalcapture.h
     alpaneltemporalcapture.h
@@ -1611,6 +1620,7 @@ set(viewer_HEADER_FILES
     llpreviewscript.h
     llpreviewsound.h
     llpreviewtexture.h
+    llprismgate.h
     llprismlens.h
     llproductinforequest.h
     llprogressview.h
@@ -2536,6 +2546,7 @@ if (BUILD_TESTING)
     alghostgroupmodel.cpp
     alghostinteractionstate.cpp
     alsceneexplorerpredicate.cpp
+    llprismgate.cpp
     llagentaccess.cpp
     lldateutil.cpp
 #    llmediadataclient.cpp
@@ -2546,6 +2557,13 @@ if (BUILD_TESTING)
 #    llvocache.cpp
     llworldmap.cpp
     llworldmipmap.cpp
+  )
+
+  set_source_files_properties(
+    llprismgate.cpp
+    PROPERTIES
+    LL_TEST_ADDITIONAL_SOURCE_FILES
+    aldirectorswitchermodel.cpp
   )
 
   set_source_files_properties(

@@ -112,7 +112,7 @@ item links to its full how-to.
 - **[Prism — lenses & camera feeds](#101-prism--magnifier-lenses--camera-feeds)** —
   designate prim faces as surface-locked magnifier windows, or place a marker prim
   as a camera and show its live view on other prim faces (a render-to-texture
-  monitor). Up to three captures fanning to sixteen faces, from the Director Camera tab.
+  monitor). Up to eight captures fanning to sixteen faces, from the Director Camera tab.
 
 ## Performance & resource usage
 

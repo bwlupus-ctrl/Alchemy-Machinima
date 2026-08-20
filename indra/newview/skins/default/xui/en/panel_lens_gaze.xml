@@ -2,119 +2,449 @@
 <panel
  background_visible="false"
  border="false"
- height="188"
+ height="1190"
  layout="topleft"
  name="panel_lens_gaze"
- width="374">
-    <text
-     follows="left|top"
-     font="SansSerifSmallBold"
-     height="12"
-     layout="topleft"
-     left="6"
-     top="4"
-     name="gaze_lbl"
-     width="120">Look-at (gaze)</text>
-    <text
-     follows="left|top|right"
-     height="12"
-     layout="topleft"
-     left="182"
-     top="4"
-     name="gaze_status"
-     text_color="LtGray_50"
+ width="516">
+    <!-- Fixed row grid: label x=12..136, control x=140..476, reset x=486. -->
+    <text follows="left|top" font="SansSerifSmallBold" height="16"
+     layout="topleft" left="12" name="gaze_lbl" top="4"
+     width="124">Actor Gaze</text>
+    <text follows="left|top|right" height="16" layout="topleft" left="140"
+     name="gaze_status" text_color="LtGray_50" top="4"
      tool_tip="Shows the first selected actor's gaze state; commits apply to every selected actor"
-     use_ellipses="true"
-     width="186">Gaze off</text>
-    <check_box
-     follows="left|top"
-     height="16"
-     label="Enable"
-     layout="topleft"
-     left="6"
-     top="18"
-     name="gaze_enable_check"
-     tool_tip="Procedural look-at. Off is a no-op and the actor's own head motion plays."
-     width="80" />
-    <combo_box
-     follows="left|top|right"
-     height="20"
-     layout="topleft"
-     left="92"
-     top="18"
-     name="gaze_target_combo"
-     tool_tip="What the actor looks at"
-     width="276">
+     use_ellipses="true" width="336">Gaze off</text>
+
+    <!-- Targeting -->
+    <text follows="left|top|right" font="SansSerifBold" height="18"
+     layout="topleft" left="12" name="gaze_targeting_section" top="28"
+     width="464">Targeting</text>
+    <check_box control_name="DirectorLookAtCameraEnabled" follows="left|top"
+     height="20" label="Look at camera (global master)" layout="topleft"
+     left="12" name="look_at_camera_enabled" top="50"
+     tool_tip="Master gate for rendering flagged real cast avatars looking at this viewer's camera. Local visual override only: no simulator, animation signal, or network state is changed"
+     width="300" />
+
+    <text follows="left|top" height="20" layout="topleft" left="12"
+     name="gaze_slot_lbl" top="76" width="124">Aim at camera</text>
+    <check_box follows="left|top" height="20" label="You" layout="topleft"
+     left="140" name="gaze_slot_you" top="76"
+     tool_tip="Toggle camera look-at for your avatar" width="54" />
+    <check_box follows="left|top" height="20" label="A" layout="topleft"
+     left="202" name="gaze_slot_a" top="76"
+     tool_tip="Toggle camera look-at for Subject A" width="44" />
+    <check_box follows="left|top" height="20" label="B" layout="topleft"
+     left="254" name="gaze_slot_b" top="76"
+     tool_tip="Toggle camera look-at for Subject B" width="44" />
+    <check_box follows="left|top" height="20" label="C" layout="topleft"
+     left="306" name="gaze_slot_c" top="76"
+     tool_tip="Toggle camera look-at for Subject C" width="44" />
+    <check_box follows="left|top" height="20" label="D" layout="topleft"
+     left="358" name="gaze_slot_d" top="76"
+     tool_tip="Toggle camera look-at for Subject D" width="44" />
+
+    <text follows="left|top" height="20" layout="topleft" left="12"
+     name="gaze_enable_lbl" top="102" width="124">Procedural gaze</text>
+    <check_box follows="left|top" height="20" label="Enabled for selection"
+     layout="topleft" left="140" name="gaze_enable_check" top="102"
+     tool_tip="Procedural look-at for selected actor. Off is a no-op and the actor's own motion plays."
+     width="190" />
+
+    <text follows="left|top" height="20" layout="topleft" left="12"
+     name="gaze_target_lbl" top="128" width="124">Head target</text>
+    <combo_box follows="left|top|right" height="20" layout="topleft"
+     left="140" name="gaze_target_combo" top="128"
+     tool_tip="What the active You/A-D actor looks at" width="336">
         <combo_box.item label="Where it's going" name="gaze_tangent" value="0" />
         <combo_box.item label="Camera" name="gaze_camera" value="1" />
         <combo_box.item label="Cast member" name="gaze_cast" value="2" />
         <combo_box.item label="Fixed point" name="gaze_point" value="3" />
+        <combo_box.item label="Object" name="gaze_object" value="4" />
     </combo_box>
-    <combo_box
-     follows="left|top|right"
-     height="20"
-     layout="topleft"
-     left="6"
-     top="40"
-     name="gaze_cast_combo"
-     tool_tip="Cast member to look at"
-     visible="false"
-     width="362" />
-    <button
-     follows="left|top"
-     height="20"
-     label="Set point from camera"
-     layout="topleft"
-     left="6"
-     top="40"
-     name="btn_gaze_setpoint"
-     tool_tip="Capture the current camera position as the fixed point every selected actor looks at"
-     visible="false"
-     width="200" />
-    <slider decimal_digits="2" follows="left|top" height="16" increment="0.05"
-     initial_value="0.7" label="Head/eyes" label_width="66" layout="topleft"
-     left="6" max_val="1" min_val="0" name="gaze_blend_slider" top="62"
-     tool_tip="0 = eyes only; 1 = full head, neck and torso turn" width="172" />
-    <slider decimal_digits="2" follows="left|top|right" height="16" increment="0.05"
-     initial_value="0.25" label="Torso" label_width="52" layout="topleft"
-     left="182" max_val="1" min_val="0" name="gaze_torso_slider" top="62"
-     tool_tip="How much of the accepted gaze aim the torso shares" width="186" />
-    <slider decimal_digits="2" follows="left|top" height="16" increment="0.05"
-     initial_value="1.0" label="Intensity" label_width="62" layout="topleft"
-     left="6" max_val="1" min_val="0" name="gaze_intensity_slider" top="80"
-     tool_tip="How strongly gaze overrides the actor's animation pose" width="172" />
-    <slider decimal_digits="2" follows="left|top|right" height="16" increment="0.05"
-     initial_value="0.5" label="Smoothing" label_width="66" layout="topleft"
-     left="182" max_val="1" min_val="0" name="gaze_smoothing_slider" top="80"
-     tool_tip="0 = snappy; 1 = very smooth" width="186" />
-    <text follows="left|top" font="SansSerifSmallBold" height="12" layout="topleft"
-     left="6" top="100" name="gaze_feel_lbl" width="180">Tracking feel (all actors)</text>
-    <spinner
-     control_name="BDMergeGazeDeadZone" decimal_digits="1" follows="left|top"
-     height="20" increment="0.5" label="Dead zone (deg)" label_width="94"
-     layout="topleft" left="6" max_val="15" min_val="0"
-     name="gaze_deadzone_spinner" top="114"
+    <button follows="right|top" height="18" image_overlay="Refresh_Off"
+     image_top_pad="0" layout="topleft" left="486" name="reset_gaze_target"
+     tool_tip="Reset head target to Camera" top="129" width="14" />
+
+    <text follows="left|top" height="20" layout="topleft" left="12"
+     name="gaze_eye_target_lbl" top="154" width="124">Eyes look at</text>
+    <combo_box follows="left|top|right" height="20" layout="topleft"
+     left="140" name="gaze_eye_target_combo" top="154"
+     tool_tip="Optional independent eye target; Off makes the eyes follow the head target"
+     width="336">
+        <combo_box.item label="Off" name="gaze_eyes_off" value="-1" />
+        <combo_box.item label="Camera" name="gaze_eyes_camera" value="1" />
+        <combo_box.item label="Cast member" name="gaze_eyes_cast" value="2" />
+        <combo_box.item label="Fixed point" name="gaze_eyes_point" value="3" />
+        <combo_box.item label="Object" name="gaze_eyes_object" value="4" />
+    </combo_box>
+    <button follows="right|top" height="18" image_overlay="Refresh_Off"
+     image_top_pad="0" layout="topleft" left="486" name="reset_gaze_eye_target"
+     tool_tip="Reset eye target to Off" top="155" width="14" />
+
+    <text follows="left|top" height="20" layout="topleft" left="12"
+     name="gaze_priority_lbl" top="180" width="124">Look-at priority</text>
+    <combo_box control_name="DirectorGazePriority" follows="left|top|right"
+     height="20" layout="topleft" left="140" name="gaze_priority_combo"
+     top="180"
+     tool_tip="Makes gaze win over playing animations on the selected joints to stop head and eye jitter"
+     width="336">
+        <combo_box.item label="Blend" name="gaze_priority_blend" value="0" />
+        <combo_box.item label="Head+Eyes" name="gaze_priority_head_eyes" value="1" />
+        <combo_box.item label="Upper body" name="gaze_priority_upper_body" value="2" />
+    </combo_box>
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorGazePriority" follows="right|top"
+     height="18" image_overlay="Refresh_Off" image_top_pad="0"
+     layout="topleft" left="486" name="reset_gaze_priority"
+     tool_tip="Reset to default" top="181" width="14" />
+
+    <text follows="left|top" height="20" layout="topleft" left="12"
+     name="gaze_target_detail_lbl" top="206" width="124">Target details</text>
+    <combo_box follows="left|top" height="20" layout="topleft" left="140"
+     name="gaze_target_detail_scope" top="206"
+     tool_tip="Choose whether the shared cast, point, and object controls edit the head target or optional eye target"
+     width="76">
+        <combo_box.item label="Head" name="gaze_detail_head" value="0" />
+        <combo_box.item label="Eyes" name="gaze_detail_eyes" value="1" />
+    </combo_box>
+    <combo_box follows="left|top|right" height="20" layout="topleft"
+     left="222" name="gaze_cast_combo" top="206"
+     tool_tip="Cast member for the Head/Eyes target selected at left"
+     visible="false" width="254" />
+    <button follows="left|top" height="20" label="Set point from camera"
+     layout="topleft" left="222" name="btn_gaze_setpoint" top="206"
+     tool_tip="Capture the current camera position as the fixed point the active You/A-D actor looks at"
+     visible="false" width="200" />
+    <button follows="left|top" height="20" label="Pick selected object"
+     layout="topleft" left="222" name="btn_gaze_pick_object" top="206"
+     tool_tip="Set the in-world selected object / linkset as the gaze target"
+     visible="false" width="142" />
+    <button follows="left|top" height="20" label="Clear target"
+     layout="topleft" left="370" name="btn_gaze_clear_object" top="206"
+     tool_tip="Clear object gaze target" visible="false" width="106" />
+
+    <!-- Performance -->
+    <text follows="left|top|right" font="SansSerifBold" height="18"
+     layout="topleft" left="12" name="gaze_performance_section" top="238"
+     width="464">Performance</text>
+    <text follows="left|top" height="20" layout="topleft" left="12"
+     name="gaze_performance_lbl" top="260" width="124">Performance preset</text>
+    <combo_box follows="left|top|right" height="20" layout="topleft"
+     left="140" name="gaze_performance_combo" top="260"
+     tool_tip="Apply a performance preset to the active You/A-D subject"
+     width="336" />
+    <button follows="right|top" height="18" image_overlay="Refresh_Off"
+     image_top_pad="0" layout="topleft" left="486"
+     name="reset_gaze_performance" tool_tip="Clear preset overrides to neutral defaults"
+     top="261" width="14" />
+
+    <slider decimal_digits="2" follows="left|top|right" height="20"
+     increment="0.05" initial_value="0" label="Dominance" label_width="124"
+     layout="topleft" left="12" max_val="1" min_val="-1"
+     name="gaze_persona_dom_slider" top="286"
+     tool_tip="Persona dominance: longer contact, squarer head, fewer blinks"
+     width="464" />
+    <button follows="right|top" height="18" image_overlay="Refresh_Off"
+     image_top_pad="0" layout="topleft" left="486" name="reset_gaze_persona_dom"
+     tool_tip="Reset Dominance to neutral" top="287" width="14" />
+    <slider decimal_digits="2" follows="left|top|right" height="20"
+     increment="0.05" initial_value="0" label="Affection" label_width="124"
+     layout="topleft" left="12" max_val="1" min_val="-1"
+     name="gaze_persona_aff_slider" top="312"
+     tool_tip="Persona affection: softer acquisition, warm eyeline, gentle lid narrow"
+     width="464" />
+    <button follows="right|top" height="18" image_overlay="Refresh_Off"
+     image_top_pad="0" layout="topleft" left="486" name="reset_gaze_persona_aff"
+     tool_tip="Reset Affection to neutral" top="313" width="14" />
+    <slider decimal_digits="2" follows="left|top|right" height="20"
+     increment="0.05" initial_value="0" label="Anxiety" label_width="124"
+     layout="topleft" left="12" max_val="1" min_val="-1"
+     name="gaze_persona_anx_slider" top="338"
+     tool_tip="Persona anxiety: shorter contact, downward aversion, more micro-life"
+     width="464" />
+    <button follows="right|top" height="18" image_overlay="Refresh_Off"
+     image_top_pad="0" layout="topleft" left="486" name="reset_gaze_persona_anx"
+     tool_tip="Reset Anxiety to neutral" top="339" width="14" />
+
+    <!-- Feel -->
+    <text follows="left|top|right" font="SansSerifBold" height="18"
+     layout="topleft" left="12" name="gaze_feel_section" top="372"
+     width="464">Feel</text>
+    <slider decimal_digits="2" follows="left|top|right" height="20"
+     increment="0.05" initial_value="0.7" label="Head/eyes" label_width="124"
+     layout="topleft" left="12" max_val="1" min_val="0"
+     name="gaze_blend_slider" top="394"
+     tool_tip="0 = eyes only; 1 = full head, neck and torso turn" width="464" />
+    <button follows="right|top" height="18" image_overlay="Refresh_Off"
+     image_top_pad="0" layout="topleft" left="486" name="reset_gaze_blend"
+     tool_tip="Reset Head/eyes to default" top="395" width="14" />
+    <slider decimal_digits="2" follows="left|top|right" height="20"
+     increment="0.05" initial_value="0.25" label="Torso" label_width="124"
+     layout="topleft" left="12" max_val="1" min_val="0"
+     name="gaze_torso_slider" top="420"
+     tool_tip="How much of the accepted gaze aim the torso shares" width="464" />
+    <button follows="right|top" height="18" image_overlay="Refresh_Off"
+     image_top_pad="0" layout="topleft" left="486" name="reset_gaze_torso"
+     tool_tip="Reset Torso to default" top="421" width="14" />
+    <slider decimal_digits="2" follows="left|top|right" height="20"
+     increment="0.05" initial_value="1.0" label="Intensity" label_width="124"
+     layout="topleft" left="12" max_val="1" min_val="0"
+     name="gaze_intensity_slider" top="446"
+     tool_tip="How strongly gaze overrides the actor's animation pose" width="464" />
+    <button follows="right|top" height="18" image_overlay="Refresh_Off"
+     image_top_pad="0" layout="topleft" left="486" name="reset_gaze_intensity"
+     tool_tip="Reset Intensity to default" top="447" width="14" />
+    <slider decimal_digits="2" follows="left|top|right" height="20"
+     increment="0.05" initial_value="0.5" label="Smoothing" label_width="124"
+     layout="topleft" left="12" max_val="1" min_val="0"
+     name="gaze_smoothing_slider" top="472"
+     tool_tip="0 = snappy; 1 = very smooth" width="464" />
+    <button follows="right|top" height="18" image_overlay="Refresh_Off"
+     image_top_pad="0" layout="topleft" left="486" name="reset_gaze_smoothing"
+     tool_tip="Reset Smoothing to default" top="473" width="14" />
+    <slider decimal_digits="1" follows="left|top|right" height="20"
+     increment="0.5" initial_value="0" label="Eyeline yaw" label_width="124"
+     layout="topleft" left="12" max_val="15" min_val="-15"
+     name="gaze_eyeline_yaw_slider" top="498"
+     tool_tip="Actor-local left/right off-camera eyeline in degrees" width="464" />
+    <button follows="right|top" height="18" image_overlay="Refresh_Off"
+     image_top_pad="0" layout="topleft" left="486" name="reset_gaze_eyeline_yaw"
+     tool_tip="Reset Eyeline yaw to default" top="499" width="14" />
+    <slider decimal_digits="1" follows="left|top|right" height="20"
+     increment="0.5" initial_value="0" label="Eyeline pitch" label_width="124"
+     layout="topleft" left="12" max_val="10" min_val="-10"
+     name="gaze_eyeline_pitch_slider" top="524"
+     tool_tip="Actor-local up/down off-camera eyeline in degrees" width="464" />
+    <button follows="right|top" height="18" image_overlay="Refresh_Off"
+     image_top_pad="0" layout="topleft" left="486" name="reset_gaze_eyeline_pitch"
+     tool_tip="Reset Eyeline pitch to default" top="525" width="14" />
+
+    <!-- Naturalism -->
+    <text follows="left|top|right" font="SansSerifBold" height="18"
+     layout="topleft" left="12" name="gaze_naturalism_section" top="558"
+     width="464">Naturalism</text>
+    <slider control_name="DirectorGazeMicroLife" decimal_digits="2"
+     follows="left|top|right" height="20" increment="0.05"
+     initial_value="0.4" label="Micro-life" label_width="124"
+     layout="topleft" left="12" max_val="1" min_val="0"
+     name="gaze_microlife_slider" top="580"
+     tool_tip="Procedural micro-life intensity (saccades, blinks, head drift)"
+     width="464" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorGazeMicroLife" follows="right|top"
+     height="18" image_overlay="Refresh_Off" image_top_pad="0"
+     layout="topleft" left="486" name="reset_gaze_microlife"
+     tool_tip="Reset to default" top="581" width="14" />
+
+    <text follows="left|top" height="20" layout="topleft" left="12"
+     name="gaze_blinks_lbl" top="606" width="124">Blinks</text>
+    <check_box control_name="DirectorGazeBlinks" follows="left|top"
+     height="20" label="Enabled" layout="topleft" left="140"
+     name="gaze_blinks_check" top="606"
+     tool_tip="Enable deterministic periodic eyelid blinks during locked gaze"
+     width="100" />
+
+    <slider control_name="DirectorGazeVariation" decimal_digits="2"
+     follows="left|top|right" height="20" increment="0.05"
+     initial_value="0.3" label="Variation" label_width="124"
+     layout="topleft" left="12" max_val="1" min_val="0"
+     name="gaze_variation_slider" top="632"
+     tool_tip="Per-subject natural variation in intensity, smoothing, and cadence"
+     width="464" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorGazeVariation" follows="right|top"
+     height="18" image_overlay="Refresh_Off" image_top_pad="0"
+     layout="topleft" left="486" name="reset_gaze_variation"
+     tool_tip="Reset to default" top="633" width="14" />
+
+    <slider control_name="DirectorGazeBreakFrequency" decimal_digits="2"
+     follows="left|top|right" height="20" increment="0.05"
+     initial_value="0.3" label="Glance breaks" label_width="124"
+     layout="topleft" left="12" max_val="1" min_val="0"
+     name="gaze_break_freq_slider" top="658"
+     tool_tip="Frequency of natural glances away from target" width="464" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorGazeBreakFrequency" follows="right|top"
+     height="18" image_overlay="Refresh_Off" image_top_pad="0"
+     layout="topleft" left="486" name="reset_gaze_break_frequency"
+     tool_tip="Reset to default" top="659" width="14" />
+
+    <spinner control_name="DirectorGazeEaseAcquireSec" decimal_digits="2"
+     follows="left|top|right" height="20" increment="0.05" label="Acquire (s)"
+     label_width="124" layout="topleft" left="12" max_val="2.0"
+     min_val="0.05" name="gaze_ease_acquire_spinner" top="684"
+     tool_tip="Time to acquire target lock" width="464" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorGazeEaseAcquireSec" follows="right|top"
+     height="18" image_overlay="Refresh_Off" image_top_pad="0"
+     layout="topleft" left="486" name="reset_gaze_ease_acquire"
+     tool_tip="Reset to default" top="685" width="14" />
+    <spinner control_name="DirectorGazeEaseReleaseSec" decimal_digits="2"
+     follows="left|top|right" height="20" increment="0.05" label="Release (s)"
+     label_width="124" layout="topleft" left="12" max_val="3.0"
+     min_val="0.05" name="gaze_ease_release_spinner" top="710"
+     tool_tip="Time to release target lock back to animation" width="464" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorGazeEaseReleaseSec" follows="right|top"
+     height="18" image_overlay="Refresh_Off" image_top_pad="0"
+     layout="topleft" left="486" name="reset_gaze_ease_release"
+     tool_tip="Reset to default" top="711" width="14" />
+
+    <!-- Tracking -->
+    <text follows="left|top|right" font="SansSerifBold" height="18"
+     layout="topleft" left="12" name="gaze_tracking_section" top="744"
+     width="464">Tracking</text>
+    <spinner control_name="BDMergeGazeDeadZone" decimal_digits="1"
+     follows="left|top|right" height="20" increment="0.5"
+     label="Dead zone (deg)" label_width="124" layout="topleft" left="12"
+     max_val="15" min_val="0" name="gaze_deadzone_spinner" top="766"
      tool_tip="Body-chain dead zone; eyes continue micro-tracking inside it"
-     width="150" />
-    <check_box
-     follows="left|top" height="16" label="Break off past" layout="topleft"
-     left="162" top="116" name="gaze_breakoff_check"
+     width="464" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="BDMergeGazeDeadZone" follows="right|top"
+     height="18" image_overlay="Refresh_Off" image_top_pad="0"
+     layout="topleft" left="486" name="reset_gaze_deadzone"
+     tool_tip="Reset to default" top="767" width="14" />
+
+    <check_box follows="left|top" height="20" label="Break off past"
+     layout="topleft" left="12" name="gaze_breakoff_check" top="792"
      tool_tip="Ease gaze out when the target passes the angle at right"
-     width="110" />
-    <spinner
-     control_name="BDMergeGazeBehindAngle" decimal_digits="0" follows="left|top|right"
-     height="20" increment="5" label="" layout="topleft" left="274"
-     max_val="180" min_val="90" name="gaze_breakoff_spinner" top="114"
-     tool_tip="Body-relative yaw where Break off disengages gaze" width="94" />
-    <slider decimal_digits="1" follows="left|top" height="16" increment="0.5"
-     initial_value="0" label="Eyeline yaw" label_width="72" layout="topleft"
-     left="6" max_val="15" min_val="-15" name="gaze_eyeline_yaw_slider" top="138"
-     tool_tip="Actor-local left/right off-lens eyeline in degrees" width="172" />
-    <slider decimal_digits="1" follows="left|top|right" height="16" increment="0.5"
-     initial_value="0" label="Eyeline pitch" label_width="78" layout="topleft"
-     left="182" max_val="10" min_val="-10" name="gaze_eyeline_pitch_slider" top="138"
-     tool_tip="Actor-local up/down off-lens eyeline in degrees" width="186" />
-    <text
-     follows="left|top|right" height="24" layout="topleft" left="6" top="158"
-     name="gaze_hint" text_color="LtGray_50" width="362" word_wrap="true">Applies to the selected cast actors; empty selection = your avatar. Dead zone and break-off are global.</text>
+     width="124" />
+    <spinner control_name="BDMergeGazeBehindAngle" decimal_digits="0"
+     follows="left|top|right" height="20" increment="5" label=""
+     layout="topleft" left="140" max_val="180" min_val="90"
+     name="gaze_breakoff_spinner" top="792"
+     tool_tip="Body-relative yaw where Break off disengages gaze" width="336" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="BDMergeGazeBehindAngle" follows="right|top"
+     height="18" image_overlay="Refresh_Off" image_top_pad="0"
+     layout="topleft" left="486" name="reset_gaze_breakoff_angle"
+     tool_tip="Reset angle to default" top="793" width="14" />
+
+    <!-- Extreme -->
+    <text follows="left|top|right" font="SansSerifBold" height="18"
+     layout="topleft" left="12" name="gaze_extreme_section" top="826"
+     width="464">Extreme</text>
+    <slider control_name="DirectorGazeCameraRoll" decimal_digits="2"
+     follows="left|top|right" height="20" increment="0.05"
+     initial_value="0" label="Camera roll" label_width="124"
+     layout="topleft" left="12" max_val="1" min_val="0"
+     name="gaze_camera_roll_slider" top="848"
+     tool_tip="Cock the head with the live CAMERA target's dutch angle; the neck follows by a smaller share"
+     width="464" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorGazeCameraRoll" follows="right|top"
+     height="18" image_overlay="Refresh_Off" image_top_pad="0"
+     layout="topleft" left="486" name="reset_gaze_camera_roll"
+     tool_tip="Reset to off" top="849" width="14" />
+    <slider control_name="DirectorGazeExaggerate" decimal_digits="2"
+     follows="left|top|right" height="20" increment="0.05"
+     initial_value="1" label="Exaggerate" label_width="124"
+     layout="topleft" left="12" max_val="3" min_val="1"
+     name="gaze_exaggerate_slider" top="874"
+     tool_tip="Scale eye, head, and neck limits from human (1) to extreme (3)"
+     width="464" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorGazeExaggerate" follows="right|top"
+     height="18" image_overlay="Refresh_Off" image_top_pad="0"
+     layout="topleft" left="486" name="reset_gaze_exaggerate"
+     tool_tip="Reset to human limits" top="875" width="14" />
+
+    <!-- Global fallback values, deliberately distinct from rich overrides. -->
+    <text follows="left|top|right" font="SansSerifBold" height="18"
+     layout="topleft" left="12" name="gaze_base_section" top="904"
+     width="464">Look-at-camera base</text>
+    <text follows="left|top|right" height="30" layout="topleft" left="12"
+     name="gaze_base_hint" text_color="LtGray_50" top="926" width="488"
+     word_wrap="true">Global fallback values for camera-facing cast. Performance and Feel overrides above remain per actor.</text>
+
+    <text follows="left|top" height="20" layout="topleft" left="12"
+     name="look_at_camera_mode_lbl" top="960" width="124">Mode</text>
+    <combo_box control_name="DirectorLookAtCameraMode" follows="left|top|right"
+     height="20" layout="topleft" left="140" name="look_at_camera_mode"
+     top="960"
+     tool_tip="Gaze keeps the current head/eye behavior. Turn body eases the rendered avatar root toward the camera and locally layers a turn animation"
+     width="336">
+        <combo_box.item label="Gaze (head/eyes)" name="look_at_mode_gaze" value="0" />
+        <combo_box.item label="Turn body" name="look_at_mode_body" value="1" />
+    </combo_box>
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorLookAtCameraMode" follows="right|top"
+     height="18" image_overlay="Refresh_Off" image_top_pad="0"
+     layout="topleft" left="486" name="reset_look_at_camera_mode"
+     tool_tip="Reset to default" top="961" width="14" />
+
+    <spinner control_name="DirectorLookAtCameraStrength" decimal_digits="2"
+     follows="left|top|right" height="20" increment="0.05" label="Strength"
+     label_width="124" layout="topleft" left="12" max_val="1" min_val="0"
+     name="look_at_camera_strength" top="986"
+     tool_tip="Blend weight for the local head and eye camera gaze" width="464" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorLookAtCameraStrength" follows="right|top"
+     height="18" image_overlay="Refresh_Off" image_top_pad="0"
+     layout="topleft" left="486" name="reset_look_at_camera_strength"
+     tool_tip="Reset to default" top="987" width="14" />
+
+    <slider control_name="DirectorLookAtCameraHeadEye" decimal_digits="2"
+     follows="left|top|right" height="20" increment="0.05" label="Head/eyes"
+     label_width="124" layout="topleft" left="12" max_val="1" min_val="0"
+     name="look_at_camera_head_eye" top="1012"
+     tool_tip="0 uses eyes only; 1 gives the head and neck their full share"
+     width="464" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorLookAtCameraHeadEye" follows="right|top"
+     height="18" image_overlay="Refresh_Off" image_top_pad="0"
+     layout="topleft" left="486" name="reset_look_at_camera_head_eye"
+     tool_tip="Reset to default" top="1013" width="14" />
+
+    <text follows="left|top" height="20" layout="topleft" left="12"
+     name="look_at_camera_torso_lbl" top="1038" width="124">Torso contribution</text>
+    <check_box control_name="DirectorLookAtCameraTorso" follows="left|top"
+     height="20" label="Enabled" layout="topleft" left="140"
+     name="look_at_camera_torso" top="1038"
+     tool_tip="Master gate for the base torso amount; off keeps the effect to head, neck, and eyes"
+     width="100" />
+
+    <slider control_name="DirectorLookAtCameraTorsoAmount" decimal_digits="2"
+     follows="left|top|right" height="20" increment="0.05"
+     label="Torso amount" label_width="124" layout="topleft" left="12"
+     max_val="1" min_val="0" name="look_at_camera_torso_amount" top="1064"
+     tool_tip="Base torso share when Torso contribution is enabled" width="464" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorLookAtCameraTorsoAmount" follows="right|top"
+     height="18" image_overlay="Refresh_Off" image_top_pad="0"
+     layout="topleft" left="486" name="reset_look_at_camera_torso_amount"
+     tool_tip="Reset to default" top="1065" width="14" />
+
+    <slider control_name="DirectorLookAtCameraSmoothing" decimal_digits="2"
+     follows="left|top|right" height="20" increment="0.01" label="Smoothing"
+     label_width="124" layout="topleft" left="12" max_val="1" min_val="0"
+     name="look_at_camera_smoothing" top="1090"
+     tool_tip="Base camera-gaze smoothing: 0 is snappy; 1 is very smooth"
+     width="464" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorLookAtCameraSmoothing" follows="right|top"
+     height="18" image_overlay="Refresh_Off" image_top_pad="0"
+     layout="topleft" left="486" name="reset_look_at_camera_smoothing"
+     tool_tip="Reset to default" top="1091" width="14" />
+
+    <slider control_name="DirectorLookAtCameraEaseTime" decimal_digits="2"
+     follows="left|top|right" height="20" increment="0.01" label="Ease master"
+     label_width="124" layout="topleft" left="12" max_val="1" min_val="0"
+     name="look_at_camera_ease_time" top="1116"
+     tool_tip="Master scale for both acquire and release; 0.15 uses the authored durations"
+     width="464" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorLookAtCameraEaseTime" follows="right|top"
+     height="18" image_overlay="Refresh_Off" image_top_pad="0"
+     layout="topleft" left="486" name="reset_look_at_camera_ease_time"
+     tool_tip="Reset to default" top="1117" width="14" />
+
+    <text follows="left|top|right" height="32" layout="topleft" left="12"
+     name="gaze_hint" text_color="LtGray_50" top="1152" width="350"
+     word_wrap="true">Performance and persona use active You/A-D; Feel applies to the current actor selection.</text>
+    <button follows="right|top" height="22" label="Gaze Cues..."
+     layout="topleft" left="370" name="btn_gaze_cues" top="1156"
+     tool_tip="Edit presentation-time gaze cues for the active You/A-D subject"
+     width="106" />
 </panel>

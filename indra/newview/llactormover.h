@@ -319,33 +319,81 @@ public:
     // resolved actor id, and persists across stop/start like the path.
     //
     // Target modes: 0 = path tangent ("look where I'm going", DEFAULT), 1 =
-    // camera, 2 = cast member, 3 = fixed point (global). An unresolvable cast
+    // camera, 2 = cast member, 3 = fixed point (global), 4 = object. An unresolvable cast
     // target / degenerate direction falls back to the path tangent gracefully.
-    enum { GAZE_TANGENT = 0, GAZE_CAMERA = 1, GAZE_CAST = 2, GAZE_POINT = 3 };
+    enum { GAZE_TANGENT = 0, GAZE_CAMERA = 1, GAZE_CAST = 2, GAZE_POINT = 3, GAZE_OBJECT = 4 };
 
-    void   setGazeEnabled(const LLUUID& actor_id, bool on);
-    bool   isGazeEnabled(const LLUUID& actor_id) const;
-    void   setGazeTargetMode(const LLUUID& actor_id, S32 mode);      // 0..3
-    S32    getGazeTargetMode(const LLUUID& actor_id) const;
-    void   setGazeCastTarget(const LLUUID& actor_id, const LLUUID& cast_id);
-    LLUUID getGazeCastTarget(const LLUUID& actor_id) const;
-    void   setGazePointGlobal(const LLUUID& actor_id, const LLVector3d& p);
-    void   setGazeHeadEyeBlend(const LLUUID& actor_id, F32 v);       // 0 eyes-only .. 1 full
-    F32    getGazeHeadEyeBlend(const LLUUID& actor_id) const;
-    void   setGazeTorsoAmount(const LLUUID& actor_id, F32 v);        // 0 still chest .. 1 full share
-    F32    getGazeTorsoAmount(const LLUUID& actor_id) const;
-    void   setGazeIntensity(const LLUUID& actor_id, F32 v);          // 0..1
-    F32    getGazeIntensity(const LLUUID& actor_id) const;
-    void   setGazeSmoothing(const LLUUID& actor_id, F32 v);          // 0 snappy .. 1 very smooth
-    F32    getGazeSmoothing(const LLUUID& actor_id) const;
-    void   setGazeEyelineOffset(const LLUUID& actor_id, F32 yaw_degrees,
-                                F32 pitch_degrees);
-    F32    getGazeEyelineYaw(const LLUUID& actor_id) const;
-    F32    getGazeEyelinePitch(const LLUUID& actor_id) const;
+    // Global render-pose ownership policy. The anatomical chain still decides
+    // each joint's target; priority only decides how completely that target
+    // replaces the animation pose at full acquire.
+    enum EGazePriority
+    {
+        GAZE_PRIORITY_BLEND = 0,
+        GAZE_PRIORITY_HEAD_EYES = 1,
+        GAZE_PRIORITY_UPPER_BODY = 2
+    };
+
+    struct GazeTarget
+    {
+        enum EMode { MOTION = 0, CAMERA = 1, CAST_MEMBER = 2, FIXED_POINT = 3, OBJECT = 4 };
+        EMode      mMode = MOTION;
+        LLUUID     mCastRef;
+        LLVector3d mFixedPoint = LLVector3d::zero;
+        LLUUID     mObjectRef;
+        // Per-subject expressive config. Neutral/default values preserve old
+        // scenes; optional preset overrides use -1 as "inherit the base slider".
+        F32        mPersonaDominance = 0.f;
+        F32        mPersonaAffection = 0.f;
+        F32        mPersonaAnxiety = 0.f;
+        // Cue targets inherit the cast member's persona unless an external
+        // author explicitly supplied persona fields for the cue.
+        bool       mPersonaOverride = false;
+        F32        mHeadEyeBlendOverride = -1.f;
+        F32        mTorsoAmountOverride = -1.f;
+        F32        mIntensityOverride = -1.f;
+        F32        mSmoothingOverride = -1.f;
+        bool       mEyelineOverride = false;
+        F32        mEyelineYawDegOverride = 0.f;
+        F32        mEyelinePitchDegOverride = 0.f;
+        F32        mMicroLifeOverride = -1.f;
+        S32        mBlinksOverride = -1; // -1 inherits the global switch
+        F32        mVariationOverride = -1.f;
+        F32        mBreakFrequencyOverride = -1.f;
+        F32        mEaseAcquireOverride = -1.f;
+        F32        mEaseReleaseOverride = -1.f;
+        F32        mDeadZoneDegOverride = -1.f;
+        F32        mBlinkRateScale = 1.f;
+        F32        mVergenceScale = 1.f;
+    };
+
+    void        setGazeEnabled(const LLUUID& actor_id, bool on);
+    bool        isGazeEnabled(const LLUUID& actor_id) const;
+    void        setGazeTargetMode(const LLUUID& actor_id, S32 mode);      // 0..4
+    S32         getGazeTargetMode(const LLUUID& actor_id) const;
+    void        setGazeCastTarget(const LLUUID& actor_id, const LLUUID& cast_id);
+    LLUUID      getGazeCastTarget(const LLUUID& actor_id) const;
+    void        setGazePointGlobal(const LLUUID& actor_id, const LLVector3d& p);
+    LLVector3d  getGazePointGlobal(const LLUUID& actor_id) const;
+    void        setGazeObjectTarget(const LLUUID& actor_id, const LLUUID& object_id);
+    LLUUID      getGazeObjectTarget(const LLUUID& actor_id) const;
+    void        setGazeTargetConfig(const LLUUID& actor_id, const GazeTarget& target);
+    GazeTarget  getGazeTargetConfig(const LLUUID& actor_id) const;
+    void        setGazeHeadEyeBlend(const LLUUID& actor_id, F32 v);       // 0 eyes-only .. 1 full
+    F32         getGazeHeadEyeBlend(const LLUUID& actor_id) const;
+    void        setGazeTorsoAmount(const LLUUID& actor_id, F32 v);        // 0 still chest .. 1 full share
+    F32         getGazeTorsoAmount(const LLUUID& actor_id) const;
+    void        setGazeIntensity(const LLUUID& actor_id, F32 v);          // 0..1
+    F32         getGazeIntensity(const LLUUID& actor_id) const;
+    void        setGazeSmoothing(const LLUUID& actor_id, F32 v);          // 0 snappy .. 1 very smooth
+    F32         getGazeSmoothing(const LLUUID& actor_id) const;
+    void        setGazeEyelineOffset(const LLUUID& actor_id, F32 yaw_degrees,
+                                     F32 pitch_degrees);
+    F32         getGazeEyelineYaw(const LLUUID& actor_id) const;
+    F32         getGazeEyelinePitch(const LLUUID& actor_id) const;
     // one-line status for the panel (e.g. "Looking at Kestrel", "Gaze off",
     // "Gaze armed -- starts with the walk"). Always fills out; returns false only
     // when the actor id is null.
-    bool   getGazeStatus(const LLUUID& actor_id, std::string& out) const;
+    bool        getGazeStatus(const LLUUID& actor_id, std::string& out) const;
 
     // per-frame gaze paint: called from the avatar update AFTER updateMotions has
     // posed the skeleton, so the override layers on the current anim pose and is
@@ -860,9 +908,29 @@ private:
     {
         // authored (panel writes these)
         bool       mEnabled      = false;
-        S32        mTarget       = 0;       // GAZE_TANGENT..GAZE_POINT
+        S32        mTarget       = 0;       // GAZE_TANGENT..GAZE_OBJECT
         LLUUID     mCastTarget;             // cast member (mode GAZE_CAST)
         LLVector3d mPoint;                  // fixed point, global (mode GAZE_POINT)
+        LLUUID     mObjectTarget;           // in-world object target (mode GAZE_OBJECT)
+        F32        mPersonaDominance = 0.f;
+        F32        mPersonaAffection = 0.f;
+        F32        mPersonaAnxiety = 0.f;
+        F32        mHeadEyeBlendOverride = -1.f;
+        F32        mTorsoAmountOverride = -1.f;
+        F32        mIntensityOverride = -1.f;
+        F32        mSmoothingOverride = -1.f;
+        bool       mEyelineOverride = false;
+        F32        mEyelineYawDegOverride = 0.f;
+        F32        mEyelinePitchDegOverride = 0.f;
+        F32        mMicroLifeOverride = -1.f;
+        S32        mBlinksOverride = -1;
+        F32        mVariationOverride = -1.f;
+        F32        mBreakFrequencyOverride = -1.f;
+        F32        mEaseAcquireOverride = -1.f;
+        F32        mEaseReleaseOverride = -1.f;
+        F32        mDeadZoneDegOverride = -1.f;
+        F32        mBlinkRateScale = 1.f;
+        F32        mVergenceScale = 1.f;
         F32        mHeadEyeBlend  = 0.7f;   // 0 = eyes only, 1 = full head+neck+torso
         F32        mTorsoAmount   = 0.25f;  // torso share; 0 = still chest, 1 = full aim
         F32        mIntensity     = 1.f;    // overall weight 0..1
@@ -890,6 +958,11 @@ private:
         bool         mValid = false;
         LLQuaternion mRotation;
     };
+    struct DirectorVisualParamPose
+    {
+        bool mValid = false;
+        F32  mWeight = 0.f;
+    };
     struct DirectorGaze
     {
         Gaze             mGaze;
@@ -897,6 +970,7 @@ private:
         bool             mStrengthValid = false;
         S32              mMode = 0;
         DirectorJointPose mRoot;
+        DirectorJointPose mPelvis;
         DirectorJointPose mTorso;
         DirectorJointPose mNeck;
         DirectorJointPose mHead;
@@ -904,20 +978,51 @@ private:
         DirectorJointPose mEyeRight;
         DirectorJointPose mAltEyeLeft;
         DirectorJointPose mAltEyeRight;
+        DirectorVisualParamPose mBlinkLeft;
+        DirectorVisualParamPose mBlinkRight;
         bool             mBodyYawValid = false;
+        bool             mBodyTurnActive = false;
         F32              mBodyYaw = 0.f;
         U32              mBodyLastFrame = 0xFFFFFFFF;
         LLUUID           mTurnAnim;       // exact built-in/AO UUID Director started
         LLUUID           mTurnSourceAnim; // canonical TURNLEFT/RIGHT AO state
         bool             mOwnsTurnAnim = false;
         bool             mTurnAOOverrideActive = false;
+        S32              mTurnPendingDirection = 0;
+        F32              mTurnPendingSeconds = 0.f;
+        F32              mTurnStopSeconds = 0.f;
+        F32              mTurnRestartDelay = 0.f;
+        bool             mAcquisitionValid = false;
+        bool             mWasSelected = false;
+        bool             mReactionPending = false;
+        F64              mAcquireStartPresentation = 0.0;
+        F32              mReactionDelay = 0.f;
+        LLActorMover::GazeTarget mLastTarget;
+        bool             mCueOverride = false;
+        LLActorMover::GazeTarget mCueFromBaseTarget;
+        LLActorMover::GazeTarget mCueFromTarget;
+        F32              mCueFromTargetBlend = 1.f;
+        F32              mCueTargetBlend = 1.f;
+        F32              mCueEyeWeight = 1.f;
+        F32              mCueHeadWeight = 1.f;
+        F32              mCueBodyWeight = 1.f;
+        F32              mCueLidWiden = 0.f;
+        F32              mCueHeadRecoilPitch = 0.f;
+        bool             mLastGateActive = false;
+        U64              mLastGateCutSerial = 0;
     };
     // per-frame gaze solve helpers (file-scope math lives in the cpp)
     void gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bool advance,
-                   bool constrain_eye_cone);
-    void captureDirectorLookAtPose(LLVOAvatar* av, DirectorGaze& runtime);
+                   bool constrain_eye_cone, bool allow_natural_break,
+                   DirectorGaze* director_runtime = nullptr,
+                   F32 body_turn_threshold_deg = 90.f,
+                   const GazeTarget* eye_target = nullptr);
+    bool resolveGazeObjectCenter(const LLUUID& object_id, LLVector3& out_agent);
+    void captureDirectorLookAtPose(LLVOAvatar* av, DirectorGaze& runtime,
+                                   bool capture_blinks);
     void restoreDirectorLookAtPose(LLVOAvatar* av, DirectorGaze& runtime);
-    bool applyDirectorBodyTurn(LLVOAvatar* av, DirectorGaze& runtime);
+    bool applyDirectorBodyTurn(LLVOAvatar* av, DirectorGaze& runtime,
+                               const LLVector3& target_direction);
     void updateDirectorTurnAnimation(LLVOAvatar* av, DirectorGaze& runtime,
                                      S32 direction);
     void stopDirectorTurnAnimation(LLVOAvatar* av, DirectorGaze& runtime);
@@ -970,6 +1075,13 @@ private:
     std::map<LLUUID, Follow> mFollows;  // follower key -> leader relationship (session-only)
     std::map<LLUUID, Gaze> mGazes;      // per-actor look-at config + runtime (session-only)
     std::map<LLUUID, DirectorGaze> mDirectorGazes; // render-only real-cast camera gaze runtime
+    struct GazeObjectCenterCache
+    {
+        U32 mFrame = 0xFFFFFFFF;
+        bool mValid = false;
+        LLVector3 mCenter;
+    };
+    std::map<LLUUID, GazeObjectCenterCache> mGazeObjectCenters;
 
     // P2 edit selection: the path key under edit + the selected node index
     LLUUID mEditActor;      // resolved path key (null = nothing being edited)

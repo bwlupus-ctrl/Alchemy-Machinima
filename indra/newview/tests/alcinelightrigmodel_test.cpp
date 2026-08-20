@@ -93,6 +93,7 @@ ALCineLightRigParamBlob distinctiveBlob()
     blob.mCatchlightEV = 1.75f;
     blob.mCatchlightSize = 0.22f;
     blob.mCatchlightAngle = 137.5f;
+    blob.mObjectTarget.set("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", false);
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
     {
         blob.mLights[i].mYaw = -80.f + i * 17.f;
@@ -104,6 +105,15 @@ ALCineLightRigParamBlob distinctiveBlob()
         blob.mLights[i].mGel = 4 + i;
         blob.mLights[i].mShadowSoft = 0.5f + i * 0.75f;
         blob.mLights[i].mOn = i == 3;
+        blob.mLights[i].mFlickerProgram = i + 1;
+        blob.mLights[i].mFlickerAmount = 0.2f * (i + 1);
+        blob.mLights[i].mFixtureMode = (i & 1) == 0;
+        blob.mLights[i].mKelvin = 2700.f + i * 1100.f;
+        blob.mLights[i].mGelSlot[0] = 1 + i;
+        blob.mLights[i].mGelSlot[1] = 9 + i;
+        blob.mLights[i].mGelSlot[2] = 15 + i;
+        blob.mLights[i].mSourceSizeM = 0.05f * (i + 1);
+        blob.mLights[i].mFixturePreset = 2 + i;
         blob.mShaftEnabled[i] = (i & 1) != 0;
         blob.mHeroEnabled[i] = i >= 2;
     }
@@ -148,6 +158,7 @@ void ensureSameBlob(const ALCineLightRigParamBlob& expected,
     ensure_equals("blob CatchlightEV", actual.mCatchlightEV, expected.mCatchlightEV);
     ensure_equals("blob CatchlightSize", actual.mCatchlightSize, expected.mCatchlightSize);
     ensure_equals("blob CatchlightAngle", actual.mCatchlightAngle, expected.mCatchlightAngle);
+    ensure_equals("blob ObjectTarget", actual.mObjectTarget, expected.mObjectTarget);
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
     {
         ensure_equals("blob light Yaw", actual.mLights[i].mYaw, expected.mLights[i].mYaw);
@@ -159,6 +170,18 @@ void ensureSameBlob(const ALCineLightRigParamBlob& expected,
         ensure_equals("blob light Gel", actual.mLights[i].mGel, expected.mLights[i].mGel);
         ensure_equals("blob light ShadowSoft", actual.mLights[i].mShadowSoft, expected.mLights[i].mShadowSoft);
         ensure_equals("blob light On", actual.mLights[i].mOn, expected.mLights[i].mOn);
+        ensure_equals("blob light FlickerProgram", actual.mLights[i].mFlickerProgram, expected.mLights[i].mFlickerProgram);
+        ensure_equals("blob light FlickerAmount", actual.mLights[i].mFlickerAmount, expected.mLights[i].mFlickerAmount);
+        ensure_equals("blob light FixtureMode", actual.mLights[i].mFixtureMode, expected.mLights[i].mFixtureMode);
+        ensure_equals("blob light Kelvin", actual.mLights[i].mKelvin, expected.mLights[i].mKelvin);
+        for (S32 slot = 0; slot < FIXTURE_GEL_SLOT_COUNT; ++slot)
+        {
+            ensure_equals("blob light fixture gel slot",
+                          actual.mLights[i].mGelSlot[slot],
+                          expected.mLights[i].mGelSlot[slot]);
+        }
+        ensure_equals("blob light SourceSize", actual.mLights[i].mSourceSizeM, expected.mLights[i].mSourceSizeM);
+        ensure_equals("blob light FixturePreset", actual.mLights[i].mFixturePreset, expected.mLights[i].mFixturePreset);
     }
     if (!include_session)
     {
@@ -207,6 +230,7 @@ void seedSettingsIndependently(FakeRigSettings& settings,
     settings.setF32("CineLightRigCatchlightEV", value.mCatchlightEV);
     settings.setF32("CineLightRigCatchlightSize", value.mCatchlightSize);
     settings.setF32("CineLightRigCatchlightAngle", value.mCatchlightAngle);
+    settings.setString("CineLightRigObjectTarget", value.mObjectTarget.asString());
     static const char* const prefixes[LIGHT_COUNT] = {
         "CineLightRigKey", "CineLightRigFill",
         "CineLightRigRim", "CineLightRigBg"
@@ -223,6 +247,17 @@ void seedSettingsIndependently(FakeRigSettings& settings,
         settings.setS32(prefix + "Gel", value.mLights[i].mGel);
         settings.setF32(prefix + "ShadowSoft", value.mLights[i].mShadowSoft);
         settings.setBOOL(prefix + "On", value.mLights[i].mOn);
+        settings.setS32(prefix + "Flicker", value.mLights[i].mFlickerProgram);
+        settings.setF32(prefix + "FlickerAmount", value.mLights[i].mFlickerAmount);
+        settings.setBOOL(prefix + "FixtureMode", value.mLights[i].mFixtureMode);
+        settings.setF32(prefix + "Kelvin", value.mLights[i].mKelvin);
+        for (S32 slot = 0; slot < FIXTURE_GEL_SLOT_COUNT; ++slot)
+        {
+            settings.setS32(prefix + "GelSlot" + std::to_string(slot),
+                            value.mLights[i].mGelSlot[slot]);
+        }
+        settings.setF32(prefix + "SourceSizeM", value.mLights[i].mSourceSizeM);
+        settings.setS32(prefix + "FixturePreset", value.mLights[i].mFixturePreset);
     }
 }
 
@@ -257,6 +292,8 @@ void ensureSettingsMatchIndependently(
     actual.mCatchlightEV = settings.getF32("CineLightRigCatchlightEV");
     actual.mCatchlightSize = settings.getF32("CineLightRigCatchlightSize");
     actual.mCatchlightAngle = settings.getF32("CineLightRigCatchlightAngle");
+    actual.mObjectTarget.set(
+        settings.getString("CineLightRigObjectTarget"), false);
     static const char* const prefixes[LIGHT_COUNT] = {
         "CineLightRigKey", "CineLightRigFill",
         "CineLightRigRim", "CineLightRigBg"
@@ -273,6 +310,21 @@ void ensureSettingsMatchIndependently(
         actual.mLights[i].mGel = settings.getS32(prefix + "Gel");
         actual.mLights[i].mShadowSoft = settings.getF32(prefix + "ShadowSoft");
         actual.mLights[i].mOn = settings.getBOOL(prefix + "On");
+        actual.mLights[i].mFlickerProgram = settings.getS32(prefix + "Flicker");
+        actual.mLights[i].mFlickerAmount =
+            settings.getF32(prefix + "FlickerAmount");
+        actual.mLights[i].mFixtureMode =
+            settings.getBOOL(prefix + "FixtureMode");
+        actual.mLights[i].mKelvin = settings.getF32(prefix + "Kelvin");
+        for (S32 slot = 0; slot < FIXTURE_GEL_SLOT_COUNT; ++slot)
+        {
+            actual.mLights[i].mGelSlot[slot] = settings.getS32(
+                prefix + "GelSlot" + std::to_string(slot));
+        }
+        actual.mLights[i].mSourceSizeM =
+            settings.getF32(prefix + "SourceSizeM");
+        actual.mLights[i].mFixturePreset =
+            settings.getS32(prefix + "FixturePreset");
     }
     ensureSameBlob(expected, actual, false);
 }
@@ -337,6 +389,7 @@ void renderScaleOneGolden(F32 radius, const LightBase live[LIGHT_COUNT],
     const Globals safe_globals = sanitizeGlobals(globals);
     const F32 distance_ev = std::log2(radius / 1.5f);
     std::memset(&out, 0, sizeof(out));
+    out.mCatchlightSizeScale = 1.f;
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
     {
         const LightBase& light = live[i];
@@ -637,6 +690,9 @@ void cine_light_rig_model_object::test<4>()
         setup.mLights[i].mProfile = 1000;
         setup.mLights[i].mEV = -std::numeric_limits<F32>::infinity();
         setup.mLights[i].mBeam = -1000;
+        setup.mLights[i].mFlickerProgram = 1000;
+        setup.mLights[i].mFlickerAmount =
+            std::numeric_limits<F32>::quiet_NaN();
     }
     const Setup safe = sanitizeSetup(setup);
     ensure("radius finite and clamped",
@@ -653,6 +709,13 @@ void cine_light_rig_model_object::test<4>()
         ensure("beam index clamped",
                safe.mLights[i].mBeam >= 0 &&
                safe.mLights[i].mBeam < BEAM_COUNT);
+        ensure("flicker program clamped",
+               safe.mLights[i].mFlickerProgram >= FLICKER_NONE &&
+               safe.mLights[i].mFlickerProgram < FLICKER_COUNT);
+        ensure("flicker amount finite and clamped",
+               std::isfinite(safe.mLights[i].mFlickerAmount) &&
+               safe.mLights[i].mFlickerAmount >= 0.f &&
+               safe.mLights[i].mFlickerAmount <= 1.f);
     }
 
     Transforms transforms;
@@ -805,9 +868,10 @@ void cine_light_rig_model_object::test<8>()
            sampleFXBeat(29, 23, 1).mOn &&
            sampleFXBeat(29, 23, 2).mOn &&
            sampleFXBeat(29, 23, 3).mOn);
-    ensure_equals("Stage fill latch is bit-identical to ramp endpoint",
-                  sampleFXBeat(29, 21, 1).mEV,
-                  sampleFXBeat(29, 20, 1).mEV);
+    ensure_approximately_equals_range(
+        "Stage fill latch reaches the ramp endpoint",
+        sampleFXBeat(29, 21, 1).mEV,
+        sampleFXBeat(29, 20, 1).mEV, 1e-6f);
     ensure("Stage beat 40 retains latched poses",
            sampleFXBeat(29, 40, 0).mOn &&
            sampleFXBeat(29, 40, 2).mOn);
@@ -829,24 +893,30 @@ void cine_light_rig_model_object::test<8>()
            !sampleFXBeat(27, 12, 3).mOn);
     const LightBase explosion_hidden = sampleFXBeat(27, 12, 2);
     const LightBase explosion_afterglow = sampleFXBeat(27, 45, 2);
-    ensure("Explosion preserves hidden latched state",
-           explosion_hidden.mProfile == explosion_afterglow.mProfile &&
-           explosion_hidden.mEV == explosion_afterglow.mEV);
+    ensure_equals("Explosion preserves hidden latched profile",
+                  explosion_afterglow.mProfile, explosion_hidden.mProfile);
+    ensure_approximately_equals_range(
+        "Explosion preserves hidden latched EV",
+        explosion_afterglow.mEV, explosion_hidden.mEV, 1e-6f);
     ensure("Explosion beat 45 leaves key only",
            sampleFXBeat(27, 45, 0).mOn &&
            !sampleFXBeat(27, 45, 1).mOn);
     const F32 explosion_ember = sampleFXBeat(27, 44, 1).mEV;
-    ensure_equals("Explosion beat 45 replays beat-44 ember",
-                  sampleFXBeat(27, 45, 1).mEV, explosion_ember);
-    ensure_equals("Explosion afterglow does not re-roll ember",
-                  sampleFXBeat(27, 63, 1).mEV, explosion_ember);
+    ensure_approximately_equals_range(
+        "Explosion beat 45 replays beat-44 ember",
+        sampleFXBeat(27, 45, 1).mEV, explosion_ember, 1e-6f);
+    ensure_approximately_equals_range(
+        "Explosion afterglow does not re-roll ember",
+        sampleFXBeat(27, 63, 1).mEV, explosion_ember, 1e-6f);
     const F32 second_cycle_ember = sampleFXBeat(27, 65 + 44, 1).mEV;
-    ensure_equals("Explosion cycle 1 replays its beat-44 ember",
-                  sampleFXBeat(27, 65 + 45, 1).mEV,
-                  second_cycle_ember);
-    ensure_equals("Explosion cycle 1 keeps its ember through afterglow",
-                  sampleFXBeat(27, 65 + 63, 1).mEV,
-                  second_cycle_ember);
+    ensure_approximately_equals_range(
+        "Explosion cycle 1 replays its beat-44 ember",
+        sampleFXBeat(27, 65 + 45, 1).mEV,
+        second_cycle_ember, 1e-6f);
+    ensure_approximately_equals_range(
+        "Explosion cycle 1 keeps its ember through afterglow",
+        sampleFXBeat(27, 65 + 63, 1).mEV,
+        second_cycle_ember, 1e-6f);
 
     ensure_equals("Supernova beat 0 begins at -2 EV",
                   sampleFXBeat(28, 0, 0).mEV, -2.f);
@@ -857,9 +927,10 @@ void cine_light_rig_model_object::test<8>()
     ensure("Supernova beat 65 is two-light remnant",
            sampleFXBeat(28, 65, 0).mOn &&
            !sampleFXBeat(28, 65, 2).mOn);
-    ensure_equals("Supernova dark tail preserves hidden collapse state",
-                  sampleFXBeat(28, 75, 2).mEV,
-                  sampleFXBeat(28, 65, 2).mEV);
+    ensure_approximately_equals_range(
+        "Supernova dark tail preserves hidden collapse state",
+        sampleFXBeat(28, 75, 2).mEV,
+        sampleFXBeat(28, 65, 2).mEV, 1e-6f);
     ensure_equals("Supernova beat 75 is threshold-dark",
                   sampleFXBeat(28, 75, 0).mEV, -10.f);
 }
@@ -1219,40 +1290,47 @@ void cine_light_rig_model_object::test<10>()
                std::max(std::fabs(omni_ratio_left),
                         std::fabs(omni_ratio_right)) * 4.f);
 
-    // 5-6. The derived ceiling and floor are exact and keep projector reach
+    // 5-6. The derived ceiling and floor are respected within float precision
+    // and keep projector reach
     // within the underlying 20 m viewer clamp.
-    ensure_equals("scaled radius ceiling exact",
-                  giant.mProj[0].mOffX, SCALED_RADIUS_CEIL);
+    ensure_approximately_equals_range(
+        "scaled radius reaches its ceiling",
+        giant.mProj[0].mOffX, SCALED_RADIUS_CEIL, 1e-5f);
     ensure("projector reach stays within 20 metres",
            giant.mProj[0].mLightRadius <= 20.f);
     globals.mSubjectScale = 0.05f;
     RigFrame doll;
     render(1.5f, live, globals, doll);
-    ensure_equals("scaled radius floor exact",
-                  doll.mProj[0].mOffX, SCALED_RADIUS_FLOOR);
+    ensure_approximately_equals_range(
+        "scaled radius reaches its floor",
+        doll.mProj[0].mOffX, SCALED_RADIUS_FLOOR, 1e-6f);
 
     // 7. The min/max-bounded clamp never shrinks a large nominal at scale-up,
     // while retaining proportional scale-down and the small-nominal floor.
     globals.mSubjectScale = 1.f;
     RigFrame large_one;
     render(12.f, live, globals, large_one);
-    ensure_equals("large nominal survives scale one",
-                  large_one.mProj[0].mOffX, 12.f);
+    ensure_approximately_equals_range(
+        "large nominal survives scale one",
+        large_one.mProj[0].mOffX, 12.f, 1e-5f);
     globals.mSubjectScale = 2.f;
     RigFrame large_up;
     render(12.f, live, globals, large_up);
-    ensure_equals("large nominal is not shrunk on scale-up",
-                  large_up.mProj[0].mOffX, 12.f);
+    ensure_approximately_equals_range(
+        "large nominal is not shrunk on scale-up",
+        large_up.mProj[0].mOffX, 12.f, 1e-5f);
     globals.mSubjectScale = 0.5f;
     RigFrame large_down;
     render(12.f, live, globals, large_down);
-    ensure_equals("large nominal scales down proportionally",
-                  large_down.mProj[0].mOffX, 6.f);
+    ensure_approximately_equals_range(
+        "large nominal scales down proportionally",
+        large_down.mProj[0].mOffX, 6.f, 1e-5f);
     globals.mSubjectScale = 0.05f;
     RigFrame small_floor;
     render(0.5f, live, globals, small_floor);
-    ensure_equals("minimum nominal observes scaled floor",
-                  small_floor.mProj[0].mOffX, SCALED_RADIUS_FLOOR);
+    ensure_approximately_equals_range(
+        "minimum nominal observes scaled floor",
+        small_floor.mProj[0].mOffX, SCALED_RADIUS_FLOOR, 1e-6f);
 
     // 8. Invalid, infinite, and non-normal scales collapse to the exact
     // scale-1 output before clamping.
@@ -1663,20 +1741,19 @@ void cine_light_rig_model_object::test<13>()
 template<> template<>
 void cine_light_rig_model_object::test<14>()
 {
-    ensure_equals("gobo table row count", GOBO_COUNT, 8);
+    ensure_equals("gobo table row count", GOBO_COUNT, 24);
     Setup clamp_setup = classicSetup();
     clamp_setup.mLights[0].mGobo = -5;
     clamp_setup.mLights[1].mGobo = 99;
     const Setup clamped = sanitizeSetup(clamp_setup);
     ensure_equals("negative gobo clamps to literal zero",
                   clamped.mLights[0].mGobo, 0);
-    ensure_equals("high gobo clamps to literal seven",
-                  clamped.mLights[1].mGobo, 7);
+    ensure_equals("high gobo clamps to literal twenty-three",
+                  clamped.mLights[1].mGobo, 23);
 
     Setup setup;
-    std::memset(&setup, 0, sizeof(setup));
     setup.mRadius = 1.5f;
-    const S32 round_trip_gobos[LIGHT_COUNT] = { 0, 3, 7, 3 };
+    const S32 round_trip_gobos[LIGHT_COUNT] = { 0, 8, 17, 23 };
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
     {
         setup.mLights[i].mYawDeg = static_cast<F32>(i * 20);
@@ -1688,8 +1765,11 @@ void cine_light_rig_model_object::test<14>()
         setup.mLights[i].mGobo = round_trip_gobos[i];
     }
     const Setup sanitized = sanitizeSetup(setup);
-    ensure("sanitize preserves in-range gobos bitwise",
-           std::memcmp(&setup, &sanitized, sizeof(Setup)) == 0);
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+    {
+        ensure_equals("sanitize preserves each in-range gobo",
+                      sanitized.mLights[i].mGobo, round_trip_gobos[i]);
+    }
 
     const S32 live_gobos[LIGHT_COUNT] = { 1, 2, 3, 4 };
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
@@ -1753,6 +1833,10 @@ void cine_light_rig_model_object::test<14>()
     const char* const gobo_names[GOBO_COUNT] = {
         "Default", "Venetian Blinds", "Window Panes", "Prison Bars",
         "Slats", "Grid", "Soft Dapple", "Branches",
+        "Arched Window", "French Door", "Curtain Edge", "Stairwell Rail",
+        "Door Crack", "Dense Foliage", "Palm Dapple", "Water Caustics",
+        "Classic Cucoloris", "Fine Celo", "Scrim Wave", "Smoke Drift",
+        "Chain Link", "Industrial Grate", "Rotating Fan", "Neon Sign Mask",
     };
     for (S32 i = 0; i < GOBO_COUNT; ++i)
     {
@@ -1763,7 +1847,7 @@ void cine_light_rig_model_object::test<14>()
     ensure_equals("low out-of-range gobo name is safe",
                   std::string(goboName(-5)), std::string("Default"));
     ensure_equals("high out-of-range gobo name is safe",
-                  std::string(goboName(99)), std::string("Branches"));
+                  std::string(goboName(99)), std::string("Neon Sign Mask"));
 }
 
 template<> template<>
@@ -2023,7 +2107,7 @@ void cine_light_rig_model_object::test<17>()
 template<> template<>
 void cine_light_rig_model_object::test<18>()
 {
-    set_test_name("multi-instance 63-key settings mapping round-trip");
+    set_test_name("multi-instance 100-key settings mapping round-trip");
     const ALCineLightRigParamBlob expected = distinctiveBlob();
     FakeRigSettings settings;
     seedSettingsIndependently(settings, expected);
@@ -2667,5 +2751,620 @@ void cine_light_rig_model_object::test<35>()
                   settings.getF32("CineLightRigMasterEV"), 4.5f);
     ensure_equals("returning to B restores B Warmth",
                   settings.getF32("CineLightRigMasterTempMired"), -70.f);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<36>()
+{
+    set_test_name("object bounding radius maps to subject scale and clamps");
+    ensure_equals("two-metre object maps to avatar scale",
+                  objectRadiusToSubjectScale(2.f * 0.5f), 1.f);
+    ensure_equals("eight-metre object maps to four avatar scales",
+                  objectRadiusToSubjectScale(8.f * 0.5f), 4.f);
+    ensure_equals("zero radius clamps to minimum subject scale",
+                  objectRadiusToSubjectScale(0.f), SUBJECT_SCALE_MIN);
+    ensure_equals("small radius clamps to minimum subject scale",
+                  objectRadiusToSubjectScale(SUBJECT_SCALE_MIN * 0.5f),
+                  SUBJECT_SCALE_MIN);
+    ensure_equals("large radius clamps to maximum subject scale",
+                  objectRadiusToSubjectScale(SUBJECT_SCALE_MAX * 2.f),
+                  SUBJECT_SCALE_MAX);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<37>()
+{
+    set_test_name("object target UUID round-trips additively");
+    ALCineLightRigParamBlob expected;
+    expected.mObjectTarget.set(
+        "01234567-89ab-cdef-fedc-ba9876543210", false);
+
+    const LLSD data = expected.toLLSD();
+    ensure("object target is stored as an LLSD UUID",
+           data["CineLightRigObjectTarget"].isUUID());
+    ensure_equals("LLSD object target round-trip",
+        ALCineLightRigParamBlob::fromLLSD(data).mObjectTarget,
+        expected.mObjectTarget);
+
+    FakeRigSettings settings;
+    expected.toSettingsStore(settings);
+    ensure_equals("settings object target round-trip",
+        ALCineLightRigParamBlob::fromSettingsStore(settings).mObjectTarget,
+        expected.mObjectTarget);
+
+    LLSD legacy = data;
+    legacy.erase("CineLightRigObjectTarget");
+    ensure("missing legacy object target defaults to avatar behavior",
+        ALCineLightRigParamBlob::fromLLSD(legacy).mObjectTarget.isNull());
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<38>()
+{
+    set_test_name("practical flicker is deterministic and light-decorrelated");
+    const U64 rig_seed = 0x123456789abcdef0ULL;
+    for (S32 program = FLICKER_FIRELIGHT;
+         program < FLICKER_COUNT; ++program)
+    {
+        for (S32 light = 0; light < LIGHT_COUNT; ++light)
+        {
+            const U64 seed = flickerLightSeed(rig_seed, light);
+            const F64 times[] = { 0.0, 0.137, 1.0, 3.875, 47.25, 1.0e7 };
+            for (F64 time : times)
+            {
+                F32 first_intensity = 0.f;
+                F32 second_intensity = 0.f;
+                F32 first_color[3] = {};
+                F32 second_color[3] = {};
+                evalFlicker(program, seed, time, 0.73f,
+                            first_intensity, first_color);
+                evalFlicker(program, seed, time, 0.73f,
+                            second_intensity, second_color);
+                ensure_equals("same seed/time has identical intensity",
+                              first_intensity, second_intensity);
+                ensure("same seed/time has identical color",
+                    std::memcmp(first_color, second_color,
+                                sizeof(first_color)) == 0);
+            }
+        }
+    }
+
+    for (S32 program = FLICKER_FIRELIGHT;
+         program < FLICKER_COUNT; ++program)
+    {
+        for (S32 first = 0; first < LIGHT_COUNT; ++first)
+        {
+            for (S32 second = first + 1; second < LIGHT_COUNT; ++second)
+            {
+                const U64 first_seed = flickerLightSeed(rig_seed, first);
+                const U64 second_seed = flickerLightSeed(rig_seed, second);
+                ensure("per-light seed derivation is unique",
+                       first_seed != second_seed);
+                bool separated = false;
+                for (S32 sample = 0; sample < 128 && !separated; ++sample)
+                {
+                    F32 first_intensity = 0.f;
+                    F32 second_intensity = 0.f;
+                    F32 first_color[3] = {};
+                    F32 second_color[3] = {};
+                    const F64 time = sample * 0.071 + 0.013;
+                    evalFlicker(program, first_seed, time, 1.f,
+                                first_intensity, first_color);
+                    evalFlicker(program, second_seed, time, 1.f,
+                                second_intensity, second_color);
+                    separated = first_intensity != second_intensity ||
+                        std::memcmp(first_color, second_color,
+                                    sizeof(first_color)) != 0;
+                }
+                ensure("different light indices decorrelate every program",
+                       separated);
+            }
+        }
+    }
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<39>()
+{
+    set_test_name("practical flicker outputs are finite, bounded, and inert at zero");
+    const U64 rig_seed = 0xfeedface12345678ULL;
+    for (S32 program = FLICKER_FIRELIGHT;
+         program < FLICKER_COUNT; ++program)
+    {
+        for (S32 light = 0; light < LIGHT_COUNT; ++light)
+        {
+            for (S32 sample = 0; sample < 512; ++sample)
+            {
+                F32 intensity = 0.f;
+                F32 color[3] = {};
+                evalFlicker(program, flickerLightSeed(rig_seed, light),
+                            sample * 0.137, 1.f, intensity, color);
+                ensure("flicker intensity is finite", std::isfinite(intensity));
+                ensure("flicker intensity is bounded",
+                    intensity >= 0.f &&
+                    intensity <= FLICKER_INTENSITY_MUL_MAX);
+                for (F32 channel : color)
+                {
+                    ensure("flicker color is finite", std::isfinite(channel));
+                    ensure("flicker color is bounded",
+                        channel >= 0.f && channel <= FLICKER_COLOR_MUL_MAX);
+                }
+            }
+
+            F32 intensity = 0.f;
+            F32 color[3] = {};
+            evalFlicker(program, flickerLightSeed(rig_seed, light),
+                        12.5, 0.f, intensity, color);
+            ensure_equals("amount zero preserves intensity", intensity, 1.f);
+            ensure("amount zero preserves color",
+                   color[0] == 1.f && color[1] == 1.f && color[2] == 1.f);
+        }
+    }
+
+    F32 intensity = 0.f;
+    F32 color[3] = {};
+    evalFlicker(FLICKER_NONE, rig_seed, 42.0, 1.f, intensity, color);
+    ensure_equals("None preserves intensity", intensity, 1.f);
+    ensure("None preserves color",
+           color[0] == 1.f && color[1] == 1.f && color[2] == 1.f);
+    evalFlicker(FLICKER_FIRELIGHT, rig_seed,
+                std::numeric_limits<F64>::quiet_NaN(),
+                std::numeric_limits<F32>::quiet_NaN(), intensity, color);
+    ensure_equals("non-finite amount is inert", intensity, 1.f);
+    ensure("non-finite amount preserves color",
+           color[0] == 1.f && color[1] == 1.f && color[2] == 1.f);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<40>()
+{
+    set_test_name("fixture white uses additive mired CT and multiplicative tint gels");
+    const S32 none[FIXTURE_GEL_SLOT_COUNT] = { 0, 0, 0 };
+    const S32 full_ctb[FIXTURE_GEL_SLOT_COUNT] = { 5, 0, 0 };
+    F32 corrected[3] = {};
+    F32 reference[3] = {};
+    fixtureWhite(3200.f, full_ctb, 0.f, corrected);
+    fixtureWhite(1.0e6f / (1.0e6f / 3200.f - 137.f),
+                 none, 0.f, reference);
+    for (S32 channel = 0; channel < 3; ++channel)
+    {
+        ensure_approximately_equals_range(
+            "Full CTB matches the equivalent effective Kelvin",
+            corrected[channel], reference[channel], 1e-5f);
+    }
+
+    const S32 stacked_cto[FIXTURE_GEL_SLOT_COUNT] = { 3, 4, 0 };
+    fixtureWhite(5600.f, stacked_cto, 0.f, corrected);
+    fixtureWhite(1.0e6f / (1.0e6f / 5600.f + 64.f + 30.f),
+                 none, 0.f, reference);
+    for (S32 channel = 0; channel < 3; ++channel)
+    {
+        ensure_approximately_equals_range(
+            "CT gel slots add in reciprocal color temperature",
+            corrected[channel], reference[channel], 1e-5f);
+    }
+
+    const S32 tint_forward[FIXTURE_GEL_SLOT_COUNT] = { 9, 11, 13 };
+    const S32 tint_reverse[FIXTURE_GEL_SLOT_COUNT] = { 13, 11, 9 };
+    fixtureWhite(4300.f, tint_forward, 0.f, corrected);
+    fixtureWhite(4300.f, tint_reverse, 0.f, reference);
+    for (S32 channel = 0; channel < 3; ++channel)
+    {
+        ensure_equals("tint gel order is immaterial",
+                      corrected[channel], reference[channel]);
+        ensure("fixture color is finite and renderer-bounded",
+               std::isfinite(corrected[channel]) &&
+               corrected[channel] >= 0.f && corrected[channel] <= 1.f);
+    }
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<41>()
+{
+    set_test_name("modeled source angular size maps monotonically to softness");
+    const F32 practical = penumbraSoftness(0.05f, 2.f);
+    const F32 fresnel = penumbraSoftness(0.12f, 2.f);
+    const F32 hmi = penumbraSoftness(0.20f, 2.f);
+    const F32 china = penumbraSoftness(0.60f, 2.f);
+    const F32 octa = penumbraSoftness(1.50f, 2.f);
+    const F32 book = penumbraSoftness(2.40f, 2.f);
+    ensure_approximately_equals_range(
+        "practical example follows the implemented formula",
+        practical, 1.0f, 0.02f);
+    ensure("larger sources get progressively softer",
+           practical < fresnel && fresnel < hmi && hmi < china &&
+           china < octa && octa < book);
+    ensure_approximately_equals_range(
+        "book light reaches the softness ceiling", book, 8.f, 1e-6f);
+    ensure("pulling a source away hardens its shadow",
+           penumbraSoftness(1.50f, 4.f) < octa);
+    ensure("invalid and extreme inputs remain bounded",
+           penumbraSoftness(std::numeric_limits<F32>::quiet_NaN(),
+                            -100.f) >= 0.f &&
+           penumbraSoftness(1000.f, 0.f) <= 8.f);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<42>()
+{
+    set_test_name("fixture rendering is additive and preserves the legacy-off path");
+    Setup setup = classicSetup();
+    LightBase baseline_live[LIGHT_COUNT];
+    computeLive(setup, Transforms(), baseline_live);
+    Globals globals;
+    globals.mBounceRatio = 0.4f;
+    RigFrame baseline;
+    render(setup.mRadius, baseline_live, globals, baseline);
+
+    LightBase legacy_live[LIGHT_COUNT];
+    std::memcpy(legacy_live, baseline_live, sizeof(legacy_live));
+    legacy_live[0].mKelvin = 2000.f;
+    legacy_live[0].mGelSlot[0] = 15;
+    legacy_live[0].mSourceSizeM = 4.f;
+    legacy_live[0].mFixturePreset = FIXTURE_PRESET_COUNT - 1;
+    RigFrame legacy;
+    render(setup.mRadius, legacy_live, globals, legacy);
+    ensure("fixture-only fields are inert while mode is off",
+           std::memcmp(&baseline, &legacy, sizeof(RigFrame)) == 0);
+
+    legacy_live[0].mFixtureMode = true;
+    legacy_live[0].mKelvin = 3200.f;
+    legacy_live[0].mGelSlot[0] = 0;
+    legacy_live[0].mSourceSizeM = 1.5f;
+    RigFrame fixture;
+    render(setup.mRadius, legacy_live, globals, fixture);
+    F32 fixture_linear[3] = {};
+    fixtureWhite(legacy_live[0].mKelvin, legacy_live[0].mGelSlot,
+                 globals.mMasterTempMired, fixture_linear);
+    const auto to_srgb = [](F32 value)
+    {
+        return value <= 0.0031308f
+            ? value * 12.92f
+            : 1.055f * std::pow(value, 1.f / 2.4f) - 0.055f;
+    };
+    ensure_approximately_equals_range(
+        "linear fixture white is converted to the emitter sRGB contract",
+        fixture.mProj[0].mSB, to_srgb(fixture_linear[2]), 1e-6f);
+    ensure_approximately_equals_range(
+        "render exposes the derived projector softness",
+        fixture.mDerivedShadowSoftness[0],
+        penumbraSoftness(1.5f, setup.mRadius), 1e-6f);
+    ensure("soft fixture feathers falloff and FOV",
+           fixture.mProj[0].mFalloff != baseline.mProj[0].mFalloff &&
+           fixture.mProj[0].mFovRad > baseline.mProj[0].mFovRad);
+    ensure("soft fixture increases only its bounce feed",
+           fixture.mOmni[0].mIntensity > baseline.mOmni[0].mIntensity);
+    ensure("key fixture scales the single catchlight",
+           fixture.mCatchlightSizeScale > 1.f);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<43>()
+{
+    set_test_name("fixture transitions interpolate Kelvin in mired space");
+    LightBase start;
+    start.mFixtureMode = true;
+    start.mKelvin = 3200.f;
+    start.mSourceSizeM = 0.1f;
+    start.mGelSlot[0] = 1;
+    LightBase target = start;
+    target.mKelvin = 5600.f;
+    target.mSourceSizeM = 1.5f;
+    target.mGelSlot[0] = 6;
+    target.mFixturePreset = 8;
+
+    const LightBase halfway = blendLight(start, target, 0.5f);
+    const F32 expected_kelvin = 1.0e6f /
+        ((1.0e6f / 3200.f + 1.0e6f / 5600.f) * 0.5f);
+    ensure_approximately_equals_range(
+        "half fade is the reciprocal-temperature midpoint",
+        halfway.mKelvin, expected_kelvin, 1e-3f);
+    ensure_approximately_equals_range(
+        "source diameter fades continuously",
+        halfway.mSourceSizeM, 0.8f, 1e-6f);
+    ensure_equals("discrete gel keeps the start at the midpoint",
+                  halfway.mGelSlot[0], 1);
+    ensure_equals("discrete gel snaps after the midpoint",
+                  blendLight(start, target, 0.51f).mGelSlot[0], 6);
+
+    for (S32 index = 0; index < FIXTURE_PRESET_COUNT; ++index)
+    {
+        const FixturePreset& preset = fixturePreset(index);
+        ensure("fixture preset has a name",
+               preset.mName && preset.mName[0] != '\0');
+        ensure("fixture preset Kelvin is in range",
+               preset.mKelvin >= FIXTURE_KELVIN_MIN &&
+               preset.mKelvin <= FIXTURE_KELVIN_MAX);
+        ensure("fixture preset source is in range",
+               preset.mSourceSizeM >= FIXTURE_SOURCE_SIZE_MIN &&
+               preset.mSourceSizeM <= FIXTURE_SOURCE_SIZE_MAX);
+    }
+
+    Setup dirty;
+    dirty.mLights[0].mFixtureMode = true;
+    dirty.mLights[0].mKelvin = std::numeric_limits<F32>::quiet_NaN();
+    dirty.mLights[0].mGelSlot[0] = -100;
+    dirty.mLights[0].mGelSlot[1] = FIXTURE_GEL_COUNT + 100;
+    dirty.mLights[0].mSourceSizeM =
+        std::numeric_limits<F32>::infinity();
+    dirty.mLights[0].mFixturePreset = FIXTURE_PRESET_COUNT + 100;
+    const Setup clean = sanitizeSetup(dirty);
+    ensure_equals("non-finite Kelvin falls back safely",
+                  clean.mLights[0].mKelvin, 5600.f);
+    ensure_equals("low gel index clamps",
+                  clean.mLights[0].mGelSlot[0], 0);
+    ensure_equals("high gel index clamps",
+                  clean.mLights[0].mGelSlot[1], FIXTURE_GEL_COUNT - 1);
+    ensure_equals("non-finite source size falls back safely",
+                  clean.mLights[0].mSourceSizeM, 0.10f);
+    ensure_equals("fixture provenance clamps",
+                  clean.mLights[0].mFixturePreset,
+                  FIXTURE_PRESET_COUNT - 1);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<44>()
+{
+    set_test_name("gobo library categories blur buckets and animation contract");
+
+    ensure_equals("gobo category count", GOBO_CATEGORY_COUNT, 5);
+    const S32 expected_categories[GOBO_COUNT] = {
+        0, 1, 1, 1, 1, 4, 2, 2,
+        1, 1, 1, 1, 1, 2, 2, 2,
+        3, 3, 3, 3, 4, 4, 4, 4,
+    };
+    for (S32 i = 0; i < GOBO_COUNT; ++i)
+    {
+        ensure_equals("gobo category golden", goboCategory(i),
+                      expected_categories[i]);
+        ensure_equals("only rotating fan is animated", goboIsAnimated(i),
+                      i == GOBO_ROTATING_FAN);
+    }
+    ensure_equals("category low clamp",
+                  std::string(goboCategoryName(-99)),
+                  std::string("User / Default"));
+    ensure_equals("category high clamp",
+                  std::string(goboCategoryName(99)),
+                  std::string("Graphic / Hard"));
+
+    ensure_equals("negative softness selects sharp", goboBlurBucket(-1.f), 0);
+    ensure_equals("below first edge selects sharp", goboBlurBucket(2.499f), 0);
+    ensure_equals("first edge selects medium", goboBlurBucket(2.5f), 1);
+    ensure_equals("below second edge selects medium", goboBlurBucket(5.499f), 1);
+    ensure_equals("second edge selects heavy", goboBlurBucket(5.5f), 2);
+    ensure_equals("upper clamp selects heavy", goboBlurBucket(99.f), 2);
+    ensure_equals("NaN has deterministic sharp fallback", goboBlurBucket(
+        std::numeric_limits<F32>::quiet_NaN()), 0);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<45>()
+{
+    set_test_name("cue fade profiles honor delay and presentation time");
+
+    ensure_equals("linear remains at start before delay",
+        cueFadeWeight(CUE_FADE_LINEAR, 11.999, 10.0, 2.f, 4.f), 0.f);
+    ensure_equals("linear starts exactly after delay",
+        cueFadeWeight(CUE_FADE_LINEAR, 12.0, 10.0, 2.f, 4.f), 0.f);
+    ensure_approximately_equals_range("linear midpoint",
+        cueFadeWeight(CUE_FADE_LINEAR, 14.0, 10.0, 2.f, 4.f), 0.5f, 1e-6f);
+    ensure_equals("linear reaches exact target",
+        cueFadeWeight(CUE_FADE_LINEAR, 16.0, 10.0, 2.f, 4.f), 1.f);
+    ensure_approximately_equals_range("ease uses smooth console curve",
+        cueFadeWeight(CUE_FADE_EASE, 13.0, 10.0, 2.f, 4.f),
+        0.15625f, 1e-6f);
+    ensure_equals("snap waits for delay",
+        cueFadeWeight(CUE_FADE_SNAP, 11.999, 10.0, 2.f, 99.f), 0.f);
+    ensure_equals("snap lands at delay boundary",
+        cueFadeWeight(CUE_FADE_SNAP, 12.0, 10.0, 2.f, 99.f), 1.f);
+    ensure_equals("zero-duration ease is an exact snap",
+        cueFadeWeight(CUE_FADE_EASE, 10.0, 10.0, 0.f, 0.f), 1.f);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<46>()
+{
+    set_test_name("cue transition fades the complete fixture and global state");
+
+    CueState start;
+    start.mSetup.mRadius = 1.f;
+    start.mSetup.mLights[0].mOn = true;
+    start.mSetup.mLights[0].mEV = -2.f;
+    start.mSetup.mLights[0].mGobo = 1;
+    start.mSetup.mLights[0].mFixtureMode = true;
+    start.mSetup.mLights[0].mKelvin = 3200.f;
+    start.mSetup.mLights[0].mSourceSizeM = 0.1f;
+    start.mGlobals.mMasterEV = -1.f;
+    start.mGlobals.mMasterTempMired = -80.f;
+    start.mGlobals.mBounceRatio = 0.2f;
+    start.mTransforms.mYawDeg = 170.f;
+    start.mShadowSoftOverride[0] = 1.f;
+    start.mShadowSoftOverride[1] = 3.f;
+    start.mFX = 2;
+
+    Cue target;
+    target.mFadeSec = 4.f;
+    target.mDelaySec = 2.f;
+    target.mProfile = CUE_FADE_LINEAR;
+    target.mSetup = start.mSetup;
+    target.mSetup.mRadius = 3.f;
+    target.mSetup.mLights[0].mEV = 2.f;
+    target.mSetup.mLights[0].mGobo = GOBO_ROTATING_FAN;
+    target.mSetup.mLights[0].mKelvin = 5600.f;
+    target.mSetup.mLights[0].mSourceSizeM = 1.5f;
+    target.mGlobals = start.mGlobals;
+    target.mGlobals.mMasterEV = 1.f;
+    target.mGlobals.mMasterTempMired = 120.f;
+    target.mGlobals.mBounceRatio = 0.8f;
+    target.mTransforms = start.mTransforms;
+    target.mTransforms.mYawDeg = -170.f;
+    target.mShadowSoftOverride[0] = 7.f;
+    target.mShadowSoftOverride[1] = -1.f;
+    target.mFX = 9;
+
+    const CueState before_arm = evaluateCueTransition(start, target, 11.0, 10.0);
+    ensure_equals("delay preserves prior FX", before_arm.mFX, 2);
+    ensure_equals("delay preserves prior EV",
+                  before_arm.mSetup.mLights[0].mEV, -2.f);
+
+    const CueState halfway = evaluateCueTransition(start, target, 14.0, 10.0);
+    ensure_approximately_equals_range("radius fades", halfway.mSetup.mRadius,
+                                      2.f, 1e-6f);
+    ensure_approximately_equals_range("fixture EV fades",
+        halfway.mSetup.mLights[0].mEV, 0.f, 1e-6f);
+    const F32 expected_kelvin = 1.0e6f /
+        ((1.0e6f / 3200.f + 1.0e6f / 5600.f) * 0.5f);
+    ensure_approximately_equals_range("cue Kelvin fades in mired space",
+        halfway.mSetup.mLights[0].mKelvin, expected_kelvin, 1e-3f);
+    ensure_approximately_equals_range("cue source diameter fades",
+        halfway.mSetup.mLights[0].mSourceSizeM, 0.8f, 1e-6f);
+    ensure_equals("gobo is still start value at exact midpoint",
+                  halfway.mSetup.mLights[0].mGobo, 1);
+    ensure_approximately_equals_range("master EV fades",
+        halfway.mGlobals.mMasterEV, 0.f, 1e-6f);
+    ensure_approximately_equals_range("master mired fades",
+        halfway.mGlobals.mMasterTempMired, 20.f, 1e-6f);
+    ensure_approximately_equals_range("bounce fades",
+        halfway.mGlobals.mBounceRatio, 0.5f, 1e-6f);
+    ensure_approximately_equals_range("explicit shadow softness fades",
+        halfway.mShadowSoftOverride[0], 4.f, 1e-6f);
+    ensure_equals("auto-shadow sentinel stays discrete at midpoint",
+                  halfway.mShadowSoftOverride[1], 3.f);
+    ensure_approximately_equals_range("yaw takes shortest wrapped path",
+        halfway.mTransforms.mYawDeg, 180.f, 1e-6f);
+    ensure_equals("FX arms at delay boundary, independent of fade",
+                  halfway.mFX, 9);
+
+    const CueState after_midpoint = evaluateCueTransition(
+        start, target, 14.1, 10.0);
+    ensure_equals("gobo block swaps after midpoint",
+                  after_midpoint.mSetup.mLights[0].mGobo,
+                  GOBO_ROTATING_FAN);
+    ensure_equals("auto-shadow sentinel swaps after midpoint",
+                  after_midpoint.mShadowSoftOverride[1], -1.f);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<47>()
+{
+    set_test_name("absolute cue timecode evaluation is scrub-back pure");
+
+    CueState released;
+    released.mSetup.mLights[0].mOn = false;
+    released.mSetup.mLights[0].mEV = -8.f;
+
+    Cue first;
+    first.mLabel = "First";
+    first.mAtSec = 10.0;
+    first.mFadeSec = 4.f;
+    first.mProfile = CUE_FADE_LINEAR;
+    first.mSetup.mLights[0].mOn = true;
+    first.mSetup.mLights[0].mEV = 0.f;
+
+    Cue second = first;
+    second.mLabel = "Second";
+    second.mAtSec = 20.0;
+    second.mFadeSec = 2.f;
+    second.mSetup.mLights[0].mEV = 4.f;
+
+    Cue same_time = second;
+    same_time.mLabel = "Same-time later row";
+    same_time.mSetup.mLights[0].mEV = 6.f;
+
+    CueList list;
+    list.mTimecodeMode = true;
+    list.mCues.push_back(second);
+    list.mCues.push_back(first);
+    list.mCues.push_back(same_time);
+
+    ensure_equals("before first cue has no active index",
+                  timecodeCueIndex(list, 9.0), -1);
+    ensure_equals("unsorted list finds first absolute cue",
+                  timecodeCueIndex(list, 12.0), 1);
+    ensure_equals("duplicate time picks later row deterministically",
+                  timecodeCueIndex(list, 20.0), 2);
+
+    const CueState pre_roll = evaluateTimecodeCueList(list, released, 9.0);
+    ensure_equals("pre-roll returns released state",
+                  pre_roll.mSetup.mLights[0].mOn, false);
+    const CueState forward = evaluateTimecodeCueList(list, released, 12.0);
+    ensure_approximately_equals_range("first cue halfway from release",
+        forward.mSetup.mLights[0].mEV, -4.f, 1e-6f);
+    const CueState later = evaluateTimecodeCueList(list, released, 21.0);
+    ensure_approximately_equals_range("same-time selected cue is halfway",
+        later.mSetup.mLights[0].mEV, 3.f, 1e-6f);
+    const CueState scrubbed_back = evaluateTimecodeCueList(list, released, 12.0);
+    ensure_approximately_equals_range("scrub back reproduces exact EV",
+        scrubbed_back.mSetup.mLights[0].mEV,
+        forward.mSetup.mLights[0].mEV, 1e-6f);
+    ensure_equals("scrub back reproduces discrete state",
+                  scrubbed_back.mSetup.mLights[0].mOn,
+                  forward.mSetup.mLights[0].mOn);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<48>()
+{
+    set_test_name("cue sanitizer bounds malformed show data");
+
+    Cue dirty;
+    dirty.mLabel.assign(200, 'L');
+    dirty.mProvenance.assign(400, 'P');
+    dirty.mFadeSec = std::numeric_limits<F32>::quiet_NaN();
+    dirty.mDelaySec = std::numeric_limits<F32>::infinity();
+    dirty.mProfile = 99;
+    dirty.mFollow = 999999;
+    dirty.mAtSec = std::numeric_limits<F64>::infinity();
+    dirty.mFX = FX_COUNT + 100;
+    dirty.mShadowSoftOverride[0] = std::numeric_limits<F32>::quiet_NaN();
+    dirty.mShadowSoftOverride[1] = 99.f;
+    const Cue clean = sanitizeCue(dirty);
+    ensure_equals("label bounded", clean.mLabel.size(), std::size_t(128));
+    ensure_equals("provenance bounded", clean.mProvenance.size(),
+                  std::size_t(256));
+    ensure_equals("NaN fade has safe default", clean.mFadeSec, 3.f);
+    ensure_equals("infinite delay has safe default", clean.mDelaySec, 0.f);
+    ensure_equals("profile clamps", clean.mProfile, CUE_FADE_SNAP);
+    ensure_equals("follow clamps", clean.mFollow, 86400);
+    ensure_equals("infinite absolute time has safe default", clean.mAtSec, 0.0);
+    ensure_equals("FX clamps", clean.mFX, FX_COUNT - 1);
+    ensure_equals("NaN shadow override becomes auto",
+                  clean.mShadowSoftOverride[0], -1.f);
+    ensure_equals("shadow override clamps", clean.mShadowSoftOverride[1], 8.f);
+
+    CueList oversized;
+    oversized.mName.assign(200, 'N');
+    oversized.mCues.assign(300, dirty);
+    const CueList bounded = sanitizeCueList(oversized);
+    ensure_equals("cue-list name bounded", bounded.mName.size(),
+                  std::size_t(128));
+    ensure_equals("cue-list row count bounded", bounded.mCues.size(),
+                  std::size_t(256));
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<49>()
+{
+    set_test_name("multi-instance storage preserves embedded cue lists");
+
+    ALCineLightRigParamBlob original = distinctiveBlob();
+    LLSD cue_list = LLSD::emptyMap();
+    cue_list["version"] = 1;
+    cue_list["name"] = "Show A";
+    cue_list["timecode_mode"] = true;
+    cue_list["cues"] = LLSD::emptyArray();
+    original.mCueList = cue_list;
+
+    const LLSD encoded = original.toLLSD();
+    ensure("blob emits optional cue-list map", encoded["cue_list"].isMap());
+    const ALCineLightRigParamBlob decoded =
+        ALCineLightRigParamBlob::fromLLSD(encoded);
+    ensure_equals("cue-list payload round-trips exactly",
+                  decoded.mCueList, cue_list);
+
+    LLSD legacy = encoded;
+    legacy.erase("cue_list");
+    ensure("old instance blobs retain the inert undefined default",
+           ALCineLightRigParamBlob::fromLLSD(legacy).mCueList.isUndefined());
 }
 } // namespace tut

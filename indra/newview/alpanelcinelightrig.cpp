@@ -20,14 +20,19 @@
 #include "llcontrol.h"
 #include "lldirectorcast.h"
 #include "llfocusmgr.h"
+#include "llfloaterreg.h"
+#include "lliconctrl.h"
 #include "lllineeditor.h"
 #include "llnotificationsutil.h"
 #include "llscrolllistcell.h"
 #include "llscrolllistitem.h"
+#include "llselectmgr.h"
 #include "llspinctrl.h"
 #include "lltextbox.h"
+#include "llui.h"
 #include "lluicolortable.h"
 #include "llviewercontrol.h"
+#include "llviewerobject.h"
 #include "pipeline.h"
 
 #include <algorithm>
@@ -58,6 +63,73 @@ void addLabeledSeparator(LLComboBox* combo, const std::string& label,
         combo->addSeparator(ADD_BOTTOM);
     }
     combo->add(label, LLSD(), ADD_BOTTOM, false);
+}
+
+void addCategorizedGobos(LLComboBox* combo)
+{
+    combo->add(ALCineLightRigModel::goboName(0), LLSD(0));
+    for (S32 category = 1;
+         category < ALCineLightRigModel::GOBO_CATEGORY_COUNT; ++category)
+    {
+        addLabeledSeparator(
+            combo, ALCineLightRigModel::goboCategoryName(category), true);
+        for (S32 index = 1; index < ALCineLightRigModel::GOBO_COUNT; ++index)
+        {
+            if (ALCineLightRigModel::goboCategory(index) == category)
+            {
+                combo->add(ALCineLightRigModel::goboName(index), LLSD(index));
+            }
+        }
+    }
+}
+
+void addThumbnailGobo(LLComboBox* combo, S32 index)
+{
+    LLSD row;
+    row["value"] = index;
+    row["columns"][0]["column"] = "label";
+    row["columns"][0]["value"] = ALCineLightRigModel::goboName(index);
+    row["columns"][0]["width"] = 208;
+    row["columns"][1]["column"] = "preview";
+    row["columns"][1]["type"] = "icon";
+    row["columns"][1]["value"] = index > 0
+        ? llformat("CineGobo%02d", index) : std::string();
+    row["columns"][1]["width"] = 32;
+    combo->addElement(row, ADD_BOTTOM);
+}
+
+void addThumbnailGoboHeader(LLComboBox* combo, const std::string& label)
+{
+    LLSD row;
+    row["value"] = LLSD();
+    row["columns"][0]["column"] = "label";
+    row["columns"][0]["value"] = "\xE2\x80\x94 " + label + " \xE2\x80\x94";
+    row["columns"][0]["width"] = 208;
+    row["columns"][1]["column"] = "preview";
+    row["columns"][1]["value"] = "";
+    row["columns"][1]["width"] = 32;
+    if (LLScrollListItem* item = combo->addElement(row, ADD_BOTTOM))
+    {
+        item->setEnabled(false);
+    }
+}
+
+void addThumbnailGoboLibrary(LLComboBox* combo)
+{
+    addThumbnailGobo(combo, 0);
+    for (S32 category = 1;
+         category < ALCineLightRigModel::GOBO_CATEGORY_COUNT; ++category)
+    {
+        addThumbnailGoboHeader(
+            combo, ALCineLightRigModel::goboCategoryName(category));
+        for (S32 index = 1; index < ALCineLightRigModel::GOBO_COUNT; ++index)
+        {
+            if (ALCineLightRigModel::goboCategory(index) == category)
+            {
+                addThumbnailGobo(combo, index);
+            }
+        }
+    }
 }
 
 void registerCineLightRigResetControl()
@@ -110,6 +182,7 @@ const std::vector<std::string>& ALPanelCineLightRig::settings()
         "CineLightRigTransitionSec",
         "CineLightRigDamping",
         "CineLightRigTrackMode",
+        "CineLightRigObjectTarget",
         "CineLightRigCookieUUID",
         "CineLightRigSeed",
         "CineLightRigMirror",
@@ -132,6 +205,15 @@ const std::vector<std::string>& ALPanelCineLightRig::settings()
         "CineLightRigKeyBeam",
         "CineLightRigKeyGobo",
         "CineLightRigKeyGel",
+        "CineLightRigKeyFixtureMode",
+        "CineLightRigKeyFixturePreset",
+        "CineLightRigKeyKelvin",
+        "CineLightRigKeyGelSlot0",
+        "CineLightRigKeyGelSlot1",
+        "CineLightRigKeyGelSlot2",
+        "CineLightRigKeySourceSizeM",
+        "CineLightRigKeyFlicker",
+        "CineLightRigKeyFlickerAmount",
         "CineLightRigKeyShadowSoft",
         "CineLightRigKeyOn",
         "CineLightRigFillYaw",
@@ -141,6 +223,15 @@ const std::vector<std::string>& ALPanelCineLightRig::settings()
         "CineLightRigFillBeam",
         "CineLightRigFillGobo",
         "CineLightRigFillGel",
+        "CineLightRigFillFixtureMode",
+        "CineLightRigFillFixturePreset",
+        "CineLightRigFillKelvin",
+        "CineLightRigFillGelSlot0",
+        "CineLightRigFillGelSlot1",
+        "CineLightRigFillGelSlot2",
+        "CineLightRigFillSourceSizeM",
+        "CineLightRigFillFlicker",
+        "CineLightRigFillFlickerAmount",
         "CineLightRigFillShadowSoft",
         "CineLightRigFillOn",
         "CineLightRigRimYaw",
@@ -150,6 +241,15 @@ const std::vector<std::string>& ALPanelCineLightRig::settings()
         "CineLightRigRimBeam",
         "CineLightRigRimGobo",
         "CineLightRigRimGel",
+        "CineLightRigRimFixtureMode",
+        "CineLightRigRimFixturePreset",
+        "CineLightRigRimKelvin",
+        "CineLightRigRimGelSlot0",
+        "CineLightRigRimGelSlot1",
+        "CineLightRigRimGelSlot2",
+        "CineLightRigRimSourceSizeM",
+        "CineLightRigRimFlicker",
+        "CineLightRigRimFlickerAmount",
         "CineLightRigRimShadowSoft",
         "CineLightRigRimOn",
         "CineLightRigBgYaw",
@@ -159,6 +259,15 @@ const std::vector<std::string>& ALPanelCineLightRig::settings()
         "CineLightRigBgBeam",
         "CineLightRigBgGobo",
         "CineLightRigBgGel",
+        "CineLightRigBgFixtureMode",
+        "CineLightRigBgFixturePreset",
+        "CineLightRigBgKelvin",
+        "CineLightRigBgGelSlot0",
+        "CineLightRigBgGelSlot1",
+        "CineLightRigBgGelSlot2",
+        "CineLightRigBgSourceSizeM",
+        "CineLightRigBgFlicker",
+        "CineLightRigBgFlickerAmount",
         "CineLightRigBgShadowSoft",
         "CineLightRigBgOn",
     };
@@ -168,6 +277,9 @@ const std::vector<std::string>& ALPanelCineLightRig::settings()
 bool ALPanelCineLightRig::postBuild()
 {
     mAnchorCombo = getChild<LLComboBox>("cine_anchor");
+    mObjectTargetButton = getChild<LLButton>("cine_target_object");
+    mObjectTargetClear = getChild<LLButton>("cine_clear_object");
+    mObjectTargetStatus = getChild<LLTextBox>("cine_object_target_status");
     mGroupEnable = getChild<LLCheckBoxCtrl>("cine_group_enable");
     mGroupStatus = getChild<LLTextBox>("cine_group_status");
     const char* const group_slot_names[5] = {
@@ -188,6 +300,17 @@ bool ALPanelCineLightRig::postBuild()
     mEasyBg = getChild<LLComboBox>("cine_easy_bg");
     mEasyWarmth = getChild<LLUICtrl>("cine_easy_warmth");
     mEasyModeToggle = getChild<LLCheckBoxCtrl>("cine_easy_mode");
+    mFixtureRole = getChild<LLComboBox>("cine_fixture_role");
+    mFixtureMode = getChild<LLCheckBoxCtrl>("cine_fixture_mode");
+    mFixturePreset = getChild<LLComboBox>("cine_fixture_preset");
+    mFixtureKelvin = getChild<LLSpinCtrl>("cine_fixture_kelvin");
+    mFixtureSourceSize = getChild<LLSpinCtrl>("cine_fixture_source_size");
+    mFixtureGelSlots[0] = getChild<LLComboBox>("cine_fixture_gel_0");
+    mFixtureGelSlots[1] = getChild<LLComboBox>("cine_fixture_gel_1");
+    mFixtureGelSlots[2] = getChild<LLComboBox>("cine_fixture_gel_2");
+    mGoboLibrary = getChild<LLComboBox>("cine_gobo_library");
+    mGoboPreview = getChild<LLIconCtrl>("cine_gobo_preview");
+    mGoboSoftness = getChild<LLTextBox>("cine_gobo_softness");
     const char* const advanced_driven_names[] = {
         "cine_master_ev", "cine_master_ev_reset",
         "cine_key_ev", "cine_key_ev_reset",
@@ -219,6 +342,10 @@ bool ALPanelCineLightRig::postBuild()
 
     mAnchorCombo->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onAnchorSelected(); });
+    mObjectTargetButton->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onTargetObject(); });
+    mObjectTargetClear->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onClearObjectTarget(); });
     mGroupEnable->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onGroupEnabledCommit(); });
     for (LLCheckBoxCtrl* control : mGroupSlotChecks)
@@ -270,6 +397,25 @@ bool ALPanelCineLightRig::postBuild()
         [this](LLUICtrl*, const LLSD&) { onEasyBgCommit(); });
     mEasyWarmth->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onEasyWarmthCommit(); });
+    mFixtureRole->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onFixtureRoleCommit(); });
+    mFixtureMode->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onFixtureModeCommit(); });
+    mFixturePreset->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onFixturePresetCommit(); });
+    mFixtureKelvin->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onFixtureValuesCommit(); });
+    mFixtureSourceSize->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onFixtureValuesCommit(); });
+    for (LLComboBox* gel : mFixtureGelSlots)
+    {
+        gel->setCommitCallback(
+            [this](LLUICtrl*, const LLSD&) { onFixtureValuesCommit(); });
+    }
+    mGoboLibrary->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onGoboLibraryCommit(); });
+    getChild<LLButton>("cine_open_cues")->setCommitCallback(
+        [](LLUICtrl*, const LLSD&) { LLFloaterReg::showInstance("cine_light_cues"); });
     getChild<LLUICtrl>("cine_manual")->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onManualCommit(); });
     for (S32 i = 0; i < ALCineLightRigModel::LIGHT_COUNT; ++i)
@@ -294,7 +440,10 @@ bool ALPanelCineLightRig::postBuild()
     }
 
     syncSeedEditor();
+    syncObjectTargetControls(true);
     syncGroupControls();
+    syncFixtureControls(true);
+    syncGoboLibrary(true);
     updateDerivedStatus();
     return true;
 }
@@ -309,6 +458,8 @@ void ALPanelCineLightRig::populateStaticCombos()
         LLComboBox* beam = getChild<LLComboBox>(widget_prefix + "_beam");
         LLComboBox* gobo = getChild<LLComboBox>(widget_prefix + "_gobo");
         LLComboBox* gel = getChild<LLComboBox>(widget_prefix + "_gel");
+        LLComboBox* flicker = getChild<LLComboBox>(
+            widget_prefix + "_flicker");
         for (S32 i = 0; i < ALCineLightRigModel::PROFILE_COUNT; ++i)
         {
             profile->add(ALCineLightRigModel::profileName(i), LLSD(i));
@@ -317,10 +468,7 @@ void ALPanelCineLightRig::populateStaticCombos()
         {
             beam->add(ALCineLightRigModel::beamName(i), LLSD(i));
         }
-        for (S32 i = 0; i < ALCineLightRigModel::GOBO_COUNT; ++i)
-        {
-            gobo->add(ALCineLightRigModel::goboName(i), LLSD(i));
-        }
+        addCategorizedGobos(gobo);
         gel->add(ALCineLightRigModel::gelName(0), LLSD(0));
         addLabeledSeparator(gel, "Colour Temp", true);
         for (S32 i = 1; i < ALCineLightRigModel::GEL_COUNT; ++i)
@@ -329,6 +477,11 @@ void ALPanelCineLightRig::populateStaticCombos()
             {
                 gel->add(ALCineLightRigModel::gelName(i), LLSD(i));
             }
+        }
+        for (S32 i = 0; i < ALCineLightRigModel::FLICKER_COUNT; ++i)
+        {
+            flicker->add(
+                ALCineLightRigModel::flickerProgramName(i), LLSD(i));
         }
         addLabeledSeparator(gel, "Colour", true);
         for (S32 i = 1; i < ALCineLightRigModel::GEL_COUNT; ++i)
@@ -344,7 +497,46 @@ void ALPanelCineLightRig::populateStaticCombos()
         beam->setValue(gSavedSettings.getS32(setting_prefix + "Beam"));
         gobo->setValue(gSavedSettings.getS32(setting_prefix + "Gobo"));
         gel->setValue(gSavedSettings.getS32(setting_prefix + "Gel"));
+        flicker->setValue(gSavedSettings.getS32(setting_prefix + "Flicker"));
     }
+
+    for (S32 light = 0; light < ALCineLightRigModel::LIGHT_COUNT; ++light)
+    {
+        mFixtureRole->add(ROLE_NAMES[light], LLSD(light));
+    }
+    mFixtureRole->setValue(mFixtureRoleIndex);
+    for (S32 preset = 0;
+         preset < ALCineLightRigModel::FIXTURE_PRESET_COUNT; ++preset)
+    {
+        mFixturePreset->add(
+            ALCineLightRigModel::fixturePresetName(preset), LLSD(preset));
+    }
+    for (LLComboBox* gel : mFixtureGelSlots)
+    {
+        gel->add(ALCineLightRigModel::fixtureGelName(0), LLSD(0));
+        addLabeledSeparator(gel, "Colour Temp", true);
+        for (S32 index = 1;
+             index < ALCineLightRigModel::FIXTURE_GEL_COUNT; ++index)
+        {
+            if (ALCineLightRigModel::fixtureGelIsColourTemperature(index))
+            {
+                gel->add(
+                    ALCineLightRigModel::fixtureGelName(index), LLSD(index));
+            }
+        }
+        addLabeledSeparator(gel, "Colour", true);
+        for (S32 index = 1;
+             index < ALCineLightRigModel::FIXTURE_GEL_COUNT; ++index)
+        {
+            if (!ALCineLightRigModel::fixtureGelIsColourTemperature(index))
+            {
+                gel->add(
+                    ALCineLightRigModel::fixtureGelName(index), LLSD(index));
+            }
+        }
+    }
+
+    addThumbnailGoboLibrary(mGoboLibrary);
 
     mFXCombo->add("None", LLSD(-1));
     for (S32 fx = 0; fx < ALCineLightRigModel::FX_COUNT; ++fx)
@@ -352,6 +544,155 @@ void ALPanelCineLightRig::populateStaticCombos()
         mFXCombo->add(ALCineLightRigModel::fxName(fx), LLSD(fx));
     }
     mFXCombo->setValue(gSavedSettings.getS32("CineLightRigFX"));
+}
+
+std::string ALPanelCineLightRig::fixtureSettingPrefix() const
+{
+    const S32 role = std::clamp(
+        mFixtureRoleIndex, 0, ALCineLightRigModel::LIGHT_COUNT - 1);
+    return std::string("CineLightRig") + ROLE_NAMES[role];
+}
+
+void ALPanelCineLightRig::syncFixtureControls(bool force)
+{
+    if (!mFixtureRole || !mFixtureMode || !mFixturePreset ||
+        !mFixtureKelvin || !mFixtureSourceSize)
+    {
+        return;
+    }
+    const S32 selected_slot = static_cast<S32>(
+        ALCineLightRigManager::instance().selectedSlot());
+    if (selected_slot != mDisplayedFixtureSlot)
+    {
+        force = true;
+        mDisplayedFixtureSlot = selected_slot;
+    }
+    const std::string prefix = fixtureSettingPrefix();
+    auto sync_value = [force](LLUICtrl* control, const LLSD& value)
+    {
+        if (force || (!control->hasFocus() &&
+                      !gFocusMgr.childHasKeyboardFocus(control)))
+        {
+            control->setValue(value);
+        }
+    };
+
+    const bool fixture_mode =
+        gSavedSettings.getBOOL(prefix + "FixtureMode");
+    sync_value(mFixtureMode, fixture_mode);
+    sync_value(mFixturePreset,
+               gSavedSettings.getS32(prefix + "FixturePreset"));
+    sync_value(mFixtureKelvin,
+               gSavedSettings.getF32(prefix + "Kelvin"));
+    sync_value(mFixtureSourceSize,
+               gSavedSettings.getF32(prefix + "SourceSizeM"));
+    for (S32 slot = 0;
+         slot < ALCineLightRigModel::FIXTURE_GEL_SLOT_COUNT; ++slot)
+    {
+        sync_value(mFixtureGelSlots[slot], gSavedSettings.getS32(
+            prefix + "GelSlot" + std::to_string(slot)));
+        mFixtureGelSlots[slot]->setEnabled(fixture_mode);
+    }
+    mFixtureKelvin->setEnabled(fixture_mode);
+    mFixtureSourceSize->setEnabled(fixture_mode);
+}
+
+void ALPanelCineLightRig::onFixtureRoleCommit()
+{
+    mFixtureRoleIndex = std::clamp(
+        mFixtureRole->getValue().asInteger(),
+        0, ALCineLightRigModel::LIGHT_COUNT - 1);
+    syncFixtureControls(true);
+    syncGoboLibrary(true);
+}
+
+void ALPanelCineLightRig::onFixtureModeCommit()
+{
+    gSavedSettings.setBOOL(
+        fixtureSettingPrefix() + "FixtureMode",
+        mFixtureMode->getValue().asBoolean());
+    syncFixtureControls(true);
+}
+
+void ALPanelCineLightRig::onFixturePresetCommit()
+{
+    const S32 index = std::clamp(
+        mFixturePreset->getValue().asInteger(),
+        0, ALCineLightRigModel::FIXTURE_PRESET_COUNT - 1);
+    const ALCineLightRigModel::FixturePreset& preset =
+        ALCineLightRigModel::fixturePreset(index);
+    const std::string prefix = fixtureSettingPrefix();
+    gSavedSettings.setBOOL(prefix + "FixtureMode", true);
+    gSavedSettings.setS32(prefix + "FixturePreset", index);
+    gSavedSettings.setF32(prefix + "Kelvin", preset.mKelvin);
+    gSavedSettings.setF32(prefix + "SourceSizeM", preset.mSourceSizeM);
+    gSavedSettings.setS32(prefix + "Beam", preset.mBeam);
+    for (S32 slot = 0;
+         slot < ALCineLightRigModel::FIXTURE_GEL_SLOT_COUNT; ++slot)
+    {
+        gSavedSettings.setS32(
+            prefix + "GelSlot" + std::to_string(slot),
+            preset.mSuggestedGels[slot]);
+    }
+    syncFixtureControls(true);
+}
+
+void ALPanelCineLightRig::onFixtureValuesCommit()
+{
+    const std::string prefix = fixtureSettingPrefix();
+    gSavedSettings.setF32(
+        prefix + "Kelvin",
+        static_cast<F32>(mFixtureKelvin->getValue().asReal()));
+    gSavedSettings.setF32(
+        prefix + "SourceSizeM",
+        static_cast<F32>(mFixtureSourceSize->getValue().asReal()));
+    for (S32 slot = 0;
+         slot < ALCineLightRigModel::FIXTURE_GEL_SLOT_COUNT; ++slot)
+    {
+        gSavedSettings.setS32(
+            prefix + "GelSlot" + std::to_string(slot),
+            mFixtureGelSlots[slot]->getValue().asInteger());
+    }
+}
+
+void ALPanelCineLightRig::syncGoboLibrary(bool force)
+{
+    if (!mGoboLibrary || !mGoboPreview || !mGoboSoftness)
+    {
+        return;
+    }
+    const std::string prefix = fixtureSettingPrefix();
+    const S32 index = std::clamp(
+        gSavedSettings.getS32(prefix + "Gobo"),
+        0, ALCineLightRigModel::GOBO_COUNT - 1);
+    if (force || (!mGoboLibrary->hasFocus() &&
+                  !gFocusMgr.childHasKeyboardFocus(mGoboLibrary)))
+    {
+        mGoboLibrary->setValue(index);
+    }
+    mGoboPreview->setVisible(index > 0);
+    if (index > 0)
+    {
+        mGoboPreview->setImage(LLUI::getUIImage(llformat("CineGobo%02d", index)));
+    }
+    const F32 softness = gSavedSettings.getBOOL(prefix + "FixtureMode")
+        ? ALCineLightRigModel::penumbraSoftness(
+              gSavedSettings.getF32(prefix + "SourceSizeM"),
+              gSavedSettings.getF32("CineLightRigRadius"))
+        : gSavedSettings.getF32(prefix + "ShadowSoft");
+    static const char* const bucket_names[] = { "sharp", "medium", "heavy" };
+    mGoboSoftness->setText(llformat(
+        "%s variant (softness %.2f)",
+        bucket_names[ALCineLightRigModel::goboBlurBucket(softness)], softness));
+}
+
+void ALPanelCineLightRig::onGoboLibraryCommit()
+{
+    gSavedSettings.setS32(
+        fixtureSettingPrefix() + "Gobo",
+        std::clamp(mGoboLibrary->getValue().asInteger(),
+                   0, ALCineLightRigModel::GOBO_COUNT - 1));
+    syncGoboLibrary(true);
 }
 
 void ALPanelCineLightRig::updateAnchorList()
@@ -385,6 +726,10 @@ void ALPanelCineLightRig::updateAnchorList()
                     ? member->mLastName : subject_ids[i].asString();
             }
             label += " - " + resolved_name;
+        }
+        if (manager.at(slot).getObjectTarget().notNull())
+        {
+            label += " (object)";
         }
         if (manager.isSlotLit(slot))
         {
@@ -439,6 +784,7 @@ void ALPanelCineLightRig::syncAnchorSelection()
     mDisplayedGroupEnabled = false;
     mDisplayedGroupSlots = ~0u;
     mDisplayedResolvedSlots = ~0u;
+    mDisplayedObjectTargetSlot = -1;
     mSeedInitialized = false;
     mShadowHintState = -1;
     mRadiusCueInitialized = false;
@@ -460,10 +806,82 @@ void ALPanelCineLightRig::onAnchorSelected()
         mDisplayedGroupEnabled = false;
         mDisplayedGroupSlots = ~0u;
         mDisplayedResolvedSlots = ~0u;
+        mDisplayedObjectTargetSlot = -1;
         mSeedInitialized = false;
         mShadowHintState = -1;
         mRadiusCueInitialized = false;
+        syncObjectTargetControls(true);
     }
+}
+
+void ALPanelCineLightRig::syncObjectTargetControls(bool force)
+{
+    ALCineLightRigManager& manager = ALCineLightRigManager::instance();
+    const S32 selected = static_cast<S32>(manager.selectedSlot());
+    const LLUUID& target = manager.selected().getObjectTarget();
+    if (!force && selected == mDisplayedObjectTargetSlot &&
+        target == mDisplayedObjectTarget)
+    {
+        return;
+    }
+
+    mDisplayedObjectTargetSlot = selected;
+    mDisplayedObjectTarget = target;
+    mObjectTargetClear->setEnabled(target.notNull());
+    if (target.isNull())
+    {
+        mObjectTargetStatus->setText(
+            std::string("\xE2\x80\x94 avatar \xE2\x80\x94"));
+        mObjectTargetStatus->setToolTip(
+            std::string("This slot follows its avatar anchor."));
+    }
+    else
+    {
+        const std::string key = target.asString();
+        mObjectTargetStatus->setText("object " + key.substr(0, 8));
+        mObjectTargetStatus->setToolTip(key);
+    }
+}
+
+void ALPanelCineLightRig::onTargetObject()
+{
+    LLObjectSelectionHandle selection =
+        LLSelectMgr::getInstance()->getSelection();
+    LLViewerObject* object = selection->getPrimaryObject();
+    if (!object)
+    {
+        mObjectTargetStatus->setText(std::string("select an object first"));
+        mObjectTargetStatus->setToolTip(
+            std::string("Select an in-world prim or linkset, then try again."));
+        return;
+    }
+
+    LLViewerObject* root = object->getRootEdit();
+    if (!root || object->isAvatar() || root->isAvatar() ||
+        object->isAttachment() || root->isAttachment())
+    {
+        mObjectTargetStatus->setText(std::string("use an in-world object"));
+        mObjectTargetStatus->setToolTip(std::string(
+            "Avatars and worn attachments cannot be object targets."));
+        return;
+    }
+
+    ALCineLightRig& rig = ALCineLightRigManager::instance().selected();
+    rig.setObjectTarget(root->getID());
+    gSavedSettings.setString(
+        "CineLightRigObjectTarget", root->getID().asString());
+    syncObjectTargetControls(true);
+    syncGroupControls();
+    updateAnchorList();
+}
+
+void ALPanelCineLightRig::onClearObjectTarget()
+{
+    ALCineLightRigManager::instance().selected().setObjectTarget(LLUUID::null);
+    gSavedSettings.setString("CineLightRigObjectTarget", std::string());
+    syncObjectTargetControls(true);
+    syncGroupControls();
+    updateAnchorList();
 }
 
 void ALPanelCineLightRig::onGroupEnabledCommit()
@@ -493,21 +911,29 @@ void ALPanelCineLightRig::syncGroupControls()
     const bool enabled = rig.isGroupEnabled();
     const U32 slots = rig.getGroupSlots();
     const U32 resolved = rig.lastResolvedGroupSlots();
+    const LLUUID& object_target = rig.getObjectTarget();
     if (enabled == mDisplayedGroupEnabled &&
         slots == mDisplayedGroupSlots &&
-        resolved == mDisplayedResolvedSlots)
+        resolved == mDisplayedResolvedSlots &&
+        object_target == mDisplayedGroupObjectTarget)
     {
         return;
     }
 
     mGroupEnable->setValue(enabled);
+    mGroupEnable->setEnabled(object_target.isNull());
     for (S32 i = 0; i < 5; ++i)
     {
         mGroupSlotChecks[i]->setValue((slots & (1u << i)) != 0);
-        mGroupSlotChecks[i]->setEnabled(enabled);
+        mGroupSlotChecks[i]->setEnabled(enabled && object_target.isNull());
     }
 
-    if (!enabled)
+    if (object_target.notNull())
+    {
+        mGroupStatus->setText(std::string("object: group is avatar-only"));
+        mGroupStatus->setColor(mRadiusDefaultColor);
+    }
+    else if (!enabled)
     {
         mGroupStatus->setText(std::string());
         mGroupStatus->setColor(mRadiusDefaultColor);
@@ -537,6 +963,7 @@ void ALPanelCineLightRig::syncGroupControls()
     mDisplayedGroupEnabled = enabled;
     mDisplayedGroupSlots = slots;
     mDisplayedResolvedSlots = resolved;
+    mDisplayedGroupObjectTarget = object_target;
 }
 
 void ALPanelCineLightRig::adjustAim(const std::string& setting, F32 delta)
@@ -768,6 +1195,7 @@ bool ALPanelCineLightRig::resetAllCallback(
     ALCineLightRigManager& manager = ALCineLightRigManager::instance();
     ALCineLightRig& rig = manager.selected();
     rig.setAnchor(LLUUID::null);
+    rig.setObjectTarget(LLUUID::null);
     rig.setGroupEnabled(false);
     rig.setGroupSlots(0);
     for (S32 i = 0; i < ALCineLightRigModel::LIGHT_COUNT; ++i)
@@ -778,9 +1206,12 @@ bool ALPanelCineLightRig::resetAllCallback(
     manager.resetAllToSelf();
     mAnchorSelectionInitialized = false;
     mDisplayedSlot = -1;
+    mDisplayedObjectTargetSlot = -1;
     mDisplayedGroupSlots = ~0u;
     mDisplayedResolvedSlots = ~0u;
     mSeedInitialized = false;
+    mDisplayedFixtureSlot = -1;
+    syncObjectTargetControls(true);
     refreshAllSetupLists(
         this, ALCineLightRig::masterSetups().front().mName);
     return false;
@@ -1097,6 +1528,7 @@ void ALPanelCineLightRig::onClickShadowFixIt()
 
 void ALPanelCineLightRig::updateDerivedStatus()
 {
+    syncObjectTargetControls();
     syncEasyModeForSelected();
     syncEasyControls();
     applyManualLock();
@@ -1206,6 +1638,8 @@ void ALPanelCineLightRig::draw()
                          mPendingSetupAllowEmpty, true);
     }
     syncSeedEditor();
+    syncFixtureControls();
+    syncGoboLibrary();
     updateDerivedStatus();
     LLPanel::draw();
 }
@@ -1215,7 +1649,10 @@ void ALPanelCineLightRig::onVisibilityChange(bool new_visibility)
     if (new_visibility)
     {
         updateAnchorList();
+        syncObjectTargetControls(true);
         syncGroupControls();
+        syncFixtureControls(true);
+        syncGoboLibrary(true);
         refreshSetupList(mSetupCombo
             ? mSetupCombo->getSelectedValue().asString() : std::string(),
             true);

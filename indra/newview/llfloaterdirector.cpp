@@ -14,10 +14,10 @@
 
 #include "indra_constants.h"        // KEY_ESCAPE / MASK_NONE, MASK_ALT
 
+#include "alfloateractorgaze.h"
 #include "alpanelactormover.h"      // embedded shared Actor Mover transport
 #include "alpanelanimpreview.h"     // embedded shared preview pane + own-avatar controls
 #include "alpanelcinecamparams.h"   // embedded shared panel (scene preset hooks)
-#include "alpanellensgaze.h"       // shared per-actor Lens Gaze controls
 #include "alpanelpatheditor.h"      // embedded shared Actor Pathing editor
 #include "alcinelightrigmanager.h"
 #include "aldirectorswitcher.h"
@@ -83,7 +83,7 @@ constexpr char TAB_ICON_WEATHER[]  = "Command_Water_Icon"; // rain/precipitation
 
 // scene files live beside the cinematic presets, same idiom
 constexpr char SCENE_SUBDIR[]  = "director_scenes";
-constexpr S32  SCENE_VERSION   = 3;
+constexpr S32  SCENE_VERSION   = 4;
 
 // the assign combo's explicit "ungroup" row: discoverable equivalent of
 // committing an empty name (which still works)
@@ -394,10 +394,6 @@ bool LLFloaterDirector::postBuild()
     mClearBBtn = getChild<LLButton>("btn_clear_b");
     mClearCBtn = getChild<LLButton>("btn_clear_c");
     mClearDBtn = getChild<LLButton>("btn_clear_d");
-    mLookAtSetBtn = getChild<LLButton>("btn_look_at_set");
-    mLookAtClearBtn = getChild<LLButton>("btn_look_at_clear");
-    mPrismSummaryText = getChild<LLTextBox>("prism_summary");
-    mPrismManageBtn = getChild<LLButton>("btn_prism_manage");
     mSetABtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSetSubjectFromSelection(SUBJECT_A); });
     mSetBBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSetSubjectFromSelection(SUBJECT_B); });
     mSetCBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSetSubjectFromSelection(SUBJECT_C); });
@@ -406,12 +402,10 @@ bool LLFloaterDirector::postBuild()
     mClearBBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickClearSubject(SUBJECT_B); });
     mClearCBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickClearSubject(SUBJECT_C); });
     mClearDBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickClearSubject(SUBJECT_D); });
-    mLookAtSetBtn->setCommitCallback(
-        [this](LLUICtrl*, const LLSD&) { onClickSetLookAtCamera(true); });
-    mLookAtClearBtn->setCommitCallback(
-        [this](LLUICtrl*, const LLSD&) { onClickSetLookAtCamera(false); });
-    mPrismManageBtn->setCommitCallback(
-        [this](LLUICtrl*, const LLSD&) { onClickManagePrism(); });
+    getChild<LLButton>("btn_actor_gaze")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onOpenActorGaze(); });
+    getChild<LLButton>("btn_virtual_cam")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onOpenVirtualCam(); });
     // embedded shared params panel: scene files read its selected preset and
     // apply presets through it on load
     mCineCamPanel = findChild<ALPanelCineCamParams>("cinecam_params_embedded");
@@ -886,6 +880,7 @@ bool LLFloaterDirector::saveScene(const std::string& name)
     const LLSD prism = LLPrismLens::sceneData();
     scene["prism_captures"] = prism["prism_captures"];
     scene["prism_displays"] = prism["prism_displays"];
+    scene["prism_gates"] = prism["prism_gates"];
     scene["light_rig"] = ALCineLightRigManager::instance().sceneData();
 
     // ... plus everything settings-backed
@@ -996,8 +991,11 @@ void LLFloaterDirector::loadScene(const std::string& name)
                                 "Prism configuration and loading only tolerant "
                                 "legacy scene fields" << LL_ENDL;
     }
-    else if (version == 3)
+    else if (version == 3 || version == 4)
     {
+        // v3 and v4 share the same Prism scene schema; v4 only raises the capture
+        // count ceiling (an older viewer treats v4 as a future version and keeps
+        // its live Prism config instead of hard-rejecting the whole scene).
         // Validate and atomically replace Prism before mutating transport, cast,
         // settings, or CineCam state. A malformed payload leaves the live scene
         // and retained Prism outputs wholly untouched.
@@ -1697,10 +1695,6 @@ void LLFloaterDirector::refreshMoveTab()
     {
         mMoverPanel->setSelectedActors(selected);
     }
-    if (ALPanelLensGaze* gaze = findChild<ALPanelLensGaze>("lens_gaze_panel"))
-    {
-        gaze->setSelectedActors(selected);
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -2105,22 +2099,24 @@ void LLFloaterDirector::onClickClearSubject(S32 subject)
     clear_subject(LLDirectorCast::instance(), subject);
 }
 
-void LLFloaterDirector::onClickSetLookAtCamera(bool selected)
+void LLFloaterDirector::onOpenActorGaze()
 {
-    LLDirectorCast& cast = LLDirectorCast::instance();
-    for (const LLUUID& id : selectedCastIds())
-    {
-        cast.setLookAtCamera(id, selected);
-    }
+    ALFloaterActorGaze::showForSelection(
+        ALFloaterActorGaze::ESelectionSource::DIRECTOR,
+        selectedCastIds());
 }
 
-void LLFloaterDirector::onClickManagePrism()
+void LLFloaterDirector::onOpenVirtualCam()
 {
-    LLFloaterReg::showInstance("prism_manager");
+    LLFloaterReg::showInstance("virtual_cam");
 }
 
 void LLFloaterDirector::refreshCameraTab()
 {
+    ALFloaterActorGaze::updateSelection(
+        ALFloaterActorGaze::ESelectionSource::DIRECTOR,
+        selectedCastIds());
+
     LLDirectorCast& cast = LLDirectorCast::instance();
     const LLUUID a = cast.getSubjectA();
     const LLUUID b = cast.getSubjectB();
@@ -2165,54 +2161,6 @@ void LLFloaterDirector::refreshCameraTab()
     setToolTipIfChanged(mClearDBtn, d.notNull()
         ? std::string("Clear Subject D")
         : std::string("Subject D is not set"));
-
-    const bool have_cast_selection = !selectedCastIds().empty();
-    mLookAtSetBtn->setEnabled(have_cast_selection);
-    mLookAtClearBtn->setEnabled(have_cast_selection);
-    const std::string look_tip = have_cast_selection
-        ? std::string("Change the camera-gaze flag for the selected cast row(s); only real resident avatars are rendered with the override")
-        : std::string("Select one or more cast rows first");
-    setToolTipIfChanged(mLookAtSetBtn, look_tip);
-    setToolTipIfChanged(mLookAtClearBtn, look_tip);
-
-    const U64 prism_configuration_revision = LLPrismLens::configurationRevision();
-    const U64 prism_runtime_revision = LLPrismLens::runtimeRevision();
-    if (!mHavePrismSummary ||
-        prism_configuration_revision != mPrismConfigurationRevision ||
-        prism_runtime_revision != mPrismRuntimeRevision)
-    {
-        const LLPrismLens::RegistrySnapshot snapshot = LLPrismLens::registrySnapshot();
-        U32 capture_attention = 0;
-        U32 display_attention = 0;
-        U32 updating = 0;
-        for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
-        {
-            const LLPrismLens::CaptureDefinition& capture = snapshot.mCaptures[index];
-            capture_attention += capture.mRuntime.mHealth != LLPrismLens::ECaptureHealth::READY;
-            updating += capture.mRuntime.mActivity == LLPrismLens::EActivityState::LIVE ||
-                        capture.mRuntime.mActivity == LLPrismLens::EActivityState::THROTTLED;
-        }
-        for (U32 index = 0; index < snapshot.mDisplayCount; ++index)
-        {
-            display_attention += snapshot.mDisplays[index].mRuntime.mHealth !=
-                LLPrismLens::EDisplayHealth::READY;
-        }
-        const bool needs_attention = capture_attention != 0 || display_attention != 0;
-
-        mPrismSummaryText->setText(llformat(
-            "Prism %u/%u captures | %u/%u faces | %u live%s",
-            snapshot.mCaptureCount, LLPrismLens::MAX_CAPTURES,
-            snapshot.mDisplayCount, LLPrismLens::MAX_DISPLAY_BINDINGS,
-            updating, needs_attention ? " | attention" : ""));
-        setToolTipIfChanged(mPrismSummaryText, llformat(
-            "%u captures and %u display bindings; attention: %u capture%s, %u display%s. Open Prism Manager for sources, faces, optics, picture FPS, and adaptive performance.",
-            snapshot.mCaptureCount, snapshot.mDisplayCount,
-            capture_attention, capture_attention == 1 ? "" : "s",
-            display_attention, display_attention == 1 ? "" : "s"));
-        mPrismConfigurationRevision = prism_configuration_revision;
-        mPrismRuntimeRevision = prism_runtime_revision;
-        mHavePrismSummary = true;
-    }
 }
 
 // ---------------------------------------------------------------------------

@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<floater
+ can_close="true"
+ can_resize="true"
+ height="510"
+ layout="topleft"
+ min_height="510"
+ min_width="640"
+ name="floater_cine_light_cues"
+ save_rect="true"
+ single_instance="true"
+ title="LIGHTING CUE STACK"
+ width="640">
+  <combo_box allow_text_entry="true" follows="left|top|right" height="22"
+   layout="topleft" left="10" name="cue_list_name" top="28" width="278" />
+  <button follows="right|top" height="22" label="Load" layout="topleft"
+   left="296" name="cue_list_load" top="28" width="64" />
+  <button follows="right|top" height="22" label="Save" layout="topleft"
+   left="366" name="cue_list_save" top="28" width="64" />
+  <button follows="right|top" height="22" label="Delete file" layout="topleft"
+   left="436" name="cue_list_delete" top="28" width="86" />
+  <check_box follows="right|top" height="20" label="Timecode mode"
+   layout="topleft" left="526" name="cue_timecode_mode" top="30" width="106"
+   tool_tip="Evaluate cues as a pure function of absolute presentation time. Live transport is disabled." />
+
+  <scroll_list column_padding="4" draw_heading="true" follows="all"
+   height="184" layout="topleft" left="10" name="cue_rows" top="58" width="620">
+    <columns label="#" name="number" width="34" />
+    <columns label="Label" name="label" width="184" />
+    <columns label="At" name="at" width="72" />
+    <columns label="Fade" name="fade" width="66" />
+    <columns label="Delay" name="delay" width="66" />
+    <columns label="Curve" name="curve" width="78" />
+    <columns label="Follow" name="follow" width="70" />
+  </scroll_list>
+
+  <text follows="left|top" font="SansSerifSmallBold" height="15"
+   layout="topleft" left="10" top="250" width="240">Cue snapshot and timing</text>
+  <line_editor follows="left|top|right" height="22" layout="topleft"
+   left="10" max_length_chars="128" name="cue_label" top="270" width="260" />
+  <spinner decimal_digits="3" follows="left|top" height="20" increment="0.033"
+   label="At s" label_width="30" layout="topleft" left="278" max_val="86400"
+   min_val="0" name="cue_at_sec" top="270" width="116" />
+  <spinner decimal_digits="2" follows="left|top" height="20" increment="0.10"
+   label="Fade" label_width="34" layout="topleft" left="402" max_val="3600"
+   min_val="0" name="cue_fade_sec" top="270" width="106" />
+  <spinner decimal_digits="2" follows="left|top" height="20" increment="0.10"
+   label="Delay" label_width="38" layout="topleft" left="516" max_val="3600"
+   min_val="0" name="cue_delay_sec" top="270" width="114" />
+
+  <combo_box follows="left|top" height="22" layout="topleft" left="10"
+   name="cue_profile" top="300" width="126" />
+  <spinner decimal_digits="0" follows="left|top" height="20" increment="1"
+   label="Follow s" label_width="50" layout="topleft" left="144" max_val="86400"
+   min_val="-1" name="cue_follow_sec" top="300"
+   tool_tip="-1 disables auto-follow; otherwise advance this many seconds after delay and fade." width="130" />
+  <combo_box follows="left|top|right" height="22" layout="topleft" left="282"
+   name="cue_fx" top="300" tool_tip="The cue owns FX and restarts its phase at cue time." width="226" />
+  <button follows="right|top" height="22" label="Capture" layout="topleft"
+   left="516" name="cue_capture" top="300" tool_tip="Append a complete snapshot of the live rig using this timing." width="114" />
+  <button follows="left|top" height="22" label="Update / Recapture"
+   layout="topleft" left="10" name="cue_update" top="330"
+   tool_tip="Replace the selected cue with a fresh complete live-rig snapshot and this timing." width="142" />
+  <button follows="left|top" height="22" label="Delete cue" layout="topleft"
+   left="160" name="cue_delete" top="330" width="104" />
+  <text follows="left|top|right" height="38" layout="topleft" left="278"
+   top="328" width="352" word_wrap="true">Gobo and gel slots switch at the fade midpoint. Kelvin fades in mireds; source size and global grade fade continuously.</text>
+
+  <view_border bevel_style="in" follows="left|top|right" height="1"
+   layout="topleft" left="10" top="376" width="620" />
+  <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
+   left="10" top="386" width="100">Transport</text>
+  <button follows="left|top" height="28" label="BACK" layout="topleft"
+   left="10" name="cue_back" top="408" width="76" />
+  <button follows="left|top" font="SansSerifBold" height="28" label="GO"
+   layout="topleft" left="94" name="cue_go" top="408"
+   tool_tip="Advance to the next cue. Space also triggers GO while text fields are not focused." width="76" />
+  <button follows="left|top" height="28" label="GOTO" layout="topleft"
+   left="178" name="cue_goto" top="408" width="76" />
+  <button follows="left|top" height="28" label="SNAP GOTO" layout="topleft"
+   left="262" name="cue_snap_goto" top="408" width="100" />
+  <button follows="left|top" height="28" label="RELEASE" layout="topleft"
+   left="370" name="cue_release" top="408" width="92" />
+  <text follows="left|top|right" font="SansSerifBold" height="20"
+   layout="topleft" left="10" name="cue_status" top="448" width="620">Idle</text>
+  <text follows="left|top|right" height="30" layout="topleft" left="10"
+   text_color="LtGray_50" top="472" width="620" word_wrap="true">Timecode mode is scrub-safe and follows each cue's absolute At value. Live mode is monotonic and supports GO, BACK, follow timers, and RELEASE.</text>
+</floater>

@@ -2,10 +2,95 @@
 <llsd xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:noNamespaceSchemaLocation="llsd.xsd">
 <map>
+    <key>CineOutlineEnabled</key>
+    <map>
+      <key>Comment</key><string>Enable the native deferred Cine Outline edge-detection post pass</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineOutlineColor</key>
+    <map>
+      <key>Comment</key><string>Linear RGB color of the Cine Outline contour</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Color3</string>
+      <key>Value</key>
+      <array><real>1.0</real><real>0.04</real><real>0.04</real></array>
+    </map>
+    <key>CineOutlineIntensity</key>
+    <map>
+      <key>Comment</key><string>HDR intensity multiplier for the Cine Outline contour</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>8.0</real>
+    </map>
+    <key>CineOutlineGlow</key>
+    <map>
+      <key>Comment</key><string>Alpha-channel bloom and legacy-glow feed for the Cine Outline contour</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.0</real>
+    </map>
+    <key>CineFisheyeEnabled</key>
+    <map>
+      <key>Comment</key><string>Enable the late Pedro Cam fisheye and circular peephole post pass</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineFisheyeStrength</key>
+    <map>
+      <key>Comment</key><string>Pedro Cam primary radial barrel strength</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.2</real>
+    </map>
+    <key>CineFisheyeStrength2</key>
+    <map>
+      <key>Comment</key><string>Pedro Cam secondary radial edge-compression strength</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.3</real>
+    </map>
+    <key>CineFisheyeZoom</key>
+    <map>
+      <key>Comment</key><string>Pedro Cam fisheye source zoom</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.0</real>
+    </map>
+    <key>CineFisheyeVignetteRadius</key>
+    <map>
+      <key>Comment</key><string>Pedro Cam peephole radius in short-half-dimension units</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.92</real>
+    </map>
+    <key>CineFisheyeVignetteSoft</key>
+    <map>
+      <key>Comment</key><string>Pedro Cam peephole rim feather</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.18</real>
+    </map>
+    <key>CineFisheyeCenterX</key>
+    <map>
+      <key>Comment</key><string>Pedro Cam horizontal lens-center offset</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineFisheyeCenterY</key>
+    <map>
+      <key>Comment</key><string>Pedro Cam vertical lens-center offset</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
     <key>CineLightRigEnabled</key>
     <map>
-      <key>Comment</key><string>Enable client-only prim-free cinematic light emitters</string>
-      <key>Persist</key><integer>1</integer>
+      <key>Comment</key><string>Enable client-only prim-free cinematic light emitters. Session-only (Persist 0) so the rig always starts OFF at login; toggle it on per session as needed.</string>
+      <key>Persist</key><integer>0</integer>
       <key>Type</key><string>Boolean</string>
       <key>Value</key><integer>0</integer>
     </map>
@@ -92,6 +177,13 @@
       <key>Persist</key><integer>1</integer>
       <key>Type</key><string>S32</string>
       <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigObjectTarget</key>
+    <map>
+      <key>Comment</key><string>Root object UUID targeted by the selected cinematic light-rig slot; empty uses its avatar anchor</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>String</string>
+      <key>Value</key><string />
     </map>
     <key>CineLightRigCookieUUID</key>
     <map>
@@ -254,6 +346,69 @@
       <key>Type</key><string>S32</string>
       <key>Value</key><integer>0</integer>
     </map>
+    <key>CineLightRigKeyFixtureMode</key>
+    <map>
+      <key>Comment</key><string>Use the 2.0 Kelvin, stacked-gel and modeled-source path for KEY</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigKeyFixturePreset</key>
+    <map>
+      <key>Comment</key><string>KEY fixture preset provenance index</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigKeyKelvin</key>
+    <map>
+      <key>Comment</key><string>KEY fixture emitter color temperature in kelvin</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>5600.0</real>
+    </map>
+    <key>CineLightRigKeyGelSlot0</key>
+    <map>
+      <key>Comment</key><string>KEY fixture gel stack slot 1</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigKeyGelSlot1</key>
+    <map>
+      <key>Comment</key><string>KEY fixture gel stack slot 2</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigKeyGelSlot2</key>
+    <map>
+      <key>Comment</key><string>KEY fixture gel stack slot 3</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigKeySourceSizeM</key>
+    <map>
+      <key>Comment</key><string>KEY modeled emitting diameter in metres</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.10</real>
+    </map>
+    <key>CineLightRigKeyFlicker</key>
+    <map>
+      <key>Comment</key><string>KEY practical flicker program index; zero is None</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigKeyFlickerAmount</key>
+    <map>
+      <key>Comment</key><string>KEY practical flicker modulation amount from zero to one</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
     <key>CineLightRigKeyShadowSoft</key>
     <map>
       <key>Comment</key><string>KEY projector shadow penumbra override; zero uses the current global behavior</string>
@@ -316,6 +471,69 @@
       <key>Persist</key><integer>1</integer>
       <key>Type</key><string>S32</string>
       <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigFillFixtureMode</key>
+    <map>
+      <key>Comment</key><string>Use the 2.0 Kelvin, stacked-gel and modeled-source path for FILL</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigFillFixturePreset</key>
+    <map>
+      <key>Comment</key><string>FILL fixture preset provenance index</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigFillKelvin</key>
+    <map>
+      <key>Comment</key><string>FILL fixture emitter color temperature in kelvin</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>5600.0</real>
+    </map>
+    <key>CineLightRigFillGelSlot0</key>
+    <map>
+      <key>Comment</key><string>FILL fixture gel stack slot 1</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigFillGelSlot1</key>
+    <map>
+      <key>Comment</key><string>FILL fixture gel stack slot 2</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigFillGelSlot2</key>
+    <map>
+      <key>Comment</key><string>FILL fixture gel stack slot 3</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigFillSourceSizeM</key>
+    <map>
+      <key>Comment</key><string>FILL modeled emitting diameter in metres</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.10</real>
+    </map>
+    <key>CineLightRigFillFlicker</key>
+    <map>
+      <key>Comment</key><string>FILL practical flicker program index; zero is None</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigFillFlickerAmount</key>
+    <map>
+      <key>Comment</key><string>FILL practical flicker modulation amount from zero to one</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
     </map>
     <key>CineLightRigFillShadowSoft</key>
     <map>
@@ -380,6 +598,69 @@
       <key>Type</key><string>S32</string>
       <key>Value</key><integer>0</integer>
     </map>
+    <key>CineLightRigRimFixtureMode</key>
+    <map>
+      <key>Comment</key><string>Use the 2.0 Kelvin, stacked-gel and modeled-source path for RIM</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigRimFixturePreset</key>
+    <map>
+      <key>Comment</key><string>RIM fixture preset provenance index</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigRimKelvin</key>
+    <map>
+      <key>Comment</key><string>RIM fixture emitter color temperature in kelvin</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>5600.0</real>
+    </map>
+    <key>CineLightRigRimGelSlot0</key>
+    <map>
+      <key>Comment</key><string>RIM fixture gel stack slot 1</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigRimGelSlot1</key>
+    <map>
+      <key>Comment</key><string>RIM fixture gel stack slot 2</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigRimGelSlot2</key>
+    <map>
+      <key>Comment</key><string>RIM fixture gel stack slot 3</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigRimSourceSizeM</key>
+    <map>
+      <key>Comment</key><string>RIM modeled emitting diameter in metres</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.10</real>
+    </map>
+    <key>CineLightRigRimFlicker</key>
+    <map>
+      <key>Comment</key><string>RIM practical flicker program index; zero is None</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigRimFlickerAmount</key>
+    <map>
+      <key>Comment</key><string>RIM practical flicker modulation amount from zero to one</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
     <key>CineLightRigRimShadowSoft</key>
     <map>
       <key>Comment</key><string>RIM projector shadow penumbra override; zero uses the current global behavior</string>
@@ -442,6 +723,69 @@
       <key>Persist</key><integer>1</integer>
       <key>Type</key><string>S32</string>
       <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigBgFixtureMode</key>
+    <map>
+      <key>Comment</key><string>Use the 2.0 Kelvin, stacked-gel and modeled-source path for BG</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigBgFixturePreset</key>
+    <map>
+      <key>Comment</key><string>BG fixture preset provenance index</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigBgKelvin</key>
+    <map>
+      <key>Comment</key><string>BG fixture emitter color temperature in kelvin</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>5600.0</real>
+    </map>
+    <key>CineLightRigBgGelSlot0</key>
+    <map>
+      <key>Comment</key><string>BG fixture gel stack slot 1</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigBgGelSlot1</key>
+    <map>
+      <key>Comment</key><string>BG fixture gel stack slot 2</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigBgGelSlot2</key>
+    <map>
+      <key>Comment</key><string>BG fixture gel stack slot 3</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigBgSourceSizeM</key>
+    <map>
+      <key>Comment</key><string>BG modeled emitting diameter in metres</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.10</real>
+    </map>
+    <key>CineLightRigBgFlicker</key>
+    <map>
+      <key>Comment</key><string>BG practical flicker program index; zero is None</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigBgFlickerAmount</key>
+    <map>
+      <key>Comment</key><string>BG practical flicker modulation amount from zero to one</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
     </map>
     <key>CineLightRigBgShadowSoft</key>
     <map>
@@ -624,6 +968,17 @@
       <string>F32</string>
       <key>Value</key>
       <real>8.0</real>
+    </map>
+    <key>CinematicCamVertigoDirection</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] One-button Dolly Zoom direction: 0 dollies out (near to far), 1 dollies in (far to near).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>0</integer>
     </map>
     <key>CinematicCamVertigoHeading</key>
     <map>
@@ -977,6 +1332,17 @@
       <key>Value</key>
       <real>1.2</real>
     </map>
+    <key>CinematicCamArcGeneratorAngle</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] One-button Hero Arc total angle in degrees; runtime-clamped to 30 through 180.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>80</real>
+    </map>
     <key>CinematicCamArcFrom</key>
     <map>
       <key>Comment</key>
@@ -1042,6 +1408,39 @@
       <string>S32</string>
       <key>Value</key>
       <integer>0</integer>
+    </map>
+    <key>CinematicCamArcHeightDrift</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Hero Arc vertical drift over one traversal in meters; negative descends and zero preserves legacy Arc geometry.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0</real>
+    </map>
+    <key>CinematicCamSpeedRampEnabled</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Apply the reusable deterministic fast-edge/slow-middle phase retime to supported one-shot patterns.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>CinematicCamSpeedRampStrength</key>
+    <map>
+      <key>Comment</key>
+      <string>[Cinematic] Strength of the monotonic speed-ramp phase retime, runtime-clamped from 0 through 0.95.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.65</real>
     </map>
     <key>CinematicCamRevealBehind</key>
     <map>
@@ -2188,6 +2587,13 @@
     <key>CinematicCamBreathingAmplitude</key><map><key>Comment</key><string>[Cinematic] Breathing Hold: subtle drift amplitude (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.025</real></map>
     <key>CinematicCamBreathingPeriod</key><map><key>Comment</key><string>[Cinematic] Breathing Hold: seconds per breathing cycle.</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>6</real></map>
     <key>CinematicCamBreathingHeading</key><map><key>Comment</key><string>[Cinematic] Breathing Hold: facing-relative heading (deg).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0</real></map>
+    <key>CinematicCamPedroBPM</key><map><key>Comment</key><string>[Cinematic] Pedro Cam: beat rate.</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>148</real></map>
+    <key>CinematicCamPedroSway</key><map><key>Comment</key><string>[Cinematic] Pedro Cam: lateral sway half-amplitude (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.22</real></map>
+    <key>CinematicCamPedroBob</key><map><key>Comment</key><string>[Cinematic] Pedro Cam: vertical dip depth (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.10</real></map>
+    <key>CinematicCamPedroRoll</key><map><key>Comment</key><string>[Cinematic] Pedro Cam: roll half-amplitude (deg).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>6</real></map>
+    <key>CinematicCamPedroDistance</key><map><key>Comment</key><string>[Cinematic] Pedro Cam: camera-to-face distance (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.9</real></map>
+    <key>CinematicCamPedroHeight</key><map><key>Comment</key><string>[Cinematic] Pedro Cam: height relative to the head focus (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>-0.35</real></map>
+    <key>CinematicCamPedroFov</key><map><key>Comment</key><string>[Cinematic] Pedro Cam: render field of view (deg).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>120</real></map>
     <key>CinematicCamStaticWideHeading</key><map><key>Comment</key><string>[Cinematic] Static Wide: facing-relative heading (deg).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>15</real></map>
     <key>CinematicCamStaticWideDistance</key><map><key>Comment</key><string>[Cinematic] Static Wide: camera distance from the subject (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>5.5</real></map>
     <key>CinematicCamStaticWideCameraUp</key><map><key>Comment</key><string>[Cinematic] Static Wide: camera height above the subject base (m).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>1.3</real></map>
@@ -3376,6 +3782,17 @@
     <map>
       <key>Comment</key>
       <string>Random seed fingerprint for the procedural motion pattern</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+    </map>
+    <key>FlycamOperatorReactionLag</key>
+    <map>
+      <key>Comment</key>
+      <string>Seconds before the operator reacts to camera motion; zero preserves the existing immediate deterministic response.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
@@ -4892,13 +5309,211 @@
     <key>DirectorLookAtCameraEaseTime</key>
     <map>
       <key>Comment</key>
-      <string>[Director] Ease-in and strength response time for the render-only real-cast camera gaze, in seconds (0..1).</string>
+      <string>[Director] Master scale for gaze acquire/release easing; 0.15 preserves the authored acquire and release durations.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
       <string>F32</string>
       <key>Value</key>
       <real>0.15</real>
+    </map>
+    <key>DirectorGazePriority</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Look-at animation priority: 0 = Blend (legacy partial animation blend), 1 = Head+Eyes override, 2 = Upper Body override.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>DirectorGazeCameraRoll</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Fraction of the live CAMERA target's dutch angle applied to the head, with a smaller neck share (0 = off, 1 = full follow).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+    </map>
+    <key>DirectorGazeExaggerate</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Scale for eye, head, and neck anatomical gaze limits (1 = human/default, 3 = extreme).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.0</real>
+    </map>
+    <key>DirectorGazeMicroLife</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Procedural micro-life intensity for camera gaze (saccades, blinks, head drift, 0..1).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.4</real>
+    </map>
+  <key>DirectorGazeBlinks</key>
+  <map>
+    <key>Comment</key>
+      <string>[Director] Enable deterministic periodic eyelid blinks during locked camera gaze.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>DirectorGazeLidFollow</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Downward eye-gaze eyelid follow gain (0 = off, 1 = strongest), sampled 30 ms ahead on the presentation clock.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.6</real>
+    </map>
+    <key>DirectorGazeReactionMin</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Minimum reaction latency before target acquisition begins, in seconds.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.1</real>
+    </map>
+    <key>DirectorGazeReactionMax</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Maximum reaction latency before target acquisition begins, in seconds.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.6</real>
+    </map>
+    <key>DirectorGazeBreakFrequency</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Frequency of natural glances away from target during locked camera gaze (0 = never, 1 = fidgety).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.3</real>
+    </map>
+    <key>DirectorGazeBodyTurnThresholdDeg</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Body-relative yaw threshold in degrees beyond which gaze triggers an anatomical body turn.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>90.0</real>
+    </map>
+    <key>DirectorGazeEaseAcquireSec</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Time to acquire and lock onto a gaze target, in seconds.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.25</real>
+    </map>
+    <key>DirectorGazeEaseReleaseSec</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Time to release from a gaze target back to animation pose, in seconds.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.60</real>
+    </map>
+    <key>DirectorGazeVariation</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Per-subject natural variation in gaze intensity, smoothing, and cadence (0 = identical, 1 = characterful).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.3</real>
+    </map>
+    <key>DirectorGazeCueDefaultDurationSec</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Default duration for newly authored gaze cues; zero holds until the next cue.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+    </map>
+    <key>DirectorGazeCueDoubleTakeGapSec</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Default Double-Take away-gap duration in seconds (0.20 to 0.50).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.35</real>
+    </map>
+    <key>DirectorGazeCueObjectDwellSec</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Default target dwell for Double-Take and Object Glance cues, in seconds.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.60</real>
+    </map>
+    <key>DirectorGazeCueButtonHoldFramesPast</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Default Button Look hold frames past its authored duration/cut point, on a deterministic 30 fps edit basis.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>2</integer>
+    </map>
+    <key>DirectorGazeCueThoughtResidue</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Default Object Glance thought-residue state; enabled uses a slower, heavier return.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
     </map>
     <key>AnimExplorerCaptureAll</key>
     <map>
@@ -24191,17 +24806,17 @@
   </map>
   <key>BDMergeGazeEyeYawMax</key>
   <map>
-    <key>Comment</key><string>Maximum gaze eye yaw in degrees.</string>
+    <key>Comment</key><string>Maximum socket-safe gaze eye yaw in degrees.</string>
     <key>Persist</key><integer>1</integer>
     <key>Type</key><string>F32</string>
-    <key>Value</key><real>35.0</real>
+    <key>Value</key><real>24.0</real>
   </map>
   <key>BDMergeGazeEyePitchMax</key>
   <map>
-    <key>Comment</key><string>Maximum gaze eye pitch in degrees.</string>
+    <key>Comment</key><string>Maximum socket-safe gaze eye pitch in degrees.</string>
     <key>Persist</key><integer>1</integer>
     <key>Type</key><string>F32</string>
-    <key>Value</key><real>25.0</real>
+    <key>Value</key><real>14.0</real>
   </map>
   <!-- Viewer-native cinematic weather. Master gate defaults off. -->
   <key>AlchemyWeatherEnabled</key>
@@ -24621,10 +25236,38 @@
   </map>
   <key>PrismLensEnabled</key>
   <map>
-    <key>Comment</key><string>Master render toggle for up to three local Prism capture producers (Surface Lens or Camera Feed). Default off; registry editing is independent.</string>
+    <key>Comment</key><string>Master render toggle for up to eight local Prism capture producers (Surface Lens or Camera Feed). Default off; registry editing is independent.</string>
     <key>Persist</key><integer>1</integer>
     <key>Type</key><string>Boolean</string>
     <key>Value</key><integer>0</integer>
+  </map>
+  <key>PrismOtsShoulderOffset</key>
+  <map>
+    <key>Comment</key><string>Reciprocal OTS camera lateral shoulder offset in meters.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.45</real>
+  </map>
+  <key>PrismOtsCameraDistance</key>
+  <map>
+    <key>Comment</key><string>Reciprocal OTS camera distance behind the dirty foreground subject in meters.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>1.1</real>
+  </map>
+  <key>PrismOtsVerticalFovDeg</key>
+  <map>
+    <key>Comment</key><string>Matched vertical lens FOV in degrees for both reciprocal OTS virtual cameras.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>45</real>
+  </map>
+  <key>PrismOtsHeightBias</key>
+  <map>
+    <key>Comment</key><string>Shared OTS eye-height bias above the mean subject head height in meters.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.05</real>
   </map>
   <key>PrismCameraGuideEnable</key>
   <map>

@@ -36,10 +36,14 @@
 #include "alchatbar.h"
 // [SL:KB] - Patch: World-Derender | Checked: Catznip-3.2
 #include "alfloaterblocked.h"
+#include "alfloatercinelightcues.h"
 // [/SL:KB]
 #include "alfloaterdirectory.h"
 #include "alfloaterevent.h"
 #include "alfloaterexploresounds.h"
+#include "alfloateractorgaze.h"
+#include "alfloatervirtualcam.h"
+#include "alfloatergazecues.h"
 #include "alfloatergenerictext.h"
 #include "alfloatergroupprofile.h"
 #include "alfloaterlightbox.h"
@@ -520,10 +524,14 @@ void LLViewerFloaterReg::registerFloaters()
     // (ALPanelCineCamParams), shared with the Director Console
     LLFloaterReg::add("cinematic_camera", "floater_cinematic_camera.xml", &LLFloaterReg::build<LLFloater>);
     LLFloaterReg::add("cine_light_rig", "floater_cine_light_rig.xml", &LLFloaterReg::build<LLFloater>);
+    LLFloaterReg::add("cine_light_cues", "floater_cine_light_cues.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<ALFloaterCineLightCues>);
     LLFloaterReg::add("flycam_recorder", "floater_flycam_recorder.xml", &LLFloaterReg::build<LLFloater>);
     LLFloaterReg::add("flycam_orbit", "floater_flycam_orbit.xml", &LLFloaterReg::build<LLFloater>);
     LLFloaterReg::add("actor_mover", "floater_actor_mover.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterActorMover>);
     LLFloaterReg::add("director", "floater_director.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterDirector>);
+    LLFloaterReg::add("actor_gaze", "floater_actor_gaze.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<ALFloaterActorGaze>);
+    LLFloaterReg::add("virtual_cam", "floater_virtual_cam.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<ALFloaterVirtualCam>);
+    LLFloaterReg::add("gaze_cues", "floater_gaze_cues.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<ALFloaterGazeCues>);
     LLFloaterReg::add("prism_manager", "floater_prism_manager.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterPrismManager>);
     LLFloaterReg::add("temporal_capture", "floater_temporal_capture.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<ALFloaterTemporalCapture>);
     // ghost_studio is a thin shell around panel_ghost_studio.xml

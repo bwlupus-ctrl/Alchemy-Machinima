@@ -24,11 +24,13 @@
 #include "lljoint.h"
 #include "llnotificationsutil.h"
 #include "llprimitive.h"
+#include "llpresentationtime.h"
 #include "llrender.h"
 #include "llsdserialize.h"
 #include "lluri.h"
 #include "llviewercontrol.h"
 #include "llviewercamera.h"
+#include "llviewerobject.h"
 #include "llviewerobjectlist.h"
 #include "llviewerregion.h"
 #include "llviewershadermgr.h"
@@ -49,6 +51,7 @@ namespace
 using namespace ALCineLightRigModel;
 
 constexpr char PRESET_SUBDIR[] = "cine_light_rig";
+constexpr char CUE_LIST_SUBDIR[] = "cine_light_rig_cues";
 constexpr char CLASSIC_SETUP_NAME[] = "Classic 3-Point";
 constexpr char MASTER_PRESET_FILE[] = "cine_light_rig_presets.xml";
 constexpr char DEFAULT_COOKIE[] = "5748decc-f629-461c-9a36-a35a221fe21f";
@@ -67,15 +70,58 @@ const char* const ROLE_NAMES[LIGHT_COUNT] = {
     "Key", "Fill", "Rim", "Bg"
 };
 
-const char* const GOBO_FILES[GOBO_COUNT] = {
-    nullptr,
-    "cine_gobos/gobo_blinds.png",
-    "cine_gobos/gobo_panes.png",
-    "cine_gobos/gobo_bars.png",
-    "cine_gobos/gobo_slats.png",
-    "cine_gobos/gobo_grid.png",
-    "cine_gobos/gobo_dapple.png",
-    "cine_gobos/gobo_branches.png",
+const char* const FIXTURE_MODE_SETTINGS[LIGHT_COUNT] = {
+    "CineLightRigKeyFixtureMode", "CineLightRigFillFixtureMode",
+    "CineLightRigRimFixtureMode", "CineLightRigBgFixtureMode"
+};
+const char* const FIXTURE_KELVIN_SETTINGS[LIGHT_COUNT] = {
+    "CineLightRigKeyKelvin", "CineLightRigFillKelvin",
+    "CineLightRigRimKelvin", "CineLightRigBgKelvin"
+};
+const char* const FIXTURE_SOURCE_SETTINGS[LIGHT_COUNT] = {
+    "CineLightRigKeySourceSizeM", "CineLightRigFillSourceSizeM",
+    "CineLightRigRimSourceSizeM", "CineLightRigBgSourceSizeM"
+};
+const char* const FIXTURE_PRESET_SETTINGS[LIGHT_COUNT] = {
+    "CineLightRigKeyFixturePreset", "CineLightRigFillFixturePreset",
+    "CineLightRigRimFixturePreset", "CineLightRigBgFixturePreset"
+};
+const char* const FIXTURE_GEL_SETTINGS[LIGHT_COUNT][FIXTURE_GEL_SLOT_COUNT] = {
+    { "CineLightRigKeyGelSlot0", "CineLightRigKeyGelSlot1",
+      "CineLightRigKeyGelSlot2" },
+    { "CineLightRigFillGelSlot0", "CineLightRigFillGelSlot1",
+      "CineLightRigFillGelSlot2" },
+    { "CineLightRigRimGelSlot0", "CineLightRigRimGelSlot1",
+      "CineLightRigRimGelSlot2" },
+    { "CineLightRigBgGelSlot0", "CineLightRigBgGelSlot1",
+      "CineLightRigBgGelSlot2" },
+};
+
+const char* const GOBO_FILES[GOBO_COUNT][GOBO_BLUR_BUCKET_COUNT] = {
+    { nullptr, nullptr, nullptr },
+    { "cine_gobos/gobo_blinds.png", "cine_gobos/gobo_blinds_medium.png", "cine_gobos/gobo_blinds_heavy.png" },
+    { "cine_gobos/gobo_panes.png", "cine_gobos/gobo_panes_medium.png", "cine_gobos/gobo_panes_heavy.png" },
+    { "cine_gobos/gobo_bars.png", "cine_gobos/gobo_bars_medium.png", "cine_gobos/gobo_bars_heavy.png" },
+    { "cine_gobos/gobo_slats.png", "cine_gobos/gobo_slats_medium.png", "cine_gobos/gobo_slats_heavy.png" },
+    { "cine_gobos/gobo_grid.png", "cine_gobos/gobo_grid_medium.png", "cine_gobos/gobo_grid_heavy.png" },
+    { "cine_gobos/gobo_dapple.png", "cine_gobos/gobo_dapple_medium.png", "cine_gobos/gobo_dapple_heavy.png" },
+    { "cine_gobos/gobo_branches.png", "cine_gobos/gobo_branches_medium.png", "cine_gobos/gobo_branches_heavy.png" },
+    { "cine_gobos/gobo_arch_window_sharp.png", "cine_gobos/gobo_arch_window_medium.png", "cine_gobos/gobo_arch_window_heavy.png" },
+    { "cine_gobos/gobo_french_door_sharp.png", "cine_gobos/gobo_french_door_medium.png", "cine_gobos/gobo_french_door_heavy.png" },
+    { "cine_gobos/gobo_curtain_edge_sharp.png", "cine_gobos/gobo_curtain_edge_medium.png", "cine_gobos/gobo_curtain_edge_heavy.png" },
+    { "cine_gobos/gobo_stairwell_rail_sharp.png", "cine_gobos/gobo_stairwell_rail_medium.png", "cine_gobos/gobo_stairwell_rail_heavy.png" },
+    { "cine_gobos/gobo_door_crack_sharp.png", "cine_gobos/gobo_door_crack_medium.png", "cine_gobos/gobo_door_crack_heavy.png" },
+    { "cine_gobos/gobo_dense_foliage_sharp.png", "cine_gobos/gobo_dense_foliage_medium.png", "cine_gobos/gobo_dense_foliage_heavy.png" },
+    { "cine_gobos/gobo_palm_dapple_sharp.png", "cine_gobos/gobo_palm_dapple_medium.png", "cine_gobos/gobo_palm_dapple_heavy.png" },
+    { "cine_gobos/gobo_water_caustics_sharp.png", "cine_gobos/gobo_water_caustics_medium.png", "cine_gobos/gobo_water_caustics_heavy.png" },
+    { "cine_gobos/gobo_cucoloris_sharp.png", "cine_gobos/gobo_cucoloris_medium.png", "cine_gobos/gobo_cucoloris_heavy.png" },
+    { "cine_gobos/gobo_fine_celo_sharp.png", "cine_gobos/gobo_fine_celo_medium.png", "cine_gobos/gobo_fine_celo_heavy.png" },
+    { "cine_gobos/gobo_scrim_wave_sharp.png", "cine_gobos/gobo_scrim_wave_medium.png", "cine_gobos/gobo_scrim_wave_heavy.png" },
+    { "cine_gobos/gobo_smoke_drift_sharp.png", "cine_gobos/gobo_smoke_drift_medium.png", "cine_gobos/gobo_smoke_drift_heavy.png" },
+    { "cine_gobos/gobo_chain_link_sharp.png", "cine_gobos/gobo_chain_link_medium.png", "cine_gobos/gobo_chain_link_heavy.png" },
+    { "cine_gobos/gobo_industrial_grate_sharp.png", "cine_gobos/gobo_industrial_grate_medium.png", "cine_gobos/gobo_industrial_grate_heavy.png" },
+    { "cine_gobos/gobo_rotating_fan_sharp.png", "cine_gobos/gobo_rotating_fan_medium.png", "cine_gobos/gobo_rotating_fan_heavy.png" },
+    { "cine_gobos/gobo_neon_sign_sharp.png", "cine_gobos/gobo_neon_sign_medium.png", "cine_gobos/gobo_neon_sign_heavy.png" },
 };
 
 bool sameSetupName(const std::string& first, const std::string& second)
@@ -210,7 +256,16 @@ bool sameLight(const LightBase& first, const LightBase& second)
            first.mBeam == second.mBeam &&
            first.mOn == second.mOn &&
            first.mGobo == second.mGobo &&
-           first.mGel == second.mGel;
+           first.mGel == second.mGel &&
+           first.mFlickerProgram == second.mFlickerProgram &&
+           first.mFlickerAmount == second.mFlickerAmount &&
+           first.mFixtureMode == second.mFixtureMode &&
+           first.mKelvin == second.mKelvin &&
+           first.mGelSlot[0] == second.mGelSlot[0] &&
+           first.mGelSlot[1] == second.mGelSlot[1] &&
+           first.mGelSlot[2] == second.mGelSlot[2] &&
+           first.mSourceSizeM == second.mSourceSizeM &&
+           first.mFixturePreset == second.mFixturePreset;
 }
 
 bool sameLights(const LightBase first[LIGHT_COUNT],
@@ -226,10 +281,33 @@ bool sameLights(const LightBase first[LIGHT_COUNT],
     return true;
 }
 
+bool sameGlobals(const Globals& first, const Globals& second)
+{
+    return first.mMasterEV == second.mMasterEV &&
+           first.mHeadroomStops == second.mHeadroomStops &&
+           first.mBounceRatio == second.mBounceRatio &&
+           first.mTransitionSec == second.mTransitionSec &&
+           first.mBounceEnabled == second.mBounceEnabled &&
+           first.mPower == second.mPower &&
+           first.mSeed == second.mSeed &&
+           first.mMasterTempMired == second.mMasterTempMired;
+}
+
 void copyLights(const LightBase source[LIGHT_COUNT],
                 LightBase destination[LIGHT_COUNT])
 {
     std::memcpy(destination, source, sizeof(LightBase) * LIGHT_COUNT);
+}
+
+void applyFlickerModulation(EmitterState& state, F32 intensity_mul,
+                            const F32 color_mul[3])
+{
+    const F32 raw_intensity = state.mIntensity * intensity_mul;
+    state.mIntensity = std::clamp(raw_intensity, 0.f, 1.f);
+    state.mClipped = state.mOn && (state.mClipped || raw_intensity > 1.f);
+    state.mSR = std::clamp(state.mSR * color_mul[0], 0.f, 1.f);
+    state.mSG = std::clamp(state.mSG * color_mul[1], 0.f, 1.f);
+    state.mSB = std::clamp(state.mSB * color_mul[2], 0.f, 1.f);
 }
 
 LLUUID rigCookie(const std::string& setting)
@@ -242,34 +320,38 @@ LLUUID rigCookie(const std::string& setting)
     return cookie;
 }
 
-LLUUID rigGoboTexture(S32 index, const std::string& cookie_setting)
+LLUUID rigGoboTexture(S32 index, F32 softness,
+                      const std::string& cookie_setting)
 {
     if (index <= 0 || index >= GOBO_COUNT)
     {
         return rigCookie(cookie_setting);
     }
 
-    static LLPointer<LLViewerFetchedTexture> cache[GOBO_COUNT];
-    static bool attempted[GOBO_COUNT] = {};
-    if (!attempted[index])
+    const S32 bucket = goboBlurBucket(softness);
+    static LLPointer<LLViewerFetchedTexture>
+        cache[GOBO_COUNT][GOBO_BLUR_BUCKET_COUNT];
+    static bool attempted[GOBO_COUNT][GOBO_BLUR_BUCKET_COUNT] = {};
+    if (!attempted[index][bucket])
     {
-        attempted[index] = true;
+        attempted[index][bucket] = true;
+        const char* file = GOBO_FILES[index][bucket];
         if (!gDirUtilp->findSkinnedFilename(
-                 "textures", GOBO_FILES[index]).empty())
+                 "textures", file).empty())
         {
-            cache[index] =
+            cache[index][bucket] =
                 LLViewerTextureManager::getFetchedTextureFromFile(
-                    GOBO_FILES[index], FTT_LOCAL_FILE, MIPMAP_YES,
+                    file, FTT_LOCAL_FILE, MIPMAP_YES,
                     LLGLTexture::BOOST_NONE);
         }
-        if (cache[index].isNull())
+        if (cache[index][bucket].isNull())
         {
             LL_WARNS("CineLightRig") << "Bundled gobo missing: "
-                << GOBO_FILES[index] << "; using default cookie" << LL_ENDL;
+                << file << "; using default cookie" << LL_ENDL;
         }
     }
-    return cache[index].notNull()
-        ? cache[index]->getID() : rigCookie(cookie_setting);
+    return cache[index][bucket].notNull()
+        ? cache[index][bucket]->getID() : rigCookie(cookie_setting);
 }
 
 bool emittersReady(const LLPointer<LLVOVolume> emitters[LIGHT_COUNT],
@@ -345,6 +427,42 @@ S32 gelIndex(const std::string& name)
     return -1;
 }
 
+S32 fixtureGelIndex(const std::string& name)
+{
+    for (S32 i = 0; i < FIXTURE_GEL_COUNT; ++i)
+    {
+        if (name == fixtureGelName(i))
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
+S32 fixturePresetIndex(const std::string& name)
+{
+    for (S32 i = 0; i < FIXTURE_PRESET_COUNT; ++i)
+    {
+        if (name == fixturePresetName(i))
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
+S32 flickerProgramIndex(const std::string& name)
+{
+    for (S32 i = 0; i < FLICKER_COUNT; ++i)
+    {
+        if (name == flickerProgramName(i))
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
 LLSD lightToLLSD(const LightBase& light)
 {
     LLSD data = LLSD::emptyMap();
@@ -360,6 +478,22 @@ LLSD lightToLLSD(const LightBase& light)
     data["gobo_name"] = goboName(light.mGobo);
     data["gel_idx"] = light.mGel;
     data["gel_name"] = gelName(light.mGel);
+    data["flicker_idx"] = light.mFlickerProgram;
+    data["flicker_name"] = flickerProgramName(light.mFlickerProgram);
+    data["flicker_amount"] = light.mFlickerAmount;
+    data["fixture_mode"] = light.mFixtureMode;
+    data["kelvin"] = light.mKelvin;
+    data["source_size_m"] = light.mSourceSizeM;
+    data["fixture_preset_idx"] = light.mFixturePreset;
+    data["fixture_preset_name"] = fixturePresetName(light.mFixturePreset);
+    data["fixture_gel_slots"] = LLSD::emptyArray();
+    data["fixture_gel_names"] = LLSD::emptyArray();
+    for (S32 slot = 0; slot < FIXTURE_GEL_SLOT_COUNT; ++slot)
+    {
+        data["fixture_gel_slots"].append(light.mGelSlot[slot]);
+        data["fixture_gel_names"].append(
+            fixtureGelName(light.mGelSlot[slot]));
+    }
     return data;
 }
 
@@ -435,6 +569,70 @@ bool setupFromLLSD(const LLSD& data, Setup& output)
                 light.mGel = named_gel;
             }
         }
+        light.mFlickerProgram = item.has("flicker_idx")
+            ? item["flicker_idx"].asInteger() : FLICKER_NONE;
+        if (item["flicker_name"].isString())
+        {
+            const S32 named_flicker = flickerProgramIndex(
+                item["flicker_name"].asString());
+            if (named_flicker >= 0 &&
+                (light.mFlickerProgram < FLICKER_NONE ||
+                 light.mFlickerProgram >= FLICKER_COUNT ||
+                 item["flicker_name"].asString() !=
+                     flickerProgramName(light.mFlickerProgram)))
+            {
+                light.mFlickerProgram = named_flicker;
+            }
+        }
+        light.mFlickerAmount = item.has("flicker_amount")
+            ? static_cast<F32>(item["flicker_amount"].asReal()) : 0.f;
+        light.mFixtureMode = item.has("fixture_mode")
+            ? item["fixture_mode"].asBoolean() : false;
+        light.mKelvin = item.has("kelvin")
+            ? static_cast<F32>(item["kelvin"].asReal()) : 5600.f;
+        light.mSourceSizeM = item.has("source_size_m")
+            ? static_cast<F32>(item["source_size_m"].asReal()) : 0.10f;
+        light.mFixturePreset = item.has("fixture_preset_idx")
+            ? item["fixture_preset_idx"].asInteger() : 0;
+        if (item["fixture_preset_name"].isString())
+        {
+            const S32 named_preset = fixturePresetIndex(
+                item["fixture_preset_name"].asString());
+            if (named_preset >= 0 &&
+                (light.mFixturePreset < 0 ||
+                 light.mFixturePreset >= FIXTURE_PRESET_COUNT ||
+                 item["fixture_preset_name"].asString() !=
+                     fixturePresetName(light.mFixturePreset)))
+            {
+                light.mFixturePreset = named_preset;
+            }
+        }
+        if (item["fixture_gel_slots"].isArray() &&
+            item["fixture_gel_slots"].size() == FIXTURE_GEL_SLOT_COUNT)
+        {
+            for (S32 slot = 0; slot < FIXTURE_GEL_SLOT_COUNT; ++slot)
+            {
+                light.mGelSlot[slot] =
+                    item["fixture_gel_slots"][slot].asInteger();
+            }
+        }
+        if (item["fixture_gel_names"].isArray() &&
+            item["fixture_gel_names"].size() == FIXTURE_GEL_SLOT_COUNT)
+        {
+            for (S32 slot = 0; slot < FIXTURE_GEL_SLOT_COUNT; ++slot)
+            {
+                const std::string name =
+                    item["fixture_gel_names"][slot].asString();
+                const S32 named_gel = fixtureGelIndex(name);
+                if (named_gel >= 0 &&
+                    (light.mGelSlot[slot] < 0 ||
+                     light.mGelSlot[slot] >= FIXTURE_GEL_COUNT ||
+                     name != fixtureGelName(light.mGelSlot[slot])))
+                {
+                    light.mGelSlot[slot] = named_gel;
+                }
+            }
+        }
     }
     output = sanitizeSetup(setup);
     return true;
@@ -497,6 +695,193 @@ LLSD setupToLLSD(const Setup& input, const Globals& input_globals)
     }
     return data;
 }
+
+LLSD globalsToLLSD(const Globals& input)
+{
+    const Globals globals = sanitizeGlobals(input);
+    LLSD data = LLSD::emptyMap();
+    data["master_ev"] = globals.mMasterEV;
+    data["headroom_stops"] = globals.mHeadroomStops;
+    data["bounce_ratio"] = globals.mBounceRatio;
+    data["transition_sec"] = globals.mTransitionSec;
+    data["bounce_enabled"] = globals.mBounceEnabled;
+    data["power"] = globals.mPower;
+    // Rig seeds originate as U32 settings; LLSD real preserves that domain
+    // exactly without signed rollover.
+    data["seed"] = static_cast<F64>(globals.mSeed);
+    data["subject_scale"] = globals.mSubjectScale;
+    data["master_temp_mired"] = globals.mMasterTempMired;
+    return data;
+}
+
+Globals globalsFromLLSD(const LLSD& data)
+{
+    Globals globals;
+    if (!data.isMap())
+    {
+        return globals;
+    }
+    if (data.has("master_ev"))
+        globals.mMasterEV = static_cast<F32>(data["master_ev"].asReal());
+    if (data.has("headroom_stops"))
+        globals.mHeadroomStops = static_cast<F32>(data["headroom_stops"].asReal());
+    if (data.has("bounce_ratio"))
+        globals.mBounceRatio = static_cast<F32>(data["bounce_ratio"].asReal());
+    if (data.has("transition_sec"))
+        globals.mTransitionSec = static_cast<F32>(data["transition_sec"].asReal());
+    if (data.has("bounce_enabled"))
+        globals.mBounceEnabled = data["bounce_enabled"].asBoolean();
+    if (data.has("power"))
+        globals.mPower = data["power"].asBoolean();
+    if (data.has("seed"))
+    {
+        globals.mSeed = static_cast<U64>(data["seed"].asReal());
+    }
+    if (data.has("subject_scale"))
+        globals.mSubjectScale = static_cast<F32>(data["subject_scale"].asReal());
+    if (data.has("master_temp_mired"))
+        globals.mMasterTempMired = static_cast<F32>(data["master_temp_mired"].asReal());
+    return sanitizeGlobals(globals);
+}
+
+LLSD transformsToLLSD(const Transforms& input)
+{
+    const Transforms transforms = sanitizeTransforms(input);
+    LLSD data = LLSD::emptyMap();
+    data["mirror"] = transforms.mMirror;
+    data["facing_azimuth"] = transforms.mFacingAzimuthDeg;
+    data["yaw"] = transforms.mYawDeg;
+    data["pitch"] = transforms.mPitchDeg;
+    return data;
+}
+
+Transforms transformsFromLLSD(const LLSD& data)
+{
+    Transforms transforms;
+    if (!data.isMap())
+    {
+        return transforms;
+    }
+    transforms.mMirror = data["mirror"].asBoolean();
+    transforms.mFacingAzimuthDeg = static_cast<F32>(data["facing_azimuth"].asReal());
+    transforms.mYawDeg = static_cast<F32>(data["yaw"].asReal());
+    transforms.mPitchDeg = static_cast<F32>(data["pitch"].asReal());
+    return sanitizeTransforms(transforms);
+}
+
+LLSD cueToLLSD(const Cue& input)
+{
+    const Cue cue = sanitizeCue(input);
+    LLSD data = LLSD::emptyMap();
+    data["label"] = cue.mLabel;
+    data["fade_sec"] = cue.mFadeSec;
+    data["delay_sec"] = cue.mDelaySec;
+    data["profile"] = cue.mProfile;
+    data["follow_sec"] = cue.mFollow;
+    data["at_sec"] = cue.mAtSec;
+    data["setup"] = setupToLLSD(cue.mSetup, cue.mGlobals);
+    data["globals"] = globalsToLLSD(cue.mGlobals);
+    data["transforms"] = transformsToLLSD(cue.mTransforms);
+    data["shadow_soft_override"] = LLSD::emptyArray();
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+    {
+        data["shadow_soft_override"].append(cue.mShadowSoftOverride[i]);
+    }
+    data["fx"] = cue.mFX;
+    data["provenance"] = cue.mProvenance;
+    return data;
+}
+
+Cue cueFromState(const CueState& state, const std::string& provenance)
+{
+    Cue cue;
+    cue.mSetup = state.mSetup;
+    cue.mGlobals = state.mGlobals;
+    cue.mTransforms = state.mTransforms;
+    cue.mFX = state.mFX;
+    cue.mProvenance = provenance;
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+    {
+        cue.mShadowSoftOverride[i] = state.mShadowSoftOverride[i];
+    }
+    return sanitizeCue(cue);
+}
+
+bool cueFromLLSD(const LLSD& data, Cue& output)
+{
+    if (!data.isMap() || !data["setup"].isMap() ||
+        !data["globals"].isMap() || !data["transforms"].isMap())
+    {
+        return false;
+    }
+    Cue cue;
+    if (!setupFromLLSD(data["setup"], cue.mSetup))
+    {
+        return false;
+    }
+    cue.mLabel = data["label"].asString();
+    cue.mFadeSec = static_cast<F32>(data["fade_sec"].asReal());
+    cue.mDelaySec = static_cast<F32>(data["delay_sec"].asReal());
+    cue.mProfile = data["profile"].asInteger();
+    cue.mFollow = data.has("follow_sec")
+        ? data["follow_sec"].asInteger() : -1;
+    cue.mAtSec = data["at_sec"].asReal();
+    cue.mGlobals = globalsFromLLSD(data["globals"]);
+    cue.mTransforms = transformsFromLLSD(data["transforms"]);
+    if (data["shadow_soft_override"].isArray() &&
+        data["shadow_soft_override"].size() == LIGHT_COUNT)
+    {
+        for (S32 i = 0; i < LIGHT_COUNT; ++i)
+        {
+            cue.mShadowSoftOverride[i] = static_cast<F32>(
+                data["shadow_soft_override"][i].asReal());
+        }
+    }
+    cue.mFX = data.has("fx") ? data["fx"].asInteger() : -1;
+    cue.mProvenance = data["provenance"].asString();
+    output = sanitizeCue(cue);
+    return true;
+}
+
+LLSD cueListToLLSD(const CueList& input)
+{
+    const CueList list = sanitizeCueList(input);
+    LLSD data = LLSD::emptyMap();
+    data["version"] = 1;
+    data["name"] = list.mName;
+    data["timecode_mode"] = list.mTimecodeMode;
+    data["cues"] = LLSD::emptyArray();
+    for (const Cue& cue : list.mCues)
+    {
+        data["cues"].append(cueToLLSD(cue));
+    }
+    return data;
+}
+
+bool cueListFromLLSD(const LLSD& data, CueList& output)
+{
+    if (!data.isMap() || !data["version"].isInteger() ||
+        data["version"].asInteger() != 1 || !data["cues"].isArray() ||
+        data["cues"].size() > 256)
+    {
+        return false;
+    }
+    CueList list;
+    list.mName = data["name"].asString();
+    list.mTimecodeMode = data["timecode_mode"].asBoolean();
+    for (LLSD::array_const_iterator it = data["cues"].beginArray();
+         it != data["cues"].endArray(); ++it)
+    {
+        Cue cue;
+        if (!cueFromLLSD(*it, cue))
+        {
+            return false;
+        }
+        list.mCues.push_back(cue);
+    }
+    output = sanitizeCueList(list);
+    return true;
+}
 } // namespace
 
 const char ALCineLightRig::BUILT_IN_SETUP_CAPTION[] =
@@ -528,6 +913,13 @@ ALCineLightRig::~ALCineLightRig() = default;
 void ALCineLightRig::setAnchor(const LLUUID& id)
 {
     mAnchor = id;
+    mHaveSmoothedCentre = false;
+    mSmoothedScale = 1.f;
+}
+
+void ALCineLightRig::setObjectTarget(const LLUUID& id)
+{
+    mObjectTarget = id;
     mHaveSmoothedCentre = false;
     mSmoothedScale = 1.f;
 }
@@ -662,6 +1054,22 @@ void ALCineLightRig::readSettings(Setup& setup, Globals& globals,
     static LLCachedControl<S32> fill_gel(gSavedSettings, "CineLightRigFillGel");
     static LLCachedControl<S32> rim_gel(gSavedSettings, "CineLightRigRimGel");
     static LLCachedControl<S32> bg_gel(gSavedSettings, "CineLightRigBgGel");
+    static LLCachedControl<S32> key_flicker(
+        gSavedSettings, "CineLightRigKeyFlicker");
+    static LLCachedControl<S32> fill_flicker(
+        gSavedSettings, "CineLightRigFillFlicker");
+    static LLCachedControl<S32> rim_flicker(
+        gSavedSettings, "CineLightRigRimFlicker");
+    static LLCachedControl<S32> bg_flicker(
+        gSavedSettings, "CineLightRigBgFlicker");
+    static LLCachedControl<F32> key_flicker_amount(
+        gSavedSettings, "CineLightRigKeyFlickerAmount");
+    static LLCachedControl<F32> fill_flicker_amount(
+        gSavedSettings, "CineLightRigFillFlickerAmount");
+    static LLCachedControl<F32> rim_flicker_amount(
+        gSavedSettings, "CineLightRigRimFlickerAmount");
+    static LLCachedControl<F32> bg_flicker_amount(
+        gSavedSettings, "CineLightRigBgFlickerAmount");
     static LLCachedControl<bool> key_on(gSavedSettings, "CineLightRigKeyOn");
     static LLCachedControl<bool> fill_on(gSavedSettings, "CineLightRigFillOn");
     static LLCachedControl<bool> rim_on(gSavedSettings, "CineLightRigRimOn");
@@ -697,6 +1105,13 @@ void ALCineLightRig::readSettings(Setup& setup, Globals& globals,
     const S32 gels[LIGHT_COUNT] = {
         key_gel, fill_gel, rim_gel, bg_gel
     };
+    const S32 flicker_programs[LIGHT_COUNT] = {
+        key_flicker, fill_flicker, rim_flicker, bg_flicker
+    };
+    const F32 flicker_amounts[LIGHT_COUNT] = {
+        key_flicker_amount, fill_flicker_amount,
+        rim_flicker_amount, bg_flicker_amount
+    };
     const bool on[LIGHT_COUNT] = { key_on, fill_on, rim_on, bg_on };
 
     setup.mRadius = radius;
@@ -712,6 +1127,21 @@ void ALCineLightRig::readSettings(Setup& setup, Globals& globals,
         setup.mLights[i].mOn = on[i];
         setup.mLights[i].mGobo = gobos[i];
         setup.mLights[i].mGel = gels[i];
+        setup.mLights[i].mFlickerProgram = flicker_programs[i];
+        setup.mLights[i].mFlickerAmount = flicker_amounts[i];
+        setup.mLights[i].mFixtureMode =
+            gSavedSettings.getBOOL(FIXTURE_MODE_SETTINGS[i]);
+        setup.mLights[i].mKelvin =
+            gSavedSettings.getF32(FIXTURE_KELVIN_SETTINGS[i]);
+        for (S32 slot = 0; slot < FIXTURE_GEL_SLOT_COUNT; ++slot)
+        {
+            setup.mLights[i].mGelSlot[slot] =
+                gSavedSettings.getS32(FIXTURE_GEL_SETTINGS[i][slot]);
+        }
+        setup.mLights[i].mSourceSizeM =
+            gSavedSettings.getF32(FIXTURE_SOURCE_SETTINGS[i]);
+        setup.mLights[i].mFixturePreset =
+            gSavedSettings.getS32(FIXTURE_PRESET_SETTINGS[i]);
     }
 
     globals.mMasterEV = master_ev;
@@ -749,6 +1179,18 @@ void ALCineLightRig::readSettings(const ALCineLightRigParamBlob& blob,
         setup.mLights[i].mOn = blob.mLights[i].mOn;
         setup.mLights[i].mGobo = blob.mLights[i].mGobo;
         setup.mLights[i].mGel = blob.mLights[i].mGel;
+        setup.mLights[i].mFlickerProgram =
+            blob.mLights[i].mFlickerProgram;
+        setup.mLights[i].mFlickerAmount = blob.mLights[i].mFlickerAmount;
+        setup.mLights[i].mFixtureMode = blob.mLights[i].mFixtureMode;
+        setup.mLights[i].mKelvin = blob.mLights[i].mKelvin;
+        for (S32 slot = 0; slot < FIXTURE_GEL_SLOT_COUNT; ++slot)
+        {
+            setup.mLights[i].mGelSlot[slot] =
+                blob.mLights[i].mGelSlot[slot];
+        }
+        setup.mLights[i].mSourceSizeM = blob.mLights[i].mSourceSizeM;
+        setup.mLights[i].mFixturePreset = blob.mLights[i].mFixturePreset;
     }
 
     globals.mMasterEV = blob.mMasterEV;
@@ -787,6 +1229,19 @@ void ALCineLightRig::writeSetupToSettings(const Setup& input) const
         gSavedSettings.setBOOL(prefix + "On", light.mOn);
         gSavedSettings.setS32(prefix + "Gobo", light.mGobo);
         gSavedSettings.setS32(prefix + "Gel", light.mGel);
+        gSavedSettings.setS32(prefix + "Flicker", light.mFlickerProgram);
+        gSavedSettings.setF32(prefix + "FlickerAmount", light.mFlickerAmount);
+        gSavedSettings.setBOOL(prefix + "FixtureMode", light.mFixtureMode);
+        gSavedSettings.setF32(prefix + "Kelvin", light.mKelvin);
+        for (S32 slot = 0; slot < FIXTURE_GEL_SLOT_COUNT; ++slot)
+        {
+            gSavedSettings.setS32(
+                prefix + "GelSlot" + std::to_string(slot),
+                light.mGelSlot[slot]);
+        }
+        gSavedSettings.setF32(prefix + "SourceSizeM", light.mSourceSizeM);
+        gSavedSettings.setS32(
+            prefix + "FixturePreset", light.mFixturePreset);
     }
 }
 
@@ -878,6 +1333,7 @@ void ALCineLightRig::destroyEmitter(LLPointer<LLVOVolume>& emitter)
         LLPipeline::toggleProjectorCastShadows(id);
     }
     LLPipeline::clearProjectorShadowSoftness(id);
+    LLPipeline::clearGoboOverride(id);
     // Always clear light membership while the strong pointer is held. A region
     // teardown may have marked the object dead before the controller observes
     // it, but a surviving drawable must never remain in LLPipeline::mLights.
@@ -1119,6 +1575,7 @@ void ALCineLightRig::evaluateTransition(F64 presentation_time)
     {
         copyLights(mTransitionTarget, mCurrentLive);
         mCurrentRadius = mTransitionRadiusTarget;
+        mCurrentGlobals = mTransitionGlobalsTarget;
         mTransitionActive = false;
         return;
     }
@@ -1128,6 +1585,7 @@ void ALCineLightRig::evaluateTransition(F64 presentation_time)
     {
         copyLights(mTransitionTarget, mCurrentLive);
         mCurrentRadius = mTransitionRadiusTarget;
+        mCurrentGlobals = mTransitionGlobalsTarget;
         mTransitionActive = false;
         return;
     }
@@ -1139,31 +1597,40 @@ void ALCineLightRig::evaluateTransition(F64 presentation_time)
     }
     mCurrentRadius = mTransitionRadiusStart +
         (mTransitionRadiusTarget - mTransitionRadiusStart) * eased;
+    mCurrentGlobals = blendGlobals(
+        mTransitionGlobalsStart, mTransitionGlobalsTarget, eased);
 }
 
 void ALCineLightRig::updateTransition(
-    const LightBase target[LIGHT_COUNT], F32 target_radius, F32 duration,
+    const LightBase target[LIGHT_COUNT], F32 target_radius,
+    const Globals& target_globals, F32 duration,
     F64 presentation_time)
 {
+    const Globals safe_target_globals = sanitizeGlobals(target_globals);
     if (!mHaveTarget)
     {
         copyLights(target, mTransitionTarget);
         copyLights(target, mCurrentLive);
         mTransitionRadiusTarget = target_radius;
         mCurrentRadius = target_radius;
+        mTransitionGlobalsTarget = safe_target_globals;
+        mCurrentGlobals = safe_target_globals;
         mHaveTarget = true;
         mTransitionActive = false;
         return;
     }
 
     if (!sameLights(target, mTransitionTarget) ||
-        target_radius != mTransitionRadiusTarget)
+        target_radius != mTransitionRadiusTarget ||
+        !sameGlobals(safe_target_globals, mTransitionGlobalsTarget))
     {
         evaluateTransition(presentation_time);
         copyLights(mCurrentLive, mTransitionStart);
         copyLights(target, mTransitionTarget);
         mTransitionRadiusStart = mCurrentRadius;
         mTransitionRadiusTarget = target_radius;
+        mTransitionGlobalsStart = mCurrentGlobals;
+        mTransitionGlobalsTarget = safe_target_globals;
         mTransitionDuration = duration;
         mTransitionStartTime = presentation_time;
         mTransitionActive = duration > 0.f;
@@ -1171,6 +1638,7 @@ void ALCineLightRig::updateTransition(
         {
             copyLights(target, mCurrentLive);
             mCurrentRadius = target_radius;
+            mCurrentGlobals = safe_target_globals;
         }
     }
     evaluateTransition(presentation_time);
@@ -1210,7 +1678,7 @@ void ALCineLightRig::applyFrame(const RigFrame& frame,
             projector->setRotation(rotation, false);
             projector->setScale(emitter_scale, false);
             const LLUUID cookie = rigGoboTexture(
-                state.mGobo, cookie_setting);
+                state.mGobo, mShadowSoftness[i], cookie_setting);
             if (projector->getLightTextureID() != cookie)
             {
                 projector->setLightTextureID(cookie);
@@ -1222,6 +1690,17 @@ void ALCineLightRig::applyFrame(const RigFrame& frame,
             projector->setLightFalloff(state.mFalloff);
             projector->setSpotLightParams(
                 LLVector3(state.mFovRad, 0.f, 0.f));
+            if (goboIsAnimated(state.mGobo))
+            {
+                LLPipeline::GoboOverride animation;
+                animation.mAnimMode = 1; // presentation-time UV rotation
+                animation.mSpeed = 0.65f;
+                LLPipeline::setGoboOverride(projector->getID(), animation);
+            }
+            else
+            {
+                LLPipeline::clearGoboOverride(projector->getID());
+            }
             projector->setIsLight(state.mOn);
             if (projector->mDrawable.notNull())
             {
@@ -1452,20 +1931,6 @@ void ALCineLightRig::tickSelected(F64 presentation_time, bool owns_shadows)
     Globals globals;
     Transforms transforms;
     readSettings(setup, globals, transforms);
-    if (!globals.mPower)
-    {
-        mLastResolvedGroupSlots = 0;
-        destroyEmitters();
-        std::memset(&mLastFrame, 0, sizeof(mLastFrame));
-        mHaveSmoothedCentre = false;
-        mSmoothedScale = 1.f;
-        mProjectorRetryTicks = 0;
-        mOmniRetryTicks = 0;
-        mCatchlightRetryTicks = 0;
-        mLastPresentationTime = presentation_time;
-        return;
-    }
-
     const F32 shadow_softness[LIGHT_COUNT] = {
         key_shadow_soft, fill_shadow_soft, rim_shadow_soft, bg_shadow_soft
     };
@@ -1522,20 +1987,6 @@ void ALCineLightRig::tickFromBlob(const ALCineLightRigParamBlob& blob,
     Globals globals;
     Transforms transforms;
     readSettings(blob, setup, globals, transforms);
-    if (!globals.mPower)
-    {
-        mLastResolvedGroupSlots = 0;
-        destroyEmitters();
-        std::memset(&mLastFrame, 0, sizeof(mLastFrame));
-        mHaveSmoothedCentre = false;
-        mSmoothedScale = 1.f;
-        mProjectorRetryTicks = 0;
-        mOmniRetryTicks = 0;
-        mCatchlightRetryTicks = 0;
-        mLastPresentationTime = presentation_time;
-        return;
-    }
-
     tickShared(presentation_time, owns_shadows, fx_setting, offset_z_setting,
                damping_setting, track_mode_setting, scale_aware_setting,
                shadow_mode, catchlight_enabled, catchlight_ev,
@@ -1552,11 +2003,81 @@ void ALCineLightRig::tickShared(
     const std::string& cookie_setting, Setup& setup, Globals& globals,
     Transforms& transforms)
 {
+    F32 effective_shadow_softness[LIGHT_COUNT] = {};
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+    {
+        effective_shadow_softness[i] = shadow_softness
+            ? shadow_softness[i] : 0.f;
+    }
+    S32 effective_fx = fx_setting;
+    F64 cue_fx_epoch = presentation_time;
+    const bool cue_driven = evaluateCuePlayback(
+        presentation_time, setup, globals, transforms,
+        effective_shadow_softness, effective_fx, cue_fx_epoch);
+    if (!globals.mPower)
+    {
+        mLastResolvedGroupSlots = 0;
+        destroyEmitters();
+        std::memset(&mLastFrame, 0, sizeof(mLastFrame));
+        mHaveSmoothedCentre = false;
+        mSmoothedScale = 1.f;
+        mProjectorRetryTicks = 0;
+        mOmniRetryTicks = 0;
+        mCatchlightRetryTicks = 0;
+        mLastPresentationTime = presentation_time;
+        return;
+    }
+    const bool object_targeted = mObjectTarget.notNull();
+    LLVector3 object_centre_agent;
+    F32 object_subject_scale = 1.f;
+    if (object_targeted)
+    {
+        mLastResolvedGroupSlots = 0;
+        LLViewerObject* object = gObjectList.findObject(mObjectTarget);
+        if (!object || object->isDead())
+        {
+            destroyEmitters();
+            std::memset(&mLastFrame, 0, sizeof(mLastFrame));
+            mHaveSmoothedCentre = false;
+            mSmoothedScale = 1.f;
+            mProjectorRetryTicks = 0;
+            mOmniRetryTicks = 0;
+            mCatchlightRetryTicks = 0;
+            mLastPresentationTime = presentation_time;
+            return;
+        }
+
+        LLViewerObject* root = object->getRootEdit();
+        if (!root)
+        {
+            root = object;
+        }
+
+        // Build an agent-space, world-axis box around the complete linkset.
+        // The identity rotation makes getCenterAgent()/getExtentLocal() use
+        // the same region-relative axes consumed by getPosGlobalFromAgent().
+        LLBBox bounds(root->getPositionAgent(), LLQuaternion(),
+                      LLVector3(), LLVector3());
+        bounds.addPointLocal(LLVector3());
+        bounds.addBBoxAgent(root->getBoundingBoxAgent());
+        for (LLViewerObject* child : root->getChildren())
+        {
+            if (child && !child->isDead())
+            {
+                bounds.addBBoxAgent(child->getBoundingBoxAgent());
+            }
+        }
+        object_centre_agent = bounds.getCenterAgent();
+        const LLVector3 extent = bounds.getExtentLocal();
+        const F32 object_radius = 0.5f * std::max(
+            {extent.mV[VX], extent.mV[VY], extent.mV[VZ]});
+        object_subject_scale = objectRadiusToSubjectScale(object_radius);
+    }
 
     LLVOAvatar* group_members[GROUP_MAX_MEMBERS] = {};
     U32 resolved_group_slots = 0;
     S32 group_count = 0;
-    if (mGroupEnabled)
+    if (!object_targeted && mGroupEnabled)
     {
         group_count = gatherGroupMembers(
             mGroupSlots, group_members, resolved_group_slots);
@@ -1567,10 +2088,11 @@ void ALCineLightRig::tickShared(
         mLastResolvedGroupSlots = 0;
     }
 
-    LLVOAvatar* avatar = mGroupEnabled
-        ? (group_count > 0 ? group_members[0] : nullptr)
-        : resolveSlotAvatar();
-    if (!avatar)
+    LLVOAvatar* avatar = object_targeted ? nullptr
+        : (mGroupEnabled
+            ? (group_count > 0 ? group_members[0] : nullptr)
+            : resolveSlotAvatar());
+    if (!object_targeted && !avatar)
     {
         destroyEmitters();
         std::memset(&mLastFrame, 0, sizeof(mLastFrame));
@@ -1586,7 +2108,7 @@ void ALCineLightRig::tickShared(
     bool aggregate_group = false;
     LLVector3 aggregate_centre_agent;
     F32 aggregate_subject_scale = 1.f;
-    if (mGroupEnabled && group_count > 1)
+    if (!object_targeted && mGroupEnabled && group_count > 1)
     {
         const S32 group_track_mode = track_mode_setting == 1 ? 1 : 0;
         F32 points[GROUP_MAX_MEMBERS][3];
@@ -1646,22 +2168,29 @@ void ALCineLightRig::tickShared(
         }
     }
 
-    // The skeleton root is the rendered body facing. Actor Mover can override
-    // it without changing the viewer-object rotation; its world axes are the
-    // same region X/Y frame used by the rig's global emitter offsets.
-    if (LLJoint* root = avatar->getRootJoint())
+    if (!object_targeted)
     {
-        const LLVector3 forward =
-            LLVector3(1.f, 0.f, 0.f) * root->getWorldRotation();
-        F32 facing = atan2f(forward.mV[VY], forward.mV[VX]) * RAD_TO_DEG;
-        if (!std::isfinite(facing))
+        // The skeleton root is the rendered body facing. Actor Mover can
+        // override it without changing the viewer-object rotation; its world
+        // axes are the same region X/Y frame used by the rig's global offsets.
+        if (LLJoint* root = avatar->getRootJoint())
         {
-            facing = 0.f;
+            const LLVector3 forward =
+                LLVector3(1.f, 0.f, 0.f) * root->getWorldRotation();
+            F32 facing = atan2f(forward.mV[VY], forward.mV[VX]) * RAD_TO_DEG;
+            if (!std::isfinite(facing))
+            {
+                facing = 0.f;
+            }
+            transforms.mFacingAzimuthDeg = facing;
         }
-        transforms.mFacingAzimuthDeg = facing;
     }
 
-    if (aggregate_group)
+    if (object_targeted)
+    {
+        globals.mSubjectScale = object_subject_scale;
+    }
+    else if (aggregate_group)
     {
         globals.mSubjectScale = aggregate_subject_scale;
     }
@@ -1676,7 +2205,7 @@ void ALCineLightRig::tickShared(
     const F32 subject_scale = globals.mSubjectScale;
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
     {
-        mShadowSoftness[i] = shadow_softness ? shadow_softness[i] : 0.f;
+        mShadowSoftness[i] = effective_shadow_softness[i];
     }
 
     LLViewerRegion* region = gAgent.getRegion();
@@ -1690,7 +2219,7 @@ void ALCineLightRig::tickShared(
 
     // Disable is an immediate lifecycle transition, even if the four main
     // projectors are currently in their retry window.
-    if (!catchlight_enabled)
+    if (!catchlight_enabled || object_targeted)
     {
         destroyCatchlight();
         mCatchlightRetryTicks = 0;
@@ -1744,7 +2273,8 @@ void ALCineLightRig::tickShared(
         mOmniRetryTicks = 0;
     }
 
-    if (catchlight_enabled && !emitterReady(mCatchlight, region))
+    if (!object_targeted && catchlight_enabled &&
+        !emitterReady(mCatchlight, region))
     {
         if (mCatchlightRetryTicks > 0)
         {
@@ -1755,14 +2285,17 @@ void ALCineLightRig::tickShared(
             mCatchlightRetryTicks = EMITTER_RETRY_TICKS;
         }
     }
-    else if (catchlight_enabled)
+    else if (!object_targeted && catchlight_enabled)
     {
         mCatchlightRetryTicks = 0;
     }
 
     const S32 requested_fx = std::clamp(
-        static_cast<S32>(fx_setting), -1, FX_COUNT - 1);
-    if (requested_fx != mActiveFX)
+        effective_fx, -1, FX_COUNT - 1);
+    const bool cue_fx_restart = cue_driven &&
+        mCueFXGeneration != mAppliedCueFXGeneration &&
+        presentation_time >= cue_fx_epoch;
+    if (requested_fx != mActiveFX || cue_fx_restart)
     {
         mTransitionActive = false;
         mHaveTarget = false;
@@ -1772,15 +2305,25 @@ void ALCineLightRig::tickShared(
             const F64 phase = mPendingFXId == mActiveFX &&
                               mPendingFXPhase >= 0.0
                 ? mPendingFXPhase : 0.0;
-            mFXStart = presentation_time - phase;
+            mFXStart = cue_driven ? cue_fx_epoch : presentation_time - phase;
         }
         mPendingFXPhase = -1.0;
         mPendingFXId = -1;
+        if (cue_driven)
+        {
+            mAppliedCueFXGeneration = mCueFXGeneration;
+        }
     }
 
     LLVector3 centre_agent;
     const S32 track_mode = track_mode_setting == 1 ? 1 : 0;
-    if (aggregate_group)
+    if (object_targeted)
+    {
+        // No avatar head-height or joint offsets: the linkset box centre is
+        // already the object's framing point.
+        centre_agent = object_centre_agent;
+    }
+    else if (aggregate_group)
     {
         centre_agent = aggregate_centre_agent;
     }
@@ -1806,8 +2349,12 @@ void ALCineLightRig::tickShared(
     {
         offset_z = 0.f;
     }
-    centre_agent.mV[VZ] +=
-        std::clamp(offset_z, -10.f, 10.f) * subject_scale;
+    // Avatar framing scales the manual Z nudge by the subject scale. An object
+    // target frames on its bounding-box centre, so apply the nudge in raw metres
+    // (0 == verbatim centre) instead of amplifying it by the object's
+    // size-derived scale, which would aim large targets well off centre.
+    centre_agent.mV[VZ] += std::clamp(offset_z, -10.f, 10.f) *
+        (object_targeted ? 1.f : subject_scale);
     const LLVector3d true_centre = gAgent.getPosGlobalFromAgent(centre_agent);
 
     F32 damping = damping_setting;
@@ -1848,30 +2395,95 @@ void ALCineLightRig::tickShared(
         copyLights(fx_base, fx_setup.mLights);
         for (S32 i = 0; i < LIGHT_COUNT; ++i)
         {
-            // FX owns the animated profile/pose, while the operator's gel is
-            // a physical modifier on that light and remains layered above it.
+            // FX owns the animated profile/pose. Physical gel and practical
+            // flicker modifiers remain layered above that rig-wide animation.
             fx_setup.mLights[i].mGel = setup.mLights[i].mGel;
+            fx_setup.mLights[i].mFlickerProgram =
+                setup.mLights[i].mFlickerProgram;
+            fx_setup.mLights[i].mFlickerAmount =
+                setup.mLights[i].mFlickerAmount;
+            fx_setup.mLights[i].mFixtureMode =
+                setup.mLights[i].mFixtureMode;
+            fx_setup.mLights[i].mKelvin = setup.mLights[i].mKelvin;
+            for (S32 slot = 0; slot < FIXTURE_GEL_SLOT_COUNT; ++slot)
+            {
+                fx_setup.mLights[i].mGelSlot[slot] =
+                    setup.mLights[i].mGelSlot[slot];
+            }
+            fx_setup.mLights[i].mSourceSizeM =
+                setup.mLights[i].mSourceSizeM;
+            fx_setup.mLights[i].mFixturePreset =
+                setup.mLights[i].mFixturePreset;
         }
         computeLive(fx_setup, transforms, desired);
         copyLights(desired, mCurrentLive);
         copyLights(desired, mTransitionTarget);
         mCurrentRadius = setup.mRadius;
         mTransitionRadiusTarget = setup.mRadius;
+        mCurrentGlobals = globals;
+        mTransitionGlobalsTarget = globals;
         mHaveTarget = true;
         mTransitionActive = false;
     }
     else
     {
         computeLive(setup, transforms, desired);
-        updateTransition(desired, setup.mRadius, globals.mTransitionSec,
+        updateTransition(desired, setup.mRadius, globals,
+                         cue_driven ? 0.f : globals.mTransitionSec,
                          presentation_time);
     }
 
-    globals.mSubjectScale = mSmoothedScale;
-    render(mCurrentRadius, mCurrentLive, globals, mLastFrame);
+    Globals render_globals = mCurrentGlobals;
+    render_globals.mSubjectScale = mSmoothedScale;
+    render(mCurrentRadius, mCurrentLive, render_globals, mLastFrame);
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+    {
+        if (mCurrentLive[i].mFixtureMode &&
+            (!cue_driven || mCueCurrent.mShadowSoftOverride[i] < 0.f))
+        {
+            mShadowSoftness[i] = mLastFrame.mDerivedShadowSoftness[i];
+        }
+    }
+    if (mActiveFX >= 0)
+    {
+        for (S32 i = 0; i < LIGHT_COUNT; ++i)
+        {
+            if (!mCurrentLive[i].mFixtureMode)
+            {
+                continue;
+            }
+            // Fixture mode replaces the base profile with physical white, but
+            // FX still owns its animated profile swatch. Reinterpret that
+            // swatch as the established top-layer color multiplier so police,
+            // club, fire, and other color programs keep their authored motion.
+            F32 fx_color[3];
+            profileSRGB(mCurrentLive[i].mProfile, fx_color);
+            applyFlickerModulation(mLastFrame.mProj[i], 1.f, fx_color);
+            applyFlickerModulation(mLastFrame.mOmni[i], 1.f, fx_color);
+        }
+    }
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+    {
+        if (mCurrentLive[i].mFlickerProgram == FLICKER_NONE ||
+            mCurrentLive[i].mFlickerAmount <= 0.f)
+        {
+            continue;
+        }
+        F32 intensity_mul = 1.f;
+        F32 color_mul[3] = { 1.f, 1.f, 1.f };
+        evalFlicker(mCurrentLive[i].mFlickerProgram,
+                    flickerLightSeed(render_globals.mSeed, i), presentation_time,
+                    mCurrentLive[i].mFlickerAmount,
+                    intensity_mul, color_mul);
+        applyFlickerModulation(
+            mLastFrame.mProj[i], intensity_mul, color_mul);
+        applyFlickerModulation(
+            mLastFrame.mOmni[i], intensity_mul, color_mul);
+    }
     applyFrame(mLastFrame, mSmoothedCentre, true_centre,
-               mCurrentRadius, globals.mSubjectScale, cookie_setting);
-    if (catchlight_enabled && emitterReady(mCatchlight, region))
+               mCurrentRadius, render_globals.mSubjectScale, cookie_setting);
+    if (!object_targeted && catchlight_enabled &&
+        emitterReady(mCatchlight, region))
     {
         // A group rig's representative scale includes member spread and is not
         // the clone scale of the avatar whose eye joints anchor the catchlight.
@@ -1879,10 +2491,11 @@ void ALCineLightRig::tickShared(
         // groups substitute the chosen target avatar's own scale.
         const F32 catchlight_subject_scale = aggregate_group
             ? sanitizeSubjectScale(avatar->getUniformScale())
-            : globals.mSubjectScale;
+            : render_globals.mSubjectScale;
         applyCatchlight(avatar, catchlight_subject_scale,
-                        globals.mMasterTempMired, catchlight_ev,
-                        catchlight_size, catchlight_angle, cookie_setting);
+                         render_globals.mMasterTempMired, catchlight_ev,
+                         catchlight_size * mLastFrame.mCatchlightSizeScale,
+                         catchlight_angle, cookie_setting);
     }
     // Every enabled rig manages its OWN projectors' shadow casting per its own
     // ShadowMode. The deferred pipeline already caps the total at
@@ -2053,6 +2666,24 @@ std::string ALCineLightRig::presetsDir()
 std::string ALCineLightRig::presetPath(const std::string& name)
 {
     return gDirUtilp->add(presetsDir(), LLURI::escape(name) + ".xml");
+}
+
+//static
+std::string ALCineLightRig::cueListsDir()
+{
+    const std::string directory = gDirUtilp->getExpandedFilename(
+        LL_PATH_USER_SETTINGS, CUE_LIST_SUBDIR);
+    if (!gDirUtilp->fileExists(directory))
+    {
+        LLFile::mkdir(directory);
+    }
+    return directory;
+}
+
+//static
+std::string ALCineLightRig::cueListPath(const std::string& name)
+{
+    return gDirUtilp->add(cueListsDir(), LLURI::escape(name) + ".xml");
 }
 
 //static
@@ -2385,6 +3016,448 @@ bool ALCineLightRig::deleteSetup(const std::string& name)
            LLFile::remove(presetPath(name)) == 0;
 }
 
+void ALCineLightRig::setCueList(const CueList& input)
+{
+    mCueList = sanitizeCueList(input);
+    mCueTransitionStart = captureCueState();
+    mCueCurrent = releasedCueState(mCueTransitionStart);
+    mCueRuntimeTarget = Cue();
+    mCueActiveIndex = -1;
+    mCueRelease = false;
+    mCueRuntimeActive = mCueList.mTimecodeMode && !mCueList.mCues.empty();
+    ++mCueRevision;
+    ++mCueFXGeneration;
+}
+
+CueState ALCineLightRig::captureCueState() const
+{
+    CueState state;
+    readSettings(state.mSetup, state.mGlobals, state.mTransforms);
+    state.mFX = std::clamp(
+        gSavedSettings.getS32("CineLightRigFX"), -1, FX_COUNT - 1);
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+    {
+        const std::string prefix = std::string("CineLightRig") + ROLE_NAMES[i];
+        state.mShadowSoftOverride[i] = state.mSetup.mLights[i].mFixtureMode
+            ? -1.f : std::clamp(
+                gSavedSettings.getF32(prefix + "ShadowSoft"), 0.f, 8.f);
+    }
+    return state;
+}
+
+CueState ALCineLightRig::releasedCueState(const CueState& input)
+{
+    CueState output = input;
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+    {
+        output.mSetup.mLights[i].mOn = false;
+        output.mShadowSoftOverride[i] = -1.f;
+    }
+    output.mFX = -1;
+    return output;
+}
+
+Cue ALCineLightRig::captureCue(const std::string& label) const
+{
+    const CueState state = captureCueState();
+    Cue cue;
+    cue.mLabel = label;
+    cue.mSetup = state.mSetup;
+    cue.mGlobals = state.mGlobals;
+    cue.mTransforms = state.mTransforms;
+    cue.mFX = state.mFX;
+    cue.mProvenance = "Captured live rig";
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+    {
+        cue.mShadowSoftOverride[i] = state.mShadowSoftOverride[i];
+    }
+    return sanitizeCue(cue);
+}
+
+std::vector<std::string> ALCineLightRig::cueListNames() const
+{
+    std::vector<std::string> names;
+    LLDirIterator iterator(cueListsDir(), "*.xml");
+    std::string file;
+    while (iterator.next(file))
+    {
+        names.emplace_back(LLURI::unescape(
+            gDirUtilp->getBaseFileName(file, true)));
+    }
+    std::sort(names.begin(), names.end());
+    return names;
+}
+
+bool ALCineLightRig::loadCueList(const std::string& name)
+{
+    llifstream input(cueListPath(name).c_str());
+    if (!input.is_open())
+    {
+        return false;
+    }
+    LLSD data;
+    const S32 parsed = LLSDSerialize::fromXML(data, input);
+    const bool stream_bad = input.bad();
+    input.close();
+    CueList list;
+    if (parsed == LLSDParser::PARSE_FAILURE || stream_bad ||
+        !cueListFromLLSD(data, list))
+    {
+        LL_WARNS("CineLightRig") << "Malformed cue list " << name << LL_ENDL;
+        return false;
+    }
+    if (list.mName.empty())
+    {
+        list.mName = name;
+    }
+    setCueList(list);
+    return true;
+}
+
+bool ALCineLightRig::saveCueList(const std::string& name)
+{
+    std::string clean_name = name;
+    LLStringUtil::trim(clean_name);
+    if (clean_name.empty())
+    {
+        return false;
+    }
+    CueList list = mCueList;
+    list.mName = clean_name;
+    const LLSD data = cueListToLLSD(list);
+    const std::string path = cueListPath(clean_name);
+    const std::string temporary = path + "." +
+        LLUUID::generateNewID().asString() + ".tmp";
+    llofstream output(temporary.c_str());
+    if (!output.is_open())
+    {
+        return false;
+    }
+    const S32 serialized = LLSDSerialize::toPrettyXML(data, output);
+    output.flush();
+    const bool succeeded = serialized > 0 && output.good();
+    output.close();
+    if (!succeeded || output.fail() || LLFile::rename(temporary, path) != 0)
+    {
+        LLFile::remove(temporary);
+        return false;
+    }
+    mCueList.mName = clean_name;
+    ++mCueRevision;
+    return true;
+}
+
+bool ALCineLightRig::deleteCueList(const std::string& name)
+{
+    return !name.empty() && LLFile::remove(cueListPath(name)) == 0;
+}
+
+LLSD ALCineLightRig::cueListData() const
+{
+    return cueListToLLSD(mCueList);
+}
+
+//static
+bool ALCineLightRig::validateCueListData(const LLSD& data)
+{
+    CueList ignored;
+    return cueListFromLLSD(data, ignored);
+}
+
+bool ALCineLightRig::applyCueListData(const LLSD& data)
+{
+    CueList list;
+    if (!cueListFromLLSD(data, list))
+    {
+        return false;
+    }
+    // Per-instance lists are restored while only the selected rig's settings
+    // are live.  Build the pre-roll state from the list itself so a timecode
+    // rig cannot inherit another slot's setup before its first absolute cue.
+    mCueList = sanitizeCueList(list);
+    mCueTransitionStart = mCueList.mCues.empty()
+        ? CueState() : cueTargetState(mCueList.mCues.front());
+    mCueCurrent = releasedCueState(mCueTransitionStart);
+    mCueRuntimeTarget = Cue();
+    mCueActiveIndex = -1;
+    mCueRelease = false;
+    mCueRuntimeActive = mCueList.mTimecodeMode && !mCueList.mCues.empty();
+    ++mCueRevision;
+    ++mCueFXGeneration;
+    return true;
+}
+
+void ALCineLightRig::applyCueSceneState(const LLSD& data)
+{
+    CueList cue_list;
+    if (!data["cue_list"].isMap() ||
+        !cueListFromLLSD(data["cue_list"], cue_list))
+    {
+        if (data.has("cue_list"))
+        {
+            LL_WARNS("CineLightRig")
+                << "Director scene contains a malformed lighting cue list; "
+                   "leaving the current list untouched" << LL_ENDL;
+        }
+        return;
+    }
+
+    setCueList(cue_list);
+    Cue start_snapshot;
+    const bool have_start_snapshot =
+        data["cue_transition_start"].isMap() &&
+        cueFromLLSD(data["cue_transition_start"], start_snapshot);
+    if (have_start_snapshot)
+    {
+        mCueTransitionStart = cueTargetState(start_snapshot);
+        mCueCurrent = releasedCueState(mCueTransitionStart);
+    }
+
+    const F64 frame_time =
+        LLPresentationTime::currentFrame().presentation_time;
+    const F64 now = std::isfinite(frame_time) ? std::max(frame_time, 0.0) : 0.0;
+    if (cue_list.mTimecodeMode)
+    {
+        if (!cue_list.mCues.empty())
+        {
+            S32 active = -1;
+            mCueCurrent = evaluateTimecodeCueList(
+                mCueList, releasedCueState(mCueTransitionStart),
+                now, &active);
+            mCueActiveIndex = active;
+            mCueFXEpoch = active >= 0
+                ? mCueList.mCues[active].mAtSec +
+                    mCueList.mCues[active].mDelaySec
+                : now;
+            ++mCueFXGeneration;
+        }
+        return;
+    }
+
+    const F64 encoded_elapsed = data["cue_elapsed"].asReal();
+    const F64 elapsed = std::isfinite(encoded_elapsed)
+        ? std::clamp(encoded_elapsed, 0.0, 86400.0) : 0.0;
+    const bool release = data["cue_release"].asBoolean();
+    const S32 active = data["cue_active"].asInteger();
+    const bool valid_active = active >= 0 &&
+        active < static_cast<S32>(cue_list.mCues.size());
+    Cue runtime_target;
+    if (have_start_snapshot && (release || valid_active) &&
+        data["cue_runtime_target"].isMap() &&
+        cueFromLLSD(data["cue_runtime_target"], runtime_target))
+    {
+        mCueRuntimeTarget = runtime_target;
+        mCueGoTime = now - elapsed;
+        mCueFXEpoch = mCueGoTime + mCueRuntimeTarget.mDelaySec;
+        mCueActiveIndex = release ? -1 : active;
+        mCueRuntimeActive = true;
+        mCueRelease = release;
+        mCueCurrent = evaluateCueTransition(
+            mCueTransitionStart, mCueRuntimeTarget, now, mCueGoTime);
+        ++mCueFXGeneration;
+        return;
+    }
+
+    // Backward-compatible reconstruction for scenes written before exact
+    // transition endpoints were embedded.
+    if (release)
+    {
+        cueRelease(now - elapsed);
+    }
+    else if (valid_active)
+    {
+        startCueTransition(active, now - elapsed, false);
+    }
+}
+
+void ALCineLightRig::startCueTransition(S32 index, F64 presentation_time,
+                                       bool snap)
+{
+    if (index < 0 || index >= static_cast<S32>(mCueList.mCues.size()) ||
+        !std::isfinite(presentation_time))
+    {
+        return;
+    }
+    if (mCueRuntimeActive)
+    {
+        mCueCurrent = mCueList.mTimecodeMode
+            ? evaluateTimecodeCueList(
+                mCueList, releasedCueState(mCueTransitionStart),
+                presentation_time)
+            : evaluateCueTransition(
+                mCueTransitionStart, mCueRuntimeTarget,
+                presentation_time, mCueGoTime);
+    }
+    else
+    {
+        mCueCurrent = captureCueState();
+    }
+    mCueTransitionStart = mCueCurrent;
+    mCueRuntimeTarget = mCueList.mCues[index];
+    if (snap)
+    {
+        mCueRuntimeTarget.mDelaySec = 0.f;
+        mCueRuntimeTarget.mFadeSec = 0.f;
+        mCueRuntimeTarget.mProfile = CUE_FADE_SNAP;
+    }
+    mCueGoTime = presentation_time;
+    mCueFXEpoch = presentation_time + mCueRuntimeTarget.mDelaySec;
+    mCueActiveIndex = index;
+    mCueRuntimeActive = true;
+    mCueRelease = false;
+    ++mCueFXGeneration;
+}
+
+void ALCineLightRig::cueGo(F64 presentation_time)
+{
+    if (mCueList.mTimecodeMode || mCueList.mCues.empty())
+    {
+        return;
+    }
+    const S32 next = mCueActiveIndex < 0 ? 0 : mCueActiveIndex + 1;
+    if (next < static_cast<S32>(mCueList.mCues.size()))
+    {
+        startCueTransition(next, presentation_time, false);
+    }
+}
+
+void ALCineLightRig::cueBack(F64 presentation_time)
+{
+    if (mCueList.mTimecodeMode || mCueList.mCues.empty())
+    {
+        return;
+    }
+    const S32 current = std::clamp(
+        mCueActiveIndex, 0, static_cast<S32>(mCueList.mCues.size()) - 1);
+    const S32 previous = std::max(0, current - 1);
+    const Cue timing = mCueList.mCues[current];
+    startCueTransition(previous, presentation_time, false);
+    // Console BACK uses the current cue's timing while targeting the previous
+    // complete state.
+    mCueRuntimeTarget.mFadeSec = timing.mFadeSec;
+    mCueRuntimeTarget.mDelaySec = timing.mDelaySec;
+    mCueRuntimeTarget.mProfile = timing.mProfile;
+    mCueFXEpoch = presentation_time + timing.mDelaySec;
+}
+
+void ALCineLightRig::cueGoto(S32 index, F64 presentation_time, bool snap)
+{
+    if (!mCueList.mTimecodeMode)
+    {
+        startCueTransition(index, presentation_time, snap);
+    }
+}
+
+void ALCineLightRig::cueRelease(F64 presentation_time)
+{
+    if (!std::isfinite(presentation_time))
+    {
+        return;
+    }
+    if (mCueRuntimeActive && !mCueList.mTimecodeMode)
+    {
+        mCueCurrent = evaluateCueTransition(
+            mCueTransitionStart, mCueRuntimeTarget,
+            presentation_time, mCueGoTime);
+    }
+    else
+    {
+        mCueCurrent = captureCueState();
+    }
+    mCueTransitionStart = mCueCurrent;
+    const CueState released = releasedCueState(mCueCurrent);
+    mCueRuntimeTarget = Cue();
+    mCueRuntimeTarget.mLabel = "Release";
+    mCueRuntimeTarget.mSetup = released.mSetup;
+    mCueRuntimeTarget.mGlobals = released.mGlobals;
+    mCueRuntimeTarget.mTransforms = released.mTransforms;
+    mCueRuntimeTarget.mFadeSec = mCueCurrent.mGlobals.mTransitionSec;
+    mCueRuntimeTarget.mFX = -1;
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+    {
+        mCueRuntimeTarget.mShadowSoftOverride[i] = -1.f;
+    }
+    mCueGoTime = presentation_time;
+    mCueFXEpoch = presentation_time;
+    mCueActiveIndex = -1;
+    mCueRuntimeActive = true;
+    mCueRelease = true;
+    ++mCueFXGeneration;
+}
+
+bool ALCineLightRig::evaluateCuePlayback(
+    F64 presentation_time, Setup& setup, Globals& globals,
+    Transforms& transforms, F32 shadow_softness[LIGHT_COUNT],
+    S32& fx_setting, F64& fx_epoch)
+{
+    if (mCueList.mTimecodeMode)
+    {
+        if (mCueList.mCues.empty())
+        {
+            return false;
+        }
+        S32 index = -1;
+        mCueCurrent = evaluateTimecodeCueList(
+            mCueList, releasedCueState(mCueTransitionStart),
+            presentation_time, &index);
+        if (index != mCueActiveIndex)
+        {
+            mCueActiveIndex = index;
+            mCueFXEpoch = index >= 0
+                ? mCueList.mCues[index].mAtSec +
+                    mCueList.mCues[index].mDelaySec
+                : presentation_time;
+            ++mCueFXGeneration;
+        }
+        mCueRuntimeActive = true;
+    }
+    else
+    {
+        if (!mCueRuntimeActive)
+        {
+            return false;
+        }
+        mCueCurrent = evaluateCueTransition(
+            mCueTransitionStart, mCueRuntimeTarget,
+            presentation_time, mCueGoTime);
+        // Catch up a complete zero/short-follow chain after a long frame or a
+        // suspended window.  The row bound also makes zero-duration follows
+        // finite while preserving their console ordering.
+        S32 follow_guard = 0;
+        while (!mCueRelease && mCueActiveIndex >= 0 &&
+               mCueActiveIndex < static_cast<S32>(mCueList.mCues.size()) &&
+               follow_guard++ < static_cast<S32>(mCueList.mCues.size()))
+        {
+            const Cue& active = mCueList.mCues[mCueActiveIndex];
+            const F64 follow_at = mCueGoTime + active.mDelaySec +
+                active.mFadeSec + std::max(active.mFollow, 0);
+            if (active.mFollow < 0 || presentation_time < follow_at ||
+                mCueActiveIndex + 1 >= static_cast<S32>(mCueList.mCues.size()))
+            {
+                break;
+            }
+            startCueTransition(mCueActiveIndex + 1, follow_at, false);
+            mCueCurrent = evaluateCueTransition(
+                mCueTransitionStart, mCueRuntimeTarget,
+                presentation_time, mCueGoTime);
+        }
+    }
+
+    setup = mCueCurrent.mSetup;
+    globals = mCueCurrent.mGlobals;
+    transforms = mCueCurrent.mTransforms;
+    fx_setting = mCueCurrent.mFX;
+    fx_epoch = mCueFXEpoch;
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+    {
+        if (mCueCurrent.mShadowSoftOverride[i] >= 0.f)
+        {
+            shadow_softness[i] = mCueCurrent.mShadowSoftOverride[i];
+        }
+    }
+    return true;
+}
+
 LLSD ALCineLightRig::sceneData() const
 {
     Setup setup;
@@ -2416,7 +3489,27 @@ LLSD ALCineLightRig::sceneData() const
         data["shafts"].append(mShaftEnabled[i]);
         data["heroes"].append(mHeroEnabled[i]);
     }
+    // setupToLLSD carries every authored per-light field, including fixture
+    // mode/Kelvin/gel stack/source size and practical flicker.
     data["base"] = setupToLLSD(setup, globals);
+    data["cue_list"] = cueListToLLSD(mCueList);
+    data["cue_active"] = mCueActiveIndex;
+    data["cue_release"] = mCueRelease;
+    data["cue_elapsed"] = mCueRuntimeActive &&
+        mLastPresentationTime >= mCueGoTime
+        ? mLastPresentationTime - mCueGoTime : 0.0;
+    if (mCueRuntimeActive)
+    {
+        // Preserve the actual transition endpoints.  Active-index + elapsed is
+        // insufficient after BACK, GOTO during a fade, or RELEASE because the
+        // start can be an arbitrary interpolated console state.
+        data["cue_transition_start"] = cueToLLSD(cueFromState(
+            mCueTransitionStart, "Scene cue transition start"));
+        if (!mCueList.mTimecodeMode)
+        {
+            data["cue_runtime_target"] = cueToLLSD(mCueRuntimeTarget);
+        }
+    }
     return data;
 }
 
@@ -2498,11 +3591,14 @@ void ALCineLightRig::applySceneData(const LLSD& data)
         Setup setup;
         if (setupFromLLSD(data["base"], setup))
         {
+            // Includes additive practical-flicker and fixture fields; old
+            // scenes read their inert legacy-mode/default fixture values.
             writeSetupToSettings(setup);
             applyOptionalSetupGlobals(
                 optionalSetupGlobalsFromLLSD(data["base"]));
         }
     }
+    applyCueSceneState(data);
     if (data.has("seed"))
     {
         U32 seed = 0;

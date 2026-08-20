@@ -136,8 +136,8 @@ private:
     static LLUUID avatarFromSelection();
     void onClickSetSubjectFromSelection(S32 subject);
     void onClickClearSubject(S32 subject);
-    void onClickSetLookAtCamera(bool selected);
-    void onClickManagePrism();
+    void onOpenActorGaze();
+    void onOpenVirtualCam();
     void refreshCameraTab();
 
     // ---- Takes tab ----
@@ -229,13 +229,6 @@ private:
     LLButton*  mClearBBtn = nullptr;
     LLButton*  mClearCBtn = nullptr;
     LLButton*  mClearDBtn = nullptr;
-    LLButton*  mLookAtSetBtn = nullptr;
-    LLButton*  mLookAtClearBtn = nullptr;
-    LLTextBox* mPrismSummaryText = nullptr;
-    LLButton*  mPrismManageBtn = nullptr;
-    U64        mPrismConfigurationRevision = 0;
-    U64        mPrismRuntimeRevision = 0;
-    bool       mHavePrismSummary = false;
 
     // Animate tab
     LLTextBox*        mAnimateHeader = nullptr;

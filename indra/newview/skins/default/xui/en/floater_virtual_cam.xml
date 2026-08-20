@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<floater
+ can_close="true"
+ can_resize="true"
+ height="720"
+ layout="topleft"
+ min_height="420"
+ min_width="374"
+ name="virtual_cam"
+ save_rect="true"
+ single_instance="true"
+ title="VIRTUAL CAM"
+ width="390">
+    <check_box
+     control_name="PrismLensEnabled"
+     follows="left|top"
+     height="18"
+     label="Enable Virtual Cam"
+     layout="topleft"
+     left="10"
+     top="30"
+     name="prism_lens_enabled"
+     tool_tip="Master render toggle. Captures and displays remain editable while disabled."
+     width="138" />
+    <text
+     follows="left|top|right"
+     height="18"
+     layout="topleft"
+     left="150"
+     name="prism_summary"
+     top="32"
+     tool_tip="Open Virtual Cam Manager for camera sources, faces, optics, picture FPS, and adaptive performance."
+     use_ellipses="true"
+     width="118">
+        VCam 0/8 captures | 0/16 faces
+    </text>
+    <button
+     follows="right|top"
+     height="22"
+     label="Manage VCam..."
+     layout="topleft"
+     left="272"
+     top="28"
+     name="btn_prism_manage"
+     tool_tip="Open the dedicated capture, display, optics, picture-rate, and performance editor."
+     width="92" />
+    <scroll_container
+     follows="all"
+     height="654"
+     layout="topleft"
+     left="0"
+     top="62"
+     name="virtual_cam_flow_scroll"
+     opaque="false"
+     size="15"
+     width="390">
+        <flow_grid
+         card_width="340"
+         column_gap="12"
+         follows="all"
+         height="8"
+         layout="topleft"
+         left="0"
+         max_columns="4"
+         name="virtual_cam_flow_grid"
+         pad="8"
+         row_gap="12"
+         top="0"
+         width="370">
+            <panel
+             background_visible="false"
+             border="true"
+             follows="left|top"
+             height="676"
+             layout="topleft"
+             left="0"
+             name="camera_switcher_card"
+             top="0"
+             width="340">
+                <text
+                 follows="left|top|right"
+                 font="SansSerifBold"
+                 height="16"
+                 layout="topleft"
+                 left="8"
+                 name="camera_switcher_card_title"
+                 top="6"
+                 width="324">
+                    Switcher
+                </text>
+                <panel
+                 class="panel_director_switcher"
+                 filename="panel_director_switcher.xml"
+                 follows="left|top|right"
+                 height="640"
+                 layout="topleft"
+                 left="0"
+                 name="director_switcher_embedded"
+                 top="28"
+                 width="340" />
+            </panel>
+            <panel
+             background_visible="false"
+             border="true"
+             follows="left|top"
+             height="226"
+             layout="topleft"
+             left="0"
+             name="camera_shot_builders_card"
+             top="0"
+             width="340">
+                <text follows="left|top|right" font="SansSerifBold" height="16"
+                 layout="topleft" left="8" name="camera_shot_builders_title"
+                 top="6" width="324">
+                    Shot Builders
+                </text>
+                <button follows="left|top" height="22" label="OTS from A/B"
+                 layout="topleft" left="8" name="btn_build_ots_pair" top="28"
+                 width="140" />
+                <spinner control_name="PrismOtsShoulderOffset" decimal_digits="2"
+                 follows="left|top" height="18" increment="0.05" label="Shoulder"
+                 label_width="62" layout="topleft" left="8" max_val="2"
+                 min_val="0.05" name="prism_ots_shoulder" top="56" width="154" />
+                <spinner control_name="PrismOtsCameraDistance" decimal_digits="2"
+                 follows="left|top" height="18" increment="0.05" label="Distance"
+                 label_width="62" layout="topleft" left="174" max_val="8"
+                 min_val="0.25" name="prism_ots_distance" top="56" width="154" />
+                <spinner control_name="PrismOtsVerticalFovDeg" decimal_digits="1"
+                 follows="left|top" height="18" increment="1" label="Lens FOV"
+                 label_width="62" layout="topleft" left="8" max_val="175"
+                 min_val="5" name="prism_ots_fov" top="80" width="154" />
+                <spinner control_name="PrismOtsHeightBias" decimal_digits="2"
+                 follows="left|top" height="18" increment="0.05" label="Height bias"
+                 label_width="70" layout="topleft" left="174" max_val="1"
+                 min_val="-1" name="prism_ots_height_bias" top="80" width="154" />
+                <button follows="left|top" height="22" label="Start Zolly"
+                 layout="topleft" left="8" name="btn_start_zolly" top="110"
+                 width="100" />
+                <spinner control_name="CinematicCamVertigoDuration" decimal_digits="1"
+                 follows="left|top" height="18" increment="0.5" label="Duration"
+                 label_width="52" layout="topleft" left="116" max_val="60"
+                 min_val="0.1" name="zolly_duration" top="112" width="104" />
+                <combo_box control_name="CinematicCamVertigoDirection"
+                 follows="left|top" height="20" layout="topleft" left="228"
+                 name="zolly_direction" top="110" width="100">
+                    <combo_box.item label="Dolly out" name="zolly_out" value="0" />
+                    <combo_box.item label="Dolly in" name="zolly_in" value="1" />
+                </combo_box>
+                <button follows="left|top" height="22" label="Start Hero Arc"
+                 layout="topleft" left="8" name="btn_start_hero_arc" top="142"
+                 width="100" />
+                <spinner control_name="CinematicCamArcGeneratorAngle" decimal_digits="0"
+                 follows="left|top" height="18" increment="5" label="Angle"
+                 label_width="38" layout="topleft" left="116" max_val="180"
+                 min_val="30" name="hero_arc_angle" top="144" width="104" />
+                <spinner control_name="CinematicCamArcDuration" decimal_digits="1"
+                 follows="left|top" height="18" increment="0.5" label="Sec"
+                 label_width="28" layout="topleft" left="228" max_val="60"
+                 min_val="0.1" name="hero_arc_duration" top="144" width="100" />
+                <spinner control_name="CinematicCamArcHeightDrift" decimal_digits="2"
+                 follows="left|top" height="18" increment="0.05" label="Height drift"
+                 label_width="72" layout="topleft" left="8" max_val="5"
+                 min_val="-5" name="hero_arc_height_drift" top="174" width="154" />
+                <check_box control_name="CinematicCamSpeedRampEnabled"
+                 follows="left|top" height="18" label="Speed ramp"
+                 layout="topleft" left="174" name="hero_arc_speed_ramp"
+                 top="174" width="154" />
+                <spinner control_name="CinematicCamSpeedRampStrength" decimal_digits="2"
+                 follows="left|top" height="18" increment="0.05" label="Ramp strength"
+                 label_width="84" layout="topleft" left="174" max_val="0.95"
+                 min_val="0" name="hero_arc_ramp_strength" top="198" width="154" />
+            </panel>
+        </flow_grid>
+    </scroll_container>
+</floater>

@@ -21,6 +21,7 @@ class LLComboBox;
 class LLButton;
 class LLCheckBoxCtrl;
 class LLLineEditor;
+class LLIconCtrl;
 class LLSpinCtrl;
 class LLTextBox;
 class LLUICtrl;
@@ -41,6 +42,7 @@ private:
     void populateStaticCombos();
     void updateAnchorList();
     void syncAnchorSelection();
+    void syncObjectTargetControls(bool force = false);
     void syncGroupControls();
     void syncSeedEditor(bool force = false);
     void syncEasyModeForSelected(bool force = false);
@@ -53,6 +55,14 @@ private:
     void onEasyRimCommit();
     void onEasyBgCommit();
     void onEasyWarmthCommit();
+    std::string fixtureSettingPrefix() const;
+    void syncFixtureControls(bool force = false);
+    void onFixtureRoleCommit();
+    void onFixtureModeCommit();
+    void onFixturePresetCommit();
+    void onFixtureValuesCommit();
+    void syncGoboLibrary(bool force = false);
+    void onGoboLibraryCommit();
     void onManualCommit();
     void applyManualLock();
     void updateDerivedStatus();
@@ -64,6 +74,8 @@ private:
         const std::string& deleted_name = std::string());
 
     void onAnchorSelected();
+    void onTargetObject();
+    void onClearObjectTarget();
     void onGroupEnabledCommit();
     void onGroupSlotsCommit();
     void adjustAim(const std::string& setting, F32 delta);
@@ -80,6 +92,9 @@ private:
     void onClickShadowFixIt();
 
     LLComboBox* mAnchorCombo = nullptr;
+    LLButton* mObjectTargetButton = nullptr;
+    LLButton* mObjectTargetClear = nullptr;
+    LLTextBox* mObjectTargetStatus = nullptr;
     LLCheckBoxCtrl* mGroupEnable = nullptr;
     LLCheckBoxCtrl* mGroupSlotChecks[5] = {};
     LLTextBox* mGroupStatus = nullptr;
@@ -93,6 +108,15 @@ private:
     LLComboBox* mEasyBg = nullptr;
     LLUICtrl* mEasyWarmth = nullptr;
     LLCheckBoxCtrl* mEasyModeToggle = nullptr;
+    LLComboBox* mFixtureRole = nullptr;
+    LLCheckBoxCtrl* mFixtureMode = nullptr;
+    LLComboBox* mFixturePreset = nullptr;
+    LLSpinCtrl* mFixtureKelvin = nullptr;
+    LLSpinCtrl* mFixtureSourceSize = nullptr;
+    LLComboBox* mFixtureGelSlots[3] = {};
+    LLComboBox* mGoboLibrary = nullptr;
+    LLIconCtrl* mGoboPreview = nullptr;
+    LLTextBox* mGoboSoftness = nullptr;
     std::vector<LLUICtrl*> mAdvancedDrivenControls;
     LLTextBox* mClipStatus[4] = {};
     LLCheckBoxCtrl* mShaftControls[4] = {};
@@ -107,6 +131,9 @@ private:
     bool mDisplayedGroupEnabled = false;
     U32 mDisplayedGroupSlots = ~0u;
     U32 mDisplayedResolvedSlots = ~0u;
+    LLUUID mDisplayedGroupObjectTarget;
+    LLUUID mDisplayedObjectTarget;
+    S32 mDisplayedObjectTargetSlot = -1;
     U32 mDisplayedSeed = 0;
     S32 mShadowHintState = -1;
     S32 mShadowHintRequested = -1;
@@ -123,6 +150,8 @@ private:
     S32 mEasyModeSlot = -1;
     bool mEasyModeActive = false;
     bool mSyncingEasyControls = false;
+    S32 mFixtureRoleIndex = 0;
+    S32 mDisplayedFixtureSlot = -1;
 };
 
 #endif // AL_PANEL_CINE_LIGHT_RIG_H

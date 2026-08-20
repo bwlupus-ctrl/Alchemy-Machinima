@@ -346,7 +346,7 @@
                 <panel
                  background_visible="false"
                  follows="left|top|right"
-                 height="746"
+                 height="540"
                  layout="topleft"
                  left="0"
                  name="move_scroll_content"
@@ -368,16 +368,6 @@
              name="actor_mover_panel"
              top="0"
              width="354" />
-            <panel
-             class="panel_lens_gaze"
-             filename="panel_lens_gaze.xml"
-             follows="left|top|right"
-             height="188"
-             layout="topleft"
-             left="0"
-             name="lens_gaze_panel"
-             top="364"
-             width="354" />
             <!-- console-only group transport: Start/Stop every member of a
                  cast group at once (members are tagged via the Group box under
                  the cast list). Calls LLActorMover start()/stop() per member;
@@ -388,7 +378,7 @@
              height="16"
              layout="topleft"
              left="10"
-             top="561"
+             top="371"
              name="group_run_lbl"
              width="44">
                 Group:
@@ -399,7 +389,7 @@
              label="Group"
              layout="topleft"
              left="56"
-             top="558"
+             top="368"
              name="group_run_combo"
              tool_tip="The group Start/Stop act on"
              width="112" />
@@ -409,7 +399,7 @@
              label="Start group"
              layout="topleft"
              left="172"
-             top="558"
+             top="368"
              name="btn_group_start"
              width="86" />
             <button
@@ -418,7 +408,7 @@
              label="Stop group"
              layout="topleft"
              left="262"
-             top="558"
+             top="368"
              name="btn_group_stop"
              width="92" />
             <!-- Groups MANAGEMENT: every group at a glance (member count +
@@ -433,7 +423,7 @@
              height="14"
              layout="topleft"
              left="10"
-             top="584"
+             top="394"
              name="groups_lbl"
              width="120">
                 Groups
@@ -445,7 +435,7 @@
              height="76"
              layout="topleft"
              left="10"
-             top="600"
+             top="410"
              name="groups_list"
              tool_tip="Every group with its member count and start delay. Select a row to highlight its members in the cast list and load the delay / rename fields below"
              width="344">
@@ -475,7 +465,7 @@
              min_val="0"
              name="group_delay_spinner"
              tool_tip="Start delay for the selected group (s): ACTION and Start group launch its members this many seconds late (staggered starts). 0 = immediate. Saved with the scene"
-             top="682"
+             top="492"
              width="130" />
             <button
              follows="left|top"
@@ -483,7 +473,7 @@
              label="Dissolve"
              layout="topleft"
              left="254"
-             top="680"
+             top="490"
              name="btn_group_dissolve"
              tool_tip="Clear the selected group: every member is untagged (nobody is removed from the cast); its delay is dropped"
              width="100" />
@@ -496,7 +486,7 @@
              max_length_chars="32"
              name="group_rename_editor"
              tool_tip="New name for the selected group; Enter or Rename commits. Renaming onto an existing group merges them"
-             top="708"
+             top="518"
              width="238" />
             <button
              follows="left|top"
@@ -504,7 +494,7 @@
              label="Rename"
              layout="topleft"
              left="254"
-             top="707"
+             top="517"
              name="btn_group_rename"
              tool_tip="Rename the selected group to the name on the left (retags every member)"
              width="100" />
@@ -991,178 +981,32 @@
              top="65"
              name="btn_clear_d"
              width="52" />
-            <check_box
-             control_name="DirectorLookAtCameraEnabled"
-             follows="left|top"
-             height="18"
-             label="Look at camera"
-             layout="topleft"
-             left="10"
-             top="89"
-             name="look_at_camera_enabled"
-             tool_tip="Render flagged real cast avatars looking at this viewer's camera. Local visual override only: no simulator, animation signal, or network state is changed"
-             width="126" />
             <button
-             follows="left|top"
-             height="18"
-             label="Set selected"
-             layout="topleft"
-             left="144"
-             top="87"
-             name="btn_look_at_set"
-             width="88" />
-            <button
-             follows="left|top"
-             height="18"
-             label="Clear selected"
-             layout="topleft"
-             left="236"
-             top="87"
-             name="btn_look_at_clear"
-             width="96" />
-            <combo_box
-             control_name="DirectorLookAtCameraMode"
-             follows="left|top"
-             height="20"
-             layout="topleft"
-             left="10"
-             top="109"
-             name="look_at_camera_mode"
-             tool_tip="Gaze keeps the current head/eye behavior. Turn body eases the rendered avatar root toward the camera and locally layers a turn animation"
-             width="322">
-                <combo_box.item label="Gaze (head/eyes)" name="look_at_mode_gaze" value="0" />
-                <combo_box.item label="Turn body" name="look_at_mode_body" value="1" />
-            </combo_box>
-            <spinner
-             control_name="DirectorLookAtCameraStrength"
-             decimal_digits="2"
-             follows="left|top"
-             height="18"
-             increment="0.05"
-             label="Strength"
-             label_width="50"
-             layout="topleft"
-             left="10"
-             max_val="1"
-             min_val="0"
-             top="133"
-             name="look_at_camera_strength"
-             tool_tip="Blend weight for the local head and eye camera gaze"
-             width="112" />
-            <check_box
-             control_name="DirectorLookAtCameraTorso"
-             follows="left|top"
-             height="18"
-             label="Torso enabled"
-             layout="topleft"
-             left="144"
-             top="133"
-             name="look_at_camera_torso"
-             tool_tip="Master gate for the torso amount; off keeps the effect to head, neck, and eyes"
-             width="130" />
-            <slider
-             control_name="DirectorLookAtCameraHeadEye"
-             decimal_digits="2"
-             follows="left|top"
-             height="18"
-             increment="0.05"
-             label="Head / eyes"
-             label_width="100"
-             layout="topleft"
-             left="10"
-             max_val="1"
-             min_val="0"
-             top="157"
-             name="look_at_camera_head_eye"
-             tool_tip="0 uses eyes only; 1 gives the head and neck their full share"
-             width="322" />
-            <slider
-             control_name="DirectorLookAtCameraTorsoAmount"
-             decimal_digits="2"
-             follows="left|top"
-             height="18"
-             increment="0.05"
-             label="Torso amount"
-             label_width="100"
-             layout="topleft"
-             left="10"
-             max_val="1"
-             min_val="0"
-             top="179"
-             name="look_at_camera_torso_amount"
-             tool_tip="Torso share when Torso enabled is checked; 0 keeps the chest still and 1 gives it the full gaze turn"
-             width="322" />
-            <slider
-             control_name="DirectorLookAtCameraSmoothing"
-             decimal_digits="2"
-             follows="left|top"
-             height="18"
-             increment="0.01"
-             label="Smoothing"
-             label_width="100"
-             layout="topleft"
-             left="10"
-             max_val="1"
-             min_val="0"
-             top="201"
-             name="look_at_camera_smoothing"
-             tool_tip="0 is snappy; 1 is very smooth"
-             width="322" />
-            <slider
-             control_name="DirectorLookAtCameraEaseTime"
-             decimal_digits="2"
-             follows="left|top"
-             height="18"
-             increment="0.01"
-             label="Responsiveness"
-             label_width="100"
-             layout="topleft"
-             left="10"
-             max_val="1"
-             min_val="0"
-             top="223"
-             name="look_at_camera_ease_time"
-             tool_tip="Ease time in seconds; lower values react faster to activation and strength changes"
-             width="322" />
-            <check_box
-             control_name="PrismLensEnabled"
-             follows="left|top"
-             height="18"
-             label="Enable Virtual Cam"
-             layout="topleft"
-             left="10"
-             top="247"
-             name="prism_lens_enabled"
-             tool_tip="Master render toggle. Captures and displays remain editable while disabled."
-             width="138" />
-            <text
              follows="left|top|right"
-             height="18"
-             layout="topleft"
-             left="150"
-             name="prism_summary"
-             top="249"
-             tool_tip="Open Virtual Cam Manager for camera sources, faces, optics, picture FPS, and adaptive performance."
-             use_ellipses="true"
-             width="118">
-                VCam 0/3 captures | 0/16 faces
-            </text>
-            <button
-             follows="right|top"
              height="22"
-             label="Manage VCam..."
+             label="Actor Gaze..."
              layout="topleft"
-             left="272"
-             top="245"
-             name="btn_prism_manage"
-             tool_tip="Open the dedicated capture, display, optics, picture-rate, and performance editor."
-             width="92" />
+             left="10"
+             name="btn_actor_gaze"
+             top="89"
+             tool_tip="Open Actor Gaze for camera look-at flagging, targeting, and performance controls"
+             width="344" />
+            <button
+             follows="left|top|right"
+             height="22"
+             label="Virtual Cam..."
+             layout="topleft"
+             left="10"
+             name="btn_virtual_cam"
+             top="117"
+             tool_tip="Open Virtual Cam controls, camera switcher, and shot builders"
+             width="344" />
             <scroll_container
              follows="all"
-             height="269"
+             height="399"
              layout="topleft"
              left="0"
-             top="279"
+             top="149"
              name="camera_flow_scroll"
              opaque="false"
              size="15"
@@ -1180,38 +1024,6 @@
                  row_gap="12"
                  top="0"
                  width="354">
-                    <panel
-                     background_visible="false"
-                     border="true"
-                     follows="left|top"
-                     height="676"
-                     layout="topleft"
-                     left="0"
-                     name="camera_switcher_card"
-                     top="0"
-                     width="340">
-                        <text
-                         follows="left|top|right"
-                         font="SansSerifBold"
-                         height="16"
-                         layout="topleft"
-                         left="8"
-                         name="camera_switcher_card_title"
-                         top="6"
-                         width="324">
-                            Switcher
-                        </text>
-                        <panel
-                         class="panel_director_switcher"
-                         filename="panel_director_switcher.xml"
-                         follows="left|top|right"
-                         height="640"
-                         layout="topleft"
-                         left="0"
-                         name="director_switcher_embedded"
-                         top="28"
-                         width="340" />
-                    </panel>
                     <panel
                      background_visible="false"
                      border="true"
@@ -1535,7 +1347,7 @@
              width="374">
                 <panel
                  background_visible="false"
-                 height="1530"
+                 height="1940"
                  layout="topleft"
                  left="0"
                  name="cine_light_rig_scroll_content"
@@ -1545,7 +1357,7 @@
                      class="panel_cine_light_rig"
                      filename="panel_cine_light_rig.xml"
                      follows="left|top"
-                     height="1520"
+                      height="1930"
                      layout="topleft"
                      left="2"
                      name="cine_light_rig_embedded"

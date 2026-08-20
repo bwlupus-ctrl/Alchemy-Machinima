@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<floater
+ can_close="true"
+ can_resize="true"
+ height="500"
+ layout="topleft"
+ min_height="500"
+ min_width="520"
+ name="floater_gaze_cues"
+ save_rect="true"
+ single_instance="false"
+ title="GAZE CUES"
+ width="520">
+  <text
+   follows="left|top|right"
+   font="SansSerifBold"
+   height="16"
+   layout="topleft"
+   left="10"
+   name="cue_subject"
+   top="26"
+   width="500">Track</text>
+
+  <scroll_list
+   column_padding="4"
+   draw_heading="true"
+   follows="left|top|right"
+   height="130"
+   layout="topleft"
+   left="10"
+   name="cue_list"
+   top="46"
+   width="500">
+    <columns label="Time" name="time" width="82" />
+    <columns label="Target" name="target" width="248" />
+    <columns label="Macro" name="macro" width="154" />
+  </scroll_list>
+  <button follows="left|top" height="22" label="Add" layout="topleft"
+   left="10" name="btn_cue_add" top="182" width="72" />
+  <button follows="left|top" height="22" label="Edit" layout="topleft"
+   left="88" name="btn_cue_edit" top="182" width="72" />
+  <button follows="left|top" height="22" label="Delete" layout="topleft"
+   left="166" name="btn_cue_delete" top="182" width="72" />
+
+  <text follows="left|top" font="SansSerifSmallBold" height="14"
+   layout="topleft" left="10" name="cue_editor_label" top="214"
+   width="220">Selected cue / new cue</text>
+  <spinner decimal_digits="3" follows="left|top" height="20" increment="0.033"
+   label="Time (s)" label_width="54" layout="topleft" left="10"
+   max_val="86400" min_val="0" name="cue_time" top="232" width="164" />
+  <spinner decimal_digits="2" follows="left|top" height="20" increment="0.10"
+   label="Duration" label_width="58" layout="topleft" left="182"
+   max_val="3600" min_val="0" name="cue_duration" top="232"
+   tool_tip="0 holds until the next cue; Creep Turn uses duration as its stretched acquire"
+   width="164" />
+
+  <combo_box follows="left|top" height="20" layout="topleft" left="10"
+   name="cue_target_mode" top="258" width="198">
+    <combo_box.item label="Motion / scene" name="target_motion" value="0" />
+    <combo_box.item label="Camera" name="target_camera" value="1" />
+    <combo_box.item label="Cast member" name="target_cast" value="2" />
+    <combo_box.item label="Fixed point" name="target_point" value="3" />
+    <combo_box.item label="Object" name="target_object" value="4" />
+  </combo_box>
+  <combo_box follows="left|top|right" height="20" layout="topleft" left="216"
+   name="cue_cast_target" top="258" visible="false" width="294" />
+  <button follows="left|top" height="20" label="Set point from camera"
+   layout="topleft" left="216" name="btn_cue_set_point" top="258"
+   visible="false" width="180" />
+  <button follows="left|top" height="20" label="Pick Selected Object"
+   layout="topleft" left="216" name="btn_cue_pick_object" top="258"
+   visible="false" width="176" />
+  <button follows="left|top" height="20" label="Clear"
+   layout="topleft" left="398" name="btn_cue_clear_object" top="258"
+   visible="false" width="72" />
+
+  <combo_box follows="left|top" height="20" layout="topleft" left="10"
+   name="cue_macro" top="284" width="198">
+    <combo_box.item label="No macro" name="macro_none" value="0" />
+    <combo_box.item label="Double-Take" name="macro_double_take" value="1" />
+    <combo_box.item label="Button Look" name="macro_button_look" value="2" />
+    <combo_box.item label="Creep Turn" name="macro_creep_turn" value="3" />
+    <combo_box.item label="Object Glance" name="macro_object_glance" value="4" />
+  </combo_box>
+  <combo_box follows="left|top" height="20" layout="topleft" left="216"
+   name="cue_acquire_style" top="284" width="140">
+    <combo_box.item label="Acquire: Default" name="acq_default" value="0" />
+    <combo_box.item label="Acquire: Snap" name="acq_snap" value="1" />
+    <combo_box.item label="Acquire: Drift" name="acq_drift" value="2" />
+    <combo_box.item label="Acquire: Casual" name="acq_casual" value="3" />
+  </combo_box>
+  <combo_box follows="left|top|right" height="20" layout="topleft" left="364"
+   name="cue_release_style" top="284" width="146">
+    <combo_box.item label="Release: Default" name="rel_default" value="0" />
+    <combo_box.item label="Release: Snap" name="rel_snap" value="1" />
+    <combo_box.item label="Release: Drift" name="rel_drift" value="2" />
+    <combo_box.item label="Release: Casual" name="rel_casual" value="3" />
+  </combo_box>
+
+  <spinner decimal_digits="2" follows="left|top" height="20" increment="0.05"
+   label="Gap" label_width="28" layout="topleft" left="10" max_val="0.50"
+   min_val="0.20" name="cue_gap" top="312" width="112" />
+  <spinner decimal_digits="2" follows="left|top" height="20" increment="0.05"
+   label="Dwell" label_width="38" layout="topleft" left="130" max_val="10"
+   min_val="0" name="cue_dwell" top="312" width="122" />
+  <spinner decimal_digits="0" follows="left|top" height="20" increment="1"
+   label="Past frames" label_width="64" layout="topleft" left="260"
+   max_val="300" min_val="0" name="cue_hold_frames" top="312" width="138" />
+  <check_box follows="left|top" height="20" label="Thought residue"
+   layout="topleft" left="406" name="cue_residue" top="314" width="104" />
+
+  <text follows="left|top" font="SansSerifSmallBold" height="14"
+   layout="topleft" left="10" name="quick_insert_label" top="346"
+   width="300">Insert macro at current playhead</text>
+  <button follows="left|top" height="24" label="Double-Take"
+   layout="topleft" left="10" name="btn_insert_double_take" top="366"
+   width="118" />
+  <button follows="left|top" height="24" label="Button Look"
+   layout="topleft" left="136" name="btn_insert_button_look" top="366"
+   width="118" />
+  <button follows="left|top" height="24" label="Creep Turn"
+   layout="topleft" left="262" name="btn_insert_creep_turn" top="366"
+   width="118" />
+  <button follows="left|top" height="24" label="Object Glance"
+   layout="topleft" left="388" name="btn_insert_object_glance" top="366"
+   width="122" />
+
+  <text follows="left|top|right" height="54" layout="topleft" left="10"
+   name="cue_help" text_color="LtGray_50" top="404" width="500"
+   word_wrap="true">Set the target and parameters above, then Add or use a quick insert. Duration 0 holds. Button Look always uses the live gated/render camera; its duration is the cut point and Past frames extends the hold at a 30 fps edit basis.</text>
+</floater>

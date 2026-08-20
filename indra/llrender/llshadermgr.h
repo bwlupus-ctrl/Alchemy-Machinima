@@ -571,6 +571,15 @@ public:
         GOBO_TINT,                         //  "gobo_tint"
         GOBO_PATTERN_PARAMS,               //  "gobo_pattern_params"
 
+        // [Cine Outline Phase 1] deferred normal/depth outline post pass.
+        OUTLINE_COLOR,                     //  "outline_color"
+        OUTLINE_PARAMS,                    //  "outline_params"
+        OUTLINE_PARAMS2,                   //  "outline_params2"
+
+        // [Pedro Cam Phase 1] fisheye / peephole late post pass.
+        FISHEYE_PARAMS,                    //  "fisheye_params"
+        FISHEYE_PARAMS2,                   //  "fisheye_params2"
+
         // [BDMerge A5.4-1a] velocity / motion-vector buffer. CURRENT_MODELVIEW and
         // MOTION_BLUR_STRENGTH are declared now for forward-compat (Phase 3 motion
         // blur, debug-viz gain). PROJECTION_MATRIX_UNJITTERED carries the T2x

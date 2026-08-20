@@ -3,9 +3,9 @@
  can_close="true"
  can_minimize="true"
  can_resize="true"
- height="844"
+ height="960"
  layout="topleft"
- min_height="520"
+ min_height="800"
  min_width="720"
  name="prism_manager"
  save_rect="true"
@@ -43,7 +43,7 @@
          top="8"
          use_ellipses="true"
          width="700">
-            VCam 0/3 captures | 0/16 displays
+            VCam 0/8 captures | 0/16 displays
         </text>
         <text
          follows="left|top|right"
@@ -73,7 +73,7 @@
     <panel
      background_visible="true"
      follows="left|top|right"
-     height="150"
+     height="214"
      layout="topleft"
      left="10"
      name="captures_panel"
@@ -88,13 +88,13 @@
          name="captures_heading"
          top="6"
          width="250">
-            Captures (maximum 3 producers)
+            Captures (maximum 8 producers)
         </text>
         <scroll_list
          column_padding="3"
          draw_heading="true"
          follows="left|top|right"
-         height="92"
+         height="150"
          layout="topleft"
          left="10"
          multi_select="false"
@@ -118,7 +118,7 @@
          layout="topleft"
          left="10"
          name="add_camera"
-         top="121"
+         top="182"
          width="100" />
         <button
          follows="left|bottom"
@@ -127,7 +127,7 @@
          layout="topleft"
          left="116"
          name="add_lens"
-         top="121"
+         top="182"
          visible="false"
          width="0" />
         <button
@@ -137,7 +137,7 @@
          layout="topleft"
          left="116"
          name="remove_capture"
-         top="121"
+         top="182"
          width="120" />
         <button
          follows="left|bottom"
@@ -147,7 +147,7 @@
          left="242"
          name="btn_new_virtual"
          tool_tip="Create a prim-free virtual camera at your current view. Needs no rezzed object; works in no-rez parcels."
-         top="121"
+         top="182"
          width="106" />
         <text
          follows="left|right|bottom"
@@ -156,7 +156,7 @@
          left="354"
          name="capture_hint"
          text_color="LtGray"
-         top="124"
+         top="185"
          use_ellipses="true"
          width="516">
             Add Camera uses one selected object. Add Lens uses one selected world face.
@@ -165,17 +165,17 @@
 
     <tab_container
      follows="all"
-     height="561"
+     height="616"
      layout="topleft"
      left="10"
      name="detail_tabs"
      tab_position="top"
-     top="244"
+     top="308"
      width="880">
         <panel
          border="true"
          follows="all"
-          height="537"
+          height="592"
          label="Capture"
          layout="topleft"
          left="0"
@@ -184,7 +184,7 @@
          width="878">
             <scroll_container
              follows="all"
-              height="520"
+              height="575"
              layout="topleft"
              left="4"
              name="capture_settings_scroll"
@@ -532,21 +532,21 @@
         <panel
          border="true"
          follows="all"
-         height="537"
+         height="592"
          label="Displays"
          layout="topleft"
          left="0"
          name="displays_tab"
          top="0"
          width="878">
-            <!-- Keep the face actions and mapping editor visible at every saved
-                 floater height. The display list and the screen-effects panel
-                 (which scrolls internally) are the only rows allowed to flex. -->
+            <!-- Keep the short display list, face actions, and mapping editor
+                 fixed. The internally scrolling screen-effects panel gets all
+                 remaining height. -->
             <layout_stack
              animate="false"
              border_size="6"
              follows="all"
-             height="507"
+             height="562"
              layout="topleft"
              left="8"
              name="displays_layout_stack"
@@ -554,18 +554,19 @@
              top="8"
              width="852">
                 <layout_panel
-                 auto_resize="true"
+                 auto_resize="false"
                  follows="all"
-                 height="210"
+                 height="112"
                  layout="topleft"
-                 min_dim="48"
+                 max_dim="112"
+                 min_dim="112"
                  name="display_list_layout"
                  user_resize="false">
                     <scroll_list
                      column_padding="3"
                      draw_heading="true"
                      follows="all"
-                     height="210"
+                     height="112"
                      layout="topleft"
                      left="0"
                      multi_select="false"
@@ -620,6 +621,7 @@
                     <spinner decimal_digits="2" follows="left|top" height="22" increment="0.05" label="R" label_width="14" layout="topleft" left="416" max_val="1" min_val="0" name="bar_red" top="32" width="76" />
                     <spinner decimal_digits="2" follows="left|top" height="22" increment="0.05" label="G" label_width="14" layout="topleft" left="498" max_val="1" min_val="0" name="bar_green" top="32" width="76" />
                     <spinner decimal_digits="2" follows="left|top" height="22" increment="0.05" label="B" label_width="14" layout="topleft" left="580" max_val="1" min_val="0" name="bar_blue" top="32" width="76" />
+                    <check_box follows="left|top" height="18" label="Source: Gate" layout="topleft" left="674" name="display_gate_source" tool_tip="Route this monitor to the Gate program feed instead of its fixed capture" top="34" width="150" />
                     <text follows="left|top|right" height="28" layout="topleft" left="8" name="display_settings_note" text_color="LtGray" top="62" width="836" word_wrap="true">Fit bars preserve the capture aspect; Fill crops by anchor; Stretch maps the complete picture. These controls never own an FPS schedule.</text>
                     <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="8" name="virtual_screen_heading" top="96" width="300">Virtual screen (prim-free, selected display)</text>
                     <slider decimal_digits="2" follows="left|top" height="18" increment="0.05" label="Height (m)" label_width="70" layout="topleft" left="8" max_val="20" min_val="0.10" name="screen_height" tool_tip="Height of the selected virtual screen in metres; width follows the aspect below" top="114" width="250" />
@@ -635,9 +637,9 @@
                  auto_resize="true"
                  background_visible="true"
                  follows="all"
-                 height="190"
+                 height="268"
                  layout="topleft"
-                 min_dim="88"
+                 min_dim="96"
                  name="display_effects_panel"
                  user_resize="false">
                     <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="8" name="effects_heading" top="4" width="340">Per-screen TV effects (selected display)</text>
@@ -648,7 +650,7 @@
                     <button follows="left|top" height="20" label="Security Feed" layout="topleft" left="368" name="preset_cctv" tool_tip="Grayscale, coarse pixels, scanlines, and vignette" top="22" width="100" />
                     <scroll_container
                      follows="all"
-                     height="140"
+                     height="218"
                      layout="topleft"
                      left="0"
                      name="effects_scroll"
@@ -693,7 +695,7 @@
         <panel
          border="true"
          follows="all"
-         height="537"
+         height="592"
          label="Performance"
          layout="topleft"
          left="0"
@@ -702,7 +704,7 @@
          width="878">
             <scroll_container
              follows="all"
-              height="520"
+              height="575"
              layout="topleft"
              left="4"
              name="performance_settings_scroll"
@@ -817,6 +819,61 @@
                 </panel>
             </scroll_container>
         </panel>
+
+        <panel
+         border="true"
+         follows="all"
+         height="592"
+         label="Gate"
+         layout="topleft"
+         left="0"
+         name="gate_tab"
+         top="0"
+         width="878">
+            <scroll_container
+             follows="all"
+             height="575"
+             layout="topleft"
+             left="4"
+             name="gate_settings_scroll"
+             opaque="false"
+             reserve_scroll_corner="false"
+             size="15"
+             top="4"
+             width="864">
+                <panel
+                 follows="left|top|right"
+                 height="500"
+                 layout="topleft"
+                 left="0"
+                 name="gate_settings_document"
+                 top="0"
+                 width="847">
+                    <text follows="left|top" font="SansSerifBold" height="18" layout="topleft" left="10" name="gate_heading" top="10" width="250">Vcam Gate switchboard</text>
+                    <check_box follows="left|top" height="18" label="Gate active" layout="topleft" left="10" name="gate_active" tool_tip="Materialize the serialized program producer and route subscribed monitors" top="38" width="130" />
+                    <combo_box follows="left|top" height="22" label="Mode" layout="topleft" left="150" name="gate_mode" top="34" width="160">
+                        <combo_box.item label="Manual" name="gate_manual" value="manual" />
+                        <combo_box.item label="Auto cycle" name="gate_auto" value="auto_cycle" />
+                    </combo_box>
+                    <spinner decimal_digits="1" follows="left|top" height="22" increment="0.5" label="Interval (s)" label_width="74" layout="topleft" left="324" max_val="120" min_val="0.5" name="gate_interval" top="34" value="8" width="150" />
+                    <button follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="480" name="gate_interval_reset" tool_tip="Reset cycle interval to 8 seconds" top="36" width="18" />
+                    <spinner decimal_digits="0" follows="left|top" height="22" increment="1" label="Pre-warm frames" label_width="104" layout="topleft" left="520" max_val="5" min_val="0" name="gate_prewarm" top="34" value="3" width="160" />
+                    <button follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="686" name="gate_prewarm_reset" tool_tip="Reset pre-warm to 3 frames" top="36" width="18" />
+                    <text follows="left|top|right" font="SansSerifBold" height="18" layout="topleft" left="10" name="gate_live" top="68" use_ellipses="true" width="820">ON AIR: inactive</text>
+                    <text follows="left|top|right" height="34" layout="topleft" left="10" name="gate_reason" text_color="LtGray" top="90" use_ellipses="true" width="820" word_wrap="true">Arm virtual cameras, select a preview row, and activate the Gate.</text>
+                    <scroll_list column_padding="3" draw_heading="true" follows="left|top|right" height="270" layout="topleft" left="10" multi_select="false" name="gate_armed_list" tool_tip="Armed rows are lightweight camera definitions; only program and optional warm producers consume capture slots" top="130" width="820">
+                        <columns label="#" name="gate_order" width="38" />
+                        <columns label="Camera" name="gate_label" width="450" />
+                        <columns label="Program" name="gate_live_column" width="120" />
+                        <columns label="Auto" name="gate_enabled" width="70" />
+                    </scroll_list>
+                    <button follows="left|top" height="22" label="Arm selected capture" layout="topleft" left="10" name="gate_arm" tool_tip="Snapshot the selected prim-free virtual camera into the armed definition list" top="410" width="160" />
+                    <button follows="left|top" height="22" label="Disarm" layout="topleft" left="178" name="gate_disarm" top="410" width="90" />
+                    <button follows="left|top" height="22" label="TAKE" layout="topleft" left="276" name="gate_take" tool_tip="In Manual mode, pre-warm and cut to the selected preview row" top="410" width="90" />
+                    <text follows="left|top|right" height="48" layout="topleft" left="10" name="gate_cost_note" text_color="LtGray" top="446" width="820" word_wrap="true">Up to 12 definitions may be armed. Steady state watches one program producer; the optional warm producer is admitted only for a bounded window, and the existing scheduler still renders at most one auxiliary view per presented frame.</text>
+                </panel>
+            </scroll_container>
+        </panel>
     </tab_container>
 
     <text
@@ -826,7 +883,7 @@
      left="12"
      name="status_text"
      text_color="LtGray"
-      top="814"
+      top="930"
      use_ellipses="true"
      width="876">
         Ready.

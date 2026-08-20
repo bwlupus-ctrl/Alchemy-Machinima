@@ -25,12 +25,386 @@
 #include "llvoavatarself.h"         // gAgentAvatarp, isAgentAvatarValid()
 
 #include <algorithm>
+#include <cmath>
+#include <iterator>
+
+namespace
+{
+LLSD writeGazeAimTarget(const LLActorMover::GazeTarget& target)
+{
+    LLSD data = LLSD::emptyMap();
+    data["mode"] = static_cast<S32>(target.mMode);
+    if (target.mCastRef.notNull())
+    {
+        data["cast_ref"] = target.mCastRef;
+    }
+    if (!target.mFixedPoint.isExactlyZero())
+    {
+        data["fixed_point"] = ll_sd_from_vector3d(target.mFixedPoint);
+    }
+    if (target.mObjectRef.notNull())
+    {
+        data["object_ref"] = target.mObjectRef;
+    }
+    return data;
+}
+
+bool readEyeGazeAimTarget(const LLSD& data, LLActorMover::GazeTarget& target)
+{
+    if (!data.isMap() || !data.has("mode"))
+    {
+        return false;
+    }
+    const S32 mode = data["mode"].asInteger();
+    if (mode < static_cast<S32>(LLActorMover::GazeTarget::CAMERA) ||
+        mode > static_cast<S32>(LLActorMover::GazeTarget::OBJECT))
+    {
+        return false;
+    }
+
+    target = LLActorMover::GazeTarget();
+    target.mMode = static_cast<LLActorMover::GazeTarget::EMode>(mode);
+    if (data.has("cast_ref"))
+    {
+        target.mCastRef = data["cast_ref"].asUUID();
+    }
+    if (data.has("fixed_point"))
+    {
+        target.mFixedPoint = ll_vector3d_from_sd(data["fixed_point"]);
+    }
+    if (data.has("object_ref"))
+    {
+        target.mObjectRef = data["object_ref"].asUUID();
+    }
+    return true;
+}
+
+void writeGazeExpression(LLSD& data, const LLActorMover::GazeTarget& target,
+                         bool include_persona = true)
+{
+    if (include_persona)
+    {
+        data["persona_dom"] = target.mPersonaDominance;
+        data["persona_aff"] = target.mPersonaAffection;
+        data["persona_anx"] = target.mPersonaAnxiety;
+    }
+    if (target.mHeadEyeBlendOverride >= 0.f)
+    {
+        data["perf_head_eye"] = target.mHeadEyeBlendOverride;
+    }
+    if (target.mTorsoAmountOverride >= 0.f)
+    {
+        data["perf_torso"] = target.mTorsoAmountOverride;
+    }
+    if (target.mIntensityOverride >= 0.f)
+    {
+        data["perf_intensity"] = target.mIntensityOverride;
+    }
+    if (target.mSmoothingOverride >= 0.f)
+    {
+        data["perf_smoothing"] = target.mSmoothingOverride;
+    }
+    if (target.mEyelineOverride)
+    {
+        data["perf_eyeline_yaw"] = target.mEyelineYawDegOverride;
+        data["perf_eyeline_pitch"] = target.mEyelinePitchDegOverride;
+    }
+    if (target.mMicroLifeOverride >= 0.f)
+    {
+        data["perf_micro_life"] = target.mMicroLifeOverride;
+    }
+    if (target.mBlinksOverride >= 0)
+    {
+        data["perf_blinks"] = target.mBlinksOverride != 0;
+    }
+    if (target.mVariationOverride >= 0.f)
+    {
+        data["perf_variation"] = target.mVariationOverride;
+    }
+    if (target.mBreakFrequencyOverride >= 0.f)
+    {
+        data["perf_break_frequency"] = target.mBreakFrequencyOverride;
+    }
+    if (target.mEaseAcquireOverride >= 0.f)
+    {
+        data["perf_acquire"] = target.mEaseAcquireOverride;
+    }
+    if (target.mEaseReleaseOverride >= 0.f)
+    {
+        data["perf_release"] = target.mEaseReleaseOverride;
+    }
+    if (target.mDeadZoneDegOverride >= 0.f)
+    {
+        data["perf_dead_zone"] = target.mDeadZoneDegOverride;
+    }
+    if (fabsf(target.mBlinkRateScale - 1.f) > 1e-5f)
+    {
+        data["blink_rate_scale"] = target.mBlinkRateScale;
+    }
+    if (fabsf(target.mVergenceScale - 1.f) > 1e-5f)
+    {
+        data["vergence_scale"] = target.mVergenceScale;
+    }
+}
+
+void readGazeExpression(const LLSD& data, LLActorMover::GazeTarget& target)
+{
+    target.mPersonaOverride = data.has("persona_dom") ||
+        data.has("persona_aff") || data.has("persona_anx");
+    if (data.has("persona_dom"))
+    {
+        target.mPersonaDominance = llclamp((F32)data["persona_dom"].asReal(), -1.f, 1.f);
+    }
+    if (data.has("persona_aff"))
+    {
+        target.mPersonaAffection = llclamp((F32)data["persona_aff"].asReal(), -1.f, 1.f);
+    }
+    if (data.has("persona_anx"))
+    {
+        target.mPersonaAnxiety = llclamp((F32)data["persona_anx"].asReal(), -1.f, 1.f);
+    }
+    if (data.has("perf_head_eye"))
+    {
+        target.mHeadEyeBlendOverride = llclamp((F32)data["perf_head_eye"].asReal(), 0.f, 1.f);
+    }
+    if (data.has("perf_torso"))
+    {
+        target.mTorsoAmountOverride = llclamp((F32)data["perf_torso"].asReal(), 0.f, 1.f);
+    }
+    if (data.has("perf_intensity"))
+    {
+        target.mIntensityOverride = llclamp((F32)data["perf_intensity"].asReal(), 0.f, 1.f);
+    }
+    if (data.has("perf_smoothing"))
+    {
+        target.mSmoothingOverride = llclamp((F32)data["perf_smoothing"].asReal(), 0.f, 1.f);
+    }
+    if (data.has("perf_eyeline_yaw") || data.has("perf_eyeline_pitch"))
+    {
+        target.mEyelineOverride = true;
+        target.mEyelineYawDegOverride = data.has("perf_eyeline_yaw")
+            ? llclamp((F32)data["perf_eyeline_yaw"].asReal(), -15.f, 15.f)
+            : 0.f;
+        target.mEyelinePitchDegOverride = data.has("perf_eyeline_pitch")
+            ? llclamp((F32)data["perf_eyeline_pitch"].asReal(), -10.f, 10.f)
+            : 0.f;
+    }
+    if (data.has("perf_micro_life"))
+    {
+        target.mMicroLifeOverride = llclamp((F32)data["perf_micro_life"].asReal(), 0.f, 1.f);
+    }
+    if (data.has("perf_blinks"))
+    {
+        target.mBlinksOverride = data["perf_blinks"].asBoolean() ? 1 : 0;
+    }
+    if (data.has("perf_variation"))
+    {
+        target.mVariationOverride = llclamp((F32)data["perf_variation"].asReal(), 0.f, 1.f);
+    }
+    if (data.has("perf_break_frequency"))
+    {
+        target.mBreakFrequencyOverride = llclamp((F32)data["perf_break_frequency"].asReal(), 0.f, 1.f);
+    }
+    if (data.has("perf_acquire"))
+    {
+        target.mEaseAcquireOverride = llclamp((F32)data["perf_acquire"].asReal(), 0.01f, 3.f);
+    }
+    if (data.has("perf_release"))
+    {
+        target.mEaseReleaseOverride = llclamp((F32)data["perf_release"].asReal(), 0.01f, 4.f);
+    }
+    if (data.has("perf_dead_zone"))
+    {
+        target.mDeadZoneDegOverride = llclamp((F32)data["perf_dead_zone"].asReal(), 0.f, 15.f);
+    }
+    if (data.has("blink_rate_scale"))
+    {
+        target.mBlinkRateScale = llclamp((F32)data["blink_rate_scale"].asReal(), 0.f, 3.f);
+    }
+    if (data.has("vergence_scale"))
+    {
+        target.mVergenceScale = llclamp((F32)data["vergence_scale"].asReal(), -1.f, 1.f);
+    }
+}
+
+LLSD writeCueTarget(const LLActorMover::GazeTarget& target)
+{
+    LLSD data = LLSD::emptyMap();
+    data["mode"] = static_cast<S32>(target.mMode);
+    if (target.mCastRef.notNull())
+    {
+        data["cast_ref"] = target.mCastRef;
+    }
+    if (!target.mFixedPoint.isExactlyZero())
+    {
+        data["fixed_point"] = ll_sd_from_vector3d(target.mFixedPoint);
+    }
+    if (target.mObjectRef.notNull())
+    {
+        data["object_ref"] = target.mObjectRef;
+    }
+    writeGazeExpression(data, target, target.mPersonaOverride);
+    return data;
+}
+
+LLActorMover::GazeTarget readCueTarget(const LLSD& data)
+{
+    LLActorMover::GazeTarget target;
+    if (data.has("mode"))
+    {
+        target.mMode = static_cast<LLActorMover::GazeTarget::EMode>(
+            llclamp(data["mode"].asInteger(),
+                    static_cast<S32>(LLActorMover::GazeTarget::MOTION),
+                    static_cast<S32>(LLActorMover::GazeTarget::OBJECT)));
+    }
+    if (data.has("cast_ref"))
+    {
+        target.mCastRef = data["cast_ref"].asUUID();
+    }
+    if (data.has("fixed_point"))
+    {
+        target.mFixedPoint = ll_vector3d_from_sd(data["fixed_point"]);
+    }
+    if (data.has("object_ref"))
+    {
+        target.mObjectRef = data["object_ref"].asUUID();
+    }
+    readGazeExpression(data, target);
+    return target;
+}
+
+F32 cueStyleSeconds(LLDirectorCast::EGazeCueStyle style, bool acquire,
+                    const LLActorMover::GazeTarget& target)
+{
+    const F32 authored = acquire
+        ? target.mEaseAcquireOverride : target.mEaseReleaseOverride;
+    const F32 base = authored >= 0.f ? authored : (acquire ? 0.25f : 0.60f);
+    switch (style)
+    {
+        case LLDirectorCast::GAZE_CUE_STYLE_SNAP:
+            return acquire ? llmin(base, 0.08f) : llmin(base, 0.12f);
+        case LLDirectorCast::GAZE_CUE_STYLE_DRIFT:
+            return llmax(base, acquire ? 0.65f : 0.90f);
+        case LLDirectorCast::GAZE_CUE_STYLE_CASUAL:
+            return llmax(base, acquire ? 0.45f : 1.00f);
+        case LLDirectorCast::GAZE_CUE_STYLE_DEFAULT:
+        default:
+            return llmax(base, 0.f);
+    }
+}
+
+void sanitizeGazeCue(LLDirectorCast::GazeCue& cue)
+{
+    if (!std::isfinite(cue.mStartSec) || cue.mStartSec < 0.0)
+    {
+        cue.mStartSec = 0.0;
+    }
+    if (!std::isfinite(cue.mDurationSec) || cue.mDurationSec < 0.0)
+    {
+        cue.mDurationSec = 0.0;
+    }
+    cue.mAcquireStyle = static_cast<LLDirectorCast::EGazeCueStyle>(
+        llclamp(static_cast<S32>(cue.mAcquireStyle),
+                static_cast<S32>(LLDirectorCast::GAZE_CUE_STYLE_DEFAULT),
+                static_cast<S32>(LLDirectorCast::GAZE_CUE_STYLE_CASUAL)));
+    cue.mReleaseStyle = static_cast<LLDirectorCast::EGazeCueStyle>(
+        llclamp(static_cast<S32>(cue.mReleaseStyle),
+                static_cast<S32>(LLDirectorCast::GAZE_CUE_STYLE_DEFAULT),
+                static_cast<S32>(LLDirectorCast::GAZE_CUE_STYLE_CASUAL)));
+    cue.mMacro = static_cast<ALGazeMath::EGazeCueMacro>(
+        llclamp(static_cast<S32>(cue.mMacro),
+                static_cast<S32>(ALGazeMath::GAZE_MACRO_NONE),
+                static_cast<S32>(ALGazeMath::GAZE_MACRO_OBJECT_GLANCE)));
+    if (!std::isfinite(cue.mMacroGapSec))
+    {
+        cue.mMacroGapSec = 0.35f;
+    }
+    if (!std::isfinite(cue.mMacroDwellSec))
+    {
+        cue.mMacroDwellSec = 0.60f;
+    }
+    cue.mMacroGapSec = llclamp(cue.mMacroGapSec, 0.20f, 0.50f);
+    cue.mMacroDwellSec = llclamp(cue.mMacroDwellSec, 0.f, 10.f);
+    cue.mHoldFramesPast = llclamp(cue.mHoldFramesPast, 0, 300);
+}
+
+LLSD writeGazeCues(const LLDirectorCast::GazeCueList& cues)
+{
+    LLSD array = LLSD::emptyArray();
+    for (const LLDirectorCast::GazeCue& cue : cues)
+    {
+        LLSD data = LLSD::emptyMap();
+        data["start_sec"] = cue.mStartSec;
+        if (cue.mDurationSec > 0.0)
+        {
+            data["duration_sec"] = cue.mDurationSec;
+        }
+        data["target"] = writeCueTarget(cue.mTarget);
+        data["acquire_style"] = static_cast<S32>(cue.mAcquireStyle);
+        data["release_style"] = static_cast<S32>(cue.mReleaseStyle);
+        data["macro"] = static_cast<S32>(cue.mMacro);
+        data["macro_gap_sec"] = cue.mMacroGapSec;
+        data["macro_dwell_sec"] = cue.mMacroDwellSec;
+        data["hold_frames_past"] = cue.mHoldFramesPast;
+        data["thought_residue"] = cue.mThoughtResidue;
+        array.append(data);
+    }
+    return array;
+}
+
+LLDirectorCast::GazeCueList readGazeCues(const LLSD& array)
+{
+    LLDirectorCast::GazeCueList cues;
+    if (!array.isArray())
+    {
+        return cues;
+    }
+    for (LLSD::array_const_iterator it = array.beginArray();
+         it != array.endArray(); ++it)
+    {
+        const LLSD& data = *it;
+        LLDirectorCast::GazeCue cue;
+        cue.mStartSec = data["start_sec"].asReal();
+        cue.mDurationSec = data["duration_sec"].asReal();
+        if (data.has("target"))
+        {
+            cue.mTarget = readCueTarget(data["target"]);
+        }
+        cue.mAcquireStyle = static_cast<LLDirectorCast::EGazeCueStyle>(
+            data["acquire_style"].asInteger());
+        cue.mReleaseStyle = static_cast<LLDirectorCast::EGazeCueStyle>(
+            data["release_style"].asInteger());
+        cue.mMacro = static_cast<ALGazeMath::EGazeCueMacro>(
+            data["macro"].asInteger());
+        if (data.has("macro_gap_sec"))
+        {
+            cue.mMacroGapSec = static_cast<F32>(data["macro_gap_sec"].asReal());
+        }
+        if (data.has("macro_dwell_sec"))
+        {
+            cue.mMacroDwellSec = static_cast<F32>(data["macro_dwell_sec"].asReal());
+        }
+        if (data.has("hold_frames_past"))
+        {
+            cue.mHoldFramesPast = data["hold_frames_past"].asInteger();
+        }
+        cue.mThoughtResidue = data["thought_residue"].asBoolean();
+        cues.push_back(cue);
+    }
+    return cues;
+}
+} // anonymous namespace
 
 // ---------------------------------------------------------------------------
 LLDirectorCast& LLDirectorCast::instance()
 {
     static LLDirectorCast sInstance;
     return sInstance;
+}
+
+LLDirectorCast::LLDirectorCast()
+{
+    mSelfGazeTarget.mMode = LLActorMover::GazeTarget::CAMERA;
 }
 
 // ---------------------------------------------------------------------------
@@ -46,6 +420,7 @@ void LLDirectorCast::add(const LLUUID& id)
     member.mId = id;
     mCast.push_back(member);
     mIds.push_back(id);
+    mMemberIndex[id] = mCast.size() - 1;
     // seed the cached name right away when the actor is in world
     resolve(id);
 }
@@ -61,7 +436,9 @@ void LLDirectorCast::remove(const LLUUID& id)
     const std::string group = it->mGroup;
     LLActorMover::instance().clearDirectorLookAtRuntime(id);
     mCast.erase(it);
+    ++mGazeCueRevision;
     mIds.erase(std::find(mIds.begin(), mIds.end(), id));
+    rebuildMemberIndex();
     mLookAtCameraIds.erase(id);
     // a subject that leaves the cast stops being a subject
     if (mSubjectA == id)
@@ -96,20 +473,17 @@ void LLDirectorCast::toggle(const LLUUID& id)
 
 bool LLDirectorCast::contains(const LLUUID& id) const
 {
-    return id.notNull()
-        && std::find(mIds.begin(), mIds.end(), id) != mIds.end();
+    return id.notNull() && mMemberIndex.find(id) != mMemberIndex.end();
 }
 
 LLDirectorCast::CastMember* LLDirectorCast::getMember(const LLUUID& id)
 {
-    for (CastMember& m : mCast)
+    const auto it = mMemberIndex.find(id);
+    if (it == mMemberIndex.end() || it->second >= mCast.size())
     {
-        if (m.mId == id)
-        {
-            return &m;
-        }
+        return nullptr;
     }
-    return nullptr;
+    return &mCast[it->second];
 }
 
 const LLDirectorCast::CastMember* LLDirectorCast::getMember(const LLUUID& id) const
@@ -119,6 +493,11 @@ const LLDirectorCast::CastMember* LLDirectorCast::getMember(const LLUUID& id) co
 
 void LLDirectorCast::setLookAtCamera(const LLUUID& id, bool selected)
 {
+    if (id.isNull() || (isAgentAvatarValid() && id == gAgentAvatarp->getID()))
+    {
+        mSelfLookAtCamera = selected;
+        return;
+    }
     if (!contains(id))
     {
         return;
@@ -130,13 +509,262 @@ void LLDirectorCast::setLookAtCamera(const LLUUID& id, bool selected)
     else
     {
         mLookAtCameraIds.erase(id);
-        LLActorMover::instance().clearDirectorLookAtRuntime(id);
     }
 }
 
 bool LLDirectorCast::isLookAtCamera(const LLUUID& id) const
 {
+    if (id.isNull() || (isAgentAvatarValid() && id == gAgentAvatarp->getID()))
+    {
+        return mSelfLookAtCamera;
+    }
     return mLookAtCameraIds.find(id) != mLookAtCameraIds.end();
+}
+
+void LLDirectorCast::rebuildMemberIndex()
+{
+    mMemberIndex.clear();
+    for (std::size_t i = 0; i < mCast.size(); ++i)
+    {
+        mMemberIndex[mCast[i].mId] = i;
+    }
+}
+
+void LLDirectorCast::setGazeTarget(const LLUUID& id, const LLActorMover::GazeTarget& target)
+{
+    if (id.isNull() || (isAgentAvatarValid() && id == gAgentAvatarp->getID()))
+    {
+        mSelfGazeTarget = target;
+        LLActorMover::instance().setGazeTargetConfig(LLUUID::null, target);
+        return;
+    }
+    if (CastMember* m = getMember(id))
+    {
+        m->mGazeTarget = target;
+        LLActorMover::instance().setGazeTargetConfig(id, target);
+    }
+}
+
+LLActorMover::GazeTarget LLDirectorCast::getGazeTarget(const LLUUID& id) const
+{
+    if (id.isNull() || (isAgentAvatarValid() && id == gAgentAvatarp->getID()))
+    {
+        return mSelfGazeTarget;
+    }
+    if (const CastMember* m = getMember(id))
+    {
+        return m->mGazeTarget;
+    }
+    return LLActorMover::GazeTarget();
+}
+
+void LLDirectorCast::setEyeGazeTarget(
+    const LLUUID& id, const LLActorMover::GazeTarget& target)
+{
+    if (target.mMode < LLActorMover::GazeTarget::CAMERA ||
+        target.mMode > LLActorMover::GazeTarget::OBJECT)
+    {
+        clearEyeGazeTarget(id);
+        return;
+    }
+    if (id.isNull() || (isAgentAvatarValid() && id == gAgentAvatarp->getID()))
+    {
+        mSelfEyeGazeTarget = target;
+        mSelfEyeGazeTargetEnabled = true;
+        return;
+    }
+    if (CastMember* m = getMember(id))
+    {
+        m->mEyeGazeTarget = target;
+        m->mEyeGazeTargetEnabled = true;
+    }
+}
+
+void LLDirectorCast::clearEyeGazeTarget(const LLUUID& id)
+{
+    if (id.isNull() || (isAgentAvatarValid() && id == gAgentAvatarp->getID()))
+    {
+        mSelfEyeGazeTarget = LLActorMover::GazeTarget();
+        mSelfEyeGazeTargetEnabled = false;
+        return;
+    }
+    if (CastMember* m = getMember(id))
+    {
+        m->mEyeGazeTarget = LLActorMover::GazeTarget();
+        m->mEyeGazeTargetEnabled = false;
+    }
+}
+
+bool LLDirectorCast::hasEyeGazeTarget(const LLUUID& id) const
+{
+    if (id.isNull() || (isAgentAvatarValid() && id == gAgentAvatarp->getID()))
+    {
+        return mSelfEyeGazeTargetEnabled;
+    }
+    const CastMember* m = getMember(id);
+    return m && m->mEyeGazeTargetEnabled;
+}
+
+LLActorMover::GazeTarget LLDirectorCast::getEyeGazeTarget(const LLUUID& id) const
+{
+    if (id.isNull() || (isAgentAvatarValid() && id == gAgentAvatarp->getID()))
+    {
+        return mSelfEyeGazeTarget;
+    }
+    if (const CastMember* m = getMember(id))
+    {
+        return m->mEyeGazeTarget;
+    }
+    return LLActorMover::GazeTarget();
+}
+
+void LLDirectorCast::setGazeCues(const LLUUID& id, const GazeCueList& input)
+{
+    GazeCueList cues = input;
+    for (GazeCue& cue : cues)
+    {
+        sanitizeGazeCue(cue);
+    }
+    std::stable_sort(cues.begin(), cues.end(),
+        [](const GazeCue& a, const GazeCue& b)
+        {
+            return a.mStartSec < b.mStartSec;
+        });
+
+    LLUUID runtime_id = id;
+    if (id.isNull() || (isAgentAvatarValid() && id == gAgentAvatarp->getID()))
+    {
+        mSelfGazeCues = cues;
+        if (isAgentAvatarValid())
+        {
+            runtime_id = gAgentAvatarp->getID();
+        }
+    }
+    else if (CastMember* member = getMember(id))
+    {
+        member->mGazeCues = cues;
+    }
+    else
+    {
+        return;
+    }
+
+    ++mGazeCueRevision;
+    LLActorMover::instance().clearDirectorLookAtRuntime(runtime_id);
+}
+
+const LLDirectorCast::GazeCueList& LLDirectorCast::getGazeCues(const LLUUID& id) const
+{
+    static const GazeCueList empty;
+    if (id.isNull() || (isAgentAvatarValid() && id == gAgentAvatarp->getID()))
+    {
+        return mSelfGazeCues;
+    }
+    if (const CastMember* member = getMember(id))
+    {
+        return member->mGazeCues;
+    }
+    return empty;
+}
+
+//static
+LLDirectorCast::GazeCueEvaluation LLDirectorCast::evaluateGazeCues(
+    const GazeCueList& cues, U64 persona_seed, F64 presentation_time)
+{
+    GazeCueEvaluation result;
+    if (cues.empty() || !std::isfinite(presentation_time))
+    {
+        return result;
+    }
+
+    const auto after = std::upper_bound(
+        cues.begin(), cues.end(), presentation_time,
+        [](F64 time, const GazeCue& cue)
+        {
+            return time < cue.mStartSec;
+        });
+    if (after == cues.begin())
+    {
+        return result; // cue track has not started; preserve the live scene aim
+    }
+
+    const std::size_t index = static_cast<std::size_t>(
+        std::distance(cues.begin(), after) - 1);
+    const GazeCue& cue = cues[index];
+    result.mHasOverride = true;
+    result.mCueIndex = static_cast<S32>(index);
+    result.mToTarget = cue.mTarget;
+    if (cue.mMacro == ALGazeMath::GAZE_MACRO_BUTTON_LOOK)
+    {
+        // Button Look always addresses the live gated/render camera, regardless
+        // of the editor's target-mode value.
+        result.mToTarget.mMode = LLActorMover::GazeTarget::CAMERA;
+    }
+    result.mEffectiveTarget = result.mToTarget;
+
+    if (index > 0)
+    {
+        result.mHasFromTarget = true;
+        result.mFromTarget = cues[index - 1].mTarget;
+        if (cues[index - 1].mMacro == ALGazeMath::GAZE_MACRO_BUTTON_LOOK)
+        {
+            result.mFromTarget.mMode = LLActorMover::GazeTarget::CAMERA;
+        }
+
+        // Freeze the previous cue's resolved aim at this cue's boundary. This
+        // preserves a prior cue that is already releasing/returning instead of
+        // always treating its raw target as the crossfade origin.
+        if (index > 1)
+        {
+            result.mHasFromBaseTarget = true;
+            result.mFromBaseTarget = cues[index - 2].mTarget;
+            if (cues[index - 2].mMacro == ALGazeMath::GAZE_MACRO_BUTTON_LOOK)
+            {
+                result.mFromBaseTarget.mMode = LLActorMover::GazeTarget::CAMERA;
+            }
+        }
+        const GazeCue& previous = cues[index - 1];
+        ALGazeMath::GazeMacroParams previous_params;
+        previous_params.mAcquireSec = cueStyleSeconds(
+            previous.mAcquireStyle, true, result.mFromTarget);
+        previous_params.mReleaseSec = cueStyleSeconds(
+            previous.mReleaseStyle, false, result.mFromTarget);
+        previous_params.mDurationSec = previous.mDurationSec;
+        previous_params.mGapSec = previous.mMacroGapSec;
+        previous_params.mDwellSec = previous.mMacroDwellSec;
+        previous_params.mHoldFramesPast = previous.mHoldFramesPast;
+        previous_params.mThoughtResidue = previous.mThoughtResidue;
+        result.mFromTargetBlend = ALGazeMath::evalGazeMacro(
+            previous.mMacro, persona_seed,
+            cue.mStartSec - previous.mStartSec,
+            previous_params).mTargetWeight;
+    }
+
+    result.mAcquireSec = cueStyleSeconds(
+        cue.mAcquireStyle, true, result.mToTarget);
+    result.mReleaseSec = cueStyleSeconds(
+        cue.mReleaseStyle, false, result.mToTarget);
+
+    ALGazeMath::GazeMacroParams params;
+    params.mAcquireSec = result.mAcquireSec;
+    params.mReleaseSec = result.mReleaseSec;
+    params.mDurationSec = cue.mDurationSec;
+    params.mGapSec = cue.mMacroGapSec;
+    params.mDwellSec = cue.mMacroDwellSec;
+    params.mHoldFramesPast = cue.mHoldFramesPast;
+    params.mThoughtResidue = cue.mThoughtResidue;
+    const ALGazeMath::GazeMacroEnvelope envelope =
+        ALGazeMath::evalGazeMacro(
+            cue.mMacro, persona_seed,
+            presentation_time - cue.mStartSec, params);
+    result.mTargetBlend = envelope.mTargetWeight;
+    result.mEyeWeight = envelope.mEyeWeight;
+    result.mHeadWeight = envelope.mHeadWeight;
+    result.mBodyWeight = envelope.mBodyWeight;
+    result.mLidWiden = envelope.mLidWiden;
+    result.mHeadRecoilPitch = envelope.mHeadRecoilPitch;
+    result.mPhase = envelope.mPhase;
+    return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -527,6 +1155,32 @@ LLSD LLDirectorCast::sceneData() const
         e["loco_anim"] = m.mLocoAnim;
         e["group"] = m.mGroup;
         e["look_at_camera"] = isLookAtCamera(m.mId);
+
+        LLSD gaze_sd = LLSD::emptyMap();
+        gaze_sd["mode"] = static_cast<S32>(m.mGazeTarget.mMode);
+        if (m.mGazeTarget.mCastRef.notNull())
+        {
+            gaze_sd["cast_ref"] = m.mGazeTarget.mCastRef;
+        }
+        if (!m.mGazeTarget.mFixedPoint.isExactlyZero())
+        {
+            gaze_sd["fixed_point"] = ll_sd_from_vector3d(m.mGazeTarget.mFixedPoint);
+        }
+        if (m.mGazeTarget.mObjectRef.notNull())
+        {
+            gaze_sd["object_ref"] = m.mGazeTarget.mObjectRef;
+        }
+        writeGazeExpression(gaze_sd, m.mGazeTarget);
+        e["gaze_target"] = gaze_sd;
+        if (m.mEyeGazeTargetEnabled)
+        {
+            e["eye_gaze_target"] = writeGazeAimTarget(m.mEyeGazeTarget);
+        }
+        if (!m.mGazeCues.empty())
+        {
+            e["gaze_cues"] = writeGazeCues(m.mGazeCues);
+        }
+
         cast_arr.append(e);
     }
     data["cast"] = cast_arr;
@@ -534,6 +1188,33 @@ LLSD LLDirectorCast::sceneData() const
     data["subject_b"] = mSubjectB;
     data["subject_c"] = mSubjectC;
     data["subject_d"] = mSubjectD;
+
+    LLSD self_gaze_sd = LLSD::emptyMap();
+    self_gaze_sd["mode"] = static_cast<S32>(mSelfGazeTarget.mMode);
+    self_gaze_sd["look_at_camera"] = mSelfLookAtCamera;
+    if (mSelfGazeTarget.mCastRef.notNull())
+    {
+        self_gaze_sd["cast_ref"] = mSelfGazeTarget.mCastRef;
+    }
+    if (!mSelfGazeTarget.mFixedPoint.isExactlyZero())
+    {
+        self_gaze_sd["fixed_point"] = ll_sd_from_vector3d(mSelfGazeTarget.mFixedPoint);
+    }
+    if (mSelfGazeTarget.mObjectRef.notNull())
+    {
+        self_gaze_sd["object_ref"] = mSelfGazeTarget.mObjectRef;
+    }
+    writeGazeExpression(self_gaze_sd, mSelfGazeTarget);
+    data["self_gaze_target"] = self_gaze_sd;
+    if (mSelfEyeGazeTargetEnabled)
+    {
+        data["self_eye_gaze_target"] = writeGazeAimTarget(mSelfEyeGazeTarget);
+    }
+    if (!mSelfGazeCues.empty())
+    {
+        data["self_gaze_cues"] = writeGazeCues(mSelfGazeCues);
+    }
+
     // per-group start delays, only for groups that still exist (the members
     // above carry the tags; this map just annotates them)
     LLSD delays = LLSD::emptyMap();
@@ -559,11 +1240,57 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     mGroupDelays.clear();
     mCast.clear();
     mIds.clear();
+    mMemberIndex.clear();
     mLookAtCameraIds.clear();
+    mSelfLookAtCamera = false;
     mSubjectA.setNull();
     mSubjectB.setNull();
     mSubjectC.setNull();
     mSubjectD.setNull();
+    mSelfGazeTarget = LLActorMover::GazeTarget();
+    mSelfGazeTarget.mMode = LLActorMover::GazeTarget::CAMERA;
+    mSelfEyeGazeTarget = LLActorMover::GazeTarget();
+    mSelfEyeGazeTargetEnabled = false;
+    mSelfGazeCues.clear();
+
+    if (data.has("self_gaze_target"))
+    {
+        const LLSD& sg = data["self_gaze_target"];
+        if (sg.has("look_at_camera"))
+        {
+            mSelfLookAtCamera = sg["look_at_camera"].asBoolean();
+        }
+        if (sg.has("mode"))
+        {
+            mSelfGazeTarget.mMode = static_cast<LLActorMover::GazeTarget::EMode>(
+                llclamp(sg["mode"].asInteger(),
+                        static_cast<S32>(LLActorMover::GazeTarget::MOTION),
+                        static_cast<S32>(LLActorMover::GazeTarget::OBJECT)));
+        }
+        if (sg.has("cast_ref"))
+        {
+            mSelfGazeTarget.mCastRef = sg["cast_ref"].asUUID();
+        }
+        if (sg.has("fixed_point"))
+        {
+            mSelfGazeTarget.mFixedPoint = ll_vector3d_from_sd(sg["fixed_point"]);
+        }
+        if (sg.has("object_ref"))
+        {
+            mSelfGazeTarget.mObjectRef = sg["object_ref"].asUUID();
+        }
+        readGazeExpression(sg, mSelfGazeTarget);
+        LLActorMover::instance().setGazeTargetConfig(LLUUID::null, mSelfGazeTarget);
+    }
+    if (data.has("self_eye_gaze_target"))
+    {
+        mSelfEyeGazeTargetEnabled = readEyeGazeAimTarget(
+            data["self_eye_gaze_target"], mSelfEyeGazeTarget);
+    }
+    if (data.has("self_gaze_cues"))
+    {
+        setGazeCues(LLUUID::null, readGazeCues(data["self_gaze_cues"]));
+    }
 
     const LLSD& cast_arr = data["cast"];
     for (LLSD::array_const_iterator it = cast_arr.beginArray();
@@ -584,8 +1311,48 @@ void LLDirectorCast::applySceneData(const LLSD& data)
         }
         m.mLocoAnim = e["loco_anim"].asUUID();
         m.mGroup = e["group"].asString();   // absent in pre-group scenes -> ""
+        if (e.has("gaze_target"))
+        {
+            const LLSD& gaze_sd = e["gaze_target"];
+            if (gaze_sd.has("mode"))
+            {
+                m.mGazeTarget.mMode = static_cast<LLActorMover::GazeTarget::EMode>(
+                    llclamp(gaze_sd["mode"].asInteger(),
+                            static_cast<S32>(LLActorMover::GazeTarget::MOTION),
+                            static_cast<S32>(LLActorMover::GazeTarget::OBJECT)));
+            }
+            if (gaze_sd.has("cast_ref"))
+            {
+                m.mGazeTarget.mCastRef = gaze_sd["cast_ref"].asUUID();
+            }
+            if (gaze_sd.has("fixed_point"))
+            {
+                m.mGazeTarget.mFixedPoint = ll_vector3d_from_sd(gaze_sd["fixed_point"]);
+            }
+            if (gaze_sd.has("object_ref"))
+            {
+                m.mGazeTarget.mObjectRef = gaze_sd["object_ref"].asUUID();
+            }
+            readGazeExpression(gaze_sd, m.mGazeTarget);
+        }
+        if (e.has("eye_gaze_target"))
+        {
+            m.mEyeGazeTargetEnabled = readEyeGazeAimTarget(
+                e["eye_gaze_target"], m.mEyeGazeTarget);
+        }
+        const GazeCueList loaded_gaze_cues = e.has("gaze_cues")
+            ? readGazeCues(e["gaze_cues"]) : GazeCueList();
         mCast.push_back(m);
         mIds.push_back(m.mId);
+        mMemberIndex[m.mId] = mCast.size() - 1;
+        if (e.has("gaze_cues"))
+        {
+            setGazeCues(m.mId, loaded_gaze_cues);
+        }
+        if (e.has("gaze_target"))
+        {
+            LLActorMover::instance().setGazeTargetConfig(m.mId, m.mGazeTarget);
+        }
         if (e["look_at_camera"].asBoolean()) // absent in older scenes -> false
         {
             mLookAtCameraIds.insert(m.mId);
@@ -616,6 +1383,7 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     {
         mSubjectD = d;
     }
+    ++mGazeCueRevision;
 
     // group start delays (absent in pre-delay scenes); only names some loaded
     // member actually carries are kept -- no stale registry

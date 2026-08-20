@@ -220,8 +220,11 @@ LLGLSLShader            gSMAAEdgeDetectProgram[4];
 LLGLSLShader            gSMAABlendWeightsProgram[4];
 LLGLSLShader            gSMAANeighborhoodBlendProgram[4];
 LLGLSLShader            gCASProgram;
+LLGLSLShader            gCineFisheyeProgram;
 // [BDMerge G3.2] volumetric lighting (donor: Black Dragon)
 LLGLSLShader            gVolumetricLightProgram;
+// [Cine Outline Phase 1] deferred normal/depth outline post pass
+LLGLSLShader            gCineOutlineProgram;
 // [BDMerge G3.3] per-projector volumetric light cones (visible spotlight shafts)
 LLGLSLShader            gDeferredProjectorVolumetricProgram;
 LLGLSLShader            gDeferredProjectorVolumetricUpsampleProgram; // [BDMerge G3.3 P1 item 3]
@@ -448,6 +451,8 @@ void LLViewerShaderMgr::finalizeShaderList()
     // registered shaders only - without this the volumetric shader computes
     // haze_density/(blue_density+haze_density) = 0/0 = NaN and blacks the frame
     mShaderList.push_back(&gVolumetricLightProgram);
+    mShaderList.push_back(&gCineOutlineProgram);
+    mShaderList.push_back(&gCineFisheyeProgram);
     // [BDMerge G3.3] projector volumetrics links the same atmospherics/deferred
     // util set as G3.2, so register it too (keeps linked util externs satisfied).
     mShaderList.push_back(&gDeferredProjectorVolumetricProgram);
@@ -1296,7 +1301,9 @@ bool LLViewerShaderMgr::loadShadersDeferred()
             gSMAANeighborhoodBlendProgram[i].unload();
         }
         gCASProgram.unload();
+        gCineFisheyeProgram.unload();
         gVolumetricLightProgram.unload();
+        gCineOutlineProgram.unload();
         gDeferredProjectorVolumetricProgram.unload(); // [BDMerge G3.3]
         gDeferredProjectorVolumetricUpsampleProgram.unload(); // [BDMerge G3.3 P1 item 3]
         gDeferredProjectorVolumetricTemporalProgram.unload(); // [BDMerge G3.3 Batch 1 A]
@@ -3102,6 +3109,41 @@ bool LLViewerShaderMgr::loadShadersDeferred()
                 gSMAABlendWeightsProgram[i].unload();
                 gSMAANeighborhoodBlendProgram[i].unload();
             }
+        }
+    }
+
+    if (success)
+    {
+        gCineOutlineProgram.mName = "Cine Outline Shader";
+        gCineOutlineProgram.mFeatures.isDeferred = true;      // attaches deferredUtil.glsl (getPosition/getDepth)
+        gCineOutlineProgram.mFeatures.hasFullGBuffer = true;  // attaches gbufferUtil.glsl (getNorm/GET_GBUFFER_FLAG)
+        gCineOutlineProgram.mShaderFiles.clear();
+        gCineOutlineProgram.clearPermutations();
+        gCineOutlineProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gCineOutlineProgram.mShaderFiles.push_back(make_pair("deferred/cineOutlineF.glsl", GL_FRAGMENT_SHADER));
+        gCineOutlineProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gCineOutlineProgram.createShader();
+        if (!success)
+        {
+            LL_WARNS() << "Failed to create shader '" << gCineOutlineProgram.mName << "', disabling!" << LL_ENDL;
+            success = true;
+        }
+    }
+
+    if (success)
+    {
+        gCineFisheyeProgram.mName = "Cine Fisheye Shader";
+        gCineFisheyeProgram.mFeatures.isDeferred = true;
+        gCineFisheyeProgram.mShaderFiles.clear();
+        gCineFisheyeProgram.clearPermutations();
+        gCineFisheyeProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gCineFisheyeProgram.mShaderFiles.push_back(make_pair("deferred/cineFisheyeF.glsl", GL_FRAGMENT_SHADER));
+        gCineFisheyeProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gCineFisheyeProgram.createShader();
+        if (!success)
+        {
+            LL_WARNS() << "Failed to create shader '" << gCineFisheyeProgram.mName << "', disabling!" << LL_ENDL;
+            success = true;
         }
     }
 

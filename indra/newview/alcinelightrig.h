@@ -90,6 +90,8 @@ public:
 
     void setAnchor(const LLUUID& id);
     const LLUUID& getAnchor() const { return mAnchor; }
+    void setObjectTarget(const LLUUID& id);
+    const LLUUID& getObjectTarget() const { return mObjectTarget; }
     void setGroupEnabled(bool enabled);
     bool isGroupEnabled() const { return mGroupEnabled; }
     void setGroupSlots(U32 mask);
@@ -115,6 +117,27 @@ public:
     bool loadSetup(const std::string& name);
     bool saveSetup(const std::string& name);
     bool deleteSetup(const std::string& name);
+
+    // Lighting-console cue stack.  Lists contain full snapshots rather than
+    // diffs, so playback is independent of later setup-preset edits.
+    const ALCineLightRigModel::CueList& cueList() const { return mCueList; }
+    void setCueList(const ALCineLightRigModel::CueList& list);
+    ALCineLightRigModel::Cue captureCue(const std::string& label) const;
+    std::vector<std::string> cueListNames() const;
+    bool loadCueList(const std::string& name);
+    bool saveCueList(const std::string& name);
+    bool deleteCueList(const std::string& name);
+    void cueGo(F64 presentation_time);
+    void cueBack(F64 presentation_time);
+    void cueGoto(S32 index, F64 presentation_time, bool snap = false);
+    void cueRelease(F64 presentation_time);
+    S32 activeCue() const { return mCueActiveIndex; }
+    bool cuePlaybackActive() const { return mCueRuntimeActive; }
+    U64 cueRevision() const { return mCueRevision; }
+    LLSD cueListData() const;
+    static bool validateCueListData(const LLSD& data);
+    bool applyCueListData(const LLSD& data);
+    void applyCueSceneState(const LLSD& data);
 
     LLSD sceneData() const;
     void applySceneData(const LLSD& data);
@@ -164,9 +187,21 @@ private:
     void writeSetupToSettings(const ALCineLightRigModel::Setup& setup) const;
     void updateTransition(const ALCineLightRigModel::LightBase target[
                               ALCineLightRigModel::LIGHT_COUNT],
-                          F32 target_radius, F32 duration,
+                          F32 target_radius,
+                          const ALCineLightRigModel::Globals& target_globals,
+                          F32 duration,
                           F64 presentation_time);
     void evaluateTransition(F64 presentation_time);
+    ALCineLightRigModel::CueState captureCueState() const;
+    static ALCineLightRigModel::CueState releasedCueState(
+        const ALCineLightRigModel::CueState& basis);
+    void startCueTransition(S32 index, F64 presentation_time, bool snap);
+    bool evaluateCuePlayback(
+        F64 presentation_time, ALCineLightRigModel::Setup& setup,
+        ALCineLightRigModel::Globals& globals,
+        ALCineLightRigModel::Transforms& transforms,
+        F32 shadow_softness[ALCineLightRigModel::LIGHT_COUNT],
+        S32& fx_setting, F64& fx_epoch);
     void applyFrame(const ALCineLightRigModel::RigFrame& frame,
                     const LLVector3d& rig_centre,
                     const LLVector3d& aim_centre, F32 nominal_radius,
@@ -181,6 +216,8 @@ private:
 
     static std::string presetsDir();
     static std::string presetPath(const std::string& name);
+    static std::string cueListsDir();
+    static std::string cueListPath(const std::string& name);
 
     LLPointer<LLVOVolume> mProjectors[
         ALCineLightRigModel::LIGHT_COUNT];
@@ -191,6 +228,7 @@ private:
 
     ALCineLightRigSlot mSlot = ALCineLightRigSlot::SELF;
     LLUUID mAnchor;
+    LLUUID mObjectTarget;
     bool mGroupEnabled = false;
     U32 mGroupSlots = 0;
     U32 mLastResolvedGroupSlots = 0;
@@ -212,10 +250,26 @@ private:
     F32 mTransitionRadiusStart = 1.5f;
     F32 mTransitionRadiusTarget = 1.5f;
     F32 mCurrentRadius = 1.5f;
+    ALCineLightRigModel::Globals mTransitionGlobalsStart;
+    ALCineLightRigModel::Globals mTransitionGlobalsTarget;
+    ALCineLightRigModel::Globals mCurrentGlobals;
     F32 mTransitionDuration = 0.9f;
     F64 mTransitionStartTime = 0.0;
     bool mHaveTarget = false;
     bool mTransitionActive = false;
+
+    ALCineLightRigModel::CueList mCueList;
+    ALCineLightRigModel::CueState mCueTransitionStart;
+    ALCineLightRigModel::CueState mCueCurrent;
+    ALCineLightRigModel::Cue mCueRuntimeTarget;
+    F64 mCueGoTime = 0.0;
+    F64 mCueFXEpoch = 0.0;
+    S32 mCueActiveIndex = -1;
+    bool mCueRuntimeActive = false;
+    bool mCueRelease = false;
+    U64 mCueRevision = 0;
+    U64 mCueFXGeneration = 0;
+    U64 mAppliedCueFXGeneration = 0;
 
     LLVector3d mSmoothedCentre;
     F32 mSmoothedScale = 1.f;

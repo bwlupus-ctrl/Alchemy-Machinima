@@ -35,13 +35,13 @@
      tool_tip="Curated one-click looks. Applying one changes the controls below; your saved named rigs remain separate."
      width="216">
         <combo_box.item label="Choose a look..." name="shake_none" value="0" />
-        <combo_box.item label="Locked Tripod" name="shake_locked" value="1" />
-        <combo_box.item label="Subtle Handheld" name="shake_subtle" value="2" />
-        <combo_box.item label="Documentary" name="shake_documentary" value="3" />
-        <combo_box.item label="Shoulder Rig" name="shake_shoulder" value="4" />
-        <combo_box.item label="Run-and-Gun" name="shake_run_gun" value="5" />
-        <combo_box.item label="Vehicle / Drive" name="shake_vehicle" value="6" />
-        <combo_box.item label="Drone Float" name="shake_drone" value="7" />
+        <combo_box.item label="Locked-Off" name="shake_locked" value="1" />
+        <combo_box.item label="Tripod Drift" name="shake_tripod_drift" value="2" />
+        <combo_box.item label="Doc Handheld" name="shake_documentary" value="3" />
+        <combo_box.item label="Run-and-Gun" name="shake_run_gun" value="4" />
+        <combo_box.item label="Steadicam Float" name="shake_steadicam" value="5" />
+        <combo_box.item label="Shoulder Rig" name="shake_shoulder" value="6" />
+        <combo_box.item label="Vehicle / Drive" name="shake_vehicle" value="7" />
         <combo_box.item label="Verite" name="shake_verite" value="8" />
         <combo_box.item label="Heartbeat" name="shake_heartbeat" value="9" />
     </combo_box>
@@ -282,6 +282,8 @@
     <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorMotionRoll" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="301" name="reset_FlycamOperatorMotionRoll" tool_tip="Reset to default" top="716" width="12" />
     <spinner control_name="FlycamOperatorMotionBreath" decimal_digits="2" height="16" increment="0.05" label="Motion breath" label_width="72" layout="topleft" left="12" top="736" min_val="0" max_val="2" name="FlycamOperatorMotionBreath" tool_tip="Motion response on the breathing pulse." width="135" />
     <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorMotionBreath" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="149" name="reset_FlycamOperatorMotionBreath" tool_tip="Reset to default" top="736" width="12" />
+    <spinner control_name="FlycamOperatorReactionLag" decimal_digits="2" height="16" increment="0.05" label="Reaction lag" label_width="72" layout="topleft" left="164" top="736" min_val="0" max_val="1.5" name="FlycamOperatorReactionLag" tool_tip="Seconds before the operator reacts and reframes after camera motion." width="135" />
+    <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="FlycamOperatorReactionLag" follows="left|top" height="16" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="301" name="reset_FlycamOperatorReactionLag" tool_tip="Reset to immediate reaction" top="736" width="12" />
 
     <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
      left="12" name="operator_settle_title" top="756" width="304">Settle &amp; damping</text>

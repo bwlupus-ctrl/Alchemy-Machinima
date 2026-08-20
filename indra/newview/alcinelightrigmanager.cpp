@@ -17,6 +17,8 @@
 #include "llgl.h"
 #include "llviewercontrol.h"
 #include "llviewercamera.h"
+#include "llviewerobject.h"
+#include "llviewerobjectlist.h"
 #include "llvoavatar.h"
 #include "pipeline.h"
 
@@ -101,14 +103,17 @@ bool blobMapWellFormed(const LLSD& data)
             return false;
         }
     }
-    // Cinema-five fields were added to the already-shipped v1 instance
+    // Additive fields were added to the already-shipped v1 instance
     // envelope. Missing means the feature's inert ParamBlob default, while a
     // present value must still have its declared type. This keeps existing v1
     // stores readable without weakening validation of newly written stores.
     if ((data.has("CineLightRigRatioLock") &&
          !data["CineLightRigRatioLock"].isBoolean()) ||
         (data.has("CineLightRigCatchlight") &&
-         !data["CineLightRigCatchlight"].isBoolean()))
+         !data["CineLightRigCatchlight"].isBoolean()) ||
+        (data.has("cue_list") &&
+         (!data["cue_list"].isMap() ||
+          !ALCineLightRig::validateCueListData(data["cue_list"]))))
     {
         return false;
     }
@@ -119,6 +124,16 @@ bool blobMapWellFormed(const LLSD& data)
     for (const char* key : optional_real_keys)
     {
         if (data.has(key) && !data[key].isReal() && !data[key].isInteger())
+        {
+            return false;
+        }
+    }
+    static const char* const optional_uuid_keys[] = {
+        "CineLightRigObjectTarget"
+    };
+    for (const char* key : optional_uuid_keys)
+    {
+        if (data.has(key) && !data[key].isUUID())
         {
             return false;
         }
@@ -145,14 +160,44 @@ bool blobMapWellFormed(const LLSD& data)
             !light["beam"].isInteger() ||
             !light["gobo"].isInteger() ||
             (light.has("gel") && !light["gel"].isInteger()) ||
-            (light.has("shadow_soft") &&
-             !light["shadow_soft"].isReal() &&
-             !light["shadow_soft"].isInteger()) ||
-            !light["on"].isBoolean() ||
+             (light.has("shadow_soft") &&
+              !light["shadow_soft"].isReal() &&
+              !light["shadow_soft"].isInteger()) ||
+            (light.has("flicker_program") &&
+             !light["flicker_program"].isInteger()) ||
+            (light.has("flicker_amount") &&
+             !light["flicker_amount"].isReal() &&
+             !light["flicker_amount"].isInteger()) ||
+            (light.has("fixture_mode") &&
+             !light["fixture_mode"].isBoolean()) ||
+            (light.has("kelvin") &&
+             !light["kelvin"].isReal() &&
+             !light["kelvin"].isInteger()) ||
+            (light.has("source_size_m") &&
+             !light["source_size_m"].isReal() &&
+             !light["source_size_m"].isInteger()) ||
+            (light.has("fixture_preset") &&
+             !light["fixture_preset"].isInteger()) ||
+            (light.has("fixture_gel_slots") &&
+             (!light["fixture_gel_slots"].isArray() ||
+              light["fixture_gel_slots"].size() !=
+                  ALCineLightRigModel::FIXTURE_GEL_SLOT_COUNT)) ||
+             !light["on"].isBoolean() ||
             !data["shafts"][i].isBoolean() ||
             !data["heroes"][i].isBoolean())
         {
             return false;
+        }
+        if (light.has("fixture_gel_slots"))
+        {
+            for (S32 slot = 0;
+                 slot < ALCineLightRigModel::FIXTURE_GEL_SLOT_COUNT; ++slot)
+            {
+                if (!light["fixture_gel_slots"][slot].isInteger())
+                {
+                    return false;
+                }
+            }
         }
     }
     return true;
@@ -180,6 +225,7 @@ void ALCineLightRigParamBlob::toSettings() const
 void ALCineLightRigParamBlob::captureRigState(const ALCineLightRig& rig)
 {
     mAnchor = rig.mAnchor;
+    mObjectTarget = rig.mObjectTarget;
     mGroupEnabled = rig.mGroupEnabled;
     mGroupSlots = rig.mGroupSlots;
     for (S32 i = 0; i < ALCineLightRigModel::LIGHT_COUNT; ++i)
@@ -201,11 +247,13 @@ void ALCineLightRigParamBlob::captureRigState(const ALCineLightRig& rig)
     }
     mPendingFXPhase = rig.mPendingFXPhase;
     mPendingFXId = rig.mPendingFXId;
+    mCueList = rig.cueListData();
 }
 
 void ALCineLightRigParamBlob::applyRigState(ALCineLightRig& rig) const
 {
     rig.setAnchor(mAnchor);
+    rig.setObjectTarget(mObjectTarget);
     rig.setGroupEnabled(mGroupEnabled);
     rig.setGroupSlots(mGroupSlots);
     for (S32 i = 0; i < ALCineLightRigModel::LIGHT_COUNT; ++i)
@@ -216,6 +264,11 @@ void ALCineLightRigParamBlob::applyRigState(ALCineLightRig& rig) const
     rig.mPendingFXPhase = mFX >= 0 ? std::max(0.0, mFXPhase)
                                    : mPendingFXPhase;
     rig.mPendingFXId = mFX >= 0 ? mFX : mPendingFXId;
+    if (mCueList.isMap() && !rig.applyCueListData(mCueList))
+    {
+        LL_WARNS("CineLightRig")
+            << "Ignoring malformed per-instance cue list" << LL_ENDL;
+    }
     rig.mActiveFX = -1;
     rig.mHaveTarget = false;
     rig.mTransitionActive = false;
@@ -233,6 +286,7 @@ ALCineLightRigManager::ALCineLightRigManager()
         mBlobs[i] = baseline;
         mBlobs[i].mEnabled = false;
         mBlobs[i].mAnchor.setNull();
+        mBlobs[i].mObjectTarget.setNull();
         mBlobs[i].mGroupEnabled = false;
         mBlobs[i].mGroupSlots = 0;
         for (S32 light = 0; light < ALCineLightRigModel::LIGHT_COUNT; ++light)
@@ -334,6 +388,12 @@ bool ALCineLightRigManager::isSlotLit(Slot slot) const
         return false;
     }
     const ALCineLightRig& rig = at(slot);
+    if (rig.getObjectTarget().notNull())
+    {
+        LLViewerObject* object =
+            gObjectList.findObject(rig.getObjectTarget());
+        return object && !object->isDead();
+    }
     return rig.isGroupEnabled() ? rig.lastResolvedGroupSlots() != 0
                                 : rig.resolveSlotAvatar() != nullptr;
 }
@@ -732,6 +792,9 @@ void ALCineLightRigManager::applySceneData(const LLSD& data)
                 mBlobs[i].applyRigState(mInstances[i]);
             }
             mBlobs[slotIndex(mSelected)].toSettings();
+            // Instance blobs own each list, while the legacy scene envelope
+            // carries the selected console's live transport position.
+            selected().applyCueSceneState(data);
             persist();
             return;
         }
@@ -744,7 +807,9 @@ void ALCineLightRigManager::applySceneData(const LLSD& data)
 
 void ALCineLightRigManager::migrateLegacyScene(const LLSD& data)
 {
-    const ParamBlob migrated = captureSelected();
+    ParamBlob migrated = captureSelected();
+    // Object targeting did not exist in the legacy single-rig scene block.
+    migrated.mObjectTarget.setNull();
     const LLDirectorCast& cast = LLDirectorCast::instance();
     const LLUUID subjects[4] = {
         cast.getSubjectA(), cast.getSubjectB(),

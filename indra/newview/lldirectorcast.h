@@ -32,12 +32,15 @@
 #ifndef LL_LLDIRECTORCAST_H
 #define LL_LLDIRECTORCAST_H
 
+#include "algazemath.h"
+#include "llactormover.h"
 #include "llsd.h"
 #include "lluuid.h"
 #include "v3math.h"
 
 #include <set>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 class LLVOAvatar;
@@ -46,14 +49,74 @@ class LLEventTimer;
 class LLDirectorCast
 {
 public:
+    enum EGazeCueStyle : S32
+    {
+        GAZE_CUE_STYLE_DEFAULT = 0,
+        GAZE_CUE_STYLE_SNAP,
+        GAZE_CUE_STYLE_DRIFT,
+        GAZE_CUE_STYLE_CASUAL
+    };
+
+    struct GazeCue
+    {
+        F64 mStartSec = 0.0;
+        F64 mDurationSec = 0.0; // zero = until the next cue / hold
+        LLActorMover::GazeTarget mTarget;
+        EGazeCueStyle mAcquireStyle = GAZE_CUE_STYLE_DEFAULT;
+        EGazeCueStyle mReleaseStyle = GAZE_CUE_STYLE_DEFAULT;
+        ALGazeMath::EGazeCueMacro mMacro = ALGazeMath::GAZE_MACRO_NONE;
+        F32 mMacroGapSec = 0.35f;
+        F32 mMacroDwellSec = 0.60f;
+        S32 mHoldFramesPast = 2;
+        bool mThoughtResidue = false;
+    };
+    using GazeCueList = std::vector<GazeCue>;
+
+    struct GazeCueEvaluation
+    {
+        // A target mode cannot encode a crossfade by itself, so the effective
+        // result carries its from/to targets plus the pure direction blend.
+        // mEffectiveTarget is the cue target whose persona/config is active.
+        bool mHasOverride = false;
+        bool mHasFromTarget = false;
+        bool mHasFromBaseTarget = false;
+        S32 mCueIndex = -1;
+        LLActorMover::GazeTarget mFromBaseTarget;
+        LLActorMover::GazeTarget mFromTarget;
+        LLActorMover::GazeTarget mToTarget;
+        LLActorMover::GazeTarget mEffectiveTarget;
+        F32 mFromTargetBlend = 1.f;
+        F32 mTargetBlend = 0.f;
+        F32 mEyeWeight = 1.f;
+        F32 mHeadWeight = 1.f;
+        F32 mBodyWeight = 1.f;
+        F32 mLidWiden = 0.f;
+        F32 mHeadRecoilPitch = 0.f;
+        F32 mAcquireSec = 0.25f;
+        F32 mReleaseSec = 0.60f;
+        ALGazeMath::EGazeCuePhase mPhase = ALGazeMath::GAZE_CUE_BEFORE;
+    };
+
     struct CastMember
     {
-        LLUUID      mId;             // avatar or control-avatar id
-        std::string mLastName;       // cached display name (survives region exit)
-        LLVector3   mMark = LLVector3::zero;    // region coords; unset unless mHasMark
-        bool        mHasMark = false;
-        LLUUID      mLocoAnim;       // per-actor locomotion override (null = stock walk)
-        std::string mGroup;          // production group tag ("" = ungrouped; session-only)
+        CastMember()
+        {
+            // Director gaze means camera-facing unless a scene or operator
+            // explicitly authors another target. Actor Mover's standalone
+            // GazeTarget default remains MOTION.
+            mGazeTarget.mMode = LLActorMover::GazeTarget::CAMERA;
+        }
+
+        LLUUID                  mId;             // avatar or control-avatar id
+        std::string             mLastName;       // cached display name (survives region exit)
+        LLVector3               mMark = LLVector3::zero;    // region coords; unset unless mHasMark
+        bool                    mHasMark = false;
+        LLUUID                  mLocoAnim;       // per-actor locomotion override (null = stock walk)
+        std::string             mGroup;          // production group tag ("" = ungrouped; session-only)
+        LLActorMover::GazeTarget mGazeTarget;    // per-cast authored gaze target config
+        bool                    mEyeGazeTargetEnabled = false;
+        LLActorMover::GazeTarget mEyeGazeTarget; // optional eyes-only target
+        GazeCueList             mGazeCues;        // ordered presentation-time performance track
     };
 
     static LLDirectorCast& instance();
@@ -76,6 +139,22 @@ public:
     // copied to an avatar, animation message, or simulator update.
     void setLookAtCamera(const LLUUID& id, bool selected);
     bool isLookAtCamera(const LLUUID& id) const;
+
+    // ---- per-cast / slot gaze targeting ----
+    void                     setGazeTarget(const LLUUID& id, const LLActorMover::GazeTarget& target);
+    LLActorMover::GazeTarget getGazeTarget(const LLUUID& id) const;
+    void                     setEyeGazeTarget(const LLUUID& id, const LLActorMover::GazeTarget& target);
+    void                     clearEyeGazeTarget(const LLUUID& id);
+    bool                     hasEyeGazeTarget(const LLUUID& id) const;
+    LLActorMover::GazeTarget getEyeGazeTarget(const LLUUID& id) const;
+    void                     setGazeCues(const LLUUID& id, const GazeCueList& cues);
+    const GazeCueList&       getGazeCues(const LLUUID& id) const;
+    U64                      getGazeCueRevision() const { return mGazeCueRevision; }
+
+    // Pure track evaluation. Empty lists (and times before the first cue)
+    // return mHasOverride=false; callers then retain their live-target path.
+    static GazeCueEvaluation evaluateGazeCues(
+        const GazeCueList& cues, U64 persona_seed, F64 presentation_time);
 
     // ---- resolution ----
     // null id = my avatar; a stale id (actor left the region) resolves to
@@ -194,10 +273,11 @@ public:
     F32  countdownRemaining() const;    // seconds; 0 when not counting down
 
 private:
-    LLDirectorCast() = default;
+    LLDirectorCast();
 
     void fireAction();
     void cancelCountdown();
+    void rebuildMemberIndex();
 
     // staggered starts: fire every queued start that has come due, then prune
     // dead (already-fired, self-deleted) timer pointers from mStaggerTimers
@@ -208,12 +288,19 @@ private:
 
     std::vector<CastMember> mCast;
     uuid_vec_t              mIds;       // mirrors mCast order
+    std::unordered_map<LLUUID, std::size_t> mMemberIndex;
     std::set<LLUUID>        mLookAtCameraIds;
+    bool                    mSelfLookAtCamera = false;
 
     LLUUID mSubjectA;
     LLUUID mSubjectB;
     LLUUID mSubjectC;
     LLUUID mSubjectD;
+    LLActorMover::GazeTarget mSelfGazeTarget;
+    bool mSelfEyeGazeTargetEnabled = false;
+    LLActorMover::GazeTarget mSelfEyeGazeTarget;
+    GazeCueList mSelfGazeCues;
+    U64 mGazeCueRevision = 0;
 
     // transport state: what THIS action() run started, so cut() undoes
     // only that

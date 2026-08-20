@@ -266,8 +266,11 @@ extern LLGLSLShader         gSMAAEdgeDetectProgram[4];
 extern LLGLSLShader         gSMAABlendWeightsProgram[4];
 extern LLGLSLShader         gSMAANeighborhoodBlendProgram[4];
 extern LLGLSLShader         gCASProgram;
+extern LLGLSLShader         gCineFisheyeProgram;
 // [BDMerge G3.2] volumetric lighting (donor: Black Dragon)
 extern LLGLSLShader         gVolumetricLightProgram;
+// [Cine Outline Phase 1] deferred normal/depth outline post pass
+extern LLGLSLShader         gCineOutlineProgram;
 // [BDMerge G3.3] per-projector volumetric light cones (visible spotlight shafts)
 extern LLGLSLShader         gDeferredProjectorVolumetricProgram;
 extern LLGLSLShader         gDeferredProjectorVolumetricUpsampleProgram; // [BDMerge G3.3 P1 item 3]

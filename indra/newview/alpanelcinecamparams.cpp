@@ -12,6 +12,7 @@
 #include "alpanelcinecamparams.h"
 #include "alscrollfocus.h"
 
+#include "llcameraoperator.h"
 #include "llcinematiccamera.h"
 #include "llbutton.h"
 #include "llcombobox.h"
@@ -45,6 +46,10 @@ struct ShakePreset
     S32 mLocomotion;
     S32 mStyle;
     S32 mProfile;
+    F32 mAmplitude;
+    F32 mFrequency;
+    F32 mDamping;
+    F32 mReactionLag;
 };
 
 // Curated output-authority looks. Style supplies the rig's procedural detail;
@@ -52,16 +57,16 @@ struct ShakePreset
 // these final gains decide which parts reach the frame. Index zero is the
 // combo's non-action placeholder.
 const ShakePreset SHAKE_PRESETS[] = {
-    { "",                 0.f,  0.f,  0.f,  0.f,  0.f,  0.f,  0.f, 0.35f,   0, 0, 0 },
-    { "Locked Tripod",    0.f,  0.f,  0.f,  0.f,  0.f,  0.f,  0.f, 0.65f,   0, 1, 1 },
-    { "Subtle Handheld", .35f, .45f, .35f, .30f, .40f, .35f, .20f, 0.45f,   0, 2, 4 },
-    { "Documentary",     .75f, .90f, .80f, .75f, .90f, .90f, .65f, 0.30f, 100, 3, 2 },
-    { "Shoulder Rig",    .65f, .90f, .75f, .80f, .70f, .65f, .35f, 0.38f,   2, 5, 4 },
-    { "Run-and-Gun",    1.15f,1.30f,1.40f,1.25f,1.35f,1.25f, .75f, 0.16f, 100, 4, 6 },
-    { "Vehicle / Drive",1.30f, .65f,1.25f, .80f, .55f, .45f, .20f, 0.28f,   4, 5, 2 },
-    { "Drone Float",     .35f, .35f, .45f, .12f, .25f, .30f, .08f, 0.75f,   5, 6, 5 },
-    { "Verite",          .90f,1.15f,1.00f,1.00f,1.10f,1.15f, .50f, 0.20f,   6, 7, 3 },
-    { "Heartbeat",       .10f, .15f, .45f, .10f, .25f, .15f,1.40f, 0.50f,   0, 8, 4 },
+    { "",                 0.f,  0.f,  0.f,  0.f,  0.f,  0.f,  0.f, 0.35f,   0, 0, 0, 1.f, 1.f, .60f, 0.f },
+    { "Locked-Off",       0.f,  0.f,  0.f,  0.f,  0.f,  0.f,  0.f, 0.65f,   1, 1, 1, 0.f, .5f, 1.00f, 0.f },
+    { "Tripod Drift",    .10f, .15f, .10f, .08f, .12f, .10f, .05f, 0.65f,   1, 1, 5, .45f,.55f, .95f, .30f },
+    { "Doc Handheld",    .75f, .90f, .80f, .75f, .90f, .90f, .65f, 0.30f, 100, 3, 2, 1.f, 1.f, .72f, .18f },
+    { "Run-and-Gun",    1.15f,1.30f,1.40f,1.25f,1.35f,1.25f, .75f, 0.16f, 100, 4, 6,1.2f,1.35f,.55f, .08f },
+    { "Steadicam Float", .25f, .30f, .35f, .08f, .20f, .22f, .08f, 0.75f,   5, 6, 5, .65f,.55f, .95f, .25f },
+    { "Shoulder Rig",    .65f, .90f, .75f, .80f, .70f, .65f, .35f, 0.38f,   2, 5, 4, .9f, .9f, .70f, .12f },
+    { "Vehicle / Drive",1.30f, .65f,1.25f, .80f, .55f, .45f, .20f, 0.28f,   4, 5, 2, 1.f,1.1f, .65f, .10f },
+    { "Verite",          .90f,1.15f,1.00f,1.00f,1.10f,1.15f, .50f, 0.20f,   6, 7, 3,1.1f,1.2f, .45f, .06f },
+    { "Heartbeat",       .10f, .15f, .45f, .10f, .25f, .15f,1.40f, 0.50f,   1, 8, 4, .8f, .8f, .85f, .22f },
 };
 
 } // anonymous namespace
@@ -116,8 +121,9 @@ ALPanelCineCamParams::ALPanelCineCamParams()
 // mode -> panel + settings table
 //
 // Ground truth is the set of LLCachedControl declarations inside each pattern
-// function of llcinematiccamera.cpp. No two modes share a setting, so every
-// mode gets its own panel. Keep this table in sync with the camera code.
+// function of llcinematiccamera.cpp, plus the few one-button shot-builder knobs
+// that author that mode's existing inputs. No two modes share a mode setting;
+// cross-pattern phase retimes live in sharedSettings().
 // ---------------------------------------------------------------------------
 //static
 const std::vector<ALPanelCineCamParams::ModeEntry>& ALPanelCineCamParams::modeTable()
@@ -137,7 +143,7 @@ const std::vector<ALPanelCineCamParams::ModeEntry>& ALPanelCineCamParams::modeTa
                                        "CinematicCamCraneMinHeight", "CinematicCamCraneMaxHeight",
                                        "CinematicCamCraneRisePeriod" } },
         {  6, "panel_mode_vertigo",  { "CinematicCamVertigoStartDist", "CinematicCamVertigoEndDist",
-                                       "CinematicCamVertigoDuration", "CinematicCamVertigoHeading",
+                                       "CinematicCamVertigoDuration", "CinematicCamVertigoDirection", "CinematicCamVertigoHeading",
                                        "CinematicCamVertigoHeight", "CinematicCamVertigoEndMode" } },
         {  7, "panel_mode_push",     { "CinematicCamPushStartDist", "CinematicCamPushEndDist",
                                        "CinematicCamPushDuration", "CinematicCamPushHeading",
@@ -153,8 +159,9 @@ const std::vector<ALPanelCineCamParams::ModeEntry>& ALPanelCineCamParams::modeTa
         { 12, "panel_mode_slowzoom", { "CinematicCamSlowZoomTarget", "CinematicCamSlowZoomDuration" } },
         { 13, "panel_mode_whip",     { "CinematicCamWhipFrom", "CinematicCamWhipTo", "CinematicCamWhipDuration",
                                        "CinematicCamWhipDistance", "CinematicCamWhipHeight" } },
-        { 14, "panel_mode_arc",      { "CinematicCamArcFrom", "CinematicCamArcTo", "CinematicCamArcDuration",
-                                       "CinematicCamArcDistance", "CinematicCamArcHeight", "CinematicCamArcEndMode" } },
+        { 14, "panel_mode_arc",      { "CinematicCamArcGeneratorAngle", "CinematicCamArcFrom", "CinematicCamArcTo",
+                                       "CinematicCamArcDuration", "CinematicCamArcDistance", "CinematicCamArcHeight",
+                                       "CinematicCamArcHeightDrift", "CinematicCamArcEndMode" } },
         { 15, "panel_mode_reveal",   { "CinematicCamRevealBehind", "CinematicCamRevealLowHeight",
                                        "CinematicCamRevealHighHeight", "CinematicCamRevealAhead",
                                        "CinematicCamRevealDuration" } },
@@ -280,6 +287,8 @@ const std::vector<std::string>& ALPanelCineCamParams::sharedSettings()
         "CinematicCamMotionStartOffsetDeg",
         "CinematicCamMotionDirection",
         "CinematicCamMotionSeed",
+        "CinematicCamSpeedRampEnabled",
+        "CinematicCamSpeedRampStrength",
         "CinematicAutoFrameEnabled",
         "CinematicAutoFrameFill",
         "CinematicAutoFrameComposeLine",
@@ -349,6 +358,7 @@ const std::vector<std::string>& ALPanelCineCamParams::sharedSettings()
         "FlycamOperatorRollDamping",
         "FlycamOperatorRollFreq",
         "FlycamOperatorSeed",
+        "FlycamOperatorReactionLag",
         "FlycamOperatorSettle",
         "FlycamOperatorSettleDecay",
         "FlycamOperatorSettleFreq",
@@ -451,6 +461,12 @@ void ALPanelCineCamParams::onShakePresetSelected()
     gSavedSettings.setS32("FlycamOperatorLocomotionMode", preset.mLocomotion);
     gSavedSettings.setS32("FlycamOperatorStyle", preset.mStyle);
     gSavedSettings.setS32("FlycamOperatorProfile", preset.mProfile);
+    gSavedSettings.setF32("FlycamOperatorMaster", preset.mAmplitude);
+    gSavedSettings.setF32("FlycamOperatorTimeSpeed", preset.mFrequency);
+    gSavedSettings.setF32("FlycamOperatorSmoothing", preset.mDamping);
+    gSavedSettings.setF32("FlycamOperatorTremorDamping", preset.mDamping);
+    gSavedSettings.setF32("FlycamOperatorReactionLag", preset.mReactionLag);
+    LLCameraOperator::instance().reset();
     LL_INFOS("CameraShake") << "Applied built-in shake preset '"
                              << preset.mName << "'" << LL_ENDL;
 }

@@ -73,9 +73,9 @@ public:
     // Clear all accumulated state (call on flycam toggle / reset so the
     // rig doesn't carry momentum across teleports or mode switches).
     //
-    // DETERMINISM: under a LOCOMOTION MODE this also resets the procedural
-    // PHASES; under Legacy it does not, so stock behaviour is preserved
-    // exactly. An earlier version
+    // DETERMINISM: under a LOCOMOTION MODE (or the explicit Reaction Lag opt-in)
+    // this also resets the procedural PHASES; zero-lag Legacy does not, so
+    // stock behaviour is preserved exactly. An earlier version
     // deliberately left them running to avoid popping the idle motion, but that
     // made takes non-repeatable -- replaying the same recorded path with the
     // same seed started at a different point in the noise, so a re-shoot did not
@@ -87,12 +87,14 @@ public:
 private:
     LLCameraOperator() = default;
 
-    // One simulation tick. update() routes Legacy directly here with the
-    // caller's variable dt; opted-in locomotion routes fixed-dt substeps here.
+    // One simulation tick. update() routes zero-lag Legacy directly here with
+    // the caller's variable dt; opted-in locomotion/latency uses fixed substeps.
     LLCameraOperatorOutput step(const LLCameraOperatorInput& input);
     LLCameraOperatorOutput interpolateOutput() const;
     void prepareFixedPath();
     bool consumePoseTick(LLVector3& position, LLQuaternion& rotation);
+    LLCameraOperatorInput delayedReactiveInput(
+        const LLCameraOperatorInput& input, F32 latency);
 
     // ---- persistent state (the shader's FP32 state textures) ----
     // smoothed motion
@@ -160,6 +162,19 @@ private:
     LLQuaternion mPreviousRenderRotation;
     LLVector3  mLastSimPosition = LLVector3::zero;
     LLQuaternion mLastSimRotation;
+
+    // Bounded input history for reaction lag. Under opted-in locomotion this
+    // is sampled exclusively at the fixed simulation tick, so it is seeded,
+    // deterministic, and independent of render-frame grouping.
+    struct ReactionSample
+    {
+        F64 mTime = 0.0;
+        LLVector3 mLinearVel = LLVector3::zero;
+        LLVector3 mAngularVel = LLVector3::zero;
+    };
+    std::deque<ReactionSample> mReactionSamples;
+    F64       mReactionTime = 0.0;
+    F32       mReactionLatency = -1.f;
 
     // The source and live parameter BLOCKS themselves live in the .cpp's
     // anonymous namespace (Locomotion is not a public type, and this class is a

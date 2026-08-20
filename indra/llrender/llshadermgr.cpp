@@ -1772,6 +1772,15 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("gobo_tint");
     mReservedUniforms.push_back("gobo_pattern_params");
 
+    // [Cine Outline Phase 1] deferred normal/depth outline post pass.
+    mReservedUniforms.push_back("outline_color");
+    mReservedUniforms.push_back("outline_params");
+    mReservedUniforms.push_back("outline_params2");
+
+    // [Pedro Cam Phase 1] fisheye / peephole late post pass.
+    mReservedUniforms.push_back("fisheye_params");
+    mReservedUniforms.push_back("fisheye_params2");
+
     // [BDMerge A5.4-1a] velocity / motion-vector buffer (must stay in lockstep
     // with the enum block in llshadermgr.h)
     mReservedUniforms.push_back("current_modelview_matrix");

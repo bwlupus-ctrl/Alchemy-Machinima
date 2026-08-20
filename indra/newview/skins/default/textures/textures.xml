@@ -134,6 +134,31 @@ with the same filename but different name
   <texture name="Checkbox_On_Press" file_name="widgets/Checkbox_On_Press.png" preload="true" />
   <texture name="Checkbox_Press" file_name="widgets/Checkbox_Press.png" preload="true" />
   <texture name="Check_Mark" file_name="icons/check_mark.png" preload="true" />
+  <!-- Cinematic Lighting 2.0 cookie thumbnails.  The same sharp luma masks
+       are projected; medium/heavy variants are selected by source softness. -->
+  <texture name="CineGobo01" file_name="cine_gobos/gobo_blinds.png" preload="false" />
+  <texture name="CineGobo02" file_name="cine_gobos/gobo_panes.png" preload="false" />
+  <texture name="CineGobo03" file_name="cine_gobos/gobo_bars.png" preload="false" />
+  <texture name="CineGobo04" file_name="cine_gobos/gobo_slats.png" preload="false" />
+  <texture name="CineGobo05" file_name="cine_gobos/gobo_grid.png" preload="false" />
+  <texture name="CineGobo06" file_name="cine_gobos/gobo_dapple.png" preload="false" />
+  <texture name="CineGobo07" file_name="cine_gobos/gobo_branches.png" preload="false" />
+  <texture name="CineGobo08" file_name="cine_gobos/gobo_arch_window_sharp.png" preload="false" />
+  <texture name="CineGobo09" file_name="cine_gobos/gobo_french_door_sharp.png" preload="false" />
+  <texture name="CineGobo10" file_name="cine_gobos/gobo_curtain_edge_sharp.png" preload="false" />
+  <texture name="CineGobo11" file_name="cine_gobos/gobo_stairwell_rail_sharp.png" preload="false" />
+  <texture name="CineGobo12" file_name="cine_gobos/gobo_door_crack_sharp.png" preload="false" />
+  <texture name="CineGobo13" file_name="cine_gobos/gobo_dense_foliage_sharp.png" preload="false" />
+  <texture name="CineGobo14" file_name="cine_gobos/gobo_palm_dapple_sharp.png" preload="false" />
+  <texture name="CineGobo15" file_name="cine_gobos/gobo_water_caustics_sharp.png" preload="false" />
+  <texture name="CineGobo16" file_name="cine_gobos/gobo_cucoloris_sharp.png" preload="false" />
+  <texture name="CineGobo17" file_name="cine_gobos/gobo_fine_celo_sharp.png" preload="false" />
+  <texture name="CineGobo18" file_name="cine_gobos/gobo_scrim_wave_sharp.png" preload="false" />
+  <texture name="CineGobo19" file_name="cine_gobos/gobo_smoke_drift_sharp.png" preload="false" />
+  <texture name="CineGobo20" file_name="cine_gobos/gobo_chain_link_sharp.png" preload="false" />
+  <texture name="CineGobo21" file_name="cine_gobos/gobo_industrial_grate_sharp.png" preload="false" />
+  <texture name="CineGobo22" file_name="cine_gobos/gobo_rotating_fan_sharp.png" preload="false" />
+  <texture name="CineGobo23" file_name="cine_gobos/gobo_neon_sign_sharp.png" preload="false" />
 
   <texture name="Checker" file_name="checker.png" preload="false" />
 

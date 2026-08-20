@@ -98,7 +98,7 @@
         <panel
          background_visible="false"
          follows="left|top|right"
-         height="568"
+         height="402"
          layout="topleft"
          left="0"
          name="move_scroll_content"
@@ -115,16 +115,16 @@
            name="actor_mover_panel"
            top="8"
            width="360" />
-          <panel
-           class="panel_lens_gaze"
-           filename="panel_lens_gaze.xml"
+          <button
            follows="left|top|right"
-           height="188"
+           height="22"
+           label="Actor Gaze..."
            layout="topleft"
-           left="0"
-           name="lens_gaze_panel"
+           left="8"
+           name="btn_actor_gaze"
            top="372"
-           width="360" />
+           tool_tip="Open the Actor Gaze controls for the selected roster actor"
+           width="344" />
         </panel>
       </scroll_container>
     </panel>

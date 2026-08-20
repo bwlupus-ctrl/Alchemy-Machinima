@@ -12,11 +12,12 @@
 #include "llfloateractormover.h"
 #include "alscrollfocus.h"
 
+#include "alfloateractorgaze.h"
 #include "llactormover.h"
 #include "alpanelactormover.h"
-#include "alpanellensgaze.h"
 #include "alpanelpatheditor.h"
 #include "llavatarnamecache.h"
+#include "llbutton.h"
 #include "lldirectorcast.h"         // group tag suffix (roster IS the cast)
 #include "llscrolllistctrl.h"
 #include "lltextbox.h"
@@ -37,6 +38,8 @@ bool LLFloaterActorMover::postBuild()
     // list above stays this floater's own presentation
     mMoverPanel = findChild<ALPanelActorMover>("actor_mover_panel");
     mPathPanel = findChild<ALPanelPathEditor>("path_editor");
+    getChild<LLButton>("btn_actor_gaze")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onOpenActorGaze(); });
 
     LLScrollContainer* move_scroll = getChild<LLScrollContainer>("move_scroll");
     LLView* move_document = getChildView("move_scroll_content");
@@ -51,6 +54,23 @@ LLUUID LLFloaterActorMover::selectedActor() const
 {
     LLScrollListItem* item = mRosterList->getFirstSelected();
     return item ? item->getValue().asUUID() : LLUUID::null;
+}
+
+uuid_vec_t LLFloaterActorMover::selectedActors() const
+{
+    uuid_vec_t selected;
+    if (const LLUUID id = selectedActor(); id.notNull())
+    {
+        selected.push_back(id);
+    }
+    return selected;
+}
+
+void LLFloaterActorMover::onOpenActorGaze()
+{
+    ALFloaterActorGaze::showForSelection(
+        ALFloaterActorGaze::ESelectionSource::ACTOR_MOVER,
+        selectedActors());
 }
 
 void LLFloaterActorMover::refreshRoster()
@@ -184,19 +204,13 @@ void LLFloaterActorMover::draw()
     // ActorMoverSync -- Everyone drives startAll/stopAll and ignores this; else
     // it acts on exactly this set, so the buttons behave identically to the
     // console Move tab (which feeds its cast-list selection the same way).
-    uuid_vec_t sel;
-    if (const LLUUID id = selectedActor(); id.notNull())
-    {
-        sel.push_back(id);
-    }
+    const uuid_vec_t sel = selectedActors();
     if (mMoverPanel)
     {
         mMoverPanel->setSelectedActors(sel);
     }
-    if (ALPanelLensGaze* gaze = findChild<ALPanelLensGaze>("lens_gaze_panel"))
-    {
-        gaze->setSelectedActors(sel);
-    }
+    ALFloaterActorGaze::updateSelection(
+        ALFloaterActorGaze::ESelectionSource::ACTOR_MOVER, sel);
 
     // point the shared path editor at the selected roster actor (implicit self
     // resolves to a concrete id in refreshRoster, so this is never null-for-self)

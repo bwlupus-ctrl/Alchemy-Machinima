@@ -178,8 +178,11 @@ public:
     void generateBloomHDR(LLRenderTarget* src);
     void compositeBloomHDR(LLRenderTarget* scene);
     void applyCAS(LLRenderTarget* src, LLRenderTarget* dst);
+    void renderCineFisheye(LLRenderTarget* src, LLRenderTarget* dst);
     // [BDMerge G3.2] volumetric lighting (donor: Black Dragon)
     void renderVolumetric(LLRenderTarget* src, LLRenderTarget* dst);
+    // [Cine Outline Phase 1] additive deferred edge pass feeding bloom/glow.
+    void renderCineOutline(LLRenderTarget* dst);
     // [BDMerge G3.3] per-projector volumetric light cones: additive pass, one
     // fullscreen cone per shadow-casting projector slot, in place on target.
     // [Prism camera feed] aux_direct=true is the Prism auxiliary (VCam) capture

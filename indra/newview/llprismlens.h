@@ -16,6 +16,7 @@
 #include <array>
 #include <string>
 #include <string_view>
+#include <vector>
 
 class LLFace;
 class LLPlane;
@@ -25,7 +26,7 @@ namespace LLPrismLens
 // A capture owns an auxiliary render target. A display binding owns only a
 // destination face and samples its capture's retained target. Keeping these
 // limits separate is what makes one camera -> many faces inexpensive.
-constexpr U32 MAX_CAPTURES = 3;
+constexpr U32 MAX_CAPTURES = 8;
 constexpr U32 MAX_DISPLAY_BINDINGS = 16;
 constexpr U32 MAX_LENSES = MAX_CAPTURES; // Temporary source compatibility.
 
@@ -62,6 +63,12 @@ enum class EOutputRateMode : U8
 {
     AUTOMATIC,
     TARGET_FPS
+};
+
+enum class EGateMode : U8
+{
+    MANUAL,
+    AUTO_CYCLE
 };
 
 enum class ECaptureHealth : U8
@@ -246,6 +253,43 @@ struct CameraSettings
     // Optional avatar/clone bone driver. Default-disabled and pointer-free;
     // transient smoothing/history lives in ALVCamBonePov, not in scene data.
     BonePovSettings mBonePov;
+};
+
+// An armed camera is a reference to one of the user's existing captures. The
+// Gate owns no producer and arming never changes the capture count.
+struct GateArmedCamera
+{
+    LLUUID mArmId;
+    std::string mLabel;
+    bool mEnabled = true;
+    LLUUID mCaptureId;
+};
+
+inline bool isOtsPairArmLabel(const std::string& label)
+{
+    return label == "OTS A" || label == "OTS B";
+}
+
+struct GateSettings
+{
+    LLUUID mGateId;
+    bool mActive = false;
+    EGateMode mMode = EGateMode::MANUAL;
+    F64 mIntervalSeconds = 8.0;
+    U32 mPrewarmFrames = 3;
+    std::vector<GateArmedCamera> mArmed;
+    S32 mProgramArmIndex = 0;
+    S32 mPreviewArmIndex = -1;
+};
+
+struct GateSnapshot
+{
+    U64 mRevision = 0;
+    GateSettings mSettings;
+    S32 mOnAirArmIndex = -1;
+    S32 mWarmArmIndex = -1;
+    U64 mCutSerial = 0;
+    std::string mReason;
 };
 
 struct CaptureRateSettings
@@ -441,12 +485,14 @@ struct DisplayDefinition
     S32 mDisplayTextureEntry = -1;
     DisplaySettings mSettings;
     DisplayRuntimeState mRuntime;
+    bool mGateSubscribed = false;
 };
 
 struct RegistrySnapshot
 {
     U64 mConfigurationRevision = 0;
     U64 mRuntimeRevision = 0;
+    U64 mGateRevision = 0;
     U32 mCaptureCount = 0;
     U32 mDisplayCount = 0;
     std::array<CaptureDefinition, MAX_CAPTURES> mCaptures;
@@ -536,6 +582,13 @@ ERegistryResult addCameraCaptureFromSelectedObject(
 ERegistryResult addVirtualCamera(CaptureHandle* capture, const LLVector3& pos,
                                  const LLQuaternion& rot,
                                  std::string* reason = nullptr);
+// Build and arm a matched reciprocal OTS pair from Director Subjects A/B.
+// Both virtual eyes stay on the same side of the action axis. Geometry is
+// evaluated only when invoked; the resulting captures are fixed AGENT-space
+// transforms and require no per-frame work.
+bool buildOtsPairFromSubjects(CaptureHandle* ots_a = nullptr,
+                              CaptureHandle* ots_b = nullptr,
+                              std::string* reason = nullptr);
 ERegistryResult addSurfaceLensFromSelectedFace(
     CaptureHandle* capture, std::string* reason = nullptr);
 ERegistryResult addSelectedDisplay(const CaptureHandle& capture, EFitMode fit,
@@ -575,6 +628,23 @@ bool setCaptureRateSettings(const CaptureHandle& capture,
 bool setDisplaySettings(const DisplayHandle& binding,
                         const DisplaySettings& settings,
                         std::string* reason = nullptr);
+bool setGateSettings(const GateSettings& settings,
+                     std::string* reason = nullptr);
+ERegistryResult gateArm(const CaptureHandle& capture,
+                        const std::string& label,
+                        LLUUID* arm_id = nullptr,
+                        std::string* reason = nullptr);
+ERegistryResult gateDisarm(const LLUUID& arm_id,
+                           std::string* reason = nullptr);
+ERegistryResult gateTake(std::string* reason = nullptr);
+ERegistryResult setDisplayGateSubscribed(const DisplayHandle& binding,
+                                         bool subscribed,
+                                         const CaptureHandle* fixed_capture = nullptr,
+                                         std::string* reason = nullptr);
+GateSnapshot gateSnapshot();
+bool gateOnAirCameraEye(LLVector3& out_agent,
+                        U64* out_cut_serial = nullptr,
+                        LLQuaternion* out_rotation = nullptr);
 bool removeDisplay(const DisplayHandle& binding,
                    std::string* reason = nullptr);
 bool removeCapture(const CaptureHandle& capture);

@@ -34,6 +34,10 @@ constexpr F64 MAX_FX_SECONDS = 1.0e12;
 constexpr F64 TWO_PI = 6.283185307179586476925286766559;
 constexpr F32 DEGREES_TO_RADIANS =
     static_cast<F32>(TWO_PI / 360.0);
+constexpr F32 RADIANS_TO_DEGREES =
+    static_cast<F32>(360.0 / TWO_PI);
+constexpr F32 PROJECTOR_FOV_MAX = 3.f;
+constexpr F32 FIXTURE_REFERENCE_SOURCE_SIZE_M = 0.10f;
 
 struct Profile
 {
@@ -51,6 +55,14 @@ struct Beam
 };
 
 struct Gel
+{
+    const char* mName;
+    bool mColourTemperature;
+    F32 mMiredShift;
+    F32 mMultiplier[3];
+};
+
+struct FixtureGel
 {
     const char* mName;
     bool mColourTemperature;
@@ -111,9 +123,68 @@ const Gel GELS[GEL_COUNT] = {
     { "Primary Blue",  false,    0.f, { 0.01f, 0.03f, 1.00f } },
 };
 
+// Fixture-mode correction values live in a separate table so the legacy gel
+// indices and multipliers remain byte-for-byte stable.
+const FixtureGel FIXTURE_GELS[FIXTURE_GEL_COUNT] = {
+    { "None",                 false,    0.f, { 1.00f, 1.00f, 1.00f } },
+    { "Full CTO (L204)",       true,  159.f, { 1.00f, 1.00f, 1.00f } },
+    { "1/2 CTO (L205)",        true,  109.f, { 1.00f, 1.00f, 1.00f } },
+    { "1/4 CTO (L206)",        true,   64.f, { 1.00f, 1.00f, 1.00f } },
+    { "1/8 CTO (L223)",        true,   30.f, { 1.00f, 1.00f, 1.00f } },
+    { "Full CTB (L201)",       true, -137.f, { 1.00f, 1.00f, 1.00f } },
+    { "1/2 CTB (L202)",        true,  -78.f, { 1.00f, 1.00f, 1.00f } },
+    { "1/4 CTB (L203)",        true,  -49.f, { 1.00f, 1.00f, 1.00f } },
+    { "1/8 CTB (L218)",        true,  -26.f, { 1.00f, 1.00f, 1.00f } },
+    { "Plus Green (L244)",    false,    0.f, { 0.78f, 1.00f, 0.76f } },
+    { "1/2 Plus Green (L245)", false,   0.f, { 0.89f, 1.00f, 0.88f } },
+    { "Minus Green (L247)",   false,    0.f, { 1.00f, 0.72f, 1.00f } },
+    { "1/2 Minus Green (L248)", false,  0.f, { 1.00f, 0.86f, 1.00f } },
+    { "Bastard Amber (R02)",  false,    0.f, { 1.00f, 0.55f, 0.18f } },
+    { "Steel Blue (R64)",     false,    0.f, { 0.22f, 0.48f, 1.00f } },
+    { "Congo Blue (L181)",    false,    0.f, { 0.015f, 0.020f, 0.55f } },
+    { "Primary Red",          false,    0.f, { 1.00f, 0.01f, 0.01f } },
+    { "Primary Green",        false,    0.f, { 0.01f, 1.00f, 0.02f } },
+    { "Primary Blue",         false,    0.f, { 0.01f, 0.03f, 1.00f } },
+};
+
+const FixturePreset FIXTURES[FIXTURE_PRESET_COUNT] = {
+    { "Tungsten Fresnel (650W)", 3200.f, 0.12f, 0, { 0, 0, 0 } },
+    { "Big Fresnel (5K)",        3200.f, 0.30f, 0, { 0, 0, 0 } },
+    { "Open-face (Redhead)",     3200.f, 0.18f, 1, { 0, 0, 0 } },
+    { "HMI (M18)",               5600.f, 0.20f, 0, { 0, 0, 0 } },
+    { "LED bi-color panel",      5600.f, 0.45f, 1, { 0, 0, 0 } },
+    { "Kino / fluoro bank",      4300.f, 1.20f, 1, { 10, 0, 0 } },
+    { "2 ft China ball",         3000.f, 0.60f, 1, { 0, 0, 0 } },
+    { "3 ft Softbox",            5600.f, 0.90f, 1, { 0, 0, 0 } },
+    { "5 ft Octabox",            5600.f, 1.50f, 1, { 0, 0, 0 } },
+    { "Book light",              5600.f, 2.40f, 1, { 0, 0, 0 } },
+    { "Practical bulb",          2700.f, 0.05f, 1, { 0, 0, 0 } },
+    { "Sodium vapor street",     2200.f, 0.25f, 1, { 9, 0, 0 } },
+    { "Moonlight (cheated)",     6500.f, 1.00f, 1, { 6, 0, 0 } },
+};
+
 const char* const GOBO_NAMES[GOBO_COUNT] = {
     "Default", "Venetian Blinds", "Window Panes", "Prison Bars",
     "Slats", "Grid", "Soft Dapple", "Branches",
+    "Arched Window", "French Door", "Curtain Edge", "Stairwell Rail",
+    "Door Crack", "Dense Foliage", "Palm Dapple", "Water Caustics",
+    "Classic Cucoloris", "Fine Celo", "Scrim Wave", "Smoke Drift",
+    "Chain Link", "Industrial Grate", "Rotating Fan", "Neon Sign Mask",
+};
+
+const S32 GOBO_CATEGORIES[GOBO_COUNT] = {
+    0, 1, 1, 1, 1, 4, 2, 2,
+    1, 1, 1, 1, 1, 2, 2, 2,
+    3, 3, 3, 3, 4, 4, 4, 4,
+};
+
+const char* const GOBO_CATEGORY_NAMES[GOBO_CATEGORY_COUNT] = {
+    "User / Default", "Architectural", "Organic", "Grip", "Graphic / Hard",
+};
+
+const char* const FLICKER_PROGRAM_NAMES[FLICKER_COUNT] = {
+    "None", "Firelight", "TV / Monitor", "Fluorescent", "Neon",
+    "Candle", "Passing Headlights", "Police Lightbar",
 };
 
 const char* FX_NAMES[FX_COUNT] = {
@@ -177,6 +248,24 @@ LightBase cleanLight(const LightBase& input, F32 min_ev = MIN_EV)
     output.mOn = input.mOn;
     output.mGobo = std::clamp(input.mGobo, 0, GOBO_COUNT - 1);
     output.mGel = std::clamp(input.mGel, 0, GEL_COUNT - 1);
+    output.mFlickerProgram = std::clamp(
+        input.mFlickerProgram, (S32)FLICKER_NONE, (S32)FLICKER_COUNT - 1);
+    output.mFlickerAmount = std::clamp(
+        finiteOr(input.mFlickerAmount, 0.f), 0.f, 1.f);
+    output.mFixtureMode = input.mFixtureMode;
+    output.mKelvin = std::clamp(
+        finiteOr(input.mKelvin, 5600.f),
+        FIXTURE_KELVIN_MIN, FIXTURE_KELVIN_MAX);
+    for (S32 slot = 0; slot < FIXTURE_GEL_SLOT_COUNT; ++slot)
+    {
+        output.mGelSlot[slot] = std::clamp(
+            input.mGelSlot[slot], 0, FIXTURE_GEL_COUNT - 1);
+    }
+    output.mSourceSizeM = std::clamp(
+        finiteOr(input.mSourceSizeM, FIXTURE_REFERENCE_SOURCE_SIZE_M),
+        FIXTURE_SOURCE_SIZE_MIN, FIXTURE_SOURCE_SIZE_MAX);
+    output.mFixturePreset = std::clamp(
+        input.mFixturePreset, 0, FIXTURE_PRESET_COUNT - 1);
     return output;
 }
 
@@ -325,6 +414,16 @@ void copyCleanLights(const LightBase input[LIGHT_COUNT],
         output[i].mOn = safe.mOn;
         output[i].mGobo = safe.mGobo;
         output[i].mGel = safe.mGel;
+        output[i].mFlickerProgram = safe.mFlickerProgram;
+        output[i].mFlickerAmount = safe.mFlickerAmount;
+        output[i].mFixtureMode = safe.mFixtureMode;
+        output[i].mKelvin = safe.mKelvin;
+        for (S32 slot = 0; slot < FIXTURE_GEL_SLOT_COUNT; ++slot)
+        {
+            output[i].mGelSlot[slot] = safe.mGelSlot[slot];
+        }
+        output[i].mSourceSizeM = safe.mSourceSizeM;
+        output[i].mFixturePreset = safe.mFixturePreset;
     }
 }
 
@@ -759,6 +858,14 @@ F32 sanitizeSubjectScale(F32 scale)
                       SUBJECT_SCALE_MIN, SUBJECT_SCALE_MAX);
 }
 
+F32 objectRadiusToSubjectScale(F32 radius_m)
+{
+    const F32 radius = std::isfinite(radius_m)
+        ? std::max(0.f, radius_m) : 0.f;
+    return std::clamp(radius / AVATAR_REF_RADIUS,
+                      SUBJECT_SCALE_MIN, SUBJECT_SCALE_MAX);
+}
+
 void groupBoundsCentre(const F32 points[][3], S32 count,
                        F32 out_centre[3])
 {
@@ -883,6 +990,16 @@ void computeLive(const Setup& setup, const Transforms& transforms,
         out[i].mOn = base.mOn;
         out[i].mGobo = base.mGobo;
         out[i].mGel = base.mGel;
+        out[i].mFlickerProgram = base.mFlickerProgram;
+        out[i].mFlickerAmount = base.mFlickerAmount;
+        out[i].mFixtureMode = base.mFixtureMode;
+        out[i].mKelvin = base.mKelvin;
+        for (S32 slot = 0; slot < FIXTURE_GEL_SLOT_COUNT; ++slot)
+        {
+            out[i].mGelSlot[slot] = base.mGelSlot[slot];
+        }
+        out[i].mSourceSizeM = base.mSourceSizeM;
+        out[i].mFixturePreset = base.mFixturePreset;
     }
     if (safe_setup.mRatioLock)
     {
@@ -894,18 +1011,19 @@ void computeLive(const Setup& setup, const Transforms& transforms,
 }
 
 LightBase blendLight(const LightBase& start, const LightBase& target,
-                     F32 eased)
+                      F32 eased)
 {
-    const LightBase safe_start = cleanLight(start, MIN_DERIVED_EV);
-    const LightBase safe_target = cleanLight(target, MIN_DERIVED_EV);
-    if (!std::isfinite(eased) || eased <= 0.f)
+    if (std::isnan(eased) || eased <= 0.f)
     {
-        return safe_start;
+        return start;
     }
     if (eased >= 1.f)
     {
-        return safe_target;
+        return target;
     }
+
+    const LightBase safe_start = cleanLight(start, MIN_DERIVED_EV);
+    const LightBase safe_target = cleanLight(target, MIN_DERIVED_EV);
 
     LightBase output;
     std::memset(&output, 0, sizeof(output));
@@ -926,7 +1044,252 @@ LightBase blendLight(const LightBase& start, const LightBase& target,
         ? safe_target.mGobo : safe_start.mGobo;
     output.mGel = eased > 0.5f
         ? safe_target.mGel : safe_start.mGel;
+    output.mFlickerProgram = eased > 0.5f
+        ? safe_target.mFlickerProgram : safe_start.mFlickerProgram;
+    output.mFlickerAmount = safe_start.mFlickerAmount +
+        (safe_target.mFlickerAmount - safe_start.mFlickerAmount) * eased;
+    output.mFixtureMode = eased > 0.5f
+        ? safe_target.mFixtureMode : safe_start.mFixtureMode;
+    const F32 start_mired = 1.0e6f / safe_start.mKelvin;
+    const F32 target_mired = 1.0e6f / safe_target.mKelvin;
+    const F32 blended_mired = start_mired +
+        (target_mired - start_mired) * eased;
+    output.mKelvin = 1.0e6f / blended_mired;
+    for (S32 slot = 0; slot < FIXTURE_GEL_SLOT_COUNT; ++slot)
+    {
+        output.mGelSlot[slot] = eased > 0.5f
+            ? safe_target.mGelSlot[slot] : safe_start.mGelSlot[slot];
+    }
+    output.mSourceSizeM = safe_start.mSourceSizeM +
+        (safe_target.mSourceSizeM - safe_start.mSourceSizeM) * eased;
+    output.mFixturePreset = eased > 0.5f
+        ? safe_target.mFixturePreset : safe_start.mFixturePreset;
     return output;
+}
+
+Globals blendGlobals(const Globals& start, const Globals& target, F32 weight)
+{
+    const Globals a = sanitizeGlobals(start);
+    const Globals b = sanitizeGlobals(target);
+    const F32 t = std::clamp(finiteOr(weight, 0.f), 0.f, 1.f);
+    Globals output;
+    output.mMasterEV = a.mMasterEV + (b.mMasterEV - a.mMasterEV) * t;
+    output.mHeadroomStops = a.mHeadroomStops +
+        (b.mHeadroomStops - a.mHeadroomStops) * t;
+    output.mBounceRatio = a.mBounceRatio +
+        (b.mBounceRatio - a.mBounceRatio) * t;
+    output.mTransitionSec = a.mTransitionSec +
+        (b.mTransitionSec - a.mTransitionSec) * t;
+    output.mBounceEnabled = t > 0.5f ? b.mBounceEnabled : a.mBounceEnabled;
+    output.mPower = t > 0.5f ? b.mPower : a.mPower;
+    output.mSeed = t > 0.5f ? b.mSeed : a.mSeed;
+    output.mSubjectScale = a.mSubjectScale +
+        (b.mSubjectScale - a.mSubjectScale) * t;
+    // This field is already a mired delta, so linear interpolation is the
+    // correct reciprocal-temperature transition.
+    output.mMasterTempMired = a.mMasterTempMired +
+        (b.mMasterTempMired - a.mMasterTempMired) * t;
+    return sanitizeGlobals(output);
+}
+
+Transforms blendTransforms(const Transforms& start, const Transforms& target,
+                           F32 weight)
+{
+    const Transforms a = sanitizeTransforms(start);
+    const Transforms b = sanitizeTransforms(target);
+    const F32 t = std::clamp(finiteOr(weight, 0.f), 0.f, 1.f);
+    Transforms output;
+    output.mMirror = t > 0.5f ? b.mMirror : a.mMirror;
+    output.mFacingAzimuthDeg = wrap180(a.mFacingAzimuthDeg +
+        wrap180(b.mFacingAzimuthDeg - a.mFacingAzimuthDeg) * t);
+    output.mYawDeg = wrap180(
+        a.mYawDeg + wrap180(b.mYawDeg - a.mYawDeg) * t);
+    output.mPitchDeg = a.mPitchDeg + (b.mPitchDeg - a.mPitchDeg) * t;
+    return sanitizeTransforms(output);
+}
+
+Cue sanitizeCue(const Cue& input)
+{
+    Cue output = input;
+    if (output.mLabel.size() > 128)
+    {
+        output.mLabel.resize(128);
+    }
+    if (output.mProvenance.size() > 256)
+    {
+        output.mProvenance.resize(256);
+    }
+    output.mFadeSec = std::clamp(finiteOr(output.mFadeSec, 3.f), 0.f, 3600.f);
+    output.mDelaySec = std::clamp(finiteOr(output.mDelaySec, 0.f), 0.f, 3600.f);
+    output.mProfile = std::clamp(
+        output.mProfile, 0, CUE_FADE_PROFILE_COUNT - 1);
+    output.mFollow = std::clamp(output.mFollow, -1, 86400);
+    output.mAtSec = std::clamp(finiteOr(output.mAtSec, 0.0), 0.0, 86400.0);
+    output.mSetup = sanitizeSetup(output.mSetup);
+    output.mGlobals = sanitizeGlobals(output.mGlobals);
+    output.mTransforms = sanitizeTransforms(output.mTransforms);
+    output.mFX = std::clamp(output.mFX, -1, FX_COUNT - 1);
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+    {
+        const F32 value = finiteOr(output.mShadowSoftOverride[i], -1.f);
+        output.mShadowSoftOverride[i] = value < 0.f
+            ? -1.f : std::clamp(value, 0.f, 8.f);
+    }
+    return output;
+}
+
+CueList sanitizeCueList(const CueList& input)
+{
+    CueList output;
+    output.mName = input.mName.substr(0, 128);
+    output.mTimecodeMode = input.mTimecodeMode;
+    const std::size_t count = std::min<std::size_t>(input.mCues.size(), 256);
+    output.mCues.reserve(count);
+    for (std::size_t i = 0; i < count; ++i)
+    {
+        output.mCues.push_back(sanitizeCue(input.mCues[i]));
+    }
+    return output;
+}
+
+CueState cueTargetState(const Cue& input)
+{
+    const Cue cue = sanitizeCue(input);
+    CueState output;
+    output.mSetup = cue.mSetup;
+    output.mGlobals = cue.mGlobals;
+    output.mTransforms = cue.mTransforms;
+    output.mFX = cue.mFX;
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+    {
+        output.mShadowSoftOverride[i] = cue.mShadowSoftOverride[i];
+    }
+    return output;
+}
+
+F32 cueFadeWeight(S32 profile, F64 presentation_time, F64 go_time,
+                  F32 delay_sec, F32 fade_sec)
+{
+    const F64 now = finiteOr(presentation_time, 0.0);
+    const F64 start = finiteOr(go_time, now) +
+        std::clamp(static_cast<F64>(finiteOr(delay_sec, 0.f)), 0.0, 3600.0);
+    if (now < start)
+    {
+        return 0.f;
+    }
+    const S32 safe_profile = std::clamp(
+        profile, 0, CUE_FADE_PROFILE_COUNT - 1);
+    const F32 duration = std::clamp(finiteOr(fade_sec, 0.f), 0.f, 3600.f);
+    if (safe_profile == CUE_FADE_SNAP || duration <= 0.f)
+    {
+        return 1.f;
+    }
+    const F32 linear = std::clamp(
+        static_cast<F32>((now - start) / duration), 0.f, 1.f);
+    return safe_profile == CUE_FADE_LINEAR
+        ? linear
+        : linear * linear * (3.f - 2.f * linear);
+}
+
+CueState evaluateCueTransition(const CueState& input_start,
+                               const Cue& input_target,
+                               F64 presentation_time, F64 go_time)
+{
+    const Cue target = sanitizeCue(input_target);
+    CueState start = input_start;
+    start.mSetup = sanitizeSetup(start.mSetup);
+    start.mGlobals = sanitizeGlobals(start.mGlobals);
+    start.mTransforms = sanitizeTransforms(start.mTransforms);
+    start.mFX = std::clamp(start.mFX, -1, FX_COUNT - 1);
+    const F32 weight = cueFadeWeight(
+        target.mProfile, presentation_time, go_time,
+        target.mDelaySec, target.mFadeSec);
+    CueState output;
+    output.mSetup.mRadius = start.mSetup.mRadius +
+        (target.mSetup.mRadius - start.mSetup.mRadius) * weight;
+    output.mSetup.mRatioLock = weight > 0.5f
+        ? target.mSetup.mRatioLock : start.mSetup.mRatioLock;
+    output.mSetup.mRatioStops = start.mSetup.mRatioStops +
+        (target.mSetup.mRatioStops - start.mSetup.mRatioStops) * weight;
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+    {
+        output.mSetup.mLights[i] = blendLight(
+            start.mSetup.mLights[i], target.mSetup.mLights[i], weight);
+        const F32 a = start.mShadowSoftOverride[i];
+        const F32 b = target.mShadowSoftOverride[i];
+        output.mShadowSoftOverride[i] = a >= 0.f && b >= 0.f
+            ? a + (b - a) * weight
+            : (weight > 0.5f ? b : a);
+    }
+    output.mSetup = sanitizeSetup(output.mSetup);
+    output.mGlobals = blendGlobals(start.mGlobals, target.mGlobals, weight);
+    output.mTransforms = blendTransforms(
+        start.mTransforms, target.mTransforms, weight);
+    const F64 arm_time = finiteOr(go_time, presentation_time) + target.mDelaySec;
+    output.mFX = presentation_time >= arm_time ? target.mFX : start.mFX;
+    return output;
+}
+
+static S32 timecodeCueIndexSanitized(const CueList& list,
+                                     F64 presentation_time)
+{
+    const F64 now = finiteOr(presentation_time, 0.0);
+    S32 best = -1;
+    F64 best_at = -1.0;
+    for (S32 i = 0; i < static_cast<S32>(list.mCues.size()); ++i)
+    {
+        const F64 at = list.mCues[i].mAtSec;
+        if (at <= now && (best < 0 || at > best_at ||
+                         (at == best_at && i > best)))
+        {
+            best = i;
+            best_at = at;
+        }
+    }
+    return best;
+}
+
+S32 timecodeCueIndex(const CueList& input, F64 presentation_time)
+{
+    return timecodeCueIndexSanitized(
+        sanitizeCueList(input), presentation_time);
+}
+
+CueState evaluateTimecodeCueList(const CueList& input,
+                                 const CueState& released_state,
+                                 F64 presentation_time,
+                                 S32* active_index)
+{
+    const CueList list = sanitizeCueList(input);
+    const S32 current = timecodeCueIndexSanitized(list, presentation_time);
+    if (active_index)
+    {
+        *active_index = current;
+    }
+    if (current < 0)
+    {
+        return released_state;
+    }
+    S32 previous = -1;
+    F64 previous_at = -1.0;
+    for (S32 i = 0; i < static_cast<S32>(list.mCues.size()); ++i)
+    {
+        const F64 at = list.mCues[i].mAtSec;
+        // Mirror the later-row tie-break used to pick `current`: among cues
+        // sharing an earlier timestamp, the LATER row is what is actually
+        // displayed during that window, so the fade must start from it.
+        if (i != current && at < list.mCues[current].mAtSec &&
+            (at > previous_at || (at == previous_at && i > previous)))
+        {
+            previous = i;
+            previous_at = at;
+        }
+    }
+    const CueState start = previous >= 0
+        ? cueTargetState(list.mCues[previous]) : released_state;
+    return evaluateCueTransition(
+        start, list.mCues[current], presentation_time,
+        list.mCues[current].mAtSec);
 }
 
 F32 intensityFromEV(F32 ev_total, F32 headroom_stops, bool* clipped)
@@ -1021,6 +1384,105 @@ F32 gelMiredShift(S32 index)
         ? GELS[index].mMiredShift : 0.f;
 }
 
+const char* fixtureGelName(S32 index)
+{
+    return FIXTURE_GELS[
+        std::clamp(index, 0, FIXTURE_GEL_COUNT - 1)].mName;
+}
+
+bool fixtureGelIsColourTemperature(S32 index)
+{
+    return index > 0 && index < FIXTURE_GEL_COUNT &&
+           FIXTURE_GELS[index].mColourTemperature;
+}
+
+F32 fixtureGelMiredShift(S32 index)
+{
+    return fixtureGelIsColourTemperature(index)
+        ? FIXTURE_GELS[index].mMiredShift : 0.f;
+}
+
+void fixtureWhite(F32 kelvin,
+                  const S32 gel_slots[FIXTURE_GEL_SLOT_COUNT],
+                  F32 master_mired, F32 out_linear_rgb[3])
+{
+    if (!out_linear_rgb)
+    {
+        return;
+    }
+
+    const F64 safe_kelvin = std::clamp(
+        static_cast<F64>(finiteOr(kelvin, 5600.f)),
+        static_cast<F64>(FIXTURE_KELVIN_MIN),
+        static_cast<F64>(FIXTURE_KELVIN_MAX));
+    F64 total_mired = 1.0e6 / safe_kelvin;
+    total_mired += std::clamp(
+        finiteOr(master_mired, 0.f),
+        MASTER_TEMP_MIRED_MIN, MASTER_TEMP_MIRED_MAX);
+    if (gel_slots)
+    {
+        for (S32 slot = 0; slot < FIXTURE_GEL_SLOT_COUNT; ++slot)
+        {
+            total_mired += fixtureGelMiredShift(gel_slots[slot]);
+        }
+    }
+    total_mired = std::clamp(total_mired, 40.0, 500.0);
+
+    F64 white[3];
+    planckianLinearRGB(1.0e6 / total_mired, white);
+    const F64 green = std::max(white[1], 1.0e-6);
+    F64 normalized[3] = {
+        white[0] / green,
+        1.0,
+        white[2] / green,
+    };
+    if (gel_slots)
+    {
+        for (S32 slot = 0; slot < FIXTURE_GEL_SLOT_COUNT; ++slot)
+        {
+            const S32 index = std::clamp(
+                gel_slots[slot], 0, FIXTURE_GEL_COUNT - 1);
+            const FixtureGel& gel = FIXTURE_GELS[index];
+            if (gel.mColourTemperature)
+            {
+                continue;
+            }
+            for (S32 channel = 0; channel < 3; ++channel)
+            {
+                normalized[channel] *= gel.mMultiplier[channel];
+            }
+        }
+    }
+    for (S32 channel = 0; channel < 3; ++channel)
+    {
+        out_linear_rgb[channel] = static_cast<F32>(
+            std::clamp(normalized[channel], 0.0, 1.0));
+    }
+}
+
+const FixturePreset& fixturePreset(S32 index)
+{
+    return FIXTURES[std::clamp(index, 0, FIXTURE_PRESET_COUNT - 1)];
+}
+
+const char* fixturePresetName(S32 index)
+{
+    return fixturePreset(index).mName;
+}
+
+F32 penumbraSoftness(F32 source_size_m, F32 distance_m)
+{
+    const F32 source = std::clamp(
+        finiteOr(source_size_m, FIXTURE_REFERENCE_SOURCE_SIZE_M),
+        FIXTURE_SOURCE_SIZE_MIN, FIXTURE_SOURCE_SIZE_MAX);
+    const F32 distance = std::max(finiteOr(distance_m, 0.25f), 0.25f);
+    const F32 theta = 2.f * std::atan(source / (2.f * distance));
+    const F32 theta_degrees = theta * RADIANS_TO_DEGREES;
+    const F32 normalized = std::clamp(
+        (theta_degrees - 0.5f) / (60.f - 0.5f), 0.f, 1.f);
+    return 8.f * std::sqrt(normalized);
+}
+
 void catchlightRadialOffset(F32 subject_scale, F32 angle_degrees,
                             F32 out_right_up[2])
 {
@@ -1057,6 +1519,7 @@ void render(F32 radius, const LightBase live[LIGHT_COUNT],
         masterTempGain(safe_globals.mMasterTempMired, temp_gain);
     }
     std::memset(&out, 0, sizeof(out));
+    out.mCatchlightSizeScale = 1.f;
 
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
     {
@@ -1078,29 +1541,54 @@ void render(F32 radius, const LightBase live[LIGHT_COUNT],
         const bool on = light.mOn && safe_globals.mPower &&
                         pre_headroom > 0.001f;
         F32 rgb[3];
-        profileSRGB(light.mProfile, rgb);
-        if (temp_active)
+        if (light.mFixtureMode)
         {
-            for (S32 channel = 0; channel < 3; ++channel)
-            {
-                const F32 linear = std::clamp(
-                    srgbChannelToLinear(rgb[channel]) * temp_gain[channel],
-                    0.f, 1.f);
-                rgb[channel] = linearChannelToSRGB(linear);
-            }
-        }
-        if (light.mGel != 0)
-        {
-            F32 linear_rgb[3] = {
-                srgbChannelToLinear(rgb[0]),
-                srgbChannelToLinear(rgb[1]),
-                srgbChannelToLinear(rgb[2])
-            };
-            applyGel(light.mGel, linear_rgb);
+            F32 linear_rgb[3];
+            fixtureWhite(light.mKelvin, light.mGelSlot,
+                         safe_globals.mMasterTempMired, linear_rgb);
             for (S32 channel = 0; channel < 3; ++channel)
             {
                 rgb[channel] = linearChannelToSRGB(linear_rgb[channel]);
             }
+        }
+        else
+        {
+            // Keep the full legacy profile/master/single-gel route isolated so
+            // fixture-off frames retain the shipped 1.x arithmetic and order.
+            profileSRGB(light.mProfile, rgb);
+            if (temp_active)
+            {
+                for (S32 channel = 0; channel < 3; ++channel)
+                {
+                    const F32 linear = std::clamp(
+                        srgbChannelToLinear(rgb[channel]) * temp_gain[channel],
+                        0.f, 1.f);
+                    rgb[channel] = linearChannelToSRGB(linear);
+                }
+            }
+            if (light.mGel != 0)
+            {
+                F32 linear_rgb[3] = {
+                    srgbChannelToLinear(rgb[0]),
+                    srgbChannelToLinear(rgb[1]),
+                    srgbChannelToLinear(rgb[2])
+                };
+                applyGel(light.mGel, linear_rgb);
+                for (S32 channel = 0; channel < 3; ++channel)
+                {
+                    rgb[channel] = linearChannelToSRGB(linear_rgb[channel]);
+                }
+            }
+        }
+
+        const F32 softness = light.mFixtureMode
+            ? penumbraSoftness(light.mSourceSizeM, effective_radius) : 0.f;
+        const F32 softness_ratio = softness / 8.f;
+        out.mDerivedShadowSoftness[i] = softness;
+        if (i == 0 && light.mFixtureMode)
+        {
+            out.mCatchlightSizeScale = std::sqrt(
+                light.mSourceSizeM / FIXTURE_REFERENCE_SOURCE_SIZE_M);
         }
 
         EmitterState& projector = out.mProj[i];
@@ -1115,8 +1603,15 @@ void render(F32 radius, const LightBase live[LIGHT_COUNT],
         projector.mSB = rgb[2];
         projector.mIntensity = intensity;
         projector.mLightRadius = effective_radius * 2.2f;
-        projector.mFalloff = beamFalloff(light.mBeam);
-        projector.mFovRad = beamFov(light.mBeam);
+        const F32 base_falloff = beamFalloff(light.mBeam);
+        projector.mFalloff = light.mFixtureMode
+            ? base_falloff + (0.35f - base_falloff) * softness_ratio
+            : base_falloff;
+        const F32 base_fov = beamFov(light.mBeam);
+        projector.mFovRad = light.mFixtureMode
+            ? std::clamp(base_fov * (1.f + 0.18f * softness_ratio),
+                         0.f, PROJECTOR_FOV_MAX)
+            : base_fov;
         projector.mOn = on;
         projector.mClipped = on && clipped;
         projector.mGobo = light.mGobo;
@@ -1134,10 +1629,13 @@ void render(F32 radius, const LightBase live[LIGHT_COUNT],
         omni.mSG = rgb[1];
         omni.mSB = rgb[2];
         const F32 raw_omni_intensity =
-            raw_intensity * safe_globals.mBounceRatio;
+            raw_intensity * safe_globals.mBounceRatio *
+            (light.mFixtureMode ? 1.f + 0.5f * softness_ratio : 1.f);
         const bool omni_on = light.mOn && safe_globals.mPower &&
             safe_globals.mBounceEnabled &&
-            pre_headroom * safe_globals.mBounceRatio > 0.001f;
+            pre_headroom * safe_globals.mBounceRatio *
+                (light.mFixtureMode ? 1.f + 0.5f * softness_ratio : 1.f) >
+                0.001f;
         omni.mIntensity = std::clamp(raw_omni_intensity, 0.f, 1.f);
         omni.mLightRadius = effective_radius * 1.5f;
         omni.mFalloff = 0.75f;
@@ -2295,6 +2793,245 @@ void evalFX(S32 fx, U64 seed, F64 t_seconds,
     copyCleanLights(lights, out);
 }
 
+U64 flickerLightSeed(U64 rig_seed, S32 light_index)
+{
+    const U64 seed = rig_seed ? rig_seed : DEFAULT_SEED;
+    const S32 safe_index = std::clamp(light_index, 0, LIGHT_COUNT - 1);
+    return splitMix64(seed ^
+        (0xd1b54a32d192ed03ULL * static_cast<U64>(safe_index + 1)));
+}
+
+void evalFlicker(S32 program, U64 light_seed, F64 t_seconds, F32 amount,
+                 F32& out_intensity_mul, F32 out_color_mul[3])
+{
+    out_intensity_mul = 1.f;
+    if (!out_color_mul)
+    {
+        return;
+    }
+    out_color_mul[0] = 1.f;
+    out_color_mul[1] = 1.f;
+    out_color_mul[2] = 1.f;
+
+    const F32 safe_amount = std::clamp(finiteOr(amount, 0.f), 0.f, 1.f);
+    if (program <= FLICKER_NONE || program >= FLICKER_COUNT ||
+        safe_amount <= 0.f)
+    {
+        return;
+    }
+
+    const U64 seed = light_seed ? light_seed : DEFAULT_SEED;
+    const F64 seconds = std::clamp(
+        finiteOr(t_seconds, 0.0), 0.0, MAX_FX_SECONDS);
+    const S32 hash_domain = FX_COUNT + program;
+    const auto hash = [seed, hash_domain](U64 counter, S32 draw)
+    {
+        return unitHash(seed, hash_domain, counter, 0, draw);
+    };
+    const auto noise = [seed, hash_domain](F64 coordinate, S32 draw)
+    {
+        return valueNoise(seed, hash_domain, coordinate, 0, draw);
+    };
+    const auto centredNoise = [&noise](F64 coordinate, S32 draw)
+    {
+        return noise(coordinate, draw) * 2.f - 1.f;
+    };
+
+    F32 intensity = 1.f;
+    F32 color[3] = { 1.f, 1.f, 1.f };
+    switch (program)
+    {
+    case FLICKER_FIRELIGHT:
+    {
+        // A strong 8--14 Hz component rides above two lower octaves, producing
+        // a cheap 1/f-like spectrum without maintaining noise state.
+        const F64 frequency = 8.0 + 6.0 * hash(0, 0);
+        const F32 fractal =
+            0.55f * centredNoise(seconds * frequency, 0) +
+            0.30f * centredNoise(seconds * frequency * 0.5, 1) +
+            0.15f * centredNoise(seconds * frequency * 0.25, 2);
+        intensity = 0.88f + 0.20f * fractal;
+        const F64 pop_coordinate = seconds / 0.20;
+        const U64 pop_step = static_cast<U64>(std::floor(pop_coordinate));
+        if (hash(pop_step, 3) > 0.94f)
+        {
+            const F32 pop_phase = static_cast<F32>(
+                pop_coordinate - std::floor(pop_coordinate));
+            const F32 pop = phaseSin(pop_phase * TWO_PI * 0.5);
+            intensity += 0.35f * pop * pop;
+        }
+        const F32 bright = std::clamp((intensity - 0.75f) / 0.68f, 0.f, 1.f);
+        color[0] = 1.08f;
+        color[1] = 1.02f - 0.04f * bright;
+        color[2] = 0.88f - 0.14f * bright;
+        break;
+    }
+    case FLICKER_TV_MONITOR:
+    {
+        // Each light gets a seeded one-to-four-second cut cadence and phase;
+        // each new virtual scene draws a fresh discontinuous luminance.
+        const F64 cut_interval = 1.0 + 3.0 * hash(0, 0);
+        const F64 cut_phase = cut_interval * hash(0, 1);
+        const U64 scene = static_cast<U64>(
+            std::floor((seconds + cut_phase) / cut_interval));
+        const F32 scene_luma = 0.64f + 0.70f * hash(scene, 2);
+        const F32 shimmer = 0.035f * phaseSin(seconds * TWO_PI * 11.3) +
+            0.035f * centredNoise(seconds * 18.0, 3);
+        intensity = scene_luma + shimmer;
+        const F32 hue = centredNoise(seconds * 0.16, 4);
+        color[0] = 0.78f + 0.07f * hue;
+        color[1] = 0.98f - 0.03f * hue;
+        color[2] = 1.18f - 0.04f * hue;
+        break;
+    }
+    case FLICKER_FLUORESCENT:
+    {
+        const F64 block_seconds = 7.0;
+        const U64 block = static_cast<U64>(std::floor(seconds / block_seconds));
+        const F64 local = positiveFmod(seconds, block_seconds);
+        const F64 mains_hz = hash(0, 0) < 0.5f ? 100.0 : 120.0;
+        intensity = 0.98f + 0.025f * phaseSin(
+            seconds * TWO_PI * mains_hz + hash(0, 1) * TWO_PI);
+        if (hash(block, 2) > 0.70f)
+        {
+            const F64 start = 0.6 + 5.2 * hash(block, 3);
+            const F64 duration = 0.18 + 0.52 * hash(block, 4);
+            if (local >= start && local < start + duration)
+            {
+                const S64 strobe = static_cast<S64>(
+                    std::floor((local - start) * 34.0));
+                intensity *= positiveMod(strobe, 4) == 0 ? 0.55f : 0.04f;
+            }
+        }
+        color[0] = 0.92f;
+        color[1] = 1.04f;
+        color[2] = 0.94f;
+        break;
+    }
+    case FLICKER_NEON:
+    {
+        // Presentation time zero is the deterministic tube warm-up origin.
+        intensity = ease(static_cast<F32>(seconds / 0.8));
+        const F64 shimmer_hz = 15.0 + 4.0 * hash(0, 4);
+        intensity *= 0.98f + 0.025f * phaseSin(
+            seconds * TWO_PI * shimmer_hz + hash(0, 5) * TWO_PI);
+        const F64 block_seconds = 8.0;
+        const U64 block = static_cast<U64>(std::floor(seconds / block_seconds));
+        const F64 local = positiveFmod(seconds, block_seconds);
+        if (hash(block, 0) > 0.72f)
+        {
+            const F64 start = 1.0 + 5.8 * hash(block, 1);
+            const F64 duration = 0.35 + 0.25 * hash(block, 2);
+            if (local >= start && local < start + duration)
+            {
+                const F32 chatter = phaseSin((local - start) * TWO_PI * 21.0);
+                intensity *= chatter > 0.65f ? 0.30f : 0.045f;
+            }
+        }
+        if (hash(0, 3) < 0.5f)
+        {
+            color[0] = 0.46f;
+            color[1] = 1.08f;
+            color[2] = 1.18f;
+        }
+        else
+        {
+            color[0] = 1.18f;
+            color[1] = 0.42f;
+            color[2] = 1.06f;
+        }
+        break;
+    }
+    case FLICKER_CANDLE:
+    {
+        const F32 gutter = 0.68f * centredNoise(seconds * 2.1, 0) +
+            0.32f * centredNoise(seconds * 0.65, 1);
+        intensity = 0.88f + 0.15f * gutter;
+        const F64 block_seconds = 8.0;
+        const U64 block = static_cast<U64>(std::floor(seconds / block_seconds));
+        const F64 local = positiveFmod(seconds, block_seconds);
+        if (hash(block, 2) > 0.82f)
+        {
+            const F64 start = 0.8 + 5.8 * hash(block, 3);
+            const F64 duration = 0.45 + 0.65 * hash(block, 4);
+            if (local >= start && local < start + duration)
+            {
+                const F32 phase = static_cast<F32>((local - start) / duration);
+                const F32 dip = phaseSin(phase * TWO_PI * 0.5);
+                intensity -= 0.55f * dip * dip;
+            }
+        }
+        color[0] = 1.10f;
+        color[1] = 0.96f;
+        color[2] = 0.76f;
+        break;
+    }
+    case FLICKER_PASSING_HEADLIGHTS:
+    {
+        const F64 period = 5.5 + 4.0 * hash(0, 0);
+        const F64 offset = period * hash(0, 1);
+        const F64 phase = positiveFmod(seconds + offset, period) / period;
+        constexpr F64 SWEEP_FRACTION = 0.30;
+        F32 sweep = 0.f;
+        if (phase < SWEEP_FRACTION)
+        {
+            const F32 pass_phase = static_cast<F32>(phase / SWEEP_FRACTION);
+            const F32 hump = phaseSin(pass_phase * TWO_PI * 0.5);
+            sweep = hump * hump;
+        }
+        intensity = 0.04f + 1.36f * sweep;
+        color[0] = 0.92f;
+        color[1] = 1.02f;
+        color[2] = 1.16f;
+        break;
+    }
+    case FLICKER_POLICE_LIGHTBAR:
+    {
+        const F64 rate = 4.5 + 2.5 * hash(0, 0);
+        const F64 flashes = seconds * rate + hash(0, 1);
+        const S64 flash = static_cast<S64>(std::floor(flashes));
+        const F32 phase = static_cast<F32>(flashes - std::floor(flashes));
+        const F32 first = phase < 0.38f
+            ? phaseSin((phase / 0.38f) * TWO_PI * 0.5) : 0.f;
+        const F32 second = phase > 0.55f
+            ? phaseSin(((phase - 0.55f) / 0.45f) * TWO_PI * 0.5) : 0.f;
+        intensity = 0.18f + 1.20f * std::max(first * first, second * second);
+        if ((flash & 1) == 0)
+        {
+            color[0] = 1.25f;
+            color[1] = 0.08f;
+            color[2] = 0.08f;
+        }
+        else
+        {
+            color[0] = 0.08f;
+            color[1] = 0.18f;
+            color[2] = 1.25f;
+        }
+        break;
+    }
+    default:
+        return;
+    }
+
+    intensity = std::clamp(finiteOr(intensity, 1.f),
+                           0.f, FLICKER_INTENSITY_MUL_MAX);
+    out_intensity_mul = 1.f + (intensity - 1.f) * safe_amount;
+    for (S32 channel = 0; channel < 3; ++channel)
+    {
+        color[channel] = std::clamp(finiteOr(color[channel], 1.f),
+                                    0.f, FLICKER_COLOR_MUL_MAX);
+        out_color_mul[channel] =
+            1.f + (color[channel] - 1.f) * safe_amount;
+    }
+}
+
+const char* flickerProgramName(S32 program)
+{
+    return program >= FLICKER_NONE && program < FLICKER_COUNT
+        ? FLICKER_PROGRAM_NAMES[program] : FLICKER_PROGRAM_NAMES[FLICKER_NONE];
+}
+
 const char* fxName(S32 fx)
 {
     return fx >= 0 && fx < FX_COUNT ? FX_NAMES[fx] : "None";
@@ -2338,6 +3075,29 @@ F32 beamFalloff(S32 index)
 const char* goboName(S32 index)
 {
     return GOBO_NAMES[std::clamp(index, 0, GOBO_COUNT - 1)];
+}
+
+S32 goboCategory(S32 index)
+{
+    return GOBO_CATEGORIES[std::clamp(index, 0, GOBO_COUNT - 1)];
+}
+
+const char* goboCategoryName(S32 category)
+{
+    return GOBO_CATEGORY_NAMES[
+        std::clamp(category, 0, GOBO_CATEGORY_COUNT - 1)];
+}
+
+S32 goboBlurBucket(F32 softness)
+{
+    const F32 safe = std::isfinite(softness)
+        ? std::clamp(softness, 0.f, 8.f) : 0.f;
+    return safe < 2.5f ? 0 : (safe < 5.5f ? 1 : 2);
+}
+
+bool goboIsAnimated(S32 index)
+{
+    return index == GOBO_ROTATING_FAN;
 }
 
 Setup classicSetup()

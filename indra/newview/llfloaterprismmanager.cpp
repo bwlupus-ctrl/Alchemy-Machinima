@@ -35,6 +35,7 @@ namespace
 {
 constexpr F32 SNAPSHOT_POLL_SECONDS = 0.25f;
 constexpr F32 AGE_REFRESH_SECONDS = 1.f;
+constexpr U32 GATE_ARM_LIMIT = LLPrismLens::MAX_CAPTURES;
 constexpr const char* BONE_EYELINE_VALUE = "__eyeline__";
 
 // Static standard-avatar fallback used until the selected cast subject has a
@@ -332,6 +333,7 @@ bool LLFloaterPrismManager::postBuild()
     mStatusText = getChild<LLTextBox>("status_text");
     mCaptureList = getChild<LLScrollListCtrl>("capture_list");
     mDisplayList = getChild<LLScrollListCtrl>("display_list");
+    mGateArmedList = getChild<LLScrollListCtrl>("gate_armed_list");
 
     mAddCameraButton = getChild<LLButton>("add_camera");
     mAddLensButton = getChild<LLButton>("add_lens");
@@ -344,6 +346,11 @@ bool LLFloaterPrismManager::postBuild()
     mAddVirtualScreenButton = getChild<LLButton>("add_virtual_screen");
     mRemoveDisplayButton = getChild<LLButton>("remove_display");
     mLocateDisplayButton = getChild<LLButton>("locate_display");
+    mGateArmButton = getChild<LLButton>("gate_arm");
+    mGateDisarmButton = getChild<LLButton>("gate_disarm");
+    mGateTakeButton = getChild<LLButton>("gate_take");
+    mGateIntervalResetButton = getChild<LLButton>("gate_interval_reset");
+    mGatePrewarmResetButton = getChild<LLButton>("gate_prewarm_reset");
 
     mCaptureScroll = getChild<LLScrollContainer>("capture_settings_scroll");
     mCaptureDocument = getChild<LLPanel>("capture_settings_document");
@@ -353,11 +360,15 @@ bool LLFloaterPrismManager::postBuild()
     mRateSettingsPanel = getChild<LLPanel>("rate_settings_panel");
     mPerformanceScroll = getChild<LLScrollContainer>("performance_settings_scroll");
     mPerformanceDocument = getChild<LLPanel>("performance_settings_document");
+    mGateScroll = getChild<LLScrollContainer>("gate_settings_scroll");
+    mGateDocument = getChild<LLPanel>("gate_settings_document");
 
     mCaptureTitle = getChild<LLTextBox>("capture_title");
     mSourceText = getChild<LLTextBox>("camera_source");
     mRateReadout = getChild<LLTextBox>("rate_readout");
     mDisplaySourceRate = getChild<LLTextBox>("display_source_rate");
+    mGateLiveText = getChild<LLTextBox>("gate_live");
+    mGateReasonText = getChild<LLTextBox>("gate_reason");
     mFovModeCombo = getChild<LLComboBox>("fov_mode");
     mVerticalFovSpinner = getChild<LLSpinCtrl>("vertical_fov");
     mNearClipSpinner = getChild<LLSpinCtrl>("near_clip");
@@ -400,6 +411,11 @@ bool LLFloaterPrismManager::postBuild()
     mTargetFpsSpinner = getChild<LLSpinCtrl>("target_fps");
     mRatePresetCombo = getChild<LLComboBox>("rate_preset");
     mNewDisplayFitCombo = getChild<LLComboBox>("new_display_fit");
+    mDisplayGateSourceCheck = getChild<LLCheckBoxCtrl>("display_gate_source");
+    mGateActiveCheck = getChild<LLCheckBoxCtrl>("gate_active");
+    mGateModeCombo = getChild<LLComboBox>("gate_mode");
+    mGateIntervalSpinner = getChild<LLSpinCtrl>("gate_interval");
+    mGatePrewarmSpinner = getChild<LLSpinCtrl>("gate_prewarm");
     mDisplayFitCombo = getChild<LLComboBox>("display_fit");
     mAnchorXSpinner = getChild<LLSpinCtrl>("anchor_x");
     mAnchorYSpinner = getChild<LLSpinCtrl>("anchor_y");
@@ -441,6 +457,8 @@ bool LLFloaterPrismManager::postBuild()
         [this](LLUICtrl*, const LLSD&) { onCaptureSelectionChanged(); });
     mDisplayList->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onDisplaySelectionChanged(); });
+    mGateArmedList->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onGateSelectionChanged(); });
     mAddCameraButton->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onAddCamera(); });
     mAddLensButton->setCommitCallback(
@@ -463,6 +481,32 @@ bool LLFloaterPrismManager::postBuild()
         [this](LLUICtrl*, const LLSD&) { onRemoveDisplay(); });
     mLocateDisplayButton->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onLocateDisplay(); });
+    mGateArmButton->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onGateArm(); });
+    mGateDisarmButton->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onGateDisarm(); });
+    mGateTakeButton->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onGateTake(); });
+    const auto gate_settings_commit = [this](LLUICtrl*, const LLSD&)
+    {
+        onCommitGateSettings();
+    };
+    mGateActiveCheck->setCommitCallback(gate_settings_commit);
+    mGateModeCombo->setCommitCallback(gate_settings_commit);
+    mGateIntervalSpinner->setCommitCallback(gate_settings_commit);
+    mGatePrewarmSpinner->setCommitCallback(gate_settings_commit);
+    mGateIntervalResetButton->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            mGateIntervalSpinner->setValue(8.0);
+            onCommitGateSettings();
+        });
+    mGatePrewarmResetButton->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            mGatePrewarmSpinner->setValue(3);
+            onCommitGateSettings();
+        });
 
     const auto camera_commit = [this](LLUICtrl*, const LLSD&)
     {
@@ -594,6 +638,8 @@ bool LLFloaterPrismManager::postBuild()
     mBarRedSpinner->setCommitCallback(display_commit);
     mBarGreenSpinner->setCommitCallback(display_commit);
     mBarBlueSpinner->setCommitCallback(display_commit);
+    mDisplayGateSourceCheck->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onCommitDisplayGateSource(); });
     // Virtual-screen size/aspect commit through the same display-settings path,
     // but via a dedicated handler that recomputes width = height * aspect. The
     // reposition button restamps the stored transform from the current view.
@@ -675,21 +721,26 @@ void LLFloaterPrismManager::pollSnapshots(bool force)
 
     LLPrismLens::RegistrySnapshot registry = LLPrismLens::registrySnapshot();
     LLPrismLens::PerformanceSnapshot performance = LLPrismLens::performanceSnapshot();
+    LLPrismLens::GateSnapshot gate = LLPrismLens::gateSnapshot();
     const bool configuration_changed = force || !mHaveRegistrySnapshot ||
         registry.mConfigurationRevision != mConfigurationRevision;
     const bool runtime_changed = force || !mHaveRegistrySnapshot ||
         registry.mRuntimeRevision != mRuntimeRevision;
     const bool performance_changed = force || !mHavePerformanceSnapshot ||
         performance.mRevision != mPerformanceRevision;
+    const bool gate_changed = force || !mHaveRegistrySnapshot ||
+        registry.mGateRevision != mGateRevision;
     const bool age_due = force || mAgeRefreshTimer.getElapsedTimeF32() >= AGE_REFRESH_SECONDS;
 
     mRegistrySnapshot = registry;
     mPerformanceSnapshot = performance;
+    mGateSnapshot = gate;
     mHaveRegistrySnapshot = true;
     mHavePerformanceSnapshot = true;
     mConfigurationRevision = registry.mConfigurationRevision;
     mRuntimeRevision = registry.mRuntimeRevision;
     mPerformanceRevision = performance.mRevision;
+    mGateRevision = registry.mGateRevision;
 
     if (configuration_changed)
     {
@@ -702,6 +753,10 @@ void LLFloaterPrismManager::pollSnapshots(bool force)
     if (configuration_changed || performance_changed || age_due)
     {
         refreshPerformance();
+    }
+    if (configuration_changed || runtime_changed || gate_changed)
+    {
+        refreshGateEditor();
     }
     refreshSelectionActions();
     // Cast slots can resolve or swap avatars without changing Prism's own
@@ -799,7 +854,8 @@ void LLFloaterPrismManager::refreshBoneJointChoices(bool force)
 
 void LLFloaterPrismManager::refreshConfiguration()
 {
-    if (!selectedCapture())
+    const LLPrismLens::CaptureDefinition* current_capture = selectedCapture();
+    if (!current_capture)
     {
         mSelectedCapture = LLPrismLens::CaptureHandle();
         if (mRegistrySnapshot.mCaptureCount > 0)
@@ -809,7 +865,8 @@ void LLFloaterPrismManager::refreshConfiguration()
     }
 
     const LLPrismLens::DisplayDefinition* display = selectedDisplay();
-    if (!display || !sameHandle(display->mCapture, mSelectedCapture))
+    if (!display || (!sameHandle(display->mCapture, mSelectedCapture) &&
+                     !display->mGateSubscribed))
     {
         mSelectedDisplay = LLPrismLens::DisplayHandle();
     }
@@ -818,6 +875,7 @@ void LLFloaterPrismManager::refreshConfiguration()
     rebuildDisplayList();
     refreshCaptureEditor();
     refreshDisplayEditor();
+    rebuildGateArmedList();
 }
 
 void LLFloaterPrismManager::refreshRuntime()
@@ -862,9 +920,12 @@ void LLFloaterPrismManager::refreshPerformance()
     }
 
     const LLPrismLens::PerformanceSnapshot& p = mPerformanceSnapshot;
+    const std::string captures_text = llformat(
+        "%u/%u captures", mRegistrySnapshot.mCaptureCount,
+        LLPrismLens::MAX_CAPTURES);
     mSummaryText->setText(llformat(
-        "VCam %u/%u captures | %u/%u displays | %s",
-        mRegistrySnapshot.mCaptureCount, LLPrismLens::MAX_CAPTURES,
+        "VCam %s | %u/%u displays | %s",
+        captures_text.c_str(),
         mRegistrySnapshot.mDisplayCount, LLPrismLens::MAX_DISPLAY_BINDINGS,
         performanceStateText(p.mState).c_str()));
     const std::string timing = p.mGpuTimingReliable
@@ -948,7 +1009,8 @@ void LLFloaterPrismManager::rebuildDisplayList()
     for (U32 index = 0; index < mRegistrySnapshot.mDisplayCount; ++index)
     {
         const LLPrismLens::DisplayDefinition& display = mRegistrySnapshot.mDisplays[index];
-        if (!sameHandle(display.mCapture, capture->mHandle))
+        if (!sameHandle(display.mCapture, capture->mHandle) &&
+            !display.mGateSubscribed)
         {
             continue;
         }
@@ -964,9 +1026,11 @@ void LLFloaterPrismManager::rebuildDisplayList()
             : llformat("%s f%d",
                 display.mDisplayObjectId.asString().substr(0, 8).c_str(),
                 display.mDisplayTextureEntry);
-        const std::string inherited = llformat("%s %u | %.1f FPS",
-            captureModeText(capture->mMode).c_str(), capture->mSlot + 1,
-            capture->mRuntime.mObservedPublicationHz);
+        const std::string inherited = display.mGateSubscribed
+            ? "Gate program"
+            : llformat("%s %u | %.1f FPS",
+                captureModeText(capture->mMode).c_str(), capture->mSlot + 1,
+                capture->mRuntime.mObservedPublicationHz);
         const std::string tooltip = llformat(
             "Display %s\nGeneration %llu\nObject %s face %d\nHealth: %s\nVisibility: %s\nInherited capture %s",
             display.mHandle.mId.asString().c_str(),
@@ -1004,6 +1068,58 @@ void LLFloaterPrismManager::rebuildDisplayList()
     {
         mDisplayList->selectByValue(LLSD(mSelectedDisplay.mId));
     }
+}
+
+void LLFloaterPrismManager::rebuildGateArmedList()
+{
+    mGateArmedList->deleteAllItems();
+    bool selected_present = false;
+    for (S32 index = 0;
+         index < static_cast<S32>(mGateSnapshot.mSettings.mArmed.size()); ++index)
+    {
+        const LLPrismLens::GateArmedCamera& armed =
+            mGateSnapshot.mSettings.mArmed[static_cast<std::size_t>(index)];
+        bool capture_resolves = false;
+        for (U32 capture_index = 0;
+             capture_index < mRegistrySnapshot.mCaptureCount; ++capture_index)
+        {
+            if (mRegistrySnapshot.mCaptures[capture_index].mHandle.mId ==
+                armed.mCaptureId)
+            {
+                capture_resolves = true;
+                break;
+            }
+        }
+        selected_present |= armed.mArmId == mSelectedGateArm;
+        LLSD row;
+        row["value"] = armed.mArmId;
+        row["columns"][0]["column"] = "gate_order";
+        row["columns"][0]["value"] = llformat("%d", index + 1);
+        row["columns"][1]["column"] = "gate_label";
+        row["columns"][1]["value"] = capture_resolves
+            ? armed.mLabel : armed.mLabel + " (deleted)";
+        row["columns"][2]["column"] = "gate_live_column";
+        row["columns"][2]["value"] =
+            index == mGateSnapshot.mOnAirArmIndex ? "ON AIR" : "";
+        row["columns"][3]["column"] = "gate_enabled";
+        row["columns"][3]["type"] = "checkbox";
+        row["columns"][3]["value"] = armed.mEnabled;
+        row["columns"][3]["enabled"] = capture_resolves;
+        mGateArmedList->addElement(row, ADD_BOTTOM);
+    }
+    if (!selected_present)
+    {
+        mSelectedGateArm.setNull();
+        const S32 preview = mGateSnapshot.mSettings.mPreviewArmIndex;
+        if (preview >= 0 &&
+            preview < static_cast<S32>(mGateSnapshot.mSettings.mArmed.size()))
+        {
+            mSelectedGateArm = mGateSnapshot.mSettings.mArmed[
+                static_cast<std::size_t>(preview)].mArmId;
+        }
+    }
+    if (!mSelectedGateArm.isNull())
+        mGateArmedList->selectByValue(LLSD(mSelectedGateArm));
 }
 
 void LLFloaterPrismManager::refreshCaptureEditor()
@@ -1154,6 +1270,15 @@ void LLFloaterPrismManager::refreshDisplayEditor()
     mBarRedSpinner->setEnabled(editable);
     mBarGreenSpinner->setEnabled(editable);
     mBarBlueSpinner->setEnabled(editable);
+    const bool gate_source_editable = display && capture &&
+        capture->mMode == LLPrismLens::ECaptureMode::CAMERA_FEED;
+    mDisplayGateSourceCheck->setEnabled(gate_source_editable);
+    mDisplayGateSourceCheck->setValue(display && display->mGateSubscribed);
+    mDisplayGateSourceCheck->setToolTip(std::string(!display
+        ? "Select a display first"
+        : !gate_source_editable
+            ? "A Surface Lens aperture must remain bound to its lens capture"
+            : "Route this monitor to the Gate program feed instead of its fixed capture"));
 
     // Screen effects run at composite time on every display binding, so
     // unlike the Camera-Feed-only mapping controls above they stay editable
@@ -1219,6 +1344,76 @@ void LLFloaterPrismManager::refreshDisplayEditor()
     }
 }
 
+void LLFloaterPrismManager::refreshGateEditor()
+{
+    rebuildGateArmedList();
+    const LLPrismLens::GateSettings& settings = mGateSnapshot.mSettings;
+    mGateActiveCheck->setValue(settings.mActive);
+    mGateModeCombo->setValue(settings.mMode == LLPrismLens::EGateMode::AUTO_CYCLE
+        ? LLSD("auto_cycle") : LLSD("manual"));
+    mGateIntervalSpinner->setValue(settings.mIntervalSeconds);
+    mGatePrewarmSpinner->setValue(static_cast<S32>(settings.mPrewarmFrames));
+
+    std::string live = settings.mActive ? "ON AIR: no valid arm" : "ON AIR: inactive";
+    if (mGateSnapshot.mOnAirArmIndex >= 0 &&
+        mGateSnapshot.mOnAirArmIndex < static_cast<S32>(settings.mArmed.size()))
+    {
+        live = llformat("ON AIR: %s%s",
+            settings.mArmed[static_cast<std::size_t>(
+                mGateSnapshot.mOnAirArmIndex)].mLabel.c_str(),
+            settings.mActive ? "" : " (static)");
+    }
+    mGateLiveText->setText(live);
+    std::string gate_reason = mGateSnapshot.mReason;
+    if (gate_reason.empty())
+    {
+        gate_reason = settings.mActive
+            ? "Gate routes monitors to the on-air existing capture; the next capture is watched only during bounded pre-warm."
+            : "Arm camera captures, select a preview row, and activate the Gate.";
+    }
+    mGateReasonText->setText(gate_reason);
+    mGateReasonText->setToolTip(gate_reason);
+
+    const LLPrismLens::CaptureDefinition* capture = selectedCapture();
+    const bool can_arm = capture &&
+        capture->mMode == LLPrismLens::ECaptureMode::CAMERA_FEED &&
+        settings.mArmed.size() < GATE_ARM_LIMIT;
+    setActionState(mGateArmButton, can_arm,
+        can_arm ? "Reference the selected existing capture from the Gate arm list"
+                : !capture ? "Select a Camera Feed capture first"
+                : capture->mMode != LLPrismLens::ECaptureMode::CAMERA_FEED
+                    ? "Only Camera Feed captures can be armed"
+                    : "The Gate already has its maximum of 8 capture references");
+    const bool have_selected_arm = !mSelectedGateArm.isNull();
+    setActionState(mGateDisarmButton, have_selected_arm,
+        have_selected_arm ? "Remove the selected capture reference from the Gate"
+                          : "Select an armed row first");
+    const bool can_take = settings.mActive &&
+        settings.mMode == LLPrismLens::EGateMode::MANUAL &&
+        settings.mPreviewArmIndex >= 0 &&
+        settings.mPreviewArmIndex != mGateSnapshot.mOnAirArmIndex;
+    setActionState(mGateTakeButton, can_take,
+        can_take ? "Cut the selected camera on-air"
+                 : !settings.mActive ? "Activate the Gate first"
+                 : settings.mMode != LLPrismLens::EGateMode::MANUAL
+                    ? "TAKE is available in Manual mode"
+                    : "Select a row that is not already on-air");
+    setActionState(mGateActiveCheck, settings.mActive || !settings.mArmed.empty(),
+        settings.mActive || !settings.mArmed.empty()
+            ? "Route subscribed monitors to the on-air armed capture"
+            : "Arm at least one camera capture first");
+    const bool automatic = settings.mMode == LLPrismLens::EGateMode::AUTO_CYCLE;
+    setActionState(mGateIntervalSpinner, automatic,
+        automatic ? "Seconds between automatic hard cuts"
+                  : "Cycle interval is used only in Auto mode");
+    setActionState(mGateIntervalResetButton, automatic,
+        automatic ? "Reset cycle interval to 8 seconds"
+                  : "Cycle interval is used only in Auto mode");
+    mGateModeCombo->setEnabled(!settings.mArmed.empty());
+    mGatePrewarmSpinner->setEnabled(!settings.mArmed.empty());
+    mGatePrewarmResetButton->setEnabled(!settings.mArmed.empty());
+}
+
 void LLFloaterPrismManager::refreshDisplayRateReadout()
 {
     const LLPrismLens::CaptureDefinition* capture = selectedCapture();
@@ -1240,6 +1435,13 @@ void LLFloaterPrismManager::refreshDisplayRateReadout()
             "No display selected | inherited from %s %u at %.1f FPS",
             captureModeText(capture->mMode).c_str(), capture->mSlot + 1,
             capture->mRuntime.mObservedPublicationHz));
+        return;
+    }
+
+    if (display->mGateSubscribed)
+    {
+        mDisplaySourceRate->setText(LLStringExplicit(
+            "Source: Vcam Gate program | CUT routing | cadence is inherited from the on-air capture"));
         return;
     }
 
@@ -1362,6 +1564,7 @@ void LLFloaterPrismManager::installDocumentFocusReveal()
     ALScrollFocus::install(mCaptureScroll, mCaptureDocument, mCaptureDocument);
     ALScrollFocus::install(mPerformanceScroll, mPerformanceDocument, mPerformanceDocument);
     ALScrollFocus::install(mEffectsScroll, mEffectsDocument, mEffectsDocument);
+    ALScrollFocus::install(mGateScroll, mGateDocument, mGateDocument);
 }
 
 void LLFloaterPrismManager::revealDocumentView(
@@ -1388,6 +1591,7 @@ void LLFloaterPrismManager::onCaptureSelectionChanged()
             rebuildDisplayList();
             refreshCaptureEditor();
             refreshDisplayEditor();
+            refreshGateEditor();
             refreshSelectionActions();
             revealDocumentView(mCaptureTitle, mCaptureDocument, mCaptureScroll);
             return;
@@ -1396,6 +1600,7 @@ void LLFloaterPrismManager::onCaptureSelectionChanged()
     mSelectedCapture = LLPrismLens::CaptureHandle();
     mSelectedDisplay = LLPrismLens::DisplayHandle();
     refreshConfiguration();
+    refreshGateEditor();
 }
 
 void LLFloaterPrismManager::onDisplaySelectionChanged()
@@ -1404,10 +1609,13 @@ void LLFloaterPrismManager::onDisplaySelectionChanged()
     for (U32 index = 0; index < mRegistrySnapshot.mDisplayCount; ++index)
     {
         const LLPrismLens::DisplayDefinition& display = mRegistrySnapshot.mDisplays[index];
-        if (display.mHandle.mId == id && sameHandle(display.mCapture, mSelectedCapture))
+        if (display.mHandle.mId == id &&
+            (sameHandle(display.mCapture, mSelectedCapture) ||
+             display.mGateSubscribed))
         {
             mSelectedDisplay = display.mHandle;
             refreshDisplayEditor();
+            refreshGateEditor();
             refreshSelectionActions();
             return;
         }
@@ -1415,6 +1623,147 @@ void LLFloaterPrismManager::onDisplaySelectionChanged()
     mSelectedDisplay = LLPrismLens::DisplayHandle();
     refreshDisplayEditor();
     refreshSelectionActions();
+}
+
+void LLFloaterPrismManager::onGateSelectionChanged()
+{
+    const LLUUID id = mGateArmedList->getSelectedValue().asUUID();
+    S32 selected_index = -1;
+    for (S32 index = 0;
+         index < static_cast<S32>(mGateSnapshot.mSettings.mArmed.size()); ++index)
+    {
+        if (mGateSnapshot.mSettings.mArmed[
+                static_cast<std::size_t>(index)].mArmId == id)
+        {
+            selected_index = index;
+            break;
+        }
+    }
+    if (selected_index < 0)
+    {
+        mSelectedGateArm.setNull();
+        refreshGateEditor();
+        return;
+    }
+    mSelectedGateArm = id;
+    LLPrismLens::GateSettings settings = mGateSnapshot.mSettings;
+    settings.mPreviewArmIndex = selected_index;
+    LLScrollListItem* selected_item = mGateArmedList->getFirstSelected();
+    LLScrollListColumn* enabled_column =
+        mGateArmedList->getColumn("gate_enabled");
+    if (selected_item && enabled_column &&
+        selected_item->getColumn(enabled_column->mIndex))
+    {
+        settings.mArmed[static_cast<std::size_t>(selected_index)].mEnabled =
+            selected_item->getColumn(enabled_column->mIndex)->getValue().asBoolean();
+    }
+    std::string reason;
+    if (LLPrismLens::setGateSettings(settings, &reason))
+    {
+        setStatus("Selected the Gate preview and updated its Auto inclusion state.");
+        invalidateRegistrySnapshot();
+        return;
+    }
+    setStatus("Gate preview was rejected: " + reason);
+    invalidateRegistrySnapshot();
+}
+
+void LLFloaterPrismManager::onGateArm()
+{
+    const LLPrismLens::CaptureDefinition* capture = selectedCapture();
+    if (!capture)
+    {
+        setStatus("Select a Camera Feed capture first.");
+        return;
+    }
+    LLUUID arm_id;
+    std::string reason;
+    const LLPrismLens::ERegistryResult result = LLPrismLens::gateArm(
+        capture->mHandle, llformat("VCam %u", capture->mSlot + 1),
+        &arm_id, &reason);
+    if (result == LLPrismLens::ERegistryResult::OK)
+    {
+        mSelectedGateArm = arm_id;
+        setStatus("Armed a reference to the existing capture; the capture count is unchanged.");
+        invalidateRegistrySnapshot();
+        return;
+    }
+    setStatus("Could not arm camera: " + reason);
+}
+
+void LLFloaterPrismManager::onGateDisarm()
+{
+    if (mSelectedGateArm.isNull()) return;
+    std::string label = "the selected camera";
+    for (const LLPrismLens::GateArmedCamera& armed :
+         mGateSnapshot.mSettings.mArmed)
+    {
+        if (armed.mArmId == mSelectedGateArm)
+        {
+            label = armed.mLabel;
+            break;
+        }
+    }
+    LLSD args;
+    args["MESSAGE"] = "Disarm " + label + " from the Vcam Gate?";
+    const LLUUID arm_id = mSelectedGateArm;
+    LLHandle<LLFloater> floater_handle = getHandle();
+    LLNotificationsUtil::add("GenericAlertYesCancel", args, LLSD(),
+        [floater_handle, arm_id](const LLSD& notification, const LLSD& response)
+        {
+            if (LLNotificationsUtil::getSelectedOption(notification, response) != 0)
+                return;
+            LLFloaterPrismManager* self =
+                static_cast<LLFloaterPrismManager*>(floater_handle.get());
+            if (!self) return;
+            std::string reason;
+            if (LLPrismLens::gateDisarm(arm_id, &reason) ==
+                LLPrismLens::ERegistryResult::OK)
+            {
+                self->mSelectedGateArm.setNull();
+                self->setStatus("Disarmed the camera definition; the live program binding remains valid.");
+                self->invalidateRegistrySnapshot();
+            }
+            else
+            {
+                self->setStatus("Could not disarm camera: " + reason);
+                self->invalidateRegistrySnapshot();
+            }
+        });
+}
+
+void LLFloaterPrismManager::onGateTake()
+{
+    std::string reason;
+    if (LLPrismLens::gateTake(&reason) == LLPrismLens::ERegistryResult::OK)
+    {
+        setStatus(reason.empty() ? "Cut the selected camera on-air." : reason);
+        invalidateRegistrySnapshot();
+        return;
+    }
+    setStatus("Could not TAKE: " + reason);
+    invalidateRegistrySnapshot();
+}
+
+void LLFloaterPrismManager::onCommitGateSettings()
+{
+    LLPrismLens::GateSettings settings = mGateSnapshot.mSettings;
+    settings.mActive = mGateActiveCheck->getValue().asBoolean();
+    settings.mMode = mGateModeCombo->getValue().asString() == "auto_cycle"
+        ? LLPrismLens::EGateMode::AUTO_CYCLE
+        : LLPrismLens::EGateMode::MANUAL;
+    settings.mIntervalSeconds = mGateIntervalSpinner->getValue().asReal();
+    settings.mPrewarmFrames = static_cast<U32>(
+        mGatePrewarmSpinner->getValue().asInteger());
+    std::string reason;
+    if (LLPrismLens::setGateSettings(settings, &reason))
+    {
+        setStatus(reason.empty() ? "Updated Vcam Gate settings." : reason);
+        invalidateRegistrySnapshot();
+        return;
+    }
+    setStatus("Gate settings were rejected: " + reason);
+    invalidateRegistrySnapshot();
 }
 
 void LLFloaterPrismManager::onAddCamera()
@@ -1907,6 +2256,28 @@ void LLFloaterPrismManager::onCommitDisplaySettings()
     }
     setStatus("Display settings were rejected: " + reason);
     refreshDisplayEditor();
+}
+
+void LLFloaterPrismManager::onCommitDisplayGateSource()
+{
+    const LLPrismLens::DisplayDefinition* display = selectedDisplay();
+    if (!display) return;
+    const LLPrismLens::CaptureDefinition* capture = selectedCapture();
+    std::string reason;
+    const bool subscribed = mDisplayGateSourceCheck->getValue().asBoolean();
+    if (LLPrismLens::setDisplayGateSubscribed(
+            display->mHandle, subscribed,
+            capture ? &capture->mHandle : nullptr, &reason) ==
+        LLPrismLens::ERegistryResult::OK)
+    {
+        setStatus(subscribed
+            ? "This monitor now follows the Vcam Gate program feed."
+            : "This monitor now keeps its current capture as a fixed source.");
+        invalidateRegistrySnapshot();
+        return;
+    }
+    setStatus("Display Gate source was rejected: " + reason);
+    invalidateRegistrySnapshot();
 }
 
 void LLFloaterPrismManager::onCommitVirtualScreenSize()
