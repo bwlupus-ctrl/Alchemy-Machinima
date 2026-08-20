@@ -12,6 +12,7 @@
 
 #include "llactormover.h"
 #include "algazemath.h"
+#include "algazemotor.h"           // coordinated gaze motor program assembly (spec 6A)
 
 #include <algorithm>                // std::reverse (path reverse op)
 #include <set>                      // collectGhostBatches (wanted-actor set)
@@ -2597,6 +2598,10 @@ void LLActorMover::migrateActor(const LLUUID& old_id, const LLUUID& new_id)
     {
         mGazes[new_id] = git->second;
         mGazes.erase(git);
+        // The actor identity (and thus the motor seed) changed: reset the
+        // coordinated motor state so it re-initializes on the current target
+        // under the new key instead of carrying the old body's trajectory.
+        mGazes[new_id].mGazeMotor = ALGazeMotor::GazeMotorState();
     }
 
     // ---- follow relationships: this actor as a FOLLOWER, and as any other
@@ -3306,6 +3311,9 @@ void LLActorMover::applyGaze(LLVOAvatar* av)
         g.mBodyAimValid = false;
         g.mAppliedValid = false;
         g.mAppliedSlewing = false;
+        // Drop the coordinated motor state so a later re-activation re-inits
+        // on the current target instead of slewing from a stale trajectory.
+        g.mGazeMotor = ALGazeMotor::GazeMotorState();
         return;
     }
     const bool needs_move = (g.mTarget == GAZE_TANGENT);
@@ -3359,6 +3367,9 @@ void LLActorMover::applyGaze(LLVOAvatar* av)
         g.mBodyAimValid = false;
         g.mAppliedValid = false;
         g.mAppliedSlewing = false;
+        // Drop the coordinated motor state so a later re-activation re-inits
+        // on the current target instead of slewing from a stale trajectory.
+        g.mGazeMotor = ALGazeMotor::GazeMotorState();
         return;
     }
     if (av->isDead() || !av->getRootJoint())
@@ -4306,6 +4317,32 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     static LLCachedControl<F32> gaze_exaggerate(
         gSavedSettings, "DirectorGazeExaggerate", 1.f);
 
+    // Coordinated gaze motor programs (spec 2.6 / 6A). The master gate and its
+    // tunables are read here but only consumed on the gate-on branch below; the
+    // legacy path never touches them, so gate-off stays byte-identical.
+    static LLCachedControl<bool> gaze_motion_programs(
+        gSavedSettings, "DirectorGazeMotionPrograms", false);
+    static LLCachedControl<F32> gaze_mp_valence(
+        gSavedSettings, "DirectorGazeValence", 0.f);
+    static LLCachedControl<F32> gaze_mp_arousal(
+        gSavedSettings, "DirectorGazeArousal", 0.5f);
+    static LLCachedControl<F32> gaze_mp_dominance(
+        gSavedSettings, "DirectorGazeDominance", 0.f);
+    static LLCachedControl<F32> gaze_mp_soft_recruit(
+        gSavedSettings, "DirectorGazeSoftRecruitDeg", 0.f);
+    static LLCachedControl<F32> gaze_mp_comfort_yaw(
+        gSavedSettings, "DirectorGazeComfortYawDeg", 25.f);
+    static LLCachedControl<F32> gaze_mp_comfort_pitch(
+        gSavedSettings, "DirectorGazeComfortPitchDeg", 14.f);
+    static LLCachedControl<F32> gaze_mp_eye_dur_base(
+        gSavedSettings, "DirectorGazeEyeDurationBaseMs", 25.f);
+    static LLCachedControl<F32> gaze_mp_eye_dur_perdeg(
+        gSavedSettings, "DirectorGazeEyeDurationPerDegMs", 2.8f);
+    static LLCachedControl<F32> gaze_mp_head_latency(
+        gSavedSettings, "DirectorGazeHeadLatencyMs", 40.f);
+    static LLCachedControl<F32> gaze_mp_head_dur_base(
+        gSavedSettings, "DirectorGazeHeadDurationBaseMs", 150.f);
+
     ALGazeMath::GazeLifeParams in_params;
     in_params.mMicroLife = g.mMicroLifeOverride >= 0.f
         ? llclamp(g.mMicroLifeOverride, 0.f, 1.f)
@@ -4642,6 +4679,325 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             dead_zone, ALGazeMath::chaseAlpha(dt, tau));
     }
     const F32 wBody = env_i * effective_head_eye_blend * behind_eased;
+
+    // ==== GATE ON: coordinated gaze motor programs (spec 2.6 / 6A) ==========
+    // DirectorGazeMotionPrograms replaces, on THIS branch only, the hard-cut
+    // applied-aim stage, the hard-knee anatomical distribute, and the legacy
+    // eye/blink/micro-life derivation with a single ALGazeMotor::step() call,
+    // then applies the returned pose through the SAME priority/cue-weighted
+    // joint + Blink_* machinery the legacy path uses. Everything upstream
+    // (target resolution, direction smoothing, the dead-zone body-aim chase,
+    // envelopes, priority, cue weights, capture/restore) is shared. The branch
+    // returns before the legacy applied stage, so the gate-off code below runs
+    // completely unmodified -- byte-identical to today.
+    if (gaze_motion_programs)
+    {
+        ALGazeMotor::GazeMotorSettings ms;
+        ms.mMasterGate          = true;
+        ms.mEyeDurationBaseMs   = (F32)gaze_mp_eye_dur_base;
+        ms.mEyeDurationPerDegMs = (F32)gaze_mp_eye_dur_perdeg;
+        ms.mHeadLatencyBaseMs   = (F32)gaze_mp_head_latency;
+        ms.mHeadDurationBaseMs  = (F32)gaze_mp_head_dur_base;
+        ms.mSoftRecruitBandDeg  = llmax((F32)gaze_mp_soft_recruit, 0.f);
+        ms.mComfortYawDeg       = (F32)gaze_mp_comfort_yaw;
+        ms.mComfortPitchDeg     = (F32)gaze_mp_comfort_pitch;
+        // Mirror distributeAnatomicalChain's authored distribution inputs so
+        // band 0 recruits the same joints the legacy hard knee would.
+        ms.mHeadEyeBlend        = effective_head_eye_blend;
+        ms.mTorsoAmount         = g.mTorsoAmount;
+        ms.mAnatomyScale        = anatomy_scale;
+        // Blink scheduling honors the existing enable + rate scale; disabling
+        // blinks zeroes both the spontaneous lattice and the evoked source.
+        const bool blinks_on    = life_params.mBlinks;
+        ms.mBlinkRate           = blinks_on
+            ? llmax(life_params.mBlinkRate, 0.f) : 0.f;
+        ms.mGazeEvokedBlink     = blinks_on ? 1.f : 0.f;
+
+        ALGazeMotor::AffectState affect;
+        affect.mValence   = llclamp((F32)gaze_mp_valence,   -1.f, 1.f);
+        affect.mArousal   = llclamp((F32)gaze_mp_arousal,    0.f, 1.f);
+        affect.mDominance = llclamp((F32)gaze_mp_dominance, -1.f, 1.f);
+
+        ALGazeMotor::GazeMotorInput in;
+        // Desired chain aim in the SAME root-relative frame the legacy solve
+        // measures raw_yaw/raw_pitch in; the dead-zone body-aim chase above is
+        // its (shared) low-pass. mRefWorldRot maps that frame to world for the
+        // VOR solve; mHeadWorldRot is the head's current sampled world rotation
+        // (this frame, pre-repaint) so counter-rotation falls out over frames.
+        in.mTargetYaw    = g.mBodyAimYaw;
+        in.mTargetPitch  = g.mBodyAimPitch;
+        in.mTargetRoll   = 0.f;   // camera roll stays a world-space op below
+        in.mHeadWorldRot = head->getWorldRotation();
+        in.mRefWorldRot  = rootWorld;
+        in.mTimeSeconds  = t_sec;
+        in.mDeltaTime    = dt;
+        in.mSeed         = seed;
+        in.mCueWeight    = 1.f;
+        in.mAffect       = affect;
+        in.mSettings     = ms;
+
+        ALGazeMotor::GazeMotorPose pose;
+        ALGazeMotor::step(g.mGazeMotor, in, pose);
+
+        // Recruited joint contributions land in an AnatomicalChainPose so the
+        // apply below reads exactly like the legacy joint stage. Head drift is
+        // already folded into pose.mHead* (post-smoothing additive, spec step
+        // 5), so no separate micro term is added here.
+        ALGazeMath::AnatomicalChainPose chain;
+        chain.mHeadYaw    = pose.mHeadYaw;
+        chain.mHeadPitch  = pose.mHeadPitch;
+        chain.mNeckYaw    = pose.mNeckYaw;
+        chain.mNeckPitch  = pose.mNeckPitch;
+        chain.mTorsoYaw   = pose.mTorsoYaw;
+        chain.mTorsoPitch = pose.mTorsoPitch;
+        chain.mHipsYaw    = pose.mHipsYaw;
+        chain.mHipsPitch  = pose.mHipsPitch;
+
+        // Head roll = camera-follow roll (world-space, as legacy) plus the
+        // motor's dominance/dutch head tilt, applied in the same channel.
+        const F32 head_roll = camera_follow_roll + pose.mHeadRoll;
+
+        const F32 wCueBody = wBody * cue_body_weight;
+        const F32 wCueHead = wBody * cue_head_weight;
+        const F32 body_pose_weight = llclamp(
+            effective_intensity * cue_body_weight, 0.f, 1.f);
+        const F32 head_pose_weight = llclamp(
+            effective_intensity * cue_head_weight, 0.f, 1.f);
+        const bool head_priority_active =
+            override_head_eyes && priority_env > 0.001f;
+        const bool body_priority_active =
+            override_upper_body && priority_env > 0.001f;
+        if (wBody > 0.001f || head_priority_active || body_priority_active)
+        {
+            if (body_priority_active ||
+                (wCueBody > 0.001f &&
+                 (fabsf(chain.mHipsYaw) + fabsf(chain.mHipsPitch)) > 1e-5f))
+            {
+                if (LLJoint* pelvis = av->getJoint("mPelvis"))
+                {
+                    LLQuaternion hips_target;
+                    hips_target.setEulerAngles(
+                        0.f, chain.mHipsPitch, chain.mHipsYaw);
+                    if (body_priority_active)
+                    {
+                        const LLQuaternion owned_target = nlerp(
+                            body_pose_weight, LLQuaternion::DEFAULT, hips_target);
+                        pelvis->setRotation(nlerp(
+                            priority_env, pelvis->getRotation(), owned_target));
+                    }
+                    else
+                    {
+                        pelvis->setRotation(nlerp(
+                            wCueBody, pelvis->getRotation(), hips_target));
+                    }
+                }
+            }
+            if (body_priority_active ||
+                (wCueBody > 0.001f &&
+                 (fabsf(chain.mTorsoYaw) + fabsf(chain.mTorsoPitch)) > 1e-5f))
+            {
+                if (LLJoint* torso = av->getJoint("mTorso"))
+                {
+                    LLQuaternion torso_target;
+                    torso_target.setEulerAngles(
+                        0.f, chain.mTorsoPitch, chain.mTorsoYaw);
+                    if (body_priority_active)
+                    {
+                        const LLQuaternion owned_target = nlerp(
+                            body_pose_weight, LLQuaternion::DEFAULT, torso_target);
+                        torso->setRotation(nlerp(
+                            priority_env, torso->getRotation(), owned_target));
+                    }
+                    else
+                    {
+                        torso->setRotation(nlerp(
+                            wCueBody, torso->getRotation(), torso_target));
+                    }
+                }
+            }
+            if (head_priority_active ||
+                (wCueHead > 0.001f &&
+                 (fabsf(chain.mNeckYaw) + fabsf(chain.mNeckPitch) +
+                  fabsf(camera_neck_roll)) > 1e-5f))
+            {
+                if (LLJoint* neck = av->getJoint("mNeck"))
+                {
+                    LLQuaternion neck_target;
+                    neck_target.setEulerAngles(
+                        0.f, chain.mNeckPitch, chain.mNeckYaw);
+                    if (head_priority_active)
+                    {
+                        const LLQuaternion owned_target = nlerp(
+                            head_pose_weight, LLQuaternion::DEFAULT, neck_target);
+                        LLQuaternion hips_target;
+                        hips_target.setEulerAngles(
+                            0.f, chain.mHipsPitch, chain.mHipsYaw);
+                        LLQuaternion torso_target;
+                        torso_target.setEulerAngles(
+                            0.f, chain.mTorsoPitch, chain.mTorsoYaw);
+                        const LLQuaternion owned_hips = nlerp(
+                            body_pose_weight, LLQuaternion::DEFAULT, hips_target);
+                        const LLQuaternion owned_torso = nlerp(
+                            body_pose_weight, LLQuaternion::DEFAULT, torso_target);
+                        const LLQuaternion desired_world = owned_target *
+                            owned_torso * owned_hips * root->getWorldRotation();
+                        LLQuaternion rolled_world = desired_world;
+                        applyGazeAimRoll(
+                            rolled_world,
+                            camera_neck_roll * head_pose_weight *
+                                effective_head_eye_blend);
+                        LLQuaternion local_target = rolled_world;
+                        if (LLJoint* parent = neck->getParent())
+                        {
+                            local_target =
+                                rolled_world * ~parent->getWorldRotation();
+                        }
+                        neck->setRotation(nlerp(
+                            priority_env, neck->getRotation(), local_target));
+                    }
+                    else
+                    {
+                        applyGazeAimRoll(neck_target, camera_neck_roll);
+                        neck->setRotation(nlerp(
+                            wCueHead, neck->getRotation(), neck_target));
+                    }
+                }
+            }
+            if (head_priority_active ||
+                (wCueHead > 0.001f &&
+                 (fabsf(chain.mHeadYaw) + fabsf(chain.mHeadPitch) +
+                  fabsf(head_roll)) > 1e-5f))
+            {
+                LLQuaternion head_target;
+                head_target.setEulerAngles(
+                    0.f, chain.mHeadPitch, chain.mHeadYaw);
+                if (head_priority_active)
+                {
+                    const LLQuaternion owned_target = nlerp(
+                        head_pose_weight, LLQuaternion::DEFAULT, head_target);
+                    LLQuaternion hips_target;
+                    hips_target.setEulerAngles(
+                        0.f, chain.mHipsPitch, chain.mHipsYaw);
+                    LLQuaternion torso_target;
+                    torso_target.setEulerAngles(
+                        0.f, chain.mTorsoPitch, chain.mTorsoYaw);
+                    LLQuaternion neck_target;
+                    neck_target.setEulerAngles(
+                        0.f, chain.mNeckPitch, chain.mNeckYaw);
+                    const LLQuaternion owned_hips = nlerp(
+                        body_pose_weight, LLQuaternion::DEFAULT, hips_target);
+                    const LLQuaternion owned_torso = nlerp(
+                        body_pose_weight, LLQuaternion::DEFAULT, torso_target);
+                    const LLQuaternion owned_neck = nlerp(
+                        head_pose_weight, LLQuaternion::DEFAULT, neck_target);
+                    LLQuaternion desired_world = owned_target * owned_neck *
+                        owned_torso * owned_hips * root->getWorldRotation();
+                    applyGazeAimRoll(
+                        desired_world,
+                        (head_roll + camera_neck_roll) *
+                            head_pose_weight * effective_head_eye_blend);
+                    LLQuaternion local_target = desired_world;
+                    if (LLJoint* parent = head->getParent())
+                    {
+                        local_target =
+                            desired_world * ~parent->getWorldRotation();
+                    }
+                    head->setRotation(nlerp(
+                        priority_env, head->getRotation(), local_target));
+                }
+                else
+                {
+                    applyGazeAimRoll(head_target, head_roll);
+                    head->setRotation(nlerp(
+                        wCueHead, head->getRotation(), head_target));
+                }
+            }
+        }
+
+        // Eyes: apply the motor's post-VOR, post-micro eye-in-head directly as
+        // a head-local rotation (the motor already solved VOR against
+        // mHeadWorldRot and comfort-limited it). Same priority/cue nlerp path
+        // and total-angle cone guard as the legacy eye stage; convergence and
+        // the legacy micro-saccade term are subsumed by the motor.
+        const bool eye_priority_active =
+            override_head_eyes && priority_env > 0.001f;
+        if (wEye > 0.001f || eye_priority_active)
+        {
+            const F32 scaled_eye_rot_max = anatomy_scale == 1.f
+                ? GAZE_DIRECTOR_EYE_ROT_MAX
+                : GAZE_DIRECTOR_EYE_ROT_MAX * anatomy_scale;
+            const F32 eye_pose_weight = llclamp(
+                effective_intensity * cue_eye_weight, 0.f, 1.f);
+            auto applyMotorEye = [&](LLJoint* eye)
+            {
+                if (!eye)
+                {
+                    return;
+                }
+                LLQuaternion tgt;
+                tgt.setEulerAngles(0.f, pose.mEyePitch, pose.mEyeYaw);
+                if (constrain_eye_cone)
+                {
+                    tgt.constrain(scaled_eye_rot_max);
+                }
+                if (eye_priority_active)
+                {
+                    const LLQuaternion owned_target = nlerp(
+                        eye_pose_weight, LLQuaternion::DEFAULT, tgt);
+                    eye->setRotation(nlerp(
+                        priority_env, eye->getRotation(), owned_target));
+                }
+                else
+                {
+                    eye->setRotation(nlerp(wEye, eye->getRotation(), tgt));
+                }
+            };
+            applyMotorEye(av->getJoint("mEyeLeft"));
+            applyMotorEye(av->getJoint("mEyeRight"));
+            applyMotorEye(av->getJoint("mFaceEyeAltLeft"));
+            applyMotorEye(av->getJoint("mFaceEyeAltRight"));
+        }
+
+        // Tier-0 lids: the motor already composed aperture posture + blink into
+        // one closure per eye (spec 2.5 stages 2-3, pre-folded); cue widen
+        // still opens. Same director-owned, capture-backed Blink_* channel and
+        // ownership gate as the legacy lid stage (applyGaze passes no runtime,
+        // so, like today, only the Director path drives the lids).
+        static LLCachedControl<F32> gaze_mp_lid_follow(
+            gSavedSettings, "DirectorGazeLidFollow", 0.6f);
+        if (director_runtime &&
+            (life_params.mBlinks || (F32)gaze_mp_lid_follow > 0.001f ||
+             persona_mod.mLidNarrow > 0.001f ||
+             (director_runtime->mCueOverride &&
+              director_runtime->mCueLidWiden > 0.001f)))
+        {
+            const F32 widen = 1.f - llclamp(
+                director_runtime->mCueLidWiden, 0.f, 1.f);
+            const F32 closure_l =
+                llclamp(pose.mLidClosureLeft,  0.f, 1.f) * wEye * widen;
+            const F32 closure_r =
+                llclamp(pose.mLidClosureRight, 0.f, 1.f) * wEye * widen;
+            bool visual_params_changed = false;
+            auto apply_lid = [&](const char* name, F32 closure)
+            {
+                if (LLVisualParam* param = av->getVisualParam(name))
+                {
+                    if (fabsf(av->getVisualParamWeight(param) - closure) > 1e-6f)
+                    {
+                        visual_params_changed |=
+                            av->setVisualParamWeight(param, closure);
+                    }
+                }
+            };
+            apply_lid("Blink_Left",  closure_l);
+            apply_lid("Blink_Right", closure_r);
+            if (visual_params_changed)
+            {
+                av->updateVisualParams();
+            }
+        }
+        return;
+    }
 
     // clamp yaw AND pitch to human head+neck+torso capacity and zero the roll, so
     // a target behind the actor eases to the max and HOLDS there (no neck-wrap, no

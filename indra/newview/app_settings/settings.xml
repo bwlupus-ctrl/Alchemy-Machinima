@@ -5383,6 +5383,127 @@
       <key>Value</key>
       <real>0.6</real>
     </map>
+    <key>DirectorGazeMotionPrograms</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Master gate for the coordinated gaze motor programs (spec 6A). OFF = legacy applied-aim path, byte-identical. ON = ALGazeMotor drives the eye/head/neck/torso trajectory, VOR, micro-life and blinks.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>DirectorGazeValence</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Per-actor Affect valence (PAD), -1 (negative) .. 1 (positive). Motor programs only; low valence droops the lids and raises blink rate.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+    </map>
+    <key>DirectorGazeArousal</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Per-actor Affect arousal (PAD), 0 (calm) .. 1 (energized); 0.5 = neutral. Motor programs only; a style gain on tempo, micro-life amplitude and blink rate.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.5</real>
+    </map>
+    <key>DirectorGazeDominance</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Per-actor Affect dominance (PAD), -1 (submissive) .. 1 (dominant). Motor programs only; biases the head-tilt at retarget.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+    </map>
+    <key>DirectorGazeSoftRecruitDeg</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Soft anatomical recruitment band width, degrees (0 = legacy hard knee, bit-exact; try 3-8). Motor programs only.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+    </map>
+    <key>DirectorGazeComfortYawDeg</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] VOR eye-in-head comfort cone, yaw half-angle in degrees. Motor programs only.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>25.0</real>
+    </map>
+    <key>DirectorGazeComfortPitchDeg</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] VOR eye-in-head comfort cone, pitch half-angle in degrees. Motor programs only.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>14.0</real>
+    </map>
+    <key>DirectorGazeEyeDurationBaseMs</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Eye saccade main-sequence duration intercept, ms (base at zero amplitude). Motor programs only.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>25.0</real>
+    </map>
+    <key>DirectorGazeEyeDurationPerDegMs</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Eye saccade main-sequence duration slope, ms per degree of shift amplitude. Motor programs only.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>2.8</real>
+    </map>
+    <key>DirectorGazeHeadLatencyMs</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Head follow latency base, ms (reduced by amplitude/predictability/trait inside the policy). Motor programs only.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>40.0</real>
+    </map>
+    <key>DirectorGazeHeadDurationBaseMs</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Head follow-through trajectory duration base, ms. Motor programs only.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>150.0</real>
+    </map>
     <key>DirectorGazeReactionMin</key>
     <map>
       <key>Comment</key>

@@ -35,6 +35,7 @@
 #include "llquaternion.h"
 #include "m4math.h"         // frozen attachment matrices (GhostDrawParams)
 #include "llghostcoverage.h" // [GhostDeferred] per-category clone coverage mask
+#include "algazemotor.h"    // per-actor coordinated gaze motor state (spec 6A)
 
 #include <map>
 #include <vector>
@@ -952,6 +953,11 @@ private:
         F32        mTorsoAimYaw   = 0.f;
         F32        mBehindEnv     = 1.f;    // smooth Release-policy weight
         U32        mLastFrame     = 0xFFFFFFFF;  // per-frame temporal-advance guard
+        // Coordinated gaze motor state (spec 6A). Only touched on the
+        // DirectorGazeMotionPrograms gate-on path; reset on release / runtime
+        // replace so re-enabling re-initializes on the current target. The
+        // legacy path never reads or writes it (gate-off stays byte-identical).
+        ALGazeMotor::GazeMotorState mGazeMotor;
     };
     struct DirectorJointPose
     {
