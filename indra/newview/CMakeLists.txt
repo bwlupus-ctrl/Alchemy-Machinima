@@ -1172,6 +1172,11 @@ set(viewer_HEADER_FILES
     alpanelcinelightrig.h
     alpanelcinecamparams.h
     algazemath.h
+    altrajectory.h
+    algazerecruit.h
+    algazeblink.h
+    algazenoise.h
+    algazepolicy.h
     alpanellensgaze.h
     alpaneldirectoranimswitcher.h
     alpaneldirectorswitcher.h
@@ -2623,6 +2628,41 @@ if (BUILD_TESTING)
   # ALGazeMath is deliberately header-only, so register its TUT directly
   # instead of inventing a production .cpp solely for the per-source macro.
   LL_ADD_INTEGRATION_TEST(algazemath
+    ""
+    "${test_libs}"
+    "${test_project}"
+  )
+
+  # ALTrajectory is the pure, header-only C2 continuity core (gaze spec 2.1);
+  # like ALGazeMath its TUT is registered directly against the header.
+  LL_ADD_INTEGRATION_TEST(altrajectory
+    ""
+    "${test_libs}"
+    "${test_project}"
+  )
+
+  # Gaze life/feel/emotion pure leaf modules (gaze spec 2.2): soft anatomical
+  # recruitment, asymmetric blink shape, band-limited fixation noise, and
+  # oculomotor policy math. All header-only, TUTs registered directly.
+  LL_ADD_INTEGRATION_TEST(algazerecruit
+    ""
+    "${test_libs}"
+    "${test_project}"
+  )
+
+  LL_ADD_INTEGRATION_TEST(algazeblink
+    ""
+    "${test_libs}"
+    "${test_project}"
+  )
+
+  LL_ADD_INTEGRATION_TEST(algazenoise
+    ""
+    "${test_libs}"
+    "${test_project}"
+  )
+
+  LL_ADD_INTEGRATION_TEST(algazepolicy
     ""
     "${test_libs}"
     "${test_project}"
