@@ -23,6 +23,7 @@
 #include "altrajectory.h"
 
 #include <cmath>
+#include <cstring>
 
 // ALGazeMotor is the serial assembly layer of the Cinematic Gaze build spec
 // (doc/CINEMATIC_GAZE_LIFE_BUILD_SPEC.md section 6A): a mostly-pure,
@@ -470,23 +471,69 @@ inline void recruitChainLegacyExact(F32 target_magnitude, const F32* caps,
     {
         const F32 amount = llmin(residual, llmax(caps[i], 0.f));
         residual -= amount;
-        out_joints[i] = sign * amount;
+        F32 signed_amount = sign * amount;
+        // Canonicalize -0.0f -> +0.0f via a BIT-PATTERN rewrite, not a
+        // floating-point comparison. Legacy's blend <= 0.001 eye-only early
+        // return (algazemath.h:620-625) leaves every downstream field at its
+        // default-constructed +0.0f -- it never computes sign * 0 for those
+        // slots -- so for a negative target this loop's sign * 0 would
+        // otherwise emit -0.0f where legacy has +0.0f. A value-domain fix
+        // (e.g. `x == 0.f ? 0.f : x`) does NOT reliably survive: this build
+        // compiles Release/RelWithDebInfo with /fp:fast (00-Common.cmake),
+        // under which the optimizer is free to treat that ternary as
+        // equivalent to plain `x` and elide the rewrite entirely (observed:
+        // it did, in this exact spot, before this fix). Rewriting the raw
+        // bit pattern is an integer operation the fast-math model has no
+        // license to "simplify" away, so it survives optimization.
+        U32 bits;
+        std::memcpy(&bits, &signed_amount, sizeof(bits));
+        if (bits == 0x80000000u) // IEEE-754 negative zero
+        {
+            bits = 0u;
+            std::memcpy(&signed_amount, &bits, sizeof(bits));
+        }
+        out_joints[i] = signed_amount;
     }
+}
+
+// True when effectiveCapacities took its blend <= 0.001 eye-only early
+// return: the eyes get full (unweighted) capacity and every downstream
+// (head/neck/torso/hips) capacity is EXACTLY zero. Shared by
+// effectiveCapacities and recruitSlot so the two stay in lockstep on the
+// same threshold.
+inline bool isEyeOnlyBlend(const GazeMotorSettings& s)
+{
+    const F32 blend = std::isfinite(s.mHeadEyeBlend)
+        ? llclamp(s.mHeadEyeBlend, 0.f, 1.f) : 1.f;
+    return blend <= 0.001f;
 }
 
 // One group's recruited contribution: run the full chain on that group's
 // sampled aim and keep this group's slot. Band 0 routes through the exact
 // legacy hard-knee formulas above (bit-identical to
-// distributeAnatomicalChain's allocation); band > 0 uses the C2 soft chain.
+// distributeAnatomicalChain's allocation); band > 0 uses the C2 soft chain
+// -- UNLESS `eye_only` is set, in which case the exact path is used
+// regardless of band. Eye-only mode gives every downstream joint EXACTLY
+// zero capacity, and ALGazeRecruit::smoothExcess's knee sits at
+// `residual - capacity`: with capacity == 0 and an eye-saturated residual of
+// exactly 0 arriving at that joint, `smoothExcess(0, band)` evaluates
+// mid-band (0.15625 * band for a symmetric quintic), handing that downstream
+// joint a nonzero, wrong-signed contribution at zero aim -- a sign
+// discontinuity across zero that the soft path was never meant to produce
+// when there is no chain left to soft-recruit into. The exact allocator
+// (min/max, no band term) cannot manufacture that spurious excess: a zero
+// residual against a zero capacity is exactly zero, for every sign of aim.
 // Each group's aim is C2 in time for ordinary gaze ranges (see
 // retargetChannel's handoff derivative clamps; extreme incoming derivatives
 // fall back to ALTrajectory's bounded C0 settle) and recruitChain is C2 in
 // its input for band > 0, so each joint output inherits the trajectory's
-// continuity.
-inline F32 recruitSlot(F32 aim, const F32* caps, F32 band, S32 slot)
+// continuity; the eye-only exact path is likewise continuous (it is exactly
+// zero on every downstream slot, identically, on both sides of zero aim).
+inline F32 recruitSlot(F32 aim, const F32* caps, F32 band, S32 slot,
+                       bool eye_only = false)
 {
     F32 joints[CHAIN_JOINTS];
-    if (!(band > 0.f))
+    if (!(band > 0.f) || eye_only)
     {
         recruitChainLegacyExact(aim, caps, joints, CHAIN_JOINTS);
     }
@@ -993,14 +1040,28 @@ inline void step(GazeMotorState& state, const GazeMotorInput& input,
     effectiveCapacities(s, caps_yaw, caps_pitch);
     const F32 band = (std::isfinite(s.mSoftRecruitBandDeg)
         ? llmax(s.mSoftRecruitBandDeg, 0.f) : 0.f) * DEG_TO_RAD;
-    out_pose.mHeadYaw   = recruitSlot(aim[CH_HEAD_YAW], caps_yaw, band, 1);
-    out_pose.mHeadPitch = recruitSlot(aim[CH_HEAD_PITCH], caps_pitch, band, 1);
-    out_pose.mNeckYaw   = recruitSlot(aim[CH_NECK_YAW], caps_yaw, band, 2);
-    out_pose.mNeckPitch = recruitSlot(aim[CH_NECK_PITCH], caps_pitch, band, 2);
-    out_pose.mTorsoYaw   = recruitSlot(aim[CH_TORSO_YAW], caps_yaw, band, 3);
-    out_pose.mTorsoPitch = recruitSlot(aim[CH_TORSO_PITCH], caps_pitch, band, 3);
-    out_pose.mHipsYaw    = recruitSlot(aim[CH_TORSO_YAW], caps_yaw, band, 4);
-    out_pose.mHipsPitch  = recruitSlot(aim[CH_TORSO_PITCH], caps_pitch, band, 4);
+    // Eye-only mode (mHeadEyeBlend <= 0.001) must use the exact allocation
+    // REGARDLESS of band -- see recruitSlot's comment: there is no chain to
+    // soft-recruit into when only the eye has capacity, and routing it
+    // through the soft path manufactures a spurious, wrong-signed downstream
+    // contribution at the knee (residual == capacity == 0).
+    const bool eye_only = isEyeOnlyBlend(s);
+    out_pose.mHeadYaw   = recruitSlot(aim[CH_HEAD_YAW], caps_yaw, band, 1,
+                                      eye_only);
+    out_pose.mHeadPitch = recruitSlot(aim[CH_HEAD_PITCH], caps_pitch, band, 1,
+                                      eye_only);
+    out_pose.mNeckYaw   = recruitSlot(aim[CH_NECK_YAW], caps_yaw, band, 2,
+                                      eye_only);
+    out_pose.mNeckPitch = recruitSlot(aim[CH_NECK_PITCH], caps_pitch, band, 2,
+                                      eye_only);
+    out_pose.mTorsoYaw   = recruitSlot(aim[CH_TORSO_YAW], caps_yaw, band, 3,
+                                       eye_only);
+    out_pose.mTorsoPitch = recruitSlot(aim[CH_TORSO_PITCH], caps_pitch, band,
+                                       3, eye_only);
+    out_pose.mHipsYaw    = recruitSlot(aim[CH_TORSO_YAW], caps_yaw, band, 4,
+                                       eye_only);
+    out_pose.mHipsPitch  = recruitSlot(aim[CH_TORSO_PITCH], caps_pitch, band,
+                                       4, eye_only);
     out_pose.mHeadRoll   = aim[CH_HEAD_ROLL];
 
     // (4) VOR eye-in-head by construction: the eye group's aim (which sweeps

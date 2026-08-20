@@ -15,6 +15,7 @@
 #include "../algazepolicy.h"
 
 #include <cmath>
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -62,6 +63,18 @@ S32 countBlinkOnsets(const std::vector<F32>& closure,
         }
     }
     return count;
+}
+
+// Bit-pattern equality: unlike `==`, this distinguishes +0.0f from -0.0f
+// (spec 5's band-0 gate is BYTE-identical to distributeAnatomicalChain, not
+// merely value-identical).
+bool bitwiseEqual(F32 a, F32 b)
+{
+    U32 au = 0;
+    U32 bu = 0;
+    memcpy(&au, &a, sizeof(au));
+    memcpy(&bu, &b, sizeof(bu));
+    return au == bu;
 }
 } // anonymous namespace
 
@@ -807,6 +820,58 @@ void algazemotor_test_object::test<14>()
                                std::to_string(scale) + " torso " +
                                std::to_string(torso) + ")",
                            pitch_exact);
+
+                    // Fix 2: `==` cannot distinguish +0.0f from -0.0f, so
+                    // the checks above would silently pass even if the
+                    // motor's eye-only branch emitted -0.0f on a downstream
+                    // slot where legacy's early return (algazemath.h:
+                    // 620-625, which never computes sign * 0 for those
+                    // fields) left a default-constructed +0.0f. Assert
+                    // BYTEWISE identity for the negative-target eye-only
+                    // case specifically, where the motor's `sign * amount`
+                    // (sign == -1, amount == 0) is the one place -0.0f could
+                    // have leaked through.
+                    if (blend <= 0.001f)
+                    {
+                        const std::string dbg =
+                            " (blend " + std::to_string(blend) + " scale " +
+                            std::to_string(scale) + " torso " +
+                            std::to_string(torso) + " yaw_deg " +
+                            std::to_string(angles_deg[ai]) + " pitch_deg " +
+                            std::to_string(angles_deg[(ai + 3) % NANGLES]) +
+                            ")";
+                        if (yaw < 0.f)
+                        {
+                            ensure("band-0 eye-only head yaw is bytewise "
+                                       "+0.0, not -0.0" + dbg,
+                                   bitwiseEqual(jy[1], legacy.mHeadYaw));
+                            ensure("band-0 eye-only neck yaw is bytewise "
+                                       "+0.0, not -0.0" + dbg,
+                                   bitwiseEqual(jy[2], legacy.mNeckYaw));
+                            ensure("band-0 eye-only torso yaw is bytewise "
+                                       "+0.0, not -0.0" + dbg,
+                                   bitwiseEqual(jy[3], legacy.mTorsoYaw));
+                            ensure("band-0 eye-only hips yaw is bytewise "
+                                       "+0.0, not -0.0" + dbg,
+                                   bitwiseEqual(jy[4], legacy.mHipsYaw));
+                        }
+                        const F32 pitch_val = angles_deg[(ai + 3) % NANGLES];
+                        if (pitch_val < 0.f)
+                        {
+                            ensure("band-0 eye-only head pitch is bytewise "
+                                       "+0.0, not -0.0" + dbg,
+                                   bitwiseEqual(jp[1], legacy.mHeadPitch));
+                            ensure("band-0 eye-only neck pitch is bytewise "
+                                       "+0.0, not -0.0" + dbg,
+                                   bitwiseEqual(jp[2], legacy.mNeckPitch));
+                            ensure("band-0 eye-only torso pitch is bytewise "
+                                       "+0.0, not -0.0" + dbg,
+                                   bitwiseEqual(jp[3], legacy.mTorsoPitch));
+                            ensure("band-0 eye-only hips pitch is bytewise "
+                                       "+0.0, not -0.0" + dbg,
+                                   bitwiseEqual(jp[4], legacy.mHipsPitch));
+                        }
+                    }
                 }
             }
         }
@@ -1157,6 +1222,77 @@ void algazemotor_test_object::test<20>()
     ALGazeMotor::detail::retargetChannel(ordinary, 0.0, 0.0, 0.3, 0.6f, 2);
     ensure("ordinary handoff velocity is untouched by the clamp",
            ordinary.mProgram.mSegments[0].mV0 == at_start.mV);
+}
+
+template<> template<>
+void algazemotor_test_object::test<21>()
+{
+    set_test_name("eye-only mode (blend <= 0.001) routes to the exact "
+                  "allocator regardless of band: downstream joints stay "
+                  "exactly zero with no sign discontinuity across zero aim");
+    // Eye-only capacities give every downstream (head/neck/torso/hips) joint
+    // EXACTLY zero capacity (effectiveCapacities, algazemotor.h ~429). Before
+    // the fix, a band > 0 routed those joints through
+    // ALGazeRecruit::recruitChain, whose smoothExcess(residual, capacity,
+    // band) evaluates a nonzero mid-band value at the residual == capacity
+    // == 0 knee -- a spurious, wrong-signed downstream contribution at zero
+    // aim (and near it) even though there is no chain left to soft-recruit
+    // into. The fix (recruitSlot's `eye_only` routing) must make every
+    // downstream joint EXACTLY 0.0 for every band and every magnitude,
+    // across a sweep that straddles zero.
+    const F32 bands_deg[] = { 0.f, 3.f, 8.f };
+    const F32 mags_deg[] =
+        { -20.f, -5.f, -1.f, -0.01f, 0.f, 0.01f, 1.f, 5.f, 20.f };
+    constexpr S32 NMAGS = sizeof(mags_deg) / sizeof(mags_deg[0]);
+
+    for (F32 band_deg : bands_deg)
+    {
+        F32 prev_head_yaw = 0.f;
+        for (S32 mi = 0; mi < NMAGS; ++mi)
+        {
+            const F32 yaw = mags_deg[mi] * DEG_TO_RAD;
+            const F32 pitch = mags_deg[(mi + 2) % NMAGS] * DEG_TO_RAD;
+
+            ALGazeMotor::GazeMotorState state;
+            ALGazeMotor::GazeMotorPose pose;
+            ALGazeMotor::GazeMotorInput in = quietInput(0.0, yaw, pitch);
+            in.mSettings.mHeadEyeBlend = 0.f;      // eye-only
+            in.mSettings.mSoftRecruitBandDeg = band_deg;
+            ALGazeMotor::step(state, in, pose);
+
+            const std::string tag = " (band " + std::to_string(band_deg) +
+                " deg, mag " + std::to_string(mags_deg[mi]) + " deg)";
+            ensure("pose is active" + tag, pose.mActive);
+            ensure_equals(("head yaw exactly zero" + tag).c_str(),
+                          pose.mHeadYaw, 0.f);
+            ensure_equals(("head pitch exactly zero" + tag).c_str(),
+                          pose.mHeadPitch, 0.f);
+            ensure_equals(("neck yaw exactly zero" + tag).c_str(),
+                          pose.mNeckYaw, 0.f);
+            ensure_equals(("neck pitch exactly zero" + tag).c_str(),
+                          pose.mNeckPitch, 0.f);
+            ensure_equals(("torso yaw exactly zero" + tag).c_str(),
+                          pose.mTorsoYaw, 0.f);
+            ensure_equals(("torso pitch exactly zero" + tag).c_str(),
+                          pose.mTorsoPitch, 0.f);
+            ensure_equals(("hips yaw exactly zero" + tag).c_str(),
+                          pose.mHipsYaw, 0.f);
+            ensure_equals(("hips pitch exactly zero" + tag).c_str(),
+                          pose.mHipsPitch, 0.f);
+            ensure("chain aim reports the full eye-group target" + tag,
+                   std::fabs(pose.mChainAimYaw - yaw) <= 1e-6f);
+
+            // No sign discontinuity across zero: since every downstream
+            // joint is pinned at exactly 0.0 on both sides of zero (and at
+            // zero itself), the finite-difference "jump" between adjacent
+            // magnitude samples is exactly 0.0 too -- the strongest
+            // possible form of continuity.
+            ensure("no jump in head yaw between adjacent magnitude samples"
+                       + tag,
+                   pose.mHeadYaw == prev_head_yaw);
+            prev_head_yaw = pose.mHeadYaw;
+        }
+    }
 }
 
 } // namespace tut
