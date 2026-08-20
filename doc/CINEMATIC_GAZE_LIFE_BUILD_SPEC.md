@@ -275,15 +275,65 @@ motion), and **instrument (Phase 0)** before wiring the core into the live appli
 
 ---
 
-## 6. Open product decisions (need the author, do not block Phase 1)
+## 6. Product decisions — DECIDED (2026-08-20)
 
-1. **Scrub contract for the live camera**: ship Recorded-target as the default for record/scrub, Live
-   as an explicit responsive mode? (Recommend yes.)
-2. **v1 expression ceiling**: Tier 0 (aperture-only, guaranteed) for the first shippable, Bento Tier 1
-   as a later opt-in? (Recommend yes.)
-3. **Affect keyframeability**: single per-actor Affect for v1, timeline-keyframeable Affect after the
-   event model lands? (Recommend yes.)
-4. **New default**: after burn-in, ship `DirectorGazeMotionPrograms` **on** for new projects (legacy
-   projects stay off via behavior version)?
+1. **Scrub contract**: **LIVE-ONLY for v1.** No event-sourced/checkpoint replay layer now. The
+   motor/trajectory retarget layer runs live (responsive, no backward-seek guarantee). The closed-form
+   layers (blink timing, drift, microsaccade — pure functions of presentation time + seed) stay
+   scrub-safe as-is. Recorded-target/event-sourcing is a LATER addition, not built now.
+2. **v1 expression ceiling**: **TIER 0 (aperture-only).** Lids via the existing `Blink_Left/Right`
+   closure channel only (`llactormover.cpp:5093-5111`). No Bento brow/lid-bone detection or
+   animation-priority arbitration in v1.
+3. **Affect authoring**: **single per-actor Affect for v1.** valence/arousal/dominance set per actor;
+   timeline-keyframeable Affect is a later addition.
+4. **New default**: defer — settle `DirectorGazeMotionPrograms` default at the end after burn-in.
 
-Phase 1 (ALTrajectory core) is required under every answer above, so it starts now.
+## 6A. ALGazeMotor — assembly contract (v1: live, tier-0, per-actor affect)
+
+The serial assembly layer. A mostly-pure, unit-testable module `ALGazeMotor` (new
+`indra/newview/algazemotor.h`/`.cpp`) that owns the per-actor motor STATE and a per-frame `step()`,
+consuming the validated leaves + `ALTrajectory`. The `llactormover` integration (§2.6) calls `step()`
+and applies its outputs; keep viewer-specific concerns (joint lookup, apply/restore, priority, cues)
+in the integration, not in `ALGazeMotor`.
+
+**State** (`GazeMotorState`, per actor, persists across frames — live mode, so carrying state is fine):
+per-channel `ALTrajectory::ScalarProgram`/segment + last-sampled `(p,v,a)` for eye_yaw, eye_pitch,
+head_yaw, head_pitch, head_roll, neck_yaw, neck_pitch, torso_yaw, torso_pitch; last committed target;
+retarget hysteresis state (reuse 3°/120ms from `llactormover.cpp:3147-3151`); nothing for blink (it
+stays closed-form of time+seed).
+
+**Input** (`GazeMotorInput`, per frame): desired world gaze direction; current head world orientation
+(for VOR); presentation time (F64) + dt; per-actor seed; `AffectState {valence,arousal,dominance}`;
+settings (durations, latencies, comfort cone, micro amplitudes, master gate); active cue/priority
+weights passed through from the integration.
+
+**Output** (`GazeMotorPose`): chain aim yaw/pitch to distribute; per-joint recruited angles OR the
+inputs for `distributeAnatomicalChain`; eye-in-head yaw/pitch (post-VOR, post-recenter); head roll;
+lid closure L/R in [0,1]. The integration maps these onto joints + the `Blink_*` visual params.
+
+**Per-frame `step()` algorithm:**
+1. **Retarget detection** — if desired target moved beyond the enter-hysteresis (and dwell), emit new
+   trajectory segments: eye channels via `ALTrajectory::retarget` with `ALGazePolicy::eyeSaccadeDurationMs`;
+   head channels delayed by `ALGazePolicy::headLatencyMs` with a longer duration; neck/torso staggered
+   further. Eyes lead, head follows. Sub-hysteresis → keep programs (no thrash).
+2. **Sample** each channel's program at presentation time → base chain aim (`p`), carrying `v/a` for
+   the next C2 handoff.
+3. **Soft recruit** the chain aim across eye→head→neck→torso→hips via `ALGazeRecruit::recruitChain`
+   (band from `DirectorGazeSoftRecruitDeg`, default 0 = legacy hard knee).
+4. **VOR** — `ALGazePolicy::eyeInHeadFromWorldGaze(desired_world_dir, head_world_rot, comfort…)` so the
+   eyes stay on the world target as the head rotates in; recenter falls out. Never key to a constant.
+5. **Micro-life** — add `ALGazeNoise::driftOffset` + `microsaccadeOffset` to eye/head, POST-smoothing
+   additive (same ordering as `llactormover.cpp:4744`), amplitude scaled by arousal.
+6. **Blink/lid** — schedule blinks closed-form (spontaneous cadence from time+seed + gaze-evoked on
+   large retargets, refractory); shape via `ALGazeBlink::blinkClosure` (asymmetric); fold into lid
+   closure; affect sets aperture posture (arousal→widen, low-valence→droop) and blink rate.
+7. **Affect tempo** — arousal shortens trajectory durations (within clamps); dominance biases head
+   tilt/contact (contact rhythm is a later add).
+
+**Unit-testable (no viewer):** feed synthetic frame sequences and assert — eyes-lead-head ordering on
+a retarget; velocity-continuous chain output across a retarget (no jump); recruitment continuity;
+retarget hysteresis prevents thrash on jitter; blink scheduling fires + is deterministic; master-gate
+off ⇒ passthrough. `AffectState`/`GazeMotorState`/input/output structs are POD.
+
+**Build orchestration:** `ALGazeMotor` = CRITICAL assembly → Fable build + Codex review. The
+`llactormover` integration + settings + UI (§2.6, §3) = Opus (integration judgment) / Sonnet (plumbing).
