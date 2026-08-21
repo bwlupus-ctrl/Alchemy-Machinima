@@ -28,6 +28,8 @@
 #include "llviewercontrol.h"
 #include "llvoavatarself.h"
 
+#include <algorithm>
+
 static LLPanelInjector<ALPanelLensGaze> t_panel_lens_gaze("panel_lens_gaze");
 
 namespace
@@ -197,6 +199,47 @@ bool presetMatches(const GazePerformancePreset& preset,
            close(target.mBlinkRateScale, preset.mBlinkRate) &&
            close(target.mVergenceScale, preset.mVergence);
 }
+
+// Read-modify-write each edited actor's authored gaze target through the cast
+// engine so the per-actor override mirror (and the render runtime) update in one
+// place. A single edited actor edits only that actor; the All scope broadcasts
+// the identical mutation to every populated cast actor (You + assigned A-D,
+// clones included).
+template <typename Fn>
+void editGazeTargetsFor(const uuid_vec_t& actors, Fn&& mutate)
+{
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    for (const LLUUID& actor : actors)
+    {
+        LLActorMover::GazeTarget target = cast.getGazeTarget(actor);
+        mutate(target);
+        cast.setGazeTarget(actor, target);
+    }
+}
+
+// Head-or-eye detail edit applied to each edited actor: reads that actor's head
+// (or optional eye) target, mutates one field, writes it back. Under the All
+// scope this broadcasts the same detail to every populated actor.
+template <typename Fn>
+void editDetailTargetsFor(const uuid_vec_t& actors, bool editing_eye, Fn&& mutate)
+{
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    for (const LLUUID& actor : actors)
+    {
+        const bool edit_eye = editing_eye && cast.hasEyeGazeTarget(actor);
+        LLActorMover::GazeTarget target = edit_eye
+            ? cast.getEyeGazeTarget(actor) : cast.getGazeTarget(actor);
+        mutate(target);
+        if (edit_eye)
+        {
+            cast.setEyeGazeTarget(actor, target);
+        }
+        else
+        {
+            cast.setGazeTarget(actor, target);
+        }
+    }
+}
 } // anonymous namespace
 
 ALPanelLensGaze::ALPanelLensGaze()
@@ -209,6 +252,7 @@ ALPanelLensGaze::ALPanelLensGaze()
 bool ALPanelLensGaze::postBuild()
 {
     mStatus = getChild<LLTextBox>("gaze_status");
+    mEditActor = getChild<LLComboBox>("gaze_edit_actor");
     mMasterEnable = getChild<LLCheckBoxCtrl>("look_at_camera_enabled");
     mSlotYou = getChild<LLCheckBoxCtrl>("gaze_slot_you");
     mSlotA = getChild<LLCheckBoxCtrl>("gaze_slot_a");
@@ -229,6 +273,12 @@ bool ALPanelLensGaze::postBuild()
     mTorso = getChild<LLSliderCtrl>("gaze_torso_slider");
     mIntensity = getChild<LLSliderCtrl>("gaze_intensity_slider");
     mSmoothing = getChild<LLSliderCtrl>("gaze_smoothing_slider");
+    mMicroLife = getChild<LLSliderCtrl>("gaze_microlife_slider");
+    mBlinks = getChild<LLCheckBoxCtrl>("gaze_blinks_check");
+    mVariation = getChild<LLSliderCtrl>("gaze_variation_slider");
+    mBreakFreq = getChild<LLSliderCtrl>("gaze_break_freq_slider");
+    mEaseAcquire = getChild<LLSpinCtrl>("gaze_ease_acquire_spinner");
+    mEaseRelease = getChild<LLSpinCtrl>("gaze_ease_release_spinner");
     mDeadZone = getChild<LLSpinCtrl>("gaze_deadzone_spinner");
     mBreakoff = getChild<LLCheckBoxCtrl>("gaze_breakoff_check");
     mBreakoffAngle = getChild<LLSpinCtrl>("gaze_breakoff_spinner");
@@ -240,6 +290,7 @@ bool ALPanelLensGaze::postBuild()
     mPersonaAnxiety = getChild<LLSliderCtrl>("gaze_persona_anx_slider");
     mCameraRoll = getChild<LLSliderCtrl>("gaze_camera_roll_slider");
     mExaggerate = getChild<LLSliderCtrl>("gaze_exaggerate_slider");
+    mMode = getChild<LLComboBox>("look_at_camera_mode");
     mGazeCues = getChild<LLButton>("btn_gaze_cues");
 
     mPerformance->removeall();
@@ -252,11 +303,15 @@ bool ALPanelLensGaze::postBuild()
 
     mMasterEnable->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onMasterEnableCommit(); });
-    mSlotYou->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSlotCommit(0); });
-    mSlotA->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSlotCommit(1); });
-    mSlotB->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSlotCommit(2); });
-    mSlotC->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSlotCommit(3); });
-    mSlotD->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSlotCommit(4); });
+    mEditActor->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onEditActorCommit(); });
+    // The Aim-at-camera checkboxes are pure per-actor look-at toggles again;
+    // choosing which actor to EDIT is the separate gaze_edit_actor dropdown.
+    mSlotYou->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSlotLookAtCommit(0); });
+    mSlotA->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSlotLookAtCommit(1); });
+    mSlotB->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSlotLookAtCommit(2); });
+    mSlotC->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSlotLookAtCommit(3); });
+    mSlotD->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSlotLookAtCommit(4); });
 
     mEnable->setCommitCallback([this](LLUICtrl*, const LLSD&) { onEnableCommit(); });
     mTarget->setCommitCallback([this](LLUICtrl*, const LLSD&) { onTargetCommit(); });
@@ -279,6 +334,19 @@ bool ALPanelLensGaze::postBuild()
     mPersonaDominance->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPersonaCommit(); });
     mPersonaAffection->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPersonaCommit(); });
     mPersonaAnxiety->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPersonaCommit(); });
+    // Naturalism / Tracking / Extreme / Mode rows now write per-actor overrides
+    // (via cast.setGazeTarget) instead of the shared global controls, so editing
+    // one actor no longer changes every actor.
+    mMicroLife->setCommitCallback([this](LLUICtrl*, const LLSD&) { onMicroLifeCommit(); });
+    mBlinks->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBlinksCommit(); });
+    mVariation->setCommitCallback([this](LLUICtrl*, const LLSD&) { onVariationCommit(); });
+    mBreakFreq->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBreakFreqCommit(); });
+    mEaseAcquire->setCommitCallback([this](LLUICtrl*, const LLSD&) { onEaseAcquireCommit(); });
+    mEaseRelease->setCommitCallback([this](LLUICtrl*, const LLSD&) { onEaseReleaseCommit(); });
+    mDeadZone->setCommitCallback([this](LLUICtrl*, const LLSD&) { onDeadZoneCommit(); });
+    mCameraRoll->setCommitCallback([this](LLUICtrl*, const LLSD&) { onCameraRollCommit(); });
+    mExaggerate->setCommitCallback([this](LLUICtrl*, const LLSD&) { onExaggerateCommit(); });
+    mMode->setCommitCallback([this](LLUICtrl*, const LLSD&) { onModeCommit(); });
     mGazeCues->setCommitCallback([this](LLUICtrl*, const LLSD&) { onGazeCues(); });
 
     // Panel-managed values have no gSavedSettings control to reset. Route each
@@ -352,6 +420,69 @@ bool ALPanelLensGaze::postBuild()
             mEyelinePitch->setValue(0.f);
             onEyelineCommit();
         });
+
+    // Per-actor override rows: reset means "inherit the matching global" (-1)
+    // on every edited actor, so a later global change flows through again.
+    getChild<LLButton>("reset_gaze_microlife")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            editGazeTargetsFor(editActors(),
+                [](LLActorMover::GazeTarget& t) { t.mMicroLifeOverride = -1.f; });
+        });
+    getChild<LLButton>("reset_gaze_variation")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            editGazeTargetsFor(editActors(),
+                [](LLActorMover::GazeTarget& t) { t.mVariationOverride = -1.f; });
+        });
+    getChild<LLButton>("reset_gaze_break_frequency")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            editGazeTargetsFor(editActors(),
+                [](LLActorMover::GazeTarget& t) { t.mBreakFrequencyOverride = -1.f; });
+        });
+    getChild<LLButton>("reset_gaze_ease_acquire")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            editGazeTargetsFor(editActors(),
+                [](LLActorMover::GazeTarget& t) { t.mEaseAcquireOverride = -1.f; });
+        });
+    getChild<LLButton>("reset_gaze_ease_release")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            editGazeTargetsFor(editActors(),
+                [](LLActorMover::GazeTarget& t) { t.mEaseReleaseOverride = -1.f; });
+        });
+    getChild<LLButton>("reset_gaze_deadzone")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            editGazeTargetsFor(editActors(),
+                [](LLActorMover::GazeTarget& t) { t.mDeadZoneDegOverride = -1.f; });
+        });
+    getChild<LLButton>("reset_gaze_priority")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            editGazeTargetsFor(editActors(),
+                [](LLActorMover::GazeTarget& t) { t.mGazePriorityOverride = -1; });
+        });
+    getChild<LLButton>("reset_gaze_camera_roll")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            editGazeTargetsFor(editActors(),
+                [](LLActorMover::GazeTarget& t) { t.mCameraRollOverride = -1.f; });
+        });
+    getChild<LLButton>("reset_gaze_exaggerate")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            editGazeTargetsFor(editActors(),
+                [](LLActorMover::GazeTarget& t) { t.mExaggerateOverride = -1.f; });
+        });
+    getChild<LLButton>("reset_look_at_camera_mode")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            editGazeTargetsFor(editActors(),
+                [](LLActorMover::GazeTarget& t) { t.mCameraModeOverride = -1; });
+        });
     return true;
 }
 
@@ -390,11 +521,116 @@ uuid_vec_t ALPanelLensGaze::commitActors() const
     return mSelected.empty() ? uuid_vec_t(1, LLUUID::null) : mSelected;
 }
 
+uuid_vec_t ALPanelLensGaze::editActors() const
+{
+    uuid_vec_t out;
+    if (!mEditAll)
+    {
+        const LLUUID a = activeSlotActor();
+        if (a.notNull())
+        {
+            out.push_back(a);
+        }
+        return out;
+    }
+
+    // All scope: every populated actor -- You (agent) plus each assigned
+    // Subject A-D. Clones are ordinary cast members and resolve here too.
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    if (isAgentAvatarValid())
+    {
+        out.push_back(gAgentAvatarp->getID());
+    }
+    const LLUUID subs[] = { cast.getSubjectA(), cast.getSubjectB(),
+                            cast.getSubjectC(), cast.getSubjectD() };
+    for (const LLUUID& id : subs)
+    {
+        if (id.notNull() &&
+            std::find(out.begin(), out.end(), id) == out.end())
+        {
+            out.push_back(id);
+        }
+    }
+    return out;
+}
+
+LLUUID ALPanelLensGaze::editDisplayActor() const
+{
+    if (!mEditAll)
+    {
+        return activeSlotActor();
+    }
+    // Representative for the All scope: You/agent if present, else the first
+    // populated subject.
+    if (isAgentAvatarValid())
+    {
+        return gAgentAvatarp->getID();
+    }
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    const LLUUID subs[] = { cast.getSubjectA(), cast.getSubjectB(),
+                            cast.getSubjectC(), cast.getSubjectD() };
+    for (const LLUUID& id : subs)
+    {
+        if (id.notNull())
+        {
+            return id;
+        }
+    }
+    return LLUUID::null;
+}
+
 void ALPanelLensGaze::draw()
 {
+    refreshEditActorCombo();
     refreshCastCombo();
     refreshControls();
     LLPanel::draw();
+}
+
+void ALPanelLensGaze::refreshEditActorCombo()
+{
+    if (isEditing(mEditActor))
+    {
+        return;
+    }
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    const LLUUID sub_a = cast.getSubjectA();
+    const LLUUID sub_b = cast.getSubjectB();
+    const LLUUID sub_c = cast.getSubjectC();
+    const LLUUID sub_d = cast.getSubjectD();
+
+    // Rebuild only when the populated set changes, so an operator mid-selection
+    // is never yanked. All + You are always offered; A-D only when populated.
+    std::string signature;
+    signature += isAgentAvatarValid() ? "you," : ",";
+    signature += sub_a.notNull() ? "a" : "";
+    signature += sub_b.notNull() ? "b" : "";
+    signature += sub_c.notNull() ? "c" : "";
+    signature += sub_d.notNull() ? "d" : "";
+    if (signature != mEditActorSignature)
+    {
+        mEditActorSignature = signature;
+        mEditActor->removeall();
+        mEditActor->add("All", LLSD(-1));
+        mEditActor->add("You", LLSD(0));
+        if (sub_a.notNull()) { mEditActor->add("A", LLSD(1)); }
+        if (sub_b.notNull()) { mEditActor->add("B", LLSD(2)); }
+        if (sub_c.notNull()) { mEditActor->add("C", LLSD(3)); }
+        if (sub_d.notNull()) { mEditActor->add("D", LLSD(4)); }
+    }
+
+    const S32 want = mEditAll ? -1 : mActiveSlot;
+    if (mEditActor->getValue().asInteger() != want)
+    {
+        if (!mEditActor->setSelectedByValue(LLSD(want), true))
+        {
+            // The selected slot lost its actor: fall back to All and re-sync.
+            mEditAll = true;
+            mActiveSlot = 0;
+            mEditActor->setSelectedByValue(LLSD(-1), true);
+            mCastSignature.clear();
+        }
+    }
 }
 
 void ALPanelLensGaze::refreshCastCombo()
@@ -451,11 +687,15 @@ void ALPanelLensGaze::refreshControls()
 {
     LLActorMover& mover = LLActorMover::instance();
     LLDirectorCast& cast = LLDirectorCast::instance();
-    const LLUUID actor = displayActor();
-    const bool have_actor = actor.notNull() || isAgentAvatarValid();
+    // Every edit row reads+presents ONE actor: the edited actor for a specific
+    // slot, or a representative of the All broadcast set. This unifies Feel,
+    // Targeting, Persona, Performance, Naturalism, Tracking, Extreme and Mode
+    // onto the same subject, so the panel never shows two actors at once.
+    const LLUUID actor = editDisplayActor();
+    const LLUUID slot_actor = actor;
+    const bool have_actor = actor.notNull();
+    const bool have_slot = actor.notNull();
     const bool enabled = have_actor && mover.isGazeEnabled(actor);
-    const LLUUID slot_actor = activeSlotActor();
-    const bool have_slot = slot_actor.notNull();
     const bool slot_enabled = have_slot && cast.isLookAtCamera(slot_actor);
     const LLActorMover::GazeTarget slot_target = have_slot
         ? cast.getGazeTarget(slot_actor) : LLActorMover::GazeTarget();
@@ -510,10 +750,18 @@ void ALPanelLensGaze::refreshControls()
     mTarget->setEnabled(have_slot && slot_enabled);
     mEyeTarget->setEnabled(have_slot && slot_enabled);
     mTargetDetailScope->setEnabled(have_slot && slot_enabled);
-    mPriority->setEnabled(true);
+    mPriority->setEnabled(have_slot);
     mCameraRoll->setEnabled(
-        !have_slot || (slot_enabled && mode == LLActorMover::GAZE_CAMERA));
-    mExaggerate->setEnabled(true);
+        have_slot && slot_enabled && mode == LLActorMover::GAZE_CAMERA);
+    mExaggerate->setEnabled(have_slot);
+    mMicroLife->setEnabled(have_slot);
+    mBlinks->setEnabled(have_slot);
+    mVariation->setEnabled(have_slot);
+    mBreakFreq->setEnabled(have_slot);
+    mEaseAcquire->setEnabled(have_slot);
+    mEaseRelease->setEnabled(have_slot);
+    mDeadZone->setEnabled(have_slot);
+    mMode->setEnabled(have_slot);
     mGazeCues->setEnabled(have_slot);
     if (!isEditing(mTarget) && mTarget->getValue().asInteger() != mode)
     {
@@ -524,10 +772,15 @@ void ALPanelLensGaze::refreshControls()
     {
         mEyeTarget->setValue(eye_mode);
     }
-    const S32 priority = llclamp(
+    const S32 global_priority = llclamp(
         gSavedSettings.getS32("DirectorGazePriority"),
         static_cast<S32>(LLActorMover::GAZE_PRIORITY_BLEND),
         static_cast<S32>(LLActorMover::GAZE_PRIORITY_UPPER_BODY));
+    const S32 priority = (have_slot && slot_target.mGazePriorityOverride >= 0)
+        ? llclamp(slot_target.mGazePriorityOverride,
+                  static_cast<S32>(LLActorMover::GAZE_PRIORITY_BLEND),
+                  static_cast<S32>(LLActorMover::GAZE_PRIORITY_UPPER_BODY))
+        : global_priority;
     if (!isEditing(mPriority) && mPriority->getValue().asInteger() != priority)
     {
         mPriority->setValue(priority);
@@ -601,6 +854,58 @@ void ALPanelLensGaze::refreshControls()
         }
     }
 
+    // Naturalism / Tracking / Extreme / Mode: present the edited actor's
+    // override when set (>= 0), else the matching global fallback value.
+    auto sync_f32 = [](LLUICtrl* control, F32 value)
+    {
+        if (!isEditing(control) &&
+            fabsf((F32)control->getValue().asReal() - value) > 0.001f)
+        {
+            control->setValue(value);
+        }
+    };
+    const F32 g_microlife = gSavedSettings.getF32("DirectorGazeMicroLife");
+    const F32 g_variation = gSavedSettings.getF32("DirectorGazeVariation");
+    const F32 g_break = gSavedSettings.getF32("DirectorGazeBreakFrequency");
+    const F32 g_acq = gSavedSettings.getF32("DirectorGazeEaseAcquireSec");
+    const F32 g_rel = gSavedSettings.getF32("DirectorGazeEaseReleaseSec");
+    const F32 g_dead = gSavedSettings.getF32("BDMergeGazeDeadZone");
+    const F32 g_roll = gSavedSettings.getF32("DirectorGazeCameraRoll");
+    const F32 g_exag = gSavedSettings.getF32("DirectorGazeExaggerate");
+    sync_f32(mMicroLife, slot_target.mMicroLifeOverride >= 0.f
+             ? slot_target.mMicroLifeOverride : g_microlife);
+    sync_f32(mVariation, slot_target.mVariationOverride >= 0.f
+             ? slot_target.mVariationOverride : g_variation);
+    sync_f32(mBreakFreq, slot_target.mBreakFrequencyOverride >= 0.f
+             ? slot_target.mBreakFrequencyOverride : g_break);
+    sync_f32(mEaseAcquire, slot_target.mEaseAcquireOverride >= 0.f
+             ? slot_target.mEaseAcquireOverride : g_acq);
+    sync_f32(mEaseRelease, slot_target.mEaseReleaseOverride >= 0.f
+             ? slot_target.mEaseReleaseOverride : g_rel);
+    sync_f32(mDeadZone, slot_target.mDeadZoneDegOverride >= 0.f
+             ? slot_target.mDeadZoneDegOverride : g_dead);
+    sync_f32(mCameraRoll, slot_target.mCameraRollOverride >= 0.f
+             ? slot_target.mCameraRollOverride : g_roll);
+    sync_f32(mExaggerate, slot_target.mExaggerateOverride >= 0.f
+             ? slot_target.mExaggerateOverride : g_exag);
+
+    const bool blinks_on = slot_target.mBlinksOverride >= 0
+        ? (slot_target.mBlinksOverride != 0)
+        : gSavedSettings.getBOOL("DirectorGazeBlinks");
+    if (!isEditing(mBlinks) && mBlinks->getValue().asBoolean() != blinks_on)
+    {
+        mBlinks->set(blinks_on);
+    }
+    const S32 g_mode =
+        gSavedSettings.getS32("DirectorLookAtCameraMode") == 1 ? 1 : 0;
+    const S32 mode_val = slot_target.mCameraModeOverride >= 0
+        ? (slot_target.mCameraModeOverride == 1 ? 1 : 0)
+        : g_mode;
+    if (!isEditing(mMode) && mMode->getValue().asInteger() != mode_val)
+    {
+        mMode->setValue(mode_val);
+    }
+
     const bool breakoff = gSavedSettings.getS32("BDMergeGazeBehindPolicy") == 1;
     if (!isEditing(mBreakoff) && mBreakoff->getValue().asBoolean() != breakoff)
     {
@@ -624,42 +929,49 @@ void ALPanelLensGaze::onMasterEnableCommit()
         "DirectorLookAtCameraEnabled", mMasterEnable->get());
 }
 
-void ALPanelLensGaze::onSlotCommit(S32 slot_index)
+void ALPanelLensGaze::onEditActorCommit()
 {
+    // Choosing which actor to edit is now a pure selection: it changes the
+    // edit scope only and never toggles any actor's camera look-at (that was
+    // the uncheck/recheck bug). -1 = All (broadcast); 0-4 = You / A-D.
+    const S32 value = mEditActor->getValue().asInteger();
+    if (value < 0)
+    {
+        mEditAll = true;
+    }
+    else
+    {
+        mEditAll = false;
+        mActiveSlot = llclamp(value, 0, 4);
+    }
+    mCastSignature.clear();
+}
+
+void ALPanelLensGaze::onSlotLookAtCommit(S32 slot_index)
+{
+    // Pure per-actor camera look-at toggle. It no longer changes the edit
+    // target, so toggling look-at and choosing an edit target are independent.
     LLDirectorCast& cast = LLDirectorCast::instance();
-    mActiveSlot = llclamp(slot_index, 0, 4);
-    const LLUUID target_id = slotActor(mActiveSlot);
+    const LLUUID target_id = slotActor(llclamp(slot_index, 0, 4));
     bool is_checked = false;
     switch (slot_index)
     {
-        case 0:
-            is_checked = mSlotYou->get();
-            break;
-        case 1:
-            is_checked = mSlotA->get();
-            break;
-        case 2:
-            is_checked = mSlotB->get();
-            break;
-        case 3:
-            is_checked = mSlotC->get();
-            break;
-        case 4:
-            is_checked = mSlotD->get();
-            break;
-        default:
-            return;
+        case 0: is_checked = mSlotYou->get(); break;
+        case 1: is_checked = mSlotA->get(); break;
+        case 2: is_checked = mSlotB->get(); break;
+        case 3: is_checked = mSlotC->get(); break;
+        case 4: is_checked = mSlotD->get(); break;
+        default: return;
     }
     if (target_id.notNull())
     {
         cast.setLookAtCamera(target_id, is_checked);
     }
-    mCastSignature.clear();
 }
 
 void ALPanelLensGaze::onEnableCommit()
 {
-    for (const LLUUID& actor : commitActors())
+    for (const LLUUID& actor : editActors())
     {
         LLActorMover::instance().setGazeEnabled(actor, mEnable->get());
     }
@@ -667,64 +979,63 @@ void ALPanelLensGaze::onEnableCommit()
 
 void ALPanelLensGaze::onTargetCommit()
 {
-    const LLUUID actor = activeSlotActor();
-    if (actor.notNull())
+    const S32 mode = llclamp(mTarget->getValue().asInteger(),
+                             static_cast<S32>(LLActorMover::GazeTarget::MOTION),
+                             static_cast<S32>(LLActorMover::GazeTarget::OBJECT));
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    for (const LLUUID& actor : editActors())
     {
-        LLDirectorCast& cast = LLDirectorCast::instance();
         LLActorMover::GazeTarget target = cast.getGazeTarget(actor);
-        target.mMode = static_cast<LLActorMover::GazeTarget::EMode>(
-            llclamp(mTarget->getValue().asInteger(),
-                    static_cast<S32>(LLActorMover::GazeTarget::MOTION),
-                    static_cast<S32>(LLActorMover::GazeTarget::OBJECT)));
+        target.mMode = static_cast<LLActorMover::GazeTarget::EMode>(mode);
         cast.setGazeTarget(actor, target);
-        if (targetNeedsDetail(static_cast<S32>(target.mMode)))
-        {
-            mEditingEyeTarget = false;
-            mTargetDetailScope->setValue(0);
-            mCastSignature.clear();
-        }
+    }
+    if (targetNeedsDetail(mode))
+    {
+        mEditingEyeTarget = false;
+        mTargetDetailScope->setValue(0);
+        mCastSignature.clear();
     }
 }
 
 void ALPanelLensGaze::onEyeTargetCommit()
 {
-    const LLUUID actor = activeSlotActor();
-    if (actor.isNull())
-    {
-        return;
-    }
-
     LLDirectorCast& cast = LLDirectorCast::instance();
     const S32 mode = mEyeTarget->getValue().asInteger();
-    if (mode < static_cast<S32>(LLActorMover::GazeTarget::CAMERA))
+    for (const LLUUID& actor : editActors())
     {
-        cast.clearEyeGazeTarget(actor);
-    }
-    else
-    {
-        LLActorMover::GazeTarget target = cast.hasEyeGazeTarget(actor)
-            ? cast.getEyeGazeTarget(actor) : LLActorMover::GazeTarget();
-        target.mMode = static_cast<LLActorMover::GazeTarget::EMode>(
-            llclamp(mode,
-                    static_cast<S32>(LLActorMover::GazeTarget::CAMERA),
-                    static_cast<S32>(LLActorMover::GazeTarget::OBJECT)));
-        cast.setEyeGazeTarget(actor, target);
-        if (targetNeedsDetail(static_cast<S32>(target.mMode)))
+        if (mode < static_cast<S32>(LLActorMover::GazeTarget::CAMERA))
         {
-            mEditingEyeTarget = true;
-            mTargetDetailScope->setValue(1);
+            cast.clearEyeGazeTarget(actor);
         }
+        else
+        {
+            LLActorMover::GazeTarget target = cast.hasEyeGazeTarget(actor)
+                ? cast.getEyeGazeTarget(actor) : LLActorMover::GazeTarget();
+            target.mMode = static_cast<LLActorMover::GazeTarget::EMode>(
+                llclamp(mode,
+                        static_cast<S32>(LLActorMover::GazeTarget::CAMERA),
+                        static_cast<S32>(LLActorMover::GazeTarget::OBJECT)));
+            cast.setEyeGazeTarget(actor, target);
+        }
+    }
+    if (mode >= static_cast<S32>(LLActorMover::GazeTarget::CAMERA) &&
+        targetNeedsDetail(mode))
+    {
+        mEditingEyeTarget = true;
+        mTargetDetailScope->setValue(1);
     }
     mCastSignature.clear();
 }
 
 void ALPanelLensGaze::onPriorityCommit()
 {
-    gSavedSettings.setS32(
-        "DirectorGazePriority",
-        llclamp(mPriority->getValue().asInteger(),
-                static_cast<S32>(LLActorMover::GAZE_PRIORITY_BLEND),
-                static_cast<S32>(LLActorMover::GAZE_PRIORITY_UPPER_BODY)));
+    const S32 priority = llclamp(
+        mPriority->getValue().asInteger(),
+        static_cast<S32>(LLActorMover::GAZE_PRIORITY_BLEND),
+        static_cast<S32>(LLActorMover::GAZE_PRIORITY_UPPER_BODY));
+    editGazeTargetsFor(editActors(),
+        [priority](LLActorMover::GazeTarget& t)
+        { t.mGazePriorityOverride = priority; });
 }
 
 void ALPanelLensGaze::onTargetDetailScopeCommit()
@@ -737,46 +1048,17 @@ void ALPanelLensGaze::onCastCommit()
 {
     const std::string value = mCast->getSelectedValue().asString();
     const LLUUID cast_target = value.empty() ? LLUUID::null : LLUUID(value);
-    const LLUUID actor = activeSlotActor();
-    if (actor.notNull())
-    {
-        LLDirectorCast& cast = LLDirectorCast::instance();
-        const bool edit_eye = mEditingEyeTarget && cast.hasEyeGazeTarget(actor);
-        LLActorMover::GazeTarget target = edit_eye
-            ? cast.getEyeGazeTarget(actor) : cast.getGazeTarget(actor);
-        target.mCastRef = cast_target;
-        if (edit_eye)
-        {
-            cast.setEyeGazeTarget(actor, target);
-        }
-        else
-        {
-            cast.setGazeTarget(actor, target);
-        }
-    }
+    editDetailTargetsFor(editActors(), mEditingEyeTarget,
+        [cast_target](LLActorMover::GazeTarget& t)
+        { t.mCastRef = cast_target; });
 }
 
 void ALPanelLensGaze::onSetPoint()
 {
     const LLVector3d point = gAgent.getPosGlobalFromAgent(
         LLViewerCamera::getInstance()->getOrigin());
-    const LLUUID actor = activeSlotActor();
-    if (actor.notNull())
-    {
-        LLDirectorCast& cast = LLDirectorCast::instance();
-        const bool edit_eye = mEditingEyeTarget && cast.hasEyeGazeTarget(actor);
-        LLActorMover::GazeTarget target = edit_eye
-            ? cast.getEyeGazeTarget(actor) : cast.getGazeTarget(actor);
-        target.mFixedPoint = point;
-        if (edit_eye)
-        {
-            cast.setEyeGazeTarget(actor, target);
-        }
-        else
-        {
-            cast.setGazeTarget(actor, target);
-        }
-    }
+    editDetailTargetsFor(editActors(), mEditingEyeTarget,
+        [point](LLActorMover::GazeTarget& t) { t.mFixedPoint = point; });
 }
 
 void ALPanelLensGaze::onPickObject()
@@ -788,51 +1070,23 @@ void ALPanelLensGaze::onPickObject()
     }
     if (obj)
     {
-        const LLUUID object_target = obj->getRootEdit() ? obj->getRootEdit()->getID() : obj->getID();
-        const LLUUID actor = activeSlotActor();
-        if (actor.notNull())
-        {
-            LLDirectorCast& cast = LLDirectorCast::instance();
-            const bool edit_eye = mEditingEyeTarget && cast.hasEyeGazeTarget(actor);
-            LLActorMover::GazeTarget target = edit_eye
-                ? cast.getEyeGazeTarget(actor) : cast.getGazeTarget(actor);
-            target.mObjectRef = object_target;
-            if (edit_eye)
-            {
-                cast.setEyeGazeTarget(actor, target);
-            }
-            else
-            {
-                cast.setGazeTarget(actor, target);
-            }
-        }
+        const LLUUID object_target =
+            obj->getRootEdit() ? obj->getRootEdit()->getID() : obj->getID();
+        editDetailTargetsFor(editActors(), mEditingEyeTarget,
+            [object_target](LLActorMover::GazeTarget& t)
+            { t.mObjectRef = object_target; });
     }
 }
 
 void ALPanelLensGaze::onClearObject()
 {
-    const LLUUID actor = activeSlotActor();
-    if (actor.notNull())
-    {
-        LLDirectorCast& cast = LLDirectorCast::instance();
-        const bool edit_eye = mEditingEyeTarget && cast.hasEyeGazeTarget(actor);
-        LLActorMover::GazeTarget target = edit_eye
-            ? cast.getEyeGazeTarget(actor) : cast.getGazeTarget(actor);
-        target.mObjectRef.setNull();
-        if (edit_eye)
-        {
-            cast.setEyeGazeTarget(actor, target);
-        }
-        else
-        {
-            cast.setGazeTarget(actor, target);
-        }
-    }
+    editDetailTargetsFor(editActors(), mEditingEyeTarget,
+        [](LLActorMover::GazeTarget& t) { t.mObjectRef.setNull(); });
 }
 
 void ALPanelLensGaze::onBlendCommit()
 {
-    for (const LLUUID& actor : commitActors())
+    for (const LLUUID& actor : editActors())
     {
         LLActorMover::instance().setGazeHeadEyeBlend(
             actor, (F32)mBlend->getValue().asReal());
@@ -841,7 +1095,7 @@ void ALPanelLensGaze::onBlendCommit()
 
 void ALPanelLensGaze::onTorsoCommit()
 {
-    for (const LLUUID& actor : commitActors())
+    for (const LLUUID& actor : editActors())
     {
         LLActorMover::instance().setGazeTorsoAmount(
             actor, (F32)mTorso->getValue().asReal());
@@ -850,7 +1104,7 @@ void ALPanelLensGaze::onTorsoCommit()
 
 void ALPanelLensGaze::onIntensityCommit()
 {
-    for (const LLUUID& actor : commitActors())
+    for (const LLUUID& actor : editActors())
     {
         LLActorMover::instance().setGazeIntensity(
             actor, (F32)mIntensity->getValue().asReal());
@@ -859,7 +1113,7 @@ void ALPanelLensGaze::onIntensityCommit()
 
 void ALPanelLensGaze::onSmoothingCommit()
 {
-    for (const LLUUID& actor : commitActors())
+    for (const LLUUID& actor : editActors())
     {
         LLActorMover::instance().setGazeSmoothing(
             actor, (F32)mSmoothing->getValue().asReal());
@@ -875,7 +1129,7 @@ void ALPanelLensGaze::onEyelineCommit()
 {
     const F32 yaw = (F32)mEyelineYaw->getValue().asReal();
     const F32 pitch = (F32)mEyelinePitch->getValue().asReal();
-    for (const LLUUID& actor : commitActors())
+    for (const LLUUID& actor : editActors())
     {
         LLActorMover::instance().setGazeEyelineOffset(actor, yaw, pitch);
     }
@@ -883,75 +1137,134 @@ void ALPanelLensGaze::onEyelineCommit()
 
 void ALPanelLensGaze::onPersonaCommit()
 {
-    const LLUUID actor = activeSlotActor();
-    if (actor.isNull())
-    {
-        return;
-    }
-    LLDirectorCast& cast = LLDirectorCast::instance();
-    LLActorMover::GazeTarget target = cast.getGazeTarget(actor);
-    target.mPersonaDominance = llclamp(
-        (F32)mPersonaDominance->getValue().asReal(), -1.f, 1.f);
-    target.mPersonaAffection = llclamp(
-        (F32)mPersonaAffection->getValue().asReal(), -1.f, 1.f);
-    target.mPersonaAnxiety = llclamp(
-        (F32)mPersonaAnxiety->getValue().asReal(), -1.f, 1.f);
-    cast.setGazeTarget(actor, target);
+    const F32 dom = llclamp((F32)mPersonaDominance->getValue().asReal(), -1.f, 1.f);
+    const F32 aff = llclamp((F32)mPersonaAffection->getValue().asReal(), -1.f, 1.f);
+    const F32 anx = llclamp((F32)mPersonaAnxiety->getValue().asReal(), -1.f, 1.f);
+    editGazeTargetsFor(editActors(),
+        [dom, aff, anx](LLActorMover::GazeTarget& t)
+        {
+            t.mPersonaDominance = dom;
+            t.mPersonaAffection = aff;
+            t.mPersonaAnxiety = anx;
+        });
 }
 
 void ALPanelLensGaze::onPerformanceCommit()
 {
     const S32 preset_index = mPerformance->getValue().asInteger();
-    const LLUUID actor = activeSlotActor();
-    if (actor.isNull() || preset_index < 0 || preset_index >= GAZE_PRESET_COUNT)
+    if (preset_index < 0 || preset_index >= GAZE_PRESET_COUNT)
     {
         return;
     }
-    LLDirectorCast& cast = LLDirectorCast::instance();
-    LLActorMover::GazeTarget target = cast.getGazeTarget(actor);
-    applyPreset(GAZE_PRESETS[preset_index], target);
-    cast.setGazeTarget(actor, target);
+    editGazeTargetsFor(editActors(),
+        [preset_index](LLActorMover::GazeTarget& t)
+        { applyPreset(GAZE_PRESETS[preset_index], t); });
 }
 
 void ALPanelLensGaze::onResetPerformance()
 {
-    const LLUUID actor = activeSlotActor();
-    if (actor.isNull())
-    {
-        return;
-    }
-
     // Preserve targeting and clear only the fields authored by a performance
     // preset. These are the documented neutral/inherit defaults on GazeTarget.
-    LLDirectorCast& cast = LLDirectorCast::instance();
-    LLActorMover::GazeTarget target = cast.getGazeTarget(actor);
     const LLActorMover::GazeTarget defaults;
-    target.mPersonaDominance = defaults.mPersonaDominance;
-    target.mPersonaAffection = defaults.mPersonaAffection;
-    target.mPersonaAnxiety = defaults.mPersonaAnxiety;
-    target.mHeadEyeBlendOverride = defaults.mHeadEyeBlendOverride;
-    target.mTorsoAmountOverride = defaults.mTorsoAmountOverride;
-    target.mIntensityOverride = defaults.mIntensityOverride;
-    target.mSmoothingOverride = defaults.mSmoothingOverride;
-    target.mEyelineOverride = defaults.mEyelineOverride;
-    target.mEyelineYawDegOverride = defaults.mEyelineYawDegOverride;
-    target.mEyelinePitchDegOverride = defaults.mEyelinePitchDegOverride;
-    target.mMicroLifeOverride = defaults.mMicroLifeOverride;
-    target.mBlinksOverride = defaults.mBlinksOverride;
-    target.mVariationOverride = defaults.mVariationOverride;
-    target.mBreakFrequencyOverride = defaults.mBreakFrequencyOverride;
-    target.mEaseAcquireOverride = defaults.mEaseAcquireOverride;
-    target.mEaseReleaseOverride = defaults.mEaseReleaseOverride;
-    target.mDeadZoneDegOverride = defaults.mDeadZoneDegOverride;
-    target.mBlinkRateScale = defaults.mBlinkRateScale;
-    target.mVergenceScale = defaults.mVergenceScale;
-    cast.setGazeTarget(actor, target);
+    editGazeTargetsFor(editActors(),
+        [&defaults](LLActorMover::GazeTarget& t)
+        {
+            t.mPersonaDominance = defaults.mPersonaDominance;
+            t.mPersonaAffection = defaults.mPersonaAffection;
+            t.mPersonaAnxiety = defaults.mPersonaAnxiety;
+            t.mHeadEyeBlendOverride = defaults.mHeadEyeBlendOverride;
+            t.mTorsoAmountOverride = defaults.mTorsoAmountOverride;
+            t.mIntensityOverride = defaults.mIntensityOverride;
+            t.mSmoothingOverride = defaults.mSmoothingOverride;
+            t.mEyelineOverride = defaults.mEyelineOverride;
+            t.mEyelineYawDegOverride = defaults.mEyelineYawDegOverride;
+            t.mEyelinePitchDegOverride = defaults.mEyelinePitchDegOverride;
+            t.mMicroLifeOverride = defaults.mMicroLifeOverride;
+            t.mBlinksOverride = defaults.mBlinksOverride;
+            t.mVariationOverride = defaults.mVariationOverride;
+            t.mBreakFrequencyOverride = defaults.mBreakFrequencyOverride;
+            t.mEaseAcquireOverride = defaults.mEaseAcquireOverride;
+            t.mEaseReleaseOverride = defaults.mEaseReleaseOverride;
+            t.mDeadZoneDegOverride = defaults.mDeadZoneDegOverride;
+            t.mBlinkRateScale = defaults.mBlinkRateScale;
+            t.mVergenceScale = defaults.mVergenceScale;
+        });
     mPerformance->setValue(LLSD(-1));
+}
+
+void ALPanelLensGaze::onMicroLifeCommit()
+{
+    const F32 v = llclamp((F32)mMicroLife->getValue().asReal(), 0.f, 1.f);
+    editGazeTargetsFor(editActors(),
+        [v](LLActorMover::GazeTarget& t) { t.mMicroLifeOverride = v; });
+}
+
+void ALPanelLensGaze::onBlinksCommit()
+{
+    const S32 v = mBlinks->get() ? 1 : 0;
+    editGazeTargetsFor(editActors(),
+        [v](LLActorMover::GazeTarget& t) { t.mBlinksOverride = v; });
+}
+
+void ALPanelLensGaze::onVariationCommit()
+{
+    const F32 v = llclamp((F32)mVariation->getValue().asReal(), 0.f, 1.f);
+    editGazeTargetsFor(editActors(),
+        [v](LLActorMover::GazeTarget& t) { t.mVariationOverride = v; });
+}
+
+void ALPanelLensGaze::onBreakFreqCommit()
+{
+    const F32 v = llclamp((F32)mBreakFreq->getValue().asReal(), 0.f, 1.f);
+    editGazeTargetsFor(editActors(),
+        [v](LLActorMover::GazeTarget& t) { t.mBreakFrequencyOverride = v; });
+}
+
+void ALPanelLensGaze::onEaseAcquireCommit()
+{
+    const F32 v = llmax((F32)mEaseAcquire->getValue().asReal(), 0.f);
+    editGazeTargetsFor(editActors(),
+        [v](LLActorMover::GazeTarget& t) { t.mEaseAcquireOverride = v; });
+}
+
+void ALPanelLensGaze::onEaseReleaseCommit()
+{
+    const F32 v = llmax((F32)mEaseRelease->getValue().asReal(), 0.f);
+    editGazeTargetsFor(editActors(),
+        [v](LLActorMover::GazeTarget& t) { t.mEaseReleaseOverride = v; });
+}
+
+void ALPanelLensGaze::onDeadZoneCommit()
+{
+    const F32 v = llclamp((F32)mDeadZone->getValue().asReal(), 0.f, 15.f);
+    editGazeTargetsFor(editActors(),
+        [v](LLActorMover::GazeTarget& t) { t.mDeadZoneDegOverride = v; });
+}
+
+void ALPanelLensGaze::onCameraRollCommit()
+{
+    const F32 v = llclamp((F32)mCameraRoll->getValue().asReal(), 0.f, 1.f);
+    editGazeTargetsFor(editActors(),
+        [v](LLActorMover::GazeTarget& t) { t.mCameraRollOverride = v; });
+}
+
+void ALPanelLensGaze::onExaggerateCommit()
+{
+    const F32 v = llclamp((F32)mExaggerate->getValue().asReal(), 1.f, 3.f);
+    editGazeTargetsFor(editActors(),
+        [v](LLActorMover::GazeTarget& t) { t.mExaggerateOverride = v; });
+}
+
+void ALPanelLensGaze::onModeCommit()
+{
+    const S32 v = mMode->getValue().asInteger() == 1 ? 1 : 0;
+    editGazeTargetsFor(editActors(),
+        [v](LLActorMover::GazeTarget& t) { t.mCameraModeOverride = v; });
 }
 
 void ALPanelLensGaze::onGazeCues()
 {
-    const LLUUID actor = activeSlotActor();
+    const LLUUID actor = editDisplayActor();
     if (actor.notNull())
     {
         LLFloaterReg::showInstance("gaze_cues", LLSD(actor.asString()));

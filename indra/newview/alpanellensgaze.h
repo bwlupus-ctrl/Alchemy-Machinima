@@ -40,11 +40,18 @@ private:
     LLUUID activeSlotActor() const;
     LLUUID displayActor() const;
     uuid_vec_t commitActors() const;
+    // The set of cast actors the edit rows write to: the single edited actor
+    // (specific slot) or every populated actor (All scope). The display actor
+    // is a single representative used to read+present current values.
+    uuid_vec_t editActors() const;
+    LLUUID     editDisplayActor() const;
     void refreshCastCombo();
+    void refreshEditActorCombo();
     void refreshControls();
 
     void onMasterEnableCommit();
-    void onSlotCommit(S32 slot_index);
+    void onEditActorCommit();
+    void onSlotLookAtCommit(S32 slot_index);
     void onEnableCommit();
     void onTargetCommit();
     void onEyeTargetCommit();
@@ -63,13 +70,28 @@ private:
     void onPersonaCommit();
     void onPerformanceCommit();
     void onResetPerformance();
+    void onMicroLifeCommit();
+    void onBlinksCommit();
+    void onVariationCommit();
+    void onBreakFreqCommit();
+    void onEaseAcquireCommit();
+    void onEaseReleaseCommit();
+    void onDeadZoneCommit();
+    void onCameraRollCommit();
+    void onExaggerateCommit();
+    void onModeCommit();
     void onGazeCues();
 
     uuid_vec_t mSelected;
     S32 mActiveSlot = 0;
+    // Editing scope: true broadcasts edit rows to every populated actor; false
+    // edits only the mActiveSlot actor (You / A-D).
+    bool mEditAll = false;
     std::string mCastSignature;
+    std::string mEditActorSignature;
 
     LLTextBox* mStatus = nullptr;
+    LLComboBox* mEditActor = nullptr;
     LLCheckBoxCtrl* mMasterEnable = nullptr;
     LLCheckBoxCtrl* mSlotYou = nullptr;
     LLCheckBoxCtrl* mSlotA = nullptr;
@@ -90,6 +112,12 @@ private:
     LLSliderCtrl* mTorso = nullptr;
     LLSliderCtrl* mIntensity = nullptr;
     LLSliderCtrl* mSmoothing = nullptr;
+    LLSliderCtrl* mMicroLife = nullptr;
+    LLCheckBoxCtrl* mBlinks = nullptr;
+    LLSliderCtrl* mVariation = nullptr;
+    LLSliderCtrl* mBreakFreq = nullptr;
+    LLSpinCtrl* mEaseAcquire = nullptr;
+    LLSpinCtrl* mEaseRelease = nullptr;
     LLSpinCtrl* mDeadZone = nullptr;
     LLCheckBoxCtrl* mBreakoff = nullptr;
     LLSpinCtrl* mBreakoffAngle = nullptr;
@@ -101,6 +129,7 @@ private:
     LLSliderCtrl* mPersonaAnxiety = nullptr;
     LLSliderCtrl* mCameraRoll = nullptr;
     LLSliderCtrl* mExaggerate = nullptr;
+    LLComboBox* mMode = nullptr;
     LLButton* mGazeCues = nullptr;
     bool mEditingEyeTarget = false;
 };

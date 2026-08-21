@@ -831,6 +831,9 @@ void LLActorMover::setGazeTargetConfig(const LLUUID& actor_id, const GazeTarget&
     g.mDeadZoneDegOverride = target.mDeadZoneDegOverride;
     g.mBlinkRateScale = llmax(target.mBlinkRateScale, 0.f);
     g.mVergenceScale = llclamp(target.mVergenceScale, -1.f, 1.f);
+    g.mCameraRollOverride = target.mCameraRollOverride;
+    g.mExaggerateOverride = target.mExaggerateOverride;
+    g.mGazePriorityOverride = target.mGazePriorityOverride;
     if (target.mHeadEyeBlendOverride >= 0.f)
     {
         g.mHeadEyeBlend = llclamp(target.mHeadEyeBlendOverride, 0.f, 1.f);
@@ -885,6 +888,9 @@ LLActorMover::GazeTarget LLActorMover::getGazeTargetConfig(const LLUUID& actor_i
         target.mDeadZoneDegOverride = it->second.mDeadZoneDegOverride;
         target.mBlinkRateScale = it->second.mBlinkRateScale;
         target.mVergenceScale = it->second.mVergenceScale;
+        target.mCameraRollOverride = it->second.mCameraRollOverride;
+        target.mExaggerateOverride = it->second.mExaggerateOverride;
+        target.mGazePriorityOverride = it->second.mGazePriorityOverride;
     }
     return target;
 }
@@ -3463,8 +3469,12 @@ void LLActorMover::captureDirectorLookAtPose(LLVOAvatar* av, DirectorGaze& runti
     }
 
     capture("mPelvis", runtime.mPelvis);
+    const S32 capture_priority = runtime.mGaze.mGazePriorityOverride >= 0
+        ? llclamp(runtime.mGaze.mGazePriorityOverride,
+                  (S32)GAZE_PRIORITY_BLEND, (S32)GAZE_PRIORITY_UPPER_BODY)
+        : currentGazePriority();
     if (runtime.mGaze.mTorsoAmount > 0.f ||
-        currentGazePriority() == GAZE_PRIORITY_UPPER_BODY)
+        capture_priority == GAZE_PRIORITY_UPPER_BODY)
     {
         capture("mTorso", runtime.mTorso);
     }
@@ -3864,7 +3874,15 @@ bool LLActorMover::applyDirectorLookAt(LLVOAvatar* av)
     static LLCachedControl<S32> mode_setting(
         gSavedSettings, "DirectorLookAtCameraMode", 0);
 
-    const S32 requested_mode = (S32)mode_setting == 1 ? 1 : 0;
+    // Per-cast camera-mode override wins over the global (-1 inherits it), so a
+    // Mode change stays scoped to the edited actor instead of retargeting every
+    // camera-facing actor. Read from the member's stored target every frame; it
+    // costs one map lookup and mirrors the selected-path read below.
+    const S32 camera_mode_override =
+        cast.getGazeTarget(av->getID()).mCameraModeOverride;
+    const S32 requested_mode = camera_mode_override >= 0
+        ? (camera_mode_override == 1 ? 1 : 0)
+        : ((S32)mode_setting == 1 ? 1 : 0);
     if (selected && runtime_it != mDirectorGazes.end() &&
         runtime_it->second.mMode != requested_mode)
     {
@@ -3967,6 +3985,9 @@ bool LLActorMover::applyDirectorLookAt(LLVOAvatar* av)
         gaze.mDeadZoneDegOverride = configured_target.mDeadZoneDegOverride;
         gaze.mBlinkRateScale = configured_target.mBlinkRateScale;
         gaze.mVergenceScale = configured_target.mVergenceScale;
+        gaze.mCameraRollOverride = configured_target.mCameraRollOverride;
+        gaze.mExaggerateOverride = configured_target.mExaggerateOverride;
+        gaze.mGazePriorityOverride = configured_target.mGazePriorityOverride;
     }
 
     static LLCachedControl<F32> gaze_microlife(
@@ -4377,8 +4398,12 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         (g.mSmoothing + persona_mod.mSmoothingAdd) * var_sm, 0.f, 1.f);
     const F32 effective_head_eye_blend = llclamp(
         g.mHeadEyeBlend + persona_mod.mHeadEyeBlendAdd, 0.f, 1.f);
-    const F32 camera_roll_amount = llclamp((F32)gaze_camera_roll, 0.f, 1.f);
-    const F32 anatomy_scale = llclamp((F32)gaze_exaggerate, 1.f, 3.f);
+    const F32 camera_roll_amount = llclamp(
+        g.mCameraRollOverride >= 0.f ? g.mCameraRollOverride
+                                     : (F32)gaze_camera_roll, 0.f, 1.f);
+    const F32 anatomy_scale = llclamp(
+        g.mExaggerateOverride >= 0.f ? g.mExaggerateOverride
+                                     : (F32)gaze_exaggerate, 1.f, 3.f);
 
     // Coordinated gaze motor activation edge (spec 2.6). Detect the operator
     // selecting a new gaze method -- or gaze (re)activating -- while the master
@@ -4667,7 +4692,10 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     const F32 cue_body_weight = director_runtime && director_runtime->mCueOverride
         ? director_runtime->mCueBodyWeight : 1.f;
     const F32 wEye = env_i * behind_eased * cue_eye_weight;
-    const S32 gaze_priority = currentGazePriority();
+    const S32 gaze_priority = g.mGazePriorityOverride >= 0
+        ? llclamp(g.mGazePriorityOverride,
+                  (S32)GAZE_PRIORITY_BLEND, (S32)GAZE_PRIORITY_UPPER_BODY)
+        : currentGazePriority();
     const bool override_head_eyes =
         gaze_priority >= GAZE_PRIORITY_HEAD_EYES;
     const bool override_upper_body =
@@ -4790,22 +4818,71 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         ALGazeMotor::step(g.mGazeMotor, in, pose);
 
         // Fix 2 (gate-transition, byte-identical-whenever-off): the legacy
-        // applied-aim stage below is skipped on this branch, so keep
-        // g.mApplied* / g.mTorsoAim* synchronized to the CURRENT target every
-        // frame -- exactly the value continuous legacy operation settles them
-        // to. A later switch to gate OFF then resumes from target (delta ~ 0,
-        // no slew trigger, mAppliedSlewing clear), leaving no slew glitch.
+        // applied-aim stage below is skipped on this branch. Snapping
+        // g.mApplied* straight to the current target here would diverge from
+        // never-enabled legacy DURING a >90-degree limiter slew: legacy holds an
+        // INTERMEDIATE applied yaw/pitch across frames while the limiter walks
+        // it toward the target, so toggling the gate OFF mid-slew must resume
+        // from that intermediate value, not the snapped target. Mirror the exact
+        // legacy applied-slew update below (see the gate-off stage) so g.mApplied*
+        // evolve frame-for-frame identically; a later ON->OFF toggle then resumes
+        // seamlessly. The motor path itself does not read g.mApplied*, so this
+        // only affects a subsequent gate-off.
         {
+            const F32 target_yaw = llclamp(g.mBodyAimYaw, -F_PI, F_PI);
             constexpr F32 CHAIN_PITCH_MAX = 100.f * DEG_TO_RAD;
-            const F32 sync_yaw = llclamp(g.mBodyAimYaw, -F_PI, F_PI);
-            const F32 sync_pitch = llclamp(
+            const F32 target_pitch = llclamp(
                 g.mBodyAimPitch, -CHAIN_PITCH_MAX, CHAIN_PITCH_MAX);
-            g.mAppliedYaw     = sync_yaw;
-            g.mAppliedPitch   = sync_pitch;
-            g.mTorsoAimYaw    = sync_yaw;
-            g.mTorsoAimPitch  = sync_pitch;
-            g.mAppliedValid   = true;
-            g.mAppliedSlewing = false;
+            if (!g.mAppliedValid)
+            {
+                g.mAppliedYaw = target_yaw;
+                g.mAppliedPitch = target_pitch;
+                g.mTorsoAimYaw = target_yaw;
+                g.mTorsoAimPitch = target_pitch;
+                g.mAppliedValid = true;
+                g.mAppliedSlewing = false;
+            }
+            else if (advance)
+            {
+                F32 yaw_delta = llsimple_angle(target_yaw - g.mAppliedYaw);
+                F32 pitch_delta = llsimple_angle(
+                    target_pitch - g.mAppliedPitch);
+                constexpr F32 APPLIED_SLEW_TRIGGER = 90.f * DEG_TO_RAD;
+                if (!g.mAppliedSlewing &&
+                    sqrtf(yaw_delta * yaw_delta + pitch_delta * pitch_delta) >
+                        APPLIED_SLEW_TRIGGER)
+                {
+                    g.mAppliedSlewing = true;
+                }
+
+                if (g.mAppliedSlewing)
+                {
+                    const F32 max_step = llmax((F32)head_slew_rate_deg, 0.f) *
+                                         DEG_TO_RAD * dt;
+                    g.mAppliedYaw = llsimple_angle(
+                        g.mAppliedYaw +
+                        llclamp(yaw_delta, -max_step, max_step));
+                    g.mAppliedPitch = llsimple_angle(
+                        g.mAppliedPitch +
+                        llclamp(pitch_delta, -max_step, max_step));
+
+                    yaw_delta = llsimple_angle(target_yaw - g.mAppliedYaw);
+                    pitch_delta = llsimple_angle(
+                        target_pitch - g.mAppliedPitch);
+                    if (fabsf(yaw_delta) <= 1e-5f &&
+                        fabsf(pitch_delta) <= 1e-5f)
+                    {
+                        g.mAppliedYaw = target_yaw;
+                        g.mAppliedPitch = target_pitch;
+                        g.mAppliedSlewing = false;
+                    }
+                }
+                else
+                {
+                    g.mAppliedYaw = target_yaw;
+                    g.mAppliedPitch = target_pitch;
+                }
+            }
         }
 
         // Recruited joint contributions land in an AnatomicalChainPose so the

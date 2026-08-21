@@ -365,6 +365,12 @@ public:
         F32        mDeadZoneDegOverride = -1.f;
         F32        mBlinkRateScale = 1.f;
         F32        mVergenceScale = 1.f;
+        // Additional per-actor overrides so no operator-edited row bleeds to
+        // other cast members. -1 means "inherit the matching global control".
+        F32        mCameraRollOverride = -1.f;   // else DirectorGazeCameraRoll
+        F32        mExaggerateOverride = -1.f;    // else DirectorGazeExaggerate
+        S32        mGazePriorityOverride = -1;    // else DirectorGazePriority
+        S32        mCameraModeOverride = -1;      // else DirectorLookAtCameraMode
     };
 
     void        setGazeEnabled(const LLUUID& actor_id, bool on);
@@ -932,6 +938,11 @@ private:
         F32        mDeadZoneDegOverride = -1.f;
         F32        mBlinkRateScale = 1.f;
         F32        mVergenceScale = 1.f;
+        // Per-actor override mirrors of the matching global controls (-1 = inherit).
+        // Consumed in gazePaint; keep gate-off byte-identical when left at -1.
+        F32        mCameraRollOverride = -1.f;
+        F32        mExaggerateOverride = -1.f;
+        S32        mGazePriorityOverride = -1;
         F32        mHeadEyeBlend  = 0.7f;   // 0 = eyes only, 1 = full head+neck+torso
         F32        mTorsoAmount   = 0.25f;  // torso share; 0 = still chest, 1 = full aim
         F32        mIntensity     = 1.f;    // overall weight 0..1
