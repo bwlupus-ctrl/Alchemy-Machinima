@@ -2,7 +2,7 @@
 <panel
  background_visible="false"
  border="false"
- height="1190"
+ height="1242"
  layout="topleft"
  name="panel_lens_gaze"
  width="516">
@@ -73,10 +73,11 @@
      name="gaze_eye_target_lbl" top="154" width="124">Eyes look at</text>
     <combo_box follows="left|top|right" height="20" layout="topleft"
      left="140" name="gaze_eye_target_combo" top="154"
-     tool_tip="Relaxed: eyes stay neutral in the socket and only drift/microsaccade (head still tracks its own target). Follow head: eyes track the head target. Camera/Cast member/Fixed point/Object: independent eye target."
+     tool_tip="Relaxed: eyes stay neutral in the socket and only drift/microsaccade (head still tracks its own target). Near-lens (just off camera): eyes aim at the camera like the head but sit a few living degrees off the lens -- almost contact, but alive. Follow head: eyes track the head target. Camera/Cast member/Fixed point/Object: independent eye target."
      width="336">
         <combo_box.item label="Follow head" name="gaze_eyes_off" value="-1" />
         <combo_box.item label="Relaxed (eyes idle)" name="gaze_eyes_relaxed" value="5" />
+        <combo_box.item label="Near-lens (just off camera)" name="gaze_eyes_near_lens" value="6" />
         <combo_box.item label="Camera" name="gaze_eyes_camera" value="1" />
         <combo_box.item label="Cast member" name="gaze_eyes_cast" value="2" />
         <combo_box.item label="Fixed point" name="gaze_eyes_point" value="3" />
@@ -222,28 +223,50 @@
     <button follows="right|top" height="18" image_overlay="Refresh_Off"
      image_top_pad="0" layout="topleft" left="486" name="reset_gaze_eyeline_pitch"
      tool_tip="Reset Eyeline pitch to default" top="525" width="14" />
+    <slider control_name="DirectorGazeStillness" decimal_digits="2"
+     follows="left|top|right" height="20" increment="0.05" label="Stillness"
+     label_width="124" layout="topleft" left="12" max_val="1" min_val="0"
+     name="gaze_stillness_slider" top="550"
+     tool_tip="Cinematic stillness: at 1 the head, neck and torso barely move (frozen body) while the eyes and micro-life stay fully alive. 0 = default."
+     width="464" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorGazeStillness" follows="right|top"
+     height="18" image_overlay="Refresh_Off" image_top_pad="0"
+     layout="topleft" left="486" name="reset_gaze_stillness"
+     tool_tip="Reset Stillness to off" top="551" width="14" />
+    <slider control_name="DirectorGazeRestraint" decimal_digits="2"
+     follows="left|top|right" height="20" increment="0.05" label="Restraint"
+     label_width="124" layout="topleft" left="12" max_val="1" min_val="0"
+     name="gaze_restraint_slider" top="576"
+     tool_tip="Cinematic restraint: globally scales down micro-life, saccades, blink rate and head-turn magnitude for a subtler performance (1 = very restrained, not frozen). 0 = default."
+     width="464" />
+    <button commit_callback.function="Machinima.ResetControl"
+     commit_callback.parameter="DirectorGazeRestraint" follows="right|top"
+     height="18" image_overlay="Refresh_Off" image_top_pad="0"
+     layout="topleft" left="486" name="reset_gaze_restraint"
+     tool_tip="Reset Restraint to off" top="577" width="14" />
 
     <!-- Naturalism -->
     <text follows="left|top|right" font="SansSerifBold" height="18"
-     layout="topleft" left="12" name="gaze_naturalism_section" top="558"
+     layout="topleft" left="12" name="gaze_naturalism_section" top="610"
      width="464">Naturalism</text>
     <slider decimal_digits="2"
      follows="left|top|right" height="20" increment="0.05"
      initial_value="0.4" label="Micro-life" label_width="124"
      layout="topleft" left="12" max_val="1" min_val="0"
-     name="gaze_microlife_slider" top="580"
+     name="gaze_microlife_slider" top="632"
      tool_tip="Procedural micro-life intensity (saccades, blinks, head drift)"
      width="464" />
     <button follows="right|top"
      height="18" image_overlay="Refresh_Off" image_top_pad="0"
      layout="topleft" left="486" name="reset_gaze_microlife"
-     tool_tip="Reset to default" top="581" width="14" />
+     tool_tip="Reset to default" top="633" width="14" />
 
     <text follows="left|top" height="20" layout="topleft" left="12"
-     name="gaze_blinks_lbl" top="606" width="124">Blinks</text>
+     name="gaze_blinks_lbl" top="658" width="124">Blinks</text>
     <check_box follows="left|top"
      height="20" label="Enabled" layout="topleft" left="140"
-     name="gaze_blinks_check" top="606"
+     name="gaze_blinks_check" top="658"
      tool_tip="Enable deterministic periodic eyelid blinks during locked gaze"
      width="100" />
 
@@ -251,114 +274,114 @@
      follows="left|top|right" height="20" increment="0.05"
      initial_value="0.3" label="Variation" label_width="124"
      layout="topleft" left="12" max_val="1" min_val="0"
-     name="gaze_variation_slider" top="632"
+     name="gaze_variation_slider" top="684"
      tool_tip="Per-subject natural variation in intensity, smoothing, and cadence"
      width="464" />
     <button follows="right|top"
      height="18" image_overlay="Refresh_Off" image_top_pad="0"
      layout="topleft" left="486" name="reset_gaze_variation"
-     tool_tip="Reset to default" top="633" width="14" />
+     tool_tip="Reset to default" top="685" width="14" />
 
     <slider decimal_digits="2"
      follows="left|top|right" height="20" increment="0.05"
      initial_value="0.3" label="Glance breaks" label_width="124"
      layout="topleft" left="12" max_val="1" min_val="0"
-     name="gaze_break_freq_slider" top="658"
+     name="gaze_break_freq_slider" top="710"
      tool_tip="Frequency of natural glances away from target" width="464" />
     <button follows="right|top"
      height="18" image_overlay="Refresh_Off" image_top_pad="0"
      layout="topleft" left="486" name="reset_gaze_break_frequency"
-     tool_tip="Reset to default" top="659" width="14" />
+     tool_tip="Reset to default" top="711" width="14" />
 
     <spinner decimal_digits="2"
      follows="left|top|right" height="20" increment="0.05" label="Acquire (s)"
      label_width="124" layout="topleft" left="12" max_val="2.0"
-     min_val="0.05" name="gaze_ease_acquire_spinner" top="684"
+     min_val="0.05" name="gaze_ease_acquire_spinner" top="736"
      tool_tip="Time to acquire target lock" width="464" />
     <button follows="right|top"
      height="18" image_overlay="Refresh_Off" image_top_pad="0"
      layout="topleft" left="486" name="reset_gaze_ease_acquire"
-     tool_tip="Reset to default" top="685" width="14" />
+     tool_tip="Reset to default" top="737" width="14" />
     <spinner decimal_digits="2"
      follows="left|top|right" height="20" increment="0.05" label="Release (s)"
      label_width="124" layout="topleft" left="12" max_val="3.0"
-     min_val="0.05" name="gaze_ease_release_spinner" top="710"
+     min_val="0.05" name="gaze_ease_release_spinner" top="762"
      tool_tip="Time to release target lock back to animation" width="464" />
     <button follows="right|top"
      height="18" image_overlay="Refresh_Off" image_top_pad="0"
      layout="topleft" left="486" name="reset_gaze_ease_release"
-     tool_tip="Reset to default" top="711" width="14" />
+     tool_tip="Reset to default" top="763" width="14" />
 
     <!-- Tracking -->
     <text follows="left|top|right" font="SansSerifBold" height="18"
-     layout="topleft" left="12" name="gaze_tracking_section" top="744"
+     layout="topleft" left="12" name="gaze_tracking_section" top="796"
      width="464">Tracking</text>
     <spinner decimal_digits="1"
      follows="left|top|right" height="20" increment="0.5"
      label="Dead zone (deg)" label_width="124" layout="topleft" left="12"
-     max_val="15" min_val="0" name="gaze_deadzone_spinner" top="766"
+     max_val="15" min_val="0" name="gaze_deadzone_spinner" top="818"
      tool_tip="Body-chain dead zone; eyes continue micro-tracking inside it"
      width="464" />
     <button follows="right|top"
      height="18" image_overlay="Refresh_Off" image_top_pad="0"
      layout="topleft" left="486" name="reset_gaze_deadzone"
-     tool_tip="Reset to default" top="767" width="14" />
+     tool_tip="Reset to default" top="819" width="14" />
 
     <check_box follows="left|top" height="20" label="Break off past"
-     layout="topleft" left="12" name="gaze_breakoff_check" top="792"
+     layout="topleft" left="12" name="gaze_breakoff_check" top="844"
      tool_tip="Ease gaze out when the target passes the angle at right"
      width="124" />
     <spinner control_name="BDMergeGazeBehindAngle" decimal_digits="0"
      follows="left|top|right" height="20" increment="5" label=""
      layout="topleft" left="140" max_val="180" min_val="90"
-     name="gaze_breakoff_spinner" top="792"
+     name="gaze_breakoff_spinner" top="844"
      tool_tip="Body-relative yaw where Break off disengages gaze" width="336" />
     <button commit_callback.function="Machinima.ResetControl"
      commit_callback.parameter="BDMergeGazeBehindAngle" follows="right|top"
      height="18" image_overlay="Refresh_Off" image_top_pad="0"
      layout="topleft" left="486" name="reset_gaze_breakoff_angle"
-     tool_tip="Reset angle to default" top="793" width="14" />
+     tool_tip="Reset angle to default" top="845" width="14" />
 
     <!-- Extreme -->
     <text follows="left|top|right" font="SansSerifBold" height="18"
-     layout="topleft" left="12" name="gaze_extreme_section" top="826"
+     layout="topleft" left="12" name="gaze_extreme_section" top="878"
      width="464">Extreme</text>
     <slider decimal_digits="2"
      follows="left|top|right" height="20" increment="0.05"
      initial_value="0" label="Camera roll" label_width="124"
      layout="topleft" left="12" max_val="1" min_val="0"
-     name="gaze_camera_roll_slider" top="848"
+     name="gaze_camera_roll_slider" top="900"
      tool_tip="Cock the head with the live CAMERA target's dutch angle; the neck follows by a smaller share"
      width="464" />
     <button follows="right|top"
      height="18" image_overlay="Refresh_Off" image_top_pad="0"
      layout="topleft" left="486" name="reset_gaze_camera_roll"
-     tool_tip="Reset to off" top="849" width="14" />
+     tool_tip="Reset to off" top="901" width="14" />
     <slider decimal_digits="2"
      follows="left|top|right" height="20" increment="0.05"
      initial_value="1" label="Exaggerate" label_width="124"
      layout="topleft" left="12" max_val="3" min_val="1"
-     name="gaze_exaggerate_slider" top="874"
+     name="gaze_exaggerate_slider" top="926"
      tool_tip="Scale eye, head, and neck limits from human (1) to extreme (3)"
      width="464" />
     <button follows="right|top"
      height="18" image_overlay="Refresh_Off" image_top_pad="0"
      layout="topleft" left="486" name="reset_gaze_exaggerate"
-     tool_tip="Reset to human limits" top="875" width="14" />
+     tool_tip="Reset to human limits" top="927" width="14" />
 
     <!-- Global fallback values, deliberately distinct from rich overrides. -->
     <text follows="left|top|right" font="SansSerifBold" height="18"
-     layout="topleft" left="12" name="gaze_base_section" top="904"
+     layout="topleft" left="12" name="gaze_base_section" top="956"
      width="464">Look-at-camera base</text>
     <text follows="left|top|right" height="30" layout="topleft" left="12"
-     name="gaze_base_hint" text_color="LtGray_50" top="926" width="488"
+     name="gaze_base_hint" text_color="LtGray_50" top="978" width="488"
      word_wrap="true">Strength/Head-eyes/Torso/Smoothing/Ease here are shared global fallbacks for camera-facing cast; Mode and every row above are per actor (or broadcast in All).</text>
 
     <text follows="left|top" height="20" layout="topleft" left="12"
-     name="look_at_camera_mode_lbl" top="960" width="124">Mode</text>
+     name="look_at_camera_mode_lbl" top="1012" width="124">Mode</text>
     <combo_box follows="left|top|right"
      height="20" layout="topleft" left="140" name="look_at_camera_mode"
-     top="960"
+     top="1012"
      tool_tip="Gaze keeps the current head/eye behavior. Turn body eases the rendered avatar root toward the camera and locally layers a turn animation"
      width="336">
         <combo_box.item label="Gaze (head/eyes)" name="look_at_mode_gaze" value="0" />
@@ -367,79 +390,79 @@
     <button follows="right|top"
      height="18" image_overlay="Refresh_Off" image_top_pad="0"
      layout="topleft" left="486" name="reset_look_at_camera_mode"
-     tool_tip="Reset to default" top="961" width="14" />
+     tool_tip="Reset to default" top="1013" width="14" />
 
     <spinner control_name="DirectorLookAtCameraStrength" decimal_digits="2"
      follows="left|top|right" height="20" increment="0.05" label="Strength"
      label_width="124" layout="topleft" left="12" max_val="1" min_val="0"
-     name="look_at_camera_strength" top="986"
+     name="look_at_camera_strength" top="1038"
      tool_tip="Blend weight for the local head and eye camera gaze" width="464" />
     <button commit_callback.function="Machinima.ResetControl"
      commit_callback.parameter="DirectorLookAtCameraStrength" follows="right|top"
      height="18" image_overlay="Refresh_Off" image_top_pad="0"
      layout="topleft" left="486" name="reset_look_at_camera_strength"
-     tool_tip="Reset to default" top="987" width="14" />
+     tool_tip="Reset to default" top="1039" width="14" />
 
     <slider control_name="DirectorLookAtCameraHeadEye" decimal_digits="2"
      follows="left|top|right" height="20" increment="0.05" label="Head/eyes"
      label_width="124" layout="topleft" left="12" max_val="1" min_val="0"
-     name="look_at_camera_head_eye" top="1012"
+     name="look_at_camera_head_eye" top="1064"
      tool_tip="0 uses eyes only; 1 gives the head and neck their full share"
      width="464" />
     <button commit_callback.function="Machinima.ResetControl"
      commit_callback.parameter="DirectorLookAtCameraHeadEye" follows="right|top"
      height="18" image_overlay="Refresh_Off" image_top_pad="0"
      layout="topleft" left="486" name="reset_look_at_camera_head_eye"
-     tool_tip="Reset to default" top="1013" width="14" />
+     tool_tip="Reset to default" top="1065" width="14" />
 
     <text follows="left|top" height="20" layout="topleft" left="12"
-     name="look_at_camera_torso_lbl" top="1038" width="124">Torso contribution</text>
+     name="look_at_camera_torso_lbl" top="1090" width="124">Torso contribution</text>
     <check_box control_name="DirectorLookAtCameraTorso" follows="left|top"
      height="20" label="Enabled" layout="topleft" left="140"
-     name="look_at_camera_torso" top="1038"
+     name="look_at_camera_torso" top="1090"
      tool_tip="Master gate for the base torso amount; off keeps the effect to head, neck, and eyes"
      width="100" />
 
     <slider control_name="DirectorLookAtCameraTorsoAmount" decimal_digits="2"
      follows="left|top|right" height="20" increment="0.05"
      label="Torso amount" label_width="124" layout="topleft" left="12"
-     max_val="1" min_val="0" name="look_at_camera_torso_amount" top="1064"
+     max_val="1" min_val="0" name="look_at_camera_torso_amount" top="1116"
      tool_tip="Base torso share when Torso contribution is enabled" width="464" />
     <button commit_callback.function="Machinima.ResetControl"
      commit_callback.parameter="DirectorLookAtCameraTorsoAmount" follows="right|top"
      height="18" image_overlay="Refresh_Off" image_top_pad="0"
      layout="topleft" left="486" name="reset_look_at_camera_torso_amount"
-     tool_tip="Reset to default" top="1065" width="14" />
+     tool_tip="Reset to default" top="1117" width="14" />
 
     <slider control_name="DirectorLookAtCameraSmoothing" decimal_digits="2"
      follows="left|top|right" height="20" increment="0.01" label="Smoothing"
      label_width="124" layout="topleft" left="12" max_val="1" min_val="0"
-     name="look_at_camera_smoothing" top="1090"
+     name="look_at_camera_smoothing" top="1142"
      tool_tip="Base camera-gaze smoothing: 0 is snappy; 1 is very smooth"
      width="464" />
     <button commit_callback.function="Machinima.ResetControl"
      commit_callback.parameter="DirectorLookAtCameraSmoothing" follows="right|top"
      height="18" image_overlay="Refresh_Off" image_top_pad="0"
      layout="topleft" left="486" name="reset_look_at_camera_smoothing"
-     tool_tip="Reset to default" top="1091" width="14" />
+     tool_tip="Reset to default" top="1143" width="14" />
 
     <slider control_name="DirectorLookAtCameraEaseTime" decimal_digits="2"
      follows="left|top|right" height="20" increment="0.01" label="Ease master"
      label_width="124" layout="topleft" left="12" max_val="1" min_val="0"
-     name="look_at_camera_ease_time" top="1116"
+     name="look_at_camera_ease_time" top="1168"
      tool_tip="Master scale for both acquire and release; 0.15 uses the authored durations"
      width="464" />
     <button commit_callback.function="Machinima.ResetControl"
      commit_callback.parameter="DirectorLookAtCameraEaseTime" follows="right|top"
      height="18" image_overlay="Refresh_Off" image_top_pad="0"
      layout="topleft" left="486" name="reset_look_at_camera_ease_time"
-     tool_tip="Reset to default" top="1117" width="14" />
+     tool_tip="Reset to default" top="1169" width="14" />
 
     <text follows="left|top|right" height="32" layout="topleft" left="12"
-     name="gaze_hint" text_color="LtGray_50" top="1152" width="350"
+     name="gaze_hint" text_color="LtGray_50" top="1204" width="350"
      word_wrap="true">Editing (top) chooses the actor these rows edit: All broadcasts to every populated actor; You / A-D edit one.</text>
     <button follows="right|top" height="22" label="Gaze Cues..."
-     layout="topleft" left="370" name="btn_gaze_cues" top="1156"
+     layout="topleft" left="370" name="btn_gaze_cues" top="1208"
      tool_tip="Edit presentation-time gaze cues for the active You/A-D subject"
      width="106" />
 </panel>

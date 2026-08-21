@@ -341,7 +341,12 @@ public:
         // vergence for it and drives the eyes with micro-life alone. Never
         // sent as a HEAD target; setGazeTarget()/the head combo never
         // produce it.
-        enum EMode { MOTION = 0, CAMERA = 1, CAST_MEMBER = 2, FIXED_POINT = 3, OBJECT = 4, RELAXED = 5 };
+        // NEAR_LENS ("just off camera") is also eyes-only: the eyes aim at the
+        // SAME direction the head aims (the camera/head target) but with a
+        // small, slowly-drifting off-lens offset (DirectorGazeNearLensDeg) so
+        // they read as "almost contact but alive". It carries no aim data of
+        // its own; the head keeps aiming at the camera normally.
+        enum EMode { MOTION = 0, CAMERA = 1, CAST_MEMBER = 2, FIXED_POINT = 3, OBJECT = 4, RELAXED = 5, NEAR_LENS = 6 };
         EMode      mMode = MOTION;
         LLUUID     mCastRef;
         LLVector3d mFixedPoint = LLVector3d::zero;

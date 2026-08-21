@@ -4206,6 +4206,38 @@ bool LLActorMover::applyDirectorLookAt(LLVOAvatar* av)
     return true;
 }
 
+// Near-lens ("just off camera") living off-lens eye offset. The eyes aim at the
+// camera/head direction but sit ~near_deg degrees off the lens, in a direction
+// that drifts slowly and DETERMINISTICALLY from the per-actor seed plus
+// presentation time -- a very low-frequency wander so the eyes hover just off
+// contact and slowly shift which side. Being a pure function of (seed, t) it is
+// scrub-stable, and it reuses ALGazeMath::eyelineOffsetDir exactly like the
+// eyeline / natural-break offsets. Returns the input unchanged when the offset
+// is negligible (near_deg ~ 0), so DirectorGazeNearLensDeg = 0 is a no-op.
+static LLVector3 nearLensOffsetDir(const LLVector3& gaze_dir,
+                                   const LLVector3& up_axis,
+                                   U64 seed, F64 t_sec, F32 near_deg)
+{
+    const F32 deg = llclamp(near_deg, 0.f, 10.f);
+    if (deg <= 1e-4f)
+    {
+        return gaze_dir;
+    }
+    // Per-actor phase so two actors never drift in lockstep.
+    const F32 phase = ALGazeNoise::unitHash(seed, 40u, 0, 0, 0) * (2.f * F_PI);
+    // The offset DIRECTION rotates slowly around the lens (~40 s per turn) with
+    // a gentle secondary wobble, so which side the eyes favour keeps shifting.
+    const F32 ang = phase + static_cast<F32>(t_sec * 0.16) +
+        0.5f * sinf(static_cast<F32>(t_sec * 0.07) + phase);
+    // Gentle amplitude "breathing" within [0.7,1.0]*near_deg keeps it alive
+    // without ever exceeding the configured off-lens angle.
+    const F32 amp = deg * (0.85f + 0.15f *
+        sinf(static_cast<F32>(t_sec * 0.11) + phase * 1.7f));
+    const F32 off_yaw = amp * DEG_TO_RAD * cosf(ang);
+    const F32 off_pitch = amp * DEG_TO_RAD * sinf(ang);
+    return ALGazeMath::eyelineOffsetDir(gaze_dir, up_axis, off_yaw, off_pitch);
+}
+
 void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bool advance,
                             bool constrain_eye_cone, bool allow_natural_break,
                             DirectorGaze* director_runtime,
@@ -4364,6 +4396,19 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     static LLCachedControl<F32> gaze_mp_head_dur_base(
         gSavedSettings, "DirectorGazeHeadDurationBaseMs", 150.f);
 
+    // Cinematic subtlety controls (spec: default 0 = byte-identical). Stillness
+    // freezes the head/neck/torso recruited contribution; Restraint globally
+    // dampens micro-life, blink rate, and head-turn magnitude; NearLensDeg is
+    // the living off-lens eye offset for the NEAR_LENS eye mode.
+    static LLCachedControl<F32> gaze_stillness(
+        gSavedSettings, "DirectorGazeStillness", 0.f);
+    static LLCachedControl<F32> gaze_restraint(
+        gSavedSettings, "DirectorGazeRestraint", 0.f);
+    static LLCachedControl<F32> gaze_near_lens_deg(
+        gSavedSettings, "DirectorGazeNearLensDeg", 3.f);
+    const F32 cine_stillness = llclamp((F32)gaze_stillness, 0.f, 1.f);
+    const F32 cine_restraint = llclamp((F32)gaze_restraint, 0.f, 1.f);
+
     ALGazeMath::GazeLifeParams in_params;
     in_params.mMicroLife = g.mMicroLifeOverride >= 0.f
         ? llclamp(g.mMicroLifeOverride, 0.f, 1.f)
@@ -4393,6 +4438,22 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     ALGazeMath::applySubjectVariation(
         seed, persona_params.mVariation, persona_params,
         life_params, var_int, var_sm);
+
+    // Cinematic Restraint (shared by BOTH the motor and legacy paths): scale
+    // DOWN the micro-life amplitude and blink rate for a subtler performance.
+    // life_params.mMicroLife feeds the motor's drift/microsaccade amplitudes
+    // (via micro_life below) AND the legacy evalMicroLife; life_params.mBlinkRate
+    // feeds the motor's blink scheduler (ms.mBlinkRate) AND the legacy blink
+    // lattice -- so scaling here dampens saccades/drift/blinks everywhere.
+    // Restraint 0 -> factors 1 -> byte-identical. (The head-turn MAGNITUDE side
+    // of Restraint is applied to the recruited/chain output further below.)
+    if (cine_restraint > 0.f)
+    {
+        life_params.mMicroLife *= (1.f - 0.85f * cine_restraint);
+        life_params.mBlinkRate = llmax(
+            life_params.mBlinkRate * (1.f - 0.6f * cine_restraint), 0.f);
+    }
+
     const F32 effective_intensity = llclamp(g.mIntensity * var_int, 0.f, 1.f);
     const F32 effective_smoothing = llclamp(
         (g.mSmoothing + persona_mod.mSmoothingAdd) * var_sm, 0.f, 1.f);
@@ -4770,6 +4831,13 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         ms.mHeadEyeBlend        = effective_head_eye_blend;
         ms.mTorsoAmount         = g.mTorsoAmount;
         ms.mAnatomyScale        = anatomy_scale;
+        // Cinematic subtlety: Stillness freezes the recruited head/neck/torso;
+        // Restraint additionally shrinks the head-turn magnitude. Both scale the
+        // recruited body output inside step() and leave the eyes + micro-life
+        // untouched (Restraint's micro-life/blink damping is already folded into
+        // life_params above). Defaults 0 -> no change.
+        ms.mStillness           = cine_stillness;
+        ms.mRestraint           = cine_restraint;
         // Blink scheduling honors the existing enable + rate scale; disabling
         // blinks zeroes both the spontaneous lattice and the evoked source.
         const bool blinks_on    = life_params.mBlinks;
@@ -5131,9 +5199,16 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         // the head target normally.
         const bool eye_relaxed =
             eye_target && eye_target->mMode == GazeTarget::RELAXED;
+        // Near-lens ("just off camera"): the eyes fixate the SAME camera/head
+        // direction the head aims (pose.mDesiredWorldGaze) but sit a few living
+        // degrees off the lens -- not relaxed (they still fixate + carry
+        // micro-life), and not an independent target (so the split-eye resolve
+        // below is skipped in its favour).
+        const bool eye_near_lens =
+            eye_target && eye_target->mMode == GazeTarget::NEAR_LENS;
         LLVector3 eye_world_gaze = pose.mDesiredWorldGaze;
         F32 eye_target_distance = targetDistance;
-        if (eye_target && !eye_relaxed)
+        if (eye_target && !eye_relaxed && !eye_near_lens)
         {
             LLVector3 split_eye_look;
             F32 split_eye_distance = 0.f;
@@ -5153,6 +5228,13 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     eye_target_distance = split_eye_distance;
                 }
             }
+        }
+        else if (eye_near_lens)
+        {
+            // Aim the eyes at the camera/head direction, offset by the living
+            // off-lens wander. The head keeps aiming at the camera normally.
+            eye_world_gaze = nearLensOffsetDir(
+                eye_world_gaze, root_up, seed, t_sec, (F32)gaze_near_lens_deg);
         }
 
         F32 lid_follow_pitch = 0.f;
@@ -5430,9 +5512,14 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     // the head target normally.
     const bool eye_relaxed =
         eye_target && eye_target->mMode == GazeTarget::RELAXED;
+    // Near-lens ("just off camera"): the eyes fixate the head/camera direction
+    // (`look`) offset by the living off-lens wander -- not relaxed (they still
+    // fixate) and not an independent target (the split-eye resolve is skipped).
+    const bool eye_near_lens =
+        eye_target && eye_target->mMode == GazeTarget::NEAR_LENS;
     LLVector3 eye_look = look;
     F32 eye_target_distance = targetDistance;
-    if (eye_target && !eye_relaxed)
+    if (eye_target && !eye_relaxed && !eye_near_lens)
     {
         LLVector3 split_eye_look;
         F32 split_eye_distance = 0.f;
@@ -5456,6 +5543,15 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 eye_look = split_eye_look;
                 eye_target_distance = split_eye_distance;
             }
+        }
+    }
+    else if (eye_near_lens)
+    {
+        LLVector3 near_look = nearLensOffsetDir(
+            eye_look, root_up, seed, t_sec, (F32)gaze_near_lens_deg);
+        if (near_look.normVec() > 1e-4f)
+        {
+            eye_look = near_look;
         }
     }
 
@@ -5483,6 +5579,26 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     if (director_runtime && director_runtime->mCueOverride)
     {
         chain.mHeadPitch += director_runtime->mCueHeadRecoilPitch;
+    }
+
+    // Cinematic Stillness (+ Restraint head-turn magnitude) on the legacy path:
+    // scale the recruited head/neck/torso/hips chain toward zero so the body
+    // barely moves, while the eyes (eye_look, applied below) and the micro-life
+    // added at apply time stay fully alive. Same combined factor as the motor
+    // path (ALGazeMotor RESTRAINT_HEADTURN_K); defaults 0 -> factor 1 ->
+    // byte-identical. The body-turn TRIGGER and camera roll are left intact.
+    if (cine_stillness > 0.f || cine_restraint > 0.f)
+    {
+        const F32 body_scale = (1.f - cine_stillness) *
+            (1.f - ALGazeMotor::RESTRAINT_HEADTURN_K * cine_restraint);
+        chain.mHeadYaw    *= body_scale;
+        chain.mHeadPitch  *= body_scale;
+        chain.mNeckYaw    *= body_scale;
+        chain.mNeckPitch  *= body_scale;
+        chain.mTorsoYaw   *= body_scale;
+        chain.mTorsoPitch *= body_scale;
+        chain.mHipsYaw    *= body_scale;
+        chain.mHipsPitch  *= body_scale;
     }
 
     // Micro-life evaluation (§B1)

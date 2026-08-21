@@ -5350,6 +5350,39 @@
       <key>Value</key>
       <real>1.0</real>
     </map>
+    <key>DirectorGazeStillness</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Cinematic stillness (0..1): at 1 the head/neck/torso barely move (recruited body contribution frozen) while the eyes and all micro-life stay fully alive. 0 = default behavior. Motor programs; also applied on the legacy path.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+    </map>
+    <key>DirectorGazeRestraint</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Cinematic restraint (0..1): globally scales down micro-life/saccade amplitude, blink rate, and head-turn magnitude for a subtler performance (1 = very restrained, not frozen). 0 = default behavior.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+    </map>
+    <key>DirectorGazeNearLensDeg</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Near-lens ("just off camera") off-lens eye offset in degrees (0..10). The living, slowly-drifting angle by which the eyes sit off the lens while the head aims at the camera. 0 = eyes exactly on the camera direction.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>3.0</real>
+    </map>
     <key>DirectorGazeMicroLife</key>
     <map>
       <key>Comment</key>

@@ -231,7 +231,25 @@ struct GazeMotorSettings
     // style gain, not the law).
     F32 mTempoArousalGain = 0.25f; // duration scale 1 -/+ gain at arousal 1/0
     F32 mDominanceRollDeg = 2.f;   // head-tilt bias at |dominance| = 1
+
+    // Cinematic subtlety controls (default 0 = byte-identical). Stillness
+    // freezes the recruited HEAD/NECK/TORSO contribution toward zero while
+    // leaving the eyes and all micro-life fully alive ("the camera captures
+    // the internal thought"). Restraint additionally shrinks the head-turn
+    // MAGNITUDE (its micro-life-amplitude and blink-rate reduction is folded
+    // into the amplitude/rate fields above by the integration). Both scale the
+    // recruited body output by RESTRAINT_HEADTURN_K below.
+    F32 mStillness = 0.f; // [0,1]
+    F32 mRestraint = 0.f; // [0,1]
 };
+
+// Restraint's fractional reduction of the recruited head-turn magnitude at
+// restraint == 1 (so 1.0 turns the head/neck/torso half as far -- restrained,
+// not frozen). Stillness handles the full freeze separately; the two combine
+// multiplicatively. Micro-life amplitude and blink-rate restraint are applied
+// upstream (integration) by scaling the settings' amplitude/rate fields, so
+// they are shared by the legacy path and need no constant here.
+constexpr F32 RESTRAINT_HEADTURN_K = 0.5f;
 
 // Per-frame input. The aim is expressed as chain yaw/pitch (radians) in the
 // caller's reference frame (the same frame llactormover's gaze solve derives
@@ -1153,6 +1171,33 @@ inline void step(GazeMotorState& state, const GazeMotorInput& input,
     out_pose.mHipsPitch  = recruitSlot(aim[CH_TORSO_PITCH], caps_pitch, band,
                                        4, eye_only);
     out_pose.mHeadRoll   = aim[CH_HEAD_ROLL];
+
+    // (3b) Cinematic Stillness + Restraint: scale the RECRUITED head/neck/
+    //      torso contribution toward zero BEFORE the micro-life drift is added
+    //      below (step 5), so the body barely moves while the eyes and all
+    //      micro-life stay fully alive. Stillness (1 -> full freeze) and
+    //      Restraint's head-turn magnitude reduction combine multiplicatively;
+    //      both default 0 -> body_scale == 1 -> byte-identical. The eye
+    //      channels (mEyeYaw/mEyePitch, solved next) and the micro-life added
+    //      in step 5 are deliberately untouched.
+    const F32 stillness = std::isfinite(s.mStillness)
+        ? llclamp(s.mStillness, 0.f, 1.f) : 0.f;
+    const F32 restraint = std::isfinite(s.mRestraint)
+        ? llclamp(s.mRestraint, 0.f, 1.f) : 0.f;
+    const F32 body_scale = (1.f - stillness) *
+        (1.f - RESTRAINT_HEADTURN_K * restraint);
+    if (body_scale != 1.f)
+    {
+        out_pose.mHeadYaw   *= body_scale;
+        out_pose.mHeadPitch *= body_scale;
+        out_pose.mHeadRoll  *= body_scale;
+        out_pose.mNeckYaw   *= body_scale;
+        out_pose.mNeckPitch *= body_scale;
+        out_pose.mTorsoYaw  *= body_scale;
+        out_pose.mTorsoPitch *= body_scale;
+        out_pose.mHipsYaw   *= body_scale;
+        out_pose.mHipsPitch *= body_scale;
+    }
 
     // (4) VOR eye-in-head by construction: the eye group's aim (which sweeps
     //     to the target over the saccade, then holds it) becomes a world

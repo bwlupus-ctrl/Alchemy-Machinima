@@ -1013,12 +1013,13 @@ void ALPanelLensGaze::onEyeTargetCommit()
         {
             LLActorMover::GazeTarget target = cast.hasEyeGazeTarget(actor)
                 ? cast.getEyeGazeTarget(actor) : LLActorMover::GazeTarget();
-            // Range covers CAMERA..RELAXED: the aimed independent targets
-            // plus "Relaxed (eyes idle)", which carries no aim data.
+            // Range covers CAMERA..NEAR_LENS: the aimed independent targets
+            // plus "Relaxed (eyes idle)" and "Near-lens (just off camera)",
+            // which carry no aim data.
             target.mMode = static_cast<LLActorMover::GazeTarget::EMode>(
                 llclamp(mode,
                         static_cast<S32>(LLActorMover::GazeTarget::CAMERA),
-                        static_cast<S32>(LLActorMover::GazeTarget::RELAXED)));
+                        static_cast<S32>(LLActorMover::GazeTarget::NEAR_LENS)));
             cast.setEyeGazeTarget(actor, target);
         }
     }
