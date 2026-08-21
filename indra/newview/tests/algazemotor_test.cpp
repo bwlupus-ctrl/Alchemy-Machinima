@@ -1295,4 +1295,219 @@ void algazemotor_test_object::test<21>()
     }
 }
 
+template<> template<>
+void algazemotor_test_object::test<22>()
+{
+    set_test_name("activation edge acquires the current target immediately "
+                  "(no dwell) and begins aiming within a frame or two");
+    constexpr F64 DT = 1.0 / 120.0;
+    const F32 target = 30.f * DEG_TO_RAD;
+
+    ALGazeMotor::GazeMotorState state;
+    ALGazeMotor::GazeMotorPose pose;
+
+    // Held on the initial (straight-ahead) target: committed == 0, no commits.
+    for (S32 i = 0; i < 5; ++i)
+    {
+        ALGazeMotor::GazeMotorInput in = quietInput(i * DT, 0.f, 0.f);
+        ALGazeMotor::step(state, in, pose);
+    }
+    ensure_equals("no commit while held on the initial target",
+                  static_cast<S32>(state.mRetargetCounter), 0);
+
+    // Activation edge: a new method target appears WITH the acquire flag. The
+    // commit must land on THIS frame -- not 120 ms later.
+    const F64 t_edge = 5 * DT;
+    ALGazeMotor::GazeMotorInput edge = quietInput(t_edge, target, 0.f);
+    edge.mAcquire = true;
+    const U64 before = state.mRetargetCounter;
+    ALGazeMotor::step(state, edge, pose);
+    ensure_equals("acquire commits on the activation frame (no dwell)",
+                  static_cast<S32>(state.mRetargetCounter),
+                  static_cast<S32>(before) + 1);
+    // At the commit instant the eye program has only just started from the old
+    // aim (C2 handoff), so the chain aim is still near zero here.
+    const F32 aim_at_commit = pose.mChainAimYaw;
+
+    // The edge is consumed (generation unchanged, flag cleared): no further
+    // acquire, and the eye/chain aim sweeps to the target at main-sequence
+    // speed -- reaching it within ~150 ms of the activation frame, the
+    // legacy-instant feel, instead of only starting to move 120 ms later.
+    const F32 reach_tol = 0.5f * DEG_TO_RAD;
+    F64 reach_time = -1.0;
+    F32 prev_aim = aim_at_commit;
+    bool advanced_early = false;
+    for (S32 i = 1; i <= static_cast<S32>(0.2 / DT); ++i)
+    {
+        const F64 t = t_edge + i * DT;
+        ALGazeMotor::GazeMotorInput in = quietInput(t, target, 0.f);
+        ALGazeMotor::step(state, in, pose);
+        if (i <= 3 && pose.mChainAimYaw > prev_aim)
+        {
+            advanced_early = true;
+        }
+        prev_aim = pose.mChainAimYaw;
+        if (reach_time < 0.0 &&
+            std::fabs(pose.mChainAimYaw - target) <= reach_tol)
+        {
+            reach_time = t;
+        }
+    }
+    ensure_equals("no spurious second commit after the edge",
+                  static_cast<S32>(state.mRetargetCounter),
+                  static_cast<S32>(before) + 1);
+    ensure("eye/chain aim begins advancing within the first few frames",
+           advanced_early && prev_aim > aim_at_commit);
+    ensure("eye acquires the target within ~150 ms of activation (no dwell)",
+           reach_time > 0.0 && reach_time - t_edge <= 0.150);
+}
+
+template<> template<>
+void algazemotor_test_object::test<23>()
+{
+    set_test_name("acquire bypasses the 120 ms dwell that unsignaled motion "
+                  "of the same size still honors");
+    constexpr F64 DT = 1.0 / 240.0;
+    const F32 target = 20.f * DEG_TO_RAD;
+
+    auto firstCommitTime = [&](bool use_acquire) -> F64
+    {
+        ALGazeMotor::GazeMotorState state;
+        ALGazeMotor::GazeMotorPose pose;
+        F64 commit_t = -1.0;
+        for (S32 i = 0; i <= static_cast<S32>(1.0 / DT); ++i)
+        {
+            const F64 t = i * DT;
+            const bool moved = t >= 0.25;
+            ALGazeMotor::GazeMotorInput in =
+                quietInput(t, moved ? target : 0.f, 0.f);
+            // One-shot edge on the first moved frame, mirroring the
+            // integration's single-frame method-switch signal.
+            if (moved && use_acquire && commit_t < 0.0)
+            {
+                in.mAcquire = true;
+            }
+            const U64 before = state.mRetargetCounter;
+            ALGazeMotor::step(state, in, pose);
+            if (commit_t < 0.0 && state.mRetargetCounter > before)
+            {
+                commit_t = t;
+            }
+        }
+        return commit_t;
+    };
+
+    const F64 acquire_commit = firstCommitTime(true);
+    const F64 dwell_commit   = firstCommitTime(false);
+    ensure("acquire committed", acquire_commit > 0.0);
+    ensure("unsignaled motion committed", dwell_commit > 0.0);
+    ensure("acquire commits on the first moved frame (~0.25 s, no dwell)",
+           acquire_commit <= 0.25 + 2.0 * DT);
+    ensure("unsignaled motion still waits the full 120 ms dwell",
+           dwell_commit >= 0.25 + 0.12 - 1e-9);
+}
+
+template<> template<>
+void algazemotor_test_object::test<24>()
+{
+    set_test_name("acquire never thrashes: a no-op re-selection and "
+                  "sub-threshold wander under a held flag never commit");
+    constexpr F64 DT = 1.0 / 120.0;
+
+    // (a) Re-selecting the SAME direction (acquire set, target == committed)
+    //     must not bump the retarget counter (acquire dead-band).
+    {
+        ALGazeMotor::GazeMotorState state;
+        ALGazeMotor::GazeMotorPose pose;
+        for (S32 i = 0; i < 5; ++i)
+        {
+            ALGazeMotor::GazeMotorInput in =
+                quietInput(i * DT, 10.f * DEG_TO_RAD, 0.f);
+            ALGazeMotor::step(state, in, pose);
+        }
+        ensure_equals("held target: no commit yet",
+                      static_cast<S32>(state.mRetargetCounter), 0);
+        ALGazeMotor::GazeMotorInput edge =
+            quietInput(5 * DT, 10.f * DEG_TO_RAD, 0.f);
+        edge.mAcquire = true;   // same direction re-selected
+        ALGazeMotor::step(state, edge, pose);
+        ensure_equals("acquire on an unchanged target is a no-op",
+                      static_cast<S32>(state.mRetargetCounter), 0);
+    }
+
+    // (b) A held acquire flag with only sub-epsilon wander must not thrash:
+    //     the acquire dead-band ignores negligible motion frame after frame.
+    {
+        ALGazeMotor::GazeMotorState state;
+        ALGazeMotor::GazeMotorPose pose;
+        ALGazeMotor::GazeMotorInput seed0 = quietInput(0.0, 0.f, 0.f);
+        ALGazeMotor::step(state, seed0, pose);
+        for (S32 i = 1; i <= static_cast<S32>(1.0 / DT); ++i)
+        {
+            const F32 wander = ((i % 2) ? 0.01f : -0.01f) * DEG_TO_RAD;
+            ALGazeMotor::GazeMotorInput in = quietInput(i * DT, wander, 0.f);
+            in.mAcquire = true;   // pathological: flag stuck on
+            ALGazeMotor::step(state, in, pose);
+        }
+        ensure_equals("held acquire + sub-epsilon wander never commits",
+                      static_cast<S32>(state.mRetargetCounter), 0);
+    }
+}
+
+template<> template<>
+void algazemotor_test_object::test<25>()
+{
+    set_test_name("a changed target generation acts as an implicit acquire; "
+                  "an unchanged generation keeps the dwell");
+    constexpr F64 DT = 1.0 / 240.0;
+    const F32 target = 25.f * DEG_TO_RAD;
+
+    // Implicit acquire via a generation change (no explicit mAcquire flag).
+    {
+        ALGazeMotor::GazeMotorState state;
+        ALGazeMotor::GazeMotorPose pose;
+        for (S32 i = 0; i < 5; ++i)
+        {
+            ALGazeMotor::GazeMotorInput in = quietInput(i * DT, 0.f, 0.f);
+            in.mTargetGeneration = 1;
+            ALGazeMotor::step(state, in, pose);
+        }
+        ensure_equals("no commit while the generation is stable",
+                      static_cast<S32>(state.mRetargetCounter), 0);
+
+        const F64 t_edge = 5 * DT;
+        ALGazeMotor::GazeMotorInput edge = quietInput(t_edge, target, 0.f);
+        edge.mTargetGeneration = 2;   // method switch, no flag
+        const U64 before = state.mRetargetCounter;
+        ALGazeMotor::step(state, edge, pose);
+        ensure_equals("a generation change commits immediately (no dwell)",
+                      static_cast<S32>(state.mRetargetCounter),
+                      static_cast<S32>(before) + 1);
+    }
+
+    // A constant generation with a large step still honors the dwell (the
+    // pre-fix behavior for ordinary, unsignaled target motion).
+    {
+        ALGazeMotor::GazeMotorState state;
+        ALGazeMotor::GazeMotorPose pose;
+        F64 commit_t = -1.0;
+        for (S32 i = 0; i <= static_cast<S32>(0.6 / DT); ++i)
+        {
+            const F64 t = i * DT;
+            ALGazeMotor::GazeMotorInput in =
+                quietInput(t, t >= 0.2 ? target : 0.f, 0.f);
+            in.mTargetGeneration = 7;   // never changes
+            const U64 before = state.mRetargetCounter;
+            ALGazeMotor::step(state, in, pose);
+            if (commit_t < 0.0 && state.mRetargetCounter > before)
+            {
+                commit_t = t;
+            }
+        }
+        ensure("unsignaled motion still commits", commit_t > 0.0);
+        ensure("unsignaled motion waits the full dwell",
+               commit_t >= 0.2 + 0.12 - 1e-9);
+    }
+}
+
 } // namespace tut

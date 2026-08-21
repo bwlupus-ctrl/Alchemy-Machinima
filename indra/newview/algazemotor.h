@@ -101,6 +101,18 @@ constexpr S32 CHAIN_JOINTS = 5; // eyes, head, neck, torso, hips
 constexpr F32 RETARGET_ENTER_DEG  = 3.f;
 constexpr F64 RETARGET_DWELL_SEC  = 0.12;
 
+// Immediate-acquisition dead-band. When the integration signals an activation
+// edge (mAcquire, or a changed mTargetGeneration -- gaze (re)becoming active,
+// or the operator selecting a new gaze method while the master gate stays on)
+// the motor commits to the current target on THIS frame, bypassing the dwell,
+// so acquisition is instant like the legacy path. Below this angle the acquire
+// edge is a no-op (re-selecting the same direction), so the retarget counter
+// and the gaze-evoked blink are never bumped spuriously. The dwell hysteresis
+// above still governs ordinary, unsignaled target motion (small wander is
+// damped; a genuine sustained move commits after the 120 ms dwell), so the
+// anti-thrash behavior is unchanged whenever no activation edge is signaled.
+constexpr F32 RETARGET_ACQUIRE_EPS_DEG = 0.05f;
+
 // Minimum absolute neck/torso stagger past the previous stage's start time.
 // ADDITIVE, not multiplicative: when ALGazePolicy::headLatencyMs legitimately
 // returns ~0 (high predictability / strong head-mover trait) a purely
@@ -240,6 +252,20 @@ struct GazeMotorInput
     F32 mCueWeight   = 1.f; // integration passthrough (cue/priority weight);
                             // copied to the pose, never consumed here
 
+    // Activation edge (spec 2.6 integration): the integration sets mAcquire on
+    // the frame gaze (re)becomes active or the operator selects a new gaze
+    // method while the master gate stays on, forcing the motor to acquire the
+    // current target immediately (no retarget dwell). mTargetGeneration is a
+    // cheap signature of the DISCRETE target selection (mode + cast/object
+    // reference): the motor stores the last value it saw (mLastTargetGen) so
+    // the integration can detect a method switch by comparing this frame's
+    // generation against it, and a change is honored as an implicit acquire
+    // even if mAcquire was not set. Default 0/false reproduces the pre-fix
+    // behavior exactly (existing callers never touch these), so the dwell
+    // hysteresis is unchanged unless an edge is signaled.
+    bool mAcquire          = false;
+    U32  mTargetGeneration = 0;
+
     AffectState      mAffect;
     GazeMotorSettings mSettings;
 };
@@ -272,6 +298,15 @@ struct GazeMotorState
     bool mCandidateValid = false;
     F64  mCandidateSince = 0.0;
     U64  mRetargetCounter = 0; // also the deterministic evoked-blink draw key
+
+    // Last discrete target signature the motor saw (see GazeMotorInput::
+    // mTargetGeneration). Updated every gated frame; a mismatch against the
+    // incoming generation is an operator method switch and forces immediate
+    // acquisition. mHasTargetGen guards the very first gated frame, where there
+    // is no prior generation to compare against (initializeState already snaps
+    // to the current target, so that frame must NOT be treated as an edge).
+    U32  mLastTargetGen = 0;
+    bool mHasTargetGen  = false;
 
     // Gaze-evoked blink (the one live blink source that needs state).
     // LIVE-mode only, not scrub-safe: the onset is the retarget commit time
@@ -318,6 +353,23 @@ struct GazeMotorPose
     // Aperture widen intent in [0,1] (arousal); Tier 0 cannot open lids past
     // rest, so this is surfaced for the integration/cue layer to consume.
     F32 mApertureWiden = 0.f;
+
+    // Fix 1 (VOR against the FINAL painted head, spec 2.6/10.5): the desired
+    // WORLD gaze direction the eyes must fixate -- the eye-group aim mapped
+    // through mRefWorldRot, carrying the eye saccade dynamics. mEyeYaw/mEyePitch
+    // above are solved HERE against the PRE-paint mHeadWorldRot and remain a
+    // convenience/back-compat passthrough (and what the unit tests assert); the
+    // integration re-solves eye-in-head against the NOW-painted head via
+    // ALGazePolicy::eyeInHeadFromWorldGaze(mDesiredWorldGaze, painted_head, ...)
+    // so the eyes fixate the target given the actual painted head, then re-adds
+    // the micro-life offset below. This avoids double-counting the head rotation
+    // that the recruited neck/head paint introduces after step() runs.
+    LLVector3 mDesiredWorldGaze;
+    // Post-VOR micro-life eye offset (drift + microsaccade), already folded into
+    // mEyeYaw/mEyePitch; surfaced separately so the integration's post-paint
+    // eye-in-head solve can re-add the SAME deterministic micro-life.
+    F32 mEyeYawMicro   = 0.f;
+    F32 mEyePitchMicro = 0.f;
 
     F32  mCueWeight = 1.f;  // passthrough from the input
     bool mActive    = false; // false = master gate off (documented passthrough)
@@ -936,8 +988,18 @@ inline void initializeState(GazeMotorState& state, const GazeMotorInput& input,
 // must stay beyond the 3-degree enter threshold continuously for 120 ms
 // before a program commit; dipping back inside cancels it, so sub-threshold
 // jitter never thrashes the running segments.
+//
+// `acquire` short-circuits the dwell: on an activation edge (gaze (re)becoming
+// active, or the operator selecting a new method while the master gate stays
+// on -- see GazeMotorInput::mAcquire / mTargetGeneration) the current target is
+// committed on THIS frame, so acquisition is instant like the legacy path
+// instead of waiting out the 120 ms dwell (which, fed by the integration's
+// heavily smoothed body-aim, could hover near the enter threshold and keep
+// cancelling the candidate so a switch never committed). The commit still goes
+// through commitRetarget -> retargetChannel, so the eyes-lead-head cascade and
+// the C2 handoff are preserved; only the dwell gate is bypassed.
 inline void detectRetarget(GazeMotorState& state, const GazeMotorInput& input,
-                           F64 now)
+                           F64 now, bool acquire)
 {
     const F32 enter_rad = RETARGET_ENTER_DEG * DEG_TO_RAD;
     const F32 dyaw = ALTrajectory::shortestArcDelta(
@@ -947,6 +1009,21 @@ inline void detectRetarget(GazeMotorState& state, const GazeMotorInput& input,
     const F32 droll =
         ALTrajectory::sanitizeValue(input.mTargetRoll) - state.mCommittedRoll;
     const F32 aim_err = sqrtf(dyaw * dyaw + dpitch * dpitch);
+
+    // Immediate acquisition on an activation/method-switch edge. A negligible
+    // move (re-selecting the same direction) is ignored so the retarget
+    // counter and the evoked-blink draw are not bumped for a non-motion edge.
+    if (acquire)
+    {
+        const F32 acquire_eps = RETARGET_ACQUIRE_EPS_DEG * DEG_TO_RAD;
+        if (aim_err > acquire_eps || fabsf(droll) > acquire_eps)
+        {
+            state.mCandidateValid = false;
+            commitRetarget(state, input, now);
+            return;
+        }
+    }
+
     const bool beyond = aim_err > enter_rad || fabsf(droll) > enter_rad;
     if (!beyond)
     {
@@ -993,6 +1070,17 @@ inline void step(GazeMotorState& state, const GazeMotorInput& input,
         detail::initializeState(state, input, now);
     }
 
+    // Activation/method-switch edge (spec 2.6 integration). A changed target
+    // generation is honored as an implicit acquire even if mAcquire was not
+    // set explicitly; the first gated frame after (re)initialization has no
+    // prior generation and must NOT count as an edge (initializeState already
+    // snapped to the current target). Update the stored generation every frame.
+    const bool gen_edge = state.mHasTargetGen &&
+        state.mLastTargetGen != input.mTargetGeneration;
+    state.mLastTargetGen = input.mTargetGeneration;
+    state.mHasTargetGen  = true;
+    const bool acquire_now = input.mAcquire || gen_edge;
+
     // Promote pending (delayed head/neck/torso) programs whose start time
     // has arrived; promotion is C2 for ordinary gaze ranges (extreme
     // incoming derivatives are clamped at the handoff -- see
@@ -1004,7 +1092,9 @@ inline void step(GazeMotorState& state, const GazeMotorInput& input,
 
     // (1) Retarget detection with hysteresis; commits rebuild the channel
     //     programs with eyes-now / head-late / neck-torso-staggered timing.
-    detail::detectRetarget(state, input, now);
+    //     An activation/method-switch edge (acquire_now) commits immediately,
+    //     bypassing the dwell so acquisition is instant like the legacy path.
+    detail::detectRetarget(state, input, now, acquire_now);
 
     // (2) Sample every channel's closed-form program at presentation time.
     //     (p, v, a) for the next C2 handoff live inside the programs.
@@ -1072,6 +1162,9 @@ inline void step(GazeMotorState& state, const GazeMotorInput& input,
     const LLVector3 world_dir =
         ALGazePolicy::eyeDirFromYawPitch(eye_aim_yaw, eye_aim_pitch) *
         input.mRefWorldRot;
+    // Fix 1: surface the desired world gaze so the integration can re-solve the
+    // eye-in-head AFTER it paints the recruited head/neck (see GazeMotorPose).
+    out_pose.mDesiredWorldGaze = world_dir;
     F32 eye_yaw = 0.f;
     F32 eye_pitch = 0.f;
     ALGazePolicy::eyeInHeadFromWorldGaze(
@@ -1093,18 +1186,26 @@ inline void step(GazeMotorState& state, const GazeMotorInput& input,
     const F32 micro_rate = std::isfinite(s.mMicrosaccadeRateHz)
         ? llclamp(s.mMicrosaccadeRateHz, 0.f, MICROSACCADE_MAX_RATE_HZ) : 0.f;
     const F32 eye_cell = llmax(s.mDriftCellSec * 0.4f, 1.0e-3f);
-    eye_yaw += ALGazeNoise::driftOffset(
+    // Accumulate the eye micro-life offset separately so it can be surfaced
+    // (fix 1: re-added by the integration's post-paint eye-in-head solve).
+    F32 eye_yaw_micro = 0.f;
+    F32 eye_pitch_micro = 0.f;
+    eye_yaw_micro += ALGazeNoise::driftOffset(
         input.mSeed, NOISE_CH_EYE_YAW, now, eye_cell,
         s.mEyeDriftAmpRad * micro);
-    eye_yaw += ALGazeNoise::microsaccadeOffset(
+    eye_yaw_micro += ALGazeNoise::microsaccadeOffset(
         input.mSeed, NOISE_CH_EYE_YAW, now, micro_rate,
         s.mMicrosaccadeAmpRad * micro);
-    eye_pitch += ALGazeNoise::driftOffset(
+    eye_pitch_micro += ALGazeNoise::driftOffset(
         input.mSeed, NOISE_CH_EYE_PITCH, now, eye_cell,
         s.mEyeDriftAmpRad * 0.7f * micro);
-    eye_pitch += ALGazeNoise::microsaccadeOffset(
+    eye_pitch_micro += ALGazeNoise::microsaccadeOffset(
         input.mSeed, NOISE_CH_EYE_PITCH, now, micro_rate,
         s.mMicrosaccadeAmpRad * 0.7f * micro);
+    eye_yaw += eye_yaw_micro;
+    eye_pitch += eye_pitch_micro;
+    out_pose.mEyeYawMicro = eye_yaw_micro;
+    out_pose.mEyePitchMicro = eye_pitch_micro;
     out_pose.mHeadYaw += ALGazeNoise::driftOffset(
         input.mSeed, NOISE_CH_HEAD_YAW, now, s.mDriftCellSec,
         s.mHeadDriftAmpRad * micro);

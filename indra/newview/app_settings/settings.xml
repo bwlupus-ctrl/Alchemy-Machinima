@@ -5397,7 +5397,7 @@
     <key>DirectorGazeValence</key>
     <map>
       <key>Comment</key>
-      <string>[Director] Per-actor Affect valence (PAD), -1 (negative) .. 1 (positive). Motor programs only; low valence droops the lids and raises blink rate.</string>
+      <string>[Director] Affect valence (PAD), -1 (negative) .. 1 (positive). Motor programs only; low valence droops the lids and raises blink rate. v1: a single GLOBAL value shared by all actors (per-actor keyframeable Affect is a later addition).</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
@@ -5408,7 +5408,7 @@
     <key>DirectorGazeArousal</key>
     <map>
       <key>Comment</key>
-      <string>[Director] Per-actor Affect arousal (PAD), 0 (calm) .. 1 (energized); 0.5 = neutral. Motor programs only; a style gain on tempo, micro-life amplitude and blink rate.</string>
+      <string>[Director] Affect arousal (PAD), 0 (calm) .. 1 (energized); 0.5 = neutral. Motor programs only; a style gain on tempo, micro-life amplitude and blink rate. v1: a single GLOBAL value shared by all actors (per-actor keyframeable Affect is a later addition).</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
@@ -5419,7 +5419,7 @@
     <key>DirectorGazeDominance</key>
     <map>
       <key>Comment</key>
-      <string>[Director] Per-actor Affect dominance (PAD), -1 (submissive) .. 1 (dominant). Motor programs only; biases the head-tilt at retarget.</string>
+      <string>[Director] Affect dominance (PAD), -1 (submissive) .. 1 (dominant). Motor programs only; biases the head-tilt at retarget. v1: a single GLOBAL value shared by all actors (per-actor keyframeable Affect is a later addition).</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>

@@ -4380,6 +4380,27 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     const F32 camera_roll_amount = llclamp((F32)gaze_camera_roll, 0.f, 1.f);
     const F32 anatomy_scale = llclamp((F32)gaze_exaggerate, 1.f, 3.f);
 
+    // Coordinated gaze motor activation edge (spec 2.6). Detect the operator
+    // selecting a new gaze method -- or gaze (re)activating -- while the master
+    // gate stays ON, so the motor acquires the freshly selected target THIS
+    // frame instead of ramping in through the shared upstream smoothing
+    // (mSmoothDir + the dead-zone body-aim chase, tau up to 0.5 s each) and
+    // stalling on the retarget dwell. The generation is a cheap signature of
+    // the DISCRETE selection (mode + cast/object reference); continuous
+    // point/target motion is deliberately excluded so a moving target does not
+    // re-acquire every frame -- the motor's own dwell handles ordinary motion.
+    // motor_acquire can only be true on the gate-on path (it requires the gate
+    // to be enabled AND the motor to have run at least once), so every snap it
+    // guards below leaves the gate-off code byte-identical.
+    U32 gaze_target_gen = static_cast<U32>(g.mTarget) * 2654435761u;
+    gaze_target_gen ^= g.mCastTarget.getCRC32() + 0x9E3779B9u +
+        (gaze_target_gen << 6) + (gaze_target_gen >> 2);
+    gaze_target_gen ^= g.mObjectTarget.getCRC32() + 0x9E3779B9u +
+        (gaze_target_gen << 6) + (gaze_target_gen >> 2);
+    const bool motor_acquire = (bool)gaze_motion_programs &&
+        g.mGazeMotor.mHasTargetGen &&
+        g.mGazeMotor.mLastTargetGen != gaze_target_gen;
+
     // The render camera and the gaze CAMERA target share this exact gate-first
     // source selection. Camera roll is evaluated directly every frame; it has
     // no history and therefore seeks/scrubs like the camera transform itself.
@@ -4557,7 +4578,11 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     // ---- smooth the direction (exp toward the target; reseed on activation) ----
     if (haveDir)
     {
-        if (!g.mDirValid)
+        // motor_acquire (gate-on only) snaps the direction smoother to the
+        // freshly selected target so the coordinated motor acquires it
+        // immediately rather than tracking the exponential ramp; gate-off never
+        // sets it, so its reseed condition is unchanged.
+        if (!g.mDirValid || motor_acquire)
         {
             g.mSmoothDir = dir;
             g.mDirValid  = true;
@@ -4678,6 +4703,17 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             g.mBodyAimPitch, g.mBodyAimYaw, raw_pitch, raw_yaw,
             dead_zone, ALGazeMath::chaseAlpha(dt, tau));
     }
+    // Activation/method-switch edge: bypass the dead-zone body-aim low-pass so
+    // the motor's target reflects the freshly selected method THIS frame
+    // (paired with in.mAcquire below). raw_yaw/raw_pitch already reflect the
+    // true target because the direction smoother was snapped above. Guarded by
+    // motor_acquire (gate-on only), so gate-off stays byte-identical.
+    if (motor_acquire)
+    {
+        g.mBodyAimPitch = raw_pitch;
+        g.mBodyAimYaw   = raw_yaw;
+        g.mBodyAimValid = true;
+    }
     const F32 wBody = env_i * effective_head_eye_blend * behind_eased;
 
     // ==== GATE ON: coordinated gaze motor programs (spec 2.6 / 6A) ==========
@@ -4712,6 +4748,14 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         ms.mBlinkRate           = blinks_on
             ? llmax(life_params.mBlinkRate, 0.f) : 0.f;
         ms.mGazeEvokedBlink     = blinks_on ? 1.f : 0.f;
+        // Fix 3: wire the Life control (DirectorGazeMicroLife + its per-target
+        // override, resolved into life_params.mMicroLife) into the motor's
+        // drift + microsaccade amplitudes, so Life = 0 kills motor micro-life
+        // and Life scales it, mirroring the legacy evalMicroLife intensity.
+        const F32 micro_life = llclamp(life_params.mMicroLife, 0.f, 1.f);
+        ms.mEyeDriftAmpRad     *= micro_life;
+        ms.mHeadDriftAmpRad    *= micro_life;
+        ms.mMicrosaccadeAmpRad *= micro_life;
 
         ALGazeMotor::AffectState affect;
         affect.mValence   = llclamp((F32)gaze_mp_valence,   -1.f, 1.f);
@@ -4735,9 +4779,34 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         in.mCueWeight    = 1.f;
         in.mAffect       = affect;
         in.mSettings     = ms;
+        // Activation edge -> commit the freshly selected target immediately (no
+        // retarget dwell). mTargetGeneration lets the motor store the discrete
+        // selection signature so the edge is detected here next time; a change
+        // is honored as an implicit acquire even if the flag path is missed.
+        in.mAcquire          = motor_acquire;
+        in.mTargetGeneration = gaze_target_gen;
 
         ALGazeMotor::GazeMotorPose pose;
         ALGazeMotor::step(g.mGazeMotor, in, pose);
+
+        // Fix 2 (gate-transition, byte-identical-whenever-off): the legacy
+        // applied-aim stage below is skipped on this branch, so keep
+        // g.mApplied* / g.mTorsoAim* synchronized to the CURRENT target every
+        // frame -- exactly the value continuous legacy operation settles them
+        // to. A later switch to gate OFF then resumes from target (delta ~ 0,
+        // no slew trigger, mAppliedSlewing clear), leaving no slew glitch.
+        {
+            constexpr F32 CHAIN_PITCH_MAX = 100.f * DEG_TO_RAD;
+            const F32 sync_yaw = llclamp(g.mBodyAimYaw, -F_PI, F_PI);
+            const F32 sync_pitch = llclamp(
+                g.mBodyAimPitch, -CHAIN_PITCH_MAX, CHAIN_PITCH_MAX);
+            g.mAppliedYaw     = sync_yaw;
+            g.mAppliedPitch   = sync_pitch;
+            g.mTorsoAimYaw    = sync_yaw;
+            g.mTorsoAimPitch  = sync_pitch;
+            g.mAppliedValid   = true;
+            g.mAppliedSlewing = false;
+        }
 
         // Recruited joint contributions land in an AnatomicalChainPose so the
         // apply below reads exactly like the legacy joint stage. Head drift is
@@ -4756,6 +4825,57 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         // Head roll = camera-follow roll (world-space, as legacy) plus the
         // motor's dominance/dutch head tilt, applied in the same channel.
         const F32 head_roll = camera_follow_roll + pose.mHeadRoll;
+
+        // Fix 5 (re-integrate the Director large-turn root replant): mMode == 1
+        // rotates the whole avatar root for big gaze shifts (respecting the
+        // 3 deg / 120 ms hysteresis + START/STOP thresholds inside
+        // applyDirectorBodyTurn). The motor's recruited torso/hips compose with
+        // the replant exactly as legacy (llactormover.cpp:5080-5097): subtract
+        // the yaw the root just absorbed from the chain aim and re-recruit the
+        // yaw chain from that residual, so root + upper chain sum to the full
+        // aim instead of double-counting it. Pitch and head roll keep the motor
+        // trajectory. Same guard as legacy (mMode 1, not sitting, full body cue
+        // weight, trigger OR an already-active turn).
+        if (director_runtime && director_runtime->mMode == 1 &&
+            !av->isSitting() && cue_body_weight >= 0.999f)
+        {
+            ALGazeMath::AnatomicalChainPose trigger_chain;
+            ALGazeMath::distributeAnatomicalChain(
+                g.mBodyAimYaw, g.mBodyAimPitch,
+                effective_head_eye_blend, g.mTorsoAmount,
+                body_turn_threshold_deg, trigger_chain, anatomy_scale);
+            if (trigger_chain.mTriggerBodyTurn ||
+                director_runtime->mBodyTurnActive)
+            {
+                director_runtime->mBodyTurnActive = true;
+                applyDirectorBodyTurn(av, *director_runtime, g.mSmoothDir);
+
+                const LLVector3 base_at = LLVector3(1.f, 0.f, 0.f) * rootWorld;
+                const LLVector3 turned_at =
+                    LLVector3(1.f, 0.f, 0.f) * root->getWorldRotation();
+                const F32 base_yaw = atan2f(base_at.mV[VY], base_at.mV[VX]);
+                const F32 turned_yaw =
+                    atan2f(turned_at.mV[VY], turned_at.mV[VX]);
+                const F32 root_delta = llsimple_angle(turned_yaw - base_yaw);
+                const F32 reduced_aim_yaw =
+                    llsimple_angle(pose.mChainAimYaw - root_delta);
+
+                F32 caps_yaw[ALGazeMotor::CHAIN_JOINTS];
+                F32 caps_pitch[ALGazeMotor::CHAIN_JOINTS];
+                ALGazeMotor::effectiveCapacities(ms, caps_yaw, caps_pitch);
+                const F32 recruit_band = (std::isfinite(ms.mSoftRecruitBandDeg)
+                    ? llmax(ms.mSoftRecruitBandDeg, 0.f) : 0.f) * DEG_TO_RAD;
+                const bool eye_only = ALGazeMotor::isEyeOnlyBlend(ms);
+                chain.mHeadYaw = ALGazeMotor::recruitSlot(
+                    reduced_aim_yaw, caps_yaw, recruit_band, 1, eye_only);
+                chain.mNeckYaw = ALGazeMotor::recruitSlot(
+                    reduced_aim_yaw, caps_yaw, recruit_band, 2, eye_only);
+                chain.mTorsoYaw = ALGazeMotor::recruitSlot(
+                    reduced_aim_yaw, caps_yaw, recruit_band, 3, eye_only);
+                chain.mHipsYaw = ALGazeMotor::recruitSlot(
+                    reduced_aim_yaw, caps_yaw, recruit_band, 4, eye_only);
+            }
+        }
 
         const F32 wCueBody = wBody * cue_body_weight;
         const F32 wCueHead = wBody * cue_head_weight;
@@ -4914,11 +5034,45 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             }
         }
 
-        // Eyes: apply the motor's post-VOR, post-micro eye-in-head directly as
-        // a head-local rotation (the motor already solved VOR against
-        // mHeadWorldRot and comfort-limited it). Same priority/cue nlerp path
-        // and total-angle cone guard as the legacy eye stage; convergence and
-        // the legacy micro-saccade term are subsumed by the motor.
+        // Eyes: solve the eye-in-head AFTER the recruited head/neck were just
+        // painted (fix 1, spec 2.6/10.5). The motor supplies the DESIRED WORLD
+        // gaze (pose.mDesiredWorldGaze, carrying the eye saccade dynamics); we
+        // solve eye-in-head against the head's NOW-painted world rotation with
+        // ALGazePolicy::eyeInHeadFromWorldGaze, then re-add the motor's
+        // deterministic micro-life. Solving against the final head (not the
+        // pre-gaze pose) is why the eyes fixate the target instead of
+        // overshooting it by the recruited head rotation. VOR counter-rotation
+        // falls out by construction.
+        //
+        // Fix 6 (split-eye target): when a distinct eyes-only target is set
+        // ("look at camera, eyes at object"), aim the EYES at that target's
+        // world direction while the head keeps aiming at the head target.
+        LLVector3 eye_world_gaze = pose.mDesiredWorldGaze;
+        F32 eye_target_distance = targetDistance;
+        if (eye_target)
+        {
+            LLVector3 split_eye_look;
+            F32 split_eye_distance = 0.f;
+            if (resolveTargetDirection(
+                    *eye_target, split_eye_look, split_eye_distance, false))
+            {
+                const F32 eyeline_yaw = g.mEyelineYawDeg * DEG_TO_RAD;
+                const F32 eyeline_pitch = g.mEyelinePitchDeg * DEG_TO_RAD;
+                if (fabsf(eyeline_yaw) + fabsf(eyeline_pitch) > 1e-4f)
+                {
+                    split_eye_look = ALGazeMath::eyelineOffsetDir(
+                        split_eye_look, root_up, eyeline_yaw, eyeline_pitch);
+                }
+                if (split_eye_look.normVec() > 1e-4f)
+                {
+                    eye_world_gaze = split_eye_look;
+                    eye_target_distance = split_eye_distance;
+                }
+            }
+        }
+
+        F32 lid_follow_pitch = 0.f;
+        bool have_lid_follow_pitch = false;
         const bool eye_priority_active =
             override_head_eyes && priority_env > 0.001f;
         if (wEye > 0.001f || eye_priority_active)
@@ -4926,16 +5080,48 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             const F32 scaled_eye_rot_max = anatomy_scale == 1.f
                 ? GAZE_DIRECTOR_EYE_ROT_MAX
                 : GAZE_DIRECTOR_EYE_ROT_MAX * anatomy_scale;
+            const F32 comfort_yaw_deg = ms.mComfortYawDeg *
+                (anatomy_scale == 1.f ? 1.f : anatomy_scale);
+            const F32 comfort_pitch_deg = ms.mComfortPitchDeg *
+                (anatomy_scale == 1.f ? 1.f : anatomy_scale);
+            const F32 comfort_yaw_rad = comfort_yaw_deg * DEG_TO_RAD;
+            const F32 comfort_pitch_rad = comfort_pitch_deg * DEG_TO_RAD;
             const F32 eye_pose_weight = llclamp(
                 effective_intensity * cue_eye_weight, 0.f, 1.f);
-            auto applyMotorEye = [&](LLJoint* eye)
+
+            // Solve against the painted head, then fold in the motor micro-life.
+            const LLQuaternion headWorld = head->getWorldRotation();
+            F32 eye_yaw = 0.f;
+            F32 eye_pitch = 0.f;
+            ALGazePolicy::eyeInHeadFromWorldGaze(
+                eye_world_gaze, headWorld, comfort_yaw_deg, comfort_pitch_deg,
+                eye_yaw, eye_pitch);
+            eye_yaw += pose.mEyeYawMicro;
+            eye_pitch += pose.mEyePitchMicro;
+
+            // Lid-follow samples this eye pitch (fix 4 composition below).
+            lid_follow_pitch =
+                llclamp(eye_pitch, -comfort_pitch_rad, comfort_pitch_rad);
+            have_lid_follow_pitch = true;
+
+            // Fix 7 (vergence): near targets toe the eyes in from the target
+            // distance and the per-actor mVergenceScale, applied with opposite
+            // sign per eye exactly as the legacy eye stage.
+            const F32 convergence = ALGazeMath::vergenceAngle(
+                eye_target_distance, 0.064f, g.mVergenceScale);
+            auto applyMotorEye = [&](LLJoint* eye, F32 convergence_sign)
             {
                 if (!eye)
                 {
                     return;
                 }
+                const F32 yaw = llclamp(
+                    eye_yaw + convergence_sign * convergence,
+                    -comfort_yaw_rad, comfort_yaw_rad);
+                const F32 pitch =
+                    llclamp(eye_pitch, -comfort_pitch_rad, comfort_pitch_rad);
                 LLQuaternion tgt;
-                tgt.setEulerAngles(0.f, pose.mEyePitch, pose.mEyeYaw);
+                tgt.setEulerAngles(0.f, pitch, yaw);
                 if (constrain_eye_cone)
                 {
                     tgt.constrain(scaled_eye_rot_max);
@@ -4952,17 +5138,21 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     eye->setRotation(nlerp(wEye, eye->getRotation(), tgt));
                 }
             };
-            applyMotorEye(av->getJoint("mEyeLeft"));
-            applyMotorEye(av->getJoint("mEyeRight"));
-            applyMotorEye(av->getJoint("mFaceEyeAltLeft"));
-            applyMotorEye(av->getJoint("mFaceEyeAltRight"));
+            applyMotorEye(av->getJoint("mEyeLeft"), -1.f);
+            applyMotorEye(av->getJoint("mEyeRight"), 1.f);
+            applyMotorEye(av->getJoint("mFaceEyeAltLeft"), -1.f);
+            applyMotorEye(av->getJoint("mFaceEyeAltRight"), 1.f);
         }
 
-        // Tier-0 lids: the motor already composed aperture posture + blink into
-        // one closure per eye (spec 2.5 stages 2-3, pre-folded); cue widen
-        // still opens. Same director-owned, capture-backed Blink_* channel and
-        // ownership gate as the legacy lid stage (applyGaze passes no runtime,
-        // so, like today, only the Director path drives the lids).
+        // Tier-0 lids (fix 4): compose the full lid stack in the legacy order
+        // (spec 2.5 stages) -- (1) gaze-position lid-follow -> (2) affect
+        // aperture posture -> (3) blink override -> (4) cue widen/narrow. The
+        // motor already pre-folded (2) aperture + (3) blink into
+        // pose.mLidClosure*; here we add (1) DirectorGazeLidFollow
+        // (ALGazeMath::lidFollowClosure of the just-solved eye pitch) and the
+        // persona_mod.mLidNarrow cue via max (both gaze-weighted like legacy),
+        // then apply the cue widen. Same director-owned, capture-backed Blink_*
+        // channel and ownership gate as the legacy lid stage.
         static LLCachedControl<F32> gaze_mp_lid_follow(
             gSavedSettings, "DirectorGazeLidFollow", 0.6f);
         if (director_runtime &&
@@ -4971,12 +5161,21 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
              (director_runtime->mCueOverride &&
               director_runtime->mCueLidWiden > 0.001f)))
         {
+            const F32 follow = have_lid_follow_pitch
+                ? ALGazeMath::lidFollowClosure(
+                      lid_follow_pitch, (F32)gaze_mp_lid_follow) * wEye
+                : 0.f;
+            const F32 narrow = persona_mod.mLidNarrow * wEye;
             const F32 widen = 1.f - llclamp(
                 director_runtime->mCueLidWiden, 0.f, 1.f);
-            const F32 closure_l =
-                llclamp(pose.mLidClosureLeft,  0.f, 1.f) * wEye * widen;
-            const F32 closure_r =
-                llclamp(pose.mLidClosureRight, 0.f, 1.f) * wEye * widen;
+            auto compose_lid = [&](F32 motor_closure) -> F32
+            {
+                const F32 c = llmax(
+                    llclamp(motor_closure, 0.f, 1.f), llmax(follow, narrow));
+                return llclamp(c * widen, 0.f, 1.f);
+            };
+            const F32 closure_l = compose_lid(pose.mLidClosureLeft);
+            const F32 closure_r = compose_lid(pose.mLidClosureRight);
             bool visual_params_changed = false;
             auto apply_lid = [&](const char* name, F32 closure)
             {
@@ -4997,6 +5196,18 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             }
         }
         return;
+    }
+
+    // Fix 2 (gate OFF -> ON re-inits on the current target): the gate-on branch
+    // above owns the motor state and calls step(); on THIS legacy path step() is
+    // never called, so its master-gate-off reset is unreachable. Drop any stale
+    // motor state here so a later gate-ON re-initializes on whatever target is
+    // current then instead of slewing from an old committed target. This writes
+    // only g.mGazeMotor, which the legacy path never reads -- gate-off output
+    // stays byte-identical.
+    if (g.mGazeMotor.mInitialized)
+    {
+        g.mGazeMotor = ALGazeMotor::GazeMotorState();
     }
 
     // clamp yaw AND pitch to human head+neck+torso capacity and zero the roll, so
