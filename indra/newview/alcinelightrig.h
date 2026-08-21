@@ -35,6 +35,64 @@ enum class ALCineLightRigSlot : S32
 
 struct ALCineLightRigParamBlob;
 
+// Optional volumetric block carried by a preset. Every field is individually
+// present-flagged: a preset applies ONLY the keys it actually declares, so a
+// preset that omits the whole block (mPresent == false) never touches the
+// user's current volumetric tuning. Mirrors the OptionalSetupGlobals pattern,
+// but is viewer-side (it drives gSavedSettings and per-fixture shaft flags,
+// which the pure ALCineLightRigModel deliberately cannot reference).
+struct CineVolumetricBlock
+{
+    struct OptF32  { bool mHas = false; F32  mValue = 0.f; };
+    struct OptBool { bool mHas = false; bool mValue = false; };
+    struct OptS32  { bool mHas = false; S32  mValue = 0; };
+    struct OptColor
+    {
+        bool mHas = false;
+        F32  mR = 1.f;
+        F32  mG = 1.f;
+        F32  mB = 1.f;
+    };
+
+    // Whether the preset declared a (map) `volumetric` block at all. A malformed
+    // or absent block leaves this false and apply becomes a strict no-op.
+    bool mPresent = false;
+
+    // Per-fixture shaft enables (Key/Fill/Rim/Bg).
+    bool mHasShafts = false;
+    bool mShafts[ALCineLightRigModel::LIGHT_COUNT] = {};
+
+    OptBool  mEnabled;        // BDMergeProjectorVolumetrics (master on/off)
+    OptF32   mMultiplier;     // ...Multiplier
+    OptF32   mDensity;        // ...Density
+    OptF32   mAnisotropy;     // ...Anisotropy
+    OptF32   mFeather;        // ...Feather
+    OptS32   mShadowSamples;  // ...ShadowSamples
+
+    OptF32   mFogStrength;       // ...FogStrength
+    OptF32   mFogGroundDensity;  // ...FogGroundDensity
+    OptF32   mFogFalloff;        // ...FogFalloff
+    OptF32   mFogBase;           // ...FogBase
+
+    OptF32   mNoiseStrength;  // ...NoiseStrength
+    OptF32   mNoiseScale;     // ...NoiseScale
+    OptF32   mNoiseSpeed;     // ...NoiseSpeed
+
+    OptBool  mDust;           // ...Dust (master)
+    OptF32   mDustIntensity;  // ...DustIntensity
+    OptF32   mDustScale;      // ...DustScale
+    OptF32   mDustDrift;      // ...DustDrift
+
+    OptF32   mRimStrength;    // ...RimStrength
+    OptF32   mRimPower;       // ...RimPower
+    OptF32   mRimWrap;        // ...RimWrap
+    OptF32   mRimThreshold;   // ...RimThreshold
+    OptF32   mRimSoftness;    // ...RimSoftness
+
+    OptColor mTint;           // ...Tint
+    OptF32   mTintStrength;   // ...TintStrength
+};
+
 class ALCineLightRig
 {
 public:
@@ -58,6 +116,9 @@ public:
         F32 mMasterEV = 0.f;
         bool mHasMasterTempMired = false;
         F32 mMasterTempMired = 0.f;
+        // Optional per-preset volumetric overrides. Default-constructed
+        // (mPresent == false) for every preset that omits the block.
+        CineVolumetricBlock mVolumetric;
     };
 
     struct SetupEntry
@@ -185,6 +246,11 @@ private:
         ALCineLightRigModel::Globals& globals,
         ALCineLightRigModel::Transforms& transforms);
     void writeSetupToSettings(const ALCineLightRigModel::Setup& setup) const;
+    // Applies a preset's optional volumetric block (clamped to each setting's
+    // documented range) and toggles the four per-fixture shafts. When any shaft
+    // is enabled it also raises the rig shadow policy to "all projectors" so the
+    // shaft is not silently starved of a shadow slot. A no-op when !mPresent.
+    void applyVolumetricBlock(const CineVolumetricBlock& block);
     void updateTransition(const ALCineLightRigModel::LightBase target[
                               ALCineLightRigModel::LIGHT_COUNT],
                           F32 target_radius,

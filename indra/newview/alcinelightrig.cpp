@@ -678,6 +678,104 @@ void applyOptionalSetupGlobals(const OptionalSetupGlobals& globals)
     }
 }
 
+// Parses an OPTIONAL `volumetric` map from a preset. Every scalar is stored with
+// its own present flag so apply touches only the keys the preset declared.
+// Absent block or a non-map block -> mPresent stays false (apply is a no-op),
+// and unknown keys are simply ignored, so a malformed block never rejects the
+// preset (setup parsing is independent of this).
+CineVolumetricBlock volumetricBlockFromLLSD(const LLSD& data)
+{
+    CineVolumetricBlock vol;
+    if (!data.isMap() || !data.has("volumetric"))
+    {
+        return vol;
+    }
+    const LLSD& block = data["volumetric"];
+    if (!block.isMap())
+    {
+        // Malformed (declared but not a map): skip gracefully.
+        return vol;
+    }
+    vol.mPresent = true;
+
+    if (block.has("shafts") && block["shafts"].isArray() &&
+        block["shafts"].size() == LIGHT_COUNT)
+    {
+        vol.mHasShafts = true;
+        for (S32 i = 0; i < LIGHT_COUNT; ++i)
+        {
+            vol.mShafts[i] = block["shafts"][i].asBoolean();
+        }
+    }
+
+    const auto read_f32 = [&block](const char* key,
+                                   CineVolumetricBlock::OptF32& out)
+    {
+        if (block.has(key))
+        {
+            out.mHas = true;
+            out.mValue = static_cast<F32>(block[key].asReal());
+        }
+    };
+    const auto read_bool = [&block](const char* key,
+                                    CineVolumetricBlock::OptBool& out)
+    {
+        if (block.has(key))
+        {
+            out.mHas = true;
+            out.mValue = block[key].asBoolean();
+        }
+    };
+    const auto read_s32 = [&block](const char* key,
+                                   CineVolumetricBlock::OptS32& out)
+    {
+        if (block.has(key))
+        {
+            out.mHas = true;
+            out.mValue = block[key].asInteger();
+        }
+    };
+
+    read_bool("enabled", vol.mEnabled);
+    read_f32("multiplier", vol.mMultiplier);
+    read_f32("density", vol.mDensity);
+    read_f32("anisotropy", vol.mAnisotropy);
+    read_f32("feather", vol.mFeather);
+    read_s32("shadow_samples", vol.mShadowSamples);
+
+    read_f32("fog_strength", vol.mFogStrength);
+    read_f32("fog_ground_density", vol.mFogGroundDensity);
+    read_f32("fog_falloff", vol.mFogFalloff);
+    read_f32("fog_base", vol.mFogBase);
+
+    read_f32("noise_strength", vol.mNoiseStrength);
+    read_f32("noise_scale", vol.mNoiseScale);
+    read_f32("noise_speed", vol.mNoiseSpeed);
+
+    read_bool("dust", vol.mDust);
+    read_f32("dust_intensity", vol.mDustIntensity);
+    read_f32("dust_scale", vol.mDustScale);
+    read_f32("dust_drift", vol.mDustDrift);
+
+    read_f32("rim_strength", vol.mRimStrength);
+    read_f32("rim_power", vol.mRimPower);
+    read_f32("rim_wrap", vol.mRimWrap);
+    read_f32("rim_threshold", vol.mRimThreshold);
+    read_f32("rim_softness", vol.mRimSoftness);
+
+    if (block.has("tint") && block["tint"].isArray() &&
+        block["tint"].size() == 3)
+    {
+        vol.mTint.mHas = true;
+        vol.mTint.mR = static_cast<F32>(block["tint"][0].asReal());
+        vol.mTint.mG = static_cast<F32>(block["tint"][1].asReal());
+        vol.mTint.mB = static_cast<F32>(block["tint"][2].asReal());
+    }
+    read_f32("tint_strength", vol.mTintStrength);
+
+    return vol;
+}
+
 LLSD setupToLLSD(const Setup& input, const Globals& input_globals)
 {
     const Setup setup = sanitizeSetup(input);
@@ -2778,7 +2876,8 @@ ALCineLightRig::masterSetups()
                         setup_globals.mHasMasterEV,
                         setup_globals.mMasterEV,
                         setup_globals.mHasMasterTempMired,
-                        setup_globals.mMasterTempMired
+                        setup_globals.mMasterTempMired,
+                        volumetricBlockFromLLSD(item)
                     });
                 }
             }
@@ -2934,10 +3033,139 @@ ALCineLightRig::setupNamesGrouped() const
     return entries;
 }
 
+void ALCineLightRig::applyVolumetricBlock(const CineVolumetricBlock& block)
+{
+    // Absent block: byte-identical to the shipped behaviour. Nothing volumetric
+    // is read or written, so the user's current tuning is untouched.
+    if (!block.mPresent)
+    {
+        return;
+    }
+
+    const auto clamp_f32 = [](F32 value, F32 lo, F32 hi)
+    {
+        if (!std::isfinite(value))
+        {
+            return lo;
+        }
+        return std::clamp(value, lo, hi);
+    };
+    const auto write_f32 = [&clamp_f32](const std::string& name,
+                                        const CineVolumetricBlock::OptF32& opt,
+                                        F32 lo, F32 hi)
+    {
+        if (opt.mHas)
+        {
+            gSavedSettings.setF32(name, clamp_f32(opt.mValue, lo, hi));
+        }
+    };
+
+    if (block.mEnabled.mHas)
+    {
+        gSavedSettings.setBOOL("BDMergeProjectorVolumetrics",
+                               block.mEnabled.mValue);
+    }
+    // Ranges below are the documented slider bounds from settings.xml.
+    write_f32("BDMergeProjectorVolumetricsMultiplier",
+              block.mMultiplier, 0.01f, 30.f);
+    write_f32("BDMergeProjectorVolumetricsDensity",
+              block.mDensity, 0.f, 4.f);
+    write_f32("BDMergeProjectorVolumetricsAnisotropy",
+              block.mAnisotropy, 0.f, 0.95f);
+    write_f32("BDMergeProjectorVolumetricsFeather",
+              block.mFeather, 0.f, 0.5f);
+    if (block.mShadowSamples.mHas)
+    {
+        gSavedSettings.setU32(
+            "BDMergeProjectorVolumetricsShadowSamples",
+            static_cast<U32>(std::clamp(block.mShadowSamples.mValue, 1, 4)));
+    }
+
+    write_f32("BDMergeProjectorVolumetricsFogStrength",
+              block.mFogStrength, 0.f, 1.f);
+    write_f32("BDMergeProjectorVolumetricsFogGroundDensity",
+              block.mFogGroundDensity, 0.f, 4.f);
+    write_f32("BDMergeProjectorVolumetricsFogFalloff",
+              block.mFogFalloff, 0.5f, 256.f);
+    // FogBase is a region-Z metre altitude with no documented slider bound;
+    // guard finiteness and clamp to a generous region-height envelope.
+    write_f32("BDMergeProjectorVolumetricsFogBase",
+              block.mFogBase, -4096.f, 8192.f);
+
+    write_f32("BDMergeProjectorVolumetricsNoiseStrength",
+              block.mNoiseStrength, 0.f, 1.f);
+    write_f32("BDMergeProjectorVolumetricsNoiseScale",
+              block.mNoiseScale, 0.01f, 2.f);
+    write_f32("BDMergeProjectorVolumetricsNoiseSpeed",
+              block.mNoiseSpeed, 0.f, 2.f);
+
+    if (block.mDust.mHas)
+    {
+        gSavedSettings.setBOOL("BDMergeProjectorVolumetricsDust",
+                               block.mDust.mValue);
+    }
+    write_f32("BDMergeProjectorVolumetricsDustIntensity",
+              block.mDustIntensity, 0.f, 2.f);
+    // DustScale/DustDrift have documented defaults but no hard slider max;
+    // the volume tiles seamlessly so any positive scale is safe.
+    write_f32("BDMergeProjectorVolumetricsDustScale",
+              block.mDustScale, 0.01f, 8.f);
+    write_f32("BDMergeProjectorVolumetricsDustDrift",
+              block.mDustDrift, 0.f, 8.f);
+
+    write_f32("BDMergeProjectorVolumetricsRimStrength",
+              block.mRimStrength, 0.f, 4.f);
+    write_f32("BDMergeProjectorVolumetricsRimPower",
+              block.mRimPower, 0.5f, 8.f);
+    write_f32("BDMergeProjectorVolumetricsRimWrap",
+              block.mRimWrap, 0.f, 1.f);
+    write_f32("BDMergeProjectorVolumetricsRimThreshold",
+              block.mRimThreshold, 0.f, 1.f);
+    write_f32("BDMergeProjectorVolumetricsRimSoftness",
+              block.mRimSoftness, 0.f, 1.f);
+
+    if (block.mTint.mHas)
+    {
+        LLControlVariablePtr ctrl =
+            gSavedSettings.getControl("BDMergeProjectorVolumetricsTint");
+        if (ctrl.notNull())
+        {
+            LLSD tint = LLSD::emptyArray();
+            tint.append(clamp_f32(block.mTint.mR, 0.f, 1.f));
+            tint.append(clamp_f32(block.mTint.mG, 0.f, 1.f));
+            tint.append(clamp_f32(block.mTint.mB, 0.f, 1.f));
+            ctrl->set(tint);
+        }
+    }
+    write_f32("BDMergeProjectorVolumetricsTintStrength",
+              block.mTintStrength, 0.f, 1.f);
+
+    if (block.mHasShafts)
+    {
+        bool any_shaft = false;
+        for (S32 i = 0; i < LIGHT_COUNT; ++i)
+        {
+            setShaftEnabled(i, block.mShafts[i]);
+            any_shaft = any_shaft || block.mShafts[i];
+        }
+        // A shaft needs a shadow slot; a projector excluded by the shadow
+        // policy loses both its shadow and its shaft (see the panel warning and
+        // updateShadowPolicy). Raise the policy to "all projectors compete" (2)
+        // so no shafted fixture is silently dead. Only ever raises, never lowers
+        // an already-permissive policy.
+        if (any_shaft &&
+            gSavedSettings.getS32("CineLightRigShadowMode") < 2)
+        {
+            gSavedSettings.setS32("CineLightRigShadowMode", 2);
+        }
+    }
+}
+
 bool ALCineLightRig::loadSetup(const std::string& name)
 {
     Setup setup;
     OptionalSetupGlobals setup_globals;
+    CineVolumetricBlock volumetric;
     if (const MasterSetup* master = findMasterSetup(name))
     {
         setup = master->mSetup;
@@ -2945,6 +3173,7 @@ bool ALCineLightRig::loadSetup(const std::string& name)
         setup_globals.mMasterEV = master->mMasterEV;
         setup_globals.mHasMasterTempMired = master->mHasMasterTempMired;
         setup_globals.mMasterTempMired = master->mMasterTempMired;
+        volumetric = master->mVolumetric;
     }
     else
     {
@@ -2965,10 +3194,12 @@ bool ALCineLightRig::loadSetup(const std::string& name)
             return false;
         }
         setup_globals = optionalSetupGlobalsFromLLSD(preset);
+        volumetric = volumetricBlockFromLLSD(preset);
     }
     stopFX();
     writeSetupToSettings(setup);
     applyOptionalSetupGlobals(setup_globals);
+    applyVolumetricBlock(volumetric);
     return true;
 }
 

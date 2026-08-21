@@ -943,6 +943,214 @@
         <map><key>yaw</key><real>170</real><key>pitch</key><real>-10</real><key>profile_idx</key><integer>13</integer><key>profile_name</key><string>Deep Amber</string><key>ev</key><real>-3.5</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>6</integer><key>gobo_name</key><string>Soft Dapple</string></map>
       </array>
     </map>
+    <map>
+      <key>name</key><string>High-Angle God Shaft</string>
+      <key>intent</key><string>Steep top-down key raked off-axis with a downward god-shaft through haze; divine skylight.</string>
+      <key>radius</key><real>1.7</real>
+      <key>master_ev</key><real>0.5</real>
+      <key>ratio_lock</key><boolean>true</boolean>
+      <key>ratio_stops</key><real>3.0</real>
+      <key>lights</key><array>
+        <map><key>yaw</key><real>30</real><key>pitch</key><real>70</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-40</real><key>pitch</key><real>10</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-2.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-150</real><key>pitch</key><real>30</real><key>profile_idx</key><integer>4</integer><key>profile_name</key><string>6500K Cool</string><key>ev</key><real>-2.5</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>180</real><key>pitch</key><real>-15</real><key>profile_idx</key><integer>5</integer><key>profile_name</key><string>8000K Moon</string><key>ev</key><real>-3.0</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>false</boolean></map>
+      </array>
+      <key>volumetric</key><map>
+        <key>enabled</key><boolean>true</boolean>
+        <key>shafts</key><array><boolean>true</boolean><boolean>false</boolean><boolean>false</boolean><boolean>false</boolean></array>
+        <key>multiplier</key><real>1.4</real>
+        <key>density</key><real>1.4</real>
+        <key>anisotropy</key><real>0.85</real>
+        <key>feather</key><real>0.2</real>
+        <key>fog_strength</key><real>0.25</real>
+      </map>
+    </map>
+    <map>
+      <key>name</key><string>Overhead Interrogation</string>
+      <key>intent</key><string>Hard overhead snoot straight down, crisp banded shaft, cold and menacing.</string>
+      <key>radius</key><real>1.5</real>
+      <key>master_ev</key><real>0.5</real>
+      <key>ratio_lock</key><boolean>true</boolean>
+      <key>ratio_stops</key><real>4.0</real>
+      <key>lights</key><array>
+        <map><key>yaw</key><real>0</real><key>pitch</key><real>80</real><key>profile_idx</key><integer>2</integer><key>profile_name</key><string>4500K Neut</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-30</real><key>pitch</key><real>0</real><key>profile_idx</key><integer>2</integer><key>profile_name</key><string>4500K Neut</string><key>ev</key><real>-4.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>false</boolean></map>
+        <map><key>yaw</key><real>-150</real><key>pitch</key><real>25</real><key>profile_idx</key><integer>4</integer><key>profile_name</key><string>6500K Cool</string><key>ev</key><real>-3.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>false</boolean></map>
+        <map><key>yaw</key><real>180</real><key>pitch</key><real>-15</real><key>profile_idx</key><integer>5</integer><key>profile_name</key><string>8000K Moon</string><key>ev</key><real>-3.0</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>false</boolean></map>
+      </array>
+      <key>volumetric</key><map>
+        <key>enabled</key><boolean>true</boolean>
+        <key>shafts</key><array><boolean>true</boolean><boolean>false</boolean><boolean>false</boolean><boolean>false</boolean></array>
+        <key>multiplier</key><real>1.2</real>
+        <key>density</key><real>1.2</real>
+        <key>anisotropy</key><real>0.8</real>
+        <key>feather</key><real>0.1</real>
+        <key>shadow_samples</key><integer>4</integer>
+        <key>tint</key><array><real>0.8</real><real>0.9</real><real>1.0</real></array>
+        <key>tint_strength</key><real>0.3</real>
+      </map>
+    </map>
+    <map>
+      <key>name</key><string>Low-Angle Uplight</string>
+      <key>intent</key><string>Warm key from below with rising haze and rim separation; theatrical horror underlight.</string>
+      <key>radius</key><real>1.6</real>
+      <key>master_ev</key><real>0.5</real>
+      <key>ratio_lock</key><boolean>true</boolean>
+      <key>ratio_stops</key><real>2.5</real>
+      <key>lights</key><array>
+        <map><key>yaw</key><real>10</real><key>pitch</key><real>-40</real><key>profile_idx</key><integer>1</integer><key>profile_name</key><string>3200K Tung</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-40</real><key>pitch</key><real>10</real><key>profile_idx</key><integer>1</integer><key>profile_name</key><string>3200K Tung</string><key>ev</key><real>-2.5</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-150</real><key>pitch</key><real>30</real><key>profile_idx</key><integer>4</integer><key>profile_name</key><string>6500K Cool</string><key>ev</key><real>-1.5</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>180</real><key>pitch</key><real>-20</real><key>profile_idx</key><integer>5</integer><key>profile_name</key><string>8000K Moon</string><key>ev</key><real>-3.0</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>false</boolean></map>
+      </array>
+      <key>volumetric</key><map>
+        <key>enabled</key><boolean>true</boolean>
+        <key>shafts</key><array><boolean>true</boolean><boolean>false</boolean><boolean>false</boolean><boolean>false</boolean></array>
+        <key>multiplier</key><real>1.3</real>
+        <key>density</key><real>1.5</real>
+        <key>anisotropy</key><real>0.8</real>
+        <key>fog_strength</key><real>0.3</real>
+        <key>fog_ground_density</key><real>2.0</real>
+        <key>tint</key><array><real>1.0</real><real>0.6</real><real>0.3</real></array>
+        <key>tint_strength</key><real>0.35</real>
+      </map>
+    </map>
+    <map>
+      <key>name</key><string>Footlight Ember</string>
+      <key>category</key><string>Genre / Mood</string>
+      <key>intent</key><string>Firelight-warm key from below with flicker; embery dust and haze in the air. Campfire or stage.</string>
+      <key>radius</key><real>1.5</real>
+      <key>master_ev</key><real>0.5</real>
+      <key>ratio_lock</key><boolean>true</boolean>
+      <key>ratio_stops</key><real>3.0</real>
+      <key>lights</key><array>
+        <map><key>yaw</key><real>0</real><key>pitch</key><real>-25</real><key>profile_idx</key><integer>0</integer><key>profile_name</key><string>2700K Incan</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean><key>flicker_idx</key><integer>1</integer><key>flicker_name</key><string>Firelight</string><key>flicker_amount</key><real>0.4</real></map>
+        <map><key>yaw</key><real>-50</real><key>pitch</key><real>5</real><key>profile_idx</key><integer>0</integer><key>profile_name</key><string>2700K Incan</string><key>ev</key><real>-2.5</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>160</real><key>pitch</key><real>25</real><key>profile_idx</key><integer>1</integer><key>profile_name</key><string>3200K Tung</string><key>ev</key><real>-2.0</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>false</boolean></map>
+        <map><key>yaw</key><real>180</real><key>pitch</key><real>-15</real><key>profile_idx</key><integer>1</integer><key>profile_name</key><string>3200K Tung</string><key>ev</key><real>-3.0</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>false</boolean></map>
+      </array>
+      <key>volumetric</key><map>
+        <key>enabled</key><boolean>true</boolean>
+        <key>shafts</key><array><boolean>true</boolean><boolean>false</boolean><boolean>false</boolean><boolean>false</boolean></array>
+        <key>multiplier</key><real>1.2</real>
+        <key>density</key><real>1.2</real>
+        <key>anisotropy</key><real>0.82</real>
+        <key>fog_strength</key><real>0.2</real>
+        <key>noise_strength</key><real>0.2</real>
+        <key>dust</key><boolean>true</boolean>
+        <key>dust_intensity</key><real>0.4</real>
+        <key>tint</key><array><real>1.0</real><real>0.5</real><real>0.2</real></array>
+        <key>tint_strength</key><real>0.3</real>
+      </map>
+    </map>
+    <map>
+      <key>name</key><string>Soft Mist</string>
+      <key>category</key><string>Genre / Mood</string>
+      <key>intent</key><string>Gentle neutral key revealing a low misty veil; broad wrap, quiet ambient haze.</string>
+      <key>radius</key><real>1.8</real>
+      <key>master_ev</key><real>0.5</real>
+      <key>ratio_lock</key><boolean>true</boolean>
+      <key>ratio_stops</key><real>1.5</real>
+      <key>lights</key><array>
+        <map><key>yaw</key><real>25</real><key>pitch</key><real>35</real><key>profile_idx</key><integer>2</integer><key>profile_name</key><string>4500K Neut</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-40</real><key>pitch</key><real>10</real><key>profile_idx</key><integer>2</integer><key>profile_name</key><string>4500K Neut</string><key>ev</key><real>-1.5</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-150</real><key>pitch</key><real>35</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-1.5</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>180</real><key>pitch</key><real>-15</real><key>profile_idx</key><integer>4</integer><key>profile_name</key><string>6500K Cool</string><key>ev</key><real>-2.0</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>false</boolean></map>
+      </array>
+      <key>volumetric</key><map>
+        <key>enabled</key><boolean>true</boolean>
+        <key>shafts</key><array><boolean>true</boolean><boolean>false</boolean><boolean>false</boolean><boolean>false</boolean></array>
+        <key>multiplier</key><real>0.9</real>
+        <key>density</key><real>0.8</real>
+        <key>anisotropy</key><real>0.7</real>
+        <key>fog_strength</key><real>0.5</real>
+        <key>fog_ground_density</key><real>2.5</real>
+        <key>noise_strength</key><real>0.15</real>
+        <key>rim_strength</key><real>0.6</real>
+        <key>rim_wrap</key><real>0.7</real>
+      </map>
+    </map>
+    <map>
+      <key>name</key><string>Dusty Shafts</string>
+      <key>category</key><string>Genre / Mood</string>
+      <key>intent</key><string>Raking snoot through Venetian-blind bars, dust-filled banded beams from key and rim.</string>
+      <key>radius</key><real>1.7</real>
+      <key>master_ev</key><real>0.5</real>
+      <key>ratio_lock</key><boolean>true</boolean>
+      <key>ratio_stops</key><real>2.5</real>
+      <key>lights</key><array>
+        <map><key>yaw</key><real>35</real><key>pitch</key><real>50</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>1</integer><key>gobo_name</key><string>Venetian Blinds</string></map>
+        <map><key>yaw</key><real>-40</real><key>pitch</key><real>10</real><key>profile_idx</key><integer>2</integer><key>profile_name</key><string>4500K Neut</string><key>ev</key><real>-2.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-150</real><key>pitch</key><real>40</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-1.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>2</integer><key>gobo_name</key><string>Window Panes</string></map>
+        <map><key>yaw</key><real>180</real><key>pitch</key><real>-15</real><key>profile_idx</key><integer>4</integer><key>profile_name</key><string>6500K Cool</string><key>ev</key><real>-2.5</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>false</boolean></map>
+      </array>
+      <key>volumetric</key><map>
+        <key>enabled</key><boolean>true</boolean>
+        <key>shafts</key><array><boolean>true</boolean><boolean>false</boolean><boolean>true</boolean><boolean>false</boolean></array>
+        <key>multiplier</key><real>1.6</real>
+        <key>density</key><real>1.3</real>
+        <key>anisotropy</key><real>0.88</real>
+        <key>feather</key><real>0.12</real>
+        <key>shadow_samples</key><integer>3</integer>
+        <key>dust</key><boolean>true</boolean>
+        <key>dust_intensity</key><real>0.6</real>
+      </map>
+    </map>
+    <map>
+      <key>name</key><string>Heavy Smoke</string>
+      <key>category</key><string>Genre / Mood</string>
+      <key>intent</key><string>Thick medium with key and background shafts punching through banded smoke; noir.</string>
+      <key>radius</key><real>1.8</real>
+      <key>master_ev</key><real>0.5</real>
+      <key>ratio_lock</key><boolean>true</boolean>
+      <key>ratio_stops</key><real>3.0</real>
+      <key>lights</key><array>
+        <map><key>yaw</key><real>30</real><key>pitch</key><real>45</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-45</real><key>pitch</key><real>10</real><key>profile_idx</key><integer>2</integer><key>profile_name</key><string>4500K Neut</string><key>ev</key><real>-2.5</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-150</real><key>pitch</key><real>35</real><key>profile_idx</key><integer>4</integer><key>profile_name</key><string>6500K Cool</string><key>ev</key><real>-1.5</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>180</real><key>pitch</key><real>20</real><key>profile_idx</key><integer>5</integer><key>profile_name</key><string>8000K Moon</string><key>ev</key><real>-1.5</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>true</boolean></map>
+      </array>
+      <key>volumetric</key><map>
+        <key>enabled</key><boolean>true</boolean>
+        <key>shafts</key><array><boolean>true</boolean><boolean>false</boolean><boolean>false</boolean><boolean>true</boolean></array>
+        <key>multiplier</key><real>1.3</real>
+        <key>density</key><real>2.2</real>
+        <key>anisotropy</key><real>0.9</real>
+        <key>shadow_samples</key><integer>4</integer>
+        <key>fog_strength</key><real>0.2</real>
+      </map>
+    </map>
+    <map>
+      <key>name</key><string>Ethereal Haze</string>
+      <key>category</key><string>Genre / Mood</string>
+      <key>intent</key><string>Soft cool key in a low-contrast fog; broad wrapped rim glow, dreamy cold air.</string>
+      <key>radius</key><real>1.9</real>
+      <key>master_ev</key><real>0.5</real>
+      <key>ratio_lock</key><boolean>true</boolean>
+      <key>ratio_stops</key><real>1.0</real>
+      <key>lights</key><array>
+        <map><key>yaw</key><real>25</real><key>pitch</key><real>45</real><key>profile_idx</key><integer>4</integer><key>profile_name</key><string>6500K Cool</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-40</real><key>pitch</key><real>10</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-1.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-150</real><key>pitch</key><real>40</real><key>profile_idx</key><integer>5</integer><key>profile_name</key><string>8000K Moon</string><key>ev</key><real>-1.5</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>180</real><key>pitch</key><real>-15</real><key>profile_idx</key><integer>6</integer><key>profile_name</key><string>10000K Sky</string><key>ev</key><real>-2.0</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>false</boolean></map>
+      </array>
+      <key>volumetric</key><map>
+        <key>enabled</key><boolean>true</boolean>
+        <key>shafts</key><array><boolean>true</boolean><boolean>false</boolean><boolean>false</boolean><boolean>false</boolean></array>
+        <key>multiplier</key><real>1.0</real>
+        <key>density</key><real>0.7</real>
+        <key>anisotropy</key><real>0.7</real>
+        <key>fog_strength</key><real>0.6</real>
+        <key>fog_ground_density</key><real>2.0</real>
+        <key>noise_strength</key><real>0.15</real>
+        <key>rim_strength</key><real>0.5</real>
+        <key>rim_wrap</key><real>0.8</real>
+        <key>rim_softness</key><real>0.6</real>
+        <key>tint</key><array><real>0.8</real><real>0.9</real><real>1.0</real></array>
+        <key>tint_strength</key><real>0.3</real>
+      </map>
+    </map>
   </array>
 </map>
 </llsd>
