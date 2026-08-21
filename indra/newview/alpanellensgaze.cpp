@@ -1005,16 +1005,20 @@ void ALPanelLensGaze::onEyeTargetCommit()
     {
         if (mode < static_cast<S32>(LLActorMover::GazeTarget::CAMERA))
         {
+            // "Follow head" (-1): no independent eye target, eyes track the
+            // head target as before.
             cast.clearEyeGazeTarget(actor);
         }
         else
         {
             LLActorMover::GazeTarget target = cast.hasEyeGazeTarget(actor)
                 ? cast.getEyeGazeTarget(actor) : LLActorMover::GazeTarget();
+            // Range covers CAMERA..RELAXED: the aimed independent targets
+            // plus "Relaxed (eyes idle)", which carries no aim data.
             target.mMode = static_cast<LLActorMover::GazeTarget::EMode>(
                 llclamp(mode,
                         static_cast<S32>(LLActorMover::GazeTarget::CAMERA),
-                        static_cast<S32>(LLActorMover::GazeTarget::OBJECT)));
+                        static_cast<S32>(LLActorMover::GazeTarget::RELAXED)));
             cast.setEyeGazeTarget(actor, target);
         }
     }

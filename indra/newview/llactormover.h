@@ -336,7 +336,12 @@ public:
 
     struct GazeTarget
     {
-        enum EMode { MOTION = 0, CAMERA = 1, CAST_MEMBER = 2, FIXED_POINT = 3, OBJECT = 4 };
+        // RELAXED is eyes-only: the eye-target combo's "Relaxed (eyes idle)"
+        // choice. It carries no aim data -- gazePaint() skips fixation and
+        // vergence for it and drives the eyes with micro-life alone. Never
+        // sent as a HEAD target; setGazeTarget()/the head combo never
+        // produce it.
+        enum EMode { MOTION = 0, CAMERA = 1, CAST_MEMBER = 2, FIXED_POINT = 3, OBJECT = 4, RELAXED = 5 };
         EMode      mMode = MOTION;
         LLUUID     mCastRef;
         LLVector3d mFixedPoint = LLVector3d::zero;

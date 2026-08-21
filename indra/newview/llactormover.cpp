@@ -5124,9 +5124,16 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         // Fix 6 (split-eye target): when a distinct eyes-only target is set
         // ("look at camera, eyes at object"), aim the EYES at that target's
         // world direction while the head keeps aiming at the head target.
+        // Relaxed (eyes idle): the eye-target combo's "eyes don't track"
+        // choice. No fixation, no split-eye direction, no vergence -- the
+        // eyes just sit neutral in the socket plus the motor's own
+        // micro-life. Head/neck/torso above are untouched and keep tracking
+        // the head target normally.
+        const bool eye_relaxed =
+            eye_target && eye_target->mMode == GazeTarget::RELAXED;
         LLVector3 eye_world_gaze = pose.mDesiredWorldGaze;
         F32 eye_target_distance = targetDistance;
-        if (eye_target)
+        if (eye_target && !eye_relaxed)
         {
             LLVector3 split_eye_look;
             F32 split_eye_distance = 0.f;
@@ -5170,11 +5177,21 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             const LLQuaternion headWorld = head->getWorldRotation();
             F32 eye_yaw = 0.f;
             F32 eye_pitch = 0.f;
-            ALGazePolicy::eyeInHeadFromWorldGaze(
-                eye_world_gaze, headWorld, comfort_yaw_deg, comfort_pitch_deg,
-                eye_yaw, eye_pitch);
-            eye_yaw += pose.mEyeYawMicro;
-            eye_pitch += pose.mEyePitchMicro;
+            if (eye_relaxed)
+            {
+                // Neutral eye-in-head (no fixation) plus the motor's own
+                // drift/microsaccade -- eyes stay centred in the socket.
+                eye_yaw = pose.mEyeYawMicro;
+                eye_pitch = pose.mEyePitchMicro;
+            }
+            else
+            {
+                ALGazePolicy::eyeInHeadFromWorldGaze(
+                    eye_world_gaze, headWorld, comfort_yaw_deg, comfort_pitch_deg,
+                    eye_yaw, eye_pitch);
+                eye_yaw += pose.mEyeYawMicro;
+                eye_pitch += pose.mEyePitchMicro;
+            }
 
             // Lid-follow samples this eye pitch (fix 4 composition below).
             lid_follow_pitch =
@@ -5183,8 +5200,9 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
 
             // Fix 7 (vergence): near targets toe the eyes in from the target
             // distance and the per-actor mVergenceScale, applied with opposite
-            // sign per eye exactly as the legacy eye stage.
-            const F32 convergence = ALGazeMath::vergenceAngle(
+            // sign per eye exactly as the legacy eye stage. Relaxed eyes skip
+            // vergence entirely (no target to converge on).
+            const F32 convergence = eye_relaxed ? 0.f : ALGazeMath::vergenceAngle(
                 eye_target_distance, 0.064f, g.mVergenceScale);
             auto applyMotorEye = [&](LLJoint* eye, F32 convergence_sign)
             {
@@ -5406,9 +5424,15 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         look.normVec();
     }
 
+    // Relaxed (eyes idle): no fixation, no split-eye direction, no vergence
+    // -- the eyes just sit neutral in the socket plus the legacy path's own
+    // micro-saccade. Head/neck/torso above are untouched and keep tracking
+    // the head target normally.
+    const bool eye_relaxed =
+        eye_target && eye_target->mMode == GazeTarget::RELAXED;
     LLVector3 eye_look = look;
     F32 eye_target_distance = targetDistance;
-    if (eye_target)
+    if (eye_target && !eye_relaxed)
     {
         LLVector3 split_eye_look;
         F32 split_eye_distance = 0.f;
@@ -5653,7 +5677,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         // joint above received its deterministic drift. Eyes are solved against
         // the final head pose and counter-rotate to keep the world eyeline fixed.
         const LLQuaternion headWorld = head->getWorldRotation();
-        const F32 convergence = ALGazeMath::vergenceAngle(
+        // Relaxed eyes skip vergence entirely (no target to converge on).
+        const F32 convergence = eye_relaxed ? 0.f : ALGazeMath::vergenceAngle(
             eye_target_distance, 0.064f, g.mVergenceScale);
         const F32 eye_pose_weight = llclamp(
             effective_intensity * cue_eye_weight, 0.f, 1.f);
@@ -5667,19 +5692,31 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             {
                 return;
             }
-            const LLVector3 skyward(0.f, 0.f, 1.f);
-            LLVector3 eleft = skyward % eye_look;
-            if (eleft.magVecSquared() < 1e-4f)
+            LLQuaternion tgt;
+            F32 pitch = 0.f, yaw = 0.f;
+            if (eye_relaxed)
             {
-                return;         // looking straight up/down: leave the eyes be
+                // No fixation target: pitch/yaw stay at neutral (0,0) --
+                // tgt is fully rebuilt from pitch/yaw below via
+                // setEulerAngles, so only the micro-saccade added there
+                // moves the eye off-centre.
             }
-            eleft.normVec();
-            LLVector3 eup = eye_look % eleft;
-            eup.normVec();
-            LLQuaternion tgt(eye_look, eleft, eup); // world
-            tgt = tgt * ~headWorld;                 // head-local
-            F32 roll = 0.f, pitch = 0.f, yaw = 0.f;
-            tgt.getEulerAngles(&roll, &pitch, &yaw);
+            else
+            {
+                const LLVector3 skyward(0.f, 0.f, 1.f);
+                LLVector3 eleft = skyward % eye_look;
+                if (eleft.magVecSquared() < 1e-4f)
+                {
+                    return;         // looking straight up/down: leave the eyes be
+                }
+                eleft.normVec();
+                LLVector3 eup = eye_look % eleft;
+                eup.normVec();
+                tgt = LLQuaternion(eye_look, eleft, eup); // world
+                tgt = tgt * ~headWorld;                   // head-local
+                F32 roll = 0.f;
+                tgt.getEulerAngles(&roll, &pitch, &yaw);
+            }
             if (!have_lid_follow_pitch)
             {
                 lid_follow_pitch = llclamp(

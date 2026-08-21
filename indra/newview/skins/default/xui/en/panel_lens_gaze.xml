@@ -73,9 +73,10 @@
      name="gaze_eye_target_lbl" top="154" width="124">Eyes look at</text>
     <combo_box follows="left|top|right" height="20" layout="topleft"
      left="140" name="gaze_eye_target_combo" top="154"
-     tool_tip="Optional independent eye target; Off makes the eyes follow the head target"
+     tool_tip="Relaxed: eyes stay neutral in the socket and only drift/microsaccade (head still tracks its own target). Follow head: eyes track the head target. Camera/Cast member/Fixed point/Object: independent eye target."
      width="336">
-        <combo_box.item label="Off" name="gaze_eyes_off" value="-1" />
+        <combo_box.item label="Follow head" name="gaze_eyes_off" value="-1" />
+        <combo_box.item label="Relaxed (eyes idle)" name="gaze_eyes_relaxed" value="5" />
         <combo_box.item label="Camera" name="gaze_eyes_camera" value="1" />
         <combo_box.item label="Cast member" name="gaze_eyes_cast" value="2" />
         <combo_box.item label="Fixed point" name="gaze_eyes_point" value="3" />
@@ -83,7 +84,7 @@
     </combo_box>
     <button follows="right|top" height="18" image_overlay="Refresh_Off"
      image_top_pad="0" layout="topleft" left="486" name="reset_gaze_eye_target"
-     tool_tip="Reset eye target to Off" top="155" width="14" />
+     tool_tip="Reset eye target to Follow head" top="155" width="14" />
 
     <text follows="left|top" height="20" layout="topleft" left="12"
      name="gaze_priority_lbl" top="180" width="124">Look-at priority</text>

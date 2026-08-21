@@ -56,8 +56,10 @@ bool readEyeGazeAimTarget(const LLSD& data, LLActorMover::GazeTarget& target)
         return false;
     }
     const S32 mode = data["mode"].asInteger();
+    // CAMERA..RELAXED: the aimed independent targets plus "Relaxed (eyes
+    // idle)", which carries no aim data of its own.
     if (mode < static_cast<S32>(LLActorMover::GazeTarget::CAMERA) ||
-        mode > static_cast<S32>(LLActorMover::GazeTarget::OBJECT))
+        mode > static_cast<S32>(LLActorMover::GazeTarget::RELAXED))
     {
         return false;
     }
@@ -561,8 +563,11 @@ LLActorMover::GazeTarget LLDirectorCast::getGazeTarget(const LLUUID& id) const
 void LLDirectorCast::setEyeGazeTarget(
     const LLUUID& id, const LLActorMover::GazeTarget& target)
 {
+    // Valid independent eye modes are CAMERA..OBJECT (the aimed targets) plus
+    // RELAXED (eyes idle, no aim data). MOTION and anything else fall back to
+    // "no eye target" (eyes follow the head).
     if (target.mMode < LLActorMover::GazeTarget::CAMERA ||
-        target.mMode > LLActorMover::GazeTarget::OBJECT)
+        target.mMode > LLActorMover::GazeTarget::RELAXED)
     {
         clearEyeGazeTarget(id);
         return;
