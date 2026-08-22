@@ -1260,40 +1260,41 @@ void ALPanelLensGaze::onClearObject()
         [](LLActorMover::GazeTarget& t) { t.mObjectRef.setNull(); });
 }
 
+// These continuous controls MUST write the per-actor OVERRIDE fields via
+// editGazeTargetsFor (the cast GazeTarget), not the raw mGazes runtime fields.
+// The master Look-at-Camera path reads the cast override every frame
+// (llactormover.cpp applyDirectorLookAt), and performance presets author these
+// same overrides -- so writing only the runtime field left the slider a no-op
+// on the Director path and unable to undo a preset's value (e.g. Torso amount
+// stuck at a preset's 0.4 despite the slider reading 0). setGazeTargetConfig
+// syncs the mGazes runtime fields from these overrides, so the per-actor gaze
+// path stays correct too.
 void ALPanelLensGaze::onBlendCommit()
 {
-    for (const LLUUID& actor : editActors())
-    {
-        LLActorMover::instance().setGazeHeadEyeBlend(
-            actor, (F32)mBlend->getValue().asReal());
-    }
+    const F32 v = llclamp((F32)mBlend->getValue().asReal(), 0.f, 1.f);
+    editGazeTargetsFor(editActors(),
+        [v](LLActorMover::GazeTarget& t) { t.mHeadEyeBlendOverride = v; });
 }
 
 void ALPanelLensGaze::onTorsoCommit()
 {
-    for (const LLUUID& actor : editActors())
-    {
-        LLActorMover::instance().setGazeTorsoAmount(
-            actor, (F32)mTorso->getValue().asReal());
-    }
+    const F32 v = llclamp((F32)mTorso->getValue().asReal(), 0.f, 1.f);
+    editGazeTargetsFor(editActors(),
+        [v](LLActorMover::GazeTarget& t) { t.mTorsoAmountOverride = v; });
 }
 
 void ALPanelLensGaze::onIntensityCommit()
 {
-    for (const LLUUID& actor : editActors())
-    {
-        LLActorMover::instance().setGazeIntensity(
-            actor, (F32)mIntensity->getValue().asReal());
-    }
+    const F32 v = llclamp((F32)mIntensity->getValue().asReal(), 0.f, 1.f);
+    editGazeTargetsFor(editActors(),
+        [v](LLActorMover::GazeTarget& t) { t.mIntensityOverride = v; });
 }
 
 void ALPanelLensGaze::onSmoothingCommit()
 {
-    for (const LLUUID& actor : editActors())
-    {
-        LLActorMover::instance().setGazeSmoothing(
-            actor, (F32)mSmoothing->getValue().asReal());
-    }
+    const F32 v = llclamp((F32)mSmoothing->getValue().asReal(), 0.f, 1.f);
+    editGazeTargetsFor(editActors(),
+        [v](LLActorMover::GazeTarget& t) { t.mSmoothingOverride = v; });
 }
 
 void ALPanelLensGaze::onBreakoffCommit()
@@ -1303,12 +1304,18 @@ void ALPanelLensGaze::onBreakoffCommit()
 
 void ALPanelLensGaze::onEyelineCommit()
 {
-    const F32 yaw = (F32)mEyelineYaw->getValue().asReal();
-    const F32 pitch = (F32)mEyelinePitch->getValue().asReal();
-    for (const LLUUID& actor : editActors())
-    {
-        LLActorMover::instance().setGazeEyelineOffset(actor, yaw, pitch);
-    }
+    // Per-actor override (see the note above onBlendCommit): the Director path
+    // gates eyeline on mEyelineOverride, so the slider must set it. 0/0 is a
+    // harmless no-op (zero offset) even with the flag on.
+    const F32 yaw = llclamp((F32)mEyelineYaw->getValue().asReal(), -15.f, 15.f);
+    const F32 pitch = llclamp((F32)mEyelinePitch->getValue().asReal(), -10.f, 10.f);
+    editGazeTargetsFor(editActors(),
+        [yaw, pitch](LLActorMover::GazeTarget& t)
+        {
+            t.mEyelineOverride = true;
+            t.mEyelineYawDegOverride = yaw;
+            t.mEyelinePitchDegOverride = pitch;
+        });
 }
 
 void ALPanelLensGaze::onPersonaCommit()
