@@ -79,8 +79,8 @@ vec3 applyChannelCurves(vec3 diff);
 #ifdef HAS_POST_EFFECTS
 vec3 computeLensFlare(sampler2D diffuse, sampler2D depth, vec2 uv);
 vec4 applyChromaticAberration(sampler2D tex, vec2 uv);
-vec3 applyGradND(vec3 color, vec2 uv, sampler2D depth);
-vec3 applyPolarizer(vec3 color, vec2 uv, sampler2D depth, float exposure_scale);
+// Note: Graduated ND + Polarizer now run in a dedicated pre-pass
+// (LLPipeline::applyOnLensFilters) ahead of bloom/flare, not here.
 #endif
 
 #ifdef DITHER
@@ -132,13 +132,9 @@ void main()
     diff.rgb = applyExposure(diff.rgb);
 #endif
 
-#ifdef HAS_POST_EFFECTS
-    // Graduated ND + Polarizer in linear HDR, after exposure and before the
-    // grade/tonemap. exposure_scale = 1.0 because exposure is already applied
-    // above (luma is exposed here), so the polarizer glare gate stays calibrated.
-    diff.rgb = applyGradND(diff.rgb, vary_fragcoord, depthMap);
-    diff.rgb = applyPolarizer(diff.rgb, vary_fragcoord, depthMap, 1.0);
-#endif
+    // Graduated ND + Polarizer are applied earlier, in the on-lens pre-pass
+    // (LLPipeline::applyOnLensFilters), so bloom and lens flare — generated
+    // between that pass and this one — see the already-filtered scene.
 
 #ifdef COLOR_GRADE
     // White balance and lift/gamma/gain run in linear light, between exposure

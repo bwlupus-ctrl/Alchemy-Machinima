@@ -4,10 +4,11 @@
  *        whose LLGLSLShader sets `mFeatures.hasPostEffects = true`
  *        (see llviewershadermgr.cpp).
  *
- * Two consumers currently link this file:
- *   - colorCorrectF.glsl  — calls applyChromaticAberration, computeLensFlare,
- *                           applyGradND and applyPolarizer in LINEAR space,
- *                           after exposure and before tonemap/gamma/LUT.
+ * Three consumers currently link this file:
+ *   - colorCorrectF.glsl  — calls applyChromaticAberration and computeLensFlare
+ *                           in LINEAR space, before tonemap/gamma/LUT.
+ *   - onLensFiltersF.glsl — calls applyGradND and applyPolarizer in LINEAR HDR,
+ *                           in a pre-pass ahead of bloom/flare generation.
  *   - blitWithEffectsF.glsl — calls applyVignette, applyCVDCompensation,
  *                           applyFilmGrain, applyDither, applyPreview in
  *                           DISPLAY space, after all grading.
@@ -17,6 +18,8 @@
  *   LINEAR SPACE (colorCorrectF)
  *     vec4 applyChromaticAberration(sampler2D tex, vec2 uv)
  *     vec3 computeLensFlare       (sampler2D diff, sampler2D depth, vec2 uv)
+ *
+ *   LINEAR HDR PRE-PASS (onLensFiltersF)
  *     vec3 applyGradND            (vec3 color, vec2 uv, sampler2D depth)
  *     vec3 applyPolarizer         (vec3 color, vec2 uv, sampler2D depth, float exposure_scale)
  *

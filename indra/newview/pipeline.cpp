@@ -1303,6 +1303,21 @@ bool LLPipeline::allocateScreenBufferInternal(U32 resX, U32 resY)
         //water reflection texture (always needed as scratch space whether or not transparent water is enabled)
         mWaterDis.allocate(resX, resY, screenFormat, true);
 
+        // RAW pre-on-lens scene snapshot for the ReShade bridge. Full-res, same
+        // HDR color format as mRT->screen (GL_RGBA16F), color-only (no depth —
+        // it is only ever a blit destination / bridge-published texture).
+        // HDR-path-only: the non-HDR path releases it, so mReShadeRawSceneValid
+        // can never become true there and the bridge falls back to mRT->screen.
+        if (hdr)
+        {
+            mReShadeSceneRaw.allocate(resX, resY, GL_RGBA16F);
+        }
+        else
+        {
+            mReShadeSceneRaw.release();
+        }
+        mReShadeRawSceneValid = false;
+
         if(RenderScreenSpaceReflections)
         {
             mSceneMap.allocate(resX, resY, screenFormat, true);
@@ -1909,6 +1924,9 @@ void LLPipeline::releaseGLBuffers()
     releaseLUTBuffers();
 
     mWaterDis.release();
+
+    mReShadeSceneRaw.release();
+    mReShadeRawSceneValid = false;
 
     mSceneMap.release();
 
@@ -11386,11 +11404,6 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst, bool app
             }
         }
 
-        // Graduated ND + Polarizer: resolve settings/presets and set their packed
-        // uniforms on this shader; the filters are applied inside colorCorrectF in
-        // linear HDR (after exposure, before grade/tonemap).
-        setOnLensFilterUniforms(shader, src);
-
         if (apply_tonemap)
         {
             // Exposure parameters
@@ -11714,16 +11727,27 @@ void LLPipeline::copyScreenSpaceReflections(LLRenderTarget* src, LLRenderTarget*
     }
 }
 
-// Resolve the Graduated ND + Polarizer settings/presets and set their packed
-// uniforms on the color-correct shader. The filters are applied inside
-// colorCorrectF (in linear HDR, after exposure, before grade/tonemap). Called
-// from colorCorrect() after the shader is bound. The uniforms are set
-// unconditionally (density/strength resolve to 0 when disabled or no_post), so
-// the shader no-ops and no stale value can leak — byte-identical when off.
-void LLPipeline::setOnLensFilterUniforms(LLGLSLShader* shader, LLRenderTarget* src)
+// On-lens filters (Graduated ND + Polarizer) applied to the linear HDR scene
+// BEFORE bloom/flare generation, so those optics respect the filtered scene the
+// way a real on-lens ND/polarizer does. Exposure is metered upstream from the
+// clean scene, so the ND can hold the sky without the meter compensating.
+//
+// Reads a snapshot copy of the scene (mWaterDis, an RGBA16F scratch that is free
+// during post) and writes the filtered result back into `screen`; every later
+// pass reads `screen` unchanged. Self-gates to a no-op (no copy, no draw) when
+// neither filter is active, preserving byte-identical output when disabled.
+void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
 {
+    if (!gOnLensFiltersProgram.isComplete())
+        return;
+
+    // Cheap enable gate FIRST — when both filters are off this returns before any
+    // GPU profiling zone, settings resolve, copy, or draw, keeping the disabled
+    // hot path minimal (only two cached-control reads).
     static LLCachedControl<bool> gnd_enabled(gSavedSettings, "RenderGradNDEnabled", false);
     static LLCachedControl<bool> pol_enabled(gSavedSettings, "RenderPolarizerEnabled", false);
+    if (!gnd_enabled() && !pol_enabled())
+        return;
 
     // "No post-processing" snapshots must stay filter-free.
     static LLCachedControl<bool> should_auto_adjust(gSavedSettings, "RenderSkyAutoAdjustLegacy", false);
@@ -11731,6 +11755,10 @@ void LLPipeline::setOnLensFilterUniforms(LLGLSLShader* shader, LLRenderTarget* s
     LLSettingsSky::ptr_t psky = LLEnvironment::instance().getCurrentSky();
     bool legacy_gamma = psky->getReflectionProbeAmbiance(should_auto_adjust) == 0.f;
     bool no_post = gSnapshotNoPost || legacy_gamma || (buildNoPost && gFloaterTools && gFloaterTools->isAvailable());
+    if (no_post)
+        return;
+
+    LL_PROFILE_GPU_ZONE("on-lens filters");
 
     // --- Graduated ND ---------------------------------------------------------
     static LLCachedControl<U32>  gnd_preset(gSavedSettings, "RenderGradNDPreset", 0);
@@ -11746,7 +11774,7 @@ void LLPipeline::setOnLensFilterUniforms(LLGLSLShader* shader, LLRenderTarget* s
     F32 density = 0.f, angle_deg = 0.f, position = 0.5f, softness = 0.35f;
     F32 sky_confine = 1.f, sun_weight = 0.f, sun_radius = 0.6f, flip = 0.f;
 
-    if (gnd_enabled() && !no_post)
+    if (gnd_enabled()) // no_post already returned above
     {
         switch (gnd_preset())
         {
@@ -11792,7 +11820,7 @@ void LLPipeline::setOnLensFilterUniforms(LLGLSLShader* shader, LLRenderTarget* s
     F32 p_strength = 0.f, p_sky_sat = 1.f, p_sky_darken = 0.f, p_band_radius = 0.5f;
     F32 p_glare = 0.f, p_glare_thr = 2.f, p_glare_depth = 0.98f, p_auto_band = 0.f;
 
-    if (pol_enabled() && !no_post)
+    if (pol_enabled()) // no_post already returned above
     {
         switch (pol_preset())
         {
@@ -11821,11 +11849,30 @@ void LLPipeline::setOnLensFilterUniforms(LLGLSLShader* shader, LLRenderTarget* s
     p_glare_thr   = llclamp(p_glare_thr, 0.5f, 8.f);
     p_glare_depth = llclamp(p_glare_depth, 0.5f, 1.f);
 
-    // --- Sun projection (shared by ND sun-weight + polarizer auto-band) -------
-    // Project the sun to screen UV so the ND sun-weight boost and the polarizer
-    // auto-band track the actual light; has_sun gates it off when the sun is not
-    // on-screen (or not up / behind camera).
-    F32 aspect  = (src && src->getHeight() > 0) ? (F32)src->getWidth() / (F32)src->getHeight() : 1.f;
+    // Nothing to do — skip the pass entirely (byte-identical, zero cost).
+    if (density <= 0.f && p_strength <= 0.f)
+        return;
+
+    // ReShade decouple: past every early-out, this pass WILL modify `screen`,
+    // so snapshot the RAW (pre-on-lens) scene first for the ReShade bridge —
+    // RTGI-style effects must reflect the unfiltered surfaces (a lens filter
+    // does not change surface-to-surface bounce). COLOR-only framebuffer blit
+    // via copyContents — NOT copyRenderTarget, whose shader samples
+    // deferredScreen's depth (which `screen` shares) and would create a depth
+    // feedback loop; a blit samples no textures. When decouple is off or the
+    // target is unallocated, mReShadeRawSceneValid stays false (reset each
+    // frame in renderFinalize) and the bridge publishes mRT->screen as before.
+    static LLCachedControl<bool> reshade_decouple(gSavedSettings, "RenderReShadeDecoupleOnLens", true);
+    if (reshade_decouple() && mReShadeSceneRaw.getWidth() > 0)
+    {
+        mReShadeSceneRaw.copyContents(*screen,
+                                      0, 0, screen->getWidth(), screen->getHeight(),
+                                      0, 0, mReShadeSceneRaw.getWidth(), mReShadeSceneRaw.getHeight(),
+                                      GL_COLOR_BUFFER_BIT, GL_NEAREST);
+        mReShadeRawSceneValid = true;
+    }
+
+    F32 aspect  = (screen->getHeight() > 0) ? (F32)screen->getWidth() / (F32)screen->getHeight() : 1.f;
     F32 sun_u = 0.5f, sun_v = 0.5f, has_sun = 0.f;
     bool need_sun = (density > 0.f && sun_weight > 0.f) || (p_strength > 0.f && p_auto_band > 0.5f);
     if (need_sun)
@@ -11851,13 +11898,50 @@ void LLPipeline::setOnLensFilterUniforms(LLGLSLShader* shader, LLRenderTarget* s
         }
     }
 
-    // The filters run post-exposure in colorCorrectF, so the polarizer glare gate
-    // uses exposed luma directly (exposure_scale = 1.0 passed at the call site).
-    shader->uniform4f(LLShaderMgr::GRADND_PARAMS,     density, angle_rad, position, softness);
-    shader->uniform4f(LLShaderMgr::GRADND_PARAMS2,    sky_confine, sun_weight, sun_radius, flip);
-    shader->uniform4f(LLShaderMgr::POLARIZER_PARAMS,  p_strength, p_sky_sat, p_sky_darken, p_band_radius);
-    shader->uniform4f(LLShaderMgr::POLARIZER_PARAMS2, p_glare, p_glare_thr, p_glare_depth, p_auto_band);
-    shader->uniform4f(LLShaderMgr::GRADND_SUN,        sun_u, sun_v, has_sun, aspect);
+    // Manual exposure knob; combined with the auto-exposure map in-shader so the
+    // polarizer glare gate thresholds against the SAME exposed luma the tonemap
+    // will apply later. The gate compares absolute luma and does NOT commute with
+    // exposure (unlike the ND multiply), so it must be exposure-aware here.
+    static LLCachedControl<F32> render_exposure(gSavedSettings, "RenderExposure", 1.f);
+    F32 exposure = llclamp(render_exposure(), 0.5f, 4.f);
+
+    // Filter the scene INTO the scratch and copy back. mWaterDis owns its own
+    // depth buffer, so sampling deferredScreen's depth while drawing here creates
+    // no feedback loop; `screen` shares deferredScreen's depth, so drawing
+    // directly into `screen` while sampling that depth would be undefined.
+    mWaterDis.bindTarget();
+    {
+        LLGLDepthTest depth(GL_FALSE, GL_FALSE);
+        LLGLDisable blend(GL_BLEND);
+
+        gOnLensFiltersProgram.bind();
+        gOnLensFiltersProgram.bindTexture(LLShaderMgr::DEFERRED_DIFFUSE, screen, false, LLTexUnit::TFO_POINT);
+        gOnLensFiltersProgram.bindTexture(LLShaderMgr::DEFERRED_DEPTH, &mRT->deferredScreen, true);
+        gOnLensFiltersProgram.bindTexture(LLShaderMgr::EXPOSURE_MAP, &mExposureMap);
+        gOnLensFiltersProgram.uniform1f(LLShaderMgr::EXPOSURE, exposure);
+
+        gOnLensFiltersProgram.uniform4f(LLShaderMgr::GRADND_PARAMS,     density, angle_rad, position, softness);
+        gOnLensFiltersProgram.uniform4f(LLShaderMgr::GRADND_PARAMS2,    sky_confine, sun_weight, sun_radius, flip);
+        gOnLensFiltersProgram.uniform4f(LLShaderMgr::POLARIZER_PARAMS,  p_strength, p_sky_sat, p_sky_darken, p_band_radius);
+        gOnLensFiltersProgram.uniform4f(LLShaderMgr::POLARIZER_PARAMS2, p_glare, p_glare_thr, p_glare_depth, p_auto_band);
+        gOnLensFiltersProgram.uniform4f(LLShaderMgr::GRADND_SUN,        sun_u, sun_v, has_sun, aspect);
+
+        mScreenTriangleVB->setBuffer();
+        mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+
+        gOnLensFiltersProgram.unbind();
+    }
+    mWaterDis.flush();
+
+    // Copy the filtered scene back into `screen` for the downstream passes
+    // (bloom/flare/tonemap). Use a raw COLOR-only framebuffer blit — NOT
+    // copyRenderTarget, whose shader samples deferredScreen's depth (which
+    // `screen` shares), reintroducing the depth feedback loop. A blit samples no
+    // textures, so it is feedback-free. GL_COLOR_BUFFER_BIT leaves depth alone.
+    screen->copyContents(mWaterDis,
+                         0, 0, mWaterDis.getWidth(), mWaterDis.getHeight(),
+                         0, 0, screen->getWidth(), screen->getHeight(),
+                         GL_COLOR_BUFFER_BIT, GL_NEAREST);
 }
 
 void LLPipeline::generateGlow(LLRenderTarget* src)
@@ -15935,6 +16019,12 @@ void LLPipeline::renderFinalize()
 
     assertInitialized();
 
+    // ReShade decouple: assume no raw-scene capture until applyOnLensFilters
+    // actually performs one this frame. Reset unconditionally (including the
+    // non-HDR path) so a stale snapshot from a previous frame can never be
+    // published by the bridge.
+    mReShadeRawSceneValid = false;
+
     gGL.color4f(1, 1, 1, 1);
     LLGLDepthTest depth(GL_FALSE);
     LLGLDisable blend(GL_BLEND);
@@ -15961,6 +16051,12 @@ void LLPipeline::renderFinalize()
         generateLuminance(&mRT->screen, &mLuminanceMap);
 
         generateExposure(&mLuminanceMap, &mExposureMap);
+
+        // On-lens filters (Graduated ND + Polarizer) run HERE — after exposure is
+        // metered from the clean scene, but before bloom/flare are generated — so
+        // those optics respect the filtered scene like a real on-lens filter.
+        // Self-gates to a no-op when both filters are disabled.
+        applyOnLensFilters(&mRT->screen);
 
         // HDR bloom runs pre-tonemap against the linear scene buffer. The pyramid
         // is generated here; the additive composite is folded into colorCorrect's
