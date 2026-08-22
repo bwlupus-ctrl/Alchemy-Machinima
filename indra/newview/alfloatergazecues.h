@@ -49,8 +49,29 @@ private:
     void onClearObject();
     void onQuickMacro(ALGazeMath::EGazeCueMacro macro);
 
+    // [Machinima] Phase 3: influence lane -- add/update/delete over a full
+    // presentation-time key list, mirroring the cue list's own add/edit/
+    // delete path (a separate scroll_list/editor pair; the influence track is
+    // stateless/independent, not embedded in cue targets). Uses its own
+    // "seen revision" against the SAME shared LLDirectorCast::mGazeCueRevision
+    // counter the cue list already watches, so either lane changing (from
+    // this floater, the panel's inline Set/Update/Delete, or a scene load)
+    // refreshes independent of floater lifetime.
+    LLDirectorCast::GazeInfluenceKey defaultInfluenceKey() const;
+    S32 selectedInfluenceIndex() const;
+    void refreshInfluenceList(bool force = false);
+    void loadInfluenceEditor(const LLDirectorCast::GazeInfluenceKey& key);
+    LLDirectorCast::GazeInfluenceKey readInfluenceEditor() const;
+    void selectInfluenceKey(const LLDirectorCast::GazeInfluenceKey& key);
+
+    void onInfluenceSelected();
+    void onInfluenceAdd();
+    void onInfluenceUpdate();
+    void onInfluenceDelete();
+
     LLUUID mActorId;
     U64 mSeenRevision = U64(-1);
+    U64 mSeenInfluenceRevision = U64(-1);
     std::string mCastSignature;
     LLActorMover::GazeTarget mEditorTarget;
 
@@ -73,6 +94,14 @@ private:
     LLSpinCtrl* mDwell = nullptr;
     LLSpinCtrl* mHoldFrames = nullptr;
     LLCheckBoxCtrl* mResidue = nullptr;
+
+    LLScrollListCtrl* mInfluenceList = nullptr;
+    LLButton* mInfluenceAdd = nullptr;
+    LLButton* mInfluenceUpdate = nullptr;
+    LLButton* mInfluenceDelete = nullptr;
+    LLSpinCtrl* mInfluenceTime = nullptr;
+    LLSpinCtrl* mInfluenceValue = nullptr;
+    LLComboBox* mInfluenceInterp = nullptr;
 };
 
 #endif // AL_ALFLOATERGAZECUES_H

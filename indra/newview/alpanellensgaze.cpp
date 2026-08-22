@@ -316,6 +316,30 @@ bool ALPanelLensGaze::postBuild()
     mBlend = getChild<LLSliderCtrl>("gaze_blend_slider");
     mTorso = getChild<LLSliderCtrl>("gaze_torso_slider");
     mIntensity = getChild<LLSliderCtrl>("gaze_intensity_slider");
+    mComposition = getChild<LLComboBox>("gaze_composition_combo");
+    mCompositionMix = getChild<LLSliderCtrl>("gaze_composition_mix_slider");
+    mInfluence = getChild<LLSliderCtrl>("gaze_influence_slider");
+    mInfluenceSet = getChild<LLButton>("btn_gaze_influence_set");
+    mInfluenceDelete = getChild<LLButton>("btn_gaze_influence_delete");
+    mChestShare = getChild<LLSliderCtrl>("gaze_chest_share_slider");
+    mLimitMode = getChild<LLComboBox>("gaze_limit_mode_combo");
+    mLimitEyeYaw = getChild<LLSpinCtrl>("gaze_limit_eye_yaw_spinner");
+    mLimitEyePitch = getChild<LLSpinCtrl>("gaze_limit_eye_pitch_spinner");
+    mLimitHeadYaw = getChild<LLSpinCtrl>("gaze_limit_head_yaw_spinner");
+    mLimitHeadPitch = getChild<LLSpinCtrl>("gaze_limit_head_pitch_spinner");
+    mLimitNeckYaw = getChild<LLSpinCtrl>("gaze_limit_neck_yaw_spinner");
+    mLimitNeckPitch = getChild<LLSpinCtrl>("gaze_limit_neck_pitch_spinner");
+    mLimitSpineYaw = getChild<LLSpinCtrl>("gaze_limit_spine_yaw_spinner");
+    mLimitSpinePitch = getChild<LLSpinCtrl>("gaze_limit_spine_pitch_spinner");
+    mLimitHipsYaw = getChild<LLSpinCtrl>("gaze_limit_hips_yaw_spinner");
+    mLimitHipsPitch = getChild<LLSpinCtrl>("gaze_limit_hips_pitch_spinner");
+    mLimitEyeApplyYaw = getChild<LLSpinCtrl>("gaze_limit_eyeapply_yaw_spinner");
+    mLimitEyeApplyPitch = getChild<LLSpinCtrl>("gaze_limit_eyeapply_pitch_spinner");
+    mLimitEyeRadial = getChild<LLSpinCtrl>("gaze_limit_eye_radial_spinner");
+    mLeanCurve = getChild<LLComboBox>("gaze_lean_curve_combo");
+    mLeanThreshold = getChild<LLSpinCtrl>("gaze_lean_threshold_spinner");
+    mLeanSoftness = getChild<LLSpinCtrl>("gaze_lean_softness_spinner");
+    mLeanMax = getChild<LLSpinCtrl>("gaze_lean_max_spinner");
     mSmoothing = getChild<LLSliderCtrl>("gaze_smoothing_slider");
     mMicroLife = getChild<LLSliderCtrl>("gaze_microlife_slider");
     mBlinks = getChild<LLCheckBoxCtrl>("gaze_blinks_check");
@@ -371,6 +395,29 @@ bool ALPanelLensGaze::postBuild()
     mBlend->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBlendCommit(); });
     mTorso->setCommitCallback([this](LLUICtrl*, const LLSD&) { onTorsoCommit(); });
     mIntensity->setCommitCallback([this](LLUICtrl*, const LLSD&) { onIntensityCommit(); });
+    mComposition->setCommitCallback([this](LLUICtrl*, const LLSD&) { onCompositionCommit(); });
+    mCompositionMix->setCommitCallback([this](LLUICtrl*, const LLSD&) { onCompositionMixCommit(); });
+    mInfluenceSet->setCommitCallback([this](LLUICtrl*, const LLSD&) { onInfluenceSet(); });
+    mInfluenceDelete->setCommitCallback([this](LLUICtrl*, const LLSD&) { onInfluenceDelete(); });
+    mChestShare->setCommitCallback([this](LLUICtrl*, const LLSD&) { onChestShareCommit(); });
+    mLimitMode->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitModeCommit(); });
+    mLimitEyeYaw->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitProfileCommit(); });
+    mLimitEyePitch->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitProfileCommit(); });
+    mLimitHeadYaw->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitProfileCommit(); });
+    mLimitHeadPitch->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitProfileCommit(); });
+    mLimitNeckYaw->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitProfileCommit(); });
+    mLimitNeckPitch->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitProfileCommit(); });
+    mLimitSpineYaw->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitProfileCommit(); });
+    mLimitSpinePitch->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitProfileCommit(); });
+    mLimitHipsYaw->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitProfileCommit(); });
+    mLimitHipsPitch->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitProfileCommit(); });
+    mLimitEyeApplyYaw->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitProfileCommit(); });
+    mLimitEyeApplyPitch->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitProfileCommit(); });
+    mLimitEyeRadial->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitProfileCommit(); });
+    mLeanCurve->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLeanCurveCommit(); });
+    mLeanThreshold->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLeanThresholdCommit(); });
+    mLeanSoftness->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLeanSoftnessCommit(); });
+    mLeanMax->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLeanMaxCommit(); });
     mSmoothing->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSmoothingCommit(); });
     mBreakoff->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBreakoffCommit(); });
     mEyelineYaw->setCommitCallback([this](LLUICtrl*, const LLSD&) { onEyelineCommit(); });
@@ -535,6 +582,68 @@ bool ALPanelLensGaze::postBuild()
         {
             editGazeTargetsFor(editActors(),
                 [](LLActorMover::GazeTarget& t) { t.mCameraModeOverride = -1; });
+        });
+
+    // [Machinima] Phase 2/4 structural resets: restore the -1/-1.f inherit
+    // sentinels on the edited actor(s), never a copied global value, mirroring
+    // reset_gaze_priority/reset_gaze_camera_roll above.
+    getChild<LLButton>("reset_gaze_composition")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            editGazeTargetsFor(editActors(),
+                [](LLActorMover::GazeTarget& t) { t.mCompositionOverride = -1; });
+        });
+    getChild<LLButton>("reset_gaze_composition_mix")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            editGazeTargetsFor(editActors(),
+                [](LLActorMover::GazeTarget& t) { t.mCompositionMixOverride = -1.f; });
+        });
+    getChild<LLButton>("reset_gaze_chest_share")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            editGazeTargetsFor(editActors(),
+                [](LLActorMover::GazeTarget& t) { t.mChestShareOverride = -1.f; });
+        });
+    getChild<LLButton>("reset_gaze_limit_mode")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            editGazeTargetsFor(editActors(),
+                [](LLActorMover::GazeTarget& t) { t.mLimitProfileModeOverride = -1; });
+        });
+    getChild<LLButton>("reset_gaze_limit_profile")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            // The profile struct has no per-field inherit sentinel (it is only
+            // ever consulted while this actor's Limits source is Custom), so
+            // reset restores its documented default constants rather than -1.
+            editGazeTargetsFor(editActors(),
+                [](LLActorMover::GazeTarget& t)
+                { t.mLimitProfile = ALGazeMath::AnatomicalLimitProfile(); });
+        });
+    getChild<LLButton>("reset_gaze_lean_curve")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            editGazeTargetsFor(editActors(),
+                [](LLActorMover::GazeTarget& t) { t.mLeanCurveOverride = -1; });
+        });
+    getChild<LLButton>("reset_gaze_lean_threshold")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            editGazeTargetsFor(editActors(),
+                [](LLActorMover::GazeTarget& t) { t.mLeanThresholdDegOverride = -1.f; });
+        });
+    getChild<LLButton>("reset_gaze_lean_softness")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            editGazeTargetsFor(editActors(),
+                [](LLActorMover::GazeTarget& t) { t.mLeanSoftnessDegOverride = -1.f; });
+        });
+    getChild<LLButton>("reset_gaze_lean_max")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            editGazeTargetsFor(editActors(),
+                [](LLActorMover::GazeTarget& t) { t.mLeanMaxDegOverride = -1.f; });
         });
     return true;
 }
@@ -1049,6 +1158,122 @@ void ALPanelLensGaze::refreshControls()
     sync_f32(mExaggerate, slot_target.mExaggerateOverride >= 0.f
              ? slot_target.mExaggerateOverride : g_exag);
 
+    // [Machinima] Phase 2: pose composition. Override-or-global like the rows
+    // above; Animation retention is shown/enabled only for Blend.
+    const S32 g_composition = gSavedSettings.getS32("DirectorGazeComposition");
+    const S32 composition = slot_target.mCompositionOverride >= 0
+        ? slot_target.mCompositionOverride : g_composition;
+    mComposition->setEnabled(have_slot);
+    if (!isEditing(mComposition) && mComposition->getValue().asInteger() != composition)
+    {
+        mComposition->setValue(composition);
+    }
+    const bool composition_blend =
+        composition == static_cast<S32>(LLActorMover::GAZE_COMPOSE_BLEND);
+    mCompositionMix->setVisible(composition_blend);
+    mCompositionMix->setEnabled(have_slot && composition_blend);
+    sync_f32(mCompositionMix, slot_target.mCompositionMixOverride >= 0.f
+             ? slot_target.mCompositionMixOverride
+             : gSavedSettings.getF32("DirectorGazeCompositionMix"));
+
+    // [Machinima] Phase 3: keyframed influence lane. Displays the EVALUATED
+    // influence at the current presentation-time playhead (not an override
+    // field), so an operator has a live starting point before Set/Update.
+    // Disabled in All -- per-actor tracks are not safely represented by the
+    // single display actor.
+    const bool influence_editable = have_slot && !mEditAll;
+    mInfluence->setEnabled(influence_editable);
+    mInfluenceSet->setEnabled(influence_editable);
+    mInfluenceDelete->setEnabled(influence_editable);
+    if (!isEditing(mInfluence))
+    {
+        const F64 playhead = llmax(
+            LLPresentationTime::currentFrame().presentation_time, 0.0);
+        const F32 influence = have_slot
+            ? LLDirectorCast::evaluateGazeInfluence(
+                  cast.getGazeInfluenceKeys(slot_actor), playhead)
+            : 1.f;
+        sync_slider(mInfluence, influence);
+    }
+
+    // [Machinima] Phase 2: planted-spine chest split. Enabled only when the
+    // RESOLVED ownership scope (override-or-global, same `priority` computed
+    // above) is Planted spine -- an inherited global Planted-spine default
+    // should still let an operator tune chest share for this actor.
+    const bool planted_spine =
+        priority == static_cast<S32>(LLActorMover::GAZE_PRIORITY_PLANTED_SPINE);
+    mChestShare->setEnabled(have_slot && planted_spine);
+    sync_f32(mChestShare, slot_target.mChestShareOverride >= 0.f
+             ? slot_target.mChestShareOverride
+             : gSavedSettings.getF32("DirectorGazeChestShare"));
+
+    // [Machinima] Phase 2: opt-in per-joint cone limit profile. "Limits
+    // source" shows the actor's RAW override (-1/0/1); Inherit is a directly
+    // selectable, persistent choice here, not merely a reset target. The grid
+    // always edits this actor's OWN profile, so it is enabled only when this
+    // actor's own override is explicitly Custom (1) -- an inherited global
+    // custom profile is resolved from DirectorGazeLimit* settings instead,
+    // which this per-actor grid does not represent.
+    const S32 limit_mode = have_slot
+        ? llclamp(slot_target.mLimitProfileModeOverride, -1, 1) : -1;
+    mLimitMode->setEnabled(have_slot);
+    if (!isEditing(mLimitMode) && mLimitMode->getValue().asInteger() != limit_mode)
+    {
+        mLimitMode->setValue(limit_mode);
+    }
+    const bool limit_custom = limit_mode == 1;
+    LLUICtrl* limit_grid[] = {
+        mLimitEyeYaw, mLimitEyePitch, mLimitHeadYaw, mLimitHeadPitch,
+        mLimitNeckYaw, mLimitNeckPitch, mLimitSpineYaw, mLimitSpinePitch,
+        mLimitHipsYaw, mLimitHipsPitch, mLimitEyeApplyYaw, mLimitEyeApplyPitch,
+        mLimitEyeRadial
+    };
+    for (LLUICtrl* control : limit_grid)
+    {
+        control->setEnabled(have_slot && limit_custom);
+    }
+    const ALGazeMath::AnatomicalLimitProfile& profile = slot_target.mLimitProfile;
+    sync_f32(mLimitEyeYaw, profile.mEyeYawDeg);
+    sync_f32(mLimitEyePitch, profile.mEyePitchDeg);
+    sync_f32(mLimitHeadYaw, profile.mHeadYawDeg);
+    sync_f32(mLimitHeadPitch, profile.mHeadPitchDeg);
+    sync_f32(mLimitNeckYaw, profile.mNeckYawDeg);
+    sync_f32(mLimitNeckPitch, profile.mNeckPitchDeg);
+    sync_f32(mLimitSpineYaw, profile.mSpineYawDeg);
+    sync_f32(mLimitSpinePitch, profile.mSpinePitchDeg);
+    sync_f32(mLimitHipsYaw, profile.mHipsYawDeg);
+    sync_f32(mLimitHipsPitch, profile.mHipsPitchDeg);
+    sync_f32(mLimitEyeApplyYaw, profile.mEyeApplyYawDeg);
+    sync_f32(mLimitEyeApplyPitch, profile.mEyeApplyPitchDeg);
+    sync_f32(mLimitEyeRadial, profile.mEyeRadialDeg);
+
+    // [Machinima] Phase 4: angle-driven spine-lean curve. Threshold/Softness/
+    // Max are enabled only for Angle ease AND the RESOLVED Planted-spine scope
+    // (v1 is Planted-spine only), matching the design doc.
+    const S32 g_lean_curve = gSavedSettings.getS32("DirectorGazeLeanCurve");
+    const S32 lean_curve = slot_target.mLeanCurveOverride >= 0
+        ? slot_target.mLeanCurveOverride : g_lean_curve;
+    mLeanCurve->setEnabled(have_slot);
+    if (!isEditing(mLeanCurve) && mLeanCurve->getValue().asInteger() != lean_curve)
+    {
+        mLeanCurve->setValue(lean_curve);
+    }
+    const bool lean_active =
+        lean_curve == static_cast<S32>(LLActorMover::GAZE_LEAN_ANGLE_EASE) &&
+        planted_spine;
+    mLeanThreshold->setEnabled(have_slot && lean_active);
+    mLeanSoftness->setEnabled(have_slot && lean_active);
+    mLeanMax->setEnabled(have_slot && lean_active);
+    sync_f32(mLeanThreshold, slot_target.mLeanThresholdDegOverride >= 0.f
+             ? slot_target.mLeanThresholdDegOverride
+             : gSavedSettings.getF32("DirectorGazeLeanThresholdDeg"));
+    sync_f32(mLeanSoftness, slot_target.mLeanSoftnessDegOverride >= 0.f
+             ? slot_target.mLeanSoftnessDegOverride
+             : gSavedSettings.getF32("DirectorGazeLeanSoftnessDeg"));
+    sync_f32(mLeanMax, slot_target.mLeanMaxDegOverride >= 0.f
+             ? slot_target.mLeanMaxDegOverride
+             : gSavedSettings.getF32("DirectorGazeLeanMaxDeg"));
+
     const bool blinks_on = slot_target.mBlinksOverride >= 0
         ? (slot_target.mBlinksOverride != 0)
         : gSavedSettings.getBOOL("DirectorGazeBlinks");
@@ -1288,6 +1513,164 @@ void ALPanelLensGaze::onIntensityCommit()
     const F32 v = llclamp((F32)mIntensity->getValue().asReal(), 0.f, 1.f);
     editGazeTargetsFor(editActors(),
         [v](LLActorMover::GazeTarget& t) { t.mIntensityOverride = v; });
+}
+
+void ALPanelLensGaze::onCompositionCommit()
+{
+    const S32 v = llclamp(mComposition->getValue().asInteger(),
+                          static_cast<S32>(LLActorMover::GAZE_COMPOSE_REPLACE),
+                          static_cast<S32>(LLActorMover::GAZE_COMPOSE_BLEND));
+    editGazeTargetsFor(editActors(),
+        [v](LLActorMover::GazeTarget& t) { t.mCompositionOverride = v; });
+}
+
+void ALPanelLensGaze::onCompositionMixCommit()
+{
+    const F32 v = llclamp((F32)mCompositionMix->getValue().asReal(), 0.f, 1.f);
+    editGazeTargetsFor(editActors(),
+        [v](LLActorMover::GazeTarget& t) { t.mCompositionMixOverride = v; });
+}
+
+// [Machinima] Phase 3: author/replace an influence key AT THE CURRENT
+// PLAYHEAD on the display actor's track. Mirrors the default-cue-at-playhead
+// pattern (alfloatergazecues.cpp defaultCue()). Not routed through
+// editGazeTargetsFor: influence keys live on LLDirectorCast's per-actor
+// GazeInfluenceKeyList, not the GazeTarget override struct, and (per the
+// design doc) are edited for the single display actor only -- never
+// broadcast under All, since a per-actor timeline track has no safe
+// "same key on every actor" interpretation.
+void ALPanelLensGaze::onInfluenceSet()
+{
+    if (mEditAll)
+    {
+        return;
+    }
+    const LLUUID actor = editDisplayActor();
+    if (actor.isNull())
+    {
+        return;
+    }
+    const F32 value = llclamp((F32)mInfluence->getValue().asReal(), 0.f, 1.f);
+    const F64 playhead = llmax(
+        LLPresentationTime::currentFrame().presentation_time, 0.0);
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    LLDirectorCast::GazeInfluenceKeyList keys = cast.getGazeInfluenceKeys(actor);
+    bool replaced = false;
+    for (LLDirectorCast::GazeInfluenceKey& key : keys)
+    {
+        if (fabsf((F32)(key.mTimeSec - playhead)) <= 1.0e-3f)
+        {
+            key.mValue = value;
+            replaced = true;
+            break;
+        }
+    }
+    if (!replaced)
+    {
+        LLDirectorCast::GazeInfluenceKey key;
+        key.mTimeSec = playhead;
+        key.mValue = value;
+        key.mInterpolation = LLDirectorCast::GAZE_KEY_SMOOTHSTEP;
+        keys.push_back(key);
+    }
+    cast.setGazeInfluenceKeys(actor, keys);
+}
+
+void ALPanelLensGaze::onInfluenceDelete()
+{
+    if (mEditAll)
+    {
+        return;
+    }
+    const LLUUID actor = editDisplayActor();
+    if (actor.isNull())
+    {
+        return;
+    }
+    const F64 playhead = llmax(
+        LLPresentationTime::currentFrame().presentation_time, 0.0);
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    LLDirectorCast::GazeInfluenceKeyList keys = cast.getGazeInfluenceKeys(actor);
+    const std::size_t before = keys.size();
+    keys.erase(
+        std::remove_if(keys.begin(), keys.end(),
+            [playhead](const LLDirectorCast::GazeInfluenceKey& key)
+            { return fabsf((F32)(key.mTimeSec - playhead)) <= 1.0e-3f; }),
+        keys.end());
+    if (keys.size() != before)
+    {
+        cast.setGazeInfluenceKeys(actor, keys);
+    }
+}
+
+void ALPanelLensGaze::onChestShareCommit()
+{
+    const F32 v = llclamp((F32)mChestShare->getValue().asReal(), 0.f, 1.f);
+    editGazeTargetsFor(editActors(),
+        [v](LLActorMover::GazeTarget& t) { t.mChestShareOverride = v; });
+}
+
+void ALPanelLensGaze::onLimitModeCommit()
+{
+    // -1/0/1 are all directly meaningful selections here (Inherit is not
+    // merely a reset target), so the raw combo value is written as-is.
+    const S32 v = llclamp(mLimitMode->getValue().asInteger(), -1, 1);
+    editGazeTargetsFor(editActors(),
+        [v](LLActorMover::GazeTarget& t) { t.mLimitProfileModeOverride = v; });
+}
+
+// Any single grid spinner's commit re-reads ALL thirteen fields and writes
+// the whole profile struct, mirroring onEyelineCommit()'s two-slider pattern.
+// It is only consulted by the backend while this actor's Limits source is
+// explicitly Custom.
+void ALPanelLensGaze::onLimitProfileCommit()
+{
+    ALGazeMath::AnatomicalLimitProfile p;
+    p.mEyeYawDeg = llclamp((F32)mLimitEyeYaw->getValue().asReal(), 0.f, 180.f);
+    p.mEyePitchDeg = llclamp((F32)mLimitEyePitch->getValue().asReal(), 0.f, 180.f);
+    p.mHeadYawDeg = llclamp((F32)mLimitHeadYaw->getValue().asReal(), 0.f, 180.f);
+    p.mHeadPitchDeg = llclamp((F32)mLimitHeadPitch->getValue().asReal(), 0.f, 180.f);
+    p.mNeckYawDeg = llclamp((F32)mLimitNeckYaw->getValue().asReal(), 0.f, 180.f);
+    p.mNeckPitchDeg = llclamp((F32)mLimitNeckPitch->getValue().asReal(), 0.f, 180.f);
+    p.mSpineYawDeg = llclamp((F32)mLimitSpineYaw->getValue().asReal(), 0.f, 180.f);
+    p.mSpinePitchDeg = llclamp((F32)mLimitSpinePitch->getValue().asReal(), 0.f, 180.f);
+    p.mHipsYawDeg = llclamp((F32)mLimitHipsYaw->getValue().asReal(), 0.f, 180.f);
+    p.mHipsPitchDeg = llclamp((F32)mLimitHipsPitch->getValue().asReal(), 0.f, 180.f);
+    p.mEyeApplyYawDeg = llclamp((F32)mLimitEyeApplyYaw->getValue().asReal(), 0.f, 180.f);
+    p.mEyeApplyPitchDeg = llclamp((F32)mLimitEyeApplyPitch->getValue().asReal(), 0.f, 180.f);
+    p.mEyeRadialDeg = llclamp((F32)mLimitEyeRadial->getValue().asReal(), 0.f, 90.f);
+    editGazeTargetsFor(editActors(),
+        [p](LLActorMover::GazeTarget& t) { t.mLimitProfile = p; });
+}
+
+void ALPanelLensGaze::onLeanCurveCommit()
+{
+    const S32 v = llclamp(mLeanCurve->getValue().asInteger(),
+                          static_cast<S32>(LLActorMover::GAZE_LEAN_LEGACY),
+                          static_cast<S32>(LLActorMover::GAZE_LEAN_ANGLE_EASE));
+    editGazeTargetsFor(editActors(),
+        [v](LLActorMover::GazeTarget& t) { t.mLeanCurveOverride = v; });
+}
+
+void ALPanelLensGaze::onLeanThresholdCommit()
+{
+    const F32 v = llclamp((F32)mLeanThreshold->getValue().asReal(), 0.f, 180.f);
+    editGazeTargetsFor(editActors(),
+        [v](LLActorMover::GazeTarget& t) { t.mLeanThresholdDegOverride = v; });
+}
+
+void ALPanelLensGaze::onLeanSoftnessCommit()
+{
+    const F32 v = llclamp((F32)mLeanSoftness->getValue().asReal(), 0.f, 90.f);
+    editGazeTargetsFor(editActors(),
+        [v](LLActorMover::GazeTarget& t) { t.mLeanSoftnessDegOverride = v; });
+}
+
+void ALPanelLensGaze::onLeanMaxCommit()
+{
+    const F32 v = llclamp((F32)mLeanMax->getValue().asReal(), 0.f, 90.f);
+    editGazeTargetsFor(editActors(),
+        [v](LLActorMover::GazeTarget& t) { t.mLeanMaxDegOverride = v; });
 }
 
 void ALPanelLensGaze::onSmoothingCommit()

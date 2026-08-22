@@ -497,7 +497,28 @@ bool sameGazeTargetConfigFields(const LLActorMover::GazeTarget& a,
            a.mExaggerateOverride == b.mExaggerateOverride &&
            a.mGazePriorityOverride == b.mGazePriorityOverride &&
            a.mAnimPriorityOverride == b.mAnimPriorityOverride &&
-           a.mCameraModeOverride == b.mCameraModeOverride;
+           a.mCameraModeOverride == b.mCameraModeOverride &&
+           a.mCompositionOverride == b.mCompositionOverride &&
+           a.mCompositionMixOverride == b.mCompositionMixOverride &&
+           a.mChestShareOverride == b.mChestShareOverride &&
+           a.mLimitProfileModeOverride == b.mLimitProfileModeOverride &&
+           a.mLimitProfile.mEyeYawDeg == b.mLimitProfile.mEyeYawDeg &&
+           a.mLimitProfile.mEyePitchDeg == b.mLimitProfile.mEyePitchDeg &&
+           a.mLimitProfile.mHeadYawDeg == b.mLimitProfile.mHeadYawDeg &&
+           a.mLimitProfile.mHeadPitchDeg == b.mLimitProfile.mHeadPitchDeg &&
+           a.mLimitProfile.mNeckYawDeg == b.mLimitProfile.mNeckYawDeg &&
+           a.mLimitProfile.mNeckPitchDeg == b.mLimitProfile.mNeckPitchDeg &&
+           a.mLimitProfile.mSpineYawDeg == b.mLimitProfile.mSpineYawDeg &&
+           a.mLimitProfile.mSpinePitchDeg == b.mLimitProfile.mSpinePitchDeg &&
+           a.mLimitProfile.mHipsYawDeg == b.mLimitProfile.mHipsYawDeg &&
+           a.mLimitProfile.mHipsPitchDeg == b.mLimitProfile.mHipsPitchDeg &&
+           a.mLimitProfile.mEyeApplyYawDeg == b.mLimitProfile.mEyeApplyYawDeg &&
+           a.mLimitProfile.mEyeApplyPitchDeg == b.mLimitProfile.mEyeApplyPitchDeg &&
+           a.mLimitProfile.mEyeRadialDeg == b.mLimitProfile.mEyeRadialDeg &&
+           a.mLeanCurveOverride == b.mLeanCurveOverride &&
+           a.mLeanThresholdDegOverride == b.mLeanThresholdDegOverride &&
+           a.mLeanSoftnessDegOverride == b.mLeanSoftnessDegOverride &&
+           a.mLeanMaxDegOverride == b.mLeanMaxDegOverride;
 }
 } // anonymous namespace
 
@@ -910,6 +931,15 @@ void LLActorMover::setGazeTargetConfig(const LLUUID& actor_id, const GazeTarget&
     g.mExaggerateOverride = target.mExaggerateOverride;
     g.mGazePriorityOverride = target.mGazePriorityOverride;
     g.mAnimPriorityOverride = target.mAnimPriorityOverride;
+    g.mCompositionOverride = target.mCompositionOverride;
+    g.mCompositionMixOverride = target.mCompositionMixOverride;
+    g.mChestShareOverride = target.mChestShareOverride;
+    g.mLimitProfileModeOverride = target.mLimitProfileModeOverride;
+    g.mLimitProfile = target.mLimitProfile;
+    g.mLeanCurveOverride = target.mLeanCurveOverride;
+    g.mLeanThresholdDegOverride = target.mLeanThresholdDegOverride;
+    g.mLeanSoftnessDegOverride = target.mLeanSoftnessDegOverride;
+    g.mLeanMaxDegOverride = target.mLeanMaxDegOverride;
     if (target.mHeadEyeBlendOverride >= 0.f)
     {
         g.mHeadEyeBlend = llclamp(target.mHeadEyeBlendOverride, 0.f, 1.f);
@@ -1295,6 +1325,15 @@ LLActorMover::GazeTarget LLActorMover::getGazeTargetConfig(const LLUUID& actor_i
         target.mExaggerateOverride = it->second.mExaggerateOverride;
         target.mGazePriorityOverride = it->second.mGazePriorityOverride;
         target.mAnimPriorityOverride = it->second.mAnimPriorityOverride;
+        target.mCompositionOverride = it->second.mCompositionOverride;
+        target.mCompositionMixOverride = it->second.mCompositionMixOverride;
+        target.mChestShareOverride = it->second.mChestShareOverride;
+        target.mLimitProfileModeOverride = it->second.mLimitProfileModeOverride;
+        target.mLimitProfile = it->second.mLimitProfile;
+        target.mLeanCurveOverride = it->second.mLeanCurveOverride;
+        target.mLeanThresholdDegOverride = it->second.mLeanThresholdDegOverride;
+        target.mLeanSoftnessDegOverride = it->second.mLeanSoftnessDegOverride;
+        target.mLeanMaxDegOverride = it->second.mLeanMaxDegOverride;
     }
     return target;
 }
@@ -3754,6 +3793,11 @@ void LLActorMover::applyGaze(LLVOAvatar* av)
         g.mBodyAimValid = false;
         g.mAppliedValid = false;
         g.mAppliedSlewing = false;
+        // [Machinima] behind-shoulder / no-snap: reseed with the applied aim
+        // so a later re-activation starts committed to the then-current side.
+        g.mChainYawValid = false;
+        g.mBehindShoulderSign = 0.f;
+        g.mBehindSweeping = false;
         // Drop the coordinated motor state so a later re-activation re-inits
         // on the current target instead of slewing from a stale trajectory.
         g.mGazeMotor = ALGazeMotor::GazeMotorState();
@@ -3818,6 +3862,11 @@ void LLActorMover::applyGaze(LLVOAvatar* av)
         g.mBodyAimValid = false;
         g.mAppliedValid = false;
         g.mAppliedSlewing = false;
+        // [Machinima] behind-shoulder / no-snap: reseed with the applied aim
+        // so a later re-activation starts committed to the then-current side.
+        g.mChainYawValid = false;
+        g.mBehindShoulderSign = 0.f;
+        g.mBehindSweeping = false;
         // Drop the coordinated motor state so a later re-activation re-inits
         // on the current target instead of slewing from a stale trajectory.
         g.mGazeMotor = ALGazeMotor::GazeMotorState();
@@ -3828,7 +3877,15 @@ void LLActorMover::applyGaze(LLVOAvatar* av)
         return;                 // never paint a dead / rootless actor
     }
 
-    gazePaint(av, g, mv, dt, advance, true, true);
+    // [Machinima] Goal 3b: standalone path also honors the influence lane (self
+    // or per-cast track) on the presentation clock. Empty track -> exactly 1 ->
+    // gazePaint's legacy env path (byte-identical), so a no-track actor is a
+    // pure no-op here.
+    const F32 timeline_influence = LLDirectorCast::instance().evaluateGazeInfluence(
+        LLDirectorCast::instance().getGazeInfluenceKeys(av->getID()),
+        LLPresentationTime::currentFrame().presentation_time);
+    gazePaint(av, g, mv, dt, advance, true, true, nullptr, 90.f, nullptr,
+              timeline_influence);
 }
 
 bool LLActorMover::resolveGazeObjectCenter(
@@ -3899,6 +3956,7 @@ void LLActorMover::captureDirectorLookAtPose(LLVOAvatar* av, DirectorGaze& runti
     runtime.mRoot.mValid = false;
     runtime.mPelvis.mValid = false;
     runtime.mTorso.mValid = false;
+    runtime.mChest.mValid = false;
     runtime.mNeck.mValid = false;
     runtime.mHead.mValid = false;
     runtime.mEyeLeft.mValid = false;
@@ -3925,6 +3983,11 @@ void LLActorMover::captureDirectorLookAtPose(LLVOAvatar* av, DirectorGaze& runti
         capture_priority >= GAZE_PRIORITY_UPPER_BODY)
     {
         capture("mTorso", runtime.mTorso);
+        // [Machinima] Capture mChest beside mTorso whenever the spine can be
+        // gaze-written, so a Planted-spine chest write is released even when the
+        // underlying animation does not key mChest every frame. getJoint-guarded
+        // by capture(); a chest-less rig simply leaves this pose invalid.
+        capture("mChest", runtime.mChest);
     }
     LLJoint* neck = av->getJoint("mNeck");
     if (neck && neck->getParent())
@@ -3978,6 +4041,7 @@ void LLActorMover::restoreDirectorLookAtPose(LLVOAvatar* av, DirectorGaze& runti
     restore("mRoot", runtime.mRoot);
     restore("mPelvis", runtime.mPelvis);
     restore("mTorso", runtime.mTorso);
+    restore("mChest", runtime.mChest);
     restore("mNeck", runtime.mNeck);
     restore("mHead", runtime.mHead);
     restore("mEyeLeft", runtime.mEyeLeft);
@@ -4492,6 +4556,15 @@ bool LLActorMover::applyDirectorLookAt(LLVOAvatar* av)
         gaze.mExaggerateOverride = configured_target.mExaggerateOverride;
         gaze.mGazePriorityOverride = configured_target.mGazePriorityOverride;
         gaze.mAnimPriorityOverride = configured_target.mAnimPriorityOverride;
+        gaze.mCompositionOverride = configured_target.mCompositionOverride;
+        gaze.mCompositionMixOverride = configured_target.mCompositionMixOverride;
+        gaze.mChestShareOverride = configured_target.mChestShareOverride;
+        gaze.mLimitProfileModeOverride = configured_target.mLimitProfileModeOverride;
+        gaze.mLimitProfile = configured_target.mLimitProfile;
+        gaze.mLeanCurveOverride = configured_target.mLeanCurveOverride;
+        gaze.mLeanThresholdDegOverride = configured_target.mLeanThresholdDegOverride;
+        gaze.mLeanSoftnessDegOverride = configured_target.mLeanSoftnessDegOverride;
+        gaze.mLeanMaxDegOverride = configured_target.mLeanMaxDegOverride;
     }
 
     static LLCachedControl<F32> gaze_microlife(
@@ -4720,10 +4793,15 @@ bool LLActorMover::applyDirectorLookAt(LLVOAvatar* av)
         eye_target = cast.getEyeGazeTarget(av->getID());
         eye_target_ptr = &eye_target;
     }
+    // [Machinima] Goal 3b: evaluate the keyframed influence lane on the SAME
+    // presentation clock the cues use. Empty track -> exactly 1 -> gazePaint
+    // takes its legacy env path (byte-identical).
+    const F32 timeline_influence = LLDirectorCast::evaluateGazeInfluence(
+        cast.getGazeInfluenceKeys(av->getID()), presentation_time);
     gazePaint(
         av, gaze, nullptr, dt, advance, true,
         selected && reaction_ready, &runtime,
-        params.mBodyTurnThresholdDeg, eye_target_ptr);
+        params.mBodyTurnThresholdDeg, eye_target_ptr, timeline_influence);
     return true;
 }
 
@@ -4759,17 +4837,230 @@ static LLVector3 nearLensOffsetDir(const LLVector3& gaze_dir,
     return ALGazeMath::eyelineOffsetDir(gaze_dir, up_axis, off_yaw, off_pitch);
 }
 
+// [Machinima] behind-shoulder / no-snap ------------------------------------
+// A neck cannot pass through the back: when the gaze target crosses the
+// +-180 seam behind the actor, the wrapped (llsimple_angle) short way flips
+// sign, and with it the anatomical chain's whole saturated allocation from
+// one shoulder to the other in a single frame -- the visible head snap.
+// This resolver turns the raw (wrapped) chain-feed yaw into a physically
+// reachable one:
+//   - while |raw| stays within the chain's yaw reach the raw value passes
+//     through UNTOUCHED, bit-for-bit (front-only tracking is unchanged);
+//   - once the target exceeds reach the current shoulder is committed;
+//     hovering at the dead-behind seam HOLDS that shoulder's limit (any
+//     |feed| >= reach saturates the chain identically, so the hold itself
+//     is pose-invisible);
+//   - when the target moves clearly past the seam onto the other side, the
+//     feed SWEEPS to the other shoulder through the FRONT (a plain,
+//     unwrapped delta: both endpoints live inside +-pi, so the plain
+//     difference IS the front path; llsimple_angle would take the
+//     unreachable through-the-back shortcut), rate-limited by max_step
+//     (head_slew_rate_deg * dt), then hands back to pass-through.
+// Hysteresis: the shoulder commit releases a band INSIDE reach, and the
+// shoulder flip requires the target a band PAST the seam, so neither edge
+// can chatter; a sweep in flight only reverses when the target crosses back
+// past the same seam band. Pitch never wraps (the chain clamps it inside
+// +-100 deg), so yaw is the only channel needing this. Reach is capped just
+// below pi so the seam stays guarded even when anatomy exaggeration pushes
+// the nominal capacity sum past 180 degrees.
+static F32 resolveBehindShoulderChainYaw(
+    F32 raw_yaw, F32 reach_yaw, F32 max_step, bool advance,
+    bool& io_valid, F32& io_chain_yaw, F32& io_shoulder_sign,
+    bool& io_sweeping)
+{
+    constexpr F32 REACH_HYST = 3.f * DEG_TO_RAD; // commit release band
+    constexpr F32 SEAM_HYST  = 3.f * DEG_TO_RAD; // shoulder-flip band
+    const F32 reach = llclamp(reach_yaw, 0.f, F_PI - 5.f * DEG_TO_RAD);
+
+    if (!io_valid)
+    {
+        // Activation seeds on today's raw value (the same place the
+        // mAppliedValid seed happens): the first frame's output is exactly
+        // the raw feed, with the shoulder pre-committed when the target is
+        // already beyond reach so a later seam crossing is recognized.
+        io_chain_yaw = raw_yaw;
+        io_shoulder_sign = fabsf(raw_yaw) > reach
+            ? (raw_yaw >= 0.f ? 1.f : -1.f) : 0.f;
+        io_sweeping = false;
+        io_valid = true;
+        return io_chain_yaw;
+    }
+    if (!advance)
+    {
+        // Same-frame repaint: never re-step the state machine.
+        return io_chain_yaw;
+    }
+
+    if (io_shoulder_sign == 0.f)
+    {
+        // In-reach tracking: pure pass-through (bit-identical to the raw
+        // feed). Arm the shoulder commit the moment the target exceeds
+        // reach so a later seam crossing is recognized as such.
+        if (fabsf(raw_yaw) > reach)
+        {
+            io_shoulder_sign = raw_yaw >= 0.f ? 1.f : -1.f;
+        }
+        io_chain_yaw = raw_yaw;
+        return io_chain_yaw;
+    }
+
+    const F32 s = io_shoulder_sign;
+    if (raw_yaw * s < 0.f)   // exact zero counts as the committed side
+    {
+        // Target on the opposite side of the committed shoulder: it crossed
+        // the +-180 seam behind the actor (or, for a discontinuous feed,
+        // jumped there). Distance past the seam gates the flip.
+        const F32 past_seam = F_PI - fabsf(raw_yaw);
+        if (past_seam > SEAM_HYST)
+        {
+            // Clearly past dead-behind: (re)commit to the target's shoulder
+            // and sweep through the front. Parking the feed inside +-reach
+            // first is pose-identical under saturation, so the visible sweep
+            // starts exactly at the old limit with no hidden catch-up.
+            if (!io_sweeping)
+            {
+                io_chain_yaw = llclamp(io_chain_yaw, -reach, reach);
+                io_sweeping = true;
+            }
+            io_shoulder_sign = -s;
+        }
+        else if (!io_sweeping)
+        {
+            // Hovering at the seam: hold the committed shoulder's limit
+            // (pose-identical to the raw feed's saturated pose). Real-neck
+            // behavior: pinned on the shoulder while the target is behind.
+            io_chain_yaw = s * reach;
+            return io_chain_yaw;
+        }
+        // else: wobbling near the seam mid-sweep -- keep the sweep goal on
+        // the currently committed side below (no flip inside the band).
+    }
+
+    if (!io_sweeping)
+    {
+        // Same-side tracking while armed: pass-through (bit-identical);
+        // release the commit once safely back inside reach.
+        if (fabsf(raw_yaw) < reach - REACH_HYST)
+        {
+            io_shoulder_sign = 0.f;
+        }
+        io_chain_yaw = raw_yaw;
+        return io_chain_yaw;
+    }
+
+    // Sweep: chase the reachable image of the target -- the target itself
+    // when inside reach, else the committed shoulder's limit -- with a PLAIN
+    // (unwrapped) delta, which is exactly the through-the-front path.
+    const F32 cs = io_shoulder_sign;   // side being swept toward
+    const F32 goal = (raw_yaw * cs >= 0.f)
+        ? cs * llmin(fabsf(raw_yaw), reach)
+        : cs * reach;   // target back across the seam band: keep heading
+    const F32 step = llmax(max_step, 0.f);
+    io_chain_yaw += llclamp(goal - io_chain_yaw, -step, step);
+    if (fabsf(goal - io_chain_yaw) <= 1e-5f)
+    {
+        io_chain_yaw = goal;
+        if (raw_yaw * cs >= 0.f)
+        {
+            // Arrived on the target's side: hand back to pass-through. If
+            // the target is still beyond reach we stay parked at the limit
+            // this frame; next frame's same-side pass-through resumes the
+            // raw feed, which saturation renders identically.
+            io_sweeping = false;
+            if (fabsf(raw_yaw) <= reach)
+            {
+                io_chain_yaw = raw_yaw;   // exact rejoin
+                if (fabsf(raw_yaw) < reach - REACH_HYST)
+                {
+                    io_shoulder_sign = 0.f;
+                }
+            }
+        }
+    }
+    return io_chain_yaw;
+}
+
 void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bool advance,
                             bool constrain_eye_cone, bool allow_natural_break,
                             DirectorGaze* director_runtime,
                             F32 body_turn_threshold_deg,
-                            const GazeTarget* eye_target)
+                            const GazeTarget* eye_target,
+                            F32 timeline_influence)
 {
     LLJoint* head = av->getJoint("mHead");
     LLJoint* root = av->getJoint("mRoot");
     if (!head || !root)
     {
         return;                 // no head/root to drive (animesh without them)
+    }
+
+    // [Machinima] Goal 2 (phase 5): resolve the gaze pose COMPOSITION once.
+    // Per-actor override wins (>= 0); -1 inherits the global. Default Replace
+    // (0) must stay byte-identical: every joint-write branch below enters the
+    // verbatim pre-existing statements under GAZE_COMPOSE_REPLACE, and the
+    // animation snapshot below is gated on composition != Replace so the
+    // default path takes no new per-frame quaternion work.
+    static LLCachedControl<S32> gaze_composition_global(
+        gSavedSettings, "DirectorGazeComposition", 0);
+    static LLCachedControl<F32> gaze_composition_mix_global(
+        gSavedSettings, "DirectorGazeCompositionMix", 0.5f);
+    const S32 composition = g.mCompositionOverride >= 0
+        ? llclamp(g.mCompositionOverride,
+                  (S32)GAZE_COMPOSE_REPLACE, (S32)GAZE_COMPOSE_BLEND)
+        : llclamp((S32)gaze_composition_global,
+                  (S32)GAZE_COMPOSE_REPLACE, (S32)GAZE_COMPOSE_BLEND);
+    const F32 composition_mix = llclamp(
+        g.mCompositionMixOverride >= 0.f
+            ? g.mCompositionMixOverride
+            : (F32)gaze_composition_mix_global,
+        0.f, 1.f);
+
+    // [Machinima] Goal 2: frame-local ANIMATION pose snapshot, captured at the
+    // very top of gazePaint BEFORE any gaze write. Gaze runs post-animation,
+    // so these local/world rotations ARE this frame's animation pose -- the
+    // additive base for both the Director and standalone Actor Mover paths
+    // (Director's own capture elsewhere is for restoration, not composition).
+    struct GazeAnimSnap
+    {
+        S32 mCount = 0;
+        LLJoint* mJoint[9] = {};
+        LLQuaternion mLocal[9];
+        LLQuaternion mWorld[9];
+        void capture(LLJoint* j)
+        {
+            if (j && mCount < 9)
+            {
+                mJoint[mCount] = j;
+                mLocal[mCount] = j->getRotation();
+                mWorld[mCount] = j->getWorldRotation();
+                ++mCount;
+            }
+        }
+        // Defensive fallback only; every joint written below was captured.
+        LLQuaternion local(LLJoint* j) const
+        {
+            for (S32 i = 0; i < mCount; ++i)
+            {
+                if (mJoint[i] == j)
+                {
+                    return mLocal[i];
+                }
+            }
+            return j->getRotation();
+        }
+    };
+    GazeAnimSnap anim_snap;
+    if (composition != GAZE_COMPOSE_REPLACE)
+    {
+        anim_snap.capture(av->getJoint("mPelvis"));
+        anim_snap.capture(av->getJoint("mTorso"));
+        anim_snap.capture(av->getJoint("mChest"));
+        anim_snap.capture(av->getJoint("mNeck"));
+        anim_snap.capture(head);
+        anim_snap.capture(av->getJoint("mEyeLeft"));
+        anim_snap.capture(av->getJoint("mEyeRight"));
+        anim_snap.capture(av->getJoint("mFaceEyeAltLeft"));
+        anim_snap.capture(av->getJoint("mFaceEyeAltRight"));
     }
 
     // Aim from the head where it is actually rendered.  Ghost scale is an
@@ -5215,7 +5506,14 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     // eased envelope * intensity = overall paint weight; the head/eyes blend gates
     // the body chain (torso/neck/head) so blend=0 is eyes-only.
     const F32 env_eased = g.mEnv * g.mEnv * (3.f - 2.f * g.mEnv);    // smoothstep
-    const F32 env_i     = env_eased * effective_intensity;
+    // [Machinima] Goal 3b: the keyframed influence multiplies the FINAL legacy
+    // write envelope. At influence 1 (empty track) this is the EXACT original
+    // assignment (execution-path byte-identical, not a reorganized *1.f); a
+    // value < 1 scales the write so influence 0 writes nothing (animation shows)
+    // while mIntensity/cue weighting still shape the owned pose.
+    const F32 env_i     = (timeline_influence != 1.f)
+        ? env_eased * effective_intensity * timeline_influence
+        : env_eased * effective_intensity;
 
     const LLQuaternion invRoot   = ~rootWorld;
 
@@ -5294,6 +5592,142 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     // (and legs) on the animation and never rotates mPelvis.
     const bool strict_pelvis =
         (gaze_priority == GAZE_PRIORITY_UPPER_BODY);
+    // [Machinima] Phase 2 -- resolve the effective custom cone-limit profile
+    // and the planted chest share ONCE, shared by both execution paths below.
+    // Defaults (Head+Eyes scope, DirectorGazeCustomLimitsEnabled off, all
+    // per-actor overrides inherited) resolve to profile_ptr == nullptr and
+    // chest_share == 0, which every downstream call treats byte-identically
+    // to the pre-profile signatures.
+    static LLCachedControl<bool> gaze_custom_limits_enabled(
+        gSavedSettings, "DirectorGazeCustomLimitsEnabled", false);
+    static LLCachedControl<F32> gaze_chest_share_global(
+        gSavedSettings, "DirectorGazeChestShare", 0.55f);
+    static LLCachedControl<F32> gaze_lim_eye_yaw(
+        gSavedSettings, "DirectorGazeLimitEyeYawDeg", 25.f);
+    static LLCachedControl<F32> gaze_lim_eye_pitch(
+        gSavedSettings, "DirectorGazeLimitEyePitchDeg", 14.f);
+    static LLCachedControl<F32> gaze_lim_head_yaw(
+        gSavedSettings, "DirectorGazeLimitHeadYawDeg", 35.f);
+    static LLCachedControl<F32> gaze_lim_head_pitch(
+        gSavedSettings, "DirectorGazeLimitHeadPitchDeg", 42.f);
+    static LLCachedControl<F32> gaze_lim_neck_yaw(
+        gSavedSettings, "DirectorGazeLimitNeckYawDeg", 35.f);
+    static LLCachedControl<F32> gaze_lim_neck_pitch(
+        gSavedSettings, "DirectorGazeLimitNeckPitchDeg", 26.f);
+    static LLCachedControl<F32> gaze_lim_spine_yaw(
+        gSavedSettings, "DirectorGazeLimitSpineYawDeg", 45.f);
+    static LLCachedControl<F32> gaze_lim_spine_pitch(
+        gSavedSettings, "DirectorGazeLimitSpinePitchDeg", 20.f);
+    static LLCachedControl<F32> gaze_lim_hips_yaw(
+        gSavedSettings, "DirectorGazeLimitHipsYawDeg", 35.f);
+    static LLCachedControl<F32> gaze_lim_hips_pitch(
+        gSavedSettings, "DirectorGazeLimitHipsPitchDeg", 15.f);
+    static LLCachedControl<F32> gaze_lim_eye_apply_yaw(
+        gSavedSettings, "DirectorGazeLimitEyeApplyYawDeg", 24.f);
+    static LLCachedControl<F32> gaze_lim_eye_apply_pitch(
+        gSavedSettings, "DirectorGazeLimitEyeApplyPitchDeg", 14.f);
+    static LLCachedControl<F32> gaze_lim_eye_radial(
+        gSavedSettings, "DirectorGazeLimitEyeRadialDeg", 19.8f);
+    // Tri-state per-actor limit mode: -1 inherits the global enable, 0 forces
+    // the legacy constants regardless of the global, 1 uses this actor's own
+    // profile values.
+    const bool use_custom_limits =
+        (g.mLimitProfileModeOverride == 1) ||
+        (g.mLimitProfileModeOverride == -1 &&
+         (bool)gaze_custom_limits_enabled);
+    ALGazeMath::AnatomicalLimitProfile eff_profile;
+    if (use_custom_limits)
+    {
+        if (g.mLimitProfileModeOverride == 1)
+        {
+            eff_profile = g.mLimitProfile;
+        }
+        else
+        {
+            eff_profile.mEyeYawDeg       = (F32)gaze_lim_eye_yaw;
+            eff_profile.mEyePitchDeg     = (F32)gaze_lim_eye_pitch;
+            eff_profile.mHeadYawDeg      = (F32)gaze_lim_head_yaw;
+            eff_profile.mHeadPitchDeg    = (F32)gaze_lim_head_pitch;
+            eff_profile.mNeckYawDeg      = (F32)gaze_lim_neck_yaw;
+            eff_profile.mNeckPitchDeg    = (F32)gaze_lim_neck_pitch;
+            eff_profile.mSpineYawDeg     = (F32)gaze_lim_spine_yaw;
+            eff_profile.mSpinePitchDeg   = (F32)gaze_lim_spine_pitch;
+            eff_profile.mHipsYawDeg      = (F32)gaze_lim_hips_yaw;
+            eff_profile.mHipsPitchDeg    = (F32)gaze_lim_hips_pitch;
+            eff_profile.mEyeApplyYawDeg  = (F32)gaze_lim_eye_apply_yaw;
+            eff_profile.mEyeApplyPitchDeg = (F32)gaze_lim_eye_apply_pitch;
+            eff_profile.mEyeRadialDeg    = (F32)gaze_lim_eye_radial;
+        }
+    }
+    // nullptr by default: the math layer's profile==nullptr paths are the
+    // untouched constant code, so the default output stays bit-exact.
+    const ALGazeMath::AnatomicalLimitProfile* profile_ptr =
+        use_custom_limits ? &eff_profile : nullptr;
+    // Chest share is a Planted-spine-only split of the conserved spine bucket;
+    // every other scope MUST see exactly 0 so no chest write ever engages.
+    const F32 chest_share = planted_spine
+        ? llclamp(g.mChestShareOverride >= 0.f
+                      ? g.mChestShareOverride
+                      : (F32)gaze_chest_share_global,
+                  0.f, 1.f)
+        : 0.f;
+    // [Machinima] Goal 3c: resolve the lean curve + parameters ONCE
+    // (per-actor override wins; -1/-1.f inherits the global), shared by both
+    // execution paths. Angle-ease is Planted-spine-ONLY in v1: lean_active
+    // requires planted AND curve 1. The LEGACY default (and every non-planted
+    // scope) leaves lean_active false, and every lean branch below is guarded
+    // on it, so the existing allocation runs unchanged -- byte-identical.
+    static LLCachedControl<S32> gaze_lean_curve_global(
+        gSavedSettings, "DirectorGazeLeanCurve", 0);
+    static LLCachedControl<F32> gaze_lean_threshold_global(
+        gSavedSettings, "DirectorGazeLeanThresholdDeg", 25.f);
+    static LLCachedControl<F32> gaze_lean_softness_global(
+        gSavedSettings, "DirectorGazeLeanSoftnessDeg", 20.f);
+    static LLCachedControl<F32> gaze_lean_max_global(
+        gSavedSettings, "DirectorGazeLeanMaxDeg", 20.f);
+    const S32 lean_curve = g.mLeanCurveOverride >= 0
+        ? g.mLeanCurveOverride : (S32)gaze_lean_curve_global;
+    const F32 lean_threshold_deg = g.mLeanThresholdDegOverride >= 0.f
+        ? g.mLeanThresholdDegOverride : (F32)gaze_lean_threshold_global;
+    const F32 lean_softness_deg = g.mLeanSoftnessDegOverride >= 0.f
+        ? g.mLeanSoftnessDegOverride : (F32)gaze_lean_softness_global;
+    const F32 lean_max_deg = g.mLeanMaxDegOverride >= 0.f
+        ? g.mLeanMaxDegOverride : (F32)gaze_lean_max_global;
+    const bool lean_active =
+        planted_spine && lean_curve == (S32)GAZE_LEAN_ANGLE_EASE;
+    // Spine cone caps for the lean curve: the ANATOMICAL safety ellipse
+    // (unweighted). The custom profile's spine axes when a profile is active;
+    // the legacy 45/20 deg TORSO_MAX constants otherwise.
+    const F32 spine_cap_yaw_rad = (use_custom_limits
+        ? llmax(eff_profile.mSpineYawDeg, 0.f) : 45.f) * DEG_TO_RAD;
+    const F32 spine_cap_pitch_rad = (use_custom_limits
+        ? llmax(eff_profile.mSpinePitchDeg, 0.f) : 20.f) * DEG_TO_RAD;
+    // [Machinima] Goal 2: per-joint ADDITIVE correction caps (radians). These
+    // bound only the gaze-authored DELTA in the additive/blend endpoints below
+    // (never the animation's own rotation). Same source and Exaggerate
+    // semantics as the chain allocator: custom profile axes when enabled, the
+    // legacy constants otherwise; head/neck scale with anatomy_scale while
+    // spine/hips stay unscaled (matching fillEffectiveCapacities /
+    // distributeAnatomicalChain). Inert plain consts under Replace -- no
+    // quaternion math, no writes.
+    const F32 add_cap_head_yaw = (use_custom_limits
+        ? llmax(eff_profile.mHeadYawDeg, 0.f) : 35.f) *
+        DEG_TO_RAD * anatomy_scale;
+    const F32 add_cap_head_pitch = (use_custom_limits
+        ? llmax(eff_profile.mHeadPitchDeg, 0.f) : 42.f) *
+        DEG_TO_RAD * anatomy_scale;
+    const F32 add_cap_neck_yaw = (use_custom_limits
+        ? llmax(eff_profile.mNeckYawDeg, 0.f) : 35.f) *
+        DEG_TO_RAD * anatomy_scale;
+    const F32 add_cap_neck_pitch = (use_custom_limits
+        ? llmax(eff_profile.mNeckPitchDeg, 0.f) : 26.f) *
+        DEG_TO_RAD * anatomy_scale;
+    const F32 add_cap_spine_yaw = spine_cap_yaw_rad;
+    const F32 add_cap_spine_pitch = spine_cap_pitch_rad;
+    const F32 add_cap_hips_yaw = (use_custom_limits
+        ? llmax(eff_profile.mHipsYawDeg, 0.f) : 35.f) * DEG_TO_RAD;
+    const F32 add_cap_hips_pitch = (use_custom_limits
+        ? llmax(eff_profile.mHipsPitchDeg, 0.f) : 15.f) * DEG_TO_RAD;
     // [Machinima] Resolve the SL animation-priority for the strict-yield gate,
     // ORTHOGONAL to the ownership scope above. Per-actor override wins (>= -1,
     // since -1 is the meaningful "Legacy final" value here, NOT inherit); -2
@@ -5307,7 +5741,13 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     // Priority owns only the animation-vs-gaze blend. Intensity and cue channel
     // weights shape the authored gaze pose below, while this envelope reaches
     // one at full acquire so the selected joints contain no animation bleed.
-    const F32 priority_env = env_eased * behind_eased;
+    // [Machinima] Goal 3b: influence also multiplies the strict-owned final
+    // write envelope, so a zero key performs NO owned write (revealing the
+    // animation) rather than replacing it with a neutral owned pose. Exact
+    // legacy assignment at influence 1 (execution-path byte-identical).
+    const F32 priority_env = (timeline_influence != 1.f)
+        ? env_eased * behind_eased * timeline_influence
+        : env_eased * behind_eased;
     const F32 dead_zone = (g.mDeadZoneDegOverride >= 0.f
         ? llclamp(g.mDeadZoneDegOverride, 0.f, 15.f)
         : llmax((F32)dead_zone_deg, 0.f)) * DEG_TO_RAD;
@@ -5367,8 +5807,13 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         ms.mHeadLatencyBaseMs   = (F32)gaze_mp_head_latency;
         ms.mHeadDurationBaseMs  = (F32)gaze_mp_head_dur_base;
         ms.mSoftRecruitBandDeg  = llmax((F32)gaze_mp_soft_recruit, 0.f);
-        ms.mComfortYawDeg       = (F32)gaze_mp_comfort_yaw;
-        ms.mComfortPitchDeg     = (F32)gaze_mp_comfort_pitch;
+        // [Machinima] Goal 3a: the custom profile's final applied-eye caps drive
+        // the motor VOR comfort cone when enabled; the legacy comfort settings
+        // are used otherwise (byte-identical default).
+        ms.mComfortYawDeg       = use_custom_limits
+            ? eff_profile.mEyeApplyYawDeg : (F32)gaze_mp_comfort_yaw;
+        ms.mComfortPitchDeg     = use_custom_limits
+            ? eff_profile.mEyeApplyPitchDeg : (F32)gaze_mp_comfort_pitch;
         // Mirror distributeAnatomicalChain's authored distribution inputs so
         // band 0 recruits the same joints the legacy hard knee would.
         ms.mHeadEyeBlend        = effective_head_eye_blend;
@@ -5377,6 +5822,26 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         // [Machinima] Planted-spine scope: hips capacity forced to zero so the
         // motor never recruits/writes the pelvis (base/legs stay planted).
         ms.mPlantPelvis         = planted_spine;
+        // [Machinima] Phase 2: custom cone profile + planted chest split feed.
+        // mUseLimitProfile false (the default) leaves the motor's constant
+        // capacity path untouched; mLimitProfile is only consulted when it is
+        // true. chest_share is already exactly 0 unless Planted spine.
+        ms.mUseLimitProfile     = use_custom_limits;
+        ms.mLimitProfile        = eff_profile;
+        ms.mChestShare          = chest_share;
+        // [Machinima] Goal 3c: angle-driven lean feed. Only set when
+        // lean_active (Planted spine + Angle-ease curve); otherwise the
+        // defaults (mLeanCurve 0) keep the motor's recruit on the untouched
+        // legacy path -- bit-exact band-0 contract preserved.
+        if (lean_active)
+        {
+            ms.mLeanCurve        = 1;
+            ms.mLeanThresholdDeg = lean_threshold_deg;
+            ms.mLeanSoftnessDeg  = lean_softness_deg;
+            ms.mLeanMaxDeg       = lean_max_deg;
+            ms.mSpineCapYawRad   = spine_cap_yaw_rad;
+            ms.mSpineCapPitchRad = spine_cap_pitch_rad;
+        }
         // Cinematic subtlety: Stillness freezes the recruited head/neck/torso;
         // Restraint additionally shrinks the head-turn magnitude. Both scale the
         // recruited body output inside step() and leave the eyes + micro-life
@@ -5404,13 +5869,43 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         affect.mArousal   = llclamp((F32)gaze_mp_arousal,    0.f, 1.f);
         affect.mDominance = llclamp((F32)gaze_mp_dominance, -1.f, 1.f);
 
+        // [Machinima] behind-shoulder / no-snap (motor path): feed the motor a
+        // physically reachable yaw target. The motor's channel programs unwrap
+        // each commit's target next to the current sample by SHORTEST arc, so
+        // a raw target crossing the +-180 seam behind the actor would either
+        // wind the aim through the back (unreachable -- the saturated recruit
+        // pins the wrong shoulder) or flip the recruit sign. The resolver
+        // holds the committed shoulder at the seam and then walks the fed
+        // target to the other shoulder through the FRONT at head_slew_rate,
+        // so every motor commit is a small front-path arc. Reach is the sum of
+        // the motor's OWN weighted yaw capacities (effectiveCapacities: same
+        // blend/torso/anatomy shaping as distributeAnatomicalChain, hips
+        // zeroed by ms.mPlantPelvis under Planted spine), so "beyond reach"
+        // matches actual saturation. A target that never leaves reach passes
+        // through bit-identically (in.mTargetYaw == g.mBodyAimYaw). The raw
+        // g.mBodyAimYaw still drives the Director body-turn trigger below.
+        F32 reach_caps_yaw[ALGazeMotor::CHAIN_JOINTS];
+        F32 reach_caps_pitch[ALGazeMotor::CHAIN_JOINTS];
+        ALGazeMotor::effectiveCapacities(ms, reach_caps_yaw, reach_caps_pitch);
+        F32 motor_reach_yaw = 0.f;
+        for (S32 rc = 0; rc < ALGazeMotor::CHAIN_JOINTS; ++rc)
+        {
+            motor_reach_yaw += reach_caps_yaw[rc];
+        }
+        const F32 chain_step = llmax((F32)head_slew_rate_deg, 0.f) *
+                               DEG_TO_RAD * dt;
+        const F32 motor_target_yaw = resolveBehindShoulderChainYaw(
+            g.mBodyAimYaw, motor_reach_yaw, chain_step, advance,
+            g.mChainYawValid, g.mChainYaw, g.mBehindShoulderSign,
+            g.mBehindSweeping);
+
         ALGazeMotor::GazeMotorInput in;
         // Desired chain aim in the SAME root-relative frame the legacy solve
         // measures raw_yaw/raw_pitch in; the dead-zone body-aim chase above is
         // its (shared) low-pass. mRefWorldRot maps that frame to world for the
         // VOR solve; mHeadWorldRot is the head's current sampled world rotation
         // (this frame, pre-repaint) so counter-rotation falls out over frames.
-        in.mTargetYaw    = g.mBodyAimYaw;
+        in.mTargetYaw    = motor_target_yaw;
         in.mTargetPitch  = g.mBodyAimPitch;
         in.mTargetRoll   = 0.f;   // camera roll stays a world-space op below
         in.mHeadWorldRot = head->getWorldRotation();
@@ -5510,8 +6005,27 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         chain.mNeckPitch  = pose.mNeckPitch;
         chain.mTorsoYaw   = pose.mTorsoYaw;
         chain.mTorsoPitch = pose.mTorsoPitch;
+        chain.mChestYaw   = pose.mChestYaw;
+        chain.mChestPitch = pose.mChestPitch;
         chain.mHipsYaw    = pose.mHipsYaw;
         chain.mHipsPitch  = pose.mHipsPitch;
+
+        // [Machinima] Chest fold-back: a rig without an mChest joint returns
+        // the split share to the torso BEFORE the torso write so no reach is
+        // ever lost. chest_share == 0 on every non-planted path keeps
+        // pose.mChest* at exactly +0, so this is a no-op there.
+        LLJoint* chest_joint = av->getJoint("mChest");
+        if (!chest_joint && chest_share > 0.f)
+        {
+            // Fold the WHOLE split share back (any magnitude) so no reach is
+            // lost on a chest-less rig, even for a tiny residual. chest_share==0
+            // (every non-planted path) keeps chain.mChest* at exactly +0, so
+            // this stays a no-op there and the torso value is untouched.
+            chain.mTorsoYaw   += chain.mChestYaw;
+            chain.mTorsoPitch += chain.mChestPitch;
+            chain.mChestYaw   = 0.f;
+            chain.mChestPitch = 0.f;
+        }
 
         // Head roll = camera-follow roll (world-space, as legacy) plus the
         // motor's dominance/dutch head tilt, applied in the same channel.
@@ -5527,15 +6041,21 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         // aim instead of double-counting it. Pitch and head roll keep the motor
         // trajectory. Same guard as legacy (mMode 1, not sitting, full body cue
         // weight, trigger OR an already-active turn).
+        // [Machinima] Goal 3b: a zero influence hides the ENTIRE gaze layer,
+        // including the Director Turn-body root replant -- otherwise the head/
+        // spine/eye writes vanish but the root still rotates. Gate the whole
+        // body-turn block on influence; the mBodyTurnActive latch is left
+        // untouched so the turn resumes warm when influence returns.
         if (director_runtime && director_runtime->mMode == 1 &&
-            !av->isSitting() && cue_body_weight >= 0.999f)
+            !av->isSitting() && cue_body_weight >= 0.999f &&
+            timeline_influence > 0.001f)
         {
             ALGazeMath::AnatomicalChainPose trigger_chain;
             ALGazeMath::distributeAnatomicalChain(
                 g.mBodyAimYaw, g.mBodyAimPitch,
                 effective_head_eye_blend, g.mTorsoAmount,
                 body_turn_threshold_deg, trigger_chain, anatomy_scale,
-                /*recruit_hips=*/!planted_spine);
+                /*recruit_hips=*/!planted_spine, profile_ptr, chest_share);
             if (trigger_chain.mTriggerBodyTurn ||
                 director_runtime->mBodyTurnActive)
             {
@@ -5558,12 +6078,53 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 const F32 recruit_band = (std::isfinite(ms.mSoftRecruitBandDeg)
                     ? llmax(ms.mSoftRecruitBandDeg, 0.f) : 0.f) * DEG_TO_RAD;
                 const bool eye_only = ALGazeMotor::isEyeOnlyBlend(ms);
+                // [Machinima] Goal 3c: under Angle-ease + Planted spine the
+                // residual re-recruit after the root turn runs the SAME
+                // lean-aware solve -- the spine's share of the REDUCED aim
+                // comes from the pure curve and head/neck recruit only the
+                // face residual. Pitch keeps the motor trajectory, matching
+                // the legacy re-recruit's yaw-only scope (the curve still
+                // sees the chain aim pitch so the angular magnitude the
+                // falloff responds to is the true 2D aim). Guarded on
+                // lean_active so the default path below is unchanged.
+                if (lean_active)
+                {
+                    const ALGazeMath::SpineLeanResult lean_rr =
+                        ALGazeMath::spineLean(
+                            reduced_aim_yaw, pose.mChainAimPitch,
+                            lean_threshold_deg, lean_softness_deg,
+                            lean_max_deg,
+                            g.mTorsoAmount, effective_head_eye_blend,
+                            spine_cap_yaw_rad, spine_cap_pitch_rad);
+                    chain.mHeadYaw = ALGazeMotor::recruitSlot(
+                        lean_rr.mFaceYaw, caps_yaw, recruit_band, 1,
+                        eye_only);
+                    chain.mNeckYaw = ALGazeMotor::recruitSlot(
+                        lean_rr.mFaceYaw, caps_yaw, recruit_band, 2,
+                        eye_only);
+                    chain.mTorsoYaw = lean_rr.mSpineYaw;
+                }
+                else
+                {
                 chain.mHeadYaw = ALGazeMotor::recruitSlot(
                     reduced_aim_yaw, caps_yaw, recruit_band, 1, eye_only);
                 chain.mNeckYaw = ALGazeMotor::recruitSlot(
                     reduced_aim_yaw, caps_yaw, recruit_band, 2, eye_only);
                 chain.mTorsoYaw = ALGazeMotor::recruitSlot(
                     reduced_aim_yaw, caps_yaw, recruit_band, 3, eye_only);
+                }
+                // [Machinima] Planted chest split of the re-recruited spine
+                // yaw: torso+chest must still sum to the one spine bucket
+                // after the root-turn re-solve (the split from step() above
+                // was computed against the pre-turn aim). Skipped when the
+                // rig has no chest joint (the share was already folded back
+                // into the torso above) and when chest_share == 0 (every
+                // non-planted path) -- a no-op there.
+                if (chest_joint && chest_share > 0.f)
+                {
+                    chain.mChestYaw  = chain.mTorsoYaw * chest_share;
+                    chain.mTorsoYaw -= chain.mChestYaw;
+                }
                 // [Machinima] Planted-spine: hard-zero hips (see the same
                 // carve-out in ALGazeMotor::step); the soft knee at capacity 0
                 // would otherwise leak a spurious pelvis contribution.
@@ -5601,6 +6162,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     // scopes 0-2; the two differ only under planted.
                     if (pelvis_priority_active)
                     {
+                        if (composition == GAZE_COMPOSE_REPLACE)
+                        {
                         const LLQuaternion owned_target = nlerp(
                             body_pose_weight, LLQuaternion::DEFAULT, hips_target);
                         const F32 ga = gazeAllowedAlpha(
@@ -5608,14 +6171,79 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                         if (ga > 0.f)
                             pelvis->setRotation(nlerp(
                                 ga, pelvis->getRotation(), owned_target));
+                        }
+                        else
+                        {
+                            // [Machinima] Goal 2: additive/blend. FULL-
+                            // strength desired (raw hips_target * root) under
+                            // the CURRENT parent; the clamped correction
+                            // DELTA -- not the endpoint -- is scaled by the
+                            // same body_pose_weight Replace used, so weight 0
+                            // leaves the animation untouched (Codex defect 1).
+                            LLQuaternion desired_local =
+                                hips_target * root->getWorldRotation();
+                            if (LLJoint* parent = pelvis->getParent())
+                            {
+                                desired_local = desired_local *
+                                    ~parent->getWorldRotation();
+                            }
+                            const LLQuaternion q_additive =
+                                ALGazeMath::additiveOverlayLocal(
+                                    desired_local, anim_snap.local(pelvis),
+                                    add_cap_hips_yaw, add_cap_hips_pitch,
+                                    /*preserve_anim_roll=*/true,
+                                    /*radial_cap_rad=*/-1.f,
+                                    /*strength=*/body_pose_weight);
+                            const LLQuaternion q_replace = nlerp(
+                                body_pose_weight, LLQuaternion::DEFAULT,
+                                hips_target);
+                            const LLQuaternion q_endpoint =
+                                composition == GAZE_COMPOSE_ADDITIVE
+                                ? q_additive
+                                : nlerp(composition_mix, q_replace,
+                                        q_additive);
+                            const F32 ga = gazeAllowedAlpha(
+                                av, pelvis, priority_env, gaze_anim_priority);
+                            if (ga > 0.f)
+                                pelvis->setRotation(nlerp(
+                                    ga, pelvis->getRotation(), q_endpoint));
+                        }
                     }
                     else
                     {
+                        if (composition == GAZE_COMPOSE_REPLACE)
+                        {
                         const F32 ga = gazeAllowedAlpha(
                             av, pelvis, wCueBody, gaze_anim_priority);
                         if (ga > 0.f)
                             pelvis->setRotation(nlerp(
                                 ga, pelvis->getRotation(), hips_target));
+                        }
+                        else
+                        {
+                            // [Machinima] Goal 2: legacy Blend-scope additive
+                            // -- a proper clamped RESIDUAL delta over the
+                            // animation (never a second absolute application
+                            // of the chain target; Codex defect 2), scaled by
+                            // the existing wCueBody alpha.
+                            const LLQuaternion q_additive =
+                                ALGazeMath::additiveOverlayLocal(
+                                    hips_target, anim_snap.local(pelvis),
+                                    add_cap_hips_yaw, add_cap_hips_pitch,
+                                    /*preserve_anim_roll=*/true,
+                                    /*radial_cap_rad=*/-1.f,
+                                    /*strength=*/wCueBody);
+                            const LLQuaternion q_endpoint =
+                                composition == GAZE_COMPOSE_ADDITIVE
+                                ? q_additive
+                                : nlerp(composition_mix, hips_target,
+                                        q_additive);
+                            const F32 ga = gazeAllowedAlpha(
+                                av, pelvis, wCueBody, gaze_anim_priority);
+                            if (ga > 0.f)
+                                pelvis->setRotation(nlerp(
+                                    ga, pelvis->getRotation(), q_endpoint));
+                        }
                     }
                 }
             }
@@ -5630,6 +6258,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                         0.f, chain.mTorsoPitch, chain.mTorsoYaw);
                     if (body_priority_active)
                     {
+                        if (composition == GAZE_COMPOSE_REPLACE)
+                        {
                         const LLQuaternion owned_target = nlerp(
                             body_pose_weight, LLQuaternion::DEFAULT, torso_target);
                         const F32 ga = gazeAllowedAlpha(
@@ -5637,14 +6267,225 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                         if (ga > 0.f)
                             torso->setRotation(nlerp(
                                 ga, torso->getRotation(), owned_target));
+                        }
+                        else
+                        {
+                            // [Machinima] Goal 2: additive/blend. FULL-
+                            // strength desired world = raw torso * raw hips *
+                            // root under the CURRENT painted parent; the
+                            // clamped correction DELTA is scaled by the same
+                            // body_pose_weight Replace used, so weight 0
+                            // leaves the animation untouched (Codex defect 1).
+                            LLQuaternion hips_stack;
+                            hips_stack.setEulerAngles(
+                                0.f, chain.mHipsPitch, chain.mHipsYaw);
+                            const LLQuaternion desired_world = torso_target *
+                                hips_stack * root->getWorldRotation();
+                            LLQuaternion desired_local = desired_world;
+                            if (LLJoint* parent = torso->getParent())
+                            {
+                                desired_local = desired_world *
+                                    ~parent->getWorldRotation();
+                            }
+                            const LLQuaternion q_additive =
+                                ALGazeMath::additiveOverlayLocal(
+                                    desired_local, anim_snap.local(torso),
+                                    add_cap_spine_yaw, add_cap_spine_pitch,
+                                    /*preserve_anim_roll=*/true,
+                                    /*radial_cap_rad=*/-1.f,
+                                    /*strength=*/body_pose_weight);
+                            const LLQuaternion q_replace = nlerp(
+                                body_pose_weight, LLQuaternion::DEFAULT,
+                                torso_target);
+                            const LLQuaternion q_endpoint =
+                                composition == GAZE_COMPOSE_ADDITIVE
+                                ? q_additive
+                                : nlerp(composition_mix, q_replace,
+                                        q_additive);
+                            const F32 ga = gazeAllowedAlpha(
+                                av, torso, priority_env, gaze_anim_priority);
+                            if (ga > 0.f)
+                                torso->setRotation(nlerp(
+                                    ga, torso->getRotation(), q_endpoint));
+                        }
                     }
                     else
                     {
+                        if (composition == GAZE_COMPOSE_REPLACE)
+                        {
                         const F32 ga = gazeAllowedAlpha(
                             av, torso, wCueBody, gaze_anim_priority);
                         if (ga > 0.f)
                             torso->setRotation(nlerp(
                                 ga, torso->getRotation(), torso_target));
+                        }
+                        else
+                        {
+                            // [Machinima] Goal 2: legacy Blend-scope additive
+                            // -- clamped RESIDUAL delta over the animation
+                            // (never a second absolute application; Codex
+                            // defect 2), scaled by the existing wCueBody.
+                            const LLQuaternion q_additive =
+                                ALGazeMath::additiveOverlayLocal(
+                                    torso_target, anim_snap.local(torso),
+                                    add_cap_spine_yaw, add_cap_spine_pitch,
+                                    /*preserve_anim_roll=*/true,
+                                    /*radial_cap_rad=*/-1.f,
+                                    /*strength=*/wCueBody);
+                            const LLQuaternion q_endpoint =
+                                composition == GAZE_COMPOSE_ADDITIVE
+                                ? q_additive
+                                : nlerp(composition_mix, torso_target,
+                                        q_additive);
+                            const F32 ga = gazeAllowedAlpha(
+                                av, torso, wCueBody, gaze_anim_priority);
+                            if (ga > 0.f)
+                                torso->setRotation(nlerp(
+                                    ga, torso->getRotation(), q_endpoint));
+                        }
+                    }
+                }
+            }
+            // [Machinima] Planted-spine chest write: the split share of the
+            // conserved spine bucket lands on mChest, parent-to-child after
+            // the torso. Guarded on a nonzero chest angle, so chest_share == 0
+            // (every pre-existing scope) never enters this block. Because
+            // mSpine3/mSpine4 sit between mTorso and mChest, the owned
+            // endpoint is built in WORLD space through the chain stack
+            // (chest over torso over hips over root) and converted through
+            // the chest joint's ACTUAL parent, exactly like the neck/head
+            // owned writes below; the cue-weighted branch mirrors the torso's
+            // local partial write.
+            if (chest_joint &&
+                (fabsf(chain.mChestYaw) + fabsf(chain.mChestPitch)) > 1e-5f &&
+                (body_priority_active || wCueBody > 0.001f))
+            {
+                LLQuaternion chest_target;
+                chest_target.setEulerAngles(
+                    0.f, chain.mChestPitch, chain.mChestYaw);
+                if (body_priority_active)
+                {
+                    if (composition == GAZE_COMPOSE_REPLACE)
+                    {
+                    const LLQuaternion owned_target = nlerp(
+                        body_pose_weight, LLQuaternion::DEFAULT, chest_target);
+                    LLQuaternion hips_target;
+                    hips_target.setEulerAngles(
+                        0.f, chain.mHipsPitch, chain.mHipsYaw);
+                    LLQuaternion torso_target;
+                    torso_target.setEulerAngles(
+                        0.f, chain.mTorsoPitch, chain.mTorsoYaw);
+                    const LLQuaternion owned_hips = nlerp(
+                        body_pose_weight, LLQuaternion::DEFAULT, hips_target);
+                    const LLQuaternion owned_torso = nlerp(
+                        body_pose_weight, LLQuaternion::DEFAULT, torso_target);
+                    const LLQuaternion desired_world = owned_target *
+                        owned_torso * owned_hips * root->getWorldRotation();
+                    LLQuaternion local_target = desired_world;
+                    if (LLJoint* parent = chest_joint->getParent())
+                    {
+                        local_target =
+                            desired_world * ~parent->getWorldRotation();
+                    }
+                    const F32 ga = gazeAllowedAlpha(
+                        av, chest_joint, priority_env, gaze_anim_priority);
+                    if (ga > 0.f)
+                        chest_joint->setRotation(nlerp(
+                            ga, chest_joint->getRotation(), local_target));
+                    }
+                    else
+                    {
+                        // [Machinima] Goal 2: additive/blend. FULL-strength
+                        // desired world = raw chest * raw torso * raw hips *
+                        // root under the CURRENT painted parent; the clamped
+                        // correction DELTA is scaled by the same
+                        // body_pose_weight Replace used (Codex defect 1).
+                        // Spine caps -- chest shares the conserved bucket.
+                        LLQuaternion hips_stack;
+                        hips_stack.setEulerAngles(
+                            0.f, chain.mHipsPitch, chain.mHipsYaw);
+                        LLQuaternion torso_stack;
+                        torso_stack.setEulerAngles(
+                            0.f, chain.mTorsoPitch, chain.mTorsoYaw);
+                        const LLQuaternion desired_world = chest_target *
+                            torso_stack * hips_stack * root->getWorldRotation();
+                        LLQuaternion local_target = desired_world;
+                        if (LLJoint* parent = chest_joint->getParent())
+                        {
+                            local_target =
+                                desired_world * ~parent->getWorldRotation();
+                        }
+                        const LLQuaternion q_additive =
+                            ALGazeMath::additiveOverlayLocal(
+                                local_target, anim_snap.local(chest_joint),
+                                add_cap_spine_yaw, add_cap_spine_pitch,
+                                /*preserve_anim_roll=*/true,
+                                /*radial_cap_rad=*/-1.f,
+                                /*strength=*/body_pose_weight);
+                        LLQuaternion q_endpoint = q_additive;
+                        if (composition == GAZE_COMPOSE_BLEND)
+                        {
+                            // Blend needs the weighted Replace endpoint too.
+                            const LLQuaternion owned_target = nlerp(
+                                body_pose_weight, LLQuaternion::DEFAULT,
+                                chest_target);
+                            const LLQuaternion owned_hips = nlerp(
+                                body_pose_weight, LLQuaternion::DEFAULT,
+                                hips_stack);
+                            const LLQuaternion owned_torso = nlerp(
+                                body_pose_weight, LLQuaternion::DEFAULT,
+                                torso_stack);
+                            const LLQuaternion replace_world = owned_target *
+                                owned_torso * owned_hips *
+                                root->getWorldRotation();
+                            LLQuaternion q_replace = replace_world;
+                            if (LLJoint* parent = chest_joint->getParent())
+                            {
+                                q_replace = replace_world *
+                                    ~parent->getWorldRotation();
+                            }
+                            q_endpoint = nlerp(
+                                composition_mix, q_replace, q_additive);
+                        }
+                        const F32 ga = gazeAllowedAlpha(
+                            av, chest_joint, priority_env, gaze_anim_priority);
+                        if (ga > 0.f)
+                            chest_joint->setRotation(nlerp(
+                                ga, chest_joint->getRotation(), q_endpoint));
+                    }
+                }
+                else
+                {
+                    if (composition == GAZE_COMPOSE_REPLACE)
+                    {
+                    const F32 ga = gazeAllowedAlpha(
+                        av, chest_joint, wCueBody, gaze_anim_priority);
+                    if (ga > 0.f)
+                        chest_joint->setRotation(nlerp(
+                            ga, chest_joint->getRotation(), chest_target));
+                    }
+                    else
+                    {
+                        // [Machinima] Goal 2: legacy Blend-scope additive --
+                        // clamped RESIDUAL delta over the animation (never a
+                        // second absolute application; Codex defect 2),
+                        // scaled by the existing wCueBody.
+                        const LLQuaternion q_additive =
+                            ALGazeMath::additiveOverlayLocal(
+                                chest_target, anim_snap.local(chest_joint),
+                                add_cap_spine_yaw, add_cap_spine_pitch,
+                                /*preserve_anim_roll=*/true,
+                                /*radial_cap_rad=*/-1.f,
+                                /*strength=*/wCueBody);
+                        const LLQuaternion q_endpoint =
+                            composition == GAZE_COMPOSE_ADDITIVE
+                            ? q_additive
+                            : nlerp(composition_mix, chest_target, q_additive);
+                        const F32 ga = gazeAllowedAlpha(
+                            av, chest_joint, wCueBody, gaze_anim_priority);
+                        if (ga > 0.f)
+                            chest_joint->setRotation(nlerp(
+                                ga, chest_joint->getRotation(), q_endpoint));
                     }
                 }
             }
@@ -5660,6 +6501,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                         0.f, chain.mNeckPitch, chain.mNeckYaw);
                     if (head_priority_active)
                     {
+                        if (composition == GAZE_COMPOSE_REPLACE)
+                        {
                         const LLQuaternion owned_target = nlerp(
                             head_pose_weight, LLQuaternion::DEFAULT, neck_target);
                         LLQuaternion hips_target;
@@ -5672,8 +6515,30 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                             body_pose_weight, LLQuaternion::DEFAULT, hips_target);
                         const LLQuaternion owned_torso = nlerp(
                             body_pose_weight, LLQuaternion::DEFAULT, torso_target);
-                        const LLQuaternion desired_world = owned_target *
-                            owned_torso * owned_hips * root->getWorldRotation();
+                        // [Machinima] When the planted chest carries part of the
+                        // spine bucket, the neck's cumulative world frame must
+                        // include the chest contribution (neck * chest * torso *
+                        // hips * root) or the neck (and head above it) under-aim
+                        // by the chest share. Guarded on a live chest angle and
+                        // written as the verbatim original product otherwise, so
+                        // the default path keeps its exact left-assoc rounding.
+                        LLQuaternion desired_world;
+                        if (chest_joint &&
+                            (fabsf(chain.mChestYaw) + fabsf(chain.mChestPitch)) > 1e-5f)
+                        {
+                            LLQuaternion chest_stack;
+                            chest_stack.setEulerAngles(
+                                0.f, chain.mChestPitch, chain.mChestYaw);
+                            const LLQuaternion owned_chest = nlerp(
+                                body_pose_weight, LLQuaternion::DEFAULT, chest_stack);
+                            desired_world = owned_target * owned_chest *
+                                owned_torso * owned_hips * root->getWorldRotation();
+                        }
+                        else
+                        {
+                            desired_world = owned_target *
+                                owned_torso * owned_hips * root->getWorldRotation();
+                        }
                         LLQuaternion rolled_world = desired_world;
                         applyGazeAimRoll(
                             rolled_world,
@@ -5690,15 +6555,146 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                         if (ga > 0.f)
                             neck->setRotation(nlerp(
                                 ga, neck->getRotation(), local_target));
+                        }
+                        else
+                        {
+                            // [Machinima] Goal 2: additive/blend. FULL-
+                            // strength desired world (raw neck * [raw chest]
+                            // * raw torso * raw hips * root, full-strength
+                            // roll channel) under the CURRENT painted parent;
+                            // the clamped correction DELTA is scaled by the
+                            // same head_pose_weight Replace used, so weight 0
+                            // leaves the animation untouched (Codex defect 1).
+                            // Animation roll is preserved unless the camera-
+                            // roll channel intentionally contributes roll.
+                            LLQuaternion hips_stack;
+                            hips_stack.setEulerAngles(
+                                0.f, chain.mHipsPitch, chain.mHipsYaw);
+                            LLQuaternion torso_stack;
+                            torso_stack.setEulerAngles(
+                                0.f, chain.mTorsoPitch, chain.mTorsoYaw);
+                            LLQuaternion chest_stack;
+                            const bool chest_live = chest_joint &&
+                                (fabsf(chain.mChestYaw) +
+                                 fabsf(chain.mChestPitch)) > 1e-5f;
+                            LLQuaternion desired_world;
+                            if (chest_live)
+                            {
+                                chest_stack.setEulerAngles(
+                                    0.f, chain.mChestPitch, chain.mChestYaw);
+                                desired_world = neck_target * chest_stack *
+                                    torso_stack * hips_stack *
+                                    root->getWorldRotation();
+                            }
+                            else
+                            {
+                                desired_world = neck_target *
+                                    torso_stack * hips_stack *
+                                    root->getWorldRotation();
+                            }
+                            const F32 neck_roll_term = camera_neck_roll *
+                                effective_head_eye_blend;
+                            LLQuaternion rolled_world = desired_world;
+                            applyGazeAimRoll(rolled_world, neck_roll_term);
+                            LLQuaternion local_target = rolled_world;
+                            if (LLJoint* parent = neck->getParent())
+                            {
+                                local_target =
+                                    rolled_world * ~parent->getWorldRotation();
+                            }
+                            const LLQuaternion q_additive =
+                                ALGazeMath::additiveOverlayLocal(
+                                    local_target, anim_snap.local(neck),
+                                    add_cap_neck_yaw, add_cap_neck_pitch,
+                                    fabsf(neck_roll_term) <= 1e-5f,
+                                    /*radial_cap_rad=*/-1.f,
+                                    /*strength=*/head_pose_weight);
+                            LLQuaternion q_endpoint = q_additive;
+                            if (composition == GAZE_COMPOSE_BLEND)
+                            {
+                                // Blend needs the weighted Replace endpoint.
+                                const LLQuaternion owned_target = nlerp(
+                                    head_pose_weight, LLQuaternion::DEFAULT,
+                                    neck_target);
+                                const LLQuaternion owned_hips = nlerp(
+                                    body_pose_weight, LLQuaternion::DEFAULT,
+                                    hips_stack);
+                                const LLQuaternion owned_torso = nlerp(
+                                    body_pose_weight, LLQuaternion::DEFAULT,
+                                    torso_stack);
+                                LLQuaternion replace_world;
+                                if (chest_live)
+                                {
+                                    const LLQuaternion owned_chest = nlerp(
+                                        body_pose_weight,
+                                        LLQuaternion::DEFAULT, chest_stack);
+                                    replace_world = owned_target *
+                                        owned_chest * owned_torso *
+                                        owned_hips * root->getWorldRotation();
+                                }
+                                else
+                                {
+                                    replace_world = owned_target *
+                                        owned_torso * owned_hips *
+                                        root->getWorldRotation();
+                                }
+                                applyGazeAimRoll(
+                                    replace_world,
+                                    camera_neck_roll * head_pose_weight *
+                                        effective_head_eye_blend);
+                                LLQuaternion q_replace = replace_world;
+                                if (LLJoint* parent = neck->getParent())
+                                {
+                                    q_replace = replace_world *
+                                        ~parent->getWorldRotation();
+                                }
+                                q_endpoint = nlerp(
+                                    composition_mix, q_replace, q_additive);
+                            }
+                            const F32 ga = gazeAllowedAlpha(
+                                av, neck, priority_env, gaze_anim_priority);
+                            if (ga > 0.f)
+                                neck->setRotation(nlerp(
+                                    ga, neck->getRotation(), q_endpoint));
+                        }
                     }
                     else
                     {
+                        if (composition == GAZE_COMPOSE_REPLACE)
+                        {
                         applyGazeAimRoll(neck_target, camera_neck_roll);
                         const F32 ga = gazeAllowedAlpha(
                             av, neck, wCueHead, gaze_anim_priority);
                         if (ga > 0.f)
                             neck->setRotation(nlerp(
                                 ga, neck->getRotation(), neck_target));
+                        }
+                        else
+                        {
+                            // [Machinima] Goal 2: legacy Blend-scope additive
+                            // -- clamped RESIDUAL delta over the animation
+                            // (never a second absolute application; Codex
+                            // defect 2), scaled by the existing wCueHead.
+                            LLQuaternion cue_target = neck_target;
+                            applyGazeAimRoll(cue_target, camera_neck_roll);
+                            const LLQuaternion q_additive =
+                                ALGazeMath::additiveOverlayLocal(
+                                    cue_target, anim_snap.local(neck),
+                                    add_cap_neck_yaw, add_cap_neck_pitch,
+                                    fabsf(camera_neck_roll) <= 1e-5f,
+                                    /*radial_cap_rad=*/-1.f,
+                                    /*strength=*/wCueHead);
+                            const LLQuaternion q_endpoint =
+                                composition == GAZE_COMPOSE_ADDITIVE
+                                ? q_additive
+                                : nlerp(composition_mix, cue_target,
+                                        q_additive);
+                            const F32 ga = gazeAllowedAlpha(
+                                av, neck, wCueHead, gaze_anim_priority);
+                            if (ga > 0.f)
+                                neck->setRotation(nlerp(
+                                    ga, neck->getRotation(), q_endpoint));
+                        }
                     }
                 }
             }
@@ -5712,6 +6708,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     0.f, chain.mHeadPitch, chain.mHeadYaw);
                 if (head_priority_active)
                 {
+                    if (composition == GAZE_COMPOSE_REPLACE)
+                    {
                     const LLQuaternion owned_target = nlerp(
                         head_pose_weight, LLQuaternion::DEFAULT, head_target);
                     LLQuaternion hips_target;
@@ -5729,8 +6727,27 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                         body_pose_weight, LLQuaternion::DEFAULT, torso_target);
                     const LLQuaternion owned_neck = nlerp(
                         head_pose_weight, LLQuaternion::DEFAULT, neck_target);
-                    LLQuaternion desired_world = owned_target * owned_neck *
-                        owned_torso * owned_hips * root->getWorldRotation();
+                    // [Machinima] Insert the planted chest contribution into the
+                    // head's cumulative world frame (head * neck * chest * torso
+                    // * hips * root) when it is live, so the head reaches the
+                    // full aim; verbatim original product otherwise (byte-parity).
+                    LLQuaternion desired_world;
+                    if (chest_joint &&
+                        (fabsf(chain.mChestYaw) + fabsf(chain.mChestPitch)) > 1e-5f)
+                    {
+                        LLQuaternion chest_stack;
+                        chest_stack.setEulerAngles(
+                            0.f, chain.mChestPitch, chain.mChestYaw);
+                        const LLQuaternion owned_chest = nlerp(
+                            body_pose_weight, LLQuaternion::DEFAULT, chest_stack);
+                        desired_world = owned_target * owned_neck * owned_chest *
+                            owned_torso * owned_hips * root->getWorldRotation();
+                    }
+                    else
+                    {
+                        desired_world = owned_target * owned_neck *
+                            owned_torso * owned_hips * root->getWorldRotation();
+                    }
                     applyGazeAimRoll(
                         desired_world,
                         (head_roll + camera_neck_roll) *
@@ -5746,15 +6763,160 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     if (ga > 0.f)
                         head->setRotation(nlerp(
                             ga, head->getRotation(), local_target));
+                    }
+                    else
+                    {
+                        // [Machinima] Goal 2: additive/blend. FULL-strength
+                        // desired world (raw head * raw neck * [raw chest] *
+                        // raw torso * raw hips * root, full-strength roll
+                        // channel) under the CURRENT painted parent; the
+                        // clamped correction DELTA is scaled by the same
+                        // head_pose_weight Replace used, so weight 0 leaves
+                        // the animation untouched (Codex defect 1). A
+                        // residual larger than the head caps undershoots
+                        // predictably.
+                        // TODO(phase5): end-effector residual distribution
+                        // (Codex defect 3) -- measure the ANIMATED head
+                        // forward from the anim_snap WORLD rotations, compute
+                        // the shortest root-relative yaw/pitch residual to
+                        // the desired aim, distribute THAT residual via
+                        // distributeAnatomicalChain, and compose per joint,
+                        // so an animation that already aims via a different
+                        // neck/head split keeps its own distribution.
+                        LLQuaternion hips_stack;
+                        hips_stack.setEulerAngles(
+                            0.f, chain.mHipsPitch, chain.mHipsYaw);
+                        LLQuaternion torso_stack;
+                        torso_stack.setEulerAngles(
+                            0.f, chain.mTorsoPitch, chain.mTorsoYaw);
+                        LLQuaternion neck_stack;
+                        neck_stack.setEulerAngles(
+                            0.f, chain.mNeckPitch, chain.mNeckYaw);
+                        LLQuaternion chest_stack;
+                        const bool chest_live = chest_joint &&
+                            (fabsf(chain.mChestYaw) +
+                             fabsf(chain.mChestPitch)) > 1e-5f;
+                        LLQuaternion desired_world;
+                        if (chest_live)
+                        {
+                            chest_stack.setEulerAngles(
+                                0.f, chain.mChestPitch, chain.mChestYaw);
+                            desired_world = head_target * neck_stack *
+                                chest_stack * torso_stack * hips_stack *
+                                root->getWorldRotation();
+                        }
+                        else
+                        {
+                            desired_world = head_target * neck_stack *
+                                torso_stack * hips_stack *
+                                root->getWorldRotation();
+                        }
+                        const F32 head_roll_term =
+                            (head_roll + camera_neck_roll) *
+                            effective_head_eye_blend;
+                        applyGazeAimRoll(desired_world, head_roll_term);
+                        LLQuaternion local_target = desired_world;
+                        if (LLJoint* parent = head->getParent())
+                        {
+                            local_target =
+                                desired_world * ~parent->getWorldRotation();
+                        }
+                        const LLQuaternion q_additive =
+                            ALGazeMath::additiveOverlayLocal(
+                                local_target, anim_snap.local(head),
+                                add_cap_head_yaw, add_cap_head_pitch,
+                                fabsf(head_roll_term) <= 1e-5f,
+                                /*radial_cap_rad=*/-1.f,
+                                /*strength=*/head_pose_weight);
+                        LLQuaternion q_endpoint = q_additive;
+                        if (composition == GAZE_COMPOSE_BLEND)
+                        {
+                            // Blend needs the weighted Replace endpoint too.
+                            const LLQuaternion owned_target = nlerp(
+                                head_pose_weight, LLQuaternion::DEFAULT,
+                                head_target);
+                            const LLQuaternion owned_hips = nlerp(
+                                body_pose_weight, LLQuaternion::DEFAULT,
+                                hips_stack);
+                            const LLQuaternion owned_torso = nlerp(
+                                body_pose_weight, LLQuaternion::DEFAULT,
+                                torso_stack);
+                            const LLQuaternion owned_neck = nlerp(
+                                head_pose_weight, LLQuaternion::DEFAULT,
+                                neck_stack);
+                            LLQuaternion replace_world;
+                            if (chest_live)
+                            {
+                                const LLQuaternion owned_chest = nlerp(
+                                    body_pose_weight, LLQuaternion::DEFAULT,
+                                    chest_stack);
+                                replace_world = owned_target * owned_neck *
+                                    owned_chest * owned_torso * owned_hips *
+                                    root->getWorldRotation();
+                            }
+                            else
+                            {
+                                replace_world = owned_target * owned_neck *
+                                    owned_torso * owned_hips *
+                                    root->getWorldRotation();
+                            }
+                            applyGazeAimRoll(
+                                replace_world,
+                                (head_roll + camera_neck_roll) *
+                                    head_pose_weight *
+                                    effective_head_eye_blend);
+                            LLQuaternion q_replace = replace_world;
+                            if (LLJoint* parent = head->getParent())
+                            {
+                                q_replace = replace_world *
+                                    ~parent->getWorldRotation();
+                            }
+                            q_endpoint = nlerp(
+                                composition_mix, q_replace, q_additive);
+                        }
+                        const F32 ga = gazeAllowedAlpha(
+                            av, head, priority_env, gaze_anim_priority);
+                        if (ga > 0.f)
+                            head->setRotation(nlerp(
+                                ga, head->getRotation(), q_endpoint));
+                    }
                 }
                 else
                 {
+                    if (composition == GAZE_COMPOSE_REPLACE)
+                    {
                     applyGazeAimRoll(head_target, head_roll);
                     const F32 ga = gazeAllowedAlpha(
                         av, head, wCueHead, gaze_anim_priority);
                     if (ga > 0.f)
                         head->setRotation(nlerp(
                             ga, head->getRotation(), head_target));
+                    }
+                    else
+                    {
+                        // [Machinima] Goal 2: legacy Blend-scope additive --
+                        // clamped RESIDUAL delta over the animation (never a
+                        // second absolute application; Codex defect 2),
+                        // scaled by the existing wCueHead.
+                        LLQuaternion cue_target = head_target;
+                        applyGazeAimRoll(cue_target, head_roll);
+                        const LLQuaternion q_additive =
+                            ALGazeMath::additiveOverlayLocal(
+                                cue_target, anim_snap.local(head),
+                                add_cap_head_yaw, add_cap_head_pitch,
+                                fabsf(head_roll) <= 1e-5f,
+                                /*radial_cap_rad=*/-1.f,
+                                /*strength=*/wCueHead);
+                        const LLQuaternion q_endpoint =
+                            composition == GAZE_COMPOSE_ADDITIVE
+                            ? q_additive
+                            : nlerp(composition_mix, cue_target, q_additive);
+                        const F32 ga = gazeAllowedAlpha(
+                            av, head, wCueHead, gaze_anim_priority);
+                        if (ga > 0.f)
+                            head->setRotation(nlerp(
+                                ga, head->getRotation(), q_endpoint));
+                    }
                 }
             }
         }
@@ -5823,9 +6985,13 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             override_head_eyes && priority_env > 0.001f;
         if (wEye > 0.001f || eye_priority_active)
         {
+            // [Machinima] Goal 3a: custom-profile radial eye cone when enabled.
+            const F32 eye_rot_max_base = use_custom_limits
+                ? eff_profile.mEyeRadialDeg * DEG_TO_RAD
+                : GAZE_DIRECTOR_EYE_ROT_MAX;
             const F32 scaled_eye_rot_max = anatomy_scale == 1.f
-                ? GAZE_DIRECTOR_EYE_ROT_MAX
-                : GAZE_DIRECTOR_EYE_ROT_MAX * anatomy_scale;
+                ? eye_rot_max_base
+                : eye_rot_max_base * anatomy_scale;
             const F32 comfort_yaw_deg = ms.mComfortYawDeg *
                 (anatomy_scale == 1.f ? 1.f : anatomy_scale);
             const F32 comfort_pitch_deg = ms.mComfortPitchDeg *
@@ -5885,6 +7051,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 }
                 if (eye_priority_active)
                 {
+                    if (composition == GAZE_COMPOSE_REPLACE)
+                    {
                     const LLQuaternion owned_target = nlerp(
                         eye_pose_weight, LLQuaternion::DEFAULT, tgt);
                     const F32 ga = gazeAllowedAlpha(
@@ -5892,13 +7060,70 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     if (ga > 0.f)
                         eye->setRotation(nlerp(
                             ga, eye->getRotation(), owned_target));
+                    }
+                    else
+                    {
+                        // [Machinima] Goal 2: additive/blend eyes, still
+                        // solved AFTER the painted head (VOR preserved). The
+                        // smallest clamped eye delta from the SNAPSHOT
+                        // animation eye rotation toward the FULL-strength
+                        // desired eye-in-head composes over the animation,
+                        // with the correction DELTA scaled by the same
+                        // eye_pose_weight Replace used (Codex defect 1).
+                        const LLQuaternion q_additive =
+                            ALGazeMath::additiveOverlayLocal(
+                                tgt, anim_snap.local(eye),
+                                comfort_yaw_rad, comfort_pitch_rad,
+                                /*preserve_anim_roll=*/true,
+                                constrain_eye_cone ? scaled_eye_rot_max
+                                                   : -1.f,
+                                /*strength=*/eye_pose_weight);
+                        const LLQuaternion q_replace = nlerp(
+                            eye_pose_weight, LLQuaternion::DEFAULT, tgt);
+                        const LLQuaternion q_endpoint =
+                            composition == GAZE_COMPOSE_ADDITIVE
+                            ? q_additive
+                            : nlerp(composition_mix, q_replace, q_additive);
+                        const F32 ga = gazeAllowedAlpha(
+                            av, eye, priority_env, gaze_anim_priority);
+                        if (ga > 0.f)
+                            eye->setRotation(nlerp(
+                                ga, eye->getRotation(), q_endpoint));
+                    }
                 }
                 else
                 {
+                    if (composition == GAZE_COMPOSE_REPLACE)
+                    {
                     const F32 ga = gazeAllowedAlpha(
                         av, eye, wEye, gaze_anim_priority);
                     if (ga > 0.f)
                         eye->setRotation(nlerp(ga, eye->getRotation(), tgt));
+                    }
+                    else
+                    {
+                        // [Machinima] Goal 2: additive/blend eyes on the
+                        // cue-weighted path -- clamped RESIDUAL delta over
+                        // the animation (Codex defect 2), scaled by the
+                        // existing wEye alpha.
+                        const LLQuaternion q_additive =
+                            ALGazeMath::additiveOverlayLocal(
+                                tgt, anim_snap.local(eye),
+                                comfort_yaw_rad, comfort_pitch_rad,
+                                /*preserve_anim_roll=*/true,
+                                constrain_eye_cone ? scaled_eye_rot_max
+                                                   : -1.f,
+                                /*strength=*/wEye);
+                        const LLQuaternion q_endpoint =
+                            composition == GAZE_COMPOSE_ADDITIVE
+                            ? q_additive
+                            : nlerp(composition_mix, tgt, q_additive);
+                        const F32 ga = gazeAllowedAlpha(
+                            av, eye, wEye, gaze_anim_priority);
+                        if (ga > 0.f)
+                            eye->setRotation(nlerp(
+                                ga, eye->getRotation(), q_endpoint));
+                    }
                 }
             };
             applyMotorEye(av->getJoint("mEyeLeft"), -1.f);
@@ -6042,18 +7267,39 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         }
     }
 
-    F32 chain_yaw = g.mAppliedYaw;
+    // [Machinima] behind-shoulder / no-snap (legacy path): the pose chains
+    // below consume a resolved chain feed that can never sign-flip through
+    // the back at the +-180 seam -- it holds the committed shoulder while the
+    // target hovers dead-behind, then sweeps to the other shoulder through
+    // the FRONT at head_slew_rate. Reach is the sum of the SAME weighted
+    // capacities distributeAnatomicalChain allocates from (Planted spine
+    // excludes the hips), so "beyond reach" matches actual saturation, and a
+    // target that never leaves reach passes through bit-identically
+    // (chain_yaw == g.mAppliedYaw). The trigger_chain solve right below
+    // deliberately keeps the RAW g.mAppliedYaw so the Turn-body handoff
+    // still fires on a behind target.
+    const F32 chain_reach_yaw = ALGazeMath::chainReachYaw(
+        effective_head_eye_blend, g.mTorsoAmount, anatomy_scale,
+        /*recruit_hips=*/!planted_spine, profile_ptr);
+    const F32 chain_step = llmax((F32)head_slew_rate_deg, 0.f) *
+                           DEG_TO_RAD * dt;
+    F32 chain_yaw = resolveBehindShoulderChainYaw(
+        g.mAppliedYaw, chain_reach_yaw, chain_step, advance,
+        g.mChainYawValid, g.mChainYaw, g.mBehindShoulderSign,
+        g.mBehindSweeping);
     ALGazeMath::AnatomicalChainPose trigger_chain;
     ALGazeMath::distributeAnatomicalChain(
         g.mAppliedYaw, g.mAppliedPitch,
         effective_head_eye_blend, g.mTorsoAmount,
         body_turn_threshold_deg, trigger_chain, anatomy_scale,
-        /*recruit_hips=*/!planted_spine);
+        /*recruit_hips=*/!planted_spine, profile_ptr, chest_share);
 
     // The old Director body mode now opts into threshold-driven replanting,
     // using the resolved/smoothed target rather than the render camera.
+    // [Machinima] Goal 3b: influence 0 hides the whole gaze layer, so gate the
+    // root replant on it too (the mBodyTurnActive latch stays warm).
     if (director_runtime && director_runtime->mMode == 1 && !av->isSitting() &&
-        cue_body_weight >= 0.999f &&
+        cue_body_weight >= 0.999f && timeline_influence > 0.001f &&
         (trigger_chain.mTriggerBodyTurn || director_runtime->mBodyTurnActive))
     {
         director_runtime->mBodyTurnActive = true;
@@ -6147,23 +7393,91 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     // contact-ration aversion, and persona eyeline/chin bias must never kick the
     // body chain or its turn trigger.
     ALGazeMath::AnatomicalChainPose chain;
+    if (lean_active)
+    {
+        // [Machinima] Goal 3c (legacy path, Angle-ease + Planted spine): run
+        // the pure curve ONCE on the break-free applied body aim -- the spine
+        // takes its angle-eased, ellipse-clamped share and the FACE residual
+        // (plus the expressive break/persona offsets, which must never feed
+        // the spine) is allocated to eye/head/neck ONLY: torso_amount 0 and
+        // recruit_hips false give the spine/hips slots zero capacity, and
+        // chest_share 0 keeps the face solve from splitting a chest. Excess
+        // beyond face + spine reach remains an undershoot (design doc).
+        const ALGazeMath::SpineLeanResult lean = ALGazeMath::spineLean(
+            chain_yaw, g.mAppliedPitch,
+            lean_threshold_deg, lean_softness_deg, lean_max_deg,
+            g.mTorsoAmount, effective_head_eye_blend,
+            spine_cap_yaw_rad, spine_cap_pitch_rad);
+        ALGazeMath::distributeAnatomicalChain(
+            lean.mFaceYaw + break_yaw,
+            lean.mFacePitch + expressive_pitch + persona_mod.mChinPitchBias,
+            effective_head_eye_blend, /*torso_amount=*/0.f,
+            body_turn_threshold_deg, chain, anatomy_scale,
+            /*recruit_hips=*/false, profile_ptr, /*chest_share=*/0.f);
+        // The conserved spine vector replaces the (zero) torso allocation,
+        // then splits across torso/chest with the SAME share the legacy
+        // planted split uses (torso+chest == the one spine bucket; the
+        // chest-less-rig fold-back below stays consistent).
+        chain.mTorsoYaw   = lean.mSpineYaw;
+        chain.mTorsoPitch = lean.mSpinePitch;
+        if (chest_share > 0.f)
+        {
+            chain.mChestYaw   = chain.mTorsoYaw * chest_share;
+            chain.mChestPitch = chain.mTorsoPitch * chest_share;
+            chain.mTorsoYaw  -= chain.mChestYaw;
+            chain.mTorsoPitch -= chain.mChestPitch;
+        }
+        // Planted: pelvis stays exactly +0 (the face solve already
+        // canonicalized its zero-capacity hips to +0; keep it explicit).
+        chain.mHipsYaw   = 0.f;
+        chain.mHipsPitch = 0.f;
+        // Turn-body handoff is keyed to the FULL body aim, never the face
+        // residual: same predicate distributeAnatomicalChain applies to its
+        // (full) input yaw. The actual root-turn gate above already used the
+        // unchanged trigger_chain solve on the raw g.mAppliedYaw.
+        chain.mTriggerBodyTurn = fabsf(chain_yaw) >
+            llclamp(body_turn_threshold_deg, 45.f, 180.f) * DEG_TO_RAD;
+    }
+    else
+    {
     ALGazeMath::distributeAnatomicalChain(
         chain_yaw + break_yaw,
         g.mAppliedPitch + expressive_pitch + persona_mod.mChinPitchBias,
         effective_head_eye_blend, g.mTorsoAmount,
         body_turn_threshold_deg, chain, anatomy_scale,
-        /*recruit_hips=*/!planted_spine);
+        /*recruit_hips=*/!planted_spine, profile_ptr, chest_share);
     ALGazeMath::AnatomicalChainPose break_free_body_chain;
     ALGazeMath::distributeAnatomicalChain(
         chain_yaw, g.mAppliedPitch,
         effective_head_eye_blend, g.mTorsoAmount,
         body_turn_threshold_deg, break_free_body_chain, anatomy_scale,
-        /*recruit_hips=*/!planted_spine);
+        /*recruit_hips=*/!planted_spine, profile_ptr, chest_share);
     chain.mTorsoYaw = break_free_body_chain.mTorsoYaw;
     chain.mTorsoPitch = break_free_body_chain.mTorsoPitch;
+    // [Machinima] Chest is a spine component: take it from the SAME break-free
+    // solve as the torso so torso+chest stay one conserved bucket (natural
+    // breaks never kick the body chain). Both are +0 when chest_share == 0.
+    chain.mChestYaw = break_free_body_chain.mChestYaw;
+    chain.mChestPitch = break_free_body_chain.mChestPitch;
     chain.mHipsYaw = break_free_body_chain.mHipsYaw;
     chain.mHipsPitch = break_free_body_chain.mHipsPitch;
     chain.mTriggerBodyTurn = break_free_body_chain.mTriggerBodyTurn;
+    } // end legacy double solve (lean_active == false)
+    // [Machinima] Chest fold-back (legacy path): a rig without an mChest joint
+    // returns the split share to the torso BEFORE the torso write so no reach
+    // is ever lost. chest_share == 0 on every non-planted path keeps mChest*
+    // at exactly +0, so this is a no-op there.
+    LLJoint* chest_joint = av->getJoint("mChest");
+    if (!chest_joint && chest_share > 0.f)
+    {
+        // Fold the WHOLE split share back (any magnitude) so no reach is lost
+        // on a chest-less rig. chest_share==0 (every non-planted path) keeps
+        // chain.mChest* at exactly +0, so this is a no-op and torso is untouched.
+        chain.mTorsoYaw   += chain.mChestYaw;
+        chain.mTorsoPitch += chain.mChestPitch;
+        chain.mChestYaw   = 0.f;
+        chain.mChestPitch = 0.f;
+    }
     ALGazeMath::applySideEye(persona_mod.mSideEyeStrength, chain);
     if (director_runtime && director_runtime->mCueOverride)
     {
@@ -6186,6 +7500,11 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         chain.mNeckPitch  *= body_scale;
         chain.mTorsoYaw   *= body_scale;
         chain.mTorsoPitch *= body_scale;
+        // [Machinima] Chest scales with its torso sibling so the conserved
+        // spine bucket shrinks as one (the motor path splits AFTER its own
+        // stillness scaling, which is equivalent). +0 stays +0 by default.
+        chain.mChestYaw   *= body_scale;
+        chain.mChestPitch *= body_scale;
         chain.mHipsYaw    *= body_scale;
         chain.mHipsPitch  *= body_scale;
     }
@@ -6221,6 +7540,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 // (byte-identical to body_priority_active for scopes 0-2).
                 if (pelvis_priority_active)
                 {
+                    if (composition == GAZE_COMPOSE_REPLACE)
+                    {
                     const LLQuaternion owned_target = nlerp(
                         body_pose_weight, LLQuaternion::DEFAULT, hips_target);
                     const F32 ga = gazeAllowedAlpha(
@@ -6228,14 +7549,74 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     if (ga > 0.f)
                         pelvis->setRotation(nlerp(
                             ga, pelvis->getRotation(), owned_target));
+                    }
+                    else
+                    {
+                        // [Machinima] Goal 2: additive/blend (legacy path);
+                        // same construction as the motor pelvis branch --
+                        // FULL-strength desired, correction DELTA scaled by
+                        // body_pose_weight (Codex defect 1).
+                        LLQuaternion desired_local =
+                            hips_target * root->getWorldRotation();
+                        if (LLJoint* parent = pelvis->getParent())
+                        {
+                            desired_local = desired_local *
+                                ~parent->getWorldRotation();
+                        }
+                        const LLQuaternion q_additive =
+                            ALGazeMath::additiveOverlayLocal(
+                                desired_local, anim_snap.local(pelvis),
+                                add_cap_hips_yaw, add_cap_hips_pitch,
+                                /*preserve_anim_roll=*/true,
+                                /*radial_cap_rad=*/-1.f,
+                                /*strength=*/body_pose_weight);
+                        const LLQuaternion q_replace = nlerp(
+                            body_pose_weight, LLQuaternion::DEFAULT,
+                            hips_target);
+                        const LLQuaternion q_endpoint =
+                            composition == GAZE_COMPOSE_ADDITIVE
+                            ? q_additive
+                            : nlerp(composition_mix, q_replace, q_additive);
+                        const F32 ga = gazeAllowedAlpha(
+                            av, pelvis, priority_env, gaze_anim_priority);
+                        if (ga > 0.f)
+                            pelvis->setRotation(nlerp(
+                                ga, pelvis->getRotation(), q_endpoint));
+                    }
                 }
                 else
                 {
+                    if (composition == GAZE_COMPOSE_REPLACE)
+                    {
                     const F32 ga = gazeAllowedAlpha(
                         av, pelvis, wCueBody, gaze_anim_priority);
                     if (ga > 0.f)
                         pelvis->setRotation(nlerp(
                             ga, pelvis->getRotation(), hips_target));
+                    }
+                    else
+                    {
+                        // [Machinima] Goal 2: legacy Blend-scope additive --
+                        // clamped RESIDUAL delta over the animation (never a
+                        // second absolute application; Codex defect 2),
+                        // scaled by the existing wCueBody.
+                        const LLQuaternion q_additive =
+                            ALGazeMath::additiveOverlayLocal(
+                                hips_target, anim_snap.local(pelvis),
+                                add_cap_hips_yaw, add_cap_hips_pitch,
+                                /*preserve_anim_roll=*/true,
+                                /*radial_cap_rad=*/-1.f,
+                                /*strength=*/wCueBody);
+                        const LLQuaternion q_endpoint =
+                            composition == GAZE_COMPOSE_ADDITIVE
+                            ? q_additive
+                            : nlerp(composition_mix, hips_target, q_additive);
+                        const F32 ga = gazeAllowedAlpha(
+                            av, pelvis, wCueBody, gaze_anim_priority);
+                        if (ga > 0.f)
+                            pelvis->setRotation(nlerp(
+                                ga, pelvis->getRotation(), q_endpoint));
+                    }
                 }
             }
         }
@@ -6249,6 +7630,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 torso_target.setEulerAngles(0.f, chain.mTorsoPitch, chain.mTorsoYaw);
                 if (body_priority_active)
                 {
+                    if (composition == GAZE_COMPOSE_REPLACE)
+                    {
                     const LLQuaternion owned_target = nlerp(
                         body_pose_weight, LLQuaternion::DEFAULT, torso_target);
                     const F32 ga = gazeAllowedAlpha(
@@ -6256,18 +7639,221 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     if (ga > 0.f)
                         torso->setRotation(nlerp(
                             ga, torso->getRotation(), owned_target));
+                    }
+                    else
+                    {
+                        // [Machinima] Goal 2: additive/blend (legacy path);
+                        // same construction as the motor torso branch --
+                        // FULL-strength desired, correction DELTA scaled by
+                        // body_pose_weight (Codex defect 1).
+                        LLQuaternion hips_stack;
+                        hips_stack.setEulerAngles(
+                            0.f, chain.mHipsPitch, chain.mHipsYaw);
+                        const LLQuaternion desired_world = torso_target *
+                            hips_stack * root->getWorldRotation();
+                        LLQuaternion desired_local = desired_world;
+                        if (LLJoint* parent = torso->getParent())
+                        {
+                            desired_local = desired_world *
+                                ~parent->getWorldRotation();
+                        }
+                        const LLQuaternion q_additive =
+                            ALGazeMath::additiveOverlayLocal(
+                                desired_local, anim_snap.local(torso),
+                                add_cap_spine_yaw, add_cap_spine_pitch,
+                                /*preserve_anim_roll=*/true,
+                                /*radial_cap_rad=*/-1.f,
+                                /*strength=*/body_pose_weight);
+                        const LLQuaternion q_replace = nlerp(
+                            body_pose_weight, LLQuaternion::DEFAULT,
+                            torso_target);
+                        const LLQuaternion q_endpoint =
+                            composition == GAZE_COMPOSE_ADDITIVE
+                            ? q_additive
+                            : nlerp(composition_mix, q_replace, q_additive);
+                        const F32 ga = gazeAllowedAlpha(
+                            av, torso, priority_env, gaze_anim_priority);
+                        if (ga > 0.f)
+                            torso->setRotation(nlerp(
+                                ga, torso->getRotation(), q_endpoint));
+                    }
                 }
                 else
                 {
+                    if (composition == GAZE_COMPOSE_REPLACE)
+                    {
                     const F32 ga = gazeAllowedAlpha(
                         av, torso, wCueBody, gaze_anim_priority);
                     if (ga > 0.f)
                         torso->setRotation(nlerp(
                             ga, torso->getRotation(), torso_target));
+                    }
+                    else
+                    {
+                        // [Machinima] Goal 2: legacy Blend-scope additive --
+                        // clamped RESIDUAL delta over the animation (never a
+                        // second absolute application; Codex defect 2),
+                        // scaled by the existing wCueBody.
+                        const LLQuaternion q_additive =
+                            ALGazeMath::additiveOverlayLocal(
+                                torso_target, anim_snap.local(torso),
+                                add_cap_spine_yaw, add_cap_spine_pitch,
+                                /*preserve_anim_roll=*/true,
+                                /*radial_cap_rad=*/-1.f,
+                                /*strength=*/wCueBody);
+                        const LLQuaternion q_endpoint =
+                            composition == GAZE_COMPOSE_ADDITIVE
+                            ? q_additive
+                            : nlerp(composition_mix, torso_target, q_additive);
+                        const F32 ga = gazeAllowedAlpha(
+                            av, torso, wCueBody, gaze_anim_priority);
+                        if (ga > 0.f)
+                            torso->setRotation(nlerp(
+                                ga, torso->getRotation(), q_endpoint));
+                    }
                 }
             }
         }
 
+        // [Machinima] Planted-spine chest write (legacy path): the split share
+        // of the conserved spine bucket lands on mChest, parent-to-child after
+        // the torso. Guarded on a nonzero chest angle, so chest_share == 0
+        // (every pre-existing scope) never enters this block. Because
+        // mSpine3/mSpine4 sit between mTorso and mChest, the owned endpoint is
+        // built in WORLD space through the chain stack (chest over torso over
+        // hips over root) and converted through the chest joint's ACTUAL
+        // parent, exactly like the neck/head owned writes below; the
+        // cue-weighted branch mirrors the torso's local partial write.
+        if (chest_joint &&
+            (fabsf(chain.mChestYaw) + fabsf(chain.mChestPitch)) > 1e-5f &&
+            (body_priority_active || wCueBody > 0.001f))
+        {
+            LLQuaternion chest_target;
+            chest_target.setEulerAngles(0.f, chain.mChestPitch, chain.mChestYaw);
+            if (body_priority_active)
+            {
+                if (composition == GAZE_COMPOSE_REPLACE)
+                {
+                const LLQuaternion owned_target = nlerp(
+                    body_pose_weight, LLQuaternion::DEFAULT, chest_target);
+                LLQuaternion hips_target;
+                hips_target.setEulerAngles(
+                    0.f, chain.mHipsPitch, chain.mHipsYaw);
+                LLQuaternion torso_target;
+                torso_target.setEulerAngles(
+                    0.f, chain.mTorsoPitch, chain.mTorsoYaw);
+                const LLQuaternion owned_hips = nlerp(
+                    body_pose_weight, LLQuaternion::DEFAULT, hips_target);
+                const LLQuaternion owned_torso = nlerp(
+                    body_pose_weight, LLQuaternion::DEFAULT, torso_target);
+                const LLQuaternion desired_world = owned_target *
+                    owned_torso * owned_hips * root->getWorldRotation();
+                LLQuaternion local_target = desired_world;
+                if (LLJoint* parent = chest_joint->getParent())
+                {
+                    local_target = desired_world * ~parent->getWorldRotation();
+                }
+                const F32 ga = gazeAllowedAlpha(
+                    av, chest_joint, priority_env, gaze_anim_priority);
+                if (ga > 0.f)
+                    chest_joint->setRotation(nlerp(
+                        ga, chest_joint->getRotation(), local_target));
+                }
+                else
+                {
+                    // [Machinima] Goal 2: additive/blend (legacy path); same
+                    // construction as the motor chest branch -- FULL-strength
+                    // desired, correction DELTA scaled by body_pose_weight
+                    // (Codex defect 1). Spine caps -- chest shares the
+                    // conserved spine bucket.
+                    LLQuaternion hips_stack;
+                    hips_stack.setEulerAngles(
+                        0.f, chain.mHipsPitch, chain.mHipsYaw);
+                    LLQuaternion torso_stack;
+                    torso_stack.setEulerAngles(
+                        0.f, chain.mTorsoPitch, chain.mTorsoYaw);
+                    const LLQuaternion desired_world = chest_target *
+                        torso_stack * hips_stack * root->getWorldRotation();
+                    LLQuaternion local_target = desired_world;
+                    if (LLJoint* parent = chest_joint->getParent())
+                    {
+                        local_target =
+                            desired_world * ~parent->getWorldRotation();
+                    }
+                    const LLQuaternion q_additive =
+                        ALGazeMath::additiveOverlayLocal(
+                            local_target, anim_snap.local(chest_joint),
+                            add_cap_spine_yaw, add_cap_spine_pitch,
+                            /*preserve_anim_roll=*/true,
+                            /*radial_cap_rad=*/-1.f,
+                            /*strength=*/body_pose_weight);
+                    LLQuaternion q_endpoint = q_additive;
+                    if (composition == GAZE_COMPOSE_BLEND)
+                    {
+                        // Blend needs the weighted Replace endpoint too.
+                        const LLQuaternion owned_target = nlerp(
+                            body_pose_weight, LLQuaternion::DEFAULT,
+                            chest_target);
+                        const LLQuaternion owned_hips = nlerp(
+                            body_pose_weight, LLQuaternion::DEFAULT,
+                            hips_stack);
+                        const LLQuaternion owned_torso = nlerp(
+                            body_pose_weight, LLQuaternion::DEFAULT,
+                            torso_stack);
+                        const LLQuaternion replace_world = owned_target *
+                            owned_torso * owned_hips *
+                            root->getWorldRotation();
+                        LLQuaternion q_replace = replace_world;
+                        if (LLJoint* parent = chest_joint->getParent())
+                        {
+                            q_replace = replace_world *
+                                ~parent->getWorldRotation();
+                        }
+                        q_endpoint = nlerp(
+                            composition_mix, q_replace, q_additive);
+                    }
+                    const F32 ga = gazeAllowedAlpha(
+                        av, chest_joint, priority_env, gaze_anim_priority);
+                    if (ga > 0.f)
+                        chest_joint->setRotation(nlerp(
+                            ga, chest_joint->getRotation(), q_endpoint));
+                }
+            }
+            else
+            {
+                if (composition == GAZE_COMPOSE_REPLACE)
+                {
+                const F32 ga = gazeAllowedAlpha(
+                    av, chest_joint, wCueBody, gaze_anim_priority);
+                if (ga > 0.f)
+                    chest_joint->setRotation(nlerp(
+                        ga, chest_joint->getRotation(), chest_target));
+                }
+                else
+                {
+                    // [Machinima] Goal 2: legacy Blend-scope additive --
+                    // clamped RESIDUAL delta over the animation (never a
+                    // second absolute application; Codex defect 2), scaled
+                    // by the existing wCueBody.
+                    const LLQuaternion q_additive =
+                        ALGazeMath::additiveOverlayLocal(
+                            chest_target, anim_snap.local(chest_joint),
+                            add_cap_spine_yaw, add_cap_spine_pitch,
+                            /*preserve_anim_roll=*/true,
+                            /*radial_cap_rad=*/-1.f,
+                            /*strength=*/wCueBody);
+                    const LLQuaternion q_endpoint =
+                        composition == GAZE_COMPOSE_ADDITIVE
+                        ? q_additive
+                        : nlerp(composition_mix, chest_target, q_additive);
+                    const F32 ga = gazeAllowedAlpha(
+                        av, chest_joint, wCueBody, gaze_anim_priority);
+                    if (ga > 0.f)
+                        chest_joint->setRotation(nlerp(
+                            ga, chest_joint->getRotation(), q_endpoint));
+                }
+            }
+        }
         if (head_priority_active ||
             (wCueHead > 0.001f &&
              (fabsf(chain.mNeckYaw) + fabsf(chain.mNeckPitch) +
@@ -6279,6 +7865,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 neck_target.setEulerAngles(0.f, chain.mNeckPitch, chain.mNeckYaw);
                 if (head_priority_active)
                 {
+                    if (composition == GAZE_COMPOSE_REPLACE)
+                    {
                     const LLQuaternion owned_target = nlerp(
                         head_pose_weight, LLQuaternion::DEFAULT, neck_target);
                     LLQuaternion hips_target;
@@ -6294,8 +7882,26 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     // Priority resolves the neutral root-frame chain in world
                     // space, then cancels the actual animated parent. Otherwise
                     // an AO-driven chest/spine can drag the locked neck/head.
-                    const LLQuaternion desired_world = owned_target *
-                        owned_torso * owned_hips * root->getWorldRotation();
+                    // [Machinima] Include the planted chest contribution (neck *
+                    // chest * torso * hips * root) when it is live so the neck
+                    // reaches the full aim; verbatim original otherwise.
+                    LLQuaternion desired_world;
+                    if (chest_joint &&
+                        (fabsf(chain.mChestYaw) + fabsf(chain.mChestPitch)) > 1e-5f)
+                    {
+                        LLQuaternion chest_stack;
+                        chest_stack.setEulerAngles(
+                            0.f, chain.mChestPitch, chain.mChestYaw);
+                        const LLQuaternion owned_chest = nlerp(
+                            body_pose_weight, LLQuaternion::DEFAULT, chest_stack);
+                        desired_world = owned_target * owned_chest *
+                            owned_torso * owned_hips * root->getWorldRotation();
+                    }
+                    else
+                    {
+                        desired_world = owned_target *
+                            owned_torso * owned_hips * root->getWorldRotation();
+                    }
                     LLQuaternion rolled_world = desired_world;
                     applyGazeAimRoll(
                         rolled_world,
@@ -6311,15 +7917,142 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     if (ga > 0.f)
                         neck->setRotation(nlerp(
                             ga, neck->getRotation(), local_target));
+                    }
+                    else
+                    {
+                        // [Machinima] Goal 2: additive/blend (legacy path);
+                        // same construction as the motor neck branch -- FULL-
+                        // strength desired, correction DELTA scaled by
+                        // head_pose_weight (Codex defect 1). Animation roll
+                        // survives unless the camera-roll channel
+                        // intentionally contributes roll here.
+                        LLQuaternion hips_stack;
+                        hips_stack.setEulerAngles(
+                            0.f, chain.mHipsPitch, chain.mHipsYaw);
+                        LLQuaternion torso_stack;
+                        torso_stack.setEulerAngles(
+                            0.f, chain.mTorsoPitch, chain.mTorsoYaw);
+                        LLQuaternion chest_stack;
+                        const bool chest_live = chest_joint &&
+                            (fabsf(chain.mChestYaw) +
+                             fabsf(chain.mChestPitch)) > 1e-5f;
+                        LLQuaternion desired_world;
+                        if (chest_live)
+                        {
+                            chest_stack.setEulerAngles(
+                                0.f, chain.mChestPitch, chain.mChestYaw);
+                            desired_world = neck_target * chest_stack *
+                                torso_stack * hips_stack *
+                                root->getWorldRotation();
+                        }
+                        else
+                        {
+                            desired_world = neck_target *
+                                torso_stack * hips_stack *
+                                root->getWorldRotation();
+                        }
+                        const F32 neck_roll_term = camera_neck_roll *
+                            effective_head_eye_blend;
+                        LLQuaternion rolled_world = desired_world;
+                        applyGazeAimRoll(rolled_world, neck_roll_term);
+                        LLQuaternion local_target = rolled_world;
+                        if (LLJoint* parent = neck->getParent())
+                        {
+                            local_target =
+                                rolled_world * ~parent->getWorldRotation();
+                        }
+                        const LLQuaternion q_additive =
+                            ALGazeMath::additiveOverlayLocal(
+                                local_target, anim_snap.local(neck),
+                                add_cap_neck_yaw, add_cap_neck_pitch,
+                                fabsf(neck_roll_term) <= 1e-5f,
+                                /*radial_cap_rad=*/-1.f,
+                                /*strength=*/head_pose_weight);
+                        LLQuaternion q_endpoint = q_additive;
+                        if (composition == GAZE_COMPOSE_BLEND)
+                        {
+                            // Blend needs the weighted Replace endpoint too.
+                            const LLQuaternion owned_target = nlerp(
+                                head_pose_weight, LLQuaternion::DEFAULT,
+                                neck_target);
+                            const LLQuaternion owned_hips = nlerp(
+                                body_pose_weight, LLQuaternion::DEFAULT,
+                                hips_stack);
+                            const LLQuaternion owned_torso = nlerp(
+                                body_pose_weight, LLQuaternion::DEFAULT,
+                                torso_stack);
+                            LLQuaternion replace_world;
+                            if (chest_live)
+                            {
+                                const LLQuaternion owned_chest = nlerp(
+                                    body_pose_weight, LLQuaternion::DEFAULT,
+                                    chest_stack);
+                                replace_world = owned_target * owned_chest *
+                                    owned_torso * owned_hips *
+                                    root->getWorldRotation();
+                            }
+                            else
+                            {
+                                replace_world = owned_target *
+                                    owned_torso * owned_hips *
+                                    root->getWorldRotation();
+                            }
+                            applyGazeAimRoll(
+                                replace_world,
+                                camera_neck_roll * head_pose_weight *
+                                    effective_head_eye_blend);
+                            LLQuaternion q_replace = replace_world;
+                            if (LLJoint* parent = neck->getParent())
+                            {
+                                q_replace = replace_world *
+                                    ~parent->getWorldRotation();
+                            }
+                            q_endpoint = nlerp(
+                                composition_mix, q_replace, q_additive);
+                        }
+                        const F32 ga = gazeAllowedAlpha(
+                            av, neck, priority_env, gaze_anim_priority);
+                        if (ga > 0.f)
+                            neck->setRotation(nlerp(
+                                ga, neck->getRotation(), q_endpoint));
+                    }
                 }
                 else
                 {
+                    if (composition == GAZE_COMPOSE_REPLACE)
+                    {
                     applyGazeAimRoll(neck_target, camera_neck_roll);
                     const F32 ga = gazeAllowedAlpha(
                         av, neck, wCueHead, gaze_anim_priority);
                     if (ga > 0.f)
                         neck->setRotation(nlerp(
                             ga, neck->getRotation(), neck_target));
+                    }
+                    else
+                    {
+                        // [Machinima] Goal 2: legacy Blend-scope additive --
+                        // clamped RESIDUAL delta over the animation (never a
+                        // second absolute application; Codex defect 2),
+                        // scaled by the existing wCueHead.
+                        LLQuaternion cue_target = neck_target;
+                        applyGazeAimRoll(cue_target, camera_neck_roll);
+                        const LLQuaternion q_additive =
+                            ALGazeMath::additiveOverlayLocal(
+                                cue_target, anim_snap.local(neck),
+                                add_cap_neck_yaw, add_cap_neck_pitch,
+                                fabsf(camera_neck_roll) <= 1e-5f,
+                                /*radial_cap_rad=*/-1.f,
+                                /*strength=*/wCueHead);
+                        const LLQuaternion q_endpoint =
+                            composition == GAZE_COMPOSE_ADDITIVE
+                            ? q_additive
+                            : nlerp(composition_mix, cue_target, q_additive);
+                        const F32 ga = gazeAllowedAlpha(
+                            av, neck, wCueHead, gaze_anim_priority);
+                        if (ga > 0.f)
+                            neck->setRotation(nlerp(
+                                ga, neck->getRotation(), q_endpoint));
+                    }
                 }
             }
         }
@@ -6335,6 +8068,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 chain.mHeadYaw + micro.mHeadDriftYaw);
             if (head_priority_active)
             {
+                if (composition == GAZE_COMPOSE_REPLACE)
+                {
                 const LLQuaternion owned_target = nlerp(
                     head_pose_weight, LLQuaternion::DEFAULT, head_target);
                 LLQuaternion hips_target;
@@ -6352,8 +8087,26 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     body_pose_weight, LLQuaternion::DEFAULT, torso_target);
                 const LLQuaternion owned_neck = nlerp(
                     head_pose_weight, LLQuaternion::DEFAULT, neck_target);
-                LLQuaternion desired_world = owned_target * owned_neck *
-                    owned_torso * owned_hips * root->getWorldRotation();
+                // [Machinima] Include the planted chest contribution (head *
+                // neck * chest * torso * hips * root) when live so the head
+                // reaches the full aim; verbatim original product otherwise.
+                LLQuaternion desired_world;
+                if (chest_joint &&
+                    (fabsf(chain.mChestYaw) + fabsf(chain.mChestPitch)) > 1e-5f)
+                {
+                    LLQuaternion chest_stack;
+                    chest_stack.setEulerAngles(
+                        0.f, chain.mChestPitch, chain.mChestYaw);
+                    const LLQuaternion owned_chest = nlerp(
+                        body_pose_weight, LLQuaternion::DEFAULT, chest_stack);
+                    desired_world = owned_target * owned_neck * owned_chest *
+                        owned_torso * owned_hips * root->getWorldRotation();
+                }
+                else
+                {
+                    desired_world = owned_target * owned_neck *
+                        owned_torso * owned_hips * root->getWorldRotation();
+                }
                 // Roll is the last world-space head operation. Including the
                 // neck share here keeps priority cancellation from erasing the
                 // parent cock when it derives the head-local target.
@@ -6371,15 +8124,155 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 if (ga > 0.f)
                     head->setRotation(nlerp(
                         ga, head->getRotation(), local_target));
+                }
+                else
+                {
+                    // [Machinima] Goal 2: additive/blend (legacy path); same
+                    // construction as the motor head branch -- FULL-strength
+                    // desired, correction DELTA scaled by head_pose_weight
+                    // (Codex defect 1); exact fixation under the additively
+                    // painted parents via the identical parent-cancel.
+                    // TODO(phase5): end-effector residual distribution
+                    // (Codex defect 3) -- measure the ANIMATED head forward
+                    // from the anim_snap WORLD rotations, compute the
+                    // shortest root-relative yaw/pitch residual to the
+                    // desired aim, distribute THAT residual via
+                    // distributeAnatomicalChain, and compose per joint, so
+                    // an animation that already aims via a different
+                    // neck/head split keeps its own distribution.
+                    LLQuaternion hips_stack;
+                    hips_stack.setEulerAngles(
+                        0.f, chain.mHipsPitch, chain.mHipsYaw);
+                    LLQuaternion torso_stack;
+                    torso_stack.setEulerAngles(
+                        0.f, chain.mTorsoPitch, chain.mTorsoYaw);
+                    LLQuaternion neck_stack;
+                    neck_stack.setEulerAngles(
+                        0.f, chain.mNeckPitch, chain.mNeckYaw);
+                    LLQuaternion chest_stack;
+                    const bool chest_live = chest_joint &&
+                        (fabsf(chain.mChestYaw) +
+                         fabsf(chain.mChestPitch)) > 1e-5f;
+                    LLQuaternion desired_world;
+                    if (chest_live)
+                    {
+                        chest_stack.setEulerAngles(
+                            0.f, chain.mChestPitch, chain.mChestYaw);
+                        desired_world = head_target * neck_stack *
+                            chest_stack * torso_stack * hips_stack *
+                            root->getWorldRotation();
+                    }
+                    else
+                    {
+                        desired_world = head_target * neck_stack *
+                            torso_stack * hips_stack *
+                            root->getWorldRotation();
+                    }
+                    const F32 head_roll_term =
+                        (camera_follow_roll + camera_neck_roll) *
+                        effective_head_eye_blend;
+                    applyGazeAimRoll(desired_world, head_roll_term);
+                    LLQuaternion local_target = desired_world;
+                    if (LLJoint* parent = head->getParent())
+                    {
+                        local_target =
+                            desired_world * ~parent->getWorldRotation();
+                    }
+                    const LLQuaternion q_additive =
+                        ALGazeMath::additiveOverlayLocal(
+                            local_target, anim_snap.local(head),
+                            add_cap_head_yaw, add_cap_head_pitch,
+                            fabsf(head_roll_term) <= 1e-5f,
+                            /*radial_cap_rad=*/-1.f,
+                            /*strength=*/head_pose_weight);
+                    LLQuaternion q_endpoint = q_additive;
+                    if (composition == GAZE_COMPOSE_BLEND)
+                    {
+                        // Blend needs the weighted Replace endpoint too.
+                        const LLQuaternion owned_target = nlerp(
+                            head_pose_weight, LLQuaternion::DEFAULT,
+                            head_target);
+                        const LLQuaternion owned_hips = nlerp(
+                            body_pose_weight, LLQuaternion::DEFAULT,
+                            hips_stack);
+                        const LLQuaternion owned_torso = nlerp(
+                            body_pose_weight, LLQuaternion::DEFAULT,
+                            torso_stack);
+                        const LLQuaternion owned_neck = nlerp(
+                            head_pose_weight, LLQuaternion::DEFAULT,
+                            neck_stack);
+                        LLQuaternion replace_world;
+                        if (chest_live)
+                        {
+                            const LLQuaternion owned_chest = nlerp(
+                                body_pose_weight, LLQuaternion::DEFAULT,
+                                chest_stack);
+                            replace_world = owned_target * owned_neck *
+                                owned_chest * owned_torso * owned_hips *
+                                root->getWorldRotation();
+                        }
+                        else
+                        {
+                            replace_world = owned_target * owned_neck *
+                                owned_torso * owned_hips *
+                                root->getWorldRotation();
+                        }
+                        applyGazeAimRoll(
+                            replace_world,
+                            (camera_follow_roll + camera_neck_roll) *
+                                head_pose_weight * effective_head_eye_blend);
+                        LLQuaternion q_replace = replace_world;
+                        if (LLJoint* parent = head->getParent())
+                        {
+                            q_replace = replace_world *
+                                ~parent->getWorldRotation();
+                        }
+                        q_endpoint = nlerp(
+                            composition_mix, q_replace, q_additive);
+                    }
+                    const F32 ga = gazeAllowedAlpha(
+                        av, head, priority_env, gaze_anim_priority);
+                    if (ga > 0.f)
+                        head->setRotation(nlerp(
+                            ga, head->getRotation(), q_endpoint));
+                }
             }
             else
             {
+                if (composition == GAZE_COMPOSE_REPLACE)
+                {
                 applyGazeAimRoll(head_target, camera_follow_roll);
                 const F32 ga = gazeAllowedAlpha(
                     av, head, wCueHead, gaze_anim_priority);
                 if (ga > 0.f)
                     head->setRotation(nlerp(
                         ga, head->getRotation(), head_target));
+                }
+                else
+                {
+                    // [Machinima] Goal 2: legacy Blend-scope additive --
+                    // clamped RESIDUAL delta (incl. micro drift) over the
+                    // animation (never a second absolute application; Codex
+                    // defect 2), scaled by the existing wCueHead.
+                    LLQuaternion cue_target = head_target;
+                    applyGazeAimRoll(cue_target, camera_follow_roll);
+                    const LLQuaternion q_additive =
+                        ALGazeMath::additiveOverlayLocal(
+                            cue_target, anim_snap.local(head),
+                            add_cap_head_yaw, add_cap_head_pitch,
+                            fabsf(camera_follow_roll) <= 1e-5f,
+                            /*radial_cap_rad=*/-1.f,
+                            /*strength=*/wCueHead);
+                    const LLQuaternion q_endpoint =
+                        composition == GAZE_COMPOSE_ADDITIVE
+                        ? q_additive
+                        : nlerp(composition_mix, cue_target, q_additive);
+                    const F32 ga = gazeAllowedAlpha(
+                        av, head, wCueHead, gaze_anim_priority);
+                    if (ga > 0.f)
+                        head->setRotation(nlerp(
+                            ga, head->getRotation(), q_endpoint));
+                }
             }
         }
     }
@@ -6396,17 +8289,25 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             gSavedSettings, "BDMergeGazeEyeYawMax", 24.f);
         static LLCachedControl<F32> eye_pitch_max_deg(
             gSavedSettings, "BDMergeGazeEyePitchMax", 14.f);
-        const F32 eye_yaw_max =
-            llclamp((F32)eye_yaw_max_deg, 0.f, 180.f) * DEG_TO_RAD;
-        const F32 eye_pitch_max =
-            llclamp((F32)eye_pitch_max_deg, 0.f, 180.f) * DEG_TO_RAD;
+        // [Machinima] Goal 3a: custom-profile final applied-eye axis + radial
+        // caps when enabled; legacy BDMerge caps / constant radial otherwise
+        // (byte-identical default -- the false branch is the verbatim original).
+        const F32 eye_yaw_max = (use_custom_limits
+            ? llclamp(eff_profile.mEyeApplyYawDeg, 0.f, 180.f)
+            : llclamp((F32)eye_yaw_max_deg, 0.f, 180.f)) * DEG_TO_RAD;
+        const F32 eye_pitch_max = (use_custom_limits
+            ? llclamp(eff_profile.mEyeApplyPitchDeg, 0.f, 180.f)
+            : llclamp((F32)eye_pitch_max_deg, 0.f, 180.f)) * DEG_TO_RAD;
         const F32 scaled_eye_yaw_max = anatomy_scale == 1.f
             ? eye_yaw_max : eye_yaw_max * anatomy_scale;
         const F32 scaled_eye_pitch_max = anatomy_scale == 1.f
             ? eye_pitch_max : eye_pitch_max * anatomy_scale;
+        const F32 eye_rot_max_base = use_custom_limits
+            ? eff_profile.mEyeRadialDeg * DEG_TO_RAD
+            : GAZE_DIRECTOR_EYE_ROT_MAX;
         const F32 scaled_eye_rot_max = anatomy_scale == 1.f
-            ? GAZE_DIRECTOR_EYE_ROT_MAX
-            : GAZE_DIRECTOR_EYE_ROT_MAX * anatomy_scale;
+            ? eye_rot_max_base
+            : eye_rot_max_base * anatomy_scale;
         // VOR / eyeline weld: query this world rotation only AFTER the head
         // joint above received its deterministic drift. Eyes are solved against
         // the final head pose and counter-rotate to keep the world eyeline fixed.
@@ -6474,6 +8375,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             // so a yielded eye still drives the lids correctly.
             if (eye_priority_active)
             {
+                if (composition == GAZE_COMPOSE_REPLACE)
+                {
                 const LLQuaternion owned_target = nlerp(
                     eye_pose_weight, LLQuaternion::DEFAULT, tgt);
                 const F32 ga = gazeAllowedAlpha(
@@ -6481,13 +8384,68 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 if (ga > 0.f)
                     eye->setRotation(nlerp(
                         ga, eye->getRotation(), owned_target));
+                }
+                else
+                {
+                    // [Machinima] Goal 2: additive/blend eyes, still solved
+                    // AFTER the painted head (VOR preserved). The smallest
+                    // clamped eye delta from the SNAPSHOT animation eye
+                    // rotation toward the FULL-strength desired eye-in-head
+                    // composes over the animation, with the correction DELTA
+                    // scaled by the same eye_pose_weight Replace used
+                    // (Codex defect 1).
+                    const LLQuaternion q_additive =
+                        ALGazeMath::additiveOverlayLocal(
+                            tgt, anim_snap.local(eye),
+                            scaled_eye_yaw_max, scaled_eye_pitch_max,
+                            /*preserve_anim_roll=*/true,
+                            constrain_eye_cone ? scaled_eye_rot_max : -1.f,
+                            /*strength=*/eye_pose_weight);
+                    const LLQuaternion q_replace = nlerp(
+                        eye_pose_weight, LLQuaternion::DEFAULT, tgt);
+                    const LLQuaternion q_endpoint =
+                        composition == GAZE_COMPOSE_ADDITIVE
+                        ? q_additive
+                        : nlerp(composition_mix, q_replace, q_additive);
+                    const F32 ga = gazeAllowedAlpha(
+                        av, eye, priority_env, gaze_anim_priority);
+                    if (ga > 0.f)
+                        eye->setRotation(nlerp(
+                            ga, eye->getRotation(), q_endpoint));
+                }
             }
             else
             {
+                if (composition == GAZE_COMPOSE_REPLACE)
+                {
                 const F32 ga = gazeAllowedAlpha(
                     av, eye, wEye, gaze_anim_priority);
                 if (ga > 0.f)
                     eye->setRotation(nlerp(ga, eye->getRotation(), tgt));
+                }
+                else
+                {
+                    // [Machinima] Goal 2: additive/blend eyes on the cue-
+                    // weighted path -- clamped RESIDUAL delta over the
+                    // animation (Codex defect 2), scaled by the existing
+                    // wEye alpha.
+                    const LLQuaternion q_additive =
+                        ALGazeMath::additiveOverlayLocal(
+                            tgt, anim_snap.local(eye),
+                            scaled_eye_yaw_max, scaled_eye_pitch_max,
+                            /*preserve_anim_roll=*/true,
+                            constrain_eye_cone ? scaled_eye_rot_max : -1.f,
+                            /*strength=*/wEye);
+                    const LLQuaternion q_endpoint =
+                        composition == GAZE_COMPOSE_ADDITIVE
+                        ? q_additive
+                        : nlerp(composition_mix, tgt, q_additive);
+                    const F32 ga = gazeAllowedAlpha(
+                        av, eye, wEye, gaze_anim_priority);
+                    if (ga > 0.f)
+                        eye->setRotation(nlerp(
+                            ga, eye->getRotation(), q_endpoint));
+                }
             }
         };
         applyEye(av->getJoint("mEyeLeft"), -1.f);

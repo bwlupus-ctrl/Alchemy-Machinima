@@ -65,6 +65,17 @@ const char* macroName(ALGazeMath::EGazeCueMacro macro)
     }
 }
 
+const char* influenceInterpName(LLDirectorCast::EGazeKeyInterpolation interp)
+{
+    switch (interp)
+    {
+        case LLDirectorCast::GAZE_KEY_STEP:   return "Step";
+        case LLDirectorCast::GAZE_KEY_LINEAR: return "Linear";
+        case LLDirectorCast::GAZE_KEY_SMOOTHSTEP:
+        default:                              return "Smoothstep";
+    }
+}
+
 std::string targetName(const LLActorMover::GazeTarget& target)
 {
     switch (target.mMode)
@@ -115,6 +126,14 @@ bool ALFloaterGazeCues::postBuild()
     mHoldFrames = getChild<LLSpinCtrl>("cue_hold_frames");
     mResidue = getChild<LLCheckBoxCtrl>("cue_residue");
 
+    mInfluenceList = getChild<LLScrollListCtrl>("influence_list");
+    mInfluenceAdd = getChild<LLButton>("btn_influence_add");
+    mInfluenceUpdate = getChild<LLButton>("btn_influence_update");
+    mInfluenceDelete = getChild<LLButton>("btn_influence_delete");
+    mInfluenceTime = getChild<LLSpinCtrl>("influence_time");
+    mInfluenceValue = getChild<LLSpinCtrl>("influence_value");
+    mInfluenceInterp = getChild<LLComboBox>("influence_interp");
+
     mSubject->setText("Track: " + actorName(mActorId));
     mCueList->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onCueSelected(); });
@@ -142,11 +161,25 @@ bool ALFloaterGazeCues::postBuild()
         [this](LLUICtrl*, const LLSD&) {
             onQuickMacro(ALGazeMath::GAZE_MACRO_OBJECT_GLANCE); });
 
+    mInfluenceList->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onInfluenceSelected(); });
+    mInfluenceAdd->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onInfluenceAdd(); });
+    mInfluenceUpdate->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onInfluenceUpdate(); });
+    mInfluenceDelete->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onInfluenceDelete(); });
+
     refreshCastCombo(true);
     refreshCueList(true);
     if (mCueList->getItemCount() == 0)
     {
         loadEditor(defaultCue());
+    }
+    refreshInfluenceList(true);
+    if (mInfluenceList->getItemCount() == 0)
+    {
+        loadInfluenceEditor(defaultInfluenceKey());
     }
     return LLFloater::postBuild();
 }
@@ -156,6 +189,7 @@ void ALFloaterGazeCues::draw()
     refreshCastCombo();
     refreshCueList();
     refreshEditorVisibility();
+    refreshInfluenceList();
     LLFloater::draw();
 }
 
@@ -486,4 +520,167 @@ void ALFloaterGazeCues::onQuickMacro(ALGazeMath::EGazeCueMacro macro)
     cast.setGazeCues(mActorId, cues);
     refreshCueList(true);
     selectCue(cue);
+}
+
+// [Machinima] Phase 3: influence-lane editor. Mirrors the cue list's
+// default/select/refresh/add/edit/delete pattern above, but reads/writes
+// LLDirectorCast's separate GazeInfluenceKeyList via
+// get/setGazeInfluenceKeys(), not GazeCueList.
+LLDirectorCast::GazeInfluenceKey ALFloaterGazeCues::defaultInfluenceKey() const
+{
+    LLDirectorCast::GazeInfluenceKey key;
+    key.mTimeSec = llmax(
+        LLPresentationTime::currentFrame().presentation_time, 0.0);
+    key.mValue = 1.f;
+    key.mInterpolation = LLDirectorCast::GAZE_KEY_SMOOTHSTEP;
+    return key;
+}
+
+S32 ALFloaterGazeCues::selectedInfluenceIndex() const
+{
+    LLScrollListItem* selected = mInfluenceList->getFirstSelected();
+    return selected ? selected->getValue().asInteger() : -1;
+}
+
+void ALFloaterGazeCues::refreshInfluenceList(bool force)
+{
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    // Same shared revision counter the cue list watches (mGazeCueRevision is
+    // bumped by both setGazeCues() and setGazeInfluenceKeys()); tracked with
+    // an independent "seen" value so this list's own staleness check does not
+    // depend on refreshCueList() having run first this frame.
+    const U64 revision = cast.getGazeCueRevision();
+    if (!force && revision == mSeenInfluenceRevision)
+    {
+        return;
+    }
+    mSeenInfluenceRevision = revision;
+    const S32 old_selection = selectedInfluenceIndex();
+    mInfluenceList->deleteAllItems();
+    const LLDirectorCast::GazeInfluenceKeyList& keys =
+        cast.getGazeInfluenceKeys(mActorId);
+    for (std::size_t i = 0; i < keys.size(); ++i)
+    {
+        LLSD row;
+        row["value"] = static_cast<S32>(i);
+        row["columns"][0]["column"] = "time";
+        row["columns"][0]["value"] = llformat("%.3f", keys[i].mTimeSec);
+        row["columns"][1]["column"] = "value";
+        row["columns"][1]["value"] = llformat("%.2f", keys[i].mValue);
+        row["columns"][2]["column"] = "curve";
+        row["columns"][2]["value"] = influenceInterpName(keys[i].mInterpolation);
+        mInfluenceList->addElement(row, ADD_BOTTOM);
+    }
+    if (old_selection >= 0 && old_selection < mInfluenceList->getItemCount())
+    {
+        mInfluenceList->selectNthItem(old_selection);
+        loadInfluenceEditor(keys[old_selection]);
+    }
+    const bool selected = selectedInfluenceIndex() >= 0;
+    mInfluenceUpdate->setEnabled(selected);
+    mInfluenceDelete->setEnabled(selected);
+}
+
+void ALFloaterGazeCues::loadInfluenceEditor(
+    const LLDirectorCast::GazeInfluenceKey& key)
+{
+    mInfluenceTime->setValue(key.mTimeSec);
+    mInfluenceValue->setValue(key.mValue);
+    mInfluenceInterp->setValue(static_cast<S32>(key.mInterpolation));
+}
+
+LLDirectorCast::GazeInfluenceKey ALFloaterGazeCues::readInfluenceEditor() const
+{
+    LLDirectorCast::GazeInfluenceKey key;
+    key.mTimeSec = llmax(mInfluenceTime->getValue().asReal(), 0.0);
+    key.mValue = llclamp((F32)mInfluenceValue->getValue().asReal(), 0.f, 1.f);
+    key.mInterpolation = static_cast<LLDirectorCast::EGazeKeyInterpolation>(
+        llclamp(mInfluenceInterp->getValue().asInteger(),
+                static_cast<S32>(LLDirectorCast::GAZE_KEY_STEP),
+                static_cast<S32>(LLDirectorCast::GAZE_KEY_SMOOTHSTEP)));
+    return key;
+}
+
+void ALFloaterGazeCues::selectInfluenceKey(
+    const LLDirectorCast::GazeInfluenceKey& wanted)
+{
+    const LLDirectorCast::GazeInfluenceKeyList& keys =
+        LLDirectorCast::instance().getGazeInfluenceKeys(mActorId);
+    for (S32 i = static_cast<S32>(keys.size()) - 1; i >= 0; --i)
+    {
+        if (std::fabs(keys[i].mTimeSec - wanted.mTimeSec) <= 1e-6)
+        {
+            mInfluenceList->selectNthItem(i);
+            onInfluenceSelected();
+            return;
+        }
+    }
+}
+
+void ALFloaterGazeCues::onInfluenceSelected()
+{
+    const S32 index = selectedInfluenceIndex();
+    const LLDirectorCast::GazeInfluenceKeyList& keys =
+        LLDirectorCast::instance().getGazeInfluenceKeys(mActorId);
+    const bool valid = index >= 0 && index < static_cast<S32>(keys.size());
+    mInfluenceUpdate->setEnabled(valid);
+    mInfluenceDelete->setEnabled(valid);
+    if (valid)
+    {
+        loadInfluenceEditor(keys[index]);
+    }
+}
+
+void ALFloaterGazeCues::onInfluenceAdd()
+{
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    LLDirectorCast::GazeInfluenceKey key = readInfluenceEditor();
+    LLDirectorCast::GazeInfluenceKeyList keys =
+        cast.getGazeInfluenceKeys(mActorId);
+    keys.push_back(key);
+    cast.setGazeInfluenceKeys(mActorId, keys);
+    refreshInfluenceList(true);
+    selectInfluenceKey(key);
+}
+
+void ALFloaterGazeCues::onInfluenceUpdate()
+{
+    const S32 index = selectedInfluenceIndex();
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    LLDirectorCast::GazeInfluenceKeyList keys =
+        cast.getGazeInfluenceKeys(mActorId);
+    if (index < 0 || index >= static_cast<S32>(keys.size()))
+    {
+        return;
+    }
+    const LLDirectorCast::GazeInfluenceKey key = readInfluenceEditor();
+    keys[index] = key;
+    cast.setGazeInfluenceKeys(mActorId, keys);
+    refreshInfluenceList(true);
+    selectInfluenceKey(key);
+}
+
+void ALFloaterGazeCues::onInfluenceDelete()
+{
+    const S32 index = selectedInfluenceIndex();
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    LLDirectorCast::GazeInfluenceKeyList keys =
+        cast.getGazeInfluenceKeys(mActorId);
+    if (index < 0 || index >= static_cast<S32>(keys.size()))
+    {
+        return;
+    }
+    keys.erase(keys.begin() + index);
+    cast.setGazeInfluenceKeys(mActorId, keys);
+    refreshInfluenceList(true);
+    if (!keys.empty())
+    {
+        const S32 next = llmin(index, static_cast<S32>(keys.size()) - 1);
+        mInfluenceList->selectNthItem(next);
+        onInfluenceSelected();
+    }
+    else
+    {
+        loadInfluenceEditor(defaultInfluenceKey());
+    }
 }

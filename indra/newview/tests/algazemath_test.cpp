@@ -12,7 +12,11 @@
 #include "../test/lltut.h"
 #include "../algazemath.h"
 
+#include <cfloat>
 #include <cmath>
+#include <cstdio>
+#include <cstring>
+#include <string>
 
 namespace tut
 {
@@ -23,6 +27,60 @@ F32 angleBetween(LLVector3 first, LLVector3 second)
     first.normVec();
     second.normVec();
     return acosf(llclamp(first * second, -1.f, 1.f));
+}
+
+// Bit-pattern equality: unlike `==`, this distinguishes +0.0f from -0.0f
+// (the planted-hips and chest-split contracts are BYTE-identical, not merely
+// value-identical).
+bool bitwiseEqual(F32 a, F32 b)
+{
+    U32 au = 0;
+    U32 bu = 0;
+    memcpy(&au, &a, sizeof(au));
+    memcpy(&bu, &b, sizeof(bu));
+    return au == bu;
+}
+
+// Raw IEEE-754 bit pattern of an F32 as a hex string, for failure messages
+// where the +0.0f/-0.0f (or 1-ulp) distinction is the whole point.
+std::string bitsOf(F32 v)
+{
+    U32 u = 0;
+    memcpy(&u, &v, sizeof(u));
+    char buf[16];
+    snprintf(buf, sizeof(buf), "0x%08x", u);
+    return std::string(buf);
+}
+
+// Integer ULP distance between two F32s (difference of monotonic bit keys;
+// +0.0f and -0.0f are 0 apart). Used for the SOFT profile==constant parity
+// contract, which /fp:fast limits to ~1 ULP (see test 29's comment).
+S64 ulpKey(F32 v)
+{
+    U32 u = 0;
+    memcpy(&u, &v, sizeof(u));
+    const S64 magnitude = static_cast<S64>(u & 0x7fffffffu);
+    return (u & 0x80000000u) ? -magnitude : magnitude;
+}
+
+S64 ulpDistance(F32 a, F32 b)
+{
+    const S64 d = ulpKey(a) - ulpKey(b);
+    return d < 0 ? -d : d;
+}
+
+// SOFT equality for /fp:fast restatement parity: the same real-number
+// formula compiled in two places (profile path vs constant path, or a
+// test-side restatement vs production) may round a couple ULPs apart when
+// the optimizer contracts/reassociates the two shapes differently, and a
+// capacity wobble subtracted from a target lands in a small residual's
+// finer ULP scale (hence the absolute floor). Anything beyond this bound
+// is a genuine arithmetic drift, not compiler noise.
+bool softEqual(F32 a, F32 b)
+{
+    return ulpDistance(a, b) <= 2 ||
+           std::fabs(a - b) <= 4.f * FLT_EPSILON * std::fabs(b) ||
+           std::fabs(a - b) <= 8.f * FLT_EPSILON;
 }
 } // anonymous namespace
 
@@ -694,6 +752,629 @@ void algazemath_test_object::test<26>()
     ensure("vertical camera uses deterministic neutral fallback",
            ALGazeMath::cameraRollAboutForward(world_up, LLVector3::y_axis) ==
                0.f);
+}
+
+template<> template<>
+void algazemath_test_object::test<27>()
+{
+    set_test_name("planted spine: hips stay bitwise +0 and reach excludes "
+                  "hips");
+    // 1. Planted hips are bitwise +0.0f (raw bit pattern zero, signbit clear)
+    //    for positive, negative, and zero aim -- both below and beyond the
+    //    planted reach.
+    const F32 aims_deg[] = { 150.f, 60.f, 0.f, -60.f, -150.f };
+    for (F32 aim_deg : aims_deg)
+    {
+        ALGazeMath::AnatomicalChainPose pose;
+        ALGazeMath::distributeAnatomicalChain(
+            aim_deg * DEG_TO_RAD, aim_deg * 0.6f * DEG_TO_RAD,
+            1.f, 1.f, 90.f, pose, 1.f, /*recruit_hips=*/false);
+        const std::string tag =
+            " (aim " + std::to_string(aim_deg) + " deg)";
+        ensure("planted hips yaw is exactly zero" + tag,
+               pose.mHipsYaw == 0.f);
+        ensure("planted hips pitch is exactly zero" + tag,
+               pose.mHipsPitch == 0.f);
+        ensure("planted hips yaw is bitwise +0.0f (signbit clear), got " +
+                   bitsOf(pose.mHipsYaw) + tag,
+               bitwiseEqual(pose.mHipsYaw, 0.f) &&
+               !std::signbit(pose.mHipsYaw));
+        ensure("planted hips pitch is bitwise +0.0f (signbit clear), got " +
+                   bitsOf(pose.mHipsPitch) + tag,
+               bitwiseEqual(pose.mHipsPitch, 0.f) &&
+               !std::signbit(pose.mHipsPitch));
+    }
+    // Sanity: the same beyond-reach aim DOES recruit the hips when unplanted,
+    // so the zeros above are the planting, not a saturated-earlier chain.
+    {
+        ALGazeMath::AnatomicalChainPose unplanted;
+        ALGazeMath::distributeAnatomicalChain(
+            150.f * DEG_TO_RAD, 0.f, 1.f, 1.f, 90.f, unplanted, 1.f, true);
+        ensure("unplanted control recruits the hips at 150 deg",
+               unplanted.mHipsYaw > 0.f);
+    }
+
+    // 2. Planted reach equals the weighted eye+head+neck+spine capacity sum
+    //    (hips excluded), mirroring chainReachYaw's own constants and order.
+    constexpr F32 EYE_MAX_YAW   = 25.f * DEG_TO_RAD;
+    constexpr F32 HEAD_MAX_YAW  = 35.f * DEG_TO_RAD;
+    constexpr F32 NECK_MAX_YAW  = 35.f * DEG_TO_RAD;
+    constexpr F32 TORSO_MAX_YAW = 45.f * DEG_TO_RAD;
+    const F32 blends[] = { 0.3f, 0.7f, 1.f };
+    const F32 torsos[] = { 0.f, 0.5f, 1.f };
+    for (F32 blend : blends)
+    {
+        for (F32 torso : torsos)
+        {
+            const F32 eye_weight = 1.f - 0.75f * blend;
+            const F32 head_weight = blend;
+            const F32 torso_weight = blend * torso;
+            const F32 expected = EYE_MAX_YAW * eye_weight +
+                                 HEAD_MAX_YAW * head_weight +
+                                 NECK_MAX_YAW * head_weight +
+                                 TORSO_MAX_YAW * torso_weight;
+            const F32 reach = ALGazeMath::chainReachYaw(
+                blend, torso, 1.f, /*recruit_hips=*/false);
+            // softEqual, not ==: this is a test-side RESTATEMENT of the
+            // production sum, and /fp:fast may contract the two compiles
+            // a couple ULPs apart (see softEqual's comment).
+            ensure("planted reach is the hips-free weighted capacity sum "
+                       "(blend " + std::to_string(blend) + " torso " +
+                       std::to_string(torso) + ", reach " + bitsOf(reach) +
+                       " expected " + bitsOf(expected) + ")",
+                   softEqual(reach, expected));
+        }
+    }
+
+    // 3. Beyond planted reach the chain saturates with NO pelvis
+    //    compensation: the allocation is identical however far past reach the
+    //    demand goes (a stable saturation residual), and the hips stay zero.
+    const F32 reach = ALGazeMath::chainReachYaw(1.f, 1.f, 1.f, false);
+    ALGazeMath::AnatomicalChainPose sat_near;
+    ALGazeMath::AnatomicalChainPose sat_far;
+    const F32 deep_pitch = 120.f * DEG_TO_RAD; // beyond the ~91.5 deg pitch reach
+    ALGazeMath::distributeAnatomicalChain(
+        reach + 20.f * DEG_TO_RAD, deep_pitch, 1.f, 1.f, 90.f,
+        sat_near, 1.f, false);
+    ALGazeMath::distributeAnatomicalChain(
+        reach + 100.f * DEG_TO_RAD, deep_pitch, 1.f, 1.f, 90.f,
+        sat_far, 1.f, false);
+    ensure("saturated planted allocation is stable however far past reach",
+           bitwiseEqual(sat_near.mEyeYaw, sat_far.mEyeYaw) &&
+           bitwiseEqual(sat_near.mHeadYaw, sat_far.mHeadYaw) &&
+           bitwiseEqual(sat_near.mNeckYaw, sat_far.mNeckYaw) &&
+           bitwiseEqual(sat_near.mTorsoYaw, sat_far.mTorsoYaw) &&
+           bitwiseEqual(sat_near.mHipsYaw, sat_far.mHipsYaw) &&
+           bitwiseEqual(sat_near.mEyePitch, sat_far.mEyePitch) &&
+           bitwiseEqual(sat_near.mHeadPitch, sat_far.mHeadPitch) &&
+           bitwiseEqual(sat_near.mNeckPitch, sat_far.mNeckPitch) &&
+           bitwiseEqual(sat_near.mTorsoPitch, sat_far.mTorsoPitch) &&
+           bitwiseEqual(sat_near.mHipsPitch, sat_far.mHipsPitch));
+    ensure("saturated planted hips yaw is zero (no pelvis compensation)",
+           sat_near.mHipsYaw == 0.f && sat_far.mHipsYaw == 0.f);
+    ensure("saturated planted hips pitch is zero (no pelvis compensation)",
+           sat_near.mHipsPitch == 0.f && sat_far.mHipsPitch == 0.f);
+    const F32 yaw_sum = sat_near.mEyeYaw + sat_near.mHeadYaw +
+                        sat_near.mNeckYaw + sat_near.mTorsoYaw;
+    ensure("saturated planted yaw delivers the planted reach (within "
+               "/fp:fast restatement rounding)",
+           softEqual(yaw_sum, reach));
+    constexpr F32 EYE_MAX_PITCH   = 14.f * DEG_TO_RAD;
+    constexpr F32 HEAD_MAX_PITCH  = 42.f * DEG_TO_RAD;
+    constexpr F32 NECK_MAX_PITCH  = 26.f * DEG_TO_RAD;
+    constexpr F32 TORSO_MAX_PITCH = 20.f * DEG_TO_RAD;
+    const F32 pitch_reach = EYE_MAX_PITCH * 0.25f + HEAD_MAX_PITCH +
+                            NECK_MAX_PITCH + TORSO_MAX_PITCH;
+    const F32 pitch_sum = sat_near.mEyePitch + sat_near.mHeadPitch +
+                          sat_near.mNeckPitch + sat_near.mTorsoPitch;
+    ensure("saturated planted pitch delivers the hips-free capacity (within "
+               "/fp:fast restatement rounding)",
+           softEqual(pitch_sum, pitch_reach));
+}
+
+template<> template<>
+void algazemath_test_object::test<28>()
+{
+    set_test_name("chest split conserves the spine bucket bit-exactly");
+    // The chest split divides the allocated spine (torso) bucket so
+    // torso + chest == the chest_share == 0 torso component EXACTLY. The
+    // missing-chest fallback is deliberately the CALLER's job (integration
+    // folds chest back into torso when the joint is absent), so only the
+    // math-level conservation is asserted here -- no joint lookup.
+    const F32 shares[] = { 0.f, 0.55f, 1.f };
+    const F32 signs[] = { 1.f, -1.f };
+    const F32 blends[] = { 0.7f, 1.f };
+    const F32 torsos[] = { 0.5f, 1.f };
+    for (F32 sign : signs)
+    {
+        // Angles deep enough that the spine bucket is recruited nonzero for
+        // every blend/torso combination below.
+        const F32 yaw = sign * 130.f * DEG_TO_RAD;
+        const F32 pitch = sign * 80.f * DEG_TO_RAD;
+        for (F32 blend : blends)
+        {
+            for (F32 torso : torsos)
+            {
+                ALGazeMath::AnatomicalChainPose base;
+                ALGazeMath::distributeAnatomicalChain(
+                    yaw, pitch, blend, torso, 90.f, base, 1.f, true,
+                    nullptr, 0.f);
+                ensure("baseline recruits a nonzero spine bucket",
+                       base.mTorsoYaw != 0.f && base.mTorsoPitch != 0.f);
+                for (F32 share : shares)
+                {
+                    ALGazeMath::AnatomicalChainPose pose;
+                    ALGazeMath::distributeAnatomicalChain(
+                        yaw, pitch, blend, torso, 90.f, pose, 1.f, true,
+                        nullptr, share);
+                    const std::string tag =
+                        " (share " + std::to_string(share) + " sign " +
+                        std::to_string(sign) + " blend " +
+                        std::to_string(blend) + " torso " +
+                        std::to_string(torso) + ")";
+                    if (share == 0.f || share == 1.f)
+                    {
+                        // The endpoints are genuinely bit-exact: share 0
+                        // never touches the fields, share 1 moves the whole
+                        // bucket (torso - torso == +0 exactly).
+                        ensure("torso+chest yaw conserves the spine bucket "
+                                   "bit-exactly" + tag,
+                               bitwiseEqual(pose.mTorsoYaw + pose.mChestYaw,
+                                            base.mTorsoYaw));
+                        ensure("torso+chest pitch conserves the spine bucket "
+                                   "bit-exactly" + tag,
+                               bitwiseEqual(pose.mTorsoPitch +
+                                                pose.mChestPitch,
+                                            base.mTorsoPitch));
+                    }
+                    else
+                    {
+                        // Intermediate shares: chest = old * share and
+                        // torso = old - chest are each correctly rounded,
+                        // so the recombined sum may sit ~1 ulp off the
+                        // baseline -- algebraic, not bit, conservation.
+                        ensure("torso+chest yaw conserves the spine bucket "
+                                   "within rounding" + tag,
+                               std::fabs((pose.mTorsoYaw + pose.mChestYaw) -
+                                         base.mTorsoYaw) <= 1e-6f);
+                        ensure("torso+chest pitch conserves the spine bucket "
+                                   "within rounding" + tag,
+                               std::fabs((pose.mTorsoPitch +
+                                          pose.mChestPitch) -
+                                         base.mTorsoPitch) <= 1e-6f);
+                    }
+                    // The split never touches any other joint.
+                    ensure("chest split leaves the rest of the chain "
+                               "bit-identical" + tag,
+                           bitwiseEqual(pose.mEyeYaw, base.mEyeYaw) &&
+                           bitwiseEqual(pose.mEyePitch, base.mEyePitch) &&
+                           bitwiseEqual(pose.mHeadYaw, base.mHeadYaw) &&
+                           bitwiseEqual(pose.mHeadPitch, base.mHeadPitch) &&
+                           bitwiseEqual(pose.mNeckYaw, base.mNeckYaw) &&
+                           bitwiseEqual(pose.mNeckPitch, base.mNeckPitch) &&
+                           bitwiseEqual(pose.mHipsYaw, base.mHipsYaw) &&
+                           bitwiseEqual(pose.mHipsPitch, base.mHipsPitch));
+                    if (share == 0.f)
+                    {
+                        ensure("share 0 leaves chest at bitwise +0" + tag,
+                               bitwiseEqual(pose.mChestYaw, 0.f) &&
+                               bitwiseEqual(pose.mChestPitch, 0.f) &&
+                               !std::signbit(pose.mChestYaw) &&
+                               !std::signbit(pose.mChestPitch));
+                        ensure("share 0 leaves torso bit-identical to the "
+                                   "baseline" + tag,
+                               bitwiseEqual(pose.mTorsoYaw, base.mTorsoYaw) &&
+                               bitwiseEqual(pose.mTorsoPitch,
+                                            base.mTorsoPitch));
+                    }
+                    if (share == 1.f)
+                    {
+                        ensure("share 1 zeroes the torso exactly" + tag,
+                               bitwiseEqual(pose.mTorsoYaw, 0.f) &&
+                               bitwiseEqual(pose.mTorsoPitch, 0.f));
+                        ensure("share 1 hands the whole bucket to the chest"
+                                   + tag,
+                               bitwiseEqual(pose.mChestYaw, base.mTorsoYaw) &&
+                               bitwiseEqual(pose.mChestPitch,
+                                            base.mTorsoPitch));
+                    }
+                }
+            }
+        }
+    }
+}
+
+template<> template<>
+void algazemath_test_object::test<29>()
+{
+    set_test_name("default limit profile matches the constant path within "
+                  "rounding");
+    // The lockstep contract here is SOFT: a DEFAULT-constructed
+    // AnatomicalLimitProfile carries the exact legacy constants, but the
+    // profile path and the constant path are two source-identical
+    // RESTATEMENTS of the same arithmetic, and this build compiles with
+    // /fp:fast (00-Common.cmake), under which the optimizer may contract or
+    // reassociate the two shapes differently -- observed as 1-ULP
+    // divergences (e.g. chainReachYaw at blend 0.3: 0x3f3465b2 vs
+    // 0x3f3465b1; the deviating side even moves between builds as inlining
+    // shifts). The HARD bit-exact contract is default/profile-OFF == the
+    // pre-feature arithmetic (test 25 keeps that strict); this test pins
+    // the profile==constant parity to softEqual (a couple ULPs, plus a
+    // small absolute floor for the small-residual slots where a cap wobble
+    // is amplified in the slot's finer ULP scale). Anything beyond that is
+    // a real capacity-table drift.
+    const ALGazeMath::AnatomicalLimitProfile profile; // defaults == constants
+    const F32 blends[] = { 0.f, 0.001f, 0.3f, 0.7f, 1.f };
+    const F32 torsos[] = { 0.f, 0.25f, 1.f };
+    const F32 scales[] = { 1.f, 1.5f, 2.f, 3.f };
+    const bool hips_opts[] = { true, false };
+    const F32 angles_deg[] =
+        { 0.f, 5.f, -5.f, 20.f, -45.f, 90.f, -120.f, 150.f, -179.f, 179.f };
+    constexpr S32 NANGLES = sizeof(angles_deg) / sizeof(angles_deg[0]);
+
+    for (F32 blend : blends)
+    {
+        for (F32 torso : torsos)
+        {
+            for (F32 scale : scales)
+            {
+                for (bool recruit_hips : hips_opts)
+                {
+                    const F32 reach_base = ALGazeMath::chainReachYaw(
+                        blend, torso, scale, recruit_hips, nullptr);
+                    const F32 reach_prof = ALGazeMath::chainReachYaw(
+                        blend, torso, scale, recruit_hips, &profile);
+                    ensure("default-profile reach matches the constant "
+                               "reach within rounding (blend " +
+                               std::to_string(blend) + " torso " +
+                               std::to_string(torso) + " scale " +
+                               std::to_string(scale) + " hips " +
+                               std::to_string(recruit_hips) +
+                               ", profile " + bitsOf(reach_prof) +
+                               " constant " + bitsOf(reach_base) + ")",
+                           softEqual(reach_prof, reach_base));
+
+                    for (S32 ai = 0; ai < NANGLES; ++ai)
+                    {
+                        const F32 yaw = angles_deg[ai] * DEG_TO_RAD;
+                        const F32 pitch =
+                            angles_deg[(ai + 3) % NANGLES] * DEG_TO_RAD;
+                        ALGazeMath::AnatomicalChainPose base;
+                        ALGazeMath::AnatomicalChainPose prof;
+                        ALGazeMath::distributeAnatomicalChain(
+                            yaw, pitch, blend, torso, 90.f, base, scale,
+                            recruit_hips, nullptr, 0.f);
+                        ALGazeMath::distributeAnatomicalChain(
+                            yaw, pitch, blend, torso, 90.f, prof, scale,
+                            recruit_hips, &profile, 0.f);
+                        const std::string tag =
+                            " (blend " + std::to_string(blend) + " torso " +
+                            std::to_string(torso) + " scale " +
+                            std::to_string(scale) + " hips " +
+                            std::to_string(recruit_hips) + " yaw_deg " +
+                            std::to_string(angles_deg[ai]) + " pitch_deg " +
+                            std::to_string(
+                                angles_deg[(ai + 3) % NANGLES]) + ")";
+                        const F32 prof_fields[12] =
+                            { prof.mEyeYaw, prof.mEyePitch,
+                              prof.mHeadYaw, prof.mHeadPitch,
+                              prof.mNeckYaw, prof.mNeckPitch,
+                              prof.mTorsoYaw, prof.mTorsoPitch,
+                              prof.mChestYaw, prof.mChestPitch,
+                              prof.mHipsYaw, prof.mHipsPitch };
+                        const F32 base_fields[12] =
+                            { base.mEyeYaw, base.mEyePitch,
+                              base.mHeadYaw, base.mHeadPitch,
+                              base.mNeckYaw, base.mNeckPitch,
+                              base.mTorsoYaw, base.mTorsoPitch,
+                              base.mChestYaw, base.mChestPitch,
+                              base.mHipsYaw, base.mHipsPitch };
+                        const char* field_names[12] =
+                            { "mEyeYaw", "mEyePitch",
+                              "mHeadYaw", "mHeadPitch",
+                              "mNeckYaw", "mNeckPitch",
+                              "mTorsoYaw", "mTorsoPitch",
+                              "mChestYaw", "mChestPitch",
+                              "mHipsYaw", "mHipsPitch" };
+                        for (S32 f = 0; f < 12; ++f)
+                        {
+                            // Soft /fp:fast parity (see softEqual's and the
+                            // test's comments).
+                            ensure("default-profile " +
+                                       std::string(field_names[f]) +
+                                       " matches the constant chain within "
+                                       "rounding (profile " +
+                                       bitsOf(prof_fields[f]) +
+                                       " constant " +
+                                       bitsOf(base_fields[f]) + ")" + tag,
+                                   softEqual(prof_fields[f],
+                                             base_fields[f]));
+                        }
+                        ensure("default-profile body-turn trigger matches"
+                                   + tag,
+                               prof.mTriggerBodyTurn ==
+                                   base.mTriggerBodyTurn);
+                    }
+                }
+            }
+        }
+    }
+}
+
+template<> template<>
+void algazemath_test_object::test<30>()
+{
+    set_test_name("angle-driven lean curve (spineLean)");
+    using ALGazeMath::SpineLeanResult;
+    using ALGazeMath::spineLean;
+
+    const F32 BIG_DEG = 1000.f; // effectively unbounded max lean
+    const F32 BIG_CAP = 100.f;  // effectively unbounded ellipse semi-axis, rad
+
+    // 1. Zero aim: everything exactly (bitwise) zero, no division by zero.
+    {
+        const SpineLeanResult r =
+            spineLean(0.f, 0.f, 25.f, 20.f, 20.f, 1.f, 1.f, 1.f, 1.f);
+        ensure("zero aim gives an exactly zero spine and face",
+               bitwiseEqual(r.mSpineYaw, 0.f) &&
+               bitwiseEqual(r.mSpinePitch, 0.f) &&
+               bitwiseEqual(r.mFaceYaw, 0.f) &&
+               bitwiseEqual(r.mFacePitch, 0.f));
+    }
+
+    // 2. Below threshold: ease 0, spine exact zero, face carries the full aim.
+    {
+        const F32 yaw = 10.f * DEG_TO_RAD;
+        const F32 pitch = -8.f * DEG_TO_RAD; // a ~= 12.8 deg < T = 25 deg
+        const SpineLeanResult r = spineLean(
+            yaw, pitch, 25.f, 20.f, 20.f, 1.f, 1.f, BIG_CAP, BIG_CAP);
+        ensure("below-threshold spine is exactly zero",
+               bitwiseEqual(r.mSpineYaw, 0.f) &&
+               bitwiseEqual(r.mSpinePitch, 0.f));
+        ensure("below-threshold face equals the full aim exactly",
+               bitwiseEqual(r.mFaceYaw, yaw) &&
+               bitwiseEqual(r.mFacePitch, pitch));
+    }
+
+    // 3. torso_amount 0 disables the spine even far above threshold.
+    {
+        const F32 yaw = -70.f * DEG_TO_RAD;
+        const F32 pitch = 20.f * DEG_TO_RAD;
+        const SpineLeanResult r = spineLean(
+            yaw, pitch, 25.f, 20.f, 20.f, 0.f, 1.f, BIG_CAP, BIG_CAP);
+        ensure("torso 0 spine is exactly zero",
+               bitwiseEqual(r.mSpineYaw, 0.f) &&
+               bitwiseEqual(r.mSpinePitch, 0.f));
+        ensure("torso 0 face equals the full aim exactly",
+               bitwiseEqual(r.mFaceYaw, yaw) &&
+               bitwiseEqual(r.mFacePitch, pitch));
+    }
+
+    // 4. C2 continuity of the smootherstep band. With M and the caps huge and
+    // torso/blend 1, the returned spine magnitude along a yaw-only aim is
+    //   g(a) = 0            for a <= T
+    //   g(a) = a * ease(u)  for T < a < T+S, u = (a-T)/S
+    //   g(a) = a            for a >= T+S
+    // whose analytic derivatives are
+    //   g'  = ease + a*ease'(u)/S,  g'' = 2*ease'(u)/S + a*ease''(u)/S^2
+    // with ease'(u) = 30u^2(1-u)^2 and ease''(u) = 60u(u-1)(2u-1); both
+    // vanish at u=0 and u=1, which is exactly the C2 join. We sample just
+    // below/at/above both edges plus a mid-band point, approximate g'/g''
+    // by central finite differences, and require them to match the analytic
+    // smootherstep formula (value continuity is checked to a tight tol).
+    {
+        const F32 T_DEG = 20.f;
+        const F32 S_DEG = 30.f;
+        const F64 T = static_cast<F64>(T_DEG) * DEG_TO_RAD;
+        const F64 S = static_cast<F64>(S_DEG) * DEG_TO_RAD;
+
+        auto g = [&](F64 a) -> F64
+        {
+            const SpineLeanResult r = spineLean(
+                static_cast<F32>(a), 0.f, T_DEG, S_DEG, BIG_DEG,
+                1.f, 1.f, BIG_CAP, BIG_CAP);
+            return static_cast<F64>(r.mSpineYaw);
+        };
+        auto analytic = [&](F64 a, F64& d1, F64& d2) -> F64
+        {
+            if (a <= T)
+            {
+                d1 = 0.0;
+                d2 = 0.0;
+                return 0.0;
+            }
+            if (a >= T + S)
+            {
+                d1 = 1.0;
+                d2 = 0.0;
+                return a;
+            }
+            const F64 u = (a - T) / S;
+            const F64 ease = u * u * u * (u * (u * 6.0 - 15.0) + 10.0);
+            const F64 e1 = 30.0 * u * u * (1.0 - u) * (1.0 - u);
+            const F64 e2 = 60.0 * u * (u - 1.0) * (2.0 * u - 1.0);
+            d1 = ease + a * e1 / S;
+            d2 = 2.0 * e1 / S + a * e2 / (S * S);
+            return a * ease;
+        };
+
+        // Value continuity across both edges.
+        const F64 delta = 1e-4;
+        ensure("value continuous at the threshold edge",
+               std::fabs(g(T + delta) - g(T - delta)) <= 5e-4);
+        ensure("value continuous at the softness edge",
+               std::fabs(g(T + S + delta) - g(T + S - delta)) <= 5e-4);
+
+        // Step choice: the function returns F32, so each g() sample carries
+        // ~3e-7 abs rounding noise; the d2 stencil amplifies that by 4/h^2
+        // (h=2e-3 gave ~0.26 noise and a flaky assert) while truncation only
+        // grows as h^2 * g'''' (~0.012 at h=5e-3 near the band edges).
+        // h=5e-3 puts noise (~0.04) and truncation both well under the tols.
+        const F64 h = 5e-3;
+        const F64 samples[] =
+        {
+            T - 3.0 * h,        // just below the threshold edge
+            T + 3.0 * h,        // just above the threshold edge
+            T + 0.3 * S,        // mid-band: formula match, not just zeros
+            T + S - 3.0 * h,    // just below the softness edge
+            T + S + 3.0 * h     // just above the softness edge
+        };
+        for (F64 a : samples)
+        {
+            F64 d1_ref = 0.0;
+            F64 d2_ref = 0.0;
+            const F64 v_ref = analytic(a, d1_ref, d2_ref);
+            const F64 v = g(a);
+            const F64 d1 = (g(a + h) - g(a - h)) / (2.0 * h);
+            const F64 d2 = (g(a + h) - 2.0 * v + g(a - h)) / (h * h);
+            const std::string tag = " (a_deg " +
+                std::to_string(a * RAD_TO_DEG) + ")";
+            ensure("lean value matches the smootherstep formula" + tag,
+                   std::fabs(v - v_ref) <= 1e-5);
+            ensure("1st derivative matches the smootherstep formula" + tag,
+                   std::fabs(d1 - d1_ref) <= 5e-3);
+            ensure("2nd derivative matches the smootherstep formula" + tag,
+                   std::fabs(d2 - d2_ref) <= 0.15);
+        }
+    }
+
+    // 5. Max clamp: far past threshold with a small M, lean_mag == M and the
+    // face keeps the remainder, both on-axis and diagonal.
+    {
+        const F32 M_RAD = 10.f * DEG_TO_RAD;
+        const F32 yaw = 80.f * DEG_TO_RAD;
+        const SpineLeanResult r = spineLean(
+            yaw, 0.f, 5.f, 5.f, 10.f, 1.f, 1.f, BIG_CAP, BIG_CAP);
+        ensure("yaw-only max clamp caps the lean at M",
+               std::fabs(r.mSpineYaw - M_RAD) <= 1e-5f &&
+               bitwiseEqual(r.mSpinePitch, 0.f));
+        ensure("yaw-only face keeps the remainder v - d*M",
+               std::fabs(r.mFaceYaw - (yaw - M_RAD)) <= 1e-5f &&
+               std::fabs(r.mFacePitch) <= 1e-6f);
+
+        const F32 dyaw = 60.f * DEG_TO_RAD;
+        const F32 dpitch = 45.f * DEG_TO_RAD;
+        const F32 mag = sqrtf(dyaw * dyaw + dpitch * dpitch);
+        const SpineLeanResult rd = spineLean(
+            dyaw, dpitch, 5.f, 5.f, 10.f, 1.f, 1.f, BIG_CAP, BIG_CAP);
+        const F32 lean = sqrtf(rd.mSpineYaw * rd.mSpineYaw +
+                               rd.mSpinePitch * rd.mSpinePitch);
+        ensure("diagonal max clamp caps the lean magnitude at M",
+               std::fabs(lean - M_RAD) <= 1e-5f);
+        ensure("diagonal spine lies along the aim direction (d * M)",
+               std::fabs(rd.mSpineYaw - (dyaw / mag) * M_RAD) <= 1e-5f &&
+               std::fabs(rd.mSpinePitch - (dpitch / mag) * M_RAD) <= 1e-5f);
+        ensure("diagonal face keeps the remainder v - d*M",
+               std::fabs(rd.mFaceYaw - (dyaw - (dyaw / mag) * M_RAD)) <= 1e-5f &&
+               std::fabs(rd.mFacePitch -
+                         (dpitch - (dpitch / mag) * M_RAD)) <= 1e-5f);
+    }
+
+    // 6. Directional ellipse clamp. T=0/S=0 step with a huge M makes
+    // requested == a, so a large aim saturates against the ellipse.
+    {
+        const F32 CY = 10.f * DEG_TO_RAD; // yaw semi-axis
+        const F32 CP = 5.f * DEG_TO_RAD;  // pitch semi-axis
+
+        // Yaw-only: cap distance is the yaw semi-axis.
+        const SpineLeanResult ry = spineLean(
+            40.f * DEG_TO_RAD, 0.f, 0.f, 0.f, BIG_DEG, 1.f, 1.f, CY, CP);
+        ensure("yaw-only saturated spine sits on the yaw semi-axis",
+               std::fabs(ry.mSpineYaw - CY) <= 1e-6f &&
+               bitwiseEqual(ry.mSpinePitch, 0.f));
+
+        // Pitch-only (negative): cap distance is the pitch semi-axis.
+        const SpineLeanResult rp = spineLean(
+            0.f, -40.f * DEG_TO_RAD, 0.f, 0.f, BIG_DEG, 1.f, 1.f, CY, CP);
+        ensure("pitch-only saturated spine sits on the pitch semi-axis",
+               std::fabs(rp.mSpinePitch + CP) <= 1e-6f &&
+               bitwiseEqual(rp.mSpineYaw, 0.f));
+
+        // Diagonal: the saturated spine lands exactly ON the ellipse, at the
+        // analytic cap distance along the aim direction.
+        const F32 dyaw = 30.f * DEG_TO_RAD;
+        const F32 dpitch = 30.f * DEG_TO_RAD;
+        const F32 mag = sqrtf(dyaw * dyaw + dpitch * dpitch);
+        const F32 uy = dyaw / mag;
+        const F32 up = dpitch / mag;
+        const F32 cap_dist = 1.f / sqrtf((uy / CY) * (uy / CY) +
+                                         (up / CP) * (up / CP));
+        const SpineLeanResult rdg = spineLean(
+            dyaw, dpitch, 0.f, 0.f, BIG_DEG, 1.f, 1.f, CY, CP);
+        const F32 lean = sqrtf(rdg.mSpineYaw * rdg.mSpineYaw +
+                               rdg.mSpinePitch * rdg.mSpinePitch);
+        ensure("diagonal saturated lean equals the directional cap distance",
+               std::fabs(lean - cap_dist) <= 1e-6f);
+        const F32 ell = (rdg.mSpineYaw / CY) * (rdg.mSpineYaw / CY) +
+                        (rdg.mSpinePitch / CP) * (rdg.mSpinePitch / CP);
+        ensure("diagonal saturated spine sits exactly on the ellipse",
+               std::fabs(ell - 1.f) <= 1e-4f);
+
+        // Unsaturated: requested < cap_dist keeps the spine strictly inside
+        // the ellipse at the requested magnitude.
+        const F32 syaw = 2.f * DEG_TO_RAD;
+        const F32 spitch = 2.f * DEG_TO_RAD;
+        const F32 smag = sqrtf(syaw * syaw + spitch * spitch);
+        const SpineLeanResult rin = spineLean(
+            syaw, spitch, 0.f, 0.f, BIG_DEG, 1.f, 1.f, CY, CP);
+        const F32 in_lean = sqrtf(rin.mSpineYaw * rin.mSpineYaw +
+                                  rin.mSpinePitch * rin.mSpinePitch);
+        ensure("unsaturated lean equals the requested magnitude",
+               std::fabs(in_lean - smag) <= 1e-6f);
+        ensure("unsaturated spine stays inside the ellipse",
+               (rin.mSpineYaw / CY) * (rin.mSpineYaw / CY) +
+               (rin.mSpinePitch / CP) * (rin.mSpinePitch / CP) <= 1.f + 1e-5f);
+
+        // Zero cap on a needed axis makes the direction unreachable...
+        const SpineLeanResult rz = spineLean(
+            dyaw, dpitch, 0.f, 0.f, BIG_DEG, 1.f, 1.f, CY, 0.f);
+        ensure("diagonal aim with a zero pitch cap gets zero spine",
+               bitwiseEqual(rz.mSpineYaw, 0.f) &&
+               bitwiseEqual(rz.mSpinePitch, 0.f) &&
+               bitwiseEqual(rz.mFaceYaw, dyaw) &&
+               bitwiseEqual(rz.mFacePitch, dpitch));
+        // ...but a yaw-only aim never touches the zero pitch axis.
+        const SpineLeanResult rzy = spineLean(
+            40.f * DEG_TO_RAD, 0.f, 0.f, 0.f, BIG_DEG, 1.f, 1.f, CY, 0.f);
+        ensure("yaw-only aim ignores a zero pitch cap",
+               std::fabs(rzy.mSpineYaw - CY) <= 1e-6f &&
+               bitwiseEqual(rzy.mSpinePitch, 0.f));
+    }
+
+    // 7. Conservation: spine + face reconstructs the aim component-wise
+    // across the regimes above (below threshold, band, max clamp, ellipse
+    // clamp, zero-cap axis).
+    {
+        struct Case
+        {
+            F32 yaw_deg, pitch_deg, t, s, m, torso, blend, cy, cp;
+        };
+        const Case cases[] =
+        {
+            {  10.f,  -8.f, 25.f, 20.f, 20.f, 1.f,  1.f,  BIG_CAP, BIG_CAP },
+            {  40.f,  25.f, 20.f, 30.f, 1000.f, 1.f, 1.f, BIG_CAP, BIG_CAP },
+            {  80.f,   0.f,  5.f,  5.f, 10.f, 1.f,  1.f,  BIG_CAP, BIG_CAP },
+            {  30.f,  30.f,  0.f,  0.f, 1000.f, 1.f, 1.f,
+               10.f * DEG_TO_RAD, 5.f * DEG_TO_RAD },
+            { -60.f,  45.f,  0.f,  0.f, 1000.f, 1.f, 1.f,
+               10.f * DEG_TO_RAD, 0.f },
+            { -70.f, -20.f, 25.f, 20.f, 20.f, 0.5f, 0.75f,
+               8.f * DEG_TO_RAD, 4.f * DEG_TO_RAD },
+        };
+        for (const Case& c : cases)
+        {
+            const F32 yaw = c.yaw_deg * DEG_TO_RAD;
+            const F32 pitch = c.pitch_deg * DEG_TO_RAD;
+            const SpineLeanResult r = spineLean(
+                yaw, pitch, c.t, c.s, c.m, c.torso, c.blend, c.cy, c.cp);
+            const std::string tag = " (yaw_deg " + std::to_string(c.yaw_deg) +
+                " pitch_deg " + std::to_string(c.pitch_deg) + ")";
+            ensure("spine + face reconstructs the aim yaw" + tag,
+                   std::fabs((r.mSpineYaw + r.mFaceYaw) - yaw) <= 1e-6f);
+            ensure("spine + face reconstructs the aim pitch" + tag,
+                   std::fabs((r.mSpinePitch + r.mFacePitch) - pitch) <= 1e-6f);
+        }
+    }
 }
 
 } // namespace tut

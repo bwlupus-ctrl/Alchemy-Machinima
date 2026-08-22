@@ -212,10 +212,104 @@ struct AnatomicalChainPose
     F32  mNeckPitch       = 0.f; // radians
     F32  mTorsoYaw        = 0.f; // radians
     F32  mTorsoPitch      = 0.f; // radians
+    // [Machinima] Chest split (Planted spine only): the conserved spine bucket
+    // is divided torso/chest so torso+chest == the old torso component. Zero on
+    // every legacy path (chest_share defaults to 0), so the default output is
+    // byte-identical -- mChest* stay +0 and only mTorso* carry the spine share.
+    F32  mChestYaw        = 0.f; // radians
+    F32  mChestPitch      = 0.f; // radians
     F32  mHipsYaw         = 0.f; // radians
     F32  mHipsPitch       = 0.f; // radians
     bool mTriggerBodyTurn = false;
 };
+
+// [Machinima] Opt-in per-joint cone limits shared by the legacy allocator
+// (distributeAnatomicalChain) and the motor allocator (effectiveCapacities).
+// Values are DEGREES (not pre-scaled radians). Default-constructed it carries
+// the EXACT current constants, but it is consulted ONLY when a custom profile
+// is explicitly enabled -- the default/legacy paths never build or read one, so
+// the byte-identical execution-path contract holds. fillEffectiveCapacities()
+// is the single point that turns a profile + shaping inputs into the weighted
+// per-slot capacity arrays both allocators consume, so the two capacity tables
+// can never drift.
+struct AnatomicalLimitProfile
+{
+    // Allocation cones (match distributeAnatomicalChain's constants).
+    F32 mEyeYawDeg   = 25.f;
+    F32 mEyePitchDeg = 14.f;
+    F32 mHeadYawDeg  = 35.f;
+    F32 mHeadPitchDeg = 42.f;
+    F32 mNeckYawDeg  = 35.f;
+    F32 mNeckPitchDeg = 26.f;
+    F32 mSpineYawDeg  = 45.f;   // conserved torso+chest bucket
+    F32 mSpinePitchDeg = 20.f;
+    F32 mHipsYawDeg  = 35.f;
+    F32 mHipsPitchDeg = 15.f;
+    // Final applied eye socket cones (custom-profile only; the default path
+    // keeps its own settings-driven caps). Axis caps plus a radial cap.
+    F32 mEyeApplyYawDeg   = 24.f;
+    F32 mEyeApplyPitchDeg = 14.f;
+    F32 mEyeRadialDeg     = 19.8f;
+};
+
+// The five chain slots the allocators fill, in parent->child order. Index 3 is
+// the conserved spine (torso+chest) bucket; the chest split happens after
+// allocation, so the capacity table has no separate chest entry.
+enum EChainSlot { CHAIN_EYE = 0, CHAIN_HEAD = 1, CHAIN_NECK = 2, CHAIN_SPINE = 3, CHAIN_HIPS = 4, CHAIN_SLOTS = 5 };
+
+// [Machinima] Single source of truth for the weighted per-slot yaw/pitch
+// capacities used by BOTH allocators when a custom profile is active. Mirrors
+// distributeAnatomicalChain's weighting EXACTLY: eye weight (1 - 0.75*blend),
+// head/neck weight = blend, spine/hips weight = blend*torso_amount; anatomy
+// scale expands eye/head/neck only (spine/hips authored); recruit_hips == false
+// zeroes the hips slot (planted spine). The blend<=0.001 eye-only case is the
+// caller's responsibility (both allocators special-case it upstream), matching
+// the legacy early return. Kept header-inline so the motor (header-only) and
+// the legacy allocator share one definition.
+inline void fillEffectiveCapacities(const AnatomicalLimitProfile& p,
+                                    F32 head_eye_blend, F32 torso_amount,
+                                    F32 anatomy_scale, bool recruit_hips,
+                                    F32 yaw[CHAIN_SLOTS], F32 pitch[CHAIN_SLOTS])
+{
+    const F32 scale = std::isfinite(anatomy_scale)
+        ? llclamp(anatomy_scale, 1.f, 3.f) : 1.f;
+    auto d2r = [](F32 deg) { return llmax(deg, 0.f) * DEG_TO_RAD; };
+
+    const F32 eye_y  = d2r(p.mEyeYawDeg)  * (scale == 1.f ? 1.f : scale);
+    const F32 eye_p  = d2r(p.mEyePitchDeg) * (scale == 1.f ? 1.f : scale);
+    const F32 head_y = d2r(p.mHeadYawDeg) * (scale == 1.f ? 1.f : scale);
+    const F32 head_p = d2r(p.mHeadPitchDeg) * (scale == 1.f ? 1.f : scale);
+    const F32 neck_y = d2r(p.mNeckYawDeg) * (scale == 1.f ? 1.f : scale);
+    const F32 neck_p = d2r(p.mNeckPitchDeg) * (scale == 1.f ? 1.f : scale);
+    const F32 spine_y = d2r(p.mSpineYawDeg);   // authored; anatomy-invariant
+    const F32 spine_p = d2r(p.mSpinePitchDeg);
+    const F32 hips_y = recruit_hips ? d2r(p.mHipsYawDeg) : 0.f;
+    const F32 hips_p = recruit_hips ? d2r(p.mHipsPitchDeg) : 0.f;
+
+    // Sanitize blend/torso the SAME way the motor's constant effectiveCapacities
+    // does (non-finite -> 1.f, not llclamp's 0), so flipping mUseLimitProfile on
+    // with the default profile reproduces the constant caps bit-for-bit even for
+    // adversarial non-finite inputs (Codex finding 1).
+    const F32 blend = std::isfinite(head_eye_blend)
+        ? llclamp(head_eye_blend, 0.f, 1.f) : 1.f;
+    const F32 torso_w = std::isfinite(torso_amount)
+        ? llclamp(torso_amount, 0.f, 1.f) : 1.f;
+    const F32 eye_weight   = 1.f - 0.75f * blend;
+    const F32 head_weight  = blend;
+    const F32 torso_weight = blend * torso_w;
+
+    yaw[CHAIN_EYE]   = eye_y * eye_weight;
+    yaw[CHAIN_HEAD]  = head_y * head_weight;
+    yaw[CHAIN_NECK]  = neck_y * head_weight;
+    yaw[CHAIN_SPINE] = spine_y * torso_weight;
+    yaw[CHAIN_HIPS]  = hips_y * torso_weight;
+
+    pitch[CHAIN_EYE]   = eye_p * eye_weight;
+    pitch[CHAIN_HEAD]  = head_p * head_weight;
+    pitch[CHAIN_NECK]  = neck_p * head_weight;
+    pitch[CHAIN_SPINE] = spine_p * torso_weight;
+    pitch[CHAIN_HIPS]  = hips_p * torso_weight;
+}
 
 struct GazePersona
 {
@@ -567,7 +661,9 @@ inline void distributeAnatomicalChain(F32 target_yaw, F32 target_pitch,
                                      F32 body_turn_threshold_deg,
                                      AnatomicalChainPose& out_pose,
                                      F32 anatomy_scale = 1.f,
-                                     bool recruit_hips = true)
+                                     bool recruit_hips = true,
+                                     const AnatomicalLimitProfile* profile = nullptr,
+                                     F32 chest_share = 0.f)
 {
     out_pose = AnatomicalChainPose();
     const F32 abs_yaw = fabsf(target_yaw);
@@ -579,6 +675,80 @@ inline void distributeAnatomicalChain(F32 target_yaw, F32 target_pitch,
     if (abs_yaw > body_turn_thresh_rad)
     {
         out_pose.mTriggerBodyTurn = true;
+    }
+
+    // [Machinima] Chest split: divide the allocated spine (torso) bucket into
+    // torso/chest so torso+chest == the old torso component, component by
+    // component (no extra reach). chest_share defaults 0 -> mChest stays +0 and
+    // mTorso is untouched, so every legacy caller is byte-identical. Applied as
+    // a tail transform in each allocation path below, guarded on chest_share>0.
+    const F32 chest_w = llclamp(chest_share, 0.f, 1.f);
+    auto split_chest = [&out_pose, chest_w]()
+    {
+        if (chest_w > 0.f)
+        {
+            out_pose.mChestYaw   = out_pose.mTorsoYaw * chest_w;
+            out_pose.mChestPitch = out_pose.mTorsoPitch * chest_w;
+            out_pose.mTorsoYaw  -= out_pose.mChestYaw;
+            out_pose.mTorsoPitch -= out_pose.mChestPitch;
+        }
+    };
+
+    // [Machinima] Opt-in custom limit profile: a self-contained allocation that
+    // draws its weighted per-slot capacities from fillEffectiveCapacities (the
+    // SAME helper the motor uses), then runs the identical direct-min recruit
+    // order. This branch is entered ONLY when a profile is supplied, so the
+    // default constant path below is never reorganized.
+    if (profile)
+    {
+        auto alloc = [](F32& residual, F32 capacity) -> F32
+        {
+            const F32 amount = llmin(residual, llmax(capacity, 0.f));
+            residual -= amount;
+            return amount;
+        };
+        const F32 blend_c = std::isfinite(head_eye_blend)
+            ? llclamp(head_eye_blend, 0.f, 1.f) : 1.f;
+        const F32 scale_c = std::isfinite(anatomy_scale)
+            ? llclamp(anatomy_scale, 1.f, 3.f) : 1.f;
+        if (blend_c <= 0.001f)
+        {
+            // Eye-only: full unweighted (anatomy-scaled) eye capacity, matching
+            // the legacy early return's semantics with profile cones.
+            const F32 eye_cap_y = llmax(profile->mEyeYawDeg, 0.f) * DEG_TO_RAD
+                                  * (scale_c == 1.f ? 1.f : scale_c);
+            const F32 eye_cap_p = llmax(profile->mEyePitchDeg, 0.f) * DEG_TO_RAD
+                                  * (scale_c == 1.f ? 1.f : scale_c);
+            out_pose.mEyeYaw = sign_yaw * llmin(abs_yaw, eye_cap_y);
+            out_pose.mEyePitch = sign_pitch * llmin(abs_pitch, eye_cap_p);
+            return;
+        }
+        F32 caps_y[CHAIN_SLOTS];
+        F32 caps_p[CHAIN_SLOTS];
+        fillEffectiveCapacities(*profile, head_eye_blend, torso_amount,
+                                anatomy_scale, recruit_hips, caps_y, caps_p);
+        F32 rem_yaw = abs_yaw;
+        out_pose.mEyeYaw   = sign_yaw * alloc(rem_yaw, caps_y[CHAIN_EYE]);
+        out_pose.mHeadYaw  = sign_yaw * alloc(rem_yaw, caps_y[CHAIN_HEAD]);
+        out_pose.mNeckYaw  = sign_yaw * alloc(rem_yaw, caps_y[CHAIN_NECK]);
+        out_pose.mTorsoYaw = sign_yaw * alloc(rem_yaw, caps_y[CHAIN_SPINE]);
+        out_pose.mHipsYaw  = sign_yaw * alloc(rem_yaw, caps_y[CHAIN_HIPS]);
+        F32 rem_pitch = abs_pitch;
+        out_pose.mEyePitch   = sign_pitch * alloc(rem_pitch, caps_p[CHAIN_EYE]);
+        out_pose.mHeadPitch  = sign_pitch * alloc(rem_pitch, caps_p[CHAIN_HEAD]);
+        out_pose.mNeckPitch  = sign_pitch * alloc(rem_pitch, caps_p[CHAIN_NECK]);
+        out_pose.mTorsoPitch = sign_pitch * alloc(rem_pitch, caps_p[CHAIN_SPINE]);
+        out_pose.mHipsPitch  = sign_pitch * alloc(rem_pitch, caps_p[CHAIN_HIPS]);
+        if (!recruit_hips)
+        {
+            // Planted: canonicalize the zero-capacity hips to +0 (sign*0 would
+            // be -0 for negative aim), matching the motor's hard-zero so the
+            // planted "hips are bitwise +0" contract holds on both paths.
+            out_pose.mHipsYaw = 0.f;
+            out_pose.mHipsPitch = 0.f;
+        }
+        split_chest();
+        return;
     }
 
     constexpr F32 EYE_MAX_YAW = 25.f * DEG_TO_RAD;
@@ -659,6 +829,184 @@ inline void distributeAnatomicalChain(F32 target_yaw, F32 target_pitch,
     out_pose.mNeckPitch = sign_pitch * allocate(rem_pitch, neck_max_pitch * head_weight);
     out_pose.mTorsoPitch = sign_pitch * allocate(rem_pitch, TORSO_MAX_PITCH * torso_weight);
     out_pose.mHipsPitch = sign_pitch * allocate(rem_pitch, hips_max_pitch * torso_weight);
+
+    if (!recruit_hips)
+    {
+        // Planted: canonicalize the zero-capacity hips to +0 (sign*0 would be
+        // -0 for negative aim), matching the motor's hard-zero so legacy and
+        // motor agree bytewise and the "hips bitwise +0" contract holds. This
+        // is planted-only; the default recruit_hips==true path is untouched.
+        out_pose.mHipsYaw = 0.f;
+        out_pose.mHipsPitch = 0.f;
+    }
+
+    split_chest();   // no-op when chest_share == 0 (every legacy caller)
+}
+
+// [Machinima] behind-shoulder / no-snap: the total one-side yaw the chain
+// above can actually deliver -- the sum of the SAME weighted per-joint
+// capacities distributeAnatomicalChain allocates from, including the
+// blend <= 0.001 eye-only early return (full unweighted eye capacity, zero
+// everywhere else), the anatomy-scale shaping (exact constants on the 1x
+// path), and the planted-spine hips zeroing (recruit_hips == false). The
+// integration uses it to decide when a target is physically beyond reach, so
+// a +-180 seam crossing sweeps through the FRONT instead of sign-flipping
+// the whole allocation through the (unreachable) back. Must stay in lockstep
+// with distributeAnatomicalChain's constants and weights.
+inline F32 chainReachYaw(F32 head_eye_blend, F32 torso_amount,
+                         F32 anatomy_scale = 1.f, bool recruit_hips = true,
+                         const AnatomicalLimitProfile* profile = nullptr)
+{
+    // Custom profile: reach is the sum of the SAME weighted per-slot yaw caps
+    // fillEffectiveCapacities feeds the profiled allocator (eye-only case uses
+    // the full unweighted eye cap, matching distributeAnatomicalChain's early
+    // return), so "beyond reach" tracks the profiled saturation exactly.
+    if (profile)
+    {
+        const F32 blend_p = llclamp(head_eye_blend, 0.f, 1.f);
+        const F32 scale_p = std::isfinite(anatomy_scale)
+            ? llclamp(anatomy_scale, 1.f, 3.f) : 1.f;
+        if (blend_p <= 0.001f)
+        {
+            return llmax(profile->mEyeYawDeg, 0.f) * DEG_TO_RAD
+                   * (scale_p == 1.f ? 1.f : scale_p);
+        }
+        F32 caps_y[CHAIN_SLOTS];
+        F32 caps_p[CHAIN_SLOTS];
+        fillEffectiveCapacities(*profile, head_eye_blend, torso_amount,
+                                anatomy_scale, recruit_hips, caps_y, caps_p);
+        return caps_y[CHAIN_EYE] + caps_y[CHAIN_HEAD] + caps_y[CHAIN_NECK] +
+               caps_y[CHAIN_SPINE] + caps_y[CHAIN_HIPS];
+    }
+
+    constexpr F32 EYE_MAX_YAW   = 25.f * DEG_TO_RAD;
+    constexpr F32 HEAD_MAX_YAW  = 35.f * DEG_TO_RAD;
+    constexpr F32 NECK_MAX_YAW  = 35.f * DEG_TO_RAD;
+    constexpr F32 TORSO_MAX_YAW = 45.f * DEG_TO_RAD;
+    constexpr F32 HIPS_MAX_YAW  = 35.f * DEG_TO_RAD;
+
+    const F32 scale = std::isfinite(anatomy_scale)
+        ? llclamp(anatomy_scale, 1.f, 3.f) : 1.f;
+    const F32 eye_max_yaw = scale == 1.f
+        ? EYE_MAX_YAW : EYE_MAX_YAW * scale;
+    const F32 head_max_yaw = scale == 1.f
+        ? HEAD_MAX_YAW : HEAD_MAX_YAW * scale;
+    const F32 neck_max_yaw = scale == 1.f
+        ? NECK_MAX_YAW : NECK_MAX_YAW * scale;
+
+    const F32 blend = llclamp(head_eye_blend, 0.f, 1.f);
+    if (blend <= 0.001f)
+    {
+        // Eye-only early return: the eyes get their FULL unweighted capacity.
+        return eye_max_yaw;
+    }
+
+    const F32 torso_w = llclamp(torso_amount, 0.f, 1.f);
+    const F32 eye_weight = 1.f - 0.75f * blend;
+    const F32 head_weight = blend;
+    const F32 torso_weight = blend * torso_w;
+    const F32 hips_max_yaw = recruit_hips ? HIPS_MAX_YAW : 0.f;
+    return eye_max_yaw * eye_weight +
+           head_max_yaw * head_weight +
+           neck_max_yaw * head_weight +
+           TORSO_MAX_YAW * torso_weight +
+           hips_max_yaw * torso_weight;
+}
+
+// [Machinima] Goal 3c: angle-driven lean falloff (opt-in Angle-ease lean
+// curve, Planted-spine scope). Pure and stateless: the spine's share of an
+// aim is a C2 function of the aim's angular magnitude alone. All internal
+// work is in radians; threshold/softness/max are authored in degrees.
+//
+//   a         = |(aim_yaw, aim_pitch)|
+//   u         = step at T when softness == 0, else clamp((a - T)/S, 0, 1)
+//   ease      = smootherstep(u)                       (C2 at both edges)
+//   requested = min(M, a * torso_amount * head_eye_blend * ease)
+//   cap_dist  = distance from the origin to the spine yaw/pitch ELLIPSE
+//               (semi-axes spine_cap_yaw/pitch) along the aim direction
+//   spine     = (v/a) * min(requested, cap_dist);  face = v - spine
+//
+// Zero aim returns exact zeros (no division by zero); a zero cap on an axis
+// the aim direction needs makes the spine unreachable along that direction
+// (cap_dist 0), never a divide-by-epsilon. spine + face always reconstructs
+// the aim, so the face allocator downstream conserves the total angle.
+struct SpineLeanResult
+{
+    F32 mSpineYaw   = 0.f; // radians
+    F32 mSpinePitch = 0.f; // radians
+    F32 mFaceYaw    = 0.f; // radians
+    F32 mFacePitch  = 0.f; // radians
+};
+
+inline SpineLeanResult spineLean(F32 aim_yaw_rad, F32 aim_pitch_rad,
+                                 F32 threshold_deg, F32 softness_deg,
+                                 F32 max_deg,
+                                 F32 torso_amount, F32 head_eye_blend,
+                                 F32 spine_cap_yaw_rad,
+                                 F32 spine_cap_pitch_rad)
+{
+    SpineLeanResult out;
+    if (!std::isfinite(aim_yaw_rad) || !std::isfinite(aim_pitch_rad))
+    {
+        return out;
+    }
+    const F32 a = sqrtf(aim_yaw_rad * aim_yaw_rad +
+                        aim_pitch_rad * aim_pitch_rad);
+    if (a <= 1e-8f)
+    {
+        // Zero aim: spine and face both exactly zero.
+        return out;
+    }
+
+    auto sane_pos = [](F32 v) { return std::isfinite(v) ? llmax(v, 0.f) : 0.f; };
+    const F32 T = sane_pos(threshold_deg) * DEG_TO_RAD;
+    const F32 S = sane_pos(softness_deg) * DEG_TO_RAD;
+    const F32 M = sane_pos(max_deg) * DEG_TO_RAD;
+
+    // Authored zero softness is a hard step at the threshold, NOT a divide by
+    // a tiny epsilon dressed up as a smooth band.
+    const F32 u = S <= 0.f ? (a > T ? 1.f : 0.f)
+                           : llclamp((a - T) / S, 0.f, 1.f);
+    const F32 ease = u * u * u * (u * (u * 6.f - 15.f) + 10.f); // smootherstep
+
+    const F32 torso_w = std::isfinite(torso_amount)
+        ? llclamp(torso_amount, 0.f, 1.f) : 0.f;
+    const F32 blend = std::isfinite(head_eye_blend)
+        ? llclamp(head_eye_blend, 0.f, 1.f) : 0.f;
+    const F32 requested = llmin(M, a * torso_w * blend * ease);
+
+    // Directional spine capacity: distance to the yaw/pitch ellipse along the
+    // unit aim direction d. A zero semi-axis makes any direction with a
+    // component on that axis unreachable (cap_dist 0).
+    const F32 dir_yaw = aim_yaw_rad / a;
+    const F32 dir_pitch = aim_pitch_rad / a;
+    const F32 cap_yaw = sane_pos(spine_cap_yaw_rad);
+    const F32 cap_pitch = sane_pos(spine_cap_pitch_rad);
+    F32 cap_dist = 0.f;
+    if ((cap_yaw > 0.f || dir_yaw == 0.f) &&
+        (cap_pitch > 0.f || dir_pitch == 0.f))
+    {
+        const F32 ty = cap_yaw > 0.f ? dir_yaw / cap_yaw : 0.f;
+        const F32 tp = cap_pitch > 0.f ? dir_pitch / cap_pitch : 0.f;
+        const F32 q = ty * ty + tp * tp;
+        cap_dist = q > 0.f ? 1.f / sqrtf(q) : 0.f;
+    }
+
+    const F32 lean_mag = llmin(requested, cap_dist);
+    if (lean_mag <= 0.f)
+    {
+        // No spine recruitment: keep the spine at exact +0 (dir * 0 would
+        // produce -0 on a negative axis) and hand the full aim to the face.
+        out.mFaceYaw = aim_yaw_rad;
+        out.mFacePitch = aim_pitch_rad;
+        return out;
+    }
+
+    out.mSpineYaw = dir_yaw * lean_mag;
+    out.mSpinePitch = dir_pitch * lean_mag;
+    out.mFaceYaw = aim_yaw_rad - out.mSpineYaw;
+    out.mFacePitch = aim_pitch_rad - out.mSpinePitch;
+    return out;
 }
 
 // Suspicious personas keep the combined head/neck yaw within about 15 degrees.
@@ -678,6 +1026,62 @@ inline void applySideEye(F32 strength, AnatomicalChainPose& pose)
     const F32 scale = capped / combined;
     pose.mHeadYaw += (pose.mHeadYaw * scale - pose.mHeadYaw) * weight;
     pose.mNeckYaw += (pose.mNeckYaw * scale - pose.mNeckYaw) * weight;
+}
+
+// ---------------------------------------------------------------------------
+// [Machinima] Goal 2: additive gaze composition (pure helper).
+// Compose a clamped gaze-authored correction over a SNAPSHOT animation local
+// rotation in the viewer's established additive order (llpose.cpp:326/414):
+//     Q_overlay_local = Q_delta_local * Q_anim_local
+// desired_local is the exact-fixation LOCAL endpoint the caller already built
+// with the SAME parent-cancel the Replace owned path uses (desired_world *
+// ~parent->getWorldRotation() under the CURRENT painted parent). The delta is
+// measured against the animation snapshot, taken by SHORTEST arc, and only the
+// gaze-authored DELTA is clamped by the resolved per-joint gaze caps -- the
+// animation's own rotation is never clamped away, so at full additive strength
+// fixation is exact only when the remaining target error fits inside the
+// correction capacity (predictable undershoot otherwise, per the design doc).
+// preserve_anim_roll drops the delta's roll so the animation's own roll
+// (breath / lean character) survives; the caller passes false when the
+// camera-roll / head-roll gaze channel intentionally contributes roll.
+// radial_cap_rad >= 0 additionally cone-constrains the delta (eye sockets).
+// strength scales the clamped correction DELTA toward identity (NOT the
+// endpoint): strength 0 returns exactly anim_local (the animation shows),
+// strength 1 applies the full clamped correction. Callers build desired_local
+// at FULL strength (raw chain targets, never pre-nlerp'd toward DEFAULT) and
+// pass the SAME pose weight / cue alpha the Replace path used -- pre-weighting
+// the endpoint instead would drive the joint to identity at zero weight and
+// wipe the animation.
+// ---------------------------------------------------------------------------
+inline LLQuaternion additiveOverlayLocal(const LLQuaternion& desired_local,
+                                         const LLQuaternion& anim_local,
+                                         F32 cap_yaw_rad, F32 cap_pitch_rad,
+                                         bool preserve_anim_roll,
+                                         F32 radial_cap_rad = -1.f,
+                                         F32 strength = 1.f)
+{
+    LLQuaternion delta = desired_local * ~anim_local;
+    if (delta.mQ[VW] < 0.f)
+    {
+        delta = -delta;         // shortest arc
+    }
+    F32 d_roll = 0.f, d_pitch = 0.f, d_yaw = 0.f;
+    delta.getEulerAngles(&d_roll, &d_pitch, &d_yaw);
+    d_yaw = llclamp(d_yaw, -fabsf(cap_yaw_rad), fabsf(cap_yaw_rad));
+    d_pitch = llclamp(d_pitch, -fabsf(cap_pitch_rad), fabsf(cap_pitch_rad));
+    if (preserve_anim_roll)
+    {
+        d_roll = 0.f;
+    }
+    LLQuaternion clamped;
+    clamped.setEulerAngles(d_roll, d_pitch, d_yaw);
+    if (radial_cap_rad >= 0.f)
+    {
+        clamped.constrain(radial_cap_rad);
+    }
+    const LLQuaternion scaled = nlerp(
+        llclamp(strength, 0.f, 1.f), LLQuaternion::DEFAULT, clamped);
+    return scaled * anim_local;
 }
 
 // ---------------------------------------------------------------------------

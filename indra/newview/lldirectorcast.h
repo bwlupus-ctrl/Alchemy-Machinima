@@ -72,6 +72,34 @@ public:
     };
     using GazeCueList = std::vector<GazeCue>;
 
+    // [Machinima] Keyframable gaze influence: a stateless presentation-time lane
+    // parallel to GazeCueList. Its evaluated value multiplies the FINAL gaze
+    // write envelope (never the owned target), so influence 0 performs NO write
+    // and the animation shows through, while the aim/motor state stays warm. An
+    // empty list evaluates to exactly 1 and the caller keeps its current formula
+    // branch (byte-identical). Interpolation is the OUTGOING segment's mode.
+    enum EGazeKeyInterpolation : S32
+    {
+        GAZE_KEY_STEP       = 0,
+        GAZE_KEY_LINEAR     = 1,
+        GAZE_KEY_SMOOTHSTEP = 2
+    };
+
+    struct GazeInfluenceKey
+    {
+        F64 mTimeSec = 0.0;
+        F32 mValue = 1.f;                                   // clamped [0,1]
+        EGazeKeyInterpolation mInterpolation = GAZE_KEY_SMOOTHSTEP;
+    };
+    using GazeInfluenceKeyList = std::vector<GazeInfluenceKey>;
+
+    // Pure, scrub-stable evaluation. Empty list -> 1. Before the first key hold
+    // its value; after the last hold its value. Between keys use the PREVIOUS
+    // key's interpolation. Duplicate-time keys resolve to the last at that time.
+    // Non-finite times/values are sanitized; result is clamped [0,1].
+    static F32 evaluateGazeInfluence(const GazeInfluenceKeyList& keys,
+                                     F64 presentation_time);
+
     struct GazeCueEvaluation
     {
         // A target mode cannot encode a crossfade by itself, so the effective
@@ -117,6 +145,7 @@ public:
         bool                    mEyeGazeTargetEnabled = false;
         LLActorMover::GazeTarget mEyeGazeTarget; // optional eyes-only target
         GazeCueList             mGazeCues;        // ordered presentation-time performance track
+        GazeInfluenceKeyList    mGazeInfluenceKeys; // parallel influence lane (empty = influence 1)
     };
 
     static LLDirectorCast& instance();
@@ -149,6 +178,8 @@ public:
     LLActorMover::GazeTarget getEyeGazeTarget(const LLUUID& id) const;
     void                     setGazeCues(const LLUUID& id, const GazeCueList& cues);
     const GazeCueList&       getGazeCues(const LLUUID& id) const;
+    void                     setGazeInfluenceKeys(const LLUUID& id, const GazeInfluenceKeyList& keys);
+    const GazeInfluenceKeyList& getGazeInfluenceKeys(const LLUUID& id) const;
     U64                      getGazeCueRevision() const { return mGazeCueRevision; }
 
     // Pure track evaluation. Empty lists (and times before the first cue)
@@ -300,6 +331,7 @@ private:
     bool mSelfEyeGazeTargetEnabled = false;
     LLActorMover::GazeTarget mSelfEyeGazeTarget;
     GazeCueList mSelfGazeCues;
+    GazeInfluenceKeyList mSelfGazeInfluenceKeys;
     U64 mGazeCueRevision = 0;
 
     // transport state: what THIS action() run started, so cut() undoes

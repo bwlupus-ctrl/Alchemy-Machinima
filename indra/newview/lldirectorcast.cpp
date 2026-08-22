@@ -147,6 +147,77 @@ void writeGazeExpression(LLSD& data, const LLActorMover::GazeTarget& target,
     {
         data["vergence_scale"] = target.mVergenceScale;
     }
+    // [Machinima] Schema cleanup: the existing discrete overrides (scope, SL
+    // anim priority, camera mode) never round-tripped through the scene file.
+    // Persist them now alongside the newer Phase 2-5 structural overrides so
+    // no discrete axis is the odd one left out of a reload. Absent -> the
+    // GazeTarget constructor's inherit sentinels (readGazeExpression()
+    // never touches a field its key doesn't have).
+    if (target.mGazePriorityOverride >= 0)
+    {
+        data["perf_scope"] = target.mGazePriorityOverride;
+    }
+    if (target.mAnimPriorityOverride >= -1)
+    {
+        data["perf_anim_priority"] = target.mAnimPriorityOverride;
+    }
+    if (target.mCameraModeOverride >= 0)
+    {
+        data["perf_camera_mode"] = target.mCameraModeOverride;
+    }
+    if (target.mCompositionOverride >= 0)
+    {
+        data["perf_composition"] = target.mCompositionOverride;
+    }
+    if (target.mCompositionMixOverride >= 0.f)
+    {
+        data["perf_composition_mix"] = target.mCompositionMixOverride;
+    }
+    if (target.mChestShareOverride >= 0.f)
+    {
+        data["perf_chest_share"] = target.mChestShareOverride;
+    }
+    if (target.mLimitProfileModeOverride >= 0)
+    {
+        data["perf_limit_mode"] = target.mLimitProfileModeOverride;
+        if (target.mLimitProfileModeOverride == 1)
+        {
+            // Only the actor-custom mode consults mLimitProfile; legacy/inherit
+            // scenes never wrote it and should stay byte-identical.
+            const ALGazeMath::AnatomicalLimitProfile& p = target.mLimitProfile;
+            LLSD profile_sd = LLSD::emptyMap();
+            profile_sd["eye_yaw"] = p.mEyeYawDeg;
+            profile_sd["eye_pitch"] = p.mEyePitchDeg;
+            profile_sd["head_yaw"] = p.mHeadYawDeg;
+            profile_sd["head_pitch"] = p.mHeadPitchDeg;
+            profile_sd["neck_yaw"] = p.mNeckYawDeg;
+            profile_sd["neck_pitch"] = p.mNeckPitchDeg;
+            profile_sd["spine_yaw"] = p.mSpineYawDeg;
+            profile_sd["spine_pitch"] = p.mSpinePitchDeg;
+            profile_sd["hips_yaw"] = p.mHipsYawDeg;
+            profile_sd["hips_pitch"] = p.mHipsPitchDeg;
+            profile_sd["eye_apply_yaw"] = p.mEyeApplyYawDeg;
+            profile_sd["eye_apply_pitch"] = p.mEyeApplyPitchDeg;
+            profile_sd["eye_radial"] = p.mEyeRadialDeg;
+            data["perf_limit_profile"] = profile_sd;
+        }
+    }
+    if (target.mLeanCurveOverride >= 0)
+    {
+        data["perf_lean_curve"] = target.mLeanCurveOverride;
+    }
+    if (target.mLeanThresholdDegOverride >= 0.f)
+    {
+        data["perf_lean_threshold"] = target.mLeanThresholdDegOverride;
+    }
+    if (target.mLeanSoftnessDegOverride >= 0.f)
+    {
+        data["perf_lean_softness"] = target.mLeanSoftnessDegOverride;
+    }
+    if (target.mLeanMaxDegOverride >= 0.f)
+    {
+        data["perf_lean_max"] = target.mLeanMaxDegOverride;
+    }
 }
 
 void readGazeExpression(const LLSD& data, LLActorMover::GazeTarget& target)
@@ -226,6 +297,118 @@ void readGazeExpression(const LLSD& data, LLActorMover::GazeTarget& target)
     if (data.has("vergence_scale"))
     {
         target.mVergenceScale = llclamp((F32)data["vergence_scale"].asReal(), -1.f, 1.f);
+    }
+    // [Machinima] Schema cleanup + Phase 2-5 structural overrides. Absent
+    // keys leave the field at the GazeTarget constructor's inherit sentinel
+    // (target is freshly default-constructed by every caller of this
+    // function), so old scenes reconstruct byte-identically.
+    if (data.has("perf_scope"))
+    {
+        target.mGazePriorityOverride = llclamp(data["perf_scope"].asInteger(),
+            (S32)LLActorMover::GAZE_PRIORITY_BLEND,
+            (S32)LLActorMover::GAZE_PRIORITY_PLANTED_SPINE);
+    }
+    if (data.has("perf_anim_priority"))
+    {
+        target.mAnimPriorityOverride = llclamp(data["perf_anim_priority"].asInteger(), -1, 6);
+    }
+    if (data.has("perf_camera_mode"))
+    {
+        target.mCameraModeOverride = llclamp(data["perf_camera_mode"].asInteger(), 0, 1);
+    }
+    if (data.has("perf_composition"))
+    {
+        target.mCompositionOverride = llclamp(data["perf_composition"].asInteger(),
+            (S32)LLActorMover::GAZE_COMPOSE_REPLACE,
+            (S32)LLActorMover::GAZE_COMPOSE_BLEND);
+    }
+    if (data.has("perf_composition_mix"))
+    {
+        target.mCompositionMixOverride = llclamp((F32)data["perf_composition_mix"].asReal(), 0.f, 1.f);
+    }
+    if (data.has("perf_chest_share"))
+    {
+        target.mChestShareOverride = llclamp((F32)data["perf_chest_share"].asReal(), 0.f, 1.f);
+    }
+    if (data.has("perf_limit_mode"))
+    {
+        target.mLimitProfileModeOverride = llclamp(data["perf_limit_mode"].asInteger(), 0, 1);
+        if (target.mLimitProfileModeOverride == 1 && data.has("perf_limit_profile"))
+        {
+            const LLSD& profile_sd = data["perf_limit_profile"];
+            ALGazeMath::AnatomicalLimitProfile p; // constructor defaults for any absent field
+            if (profile_sd.has("eye_yaw"))
+            {
+                p.mEyeYawDeg = llclamp((F32)profile_sd["eye_yaw"].asReal(), 0.f, 180.f);
+            }
+            if (profile_sd.has("eye_pitch"))
+            {
+                p.mEyePitchDeg = llclamp((F32)profile_sd["eye_pitch"].asReal(), 0.f, 180.f);
+            }
+            if (profile_sd.has("head_yaw"))
+            {
+                p.mHeadYawDeg = llclamp((F32)profile_sd["head_yaw"].asReal(), 0.f, 180.f);
+            }
+            if (profile_sd.has("head_pitch"))
+            {
+                p.mHeadPitchDeg = llclamp((F32)profile_sd["head_pitch"].asReal(), 0.f, 180.f);
+            }
+            if (profile_sd.has("neck_yaw"))
+            {
+                p.mNeckYawDeg = llclamp((F32)profile_sd["neck_yaw"].asReal(), 0.f, 180.f);
+            }
+            if (profile_sd.has("neck_pitch"))
+            {
+                p.mNeckPitchDeg = llclamp((F32)profile_sd["neck_pitch"].asReal(), 0.f, 180.f);
+            }
+            if (profile_sd.has("spine_yaw"))
+            {
+                p.mSpineYawDeg = llclamp((F32)profile_sd["spine_yaw"].asReal(), 0.f, 180.f);
+            }
+            if (profile_sd.has("spine_pitch"))
+            {
+                p.mSpinePitchDeg = llclamp((F32)profile_sd["spine_pitch"].asReal(), 0.f, 180.f);
+            }
+            if (profile_sd.has("hips_yaw"))
+            {
+                p.mHipsYawDeg = llclamp((F32)profile_sd["hips_yaw"].asReal(), 0.f, 180.f);
+            }
+            if (profile_sd.has("hips_pitch"))
+            {
+                p.mHipsPitchDeg = llclamp((F32)profile_sd["hips_pitch"].asReal(), 0.f, 180.f);
+            }
+            if (profile_sd.has("eye_apply_yaw"))
+            {
+                p.mEyeApplyYawDeg = llclamp((F32)profile_sd["eye_apply_yaw"].asReal(), 0.f, 180.f);
+            }
+            if (profile_sd.has("eye_apply_pitch"))
+            {
+                p.mEyeApplyPitchDeg = llclamp((F32)profile_sd["eye_apply_pitch"].asReal(), 0.f, 180.f);
+            }
+            if (profile_sd.has("eye_radial"))
+            {
+                p.mEyeRadialDeg = llclamp((F32)profile_sd["eye_radial"].asReal(), 0.f, 90.f);
+            }
+            target.mLimitProfile = p;
+        }
+    }
+    if (data.has("perf_lean_curve"))
+    {
+        target.mLeanCurveOverride = llclamp(data["perf_lean_curve"].asInteger(),
+            (S32)LLActorMover::GAZE_LEAN_LEGACY,
+            (S32)LLActorMover::GAZE_LEAN_ANGLE_EASE);
+    }
+    if (data.has("perf_lean_threshold"))
+    {
+        target.mLeanThresholdDegOverride = llclamp((F32)data["perf_lean_threshold"].asReal(), 0.f, 180.f);
+    }
+    if (data.has("perf_lean_softness"))
+    {
+        target.mLeanSoftnessDegOverride = llclamp((F32)data["perf_lean_softness"].asReal(), 0.f, 180.f);
+    }
+    if (data.has("perf_lean_max"))
+    {
+        target.mLeanMaxDegOverride = llclamp((F32)data["perf_lean_max"].asReal(), 0.f, 180.f);
     }
 }
 
@@ -394,6 +577,47 @@ LLDirectorCast::GazeCueList readGazeCues(const LLSD& array)
         cues.push_back(cue);
     }
     return cues;
+}
+
+// [Machinima] Goal 3b: keyframable gaze influence lane, serialized parallel to
+// the cue list above. Written/read raw -- evaluateGazeInfluence() is the pure
+// sanitize/sort/evaluate point, so this side stays a plain field-for-field
+// round trip like writeCueTarget()/readCueTarget() above it.
+LLSD writeGazeInfluenceKeys(const LLDirectorCast::GazeInfluenceKeyList& keys)
+{
+    LLSD array = LLSD::emptyArray();
+    for (const LLDirectorCast::GazeInfluenceKey& key : keys)
+    {
+        LLSD data = LLSD::emptyMap();
+        data["time_sec"] = key.mTimeSec;
+        data["value"] = key.mValue;
+        data["interp"] = static_cast<S32>(key.mInterpolation);
+        array.append(data);
+    }
+    return array;
+}
+
+LLDirectorCast::GazeInfluenceKeyList readGazeInfluenceKeys(const LLSD& array)
+{
+    LLDirectorCast::GazeInfluenceKeyList keys;
+    if (!array.isArray())
+    {
+        return keys;
+    }
+    for (LLSD::array_const_iterator it = array.beginArray();
+         it != array.endArray(); ++it)
+    {
+        const LLSD& data = *it;
+        LLDirectorCast::GazeInfluenceKey key;
+        key.mTimeSec = data["time_sec"].asReal();
+        key.mValue = llclamp((F32)data["value"].asReal(), 0.f, 1.f);
+        key.mInterpolation = static_cast<LLDirectorCast::EGazeKeyInterpolation>(
+            llclamp(data["interp"].asInteger(),
+                    static_cast<S32>(LLDirectorCast::GAZE_KEY_STEP),
+                    static_cast<S32>(LLDirectorCast::GAZE_KEY_SMOOTHSTEP)));
+        keys.push_back(key);
+    }
+    return keys;
 }
 } // anonymous namespace
 
@@ -673,6 +897,58 @@ const LLDirectorCast::GazeCueList& LLDirectorCast::getGazeCues(const LLUUID& id)
     return empty;
 }
 
+// [Machinima] Goal 3b: influence-lane accessors, mirroring the cue accessors
+// (same self/member routing and shared mGazeCueRevision bump so a floater
+// refresh keyed on the revision picks up either lane changing).
+void LLDirectorCast::setGazeInfluenceKeys(const LLUUID& id,
+                                          const GazeInfluenceKeyList& input)
+{
+    // Store as authored; evaluateGazeInfluence() sanitizes/sorts on read so a
+    // scrub is always stable regardless of authoring order.
+    GazeInfluenceKeyList keys = input;
+    std::stable_sort(keys.begin(), keys.end(),
+        [](const GazeInfluenceKey& a, const GazeInfluenceKey& b)
+        {
+            return a.mTimeSec < b.mTimeSec;
+        });
+
+    LLUUID runtime_id = id;
+    if (id.isNull() || (isAgentAvatarValid() && id == gAgentAvatarp->getID()))
+    {
+        mSelfGazeInfluenceKeys = keys;
+        if (isAgentAvatarValid())
+        {
+            runtime_id = gAgentAvatarp->getID();
+        }
+    }
+    else if (CastMember* member = getMember(id))
+    {
+        member->mGazeInfluenceKeys = keys;
+    }
+    else
+    {
+        return;
+    }
+
+    ++mGazeCueRevision;
+    LLActorMover::instance().clearDirectorLookAtRuntime(runtime_id);
+}
+
+const LLDirectorCast::GazeInfluenceKeyList&
+LLDirectorCast::getGazeInfluenceKeys(const LLUUID& id) const
+{
+    static const GazeInfluenceKeyList empty;
+    if (id.isNull() || (isAgentAvatarValid() && id == gAgentAvatarp->getID()))
+    {
+        return mSelfGazeInfluenceKeys;
+    }
+    if (const CastMember* member = getMember(id))
+    {
+        return member->mGazeInfluenceKeys;
+    }
+    return empty;
+}
+
 //static
 LLDirectorCast::GazeCueEvaluation LLDirectorCast::evaluateGazeCues(
     const GazeCueList& cues, U64 persona_seed, F64 presentation_time)
@@ -771,6 +1047,121 @@ LLDirectorCast::GazeCueEvaluation LLDirectorCast::evaluateGazeCues(
     result.mHeadRecoilPitch = envelope.mHeadRecoilPitch;
     result.mPhase = envelope.mPhase;
     return result;
+}
+
+//static
+// [Machinima] Goal 3b: pure, stateless, scrub-stable evaluation of the
+// keyframed influence lane. Never touches mIntensity/mEnv -- this only
+// produces the multiplier the caller applies to the final write envelope.
+F32 LLDirectorCast::evaluateGazeInfluence(const GazeInfluenceKeyList& keys,
+                                          F64 presentation_time)
+{
+    if (keys.empty() || !std::isfinite(presentation_time))
+    {
+        return 1.f;
+    }
+
+    // Sanitize into a working copy: drop any key whose time or value is not
+    // finite (rather than guessing a replacement), clamp the rest to
+    // [0,1], and clamp the interpolation enum defensively.
+    GazeInfluenceKeyList sanitized;
+    sanitized.reserve(keys.size());
+    for (const GazeInfluenceKey& key : keys)
+    {
+        if (!std::isfinite(key.mTimeSec) || !std::isfinite(key.mValue))
+        {
+            continue;
+        }
+        GazeInfluenceKey clean = key;
+        clean.mValue = llclamp(clean.mValue, 0.f, 1.f);
+        clean.mInterpolation = static_cast<EGazeKeyInterpolation>(
+            llclamp(static_cast<S32>(clean.mInterpolation),
+                    static_cast<S32>(GAZE_KEY_STEP),
+                    static_cast<S32>(GAZE_KEY_SMOOTHSTEP)));
+        sanitized.push_back(clean);
+    }
+    if (sanitized.empty())
+    {
+        return 1.f;
+    }
+
+    // Stably sort by time, mirroring the cue-sort approach at
+    // lldirectorcast.cpp:634 (see setGazeCues()).
+    std::stable_sort(sanitized.begin(), sanitized.end(),
+        [](const GazeInfluenceKey& a, const GazeInfluenceKey& b)
+        {
+            return a.mTimeSec < b.mTimeSec;
+        });
+
+    // Duplicate-time keys resolve to the LAST key at that time: collapse
+    // stable runs of equal mTimeSec down to their final entry.
+    GazeInfluenceKeyList sorted;
+    sorted.reserve(sanitized.size());
+    for (const GazeInfluenceKey& key : sanitized)
+    {
+        if (!sorted.empty() && sorted.back().mTimeSec == key.mTimeSec)
+        {
+            sorted.back() = key;
+        }
+        else
+        {
+            sorted.push_back(key);
+        }
+    }
+
+    if (presentation_time <= sorted.front().mTimeSec)
+    {
+        return llclamp(sorted.front().mValue, 0.f, 1.f);
+    }
+    if (presentation_time >= sorted.back().mTimeSec)
+    {
+        return llclamp(sorted.back().mValue, 0.f, 1.f);
+    }
+
+    // presentation_time is strictly between the first and last key's times,
+    // so upper_bound here can be neither begin() nor end().
+    const auto after = std::upper_bound(
+        sorted.begin(), sorted.end(), presentation_time,
+        [](F64 time, const GazeInfluenceKey& key)
+        {
+            return time < key.mTimeSec;
+        });
+    const std::size_t next_index = static_cast<std::size_t>(
+        std::distance(sorted.begin(), after));
+    const std::size_t index = next_index - 1;
+
+    const GazeInfluenceKey& a = sorted[index];
+    const GazeInfluenceKey& b = sorted[next_index];
+
+    const F64 span = b.mTimeSec - a.mTimeSec;
+    if (!(span > 0.0))
+    {
+        // Identical times after collapsing shouldn't reach here, but guard
+        // the division regardless.
+        return llclamp(a.mValue, 0.f, 1.f);
+    }
+
+    const F32 t = static_cast<F32>(
+        llclamp((presentation_time - a.mTimeSec) / span, 0.0, 1.0));
+
+    F32 value;
+    switch (a.mInterpolation)
+    {
+        case GAZE_KEY_STEP:
+            value = a.mValue;
+            break;
+        case GAZE_KEY_LINEAR:
+            value = a.mValue + (b.mValue - a.mValue) * t;
+            break;
+        case GAZE_KEY_SMOOTHSTEP:
+        default:
+        {
+            const F32 s = t * t * (3.f - 2.f * t);
+            value = a.mValue + (b.mValue - a.mValue) * s;
+            break;
+        }
+    }
+    return llclamp(value, 0.f, 1.f);
 }
 
 // ---------------------------------------------------------------------------
@@ -1186,6 +1577,10 @@ LLSD LLDirectorCast::sceneData() const
         {
             e["gaze_cues"] = writeGazeCues(m.mGazeCues);
         }
+        if (!m.mGazeInfluenceKeys.empty())
+        {
+            e["gaze_influence_keys"] = writeGazeInfluenceKeys(m.mGazeInfluenceKeys);
+        }
 
         cast_arr.append(e);
     }
@@ -1219,6 +1614,10 @@ LLSD LLDirectorCast::sceneData() const
     if (!mSelfGazeCues.empty())
     {
         data["self_gaze_cues"] = writeGazeCues(mSelfGazeCues);
+    }
+    if (!mSelfGazeInfluenceKeys.empty())
+    {
+        data["self_gaze_influence_keys"] = writeGazeInfluenceKeys(mSelfGazeInfluenceKeys);
     }
 
     // per-group start delays, only for groups that still exist (the members
@@ -1258,6 +1657,7 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     mSelfEyeGazeTarget = LLActorMover::GazeTarget();
     mSelfEyeGazeTargetEnabled = false;
     mSelfGazeCues.clear();
+    mSelfGazeInfluenceKeys.clear();
 
     if (data.has("self_gaze_target"))
     {
@@ -1296,6 +1696,10 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     if (data.has("self_gaze_cues"))
     {
         setGazeCues(LLUUID::null, readGazeCues(data["self_gaze_cues"]));
+    }
+    if (data.has("self_gaze_influence_keys"))
+    {
+        mSelfGazeInfluenceKeys = readGazeInfluenceKeys(data["self_gaze_influence_keys"]);
     }
 
     const LLSD& cast_arr = data["cast"];
@@ -1354,6 +1758,13 @@ void LLDirectorCast::applySceneData(const LLSD& data)
         if (e.has("gaze_cues"))
         {
             setGazeCues(m.mId, loaded_gaze_cues);
+        }
+        if (e.has("gaze_influence_keys"))
+        {
+            // No public setter for this lane (unlike setGazeCues -- it has no
+            // revision/runtime-clear side effects to fire), so write it
+            // straight into the member just pushed onto mCast.
+            mCast.back().mGazeInfluenceKeys = readGazeInfluenceKeys(e["gaze_influence_keys"]);
         }
         if (e.has("gaze_target"))
         {

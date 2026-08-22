@@ -14,7 +14,9 @@
 #include "../algazemath.h"
 #include "../algazepolicy.h"
 
+#include <cfloat>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -75,6 +77,48 @@ bool bitwiseEqual(F32 a, F32 b)
     memcpy(&au, &a, sizeof(au));
     memcpy(&bu, &b, sizeof(bu));
     return au == bu;
+}
+
+// Raw IEEE-754 bit pattern of an F32 as a hex string, for failure messages
+// where the +0.0f/-0.0f (or 1-ulp) distinction is the whole point.
+std::string bitsOf(F32 v)
+{
+    U32 u = 0;
+    memcpy(&u, &v, sizeof(u));
+    char buf[16];
+    snprintf(buf, sizeof(buf), "0x%08x", u);
+    return std::string(buf);
+}
+
+// Integer ULP distance between two F32s (difference of monotonic bit keys;
+// +0.0f and -0.0f are 0 apart). Used for the SOFT profile==constant parity
+// contract, which /fp:fast limits to ~1 ULP (see test 26's comment).
+S64 ulpKey(F32 v)
+{
+    U32 u = 0;
+    memcpy(&u, &v, sizeof(u));
+    const S64 magnitude = static_cast<S64>(u & 0x7fffffffu);
+    return (u & 0x80000000u) ? -magnitude : magnitude;
+}
+
+S64 ulpDistance(F32 a, F32 b)
+{
+    const S64 d = ulpKey(a) - ulpKey(b);
+    return d < 0 ? -d : d;
+}
+
+// SOFT equality for /fp:fast restatement parity: the same real-number
+// formula compiled in two places (profile path vs constant path) may round
+// a couple ULPs apart when the optimizer contracts/reassociates the two
+// shapes differently, and a capacity wobble subtracted from a target lands
+// in a small residual's finer ULP scale (hence the absolute floor).
+// Anything beyond this bound is a genuine arithmetic drift, not compiler
+// noise.
+bool softEqual(F32 a, F32 b)
+{
+    return ulpDistance(a, b) <= 2 ||
+           std::fabs(a - b) <= 4.f * FLT_EPSILON * std::fabs(b) ||
+           std::fabs(a - b) <= 8.f * FLT_EPSILON;
 }
 } // anonymous namespace
 
@@ -1507,6 +1551,554 @@ void algazemotor_test_object::test<25>()
         ensure("unsignaled motion still commits", commit_t > 0.0);
         ensure("unsignaled motion waits the full dwell",
                commit_t >= 0.2 + 0.12 - 1e-9);
+    }
+}
+
+template<> template<>
+void algazemotor_test_object::test<26>()
+{
+    set_test_name("mUseLimitProfile with a default profile matches the "
+                  "constant capacity path within rounding");
+    // The shared-helper contract here is SOFT: enabling mUseLimitProfile
+    // with a DEFAULT-constructed profile reproduces the constant path's
+    // capacity table only to ~1 ULP, because the profile path
+    // (fillEffectiveCapacities) and the constant path are two
+    // source-identical RESTATEMENTS of the same arithmetic and this build
+    // compiles with /fp:fast (00-Common.cmake), under which the optimizer
+    // may contract or reassociate the two shapes differently (observed:
+    // the head pitch cap at blend 0.3, 0x3e61307a vs 0x3e61307b, and a
+    // 2-ULP eye yaw cap at blend 0.8; the deviating side even moves between
+    // builds as inlining shifts). The HARD bit-exact contract is
+    // mUseLimitProfile == false vs the legacy chain (the band-0 grid test
+    // above keeps that strict). Capacities and allocated joints are pinned
+    // to softEqual (a couple ULPs, plus a small absolute floor for the
+    // small-residual slots where a cap wobble is amplified in the slot's
+    // finer ULP scale). Anything beyond that is a real capacity-table
+    // drift.
+    const F32 blends[] = { 0.f, 0.001f, 0.3f, 0.8f, 1.f };
+    const F32 scales[] = { 1.f, 2.f };
+    const F32 torsos[] = { 0.6f, 1.f };
+    const bool plants[] = { false, true };
+    const F32 angles_deg[] =
+        { 0.f, 3.f, -7.5f, 12.f, -25.f, 40.f, -60.f, 90.f,
+          -120.f, 150.f, -179.f };
+    constexpr S32 NANGLES = sizeof(angles_deg) / sizeof(angles_deg[0]);
+
+    for (F32 blend : blends)
+    {
+        for (F32 scale : scales)
+        {
+            for (F32 torso : torsos)
+            {
+                for (bool plant : plants)
+                {
+                    ALGazeMotor::GazeMotorSettings s_const;
+                    s_const.mHeadEyeBlend = blend;
+                    s_const.mTorsoAmount  = torso;
+                    s_const.mAnatomyScale = scale;
+                    s_const.mPlantPelvis  = plant;
+                    s_const.mUseLimitProfile = false;
+                    ALGazeMotor::GazeMotorSettings s_prof = s_const;
+                    s_prof.mUseLimitProfile = true; // default mLimitProfile
+
+                    F32 cy_const[ALGazeMotor::CHAIN_JOINTS];
+                    F32 cp_const[ALGazeMotor::CHAIN_JOINTS];
+                    F32 cy_prof[ALGazeMotor::CHAIN_JOINTS];
+                    F32 cp_prof[ALGazeMotor::CHAIN_JOINTS];
+                    ALGazeMotor::effectiveCapacities(s_const, cy_const,
+                                                     cp_const);
+                    ALGazeMotor::effectiveCapacities(s_prof, cy_prof,
+                                                     cp_prof);
+
+                    const std::string tag =
+                        " (blend " + std::to_string(blend) + " scale " +
+                        std::to_string(scale) + " torso " +
+                        std::to_string(torso) + " plant " +
+                        std::to_string(plant) + ")";
+                    for (S32 slot = 0; slot < ALGazeMotor::CHAIN_JOINTS;
+                         ++slot)
+                    {
+                        ensure("default-profile yaw capacity within "
+                                   "rounding, slot " + std::to_string(slot) +
+                                   " (profile " + bitsOf(cy_prof[slot]) +
+                                   " constant " + bitsOf(cy_const[slot]) +
+                                   ")" + tag,
+                               softEqual(cy_prof[slot], cy_const[slot]));
+                        ensure("default-profile pitch capacity within "
+                                   "rounding, slot " +
+                                   std::to_string(slot) +
+                                   " (profile " + bitsOf(cp_prof[slot]) +
+                                   " constant " + bitsOf(cp_const[slot]) +
+                                   ")" + tag,
+                               softEqual(cp_prof[slot], cp_const[slot]));
+                    }
+
+                    // Band-0 allocation from those caps stays within
+                    // accumulated rounding across the signed angle grid
+                    // (incl. the seam values); see softEqual's comment.
+                    for (S32 ai = 0; ai < NANGLES; ++ai)
+                    {
+                        const F32 yaw = angles_deg[ai] * DEG_TO_RAD;
+                        const F32 pitch =
+                            angles_deg[(ai + 3) % NANGLES] * DEG_TO_RAD;
+                        const bool eye_only =
+                            ALGazeMotor::isEyeOnlyBlend(s_const);
+                        for (S32 slot = 0;
+                             slot < ALGazeMotor::CHAIN_JOINTS; ++slot)
+                        {
+                            ensure("default-profile band-0 yaw allocation "
+                                       "within rounding, slot " +
+                                       std::to_string(slot) + " deg " +
+                                       std::to_string(angles_deg[ai]) + tag,
+                                   softEqual(
+                                       ALGazeMotor::recruitSlot(
+                                           yaw, cy_prof, 0.f, slot,
+                                           eye_only),
+                                       ALGazeMotor::recruitSlot(
+                                           yaw, cy_const, 0.f, slot,
+                                           eye_only)));
+                            ensure("default-profile band-0 pitch allocation "
+                                       "within rounding, slot " +
+                                       std::to_string(slot) + tag,
+                                   softEqual(
+                                       ALGazeMotor::recruitSlot(
+                                           pitch, cp_prof, 0.f, slot,
+                                           eye_only),
+                                       ALGazeMotor::recruitSlot(
+                                           pitch, cp_const, 0.f, slot,
+                                           eye_only)));
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+template<> template<>
+void algazemotor_test_object::test<27>()
+{
+    set_test_name("motor chest split conserves the recruited torso bucket "
+                  "bit-exactly");
+    // With mChestShare in {0, 0.55, 1}, the converged pose must satisfy
+    // mTorsoYaw + mChestYaw == the mTorsoYaw of the share-0 run, BIT-equal
+    // (same for pitch). Share 0 leaves mChest* at exactly +0; share 1 hands
+    // the whole bucket to the chest.
+    auto convergedPose = [](F32 share, F32 yaw,
+                            F32 pitch) -> ALGazeMotor::GazeMotorPose
+    {
+        ALGazeMotor::GazeMotorState state;
+        ALGazeMotor::GazeMotorPose pose;
+        for (S32 i = 0; i < 10; ++i)
+        {
+            ALGazeMotor::GazeMotorInput in =
+                quietInput(i / 60.0, yaw, pitch);
+            in.mSettings.mHeadEyeBlend = 1.f;
+            in.mSettings.mTorsoAmount  = 1.f;
+            in.mSettings.mChestShare   = share;
+            ALGazeMotor::step(state, in, pose);
+        }
+        return pose;
+    };
+
+    const F32 signs[] = { 1.f, -1.f };
+    for (F32 sign : signs)
+    {
+        // Deep enough that the torso slot is recruited nonzero on both axes
+        // (yaw needs > ~76.25 deg, pitch > ~71.5 deg cumulative upstream).
+        const F32 yaw = sign * 120.f * DEG_TO_RAD;
+        const F32 pitch = sign * 80.f * DEG_TO_RAD;
+        const std::string tag = " (sign " + std::to_string(sign) + ")";
+
+        const ALGazeMotor::GazeMotorPose base =
+            convergedPose(0.f, yaw, pitch);
+        ensure("baseline recruits a nonzero torso bucket" + tag,
+               base.mTorsoYaw != 0.f && base.mTorsoPitch != 0.f);
+        ensure("share 0 leaves chest at bitwise +0" + tag,
+               bitwiseEqual(base.mChestYaw, 0.f) &&
+               bitwiseEqual(base.mChestPitch, 0.f) &&
+               !std::signbit(base.mChestYaw) &&
+               !std::signbit(base.mChestPitch));
+
+        const F32 shares[] = { 0.55f, 1.f };
+        for (F32 share : shares)
+        {
+            const ALGazeMotor::GazeMotorPose split =
+                convergedPose(share, yaw, pitch);
+            const std::string stag =
+                " (share " + std::to_string(share) + " sign " +
+                std::to_string(sign) + ")";
+            if (share == 1.f)
+            {
+                // Share 1 is genuinely bit-exact: the whole bucket moves
+                // (torso - torso == +0 exactly, chest == the old torso).
+                ensure("motor torso+chest yaw conserves the share-0 torso "
+                           "bit-exactly" + stag,
+                       bitwiseEqual(split.mTorsoYaw + split.mChestYaw,
+                                    base.mTorsoYaw));
+                ensure("motor torso+chest pitch conserves the share-0 torso "
+                           "bit-exactly" + stag,
+                       bitwiseEqual(split.mTorsoPitch + split.mChestPitch,
+                                    base.mTorsoPitch));
+            }
+            else
+            {
+                // Intermediate shares: chest = old * share and torso =
+                // old - chest are each correctly rounded, so the recombined
+                // sum may sit ~1 ulp off the share-0 torso -- algebraic,
+                // not bit, conservation.
+                ensure("motor torso+chest yaw conserves the share-0 torso "
+                           "within rounding" + stag,
+                       std::fabs((split.mTorsoYaw + split.mChestYaw) -
+                                 base.mTorsoYaw) <= 1e-6f);
+                ensure("motor torso+chest pitch conserves the share-0 torso "
+                           "within rounding" + stag,
+                       std::fabs((split.mTorsoPitch + split.mChestPitch) -
+                                 base.mTorsoPitch) <= 1e-6f);
+            }
+            // The split never leaks into any other recruited joint.
+            ensure("chest split leaves the rest of the pose bit-identical"
+                       + stag,
+                   bitwiseEqual(split.mEyeYaw, base.mEyeYaw) &&
+                   bitwiseEqual(split.mEyePitch, base.mEyePitch) &&
+                   bitwiseEqual(split.mHeadYaw, base.mHeadYaw) &&
+                   bitwiseEqual(split.mHeadPitch, base.mHeadPitch) &&
+                   bitwiseEqual(split.mNeckYaw, base.mNeckYaw) &&
+                   bitwiseEqual(split.mNeckPitch, base.mNeckPitch) &&
+                   bitwiseEqual(split.mHipsYaw, base.mHipsYaw) &&
+                   bitwiseEqual(split.mHipsPitch, base.mHipsPitch));
+            if (share == 1.f)
+            {
+                ensure("share 1 zeroes the motor torso exactly" + stag,
+                       bitwiseEqual(split.mTorsoYaw, 0.f) &&
+                       bitwiseEqual(split.mTorsoPitch, 0.f));
+                ensure("share 1 hands the whole bucket to the chest" + stag,
+                       bitwiseEqual(split.mChestYaw, base.mTorsoYaw) &&
+                       bitwiseEqual(split.mChestPitch, base.mTorsoPitch));
+            }
+        }
+    }
+}
+
+template<> template<>
+void algazemotor_test_object::test<29>()
+{
+    set_test_name("angle-ease lean: LEGACY curve is bit-identical; planted "
+                  "angle-ease matches spineLean + face-only recruit; below "
+                  "threshold behaves face-only");
+
+    // (1) LEGACY curve (mLeanCurve == 0) with every new lean field set to
+    // aggressive non-default values must be BIT-identical to a run that
+    // never touches them: the default enters NONE of the new math, even
+    // under Planted spine and across a retarget.
+    {
+        ALGazeMotor::GazeMotorState state_a;
+        ALGazeMotor::GazeMotorState state_b;
+        ALGazeMotor::GazeMotorPose pose_a;
+        ALGazeMotor::GazeMotorPose pose_b;
+        for (S32 i = 0; i < 240; ++i)
+        {
+            const F64 t = i / 60.0;
+            const F32 yaw = (i < 120 ? 40.f : -70.f) * DEG_TO_RAD;
+            const F32 pitch = (i < 120 ? 15.f : -10.f) * DEG_TO_RAD;
+            ALGazeMotor::GazeMotorInput in_a = quietInput(t, yaw, pitch);
+            in_a.mSettings.mHeadEyeBlend = 0.8f;
+            in_a.mSettings.mTorsoAmount  = 0.7f;
+            in_a.mSettings.mPlantPelvis  = true; // planted, but LEGACY curve
+            ALGazeMotor::GazeMotorInput in_b = in_a;
+            in_b.mSettings.mLeanCurve        = 0; // LEGACY, explicit
+            in_b.mSettings.mLeanThresholdDeg = 5.f;
+            in_b.mSettings.mLeanSoftnessDeg  = 0.f;
+            in_b.mSettings.mLeanMaxDeg       = 45.f;
+            in_b.mSettings.mSpineCapYawRad   = 0.1f;
+            in_b.mSettings.mSpineCapPitchRad = 0.1f;
+            ALGazeMotor::step(state_a, in_a, pose_a);
+            ALGazeMotor::step(state_b, in_b, pose_b);
+            const std::string f = " (frame " + std::to_string(i) + ")";
+            ensure("legacy-curve head yaw bit-identical" + f,
+                   bitwiseEqual(pose_a.mHeadYaw, pose_b.mHeadYaw));
+            ensure("legacy-curve head pitch bit-identical" + f,
+                   bitwiseEqual(pose_a.mHeadPitch, pose_b.mHeadPitch));
+            ensure("legacy-curve neck yaw bit-identical" + f,
+                   bitwiseEqual(pose_a.mNeckYaw, pose_b.mNeckYaw));
+            ensure("legacy-curve neck pitch bit-identical" + f,
+                   bitwiseEqual(pose_a.mNeckPitch, pose_b.mNeckPitch));
+            ensure("legacy-curve torso yaw bit-identical" + f,
+                   bitwiseEqual(pose_a.mTorsoYaw, pose_b.mTorsoYaw));
+            ensure("legacy-curve torso pitch bit-identical" + f,
+                   bitwiseEqual(pose_a.mTorsoPitch, pose_b.mTorsoPitch));
+            ensure("legacy-curve chest yaw bit-identical" + f,
+                   bitwiseEqual(pose_a.mChestYaw, pose_b.mChestYaw));
+            ensure("legacy-curve chest pitch bit-identical" + f,
+                   bitwiseEqual(pose_a.mChestPitch, pose_b.mChestPitch));
+            ensure("legacy-curve hips yaw bit-identical" + f,
+                   bitwiseEqual(pose_a.mHipsYaw, pose_b.mHipsYaw));
+            ensure("legacy-curve hips pitch bit-identical" + f,
+                   bitwiseEqual(pose_a.mHipsPitch, pose_b.mHipsPitch));
+            ensure("legacy-curve eye yaw bit-identical" + f,
+                   bitwiseEqual(pose_a.mEyeYaw, pose_b.mEyeYaw));
+            ensure("legacy-curve eye pitch bit-identical" + f,
+                   bitwiseEqual(pose_a.mEyePitch, pose_b.mEyePitch));
+        }
+    }
+
+    // (2) Planted + ANGLE_EASE, converged on a large aim: torso+chest carry
+    // exactly spineLean's spine vector (split by chest share), head/neck
+    // carry the recruited FACE residual, hips are bitwise +0, and the eyes
+    // are unaffected (identical to a LEGACY-curve run: they keep fixating
+    // the FULL target, never the face residual).
+    {
+        const F32 yaw = 60.f * DEG_TO_RAD;
+        const F32 pitch = 10.f * DEG_TO_RAD;
+        auto lean_input = [&](F64 t)
+        {
+            ALGazeMotor::GazeMotorInput in = quietInput(t, yaw, pitch);
+            in.mSettings.mHeadEyeBlend = 1.f;
+            in.mSettings.mTorsoAmount  = 1.f;
+            in.mSettings.mPlantPelvis  = true;
+            in.mSettings.mChestShare   = 0.5f;
+            in.mSettings.mLeanCurve        = 1; // ANGLE_EASE
+            in.mSettings.mLeanThresholdDeg = 10.f;
+            in.mSettings.mLeanSoftnessDeg  = 10.f;
+            in.mSettings.mLeanMaxDeg       = 20.f;
+            return in;
+        };
+        ALGazeMotor::GazeMotorState state;
+        ALGazeMotor::GazeMotorState state_legacy;
+        ALGazeMotor::GazeMotorPose pose;
+        ALGazeMotor::GazeMotorPose pose_legacy;
+        for (S32 i = 0; i < 30; ++i)
+        {
+            ALGazeMotor::GazeMotorInput in = lean_input(i / 60.0);
+            ALGazeMotor::GazeMotorInput in_legacy = in;
+            in_legacy.mSettings.mLeanCurve = 0;
+            ALGazeMotor::step(state, in, pose);
+            ALGazeMotor::step(state_legacy, in_legacy, pose_legacy);
+        }
+        const ALGazeMotor::GazeMotorInput ref = lean_input(0.0);
+        const ALGazeMath::SpineLeanResult lean = ALGazeMath::spineLean(
+            yaw, pitch, 10.f, 10.f, 20.f, 1.f, 1.f,
+            ref.mSettings.mSpineCapYawRad, ref.mSettings.mSpineCapPitchRad);
+        ensure("lean recruited a nonzero spine",
+               std::fabs(lean.mSpineYaw) > 0.01f);
+        ensure("converged torso+chest yaw == spineLean spine yaw",
+               std::fabs((pose.mTorsoYaw + pose.mChestYaw) - lean.mSpineYaw)
+                   <= 1e-5f);
+        ensure("converged torso+chest pitch == spineLean spine pitch",
+               std::fabs((pose.mTorsoPitch + pose.mChestPitch) -
+                         lean.mSpinePitch) <= 1e-5f);
+        ensure("chest carries the configured share of the spine",
+               std::fabs(pose.mChestYaw - lean.mSpineYaw * 0.5f) <= 1e-5f);
+        F32 cy[ALGazeMotor::CHAIN_JOINTS];
+        F32 cp[ALGazeMotor::CHAIN_JOINTS];
+        ALGazeMotor::effectiveCapacities(ref.mSettings, cy, cp);
+        ensure("head yaw is the recruited FACE residual",
+               std::fabs(pose.mHeadYaw - ALGazeMotor::recruitSlot(
+                             lean.mFaceYaw, cy, 0.f, 1)) <= 1e-5f);
+        ensure("head pitch is the recruited FACE residual",
+               std::fabs(pose.mHeadPitch - ALGazeMotor::recruitSlot(
+                             lean.mFacePitch, cp, 0.f, 1)) <= 1e-5f);
+        ensure("neck yaw is the recruited FACE residual",
+               std::fabs(pose.mNeckYaw - ALGazeMotor::recruitSlot(
+                             lean.mFaceYaw, cy, 0.f, 2)) <= 1e-5f);
+        ensure("neck pitch is the recruited FACE residual",
+               std::fabs(pose.mNeckPitch - ALGazeMotor::recruitSlot(
+                             lean.mFacePitch, cp, 0.f, 2)) <= 1e-5f);
+        ensure("planted lean hips yaw is bitwise +0 " + bitsOf(pose.mHipsYaw),
+               bitwiseEqual(pose.mHipsYaw, 0.f));
+        ensure("planted lean hips pitch is bitwise +0 " +
+                   bitsOf(pose.mHipsPitch),
+               bitwiseEqual(pose.mHipsPitch, 0.f));
+        ensure("eyes keep aiming at the FULL target (yaw as legacy)",
+               bitwiseEqual(pose.mEyeYaw, pose_legacy.mEyeYaw));
+        ensure("eyes keep aiming at the FULL target (pitch as legacy)",
+               bitwiseEqual(pose.mEyePitch, pose_legacy.mEyePitch));
+        ensure("chain aim still reports the full target",
+               std::fabs(pose.mChainAimYaw - yaw) <= 1e-5f);
+    }
+
+    // (3) Below the threshold the spine share is exactly zero and the whole
+    // pose behaves face-only: bit-identical to the LEGACY-curve run (the
+    // face residual IS the full aim, and legacy's torso allocation at this
+    // small angle is zero anyway).
+    {
+        const F32 yaw = 5.f * DEG_TO_RAD;
+        const F32 pitch = 2.f * DEG_TO_RAD;
+        ALGazeMotor::GazeMotorState state;
+        ALGazeMotor::GazeMotorState state_legacy;
+        ALGazeMotor::GazeMotorPose pose;
+        ALGazeMotor::GazeMotorPose pose_legacy;
+        for (S32 i = 0; i < 30; ++i)
+        {
+            ALGazeMotor::GazeMotorInput in = quietInput(i / 60.0, yaw, pitch);
+            in.mSettings.mHeadEyeBlend = 1.f;
+            in.mSettings.mTorsoAmount  = 1.f;
+            in.mSettings.mPlantPelvis  = true;
+            in.mSettings.mChestShare   = 0.5f;
+            in.mSettings.mLeanCurve        = 1; // ANGLE_EASE
+            in.mSettings.mLeanThresholdDeg = 10.f;
+            in.mSettings.mLeanSoftnessDeg  = 10.f;
+            in.mSettings.mLeanMaxDeg       = 20.f;
+            ALGazeMotor::GazeMotorInput in_legacy = in;
+            in_legacy.mSettings.mLeanCurve = 0;
+            ALGazeMotor::step(state, in, pose);
+            ALGazeMotor::step(state_legacy, in_legacy, pose_legacy);
+        }
+        ensure("below threshold: torso yaw exactly +0 " +
+                   bitsOf(pose.mTorsoYaw),
+               bitwiseEqual(pose.mTorsoYaw, 0.f));
+        ensure("below threshold: torso pitch exactly +0 " +
+                   bitsOf(pose.mTorsoPitch),
+               bitwiseEqual(pose.mTorsoPitch, 0.f));
+        ensure("below threshold: chest yaw exactly +0 " +
+                   bitsOf(pose.mChestYaw),
+               bitwiseEqual(pose.mChestYaw, 0.f));
+        ensure("below threshold: chest pitch exactly +0 " +
+                   bitsOf(pose.mChestPitch),
+               bitwiseEqual(pose.mChestPitch, 0.f));
+        ensure("below threshold: head yaw behaves face-only (as legacy)",
+               bitwiseEqual(pose.mHeadYaw, pose_legacy.mHeadYaw));
+        ensure("below threshold: head pitch behaves face-only (as legacy)",
+               bitwiseEqual(pose.mHeadPitch, pose_legacy.mHeadPitch));
+        ensure("below threshold: neck yaw behaves face-only (as legacy)",
+               bitwiseEqual(pose.mNeckYaw, pose_legacy.mNeckYaw));
+        ensure("below threshold: hips stay bitwise +0",
+               bitwiseEqual(pose.mHipsYaw, 0.f) &&
+                   bitwiseEqual(pose.mHipsPitch, 0.f));
+        ensure("below threshold: eyes as legacy",
+               bitwiseEqual(pose.mEyeYaw, pose_legacy.mEyeYaw) &&
+                   bitwiseEqual(pose.mEyePitch, pose_legacy.mEyePitch));
+    }
+}
+
+template<> template<>
+void algazemotor_test_object::test<28>()
+{
+    set_test_name("profiled band-0 recruitment is bit-identical to the "
+                  "profiled legacy chain");
+    // The mUseLimitProfile counterpart of the band-0 legacy-parity grid:
+    // with a matching (default) AnatomicalLimitProfile on BOTH sides and
+    // planted hips off, the motor's converged band-0 allocation must equal
+    // distributeAnatomicalChain(&profile) exactly, slot for slot.
+    const ALGazeMath::AnatomicalLimitProfile profile; // matches defaults
+    const F32 blends[] = { 0.f, 0.001f, 0.3f, 0.8f, 1.f };
+    const F32 scales[] = { 1.f, 2.f };
+    const F32 torsos[] = { 0.6f, 1.f };
+    const F32 angles_deg[] =
+        { 0.f, 3.f, -7.5f, 12.f, -25.f, 40.f, -60.f, 90.f,
+          -120.f, 150.f, -179.f };
+    constexpr S32 NANGLES = sizeof(angles_deg) / sizeof(angles_deg[0]);
+
+    for (F32 blend : blends)
+    {
+        for (F32 scale : scales)
+        {
+            for (F32 torso : torsos)
+            {
+                ALGazeMotor::GazeMotorSettings s;
+                s.mHeadEyeBlend = blend;
+                s.mTorsoAmount  = torso;
+                s.mAnatomyScale = scale;
+                s.mUseLimitProfile = true; // default mLimitProfile == profile
+                s.mPlantPelvis = false;    // planted hips off
+                F32 cy[ALGazeMotor::CHAIN_JOINTS];
+                F32 cp[ALGazeMotor::CHAIN_JOINTS];
+                ALGazeMotor::effectiveCapacities(s, cy, cp);
+                const bool eye_only = ALGazeMotor::isEyeOnlyBlend(s);
+
+                for (S32 ai = 0; ai < NANGLES; ++ai)
+                {
+                    const F32 yaw = angles_deg[ai] * DEG_TO_RAD;
+                    const F32 pitch =
+                        angles_deg[(ai + 3) % NANGLES] * DEG_TO_RAD;
+                    ALGazeMath::AnatomicalChainPose legacy;
+                    ALGazeMath::distributeAnatomicalChain(
+                        yaw, pitch, blend, torso, 90.f, legacy, scale,
+                        true /*recruit_hips*/, &profile);
+
+                    F32 jy[ALGazeMotor::CHAIN_JOINTS];
+                    F32 jp[ALGazeMotor::CHAIN_JOINTS];
+                    for (S32 slot = 0; slot < ALGazeMotor::CHAIN_JOINTS;
+                         ++slot)
+                    {
+                        jy[slot] = ALGazeMotor::recruitSlot(
+                            yaw, cy, 0.f, slot, eye_only);
+                        jp[slot] = ALGazeMotor::recruitSlot(
+                            pitch, cp, 0.f, slot, eye_only);
+                    }
+                    const bool yaw_exact =
+                        jy[0] == legacy.mEyeYaw &&
+                        jy[1] == legacy.mHeadYaw &&
+                        jy[2] == legacy.mNeckYaw &&
+                        jy[3] == legacy.mTorsoYaw &&
+                        jy[4] == legacy.mHipsYaw;
+                    const bool pitch_exact =
+                        jp[0] == legacy.mEyePitch &&
+                        jp[1] == legacy.mHeadPitch &&
+                        jp[2] == legacy.mNeckPitch &&
+                        jp[3] == legacy.mTorsoPitch &&
+                        jp[4] == legacy.mHipsPitch;
+                    ensure("profiled band-0 yaw allocation bit-identical "
+                               "(blend " + std::to_string(blend) +
+                               " scale " + std::to_string(scale) +
+                               " torso " + std::to_string(torso) + " deg " +
+                               std::to_string(angles_deg[ai]) + ")",
+                           yaw_exact);
+                    ensure("profiled band-0 pitch allocation bit-identical "
+                               "(blend " + std::to_string(blend) +
+                               " scale " + std::to_string(scale) +
+                               " torso " + std::to_string(torso) + ")",
+                           pitch_exact);
+
+                    // Same bytewise -0.0 guard as the constant-path grid:
+                    // in eye-only mode the profiled legacy early return
+                    // leaves downstream fields default-constructed +0.0f;
+                    // the motor's canonicalization must match it bytewise
+                    // for negative targets.
+                    if (blend <= 0.001f)
+                    {
+                        const std::string dbg =
+                            " (blend " + std::to_string(blend) + " scale " +
+                            std::to_string(scale) + " torso " +
+                            std::to_string(torso) + " yaw_deg " +
+                            std::to_string(angles_deg[ai]) + " pitch_deg " +
+                            std::to_string(angles_deg[(ai + 3) % NANGLES]) +
+                            ")";
+                        if (yaw < 0.f)
+                        {
+                            ensure("profiled eye-only head yaw is bytewise "
+                                       "+0.0, not -0.0" + dbg,
+                                   bitwiseEqual(jy[1], legacy.mHeadYaw));
+                            ensure("profiled eye-only neck yaw is bytewise "
+                                       "+0.0, not -0.0" + dbg,
+                                   bitwiseEqual(jy[2], legacy.mNeckYaw));
+                            ensure("profiled eye-only torso yaw is bytewise "
+                                       "+0.0, not -0.0" + dbg,
+                                   bitwiseEqual(jy[3], legacy.mTorsoYaw));
+                            ensure("profiled eye-only hips yaw is bytewise "
+                                       "+0.0, not -0.0" + dbg,
+                                   bitwiseEqual(jy[4], legacy.mHipsYaw));
+                        }
+                        const F32 pitch_val = angles_deg[(ai + 3) % NANGLES];
+                        if (pitch_val < 0.f)
+                        {
+                            ensure("profiled eye-only head pitch is bytewise "
+                                       "+0.0, not -0.0" + dbg,
+                                   bitwiseEqual(jp[1], legacy.mHeadPitch));
+                            ensure("profiled eye-only neck pitch is bytewise "
+                                       "+0.0, not -0.0" + dbg,
+                                   bitwiseEqual(jp[2], legacy.mNeckPitch));
+                            ensure("profiled eye-only torso pitch is "
+                                       "bytewise +0.0, not -0.0" + dbg,
+                                   bitwiseEqual(jp[3], legacy.mTorsoPitch));
+                            ensure("profiled eye-only hips pitch is bytewise "
+                                       "+0.0, not -0.0" + dbg,
+                                   bitwiseEqual(jp[4], legacy.mHipsPitch));
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

@@ -5745,6 +5745,237 @@
       <key>Value</key>
       <integer>0</integer>
     </map>
+    <key>DirectorGazeComposition</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Gaze pose composition: 0 Replace (current), 1 Additive overlay, 2 Blend.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>DirectorGazeCompositionMix</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Gaze Blend composition mix: 0 Replace .. 1 Additive.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.5</real>
+    </map>
+    <key>DirectorGazeChestShare</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Planted-spine chest share of the spine bucket (no extra reach).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.55</real>
+    </map>
+    <key>DirectorGazeCustomLimitsEnabled</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Enable the custom gaze cone limit profile (off = legacy constants).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>DirectorGazeLimitEyeYawDeg</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Custom gaze limit: eye allocation yaw (deg).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>25.0</real>
+    </map>
+    <key>DirectorGazeLimitEyePitchDeg</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Custom gaze limit: eye allocation pitch (deg).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>14.0</real>
+    </map>
+    <key>DirectorGazeLimitHeadYawDeg</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Custom gaze limit: head yaw (deg).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>35.0</real>
+    </map>
+    <key>DirectorGazeLimitHeadPitchDeg</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Custom gaze limit: head pitch (deg).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>42.0</real>
+    </map>
+    <key>DirectorGazeLimitNeckYawDeg</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Custom gaze limit: neck yaw (deg).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>35.0</real>
+    </map>
+    <key>DirectorGazeLimitNeckPitchDeg</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Custom gaze limit: neck pitch (deg).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>26.0</real>
+    </map>
+    <key>DirectorGazeLimitSpineYawDeg</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Custom gaze limit: spine (torso+chest) yaw (deg).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>45.0</real>
+    </map>
+    <key>DirectorGazeLimitSpinePitchDeg</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Custom gaze limit: spine (torso+chest) pitch (deg).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>20.0</real>
+    </map>
+    <key>DirectorGazeLimitHipsYawDeg</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Custom gaze limit: hips yaw (deg, legacy Upper-body only).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>35.0</real>
+    </map>
+    <key>DirectorGazeLimitHipsPitchDeg</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Custom gaze limit: hips pitch (deg, legacy Upper-body only).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>15.0</real>
+    </map>
+    <key>DirectorGazeLimitEyeApplyYawDeg</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Custom gaze limit: final applied eye yaw cap (deg).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>24.0</real>
+    </map>
+    <key>DirectorGazeLimitEyeApplyPitchDeg</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Custom gaze limit: final applied eye pitch cap (deg).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>14.0</real>
+    </map>
+    <key>DirectorGazeLimitEyeRadialDeg</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Custom gaze limit: final applied eye radial cone (deg).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>19.8</real>
+    </map>
+    <key>DirectorGazeLeanCurve</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Gaze spine-lean curve: 0 legacy fill, 1 angle ease.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>DirectorGazeLeanThresholdDeg</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Angle-ease lean threshold (deg); inert while curve 0.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>25.0</real>
+    </map>
+    <key>DirectorGazeLeanSoftnessDeg</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Angle-ease lean softness (deg); inert while curve 0.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>20.0</real>
+    </map>
+    <key>DirectorGazeLeanMaxDeg</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Angle-ease lean maximum (deg); inert while curve 0.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>20.0</real>
+    </map>
     <key>AnimExplorerCaptureAll</key>
     <map>
       <key>Comment</key>

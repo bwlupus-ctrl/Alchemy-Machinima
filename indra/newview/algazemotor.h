@@ -17,6 +17,7 @@
 #include "v3math.h"
 
 #include "algazeblink.h"
+#include "algazemath.h"
 #include "algazenoise.h"
 #include "algazepolicy.h"
 #include "algazerecruit.h"
@@ -201,6 +202,32 @@ struct GazeMotorSettings
     // [Machinima] Planted-spine scope: force hips capacity to zero so the motor
     // never recruits/writes the pelvis. Default false = byte-identical.
     bool mPlantPelvis = false;
+    // [Machinima] Chest split (Planted spine): fraction of the recruited torso
+    // (spine) contribution routed to mChest so torso+chest == the old torso
+    // amount (no extra reach). 0 = torso-only, byte-identical.
+    F32 mChestShare = 0.f; // [0,1]
+    // [Machinima] Opt-in custom cone profile. When mUseLimitProfile is true,
+    // effectiveCapacities draws its weighted per-slot caps from the SHARED
+    // ALGazeMath::fillEffectiveCapacities so the motor and legacy allocators
+    // cannot drift. Default false keeps the exact constant path (the bit-exact
+    // band-zero contract), so the default output is byte-identical.
+    bool mUseLimitProfile = false;
+    ALGazeMath::AnatomicalLimitProfile mLimitProfile;
+    // [Machinima] Goal 3c: angle-driven lean falloff (opt-in Angle-ease
+    // curve, Planted-spine scope). When mLeanCurve == 1 AND mPlantPelvis,
+    // the torso group's contribution comes from ALGazeMath::spineLean and
+    // the head/neck groups recruit only their FACE residual. The default
+    // (0 == legacy) takes NONE of the new math: the existing recruit runs
+    // unchanged, preserving the bit-exact band-zero contract. The spine cap
+    // radians are the ANATOMICAL safety ellipse (unweighted), fed by the
+    // integration from the custom profile's spine axes or the 45/20 deg
+    // constants; threshold/softness/max are the authored curve, in degrees.
+    S32 mLeanCurve        = 0;   // 0 = legacy allocator, 1 = angle ease
+    F32 mLeanThresholdDeg = 25.f;
+    F32 mLeanSoftnessDeg  = 20.f;
+    F32 mLeanMaxDeg       = 20.f;
+    F32 mSpineCapYawRad   = 45.f * DEG_TO_RAD;
+    F32 mSpineCapPitchRad = 20.f * DEG_TO_RAD;
     // Anatomy exaggeration, mirroring distributeAnatomicalChain's
     // anatomy_scale (algazemath.h ~598-615): scales the eye/head/neck
     // capacities only (chest/hips keep authored limits), clamped to [1, 3],
@@ -360,6 +387,10 @@ struct GazeMotorPose
     F32 mNeckPitch = 0.f;
     F32 mTorsoYaw  = 0.f;
     F32 mTorsoPitch = 0.f;
+    // [Machinima] Chest split of the recruited torso (spine) bucket; zero on
+    // every legacy path (mChestShare == 0), so the default pose is unchanged.
+    F32 mChestYaw  = 0.f;
+    F32 mChestPitch = 0.f;
     F32 mHipsYaw   = 0.f;
     F32 mHipsPitch = 0.f;
 
@@ -461,6 +492,37 @@ inline F32 aperturePosture(const AffectState& affect)
 inline void effectiveCapacities(const GazeMotorSettings& s,
                                 F32* caps_yaw, F32* caps_pitch)
 {
+    // [Machinima] Opt-in custom profile: draw the weighted per-slot caps from
+    // the SHARED helper so the motor and legacy tables stay in lockstep. Only
+    // entered when explicitly enabled; the constant path below is untouched,
+    // preserving the bit-exact band-zero contract.
+    if (s.mUseLimitProfile)
+    {
+        const F32 blend_c = std::isfinite(s.mHeadEyeBlend)
+            ? llclamp(s.mHeadEyeBlend, 0.f, 1.f) : 1.f;
+        const F32 scale_c = std::isfinite(s.mAnatomyScale)
+            ? llclamp(s.mAnatomyScale, 1.f, 3.f) : 1.f;
+        if (blend_c <= 0.001f)
+        {
+            // Eye-only early return: full unweighted (anatomy-scaled) eye cap,
+            // every downstream joint exactly zero -- same as the constant path.
+            caps_yaw[0] = llmax(s.mLimitProfile.mEyeYawDeg, 0.f) * DEG_TO_RAD
+                          * (scale_c == 1.f ? 1.f : scale_c);
+            caps_pitch[0] = llmax(s.mLimitProfile.mEyePitchDeg, 0.f) * DEG_TO_RAD
+                            * (scale_c == 1.f ? 1.f : scale_c);
+            for (S32 i = 1; i < CHAIN_JOINTS; ++i)
+            {
+                caps_yaw[i] = 0.f;
+                caps_pitch[i] = 0.f;
+            }
+            return;
+        }
+        ALGazeMath::fillEffectiveCapacities(
+            s.mLimitProfile, s.mHeadEyeBlend, s.mTorsoAmount, s.mAnatomyScale,
+            /*recruit_hips=*/!s.mPlantPelvis, caps_yaw, caps_pitch);
+        return;
+    }
+
     const F32 EYE_MAX_YAW    = 25.f * DEG_TO_RAD;
     const F32 EYE_MAX_PITCH  = 14.f * DEG_TO_RAD;
     const F32 HEAD_MAX_YAW   = 35.f * DEG_TO_RAD;
@@ -1157,6 +1219,57 @@ inline void step(GazeMotorState& state, const GazeMotorInput& input,
     // through the soft path manufactures a spurious, wrong-signed downstream
     // contribution at the knee (residual == capacity == 0).
     const bool eye_only = isEyeOnlyBlend(s);
+    // [Machinima] Goal 3c: angle-driven spine lean (opt-in: Angle-ease curve
+    // AND Planted spine). Each channel GROUP keeps its own delayed sample --
+    // the torso group's sampled aim runs the pure curve and its spine vector
+    // is written directly, while the head and neck groups each run the SAME
+    // curve on THEIR sampled aim and recruit only the FACE residual into
+    // their slot. At convergence every group samples the same target, so the
+    // contributions sum to the one angle-conserving planted solution; during
+    // a retarget the eye/head/neck/torso temporal stagger stays visible.
+    // The guard keeps the default (LEGACY curve, or any non-planted scope)
+    // on the UNCHANGED recruit below -- bit-exact band-0 contract (test 14).
+    const bool lean_ease = (s.mLeanCurve == 1) && s.mPlantPelvis;
+    if (lean_ease)
+    {
+        const ALGazeMath::SpineLeanResult lean_head = ALGazeMath::spineLean(
+            aim[CH_HEAD_YAW], aim[CH_HEAD_PITCH],
+            s.mLeanThresholdDeg, s.mLeanSoftnessDeg, s.mLeanMaxDeg,
+            s.mTorsoAmount, s.mHeadEyeBlend,
+            s.mSpineCapYawRad, s.mSpineCapPitchRad);
+        const ALGazeMath::SpineLeanResult lean_neck = ALGazeMath::spineLean(
+            aim[CH_NECK_YAW], aim[CH_NECK_PITCH],
+            s.mLeanThresholdDeg, s.mLeanSoftnessDeg, s.mLeanMaxDeg,
+            s.mTorsoAmount, s.mHeadEyeBlend,
+            s.mSpineCapYawRad, s.mSpineCapPitchRad);
+        const ALGazeMath::SpineLeanResult lean_torso = ALGazeMath::spineLean(
+            aim[CH_TORSO_YAW], aim[CH_TORSO_PITCH],
+            s.mLeanThresholdDeg, s.mLeanSoftnessDeg, s.mLeanMaxDeg,
+            s.mTorsoAmount, s.mHeadEyeBlend,
+            s.mSpineCapYawRad, s.mSpineCapPitchRad);
+        // Face residual to head/neck slots (the eye slot's capacity is
+        // consumed first inside recruitSlot, exactly like the legacy chain;
+        // the spine slot never sees the face residual). Excess beyond face
+        // plus spine reach remains an undershoot, per the design doc.
+        out_pose.mHeadYaw   = recruitSlot(lean_head.mFaceYaw, caps_yaw, band,
+                                          1, eye_only);
+        out_pose.mHeadPitch = recruitSlot(lean_head.mFacePitch, caps_pitch,
+                                          band, 1, eye_only);
+        out_pose.mNeckYaw   = recruitSlot(lean_neck.mFaceYaw, caps_yaw, band,
+                                          2, eye_only);
+        out_pose.mNeckPitch = recruitSlot(lean_neck.mFacePitch, caps_pitch,
+                                          band, 2, eye_only);
+        // Torso = the torso group's curve spine vector (clamped inside
+        // spineLean to the anatomical spine ellipse). The chest split below
+        // then divides this conserved bucket as usual.
+        out_pose.mTorsoYaw   = lean_torso.mSpineYaw;
+        out_pose.mTorsoPitch = lean_torso.mSpinePitch;
+        // Planted (required for lean_ease): hips exactly +0.
+        out_pose.mHipsYaw   = 0.f;
+        out_pose.mHipsPitch = 0.f;
+    }
+    else
+    {
     out_pose.mHeadYaw   = recruitSlot(aim[CH_HEAD_YAW], caps_yaw, band, 1,
                                       eye_only);
     out_pose.mHeadPitch = recruitSlot(aim[CH_HEAD_PITCH], caps_pitch, band, 1,
@@ -1186,6 +1299,7 @@ inline void step(GazeMotorState& state, const GazeMotorInput& input,
         out_pose.mHipsPitch  = recruitSlot(aim[CH_TORSO_PITCH], caps_pitch, band,
                                            4, eye_only);
     }
+    } // end legacy recruit (lean_ease == false)
     out_pose.mHeadRoll   = aim[CH_HEAD_ROLL];
 
     // (3b) Cinematic Stillness + Restraint: scale the RECRUITED head/neck/
@@ -1213,6 +1327,20 @@ inline void step(GazeMotorState& state, const GazeMotorInput& input,
         out_pose.mTorsoPitch *= body_scale;
         out_pose.mHipsYaw   *= body_scale;
         out_pose.mHipsPitch *= body_scale;
+    }
+
+    // [Machinima] Chest split (Planted spine): route a fraction of the final
+    // (post-stillness/restraint) recruited torso contribution to mChest so
+    // torso+chest == the old torso amount, component by component. Guarded on
+    // share>0 so every legacy path leaves mChest at +0 and mTorso untouched.
+    const F32 chest_share = std::isfinite(s.mChestShare)
+        ? llclamp(s.mChestShare, 0.f, 1.f) : 0.f;
+    if (chest_share > 0.f)
+    {
+        out_pose.mChestYaw   = out_pose.mTorsoYaw * chest_share;
+        out_pose.mChestPitch = out_pose.mTorsoPitch * chest_share;
+        out_pose.mTorsoYaw  -= out_pose.mChestYaw;
+        out_pose.mTorsoPitch -= out_pose.mChestPitch;
     }
 
     // (4) VOR eye-in-head by construction: the eye group's aim (which sweeps

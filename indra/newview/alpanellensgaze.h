@@ -75,6 +75,22 @@ private:
     void onBlendCommit();
     void onTorsoCommit();
     void onIntensityCommit();
+    // [Machinima] Phase 2/3/4 UI: pose composition, keyframed influence, and
+    // IK/limits/lean. Per-actor structural rows commit via editGazeTargetsFor,
+    // mirroring onBlendCommit/onTorsoCommit above. Influence keys commit
+    // through LLDirectorCast's influence-lane accessors instead (they are not
+    // GazeTarget override fields).
+    void onCompositionCommit();
+    void onCompositionMixCommit();
+    void onInfluenceSet();
+    void onInfluenceDelete();
+    void onChestShareCommit();
+    void onLimitModeCommit();
+    void onLimitProfileCommit();
+    void onLeanCurveCommit();
+    void onLeanThresholdCommit();
+    void onLeanSoftnessCommit();
+    void onLeanMaxCommit();
     void onSmoothingCommit();
     void onBreakoffCommit();
     void onEyelineCommit();
@@ -123,6 +139,40 @@ private:
     LLSliderCtrl* mBlend = nullptr;
     LLSliderCtrl* mTorso = nullptr;
     LLSliderCtrl* mIntensity = nullptr;
+    // [Machinima] Phase 2: pose composition (endpoint built when a joint is
+    // allowed gaze write), orthogonal to Ownership scope / SL anim priority.
+    LLComboBox* mComposition = nullptr;
+    LLSliderCtrl* mCompositionMix = nullptr;
+    // [Machinima] Phase 3: keyframed influence lane (LLDirectorCast
+    // GazeInfluenceKeyList), a stateless presentation-time multiplier on the
+    // final write weight. NOT a GazeTarget override field.
+    LLSliderCtrl* mInfluence = nullptr;
+    LLButton* mInfluenceSet = nullptr;
+    LLButton* mInfluenceDelete = nullptr;
+    // [Machinima] Phase 2: planted-spine chest split and opt-in per-joint
+    // cone limit profile.
+    LLSliderCtrl* mChestShare = nullptr;
+    LLComboBox* mLimitMode = nullptr;
+    LLSpinCtrl* mLimitEyeYaw = nullptr;
+    LLSpinCtrl* mLimitEyePitch = nullptr;
+    LLSpinCtrl* mLimitHeadYaw = nullptr;
+    LLSpinCtrl* mLimitHeadPitch = nullptr;
+    LLSpinCtrl* mLimitNeckYaw = nullptr;
+    LLSpinCtrl* mLimitNeckPitch = nullptr;
+    LLSpinCtrl* mLimitSpineYaw = nullptr;
+    LLSpinCtrl* mLimitSpinePitch = nullptr;
+    LLSpinCtrl* mLimitHipsYaw = nullptr;
+    LLSpinCtrl* mLimitHipsPitch = nullptr;
+    LLSpinCtrl* mLimitEyeApplyYaw = nullptr;
+    LLSpinCtrl* mLimitEyeApplyPitch = nullptr;
+    LLSpinCtrl* mLimitEyeRadial = nullptr;
+    // [Machinima] Phase 4: angle-driven spine-lean curve (Planted spine only
+    // in v1). DirectorGazeSoftRecruitDeg is a pure global (control_name-bound
+    // in the XML) and needs no member here.
+    LLComboBox* mLeanCurve = nullptr;
+    LLSpinCtrl* mLeanThreshold = nullptr;
+    LLSpinCtrl* mLeanSoftness = nullptr;
+    LLSpinCtrl* mLeanMax = nullptr;
     LLSliderCtrl* mSmoothing = nullptr;
     LLSliderCtrl* mMicroLife = nullptr;
     LLCheckBoxCtrl* mBlinks = nullptr;

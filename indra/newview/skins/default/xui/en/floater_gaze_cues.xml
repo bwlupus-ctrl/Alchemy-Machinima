@@ -2,9 +2,9 @@
 <floater
  can_close="true"
  can_resize="true"
- height="500"
+ height="700"
  layout="topleft"
- min_height="500"
+ min_height="700"
  min_width="520"
  name="floater_gaze_cues"
  save_rect="true"
@@ -128,4 +128,55 @@
   <text follows="left|top|right" height="54" layout="topleft" left="10"
    name="cue_help" text_color="LtGray_50" top="404" width="500"
    word_wrap="true">Set the target and parameters above, then Add or use a quick insert. Duration 0 holds. Button Look always uses the live gated/render camera; its duration is the cut point and Past frames extends the hold at a 30 fps edit basis.</text>
+
+  <!-- [Machinima] Phase 3: keyframable gaze influence: a separate,
+       stateless presentation-time lane (parallel to the cue track above, NOT
+       embedded in cue targets). Evaluated influence multiplies the final
+       gaze write weight; an empty track is always 1. -->
+  <text
+   follows="left|top|right"
+   font="SansSerifBold"
+   height="16"
+   layout="topleft"
+   left="10"
+   name="influence_section"
+   top="466"
+   width="500">Influence @ playhead</text>
+  <text follows="left|top|right" height="28" layout="topleft" left="10"
+   name="influence_help" text_color="LtGray_50" top="484" width="500"
+   word_wrap="true">A separate strength track: 1 shows the gaze pose as authored above, 0 hides gaze and reveals the actor's own animation. Interpolation is the OUTGOING segment from that key.</text>
+
+  <scroll_list
+   column_padding="4"
+   draw_heading="true"
+   follows="left|top|right"
+   height="110"
+   layout="topleft"
+   left="10"
+   name="influence_list"
+   top="516"
+   width="500">
+    <columns label="Time" name="time" width="90" />
+    <columns label="Value" name="value" width="90" />
+    <columns label="Curve" name="curve" width="150" />
+  </scroll_list>
+  <button follows="left|top" height="22" label="Add" layout="topleft"
+   left="10" name="btn_influence_add" top="632" width="72" />
+  <button follows="left|top" height="22" label="Update" layout="topleft"
+   left="88" name="btn_influence_update" top="632" width="72" />
+  <button follows="left|top" height="22" label="Delete" layout="topleft"
+   left="166" name="btn_influence_delete" top="632" width="72" />
+
+  <spinner decimal_digits="3" follows="left|top" height="20" increment="0.033"
+   label="Time (s)" label_width="54" layout="topleft" left="10"
+   max_val="86400" min_val="0" name="influence_time" top="660" width="164" />
+  <spinner decimal_digits="2" follows="left|top" height="20" increment="0.05"
+   label="Value" label_width="42" layout="topleft" left="182" max_val="1"
+   min_val="0" name="influence_value" top="660" width="148" />
+  <combo_box follows="left|top|right" height="20" layout="topleft" left="338"
+   name="influence_interp" top="660" width="172">
+    <combo_box.item label="Step" name="influence_step" value="0" />
+    <combo_box.item label="Linear" name="influence_linear" value="1" />
+    <combo_box.item label="Smoothstep" name="influence_smoothstep" value="2" />
+  </combo_box>
 </floater>

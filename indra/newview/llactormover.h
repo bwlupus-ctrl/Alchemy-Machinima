@@ -341,6 +341,28 @@ public:
         GAZE_PRIORITY_PLANTED_SPINE = 3
     };
 
+    // [Machinima] Pose composition: how an ALLOWED joint endpoint is built.
+    // Orthogonal to ownership scope (which joints) and SL anim priority (may
+    // veto the write). Replace is the exact current behavior; Additive overlays
+    // the smallest gaze correction on top of the animation; Blend nlerps the
+    // two local endpoints. Default Replace enters the current statements
+    // verbatim, so the default path is byte-identical.
+    enum EGazeComposition
+    {
+        GAZE_COMPOSE_REPLACE  = 0,
+        GAZE_COMPOSE_ADDITIVE = 1,
+        GAZE_COMPOSE_BLEND    = 2
+    };
+
+    // [Machinima] Spine-recruitment curve. Legacy fills the chain by hard
+    // capacity order (default, byte-identical); Angle-ease drives an
+    // angle-driven smootherstep lean of the spine (Planted spine only in v1).
+    enum EGazeLeanCurve
+    {
+        GAZE_LEAN_LEGACY    = 0,
+        GAZE_LEAN_ANGLE_EASE = 1
+    };
+
     struct GazeTarget
     {
         // RELAXED is eyes-only: the eye-target combo's "Relaxed (eyes idle)"
@@ -393,6 +415,24 @@ public:
         // joint to animations of strictly HIGHER effective rotation priority.
         S32        mAnimPriorityOverride = -2;
         S32        mCameraModeOverride = -1;      // else DirectorLookAtCameraMode
+        // [Machinima] Phase 2-5 structural overrides. Discrete fields use -1 =
+        // inherit the matching global; continuous fields use -1.f = inherit.
+        // All default to inherit so old scenes and default configs enter none
+        // of the new math.
+        S32        mCompositionOverride = -1;     // EGazeComposition; else DirectorGazeComposition
+        F32        mCompositionMixOverride = -1.f;// Blend mix; else DirectorGazeCompositionMix
+        F32        mChestShareOverride = -1.f;    // else DirectorGazeChestShare (Planted spine)
+        // Limit profile: tri-state mode override (-1 inherit global,
+        // 0 force legacy constants, 1 use this actor's custom profile) plus the
+        // actor's own profile values (only consulted when the resolved mode==1).
+        S32        mLimitProfileModeOverride = -1;
+        ALGazeMath::AnatomicalLimitProfile mLimitProfile;
+        // Lean curve: mode override + continuous threshold/softness/max, each
+        // -1/-1.f = inherit the matching global.
+        S32        mLeanCurveOverride = -1;
+        F32        mLeanThresholdDegOverride = -1.f;
+        F32        mLeanSoftnessDegOverride = -1.f;
+        F32        mLeanMaxDegOverride = -1.f;
     };
 
     void        setGazeEnabled(const LLUUID& actor_id, bool on);
@@ -978,6 +1018,17 @@ private:
         // [Machinima] SL animation priority for the gaze-yield gate: -2 inherit
         // DirectorGazeAnimationPriority, -1 Legacy final, 0..6 selected priority.
         S32        mAnimPriorityOverride = -2;
+        // [Machinima] Phase 2-5 structural override mirrors (see GazeTarget).
+        // All inherit by default so gate-off / default output is byte-identical.
+        S32        mCompositionOverride = -1;
+        F32        mCompositionMixOverride = -1.f;
+        F32        mChestShareOverride = -1.f;
+        S32        mLimitProfileModeOverride = -1;
+        ALGazeMath::AnatomicalLimitProfile mLimitProfile;
+        S32        mLeanCurveOverride = -1;
+        F32        mLeanThresholdDegOverride = -1.f;
+        F32        mLeanSoftnessDegOverride = -1.f;
+        F32        mLeanMaxDegOverride = -1.f;
         F32        mHeadEyeBlend  = 0.7f;   // 0 = eyes only, 1 = full head+neck+torso
         F32        mTorsoAmount   = 0.25f;  // torso share; 0 = still chest, 1 = full aim
         F32        mIntensity     = 1.f;    // overall weight 0..1
@@ -997,6 +1048,17 @@ private:
         F32        mAppliedYaw    = 0.f;
         F32        mTorsoAimPitch = 0.f;    // extra torso-only chase behind applied aim
         F32        mTorsoAimYaw   = 0.f;
+        // [Machinima] behind-shoulder / no-snap runtime (see
+        // resolveBehindShoulderChainYaw in llactormover.cpp). While the
+        // target stays within the chain's physical yaw reach the resolver is
+        // a bit-exact pass-through of the raw feed; these only engage once
+        // the target goes beyond reach (behind the actor), where they hold
+        // the committed shoulder across the +-180 seam and then sweep the
+        // chain feed to the other shoulder through the FRONT, rate-limited.
+        bool       mChainYawValid = false;  // mChainYaw seeded yet
+        F32        mChainYaw      = 0.f;    // resolved no-snap chain-feed yaw
+        F32        mBehindShoulderSign = 0.f; // +-1 committed shoulder beyond reach, 0 none
+        bool       mBehindSweeping = false; // front sweep to the other shoulder in flight
         F32        mBehindEnv     = 1.f;    // smooth Release-policy weight
         U32        mLastFrame     = 0xFFFFFFFF;  // per-frame temporal-advance guard
         // Preset transition runtime (DirectorGazeTransitionSec / Easing).
@@ -1094,6 +1156,7 @@ private:
         DirectorJointPose mRoot;
         DirectorJointPose mPelvis;
         DirectorJointPose mTorso;
+        DirectorJointPose mChest;   // planted-spine chest split (capture/restore beside mTorso)
         DirectorJointPose mNeck;
         DirectorJointPose mHead;
         DirectorJointPose mEyeLeft;
@@ -1138,7 +1201,13 @@ private:
                    bool constrain_eye_cone, bool allow_natural_break,
                    DirectorGaze* director_runtime = nullptr,
                    F32 body_turn_threshold_deg = 90.f,
-                   const GazeTarget* eye_target = nullptr);
+                   const GazeTarget* eye_target = nullptr,
+                   // [Machinima] Goal 3b: keyframed influence multiplier on the
+                   // FINAL write envelope. 1.f (the default / empty track) takes
+                   // the exact legacy env assignments; a value < 1 scales the
+                   // write so influence 0 performs NO gaze write (animation
+                   // shows) while the aim/motor state stays warm.
+                   F32 timeline_influence = 1.f);
     bool resolveGazeObjectCenter(const LLUUID& object_id, LLVector3& out_agent);
     void captureDirectorLookAtPose(LLVOAvatar* av, DirectorGaze& runtime,
                                    bool capture_blinks);
