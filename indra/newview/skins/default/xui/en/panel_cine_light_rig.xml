@@ -286,9 +286,11 @@
     <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="8" top="292" value="Easy" width="80" />
     <check_box control_name="CineLightRigEasyMode" follows="left|top" height="18" label="Easy mode" layout="topleft" left="246" name="cine_easy_mode" top="290" tool_tip="On uses the simplified exposure controls. Off enables Advanced EV and Ratio controls." width="94" />
     <text follows="left|top" height="15" layout="topleft" left="8" top="318" value="Brightness" width="72" />
-    <slider can_edit_text="true" control_name="CineLightRigMasterEV" decimal_digits="1" follows="left|top" height="20" increment="0.1" layout="topleft" left="82" max_val="16" min_val="-16" name="cine_easy_brightness" show_text="true" top="314" width="258" />
+    <slider can_edit_text="true" control_name="CineLightRigMasterEV" decimal_digits="1" follows="left|top" height="20" increment="0.1" layout="topleft" left="82" max_val="16" min_val="-16" name="cine_easy_brightness" show_text="true" top="314" width="236" />
+    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_easy_brightness_reset" top="315" tool_tip="Reset brightness to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigMasterEV" />
     <text follows="left|top" height="15" layout="topleft" left="8" top="342" value="Drama" width="72" />
-    <slider can_edit_text="true" control_name="CineLightRigRatio" decimal_digits="1" follows="left|top" height="20" increment="0.1" layout="topleft" left="82" max_val="5" min_val="0" name="cine_easy_drama" show_text="true" top="338" tool_tip="KEY:FILL stop difference: 0 is flat, 2 is natural, and 5 is noir." width="258" />
+    <slider can_edit_text="true" control_name="CineLightRigRatio" decimal_digits="1" follows="left|top" height="20" increment="0.1" layout="topleft" left="82" max_val="5" min_val="0" name="cine_easy_drama" show_text="true" top="338" tool_tip="KEY:FILL stop difference: 0 is flat, 2 is natural, and 5 is noir." width="236" />
+    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_easy_drama_reset" top="339" tool_tip="Reset drama to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRatio" />
     <text follows="left|top" height="15" layout="topleft" left="8" top="366" value="Rim" width="38" />
     <combo_box follows="left|top" height="20" layout="topleft" left="46" name="cine_easy_rim" top="362" width="116">
         <combo_box.item label="Off" name="cine_easy_rim_off" value="0" />
@@ -304,7 +306,8 @@
         <combo_box.item label="Strong" name="cine_easy_bg_strong" value="3" />
     </combo_box>
     <text follows="left|top" height="15" layout="topleft" left="8" top="390" value="Warmth" width="52" />
-    <slider can_edit_text="true" control_name="CineLightRigMasterTempMired" decimal_digits="0" follows="left|top" height="20" increment="5" layout="topleft" left="62" max_val="150" min_val="-110" name="cine_easy_warmth" show_text="true" top="386" tool_tip="Relative colour-temperature trim in mireds: + warms and - cools all lights." width="278" />
+    <slider can_edit_text="true" control_name="CineLightRigMasterTempMired" decimal_digits="0" follows="left|top" height="20" increment="5" layout="topleft" left="62" max_val="150" min_val="-110" name="cine_easy_warmth" show_text="true" top="386" tool_tip="Relative colour-temperature trim in mireds: + warms and - cools all lights." width="256" />
+    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_easy_warmth_reset" top="387" tool_tip="Reset warmth to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigMasterTempMired" />
     <text follows="left|top" height="15" layout="topleft" left="8" top="414" value="Fine control? Switch to Advanced." width="260" />
     <view_border bevel_style="in" follows="left|top|right" height="1" layout="topleft" left="8" top="432" width="332" />
 
