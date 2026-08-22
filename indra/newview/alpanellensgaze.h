@@ -23,6 +23,11 @@ class LLSliderCtrl;
 class LLSpinCtrl;
 class LLTextBox;
 
+// [Machinima] Register the Actor Gaze random-performance auto-cycle on the idle
+// callback list. Call once at viewer startup (post-settings) so cycling runs
+// independent of whether the gaze floater is ever opened.
+void al_gaze_register_random_perf_idle();
+
 class ALPanelLensGaze final : public LLPanel
 {
 public:
@@ -49,11 +54,10 @@ private:
     void refreshCastCombo();
     void refreshEditActorCombo();
     void refreshControls();
-    // Random performance cycling (DirectorGazeRandomMode): retargets each
-    // edited actor to a deterministically random preset roughly every
-    // DirectorGazeRandomInterval seconds through the same blended entry point
-    // manual preset commits use. Driven from draw() on the presentation clock.
-    void updateRandomPerformance();
+    // Random-performance cycling (DirectorGazeRandomMode) lives in the
+    // file-static gazeRandomPerfTick() in the .cpp, driven by a persistent idle
+    // callback registered from the ctor, so it keeps running with the floater
+    // closed. (Formerly the panel method updateRandomPerformance, driven by draw.)
 
     void onMasterEnableCommit();
     void onEditActorCommit();
@@ -140,9 +144,6 @@ private:
     LLComboBox* mMode = nullptr;
     LLButton* mGazeCues = nullptr;
     bool mEditingEyeTarget = false;
-    // Last random-cycle index applied per actor (presentation-clock derived,
-    // so scrubbing to the same time re-derives the same cycle and preset).
-    std::map<LLUUID, U64> mRandomCycleSeen;
 };
 
 #endif // AL_ALPANELLENSGAZE_H

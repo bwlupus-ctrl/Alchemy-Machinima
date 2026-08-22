@@ -196,6 +196,7 @@
 #include "pipeline.h"
 #include "llappviewer.h"
 #include "llfloatermap.h"
+#include "alpanellensgaze.h"     // [Machinima] register gaze random-perf idle tick
 #include "llweb.h"
 #include "llvoiceclient.h"
 #include "llnamelistctrl.h"
@@ -2239,6 +2240,11 @@ bool idle_startup()
             gIdleCallbacks.addFunction(RlvHandler::onIdleStartup, new LLTimer());
         }
 // [/RLVa:KB]
+        // [Machinima] Drive Actor Gaze random-performance cycling from the idle
+        // list for the whole session (guarded), so persisted DirectorGazeRandomMode
+        // runs without needing the gaze floater opened first.
+        al_gaze_register_random_perf_idle();
+
         LLStartUp::setStartupState( STATE_MISC );
         do_startup_frame();
 

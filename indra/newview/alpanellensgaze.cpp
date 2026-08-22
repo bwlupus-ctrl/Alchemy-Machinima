@@ -20,6 +20,7 @@
 #include "llcheckboxctrl.h"
 #include "llcombobox.h"
 #include "lldirectorcast.h"
+#include "llcallbacklist.h"      // [Machinima] persistent idle tick for random-perf cycling
 #include "llfloaterreg.h"
 #include "llpresentationtime.h"
 #include "llselectmgr.h"
@@ -266,11 +267,29 @@ void editDetailTargetsFor(const uuid_vec_t& actors, bool editing_eye, Fn&& mutat
 }
 } // anonymous namespace
 
+// [Machinima] Persistent idle tick driving the random-performance auto-cycle.
+// Registered once from the panel ctor so cycling keeps running while the gaze
+// floater is CLOSED (the panel's draw() no longer drives it). Defined below,
+// next to the preset helpers it uses.
+static void gazeRandomPerfTick(void* user);
+
 ALPanelLensGaze::ALPanelLensGaze()
 {
     // The settings-backed rows use the same compact XUI reset callback as the
     // Cinematic Camera parameter panels. Register it before our children build.
     alRegisterMachinimaResetControl();
+}
+
+// Register the random-performance idle tick from viewer startup (see
+// al_gaze_register_random_perf_idle below / llstartup.cpp), NOT the panel ctor,
+// so persisted DirectorGazeRandomMode cycles even if the gaze floater is never
+// opened this session.
+void al_gaze_register_random_perf_idle()
+{
+    if (!gIdleCallbacks.containsFunction(&gazeRandomPerfTick))
+    {
+        gIdleCallbacks.addFunction(&gazeRandomPerfTick, nullptr);
+    }
 }
 
 bool ALPanelLensGaze::postBuild()
@@ -618,11 +637,21 @@ void ALPanelLensGaze::draw()
     refreshEditActorCombo();
     refreshCastCombo();
     refreshControls();
-    updateRandomPerformance();
+    // Random-performance cycling is driven by gazeRandomPerfTick() on the idle
+    // callback list (registered in the ctor), NOT here, so it keeps running when
+    // the floater is closed.
     LLPanel::draw();
 }
 
-void ALPanelLensGaze::updateRandomPerformance()
+// [Machinima] Random-performance auto-cycle. Runs every frame off the idle
+// callback list (persistent, floater-independent). No-op while
+// DirectorGazeRandomMode is off. Cycles the gaze cast (You + Subjects A-D)
+// through the performance library on a deterministic, scrub-stable schedule,
+// routing each switch through applyGazePresetBlended so it inherits
+// DirectorGazeTransitionSec + DirectorGazeEasing.
+static std::map<LLUUID, U64> sGazeRandomCycleSeen;
+
+static void gazeRandomPerfTick(void* /*user*/)
 {
     static LLCachedControl<bool> random_mode(
         gSavedSettings, "DirectorGazeRandomMode", false);
@@ -630,9 +659,9 @@ void ALPanelLensGaze::updateRandomPerformance()
     {
         // Off (default): pure no-op beyond this early-out. Clearing the seen
         // map re-arms cleanly for the next enable (no stale cycle carryover).
-        if (!mRandomCycleSeen.empty())
+        if (!sGazeRandomCycleSeen.empty())
         {
-            mRandomCycleSeen.clear();
+            sGazeRandomCycleSeen.clear();
         }
         return;
     }
@@ -647,8 +676,32 @@ void ALPanelLensGaze::updateRandomPerformance()
     // Hash channel for random performance cycling; distinct from the gaze
     // micro-life channels used inside llactormover's paint.
     constexpr S32 RANDOM_PERF_CHANNEL = 0x52;  // 'R'
-    for (const LLUUID& actor : editActors())
+
+    // The gaze cast: You (agent) + Subjects A-D, whichever are present. This is
+    // the same actor set the panel edits, resolved here without the panel so
+    // cycling is independent of the floater being open.
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    const LLUUID actors[5] = {
+        isAgentAvatarValid() ? gAgentAvatarp->getID() : LLUUID::null,
+        cast.getSubjectA(), cast.getSubjectB(),
+        cast.getSubjectC(), cast.getSubjectD()
+    };
+
+    LLActorMover& mover = LLActorMover::instance();
+    for (const LLUUID& actor : actors)
     {
+        if (actor.isNull())
+        {
+            continue;
+        }
+        // Only cycle actors whose gaze is actually active (per-actor gaze OR
+        // Director look-at-camera). This keeps auto-cycle from churning the
+        // preset config of actors that are not performing -- the panel-driven
+        // version was implicitly scoped to the operator's edit selection.
+        if (!mover.isGazeEnabled(actor) && !cast.isLookAtCamera(actor))
+        {
+            continue;
+        }
         // Deterministic per-actor jitter: +/-25% off the shared interval,
         // derived from the actor id, so actors never switch in lockstep and
         // the schedule is stable across sessions and scrubs.
@@ -656,13 +709,13 @@ void ALPanelLensGaze::updateRandomPerformance()
         const F32 jitter = 0.75f +
             0.5f * ALGazeMath::unitHash(seed, RANDOM_PERF_CHANNEL, 0, 0, 0);
         const U64 cycle = (U64)(now / (F64)(base_interval * jitter));
-        auto seen = mRandomCycleSeen.find(actor);
-        if (seen == mRandomCycleSeen.end())
+        auto seen = sGazeRandomCycleSeen.find(actor);
+        if (seen == sGazeRandomCycleSeen.end())
         {
             // First sight under random mode: arm on the current cycle WITHOUT
-            // an immediate switch, so enabling the mode (or opening the
-            // panel) never yanks every actor to a new preset at once.
-            mRandomCycleSeen[actor] = cycle;
+            // an immediate switch, so enabling the mode never yanks every actor
+            // to a new preset at once.
+            sGazeRandomCycleSeen[actor] = cycle;
             continue;
         }
         if (seen->second == cycle)
