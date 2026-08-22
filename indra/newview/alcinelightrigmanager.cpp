@@ -24,6 +24,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <random>
+#include <vector>
 
 namespace
 {
@@ -559,6 +561,7 @@ void ALCineLightRigManager::tick(F64 presentation_time)
     }
     mBlobs[slotIndex(mSelected)] = captureSelected();
     updateAutoShadowSlots();
+    updateRandomCycle(presentation_time);
     resolveCameraFocus();
     const U32 enabled_mask = enabledMask();
     for (S32 i = 0; i < SLOT_COUNT; ++i)
@@ -587,6 +590,71 @@ void ALCineLightRigManager::tick(F64 presentation_time)
     // shaft setups (a suppressed projector loses its shadow slot AND its shaft).
     // applyShadowSuppression()/suppressedSlotMask() are retained (unused here)
     // for a future soft focus-priority bias.
+}
+
+void ALCineLightRigManager::updateRandomCycle(F64 presentation_time)
+{
+    static LLCachedControl<bool> random_cycle(
+        gSavedSettings, "CineLightRigRandomCycle", false);
+    static LLCachedControl<F32> random_interval(
+        gSavedSettings, "CineLightRigRandomInterval", 20.f);
+
+    if (!random_cycle)
+    {
+        mRandomCycleNextTime = -1.0;
+        mRandomCycleLastTime = presentation_time;
+        return;
+    }
+
+    if (!std::isfinite(presentation_time))
+    {
+        return;
+    }
+
+    const F64 interval = std::max(1.0, static_cast<F64>(random_interval));
+
+    // (Re)arm the timer on enable, on first tick, or after a scrub backwards
+    // so we never fire from a stale schedule. presentation_time is scrub-safe.
+    if (mRandomCycleNextTime < 0.0 ||
+        !std::isfinite(mRandomCycleNextTime) ||
+        presentation_time < mRandomCycleLastTime)
+    {
+        mRandomCycleNextTime = presentation_time + interval;
+        mRandomCycleLastTime = presentation_time;
+        return;
+    }
+
+    if (presentation_time >= mRandomCycleNextTime)
+    {
+        ALCineLightRig& rig = selected();
+        // Exclude decorations AND the currently-lit named setup. The rig's
+        // loaded-setup name is updated on every loadSetup (manual or random),
+        // so we never cross-fade to the setup that is already active, and a
+        // pool holding only the active setup collapses to "no valid choice".
+        const std::string& current = rig.loadedSetupName();
+        std::vector<std::string> pool;
+        for (const ALCineLightRig::SetupEntry& entry : rig.setupNamesGrouped())
+        {
+            if (!ALCineLightRig::isSetupDecorationName(entry.mName) &&
+                entry.mName != current)
+            {
+                pool.push_back(entry.mName);
+            }
+        }
+        if (!pool.empty())
+        {
+            static std::mt19937 rng(std::random_device{}());
+            std::uniform_int_distribution<size_t> dist(0, pool.size() - 1);
+            // Cross-fades automatically: loadSetup preserves the transition
+            // target so the next tick eases to this setup.
+            rig.loadSetup(pool[dist(rng)]);
+        }
+        // Re-arm even when nothing was eligible so we retry next interval
+        // instead of reloading the already-active setup.
+        mRandomCycleNextTime = presentation_time + interval;
+    }
+
+    mRandomCycleLastTime = presentation_time;
 }
 
 void ALCineLightRigManager::applyShadowSuppression()

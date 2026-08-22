@@ -1789,6 +1789,226 @@
                 <real>0.15</real>
             </array>
         </map>
+        <key>RenderGradNDEnabled</key>
+        <map>
+            <key>Comment</key>
+            <string>Master switch for the native Graduated ND filter (a pre-tonemap exposure wedge applied in linear HDR). Off = bit-identical no-op.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>Boolean</string>
+            <key>Value</key>
+            <integer>0</integer>
+        </map>
+        <key>RenderGradNDPreset</key>
+        <map>
+            <key>Comment</key>
+            <string>Graduated ND preset. 0 Custom (use sliders); 1 Sky Hold Light; 2 Sky Hold Strong; 3 Harsh Noon; 4 Golden Hour; 5 Optical Grad (no sky mask); 6 Low/Reflection Hold. A preset overrides the sliders below.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>U32</string>
+            <key>Value</key>
+            <integer>1</integer>
+        </map>
+        <key>RenderGradNDDensity</key>
+        <map>
+            <key>Comment</key>
+            <string>Custom mode: ND strength in photographic stops (each stop halves the light). 0 disables. Range 0 to 6.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>1.5</real>
+        </map>
+        <key>RenderGradNDAngle</key>
+        <map>
+            <key>Comment</key>
+            <string>Custom mode: tilt of the ND line in degrees, to match a sloped horizon. Range -45 to 45.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.0</real>
+        </map>
+        <key>RenderGradNDPosition</key>
+        <map>
+            <key>Comment</key>
+            <string>Custom mode: vertical position of the ND transition line, 0 (bottom) to 1 (top). 0.5 puts the horizon at mid-frame.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.5</real>
+        </map>
+        <key>RenderGradNDSoftness</key>
+        <map>
+            <key>Comment</key>
+            <string>Custom mode: width of the soft transition (hard grad to soft grad). Range 0.01 to 1.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.35</real>
+        </map>
+        <key>RenderGradNDSkyConfine</key>
+        <map>
+            <key>Comment</key>
+            <string>Custom mode: restrict darkening to sky (far plane) so foreground rising into the band is spared. 0 = pure optical grad; 1 = sky only.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>1.0</real>
+        </map>
+        <key>RenderGradNDSunWeight</key>
+        <map>
+            <key>Comment</key>
+            <string>Custom mode: extra density added toward the sun to hold the hottest sky. 0 = uniform. Range 0 to 2.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.4</real>
+        </map>
+        <key>RenderGradNDSunRadius</key>
+        <map>
+            <key>Comment</key>
+            <string>Custom mode: screen-space radius over which the sun-weight boost falls off. Range 0.1 to 2.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.6</real>
+        </map>
+        <key>RenderGradNDFlip</key>
+        <map>
+            <key>Comment</key>
+            <string>Custom mode: darken the bottom of the frame instead of the top (e.g. to hold a bright foreground or water).</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>Boolean</string>
+            <key>Value</key>
+            <integer>0</integer>
+        </map>
+        <key>RenderPolarizerEnabled</key>
+        <map>
+            <key>Comment</key>
+            <string>Master switch for the native Polarizer (a pre-tonemap on-lens filter: glare cut + sky deepen, in linear HDR). Off = bit-identical no-op.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>Boolean</string>
+            <key>Value</key>
+            <integer>0</integer>
+        </map>
+        <key>RenderPolarizerPreset</key>
+        <map>
+            <key>Comment</key>
+            <string>Polarizer preset. 0 Custom (use sliders); 1 Deep Blue Sky; 2 Glare Killer (water/glass); 3 Landscape (sky + glare); 4 Subtle. A preset overrides the sliders below.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>U32</string>
+            <key>Value</key>
+            <integer>3</integer>
+        </map>
+        <key>RenderPolarizerStrength</key>
+        <map>
+            <key>Comment</key>
+            <string>Custom mode: overall polarizer intensity. 0 disables. Range 0 to 1.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.7</real>
+        </map>
+        <key>RenderPolarizerSkySaturation</key>
+        <map>
+            <key>Comment</key>
+            <string>Custom mode: saturation boost applied to sky pixels (deepen blue). 1 = none. Range 1 to 2.5.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>1.4</real>
+        </map>
+        <key>RenderPolarizerSkyDarken</key>
+        <map>
+            <key>Comment</key>
+            <string>Custom mode: darken the sky by this many stops. Range 0 to 1.5.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.3</real>
+        </map>
+        <key>RenderPolarizerAutoBand</key>
+        <map>
+            <key>Comment</key>
+            <string>Custom mode: ease the sky effect off toward the sun (screen-space proxy for the 90-degrees-from-sun polarized band).</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>Boolean</string>
+            <key>Value</key>
+            <integer>1</integer>
+        </map>
+        <key>RenderPolarizerBandRadius</key>
+        <map>
+            <key>Comment</key>
+            <string>Custom mode: screen-space radius of the eased sky band around the sun. Range 0.1 to 1.5.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.5</real>
+        </map>
+        <key>RenderPolarizerGlareStrength</key>
+        <map>
+            <key>Comment</key>
+            <string>Custom mode: specular glare knockdown in stops (bright + low-chroma + mid-depth surfaces, e.g. water/glass). 0 = off. Range 0 to 4.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>2.0</real>
+        </map>
+        <key>RenderPolarizerGlareThreshold</key>
+        <map>
+            <key>Comment</key>
+            <string>Custom mode: HDR luminance above which a pixel counts as glare. Higher = only true specular (spares bright diffuse whites like clothing/skin/snow); lower = catches dimmer highlights. Range 0.5 to 8.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>3.0</real>
+        </map>
+        <key>RenderPolarizerGlareMaxDepth</key>
+        <map>
+            <key>Comment</key>
+            <string>Custom mode: glare cut only applies nearer than this depth (spares the sky/far plane). Range 0.5 to 1.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.98</real>
+        </map>
         <key>RenderChromaticAberrationStrength</key>
         <map>
             <key>Comment</key>

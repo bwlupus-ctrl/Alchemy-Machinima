@@ -424,6 +424,80 @@ LLUUID path_key(const LLUUID& actor_id)
     }
     return actor_id;
 }
+
+// Shared easing curve for gaze preset transitions (DirectorGazeEasing).
+// 0 Linear, 1 Smoothstep, 2 Ease-In-Out (cubic), 3 Ease-Out (cubic).
+// t is the normalized 0..1 transition progress; returns the eased fraction.
+F32 gazeTransitionEase(U32 mode, F32 t)
+{
+    if (!std::isfinite(t))
+    {
+        // Non-finite progress (e.g. a poisoned duration setting) must never
+        // NaN-poison the blended params: treat the transition as completed.
+        return 1.f;
+    }
+    t = llclamp(t, 0.f, 1.f);
+    switch (mode)
+    {
+        case 1:  // smoothstep
+            return t * t * (3.f - 2.f * t);
+        case 2:  // ease-in-out cubic
+            if (t < 0.5f)
+            {
+                return 4.f * t * t * t;
+            }
+            else
+            {
+                const F32 u = -2.f * t + 2.f;
+                return 1.f - (u * u * u) * 0.5f;
+            }
+        case 3:  // ease-out cubic
+        {
+            const F32 u = 1.f - t;
+            return 1.f - u * u * u;
+        }
+        default: // 0: linear
+            return t;
+    }
+}
+
+// Full-config equality for GazeTarget (every authored field, raw sentinels
+// included). Used by the transition guard in setGazeTargetConfig() to tell a
+// re-snap of the identical config (the cast mirror forwarding our own blended
+// write) from a genuinely new authoring that must cancel a running blend.
+// Exact float compares are intended: both sides are copies of the same struct.
+bool sameGazeTargetConfigFields(const LLActorMover::GazeTarget& a,
+                                const LLActorMover::GazeTarget& b)
+{
+    return a.mMode == b.mMode &&
+           a.mCastRef == b.mCastRef &&
+           a.mFixedPoint == b.mFixedPoint &&
+           a.mObjectRef == b.mObjectRef &&
+           a.mPersonaDominance == b.mPersonaDominance &&
+           a.mPersonaAffection == b.mPersonaAffection &&
+           a.mPersonaAnxiety == b.mPersonaAnxiety &&
+           a.mPersonaOverride == b.mPersonaOverride &&
+           a.mHeadEyeBlendOverride == b.mHeadEyeBlendOverride &&
+           a.mTorsoAmountOverride == b.mTorsoAmountOverride &&
+           a.mIntensityOverride == b.mIntensityOverride &&
+           a.mSmoothingOverride == b.mSmoothingOverride &&
+           a.mEyelineOverride == b.mEyelineOverride &&
+           a.mEyelineYawDegOverride == b.mEyelineYawDegOverride &&
+           a.mEyelinePitchDegOverride == b.mEyelinePitchDegOverride &&
+           a.mMicroLifeOverride == b.mMicroLifeOverride &&
+           a.mBlinksOverride == b.mBlinksOverride &&
+           a.mVariationOverride == b.mVariationOverride &&
+           a.mBreakFrequencyOverride == b.mBreakFrequencyOverride &&
+           a.mEaseAcquireOverride == b.mEaseAcquireOverride &&
+           a.mEaseReleaseOverride == b.mEaseReleaseOverride &&
+           a.mDeadZoneDegOverride == b.mDeadZoneDegOverride &&
+           a.mBlinkRateScale == b.mBlinkRateScale &&
+           a.mVergenceScale == b.mVergenceScale &&
+           a.mCameraRollOverride == b.mCameraRollOverride &&
+           a.mExaggerateOverride == b.mExaggerateOverride &&
+           a.mGazePriorityOverride == b.mGazePriorityOverride &&
+           a.mCameraModeOverride == b.mCameraModeOverride;
+}
 } // anonymous namespace
 
 LLActorMover::Path& LLActorMover::editPath(const LLUUID& actor_id)
@@ -857,6 +931,325 @@ void LLActorMover::setGazeTargetConfig(const LLUUID& actor_id, const GazeTarget&
         g.mEyelinePitchDeg = llclamp(
             target.mEyelinePitchDegOverride, -10.f, 10.f);
     }
+    // Preset-transition guard: a running blend owns the continuous runtime
+    // params. Re-authoring the IDENTICAL config (the cast mirror forwards the
+    // same struct right after setGazeTargetConfigBlended() installs the
+    // transition) must not flash the endpoint, so re-assert this frame's
+    // blended values. A genuinely different config wins instead: cancel the
+    // blend and accept the snap above (legacy behavior). Inactive transitions
+    // skip this entirely -- the default path stays byte-identical.
+    if (g.mParamTransition.mActive)
+    {
+        if (sameGazeTargetConfigFields(g.mParamTransition.mAuthored, target))
+        {
+            const Gaze::ParamTransition& x = g.mParamTransition;
+            const F32 t = x.mDuration > 0.f
+                ? gazeTransitionEase(x.mEasing, x.mElapsed / x.mDuration)
+                : 1.f;
+            F32 blended[Gaze::ParamTransition::P_COUNT];
+            for (S32 i = 0; i < Gaze::ParamTransition::P_COUNT; ++i)
+            {
+                blended[i] = x.mFrom[i] + (x.mTo[i] - x.mFrom[i]) * t;
+            }
+            writeGazeBlendValues(g, blended);
+        }
+        else
+        {
+            g.mParamTransition.mActive = false;
+        }
+    }
+}
+
+// static
+void LLActorMover::resolveGazeBlendValues(
+    const Gaze& g, F32 out[Gaze::ParamTransition::P_COUNT])
+{
+    // Global fallbacks: identical names/defaults to the LLCachedControls the
+    // consumers use (applyGaze advance block + gazePaint + the panel's
+    // refreshControls override-or-global presentation).
+    static LLCachedControl<F32> gaze_microlife(
+        gSavedSettings, "DirectorGazeMicroLife", 0.4f);
+    static LLCachedControl<F32> gaze_variation(
+        gSavedSettings, "DirectorGazeVariation", 0.3f);
+    static LLCachedControl<F32> gaze_break_freq(
+        gSavedSettings, "DirectorGazeBreakFrequency", 0.3f);
+    static LLCachedControl<F32> gaze_ease_acquire(
+        gSavedSettings, "DirectorGazeEaseAcquireSec", 0.25f);
+    static LLCachedControl<F32> gaze_ease_release(
+        gSavedSettings, "DirectorGazeEaseReleaseSec", 0.60f);
+    static LLCachedControl<F32> dead_zone_deg(
+        gSavedSettings, "BDMergeGazeDeadZone", 3.f);
+    static LLCachedControl<F32> gaze_camera_roll(
+        gSavedSettings, "DirectorGazeCameraRoll", 0.f);
+    static LLCachedControl<F32> gaze_exaggerate(
+        gSavedSettings, "DirectorGazeExaggerate", 1.f);
+    using X = Gaze::ParamTransition;
+    // Direct authored values (no sentinel form exists).
+    out[X::P_DOMINANCE]  = g.mPersonaDominance;
+    out[X::P_AFFECTION]  = g.mPersonaAffection;
+    out[X::P_ANXIETY]    = g.mPersonaAnxiety;
+    out[X::P_BLINK_RATE] = g.mBlinkRateScale;
+    out[X::P_VERGENCE]   = g.mVergenceScale;
+    // Resolved runtime copies: these are what gazePaint() consumes, updated
+    // by setGazeTargetConfig() only when an override is authored, so they ARE
+    // the current effective values.
+    out[X::P_HEAD_EYE]      = g.mHeadEyeBlend;
+    out[X::P_TORSO]         = g.mTorsoAmount;
+    out[X::P_INTENSITY]     = g.mIntensity;
+    out[X::P_SMOOTHING]     = g.mSmoothing;
+    out[X::P_EYELINE_YAW]   = g.mEyelineYawDeg;
+    out[X::P_EYELINE_PITCH] = g.mEyelinePitchDeg;
+    // Override-or-global fields: resolve exactly like the consumers do
+    // (override >= 0 wins, else the matching global control). The llmax(.,0)
+    // keeps every endpoint in the >=0 value domain: these fields are stored
+    // as CONCRETE override values while a blend runs, and their consumers
+    // treat a negative value as the INHERIT sentinel -- a negative global
+    // (debug-set) must therefore never leak into an endpoint, or the lerp
+    // would flip to "inherit" mid-blend when it crosses zero.
+    out[X::P_MICRO_LIFE] = llmax(g.mMicroLifeOverride >= 0.f
+        ? g.mMicroLifeOverride : (F32)gaze_microlife, 0.f);
+    out[X::P_VARIATION] = llmax(g.mVariationOverride >= 0.f
+        ? g.mVariationOverride : (F32)gaze_variation, 0.f);
+    out[X::P_BREAK_FREQ] = llmax(g.mBreakFrequencyOverride >= 0.f
+        ? g.mBreakFrequencyOverride : (F32)gaze_break_freq, 0.f);
+    out[X::P_EASE_ACQ] = llmax(g.mEaseAcquireOverride >= 0.f
+        ? g.mEaseAcquireOverride : (F32)gaze_ease_acquire, 0.f);
+    out[X::P_EASE_REL] = llmax(g.mEaseReleaseOverride >= 0.f
+        ? g.mEaseReleaseOverride : (F32)gaze_ease_release, 0.f);
+    out[X::P_DEAD_ZONE] = llmax(g.mDeadZoneDegOverride >= 0.f
+        ? g.mDeadZoneDegOverride : (F32)dead_zone_deg, 0.f);
+    out[X::P_CAMERA_ROLL] = llmax(g.mCameraRollOverride >= 0.f
+        ? g.mCameraRollOverride : (F32)gaze_camera_roll, 0.f);
+    out[X::P_EXAGGERATE] = llmax(g.mExaggerateOverride >= 0.f
+        ? g.mExaggerateOverride : (F32)gaze_exaggerate, 0.f);
+}
+
+// static
+void LLActorMover::writeGazeBlendValues(
+    Gaze& g, const F32 v[Gaze::ParamTransition::P_COUNT])
+{
+    using X = Gaze::ParamTransition;
+    // Same clamps as setGazeTargetConfig() so a blended frame can never write
+    // a value the snap path could not.
+    g.mPersonaDominance = llclamp(v[X::P_DOMINANCE], -1.f, 1.f);
+    g.mPersonaAffection = llclamp(v[X::P_AFFECTION], -1.f, 1.f);
+    g.mPersonaAnxiety   = llclamp(v[X::P_ANXIETY], -1.f, 1.f);
+    g.mBlinkRateScale   = llmax(v[X::P_BLINK_RATE], 0.f);
+    g.mVergenceScale    = llclamp(v[X::P_VERGENCE], -1.f, 1.f);
+    // Resolved runtime copies consumed by gazePaint().
+    g.mHeadEyeBlend    = llclamp(v[X::P_HEAD_EYE], 0.f, 1.f);
+    g.mTorsoAmount     = llclamp(v[X::P_TORSO], 0.f, 1.f);
+    g.mIntensity       = llclamp(v[X::P_INTENSITY], 0.f, 1.f);
+    g.mSmoothing       = llclamp(v[X::P_SMOOTHING], 0.f, 1.f);
+    g.mEyelineYawDeg   = llclamp(v[X::P_EYELINE_YAW], -15.f, 15.f);
+    g.mEyelinePitchDeg = llclamp(v[X::P_EYELINE_PITCH], -10.f, 10.f);
+    // Override-consumed fields: hold CONCRETE blended values while the
+    // transition runs (the consumers clamp on read); completion restores the
+    // authored raw sentinels via finishGazeParamTransition().
+    g.mMicroLifeOverride      = v[X::P_MICRO_LIFE];
+    g.mVariationOverride      = v[X::P_VARIATION];
+    g.mBreakFrequencyOverride = v[X::P_BREAK_FREQ];
+    g.mEaseAcquireOverride    = v[X::P_EASE_ACQ];
+    g.mEaseReleaseOverride    = v[X::P_EASE_REL];
+    g.mDeadZoneDegOverride    = v[X::P_DEAD_ZONE];
+    g.mCameraRollOverride     = v[X::P_CAMERA_ROLL];
+    g.mExaggerateOverride     = v[X::P_EXAGGERATE];
+}
+
+// static
+void LLActorMover::finishGazeParamTransition(Gaze& g)
+{
+    Gaze::ParamTransition& x = g.mParamTransition;
+    // Land direct + resolved fields on the TO endpoint...
+    writeGazeBlendValues(g, x.mTo);
+    // ...then restore the authored RAW override values (sentinels included)
+    // so the settled state is byte-identical to a legacy snap and future
+    // global-control edits flow through -1/inherit fields again.
+    const GazeTarget& a = x.mAuthored;
+    g.mMicroLifeOverride      = a.mMicroLifeOverride;
+    g.mVariationOverride      = a.mVariationOverride;
+    g.mBreakFrequencyOverride = a.mBreakFrequencyOverride;
+    g.mEaseAcquireOverride    = a.mEaseAcquireOverride;
+    g.mEaseReleaseOverride    = a.mEaseReleaseOverride;
+    g.mDeadZoneDegOverride    = a.mDeadZoneDegOverride;
+    g.mCameraRollOverride     = a.mCameraRollOverride;
+    g.mExaggerateOverride     = a.mExaggerateOverride;
+    x.mActive = false;
+}
+
+void LLActorMover::stepGazeParamTransition(Gaze& g, F32 dt)
+{
+    Gaze::ParamTransition& x = g.mParamTransition;
+    x.mElapsed += dt;            // presentation dt: scrub/timescale-safe
+    // Finish on: expired, zero/negative duration, or ANY non-finite state
+    // (NaN duration/elapsed make both orderings false, so test the inverse --
+    // a NaN must land the transition instantly, never run it forever).
+    if (!std::isfinite(x.mDuration) || x.mDuration <= 0.f ||
+        !(x.mElapsed < x.mDuration))
+    {
+        finishGazeParamTransition(g);
+        return;
+    }
+    const F32 t = gazeTransitionEase(x.mEasing, x.mElapsed / x.mDuration);
+    F32 blended[Gaze::ParamTransition::P_COUNT];
+    for (S32 i = 0; i < Gaze::ParamTransition::P_COUNT; ++i)
+    {
+        blended[i] = x.mFrom[i] + (x.mTo[i] - x.mFrom[i]) * t;
+    }
+    writeGazeBlendValues(g, blended);
+}
+
+void LLActorMover::advanceGazeParamTransition(Gaze& g)
+{
+    Gaze::ParamTransition& x = g.mParamTransition;
+    if (!x.mActive)
+    {
+        return;                 // default: pure no-op, byte-identical
+    }
+    // Once per frame across BOTH callers (applyGaze / applyDirectorLookAt):
+    // the transition keeps its OWN frame guard so it never suppresses -- and
+    // is never suppressed by -- the envelope advance guard (Gaze::mLastFrame).
+    const U32 frame = LLFrameTimer::getFrameCount();
+    if (x.mLastFrame == frame)
+    {
+        return;
+    }
+    x.mLastFrame = frame;
+    // Same presentation-clock dt (and 0.25s hitch cap) as the envelope
+    // advance in applyGaze(): scrub/timescale-safe, 0x holds the blend.
+    F32 dt;
+    if (LLPresentationTime::drives(LLTemporalFeature::ANIMATION))
+    {
+        dt = llclamp(LLPresentationTime::presentationDelta(), 0.f, 0.25f);
+    }
+    else
+    {
+        dt = llclamp(gFrameIntervalSeconds.value(), 0.f, 0.25f);
+    }
+    stepGazeParamTransition(g, dt);
+}
+
+// static
+void LLActorMover::overlayGazeTransition(const Gaze& g, GazeTarget& target)
+{
+    // Continuous fields only; discrete fields always come from the authored
+    // target. During an active blend the runtime Gaze holds concrete blended
+    // values (writeGazeBlendValues), so this is a straight copy of the
+    // current blend frame into the target the Director path resolves from.
+    // Fields the authored target INHERITS (-1) are deliberately left alone:
+    // they keep resolving through the Director path's own base fallbacks
+    // (DirectorLookAtCamera* / globals) and never move.
+    target.mPersonaDominance = g.mPersonaDominance;
+    target.mPersonaAffection = g.mPersonaAffection;
+    target.mPersonaAnxiety   = g.mPersonaAnxiety;
+    target.mBlinkRateScale   = g.mBlinkRateScale;
+    target.mVergenceScale    = g.mVergenceScale;
+    if (target.mHeadEyeBlendOverride >= 0.f)
+    {
+        target.mHeadEyeBlendOverride = g.mHeadEyeBlend;
+    }
+    if (target.mTorsoAmountOverride >= 0.f)
+    {
+        target.mTorsoAmountOverride = g.mTorsoAmount;
+    }
+    if (target.mIntensityOverride >= 0.f)
+    {
+        target.mIntensityOverride = g.mIntensity;
+    }
+    if (target.mSmoothingOverride >= 0.f)
+    {
+        target.mSmoothingOverride = g.mSmoothing;
+    }
+    if (target.mEyelineOverride)
+    {
+        target.mEyelineYawDegOverride = g.mEyelineYawDeg;
+        target.mEyelinePitchDegOverride = g.mEyelinePitchDeg;
+    }
+    if (target.mMicroLifeOverride >= 0.f)
+    {
+        target.mMicroLifeOverride = g.mMicroLifeOverride;
+    }
+    if (target.mVariationOverride >= 0.f)
+    {
+        target.mVariationOverride = g.mVariationOverride;
+    }
+    if (target.mBreakFrequencyOverride >= 0.f)
+    {
+        target.mBreakFrequencyOverride = g.mBreakFrequencyOverride;
+    }
+    if (target.mEaseAcquireOverride >= 0.f)
+    {
+        target.mEaseAcquireOverride = g.mEaseAcquireOverride;
+    }
+    if (target.mEaseReleaseOverride >= 0.f)
+    {
+        target.mEaseReleaseOverride = g.mEaseReleaseOverride;
+    }
+    if (target.mDeadZoneDegOverride >= 0.f)
+    {
+        target.mDeadZoneDegOverride = g.mDeadZoneDegOverride;
+    }
+    if (target.mCameraRollOverride >= 0.f)
+    {
+        target.mCameraRollOverride = g.mCameraRollOverride;
+    }
+    if (target.mExaggerateOverride >= 0.f)
+    {
+        target.mExaggerateOverride = g.mExaggerateOverride;
+    }
+}
+
+void LLActorMover::setGazeTargetConfigBlended(const LLUUID& actor_id, const GazeTarget& target)
+{
+    static LLCachedControl<F32> transition_sec(
+        gSavedSettings, "DirectorGazeTransitionSec", 1.5f);
+    static LLCachedControl<U32> transition_easing(
+        gSavedSettings, "DirectorGazeEasing", 2);
+    const F32 duration = (F32)transition_sec;
+    if (!std::isfinite(duration) || duration <= 0.f)
+    {
+        // Legacy instant snap, byte-identical (a non-finite duration setting
+        // is treated as 0). Hard-cancel any transition still in flight FIRST:
+        // otherwise the identical-config guard in setGazeTargetConfig() would
+        // recognize a re-select of the same preset and keep the partial blend
+        // alive instead of snapping.
+        auto it = mGazes.find(path_key(actor_id));
+        if (it != mGazes.end())
+        {
+            it->second.mParamTransition.mActive = false;
+        }
+        setGazeTargetConfig(actor_id, target);
+        return;
+    }
+    Gaze& g = mGazes[path_key(actor_id)];
+    // FROM endpoint: the actor's CURRENT effective values, captured BEFORE the
+    // snap below. A blend already in flight contributes its current blended
+    // values here, so re-committing mid-transition chains smoothly.
+    F32 from[Gaze::ParamTransition::P_COUNT];
+    resolveGazeBlendValues(g, from);
+    // Drop any running transition so this authoring snap passes the guard in
+    // setGazeTargetConfig() untouched.
+    g.mParamTransition.mActive = false;
+    // Snap: DISCRETE fields (mode, refs, blinks, eyeline flag, priority,
+    // camera mode) apply immediately and permanently; the continuous raw
+    // values land too and are rewound to the FROM endpoint just below.
+    setGazeTargetConfig(actor_id, target);
+    // TO endpoint: the post-snap effective values (preset overrides where
+    // authored, current/global values where the preset inherits).
+    Gaze::ParamTransition& x = g.mParamTransition;
+    resolveGazeBlendValues(g, x.mTo);
+    for (S32 i = 0; i < Gaze::ParamTransition::P_COUNT; ++i)
+    {
+        x.mFrom[i] = from[i];
+    }
+    x.mAuthored = target;
+    x.mElapsed = 0.f;
+    x.mDuration = duration;
+    x.mEasing = llmin((U32)transition_easing, 3u);
+    x.mActive = true;
+    // First visible frame shows the FROM endpoint (no snap flash); the
+    // once-per-frame advance in applyGaze() eases forward from here.
+    writeGazeBlendValues(g, x.mFrom);
 }
 
 LLActorMover::GazeTarget LLActorMover::getGazeTargetConfig(const LLUUID& actor_id) const
@@ -865,6 +1258,14 @@ LLActorMover::GazeTarget LLActorMover::getGazeTargetConfig(const LLUUID& actor_i
     auto it = mGazes.find(path_key(actor_id));
     if (it != mGazes.end())
     {
+        if (it->second.mParamTransition.mActive)
+        {
+            // Mid-blend the runtime override fields hold transient CONCRETE
+            // blended values, not authored sentinels. Report the authored
+            // target the transition is landing on instead, so a caller never
+            // persists or re-authors a half-blended frame.
+            return it->second.mParamTransition.mAuthored;
+        }
         target.mMode = static_cast<GazeTarget::EMode>(it->second.mTarget);
         target.mCastRef = it->second.mCastTarget;
         target.mFixedPoint = it->second.mPoint;
@@ -3344,6 +3745,14 @@ void LLActorMover::applyGaze(LLVOAvatar* av)
         {
             dt = llclamp(gFrameIntervalSeconds.value(), 0.f, 0.25f);
         }
+        // Preset transition: ease every continuous gaze param between its
+        // resolved endpoints on the presentation clock (scrub-safe) BEFORE
+        // this frame's persona/ease/envelope reads consume them, so a blend
+        // keeps running even with the gaze panel closed. The shared helper
+        // owns its own once-per-frame guard (applyDirectorLookAt also calls
+        // it, since Director-driven actors skip applyGaze entirely).
+        // Inactive by default: the legacy path below is byte-identical.
+        advanceGazeParamTransition(g);
         static LLCachedControl<F32> gaze_ease_acquire(
             gSavedSettings, "DirectorGazeEaseAcquireSec", 0.25f);
         static LLCachedControl<F32> gaze_ease_release(
@@ -3900,6 +4309,18 @@ bool LLActorMover::applyDirectorLookAt(LLVOAvatar* av)
     }
     Gaze& gaze = runtime.mGaze;
 
+    // Preset transition (DirectorGazeTransitionSec): this Director path is
+    // taken INSTEAD of applyGaze() for camera-facing cast actors, so the
+    // per-actor blend must tick here too or a preset change would snap and
+    // the transition would never advance. The helper's own once-per-frame
+    // guard makes this safe alongside applyGaze() (whichever runs first in a
+    // frame wins); inactive transitions make this a pure no-op.
+    auto transition_it = mGazes.find(av->getID());
+    if (transition_it != mGazes.end())
+    {
+        advanceGazeParamTransition(transition_it->second);
+    }
+
     LLActorMover::GazeTarget configured_target = runtime.mLastTarget;
     const F64 presentation_time =
         LLPresentationTime::currentFrame().presentation_time;
@@ -3959,6 +4380,17 @@ bool LLActorMover::applyDirectorLookAt(LLVOAvatar* av)
             runtime.mCueBodyWeight = 1.f;
             runtime.mCueLidWiden = 0.f;
             runtime.mCueHeadRecoilPitch = 0.f;
+        }
+        // A running preset transition owns the continuous fields the authored
+        // target sets: consume the current blended concrete values instead of
+        // the authored endpoint, so Director-driven actors ease preset
+        // changes exactly like the applyGaze() path. Cue overrides keep full
+        // ownership of the aim (the transition still advanced above, so it
+        // lands on schedule underneath the cue).
+        if (!cue_override && transition_it != mGazes.end() &&
+            transition_it->second.mParamTransition.mActive)
+        {
+            overlayGazeTransition(transition_it->second, configured_target);
         }
         gaze.mTarget = llclamp(
             static_cast<S32>(configured_target.mMode),

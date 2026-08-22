@@ -394,6 +394,16 @@ public:
     void        setGazeObjectTarget(const LLUUID& actor_id, const LLUUID& object_id);
     LLUUID      getGazeObjectTarget(const LLUUID& actor_id) const;
     void        setGazeTargetConfig(const LLUUID& actor_id, const GazeTarget& target);
+    // Preset-transition entry point: applies @target like setGazeTargetConfig,
+    // but when DirectorGazeTransitionSec > 0 the CONTINUOUS params ease from
+    // the actor's current effective (sentinel-resolved) values to the target's
+    // effective values over that duration with the DirectorGazeEasing curve,
+    // driven per-frame in applyGaze() on the presentation clock (so a blend
+    // keeps running with the gaze panel closed and stays scrub-safe).
+    // DISCRETE fields (mode, target refs, blinks on/off, eyeline flag,
+    // priority, camera mode) switch immediately at transition start.
+    // Duration 0 falls through to the legacy instant snap, byte-identical.
+    void        setGazeTargetConfigBlended(const LLUUID& actor_id, const GazeTarget& target);
     GazeTarget  getGazeTargetConfig(const LLUUID& actor_id) const;
     void        setGazeHeadEyeBlend(const LLUUID& actor_id, F32 v);       // 0 eyes-only .. 1 full
     F32         getGazeHeadEyeBlend(const LLUUID& actor_id) const;
@@ -974,12 +984,82 @@ private:
         F32        mTorsoAimYaw   = 0.f;
         F32        mBehindEnv     = 1.f;    // smooth Release-policy weight
         U32        mLastFrame     = 0xFFFFFFFF;  // per-frame temporal-advance guard
+        // Preset transition runtime (DirectorGazeTransitionSec / Easing).
+        // Captures sentinel-RESOLVED endpoints for every continuous gaze
+        // param when a preset is applied through the blended entry point and
+        // eases between them on presentation dt in applyGaze(). Inactive by
+        // default so the legacy snap path stays byte-identical.
+        struct ParamTransition
+        {
+            // Continuous blended params, indices into mFrom/mTo. Discrete
+            // fields (mode, refs, blinks, eyeline flag, priority, camera
+            // mode) are never here -- they hard-switch at transition start.
+            enum EParam
+            {
+                P_DOMINANCE = 0, P_AFFECTION, P_ANXIETY,
+                P_HEAD_EYE, P_TORSO, P_INTENSITY, P_SMOOTHING,
+                P_EYELINE_YAW, P_EYELINE_PITCH,
+                P_MICRO_LIFE, P_VARIATION, P_BREAK_FREQ,
+                P_EASE_ACQ, P_EASE_REL, P_DEAD_ZONE,
+                P_BLINK_RATE, P_VERGENCE,
+                P_CAMERA_ROLL, P_EXAGGERATE,
+                P_COUNT
+            };
+            bool mActive   = false;
+            F32  mElapsed  = 0.f;
+            F32  mDuration = 0.f;
+            U32  mEasing   = 2;              // DirectorGazeEasing at start
+            // Once-per-frame advance guard OWN to the transition (distinct
+            // from Gaze::mLastFrame, which gates the envelope advance): both
+            // applyGaze() and the Director look-at path call the advance, and
+            // whichever runs first in a frame wins without double-stepping.
+            U32  mLastFrame = 0xFFFFFFFF;
+            F32  mFrom[P_COUNT] = {};        // resolved effective, pre-commit
+            F32  mTo[P_COUNT] = {};          // resolved effective, post-commit
+            // The authored target this transition eases toward, raw sentinels
+            // included: completion restores these override values exactly so
+            // the settled state is byte-identical to a legacy snap, and
+            // setGazeTargetConfig() uses it to recognize a re-snap of the
+            // identical config (the cast mirror forwarding our own write).
+            GazeTarget mAuthored;
+        };
+        ParamTransition mParamTransition;
         // Coordinated gaze motor state (spec 6A). Only touched on the
         // DirectorGazeMotionPrograms gate-on path; reset on release / runtime
         // replace so re-enabling re-initializes on the current target. The
         // legacy path never reads or writes it (gate-off stays byte-identical).
         ALGazeMotor::GazeMotorState mGazeMotor;
     };
+    // ---- Preset transition helpers (see Gaze::ParamTransition) --------------
+    // Resolve the CURRENT effective value of every continuous gaze param:
+    // direct fields as-is, resolved runtime copies (head/eye blend, torso,
+    // intensity, smoothing, eyeline) as-is, and override-or-global fields via
+    // the same override>=0 rule gazePaint() consumes them with. A -1/INHERIT
+    // sentinel is never used as a numeric endpoint.
+    static void resolveGazeBlendValues(const Gaze& g,
+                                       F32 out[Gaze::ParamTransition::P_COUNT]);
+    // Write one blended frame of continuous values into the runtime Gaze,
+    // with the same clamps setGazeTargetConfig() applies.
+    static void writeGazeBlendValues(Gaze& g,
+                                     const F32 v[Gaze::ParamTransition::P_COUNT]);
+    // Land the transition: TO endpoint plus the authored raw override values
+    // (sentinels restored) so the settled state matches a legacy snap exactly.
+    static void finishGazeParamTransition(Gaze& g);
+    // Raw advance: accumulate dt and ease/finish. Callers go through
+    // advanceGazeParamTransition(), which owns the once-per-frame guard.
+    void stepGazeParamTransition(Gaze& g, F32 dt);
+    // Once-per-frame transition advance shared by BOTH per-frame gaze paths
+    // (applyGaze and applyDirectorLookAt -- the Director path skips
+    // applyGaze entirely, so it must tick the blend itself). Computes the
+    // same presentation dt as the envelope advance; no-op when inactive or
+    // when the other path already advanced this frame.
+    void advanceGazeParamTransition(Gaze& g);
+    // Director-path consumption: replace the CONTINUOUS fields the authored
+    // @target sets with the current blended concrete values from @g, so a
+    // Director-driven actor eases a preset change exactly like the
+    // applyGaze() path instead of snapping. Inherited (-1) fields are left
+    // alone and keep resolving through the Director base fallbacks.
+    static void overlayGazeTransition(const Gaze& g, GazeTarget& target);
     struct DirectorJointPose
     {
         bool         mValid = false;

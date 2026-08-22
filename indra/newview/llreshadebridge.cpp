@@ -222,9 +222,20 @@ void LLReShadeBridge::gatherFrame()
         if (n > 2) fill_texture(f.normals,  def, 2);
         if (n > 3) fill_texture(f.emissive, def, 3);
 
-        if (scr.getNumTextures() > 0)
+        // On-lens decouple: when applyOnLensFilters captured a RAW pre-filter
+        // snapshot this frame (RenderReShadeDecoupleOnLens on + filters active),
+        // publish THAT as color_hdr so RTGI-style effects see the unfiltered
+        // scene — a lens filter must not change surface-to-surface bounce.
+        // Otherwise (filters off, decouple off, non-HDR path, or target not
+        // allocated) mReShadeRawSceneValid is false and we publish mRT->screen
+        // exactly as before, byte-identical to the legacy/coupled behavior.
+        LLRenderTarget& colorSrc = (gPipeline.mReShadeRawSceneValid &&
+                                    gPipeline.mReShadeSceneRaw.getWidth() > 0)
+                                       ? gPipeline.mReShadeSceneRaw
+                                       : scr;
+        if (colorSrc.getNumTextures() > 0)
         {
-            fill_texture(f.color_hdr, scr, 0);
+            fill_texture(f.color_hdr, colorSrc, 0);
         }
         // LLCachedControl, not getBOOL: gatherFrame() runs EVERY frame, and a
         // getBOOL is a string-keyed map lookup. Matches the hot-path convention

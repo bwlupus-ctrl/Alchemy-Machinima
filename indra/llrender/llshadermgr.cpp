@@ -1619,6 +1619,15 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("uLensFlareOcclusionTaps");
     mReservedUniforms.push_back("uLensFlareLightColor");
 
+    // Graduated ND (pre-tonemap exposure region)
+    mReservedUniforms.push_back("gradnd_params");
+    mReservedUniforms.push_back("gradnd_params2");
+    mReservedUniforms.push_back("gradnd_sun");
+
+    // Polarizer (pre-tonemap on-lens filter; shares gradnd_sun)
+    mReservedUniforms.push_back("polarizer_params");
+    mReservedUniforms.push_back("polarizer_params2");
+
     // Color Correction LUT
     mReservedUniforms.push_back("uColorGradeLut");
     mReservedUniforms.push_back("uColorGradeLutSize");

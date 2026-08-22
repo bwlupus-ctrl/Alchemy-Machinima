@@ -163,7 +163,10 @@ public:
     }
 
     void startFX(S32 fx_id, F64 presentation_time);
-    void stopFX();
+    // preserve_target keeps the transition target and current lit state so a
+    // following updateTransition eases (used by setup loads) instead of
+    // snapping. Default false performs the full FX/transition reset.
+    void stopFX(bool preserve_target = false);
     S32 activeFX() const { return mActiveFX; }
 
     void setShaftEnabled(S32 light, bool enabled);
@@ -178,6 +181,9 @@ public:
     bool loadSetup(const std::string& name);
     bool saveSetup(const std::string& name);
     bool deleteSetup(const std::string& name);
+    // Name of the most recently loaded setup (manual or random). Empty until
+    // the first successful loadSetup. Reflects the currently-lit named preset.
+    const std::string& loadedSetupName() const { return mLoadedSetupName; }
 
     // Lighting-console cue stack.  Lists contain full snapshots rather than
     // diffs, so playback is independent of later setup-preset edits.
@@ -323,6 +329,7 @@ private:
     F64 mTransitionStartTime = 0.0;
     bool mHaveTarget = false;
     bool mTransitionActive = false;
+    std::string mLoadedSetupName;
 
     ALCineLightRigModel::CueList mCueList;
     ALCineLightRigModel::CueState mCueTransitionStart;

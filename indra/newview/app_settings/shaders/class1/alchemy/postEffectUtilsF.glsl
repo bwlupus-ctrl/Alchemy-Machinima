@@ -4,9 +4,11 @@
  *        whose LLGLSLShader sets `mFeatures.hasPostEffects = true`
  *        (see llviewershadermgr.cpp).
  *
- * Two consumers currently link this file:
+ * Three consumers currently link this file:
  *   - colorCorrectF.glsl  — calls applyChromaticAberration and computeLensFlare
  *                           in LINEAR space, before tonemap/gamma/LUT.
+ *   - onLensFiltersF.glsl — calls applyGradND and applyPolarizer in LINEAR HDR,
+ *                           in a pre-pass ahead of bloom/flare generation.
  *   - blitWithEffectsF.glsl — calls applyVignette, applyCVDCompensation,
  *                           applyFilmGrain, applyDither, applyPreview in
  *                           DISPLAY space, after all grading.
@@ -16,6 +18,10 @@
  *   LINEAR SPACE (colorCorrectF)
  *     vec4 applyChromaticAberration(sampler2D tex, vec2 uv)
  *     vec3 computeLensFlare       (sampler2D diff, sampler2D depth, vec2 uv)
+ *
+ *   LINEAR HDR PRE-PASS (onLensFiltersF)
+ *     vec3 applyGradND            (vec3 color, vec2 uv, sampler2D depth)
+ *     vec3 applyPolarizer         (vec3 color, vec2 uv, sampler2D depth, float exposure_scale)
  *
  *   DISPLAY SPACE (blitWithEffectsF)
  *     vec3 applyVignette          (vec3 color, vec2 uv)
@@ -246,6 +252,175 @@ uniform int   uLensFlareStarburstSpikes;          // primary angular frequency �
                                                   //   lobes per full turn, so 4 here = 8 visible spikes
 uniform float uLensFlareStarburstSharpness;       // pow() exponent — higher = tighter spikes
 uniform float uLensFlareStarburstFalloff;         // radial decay rate from the sun
+
+// =============================================================================
+// Graduated ND  (pre-tonemap exposure region)
+// =============================================================================
+//
+// A neutral-density wedge applied in LINEAR HDR, before exposure roll-off and
+// the tonemapper. Because this runs on physically-linear scene radiance, one
+// "stop" of density is an exact halving of light (exp2(-stops)) — the honest
+// optical behaviour a post-tonemap ReShade pass can only approximate.
+//
+// The wedge is a tilted straight-line gradient (position + angle + softness +
+// flip). Two optional refinements make it "auto" like a DP angling a grad:
+//   - sky confine : multiply the mask by the far-plane sky gate so foreground
+//                   geometry rising into the darkened band is spared. Depth is
+//                   ground truth here (sky == hardware depth ~1.0), so no
+//                   colour/blueness heuristic is needed.
+//   - sun weight  : add density toward the CPU-projected sun UV to hold the
+//                   hottest sky, eased in only when the sun is actually on
+//                   screen (has_sun).
+//
+// Packed uniforms:
+//   gradnd_params  = (density_stops, angle_rad, position, softness)
+//   gradnd_params2 = (sky_confine [0..1], sun_weight, sun_radius, flip [0/1])
+//   gradnd_sun     = (sun_uv.x, sun_uv.y, has_sun [0/1], aspect)
+uniform vec4 gradnd_params;
+uniform vec4 gradnd_params2;
+uniform vec4 gradnd_sun;
+
+vec3 applyGradND(vec3 color, vec2 uv, sampler2D depth)
+{
+    float density = gradnd_params.x;
+    // Cheapest possible early-out — density 0 (feature off) returns the input
+    // untouched, bit-for-bit, before any texture fetch or transcendental.
+    if (density <= 0.0)
+        return color;
+
+    float angle    = gradnd_params.y;
+    float position = gradnd_params.z;
+    float softness = max(gradnd_params.w, 1e-3);
+
+    float sky_confine = clamp(gradnd_params2.x, 0.0, 1.0); // guard: mix() would invert the ND if >1
+    float sun_weight  = gradnd_params2.y;
+    float sun_radius  = max(gradnd_params2.z, 1e-3);
+    float flip        = gradnd_params2.w;
+
+    float aspect = max(gradnd_sun.w, 1e-3);
+
+    // --- Straight-line wedge (aspect-corrected so tilt reads at true angle) --
+    vec2 p = uv - vec2(0.5, position);
+    p.x *= aspect;
+    float axis = -p.x * sin(angle) + p.y * cos(angle);
+    // GL framebuffer UV is y-up (0 = bottom, 1 = top), so a positive axis is
+    // toward the top of frame. t must rise with axis so the unflipped wedge
+    // darkens the SKY (top); flip inverts it to hold a bright foreground.
+    float t = clamp(0.5 + (axis / softness) * 0.5, 0.0, 1.0);
+    t = smoothstep(0.0, 1.0, t);
+    if (flip > 0.5)
+        t = 1.0 - t;
+
+    // --- Sun weighting (screen-space proxy), gated on on-screen sun ----------
+    if (sun_weight > 0.0)
+    {
+        vec2 dv = uv - gradnd_sun.xy;
+        dv.x *= aspect;
+        float near_sun = clamp(1.0 - length(dv) / sun_radius, 0.0, 1.0);
+        near_sun *= gradnd_sun.z; // has_sun
+        t = clamp(t * (1.0 + near_sun * sun_weight), 0.0, 1.0);
+    }
+
+    // --- Confine to sky (far plane) — protects foreground rising into band ---
+    if (sky_confine > 0.0)
+    {
+        float d = texture(depth, uv).r;
+        // Tight far-plane band — only true sky (matches the lens-flare sky test).
+        // A looser threshold lets distant-but-solid geometry read as partial sky.
+        float sky = smoothstep(0.9999, 1.0, d);
+        t *= mix(1.0, sky, sky_confine);
+    }
+
+    // Linear ND: each stop halves the light. Exact because we are pre-tonemap.
+    return color * exp2(-density * t);
+}
+
+// =============================================================================
+// Polarizer  (pre-tonemap on-lens filter)
+// =============================================================================
+//
+// A circular-polarizer approximation, applied in LINEAR HDR alongside the grad
+// ND. Two independent jobs:
+//
+//   Glare cut  — the flagship reason to run early. A specular highlight is a
+//                huge linear value here; knocking it down BEFORE the tonemap
+//                lets the filmic curve roll the reduced value off naturally and
+//                recover texture inside the reflection. Post-tonemap the same
+//                cut only greys an already-clipped near-white pixel. Gated on
+//                bright + low-chroma + mid-depth so it targets reflections off
+//                water/glass and spares sky and the subject.
+//
+//   Sky deepen — darken (exposure-domain, so early is correct) plus a gentle
+//                saturation push, confined to the far-plane sky. An optional
+//                auto-band eases the effect off toward the sun (screen-space
+//                proxy for the real 90-degrees-from-sun polarized band).
+//
+// Shares the on-lens sun uniform (gradnd_sun = uv.xy, has_sun, aspect). Packed:
+//   polarizer_params  = (strength, sky_saturation, sky_darken_stops, band_radius)
+//   polarizer_params2 = (glare_stops, glare_threshold, glare_max_depth, auto_band)
+uniform vec4 polarizer_params;
+uniform vec4 polarizer_params2;
+
+// exposure_scale = the effective exposure (manual * auto) that the tonemapper
+// will apply downstream. The glare gate thresholds absolute luma, which does not
+// commute with exposure, so it evaluates luma*exposure_scale to stay calibrated
+// even though this filter runs before exposure is applied.
+vec3 applyPolarizer(vec3 color, vec2 uv, sampler2D depth, float exposure_scale)
+{
+    float strength = clamp(polarizer_params.x, 0.0, 1.0);
+    if (strength <= 0.0)
+        return color; // off — untouched, before any fetch
+
+    float sky_sat     = polarizer_params.y;
+    float sky_darken  = polarizer_params.z;
+    float band_radius = max(polarizer_params.w, 1e-3);
+
+    float glare_stops = polarizer_params2.x;
+    float glare_thr   = max(polarizer_params2.y, 1e-3);
+    float glare_depth = polarizer_params2.z;
+    float auto_band   = polarizer_params2.w;
+
+    float aspect = max(gradnd_sun.w, 1e-3);
+    float d = texture(depth, uv).r;
+
+    // --- Glare cut: bright, low-chroma, mid-depth specular knockdown ---------
+    if (glare_stops > 0.0)
+    {
+        float luma = dot(color, LUMA);
+        float maxc = max(color.r, max(color.g, color.b));
+        float minc = min(color.r, min(color.g, color.b));
+        float sat  = (maxc - minc) / max(maxc, 1e-4);
+
+        float glare = smoothstep(glare_thr, glare_thr * 2.0, luma * exposure_scale); // exposed HDR bright
+        glare *= clamp(1.0 - sat * 2.0, 0.0, 1.0);                  // low-chroma
+        glare *= clamp((glare_depth - d) / 0.02, 0.0, 1.0);        // spare sky/far
+        glare *= strength;
+
+        color *= exp2(-glare_stops * glare);
+    }
+
+    // --- Sky deepen: darken + gentle saturation, confined to sky -------------
+    float sky = smoothstep(0.9999, 1.0, d);
+    if (sky > 0.0)
+    {
+        float skyW = sky * strength;
+
+        if (auto_band > 0.5)
+        {
+            vec2 dv = uv - gradnd_sun.xy;
+            dv.x *= aspect;
+            float band = clamp(length(dv) / band_radius, 0.0, 1.0); // 0 at sun -> 1 away
+            skyW *= mix(1.0, band, gradnd_sun.z);                   // only when sun on-screen
+        }
+
+        vec3 deep = mix(vec3(dot(color, LUMA)), color, sky_sat); // saturation push
+        deep = max(deep, vec3(0.0)); // sat>1 extrapolates — clamp to avoid negative-channel hue shift
+        deep *= exp2(-sky_darken);                               // sky darken (stops)
+        color = mix(color, deep, skyW);
+    }
+
+    return color;
+}
 
 vec3 computeLensFlare(sampler2D diffuse, sampler2D depth, vec2 uv)
 {

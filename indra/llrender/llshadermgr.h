@@ -417,6 +417,20 @@ public:
         LENS_FLARE_OCCLUSION_TAPS,          //  "uLensFlareOcclusionTaps"
         LENS_FLARE_LIGHT_COLOR,             //  "uLensFlareLightColor"
 
+        // Graduated ND (pre-tonemap exposure region). Packed:
+        //   gradnd_params  = (density_stops, angle_rad, position, softness)
+        //   gradnd_params2 = (sky_confine, sun_weight, sun_radius, flip)
+        //   gradnd_sun     = (sun_uv.x, sun_uv.y, has_sun, aspect)
+        GRADND_PARAMS,                      //  "gradnd_params"
+        GRADND_PARAMS2,                     //  "gradnd_params2"
+        GRADND_SUN,                         //  "gradnd_sun"  (shared on-lens sun: uv.xy, has_sun, aspect)
+
+        // Polarizer (pre-tonemap on-lens filter; shares gradnd_sun). Packed:
+        //   polarizer_params  = (strength, sky_saturation, sky_darken_stops, band_radius)
+        //   polarizer_params2 = (glare_stops, glare_threshold, glare_max_depth, auto_band)
+        POLARIZER_PARAMS,                   //  "polarizer_params"
+        POLARIZER_PARAMS2,                  //  "polarizer_params2"
+
         // Color Correction LUT
         COLOR_GRADE_LUT,                    //  "uColorGradeLut"
         COLOR_GRADE_LUT_SIZE,               //  "uColorGradeLutSize"

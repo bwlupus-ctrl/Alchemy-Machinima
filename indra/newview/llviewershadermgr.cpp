@@ -31,8 +31,11 @@
 #include "llviewerprecompiledheaders.h"
 
 #include <boost/lexical_cast.hpp>
+#include <filesystem>
+#include <fstream>
 
 #include "hbxxh.h"
+#include "fsyspath.h"
 #include "llfeaturemanager.h"
 #include "llviewershadermgr.h"
 #include "llviewercontrol.h"
@@ -284,6 +287,7 @@ LLGLSLShader            gCGColorgradeGammaProgram;
 LLGLSLShader            gCGColorgradeLegacyGammaProgram;
 LLGLSLShader            gCGTonemapColorgradeProgram;
 LLGLSLShader            gCGTonemapColorgradeLegacyGammaProgram;
+LLGLSLShader            gOnLensFiltersProgram; // ND + polarizer pre-pass (pre-bloom)
 // [RLVa:KB] - @setsphere
 LLGLSLShader            gRlvSphereProgram;
 // [/RLVa:KB]
@@ -531,6 +535,7 @@ void LLViewerShaderMgr::finalizeShaderList()
     mShaderList.push_back(&gCGTonemapLegacyGammaProgram);
     mShaderList.push_back(&gCGTonemapColorgradeProgram);
     mShaderList.push_back(&gCGTonemapColorgradeLegacyGammaProgram);
+    mShaderList.push_back(&gOnLensFiltersProgram);
 
     // make sure there are no redundancies
     llassert(no_redundant_shaders(mShaderList));
@@ -605,6 +610,82 @@ void LLViewerShaderMgr::setShaders()
         {
             HBXXH128 hash_obj;
             hash_obj.update(LLVersionInfo::instance().getVersion());
+
+            // Fold a fingerprint of the on-disk shader SOURCE into the cache key
+            // so ANY shader edit invalidates the GL program-binary cache on next
+            // launch — automatically, independent of the viewer version/build
+            // number. Without this, a shader-only change (or two builds that share
+            // a version) leaves stale cached binaries that fail to link and crash
+            // the deferred pipeline. We hash each shader file's relative path plus
+            // its full CONTENTS (the tree is ~1.6 MB, hashed once per process) in
+            // SORTED path order: content hashing also catches edits that preserve
+            // size+mtime (reproducible builds, coarse-resolution filesystems), and
+            // sorting makes the key independent of the unspecified iterator order.
+            // On ANY scan error we fold in NOTHING and fall back to the exact
+            // version-only key (never a partial/unstable fingerprint).
+            try
+            {
+                namespace fs = std::filesystem;
+                // fsyspath: correct UTF-8 -> native path conversion on Windows.
+                fs::path shader_root = fsyspath(getShaderDirPrefix()).parent_path(); // .../shaders
+                std::error_code root_ec;
+                if (!shader_root.empty() && fs::exists(shader_root, root_ec) && !root_ec)
+                {
+                    bool scan_ok = true;
+                    std::vector<fs::path> files;
+                    std::error_code it_ec;
+                    // NOTE: default directory_options (NOT skip_permission_denied) so an
+                    // inaccessible subtree surfaces as it_ec and forces the version-only
+                    // fallback rather than silently folding a PARTIAL fingerprint (which
+                    // would let edits in the omitted files reuse stale binaries).
+                    for (fs::recursive_directory_iterator it(shader_root, it_ec), end;
+                         !it_ec && it != end;
+                         it.increment(it_ec))
+                    {
+                        if (it_ec) { scan_ok = false; break; }
+                        std::error_code f_ec;
+                        bool is_file = it->is_regular_file(f_ec);
+                        if (f_ec) { scan_ok = false; break; }
+                        if (is_file) files.push_back(it->path());
+                    }
+                    // An increment that both errors AND reaches end exits the loop
+                    // without the in-body check, and a failed constructor sets it_ec
+                    // too — catch both here so a partial scan never folds.
+                    if (it_ec) scan_ok = false;
+
+                    if (scan_ok)
+                    {
+                        std::sort(files.begin(), files.end()); // deterministic order
+                        // Separate accumulator: a mid-scan failure folds in nothing.
+                        HBXXH128 fp;
+                        for (const fs::path& p : files)
+                        {
+                            std::error_code r_ec;
+                            const std::string rel = fs::relative(p, shader_root, r_ec).generic_string();
+                            if (r_ec) { scan_ok = false; break; }
+                            std::ifstream fin(p, std::ios::binary);
+                            if (!fin.good()) { scan_ok = false; break; }
+                            fp.update(rel);
+                            fp.update(fin); // hash full file contents
+                            if (fin.bad()) { scan_ok = false; break; }
+                        }
+                        if (scan_ok)
+                        {
+                            hash_obj.update(fp.digest().asString());
+                        }
+                    }
+
+                    if (!scan_ok)
+                    {
+                        LL_WARNS("ShaderLoading") << "Shader source fingerprint incomplete; using version-only cache key" << LL_ENDL;
+                    }
+                }
+            }
+            catch (...)
+            {
+                LL_WARNS("ShaderLoading") << "Shader source fingerprint failed; using version-only cache key" << LL_ENDL;
+            }
+
             current_cache_version = hash_obj.digest();
 
             old_cache_version = LLUUID(gSavedSettings.getString("RenderShaderCacheVersion"));
@@ -4190,6 +4271,24 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         }
         gCGTonemapColorgradeLegacyGammaProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
         success = gCGTonemapColorgradeLegacyGammaProgram.createShader();
+        llassert(success);
+    }
+
+    // On-lens filters (Graduated ND + Polarizer) pre-pass. Runs on the linear
+    // HDR scene before bloom/flare. hasPostEffects attaches postEffectUtilsF,
+    // which defines applyGradND/applyPolarizer and the gradnd_*/polarizer_*
+    // uniforms this shader consumes.
+    if (success)
+    {
+        gOnLensFiltersProgram.mName = "On-Lens Filters Shader";
+        gOnLensFiltersProgram.mFeatures.isDeferred = true;
+        gOnLensFiltersProgram.mFeatures.hasPostEffects = true;
+        gOnLensFiltersProgram.mShaderFiles.clear();
+        gOnLensFiltersProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gOnLensFiltersProgram.mShaderFiles.push_back(make_pair("alchemy/onLensFiltersF.glsl", GL_FRAGMENT_SHADER));
+        gOnLensFiltersProgram.clearPermutations();
+        gOnLensFiltersProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gOnLensFiltersProgram.createShader();
         llassert(success);
     }
 

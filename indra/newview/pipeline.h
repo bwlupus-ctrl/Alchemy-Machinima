@@ -174,6 +174,9 @@ public:
     void generateLuminance(LLRenderTarget* src, LLRenderTarget* dst);
     void generateExposure(LLRenderTarget* src, LLRenderTarget* dst, bool use_history = true);
     void colorCorrect(LLRenderTarget* src, LLRenderTarget* dst, bool tonemap, bool colorgrade);
+    // On-lens filters (Graduated ND + Polarizer) applied to the linear HDR scene
+    // before bloom/flare generation, so those optics respect the filtered scene.
+    void applyOnLensFilters(LLRenderTarget* screen);
     void generateGlow(LLRenderTarget* src);
     void generateBloomHDR(LLRenderTarget* src);
     void compositeBloomHDR(LLRenderTarget* scene);
@@ -1237,6 +1240,18 @@ public:
 
     //water distortion texture (refraction)
     LLRenderTarget              mWaterDis;
+
+    // RAW (pre-on-lens-filter) HDR scene snapshot for the ReShade bridge.
+    // applyOnLensFilters blits mRT->screen here BEFORE the Graduated ND /
+    // Polarizer modify it (gated on RenderReShadeDecoupleOnLens), so RTGI-style
+    // effects see the unfiltered scene — a lens filter must not change
+    // surface-to-surface bounce. HDR-path-only (released in the non-HDR path).
+    // Public for the same reason as mVelocityMap: llreshadebridge.cpp reads it
+    // via gPipeline. mReShadeRawSceneValid is reset every renderFinalize and
+    // only set when a capture actually happened this frame; when false the
+    // bridge publishes mRT->screen exactly as before.
+    LLRenderTarget              mReShadeSceneRaw;
+    bool                        mReShadeRawSceneValid = false;
 
     static const U32 MAX_PREVIEW_WIDTH;
 

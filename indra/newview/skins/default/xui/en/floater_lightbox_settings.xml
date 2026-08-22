@@ -604,6 +604,151 @@
 				increment="0.1"
 				name="lpm_satb_spinner"
 				control_name="AlchemyToneMapAMDSaturationB" />
+				<!-- ================= Graduated ND (pre-tonemap) ================= -->
+				<view_border bevel_style="none" height="0" layout="topleft" left="0" name="gradnd_border" top_pad="10" width="500" />
+				<check_box
+					follows="left|top"
+					height="15"
+					left="10"
+					top_pad="8"
+					width="200"
+					layout="topleft"
+					label="Graduated ND (pre-tonemap)"
+					tool_tip="Native neutral-density gradient applied to linear HDR before the tonemapper — the physically-correct place to hold a blown-out sky. Off = no cost."
+					control_name="RenderGradNDEnabled" />
+				<text
+					enabled_control="RenderGradNDEnabled"
+					follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft"
+					tool_tip="A preset overrides the sliders below. Custom exposes everything."
+					value="Preset:" />
+				<combo_box
+					enabled_control="RenderGradNDEnabled"
+					allow_text_entry="false"
+					tool_tip="A preset overrides the sliders below. Custom exposes everything."
+					control_name="RenderGradNDPreset"
+					follows="left|top" height="16" layout="topleft" left_delta="100" right="-2"
+					max_chars="128" name="gradnd_preset_combo" top_delta="-2">
+					<combo_box.item label="Custom (use sliders)" name="gnd_custom" value="0" />
+					<combo_box.item label="Sky Hold - Light (1 stop)" name="gnd_light" value="1" />
+					<combo_box.item label="Sky Hold - Strong (2.5)" name="gnd_strong" value="2" />
+					<combo_box.item label="Harsh Noon (3 stops)" name="gnd_noon" value="3" />
+					<combo_box.item label="Golden Hour (sun-weighted)" name="gnd_golden" value="4" />
+					<combo_box.item label="Optical Grad (no sky mask)" name="gnd_optical" value="5" />
+					<combo_box.item label="Low / Reflection Hold" name="gnd_low" value="6" />
+				</combo_box>
+				<text enabled_control="RenderGradNDEnabled" follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft"
+					tool_tip="Custom: strength in stops. Each stop halves the light. 0 = off." value="Density:" />
+				<slider_bar enabled_control="RenderGradNDEnabled" top_pad="-18" height="20" increment="0.1" follows="left|top|right" layout="topleft"
+					max_val="6" min_val="0" left_delta="100" right="-55" name="gradnd_density_slider" control_name="RenderGradNDDensity" />
+				<spinner enabled_control="RenderGradNDEnabled" top_pad="-20" height="15" label_width="0" right="-1" decimal_digits="2" follows="top|right" layout="topleft"
+					max_val="6" min_val="0" width="55" increment="0.1" name="gradnd_density_spinner" control_name="RenderGradNDDensity" />
+				<text enabled_control="RenderGradNDEnabled" follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft"
+					tool_tip="Custom: 1 = darken sky only (spares foreground); 0 = pure optical grad across the whole frame." value="Sky Confine:" />
+				<slider_bar enabled_control="RenderGradNDEnabled" top_pad="-18" height="20" increment="0.05" follows="left|top|right" layout="topleft"
+					max_val="1" min_val="0" left_delta="100" right="-55" name="gradnd_confine_slider" control_name="RenderGradNDSkyConfine" />
+				<spinner enabled_control="RenderGradNDEnabled" top_pad="-20" height="15" label_width="0" right="-1" decimal_digits="2" follows="top|right" layout="topleft"
+					max_val="1" min_val="0" width="55" increment="0.05" name="gradnd_confine_spinner" control_name="RenderGradNDSkyConfine" />
+				<text enabled_control="RenderGradNDEnabled" follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft"
+					tool_tip="Custom: extra density toward the sun to hold the hottest sky. 0 = uniform." value="Sun Weight:" />
+				<slider_bar enabled_control="RenderGradNDEnabled" top_pad="-18" height="20" increment="0.05" follows="left|top|right" layout="topleft"
+					max_val="2" min_val="0" left_delta="100" right="-55" name="gradnd_sunw_slider" control_name="RenderGradNDSunWeight" />
+				<spinner enabled_control="RenderGradNDEnabled" top_pad="-20" height="15" label_width="0" right="-1" decimal_digits="2" follows="top|right" layout="topleft"
+					max_val="2" min_val="0" width="55" increment="0.05" name="gradnd_sunw_spinner" control_name="RenderGradNDSunWeight" />
+				<text enabled_control="RenderGradNDEnabled" follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft"
+					tool_tip="Custom: screen-space radius over which the sun-weight boost falls off." value="Sun Radius:" />
+				<slider_bar enabled_control="RenderGradNDEnabled" top_pad="-18" height="20" increment="0.05" follows="left|top|right" layout="topleft"
+					max_val="2" min_val="0.1" left_delta="100" right="-55" name="gradnd_sunr_slider" control_name="RenderGradNDSunRadius" />
+				<spinner enabled_control="RenderGradNDEnabled" top_pad="-20" height="15" label_width="0" right="-1" decimal_digits="2" follows="top|right" layout="topleft"
+					max_val="2" min_val="0.1" width="55" increment="0.05" name="gradnd_sunr_spinner" control_name="RenderGradNDSunRadius" />
+				<text enabled_control="RenderGradNDEnabled" follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft"
+					tool_tip="Custom: vertical position of the ND transition line. 0.5 = mid-frame." value="Position:" />
+				<slider_bar enabled_control="RenderGradNDEnabled" top_pad="-18" height="20" increment="0.02" follows="left|top|right" layout="topleft"
+					max_val="1" min_val="0" left_delta="100" right="-55" name="gradnd_pos_slider" control_name="RenderGradNDPosition" />
+				<spinner enabled_control="RenderGradNDEnabled" top_pad="-20" height="15" label_width="0" right="-1" decimal_digits="2" follows="top|right" layout="topleft"
+					max_val="1" min_val="0" width="55" increment="0.02" name="gradnd_pos_spinner" control_name="RenderGradNDPosition" />
+				<text enabled_control="RenderGradNDEnabled" follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft"
+					tool_tip="Custom: width of the soft transition. Low = hard grad, high = gentle." value="Softness:" />
+				<slider_bar enabled_control="RenderGradNDEnabled" top_pad="-18" height="20" increment="0.01" follows="left|top|right" layout="topleft"
+					max_val="1" min_val="0.01" left_delta="100" right="-55" name="gradnd_soft_slider" control_name="RenderGradNDSoftness" />
+				<spinner enabled_control="RenderGradNDEnabled" top_pad="-20" height="15" label_width="0" right="-1" decimal_digits="2" follows="top|right" layout="topleft"
+					max_val="1" min_val="0.01" width="55" increment="0.01" name="gradnd_soft_spinner" control_name="RenderGradNDSoftness" />
+				<text enabled_control="RenderGradNDEnabled" follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft"
+					tool_tip="Custom: tilt the ND line to match a sloped horizon (degrees)." value="Tilt (deg):" />
+				<slider_bar enabled_control="RenderGradNDEnabled" top_pad="-18" height="20" increment="0.5" follows="left|top|right" layout="topleft"
+					max_val="45" min_val="-45" left_delta="100" right="-55" name="gradnd_angle_slider" control_name="RenderGradNDAngle" />
+				<spinner enabled_control="RenderGradNDEnabled" top_pad="-20" height="15" label_width="0" right="-1" decimal_digits="1" follows="top|right" layout="topleft"
+					max_val="45" min_val="-45" width="55" increment="0.5" name="gradnd_angle_spinner" control_name="RenderGradNDAngle" />
+				<check_box enabled_control="RenderGradNDEnabled" follows="left|top" height="15" left="30" top_pad="8" width="260" layout="topleft"
+					label="Darken bottom instead (Custom)"
+					tool_tip="Custom: flip the wedge to darken the foreground/water instead of the sky."
+					control_name="RenderGradNDFlip" />
+				<!-- ================= Polarizer (pre-tonemap) ================= -->
+				<view_border bevel_style="none" height="0" layout="topleft" left="0" name="polarizer_border" top_pad="10" width="500" />
+				<check_box
+					follows="left|top" height="15" left="10" top_pad="8" width="200" layout="topleft"
+					label="Polarizer (pre-tonemap)"
+					tool_tip="Native CPL approximation in linear HDR before the tonemapper: cuts specular glare (so the filmic curve recovers reflection detail) and deepens the sky. Off = no cost."
+					control_name="RenderPolarizerEnabled" />
+				<text enabled_control="RenderPolarizerEnabled" follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft"
+					tool_tip="A preset overrides the sliders below. Custom exposes everything." value="Preset:" />
+				<combo_box
+					enabled_control="RenderPolarizerEnabled" allow_text_entry="false"
+					tool_tip="A preset overrides the sliders below. Custom exposes everything."
+					control_name="RenderPolarizerPreset"
+					follows="left|top" height="16" layout="topleft" left_delta="100" right="-2"
+					max_chars="128" name="polarizer_preset_combo" top_delta="-2">
+					<combo_box.item label="Custom (use sliders)" name="pol_custom" value="0" />
+					<combo_box.item label="Deep Blue Sky" name="pol_deep" value="1" />
+					<combo_box.item label="Glare Killer (water/glass)" name="pol_glare" value="2" />
+					<combo_box.item label="Landscape (sky + glare)" name="pol_landscape" value="3" />
+					<combo_box.item label="Subtle" name="pol_subtle" value="4" />
+				</combo_box>
+				<text enabled_control="RenderPolarizerEnabled" follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft"
+					tool_tip="Custom: overall polarizer intensity. 0 = off." value="Strength:" />
+				<slider_bar enabled_control="RenderPolarizerEnabled" top_pad="-18" height="20" increment="0.05" follows="left|top|right" layout="topleft"
+					max_val="1" min_val="0" left_delta="100" right="-55" name="pol_strength_slider" control_name="RenderPolarizerStrength" />
+				<spinner enabled_control="RenderPolarizerEnabled" top_pad="-20" height="15" label_width="0" right="-1" decimal_digits="2" follows="top|right" layout="topleft"
+					max_val="1" min_val="0" width="55" increment="0.05" name="pol_strength_spinner" control_name="RenderPolarizerStrength" />
+				<text enabled_control="RenderPolarizerEnabled" follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft"
+					tool_tip="Custom: glare knockdown in stops (bright, low-chroma, mid-depth reflections). 0 = off." value="Glare Cut:" />
+				<slider_bar enabled_control="RenderPolarizerEnabled" top_pad="-18" height="20" increment="0.05" follows="left|top|right" layout="topleft"
+					max_val="4" min_val="0" left_delta="100" right="-55" name="pol_glare_slider" control_name="RenderPolarizerGlareStrength" />
+				<spinner enabled_control="RenderPolarizerEnabled" top_pad="-20" height="15" label_width="0" right="-1" decimal_digits="2" follows="top|right" layout="topleft"
+					max_val="4" min_val="0" width="55" increment="0.05" name="pol_glare_spinner" control_name="RenderPolarizerGlareStrength" />
+				<text enabled_control="RenderPolarizerEnabled" follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft"
+					tool_tip="Custom: HDR brightness above which a pixel counts as glare. Higher = only true specular (spares bright whites); lower = catches dimmer highlights." value="Glare Gate:" />
+				<slider_bar enabled_control="RenderPolarizerEnabled" top_pad="-18" height="20" increment="0.1" follows="left|top|right" layout="topleft"
+					max_val="8" min_val="0.5" left_delta="100" right="-55" name="pol_glarethr_slider" control_name="RenderPolarizerGlareThreshold" />
+				<spinner enabled_control="RenderPolarizerEnabled" top_pad="-20" height="15" label_width="0" right="-1" decimal_digits="2" follows="top|right" layout="topleft"
+					max_val="8" min_val="0.5" width="55" increment="0.1" name="pol_glarethr_spinner" control_name="RenderPolarizerGlareThreshold" />
+				<text enabled_control="RenderPolarizerEnabled" follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft"
+					tool_tip="Custom: glare cut only applies nearer than this depth (spares the sky/far plane). 1 = whole scene." value="Glare Depth:" />
+				<slider_bar enabled_control="RenderPolarizerEnabled" top_pad="-18" height="20" increment="0.005" follows="left|top|right" layout="topleft"
+					max_val="1" min_val="0.5" left_delta="100" right="-55" name="pol_glaredepth_slider" control_name="RenderPolarizerGlareMaxDepth" />
+				<spinner enabled_control="RenderPolarizerEnabled" top_pad="-20" height="15" label_width="0" right="-1" decimal_digits="3" follows="top|right" layout="topleft"
+					max_val="1" min_val="0.5" width="55" increment="0.005" name="pol_glaredepth_spinner" control_name="RenderPolarizerGlareMaxDepth" />
+				<text enabled_control="RenderPolarizerEnabled" follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft"
+					tool_tip="Custom: deepen sky saturation. 1 = none." value="Sky Sat:" />
+				<slider_bar enabled_control="RenderPolarizerEnabled" top_pad="-18" height="20" increment="0.05" follows="left|top|right" layout="topleft"
+					max_val="2.5" min_val="1" left_delta="100" right="-55" name="pol_skysat_slider" control_name="RenderPolarizerSkySaturation" />
+				<spinner enabled_control="RenderPolarizerEnabled" top_pad="-20" height="15" label_width="0" right="-1" decimal_digits="2" follows="top|right" layout="topleft"
+					max_val="2.5" min_val="1" width="55" increment="0.05" name="pol_skysat_spinner" control_name="RenderPolarizerSkySaturation" />
+				<text enabled_control="RenderPolarizerEnabled" follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft"
+					tool_tip="Custom: darken the sky by this many stops." value="Sky Darken:" />
+				<slider_bar enabled_control="RenderPolarizerEnabled" top_pad="-18" height="20" increment="0.05" follows="left|top|right" layout="topleft"
+					max_val="1.5" min_val="0" left_delta="100" right="-55" name="pol_skydark_slider" control_name="RenderPolarizerSkyDarken" />
+				<spinner enabled_control="RenderPolarizerEnabled" top_pad="-20" height="15" label_width="0" right="-1" decimal_digits="2" follows="top|right" layout="topleft"
+					max_val="1.5" min_val="0" width="55" increment="0.05" name="pol_skydark_spinner" control_name="RenderPolarizerSkyDarken" />
+				<check_box enabled_control="RenderPolarizerEnabled" follows="left|top" height="15" left="30" top_pad="8" width="260" layout="topleft"
+					label="Auto band (ease off near sun)"
+					tool_tip="Custom: ease the sky effect off toward the sun — a screen-space proxy for the real polarized band 90 degrees from the sun."
+					control_name="RenderPolarizerAutoBand" />
+				<text enabled_control="RenderPolarizerEnabled" follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft"
+					tool_tip="Custom: screen-space radius of the eased sky band around the sun." value="Band Radius:" />
+				<slider_bar enabled_control="RenderPolarizerEnabled" top_pad="-18" height="20" increment="0.05" follows="left|top|right" layout="topleft"
+					max_val="1.5" min_val="0.1" left_delta="100" right="-55" name="pol_bandrad_slider" control_name="RenderPolarizerBandRadius" />
+				<spinner enabled_control="RenderPolarizerEnabled" top_pad="-20" height="15" label_width="0" right="-1" decimal_digits="2" follows="top|right" layout="topleft"
+					max_val="1.5" min_val="0.1" width="55" increment="0.05" name="pol_bandrad_spinner" control_name="RenderPolarizerBandRadius" />
             <!--<text
 				visible="false"
 				name="tonemapper_dynamic_text1"

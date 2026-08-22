@@ -164,6 +164,27 @@
       <key>Type</key><string>F32</string>
       <key>Value</key><real>0.9</real>
     </map>
+    <key>CineLightRigEasing</key>
+    <map>
+      <key>Comment</key><string>Easing curve for setup transitions: 0 Linear, 1 Smoothstep, 2 Ease-In-Out (default), 3 Ease-Out</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>2</integer>
+    </map>
+    <key>CineLightRigRandomCycle</key>
+    <map>
+      <key>Comment</key><string>Automatically cross-fade to a random setup every CineLightRigRandomInterval seconds</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigRandomInterval</key>
+    <map>
+      <key>Comment</key><string>Seconds between random setup changes when CineLightRigRandomCycle is on</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>20.0</real>
+    </map>
     <key>CineLightRigDamping</key>
     <map>
       <key>Comment</key><string>Presentation-time anchor damping constant in seconds; zero follows rigidly</string>
@@ -5371,6 +5392,50 @@
       <string>F32</string>
       <key>Value</key>
       <real>0.0</real>
+    </map>
+    <key>DirectorGazeTransitionSec</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Duration in seconds to blend continuous gaze-preset parameters from the current values to a newly selected preset. 0 = instant snap (legacy behavior).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.5</real>
+    </map>
+    <key>DirectorGazeEasing</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Easing curve for gaze-preset transitions: 0 Linear, 1 Smoothstep, 2 Ease-In-Out (default), 3 Ease-Out</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>U32</string>
+      <key>Value</key>
+      <integer>2</integer>
+    </map>
+    <key>DirectorGazeRandomMode</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Automatically transition each edited actor to a random gaze preset every DirectorGazeRandomInterval seconds (per-actor independent timing). Uses the transition duration + easing above.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>DirectorGazeRandomInterval</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Average seconds between random gaze-preset changes when DirectorGazeRandomMode is on. Each actor jitters around this interval so they do not switch in lockstep.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>12.0</real>
     </map>
     <key>DirectorGazeNearLensDeg</key>
     <map>
@@ -15113,6 +15178,17 @@
     <string>Boolean</string>
     <key>Value</key>
     <integer>0</integer>
+  </map>
+  <key>RenderReShadeDecoupleOnLens</key>
+  <map>
+    <key>Comment</key>
+    <string>When on (default), publish the PRE-on-lens (raw) scene colour to the ReShade bridge so external effects (RTGI, etc.) reflect the natural scene, not the Graduated ND / Polarizer grade. Off = publish the filtered scene (couples the on-lens filters into ReShade reflections). Flip this to instantly revert the decouple.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>Boolean</string>
+    <key>Value</key>
+    <integer>1</integer>
   </map>
   <key>RenderHDRIExposure</key>
   <map>

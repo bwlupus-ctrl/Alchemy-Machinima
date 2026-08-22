@@ -13,6 +13,7 @@
 #include "llpanel.h"
 #include "lluuid.h"
 
+#include <map>
 #include <string>
 
 class LLButton;
@@ -48,6 +49,11 @@ private:
     void refreshCastCombo();
     void refreshEditActorCombo();
     void refreshControls();
+    // Random performance cycling (DirectorGazeRandomMode): retargets each
+    // edited actor to a deterministically random preset roughly every
+    // DirectorGazeRandomInterval seconds through the same blended entry point
+    // manual preset commits use. Driven from draw() on the presentation clock.
+    void updateRandomPerformance();
 
     void onMasterEnableCommit();
     void onEditActorCommit();
@@ -132,6 +138,9 @@ private:
     LLComboBox* mMode = nullptr;
     LLButton* mGazeCues = nullptr;
     bool mEditingEyeTarget = false;
+    // Last random-cycle index applied per actor (presentation-clock derived,
+    // so scrubbing to the same time re-derives the same cycle and preset).
+    std::map<LLUUID, U64> mRandomCycleSeen;
 };
 
 #endif // AL_ALPANELLENSGAZE_H

@@ -841,6 +841,7 @@ private:
     static bool validSlot(Slot slot);
     void updateAutoShadowSlots();
     void restoreAutoShadowSlots();
+    void updateRandomCycle(F64 presentation_time);
     void resolveCameraFocus();
     void applyShadowSuppression();
     void clearShadowSuppression();
@@ -859,6 +860,12 @@ private:
     bool mLastAutoShadowEnabled = false;
     bool mAutoShadowInputsInitialized = false;
     bool mNeedsSessionRestore = false;
+
+    // Random setup cycling. Timed off scrub-safe presentation time. The
+    // "currently-active" setup used for exclusion is read from the rig's
+    // loadedSetupName(), so no separate last-pick tracker is needed.
+    F64 mRandomCycleNextTime = -1.0;
+    F64 mRandomCycleLastTime = -1.0;
 };
 
 #endif // AL_CINE_LIGHT_RIG_MANAGER_H

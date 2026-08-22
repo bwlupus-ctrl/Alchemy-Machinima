@@ -951,7 +951,7 @@ F32 wrap180(F32 degrees)
     return wrapped == 0.f ? 0.f : wrapped;
 }
 
-F32 ease(F32 t)
+F32 ease(F32 t, U32 mode)
 {
     if (!std::isfinite(t) || t <= 0.f)
     {
@@ -961,6 +961,23 @@ F32 ease(F32 t)
     {
         return 1.f;
     }
+    switch (mode)
+    {
+        case 0: // Linear
+            return t;
+        case 1: // Smoothstep
+            return t * t * (3.f - 2.f * t);
+        case 3: // Ease-Out (cubic)
+        {
+            const F32 inv = 1.f - t;
+            return 1.f - inv * inv * inv;
+        }
+        case 2: // Ease-In-Out (cubic) - default
+        default:
+            break;
+    }
+    // Mode 2: Ease-In-Out cubic. Kept identical to the historical hardcoded
+    // curve so default transitions are unchanged.
     if (t < 0.5f)
     {
         return 4.f * t * t * t;

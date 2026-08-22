@@ -1080,14 +1080,22 @@ void ALCineLightRig::startFX(S32 fx_id, F64 presentation_time)
     mHaveTarget = false;
 }
 
-void ALCineLightRig::stopFX()
+void ALCineLightRig::stopFX(bool preserve_target)
 {
     gSavedSettings.setS32("CineLightRigFX", -1);
     mActiveFX = -1;
     mPendingFXPhase = -1.0;
     mPendingFXId = -1;
-    mTransitionActive = false;
-    mHaveTarget = false;
+    if (!preserve_target)
+    {
+        // Full reset: the next tick snaps to the plain setup.
+        mTransitionActive = false;
+        mHaveTarget = false;
+    }
+    // When preserve_target is true, mHaveTarget and the current lit state
+    // (mCurrentLive/mCurrentRadius/mCurrentGlobals) are left intact so the
+    // next updateTransition eases from the currently-lit state to the new
+    // target instead of snapping.
 }
 
 void ALCineLightRig::setShaftEnabled(S32 light, bool enabled)
@@ -1687,7 +1695,9 @@ void ALCineLightRig::evaluateTransition(F64 presentation_time)
         mTransitionActive = false;
         return;
     }
-    const F32 eased = ease(t);
+    static LLCachedControl<U32> easing_mode(
+        gSavedSettings, "CineLightRigEasing", 2);
+    const F32 eased = ease(t, static_cast<U32>(easing_mode));
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
     {
         mCurrentLive[i] = blendLight(
@@ -3196,10 +3206,17 @@ bool ALCineLightRig::loadSetup(const std::string& name)
         setup_globals = optionalSetupGlobalsFromLLSD(preset);
         volumetric = volumetricBlockFromLLSD(preset);
     }
-    stopFX();
+    // Preserve the transition target so the next tick eases from the
+    // currently-lit state to this setup over CineLightRigTransitionSec.
+    // On the very first load nothing is lit yet (mHaveTarget is false) so
+    // updateTransition still snaps, which is the intended first-load behavior.
+    stopFX(true);
     writeSetupToSettings(setup);
     applyOptionalSetupGlobals(setup_globals);
     applyVolumetricBlock(volumetric);
+    // Record the loaded name so callers (e.g. the random cycler) can identify
+    // the currently-lit named preset regardless of manual vs random origin.
+    mLoadedSetupName = name;
     return true;
 }
 

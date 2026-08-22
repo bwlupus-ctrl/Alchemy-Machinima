@@ -223,7 +223,9 @@ F32 groupSubjectScale(const F32 points[][3], const F32 member_scales[],
                       S32 count, const F32 centre[3], F32 nominal_radius);
 
 F32 wrap180(F32 degrees);
-F32 ease(F32 t);
+// Transition easing curve. mode: 0 Linear, 1 Smoothstep,
+// 2 Ease-In-Out cubic (default), 3 Ease-Out cubic.
+F32 ease(F32 t, U32 mode = 2);
 void computeLive(const Setup& setup, const Transforms& transforms,
                  LightBase out[LIGHT_COUNT]);
 LightBase blendLight(const LightBase& start, const LightBase& target,

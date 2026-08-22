@@ -12,6 +12,7 @@
 #include "alpanellensgaze.h"
 
 #include "llactormover.h"
+#include "algazemath.h"
 #include "alpanelcinecamparams.h"
 #include "llagent.h"
 #include "llavatarnamecache.h"
@@ -20,6 +21,7 @@
 #include "llcombobox.h"
 #include "lldirectorcast.h"
 #include "llfloaterreg.h"
+#include "llpresentationtime.h"
 #include "llselectmgr.h"
 #include "llsliderctrl.h"
 #include "llspinctrl.h"
@@ -215,6 +217,28 @@ void editGazeTargetsFor(const uuid_vec_t& actors, Fn&& mutate)
         mutate(target);
         cast.setGazeTarget(actor, target);
     }
+}
+
+// Preset application entry point shared by the manual combo commit and the
+// random cycler (DirectorGazeRandomMode): author the preset into the actor's
+// cast mirror AND hand the mover the same target through the blended entry so
+// the runtime eases from its current effective values over
+// DirectorGazeTransitionSec with the DirectorGazeEasing curve (duration 0 is
+// the legacy instant snap). Order matters: the blended call captures the
+// pre-commit values FIRST; the cast write that follows forwards the identical
+// config, which the mover's transition guard recognizes and re-asserts the
+// blend instead of flashing the endpoint.
+void applyGazePresetBlended(const LLUUID& actor, S32 preset_index)
+{
+    if (preset_index < 0 || preset_index >= GAZE_PRESET_COUNT)
+    {
+        return;
+    }
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    LLActorMover::GazeTarget target = cast.getGazeTarget(actor);
+    applyPreset(GAZE_PRESETS[preset_index], target);
+    LLActorMover::instance().setGazeTargetConfigBlended(actor, target);
+    cast.setGazeTarget(actor, target);  // authored mirror (readback/persist)
 }
 
 // Head-or-eye detail edit applied to each edited actor: reads that actor's head
@@ -584,7 +608,67 @@ void ALPanelLensGaze::draw()
     refreshEditActorCombo();
     refreshCastCombo();
     refreshControls();
+    updateRandomPerformance();
     LLPanel::draw();
+}
+
+void ALPanelLensGaze::updateRandomPerformance()
+{
+    static LLCachedControl<bool> random_mode(
+        gSavedSettings, "DirectorGazeRandomMode", false);
+    if (!random_mode)
+    {
+        // Off (default): pure no-op beyond this early-out. Clearing the seen
+        // map re-arms cleanly for the next enable (no stale cycle carryover).
+        if (!mRandomCycleSeen.empty())
+        {
+            mRandomCycleSeen.clear();
+        }
+        return;
+    }
+    static LLCachedControl<F32> random_interval(
+        gSavedSettings, "DirectorGazeRandomInterval", 12.f);
+    const F32 base_interval = llmax((F32)random_interval, 1.f);
+    // Presentation clock: scrub/timescale-safe (equals wall time in LIVE).
+    // The cycle index is a pure function of this clock, so scrubbing back to
+    // the same time re-derives the same cycle -- and the same preset.
+    const F64 now = llmax(
+        LLPresentationTime::currentFrame().presentation_time, 0.0);
+    // Hash channel for random performance cycling; distinct from the gaze
+    // micro-life channels used inside llactormover's paint.
+    constexpr S32 RANDOM_PERF_CHANNEL = 0x52;  // 'R'
+    for (const LLUUID& actor : editActors())
+    {
+        // Deterministic per-actor jitter: +/-25% off the shared interval,
+        // derived from the actor id, so actors never switch in lockstep and
+        // the schedule is stable across sessions and scrubs.
+        const U64 seed = ALGazeMath::castSeedFromUUID(actor);
+        const F32 jitter = 0.75f +
+            0.5f * ALGazeMath::unitHash(seed, RANDOM_PERF_CHANNEL, 0, 0, 0);
+        const U64 cycle = (U64)(now / (F64)(base_interval * jitter));
+        auto seen = mRandomCycleSeen.find(actor);
+        if (seen == mRandomCycleSeen.end())
+        {
+            // First sight under random mode: arm on the current cycle WITHOUT
+            // an immediate switch, so enabling the mode (or opening the
+            // panel) never yanks every actor to a new preset at once.
+            mRandomCycleSeen[actor] = cycle;
+            continue;
+        }
+        if (seen->second == cycle)
+        {
+            continue;
+        }
+        seen->second = cycle;
+        // Deterministic pick for THIS cycle boundary (scrub-stable), fed to
+        // the SAME blended entry point as a manual preset commit so cycling
+        // inherits DirectorGazeTransitionSec + DirectorGazeEasing.
+        const S32 preset_index = llmin(
+            (S32)(ALGazeMath::unitHash(seed, RANDOM_PERF_CHANNEL, cycle, 1, 0) *
+                  GAZE_PRESET_COUNT),
+            GAZE_PRESET_COUNT - 1);
+        applyGazePresetBlended(actor, preset_index);
+    }
 }
 
 void ALPanelLensGaze::refreshEditActorCombo()
@@ -1161,9 +1245,13 @@ void ALPanelLensGaze::onPerformanceCommit()
     {
         return;
     }
-    editGazeTargetsFor(editActors(),
-        [preset_index](LLActorMover::GazeTarget& t)
-        { applyPreset(GAZE_PRESETS[preset_index], t); });
+    // Same author-then-blend path per actor as the random cycler, so manual
+    // preset changes ease with DirectorGazeTransitionSec/Easing too (a 0s
+    // duration keeps the legacy instant snap).
+    for (const LLUUID& actor : editActors())
+    {
+        applyGazePresetBlended(actor, preset_index);
+    }
 }
 
 void ALPanelLensGaze::onResetPerformance()
