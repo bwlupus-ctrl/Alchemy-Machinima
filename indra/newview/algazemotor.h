@@ -198,6 +198,9 @@ struct GazeMotorSettings
     // distribution controls.
     F32 mHeadEyeBlend = 1.f; // [0,1]
     F32 mTorsoAmount  = 1.f; // [0,1]
+    // [Machinima] Planted-spine scope: force hips capacity to zero so the motor
+    // never recruits/writes the pelvis. Default false = byte-identical.
+    bool mPlantPelvis = false;
     // Anatomy exaggeration, mirroring distributeAnatomicalChain's
     // anatomy_scale (algazemath.h ~598-615): scales the eye/head/neck
     // capacities only (chest/hips keep authored limits), clamped to [1, 3],
@@ -517,12 +520,12 @@ inline void effectiveCapacities(const GazeMotorSettings& s,
     caps_yaw[1] = head_max_yaw * head_w;
     caps_yaw[2] = neck_max_yaw * head_w;
     caps_yaw[3] = TORSO_MAX_YAW * torso_w;
-    caps_yaw[4] = HIPS_MAX_YAW * torso_w;
+    caps_yaw[4] = s.mPlantPelvis ? 0.f : HIPS_MAX_YAW * torso_w;
     caps_pitch[0] = eye_max_pitch * eye_w;
     caps_pitch[1] = head_max_pitch * head_w;
     caps_pitch[2] = neck_max_pitch * head_w;
     caps_pitch[3] = TORSO_MAX_PITCH * torso_w;
-    caps_pitch[4] = HIPS_MAX_PITCH * torso_w;
+    caps_pitch[4] = s.mPlantPelvis ? 0.f : HIPS_MAX_PITCH * torso_w;
 }
 
 // Bit-exact restatement of distributeAnatomicalChain's allocation loop
@@ -1166,10 +1169,23 @@ inline void step(GazeMotorState& state, const GazeMotorInput& input,
                                        eye_only);
     out_pose.mTorsoPitch = recruitSlot(aim[CH_TORSO_PITCH], caps_pitch, band,
                                        3, eye_only);
-    out_pose.mHipsYaw    = recruitSlot(aim[CH_TORSO_YAW], caps_yaw, band, 4,
-                                       eye_only);
-    out_pose.mHipsPitch  = recruitSlot(aim[CH_TORSO_PITCH], caps_pitch, band,
-                                       4, eye_only);
+    // [Machinima] Planted-spine: hard-zero hips regardless of the soft-recruit
+    // band. Routing slot 4 (capacity 0) through the soft chain yields a spurious
+    // wrong-signed contribution at the zero-capacity knee (same pathology the
+    // eye_only carve-out guards against), which would otherwise re-enter the
+    // pelvis write and stomp the base. Force exact +0 so planted never moves it.
+    if (s.mPlantPelvis)
+    {
+        out_pose.mHipsYaw   = 0.f;
+        out_pose.mHipsPitch = 0.f;
+    }
+    else
+    {
+        out_pose.mHipsYaw    = recruitSlot(aim[CH_TORSO_YAW], caps_yaw, band, 4,
+                                           eye_only);
+        out_pose.mHipsPitch  = recruitSlot(aim[CH_TORSO_PITCH], caps_pitch, band,
+                                           4, eye_only);
+    }
     out_pose.mHeadRoll   = aim[CH_HEAD_ROLL];
 
     // (3b) Cinematic Stillness + Restraint: scale the RECRUITED head/neck/

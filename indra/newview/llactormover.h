@@ -331,7 +331,14 @@ public:
     {
         GAZE_PRIORITY_BLEND = 0,
         GAZE_PRIORITY_HEAD_EYES = 1,
-        GAZE_PRIORITY_UPPER_BODY = 2
+        GAZE_PRIORITY_UPPER_BODY = 2,
+        // [Machinima] Planted-spine "IK-like" scope: owns torso/neck/head/eyes
+        // like Upper body but NEVER allocates a hips share and NEVER writes
+        // mPelvis, so the base/legs stay put and only the spine leans toward the
+        // target (Turn-body mode handles yaw beyond the planted reach). Resolved
+        // via explicit predicates -- do NOT rely on numeric >= ordering, so this
+        // higher value never accidentally implies pelvis ownership.
+        GAZE_PRIORITY_PLANTED_SPINE = 3
     };
 
     struct GazeTarget

@@ -566,7 +566,8 @@ inline void distributeAnatomicalChain(F32 target_yaw, F32 target_pitch,
                                      F32 head_eye_blend, F32 torso_amount,
                                      F32 body_turn_threshold_deg,
                                      AnatomicalChainPose& out_pose,
-                                     F32 anatomy_scale = 1.f)
+                                     F32 anatomy_scale = 1.f,
+                                     bool recruit_hips = true)
 {
     out_pose = AnatomicalChainPose();
     const F32 abs_yaw = fabsf(target_yaw);
@@ -638,19 +639,26 @@ inline void distributeAnatomicalChain(F32 target_yaw, F32 target_pitch,
         return amount;
     };
 
+    // [Machinima] Planted-spine scope forces the hips capacity to exactly +0
+    // BEFORE allocation (not a post-hoc skip), so the pelvis never absorbs an
+    // "invisible" share and the base/legs stay planted. Default recruit_hips ==
+    // true preserves the exact prior allocation (byte-identical).
+    const F32 hips_max_yaw   = recruit_hips ? HIPS_MAX_YAW   : 0.f;
+    const F32 hips_max_pitch = recruit_hips ? HIPS_MAX_PITCH : 0.f;
+
     F32 rem_yaw = abs_yaw;
     out_pose.mEyeYaw = sign_yaw * allocate(rem_yaw, eye_max_yaw * eye_weight);
     out_pose.mHeadYaw = sign_yaw * allocate(rem_yaw, head_max_yaw * head_weight);
     out_pose.mNeckYaw = sign_yaw * allocate(rem_yaw, neck_max_yaw * head_weight);
     out_pose.mTorsoYaw = sign_yaw * allocate(rem_yaw, TORSO_MAX_YAW * torso_weight);
-    out_pose.mHipsYaw = sign_yaw * allocate(rem_yaw, HIPS_MAX_YAW * torso_weight);
+    out_pose.mHipsYaw = sign_yaw * allocate(rem_yaw, hips_max_yaw * torso_weight);
 
     F32 rem_pitch = abs_pitch;
     out_pose.mEyePitch = sign_pitch * allocate(rem_pitch, eye_max_pitch * eye_weight);
     out_pose.mHeadPitch = sign_pitch * allocate(rem_pitch, head_max_pitch * head_weight);
     out_pose.mNeckPitch = sign_pitch * allocate(rem_pitch, neck_max_pitch * head_weight);
     out_pose.mTorsoPitch = sign_pitch * allocate(rem_pitch, TORSO_MAX_PITCH * torso_weight);
-    out_pose.mHipsPitch = sign_pitch * allocate(rem_pitch, HIPS_MAX_PITCH * torso_weight);
+    out_pose.mHipsPitch = sign_pitch * allocate(rem_pitch, hips_max_pitch * torso_weight);
 }
 
 // Suspicious personas keep the combined head/neck yaw within about 15 degrees.

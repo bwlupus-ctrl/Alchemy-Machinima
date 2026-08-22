@@ -94,9 +94,10 @@
      top="180"
      tool_tip="How completely gaze owns its joints when it is allowed to write. Does not consult SL animation priority."
      width="336">
-        <combo_box.item label="Blend" name="gaze_priority_blend" value="0" />
+        <combo_box.item label="Legacy blend" name="gaze_priority_blend" value="0" />
         <combo_box.item label="Head+Eyes" name="gaze_priority_head_eyes" value="1" />
         <combo_box.item label="Upper body" name="gaze_priority_upper_body" value="2" />
+        <combo_box.item label="Planted spine (IK)" name="gaze_priority_planted_spine" value="3" />
     </combo_box>
     <button follows="right|top"
      height="18" image_overlay="Refresh_Off" image_top_pad="0"

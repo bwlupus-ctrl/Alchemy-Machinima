@@ -3573,7 +3573,7 @@ S32 currentGazePriority()
     return llclamp(
         static_cast<S32>(priority),
         static_cast<S32>(LLActorMover::GAZE_PRIORITY_BLEND),
-        static_cast<S32>(LLActorMover::GAZE_PRIORITY_UPPER_BODY));
+        static_cast<S32>(LLActorMover::GAZE_PRIORITY_PLANTED_SPINE));
 }
 
 // [Machinima] Hybrid strict-yield gate for a single gaze joint write. Returns
@@ -3916,10 +3916,13 @@ void LLActorMover::captureDirectorLookAtPose(LLVOAvatar* av, DirectorGaze& runti
     capture("mPelvis", runtime.mPelvis);
     const S32 capture_priority = runtime.mGaze.mGazePriorityOverride >= 0
         ? llclamp(runtime.mGaze.mGazePriorityOverride,
-                  (S32)GAZE_PRIORITY_BLEND, (S32)GAZE_PRIORITY_UPPER_BODY)
+                  (S32)GAZE_PRIORITY_BLEND, (S32)GAZE_PRIORITY_PLANTED_SPINE)
         : currentGazePriority();
+    // Torso is gaze-written by any spine-owning scope (Upper body OR Planted
+    // spine), so capture it for both -- otherwise a torso_amount==0 planted
+    // actor would not restore the torso on release.
     if (runtime.mGaze.mTorsoAmount > 0.f ||
-        capture_priority == GAZE_PRIORITY_UPPER_BODY)
+        capture_priority >= GAZE_PRIORITY_UPPER_BODY)
     {
         capture("mTorso", runtime.mTorso);
     }
@@ -5273,12 +5276,24 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     const F32 wEye = env_i * behind_eased * cue_eye_weight;
     const S32 gaze_priority = g.mGazePriorityOverride >= 0
         ? llclamp(g.mGazePriorityOverride,
-                  (S32)GAZE_PRIORITY_BLEND, (S32)GAZE_PRIORITY_UPPER_BODY)
+                  (S32)GAZE_PRIORITY_BLEND, (S32)GAZE_PRIORITY_PLANTED_SPINE)
         : currentGazePriority();
+    // [Machinima] Explicit scope predicates (NOT numeric >= alone) so the new
+    // Planted-spine scope (3) owns the spine but never the pelvis:
+    //   head+eyes owned  : Head+Eyes, Upper body, Planted spine
+    //   spine (torso) owned: Upper body, Planted spine
+    //   pelvis owned     : Upper body ONLY
     const bool override_head_eyes =
         gaze_priority >= GAZE_PRIORITY_HEAD_EYES;
     const bool override_upper_body =
-        gaze_priority >= GAZE_PRIORITY_UPPER_BODY;
+        (gaze_priority == GAZE_PRIORITY_UPPER_BODY) ||
+        (gaze_priority == GAZE_PRIORITY_PLANTED_SPINE);
+    const bool planted_spine =
+        (gaze_priority == GAZE_PRIORITY_PLANTED_SPINE);
+    // Pelvis is gaze-owned only under Upper body; Planted spine keeps the base
+    // (and legs) on the animation and never rotates mPelvis.
+    const bool strict_pelvis =
+        (gaze_priority == GAZE_PRIORITY_UPPER_BODY);
     // [Machinima] Resolve the SL animation-priority for the strict-yield gate,
     // ORTHOGONAL to the ownership scope above. Per-actor override wins (>= -1,
     // since -1 is the meaningful "Legacy final" value here, NOT inherit); -2
@@ -5359,6 +5374,9 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         ms.mHeadEyeBlend        = effective_head_eye_blend;
         ms.mTorsoAmount         = g.mTorsoAmount;
         ms.mAnatomyScale        = anatomy_scale;
+        // [Machinima] Planted-spine scope: hips capacity forced to zero so the
+        // motor never recruits/writes the pelvis (base/legs stay planted).
+        ms.mPlantPelvis         = planted_spine;
         // Cinematic subtlety: Stillness freezes the recruited head/neck/torso;
         // Restraint additionally shrinks the head-turn magnitude. Both scale the
         // recruited body output inside step() and leave the eyes + micro-life
@@ -5516,7 +5534,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             ALGazeMath::distributeAnatomicalChain(
                 g.mBodyAimYaw, g.mBodyAimPitch,
                 effective_head_eye_blend, g.mTorsoAmount,
-                body_turn_threshold_deg, trigger_chain, anatomy_scale);
+                body_turn_threshold_deg, trigger_chain, anatomy_scale,
+                /*recruit_hips=*/!planted_spine);
             if (trigger_chain.mTriggerBodyTurn ||
                 director_runtime->mBodyTurnActive)
             {
@@ -5545,7 +5564,10 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     reduced_aim_yaw, caps_yaw, recruit_band, 2, eye_only);
                 chain.mTorsoYaw = ALGazeMotor::recruitSlot(
                     reduced_aim_yaw, caps_yaw, recruit_band, 3, eye_only);
-                chain.mHipsYaw = ALGazeMotor::recruitSlot(
+                // [Machinima] Planted-spine: hard-zero hips (see the same
+                // carve-out in ALGazeMotor::step); the soft knee at capacity 0
+                // would otherwise leak a spurious pelvis contribution.
+                chain.mHipsYaw = planted_spine ? 0.f : ALGazeMotor::recruitSlot(
                     reduced_aim_yaw, caps_yaw, recruit_band, 4, eye_only);
             }
         }
@@ -5560,9 +5582,12 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             override_head_eyes && priority_env > 0.001f;
         const bool body_priority_active =
             override_upper_body && priority_env > 0.001f;
+        // [Machinima] Pelvis ownership is Upper-body only; Planted spine never
+        // gaze-writes mPelvis (base/legs stay on the animation).
+        const bool pelvis_priority_active = strict_pelvis && priority_env > 0.001f;
         if (wBody > 0.001f || head_priority_active || body_priority_active)
         {
-            if (body_priority_active ||
+            if (pelvis_priority_active ||
                 (wCueBody > 0.001f &&
                  (fabsf(chain.mHipsYaw) + fabsf(chain.mHipsPitch)) > 1e-5f))
             {
@@ -5571,7 +5596,10 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     LLQuaternion hips_target;
                     hips_target.setEulerAngles(
                         0.f, chain.mHipsPitch, chain.mHipsYaw);
-                    if (body_priority_active)
+                    // Pelvis OWNED write only under Upper body (pelvis_priority_active),
+                    // never Planted spine -- identical to body_priority_active for
+                    // scopes 0-2; the two differ only under planted.
+                    if (pelvis_priority_active)
                     {
                         const LLQuaternion owned_target = nlerp(
                             body_pose_weight, LLQuaternion::DEFAULT, hips_target);
@@ -6019,7 +6047,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     ALGazeMath::distributeAnatomicalChain(
         g.mAppliedYaw, g.mAppliedPitch,
         effective_head_eye_blend, g.mTorsoAmount,
-        body_turn_threshold_deg, trigger_chain, anatomy_scale);
+        body_turn_threshold_deg, trigger_chain, anatomy_scale,
+        /*recruit_hips=*/!planted_spine);
 
     // The old Director body mode now opts into threshold-driven replanting,
     // using the resolved/smoothed target rather than the render camera.
@@ -6122,12 +6151,14 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         chain_yaw + break_yaw,
         g.mAppliedPitch + expressive_pitch + persona_mod.mChinPitchBias,
         effective_head_eye_blend, g.mTorsoAmount,
-        body_turn_threshold_deg, chain, anatomy_scale);
+        body_turn_threshold_deg, chain, anatomy_scale,
+        /*recruit_hips=*/!planted_spine);
     ALGazeMath::AnatomicalChainPose break_free_body_chain;
     ALGazeMath::distributeAnatomicalChain(
         chain_yaw, g.mAppliedPitch,
         effective_head_eye_blend, g.mTorsoAmount,
-        body_turn_threshold_deg, break_free_body_chain, anatomy_scale);
+        body_turn_threshold_deg, break_free_body_chain, anatomy_scale,
+        /*recruit_hips=*/!planted_spine);
     chain.mTorsoYaw = break_free_body_chain.mTorsoYaw;
     chain.mTorsoPitch = break_free_body_chain.mTorsoPitch;
     chain.mHipsYaw = break_free_body_chain.mHipsYaw;
@@ -6167,6 +6198,9 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
 
     const bool head_priority_active = override_head_eyes && priority_env > 0.001f;
     const bool body_priority_active = override_upper_body && priority_env > 0.001f;
+    // [Machinima] Pelvis ownership is Upper-body only; Planted spine never
+    // gaze-writes mPelvis (base/legs stay on the animation).
+    const bool pelvis_priority_active = strict_pelvis && priority_env > 0.001f;
     if (wBody > 0.001f || head_priority_active || body_priority_active)
     {
         const F32 wCueBody = wBody * cue_body_weight;
@@ -6175,7 +6209,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             effective_intensity * cue_body_weight, 0.f, 1.f);
         const F32 head_pose_weight = llclamp(
             effective_intensity * cue_head_weight, 0.f, 1.f);
-        if (body_priority_active ||
+        if (pelvis_priority_active ||
             (wCueBody > 0.001f &&
              (fabsf(chain.mHipsYaw) + fabsf(chain.mHipsPitch)) > 1e-5f))
         {
@@ -6183,7 +6217,9 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             {
                 LLQuaternion hips_target;
                 hips_target.setEulerAngles(0.f, chain.mHipsPitch, chain.mHipsYaw);
-                if (body_priority_active)
+                // Pelvis OWNED write only under Upper body, never Planted spine
+                // (byte-identical to body_priority_active for scopes 0-2).
+                if (pelvis_priority_active)
                 {
                     const LLQuaternion owned_target = nlerp(
                         body_pose_weight, LLQuaternion::DEFAULT, hips_target);

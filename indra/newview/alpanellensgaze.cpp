@@ -922,11 +922,11 @@ void ALPanelLensGaze::refreshControls()
     const S32 global_priority = llclamp(
         gSavedSettings.getS32("DirectorGazePriority"),
         static_cast<S32>(LLActorMover::GAZE_PRIORITY_BLEND),
-        static_cast<S32>(LLActorMover::GAZE_PRIORITY_UPPER_BODY));
+        static_cast<S32>(LLActorMover::GAZE_PRIORITY_PLANTED_SPINE));
     const S32 priority = (have_slot && slot_target.mGazePriorityOverride >= 0)
         ? llclamp(slot_target.mGazePriorityOverride,
                   static_cast<S32>(LLActorMover::GAZE_PRIORITY_BLEND),
-                  static_cast<S32>(LLActorMover::GAZE_PRIORITY_UPPER_BODY))
+                  static_cast<S32>(LLActorMover::GAZE_PRIORITY_PLANTED_SPINE))
         : global_priority;
     if (!isEditing(mPriority) && mPriority->getValue().asInteger() != priority)
     {
@@ -1197,7 +1197,7 @@ void ALPanelLensGaze::onPriorityCommit()
     const S32 priority = llclamp(
         mPriority->getValue().asInteger(),
         static_cast<S32>(LLActorMover::GAZE_PRIORITY_BLEND),
-        static_cast<S32>(LLActorMover::GAZE_PRIORITY_UPPER_BODY));
+        static_cast<S32>(LLActorMover::GAZE_PRIORITY_PLANTED_SPINE));
     editGazeTargetsFor(editActors(),
         [priority](LLActorMover::GazeTarget& t)
         { t.mGazePriorityOverride = priority; });

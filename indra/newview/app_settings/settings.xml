@@ -5341,7 +5341,7 @@
     <key>DirectorGazePriority</key>
     <map>
       <key>Comment</key>
-      <string>[Director] Gaze ownership SCOPE (how completely gaze owns its joints when it is allowed to write; NOT SL animation priority -- see DirectorGazeAnimationPriority): 0 = Blend (partial animation blend), 1 = Head+Eyes, 2 = Upper Body.</string>
+      <string>[Director] Gaze ownership SCOPE (how completely gaze owns its joints when it is allowed to write; NOT SL animation priority -- see DirectorGazeAnimationPriority): 0 = Blend (partial animation blend), 1 = Head+Eyes, 2 = Upper Body, 3 = Planted spine (owns torso/neck/head/eyes but never the pelvis, so the base/legs stay put and only the spine leans -- Turn body handles yaw beyond the planted reach).</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
