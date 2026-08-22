@@ -235,7 +235,15 @@ bool LLJointStateBlender::addJointState(const LLPointer<LLJointState>& joint_sta
 //-----------------------------------------------------------------------------
 // blendJointStates()
 //-----------------------------------------------------------------------------
-void LLJointStateBlender::blendJointStates(bool apply_now)
+// [Machinima] Minimum contributing weight for a rotation state to count toward
+// the gaze-yield observation. The blender itself skips only exact 0.f (below);
+// this floor matches the gaze code's own activity thresholds (wBody > 0.001f)
+// so an easing-out sliver-weight motion does not strictly block gaze. Benign
+// divergence: a ~1e-4-weight high-priority motion fractionally touches the pose
+// but will not be treated as a blocker.
+static constexpr F32 GAZE_OBS_ROT_WEIGHT_EPSILON = 0.001f;
+
+void LLJointStateBlender::blendJointStates(bool apply_now, U32 serial)
 {
     // we need at least one joint to blend
     // if there is one, it will be in slot zero according to insertion logic
@@ -244,6 +252,11 @@ void LLJointStateBlender::blendJointStates(bool apply_now)
     {
         return;
     }
+
+    // [Machinima] Highest non-additive ROT priority reaching this joint this
+    // blend (see mLastRegularRotPriority). Stamped after the blend below.
+    S32  max_regular_rot = LLJoint::USE_MOTION_PRIORITY;
+    bool found_regular_rot = false;
 
     LLJoint* target_joint = apply_now ? mJointStates[0]->getJoint() : &mJointCache;
 
@@ -279,6 +292,17 @@ void LLJointStateBlender::blendJointStates(bool apply_now)
         if (current_weight == 0.f)
         {
             continue;
+        }
+
+        // [Machinima] Record the highest NON-additive rotation priority that
+        // actually contributes (weight above the floor) for the gaze-yield gate.
+        // mPriorities[i] is the resolved effective priority addMotion passed in.
+        if (!mAdditiveBlends[joint_state_index]
+            && (current_usage & LLJointState::ROT)
+            && current_weight > GAZE_OBS_ROT_WEIGHT_EPSILON)
+        {
+            max_regular_rot = llmax(max_regular_rot, mPriorities[joint_state_index]);
+            found_regular_rot = true;
         }
 
         if (mAdditiveBlends[joint_state_index])
@@ -388,6 +412,15 @@ void LLJointStateBlender::blendJointStates(bool apply_now)
     target_joint->setPosition(blended_pos + added_pos);
     target_joint->setScale(blended_scale + added_scale);
     target_joint->setRotation(added_rot * blended_rot);
+
+    // [Machinima] Stamp the gaze-yield observation for this joint. Stamped
+    // regardless of found_regular_rot: a joint blended with only POS/additive
+    // contributions must read "no regular ROT contributor -> allow", not
+    // resurrect an older observation. The early-out above (no states) skips
+    // this, so its stale serial correctly expires on the next blend.
+    mLastRegularRotPriority = max_regular_rot;
+    mLastRegularRotValid    = found_regular_rot;
+    mLastRegularRotSerial   = serial;
 
     if (apply_now)
     {
@@ -509,11 +542,14 @@ bool LLPoseBlender::addMotion(LLMotion* motion)
 //-----------------------------------------------------------------------------
 void LLPoseBlender::blendAndApply()
 {
+    // [Machinima] Advance the blend serial once per pass so gaze-yield
+    // observations stamped this frame are distinguishable from stale ones.
+    ++mBlendSerial;
     for (blender_list_t::reverse_iterator iter = mActiveBlenders.rbegin(), end = mActiveBlenders.rend();
          iter != end; )
     {
         LLJointStateBlender* jsbp = *iter++;
-        jsbp->blendJointStates();
+        jsbp->blendJointStates(true, mBlendSerial);
     }
 
     // we're done now so there are no more active blenders for this frame
@@ -525,6 +561,9 @@ void LLPoseBlender::blendAndApply()
 //-----------------------------------------------------------------------------
 void LLPoseBlender::blendAndCache(bool reset_cached_joints)
 {
+    // [Machinima] Advance the serial here too so the gaze-yield observation
+    // stays correct if the disabled quantum path (SL-763) is ever re-enabled.
+    ++mBlendSerial;
     for (blender_list_t::reverse_iterator iter = mActiveBlenders.rbegin(), end = mActiveBlenders.rend();
          iter != end; ++iter)
     {
@@ -533,8 +572,36 @@ void LLPoseBlender::blendAndCache(bool reset_cached_joints)
         {
             jsbp->resetCachedJoint();
         }
-        jsbp->blendJointStates(false);
+        jsbp->blendJointStates(false, mBlendSerial);
     }
+}
+
+//-----------------------------------------------------------------------------
+// getLastRegularRotationPriority()
+//-----------------------------------------------------------------------------
+bool LLPoseBlender::getLastRegularRotationPriority(const LLJoint* joint, S32& priority_out) const
+{
+    if (!joint)
+    {
+        return false;
+    }
+    // The pool is persistent across frames and keyed by LLJoint*, so a miss
+    // means the joint was never animated -> allow. A hit is only current when
+    // its stamped serial matches this frame's blend serial; a stale stamp means
+    // the joint was not re-blended (its motion stopped) -> allow.
+    blender_map_t::const_iterator it =
+        mJointStateBlenderPool.find(const_cast<LLJoint*>(joint));
+    if (it == mJointStateBlenderPool.end())
+    {
+        return false;
+    }
+    const LLJointStateBlender* b = it->second;
+    if (!b->mLastRegularRotValid || b->mLastRegularRotSerial != mBlendSerial)
+    {
+        return false;
+    }
+    priority_out = b->mLastRegularRotPriority;
+    return true;
 }
 
 //-----------------------------------------------------------------------------

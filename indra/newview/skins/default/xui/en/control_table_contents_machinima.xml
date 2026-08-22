@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<contents>
+    <rows
+     enabled="false"
+     name="machinima_actions"
+     value="">
+        <columns
+         type="icontext"
+         column="lst_action"
+         font="SansSerif"
+         halign="left"
+         label="Actor Gaze"
+         name="lst_action"
+         value="Cam_FreeCam_Off" />
+    </rows>
+    <rows
+     name="director_look_at_camera"
+     value="director_look_at_camera">
+        <columns
+         column="lst_action"
+         font="SansSerif"
+         halign="left"
+         name="lst_action"
+         tool_tip="Toggle the master Actor Gaze look-at-camera on/off"
+         value="Look at Camera: Master" />
+    </rows>
+    <rows
+     name="actor_look_at_camera_1"
+     value="actor_look_at_camera_1">
+        <columns
+         column="lst_action"
+         font="SansSerif"
+         halign="left"
+         name="lst_action"
+         tool_tip="Toggle look-at-camera for actor slot 1 (You)"
+         value="Look at Camera: You" />
+    </rows>
+    <rows
+     name="actor_look_at_camera_2"
+     value="actor_look_at_camera_2">
+        <columns
+         column="lst_action"
+         font="SansSerif"
+         halign="left"
+         name="lst_action"
+         tool_tip="Toggle look-at-camera for actor slot 2 (Subject A)"
+         value="Look at Camera: Subject A" />
+    </rows>
+    <rows
+     name="actor_look_at_camera_3"
+     value="actor_look_at_camera_3">
+        <columns
+         column="lst_action"
+         font="SansSerif"
+         halign="left"
+         name="lst_action"
+         tool_tip="Toggle look-at-camera for actor slot 3 (Subject B)"
+         value="Look at Camera: Subject B" />
+    </rows>
+    <rows
+     name="actor_look_at_camera_4"
+     value="actor_look_at_camera_4">
+        <columns
+         column="lst_action"
+         font="SansSerif"
+         halign="left"
+         name="lst_action"
+         tool_tip="Toggle look-at-camera for actor slot 4 (Subject C)"
+         value="Look at Camera: Subject C" />
+    </rows>
+    <rows
+     name="actor_look_at_camera_5"
+     value="actor_look_at_camera_5">
+        <columns
+         column="lst_action"
+         font="SansSerif"
+         halign="left"
+         name="lst_action"
+         tool_tip="Toggle look-at-camera for actor slot 5 (Subject D)"
+         value="Look at Camera: Subject D" />
+    </rows>
+</contents>

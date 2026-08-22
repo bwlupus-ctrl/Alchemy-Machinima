@@ -288,6 +288,7 @@ bool ALPanelLensGaze::postBuild()
     mTarget = getChild<LLComboBox>("gaze_target_combo");
     mEyeTarget = getChild<LLComboBox>("gaze_eye_target_combo");
     mPriority = getChild<LLComboBox>("gaze_priority_combo");
+    mAnimPriority = getChild<LLComboBox>("gaze_anim_priority_combo");
     mTargetDetailScope = getChild<LLComboBox>("gaze_target_detail_scope");
     mCast = getChild<LLComboBox>("gaze_cast_combo");
     mSetPoint = getChild<LLButton>("btn_gaze_setpoint");
@@ -341,6 +342,7 @@ bool ALPanelLensGaze::postBuild()
     mTarget->setCommitCallback([this](LLUICtrl*, const LLSD&) { onTargetCommit(); });
     mEyeTarget->setCommitCallback([this](LLUICtrl*, const LLSD&) { onEyeTargetCommit(); });
     mPriority->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPriorityCommit(); });
+    mAnimPriority->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAnimPriorityCommit(); });
     mTargetDetailScope->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onTargetDetailScopeCommit(); });
     mCast->setCommitCallback([this](LLUICtrl*, const LLSD&) { onCastCommit(); });
@@ -488,6 +490,14 @@ bool ALPanelLensGaze::postBuild()
         {
             editGazeTargetsFor(editActors(),
                 [](LLActorMover::GazeTarget& t) { t.mGazePriorityOverride = -1; });
+        });
+    getChild<LLButton>("reset_gaze_anim_priority")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            // -2 == inherit the global DirectorGazeAnimationPriority. NOT -1:
+            // -1 is the meaningful "Legacy final" value for this control.
+            editGazeTargetsFor(editActors(),
+                [](LLActorMover::GazeTarget& t) { t.mAnimPriorityOverride = -2; });
         });
     getChild<LLButton>("reset_gaze_camera_roll")->setCommitCallback(
         [this](LLUICtrl*, const LLSD&)
@@ -869,6 +879,19 @@ void ALPanelLensGaze::refreshControls()
     {
         mPriority->setValue(priority);
     }
+    // SL anim priority: per-actor override wins when >= -1 (NOT >= 0 -- here -1
+    // is the meaningful "Legacy final" selection, and -2 means inherit).
+    const S32 global_anim_priority = llclamp(
+        gSavedSettings.getS32("DirectorGazeAnimationPriority"), -1, 6);
+    const S32 anim_priority = (have_slot && slot_target.mAnimPriorityOverride >= -1)
+        ? llclamp(slot_target.mAnimPriorityOverride, -1, 6)
+        : global_anim_priority;
+    if (!isEditing(mAnimPriority) &&
+        mAnimPriority->getValue().asInteger() != anim_priority)
+    {
+        mAnimPriority->setValue(anim_priority);
+    }
+    mAnimPriority->setEnabled(have_slot);
     if (!isEditing(mTargetDetailScope) &&
         mTargetDetailScope->getValue().asInteger() != (mEditingEyeTarget ? 1 : 0))
     {
@@ -1125,6 +1148,17 @@ void ALPanelLensGaze::onPriorityCommit()
     editGazeTargetsFor(editActors(),
         [priority](LLActorMover::GazeTarget& t)
         { t.mGazePriorityOverride = priority; });
+}
+
+void ALPanelLensGaze::onAnimPriorityCommit()
+{
+    // Combo values are -1 (Legacy final) through 6; the per-actor override
+    // stores that directly. -2 (inherit) is only produced by the reset button.
+    const S32 anim_priority = llclamp(
+        mAnimPriority->getValue().asInteger(), -1, 6);
+    editGazeTargetsFor(editActors(),
+        [anim_priority](LLActorMover::GazeTarget& t)
+        { t.mAnimPriorityOverride = anim_priority; });
 }
 
 void ALPanelLensGaze::onTargetDetailScopeCommit()

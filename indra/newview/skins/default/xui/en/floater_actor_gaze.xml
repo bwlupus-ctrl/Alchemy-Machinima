@@ -24,7 +24,7 @@
         <panel
          background_visible="false"
          follows="left|top|right"
-         height="1354"
+         height="1380"
          layout="topleft"
          left="0"
          name="actor_gaze_scroll_content"
@@ -34,7 +34,7 @@
              class="panel_lens_gaze"
              filename="panel_lens_gaze.xml"
              follows="left|top|right"
-             height="1346"
+             height="1372"
              layout="topleft"
              left="8"
              name="lens_gaze_panel"

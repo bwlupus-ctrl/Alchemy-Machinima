@@ -62,6 +62,7 @@ private:
     void onTargetCommit();
     void onEyeTargetCommit();
     void onPriorityCommit();
+    void onAnimPriorityCommit();
     void onTargetDetailScopeCommit();
     void onCastCommit();
     void onSetPoint();
@@ -108,7 +109,8 @@ private:
     LLCheckBoxCtrl* mEnable = nullptr;
     LLComboBox* mTarget = nullptr;
     LLComboBox* mEyeTarget = nullptr;
-    LLComboBox* mPriority = nullptr;
+    LLComboBox* mPriority = nullptr;        // ownership scope
+    LLComboBox* mAnimPriority = nullptr;    // SL animation priority (yield gate)
     LLComboBox* mTargetDetailScope = nullptr;
     LLComboBox* mCast = nullptr;
     LLButton* mSetPoint = nullptr;

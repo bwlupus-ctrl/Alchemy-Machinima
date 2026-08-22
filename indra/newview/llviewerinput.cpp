@@ -45,6 +45,7 @@
 #include "llviewercontrol.h"
 #include "llviewerwindow.h"
 #include "llvoavatarself.h"
+#include "lldirectorcast.h"      // [Machinima] Actor Gaze look-at-camera hotkeys
 #include "llfloatercamera.h"
 #include "llinitparam.h"
 #include "llselectmgr.h"
@@ -501,6 +502,46 @@ bool camera_roll_reset(EKeystate s)
     gAgentCamera.resetCameraRoll();
     return true;
 }
+
+// [Machinima] Actor Gaze "look at camera" hotkeys. These toggle exactly the
+// same state the Actor Gaze panel writes, so a director can trigger a look
+// without reaching for the floater. Registered as regular (non-global) actions
+// (below) so the regular key path debounces OS auto-repeat -- fire once on the
+// key-down edge; the KEYSTATE_UP/level edges are ignored here and repeats are
+// filtered upstream, so a hold does not chatter-toggle.
+bool director_look_at_camera(EKeystate s)
+{
+    if (KEYSTATE_DOWN != s) return true;
+    gSavedSettings.setBOOL("DirectorLookAtCameraEnabled",
+                           !gSavedSettings.getBOOL("DirectorLookAtCameraEnabled"));
+    return true;
+}
+
+// Toggle look-at-camera for one cast slot: 0 = You (agent), 1..4 = Subject A..D.
+// No-op on an empty slot, mirroring the panel (which disables empty slot rows).
+static bool toggle_actor_look_at_camera(S32 slot)
+{
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    LLUUID id;
+    switch (slot)
+    {
+    case 0: id = isAgentAvatarValid() ? gAgentAvatarp->getID() : LLUUID::null; break;
+    case 1: id = cast.getSubjectA(); break;
+    case 2: id = cast.getSubjectB(); break;
+    case 3: id = cast.getSubjectC(); break;
+    case 4: id = cast.getSubjectD(); break;
+    default: break;
+    }
+    if (id.isNull()) return true; // empty slot -> no-op
+    cast.setLookAtCamera(id, !cast.isLookAtCamera(id));
+    return true;
+}
+
+bool actor_look_at_camera_1(EKeystate s) { if (KEYSTATE_DOWN != s) return true; return toggle_actor_look_at_camera(0); }
+bool actor_look_at_camera_2(EKeystate s) { if (KEYSTATE_DOWN != s) return true; return toggle_actor_look_at_camera(1); }
+bool actor_look_at_camera_3(EKeystate s) { if (KEYSTATE_DOWN != s) return true; return toggle_actor_look_at_camera(2); }
+bool actor_look_at_camera_4(EKeystate s) { if (KEYSTATE_DOWN != s) return true; return toggle_actor_look_at_camera(3); }
+bool actor_look_at_camera_5(EKeystate s) { if (KEYSTATE_DOWN != s) return true; return toggle_actor_look_at_camera(4); }
 
 bool camera_move_forward( EKeystate s )
 {
@@ -1088,6 +1129,18 @@ REGISTER_KEYBOARD_ACTION(script_mouse_handler_name, script_trigger_lbutton);
 REGISTER_KEYBOARD_ACTION("roll_left", camera_roll_left);
 REGISTER_KEYBOARD_ACTION("roll_right", camera_roll_right);
 REGISTER_KEYBOARD_ACTION("roll_reset", camera_roll_reset);
+// [Machinima] Actor Gaze look-at-camera toggles. Regular (NOT global) actions:
+// the regular key path debounces OS auto-repeat via gKeyboard->getKeyRepeated so
+// a held key toggles exactly once, whereas the global-binds path fires
+// KEYSTATE_DOWN on every repeat and would chatter-toggle. They fire while the 3D
+// view has keyboard focus (the normal filming state). Shipped unbound -- present
+// in the Controls panel for the operator to assign.
+REGISTER_KEYBOARD_ACTION("director_look_at_camera", director_look_at_camera);
+REGISTER_KEYBOARD_ACTION("actor_look_at_camera_1", actor_look_at_camera_1);
+REGISTER_KEYBOARD_ACTION("actor_look_at_camera_2", actor_look_at_camera_2);
+REGISTER_KEYBOARD_ACTION("actor_look_at_camera_3", actor_look_at_camera_3);
+REGISTER_KEYBOARD_ACTION("actor_look_at_camera_4", actor_look_at_camera_4);
+REGISTER_KEYBOARD_ACTION("actor_look_at_camera_5", actor_look_at_camera_5);
 #undef REGISTER_KEYBOARD_ACTION
 
 LLViewerInput::LLViewerInput()

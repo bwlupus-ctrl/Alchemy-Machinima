@@ -496,6 +496,7 @@ bool sameGazeTargetConfigFields(const LLActorMover::GazeTarget& a,
            a.mCameraRollOverride == b.mCameraRollOverride &&
            a.mExaggerateOverride == b.mExaggerateOverride &&
            a.mGazePriorityOverride == b.mGazePriorityOverride &&
+           a.mAnimPriorityOverride == b.mAnimPriorityOverride &&
            a.mCameraModeOverride == b.mCameraModeOverride;
 }
 } // anonymous namespace
@@ -908,6 +909,7 @@ void LLActorMover::setGazeTargetConfig(const LLUUID& actor_id, const GazeTarget&
     g.mCameraRollOverride = target.mCameraRollOverride;
     g.mExaggerateOverride = target.mExaggerateOverride;
     g.mGazePriorityOverride = target.mGazePriorityOverride;
+    g.mAnimPriorityOverride = target.mAnimPriorityOverride;
     if (target.mHeadEyeBlendOverride >= 0.f)
     {
         g.mHeadEyeBlend = llclamp(target.mHeadEyeBlendOverride, 0.f, 1.f);
@@ -1292,6 +1294,7 @@ LLActorMover::GazeTarget LLActorMover::getGazeTargetConfig(const LLUUID& actor_i
         target.mCameraRollOverride = it->second.mCameraRollOverride;
         target.mExaggerateOverride = it->second.mExaggerateOverride;
         target.mGazePriorityOverride = it->second.mGazePriorityOverride;
+        target.mAnimPriorityOverride = it->second.mAnimPriorityOverride;
     }
     return target;
 }
@@ -3573,6 +3576,39 @@ S32 currentGazePriority()
         static_cast<S32>(LLActorMover::GAZE_PRIORITY_UPPER_BODY));
 }
 
+// [Machinima] Hybrid strict-yield gate for a single gaze joint write. Returns
+// base_alpha UNCHANGED when the write is allowed (bit-identical to the legacy
+// path), or 0.f when this joint must yield because an animation of strictly
+// higher effective rotation priority reached it in this frame's motion blend.
+// selected_priority: -1 = Legacy final (always apply); 0..6 = SL priority.
+//
+// Observation lifetime (see LLPoseBlender::getLastRegularRotationPriority):
+//   - a joint whose blocking motion STOPPED reads stale on the next blend =>
+//     query false => allow (gaze reacquires);
+//   - a NEVER-animated joint => pool miss => allow;
+//   - PAUSED / LOD-minimal frames run no new blend, so the last real
+//     observation is retained on purpose (it matches the equally frozen pose),
+//     and gaze stays yielded on a joint an anim was holding -- intended.
+static F32 gazeAllowedAlpha(LLVOAvatar* av, LLJoint* joint,
+                            F32 base_alpha, S32 selected_priority)
+{
+    if (selected_priority < 0 || !av || !joint)
+    {
+        return base_alpha;                          // Legacy final / no data
+    }
+    S32 observed = 0;
+    if (!av->getMotionController()
+            .getLastAppliedRegularRotationPriority(joint, observed))
+    {
+        return base_alpha;                          // no current observation => allow
+    }
+    // A normal-blend .anim can carry a hacked per-joint priority of 7
+    // (== ADDITIVE_PRIORITY) -- clamp to the max selectable normal priority so
+    // the "6" selection can still win/tie it instead of yielding forever.
+    observed = llmin(observed, 6);
+    return observed > selected_priority ? 0.f : base_alpha;
+}
+
 // Compose roll after an aim rotation without disturbing its forward axis. The
 // supplied quaternion may be local or world space; its resulting +X is the aim
 // axis in that same frame.
@@ -4240,8 +4276,38 @@ bool LLActorMover::applyDirectorLookAt(LLVOAvatar* av)
 
     if (!enabled)
     {
-        clearAllDirectorLookAtRuntime();
-        return false;
+        // Master just turned off. Do NOT hard-clear -- that snaps every pose
+        // to the animation in one frame. Present avatars ease their release
+        // envelope down through the normal per-avatar path below (each still
+        // receives applyDirectorLookAt while rendered, including LOD-skipped
+        // frames via llvoavatar.cpp). `selected` resolves false below because
+        // `enabled` is false, so the release/decay branch runs for this av.
+        //
+        // The one case the per-avatar path cannot service is a runtime whose
+        // avatar has despawned without a cast remove() -- it is never ticked
+        // again, so it can neither ease nor be restored on a missing joint.
+        // Sweep those unresolvable entries (hard-clear is correct there).
+        if (mDirectorGazes.empty())
+        {
+            return false; // fast, byte-identical early-out once fully released
+        }
+        LLDirectorCast& sweep_cast = LLDirectorCast::instance();
+        for (auto it = mDirectorGazes.begin(); it != mDirectorGazes.end();)
+        {
+            if (sweep_cast.resolve(it->first) == nullptr)
+            {
+                stopDirectorTurnAnimation(nullptr, it->second);
+                it = mDirectorGazes.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+        if (mDirectorGazes.empty())
+        {
+            return false;
+        }
     }
     if (!av)
     {
@@ -4256,7 +4322,9 @@ bool LLActorMover::applyDirectorLookAt(LLVOAvatar* av)
     }
 
     LLDirectorCast& cast = LLDirectorCast::instance();
-    const bool selected = cast.isLookAtCamera(av->getID());
+    // Master-off (enabled==false) forces deselection for every actor, so the
+    // release envelope below eases the pose out instead of the old hard clear.
+    const bool selected = enabled && cast.isLookAtCamera(av->getID());
     auto runtime_it = mDirectorGazes.find(av->getID());
     if (!selected && runtime_it == mDirectorGazes.end())
     {
@@ -4420,6 +4488,7 @@ bool LLActorMover::applyDirectorLookAt(LLVOAvatar* av)
         gaze.mCameraRollOverride = configured_target.mCameraRollOverride;
         gaze.mExaggerateOverride = configured_target.mExaggerateOverride;
         gaze.mGazePriorityOverride = configured_target.mGazePriorityOverride;
+        gaze.mAnimPriorityOverride = configured_target.mAnimPriorityOverride;
     }
 
     static LLCachedControl<F32> gaze_microlife(
@@ -4601,6 +4670,23 @@ bool LLActorMover::applyDirectorLookAt(LLVOAvatar* av)
     {
         clearDirectorLookAtRuntime(av->getID());
         return false;
+    }
+
+    // Releasing (actor deselected, or master toggled off): tear down any
+    // locally owned body turn so a mode-1 actor does not keep root-rotating --
+    // or START a new turn -- part-way through the ease-out, which would leave
+    // the root mid-swing and snap when the captured pose is restored at
+    // env<=0.001. Idempotent; only fires while releasing. Mirrors the seated
+    // guard just below (which also covers the still-selected seated case).
+    if (!selected && runtime.mBodyTurnActive)
+    {
+        stopDirectorTurnAnimation(av, runtime);
+        runtime.mBodyTurnActive = false;
+        runtime.mBodyYawValid = false;
+        runtime.mTurnPendingDirection = 0;
+        runtime.mTurnPendingSeconds = 0.f;
+        runtime.mTurnStopSeconds = 0.f;
+        runtime.mTurnRestartDelay = 0.f;
     }
 
     if (runtime.mMode == 1 && av->isSitting() && runtime.mBodyTurnActive)
@@ -5193,6 +5279,16 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         gaze_priority >= GAZE_PRIORITY_HEAD_EYES;
     const bool override_upper_body =
         gaze_priority >= GAZE_PRIORITY_UPPER_BODY;
+    // [Machinima] Resolve the SL animation-priority for the strict-yield gate,
+    // ORTHOGONAL to the ownership scope above. Per-actor override wins (>= -1,
+    // since -1 is the meaningful "Legacy final" value here, NOT inherit); -2
+    // inherits the global. Ceiling is 6: 7 is ADDITIVE_PRIORITY, never a
+    // selectable normal priority. Legacy final (-1) short-circuits every gate.
+    static LLCachedControl<S32> gaze_anim_priority_global(
+        gSavedSettings, "DirectorGazeAnimationPriority", -1);
+    const S32 gaze_anim_priority = g.mAnimPriorityOverride >= -1
+        ? llclamp(g.mAnimPriorityOverride, -1, 6)
+        : llclamp(static_cast<S32>(gaze_anim_priority_global), -1, 6);
     // Priority owns only the animation-vs-gaze blend. Intensity and cue channel
     // weights shape the authored gaze pose below, while this envelope reaches
     // one at full acquire so the selected joints contain no animation bleed.
@@ -5479,13 +5575,19 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     {
                         const LLQuaternion owned_target = nlerp(
                             body_pose_weight, LLQuaternion::DEFAULT, hips_target);
-                        pelvis->setRotation(nlerp(
-                            priority_env, pelvis->getRotation(), owned_target));
+                        const F32 ga = gazeAllowedAlpha(
+                            av, pelvis, priority_env, gaze_anim_priority);
+                        if (ga > 0.f)
+                            pelvis->setRotation(nlerp(
+                                ga, pelvis->getRotation(), owned_target));
                     }
                     else
                     {
-                        pelvis->setRotation(nlerp(
-                            wCueBody, pelvis->getRotation(), hips_target));
+                        const F32 ga = gazeAllowedAlpha(
+                            av, pelvis, wCueBody, gaze_anim_priority);
+                        if (ga > 0.f)
+                            pelvis->setRotation(nlerp(
+                                ga, pelvis->getRotation(), hips_target));
                     }
                 }
             }
@@ -5502,13 +5604,19 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     {
                         const LLQuaternion owned_target = nlerp(
                             body_pose_weight, LLQuaternion::DEFAULT, torso_target);
-                        torso->setRotation(nlerp(
-                            priority_env, torso->getRotation(), owned_target));
+                        const F32 ga = gazeAllowedAlpha(
+                            av, torso, priority_env, gaze_anim_priority);
+                        if (ga > 0.f)
+                            torso->setRotation(nlerp(
+                                ga, torso->getRotation(), owned_target));
                     }
                     else
                     {
-                        torso->setRotation(nlerp(
-                            wCueBody, torso->getRotation(), torso_target));
+                        const F32 ga = gazeAllowedAlpha(
+                            av, torso, wCueBody, gaze_anim_priority);
+                        if (ga > 0.f)
+                            torso->setRotation(nlerp(
+                                ga, torso->getRotation(), torso_target));
                     }
                 }
             }
@@ -5549,14 +5657,20 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                             local_target =
                                 rolled_world * ~parent->getWorldRotation();
                         }
-                        neck->setRotation(nlerp(
-                            priority_env, neck->getRotation(), local_target));
+                        const F32 ga = gazeAllowedAlpha(
+                            av, neck, priority_env, gaze_anim_priority);
+                        if (ga > 0.f)
+                            neck->setRotation(nlerp(
+                                ga, neck->getRotation(), local_target));
                     }
                     else
                     {
                         applyGazeAimRoll(neck_target, camera_neck_roll);
-                        neck->setRotation(nlerp(
-                            wCueHead, neck->getRotation(), neck_target));
+                        const F32 ga = gazeAllowedAlpha(
+                            av, neck, wCueHead, gaze_anim_priority);
+                        if (ga > 0.f)
+                            neck->setRotation(nlerp(
+                                ga, neck->getRotation(), neck_target));
                     }
                 }
             }
@@ -5599,14 +5713,20 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                         local_target =
                             desired_world * ~parent->getWorldRotation();
                     }
-                    head->setRotation(nlerp(
-                        priority_env, head->getRotation(), local_target));
+                    const F32 ga = gazeAllowedAlpha(
+                        av, head, priority_env, gaze_anim_priority);
+                    if (ga > 0.f)
+                        head->setRotation(nlerp(
+                            ga, head->getRotation(), local_target));
                 }
                 else
                 {
                     applyGazeAimRoll(head_target, head_roll);
-                    head->setRotation(nlerp(
-                        wCueHead, head->getRotation(), head_target));
+                    const F32 ga = gazeAllowedAlpha(
+                        av, head, wCueHead, gaze_anim_priority);
+                    if (ga > 0.f)
+                        head->setRotation(nlerp(
+                            ga, head->getRotation(), head_target));
                 }
             }
         }
@@ -5739,12 +5859,18 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 {
                     const LLQuaternion owned_target = nlerp(
                         eye_pose_weight, LLQuaternion::DEFAULT, tgt);
-                    eye->setRotation(nlerp(
-                        priority_env, eye->getRotation(), owned_target));
+                    const F32 ga = gazeAllowedAlpha(
+                        av, eye, priority_env, gaze_anim_priority);
+                    if (ga > 0.f)
+                        eye->setRotation(nlerp(
+                            ga, eye->getRotation(), owned_target));
                 }
                 else
                 {
-                    eye->setRotation(nlerp(wEye, eye->getRotation(), tgt));
+                    const F32 ga = gazeAllowedAlpha(
+                        av, eye, wEye, gaze_anim_priority);
+                    if (ga > 0.f)
+                        eye->setRotation(nlerp(ga, eye->getRotation(), tgt));
                 }
             };
             applyMotorEye(av->getJoint("mEyeLeft"), -1.f);
@@ -6061,13 +6187,19 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 {
                     const LLQuaternion owned_target = nlerp(
                         body_pose_weight, LLQuaternion::DEFAULT, hips_target);
-                    pelvis->setRotation(nlerp(
-                        priority_env, pelvis->getRotation(), owned_target));
+                    const F32 ga = gazeAllowedAlpha(
+                        av, pelvis, priority_env, gaze_anim_priority);
+                    if (ga > 0.f)
+                        pelvis->setRotation(nlerp(
+                            ga, pelvis->getRotation(), owned_target));
                 }
                 else
                 {
-                    pelvis->setRotation(nlerp(
-                        wCueBody, pelvis->getRotation(), hips_target));
+                    const F32 ga = gazeAllowedAlpha(
+                        av, pelvis, wCueBody, gaze_anim_priority);
+                    if (ga > 0.f)
+                        pelvis->setRotation(nlerp(
+                            ga, pelvis->getRotation(), hips_target));
                 }
             }
         }
@@ -6083,13 +6215,19 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 {
                     const LLQuaternion owned_target = nlerp(
                         body_pose_weight, LLQuaternion::DEFAULT, torso_target);
-                    torso->setRotation(nlerp(
-                        priority_env, torso->getRotation(), owned_target));
+                    const F32 ga = gazeAllowedAlpha(
+                        av, torso, priority_env, gaze_anim_priority);
+                    if (ga > 0.f)
+                        torso->setRotation(nlerp(
+                            ga, torso->getRotation(), owned_target));
                 }
                 else
                 {
-                    torso->setRotation(nlerp(
-                        wCueBody, torso->getRotation(), torso_target));
+                    const F32 ga = gazeAllowedAlpha(
+                        av, torso, wCueBody, gaze_anim_priority);
+                    if (ga > 0.f)
+                        torso->setRotation(nlerp(
+                            ga, torso->getRotation(), torso_target));
                 }
             }
         }
@@ -6132,14 +6270,20 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     {
                         local_target = rolled_world * ~parent->getWorldRotation();
                     }
-                    neck->setRotation(nlerp(
-                        priority_env, neck->getRotation(), local_target));
+                    const F32 ga = gazeAllowedAlpha(
+                        av, neck, priority_env, gaze_anim_priority);
+                    if (ga > 0.f)
+                        neck->setRotation(nlerp(
+                            ga, neck->getRotation(), local_target));
                 }
                 else
                 {
                     applyGazeAimRoll(neck_target, camera_neck_roll);
-                    neck->setRotation(nlerp(
-                        wCueHead, neck->getRotation(), neck_target));
+                    const F32 ga = gazeAllowedAlpha(
+                        av, neck, wCueHead, gaze_anim_priority);
+                    if (ga > 0.f)
+                        neck->setRotation(nlerp(
+                            ga, neck->getRotation(), neck_target));
                 }
             }
         }
@@ -6186,14 +6330,20 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 {
                     local_target = desired_world * ~parent->getWorldRotation();
                 }
-                head->setRotation(nlerp(
-                    priority_env, head->getRotation(), local_target));
+                const F32 ga = gazeAllowedAlpha(
+                    av, head, priority_env, gaze_anim_priority);
+                if (ga > 0.f)
+                    head->setRotation(nlerp(
+                        ga, head->getRotation(), local_target));
             }
             else
             {
                 applyGazeAimRoll(head_target, camera_follow_roll);
-                head->setRotation(nlerp(
-                    wCueHead, head->getRotation(), head_target));
+                const F32 ga = gazeAllowedAlpha(
+                    av, head, wCueHead, gaze_anim_priority);
+                if (ga > 0.f)
+                    head->setRotation(nlerp(
+                        ga, head->getRotation(), head_target));
             }
         }
     }
@@ -6284,16 +6434,24 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 // pitch inside classic and Bento-weighted eye sockets.
                 tgt.constrain(scaled_eye_rot_max);
             }
+            // Gate ONLY the write -- lid_follow_pitch above is already computed,
+            // so a yielded eye still drives the lids correctly.
             if (eye_priority_active)
             {
                 const LLQuaternion owned_target = nlerp(
                     eye_pose_weight, LLQuaternion::DEFAULT, tgt);
-                eye->setRotation(nlerp(
-                    priority_env, eye->getRotation(), owned_target));
+                const F32 ga = gazeAllowedAlpha(
+                    av, eye, priority_env, gaze_anim_priority);
+                if (ga > 0.f)
+                    eye->setRotation(nlerp(
+                        ga, eye->getRotation(), owned_target));
             }
             else
             {
-                eye->setRotation(nlerp(wEye, eye->getRotation(), tgt));
+                const F32 ga = gazeAllowedAlpha(
+                    av, eye, wEye, gaze_anim_priority);
+                if (ga > 0.f)
+                    eye->setRotation(nlerp(ga, eye->getRotation(), tgt));
             }
         };
         applyEye(av->getJoint("mEyeLeft"), -1.f);

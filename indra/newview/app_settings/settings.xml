@@ -5341,13 +5341,24 @@
     <key>DirectorGazePriority</key>
     <map>
       <key>Comment</key>
-      <string>[Director] Look-at animation priority: 0 = Blend (legacy partial animation blend), 1 = Head+Eyes override, 2 = Upper Body override.</string>
+      <string>[Director] Gaze ownership SCOPE (how completely gaze owns its joints when it is allowed to write; NOT SL animation priority -- see DirectorGazeAnimationPriority): 0 = Blend (partial animation blend), 1 = Head+Eyes, 2 = Upper Body.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
       <string>S32</string>
       <key>Value</key>
       <integer>1</integer>
+    </map>
+    <key>DirectorGazeAnimationPriority</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] SL animation priority for Actor Gaze: -1 = Legacy final (always apply, ignore animation priority; default), 0-6 = gaze yields per joint to animations whose effective joint rotation priority is HIGHER than this. Equal priority favors gaze.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>-1</integer>
     </map>
     <key>DirectorGazeCameraRoll</key>
     <map>

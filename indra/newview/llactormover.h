@@ -379,7 +379,12 @@ public:
         // other cast members. -1 means "inherit the matching global control".
         F32        mCameraRollOverride = -1.f;   // else DirectorGazeCameraRoll
         F32        mExaggerateOverride = -1.f;    // else DirectorGazeExaggerate
-        S32        mGazePriorityOverride = -1;    // else DirectorGazePriority
+        S32        mGazePriorityOverride = -1;    // ownership scope; else DirectorGazePriority
+        // [Machinima] SL animation priority for the gaze-yield gate. NOTE the
+        // sentinel differs from the others: -2 = inherit DirectorGazeAnimationPriority,
+        // -1 = Legacy final (always apply, ignore anim priority), 0..6 = yield per
+        // joint to animations of strictly HIGHER effective rotation priority.
+        S32        mAnimPriorityOverride = -2;
         S32        mCameraModeOverride = -1;      // else DirectorLookAtCameraMode
     };
 
@@ -963,6 +968,9 @@ private:
         F32        mCameraRollOverride = -1.f;
         F32        mExaggerateOverride = -1.f;
         S32        mGazePriorityOverride = -1;
+        // [Machinima] SL animation priority for the gaze-yield gate: -2 inherit
+        // DirectorGazeAnimationPriority, -1 Legacy final, 0..6 selected priority.
+        S32        mAnimPriorityOverride = -2;
         F32        mHeadEyeBlend  = 0.7f;   // 0 = eyes only, 1 = full head+neck+torso
         F32        mTorsoAmount   = 0.25f;  // torso share; 0 = still chest, 1 = full aim
         F32        mIntensity     = 1.f;    // overall weight 0..1
