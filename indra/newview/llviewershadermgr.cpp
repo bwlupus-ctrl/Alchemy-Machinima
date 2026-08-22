@@ -287,7 +287,6 @@ LLGLSLShader            gCGColorgradeGammaProgram;
 LLGLSLShader            gCGColorgradeLegacyGammaProgram;
 LLGLSLShader            gCGTonemapColorgradeProgram;
 LLGLSLShader            gCGTonemapColorgradeLegacyGammaProgram;
-LLGLSLShader            gOnLensFiltersProgram; // ND + polarizer pre-pass (pre-bloom)
 // [RLVa:KB] - @setsphere
 LLGLSLShader            gRlvSphereProgram;
 // [/RLVa:KB]
@@ -535,7 +534,6 @@ void LLViewerShaderMgr::finalizeShaderList()
     mShaderList.push_back(&gCGTonemapLegacyGammaProgram);
     mShaderList.push_back(&gCGTonemapColorgradeProgram);
     mShaderList.push_back(&gCGTonemapColorgradeLegacyGammaProgram);
-    mShaderList.push_back(&gOnLensFiltersProgram);
 
     // make sure there are no redundancies
     llassert(no_redundant_shaders(mShaderList));
@@ -4271,24 +4269,6 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         }
         gCGTonemapColorgradeLegacyGammaProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
         success = gCGTonemapColorgradeLegacyGammaProgram.createShader();
-        llassert(success);
-    }
-
-    // On-lens filters (Graduated ND + Polarizer) pre-pass. Runs on the linear
-    // HDR scene before bloom/flare. hasPostEffects attaches postEffectUtilsF,
-    // which defines applyGradND/applyPolarizer and the gradnd_*/polarizer_*
-    // uniforms this shader consumes.
-    if (success)
-    {
-        gOnLensFiltersProgram.mName = "On-Lens Filters Shader";
-        gOnLensFiltersProgram.mFeatures.isDeferred = true;
-        gOnLensFiltersProgram.mFeatures.hasPostEffects = true;
-        gOnLensFiltersProgram.mShaderFiles.clear();
-        gOnLensFiltersProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
-        gOnLensFiltersProgram.mShaderFiles.push_back(make_pair("alchemy/onLensFiltersF.glsl", GL_FRAGMENT_SHADER));
-        gOnLensFiltersProgram.clearPermutations();
-        gOnLensFiltersProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
-        success = gOnLensFiltersProgram.createShader();
         llassert(success);
     }
 
