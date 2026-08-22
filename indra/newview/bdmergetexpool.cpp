@@ -17,6 +17,7 @@
 
 #include "bdmergetexpool.h"
 
+#include "bdmergememorybudget.h"
 #include "llagent.h"
 #include "llimage.h"
 #include "llmemory.h"
@@ -49,6 +50,7 @@ struct Entry
 // Settings mirror, written on the main thread in refreshSettings(), read on
 // worker threads.
 std::atomic<bool> sEnabled{ false };
+std::atomic<bool> sAcceptInserts{ false };
 std::atomic<U64> sBudgetBytes{ 0 };
 // [B-2b.1] tier parameters, mirrored on the main thread like the rest
 std::atomic<U64> sCurrentRegion{ 0 };
@@ -137,12 +139,12 @@ void evictToBudgetLocked(U64 budget)
 //static
 void BDMergeTexPool::refreshSettings()
 {
-    static LLCachedControl<bool> pool_enable(gSavedSettings, "BDMergeTexPoolEnable", true);
-    static LLCachedControl<F32> pool_fraction(gSavedSettings, "BDMergeTexPoolFraction", 0.5f);
-    static LLCachedControl<U32> pool_max_mb(gSavedSettings, "BDMergeTexPoolMaxMB", 0);
-    static LLCachedControl<U32> pool_floor_mb(gSavedSettings, "BDMergeTexPoolFloorMB", 1024);
-    static LLCachedControl<U32> pool_reserve_mb(gSavedSettings, "BDMergePoolReserveMB", 6144);
+    BDMergeMemoryBudget::refresh();
+}
 
+//static
+void BDMergeTexPool::configure(bool enable, U64 budget, bool allow_inserts)
+{
     static LLCachedControl<F32> region_grace(gSavedSettings, "BDMergeTexPoolRegionGraceTTL", 900.f);
     static LLCachedControl<F32> recency_window(gSavedSettings, "BDMergeTexPoolRecencyWindow", 300.f);
     sRegionGraceTTL.store(llmax((F32)region_grace, 0.f), std::memory_order_relaxed);
@@ -152,40 +154,9 @@ void BDMergeTexPool::refreshSettings()
         sCurrentRegion.store(regionp->getHandle(), std::memory_order_relaxed);
     }
 
-    bool enable = pool_enable;
-    U64 budget;
-    if (pool_max_mb > 0)
-    { // manual override
-        budget = U64(pool_max_mb) * 1024u * 1024u;
-    }
-    else
-    { // Auto-size from detected physical RAM. Take the fraction of the RAM left
-      // AFTER reserving headroom for the OS + the viewer's own (non-pool) working
-      // set -- NOT of total RAM. A flat fraction of total starves low-RAM machines:
-      // 50% of 12GB is 6GB of decoded textures on top of the OS and the rest of the
-      // viewer -> thrash/OOM. On a big rig the reserve is a rounding error so the
-      // pool is effectively unchanged; on a small one it shrinks hard. The pool is
-      // never allowed to exceed the headroom-adjusted available, even past the floor.
-        const U64 phys_bytes    = U64(gSysMemory.getPhysicalMemoryKB().value()) * 1024u;
-        const U64 reserve_bytes = U64(pool_reserve_mb) * 1024u * 1024u;
-        // Available = what's left after the reserve, but never less than a quarter
-        // of physical RAM. The phys/4 floor keeps the sizing monotonic: without it,
-        // a machine reporting just over the reserve (an 8GB box with an iGPU
-        // carve-out reports ~6.3GB) would get a near-zero pool while a strictly
-        // smaller machine fell back to phys/4. For phys >= 4/3 * reserve this is
-        // exactly (phys - reserve), so bigger machines are unaffected.
-        const U64 headroom_bytes = (phys_bytes > reserve_bytes)
-                                       ? (phys_bytes - reserve_bytes)
-                                       : U64(0);
-        const U64 avail_bytes   = llmax(headroom_bytes, phys_bytes / 4u);
-        const F32 fraction      = llclamp((F32)pool_fraction, 0.05f, 0.9f);
-        U64 want = U64((F64)avail_bytes * (F64)fraction);
-        want = llmax(want, U64(pool_floor_mb) * 1024u * 1024u); // at least the floor...
-        budget = llmin(want, avail_bytes);                      // ...but capped at avail
-    }
-    sBudgetBytes.store(budget, std::memory_order_relaxed);
-
     bool was_enabled = sEnabled.exchange(enable, std::memory_order_relaxed);
+    sBudgetBytes.store(enable ? budget : 0, std::memory_order_relaxed);
+    sAcceptInserts.store(enable && allow_inserts, std::memory_order_relaxed);
     if (was_enabled && !enable)
     { // gate turned off: drop everything so off == stock memory footprint
         LLMutexLock lock(&sMutex);
@@ -198,6 +169,13 @@ void BDMergeTexPool::refreshSettings()
         LLMutexLock lock(&sMutex);
         evictToBudgetLocked(sBudgetBytes.load(std::memory_order_relaxed));
     }
+}
+
+//static
+U64 BDMergeTexPool::getBytes()
+{
+    LLMutexLock lock(&sMutex);
+    return sBytes;
 }
 
 //static
@@ -244,7 +222,8 @@ LLPointer<LLImageRaw> BDMergeTexPool::fetch(const LLUUID& id, S32 desired_discar
 //static
 void BDMergeTexPool::put(const LLUUID& id, S32 discard, const LLImageRaw* raw)
 {
-    if (!enabled() || !raw || raw->isBufferInvalid() || discard < 0)
+    if (!enabled() || !sAcceptInserts.load(std::memory_order_relaxed) ||
+        !raw || raw->isBufferInvalid() || discard < 0)
     {
         return;
     }

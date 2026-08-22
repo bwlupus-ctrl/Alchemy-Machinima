@@ -29,6 +29,7 @@
 
 #include "llviewertexture.h"
 
+#include "bdmergememorybudget.h"
 #include "bdmergetexspike.h"
 
 // Library includes
@@ -480,7 +481,8 @@ void LLViewerTexture::initClass()
 //
 // Evaluated here rather than at the per-texture sites because those run for
 // every texture every frame -- polling four subsystems per texture would be
-// pure waste. The two full-res checks just read sCaptureModeActive.
+// pure waste. Full-resolution checks use isCaptureModeActive(), which also
+// honors the critical-pressure override.
 //
 // HYSTERESIS is the important part. Arming upgrades every visible texture to
 // full resolution (a fetch burst); disarming lets them downrez again. A mode
@@ -494,12 +496,16 @@ static F32   sCaptureModeReleaseAt = 0.f;
 //static
 bool LLViewerTexture::isCaptureModeActive()
 {
-    return sCaptureModeActive;
+    // Keep the operator's pin armed, but never let a creative preference
+    // override critical system/process memory pressure. It resumes
+    // automatically after the governor recovers.
+    return sCaptureModeActive && !BDMergeMemoryBudget::isCritical();
 }
 
 static void update_capture_mode()
 {
-    // Manual pin always wins and is instantaneous in both directions.
+    // The preference remains armed during critical pressure, while
+    // isCaptureModeActive() temporarily suppresses its memory-heavy effects.
     static LLCachedControl<bool> manual_pin(gSavedSettings, "BDMergeCaptureModePin", false);
     if (manual_pin)
     {
@@ -568,6 +574,7 @@ static void update_capture_mode()
 
 void LLViewerTexture::updateClass()
 {
+    BDMergeMemoryBudget::refresh();
     update_capture_mode();
 
     LL_PROFILE_ZONE_SCOPED_CATEGORY_TEXTURE;
@@ -711,7 +718,7 @@ void LLViewerTexture::updateClass()
     // budget (full detected VRAM, 20% headroom) and the G5.1 decoded RAM
     // pool absorb the larger working set. This disables a memory safety
     // valve by design - it is a capture tool, default off.
-    if (sCaptureModeActive)
+    if (LLViewerTexture::isCaptureModeActive())
     {
         sDesiredDiscardBias = 1.f;
     }
@@ -757,8 +764,12 @@ U32Megabytes LLViewerTexture::getFreeSystemMemory()
 S32Megabytes get_render_free_main_memory_treshold()
 {
     static LLCachedControl<U32> min_free_main_memory(gSavedSettings, "RenderMinFreeMainMemoryThreshold", 512);
-    const U32Megabytes MIN_FREE_MAIN_MEMORY(min_free_main_memory);
-    return MIN_FREE_MAIN_MEMORY;
+    // 512 MB was far too late on a machine whose cache could grow by roughly
+    // 1 GB/s. Scale the emergency texture valve with installed RAM while
+    // keeping reasonable bounds for both small and very large systems.
+    const U32 installed_mb = LLMemory::getMaxMemKB().value() / 1024u;
+    const U32 automatic_mb = llclamp(installed_mb / 20u, 1024u, 8192u); // 5%
+    return S32Megabytes(llmax((U32)min_free_main_memory, automatic_mb));
 }
 
 //static

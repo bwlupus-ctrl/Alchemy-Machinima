@@ -148,6 +148,7 @@ endif ()
 
 set(viewer_SOURCE_FILES
     ao.cpp
+    bdmergememorybudget.cpp
     bdmergemeshpool.cpp
     bdmergetexpool.cpp
     bdmergeenvlibrary.cpp
@@ -998,6 +999,7 @@ set(viewer_SOURCE_FILES
 set(viewer_HEADER_FILES
     ViewerInstall.cmake
     ao.h
+    bdmergememorybudget.h
     bdmergemeshpool.h
     bdmergetexpool.h
     bdmergeenvlibrary.h

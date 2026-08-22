@@ -422,13 +422,23 @@ public:
     static void logMemoryInfo(bool update = false);
 
     static U32Kilobytes getAvailableMemKB() ;
+    static U32Kilobytes getAvailablePhysicalMemKB();
+    static U32Kilobytes getAvailableCommitKB();
     static U32Kilobytes getMaxMemKB() ;
     static U32Kilobytes getAllocatedMemKB() ;
+    static U32Kilobytes getAllocatedPrivateMemKB();
+    static bool isSystemMemoryLow();
 private:
+    // Raw system metrics. sAvailPhysicalMemInKB below is the effective
+    // allocation budget after physical, commit, and process-cap limits.
+    static U32Kilobytes sAvailSystemPhysicalMemInKB;
+    static U32Kilobytes sAvailCommitInKB;
     static U32Kilobytes sAvailPhysicalMemInKB ;
     static U32Kilobytes sMaxPhysicalMemInKB ;
     static U32Kilobytes sAllocatedMemInKB;
     static U32Kilobytes sAllocatedPageSizeInKB ;
+    static U32Kilobytes sAllocatedPrivateMemInKB;
+    static bool sSystemLowMemory;
 
     static U32Kilobytes sMaxHeapSizeInKB;
 };

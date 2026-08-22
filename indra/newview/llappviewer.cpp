@@ -1327,15 +1327,21 @@ void LLAppViewer::initMaxHeapSize()
     F32Gigabytes max_heap_size_gb = (F32Gigabytes)gSavedSettings.getF32("MaxHeapSize") ;
 #else
     F32Gigabytes max_heap_size_gb = (F32Gigabytes)gSavedSettings.getF32("MaxHeapSize64");
-    // [BDMerge G5.0] 0 = auto-size: 7/8 of installed physical RAM, never below
-    // the legacy 16GB default. A fixed cap makes updateMemoryInfo() report
-    // available memory as min(true available, cap - RSS), so a machine with
+    // [BDMerge G5.0] 0 = auto-size from installed physical RAM.
+    // A fixed cap makes updateMemoryInfo() report
+    // available memory as min(true available, cap - private commit), so a machine with
     // far more RAM than the cap can misread as "low system memory" and
     // trigger the emergency texture purge with plenty actually free.
     if (max_heap_size_gb.value() <= 0.f)
     {
         const F32Gigabytes phys_gb = F32Gigabytes::convert(gSysMemory.getPhysicalMemoryKB());
-        max_heap_size_gb = F32Gigabytes(llmax(phys_gb.value() * 0.875f, 16.f));
+        // Leave proportionally more room for Windows and other applications
+        // on small machines. The ratio rises smoothly from ~75% at 4 GB to
+        // 87.5% at 64 GB and stays there for large workstations.
+        const F32 auto_ratio = llclamp(0.75f + llmin(phys_gb.value(), 64.f) / 512.f,
+                                       0.75f,
+                                       0.875f);
+        max_heap_size_gb = F32Gigabytes(phys_gb.value() * auto_ratio);
     }
 #endif
 
@@ -2287,7 +2293,21 @@ bool LLAppViewer::initThreads()
     // (measured: ~45 threads' worth of queued decode demand on 32 threads);
     // 0 = stock ceiling of 16
     U32 decode_ceiling = gSavedSettings.getU32("BDMergeDecodeThreadCeiling");
-    S32 image_decode_count = llclamp(cores - 6, 2, decode_ceiling > 0 ? (S32)decode_ceiling : 16);
+    const U32 configured_decode_ceiling = decode_ceiling > 0 ? llmin(decode_ceiling, 256u) : 16u;
+    const U32 physical_mb = gSysMemory.getPhysicalMemoryKB().value() / 1024u;
+    // A decoder can transiently hold a full raw image plus conversion and
+    // cache copies. Limit concurrency to one worker per 2 GB of installed RAM
+    // before applying the CPU/configured ceilings: 4/8/16/32 GB -> 2/4/8/16.
+    const U32 memory_decode_ceiling = llclamp(physical_mb / 2048u, 2u, 256u);
+    const S32 effective_decode_ceiling = (S32)llmin(configured_decode_ceiling,
+                                                    memory_decode_ceiling);
+    S32 image_decode_count = llclamp(cores - 6, 2, effective_decode_ceiling);
+
+    LL_INFOS("ThreadPool") << "ImageDecode workers: " << image_decode_count
+                            << " (cores " << cores
+                            << ", configured ceiling " << configured_decode_ceiling
+                            << ", memory ceiling " << memory_decode_ceiling << ")"
+                            << LL_ENDL;
 
     threadCounts["ImageDecode"] = image_decode_count;
     gSavedSettings.setLLSD("ThreadPoolSizes", threadCounts);

@@ -8066,7 +8066,7 @@
     <key>BDMergeCaptureModePin</key>
     <map>
       <key>Comment</key>
-      <string>[BDMerge G5.2] Capture mode: pin scene textures at loaded resolution - holds the discard bias at its floor so no bias-driven downrez, unload, backgrounded dump, or draw-distance shrink occurs during a take. Disables a memory safety valve by design; intended for capture sessions. Forces capture mode on regardless of the BDMergeCineMode* auto-arming.</string>
+      <string>[BDMerge G5.2] Capture mode: pin scene textures at loaded resolution so bias-driven downrez, unload, backgrounded dump, or draw-distance shrink does not occur during a take. Critical physical/commit pressure temporarily overrides the pin; it resumes automatically after recovery. Forces capture mode on regardless of the BDMergeCineMode* auto-arming.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
@@ -8077,7 +8077,7 @@
     <key>BDMergeDecodeThreadCeiling</key>
     <map>
       <key>Comment</key>
-      <string>[BDMerge G5.1 4a-i] Ceiling for the ImageDecode thread pool (final count is still clamp(cores-6, 2, ceiling)). 0 = stock ceiling of 16. Takes effect at next launch.</string>
+      <string>[BDMerge G5.1 4a-i] Configured ceiling for the ImageDecode thread pool. Runtime also applies one worker per 2 GB of installed RAM and the cores-6 CPU limit, with a minimum of 2. 0 = stock configured ceiling of 16. Takes effect at next launch.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
@@ -8099,7 +8099,7 @@
     <key>BDMergeMeshPoolFraction</key>
     <map>
       <key>Comment</key>
-      <string>[BDMerge G5.1-2b] Fraction of physical RAM (after the BDMergePoolReserveMB headroom) the decoded-mesh pool may use when BDMergeMeshPoolMaxMB is 0 (auto). Clamped 0.01-0.5.</string>
+      <string>[BDMerge G5.1-2b] Target share of post-reserve RAM for the decoded-mesh pool when BDMergeMeshPoolMaxMB is 0. Texture and mesh targets are normalized into one shared, pressure-aware budget. Clamped 0.01-0.5.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
@@ -8110,7 +8110,7 @@
     <key>BDMergeMeshPoolMaxMB</key>
     <map>
       <key>Comment</key>
-      <string>[BDMerge G5.1-2b] Manual decoded-mesh pool budget in MB. 0 = auto-size from detected physical RAM via BDMergeMeshPoolFraction.</string>
+      <string>[BDMerge G5.1-2b] Manual decoded-mesh pool target in MB. 0 = auto-size via BDMergeMeshPoolFraction. Manual targets remain subject to the shared physical/commit safety governor.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
@@ -8187,7 +8187,7 @@
     <key>BDMergePoolReserveMB</key>
     <map>
       <key>Comment</key>
-      <string>[BDMerge G5.2] Headroom in MB reserved for the OS and the viewer's own (non-pool) working set before the auto-sized decoded texture/mesh pools take their fraction. The pools size to a fraction of (physical RAM - this reserve), NOT of total RAM, so low-RAM machines are not starved; negligible on large-RAM machines. Shared by BDMergeTexPool and BDMergeMeshPool.</string>
+      <string>[BDMerge memory governor] Absolute minimum headroom in MB kept outside the shared decoded texture/mesh cache budget. On machines smaller than twice this value, the floor scales down to half of installed RAM. The larger adaptive floor or BDMergePoolReserveFraction is preserved against live physical, commit, and per-process private-commit limits.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
@@ -8195,10 +8195,21 @@
       <key>Value</key>
       <integer>6144</integer>
     </map>
+    <key>BDMergePoolReserveFraction</key>
+    <map>
+      <key>Comment</key>
+      <string>[BDMerge memory governor] Fraction of installed RAM reserved from decoded texture/mesh caches for the OS, other applications, viewer non-cache allocations, and allocation bursts. Clamped 0.10-0.50; the larger of this reserve and the adaptive BDMergePoolReserveMB floor wins.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.25</real>
+    </map>
     <key>BDMergeTexPoolFraction</key>
     <map>
       <key>Comment</key>
-      <string>[BDMerge G5.1] Fraction of physical RAM (after the BDMergePoolReserveMB headroom) the decoded-texture pool may use when BDMergeTexPoolMaxMB is 0 (auto). Clamped 0.05-0.9.</string>
+      <string>[BDMerge G5.1] Target share of post-reserve RAM for the decoded-texture pool when BDMergeTexPoolMaxMB is 0. Texture and mesh targets are normalized into one shared, pressure-aware budget. Clamped 0.05-0.9.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
@@ -8231,7 +8242,7 @@
     <key>BDMergeTexPoolMaxMB</key>
     <map>
       <key>Comment</key>
-      <string>[BDMerge G5.1] Manual decoded-texture pool budget in MB. 0 = auto-size from detected physical RAM via BDMergeTexPoolFraction.</string>
+      <string>[BDMerge G5.1] Manual decoded-texture pool target in MB. 0 = auto-size via BDMergeTexPoolFraction. Manual targets remain subject to the shared physical/commit safety governor.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
@@ -16451,7 +16462,7 @@
   <key>RenderMinFreeMainMemoryThreshold</key>
   <map>
     <key>Comment</key>
-    <string>If available free physical memory is below this value textures get agresively scaled down</string>
+    <string>Minimum emergency texture-downrez threshold in MB. Runtime also applies an automatic 5% of installed RAM threshold, clamped to 1-8 GB, and uses whichever is larger.</string>
     <key>Persist</key>
     <integer>0</integer>
     <key>Type</key>

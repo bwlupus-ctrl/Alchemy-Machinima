@@ -17,6 +17,7 @@
 
 #include "bdmergetexspike.h"
 
+#include "bdmergememorybudget.h"
 #include "bdmergemeshpool.h"
 #include "bdmergetexpool.h"
 #include "llmutex.h"
@@ -145,6 +146,8 @@ void dump()
     BDMergeTexPool::appendReport(out);
     out << "\n";
     BDMergeMeshPool::appendReport(out);
+    out << "\n";
+    BDMergeMemoryBudget::appendReport(out);
     LL_INFOS("BDMergeTexSpike") << out.str() << LL_ENDL;
 }
 
