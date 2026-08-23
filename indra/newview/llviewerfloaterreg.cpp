@@ -530,6 +530,9 @@ void LLViewerFloaterReg::registerFloaters()
     LLFloaterReg::add("actor_mover", "floater_actor_mover.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterActorMover>);
     LLFloaterReg::add("director", "floater_director.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterDirector>);
     LLFloaterReg::add("actor_gaze", "floater_actor_gaze.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<ALFloaterActorGaze>);
+    // pose_polish is a plain floater: every control binds directly to its
+    // ALPolish* setting via control_name=, so no custom C++ class is needed.
+    LLFloaterReg::add("pose_polish", "floater_pose_polish.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloater>);
     LLFloaterReg::add("virtual_cam", "floater_virtual_cam.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<ALFloaterVirtualCam>);
     LLFloaterReg::add("gaze_cues", "floater_gaze_cues.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<ALFloaterGazeCues>);
     LLFloaterReg::add("prism_manager", "floater_prism_manager.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterPrismManager>);
