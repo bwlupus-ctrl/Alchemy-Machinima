@@ -138,6 +138,7 @@ private:
     void onClickClearSubject(S32 subject);
     void onOpenActorGaze();
     void onOpenVirtualCam();
+    void onOpenPosePolish();
     void refreshCameraTab();
 
     // ---- Takes tab ----

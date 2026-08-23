@@ -406,6 +406,8 @@ bool LLFloaterDirector::postBuild()
         [this](LLUICtrl*, const LLSD&) { onOpenActorGaze(); });
     getChild<LLButton>("btn_virtual_cam")->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onOpenVirtualCam(); });
+    getChild<LLButton>("btn_pose_polish")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onOpenPosePolish(); });
     // embedded shared params panel: scene files read its selected preset and
     // apply presets through it on load
     mCineCamPanel = findChild<ALPanelCineCamParams>("cinecam_params_embedded");
@@ -2109,6 +2111,11 @@ void LLFloaterDirector::onOpenActorGaze()
 void LLFloaterDirector::onOpenVirtualCam()
 {
     LLFloaterReg::showInstance("virtual_cam");
+}
+
+void LLFloaterDirector::onOpenPosePolish()
+{
+    LLFloaterReg::toggleInstance("pose_polish");
 }
 
 void LLFloaterDirector::refreshCameraTab()
