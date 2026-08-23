@@ -2904,6 +2904,274 @@
             <key>Value</key>
             <integer>9</integer>
         </map>
+        <key>RenderLensFlareGhostChroma</key>
+        <map>
+            <key>Comment</key>
+            <string>Red/blue radial split on the ghost discs for a chromatic-dispersion look. 0 keeps ghosts monochrome. Range 0 to 0.1.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.0</real>
+        </map>
+        <key>RenderLensFlareHaloChroma</key>
+        <map>
+            <key>Comment</key>
+            <string>Red/blue radius split on the halo ring for a lateral-dispersion look. 0 keeps the halo monochrome. Range 0 to 0.05.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.0</real>
+        </map>
+        <key>RenderLensFlareIris</key>
+        <map>
+            <key>Comment</key>
+            <string>Intensity of the polygonal (n-gon) iris-ghost chain marching along the source-to-center axis. 0 disables it. Range 0 to 1.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.0</real>
+        </map>
+        <key>RenderLensFlareIrisCount</key>
+        <map>
+            <key>Comment</key>
+            <string>Number of iris-ghost reflections in the chain. Shape control only; use RenderLensFlareIris to toggle the effect. Range 1 to 8.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>S32</string>
+            <key>Value</key>
+            <integer>4</integer>
+        </map>
+        <key>RenderLensFlareIrisSides</key>
+        <map>
+            <key>Comment</key>
+            <string>Aperture blade count of each iris ghost polygon. 6 reads as a hexagonal iris; higher counts look rounder. Range 3 to 12.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>S32</string>
+            <key>Value</key>
+            <integer>6</integer>
+        </map>
+        <key>RenderLensFlareIrisSize</key>
+        <map>
+            <key>Comment</key>
+            <string>Base radius of each iris-ghost polygon in UV space. Range 0.01 to 0.2.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.055</real>
+        </map>
+        <key>RenderLensFlareRing</key>
+        <map>
+            <key>Comment</key>
+            <string>Intensity of the chromatic dispersion rings drawn around the source. 0 disables them. Range 0 to 1.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.0</real>
+        </map>
+        <key>RenderLensFlareRingRadius</key>
+        <map>
+            <key>Comment</key>
+            <string>Radius of the first dispersion ring in UV space. Shape control only; use RenderLensFlareRing to toggle the effect. Range 0.05 to 0.8.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.30</real>
+        </map>
+        <key>RenderLensFlareRingWidth</key>
+        <map>
+            <key>Comment</key>
+            <string>Thickness of each dispersion ring in UV space. Range 0.01 to 0.3.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.10</real>
+        </map>
+        <key>RenderLensFlareRingDispersion</key>
+        <map>
+            <key>Comment</key>
+            <string>How far the spectral hue sweeps across each ring's thickness. Higher values give a more saturated rainbow band. Range 0 to 3.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>1.0</real>
+        </map>
+        <key>RenderLensFlareRingCount</key>
+        <map>
+            <key>Comment</key>
+            <string>Number of concentric dispersion rings. Range 1 to 4.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>S32</string>
+            <key>Value</key>
+            <integer>1</integer>
+        </map>
+        <key>RenderLensFlareCircle</key>
+        <map>
+            <key>Comment</key>
+            <string>Intensity of the spectral lens circles ringing outward through the optical axis. 0 disables them. Range 0 to 1.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.0</real>
+        </map>
+        <key>RenderLensFlareCircleScale</key>
+        <map>
+            <key>Comment</key>
+            <string>Radius of each spectral lens circle in UV space. Shape control only; use RenderLensFlareCircle to toggle the effect. Range 0.02 to 0.5.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.15</real>
+        </map>
+        <key>RenderLensFlareCircleSpacing</key>
+        <map>
+            <key>Comment</key>
+            <string>Step distance between consecutive spectral lens circles along the optical axis. Range 0.02 to 0.5.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.14</real>
+        </map>
+        <key>RenderLensFlareCircleCount</key>
+        <map>
+            <key>Comment</key>
+            <string>Number of spectral lens circles. Range 1 to 8.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>S32</string>
+            <key>Value</key>
+            <integer>5</integer>
+        </map>
+        <key>RenderLensFlareArc</key>
+        <map>
+            <key>Comment</key>
+            <string>Intensity of the partial spectral arc on the far side of frame center. 0 disables it. Range 0 to 1.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.0</real>
+        </map>
+        <key>RenderLensFlareWarp</key>
+        <map>
+            <key>Comment</key>
+            <string>Barrel (positive) or pincushion (negative) lens distortion applied to the ghost/halo/iris/ring/circle/arc layers. 0 disables it; streak and starburst are unaffected. Range -1 to 1.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.0</real>
+        </map>
+        <key>RenderLensFlareStreakTipAmount</key>
+        <map>
+            <key>Comment</key>
+            <string>Blends the anamorphic streak's tint toward RenderLensFlareStreakTipTint with distance from the source, for a two-tone streak. 0 disables it. Range 0 to 1.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.0</real>
+        </map>
+        <key>RenderLensFlareStreakTipTint</key>
+        <map>
+            <key>Comment</key>
+            <string>Color the streak fades toward at its tip when RenderLensFlareStreakTipAmount is above 0.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>Color3</string>
+            <key>Value</key>
+            <array>
+                <real>1.0</real>
+                <real>1.0</real>
+                <real>1.0</real>
+            </array>
+        </map>
+        <key>RenderLensFlareSrcColorAmount</key>
+        <map>
+            <key>Comment</key>
+            <string>Pulls each flare element's tint toward the light source's own color (luminance-preserving) instead of the screen-sampled pixel under it. Most useful for gelled rig projectors. 0 disables it. Range 0 to 1.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.0</real>
+        </map>
+        <key>RenderLensFlareMaster</key>
+        <map>
+            <key>Comment</key>
+            <string>One-knob brightness scale over the entire composited flare (sun and cinematic rig sources together), applied after every other flare control. 1 is neutral/off; 0 mutes the flare. Range 0 to 4.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>1.0</real>
+        </map>
+        <key>RenderCineLensFlareStrength</key>
+        <map>
+            <key>Comment</key>
+            <string>Master on/off for lens flare sourced from active Cinematic Light Rig projectors. 0 turns the rig-fed flare off entirely (the sun flare, if enabled, is unaffected). Range 0 to 2.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.0</real>
+        </map>
+        <key>RenderCineLensFlareIntensity</key>
+        <map>
+            <key>Comment</key>
+            <string>Brightness multiplier applied to every active rig-projector flare source, independent of RenderCineLensFlareStrength's on/off gate. 1 is neutral. Range 0 to 4.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>1.0</real>
+        </map>
+        <key>RenderCineLensFlarePreset</key>
+        <map>
+            <key>Comment</key>
+            <string>Last lens-flare preset applied from the Lights panel's preset dropdown. 0 is the "Choose preset..." sentinel (manual sliders); UI-facing bookkeeping only, not read by the renderer.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>S32</string>
+            <key>Value</key>
+            <integer>0</integer>
+        </map>
         <key>RenderParcelSelectionToMaxHeight</key>
         <map>
             <key>Comment</key>

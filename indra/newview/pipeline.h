@@ -1279,6 +1279,20 @@ public:
 
     F32                 mLensFlareSunVisibility = 0.f;
 
+    // Per-source temporal visibility smoothing for the cine-rig lens flare,
+    // mirroring mLensFlareSunVisibility above but one scalar per rig
+    // projector SLOT (not per packed upload index — a packed index can be
+    // reused by a different light next frame when a source drops out, which
+    // would otherwise hand its smoothed visibility to the wrong light).
+    // Sized ALCineLightRigManager::SLOT_COUNT(5) * ALCineLightRigModel::
+    // LIGHT_COUNT(4) = 20, indexed by stable_idx = slot*LIGHT_COUNT + light.
+    // Kept as a literal here so pipeline.h doesn't need to pull in
+    // alcinelightrigmanager.h/alcinelightrigmodel.h; colorCorrect()
+    // static_asserts the two stay in sync. This is unrelated to
+    // AL_CINE_FLARE_MAX(8, llviewershadermgr.h), which caps how many of
+    // these 20 possible sources get uploaded to the shader in a given frame.
+    F32                 mCineFlareVisibility[20] = {};
+
     bool                    mInitialized;
     bool                    mShadersLoaded;
 

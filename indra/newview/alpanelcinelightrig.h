@@ -81,6 +81,7 @@ private:
     void adjustAim(const std::string& setting, F32 delta);
     void resetAim();
     void onSetupSelected();
+    void onFlarePresetSelected();
     void saveSetup();
     void deleteSetup();
     bool deleteSetupCallback(const LLSD& notification, const LLSD& response,
@@ -99,6 +100,7 @@ private:
     LLCheckBoxCtrl* mGroupSlotChecks[5] = {};
     LLTextBox* mGroupStatus = nullptr;
     LLComboBox* mSetupCombo = nullptr;
+    LLComboBox* mFlarePreset = nullptr;
     LLComboBox* mFXCombo = nullptr;
     LLLineEditor* mSeedEditor = nullptr;
     LLSpinCtrl* mFillEV = nullptr;

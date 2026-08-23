@@ -417,6 +417,43 @@ public:
         LENS_FLARE_OCCLUSION_TAPS,          //  "uLensFlareOcclusionTaps"
         LENS_FLARE_LIGHT_COLOR,             //  "uLensFlareLightColor"
 
+        // Cine rig flare sources (Group 1 — rig source arrays, uploaded per
+        // frame like MULTI_LIGHT). AL_CINE_FLARE_MAX cap defined alongside
+        // LL_DEFERRED_MULTI_LIGHT_COUNT in llviewershadermgr.h.
+        CINE_FLARE_COUNT,                   //  "uCineFlareCount"
+        CINE_FLARE_A,                       //  "uCineFlareA"       vec4[] (uv.x, uv.y, visibility, intensity)
+        CINE_FLARE_COLOR,                   //  "uCineFlareColor"   vec4[] (linR, linG, linB, perSourceScale)
+
+        // Lens flare polished-stack additions (Group 2 — element intensities,
+        // default 0 = feature-off byte-parity with the legacy sun-only flare).
+        LENS_FLARE_GHOST_CHROMA,            //  "uLensFlareGhostChroma"
+        LENS_FLARE_HALO_CHROMA,             //  "uLensFlareHaloChroma"
+        LENS_FLARE_IRIS,                    //  "uLensFlareIris"
+        LENS_FLARE_RING,                    //  "uLensFlareRing"
+        LENS_FLARE_CIRCLE,                  //  "uLensFlareCircle"
+        LENS_FLARE_ARC,                     //  "uLensFlareArc"
+        LENS_FLARE_WARP,                    //  "uLensFlareWarp"
+        LENS_FLARE_STREAK_TIP_AMOUNT,       //  "uLensFlareStreakTipAmount"
+        LENS_FLARE_SRC_COLOR_AMOUNT,        //  "uLensFlareSrcColorAmount"
+
+        // Lens flare polished-stack shape params (Group 3 — read only when the
+        // matching Group 2 gate is > 0).
+        LENS_FLARE_IRIS_COUNT,              //  "uLensFlareIrisCount"
+        LENS_FLARE_IRIS_SIDES,              //  "uLensFlareIrisSides"
+        LENS_FLARE_IRIS_SIZE,               //  "uLensFlareIrisSize"
+        LENS_FLARE_RING_RADIUS,             //  "uLensFlareRingRadius"
+        LENS_FLARE_RING_WIDTH,              //  "uLensFlareRingWidth"
+        LENS_FLARE_RING_DISPERSION,         //  "uLensFlareRingDispersion"
+        LENS_FLARE_RING_COUNT,              //  "uLensFlareRingCount"
+        LENS_FLARE_CIRCLE_SCALE,            //  "uLensFlareCircleScale"
+        LENS_FLARE_CIRCLE_SPACING,          //  "uLensFlareCircleSpacing"
+        LENS_FLARE_CIRCLE_COUNT,            //  "uLensFlareCircleCount"
+        LENS_FLARE_STREAK_TIP_TINT,         //  "uLensFlareStreakTipTint"
+
+        // Lens flare master (Group 4 — one-knob scale over sun + rig, default
+        // 1.0 = branch not taken, byte-parity with the legacy output).
+        LENS_FLARE_MASTER,                  //  "uLensFlareMaster"
+
         // Graduated ND (pre-tonemap exposure region). Packed:
         //   gradnd_params  = (density_stops, angle_rad, position, softness)
         //   gradnd_params2 = (sky_confine, sun_weight, sun_radius, flip)

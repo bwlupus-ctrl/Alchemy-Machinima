@@ -111,20 +111,43 @@
 
     <text follows="left|top" height="20" layout="topleft" left="12"
      name="gaze_priority_lbl" top="180" width="124">Movement Style</text>
-    <combo_box follows="left|top|right"
+    <combo_box follows="left|top"
      height="20" layout="topleft" left="140" name="gaze_priority_combo"
      top="180"
      tool_tip="How completely gaze owns its joints when it is allowed to write. Does not consult SL animation priority."
-     width="336">
+     width="190">
         <combo_box.item label="Legacy blend" name="gaze_priority_blend" value="0" />
         <combo_box.item label="Head+Eyes" name="gaze_priority_head_eyes" value="1" />
         <combo_box.item label="Upper body" name="gaze_priority_upper_body" value="2" />
         <combo_box.item label="Planted spine (IK)" name="gaze_priority_planted_spine" value="3" />
     </combo_box>
+    <!-- [Machinima] IK Lean preset chooser: stateless, same pattern as Range
+         above. Greyed out unless the resolved Movement Style (Ownership
+         scope) is Planted spine (IK); Lean only applies in that scope. -->
+    <text follows="left|top" height="16" layout="topleft" left="334"
+     name="gaze_ik_lean_lbl" top="182" width="32">Lean</text>
+    <combo_box follows="left|top" height="20" layout="topleft" left="368"
+     name="gaze_ik_lean_combo" top="180"
+     tool_tip="IK Lean: apply a spine-lean preset (curve + threshold/max/softness + chest share) to the edited actor(s). Enabled only while Movement Style is Planted spine (IK)."
+     width="100">
+        <combo_box.item label="Choose lean..." name="gaze_lean_choose" value="-1" />
+        <combo_box.item label="Off" name="gaze_lean_off" value="0" />
+        <combo_box.item label="Subtle" name="gaze_lean_subtle" value="1" />
+        <combo_box.item label="Natural" name="gaze_lean_natural" value="2" />
+        <combo_box.item label="Responsive" name="gaze_lean_responsive" value="3" />
+        <combo_box.item label="Expressive" name="gaze_lean_expressive" value="4" />
+        <combo_box.item label="Hero" name="gaze_lean_hero" value="5" />
+        <combo_box.item label="Lean-in" name="gaze_lean_lean_in" value="6" />
+        <combo_box.item label="Snap" name="gaze_lean_snap" value="7" />
+        <combo_box.item label="Deep bow" name="gaze_lean_deep_bow" value="8" />
+    </combo_box>
     <button follows="right|top"
      height="18" image_overlay="Refresh_Off" image_top_pad="0"
-     layout="topleft" left="486" name="reset_gaze_priority"
+     layout="topleft" left="470" name="reset_gaze_priority"
      tool_tip="Reset to default" top="181" width="14" />
+    <button follows="right|top" height="18" image_overlay="Refresh_Off"
+     image_top_pad="0" layout="topleft" left="486" name="reset_gaze_ik_lean"
+     tool_tip="Reset display to Choose lean..." top="181" width="14" />
 
     <text follows="left|top" height="20" layout="topleft" left="12"
      name="gaze_anim_priority_lbl" top="206" width="124">SL anim priority</text>
@@ -142,27 +165,6 @@
         <combo_box.item label="5" name="gaze_anim_prio_5" value="5" />
         <combo_box.item label="6 (Maximum normal)" name="gaze_anim_prio_6" value="6" />
     </combo_box>
-    <!-- [Machinima] IK Lean preset chooser: stateless, same pattern as Range
-         above. Greyed out unless the resolved Movement Style (Ownership
-         scope) is Planted spine (IK); Lean only applies in that scope. -->
-    <combo_box follows="left|top" height="20" layout="topleft" left="296"
-     name="gaze_ik_lean_combo" top="206"
-     tool_tip="IK Lean: apply a spine-lean preset (curve + threshold/max/softness + chest share) to the edited actor(s). Enabled only while Movement Style is Planted spine (IK)."
-     width="146">
-        <combo_box.item label="Choose lean..." name="gaze_lean_choose" value="-1" />
-        <combo_box.item label="Off" name="gaze_lean_off" value="0" />
-        <combo_box.item label="Subtle" name="gaze_lean_subtle" value="1" />
-        <combo_box.item label="Natural" name="gaze_lean_natural" value="2" />
-        <combo_box.item label="Responsive" name="gaze_lean_responsive" value="3" />
-        <combo_box.item label="Expressive" name="gaze_lean_expressive" value="4" />
-        <combo_box.item label="Hero" name="gaze_lean_hero" value="5" />
-        <combo_box.item label="Lean-in" name="gaze_lean_lean_in" value="6" />
-        <combo_box.item label="Snap" name="gaze_lean_snap" value="7" />
-        <combo_box.item label="Deep bow" name="gaze_lean_deep_bow" value="8" />
-    </combo_box>
-    <button follows="right|top" height="18" image_overlay="Refresh_Off"
-     image_top_pad="0" layout="topleft" left="448" name="reset_gaze_ik_lean"
-     tool_tip="Reset display to Choose lean..." top="207" width="14" />
     <button follows="right|top"
      height="18" image_overlay="Refresh_Off" image_top_pad="0"
      layout="topleft" left="486" name="reset_gaze_anim_priority"

@@ -200,18 +200,26 @@ vec4 applyChromaticAberration(sampler2D tex, vec2 uv)
 
 
 // =============================================================================
-// Lens flare — anamorphic streak with optional glow, ghosts, halo, starburst
+// Lens flare — multi-source cinematic stack (sun + cine-rig projectors)
 // =============================================================================
 //
-// Screen-space approximation of an anamorphic lens flare. Driven by a
-// CPU-computed sun UV position and visibility (on-screen fade), plus a
-// multi-tap depth occlusion check done here so geometry in front of the sun
-// attenuates the flare smoothly.
+// Screen-space approximation of a cinematic lens flare. The per-source body
+// (flareForSource) draws the full optical stack — glow, anamorphic streak,
+// ghosts, halo, starburst, plus the gated "polished stack" additions (iris
+// ghosts, dispersion rings, spectral circles/arc, chromatic fringing, lens
+// warp) — and computeLensFlare sums it over the sun source and up to
+// AL_CINE_FLARE_MAX rig-projector sources uploaded by pipeline.cpp.
 //
-// Each sub-effect (glow / ghosts / halo / starburst) is gated by its own
-// intensity uniform (0 = disabled, else acts as a brightness multiplier), so
-// this single function backs a variety of looks without branching from the
-// call site.
+// The sun is driven by a CPU-computed UV position and visibility (on-screen
+// fade), plus a multi-tap depth occlusion check done here so geometry in
+// front of the sun attenuates the flare smoothly. Rig sources arrive with
+// CPU-computed visibility and skip the in-shader occlusion probe.
+//
+// Each sub-effect is gated by its own intensity uniform (0 = disabled, else
+// acts as a brightness multiplier), so this single function backs a variety
+// of looks without branching from the call site. All new elements default to
+// 0 (off): with those defaults and uCineFlareCount == 0 the output is
+// bit-identical to the original sun-only implementation.
 
 // ---- Driver inputs (set by the viewer each frame) --------------------------
 uniform float uLensFlareStrength;                 // master on/off + intensity
@@ -252,6 +260,62 @@ uniform int   uLensFlareStarburstSpikes;          // primary angular frequency �
                                                   //   lobes per full turn, so 4 here = 8 visible spikes
 uniform float uLensFlareStarburstSharpness;       // pow() exponent — higher = tighter spikes
 uniform float uLensFlareStarburstFalloff;         // radial decay rate from the sun
+
+// ---- Cine rig flare sources (uploaded by pipeline.cpp each frame) ----------
+// Screen-space projector sources from the cinematic light rig. When
+// uCineFlareCount is 0 (the default) the rig loop is skipped entirely and
+// computeLensFlare's output is bit-identical to the sun-only implementation.
+#define AL_CINE_FLARE_MAX 8
+uniform int  uCineFlareCount;                     // active rig sources, 0..AL_CINE_FLARE_MAX
+uniform vec4 uCineFlareA[AL_CINE_FLARE_MAX];      // per source: (uv.x, uv.y, visibility, intensity)
+uniform vec4 uCineFlareColor[AL_CINE_FLARE_MAX];  // per source: (linR, linG, linB, perSourceScale)
+
+// ---- Polished-stack additions ----------------------------------------------
+// Every element below is gated by its own intensity/amount uniform whose
+// DEFAULT IS 0 (or 1.0 for the pure multipliers), so with defaults in place
+// none of this math runs and the legacy flare output is bit-unchanged.
+
+// Ghost / halo chromatic fringing (0 = legacy monochrome discs/ring).
+uniform float uLensFlareGhostChroma;              // [0, 0.1]  R/B ghost-disc shift along the axis
+uniform float uLensFlareHaloChroma;               // [0, 0.05] R/B halo-ring radius split (UV units)
+
+// N-gon iris ghosts — polygonal aperture reflections marching along the axis.
+uniform float uLensFlareIris;                     // 0 = off, else brightness
+uniform int   uLensFlareIrisCount;                // [1, 8]   number of iris ghosts
+uniform int   uLensFlareIrisSides;                // [3, 12]  aperture blade count (polygon sides)
+uniform float uLensFlareIrisSize;                 // [0.01, 0.2] base polygon radius in UV
+
+// Chromatic dispersion rings — concentric rainbow rings around the source.
+uniform float uLensFlareRing;                     // 0 = off, else brightness
+uniform float uLensFlareRingRadius;               // [0.05, 0.8] first ring radius in UV
+uniform float uLensFlareRingWidth;                // [0.01, 0.3] ring thickness in UV
+uniform float uLensFlareRingDispersion;           // [0, 3]   spectral hue sweep across the ring
+uniform int   uLensFlareRingCount;                // [1, 4]   number of rings
+
+// Spectral lens circles — tinted copies of the source along the optical axis.
+uniform float uLensFlareCircle;                   // 0 = off, else brightness
+uniform float uLensFlareCircleScale;              // [0.02, 0.5] circle radius in UV
+uniform float uLensFlareCircleSpacing;            // [0.02, 0.5] step along the axis per circle
+uniform int   uLensFlareCircleCount;              // [1, 8]   number of circles
+
+// Spectral arc — partial rainbow arc on the far side of frame center.
+uniform float uLensFlareArc;                      // 0 = off, else brightness
+
+// Lens warp — barrel (+) / pincushion (-) distortion of the "glass" layers
+// (ghosts, halo, iris, rings, circles, arc). Streak and starburst stay straight.
+uniform float uLensFlareWarp;                     // [-1, 1]  0 = off (layers use raw UV)
+
+// Streak two-tone tip — blends the streak tint toward a tip color with
+// horizontal distance from the source (core keeps uLensFlareStreakTint).
+uniform float uLensFlareStreakTipAmount;          // [0, 1]   0 = off (single-tone streak)
+uniform vec3  uLensFlareStreakTipTint;            // tip color the streak fades toward
+
+// Source-color blend — pulls each element's energy tint toward the source's
+// own color (luminance-preserving), instead of the raw screen sample.
+uniform float uLensFlareSrcColorAmount;           // [0, 1]   0 = off (screen-sampled tint)
+
+// Master one-knob scale over the whole composited flare (sun + rig).
+uniform float uLensFlareMaster;                   // default 1.0 = off (branch not taken)
 
 // =============================================================================
 // Graduated ND  (pre-tonemap exposure region)
@@ -422,14 +486,47 @@ vec3 applyPolarizer(vec3 color, vec2 uv, sampler2D depth, float exposure_scale)
     return color;
 }
 
-vec3 computeLensFlare(sampler2D diffuse, sampler2D depth, vec2 uv)
-{
-    // Master gate: cheapest possible early-out.
-    float vis = uLensFlareSunVisibility * uLensFlareStrength;
-    if (vis <= 0.0)
-        return vec3(0.0);
+// -----------------------------------------------------------------------------
+// Per-source flare body.
+//
+// The complete optical stack for ONE light source, parameterized by screen-UV
+// position, pre-computed visibility, and source color so the same body serves
+// both the sun and the cine-rig projector sources.
+//
+// The original sun-only elements (depth occlusion, central glow, anamorphic
+// streak, ghosts, halo, starburst) are ported VERBATIM — same operations, same
+// order, same constants — so the sun call is bit-identical to the previous
+// single-source implementation. The "polished stack" additions are strictly
+// additive and each early-outs on its own intensity uniform (default 0), so
+// they add no math to the legacy path.
+//
+// occTaps:  >= 0 — run the Poisson depth-occlusion probe (clamped 1..32; the
+//                  sun passes its uniform through unchanged).
+//           <  0 — skip in-shader occlusion entirely. Rig sources use this:
+//                  their visibility arrives CPU-computed per frame, and the
+//                  sky-plane depth test below would read "always occluded"
+//                  for an in-scene light prim anyway.
 
-    vec2 sun_uv = uLensFlareSunPos;
+// Cosine spectrum palette — rainbow hue sweep for the dispersion elements.
+vec3 flareSpectrum(float t)
+{
+    return 0.5 + 0.5 * cos(6.2831853 * (t + vec3(0.0, 0.33, 0.67)));
+}
+
+// N-gon "distance" via angle fold: length scaled so iso-lines are regular
+// polygons with `n` sides (apothem-normalized). rot spins the polygon.
+float flareNgonDist(vec2 p, float n, float rot)
+{
+    float seg = 6.2831853 / max(n, 3.0);
+    float a   = atan(p.y, p.x) + rot;
+    a = mod(a, seg) - seg * 0.5;
+    return length(p) * cos(a) / cos(seg * 0.5);
+}
+
+vec3 flareForSource(sampler2D diffuse, sampler2D depth, vec2 uv,
+                    vec2 srcUV, float vis, vec3 srcColor, int occTaps)
+{
+    vec2 sun_uv = srcUV;
 
     // -------------------------------------------------------------------
     // Depth-based occlusion.
@@ -440,7 +537,7 @@ vec3 computeLensFlare(sampler2D diffuse, sampler2D depth, vec2 uv)
     // plane (i.e. sky). This gives smooth partial occlusion when the sun
     // is half-behind an object.
     // -------------------------------------------------------------------
-    if (all(greaterThanEqual(sun_uv, vec2(0.0))) && all(lessThanEqual(sun_uv, vec2(1.0))))
+    if (occTaps >= 0 && all(greaterThanEqual(sun_uv, vec2(0.0))) && all(lessThanEqual(sun_uv, vec2(1.0))))
     {
         // Pre-baked Poisson disk samples, good spatial distribution.
         const vec2 taps[32] = vec2[32](
@@ -477,7 +574,7 @@ vec3 computeLensFlare(sampler2D diffuse, sampler2D depth, vec2 uv)
             vec2( 0.289,   0.934),
             vec2(-0.867,   0.745)
         );
-        int   num_taps = clamp(uLensFlareOcclusionTaps, 1, 32);
+        int   num_taps = clamp(occTaps, 1, 32);
         float occluded = 0.0;
         for (int i = 0; i < num_taps; i++)
         {
@@ -492,21 +589,76 @@ vec3 computeLensFlare(sampler2D diffuse, sampler2D depth, vec2 uv)
         return vec3(0.0);
 
     // -------------------------------------------------------------------
-    // Sample sun brightness once, convert to a normalized "overbright"
-    // factor. We subtract 2.0 from luminance so only HDR-bright suns
-    // drive the flare — prevents diffuse bright surfaces from flaring.
+    // Source energy.
+    //
+    // Sun (occTaps >= 0): sample sun brightness once, convert to a
+    // normalized "overbright" factor. We subtract 2.0 from luminance so
+    // only HDR-bright suns drive the flare — prevents diffuse bright
+    // surfaces from flaring. (Ported verbatim from the single-source
+    // implementation.)
+    //
+    // Rig sources (occTaps < 0): BYPASS the overbright pixel gate — a
+    // projector is a known, CPU-authored light, and its on-screen pixel
+    // may not be HDR-bright without that meaning the flare should vanish.
+    // The energy base is unit white: brightness arrives pre-folded into
+    // `vis` (CPU visibility × intensity × per-source scale) and the color
+    // is applied exactly once by the final `srcColor` multiply, so a rig
+    // source with intensity > 0 and visibility > 0 always flares. Rig
+    // sources therefore take no diffuse tap at all — their whole stack is
+    // procedural.
     // -------------------------------------------------------------------
-    vec3  sun_color  = texture(diffuse, clamp(sun_uv, vec2(0.0), vec2(1.0))).rgb;
-    float sun_lum    = dot(sun_color, LUMA);
-    float sun_bright = max(sun_lum - 2.0, 0.0) / max(sun_lum, 1e-4);
-    sun_color *= sun_bright;
+    vec3  sun_color;
+    float sun_lum;
+    float sun_bright;
+    if (occTaps >= 0)
+    {
+        sun_color  = texture(diffuse, clamp(sun_uv, vec2(0.0), vec2(1.0))).rgb;
+        sun_lum    = dot(sun_color, LUMA);
+        sun_bright = max(sun_lum - 2.0, 0.0) / max(sun_lum, 1e-4);
+        sun_color *= sun_bright;
 
-    if (sun_bright <= 0.0)
-        return vec3(0.0);
+        if (sun_bright <= 0.0)
+            return vec3(0.0);
+    }
+    else
+    {
+        sun_color  = vec3(1.0);
+        sun_lum    = 1.0;
+        sun_bright = 1.0;
+    }
+
+    // ---- Source-color blend (new, gated) ----------------------------------
+    // Pull the element energy tint toward the source's own color while
+    // preserving the current energy luminance. For the sun this trades the
+    // screen-sampled tint for the artist tint; for rig sources (unit-white
+    // base) it pre-saturates the elements toward the gel color on top of
+    // the final srcColor multiply. Skipped entirely at the default 0.
+    if (uLensFlareSrcColorAmount > 0.0)
+    {
+        float src_l = max(dot(srcColor, LUMA), 1e-4);
+        sun_color = mix(sun_color, srcColor * (sun_lum * sun_bright / src_l),
+                        clamp(uLensFlareSrcColorAmount, 0.0, 1.0));
+    }
 
     float aspect = uResolution.x / max(uResolution.y, 1.0);
     vec2  delta  = uv - sun_uv;
     vec3  flare  = vec3(0.0);
+
+    // ---- Lens warp (new, gated) -------------------------------------------
+    // Barrel/pincushion-warped UV used by the "glass" layers only (ghosts,
+    // halo, iris, rings, circles, arc). Streak and starburst stay straight.
+    // At the default 0 this is a plain copy, so the legacy ghost/halo math
+    // sees bit-identical coordinates.
+    vec2 wuv = uv;
+    if (uLensFlareWarp != 0.0)
+    {
+        vec2 wc = uv - 0.5;
+        wc.x *= aspect;
+        float wr2 = dot(wc, wc);
+        wc *= 1.0 + uLensFlareWarp * wr2;
+        wc.x /= aspect;
+        wuv = wc + 0.5;
+    }
 
     // ---- Central glow: soft radial falloff --------------------------------
     // Scaled by sky_hdr_scale (same as starburst) so the glow reads at the
@@ -556,6 +708,19 @@ vec3 computeLensFlare(sampler2D diffuse, sampler2D depth, vec2 uv)
         {
             flare += sun_color * streak * uLensFlareStreakTint * uLensFlareStreakIntensity;
         }
+
+        // ---- Streak two-tone tip (new, gated) -----------------------------
+        // Linear blend of the streak tint toward a tip color with distance
+        // from the core: adding streak·t·amt·(tipTint − tint) on top of the
+        // base term is exactly streak·mix(tint, tipTint, t·amt). Uses the
+        // base (green-channel) streak profile for all three channels.
+        if (uLensFlareStreakTipAmount > 0.0)
+        {
+            float tip_t = 1.0 - horiz_falloff; // 0 at the core -> 1 at the tip
+            flare += sun_color * streak * tip_t
+                   * (uLensFlareStreakTipTint - uLensFlareStreakTint)
+                   * uLensFlareStreakIntensity * uLensFlareStreakTipAmount;
+        }
     }
 
     // ---- Ghosts: soft disks stepped along the sun→center axis -------------
@@ -569,12 +734,29 @@ vec3 computeLensFlare(sampler2D diffuse, sampler2D depth, vec2 uv)
             float scale    = 1.0 / float(i + 1);        // later ghosts fade out
             float radius   = 0.04 * scale + 0.02;
 
-            vec2 gd = uv - ghost_uv;
+            vec2 gd = wuv - ghost_uv;
             gd.x *= aspect;
             float d    = length(gd);
             float disk = 1.0 - smoothstep(radius * 0.5, radius, d);
 
-            flare += sun_color * disk * scale * uLensFlareGhost;
+            // ---- Ghost chromatic fringing (new, gated) --------------------
+            // R and B discs shifted along the ghost axis; G keeps the base
+            // disc, so the fringe reads as dispersion, not a triple image.
+            if (uLensFlareGhostChroma > 0.0)
+            {
+                vec2 co = ghost_vec * uLensFlareGhostChroma;
+                vec2 gr = wuv - ghost_uv + co;
+                vec2 gb = wuv - ghost_uv - co;
+                gr.x *= aspect;
+                gb.x *= aspect;
+                float disk_r = 1.0 - smoothstep(radius * 0.5, radius, length(gr));
+                float disk_b = 1.0 - smoothstep(radius * 0.5, radius, length(gb));
+                flare += sun_color * vec3(disk_r, disk, disk_b) * scale * uLensFlareGhost;
+            }
+            else
+            {
+                flare += sun_color * disk * scale * uLensFlareGhost;
+            }
         }
     }
 
@@ -582,12 +764,27 @@ vec3 computeLensFlare(sampler2D diffuse, sampler2D depth, vec2 uv)
     if (uLensFlareHalo > 0.0 && uLensFlareHaloRadius > 0.0)
     {
         vec2  halo_center = vec2(0.5) + (vec2(0.5) - sun_uv);
-        float halo_dist   = length(uv - halo_center);
+        float halo_dist   = length(wuv - halo_center);
         float halo_w      = max(uLensFlareHaloWidth, 0.01);
         float halo        = 1.0 - abs(halo_dist - uLensFlareHaloRadius) / halo_w;
         halo  = clamp(halo, 0.0, 1.0);
         halo *= halo;                                    // soften the edges
-        flare += sun_color * halo * 0.3 * uLensFlareHalo;
+
+        // ---- Halo chromatic fringing (new, gated) -------------------------
+        // R ring pulled slightly inward, B pushed outward — classic lateral
+        // dispersion. G keeps the base ring.
+        if (uLensFlareHaloChroma > 0.0)
+        {
+            float halo_r = clamp(1.0 - abs(halo_dist - (uLensFlareHaloRadius - uLensFlareHaloChroma)) / halo_w, 0.0, 1.0);
+            float halo_b = clamp(1.0 - abs(halo_dist - (uLensFlareHaloRadius + uLensFlareHaloChroma)) / halo_w, 0.0, 1.0);
+            halo_r *= halo_r;
+            halo_b *= halo_b;
+            flare += sun_color * vec3(halo_r, halo, halo_b) * 0.3 * uLensFlareHalo;
+        }
+        else
+        {
+            flare += sun_color * halo * 0.3 * uLensFlareHalo;
+        }
     }
 
     // ---- Starburst: angular spikes radiating from the sun -----------------
@@ -625,9 +822,160 @@ vec3 computeLensFlare(sampler2D diffuse, sampler2D depth, vec2 uv)
         }
     }
 
+    // ---- N-gon iris ghosts (new, gated) -----------------------------------
+    // Polygonal aperture reflections marching along the source→center axis,
+    // body + bright rim, per-element hash for spacing/size/rotation jitter.
+    if (uLensFlareIris > 0.0 && uLensFlareIrisCount > 0)
+    {
+        vec2  iris_axis = vec2(0.5) - sun_uv;
+        float sides     = float(clamp(uLensFlareIrisSides, 3, 12));
+        int   iris_n    = clamp(uLensFlareIrisCount, 1, 8);
+        for (int i = 0; i < iris_n; i++)
+        {
+            float fi = float(i);
+            float h  = hash12(vec2(fi * 7.13, 4.7));
+            // March from just past the source through center to the far side,
+            // with a hash jitter so the chain doesn't read as a metronome.
+            float t     = (fi + 0.5) / float(iris_n) * 1.6 + (h - 0.5) * 0.25;
+            vec2  cpos  = sun_uv + iris_axis * t;
+            vec2  pd    = wuv - cpos;
+            pd.x *= aspect;
+            float size = uLensFlareIrisSize * (0.7 + 0.6 * hash12(vec2(fi * 3.7, 9.1)));
+            float nd   = flareNgonDist(pd, sides, h * 6.2831853);
+            float body = 1.0 - smoothstep(size * 0.72, size, nd);
+            float rim  = 1.0 - smoothstep(0.0, size * 0.28, abs(nd - size * 0.86));
+            float fall = 1.0 / (1.0 + fi);              // later reflections fade
+            flare += sun_color * (body * 0.35 + rim * 0.65) * fall * uLensFlareIris;
+        }
+    }
+
+    // ---- Chromatic dispersion rings (new, gated) --------------------------
+    // Concentric rainbow rings around the source; the cosine spectrum sweeps
+    // across each ring's thickness, scaled by the dispersion knob.
+    if (uLensFlareRing > 0.0 && uLensFlareRingCount > 0)
+    {
+        vec2 rd = wuv - sun_uv;
+        rd.x *= aspect;
+        float rl     = length(rd);
+        float ring_w = max(uLensFlareRingWidth, 1e-3);
+        int   ring_n = clamp(uLensFlareRingCount, 1, 4);
+        for (int i = 0; i < ring_n; i++)
+        {
+            float fi   = float(i);
+            float rr   = uLensFlareRingRadius * (1.0 + 0.55 * fi);
+            float band = 1.0 - abs(rl - rr) / ring_w;
+            if (band <= 0.0)
+                continue;
+            band  = clamp(band, 0.0, 1.0);
+            band *= band;                                // soften the edges
+            // 0..1 across the ring thickness drives the hue sweep.
+            float t = clamp((rl - (rr - ring_w)) / (2.0 * ring_w), 0.0, 1.0);
+            vec3  spec = flareSpectrum(t * uLensFlareRingDispersion + 0.13 * fi);
+            flare += sun_color * spec * band * uLensFlareRing / (1.0 + fi);
+        }
+    }
+
+    // ---- Spectral lens circles (new, gated) -------------------------------
+    // Scaled, spectrum-tinted copies of the source ringing outward through
+    // the optical axis past frame center — soft disc + brighter edge.
+    if (uLensFlareCircle > 0.0 && uLensFlareCircleCount > 0)
+    {
+        vec2 circ_axis = vec2(0.5) - sun_uv;
+        int  circ_n    = clamp(uLensFlareCircleCount, 1, 8);
+        for (int i = 0; i < circ_n; i++)
+        {
+            float fi   = float(i);
+            vec2  cpos = sun_uv + circ_axis * (1.2 + uLensFlareCircleSpacing * (fi + 1.0) * 2.0);
+            vec2  cd   = wuv - cpos;
+            cd.x *= aspect;
+            float rad   = uLensFlareCircleScale * (0.8 + 0.35 * hash12(vec2(fi * 11.31, 2.9)));
+            float dcirc = length(cd);
+            float disc  = 1.0 - smoothstep(rad * 0.55, rad, dcirc);
+            float edge  = 1.0 - smoothstep(0.0, rad * 0.22, abs(dcirc - rad * 0.85));
+            vec3  spec  = flareSpectrum(fi / float(circ_n) + 0.15);
+            flare += sun_color * spec * (disc * 0.3 + edge * 0.7) / (1.5 + fi) * uLensFlareCircle;
+        }
+    }
+
+    // ---- Spectral arc (new, gated) ----------------------------------------
+    // Partial rainbow arc on the far side of frame center: a ring segment at
+    // ~2.2x the source→center distance, windowed to the away-facing angle,
+    // with the spectrum swept across its thickness.
+    if (uLensFlareArc > 0.0)
+    {
+        vec2 arc_axis = vec2((0.5 - sun_uv.x) * aspect, 0.5 - sun_uv.y);
+        float alen = length(arc_axis);
+        if (alen > 1e-3)
+        {
+            arc_axis /= alen;
+            vec2 ad = wuv - sun_uv;
+            ad.x *= aspect;
+            float r     = length(ad);
+            float arc_r = alen * 2.2;
+            float arc_w = 0.10;
+            float band  = 1.0 - abs(r - arc_r) / arc_w;
+            if (band > 0.0)
+            {
+                band  = clamp(band, 0.0, 1.0);
+                band *= band;
+                float facing = dot(ad / max(r, 1e-4), arc_axis);
+                float window = smoothstep(0.55, 0.95, facing);
+                float t = clamp((r - (arc_r - arc_w)) / (2.0 * arc_w), 0.0, 1.0);
+                flare += sun_color * flareSpectrum(t * 0.7 + 0.05) * band * window * uLensFlareArc;
+            }
+        }
+    }
+
     // Final scale: 0.15 tames peak intensity to a plausible lens-response
     // range; tint and visibility factor apply equally to all sub-effects.
-    return max(flare * vis * uLensFlareLightColor * 0.15, vec3(0.0));
+    return max(flare * vis * srcColor * 0.15, vec3(0.0));
+}
+
+vec3 computeLensFlare(sampler2D diffuse, sampler2D depth, vec2 uv)
+{
+    // Master gate: cheapest possible early-out. The extra integer compare on
+    // uCineFlareCount keeps rig flares alive when the sun is off/occluded;
+    // with the default count of 0 this reduces to the original sun-only gate.
+    float vis = uLensFlareSunVisibility * uLensFlareStrength;
+    if (vis <= 0.0 && uCineFlareCount <= 0)
+        return vec3(0.0);
+
+    vec3 total = vec3(0.0);
+
+    // Source 0: the sun — math untouched, including its full-tap depth
+    // occlusion (occTaps passes the uniform through; the max() only guards
+    // against a negative debug value colliding with the skip sentinel).
+    if (vis > 0.0)
+    {
+        total = flareForSource(diffuse, depth, uv, uLensFlareSunPos, vis,
+                               uLensFlareLightColor,
+                               max(uLensFlareOcclusionTaps, 0));
+    }
+
+    // Rig projector sources — additive, each gated by its CPU-provided
+    // visibility × intensity × per-source scale before any per-source work,
+    // and running with in-shader occlusion skipped (occTaps = -1): their
+    // occlusion/edge fade is computed CPU-side per frame.
+    if (uCineFlareCount > 0)
+    {
+        int rig_count = min(uCineFlareCount, AL_CINE_FLARE_MAX);
+        for (int i = 0; i < rig_count; i++)
+        {
+            float rvis = uCineFlareA[i].z * uCineFlareA[i].w * uCineFlareColor[i].w;
+            if (rvis <= 0.0)
+                continue;
+            total += flareForSource(diffuse, depth, uv,
+                                    uCineFlareA[i].xy, rvis,
+                                    uCineFlareColor[i].rgb, -1);
+        }
+    }
+
+    // Master one-knob scale — branch not taken at the default 1.0, so the
+    // legacy output stays bit-identical.
+    if (uLensFlareMaster != 1.0)
+        total *= max(uLensFlareMaster, 0.0);
+
+    return total;
 }
 
 

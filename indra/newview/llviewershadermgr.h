@@ -35,6 +35,11 @@
 
 #define LL_DEFERRED_MULTI_LIGHT_COUNT 16
 
+// Cine-rig lens flare: max rig projector sources uploaded per frame to
+// uCineFlareA/uCineFlareColor (postEffectUtilsF.glsl AL_CINE_FLARE_MAX must
+// match — LIGHT_COUNT(4) rig lights per rig, cap sized for ~2 subjects).
+#define AL_CINE_FLARE_MAX 8
+
 class LLViewerShaderMgr: public LLShaderMgr
 {
 public:

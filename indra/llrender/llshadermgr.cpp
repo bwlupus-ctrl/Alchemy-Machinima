@@ -1619,6 +1619,38 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("uLensFlareOcclusionTaps");
     mReservedUniforms.push_back("uLensFlareLightColor");
 
+    // Cine rig flare sources (Group 1 — rig source arrays)
+    mReservedUniforms.push_back("uCineFlareCount");
+    mReservedUniforms.push_back("uCineFlareA");
+    mReservedUniforms.push_back("uCineFlareColor");
+
+    // Lens flare polished-stack additions (Group 2 — element intensities)
+    mReservedUniforms.push_back("uLensFlareGhostChroma");
+    mReservedUniforms.push_back("uLensFlareHaloChroma");
+    mReservedUniforms.push_back("uLensFlareIris");
+    mReservedUniforms.push_back("uLensFlareRing");
+    mReservedUniforms.push_back("uLensFlareCircle");
+    mReservedUniforms.push_back("uLensFlareArc");
+    mReservedUniforms.push_back("uLensFlareWarp");
+    mReservedUniforms.push_back("uLensFlareStreakTipAmount");
+    mReservedUniforms.push_back("uLensFlareSrcColorAmount");
+
+    // Lens flare polished-stack shape params (Group 3)
+    mReservedUniforms.push_back("uLensFlareIrisCount");
+    mReservedUniforms.push_back("uLensFlareIrisSides");
+    mReservedUniforms.push_back("uLensFlareIrisSize");
+    mReservedUniforms.push_back("uLensFlareRingRadius");
+    mReservedUniforms.push_back("uLensFlareRingWidth");
+    mReservedUniforms.push_back("uLensFlareRingDispersion");
+    mReservedUniforms.push_back("uLensFlareRingCount");
+    mReservedUniforms.push_back("uLensFlareCircleScale");
+    mReservedUniforms.push_back("uLensFlareCircleSpacing");
+    mReservedUniforms.push_back("uLensFlareCircleCount");
+    mReservedUniforms.push_back("uLensFlareStreakTipTint");
+
+    // Lens flare master (Group 4)
+    mReservedUniforms.push_back("uLensFlareMaster");
+
     // Graduated ND (pre-tonemap exposure region)
     mReservedUniforms.push_back("gradnd_params");
     mReservedUniforms.push_back("gradnd_params2");

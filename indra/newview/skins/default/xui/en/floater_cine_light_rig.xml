@@ -21,7 +21,7 @@
      width="390">
         <panel
          background_visible="false"
-         height="1940"
+         height="2380"
          layout="topleft"
          left="0"
          name="cine_light_rig_content"
@@ -31,7 +31,7 @@
              class="panel_cine_light_rig"
              filename="panel_cine_light_rig.xml"
              follows="left|top"
-             height="1930"
+             height="2370"
              layout="topleft"
              left="8"
              name="cine_light_rig_panel"

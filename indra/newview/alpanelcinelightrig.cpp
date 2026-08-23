@@ -32,6 +32,7 @@
 #include "llui.h"
 #include "lluicolortable.h"
 #include "llviewercontrol.h"
+#include "v3color.h"
 #include "llviewerobject.h"
 #include "pipeline.h"
 
@@ -130,6 +131,103 @@ void addThumbnailGoboLibrary(LLComboBox* combo)
             }
         }
     }
+}
+
+// 19-preset lens flare table, adapted from the VirtualCinema reference (see
+// docs/projector_lensflare_design.md). Applying a preset stamps every field
+// below onto its matching RenderLensFlare* setting; RenderLensFlareMaster and
+// the RenderCineLensFlare* rig controls are deliberately NOT part of any
+// preset row — MasterIntensity is a one-knob scale independent of preset, and
+// the rig master/intensity are a separate on/off + brightness the user sets
+// once for their scene.
+struct FlarePresetRow
+{
+    const char* mName;
+    F32 mStreakInt;
+    F32 mTintR, mTintG, mTintB;
+    S32 mGhostCount;
+    F32 mGhostDisp;
+    F32 mGhostInt;
+    F32 mGhostChroma;
+    F32 mHaloInt;
+    F32 mHaloWidth;
+    F32 mHaloChroma;
+    F32 mRingInt;
+    F32 mRingRadius;
+    F32 mRingWidth;
+    F32 mRingDisp;
+    S32 mRingCount;
+    F32 mCircleInt;
+    F32 mCircleScale;
+    F32 mCircleSpacing;
+    S32 mCircleCount;
+    F32 mCore;
+    F32 mSpikeInt;
+    S32 mSpikeCount;
+    F32 mSpikeLen;
+    F32 mIrisInt;
+    S32 mIrisCount;
+    S32 mIrisSides;
+    F32 mIrisSize;
+    F32 mArcInt;
+};
+
+const FlarePresetRow FLARE_PRESETS[19] = {
+    // name                  streak  tintR tintG tintB  gN  gDisp gInt gChr   hInt hWid hChr    rInt rRad rWid rDsp rN   cInt cScl cSpc cN   core  spI  spN spLen  irI  irN irSd irSz  arc
+    { "Anamorphic Blue",       1.2f, .35f, .55f, 1.f,   4, .35f, .22f, .012f, .28f, .35f, .015f, .15f, .30f, .10f, 1.0f, 1,  .12f, .15f, .14f, 5,  .35f, .10f, 6, .40f,  .15f, 4, 6, .055f, .08f },
+    { "Anamorphic Gold",       1.1f, 1.f, .78f, .42f,   4, .33f, .24f, .014f, .30f, .33f, .016f, .16f, .29f, .10f, 1.0f, 1,  .13f, .15f, .13f, 5,  .35f, .12f, 6, .40f,  .16f, 4, 6, .055f, .08f },
+    { "Spherical Prime",       .35f, .80f, .85f, 1.f,   5, .30f, .28f, .010f, .22f, .30f, .012f, .12f, .32f, .09f, 1.0f, 1,  .15f, .14f, .12f, 6,  .25f, .32f, 8, .30f,  .26f, 6, 9, .050f, .06f },
+    { "Vintage Uncoated",      .55f, 1.f, .72f, .50f,   8, .28f, .40f, .022f, .55f, .40f, .024f, .35f, .30f, .12f, 1.3f, 2,  .30f, .16f, .16f, 7,  .45f, .15f, 12, .25f, .40f, 8, 5, .070f, .22f },
+    { "Master Anamorphic",     1.4f, .40f, .60f, 1.f,   2, .40f, .14f, .008f, .20f, .30f, .010f, .08f, .30f, .08f, 1.0f, 1,  .06f, .14f, .12f, 3,  .28f, .06f, 4, .45f,  .10f, 2, 8, .045f, .04f },
+    { "Sci-Fi / Neon",         1.6f, .30f, .90f, 1.f,   7, .36f, .45f, .028f, .50f, .42f, .030f, .40f, .35f, .13f, 1.6f, 3,  .35f, .18f, .17f, 7,  .50f, .45f, 10, .50f, .35f, 7, 6, .065f, .30f },
+    { "Minimal Glint",         .30f, .85f, .90f, 1.f,   1, .30f, .08f, .008f, .12f, .28f, .010f, .05f, .28f, .08f, 1.0f, 1,  .04f, .14f, .12f, 2,  .15f, .12f, 6, .25f,  .06f, 1, 7, .040f, .03f },
+    { "Rainbow Prism",         .60f, .70f, .80f, 1.f,   6, .34f, .30f, .020f, .35f, .34f, .025f, .45f, .30f, .13f, 1.8f, 3,  .40f, .16f, .16f, 7,  .35f, .25f, 14, .35f, .30f, 7, 6, .065f, .45f },
+    { "Dreamy Halo",           .25f, .90f, .92f, 1.f,   3, .30f, .15f, .012f, .70f, .42f, .020f, .15f, .32f, .12f, 1.0f, 1,  .18f, .16f, .14f, 5,  .55f, .08f, 4, .50f,  .12f, 3, 9, .060f, .12f },
+    { "JJ Blue Blast",         2.0f, .30f, .55f, 1.f,   6, .40f, .35f, .015f, .35f, .35f, .015f, .20f, .30f, .10f, 1.2f, 2,  .15f, .15f, .14f, 4,  .65f, .18f, 4, .60f,  .22f, 6, 8, .055f, .08f },
+    { "Retro 70s Warm",        .50f, 1.f, .72f, .45f,   8, .28f, .40f, .024f, .50f, .40f, .024f, .35f, .30f, .13f, 1.3f, 2,  .35f, .17f, .16f, 7,  .40f, .18f, 10, .30f, .45f, 8, 5, .075f, .20f },
+    { "Cyberpunk Neon",        1.5f, 1.f, .30f, .90f,   7, .36f, .45f, .028f, .50f, .42f, .030f, .40f, .35f, .13f, 1.6f, 3,  .40f, .18f, .17f, 7,  .50f, .42f, 12, .45f, .35f, 7, 3, .060f, .35f },
+    { "Ethereal Angelic",      .30f, 1.f, .98f, .92f,   4, .30f, .18f, .014f, .65f, .44f, .018f, .18f, .33f, .12f, 1.0f, 1,  .22f, .16f, .14f, 6,  .60f, .15f, 6, .55f,  .10f, 3, 9, .060f, .10f },
+    { "Golden Hour",           .80f, 1.f, .70f, .45f,   3, .32f, .18f, .012f, .40f, .38f, .018f, .12f, .32f, .11f, 1.0f, 1,  .15f, .16f, .14f, 4,  .55f, .10f, 6, .45f,  .12f, 3, 7, .060f, .06f },
+    { "Noir Practical",        .35f, .75f, .85f, 1.f,   2, .30f, .12f, .008f, .18f, .30f, .010f, .05f, .30f, .09f, 1.0f, 1,  .05f, .14f, .12f, 2,  .30f, .06f, 4, .30f,  .06f, 2, 8, .045f, .02f },
+    { "Documentary Real",      .20f, .90f, .95f, 1.f,   2, .28f, .10f, .006f, .10f, .28f, .008f, .03f, .30f, .08f, 1.0f, 1,  .03f, .14f, .12f, 2,  .18f, .05f, 6, .20f,  .05f, 2, 7, .040f, .02f },
+    { "Blockbuster T-O",       1.3f, .25f, .75f, .90f,  5, .36f, .28f, .014f, .32f, .34f, .016f, .15f, .32f, .11f, 1.2f, 2,  .18f, .16f, .15f, 5,  .50f, .15f, 6, .45f,  .20f, 5, 8, .055f, .10f },
+    { "Sodium Night",          .55f, 1.f, .62f, .25f,   6, .30f, .35f, .020f, .45f, .40f, .022f, .18f, .33f, .12f, 1.2f, 2,  .22f, .17f, .15f, 6,  .45f, .10f, 8, .30f,  .30f, 6, 5, .065f, .12f },
+    { "Music Video Glam",      .90f, 1.f, .85f, .95f,   5, .34f, .30f, .018f, .60f, .42f, .022f, .22f, .34f, .12f, 1.1f, 2,  .30f, .17f, .15f, 6,  .55f, .30f, 12, .40f, .25f, 6, 9, .060f, .20f },
+};
+
+void applyFlarePreset(const FlarePresetRow& row)
+{
+    gSavedSettings.setF32("RenderLensFlareStreakIntensity", row.mStreakInt);
+    // LLControlGroup has no setColor3(); Color3-typed controls are written
+    // via the generic LLSD path (mirrors LLColor3's DefaultParam usage
+    // elsewhere, e.g. llsettingsvo.cpp).
+    gSavedSettings.setUntypedValue("RenderLensFlareStreakTint",
+        LLColor3(row.mTintR, row.mTintG, row.mTintB).getValue());
+    gSavedSettings.setS32("RenderLensFlareGhostCount", row.mGhostCount);
+    gSavedSettings.setF32("RenderLensFlareGhostSpacing", row.mGhostDisp);
+    gSavedSettings.setF32("RenderLensFlareGhost", row.mGhostInt);
+    gSavedSettings.setF32("RenderLensFlareGhostChroma", row.mGhostChroma);
+    gSavedSettings.setF32("RenderLensFlareHalo", row.mHaloInt);
+    gSavedSettings.setF32("RenderLensFlareHaloWidth", row.mHaloWidth);
+    gSavedSettings.setF32("RenderLensFlareHaloChroma", row.mHaloChroma);
+    gSavedSettings.setF32("RenderLensFlareRing", row.mRingInt);
+    gSavedSettings.setF32("RenderLensFlareRingRadius", row.mRingRadius);
+    gSavedSettings.setF32("RenderLensFlareRingWidth", row.mRingWidth);
+    gSavedSettings.setF32("RenderLensFlareRingDispersion", row.mRingDisp);
+    gSavedSettings.setS32("RenderLensFlareRingCount", row.mRingCount);
+    gSavedSettings.setF32("RenderLensFlareCircle", row.mCircleInt);
+    gSavedSettings.setF32("RenderLensFlareCircleScale", row.mCircleScale);
+    gSavedSettings.setF32("RenderLensFlareCircleSpacing", row.mCircleSpacing);
+    gSavedSettings.setS32("RenderLensFlareCircleCount", row.mCircleCount);
+    gSavedSettings.setF32("RenderLensFlareGlow", row.mCore);
+    gSavedSettings.setF32("RenderLensFlareStarburst", row.mSpikeInt);
+    gSavedSettings.setS32("RenderLensFlareStarburstSpikes", row.mSpikeCount);
+    gSavedSettings.setF32("RenderLensFlareStarburstLength", row.mSpikeLen);
+    gSavedSettings.setF32("RenderLensFlareIris", row.mIrisInt);
+    gSavedSettings.setS32("RenderLensFlareIrisCount", row.mIrisCount);
+    gSavedSettings.setS32("RenderLensFlareIrisSides", row.mIrisSides);
+    gSavedSettings.setF32("RenderLensFlareIrisSize", row.mIrisSize);
+    gSavedSettings.setF32("RenderLensFlareArc", row.mArcInt);
 }
 
 void registerCineLightRigResetControl()
@@ -291,6 +389,7 @@ bool ALPanelCineLightRig::postBuild()
         mGroupSlotChecks[i] = getChild<LLCheckBoxCtrl>(group_slot_names[i]);
     }
     mSetupCombo = getChild<LLComboBox>("cine_setup_combo");
+    mFlarePreset = getChild<LLComboBox>("cine_flare_preset");
     mFXCombo = getChild<LLComboBox>("cine_fx_combo");
     mSeedEditor = getChild<LLLineEditor>("cine_seed");
     mFillEV = getChild<LLSpinCtrl>("cine_fill_ev");
@@ -355,6 +454,8 @@ bool ALPanelCineLightRig::postBuild()
     }
     mSetupCombo->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onSetupSelected(); });
+    mFlarePreset->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onFlarePresetSelected(); });
     getChild<LLButton>("cine_setup_save")->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { saveSetup(); });
     getChild<LLButton>("cine_setup_delete")->setCommitCallback(
@@ -544,6 +645,19 @@ void ALPanelCineLightRig::populateStaticCombos()
         mFXCombo->add(ALCineLightRigModel::fxName(fx), LLSD(fx));
     }
     mFXCombo->setValue(gSavedSettings.getS32("CineLightRigFX"));
+
+    // Lens flare presets: 0 is the "Choose preset..." sentinel (manual
+    // sliders / whatever the user last dialed in); 1..19 apply-and-snap-back,
+    // mirroring the gaze Movement Style / Lean preset boxes.
+    mFlarePreset->add("Choose preset...", LLSD(0));
+    constexpr S32 FLARE_PRESET_COUNT =
+        static_cast<S32>(sizeof(FLARE_PRESETS) / sizeof(FLARE_PRESETS[0]));
+    for (S32 i = 0; i < FLARE_PRESET_COUNT; ++i)
+    {
+        mFlarePreset->add(
+            llformat("%d  %s", i + 1, FLARE_PRESETS[i].mName), LLSD(i + 1));
+    }
+    mFlarePreset->setValue(0);
 }
 
 std::string ALPanelCineLightRig::fixtureSettingPrefix() const
@@ -1090,6 +1204,30 @@ void ALPanelCineLightRig::onSetupSelected()
         mSetupCombo->setValue(name);
         syncEasyModeForSelected(true);
     }
+}
+
+void ALPanelCineLightRig::onFlarePresetSelected()
+{
+    if (!mFlarePreset)
+    {
+        return;
+    }
+    const S32 index = mFlarePreset->getSelectedValue().asInteger();
+    constexpr S32 FLARE_PRESET_COUNT =
+        static_cast<S32>(sizeof(FLARE_PRESETS) / sizeof(FLARE_PRESETS[0]));
+    // 0 is the sentinel ("Choose preset..." / manual sliders) — nothing to
+    // stamp. Guard the upper bound too in case the combo ever desyncs from
+    // the table.
+    if (index <= 0 || index > FLARE_PRESET_COUNT)
+    {
+        return;
+    }
+    applyFlarePreset(FLARE_PRESETS[index - 1]);
+    gSavedSettings.setS32("RenderCineLensFlarePreset", index);
+    // Snap back to the sentinel so the combo always reads as an action
+    // ("apply this look"), not a persistent mode — matches the gaze preset
+    // boxes' pick -> stamp -> reset-to-sentinel pattern.
+    mFlarePreset->setValue(0);
 }
 
 void ALPanelCineLightRig::saveSetup()

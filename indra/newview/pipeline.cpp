@@ -30,6 +30,9 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "pipeline.h"
+#include "alcinelightrig.h"
+#include "alcinelightrigmanager.h"
+#include "alcinelightrigmodel.h"
 #include "alweathermodel.h"
 
 // library includes
@@ -11320,45 +11323,23 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst, bool app
             static LLCachedControl<F32> lens_flare_starburst_length(gSavedSettings, "RenderLensFlareStarburstLength", 0.25f);
             static LLCachedControl<F32> lens_flare_occlusion_radius(gSavedSettings, "RenderLensFlareOcclusionRadius", 0.02f);
             static LLCachedControl<S32> lens_flare_occlusion_taps(gSavedSettings, "RenderLensFlareOcclusionTaps", 9);
+            // Peeked here only to compute the any_flare gate below (re-read
+            // properly, with its own clamp, in the rig-sourcing block).
+            static LLCachedControl<F32> cine_flare_strength_gate(gSavedSettings, "RenderCineLensFlareStrength", 0.f);
 
             F32 strength = llclamp(lens_flare_strength(), 0.f, 1.f);
             shader->uniform1f(LLShaderMgr::LENS_FLARE_STRENGTH, strength);
 
-            if (strength > 0.f)
+            // Shared optical shape uniforms — streak/glow/ghost/halo/starburst/
+            // occlusion — drive BOTH the sun flare and every rig-projector
+            // flare (flareForSource() is one body called once per source, sun
+            // included). Gate on EITHER master being on: gating solely on the
+            // sun's strength left these at stale/GLSL-default values whenever
+            // only the rig flare was enabled, making the rig flare render
+            // blank or wrong (Codex review finding).
+            const bool any_flare = (strength > 0.f) || (llmax(cine_flare_strength_gate(), 0.f) > 0.f);
+            if (any_flare)
             {
-                // Project sun direction to screen UV
-                LLEnvironment& environment = LLEnvironment::instance();
-                bool sun_up = environment.getIsSunUp();
-                LLVector4 light_dir = sun_up ? mSunDir : mMoonDir;
-
-                glm::vec4 sun_clip = get_current_projection() * get_current_modelview() * glm::vec4(light_dir.mV[0], light_dir.mV[1], light_dir.mV[2], 0.0f);
-
-                F32 target_visibility = 0.f;
-                if (sun_clip.z > 0.f)
-                {
-                    glm::vec2 sun_ndc = glm::vec2(sun_clip.x, sun_clip.y) / sun_clip.z;
-                    glm::vec2 sun_uv = sun_ndc * 0.5f + 0.5f;
-
-                    // Soft fade as sun approaches screen edges — generous margin
-                    // lets the streak persist even when the sun is slightly off-screen.
-                    F32 edge_fade = 1.f;
-                    F32 margin = 0.2f;
-                    edge_fade *= llclamp((sun_uv.x - (-margin)) / margin, 0.f, 1.f);
-                    edge_fade *= llclamp(((1.f + margin) - sun_uv.x) / margin, 0.f, 1.f);
-                    edge_fade *= llclamp((sun_uv.y - (-margin)) / margin, 0.f, 1.f);
-                    edge_fade *= llclamp(((1.f + margin) - sun_uv.y) / margin, 0.f, 1.f);
-
-                    target_visibility = edge_fade;
-                    shader->uniform2f(LLShaderMgr::LENS_FLARE_SUN_POS, sun_uv.x, sun_uv.y);
-                }
-
-                // Temporally smooth visibility to avoid flicker from depth sampling noise.
-                // Fade out faster than fade in for responsive occlusion.
-                F32 fade_speed = (target_visibility < mLensFlareSunVisibility) ? 0.15f : 0.05f;
-                mLensFlareSunVisibility = std::lerp(mLensFlareSunVisibility, target_visibility, fade_speed);
-
-                shader->uniform1f(LLShaderMgr::LENS_FLARE_SUN_VISIBILITY, mLensFlareSunVisibility);
-
                 // Anamorphic streak
                 shader->uniform1f(LLShaderMgr::LENS_FLARE_STREAK_LENGTH, llclamp(lens_flare_streak_length(), 0.01f, 2.f));
                 shader->uniform1f(LLShaderMgr::LENS_FLARE_STREAK_FALLOFF, llclamp(lens_flare_streak_falloff(), 0.1f, 10.f));
@@ -11394,13 +11375,270 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst, bool app
                 shader->uniform1f(LLShaderMgr::LENS_FLARE_STARBURST_FALLOFF, starburst_falloff);
                 shader->uniform1f(LLShaderMgr::LENS_FLARE_OCCLUSION_RADIUS, llclamp(lens_flare_occlusion_radius(), 0.005f, 0.1f));
                 shader->uniform1i(LLShaderMgr::LENS_FLARE_OCCLUSION_TAPS, llclamp(lens_flare_occlusion_taps(), 1, 32));
+            }
 
+            if (strength > 0.f)
+            {
+                // Project sun direction to screen UV — sun-only positioning;
+                // untouched from the original single-source implementation.
+                LLEnvironment& environment = LLEnvironment::instance();
+                bool sun_up = environment.getIsSunUp();
+                LLVector4 light_dir = sun_up ? mSunDir : mMoonDir;
+
+                glm::vec4 sun_clip = get_current_projection() * get_current_modelview() * glm::vec4(light_dir.mV[0], light_dir.mV[1], light_dir.mV[2], 0.0f);
+
+                F32 target_visibility = 0.f;
+                if (sun_clip.z > 0.f)
+                {
+                    glm::vec2 sun_ndc = glm::vec2(sun_clip.x, sun_clip.y) / sun_clip.z;
+                    glm::vec2 sun_uv = sun_ndc * 0.5f + 0.5f;
+
+                    // Soft fade as sun approaches screen edges — generous margin
+                    // lets the streak persist even when the sun is slightly off-screen.
+                    F32 edge_fade = 1.f;
+                    F32 margin = 0.2f;
+                    edge_fade *= llclamp((sun_uv.x - (-margin)) / margin, 0.f, 1.f);
+                    edge_fade *= llclamp(((1.f + margin) - sun_uv.x) / margin, 0.f, 1.f);
+                    edge_fade *= llclamp((sun_uv.y - (-margin)) / margin, 0.f, 1.f);
+                    edge_fade *= llclamp(((1.f + margin) - sun_uv.y) / margin, 0.f, 1.f);
+
+                    target_visibility = edge_fade;
+                    shader->uniform2f(LLShaderMgr::LENS_FLARE_SUN_POS, sun_uv.x, sun_uv.y);
+                }
+
+                // Temporally smooth visibility to avoid flicker from depth sampling noise.
+                // Fade out faster than fade in for responsive occlusion.
+                F32 fade_speed = (target_visibility < mLensFlareSunVisibility) ? 0.15f : 0.05f;
+                mLensFlareSunVisibility = std::lerp(mLensFlareSunVisibility, target_visibility, fade_speed);
+
+                shader->uniform1f(LLShaderMgr::LENS_FLARE_SUN_VISIBILITY, mLensFlareSunVisibility);
+
+                // Sun-only tint — the rig sources carry their own per-source
+                // color in uCineFlareColor[i].rgb instead.
                 LLColor4 light_color = linearColor3(sun_up ? mSunDiffuse : mMoonDiffuse);
                 shader->uniform3f(LLShaderMgr::LENS_FLARE_LIGHT_COLOR, light_color.mV[0], light_color.mV[1], light_color.mV[2]);
             }
             else
             {
                 mLensFlareSunVisibility = 0.f;
+            }
+        }
+
+        // Cine-rig lens flare — polished-stack element uniforms (Group 2/3/4).
+        // Driven unconditionally: these gate the SUN flare's new elements too,
+        // not just the rig path. Every new element default is 0 (or 1.0 for
+        // uLensFlareMaster, the pure multiplier), so with default settings
+        // this uploads zeros/one and the shader's own per-element
+        // `if (amount > 0)` guards make it a no-op — byte-parity with the
+        // pre-existing sun-only flare output is preserved.
+        {
+            static LLCachedControl<F32> lens_flare_ghost_chroma(gSavedSettings, "RenderLensFlareGhostChroma", 0.f);
+            static LLCachedControl<F32> lens_flare_halo_chroma(gSavedSettings, "RenderLensFlareHaloChroma", 0.f);
+            static LLCachedControl<F32> lens_flare_iris(gSavedSettings, "RenderLensFlareIris", 0.f);
+            static LLCachedControl<S32> lens_flare_iris_count(gSavedSettings, "RenderLensFlareIrisCount", 4);
+            static LLCachedControl<S32> lens_flare_iris_sides(gSavedSettings, "RenderLensFlareIrisSides", 6);
+            static LLCachedControl<F32> lens_flare_iris_size(gSavedSettings, "RenderLensFlareIrisSize", 0.055f);
+            static LLCachedControl<F32> lens_flare_ring(gSavedSettings, "RenderLensFlareRing", 0.f);
+            static LLCachedControl<F32> lens_flare_ring_radius(gSavedSettings, "RenderLensFlareRingRadius", 0.30f);
+            static LLCachedControl<F32> lens_flare_ring_width(gSavedSettings, "RenderLensFlareRingWidth", 0.10f);
+            static LLCachedControl<F32> lens_flare_ring_dispersion(gSavedSettings, "RenderLensFlareRingDispersion", 1.0f);
+            static LLCachedControl<S32> lens_flare_ring_count(gSavedSettings, "RenderLensFlareRingCount", 1);
+            static LLCachedControl<F32> lens_flare_circle(gSavedSettings, "RenderLensFlareCircle", 0.f);
+            static LLCachedControl<F32> lens_flare_circle_scale(gSavedSettings, "RenderLensFlareCircleScale", 0.15f);
+            static LLCachedControl<F32> lens_flare_circle_spacing(gSavedSettings, "RenderLensFlareCircleSpacing", 0.14f);
+            static LLCachedControl<S32> lens_flare_circle_count(gSavedSettings, "RenderLensFlareCircleCount", 5);
+            static LLCachedControl<F32> lens_flare_arc(gSavedSettings, "RenderLensFlareArc", 0.f);
+            static LLCachedControl<F32> lens_flare_warp(gSavedSettings, "RenderLensFlareWarp", 0.f);
+            static LLCachedControl<F32> lens_flare_streak_tip_amount(gSavedSettings, "RenderLensFlareStreakTipAmount", 0.f);
+            static LLCachedControl<LLColor3> lens_flare_streak_tip_tint(gSavedSettings, "RenderLensFlareStreakTipTint", LLColor3(1.f, 1.f, 1.f));
+            static LLCachedControl<F32> lens_flare_src_color_amount(gSavedSettings, "RenderLensFlareSrcColorAmount", 0.f);
+            static LLCachedControl<F32> lens_flare_master(gSavedSettings, "RenderLensFlareMaster", 1.f);
+            // Same any_flare gate as the legacy shared-shape block above,
+            // recomputed locally (independent LLCachedControl reads of the
+            // same two keys — cheap, and keeps this block self-contained).
+            static LLCachedControl<F32> lens_flare_strength_gate(gSavedSettings, "RenderLensFlareStrength", 0.f);
+            static LLCachedControl<F32> cine_flare_strength_gate2(gSavedSettings, "RenderCineLensFlareStrength", 0.f);
+            const bool any_flare = (llclamp(lens_flare_strength_gate(), 0.f, 1.f) > 0.f) ||
+                                    (llmax(cine_flare_strength_gate2(), 0.f) > 0.f);
+
+            if (any_flare)
+            {
+                shader->uniform1f(LLShaderMgr::LENS_FLARE_GHOST_CHROMA, llclamp(lens_flare_ghost_chroma(), 0.f, 0.1f));
+                shader->uniform1f(LLShaderMgr::LENS_FLARE_HALO_CHROMA, llclamp(lens_flare_halo_chroma(), 0.f, 0.05f));
+                shader->uniform1f(LLShaderMgr::LENS_FLARE_IRIS, llclamp(lens_flare_iris(), 0.f, 1.f));
+                shader->uniform1i(LLShaderMgr::LENS_FLARE_IRIS_COUNT, llclamp(lens_flare_iris_count(), 1, 8));
+                shader->uniform1i(LLShaderMgr::LENS_FLARE_IRIS_SIDES, llclamp(lens_flare_iris_sides(), 3, 12));
+                shader->uniform1f(LLShaderMgr::LENS_FLARE_IRIS_SIZE, llmax(lens_flare_iris_size(), 0.f));
+                shader->uniform1f(LLShaderMgr::LENS_FLARE_RING, llclamp(lens_flare_ring(), 0.f, 1.f));
+                shader->uniform1f(LLShaderMgr::LENS_FLARE_RING_RADIUS, llmax(lens_flare_ring_radius(), 0.f));
+                shader->uniform1f(LLShaderMgr::LENS_FLARE_RING_WIDTH, llmax(lens_flare_ring_width(), 1e-3f));
+                shader->uniform1f(LLShaderMgr::LENS_FLARE_RING_DISPERSION, llmax(lens_flare_ring_dispersion(), 0.f));
+                shader->uniform1i(LLShaderMgr::LENS_FLARE_RING_COUNT, llclamp(lens_flare_ring_count(), 1, 4));
+                shader->uniform1f(LLShaderMgr::LENS_FLARE_CIRCLE, llclamp(lens_flare_circle(), 0.f, 1.f));
+                shader->uniform1f(LLShaderMgr::LENS_FLARE_CIRCLE_SCALE, llmax(lens_flare_circle_scale(), 0.f));
+                shader->uniform1f(LLShaderMgr::LENS_FLARE_CIRCLE_SPACING, llmax(lens_flare_circle_spacing(), 0.f));
+                shader->uniform1i(LLShaderMgr::LENS_FLARE_CIRCLE_COUNT, llclamp(lens_flare_circle_count(), 1, 8));
+                shader->uniform1f(LLShaderMgr::LENS_FLARE_ARC, llclamp(lens_flare_arc(), 0.f, 1.f));
+                shader->uniform1f(LLShaderMgr::LENS_FLARE_WARP, llclamp(lens_flare_warp(), -1.f, 1.f));
+                shader->uniform1f(LLShaderMgr::LENS_FLARE_STREAK_TIP_AMOUNT, llclamp(lens_flare_streak_tip_amount(), 0.f, 1.f));
+                LLColor3 tip_tint = linearColor3(lens_flare_streak_tip_tint());
+                shader->uniform3f(LLShaderMgr::LENS_FLARE_STREAK_TIP_TINT, tip_tint.mV[0], tip_tint.mV[1], tip_tint.mV[2]);
+                shader->uniform1f(LLShaderMgr::LENS_FLARE_SRC_COLOR_AMOUNT, llclamp(lens_flare_src_color_amount(), 0.f, 1.f));
+                shader->uniform1f(LLShaderMgr::LENS_FLARE_MASTER, llmax(lens_flare_master(), 0.f));
+            }
+        }
+
+        // Cine-rig lens flare — rig projector sources (Group 1). Gated on the
+        // rig-flare master, RenderCineLensFlareStrength: 0 (default) uploads
+        // uCineFlareCount=0 and skips enumeration entirely, so the shader's
+        // additive rig loop (`if (uCineFlareCount > 0)`) is exact byte-parity
+        // with the sun-only output. Path A per the design doc: enumerate lit
+        // rig slots -> live spot-projector emitters -> resolve the backing
+        // LLVOVolume prim -> project world position to screen UV with the
+        // same matrix path the sun uses (position, not direction, so this
+        // divides by clip.w rather than mirroring the sun's direction-vector
+        // z-divide).
+        {
+            static LLCachedControl<F32> cine_flare_strength(gSavedSettings, "RenderCineLensFlareStrength", 0.f);
+            static LLCachedControl<F32> cine_flare_intensity(gSavedSettings, "RenderCineLensFlareIntensity", 1.f);
+
+            // mCineFlareVisibility is sized by STABLE (slot, light) identity —
+            // ALCineLightRigManager::SLOT_COUNT * ALCineLightRigModel::LIGHT_COUNT
+            // — not by the <=8 packed upload slot. Indexing by pack order let a
+            // projector that dropped out (off/null/behind-camera) hand its
+            // smoothed visibility to whichever OTHER light happened to shift
+            // into that upload slot next frame, causing cross-light flicker
+            // (Codex review finding). AL_CINE_FLARE_MAX(8) remains the upload
+            // cap; it is unrelated to this array's size.
+            constexpr S32 CINE_FLARE_STABLE_COUNT =
+                ALCineLightRigManager::SLOT_COUNT * ALCineLightRigModel::LIGHT_COUNT;
+            static_assert(sizeof(mCineFlareVisibility) / sizeof(mCineFlareVisibility[0]) == CINE_FLARE_STABLE_COUNT,
+                          "LLPipeline::mCineFlareVisibility must be sized "
+                          "ALCineLightRigManager::SLOT_COUNT * ALCineLightRigModel::LIGHT_COUNT");
+
+            S32 cine_count = 0;
+            LLVector4 cine_a[AL_CINE_FLARE_MAX];
+            LLVector4 cine_col[AL_CINE_FLARE_MAX];
+
+            F32 cine_strength = llmax(cine_flare_strength(), 0.f);
+            if (cine_strength > 0.f)
+            {
+                F32 cine_intensity = llmax(cine_flare_intensity(), 0.f);
+                glm::mat4 proj_mod = get_current_projection() * get_current_modelview();
+
+                ALCineLightRigManager& rig_mgr = ALCineLightRigManager::instance();
+                // Visit every (slot, light) pair every frame — even past the
+                // <=8 upload cap — so every stable smoothing slot gets a
+                // proper this-frame target and decays correctly instead of
+                // freezing at a stale value. 5*4 = 20 cheap iterations; not a
+                // perf concern next to the rest of a render frame.
+                for (S32 slot_i = 0; slot_i < ALCineLightRigManager::SLOT_COUNT; ++slot_i)
+                {
+                    ALCineLightRigManager::Slot slot = static_cast<ALCineLightRigManager::Slot>(slot_i);
+                    // isSlotLit() (not enabledMask() alone) matches Path A —
+                    // only currently-live rigs contribute a source this frame.
+                    const bool slot_lit = rig_mgr.isSlotLit(slot);
+                    const ALCineLightRig* rig = slot_lit ? &rig_mgr.at(slot) : nullptr;
+                    const ALCineLightRigModel::RigFrame* frame = rig ? &rig->lastFrame() : nullptr;
+
+                    for (S32 light_i = 0; light_i < ALCineLightRigModel::LIGHT_COUNT; ++light_i)
+                    {
+                        const S32 stable_idx = slot_i * ALCineLightRigModel::LIGHT_COUNT + light_i;
+
+                        F32 target_visibility = 0.f;
+                        glm::vec2 uv(0.f, 0.f);
+                        LLColor3 base_color;
+                        F32 raw_intensity = 0.f;
+
+                        if (frame)
+                        {
+                            const ALCineLightRigModel::EmitterState& emitter = frame->mProj[light_i];
+                            // projectorId(i), not a tag scan (Path B), so omni
+                            // fills + the catchlight — which share the same
+                            // local object tag — never flare. A freshly-
+                            // created projector is null for a few retry
+                            // ticks; treat that exactly like "no source"
+                            // rather than erroring.
+                            LLUUID id = (emitter.mOn && emitter.mIntensity > 0.f)
+                                ? rig->projectorId(light_i) : LLUUID::null;
+                            LLViewerObject* obj = id.isNull() ? nullptr : gObjectList.findObject(id);
+                            LLVOVolume* volume = obj ? dynamic_cast<LLVOVolume*>(obj) : nullptr;
+                            if (volume)
+                            {
+                                LLVector3 pos_agent = obj->getPositionAgent();
+                                glm::vec4 clip = proj_mod * glm::vec4(pos_agent.mV[0], pos_agent.mV[1], pos_agent.mV[2], 1.0f);
+                                if (clip.w > 0.f)
+                                {
+                                    glm::vec2 ndc = glm::vec2(clip.x, clip.y) / clip.w;
+                                    uv = ndc * 0.5f + 0.5f;
+
+                                    // Same edge-fade formula as the sun (~11344-49 above).
+                                    F32 margin = 0.2f;
+                                    F32 edge_fade = 1.f;
+                                    edge_fade *= llclamp((uv.x - (-margin)) / margin, 0.f, 1.f);
+                                    edge_fade *= llclamp(((1.f + margin) - uv.x) / margin, 0.f, 1.f);
+                                    edge_fade *= llclamp((uv.y - (-margin)) / margin, 0.f, 1.f);
+                                    edge_fade *= llclamp(((1.f + margin) - uv.y) / margin, 0.f, 1.f);
+
+                                    target_visibility = edge_fade;
+                                    // Color.rgb = BASE linear color (unscaled
+                                    // by intensity); A.w = raw intensity. The
+                                    // shader multiplies rvis (which includes
+                                    // A.w) by Color.rgb, so baking intensity
+                                    // into BOTH would square it — getLightLinearColor()
+                                    // (base*intensity) was the earlier, buggy
+                                    // choice here (Codex review finding).
+                                    base_color = volume->getLightLinearBaseColor();
+                                    raw_intensity = emitter.mIntensity;
+                                }
+                            }
+                        }
+
+                        // Smooth every stable slot every frame the rig master
+                        // is on, regardless of whether it has a valid source
+                        // this frame — target is 0 when off/null/behind-camera,
+                        // so an absent projector's OWN slot decays toward 0
+                        // instead of a different light inheriting its value.
+                        F32 fade_speed = (target_visibility < mCineFlareVisibility[stable_idx]) ? 0.15f : 0.05f;
+                        mCineFlareVisibility[stable_idx] =
+                            std::lerp(mCineFlareVisibility[stable_idx], target_visibility, fade_speed);
+
+                        // Only pack sources that are actually eligible THIS
+                        // frame and while the <=8 upload cap holds. A source
+                        // that just dropped out simply isn't uploaded this
+                        // frame (acceptable — there is no cross-light identity
+                        // to fade through); its stable slot keeps decaying so
+                        // a later reappearance ramps in cleanly instead of
+                        // popping to full brightness.
+                        if (target_visibility > 0.f && cine_count < AL_CINE_FLARE_MAX)
+                        {
+                            // A.w keeps the raw emitter intensity; the global
+                            // RenderCineLensFlareIntensity multiplier rides in
+                            // Color.w (uCineFlareColor[i].w — the shader's
+                            // "perSourceScale"), matching the shader's
+                            // `rvis = A.z * A.w * Color.w` gate.
+                            cine_a[cine_count] = LLVector4(uv.x, uv.y, mCineFlareVisibility[stable_idx], raw_intensity);
+                            cine_col[cine_count] = LLVector4(base_color.mV[0], base_color.mV[1], base_color.mV[2], cine_intensity);
+                            ++cine_count;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                // Feature off — decay every stable slot so a later re-enable
+                // doesn't resume at a stale smoothed visibility.
+                for (F32& visibility : mCineFlareVisibility)
+                {
+                    visibility = 0.f;
+                }
+            }
+
+            shader->uniform1i(LLShaderMgr::CINE_FLARE_COUNT, cine_count);
+            if (cine_count > 0)
+            {
+                shader->uniform4fv(LLShaderMgr::CINE_FLARE_A, cine_count, cine_a[0].mV);
+                shader->uniform4fv(LLShaderMgr::CINE_FLARE_COLOR, cine_count, cine_col[0].mV);
             }
         }
 
