@@ -5193,6 +5193,7 @@ void ALPosePolish::runInertialization(LLVOAvatar* av, F32 dt)
         {
             j->setRotation(rot);
             mSeeded = true;
+            ++mDiagInertia;   // M5 diagnostic
         }
     }
 }
@@ -5413,6 +5414,83 @@ void ALPosePolish::runContact(LLVOAvatar* av, F32 dt)
         leg.mRealKnee->setRotation(nlerp(weight, leg.mRealKnee->getRotation(), leg.mCopyKnee->getRotation()));
         leg.mRealAnkle->setRotation(nlerp(weight, leg.mRealAnkle->getRotation(), leg.mCopyAnkle->getRotation()));
         mSeeded = true;
+        ++mDiagContact;   // M5 diagnostic
+    }
+}
+
+// [Machinima] M6 procedural secondary motion: subtle ambient life (breath +
+// idle weight-shift sway) layered ADDITIVELY on the post-blend pose. The math
+// is the pure ALPoseSecondary::evalSecondary() (alposesecondary.h) — a
+// deterministic function of the driving clock — so this wiring only advances
+// the clock and composes the tiny rotation deltas over the current joint
+// rotations (delta * current, same additive-over-animation discipline as the
+// gaze overlay). Rotation-only, chest/torso only — never mRoot, never pelvis
+// translation, never sim state.
+void ALPosePolish::runSecondary(LLVOAvatar* av, F32 dt)
+{
+    static LLCachedControl<F32> breath_amp(gSavedSettings, "ALPolishSecondaryBreathAmp", 1.f);
+    static LLCachedControl<F32> sway_amp(gSavedSettings, "ALPolishSecondarySwayAmp", 1.f);
+
+    // A hitch / teleport / scrub shows up as a very large (or invalid) dt:
+    // restart the ambient clock instead of jumping phase (mirror the other
+    // stages' big_dt reseed). The zero-time pose is evaluated next frame.
+    const bool big_dt = !(dt > 0.f) || dt > 0.25f;
+    if (big_dt)
+    {
+        mSecondaryTime = 0.f;
+        return;
+    }
+    // Advance the driving clock, wrapping at the waves' common period so F32
+    // precision never degrades over a long session (phase-exact by design:
+    // every component completes an integer cycle count per period).
+    mSecondaryTime += dt;
+    if (mSecondaryTime >= ALPoseSecondary::COMMON_PERIOD_SEC)
+    {
+        mSecondaryTime -= ALPoseSecondary::COMMON_PERIOD_SEC;
+    }
+
+    ALPoseSecondary::SecondaryParams params;
+    params.mBreathAmp = (F32)breath_amp;
+    params.mSwayAmp   = (F32)sway_amp;
+    const ALPoseSecondary::SecondaryPose pose =
+        ALPoseSecondary::evalSecondary((F64)mSecondaryTime, params);
+
+    // Below this the delta is visually nothing: skip the write entirely so a
+    // zero-amplitude (or zero-crossing) frame never touches/dirties the joint
+    // (M1's settled-path discipline; the "amps 0 => no visible change" and
+    // ideally no-write contract).
+    const F32 WRITE_EPS = 1e-7f;   // rad
+
+    // Breath: tiny chest pitch (rotation about the joint's local Y / left
+    // axis = rise-and-fall). Falls back to mTorso on rigs without mChest.
+    if (fabsf(pose.mChestPitch) > WRITE_EPS)
+    {
+        LLJoint* chest = av->getJoint("mChest");
+        if (!chest)
+        {
+            chest = av->getJoint("mTorso");
+        }
+        if (chest)
+        {
+            const LLQuaternion delta(pose.mChestPitch, LLVector3(0.f, 1.f, 0.f));
+            chest->setRotation(delta * chest->getRotation());
+            mSeeded = true;
+            ++mDiagSecondary;   // M5 diagnostic
+        }
+    }
+
+    // Sway: tiny spine roll (lateral weight shift) + coupled pitch on the
+    // lower spine (mTorso is the joint directly above the pelvis).
+    if (fabsf(pose.mSpineRoll) > WRITE_EPS || fabsf(pose.mSpinePitch) > WRITE_EPS)
+    {
+        if (LLJoint* torso = av->getJoint("mTorso"))
+        {
+            LLQuaternion delta;
+            delta.setEulerAngles(pose.mSpineRoll, pose.mSpinePitch, 0.f);
+            torso->setRotation(delta * torso->getRotation());
+            mSeeded = true;
+            ++mDiagSecondary;   // M5 diagnostic
+        }
     }
 }
 
@@ -5423,6 +5501,7 @@ void ALPosePolish::run(LLVOAvatar* av, F32 dt)
     {
         return;   // master gate off (default) -> no-op
     }
+    mDiagInertia = mDiagContact = mDiagSecondary = 0;   // M5 per-frame counts
     static LLCachedControl<bool> inertia_enabled(gSavedSettings, "ALPolishInertiaEnabled", false);
     if (inertia_enabled)
     {
@@ -5433,7 +5512,20 @@ void ALPosePolish::run(LLVOAvatar* av, F32 dt)
     {
         runContact(av, dt);
     }
-    // M6 secondary motion is invoked here as it lands.
+    static LLCachedControl<bool> secondary_enabled(gSavedSettings, "ALPolishSecondaryEnabled", false);
+    if (secondary_enabled)
+    {
+        runSecondary(av, dt);
+    }
+    // [Machinima] M5 layer diagnostic: surface which polish stages actually
+    // touched joints this frame (the testable core of the NLA "current owner"
+    // tooling; full Director layer UI is a follow-on). Off = zero cost.
+    static LLCachedControl<bool> layer_diag(gSavedSettings, "ALPolishLayerDiagnostic", false);
+    if (layer_diag)
+    {
+        av->addDebugText(llformat("Polish inertia:%d contact:%d secondary:%d",
+                                  mDiagInertia, mDiagContact, mDiagSecondary));
+    }
 }
 
 void ALPosePolish::reset()
@@ -5450,12 +5542,27 @@ void ALPosePolish::reset()
     ALContactStab::resetFoot(mFoot[0]);
     ALContactStab::resetFoot(mFoot[1]);
     mContactBlend[0] = mContactBlend[1] = 0.f;
+    // M6: restart the ambient clock (breath/sway resume from phase zero).
+    mSecondaryTime = 0.f;
 }
 
 //------------------------------------------------------------------------
 bool LLVOAvatar::updateCharacter(LLAgent &agent)
 {
     updateDebugText();
+
+    // [Machinima] Push the Pose Polish M3 phase-aware-locomotion gate into the
+    // walk motion. llcharacter has no settings access, so mirror the
+    // LLHeadRotMotion/LLEyeMotion static-push pattern; do it once per frame from
+    // self. Default false => the walk cadence is byte-identical to stock.
+    if (isSelf())
+    {
+        static LLCachedControl<bool> polish_en(gSavedSettings, "ALPolishEnabled", false);
+        static LLCachedControl<bool> phase_en(gSavedSettings, "ALPolishPhaseMatchEnabled", false);
+        static LLCachedControl<bool> loopseam_en(gSavedSettings, "ALPolishLoopSeamEnabled", false);
+        LLKeyframeWalkMotion::setPhaseAwareLocomotionEnabled(polish_en && phase_en);
+        LLKeyframeMotion::setLoopSeamRepairEnabled(polish_en && loopseam_en);
+    }
 
     if (!mIsBuilt)
     {

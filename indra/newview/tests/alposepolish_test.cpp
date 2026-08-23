@@ -21,6 +21,7 @@
 
 #include "../alposecontinuity.h"
 #include "../alcontactstab.h"
+#include "../alposesecondary.h"
 
 #include <cfloat>
 #include <cmath>
@@ -764,6 +765,214 @@ void alposepolish_test_object::test<15>()
     ensure("post-reset plants after the full dwell", planted);
     ensure("post-reset lock is at the new position",
            (f.mLockPos - pos_b).length() < 1e-6f);
+}
+
+// ---------------------------------------------------------------------------
+// Milestone 6 — ALPoseSecondary::evalSecondary
+// ---------------------------------------------------------------------------
+using ALPoseSecondary::SecondaryParams;
+using ALPoseSecondary::SecondaryPose;
+using ALPoseSecondary::evalSecondary;
+using ALPoseSecondary::MAX_DELTA_RAD;
+using ALPoseSecondary::COMMON_PERIOD_SEC;
+
+namespace
+{
+inline bool bitwiseZeroPose(const SecondaryPose& s)
+{
+    // EXACT +0.f (signed-zero aware): the untouched-channel contract.
+    return bitwiseEqual(s.mChestPitch, 0.f) &&
+           bitwiseEqual(s.mSpineRoll, 0.f) &&
+           bitwiseEqual(s.mSpinePitch, 0.f);
+}
+
+inline bool bitwiseEqualPose(const SecondaryPose& a, const SecondaryPose& b)
+{
+    return bitwiseEqual(a.mChestPitch, b.mChestPitch) &&
+           bitwiseEqual(a.mSpineRoll, b.mSpineRoll) &&
+           bitwiseEqual(a.mSpinePitch, b.mSpinePitch);
+}
+
+inline bool finitePose(const SecondaryPose& s)
+{
+    return std::isfinite(s.mChestPitch) && std::isfinite(s.mSpineRoll) &&
+           std::isfinite(s.mSpinePitch);
+}
+} // namespace
+
+// Secondary 1: amplitude 0 => the EXACT zero pose (bitwise +0.f, channels
+// never written), across a time sweep; non-finite / negative amplitudes and
+// non-finite time also collapse to the exact zero pose.
+template<> template<>
+void alposepolish_test_object::test<16>()
+{
+    SecondaryParams off;
+    off.mBreathAmp = 0.f;
+    off.mSwayAmp   = 0.f;
+    for (S32 i = 0; i < 200; ++i)
+    {
+        const F64 t = 0.37 * i;
+        ensure("amp 0 => exact zero pose", bitwiseZeroPose(evalSecondary(t, off)));
+    }
+
+    SecondaryParams bad;
+    bad.mBreathAmp = -1.f;
+    bad.mSwayAmp   = -0.5f;
+    ensure("negative amps => exact zero pose", bitwiseZeroPose(evalSecondary(3.2, bad)));
+
+    bad.mBreathAmp = std::numeric_limits<F32>::quiet_NaN();
+    bad.mSwayAmp   = std::numeric_limits<F32>::infinity();
+    ensure("non-finite amps => exact zero pose", bitwiseZeroPose(evalSecondary(3.2, bad)));
+
+    const SecondaryParams on;   // defaults 1/1
+    ensure("nan time => exact zero pose",
+           bitwiseZeroPose(evalSecondary(std::numeric_limits<F64>::quiet_NaN(), on)));
+    ensure("inf time => exact zero pose",
+           bitwiseZeroPose(evalSecondary(std::numeric_limits<F64>::infinity(), on)));
+}
+
+// Secondary 2: deterministic — the same time yields a bit-identical pose on
+// every call (pure function, no hidden state), and the advertised common
+// period wraps phase-cleanly.
+template<> template<>
+void alposepolish_test_object::test<17>()
+{
+    const SecondaryParams p;   // defaults 1/1
+    for (S32 i = 0; i < 100; ++i)
+    {
+        const F64 t = 0.913 * i;
+        const SecondaryPose a = evalSecondary(t, p);
+        const SecondaryPose b = evalSecondary(t, p);
+        ensure("same time => bit-identical pose", bitwiseEqualPose(a, b));
+        ensure("output is live (not degenerate all-zero sweep)",
+               finitePose(a));
+    }
+    // Distinct times generally differ (the waves are actually running).
+    ensure("waves actually move",
+           !bitwiseEqualPose(evalSecondary(1.0, p), evalSecondary(2.0, p)));
+
+    // COMMON_PERIOD_SEC is a true common period: eval(t) == eval(t + period)
+    // to tight tolerance (double phase math; used by the wiring's clock wrap).
+    for (S32 i = 0; i < 40; ++i)
+    {
+        const F64 t = 1.7 * i;
+        const SecondaryPose a = evalSecondary(t, p);
+        const SecondaryPose b = evalSecondary(t + (F64)COMMON_PERIOD_SEC, p);
+        ensure("period wrap: chest", fabsf(a.mChestPitch - b.mChestPitch) < 1e-6f);
+        ensure("period wrap: roll", fabsf(a.mSpineRoll - b.mSpineRoll) < 1e-6f);
+        ensure("period wrap: pitch", fabsf(a.mSpinePitch - b.mSpinePitch) < 1e-6f);
+    }
+}
+
+// Secondary 3: bounded — across a long time sweep every output stays within
+// MAX_DELTA_RAD (a few degrees), at default amplitude AND under amplitude
+// abuse (huge amp => clamped, never a large pose change).
+template<> template<>
+void alposepolish_test_object::test<18>()
+{
+    const SecondaryParams normal;   // 1/1
+    SecondaryParams abuse;
+    abuse.mBreathAmp = 1e9f;
+    abuse.mSwayAmp   = 1e9f;
+
+    F32 peak = 0.f;
+    for (S32 i = 0; i < 20000; ++i)
+    {
+        const F64 t = 0.093 * i;   // ~31 min sweep, off-grid step
+        const SecondaryPose a = evalSecondary(t, normal);
+        const SecondaryPose b = evalSecondary(t, abuse);
+        ensure("normal sweep finite", finitePose(a));
+        ensure("abuse sweep finite", finitePose(b));
+        ensure("normal chest bounded", fabsf(a.mChestPitch) <= MAX_DELTA_RAD);
+        ensure("normal roll bounded", fabsf(a.mSpineRoll) <= MAX_DELTA_RAD);
+        ensure("normal pitch bounded", fabsf(a.mSpinePitch) <= MAX_DELTA_RAD);
+        ensure("abuse chest clamped", fabsf(b.mChestPitch) <= MAX_DELTA_RAD);
+        ensure("abuse roll clamped", fabsf(b.mSpineRoll) <= MAX_DELTA_RAD);
+        ensure("abuse pitch clamped", fabsf(b.mSpinePitch) <= MAX_DELTA_RAD);
+        peak = llmax(peak, fabsf(a.mChestPitch));
+    }
+    // Sanity: the default breath actually breathes (near its ~0.6 deg base).
+    ensure("default breath reaches most of its base amplitude",
+           peak > 0.5f * DEG_TO_RAD);
+    ensure("default breath stays subtle (well under the hard clamp)",
+           peak < 1.f * DEG_TO_RAD);
+}
+
+// Secondary 4: C1 continuity — a small time step produces a proportionally
+// small output change (slope bounded by the waves' maximum angular rate).
+template<> template<>
+void alposepolish_test_object::test<19>()
+{
+    const SecondaryParams p;   // defaults 1/1
+    // Generous analytic slope bound: amp * base * 2*pi*hz < 0.02 rad/s per
+    // channel at defaults; allow 5x slack for the summed sway components.
+    const F32 MAX_RATE = 0.1f;   // rad/s
+    const F64 dts[] = { 0.001, 0.004, 0.016 };
+    for (const F64 dt : dts)
+    {
+        for (S32 i = 0; i < 3000; ++i)
+        {
+            const F64 t = 0.21 * i;
+            const SecondaryPose a = evalSecondary(t, p);
+            const SecondaryPose b = evalSecondary(t + dt, p);
+            const F32 bound = MAX_RATE * (F32)dt;
+            ensure("chest step small", fabsf(b.mChestPitch - a.mChestPitch) < bound);
+            ensure("roll step small", fabsf(b.mSpineRoll - a.mSpineRoll) < bound);
+            ensure("pitch step small", fabsf(b.mSpinePitch - a.mSpinePitch) < bound);
+        }
+    }
+}
+
+// Secondary 5: the channels scale independently — breath amp drives ONLY the
+// chest pitch (linearly, below the clamp), sway amp drives ONLY the spine
+// roll/pitch; zeroing one channel leaves the other exactly intact.
+template<> template<>
+void alposepolish_test_object::test<20>()
+{
+    const F64 t = 7.31;   // arbitrary live phase
+    const SecondaryParams both;   // 1/1
+
+    SecondaryParams breath_only;
+    breath_only.mBreathAmp = 1.f;
+    breath_only.mSwayAmp   = 0.f;
+    SecondaryParams sway_only;
+    sway_only.mBreathAmp = 0.f;
+    sway_only.mSwayAmp   = 1.f;
+
+    const SecondaryPose full = evalSecondary(t, both);
+    const SecondaryPose br   = evalSecondary(t, breath_only);
+    const SecondaryPose sw   = evalSecondary(t, sway_only);
+
+    // Channel independence: each solo pose reproduces its own fields from the
+    // combined pose bit-identically and leaves the other fields at exact zero.
+    ensure("breath-only chest matches combined",
+           bitwiseEqual(br.mChestPitch, full.mChestPitch));
+    ensure("breath-only sway fields exactly zero",
+           bitwiseEqual(br.mSpineRoll, 0.f) && bitwiseEqual(br.mSpinePitch, 0.f));
+    ensure("sway-only roll/pitch match combined",
+           bitwiseEqual(sw.mSpineRoll, full.mSpineRoll) &&
+           bitwiseEqual(sw.mSpinePitch, full.mSpinePitch));
+    ensure("sway-only chest exactly zero", bitwiseEqual(sw.mChestPitch, 0.f));
+
+    // Linear amplitude scaling (well below the clamp at these levels).
+    SecondaryParams doubled = both;
+    doubled.mBreathAmp = 2.f;
+    const SecondaryPose d = evalSecondary(t, doubled);
+    ensure("2x breath amp => 2x chest pitch",
+           fabsf(d.mChestPitch - 2.f * full.mChestPitch) < 1e-6f);
+    ensure("breath amp does not touch sway",
+           bitwiseEqual(d.mSpineRoll, full.mSpineRoll) &&
+           bitwiseEqual(d.mSpinePitch, full.mSpinePitch));
+
+    SecondaryParams half_sway = both;
+    half_sway.mSwayAmp = 0.5f;
+    const SecondaryPose h = evalSecondary(t, half_sway);
+    ensure("0.5x sway amp => 0.5x roll",
+           fabsf(h.mSpineRoll - 0.5f * full.mSpineRoll) < 1e-6f);
+    ensure("0.5x sway amp => 0.5x pitch",
+           fabsf(h.mSpinePitch - 0.5f * full.mSpinePitch) < 1e-6f);
+    ensure("sway amp does not touch breath",
+           bitwiseEqual(h.mChestPitch, full.mChestPitch));
 }
 
 } // namespace tut

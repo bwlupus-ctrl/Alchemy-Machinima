@@ -32,6 +32,8 @@
 //-----------------------------------------------------------------------------
 
 #include <string>
+#include <map>
+#include <vector>
 
 #include "llassetstorage.h"
 #include "llbboxlocal.h"
@@ -191,6 +193,21 @@ public:
         return (mJointMotionList) ? mJointMotionList->mHandPose : LLHandMotion::HAND_POSE_RELAXED;
     }
 
+public:
+    // [PosePolish M4] Loop-seam repair master gate.
+    // docs/pose_polish_integration_plan.md "Milestone 4 -- Loop-seam repair".
+    //
+    // llcharacter has no access to gSavedSettings/LLControlGroup (verified: no such
+    // usage anywhere under indra/llcharacter). Mirrors the static-setter "push"
+    // pattern used by LLHeadRotMotion/LLEyeMotion (indra/llcharacter/llheadrotmotion.h)
+    // and by LLKeyframeWalkMotion's Milestone-3 gate
+    // (indra/llcharacter/llkeyframewalkmotion.h/.cpp): defaults to false, so unless a
+    // newview caller pushes this every frame, onUpdate()/detectSeamWrap()/
+    // captureSeamPose()/applySeamEase() below take the exact stock code path --
+    // byte-identical output.
+    static void setLoopSeamRepairEnabled(bool enabled) { sLoopSeamRepairEnabled = enabled; }
+    static void resetLoopSeamRepairEnabled() { sLoopSeamRepairEnabled = false; }
+
     void setPriority(S32 priority);
 
     void setEmote(const LLUUID& emote_id);
@@ -267,6 +284,77 @@ protected:
     };
 
     void applyKeyframes(F32 time);
+
+    //-------------------------------------------------------------------------
+    // [PosePolish M4] LoopSeamJointDelta / LoopSeamInfo
+    // docs/pose_polish_integration_plan.md "Milestone 4 -- Loop-seam repair".
+    //
+    // Cached, once per clip *asset* (see sLoopSeamCache, keyed like M3's
+    // sPhaseInfoCache in LLKeyframeWalkMotion): per animated joint, whether a
+    // LOOPING clip's loop-out pose disagrees with its loop-in pose (and/or
+    // incoming/outgoing velocity) by more than a small threshold -- the "one-frame
+    // hitch" a discontinuous authored loop produces on wrap. This is pure derived
+    // *gating* data (which joints are even worth touching) read from the
+    // already-loaded keyframe curves; the asset/curves themselves are never
+    // modified, and no correction offset is stored here -- the runtime correction
+    // is a "capture-and-ease" of the actually-displayed pose (see
+    // captureSeamPose()/applySeamEase()), not a fixed delta computed from this
+    // analysis. Only ever populated when sLoopSeamRepairEnabled is true.
+    //-------------------------------------------------------------------------
+    class LoopSeamJointDelta
+    {
+    public:
+        LoopSeamJointDelta()
+        :   mHasCorrection(false),
+            mHasRotation(false),
+            mHasPosition(false),
+            mHasScale(false)
+        {}
+
+        bool mHasCorrection; // true if this joint's seam mismatch is above threshold (any of the below)
+        bool mHasRotation;
+        bool mHasPosition;
+        bool mHasScale;
+    };
+
+    class LoopSeamInfo
+    {
+    public:
+        LoopSeamInfo() : mValid(false), mNeedsRepair(false) {}
+
+        bool                                mValid;       // analysis has run for this asset (may still be "no repair needed")
+        bool                                mNeedsRepair; // at least one joint's seam mismatch was above threshold
+        std::vector<LoopSeamJointDelta>     mJointDeltas; // parallel to mJointMotionList->mJointMotionArray / mJointStates
+    };
+
+    //-------------------------------------------------------------------------
+    // [PosePolish M4] SeamCapturedJoint
+    // Per-instance (not per-asset) snapshot of the pose actually displayed by a
+    // seam-relevant joint the instant before a wrap is applied -- curve value plus
+    // any prior correction, i.e. exactly what was last written into mJointStates.
+    // Captured once per wrap (captureSeamPose()) and held fixed for the whole
+    // blend window; the window eases the freshly-applied curve pose *toward* this
+    // captured snapshot at window-start and back to the pure curve value by
+    // window-end (applySeamEase()).
+    //-------------------------------------------------------------------------
+    class SeamCapturedJoint
+    {
+    public:
+        SeamCapturedJoint()
+        :   mRotation(),
+            mPosition(LLVector3::zero),
+            mScale(1.f, 1.f, 1.f)
+        {}
+
+        LLQuaternion mRotation;
+        LLVector3    mPosition;
+        LLVector3    mScale;
+    };
+
+    const LoopSeamInfo& getLoopSeamInfo();
+    bool detectSeamWrap(F32 raw_time, F32 prev_looped_time);
+    void captureSeamPose();
+    void applySeamEase(F32 raw_time);
 
     void applyConstraints(F32 time, U8* joint_mask);
 
@@ -441,6 +529,20 @@ protected:
     F32                             mLastUpdateTime;
     F32                             mLastLoopedTime;
     AssetStatus                     mAssetStatus;
+
+    // [PosePolish M4] Loop-seam repair per-instance runtime state (the post-wrap
+    // blend window). Only ever written/read when sLoopSeamRepairEnabled is true --
+    // see detectSeamWrap()/captureSeamPose()/applySeamEase() in
+    // llkeyframemotion.cpp. Harmless, inert data when the gate is off; never
+    // affects output. mSeamCapturedPose is sized once (onActivate()) so a wrap
+    // never has to allocate on the frame it fires.
+    bool                                mSeamHavePrevLoopedTime;
+    bool                                mSeamBlendActive;
+    F32                                 mSeamBlendElapsed;
+    std::vector<SeamCapturedJoint>      mSeamCapturedPose;
+
+    static bool                             sLoopSeamRepairEnabled;
+    static std::map<LLUUID, LoopSeamInfo>   sLoopSeamCache;
 
 public:
     void setCharacter(LLCharacter* character) { mCharacter = character; }

@@ -27,7 +27,8 @@
  *   M3 phase-aware locomotion      -> (llcharacter-side; wraps walk cadence)
  *   M4 loop-seam repair            -> (load-time; reuses M1 decay)
  *   M5 NLA-like layers/diagnostics -> alposelayer.h
- *   M6 procedural secondary motion -> alposesecondary.h  (incl. Gravitate lean)
+ *   M6 procedural secondary motion -> alposesecondary.h  (breath + idle sway;
+ *      the gaze-coupled Gravitate lean lives in the gaze layer, not here)
  */
 #ifndef LL_ALPOSEPOLISH_H
 #define LL_ALPOSEPOLISH_H
@@ -36,6 +37,7 @@
 
 #include "alposecontinuity.h"   // M1 inertializer (pure, header-only)
 #include "alcontactstab.h"      // M2 contact inference (pure, header-only)
+#include "alposesecondary.h"    // M6 secondary motion (pure, header-only)
 #include "lljointsolverrp3.h"   // M2 leg IK: proven two-bone solver (pulls in lljoint.h)
 #include "v3math.h"
 
@@ -131,8 +133,27 @@ private:
     // grounded biped locomotion only (sit/fly/in-air skip + release).
     void runContact(LLVOAvatar* av, F32 dt);
 
-    // Milestone shadow-state members (M6 secondary, ...) are added here as
-    // each lands, so per-avatar state is allocated exactly once.
+    // ---- M6 secondary-motion state ----------------------------------------
+    // Driving clock for the pure ambient waves (alposesecondary.h). Advanced
+    // by dt each frame; wrapped at ALPoseSecondary::COMMON_PERIOD_SEC (phase-
+    // exact, keeps F32 precision forever); reset() and big-dt discontinuities
+    // zero it so ambient life restarts cleanly instead of jumping phase.
+    F32 mSecondaryTime = 0.f;
+
+    // M6 sub-stage: additive breath (chest pitch) + idle weight-shift sway
+    // (spine roll/pitch) composed over the post-blend pose. Defined in
+    // llvoavatar.cpp (needs LLVOAvatar). No-op unless ALPolishSecondaryEnabled;
+    // zero amplitudes produce zero deltas and skip the joint writes entirely.
+    void runSecondary(LLVOAvatar* av, F32 dt);
+
+    // ---- M5 layer diagnostic ----------------------------------------------
+    // Per-frame count of joints each polish stage actually wrote, surfaced as
+    // avatar debug text when ALPolishLayerDiagnostic is on (the testable core
+    // of the NLA "current owner" tooling; the full Director layer UI is the
+    // larger follow-on in the integration plan). Zero cost when off.
+    S32 mDiagInertia = 0;
+    S32 mDiagContact = 0;
+    S32 mDiagSecondary = 0;
 };
 
 #endif // LL_ALPOSEPOLISH_H

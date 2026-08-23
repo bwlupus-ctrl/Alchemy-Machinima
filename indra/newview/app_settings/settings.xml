@@ -6064,6 +6064,72 @@
       <key>Value</key>
       <real>0.07</real>
     </map>
+    <key>ALPolishSecondaryEnabled</key>
+    <map>
+      <key>Comment</key>
+      <string>[Machinima] Pose Polish M6: procedural secondary motion (subtle breath + idle weight-shift sway). Off = no-op. Requires ALPolishEnabled.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>ALPolishSecondaryBreathAmp</key>
+    <map>
+      <key>Comment</key>
+      <string>[Machinima] Pose Polish M6 breath amplitude scale (0 disables breath).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.0</real>
+    </map>
+    <key>ALPolishSecondarySwayAmp</key>
+    <map>
+      <key>Comment</key>
+      <string>[Machinima] Pose Polish M6 idle weight-shift sway amplitude scale (0 disables sway).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.0</real>
+    </map>
+    <key>ALPolishLoopSeamEnabled</key>
+    <map>
+      <key>Comment</key>
+      <string>[Machinima] Pose Polish M4: repair the one-frame hitch at a looping animation's seam by pulsing the inertializer across the wrap. Off = no-op. Requires ALPolishEnabled + ALPolishInertiaEnabled.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>ALPolishPhaseMatchEnabled</key>
+    <map>
+      <key>Comment</key>
+      <string>[Machinima] Pose Polish M3: phase-aware locomotion - start a new walk/run clip near a compatible foot-plant phase. Off = stock cadence behavior.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>ALPolishLayerDiagnostic</key>
+    <map>
+      <key>Comment</key>
+      <string>[Machinima] Pose Polish M5: per-joint layer "current owner" diagnostic overlay for Director tools. Off = no overlay.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
     <key>AnimExplorerCaptureAll</key>
     <map>
       <key>Comment</key>
