@@ -129,6 +129,73 @@ const GazePerformancePreset GAZE_PRESETS[] =
 const S32 GAZE_PRESET_COUNT =
     static_cast<S32>(sizeof(GAZE_PRESETS) / sizeof(GAZE_PRESETS[0]));
 
+// [Machinima] Rotation-range preset chooser (Procedural gaze row). Stateless:
+// picking one stamps mLimitProfileModeOverride (+ the whole mLimitProfile for
+// non-Stock presets) and mExaggerateOverride onto the edited actor(s), then
+// the combo snaps back to its "Choose range..." sentinel -- it never claims
+// to represent the resulting (now freely-editable, effectively Custom)
+// state. mMode mirrors mLimitProfileModeOverride: 0 = Stock restores legacy
+// constants and touches nothing else in the profile; 1 = every other preset
+// also fills the per-joint profile below (yaw / pitch-down / pitch-up).
+struct GazeRangePreset
+{
+    const char* mName;
+    S32 mMode;
+    F32 mEyeYaw, mEyePitchDown, mEyePitchUp;
+    F32 mHeadYaw, mHeadPitchDown, mHeadPitchUp;
+    F32 mNeckYaw, mNeckPitchDown, mNeckPitchUp;
+    F32 mSpineYaw, mSpinePitchDown, mSpinePitchUp;
+    F32 mHipsYaw, mHipsPitchDown, mHipsPitchUp;
+    F32 mEyeApplyYaw, mEyeApplyPitchDown, mEyeApplyPitchUp;
+    F32 mEyeRadial;
+    F32 mExaggerate;
+};
+
+const GazeRangePreset GAZE_RANGE_PRESETS[] =
+{
+    // name          mode  eyeY  eyePD eyePU  headY headPD headPU neckY neckPD neckPU spineY spinePD spinePU hipsY hipsPD hipsPU eyeAppY eyeAppPD eyeAppPU radial exagg
+    { "Stock",          0,  0.f,  0.f,  0.f,   0.f,  0.f,  0.f,   0.f,  0.f,   0.f,   0.f,   0.f,    0.f,    0.f,  0.f,   0.f,   0.f,    0.f,     0.f,     0.f,  -1.f },
+    { "Tight",          1, 20.f, 12.f, 16.f,  25.f, 34.f, 40.f,  22.f, 22.f,  28.f,  30.f,  16.f,   18.f,   30.f, 12.f,  14.f,  20.f,   12.f,    16.f,    16.f,   1.0f },
+    { "Natural",        1, 25.f, 14.f, 22.f,  35.f, 42.f, 50.f,  35.f, 26.f,  34.f,  45.f,  20.f,   24.f,   35.f, 15.f,  18.f,  24.f,   14.f,    20.f,    19.8f,  1.0f },
+    { "Wide",           1, 28.f, 16.f, 26.f,  42.f, 45.f, 55.f,  42.f, 30.f,  40.f,  50.f,  22.f,   28.f,   35.f, 15.f,  18.f,  26.f,   16.f,    24.f,    22.f,   1.1f },
+    { "Extreme",        1, 30.f, 20.f, 30.f,  48.f, 52.f, 62.f,  48.f, 38.f,  48.f,  55.f,  28.f,   34.f,   35.f, 15.f,  18.f,  28.f,   20.f,    28.f,    24.f,   1.6f },
+    { "Owl/Creature",   1, 35.f, 25.f, 35.f,  70.f, 60.f, 70.f,  90.f, 45.f,  60.f,  45.f,  24.f,   30.f,   35.f, 15.f,  18.f,  30.f,   25.f,    35.f,    28.f,   1.2f },
+    { "Up-favored",     1, 25.f, 14.f, 28.f,  35.f, 42.f, 58.f,  35.f, 26.f,  42.f,  45.f,  20.f,   30.f,   35.f, 15.f,  22.f,  24.f,   14.f,    26.f,    19.8f,  1.0f },
+};
+const S32 GAZE_RANGE_PRESET_COUNT =
+    static_cast<S32>(sizeof(GAZE_RANGE_PRESETS) / sizeof(GAZE_RANGE_PRESETS[0]));
+
+// [Machinima] IK Lean preset chooser (SL anim priority row). Same stateless
+// chooser pattern as the Range preset above, but only enabled while the
+// edited actor's resolved Movement Style (ownership scope) is Planted spine
+// (IK) -- the lean curve is only ever consulted in that scope. "Off" sets
+// only the legacy curve and deliberately leaves threshold/max/softness/chest
+// at their -1 inherit sentinels (matching reset_gaze_lean_* semantics).
+struct GazeLeanPreset
+{
+    const char* mName;
+    S32 mCurve;
+    F32 mThresholdDeg;
+    F32 mMaxDeg;
+    F32 mSoftnessDeg;
+    F32 mChestShare;
+};
+
+const GazeLeanPreset GAZE_LEAN_PRESETS[] =
+{
+    { "Off",         0, -1.f,  -1.f,  -1.f, -1.f },
+    { "Subtle",      1, 40.f,   8.f, 25.f,  0.5f },
+    { "Natural",     1, 30.f,  15.f, 20.f,  0.5f },
+    { "Responsive",  1, 20.f,  20.f, 18.f,  0.5f },
+    { "Expressive",  1, 18.f,  25.f, 18.f,  0.6f },
+    { "Hero",        1, 12.f,  35.f, 15.f,  0.55f },
+    { "Lean-in",     1, 10.f,  30.f, 25.f,  0.35f },
+    { "Snap",        1, 15.f,  28.f,  8.f,  0.5f },
+    { "Deep bow",    1,  8.f,  45.f, 20.f,  0.5f },
+};
+const S32 GAZE_LEAN_PRESET_COUNT =
+    static_cast<S32>(sizeof(GAZE_LEAN_PRESETS) / sizeof(GAZE_LEAN_PRESETS[0]));
+
 void applyPreset(const GazePerformancePreset& preset,
                  LLActorMover::GazeTarget& target)
 {
@@ -308,6 +375,8 @@ bool ALPanelLensGaze::postBuild()
     mEyeTarget = getChild<LLComboBox>("gaze_eye_target_combo");
     mPriority = getChild<LLComboBox>("gaze_priority_combo");
     mAnimPriority = getChild<LLComboBox>("gaze_anim_priority_combo");
+    mRangePreset = getChild<LLComboBox>("gaze_range_preset_combo");
+    mIkLean = getChild<LLComboBox>("gaze_ik_lean_combo");
     mTargetDetailScope = getChild<LLComboBox>("gaze_target_detail_scope");
     mCast = getChild<LLComboBox>("gaze_cast_combo");
     mSetPoint = getChild<LLButton>("btn_gaze_setpoint");
@@ -325,16 +394,22 @@ bool ALPanelLensGaze::postBuild()
     mLimitMode = getChild<LLComboBox>("gaze_limit_mode_combo");
     mLimitEyeYaw = getChild<LLSpinCtrl>("gaze_limit_eye_yaw_spinner");
     mLimitEyePitch = getChild<LLSpinCtrl>("gaze_limit_eye_pitch_spinner");
+    mLimitEyePitchUp = getChild<LLSpinCtrl>("gaze_limit_eye_pitchup_spinner");
     mLimitHeadYaw = getChild<LLSpinCtrl>("gaze_limit_head_yaw_spinner");
     mLimitHeadPitch = getChild<LLSpinCtrl>("gaze_limit_head_pitch_spinner");
+    mLimitHeadPitchUp = getChild<LLSpinCtrl>("gaze_limit_head_pitchup_spinner");
     mLimitNeckYaw = getChild<LLSpinCtrl>("gaze_limit_neck_yaw_spinner");
     mLimitNeckPitch = getChild<LLSpinCtrl>("gaze_limit_neck_pitch_spinner");
+    mLimitNeckPitchUp = getChild<LLSpinCtrl>("gaze_limit_neck_pitchup_spinner");
     mLimitSpineYaw = getChild<LLSpinCtrl>("gaze_limit_spine_yaw_spinner");
     mLimitSpinePitch = getChild<LLSpinCtrl>("gaze_limit_spine_pitch_spinner");
+    mLimitSpinePitchUp = getChild<LLSpinCtrl>("gaze_limit_spine_pitchup_spinner");
     mLimitHipsYaw = getChild<LLSpinCtrl>("gaze_limit_hips_yaw_spinner");
     mLimitHipsPitch = getChild<LLSpinCtrl>("gaze_limit_hips_pitch_spinner");
+    mLimitHipsPitchUp = getChild<LLSpinCtrl>("gaze_limit_hips_pitchup_spinner");
     mLimitEyeApplyYaw = getChild<LLSpinCtrl>("gaze_limit_eyeapply_yaw_spinner");
     mLimitEyeApplyPitch = getChild<LLSpinCtrl>("gaze_limit_eyeapply_pitch_spinner");
+    mLimitEyeApplyPitchUp = getChild<LLSpinCtrl>("gaze_limit_eyeapply_pitchup_spinner");
     mLimitEyeRadial = getChild<LLSpinCtrl>("gaze_limit_eye_radial_spinner");
     mLeanCurve = getChild<LLComboBox>("gaze_lean_curve_combo");
     mLeanThreshold = getChild<LLSpinCtrl>("gaze_lean_threshold_spinner");
@@ -386,6 +461,8 @@ bool ALPanelLensGaze::postBuild()
     mEyeTarget->setCommitCallback([this](LLUICtrl*, const LLSD&) { onEyeTargetCommit(); });
     mPriority->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPriorityCommit(); });
     mAnimPriority->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAnimPriorityCommit(); });
+    mRangePreset->setCommitCallback([this](LLUICtrl*, const LLSD&) { onRangePresetCommit(); });
+    mIkLean->setCommitCallback([this](LLUICtrl*, const LLSD&) { onIkLeanCommit(); });
     mTargetDetailScope->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onTargetDetailScopeCommit(); });
     mCast->setCommitCallback([this](LLUICtrl*, const LLSD&) { onCastCommit(); });
@@ -403,16 +480,22 @@ bool ALPanelLensGaze::postBuild()
     mLimitMode->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitModeCommit(); });
     mLimitEyeYaw->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitProfileCommit(); });
     mLimitEyePitch->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitProfileCommit(); });
+    mLimitEyePitchUp->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitProfileCommit(); });
     mLimitHeadYaw->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitProfileCommit(); });
     mLimitHeadPitch->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitProfileCommit(); });
+    mLimitHeadPitchUp->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitProfileCommit(); });
     mLimitNeckYaw->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitProfileCommit(); });
     mLimitNeckPitch->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitProfileCommit(); });
+    mLimitNeckPitchUp->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitProfileCommit(); });
     mLimitSpineYaw->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitProfileCommit(); });
     mLimitSpinePitch->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitProfileCommit(); });
+    mLimitSpinePitchUp->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitProfileCommit(); });
     mLimitHipsYaw->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitProfileCommit(); });
     mLimitHipsPitch->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitProfileCommit(); });
+    mLimitHipsPitchUp->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitProfileCommit(); });
     mLimitEyeApplyYaw->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitProfileCommit(); });
     mLimitEyeApplyPitch->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitProfileCommit(); });
+    mLimitEyeApplyPitchUp->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitProfileCommit(); });
     mLimitEyeRadial->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLimitProfileCommit(); });
     mLeanCurve->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLeanCurveCommit(); });
     mLeanThreshold->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLeanThresholdCommit(); });
@@ -565,6 +648,13 @@ bool ALPanelLensGaze::postBuild()
             editGazeTargetsFor(editActors(),
                 [](LLActorMover::GazeTarget& t) { t.mAnimPriorityOverride = -2; });
         });
+    // Range/IK Lean choosers hold no persistent target state -- their resets
+    // just snap the display back to the "Choose..." sentinel, they never
+    // mutate the edited actor(s).
+    getChild<LLButton>("reset_gaze_range_preset")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { mRangePreset->setValue(LLSD(-1)); });
+    getChild<LLButton>("reset_gaze_ik_lean")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { mIkLean->setValue(LLSD(-1)); });
     getChild<LLButton>("reset_gaze_camera_roll")->setCommitCallback(
         [this](LLUICtrl*, const LLSD&)
         {
@@ -1047,6 +1137,19 @@ void ALPanelLensGaze::refreshControls()
     {
         mPriority->setValue(priority);
     }
+    // [Machinima] Resolved Movement Style == Planted spine, computed once here
+    // (override-or-global, same `priority` above) and reused below by chest
+    // share, the Lean threshold/softness/max trio, and the IK Lean chooser.
+    const bool planted_spine =
+        priority == static_cast<S32>(LLActorMover::GAZE_PRIORITY_PLANTED_SPINE);
+    // [Machinima] Range preset chooser: stateless, so it never reflects target
+    // state beyond staying enabled while there is an actor to edit and parked
+    // on its "Choose range..." sentinel.
+    mRangePreset->setEnabled(have_slot);
+    if (!isEditing(mRangePreset) && mRangePreset->getValue().asInteger() != -1)
+    {
+        mRangePreset->setValue(LLSD(-1));
+    }
     // SL anim priority: per-actor override wins when >= -1 (NOT >= 0 -- here -1
     // is the meaningful "Legacy final" selection, and -2 means inherit).
     const S32 global_anim_priority = llclamp(
@@ -1060,6 +1163,14 @@ void ALPanelLensGaze::refreshControls()
         mAnimPriority->setValue(anim_priority);
     }
     mAnimPriority->setEnabled(have_slot);
+    // [Machinima] IK Lean chooser: same stateless pattern as Range above, but
+    // only enabled while the resolved Movement Style is Planted spine (IK) --
+    // the lean curve is only ever consulted in that scope.
+    mIkLean->setEnabled(have_slot && planted_spine);
+    if (!isEditing(mIkLean) && mIkLean->getValue().asInteger() != -1)
+    {
+        mIkLean->setValue(LLSD(-1));
+    }
     if (!isEditing(mTargetDetailScope) &&
         mTargetDetailScope->getValue().asInteger() != (mEditingEyeTarget ? 1 : 0))
     {
@@ -1203,11 +1314,9 @@ void ALPanelLensGaze::refreshControls()
     }
 
     // [Machinima] Phase 2: planted-spine chest split. Enabled only when the
-    // RESOLVED ownership scope (override-or-global, same `priority` computed
-    // above) is Planted spine -- an inherited global Planted-spine default
-    // should still let an operator tune chest share for this actor.
-    const bool planted_spine =
-        priority == static_cast<S32>(LLActorMover::GAZE_PRIORITY_PLANTED_SPINE);
+    // RESOLVED ownership scope is Planted spine (`planted_spine`, computed
+    // above alongside `priority`) -- an inherited global Planted-spine
+    // default should still let an operator tune chest share for this actor.
     mChestShare->setEnabled(have_slot && planted_spine);
     sync_f32(mChestShare, slot_target.mChestShareOverride >= 0.f
              ? slot_target.mChestShareOverride
@@ -1229,9 +1338,12 @@ void ALPanelLensGaze::refreshControls()
     }
     const bool limit_custom = limit_mode == 1;
     LLUICtrl* limit_grid[] = {
-        mLimitEyeYaw, mLimitEyePitch, mLimitHeadYaw, mLimitHeadPitch,
-        mLimitNeckYaw, mLimitNeckPitch, mLimitSpineYaw, mLimitSpinePitch,
-        mLimitHipsYaw, mLimitHipsPitch, mLimitEyeApplyYaw, mLimitEyeApplyPitch,
+        mLimitEyeYaw, mLimitEyePitch, mLimitEyePitchUp,
+        mLimitHeadYaw, mLimitHeadPitch, mLimitHeadPitchUp,
+        mLimitNeckYaw, mLimitNeckPitch, mLimitNeckPitchUp,
+        mLimitSpineYaw, mLimitSpinePitch, mLimitSpinePitchUp,
+        mLimitHipsYaw, mLimitHipsPitch, mLimitHipsPitchUp,
+        mLimitEyeApplyYaw, mLimitEyeApplyPitch, mLimitEyeApplyPitchUp,
         mLimitEyeRadial
     };
     for (LLUICtrl* control : limit_grid)
@@ -1241,16 +1353,22 @@ void ALPanelLensGaze::refreshControls()
     const ALGazeMath::AnatomicalLimitProfile& profile = slot_target.mLimitProfile;
     sync_f32(mLimitEyeYaw, profile.mEyeYawDeg);
     sync_f32(mLimitEyePitch, profile.mEyePitchDeg);
+    sync_f32(mLimitEyePitchUp, profile.mEyePitchUpDeg);
     sync_f32(mLimitHeadYaw, profile.mHeadYawDeg);
     sync_f32(mLimitHeadPitch, profile.mHeadPitchDeg);
+    sync_f32(mLimitHeadPitchUp, profile.mHeadPitchUpDeg);
     sync_f32(mLimitNeckYaw, profile.mNeckYawDeg);
     sync_f32(mLimitNeckPitch, profile.mNeckPitchDeg);
+    sync_f32(mLimitNeckPitchUp, profile.mNeckPitchUpDeg);
     sync_f32(mLimitSpineYaw, profile.mSpineYawDeg);
     sync_f32(mLimitSpinePitch, profile.mSpinePitchDeg);
+    sync_f32(mLimitSpinePitchUp, profile.mSpinePitchUpDeg);
     sync_f32(mLimitHipsYaw, profile.mHipsYawDeg);
     sync_f32(mLimitHipsPitch, profile.mHipsPitchDeg);
+    sync_f32(mLimitHipsPitchUp, profile.mHipsPitchUpDeg);
     sync_f32(mLimitEyeApplyYaw, profile.mEyeApplyYawDeg);
     sync_f32(mLimitEyeApplyPitch, profile.mEyeApplyPitchDeg);
+    sync_f32(mLimitEyeApplyPitchUp, profile.mEyeApplyPitchUpDeg);
     sync_f32(mLimitEyeRadial, profile.mEyeRadialDeg);
 
     // [Machinima] Phase 4: angle-driven spine-lean curve. Threshold/Softness/
@@ -1625,28 +1743,104 @@ void ALPanelLensGaze::onLimitModeCommit()
         [v](LLActorMover::GazeTarget& t) { t.mLimitProfileModeOverride = v; });
 }
 
-// Any single grid spinner's commit re-reads ALL thirteen fields and writes
+// Any single grid spinner's commit re-reads ALL nineteen fields and writes
 // the whole profile struct, mirroring onEyelineCommit()'s two-slider pattern.
 // It is only consulted by the backend while this actor's Limits source is
-// explicitly Custom.
+// explicitly Custom. Pitch is split into a down cap (mXPitchDeg, the
+// original field) and an up cap (mXPitchUpDeg); Eye radial keeps its single
+// value -- there is no up/down split for the radial cone.
 void ALPanelLensGaze::onLimitProfileCommit()
 {
     ALGazeMath::AnatomicalLimitProfile p;
     p.mEyeYawDeg = llclamp((F32)mLimitEyeYaw->getValue().asReal(), 0.f, 180.f);
     p.mEyePitchDeg = llclamp((F32)mLimitEyePitch->getValue().asReal(), 0.f, 180.f);
+    p.mEyePitchUpDeg = llclamp((F32)mLimitEyePitchUp->getValue().asReal(), 0.f, 180.f);
     p.mHeadYawDeg = llclamp((F32)mLimitHeadYaw->getValue().asReal(), 0.f, 180.f);
     p.mHeadPitchDeg = llclamp((F32)mLimitHeadPitch->getValue().asReal(), 0.f, 180.f);
+    p.mHeadPitchUpDeg = llclamp((F32)mLimitHeadPitchUp->getValue().asReal(), 0.f, 180.f);
     p.mNeckYawDeg = llclamp((F32)mLimitNeckYaw->getValue().asReal(), 0.f, 180.f);
     p.mNeckPitchDeg = llclamp((F32)mLimitNeckPitch->getValue().asReal(), 0.f, 180.f);
+    p.mNeckPitchUpDeg = llclamp((F32)mLimitNeckPitchUp->getValue().asReal(), 0.f, 180.f);
     p.mSpineYawDeg = llclamp((F32)mLimitSpineYaw->getValue().asReal(), 0.f, 180.f);
     p.mSpinePitchDeg = llclamp((F32)mLimitSpinePitch->getValue().asReal(), 0.f, 180.f);
+    p.mSpinePitchUpDeg = llclamp((F32)mLimitSpinePitchUp->getValue().asReal(), 0.f, 180.f);
     p.mHipsYawDeg = llclamp((F32)mLimitHipsYaw->getValue().asReal(), 0.f, 180.f);
     p.mHipsPitchDeg = llclamp((F32)mLimitHipsPitch->getValue().asReal(), 0.f, 180.f);
+    p.mHipsPitchUpDeg = llclamp((F32)mLimitHipsPitchUp->getValue().asReal(), 0.f, 180.f);
     p.mEyeApplyYawDeg = llclamp((F32)mLimitEyeApplyYaw->getValue().asReal(), 0.f, 180.f);
     p.mEyeApplyPitchDeg = llclamp((F32)mLimitEyeApplyPitch->getValue().asReal(), 0.f, 180.f);
+    p.mEyeApplyPitchUpDeg = llclamp((F32)mLimitEyeApplyPitchUp->getValue().asReal(), 0.f, 180.f);
     p.mEyeRadialDeg = llclamp((F32)mLimitEyeRadial->getValue().asReal(), 0.f, 90.f);
     editGazeTargetsFor(editActors(),
         [p](LLActorMover::GazeTarget& t) { t.mLimitProfile = p; });
+}
+
+// [Machinima] Range preset chooser (Procedural gaze row). Stock only touches
+// Limits source (legacy constants) + Exaggerate (inherit); every other
+// preset also fills the whole per-joint profile. Either way the fields stay
+// freely editable afterward -- there is no "this actor is now preset X" flag
+// -- so the combo snaps back to its "Choose range..." sentinel rather than
+// trying to keep showing the (now stale the moment a field is nudged) name.
+void ALPanelLensGaze::onRangePresetCommit()
+{
+    const S32 idx = mRangePreset->getValue().asInteger();
+    if (idx >= 0 && idx < GAZE_RANGE_PRESET_COUNT)
+    {
+        const GazeRangePreset& preset = GAZE_RANGE_PRESETS[idx];
+        editGazeTargetsFor(editActors(),
+            [&preset](LLActorMover::GazeTarget& t)
+            {
+                t.mLimitProfileModeOverride = preset.mMode;
+                t.mExaggerateOverride = preset.mExaggerate;
+                if (preset.mMode == 1)
+                {
+                    ALGazeMath::AnatomicalLimitProfile p;
+                    p.mEyeYawDeg = preset.mEyeYaw;
+                    p.mEyePitchDeg = preset.mEyePitchDown;
+                    p.mEyePitchUpDeg = preset.mEyePitchUp;
+                    p.mHeadYawDeg = preset.mHeadYaw;
+                    p.mHeadPitchDeg = preset.mHeadPitchDown;
+                    p.mHeadPitchUpDeg = preset.mHeadPitchUp;
+                    p.mNeckYawDeg = preset.mNeckYaw;
+                    p.mNeckPitchDeg = preset.mNeckPitchDown;
+                    p.mNeckPitchUpDeg = preset.mNeckPitchUp;
+                    p.mSpineYawDeg = preset.mSpineYaw;
+                    p.mSpinePitchDeg = preset.mSpinePitchDown;
+                    p.mSpinePitchUpDeg = preset.mSpinePitchUp;
+                    p.mHipsYawDeg = preset.mHipsYaw;
+                    p.mHipsPitchDeg = preset.mHipsPitchDown;
+                    p.mHipsPitchUpDeg = preset.mHipsPitchUp;
+                    p.mEyeApplyYawDeg = preset.mEyeApplyYaw;
+                    p.mEyeApplyPitchDeg = preset.mEyeApplyPitchDown;
+                    p.mEyeApplyPitchUpDeg = preset.mEyeApplyPitchUp;
+                    p.mEyeRadialDeg = preset.mEyeRadial;
+                    t.mLimitProfile = p;
+                }
+            });
+    }
+    mRangePreset->setValue(LLSD(-1));
+}
+
+// [Machinima] IK Lean preset chooser (SL anim priority row). Same stateless
+// pattern as Range above; only reachable while refreshControls has left it
+// enabled (resolved Movement Style == Planted spine).
+void ALPanelLensGaze::onIkLeanCommit()
+{
+    const S32 idx = mIkLean->getValue().asInteger();
+    if (idx >= 0 && idx < GAZE_LEAN_PRESET_COUNT)
+    {
+        const GazeLeanPreset& preset = GAZE_LEAN_PRESETS[idx];
+        editGazeTargetsFor(editActors(),
+            [&preset](LLActorMover::GazeTarget& t)
+            {
+                t.mLeanCurveOverride = preset.mCurve;
+                t.mLeanThresholdDegOverride = preset.mThresholdDeg;
+                t.mLeanSoftnessDegOverride = preset.mSoftnessDeg;
+                t.mLeanMaxDegOverride = preset.mMaxDeg;
+                t.mChestShareOverride = preset.mChestShare;
+            });
+    }
+    mIkLean->setValue(LLSD(-1));
 }
 
 void ALPanelLensGaze::onLeanCurveCommit()

@@ -2102,4 +2102,290 @@ void algazemotor_test_object::test<28>()
     }
 }
 
+template<> template<>
+void algazemotor_test_object::test<30>()
+{
+    set_test_name("asymmetric up/down pitch: symmetric defaults keep "
+                  "bit-parity; scale/profile raise only the upward capacity");
+
+    // 1. Symmetric defaults: the pitch_up capacity table is bitwise the down
+    //    table (constant AND profiled paths), so the per-channel sign
+    //    selection in step() cannot change the default output -- the band-0
+    //    bit-parity contract (test 14) is preserved by construction.
+    {
+        ALGazeMotor::GazeMotorSettings s;
+        s.mHeadEyeBlend = 0.8f;
+        s.mTorsoAmount  = 0.6f;
+        for (S32 mode = 0; mode < 2; ++mode)
+        {
+            s.mUseLimitProfile = (mode == 1); // default profile is symmetric
+            F32 y_dn[ALGazeMotor::CHAIN_JOINTS];
+            F32 p_dn[ALGazeMotor::CHAIN_JOINTS];
+            F32 y_up[ALGazeMotor::CHAIN_JOINTS];
+            F32 p_up[ALGazeMotor::CHAIN_JOINTS];
+            ALGazeMotor::effectiveCapacities(s, y_dn, p_dn);
+            ALGazeMotor::effectiveCapacities(s, y_up, p_up, true);
+            for (S32 i = 0; i < ALGazeMotor::CHAIN_JOINTS; ++i)
+            {
+                ensure("symmetric up table is bitwise the down table, mode " +
+                           std::to_string(mode) + " slot " +
+                           std::to_string(i) + " (up " + bitsOf(p_up[i]) +
+                           " down " + bitsOf(p_dn[i]) + ")",
+                       bitwiseEqual(p_up[i], p_dn[i]) &&
+                       bitwiseEqual(y_up[i], y_dn[i]));
+            }
+        }
+    }
+
+    // 2. mPitchUpScale 1.3 (constant path): the UP pitch table scales by 1.3;
+    //    the DOWN pitch table and the yaw table stay bit-identical.
+    {
+        ALGazeMotor::GazeMotorSettings a;
+        a.mHeadEyeBlend = 1.f;
+        a.mTorsoAmount  = 1.f;
+        ALGazeMotor::GazeMotorSettings b = a;
+        b.mPitchUpScale = 1.3f;
+        F32 ya[ALGazeMotor::CHAIN_JOINTS], pa_dn[ALGazeMotor::CHAIN_JOINTS];
+        F32 yb[ALGazeMotor::CHAIN_JOINTS], pb_dn[ALGazeMotor::CHAIN_JOINTS];
+        F32 ys[ALGazeMotor::CHAIN_JOINTS], pb_up[ALGazeMotor::CHAIN_JOINTS];
+        ALGazeMotor::effectiveCapacities(a, ya, pa_dn);
+        ALGazeMotor::effectiveCapacities(b, yb, pb_dn);
+        ALGazeMotor::effectiveCapacities(b, ys, pb_up, true);
+        for (S32 i = 0; i < ALGazeMotor::CHAIN_JOINTS; ++i)
+        {
+            ensure("up scale leaves the down pitch table bit-identical, "
+                       "slot " + std::to_string(i),
+                   bitwiseEqual(pb_dn[i], pa_dn[i]));
+            ensure("up scale leaves the yaw table bit-identical, slot " +
+                       std::to_string(i),
+                   bitwiseEqual(yb[i], ya[i]) && bitwiseEqual(ys[i], ya[i]));
+            ensure("up pitch capacity is 1.3x the down capacity, slot " +
+                       std::to_string(i) + " (up " + bitsOf(pb_up[i]) +
+                       " down " + bitsOf(pa_dn[i]) + ")",
+                   softEqual(pb_up[i], pa_dn[i] * 1.3f));
+        }
+    }
+
+    // 3. Asymmetric-PROFILE band-0 recruit from the up table is bit-identical
+    //    to the profiled legacy chain for upward targets (test 28's contract
+    //    extended to the sign-selected table).
+    {
+        ALGazeMath::AnatomicalLimitProfile prof; // down fields at defaults
+        prof.mEyePitchUpDeg   = 20.f;
+        prof.mHeadPitchUpDeg  = 50.f;
+        prof.mNeckPitchUpDeg  = 34.f;
+        prof.mSpinePitchUpDeg = 24.f;
+        prof.mHipsPitchUpDeg  = 18.f;
+        const F32 blends[] = { 0.f, 0.8f, 1.f };
+        const F32 pitches_deg[] =
+            { -150.f, -100.f, -60.f, -20.f, -3.f, 3.f, 40.f, 110.f };
+        for (F32 blend : blends)
+        {
+            ALGazeMotor::GazeMotorSettings s;
+            s.mHeadEyeBlend = blend;
+            s.mTorsoAmount  = 1.f;
+            s.mUseLimitProfile = true;
+            s.mLimitProfile = prof;
+            F32 cy[ALGazeMotor::CHAIN_JOINTS];
+            F32 cp_dn[ALGazeMotor::CHAIN_JOINTS];
+            F32 cp_up[ALGazeMotor::CHAIN_JOINTS];
+            ALGazeMotor::effectiveCapacities(s, cy, cp_dn);
+            ALGazeMotor::effectiveCapacities(s, cy, cp_up, true);
+            const bool eye_only = ALGazeMotor::isEyeOnlyBlend(s);
+            for (F32 pitch_deg : pitches_deg)
+            {
+                const F32 pitch = pitch_deg * DEG_TO_RAD;
+                ALGazeMath::AnatomicalChainPose legacy;
+                ALGazeMath::distributeAnatomicalChain(
+                    20.f * DEG_TO_RAD, pitch, blend, 1.f, 90.f, legacy, 1.f,
+                    true, &prof);
+                const F32* cp = pitch < 0.f ? cp_up : cp_dn;
+                F32 jp[ALGazeMotor::CHAIN_JOINTS];
+                for (S32 slot = 0; slot < ALGazeMotor::CHAIN_JOINTS; ++slot)
+                {
+                    jp[slot] = ALGazeMotor::recruitSlot(pitch, cp, 0.f, slot,
+                                                        eye_only);
+                }
+                ensure("asymmetric-profile band-0 pitch allocation is "
+                           "bit-identical to the profiled chain (blend " +
+                           std::to_string(blend) + " pitch_deg " +
+                           std::to_string(pitch_deg) + ")",
+                       jp[0] == legacy.mEyePitch &&
+                       jp[1] == legacy.mHeadPitch &&
+                       jp[2] == legacy.mNeckPitch &&
+                       jp[3] == legacy.mTorsoPitch &&
+                       jp[4] == legacy.mHipsPitch);
+            }
+        }
+    }
+
+    // 4. Converged step(): mPitchUpScale 1.3 delivers more recruited body
+    //    pitch for an UPWARD target than scale 1, while the same DOWNWARD
+    //    target converges bit-identically under either scale.
+    {
+        auto convergedPose = [](F32 up_scale,
+                                F32 pitch) -> ALGazeMotor::GazeMotorPose
+        {
+            ALGazeMotor::GazeMotorState state;
+            ALGazeMotor::GazeMotorPose pose;
+            for (S32 i = 0; i < 10; ++i)
+            {
+                ALGazeMotor::GazeMotorInput in =
+                    quietInput(i / 60.0, 0.f, pitch);
+                in.mSettings.mHeadEyeBlend = 1.f;
+                in.mSettings.mTorsoAmount  = 1.f;
+                in.mSettings.mPitchUpScale = up_scale;
+                ALGazeMotor::step(state, in, pose);
+            }
+            return pose;
+        };
+        auto bodyPitchMag = [](const ALGazeMotor::GazeMotorPose& p) -> F32
+        {
+            return std::fabs(p.mHeadPitch) + std::fabs(p.mNeckPitch) +
+                   std::fabs(p.mTorsoPitch) + std::fabs(p.mChestPitch) +
+                   std::fabs(p.mHipsPitch);
+        };
+
+        const F32 deep_up = -120.f * DEG_TO_RAD; // beyond the ~106.5 deg reach
+        const ALGazeMotor::GazeMotorPose up_plain =
+            convergedPose(1.f, deep_up);
+        const ALGazeMotor::GazeMotorPose up_scaled =
+            convergedPose(1.3f, deep_up);
+        ensure("upward target recruits more body pitch under the up scale "
+                   "(scaled " + std::to_string(bodyPitchMag(up_scaled)) +
+                   " plain " + std::to_string(bodyPitchMag(up_plain)) + ")",
+               bodyPitchMag(up_scaled) >
+                   bodyPitchMag(up_plain) + 5.f * DEG_TO_RAD);
+        ensure("upward recruited pitch keeps the upward sign",
+               up_scaled.mHeadPitch < 0.f && up_scaled.mNeckPitch < 0.f);
+
+        const F32 deep_dn = 120.f * DEG_TO_RAD;
+        const ALGazeMotor::GazeMotorPose dn_plain =
+            convergedPose(1.f, deep_dn);
+        const ALGazeMotor::GazeMotorPose dn_scaled =
+            convergedPose(1.3f, deep_dn);
+        ensure("downward target is bit-identical under the up scale",
+               bitwiseEqual(dn_scaled.mEyeYaw, dn_plain.mEyeYaw) &&
+               bitwiseEqual(dn_scaled.mEyePitch, dn_plain.mEyePitch) &&
+               bitwiseEqual(dn_scaled.mHeadYaw, dn_plain.mHeadYaw) &&
+               bitwiseEqual(dn_scaled.mHeadPitch, dn_plain.mHeadPitch) &&
+               bitwiseEqual(dn_scaled.mNeckYaw, dn_plain.mNeckYaw) &&
+               bitwiseEqual(dn_scaled.mNeckPitch, dn_plain.mNeckPitch) &&
+               bitwiseEqual(dn_scaled.mTorsoYaw, dn_plain.mTorsoYaw) &&
+               bitwiseEqual(dn_scaled.mTorsoPitch, dn_plain.mTorsoPitch) &&
+               bitwiseEqual(dn_scaled.mHipsYaw, dn_plain.mHipsYaw) &&
+               bitwiseEqual(dn_scaled.mHipsPitch, dn_plain.mHipsPitch));
+    }
+}
+
+template<> template<>
+void algazemotor_test_object::test<31>()
+{
+    set_test_name("asymmetric eye soft-limit: upward comfort reaches past "
+                  "the downward cap; symmetric defaults keep bit-parity");
+
+    const F32 comfort_yaw_deg   = 25.f;
+    const F32 comfort_pitch_deg = 14.f;
+
+    // 1. DEFAULT PARITY: the default-argument call, the -1 sentinel, and an
+    //    up comfort bit-equal to the down comfort are all bit-identical
+    //    across both pitch signs (the symmetric else-branch is the original
+    //    statement verbatim).
+    {
+        const F32 pitches_deg[] = { -60.f, -20.f, -5.f, 0.f, 5.f, 20.f, 60.f };
+        for (F32 pitch_deg : pitches_deg)
+        {
+            const F32 pitch = pitch_deg * DEG_TO_RAD;
+            F32 y0 = 0.f, p0 = 0.f, y1 = 0.f, p1 = 0.f, y2 = 0.f, p2 = 0.f;
+            ALGazePolicy::softLimitEyeInHead(
+                0.3f, pitch, comfort_yaw_deg, comfort_pitch_deg, y0, p0);
+            ALGazePolicy::softLimitEyeInHead(
+                0.3f, pitch, comfort_yaw_deg, comfort_pitch_deg, y1, p1,
+                -1.f);
+            ALGazePolicy::softLimitEyeInHead(
+                0.3f, pitch, comfort_yaw_deg, comfort_pitch_deg, y2, p2,
+                comfort_pitch_deg);
+            ensure("soft limit: -1 sentinel is bit-identical to the default "
+                       "call (pitch_deg " + std::to_string(pitch_deg) + ")",
+                   bitwiseEqual(y1, y0) && bitwiseEqual(p1, p0));
+            ensure("soft limit: up comfort == down comfort is bit-identical "
+                       "to the default call (pitch_deg " +
+                       std::to_string(pitch_deg) + " up " + bitsOf(p2) +
+                       " base " + bitsOf(p0) + ")",
+                   bitwiseEqual(y2, y0) && bitwiseEqual(p2, p0));
+        }
+    }
+
+    // 2. Asymmetric soft limit (defect A): a large UPWARD (negative) request
+    //    escapes the downward comfort's tanh ceiling and approaches the up
+    //    comfort instead; the mirrored DOWNWARD request is bit-identical
+    //    with or without the up comfort.
+    {
+        const F32 up_comfort_deg = comfort_pitch_deg * 1.3f; // 18.2 deg
+        const F32 raw_up = -40.f * DEG_TO_RAD;
+        F32 y_sym = 0.f, p_sym = 0.f, y_asym = 0.f, p_asym = 0.f;
+        ALGazePolicy::softLimitEyeInHead(
+            0.f, raw_up, comfort_yaw_deg, comfort_pitch_deg, y_sym, p_sym);
+        ALGazePolicy::softLimitEyeInHead(
+            0.f, raw_up, comfort_yaw_deg, comfort_pitch_deg, y_asym, p_asym,
+            up_comfort_deg);
+        ensure("symmetric soft limit stays inside the down comfort",
+               std::fabs(p_sym) <= comfort_pitch_deg * DEG_TO_RAD + 1e-6f);
+        ensure("asymmetric upward output exceeds the DOWN comfort cap "
+                   "(the up range is genuinely reachable, p " +
+                   std::to_string(p_asym * RAD_TO_DEG) + " deg)",
+               p_asym < -comfort_pitch_deg * DEG_TO_RAD);
+        ensure("asymmetric upward output stays inside the UP comfort cap",
+               std::fabs(p_asym) <= up_comfort_deg * DEG_TO_RAD + 1e-6f);
+        ensure("upward yaw is untouched by the asymmetric pitch limit",
+               bitwiseEqual(y_asym, y_sym));
+
+        F32 y_dn0 = 0.f, p_dn0 = 0.f, y_dn1 = 0.f, p_dn1 = 0.f;
+        ALGazePolicy::softLimitEyeInHead(
+            0.f, -raw_up, comfort_yaw_deg, comfort_pitch_deg, y_dn0, p_dn0);
+        ALGazePolicy::softLimitEyeInHead(
+            0.f, -raw_up, comfort_yaw_deg, comfort_pitch_deg, y_dn1, p_dn1,
+            up_comfort_deg);
+        ensure("downward request is bit-identical under the up comfort",
+               bitwiseEqual(y_dn1, y_dn0) && bitwiseEqual(p_dn1, p_dn0));
+    }
+
+    // 3. End-to-end eyeInHeadFromWorldGaze: an upward world gaze against an
+    //    identity head solves to an upward eye-in-head past the down
+    //    comfort when the up comfort is supplied, and the downward solve is
+    //    bit-identical either way.
+    {
+        const F32 up_comfort_deg = comfort_pitch_deg * 1.3f;
+        const LLQuaternion head_identity;
+        const LLVector3 up_dir =
+            ALGazePolicy::eyeDirFromYawPitch(0.f, -40.f * DEG_TO_RAD);
+        F32 y_sym = 0.f, p_sym = 0.f, y_asym = 0.f, p_asym = 0.f;
+        ALGazePolicy::eyeInHeadFromWorldGaze(
+            up_dir, head_identity, comfort_yaw_deg, comfort_pitch_deg,
+            y_sym, p_sym);
+        ALGazePolicy::eyeInHeadFromWorldGaze(
+            up_dir, head_identity, comfort_yaw_deg, comfort_pitch_deg,
+            y_asym, p_asym, up_comfort_deg);
+        ensure("solved upward eye pitch is upward (negative)",
+               p_sym < 0.f && p_asym < 0.f);
+        ensure("solved upward eye pitch escapes the down comfort with the "
+                   "up comfort supplied",
+               p_asym < -comfort_pitch_deg * DEG_TO_RAD &&
+               p_asym < p_sym);
+
+        const LLVector3 dn_dir =
+            ALGazePolicy::eyeDirFromYawPitch(0.f, 40.f * DEG_TO_RAD);
+        F32 y_d0 = 0.f, p_d0 = 0.f, y_d1 = 0.f, p_d1 = 0.f;
+        ALGazePolicy::eyeInHeadFromWorldGaze(
+            dn_dir, head_identity, comfort_yaw_deg, comfort_pitch_deg,
+            y_d0, p_d0);
+        ALGazePolicy::eyeInHeadFromWorldGaze(
+            dn_dir, head_identity, comfort_yaw_deg, comfort_pitch_deg,
+            y_d1, p_d1, up_comfort_deg);
+        ensure("downward end-to-end solve is bit-identical under the up "
+                   "comfort",
+               bitwiseEqual(y_d1, y_d0) && bitwiseEqual(p_d1, p_d0));
+    }
+}
+
 } // namespace tut

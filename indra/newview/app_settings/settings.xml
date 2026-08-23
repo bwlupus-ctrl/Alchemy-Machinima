@@ -5932,6 +5932,83 @@
       <key>Value</key>
       <real>19.8</real>
     </map>
+    <key>DirectorGazePitchUpScale</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Gaze up range: multiplier applied to the UPWARD pitch caps on the default (legacy) allocator path, so looking up reaches further across the board while chin-down stays as-is. 1.0 = old symmetric behavior. Custom profiles use their own explicit up caps instead.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.3</real>
+    </map>
+    <key>DirectorGazeLimitEyePitchUpDeg</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Custom gaze limit: eye allocation UPWARD pitch (deg), separate from downward so looking up reaches further.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>20.0</real>
+    </map>
+    <key>DirectorGazeLimitHeadPitchUpDeg</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Custom gaze limit: head UPWARD pitch (deg).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>50.0</real>
+    </map>
+    <key>DirectorGazeLimitNeckPitchUpDeg</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Custom gaze limit: neck UPWARD pitch (deg).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>34.0</real>
+    </map>
+    <key>DirectorGazeLimitSpinePitchUpDeg</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Custom gaze limit: spine (torso+chest) UPWARD pitch (deg).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>24.0</real>
+    </map>
+    <key>DirectorGazeLimitHipsPitchUpDeg</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Custom gaze limit: hips UPWARD pitch (deg, legacy Upper-body only).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>18.0</real>
+    </map>
+    <key>DirectorGazeLimitEyeApplyPitchUpDeg</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Custom gaze limit: final applied eye UPWARD pitch cap (deg).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>20.0</real>
+    </map>
     <key>DirectorGazeLeanCurve</key>
     <map>
       <key>Comment</key>

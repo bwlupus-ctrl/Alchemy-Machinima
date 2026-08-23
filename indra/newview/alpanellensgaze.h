@@ -87,6 +87,12 @@ private:
     void onChestShareCommit();
     void onLimitModeCommit();
     void onLimitProfileCommit();
+    // [Machinima] Range/IK-Lean preset choosers: stateless -- each commit
+    // writes a full preset into the edited actor(s) via editGazeTargetsFor,
+    // then snaps its own display back to the "Choose..." sentinel so it never
+    // claims to represent the (now-Custom) resulting state.
+    void onRangePresetCommit();
+    void onIkLeanCommit();
     void onLeanCurveCommit();
     void onLeanThresholdCommit();
     void onLeanSoftnessCommit();
@@ -129,8 +135,15 @@ private:
     LLCheckBoxCtrl* mEnable = nullptr;
     LLComboBox* mTarget = nullptr;
     LLComboBox* mEyeTarget = nullptr;
-    LLComboBox* mPriority = nullptr;        // ownership scope
+    LLComboBox* mPriority = nullptr;        // Movement Style (ownership scope)
     LLComboBox* mAnimPriority = nullptr;    // SL animation priority (yield gate)
+    // [Machinima] Range preset chooser (Procedural gaze row): stateless,
+    // fills mLimitProfileModeOverride/mLimitProfile/mExaggerateOverride then
+    // resets to the sentinel. IK Lean preset chooser (SL anim priority row):
+    // stateless, fills mLeanCurveOverride/threshold/softness/max/chest share,
+    // enabled only while the resolved Movement Style is Planted spine (IK).
+    LLComboBox* mRangePreset = nullptr;
+    LLComboBox* mIkLean = nullptr;
     LLComboBox* mTargetDetailScope = nullptr;
     LLComboBox* mCast = nullptr;
     LLButton* mSetPoint = nullptr;
@@ -155,16 +168,22 @@ private:
     LLComboBox* mLimitMode = nullptr;
     LLSpinCtrl* mLimitEyeYaw = nullptr;
     LLSpinCtrl* mLimitEyePitch = nullptr;
+    LLSpinCtrl* mLimitEyePitchUp = nullptr;
     LLSpinCtrl* mLimitHeadYaw = nullptr;
     LLSpinCtrl* mLimitHeadPitch = nullptr;
+    LLSpinCtrl* mLimitHeadPitchUp = nullptr;
     LLSpinCtrl* mLimitNeckYaw = nullptr;
     LLSpinCtrl* mLimitNeckPitch = nullptr;
+    LLSpinCtrl* mLimitNeckPitchUp = nullptr;
     LLSpinCtrl* mLimitSpineYaw = nullptr;
     LLSpinCtrl* mLimitSpinePitch = nullptr;
+    LLSpinCtrl* mLimitSpinePitchUp = nullptr;
     LLSpinCtrl* mLimitHipsYaw = nullptr;
     LLSpinCtrl* mLimitHipsPitch = nullptr;
+    LLSpinCtrl* mLimitHipsPitchUp = nullptr;
     LLSpinCtrl* mLimitEyeApplyYaw = nullptr;
     LLSpinCtrl* mLimitEyeApplyPitch = nullptr;
+    LLSpinCtrl* mLimitEyeApplyPitchUp = nullptr;
     LLSpinCtrl* mLimitEyeRadial = nullptr;
     // [Machinima] Phase 4: angle-driven spine-lean curve (Planted spine only
     // in v1). DirectorGazeSoftRecruitDeg is a pure global (control_name-bound

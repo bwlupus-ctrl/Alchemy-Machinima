@@ -191,12 +191,29 @@ inline F32 softClampAngle(F32 value, F32 limit)
 // cone. Kept separate from eyeInHeadRawFromWorldGaze so tests (and callers)
 // can verify the pre-limit world-gaze reconstruction independent of the
 // comfort clamp.
+// [Machinima] Asymmetric up/down pitch: comfort_pitch_up_deg (>= 0) soft-
+// limits UPWARD (negative, viewer convention "positive looking down") pitch
+// against its own, typically larger, comfort cap. The default sentinel (-1)
+// and an up cap bit-equal to the down cap both take the ORIGINAL statement
+// verbatim, so the symmetric/default output stays bit-for-bit identical
+// under /fp:fast (softClampAngle is C1 with unit slope and zero value at 0,
+// so the sign-selected pair stays smooth at the seam).
 inline void softLimitEyeInHead(F32 eye_yaw, F32 eye_pitch,
                                F32 comfort_yaw_deg, F32 comfort_pitch_deg,
-                               F32& out_eye_yaw, F32& out_eye_pitch)
+                               F32& out_eye_yaw, F32& out_eye_pitch,
+                               F32 comfort_pitch_up_deg = -1.f)
 {
     out_eye_yaw = softClampAngle(eye_yaw, comfort_yaw_deg * DEG_TO_RAD);
-    out_eye_pitch = softClampAngle(eye_pitch, comfort_pitch_deg * DEG_TO_RAD);
+    if (eye_pitch < 0.f && comfort_pitch_up_deg >= 0.f &&
+        comfort_pitch_up_deg != comfort_pitch_deg)
+    {
+        out_eye_pitch =
+            softClampAngle(eye_pitch, comfort_pitch_up_deg * DEG_TO_RAD);
+    }
+    else
+    {
+        out_eye_pitch = softClampAngle(eye_pitch, comfort_pitch_deg * DEG_TO_RAD);
+    }
 }
 
 // Full VOR eye-in-head solve: solve the exact eye-in-head yaw/pitch that
@@ -204,16 +221,20 @@ inline void softLimitEyeInHead(F32 eye_yaw, F32 eye_pitch,
 // soft-limit into the comfort cone. DirectorGazeRecenter (how far the head
 // ultimately aligns) belongs upstream, in whatever supplies head_world_rot
 // -- it never substitutes for this world-gaze equation.
+// [Machinima] Asymmetric up/down pitch: comfort_pitch_up_deg (>= 0) is the
+// UPWARD (negative-pitch) comfort cap; the default sentinel keeps every
+// existing caller's output bit-identical (see softLimitEyeInHead).
 inline void eyeInHeadFromWorldGaze(const LLVector3& world_gaze_dir,
                                    const LLQuaternion& head_world_rot,
                                    F32 comfort_yaw_deg, F32 comfort_pitch_deg,
-                                   F32& out_eye_yaw, F32& out_eye_pitch)
+                                   F32& out_eye_yaw, F32& out_eye_pitch,
+                                   F32 comfort_pitch_up_deg = -1.f)
 {
     F32 raw_yaw = 0.f;
     F32 raw_pitch = 0.f;
     eyeInHeadRawFromWorldGaze(world_gaze_dir, head_world_rot, raw_yaw, raw_pitch);
     softLimitEyeInHead(raw_yaw, raw_pitch, comfort_yaw_deg, comfort_pitch_deg,
-                       out_eye_yaw, out_eye_pitch);
+                       out_eye_yaw, out_eye_pitch, comfort_pitch_up_deg);
 }
 
 // Reconstructs the world-space gaze direction implied by an eye-in-head

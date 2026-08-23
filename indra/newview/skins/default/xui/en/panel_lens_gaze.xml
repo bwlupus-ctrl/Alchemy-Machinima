@@ -53,6 +53,28 @@
      layout="topleft" left="140" name="gaze_enable_check" top="102"
      tool_tip="Procedural look-at for selected actor. Off is a no-op and the actor's own motion plays."
      width="190" />
+    <!-- [Machinima] Range preset chooser: stateless. Picking an item stamps
+         Limits source + the whole per-joint profile (+ Exaggerate) onto the
+         edited actor(s), then this combo snaps back to "Choose range..." so it
+         never claims to represent the resulting (now-Custom) state. -->
+    <text follows="left|top" height="16" layout="topleft" left="334"
+     name="gaze_range_preset_lbl" top="104" width="38">Range</text>
+    <combo_box follows="left|top" height="20" layout="topleft" left="376"
+     name="gaze_range_preset_combo" top="102"
+     tool_tip="Apply a rotation-range preset to the edited actor(s): sets Limits source + the whole per-joint limit profile below, plus Exaggerate. Fields stay editable afterward (shown as Custom)."
+     width="96">
+        <combo_box.item label="Choose range..." name="gaze_range_choose" value="-1" />
+        <combo_box.item label="Stock" name="gaze_range_stock" value="0" />
+        <combo_box.item label="Tight" name="gaze_range_tight" value="1" />
+        <combo_box.item label="Natural" name="gaze_range_natural" value="2" />
+        <combo_box.item label="Wide" name="gaze_range_wide" value="3" />
+        <combo_box.item label="Extreme" name="gaze_range_extreme" value="4" />
+        <combo_box.item label="Owl/Creature" name="gaze_range_owl" value="5" />
+        <combo_box.item label="Up-favored" name="gaze_range_up_favored" value="6" />
+    </combo_box>
+    <button follows="right|top" height="18" image_overlay="Refresh_Off"
+     image_top_pad="0" layout="topleft" left="486" name="reset_gaze_range_preset"
+     tool_tip="Reset display to Choose range..." top="103" width="14" />
 
     <text follows="left|top" height="20" layout="topleft" left="12"
      name="gaze_target_lbl" top="128" width="124">Head target</text>
@@ -88,7 +110,7 @@
      tool_tip="Reset eye target to Follow head" top="155" width="14" />
 
     <text follows="left|top" height="20" layout="topleft" left="12"
-     name="gaze_priority_lbl" top="180" width="124">Ownership scope</text>
+     name="gaze_priority_lbl" top="180" width="124">Movement Style</text>
     <combo_box follows="left|top|right"
      height="20" layout="topleft" left="140" name="gaze_priority_combo"
      top="180"
@@ -106,11 +128,11 @@
 
     <text follows="left|top" height="20" layout="topleft" left="12"
      name="gaze_anim_priority_lbl" top="206" width="124">SL anim priority</text>
-    <combo_box follows="left|top|right"
+    <combo_box follows="left|top"
      height="20" layout="topleft" left="140" name="gaze_anim_priority_combo"
      top="206"
      tool_tip="Gaze yields on each joint to animations above this priority. Equal priority favors gaze. Legacy final ignores animation priority."
-     width="336">
+     width="150">
         <combo_box.item label="Legacy final (always apply)" name="gaze_anim_prio_legacy" value="-1" />
         <combo_box.item label="0 (Low)" name="gaze_anim_prio_0" value="0" />
         <combo_box.item label="1" name="gaze_anim_prio_1" value="1" />
@@ -120,6 +142,27 @@
         <combo_box.item label="5" name="gaze_anim_prio_5" value="5" />
         <combo_box.item label="6 (Maximum normal)" name="gaze_anim_prio_6" value="6" />
     </combo_box>
+    <!-- [Machinima] IK Lean preset chooser: stateless, same pattern as Range
+         above. Greyed out unless the resolved Movement Style (Ownership
+         scope) is Planted spine (IK); Lean only applies in that scope. -->
+    <combo_box follows="left|top" height="20" layout="topleft" left="296"
+     name="gaze_ik_lean_combo" top="206"
+     tool_tip="IK Lean: apply a spine-lean preset (curve + threshold/max/softness + chest share) to the edited actor(s). Enabled only while Movement Style is Planted spine (IK)."
+     width="146">
+        <combo_box.item label="Choose lean..." name="gaze_lean_choose" value="-1" />
+        <combo_box.item label="Off" name="gaze_lean_off" value="0" />
+        <combo_box.item label="Subtle" name="gaze_lean_subtle" value="1" />
+        <combo_box.item label="Natural" name="gaze_lean_natural" value="2" />
+        <combo_box.item label="Responsive" name="gaze_lean_responsive" value="3" />
+        <combo_box.item label="Expressive" name="gaze_lean_expressive" value="4" />
+        <combo_box.item label="Hero" name="gaze_lean_hero" value="5" />
+        <combo_box.item label="Lean-in" name="gaze_lean_lean_in" value="6" />
+        <combo_box.item label="Snap" name="gaze_lean_snap" value="7" />
+        <combo_box.item label="Deep bow" name="gaze_lean_deep_bow" value="8" />
+    </combo_box>
+    <button follows="right|top" height="18" image_overlay="Refresh_Off"
+     image_top_pad="0" layout="topleft" left="448" name="reset_gaze_ik_lean"
+     tool_tip="Reset display to Choose lean..." top="207" width="14" />
     <button follows="right|top"
      height="18" image_overlay="Refresh_Off" image_top_pad="0"
      layout="topleft" left="486" name="reset_gaze_anim_priority"
@@ -521,9 +564,11 @@
      name="gaze_limit_grid_lbl" top="1268" width="124"
      tool_tip="This actor's custom cone limits. Only consulted while Limits source above is Custom for this actor.">Per-joint limits (deg)</text>
     <text follows="left|top" height="16" layout="topleft" left="140"
-     name="gaze_limit_grid_yaw_hdr" top="1268" width="150">Yaw</text>
-    <text follows="left|top" height="16" layout="topleft" left="300"
-     name="gaze_limit_grid_pitch_hdr" top="1268" width="150">Pitch</text>
+     name="gaze_limit_grid_yaw_hdr" top="1268" width="106">Yaw</text>
+    <text follows="left|top" height="16" layout="topleft" left="254"
+     name="gaze_limit_grid_pitch_hdr" top="1268" width="106">Pitch down</text>
+    <text follows="left|top" height="16" layout="topleft" left="368"
+     name="gaze_limit_grid_pitchup_hdr" top="1268" width="106">Pitch up</text>
     <button follows="right|top" height="18" image_overlay="Refresh_Off"
      image_top_pad="0" layout="topleft" left="486" name="reset_gaze_limit_profile"
      tool_tip="Reset this actor's custom limit profile to defaults" top="1268"
@@ -534,73 +579,97 @@
     <spinner decimal_digits="1" follows="left|top" height="20" increment="0.5"
      label="" layout="topleft" left="140" max_val="180" min_val="0"
      name="gaze_limit_eye_yaw_spinner" tool_tip="Eye allocation yaw cap"
-     top="1294" width="150" />
+     top="1294" width="106" />
     <spinner decimal_digits="1" follows="left|top" height="20" increment="0.5"
-     label="" layout="topleft" left="300" max_val="180" min_val="0"
-     name="gaze_limit_eye_pitch_spinner" tool_tip="Eye allocation pitch cap"
-     top="1294" width="150" />
+     label="" layout="topleft" left="254" max_val="180" min_val="0"
+     name="gaze_limit_eye_pitch_spinner" tool_tip="Eye allocation pitch-down cap"
+     top="1294" width="106" />
+    <spinner decimal_digits="1" follows="left|top" height="20" increment="0.5"
+     label="" layout="topleft" left="368" max_val="180" min_val="0"
+     name="gaze_limit_eye_pitchup_spinner" tool_tip="Eye allocation pitch-up cap"
+     top="1294" width="106" />
 
     <text follows="left|top" height="20" layout="topleft" left="12"
      name="gaze_limit_head_lbl" top="1320" width="124">Head</text>
     <spinner decimal_digits="1" follows="left|top" height="20" increment="0.5"
      label="" layout="topleft" left="140" max_val="180" min_val="0"
      name="gaze_limit_head_yaw_spinner" tool_tip="Head yaw cap"
-     top="1320" width="150" />
+     top="1320" width="106" />
     <spinner decimal_digits="1" follows="left|top" height="20" increment="0.5"
-     label="" layout="topleft" left="300" max_val="180" min_val="0"
-     name="gaze_limit_head_pitch_spinner" tool_tip="Head pitch cap"
-     top="1320" width="150" />
+     label="" layout="topleft" left="254" max_val="180" min_val="0"
+     name="gaze_limit_head_pitch_spinner" tool_tip="Head pitch-down cap"
+     top="1320" width="106" />
+    <spinner decimal_digits="1" follows="left|top" height="20" increment="0.5"
+     label="" layout="topleft" left="368" max_val="180" min_val="0"
+     name="gaze_limit_head_pitchup_spinner" tool_tip="Head pitch-up cap"
+     top="1320" width="106" />
 
     <text follows="left|top" height="20" layout="topleft" left="12"
      name="gaze_limit_neck_lbl" top="1346" width="124">Neck</text>
     <spinner decimal_digits="1" follows="left|top" height="20" increment="0.5"
      label="" layout="topleft" left="140" max_val="180" min_val="0"
      name="gaze_limit_neck_yaw_spinner" tool_tip="Neck yaw cap"
-     top="1346" width="150" />
+     top="1346" width="106" />
     <spinner decimal_digits="1" follows="left|top" height="20" increment="0.5"
-     label="" layout="topleft" left="300" max_val="180" min_val="0"
-     name="gaze_limit_neck_pitch_spinner" tool_tip="Neck pitch cap"
-     top="1346" width="150" />
+     label="" layout="topleft" left="254" max_val="180" min_val="0"
+     name="gaze_limit_neck_pitch_spinner" tool_tip="Neck pitch-down cap"
+     top="1346" width="106" />
+    <spinner decimal_digits="1" follows="left|top" height="20" increment="0.5"
+     label="" layout="topleft" left="368" max_val="180" min_val="0"
+     name="gaze_limit_neck_pitchup_spinner" tool_tip="Neck pitch-up cap"
+     top="1346" width="106" />
 
     <text follows="left|top" height="20" layout="topleft" left="12"
      name="gaze_limit_spine_lbl" top="1372" width="124">Spine</text>
     <spinner decimal_digits="1" follows="left|top" height="20" increment="0.5"
      label="" layout="topleft" left="140" max_val="180" min_val="0"
      name="gaze_limit_spine_yaw_spinner"
-     tool_tip="Conserved torso+chest bucket yaw cap" top="1372" width="150" />
+     tool_tip="Conserved torso+chest bucket yaw cap" top="1372" width="106" />
     <spinner decimal_digits="1" follows="left|top" height="20" increment="0.5"
-     label="" layout="topleft" left="300" max_val="180" min_val="0"
+     label="" layout="topleft" left="254" max_val="180" min_val="0"
      name="gaze_limit_spine_pitch_spinner"
-     tool_tip="Conserved torso+chest bucket pitch cap" top="1372" width="150" />
+     tool_tip="Conserved torso+chest bucket pitch-down cap" top="1372" width="106" />
+    <spinner decimal_digits="1" follows="left|top" height="20" increment="0.5"
+     label="" layout="topleft" left="368" max_val="180" min_val="0"
+     name="gaze_limit_spine_pitchup_spinner"
+     tool_tip="Conserved torso+chest bucket pitch-up cap" top="1372" width="106" />
 
     <text follows="left|top" height="20" layout="topleft" left="12"
      name="gaze_limit_hips_lbl" top="1398" width="124">Hips</text>
     <spinner decimal_digits="1" follows="left|top" height="20" increment="0.5"
      label="" layout="topleft" left="140" max_val="180" min_val="0"
      name="gaze_limit_hips_yaw_spinner"
-     tool_tip="Hips yaw cap (legacy Upper-body only)" top="1398" width="150" />
+     tool_tip="Hips yaw cap (legacy Upper-body only)" top="1398" width="106" />
     <spinner decimal_digits="1" follows="left|top" height="20" increment="0.5"
-     label="" layout="topleft" left="300" max_val="180" min_val="0"
+     label="" layout="topleft" left="254" max_val="180" min_val="0"
      name="gaze_limit_hips_pitch_spinner"
-     tool_tip="Hips pitch cap (legacy Upper-body only)" top="1398" width="150" />
+     tool_tip="Hips pitch-down cap (legacy Upper-body only)" top="1398" width="106" />
+    <spinner decimal_digits="1" follows="left|top" height="20" increment="0.5"
+     label="" layout="topleft" left="368" max_val="180" min_val="0"
+     name="gaze_limit_hips_pitchup_spinner"
+     tool_tip="Hips pitch-up cap (legacy Upper-body only)" top="1398" width="106" />
 
     <text follows="left|top" height="20" layout="topleft" left="12"
      name="gaze_limit_eyeapply_lbl" top="1424" width="124">Eye apply</text>
     <spinner decimal_digits="1" follows="left|top" height="20" increment="0.5"
      label="" layout="topleft" left="140" max_val="180" min_val="0"
      name="gaze_limit_eyeapply_yaw_spinner"
-     tool_tip="Final applied eye socket yaw cap" top="1424" width="150" />
+     tool_tip="Final applied eye socket yaw cap" top="1424" width="106" />
     <spinner decimal_digits="1" follows="left|top" height="20" increment="0.5"
-     label="" layout="topleft" left="300" max_val="180" min_val="0"
+     label="" layout="topleft" left="254" max_val="180" min_val="0"
      name="gaze_limit_eyeapply_pitch_spinner"
-     tool_tip="Final applied eye socket pitch cap" top="1424" width="150" />
+     tool_tip="Final applied eye socket pitch-down cap" top="1424" width="106" />
+    <spinner decimal_digits="1" follows="left|top" height="20" increment="0.5"
+     label="" layout="topleft" left="368" max_val="180" min_val="0"
+     name="gaze_limit_eyeapply_pitchup_spinner"
+     tool_tip="Final applied eye socket pitch-up cap" top="1424" width="106" />
 
     <text follows="left|top" height="20" layout="topleft" left="12"
      name="gaze_limit_eyeradial_lbl" top="1450" width="124">Eye radial</text>
     <spinner decimal_digits="1" follows="left|top" height="20" increment="0.5"
      label="" layout="topleft" left="140" max_val="90" min_val="0"
      name="gaze_limit_eye_radial_spinner"
-     tool_tip="Final applied eye socket radial cone cap" top="1450" width="150" />
+     tool_tip="Final applied eye socket radial cone cap" top="1450" width="106" />
 
     <text follows="left|top" height="20" layout="topleft" left="12"
      name="gaze_lean_lbl" top="1476" width="124">Lean</text>

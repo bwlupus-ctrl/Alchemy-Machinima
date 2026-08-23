@@ -250,6 +250,17 @@ struct AnatomicalLimitProfile
     F32 mEyeApplyYawDeg   = 24.f;
     F32 mEyeApplyPitchDeg = 14.f;
     F32 mEyeRadialDeg     = 19.8f;
+    // [Machinima] Asymmetric up/down pitch: UPWARD (negative-pitch, viewer
+    // convention "positive looking down") cones, selected by the sign of the
+    // target pitch. The existing m*PitchDeg fields above are the DOWNWARD
+    // caps. Defaults equal the downward defaults, so a default-constructed
+    // profile is symmetric and every existing consumer is byte-identical.
+    F32 mEyePitchUpDeg      = 14.f;
+    F32 mHeadPitchUpDeg     = 42.f;
+    F32 mNeckPitchUpDeg     = 26.f;
+    F32 mSpinePitchUpDeg    = 20.f;
+    F32 mHipsPitchUpDeg     = 15.f;
+    F32 mEyeApplyPitchUpDeg = 14.f;
 };
 
 // The five chain slots the allocators fill, in parent->child order. Index 3 is
@@ -269,22 +280,33 @@ enum EChainSlot { CHAIN_EYE = 0, CHAIN_HEAD = 1, CHAIN_NECK = 2, CHAIN_SPINE = 3
 inline void fillEffectiveCapacities(const AnatomicalLimitProfile& p,
                                     F32 head_eye_blend, F32 torso_amount,
                                     F32 anatomy_scale, bool recruit_hips,
-                                    F32 yaw[CHAIN_SLOTS], F32 pitch[CHAIN_SLOTS])
+                                    F32 yaw[CHAIN_SLOTS], F32 pitch[CHAIN_SLOTS],
+                                    bool pitch_up = false)
 {
     const F32 scale = std::isfinite(anatomy_scale)
         ? llclamp(anatomy_scale, 1.f, 3.f) : 1.f;
     auto d2r = [](F32 deg) { return llmax(deg, 0.f) * DEG_TO_RAD; };
 
+    // [Machinima] Asymmetric up/down pitch: `pitch_up` selects the profile's
+    // UPWARD pitch cones (m*PitchUpDeg) instead of the downward ones. The
+    // default (false) and a symmetric profile (up == down, the constructed
+    // default) both reproduce the previous table bit-for-bit.
+    const F32 eye_p_deg   = pitch_up ? p.mEyePitchUpDeg   : p.mEyePitchDeg;
+    const F32 head_p_deg  = pitch_up ? p.mHeadPitchUpDeg  : p.mHeadPitchDeg;
+    const F32 neck_p_deg  = pitch_up ? p.mNeckPitchUpDeg  : p.mNeckPitchDeg;
+    const F32 spine_p_deg = pitch_up ? p.mSpinePitchUpDeg : p.mSpinePitchDeg;
+    const F32 hips_p_deg  = pitch_up ? p.mHipsPitchUpDeg  : p.mHipsPitchDeg;
+
     const F32 eye_y  = d2r(p.mEyeYawDeg)  * (scale == 1.f ? 1.f : scale);
-    const F32 eye_p  = d2r(p.mEyePitchDeg) * (scale == 1.f ? 1.f : scale);
+    const F32 eye_p  = d2r(eye_p_deg) * (scale == 1.f ? 1.f : scale);
     const F32 head_y = d2r(p.mHeadYawDeg) * (scale == 1.f ? 1.f : scale);
-    const F32 head_p = d2r(p.mHeadPitchDeg) * (scale == 1.f ? 1.f : scale);
+    const F32 head_p = d2r(head_p_deg) * (scale == 1.f ? 1.f : scale);
     const F32 neck_y = d2r(p.mNeckYawDeg) * (scale == 1.f ? 1.f : scale);
-    const F32 neck_p = d2r(p.mNeckPitchDeg) * (scale == 1.f ? 1.f : scale);
+    const F32 neck_p = d2r(neck_p_deg) * (scale == 1.f ? 1.f : scale);
     const F32 spine_y = d2r(p.mSpineYawDeg);   // authored; anatomy-invariant
-    const F32 spine_p = d2r(p.mSpinePitchDeg);
+    const F32 spine_p = d2r(spine_p_deg);
     const F32 hips_y = recruit_hips ? d2r(p.mHipsYawDeg) : 0.f;
-    const F32 hips_p = recruit_hips ? d2r(p.mHipsPitchDeg) : 0.f;
+    const F32 hips_p = recruit_hips ? d2r(hips_p_deg) : 0.f;
 
     // Sanitize blend/torso the SAME way the motor's constant effectiveCapacities
     // does (non-finite -> 1.f, not llclamp's 0), so flipping mUseLimitProfile on
@@ -663,13 +685,22 @@ inline void distributeAnatomicalChain(F32 target_yaw, F32 target_pitch,
                                      F32 anatomy_scale = 1.f,
                                      bool recruit_hips = true,
                                      const AnatomicalLimitProfile* profile = nullptr,
-                                     F32 chest_share = 0.f)
+                                     F32 chest_share = 0.f,
+                                     F32 pitch_up_scale = 1.f)
 {
     out_pose = AnatomicalChainPose();
     const F32 abs_yaw = fabsf(target_yaw);
     const F32 sign_yaw = target_yaw >= 0.f ? 1.f : -1.f;
     const F32 abs_pitch = fabsf(target_pitch);
     const F32 sign_pitch = target_pitch >= 0.f ? 1.f : -1.f;
+    // [Machinima] Asymmetric up/down pitch, chosen up front from the sign of
+    // the target pitch (viewer convention: positive = down, negative = up).
+    // The PROFILE path draws upward caps from the profile's explicit
+    // m*PitchUpDeg fields (pitch_up_scale is NOT applied there); the LEGACY
+    // constant path scales its pitch constants by pitch_up_scale for upward
+    // targets only. The defaults (symmetric profile / scale 1) leave every
+    // path byte-identical.
+    const bool pitch_is_up = target_pitch < 0.f;
 
     const F32 body_turn_thresh_rad = llclamp(body_turn_threshold_deg, 45.f, 180.f) * DEG_TO_RAD;
     if (abs_yaw > body_turn_thresh_rad)
@@ -714,10 +745,13 @@ inline void distributeAnatomicalChain(F32 target_yaw, F32 target_pitch,
         if (blend_c <= 0.001f)
         {
             // Eye-only: full unweighted (anatomy-scaled) eye capacity, matching
-            // the legacy early return's semantics with profile cones.
+            // the legacy early return's semantics with profile cones. Upward
+            // targets read the profile's UP pitch cone.
+            const F32 eye_cap_p_deg = pitch_is_up
+                ? profile->mEyePitchUpDeg : profile->mEyePitchDeg;
             const F32 eye_cap_y = llmax(profile->mEyeYawDeg, 0.f) * DEG_TO_RAD
                                   * (scale_c == 1.f ? 1.f : scale_c);
-            const F32 eye_cap_p = llmax(profile->mEyePitchDeg, 0.f) * DEG_TO_RAD
+            const F32 eye_cap_p = llmax(eye_cap_p_deg, 0.f) * DEG_TO_RAD
                                   * (scale_c == 1.f ? 1.f : scale_c);
             out_pose.mEyeYaw = sign_yaw * llmin(abs_yaw, eye_cap_y);
             out_pose.mEyePitch = sign_pitch * llmin(abs_pitch, eye_cap_p);
@@ -726,7 +760,8 @@ inline void distributeAnatomicalChain(F32 target_yaw, F32 target_pitch,
         F32 caps_y[CHAIN_SLOTS];
         F32 caps_p[CHAIN_SLOTS];
         fillEffectiveCapacities(*profile, head_eye_blend, torso_amount,
-                                anatomy_scale, recruit_hips, caps_y, caps_p);
+                                anatomy_scale, recruit_hips, caps_y, caps_p,
+                                pitch_is_up);
         F32 rem_yaw = abs_yaw;
         out_pose.mEyeYaw   = sign_yaw * alloc(rem_yaw, caps_y[CHAIN_EYE]);
         out_pose.mHeadYaw  = sign_yaw * alloc(rem_yaw, caps_y[CHAIN_HEAD]);
@@ -785,13 +820,34 @@ inline void distributeAnatomicalChain(F32 target_yaw, F32 target_pitch,
     const F32 neck_max_pitch = scale == 1.f
         ? NECK_MAX_PITCH : NECK_MAX_PITCH * scale;
 
+    // [Machinima] LEGACY-path upward pitch scale: 1 for downward targets and
+    // whenever the caller passes the default. Applied to each pitch capacity
+    // AFTER anatomy scaling and BEFORE the eye/head/torso weighting (the
+    // motor's constant path multiplies in the same order). The up_k != 1
+    // work lives in its own branches below so the up_k == 1 path keeps the
+    // ORIGINAL statements verbatim -- the /fp:fast bit-parity contracts
+    // (motor band-0 test 14) depend on that exact compiled shape.
+    F32 up_k = 1.f;
+    if (pitch_is_up && std::isfinite(pitch_up_scale))
+    {
+        up_k = llmax(pitch_up_scale, 0.f);
+    }
+
     const F32 blend = llclamp(head_eye_blend, 0.f, 1.f);
     const F32 torso_w = llclamp(torso_amount, 0.f, 1.f);
 
     if (blend <= 0.001f)
     {
         out_pose.mEyeYaw = sign_yaw * llmin(abs_yaw, eye_max_yaw);
-        out_pose.mEyePitch = sign_pitch * llmin(abs_pitch, eye_max_pitch);
+        if (up_k != 1.f)
+        {
+            out_pose.mEyePitch =
+                sign_pitch * llmin(abs_pitch, eye_max_pitch * up_k);
+        }
+        else
+        {
+            out_pose.mEyePitch = sign_pitch * llmin(abs_pitch, eye_max_pitch);
+        }
         return;
     }
 
@@ -824,11 +880,25 @@ inline void distributeAnatomicalChain(F32 target_yaw, F32 target_pitch,
     out_pose.mHipsYaw = sign_yaw * allocate(rem_yaw, hips_max_yaw * torso_weight);
 
     F32 rem_pitch = abs_pitch;
-    out_pose.mEyePitch = sign_pitch * allocate(rem_pitch, eye_max_pitch * eye_weight);
-    out_pose.mHeadPitch = sign_pitch * allocate(rem_pitch, head_max_pitch * head_weight);
-    out_pose.mNeckPitch = sign_pitch * allocate(rem_pitch, neck_max_pitch * head_weight);
-    out_pose.mTorsoPitch = sign_pitch * allocate(rem_pitch, TORSO_MAX_PITCH * torso_weight);
-    out_pose.mHipsPitch = sign_pitch * allocate(rem_pitch, hips_max_pitch * torso_weight);
+    if (up_k != 1.f)
+    {
+        // Upward with a non-unity scale: the same allocation with each pitch
+        // capacity scaled by up_k (after anatomy scaling, before weighting --
+        // the motor's constant up-table multiplies in the same order).
+        out_pose.mEyePitch = sign_pitch * allocate(rem_pitch, eye_max_pitch * up_k * eye_weight);
+        out_pose.mHeadPitch = sign_pitch * allocate(rem_pitch, head_max_pitch * up_k * head_weight);
+        out_pose.mNeckPitch = sign_pitch * allocate(rem_pitch, neck_max_pitch * up_k * head_weight);
+        out_pose.mTorsoPitch = sign_pitch * allocate(rem_pitch, TORSO_MAX_PITCH * up_k * torso_weight);
+        out_pose.mHipsPitch = sign_pitch * allocate(rem_pitch, hips_max_pitch * up_k * torso_weight);
+    }
+    else
+    {
+        out_pose.mEyePitch = sign_pitch * allocate(rem_pitch, eye_max_pitch * eye_weight);
+        out_pose.mHeadPitch = sign_pitch * allocate(rem_pitch, head_max_pitch * head_weight);
+        out_pose.mNeckPitch = sign_pitch * allocate(rem_pitch, neck_max_pitch * head_weight);
+        out_pose.mTorsoPitch = sign_pitch * allocate(rem_pitch, TORSO_MAX_PITCH * torso_weight);
+        out_pose.mHipsPitch = sign_pitch * allocate(rem_pitch, hips_max_pitch * torso_weight);
+    }
 
     if (!recruit_hips)
     {
@@ -938,12 +1008,20 @@ struct SpineLeanResult
     F32 mFacePitch  = 0.f; // radians
 };
 
+// [Machinima] Asymmetric up/down pitch: spine_cap_pitch_up_rad (>= 0) is the
+// UPWARD (negative-pitch, viewer convention "positive looking down") pitch
+// semi-axis of the spine ellipse, selected by the sign of the aim's pitch
+// component. The default sentinel (-1) and an up cap bit-equal to the down
+// cap both leave cap_pitch on the ORIGINAL value, so the symmetric/default
+// output stays bit-for-bit identical (pure value selection before any
+// arithmetic -- /fp:fast cannot re-associate it).
 inline SpineLeanResult spineLean(F32 aim_yaw_rad, F32 aim_pitch_rad,
                                  F32 threshold_deg, F32 softness_deg,
                                  F32 max_deg,
                                  F32 torso_amount, F32 head_eye_blend,
                                  F32 spine_cap_yaw_rad,
-                                 F32 spine_cap_pitch_rad)
+                                 F32 spine_cap_pitch_rad,
+                                 F32 spine_cap_pitch_up_rad = -1.f)
 {
     SpineLeanResult out;
     if (!std::isfinite(aim_yaw_rad) || !std::isfinite(aim_pitch_rad))
@@ -981,7 +1059,13 @@ inline SpineLeanResult spineLean(F32 aim_yaw_rad, F32 aim_pitch_rad,
     const F32 dir_yaw = aim_yaw_rad / a;
     const F32 dir_pitch = aim_pitch_rad / a;
     const F32 cap_yaw = sane_pos(spine_cap_yaw_rad);
-    const F32 cap_pitch = sane_pos(spine_cap_pitch_rad);
+    // Upward (negative dir_pitch) aims read the UP semi-axis when the caller
+    // supplied one; every other case is the ORIGINAL expression verbatim.
+    const F32 cap_pitch =
+        (dir_pitch < 0.f && std::isfinite(spine_cap_pitch_up_rad) &&
+         spine_cap_pitch_up_rad >= 0.f)
+        ? sane_pos(spine_cap_pitch_up_rad)
+        : sane_pos(spine_cap_pitch_rad);
     F32 cap_dist = 0.f;
     if ((cap_yaw > 0.f || dir_yaw == 0.f) &&
         (cap_pitch > 0.f || dir_pitch == 0.f))
@@ -1053,12 +1137,20 @@ inline void applySideEye(F32 strength, AnatomicalChainPose& pose)
 // the endpoint instead would drive the joint to identity at zero weight and
 // wipe the animation.
 // ---------------------------------------------------------------------------
+// [Machinima] Asymmetric up/down pitch: cap_pitch_up_rad (>= 0) bounds the
+// UPWARD (negative, viewer convention "positive looking down") side of the
+// pitch delta clamp, so an upward correction can reach past the downward
+// cap. The default sentinel (-1) and an up cap bit-equal to the down cap
+// both take the ORIGINAL clamp statement verbatim -- llclamp is exact, but
+// the guarded else-branch keeps the compiled default shape untouched under
+// /fp:fast. The downward (positive) bound is cap_pitch_rad in both branches.
 inline LLQuaternion additiveOverlayLocal(const LLQuaternion& desired_local,
                                          const LLQuaternion& anim_local,
                                          F32 cap_yaw_rad, F32 cap_pitch_rad,
                                          bool preserve_anim_roll,
                                          F32 radial_cap_rad = -1.f,
-                                         F32 strength = 1.f)
+                                         F32 strength = 1.f,
+                                         F32 cap_pitch_up_rad = -1.f)
 {
     LLQuaternion delta = desired_local * ~anim_local;
     if (delta.mQ[VW] < 0.f)
@@ -1068,7 +1160,14 @@ inline LLQuaternion additiveOverlayLocal(const LLQuaternion& desired_local,
     F32 d_roll = 0.f, d_pitch = 0.f, d_yaw = 0.f;
     delta.getEulerAngles(&d_roll, &d_pitch, &d_yaw);
     d_yaw = llclamp(d_yaw, -fabsf(cap_yaw_rad), fabsf(cap_yaw_rad));
-    d_pitch = llclamp(d_pitch, -fabsf(cap_pitch_rad), fabsf(cap_pitch_rad));
+    if (cap_pitch_up_rad >= 0.f && cap_pitch_up_rad != fabsf(cap_pitch_rad))
+    {
+        d_pitch = llclamp(d_pitch, -cap_pitch_up_rad, fabsf(cap_pitch_rad));
+    }
+    else
+    {
+        d_pitch = llclamp(d_pitch, -fabsf(cap_pitch_rad), fabsf(cap_pitch_rad));
+    }
     if (preserve_anim_roll)
     {
         d_roll = 0.f;

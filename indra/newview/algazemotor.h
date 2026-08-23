@@ -228,12 +228,24 @@ struct GazeMotorSettings
     F32 mLeanMaxDeg       = 20.f;
     F32 mSpineCapYawRad   = 45.f * DEG_TO_RAD;
     F32 mSpineCapPitchRad = 20.f * DEG_TO_RAD;
+    // [Machinima] Asymmetric up/down pitch: UPWARD (negative-pitch) spine
+    // ellipse semi-axis for the Angle-ease lean. The -1 sentinel (default)
+    // keeps spineLean on its symmetric down cap -- byte-identical -- and the
+    // integration feeds the profile's up axis / scaled legacy constant here.
+    F32 mSpineCapPitchUpRad = -1.f;
     // Anatomy exaggeration, mirroring distributeAnatomicalChain's
     // anatomy_scale (algazemath.h ~598-615): scales the eye/head/neck
     // capacities only (chest/hips keep authored limits), clamped to [1, 3],
     // with the 1x path using the exact unscaled constants so the default
     // reproduces the pre-exaggeration result bit-for-bit.
     F32 mAnatomyScale = 1.f; // [1,3]
+    // [Machinima] Asymmetric up/down pitch (constant capacity path): upward
+    // (negative, viewer convention) pitch caps are the legacy constants
+    // scaled by this factor, selected per channel by the sign of that
+    // channel's sampled pitch. 1 = symmetric legacy behavior (byte-identical
+    // -- the band-0 bit-parity contract holds). Custom profiles ignore this
+    // and use their explicit m*PitchUpDeg fields instead.
+    F32 mPitchUpScale = 1.f;
 
     // VOR comfort cone (per-axis soft limit, degrees). Defaults match the
     // eye capacities in distributeAnatomicalChain (25 yaw / 14 pitch).
@@ -489,8 +501,16 @@ inline F32 aperturePosture(const AffectState& affect)
 // and the motor output can drive the same joints. (The constants are local
 // to that function, hence restated here; a divergence is a behavior-version
 // bump.)
+// [Machinima] Asymmetric up/down pitch: `pitch_up` selects the UPWARD pitch
+// capacity table -- the profile's m*PitchUpDeg cones when a custom profile is
+// active, otherwise the legacy constants scaled by mPitchUpScale (applied
+// after anatomy scaling and before the weighting, mirroring
+// distributeAnatomicalChain's legacy path). The default (false), a symmetric
+// profile, and mPitchUpScale == 1 all reproduce the previous table
+// bit-for-bit, so the band-0 bit-parity contract is preserved.
 inline void effectiveCapacities(const GazeMotorSettings& s,
-                                F32* caps_yaw, F32* caps_pitch)
+                                F32* caps_yaw, F32* caps_pitch,
+                                bool pitch_up = false)
 {
     // [Machinima] Opt-in custom profile: draw the weighted per-slot caps from
     // the SHARED helper so the motor and legacy tables stay in lockstep. Only
@@ -506,9 +526,11 @@ inline void effectiveCapacities(const GazeMotorSettings& s,
         {
             // Eye-only early return: full unweighted (anatomy-scaled) eye cap,
             // every downstream joint exactly zero -- same as the constant path.
+            const F32 eye_p_deg = pitch_up
+                ? s.mLimitProfile.mEyePitchUpDeg : s.mLimitProfile.mEyePitchDeg;
             caps_yaw[0] = llmax(s.mLimitProfile.mEyeYawDeg, 0.f) * DEG_TO_RAD
                           * (scale_c == 1.f ? 1.f : scale_c);
-            caps_pitch[0] = llmax(s.mLimitProfile.mEyePitchDeg, 0.f) * DEG_TO_RAD
+            caps_pitch[0] = llmax(eye_p_deg, 0.f) * DEG_TO_RAD
                             * (scale_c == 1.f ? 1.f : scale_c);
             for (S32 i = 1; i < CHAIN_JOINTS; ++i)
             {
@@ -519,7 +541,7 @@ inline void effectiveCapacities(const GazeMotorSettings& s,
         }
         ALGazeMath::fillEffectiveCapacities(
             s.mLimitProfile, s.mHeadEyeBlend, s.mTorsoAmount, s.mAnatomyScale,
-            /*recruit_hips=*/!s.mPlantPelvis, caps_yaw, caps_pitch);
+            /*recruit_hips=*/!s.mPlantPelvis, caps_yaw, caps_pitch, pitch_up);
         return;
     }
 
@@ -552,6 +574,16 @@ inline void effectiveCapacities(const GazeMotorSettings& s,
     const F32 neck_max_pitch = scale == 1.f
         ? NECK_MAX_PITCH : NECK_MAX_PITCH * scale;
 
+    // Upward pitch scale (constant path only). The up_k != 1 work lives in
+    // its own branches below so the up_k == 1 path keeps the ORIGINAL
+    // statements verbatim -- the /fp:fast band-0 bit-parity contract
+    // (test 14) depends on that exact compiled shape.
+    F32 up_k = 1.f;
+    if (pitch_up && std::isfinite(s.mPitchUpScale))
+    {
+        up_k = llmax(s.mPitchUpScale, 0.f);
+    }
+
     const F32 blend = std::isfinite(s.mHeadEyeBlend)
         ? llclamp(s.mHeadEyeBlend, 0.f, 1.f) : 1.f;
     const F32 torso = std::isfinite(s.mTorsoAmount)
@@ -565,7 +597,14 @@ inline void effectiveCapacities(const GazeMotorSettings& s,
     if (blend <= 0.001f)
     {
         caps_yaw[0]   = eye_max_yaw;
-        caps_pitch[0] = eye_max_pitch;
+        if (up_k != 1.f)
+        {
+            caps_pitch[0] = eye_max_pitch * up_k;
+        }
+        else
+        {
+            caps_pitch[0] = eye_max_pitch;
+        }
         for (S32 i = 1; i < CHAIN_JOINTS; ++i)
         {
             caps_yaw[i]   = 0.f;
@@ -583,11 +622,24 @@ inline void effectiveCapacities(const GazeMotorSettings& s,
     caps_yaw[2] = neck_max_yaw * head_w;
     caps_yaw[3] = TORSO_MAX_YAW * torso_w;
     caps_yaw[4] = s.mPlantPelvis ? 0.f : HIPS_MAX_YAW * torso_w;
-    caps_pitch[0] = eye_max_pitch * eye_w;
-    caps_pitch[1] = head_max_pitch * head_w;
-    caps_pitch[2] = neck_max_pitch * head_w;
-    caps_pitch[3] = TORSO_MAX_PITCH * torso_w;
-    caps_pitch[4] = s.mPlantPelvis ? 0.f : HIPS_MAX_PITCH * torso_w;
+    if (up_k != 1.f)
+    {
+        // Upward: capacities scaled by up_k after anatomy scaling and before
+        // the weighting, mirroring distributeAnatomicalChain's up branch.
+        caps_pitch[0] = eye_max_pitch * up_k * eye_w;
+        caps_pitch[1] = head_max_pitch * up_k * head_w;
+        caps_pitch[2] = neck_max_pitch * up_k * head_w;
+        caps_pitch[3] = TORSO_MAX_PITCH * up_k * torso_w;
+        caps_pitch[4] = s.mPlantPelvis ? 0.f : HIPS_MAX_PITCH * up_k * torso_w;
+    }
+    else
+    {
+        caps_pitch[0] = eye_max_pitch * eye_w;
+        caps_pitch[1] = head_max_pitch * head_w;
+        caps_pitch[2] = neck_max_pitch * head_w;
+        caps_pitch[3] = TORSO_MAX_PITCH * torso_w;
+        caps_pitch[4] = s.mPlantPelvis ? 0.f : HIPS_MAX_PITCH * torso_w;
+    }
 }
 
 // Bit-exact restatement of distributeAnatomicalChain's allocation loop
@@ -1211,6 +1263,20 @@ inline void step(GazeMotorState& state, const GazeMotorInput& input,
     F32 caps_yaw[CHAIN_JOINTS];
     F32 caps_pitch[CHAIN_JOINTS];
     effectiveCapacities(s, caps_yaw, caps_pitch);
+    // [Machinima] Asymmetric up/down pitch: a second pitch-cap table for
+    // UPWARD (negative) pitch samples, selected per channel by the sign of
+    // the value fed to the recruit. With mPitchUpScale == 1 and a symmetric
+    // profile the two tables are bit-identical, so the selection cannot
+    // change the default output (band-0 bit-parity, test 14, holds).
+    F32 caps_yaw_up[CHAIN_JOINTS];   // identical to caps_yaw; scratch only
+    F32 caps_pitch_up[CHAIN_JOINTS];
+    effectiveCapacities(s, caps_yaw_up, caps_pitch_up, /*pitch_up=*/true);
+    const F32* const cp_dn = caps_pitch;
+    const F32* const cp_up = caps_pitch_up;
+    auto pitch_caps_for = [cp_dn, cp_up](F32 pitch_sample) -> const F32*
+    {
+        return pitch_sample < 0.f ? cp_up : cp_dn;
+    };
     const F32 band = (std::isfinite(s.mSoftRecruitBandDeg)
         ? llmax(s.mSoftRecruitBandDeg, 0.f) : 0.f) * DEG_TO_RAD;
     // Eye-only mode (mHeadEyeBlend <= 0.001) must use the exact allocation
@@ -1236,28 +1302,30 @@ inline void step(GazeMotorState& state, const GazeMotorInput& input,
             aim[CH_HEAD_YAW], aim[CH_HEAD_PITCH],
             s.mLeanThresholdDeg, s.mLeanSoftnessDeg, s.mLeanMaxDeg,
             s.mTorsoAmount, s.mHeadEyeBlend,
-            s.mSpineCapYawRad, s.mSpineCapPitchRad);
+            s.mSpineCapYawRad, s.mSpineCapPitchRad, s.mSpineCapPitchUpRad);
         const ALGazeMath::SpineLeanResult lean_neck = ALGazeMath::spineLean(
             aim[CH_NECK_YAW], aim[CH_NECK_PITCH],
             s.mLeanThresholdDeg, s.mLeanSoftnessDeg, s.mLeanMaxDeg,
             s.mTorsoAmount, s.mHeadEyeBlend,
-            s.mSpineCapYawRad, s.mSpineCapPitchRad);
+            s.mSpineCapYawRad, s.mSpineCapPitchRad, s.mSpineCapPitchUpRad);
         const ALGazeMath::SpineLeanResult lean_torso = ALGazeMath::spineLean(
             aim[CH_TORSO_YAW], aim[CH_TORSO_PITCH],
             s.mLeanThresholdDeg, s.mLeanSoftnessDeg, s.mLeanMaxDeg,
             s.mTorsoAmount, s.mHeadEyeBlend,
-            s.mSpineCapYawRad, s.mSpineCapPitchRad);
+            s.mSpineCapYawRad, s.mSpineCapPitchRad, s.mSpineCapPitchUpRad);
         // Face residual to head/neck slots (the eye slot's capacity is
         // consumed first inside recruitSlot, exactly like the legacy chain;
         // the spine slot never sees the face residual). Excess beyond face
         // plus spine reach remains an undershoot, per the design doc.
         out_pose.mHeadYaw   = recruitSlot(lean_head.mFaceYaw, caps_yaw, band,
                                           1, eye_only);
-        out_pose.mHeadPitch = recruitSlot(lean_head.mFacePitch, caps_pitch,
+        out_pose.mHeadPitch = recruitSlot(lean_head.mFacePitch,
+                                          pitch_caps_for(lean_head.mFacePitch),
                                           band, 1, eye_only);
         out_pose.mNeckYaw   = recruitSlot(lean_neck.mFaceYaw, caps_yaw, band,
                                           2, eye_only);
-        out_pose.mNeckPitch = recruitSlot(lean_neck.mFacePitch, caps_pitch,
+        out_pose.mNeckPitch = recruitSlot(lean_neck.mFacePitch,
+                                          pitch_caps_for(lean_neck.mFacePitch),
                                           band, 2, eye_only);
         // Torso = the torso group's curve spine vector (clamped inside
         // spineLean to the anatomical spine ellipse). The chest split below
@@ -1272,16 +1340,19 @@ inline void step(GazeMotorState& state, const GazeMotorInput& input,
     {
     out_pose.mHeadYaw   = recruitSlot(aim[CH_HEAD_YAW], caps_yaw, band, 1,
                                       eye_only);
-    out_pose.mHeadPitch = recruitSlot(aim[CH_HEAD_PITCH], caps_pitch, band, 1,
-                                      eye_only);
+    out_pose.mHeadPitch = recruitSlot(aim[CH_HEAD_PITCH],
+                                      pitch_caps_for(aim[CH_HEAD_PITCH]),
+                                      band, 1, eye_only);
     out_pose.mNeckYaw   = recruitSlot(aim[CH_NECK_YAW], caps_yaw, band, 2,
                                       eye_only);
-    out_pose.mNeckPitch = recruitSlot(aim[CH_NECK_PITCH], caps_pitch, band, 2,
-                                      eye_only);
+    out_pose.mNeckPitch = recruitSlot(aim[CH_NECK_PITCH],
+                                      pitch_caps_for(aim[CH_NECK_PITCH]),
+                                      band, 2, eye_only);
     out_pose.mTorsoYaw   = recruitSlot(aim[CH_TORSO_YAW], caps_yaw, band, 3,
                                        eye_only);
-    out_pose.mTorsoPitch = recruitSlot(aim[CH_TORSO_PITCH], caps_pitch, band,
-                                       3, eye_only);
+    out_pose.mTorsoPitch = recruitSlot(aim[CH_TORSO_PITCH],
+                                       pitch_caps_for(aim[CH_TORSO_PITCH]),
+                                       band, 3, eye_only);
     // [Machinima] Planted-spine: hard-zero hips regardless of the soft-recruit
     // band. Routing slot 4 (capacity 0) through the soft chain yields a spurious
     // wrong-signed contribution at the zero-capacity knee (same pathology the
@@ -1296,8 +1367,9 @@ inline void step(GazeMotorState& state, const GazeMotorInput& input,
     {
         out_pose.mHipsYaw    = recruitSlot(aim[CH_TORSO_YAW], caps_yaw, band, 4,
                                            eye_only);
-        out_pose.mHipsPitch  = recruitSlot(aim[CH_TORSO_PITCH], caps_pitch, band,
-                                           4, eye_only);
+        out_pose.mHipsPitch  = recruitSlot(aim[CH_TORSO_PITCH],
+                                           pitch_caps_for(aim[CH_TORSO_PITCH]),
+                                           band, 4, eye_only);
     }
     } // end legacy recruit (lean_ease == false)
     out_pose.mHeadRoll   = aim[CH_HEAD_ROLL];

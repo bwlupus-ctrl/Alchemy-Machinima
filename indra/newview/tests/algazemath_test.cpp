@@ -1377,4 +1377,326 @@ void algazemath_test_object::test<30>()
     }
 }
 
+template<> template<>
+void algazemath_test_object::test<31>()
+{
+    set_test_name("asymmetric up/down pitch: defaults byte-identical; scale "
+                  "and profile raise only the upward reach");
+    using ALGazeMath::AnatomicalChainPose;
+    using ALGazeMath::AnatomicalLimitProfile;
+    using ALGazeMath::distributeAnatomicalChain;
+
+    auto poseBitEqual = [](const AnatomicalChainPose& a,
+                           const AnatomicalChainPose& b) -> bool
+    {
+        return bitwiseEqual(a.mEyeYaw, b.mEyeYaw) &&
+               bitwiseEqual(a.mEyePitch, b.mEyePitch) &&
+               bitwiseEqual(a.mHeadYaw, b.mHeadYaw) &&
+               bitwiseEqual(a.mHeadPitch, b.mHeadPitch) &&
+               bitwiseEqual(a.mNeckYaw, b.mNeckYaw) &&
+               bitwiseEqual(a.mNeckPitch, b.mNeckPitch) &&
+               bitwiseEqual(a.mTorsoYaw, b.mTorsoYaw) &&
+               bitwiseEqual(a.mTorsoPitch, b.mTorsoPitch) &&
+               bitwiseEqual(a.mChestYaw, b.mChestYaw) &&
+               bitwiseEqual(a.mChestPitch, b.mChestPitch) &&
+               bitwiseEqual(a.mHipsYaw, b.mHipsYaw) &&
+               bitwiseEqual(a.mHipsPitch, b.mHipsPitch);
+    };
+    auto pitchMagSum = [](const AnatomicalChainPose& p) -> F32
+    {
+        return std::fabs(p.mEyePitch) + std::fabs(p.mHeadPitch) +
+               std::fabs(p.mNeckPitch) + std::fabs(p.mTorsoPitch) +
+               std::fabs(p.mHipsPitch);
+    };
+
+    // 1. Byte-parity of the defaults: an explicit pitch_up_scale == 1 call is
+    //    bit-identical to the default-argument call across a signed grid, and
+    //    the default (symmetric) profile fills a bitwise-identical up table.
+    {
+        const F32 blends[] = { 0.f, 0.3f, 1.f };
+        const F32 pitches_deg[] =
+            { -120.f, -60.f, -20.f, -5.f, 0.f, 5.f, 20.f, 60.f, 120.f };
+        for (F32 blend : blends)
+        {
+            for (F32 pitch_deg : pitches_deg)
+            {
+                AnatomicalChainPose a;
+                AnatomicalChainPose b;
+                distributeAnatomicalChain(
+                    40.f * DEG_TO_RAD, pitch_deg * DEG_TO_RAD,
+                    blend, 1.f, 90.f, a);
+                distributeAnatomicalChain(
+                    40.f * DEG_TO_RAD, pitch_deg * DEG_TO_RAD,
+                    blend, 1.f, 90.f, b, 1.f, true, nullptr, 0.f,
+                    /*pitch_up_scale=*/1.f);
+                ensure("explicit pitch_up_scale 1 is bit-identical to the "
+                           "default (blend " + std::to_string(blend) +
+                           " pitch_deg " + std::to_string(pitch_deg) + ")",
+                       poseBitEqual(a, b));
+            }
+        }
+
+        const AnatomicalLimitProfile sym; // default: up fields == down fields
+        F32 y_dn[ALGazeMath::CHAIN_SLOTS];
+        F32 p_dn[ALGazeMath::CHAIN_SLOTS];
+        F32 y_up[ALGazeMath::CHAIN_SLOTS];
+        F32 p_up[ALGazeMath::CHAIN_SLOTS];
+        ALGazeMath::fillEffectiveCapacities(sym, 1.f, 1.f, 1.f, true,
+                                            y_dn, p_dn, false);
+        ALGazeMath::fillEffectiveCapacities(sym, 1.f, 1.f, 1.f, true,
+                                            y_up, p_up, true);
+        for (S32 i = 0; i < ALGazeMath::CHAIN_SLOTS; ++i)
+        {
+            ensure("symmetric-profile up capacity table is bitwise the down "
+                       "table, slot " + std::to_string(i),
+                   bitwiseEqual(p_up[i], p_dn[i]) &&
+                   bitwiseEqual(y_up[i], y_dn[i]));
+        }
+    }
+
+    // 2. Legacy path, pitch_up_scale 1.3: only the UPWARD pitch changes.
+    {
+        // Eye-only: up cap 14 -> 18.2 deg; the downward call is bit-identical.
+        AnatomicalChainPose up_plain, up_scaled, dn_plain, dn_scaled;
+        distributeAnatomicalChain(0.f, -30.f * DEG_TO_RAD, 0.f, 1.f, 90.f,
+                                  up_plain);
+        distributeAnatomicalChain(0.f, -30.f * DEG_TO_RAD, 0.f, 1.f, 90.f,
+                                  up_scaled, 1.f, true, nullptr, 0.f, 1.3f);
+        distributeAnatomicalChain(0.f, 30.f * DEG_TO_RAD, 0.f, 1.f, 90.f,
+                                  dn_plain);
+        distributeAnatomicalChain(0.f, 30.f * DEG_TO_RAD, 0.f, 1.f, 90.f,
+                                  dn_scaled, 1.f, true, nullptr, 0.f, 1.3f);
+        ensure("eye-only upward cap scales to 18.2 deg",
+               std::fabs(up_scaled.mEyePitch + 18.2f * DEG_TO_RAD) <= 1e-5f);
+        ensure("eye-only upward reach grew",
+               std::fabs(up_scaled.mEyePitch) >
+                   std::fabs(up_plain.mEyePitch) + 1.f * DEG_TO_RAD);
+        ensure("eye-only downward is bit-identical under the up scale",
+               poseBitEqual(dn_plain, dn_scaled));
+
+        // Full chain, beyond the symmetric ~106.5 deg pitch reach: upward
+        // delivery grows; the mirrored downward call is bit-identical and
+        // yaw is untouched on the upward call.
+        AnatomicalChainPose deep_up_plain, deep_up_scaled;
+        AnatomicalChainPose deep_dn_plain, deep_dn_scaled;
+        distributeAnatomicalChain(50.f * DEG_TO_RAD, -120.f * DEG_TO_RAD,
+                                  1.f, 1.f, 90.f, deep_up_plain);
+        distributeAnatomicalChain(50.f * DEG_TO_RAD, -120.f * DEG_TO_RAD,
+                                  1.f, 1.f, 90.f, deep_up_scaled, 1.f, true,
+                                  nullptr, 0.f, 1.3f);
+        distributeAnatomicalChain(50.f * DEG_TO_RAD, 120.f * DEG_TO_RAD,
+                                  1.f, 1.f, 90.f, deep_dn_plain);
+        distributeAnatomicalChain(50.f * DEG_TO_RAD, 120.f * DEG_TO_RAD,
+                                  1.f, 1.f, 90.f, deep_dn_scaled, 1.f, true,
+                                  nullptr, 0.f, 1.3f);
+        ensure("deep upward delivery grows under the up scale",
+               pitchMagSum(deep_up_scaled) >
+                   pitchMagSum(deep_up_plain) + 5.f * DEG_TO_RAD);
+        ensure("deep upward delivery reaches the full 120 deg target",
+               std::fabs(pitchMagSum(deep_up_scaled) - 120.f * DEG_TO_RAD) <=
+                   1e-4f);
+        ensure("deep downward is bit-identical under the up scale",
+               poseBitEqual(deep_dn_plain, deep_dn_scaled));
+        ensure("the up scale never touches the yaw allocation",
+               bitwiseEqual(deep_up_scaled.mEyeYaw, deep_up_plain.mEyeYaw) &&
+               bitwiseEqual(deep_up_scaled.mHeadYaw, deep_up_plain.mHeadYaw) &&
+               bitwiseEqual(deep_up_scaled.mNeckYaw, deep_up_plain.mNeckYaw) &&
+               bitwiseEqual(deep_up_scaled.mTorsoYaw,
+                            deep_up_plain.mTorsoYaw) &&
+               bitwiseEqual(deep_up_scaled.mHipsYaw, deep_up_plain.mHipsYaw));
+    }
+
+    // 3. Profile path: explicit up cones beat the down cones only upward,
+    //    and pitch_up_scale is ignored when a profile is active.
+    {
+        AnatomicalLimitProfile prof; // down fields at defaults
+        prof.mEyePitchUpDeg   = 20.f;
+        prof.mHeadPitchUpDeg  = 50.f;
+        prof.mNeckPitchUpDeg  = 34.f;
+        prof.mSpinePitchUpDeg = 24.f;
+        prof.mHipsPitchUpDeg  = 18.f;
+
+        AnatomicalChainPose up_pose, dn_pose, dn_sym;
+        distributeAnatomicalChain(0.f, -110.f * DEG_TO_RAD, 1.f, 1.f, 90.f,
+                                  up_pose, 1.f, true, &prof);
+        distributeAnatomicalChain(0.f, 110.f * DEG_TO_RAD, 1.f, 1.f, 90.f,
+                                  dn_pose, 1.f, true, &prof);
+        const AnatomicalLimitProfile sym;
+        distributeAnatomicalChain(0.f, 110.f * DEG_TO_RAD, 1.f, 1.f, 90.f,
+                                  dn_sym, 1.f, true, &sym);
+        ensure("profile up>down delivers more upward than downward",
+               pitchMagSum(up_pose) >
+                   pitchMagSum(dn_pose) + 3.f * DEG_TO_RAD);
+        ensure("profile downward is untouched by the up cones",
+               poseBitEqual(dn_pose, dn_sym));
+        ensure("upward head share reaches the 50 deg up cone",
+               std::fabs(std::fabs(up_pose.mHeadPitch) -
+                         50.f * DEG_TO_RAD) <= 1e-4f);
+
+        AnatomicalChainPose up_pose_scaled;
+        distributeAnatomicalChain(0.f, -110.f * DEG_TO_RAD, 1.f, 1.f, 90.f,
+                                  up_pose_scaled, 1.f, true, &prof, 0.f, 5.f);
+        ensure("pitch_up_scale is ignored on the profile path",
+               poseBitEqual(up_pose, up_pose_scaled));
+    }
+}
+
+template<> template<>
+void algazemath_test_object::test<32>()
+{
+    set_test_name("asymmetric up/down pitch on the secondary paths: "
+                  "additiveOverlayLocal delta clamp and spineLean ellipse");
+    using ALGazeMath::additiveOverlayLocal;
+    using ALGazeMath::spineLean;
+    using ALGazeMath::SpineLeanResult;
+
+    auto quatBitEqual = [](const LLQuaternion& a,
+                           const LLQuaternion& b) -> bool
+    {
+        return bitwiseEqual(a.mQ[VX], b.mQ[VX]) &&
+               bitwiseEqual(a.mQ[VY], b.mQ[VY]) &&
+               bitwiseEqual(a.mQ[VZ], b.mQ[VZ]) &&
+               bitwiseEqual(a.mQ[VW], b.mQ[VW]);
+    };
+    auto leanBitEqual = [](const SpineLeanResult& a,
+                           const SpineLeanResult& b) -> bool
+    {
+        return bitwiseEqual(a.mSpineYaw, b.mSpineYaw) &&
+               bitwiseEqual(a.mSpinePitch, b.mSpinePitch) &&
+               bitwiseEqual(a.mFaceYaw, b.mFaceYaw) &&
+               bitwiseEqual(a.mFacePitch, b.mFacePitch);
+    };
+    auto pitchRot = [](F32 pitch_rad) -> LLQuaternion
+    {
+        LLQuaternion q;
+        q.setEulerAngles(0.f, pitch_rad, 0.f);
+        return q;
+    };
+    auto pitchOf = [](const LLQuaternion& q) -> F32
+    {
+        F32 roll = 0.f, pitch = 0.f, yaw = 0.f;
+        q.getEulerAngles(&roll, &pitch, &yaw);
+        return pitch;
+    };
+
+    const F32 cap_yaw = 40.f * DEG_TO_RAD;
+    const F32 cap_dn  = 10.f * DEG_TO_RAD;
+    const F32 cap_up  = 25.f * DEG_TO_RAD;
+    const LLQuaternion anim; // identity animation snapshot
+
+    // 1. additiveOverlayLocal DEFAULT PARITY: the default-argument call, the
+    //    -1 sentinel, and an up cap bit-equal to the down cap are all
+    //    bit-identical across both pitch signs (the symmetric else-branch is
+    //    the original statement verbatim).
+    {
+        const F32 deltas_deg[] = { -30.f, -8.f, 0.f, 8.f, 30.f };
+        for (F32 d : deltas_deg)
+        {
+            const LLQuaternion desired = pitchRot(d * DEG_TO_RAD);
+            const LLQuaternion base = additiveOverlayLocal(
+                desired, anim, cap_yaw, cap_dn, true);
+            const LLQuaternion sentinel = additiveOverlayLocal(
+                desired, anim, cap_yaw, cap_dn, true, -1.f, 1.f, -1.f);
+            const LLQuaternion sym_up = additiveOverlayLocal(
+                desired, anim, cap_yaw, cap_dn, true, -1.f, 1.f, cap_dn);
+            ensure("additive overlay: -1 sentinel is bit-identical to the "
+                       "default call (delta_deg " + std::to_string(d) + ")",
+                   quatBitEqual(sentinel, base));
+            ensure("additive overlay: up cap == down cap is bit-identical "
+                       "to the default call (delta_deg " +
+                       std::to_string(d) + ")",
+                   quatBitEqual(sym_up, base));
+        }
+    }
+
+    // 2. additiveOverlayLocal asymmetric clamp: an UPWARD (negative) delta
+    //    past the down cap reaches the larger up cap; the mirrored DOWNWARD
+    //    delta still clamps at the down cap, bit-identical to the symmetric
+    //    call.
+    {
+        const LLQuaternion up_desired = pitchRot(-30.f * DEG_TO_RAD);
+        const LLQuaternion up_sym = additiveOverlayLocal(
+            up_desired, anim, cap_yaw, cap_dn, true);
+        const LLQuaternion up_asym = additiveOverlayLocal(
+            up_desired, anim, cap_yaw, cap_dn, true, -1.f, 1.f, cap_up);
+        ensure("upward delta clamps at the down cap without the up cap",
+               std::fabs(pitchOf(up_sym) + cap_dn) <= 1e-4f);
+        ensure("upward delta reaches the up cap when supplied",
+               std::fabs(pitchOf(up_asym) + cap_up) <= 1e-4f);
+        ensure("upward reach grew past the down cap",
+               std::fabs(pitchOf(up_asym)) >
+                   std::fabs(pitchOf(up_sym)) + 5.f * DEG_TO_RAD);
+
+        const LLQuaternion dn_desired = pitchRot(30.f * DEG_TO_RAD);
+        const LLQuaternion dn_sym = additiveOverlayLocal(
+            dn_desired, anim, cap_yaw, cap_dn, true);
+        const LLQuaternion dn_asym = additiveOverlayLocal(
+            dn_desired, anim, cap_yaw, cap_dn, true, -1.f, 1.f, cap_up);
+        ensure("downward delta still clamps at the down cap",
+               std::fabs(pitchOf(dn_asym) - cap_dn) <= 1e-4f);
+        ensure("downward delta is bit-identical under the up cap",
+               quatBitEqual(dn_asym, dn_sym));
+    }
+
+    // 3. spineLean DEFAULT PARITY: the default-argument call, the -1
+    //    sentinel, and an up semi-axis bit-equal to the down semi-axis are
+    //    bit-identical across both pitch signs (cap selection happens before
+    //    any arithmetic).
+    {
+        const F32 aims_deg[] = { -60.f, -10.f, 0.f, 10.f, 60.f };
+        for (F32 aim_deg : aims_deg)
+        {
+            const F32 aim = aim_deg * DEG_TO_RAD;
+            const SpineLeanResult base = spineLean(
+                20.f * DEG_TO_RAD, aim, 0.f, 0.f, 90.f, 1.f, 1.f,
+                45.f * DEG_TO_RAD, 20.f * DEG_TO_RAD);
+            const SpineLeanResult sentinel = spineLean(
+                20.f * DEG_TO_RAD, aim, 0.f, 0.f, 90.f, 1.f, 1.f,
+                45.f * DEG_TO_RAD, 20.f * DEG_TO_RAD, -1.f);
+            const SpineLeanResult sym_up = spineLean(
+                20.f * DEG_TO_RAD, aim, 0.f, 0.f, 90.f, 1.f, 1.f,
+                45.f * DEG_TO_RAD, 20.f * DEG_TO_RAD, 20.f * DEG_TO_RAD);
+            ensure("spineLean: -1 sentinel is bit-identical to the default "
+                       "call (aim_deg " + std::to_string(aim_deg) + ")",
+                   leanBitEqual(sentinel, base));
+            ensure("spineLean: up axis == down axis is bit-identical to the "
+                       "default call (aim_deg " + std::to_string(aim_deg) +
+                       ")",
+                   leanBitEqual(sym_up, base));
+        }
+    }
+
+    // 4. spineLean asymmetric ellipse: a pure UPWARD lean past both caps
+    //    reaches the up semi-axis; the mirrored DOWNWARD lean still stops at
+    //    the down semi-axis, bit-identical to the symmetric call.
+    {
+        const F32 spine_dn = 20.f * DEG_TO_RAD;
+        const F32 spine_up = 24.f * DEG_TO_RAD;
+        const SpineLeanResult up_sym = spineLean(
+            0.f, -60.f * DEG_TO_RAD, 0.f, 0.f, 90.f, 1.f, 1.f,
+            45.f * DEG_TO_RAD, spine_dn);
+        const SpineLeanResult up_asym = spineLean(
+            0.f, -60.f * DEG_TO_RAD, 0.f, 0.f, 90.f, 1.f, 1.f,
+            45.f * DEG_TO_RAD, spine_dn, spine_up);
+        ensure("pure upward lean caps at the down axis without the up axis",
+               std::fabs(up_sym.mSpinePitch + spine_dn) <= 1e-5f);
+        ensure("pure upward lean reaches the up axis when supplied",
+               std::fabs(up_asym.mSpinePitch + spine_up) <= 1e-5f);
+        ensure("upward lean still reconstructs the aim (spine + face)",
+               std::fabs(up_asym.mSpinePitch + up_asym.mFacePitch +
+                         60.f * DEG_TO_RAD) <= 1e-5f);
+
+        const SpineLeanResult dn_sym = spineLean(
+            0.f, 60.f * DEG_TO_RAD, 0.f, 0.f, 90.f, 1.f, 1.f,
+            45.f * DEG_TO_RAD, spine_dn);
+        const SpineLeanResult dn_asym = spineLean(
+            0.f, 60.f * DEG_TO_RAD, 0.f, 0.f, 90.f, 1.f, 1.f,
+            45.f * DEG_TO_RAD, spine_dn, spine_up);
+        ensure("downward lean still stops at the down axis",
+               std::fabs(dn_asym.mSpinePitch - spine_dn) <= 1e-5f);
+        ensure("downward lean is bit-identical under the up axis",
+               leanBitEqual(dn_asym, dn_sym));
+    }
+}
+
 } // namespace tut

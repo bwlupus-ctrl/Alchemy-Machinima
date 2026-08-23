@@ -199,6 +199,14 @@ void writeGazeExpression(LLSD& data, const LLActorMover::GazeTarget& target,
             profile_sd["eye_apply_yaw"] = p.mEyeApplyYawDeg;
             profile_sd["eye_apply_pitch"] = p.mEyeApplyPitchDeg;
             profile_sd["eye_radial"] = p.mEyeRadialDeg;
+            // Asymmetric UPWARD pitch caps (absent in old scenes -> the
+            // constructor defaults, which equal the downward caps = symmetric).
+            profile_sd["eye_pitch_up"] = p.mEyePitchUpDeg;
+            profile_sd["head_pitch_up"] = p.mHeadPitchUpDeg;
+            profile_sd["neck_pitch_up"] = p.mNeckPitchUpDeg;
+            profile_sd["spine_pitch_up"] = p.mSpinePitchUpDeg;
+            profile_sd["hips_pitch_up"] = p.mHipsPitchUpDeg;
+            profile_sd["eye_apply_pitch_up"] = p.mEyeApplyPitchUpDeg;
             data["perf_limit_profile"] = profile_sd;
         }
     }
@@ -389,6 +397,34 @@ void readGazeExpression(const LLSD& data, LLActorMover::GazeTarget& target)
             {
                 p.mEyeRadialDeg = llclamp((F32)profile_sd["eye_radial"].asReal(), 0.f, 90.f);
             }
+            // Upward pitch caps. An absent up key with a PRESENT down key means
+            // an old (pre-asymmetric) scene that was symmetric -- mirror the down
+            // value so the up cap matches, rather than jumping to the new
+            // asymmetric constructor default. Absent both -> constructor default.
+            if (profile_sd.has("eye_pitch_up"))
+                p.mEyePitchUpDeg = llclamp((F32)profile_sd["eye_pitch_up"].asReal(), 0.f, 180.f);
+            else if (profile_sd.has("eye_pitch"))
+                p.mEyePitchUpDeg = p.mEyePitchDeg;
+            if (profile_sd.has("head_pitch_up"))
+                p.mHeadPitchUpDeg = llclamp((F32)profile_sd["head_pitch_up"].asReal(), 0.f, 180.f);
+            else if (profile_sd.has("head_pitch"))
+                p.mHeadPitchUpDeg = p.mHeadPitchDeg;
+            if (profile_sd.has("neck_pitch_up"))
+                p.mNeckPitchUpDeg = llclamp((F32)profile_sd["neck_pitch_up"].asReal(), 0.f, 180.f);
+            else if (profile_sd.has("neck_pitch"))
+                p.mNeckPitchUpDeg = p.mNeckPitchDeg;
+            if (profile_sd.has("spine_pitch_up"))
+                p.mSpinePitchUpDeg = llclamp((F32)profile_sd["spine_pitch_up"].asReal(), 0.f, 180.f);
+            else if (profile_sd.has("spine_pitch"))
+                p.mSpinePitchUpDeg = p.mSpinePitchDeg;
+            if (profile_sd.has("hips_pitch_up"))
+                p.mHipsPitchUpDeg = llclamp((F32)profile_sd["hips_pitch_up"].asReal(), 0.f, 180.f);
+            else if (profile_sd.has("hips_pitch"))
+                p.mHipsPitchUpDeg = p.mHipsPitchDeg;
+            if (profile_sd.has("eye_apply_pitch_up"))
+                p.mEyeApplyPitchUpDeg = llclamp((F32)profile_sd["eye_apply_pitch_up"].asReal(), 0.f, 180.f);
+            else if (profile_sd.has("eye_apply_pitch"))
+                p.mEyeApplyPitchUpDeg = p.mEyeApplyPitchDeg;
             target.mLimitProfile = p;
         }
     }

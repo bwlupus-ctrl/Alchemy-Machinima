@@ -515,6 +515,12 @@ bool sameGazeTargetConfigFields(const LLActorMover::GazeTarget& a,
            a.mLimitProfile.mEyeApplyYawDeg == b.mLimitProfile.mEyeApplyYawDeg &&
            a.mLimitProfile.mEyeApplyPitchDeg == b.mLimitProfile.mEyeApplyPitchDeg &&
            a.mLimitProfile.mEyeRadialDeg == b.mLimitProfile.mEyeRadialDeg &&
+           a.mLimitProfile.mEyePitchUpDeg == b.mLimitProfile.mEyePitchUpDeg &&
+           a.mLimitProfile.mHeadPitchUpDeg == b.mLimitProfile.mHeadPitchUpDeg &&
+           a.mLimitProfile.mNeckPitchUpDeg == b.mLimitProfile.mNeckPitchUpDeg &&
+           a.mLimitProfile.mSpinePitchUpDeg == b.mLimitProfile.mSpinePitchUpDeg &&
+           a.mLimitProfile.mHipsPitchUpDeg == b.mLimitProfile.mHipsPitchUpDeg &&
+           a.mLimitProfile.mEyeApplyPitchUpDeg == b.mLimitProfile.mEyeApplyPitchUpDeg &&
            a.mLeanCurveOverride == b.mLeanCurveOverride &&
            a.mLeanThresholdDegOverride == b.mLeanThresholdDegOverride &&
            a.mLeanSoftnessDegOverride == b.mLeanSoftnessDegOverride &&
@@ -5650,6 +5656,25 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         gSavedSettings, "DirectorGazeLimitEyeApplyPitchDeg", 14.f);
     static LLCachedControl<F32> gaze_lim_eye_radial(
         gSavedSettings, "DirectorGazeLimitEyeRadialDeg", 19.8f);
+    // [Machinima] Asymmetric up/down gaze pitch. The scale multiplies the
+    // LEGACY (constant-path) upward pitch caps so looking up reaches further
+    // while chin-down stays as-is; custom profiles carry their own explicit
+    // upward cones below instead.
+    static LLCachedControl<F32> gaze_pitch_up_scale(
+        gSavedSettings, "DirectorGazePitchUpScale", 1.3f);
+    static LLCachedControl<F32> gaze_lim_eye_pitch_up(
+        gSavedSettings, "DirectorGazeLimitEyePitchUpDeg", 20.f);
+    static LLCachedControl<F32> gaze_lim_head_pitch_up(
+        gSavedSettings, "DirectorGazeLimitHeadPitchUpDeg", 50.f);
+    static LLCachedControl<F32> gaze_lim_neck_pitch_up(
+        gSavedSettings, "DirectorGazeLimitNeckPitchUpDeg", 34.f);
+    static LLCachedControl<F32> gaze_lim_spine_pitch_up(
+        gSavedSettings, "DirectorGazeLimitSpinePitchUpDeg", 24.f);
+    static LLCachedControl<F32> gaze_lim_hips_pitch_up(
+        gSavedSettings, "DirectorGazeLimitHipsPitchUpDeg", 18.f);
+    static LLCachedControl<F32> gaze_lim_eye_apply_pitch_up(
+        gSavedSettings, "DirectorGazeLimitEyeApplyPitchUpDeg", 20.f);
+    const F32 pitch_up_scale = (F32)gaze_pitch_up_scale;
     // Tri-state per-actor limit mode: -1 inherits the global enable, 0 forces
     // the legacy constants regardless of the global, 1 uses this actor's own
     // profile values.
@@ -5679,6 +5704,13 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             eff_profile.mEyeApplyYawDeg  = (F32)gaze_lim_eye_apply_yaw;
             eff_profile.mEyeApplyPitchDeg = (F32)gaze_lim_eye_apply_pitch;
             eff_profile.mEyeRadialDeg    = (F32)gaze_lim_eye_radial;
+            // Upward pitch cones (asymmetric up/down gaze pitch).
+            eff_profile.mEyePitchUpDeg      = (F32)gaze_lim_eye_pitch_up;
+            eff_profile.mHeadPitchUpDeg     = (F32)gaze_lim_head_pitch_up;
+            eff_profile.mNeckPitchUpDeg     = (F32)gaze_lim_neck_pitch_up;
+            eff_profile.mSpinePitchUpDeg    = (F32)gaze_lim_spine_pitch_up;
+            eff_profile.mHipsPitchUpDeg     = (F32)gaze_lim_hips_pitch_up;
+            eff_profile.mEyeApplyPitchUpDeg = (F32)gaze_lim_eye_apply_pitch_up;
         }
     }
     // nullptr by default: the math layer's profile==nullptr paths are the
@@ -5724,6 +5756,17 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         ? llmax(eff_profile.mSpineYawDeg, 0.f) : 45.f) * DEG_TO_RAD;
     const F32 spine_cap_pitch_rad = (use_custom_limits
         ? llmax(eff_profile.mSpinePitchDeg, 0.f) : 20.f) * DEG_TO_RAD;
+    // [Machinima] Asymmetric up/down pitch: sanitized upward scale for the
+    // LEGACY (constant) caps below, mirroring the chain allocator's up_k
+    // (effectiveCapacities / distributeAnatomicalChain): custom profiles use
+    // their explicit m*PitchUpDeg cones UNSCALED; the legacy constants scale
+    // by DirectorGazePitchUpScale. Inert plain consts on the default path.
+    const F32 up_scale_k = std::isfinite(pitch_up_scale)
+        ? llmax(pitch_up_scale, 0.f) : 1.f;
+    // UPWARD spine ellipse semi-axis for the Angle-ease lean (spineLean).
+    const F32 spine_cap_pitch_up_rad = (use_custom_limits
+        ? llmax(eff_profile.mSpinePitchUpDeg, 0.f)
+        : 20.f * up_scale_k) * DEG_TO_RAD;
     // [Machinima] Goal 2: per-joint ADDITIVE correction caps (radians). These
     // bound only the gaze-authored DELTA in the additive/blend endpoints below
     // (never the animation's own rotation). Same source and Exaggerate
@@ -5750,6 +5793,23 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         ? llmax(eff_profile.mHipsYawDeg, 0.f) : 35.f) * DEG_TO_RAD;
     const F32 add_cap_hips_pitch = (use_custom_limits
         ? llmax(eff_profile.mHipsPitchDeg, 0.f) : 15.f) * DEG_TO_RAD;
+    // [Machinima] Asymmetric up/down pitch: UPWARD additive-delta pitch caps,
+    // one per channel, mirroring the chain allocator exactly -- profile
+    // m*PitchUpDeg cones (unscaled by DirectorGazePitchUpScale) when custom
+    // limits are on, else the legacy constants times up_scale_k; head/neck
+    // scale with anatomy_scale while spine/hips stay unscaled. They feed only
+    // the UPWARD (negative) side of additiveOverlayLocal's delta clamp; the
+    // downward side keeps the add_cap_*_pitch values above unchanged.
+    const F32 add_cap_head_pitch_up = (use_custom_limits
+        ? llmax(eff_profile.mHeadPitchUpDeg, 0.f) : 42.f * up_scale_k) *
+        DEG_TO_RAD * anatomy_scale;
+    const F32 add_cap_neck_pitch_up = (use_custom_limits
+        ? llmax(eff_profile.mNeckPitchUpDeg, 0.f) : 26.f * up_scale_k) *
+        DEG_TO_RAD * anatomy_scale;
+    const F32 add_cap_spine_pitch_up = spine_cap_pitch_up_rad;
+    const F32 add_cap_hips_pitch_up = (use_custom_limits
+        ? llmax(eff_profile.mHipsPitchUpDeg, 0.f) : 15.f * up_scale_k) *
+        DEG_TO_RAD;
     // [Machinima] Resolve the SL animation-priority for the strict-yield gate,
     // ORTHOGONAL to the ownership scope above. Per-actor override wins (>= -1,
     // since -1 is the meaningful "Legacy final" value here, NOT inherit); -2
@@ -5851,6 +5911,9 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         ms.mUseLimitProfile     = use_custom_limits;
         ms.mLimitProfile        = eff_profile;
         ms.mChestShare          = chest_share;
+        // [Machinima] Asymmetric up/down pitch: upward caps on the motor's
+        // constant capacity path scale by this; 1 = symmetric (byte-identical).
+        ms.mPitchUpScale        = pitch_up_scale;
         // [Machinima] Goal 3c: angle-driven lean feed. Only set when
         // lean_active (Planted spine + Angle-ease curve); otherwise the
         // defaults (mLeanCurve 0) keep the motor's recruit on the untouched
@@ -5863,6 +5926,10 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             ms.mLeanMaxDeg       = lean_max_deg;
             ms.mSpineCapYawRad   = spine_cap_yaw_rad;
             ms.mSpineCapPitchRad = spine_cap_pitch_rad;
+            // Asymmetric up/down pitch: upward spine semi-axis for the
+            // motor's internal Angle-ease lean (spineLean selects it by the
+            // sign of the aim's pitch; symmetric values are byte-identical).
+            ms.mSpineCapPitchUpRad = spine_cap_pitch_up_rad;
         }
         // Cinematic subtlety: Stillness freezes the recruited head/neck/torso;
         // Restraint additionally shrinks the head-turn magnitude. Both scale the
@@ -6077,7 +6144,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 g.mBodyAimYaw, g.mBodyAimPitch,
                 effective_head_eye_blend, g.mTorsoAmount,
                 body_turn_threshold_deg, trigger_chain, anatomy_scale,
-                /*recruit_hips=*/!planted_spine, profile_ptr, chest_share);
+                /*recruit_hips=*/!planted_spine, profile_ptr, chest_share,
+                pitch_up_scale);
             if (trigger_chain.mTriggerBodyTurn ||
                 director_runtime->mBodyTurnActive)
             {
@@ -6117,7 +6185,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                             lean_threshold_deg, lean_softness_deg,
                             lean_max_deg,
                             g.mTorsoAmount, effective_head_eye_blend,
-                            spine_cap_yaw_rad, spine_cap_pitch_rad);
+                            spine_cap_yaw_rad, spine_cap_pitch_rad,
+                            spine_cap_pitch_up_rad);
                     chain.mHeadYaw = ALGazeMotor::recruitSlot(
                         lean_rr.mFaceYaw, caps_yaw, recruit_band, 1,
                         eye_only);
@@ -6215,7 +6284,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                                     add_cap_hips_yaw, add_cap_hips_pitch,
                                     /*preserve_anim_roll=*/true,
                                     /*radial_cap_rad=*/-1.f,
-                                    /*strength=*/body_pose_weight);
+                                    /*strength=*/body_pose_weight,
+                                    /*cap_pitch_up=*/add_cap_hips_pitch_up);
                             const LLQuaternion q_replace = nlerp(
                                 body_pose_weight, LLQuaternion::DEFAULT,
                                 hips_target);
@@ -6254,7 +6324,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                                     add_cap_hips_yaw, add_cap_hips_pitch,
                                     /*preserve_anim_roll=*/true,
                                     /*radial_cap_rad=*/-1.f,
-                                    /*strength=*/wCueBody);
+                                    /*strength=*/wCueBody,
+                                    /*cap_pitch_up=*/add_cap_hips_pitch_up);
                             const LLQuaternion q_endpoint =
                                 composition == GAZE_COMPOSE_ADDITIVE
                                 ? q_additive
@@ -6315,7 +6386,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                                     add_cap_spine_yaw, add_cap_spine_pitch,
                                     /*preserve_anim_roll=*/true,
                                     /*radial_cap_rad=*/-1.f,
-                                    /*strength=*/body_pose_weight);
+                                    /*strength=*/body_pose_weight,
+                                    /*cap_pitch_up=*/add_cap_spine_pitch_up);
                             const LLQuaternion q_replace = nlerp(
                                 body_pose_weight, LLQuaternion::DEFAULT,
                                 torso_target);
@@ -6353,7 +6425,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                                     add_cap_spine_yaw, add_cap_spine_pitch,
                                     /*preserve_anim_roll=*/true,
                                     /*radial_cap_rad=*/-1.f,
-                                    /*strength=*/wCueBody);
+                                    /*strength=*/wCueBody,
+                                    /*cap_pitch_up=*/add_cap_spine_pitch_up);
                             const LLQuaternion q_endpoint =
                                 composition == GAZE_COMPOSE_ADDITIVE
                                 ? q_additive
@@ -6443,7 +6516,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                                 add_cap_spine_yaw, add_cap_spine_pitch,
                                 /*preserve_anim_roll=*/true,
                                 /*radial_cap_rad=*/-1.f,
-                                /*strength=*/body_pose_weight);
+                                /*strength=*/body_pose_weight,
+                                /*cap_pitch_up=*/add_cap_spine_pitch_up);
                         LLQuaternion q_endpoint = q_additive;
                         if (composition == GAZE_COMPOSE_BLEND)
                         {
@@ -6498,7 +6572,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                                 add_cap_spine_yaw, add_cap_spine_pitch,
                                 /*preserve_anim_roll=*/true,
                                 /*radial_cap_rad=*/-1.f,
-                                /*strength=*/wCueBody);
+                                /*strength=*/wCueBody,
+                                /*cap_pitch_up=*/add_cap_spine_pitch_up);
                         const LLQuaternion q_endpoint =
                             composition == GAZE_COMPOSE_ADDITIVE
                             ? q_additive
@@ -6630,7 +6705,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                                     add_cap_neck_yaw, add_cap_neck_pitch,
                                     fabsf(neck_roll_term) <= 1e-5f,
                                     /*radial_cap_rad=*/-1.f,
-                                    /*strength=*/head_pose_weight);
+                                    /*strength=*/head_pose_weight,
+                                    /*cap_pitch_up=*/add_cap_neck_pitch_up);
                             LLQuaternion q_endpoint = q_additive;
                             if (composition == GAZE_COMPOSE_BLEND)
                             {
@@ -6705,7 +6781,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                                     add_cap_neck_yaw, add_cap_neck_pitch,
                                     fabsf(camera_neck_roll) <= 1e-5f,
                                     /*radial_cap_rad=*/-1.f,
-                                    /*strength=*/wCueHead);
+                                    /*strength=*/wCueHead,
+                                    /*cap_pitch_up=*/add_cap_neck_pitch_up);
                             const LLQuaternion q_endpoint =
                                 composition == GAZE_COMPOSE_ADDITIVE
                                 ? q_additive
@@ -6849,7 +6926,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                                 add_cap_head_yaw, add_cap_head_pitch,
                                 fabsf(head_roll_term) <= 1e-5f,
                                 /*radial_cap_rad=*/-1.f,
-                                /*strength=*/head_pose_weight);
+                                /*strength=*/head_pose_weight,
+                                /*cap_pitch_up=*/add_cap_head_pitch_up);
                         LLQuaternion q_endpoint = q_additive;
                         if (composition == GAZE_COMPOSE_BLEND)
                         {
@@ -6928,7 +7006,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                                 add_cap_head_yaw, add_cap_head_pitch,
                                 fabsf(head_roll) <= 1e-5f,
                                 /*radial_cap_rad=*/-1.f,
-                                /*strength=*/wCueHead);
+                                /*strength=*/wCueHead,
+                                /*cap_pitch_up=*/add_cap_head_pitch_up);
                         const LLQuaternion q_endpoint =
                             composition == GAZE_COMPOSE_ADDITIVE
                             ? q_additive
@@ -7020,6 +7099,24 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 (anatomy_scale == 1.f ? 1.f : anatomy_scale);
             const F32 comfort_yaw_rad = comfort_yaw_deg * DEG_TO_RAD;
             const F32 comfort_pitch_rad = comfort_pitch_deg * DEG_TO_RAD;
+            // [Machinima] Asymmetric up/down pitch: the UPWARD (negative)
+            // eye-apply cap comes from the profile's explicit up cone when
+            // custom limits are on, else from the legacy comfort pitch scaled
+            // by DirectorGazePitchUpScale. Downward keeps the current cap.
+            const F32 comfort_pitch_up_base = llmax(use_custom_limits
+                ? eff_profile.mEyeApplyPitchUpDeg
+                : ms.mComfortPitchDeg * pitch_up_scale, 0.f);
+            // Degrees form for the asymmetric SOFT limit inside
+            // eyeInHeadFromWorldGaze (defect A): without it the symmetric
+            // tanh soft-clamp squashes an upward request to ~the downward
+            // comfort before the asymmetric hard clamp below can ever see
+            // it. Same anatomy scaling as comfort_pitch_deg; with scale 1
+            // and a symmetric profile this is bit-equal to comfort_pitch_deg
+            // and the soft limit takes its ORIGINAL branch verbatim.
+            const F32 comfort_pitch_up_deg = comfort_pitch_up_base *
+                (anatomy_scale == 1.f ? 1.f : anatomy_scale);
+            const F32 comfort_pitch_up_rad = comfort_pitch_up_base *
+                (anatomy_scale == 1.f ? 1.f : anatomy_scale) * DEG_TO_RAD;
             const F32 eye_pose_weight = llclamp(
                 effective_intensity * cue_eye_weight, 0.f, 1.f);
 
@@ -7038,14 +7135,15 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             {
                 ALGazePolicy::eyeInHeadFromWorldGaze(
                     eye_world_gaze, headWorld, comfort_yaw_deg, comfort_pitch_deg,
-                    eye_yaw, eye_pitch);
+                    eye_yaw, eye_pitch, comfort_pitch_up_deg);
                 eye_yaw += pose.mEyeYawMicro;
                 eye_pitch += pose.mEyePitchMicro;
             }
 
             // Lid-follow samples this eye pitch (fix 4 composition below).
+            // Asymmetric: upward (negative) side uses the up cap.
             lid_follow_pitch =
-                llclamp(eye_pitch, -comfort_pitch_rad, comfort_pitch_rad);
+                llclamp(eye_pitch, -comfort_pitch_up_rad, comfort_pitch_rad);
             have_lid_follow_pitch = true;
 
             // Fix 7 (vergence): near targets toe the eyes in from the target
@@ -7063,8 +7161,10 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 const F32 yaw = llclamp(
                     eye_yaw + convergence_sign * convergence,
                     -comfort_yaw_rad, comfort_yaw_rad);
+                // Asymmetric eye-apply pitch: upward (negative) cap may
+                // exceed the downward one so looking up reaches further.
                 const F32 pitch =
-                    llclamp(eye_pitch, -comfort_pitch_rad, comfort_pitch_rad);
+                    llclamp(eye_pitch, -comfort_pitch_up_rad, comfort_pitch_rad);
                 LLQuaternion tgt;
                 tgt.setEulerAngles(0.f, pitch, yaw);
                 if (constrain_eye_cone)
@@ -7099,7 +7199,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                                 /*preserve_anim_roll=*/true,
                                 constrain_eye_cone ? scaled_eye_rot_max
                                                    : -1.f,
-                                /*strength=*/eye_pose_weight);
+                                /*strength=*/eye_pose_weight,
+                                /*cap_pitch_up=*/comfort_pitch_up_rad);
                         const LLQuaternion q_replace = nlerp(
                             eye_pose_weight, LLQuaternion::DEFAULT, tgt);
                         const LLQuaternion q_endpoint =
@@ -7135,7 +7236,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                                 /*preserve_anim_roll=*/true,
                                 constrain_eye_cone ? scaled_eye_rot_max
                                                    : -1.f,
-                                /*strength=*/wEye);
+                                /*strength=*/wEye,
+                                /*cap_pitch_up=*/comfort_pitch_up_rad);
                         const LLQuaternion q_endpoint =
                             composition == GAZE_COMPOSE_ADDITIVE
                             ? q_additive
@@ -7314,7 +7416,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         g.mAppliedYaw, g.mAppliedPitch,
         effective_head_eye_blend, g.mTorsoAmount,
         body_turn_threshold_deg, trigger_chain, anatomy_scale,
-        /*recruit_hips=*/!planted_spine, profile_ptr, chest_share);
+        /*recruit_hips=*/!planted_spine, profile_ptr, chest_share,
+        pitch_up_scale);
 
     // The old Director body mode now opts into threshold-driven replanting,
     // using the resolved/smoothed target rather than the render camera.
@@ -7429,13 +7532,15 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             chain_yaw, g.mAppliedPitch,
             lean_threshold_deg, lean_softness_deg, lean_max_deg,
             g.mTorsoAmount, effective_head_eye_blend,
-            spine_cap_yaw_rad, spine_cap_pitch_rad);
+            spine_cap_yaw_rad, spine_cap_pitch_rad,
+            spine_cap_pitch_up_rad);
         ALGazeMath::distributeAnatomicalChain(
             lean.mFaceYaw + break_yaw,
             lean.mFacePitch + expressive_pitch + persona_mod.mChinPitchBias,
             effective_head_eye_blend, /*torso_amount=*/0.f,
             body_turn_threshold_deg, chain, anatomy_scale,
-            /*recruit_hips=*/false, profile_ptr, /*chest_share=*/0.f);
+            /*recruit_hips=*/false, profile_ptr, /*chest_share=*/0.f,
+            pitch_up_scale);
         // The conserved spine vector replaces the (zero) torso allocation,
         // then splits across torso/chest with the SAME share the legacy
         // planted split uses (torso+chest == the one spine bucket; the
@@ -7467,13 +7572,15 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         g.mAppliedPitch + expressive_pitch + persona_mod.mChinPitchBias,
         effective_head_eye_blend, g.mTorsoAmount,
         body_turn_threshold_deg, chain, anatomy_scale,
-        /*recruit_hips=*/!planted_spine, profile_ptr, chest_share);
+        /*recruit_hips=*/!planted_spine, profile_ptr, chest_share,
+        pitch_up_scale);
     ALGazeMath::AnatomicalChainPose break_free_body_chain;
     ALGazeMath::distributeAnatomicalChain(
         chain_yaw, g.mAppliedPitch,
         effective_head_eye_blend, g.mTorsoAmount,
         body_turn_threshold_deg, break_free_body_chain, anatomy_scale,
-        /*recruit_hips=*/!planted_spine, profile_ptr, chest_share);
+        /*recruit_hips=*/!planted_spine, profile_ptr, chest_share,
+        pitch_up_scale);
     chain.mTorsoYaw = break_free_body_chain.mTorsoYaw;
     chain.mTorsoPitch = break_free_body_chain.mTorsoPitch;
     // [Machinima] Chest is a spine component: take it from the SAME break-free
@@ -7591,7 +7698,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                                 add_cap_hips_yaw, add_cap_hips_pitch,
                                 /*preserve_anim_roll=*/true,
                                 /*radial_cap_rad=*/-1.f,
-                                /*strength=*/body_pose_weight);
+                                /*strength=*/body_pose_weight,
+                                /*cap_pitch_up=*/add_cap_hips_pitch_up);
                         const LLQuaternion q_replace = nlerp(
                             body_pose_weight, LLQuaternion::DEFAULT,
                             hips_target);
@@ -7628,7 +7736,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                                 add_cap_hips_yaw, add_cap_hips_pitch,
                                 /*preserve_anim_roll=*/true,
                                 /*radial_cap_rad=*/-1.f,
-                                /*strength=*/wCueBody);
+                                /*strength=*/wCueBody,
+                                /*cap_pitch_up=*/add_cap_hips_pitch_up);
                         const LLQuaternion q_endpoint =
                             composition == GAZE_COMPOSE_ADDITIVE
                             ? q_additive
@@ -7685,7 +7794,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                                 add_cap_spine_yaw, add_cap_spine_pitch,
                                 /*preserve_anim_roll=*/true,
                                 /*radial_cap_rad=*/-1.f,
-                                /*strength=*/body_pose_weight);
+                                /*strength=*/body_pose_weight,
+                                /*cap_pitch_up=*/add_cap_spine_pitch_up);
                         const LLQuaternion q_replace = nlerp(
                             body_pose_weight, LLQuaternion::DEFAULT,
                             torso_target);
@@ -7722,7 +7832,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                                 add_cap_spine_yaw, add_cap_spine_pitch,
                                 /*preserve_anim_roll=*/true,
                                 /*radial_cap_rad=*/-1.f,
-                                /*strength=*/wCueBody);
+                                /*strength=*/wCueBody,
+                                /*cap_pitch_up=*/add_cap_spine_pitch_up);
                         const LLQuaternion q_endpoint =
                             composition == GAZE_COMPOSE_ADDITIVE
                             ? q_additive
@@ -7808,7 +7919,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                             add_cap_spine_yaw, add_cap_spine_pitch,
                             /*preserve_anim_roll=*/true,
                             /*radial_cap_rad=*/-1.f,
-                            /*strength=*/body_pose_weight);
+                            /*strength=*/body_pose_weight,
+                            /*cap_pitch_up=*/add_cap_spine_pitch_up);
                     LLQuaternion q_endpoint = q_additive;
                     if (composition == GAZE_COMPOSE_BLEND)
                     {
@@ -7863,7 +7975,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                             add_cap_spine_yaw, add_cap_spine_pitch,
                             /*preserve_anim_roll=*/true,
                             /*radial_cap_rad=*/-1.f,
-                            /*strength=*/wCueBody);
+                            /*strength=*/wCueBody,
+                            /*cap_pitch_up=*/add_cap_spine_pitch_up);
                     const LLQuaternion q_endpoint =
                         composition == GAZE_COMPOSE_ADDITIVE
                         ? q_additive
@@ -7989,7 +8102,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                                 add_cap_neck_yaw, add_cap_neck_pitch,
                                 fabsf(neck_roll_term) <= 1e-5f,
                                 /*radial_cap_rad=*/-1.f,
-                                /*strength=*/head_pose_weight);
+                                /*strength=*/head_pose_weight,
+                                /*cap_pitch_up=*/add_cap_neck_pitch_up);
                         LLQuaternion q_endpoint = q_additive;
                         if (composition == GAZE_COMPOSE_BLEND)
                         {
@@ -8064,7 +8178,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                                 add_cap_neck_yaw, add_cap_neck_pitch,
                                 fabsf(camera_neck_roll) <= 1e-5f,
                                 /*radial_cap_rad=*/-1.f,
-                                /*strength=*/wCueHead);
+                                /*strength=*/wCueHead,
+                                /*cap_pitch_up=*/add_cap_neck_pitch_up);
                         const LLQuaternion q_endpoint =
                             composition == GAZE_COMPOSE_ADDITIVE
                             ? q_additive
@@ -8206,7 +8321,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                             add_cap_head_yaw, add_cap_head_pitch,
                             fabsf(head_roll_term) <= 1e-5f,
                             /*radial_cap_rad=*/-1.f,
-                            /*strength=*/head_pose_weight);
+                            /*strength=*/head_pose_weight,
+                            /*cap_pitch_up=*/add_cap_head_pitch_up);
                     LLQuaternion q_endpoint = q_additive;
                     if (composition == GAZE_COMPOSE_BLEND)
                     {
@@ -8284,7 +8400,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                             add_cap_head_yaw, add_cap_head_pitch,
                             fabsf(camera_follow_roll) <= 1e-5f,
                             /*radial_cap_rad=*/-1.f,
-                            /*strength=*/wCueHead);
+                            /*strength=*/wCueHead,
+                            /*cap_pitch_up=*/add_cap_head_pitch_up);
                     const LLQuaternion q_endpoint =
                         composition == GAZE_COMPOSE_ADDITIVE
                         ? q_additive
@@ -8320,10 +8437,20 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         const F32 eye_pitch_max = (use_custom_limits
             ? llclamp(eff_profile.mEyeApplyPitchDeg, 0.f, 180.f)
             : llclamp((F32)eye_pitch_max_deg, 0.f, 180.f)) * DEG_TO_RAD;
+        // [Machinima] Asymmetric up/down pitch: the UPWARD (negative) apply
+        // cap comes from the profile's explicit up cone when custom limits
+        // are on, else from the legacy cap scaled by DirectorGazePitchUpScale.
+        // Downward keeps the current cap.
+        const F32 eye_pitch_up_max = (use_custom_limits
+            ? llclamp(eff_profile.mEyeApplyPitchUpDeg, 0.f, 180.f)
+            : llclamp((F32)eye_pitch_max_deg * pitch_up_scale, 0.f, 180.f)) *
+            DEG_TO_RAD;
         const F32 scaled_eye_yaw_max = anatomy_scale == 1.f
             ? eye_yaw_max : eye_yaw_max * anatomy_scale;
         const F32 scaled_eye_pitch_max = anatomy_scale == 1.f
             ? eye_pitch_max : eye_pitch_max * anatomy_scale;
+        const F32 scaled_eye_pitch_up_max = anatomy_scale == 1.f
+            ? eye_pitch_up_max : eye_pitch_up_max * anatomy_scale;
         const F32 eye_rot_max_base = use_custom_limits
             ? eff_profile.mEyeRadialDeg * DEG_TO_RAD
             : GAZE_DIRECTOR_EYE_ROT_MAX;
@@ -8378,14 +8505,17 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             {
                 lid_follow_pitch = llclamp(
                     pitch + lid_lead_micro.mEyeSaccadePitch,
-                    -scaled_eye_pitch_max, scaled_eye_pitch_max);
+                    -scaled_eye_pitch_up_max, scaled_eye_pitch_max);
                 have_lid_follow_pitch = true;
             }
             yaw   += micro.mEyeSaccadeYaw;
             pitch += micro.mEyeSaccadePitch;
             yaw   += convergence_sign * convergence;
             yaw   = llclamp(yaw,   -scaled_eye_yaw_max,   scaled_eye_yaw_max);
-            pitch = llclamp(pitch, -scaled_eye_pitch_max, scaled_eye_pitch_max);
+            // Asymmetric eye-apply pitch: upward (negative) side uses the
+            // up cap so looking up reaches further; downward is unchanged.
+            pitch = llclamp(pitch, -scaled_eye_pitch_up_max,
+                            scaled_eye_pitch_max);
             tgt.setEulerAngles(0.f, pitch, yaw);
             if (constrain_eye_cone)
             {
@@ -8422,7 +8552,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                             scaled_eye_yaw_max, scaled_eye_pitch_max,
                             /*preserve_anim_roll=*/true,
                             constrain_eye_cone ? scaled_eye_rot_max : -1.f,
-                            /*strength=*/eye_pose_weight);
+                            /*strength=*/eye_pose_weight,
+                            /*cap_pitch_up=*/scaled_eye_pitch_up_max);
                     const LLQuaternion q_replace = nlerp(
                         eye_pose_weight, LLQuaternion::DEFAULT, tgt);
                     const LLQuaternion q_endpoint =
@@ -8457,7 +8588,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                             scaled_eye_yaw_max, scaled_eye_pitch_max,
                             /*preserve_anim_roll=*/true,
                             constrain_eye_cone ? scaled_eye_rot_max : -1.f,
-                            /*strength=*/wEye);
+                            /*strength=*/wEye,
+                            /*cap_pitch_up=*/scaled_eye_pitch_up_max);
                     const LLQuaternion q_endpoint =
                         composition == GAZE_COMPOSE_ADDITIVE
                         ? q_additive
