@@ -2404,6 +2404,11 @@ void LLVOAvatar::resetSkeleton(bool reset_animations)
         }
     }
 
+    // [Machinima] The skeleton was rebuilt: joint pointers and bone lengths
+    // changed, so drop all Pose Polish shadow state (cached IK setup, contact
+    // locks, inertia offsets) to reseed fresh against the new skeleton.
+    mPosePolish.reset();
+
     LL_DEBUGS("Avatar") << avString() << " reset ends" << LL_ENDL;
 }
 
@@ -4144,6 +4149,9 @@ void LLVOAvatar::slamPosition()
         gPipeline.updateMoveNormalAsync(mDrawable);
     }
     mRoot->updateWorldMatrixChildren();
+    // [Machinima] A position slam (teleport / region cross) is a discontinuity:
+    // drop Pose Polish shadow state so it never smooths across the jump.
+    mPosePolish.reset();
 }
 
 bool LLVOAvatar::isVisuallyMuted()
@@ -5109,6 +5117,342 @@ bool LLVOAvatar::computeNeedsUpdate()
 // simulator.
 //
 //------------------------------------------------------------------------
+// [Machinima] Post-blend Pose Polish stage (alposepolish.h). Defined here
+// because it operates on the full LLVOAvatar. Master gate ALPolishEnabled
+// defaults false -> pure no-op, displayed pose bit-identical to today. Each
+// milestone's pure math lives in its own header-only module and is invoked
+// from here as it lands.
+//------------------------------------------------------------------------
+namespace
+{
+// [Machinima] M1 joint table: the major body joints the inertializer polishes,
+// grouped so each gets a suitable decay half-life. Fingers/face are deliberately
+// omitted (per the plan); mPelvis is omitted in v1 so continuity never fights
+// root turning/locomotion. getJoint() is null-guarded, so rigs missing a Bento
+// spine joint simply skip it.
+enum { PJ_SPINE = 0, PJ_ARM, PJ_LEG, PJ_HEAD, PJ_GROUPS };
+struct PolishJointEntry { const char* mName; S32 mGroup; };
+const PolishJointEntry kPolishJoints[] = {
+    {"mTorso", PJ_SPINE}, {"mChest", PJ_SPINE},
+    {"mSpine1", PJ_SPINE}, {"mSpine2", PJ_SPINE},
+    {"mSpine3", PJ_SPINE}, {"mSpine4", PJ_SPINE},
+    {"mNeck", PJ_HEAD}, {"mHead", PJ_HEAD},
+    {"mCollarLeft", PJ_ARM}, {"mShoulderLeft", PJ_ARM},
+    {"mElbowLeft", PJ_ARM}, {"mWristLeft", PJ_ARM},
+    {"mCollarRight", PJ_ARM}, {"mShoulderRight", PJ_ARM},
+    {"mElbowRight", PJ_ARM}, {"mWristRight", PJ_ARM},
+    // Legs are deliberately NOT inertialized here: the M2 contact stage owns
+    // hip/knee/ankle and runs AFTER M1, so inertializing them would make M1
+    // record a pre-IK "displayed" pose and mis-capture the next transition
+    // (Codex finding). Leg continuity, when wanted, comes from contact.
+};
+const S32 kPolishJointCount = (S32)(sizeof(kPolishJoints) / sizeof(kPolishJoints[0]));
+}
+
+void ALPosePolish::runInertialization(LLVOAvatar* av, F32 dt)
+{
+    static LLCachedControl<F32> hl_spine(gSavedSettings, "ALPolishInertiaHalfLifeSpine", 0.13f);
+    static LLCachedControl<F32> hl_arm(gSavedSettings,   "ALPolishInertiaHalfLifeArm",   0.09f);
+    static LLCachedControl<F32> hl_leg(gSavedSettings,   "ALPolishInertiaHalfLifeLeg",   0.09f);
+    static LLCachedControl<F32> hl_head(gSavedSettings,  "ALPolishInertiaHalfLifeHead",  0.07f);
+    const F32 group_hl[PJ_GROUPS] = {
+        (F32)hl_spine, (F32)hl_arm, (F32)hl_leg, (F32)hl_head };
+
+    if ((S32)mInertiaJoints.size() != kPolishJointCount)
+    {
+        mInertiaJoints.assign(kPolishJointCount, ALPoseContinuity::InertiaJoint());
+    }
+    // A hitch / teleport / scrub shows up as a very large dt: reseed (raw pose)
+    // instead of smoothing across the discontinuity.
+    const bool big_dt = !(dt > 0.f) || dt > 0.25f;
+
+    for (S32 i = 0; i < kPolishJointCount; ++i)
+    {
+        LLJoint* j = av->getJoint(kPolishJoints[i].mName);
+        if (!j)
+        {
+            continue;
+        }
+        ALPoseContinuity::InertiaJoint& s = mInertiaJoints[i];
+        if (big_dt)
+        {
+            ALPoseContinuity::resetJoint(s);
+        }
+        LLQuaternion rot = j->getRotation();      // freshly blended local rotation
+        LLVector3    pos = j->getPosition();
+        // Rotation-only v1: pos half-life 0 snaps that channel closed, so pos is
+        // returned untouched (position inertialization is a later refinement).
+        ALPoseContinuity::inertialize(
+            s, rot, pos, dt, group_hl[kPolishJoints[i].mGroup],
+            /*pos_half_life=*/0.f, /*transition=*/false);
+        // Write only while the offset actually contributes. When settled, `rot`
+        // is a bit-copy of the blended input, so skipping the write leaves the
+        // joint exactly as animated AND avoids the redundant touch()/dirty
+        // (true execution-path no-op, per Codex).
+        if (!s.mSettled)
+        {
+            j->setRotation(rot);
+            mSeeded = true;
+        }
+    }
+}
+
+// [Machinima] M2 contact stabilizer: hold planted feet in world space with the
+// proven LLJointSolverRP3 two-bone leg IK, mirroring llkeyframestandmotion.cpp's
+// internal-joint-copy setup (onActivate pole/BAxis, setupJoints, per-frame
+// propagation of the REAL joint transforms into the copies, solve, readback).
+// Contact inference (when/where a foot is locked) is the pure ALContactStab
+// module; this function only wires it to the skeleton. Writes ONLY hip/knee/
+// ankle LOCAL rotations, blended by a ramped correction weight — never mRoot,
+// never sim position, never joint positions.
+void ALPosePolish::runContact(LLVOAvatar* av, F32 dt)
+{
+    static LLCachedControl<F32> contact_weight(gSavedSettings, "ALPolishContactWeight", 0.75f);
+
+    const F32 BLEND_IN_TIME  = 0.15f;  // s: correction ramp-in (never hard-on)
+    const F32 BLEND_OUT_TIME = 0.08f;  // s: correction ramp-out on release
+    const F32 REACH_CLAMP    = 0.95f;  // fraction of full leg length: beyond => release
+    const F32 MAX_CORRECTION = 0.35f;  // m: lock this far from the raw foot is stale => drop it
+
+    LLJoint* hip_l   = av->getJoint("mHipLeft");
+    LLJoint* knee_l  = av->getJoint("mKneeLeft");
+    LLJoint* ankle_l = av->getJoint("mAnkleLeft");
+    LLJoint* hip_r   = av->getJoint("mHipRight");
+    LLJoint* knee_r  = av->getJoint("mKneeRight");
+    LLJoint* ankle_r = av->getJoint("mAnkleRight");
+    LLJoint* pelvis  = av->getJoint("mPelvis");
+
+    const bool joints_ok = pelvis && hip_l && knee_l && ankle_l
+                                  && hip_r && knee_r && ankle_r;
+    const bool big_dt = !(dt > 0.f) || dt > 0.25f;
+
+    // Grounded biped locomotion only (plan rule 5): sitting, flying / in-air,
+    // underwater / swimming, an incomplete leg rig, or a dt discontinuity
+    // (teleport / hitch / scrub, rule 4) skips the stage entirely and drops all
+    // contact state so nothing stale survives. The leg then keeps its authored
+    // animation untouched. NOTE: a standard skeleton always has the six leg
+    // bones, so joint presence is not proof of a walking biped -- a grounded
+    // full-body dance can still qualify; the contact inference's speed/height
+    // gating is the practical filter there (documented limitation for v1).
+    if (!joints_ok || big_dt || av->isSitting() || av->mInAir || av->mBelowWater)
+    {
+        ALContactStab::resetFoot(mFoot[0]);
+        ALContactStab::resetFoot(mFoot[1]);
+        mContactBlend[0] = mContactBlend[1] = 0.f;
+        return;
+    }
+
+    // No valid world position for this avatar yet (mirror stand motion's
+    // root_world_pos check): drop contact state (do not hold a stale lock across
+    // an invalid frame) and do nothing this frame.
+    const LLVector3 pelvis_world = pelvis->getWorldPosition();
+    if (pelvis_world.isExactlyZero())
+    {
+        ALContactStab::resetFoot(mFoot[0]);
+        ALContactStab::resetFoot(mFoot[1]);
+        mContactBlend[0] = mContactBlend[1] = 0.f;
+        return;
+    }
+
+    //-------------------------------------------------------------------------
+    // propagate the REAL joint transforms into the internal copies
+    // (mirror of llkeyframestandmotion.cpp onUpdate :205-247): the pelvis copy
+    // anchors the chains in world space; hips/knees/ankles carry their live
+    // local position/scale/rotation so the copies reproduce the blended pose.
+    //-------------------------------------------------------------------------
+    // SL-315
+    mPelvisJoint.setPosition(pelvis_world);
+    mPelvisJoint.setRotation(pelvis->getWorldRotation());
+    // Copy the pelvis SCALE too: shaped avatars (Hip Width/Length) scale the
+    // pelvis, and child offsets are multiplied by the parent scale, so without
+    // this the copied ankle world positions (and thus the solve) are wrong.
+    mPelvisJoint.setScale(pelvis->getScale());
+
+    // SL-315
+    mHipLeftJoint.setPosition(hip_l->getPosition());
+    mKneeLeftJoint.setPosition(knee_l->getPosition());
+    mAnkleLeftJoint.setPosition(ankle_l->getPosition());
+
+    mHipLeftJoint.setScale(hip_l->getScale());
+    mKneeLeftJoint.setScale(knee_l->getScale());
+    mAnkleLeftJoint.setScale(ankle_l->getScale());
+
+    // SL-315
+    mHipRightJoint.setPosition(hip_r->getPosition());
+    mKneeRightJoint.setPosition(knee_r->getPosition());
+    mAnkleRightJoint.setPosition(ankle_r->getPosition());
+
+    mHipRightJoint.setScale(hip_r->getScale());
+    mKneeRightJoint.setScale(knee_r->getScale());
+    mAnkleRightJoint.setScale(ankle_r->getScale());
+
+    mHipLeftJoint.setRotation(hip_l->getRotation());
+    mKneeLeftJoint.setRotation(knee_l->getRotation());
+    mAnkleLeftJoint.setRotation(ankle_l->getRotation());
+
+    mHipRightJoint.setRotation(hip_r->getRotation());
+    mKneeRightJoint.setRotation(knee_r->getRotation());
+    mAnkleRightJoint.setRotation(ankle_r->getRotation());
+
+    //-------------------------------------------------------------------------
+    // one-time IK setup (mirror of llkeyframestandmotion.cpp onActivate
+    // :137-140 and setupJoints :252-253), done AFTER the first propagation so
+    // the cached bone lengths / base rotations come from the live skeleton.
+    // reset() clears mContactInit so a skeleton rebuild re-caches lengths.
+    //-------------------------------------------------------------------------
+    if (!mContactInit)
+    {
+        mIKLeft.setPoleVector(LLVector3(1.0f, 0.0f, 0.0f));
+        mIKRight.setPoleVector(LLVector3(1.0f, 0.0f, 0.0f));
+        mIKLeft.setBAxis(LLVector3(0.05f, 1.0f, 0.0f));
+        mIKRight.setBAxis(LLVector3(-0.05f, 1.0f, 0.0f));
+        mIKLeft.setupJoints(&mHipLeftJoint, &mKneeLeftJoint, &mAnkleLeftJoint, &mTargetLeft);
+        mIKRight.setupJoints(&mHipRightJoint, &mKneeRightJoint, &mAnkleRightJoint, &mTargetRight);
+        mContactInit = true;
+    }
+
+    struct ContactLeg
+    {
+        LLJoint* mRealHip;  LLJoint* mRealKnee;  LLJoint* mRealAnkle;   // live skeleton
+        LLJoint* mCopyHip;  LLJoint* mCopyKnee;  LLJoint* mCopyAnkle;   // internal copies
+        LLJoint* mTarget;
+        LLJointSolverRP3* mIK;
+    };
+    const ContactLeg legs[2] = {
+        { hip_l, knee_l, ankle_l, &mHipLeftJoint,  &mKneeLeftJoint,  &mAnkleLeftJoint,  &mTargetLeft,  &mIKLeft  },
+        { hip_r, knee_r, ankle_r, &mHipRightJoint, &mKneeRightJoint, &mAnkleRightJoint, &mTargetRight, &mIKRight },
+    };
+
+    const ALContactStab::ContactParams params;   // tuned defaults (alcontactstab.h)
+    const F32 max_weight = llclamp((F32)contact_weight, 0.f, 1.f);
+
+    for (S32 i = 0; i < 2; ++i)
+    {
+        const ContactLeg& leg = legs[i];
+
+        // Raw (animated) ankle world position from the freshly propagated copy,
+        // and the ground height under it (mirror stand motion's getGround use).
+        const LLVector3 foot_pos = leg.mCopyAnkle->getWorldPosition();
+        LLVector3 ground_pos, ground_norm;
+        av->getGround(foot_pos, ground_pos, ground_norm);
+
+        bool planted = false;
+        const LLVector3 hold = ALContactStab::updateFoot(
+            mFoot[i], params, foot_pos, ground_pos.mV[VZ], dt, planted);
+
+        F32 want = 0.f;
+        if (planted)
+        {
+            mContactHold[i] = hold;   // live lock: ramp the correction in
+            want = 1.f;
+        }
+        // While ramping out after a release we keep solving toward the LAST
+        // hold so the correction fades smoothly instead of switching off hard
+        // (the classic knee-pop; plan M2 step 5).
+        const bool solving = planted || mContactBlend[i] > 0.f;
+
+        if (solving)
+        {
+            // Safety release: never fabricate reach. If the hold demands (near)
+            // full leg extension, or the lock has drifted absurdly far from the
+            // animated foot (yank/glitch), release immediately: skip applying,
+            // weight -> 0, rather than hyperextending or dragging the leg.
+            const LLVector3 hip_w  = leg.mCopyHip->getWorldPosition();
+            const LLVector3 knee_w = leg.mCopyKnee->getWorldPosition();
+            const F32 reach = (knee_w - hip_w).magVec() + (foot_pos - knee_w).magVec();
+            const F32 dist  = (mContactHold[i] - hip_w).magVec();
+            const F32 corr  = (mContactHold[i] - foot_pos).magVec();
+            if (corr > MAX_CORRECTION)
+            {
+                ALContactStab::resetFoot(mFoot[i]);   // stale lock: re-plant fresh
+                mContactBlend[i] = 0.f;
+                continue;
+            }
+            if (dist > reach * REACH_CLAMP)
+            {
+                // Beyond reach: release AND drop the plant, so an unreachable
+                // stationary lock cannot stay planted forever (it would re-engage
+                // with no dwell the instant it became reachable). Re-plants fresh.
+                ALContactStab::resetFoot(mFoot[i]);
+                mContactBlend[i] = 0.f;
+                continue;
+            }
+        }
+
+        // Ramp the correction weight toward its target (in slower than out).
+        if (want > mContactBlend[i])
+        {
+            mContactBlend[i] = llmin(want, mContactBlend[i] + dt / BLEND_IN_TIME);
+        }
+        else
+        {
+            mContactBlend[i] = llmax(want, mContactBlend[i] - dt / BLEND_OUT_TIME);
+        }
+
+        const F32 weight = mContactBlend[i] * max_weight;
+        if (!solving || weight <= 0.001f)
+        {
+            continue;   // not planted / ramped out: the leg keeps its animation
+        }
+
+        // Solve the two-bone chain toward the hold point on the copies
+        // (mirror stand motion :272-280). The target joint is parentless, so
+        // its local position IS the world goal.
+        // SL-315
+        leg.mTarget->setPosition(mContactHold[i]);
+        const LLQuaternion foot_world_rot = leg.mCopyAnkle->getWorldRotation();
+        leg.mIK->solve();
+        // Preserve the ANIMATED foot orientation: counter-rotate the ankle copy
+        // so the hip/knee correction never swivels the foot (we deliberately do
+        // not re-aim to the ground normal in v1 — gentler than stand motion).
+        leg.mCopyAnkle->setWorldRotation(foot_world_rot);
+
+        // Read the solved LOCAL rotations back and blend them onto the real
+        // joints by the ramped weight (rotations only; positions untouched).
+        leg.mRealHip->setRotation(nlerp(weight, leg.mRealHip->getRotation(), leg.mCopyHip->getRotation()));
+        leg.mRealKnee->setRotation(nlerp(weight, leg.mRealKnee->getRotation(), leg.mCopyKnee->getRotation()));
+        leg.mRealAnkle->setRotation(nlerp(weight, leg.mRealAnkle->getRotation(), leg.mCopyAnkle->getRotation()));
+        mSeeded = true;
+    }
+}
+
+void ALPosePolish::run(LLVOAvatar* av, F32 dt)
+{
+    static LLCachedControl<bool> polish_enabled(gSavedSettings, "ALPolishEnabled", false);
+    if (!polish_enabled || !av)
+    {
+        return;   // master gate off (default) -> no-op
+    }
+    static LLCachedControl<bool> inertia_enabled(gSavedSettings, "ALPolishInertiaEnabled", false);
+    if (inertia_enabled)
+    {
+        runInertialization(av, dt);
+    }
+    static LLCachedControl<bool> contact_enabled(gSavedSettings, "ALPolishContactEnabled", false);
+    if (contact_enabled)
+    {
+        runContact(av, dt);
+    }
+    // M6 secondary motion is invoked here as it lands.
+}
+
+void ALPosePolish::reset()
+{
+    mSeeded = false;
+    mLastFrame = 0xFFFFFFFF;
+    for (ALPoseContinuity::InertiaJoint& s : mInertiaJoints)
+    {
+        ALPoseContinuity::resetJoint(s);
+    }
+    // M2: drop contact locks and force IK re-setup (a skeleton rebuild changes
+    // bone lengths, which setupJoints caches).
+    mContactInit = false;
+    ALContactStab::resetFoot(mFoot[0]);
+    ALContactStab::resetFoot(mFoot[1]);
+    mContactBlend[0] = mContactBlend[1] = 0.f;
+}
+
+//------------------------------------------------------------------------
 bool LLVOAvatar::updateCharacter(LLAgent &agent)
 {
     updateDebugText();
@@ -5222,6 +5566,12 @@ bool LLVOAvatar::updateCharacter(LLAgent &agent)
         // Might be better to do HIDDEN_UPDATE if cloud
         updateMotions(LLCharacter::NORMAL_UPDATE);
     }
+
+    // [Machinima] Pose Polish: on the freshly blended pose, repair transition
+    // discontinuities and stabilize foot contact BEFORE the gaze layer paints
+    // on top, so gaze solves against a continuous, grounded pose. No-op unless
+    // ALPolishEnabled. See docs/pose_polish_integration_plan.md.
+    mPosePolish.run(this, gFrameIntervalSeconds.value());
 
     // [Director/ActorMover] arbitrate the post-motion look-at layer. Director gets
     // first refusal for selected real cast avatars; Actor Mover is skipped when

@@ -5976,6 +5976,94 @@
       <key>Value</key>
       <real>20.0</real>
     </map>
+    <key>ALPolishEnabled</key>
+    <map>
+      <key>Comment</key>
+      <string>[Machinima] Master gate for the post-blend Pose Polish stage (inertialization, contact stabilization, secondary motion). Off = no-op, displayed pose unchanged.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>ALPolishContactEnabled</key>
+    <map>
+      <key>Comment</key>
+      <string>[Machinima] Pose Polish M2: contact stabilizer — leg IK holds planted feet in world space (anti-footskate). Grounded biped locomotion only; off while sitting/flying. Off = no-op. Requires ALPolishEnabled.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>ALPolishContactWeight</key>
+    <map>
+      <key>Comment</key>
+      <string>[Machinima] Pose Polish M2: maximum IK correction blend (0-1) applied to hip/knee/ankle rotations while a foot is planted. The correction ramps in/out toward this cap.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.75</real>
+    </map>
+    <key>ALPolishInertiaEnabled</key>
+    <map>
+      <key>Comment</key>
+      <string>[Machinima] Pose Polish M1: velocity-preserving transition inertialization (kills AO/gesture snap). Off = no-op. Requires ALPolishEnabled.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>ALPolishInertiaHalfLifeSpine</key>
+    <map>
+      <key>Comment</key>
+      <string>[Machinima] Pose Polish inertialization half-life (sec) for pelvis/spine/chest joints.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.13</real>
+    </map>
+    <key>ALPolishInertiaHalfLifeArm</key>
+    <map>
+      <key>Comment</key>
+      <string>[Machinima] Pose Polish inertialization half-life (sec) for arm joints.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.09</real>
+    </map>
+    <key>ALPolishInertiaHalfLifeLeg</key>
+    <map>
+      <key>Comment</key>
+      <string>[Machinima] Pose Polish inertialization half-life (sec) for leg joints.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.09</real>
+    </map>
+    <key>ALPolishInertiaHalfLifeHead</key>
+    <map>
+      <key>Comment</key>
+      <string>[Machinima] Pose Polish inertialization half-life (sec) for neck/head joints.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.07</real>
+    </map>
     <key>AnimExplorerCaptureAll</key>
     <map>
       <key>Comment</key>

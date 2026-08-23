@@ -55,6 +55,7 @@
 #include "llvovolume.h"
 #include "llavatarrendernotifier.h"
 #include "llmodel.h"
+#include "alposepolish.h"       // [Machinima] post-blend Pose Polish stage
 
 extern const LLUUID ANIM_AGENT_BODY_NOISE;
 extern const LLUUID ANIM_AGENT_BREATHE_ROT;
@@ -1106,6 +1107,9 @@ private:
     F32         mSpeedAccum; // measures speed (for diagnostics mostly).
     bool        mTurning; // controls hysteresis on avatar rotation
     F32         mSpeed; // misc. animation repeated state
+    // [Machinima] Post-blend Pose Polish stage (continuity/grounding/secondary).
+    // Session-only, disabled by default; see alposepolish.h.
+    ALPosePolish mPosePolish;
 
     //--------------------------------------------------------------------
     // Dimensions

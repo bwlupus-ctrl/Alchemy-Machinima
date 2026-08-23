@@ -2636,6 +2636,14 @@ if (BUILD_TESTING)
     "${test_project}"
   )
 
+  # [Machinima] Pose Polish pure-math modules (inertialization, contact, etc.);
+  # header-only, TUT registered directly like ALGazeMath.
+  LL_ADD_INTEGRATION_TEST(alposepolish
+    ""
+    "${test_libs}"
+    "${test_project}"
+  )
+
   # ALTrajectory is the pure, header-only C2 continuity core (gaze spec 2.1);
   # like ALGazeMath its TUT is registered directly against the header.
   LL_ADD_INTEGRATION_TEST(altrajectory
