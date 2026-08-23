@@ -1003,9 +1003,15 @@ void ALPanelLensGaze::refreshControls()
     {
         mEnable->set(enabled);
     }
-    mTarget->setEnabled(have_slot && slot_enabled);
-    mEyeTarget->setEnabled(have_slot && slot_enabled);
-    mTargetDetailScope->setEnabled(have_slot && slot_enabled);
+    // Head target / Eyes look at / target-detail are PROCEDURAL-gaze settings
+    // (what the actor looks at), so they must be editable whenever procedural
+    // gaze is enabled -- not only when the actor is in the render "Aim at
+    // camera" set. Gating them on isLookAtCamera alone left them greyed (and the
+    // eye target uneditable) for a procedural-gaze-only actor.
+    const bool target_editable = have_slot && (enabled || slot_enabled);
+    mTarget->setEnabled(target_editable);
+    mEyeTarget->setEnabled(target_editable);
+    mTargetDetailScope->setEnabled(target_editable);
     mPriority->setEnabled(have_slot);
     mCameraRoll->setEnabled(
         have_slot && slot_enabled && mode == LLActorMover::GAZE_CAMERA);

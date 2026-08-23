@@ -3804,7 +3804,17 @@ void LLActorMover::applyGaze(LLVOAvatar* av)
         return;
     }
     const bool needs_move = (g.mTarget == GAZE_TANGENT);
-    const bool active = g.mEnabled && camera_safe && (!needs_move || mv);
+    // [Machinima] True master: "Look at camera (global master)" gates ALL
+    // camera-directed gaze, not just the Director render layer. When it is off,
+    // a Camera-targeted actor eases out through the release path below (active
+    // false), so unchecking the master stops the character looking at the
+    // camera even on this standalone procedural path. Non-camera targets
+    // (cast / fixed point / object / path tangent) are unaffected.
+    static LLCachedControl<bool> lookat_master(
+        gSavedSettings, "DirectorLookAtCameraEnabled", false);
+    const bool camera_gaze_gated = (g.mTarget == GAZE_CAMERA) && !lookat_master;
+    const bool active = g.mEnabled && camera_safe && (!needs_move || mv) &&
+                        !camera_gaze_gated;
 
     // advance the envelope + direction smoothing once per frame; the joint set is
     // re-asserted on every call (same idempotent idiom as applyOverride)
@@ -3884,7 +3894,19 @@ void LLActorMover::applyGaze(LLVOAvatar* av)
     const F32 timeline_influence = LLDirectorCast::instance().evaluateGazeInfluence(
         LLDirectorCast::instance().getGazeInfluenceKeys(av->getID()),
         LLPresentationTime::currentFrame().presentation_time);
-    gazePaint(av, g, mv, dt, advance, true, true, nullptr, 90.f, nullptr,
+    // [Machinima] Honor an independent eye target ("Eyes look at" != Follow
+    // head) on the STANDALONE path too, not just the Director path -- otherwise
+    // when the camera look-at master is off (so this path runs), the eyes fall
+    // back to the head target and cannot be aimed separately.
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    LLActorMover::GazeTarget eye_target;
+    const LLActorMover::GazeTarget* eye_target_ptr = nullptr;
+    if (cast.hasEyeGazeTarget(av->getID()))
+    {
+        eye_target = cast.getEyeGazeTarget(av->getID());
+        eye_target_ptr = &eye_target;
+    }
+    gazePaint(av, g, mv, dt, advance, true, true, nullptr, 90.f, eye_target_ptr,
               timeline_influence);
 }
 
