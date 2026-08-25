@@ -5692,6 +5692,7 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
     //drawable->getVObj()->setDebugText(llformat("%d", drawable->isState(LLDrawable::ANIMATED_CHILD)));
 
     const LLTextureEntry* te = facep->getTextureEntry();
+    const bool has_glow = te && te->getGlow() > 0.f;
     U8 bump = (type == LLRenderPass::PASS_BUMP || type == LLRenderPass::PASS_POST_BUMP) ? te->getBumpmap() : 0;
     U8 shiny = te->getShiny();
 
@@ -5855,6 +5856,11 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
         // slot list (checked via `batchable` above) governs membership instead.
         (gltf_indexed || legacy_indexed || info->mMaterialID == mat_id) &&
         info->mFullbright == fullbright &&
+        // mVertexBuffer's TYPE_EMISSIVE allocation is group-wide. Preserve
+        // exact per-draw authored-glow ownership so shared Actor FX (and any
+        // other DrawInfo consumer) never classifies a neighbouring face's
+        // emissive stream as this batch's glow.
+        info->mHasGlow == has_glow &&
         info->mBump == bump &&
         (!mat || legacy_indexed || (info->mShiny == shiny)) && // need to break batches when a material is shared, but legacy settings are different
         info->mTextureMatrix == tex_mat &&
@@ -5914,6 +5920,7 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
 
         draw_info->mBump  = bump;
         draw_info->mShiny = shiny;
+        draw_info->mHasGlow = has_glow;
 
         static const float alpha[4] =
         {
@@ -6871,16 +6878,23 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
             if (batch_gltf && !hud_group && can_batch_gltf_material(facep))
             {
                 // Indexed (multi-material) GLTF PBR: accumulate up to
-                // sIndexedGLTFChannels distinct materials into one batch, assigning
-                // each face a material slot via setTextureIndex. The shader selects
-                // per-vertex by that slot. See LLRenderPass::pushGLTFBatchIndexed.
-                const S32 gltf_channels = llmin((S32)LLGLSLShader::sIndexedGLTFChannels, 8);
+                // Static/native GBuffer PBR retains the full indexed material
+                // width. Rigged PBR is also eligible for shared Actor FX's
+                // forward replay, whose shadow/probe samplers require a narrower
+                // material stride. Always split rigged geometry at that safe
+                // width so live style activation never needs a geometry rebuild.
+                const S32 gltf_channels = llmin(
+                    rigged
+                        ? LLGLSLShader::sSharedPBRIndexedGLTFChannels
+                        : LLGLSLShader::sIndexedGLTFChannels,
+                    8);
                 const LLGLTFMaterial* mat_slots[8];
                 U32 slot_count = 0;
 
                 const LLGLTFMaterial* anchor_mat = facep->getTextureEntry()->getGLTFRenderMaterial();
                 const bool anchor_double = anchor_mat->mDoubleSided;
                 const U8 anchor_alpha = (U8)anchor_mat->mAlphaMode;
+                const bool anchor_glow = facep->getTextureEntry()->getGlow() > 0.f;
                 // Rigged batches must be a single avatar+skin -- the matrix palette
                 // is uploaded per skin. (Null/0 for the static set; the rigged guard
                 // below keeps it inert there.)
@@ -6899,6 +6913,12 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
                     }
 
                     const LLGLTFMaterial* m = facep->getTextureEntry()->getGLTFRenderMaterial();
+                    if ((facep->getTextureEntry()->getGlow() > 0.f) != anchor_glow)
+                    { // per-draw authored glow ownership is a hard batch key;
+                      // splitting after slot assignment would leave sparse
+                      // indexed material lists that shared replay must reject
+                        break;
+                    }
                     if (m->mDoubleSided != anchor_double)
                     { // different cull state can't share a draw call
                         break;
@@ -6987,6 +7007,7 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
 
                 LLMaterial* anchor_mat = facep->getTextureEntry()->getMaterialParams().get();
                 const U32 anchor_mask = anchor_mat->getShaderMask(LLMaterial::DIFFUSE_ALPHA_MODE_DEFAULT, false);
+                const bool anchor_glow = facep->getTextureEntry()->getGlow() > 0.f;
                 // rigged batches are one avatar+skin (matrix palette per skin)
                 const LLVOAvatar* anchor_avatar = facep->mAvatar;
                 const U64 anchor_skin = facep->getSkinHash();
@@ -7007,6 +7028,11 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
                     }
 
                     LLMaterial* m = facep->getTextureEntry()->getMaterialParams().get();
+                    if ((facep->getTextureEntry()->getGlow() > 0.f) != anchor_glow)
+                    { // keep indexed slot assignment aligned with the later
+                      // per-DrawInfo authored-glow batch split
+                        break;
+                    }
                     if (m->getShaderMask(LLMaterial::DIFFUSE_ALPHA_MODE_DEFAULT, false) != anchor_mask)
                     { // different program -- can't share a draw call
                         break;

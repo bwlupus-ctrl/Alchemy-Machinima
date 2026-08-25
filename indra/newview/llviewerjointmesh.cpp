@@ -206,6 +206,47 @@ void LLViewerJointMesh::uploadJointMatrices()
     }
 }
 
+bool LLViewerJointMesh::isActorGhostPaletteReady() const
+{
+    if (!mValid || !mMesh || !mMesh->hasWeights())
+    {
+        return false;
+    }
+    LLPolyMesh* reference_mesh = mMesh->getReferenceMesh();
+    return reference_mesh
+        && !reference_mesh->mJointRenderData.empty()
+        && reference_mesh->mJointRenderData.size()
+            <= LL_CHARACTER_MAX_JOINTS_PER_MESH;
+}
+
+bool LLViewerJointMesh::isActorGhostReplayReady() const
+{
+    if (!mVisible)
+    {
+        return true; // not submitted by LLViewerJointMesh::drawShape this frame
+    }
+    if (!mValid || !mMesh || !mFace || !mFace->getVertexBuffer()
+        || mMesh->getNumFaces() == 0)
+    {
+        return false;
+    }
+
+    LLVertexBuffer* vb = mFace->getVertexBuffer();
+    const U32 vertex_offset = mMesh->mFaceVertexOffset;
+    const U32 vertex_count = mMesh->mFaceVertexCount;
+    const U32 index_offset = mMesh->mFaceIndexOffset;
+    const U32 index_count = mMesh->mFaceIndexCount;
+    if (!vertex_count || !index_count
+        || vertex_offset >= vb->getNumVerts()
+        || vertex_count > vb->getNumVerts() - vertex_offset
+        || index_offset > vb->getNumIndices()
+        || index_count > vb->getNumIndices() - index_offset)
+    {
+        return false;
+    }
+    return !mMesh->hasWeights() || isActorGhostPaletteReady();
+}
+
 //--------------------------------------------------------------------
 // DrawElementsBLEND and utility code
 //--------------------------------------------------------------------

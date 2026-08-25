@@ -47,6 +47,7 @@ class LLFace;
 class LLCamera;     // [GhostDeferred] proxy-queue build/cull takes an explicit view
 class LLSpatialGroup;   // [CloneFidelity] shared source-walk callback arg
 class LLViewerObject;   // [CloneFidelity] shared source-walk callback arg
+class LLFetchedGLTFMaterial;
 template <class T> class LLPointer;
 
 class LLActorMover
@@ -614,11 +615,55 @@ public:
     // cost when the studio has no enabled instances.
     void renderStudioGhosts();
 
-    // [ActorStyle] Re-render only topology Wireframe actors at their exact live
-    // placement and pose through the actorghost geometry path. The deferred
-    // world render calls this while the main depth target remains bound. Every
-    // color/material look remains in the native shaders.
-    void renderStyledActors();
+    // [ActorStyle/SharedActivation] Frame-local live-replay stream. Actor FX
+    // reuses the exact harvested avatar/attachment geometry and is merged with
+    // world + rigged alpha far-to-near; it is never a late UI overlay. The
+    // queue is valid only in the main world view for the frame in which
+    // collectGhostBatches() built it. These small accessors let the alpha pool
+    // consume one proxy at its sorted turn without exposing frame-lifetime
+    // draw pointers outside this class.
+    bool   hasSharedActorStyleProxies() const;
+    size_t sharedActorStyleProxyCount() const;
+    F32    sharedActorStyleProxyDepth(size_t index) const;
+    // Cover owns an opaque/masked depth silhouette. Prime that silhouette once
+    // before any native/shared alpha is drained so already-blended world alpha
+    // cannot leak through a styled actor whose sorted colour turn is later.
+    void   renderSharedActorStyleDepthPrepass();
+    bool   renderSharedActorStyleProxy(size_t index);
+
+    // Fail-open exclusion contract for native beauty renderers. True means a
+    // Cover/Replace actor has a complete, same-frame replay and can safely have
+    // its native COLOR draw skipped. Layer actors deliberately return false.
+    // Accepts either the stable Director style id or the runtime/wearer id.
+    bool isSharedActorStyleReady(const LLUUID& actor_id) const;
+
+    // Same-frame complete shared replay for either Layer or Cover. Native
+    // beauty uses this to stay authored/unstyled while the proxy owns the FX;
+    // unlike isSharedActorStyleReady(), Layer is included here.
+    bool isSharedActorStyleActive(const LLUUID& actor_id) const;
+
+    // PBR beauty/glow is authoritative in the shared replay for both Layer and
+    // Cover.  Native PBR call sites use this stricter, whole-actor readiness
+    // gate; legacy Layer still keeps its authored native draw underneath the
+    // actorghost treatment.
+    bool isSharedActorStylePBRReady(const LLUUID& actor_id) const;
+
+    // True only while renderSharedActorStyleProxy() is replaying geometry.
+    // Native suppression must bypass itself in this scope or it would also
+    // suppress the shared replay's source batches.
+    bool isRenderingSharedActorStyle() const { return mRenderingSharedActorStyle; }
+
+    // Shared Actor FX replay hook for the classic/system avatar body. The
+    // readiness query is fail-open (false unless both body + rigid-eye world
+    // actorghost programs linked). Call the draw once for solid and once for
+    // blend so the shared proxy queue can interleave authored alpha correctly.
+    bool canRenderSystemActorGhost(LLVOAvatar* avatar,
+                                   const LLUUID& style_id) const;
+    bool renderSystemActorGhost(LLVOAvatar* avatar,
+                                const LLUUID& style_id,
+                                bool blend_sweep,
+                                bool depth_only = false,
+                                bool depth_available = false);
 
     // ---- Pose/blocking ghosts: translucent REAL-avatar billboards -------------
     // Refresh each roster actor's cached impostor snapshot (a billboard image of
@@ -662,7 +707,14 @@ public:
         std::function<void(LLVOAvatar* wearer, LLViewerObject* object, LLFace* face)>;
     void walkGhostSourceGeometry(LLVOAvatar* avatar,
                                  const ghost_rigged_source_cb_t& rigged_cb,
-                                 const ghost_static_source_cb_t& static_cb);
+                                 const ghost_static_source_cb_t& static_cb,
+                                 // Shared activation alone needs the legacy
+                                 // authored-glow duplicate. Keeping it on a
+                                 // distinct callback prevents Ghost Studio and
+                                 // clone fidelity from treating PASS_GLOW_RIGGED
+                                 // as ordinary beauty geometry.
+                                 const ghost_rigged_source_cb_t&
+                                     shared_legacy_glow_cb = {});
 
     void collectGhostBatches();
 
@@ -677,6 +729,7 @@ public:
     {
         LLDrawInfo* mInfo = nullptr;
         U32         mPass = 0;      // LLRenderPass::PASS_*_RIGGED it was collected from
+        LLSpatialGroup* mGroup = nullptr; // source visibility; frame-local
     };
 
     // [GhostStudio] this frame's collected batches for a wearer (nullptr /
@@ -852,11 +905,34 @@ public:
         F32        mDistortAmount = 0.5f;    // 0..1 selected distortion strength
         F32        mPhase = 0.f;            // per-instance phase so FX don't sync up
         F32        mEffectFps = 0.f;        // 0 smooth; 1..30 quantized ghostTime
+        F32        mDissolveProgress = 0.5f; // shared beauty/shadow coverage 0..1
         // actorghostF historically composites after tone mapping and therefore
         // authors its output in display/sRGB space.  The native live Wire pass
         // is submitted into the linear HDR world target instead; flag that one
         // caller so the shader converts its final colour exactly once.
         bool       mWorldLinear = false;
+        // Shared world replay needs the composition mode independently of depth
+        // ownership: Layer and a partially faded Cover alpha-blend Clone over
+        // the native/background colour, while only full-opacity Cover may use
+        // opaque RGB replacement. Ghost Studio leaves this false.
+        bool       mCoverMode = false;
+        // Layer normally composites over the retained native actor. Dissolve is
+        // coverage-changing, so its live-world replay must instead own the
+        // authored surface while the Layer alpha remains treatment strength.
+        // A non-negative value carries that strength; Ghost Studio and every
+        // ordinary shared draw leave the sentinel untouched.
+        F32        mCoverageLayerStrength = -1.f;
+        // Shared Layer already has the authored native beauty/depth in the
+        // world target. Re-running the colorless full-body depth prime would
+        // be redundant (and GL_LESS would reject it at equality), so that one
+        // caller may use the native surface as its front-layer depth. Cover
+        // leaves this false because its suppressed native beauty must be
+        // replaced by a complete proxy-owned depth surface.
+        bool       mNativeDepthAvailable = false;
+        // Shared Cover primes its solid/masked silhouette before the merged
+        // alpha stream. This draw-only mode emits that depth and skips every
+        // styled colour sweep; Layer never needs it because native depth stays.
+        bool       mDepthOnly = false;
         // [R2-1] output brightness multiplier (rides ghostFx.w; 1 = as-is).
         // The ghost is unlit in the post-tonemap overlay, so this is how a
         // clone sits into a night scene instead of glowing fullbright.
@@ -1253,9 +1329,106 @@ private:
     // skeleton, so their mAvatar is the control avatar, not the wearer) are
     // bucketed under the wearing actor so the whole outfit ghosts as one body.
     std::map<LLUUID, std::vector<GhostBatch> > mGhostBatches;
+    // Shared-activation-only PASS_GLOW_RIGGED duplicates. These never enter
+    // mGhostBatches, Ghost Studio, path ghosts, or clone fidelity auditing.
+    std::map<LLUUID, std::vector<GhostBatch> >
+        mSharedActorLegacyGlowBatches;
     // [R2-2] per-wearer NON-RIGGED worn-attachment faces (collar/jewelry/flexi),
     // collected alongside the batches each frame; same lifetime rules
     std::map<LLUUID, std::vector<GhostStaticFace> > mGhostStaticFaces;
+
+    // [ActorStyle/SharedActivation] Same-frame alpha-stream items. Solid/masked
+    // geometry is one actor item; every authored alpha component is a separate
+    // item so the third stream can interleave it far-to-near with native world,
+    // rigged alpha and other styled actors. ActorStyle is intentionally copied
+    // into primitive fields here because lldirectorcast.h depends on this header.
+    enum class ESharedActorStylePart : U8
+    {
+        ACTOR_SOLID,
+        RIGGED_BLEND,
+        STATIC_BLEND,
+        SYSTEM_BLEND
+    };
+
+    struct SharedActorPBRCommand
+    {
+        // Exactly one of mBatch.mInfo / mStaticFace.mFace is populated.  An
+        // indexed rigged batch remains one command and one geometry draw; its
+        // per-vertex texture_index selects the complete material-array contract.
+        GhostBatch mBatch;
+        GhostStaticFace mStaticFace;
+        LLFetchedGLTFMaterial* mMaterial = nullptr; // scalar or representative indexed material
+        LLDrawInfo* mGlowInfo = nullptr;             // matched authored sidecar
+        U8 mAlphaMode = 0;                           // ESharedActorFxPBRAlphaMode
+        bool mRigged = false;
+        bool mIndexed = false;
+        bool mAuthoredGlow = false;
+    };
+
+    struct SharedActorStyleProxy
+    {
+        LLUUID mStyleId;
+        LLUUID mWearerId;
+        LLVOAvatar* mAvatar = nullptr; // non-owning; mFrameStamp only
+        // Filtered from the permissive Ghost Studio harvest to geometry that
+        // belongs to the current main-world cull only. Copies descriptors, not
+        // VBOs/faces; the pointed-to render data remains frame-local.
+        std::vector<GhostBatch> mBatches;
+        // Coverage-owner PASS_GLOW_RIGGED sidecars matched to the base geometry
+        // in this exact sorted item. Used by Cover and Layer+Dissolve only;
+        // never fed to drawGeometryGhost beauty.
+        std::vector<GhostBatch> mLegacyGlowBatches;
+        // Legacy BLEND geometry has no separate PASS_GLOW_RIGGED sidecar: the
+        // native alpha pool replays the base DrawInfo in-place. When shared
+        // coverage suppresses that native draw, retain its exact base range for
+        // authored-only bloom replay after this component's shared beauty.
+        std::vector<GhostBatch> mLegacyBlendGlowBatches;
+        // Same contract for non-rigged worn-attachment PASS_GLOW. GhostBatch is
+        // reused as a frame-local DrawInfo/range carrier; no skin is expected.
+        std::vector<GhostBatch> mStaticLegacyGlowBatches;
+        // Static BLEND faces likewise emit from their base face/range in the
+        // alpha pool and therefore cannot be represented by PASS_GLOW.
+        std::vector<GhostStaticFace> mStaticLegacyBlendGlowFaces;
+        std::vector<GhostStaticFace> mStaticFaces;
+        std::vector<SharedActorPBRCommand> mPBRCommands;
+        LLVector3 mFootAgent;
+        F32 mAlphaDepth = 0.f;
+        F32 mAlpha = 0.f;
+        S32 mStyle = 0;
+        bool mUseActorHue = true;
+        F32 mHue = 200.f;
+        F32 mPixelSize = 0.f;
+        F32 mShimmerSpeed = 0.f;
+        F32 mShimmerAmount = 0.f;
+        F32 mGlitch = 0.f;
+        S32 mDistortion = 0;
+        F32 mDistortionAmount = 0.f;
+        F32 mBrightness = 1.f;
+        F32 mEffectFps = 0.f;
+        F32 mDissolveProgress = 0.5f;
+        ESharedActorStylePart mPart = ESharedActorStylePart::ACTOR_SOLID;
+        bool mActive = false;
+        // Cover composition/opacity semantics. This deliberately remains false
+        // for coverage-changing Layer+Dissolve.
+        bool mSuppressible = false;
+        // Native main-world beauty/glow ownership. Cover always owns it;
+        // Layer owns it only for Dissolve so holes cannot reveal native colour.
+        bool mSuppressNativeBeauty = false;
+        bool mCoverageReplacement = false;
+        bool mPBRReady = false;
+        bool mDepthPrimed = false;
+    };
+    void buildSharedActorStyleQueue();
+    bool renderSharedActorStyleProxyItem(SharedActorStyleProxy& proxy,
+                                         bool depth_only);
+    bool renderSharedActorPBRCommands(const SharedActorStyleProxy& proxy,
+                                      bool depth_only);
+    bool renderSharedActorLegacyGlowCommands(
+        const SharedActorStyleProxy& proxy);
+    std::vector<SharedActorStyleProxy> mSharedActorStyleProxies;
+    U32 mSharedActorStyleFrame = 0xFFFFFFFF;
+    U32 mSharedActorStyleDepthFrame = 0xFFFFFFFF;
+    bool mRenderingSharedActorStyle = false;
 
     // [GhostDeferred/P0] frame-local proxy queue + diagnostics counters, built by
     // buildGhostDeferredQueue() and (P1) consumed by the deferred submission.

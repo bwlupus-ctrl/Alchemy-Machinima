@@ -410,6 +410,11 @@ void LLDrawPoolBump::renderGroup(LLSpatialGroup* group, U32 type, bool texture =
     {
         LLDrawInfo& params = **k;
 
+        if (shouldSuppressSharedActorFx(params))
+        {
+            continue;
+        }
+
         applyModelMatrix(params);
 
         uploadActorFx(params);
@@ -1060,6 +1065,11 @@ void LLDrawPoolBump::pushBumpBatches(U32 type)
 void LLRenderPass::pushBumpBatch(LLDrawInfo& params, bool texture, bool batch_textures)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
+    if (shouldSuppressSharedActorFx(params))
+    {
+        return;
+    }
+
     applyModelMatrix(params);
 
     bool tex_setup = false;

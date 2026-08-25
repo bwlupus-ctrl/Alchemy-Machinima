@@ -42,11 +42,13 @@ in vec3 position;
 out vec3 vary_actor_fx_position;
 #endif
 in vec4 emissive;
+in vec4 diffuse_color;
 in vec2 texcoord0;
 in int texture_index;
 
 flat out int vary_material_index;
 out vec4 vertex_color;
+out float vertex_alpha;
 out vec2 vary_texcoord0;
 
 void main()
@@ -66,4 +68,5 @@ void main()
     vary_material_index = texture_index;
     vary_texcoord0 = texcoord0;
     vertex_color = emissive;
+    vertex_alpha = diffuse_color.a;
 }

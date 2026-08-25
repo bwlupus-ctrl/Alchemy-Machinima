@@ -128,6 +128,12 @@ LLGLSLShader        gHighlightSpecularProgram;
 // [ActorMover] pose-ghost FX (hologram / x-ray ghost styles)
 LLGLSLShader        gActorGhostProgram;
 LLGLSLShader        gSkinnedActorGhostProgram;
+LLGLSLShader        gWorldActorGhostProgram;
+LLGLSLShader        gWorldSkinnedActorGhostProgram;
+LLGLSLShader        gWorldActorGhostIndexedProgram;
+LLGLSLShader        gWorldSkinnedActorGhostIndexedProgram;
+LLGLSLShader        gAvatarActorGhostProgram;
+LLGLSLShader        gAvatarEyeballActorGhostProgram;
 
 LLGLSLShader        gDeferredHighlightProgram;
 
@@ -317,6 +323,22 @@ LLGLSLShader            gDeferredSkinnedPBROpaqueProgram;
 LLGLSLShader            gHUDPBRAlphaProgram;
 LLGLSLShader            gDeferredPBRAlphaProgram;
 LLGLSLShader            gDeferredSkinnedPBRAlphaProgram;
+LLGLSLShader            gSharedActorFxPBRProgram[SHARED_ACTOR_FX_PBR_ALPHA_COUNT];
+LLGLSLShader            gSharedActorFxSkinnedPBRProgram[SHARED_ACTOR_FX_PBR_ALPHA_COUNT];
+LLGLSLShader            gSharedActorFxPBRSlotProgram[SHARED_ACTOR_FX_PBR_ALPHA_COUNT];
+LLGLSLShader            gSharedActorFxSkinnedPBRSlotProgram[SHARED_ACTOR_FX_PBR_ALPHA_COUNT];
+LLGLSLShader            gSharedActorFxPBRGlowProgram[SHARED_ACTOR_FX_PBR_ALPHA_COUNT];
+LLGLSLShader            gSharedActorFxSkinnedPBRGlowProgram[SHARED_ACTOR_FX_PBR_ALPHA_COUNT];
+LLGLSLShader            gSharedActorFxPBRGlowSlotProgram[SHARED_ACTOR_FX_PBR_ALPHA_COUNT];
+LLGLSLShader            gSharedActorFxSkinnedPBRGlowSlotProgram[SHARED_ACTOR_FX_PBR_ALPHA_COUNT];
+LLGLSLShader            gSharedActorFxPBRSyntheticGlowProgram[SHARED_ACTOR_FX_PBR_ALPHA_COUNT];
+LLGLSLShader            gSharedActorFxSkinnedPBRSyntheticGlowProgram[SHARED_ACTOR_FX_PBR_ALPHA_COUNT];
+LLGLSLShader            gSharedActorFxPBRSyntheticGlowSlotProgram[SHARED_ACTOR_FX_PBR_ALPHA_COUNT];
+LLGLSLShader            gSharedActorFxSkinnedPBRSyntheticGlowSlotProgram[SHARED_ACTOR_FX_PBR_ALPHA_COUNT];
+LLGLSLShader            gSharedActorFxPBRDepthProgram[SHARED_ACTOR_FX_PBR_ALPHA_COUNT];
+LLGLSLShader            gSharedActorFxSkinnedPBRDepthProgram[SHARED_ACTOR_FX_PBR_ALPHA_COUNT];
+LLGLSLShader            gSharedActorFxPBRDepthSlotProgram[SHARED_ACTOR_FX_PBR_ALPHA_COUNT];
+LLGLSLShader            gSharedActorFxSkinnedPBRDepthSlotProgram[SHARED_ACTOR_FX_PBR_ALPHA_COUNT];
 LLGLSLShader            gDeferredPBRTerrainProgram[TERRAIN_PAINT_TYPE_COUNT];
 
 //helper for making a rigged variant of a given shader
@@ -334,6 +356,104 @@ static bool make_rigged_variant(LLGLSLShader& shader, LLGLSLShader& riggedShader
 
     shader.mRiggedVariant = &riggedShader;
     return riggedShader.createShader();
+}
+
+// The shared replay is an optional cinematic accelerator.  Publish it only as
+// one complete family: partial availability could suppress a native component
+// before its matching alpha-mode or glow command exists.
+static bool shared_actor_fx_pbr_family_loaded()
+{
+    if (!LLViewerShaderMgr::hasPrimaryActorFxModules())
+    {
+        return false;
+    }
+
+    for (U32 mode = 0; mode < SHARED_ACTOR_FX_PBR_ALPHA_COUNT; ++mode)
+    {
+        if (!gSharedActorFxPBRProgram[mode].mProgramObject ||
+            !gSharedActorFxSkinnedPBRProgram[mode].mProgramObject ||
+            !gSharedActorFxPBRSlotProgram[mode].mProgramObject ||
+            !gSharedActorFxSkinnedPBRSlotProgram[mode].mProgramObject ||
+            !gSharedActorFxPBRGlowProgram[mode].mProgramObject ||
+            !gSharedActorFxSkinnedPBRGlowProgram[mode].mProgramObject ||
+            !gSharedActorFxPBRGlowSlotProgram[mode].mProgramObject ||
+            !gSharedActorFxSkinnedPBRGlowSlotProgram[mode].mProgramObject ||
+            !gSharedActorFxPBRSyntheticGlowProgram[mode].mProgramObject ||
+            !gSharedActorFxSkinnedPBRSyntheticGlowProgram[mode].mProgramObject ||
+            !gSharedActorFxPBRSyntheticGlowSlotProgram[mode].mProgramObject ||
+            !gSharedActorFxSkinnedPBRSyntheticGlowSlotProgram[mode].mProgramObject)
+        {
+            return false;
+        }
+        if (mode != SHARED_ACTOR_FX_PBR_ALPHA_BLEND
+            && (!gSharedActorFxPBRDepthProgram[mode].mProgramObject
+                || !gSharedActorFxSkinnedPBRDepthProgram[mode].mProgramObject
+                || !gSharedActorFxPBRDepthSlotProgram[mode].mProgramObject
+                || !gSharedActorFxSkinnedPBRDepthSlotProgram[mode].mProgramObject))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+static void unload_shared_actor_fx_pbr_family()
+{
+    for (U32 mode = 0; mode < SHARED_ACTOR_FX_PBR_ALPHA_COUNT; ++mode)
+    {
+        gSharedActorFxPBRProgram[mode].unload();
+        gSharedActorFxSkinnedPBRProgram[mode].unload();
+        gSharedActorFxPBRSlotProgram[mode].unload();
+        gSharedActorFxSkinnedPBRSlotProgram[mode].unload();
+        gSharedActorFxPBRGlowProgram[mode].unload();
+        gSharedActorFxSkinnedPBRGlowProgram[mode].unload();
+        gSharedActorFxPBRGlowSlotProgram[mode].unload();
+        gSharedActorFxSkinnedPBRGlowSlotProgram[mode].unload();
+        gSharedActorFxPBRSyntheticGlowProgram[mode].unload();
+        gSharedActorFxSkinnedPBRSyntheticGlowProgram[mode].unload();
+        gSharedActorFxPBRSyntheticGlowSlotProgram[mode].unload();
+        gSharedActorFxSkinnedPBRSyntheticGlowSlotProgram[mode].unload();
+        gSharedActorFxPBRDepthProgram[mode].unload();
+        gSharedActorFxSkinnedPBRDepthProgram[mode].unload();
+        gSharedActorFxPBRDepthSlotProgram[mode].unload();
+        gSharedActorFxSkinnedPBRDepthSlotProgram[mode].unload();
+    }
+}
+
+static void init_shared_actor_fx_pbr_replay_uniforms(LLGLSLShader& shader)
+{
+    static const LLStaticHashedString opacity("sharedActorFxOpacity");
+    static const LLStaticHashedString synthetic_enabled(
+        "sharedActorFxSyntheticEnabled");
+
+    // Safe program defaults. The authored-glow program can add synthetic bloom
+    // in the same indexed draw, but only when dispatch explicitly enables it.
+    shader.bind();
+    shader.uniform1f(opacity, 1.f);
+    shader.uniform1i(synthetic_enabled, 0);
+    shader.unbind();
+}
+
+// static
+bool LLViewerShaderMgr::hasPrimaryActorFxModules()
+{
+    if (!sInstance)
+    {
+        return false;
+    }
+
+    const LLViewerShaderMgr* shader_mgr =
+        static_cast<const LLViewerShaderMgr*>(sInstance);
+    return shader_mgr->mFragmentShaderObjects.count(
+               "alchemy/actorFxDissolveF.glsl") != 0
+        && shader_mgr->mFragmentShaderObjects.count(
+               "alchemy/actorFxF.glsl") != 0;
+}
+
+// static
+bool LLViewerShaderMgr::hasSharedActorFxPBRShaders()
+{
+    return shared_actor_fx_pbr_family_loaded();
 }
 
 // One reader for the sidecar gate. Programs that are permuted OUTSIDE
@@ -428,6 +548,7 @@ static void disable_indexed_gltf_batching()
 
     LLGLSLShader::sIndexedLegacyMaterials = false;
     LLGLSLShader::sIndexedGLTFChannels = 0;
+    LLGLSLShader::sSharedPBRIndexedGLTFChannels = 0;
 }
 
 #ifdef SHOW_ASSERT
@@ -478,6 +599,23 @@ void LLViewerShaderMgr::finalizeShaderList()
     mShaderList.push_back(&gAvatarProgram);
     mShaderList.push_back(&gWaterProgram);
     mShaderList.push_back(&gAvatarEyeballProgram);
+    // Actorghost world programs are optional/fail-open. Never publish an
+    // unloaded optional program to the environment-uniform list (debug builds
+    // assert that every entry is linked).
+    if (gAvatarActorGhostProgram.mProgramObject
+        && gAvatarEyeballActorGhostProgram.mProgramObject)
+    {
+        mShaderList.push_back(&gAvatarActorGhostProgram);
+        mShaderList.push_back(&gAvatarEyeballActorGhostProgram);
+    }
+    if (gWorldActorGhostProgram.mProgramObject)
+    {
+        mShaderList.push_back(&gWorldActorGhostProgram);
+    }
+    if (gWorldActorGhostIndexedProgram.mProgramObject)
+    {
+        mShaderList.push_back(&gWorldActorGhostIndexedProgram);
+    }
     mShaderList.push_back(&gImpostorProgram);
     mShaderList.push_back(&gObjectBumpProgram);
     mShaderList.push_back(&gObjectFullbrightAlphaMaskProgram);
@@ -551,6 +689,29 @@ void LLViewerShaderMgr::finalizeShaderList()
 // [/RLVa:KB]
     mShaderList.push_back(&gDeferredPBRAlphaProgram);
     mShaderList.push_back(&gHUDPBRAlphaProgram);
+    // Optional shared Actor FX PBR programs must never enter environment
+    // propagation partially loaded: debug builds assert every registered base
+    // and rigged variant is linked.  The renderer therefore also gets a simple
+    // all-or-nothing readiness signal from this same family invariant.
+    if (hasSharedActorFxPBRShaders())
+    {
+        for (U32 mode = 0; mode < SHARED_ACTOR_FX_PBR_ALPHA_COUNT; ++mode)
+        {
+            mShaderList.push_back(&gSharedActorFxPBRProgram[mode]);
+            mShaderList.push_back(&gSharedActorFxPBRSlotProgram[mode]);
+            mShaderList.push_back(&gSharedActorFxPBRGlowProgram[mode]);
+            mShaderList.push_back(&gSharedActorFxPBRGlowSlotProgram[mode]);
+            mShaderList.push_back(
+                &gSharedActorFxPBRSyntheticGlowProgram[mode]);
+            mShaderList.push_back(
+                &gSharedActorFxPBRSyntheticGlowSlotProgram[mode]);
+            if (mode != SHARED_ACTOR_FX_PBR_ALPHA_BLEND)
+            {
+                mShaderList.push_back(&gSharedActorFxPBRDepthProgram[mode]);
+                mShaderList.push_back(&gSharedActorFxPBRDepthSlotProgram[mode]);
+            }
+        }
+    }
     mShaderList.push_back(&gDeferredDiffuseProgram);
     mShaderList.push_back(&gDeferredBumpProgram);
     mShaderList.push_back(&gDeferredPBROpaqueProgram);
@@ -748,12 +909,26 @@ void LLViewerShaderMgr::setShaders()
 
     LLGLSLShader::sIndexedTextureChannels = llmax(4, gGLManager.mNumTextureImageUnits - reserved_texture_units);
 
-    // Indexed GLTF PBR batches one material per four texture units (base color,
-    // normal, ORM, emissive). The PBR opaque GBuffer-write pass binds no
-    // shadow/reflection maps, so the full fragment texture-unit budget is
-    // available here -- unlike sIndexedTextureChannels above, no units are
-    // reserved. Capped at 8 to bound shader sampler declarations.
-    LLGLSLShader::sIndexedGLTFChannels = llclamp(gGLManager.mNumTextureImageUnits / 4, 1, 8);
+    // Native indexed GLTF PBR uses only four material maps per slot in its
+    // GBuffer pass, so retain its full batch width. Shared Actor FX replays
+    // rigged indexed PBR through a forward-lighting shader and therefore needs
+    // a separate, narrower stride. At the highest feature level that forward
+    // contract has ten simultaneously active auxiliary samplers: BRDF LUT (1),
+    // directional shadows (4), reflection + irradiance probes (2), SSR colour
+    // + depth (2), and the hero probe (1). Rigged PBR geometry is split at this
+    // second limit by genDrawInfo; static/native PBR and indexed legacy material
+    // batching keep the native limit. On a 32-unit GPU the shared limit is five
+    // materials; on a 16-unit GPU it is one and shared indexed replay naturally
+    // falls back to exact scalar commands.
+    LLGLSLShader::sIndexedGLTFChannels = llclamp(
+        gGLManager.mNumTextureImageUnits / 4, 1, 8);
+    constexpr S32 SHARED_FORWARD_PBR_AUX_TEXTURE_UNITS = 10;
+    const S32 indexed_gltf_texture_units = llmax(
+        gGLManager.mNumTextureImageUnits
+            - SHARED_FORWARD_PBR_AUX_TEXTURE_UNITS,
+        4);
+    LLGLSLShader::sSharedPBRIndexedGLTFChannels = llclamp(
+        indexed_gltf_texture_units / 4, 1, 8);
 
     reentrance = true;
 
@@ -1510,6 +1685,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gDeferredSkinnedPBROpaqueProgram.unload();
         gDeferredPBRAlphaProgram.unload();
         gDeferredSkinnedPBRAlphaProgram.unload();
+        unload_shared_actor_fx_pbr_family();
         for (U32 paint_type = 0; paint_type < TERRAIN_PAINT_TYPE_COUNT; ++paint_type)
         {
             gDeferredPBRTerrainProgram[paint_type].unload();
@@ -1986,6 +2162,284 @@ bool LLViewerShaderMgr::loadShadersDeferred()
 
         shader->mRiggedVariant->mFeatures.calculatesLighting = true;
         shader->mRiggedVariant->mFeatures.hasLighting = true;
+    }
+
+    if (success)
+    {
+        // [ActorStyle/Shared PBR Phase 1] Optional, isolated forward-PBR replay
+        // family.  It intentionally does not participate in the main `success`
+        // chain: a failed cinematic replay program must leave native GLTF
+        // rendering available.  The family is unloaded as a unit below.
+        unload_shared_actor_fx_pbr_family();
+        static const char* const mode_names[SHARED_ACTOR_FX_PBR_ALPHA_COUNT] =
+        {
+            "Opaque", "Mask", "Blend"
+        };
+        static const U32 material_alpha_modes[SHARED_ACTOR_FX_PBR_ALPHA_COUNT] =
+        {
+            LLMaterial::DIFFUSE_ALPHA_MODE_NONE,
+            LLMaterial::DIFFUSE_ALPHA_MODE_MASK,
+            LLMaterial::DIFFUSE_ALPHA_MODE_BLEND
+        };
+
+        auto load_shared_beauty =
+            [&](LLGLSLShader& beauty, LLGLSLShader& skinned_beauty,
+                U32 mode, bool slot_filter) -> bool
+        {
+            beauty.mName = llformat("Shared Actor FX PBR %s %s Shader",
+                                    mode_names[mode],
+                                    slot_filter ? "Slot" : "Scalar");
+            beauty.mFeatures.calculatesLighting = false;
+            beauty.mFeatures.hasLighting = false;
+            beauty.mFeatures.isAlphaLighting = true;
+            beauty.mFeatures.hasSrgb = true;
+            beauty.mFeatures.calculatesAtmospherics = true;
+            beauty.mFeatures.hasAtmospherics = true;
+            beauty.mFeatures.hasGamma = true;
+            beauty.mFeatures.hasShadows = use_sun_shadow;
+            beauty.mFeatures.isDeferred = true;
+            beauty.mFeatures.hasReflectionProbes =
+                mShaderLevel[SHADER_DEFERRED];
+            beauty.mFeatures.hasActorFx = true;
+            const S32 indexed_channels = llmax(
+                LLGLSLShader::sSharedPBRIndexedGLTFChannels, 1);
+            if (slot_filter)
+            {
+                beauty.mFeatures.mIndexedMaterialChannels = indexed_channels;
+            }
+            beauty.mShaderFiles.clear();
+            beauty.mShaderFiles.push_back(make_pair(
+                "deferred/sharedActorFxPbrV.glsl", GL_VERTEX_SHADER));
+            beauty.mShaderFiles.push_back(make_pair(
+                "deferred/sharedActorFxPbrF.glsl", GL_FRAGMENT_SHADER));
+            beauty.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+            beauty.clearPermutations();
+            beauty.addPermutation("HAS_ACTOR_FX", "1");
+            beauty.addPermutation("SHARED_ACTOR_FX_REPLAY", "1");
+            beauty.addPermutation("SHARED_ACTOR_FX_ALPHA_MODE",
+                                  llformat("%u", mode));
+            beauty.addPermutation("DIFFUSE_ALPHA_MODE",
+                                  llformat("%u", material_alpha_modes[mode]));
+            beauty.addPermutation("HAS_NORMAL_MAP", "1");
+            beauty.addPermutation("HAS_SPECULAR_MAP", "1");
+            beauty.addPermutation("HAS_EMISSIVE_MAP", "1");
+            beauty.addPermutation("USE_VERTEX_COLOR", "1");
+            if (slot_filter)
+            {
+                beauty.addPermutation("SHARED_ACTOR_FX_SLOT_FILTER", "1");
+                beauty.addPermutation("GLTF_INDEXED_CHANNELS",
+                                      llformat("%d", indexed_channels));
+            }
+            if (mode == SHARED_ACTOR_FX_PBR_ALPHA_MASK)
+            {
+                beauty.addPermutation("HAS_ALPHA_MASK", "1");
+            }
+            if (use_sun_shadow)
+            {
+                beauty.addPermutation("HAS_SUN_SHADOW", "1");
+            }
+
+            // Deliberately omit add_common_permutations(): shared replay owns
+            // exactly one HDR colour output and no optional MRT sidecars.
+            bool ok = make_rigged_variant(beauty, skinned_beauty);
+            if (ok)
+            {
+                ok = beauty.createShader();
+            }
+            if (ok)
+            {
+                // Same post-link matrix-sync contract as native PBR alpha.
+                beauty.mFeatures.calculatesLighting = true;
+                beauty.mFeatures.hasLighting = true;
+                skinned_beauty.mFeatures.calculatesLighting = true;
+                skinned_beauty.mFeatures.hasLighting = true;
+                init_shared_actor_fx_pbr_replay_uniforms(beauty);
+                init_shared_actor_fx_pbr_replay_uniforms(skinned_beauty);
+                if (slot_filter)
+                {
+                    setup_gltf_indexed_samplers(beauty, indexed_channels,
+                                                true);
+                    setup_gltf_indexed_samplers(skinned_beauty,
+                                                indexed_channels, true);
+                }
+            }
+            return ok;
+        };
+
+        auto load_shared_glow =
+            [&](LLGLSLShader& glow, LLGLSLShader& skinned_glow,
+                U32 mode, bool slot_filter, bool synthetic) -> bool
+        {
+            glow.mName = llformat("Shared Actor FX PBR %s %s %sGlow Shader",
+                                  mode_names[mode],
+                                  slot_filter ? "Slot" : "Scalar",
+                                  synthetic ? "Synthetic " : "");
+            glow.mFeatures.hasSrgb = true;
+            glow.mFeatures.hasActorFx = true;
+            const S32 indexed_channels = llmax(
+                LLGLSLShader::sSharedPBRIndexedGLTFChannels, 1);
+            if (slot_filter)
+            {
+                glow.mFeatures.mIndexedMaterialChannels = indexed_channels;
+            }
+            glow.mShaderFiles.clear();
+            glow.mShaderFiles.push_back(make_pair(
+                synthetic
+                    ? "deferred/sharedActorFxPbrSyntheticGlowV.glsl"
+                    : "deferred/sharedActorFxPbrGlowV.glsl",
+                GL_VERTEX_SHADER));
+            glow.mShaderFiles.push_back(make_pair(
+                synthetic
+                    ? "deferred/sharedActorFxPbrSyntheticGlowF.glsl"
+                    : "deferred/sharedActorFxPbrGlowF.glsl",
+                GL_FRAGMENT_SHADER));
+            glow.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+            glow.clearPermutations();
+            glow.addPermutation("HAS_ACTOR_FX", "1");
+            glow.addPermutation("SHARED_ACTOR_FX_REPLAY", "1");
+            glow.addPermutation("SHARED_ACTOR_FX_ALPHA_MODE",
+                                llformat("%u", mode));
+            glow.addPermutation("DIFFUSE_ALPHA_MODE",
+                                llformat("%u", material_alpha_modes[mode]));
+            if (slot_filter)
+            {
+                glow.addPermutation("SHARED_ACTOR_FX_SLOT_FILTER", "1");
+                glow.addPermutation("GLTF_INDEXED_CHANNELS",
+                                    llformat("%d", indexed_channels));
+            }
+            if (mode == SHARED_ACTOR_FX_PBR_ALPHA_MASK)
+            {
+                glow.addPermutation("HAS_ALPHA_MASK", "1");
+            }
+
+            bool ok = make_rigged_variant(glow, skinned_glow);
+            if (ok)
+            {
+                ok = glow.createShader();
+            }
+            if (ok)
+            {
+                init_shared_actor_fx_pbr_replay_uniforms(glow);
+                init_shared_actor_fx_pbr_replay_uniforms(skinned_glow);
+                if (slot_filter)
+                {
+                    // Authored glow consumes base+emissive while synthetic glow
+                    // consumes base only. The common mapping helper safely
+                    // skips sampler uniforms optimized out of either program.
+                    setup_gltf_indexed_samplers(glow, indexed_channels, true);
+                    setup_gltf_indexed_samplers(skinned_glow,
+                                                indexed_channels, true);
+                }
+            }
+            return ok;
+        };
+
+        auto load_shared_depth =
+            [&](LLGLSLShader& depth, LLGLSLShader& skinned_depth,
+                U32 mode, bool indexed) -> bool
+        {
+            depth.mName = llformat("Shared Actor FX PBR %s %s Depth Shader",
+                                  mode_names[mode],
+                                  indexed ? "Indexed" : "Scalar");
+            // Depth needs only the dissolve module. Linking the beauty module
+            // would pull the full material treatment into this hot prepass.
+            depth.mFeatures.hasActorFxShadow = true;
+            const S32 indexed_channels = llmax(
+                LLGLSLShader::sSharedPBRIndexedGLTFChannels, 1);
+            if (indexed)
+            {
+                depth.mFeatures.mIndexedMaterialChannels = indexed_channels;
+            }
+            depth.mShaderFiles.clear();
+            depth.mShaderFiles.push_back(make_pair(
+                "deferred/sharedActorFxPbrDepthV.glsl", GL_VERTEX_SHADER));
+            depth.mShaderFiles.push_back(make_pair(
+                "deferred/sharedActorFxPbrDepthF.glsl", GL_FRAGMENT_SHADER));
+            depth.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+            depth.clearPermutations();
+            depth.addPermutation("SHARED_ACTOR_FX_REPLAY", "1");
+            depth.addPermutation("SHARED_ACTOR_FX_ALPHA_MODE",
+                                 llformat("%u", mode));
+            if (indexed)
+            {
+                depth.addPermutation("SHARED_ACTOR_FX_SLOT_FILTER", "1");
+                depth.addPermutation("GLTF_INDEXED_CHANNELS",
+                                     llformat("%d", indexed_channels));
+            }
+
+            bool ok = make_rigged_variant(depth, skinned_depth);
+            if (ok)
+            {
+                ok = depth.createShader();
+            }
+            if (ok && indexed)
+            {
+                // OPAQUE optimizes every sampler out; MASK retains base color.
+                setup_gltf_indexed_samplers(depth, indexed_channels, false);
+                setup_gltf_indexed_samplers(skinned_depth,
+                                            indexed_channels, false);
+            }
+            return ok;
+        };
+
+        bool shared_pbr_ok = true;
+        for (U32 mode = 0; mode < SHARED_ACTOR_FX_PBR_ALPHA_COUNT; ++mode)
+        {
+            const bool scalar_beauty_ok = load_shared_beauty(
+                gSharedActorFxPBRProgram[mode],
+                gSharedActorFxSkinnedPBRProgram[mode], mode, false);
+            const bool slot_beauty_ok = load_shared_beauty(
+                gSharedActorFxPBRSlotProgram[mode],
+                gSharedActorFxSkinnedPBRSlotProgram[mode], mode, true);
+            const bool scalar_glow_ok = load_shared_glow(
+                gSharedActorFxPBRGlowProgram[mode],
+                gSharedActorFxSkinnedPBRGlowProgram[mode],
+                mode, false, false);
+            const bool slot_glow_ok = load_shared_glow(
+                gSharedActorFxPBRGlowSlotProgram[mode],
+                gSharedActorFxSkinnedPBRGlowSlotProgram[mode],
+                mode, true, false);
+            const bool scalar_synthetic_ok = load_shared_glow(
+                gSharedActorFxPBRSyntheticGlowProgram[mode],
+                gSharedActorFxSkinnedPBRSyntheticGlowProgram[mode],
+                mode, false, true);
+            const bool slot_synthetic_ok = load_shared_glow(
+                gSharedActorFxPBRSyntheticGlowSlotProgram[mode],
+                gSharedActorFxSkinnedPBRSyntheticGlowSlotProgram[mode],
+                mode, true, true);
+
+            bool scalar_depth_ok = true;
+            bool indexed_depth_ok = true;
+            if (mode != SHARED_ACTOR_FX_PBR_ALPHA_BLEND)
+            {
+                scalar_depth_ok = load_shared_depth(
+                    gSharedActorFxPBRDepthProgram[mode],
+                    gSharedActorFxSkinnedPBRDepthProgram[mode], mode, false);
+                indexed_depth_ok = load_shared_depth(
+                    gSharedActorFxPBRDepthSlotProgram[mode],
+                    gSharedActorFxSkinnedPBRDepthSlotProgram[mode], mode, true);
+            }
+
+            shared_pbr_ok = shared_pbr_ok && scalar_beauty_ok &&
+                            slot_beauty_ok && scalar_glow_ok &&
+                            slot_glow_ok && scalar_synthetic_ok &&
+                            slot_synthetic_ok && scalar_depth_ok &&
+                            indexed_depth_ok;
+        }
+
+        if (!shared_pbr_ok || !shared_actor_fx_pbr_family_loaded())
+        {
+            unload_shared_actor_fx_pbr_family();
+            // No shared forward replay will consume rigged geometry until the
+            // next shader reload, so restore the native indexed width rather
+            // than imposing the forward sampler reserve on native rendering.
+            LLGLSLShader::sSharedPBRIndexedGLTFChannels =
+                LLGLSLShader::sIndexedGLTFChannels;
+            LL_WARNS("ShaderLoading")
+                << "Shared Actor FX forward-PBR shader family failed to load; "
+                   "cinematic replay remains fail-open to native PBR rendering"
+                << LL_ENDL;
+        }
     }
 
     if (success)
@@ -4629,6 +5083,8 @@ bool LLViewerShaderMgr::loadShadersAvatar()
     {
         gAvatarProgram.unload();
         gAvatarEyeballProgram.unload();
+        gAvatarActorGhostProgram.unload();
+        gAvatarEyeballActorGhostProgram.unload();
         return true;
     }
 
@@ -4674,6 +5130,61 @@ bool LLViewerShaderMgr::loadShadersAvatar()
         gAvatarEyeballProgram.mShaderLevel = mShaderLevel[SHADER_AVATAR];
         gAvatarEyeballProgram.addPermutation("HAS_ACTOR_FX", "1");
         success = gAvatarEyeballProgram.createShader();
+    }
+
+    if (success)
+    {
+        // [ActorStyle] Dedicated WORLD/HDR actorghostF programs for the classic
+        // system avatar.  They deliberately remain separate from the interface
+        // Ghost Studio pair: classic body vertices use the avatar palette (not
+        // objectSkinV), rigid eyes use their joint model matrix, and both need
+        // world atmospherics plus an independent style colour that joint-mesh
+        // texture setup cannot overwrite.  Optional/fail-open: native Actor FX
+        // stays active if either replay program fails to link.
+        gAvatarActorGhostProgram.mName = "Classic Avatar Actor Ghost Shader";
+        gAvatarActorGhostProgram.mFeatures.hasSkinning = true;
+        gAvatarActorGhostProgram.mFeatures.calculatesAtmospherics = true;
+        gAvatarActorGhostProgram.mFeatures.hasAtmospherics = true;
+        gAvatarActorGhostProgram.mFeatures.hasSrgb = true;
+        gAvatarActorGhostProgram.mShaderFiles.clear();
+        gAvatarActorGhostProgram.mShaderFiles.push_back(
+            make_pair("avatar/avatarActorGhostV.glsl", GL_VERTEX_SHADER));
+        gAvatarActorGhostProgram.mShaderFiles.push_back(
+            make_pair("interface/actorghostF.glsl", GL_FRAGMENT_SHADER));
+        gAvatarActorGhostProgram.mShaderLevel = mShaderLevel[SHADER_AVATAR];
+        gAvatarActorGhostProgram.clearPermutations();
+        gAvatarActorGhostProgram.addPermutation("GHOST_WORLD_PASS", "1");
+        gAvatarActorGhostProgram.addPermutation("GHOST_SYSTEM_AVATAR", "1");
+        gAvatarActorGhostProgram.addPermutation("GHOST_SHARED_DISSOLVE", "1");
+        if (gSavedSettings.getBOOL("RenderAvatarCloth"))
+        {
+            gAvatarActorGhostProgram.addPermutation("AVATAR_CLOTH", "1");
+        }
+        const bool body_ghost_ok = gAvatarActorGhostProgram.createShader();
+
+        gAvatarEyeballActorGhostProgram.mName = "Classic Avatar Eye Actor Ghost Shader";
+        gAvatarEyeballActorGhostProgram.mFeatures.calculatesAtmospherics = true;
+        gAvatarEyeballActorGhostProgram.mFeatures.hasAtmospherics = true;
+        gAvatarEyeballActorGhostProgram.mFeatures.hasSrgb = true;
+        gAvatarEyeballActorGhostProgram.mShaderFiles.clear();
+        gAvatarEyeballActorGhostProgram.mShaderFiles.push_back(
+            make_pair("avatar/eyeballActorGhostV.glsl", GL_VERTEX_SHADER));
+        gAvatarEyeballActorGhostProgram.mShaderFiles.push_back(
+            make_pair("interface/actorghostF.glsl", GL_FRAGMENT_SHADER));
+        gAvatarEyeballActorGhostProgram.mShaderLevel = mShaderLevel[SHADER_AVATAR];
+        gAvatarEyeballActorGhostProgram.clearPermutations();
+        gAvatarEyeballActorGhostProgram.addPermutation("GHOST_WORLD_PASS", "1");
+        gAvatarEyeballActorGhostProgram.addPermutation("GHOST_SYSTEM_AVATAR", "1");
+        gAvatarEyeballActorGhostProgram.addPermutation("GHOST_SHARED_DISSOLVE", "1");
+        const bool eye_ghost_ok = gAvatarEyeballActorGhostProgram.createShader();
+
+        if (!body_ghost_ok || !eye_ghost_ok)
+        {
+            gAvatarActorGhostProgram.unload();
+            gAvatarEyeballActorGhostProgram.unload();
+            LL_WARNS("Shader") << "Classic avatar Actor FX replay shaders failed; "
+                                  "keeping native Actor FX fail-open" << LL_ENDL;
+        }
     }
 
     if( !success )
@@ -4726,6 +5237,91 @@ bool LLViewerShaderMgr::loadShadersInterface()
             LL_WARNS("Shader") << "Actor ghost FX shader failed to load; the"
                                   " hologram / x-ray ghost styles will fall back"
                                   " to the classic translucent ghost" << LL_ENDL;
+        }
+
+        // [ActorStyle/SharedActivation] The live proxy is submitted into the
+        // linear HDR world alpha stream, not Ghost Studio's late interface
+        // compositor. Compile a separate pair with world atmospherics and the
+        // authored rest-space dissolve law; keeping it separate guarantees the
+        // existing path/studio ghost result remains byte-identical.
+        gWorldActorGhostProgram.mName = "World Actor Ghost Shader";
+        gWorldActorGhostProgram.mFeatures.calculatesAtmospherics = true;
+        gWorldActorGhostProgram.mFeatures.hasAtmospherics = true;
+        gWorldActorGhostProgram.mFeatures.hasSrgb = true;
+        gWorldActorGhostProgram.mShaderFiles.clear();
+        gWorldActorGhostProgram.mShaderFiles.push_back(
+            make_pair("interface/actorghostV.glsl", GL_VERTEX_SHADER));
+        gWorldActorGhostProgram.mShaderFiles.push_back(
+            make_pair("interface/actorghostF.glsl", GL_FRAGMENT_SHADER));
+        gWorldActorGhostProgram.mShaderLevel = mShaderLevel[SHADER_INTERFACE];
+        gWorldActorGhostProgram.clearPermutations();
+        gWorldActorGhostProgram.addPermutation("GHOST_WORLD_PASS", "1");
+        gWorldActorGhostProgram.addPermutation("GHOST_SHARED_DISSOLVE", "1");
+        bool world_ghost_ok = make_rigged_variant(
+            gWorldActorGhostProgram, gWorldSkinnedActorGhostProgram);
+        world_ghost_ok = world_ghost_ok &&
+            gWorldActorGhostProgram.createShader();
+        if (!world_ghost_ok)
+        {
+            gWorldActorGhostProgram.unload();
+            gWorldSkinnedActorGhostProgram.unload();
+            LL_WARNS("Shader") << "World Actor FX replay shader failed; "
+                                  "native Actor FX remains active fail-open"
+                               << LL_ENDL;
+        }
+
+        // Native indexed legacy batches carry one material selector per
+        // vertex. The shared world replay must consume that selector in one
+        // draw as well; scalar slot filtering multiplies every depth/beauty/
+        // bloom/wire sweep by the material count. Keep this optional and
+        // independent of the scalar family so a link failure remains an
+        // actor-wide native fail-open only for geometry that actually needs it.
+        if (world_ghost_ok && LLGLSLShader::sIndexedTextureChannels >= 2)
+        {
+            const S32 indexed_channels = LLGLSLShader::sIndexedTextureChannels;
+            gWorldActorGhostIndexedProgram.mName =
+                "World Actor Ghost Indexed Shader";
+            gWorldActorGhostIndexedProgram.mFeatures.calculatesAtmospherics = true;
+            gWorldActorGhostIndexedProgram.mFeatures.hasAtmospherics = true;
+            gWorldActorGhostIndexedProgram.mFeatures.hasSrgb = true;
+            gWorldActorGhostIndexedProgram.mFeatures.mIndexedTextureChannels =
+                indexed_channels;
+            gWorldActorGhostIndexedProgram.mShaderFiles.clear();
+            gWorldActorGhostIndexedProgram.mShaderFiles.push_back(
+                make_pair("interface/actorghostV.glsl", GL_VERTEX_SHADER));
+            gWorldActorGhostIndexedProgram.mShaderFiles.push_back(
+                make_pair("interface/actorghostF.glsl", GL_FRAGMENT_SHADER));
+            gWorldActorGhostIndexedProgram.mShaderLevel =
+                mShaderLevel[SHADER_INTERFACE];
+            gWorldActorGhostIndexedProgram.clearPermutations();
+            gWorldActorGhostIndexedProgram.addPermutation(
+                "GHOST_WORLD_PASS", "1");
+            gWorldActorGhostIndexedProgram.addPermutation(
+                "GHOST_SHARED_DISSOLVE", "1");
+            gWorldActorGhostIndexedProgram.addPermutation(
+                "GHOST_INDEXED_WORLD", "1");
+            gWorldActorGhostIndexedProgram.addPermutation(
+                "GHOST_INDEXED_CHANNELS", llformat("%d", indexed_channels));
+
+            bool indexed_ghost_ok = make_rigged_variant(
+                gWorldActorGhostIndexedProgram,
+                gWorldSkinnedActorGhostIndexedProgram);
+            indexed_ghost_ok = indexed_ghost_ok
+                && gWorldActorGhostIndexedProgram.createShader();
+            if (!indexed_ghost_ok)
+            {
+                gWorldActorGhostIndexedProgram.unload();
+                gWorldSkinnedActorGhostIndexedProgram.unload();
+                LL_WARNS("Shader")
+                    << "Indexed world Actor FX replay shader failed; "
+                       "multi-material actors remain native fail-open"
+                    << LL_ENDL;
+            }
+        }
+        else
+        {
+            gWorldActorGhostIndexedProgram.unload();
+            gWorldSkinnedActorGhostIndexedProgram.unload();
         }
     }
 

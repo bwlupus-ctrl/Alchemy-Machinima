@@ -124,10 +124,20 @@ bool actorFxActive()
     return actorFxEnabled != 0 && actorFxParams0.x > 0.001;
 }
 
-// Scale for legacy authored specular/gloss/environment response. Layer and the
-// Clone look preserve the original material. A material-owning Cover style
-// supplies its own flat/sensor/metal/ice read and must not retain unrelated
-// legacy shine underneath it.
+float actorFxBeautyDissolveAlpha()
+{
+    if (!actorFxActive() || actorFxLook != 10)
+    {
+        return 1.0;
+    }
+    return smoothstep(0.0, 0.025, actorFxBeautyDissolveCoverage());
+}
+
+// Scale for authored normal/AO/specular/gloss/environment/emissive response.
+// Layer and Clone preserve the original material. A material-owning Cover
+// supplies its own flat/sensor/metal/ice read, but the transition still follows
+// the uploaded strength continuously so partial activation cannot pop normals,
+// AO, shine, or authored bloom between the binary endpoints.
 float actorFxAuthoredMaterialResponse()
 {
     if (!actorFxActive() || !actorFxCoverMode())
@@ -138,7 +148,9 @@ float actorFxAuthoredMaterialResponse()
     bool style_owns_material = actorFxFlatSensorLook() ||
                                actorFxLook == 9 || actorFxLook == 12 ||
                                actorFxLook == 16;
-    return style_owns_material ? 0.0 : 1.0;
+    return style_owns_material
+        ? 1.0 - clamp(actorFxParams0.x, 0.0, 1.0)
+        : 1.0;
 }
 
 vec2 actor_fx_screen_quantize(vec2 uv, float block_pixels)
@@ -292,6 +304,31 @@ vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction)
     }
     return transformed_uv + dFdx(transformed_uv) * pixels
                            + dFdy(transformed_uv) * pixels * 0.12;
+}
+
+// One deterministic signal envelope for both styled beauty and synthetic
+// emission.  Keeping it callable from actorFxEmissive() makes the Dissolve
+// boundary pulse identically on legacy/system and PBR materials.
+float actorFxSignalPulse()
+{
+    float shimmer = clamp(actorFxParams0.z, 0.0, 1.0);
+    float glitch = clamp(actorFxParams0.w, 0.0, 1.0);
+    float pulse = 1.0;
+    if (shimmer > 0.001)
+    {
+        pulse -= shimmer * 0.60
+            * (0.5 + 0.5 * sin(actorFxTime * max(actorFxParams2.x, 0.0)
+                                * 6.2831853 + actorFxParams1.w));
+    }
+    float tear = 0.0;
+    if (glitch > 0.001)
+    {
+        vec2 frag_coord = actorFxFragCoord();
+        tear = step(1.0 - 0.35 * glitch,
+                    actor_fx_hash(vec2(floor(frag_coord.y / 14.0),
+                                       floor(actorFxTime * 9.0) + actorFxParams1.w)));
+    }
+    return pulse * (1.0 + tear * 0.35 * glitch);
 }
 
 vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv)
@@ -575,26 +612,10 @@ vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored
             fx *= 1.0 - vhs_band * 0.22 * distort;
     }
 
-    float shimmer = clamp(actorFxParams0.z, 0.0, 1.0);
-    float glitch = clamp(actorFxParams0.w, 0.0, 1.0);
     // Ghost Studio's adjustable shimmer can dim by up to 60%, and a torn band
     // gets a 35% signal pop.  Keep the native pass on the same time law so an
     // actor and an overlay clone move together at identical settings.
-    float pulse = 1.0;
-    if (shimmer > 0.001)
-    {
-        pulse -= shimmer * 0.60
-            * (0.5 + 0.5 * sin(actorFxTime * max(actorFxParams2.x, 0.0)
-                                * 6.2831853 + actorFxParams1.w));
-    }
-    float tear = 0.0;
-    if (glitch > 0.001)
-    {
-        tear = step(1.0 - 0.35 * glitch,
-                    actor_fx_hash(vec2(floor(frag_coord.y / 14.0),
-                                       floor(actorFxTime * 9.0) + actorFxParams1.w)));
-    }
-    fx *= pulse * (1.0 + tear * 0.35 * glitch);
+    fx *= actorFxSignalPulse();
     fx *= max(actorFxParams1.z, 0.0);
 
     return mix(layer_source, fx, clamp(actorFxParams0.x, 0.0, 1.0));
@@ -617,7 +638,8 @@ vec2 actorFxPbrMaterial(vec2 roughness_metallic)
     return mix(roughness_metallic, styled, clamp(actorFxParams0.x, 0.0, 1.0));
 }
 
-vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color)
+vec3 actorFxEmissiveImpl(vec3 authored_emissive, vec3 styled_color,
+                         float dissolve_edge_brightness)
 {
     if (!actorFxActive())
     {
@@ -719,7 +741,26 @@ vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color)
         float coverage = actorFxBeautyDissolveCoverage();
         float dissolve_edge = 1.0 - smoothstep(0.0, 0.10, coverage);
         vec3 dissolve_tint = mix(vec3(1.0, 0.35, 0.02), actorFxTint, 0.4);
-        style_emissive += dissolve_tint * dissolve_edge * 2.2;
+        style_emissive += dissolve_tint * dissolve_edge * 2.2
+                        * actorFxSignalPulse()
+                        * max(dissolve_edge_brightness, 0.0);
     }
     return base_emissive + style_emissive * strength;
+}
+
+vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color)
+{
+    // Bloom and the native material path intentionally retain the historical
+    // edge energy. actorghost reconstructs Dissolve bloom without brightness.
+    return actorFxEmissiveImpl(authored_emissive, styled_color, 1.0);
+}
+
+vec3 actorFxBeautyEmissive(vec3 authored_emissive, vec3 styled_color)
+{
+    // World actorghost beauty scales the incandescent Dissolve edge by the
+    // user brightness control after applying the signal pulse. Keep that
+    // treatment local to shared PBR beauty; authored emissive and every glow
+    // replay continue through actorFxEmissive() above unchanged.
+    return actorFxEmissiveImpl(authored_emissive, styled_color,
+                               max(actorFxParams1.z, 0.0));
 }

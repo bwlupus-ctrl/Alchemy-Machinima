@@ -33,11 +33,13 @@
 #include "llcontrolavatar.h"        // animesh attachments bucket under the wearer (model ghost)
 #include "lldirectorcast.h"         // [Director] roster storage + per-actor loco anim
 #include "lldrawpool.h"             // LLRenderPass (rigged pass enum + uploadMatrixPalette)
+#include "lldrawpoolavatar.h"       // classic/BOM Actor FX replay sweeps
 #include "llflycamrecorder.h"       // sync-to-take: the recorder playhead is the clock
 #include "llfloaterreg.h"           // heading preview only draws with the floater open
 #include "llframetimer.h"           // per-frame idempotency for applyOverride()
 #include "llghostavatar.h"          // clone eye-motion lifecycle for procedural gaze
 #include "llmaterial.h"             // legacy alpha-mode classification (static ghost faces)
+#include "noise.h"                  // classic cloth ripple matches the stock avatar pass
 #include "llcinematiccamera.h"      // camera-gaze feedback interlock
 #include "llprismlens.h"            // [Prism] Vcam Gate on-air camera eye resolution
 #include "llmotion.h"               // LLMotion::setPriorityOverride (custom-anim priority)
@@ -45,6 +47,7 @@
 #include "llglstates.h"             // LLGLSUIDefault (heading preview)
 #include "lljoint.h"
 #include "llrender.h"               // gGL (heading preview)
+#include "llrendertarget.h"         // shared PBR HDR-only draw-buffer scope
 #include "llspatialpartition.h"     // LLDrawInfo / LLCullResult (model-ghost geometry sweep)
 #include "lltoolmgr.h"              // [R2-3] edit-tool gate for the highlight ring
 #include "llvector4a.h"             // downward ground raycast (pathing ground-follow)
@@ -61,6 +64,7 @@
 #include "pipeline.h"               // gPipeline.lineSegmentIntersectInWorld (raycast)
 
 extern bool gSnapshot;
+extern bool gCubeSnapshot;
 
 namespace
 {
@@ -74,17 +78,44 @@ LLVOAvatar* resolve_actor(const LLUUID& id)
     return LLDirectorCast::instance().resolve(id);
 }
 
-// Actor styling runs in the actor's native material draw except for true
-// topology wireframe. A fragment shader has no triangle-edge coordinates, so
-// attempting that look natively produced a UV grid instead of mesh edges. Keep
-// the exact-live overlay renderer narrowly enabled for look 3: it reuses the
-// live VBO and skin palette (no cloned avatar/skeleton) and pays the additional
-// line pass only while Wireframe is actually selected.
-bool actor_style_wants_overlay(const LLDirectorCast::ActorStyle& style)
+// Shared activation owns every effective Director look.  IDs outside the
+// actorghost contract are not silently clamped into a different cinematic
+// treatment: leaving native beauty active is the fail-open result.
+bool actor_style_wants_shared_replay(const LLDirectorCast::ActorStyle& style)
 {
-    return style.mEnabled && style.mStyle == 3 &&
-        (style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE ||
-         style.mAlpha > 0.001f);
+    if (!style.mEnabled || style.mStyle < 0 || style.mStyle > 27)
+    {
+        return false;
+    }
+
+    // Exact-zero Cover is implemented by native-pass suppression and emits no
+    // replacement colour or depth.  Do not harvest geometry or build replay
+    // queues for an effect that has no shared draw work.  Preserve every
+    // positive Cover value; Layer keeps its historical noise-floor threshold.
+    return style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE
+        ? style.mAlpha > 0.f
+        : style.mAlpha > 0.001f;
+}
+
+// Actor FX is a live rendering treatment, never an off-camera Ghost Studio
+// instance. Keep its queue and readiness scoped to exactly the main world
+// beauty view. Every auxiliary view fails open to ordinary native rendering.
+bool shared_actor_main_world_context()
+{
+    // The only shared replay consumer is LLDrawPoolAlpha's post-deferred
+    // interleaved stream.  Forward rendering has no equivalent consumer, so it
+    // must remain native/fail-open even though its avatar shaders support the
+    // legacy Actor FX uniforms.
+    return LLPipeline::sRenderDeferred
+        && !gCubeSnapshot
+        && !LLPipeline::sPrismLensRender
+        && !LLPipeline::sReflectionRender
+        && !LLPipeline::sImpostorRender
+        && !LLPipeline::sRenderingHUDs
+        && !LLPipeline::sShadowRender
+        && !LLPipeline::sVelocityRender
+        && !gPipeline.mHeroProbeManager.isMirrorPass()
+        && LLViewerCamera::sCurCameraID == LLViewerCamera::CAMERA_WORLD;
 }
 
 // the locomotion anim a new Move should start for THIS actor: the cast
@@ -9204,12 +9235,125 @@ static LLStaticHashedString sGhostLook("ghostLook");
 static LLStaticHashedString sGhostDistort("ghostDistort");
 static LLStaticHashedString sGhostDistortParams("ghostDistortParams");
 static LLStaticHashedString sGhostUseVertexAlpha("ghostUseVertexAlpha");
+static LLStaticHashedString sGhostAlphaCutoffMode("ghostAlphaCutoffMode");
 static LLStaticHashedString sGhostWorldLinear("ghostWorldLinear");
+static LLStaticHashedString sGhostGlowOnly("ghostGlowOnly");
 static LLStaticHashedString sGhostFragOffset("ghostFragOffset");
+static LLStaticHashedString sGhostScreenSize("ghostScreenSize");
+static LLStaticHashedString sGhostDissolveProgress("ghostDissolveProgress");
+static LLStaticHashedString sGhostCoverageLayerStrength(
+    "ghostCoverageLayerStrength");
+static LLStaticHashedString sGhostIndexedMaterialFactor(
+    "ghostIndexedMaterialFactor");
+static LLStaticHashedString sGhostIndexedTextureAlpha(
+    "ghostIndexedTextureAlpha");
+static LLStaticHashedString sGhostIndexedMinimumAlpha(
+    "ghostIndexedMinimumAlpha");
+static LLStaticHashedString sGhostIndexedUseVertexAlpha(
+    "ghostIndexedUseVertexAlpha");
+static LLStaticHashedString sGhostIndexedAlphaCutoffMode(
+    "ghostIndexedAlphaCutoffMode");
+static LLStaticHashedString sGhostSystemColor("ghostSystemColor");
 // x: honor sampled texture alpha; y: authored PBR base-colour factor alpha.
 // OPAQUE PBR materials deliberately upload (0, 1): their base-colour alpha is
 // not opacity and can contain arbitrary/packed data.
 static LLStaticHashedString sGhostAlpha("ghostAlpha");
+
+// Legacy per-vertex glow is a duplicate sidecar, like GLTF glow, but it is not
+// part of Ghost Studio's historical SWEEP_GLOW contract. Keep the predicate
+// private and explicit so the global ghost_pass_is_glow() semantics do not
+// change under existing clone/coverage code.
+static bool ghost_pass_is_legacy_authored_glow(U32 pass)
+{
+    return pass == LLRenderPass::PASS_GLOW_RIGGED;
+}
+
+// Single-output shared Actor FX programs must not leave the deferred target's
+// auxiliary attachments active: an unwritten MRT output is undefined even when
+// a cached per-attachment colour mask says "off" on some drivers.  Restrict the
+// replay to HDR colour, then restore the target's canonical attachment list.
+struct ScopedSharedActorHDRDrawBuffer
+{
+    explicit ScopedSharedActorHDRDrawBuffer(bool enable)
+    {
+        mTarget = enable ? LLRenderTarget::getCurrentBoundTarget() : nullptr;
+        mCount = mTarget ? llmin(mTarget->getNumTextures(), 4u) : 0u;
+        if (mCount > 0)
+        {
+            gGL.flush();
+            const GLenum hdr = GL_COLOR_ATTACHMENT0;
+            glDrawBuffers(1, &hdr);
+        }
+    }
+
+    ~ScopedSharedActorHDRDrawBuffer()
+    {
+        if (mCount > 0)
+        {
+            gGL.flush();
+            static const GLenum full[] = {
+                GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1,
+                GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3
+            };
+            glDrawBuffers((GLsizei)mCount, full);
+        }
+    }
+
+    LLRenderTarget* mTarget = nullptr;
+    U32 mCount = 0;
+};
+
+// Preserve Ghost Studio's historical overlay clock. Shared world Actor FX uses
+// LLRenderPass::actorFxFrameTime() so legacy/system/PBR/authored-glow surfaces
+// all receive the exact same quantized phase and tiled-snapshot freeze.
+F32 actor_ghost_studio_frame_time(F32 requested_fps)
+{
+    static bool sInitialized = false;
+    static F64 sEpoch = 0.0;
+    static U32 sFrame = U32_MAX;
+    static F64 sFrameClock = 0.0;
+    static F64 sSnapshotTime = 0.0;
+    static bool sWasSnapshot = false;
+
+    if (sFrame != gFrameCount)
+    {
+        sFrame = gFrameCount;
+        sFrameClock = LLFrameTimer::getElapsedSeconds();
+    }
+    if (!sInitialized)
+    {
+        sEpoch = sFrameClock;
+        sInitialized = true;
+    }
+    const F64 elapsed = llmax(sFrameClock - sEpoch, 0.0);
+    if (gSnapshot && !sWasSnapshot)
+    {
+        sSnapshotTime = elapsed;
+    }
+    const F64 real_time = gSnapshot ? sSnapshotTime : elapsed;
+    sWasSnapshot = gSnapshot;
+    const F64 fps = static_cast<F64>(llclamp(requested_fps, 0.f, 30.f));
+    return static_cast<F32>(fps > 0.0
+        ? floor(real_time * fps) / fps : real_time);
+}
+
+LLVector2 actor_ghost_frag_offset()
+{
+    LLVector2 offset;
+    const F32 zoom = LLViewerCamera::getInstance()->getZoomFactor();
+    if (gSnapshot && gViewerWindow && zoom > 1.f)
+    {
+        const S32 tiles = llceil(zoom);
+        const S32 sub = LLViewerCamera::getInstance()->getZoomSubRegion();
+        const S32 tile_y = sub / tiles;
+        const S32 tile_x = sub - tile_y * tiles;
+        offset.mV[VX] = static_cast<F32>(
+            tile_x * gViewerWindow->getWorldViewWidthRaw());
+        offset.mV[VY] = static_cast<F32>(
+            tile_y * gViewerWindow->getWorldViewHeightRaw());
+    }
+    return offset;
+}
 
 // ---------------------------------------------------------------------------
 // Per-batch alpha semantics: how does the REAL render treat this rigged pass's
@@ -9235,6 +9379,59 @@ bool ghost_pass_is_mask(U32 pass)
     }
 }
 
+// Native legacy MASK shaders do not share one coverage law. Ordinary simple
+// masks compare texture * diffuse vertex alpha; fullbright masks compare only
+// texture alpha; material masks compare texture alpha against a threshold
+// reduced by half an 8-bit quantization step. Keep these small numeric values
+// synchronized with actorghostF/emissive{Indexed}F.
+enum EGhostAlphaCutoffMode : S32
+{
+    GHOST_CUTOFF_NONE = 0,
+    GHOST_CUTOFF_TEXTURE_ONLY = 1,
+    GHOST_CUTOFF_TEXTURE_VERTEX_ALPHA = 2,
+    GHOST_CUTOFF_MATERIAL_BIASED = 3
+};
+
+S32 ghost_batch_alpha_cutoff_mode(U32 pass)
+{
+    switch (pass)
+    {
+    case LLRenderPass::PASS_ALPHA_MASK_RIGGED:
+    case LLRenderPass::PASS_GLTF_PBR_ALPHA_MASK_RIGGED:
+        return GHOST_CUTOFF_TEXTURE_VERTEX_ALPHA;
+    case LLRenderPass::PASS_MATERIAL_ALPHA_MASK_RIGGED:
+    case LLRenderPass::PASS_SPECMAP_MASK_RIGGED:
+    case LLRenderPass::PASS_NORMMAP_MASK_RIGGED:
+    case LLRenderPass::PASS_NORMSPEC_MASK_RIGGED:
+        return GHOST_CUTOFF_MATERIAL_BIASED;
+    case LLRenderPass::PASS_FULLBRIGHT_ALPHA_MASK_RIGGED:
+        return GHOST_CUTOFF_TEXTURE_ONLY;
+    default:
+        return GHOST_CUTOFF_NONE;
+    }
+}
+
+S32 ghost_static_alpha_cutoff_mode(
+    const LLActorMover::GhostStaticFace& source)
+{
+    if (source.mAlphaKind != 1 || !source.mFace)
+    {
+        return GHOST_CUTOFF_NONE;
+    }
+    switch (source.mFace->getPoolType())
+    {
+    case LLDrawPool::POOL_ALPHA_MASK:
+    case LLDrawPool::POOL_GLTF_PBR_ALPHA_MASK:
+        return GHOST_CUTOFF_TEXTURE_VERTEX_ALPHA;
+    case LLDrawPool::POOL_MATERIALS:
+        return GHOST_CUTOFF_MATERIAL_BIASED;
+    case LLDrawPool::POOL_FULLBRIGHT_ALPHA_MASK:
+        return GHOST_CUTOFF_TEXTURE_ONLY;
+    default:
+        return GHOST_CUTOFF_NONE;
+    }
+}
+
 // (ghost_pass_is_blend / ghost_pass_is_glow moved OUT of this anonymous
 // namespace -- see below the namespace close. The deferred submission's
 // coverage accounting in pipeline.cpp needs the SAME classification, and a
@@ -9245,13 +9442,34 @@ bool ghost_pass_is_mask(U32 pass)
 // carry? 1 = scalar (mGLTFMaterial / mTexture as usual). >1 = the vertex
 // buffer's texture_index attribute selects the material per vertex, and a
 // single bound texture is WRONG for every non-anchor slot (this is how eye
-// materials merged into a head's indexed batch came out white) -- the clone
-// redraws such a batch once per slot with the ghostSlot shader filter.
+// materials merged into a head's indexed batch came out white). Shared world
+// replay uses its true indexed program; Ghost Studio retains its historical
+// per-slot ghostSlot replay.
 S32 ghost_batch_slot_count(LLDrawInfo* di)
 {
     if (di->mGLTFMaterialList.size() > 1)  return (S32)di->mGLTFMaterialList.size();
     if (di->mMaterialSlotList.size() > 1)  return (S32)di->mMaterialSlotList.size();
     if (di->mTextureList.size() > 1)       return (S32)di->mTextureList.size();
+    return 1;
+}
+
+// Shared world legacy replay can consume both of the viewer's ordinary
+// texture-indexed descriptor families in one draw. GLTF material lists are
+// intentionally excluded: authoritative shared PBR owns those commands.
+S32 ghost_legacy_indexed_slot_count(const LLDrawInfo* di)
+{
+    if (!di)
+    {
+        return 1;
+    }
+    if (di->mMaterialSlotList.size() > 1)
+    {
+        return (S32)di->mMaterialSlotList.size();
+    }
+    if (di->mTextureList.size() > 1)
+    {
+        return (S32)di->mTextureList.size();
+    }
     return 1;
 }
 
@@ -9461,31 +9679,65 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                       const LLVector3& foot, const LLColor4& tint, F32 alpha,
                       S32 style,
                       const LLActorMover::GhostDrawParams& gp = LLActorMover::GhostDrawParams(),
-                      const std::vector<LLActorMover::GhostStaticFace>* static_faces = nullptr)
+                      const std::vector<LLActorMover::GhostStaticFace>* static_faces = nullptr,
+                      bool* out_complete = nullptr)
 {
+    bool complete = true;
+    if (out_complete)
+    {
+        *out_complete = true;
+    }
     if (!av || av->isDead() || (batches.empty() && (!static_faces || static_faces->empty())))
     {
+        if (out_complete)
+        {
+            *out_complete = false;
+        }
         return 0;
     }
 
     // shader choice + graceful degradation (see the header comment). The
     // rigged variant skins the batches; the BASE variant places the NON-RIGGED
     // attachment faces (collar/jewelry/flexi) through their own render matrix.
-    LLGLSLShader* fx = gActorGhostProgram.mRiggedVariant;
+    // Shared live Actor FX runs in the HDR world stream and therefore uses a
+    // dedicated atmospherics + rest-space-dissolve permutation. Ghost Studio,
+    // path ghosts and every legacy overlay keep the interface program.
+    LLGLSLShader* fx_base = gp.mWorldLinear
+        ? &gWorldActorGhostProgram : &gActorGhostProgram;
+    LLGLSLShader* fx = fx_base->mRiggedVariant;
     const bool have_fx = fx && fx->mProgramObject;
+    if (gp.mWorldLinear && !have_fx)
+    {
+        // Shared activation preflights the world permutation before native
+        // suppression. Falling back here is still useful to legacy callers,
+        // but is an invariant violation for the shared replay.
+        complete = false;
+    }
     if (!have_fx && style != GHOST_STYLE_GHOST && style != GHOST_STYLE_CLONE
         && style != GHOST_STYLE_WIREFRAME)
     {
         style = GHOST_STYLE_GHOST;
     }
     LLGLSLShader* shader = have_fx ? fx : gHighlightProgram.mRiggedVariant;
-    LLGLSLShader* static_shader = have_fx ? &gActorGhostProgram : &gHighlightProgram;
+    LLGLSLShader* static_shader = have_fx ? fx_base : &gHighlightProgram;
+    LLGLSLShader* indexed_shader = gp.mWorldLinear
+        ? &gWorldSkinnedActorGhostIndexedProgram : nullptr;
+    const bool have_indexed_shader = indexed_shader
+        && indexed_shader->mProgramObject;
     if (!shader)
     {
+        if (out_complete)
+        {
+            *out_complete = false;
+        }
         return 0;
     }
     if (!static_shader->mProgramObject)
     {
+        if (static_faces && !static_faces->empty())
+        {
+            complete = false;
+        }
         static_faces = nullptr;     // base variant unavailable: rigged-only ghost
     }
 
@@ -9522,6 +9774,10 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     // instead -- the caller falls back to the billboard/stick card.
     if (!pivot.isFinite() || !foot.isFinite())
     {
+        if (out_complete)
+        {
+            *out_complete = false;
+        }
         return 0;
     }
 
@@ -9533,57 +9789,28 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     // (re)applied to whichever variant a sweep binds.
     LLColor4  style_color(1.f, 1.f, 1.f, alpha);    // set per style below
     LLVector4 style_params(0.f, 0.f, 0.f, 6.f);     // ghostParams per style
-    // Use one small, double-precision clock value for the whole viewer frame.
-    // Freeze it for the complete tiled-snapshot operation so a procedural look
-    // cannot advance between tiles.  Reducing the absolute uptime to float was
-    // also the source of late-session shimmer stutter.
-    static bool sGhostClockInitialized = false;
-    static F64 sGhostClockEpoch = 0.0;
-    static U32 sGhostClockFrame = U32_MAX;
-    static F64 sGhostFrameClock = 0.0;
-    if (sGhostClockFrame != gFrameCount)
-    {
-        sGhostClockFrame = gFrameCount;
-        sGhostFrameClock = LLFrameTimer::getElapsedSeconds();
-    }
-    if (!sGhostClockInitialized)
-    {
-        sGhostClockEpoch = sGhostFrameClock;
-        sGhostClockInitialized = true;
-    }
-    const F64 elapsed = llmax(sGhostFrameClock - sGhostClockEpoch, 0.0);
-    static F64 sGhostSnapshotTime = 0.0;
-    static bool sGhostWasSnapshot = false;
-    if (gSnapshot && !sGhostWasSnapshot)
-    {
-        sGhostSnapshotTime = elapsed;
-    }
-    const F64 ghost_real_time = gSnapshot ? sGhostSnapshotTime : elapsed;
-    sGhostWasSnapshot = gSnapshot;
-    const F64 effect_fps = static_cast<F64>(llclamp(gp.mEffectFps, 0.f, 30.f));
-    const F64 ghost_time_64 = effect_fps > 0.0
-        ? floor(ghost_real_time * effect_fps) / effect_fps
-        : ghost_real_time;
-    const F32 ghost_now = static_cast<F32>(ghost_time_64);
+    const F32 ghost_now = gp.mWorldLinear
+        ? LLRenderPass::actorFxFrameTime(gp.mEffectFps)
+        : actor_ghost_studio_frame_time(gp.mEffectFps);
+    bool glow_only = false;
 
     // gl_FragCoord restarts at zero for each high-resolution snapshot tile.
     // Supply its bottom-up whole-image pixel origin so scanlines, noise and
     // pixel blocks meet exactly at the tile boundaries (including HiDPI).
-    F32 ghost_tile_x = 0.f;
-    F32 ghost_tile_y = 0.f;
-    const F32 zoom = LLViewerCamera::getInstance()->getZoomFactor();
-    if (gSnapshot && gViewerWindow && zoom > 1.f)
-    {
-        const S32 tiles = llceil(zoom);
-        const S32 sub = LLViewerCamera::getInstance()->getZoomSubRegion();
-        const S32 tile_y = sub / tiles;
-        const S32 tile_x = sub - tile_y * tiles;
-        ghost_tile_x = static_cast<F32>(tile_x * gViewerWindow->getWorldViewWidthRaw());
-        ghost_tile_y = static_cast<F32>(tile_y * gViewerWindow->getWorldViewHeightRaw());
-    }
+    const LLVector2 ghost_frag_offset = gp.mWorldLinear
+        ? LLRenderPass::actorFxFragOffset() : actor_ghost_frag_offset();
+    const LLVector2 ghost_screen_size = gp.mWorldLinear
+        ? LLRenderPass::actorFxScreenSize() : LLVector2(1.f, 1.f);
     auto apply_program = [&](LLGLSLShader* sh)
     {
-        sh->bind();
+        if (gp.mWorldLinear)
+        {
+            gPipeline.bindDeferredShaderFast(*sh);
+        }
+        else
+        {
+            sh->bind();
+        }
         if (have_fx)
         {
             // neutral alpha state (per-draw code retargets ghostAux.xy and
@@ -9602,9 +9829,26 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             // so a program switch / empty sweep never inherits the prior
             // draw's per-batch upload
             sh->uniform1i(sGhostUseVertexAlpha, 0);
+            if (gp.mWorldLinear)
+            {
+                sh->uniform1i(sGhostAlphaCutoffMode,
+                              GHOST_CUTOFF_NONE);
+            }
             sh->uniform2f(sGhostAlpha, 0.f, 1.f);
             sh->uniform1i(sGhostWorldLinear, gp.mWorldLinear ? 1 : 0);
-            sh->uniform2f(sGhostFragOffset, ghost_tile_x, ghost_tile_y);
+            if (gp.mWorldLinear)
+            {
+                sh->uniform1i(sGhostGlowOnly, glow_only ? 1 : 0);
+            }
+            sh->uniform2fv(sGhostFragOffset, 1, ghost_frag_offset.mV);
+            if (gp.mWorldLinear)
+            {
+                sh->uniform2fv(sGhostScreenSize, 1, ghost_screen_size.mV);
+                sh->uniform1f(sGhostCoverageLayerStrength,
+                              gp.mCoverageLayerStrength);
+            }
+            sh->uniform1f(sGhostDissolveProgress,
+                          llclamp(gp.mDissolveProgress, 0.f, 1.f));
         }
         // [R2-4] park the diffuse_color GENERIC at white: buffers WITHOUT a
         // COLOR array (PBR) read the generic, whose GL boot default is BLACK
@@ -9673,6 +9917,11 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     // has its real texture bound for its ALPHA channel
     auto draw_batches = [&](S32 subset, bool texture_rgb, bool clone_color, bool alpha_aware)
     {
+        // A preceding static sweep or indexed batch may have left a different
+        // program bound. Start every rigged sweep from a proven scalar state;
+        // individual indexed descriptors switch below and the tail restores it.
+        apply_program(shader);
+        LLGLSLShader* active_shader = shader;
         const LLVOAvatar* lastAvatar = nullptr;
         U64  lastMeshId = 0;
         bool skipLastSkin = false;
@@ -9682,6 +9931,12 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         for (const LLActorMover::GhostBatch& gb : batches)
         {
             LLDrawInfo* di = gb.mInfo;
+            if (!di || di->mVertexBuffer.isNull() || di->mAvatar.isNull()
+                || di->mSkinInfo.isNull())
+            {
+                complete = false;
+                continue;
+            }
             const bool is_blend = ghost_pass_is_blend(gb.mPass);
             const bool is_glow  = ghost_pass_is_glow(gb.mPass);
             // glow duplicates base-pass geometry: only the glow sweep draws it
@@ -9693,6 +9948,40 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 || (subset == SWEEP_BLEND && !is_blend))
             {
                 continue;
+            }
+
+            const S32 indexed_slot_count =
+                ghost_legacy_indexed_slot_count(di);
+            const bool indexed_world = gp.mWorldLinear
+                && indexed_slot_count > 1;
+            if (indexed_world
+                && !di->mVertexBuffer->hasDataType(
+                    LLVertexBuffer::TYPE_TEXTURE_INDEX))
+            {
+                // Queue preflight rejects this before suppression. If source
+                // topology mutates mid-frame, drop the component and report an
+                // invariant failure rather than silently drawing slot zero.
+                complete = false;
+                continue;
+            }
+            LLGLSLShader* batch_shader = indexed_world
+                ? indexed_shader : shader;
+            if (!batch_shader || !batch_shader->mProgramObject
+                || (batch_shader->mAttributeMask
+                    & ~di->mVertexBuffer->getTypeMask()))
+            {
+                complete = false;
+                continue;
+            }
+            if (batch_shader != active_shader)
+            {
+                apply_program(batch_shader);
+                active_shader = batch_shader;
+                lastAvatar = nullptr;
+                lastMeshId = 0;
+                skipLastSkin = false;
+                cur_cutoff = -1.f;
+                tex_mat_on = false;
             }
 
             // matrix palette: a FROZEN studio instance uploads the snapshot
@@ -9708,9 +9997,10 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 {
                     // same uniform the live path drives (AVATAR_MATRIX, GL-ready
                     // 3x4 floats, 12 per joint)
-                    shader->uniformMatrix3x4fv(LLViewerShaderMgr::AVATAR_MATRIX,
-                                               (U32)(fit->second.size() / 12),
-                                               false, fit->second.data());
+                    batch_shader->uniformMatrix3x4fv(
+                        LLViewerShaderMgr::AVATAR_MATRIX,
+                        (U32)(fit->second.size() / 12), false,
+                        fit->second.data());
                     // poison the live-upload cache so a following live batch
                     // re-uploads instead of "already bound" skipping
                     lastAvatar = nullptr;
@@ -9722,22 +10012,34 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 && !LLRenderPass::uploadMatrixPalette(di->mAvatar, di->mSkinInfo,
                                                       lastAvatar, lastMeshId, skipLastSkin))
             {
+                complete = false;
                 continue;
             }
 
             const bool is_mask = ghost_pass_is_mask(gb.mPass);
 
             // Vertex-colour ALPHA is real opacity only where the stock
-            // pipeline honors it: the alpha pool, plus cutoff-masked PBR.
-            // PBR OPAQUE ignores the completed base-colour alpha, so it must
-            // ignore BOTH texture and vertex alpha here too. Legacy non-alpha-
-            // pool faces bake SHININESS there (shiny "None" == 0).
+            // pipeline honors it: BLEND, ordinary simple MASK, and PBR MASK.
+            // Fullbright/material MASK use texture-only coverage (material
+            // also biases the cutoff); PBR OPAQUE ignores base-colour alpha.
+            // Legacy non-alpha-pool faces otherwise bake SHININESS there
+            // (shiny "None" == 0).
             if (have_fx)
             {
                 const bool is_pbr = di->mGLTFMaterial.notNull()
                     || !di->mGLTFMaterialList.empty();
-                const bool use_vertex_alpha = is_blend || (is_pbr && is_mask);
-                shader->uniform1i(sGhostUseVertexAlpha, use_vertex_alpha ? 1 : 0);
+                const S32 cutoff_mode = is_mask
+                    ? ghost_batch_alpha_cutoff_mode(gb.mPass)
+                    : GHOST_CUTOFF_NONE;
+                const bool use_vertex_alpha = is_blend
+                    || cutoff_mode == GHOST_CUTOFF_TEXTURE_VERTEX_ALPHA
+                    || (is_pbr && is_mask);
+                batch_shader->uniform1i(sGhostUseVertexAlpha,
+                                        use_vertex_alpha ? 1 : 0);
+                if (gp.mWorldLinear)
+                {
+                    batch_shader->uniform1i(sGhostAlphaCutoffMode, cutoff_mode);
+                }
             }
 
             // [R2-5] double-sided GLTF unculls for this batch, exactly like
@@ -9750,6 +10052,148 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                          && di->mGLTFMaterialList[ds]->mDoubleSided;
             }
             LLGLDisable no_cull(two_sided ? GL_CULL_FACE : 0);
+
+            // Shared world replay uses the viewer's full ordinary indexed-
+            // texture width (tex0..texN). Both mTextureList and legacy
+            // mMaterialSlotList therefore shade their complete VBO exactly
+            // once per intentional depth/beauty/bloom/wire sweep. Ghost Studio
+            // remains on the historical scalar slot-filter loop below.
+            if (indexed_world)
+            {
+                const S32 capacity = LLGLSLShader::sIndexedTextureChannels;
+                if (!have_indexed_shader || indexed_slot_count > capacity)
+                {
+                    complete = false;
+                    continue;
+                }
+
+                const bool material_slots =
+                    di->mMaterialSlotList.size() > 1;
+                const bool authored_alpha = alpha_aware
+                    && (is_mask || is_blend);
+                S32 cutoff_mode = is_mask
+                    ? ghost_batch_alpha_cutoff_mode(gb.mPass)
+                    : GHOST_CUTOFF_NONE;
+                F32 common_cutoff = alpha_aware
+                    ? ghost_batch_cutoff(di, gb.mPass) : 0.f;
+                if (alpha_aware && style == GHOST_STYLE_WIREFRAME
+                    && is_blend)
+                {
+                    // Hidden-line replay discards only fully transparent card
+                    // texels while retaining continuous authored BLEND alpha.
+                    cutoff_mode = GHOST_CUTOFF_TEXTURE_VERTEX_ALPHA;
+                    common_cutoff = llmax(common_cutoff, 1.f / 255.f);
+                }
+
+                // Shader mapping has an engine-wide 32-channel canary. Keep
+                // the hot replay path entirely stack based: Layer can execute
+                // several intentional sweeps, and per-batch heap churn here
+                // would recreate the reported indexed-material FPS cliff.
+                constexpr S32 MAX_INDEXED_GHOST_CHANNELS = 32;
+                if (capacity > MAX_INDEXED_GHOST_CHANNELS)
+                {
+                    complete = false;
+                    continue;
+                }
+                F32 material_factor[4 * MAX_INDEXED_GHOST_CHANNELS];
+                F32 texture_alpha[MAX_INDEXED_GHOST_CHANNELS];
+                F32 minimum_alpha[MAX_INDEXED_GHOST_CHANNELS];
+                GLint use_vertex_alpha[MAX_INDEXED_GHOST_CHANNELS];
+                GLint alpha_cutoff_mode[MAX_INDEXED_GHOST_CHANNELS];
+                std::fill(std::begin(material_factor),
+                          std::end(material_factor), 1.f);
+                std::fill(std::begin(texture_alpha),
+                          std::end(texture_alpha),
+                          authored_alpha ? 1.f : 0.f);
+                std::fill(std::begin(minimum_alpha),
+                          std::end(minimum_alpha), common_cutoff);
+                std::fill(std::begin(use_vertex_alpha),
+                          std::end(use_vertex_alpha),
+                          (is_blend
+                           || cutoff_mode
+                                == GHOST_CUTOFF_TEXTURE_VERTEX_ALPHA)
+                              ? 1 : 0);
+                std::fill(std::begin(alpha_cutoff_mode),
+                          std::end(alpha_cutoff_mode), cutoff_mode);
+
+                // Clone's authored-colour baseline is common to the batch;
+                // the factor array carries only the rare no-texture/no-colour
+                // mid-grey fallback that formerly varied per slot.
+                if (clone_color)
+                {
+                    F32 r = 0.98f, g = 0.98f, b = 0.98f;
+                    if (gp.mTintCustom)
+                    {
+                        const F32 mx = llmax(
+                            llmax(tint.mV[0], tint.mV[1]),
+                            llmax(tint.mV[2], 0.001f));
+                        constexpr F32 st = 0.65f;
+                        r *= 1.f - st + st * (tint.mV[0] / mx);
+                        g *= 1.f - st + st * (tint.mV[1] / mx);
+                        b *= 1.f - st + st * (tint.mV[2] / mx);
+                    }
+                    gGL.diffuseColor4f(r, g, b, alpha);
+                }
+
+                for (S32 slot = 0; slot < indexed_slot_count; ++slot)
+                {
+                    LLViewerTexture* tex = nullptr;
+                    if (material_slots)
+                    {
+                        const LLDrawInfo::MaterialSlot& material =
+                            di->mMaterialSlotList[(size_t)slot];
+                        tex = material.mDiffuse.get();
+                        if (is_mask)
+                        {
+                            minimum_alpha[slot] =
+                                material.mAlphaMaskCutoff;
+                        }
+                    }
+                    else if ((size_t)slot < di->mTextureList.size())
+                    {
+                        tex = di->mTextureList[(size_t)slot].get();
+                    }
+                    gGL.getTexUnit(slot)->bind(
+                        tex ? tex
+                            : (LLViewerTexture*)
+                                LLViewerFetchedTexture::sWhiteImagep);
+
+                    if (clone_color && !tex
+                        && !(di->mVertexBuffer->getTypeMask()
+                             & LLVertexBuffer::MAP_COLOR))
+                    {
+                        const size_t base = (size_t)slot * 4u;
+                        material_factor[base] = 0.5f / 0.98f;
+                        material_factor[base + 1] = 0.5f / 0.98f;
+                        material_factor[base + 2] = 0.5f / 0.98f;
+                    }
+                }
+
+                batch_shader->uniform4fv(
+                    sGhostIndexedMaterialFactor, indexed_slot_count,
+                    material_factor);
+                batch_shader->uniform1fv(
+                    sGhostIndexedTextureAlpha, indexed_slot_count,
+                    texture_alpha);
+                batch_shader->uniform1fv(
+                    sGhostIndexedMinimumAlpha, indexed_slot_count,
+                    minimum_alpha);
+                batch_shader->uniform1iv(
+                    sGhostIndexedUseVertexAlpha, indexed_slot_count,
+                    use_vertex_alpha);
+                batch_shader->uniform1iv(
+                    sGhostIndexedAlphaCutoffMode, indexed_slot_count,
+                    alpha_cutoff_mode);
+                batch_shader->uniform4f(
+                    sGhostAux, 0.f, tex_mix, gp.mPixelSize, gp.mPhase);
+                batch_shader->uniform1i(sGhostSlot, -1);
+
+                di->mVertexBuffer->setBuffer();
+                di->mVertexBuffer->drawRange(
+                    LLRender::TRIANGLES, di->mStart, di->mEnd,
+                    di->mCount, di->mOffset);
+                continue;
+            }
 
             // [R2-2] indexed multi-material batches: the vertex buffer's
             // texture_index attribute picks the material per vertex, so ONE
@@ -9968,6 +10412,11 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             gGL.loadIdentity();
             gGL.matrixMode(LLRender::MM_MODELVIEW);
         }
+        if (active_shader != shader)
+        {
+            apply_program(shader);
+            active_shader = shader;
+        }
         if (have_fx)
         {
             shader->uniform1i(sGhostSlot, -1);      // never leak the slot filter
@@ -10002,6 +10451,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             LLVertexBuffer* vb = face ? face->getVertexBuffer() : nullptr;
             if (!vb)
             {
+                complete = false;
                 continue;
             }
 
@@ -10068,15 +10518,24 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             }
             if (have_fx)
             {
-                // same channel-semantics gate as the rigged sweep, per face:
-                // isInAlphaPool() matches llface's vertex-alpha bake gate.
-                // PBR vertex/base-colour alpha participates only for MASK or
-                // BLEND; OPAQUE explicitly ignores it.
+                // Same channel-semantics gate as the rigged sweep, per face:
+                // alpha-pool BLEND and ordinary simple/PBR MASK use diffuse
+                // vertex alpha. Fullbright/material MASK are texture-only;
+                // PBR OPAQUE explicitly ignores base-colour alpha.
                 const bool authored_alpha = alpha_aware && gf.mAlphaKind != 0;
+                const S32 cutoff_mode = gf.mAlphaKind == 1
+                    ? ghost_static_alpha_cutoff_mode(gf)
+                    : GHOST_CUTOFF_NONE;
                 const bool use_vertex_alpha = face->isInAlphaPool()
+                    || cutoff_mode == GHOST_CUTOFF_TEXTURE_VERTEX_ALPHA
                     || (gmat != nullptr && authored_alpha);
                 static_shader->uniform1i(sGhostUseVertexAlpha,
                     use_vertex_alpha ? 1 : 0);
+                if (gp.mWorldLinear)
+                {
+                    static_shader->uniform1i(sGhostAlphaCutoffMode,
+                                             cutoff_mode);
+                }
                 static_shader->uniform2f(sGhostAlpha,
                     authored_alpha ? 1.f : 0.f,
                     1.f);
@@ -10173,6 +10632,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     // [GhostDeferred] the prime deliberately IGNORES overlay_mask: a deferred-
     // covered solid category is exactly the occluder the remaining overlay
     // categories need, so every present solid still primes depth here.
+    if (!gp.mNativeDepthAvailable)
     {
         LLGLDepthTest depth(GL_TRUE, GL_TRUE, GL_LESS);
         LLGLDisable   blend(GL_BLEND);
@@ -10205,6 +10665,27 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     // --- pass 2: shade the primed front layer, per style ---
     // each style sets style_color / style_params FIRST (apply_program pushes
     // them to whichever shader variant a sweep binds), then runs its sweeps
+    if (!gp.mDepthOnly)
+    {
+    // In the main HDR target alpha is the bloom channel, not ordinary colour
+    // opacity. Shared world-linear beauty must therefore match the native
+    // alpha pool's separate RGB/alpha factors: composite RGB normally while
+    // attenuating bloom behind the translucent surface. Ghost Studio's legacy
+    // offscreen/path rendering retains its established two-factor blend.
+    auto set_alpha_beauty_blend = [&gp]()
+    {
+        if (gp.mWorldLinear)
+        {
+            gGL.blendFunc(LLRender::BF_SOURCE_ALPHA,
+                          LLRender::BF_ONE_MINUS_SOURCE_ALPHA,
+                          LLRender::BF_ZERO,
+                          LLRender::BF_ONE_MINUS_SOURCE_ALPHA);
+        }
+        else
+        {
+            gGL.setSceneBlendType(LLRender::BT_ALPHA);
+        }
+    };
     switch (style)
     {
     case GHOST_STYLE_CLONE:
@@ -10226,7 +10707,28 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         if (overlay_mask & (GHOST_COVERAGE_RIGGED_SOLID | GHOST_COVERAGE_STATIC_SOLID))
         {
             LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
-            LLGLDisable   blend(GL_BLEND);
+            // A world-linear opaque/masked beauty fragment replaces HDR RGB
+            // and explicitly clears bloom beneath it. Its authored/synthetic
+            // bloom is then added exactly once by the deliberate glow sweep.
+            // Legacy ghost rendering keeps the original no-blend behaviour.
+            LLGLDisable no_blend(gp.mWorldLinear ? 0 : GL_BLEND);
+            LLGLEnable world_blend(gp.mWorldLinear ? GL_BLEND : 0);
+            if (gp.mWorldLinear)
+            {
+                // Clone is the one style whose historical Studio solid sweep
+                // is opaque. In the live world path, only a fully opaque Cover
+                // has that contract. Layer and a partial Cover must respect the
+                // operator's style opacity, just like system/BOM and shared PBR.
+                if (gp.mCoverMode && alpha >= 0.999f)
+                {
+                    gGL.blendFunc(LLRender::BF_ONE, LLRender::BF_ZERO,
+                                  LLRender::BF_ZERO, LLRender::BF_ZERO);
+                }
+                else
+                {
+                    set_alpha_beauty_blend();
+                }
+            }
             if (overlay_mask & GHOST_COVERAGE_RIGGED_SOLID)
             {
                 draw_batches(SWEEP_SOLID, true, true, true);
@@ -10236,11 +10738,14 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 draw_static(SWEEP_SOLID, true, true, true);
             }
         }
+        // The blended and glow sweeps need alpha writes enabled even when the
+        // preceding world-linear solid sweep used replacement semantics.
+        gGL.setColorMask(true, true);
         if (overlay_mask & (GHOST_COVERAGE_RIGGED_BLEND | GHOST_COVERAGE_STATIC_BLEND))
         {
             LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
             LLGLEnable    blend(GL_BLEND);
-            gGL.setSceneBlendType(LLRender::BT_ALPHA);
+            set_alpha_beauty_blend();
             if (overlay_mask & GHOST_COVERAGE_RIGGED_BLEND)
             {
                 draw_batches(SWEEP_BLEND, true, true, true);
@@ -10256,7 +10761,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             LLGLEnable    blend(GL_BLEND);
             gGL.setSceneBlendType(LLRender::BT_ADD);
             draw_batches(SWEEP_GLOW, true, true, true);
-            gGL.setSceneBlendType(LLRender::BT_ALPHA);  // leave standard state
+            set_alpha_beauty_blend();  // leave standard state
         }
         break;
     }
@@ -10266,7 +10771,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         // white than the classic ghost, and more opaque, so 1px lines read)
         LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
         LLGLEnable    blend(GL_BLEND);
-        gGL.setSceneBlendType(LLRender::BT_ALPHA);
+        set_alpha_beauty_blend();
         gGL.setColorMask(true, true);
         const F32 t = 0.55f;
         style_color.set(tint.mV[VX] * (1.f - t) + t,
@@ -10288,7 +10793,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         // the look (x scanlines, y rim, z flicker, w scanline period px)
         LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
         LLGLEnable    blend(GL_BLEND);
-        gGL.setSceneBlendType(LLRender::BT_ALPHA);
+        set_alpha_beauty_blend();
         gGL.setColorMask(true, true);
         if (style == GHOST_STYLE_HOLOGRAM)
         {
@@ -10309,13 +10814,24 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             style_color.set(0.55f * (1.f - t) + tint.mV[VX] * t,
                             0.75f * (1.f - t) + tint.mV[VY] * t,
                             1.00f * (1.f - t) + tint.mV[VZ] * t,
-                            alpha * 0.4f);
+                            gp.mWorldLinear ? alpha : alpha * 0.4f);
             style_params = LLVector4(0.f, 2.2f, 0.f, 6.f);
         }
         gGL.diffuseColor4fv(style_color.mV);
         shader->uniform4fv(sGhostParams, 1, style_params.mV);
         draw_batches(SWEEP_SOLID, true, false, true);
         draw_static(SWEEP_SOLID, true, false, true);
+        // Shared live Actor FX must replay authored BLEND cards (hair, lace,
+        // multi-face alpha) at the actor's alpha-stream turn. Ghost Studio and
+        // path ghosts deliberately retain their established overlay semantics.
+        if (gp.mWorldLinear)
+        {
+            // Preserve this look's style_color on authored alpha cards.  The
+            // texture still supplies RGB/coverage, but Clone's per-material
+            // colour setup must never replace Hologram/X-ray tint/opacity.
+            draw_batches(SWEEP_BLEND, true, false, true);
+            draw_static(SWEEP_BLEND, true, false, true);
+        }
         break;
     }
     case GHOST_STYLE_THERMAL:
@@ -10347,14 +10863,27 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         // resolving every indexed material slot for texture-driven looks.
         LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
         LLGLEnable blend(GL_BLEND);
-        gGL.setSceneBlendType(LLRender::BT_ALPHA);
+        set_alpha_beauty_blend();
         gGL.setColorMask(true, true);
-        style_color.set(tint.mV[VX], tint.mV[VY], tint.mV[VZ], alpha);
+        const bool coverage_layer = gp.mWorldLinear
+            && style == GHOST_STYLE_DISSOLVE
+            && gp.mCoverageLayerStrength >= 0.f;
+        style_color.set(tint.mV[VX], tint.mV[VY], tint.mV[VZ],
+                        coverage_layer ? 1.f : alpha);
+        // ghostParams.x remains the historical scanline channel. Dedicated
+        // world-only ghostCoverageLayerStrength carries Dissolve's Layer mix.
         style_params = LLVector4(0.f, 1.f, 0.f, 8.f);
         gGL.diffuseColor4fv(style_color.mV);
         shader->uniform4fv(sGhostParams, 1, style_params.mV);
         draw_batches(SWEEP_SOLID, true, false, true);
         draw_static(SWEEP_SOLID, true, false, true);
+        if (gp.mWorldLinear)
+        {
+            // Creative looks keep their own style colour on blended surfaces;
+            // clone_color is exclusively the Clone look's authored-colour path.
+            draw_batches(SWEEP_BLEND, true, false, true);
+            draw_static(SWEEP_BLEND, true, false, true);
+        }
         break;
     }
     case GHOST_STYLE_GHOST:
@@ -10365,7 +10894,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         // actors' ghosts stay distinguishable without hiding the body shape
         LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
         LLGLEnable    blend(GL_BLEND);
-        gGL.setSceneBlendType(LLRender::BT_ALPHA);
+        set_alpha_beauty_blend();
         gGL.setColorMask(true, true);
         const F32 t = 0.25f;
         style_color.set(1.f - t + tint.mV[VX] * t,
@@ -10375,18 +10904,62 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         gGL.diffuseColor4fv(style_color.mV);
         draw_batches(SWEEP_SOLID, false, false, true);
         draw_static(SWEEP_SOLID, false, false, true);
+        if (gp.mWorldLinear)
+        {
+            draw_batches(SWEEP_BLEND, false, false, true);
+            draw_static(SWEEP_BLEND, false, false, true);
+        }
         break;
+    }
+    }
+
+    // Shared live Actor FX beauty clears/attenuates HDR alpha deliberately, so
+    // the treatment bloom must be replayed as a separate alpha-only draw. Reuse
+    // the exact actorghost program and geometry subset from this queue item:
+    // animated scanlines/noise, mask cutoffs, authored BLEND coverage, indexed
+    // material slots and the moving dissolve boundary therefore cannot drift.
+    if (gp.mWorldLinear && LLRenderPass::actorFxLookNeedsSyntheticBloom(style))
+    {
+        ScopedSharedActorHDRDrawBuffer hdr_only(true);
+        LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
+        LLGLEnable blend(GL_BLEND);
+        gGL.setColorMask(true, true);
+        gGL.blendFunc(LLRender::BF_ZERO, LLRender::BF_ONE,
+                      LLRender::BF_ONE, LLRender::BF_ONE);
+        glow_only = true;
+        apply_program(shader);
+        draw_batches(SWEEP_ALL, true, false, true);
+        draw_static(SWEEP_ALL, true, false, true);
+        glow_only = false;
+        apply_program(shader); // never leak glow-only into the next shared item
+        gGL.blendFunc(LLRender::BF_SOURCE_ALPHA,
+                      LLRender::BF_ONE_MINUS_SOURCE_ALPHA,
+                      LLRender::BF_ZERO,
+                      LLRender::BF_ONE_MINUS_SOURCE_ALPHA);
     }
     }
 
     gGL.popMatrix();
     gGL.syncMatrices();
     gGL.setColorMask(true, true);
+    if (gp.mWorldLinear && !gp.mDepthOnly)
+    {
+        // Shared replay is interleaved with native LLDrawPoolAlpha items. Never
+        // leak Clone replacement/additive factors into the next queue item.
+        gGL.blendFunc(LLRender::BF_SOURCE_ALPHA,
+                      LLRender::BF_ONE_MINUS_SOURCE_ALPHA,
+                      LLRender::BF_ZERO,
+                      LLRender::BF_ONE_MINUS_SOURCE_ALPHA);
+    }
     gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
     // [R2-4] restore the diffuse_color generic to the GL boot default so no
     // later pass inherits our white park (generic state is global)
     shader->vertexAttrib4f(LLVertexBuffer::TYPE_COLOR, 0.f, 0.f, 0.f, 1.f);
     shader->unbind();   // draw_static always hands back to the rigged program
+    if (out_complete)
+    {
+        *out_complete = complete;
+    }
     return (S32)(batches.size() + (static_faces ? static_faces->size() : 0));
 }
 } // anonymous namespace
@@ -10418,10 +10991,9 @@ bool ghost_pass_is_blend(U32 pass)
 // emissive sweep -- otherwise the body would double-draw. Only the GLTF glow
 // pass is collected: PBR emissive is real surface COLOUR (emissive map x
 // emissive colour -- the missing iris on emissive-driven eyes); legacy
-// PASS_GLOW_RIGGED is a bloom intensity whose per-vertex glow amount lives in
-// the EMISSIVE vertex attribute this shader does not read, so honoring it
-// faithfully is out of scope (its faces' base colour already draws via their
-// base pass).
+// PASS_GLOW_RIGGED is deliberately NOT part of this public Ghost Studio sweep:
+// shared Actor FX harvests that duplicate through a private callback/map and
+// replays it with the stock emissive attribute contract under Cover only.
 bool ghost_pass_is_glow(U32 pass)
 {
     return pass == LLRenderPass::PASS_GLTF_GLOW_RIGGED;
@@ -11119,7 +11691,9 @@ constexpr U32 kRiggedPasses[] = {
 // No draw calls, no dedup here -- callers decide what to keep.
 void LLActorMover::walkGhostSourceGeometry(LLVOAvatar* av,
                                            const ghost_rigged_source_cb_t& rigged_cb,
-                                           const ghost_static_source_cb_t& static_cb)
+                                           const ghost_static_source_cb_t& static_cb,
+                                           const ghost_rigged_source_cb_t&
+                                               shared_legacy_glow_cb)
 {
     if (!av || av->isDead())
     {
@@ -11217,11 +11791,42 @@ void LLActorMover::walkGhostSourceGeometry(LLVOAvatar* av,
                 rigged_cb(av, group, pass, draw_info);
             }
         }
+
+        // PASS_GLOW_RIGGED duplicates base geometry and is not part of Ghost
+        // Studio's historical beauty domain. Enumerate it only for the explicit
+        // shared-activation consumer so ordinary clones cannot accidentally
+        // shade the bloom sidecar as a solid surface.
+        if (shared_legacy_glow_cb)
+        {
+            constexpr U32 pass = LLRenderPass::PASS_GLOW_RIGGED;
+            auto found = group->mDrawMap.find(pass);
+            if (found != group->mDrawMap.end())
+            {
+                for (const LLPointer<LLDrawInfo>& draw_info : found->second)
+                {
+                    LLDrawInfo* di = draw_info.get();
+                    if (!di || di->mAvatar.isNull()
+                        || di->mSkinInfo.isNull()
+                        || di->mVertexBuffer.isNull())
+                    {
+                        continue;
+                    }
+                    shared_legacy_glow_cb(av, group, pass, draw_info);
+                }
+            }
+        }
     }
 }
 
 void LLActorMover::collectGhostBatches()
 {
+    // Shared Actor FX is strictly same-frame. Clear first so every early return
+    // is fail-open for native beauty rather than reusing stale replay pointers.
+    mSharedActorStyleProxies.clear();
+    mSharedActorLegacyGlowBatches.clear();
+    mSharedActorStyleFrame = LLFrameTimer::getFrameCount();
+    mSharedActorStyleDepthFrame = 0xFFFFFFFF;
+
     // Three independent reasons to collect: the PATH-NODE ghost preview (its
     // classic gate: setting trio + an operator floater up) and the GHOST
     // STUDIO (enabled instances render floater-or-not -- they are scene
@@ -11244,13 +11849,13 @@ void LLActorMover::collectGhostBatches()
     }
     const bool studio = ALGhostStudio::instance().anyEnabled();
     LLDirectorCast& director_cast = LLDirectorCast::instance();
-    bool actor_styles = actor_style_wants_overlay(
+    bool actor_styles = actor_style_wants_shared_replay(
         director_cast.getActorStyle(LLUUID::null));
     if (!actor_styles)
     {
         for (const LLDirectorCast::CastMember& member : director_cast.getCast())
         {
-            if (actor_style_wants_overlay(
+            if (actor_style_wants_shared_replay(
                     director_cast.getActorStyle(member.mId)))
             {
                 actor_styles = true;
@@ -11323,7 +11928,7 @@ void LLActorMover::collectGhostBatches()
         // wanted set deduplicates a wearer that is reachable through both keys.
         auto add_styled_actor = [&](const LLUUID& style_id)
         {
-            if (!actor_style_wants_overlay(
+            if (!actor_style_wants_shared_replay(
                     director_cast.getActorStyle(style_id)))
             {
                 return;
@@ -11441,7 +12046,8 @@ void LLActorMover::collectGhostBatches()
                     if (b.mInfo->mVertexBuffer.get() == di->mVertexBuffer.get()
                         && b.mInfo->mStart == di->mStart && b.mInfo->mEnd == di->mEnd
                         && b.mInfo->mOffset == di->mOffset
-                        && ghost_pass_sweep_class(b.mPass) == ghost_pass_sweep_class(pass))
+                        && ghost_pass_sweep_class(b.mPass) ==
+                           ghost_pass_sweep_class(pass))
                     {
                         dup = true;
                         break;
@@ -11449,7 +12055,7 @@ void LLActorMover::collectGhostBatches()
                 }
                 if (!dup)
                 {
-                    bucket.push_back({ di, pass });
+                    bucket.push_back({ di, pass, group });
                 }
                 // [CloneFidelity] raw source truth + whether the VB+range dedup
                 // retained THIS entry (so the audit can report DROP_DEDUP).
@@ -11517,7 +12123,42 @@ void LLActorMover::collectGhostBatches()
                 // (pass the alpha classification directly -- no pointer retained).
                 LLCloneFidelityAudit::instance().captureEarlyStatic(
                     wearer, obj, face, gf.mAlphaKind, gf.mCutoff, gf.mDoubleSided);
-            });
+            },
+            actor_styles
+                ? ghost_rigged_source_cb_t(
+                    [&](LLVOAvatar* wearer, LLSpatialGroup* group, U32 pass,
+                        const LLPointer<LLDrawInfo>& draw_info)
+                    {
+                        LLDrawInfo* di = draw_info.get();
+                        LLVOAvatar* drawing_avatar = di ? di->mAvatar.get() : nullptr;
+                        const bool belongs_to_wearer = drawing_avatar == wearer
+                            || (drawing_avatar && drawing_avatar->isControlAvatar()
+                                && drawing_avatar->getAttachedAvatar() == wearer);
+                        if (!belongs_to_wearer)
+                        {
+                            return;
+                        }
+
+                        std::vector<GhostBatch>& glow_bucket =
+                            mSharedActorLegacyGlowBatches[wearer->getID()];
+                        const bool duplicate = std::find_if(
+                            glow_bucket.begin(), glow_bucket.end(),
+                            [di](const GhostBatch& batch)
+                            {
+                                return batch.mInfo
+                                    && batch.mInfo->mVertexBuffer.get()
+                                        == di->mVertexBuffer.get()
+                                    && batch.mInfo->mStart == di->mStart
+                                    && batch.mInfo->mEnd == di->mEnd
+                                    && batch.mInfo->mCount == di->mCount
+                                    && batch.mInfo->mOffset == di->mOffset;
+                            }) != glow_bucket.end();
+                        if (!duplicate)
+                        {
+                            glow_bucket.push_back({ di, pass, group });
+                        }
+                    })
+                : ghost_rigged_source_cb_t{});
 
         // keep both maps miss-cheap
         if (bucket.empty())
@@ -11531,6 +12172,7 @@ void LLActorMover::collectGhostBatches()
     }
 
     LLCloneFidelityAudit::instance().endEarlyCapture();
+    buildSharedActorStyleQueue();
 }
 
 // ---------------------------------------------------------------------------
@@ -12053,153 +12695,2961 @@ void LLActorMover::renderStudioGhosts()
 }
 
 // ---------------------------------------------------------------------------
-// [ActorStyle] Draw the topology-wireframe exception at each actor's exact live
-// placement. Every color/material look remains in the native pass. Harvested
-// rigged batches already reference the current skinning owner, palette, and VBO;
-// using live-foot as both destination and implicit pivot collapses placement to
-// identity (T(foot) * T(-foot)). This is an extra line draw, not an avatar clone,
-// and actor_style_wants_overlay() keeps the path dormant for all non-wire looks.
-void LLActorMover::renderStyledActors()
+// [ActorStyle] Dedicated classic/system-avatar replay. Modern attachments use
+// harvested DrawInfo/face geometry; BOM head/upper/lower/skirt/hair/eyelashes
+// instead live behind LLVOAvatar::renderSkinned and its classic matrix palette.
+// Keep this a two-sweep API so the shared proxy scheduler can submit SOLID at
+// the opaque boundary and BLEND in its ordered alpha stage.
+bool LLActorMover::canRenderSystemActorGhost(LLVOAvatar* avatar,
+                                             const LLUUID& style_id) const
 {
-    LLDirectorCast& director_cast = LLDirectorCast::instance();
-
-    struct StyledActorItem
+    if (!avatar || avatar->isDead() || avatar->isControlAvatar()
+        || avatar->isUIAvatar() || avatar->mDrawable.isNull()
+        || avatar->isHardVisualMute()
+        || avatar->getOverallAppearance() == LLVOAvatar::AOA_INVISIBLE
+        || !gPipeline.hasRenderType(LLPipeline::RENDER_TYPE_AVATAR)
+        || !gAvatarActorGhostProgram.mProgramObject
+        || !gAvatarEyeballActorGhostProgram.mProgramObject
+        || gAvatarActorGhostProgram.getUniformLocation(
+               sGhostAlphaCutoffMode) < 0
+        || gAvatarEyeballActorGhostProgram.getUniformLocation(
+               sGhostAlphaCutoffMode) < 0
+        || gAvatarActorGhostProgram.getUniformLocation(sGhostScreenSize) < 0
+        || gAvatarEyeballActorGhostProgram.getUniformLocation(
+               sGhostScreenSize) < 0
+        || gAvatarActorGhostProgram.getUniformLocation(
+               sGhostCoverageLayerStrength) < 0
+        || gAvatarEyeballActorGhostProgram.getUniformLocation(
+               sGhostCoverageLayerStrength) < 0
+        || !avatar->isActorGhostSystemReplayReady())
     {
-        LLUUID mStyleId;
-        LLVOAvatar* mAvatar = nullptr;
-        LLDirectorCast::ActorStyle mStyle;
-        const std::vector<GhostBatch>* mBatches = nullptr;
-        const std::vector<GhostStaticFace>* mStaticFaces = nullptr;
-        LLVector3 mFootAgent;
+        return false;
+    }
+
+    static LLCachedControl<bool> friends_only(
+        gSavedSettings, "RenderAvatarFriendsOnly", false);
+    if (friends_only() && !avatar->isSelf() && !avatar->isBuddy())
+    {
+        return false;
+    }
+
+    const LLDirectorCast::ActorStyle& style =
+        LLDirectorCast::instance().getActorStyle(style_id);
+    return style.mEnabled
+        && (style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE
+            || style.mAlpha > 0.001f);
+}
+
+bool LLActorMover::renderSystemActorGhost(LLVOAvatar* avatar,
+                                          const LLUUID& style_id,
+                                          bool blend_sweep,
+                                          bool depth_only,
+                                          bool depth_available)
+{
+    if (!canRenderSystemActorGhost(avatar, style_id))
+    {
+        return false;
+    }
+
+    const LLDirectorCast::ActorStyle& style =
+        LLDirectorCast::instance().getActorStyle(style_id);
+    const S32 look = llclamp(style.mStyle,
+                             static_cast<S32>(GHOST_STYLE_GHOST),
+                             static_cast<S32>(GHOST_STYLE_HOLO_ECHO));
+    const F32 treatment_strength = llclamp(style.mAlpha, 0.f, 1.f);
+    const bool coverage_replacement =
+        style.mMode == LLDirectorCast::ACTOR_STYLE_LAYER
+        && look == GHOST_STYLE_DISSOLVE;
+    // Ordinary Layer alpha is compositing opacity. Dissolve instead owns the
+    // authored surface so its coverage can match PBR/shadows; alpha remains a
+    // separate treatment strength and the replay itself stays material-opaque.
+    const F32 base_alpha = coverage_replacement ? 1.f : treatment_strength;
+
+    const LLUUID stable_id = style_id.isNull() && gAgentID.notNull()
+        ? gAgentID : style_id;
+    LLColor4 tint;
+    if (style.mUseActorHue)
+    {
+        tint = actorPathColor(stable_id);
+    }
+    else
+    {
+        tint.setHSL(fmodf(llmax(style.mHue, 0.f), 360.f) / 360.f,
+                    0.9f, 0.6f);
+        tint.mV[VW] = 1.f;
+    }
+
+    LLColor4 style_color(tint.mV[VX], tint.mV[VY], tint.mV[VZ], base_alpha);
+    LLVector4 style_params(0.f, 0.f, 0.f, 6.f);
+    bool texture_rgb = look != GHOST_STYLE_GHOST
+                    && look != GHOST_STYLE_WIREFRAME;
+    if (look == GHOST_STYLE_CLONE)
+    {
+        style_color.set(0.98f, 0.98f, 0.98f, base_alpha);
+        if (!style.mUseActorHue)
+        {
+            const F32 mx = llmax(llmax(tint.mV[VX], tint.mV[VY]),
+                                 llmax(tint.mV[VZ], 0.001f));
+            constexpr F32 strength = 0.65f;
+            style_color.mV[VX] *= 1.f - strength + strength * tint.mV[VX] / mx;
+            style_color.mV[VY] *= 1.f - strength + strength * tint.mV[VY] / mx;
+            style_color.mV[VZ] *= 1.f - strength + strength * tint.mV[VZ] / mx;
+        }
+    }
+    else if (look == GHOST_STYLE_HOLOGRAM)
+    {
+        constexpr F32 t = 0.25f;
+        style_color.set(0.25f * (1.f - t) + tint.mV[VX] * t,
+                        0.85f * (1.f - t) + tint.mV[VY] * t,
+                        1.00f * (1.f - t) + tint.mV[VZ] * t,
+                        base_alpha);
+        style_params.set(1.f, 0.8f, 1.f, 6.f);
+    }
+    else if (look == GHOST_STYLE_XRAY)
+    {
+        constexpr F32 t = 0.35f;
+        style_color.set(0.55f * (1.f - t) + tint.mV[VX] * t,
+                        0.75f * (1.f - t) + tint.mV[VY] * t,
+                        1.00f * (1.f - t) + tint.mV[VZ] * t,
+                        base_alpha);
+        style_params.set(0.f, 2.2f, 0.f, 6.f);
+    }
+    else if (look == GHOST_STYLE_WIREFRAME)
+    {
+        constexpr F32 t = 0.55f;
+        style_color.set(tint.mV[VX] * (1.f - t) + t,
+                        tint.mV[VY] * (1.f - t) + t,
+                        tint.mV[VZ] * (1.f - t) + t,
+                        llmin(1.f, base_alpha * 1.5f));
+    }
+    else if (look == GHOST_STYLE_GHOST)
+    {
+        constexpr F32 t = 0.25f;
+        style_color.set(1.f - t + tint.mV[VX] * t,
+                        1.f - t + tint.mV[VY] * t,
+                        1.f - t + tint.mV[VZ] * t,
+                        base_alpha);
+    }
+    else
+    {
+        style_params.set(0.f, 1.f, 0.f, 8.f);
+    }
+
+    GhostDrawParams gp;
+    gp.mPixelSize = llmax(0.f, style.mPixelSize);
+    gp.mShimmerSpeed = llmax(0.f, style.mShimmerSpeed);
+    gp.mShimmerIntensity = llclamp(style.mShimmerAmount, 0.f, 1.f);
+    gp.mGlitch = llclamp(style.mGlitch, 0.f, 1.f);
+    gp.mDistort = llmax(0, style.mDistortion);
+    gp.mDistortAmount = llclamp(style.mDistortionAmount, 0.f, 1.f);
+    gp.mBrightness = llclamp(style.mBrightness, 0.05f, 1.5f);
+    gp.mEffectFps = llclamp(style.mEffectFps, 0.f, 30.f);
+    gp.mDissolveProgress = llclamp(style.mDissolveProgress, 0.f, 1.f);
+    gp.mWorldLinear = true;
+    gp.mPhase = (F32)(stable_id.mData[0] | (stable_id.mData[1] << 8))
+        * (F_TWO_PI / 65536.f);
+
+    const F32 ghost_now = LLRenderPass::actorFxFrameTime(gp.mEffectFps);
+    const LLVector2 frag_offset = LLRenderPass::actorFxFragOffset();
+    const LLVector2 screen_size = LLRenderPass::actorFxScreenSize();
+    bool glow_only = false;
+    auto upload = [&](LLGLSLShader& shader, F32 cutoff)
+    {
+        shader.uniform1f(sGhostTime, ghost_now);
+        shader.uniform4fv(sGhostParams, 1, style_params.mV);
+        shader.uniform4f(sGhostAux, cutoff, texture_rgb ? 1.f : 0.f,
+                         gp.mPixelSize, gp.mPhase);
+        shader.uniform4f(sGhostFx, gp.mShimmerSpeed, gp.mShimmerIntensity,
+                         gp.mGlitch, gp.mBrightness);
+        shader.uniform1i(sGhostSlot, -1);
+        shader.uniform1i(sGhostLook, look);
+        shader.uniform1i(sGhostDistort, gp.mDistort);
+        shader.uniform4f(sGhostDistortParams, gp.mDistortAmount,
+                         0.5f, 0.5f, 0.f);
+        shader.uniform1i(sGhostUseVertexAlpha, 0);
+        shader.uniform1i(sGhostAlphaCutoffMode,
+            cutoff > 0.f ? GHOST_CUTOFF_TEXTURE_ONLY : GHOST_CUTOFF_NONE);
+        shader.uniform2f(sGhostAlpha, 1.f, 1.f);
+        shader.uniform1i(sGhostWorldLinear, 1);
+        shader.uniform1i(sGhostGlowOnly, glow_only ? 1 : 0);
+        shader.uniform2fv(sGhostFragOffset, 1, frag_offset.mV);
+        shader.uniform2fv(sGhostScreenSize, 1, screen_size.mV);
+        shader.uniform1f(sGhostDissolveProgress, gp.mDissolveProgress);
+        shader.uniform1f(sGhostCoverageLayerStrength,
+                         coverage_replacement ? treatment_strength : -1.f);
+        shader.uniform4fv(sGhostSystemColor, 1, style_color.mV);
     };
 
-    std::vector<StyledActorItem> items;
+    LLGLSLShader* saved_shader = LLGLSLShader::sCurBoundShaderPtr;
+    const U32 saved_texture_unit = gGL.getCurrentTexUnitIndex();
+    LLGLSLShader* saved_avatar_shader = LLDrawPoolAvatar::sVertexProgram;
+    const S32 saved_diffuse_channel = LLDrawPoolAvatar::sDiffuseChannel;
+    const bool saved_skip_opaque = LLDrawPoolAvatar::sSkipOpaque;
+    const bool saved_skip_transparent = LLDrawPoolAvatar::sSkipTransparent;
+
+    const bool alpha_blend = !depth_only && (blend_sweep
+        || style.mMode == LLDirectorCast::ACTOR_STYLE_LAYER
+        || look != GHOST_STYLE_CLONE
+        || base_alpha < 0.999f);
+    // Cover and coverage-changing Layer+Dissolve suppress native beauty, so
+    // their solid replay must restore the ordinary opaque depth surface.
+    // BLEND remains depth-tested with no writes so alpha cards never occlude.
+    const bool replace_solid = !blend_sweep
+        && (style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE
+            || coverage_replacement);
+    const bool write_solid_depth = replace_solid && !depth_available;
+    LLGLDepthTest depth(GL_TRUE, write_solid_depth,
+                        write_solid_depth ? GL_LESS : GL_LEQUAL);
+    // Shared system-avatar beauty is composited directly into the HDR target,
+    // whose alpha channel is bloom rather than ordinary surface opacity.
+    // Keep blending enabled for every colour draw so the opaque Clone case can
+    // replace RGB while explicitly clearing bloom beneath its covered pixels.
+    LLGLState blend(GL_BLEND, !depth_only
+        ? LLGLState::ENABLED_STATE : LLGLState::DISABLED_STATE);
+    LLGLEnable cull(GL_CULL_FACE);
+    if (alpha_blend)
+    {
+        gGL.blendFunc(LLRender::BF_SOURCE_ALPHA,
+                      LLRender::BF_ONE_MINUS_SOURCE_ALPHA,
+                      LLRender::BF_ZERO,
+                      LLRender::BF_ONE_MINUS_SOURCE_ALPHA);
+    }
+    else if (!depth_only)
+    {
+        gGL.blendFunc(LLRender::BF_ONE, LLRender::BF_ZERO,
+                      LLRender::BF_ZERO, LLRender::BF_ZERO);
+    }
+    gGL.setColorMask(!depth_only, !depth_only);
+
+    const GLenum saved_polygon_mode = gUseWireframe ? GL_LINE : GL_FILL;
+    if (look == GHOST_STYLE_WIREFRAME && !depth_only)
+    {
+        gGL.flush();
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    }
+
+    LLGLSLShader& body_shader = gAvatarActorGhostProgram;
+    gPipeline.bindDeferredShaderFast(body_shader);
+    const S32 body_diffuse = body_shader.enableTexture(
+        LLViewerShaderMgr::DIFFUSE_MAP);
+    LLDrawPoolAvatar::sVertexProgram = &body_shader;
+    LLDrawPoolAvatar::sDiffuseChannel = body_diffuse;
+    // Opaque system body/head meshes use the viewer's authored BOM alpha-mask
+    // cutoff.  The separate BLEND sweep must keep the complete coverage ramp;
+    // applying 0.2 there would punch away faint hair/eyelash/skirt texels.
+    upload(body_shader, blend_sweep ? 0.f : LLDrawPoolAvatar::sMinimumAlpha);
+    if (LLPipeline::RenderAvatarCloth)
+    {
+        LLMatrix4 rot_mat;
+        LLViewerCamera::getInstance()->getMatrixToLocal(rot_mat);
+        LLMatrix4 cfr(OGL_TO_CFR_ROTATION);
+        rot_mat *= cfr;
+
+        LLVector4 wind;
+        wind.setVec(avatar->mWindVec);
+        wind.mV[VW] = 0.f;
+        wind = wind * rot_mat;
+        wind.mV[VW] = avatar->mWindVec.mV[VW];
+        body_shader.uniform4fv(LLViewerShaderMgr::AVATAR_WIND, 1, wind.mV);
+
+        const F32 phase = -avatar->mRipplePhase;
+        const F32 freq = 7.f + noise1(avatar->mRipplePhase) * 2.f;
+        const LLVector4 sin_params(freq, freq, freq, phase);
+        body_shader.uniform4fv(LLViewerShaderMgr::AVATAR_SINWAVE,
+                               1, sin_params.mV);
+
+        LLVector4 gravity(0.f, 0.f, -0.7f, 0.f);
+        gravity = gravity * rot_mat;
+        body_shader.uniform4fv(LLViewerShaderMgr::AVATAR_GRAVITY,
+                               1, gravity.mV);
+    }
+    if (blend_sweep)
+    {
+        // The stock transparent path assumes the opaque pass already uploaded
+        // this program's palette. Shared alpha can be interleaved much later,
+        // so explicitly seed it from the first available classic body mesh.
+        avatar->uploadActorGhostPalette();
+        avatar->renderTransparent(true);
+    }
+    else
+    {
+        LLDrawPoolAvatar::sSkipOpaque = false;
+        LLDrawPoolAvatar::sSkipTransparent = true;
+        avatar->renderSkinned();
+    }
+    body_shader.disableTexture(LLViewerShaderMgr::DIFFUSE_MAP);
+
+    if (!blend_sweep)
+    {
+        LLGLSLShader& eye_shader = gAvatarEyeballActorGhostProgram;
+        gPipeline.bindDeferredShaderFast(eye_shader);
+        const S32 eye_diffuse = eye_shader.enableTexture(
+            LLViewerShaderMgr::DIFFUSE_MAP);
+        LLDrawPoolAvatar::sVertexProgram = &eye_shader;
+        LLDrawPoolAvatar::sDiffuseChannel = eye_diffuse;
+        upload(eye_shader, LLDrawPoolAvatar::sMinimumAlpha);
+        avatar->renderRigid();
+        eye_shader.disableTexture(LLViewerShaderMgr::DIFFUSE_MAP);
+    }
+
+    // BOM body/head/skirt and rigid eyes do not use the generic rigged VBO
+    // layout, so replay them through their own actorghost permutations. This is
+    // the same geometry/coverage path as beauty, now with RGB preserved and the
+    // animated treatment energy accumulated into HDR bloom alpha only.
+    if (!depth_only && LLRenderPass::actorFxLookNeedsSyntheticBloom(look))
+    {
+        ScopedSharedActorHDRDrawBuffer hdr_only(true);
+        LLGLDepthTest glow_depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
+        LLGLEnable glow_blend(GL_BLEND);
+        gGL.setColorMask(true, true);
+        gGL.blendFunc(LLRender::BF_ZERO, LLRender::BF_ONE,
+                      LLRender::BF_ONE, LLRender::BF_ONE);
+        glow_only = true;
+
+        gPipeline.bindDeferredShaderFast(body_shader);
+        const S32 glow_body_diffuse = body_shader.enableTexture(
+            LLViewerShaderMgr::DIFFUSE_MAP);
+        LLDrawPoolAvatar::sVertexProgram = &body_shader;
+        LLDrawPoolAvatar::sDiffuseChannel = glow_body_diffuse;
+        upload(body_shader, blend_sweep ? 0.f : LLDrawPoolAvatar::sMinimumAlpha);
+        if (blend_sweep)
+        {
+            avatar->uploadActorGhostPalette();
+            avatar->renderTransparent(true);
+        }
+        else
+        {
+            LLDrawPoolAvatar::sSkipOpaque = false;
+            LLDrawPoolAvatar::sSkipTransparent = true;
+            avatar->renderSkinned();
+        }
+        body_shader.disableTexture(LLViewerShaderMgr::DIFFUSE_MAP);
+
+        if (!blend_sweep)
+        {
+            LLGLSLShader& eye_shader = gAvatarEyeballActorGhostProgram;
+            gPipeline.bindDeferredShaderFast(eye_shader);
+            const S32 glow_eye_diffuse = eye_shader.enableTexture(
+                LLViewerShaderMgr::DIFFUSE_MAP);
+            LLDrawPoolAvatar::sVertexProgram = &eye_shader;
+            LLDrawPoolAvatar::sDiffuseChannel = glow_eye_diffuse;
+            upload(eye_shader, LLDrawPoolAvatar::sMinimumAlpha);
+            avatar->renderRigid();
+            eye_shader.disableTexture(LLViewerShaderMgr::DIFFUSE_MAP);
+        }
+
+        glow_only = false;
+        gPipeline.bindDeferredShaderFast(body_shader);
+        upload(body_shader, blend_sweep ? 0.f : LLDrawPoolAvatar::sMinimumAlpha);
+        gGL.blendFunc(LLRender::BF_SOURCE_ALPHA,
+                      LLRender::BF_ONE_MINUS_SOURCE_ALPHA,
+                      LLRender::BF_ZERO,
+                      LLRender::BF_ONE_MINUS_SOURCE_ALPHA);
+    }
+
+    gGL.flush();
+    if (look == GHOST_STYLE_WIREFRAME && !depth_only)
+    {
+        glPolygonMode(GL_FRONT_AND_BACK, saved_polygon_mode);
+    }
+    LLDrawPoolAvatar::sVertexProgram = saved_avatar_shader;
+    LLDrawPoolAvatar::sDiffuseChannel = saved_diffuse_channel;
+    LLDrawPoolAvatar::sSkipOpaque = saved_skip_opaque;
+    LLDrawPoolAvatar::sSkipTransparent = saved_skip_transparent;
+    gGL.setColorMask(true, true);
+    if (!depth_only)
+    {
+        // The shared actor item sits inside the native alpha drain. Restore its
+        // expected split HDR blend after an opaque replacement draw as well.
+        gGL.blendFunc(LLRender::BF_SOURCE_ALPHA,
+                      LLRender::BF_ONE_MINUS_SOURCE_ALPHA,
+                      LLRender::BF_ZERO,
+                      LLRender::BF_ONE_MINUS_SOURCE_ALPHA);
+    }
+    LLVertexBuffer::unbind();
+    if (saved_shader && saved_shader->mProgramObject)
+    {
+        saved_shader->bind();
+    }
+    else
+    {
+        LLGLSLShader::unbind();
+    }
+    gGL.getTexUnit(saved_texture_unit)->activate();
+    return true;
+}
+
+// ---------------------------------------------------------------------------
+// [ActorStyle/SharedActivation] Build one frame-local solid item per eligible
+// actor plus one item for each authored alpha component. Ghost Studio's harvest
+// is intentionally permissive; every descriptor is re-gated here so Actor FX
+// never revives hidden geometry.
+namespace
+{
+bool shared_rigged_descriptor_ready(const LLActorMover::GhostBatch& batch)
+{
+    LLDrawInfo* info = batch.mInfo;
+    LLVertexBuffer* vb = info ? info->mVertexBuffer.get() : nullptr;
+    LLVOAvatar* drawing_avatar = info ? info->mAvatar.get() : nullptr;
+    if (!info || !vb || !drawing_avatar || drawing_avatar->isDead()
+        || info->mSkinInfo.isNull() || !info->mCount
+        || info->mStart > info->mEnd
+        || info->mEnd >= vb->getNumVerts()
+        || info->mOffset > vb->getNumIndices()
+        || info->mCount > vb->getNumIndices() - info->mOffset)
+    {
+        return false;
+    }
+
+    // This is the sole late structural failure in uploadMatrixPalette().
+    // Prove it now, in the same frame, before actor-wide native suppression.
+    const LLVOAvatar::MatrixPaletteCache& palette =
+        drawing_avatar->updateSkinInfoMatrixPalette(info->mSkinInfo);
+    if (palette.mMatrixPalette.empty() || palette.mGLMp.empty())
+    {
+        return false;
+    }
+
+    const S32 slot_count = ghost_batch_slot_count(info);
+    if (slot_count > 1)
+    {
+        if (!vb->hasDataType(LLVertexBuffer::TYPE_TEXTURE_INDEX))
+        {
+            return false;
+        }
+        // The actorghost per-slot loop deliberately skips null GLTF gap slots.
+        // Without scanning the GPU index attribute we cannot prove such a gap
+        // is unreferenced, so shared activation conservatively fails open.
+        if (info->mGLTFMaterialList.size() > 1)
+        {
+            for (const LLPointer<LLFetchedGLTFMaterial>& material :
+                 info->mGLTFMaterialList)
+            {
+                if (material.isNull())
+                {
+                    return false;
+                }
+            }
+        }
+    }
+
+    if (ghost_pass_is_glow(batch.mPass)
+        && info->mGLTFMaterialList.size() <= 1
+        && info->mGLTFMaterial.isNull())
+    {
+        return false;
+    }
+    return true;
+}
+
+bool shared_world_indexed_actorghost_ready(
+    const LLActorMover::GhostBatch& batch)
+{
+    LLDrawInfo* info = batch.mInfo;
+    LLVertexBuffer* vb = info ? info->mVertexBuffer.get() : nullptr;
+    const S32 slots = ghost_legacy_indexed_slot_count(info);
+    if (slots <= 1)
+    {
+        return true;
+    }
+    if (!vb || !vb->hasDataType(LLVertexBuffer::TYPE_TEXTURE_INDEX)
+        || slots > LLGLSLShader::sIndexedTextureChannels
+        || !gWorldSkinnedActorGhostIndexedProgram.mProgramObject
+        || (gWorldSkinnedActorGhostIndexedProgram.mAttributeMask
+            & ~vb->getTypeMask()))
+    {
+        return false;
+    }
+
+    // Every indexed-only array plus every world creative-control uniform is
+    // proven before actor-wide suppression. A driver optimizing out or failing
+    // to link any part of this contract keeps the whole actor native for the
+    // frame instead of publishing a partial shared replay.
+    LLGLSLShader& shader = gWorldSkinnedActorGhostIndexedProgram;
+    const LLStaticHashedString* required[] = {
+        &sGhostTime, &sGhostParams, &sGhostAux, &sGhostFx, &sGhostSlot,
+        &sGhostLook, &sGhostDistort, &sGhostDistortParams,
+        &sGhostWorldLinear, &sGhostGlowOnly, &sGhostFragOffset,
+        &sGhostScreenSize, &sGhostDissolveProgress,
+        &sGhostCoverageLayerStrength, &sGhostIndexedMaterialFactor,
+        &sGhostIndexedTextureAlpha, &sGhostIndexedMinimumAlpha,
+        &sGhostIndexedUseVertexAlpha, &sGhostIndexedAlphaCutoffMode
+    };
+    for (const LLStaticHashedString* uniform : required)
+    {
+        if (shader.getUniformLocation(*uniform) < 0)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool shared_static_descriptor_ready(const LLActorMover::GhostStaticFace& source)
+{
+    LLFace* face = source.mFace;
+    LLVertexBuffer* vb = face ? face->getVertexBuffer() : nullptr;
+    if (!face || !vb || !face->getGeomCount() || !face->getIndicesCount())
+    {
+        return false;
+    }
+    const U32 vertex_offset = face->getGeomIndex();
+    const U32 vertex_count = face->getGeomCount();
+    const U32 index_offset = face->getIndicesStart();
+    const U32 index_count = face->getIndicesCount();
+    return vertex_offset < vb->getNumVerts()
+        && vertex_count <= vb->getNumVerts() - vertex_offset
+        && index_offset <= vb->getNumIndices()
+        && index_count <= vb->getNumIndices() - index_offset;
+}
+
+bool shared_batch_is_pbr(const LLActorMover::GhostBatch& batch)
+{
+    const LLDrawInfo* info = batch.mInfo;
+    return info && (info->mGLTFMaterial.notNull()
+                    || !info->mGLTFMaterialList.empty());
+}
+
+bool shared_legacy_glow_ready(const LLActorMover::GhostBatch& batch)
+{
+    static const LLStaticHashedString sAuthoredOnly(
+        "actorFxSharedAuthoredOnly");
+    static const LLStaticHashedString sGlowAttenuation(
+        "actorFxSharedGlowAttenuation");
+    static const LLStaticHashedString sMinimumAlpha(
+        "actorFxSharedMinimumAlpha");
+    static const LLStaticHashedString sAlphaCutoffMode(
+        "actorFxSharedAlphaCutoffMode");
+    static const LLStaticHashedString sUseCoverageAlpha(
+        "actorFxUseCoverageAlpha");
+    LLDrawInfo* info = batch.mInfo;
+    LLVertexBuffer* vb = info ? info->mVertexBuffer.get() : nullptr;
+    if (!ghost_pass_is_legacy_authored_glow(batch.mPass) || !vb
+        || !vb->hasDataType(LLVertexBuffer::TYPE_EMISSIVE))
+    {
+        return false;
+    }
+
+    const bool indexed = info->mMaterialSlotList.size() > 1;
+    LLGLSLShader* shader = indexed
+        ? gDeferredEmissiveIndexedProgram.mRiggedVariant
+        : gDeferredEmissiveProgram.mRiggedVariant;
+    if (!shader || !shader->mProgramObject
+        || !(shader->mAttributeMask & LLVertexBuffer::MAP_EMISSIVE)
+        || (shader->mAttributeMask & ~vb->getTypeMask())
+        || shader->getUniformLocation(sAuthoredOnly) < 0
+        || shader->getUniformLocation(sGlowAttenuation) < 0
+        || shader->getUniformLocation(sMinimumAlpha) < 0
+        || shader->getUniformLocation(sAlphaCutoffMode) < 0
+        || shader->getUniformLocation(sUseCoverageAlpha) < 0)
+    {
+        return false;
+    }
+    if (indexed)
+    {
+        const S32 slots = (S32)info->mMaterialSlotList.size();
+        return LLGLSLShader::sIndexedGLTFChannels > 0
+            && slots <= llmin(LLGLSLShader::sIndexedGLTFChannels, 8)
+            && vb->hasDataType(LLVertexBuffer::TYPE_TEXTURE_INDEX);
+    }
+    return info->mTextureList.size()
+        <= (size_t)LLGLSLShader::sIndexedTextureChannels;
+}
+
+bool shared_legacy_blend_glow_ready(
+    const LLActorMover::GhostBatch& batch)
+{
+    static const LLStaticHashedString sAuthoredOnly(
+        "actorFxSharedAuthoredOnly");
+    static const LLStaticHashedString sGlowAttenuation(
+        "actorFxSharedGlowAttenuation");
+    static const LLStaticHashedString sMinimumAlpha(
+        "actorFxSharedMinimumAlpha");
+    static const LLStaticHashedString sAlphaCutoffMode(
+        "actorFxSharedAlphaCutoffMode");
+    static const LLStaticHashedString sUseCoverageAlpha(
+        "actorFxUseCoverageAlpha");
+    LLDrawInfo* info = batch.mInfo;
+    LLVertexBuffer* vb = info ? info->mVertexBuffer.get() : nullptr;
+    if (!ghost_pass_is_blend(batch.mPass) || !info || !info->mHasGlow
+        || !vb || !vb->hasDataType(LLVertexBuffer::TYPE_EMISSIVE))
+    {
+        return false;
+    }
+
+    const bool indexed = info->mMaterialSlotList.size() > 1;
+    LLGLSLShader* shader = indexed
+        ? gDeferredEmissiveIndexedProgram.mRiggedVariant
+        : gDeferredEmissiveProgram.mRiggedVariant;
+    if (!shader || !shader->mProgramObject
+        || !(shader->mAttributeMask & LLVertexBuffer::MAP_EMISSIVE)
+        || (shader->mAttributeMask & ~vb->getTypeMask())
+        || shader->getUniformLocation(sAuthoredOnly) < 0
+        || shader->getUniformLocation(sGlowAttenuation) < 0
+        || shader->getUniformLocation(sMinimumAlpha) < 0
+        || shader->getUniformLocation(sAlphaCutoffMode) < 0
+        || shader->getUniformLocation(sUseCoverageAlpha) < 0)
+    {
+        return false;
+    }
+    if (indexed)
+    {
+        const S32 slots = (S32)info->mMaterialSlotList.size();
+        return LLGLSLShader::sIndexedGLTFChannels > 0
+            && slots <= llmin(LLGLSLShader::sIndexedGLTFChannels, 8)
+            && vb->hasDataType(LLVertexBuffer::TYPE_TEXTURE_INDEX);
+    }
+    return info->mTextureList.size()
+        <= (size_t)LLGLSLShader::sIndexedTextureChannels;
+}
+
+bool shared_same_static_geometry(const LLActorMover::GhostStaticFace& source,
+                                 const LLDrawInfo* info)
+{
+    LLFace* face = source.mFace;
+    LLVertexBuffer* vb = face ? face->getVertexBuffer() : nullptr;
+    return face && vb && info
+        && info->mVertexBuffer.get() == vb
+        && info->mStart == face->getGeomIndex()
+        && info->mEnd == face->getGeomIndex() + face->getGeomCount() - 1
+        && info->mCount == face->getIndicesCount()
+        && info->mOffset == face->getIndicesStart();
+}
+
+bool shared_static_legacy_glow_ready(const LLActorMover::GhostBatch& batch)
+{
+    static const LLStaticHashedString sAuthoredOnly(
+        "actorFxSharedAuthoredOnly");
+    static const LLStaticHashedString sGlowAttenuation(
+        "actorFxSharedGlowAttenuation");
+    static const LLStaticHashedString sMinimumAlpha(
+        "actorFxSharedMinimumAlpha");
+    static const LLStaticHashedString sAlphaCutoffMode(
+        "actorFxSharedAlphaCutoffMode");
+    static const LLStaticHashedString sUseCoverageAlpha(
+        "actorFxUseCoverageAlpha");
+    LLDrawInfo* info = batch.mInfo;
+    LLVertexBuffer* vb = info ? info->mVertexBuffer.get() : nullptr;
+    if (!info || batch.mPass != LLRenderPass::PASS_GLOW || !vb
+        || !info->mCount || info->mStart > info->mEnd
+        || info->mEnd >= vb->getNumVerts()
+        || info->mOffset > vb->getNumIndices()
+        || info->mCount > vb->getNumIndices() - info->mOffset
+        || !vb->hasDataType(LLVertexBuffer::TYPE_EMISSIVE))
+    {
+        return false;
+    }
+
+    const bool indexed = info->mMaterialSlotList.size() > 1;
+    LLGLSLShader* shader = indexed
+        ? &gDeferredEmissiveIndexedProgram
+        : &gDeferredEmissiveProgram;
+    if (!shader->mProgramObject
+        || !(shader->mAttributeMask & LLVertexBuffer::MAP_EMISSIVE)
+        || (shader->mAttributeMask & ~vb->getTypeMask())
+        || shader->getUniformLocation(sAuthoredOnly) < 0
+        || shader->getUniformLocation(sGlowAttenuation) < 0
+        || shader->getUniformLocation(sMinimumAlpha) < 0
+        || shader->getUniformLocation(sAlphaCutoffMode) < 0
+        || shader->getUniformLocation(sUseCoverageAlpha) < 0)
+    {
+        return false;
+    }
+    if (indexed)
+    {
+        const S32 slots = (S32)info->mMaterialSlotList.size();
+        return LLGLSLShader::sIndexedGLTFChannels > 0
+            && slots <= llmin(LLGLSLShader::sIndexedGLTFChannels, 8)
+            && vb->hasDataType(LLVertexBuffer::TYPE_TEXTURE_INDEX);
+    }
+    return info->mTextureList.size()
+        <= (size_t)LLGLSLShader::sIndexedTextureChannels;
+}
+
+bool shared_static_legacy_blend_glow_ready(
+    const LLActorMover::GhostStaticFace& source)
+{
+    static const LLStaticHashedString sAuthoredOnly(
+        "actorFxSharedAuthoredOnly");
+    static const LLStaticHashedString sGlowAttenuation(
+        "actorFxSharedGlowAttenuation");
+    static const LLStaticHashedString sMinimumAlpha(
+        "actorFxSharedMinimumAlpha");
+    static const LLStaticHashedString sAlphaCutoffMode(
+        "actorFxSharedAlphaCutoffMode");
+    static const LLStaticHashedString sUseCoverageAlpha(
+        "actorFxUseCoverageAlpha");
+    LLFace* face = source.mFace;
+    LLVertexBuffer* vb = face ? face->getVertexBuffer() : nullptr;
+    const LLTextureEntry* te = face ? face->getTextureEntry() : nullptr;
+    LLDrawInfo* info = face ? face->mDrawInfo : nullptr;
+    const bool indexed = info && info->mMaterialSlotList.size() > 1;
+    LLGLSLShader* shader = indexed
+        ? &gDeferredEmissiveIndexedProgram : &gDeferredEmissiveProgram;
+    const U8 texture_index = face
+        ? face->getTextureIndex() : FACE_DO_NOT_BATCH_TEXTURES;
+    const bool texture_index_ready = indexed
+        ? info && texture_index < info->mMaterialSlotList.size()
+            && info->mMaterialSlotList.size()
+                <= (size_t)llmin(LLGLSLShader::sIndexedGLTFChannels, 8)
+            && vb && vb->hasDataType(LLVertexBuffer::TYPE_TEXTURE_INDEX)
+        : texture_index == FACE_DO_NOT_BATCH_TEXTURES
+            || texture_index < LLGLSLShader::sIndexedTextureChannels;
+    return source.mAlphaKind == 2 && te && te->getGlow() > 0.f
+        && shared_static_descriptor_ready(source) && vb
+        && vb->hasDataType(LLVertexBuffer::TYPE_EMISSIVE)
+        && texture_index_ready
+        && shader->mProgramObject
+        && (shader->mAttributeMask & LLVertexBuffer::MAP_EMISSIVE)
+        && !(shader->mAttributeMask & ~vb->getTypeMask())
+        && shader->getUniformLocation(sAuthoredOnly) >= 0
+        && shader->getUniformLocation(sGlowAttenuation) >= 0
+        && shader->getUniformLocation(sMinimumAlpha) >= 0
+        && shader->getUniformLocation(sAlphaCutoffMode) >= 0
+        && shader->getUniformLocation(sUseCoverageAlpha) >= 0;
+}
+
+bool shared_same_pbr_geometry(const LLDrawInfo* lhs, const LLDrawInfo* rhs)
+{
+    return lhs && rhs
+        && lhs->mVertexBuffer.get() == rhs->mVertexBuffer.get()
+        && lhs->mAvatar.get() == rhs->mAvatar.get()
+        && lhs->mSkinInfo.get() == rhs->mSkinInfo.get()
+        && lhs->mStart == rhs->mStart && lhs->mEnd == rhs->mEnd
+        && lhs->mCount == rhs->mCount && lhs->mOffset == rhs->mOffset;
+}
+
+bool shared_pbr_alpha_mode(const LLFetchedGLTFMaterial* material,
+                           U8& out_mode)
+{
+    if (!material)
+    {
+        return false;
+    }
+    switch (material->mAlphaMode)
+    {
+    case LLGLTFMaterial::ALPHA_MODE_OPAQUE:
+        out_mode = SHARED_ACTOR_FX_PBR_ALPHA_OPAQUE;
+        return true;
+    case LLGLTFMaterial::ALPHA_MODE_MASK:
+        out_mode = SHARED_ACTOR_FX_PBR_ALPHA_MASK;
+        return true;
+    case LLGLTFMaterial::ALPHA_MODE_BLEND:
+        out_mode = SHARED_ACTOR_FX_PBR_ALPHA_BLEND;
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool shared_pbr_material_has_authored_emissive(
+    const LLFetchedGLTFMaterial* material, bool& out_emissive)
+{
+    if (!material
+        || !llfinite(material->mEmissiveColor.mV[VX])
+        || !llfinite(material->mEmissiveColor.mV[VY])
+        || !llfinite(material->mEmissiveColor.mV[VZ]))
+    {
+        return false;
+    }
+    // Native PBR glow multiplies the emissive texture by this factor and by
+    // exact per-vertex TE glow. A black factor emits nothing even when a map or
+    // another face's group-wide TYPE_EMISSIVE stream happens to be present.
+    out_emissive = material->mEmissiveColor.mV[VX] > 0.f
+        || material->mEmissiveColor.mV[VY] > 0.f
+        || material->mEmissiveColor.mV[VZ] > 0.f;
+    return true;
+}
+
+LLFetchedGLTFMaterial* shared_static_pbr_material(
+    const LLActorMover::GhostStaticFace& source)
+{
+    LLFace* face = source.mFace;
+    const LLTextureEntry* te = face ? face->getTextureEntry() : nullptr;
+    return te ? dynamic_cast<LLFetchedGLTFMaterial*>(
+                    te->getGLTFRenderMaterial()) : nullptr;
+}
+
+// Match the alpha pool's group depth metric without mutating the source
+// group's cached sort state. Rigged-alpha groups deliberately skip the normal
+// updateDistance() path, so mDepth is not reliable for these replay items.
+F32 shared_component_alpha_depth(LLSpatialGroup* group, F32 fallback)
+{
+    if (!group || !group->getSpatialPartition())
+    {
+        return fallback;
+    }
+
+    auto depth_for_camera = [group](const LLCamera& camera) -> F32
+    {
+        const LLVector4a* bounds = group->getObjectBounds();
+        LLVector4a origin;
+        origin.load3(camera.getOrigin().mV);
+        LLVector4a eye;
+        eye.setSub(bounds[0], origin);
+
+        LLVector4a at;
+        at.load3(camera.getAtAxis().mV);
+        LLVector4a front = at;
+        front.mul(0.25f);
+        front.mul(bounds[1]);
+        eye.sub(front);
+        return eye.dot3(at).getF32();
+    };
+
+    LLCamera world_camera = *LLViewerCamera::getInstance();
+    if (LLSpatialBridge* bridge =
+            group->getSpatialPartition()->asBridge())
+    {
+        LLCamera local_camera = bridge->transformCamera(world_camera);
+        const F32 depth = depth_for_camera(local_camera);
+        return llfinite(depth) ? depth : fallback;
+    }
+    const F32 depth = depth_for_camera(world_camera);
+    return llfinite(depth) ? depth : fallback;
+}
+
+// Layer must composite immediately after the native actor ensemble.  Reuse the
+// exact avatar-depth stamp consumed by LLDrawPoolAlpha instead of recomputing a
+// per-component bounds key; Cover has no native alpha item and deliberately
+// keeps the component key above for world interleaving.
+F32 shared_native_layer_alpha_depth(LLSpatialGroup* group, F32 fallback)
+{
+    if (!group)
+    {
+        return fallback;
+    }
+
+    if (group->mAvatarp && llfinite(group->mAvatarDepth))
+    {
+        return group->mAvatarDepth;
+    }
+    LLSpatialPartition* partition = group->getSpatialPartition();
+    LLSpatialBridge* bridge = partition ? partition->asBridge() : nullptr;
+    if (bridge && bridge->mAvatarp && llfinite(bridge->mAvatarDepth))
+    {
+        return bridge->mAvatarDepth;
+    }
+    return fallback;
+}
+} // anonymous namespace
+
+void LLActorMover::buildSharedActorStyleQueue()
+{
+    mSharedActorStyleProxies.clear();
+    mSharedActorStyleFrame = LLFrameTimer::getFrameCount();
+    mSharedActorStyleDepthFrame = 0xFFFFFFFF;
+    // Suppressing native geometry is safe only when the authored Actor FX
+    // modules themselves are present.  Identity fallbacks may link, but they
+    // cannot provide an authoritative legacy/system/PBR/shadow replacement.
+    if (!shared_actor_main_world_context()
+        || !LLViewerShaderMgr::hasPrimaryActorFxModules())
+    {
+        return;
+    }
+
+    LLDirectorCast& director_cast = LLDirectorCast::instance();
+    const F32 water_height = gPipeline.getRenderWaterHeight();
+    const bool camera_above_water =
+        LLViewerCamera::getInstance()->getOrigin().mV[VZ] >= water_height;
     std::set<LLUUID> added_wearers;
+    std::set<LLUUID> exact_styled_controls;
+
+    auto remember_exact_control = [&](const LLUUID& style_id)
+    {
+        if (!actor_style_wants_shared_replay(
+                director_cast.getActorStyle(style_id)))
+        {
+            return;
+        }
+        LLVOAvatar* resolved = director_cast.resolve(style_id);
+        if (resolved && resolved->isControlAvatar())
+        {
+            exact_styled_controls.insert(resolved->getID());
+        }
+    };
+    remember_exact_control(LLUUID::null);
+    for (const LLDirectorCast::CastMember& member : director_cast.getCast())
+    {
+        remember_exact_control(member.mId);
+    }
+
+    auto actor_visible_in_main_cull = [&](LLVOAvatar* avatar) -> bool
+    {
+        if (!avatar || avatar->isDead() || !avatar->getRootJoint()
+            || avatar->isUIAvatar() || avatar->mDrawable.isNull()
+            || !avatar->mDrawable->isVisible() || !avatar->isVisible()
+            || !avatar->isFullyLoaded() || avatar->isHardVisualMute()
+            || avatar->getOverallAppearance() == LLVOAvatar::AOA_INVISIBLE)
+        {
+            return false;
+        }
+        if (avatar->isSelf() && !gAgent.needsRenderAvatar())
+        {
+            return false;
+        }
+        const U32 render_type = avatar->isControlAvatar()
+            ? LLPipeline::RENDER_TYPE_CONTROL_AV : LLPipeline::RENDER_TYPE_AVATAR;
+        if (!gPipeline.hasRenderType(render_type))
+        {
+            return false;
+        }
+
+        LLVOAvatar* wearer = avatar->getAttachedAvatar();
+        if (wearer && (wearer->isDead() || wearer->isUIAvatar()
+            || wearer->mDrawable.isNull() || !wearer->isVisible()
+            || wearer->isHardVisualMute()
+            || wearer->getOverallAppearance() == LLVOAvatar::AOA_INVISIBLE
+            || !gPipeline.hasRenderType(LLPipeline::RENDER_TYPE_AVATAR)))
+        {
+            return false;
+        }
+
+        LLSpatialGroup* avatar_group = avatar->mDrawable->getSpatialGroup();
+        if (avatar_group && (!avatar_group->isVisible()
+            || (LLPipeline::sUseOcclusion
+                && avatar_group->isOcclusionState(LLSpatialGroup::OCCLUDED))))
+        {
+            return false;
+        }
+
+        // Shared proxies are consumed exactly once, in POST_WATER. Only actors
+        // wholly on the camera side are eligible; opposite-side/straddling
+        // actors fail open to the native PRE/POST split.
+        const LLVector3* extents = avatar->getLastAnimExtents();
+        if (!extents || !extents[0].isFinite() || !extents[1].isFinite())
+        {
+            return false;
+        }
+        const F32 low_z = llmin(extents[0].mV[VZ], extents[1].mV[VZ]);
+        const F32 high_z = llmax(extents[0].mV[VZ], extents[1].mV[VZ]);
+        if ((low_z < water_height && high_z > water_height)
+            || (camera_above_water && low_z < water_height)
+            || (!camera_above_water && high_z > water_height))
+        {
+            return false;
+        }
+        return true;
+    };
+
     auto add_actor = [&](const LLUUID& style_id)
     {
         const LLDirectorCast::ActorStyle& style =
             director_cast.getActorStyle(style_id);
-        if (!actor_style_wants_overlay(style))
+        if (!actor_style_wants_shared_replay(style))
         {
             return;
         }
-
         LLVOAvatar* avatar = director_cast.resolve(style_id);
-        if (!avatar || avatar->isDead() || !avatar->getRootJoint()
+        if (!actor_visible_in_main_cull(avatar)
             || !added_wearers.insert(avatar->getID()).second)
         {
             return;
         }
 
-        const std::vector<GhostBatch>* batches =
-            ghostBatchesFor(avatar->getID());
-        const std::vector<GhostStaticFace>* static_faces =
-            ghostStaticFacesFor(avatar->getID());
-        if (!batches && !static_faces)
+        SharedActorStyleProxy proxy;
+        proxy.mStyleId = style_id;
+        proxy.mWearerId = avatar->getID();
+        proxy.mAvatar = avatar;
+        std::vector<GhostBatch> eligible_batches;
+        std::vector<GhostStaticFace> eligible_faces;
+        bool replay_complete = true;
+        const bool cover_mode =
+            style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE;
+        const bool coverage_replacement =
+            style.mMode == LLDirectorCast::ACTOR_STYLE_LAYER
+            && style.mStyle == GHOST_STYLE_DISSOLVE;
+        // Dissolve is the sole Layer look that changes authored coverage. Its
+        // shared replay must therefore own native beauty and authored bloom,
+        // just like Cover, or native colour/glow would remain in the holes.
+        const bool owns_native_beauty =
+            cover_mode || coverage_replacement;
+
+        if (const std::vector<GhostBatch>* harvested =
+                ghostBatchesFor(avatar->getID()))
+        {
+            for (const GhostBatch& batch : *harvested)
+            {
+                LLDrawInfo* info = batch.mInfo;
+                LLSpatialGroup* group = batch.mGroup;
+                if (!info || !group || group->isDead())
+                {
+                    replay_complete = false;
+                    continue;
+                }
+                if (!group->isVisible()
+                    || (LLPipeline::sUseOcclusion
+                        && group->isOcclusionState(LLSpatialGroup::OCCLUDED))
+                    || !gPipeline.hasRenderType(batch.mPass))
+                {
+                    continue;
+                }
+                LLVOAvatar* drawing_avatar = info->mAvatar.get();
+                if (drawing_avatar && drawing_avatar != avatar
+                    && drawing_avatar->isControlAvatar()
+                    && exact_styled_controls.count(drawing_avatar->getID()))
+                {
+                    // Exact control style owns this Animesh. The human wearer
+                    // inherits it only when no independent control style exists.
+                    continue;
+                }
+                if (!drawing_avatar || drawing_avatar->isDead())
+                {
+                    replay_complete = false;
+                    continue;
+                }
+                if (drawing_avatar->isUIAvatar()
+                    || drawing_avatar->isHardVisualMute()
+                    || drawing_avatar->getOverallAppearance()
+                        == LLVOAvatar::AOA_INVISIBLE
+                    || (drawing_avatar->isControlAvatar()
+                        && !gPipeline.hasRenderType(
+                            LLPipeline::RENDER_TYPE_CONTROL_AV)))
+                {
+                    continue;
+                }
+                if (!shared_rigged_descriptor_ready(batch))
+                {
+                    replay_complete = false;
+                    continue;
+                }
+                eligible_batches.push_back(batch);
+            }
+        }
+
+        if (const std::vector<GhostStaticFace>* harvested =
+                ghostStaticFacesFor(avatar->getID()))
+        {
+            for (const GhostStaticFace& source_face : *harvested)
+            {
+                LLFace* face = source_face.mFace;
+                LLDrawable* drawable = face ? face->getDrawable() : nullptr;
+                LLSpatialGroup* group = drawable ? drawable->getSpatialGroup() : nullptr;
+                if (!face || !drawable || drawable->isDead()
+                    || !group || group->isDead())
+                {
+                    replay_complete = false;
+                    continue;
+                }
+                if (!drawable->isVisible() || !group->isVisible()
+                    || (LLPipeline::sUseOcclusion
+                        && group->isOcclusionState(LLSpatialGroup::OCCLUDED))
+                    || !gPipeline.hasRenderType(face->getPoolType()))
+                {
+                    continue;
+                }
+                LLViewerObject* source_object = face->getViewerObject();
+                LLControlAvatar* source_control =
+                    source_object ? source_object->getControlAvatar() : nullptr;
+                if (source_control && source_control != avatar
+                    && exact_styled_controls.count(source_control->getID()))
+                {
+                    continue;
+                }
+                if (!shared_static_descriptor_ready(source_face))
+                {
+                    replay_complete = false;
+                    continue;
+                }
+                eligible_faces.push_back(source_face);
+            }
+        }
+
+        // Separate exact PBR replay from the legacy actorghost path.  Glow
+        // descriptors duplicate their base geometry, so retain them only as
+        // authored-emissive sidecars and never as independent beauty commands.
+        std::vector<GhostBatch> legacy_batches;
+        std::vector<GhostBatch> legacy_glow_batches;
+        std::vector<GhostBatch> static_legacy_glow_batches;
+        std::vector<GhostBatch> pbr_base_batches;
+        std::vector<GhostBatch> pbr_glow_batches;
+        for (const GhostBatch& batch : eligible_batches)
+        {
+            if (!shared_batch_is_pbr(batch))
+            {
+                legacy_batches.push_back(batch);
+            }
+            else if (ghost_pass_is_glow(batch.mPass))
+            {
+                pbr_glow_batches.push_back(batch);
+            }
+            else
+            {
+                pbr_base_batches.push_back(batch);
+            }
+        }
+
+        // Legacy authored bloom is intentionally harvested outside the public
+        // Ghost Studio batch map. Native glow is suppressed whenever shared
+        // beauty owns coverage: Cover and coverage-changing Layer+Dissolve.
+        if (owns_native_beauty
+            && gPipeline.hasRenderType(LLRenderPass::PASS_GLOW_RIGGED))
+        {
+            auto glow_it =
+                mSharedActorLegacyGlowBatches.find(avatar->getID());
+            if (glow_it != mSharedActorLegacyGlowBatches.end())
+            {
+                for (const GhostBatch& batch : glow_it->second)
+                {
+                    LLDrawInfo* info = batch.mInfo;
+                    LLSpatialGroup* group = batch.mGroup;
+                    if (!info || !group || group->isDead())
+                    {
+                        replay_complete = false;
+                        continue;
+                    }
+                    if (!group->isVisible()
+                        || (LLPipeline::sUseOcclusion
+                            && group->isOcclusionState(
+                                LLSpatialGroup::OCCLUDED))
+                        || !gPipeline.hasRenderType(batch.mPass))
+                    {
+                        continue;
+                    }
+                    LLVOAvatar* drawing_avatar = info->mAvatar.get();
+                    if (drawing_avatar && drawing_avatar != avatar
+                        && drawing_avatar->isControlAvatar()
+                        && exact_styled_controls.count(
+                            drawing_avatar->getID()))
+                    {
+                        continue;
+                    }
+                    if (!drawing_avatar || drawing_avatar->isDead())
+                    {
+                        replay_complete = false;
+                        continue;
+                    }
+                    if (drawing_avatar->isUIAvatar()
+                        || drawing_avatar->isHardVisualMute()
+                        || drawing_avatar->getOverallAppearance()
+                            == LLVOAvatar::AOA_INVISIBLE
+                        || (drawing_avatar->isControlAvatar()
+                            && !gPipeline.hasRenderType(
+                                LLPipeline::RENDER_TYPE_CONTROL_AV)))
+                    {
+                        continue;
+                    }
+                    if (!shared_rigged_descriptor_ready(batch))
+                    {
+                        replay_complete = false;
+                        continue;
+                    }
+                    legacy_glow_batches.push_back(batch);
+                }
+            }
+        }
+
+        auto matching_legacy_glow = [&](const GhostBatch& base)
+            -> const GhostBatch*
+        {
+            const GhostBatch* match = nullptr;
+            for (const GhostBatch& glow : legacy_glow_batches)
+            {
+                if (shared_same_pbr_geometry(base.mInfo, glow.mInfo))
+                {
+                    // Harvest dedup makes this one-to-one. Treat an unexpected
+                    // duplicate as unprovable and fail open below.
+                    if (match)
+                    {
+                        return nullptr;
+                    }
+                    match = &glow;
+                }
+            }
+            return match;
+        };
+
+        auto matching_static_legacy_glow =
+            [&](const GhostStaticFace& base) -> const GhostBatch*
+        {
+            const GhostBatch* match = nullptr;
+            for (const GhostBatch& glow : static_legacy_glow_batches)
+            {
+                if (shared_same_static_geometry(base, glow.mInfo))
+                {
+                    if (match)
+                    {
+                        return nullptr;
+                    }
+                    match = &glow;
+                }
+            }
+            return match;
+        };
+
+        std::vector<GhostStaticFace> legacy_faces;
+        std::vector<SharedActorPBRCommand> pbr_commands;
+        const bool synthetic_glow =
+            LLRenderPass::actorFxLookNeedsSyntheticBloom(style.mStyle);
+
+        auto selected_program = [](U8 mode, bool rigged, bool indexed,
+                                   bool glow, bool synthetic,
+                                   bool depth) -> LLGLSLShader*
+        {
+            if (mode >= SHARED_ACTOR_FX_PBR_ALPHA_COUNT)
+            {
+                return nullptr;
+            }
+            if (depth)
+            {
+                if (mode == SHARED_ACTOR_FX_PBR_ALPHA_BLEND)
+                {
+                    return nullptr;
+                }
+                if (rigged)
+                {
+                    return indexed
+                        ? &gSharedActorFxSkinnedPBRDepthSlotProgram[mode]
+                        : &gSharedActorFxSkinnedPBRDepthProgram[mode];
+                }
+                return indexed ? &gSharedActorFxPBRDepthSlotProgram[mode]
+                               : &gSharedActorFxPBRDepthProgram[mode];
+            }
+            if (glow)
+            {
+                if (synthetic)
+                {
+                    if (rigged)
+                    {
+                        return indexed
+                            ? &gSharedActorFxSkinnedPBRSyntheticGlowSlotProgram[mode]
+                            : &gSharedActorFxSkinnedPBRSyntheticGlowProgram[mode];
+                    }
+                    return indexed
+                        ? &gSharedActorFxPBRSyntheticGlowSlotProgram[mode]
+                        : &gSharedActorFxPBRSyntheticGlowProgram[mode];
+                }
+                if (rigged)
+                {
+                    return indexed
+                        ? &gSharedActorFxSkinnedPBRGlowSlotProgram[mode]
+                        : &gSharedActorFxSkinnedPBRGlowProgram[mode];
+                }
+                return indexed
+                    ? &gSharedActorFxPBRGlowSlotProgram[mode]
+                    : &gSharedActorFxPBRGlowProgram[mode];
+            }
+            if (rigged)
+            {
+                return indexed ? &gSharedActorFxSkinnedPBRSlotProgram[mode]
+                               : &gSharedActorFxSkinnedPBRProgram[mode];
+            }
+            return indexed ? &gSharedActorFxPBRSlotProgram[mode]
+                           : &gSharedActorFxPBRProgram[mode];
+        };
+
+        auto program_accepts = [](LLGLSLShader* shader,
+                                  LLVertexBuffer* vb) -> bool
+        {
+            return shader && shader->mProgramObject && vb
+                && !(shader->mAttributeMask & ~vb->getTypeMask());
+        };
+        static const LLStaticHashedString sPBRSyntheticEnabled(
+            "sharedActorFxSyntheticEnabled");
+        static const LLStaticHashedString sActorFxParams2("actorFxParams2");
+
+        auto find_glow_info = [&](LLDrawInfo* base,
+                                  bool& ambiguous) -> LLDrawInfo*
+        {
+            ambiguous = false;
+            LLDrawInfo* match = nullptr;
+            for (const GhostBatch& glow : pbr_glow_batches)
+            {
+                if (shared_same_pbr_geometry(base, glow.mInfo))
+                {
+                    if (match)
+                    {
+                        ambiguous = true;
+                        return nullptr;
+                    }
+                    match = glow.mInfo;
+                }
+            }
+            return match;
+        };
+
+        auto command_ready = [&](const SharedActorPBRCommand& command) -> bool
+        {
+            LLVertexBuffer* vb = command.mRigged
+                ? (command.mBatch.mInfo
+                    ? command.mBatch.mInfo->mVertexBuffer.get() : nullptr)
+                : (command.mStaticFace.mFace
+                    ? command.mStaticFace.mFace->getVertexBuffer() : nullptr);
+            const bool indexed = command.mIndexed;
+            LLDrawInfo* base_info = command.mBatch.mInfo;
+            if (indexed)
+            {
+                if (!command.mRigged || !base_info
+                    || base_info->mGLTFMaterialList.size() < 2
+                    || base_info->mTexture.notNull()
+                    || LLGLSLShader::sSharedPBRIndexedGLTFChannels <= 0
+                    || base_info->mGLTFMaterialList.size()
+                        > (size_t)llmin(
+                            LLGLSLShader::sSharedPBRIndexedGLTFChannels, 8)
+                    || !vb->hasDataType(LLVertexBuffer::TYPE_TEXTURE_INDEX))
+                {
+                    return false;
+                }
+                for (const LLPointer<LLFetchedGLTFMaterial>& material :
+                     base_info->mGLTFMaterialList)
+                {
+                    U8 slot_mode = 0;
+                    if (material.isNull()
+                        || !shared_pbr_alpha_mode(material.get(), slot_mode)
+                        || slot_mode != command.mAlphaMode)
+                    {
+                        return false;
+                    }
+                }
+            }
+            LLGLSLShader* beauty = selected_program(
+                command.mAlphaMode, command.mRigged, indexed,
+                false, false, false);
+            if (!command.mMaterial || !program_accepts(beauty, vb)
+                || (style.mStyle == GHOST_STYLE_WIREFRAME
+                    && beauty->getUniformLocation(sActorFxParams2) < 0))
+            {
+                return false;
+            }
+            if (command.mAlphaMode != SHARED_ACTOR_FX_PBR_ALPHA_BLEND
+                && !program_accepts(selected_program(
+                       command.mAlphaMode, command.mRigged, indexed,
+                       false, false, true), vb))
+            {
+                return false;
+            }
+
+            if (command.mAuthoredGlow)
+            {
+                LLVertexBuffer* glow_vb = command.mRigged
+                    ? (command.mGlowInfo
+                        ? command.mGlowInfo->mVertexBuffer.get() : nullptr)
+                    : vb;
+                if (indexed)
+                {
+                    if (!command.mGlowInfo
+                        || command.mGlowInfo->mTexture.notNull()
+                        || command.mGlowInfo->mGLTFMaterialList.size()
+                            != base_info->mGLTFMaterialList.size()
+                        || !glow_vb
+                        || !glow_vb->hasDataType(
+                            LLVertexBuffer::TYPE_TEXTURE_INDEX))
+                    {
+                        return false;
+                    }
+                    for (size_t slot = 0;
+                         slot < base_info->mGLTFMaterialList.size(); ++slot)
+                    {
+                        if (command.mGlowInfo->mGLTFMaterialList[slot].isNull()
+                            || command.mGlowInfo->mGLTFMaterialList[slot].get()
+                                != base_info->mGLTFMaterialList[slot].get())
+                        {
+                            return false;
+                        }
+                    }
+                }
+                return glow_vb
+                    && glow_vb->hasDataType(LLVertexBuffer::TYPE_EMISSIVE)
+                    && program_accepts(selected_program(
+                        command.mAlphaMode, command.mRigged, indexed,
+                        true, false, false),
+                        glow_vb)
+                    && selected_program(command.mAlphaMode, command.mRigged,
+                                        indexed, true, false, false)
+                           ->getUniformLocation(sPBRSyntheticEnabled) >= 0;
+            }
+            if (synthetic_glow)
+            {
+                return program_accepts(selected_program(
+                    command.mAlphaMode, command.mRigged, indexed,
+                    true, true, false), vb);
+            }
+            return true;
+        };
+
+        auto append_rigged_pbr = [&](const GhostBatch& batch,
+                                     bool indexed)
+        {
+            LLDrawInfo* info = batch.mInfo;
+            LLFetchedGLTFMaterial* material = info
+                ? (indexed && !info->mGLTFMaterialList.empty()
+                    ? info->mGLTFMaterialList.front().get()
+                    : (info->mGLTFMaterial.notNull()
+                        ? info->mGLTFMaterial.get()
+                        : (!info->mGLTFMaterialList.empty()
+                            ? info->mGLTFMaterialList.front().get()
+                            : nullptr)))
+                : nullptr;
+            U8 alpha_mode = 0;
+            if (!info || !shared_pbr_alpha_mode(material, alpha_mode))
+            {
+                replay_complete = false;
+                return;
+            }
+
+            // Per-sweep harvest can encounter the same geometry in more than
+            // one map. Material alpha mode, not that map, owns placement in the
+            // shared solid/blend queue; suppress duplicate geometry here.
+            for (const SharedActorPBRCommand& existing : pbr_commands)
+            {
+                if (existing.mRigged
+                    && shared_same_pbr_geometry(existing.mBatch.mInfo, info))
+                {
+                    return;
+                }
+            }
+
+            SharedActorPBRCommand command;
+            command.mBatch = batch;
+            command.mMaterial = material;
+            command.mIndexed = indexed;
+            bool any_material_emissive = false;
+            if (indexed)
+            {
+                // genDrawInfo hard-splits indexed batches by alpha mode, cull
+                // state and authored TE glow. Re-prove the material-side part
+                // here before native suppression so one command can safely own
+                // the complete vertex-indexed batch.
+                if (info->mGLTFMaterialList.size() < 2)
+                {
+                    replay_complete = false;
+                    return;
+                }
+                for (const LLPointer<LLFetchedGLTFMaterial>& slot_material :
+                     info->mGLTFMaterialList)
+                {
+                    U8 slot_mode = 0;
+                    bool slot_emissive = false;
+                    if (slot_material.isNull()
+                        || !shared_pbr_alpha_mode(slot_material.get(), slot_mode)
+                        || slot_mode != alpha_mode
+                        || !shared_pbr_material_has_authored_emissive(
+                               slot_material.get(), slot_emissive))
+                    {
+                        replay_complete = false;
+                        return;
+                    }
+                    any_material_emissive |= slot_emissive;
+                }
+            }
+            else if (!shared_pbr_material_has_authored_emissive(
+                         material, any_material_emissive))
+            {
+                replay_complete = false;
+                return;
+            }
+
+            bool ambiguous_glow = false;
+            LLDrawInfo* exact_glow = find_glow_info(info, ambiguous_glow);
+            if (ambiguous_glow)
+            {
+                replay_complete = false;
+                return;
+            }
+            if (exact_glow && !info->mHasGlow)
+            {
+                // PASS_GLTF_GLOW and the base DrawInfo are built from the same
+                // TE. Disagreement means the frame-local descriptors cannot be
+                // paired authoritatively.
+                replay_complete = false;
+                return;
+            }
+            if (any_material_emissive && info->mHasGlow)
+            {
+                // Opaque/mask ordinarily has an exact duplicated glow pass;
+                // alpha PBR emits from the base draw. mHasGlow is per DrawInfo
+                // (volume batching splits on it), unlike the VBO's group-wide
+                // TYPE_EMISSIVE allocation, so either source is exact here.
+                command.mGlowInfo = exact_glow ? exact_glow : info;
+                command.mAuthoredGlow = true;
+            }
+            command.mAlphaMode = alpha_mode;
+            command.mRigged = true;
+            if (!command_ready(command))
+            {
+                replay_complete = false;
+                return;
+            }
+            pbr_commands.push_back(command);
+        };
+
+        if (!pbr_base_batches.empty() || !pbr_glow_batches.empty())
+        {
+            if (!LLViewerShaderMgr::hasSharedActorFxPBRShaders())
+            {
+                replay_complete = false;
+            }
+            for (const GhostBatch& batch : pbr_base_batches)
+            {
+                LLDrawInfo* info = batch.mInfo;
+                if (!info)
+                {
+                    replay_complete = false;
+                    continue;
+                }
+                if (info->mGLTFMaterialList.size() > 1)
+                {
+                    const S32 slots = (S32)info->mGLTFMaterialList.size();
+                    if (info->mTexture.notNull()
+                        || LLGLSLShader::sSharedPBRIndexedGLTFChannels <= 0
+                        || slots
+                            > LLGLSLShader::sSharedPBRIndexedGLTFChannels
+                        || !info->mVertexBuffer->hasDataType(
+                            LLVertexBuffer::TYPE_TEXTURE_INDEX))
+                    {
+                        replay_complete = false;
+                        continue;
+                    }
+                    append_rigged_pbr(batch, true);
+                }
+                else
+                {
+                    append_rigged_pbr(batch, false);
+                }
+            }
+
+            // Every collected authored-glow sidecar must resolve to a base
+            // command. Otherwise native glow suppression would drop content.
+            for (const GhostBatch& glow : pbr_glow_batches)
+            {
+                bool matched = false;
+                for (const GhostBatch& base : pbr_base_batches)
+                {
+                    if (shared_same_pbr_geometry(base.mInfo, glow.mInfo))
+                    {
+                        matched = true;
+                        break;
+                    }
+                }
+                replay_complete &= matched;
+            }
+        }
+
+        for (const GhostStaticFace& source_face : eligible_faces)
+        {
+            LLFetchedGLTFMaterial* material =
+                shared_static_pbr_material(source_face);
+            if (!material)
+            {
+                legacy_faces.push_back(source_face);
+                continue;
+            }
+
+            U8 alpha_mode = 0;
+            if (!LLViewerShaderMgr::hasSharedActorFxPBRShaders()
+                || !shared_pbr_alpha_mode(material, alpha_mode))
+            {
+                replay_complete = false;
+                continue;
+            }
+            SharedActorPBRCommand command;
+            command.mStaticFace = source_face;
+            command.mMaterial = material;
+            command.mAlphaMode = alpha_mode;
+            command.mRigged = false;
+            LLFace* face = source_face.mFace;
+            const LLTextureEntry* te = face ? face->getTextureEntry() : nullptr;
+            bool material_emissive = false;
+            if (!te || !shared_pbr_material_has_authored_emissive(
+                           material, material_emissive))
+            {
+                replay_complete = false;
+                continue;
+            }
+            // Static faces retain an exact TE, so do not infer ownership from
+            // the shared VBO's group-wide attribute mask. Authored PBR bloom
+            // exists only when this face's glow and this material's emissive
+            // response are both nonzero; otherwise the look's synthetic path
+            // remains eligible.
+            command.mAuthoredGlow = material_emissive && te->getGlow() > 0.f;
+            if (!command_ready(command))
+            {
+                replay_complete = false;
+                continue;
+            }
+            pbr_commands.push_back(command);
+        }
+
+        if (owns_native_beauty
+            && gPipeline.hasRenderType(LLRenderPass::PASS_GLOW))
+        {
+            // Static legacy glow lives in PASS_GLOW and is suppressed with the
+            // rest of Cover's native beauty. Resolve it from each already-
+            // eligible worn face's own spatial group and require an exact
+            // one-face range match; a merged/ambiguous batch fails the entire
+            // actor open rather than replaying a neighbour or another wearer.
+            for (const GhostStaticFace& source_face : legacy_faces)
+            {
+                if (source_face.mAlphaKind == 2)
+                {
+                    // BLEND bloom is emitted from the alpha pool's base face;
+                    // it deliberately has no PASS_GLOW sidecar and is proven
+                    // separately below.
+                    continue;
+                }
+                LLFace* face = source_face.mFace;
+                LLDrawable* drawable = face ? face->getDrawable() : nullptr;
+                LLSpatialGroup* group = drawable
+                    ? drawable->getSpatialGroup() : nullptr;
+                if (!group || group->isDead())
+                {
+                    replay_complete = false;
+                    continue;
+                }
+                const LLTextureEntry* te = face->getTextureEntry();
+                auto found = group->mDrawMap.find(LLRenderPass::PASS_GLOW);
+                if (found == group->mDrawMap.end())
+                {
+                    if (te && te->getGlow() > 0.f)
+                    {
+                        replay_complete = false;
+                    }
+                    continue;
+                }
+
+                LLDrawInfo* exact = nullptr;
+                for (const LLPointer<LLDrawInfo>& candidate : found->second)
+                {
+                    if (!shared_same_static_geometry(
+                            source_face, candidate.get()))
+                    {
+                        continue;
+                    }
+                    if (exact)
+                    {
+                        replay_complete = false;
+                        exact = nullptr;
+                        break;
+                    }
+                    exact = candidate.get();
+                }
+                if (!exact && te && te->getGlow() > 0.f)
+                {
+                    // Native Cover suppression would otherwise erase authored
+                    // static bloom. A merged/non-exact PASS_GLOW DrawInfo cannot
+                    // be replayed without also drawing another face, so fail the
+                    // whole actor open for this frame.
+                    replay_complete = false;
+                }
+                if (exact)
+                {
+                    GhostBatch sidecar{
+                        exact, LLRenderPass::PASS_GLOW, group };
+                    if (!shared_static_legacy_glow_ready(sidecar))
+                    {
+                        replay_complete = false;
+                    }
+                    else
+                    {
+                        static_legacy_glow_batches.push_back(sidecar);
+                    }
+                }
+            }
+        }
+
+        if (synthetic_glow)
+        {
+            if ((!legacy_batches.empty()
+                 && gWorldSkinnedActorGhostProgram.getUniformLocation(
+                        sGhostGlowOnly) < 0)
+                || (!legacy_faces.empty()
+                    && gWorldActorGhostProgram.getUniformLocation(
+                        sGhostGlowOnly) < 0))
+            {
+                replay_complete = false;
+            }
+        }
+
+        if ((!legacy_batches.empty()
+             && gWorldSkinnedActorGhostProgram.getUniformLocation(
+                    sGhostAlphaCutoffMode) < 0)
+            || (!legacy_faces.empty()
+                && gWorldActorGhostProgram.getUniformLocation(
+                       sGhostAlphaCutoffMode) < 0)
+            || (!legacy_batches.empty()
+                && gWorldSkinnedActorGhostProgram.getUniformLocation(
+                       sGhostScreenSize) < 0)
+            || (!legacy_faces.empty()
+                && gWorldActorGhostProgram.getUniformLocation(
+                       sGhostScreenSize) < 0)
+            || (!legacy_batches.empty()
+                && gWorldSkinnedActorGhostProgram.getUniformLocation(
+                       sGhostCoverageLayerStrength) < 0)
+            || (!legacy_faces.empty()
+                && gWorldActorGhostProgram.getUniformLocation(
+                       sGhostCoverageLayerStrength) < 0))
+        {
+            replay_complete = false;
+        }
+
+        // Legacy actorghost is the authoritative beauty/synthetic path for
+        // these exact VBOs. Prove every shader attribute contract up front so
+        // Cover never suppresses native geometry and then discovers a partial
+        // component during the draw.
+        for (const GhostBatch& batch : legacy_batches)
+        {
+            LLVertexBuffer* vb = batch.mInfo
+                ? batch.mInfo->mVertexBuffer.get() : nullptr;
+            const bool indexed_world =
+                ghost_legacy_indexed_slot_count(batch.mInfo) > 1;
+            LLGLSLShader& replay_shader = indexed_world
+                ? gWorldSkinnedActorGhostIndexedProgram
+                : gWorldSkinnedActorGhostProgram;
+            if (!vb || !replay_shader.mProgramObject
+                || (replay_shader.mAttributeMask & ~vb->getTypeMask())
+                || (indexed_world
+                    && !shared_world_indexed_actorghost_ready(batch)))
+            {
+                replay_complete = false;
+            }
+            if (owns_native_beauty && ghost_pass_is_blend(batch.mPass)
+                && batch.mInfo && batch.mInfo->mHasGlow
+                && !shared_legacy_blend_glow_ready(batch))
+            {
+                // Native alpha authored bloom is suppressed with Cover's base
+                // draw. Prove its exact base-range replay before suppressing
+                // any component of this actor.
+                replay_complete = false;
+            }
+            if (ghost_pass_is_mask(batch.mPass)
+                && ghost_batch_alpha_cutoff_mode(batch.mPass)
+                    == GHOST_CUTOFF_NONE)
+            {
+                // A newly introduced native MASK pass must not be suppressed
+                // until its exact discard law is explicitly mapped above.
+                replay_complete = false;
+            }
+        }
+        for (const GhostStaticFace& source_face : legacy_faces)
+        {
+            LLVertexBuffer* vb = source_face.mFace
+                ? source_face.mFace->getVertexBuffer() : nullptr;
+            if (!vb || !gWorldActorGhostProgram.mProgramObject
+                || (gWorldActorGhostProgram.mAttributeMask
+                    & ~vb->getTypeMask()))
+            {
+                replay_complete = false;
+            }
+            const LLTextureEntry* te = source_face.mFace
+                ? source_face.mFace->getTextureEntry() : nullptr;
+            if (owns_native_beauty && source_face.mAlphaKind == 2
+                && te && te->getGlow() > 0.f
+                && !shared_static_legacy_blend_glow_ready(source_face))
+            {
+                replay_complete = false;
+            }
+            if (source_face.mAlphaKind == 1
+                && ghost_static_alpha_cutoff_mode(source_face)
+                    == GHOST_CUTOFF_NONE)
+            {
+                // Unknown pool routing means unknown native MASK coverage.
+                // Keep the actor native for this frame instead of drawing a
+                // visually plausible but non-authoritative shared substitute.
+                replay_complete = false;
+            }
+        }
+
+        if (owns_native_beauty)
+        {
+            for (const GhostBatch& glow : legacy_glow_batches)
+            {
+                S32 matches = 0;
+                for (const GhostBatch& base : legacy_batches)
+                {
+                    if (shared_same_pbr_geometry(base.mInfo, glow.mInfo))
+                    {
+                        ++matches;
+                    }
+                }
+                if (matches != 1 || !shared_legacy_glow_ready(glow))
+                {
+                    replay_complete = false;
+                }
+            }
+            for (const GhostBatch& glow : static_legacy_glow_batches)
+            {
+                S32 matches = 0;
+                for (const GhostStaticFace& base : legacy_faces)
+                {
+                    if (shared_same_static_geometry(base, glow.mInfo))
+                    {
+                        ++matches;
+                    }
+                }
+                if (matches != 1 || !shared_static_legacy_glow_ready(glow))
+                {
+                    replay_complete = false;
+                }
+            }
+        }
+
+        const bool system_replay = !avatar->isControlAvatar();
+        if (synthetic_glow && system_replay
+            && (gAvatarActorGhostProgram.getUniformLocation(sGhostGlowOnly) < 0
+                || gAvatarEyeballActorGhostProgram.getUniformLocation(
+                    sGhostGlowOnly) < 0))
+        {
+            replay_complete = false;
+        }
+        if (!replay_complete
+            || (system_replay
+                && !canRenderSystemActorGhost(avatar, style_id)))
+        {
+            return;
+        }
+        if ((!legacy_batches.empty()
+             && !gWorldSkinnedActorGhostProgram.mProgramObject)
+            || (!legacy_faces.empty()
+                && !gWorldActorGhostProgram.mProgramObject)
+            || (!system_replay && legacy_batches.empty()
+                && legacy_faces.empty() && pbr_commands.empty()))
         {
             return;
         }
 
-        LLVector3 foot = avatar->getRenderPosition();
+        proxy.mFootAgent = avatar->getRenderPosition();
         F32 pelvis_to_foot = avatar->getPelvisToFoot();
         if (!llfinite(pelvis_to_foot))
         {
             pelvis_to_foot = 0.f;
         }
-        foot.mV[VZ] -= llmax(0.f, pelvis_to_foot);
-        if (!foot.isFinite())
+        proxy.mFootAgent.mV[VZ] -= llmax(0.f, pelvis_to_foot);
+        proxy.mAlphaDepth = avatar->calcRiggedAlphaDepth();
+        if (!proxy.mFootAgent.isFinite() || !llfinite(proxy.mAlphaDepth))
         {
             return;
         }
 
-        items.push_back({ style_id, avatar, style, batches, static_faces, foot });
+        proxy.mAlpha = llclamp(style.mAlpha, 0.f, 1.f);
+        proxy.mStyle = style.mStyle;
+        proxy.mUseActorHue = style.mUseActorHue;
+        proxy.mHue = style.mHue;
+        proxy.mPixelSize = style.mPixelSize;
+        proxy.mShimmerSpeed = style.mShimmerSpeed;
+        proxy.mShimmerAmount = style.mShimmerAmount;
+        proxy.mGlitch = style.mGlitch;
+        proxy.mDistortion = style.mDistortion;
+        proxy.mDistortionAmount = style.mDistortionAmount;
+        proxy.mBrightness = style.mBrightness;
+        proxy.mEffectFps = style.mEffectFps;
+        proxy.mDissolveProgress = style.mDissolveProgress;
+        proxy.mActive = true;
+        proxy.mSuppressible =
+            style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE;
+        proxy.mSuppressNativeBeauty = owns_native_beauty;
+        proxy.mCoverageReplacement = coverage_replacement;
+        proxy.mPBRReady = !pbr_commands.empty();
+
+        // Solid/masked material work remains one item per actor. It later gets
+        // a Cover-only depth prepass, before any native/shared alpha is drained.
+        SharedActorStyleProxy solid = proxy;
+        solid.mPart = ESharedActorStylePart::ACTOR_SOLID;
+        for (const GhostBatch& batch : legacy_batches)
+        {
+            if (!ghost_pass_is_blend(batch.mPass))
+            {
+                solid.mBatches.push_back(batch);
+                if (owns_native_beauty)
+                {
+                    if (const GhostBatch* glow = matching_legacy_glow(batch))
+                    {
+                        solid.mLegacyGlowBatches.push_back(*glow);
+                    }
+                }
+            }
+        }
+        for (const GhostStaticFace& source_face : legacy_faces)
+        {
+            if (source_face.mAlphaKind != 2)
+            {
+                solid.mStaticFaces.push_back(source_face);
+                if (owns_native_beauty)
+                {
+                    if (const GhostBatch* glow =
+                            matching_static_legacy_glow(source_face))
+                    {
+                        solid.mStaticLegacyGlowBatches.push_back(*glow);
+                    }
+                }
+            }
+        }
+        for (const SharedActorPBRCommand& command : pbr_commands)
+        {
+            if (command.mAlphaMode != SHARED_ACTOR_FX_PBR_ALPHA_BLEND)
+            {
+                solid.mPBRCommands.push_back(command);
+            }
+        }
+        if (system_replay || !solid.mBatches.empty()
+            || !solid.mStaticFaces.empty() || !solid.mPBRCommands.empty())
+        {
+            mSharedActorStyleProxies.push_back(std::move(solid));
+        }
+
+        // Each authored alpha component becomes exactly one independently
+        // sorted queue item. Copying the descriptor is cheap; VBO/face storage
+        // remains owned by the source renderer for this frame.
+        for (const GhostBatch& batch : legacy_batches)
+        {
+            if (!ghost_pass_is_blend(batch.mPass))
+            {
+                continue;
+            }
+            SharedActorStyleProxy item = proxy;
+            item.mPart = ESharedActorStylePart::RIGGED_BLEND;
+            item.mBatches.push_back(batch);
+            if (owns_native_beauty)
+            {
+                if (batch.mInfo && batch.mInfo->mHasGlow)
+                {
+                    item.mLegacyBlendGlowBatches.push_back(batch);
+                }
+            }
+            item.mAlphaDepth = owns_native_beauty
+                ? shared_component_alpha_depth(batch.mGroup, proxy.mAlphaDepth)
+                : shared_native_layer_alpha_depth(batch.mGroup,
+                                                  proxy.mAlphaDepth);
+            mSharedActorStyleProxies.push_back(std::move(item));
+        }
+        for (const GhostStaticFace& source_face : legacy_faces)
+        {
+            if (source_face.mAlphaKind != 2)
+            {
+                continue;
+            }
+            SharedActorStyleProxy item = proxy;
+            item.mPart = ESharedActorStylePart::STATIC_BLEND;
+            item.mStaticFaces.push_back(source_face);
+            if (owns_native_beauty)
+            {
+                const LLTextureEntry* te = source_face.mFace
+                    ? source_face.mFace->getTextureEntry() : nullptr;
+                if (te && te->getGlow() > 0.f)
+                {
+                    item.mStaticLegacyBlendGlowFaces.push_back(source_face);
+                }
+            }
+            const F32 face_depth = source_face.mFace
+                ? source_face.mFace->getKey() : 0.f;
+            LLDrawable* drawable = source_face.mFace
+                ? source_face.mFace->getDrawable() : nullptr;
+            LLSpatialGroup* group = drawable
+                ? drawable->getSpatialGroup() : nullptr;
+            item.mAlphaDepth = !owns_native_beauty
+                ? shared_native_layer_alpha_depth(group, proxy.mAlphaDepth)
+                : (llfinite(face_depth) && face_depth > 0.f
+                    ? face_depth
+                    : shared_component_alpha_depth(group, proxy.mAlphaDepth));
+            mSharedActorStyleProxies.push_back(std::move(item));
+        }
+        for (const SharedActorPBRCommand& command : pbr_commands)
+        {
+            if (command.mAlphaMode != SHARED_ACTOR_FX_PBR_ALPHA_BLEND)
+            {
+                continue;
+            }
+            SharedActorStyleProxy item = proxy;
+            item.mPart = command.mRigged
+                ? ESharedActorStylePart::RIGGED_BLEND
+                : ESharedActorStylePart::STATIC_BLEND;
+            item.mPBRCommands.push_back(command);
+            if (!owns_native_beauty)
+            {
+                LLSpatialGroup* group = command.mRigged
+                    ? command.mBatch.mGroup
+                    : (command.mStaticFace.mFace
+                        && command.mStaticFace.mFace->getDrawable()
+                        ? command.mStaticFace.mFace->getDrawable()
+                              ->getSpatialGroup()
+                        : nullptr);
+                item.mAlphaDepth = shared_native_layer_alpha_depth(
+                    group, proxy.mAlphaDepth);
+            }
+            else if (command.mRigged && command.mBatch.mGroup)
+            {
+                item.mAlphaDepth = shared_component_alpha_depth(
+                    command.mBatch.mGroup, proxy.mAlphaDepth);
+            }
+            else if (!command.mRigged && command.mStaticFace.mFace)
+            {
+                LLFace* face = command.mStaticFace.mFace;
+                const F32 face_depth = face->getKey();
+                LLDrawable* drawable = face->getDrawable();
+                item.mAlphaDepth = llfinite(face_depth) && face_depth > 0.f
+                    ? face_depth
+                    : shared_component_alpha_depth(
+                        drawable ? drawable->getSpatialGroup() : nullptr,
+                        proxy.mAlphaDepth);
+            }
+            mSharedActorStyleProxies.push_back(std::move(item));
+        }
+
+        // LLVOAvatar exposes transparent BOM/system geometry only as one
+        // aggregate renderTransparent() sweep, so this is the narrowest safe
+        // ordering item until that renderer gains a per-mesh callback.
+        if (system_replay)
+        {
+            SharedActorStyleProxy item = proxy;
+            item.mPart = ESharedActorStylePart::SYSTEM_BLEND;
+            mSharedActorStyleProxies.push_back(std::move(item));
+        }
     };
 
-    // Null is You. Add it first so an accidental self entry in the cast cannot
-    // double-draw the agent avatar through two stable style keys.
     add_actor(LLUUID::null);
     for (const LLDirectorCast::CastMember& member : director_cast.getCast())
     {
         add_actor(member.mId);
     }
-    if (items.empty())
+
+    std::stable_sort(mSharedActorStyleProxies.begin(),
+                     mSharedActorStyleProxies.end(),
+        [](const SharedActorStyleProxy& lhs,
+           const SharedActorStyleProxy& rhs)
+        {
+            if (lhs.mAlphaDepth != rhs.mAlphaDepth)
+            {
+                return lhs.mAlphaDepth > rhs.mAlphaDepth;
+            }
+            return lhs.mWearerId < rhs.mWearerId;
+        });
+}
+
+bool LLActorMover::hasSharedActorStyleProxies() const
+{
+    return !mRenderingSharedActorStyle
+        && mSharedActorStyleFrame == LLFrameTimer::getFrameCount()
+        && shared_actor_main_world_context()
+        && !mSharedActorStyleProxies.empty();
+}
+
+size_t LLActorMover::sharedActorStyleProxyCount() const
+{
+    return hasSharedActorStyleProxies() ? mSharedActorStyleProxies.size() : 0;
+}
+
+F32 LLActorMover::sharedActorStyleProxyDepth(size_t index) const
+{
+    return hasSharedActorStyleProxies() && index < mSharedActorStyleProxies.size()
+        ? mSharedActorStyleProxies[index].mAlphaDepth : -FLT_MAX;
+}
+
+bool LLActorMover::isSharedActorStyleActive(const LLUUID& actor_id) const
+{
+    if (!hasSharedActorStyleProxies())
+    {
+        return false;
+    }
+    for (const SharedActorStyleProxy& proxy : mSharedActorStyleProxies)
+    {
+        const bool matches = actor_id == proxy.mStyleId
+            || actor_id == proxy.mWearerId
+            || (proxy.mAvatar
+                && actor_id == proxy.mAvatar->getActorFxOwnerId())
+            || (proxy.mStyleId.isNull() && proxy.mAvatar
+                && proxy.mAvatar->isSelf()
+                && (actor_id.isNull() || actor_id == gAgentID));
+        if (proxy.mActive && matches)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool LLActorMover::isSharedActorStylePBRReady(const LLUUID& actor_id) const
+{
+    if (!hasSharedActorStyleProxies())
+    {
+        return false;
+    }
+    for (const SharedActorStyleProxy& proxy : mSharedActorStyleProxies)
+    {
+        const bool matches = actor_id == proxy.mStyleId
+            || actor_id == proxy.mWearerId
+            || (proxy.mAvatar
+                && actor_id == proxy.mAvatar->getActorFxOwnerId())
+            || (proxy.mStyleId.isNull() && proxy.mAvatar
+                && proxy.mAvatar->isSelf()
+                && (actor_id.isNull() || actor_id == gAgentID));
+        if (proxy.mActive && proxy.mPBRReady && matches)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool LLActorMover::isSharedActorStyleReady(const LLUUID& actor_id) const
+{
+    if (!hasSharedActorStyleProxies())
+    {
+        return false;
+    }
+    for (const SharedActorStyleProxy& proxy : mSharedActorStyleProxies)
+    {
+        const bool matches = actor_id == proxy.mStyleId
+            || actor_id == proxy.mWearerId
+            || (proxy.mAvatar
+                && actor_id == proxy.mAvatar->getActorFxOwnerId())
+            || (proxy.mStyleId.isNull() && proxy.mAvatar
+                && proxy.mAvatar->isSelf()
+                && (actor_id.isNull() || actor_id == gAgentID));
+        if (proxy.mSuppressNativeBeauty && matches)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool LLActorMover::renderSharedActorStyleProxy(size_t index)
+{
+    if (!hasSharedActorStyleProxies() || index >= mSharedActorStyleProxies.size())
+    {
+        return false;
+    }
+    return renderSharedActorStyleProxyItem(
+        mSharedActorStyleProxies[index], false);
+}
+
+void LLActorMover::renderSharedActorStyleDepthPrepass()
+{
+    const U32 frame = LLFrameTimer::getFrameCount();
+    if (!hasSharedActorStyleProxies()
+        || mSharedActorStyleDepthFrame == frame)
     {
         return;
     }
 
-    // This path now executes inside the post-deferred world render rather than
-    // the UI compositor. Preserve the caller-owned program and active texture
-    // unit so a wireframe actor cannot perturb the passes that follow it.
-    LLGLSLShader* saved_shader = LLGLSLShader::sCurBoundShaderPtr;
-    const U32 saved_texture_unit = gGL.getCurrentTexUnitIndex();
-
-    // Styled lines are translucent scene dressing submitted while the main
-    // world depth target is live. Keep stable far-to-near ordering when
-    // multiple cast silhouettes overlap; drawGeometryGhost's LEQUAL line pass
-    // then respects foreground scene occlusion.
-    const LLVector3 camera_pos = LLViewerCamera::getInstance()->getOrigin();
-    std::stable_sort(items.begin(), items.end(),
-        [&](const StyledActorItem& a, const StyledActorItem& b)
-        {
-            return (a.mFootAgent - camera_pos).magVecSquared()
-                 > (b.mFootAgent - camera_pos).magVecSquared();
-        });
-
-    LLGLSUIDefault gls_ui;
-    gUIProgram.bind();
-    gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
-
-    static const std::vector<GhostBatch> sNoBatches;
-    for (const StyledActorItem& item : items)
+    // Mark first: if a replay path re-enters unexpectedly, it must not prime
+    // the entire cast twice in one frame.
+    mSharedActorStyleDepthFrame = frame;
+    for (SharedActorStyleProxy& proxy : mSharedActorStyleProxies)
     {
-        const LLDirectorCast::ActorStyle& style = item.mStyle;
-
-        LLColor4 tint;
-        if (style.mUseActorHue)
+        if (!proxy.mActive
+            || proxy.mPart != ESharedActorStylePart::ACTOR_SOLID
+            || proxy.mAlpha <= 0.f
+            || (!proxy.mSuppressNativeBeauty && proxy.mPBRCommands.empty()))
         {
-            tint = actorPathColor(item.mAvatar->getID());
+            continue;
+        }
+        proxy.mDepthPrimed = renderSharedActorStyleProxyItem(proxy, true);
+    }
+}
+
+bool LLActorMover::renderSharedActorPBRCommands(
+    const SharedActorStyleProxy& proxy, bool depth_only)
+{
+    if (proxy.mPBRCommands.empty()
+        || !LLViewerShaderMgr::hasSharedActorFxPBRShaders()
+        || proxy.mAlpha <= 0.f)
+    {
+        return proxy.mPBRCommands.empty() || proxy.mAlpha <= 0.f;
+    }
+
+    static const LLStaticHashedString sOpacity("sharedActorFxOpacity");
+    static const LLStaticHashedString sSyntheticEnabled(
+        "sharedActorFxSyntheticEnabled");
+
+    auto select_program = [](U8 mode, bool rigged, bool indexed,
+                             bool glow, bool synthetic,
+                             bool depth) -> LLGLSLShader*
+    {
+        if (mode >= SHARED_ACTOR_FX_PBR_ALPHA_COUNT)
+        {
+            return nullptr;
+        }
+        if (depth)
+        {
+            if (mode == SHARED_ACTOR_FX_PBR_ALPHA_BLEND)
+            {
+                return nullptr;
+            }
+            if (rigged)
+            {
+                return indexed
+                    ? &gSharedActorFxSkinnedPBRDepthSlotProgram[mode]
+                    : &gSharedActorFxSkinnedPBRDepthProgram[mode];
+            }
+            return indexed ? &gSharedActorFxPBRDepthSlotProgram[mode]
+                           : &gSharedActorFxPBRDepthProgram[mode];
+        }
+        if (glow)
+        {
+            if (synthetic)
+            {
+                if (rigged)
+                {
+                    return indexed
+                        ? &gSharedActorFxSkinnedPBRSyntheticGlowSlotProgram[mode]
+                        : &gSharedActorFxSkinnedPBRSyntheticGlowProgram[mode];
+                }
+                return indexed
+                    ? &gSharedActorFxPBRSyntheticGlowSlotProgram[mode]
+                    : &gSharedActorFxPBRSyntheticGlowProgram[mode];
+            }
+            if (rigged)
+            {
+                return indexed
+                    ? &gSharedActorFxSkinnedPBRGlowSlotProgram[mode]
+                    : &gSharedActorFxSkinnedPBRGlowProgram[mode];
+            }
+            return indexed ? &gSharedActorFxPBRGlowSlotProgram[mode]
+                           : &gSharedActorFxPBRGlowProgram[mode];
+        }
+        if (rigged)
+        {
+            return indexed ? &gSharedActorFxSkinnedPBRSlotProgram[mode]
+                           : &gSharedActorFxSkinnedPBRProgram[mode];
+        }
+        return indexed ? &gSharedActorFxPBRSlotProgram[mode]
+                       : &gSharedActorFxPBRProgram[mode];
+    };
+
+    const F32 opacity = proxy.mSuppressible
+        ? llclamp(proxy.mAlpha, 0.f, 1.f) : 1.f;
+    const bool needs_synthetic =
+        LLRenderPass::actorFxLookNeedsSyntheticBloom(proxy.mStyle);
+
+    // These programs intentionally publish only the composited HDR colour.
+    // The main screen target can also carry visible-diffuse/coverage sidecars;
+    // leaving those draw buffers attached would make their unwritten fragment
+    // outputs undefined on some drivers.  bindTarget() always installs the
+    // target's canonical contiguous [0..N) list (LLRenderTarget is capped at
+    // four attachments), so restore that list without synchronous glGet state
+    // queries after the colour/glow replay completes.
+    struct ScopedHDRDrawBuffer
+    {
+        explicit ScopedHDRDrawBuffer(bool enable)
+        {
+            mTarget = enable ? LLRenderTarget::getCurrentBoundTarget() : nullptr;
+            mCount = mTarget ? llmin(mTarget->getNumTextures(), 4u) : 0u;
+            if (mCount > 0)
+            {
+                gGL.flush();
+                const GLenum hdr = GL_COLOR_ATTACHMENT0;
+                glDrawBuffers(1, &hdr);
+            }
+        }
+
+        ~ScopedHDRDrawBuffer()
+        {
+            if (mCount > 0)
+            {
+                gGL.flush();
+                static const GLenum full[] = {
+                    GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1,
+                    GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3
+                };
+                glDrawBuffers((GLsizei)mCount, full);
+            }
+        }
+
+        LLRenderTarget* mTarget = nullptr;
+        U32 mCount = 0;
+    } hdr_draw_buffer(true);
+
+    auto draw_command = [&](const SharedActorPBRCommand& command,
+                             bool glow, bool synthetic,
+                             bool topology_wire,
+                             bool depth) -> bool
+    {
+        LLDrawInfo* base_info = command.mBatch.mInfo;
+        LLDrawInfo* draw_info = command.mRigged
+            ? ((glow && command.mAuthoredGlow)
+                ? command.mGlowInfo : base_info)
+            : nullptr;
+        LLFace* face = command.mStaticFace.mFace;
+        LLVertexBuffer* vb = command.mRigged
+            ? (draw_info ? draw_info->mVertexBuffer.get() : nullptr)
+            : (face ? face->getVertexBuffer() : nullptr);
+        LLFetchedGLTFMaterial* material = command.mMaterial;
+        const bool indexed = command.mIndexed;
+        LLGLSLShader* shader = select_program(
+            command.mAlphaMode, command.mRigged, indexed,
+            glow, synthetic, depth);
+        if (!shader || !shader->mProgramObject || !vb || !material
+            || (shader->mAttributeMask & ~vb->getTypeMask()))
+        {
+            return false; // preflight made this unreachable in a valid frame
+        }
+
+        gPipeline.bindDeferredShaderFast(*shader);
+        gGL.syncLightState();
+        shader->uniform1f(sOpacity, opacity);
+        if (glow && !synthetic)
+        {
+            shader->uniform1i(sSyntheticEnabled,
+                              needs_synthetic ? 1 : 0);
+        }
+
+        LLViewerTexture* media = nullptr;
+        const LLMatrix4* texture_matrix = nullptr;
+        if (command.mRigged)
+        {
+            // Indexed replay deliberately rejects media overrides during
+            // preflight; scalar follows the native material binder exactly.
+            media = (!indexed && base_info) ? base_info->mTexture.get() : nullptr;
+            texture_matrix = base_info ? base_info->mTextureMatrix : nullptr;
         }
         else
         {
-            tint.setHSL(fmodf(llmax(style.mHue, 0.f), 360.f) / 360.f,
-                        0.9f, 0.6f);
-            tint.mV[VW] = 1.f;
+            if (face->mDrawInfo && face->mDrawInfo->mGLTFMaterial.notNull())
+            {
+                media = face->mDrawInfo->mTexture.get();
+            }
+            texture_matrix = face->mTextureMatrix;
         }
 
-        GhostDrawParams params;
-        params.mPixelSize = llmax(0.f, style.mPixelSize);
-        params.mShimmerSpeed = llmax(0.f, style.mShimmerSpeed);
-        params.mShimmerIntensity = llclamp(style.mShimmerAmount, 0.f, 1.f);
-        params.mGlitch = llclamp(style.mGlitch, 0.f, 1.f);
-        params.mDistort = llmax(0, style.mDistortion);
-        params.mDistortAmount = llclamp(style.mDistortionAmount, 0.f, 1.f);
-        params.mBrightness = llclamp(style.mBrightness, 0.05f, 1.5f);
-        params.mEffectFps = llclamp(style.mEffectFps, 0.f, 30.f);
-        params.mWorldLinear = true;
-        params.mTintCustom = !style.mUseActorHue;
-        params.mPhase =
-            (F32)(item.mAvatar->getID().mData[0]
-                  | (item.mAvatar->getID().mData[1] << 8))
-            * (F_TWO_PI / 65536.f);
+        LLRenderPass::uploadActorFx(proxy.mStyleId, topology_wire, true);
 
-        // Replace cannot safely hide the original until every avatar/material/
-        // attachment/impostor COLOR pass has an actor-specific exclusion while
-        // shadow casters remain enabled. Use an opaque styled layer for now: it
-        // is visibly distinct and reversible, and never punches holes in actors.
-        const F32 alpha = style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE
-            ? 1.f : llclamp(style.mAlpha, 0.f, 1.f);
+        if (command.mRigged
+            && !LLRenderPass::uploadMatrixPalette(
+                draw_info->mAvatar, draw_info->mSkinInfo))
+        {
+            if (glow && !synthetic)
+            {
+                shader->uniform1i(sSyntheticEnabled, 0);
+            }
+            return false;
+        }
 
-        drawGeometryGhost(item.mAvatar,
-                          item.mBatches ? *item.mBatches : sNoBatches,
-                          item.mFootAgent, tint, alpha,
-                          llclamp(style.mStyle,
-                                  static_cast<S32>(GHOST_STYLE_GHOST),
-                                  static_cast<S32>(GHOST_STYLE_HOLO_ECHO)),
-                          params, item.mStaticFaces);
+        if (indexed)
+        {
+            LLRenderPass::eGLTFIndexedMaps maps = LLRenderPass::GLTF_MAPS_FULL;
+            if (depth)
+            {
+                maps = command.mAlphaMode == SHARED_ACTOR_FX_PBR_ALPHA_MASK
+                    ? LLRenderPass::GLTF_MAPS_BASE_COLOR
+                    : LLRenderPass::GLTF_MAPS_NONE;
+            }
+            else if (glow)
+            {
+                maps = synthetic ? LLRenderPass::GLTF_MAPS_BASE_COLOR
+                                 : LLRenderPass::GLTF_MAPS_GLOW;
+            }
+
+            // The indexed binder uploads all material arrays and emits this
+            // geometry exactly once. shared_replay preserves the proxy style
+            // just uploaded above and bypasses only native-pass suppression.
+            LLRenderPass::pushGLTFBatchIndexed(*draw_info, maps, true);
+            if (glow && !synthetic)
+            {
+                shader->uniform1i(sSyntheticEnabled, 0);
+            }
+            return true;
+        }
+
+        if (command.mRigged)
+        {
+            LLRenderPass::applyModelMatrix(*base_info);
+        }
+        else
+        {
+            LLRenderPass::applyModelMatrix(&face->getRenderMatrix());
+        }
+
+        bool uses_texture_matrix = !depth
+            || command.mAlphaMode == SHARED_ACTOR_FX_PBR_ALPHA_MASK;
+        if (depth)
+        {
+            if (command.mAlphaMode == SHARED_ACTOR_FX_PBR_ALPHA_MASK)
+            {
+                LLViewerTexture* base = media ? media
+                    : (material->mBaseColorTexture.notNull()
+                        ? material->mBaseColorTexture.get()
+                        : LLViewerFetchedTexture::sWhiteImagep.get());
+                shader->bindTexture(LLShaderMgr::DIFFUSE_MAP, base);
+                shader->uniform1f(LLShaderMgr::MINIMUM_ALPHA,
+                                  material->mAlphaCutoff);
+                LLGLTFMaterial::TextureTransform::Pack packed;
+                material->mTextureTransform[
+                    LLGLTFMaterial::GLTF_TEXTURE_INFO_BASE_COLOR]
+                    .getPacked(packed);
+                shader->uniform4fv(
+                    LLShaderMgr::TEXTURE_BASE_COLOR_TRANSFORM,
+                    2, packed);
+            }
+        }
+        else
+        {
+            material->bind(media);
+        }
+        if (uses_texture_matrix)
+        {
+            LLRenderPass::setupGLTFTextureMatrix(texture_matrix);
+        }
+
+        LLGLDisable no_cull(material->mDoubleSided ? GL_CULL_FACE : 0);
+        vb->setBuffer();
+        if (command.mRigged)
+        {
+            vb->drawRange(LLRender::TRIANGLES, draw_info->mStart,
+                          draw_info->mEnd, draw_info->mCount,
+                          draw_info->mOffset);
+        }
+        else
+        {
+            vb->drawRange(LLRender::TRIANGLES, face->getGeomIndex(),
+                          face->getGeomIndex() + face->getGeomCount() - 1,
+                          face->getIndicesCount(), face->getIndicesStart());
+        }
+        if (uses_texture_matrix)
+        {
+            LLRenderPass::teardownGLTFTextureMatrix(texture_matrix);
+        }
+        if (glow && !synthetic)
+        {
+            shader->uniform1i(sSyntheticEnabled, 0);
+        }
+        return true;
+    };
+
+    bool complete = true;
+    LLGLEnable cull(GL_CULL_FACE);
+    if (depth_only)
+    {
+        LLGLDepthTest depth(GL_TRUE, GL_TRUE, GL_LESS);
+        LLGLDisable blend(GL_BLEND);
+        gGL.setColorMask(false, false);
+        for (const SharedActorPBRCommand& command : proxy.mPBRCommands)
+        {
+            // The solid proxy contains only OPAQUE/MASK commands.
+            if (command.mAlphaMode != SHARED_ACTOR_FX_PBR_ALPHA_BLEND)
+            {
+                complete &= draw_command(command, false, false, false, true);
+            }
+        }
+        gGL.setColorMask(true, true);
+    }
+    else
+    {
+        LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
+        LLGLEnable blend(GL_BLEND);
+        // HDR alpha carries bloom. Beauty must never accumulate ordinary
+        // surface opacity there; match LLDrawPoolAlpha's native contract.
+        gGL.blendFunc(LLRender::BF_SOURCE_ALPHA,
+                      LLRender::BF_ONE_MINUS_SOURCE_ALPHA,
+                      LLRender::BF_ZERO,
+                      LLRender::BF_ONE_MINUS_SOURCE_ALPHA);
+        for (const SharedActorPBRCommand& command : proxy.mPBRCommands)
+        {
+            complete &= draw_command(command, false, false, false, false);
+
+            const bool authored = command.mAuthoredGlow;
+            const bool synthetic = !authored && needs_synthetic;
+            if (authored || synthetic)
+            {
+                // Match the native bloom pass: preserve destination RGB and add
+                // this component's luminance to destination alpha exactly once.
+                gGL.blendFunc(LLRender::BF_ZERO, LLRender::BF_ONE,
+                              LLRender::BF_ONE, LLRender::BF_ONE);
+                complete &= draw_command(command, true, synthetic, false, false);
+                gGL.blendFunc(LLRender::BF_SOURCE_ALPHA,
+                              LLRender::BF_ONE_MINUS_SOURCE_ALPHA,
+                              LLRender::BF_ZERO,
+                              LLRender::BF_ONE_MINUS_SOURCE_ALPHA);
+            }
+        }
+
+        if (proxy.mStyle == GHOST_STYLE_WIREFRAME)
+        {
+            // The PBR beauty pass above supplies the hidden-line backing. Replay
+            // the exact same scalar/indexed command ranges and live palettes as
+            // topology lines after every triangle component, so a later material
+            // cannot paint over an earlier slot's wire. No extra glow is emitted.
+            gGL.flush();
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            for (const SharedActorPBRCommand& command : proxy.mPBRCommands)
+            {
+                complete &= draw_command(command, false, false, true, false);
+            }
+            gGL.flush();
+            glPolygonMode(GL_FRONT_AND_BACK,
+                          gUseWireframe ? GL_LINE : GL_FILL);
+        }
     }
 
-    gUIProgram.bind();
-    gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
+    LLRenderPass::applyModelMatrix((const LLMatrix4*)nullptr);
+    LLVertexBuffer::unbind();
+    return complete;
+}
+
+bool LLActorMover::renderSharedActorLegacyGlowCommands(
+    const SharedActorStyleProxy& proxy)
+{
+    if ((proxy.mLegacyGlowBatches.empty()
+         && proxy.mLegacyBlendGlowBatches.empty()
+         && proxy.mStaticLegacyGlowBatches.empty()
+         && proxy.mStaticLegacyBlendGlowFaces.empty())
+        || proxy.mAlpha <= 0.f)
+    {
+        return true;
+    }
+
+    static const LLStaticHashedString sAuthoredOnly(
+        "actorFxSharedAuthoredOnly");
+    static const LLStaticHashedString sGlowAttenuation(
+        "actorFxSharedGlowAttenuation");
+    static const LLStaticHashedString sMinimumAlpha(
+        "actorFxSharedMinimumAlpha");
+    static const LLStaticHashedString sAlphaCutoffMode(
+        "actorFxSharedAlphaCutoffMode");
+    static const LLStaticHashedString sUseCoverageAlpha(
+        "actorFxUseCoverageAlpha");
+
+    // Cover fades authored bloom with its surface opacity. Coverage-changing
+    // Layer+Dissolve owns the native glow pass only to apply matching holes;
+    // surviving material bloom remains fully authored, exactly like shared PBR.
+    const F32 opacity = proxy.mSuppressible
+        ? llclamp(proxy.mAlpha, 0.f, 1.f) : 1.f;
+    ScopedSharedActorHDRDrawBuffer hdr_only(true);
+    LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
+    LLGLEnable blend(GL_BLEND);
+    LLGLEnable cull(GL_CULL_FACE);
+    LLGLEnable polygon_offset(GL_POLYGON_OFFSET_FILL);
+    glPolygonOffset(-1.f, -1.f);
+    // HDR RGB is immutable; authored per-vertex legacy glow contributes only
+    // to bloom alpha, exactly like LLDrawPoolGlow's native post-deferred pass.
+    gGL.setColorMask(false, true);
+    gGL.blendFunc(LLRender::BF_ZERO, LLRender::BF_ONE,
+                  LLRender::BF_ONE, LLRender::BF_ONE);
+
+    auto draw_glow = [&](const GhostBatch& glow, bool rigged, bool masked,
+                         F32 cutoff, S32 cutoff_mode,
+                         bool double_sided,
+                         bool coverage_alpha) -> bool
+    {
+        LLDrawInfo* info = glow.mInfo;
+        LLVertexBuffer* vb = info ? info->mVertexBuffer.get() : nullptr;
+        const bool indexed = info && info->mMaterialSlotList.size() > 1;
+        LLGLSLShader* shader = nullptr;
+        if (rigged)
+        {
+            shader = indexed
+                ? gDeferredEmissiveIndexedProgram.mRiggedVariant
+                : gDeferredEmissiveProgram.mRiggedVariant;
+        }
+        else
+        {
+            shader = indexed ? &gDeferredEmissiveIndexedProgram
+                             : &gDeferredEmissiveProgram;
+        }
+        if (!vb || !shader || !shader->mProgramObject)
+        {
+            return false; // all are proven during queue preflight
+        }
+
+        gPipeline.bindDeferredShaderFast(*shader);
+        gGL.syncLightState();
+        shader->uniform1i(sAuthoredOnly, 1);
+        shader->uniform1f(sGlowAttenuation, 1.f - opacity);
+        shader->uniform1i(sAlphaCutoffMode, cutoff_mode);
+        shader->uniform1i(sUseCoverageAlpha, coverage_alpha ? 1 : 0);
+
+        F32 minimum_alpha[8] = { 0.f };
+        if (indexed)
+        {
+            const S32 count = llmin((S32)info->mMaterialSlotList.size(), 8);
+            for (S32 slot = 0; slot < count; ++slot)
+            {
+                const LLDrawInfo::MaterialSlot& material =
+                    info->mMaterialSlotList[slot];
+                LLViewerTexture* diffuse = material.mDiffuse.notNull()
+                    ? material.mDiffuse.get()
+                    : LLViewerFetchedTexture::sWhiteImagep.get();
+                gGL.getTexUnit(slot)->bindFast(diffuse);
+                minimum_alpha[slot] = masked
+                    ? material.mAlphaMaskCutoff : 0.f;
+            }
+            shader->uniform1fv(sMinimumAlpha, count, minimum_alpha);
+        }
+        else
+        {
+            if (info->mTextureList.size() > 1)
+            {
+                const S32 count = llmin(
+                    (S32)info->mTextureList.size(),
+                    LLGLSLShader::sIndexedTextureChannels);
+                for (S32 slot = 0; slot < count; ++slot)
+                {
+                    LLViewerTexture* diffuse = info->mTextureList[slot].notNull()
+                        ? info->mTextureList[slot].get()
+                        : LLViewerFetchedTexture::sWhiteImagep.get();
+                    gGL.getTexUnit(slot)->bindFast(diffuse);
+                }
+            }
+            else
+            {
+                LLViewerTexture* diffuse = info->mTexture.notNull()
+                    ? info->mTexture.get()
+                    : (!info->mTextureList.empty()
+                        && info->mTextureList.front().notNull()
+                            ? info->mTextureList.front().get()
+                            : LLViewerFetchedTexture::sWhiteImagep.get());
+                gGL.getTexUnit(0)->bindFast(diffuse);
+            }
+            shader->uniform1f(sMinimumAlpha,
+                              masked ? cutoff : 0.f);
+        }
+
+        LLRenderPass::applyModelMatrix(*info);
+        LLRenderPass::setupGLTFTextureMatrix(
+            indexed || info->mTextureList.size() > 1
+                ? nullptr : info->mTextureMatrix);
+        LLRenderPass::uploadActorFx(proxy.mStyleId, false, true);
+        const bool palette_ok = !rigged || LLRenderPass::uploadMatrixPalette(
+            info->mAvatar, info->mSkinInfo);
+        if (palette_ok)
+        {
+            LLGLDisable no_cull(double_sided ? GL_CULL_FACE : 0);
+            vb->setBuffer();
+            vb->drawRange(LLRender::TRIANGLES, info->mStart, info->mEnd,
+                          info->mCount, info->mOffset);
+        }
+        else
+        {
+            // Same-frame queue preflight makes this unreachable unless source
+            // skin state changes during the replay.
+        }
+        LLRenderPass::teardownGLTFTextureMatrix(
+            indexed || info->mTextureList.size() > 1
+                ? nullptr : info->mTextureMatrix);
+
+        // These programs are also used by the native glow pool. Restore every
+        // shared-only switch immediately so a later native batch cannot inherit
+        // Cover attenuation, cutoff, or Actor FX state.
+        shader->uniform1i(sAuthoredOnly, 0);
+        shader->uniform1f(sGlowAttenuation, 0.f);
+        shader->uniform1i(sAlphaCutoffMode, GHOST_CUTOFF_NONE);
+        shader->uniform1i(sUseCoverageAlpha, 0);
+        if (indexed)
+        {
+            std::fill(std::begin(minimum_alpha),
+                      std::end(minimum_alpha), 0.f);
+            shader->uniform1fv(sMinimumAlpha,
+                llmin((U32)info->mMaterialSlotList.size(), 8u), minimum_alpha);
+        }
+        else
+        {
+            shader->uniform1f(sMinimumAlpha, 0.f);
+        }
+        LLRenderPass::uploadActorFxDisabled();
+        return palette_ok;
+    };
+
+    auto draw_static_blend_glow =
+        [&](const GhostStaticFace& source) -> bool
+    {
+        LLFace* face = source.mFace;
+        LLVertexBuffer* vb = face ? face->getVertexBuffer() : nullptr;
+        LLDrawInfo* info = face ? face->mDrawInfo : nullptr;
+        const bool indexed = info && info->mMaterialSlotList.size() > 1;
+        LLGLSLShader* shader = indexed
+            ? &gDeferredEmissiveIndexedProgram : &gDeferredEmissiveProgram;
+        if (!face || !vb || !shader->mProgramObject)
+        {
+            return false; // all are proven during queue preflight
+        }
+
+        gPipeline.bindDeferredShaderFast(*shader);
+        gGL.syncLightState();
+        shader->uniform1i(sAuthoredOnly, 1);
+        shader->uniform1f(sGlowAttenuation, 1.f - opacity);
+        shader->uniform1i(sAlphaCutoffMode, GHOST_CUTOFF_NONE);
+        shader->uniform1i(sUseCoverageAlpha, 1);
+
+        LLViewerTexture* diffuse = face->getTexture();
+        F32 minimum_alpha[8] = {};
+        if (indexed)
+        {
+            const S32 count = llmin(
+                (S32)info->mMaterialSlotList.size(),
+                llmin(LLGLSLShader::sIndexedGLTFChannels, 8));
+            shader->uniform1fv(sMinimumAlpha, count, minimum_alpha);
+            for (S32 slot = 0; slot < count; ++slot)
+            {
+                LLViewerTexture* slot_diffuse =
+                    info->mMaterialSlotList[slot].mDiffuse.notNull()
+                        ? info->mMaterialSlotList[slot].mDiffuse.get()
+                        : LLViewerFetchedTexture::sWhiteImagep.get();
+                gGL.getTexUnit(slot)->bindFast(slot_diffuse);
+            }
+        }
+        else
+        {
+            shader->uniform1f(sMinimumAlpha, 0.f);
+            const U8 source_index = face->getTextureIndex();
+            const S32 texture_unit = source_index < FACE_DO_NOT_BATCH_TEXTURES
+                ? (S32)source_index : 0;
+            // The scalar emissive shader still carries the viewer's indexed-
+            // texture feature.  Exact face replay must therefore populate the
+            // face's actual unit rather than assuming slot zero.
+            gGL.getTexUnit(texture_unit)->bindFast(diffuse
+                ? diffuse : LLViewerFetchedTexture::sWhiteImagep.get());
+        }
+        LLRenderPass::applyModelMatrix(&face->getRenderMatrix());
+        LLRenderPass::setupGLTFTextureMatrix(
+            indexed ? nullptr : face->mTextureMatrix);
+        LLRenderPass::uploadActorFx(proxy.mStyleId, false, true);
+        LLGLDisable no_cull(source.mDoubleSided ? GL_CULL_FACE : 0);
+        vb->setBuffer();
+        vb->drawRange(LLRender::TRIANGLES, face->getGeomIndex(),
+                      face->getGeomIndex() + face->getGeomCount() - 1,
+                      face->getIndicesCount(), face->getIndicesStart());
+        LLRenderPass::teardownGLTFTextureMatrix(
+            indexed ? nullptr : face->mTextureMatrix);
+
+        shader->uniform1i(sAuthoredOnly, 0);
+        shader->uniform1f(sGlowAttenuation, 0.f);
+        if (indexed)
+        {
+            shader->uniform1fv(sMinimumAlpha,
+                llmin((U32)info->mMaterialSlotList.size(), 8u), minimum_alpha);
+        }
+        else
+        {
+            shader->uniform1f(sMinimumAlpha, 0.f);
+        }
+        shader->uniform1i(sAlphaCutoffMode, GHOST_CUTOFF_NONE);
+        shader->uniform1i(sUseCoverageAlpha, 0);
+        LLRenderPass::uploadActorFxDisabled();
+        return true;
+    };
+
+    bool complete = true;
+    for (const GhostBatch& glow : proxy.mLegacyGlowBatches)
+    {
+        const GhostBatch* base = nullptr;
+        for (const GhostBatch& candidate : proxy.mBatches)
+        {
+            if (shared_same_pbr_geometry(candidate.mInfo, glow.mInfo))
+            {
+                if (base)
+                {
+                    base = nullptr;
+                    break;
+                }
+                base = &candidate;
+            }
+        }
+        if (!base)
+        {
+            complete = false;
+            continue;
+        }
+        complete &= draw_glow(
+            glow, true, ghost_pass_is_mask(base->mPass),
+            ghost_pass_is_mask(base->mPass)
+                ? ghost_batch_cutoff(base->mInfo, base->mPass) : 0.f,
+            ghost_pass_is_mask(base->mPass)
+                ? ghost_batch_alpha_cutoff_mode(base->mPass)
+                : GHOST_CUTOFF_NONE,
+            false, false);
+    }
+    for (const GhostBatch& glow : proxy.mStaticLegacyGlowBatches)
+    {
+        const GhostStaticFace* base = nullptr;
+        for (const GhostStaticFace& candidate : proxy.mStaticFaces)
+        {
+            if (shared_same_static_geometry(candidate, glow.mInfo))
+            {
+                if (base)
+                {
+                    base = nullptr;
+                    break;
+                }
+                base = &candidate;
+            }
+        }
+        if (!base)
+        {
+            complete = false;
+            continue;
+        }
+        complete &= draw_glow(
+            glow, false, base->mAlphaKind == 1, base->mCutoff,
+            base->mAlphaKind == 1
+                ? ghost_static_alpha_cutoff_mode(*base) : GHOST_CUTOFF_NONE,
+            base->mDoubleSided, false);
+    }
+    for (const GhostBatch& base : proxy.mLegacyBlendGlowBatches)
+    {
+        S32 matches = 0;
+        for (const GhostBatch& candidate : proxy.mBatches)
+        {
+            if (candidate.mPass == base.mPass
+                && shared_same_pbr_geometry(candidate.mInfo, base.mInfo))
+            {
+                ++matches;
+            }
+        }
+        if (matches != 1)
+        {
+            complete = false;
+            continue;
+        }
+        complete &= draw_glow(base, true, false, 0.f,
+                              GHOST_CUTOFF_NONE, false, true);
+    }
+    for (const GhostStaticFace& source :
+         proxy.mStaticLegacyBlendGlowFaces)
+    {
+        const S32 matches = (S32)std::count_if(
+            proxy.mStaticFaces.begin(), proxy.mStaticFaces.end(),
+            [&source](const GhostStaticFace& candidate)
+            {
+                return candidate.mFace == source.mFace
+                    && candidate.mObjectId == source.mObjectId
+                    && candidate.mAlphaKind == source.mAlphaKind;
+            });
+        if (matches != 1)
+        {
+            complete = false;
+            continue;
+        }
+        complete &= draw_static_blend_glow(source);
+    }
+
+    glPolygonOffset(0.f, 0.f);
+    LLRenderPass::applyModelMatrix((const LLMatrix4*)nullptr);
+    LLVertexBuffer::unbind();
+    gGL.setColorMask(true, true);
+    gGL.blendFunc(LLRender::BF_SOURCE_ALPHA,
+                  LLRender::BF_ONE_MINUS_SOURCE_ALPHA,
+                  LLRender::BF_ZERO,
+                  LLRender::BF_ONE_MINUS_SOURCE_ALPHA);
+    return complete;
+}
+
+bool LLActorMover::renderSharedActorStyleProxyItem(
+    SharedActorStyleProxy& proxy, bool depth_only)
+{
+    if (!proxy.mActive || !proxy.mAvatar || proxy.mAvatar->isDead())
+    {
+        return false;
+    }
+    if (depth_only
+        && (proxy.mPart != ESharedActorStylePart::ACTOR_SOLID
+            || (!proxy.mSuppressNativeBeauty && proxy.mPBRCommands.empty())))
+    {
+        return false;
+    }
+
+    struct SharedReplayScope
+    {
+        explicit SharedReplayScope(bool& flag) : mFlag(flag) { mFlag = true; }
+        ~SharedReplayScope() { mFlag = false; }
+        bool& mFlag;
+    } replay_scope(mRenderingSharedActorStyle);
+
+    // Cover opacity zero intentionally means an invisible actor: readiness and
+    // suppression remain true, but no proxy color or depth is emitted.
+    if (proxy.mAlpha <= 0.f)
+    {
+        return true;
+    }
+
+    LLColor4 tint;
+    if (proxy.mUseActorHue)
+    {
+        tint = actorPathColor(proxy.mWearerId);
+    }
+    else
+    {
+        tint.setHSL(fmodf(llmax(proxy.mHue, 0.f), 360.f) / 360.f,
+                    0.9f, 0.6f);
+        tint.mV[VW] = 1.f;
+    }
+
+    GhostDrawParams params;
+    params.mPixelSize = llmax(0.f, proxy.mPixelSize);
+    params.mShimmerSpeed = llmax(0.f, proxy.mShimmerSpeed);
+    params.mShimmerIntensity = llclamp(proxy.mShimmerAmount, 0.f, 1.f);
+    params.mGlitch = llclamp(proxy.mGlitch, 0.f, 1.f);
+    params.mDistort = llmax(0, proxy.mDistortion);
+    params.mDistortAmount = llclamp(proxy.mDistortionAmount, 0.f, 1.f);
+    params.mBrightness = llclamp(proxy.mBrightness, 0.05f, 1.5f);
+    params.mEffectFps = llclamp(proxy.mEffectFps, 0.f, 30.f);
+    params.mDissolveProgress = llclamp(proxy.mDissolveProgress, 0.f, 1.f);
+    params.mWorldLinear = true;
+    params.mCoverMode = proxy.mSuppressible;
+    params.mCoverageLayerStrength = proxy.mCoverageReplacement
+        ? llclamp(proxy.mAlpha, 0.f, 1.f) : -1.f;
+    params.mDepthOnly = depth_only;
+    params.mNativeDepthAvailable = !depth_only
+        && (proxy.mPart != ESharedActorStylePart::ACTOR_SOLID
+            || !proxy.mSuppressNativeBeauty || proxy.mDepthPrimed);
+    params.mTintCustom = !proxy.mUseActorHue;
+    params.mPhase =
+        (F32)(proxy.mWearerId.mData[0] | (proxy.mWearerId.mData[1] << 8))
+        * (F_TWO_PI / 65536.f);
+
+    LLGLSLShader* saved_shader = LLGLSLShader::sCurBoundShaderPtr;
+    const U32 saved_texture_unit = gGL.getCurrentTexUnitIndex();
+    const bool system_replay = !proxy.mAvatar->isControlAvatar();
+    bool complete = true;
+    switch (proxy.mPart)
+    {
+    case ESharedActorStylePart::ACTOR_SOLID:
+        if (system_replay && (!depth_only || proxy.mSuppressNativeBeauty))
+        {
+            complete &= renderSystemActorGhost(
+                proxy.mAvatar, proxy.mStyleId, false, depth_only,
+                !depth_only && proxy.mDepthPrimed);
+        }
+        if ((!depth_only || proxy.mSuppressNativeBeauty)
+            && (!proxy.mBatches.empty() || !proxy.mStaticFaces.empty()))
+        {
+            bool geometry_complete = true;
+            drawGeometryGhost(proxy.mAvatar, proxy.mBatches, proxy.mFootAgent,
+                              tint, proxy.mAlpha, proxy.mStyle, params,
+                              &proxy.mStaticFaces, &geometry_complete);
+            complete &= geometry_complete;
+        }
+        if (!proxy.mPBRCommands.empty())
+        {
+            complete &= renderSharedActorPBRCommands(proxy, depth_only);
+        }
+        break;
+
+    case ESharedActorStylePart::RIGGED_BLEND:
+    case ESharedActorStylePart::STATIC_BLEND:
+        if (!depth_only
+            && (!proxy.mBatches.empty() || !proxy.mStaticFaces.empty()))
+        {
+            // Each item contains exactly one designated component. The shared
+            // draw helper's sweep filters therefore cannot replay the actor.
+            bool geometry_complete = true;
+            drawGeometryGhost(proxy.mAvatar, proxy.mBatches, proxy.mFootAgent,
+                              tint, proxy.mAlpha, proxy.mStyle, params,
+                              &proxy.mStaticFaces, &geometry_complete);
+            complete &= geometry_complete;
+        }
+        if (!depth_only && !proxy.mPBRCommands.empty())
+        {
+            complete &= renderSharedActorPBRCommands(proxy, false);
+        }
+        break;
+
+    case ESharedActorStylePart::SYSTEM_BLEND:
+        if (!depth_only && system_replay)
+        {
+            complete &= renderSystemActorGhost(
+                proxy.mAvatar, proxy.mStyleId, true, false, true);
+        }
+        break;
+    }
+
+    if (!depth_only
+        && (!proxy.mLegacyGlowBatches.empty()
+            || !proxy.mLegacyBlendGlowBatches.empty()
+            || !proxy.mStaticLegacyGlowBatches.empty()
+            || !proxy.mStaticLegacyBlendGlowFaces.empty()))
+    {
+        complete &= renderSharedActorLegacyGlowCommands(proxy);
+    }
+
     gGL.flush();
     LLVertexBuffer::unbind();
     if (saved_shader && saved_shader->mProgramObject)
@@ -12211,4 +15661,18 @@ void LLActorMover::renderStyledActors()
         LLGLSLShader::unbind();
     }
     gGL.getTexUnit(saved_texture_unit)->activate();
+    if (!complete)
+    {
+        LL_WARNS("ActorFX")
+            << "Shared Actor FX replay invariant violated after actor-wide "
+               "preflight; wearer=" << proxy.mWearerId
+            << " style_id=" << proxy.mStyleId
+            << " part=" << static_cast<S32>(proxy.mPart)
+            << " depth_only=" << depth_only
+            << " frame=" << LLFrameTimer::getFrameCount()
+            << ". Native suppression remains unchanged because the native "
+               "passes may already have drained."
+            << LL_ENDL;
+    }
+    return complete;
 }

@@ -117,11 +117,15 @@ static void pushMaterialBatchIndexed(LLGLSLShader& program, U32 type, bool rigge
         { // single-material batch -- handled by the scalar loop
             continue;
         }
-
         if (!bound)
         { // defer the bind until we actually have an indexed batch this pass
             program.bind();
             bound = true;
+        }
+
+        if (LLRenderPass::shouldSuppressSharedActorFx(params))
+        {
+            continue;
         }
 
         if (rigged)
@@ -314,6 +318,10 @@ void LLDrawPoolMaterials::renderDeferred(S32 pass)
 
         if (params.mMaterialSlotList.size() > 1)
         { // multi-material batch -- drawn by the indexed sweep below
+            continue;
+        }
+        if (LLRenderPass::shouldSuppressSharedActorFx(params))
+        {
             continue;
         }
 

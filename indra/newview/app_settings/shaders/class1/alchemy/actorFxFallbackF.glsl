@@ -21,6 +21,11 @@ float actorFxBeautyDissolveCoverage()
     return 1.0;
 }
 
+float actorFxBeautyDissolveAlpha()
+{
+    return 1.0;
+}
+
 bool actorFxRgbSplitEnabled()
 {
     return false;
@@ -54,4 +59,9 @@ vec2 actorFxPbrMaterial(vec2 roughness_metallic)
 vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color)
 {
     return authored_emissive;
+}
+
+vec3 actorFxBeautyEmissive(vec3 authored_emissive, vec3 styled_color)
+{
+    return actorFxEmissive(authored_emissive, styled_color);
 }

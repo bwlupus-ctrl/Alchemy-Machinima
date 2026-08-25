@@ -372,10 +372,42 @@ public:
     // sites that do not need that classification may ignore the result.
     // allow_native_wire is reserved for the second GL_LINE draw of classic/
     // system-avatar body and eye geometry, which the live harvester cannot see.
+    // force_native is reserved for auxiliary coverage sweeps (currently alpha
+    // DoF depth) that must retain native dissolve/cutout semantics even while a
+    // shared colour replay is active.
     static bool uploadActorFx(const LLUUID& actor_id,
-                              bool allow_native_wire = false);
-    static bool uploadActorFx(const LLDrawInfo& params);
+                              bool allow_native_wire = false,
+                              bool force_native = false);
+    static bool uploadActorFx(const LLDrawInfo& params,
+                              bool force_native = false);
     static void uploadActorFxDisabled();
+    static bool actorFxLookNeedsSyntheticBloom(S32 look);
+    // One frame-coherent clock and whole-frame device-coordinate contract for
+    // every shared Actor FX shader family.  The clock freezes across an entire
+    // tiled snapshot and quantizes only at the final upload; frag offset and
+    // screen size use raw framebuffer pixels so procedural motifs cannot seam
+    // between legacy/PBR faces or snapshot tiles.
+    static F32 actorFxFrameTime(F32 requested_fps);
+    static LLVector2 actorFxFragOffset();
+    static LLVector2 actorFxScreenSize();
+    // Replace/Cover Actor FX is replayed from the shared live-proxy queue so it
+    // can use true forward alpha.  Suppress the native beauty draw only when
+    // that exact actor has a frame-ready proxy; every auxiliary render remains
+    // fail-open.  The LLDrawInfo overload resolves primary/fallback ownership.
+    static bool shouldSuppressSharedActorFx(const LLUUID& actor_id);
+    static bool shouldSuppressSharedActorFx(const LLDrawInfo& params,
+                                             bool depth_only = false);
+    // PBR is rendered authoritatively by the shared forward replay for both
+    // Layer and Cover.  This separate query prevents legacy Layer geometry
+    // from inheriting the PBR-only native suppression policy.
+    static bool shouldSuppressSharedActorFxPBR(const LLDrawInfo& params,
+                                                bool depth_only = false);
+
+    // Exact SL texture-animation half of the GLTF UV contract.  Shared PBR
+    // replay binds KHR transforms through LLFetchedGLTFMaterial and uses this
+    // helper for texture_matrix0, matching the native scalar path.
+    static void setupGLTFTextureMatrix(const LLMatrix4* texture_matrix);
+    static void teardownGLTFTextureMatrix(const LLMatrix4* texture_matrix);
     void pushBatches(U32 type, bool texture = true, bool batch_textures = false);
     void pushUntexturedBatches(U32 type);
 
@@ -424,6 +456,7 @@ public:
         GLTF_MAPS_FULL = 0,    // base color + normal + ORM + emissive (GBuffer write)
         GLTF_MAPS_BASE_COLOR,  // base color only (shadow alpha-mask discard)
         GLTF_MAPS_GLOW,        // base color + emissive (glow/emissive pass)
+        GLTF_MAPS_NONE,        // no maps (opaque depth-only geometry)
     };
 
     // Indexed (multi-material) GLTF PBR helpers. Indexed and scalar draw infos
@@ -435,7 +468,9 @@ public:
     //   pushGLTFBatchesIndexed -- renders only multi-material infos (indexed program bound)
     void pushGLTFBatchesScalar(U32 type);
     void pushGLTFBatchesIndexed(U32 type, eGLTFIndexedMaps maps = GLTF_MAPS_FULL);
-    static void pushGLTFBatchIndexed(LLDrawInfo& params, eGLTFIndexedMaps maps = GLTF_MAPS_FULL);
+    static void pushGLTFBatchIndexed(LLDrawInfo& params,
+                                     eGLTFIndexedMaps maps = GLTF_MAPS_FULL,
+                                     bool shared_replay = false);
 
     // like pushGLTFBatches, but will not bind textures or set up texture transforms
     void pushUntexturedGLTFBatches(U32 type);

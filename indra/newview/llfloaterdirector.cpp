@@ -2005,8 +2005,10 @@ void LLFloaterDirector::refreshActorStyleTab()
     mActorStyleLook->setEnabled(active);
     mActorStyleUseActorHue->setEnabled(active);
     mActorStyleHue->setEnabled(active && !style.mUseActorHue);
-    mActorStyleAlpha->setEnabled(
-        active && style.mMode == LLDirectorCast::ACTOR_STYLE_LAYER);
+    // Effect opacity belongs to the shared replay in both modes. Layer
+    // composites it over authored beauty; Cover uses it for the replacement
+    // itself (including the intentional fully-invisible zero endpoint).
+    mActorStyleAlpha->setEnabled(active);
     const bool dissolve = style.mStyle == 10;
     mActorStyleDissolveProgress->setVisible(dissolve);
     mActorStyleDissolveProgress->setEnabled(active && dissolve);

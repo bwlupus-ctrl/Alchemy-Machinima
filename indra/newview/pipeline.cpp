@@ -4766,7 +4766,13 @@ void renderSoundHighlights(LLDrawable *drawablep)
 bool LLPipeline::canUseInterleavedAlpha()
 {
     static LLCachedControl<bool> interleaved_alpha(gSavedSettings, "RenderInterleavedAlpha", true);
-    return interleaved_alpha && !sRenderingHUDs && !sShadowRender && !gCubeSnapshot &&
+    // A frame-ready shared Actor FX proxy is a third alpha stream, so it must
+    // use the same far-to-near merge even when the optional user preference is
+    // off. Auxiliary views never build a ready queue and retain legacy order.
+    const bool require_interleave =
+        LLActorMover::instance().hasSharedActorStyleProxies();
+    return (interleaved_alpha || require_interleave)
+        && !sRenderingHUDs && !sShadowRender && !gCubeSnapshot &&
            LLViewerCamera::sCurCameraID == LLViewerCamera::CAMERA_WORLD;
 }
 
@@ -18107,42 +18113,6 @@ void LLPipeline::renderDeferredLighting()
                 }
             }
         }
-    }
-
-    // [ActorStyle] Submit the topology-only live Wire pass after every world
-    // transparency and Prism display composite, but before the main HDR scene
-    // target is resolved.  This preserves opaque foreground occlusion without
-    // letting the wire's depth prime hide Ghost alpha or display geometry drawn
-    // later in the frame.  Keep auxiliary captures byte-identical: a styled
-    // actor belongs to the main cinematic camera, not reflection/impostor/cube
-    // or recursively rendered Prism views.
-    const bool actor_wire_main_world =
-        mRT == &mMainRT
-        && screen_target == &mRT->screen
-        && LLRenderTarget::getCurrentBoundTarget() == screen_target
-        && !gCubeSnapshot
-        && !sPrismLensRender
-        && !sReflectionRender
-        && !sImpostorRender
-        && !sRenderingHUDs
-        && LLViewerCamera::sCurCameraID == LLViewerCamera::CAMERA_WORLD;
-    if (actor_wire_main_world)
-    {
-        // The optional visible-diffuse/coverage MRTs are not Actor FX outputs.
-        // Guard both together so the line draw can touch beauty only and cannot
-        // contaminate ReShade classification or its readiness coverage.
-        static const U32 sActorWireGuarded[] =
-        {
-            SL_SIDECAR_ATTACHMENT,
-            SL_COVERAGE_ATTACHMENT
-        };
-        const bool actor_wire_has_sidecars =
-            screen_target->getNumTextures() > SL_COVERAGE_ATTACHMENT;
-        LLScopedIndexedDrawBufferGuard actor_wire_sidecar_guard(
-            actor_wire_has_sidecars,
-            sActorWireGuarded,
-            LL_ARRAY_SIZE(sActorWireGuarded));
-        LLActorMover::instance().renderStyledActors();
     }
 
     screen_target->flush();

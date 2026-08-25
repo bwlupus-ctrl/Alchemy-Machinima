@@ -29,6 +29,7 @@
 #include "lldrawpoolavatar.h"
 #include "llghostavatar.h"
 #include "lldirectorcast.h"
+#include "llactormover.h"
 #include "llskinningutil.h"
 #include "llrender.h"
 
@@ -134,6 +135,27 @@ static bool has_actor_fx_wireframe(const LLVOAvatar* avatarp)
     return style.mEnabled && style.mStyle == 3 &&
         (style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE ||
          style.mAlpha > 0.001f);
+}
+
+// The shared actorghost replay owns classic BODY/EYE beauty only in the main
+// world camera and only when both optional replay programs linked. Auxiliary
+// views retain native Actor FX, so shader failure or a reflection/impostor pass
+// can never turn a styled actor into an unstyled/missing one.
+static bool use_system_actor_ghost_replay(LLVOAvatar* avatarp,
+                                          const LLUUID& style_id)
+{
+    LLActorMover& mover = LLActorMover::instance();
+    return avatarp
+        && !LLPipeline::sReflectionRender
+        && !LLPipeline::sImpostorRender
+        && !LLPipeline::sRenderingHUDs
+        && LLViewerCamera::sCurCameraID == LLViewerCamera::CAMERA_WORLD
+        && !mover.isRenderingSharedActorStyle()
+        // Same-frame queue readiness owns the hand-off.  Program availability
+        // alone is insufficient in auxiliary or incomplete harvests: keeping
+        // native Actor FX there is the fail-open result.
+        && mover.isSharedActorStyleActive(style_id)
+        && mover.canRenderSystemActorGhost(avatarp, style_id);
 }
 
 F32 CLOTHING_GRAVITY_EFFECT = 0.7f;
@@ -522,12 +544,21 @@ void LLDrawPoolAvatar::renderShadow(S32 pass)
         return;
     }
 
+    const LLUUID actor_fx_id = get_actor_fx_id(avatarp);
+    if (LLRenderPass::shouldSuppressSharedActorFx(actor_fx_id))
+    {
+        // System/BOM bodies and rigid eyes do not have LLDrawInfo ownership.
+        // At zero Cover they must therefore be suppressed explicitly in the
+        // shadow endpoint; nonzero Cover remains native/fail-open here.
+        return;
+    }
+
     LLDrawPoolAvatar::sShadowPass = pass;
 
     // Classic/system avatar bodies bypass LLDrawInfo, so upload their cast
     // identity explicitly for every shadow pass.  Disabled/non-cast actors set
     // actorFxEnabled=0 here and cannot inherit the preceding actor's dissolve.
-    LLRenderPass::uploadActorFx(get_actor_fx_id(avatarp));
+    LLRenderPass::uploadActorFx(actor_fx_id);
 
     if (pass == SHADOW_PASS_AVATAR_OPAQUE)
     {
@@ -854,7 +885,12 @@ void LLDrawPoolAvatar::renderVelocity(S32 pass)
         return;
     }
 
-    LLRenderPass::uploadActorFx(get_actor_fx_id(avatarp));
+    const LLUUID actor_fx_id = get_actor_fx_id(avatarp);
+    if (LLRenderPass::shouldSuppressSharedActorFx(actor_fx_id))
+    {
+        return;
+    }
+    LLRenderPass::uploadActorFx(actor_fx_id);
     // Match the deferred body pass.  Alpha-blended skirt/hair/eyelashes remain
     // on the camera-depth fallback rather than double-stamping ordered alpha.
     LLDrawPoolAvatar::sSkipTransparent = true;
@@ -1049,8 +1085,24 @@ void LLDrawPoolAvatar::renderAvatars(LLVOAvatar* single_avatar, S32 pass)
         // Upload on every avatar, including unstyled actors, so a shared bound
         // shader cannot inherit the previous avatar's Actor FX state.
         const LLUUID actor_fx_id = get_actor_fx_id(avatarp);
-        const bool wireframe = has_actor_fx_wireframe(avatarp);
-        LLRenderPass::uploadActorFx(actor_fx_id);
+        if (LLRenderPass::shouldSuppressSharedActorFx(actor_fx_id))
+        {
+            // Replace replays the rigid eyes through the dedicated world
+            // actorghost shader. The helper is main-world/replay-ready gated;
+            // every auxiliary view and link failure remains fail-open.
+            return;
+        }
+        const bool shared_replay = use_system_actor_ghost_replay(
+            avatarp, actor_fx_id);
+        const bool wireframe = !shared_replay && has_actor_fx_wireframe(avatarp);
+        if (shared_replay)
+        {
+            LLRenderPass::uploadActorFxDisabled();
+        }
+        else
+        {
+            LLRenderPass::uploadActorFx(actor_fx_id);
+        }
         avatarp->renderRigid();
         if (wireframe)
         {
@@ -1076,8 +1128,24 @@ void LLDrawPoolAvatar::renderAvatars(LLVOAvatar* single_avatar, S32 pass)
     }
 
     const LLUUID actor_fx_id = get_actor_fx_id(avatarp);
-    const bool wireframe = has_actor_fx_wireframe(avatarp);
-    LLRenderPass::uploadActorFx(actor_fx_id);
+    if (LLRenderPass::shouldSuppressSharedActorFx(actor_fx_id))
+    {
+        // Replace replays opaque and alpha classic meshes in their shared
+        // proxy stages. Layer still draws the authored base here with Actor FX
+        // disabled, then composites the actorghost result over it.
+        return;
+    }
+    const bool shared_replay = use_system_actor_ghost_replay(
+        avatarp, actor_fx_id);
+    const bool wireframe = !shared_replay && has_actor_fx_wireframe(avatarp);
+    if (shared_replay)
+    {
+        LLRenderPass::uploadActorFxDisabled();
+    }
+    else
+    {
+        LLRenderPass::uploadActorFx(actor_fx_id);
+    }
 
     if (LLPipeline::RenderAvatarCloth)
     {

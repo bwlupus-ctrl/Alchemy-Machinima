@@ -587,6 +587,13 @@ public:
 
     U32         renderRigid();
     U32         renderSkinned();
+    // Upload the classic 45-matrix system-avatar palette to the currently
+    // bound replay shader.  Shared Actor FX alpha can be interleaved long after
+    // the opaque sweep, so it cannot rely on that sweep's program uniforms.
+    void        uploadActorGhostPalette();
+    // Conservative same-frame proof that every classic/system mesh the native
+    // avatar would submit can also be consumed by the shared replay.
+    bool        isActorGhostSystemReplayReady();
     F32         getLastSkinTime() { return mLastSkinTime; }
     U32         renderTransparent(bool first_pass);
     void        renderCollisionVolumes();

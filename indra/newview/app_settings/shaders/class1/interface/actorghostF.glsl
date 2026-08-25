@@ -52,8 +52,37 @@
 
 out vec4 frag_color;
 
+#ifdef GHOST_SYSTEM_AVATAR
+// LLViewerJointMesh updates the stock `color` uniform while it binds each BOM
+// texture.  Keep the cinematic style tint independent so those per-mesh setup
+// writes cannot erase it during the replay sweep.
+uniform vec4 ghostSystemColor;
+#define color ghostSystemColor
+#else
 uniform vec4 color;
+#endif
+#ifdef GHOST_INDEXED_WORLD
+// Authoritative shared-world indexed replay. The engine injects its native
+// tex0..texN sampler family, vary_texture_index, and diffuseLookup() at the
+// full legacy indexed width. Ghost Studio never compiles this permutation.
+
+// Exact per-slot material contract. RGB factor is one for ordinary legacy/PBR
+// beauty because the batcher bakes TE/base-colour factors into diffuse_color;
+// it carries an auxiliary authored-map factor when a replay source requires
+// one. A is the non-vertex authored alpha factor. Texture-alpha participation,
+// cutoff law and vertex-alpha participation remain independent so OPAQUE,
+// MASK and BLEND cannot leak semantics across merged material slots.
+uniform vec4  ghostIndexedMaterialFactor[GHOST_INDEXED_CHANNELS];
+uniform float ghostIndexedTextureAlpha[GHOST_INDEXED_CHANNELS];
+uniform float ghostIndexedMinimumAlpha[GHOST_INDEXED_CHANNELS];
+uniform int   ghostIndexedUseVertexAlpha[GHOST_INDEXED_CHANNELS];
+uniform int   ghostIndexedAlphaCutoffMode[GHOST_INDEXED_CHANNELS];
+#define GHOST_DIFFUSE_SAMPLE(uv_) diffuseLookup(uv_)
+#else
+flat in int vary_texture_index;
 uniform sampler2D diffuseMap;
+#define GHOST_DIFFUSE_SAMPLE(uv_) texture(diffuseMap, uv_)
+#endif
 uniform float ghostTime;
 uniform vec4 ghostParams;
 uniform vec4 ghostAux;
@@ -63,6 +92,13 @@ uniform int ghostLook;
 // multiplies the texture alpha; 0 = legacy non-alpha-pool face whose vertex
 // alpha bakes SHININESS, not opacity (RGB tint still always applies).
 uniform int ghostUseVertexAlpha;
+// Shared world MASK replay follows the exact native base-pass discard law:
+// 0 = no cutoff, 1 = texture alpha, 2 = texture * vertex alpha, 3 = texture
+// alpha with the legacy-material half-UNORM8 (1/512) cutoff bias. Ghost Studio keeps its
+// historical coverage branch and never compiles this world-only uniform.
+#ifdef GHOST_WORLD_PASS
+uniform int ghostAlphaCutoffMode;
+#endif
 // x > .5 means the material alpha mode actually uses sampled texture alpha;
 // y is the PBR base-colour factor alpha. OPAQUE materials receive (0, 1), so
 // arbitrary/packed data in their base-colour A channel cannot punch holes.
@@ -73,8 +109,32 @@ uniform vec4 ghostDistortParams;
 // Native live Actor wire is submitted to the linear HDR world buffer. Ghost
 // Studio overlays remain post-tonemap/display-space and leave this disabled.
 uniform int ghostWorldLinear;
+#ifdef GHOST_WORLD_PASS
+// Shared live Actor FX reuses the exact animated beauty program for its bloom
+// replay.  This mode preserves every alpha/mask/dissolve decision above, emits
+// no RGB, and publishes only bloom energy in HDR alpha.  Ghost Studio's late
+// interface permutation never compiles or observes this uniform.
+uniform int ghostGlowOnly;
+#endif
 // Whole-image pixel origin of the current tiled snapshot subregion.
 uniform vec2 ghostFragOffset;
+#ifdef GHOST_WORLD_PASS
+// Full untiled render-target size. Shared Actor FX device motifs use this with
+// ghostFragOffset so their scope/tube/recorder field spans the whole frame
+// instead of restarting at every face, material UV island, or snapshot tile.
+uniform vec2 ghostScreenSize;
+// Layer+Dissolve owns authored coverage while its UI alpha remains treatment
+// strength. Negative means Cover/full treatment. This is deliberately separate
+// from ghostParams.x, whose historical meaning is scanline amount.
+uniform float ghostCoverageLayerStrength;
+#endif
+#ifdef GHOST_SHARED_DISSOLVE
+// Classic Actor FX uses the same authored progress and the same raw/rest-space
+// field as native beauty + shadow. Ghost Studio keeps its historical automatic
+// dissolve when this world-only permutation is absent.
+uniform float ghostDissolveProgress;
+in vec3 vary_object_position;
+#endif
 // [R2-2] indexed-batch slot filter: >= 0 draws ONLY fragments whose
 // per-vertex material slot matches (the clone re-draws a multi-material
 // batch once per slot with that slot's texture bound); -1 = no filtering.
@@ -91,8 +151,27 @@ float ghostSrgbChannelToLinear(float channel)
         ? c / 12.92
         : pow((c + 0.055) / 1.055, 2.4);
 }
-flat in int vary_texture_index;
 in vec4 vary_vertex_color;
+
+vec2 ghostDeviceUv()
+{
+#ifdef GHOST_WORLD_PASS
+    return clamp((gl_FragCoord.xy + ghostFragOffset)
+                 / max(ghostScreenSize, vec2(1.0)),
+                 vec2(0.0), vec2(1.0));
+#else
+    // Ghost Studio is a historical late overlay and retains its per-material
+    // motif coordinates. Only authoritative shared-world activation uses the
+    // whole-frame device field above.
+    return fract(vary_texcoord0);
+#endif
+}
+
+#ifdef GHOST_WORLD_PASS
+vec3 getAdditiveColor();
+vec3 getAtmosAttenuation();
+vec4 applySkyAndWaterFog(vec3 pos, vec3 additive, vec3 atten, vec4 color);
+#endif
 
 // cheap stable hash for the glitch bands (classic one-liner)
 float ghost_hash(vec2 p)
@@ -136,6 +215,33 @@ vec3 ghost_rainbow(float h)
 void main()
 {
     vec2 fragCoord = gl_FragCoord.xy + ghostFragOffset;
+    float ghostDissolveEdge = 0.0;
+#ifdef GHOST_INDEXED_WORLD
+    if (vary_texture_index < 0 || vary_texture_index >= GHOST_INDEXED_CHANNELS)
+    {
+        discard;
+    }
+    int activeAlphaCutoffMode =
+        ghostIndexedAlphaCutoffMode[vary_texture_index];
+    int activeUseVertexAlpha =
+        ghostIndexedUseVertexAlpha[vary_texture_index];
+    vec4 activeMaterialFactor =
+        ghostIndexedMaterialFactor[vary_texture_index];
+    vec2 activeGhostAlpha = vec2(
+        ghostIndexedTextureAlpha[vary_texture_index],
+        activeMaterialFactor.a);
+    float activeMinimumAlpha =
+        ghostIndexedMinimumAlpha[vary_texture_index];
+#else
+    int activeAlphaCutoffMode = 0;
+#ifdef GHOST_WORLD_PASS
+    activeAlphaCutoffMode = ghostAlphaCutoffMode;
+#endif
+    int activeUseVertexAlpha = ghostUseVertexAlpha;
+    vec4 activeMaterialFactor = vec4(1.0);
+    vec2 activeGhostAlpha = ghostAlpha;
+    float activeMinimumAlpha = ghostAux.x;
+#endif
     // [R2-2] indexed-batch slot filter (see ghostSlot above)
     if (ghostSlot >= 0 && vary_texture_index != ghostSlot)
     {
@@ -238,18 +344,26 @@ void main()
         uv.x += torn * (r - 0.5) * 0.22 * glitch;       // sideways slice offset
     }
 
-    vec4 tex = texture(diffuseMap, uv);
+    vec4 tex = GHOST_DIFFUSE_SAMPLE(uv);
+#ifdef GHOST_WORLD_PASS
+    // Creative RGB distortions must never move authored coverage.  Keep a
+    // separate sample at the original material UV for BLEND ramps and MASK
+    // discard; Ghost Studio intentionally retains its historical distorted-A
+    // behaviour in the non-world permutation.
+    float worldAuthoredTextureAlpha = activeGhostAlpha.x > 0.5
+        ? GHOST_DIFFUSE_SAMPLE(vary_texcoord0.xy).a : 1.0;
+#endif
     if (ghostDistort == 5 && distort > 0.001) // RGB split
     {
         vec2 split = vec2(0.003 + 0.018 * distort, 0.0);
-        tex.r = texture(diffuseMap, uv + split).r;
-        tex.b = texture(diffuseMap, uv - split).b;
+        tex.r = GHOST_DIFFUSE_SAMPLE(uv + split).r;
+        tex.b = GHOST_DIFFUSE_SAMPLE(uv - split).b;
     }
     else if (ghostDistort == 8 && distort > 0.001)
     {
         vec2 split = vec2(0.002 + vhsBand * 0.008, 0.0) * distort;
-        tex.r = texture(diffuseMap, uv + split).r;
-        tex.b = texture(diffuseMap, uv - split).b;
+        tex.r = GHOST_DIFFUSE_SAMPLE(uv + split).r;
+        tex.b = GHOST_DIFFUSE_SAMPLE(uv - split).b;
         float mono = dot(tex.rgb, vec3(0.299, 0.587, 0.114));
         tex.rgb = mix(tex.rgb, vec3(mono), 0.25 * distort);
     }
@@ -258,31 +372,62 @@ void main()
     {
         // chroma split on the torn slice: R and B sampled a hair apart
         vec2 split = vec2(0.006 * glitch, 0.0);
-        tex.r = texture(diffuseMap, uv + split).r;
-        tex.b = texture(diffuseMap, uv - split).b;
+        tex.r = GHOST_DIFFUSE_SAMPLE(uv + split).r;
+        tex.b = GHOST_DIFFUSE_SAMPLE(uv - split).b;
     }
 
     // [R2-4] per-vertex colour, split by channel semantics:
     // RGB is always authored tint/base-colour and must always be honored.
     // Legacy non-alpha-pool vertex alpha holds shininess, not opacity.
-    tex.rgb *= vary_vertex_color.rgb;
-    float authoredAlpha = ghostAlpha.x > 0.5 ? tex.a : 1.0;
-    if (ghostUseVertexAlpha != 0)
+    tex.rgb *= activeMaterialFactor.rgb * vary_vertex_color.rgb;
+    float sampledAuthoredAlpha = tex.a;
+#ifdef GHOST_WORLD_PASS
+    sampledAuthoredAlpha = worldAuthoredTextureAlpha;
+#endif
+    float authoredAlpha = activeGhostAlpha.x > 0.5 ? sampledAuthoredAlpha : 1.0;
+    if (activeUseVertexAlpha != 0)
     {
         authoredAlpha *= vary_vertex_color.a;
     }
-    authoredAlpha *= clamp(ghostAlpha.y, 0.0, 1.0);
+    authoredAlpha *= clamp(activeGhostAlpha.y, 0.0, 1.0);
 
     // alpha-mask cutoff, exactly like the real render's masked passes. With
     // ghostAux.x == 0 no texel can be below the cutoff, so the branch is free
     // for opaque/blend batches.
-    if (authoredAlpha < ghostAux.x)
+#ifdef GHOST_WORLD_PASS
+    float cutoffAlpha = activeGhostAlpha.x > 0.5 ? sampledAuthoredAlpha : 1.0;
+    if (activeAlphaCutoffMode == 2)
+    {
+        cutoffAlpha *= vary_vertex_color.a;
+    }
+    cutoffAlpha *= clamp(activeGhostAlpha.y, 0.0, 1.0);
+    float cutoffBias = activeAlphaCutoffMode == 3 ? (1.0 / 512.0) : 0.0;
+    if (activeAlphaCutoffMode != 0 && cutoffAlpha < activeMinimumAlpha - cutoffBias)
+#else
+    if (authoredAlpha < activeMinimumAlpha)
+#endif
     {
         discard;
     }
     // All look branches below consume tex.a as the authored coverage. Replace
     // it once here so OPAQUE, MASK, and BLEND semantics stay centralized.
     tex.a = authoredAlpha;
+#ifdef GHOST_WORLD_PASS
+    // Shared live activation changes surface colour, not material coverage.
+    // Keep the exact centralized authored texture/vertex ramp for every look;
+    // Dissolve is the sole look allowed to reshape/discard it below. This
+    // branch is absent from Ghost Studio's historical interface permutation.
+    // Native MASK/PBR MASK uses alpha only for discard; a surviving fragment
+    // is material-opaque.  BLEND alone retains its continuous authored ramp.
+    float worldAuthoredCoverage = activeAlphaCutoffMode != 0
+        ? clamp(color.a, 0.0, 1.0)
+        : clamp(color.a * tex.a, 0.0, 1.0);
+    // Coverage-changing Layer+Dissolve cannot leave the native actor below its
+    // holes. Preserve the authored replay as the zero-strength endpoint and
+    // blend only the creative treatment; negative is Cover/full treatment.
+    vec3 worldDissolveSource = tex.rgb;
+    float worldDissolveTreatmentStrength = 1.0;
+#endif
 
     // animated screen-space scanlines, scrolling slowly upward
     float scan_amt = clamp(ghostParams.x, 0.0, 1.0);
@@ -316,8 +461,20 @@ void main()
     // [R2-1] the per-instance brightness scales the WHOLE output colour (rim
     // included) but never the alpha -- a dimmed clone stays as opaque.
     vec3  rgb   = base * scan * flicker + color.rgb * rim;
+#ifdef GHOST_WORLD_PASS
+    // Shared world replay gates the rim as well as the body.  Without tex.a on
+    // the additive rim term, a fully transparent texel on a BLEND card still
+    // produced an opaque Hologram/X-ray rectangle around hair, lace, and eyes.
+    float syntheticCoverage = clamp(
+        color.a * tex.a * (1.0 - scan_amt * (0.4 - 0.4 * band))
+        + rim * 0.5 * tex.a, 0.0, 1.0);
+    float alpha = clamp(color.a * tex.a * (1.0 - scan_amt * (0.4 - 0.4 * band)) * flicker
+                        + rim * 0.5 * tex.a, 0.0, 1.0);
+#else
+    // Preserve Ghost Studio's historical post-tonemap overlay equation.
     float alpha = clamp(color.a * tex.a * (1.0 - scan_amt * (0.4 - 0.4 * band)) * flicker
                         + rim * 0.5, 0.0, 1.0);
+#endif
 
     float lum = dot(tex.rgb, vec3(0.299, 0.587, 0.114));
     float facing = clamp(abs(dot(n, v)), 0.0, 1.0);
@@ -330,7 +487,15 @@ void main()
     else if (ghostLook == 6) // Neon outline
     {
         rgb = color.rgb * edge * 3.0;
+#ifdef GHOST_WORLD_PASS
+        float edgeMask = smoothstep(0.12, 0.75, edge);
+        // Edge intensity must remain inside the material's authored coverage;
+        // otherwise transparent portions of BLEND cards become neon quads.
+        alpha = color.a * tex.a * edgeMask;
+#else
+        // Preserve Ghost Studio's historical post-tonemap overlay equation.
         alpha = color.a * smoothstep(0.12, 0.75, edge);
+#endif
     }
     else if (ghostLook == 7) // Silhouette
     {
@@ -355,12 +520,42 @@ void main()
     }
     else if (ghostLook == 10) // Dissolve
     {
+#ifdef GHOST_SHARED_DISSOLVE
+        worldDissolveTreatmentStrength = ghostCoverageLayerStrength < 0.0
+            ? 1.0 : clamp(ghostCoverageLayerStrength, 0.0, 1.0);
+        float progress = clamp(ghostDissolveProgress, 0.0, 1.0);
+        if (progress >= 1.0)
+        {
+            discard;
+        }
+        vec2 actor_offset = vec2(cos(ghostAux.w), sin(ghostAux.w)) * 17.0;
+        vec2 domain = vary_object_position.xy
+                    + vec2(vary_object_position.z * 0.73,
+                           vary_object_position.z * 1.17);
+        // Exact actorFxDissolveCoverage() field. Shared legacy/PBR beauty,
+        // synthetic bloom and native shadow must agree on the same rest-space
+        // domain, advection and unpulsed manual threshold.
+        float threshold = progress;
+        float d = progress <= 0.0
+            ? 1.0
+            : ghost_fbm(domain * 3.2 + actor_offset
+                        + vec2(0.0, ghostTime * 0.22)) - threshold;
+        if (d < 0.0) discard;
+        float glow = 1.0 - smoothstep(0.0, 0.10, d);
+        ghostDissolveEdge = glow * worldDissolveTreatmentStrength;
+        rgb = tex.rgb * color.rgb
+            + glow * mix(vec3(1.0, 0.35, 0.02), color.rgb, 0.4) * 2.2;
+        // Match shared PBR output coverage exactly: surviving MASK fragments
+        // remain material-opaque, while BLEND retains its authored ramp.
+        alpha = worldAuthoredCoverage * smoothstep(0.0, 0.025, d);
+#else
         float d = ghost_fbm(vary_position.xy * 3.2 + vec2(0.0, ghostTime * 0.22));
         float threshold = 0.40 + 0.16 * sin(ghostTime * 0.55 + ghostAux.w);
         if (d < threshold) discard;
         float glow = 1.0 - smoothstep(threshold, threshold + 0.10, d);
         rgb = tex.rgb * color.rgb + glow * mix(vec3(1.0, 0.35, 0.02), color.rgb, 0.4) * 2.2;
         alpha = color.a * tex.a * smoothstep(threshold, threshold + 0.025, d);
+#endif
     }
     else if (ghostLook == 11) // Negative
     {
@@ -395,7 +590,16 @@ void main()
                                + vec2(sin(ghostTime * 0.45), -ghostTime * 0.38));
         float wispy = smoothstep(0.22, 0.82, flow + edge * 0.45);
         rgb = mix(vec3(0.015, 0.12, 0.04), color.rgb, 0.7) * (0.5 + flow * 1.4);
+#ifdef GHOST_WORLD_PASS
+        // Shared material replay preserves authored surface coverage. Match
+        // actorFxF by expressing the ectoplasm wisps as luminance so legacy,
+        // system/BOM, and PBR faces do not split at material boundaries.
+        rgb *= mix(0.28, 1.0, wispy);
+        alpha = color.a * tex.a;
+#else
+        // Ghost Studio keeps its historical wispy transparency.
         alpha = color.a * tex.a * wispy;
+#endif
     }
     else if (ghostLook == 16) // Frost / ice
     {
@@ -415,8 +619,8 @@ void main()
     }
     else if (ghostLook == 18) // Thermal scope
     {
-        vec2 p = fract(vary_texcoord0);
-        float vignette = smoothstep(0.72, 0.18, length(p - 0.5));
+        vec2 p = ghostDeviceUv();
+        float vignette = 1.0 - smoothstep(0.18, 0.72, length(p - 0.5));
         float reticle = (1.0 - smoothstep(0.002, 0.012, abs(p.x - 0.5)))
                       + (1.0 - smoothstep(0.002, 0.012, abs(p.y - 0.5)));
         rgb = heat_lut(lum + edge * 0.32) * (0.35 + 0.65 * vignette)
@@ -430,7 +634,7 @@ void main()
     }
     else if (ghostLook == 20) // Night-vision tube
     {
-        vec2 p = fract(vary_texcoord0) - 0.5;
+        vec2 p = ghostDeviceUv() - 0.5;
         float tube = 1.0 - smoothstep(0.36, 0.52, length(p));
         float grain = ghost_hash(fragCoord + floor(ghostTime * 20.0)) - 0.5;
         float ir = clamp(lum * 1.55 + edge * 0.55 + grain * 0.16, 0.0, 1.0);
@@ -448,8 +652,8 @@ void main()
     else if (ghostLook == 22) // Killcam
     {
         float grain = ghost_hash(fragCoord + floor(ghostTime * 24.0)) - 0.5;
-        float bars = step(fract(vary_texcoord0.y), 0.12)
-                   + step(0.88, fract(vary_texcoord0.y));
+        float device_y = ghostDeviceUv().y;
+        float bars = step(device_y, 0.12) + step(0.88, device_y);
         rgb = mix(vec3(lum + grain * 0.10), color.rgb * vec3(lum), 0.18);
         rgb *= 1.0 - clamp(bars, 0.0, 1.0) * 0.78;
         alpha = color.a * tex.a;
@@ -481,23 +685,35 @@ void main()
     {
         float sweep = fract(ghostTime * 0.35 + ghostAux.w * 0.1);
         float beam = 1.0 - smoothstep(0.0, 0.075,
-                                     abs(fract(vary_texcoord0.y) - sweep));
+                                     abs(ghostDeviceUv().y - sweep));
         rgb = color.rgb * (0.08 + edge * 0.7 + beam * 2.5);
         alpha = color.a * tex.a * (0.22 + edge * 0.35 + beam * 0.55);
     }
     else if (ghostLook == 27) // Hologram interference / double image
     {
         vec2 echo = vec2(0.012 * sin(ghostTime * 3.0 + ghostAux.w), 0.0);
-        vec3 a = texture(diffuseMap, uv + echo).rgb;
-        vec3 b = texture(diffuseMap, uv - echo).rgb;
+        vec3 a = GHOST_DIFFUSE_SAMPLE(uv + echo).rgb;
+        vec3 b = GHOST_DIFFUSE_SAMPLE(uv - echo).rgb;
         rgb = vec3(a.r, tex.g, b.b) * color.rgb + color.rgb * edge * 1.2;
         alpha = color.a * tex.a * (0.55 + edge * 0.45);
     }
     if (ghostLook >= 5)
     {
+#ifdef GHOST_WORLD_PASS
+        // Capture Dissolve's edge-shaped coverage before the common flicker.
+        // World beauty restores this value only for Dissolve; every other live
+        // look restores authoritative authored material coverage below.
+        syntheticCoverage = clamp(alpha, 0.0, 1.0);
+#endif
         rgb *= flicker;
         alpha *= flicker;
     }
+#ifdef GHOST_WORLD_PASS
+    // The common creative flicker is RGB animation, not surface coverage.
+    // Dissolve restores its pre-flicker edge-shaped alpha; all other looks
+    // restore the untouched material coverage captured above.
+    alpha = ghostLook == 10 ? syntheticCoverage : worldAuthoredCoverage;
+#endif
     rgb *= max(ghostFx.w, 0.0);
     // Flat-tint looks have no authored texture detail to reveal a UV warp.
     // Add a restrained signal cue so every distortion remains readable on
@@ -532,6 +748,15 @@ void main()
     }
     if (ghostDistort == 8)
         rgb *= 1.0 - vhsBand * 0.22 * distort;
+#ifdef GHOST_WORLD_PASS
+    if (ghostLook == 10 && ghostCoverageLayerStrength >= 0.0)
+    {
+        // Apply Layer strength after the complete animated look so the source
+        // endpoint does not inherit dissolve tint, edge, flicker, or brightness.
+        rgb = mix(worldDissolveSource, rgb,
+                  worldDissolveTreatmentStrength);
+    }
+#endif
     if (ghostWorldLinear != 0)
     {
         // actorghostF authors its looks in display/sRGB space.  Convert only
@@ -541,5 +766,55 @@ void main()
                    ghostSrgbChannelToLinear(rgb.g),
                    ghostSrgbChannelToLinear(rgb.b));
     }
+#ifdef GHOST_WORLD_PASS
+    if (ghostGlowOnly != 0)
+    {
+        float strength = 0.0;
+        if (ghostLook == 2) strength = 0.55;
+        else if (ghostLook == 6) strength = 0.45;
+        else if (ghostLook == 14 || ghostLook == 15 || ghostLook == 17 ||
+                 ghostLook == 19 || ghostLook == 26 || ghostLook == 27)
+        {
+            strength = 0.22;
+        }
+
+        vec3 emitted = rgb * strength;
+        if (ghostLook == 10)
+        {
+            vec3 dissolveTint = mix(vec3(1.0, 0.35, 0.02), color.rgb, 0.4);
+            // Beauty RGB was converted to linear immediately above. Convert
+            // the separately reconstructed dissolve edge too before deriving
+            // HDR bloom energy; otherwise this one look over-bloomed relative
+            // to the exact same edge colour in world beauty. This branch only
+            // exists in the world permutation, so Ghost Studio is unchanged.
+            dissolveTint = vec3(ghostSrgbChannelToLinear(dissolveTint.r),
+                                ghostSrgbChannelToLinear(dissolveTint.g),
+                                ghostSrgbChannelToLinear(dissolveTint.b));
+            emitted = dissolveTint * ghostDissolveEdge * 2.2;
+        }
+        // The styled RGB already contains each look's edge/beam/scan shaping
+        // and the one common signal pulse. Gate ordinary treatment bloom only
+        // by authoritative material coverage so those cues are not squared;
+        // surviving MASK texels stay binary and BLEND keeps its authored ramp.
+        float bloomCoverage = worldAuthoredCoverage;
+        if (ghostLook == 10)
+        {
+            // Dissolve reconstructs its incandescent edge independently of
+            // beauty RGB, so apply the signal pulse here exactly once while
+            // retaining the same MASK/BLEND material gate as every other look.
+            bloomCoverage = clamp(worldAuthoredCoverage * flicker, 0.0, 1.0);
+        }
+        float glow = max(max(emitted.r, emitted.g), emitted.b)
+                   * bloomCoverage;
+        frag_color = vec4(0.0, 0.0, 0.0, max(glow, 0.0));
+        return;
+    }
+    // This dedicated replay executes before the main HDR target is resolved.
+    // Match ordinary forward world alpha, including both sky atmosphere and
+    // the underwater fog law. Ghost Studio's late display-space program never
+    // compiles this branch.
+    rgb = applySkyAndWaterFog(vary_position, getAdditiveColor(),
+                              getAtmosAttenuation(), vec4(rgb, alpha)).rgb;
+#endif
     frag_color = max(vec4(rgb, alpha), vec4(0));
 }

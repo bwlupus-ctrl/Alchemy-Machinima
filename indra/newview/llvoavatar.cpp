@@ -8435,6 +8435,106 @@ void LLVOAvatar::dirtyMesh(S32 priority)
 //-----------------------------------------------------------------------------
 // getViewerJoint()
 //-----------------------------------------------------------------------------
+void LLVOAvatar::uploadActorGhostPalette()
+{
+    // Every weighted classic body mesh uses the same reference palette.  Pick
+    // the first built core mesh; doing the private lookup here avoids exposing
+    // mesh-LOD internals to ActorMover while keeping an interleaved alpha replay
+    // independent of whichever actor last used the shader program.
+    for (S32 mesh_id : { (S32)MESH_ID_HEAD,
+                         (S32)MESH_ID_UPPER_BODY,
+                         (S32)MESH_ID_LOWER_BODY })
+    {
+        if (LLViewerJointMesh* mesh =
+                dynamic_cast<LLViewerJointMesh*>(getViewerJoint(mesh_id)))
+        {
+            if (mesh->isActorGhostPaletteReady())
+            {
+                mesh->uploadJointMatrices();
+                return;
+            }
+        }
+    }
+}
+
+bool LLVOAvatar::isActorGhostSystemReplayReady()
+{
+    if (!isBuilt() || mDrawable.isNull()
+        || mDrawable->isState(LLDrawable::REBUILD_GEOMETRY)
+        || mDirtyMesh)
+    {
+        return false;
+    }
+
+    LLFace* shared_face = mDrawable->getFace(0);
+    if (!shared_face || !shared_face->getVertexBuffer())
+    {
+        return false;
+    }
+
+    const bool render_head = !isSelf() || gAgent.needsRenderHead();
+    const bool jelly = getOverallAppearance() == AOA_JELLYDOLL;
+    const bool head_visible = render_head
+        && (isTextureVisible(TEX_HEAD_BAKED) || jelly);
+    const bool upper_visible = isTextureVisible(TEX_UPPER_BAKED) || jelly;
+    const bool lower_visible = isTextureVisible(TEX_LOWER_BAKED) || jelly;
+    const bool skirt_visible = isWearingWearableType(LLWearableType::WT_SKIRT)
+        && isTextureVisible(TEX_SKIRT_BAKED);
+    const bool eyelash_visible = render_head
+        && isTextureVisible(TEX_HEAD_BAKED);
+    const bool hair_visible = render_head
+        && isTextureVisible(TEX_HAIR_BAKED)
+        && (getOverallAppearance() != AOA_JELLYDOLL || hasEffectiveActorFx());
+    const bool eyes_visible = isTextureVisible(TEX_EYES_BAKED) || jelly;
+
+    auto mesh_ready = [&](S32 mesh_id, bool required) -> bool
+    {
+        if (!required)
+        {
+            return true;
+        }
+        LLViewerJointMesh* mesh =
+            dynamic_cast<LLViewerJointMesh*>(getViewerJoint(mesh_id));
+        return mesh && mesh->isActorGhostReplayReady();
+    };
+
+    if (!mesh_ready(MESH_ID_HEAD, head_visible)
+        || !mesh_ready(MESH_ID_UPPER_BODY, upper_visible)
+        || !mesh_ready(MESH_ID_LOWER_BODY, lower_visible)
+        || !mesh_ready(MESH_ID_SKIRT, skirt_visible)
+        || !mesh_ready(MESH_ID_EYELASH, eyelash_visible)
+        || !mesh_ready(MESH_ID_HAIR, hair_visible)
+        || !mesh_ready(MESH_ID_EYEBALL_LEFT, eyes_visible)
+        || !mesh_ready(MESH_ID_EYEBALL_RIGHT, eyes_visible))
+    {
+        return false;
+    }
+
+    const bool needs_weighted_palette = head_visible || upper_visible
+        || lower_visible || skirt_visible || eyelash_visible || hair_visible;
+    if (needs_weighted_palette)
+    {
+        bool have_palette_source = false;
+        for (S32 mesh_id : { (S32)MESH_ID_HEAD,
+                             (S32)MESH_ID_UPPER_BODY,
+                             (S32)MESH_ID_LOWER_BODY })
+        {
+            LLViewerJointMesh* mesh =
+                dynamic_cast<LLViewerJointMesh*>(getViewerJoint(mesh_id));
+            if (mesh && mesh->isActorGhostPaletteReady())
+            {
+                have_palette_source = true;
+                break;
+            }
+        }
+        if (!have_palette_source)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 LLViewerJoint*  LLVOAvatar::getViewerJoint(S32 idx)
 {
     return dynamic_cast<LLViewerJoint*>(mMeshLOD[idx]);
