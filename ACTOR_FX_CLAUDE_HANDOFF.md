@@ -231,6 +231,20 @@ cmake --build build-Windows-vs2026-os --config RelWithDebInfo --target alchemy-b
   in-world visual and frame-time matrix below still needs to be run on the reported
   production avatars before declaring the cinematic result visually approved.
 
+### Release artifact warning and verification
+
+- Do not reuse the older `build-Windows-vs2026-os/newview/Release/AlchemyTest.exe`
+  dated 2026-08-24 20:59. It was built from the pre-activation checkpoint and its
+  `llviewershadermgr.cpp:871` fatal assertion identifies a deferred-shader load
+  failure from that older source layout.
+- Do not mix an executable from one configuration/commit with another build's
+  `app_settings/shaders` directory. Treat the executable and staged runtime tree as
+  one inseparable artifact.
+- Release was rebuilt at `5c1de7d4503` with the same local MSVC non-LTO workaround.
+  All 76 committed shader files matched the Release staging tree, and the exact
+  `newview/Release/AlchemyTest.exe` launched responsively, logged `Loaded deferred
+  shaders`, and reached the login screen without the assertion.
+
 ## Cinematic runtime test matrix
 
 Use a fixed camera, resolution, graphics preset, environment, and animation. Capture
