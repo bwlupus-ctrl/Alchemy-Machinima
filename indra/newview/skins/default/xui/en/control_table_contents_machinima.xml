@@ -100,7 +100,7 @@
          font="SansSerif"
          halign="left"
          name="lst_action"
-         tool_tip="Toggle the selected Cinematic Light Rig master power on/off"
-         value="Light Rig: Master Power" />
+         tool_tip="Toggle Enable for the selected Cinematic Light Rig"
+         value="Light Rig: Enable / Disable" />
     </rows>
 </contents>

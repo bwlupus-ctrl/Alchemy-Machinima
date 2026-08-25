@@ -517,9 +517,11 @@ bool director_look_at_camera(EKeystate s)
     return true;
 }
 
-// [Machinima] Toggle the selected Cinematic Light Rig's single master gate.
-// Shipped unbound; operators can assign it in Preferences > Controls.
-bool cine_light_rig_power(EKeystate s)
+// [Machinima] Toggle the selected Cinematic Light Rig's single Enable master.
+// Shipped unbound; operators can assign it in Preferences > Controls. The
+// registered action ID retains its historical "power" name so existing user
+// keybindings continue to work, but it never touches the deprecated Power gate.
+bool cine_light_rig_enable(EKeystate s)
 {
     if (KEYSTATE_DOWN != s) return true;
     gSavedSettings.setBOOL("CineLightRigEnabled",
@@ -1146,7 +1148,7 @@ REGISTER_KEYBOARD_ACTION("roll_reset", camera_roll_reset);
 // view has keyboard focus (the normal filming state). Shipped unbound -- present
 // in the Controls panel for the operator to assign.
 REGISTER_KEYBOARD_ACTION("director_look_at_camera", director_look_at_camera);
-REGISTER_KEYBOARD_ACTION("cine_light_rig_power", cine_light_rig_power);
+REGISTER_KEYBOARD_ACTION("cine_light_rig_power", cine_light_rig_enable);
 REGISTER_KEYBOARD_ACTION("actor_look_at_camera_1", actor_look_at_camera_1);
 REGISTER_KEYBOARD_ACTION("actor_look_at_camera_2", actor_look_at_camera_2);
 REGISTER_KEYBOARD_ACTION("actor_look_at_camera_3", actor_look_at_camera_3);

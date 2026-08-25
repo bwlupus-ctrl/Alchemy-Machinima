@@ -9,7 +9,8 @@
     <text follows="left|top" font="SansSerifBold" height="18" layout="topleft"
      left="8" top="6" value="Cinematic Light Rig" width="200" />
     <check_box control_name="CineLightRigEnabled" follows="left|top" height="18"
-     label="Power" layout="topleft" left="8" name="cine_power" top="30" width="82" />
+     label="Enable" layout="topleft" left="8" name="cine_enabled" top="30" width="82"
+     tool_tip="Master on/off for the selected Cinematic Light Rig." />
     <check_box control_name="CineLightRigGizmo" follows="left|top" height="18"
      label="Gizmo" layout="topleft" left="94" name="cine_gizmo" top="30" width="92" />
     <text follows="left|top" height="16" layout="topleft" left="8" top="57"
