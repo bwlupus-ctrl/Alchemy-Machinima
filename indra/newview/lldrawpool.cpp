@@ -435,6 +435,8 @@ const LLStaticHashedString sActorFxTint("actorFxTint");
 const LLStaticHashedString sActorFxParams0("actorFxParams0");
 const LLStaticHashedString sActorFxParams1("actorFxParams1");
 const LLStaticHashedString sActorFxParams2("actorFxParams2");
+const LLStaticHashedString sActorFxScreenSize("actorFxScreenSize");
+const LLStaticHashedString sActorFxDissolveProgress("actorFxDissolveProgress");
 
 LLGLSLShader* get_actor_fx_shader()
 {
@@ -457,8 +459,13 @@ void LLRenderPass::uploadActorFxDisabled()
     }
 }
 
-bool actor_fx_style_has_glow(const LLDirectorCast::ActorStyle& style)
+bool actor_fx_style_needs_synthetic_bloom(const LLDirectorCast::ActorStyle& style)
 {
+    // actorFxEmissive() also provides restrained self-light for many looks so
+    // they remain legible after scene lighting; self-light does not imply a
+    // costly second bloom draw. Queue zero-authored-emissive alpha faces only
+    // for deliberate bloom-signature looks. Opaque and authored-emissive faces
+    // publish their glow in their normal paths.
     switch (style.mStyle)
     {
         case 2:  // Hologram
@@ -476,7 +483,8 @@ bool actor_fx_style_has_glow(const LLDirectorCast::ActorStyle& style)
 }
 
 bool upload_actor_fx_style(const LLUUID& style_id,
-                           const LLDirectorCast::ActorStyle& style)
+                           const LLDirectorCast::ActorStyle& style,
+                           bool allow_native_wire)
 {
     LLGLSLShader* shader = get_actor_fx_shader();
     if (!shader)
@@ -492,6 +500,17 @@ bool upload_actor_fx_style(const LLUUID& style_id,
         (style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE ||
          style.mAlpha > 0.001f);
     if (!effective)
+    {
+        shader->uniform1i(sActorFxEnabled, 0);
+        return false;
+    }
+
+    // Wireframe Layer keeps the authored fill and receives topology lines in a
+    // dedicated live pass. Cover must actually own the interior too: keep its
+    // native material draw enabled as a neutral hidden-line backing, then let
+    // the line caller select the bright topology treatment below.
+    if (style.mStyle == 3 && !allow_native_wire
+        && style.mMode != LLDirectorCast::ACTOR_STYLE_REPLACE)
     {
         shader->uniform1i(sActorFxEnabled, 0);
         return false;
@@ -515,22 +534,41 @@ bool upload_actor_fx_style(const LLUUID& style_id,
         tint.mV[VW] = 1.f;
     }
 
-    // This timestamp is updated once per viewer frame. Using wall-clock time
-    // here made each material batch advance by a slightly different amount and
-    // defeated LLGLSLShader's per-program uniform value cache.
-    const F32 frame_time = static_cast<F32>(gFrameTimeSeconds);
-    static F32 sSnapshotTime = 0.f;
+    // LLFrameTimer is sampled once per viewer frame, so every material batch
+    // receives one coherent phase. Keep the absolute clock and FPS
+    // quantization in double precision, then upload only the small elapsed
+    // value. Uploading gFrameTimeSeconds directly first reduced the absolute
+    // viewer uptime to F32; after a long session its increasingly coarse steps
+    // made procedural Actor FX stutter or appear frozen.
+    static bool sClockInitialized = false;
+    static F64 sClockEpoch = 0.0;
+    static U32 sClockFrame = U32_MAX;
+    static F64 sFrameClock = 0.0;
+    if (sClockFrame != gFrameCount)
+    {
+        sClockFrame = gFrameCount;
+        sFrameClock = LLFrameTimer::getElapsedSeconds();
+    }
+    const F64 frame_clock = sFrameClock;
+    if (!sClockInitialized)
+    {
+        sClockEpoch = frame_clock;
+        sClockInitialized = true;
+    }
+    const F64 frame_time = llmax(frame_clock - sClockEpoch, 0.0);
+    static F64 sSnapshotTime = 0.0;
     static bool sWasSnapshot = false;
     if (gSnapshot && !sWasSnapshot)
     {
         sSnapshotTime = frame_time;
     }
-    const F32 real_time = gSnapshot ? sSnapshotTime : frame_time;
+    const F64 real_time = gSnapshot ? sSnapshotTime : frame_time;
     sWasSnapshot = gSnapshot;
-    const F32 effect_fps = llclamp(style.mEffectFps, 0.f, 30.f);
-    const F32 effect_time = effect_fps > 0.f
-        ? floorf(real_time * effect_fps) / effect_fps
+    const F64 effect_fps = static_cast<F64>(llclamp(style.mEffectFps, 0.f, 30.f));
+    const F64 effect_time_64 = effect_fps > 0.0
+        ? floor(real_time * effect_fps) / effect_fps
         : real_time;
+    const F32 effect_time = static_cast<F32>(effect_time_64);
     const F32 strength = style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE
         ? 1.f : llclamp(style.mAlpha, 0.f, 1.f);
     const F32 stable_phase =
@@ -556,7 +594,22 @@ bool upload_actor_fx_style(const LLUUID& style_id,
     // meet exactly at tile edges. Y is expressed in bottom-up GL coordinates.
     F32 tile_offset_x = 0.f;
     F32 tile_offset_y = 0.f;
+    F32 screen_width = 1.f;
+    F32 screen_height = 1.f;
     const F32 zoom = LLViewerCamera::getInstance()->getZoomFactor();
+    if (gViewerWindow)
+    {
+        const F32 snapshot_tiles = gSnapshot && zoom > 1.f
+            ? static_cast<F32>(llceil(zoom)) : 1.f;
+        screen_width = llmax(
+            static_cast<F32>(gViewerWindow->getWorldViewWidthRaw())
+                * snapshot_tiles,
+            1.f);
+        screen_height = llmax(
+            static_cast<F32>(gViewerWindow->getWorldViewHeightRaw())
+                * snapshot_tiles,
+            1.f);
+    }
     if (gSnapshot && gViewerWindow && zoom > 1.f)
     {
         const S32 tiles = llceil(zoom);
@@ -570,21 +623,32 @@ bool upload_actor_fx_style(const LLUUID& style_id,
         tile_offset_x = static_cast<F32>(tile_x * gViewerWindow->getWorldViewWidthRaw());
         tile_offset_y = static_cast<F32>(tile_y * gViewerWindow->getWorldViewHeightRaw());
     }
+    F32 render_semantics =
+        style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE ? 1.f : 0.f;
+    if (style.mStyle == 3 && allow_native_wire)
+    {
+        render_semantics = 2.f; // exact topology line pass
+    }
     shader->uniform4f(sActorFxParams2,
                       llclamp(style.mShimmerSpeed, 0.f, 20.f),
-                      tile_offset_x, tile_offset_y, 0.f);
+                      tile_offset_x, tile_offset_y,
+                      render_semantics);
+    shader->uniform2f(sActorFxScreenSize, screen_width, screen_height);
+    shader->uniform1f(sActorFxDissolveProgress,
+                      llclamp(style.mDissolveProgress, 0.f, 1.f));
     shader->uniform1i(sActorFxEnabled, 1);
-    return actor_fx_style_has_glow(style);
+    return actor_fx_style_needs_synthetic_bloom(style);
 }
 
 // static
-bool LLRenderPass::uploadActorFx(const LLUUID& actor_id)
+bool LLRenderPass::uploadActorFx(const LLUUID& actor_id,
+                                 bool allow_native_wire)
 {
     // UUID callers and LLDrawInfo owners are canonicalized at their mutation /
     // geometry-build boundaries; keep this per-draw path free of object lookup.
     const LLDirectorCast::ActorStyle& style =
         LLDirectorCast::instance().getActorStyle(actor_id);
-    return upload_actor_fx_style(actor_id, style);
+    return upload_actor_fx_style(actor_id, style, allow_native_wire);
 }
 
 // static
@@ -602,7 +666,7 @@ bool LLRenderPass::uploadActorFx(const LLDrawInfo& params)
     const LLDirectorCast::ActorStyle& style =
         LLDirectorCast::instance().resolveStoredActorStyle(
             params.mActorFxOwner, params.mActorFxFallbackOwner, owner);
-    return upload_actor_fx_style(owner, style);
+    return upload_actor_fx_style(owner, style, false);
 }
 
 LLRenderPass::LLRenderPass(const U32 type)

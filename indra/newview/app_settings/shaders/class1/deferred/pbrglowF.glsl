@@ -113,6 +113,13 @@ void main()
 #ifdef HAS_ACTOR_FX
     if (actor_fx_active)
     {
+        // Re-evaluate authored glow through the same Layer/Cover contract as
+        // PBR beauty. Layer preserves it; a material-owning Cover suppresses
+        // it so unrelated baked signs/LEDs cannot bloom through the treatment.
+        vec3 covered_authored = actorFxEmissive(emissive, vec3(0.0));
+        lum = max(max(covered_authored.r, covered_authored.g),
+                  covered_authored.b) * vertex_emissive.a;
+
         // Glow batches omit tangent/normal attributes; reconstruct the actual
         // eye-space geometric surface normal from position derivatives.
         vec3 actor_fx_normal = cross(dFdx(vary_position), dFdy(vary_position));

@@ -13,9 +13,13 @@ Known rollback points:
 
 - `6468f6b6772` — `Checkpoint: cinematic light rig + actor gaze feature stack`
 - `f547400e0fb` — `Checkpoint: cinematic controls and native Actor FX groundwork`
+- `5c1de7d4503` — `Perfect native Actor FX across avatar and material paths`
+- `cb66bd165d6` — `Document stale Release shader assertion`
 
-The second checkpoint was made before completing full native Actor FX activation so
-the renderer can be stepped back safely if a driver-specific regression is found.
+The new all-look/wire/Dissolve pass described below is the commit immediately after
+`cb66bd165d6`. Use `git log -1 --oneline` after receiving the handoff to record its
+final hash. The earlier points allow progressively larger rollbacks if a
+driver-specific regression is found.
 
 ## Whole-session feature inventory
 
@@ -72,21 +76,47 @@ This handoff covers the full session, not only Actor FX.
 Director has a final scrollable `Actor FX` tab for You and Director cast members.
 Settings persist for away actors and in Director scenes.
 
-Actor FX no longer redraws harvested Ghost Studio overlay geometry. It is a native,
-per-draw material transform attached to the viewer's existing beauty, alpha, shadow,
-glow, and velocity passes. This removes the overlay clone's duplicate-geometry cost
-and gives system bodies, BOM surfaces, rigged mesh, worn attachments, and standalone
-Animesh one ownership model.
+Actor FX is a native, per-draw material transform attached to the viewer's existing
+beauty, alpha, shadow, glow, and velocity passes. This removes the former full Actor
+FX overlay clone and gives system bodies, BOM surfaces, rigged mesh, worn
+attachments, and standalone Animesh one ownership model. True topology Wireframe is
+the deliberate exception: it reuses the actor's exact live VBO and skin palette for
+one GL line pass because a fragment shader cannot recover triangle edges.
 
 Render modes:
 
-- `Layer` mixes the selected style with the material result using Actor FX alpha.
-- `Replace` uses full style strength while preserving the material's authored
-  coverage and its normal pass ordering.
+- `Layer` mixes the selected style with the authored material result using Layer
+  alpha. PBR/legacy material response and authored emissive stay intact.
+- `Cover` fully owns the visible colour/material response while preserving authored
+  coverage, shadows, velocity, depth, and normal pass ordering. Flat/sensor Cover
+  looks suppress legacy spec/gloss/environment and unrelated authored emissive;
+  Chrome, Gold, and Ice supply their own intentional material response.
+- Wire Layer keeps the authored fill plus live topology. Wire Cover uses a neutral
+  dark hidden-line backing plus the same exact topology, rather than leaving the
+  original material visible beneath an overlay.
+- Rigged/static mesh Wire samples each indexed material slot's authored MASK/BLEND
+  alpha in both hidden-line depth prime and line shading. Fully transparent hair-
+  card texels are discarded at a 1/255 coverage floor, preventing rectangular or
+  internal card edges while retaining visible semi-transparent topology.
 
-The feature provides all 28 Ghost Studio-derived looks plus actor/custom hue, alpha,
-pixel size, shimmer speed/amount, glitch, distortion mode/amount, brightness, and
-effect FPS controls.
+The feature provides all 28 Ghost Studio-derived looks plus actor/custom hue, Layer
+alpha, independent Dissolve progress, pixel size, shimmer speed/amount, glitch,
+distortion mode/amount, brightness, and effect FPS controls.
+
+All looks evaluated in shader core (IDs are the persisted scene values):
+
+`0 Ghost`, `1 Clone`, `2 Hologram`, `3 Wireframe`, `4 X-ray`, `5 Thermal`,
+`6 Neon Outline`, `7 Silhouette`, `8 Toon/Ink`, `9 Chrome`, `10 Dissolve`,
+`11 Negative`, `12 Gold Statue`, `13 Night-vision`, `14 Blueprint`,
+`15 Ectoplasm`, `16 Frost/Ice`, `17 Prism`, `18 Thermal Scope`,
+`19 Wallhack/ESP`, `20 Night-vision Tube`, `21 Damage Overlay`, `22 Killcam`,
+`23 Oil Slick`, `24 Vaporwave`, `25 Halftone/Comic`, `26 Sonar Reveal`, and
+`27 Hologram Echo`.
+
+Independent distortion IDs are `0 None`, `1 Pixelate`, `2 Voxel`,
+`3 Lens/Magnify`, `4 Wave/Ripple`, `5 RGB Split`, `6 Block Glitch`,
+`7 Vertical Tear`, and `8 VHS`.
+Each distortion is evaluated with every look, not only Hologram/Wire/Halftone.
 
 ## Actor ownership and lifecycle
 
@@ -136,21 +166,32 @@ skeleton remains animation-shelved.
   optional UV work, look math, or extra texture taps.
 - Legacy deferred, PBR, and classic/system-avatar forward paths perform the Actor FX
   transform in linear light and return to their existing encoded contract.
+- Legacy specular, gloss, and environment response now follows the same Layer/Cover
+  ownership contract as PBR roughness/metallic instead of punching through Cover.
 - Fullbright geometric normals are reconstructed from derivatives where the glow
   vertex format does not carry a normal.
 - Legacy and PBR material families publish styled emissive consistently.
 - Zero-authored-glow alpha faces get a lightweight synthetic glow sub-pass only for
-  an effective glow-producing style; other styles and disabled Actor FX do not pay
-  that duplicate alpha draw.
+  the eight signature bloom looks (`2/6/14/15/17/19/26/27`). Other styles and
+  disabled Actor FX do not pay that duplicate alpha draw.
 
 ## Dissolve, shadows, motion blur, and snapshots
 
+- Dissolve has a dedicated persisted progress control. `0` is exactly whole and `1`
+  is exactly gone; Layer alpha no longer doubles as the dissolve threshold.
 - Beauty and shadow passes call the same rest/object-space Dissolve coverage utility.
 - Rigid, rigged, alpha-mask, PBR, and classic-avatar velocity shaders use the same
   coverage, so dissolved holes do not write motion vectors and smear background
   during cinematic motion blur.
 - High-resolution snapshots use raw framebuffer tile offsets and freeze Actor FX
   time for all tiles, preventing seams and phase changes across a tiled capture.
+- The live topology shader also receives tile offsets/frozen F64-epoch time. Its
+  display-authored colour is converted to linear only for the pre-tonemap HDR world
+  pass; Ghost Studio's post-tonemap overlay path remains unchanged.
+- Live mesh/Animesh topology is submitted after Ghost alpha and Prism composites but
+  before the main screen target resolves. It is gated out of Prism auxiliary,
+  reflection, cube, impostor, and HUD renders and cannot write the optional visible-
+  diffuse/coverage sidecars.
 - Shader sources are staged beside normal test builds by `viewer_manifest.py`.
 
 ## Shader compatibility and sampler safety
@@ -172,6 +213,13 @@ skeleton remains animation-shelved.
   `indra/newview/llvoavatar.h`, `indra/newview/llvoavatar.cpp`
 - Per-draw uniforms, velocity submission, and owner resolution:
   `indra/newview/lldrawpool.h`, `indra/newview/lldrawpool.cpp`
+- System/BOM topology and alpha-card line semantics:
+  `indra/newview/lldrawpoolavatar.cpp`
+- Mesh/Animesh live topology and its shader:
+  `indra/newview/llactormover.cpp`, `indra/newview/llactormover.h`,
+  `indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl`
+- Final main-world submission/sidecar isolation:
+  `indra/newview/pipeline.cpp`
 - Alpha and synthetic glow:
   `indra/newview/lldrawpoolalpha.h`, `indra/newview/lldrawpoolalpha.cpp`
 - Shader enrollment and fallback loading:
@@ -193,13 +241,13 @@ Run from `I:\alchemy-machinima`:
 
 ```powershell
 git diff --check
-cmake --build build-Windows-vs2026-os --config RelWithDebInfo --target alchemy-bin -- /m:4
+cmake --build build-Windows-vs2026-os --config Release --target alchemy-bin --parallel 4
 ```
 
 Expected executable:
 
 ```text
-I:\alchemy-machinima\build-Windows-vs2026-os\newview\RelWithDebInfo\AlchemyTest.exe
+I:\alchemy-machinima\build-Windows-vs2026-os\newview\Release\AlchemyTest.exe
 ```
 
 Confirm the staged runtime shader tree contains every modified/new shader and matches
@@ -207,23 +255,17 @@ the source hashes before testing.
 
 ### Validation completed in this session
 
-- `git diff --check` passes (only Git's existing CRLF conversion notices remain).
-- The complete RelWithDebInfo viewer compiled and linked successfully. Visual Studio
-  18/MSVC 14.51 reproducibly crashes inside link-time optimization while processing
-  unchanged `llimagej2coj.cpp`; the successful validation build therefore used the
-  local-only MSBuild override below. This does not change source or Actor FX behavior.
-
-```powershell
-cmake --build build-Windows-vs2026-os --config RelWithDebInfo --target alchemy-bin -- /m:4 /p:WholeProgramOptimization=false /p:LinkTimeCodeGeneration=Default
-```
-
-- All 76 modified/new shader sources were present in the staged runtime tree with
-  identical SHA-256 hashes: 0 missing and 0 mismatched.
-- The exact staged `AlchemyTest.exe` launched responsively on an NVIDIA GeForce RTX
-  5090 using OpenGL 4.6 / GLSL 4.60 and driver 591.74.
-- The GPU loaded deferred shaders. There were no Actor FX compile/link, varying,
-  texture-channel, or indexed-sampler failures. Indexed PBR glow used the GPU's full
-  32-channel limit as designed.
+- `git diff --check` passes.
+- The complete Release viewer compiled, linked, and completed the manifest copy with
+  Visual Studio 18/MSVC; no LTO workaround was required for this final build.
+- Every shader modified by this final pass matched the staged Release copy by
+  SHA-256, including Actor FX core/fallback/Dissolve, actorghost, legacy diffuse/
+  bump/material, PBR glow, alpha-mask, and fullbright-shiny paths.
+- The exact staged Release `AlchemyTest.exe` launched responsively on OpenGL 4.6 /
+  GLSL 4.60. Shader cache was purged automatically, forcing a real compile.
+- Basic, interface, and deferred shader groups loaded. There were no Actor FX or
+  Actor Ghost compile/link failures and no `setShaders: ASSERT(loaded)` fatal.
+- Indexed PBR opaque/glow used the GPU's full 32-channel limit as designed.
 - The existing optional `cineOutlineF.glsl` compile failure remains; it disables only
   Cine Outline and did not prevent deferred shaders from loading. It is unrelated to
   Actor FX.
@@ -233,28 +275,35 @@ cmake --build build-Windows-vs2026-os --config RelWithDebInfo --target alchemy-b
 
 ### Release artifact warning and verification
 
-- Do not reuse the older `build-Windows-vs2026-os/newview/Release/AlchemyTest.exe`
-  dated 2026-08-24 20:59. It was built from the pre-activation checkpoint and its
-  `llviewershadermgr.cpp:871` fatal assertion identifies a deferred-shader load
-  failure from that older source layout.
 - Do not mix an executable from one configuration/commit with another build's
   `app_settings/shaders` directory. Treat the executable and staged runtime tree as
   one inseparable artifact.
-- Release was rebuilt at `5c1de7d4503` with the same local MSVC non-LTO workaround.
-  All 76 committed shader files matched the Release staging tree, and the exact
-  `newview/Release/AlchemyTest.exe` launched responsively, logged `Loaded deferred
-  shaders`, and reached the login screen without the assertion.
+- Use the freshly staged Release directory from the final all-look commit. The older
+  2026-08-24 Release artifact predates this pass and must not be used for acceptance.
 
 ## Cinematic runtime test matrix
 
 Use a fixed camera, resolution, graphics preset, environment, and animation. Capture
 screenshots or short lossless clips for comparisons.
 
+0. **Complete 28 x 9 contact sheet**
+   - Capture every look ID `0..27` in both Layer and Cover on the same reference
+     actor, then combine each look with distortion IDs `0..8` at nonzero strength.
+   - Use Effect FPS `0` and `12`, a dark set and a bright HDR set, and alpha values
+     `.25/.60/1.0` for Layer. Cover must remain independent of stored Layer alpha.
+   - Reject any look that is static when its Ghost Studio counterpart animates,
+     restarts per material island, changes at snapshot tile seams, or exposes
+     unrelated authored PBR/spec/emissive through Cover.
+
 1. **Disabled baseline/performance**
    - Actor FX disabled on all actors.
    - Confirm exact normal appearance and record GPU/CPU frame time.
    - Compare a crowded shot to the checkpoint build; disabled Actor FX must not
      show the old Layer overlay cost.
+   - Record Layer and Cover separately for the same non-Wire look. They share one
+     native geometry pass and should be close; only the eight signature bloom looks
+     may add the documented alpha glow sub-pass. Wire deliberately adds one line
+     pass and should be measured separately.
 
 2. **System/BOM avatar**
    - Test classic system body, BOM skin/tattoos/clothing, hair, and eyes.
@@ -266,6 +315,8 @@ screenshots or short lossless clips for comparisons.
    - Cycle Hologram, Dissolve, Halftone/Comic, Thermal, Night Vision, and Neon.
    - Look for missing head sections, flicker, alpha crawling, doubled surfaces, or
      animation/joint offset.
+   - Include BOM-on-mesh heads, eyelashes/hair cards, multiple overlapping blend
+     faces, legacy materials, PBR OPAQUE/MASK/BLEND, and standalone mesh surfaces.
 
 4. **PBR matrix**
    - PBR OPAQUE, MASK, and BLEND materials.
@@ -301,7 +352,17 @@ screenshots or short lossless clips for comparisons.
      glitch, and Dissolve.
    - Inspect every tile boundary at 100%; there must be no pattern seam or time jump.
 
-10. **Multiple actors and lifecycle**
+10. **Wire world-order and render-state isolation**
+   - Place half the actor behind an opaque prop, another avatar, a Ghost alpha clone,
+     and a Prism display. No topology may show through foreground geometry and the
+     line draw must not hide later transparent/display content.
+   - Enable global viewer wireframe and toggle Actor Wire repeatedly; subsequent
+     pools must remain in GL line mode.
+   - Repeat with the visible-diffuse sidecar, reflections, cube snapshots, avatar
+     impostors, HUD rendering, and Prism auxiliary capture. The main camera should
+     include Actor Wire; auxiliary targets and sidecars must remain uncontaminated.
+
+11. **Multiple actors and lifecycle**
     - Style You plus A/B/C/D and a standalone Animesh with distinct looks.
     - Overlap silhouettes, move between spatial groups, leave/return, save/reload,
       and rebuild outfits.

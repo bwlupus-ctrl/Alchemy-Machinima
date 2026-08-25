@@ -12,11 +12,16 @@ uniform int actorFxEnabled;
 uniform int actorFxLook;
 uniform float actorFxTime;
 uniform vec3 actorFxTint;
+// Full untiled render-target size in pixels. The uploader keeps this coherent
+// with actorFxParams2.yz, whose y/z components are the current tile origin.
+uniform vec2 actorFxScreenSize;
 // x=mix strength, y=pixel size, z=shimmer amount, w=glitch amount
 uniform vec4 actorFxParams0;
 // x=distortion id, y=distortion amount, z=brightness, w=stable actor phase
 uniform vec4 actorFxParams1;
-// x=shimmer speed in Hz; y/z=whole-image fragment offset; w reserved
+// x=shimmer speed in Hz; y/z=whole-image fragment offset;
+// w=render semantics supplied by the caller
+//   0=Layer, 1=Cover material/backing, 2=exact topology line pass
 uniform vec4 actorFxParams2;
 
 // Shared with shadow and glow programs; implemented by actorFxDissolveF.glsl.
@@ -75,12 +80,60 @@ vec2 actorFxFragCoord()
     return gl_FragCoord.xy + actorFxParams2.yz;
 }
 
+// A common full-frame device field for scope/tube/recorder motifs. It is
+// intentionally derived from the tile-correct whole-image fragment coordinate,
+// never a material UV, so the graphic does not restart at every face or GLTF
+// texture island or snapshot tile.
+vec2 actorFxDeviceUv()
+{
+    vec2 frame_size = max(actorFxScreenSize, vec2(1.0));
+    return clamp(actorFxFragCoord() / frame_size, vec2(0.0), vec2(1.0));
+}
+
+bool actorFxCoverMode()
+{
+    return actorFxParams2.w > 0.5;
+}
+
+bool actorFxWireLinePass()
+{
+    return actorFxParams2.w > 1.5;
+}
+
+bool actorFxFlatSensorLook()
+{
+    return actorFxLook == 0 || actorFxLook == 2 || actorFxLook == 3 ||
+           actorFxLook == 4 || actorFxLook == 5 || actorFxLook == 6 ||
+           actorFxLook == 7 || actorFxLook == 8 || actorFxLook == 13 ||
+           actorFxLook == 14 || actorFxLook == 15 ||
+           actorFxLook == 17 || actorFxLook == 18 || actorFxLook == 19 ||
+           actorFxLook == 20 || actorFxLook == 22 || actorFxLook == 24 ||
+           actorFxLook == 25 || actorFxLook == 26 || actorFxLook == 27;
+}
+
 // The public, cheap gate used by material shaders.  Callers use this before
 // any optional UV work or color-space conversion so disabled Actor FX is a
 // bit-for-bit identity path.
 bool actorFxActive()
 {
     return actorFxEnabled != 0 && actorFxParams0.x > 0.001;
+}
+
+// Scale for legacy authored specular/gloss/environment response. Layer and the
+// Clone look preserve the original material. A material-owning Cover style
+// supplies its own flat/sensor/metal/ice read and must not retain unrelated
+// legacy shine underneath it.
+float actorFxAuthoredMaterialResponse()
+{
+    if (!actorFxActive() || !actorFxCoverMode())
+    {
+        return 1.0;
+    }
+
+    bool style_owns_material = actorFxFlatSensorLook() ||
+                               actorFxLook == 9 || actorFxLook == 12 ||
+                               actorFxLook == 16;
+    return style_owns_material ? 0.0 : 1.0;
 }
 
 vec2 actor_fx_screen_quantize(vec2 uv, float block_pixels)
@@ -99,8 +152,10 @@ vec2 actor_fx_screen_quantize(vec2 uv, float block_pixels)
 bool actorFxRgbSplitEnabled()
 {
     int mode = int(actorFxParams1.x + 0.5);
+    float amount = actorFxParams1.y;
     return actorFxActive() &&
-           mode == 5 && actorFxParams1.y > 0.001;
+           (((mode == 5 || mode == 8) && amount > 0.001) ||
+            actorFxLook == 27 || actorFxParams0.w > 0.001);
 }
 
 bool actorFxUvTransformEnabled()
@@ -111,8 +166,9 @@ bool actorFxUvTransformEnabled()
     }
 
     int mode = int(actorFxParams1.x + 0.5);
-    bool distortion = actorFxParams1.y > 0.001 && mode >= 1 && mode <= 8 && mode != 5;
-    return actorFxParams0.y > 1.0 || distortion;
+    bool distortion = actorFxParams1.y > 0.001 &&
+                      mode >= 1 && mode <= 8 && mode != 5;
+    return actorFxParams0.y > 1.0 || distortion || actorFxParams0.w > 0.001;
 }
 
 // Transform a material's authored UV before RGB sampling.  Alpha and mask
@@ -129,22 +185,19 @@ vec2 actorFxUv(vec2 uv, vec3 position_eye)
     // Pixel Size is an independent, literal screen-pixel block size.  Mode 1
     // can request a larger block while retaining the same tile-safe grid.
     float block_pixels = max(actorFxParams0.y, 0.0);
-    if (mode == 1) // pixelate
+    if (mode == 1 && amount > 0.001) // pixelate
     {
         block_pixels = max(block_pixels, mix(2.0, 64.0, amount));
     }
     else if (mode == 2 && amount > 0.001) // voxel
     {
-        block_pixels = max(block_pixels, mix(5.0, 28.0, amount));
+        // Voxel owns an independent, visibly stronger 3..38 pixel grid even
+        // when the creative Pixel Size control is zero.
+        block_pixels = max(block_pixels, mix(3.0, 38.0, amount));
     }
     uv = actor_fx_screen_quantize(uv, block_pixels);
 
-    if (amount <= 0.001)
-    {
-        return uv;
-    }
-
-    if (mode == 2) // voxel: block the surface and stagger neighbouring cells
+    if (mode == 2 && amount > 0.001) // voxel: block the surface and stagger neighbouring cells
     {
         vec2 frag_cell = floor(actorFxFragCoord() / max(block_pixels, 1.0));
         vec3 volume_cell = floor(position_eye / mix(0.28, 0.06, amount));
@@ -155,36 +208,51 @@ vec2 actorFxUv(vec2 uv, vec3 position_eye)
                    actor_fx_hash(frag_cell.yx + volume_cell.yz + 19.7)) - 0.5)
               * texel * mix(1.0, 6.0, amount);
     }
-    else if (mode == 3) // lens
+    else if (mode == 3 && amount > 0.001) // lens
     {
         vec2 d = uv - vec2(0.5);
         float q = clamp(length(d) / 0.48, 0.0, 1.0);
-        return vec2(0.5) + d * mix(1.0 - 0.48 * amount, 1.0, q * q);
+        uv = vec2(0.5) + d * mix(1.0 - 0.48 * amount, 1.0, q * q);
     }
-    if (mode == 4) // ripple
+    else if (mode == 4 && amount > 0.001) // ripple
     {
-        return uv + vec2(sin(uv.y * 42.0 + actorFxTime * 4.2 + actorFxParams1.w),
-                         cos(uv.x * 35.0 - actorFxTime * 3.4))
-                    * (0.002 + 0.025 * amount);
+        uv += vec2(sin(uv.y * 42.0 + actorFxTime * 4.2 + actorFxParams1.w),
+                   cos(uv.x * 35.0 - actorFxTime * 3.4))
+              * (0.002 + 0.025 * amount);
     }
-    if (mode == 6) // block glitch
+    else if (mode == 6 && amount > 0.001) // block glitch
     {
         float beat = floor(actorFxTime * 7.0);
         float r = actor_fx_hash(floor(uv * vec2(12.0, 22.0))
                                 + vec2(beat, actorFxParams1.w));
         uv.x += step(1.0 - 0.38 * amount, r) * (r - 0.5) * 0.28 * amount;
     }
-    else if (mode == 7) // vertical tear
+    else if (mode == 7 && amount > 0.001) // vertical tear
     {
         float r = actor_fx_hash(vec2(floor(actorFxFragCoord().x / 13.0),
                                      floor(actorFxTime * 8.0) + actorFxParams1.w));
         uv.y += step(1.0 - 0.35 * amount, r) * (r - 0.5) * 0.24 * amount;
     }
-    else if (mode == 8) // VHS
+    else if (mode == 8 && amount > 0.001) // VHS
     {
+        float roll = fract(actorFxFragCoord().y / 180.0 - actorFxTime * 0.32);
+        float tracking = 1.0 - smoothstep(0.02, 0.12, abs(roll - 0.5));
         float line_noise = actor_fx_hash(vec2(floor(actorFxFragCoord().y / 3.0),
-                                              floor(actorFxTime * 12.0)));
-        uv.x += (line_noise - 0.5) * 0.035 * amount;
+                                               floor(actorFxTime * 12.0)));
+        uv.x += ((line_noise - 0.5) * 0.035 + tracking * 0.02) * amount;
+    }
+
+    // Creative Glitch is orthogonal to the distortion selector. Match Ghost
+    // Studio's held horizontal slices in the authored RGB sample while alpha
+    // and mask coverage remain at the original UV in each material caller.
+    float glitch = clamp(actorFxParams0.w, 0.0, 1.0);
+    if (glitch > 0.001)
+    {
+        float band_id = floor(actorFxFragCoord().y / 14.0);
+        float beat = floor(actorFxTime * 9.0);
+        float r = actor_fx_hash(vec2(band_id, beat + actorFxParams1.w));
+        float torn = step(1.0 - 0.35 * glitch, r);
+        uv.x += torn * (r - 0.5) * 0.22 * glitch;
     }
     return uv;
 }
@@ -194,12 +262,36 @@ vec2 actorFxUv(vec2 uv, vec3 position_eye)
 vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction)
 {
     float amount = clamp(actorFxParams1.y, 0.0, 1.0);
-    float pixels = mix(1.0, 12.0, amount) * direction;
-    float band = actor_fx_hash(vec2(floor(actorFxFragCoord().y / 18.0),
-                                     floor(actorFxTime * 10.0) + actorFxParams1.w));
-    pixels *= mix(0.65, 1.35, band);
+    int mode = int(actorFxParams1.x + 0.5);
+    float pixels = 0.0;
+    if (mode == 5 && amount > 0.001)
+    {
+        float band = actor_fx_hash(vec2(floor(actorFxFragCoord().y / 18.0),
+                                         floor(actorFxTime * 10.0) + actorFxParams1.w));
+        pixels += mix(1.0, 12.0, amount) * mix(0.65, 1.35, band) * direction;
+    }
+    else if (mode == 8 && amount > 0.001)
+    {
+        float roll = fract(actorFxFragCoord().y / 180.0 - actorFxTime * 0.32);
+        float tracking = 1.0 - smoothstep(0.02, 0.12, abs(roll - 0.5));
+        pixels += (2.0 + tracking * 8.0) * amount * direction;
+    }
+    if (actorFxLook == 27)
+    {
+        pixels += sin(actorFxTime * 3.0 + actorFxParams1.w)
+                  * 8.0 * direction;
+    }
+    float glitch = clamp(actorFxParams0.w, 0.0, 1.0);
+    if (glitch > 0.001)
+    {
+        float band_id = floor(actorFxFragCoord().y / 14.0);
+        float r = actor_fx_hash(vec2(band_id,
+                                     floor(actorFxTime * 9.0) + actorFxParams1.w));
+        float torn = step(1.0 - 0.35 * glitch, r);
+        pixels += torn * 6.0 * glitch * direction;
+    }
     return transformed_uv + dFdx(transformed_uv) * pixels
-                          + dFdy(transformed_uv) * pixels * 0.12;
+                           + dFdy(transformed_uv) * pixels * 0.12;
 }
 
 vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv)
@@ -211,6 +303,11 @@ vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored
         return source;
     }
 
+    // Preserve the material sample that entered the style stage.  Some
+    // distortion cues (notably VHS monochrome) deliberately alter the working
+    // source below; Layer Alpha must blend those cues against this unchanged
+    // input instead of allowing them to leak through the base side of mix().
+    vec3 layer_source = source;
     vec2 uv = authored_uv;
     if (actorFxUvTransformEnabled())
     {
@@ -220,41 +317,111 @@ vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored
     vec3 v = normalize(-position_eye);
     float facing = clamp(abs(dot(n, v)), 0.0, 1.0);
     float edge = pow(1.0 - facing, 2.0);
-    float lum = dot(max(source, vec3(0.0)), vec3(0.299, 0.587, 0.114));
     vec2 frag_coord = actorFxFragCoord();
-    float band = 0.5 + 0.5 * sin((frag_coord.y / 6.0 + actorFxTime * 1.7) * 6.2831853);
-    float grain = actor_fx_hash(frag_coord + floor(actorFxTime * 18.0)) - 0.5;
+    int distort_mode = int(actorFxParams1.x + 0.5);
+    float distort = clamp(actorFxParams1.y, 0.0, 1.0);
+    float voxel_shade = 1.0;
+    float vhs_band = 0.0;
+    if (distort_mode == 2 && distort > 0.001)
+    {
+        float cells = mix(80.0, 10.0, distort);
+        vec3 cell = floor(position_eye * cells) / cells;
+        float cell_shade = 0.68 + 0.32 * actor_fx_hash(cell.xy + cell.z);
+        voxel_shade = mix(1.0, cell_shade, distort);
+    }
+    else if (distort_mode == 8 && distort > 0.001)
+    {
+        float roll = fract(frag_coord.y / 180.0 - actorFxTime * 0.32);
+        vhs_band = 1.0 - smoothstep(0.02, 0.12, abs(roll - 0.5));
+        float mono = dot(source, vec3(0.299, 0.587, 0.114));
+        source = mix(source, vec3(mono), 0.25 * distort);
+    }
+    float lum = dot(max(source, vec3(0.0)), vec3(0.299, 0.587, 0.114));
+    // Uniform look branches let the driver skip procedural work that a style
+    // cannot use.  In particular, a static Ghost/Clone/Silhouette should not
+    // pay a sine plus hash for every fragment merely because Actor FX is on.
+    float band = 1.0;
+    if (actorFxLook == 2 || actorFxLook == 13 || actorFxLook == 27)
+    {
+        band = 0.5 + 0.5
+            * sin((frag_coord.y / 6.0 + actorFxTime * 1.7) * 6.2831853);
+    }
+    float grain = 0.0;
+    if (actorFxLook == 13)
+    {
+        grain = actor_fx_hash(frag_coord + floor(actorFxTime * 18.0)) - 0.5;
+    }
+    else if (actorFxLook == 20)
+    {
+        grain = actor_fx_hash(frag_coord + floor(actorFxTime * 20.0)) - 0.5;
+    }
+    else if (actorFxLook == 22)
+    {
+        grain = actor_fx_hash(frag_coord + floor(actorFxTime * 24.0)) - 0.5;
+    }
     vec3 fx = source;
 
     if (actorFxLook == 0) // Ghost
-        fx = mix(source * actorFxTint, actorFxTint * (0.25 + lum * 0.75), 0.72) + edge * actorFxTint;
+        // Ghost Studio is a flat mostly-white tint, not a dark material wash.
+        fx = mix(vec3(1.0), actorFxTint, 0.25);
     else if (actorFxLook == 1) // Clone / authored material
         fx = source;
     else if (actorFxLook == 2) // Hologram
-        fx = actorFxTint * (lum * (0.45 + 0.55 * band) + edge * 2.2);
-    else if (actorFxLook == 3) // Wireframe
     {
-        vec2 cell = abs(fract(uv * 28.0) - 0.5);
-        float line = 1.0 - smoothstep(0.42, 0.49, max(cell.x, cell.y));
-        fx = mix(source * 0.08, actorFxTint * (0.35 + edge * 2.2), line);
+        // Match Ghost Studio's projector rather than modulating by the already
+        // lit/material source.  The clone starts with a flat bright body, dims
+        // it with moving scanlines, then adds a silhouette rim.  Using source
+        // luminance here made dark skins and shadowed faces nearly disappear.
+        float scan = 0.30 + 0.70 * band;
+        float signal = 1.0 - 0.30
+            * (0.5 + 0.5 * sin(actorFxTime * 13.0)
+                           * sin(actorFxTime * 7.3));
+        vec3 holo_tint = mix(vec3(0.25, 0.85, 1.0), actorFxTint, 0.25);
+        fx = holo_tint * (scan * signal + edge * 0.8);
+    }
+    else if (actorFxLook == 3) // Wireframe backing / native line draw
+    {
+        if (actorFxWireLinePass())
+        {
+            // Exact system/BOM topology line draw. Harvested mesh and Animesh
+            // use actorghostF's equivalent live-palette GL_LINE path.
+            vec3 wire_tint = mix(actorFxTint, vec3(1.0), 0.55);
+            fx = wire_tint * (0.75 + edge * 1.8);
+        }
+        else
+        {
+            // Cover hidden-line backing: suppress authored colour/PBR response
+            // while keeping the actor's exact alpha coverage, shadows and
+            // velocity. The final topology pass supplies the bright lines.
+            fx = mix(vec3(0.006), actorFxTint * 0.035, 0.45);
+        }
     }
     else if (actorFxLook == 4) // X-ray
-        fx = actorFxTint * (0.12 + edge * 3.0) + source * 0.08;
+    {
+        vec3 xray_tint = mix(vec3(0.55, 0.75, 1.0), actorFxTint, 0.35);
+        // Native coverage remains authored, so use a faint interior instead of
+        // reproducing the clone's global 0.4 alpha and breaking mask/blend PBR.
+        fx = xray_tint * (0.16 + edge * 2.2) + source * 0.04;
+    }
     else if (actorFxLook == 5) // Thermal
-        fx = actor_fx_heat(clamp(lum + edge * 0.28, 0.0, 1.0));
+        fx = mix(actor_fx_heat(clamp(lum + edge * 0.28, 0.0, 1.0)),
+                 actorFxTint, 0.12);
     else if (actorFxLook == 6) // Neon outline
         fx = source * 0.025 + actorFxTint * edge * 3.2;
     else if (actorFxLook == 7) // Silhouette
         fx = actorFxTint;
     else if (actorFxLook == 8) // Toon / ink
-        fx = mix(floor(max(source, vec3(0.0)) * 4.0 + 0.5) / 4.0,
-                 vec3(0.012), smoothstep(0.18, 0.62, edge));
+    {
+        vec3 poster = floor(max(source, vec3(0.0)) * 4.0 + 0.5) / 4.0;
+        fx = mix(poster * actorFxTint, vec3(0.015),
+                 smoothstep(0.18, 0.62, edge));
+    }
     else if (actorFxLook == 9) // Chrome
     {
         vec3 r = reflect(-v, n);
         float stripes = 0.5 + 0.5 * sin((r.y * 2.4 + r.x) * 3.1415927);
-        fx = mix(vec3(0.025, 0.045, 0.08), vec3(0.95, 0.98, 1.0), stripes)
-             + edge * 0.35;
+        fx = mix(vec3(0.05, 0.08, 0.12), vec3(0.9, 0.95, 1.0), stripes);
+        fx = mix(fx, actorFxTint, 0.18) + edge * 0.35;
     }
     else if (actorFxLook == 10) // Dissolve (intentional coverage change)
     {
@@ -266,11 +433,17 @@ vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored
     else if (actorFxLook == 11) // Negative
         fx = (vec3(1.0) - source) * mix(vec3(1.0), actorFxTint, 0.35);
     else if (actorFxLook == 12) // Gold statue
+    {
         fx = mix(vec3(0.16, 0.055, 0.008), vec3(1.0, 0.72, 0.16),
                  smoothstep(0.05, 0.9, lum)) + edge * vec3(0.5, 0.3, 0.05);
+        fx *= mix(vec3(1.0), actorFxTint, 0.12);
+    }
     else if (actorFxLook == 13) // Night vision
+    {
         fx = vec3(0.03, clamp(lum * 1.35 + grain * 0.14, 0.0, 1.0), 0.08)
              * (0.72 + 0.28 * band);
+        fx *= mix(vec3(1.0), actorFxTint, 0.12);
+    }
     else if (actorFxLook == 14) // Blueprint
     {
         vec2 guv = abs(fract(frag_coord / 18.0) - 0.5);
@@ -281,23 +454,30 @@ vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored
     {
         float flow = actor_fx_fbm(position_eye.xy * 2.8
                                   + vec2(sin(actorFxTime * 0.45), -actorFxTime * 0.38));
-        fx = mix(vec3(0.015, 0.12, 0.04), actorFxTint, 0.7) * (0.5 + flow * 1.4);
+        float wispy = smoothstep(0.22, 0.82, flow + edge * 0.45);
+        // Native materials retain authored coverage; express Ghost Studio's
+        // wispy alpha variation as luminance instead of punching new holes.
+        fx = mix(vec3(0.015, 0.12, 0.04), actorFxTint, 0.7)
+             * (0.5 + flow * 1.4) * mix(0.28, 1.0, wispy);
     }
     else if (actorFxLook == 16) // Frost / ice
     {
         float sparkle = pow(actor_fx_hash(floor(frag_coord / 3.0)
                                            + floor(actorFxTime * 3.0)), 18.0);
         fx = mix(vec3(0.15, 0.42, 0.7), vec3(0.86, 0.97, 1.0),
-                 lum * 0.45 + edge) + sparkle * 1.6;
+                  lum * 0.45 + edge) + sparkle * 1.6;
+        fx *= mix(vec3(1.0), actorFxTint, 0.15);
     }
     else if (actorFxLook == 17) // Prism
-        fx = actor_fx_rainbow(edge * 0.82 + actorFxTime * 0.035
-                              + actorFxParams1.w * 0.05) * (0.25 + edge * 1.7);
+        fx = mix(actor_fx_rainbow(edge * 0.82 + actorFxTime * 0.035
+                                  + actorFxParams1.w * 0.05) * (0.25 + edge * 1.7),
+                 actorFxTint, 0.12);
     else if (actorFxLook == 18) // Thermal scope
     {
-        vec2 p = fract(uv);
-        float vignette = smoothstep(0.72, 0.18, length(p - 0.5));
-        float reticle = 1.0 - smoothstep(0.002, 0.012, min(abs(p.x - 0.5), abs(p.y - 0.5)));
+        vec2 p = actorFxDeviceUv();
+        float vignette = 1.0 - smoothstep(0.18, 0.72, length(p - 0.5));
+        float reticle = (1.0 - smoothstep(0.002, 0.012, abs(p.x - 0.5)))
+                       + (1.0 - smoothstep(0.002, 0.012, abs(p.y - 0.5)));
         fx = actor_fx_heat(lum + edge * 0.32) * (0.35 + 0.65 * vignette)
              + actorFxTint * reticle * 0.22;
     }
@@ -305,28 +485,35 @@ vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored
         fx = actorFxTint * (0.16 + edge * 3.1) + vec3(lum) * actorFxTint * 0.12;
     else if (actorFxLook == 20) // Night-vision tube
     {
-        float tube = 1.0 - smoothstep(0.36, 0.52, length(fract(uv) - 0.5));
+        vec2 p = actorFxDeviceUv();
+        float tube = 1.0 - smoothstep(0.36, 0.52,
+                                      length(p - 0.5));
         float ir = clamp(lum * 1.55 + edge * 0.55 + grain * 0.16, 0.0, 1.0);
         fx = vec3(0.025, ir, 0.045) * tube;
     }
     else if (actorFxLook == 21) // Damage overlay
     {
-        float wound = smoothstep(0.18, 0.68, length(fract(uv) - 0.5))
+        float wound = smoothstep(0.18, 0.68,
+                                 length(fract(authored_uv) - 0.5))
                       * (0.55 + 0.45 * sin(actorFxTime * 5.5 + actorFxParams1.w));
         fx = mix(source, vec3(0.72, 0.005, 0.01), wound * 0.82);
     }
     else if (actorFxLook == 22) // Killcam
     {
-        float bars = step(fract(uv.y), 0.12) + step(0.88, fract(uv.y));
-        fx = vec3(lum + grain * 0.10) * (1.0 - clamp(bars, 0.0, 1.0) * 0.78);
+        float device_y = actorFxDeviceUv().y;
+        float bars = step(device_y, 0.12) + step(0.88, device_y);
+        vec3 monochrome = vec3(lum + grain * 0.10);
+        fx = mix(monochrome, actorFxTint * vec3(lum), 0.18)
+             * (1.0 - clamp(bars, 0.0, 1.0) * 0.78);
     }
     else if (actorFxLook == 23) // Oil slick
         fx = actor_fx_rainbow(facing * 1.3 + lum * 0.22 + actorFxTime * 0.018)
              * (0.34 + edge * 1.25) + source * 0.14;
     else if (actorFxLook == 24) // Vaporwave
     {
-        float horizon = fract(uv.y * 12.0 + actorFxTime * 0.25);
-        float grid = 1.0 - smoothstep(0.04, 0.12, min(fract(uv.x * 10.0), horizon));
+        float horizon = fract(authored_uv.y * 12.0 + actorFxTime * 0.25);
+        float grid = 1.0 - smoothstep(0.04, 0.12,
+                                     min(fract(authored_uv.x * 10.0), horizon));
         fx = mix(vec3(1.0, 0.03, 0.55), vec3(0.0, 0.92, 1.0), lum)
              * (0.65 + grid * 0.55) + actorFxTint * edge;
     }
@@ -335,36 +522,91 @@ vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored
         vec2 cell = fract(frag_coord / 7.0) - 0.5;
         float radius = sqrt(max(lum, 0.02)) * 0.34;
         float dots = 1.0 - smoothstep(radius, radius + 0.08, length(cell));
-        fx = mix(vec3(0.015), actorFxTint * (0.35 + source), dots);
+        // Ghost Studio draws after scene lighting, so its tinted dots retain a
+        // readable floor even on a dark actor.  Native Actor FX participates in
+        // lighting/PBR; lift both the paper and ink without touching coverage.
+        vec3 paper = actorFxTint * (0.045 + 0.10 * lum) + source * 0.06;
+        vec3 ink = actorFxTint * (vec3(0.55) + source * 0.75);
+        fx = mix(paper, ink, dots);
     }
     else if (actorFxLook == 26) // Sonar reveal
     {
         float sweep = fract(actorFxTime * 0.35 + actorFxParams1.w * 0.1);
-        float beam = 1.0 - smoothstep(0.0, 0.075, abs(fract(uv.y) - sweep));
+        float device_y = actorFxDeviceUv().y;
+        float beam = 1.0 - smoothstep(0.0, 0.075,
+                                     abs(device_y - sweep));
         fx = actorFxTint * (0.08 + edge * 0.7 + beam * 2.5);
     }
     else if (actorFxLook == 27) // Hologram interference
-        fx = source * vec3(1.08, 0.82 + 0.18 * band, 1.18)
-             + actorFxTint * edge * 1.2;
+        // Material callers have already assembled source.r/source.b from the
+        // animated side taps requested by actorFxRgbSplitEnabled().
+        fx = source * actorFxTint + actorFxTint * edge * 1.2;
+
+    // Ghost Studio adds restrained cues after the style so flat-tint looks
+    // still reveal the selected distortion. Native textured looks keep their
+    // real UV warp, with authored alpha/mask coverage untouched by callers.
+    if (distort > 0.001)
+    {
+        if (distort_mode == 1)
+        {
+            vec2 cell = fract(frag_coord / mix(2.0, 18.0, distort));
+            float seam = smoothstep(0.0, 0.10, min(min(cell.x, cell.y),
+                                                    min(1.0 - cell.x, 1.0 - cell.y)));
+            fx *= mix(0.82, 1.0, seam);
+        }
+        else if (distort_mode == 2)
+            fx *= voxel_shade;
+        else if (distort_mode == 3)
+        {
+            float lens_ring = 1.0 - smoothstep(0.012, 0.035,
+                abs(length(authored_uv - vec2(0.5)) - 0.38));
+            fx += actorFxTint * lens_ring * 0.25 * distort;
+        }
+        else if (distort_mode == 4)
+            fx *= 0.88 + 0.12 * sin(frag_coord.y * 0.12 + actorFxTime * 4.2) * distort;
+        else if (distort_mode == 5)
+            fx += vec3(edge, 0.0, -edge) * 0.35 * distort;
+        else if (distort_mode == 6)
+            fx *= 0.82 + 0.18 * actor_fx_hash(floor(authored_uv * vec2(12.0, 22.0))
+                                               + floor(actorFxTime * 7.0)) * distort;
+        else if (distort_mode == 7)
+            fx *= 0.86 + 0.14 * actor_fx_hash(vec2(floor(frag_coord.x / 13.0),
+                                                    floor(actorFxTime * 8.0))) * distort;
+        else if (distort_mode == 8)
+            fx *= 1.0 - vhs_band * 0.22 * distort;
+    }
 
     float shimmer = clamp(actorFxParams0.z, 0.0, 1.0);
     float glitch = clamp(actorFxParams0.w, 0.0, 1.0);
-    float pulse = 1.0 - shimmer * 0.30
-                  * (0.5 + 0.5 * sin(actorFxTime * max(actorFxParams2.x, 0.0)
-                                      * 6.2831853 + actorFxParams1.w));
-    float tear = step(1.0 - 0.35 * glitch,
-                      actor_fx_hash(vec2(floor(frag_coord.y / 14.0),
-                                         floor(actorFxTime * 9.0) + actorFxParams1.w)));
-    fx *= pulse * (1.0 + tear * 0.25 * glitch);
+    // Ghost Studio's adjustable shimmer can dim by up to 60%, and a torn band
+    // gets a 35% signal pop.  Keep the native pass on the same time law so an
+    // actor and an overlay clone move together at identical settings.
+    float pulse = 1.0;
+    if (shimmer > 0.001)
+    {
+        pulse -= shimmer * 0.60
+            * (0.5 + 0.5 * sin(actorFxTime * max(actorFxParams2.x, 0.0)
+                                * 6.2831853 + actorFxParams1.w));
+    }
+    float tear = 0.0;
+    if (glitch > 0.001)
+    {
+        tear = step(1.0 - 0.35 * glitch,
+                    actor_fx_hash(vec2(floor(frag_coord.y / 14.0),
+                                       floor(actorFxTime * 9.0) + actorFxParams1.w)));
+    }
+    fx *= pulse * (1.0 + tear * 0.35 * glitch);
     fx *= max(actorFxParams1.z, 0.0);
 
-    return mix(source, fx, clamp(actorFxParams0.x, 0.0, 1.0));
+    return mix(layer_source, fx, clamp(actorFxParams0.x, 0.0, 1.0));
 }
 
 vec2 actorFxPbrMaterial(vec2 roughness_metallic)
 {
-    if (!actorFxActive())
+    if (!actorFxActive() || !actorFxCoverMode())
     {
+        // Layer is a colour/effect treatment over the authored material. It
+        // must not silently turn a leather/skin/metal surface into a new BRDF.
         return roughness_metallic;
     }
 
@@ -372,6 +614,7 @@ vec2 actorFxPbrMaterial(vec2 roughness_metallic)
     if (actorFxLook == 9)       styled = vec2(0.08, 1.0); // chrome
     else if (actorFxLook == 12) styled = vec2(0.18, 1.0); // gold
     else if (actorFxLook == 16) styled = vec2(0.24, 0.15); // ice
+    else if (actorFxFlatSensorLook()) styled = vec2(0.92, 0.0);
     return mix(roughness_metallic, styled, clamp(actorFxParams0.x, 0.0, 1.0));
 }
 
@@ -381,12 +624,91 @@ vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color)
     {
         return authored_emissive;
     }
+    float strength = clamp(actorFxParams0.x, 0.0, 1.0);
+    bool style_owns_material = actorFxFlatSensorLook() ||
+                               actorFxLook == 9 || actorFxLook == 12 ||
+                               actorFxLook == 16;
+    vec3 base_emissive = authored_emissive;
+    if (actorFxCoverMode() && style_owns_material)
+    {
+        // Cover supplies its own imaging/material read. Fade out authored
+        // emissive with the same strength instead of letting unrelated signs,
+        // LEDs, or baked glow burn through the replacement treatment.
+        base_emissive = mix(authored_emissive, vec3(0.0), strength);
+    }
+
     float glow = 0.0;
-    if (actorFxLook == 2 || actorFxLook == 6 || actorFxLook == 14 ||
-        actorFxLook == 15 || actorFxLook == 17 || actorFxLook == 19 ||
+    if (actorFxLook == 0)
+    {
+        glow = 0.32;
+    }
+    else if (actorFxLook == 2)
+    {
+        // Clone holograms are an unlit post-scene overlay.  A stronger native
+        // emissive term preserves that projector read through deferred/PBR
+        // lighting while still retaining authored depth and alpha coverage.
+        glow = 0.55;
+    }
+    else if (actorFxLook == 3)
+    {
+        glow = 0.36;
+    }
+    else if (actorFxLook == 4)
+    {
+        glow = 0.38;
+    }
+    else if (actorFxLook == 5)
+    {
+        glow = 0.20;
+    }
+    else if (actorFxLook == 6)
+    {
+        glow = 0.45;
+    }
+    else if (actorFxLook == 7)
+    {
+        glow = 0.32;
+    }
+    else if (actorFxLook == 8 || actorFxLook == 11)
+    {
+        glow = 0.12;
+    }
+    else if (actorFxLook == 13)
+    {
+        glow = 0.28;
+    }
+    else if (actorFxLook == 25)
+    {
+        // Keep comic dots legible in shadow with a restrained lift.  The
+        // uploader intentionally avoids an extra synthetic alpha-glow pass.
+        glow = 0.24;
+    }
+    else if (actorFxLook == 14 || actorFxLook == 15 ||
+        actorFxLook == 17 || actorFxLook == 19 ||
         actorFxLook == 26 || actorFxLook == 27)
     {
         glow = 0.22;
     }
-    return authored_emissive + styled_color * glow * clamp(actorFxParams0.x, 0.0, 1.0);
+    else if (actorFxLook == 18 || actorFxLook == 20)
+    {
+        // Scope/tube looks are self-lit imaging devices in Ghost Studio.
+        glow = 0.24;
+    }
+    else if (actorFxLook == 24)
+    {
+        glow = 0.18;
+    }
+    else if (actorFxLook == 16)
+    {
+        glow = 0.14;
+    }
+    else if (actorFxLook == 21 || actorFxLook == 23)
+    {
+        glow = 0.10;
+    }
+    else if (actorFxLook == 22)
+    {
+        glow = 0.08;
+    }
+    return base_emissive + styled_color * glow * strength;
 }

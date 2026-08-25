@@ -56,6 +56,7 @@ void applyLegacyEnv(inout vec3 color, vec3 legacyenv, vec4 spec, vec3 pos, vec3 
 vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
 vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
 bool actorFxActive();
+float actorFxAuthoredMaterialResponse();
 bool actorFxUvTransformEnabled();
 bool actorFxRgbSplitEnabled();
 vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
@@ -110,6 +111,9 @@ void main()
     calcAtmosphericVars(pos.xyz, vec3(0), 1.0, sunlit, amblit, additive, atten);
 
     float env_intensity = vertex_color.a;
+#ifdef HAS_ACTOR_FX
+    env_intensity *= actorFxAuthoredMaterialResponse();
+#endif
 
     vec3 ambenv = vec3(1.0);
     vec3 glossenv = vec3(0.0);

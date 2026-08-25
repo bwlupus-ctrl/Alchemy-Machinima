@@ -70,6 +70,11 @@ uniform vec2 ghostAlpha;
 // Independent, orthogonal distortion layer. x=strength, yz=lens center.
 uniform int ghostDistort;
 uniform vec4 ghostDistortParams;
+// Native live Actor wire is submitted to the linear HDR world buffer. Ghost
+// Studio overlays remain post-tonemap/display-space and leave this disabled.
+uniform int ghostWorldLinear;
+// Whole-image pixel origin of the current tiled snapshot subregion.
+uniform vec2 ghostFragOffset;
 // [R2-2] indexed-batch slot filter: >= 0 draws ONLY fragments whose
 // per-vertex material slot matches (the clone re-draws a multi-material
 // batch once per slot with that slot's texture bound); -1 = no filtering.
@@ -78,6 +83,14 @@ uniform int ghostSlot;
 in vec2 vary_texcoord0;
 in vec3 vary_position;
 in vec3 vary_normal;
+
+float ghostSrgbChannelToLinear(float channel)
+{
+    float c = max(channel, 0.0);
+    return c <= 0.04045
+        ? c / 12.92
+        : pow((c + 0.055) / 1.055, 2.4);
+}
 flat in int vary_texture_index;
 in vec4 vary_vertex_color;
 
@@ -122,6 +135,7 @@ vec3 ghost_rainbow(float h)
 
 void main()
 {
+    vec2 fragCoord = gl_FragCoord.xy + ghostFragOffset;
     // [R2-2] indexed-batch slot filter (see ghostSlot above)
     if (ghostSlot >= 0 && vary_texture_index != ghostSlot)
     {
@@ -172,16 +186,16 @@ void main()
     }
     else if (ghostDistort == 7 && distort > 0.001) // Vertical tear
     {
-        float slice = floor(gl_FragCoord.x / 13.0);
+        float slice = floor(fragCoord.x / 13.0);
         float beat = floor(ghostTime * 8.0);
         float r = ghost_hash(vec2(slice, beat + ghostAux.w));
         uv.y += step(1.0 - 0.35 * distort, r) * (r - 0.5) * 0.24 * distort;
     }
     else if (ghostDistort == 8 && distort > 0.001) // VHS / tracking
     {
-        float roll = fract(gl_FragCoord.y / 180.0 - ghostTime * 0.32);
+        float roll = fract(fragCoord.y / 180.0 - ghostTime * 0.32);
         vhsBand = 1.0 - smoothstep(0.02, 0.12, abs(roll - 0.5));
-        float lineNoise = ghost_hash(vec2(floor(gl_FragCoord.y / 3.0),
+        float lineNoise = ghost_hash(vec2(floor(fragCoord.y / 3.0),
                                            floor(ghostTime * 12.0)));
         uv.x += (lineNoise - 0.5) * 0.035 * distort + vhsBand * 0.02 * distort;
     }
@@ -217,7 +231,7 @@ void main()
     float torn = 0.0;
     if (glitch > 0.001)
     {
-        float band_id = floor(gl_FragCoord.y / 14.0);
+        float band_id = floor(fragCoord.y / 14.0);
         float beat    = floor(ghostTime * 9.0);
         float r       = ghost_hash(vec2(band_id, beat + ghostAux.w));
         torn = step(1.0 - 0.35 * glitch, r);            // a minority of bands tear
@@ -273,7 +287,7 @@ void main()
     // animated screen-space scanlines, scrolling slowly upward
     float scan_amt = clamp(ghostParams.x, 0.0, 1.0);
     float period   = max(ghostParams.w, 2.0);
-    float band     = 0.5 + 0.5 * sin((gl_FragCoord.y / period + ghostTime * 1.7) * 6.2831853);
+    float band     = 0.5 + 0.5 * sin((fragCoord.y / period + ghostTime * 1.7) * 6.2831853);
     float scan     = mix(1.0, 0.30 + 0.70 * band, scan_amt);
 
     // fresnel-ish rim from the eye-space normal / view direction
@@ -362,7 +376,7 @@ void main()
     }
     else if (ghostLook == 13) // Night vision
     {
-        float grain = ghost_hash(gl_FragCoord.xy + floor(ghostTime * 18.0)) - 0.5;
+        float grain = ghost_hash(fragCoord + floor(ghostTime * 18.0)) - 0.5;
         float nv = clamp(lum * 1.35 + grain * 0.14, 0.0, 1.0);
         rgb = vec3(0.03, nv, 0.08) * (0.72 + 0.28 * band);
         rgb *= mix(vec3(1.0), color.rgb, 0.12);
@@ -370,7 +384,7 @@ void main()
     }
     else if (ghostLook == 14) // Blueprint
     {
-        vec2 grid_uv = abs(fract(gl_FragCoord.xy / 18.0) - 0.5);
+        vec2 grid_uv = abs(fract(fragCoord / 18.0) - 0.5);
         float grid = 1.0 - smoothstep(0.43, 0.49, max(grid_uv.x, grid_uv.y));
         rgb = vec3(0.005, 0.035, 0.09) + color.rgb * (edge * 1.8 + grid * 0.11);
         alpha = color.a * tex.a;
@@ -385,7 +399,7 @@ void main()
     }
     else if (ghostLook == 16) // Frost / ice
     {
-        float sparkle = pow(ghost_hash(floor(gl_FragCoord.xy / 3.0)
+        float sparkle = pow(ghost_hash(floor(fragCoord / 3.0)
                                           + floor(ghostTime * 3.0)), 18.0);
         rgb = mix(vec3(0.15, 0.42, 0.7), vec3(0.86, 0.97, 1.0), lum * 0.45 + edge)
               + sparkle * 1.6;
@@ -418,7 +432,7 @@ void main()
     {
         vec2 p = fract(vary_texcoord0) - 0.5;
         float tube = 1.0 - smoothstep(0.36, 0.52, length(p));
-        float grain = ghost_hash(gl_FragCoord.xy + floor(ghostTime * 20.0)) - 0.5;
+        float grain = ghost_hash(fragCoord + floor(ghostTime * 20.0)) - 0.5;
         float ir = clamp(lum * 1.55 + edge * 0.55 + grain * 0.16, 0.0, 1.0);
         rgb = vec3(0.025, ir, 0.045) * tube;
         alpha = color.a * tex.a * tube;
@@ -433,7 +447,7 @@ void main()
     }
     else if (ghostLook == 22) // Killcam
     {
-        float grain = ghost_hash(gl_FragCoord.xy + floor(ghostTime * 24.0)) - 0.5;
+        float grain = ghost_hash(fragCoord + floor(ghostTime * 24.0)) - 0.5;
         float bars = step(fract(vary_texcoord0.y), 0.12)
                    + step(0.88, fract(vary_texcoord0.y));
         rgb = mix(vec3(lum + grain * 0.10), color.rgb * vec3(lum), 0.18);
@@ -456,7 +470,7 @@ void main()
     }
     else if (ghostLook == 25) // Halftone / comic
     {
-        vec2 cell = fract(gl_FragCoord.xy / 7.0) - 0.5;
+        vec2 cell = fract(fragCoord / 7.0) - 0.5;
         float dotMask = 1.0 - smoothstep(sqrt(max(lum, 0.02)) * 0.34,
                                          sqrt(max(lum, 0.02)) * 0.34 + 0.08,
                                          length(cell));
@@ -492,7 +506,7 @@ void main()
     {
         if (ghostDistort == 1)
         {
-            vec2 cell = fract(gl_FragCoord.xy / mix(2.0, 18.0, distort));
+            vec2 cell = fract(fragCoord / mix(2.0, 18.0, distort));
             float seam = smoothstep(0.0, 0.10, min(min(cell.x, cell.y),
                                                     min(1.0 - cell.x, 1.0 - cell.y)));
             rgb *= mix(0.82, 1.0, seam);
@@ -506,17 +520,26 @@ void main()
             rgb += color.rgb * lensRing * 0.25 * distort;
         }
         else if (ghostDistort == 4)
-            rgb *= 0.88 + 0.12 * sin(gl_FragCoord.y * 0.12 + ghostTime * 4.2) * distort;
+            rgb *= 0.88 + 0.12 * sin(fragCoord.y * 0.12 + ghostTime * 4.2) * distort;
         else if (ghostDistort == 5)
             rgb += vec3(edge, 0.0, -edge) * 0.35 * distort;
         else if (ghostDistort == 6)
             rgb *= 0.82 + 0.18 * ghost_hash(floor(vary_texcoord0 * vec2(12.0, 22.0))
                                              + floor(ghostTime * 7.0)) * distort;
         else if (ghostDistort == 7)
-            rgb *= 0.86 + 0.14 * ghost_hash(vec2(floor(gl_FragCoord.x / 13.0),
+            rgb *= 0.86 + 0.14 * ghost_hash(vec2(floor(fragCoord.x / 13.0),
                                                   floor(ghostTime * 8.0))) * distort;
     }
     if (ghostDistort == 8)
         rgb *= 1.0 - vhsBand * 0.22 * distort;
+    if (ghostWorldLinear != 0)
+    {
+        // actorghostF authors its looks in display/sRGB space.  Convert only
+        // the native pre-tonemap live-wire call; late Ghost Studio overlays are
+        // intentionally unchanged.
+        rgb = vec3(ghostSrgbChannelToLinear(rgb.r),
+                   ghostSrgbChannelToLinear(rgb.g),
+                   ghostSrgbChannelToLinear(rgb.b));
+    }
     frag_color = max(vec4(rgb, alpha), vec4(0));
 }

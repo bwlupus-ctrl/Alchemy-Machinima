@@ -237,6 +237,7 @@ private:
     LLCheckBoxCtrl*  mActorStyleUseActorHue = nullptr;
     LLSliderCtrl*    mActorStyleHue = nullptr;
     LLSliderCtrl*    mActorStyleAlpha = nullptr;
+    LLSliderCtrl*    mActorStyleDissolveProgress = nullptr;
     LLSliderCtrl*    mActorStylePixel = nullptr;
     LLSliderCtrl*    mActorStyleShimmerSpeed = nullptr;
     LLSliderCtrl*    mActorStyleShimmerAmount = nullptr;

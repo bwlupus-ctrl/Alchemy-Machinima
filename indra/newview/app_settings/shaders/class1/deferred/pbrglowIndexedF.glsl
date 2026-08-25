@@ -186,6 +186,12 @@ void main()
 #ifdef HAS_ACTOR_FX
     if (actor_fx_active)
     {
+        // Match PBR beauty's Layer/Cover handling of authored emissive before
+        // adding the style's independent synthetic bloom contribution.
+        vec3 covered_authored = actorFxEmissive(emissive, vec3(0.0));
+        lum = max(max(covered_authored.r, covered_authored.g),
+                  covered_authored.b) * vertex_emissive.a;
+
         vec3 actor_fx_normal = cross(dFdx(vary_position), dFdy(vary_position));
         float actor_fx_normal_len2 = dot(actor_fx_normal, actor_fx_normal);
         actor_fx_normal = actor_fx_normal_len2 > 1e-12

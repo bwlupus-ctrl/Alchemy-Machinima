@@ -45,6 +45,10 @@ void sanitizeActorStyle(LLDirectorCast::ActorStyle& style)
                          0.f, 360.f);
     style.mAlpha = llclamp(std::isfinite(style.mAlpha) ? style.mAlpha : defaults.mAlpha,
                            0.f, 1.f);
+    style.mDissolveProgress = llclamp(
+        std::isfinite(style.mDissolveProgress) ? style.mDissolveProgress
+                                               : defaults.mDissolveProgress,
+        0.f, 1.f);
     style.mPixelSize = llclamp(
         std::isfinite(style.mPixelSize) ? style.mPixelSize : defaults.mPixelSize,
         0.f, 64.f);
@@ -87,6 +91,7 @@ LLSD writeActorStyle(const LLDirectorCast::ActorStyle& input)
     data["actor_hue"] = style.mUseActorHue;
     data["hue"] = style.mHue;
     data["alpha"] = style.mAlpha;
+    data["dissolve_progress"] = style.mDissolveProgress;
     data["pixel_size"] = style.mPixelSize;
     data["shimmer_speed"] = style.mShimmerSpeed;
     data["shimmer_amount"] = style.mShimmerAmount;
@@ -112,6 +117,13 @@ LLDirectorCast::ActorStyle readActorStyle(const LLSD& data)
     if (data.has("actor_hue"))        style.mUseActorHue = data["actor_hue"].asBoolean();
     if (data.has("hue"))              style.mHue = static_cast<F32>(data["hue"].asReal());
     if (data.has("alpha"))            style.mAlpha = static_cast<F32>(data["alpha"].asReal());
+    // Pre-progress scenes retain ActorStyle's mid-dissolve default instead of
+    // coupling coverage back to Layer Alpha.
+    if (data.has("dissolve_progress"))
+    {
+        style.mDissolveProgress =
+            static_cast<F32>(data["dissolve_progress"].asReal());
+    }
     if (data.has("pixel_size"))       style.mPixelSize = static_cast<F32>(data["pixel_size"].asReal());
     if (data.has("shimmer_speed"))    style.mShimmerSpeed = static_cast<F32>(data["shimmer_speed"].asReal());
     if (data.has("shimmer_amount"))   style.mShimmerAmount = static_cast<F32>(data["shimmer_amount"].asReal());

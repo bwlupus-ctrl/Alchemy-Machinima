@@ -371,6 +371,7 @@ bool LLFloaterDirector::postBuild()
     mActorStyleUseActorHue = getChild<LLCheckBoxCtrl>("actor_style_use_actor_hue");
     mActorStyleHue = getChild<LLSliderCtrl>("actor_style_hue");
     mActorStyleAlpha = getChild<LLSliderCtrl>("actor_style_alpha");
+    mActorStyleDissolveProgress = getChild<LLSliderCtrl>("actor_style_dissolve_progress");
     mActorStylePixel = getChild<LLSliderCtrl>("actor_style_pixel");
     mActorStyleShimmerSpeed = getChild<LLSliderCtrl>("actor_style_shimmer_speed");
     mActorStyleShimmerAmount = getChild<LLSliderCtrl>("actor_style_shimmer_amount");
@@ -391,6 +392,7 @@ bool LLFloaterDirector::postBuild()
             static_cast<LLUICtrl*>(mActorStyleUseActorHue),
             static_cast<LLUICtrl*>(mActorStyleHue),
             static_cast<LLUICtrl*>(mActorStyleAlpha),
+            static_cast<LLUICtrl*>(mActorStyleDissolveProgress),
             static_cast<LLUICtrl*>(mActorStylePixel),
             static_cast<LLUICtrl*>(mActorStyleShimmerSpeed),
             static_cast<LLUICtrl*>(mActorStyleShimmerAmount),
@@ -1835,6 +1837,8 @@ void LLFloaterDirector::onActorStyleControlChanged()
     style.mUseActorHue = mActorStyleUseActorHue->get();
     style.mHue = (F32)mActorStyleHue->getValue().asReal();
     style.mAlpha = (F32)mActorStyleAlpha->getValue().asReal();
+    style.mDissolveProgress =
+        (F32)mActorStyleDissolveProgress->getValue().asReal();
     style.mPixelSize = (F32)mActorStylePixel->getValue().asReal();
     style.mShimmerSpeed = (F32)mActorStyleShimmerSpeed->getValue().asReal();
     style.mShimmerAmount = (F32)mActorStyleShimmerAmount->getValue().asReal();
@@ -1941,6 +1945,8 @@ void LLFloaterDirector::refreshActorStyleTab()
         mActorStyleUseActorHue->setEnabled(false);
         mActorStyleHue->setEnabled(false);
         mActorStyleAlpha->setEnabled(false);
+        mActorStyleDissolveProgress->setEnabled(false);
+        mActorStyleDissolveProgress->setVisible(false);
         mActorStylePixel->setEnabled(false);
         mActorStyleShimmerSpeed->setEnabled(false);
         mActorStyleShimmerAmount->setEnabled(false);
@@ -1960,10 +1966,11 @@ void LLFloaterDirector::refreshActorStyleTab()
     const LLUUID id = actorStyleTargetId();
     const LLDirectorCast::ActorStyle& style = cast.getActorStyle(id);
     const std::string snapshot = llformat(
-        "%d|%d|%d|%d|%.4f|%.4f|%.4f|%.4f|%.4f|%.4f|%d|%.4f|%.4f|%.4f",
+        "%d|%d|%d|%d|%.4f|%.4f|%.4f|%.4f|%.4f|%.4f|%.4f|%d|%.4f|%.4f|%.4f",
         style.mEnabled ? 1 : 0, static_cast<S32>(style.mMode), style.mStyle,
         style.mUseActorHue ? 1 : 0, style.mHue, style.mAlpha,
-        style.mPixelSize, style.mShimmerSpeed, style.mShimmerAmount,
+        style.mDissolveProgress, style.mPixelSize, style.mShimmerSpeed,
+        style.mShimmerAmount,
         style.mGlitch, style.mDistortion, style.mDistortionAmount,
         style.mBrightness, style.mEffectFps);
 
@@ -1977,6 +1984,7 @@ void LLFloaterDirector::refreshActorStyleTab()
         mActorStyleUseActorHue->set(style.mUseActorHue);
         mActorStyleHue->setValue(style.mHue);
         mActorStyleAlpha->setValue(style.mAlpha);
+        mActorStyleDissolveProgress->setValue(style.mDissolveProgress);
         mActorStylePixel->setValue(style.mPixelSize);
         mActorStyleShimmerSpeed->setValue(style.mShimmerSpeed);
         mActorStyleShimmerAmount->setValue(style.mShimmerAmount);
@@ -1997,7 +2005,11 @@ void LLFloaterDirector::refreshActorStyleTab()
     mActorStyleLook->setEnabled(active);
     mActorStyleUseActorHue->setEnabled(active);
     mActorStyleHue->setEnabled(active && !style.mUseActorHue);
-    mActorStyleAlpha->setEnabled(active);
+    mActorStyleAlpha->setEnabled(
+        active && style.mMode == LLDirectorCast::ACTOR_STYLE_LAYER);
+    const bool dissolve = style.mStyle == 10;
+    mActorStyleDissolveProgress->setVisible(dissolve);
+    mActorStyleDissolveProgress->setEnabled(active && dissolve);
     mActorStylePixel->setEnabled(active);
     mActorStyleShimmerSpeed->setEnabled(active);
     mActorStyleShimmerAmount->setEnabled(active);

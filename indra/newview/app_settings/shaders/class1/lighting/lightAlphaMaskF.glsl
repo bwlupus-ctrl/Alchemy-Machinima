@@ -38,6 +38,7 @@ in vec2 vary_texcoord0;
 in vec3 vary_actor_fx_normal;
 in vec3 vary_actor_fx_eye_position;
 vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
+vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
 bool actorFxActive();
 bool actorFxUvTransformEnabled();
 bool actorFxRgbSplitEnabled();
@@ -56,6 +57,7 @@ void default_lighting()
 
 #ifdef HAS_ACTOR_FX
     bool actor_fx_active = actorFxActive();
+    vec3 actor_fx_emissive = vec3(0.0);
     if (actor_fx_active)
     {
         vec2 fx_uv = vary_texcoord0.xy;
@@ -77,14 +79,26 @@ void default_lighting()
 #ifdef HAS_ACTOR_FX
     if (actor_fx_active)
     {
-        color.rgb = linear_to_srgb(actorFxApply(srgb_to_linear(color.rgb),
-                                                normalize(vary_actor_fx_normal),
-                                                vary_actor_fx_eye_position,
-                                                vary_texcoord0.xy));
+        vec3 actor_fx_styled = actorFxApply(srgb_to_linear(color.rgb),
+                                            normalize(vary_actor_fx_normal),
+                                            vary_actor_fx_eye_position,
+                                            vary_texcoord0.xy);
+        actor_fx_emissive = actorFxEmissive(vec3(0.0), actor_fx_styled);
+        color.rgb = linear_to_srgb(actor_fx_styled);
     }
 #endif
 
     color.rgb = atmosLighting(color.rgb);
+#ifdef HAS_ACTOR_FX
+    if (actor_fx_active &&
+        max(max(actor_fx_emissive.r, actor_fx_emissive.g), actor_fx_emissive.b) > 0.0)
+    {
+        // This forward path has no emissive GBuffer.  Add the same linear
+        // Actor FX lift used by deferred/PBR after scene lighting, then return
+        // to the legacy shader's sRGB soft-clip domain.
+        color.rgb = linear_to_srgb(srgb_to_linear(color.rgb) + actor_fx_emissive);
+    }
+#endif
     color.rgb = scaleSoftClip(color.rgb);
 
     frag_color = max(color, vec4(0));

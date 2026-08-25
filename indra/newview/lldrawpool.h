@@ -370,7 +370,10 @@ public:
     // routed through the draw-info overload/disabled helper.
     // Returns true when this draw's effective style emits synthetic glow. Call
     // sites that do not need that classification may ignore the result.
-    static bool uploadActorFx(const LLUUID& actor_id);
+    // allow_native_wire is reserved for the second GL_LINE draw of classic/
+    // system-avatar body and eye geometry, which the live harvester cannot see.
+    static bool uploadActorFx(const LLUUID& actor_id,
+                              bool allow_native_wire = false);
     static bool uploadActorFx(const LLDrawInfo& params);
     static void uploadActorFxDisabled();
     void pushBatches(U32 type, bool texture = true, bool batch_textures = false);

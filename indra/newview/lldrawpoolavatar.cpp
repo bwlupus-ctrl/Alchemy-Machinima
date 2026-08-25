@@ -120,6 +120,22 @@ static bool has_enabled_actor_fx(const LLVOAvatar* avatarp)
     return wearer && wearer->hasEffectiveActorFx();
 }
 
+static bool has_actor_fx_wireframe(const LLVOAvatar* avatarp)
+{
+    // Control avatars are only skeleton drivers for Animesh. Their visible
+    // surfaces are harvested volume geometry and receive the exact overlay
+    // line pass; there is no system body here to draw a second time.
+    if (!avatarp || avatarp->isControlAvatar())
+    {
+        return false;
+    }
+    const LLDirectorCast::ActorStyle& style =
+        LLDirectorCast::instance().getActorStyle(get_actor_fx_id(avatarp));
+    return style.mEnabled && style.mStyle == 3 &&
+        (style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE ||
+         style.mAlpha > 0.001f);
+}
+
 F32 CLOTHING_GRAVITY_EFFECT = 0.7f;
 F32 CLOTHING_ACCEL_FORCE_FACTOR = 0.2f;
 
@@ -1032,12 +1048,36 @@ void LLDrawPoolAvatar::renderAvatars(LLVOAvatar* single_avatar, S32 pass)
         // render rigid meshes (eyeballs) first
         // Upload on every avatar, including unstyled actors, so a shared bound
         // shader cannot inherit the previous avatar's Actor FX state.
-        LLRenderPass::uploadActorFx(get_actor_fx_id(avatarp));
+        const LLUUID actor_fx_id = get_actor_fx_id(avatarp);
+        const bool wireframe = has_actor_fx_wireframe(avatarp);
+        LLRenderPass::uploadActorFx(actor_fx_id);
         avatarp->renderRigid();
+        if (wireframe)
+        {
+            // System eyes are outside Ghost Studio's harvested VBOs. Reuse the
+            // live rigid geometry once in line mode; no cloned avatar is made.
+            LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
+            LLGLState blend(GL_BLEND, is_post_deferred_render
+                ? LLGLState::ENABLED_STATE : LLGLState::DISABLED_STATE);
+            if (is_post_deferred_render)
+            {
+                gGL.setSceneBlendType(LLRender::BT_ALPHA);
+            }
+            LLRenderPass::uploadActorFx(actor_fx_id, true);
+            gGL.flush();
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            avatarp->renderRigid();
+            gGL.flush();
+            glPolygonMode(GL_FRONT_AND_BACK,
+                          gUseWireframe ? GL_LINE : GL_FILL);
+            LLRenderPass::uploadActorFxDisabled();
+        }
         return;
     }
 
-    LLRenderPass::uploadActorFx(get_actor_fx_id(avatarp));
+    const LLUUID actor_fx_id = get_actor_fx_id(avatarp);
+    const bool wireframe = has_actor_fx_wireframe(avatarp);
+    LLRenderPass::uploadActorFx(actor_fx_id);
 
     if (LLPipeline::RenderAvatarCloth)
     {
@@ -1067,6 +1107,27 @@ void LLDrawPoolAvatar::renderAvatars(LLVOAvatar* single_avatar, S32 pass)
     if( !single_avatar || (avatarp == single_avatar) )
     {
         avatarp->renderSkinned();
+        if (wireframe)
+        {
+            // The classic head/upper/lower/skirt meshes are not part of the
+            // harvested attachment batches. Draw their exact live triangles a
+            // second time as topology lines, depth-tested against the fill.
+            LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
+            LLGLState blend(GL_BLEND, is_post_deferred_render
+                ? LLGLState::ENABLED_STATE : LLGLState::DISABLED_STATE);
+            if (is_post_deferred_render)
+            {
+                gGL.setSceneBlendType(LLRender::BT_ALPHA);
+            }
+            LLRenderPass::uploadActorFx(actor_fx_id, true);
+            gGL.flush();
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            avatarp->renderSkinned();
+            gGL.flush();
+            glPolygonMode(GL_FRONT_AND_BACK,
+                          gUseWireframe ? GL_LINE : GL_FILL);
+            LLRenderPass::uploadActorFxDisabled();
+        }
     }
 }
 

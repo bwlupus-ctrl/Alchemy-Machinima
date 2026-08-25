@@ -1628,13 +1628,10 @@ void render_ui(F32 zoom_factor, int subfield)
             gPipeline.disableLights();
         }
 
-        // [ActorStyle/GhostStudio] Styled cast layers and studio ghost instances
-        // are SCENE DRESSING, not editing indicators. Actor styles use the same
-        // clone renderer at the actor's exact live placement and therefore share
-        // this always-visible, pre-UI compositing stage.
-        // Actor FX is applied by the actor's native material shaders.  The
-        // former overlay-clone pass is intentionally not rendered here: it
-        // duplicated geometry and produced incorrect alpha/PBR composition.
+        // [ActorStyle/GhostStudio] Actor FX is applied by native material
+        // shaders. Topology-accurate live Wireframe is submitted earlier from
+        // renderDeferredLighting(), while the main world depth target is still
+        // bound, so foreground geometry occludes its mesh/Animesh lines.
 
         // [GhostStudio] studio ghost instances are SCENE DRESSING, not an
         // editing indicator. They draw HERE -- before (and independent of) the

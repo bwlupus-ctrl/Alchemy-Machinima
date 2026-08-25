@@ -42,6 +42,7 @@ vec3 linear_to_srgb(vec3 c);
 vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
 vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
 bool actorFxActive();
+float actorFxAuthoredMaterialResponse();
 bool actorFxUvTransformEnabled();
 bool actorFxRgbSplitEnabled();
 vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
@@ -78,9 +79,15 @@ void main()
         col = linear_to_srgb(actor_fx_styled_linear);
     }
 #endif
+    float actor_fx_material_response = 1.0;
+#ifdef HAS_ACTOR_FX
+    actor_fx_material_response = actorFxAuthoredMaterialResponse();
+#endif
     frag_data[0] = vec4(col, 0.0);
-    frag_data[1] = vertex_color.aaaa; // spec
-    frag_data[2] = encodeNormal(nvn.xyz, vertex_color.a, GBUFFER_FLAG_HAS_ATMOS);
+    frag_data[1] = vertex_color.aaaa * actor_fx_material_response; // spec/gloss
+    frag_data[2] = encodeNormal(nvn.xyz,
+                                vertex_color.a * actor_fx_material_response,
+                                GBUFFER_FLAG_HAS_ATMOS);
 
 #if defined(HAS_EMISSIVE)
     frag_data[3] = vec4(0, 0, 0, 0);

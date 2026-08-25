@@ -56,6 +56,7 @@ void mirrorClip(vec3 pos);
 vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
 vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
 bool actorFxActive();
+float actorFxAuthoredMaterialResponse();
 bool actorFxUvTransformEnabled();
 bool actorFxRgbSplitEnabled();
 vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
@@ -357,6 +358,11 @@ void main()
     float glossiness = specular_color.a;
     vec3 norm = getNormal(glossiness, fx_normal_uv);
 #ifdef HAS_ACTOR_FX
+    float actor_fx_material_response = actorFxAuthoredMaterialResponse();
+    spec.rgb *= actor_fx_material_response;
+    glossiness *= actor_fx_material_response;
+    env *= actor_fx_material_response;
+
     // Legacy material textures/G-buffer values are sRGB. Actor FX has one
     // linear-light contract across legacy, PBR, and fullbright surfaces.
     vec3 actor_fx_styled_linear = vec3(0.0);
@@ -477,6 +483,16 @@ void main()
         LIGHT_LOOP(7)
 
     color += light;
+
+#ifdef HAS_ACTOR_FX
+    if (actor_fx_active)
+    {
+        // Legacy material BLEND is a forward path and has no emissive GBuffer
+        // attachment. Publish the same synthetic Actor FX emission used by the
+        // opaque/mask permutations directly into beauty before atmospheric fog.
+        color += actorFxEmissive(vec3(0.0), actor_fx_styled_linear);
+    }
+#endif
 
     color.rgb = applySkyAndWaterFog(pos.xyz, additive, atten, vec4(color, 1.0)).rgb;
 

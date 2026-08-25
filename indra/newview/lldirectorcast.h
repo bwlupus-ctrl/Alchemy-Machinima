@@ -142,6 +142,7 @@ public:
         bool            mUseActorHue = true;
         F32             mHue = 200.f;
         F32             mAlpha = 0.6f;
+        F32             mDissolveProgress = 0.5f;
         F32             mPixelSize = 0.f;
         F32             mShimmerSpeed = 1.f;
         F32             mShimmerAmount = 0.f;

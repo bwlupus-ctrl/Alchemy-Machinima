@@ -223,6 +223,7 @@ vec3 linear_to_srgb(vec3 cl);
 vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
 vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
 bool actorFxActive();
+float actorFxAuthoredMaterialResponse();
 bool actorFxUvTransformEnabled();
 bool actorFxRgbSplitEnabled();
 vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
@@ -329,6 +330,11 @@ void main()
     float glossiness = mat_specular_color[mi].a;
     vec3 norm = getNormal(mi, glossiness, fx_normal_uv);
 #ifdef HAS_ACTOR_FX
+    float actor_fx_material_response = actorFxAuthoredMaterialResponse();
+    spec.rgb *= actor_fx_material_response;
+    glossiness *= actor_fx_material_response;
+    env *= actor_fx_material_response;
+
     vec3 actor_fx_styled_linear = vec3(0.0);
     if (actor_fx_active)
     {

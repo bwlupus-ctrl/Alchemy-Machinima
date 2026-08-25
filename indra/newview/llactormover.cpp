@@ -54,10 +54,13 @@
 #include "llviewerobjectlist.h"     // gObjectList (object gaze targets)
 #include "llviewershadermgr.h"      // gUIProgram / gHighlightProgram (heading preview + model ghost)
 #include "llviewertexture.h"        // sWhiteImagep (flat-tint texture for the model ghost)
+#include "llviewerwindow.h"         // raw snapshot tile dimensions for Actor FX
 #include "llvoavatar.h"
 #include "llvoavatarself.h"         // gAgentAvatarp, isAgentAvatarValid()
 #include "llworld.h"                // resolveLandHeightAgent (pathing ground-follow)
 #include "pipeline.h"               // gPipeline.lineSegmentIntersectInWorld (raycast)
+
+extern bool gSnapshot;
 
 namespace
 {
@@ -71,15 +74,17 @@ LLVOAvatar* resolve_actor(const LLUUID& id)
     return LLDirectorCast::instance().resolve(id);
 }
 
-// Actor styling now runs in the actor's native material draw.  Keep the former
-// overlay-clone implementation dormant: harvesting and redrawing the complete
-// actor here would double geometry cost, break global alpha sorting, and apply
-// the effect a second time.  The code remains available only as a rollback aid
-// while the native path is validated.
+// Actor styling runs in the actor's native material draw except for true
+// topology wireframe. A fragment shader has no triangle-edge coordinates, so
+// attempting that look natively produced a UV grid instead of mesh edges. Keep
+// the exact-live overlay renderer narrowly enabled for look 3: it reuses the
+// live VBO and skin palette (no cloned avatar/skeleton) and pays the additional
+// line pass only while Wireframe is actually selected.
 bool actor_style_wants_overlay(const LLDirectorCast::ActorStyle& style)
 {
-    (void)style;
-    return false;
+    return style.mEnabled && style.mStyle == 3 &&
+        (style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE ||
+         style.mAlpha > 0.001f);
 }
 
 // the locomotion anim a new Move should start for THIS actor: the cast
@@ -9199,6 +9204,8 @@ static LLStaticHashedString sGhostLook("ghostLook");
 static LLStaticHashedString sGhostDistort("ghostDistort");
 static LLStaticHashedString sGhostDistortParams("ghostDistortParams");
 static LLStaticHashedString sGhostUseVertexAlpha("ghostUseVertexAlpha");
+static LLStaticHashedString sGhostWorldLinear("ghostWorldLinear");
+static LLStaticHashedString sGhostFragOffset("ghostFragOffset");
 // x: honor sampled texture alpha; y: authored PBR base-colour factor alpha.
 // OPAQUE PBR materials deliberately upload (0, 1): their base-colour alpha is
 // not opacity and can contain arbitrary/packed data.
@@ -9526,11 +9533,54 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     // (re)applied to whichever variant a sweep binds.
     LLColor4  style_color(1.f, 1.f, 1.f, alpha);    // set per style below
     LLVector4 style_params(0.f, 0.f, 0.f, 6.f);     // ghostParams per style
-    const F32 ghost_real_time = (F32)LLFrameTimer::getElapsedSeconds();
-    const F32 effect_fps = llclamp(gp.mEffectFps, 0.f, 30.f);
-    const F32 ghost_now = effect_fps > 0.f
-        ? floorf(ghost_real_time * effect_fps) / effect_fps
+    // Use one small, double-precision clock value for the whole viewer frame.
+    // Freeze it for the complete tiled-snapshot operation so a procedural look
+    // cannot advance between tiles.  Reducing the absolute uptime to float was
+    // also the source of late-session shimmer stutter.
+    static bool sGhostClockInitialized = false;
+    static F64 sGhostClockEpoch = 0.0;
+    static U32 sGhostClockFrame = U32_MAX;
+    static F64 sGhostFrameClock = 0.0;
+    if (sGhostClockFrame != gFrameCount)
+    {
+        sGhostClockFrame = gFrameCount;
+        sGhostFrameClock = LLFrameTimer::getElapsedSeconds();
+    }
+    if (!sGhostClockInitialized)
+    {
+        sGhostClockEpoch = sGhostFrameClock;
+        sGhostClockInitialized = true;
+    }
+    const F64 elapsed = llmax(sGhostFrameClock - sGhostClockEpoch, 0.0);
+    static F64 sGhostSnapshotTime = 0.0;
+    static bool sGhostWasSnapshot = false;
+    if (gSnapshot && !sGhostWasSnapshot)
+    {
+        sGhostSnapshotTime = elapsed;
+    }
+    const F64 ghost_real_time = gSnapshot ? sGhostSnapshotTime : elapsed;
+    sGhostWasSnapshot = gSnapshot;
+    const F64 effect_fps = static_cast<F64>(llclamp(gp.mEffectFps, 0.f, 30.f));
+    const F64 ghost_time_64 = effect_fps > 0.0
+        ? floor(ghost_real_time * effect_fps) / effect_fps
         : ghost_real_time;
+    const F32 ghost_now = static_cast<F32>(ghost_time_64);
+
+    // gl_FragCoord restarts at zero for each high-resolution snapshot tile.
+    // Supply its bottom-up whole-image pixel origin so scanlines, noise and
+    // pixel blocks meet exactly at the tile boundaries (including HiDPI).
+    F32 ghost_tile_x = 0.f;
+    F32 ghost_tile_y = 0.f;
+    const F32 zoom = LLViewerCamera::getInstance()->getZoomFactor();
+    if (gSnapshot && gViewerWindow && zoom > 1.f)
+    {
+        const S32 tiles = llceil(zoom);
+        const S32 sub = LLViewerCamera::getInstance()->getZoomSubRegion();
+        const S32 tile_y = sub / tiles;
+        const S32 tile_x = sub - tile_y * tiles;
+        ghost_tile_x = static_cast<F32>(tile_x * gViewerWindow->getWorldViewWidthRaw());
+        ghost_tile_y = static_cast<F32>(tile_y * gViewerWindow->getWorldViewHeightRaw());
+    }
     auto apply_program = [&](LLGLSLShader* sh)
     {
         sh->bind();
@@ -9553,6 +9603,8 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             // draw's per-batch upload
             sh->uniform1i(sGhostUseVertexAlpha, 0);
             sh->uniform2f(sGhostAlpha, 0.f, 1.f);
+            sh->uniform1i(sGhostWorldLinear, gp.mWorldLinear ? 1 : 0);
+            sh->uniform2f(sGhostFragOffset, ghost_tile_x, ghost_tile_y);
         }
         // [R2-4] park the diffuse_color GENERIC at white: buffers WITHOUT a
         // COLOR array (PBR) read the generic, whose GL boot default is BLACK
@@ -9708,7 +9760,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             // sample texture RGB keep the single unfiltered draw.
             const S32 slot_count = ghost_batch_slot_count(di);
             const bool per_slot = have_fx && slot_count > 1
-                && (texture_rgb || (alpha_aware && is_mask))
+                && (texture_rgb || (alpha_aware && (is_mask || is_blend)))
                 && di->mVertexBuffer->hasDataType(LLVertexBuffer::TYPE_TEXTURE_INDEX);
             const S32 draws = per_slot ? slot_count : 1;
 
@@ -9777,6 +9829,15 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                         factor = di->mGLTFMaterial->mBaseColor;
                         have_factor = true;
                     }
+                }
+
+                // Hidden-line Wire must not let a completely transparent BLEND
+                // card prime depth or expose its rectangular/internal topology.
+                // A one-byte coverage floor preserves every visible authored
+                // alpha value while discarding only effectively empty texels.
+                if (alpha_aware && style == GHOST_STYLE_WIREFRAME && is_blend)
+                {
+                    cutoff = llmax(cutoff, 1.f / 255.f);
                 }
 
                 gGL.getTexUnit(0)->bind(
@@ -10019,8 +10080,12 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 static_shader->uniform2f(sGhostAlpha,
                     authored_alpha ? 1.f : 0.f,
                     1.f);
+                const F32 wire_blend_cutoff =
+                    alpha_aware && style == GHOST_STYLE_WIREFRAME
+                    && gf.mAlphaKind == 2 ? (1.f / 255.f) : 0.f;
                 static_shader->uniform4f(sGhostAux,
-                    (alpha_aware && gf.mAlphaKind == 1) ? gf.mCutoff : 0.f,
+                    (alpha_aware && gf.mAlphaKind == 1)
+                        ? gf.mCutoff : wire_blend_cutoff,
                     texture_rgb ? 1.f : 0.f, gp.mPixelSize, gp.mPhase);
             }
             // per-face UV transform (SL texture animation / GLTF KHR)
@@ -10100,8 +10165,9 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     // excludes BLENDED layers from the prime so the body under a sheer skirt
     // still shades (they get their own blended sweep below); the flat-tint
     // styles keep them (a translucent layer still contributes silhouette to a
-    // flat ghost). Wireframe stays fully unmasked: hidden-line wants the whole
-    // mesh's edges, holes included. [R2-2] the non-rigged attachment faces
+    // flat ghost). Wireframe samples the authored MASK/BLEND alpha as well, so
+    // hair cards contribute only where their material actually has coverage.
+    // [R2-2] the non-rigged attachment faces
     // prime alongside the batches so collar and body occlude each other right.
     // [GhostDeferred] the prime deliberately IGNORES overlay_mask: a deferred-
     // covered solid category is exactly the occluder the remaining overlay
@@ -10119,8 +10185,8 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         gGL.setColorMask(false, false);
         if (style == GHOST_STYLE_WIREFRAME)
         {
-            draw_batches(SWEEP_ALL, false, false, false);
-            draw_static(SWEEP_ALL, false, false, false);
+            draw_batches(SWEEP_ALL, false, false, true);
+            draw_static(SWEEP_ALL, false, false, true);
         }
         else
         {
@@ -10208,9 +10274,10 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                         llmin(1.f, alpha * 1.5f));
         gGL.diffuseColor4fv(style_color.mV);
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        draw_batches(SWEEP_ALL, false, false, false);
-        draw_static(SWEEP_ALL, false, false, false);
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        draw_batches(SWEEP_ALL, false, false, true);
+        draw_static(SWEEP_ALL, false, false, true);
+        glPolygonMode(GL_FRONT_AND_BACK,
+                      gUseWireframe ? GL_LINE : GL_FILL);
         break;
     }
     case GHOST_STYLE_HOLOGRAM:
@@ -11946,12 +12013,12 @@ void LLActorMover::renderStudioGhosts()
 }
 
 // ---------------------------------------------------------------------------
-// [ActorStyle] Draw enabled cast styles at each actor's exact live placement.
-// The harvested rigged batches already contain the current skinning owner and
-// palette; using live-foot as both destination and implicit pivot collapses the
-// ghost placement matrix to identity (T(foot) * T(-foot)). Non-rigged worn
-// attachment faces ride through the same source harvest, so Layer mode matches
-// the coverage of an overlay clone without creating a second avatar/skeleton.
+// [ActorStyle] Draw the topology-wireframe exception at each actor's exact live
+// placement. Every color/material look remains in the native pass. Harvested
+// rigged batches already reference the current skinning owner, palette, and VBO;
+// using live-foot as both destination and implicit pivot collapses placement to
+// identity (T(foot) * T(-foot)). This is an extra line draw, not an avatar clone,
+// and actor_style_wants_overlay() keeps the path dormant for all non-wire looks.
 void LLActorMover::renderStyledActors()
 {
     LLDirectorCast& director_cast = LLDirectorCast::instance();
@@ -12020,8 +12087,16 @@ void LLActorMover::renderStyledActors()
         return;
     }
 
-    // Styled layers are translucent scene dressing like overlay clones. Keep
-    // stable far-to-near ordering when multiple cast silhouettes overlap.
+    // This path now executes inside the post-deferred world render rather than
+    // the UI compositor. Preserve the caller-owned program and active texture
+    // unit so a wireframe actor cannot perturb the passes that follow it.
+    LLGLSLShader* saved_shader = LLGLSLShader::sCurBoundShaderPtr;
+    const U32 saved_texture_unit = gGL.getCurrentTexUnitIndex();
+
+    // Styled lines are translucent scene dressing submitted while the main
+    // world depth target is live. Keep stable far-to-near ordering when
+    // multiple cast silhouettes overlap; drawGeometryGhost's LEQUAL line pass
+    // then respects foreground scene occlusion.
     const LLVector3 camera_pos = LLViewerCamera::getInstance()->getOrigin();
     std::stable_sort(items.begin(), items.end(),
         [&](const StyledActorItem& a, const StyledActorItem& b)
@@ -12060,6 +12135,7 @@ void LLActorMover::renderStyledActors()
         params.mDistortAmount = llclamp(style.mDistortionAmount, 0.f, 1.f);
         params.mBrightness = llclamp(style.mBrightness, 0.05f, 1.5f);
         params.mEffectFps = llclamp(style.mEffectFps, 0.f, 30.f);
+        params.mWorldLinear = true;
         params.mTintCustom = !style.mUseActorHue;
         params.mPhase =
             (F32)(item.mAvatar->getID().mData[0]
@@ -12085,4 +12161,14 @@ void LLActorMover::renderStyledActors()
     gUIProgram.bind();
     gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
     gGL.flush();
+    LLVertexBuffer::unbind();
+    if (saved_shader && saved_shader->mProgramObject)
+    {
+        saved_shader->bind();
+    }
+    else
+    {
+        LLGLSLShader::unbind();
+    }
+    gGL.getTexUnit(saved_texture_unit)->activate();
 }

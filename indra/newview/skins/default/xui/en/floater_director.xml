@@ -1626,7 +1626,7 @@
                 <panel
                  background_visible="false"
                  follows="left|top|right"
-                 height="570"
+                 height="596"
                  layout="topleft"
                  left="0"
                  name="actor_style_scroll_content"
@@ -1686,10 +1686,10 @@
                      left="100"
                      name="actor_style_mode"
                      right="-10"
-                     tool_tip="Layer adds the effect over the normal actor. Opaque cover is a preview: it forces the styled layer opaque but currently leaves the normal actor underneath."
+                     tool_tip="Layer blends the effect over the authored actor material. Cover fully owns the actor's visible material response while preserving authored alpha coverage, shadows, and motion."
                      top="128">
                         <combo_box.item label="Layer" name="actor_style_layer" value="0" />
-                        <combo_box.item label="Opaque cover (preview)" name="actor_style_replace" value="1" />
+                        <combo_box.item label="Cover" name="actor_style_replace" value="1" />
                     </combo_box>
                     <text follows="left|top" height="16" layout="topleft" left="10" top="164" width="84">
                         Look:
@@ -1744,15 +1744,16 @@
                      top="194"
                      width="220" />
                     <slider decimal_digits="0" follows="left|top|right" height="20" increment="5" initial_value="200" label="Custom hue" label_width="88" layout="topleft" left="10" max_val="360" min_val="0" name="actor_style_hue" right="-10" tool_tip="Tint hue in degrees when Use actor hue is off" top="220" />
-                    <slider decimal_digits="2" follows="left|top|right" height="20" increment="0.05" initial_value="0.6" label="Alpha" label_width="88" layout="topleft" left="10" max_val="1" min_val="0" name="actor_style_alpha" right="-10" tool_tip="Base opacity of the actor style" top="246" />
-                    <slider decimal_digits="0" follows="left|top|right" height="20" increment="1" initial_value="0" label="Pixelate" label_width="88" layout="topleft" left="10" max_val="64" min_val="0" name="actor_style_pixel" right="-10" tool_tip="Screen-space pixelation block size in pixels; 0 is off" top="272" />
-                    <slider decimal_digits="1" follows="left|top|right" height="20" increment="0.5" initial_value="1" label="Shimmer Hz" label_width="88" layout="topleft" left="10" max_val="10" min_val="0" name="actor_style_shimmer_speed" right="-10" tool_tip="Shimmer speed; only matters when Shimmer amount is above zero" top="298" />
-                    <slider decimal_digits="2" follows="left|top|right" height="20" increment="0.05" initial_value="0" label="Shimmer amt" label_width="88" layout="topleft" left="10" max_val="1" min_val="0" name="actor_style_shimmer_amount" right="-10" tool_tip="Brightness and alpha shimmer depth; 0 is off" top="324" />
-                    <slider decimal_digits="2" follows="left|top|right" height="20" increment="0.05" initial_value="0" label="Glitch" label_width="88" layout="topleft" left="10" max_val="1" min_val="0" name="actor_style_glitch" right="-10" tool_tip="Broken-signal horizontal tear and chroma split; 0 is off" top="350" />
-                    <text follows="left|top" height="16" layout="topleft" left="10" top="382" width="84">
+                    <slider decimal_digits="2" follows="left|top|right" height="20" increment="0.05" initial_value="0.6" label="Layer alpha" label_width="88" layout="topleft" left="10" max_val="1" min_val="0" name="actor_style_alpha" right="-10" tool_tip="Overlay opacity in Layer mode. It does not control Dissolve coverage." top="246" />
+                    <slider decimal_digits="2" follows="left|top|right" height="20" increment="0.01" initial_value="0.5" label="Dissolve" label_width="88" layout="topleft" left="10" max_val="1" min_val="0" name="actor_style_dissolve_progress" right="-10" tool_tip="Dissolve progress: 0 keeps the actor whole; 1 removes it completely. Only available for the Dissolve look." top="272" visible="false" />
+                    <slider decimal_digits="0" follows="left|top|right" height="20" increment="1" initial_value="0" label="Pixelate" label_width="88" layout="topleft" left="10" max_val="64" min_val="0" name="actor_style_pixel" right="-10" tool_tip="Screen-space pixelation block size in pixels; 0 is off" top="298" />
+                    <slider decimal_digits="1" follows="left|top|right" height="20" increment="0.5" initial_value="1" label="Shimmer Hz" label_width="88" layout="topleft" left="10" max_val="10" min_val="0" name="actor_style_shimmer_speed" right="-10" tool_tip="Shimmer speed; only matters when Shimmer amount is above zero" top="324" />
+                    <slider decimal_digits="2" follows="left|top|right" height="20" increment="0.05" initial_value="0" label="Shimmer amt" label_width="88" layout="topleft" left="10" max_val="1" min_val="0" name="actor_style_shimmer_amount" right="-10" tool_tip="Brightness and alpha shimmer depth; 0 is off" top="350" />
+                    <slider decimal_digits="2" follows="left|top|right" height="20" increment="0.05" initial_value="0" label="Glitch" label_width="88" layout="topleft" left="10" max_val="1" min_val="0" name="actor_style_glitch" right="-10" tool_tip="Broken-signal horizontal tear and chroma split; 0 is off" top="376" />
+                    <text follows="left|top" height="16" layout="topleft" left="10" top="408" width="84">
                         Distortion:
                     </text>
-                    <combo_box follows="left|top|right" height="22" layout="topleft" left="100" name="actor_style_distortion" right="-10" tool_tip="Independent distortion layer; stacks with any selected look" top="378">
+                    <combo_box follows="left|top|right" height="22" layout="topleft" left="100" name="actor_style_distortion" right="-10" tool_tip="Independent distortion layer; stacks with any selected look" top="404">
                         <combo_box.item label="None" name="actor_ds_none" value="0" />
                         <combo_box.item label="Pixelate" name="actor_ds_pixel" value="1" />
                         <combo_box.item label="Voxel" name="actor_ds_voxel" value="2" />
@@ -1763,11 +1764,11 @@
                         <combo_box.item label="Vertical Tear" name="actor_ds_vertical" value="7" />
                         <combo_box.item label="VHS" name="actor_ds_vhs" value="8" />
                     </combo_box>
-                    <slider decimal_digits="2" follows="left|top|right" height="20" increment="0.05" initial_value="0.5" label="Distort amt" label_width="88" layout="topleft" left="10" max_val="1" min_val="0" name="actor_style_distortion_amount" right="-10" tool_tip="Strength of the selected independent distortion" top="410" />
-                    <slider decimal_digits="2" follows="left|top|right" height="20" increment="0.05" initial_value="1" label="Brightness" label_width="88" layout="topleft" left="10" max_val="1.5" min_val="0.05" name="actor_style_brightness" right="-10" tool_tip="Output brightness of the unlit style; reduce it to sit the actor into a dark set" top="436" />
-                    <spinner decimal_digits="0" follows="left|top" height="20" increment="1" initial_value="0" label="Effect fps" label_width="70" layout="topleft" left="10" max_val="30" min_val="0" name="actor_style_effect_fps" tool_tip="Shader animation cadence. 0 is smooth; 1-30 holds animated looks for stop motion." top="462" width="160" />
-                    <button follows="left|top" height="22" label="Reset actor style" layout="topleft" left="10" name="actor_style_reset" tool_tip="Restore this actor's style defaults and turn styling off" top="494" width="160" />
-                    <text follows="left|top|right" height="34" layout="topleft" left="10" name="actor_style_status" right="-10" text_color="LtGray_50" top="526">
+                    <slider decimal_digits="2" follows="left|top|right" height="20" increment="0.05" initial_value="0.5" label="Distort amt" label_width="88" layout="topleft" left="10" max_val="1" min_val="0" name="actor_style_distortion_amount" right="-10" tool_tip="Strength of the selected independent distortion" top="436" />
+                    <slider decimal_digits="2" follows="left|top|right" height="20" increment="0.05" initial_value="1" label="Brightness" label_width="88" layout="topleft" left="10" max_val="1.5" min_val="0.05" name="actor_style_brightness" right="-10" tool_tip="Output brightness of the unlit style; reduce it to sit the actor into a dark set" top="462" />
+                    <spinner decimal_digits="0" follows="left|top" height="20" increment="1" initial_value="0" label="Effect fps" label_width="70" layout="topleft" left="10" max_val="30" min_val="0" name="actor_style_effect_fps" tool_tip="Shader animation cadence. 0 is smooth; 1-30 holds animated looks for stop motion." top="488" width="160" />
+                    <button follows="left|top" height="22" label="Reset actor style" layout="topleft" left="10" name="actor_style_reset" tool_tip="Restore this actor's style defaults and turn styling off" top="520" width="160" />
+                    <text follows="left|top|right" height="34" layout="topleft" left="10" name="actor_style_status" right="-10" text_color="LtGray_50" top="552">
                         Select an actor.
                     </text>
                 </panel>

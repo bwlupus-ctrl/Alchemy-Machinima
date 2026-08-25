@@ -11,6 +11,11 @@ bool actorFxActive()
     return false;
 }
 
+float actorFxAuthoredMaterialResponse()
+{
+    return 1.0;
+}
+
 float actorFxBeautyDissolveCoverage()
 {
     return 1.0;

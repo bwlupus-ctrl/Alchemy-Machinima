@@ -12,6 +12,7 @@ uniform int actorFxEnabled;
 uniform int actorFxLook;
 uniform vec4 actorFxParams0;
 uniform vec4 actorFxParams1;
+uniform float actorFxDissolveProgress;
 
 float actor_fx_dissolve_hash(vec2 p)
 {
@@ -40,13 +41,26 @@ float actor_fx_dissolve_fbm(vec2 p)
 
 bool actorFxDissolveEnabled()
 {
-    // Look 10 is the persisted/UI ActorStyle mapping for Dissolve.  Strength
-    // at or below epsilon is a strict identity operation and must not discard.
-    return actorFxEnabled != 0 && actorFxLook == 10 && actorFxParams0.x > 0.001;
+    // Look 10 is the persisted/UI ActorStyle mapping for Dissolve. Coverage is
+    // independent of Layer Alpha; actorFxEnabled remains the shared style gate.
+    return actorFxEnabled != 0 && actorFxLook == 10;
 }
 
 float actorFxDissolveCoverage(vec3 object_position)
 {
+    float progress = clamp(actorFxDissolveProgress, 0.0, 1.0);
+    // Make the authored endpoints exact instead of depending on the sampled
+    // FBM's practical min/max. This keeps Cover useful at progress zero and
+    // guarantees a completely dissolved actor at progress one.
+    if (progress <= 0.0)
+    {
+        return 1.0;
+    }
+    if (progress >= 1.0)
+    {
+        return -1.0;
+    }
+
     float phase = actorFxParams1.w;
     vec2 actor_offset = vec2(cos(phase), sin(phase)) * 17.0;
     // Fold all three object axes into a stable 2-D noise domain.  Passing the
@@ -54,7 +68,7 @@ float actorFxDissolveCoverage(vec3 object_position)
     vec2 domain = object_position.xy
                 + vec2(object_position.z * 0.73, object_position.z * 1.17);
     float field = actor_fx_dissolve_fbm(domain * 3.2 + actor_offset);
-    float threshold = mix(0.05, 0.56, clamp(actorFxParams0.x, 0.0, 1.0));
+    float threshold = mix(0.0, 1.0, progress);
     return field - threshold;
 }
 

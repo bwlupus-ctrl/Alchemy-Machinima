@@ -614,15 +614,10 @@ public:
     // cost when the studio has no enabled instances.
     void renderStudioGhosts();
 
-    // [ActorStyle] Re-render enabled cast actors at their exact LIVE placement
-    // and pose through the same actorghost shader used by overlay clones. This
-    // is scene dressing (not an editor indicator), so the world UI compositor
-    // calls it alongside renderStudioGhosts(), outside the UI-visibility gate.
-    // Layer mode adds the authored look over the normally rendered actor.
-    // Replace mode currently uses an opaque styled overlay but intentionally
-    // does not suppress the normal avatar: comprehensive suppression must cover
-    // the system body, every rigged/material pass, non-rigged/flexi attachments,
-    // impostors, and shadow passes before it is safe to enable.
+    // [ActorStyle] Re-render only topology Wireframe actors at their exact live
+    // placement and pose through the actorghost geometry path. The deferred
+    // world render calls this while the main depth target remains bound. Every
+    // color/material look remains in the native shaders.
     void renderStyledActors();
 
     // ---- Pose/blocking ghosts: translucent REAL-avatar billboards -------------
@@ -857,6 +852,11 @@ public:
         F32        mDistortAmount = 0.5f;    // 0..1 selected distortion strength
         F32        mPhase = 0.f;            // per-instance phase so FX don't sync up
         F32        mEffectFps = 0.f;        // 0 smooth; 1..30 quantized ghostTime
+        // actorghostF historically composites after tone mapping and therefore
+        // authors its output in display/sRGB space.  The native live Wire pass
+        // is submitted into the linear HDR world target instead; flag that one
+        // caller so the shader converts its final colour exactly once.
+        bool       mWorldLinear = false;
         // [R2-1] output brightness multiplier (rides ghostFx.w; 1 = as-is).
         // The ghost is unlit in the post-tonemap overlay, so this is how a
         // clone sits into a night scene instead of glowing fullbright.
