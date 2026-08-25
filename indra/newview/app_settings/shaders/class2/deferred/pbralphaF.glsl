@@ -94,6 +94,10 @@ vec4 applySkyAndWaterFog(vec3 pos, vec3 additive, vec3 atten, vec4 color);
 vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
 vec2 actorFxPbrMaterial(vec2 roughness_metallic);
 vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
+bool actorFxUvTransformEnabled();
+bool actorFxRgbSplitEnabled();
+vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
+vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
 #endif
 
 void calcHalfVectors(vec3 lv, vec3 n, vec3 v, out vec3 h, out vec3 l, out float nh, out float nl, out float nv, out float vh, out float lightDist);
@@ -146,7 +150,6 @@ void main()
     waterClip(pos);
 
     vec4 basecolor = texture(diffuseMap, base_color_texcoord.xy).rgba;
-    basecolor.rgb = srgb_to_linear(basecolor.rgb);
 #ifdef HAS_ALPHA_MASK
     if (basecolor.a < minimum_alpha)
     {
@@ -154,9 +157,35 @@ void main()
     }
 #endif
 
+#ifdef HAS_ACTOR_FX
+    bool fx_uv_transform = actorFxUvTransformEnabled();
+    bool fx_rgb_split = actorFxRgbSplitEnabled();
+    vec2 fx_base_uv = base_color_texcoord.xy;
+    if (fx_uv_transform)
+    {
+        fx_base_uv = actorFxUv(fx_base_uv, vary_position);
+        basecolor.rgb = texture(diffuseMap, fx_base_uv).rgb;
+    }
+    if (fx_rgb_split)
+    {
+        basecolor.r = texture(diffuseMap, actorFxRgbSplitUv(fx_base_uv, -1.0)).r;
+        basecolor.b = texture(diffuseMap, actorFxRgbSplitUv(fx_base_uv,  1.0)).b;
+    }
+#endif
+    basecolor.rgb = srgb_to_linear(basecolor.rgb);
+
     vec3 col = vertex_color.rgb * basecolor.rgb;
 
+#ifdef HAS_ACTOR_FX
+    vec2 fx_normal_uv = normal_texcoord.xy;
+    if (fx_uv_transform)
+    {
+        fx_normal_uv = actorFxUv(fx_normal_uv, vary_position);
+    }
+    vec3 vNt = texture(bumpMap, fx_normal_uv).xyz*2.0-1.0;
+#else
     vec3 vNt = texture(bumpMap, normal_texcoord.xy).xyz*2.0-1.0;
+#endif
     float sign = vary_sign;
     vec3 vN = vary_normal;
     vec3 vT = vary_tangent.xyz;
@@ -182,7 +211,16 @@ void main()
     scol = sampleDirectionalShadow(pos.xyz, norm.xyz, frag);
 #endif
 
-    vec3 orm = texture(specularMap, metallic_roughness_texcoord.xy).rgb; //orm is packed into "emissiveRect" to keep the data in linear color space
+#ifdef HAS_ACTOR_FX
+    vec2 fx_orm_uv = metallic_roughness_texcoord.xy;
+    if (fx_uv_transform)
+    {
+        fx_orm_uv = actorFxUv(fx_orm_uv, vary_position);
+    }
+    vec3 orm = texture(specularMap, fx_orm_uv).rgb;
+#else
+    vec3 orm = texture(specularMap, metallic_roughness_texcoord.xy).rgb;
+#endif // orm is packed into "emissiveRect" to keep the data in linear color space
 
     float perceptualRoughness = orm.g * roughnessFactor;
     float metallic = orm.b * metallicFactor;
@@ -191,7 +229,24 @@ void main()
     // emissiveColor is the emissive color factor from GLTF and is already in linear space
     vec3 colorEmissive = emissiveColor;
     // emissiveMap here is a vanilla RGB texture encoded as sRGB, manually convert to linear
+#ifdef HAS_ACTOR_FX
+    vec2 fx_emissive_uv = emissive_texcoord.xy;
+    if (fx_uv_transform)
+    {
+        fx_emissive_uv = actorFxUv(fx_emissive_uv, vary_position);
+    }
+    vec3 emissive_texel = texture(emissiveMap, fx_emissive_uv).rgb;
+    if (fx_rgb_split)
+    {
+        emissive_texel.r = texture(emissiveMap,
+                                   actorFxRgbSplitUv(fx_emissive_uv, -1.0)).r;
+        emissive_texel.b = texture(emissiveMap,
+                                   actorFxRgbSplitUv(fx_emissive_uv,  1.0)).b;
+    }
+    colorEmissive *= srgb_to_linear(emissive_texel);
+#else
     colorEmissive *= srgb_to_linear(texture(emissiveMap, emissive_texcoord.xy).rgb);
+#endif
 
 #ifdef HAS_ACTOR_FX
     col = actorFxApply(col, norm, vary_position, base_color_texcoord.xy);

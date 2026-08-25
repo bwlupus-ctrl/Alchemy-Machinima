@@ -54,6 +54,12 @@ in vec3 vary_position;
 void mirrorClip(vec3 pos);
 #ifdef HAS_ACTOR_FX
 vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
+vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
+bool actorFxActive();
+bool actorFxUvTransformEnabled();
+bool actorFxRgbSplitEnabled();
+vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
+vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
 #endif
 vec4 encodeNormal(vec3 n, float env, float gbuffer_flag);
 
@@ -223,10 +229,10 @@ in vec4 vertex_color;
 in vec2 vary_texcoord0;
 
 // get the transformed normal and apply glossiness component from normal map
-vec3 getNormal(inout float glossiness)
+vec3 getNormal(inout float glossiness, vec2 normal_uv)
 {
 #ifdef HAS_NORMAL_MAP
-    vec4 vNt = texture(bumpMap, vary_texcoord1.xy);
+    vec4 vNt = texture(bumpMap, normal_uv);
     glossiness *= vNt.a;
     vNt.xyz = vNt.xyz * 2 - 1;
     float sign = vary_sign;
@@ -242,10 +248,17 @@ vec3 getNormal(inout float glossiness)
 #endif
 }
 
-vec4 getSpecular()
+vec4 getSpecular(vec2 spec_uv, bool fx_rgb_split)
 {
 #ifdef HAS_SPECULAR_MAP
-    vec4 spec = texture(specularMap, vary_texcoord2.xy);
+    vec4 spec = texture(specularMap, spec_uv);
+#ifdef HAS_ACTOR_FX
+    if (fx_rgb_split)
+    {
+        spec.r = texture(specularMap, actorFxRgbSplitUv(spec_uv, -1.0)).r;
+        spec.b = texture(specularMap, actorFxRgbSplitUv(spec_uv,  1.0)).b;
+    }
+#endif
     spec.rgb *= specular_color.rgb;
 #else
     vec4 spec = vec4(specular_color.rgb, 1.0);
@@ -304,13 +317,56 @@ void main()
     diffcol.rgb *= vertex_color.rgb;
     alphaMask(diffcol.a);
 
+    vec2 fx_diffuse_uv = vary_texcoord0.xy;
+    vec2 fx_normal_uv = vec2(0.0);
+    vec2 fx_spec_uv = vec2(0.0);
+#ifdef HAS_NORMAL_MAP
+    fx_normal_uv = vary_texcoord1.xy;
+#endif
+#ifdef HAS_SPECULAR_MAP
+    fx_spec_uv = vary_texcoord2.xy;
+#endif
+    bool fx_rgb_split = false;
+#ifdef HAS_ACTOR_FX
+    bool actor_fx_active = actorFxActive();
+    bool fx_uv_transform = actor_fx_active && actorFxUvTransformEnabled();
+    fx_rgb_split = actor_fx_active && actorFxRgbSplitEnabled();
+    if (fx_uv_transform)
+    {
+        fx_diffuse_uv = actorFxUv(fx_diffuse_uv, vary_position);
+#ifdef HAS_NORMAL_MAP
+        fx_normal_uv = actorFxUv(fx_normal_uv, vary_position);
+#endif
+#ifdef HAS_SPECULAR_MAP
+        fx_spec_uv = actorFxUv(fx_spec_uv, vary_position);
+#endif
+        diffcol.rgb = texture(diffuseMap, fx_diffuse_uv).rgb * vertex_color.rgb;
+    }
+    if (fx_rgb_split)
+    {
+        diffcol.r = texture(diffuseMap,
+                            actorFxRgbSplitUv(fx_diffuse_uv, -1.0)).r * vertex_color.r;
+        diffcol.b = texture(diffuseMap,
+                            actorFxRgbSplitUv(fx_diffuse_uv,  1.0)).b * vertex_color.b;
+    }
+#endif
+
     // spec == specular map combined with specular color
-    vec4 spec = getSpecular();
+    vec4 spec = getSpecular(fx_spec_uv, fx_rgb_split);
     float env = env_intensity * spec.a;
     float glossiness = specular_color.a;
-    vec3 norm = getNormal(glossiness);
+    vec3 norm = getNormal(glossiness, fx_normal_uv);
 #ifdef HAS_ACTOR_FX
-    diffcol.rgb = actorFxApply(diffcol.rgb, norm, vary_position, vary_texcoord0.xy);
+    // Legacy material textures/G-buffer values are sRGB. Actor FX has one
+    // linear-light contract across legacy, PBR, and fullbright surfaces.
+    vec3 actor_fx_styled_linear = vec3(0.0);
+    if (actor_fx_active)
+    {
+        actor_fx_styled_linear = actorFxApply(srgb_to_linear(diffcol.rgb),
+                                               norm, vary_position,
+                                               vary_texcoord0.xy);
+        diffcol.rgb = linear_to_srgb(actor_fx_styled_linear);
+    }
 #endif
 
     float emissive = getEmissive(diffcol);
@@ -443,8 +499,13 @@ void main()
 
 #if defined(HAS_EMISSIVE)
     frag_data[3] = vec4(0, 0, 0, 0);
+#ifdef HAS_ACTOR_FX
+    if (actor_fx_active)
+    {
+        frag_data[3].rgb = actorFxEmissive(vec3(0.0), actor_fx_styled_linear);
+    }
+#endif
 #endif
 
 #endif
 }
-

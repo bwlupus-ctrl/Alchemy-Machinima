@@ -31,9 +31,21 @@ uniform sampler2D diffuseMap;
 
 vec3 atmosLighting(vec3 light);
 vec3 scaleSoftClip(vec3 light);
+vec3 srgb_to_linear(vec3 c);
+vec3 linear_to_srgb(vec3 c);
 
 in vec4 vertex_color;
 in vec2 vary_texcoord0;
+#ifdef HAS_ACTOR_FX
+in vec3 vary_actor_fx_normal;
+in vec3 vary_actor_fx_eye_position;
+vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
+bool actorFxActive();
+bool actorFxUvTransformEnabled();
+bool actorFxRgbSplitEnabled();
+vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
+vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
+#endif
 
 void default_lighting()
 {
@@ -44,7 +56,35 @@ void default_lighting()
         discard;
     }
 
+#ifdef HAS_ACTOR_FX
+    bool actor_fx_active = actorFxActive();
+    if (actor_fx_active)
+    {
+        vec2 fx_uv = vary_texcoord0.xy;
+        if (actorFxUvTransformEnabled())
+        {
+            fx_uv = actorFxUv(fx_uv, vary_actor_fx_eye_position);
+            color.rgb = texture(diffuseMap, fx_uv).rgb;
+        }
+        if (actorFxRgbSplitEnabled())
+        {
+            color.r = texture(diffuseMap, actorFxRgbSplitUv(fx_uv, -1.0)).r;
+            color.b = texture(diffuseMap, actorFxRgbSplitUv(fx_uv,  1.0)).b;
+        }
+    }
+#endif
+
     color *= vertex_color;
+
+#ifdef HAS_ACTOR_FX
+    if (actor_fx_active)
+    {
+        color.rgb = linear_to_srgb(actorFxApply(srgb_to_linear(color.rgb),
+                                                normalize(vary_actor_fx_normal),
+                                                vary_actor_fx_eye_position,
+                                                vary_texcoord0.xy));
+    }
+#endif
 
     color.rgb = atmosLighting(color.rgb);
 
@@ -52,4 +92,3 @@ void default_lighting()
 
     frag_color = max(color, vec4(0));
 }
-

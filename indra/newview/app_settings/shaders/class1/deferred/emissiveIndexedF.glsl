@@ -37,6 +37,11 @@ in vec2 vary_texcoord0;
 flat in int vary_material_index;
 
 uniform sampler2D diffuse0;
+#ifdef HAS_ACTOR_FX
+vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
+bool actorFxDissolveEnabled();
+float actorFxBeautyDissolveCoverage();
+#endif
 #if GLTF_INDEXED_CHANNELS > 1
 uniform sampler2D diffuse1;
 #endif
@@ -88,7 +93,17 @@ vec4 sample_diffuse(vec2 uv)
 
 void main()
 {
+#ifdef HAS_ACTOR_FX
+    if (actorFxDissolveEnabled() && actorFxBeautyDissolveCoverage() < 0.0)
+    {
+        discard;
+    }
+#endif
     // NOTE: when this shader is used, only alpha is being written to
     float a = sample_diffuse(vary_texcoord0.xy).a * vertex_color.a;
+#ifdef HAS_ACTOR_FX
+    vec3 fx_emissive = actorFxEmissive(vec3(0.0), vec3(1.0));
+    a += max(max(fx_emissive.r, fx_emissive.g), fx_emissive.b);
+#endif
     frag_color = max(vec4(0, 0, 0, a), vec4(0));
 }

@@ -1562,10 +1562,14 @@ void LLSpatialBridge::setVisible(LLCamera& camera_in, std::vector<LLDrawable*>* 
             if (objparent->isAvatar())
             {
                 LLVOAvatar* avatarp = (LLVOAvatar*) objparent;
+                LLControlAvatar* control_avatar = vobj->getControlAvatar();
+                const bool actor_fx_live = avatarp->hasEffectiveActorFx() ||
+                    (control_avatar && control_avatar->hasEffectiveActorFx());
                 if (avatarp->isVisible())
                 {
-                    impostor = objparent->isAvatar() && !LLPipeline::sImpostorRender && ((LLVOAvatar*) objparent)->isImpostor();
-                    loaded   = objparent->isAvatar() && ((LLVOAvatar*) objparent)->isFullyLoaded();
+                    impostor = !actor_fx_live && !LLPipeline::sImpostorRender &&
+                        avatarp->isImpostor();
+                    loaded = actor_fx_live || avatarp->isFullyLoaded();
                 }
                 else
                 {
@@ -1657,7 +1661,12 @@ void LLSpatialBridge::updateDistance(LLCamera& camera_in, bool force_update)
             if (parent && parent->getVObj())
             {
                 LLVOAvatar* av = parent->getVObj()->asAvatar();
-                if (av && av->isImpostor())
+                LLControlAvatar* control_avatar =
+                    mDrawable->getVObj()->getControlAvatar();
+                const bool actor_fx_live =
+                    (av && av->hasEffectiveActorFx()) ||
+                    (control_avatar && control_avatar->hasEffectiveActorFx());
+                if (av && !actor_fx_live && av->isImpostor())
                 {
                     return;
                 }
@@ -1852,4 +1861,3 @@ void LLHUDBridge::shiftPos(const LLVector4a& vec)
 {
     //don't shift hud bridges on region crossing
 }
-

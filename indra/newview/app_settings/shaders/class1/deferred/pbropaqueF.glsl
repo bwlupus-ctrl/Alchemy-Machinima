@@ -66,6 +66,10 @@ vec4 encodeNormal(vec3 n, float env, float gbuffer_flag);
 vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
 vec2 actorFxPbrMaterial(vec2 roughness_metallic);
 vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
+bool actorFxUvTransformEnabled();
+bool actorFxRgbSplitEnabled();
+vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
+vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
 #endif
 
 uniform mat3 normal_matrix;
@@ -75,19 +79,43 @@ void main()
     mirrorClip(vary_position);
 
     vec4 basecolor = texture(diffuseMap, base_color_texcoord.xy).rgba;
-    basecolor.rgb = srgb_to_linear(basecolor.rgb);
 
-    basecolor *= vertex_color;
-
-    if (basecolor.a < minimum_alpha)
+    if (basecolor.a * vertex_color.a < minimum_alpha)
     {
         discard;
     }
 
+#ifdef HAS_ACTOR_FX
+    bool fx_uv_transform = actorFxUvTransformEnabled();
+    bool fx_rgb_split = actorFxRgbSplitEnabled();
+    vec2 fx_base_uv = base_color_texcoord.xy;
+    if (fx_uv_transform)
+    {
+        fx_base_uv = actorFxUv(fx_base_uv, vary_position);
+        basecolor.rgb = texture(diffuseMap, fx_base_uv).rgb;
+    }
+    if (fx_rgb_split)
+    {
+        basecolor.r = texture(diffuseMap, actorFxRgbSplitUv(fx_base_uv, -1.0)).r;
+        basecolor.b = texture(diffuseMap, actorFxRgbSplitUv(fx_base_uv,  1.0)).b;
+    }
+#endif
+    basecolor.rgb = srgb_to_linear(basecolor.rgb);
+    basecolor *= vertex_color;
+
     vec3 col = basecolor.rgb;
 
     // from mikktspace.com
+#ifdef HAS_ACTOR_FX
+    vec2 fx_normal_uv = normal_texcoord.xy;
+    if (fx_uv_transform)
+    {
+        fx_normal_uv = actorFxUv(fx_normal_uv, vary_position);
+    }
+    vec3 vNt = texture(bumpMap, fx_normal_uv).xyz*2.0-1.0;
+#else
     vec3 vNt = texture(bumpMap, normal_texcoord.xy).xyz*2.0-1.0;
+#endif
     float sign = vary_sign;
     vec3 vN = vary_normal;
     vec3 vT = vary_tangent.xyz;
@@ -100,13 +128,39 @@ void main()
     //   occlusion 1.0
     //   roughness 0.0
     //   metal     0.0
+#ifdef HAS_ACTOR_FX
+    vec2 fx_orm_uv = metallic_roughness_texcoord.xy;
+    if (fx_uv_transform)
+    {
+        fx_orm_uv = actorFxUv(fx_orm_uv, vary_position);
+    }
+    vec3 spec = texture(specularMap, fx_orm_uv).rgb;
+#else
     vec3 spec = texture(specularMap, metallic_roughness_texcoord.xy).rgb;
+#endif
 
     spec.g *= roughnessFactor;
     spec.b *= metallicFactor;
 
     vec3 emissive = emissiveColor;
+#ifdef HAS_ACTOR_FX
+    vec2 fx_emissive_uv = emissive_texcoord.xy;
+    if (fx_uv_transform)
+    {
+        fx_emissive_uv = actorFxUv(fx_emissive_uv, vary_position);
+    }
+    vec3 emissive_texel = texture(emissiveMap, fx_emissive_uv).rgb;
+    if (fx_rgb_split)
+    {
+        emissive_texel.r = texture(emissiveMap,
+                                   actorFxRgbSplitUv(fx_emissive_uv, -1.0)).r;
+        emissive_texel.b = texture(emissiveMap,
+                                   actorFxRgbSplitUv(fx_emissive_uv,  1.0)).b;
+    }
+    emissive *= srgb_to_linear(emissive_texel);
+#else
     emissive *= srgb_to_linear(texture(emissiveMap, emissive_texcoord.xy).rgb);
+#endif
 
     tnorm *= gl_FrontFacing ? 1.0 : -1.0;
 

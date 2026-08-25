@@ -4184,6 +4184,13 @@ bool LLVOAvatar::isVisuallyMuted()
         {
             muted = true;
         }
+        else if (hasEffectiveActorFx())
+        {
+            // Actor FX needs the authored live avatar, not a complexity/ART
+            // stand-in. Explicit mute-list and Never Render policy above remain
+            // authoritative; only automatic performance muting is bypassed.
+            muted = false;
+        }
         else if (mIsControlAvatar)
         {
             muted = isTooSlow();
@@ -4608,8 +4615,10 @@ void LLVOAvatar::updateFootstepSounds()
 // ------------------------------------------------------------------------
 void LLVOAvatar::computeUpdatePeriod()
 {
-    // A client-only ghost clone always updates every frame (never impostor-throttled).
-    if (isGhostAvatar())
+    // Ghost clones and styled cinematic actors always update their authored
+    // skeleton every frame. Actor FX cannot use temporally throttled jelly or
+    // impostor state without visibly freezing animation and attachments.
+    if (isGhostAvatar() || hasEffectiveActorFx())
     {
         mUpdatePeriod = 1;
         return;
@@ -6321,7 +6330,8 @@ U32 LLVOAvatar::renderTransparent(bool first_pass)
             }
             first_pass = false;
         }
-        if (isTextureVisible(TEX_HAIR_BAKED) && (getOverallAppearance() != AOA_JELLYDOLL))
+        if (isTextureVisible(TEX_HAIR_BAKED) &&
+            (getOverallAppearance() != AOA_JELLYDOLL || hasEffectiveActorFx()))
         {
             LLViewerJoint* hair_mesh = getViewerJoint(MESH_ID_HAIR);
             if (hair_mesh)
@@ -12114,6 +12124,53 @@ void LLVOAvatar::updateImpostors()
     LLCharacter::sAllowInstancesChange = true;
 }
 
+bool LLVOAvatar::isHardVisualMute() const
+{
+    return isInMuteList() || mVisuallyMuteSetting == AV_DO_NOT_RENDER;
+}
+
+LLUUID LLVOAvatar::getActorFxOwnerId() const
+{
+    if (isControlAvatar())
+    {
+        const LLControlAvatar* control =
+            static_cast<const LLControlAvatar*>(this);
+        if (control->mRootVolp)
+        {
+            LLViewerObject* root = control->mRootVolp->getRootEdit();
+            return root ? root->getID() : control->mRootVolp->getID();
+        }
+    }
+
+    return getID();
+}
+
+bool LLVOAvatar::hasEffectiveActorFx() const
+{
+    const LLVOAvatar* actor_fx_avatar = this;
+    const LLUUID self_actor_fx_id = getActorFxOwnerId();
+    if (!LLDirectorCast::instance().containsStored(self_actor_fx_id) && getAttachedAvatar())
+    {
+        actor_fx_avatar = getAttachedAvatar();
+    }
+
+    // An explicitly cast animated attachment may own its style, but the
+    // wearer's hard visibility choice still governs whether it may render.
+    const LLVOAvatar* attached_avatar = getAttachedAvatar();
+    if (isUIAvatar() || isHardVisualMute() ||
+        (attached_avatar && attached_avatar->isHardVisualMute()))
+    {
+        return false;
+    }
+
+    const LLUUID actor_fx_id = actor_fx_avatar->getActorFxOwnerId();
+    const LLDirectorCast::ActorStyle& actor_fx_style =
+        LLDirectorCast::instance().getActorStyle(actor_fx_id);
+    return actor_fx_style.mEnabled &&
+        (actor_fx_style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE ||
+         actor_fx_style.mAlpha > 0.001f);
+}
+
 // virtual
 bool LLVOAvatar::isImpostor()
 {
@@ -12121,16 +12178,8 @@ bool LLVOAvatar::isImpostor()
 
     // Actor FX is evaluated on live geometry. Keep a styled cinematic actor
     // out of the impostor lifecycle as well as the draw-pool shortcut so its
-    // skeleton/LOD continues updating. Muting remains the stronger privacy and
-    // performance policy, and control avatars inherit their wearer's style.
-    const LLVOAvatar* actor_fx_avatar = getAttachedAvatar();
-    if (!actor_fx_avatar)
-    {
-        actor_fx_avatar = this;
-    }
-    if (!visually_muted &&
-        !actor_fx_avatar->isUIAvatar() &&
-        LLDirectorCast::instance().getActorStyle(actor_fx_avatar->getID()).mEnabled)
+    // skeleton/LOD continues updating. Hard visual mutes remain authoritative.
+    if (hasEffectiveActorFx())
     {
         return false;
     }
@@ -12690,7 +12739,18 @@ void LLVOAvatar::setVisualMuteSettings(VisualMuteSettings set)
 void LLVOAvatar::setOverallAppearanceNormal()
 {
     if (isControlAvatar())
+    {
+        // Control avatars do not rebuild the system-avatar skeleton, but they
+        // still need alternate-bind position/scale overrides from their live
+        // animated linkset when Actor FX lifts a performance-jelly state.
+        updateAttachmentOverrides();
+        // Animation messages received while performance-jellied retain their
+        // signaled state but shelve mPlayingAnimations.  Resume that state as
+        // part of the effective-normal transition rather than waiting for a
+        // later simulator animation message that may never arrive.
+        processAnimationStateChanges();
         return;
+    }
 
     LLVector3 pelvis_pos = getJoint("mPelvis")->getPosition();
     if (isControlAvatar() || mLastProcessedAppearance)
@@ -12840,13 +12900,16 @@ LLVOAvatar::AvatarOverallAppearance LLVOAvatar::getOverallAppearance() const
         {
             result = AOA_INVISIBLE;
         }
-        else if (mVisuallyMuteSetting == AV_ALWAYS_RENDER)
-        {
-            result = AOA_NORMAL;
-        }
         else if (mVisuallyMuteSetting == AV_DO_NOT_RENDER)
-        {   // Always want to see this AV as an impostor
+        {   // Hard user choice: Actor FX must never revive this avatar.
             result = AOA_JELLYDOLL;
+        }
+        else if (mVisuallyMuteSetting == AV_ALWAYS_RENDER || hasEffectiveActorFx())
+        {
+            // A styled cinematic actor needs its authored skeleton, animation,
+            // attachments, mesh visibility/extents and root placement. Treat it
+            // as normal only after the hard visibility policy above.
+            result = AOA_NORMAL;
         }
         else if (isTooComplex() || isTooSlow())
         {

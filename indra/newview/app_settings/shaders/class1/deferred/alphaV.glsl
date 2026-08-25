@@ -34,6 +34,9 @@ uniform mat4 modelview_matrix;
 uniform mat4 modelview_projection_matrix;
 
 in vec3 position;
+#ifdef HAS_ACTOR_FX
+out vec3 vary_actor_fx_position;
+#endif
 
 #ifdef USE_INDEXED_TEX
 void passTextureIndex();
@@ -69,6 +72,9 @@ uniform float near_clip;
 
 void main()
 {
+#ifdef HAS_ACTOR_FX
+    vary_actor_fx_position = position;
+#endif
     vec4 pos;
     vec3 norm;
 
@@ -136,4 +142,3 @@ void main()
 #endif
 
 }
-

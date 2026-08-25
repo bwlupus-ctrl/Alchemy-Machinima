@@ -22,6 +22,8 @@
 #include "llflycamrecorder.h"       // armed recorder playback/capture
 #include "llviewercontrol.h"        // gSavedSettings, LLCachedControl
 #include "llviewerobjectlist.h"     // gObjectList
+#include "llcontrolavatar.h"
+#include "llvovolume.h"
 #include "llvoavatar.h"
 #include "llvoavatarself.h"         // gAgentAvatarp, isAgentAvatarValid()
 
@@ -122,6 +124,51 @@ LLDirectorCast::ActorStyle readActorStyle(const LLSD& data)
     return style;
 }
 
+using SceneActorIdRemap = std::map<LLUUID, LLUUID>;
+
+// Translate a scene-owned actor reference through the same canonical identity
+// used by cast membership.  The explicit remap also covers a legacy transient
+// control-avatar UUID after that control avatar has already been regenerated.
+LLUUID canonicalSceneActorId(const LLUUID& id,
+                             const SceneActorIdRemap& actor_ids)
+{
+    const SceneActorIdRemap::const_iterator found = actor_ids.find(id);
+    return LLDirectorCast::canonicalActorId(
+        found != actor_ids.end() ? found->second : id);
+}
+
+// Pre-stable-ID scenes cached animated-object names as AO_<root UUID>.  Only
+// trust that legacy marker when the stale UUID is no longer a live object and
+// the encoded UUID currently identifies a linkset root with a control avatar.
+// Requiring a live animated-object root prevents an arbitrary resident name
+// from redirecting a resident cast entry.
+LLUUID recoverLegacySceneActorId(const LLUUID& id, const std::string& name)
+{
+    const LLUUID canonical_id = LLDirectorCast::canonicalActorId(id);
+    if (canonical_id != id || id.isNull() || gObjectList.findObject(id) ||
+        name.size() != 3 + (UUID_STR_LENGTH - 1) ||
+        name.compare(0, 3, "AO_") != 0)
+    {
+        return canonical_id;
+    }
+
+    LLUUID stable_id;
+    if (!stable_id.set(name.substr(3), false) || stable_id.isNull())
+    {
+        return id;
+    }
+
+    LLViewerObject* encoded_object = gObjectList.findObject(stable_id);
+    LLViewerObject* encoded_root = encoded_object
+        ? encoded_object->getRootEdit() : nullptr;
+    if (!encoded_root || encoded_root->getID() != stable_id ||
+        !encoded_root->getControlAvatar())
+    {
+        return id;
+    }
+    return stable_id;
+}
+
 LLSD writeGazeAimTarget(const LLActorMover::GazeTarget& target)
 {
     LLSD data = LLSD::emptyMap();
@@ -141,7 +188,9 @@ LLSD writeGazeAimTarget(const LLActorMover::GazeTarget& target)
     return data;
 }
 
-bool readEyeGazeAimTarget(const LLSD& data, LLActorMover::GazeTarget& target)
+bool readEyeGazeAimTarget(const LLSD& data,
+                          LLActorMover::GazeTarget& target,
+                          const SceneActorIdRemap& actor_ids)
 {
     if (!data.isMap() || !data.has("mode"))
     {
@@ -160,7 +209,8 @@ bool readEyeGazeAimTarget(const LLSD& data, LLActorMover::GazeTarget& target)
     target.mMode = static_cast<LLActorMover::GazeTarget::EMode>(mode);
     if (data.has("cast_ref"))
     {
-        target.mCastRef = data["cast_ref"].asUUID();
+        target.mCastRef = canonicalSceneActorId(
+            data["cast_ref"].asUUID(), actor_ids);
     }
     if (data.has("fixed_point"))
     {
@@ -560,7 +610,8 @@ LLSD writeCueTarget(const LLActorMover::GazeTarget& target)
     return data;
 }
 
-LLActorMover::GazeTarget readCueTarget(const LLSD& data)
+LLActorMover::GazeTarget readCueTarget(const LLSD& data,
+                                       const SceneActorIdRemap& actor_ids)
 {
     LLActorMover::GazeTarget target;
     if (data.has("mode"))
@@ -572,7 +623,8 @@ LLActorMover::GazeTarget readCueTarget(const LLSD& data)
     }
     if (data.has("cast_ref"))
     {
-        target.mCastRef = data["cast_ref"].asUUID();
+        target.mCastRef = canonicalSceneActorId(
+            data["cast_ref"].asUUID(), actor_ids);
     }
     if (data.has("fixed_point"))
     {
@@ -665,7 +717,8 @@ LLSD writeGazeCues(const LLDirectorCast::GazeCueList& cues)
     return array;
 }
 
-LLDirectorCast::GazeCueList readGazeCues(const LLSD& array)
+LLDirectorCast::GazeCueList readGazeCues(
+    const LLSD& array, const SceneActorIdRemap& actor_ids)
 {
     LLDirectorCast::GazeCueList cues;
     if (!array.isArray())
@@ -681,7 +734,7 @@ LLDirectorCast::GazeCueList readGazeCues(const LLSD& array)
         cue.mDurationSec = data["duration_sec"].asReal();
         if (data.has("target"))
         {
-            cue.mTarget = readCueTarget(data["target"]);
+            cue.mTarget = readCueTarget(data["target"], actor_ids);
         }
         cue.mAcquireStyle = static_cast<LLDirectorCast::EGazeCueStyle>(
             data["acquire_style"].asInteger());
@@ -756,6 +809,31 @@ LLDirectorCast& LLDirectorCast::instance()
     return sInstance;
 }
 
+// static
+LLUUID LLDirectorCast::canonicalActorId(const LLUUID& id)
+{
+    if (id.isNull())
+    {
+        return id;
+    }
+
+    LLViewerObject* object = gObjectList.findObject(id);
+    LLVOAvatar* avatar = object ? object->asAvatar() : nullptr;
+    LLControlAvatar* control = avatar && avatar->isControlAvatar()
+        ? static_cast<LLControlAvatar*>(avatar) : nullptr;
+    if (!control && object)
+    {
+        LLViewerObject* root = object->getRootEdit();
+        control = root ? root->getControlAvatar() : nullptr;
+    }
+    if (control && control->mRootVolp)
+    {
+        LLViewerObject* root = control->mRootVolp->getRootEdit();
+        return root ? root->getID() : control->mRootVolp->getID();
+    }
+    return id;
+}
+
 LLDirectorCast::LLDirectorCast()
 {
     mSelfGazeTarget.mMode = LLActorMover::GazeTarget::CAMERA;
@@ -766,73 +844,123 @@ LLDirectorCast::LLDirectorCast()
 // ---------------------------------------------------------------------------
 void LLDirectorCast::add(const LLUUID& id)
 {
-    if (id.isNull() || contains(id))
+    const LLUUID actor_id = canonicalActorId(id);
+    if (actor_id.isNull() || contains(actor_id))
     {
         return;
     }
     CastMember member;
-    member.mId = id;
+    member.mId = actor_id;
     mCast.push_back(member);
-    mIds.push_back(id);
-    mMemberIndex[id] = mCast.size() - 1;
+    mIds.push_back(actor_id);
+    mMemberIndex[actor_id] = mCast.size() - 1;
     // seed the cached name right away when the actor is in world
-    resolve(id);
+    resolve(actor_id);
 }
 
 void LLDirectorCast::remove(const LLUUID& id)
 {
+    const LLUUID actor_id = canonicalActorId(id);
     auto it = std::find_if(mCast.begin(), mCast.end(),
-                           [&id](const CastMember& m) { return m.mId == id; });
+                           [&actor_id](const CastMember& m) { return m.mId == actor_id; });
     if (it == mCast.end())
     {
         return;
     }
     const std::string group = it->mGroup;
-    LLActorMover::instance().clearDirectorLookAtRuntime(id);
+    LLActorMover::instance().clearDirectorLookAtRuntime(actor_id);
     mCast.erase(it);
     ++mGazeCueRevision;
-    mIds.erase(std::find(mIds.begin(), mIds.end(), id));
+    mIds.erase(std::find(mIds.begin(), mIds.end(), actor_id));
     rebuildMemberIndex();
-    mLookAtCameraIds.erase(id);
+    mLookAtCameraIds.erase(actor_id);
     // a subject that leaves the cast stops being a subject
-    if (mSubjectA == id)
+    if (mSubjectA == actor_id)
     {
         mSubjectA.setNull();
     }
-    if (mSubjectB == id)
+    if (mSubjectB == actor_id)
     {
         mSubjectB.setNull();
     }
-    if (mSubjectC == id)
+    if (mSubjectC == actor_id)
     {
         mSubjectC.setNull();
     }
-    if (mSubjectD == id)
+    if (mSubjectD == actor_id)
     {
         mSubjectD.setNull();
     }
     // leaving the cast also leaves the start queue, and may retire the group
-    cancelPendingStart(id);
+    cancelPendingStart(actor_id);
     pruneGroupDelay(group);
 }
 
 void LLDirectorCast::toggle(const LLUUID& id)
 {
-    if (id.isNull())
+    const LLUUID actor_id = canonicalActorId(id);
+    if (actor_id.isNull())
     {
         return;
     }
-    contains(id) ? remove(id) : add(id);
+    contains(actor_id) ? remove(actor_id) : add(actor_id);
 }
 
 bool LLDirectorCast::contains(const LLUUID& id) const
 {
+    const LLUUID actor_id = canonicalActorId(id);
+    return actor_id.notNull() && mMemberIndex.find(actor_id) != mMemberIndex.end();
+}
+
+bool LLDirectorCast::containsStored(const LLUUID& id) const
+{
     return id.notNull() && mMemberIndex.find(id) != mMemberIndex.end();
+}
+
+const LLDirectorCast::ActorStyle& LLDirectorCast::resolveStoredActorStyle(
+    const LLUUID& primary, const LLUUID& fallback, LLUUID& resolved_id) const
+{
+    static const ActorStyle default_style;
+
+    // The runtime agent id is Director's non-null renderer identity for You.
+    if (gAgentID.notNull() && primary == gAgentID)
+    {
+        resolved_id = primary;
+        return mSelfActorStyle;
+    }
+
+    const auto primary_it = mMemberIndex.find(primary);
+    if (primary_it != mMemberIndex.end() && primary_it->second < mCast.size())
+    {
+        resolved_id = primary;
+        return mCast[primary_it->second].mActorStyle;
+    }
+
+    // Preserve the established animesh/control-avatar fallback semantics even
+    // when the fallback itself is not currently in the cast: its id remains the
+    // stable tint/phase identity while the returned style is disabled.
+    if (fallback.notNull())
+    {
+        resolved_id = fallback;
+        if (gAgentID.notNull() && fallback == gAgentID)
+        {
+            return mSelfActorStyle;
+        }
+        const auto fallback_it = mMemberIndex.find(fallback);
+        if (fallback_it != mMemberIndex.end() && fallback_it->second < mCast.size())
+        {
+            return mCast[fallback_it->second].mActorStyle;
+        }
+        return default_style;
+    }
+
+    resolved_id = primary;
+    return default_style;
 }
 
 LLDirectorCast::CastMember* LLDirectorCast::getMember(const LLUUID& id)
 {
-    const auto it = mMemberIndex.find(id);
+    const auto it = mMemberIndex.find(canonicalActorId(id));
     if (it == mMemberIndex.end() || it->second >= mCast.size())
     {
         return nullptr;
@@ -852,9 +980,10 @@ const LLDirectorCast::ActorStyle& LLDirectorCast::getActorStyle(const LLUUID& id
     {
         return mSelfActorStyle;
     }
-    if (const CastMember* member = getMember(id))
+    const auto it = mMemberIndex.find(id);
+    if (it != mMemberIndex.end() && it->second < mCast.size())
     {
-        return member->mActorStyle;
+        return mCast[it->second].mActorStyle;
     }
     return default_style;
 }
@@ -868,7 +997,7 @@ void LLDirectorCast::setActorStyle(const LLUUID& id, const ActorStyle& input)
         mSelfActorStyle = style;
         return;
     }
-    if (CastMember* member = getMember(id))
+    if (CastMember* member = getMember(canonicalActorId(id)))
     {
         member->mActorStyle = style;
     }
@@ -1330,8 +1459,14 @@ LLVOAvatar* LLDirectorCast::resolve(const LLUUID& id)
     {
         return isAgentAvatarValid() ? (LLVOAvatar*)gAgentAvatarp : nullptr;
     }
-    LLViewerObject* obj = gObjectList.findObject(id);
+    const LLUUID actor_id = canonicalActorId(id);
+    LLViewerObject* obj = gObjectList.findObject(actor_id);
     LLVOAvatar* av = obj ? obj->asAvatar() : nullptr;
+    if (!av && obj)
+    {
+        LLViewerObject* root = obj->getRootEdit();
+        av = root ? root->getControlAvatar() : nullptr;
+    }
     if (av && av->isGhostAvatar())
     {
         // Director subjects are the one intentional targeting exception for
@@ -1346,7 +1481,7 @@ LLVOAvatar* LLDirectorCast::resolve(const LLUUID& id)
         // Stable Studio instance ids are client-only actor handles. This
         // bypasses resident/name-cache paths and resolves only via the local
         // Ghost Studio registry.
-        av = ALGhostStudio::instance().resolveEntityClone(id);
+        av = ALGhostStudio::instance().resolveEntityClone(actor_id);
     }
     if (!av || av->isDead())
     {
@@ -1354,7 +1489,7 @@ LLVOAvatar* LLDirectorCast::resolve(const LLUUID& id)
     }
     // refresh the cached display name whenever one is available, so the
     // cast list can keep labelling an actor who later leaves the region
-    if (CastMember* m = getMember(id))
+    if (CastMember* m = getMember(actor_id))
     {
         std::string name = av->getFullname();
         if (!name.empty() && name != m->mLastName)
@@ -1364,6 +1499,11 @@ LLVOAvatar* LLDirectorCast::resolve(const LLUUID& id)
     }
     return av;
 }
+
+void LLDirectorCast::setSubjectA(const LLUUID& id) { mSubjectA = canonicalActorId(id); }
+void LLDirectorCast::setSubjectB(const LLUUID& id) { mSubjectB = canonicalActorId(id); }
+void LLDirectorCast::setSubjectC(const LLUUID& id) { mSubjectC = canonicalActorId(id); }
+void LLDirectorCast::setSubjectD(const LLUUID& id) { mSubjectD = canonicalActorId(id); }
 
 LLVOAvatar* LLDirectorCast::resolveSubjectA()
 {
@@ -1819,6 +1959,26 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     mSelfGazeInfluenceKeys.clear();
     mSelfActorStyle = ActorStyle();
 
+    // Build the legacy-to-stable identity map before loading any gaze lane:
+    // self targets may refer to a cast entry that appears later in the file.
+    const LLSD& cast_arr = data["cast"];
+    SceneActorIdRemap scene_actor_ids;
+    if (cast_arr.isArray())
+    {
+        for (LLSD::array_const_iterator it = cast_arr.beginArray();
+             it != cast_arr.endArray(); ++it)
+        {
+            const LLSD& entry = *it;
+            const LLUUID legacy_id = entry["id"].asUUID();
+            const LLUUID stable_id = recoverLegacySceneActorId(
+                legacy_id, entry["name"].asString());
+            if (legacy_id.notNull() && stable_id != legacy_id)
+            {
+                scene_actor_ids[legacy_id] = stable_id;
+            }
+        }
+    }
+
     if (data.has("self_gaze_target"))
     {
         const LLSD& sg = data["self_gaze_target"];
@@ -1835,7 +1995,8 @@ void LLDirectorCast::applySceneData(const LLSD& data)
         }
         if (sg.has("cast_ref"))
         {
-            mSelfGazeTarget.mCastRef = sg["cast_ref"].asUUID();
+            mSelfGazeTarget.mCastRef = canonicalSceneActorId(
+                sg["cast_ref"].asUUID(), scene_actor_ids);
         }
         if (sg.has("fixed_point"))
         {
@@ -1851,11 +2012,13 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     if (data.has("self_eye_gaze_target"))
     {
         mSelfEyeGazeTargetEnabled = readEyeGazeAimTarget(
-            data["self_eye_gaze_target"], mSelfEyeGazeTarget);
+            data["self_eye_gaze_target"], mSelfEyeGazeTarget,
+            scene_actor_ids);
     }
     if (data.has("self_gaze_cues"))
     {
-        setGazeCues(LLUUID::null, readGazeCues(data["self_gaze_cues"]));
+        setGazeCues(LLUUID::null,
+                    readGazeCues(data["self_gaze_cues"], scene_actor_ids));
     }
     if (data.has("self_gaze_influence_keys"))
     {
@@ -1866,13 +2029,16 @@ void LLDirectorCast::applySceneData(const LLSD& data)
         mSelfActorStyle = readActorStyle(data["self_actor_style"]);
     }
 
-    const LLSD& cast_arr = data["cast"];
     for (LLSD::array_const_iterator it = cast_arr.beginArray();
          it != cast_arr.endArray(); ++it)
     {
         const LLSD& e = *it;
         CastMember m;
-        m.mId = e["id"].asUUID();
+        // Animated-object control avatars are transient viewer objects.  Older
+        // scenes could persist that transient UUID; migrate it to the stable
+        // linkset-root owner while the object is present so Actor FX, gaze, and
+        // marks continue to resolve after the control avatar is regenerated.
+        m.mId = canonicalSceneActorId(e["id"].asUUID(), scene_actor_ids);
         if (m.mId.isNull() || contains(m.mId))
         {
             continue;
@@ -1901,7 +2067,8 @@ void LLDirectorCast::applySceneData(const LLSD& data)
             }
             if (gaze_sd.has("cast_ref"))
             {
-                m.mGazeTarget.mCastRef = gaze_sd["cast_ref"].asUUID();
+                m.mGazeTarget.mCastRef = canonicalSceneActorId(
+                    gaze_sd["cast_ref"].asUUID(), scene_actor_ids);
             }
             if (gaze_sd.has("fixed_point"))
             {
@@ -1916,10 +2083,10 @@ void LLDirectorCast::applySceneData(const LLSD& data)
         if (e.has("eye_gaze_target"))
         {
             m.mEyeGazeTargetEnabled = readEyeGazeAimTarget(
-                e["eye_gaze_target"], m.mEyeGazeTarget);
+                e["eye_gaze_target"], m.mEyeGazeTarget, scene_actor_ids);
         }
         const GazeCueList loaded_gaze_cues = e.has("gaze_cues")
-            ? readGazeCues(e["gaze_cues"]) : GazeCueList();
+            ? readGazeCues(e["gaze_cues"], scene_actor_ids) : GazeCueList();
         mCast.push_back(m);
         mIds.push_back(m.mId);
         mMemberIndex[m.mId] = mCast.size() - 1;
@@ -1948,10 +2115,10 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     }
 
     // subjects only survive when they point into the loaded cast
-    const LLUUID a = data["subject_a"].asUUID();
-    const LLUUID b = data["subject_b"].asUUID();
-    const LLUUID c = data["subject_c"].asUUID();
-    const LLUUID d = data["subject_d"].asUUID();
+    const LLUUID a = canonicalSceneActorId(data["subject_a"].asUUID(), scene_actor_ids);
+    const LLUUID b = canonicalSceneActorId(data["subject_b"].asUUID(), scene_actor_ids);
+    const LLUUID c = canonicalSceneActorId(data["subject_c"].asUUID(), scene_actor_ids);
+    const LLUUID d = canonicalSceneActorId(data["subject_d"].asUUID(), scene_actor_ids);
     if (contains(a))
     {
         mSubjectA = a;

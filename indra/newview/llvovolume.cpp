@@ -79,6 +79,7 @@
 #include "llviewershadermgr.h"
 #include "llvoavatar.h"
 #include "llcontrolavatar.h"
+#include "lldirectorcast.h"
 #include "llghostavatar.h"
 #include "llvoavatarself.h"
 #include "llvocache.h"
@@ -5547,12 +5548,38 @@ static LLClientOuterTransform* resolve_outer_transform(LLFace* facep)
 
 // Native Actor FX is authored for the visible Director actor, not necessarily
 // the avatar that skins this one face. Worn animated objects are skinned by an
-// LLControlAvatar, while their stable presentation identity is the avatar they
-// are attached to. A standalone animated object has no wearer, so its control
-// avatar remains the only useful runtime cast identity.
-static LLUUID resolve_actor_fx_owner(LLFace* facep)
+// LLControlAvatar. Keep that exact runtime identity in LLDrawInfo even before
+// the object joins the Director cast: cast membership can change without a
+// geometry rebuild. uploadActorFx() dynamically falls back to the wearer for
+// an uncast control avatar, so ordinary worn animesh still inherits its actor.
+struct ActorFxOwners
 {
+    LLUUID mExact;
+    LLUUID mFallback;
+};
+
+static ActorFxOwners resolve_actor_fx_owners(LLFace* facep)
+{
+    ActorFxOwners result;
     LLViewerObject* object = facep ? facep->getViewerObject() : nullptr;
+    LLVOAvatar* exact = facep ? facep->mAvatar : nullptr;
+    if (!exact && object)
+    {
+        exact = object->getAvatar();
+    }
+    if (exact)
+    {
+        result.mExact = LLDirectorCast::canonicalActorId(exact->getID());
+        if (exact->isControlAvatar())
+        {
+            if (LLVOAvatar* wearer = exact->getAttachedAvatar())
+            {
+                result.mFallback = wearer->getID();
+            }
+        }
+        return result;
+    }
+
     LLVOAvatar* owner = object ? object->getAvatarAncestor() : nullptr;
 
     if (!owner)
@@ -5571,7 +5598,8 @@ static LLUUID resolve_actor_fx_owner(LLFace* facep)
         }
     }
 
-    return owner ? owner->getID() : LLUUID::null;
+    result.mExact = owner ? owner->getID() : LLUUID::null;
+    return result;
 }
 
 void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep, U32 type)
@@ -5641,7 +5669,7 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
     LLClientOuterTransform* outer_transform = resolve_outer_transform(facep);
 
     LLDrawable* drawable = facep->getDrawable();
-    const LLUUID actor_fx_owner = resolve_actor_fx_owner(facep);
+    const ActorFxOwners actor_fx_owners = resolve_actor_fx_owners(facep);
 
     if (rigged)
     {
@@ -5834,7 +5862,8 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
         info->mOuterTransform.get() == outer_transform &&
         info->mShaderMask == shader_mask &&
         info->mAvatar == facep->mAvatar &&
-        info->mActorFxOwner == actor_fx_owner &&
+        info->mActorFxOwner == actor_fx_owners.mExact &&
+        info->mActorFxFallbackOwner == actor_fx_owners.mFallback &&
         info->getSkinHash() == facep->getSkinHash())
     {
         info->mCount += facep->getIndicesCount();
@@ -5902,15 +5931,17 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
         draw_info->mGLTFMaterial = gltf_mat;
         draw_info->mShaderMask = shader_mask;
         draw_info->mAvatar = facep->mAvatar;
-        draw_info->mActorFxOwner = actor_fx_owner;
+        draw_info->mActorFxOwner = actor_fx_owners.mExact;
+        draw_info->mActorFxFallbackOwner = actor_fx_owners.mFallback;
         draw_info->mSkinInfo = facep->mSkinInfo;
-        // [BDMerge] Mark draws that belong to a worn attachment (rigged or not).
-        // getAvatar() walks parents, so a non-rigged prim of a worn attachment
-        // still resolves to its wearer; SIM-rezzed objects resolve to null. Drives
+        // [BDMerge] Mark draws that belong to a genuinely worn attachment
+        // (rigged or not). getAvatarAncestor() excludes standalone animesh even
+        // though getAvatar() returns its control avatar. Drives
         // the gated 3-pass alpha ordering in LLDrawPoolAlpha.
         {
-            const LLViewerObject* drawObj = facep->getViewerObject();
-            draw_info->mAttachedToAvatar = (drawObj && drawObj->getAvatar() != nullptr);
+            LLViewerObject* drawObj = facep->getViewerObject();
+            draw_info->mAttachedToAvatar =
+                (drawObj && drawObj->getAvatarAncestor() != nullptr);
         }
 
         if (gltf_mat)

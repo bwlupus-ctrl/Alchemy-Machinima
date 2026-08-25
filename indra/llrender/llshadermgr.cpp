@@ -192,11 +192,38 @@ bool LLShaderMgr::attachShaderFeatures(LLGLSLShader * shader)
         return false;
     }
 
-    if (features->hasActorFx)
+    if (features->hasActorFx || features->hasActorFxShadow)
     {
-        if (!shader->attachFragmentObject("alchemy/actorFxF.glsl"))
+        // Beauty and dissolve/shadow coverage form one Actor FX contract. If
+        // either primary module failed to load, use identity fallbacks for
+        // both so the color and shadow passes cannot disagree about coverage.
+        const bool actor_fx_primary_available =
+            mFragmentShaderObjects.count("alchemy/actorFxDissolveF.glsl") != 0 &&
+            mFragmentShaderObjects.count("alchemy/actorFxF.glsl") != 0;
+
+        if (!actor_fx_primary_available)
+        {
+            LL_WARNS("Shader") << "Actor FX primary modules unavailable for "
+                                << shader->mName << "; attaching coupled identity fallbacks" << LL_ENDL;
+        }
+
+        const char* dissolve_module = actor_fx_primary_available
+                                          ? "alchemy/actorFxDissolveF.glsl"
+                                          : "alchemy/actorFxDissolveFallbackF.glsl";
+        if (!shader->attachFragmentObject(dissolve_module))
         {
             return false;
+        }
+
+        if (features->hasActorFx)
+        {
+            const char* beauty_module = actor_fx_primary_available
+                                            ? "alchemy/actorFxF.glsl"
+                                            : "alchemy/actorFxFallbackF.glsl";
+            if (!shader->attachFragmentObject(beauty_module))
+            {
+                return false;
+            }
         }
     }
 
@@ -1131,6 +1158,16 @@ void LLShaderMgr::persistShaderCacheMetadata()
 
 bool LLShaderMgr::loadCachedProgramBinary(LLGLSLShader* shader)
 {
+    // Fallback Actor FX programs share the primary program feature/hash key.
+    // Ignore a cached primary binary while either primary module is missing,
+    // otherwise cache loading can defeat the coupled degradation above.
+    if (shader && (shader->mFeatures.hasActorFx || shader->mFeatures.hasActorFxShadow) &&
+        (mFragmentShaderObjects.count("alchemy/actorFxDissolveF.glsl") == 0 ||
+         mFragmentShaderObjects.count("alchemy/actorFxF.glsl") == 0))
+    {
+        return false;
+    }
+
     if (!mShaderCacheEnabled) return false;
 
     glProgramParameteri(shader->mProgramObject, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE);
@@ -1178,6 +1215,15 @@ bool LLShaderMgr::loadCachedProgramBinary(LLGLSLShader* shader)
 
 bool LLShaderMgr::saveCachedProgramBinary(LLGLSLShader* shader)
 {
+    // Do not cache a fallback program under the primary key. A later run with
+    // working modules must relink the real Actor FX implementation.
+    if (shader && (shader->mFeatures.hasActorFx || shader->mFeatures.hasActorFxShadow) &&
+        (mFragmentShaderObjects.count("alchemy/actorFxDissolveF.glsl") == 0 ||
+         mFragmentShaderObjects.count("alchemy/actorFxF.glsl") == 0))
+    {
+        return true;
+    }
+
     if (!mShaderCacheEnabled) return true;
 
     ProgramBinaryData binary_info = ProgramBinaryData();

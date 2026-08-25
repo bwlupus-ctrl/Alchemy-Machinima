@@ -111,11 +111,12 @@ public:
     LLMatrix4* mLastModelMatrix = nullptr;
 
     LLPointer<LLVOAvatar> mAvatar = nullptr;
-    // Stable Director Actor-FX owner for this native draw. Unlike mAvatar,
-    // which is the skinning avatar (and may therefore be an LLControlAvatar
-    // belonging to worn animesh), this is the visible wearer/cast actor UUID.
+    // Stable Director Actor-FX owner for this native draw. Animated objects use
+    // their persistent linkset-root UUID, never a regenerated control-avatar
+    // UUID. Uncast worn animesh inherits mActorFxFallbackOwner (the wearer).
     // Null means "not an actor draw" and must reset Actor FX before drawing.
     LLUUID mActorFxOwner;
+    LLUUID mActorFxFallbackOwner;
     // Owning, like mAvatar above: the mesh repo culls skins whose only
     // remaining reference is its own map (and a local-mesh reload drops the
     // unit/volume references mid-frame), so the draw call must hold its skin

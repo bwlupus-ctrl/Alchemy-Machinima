@@ -87,14 +87,21 @@ static bool is_hidden_entity_clone(const LLVOAvatar* avatarp)
         && !static_cast<const LLGhostAvatar*>(owner)->isEntityCloneVisible();
 }
 
-// Actor FX is authored against Director cast actors, while attachment/control
-// avatars render through their own avatar pools. Resolve those pools back to
-// the wearer so every part of one actor receives the same style state.
+// Prefer an explicitly cast control/animesh avatar. Otherwise resolve an
+// attachment control avatar back to its wearer so every part of that actor
+// receives one style. This preserves independently styled cast animesh while
+// retaining the intuitive wearer fallback for ordinary worn animation.
 static const LLVOAvatar* get_actor_fx_wearer(const LLVOAvatar* avatarp)
 {
     if (!avatarp)
     {
         return nullptr;
+    }
+
+    const LLUUID actor_id = avatarp->getActorFxOwnerId();
+    if (LLDirectorCast::instance().containsStored(actor_id))
+    {
+        return avatarp;
     }
 
     const LLVOAvatar* attached_avatar = avatarp->getAttachedAvatar();
@@ -104,15 +111,13 @@ static const LLVOAvatar* get_actor_fx_wearer(const LLVOAvatar* avatarp)
 static LLUUID get_actor_fx_id(const LLVOAvatar* avatarp)
 {
     const LLVOAvatar* wearer = get_actor_fx_wearer(avatarp);
-    return wearer ? wearer->getID() : LLUUID::null;
+    return wearer ? wearer->getActorFxOwnerId() : LLUUID::null;
 }
 
 static bool has_enabled_actor_fx(const LLVOAvatar* avatarp)
 {
     const LLVOAvatar* wearer = get_actor_fx_wearer(avatarp);
-    return wearer &&
-           !wearer->isUIAvatar() &&
-           LLDirectorCast::instance().getActorStyle(wearer->getID()).mEnabled;
+    return wearer && wearer->hasEffectiveActorFx();
 }
 
 F32 CLOTHING_GRAVITY_EFFECT = 0.7f;
@@ -465,9 +470,23 @@ void LLDrawPoolAvatar::renderShadow(S32 pass)
     }
 
     LLVOAvatar::AvatarOverallAppearance oa = avatarp->getOverallAppearance();
-    bool impostor = !LLPipeline::sImpostorRender && avatarp->isImpostor();
+    const bool actor_fx_enabled = has_enabled_actor_fx(avatarp);
+    bool impostor = !actor_fx_enabled &&
+                    !LLPipeline::sImpostorRender && avatarp->isImpostor();
+    LLVOAvatar* attached_avatar = avatarp->getAttachedAvatar();
+    if (attached_avatar &&
+        (attached_avatar->isHardVisualMute() ||
+         attached_avatar->getOverallAppearance() == LLVOAvatar::AOA_INVISIBLE))
+    {
+        return;
+    }
     // no shadows if the shadows are causing this avatar to breach the limit.
-    if (avatarp->isTooSlow() || impostor || (oa == LLVOAvatar::AOA_INVISIBLE))
+    // A styled cinematic actor is already forced out of the beauty impostor
+    // path; keep its live shadow in lockstep. Mute/invisible remain stronger
+    // privacy policy and are never bypassed by Actor FX.
+    if (avatarp->isHardVisualMute() ||
+        (!actor_fx_enabled && avatarp->isTooSlow()) ||
+        impostor || (oa == LLVOAvatar::AOA_INVISIBLE))
     {
         // No shadows for impostored (including jellydolled) or invisible avs.
         return;
@@ -476,16 +495,23 @@ void LLDrawPoolAvatar::renderShadow(S32 pass)
     // Optionally skip the costlier avatar shadow passes (alpha blend is the most
     // expensive and least visually important; alpha mask next). Default 2 = full.
     static LLCachedControl<S32> avatar_shadow_detail(gSavedSettings, "RenderAvatarShadowDetail", 2);
-    if (pass == SHADOW_PASS_AVATAR_ALPHA_BLEND && avatar_shadow_detail() < 2)
+    if (!actor_fx_enabled &&
+        pass == SHADOW_PASS_AVATAR_ALPHA_BLEND && avatar_shadow_detail() < 2)
     {
         return;
     }
-    if (pass == SHADOW_PASS_AVATAR_ALPHA_MASK && avatar_shadow_detail() < 1)
+    if (!actor_fx_enabled &&
+        pass == SHADOW_PASS_AVATAR_ALPHA_MASK && avatar_shadow_detail() < 1)
     {
         return;
     }
 
     LLDrawPoolAvatar::sShadowPass = pass;
+
+    // Classic/system avatar bodies bypass LLDrawInfo, so upload their cast
+    // identity explicitly for every shadow pass.  Disabled/non-cast actors set
+    // actorFxEnabled=0 here and cannot inherit the preceding actor's dissolve.
+    LLRenderPass::uploadActorFx(get_actor_fx_id(avatarp));
 
     if (pass == SHADOW_PASS_AVATAR_OPAQUE)
     {
@@ -759,6 +785,10 @@ void LLDrawPoolAvatar::beginVelocityPass(S32 pass)
 
     sVertexProgram->bind();
     LLRenderPass::bindVelocityUniforms(*sVertexProgram);
+    sVertexProgram->setMinimumAlpha(LLDrawPoolAvatar::sMinimumAlpha);
+    static const LLStaticHashedString sTextureAlphaOnly("velocity_texture_alpha_only");
+    sVertexProgram->uniform1i(sTextureAlphaOnly, 1);
+    sDiffuseChannel = sVertexProgram->enableTexture(LLViewerShaderMgr::DIFFUSE_MAP);
     gGL.diffuseColor4f(1, 1, 1, 1);
 }
 
@@ -767,8 +797,10 @@ void LLDrawPoolAvatar::endVelocityPass(S32 pass)
     LL_PROFILE_ZONE_SCOPED_CATEGORY_AVATAR;
 
     sRenderingSkinned = false;
+    sVertexProgram->disableTexture(LLViewerShaderMgr::DIFFUSE_MAP);
     sVertexProgram->unbind();
     sVertexProgram = NULL;
+    sDiffuseChannel = 0;
 }
 
 void LLDrawPoolAvatar::renderVelocity(S32 pass)
@@ -796,14 +828,22 @@ void LLDrawPoolAvatar::renderVelocity(S32 pass)
 
     // Impostors and jellydolled avatars are static billboards/simplified reps --
     // the camera fallback already covers them; true limb velocity is meaningless.
-    bool impostor = !LLPipeline::sImpostorRender && avatarp->isImpostor();
-    if (avatarp->isTooSlow() || impostor
+    const bool actor_fx_enabled = has_enabled_actor_fx(avatarp);
+    bool impostor = !actor_fx_enabled &&
+                    !LLPipeline::sImpostorRender && avatarp->isImpostor();
+    if (avatarp->isHardVisualMute() ||
+        (!actor_fx_enabled && avatarp->isTooSlow()) || impostor
         || (avatarp->getOverallAppearance() == LLVOAvatar::AOA_INVISIBLE))
     {
         return;
     }
 
+    LLRenderPass::uploadActorFx(get_actor_fx_id(avatarp));
+    // Match the deferred body pass.  Alpha-blended skirt/hair/eyelashes remain
+    // on the camera-depth fallback rather than double-stamping ordered alpha.
+    LLDrawPoolAvatar::sSkipTransparent = true;
     avatarp->renderSkinned();
+    LLDrawPoolAvatar::sSkipTransparent = false;
 }
 
 void LLDrawPoolAvatar::beginDeferredSkinned()
@@ -919,12 +959,19 @@ void LLDrawPoolAvatar::renderAvatars(LLVOAvatar* single_avatar, S32 pass)
     // a cached impostor would freeze both. Existing mute/invisible gates below
     // remain authoritative even when the style is enabled.
     const bool actor_fx_enabled = has_enabled_actor_fx(avatarp);
-    bool impostor = !actor_fx_enabled &&
+    const LLVOAvatar::AvatarOverallAppearance appearance =
+        avatarp->getOverallAppearance();
+    const bool actor_fx_live = actor_fx_enabled &&
+        appearance != LLVOAvatar::AOA_INVISIBLE;
+    const bool appearance_fallback =
+        appearance != LLVOAvatar::AOA_NORMAL &&
+        !avatarp->needsImpostorUpdate();
+    bool impostor = !actor_fx_live &&
                     !LLPipeline::sImpostorRender && avatarp->isImpostor() && !single_avatar;
 
-    if (( avatarp->isInMuteList()
+    if (( avatarp->isHardVisualMute()
           || impostor
-          || (LLVOAvatar::AOA_NORMAL != avatarp->getOverallAppearance() && !avatarp->needsImpostorUpdate()) ) && pass != 0)
+          || (!actor_fx_live && appearance_fallback) ) && pass != 0)
 //        || (LLVOAvatar::AV_DO_NOT_RENDER == avatarp->getVisualMuteSettings() && !avatarp->needsImpostorUpdate()) ) && pass != 0)
     { //don't draw anything but the impostor for impostored avatars
         return;
@@ -936,10 +983,22 @@ void LLDrawPoolAvatar::renderAvatars(LLVOAvatar* single_avatar, S32 pass)
     }
 
     LLVOAvatar *attached_av = avatarp->getAttachedAvatar();
-    if (attached_av && (LLVOAvatar::AOA_NORMAL != attached_av->getOverallAppearance() || !gPipeline.hasRenderType(LLPipeline::RENDER_TYPE_AVATAR)))
+    if (attached_av)
     {
-        // Animesh attachment of a jellydolled or invisible parent - don't show
-        return;
+        const LLVOAvatar::AvatarOverallAppearance attached_appearance =
+            attached_av->getOverallAppearance();
+        const bool attached_actor_fx_live = actor_fx_enabled &&
+            attached_appearance != LLVOAvatar::AOA_INVISIBLE;
+        if (!gPipeline.hasRenderType(LLPipeline::RENDER_TYPE_AVATAR) ||
+            attached_av->isHardVisualMute() ||
+            (!attached_actor_fx_live &&
+             attached_appearance != LLVOAvatar::AOA_NORMAL))
+        {
+            // Actor FX may keep a performance-jellied wearer and its animated
+            // attachment live, but never revives an invisible/muted wearer or
+            // bypasses the avatar render-type switch.
+            return;
+        }
     }
 
     if (pass == 0)
@@ -950,7 +1009,7 @@ void LLDrawPoolAvatar::renderAvatars(LLVOAvatar* single_avatar, S32 pass)
         }
 
 //      if (impostor || (LLVOAvatar::AV_DO_NOT_RENDER == avatarp->getVisualMuteSettings() && !avatarp->needsImpostorUpdate()))
-        if (impostor || (LLVOAvatar::AOA_NORMAL != avatarp->getOverallAppearance() && !avatarp->needsImpostorUpdate()))
+        if (impostor || (!actor_fx_live && appearance_fallback))
         {
             if (LLPipeline::sRenderDeferred && !LLPipeline::sReflectionRender && avatarp->mImpostor.isComplete())
             {

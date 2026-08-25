@@ -39,9 +39,13 @@ uniform vec4 lastMatrixPalette[45];
 
 in vec3 position;
 in vec4 weight;
+in vec2 texcoord0;
 
 out vec4 vary_cur_clip;
 out vec4 vary_last_clip;
+out vec3 vary_actor_fx_position;
+out vec2 vary_texcoord0;
+out vec4 vertex_color;
 
 mat4 getSkinnedTransform();
 
@@ -66,6 +70,12 @@ mat4 getLastSkinnedTransform()
 
 void main()
 {
+    vary_actor_fx_position = position;
+    // Classic-avatar beauty tests the baked texture alpha only.  Supplying an
+    // identity color keeps this interface compatible with velocityAlphaF
+    // without requesting a diffuse-color attribute from the avatar VBO.
+    vary_texcoord0 = texcoord0;
+    vertex_color = vec4(1.0);
     vec4 pos = vec4(position.xyz, 1.0);
 
     mat4 cur_skin = getSkinnedTransform();

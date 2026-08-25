@@ -426,10 +426,10 @@ void LLDrawPoolMaterials::renderDeferred(S32 pass)
 
 // ============================================================================
 // [BDMerge A5.4-1a] Velocity / motion-vector pass (rigid + camera).
-// Donor: Black Dragon lldrawpoolmaterials.cpp:292-348. All 12 legacy material
-// sub-passes are pushed with the plain (non-cutout) velocity program, matching
-// the donor -- alpha-mask material silhouettes over-cover slightly, which is
-// acceptable for the Phase 1a foundation. Rigged sub-passes are Phase 1b.
+// Donor: Black Dragon lldrawpoolmaterials.cpp:292-348. Opaque/emissive passes
+// use the plain velocity program; alpha-mask passes use the authored diffuse
+// texture/cutoff (including indexed batches) so motion coverage matches beauty.
+// Rigged sub-passes use the corresponding previous-palette variants.
 // ============================================================================
 void LLDrawPoolMaterials::beginVelocityPass(S32 pass)
 {
@@ -447,16 +447,77 @@ void LLDrawPoolMaterials::renderVelocity(S32 pass)
     LL_PROFILE_ZONE_SCOPED_CATEGORY_MATERIAL;
     LLGLEnable cull(GL_CULL_FACE);
 
-    for (U32 i = 0; i < sizeof(sMaterialPassType) / sizeof(U32); ++i)
+    const U32 pass_count = sizeof(sMaterialPassType) / sizeof(U32);
+    auto is_mask_pass = [](U32 i) { return (i % 3) == 1; };
+
+    for (U32 i = 0; i < pass_count; ++i)
     {
-        pushVelocityBatches(sMaterialPassType[i]);
+        if (!is_mask_pass(i))
+        {
+            pushVelocityBatches(sMaterialPassType[i]);
+        }
     }
 
-    // [BDMerge A5.4-1b] rigged sub-passes (each rigid pass type + 1)
+    static const LLStaticHashedString sTextureAlphaOnly("velocity_texture_alpha_only");
+    gVelocityAlphaProgram.bind();
+    bindVelocityUniforms(gVelocityAlphaProgram);
+    gVelocityAlphaProgram.uniform1i(sTextureAlphaOnly, 1);
+    for (U32 i = 0; i < pass_count; ++i)
+    {
+        if (is_mask_pass(i))
+        {
+            pushVelocityBatchesTextured(sMaterialPassType[i], true);
+        }
+    }
+    if (LLGLSLShader::sIndexedLegacyMaterials &&
+        gVelocityAlphaIndexedProgram.isComplete())
+    {
+        gVelocityAlphaIndexedProgram.bind();
+        bindVelocityUniforms(gVelocityAlphaIndexedProgram);
+        gVelocityAlphaIndexedProgram.uniform1i(sTextureAlphaOnly, 1);
+        for (U32 i = 0; i < pass_count; ++i)
+        {
+            if (is_mask_pass(i))
+            {
+                pushVelocityAlphaBatchesIndexed(sMaterialPassType[i], false, false);
+            }
+        }
+    }
+
+    // rigged sub-passes (each rigid pass type + 1)
     gVelocityProgram.bind(true);
     bindVelocityUniforms(*gVelocityProgram.mRiggedVariant);
-    for (U32 i = 0; i < sizeof(sMaterialPassType) / sizeof(U32); ++i)
+    for (U32 i = 0; i < pass_count; ++i)
     {
-        pushRiggedVelocityBatches(sMaterialPassType[i] + 1);
+        if (!is_mask_pass(i))
+        {
+            pushRiggedVelocityBatches(sMaterialPassType[i] + 1);
+        }
+    }
+
+    gVelocityAlphaProgram.bind(true);
+    bindVelocityUniforms(*gVelocityAlphaProgram.mRiggedVariant);
+    gVelocityAlphaProgram.mRiggedVariant->uniform1i(sTextureAlphaOnly, 1);
+    for (U32 i = 0; i < pass_count; ++i)
+    {
+        if (is_mask_pass(i))
+        {
+            pushRiggedVelocityBatchesTextured(sMaterialPassType[i] + 1, true);
+        }
+    }
+    if (LLGLSLShader::sIndexedLegacyMaterials &&
+        gVelocityAlphaIndexedProgram.mRiggedVariant &&
+        gVelocityAlphaIndexedProgram.mRiggedVariant->isComplete())
+    {
+        gVelocityAlphaIndexedProgram.bind(true);
+        bindVelocityUniforms(*gVelocityAlphaIndexedProgram.mRiggedVariant);
+        gVelocityAlphaIndexedProgram.mRiggedVariant->uniform1i(sTextureAlphaOnly, 1);
+        for (U32 i = 0; i < pass_count; ++i)
+        {
+            if (is_mask_pass(i))
+            {
+                pushVelocityAlphaBatchesIndexed(sMaterialPassType[i] + 1, false, true);
+            }
+        }
     }
 }

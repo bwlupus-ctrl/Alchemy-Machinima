@@ -62,13 +62,24 @@ uniform sampler2D basecolor7; uniform sampler2D emissivemap7;
 out vec4 frag_color;
 
 in vec4 vertex_emissive;
+in vec4 vertex_color;
 flat in int vary_material_index;
+in vec3 vary_position;
 
 in vec2 base_color_texcoord;
 in vec2 emissive_texcoord;
 
 vec3 linear_to_srgb(vec3 c);
 vec3 srgb_to_linear(vec3 c);
+#ifdef HAS_ACTOR_FX
+vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
+vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
+bool actorFxActive();
+bool actorFxUvTransformEnabled();
+bool actorFxRgbSplitEnabled();
+vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
+vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
+#endif
 
 vec4 sample_basecolor(vec2 uv)
 {
@@ -130,16 +141,65 @@ void main()
 
     vec4 basecolor = sample_basecolor(base_color_texcoord.xy).rgba;
 
-    if (basecolor.a < gltf_minimum_alpha[mi])
+    if (basecolor.a * vertex_color.a < gltf_minimum_alpha[mi])
     {
         discard;
     }
 
+#ifdef HAS_ACTOR_FX
+    bool actor_fx_active = actorFxActive();
+    bool fx_uv_transform = actor_fx_active && actorFxUvTransformEnabled();
+    bool fx_rgb_split = actor_fx_active && actorFxRgbSplitEnabled();
+    vec2 fx_base_uv = base_color_texcoord.xy;
+    if (fx_uv_transform)
+    {
+        fx_base_uv = actorFxUv(fx_base_uv, vary_position);
+        basecolor.rgb = sample_basecolor(fx_base_uv).rgb;
+    }
+    if (fx_rgb_split)
+    {
+        basecolor.r = sample_basecolor(actorFxRgbSplitUv(fx_base_uv, -1.0)).r;
+        basecolor.b = sample_basecolor(actorFxRgbSplitUv(fx_base_uv,  1.0)).b;
+    }
+#endif
+
     vec3 emissive = gltf_emissive_color[mi];
+#ifdef HAS_ACTOR_FX
+    vec2 fx_emissive_uv = emissive_texcoord.xy;
+    if (fx_uv_transform)
+    {
+        fx_emissive_uv = actorFxUv(fx_emissive_uv, vary_position);
+    }
+    vec3 emissive_texel = sample_emissive(fx_emissive_uv);
+    if (fx_rgb_split)
+    {
+        emissive_texel.r = sample_emissive(actorFxRgbSplitUv(fx_emissive_uv, -1.0)).r;
+        emissive_texel.b = sample_emissive(actorFxRgbSplitUv(fx_emissive_uv,  1.0)).b;
+    }
+    emissive *= srgb_to_linear(emissive_texel);
+#else
     emissive *= srgb_to_linear(sample_emissive(emissive_texcoord.xy));
+#endif
 
     float lum = max(max(emissive.r, emissive.g), emissive.b);
     lum *= vertex_emissive.a;
+#ifdef HAS_ACTOR_FX
+    if (actor_fx_active)
+    {
+        vec3 actor_fx_normal = cross(dFdx(vary_position), dFdy(vary_position));
+        float actor_fx_normal_len2 = dot(actor_fx_normal, actor_fx_normal);
+        actor_fx_normal = actor_fx_normal_len2 > 1e-12
+            ? actor_fx_normal * inversesqrt(actor_fx_normal_len2)
+            : vec3(0.0, 0.0, 1.0);
+        vec3 styled_source = vertex_color.rgb * srgb_to_linear(basecolor.rgb);
+        vec3 styled = actorFxApply(styled_source,
+                                   actor_fx_normal,
+                                   vary_position,
+                                   base_color_texcoord.xy);
+        vec3 fx_emissive = actorFxEmissive(vec3(0.0), styled);
+        lum += max(max(fx_emissive.r, fx_emissive.g), fx_emissive.b);
+    }
+#endif
 
     frag_color.rgb = vec3(0);
     frag_color.a = lum;

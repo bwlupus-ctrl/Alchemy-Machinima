@@ -33,10 +33,13 @@ in vec4 post_pos;
 in float target_pos_x;
 in vec4 vertex_color;
 in vec2 vary_texcoord0;
+in vec3 vary_actor_fx_position;
 
 uniform float gltf_minimum_alpha[GLTF_INDEXED_CHANNELS];
 
 uniform sampler2D basecolor0;
+
+bool actorFxDissolveDiscard(vec3 object_position);
 #if GLTF_INDEXED_CHANNELS > 1
 uniform sampler2D basecolor1;
 #endif
@@ -91,6 +94,11 @@ void main()
     float alpha = sample_alpha(vary_texcoord0.xy) * vertex_color.a;
 
     if (alpha < gltf_minimum_alpha[vary_material_index])
+    {
+        discard;
+    }
+
+    if (actorFxDissolveDiscard(vary_actor_fx_position))
     {
         discard;
     }

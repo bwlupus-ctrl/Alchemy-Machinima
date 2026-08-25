@@ -37,9 +37,11 @@ in vec2 texcoord0;
 out float pos_w;
 out float target_pos_x;
 out vec2 vary_texcoord0;
+out vec3 vary_actor_fx_position;
 
 void main()
 {
+    vary_actor_fx_position = position;
     vec4 pos;
     vec3 norm;
 
@@ -67,4 +69,3 @@ void main()
 
     passTextureIndex();
 }
-

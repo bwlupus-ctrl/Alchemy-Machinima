@@ -177,12 +177,24 @@ public:
     };
 
     static LLDirectorCast& instance();
+    // Residents use their avatar UUID; animated objects use their persistent
+    // linkset-root UUID rather than the regenerated LLControlAvatar UUID.
+    static LLUUID canonicalActorId(const LLUUID& id);
 
     // ---- membership (ordered, session-only) ----
     void add(const LLUUID& id);
     void remove(const LLUUID& id);
     void toggle(const LLUUID& id);
     bool contains(const LLUUID& id) const;
+    // Direct lookup for renderer-owned IDs that are already canonical. This is
+    // the hot-path variant and deliberately never touches gObjectList.
+    bool containsStored(const LLUUID& id) const;
+    // Resolve a canonical renderer owner and its wearer fallback together.
+    // The primary member-index probe supplies the style directly when it hits,
+    // avoiding the former containsStored()+getActorStyle() double lookup.
+    const ActorStyle& resolveStoredActorStyle(const LLUUID& primary,
+                                              const LLUUID& fallback,
+                                              LLUUID& resolved_id) const;
     const std::vector<CastMember>& getCast() const { return mCast; }
     // parallel id list, kept in membership order; this is what
     // LLActorMover::getRoster() hands out (empty = "my avatar")
@@ -233,10 +245,10 @@ public:
     // legacy Two-Shot/OTS. C/D are additional switcher-addressable marks.
     // resolveSubject*() returns nullptr when unset or dead, which every
     // consumer treats as "fall back to stock behavior".
-    void setSubjectA(const LLUUID& id) { mSubjectA = id; }
-    void setSubjectB(const LLUUID& id) { mSubjectB = id; }
-    void setSubjectC(const LLUUID& id) { mSubjectC = id; }
-    void setSubjectD(const LLUUID& id) { mSubjectD = id; }
+    void setSubjectA(const LLUUID& id);
+    void setSubjectB(const LLUUID& id);
+    void setSubjectC(const LLUUID& id);
+    void setSubjectD(const LLUUID& id);
     const LLUUID& getSubjectA() const { return mSubjectA; }
     const LLUUID& getSubjectB() const { return mSubjectB; }
     const LLUUID& getSubjectC() const { return mSubjectC; }

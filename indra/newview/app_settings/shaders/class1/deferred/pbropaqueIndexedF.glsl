@@ -87,6 +87,10 @@ vec4 encodeNormal(vec3 n, float env, float gbuffer_flag);
 vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
 vec2 actorFxPbrMaterial(vec2 roughness_metallic);
 vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
+bool actorFxUvTransformEnabled();
+bool actorFxRgbSplitEnabled();
+vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
+vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
 #endif
 
 vec4 sample_basecolor(vec2 uv)
@@ -204,19 +208,43 @@ void main()
     int mi = vary_material_index;
 
     vec4 basecolor = sample_basecolor(base_color_texcoord.xy).rgba;
-    basecolor.rgb = srgb_to_linear(basecolor.rgb);
 
-    basecolor *= vertex_color;
-
-    if (basecolor.a < gltf_minimum_alpha[mi])
+    if (basecolor.a * vertex_color.a < gltf_minimum_alpha[mi])
     {
         discard;
     }
 
+#ifdef HAS_ACTOR_FX
+    bool fx_uv_transform = actorFxUvTransformEnabled();
+    bool fx_rgb_split = actorFxRgbSplitEnabled();
+    vec2 fx_base_uv = base_color_texcoord.xy;
+    if (fx_uv_transform)
+    {
+        fx_base_uv = actorFxUv(fx_base_uv, vary_position);
+        basecolor.rgb = sample_basecolor(fx_base_uv).rgb;
+    }
+    if (fx_rgb_split)
+    {
+        basecolor.r = sample_basecolor(actorFxRgbSplitUv(fx_base_uv, -1.0)).r;
+        basecolor.b = sample_basecolor(actorFxRgbSplitUv(fx_base_uv,  1.0)).b;
+    }
+#endif
+    basecolor.rgb = srgb_to_linear(basecolor.rgb);
+    basecolor *= vertex_color;
+
     vec3 col = basecolor.rgb;
 
     // from mikktspace.com
+#ifdef HAS_ACTOR_FX
+    vec2 fx_normal_uv = normal_texcoord.xy;
+    if (fx_uv_transform)
+    {
+        fx_normal_uv = actorFxUv(fx_normal_uv, vary_position);
+    }
+    vec3 vNt = sample_normal(fx_normal_uv) * 2.0 - 1.0;
+#else
     vec3 vNt = sample_normal(normal_texcoord.xy) * 2.0 - 1.0;
+#endif
     float sign = vary_sign;
     vec3 vN = vary_normal;
     vec3 vT = vary_tangent.xyz;
@@ -225,13 +253,37 @@ void main()
     vec3 tnorm = normalize( vNt.x * vT + vNt.y * vB + vNt.z * vN );
 
     // RGB = Occlusion, Roughness, Metal
+#ifdef HAS_ACTOR_FX
+    vec2 fx_orm_uv = metallic_roughness_texcoord.xy;
+    if (fx_uv_transform)
+    {
+        fx_orm_uv = actorFxUv(fx_orm_uv, vary_position);
+    }
+    vec3 spec = sample_orm(fx_orm_uv);
+#else
     vec3 spec = sample_orm(metallic_roughness_texcoord.xy);
+#endif
 
     spec.g *= gltf_roughness_factor[mi];
     spec.b *= gltf_metallic_factor[mi];
 
     vec3 emissive = gltf_emissive_color[mi];
+#ifdef HAS_ACTOR_FX
+    vec2 fx_emissive_uv = emissive_texcoord.xy;
+    if (fx_uv_transform)
+    {
+        fx_emissive_uv = actorFxUv(fx_emissive_uv, vary_position);
+    }
+    vec3 emissive_texel = sample_emissive(fx_emissive_uv);
+    if (fx_rgb_split)
+    {
+        emissive_texel.r = sample_emissive(actorFxRgbSplitUv(fx_emissive_uv, -1.0)).r;
+        emissive_texel.b = sample_emissive(actorFxRgbSplitUv(fx_emissive_uv,  1.0)).b;
+    }
+    emissive *= srgb_to_linear(emissive_texel);
+#else
     emissive *= srgb_to_linear(sample_emissive(emissive_texcoord.xy));
+#endif
 
     tnorm *= gl_FrontFacing ? 1.0 : -1.0;
 

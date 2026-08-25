@@ -368,8 +368,10 @@ public:
     // The UUID overload follows Director identity rules (null explicitly means
     // You); LLDrawInfo's null mActorFxOwner instead means disabled and is
     // routed through the draw-info overload/disabled helper.
-    static void uploadActorFx(const LLUUID& actor_id);
-    static void uploadActorFx(const LLDrawInfo& params);
+    // Returns true when this draw's effective style emits synthetic glow. Call
+    // sites that do not need that classification may ignore the result.
+    static bool uploadActorFx(const LLUUID& actor_id);
+    static bool uploadActorFx(const LLDrawInfo& params);
     static void uploadActorFxDisabled();
     void pushBatches(U32 type, bool texture = true, bool batch_textures = false);
     void pushUntexturedBatches(U32 type);
@@ -382,7 +384,11 @@ public:
     // writes the current matrix back for next frame. The *Textured variant also
     // binds the diffuse texture for alpha-mask cutout.
     void pushVelocityBatches(U32 type);
-    void pushVelocityBatchesTextured(U32 type);
+    void pushVelocityBatchesTextured(U32 type, bool legacy_material = false);
+    // Multi-material cutout velocity.  The caller binds either the legacy or
+    // GLTF indexed alpha program; this helper binds per-slot base textures,
+    // cutoffs and (for GLTF) KHR base-color transforms.
+    void pushVelocityAlphaBatchesIndexed(U32 type, bool gltf, bool rigged);
     // [BDMerge A5.4-1b] Rigged velocity pushers: upload CURRENT palette
     // (matrixPalette) + PREVIOUS palette (lastMatrixPalette) per (avatar, mesh)
     // key, then draw. Donor: Black Dragon lldrawpool.cpp:838-869/912-948, with
@@ -392,7 +398,7 @@ public:
     // and it is re-uploaded on every key change so a stale palette from the
     // previous avatar can never leak into this draw.
     void pushRiggedVelocityBatches(U32 type);
-    void pushRiggedVelocityBatchesTextured(U32 type);
+    void pushRiggedVelocityBatchesTextured(U32 type, bool legacy_material = false);
     // Upload both palettes for a rigged velocity draw. Returns false if the
     // skin isn't ready (skip the draw). Dedup via lastAvatar/lastMeshId.
     static bool uploadVelocityMatrixPalettes(LLVOAvatar* avatar, LLMeshSkinInfo* skinInfo,

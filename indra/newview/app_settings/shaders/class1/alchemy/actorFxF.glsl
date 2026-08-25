@@ -16,6 +16,17 @@ uniform vec3 actorFxTint;
 uniform vec4 actorFxParams0;
 // x=distortion id, y=distortion amount, z=brightness, w=stable actor phase
 uniform vec4 actorFxParams1;
+// x=shimmer speed in Hz; y/z=whole-image fragment offset; w reserved
+uniform vec4 actorFxParams2;
+
+// Shared with shadow and glow programs; implemented by actorFxDissolveF.glsl.
+float actorFxDissolveCoverage(vec3 object_position);
+in vec3 vary_actor_fx_position;
+
+float actorFxBeautyDissolveCoverage()
+{
+    return actorFxDissolveCoverage(vary_actor_fx_position);
+}
 
 float actor_fx_hash(vec2 p)
 {
@@ -56,21 +67,95 @@ vec3 actor_fx_rainbow(float h)
     return clamp(p - 1.0, 0.0, 1.0);
 }
 
-vec2 actor_fx_uv(vec2 uv)
+// gl_FragCoord is relative to the current render tile.  Adding the uploader's
+// tile origin keeps pixel blocks, scan lines, and random bands continuous when
+// the same frame is rendered as multiple tiles.
+vec2 actorFxFragCoord()
+{
+    return gl_FragCoord.xy + actorFxParams2.yz;
+}
+
+// The public, cheap gate used by material shaders.  Callers use this before
+// any optional UV work or color-space conversion so disabled Actor FX is a
+// bit-for-bit identity path.
+bool actorFxActive()
+{
+    return actorFxEnabled != 0 && actorFxParams0.x > 0.001;
+}
+
+vec2 actor_fx_screen_quantize(vec2 uv, float block_pixels)
+{
+    if (block_pixels <= 1.0)
+    {
+        return uv;
+    }
+
+    vec2 frag = actorFxFragCoord();
+    vec2 block_center = (floor(frag / block_pixels) + 0.5) * block_pixels;
+    vec2 delta_pixels = block_center - frag;
+    return uv + dFdx(uv) * delta_pixels.x + dFdy(uv) * delta_pixels.y;
+}
+
+bool actorFxRgbSplitEnabled()
+{
+    int mode = int(actorFxParams1.x + 0.5);
+    return actorFxActive() &&
+           mode == 5 && actorFxParams1.y > 0.001;
+}
+
+bool actorFxUvTransformEnabled()
+{
+    if (!actorFxActive())
+    {
+        return false;
+    }
+
+    int mode = int(actorFxParams1.x + 0.5);
+    bool distortion = actorFxParams1.y > 0.001 && mode >= 1 && mode <= 8 && mode != 5;
+    return actorFxParams0.y > 1.0 || distortion;
+}
+
+// Transform a material's authored UV before RGB sampling.  Alpha and mask
+// coverage deliberately continue sampling the original UV in the callers.
+vec2 actorFxUv(vec2 uv, vec3 position_eye)
 {
     float amount = clamp(actorFxParams1.y, 0.0, 1.0);
     int mode = int(actorFxParams1.x + 0.5);
+    if (!actorFxActive())
+    {
+        return uv;
+    }
+
+    // Pixel Size is an independent, literal screen-pixel block size.  Mode 1
+    // can request a larger block while retaining the same tile-safe grid.
+    float block_pixels = max(actorFxParams0.y, 0.0);
+    if (mode == 1) // pixelate
+    {
+        block_pixels = max(block_pixels, mix(2.0, 64.0, amount));
+    }
+    else if (mode == 2 && amount > 0.001) // voxel
+    {
+        block_pixels = max(block_pixels, mix(5.0, 28.0, amount));
+    }
+    uv = actor_fx_screen_quantize(uv, block_pixels);
+
     if (amount <= 0.001)
     {
         return uv;
     }
 
-    if (mode == 1) // pixelate
+    if (mode == 2) // voxel: block the surface and stagger neighbouring cells
     {
-        vec2 px = max(fwidth(uv) * mix(2.0, 64.0, amount), vec2(1e-6));
-        return (floor(uv / px) + 0.5) * px;
+        vec2 frag_cell = floor(actorFxFragCoord() / max(block_pixels, 1.0));
+        vec3 volume_cell = floor(position_eye / mix(0.28, 0.06, amount));
+        float cell_phase = actor_fx_hash(frag_cell + volume_cell.xy
+                                         + vec2(volume_cell.z, actorFxParams1.w));
+        vec2 texel = abs(dFdx(uv)) + abs(dFdy(uv));
+        uv += (vec2(cell_phase,
+                   actor_fx_hash(frag_cell.yx + volume_cell.yz + 19.7)) - 0.5)
+              * texel * mix(1.0, 6.0, amount);
     }
-    if (mode == 3) // lens
+    else if (mode == 3) // lens
     {
         vec2 d = uv - vec2(0.5);
         float q = clamp(length(d) / 0.48, 0.0, 1.0);
@@ -91,48 +176,68 @@ vec2 actor_fx_uv(vec2 uv)
     }
     else if (mode == 7) // vertical tear
     {
-        float r = actor_fx_hash(vec2(floor(gl_FragCoord.x / 13.0),
+        float r = actor_fx_hash(vec2(floor(actorFxFragCoord().x / 13.0),
                                      floor(actorFxTime * 8.0) + actorFxParams1.w));
         uv.y += step(1.0 - 0.35 * amount, r) * (r - 0.5) * 0.24 * amount;
     }
     else if (mode == 8) // VHS
     {
-        float line_noise = actor_fx_hash(vec2(floor(gl_FragCoord.y / 3.0),
+        float line_noise = actor_fx_hash(vec2(floor(actorFxFragCoord().y / 3.0),
                                               floor(actorFxTime * 12.0)));
         uv.x += (line_noise - 0.5) * 0.035 * amount;
     }
     return uv;
 }
 
+// Return one RGB-split side tap.  Callers sample these only when
+// actorFxRgbSplitEnabled(), so every other mode pays no extra texture reads.
+vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction)
+{
+    float amount = clamp(actorFxParams1.y, 0.0, 1.0);
+    float pixels = mix(1.0, 12.0, amount) * direction;
+    float band = actor_fx_hash(vec2(floor(actorFxFragCoord().y / 18.0),
+                                     floor(actorFxTime * 10.0) + actorFxParams1.w));
+    pixels *= mix(0.65, 1.35, band);
+    return transformed_uv + dFdx(transformed_uv) * pixels
+                          + dFdy(transformed_uv) * pixels * 0.12;
+}
+
 vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv)
 {
-    if (actorFxEnabled == 0)
+    // This must precede UV work and the Dissolve branch: a zero-strength style
+    // is a strict no-op and may never discard authored coverage.
+    if (!actorFxActive())
     {
         return source;
     }
 
-    vec2 uv = actor_fx_uv(authored_uv);
+    vec2 uv = authored_uv;
+    if (actorFxUvTransformEnabled())
+    {
+        uv = actorFxUv(uv, position_eye);
+    }
     vec3 n = normalize(normal_eye);
     vec3 v = normalize(-position_eye);
     float facing = clamp(abs(dot(n, v)), 0.0, 1.0);
     float edge = pow(1.0 - facing, 2.0);
     float lum = dot(max(source, vec3(0.0)), vec3(0.299, 0.587, 0.114));
-    float band = 0.5 + 0.5 * sin((gl_FragCoord.y / 6.0 + actorFxTime * 1.7) * 6.2831853);
-    float grain = actor_fx_hash(gl_FragCoord.xy + floor(actorFxTime * 18.0)) - 0.5;
+    vec2 frag_coord = actorFxFragCoord();
+    float band = 0.5 + 0.5 * sin((frag_coord.y / 6.0 + actorFxTime * 1.7) * 6.2831853);
+    float grain = actor_fx_hash(frag_coord + floor(actorFxTime * 18.0)) - 0.5;
     vec3 fx = source;
 
     if (actorFxLook == 0) // Ghost
         fx = mix(source * actorFxTint, actorFxTint * (0.25 + lum * 0.75), 0.72) + edge * actorFxTint;
     else if (actorFxLook == 1) // Clone / authored material
         fx = source;
-    else if (actorFxLook == 2) // Wireframe
+    else if (actorFxLook == 2) // Hologram
+        fx = actorFxTint * (lum * (0.45 + 0.55 * band) + edge * 2.2);
+    else if (actorFxLook == 3) // Wireframe
     {
         vec2 cell = abs(fract(uv * 28.0) - 0.5);
         float line = 1.0 - smoothstep(0.42, 0.49, max(cell.x, cell.y));
         fx = mix(source * 0.08, actorFxTint * (0.35 + edge * 2.2), line);
     }
-    else if (actorFxLook == 3) // Hologram
-        fx = actorFxTint * (lum * (0.45 + 0.55 * band) + edge * 2.2);
     else if (actorFxLook == 4) // X-ray
         fx = actorFxTint * (0.12 + edge * 3.0) + source * 0.08;
     else if (actorFxLook == 5) // Thermal
@@ -153,11 +258,9 @@ vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored
     }
     else if (actorFxLook == 10) // Dissolve (intentional coverage change)
     {
-        float d = actor_fx_fbm(position_eye.xy * 3.2
-                               + vec2(0.0, actorFxTime * 0.22));
-        float threshold = mix(0.05, 0.56, clamp(actorFxParams0.x, 0.0, 1.0));
-        if (d < threshold) discard;
-        float glow = 1.0 - smoothstep(threshold, threshold + 0.10, d);
+        float coverage = actorFxBeautyDissolveCoverage();
+        if (coverage < 0.0) discard;
+        float glow = 1.0 - smoothstep(0.0, 0.10, coverage);
         fx = source + glow * mix(vec3(1.0, 0.35, 0.02), actorFxTint, 0.4) * 2.2;
     }
     else if (actorFxLook == 11) // Negative
@@ -170,7 +273,7 @@ vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored
              * (0.72 + 0.28 * band);
     else if (actorFxLook == 14) // Blueprint
     {
-        vec2 guv = abs(fract(gl_FragCoord.xy / 18.0) - 0.5);
+        vec2 guv = abs(fract(frag_coord / 18.0) - 0.5);
         float grid = 1.0 - smoothstep(0.43, 0.49, max(guv.x, guv.y));
         fx = vec3(0.005, 0.035, 0.09) + actorFxTint * (edge * 1.8 + grid * 0.11);
     }
@@ -182,7 +285,7 @@ vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored
     }
     else if (actorFxLook == 16) // Frost / ice
     {
-        float sparkle = pow(actor_fx_hash(floor(gl_FragCoord.xy / 3.0)
+        float sparkle = pow(actor_fx_hash(floor(frag_coord / 3.0)
                                            + floor(actorFxTime * 3.0)), 18.0);
         fx = mix(vec3(0.15, 0.42, 0.7), vec3(0.86, 0.97, 1.0),
                  lum * 0.45 + edge) + sparkle * 1.6;
@@ -229,7 +332,7 @@ vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored
     }
     else if (actorFxLook == 25) // Halftone / comic
     {
-        vec2 cell = fract(gl_FragCoord.xy / 7.0) - 0.5;
+        vec2 cell = fract(frag_coord / 7.0) - 0.5;
         float radius = sqrt(max(lum, 0.02)) * 0.34;
         float dots = 1.0 - smoothstep(radius, radius + 0.08, length(cell));
         fx = mix(vec3(0.015), actorFxTint * (0.35 + source), dots);
@@ -247,9 +350,10 @@ vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored
     float shimmer = clamp(actorFxParams0.z, 0.0, 1.0);
     float glitch = clamp(actorFxParams0.w, 0.0, 1.0);
     float pulse = 1.0 - shimmer * 0.30
-                  * (0.5 + 0.5 * sin(actorFxTime * 6.2831853 + actorFxParams1.w));
+                  * (0.5 + 0.5 * sin(actorFxTime * max(actorFxParams2.x, 0.0)
+                                      * 6.2831853 + actorFxParams1.w));
     float tear = step(1.0 - 0.35 * glitch,
-                      actor_fx_hash(vec2(floor(gl_FragCoord.y / 14.0),
+                      actor_fx_hash(vec2(floor(frag_coord.y / 14.0),
                                          floor(actorFxTime * 9.0) + actorFxParams1.w)));
     fx *= pulse * (1.0 + tear * 0.25 * glitch);
     fx *= max(actorFxParams1.z, 0.0);
@@ -259,7 +363,7 @@ vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored
 
 vec2 actorFxPbrMaterial(vec2 roughness_metallic)
 {
-    if (actorFxEnabled == 0)
+    if (!actorFxActive())
     {
         return roughness_metallic;
     }
@@ -273,12 +377,12 @@ vec2 actorFxPbrMaterial(vec2 roughness_metallic)
 
 vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color)
 {
-    if (actorFxEnabled == 0)
+    if (!actorFxActive())
     {
         return authored_emissive;
     }
     float glow = 0.0;
-    if (actorFxLook == 3 || actorFxLook == 6 || actorFxLook == 14 ||
+    if (actorFxLook == 2 || actorFxLook == 6 || actorFxLook == 14 ||
         actorFxLook == 15 || actorFxLook == 17 || actorFxLook == 19 ||
         actorFxLook == 26 || actorFxLook == 27)
     {

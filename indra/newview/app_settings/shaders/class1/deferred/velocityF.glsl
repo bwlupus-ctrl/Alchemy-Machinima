@@ -32,9 +32,17 @@ out vec4 frag_color;
 
 in vec4 vary_cur_clip;
 in vec4 vary_last_clip;
+in vec3 vary_actor_fx_position;
+
+bool actorFxDissolveDiscard(vec3 raw_object_position);
 
 void main()
 {
+    if (actorFxDissolveDiscard(vary_actor_fx_position))
+    {
+        discard;
+    }
+
     vec2 cur_ndc  = vary_cur_clip.xy  / vary_cur_clip.w;
     vec2 last_ndc = vary_last_clip.xy / vary_last_clip.w;
 

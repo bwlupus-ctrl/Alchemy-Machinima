@@ -1,251 +1,309 @@
-# Actor FX — Claude Test/Build Handoff
+# Alchemy Machinima Session Handoff — Claude Test/Build
 
-Date: 2026-08-24  
-Repository: `I:\alchemy-machinima`  
-Branch observed during implementation: `feature/vram-management`
+Date: 2026-08-25
+Repository: `I:\alchemy-machinima`
+Branch: `feature/vram-management`
 
-## Important workspace warning
+## Safety and rollback
 
-This repository already has a large dirty worktree containing unrelated user work. Do **not** reset, discard, restore, or broadly reformat existing changes. Limit any fixes to the Actor FX files and preserve overlapping edits.
+This is a deliberately dirty working tree with unrelated user files. Do not reset,
+clean, restore, or broadly reformat it. Build and test the current branch as-is.
 
-## What was added
+Known rollback points:
 
-Director now has a final, scrollable **Actor FX** tab that applies Ghost Studio-style rendering to a live actor at their current position. It does not create or manage a separate clone.
+- `6468f6b6772` — `Checkpoint: cinematic light rig + actor gaze feature stack`
+- `f547400e0fb` — `Checkpoint: cinematic controls and native Actor FX groundwork`
 
-The tab can target:
+The second checkpoint was made before completing full native Actor FX activation so
+the renderer can be stepped back safely if a driver-specific regression is found.
 
-- You
-- Any Director cast member
-- Cast members currently away from the region; their settings remain stored for when they return
+## Whole-session feature inventory
 
-Available controls:
+This handoff covers the full session, not only Actor FX.
 
-- Per-actor enable switch
-- Render mode: `Layer` or `Opaque cover (preview)`
-- All 28 existing Ghost Studio looks
-- Actor color or custom hue
-- Alpha
-- Pixelation
-- Shimmer speed and amount
-- Glitch
-- Distortion mode and amount
-- Brightness
-- Effect FPS
-- Reset to defaults
+### Joystick configuration
 
-Actor FX is appended after the pre-existing Director tabs so older numeric `DirectorLastTab` values continue to open the same tabs.
+- The Joystick Configuration floater has more usable space and can expand to fit
+  the monitor, mappings, defaults, and action buttons without clipping.
+- Joystick/flycam support and layout changes are in the existing checkpoint.
 
-## Rendering semantics
+### Pose Polish and Actor Gaze
 
-`Layer` draws the selected effect over the normally rendered actor.
+- Pose Polish is opened from inside Actor Gaze, adjacent to `Gaze Cues...`.
+- New/default Pose Polish state enables M1, M2, M3, M4, and M6.
+- Diagnostics M5 remains off by default.
+- Actor Gaze, independent eye targeting, camera-facing behavior, gaze cues,
+  asymmetric pitch, movement styles, and related presets remain in the stack.
 
-`Opaque cover (preview)` forces the styled layer to full opacity, but it does **not** suppress the actor's normal render underneath. The UI deliberately calls this a preview rather than claiming true replacement.
+### Director subjects C and D
 
-The feature reuses Actor Mover/Ghost Studio's harvested worn geometry and `actorghostF.glsl` style pipeline. Rendering occurs in the always-visible scene-dressing portion of `render_ui()`, before normal UI chrome. It remains present when the viewer UI debug feature is hidden and is included in both deferred and non-deferred snapshot paths.
+- Director Cast supports Subjects A, B, C, and D.
+- World context menus, attachment/object menus, and Director cast menus include C/D.
+- Subject IDs are canonicalized for animated-object linkset roots.
 
-## Data and persistence
+### Cinematic light rig
 
-`LLDirectorCast::ActorStyle` stores the per-actor configuration. The new data is additive and backward-compatible:
+- The rig has one master `Power` control; the redundant top-level `Enable` control
+  was removed while per-subject You/A/B/C/D checkboxes remain individual soft power.
+- `Gizmo` remains available.
+- Hotkey actions exist for master rig power on/off/toggle, but no default keys are
+  assigned. The machinima keybinding table was updated so users can bind them.
+- Rig controls, presets, multi-anchor work, mirror/aim controls, shaft behavior, and
+  the related cinematic light stack are included in the checkpoints.
 
-- Each cast scene entry can contain an `actor_style` map.
-- The local user is stored separately as `self_actor_style`.
-- Old scenes without these keys load with styling disabled.
-- Partial or malformed numeric values are defaulted, clamped, and checked for non-finite values.
-- Null UUID continues to mean You.
-- A non-null `gAgentID` also routes to the authoritative self-style record, even while the avatar object is temporarily unavailable during a rebuild.
+### Projector volumetric shafts
 
-## Main source locations
+- Lightbox `Proj Shafts` and Director `Shafts` use the same underlying settings.
+- Shared fast presets are available.
+- Cone controls are exposed in the Lightbox easy controls and in manual light
+  settings so the volumetric beam matches the authored projector cone.
+- Runtime shader assets are now staged for ordinary developer builds, avoiding a
+  linked executable running against stale shader sources.
 
-- Model, defaults, and API: `indra/newview/lldirectorcast.h`
-- Sanitization and scene serialization: `indra/newview/lldirectorcast.cpp`
-- Geometry harvesting and actor-style renderer: `indra/newview/llactormover.h`, `indra/newview/llactormover.cpp`
-- Frame integration: `indra/newview/llviewerdisplay.cpp`
-- Director control logic: `indra/newview/llfloaterdirector.h`, `indra/newview/llfloaterdirector.cpp`
-- Actor FX tab layout: `indra/newview/skins/default/xui/en/floater_director.xml`
+### Local atmospheric volumes
 
-Useful symbols/search terms:
+- Local Froxel atmospheric volumes were investigated but are **not claimed fixed**.
+- The in-world volume cage and numeric controls are local render tools; the reported
+  no-fog result remains held for later work.
+- See `doc/CINEMATIC_SUBJECT_FOG_HOLDOUT_DESIGN.md` for the design/research record.
 
-- `LLDirectorCast::ActorStyle`
-- `LLDirectorCast::getActorStyle`
-- `LLDirectorCast::setActorStyle`
-- `actor_style_wants_overlay`
-- `LLActorMover::renderStyledActors`
-- `LLFloaterDirector::refreshActorStyleTab`
-- `actor_style_tab`
+## Actor FX: final architecture
 
-## Adversarial-review fixes already applied
+Director has a final scrollable `Actor FX` tab for You and Director cast members.
+Settings persist for away actors and in Director scenes.
 
-Three independent review passes were performed. The following issues were found and fixed:
+Actor FX no longer redraws harvested Ghost Studio overlay geometry. It is a native,
+per-draw material transform attached to the viewer's existing beauty, alpha, shadow,
+glow, and velocity passes. This removes the overlay clone's duplicate-geometry cost
+and gives system bodies, BOM surfaces, rigged mesh, worn attachments, and standalone
+Animesh one ownership model.
 
-1. The original `Replace` wording falsely promised suppression of the normal avatar. It is now honestly labeled `Opaque cover (preview)` in the combo, tooltip, status, and renderer comments.
-2. An enabled Layer with alpha zero still ran the ghost renderer's depth-prime pass, creating an invisible silhouette that could occlude later Actor FX or Ghost Studio overlays. `actor_style_wants_overlay()` now excludes Layer alpha values at or below `0.001` from detection, harvesting, and rendering.
-3. Inserting Actor FX near Ghosts shifted every later saved `DirectorLastTab` index. Actor FX is now the final XML tab, preserving all previous indices.
-4. Self targeting previously depended on `isAgentAvatarValid()`, which could split state during avatar reconstruction. Model routing now uses stable `gAgentID`, and the UI uses stable `gAgent.getID()` when suppressing a duplicate self cast row.
-5. The snapshot call chain was explicitly audited. Deferred snapshots still run `render_ui()` because `display()` clears its local `for_snapshot` gate while retaining `gSnapshot`; non-deferred snapshots explicitly call `render_ui()` from `LLViewerWindow::rawSnapshot()`. Actor FX should be included exactly once in both paths.
+Render modes:
 
-The final post-fix review reported no release-blocking model, UI, rendering, persistence, or integration issue.
+- `Layer` mixes the selected style with the material result using Actor FX alpha.
+- `Replace` uses full style strength while preserving the material's authored
+  coverage and its normal pass ordering.
 
-## Post-runtime PBR/alpha fix — 2026-08-24
+The feature provides all 28 Ghost Studio-derived looks plus actor/custom hue, alpha,
+pixel size, shimmer speed/amount, glitch, distortion mode/amount, brightness, and
+effect FPS controls.
 
-The first in-world test on a complex PBR outfit exposed unstable alpha coverage/flicker and a larger-than-expected Layer FPS cost. Two concrete renderer defects were found and fixed:
+## Actor ownership and lifecycle
 
-1. **Cross-wearer spatial-group leakage.** `walkGhostSourceGeometry()` gathers the spatial groups containing the target's attachments, but a spatial group is a shared world bucket and can contain rigged draw batches from nearby avatars. The old callback accepted every rigged draw in those groups. Actor FX could therefore harvest and redraw unrelated nearby wearers, with the set changing as spatial grouping changed. This produced unstable PBR coverage and potentially enormous overdraw in crowded regions. Rigged batches are now accepted only when their drawing avatar is the requested wearer, or when the drawing avatar is an attached `LLControlAvatar` whose wearer is the requested avatar.
-2. **Incorrect PBR alpha semantics.** The actor-ghost shader previously multiplied every PBR base-colour texture's alpha into output coverage, even for GLTF `OPAQUE` materials. Opaque materials are required to ignore completed base-colour alpha; that channel may contain arbitrary or packed data and its mip transitions were punching/flickering holes in Actor FX. The draw now uploads explicit authored-alpha semantics: Opaque uses neither texture nor factor alpha, while Mask/Blend use texture alpha, appropriate vertex alpha, and the PBR base-colour factor alpha. The shader centralizes this as `ghostAlpha`/`authoredAlpha` before cutoff and look evaluation.
+- Residents use the stable avatar UUID.
+- You uses Director's self style, with the runtime agent UUID only for stable phase
+  and color generation.
+- Worn rigged attachments resolve to the wearer unless an explicitly cast animated
+  attachment has its own style.
+- Standalone Animesh uses the persistent animated linkset-root UUID, not the
+  regenerated `LLControlAvatar` UUID.
+- Older loaded scenes canonicalize available transient control-avatar IDs to their
+  current linkset root, including Subject and gaze references.
+- Draw infos cache a canonical primary owner and a wearer fallback.
+- The renderer resolves primary/fallback style in one cast-map lookup path and does
+  not query the world object list per draw.
 
-The same fix also corrects the Clone/Actor FX alpha slider: clone-color draws now retain the requested instance alpha instead of replacing it with the material factor alpha.
+Hard user/privacy suppression stays authoritative. Block/mute-list, Never Render,
+UI avatars, and a hard-muted wearer cannot be revived by Actor FX.
 
-Verification after this patch:
+## Avatar state and performance-jelly behavior
 
-- Integrated RelWithDebInfo compile, link, dependency deployment, and manifest copy: passed with exit code 0.
-- Release/x64 `ClCompile` for `llactormover.cpp`: passed with 0 warnings and 0 errors.
-- `git diff --check` for the renderer and shader: passed.
-- A complete runtime asset tree was staged beside the RelWithDebInfo executable, then verified to contain the updated `actorghostF.glsl` (`ghostAlpha`/`authoredAlpha`) and current Actor FX XUI. This matters because the normal development manifest's `copy` action does not copy the full shader tree; shaders are normally included only by its packaging action.
+An enabled/effective Actor FX style makes only automatic complexity/too-slow jelly
+state behave as normal for that actor:
 
-The new build still needs an in-world comparison on the reported outfit. Use the same camera, look, and graphics settings and toggle only Layer/Opaque cover when measuring FPS.
+- skeleton and animation update every frame;
+- real simulator animations resume instead of jelly stand/sit substitutes;
+- attachment and alternate-bind overrides are restored;
+- normal mesh visibility, extents, rigged rendering, and root placement are used;
+- impostor and performance-jelly draw shortcuts are bypassed.
 
-Ready-to-run post-fix test build:
+Disabling the style, or setting a Layer strength to effectively zero, returns the
+actor to the viewer's ordinary performance policy. Explicit hard mute remains
+stronger than styling.
 
-```text
-I:\alchemy-machinima\build-Windows-vs2026-os\newview\RelWithDebInfo\AlchemyTest.exe
-```
+This state fix is important for Bento/rigged heads, BOM faces, system avatars, and
+Animesh attachment surfaces; a live material shader is not sufficient if its
+skeleton remains animation-shelved.
 
-Do not test the currently running Release executable for this fix unless it has been fully relinked and its staged shader tree refreshed; an older Release asset tree was observed to contain a stale `actorghostF.glsl`.
+## Material, alpha, PBR, and color contracts
 
-## Build verification already completed
+- Authored alpha is sampled at the original UV and remains owned by the original
+  opaque/mask/blend shader and draw pool.
+- Actor FX UV distortion and RGB split affect RGB/material taps only.
+- PBR OPAQUE ignores texture alpha as required; MASK and BLEND retain authored
+  cutoff/transparency behavior.
+- Actor FX disabled/zero-strength is an exact identity path: no sRGB round trip,
+  optional UV work, look math, or extra texture taps.
+- Legacy deferred, PBR, and classic/system-avatar forward paths perform the Actor FX
+  transform in linear light and return to their existing encoded contract.
+- Fullbright geometric normals are reconstructed from derivatives where the glow
+  vertex format does not carry a normal.
+- Legacy and PBR material families publish styled emissive consistently.
+- Zero-authored-glow alpha faces get a lightweight synthetic glow sub-pass only for
+  an effective glow-producing style; other styles and disabled Actor FX do not pay
+  that duplicate alpha draw.
 
-The integrated RelWithDebInfo build, link, dependency deployment, and viewer manifest copy completed successfully with exit code 0:
+## Dissolve, shadows, motion blur, and snapshots
+
+- Beauty and shadow passes call the same rest/object-space Dissolve coverage utility.
+- Rigid, rigged, alpha-mask, PBR, and classic-avatar velocity shaders use the same
+  coverage, so dissolved holes do not write motion vectors and smear background
+  during cinematic motion blur.
+- High-resolution snapshots use raw framebuffer tile offsets and freeze Actor FX
+  time for all tiles, preventing seams and phase changes across a tiled capture.
+- Shader sources are staged beside normal test builds by `viewer_manifest.py`.
+
+## Shader compatibility and sampler safety
+
+- Actor FX beauty and dissolve modules use a coupled identity fallback. If either
+  optional effect module fails to compile/attach on a driver, both beauty and
+  shadow coverage degrade to identity together; core avatar/object shader families
+  continue instead of failing viewer shader load or producing unmatched silhouettes.
+- Indexed legacy/PBR material sampler families receive deterministic texture units
+  during generic uniform mapping; the later explicit setup remains a safety check.
+- Ordinary indexed texture shaders and indexed material families are asserted not to
+  share incompatible layouts, and the 32-channel canary remains enforced.
+
+## Primary implementation locations
+
+- Actor style model/persistence/owner canonicalization:
+  `indra/newview/lldirectorcast.h`, `indra/newview/lldirectorcast.cpp`
+- Effective live avatar state:
+  `indra/newview/llvoavatar.h`, `indra/newview/llvoavatar.cpp`
+- Per-draw uniforms, velocity submission, and owner resolution:
+  `indra/newview/lldrawpool.h`, `indra/newview/lldrawpool.cpp`
+- Alpha and synthetic glow:
+  `indra/newview/lldrawpoolalpha.h`, `indra/newview/lldrawpoolalpha.cpp`
+- Shader enrollment and fallback loading:
+  `indra/llrender/llshadermgr.cpp`, `indra/newview/llviewershadermgr.h`,
+  `indra/newview/llviewershadermgr.cpp`
+- Material sampler mapping:
+  `indra/llrender/llglslshader.h`, `indra/llrender/llglslshader.cpp`
+- Shared effect modules:
+  `indra/newview/app_settings/shaders/class1/alchemy/actorFxF.glsl`,
+  `actorFxDissolveF.glsl`, and their fallback modules
+- Director UI:
+  `indra/newview/llfloaterdirector.cpp`,
+  `indra/newview/skins/default/xui/en/floater_director.xml`
+- Runtime shader staging: `indra/newview/viewer_manifest.py`
+
+## Required build and static checks
+
+Run from `I:\alchemy-machinima`:
 
 ```powershell
-cmake --build build-Windows-vs2026-os --config RelWithDebInfo --target alchemy-bin -- /m
-```
-
-Built executable:
-
-```text
-I:\alchemy-machinima\build-Windows-vs2026-os\newview\RelWithDebInfo\AlchemyTest.exe
-```
-
-Additional checks already passed:
-
-- `floater_director.xml` parses as XML.
-- All 19 Actor FX named controls are unique and match their C++ control types.
-- `git diff --check` reports no Actor FX whitespace errors.
-- Selected-file compile checks passed for the model, renderer, and Director UI.
-
-The feature has not yet received a full interactive in-world visual test; that is the purpose of this handoff.
-
-## Recommended runtime test matrix
-
-### 1. Basic You styling
-
-1. Launch the RelWithDebInfo executable and log in.
-2. Open Director and select the final **Actor FX** tab.
-3. Select **You** and enable actor styling.
-4. Cycle several distinctive looks: Ghost, Clone, Wireframe, X-ray, Toon/Ink, Dissolve, Gold Statue, and Holo Echo.
-5. Verify sliders update the live actor without creating a separate cast/clone entry.
-6. Disable styling and confirm the effect disappears cleanly.
-
-### 2. Layer and alpha behavior
-
-1. Use `Layer` mode.
-2. Test alpha at `1.0`, approximately `0.5`, and `0.0`.
-3. At alpha zero, confirm the style vanishes and does not hide another Actor FX actor or a Ghost Studio overlay positioned behind it.
-4. Re-enable a visible alpha and verify rendering resumes.
-5. On PBR `OPAQUE` surfaces, confirm texture alpha no longer creates holes, crawling transparency, or mip-dependent flicker.
-6. On PBR `MASK` surfaces such as cutout feathers/hair, confirm authored holes and cutoff edges remain intact.
-7. On true PBR `BLEND` surfaces, confirm transparency follows the material without turning opaque surfaces translucent.
-
-### 3. Opaque cover preview
-
-1. Select `Opaque cover (preview)`.
-2. Confirm the effect is forced opaque regardless of the stored alpha slider.
-3. Confirm the normal actor may still be visible underneath for open effects such as Wireframe, X-ray, and Dissolve. This is expected for the preview implementation.
-
-### 4. Multiple cast actors
-
-1. Add at least two avatars/animesh actors to Director Cast.
-2. Give each actor a different look and hue.
-3. Move the camera so their silhouettes overlap.
-4. Confirm effects follow the correct live actors and are not duplicated.
-5. Confirm selecting or editing one actor does not alter the other actor's settings.
-
-### 5. Away/return lifecycle
-
-1. Configure a cast member's effect.
-2. Have the actor leave the region or otherwise become unresolved.
-3. Confirm the selector retains an `(away)` entry and its controls remain editable.
-4. When the actor returns and resolves again, confirm the stored style resumes on that actor.
-
-### 6. Self rebuild stability
-
-Trigger an outfit/avatar rebuild if practical. Confirm the You entry does not duplicate and its style settings do not reset or jump to a cast-member record.
-
-### 7. Scene persistence
-
-1. Configure different effects for You and multiple cast members.
-2. Save a Director scene.
-3. Change or reset the effects.
-4. Reload the scene.
-5. Confirm all per-actor fields restore correctly.
-6. Load an older scene without Actor FX data and confirm styling defaults to off.
-
-### 8. UI-hidden filming
-
-Enable an Actor FX look, hide viewer UI/debug UI using the normal filming shortcut, and verify the styled actor remains visible as scene dressing.
-
-### 9. Snapshot coverage
-
-Capture:
-
-- A normal deferred snapshot
-- A high-resolution deferred snapshot
-- A non-deferred snapshot if that path is available in the current configuration
-
-Confirm the Actor FX result appears once in each image and is not missing or double-rendered.
-
-### 10. Ghost Studio coexistence
-
-Enable both Actor FX and one or more existing Ghost Studio overlays. Confirm both render and that a zero-alpha Actor FX Layer cannot invisibly occlude a Studio ghost.
-
-### 11. Crowded-scene ownership and performance regression
-
-1. Stand in a region with several nearby avatars, preferably including PBR outfits.
-2. Apply Actor FX only to You.
-3. Confirm no geometry from another wearer appears, flashes, or inherits the effect.
-4. Record baseline FPS with Actor FX disabled.
-5. Use one fixed look and camera; record Layer FPS at alpha `1.0`, then Opaque-cover FPS.
-6. Repeat at Layer alpha `0.5`.
-7. Move nearby avatars across spatial-group boundaries and confirm the styled geometry and frame time remain stable.
-8. Report the exact look, alpha, resolution, nearby-avatar count, and before/after FPS if a substantial Layer-only gap remains.
-
-## Known limitations — do not report these as new regressions
-
-1. **No true replacement yet.** Opaque cover leaves the normal actor rendering underneath.
-2. **Overlay-style depth behavior.** Actor FX uses the same post-finalize overlay approach as overlay clones, so ordinary looks may show through props or walls. World-depth occlusion is not implemented for this pass.
-3. **Legacy/system body coverage.** The shared geometry harvester focuses on worn mesh and attachments and does not reproduce the complete legacy system-avatar body path. A pure legacy avatar can be partially styled or show no useful effect.
-4. **Alpha-blended materials.** Some advanced looks shade solid/masked sweeps but do not fully restyle true alpha-blended hair, clothing, or attachments. Clone and Wireframe have broader coverage. This is separate from the fixed bug where Opaque PBR surfaces incorrectly consumed their texture alpha.
-5. **Shader fallback.** If an advanced actor-ghost shader fails to compile, the shared renderer can fall back to the basic Ghost look while the combo still displays the requested look.
-
-## What should be treated as a bug
-
-- Crash, assertion, or persistent GL-state corruption when enabling/disabling Actor FX
-- A style targeting the wrong cast member
-- You settings disappearing across an avatar rebuild
-- Saved scene fields failing to restore
-- Actor FX missing from ordinary or high-resolution snapshots
-- Actor FX disappearing merely because viewer UI is hidden
-- Alpha-zero Layer hiding another Actor FX or Ghost Studio overlay
-- Duplicate rendering of the same wearer because they are reachable as both You and a cast member
-- Significant cost while no Actor FX style, path ghost, or Ghost Studio instance is active
-
-## If a fix is needed
-
-Keep the patch tightly scoped. Re-run at minimum:
-
-```powershell
-[xml](Get-Content -Raw indra/newview/skins/default/xui/en/floater_director.xml) | Out-Null
 git diff --check
-cmake --build build-Windows-vs2026-os --config RelWithDebInfo --target alchemy-bin -- /m
+cmake --build build-Windows-vs2026-os --config RelWithDebInfo --target alchemy-bin -- /m:4
 ```
 
-Do not solve the known true-replacement or world-depth limitations by globally suppressing avatar render passes. A correct replacement implementation must account for system body geometry, rigged and non-rigged attachments, alpha/material passes, impostors, and shadow casting without punching holes in normal rendering.
+Expected executable:
+
+```text
+I:\alchemy-machinima\build-Windows-vs2026-os\newview\RelWithDebInfo\AlchemyTest.exe
+```
+
+Confirm the staged runtime shader tree contains every modified/new shader and matches
+the source hashes before testing.
+
+### Validation completed in this session
+
+- `git diff --check` passes (only Git's existing CRLF conversion notices remain).
+- The complete RelWithDebInfo viewer compiled and linked successfully. Visual Studio
+  18/MSVC 14.51 reproducibly crashes inside link-time optimization while processing
+  unchanged `llimagej2coj.cpp`; the successful validation build therefore used the
+  local-only MSBuild override below. This does not change source or Actor FX behavior.
+
+```powershell
+cmake --build build-Windows-vs2026-os --config RelWithDebInfo --target alchemy-bin -- /m:4 /p:WholeProgramOptimization=false /p:LinkTimeCodeGeneration=Default
+```
+
+- All 76 modified/new shader sources were present in the staged runtime tree with
+  identical SHA-256 hashes: 0 missing and 0 mismatched.
+- The exact staged `AlchemyTest.exe` launched responsively on an NVIDIA GeForce RTX
+  5090 using OpenGL 4.6 / GLSL 4.60 and driver 591.74.
+- The GPU loaded deferred shaders. There were no Actor FX compile/link, varying,
+  texture-channel, or indexed-sampler failures. Indexed PBR glow used the GPU's full
+  32-channel limit as designed.
+- The existing optional `cineOutlineF.glsl` compile failure remains; it disables only
+  Cine Outline and did not prevent deferred shaders from loading. It is unrelated to
+  Actor FX.
+- The test viewer was stopped at the login screen after shader validation. The
+  in-world visual and frame-time matrix below still needs to be run on the reported
+  production avatars before declaring the cinematic result visually approved.
+
+## Cinematic runtime test matrix
+
+Use a fixed camera, resolution, graphics preset, environment, and animation. Capture
+screenshots or short lossless clips for comparisons.
+
+1. **Disabled baseline/performance**
+   - Actor FX disabled on all actors.
+   - Confirm exact normal appearance and record GPU/CPU frame time.
+   - Compare a crowded shot to the checkpoint build; disabled Actor FX must not
+     show the old Layer overlay cost.
+
+2. **System/BOM avatar**
+   - Test classic system body, BOM skin/tattoos/clothing, hair, and eyes.
+   - Check deferred and any available forward fallback.
+   - Verify face/body hue and brightness match rather than splitting by pass.
+
+3. **Rigged Bento head and layered alpha**
+   - Use the reported rigged head/outfit with BOM and multiple alpha faces.
+   - Cycle Hologram, Dissolve, Halftone/Comic, Thermal, Night Vision, and Neon.
+   - Look for missing head sections, flicker, alpha crawling, doubled surfaces, or
+     animation/joint offset.
+
+4. **PBR matrix**
+   - PBR OPAQUE, MASK, and BLEND materials.
+   - Normal/ORM/emissive textures, fullbright, double-sided faces, and zero-authored
+     glow materials.
+   - Confirm opaque faces never consume arbitrary texture alpha, mask holes stay
+     exact, blend transparency remains sorted, and emissive is stable.
+
+5. **Standalone and worn Animesh**
+   - Test a standalone animated linkset and a worn animated attachment.
+   - Save/reload a Director scene and force an Animesh/control-avatar rebuild.
+   - Confirm the style stays on the correct stable root and all surfaces animate.
+
+6. **Performance-jellied actor**
+   - Lower avatar complexity/ART thresholds until the actor jellies without styling.
+   - Enable Actor FX and confirm the live skeleton, rigged head, animations, and
+     attachment overrides return.
+   - Apply Never Render or block/mute and confirm Actor FX does not revive the actor.
+
+7. **Dissolve parity**
+   - Inspect beauty and all shadows frame by frame.
+   - Enable cinematic motion blur and move/animate the actor rapidly.
+   - Confirm dissolved holes do not leave shadow islands or velocity smears.
+
+8. **Glow parity**
+   - Compare opaque, alpha, fullbright, legacy material, and PBR faces with authored
+     glow zero and nonzero.
+   - Confirm edge-dependent styles follow real geometry and bloom without a fake
+     camera-facing normal.
+
+9. **High-resolution snapshot**
+   - Capture a multi-tile high-resolution image using pixelation, scanlines, shimmer,
+     glitch, and Dissolve.
+   - Inspect every tile boundary at 100%; there must be no pattern seam or time jump.
+
+10. **Multiple actors and lifecycle**
+    - Style You plus A/B/C/D and a standalone Animesh with distinct looks.
+    - Overlap silhouettes, move between spatial groups, leave/return, save/reload,
+      and rebuild outfits.
+    - Confirm no style leaks to another owner and away settings resume correctly.
+
+## Report format
+
+For a visual or performance failure, record:
+
+- executable/configuration and git commit;
+- GPU, driver, resolution, and graphics settings;
+- avatar surface type (system/BOM/rigged/PBR/Animesh);
+- Actor FX mode/look/alpha/distortion/effect FPS;
+- whether the face is opaque, mask, blend, fullbright, or emissive;
+- baseline and styled CPU/GPU frame time;
+- screenshot/clip plus the exact reproduction steps.
+
+Do not report the unresolved local atmospheric-volume no-fog issue as an Actor FX
+regression; it remains a separate held task.

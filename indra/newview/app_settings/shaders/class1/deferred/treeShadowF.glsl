@@ -33,12 +33,20 @@ uniform float minimum_alpha;
 uniform sampler2D diffuseMap;
 
 in vec2 vary_texcoord0;
+in vec3 vary_actor_fx_position;
+
+bool actorFxDissolveDiscard(vec3 object_position);
 
 void main()
 {
     float alpha = texture(diffuseMap, vary_texcoord0.xy).a;
 
     if (alpha < minimum_alpha)
+    {
+        discard;
+    }
+
+    if (actorFxDissolveDiscard(vary_actor_fx_position))
     {
         discard;
     }

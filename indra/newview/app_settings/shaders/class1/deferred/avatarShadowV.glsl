@@ -30,9 +30,11 @@ mat4 getSkinnedTransform();
 in vec3 position;
 in vec3 normal;
 in vec2 texcoord0;
+out vec3 vary_actor_fx_position;
 
 void main()
 {
+    vary_actor_fx_position = position;
     vec4 pos;
     vec3 norm;
 
@@ -51,5 +53,4 @@ void main()
     pos = projection_matrix * pos;
     gl_Position = pos;
 }
-
 

@@ -1632,7 +1632,9 @@ void render_ui(F32 zoom_factor, int subfield)
         // are SCENE DRESSING, not editing indicators. Actor styles use the same
         // clone renderer at the actor's exact live placement and therefore share
         // this always-visible, pre-UI compositing stage.
-        LLActorMover::instance().renderStyledActors();
+        // Actor FX is applied by the actor's native material shaders.  The
+        // former overlay-clone pass is intentionally not rendered here: it
+        // duplicated geometry and produced incorrect alpha/PBR composition.
 
         // [GhostStudio] studio ghost instances are SCENE DRESSING, not an
         // editing indicator. They draw HERE -- before (and independent of) the

@@ -76,6 +76,12 @@ class ViewerManifest(LLManifest):
             self.path("*.luau")
             self.path("*.yml")
 
+        # Shader sources are runtime assets, not packaging-only artwork.  Stage
+        # them for ordinary developer/test builds as well so a freshly linked
+        # viewer cannot start with stale programs or miss a newly added include.
+        with self.prefix(src_dst="app_settings"):
+            self.path("shaders")
+
         if self.is_packaging_viewer():
             with self.prefix(src_dst="app_settings"):
                 self.exclude("logcontrol.xml")
@@ -85,8 +91,6 @@ class ViewerManifest(LLManifest):
                 # Branded splash icon for the SDL splash screen (LLSplashScreenSDL)
                 self.path("alchemy_logo.png")
 
-                # include the entire shaders directory recursively
-                self.path("shaders")
                 # include the extracted list of contributors
                 contributions_path = os.path.join(self.args['source'], "..", "..", "doc", "contributions.txt")
                 contributor_names = self.extract_names(contributions_path)

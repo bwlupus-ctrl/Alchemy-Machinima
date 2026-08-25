@@ -139,6 +139,9 @@ static void prepare_alpha_shader(LLGLSLShader* shader, bool deferredEnvironment,
 
 extern bool gCubeSnapshot;
 
+static LLStaticHashedString sActorFxUseCoverageAlpha("actorFxUseCoverageAlpha");
+static LLStaticHashedString sActorFxAlphaCutoffMode("actorFxAlphaCutoffMode");
+
 void LLDrawPoolAlpha::renderPostDeferred(S32 pass)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
@@ -177,6 +180,9 @@ void LLDrawPoolAlpha::renderPostDeferred(S32 pass)
 
     pbr_emissive_shader = &gPBRGlowProgram;
     prepare_alpha_shader(pbr_emissive_shader, false, water_sign);
+
+    prepare_alpha_shader(&gActorFxGlowProgram, false, water_sign);
+    prepare_alpha_shader(&gActorFxPBRGlowProgram, false, water_sign);
 
 
     fullbright_shader   =
@@ -533,6 +539,7 @@ void LLDrawPoolAlpha::renderEmissives(std::vector<LLDrawInfo*>& emissives)
 {
     emissive_shader->bind();
     emissive_shader->uniform1f(LLShaderMgr::EMISSIVE_BRIGHTNESS, 1.f);
+    emissive_shader->uniform1i(sActorFxUseCoverageAlpha, 1);
 
     for (LLDrawInfo* draw : emissives)
     {
@@ -545,6 +552,7 @@ void LLDrawPoolAlpha::renderEmissives(std::vector<LLDrawInfo*>& emissives)
 void LLDrawPoolAlpha::renderPbrEmissives(std::vector<LLDrawInfo*>& emissives)
 {
     pbr_emissive_shader->bind();
+    pbr_emissive_shader->uniform1i(sActorFxUseCoverageAlpha, 1);
 
     for (LLDrawInfo* draw : emissives)
     {
@@ -563,6 +571,7 @@ void LLDrawPoolAlpha::renderRiggedEmissives(std::vector<LLDrawInfo*>& emissives)
     LLGLSLShader* shader = emissive_shader->mRiggedVariant;
     shader->bind();
     shader->uniform1f(LLShaderMgr::EMISSIVE_BRIGHTNESS, 1.f);
+    shader->uniform1i(sActorFxUseCoverageAlpha, 1);
 
     const LLVOAvatar* lastAvatar = nullptr;
     U64 lastMeshId = 0;
@@ -585,6 +594,7 @@ void LLDrawPoolAlpha::renderRiggedPbrEmissives(std::vector<LLDrawInfo*>& emissiv
 {
     LLGLDepthTest depth(GL_TRUE, GL_FALSE); //disable depth writes since "emissive" is additive so sorting doesn't matter
     pbr_emissive_shader->bind(true);
+    pbr_emissive_shader->mRiggedVariant->uniform1i(sActorFxUseCoverageAlpha, 1);
 
     const LLVOAvatar* lastAvatar = nullptr;
     U64 lastMeshId = 0;
@@ -602,6 +612,77 @@ void LLDrawPoolAlpha::renderRiggedPbrEmissives(std::vector<LLDrawInfo*>& emissiv
         LLRenderPass::uploadActorFx(*draw);
         draw->mVertexBuffer->setBuffer();
         draw->mVertexBuffer->drawRange(LLRender::TRIANGLES, draw->mStart, draw->mEnd, draw->mCount, draw->mOffset);
+    }
+}
+
+void LLDrawPoolAlpha::renderActorFxEmissives(
+    std::vector<LLDrawInfo*>& emissives, bool pbr, bool rigged)
+{
+    LLGLDepthTest depth(GL_TRUE, GL_FALSE);
+    LLGLSLShader* shader = pbr ? &gActorFxPBRGlowProgram
+                               : &gActorFxGlowProgram;
+    if (rigged)
+    {
+        llassert(shader->mRiggedVariant != nullptr);
+        shader = shader->mRiggedVariant;
+    }
+    shader->bind();
+
+    const LLVOAvatar* last_avatar = nullptr;
+    U64 last_mesh_id = 0;
+    bool skip_last_skin = false;
+
+    for (LLDrawInfo* draw : emissives)
+    {
+        if (rigged && !uploadMatrixPalette(draw->mAvatar, draw->mSkinInfo,
+                                           last_avatar, last_mesh_id,
+                                           skip_last_skin))
+        {
+            continue;
+        }
+
+        LLRenderPass::applyModelMatrix(*draw);
+        const bool custom_blend =
+            draw->mBlendFuncDst != LLRender::BF_SOURCE_ALPHA &&
+            draw->mBlendFuncSrc != LLRender::BF_SOURCE_ALPHA;
+        if (pbr)
+        {
+            llassert(draw->mGLTFMaterial);
+            LLGLDisable cull_face(draw->mGLTFMaterial->mDoubleSided
+                                      ? GL_CULL_FACE : 0);
+            draw->mGLTFMaterial->bind(draw->mTexture);
+            if (custom_blend)
+            {
+                // Match the beauty alpha draw's custom-blend cutoff override.
+                // Ordinary GLTF BLEND keeps the -1 supplied by material bind.
+                shader->setMinimumAlpha(0.f);
+            }
+            LLRenderPass::uploadActorFx(*draw);
+            draw->mVertexBuffer->setBuffer();
+            draw->mVertexBuffer->drawRange(LLRender::TRIANGLES, draw->mStart,
+                                           draw->mEnd, draw->mCount,
+                                           draw->mOffset);
+        }
+        else
+        {
+            shader->setMinimumAlpha(custom_blend ? 0.f :
+                (LLPipeline::sImpostorRender ? MINIMUM_IMPOSTOR_ALPHA
+                                             : MINIMUM_ALPHA));
+
+            // Mirror the beauty shader's cutout policy. Legacy material BLEND
+            // has no cutoff; fullbright tests texture alpha; ordinary lit
+            // alpha tests the complete texture * face alpha coverage.
+            const S32 cutoff_mode = draw->mMaterial.notNull()
+                ? 0 : (draw->mFullbright ? 1 : 2);
+            shader->uniform1i(sActorFxAlphaCutoffMode, cutoff_mode);
+            const bool tex_setup = TexSetup(draw, false);
+            LLRenderPass::uploadActorFx(*draw);
+            draw->mVertexBuffer->setBuffer();
+            draw->mVertexBuffer->drawRange(LLRender::TRIANGLES, draw->mStart,
+                                           draw->mEnd, draw->mCount,
+                                           draw->mOffset);
+            RestoreTexSetup(tex_setup);
+        }
     }
 }
 
@@ -757,11 +838,19 @@ void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, EAlphaStream stream
             static std::vector<LLDrawInfo*> rigged_emissives;
             static std::vector<LLDrawInfo*> pbr_emissives;
             static std::vector<LLDrawInfo*> pbr_rigged_emissives;
+            static std::vector<LLDrawInfo*> actor_fx_emissives;
+            static std::vector<LLDrawInfo*> actor_fx_rigged_emissives;
+            static std::vector<LLDrawInfo*> actor_fx_pbr_emissives;
+            static std::vector<LLDrawInfo*> actor_fx_pbr_rigged_emissives;
 
             emissives.resize(0);
             rigged_emissives.resize(0);
             pbr_emissives.resize(0);
             pbr_rigged_emissives.resize(0);
+            actor_fx_emissives.resize(0);
+            actor_fx_rigged_emissives.resize(0);
+            actor_fx_pbr_emissives.resize(0);
+            actor_fx_pbr_rigged_emissives.resize(0);
 
             bool is_particle_or_hud_particle = group->getSpatialPartition()->mPartitionType == LLViewerRegion::PARTITION_PARTICLE
                                                       || group->getSpatialPartition()->mPartitionType == LLViewerRegion::PARTITION_HUD_PARTICLE;
@@ -909,6 +998,7 @@ void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, EAlphaStream stream
                 }
 
                 bool tex_setup = TexSetup(&params, (mat != nullptr));
+                bool actor_fx_glow = false;
 
                 {
                     // Set the guarded indexed blend BEFORE the global call, not
@@ -948,7 +1038,7 @@ void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, EAlphaStream stream
                         reset_minimum_alpha = true;
                     }
 
-                    LLRenderPass::uploadActorFx(params);
+                    actor_fx_glow = LLRenderPass::uploadActorFx(params);
                     params.mVertexBuffer->setBuffer();
                     params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
                     stop_glerror();
@@ -985,6 +1075,27 @@ void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, EAlphaStream stream
                             pbr_emissives.push_back(&params);
                         }
                     }
+                }
+                else if (getType() != LLDrawPool::POOL_ALPHA_PRE_WATER &&
+                         actor_fx_glow)
+                {
+                    // Zero-authored-glow faces have no TYPE_EMISSIVE stream.
+                    // Queue only effective glow looks into the lightweight
+                    // colour-stream shader, avoiding blanket duplicate draws.
+                    std::vector<LLDrawInfo*>* target = nullptr;
+                    if (params.mGLTFMaterial.notNull())
+                    {
+                        target = params.mAvatar
+                            ? &actor_fx_pbr_rigged_emissives
+                            : &actor_fx_pbr_emissives;
+                    }
+                    else
+                    {
+                        target = params.mAvatar
+                            ? &actor_fx_rigged_emissives
+                            : &actor_fx_emissives;
+                    }
+                    target->push_back(&params);
                 }
 
                 if (tex_setup)
@@ -1045,6 +1156,27 @@ void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, EAlphaStream stream
                 {
                     light_enabled = true;
                     renderRiggedPbrEmissives(pbr_rigged_emissives);
+                    rebind = true;
+                }
+
+                if (!actor_fx_emissives.empty())
+                {
+                    renderActorFxEmissives(actor_fx_emissives, false, false);
+                    rebind = true;
+                }
+                if (!actor_fx_pbr_emissives.empty())
+                {
+                    renderActorFxEmissives(actor_fx_pbr_emissives, true, false);
+                    rebind = true;
+                }
+                if (!actor_fx_rigged_emissives.empty())
+                {
+                    renderActorFxEmissives(actor_fx_rigged_emissives, false, true);
+                    rebind = true;
+                }
+                if (!actor_fx_pbr_rigged_emissives.empty())
+                {
+                    renderActorFxEmissives(actor_fx_pbr_rigged_emissives, true, true);
                     rebind = true;
                 }
 

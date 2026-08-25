@@ -76,6 +76,11 @@ vec3 linear_to_srgb(vec3 c);
 vec4 applySkyAndWaterFog(vec3 pos, vec3 additive, vec3 atten, vec4 color);
 #ifdef HAS_ACTOR_FX
 vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
+vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
+bool actorFxUvTransformEnabled();
+bool actorFxRgbSplitEnabled();
+vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
+vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
 #endif
 void calcAtmosphericVarsLinear(vec3 inPositionEye, vec3 norm, vec3 light_dir, out vec3 sunlit, out vec3 amblit, out vec3 atten, out vec3 additive);
 
@@ -204,6 +209,33 @@ void main()
     vec4 diffuse_tap = diffuseLookup(vary_texcoord0.xy);
 #endif
 
+#ifdef HAS_ACTOR_FX
+    vec2 fx_uv = vary_texcoord0.xy;
+    bool fx_uv_transform = actorFxUvTransformEnabled();
+    bool fx_rgb_split = actorFxRgbSplitEnabled();
+    if (fx_uv_transform)
+    {
+        fx_uv = actorFxUv(fx_uv, vary_position);
+#ifdef USE_DIFFUSE_TEX
+        diffuse_tap.rgb = texture(diffuseMap, fx_uv).rgb;
+#endif
+#ifdef USE_INDEXED_TEX
+        diffuse_tap.rgb = diffuseLookup(fx_uv).rgb;
+#endif
+    }
+    if (fx_rgb_split)
+    {
+#ifdef USE_DIFFUSE_TEX
+        diffuse_tap.r = texture(diffuseMap, actorFxRgbSplitUv(fx_uv, -1.0)).r;
+        diffuse_tap.b = texture(diffuseMap, actorFxRgbSplitUv(fx_uv,  1.0)).b;
+#endif
+#ifdef USE_INDEXED_TEX
+        diffuse_tap.r = diffuseLookup(actorFxRgbSplitUv(fx_uv, -1.0)).r;
+        diffuse_tap.b = diffuseLookup(actorFxRgbSplitUv(fx_uv,  1.0)).b;
+#endif
+    }
+#endif
+
     vec4 diffuse_srgb = diffuse_tap;
 
 #ifdef FOR_IMPOSTOR
@@ -255,6 +287,10 @@ void main()
 #ifdef HAS_ACTOR_FX
     diffuse_linear.rgb = actorFxApply(diffuse_linear.rgb, norm, vary_position,
                                       vary_texcoord0.xy);
+    // Transparent legacy surfaces have no GBuffer emissive attachment.  Add
+    // the styled emission to their forward beauty result; the separate glow
+    // sub-pass only publishes bloom metadata and never changes coverage.
+    vec3 actor_fx_emissive = actorFxEmissive(vec3(0.0), diffuse_linear.rgb);
 #endif
 
     vec3 sunlit;
@@ -315,6 +351,9 @@ void main()
 
     // sum local light contrib in linear colorspace
     color.rgb += light.rgb;
+#ifdef HAS_ACTOR_FX
+    color.rgb += actor_fx_emissive;
+#endif
 
     color.rgb = applySkyAndWaterFog(pos.xyz, additive, atten, color).rgb;
 

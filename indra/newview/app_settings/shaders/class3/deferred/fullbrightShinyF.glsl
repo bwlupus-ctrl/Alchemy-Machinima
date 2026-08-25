@@ -54,6 +54,12 @@ void sampleReflectionProbesLegacy(inout vec3 ambenv, inout vec3 glossenv, inout 
 void applyLegacyEnv(inout vec3 color, vec3 legacyenv, vec4 spec, vec3 pos, vec3 norm, float envIntensity);
 #ifdef HAS_ACTOR_FX
 vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
+vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
+bool actorFxActive();
+bool actorFxUvTransformEnabled();
+bool actorFxRgbSplitEnabled();
+vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
+vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
 #endif
 
 void mirrorClip(vec3 pos);
@@ -61,10 +67,34 @@ void mirrorClip(vec3 pos);
 void main()
 {
     mirrorClip(vary_position);
+#ifdef HAS_ACTOR_FX
+    bool actor_fx_active = actorFxActive();
+    vec2 fx_uv = vary_texcoord0.xy;
+    if (actor_fx_active && actorFxUvTransformEnabled())
+    {
+        fx_uv = actorFxUv(fx_uv, vary_position);
+    }
+#ifdef HAS_DIFFUSE_LOOKUP
+    vec4 color = diffuseLookup(fx_uv);
+#else
+    vec4 color = texture(diffuseMap, fx_uv);
+#endif
+    if (actor_fx_active && actorFxRgbSplitEnabled())
+    {
+#ifdef HAS_DIFFUSE_LOOKUP
+        color.r = diffuseLookup(actorFxRgbSplitUv(fx_uv, -1.0)).r;
+        color.b = diffuseLookup(actorFxRgbSplitUv(fx_uv,  1.0)).b;
+#else
+        color.r = texture(diffuseMap, actorFxRgbSplitUv(fx_uv, -1.0)).r;
+        color.b = texture(diffuseMap, actorFxRgbSplitUv(fx_uv,  1.0)).b;
+#endif
+    }
+#else
 #ifdef HAS_DIFFUSE_LOOKUP
     vec4 color = diffuseLookup(vary_texcoord0.xy);
 #else
     vec4 color = texture(diffuseMap, vary_texcoord0.xy);
+#endif
 #endif
 
     color.rgb *= vertex_color.rgb;
@@ -86,17 +116,38 @@ void main()
     vec3 legacyenv = vec3(0.0);
     vec3 norm = normalize(vary_texcoord1.xyz);
 #ifdef HAS_ACTOR_FX
-    color.rgb = actorFxApply(color.rgb, norm, vary_position, vary_texcoord0.xy);
+    if (actor_fx_active)
+    {
+        color.rgb = linear_to_srgb(actorFxApply(srgb_to_linear(color.rgb),
+                                                norm, vary_position,
+                                                vary_texcoord0.xy));
+    }
 #endif
     vec4 spec = vec4(0,0,0,0);
     sampleReflectionProbesLegacy(ambenv, glossenv, legacyenv, vec2(0), pos.xyz, norm.xyz, spec.a, env_intensity, false, amblit);
 
     color.rgb = srgb_to_linear(color.rgb);
+#ifdef HAS_ACTOR_FX
+    // Capture the styled, unlit surface colour before reflection-probe energy
+    // is added. Actor FX emission is a material property, not reflected light.
+    vec3 actor_fx_emissive = actor_fx_active
+        ? actorFxEmissive(vec3(0.0), color.rgb) : vec3(0.0);
+#endif
 
     applyLegacyEnv(color.rgb, legacyenv, spec, pos, norm, env_intensity);
 #endif
 
     color.a = 1.0;
+#ifdef HAS_ACTOR_FX
+    if (actor_fx_active)
+    {
+        // This is an unblended world pass, so destination alpha is glow
+        // metadata rather than material coverage.  Publish synthetic Actor FX
+        // emission without changing the beauty colour or authored alpha path.
+        color.a += max(max(actor_fx_emissive.r, actor_fx_emissive.g),
+                       actor_fx_emissive.b);
+    }
+#endif
 
     frag_color = max(color, vec4(0));
 }

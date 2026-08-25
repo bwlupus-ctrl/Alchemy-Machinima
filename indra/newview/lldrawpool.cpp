@@ -50,6 +50,7 @@
 #include "pipeline.h"
 #include "llspatialpartition.h"
 #include "llviewercamera.h"
+#include "llviewerwindow.h"
 #include "lldrawpoolwlsky.h"
 #include "llglslshader.h"
 #include "llglcommonfunc.h"
@@ -61,8 +62,12 @@
 #include "llactormover.h"
 
 S32 LLDrawPool::sNumDrawPools = 0;
+extern bool gSnapshot;
 static const LLClientOuterTransform* sLastOuterTransform = nullptr;
 static U32 sLastOuterTransformRevision = 0;
+
+void setup_texture_matrix(LLDrawInfo& params);
+void teardown_texture_matrix(LLDrawInfo& params);
 
 //=============================
 // Draw Pool Implementation
@@ -429,11 +434,14 @@ const LLStaticHashedString sActorFxTime("actorFxTime");
 const LLStaticHashedString sActorFxTint("actorFxTint");
 const LLStaticHashedString sActorFxParams0("actorFxParams0");
 const LLStaticHashedString sActorFxParams1("actorFxParams1");
+const LLStaticHashedString sActorFxParams2("actorFxParams2");
 
 LLGLSLShader* get_actor_fx_shader()
 {
     LLGLSLShader* shader = LLGLSLShader::sCurBoundShaderPtr;
-    return shader && shader->mFeatures.hasActorFx ? shader : nullptr;
+    return shader &&
+           (shader->mFeatures.hasActorFx || shader->mFeatures.hasActorFxShadow)
+        ? shader : nullptr;
 }
 }
 
@@ -449,28 +457,51 @@ void LLRenderPass::uploadActorFxDisabled()
     }
 }
 
-// static
-void LLRenderPass::uploadActorFx(const LLUUID& actor_id)
+bool actor_fx_style_has_glow(const LLDirectorCast::ActorStyle& style)
+{
+    switch (style.mStyle)
+    {
+        case 2:  // Hologram
+        case 6:  // Neon outline
+        case 14: // Blueprint
+        case 15: // Ectoplasm
+        case 17: // Prism
+        case 19: // Wallhack / ESP
+        case 26: // Sonar reveal
+        case 27: // Hologram interference
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool upload_actor_fx_style(const LLUUID& style_id,
+                           const LLDirectorCast::ActorStyle& style)
 {
     LLGLSLShader* shader = get_actor_fx_shader();
     if (!shader)
     {
-        return;
+        return false;
     }
 
-    const LLDirectorCast::ActorStyle& style =
-        LLDirectorCast::instance().getActorStyle(actor_id);
-    if (!style.mEnabled)
+    // A zero-strength Layer has no visible contribution. Treat it as disabled
+    // so it takes the uniform fast path and agrees with the live-LOD/impostor
+    // policy used by the avatar pools. Replace deliberately remains effective
+    // regardless of its stored Layer alpha.
+    const bool effective = style.mEnabled &&
+        (style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE ||
+         style.mAlpha > 0.001f);
+    if (!effective)
     {
         shader->uniform1i(sActorFxEnabled, 0);
-        return;
+        return false;
     }
 
     // Null is Director's explicit identity for You. Use the runtime agent id
     // only for stable tint/phase generation; the style lookup above must retain
     // Director's null-is-self semantics.
-    const LLUUID& stable_id = actor_id.isNull() && gAgentID.notNull()
-        ? gAgentID : actor_id;
+    const LLUUID& stable_id = style_id.isNull() && gAgentID.notNull()
+        ? gAgentID : style_id;
 
     LLColor4 tint;
     if (style.mUseActorHue)
@@ -484,7 +515,18 @@ void LLRenderPass::uploadActorFx(const LLUUID& actor_id)
         tint.mV[VW] = 1.f;
     }
 
-    const F32 real_time = static_cast<F32>(LLFrameTimer::getElapsedSeconds());
+    // This timestamp is updated once per viewer frame. Using wall-clock time
+    // here made each material batch advance by a slightly different amount and
+    // defeated LLGLSLShader's per-program uniform value cache.
+    const F32 frame_time = static_cast<F32>(gFrameTimeSeconds);
+    static F32 sSnapshotTime = 0.f;
+    static bool sWasSnapshot = false;
+    if (gSnapshot && !sWasSnapshot)
+    {
+        sSnapshotTime = frame_time;
+    }
+    const F32 real_time = gSnapshot ? sSnapshotTime : frame_time;
+    sWasSnapshot = gSnapshot;
     const F32 effect_fps = llclamp(style.mEffectFps, 0.f, 30.f);
     const F32 effect_time = effect_fps > 0.f
         ? floorf(real_time * effect_fps) / effect_fps
@@ -509,22 +551,58 @@ void LLRenderPass::uploadActorFx(const LLUUID& actor_id)
                       llclamp(style.mDistortionAmount, 0.f, 1.f),
                       llclamp(style.mBrightness, 0.05f, 1.5f),
                       stable_phase);
+    // gl_FragCoord is local to each high-resolution snapshot tile. Supply the
+    // tile's whole-image pixel origin so procedural grain/scanlines/pixelation
+    // meet exactly at tile edges. Y is expressed in bottom-up GL coordinates.
+    F32 tile_offset_x = 0.f;
+    F32 tile_offset_y = 0.f;
+    const F32 zoom = LLViewerCamera::getInstance()->getZoomFactor();
+    if (gSnapshot && gViewerWindow && zoom > 1.f)
+    {
+        const S32 tiles = llceil(zoom);
+        const S32 sub = LLViewerCamera::getInstance()->getZoomSubRegion();
+        const S32 tile_y = sub / tiles;
+        const S32 tile_x = sub - tile_y * tiles;
+        // gl_FragCoord is expressed in raw framebuffer pixels and the snapshot
+        // camera enumerates subregion row zero from the bottom.  Using logical
+        // UI dimensions (or flipping Y) makes procedural Actor FX restart at
+        // every tile on HiDPI captures.
+        tile_offset_x = static_cast<F32>(tile_x * gViewerWindow->getWorldViewWidthRaw());
+        tile_offset_y = static_cast<F32>(tile_y * gViewerWindow->getWorldViewHeightRaw());
+    }
+    shader->uniform4f(sActorFxParams2,
+                      llclamp(style.mShimmerSpeed, 0.f, 20.f),
+                      tile_offset_x, tile_offset_y, 0.f);
     shader->uniform1i(sActorFxEnabled, 1);
+    return actor_fx_style_has_glow(style);
 }
 
 // static
-void LLRenderPass::uploadActorFx(const LLDrawInfo& params)
+bool LLRenderPass::uploadActorFx(const LLUUID& actor_id)
+{
+    // UUID callers and LLDrawInfo owners are canonicalized at their mutation /
+    // geometry-build boundaries; keep this per-draw path free of object lookup.
+    const LLDirectorCast::ActorStyle& style =
+        LLDirectorCast::instance().getActorStyle(actor_id);
+    return upload_actor_fx_style(actor_id, style);
+}
+
+// static
+bool LLRenderPass::uploadActorFx(const LLDrawInfo& params)
 {
     // Draw-info null is intentionally *not* Director's null-is-You identity.
     // It denotes world geometry with no stable actor owner.
     if (params.mActorFxOwner.isNull())
     {
         uploadActorFxDisabled();
+        return false;
     }
-    else
-    {
-        uploadActorFx(params.mActorFxOwner);
-    }
+
+    LLUUID owner;
+    const LLDirectorCast::ActorStyle& style =
+        LLDirectorCast::instance().resolveStoredActorStyle(
+            params.mActorFxOwner, params.mActorFxFallbackOwner, owner);
+    return upload_actor_fx_style(owner, style);
 }
 
 LLRenderPass::LLRenderPass(const U32 type)
@@ -953,6 +1031,8 @@ void LLRenderPass::pushVelocityBatches(U32 type)
 
         applyModelMatrix(params);
 
+        uploadActorFx(params);
+
         const LLMatrix4* last_mat = params.mLastModelMatrix ? params.mLastModelMatrix : &identity;
         LLGLSLShader::sCurBoundShaderPtr->uniformMatrix4fv(LLShaderMgr::LAST_OBJECT_MATRIX, 1, GL_FALSE, (GLfloat*)last_mat->mMatrix);
 
@@ -968,7 +1048,7 @@ void LLRenderPass::pushVelocityBatches(U32 type)
     }
 }
 
-void LLRenderPass::pushVelocityBatchesTextured(U32 type)
+void LLRenderPass::pushVelocityBatchesTextured(U32 type, bool legacy_material)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
     static const LLMatrix4 identity;
@@ -986,20 +1066,49 @@ void LLRenderPass::pushVelocityBatchesTextured(U32 type)
             continue;
         }
 
+        if (params.mMaterialSlotList.size() > 1 || params.mGLTFMaterialList.size() > 1)
+        { // indexed multi-material geometry is emitted by the indexed helper
+            continue;
+        }
+
         LLGLDisable cull_face(params.mGLTFMaterial && params.mGLTFMaterial->mDoubleSided ? GL_CULL_FACE : 0);
 
         applyModelMatrix(params);
 
-        if (params.mTexture.notNull())
+        uploadActorFx(params);
+
+        LLFetchedGLTFMaterial* gltf = params.mGLTFMaterial.get();
+        if (gltf)
         {
-            gGL.getTexUnit(0)->bindFast(params.mTexture);
+            LLViewerTexture* base = params.mTexture.notNull()
+                ? params.mTexture.get()
+                : gltf->mBaseColorTexture.get();
+            gGL.getTexUnit(0)->bindFast(base ? base : LLViewerFetchedTexture::sWhiteImagep.get());
+            LLGLSLShader::sCurBoundShaderPtr->setMinimumAlpha(gltf->mAlphaCutoff);
+            LLGLTFMaterial::TextureTransform::Pack packed;
+            gltf->mTextureTransform[LLGLTFMaterial::GLTF_TEXTURE_INFO_BASE_COLOR].getPacked(packed);
+            LLGLSLShader::sCurBoundShaderPtr->uniform4fv(
+                LLShaderMgr::TEXTURE_BASE_COLOR_TRANSFORM, 2, packed);
         }
+        else
+        {
+            gGL.getTexUnit(0)->bindFast(params.mTexture.notNull()
+                ? params.mTexture.get()
+                : LLViewerFetchedTexture::sWhiteImagep.get());
+            const F32 bias = legacy_material ? 0.001953125f : 0.f;
+            LLGLSLShader::sCurBoundShaderPtr->setMinimumAlpha(
+                params.mAlphaMaskCutoff - bias);
+        }
+
+        setup_texture_matrix(params);
 
         const LLMatrix4* last_mat = params.mLastModelMatrix ? params.mLastModelMatrix : &identity;
         LLGLSLShader::sCurBoundShaderPtr->uniformMatrix4fv(LLShaderMgr::LAST_OBJECT_MATRIX, 1, GL_FALSE, (GLfloat*)last_mat->mMatrix);
 
         params.mVertexBuffer->setBuffer();
         params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
+
+        teardown_texture_matrix(params);
 
         if (params.mLastModelMatrix)
         {
@@ -1099,12 +1208,14 @@ void LLRenderPass::pushRiggedVelocityBatches(U32 type)
 
         applyModelMatrix(params);
 
+        uploadActorFx(params);
+
         params.mVertexBuffer->setBuffer();
         params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
     }
 }
 
-void LLRenderPass::pushRiggedVelocityBatchesTextured(U32 type)
+void LLRenderPass::pushRiggedVelocityBatchesTextured(U32 type, bool legacy_material)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
 
@@ -1125,6 +1236,11 @@ void LLRenderPass::pushRiggedVelocityBatchesTextured(U32 type)
             continue;
         }
 
+        if (params.mMaterialSlotList.size() > 1 || params.mGLTFMaterialList.size() > 1)
+        {
+            continue;
+        }
+
         if (!uploadVelocityMatrixPalettes(params.mAvatar, params.mSkinInfo, lastAvatar, lastMeshId, skipLastSkin))
         {
             continue;
@@ -1134,13 +1250,131 @@ void LLRenderPass::pushRiggedVelocityBatchesTextured(U32 type)
 
         applyModelMatrix(params);
 
-        if (params.mTexture.notNull())
+        uploadActorFx(params);
+
+        LLFetchedGLTFMaterial* gltf = params.mGLTFMaterial.get();
+        if (gltf)
         {
-            gGL.getTexUnit(0)->bindFast(params.mTexture);
+            LLViewerTexture* base = params.mTexture.notNull()
+                ? params.mTexture.get()
+                : gltf->mBaseColorTexture.get();
+            gGL.getTexUnit(0)->bindFast(base ? base : LLViewerFetchedTexture::sWhiteImagep.get());
+            LLGLSLShader::sCurBoundShaderPtr->setMinimumAlpha(gltf->mAlphaCutoff);
+            LLGLTFMaterial::TextureTransform::Pack packed;
+            gltf->mTextureTransform[LLGLTFMaterial::GLTF_TEXTURE_INFO_BASE_COLOR].getPacked(packed);
+            LLGLSLShader::sCurBoundShaderPtr->uniform4fv(
+                LLShaderMgr::TEXTURE_BASE_COLOR_TRANSFORM, 2, packed);
         }
+        else
+        {
+            gGL.getTexUnit(0)->bindFast(params.mTexture.notNull()
+                ? params.mTexture.get()
+                : LLViewerFetchedTexture::sWhiteImagep.get());
+            const F32 bias = legacy_material ? 0.001953125f : 0.f;
+            LLGLSLShader::sCurBoundShaderPtr->setMinimumAlpha(
+                params.mAlphaMaskCutoff - bias);
+        }
+
+        setup_texture_matrix(params);
 
         params.mVertexBuffer->setBuffer();
         params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
+        teardown_texture_matrix(params);
+    }
+}
+
+void LLRenderPass::pushVelocityAlphaBatchesIndexed(U32 type, bool gltf, bool rigged)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
+    static const LLMatrix4 identity;
+    const LLVOAvatar* last_avatar = nullptr;
+    U64 last_mesh_id = 0;
+    bool skip_last_skin = false;
+
+    auto* begin = gPipeline.beginRenderMap(type);
+    auto* end = gPipeline.endRenderMap(type);
+    for (LLCullResult::drawinfo_iterator i = begin; i != end; )
+    {
+        LLDrawInfo& params = **i;
+        LLCullResult::increment_iterator(i, end);
+
+        const S32 list_size = gltf ? (S32)params.mGLTFMaterialList.size()
+                                   : (S32)params.mMaterialSlotList.size();
+        if (params.mVertexBuffer.isNull() || list_size < 2)
+        {
+            continue;
+        }
+        if (rigged && (!params.mAvatar || !params.mSkinInfo ||
+            !uploadVelocityMatrixPalettes(params.mAvatar, params.mSkinInfo,
+                                          last_avatar, last_mesh_id, skip_last_skin)))
+        {
+            continue;
+        }
+
+        const S32 n = llmin(list_size, LLGLSLShader::sIndexedGLTFChannels);
+        F32 min_alpha[8] = { 0.f };
+        F32 bc_xform[8 * 8] = { 0.f };
+        bool double_sided = false;
+        for (S32 s = 0; s < n; ++s)
+        {
+            if (gltf)
+            {
+                LLFetchedGLTFMaterial* mat = params.mGLTFMaterialList[s].get();
+                if (!mat)
+                {
+                    min_alpha[s] = -1.f;
+                    continue;
+                }
+                double_sided = double_sided || mat->mDoubleSided;
+                LLViewerTexture* base = mat->mBaseColorTexture.notNull()
+                    ? mat->mBaseColorTexture.get()
+                    : LLViewerFetchedTexture::sWhiteImagep.get();
+                gGL.getTexUnit(s)->bindFast(base);
+                min_alpha[s] = mat->mAlphaCutoff;
+                LLGLTFMaterial::TextureTransform::Pack packed;
+                mat->mTextureTransform[LLGLTFMaterial::GLTF_TEXTURE_INFO_BASE_COLOR].getPacked(packed);
+                memcpy(&bc_xform[8 * s], packed, sizeof(packed));
+            }
+            else
+            {
+                const LLDrawInfo::MaterialSlot& slot = params.mMaterialSlotList[s];
+                LLViewerTexture* diffuse = slot.mDiffuse.notNull()
+                    ? slot.mDiffuse.get()
+                    : LLViewerFetchedTexture::sWhiteImagep.get();
+                gGL.getTexUnit(s)->bindFast(diffuse);
+                min_alpha[s] = slot.mAlphaMaskCutoff - 0.001953125f;
+            }
+        }
+
+        LLGLSLShader* shader = LLGLSLShader::sCurBoundShaderPtr;
+        static const LLStaticHashedString sVelocityMinAlpha("velocity_minimum_alpha");
+        shader->uniform1fv(sVelocityMinAlpha, n, min_alpha);
+        if (gltf)
+        {
+            static const LLStaticHashedString sBaseXform("gltf_basecolor_transform");
+            shader->uniform4fv(sBaseXform, 2 * n, bc_xform);
+        }
+
+        LLGLDisable cull_face(double_sided ? GL_CULL_FACE : 0);
+        applyModelMatrix(params);
+        uploadActorFx(params);
+        if (!rigged)
+        {
+            const LLMatrix4* last_mat = params.mLastModelMatrix
+                ? params.mLastModelMatrix : &identity;
+            shader->uniformMatrix4fv(LLShaderMgr::LAST_OBJECT_MATRIX, 1, GL_FALSE,
+                                     (GLfloat*)last_mat->mMatrix);
+        }
+
+        params.mVertexBuffer->setBuffer();
+        params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart,
+                                        params.mEnd, params.mCount, params.mOffset);
+        if (!rigged && params.mLastModelMatrix)
+        {
+            const LLMatrix4* current_mat = params.mModelMatrix
+                ? params.mModelMatrix : &identity;
+            *params.mLastModelMatrix = *current_mat;
+        }
     }
 }
 

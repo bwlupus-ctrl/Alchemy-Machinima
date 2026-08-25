@@ -71,16 +71,15 @@ LLVOAvatar* resolve_actor(const LLUUID& id)
     return LLDirectorCast::instance().resolve(id);
 }
 
-// An enabled zero-alpha Layer has no visible color contribution, but the shared
-// actorghost renderer always depth-primes its silhouette before shading. Treat
-// it as inactive so it cannot become an invisible occluder of another styled
-// actor or Studio ghost. Replace deliberately ignores authored alpha and uses
-// its opaque interim overlay, so it remains drawable at alpha zero.
+// Actor styling now runs in the actor's native material draw.  Keep the former
+// overlay-clone implementation dormant: harvesting and redrawing the complete
+// actor here would double geometry cost, break global alpha sorting, and apply
+// the effect a second time.  The code remains available only as a rollback aid
+// while the native path is validated.
 bool actor_style_wants_overlay(const LLDirectorCast::ActorStyle& style)
 {
-    return style.mEnabled
-        && (style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE
-            || style.mAlpha > 0.001f);
+    (void)style;
+    return false;
 }
 
 // the locomotion anim a new Move should start for THIS actor: the cast

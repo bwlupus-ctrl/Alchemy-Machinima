@@ -38,6 +38,9 @@ uniform mat4 modelview_projection_matrix;
 #endif
 
 in vec3 position;
+#ifdef HAS_ACTOR_FX
+out vec3 vary_actor_fx_position;
+#endif
 in vec4 emissive;
 in vec2 texcoord0;
 in int texture_index;
@@ -48,6 +51,9 @@ out vec2 vary_texcoord0;
 
 void main()
 {
+#ifdef HAS_ACTOR_FX
+    vary_actor_fx_position = position;
+#endif
 #ifdef HAS_SKIN
     mat4 mat = getObjectSkinnedTransform();
     mat = modelview_matrix * mat;

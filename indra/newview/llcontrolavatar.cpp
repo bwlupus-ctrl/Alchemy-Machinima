@@ -27,6 +27,7 @@
 #include "llviewerprecompiledheaders.h"
 #include "llcontrolavatar.h"
 #include "llactormover.h"   // [ActorMover] local ghost locomotion for animesh
+#include "lldirectorcast.h"
 #include "llagent.h" //  Get state values from here
 #include "llviewerobjectlist.h"
 #include "pipeline.h"
@@ -409,6 +410,20 @@ bool LLControlAvatar::computeNeedsUpdate()
     LLVOAvatar *attached_av = getAttachedAvatar();
     if (attached_av)
     {
+        // A cast animated attachment with its own effective Actor FX is an
+        // independent presentation actor.  Do not let a jellied or throttled
+        // wearer overwrite the per-frame cadence requested by
+        // LLVOAvatar::computeUpdatePeriod().  hasEffectiveActorFx() retains the
+        // wearer's hard-mute veto.
+        const LLUUID actor_fx_owner = getActorFxOwnerId();
+        if (LLDirectorCast::instance().containsStored(actor_fx_owner) &&
+            hasEffectiveActorFx())
+        {
+            mNeedsImpostorUpdate = true;
+            mLastImpostorUpdateReason = 12;
+            return true;
+        }
+
         // Have to run computeNeedsUpdate() for attached av in
         // case it hasn't run updateCharacter() already this
         // frame.  Note this means that the attached av will

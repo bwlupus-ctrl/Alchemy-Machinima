@@ -27,11 +27,13 @@ uniform mat4 modelview_matrix;
 uniform mat4 projection_matrix;
 
 in vec3 position;
+out vec3 vary_actor_fx_position;
 
 mat4 getObjectSkinnedTransform();
 
 void main()
 {
+    vary_actor_fx_position = position;
     //transform vertex
     mat4 mat = getObjectSkinnedTransform();
 

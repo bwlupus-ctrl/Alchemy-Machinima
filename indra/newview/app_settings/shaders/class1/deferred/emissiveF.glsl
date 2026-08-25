@@ -28,12 +28,33 @@
 out vec4 frag_color;
 
 in vec4 vertex_color;
+in float vertex_alpha;
 in vec2 vary_texcoord0;
+#ifdef HAS_ACTOR_FX
+uniform int actorFxUseCoverageAlpha;
+#endif
+#ifdef HAS_ACTOR_FX
+vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
+bool actorFxDissolveEnabled();
+float actorFxBeautyDissolveCoverage();
+#endif
 
 void main()
 {
+#ifdef HAS_ACTOR_FX
+    if (actorFxDissolveEnabled() && actorFxBeautyDissolveCoverage() < 0.0)
+    {
+        discard;
+    }
+#endif
     // NOTE: when this shader is used, only alpha is being written to
-    float a = diffuseLookup(vary_texcoord0.xy).a*vertex_color.a;
+    float diffuse_alpha = diffuseLookup(vary_texcoord0.xy).a;
+    float a = diffuse_alpha * vertex_color.a;
+#ifdef HAS_ACTOR_FX
+    vec3 fx_emissive = actorFxEmissive(vec3(0.0), vec3(1.0));
+    float fx_coverage = actorFxUseCoverageAlpha != 0
+        ? diffuse_alpha * vertex_alpha : 1.0;
+    a += max(max(fx_emissive.r, fx_emissive.g), fx_emissive.b) * fx_coverage;
+#endif
     frag_color = max(vec4(0, 0, 0, a), vec4(0));
 }
-

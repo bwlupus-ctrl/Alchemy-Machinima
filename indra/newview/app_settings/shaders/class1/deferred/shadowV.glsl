@@ -26,9 +26,11 @@
 uniform mat4 modelview_projection_matrix;
 
 in vec3 position;
+out vec3 vary_actor_fx_position;
 
 void main()
 {
+    vary_actor_fx_position = position;
     //transform vertex
     gl_Position = modelview_projection_matrix*vec4(position.xyz, 1.0);
 }

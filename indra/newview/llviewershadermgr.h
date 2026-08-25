@@ -308,6 +308,8 @@ extern LLGLSLShader         gDeferredFullbrightAlphaMaskAlphaProgram;
 extern LLGLSLShader         gHUDFullbrightAlphaMaskAlphaProgram;
 extern LLGLSLShader         gDeferredEmissiveProgram;
 extern LLGLSLShader         gDeferredEmissiveIndexedProgram; // multi-material indexed legacy glow
+extern LLGLSLShader         gActorFxGlowProgram;              // zero-authored-glow legacy alpha
+extern LLGLSLShader         gActorFxPBRGlowProgram;           // zero-authored-glow PBR alpha
 extern LLGLSLShader         gDeferredAvatarEyesProgram;
 extern LLGLSLShader         gDeferredAvatarAlphaProgram;
 extern LLGLSLShader         gEnvironmentMapProgram;
@@ -327,9 +329,15 @@ extern LLGLSLShader         gDeferredBufferVisualProgram;
 // Skinned/rigged + avatar variants are Phase 1b.
 extern LLGLSLShader         gVelocityProgram;
 extern LLGLSLShader         gVelocityAlphaProgram;
+extern LLGLSLShader         gVelocityPBRAlphaProgram;
+extern LLGLSLShader         gVelocityAlphaIndexedProgram;
+extern LLGLSLShader         gVelocityPBRAlphaIndexedProgram;
 extern LLGLSLShader         gVelocityDebugProgram;
 extern LLGLSLShader         gVelocitySkinnedProgram;        // [BDMerge A5.4-1b]
 extern LLGLSLShader         gVelocityAlphaSkinnedProgram;   // [BDMerge A5.4-1b]
+extern LLGLSLShader         gVelocityPBRAlphaSkinnedProgram;
+extern LLGLSLShader         gVelocityAlphaIndexedSkinnedProgram;
+extern LLGLSLShader         gVelocityPBRAlphaIndexedSkinnedProgram;
 extern LLGLSLShader         gAvatarVelocityProgram;         // [BDMerge A5.4-1b] classic avatar
 extern LLGLSLShader         gDeferredMotionBlurProgram;     // [BDMerge A5.4-3]
 // [BDMerge A5.4-1c] fullscreen camera-motion fallback (fills avatar/sky/uncovered

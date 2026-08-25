@@ -29,6 +29,8 @@
 #include "lldrawpool.h"
 #include "lldrawpoolpbropaque.h"
 #include "llviewershadermgr.h"
+
+static LLStaticHashedString sActorFxUseCoverageAlpha("actorFxUseCoverageAlpha");
 #include "pipeline.h"
 
 LLDrawPoolGLTFPBR::LLDrawPoolGLTFPBR(U32 type) :
@@ -124,6 +126,7 @@ void LLDrawPoolGLTFPBR::renderPostDeferred(S32 pass)
                             gPBRGlowIndexedProgram.mRiggedVariant->isComplete();
 
         gPBRGlowProgram.bind();
+        gPBRGlowProgram.uniform1i(sActorFxUseCoverageAlpha, 0);
         if (glow_indexed)
         {
             pushGLTFBatchesScalar(LLRenderPass::PASS_GLTF_GLOW);
@@ -134,6 +137,7 @@ void LLDrawPoolGLTFPBR::renderPostDeferred(S32 pass)
         }
 
         gPBRGlowProgram.bind(true);
+        gPBRGlowProgram.mRiggedVariant->uniform1i(sActorFxUseCoverageAlpha, 0);
         if (glow_indexed)
         {
             pushRiggedGLTFBatchesScalar(LLRenderPass::PASS_GLTF_GLOW_RIGGED);
@@ -159,16 +163,22 @@ void LLDrawPoolGLTFPBR::renderPostDeferred(S32 pass)
 // ============================================================================
 // [BDMerge A5.4-1a] Velocity / motion-vector pass (rigid + camera).
 // Donor: Black Dragon lldrawpoolpbropaque.cpp:100-140. This pool owns both the
-// opaque and alpha-mask GLTF passes (mRenderType). Phase 1a pushes both with the
-// plain velocity program (position + model matrix); the GLTF alpha-mask cutout
-// (base_color_texcoord) is NOT applied here -- masked-transparent texels over-
-// cover slightly, acceptable for the foundation and cheaply refined later.
-// Rigged GLTF (mRenderType + 1) is Phase 1b.
+// opaque and alpha-mask GLTF passes (mRenderType). Opaque uses the position-only
+// program. Alpha mask reproduces KHR base-color transforms, vertex-factor alpha
+// and the material cutoff for scalar and indexed batches. Rigged GLTF uses the
+// same coverage with previous-palette motion.
 // ============================================================================
 void LLDrawPoolGLTFPBR::beginVelocityPass(S32 pass)
 {
-    gVelocityProgram.bind();
-    bindVelocityUniforms(gVelocityProgram);
+    LLGLSLShader& shader = (mRenderType == LLPipeline::RENDER_TYPE_PASS_GLTF_PBR_ALPHA_MASK)
+        ? gVelocityPBRAlphaProgram : gVelocityProgram;
+    shader.bind();
+    bindVelocityUniforms(shader);
+    if (&shader == &gVelocityPBRAlphaProgram)
+    {
+        static const LLStaticHashedString sTextureAlphaOnly("velocity_texture_alpha_only");
+        shader.uniform1i(sTextureAlphaOnly, 0);
+    }
 }
 
 void LLDrawPoolGLTFPBR::endVelocityPass(S32 pass)
@@ -180,11 +190,43 @@ void LLDrawPoolGLTFPBR::renderVelocity(S32 pass)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
     LLGLEnable cull(GL_CULL_FACE);
-    pushVelocityBatches(mRenderType);
+    const bool masked = mRenderType == LLPipeline::RENDER_TYPE_PASS_GLTF_PBR_ALPHA_MASK;
+    if (masked)
+    {
+        pushVelocityBatchesTextured(mRenderType);
+        if (gVelocityPBRAlphaIndexedProgram.isComplete())
+        {
+            static const LLStaticHashedString sTextureAlphaOnly("velocity_texture_alpha_only");
+            gVelocityPBRAlphaIndexedProgram.bind();
+            bindVelocityUniforms(gVelocityPBRAlphaIndexedProgram);
+            gVelocityPBRAlphaIndexedProgram.uniform1i(sTextureAlphaOnly, 0);
+            pushVelocityAlphaBatchesIndexed(mRenderType, true, false);
+        }
+    }
+    else
+    {
+        pushVelocityBatches(mRenderType);
+    }
 
-    // [BDMerge A5.4-1b] rigged GLTF
-    gVelocityProgram.bind(true);
-    bindVelocityUniforms(*gVelocityProgram.mRiggedVariant);
-    pushRiggedVelocityBatches(mRenderType + 1);
+    LLGLSLShader& base = masked ? gVelocityPBRAlphaProgram : gVelocityProgram;
+    base.bind(true);
+    bindVelocityUniforms(*base.mRiggedVariant);
+    if (masked)
+    {
+        static const LLStaticHashedString sTextureAlphaOnly("velocity_texture_alpha_only");
+        base.mRiggedVariant->uniform1i(sTextureAlphaOnly, 0);
+        pushRiggedVelocityBatchesTextured(mRenderType + 1);
+        if (gVelocityPBRAlphaIndexedProgram.mRiggedVariant &&
+            gVelocityPBRAlphaIndexedProgram.mRiggedVariant->isComplete())
+        {
+            gVelocityPBRAlphaIndexedProgram.bind(true);
+            bindVelocityUniforms(*gVelocityPBRAlphaIndexedProgram.mRiggedVariant);
+            gVelocityPBRAlphaIndexedProgram.mRiggedVariant->uniform1i(sTextureAlphaOnly, 0);
+            pushVelocityAlphaBatchesIndexed(mRenderType + 1, true, true);
+        }
+    }
+    else
+    {
+        pushRiggedVelocityBatches(mRenderType + 1);
+    }
 }
-

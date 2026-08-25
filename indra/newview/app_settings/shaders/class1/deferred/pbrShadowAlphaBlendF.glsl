@@ -31,7 +31,10 @@ in vec4 post_pos;
 in float target_pos_x;
 in vec4 vertex_color;
 in vec2 vary_texcoord0;
+in vec3 vary_actor_fx_position;
 uniform float minimum_alpha;
+
+bool actorFxDissolveDiscard(vec3 object_position);
 
 void main()
 {
@@ -50,6 +53,11 @@ void main()
         {
             discard;
         }
+    }
+
+    if (actorFxDissolveDiscard(vary_actor_fx_position))
+    {
+        discard;
     }
 
     frag_color = vec4(1,1,1,1);

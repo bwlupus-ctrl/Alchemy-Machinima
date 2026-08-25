@@ -759,6 +759,32 @@ void LLGLSLShader::mapUniform(const gl_uniform_data_t& gl_uniform)
 
         LL_DEBUGS("ShaderUniform") << "Uniform " << name << " is at location " << location << LL_ENDL;
 
+        // Multi-material shaders bind several sampler families with a fixed
+        // per-slot layout. These names are not reserved uniforms and must not
+        // fall through to GL's default sampler value of texture unit zero.
+        if (gl_uniform.forced_texunit >= 0 && is_sampler_type(type))
+        {
+            if (size == 1)
+            {
+                glUniform1i(location, gl_uniform.forced_texunit);
+            }
+            else
+            {
+                GLint channels[32];
+                const GLint count = llmin(size, 32);
+                llassert(size <= 32);
+                for (GLint i = 0; i < count; ++i)
+                {
+                    channels[i] = gl_uniform.forced_texunit + i;
+                }
+                glUniform1iv(location, count, channels);
+            }
+            mActiveTextureChannels = llmax(
+                mActiveTextureChannels,
+                gl_uniform.forced_texunit + llmin(size, 32));
+            return;
+        }
+
         // Indexed textures (tex0..texN) are referenced by hardcoded texture-unit
         // index, not through a reserved-uniform enum. The priority sort in
         // mapUniforms() guarantees they are mapped first, so just bind the
@@ -885,7 +911,10 @@ bool LLGLSLShader::mapUniforms()
     //   UINT_MAX                       -> everything else (order irrelevant; non-samplers)
     const auto& reservedUniforms = LLShaderMgr::instance()->mReservedUniforms;
     const U32 max_index = (U32)mFeatures.mIndexedTextureChannels;
+    const U32 material_channels = (U32)mFeatures.mIndexedMaterialChannels;
+    const U32 material_span = 4U * material_channels;
     llassert(max_index == 0 || mFeatures.mIndexedTextureChannels == LLGLSLShader::sIndexedTextureChannels);
+    llassert(max_index == 0 || material_channels == 0);
 
     std::vector<gl_uniform_data_t> gl_uniforms;
     gl_uniforms.reserve(activeCount);
@@ -914,7 +943,8 @@ bool LLGLSLShader::mapUniforms()
         auto it = std::find(reservedUniforms.cbegin(), reservedUniforms.cend(), gl_uniform.name);
         if (it != reservedUniforms.cend())
         {
-            gl_uniform.texunit_priority = max_index + (U32)std::distance(reservedUniforms.cbegin(), it);
+            gl_uniform.texunit_priority = max_index + material_span +
+                (U32)std::distance(reservedUniforms.cbegin(), it);
         }
         else
         {
@@ -924,6 +954,39 @@ bool LLGLSLShader::mapUniforms()
             if (sscanf(gl_uniform.name.c_str(), "tex%d", &idx) == 1 && idx >= 0 && idx < (S32)max_index)
             {
                 gl_uniform.texunit_priority = (U32)idx;
+            }
+            else if (material_channels > 0)
+            {
+                S32 unit = -1;
+                if ((sscanf(gl_uniform.name.c_str(), "diffuse%d", &idx) == 1 ||
+                     sscanf(gl_uniform.name.c_str(), "basecolor%d", &idx) == 1) &&
+                    idx >= 0 && idx < (S32)material_channels)
+                {
+                    unit = idx;
+                }
+                else if ((sscanf(gl_uniform.name.c_str(), "bump%d", &idx) == 1 ||
+                          sscanf(gl_uniform.name.c_str(), "normalmap%d", &idx) == 1) &&
+                         idx >= 0 && idx < (S32)material_channels)
+                {
+                    unit = (S32)material_channels + idx;
+                }
+                else if ((sscanf(gl_uniform.name.c_str(), "spec%d", &idx) == 1 ||
+                          sscanf(gl_uniform.name.c_str(), "ormmap%d", &idx) == 1) &&
+                         idx >= 0 && idx < (S32)material_channels)
+                {
+                    unit = 2 * (S32)material_channels + idx;
+                }
+                else if (sscanf(gl_uniform.name.c_str(), "emissivemap%d", &idx) == 1 &&
+                         idx >= 0 && idx < (S32)material_channels)
+                {
+                    unit = 3 * (S32)material_channels + idx;
+                }
+
+                if (unit >= 0)
+                {
+                    gl_uniform.forced_texunit = unit;
+                    gl_uniform.texunit_priority = (U32)unit;
+                }
             }
         }
         gl_uniforms.push_back(std::move(gl_uniform));
@@ -949,7 +1012,8 @@ bool LLGLSLShader::mapUniforms()
 
     // when indexed texture channels are used, enforce an upper limit of 32; this
     // acts as a canary for adding textures and breaking machines limited to 32.
-    llassert(max_index == 0 || mActiveTextureChannels <= 32);
+    llassert((max_index == 0 && material_channels == 0) ||
+             mActiveTextureChannels <= 32);
 
     // Set up block binding, in a way supported by Apple (rather than binding = 1 in .glsl).
     // See slide 35 and more of https://docs.huihoo.com/apple/wwdc/2011/session_420__advances_in_opengl_for_mac_os_x_lion.pdf

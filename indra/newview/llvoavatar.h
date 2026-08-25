@@ -521,6 +521,14 @@ public:
     U32         renderImpostor(LLColor4U color = LLColor4U(255,255,255,255), S32 diffuse_channel = 0);
     bool        isVisuallyMuted();
     bool        isInMuteList() const;
+    // Hard user/privacy suppression is stronger than cinematic Actor FX. The
+    // effective-style helper deliberately excludes performance jelly/impostor
+    // state so a styled actor can remain live without reviving hidden actors.
+    bool        isHardVisualMute() const;
+    // Canonical resident/linkset key used by render hot paths. Unlike the
+    // Director mutation boundary, this never consults gObjectList.
+    LLUUID      getActorFxOwnerId() const;
+    bool        hasEffectiveActorFx() const;
 // [RLVa:KB] - Checked: RLVa-2.2 (@setcam_avdist)
     bool        isRlvSilhouette() const;
 // [/RLVa:KB]

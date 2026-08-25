@@ -106,6 +106,7 @@
 #include "llviewerregion.h" // for audio debugging.
 #include "llviewerwindow.h" // For getSpinAxis
 #include "llvoavatarself.h"
+#include "llcontrolavatar.h"
 #include "llviewerjointattachment.h"
 #include "llvocache.h"
 #include "llvosky.h"
@@ -4084,10 +4085,17 @@ void LLPipeline::markVisible(LLDrawable *drawablep, LLCamera& camera)
                     if (vobj) // this test may not be needed, see above
                     {
                         LLVOAvatar* av = vobj->asAvatar();
+                        LLControlAvatar* control_avatar =
+                            root->getVObj()->getControlAvatar();
+                        const bool actor_fx_live =
+                            (av && av->hasEffectiveActorFx()) ||
+                            (control_avatar && control_avatar->hasEffectiveActorFx());
                         if (av &&
-                            ((!sImpostorRender && av->isImpostor()) //ignore impostor flag during impostor pass
-                             || av->isInMuteList()
-                             || (LLVOAvatar::AOA_JELLYDOLL == av->getOverallAppearance() && !av->needsImpostorUpdate()) ))
+                            ((!actor_fx_live && !sImpostorRender && av->isImpostor()) //ignore impostor flag during impostor pass
+                             || av->isHardVisualMute()
+                             || (!actor_fx_live &&
+                                 LLVOAvatar::AOA_JELLYDOLL == av->getOverallAppearance() &&
+                                 !av->needsImpostorUpdate()) ))
                         {
                             return;
                         }
@@ -5255,6 +5263,11 @@ bool pushGhostBatch(LLDrawInfo& params, bool batch_textures)
         }
     }
 
+    // Ghost Studio scene-lit clones are not Director cast Actor FX draws. The
+    // stock material programs retain uniforms across binds, so explicitly
+    // clear a styled source actor that may have used this program immediately
+    // before the custom clone submission.
+    LLRenderPass::uploadActorFxDisabled();
     // Deliberately no LLRenderPass::applyModelMatrix(params).
     params.mVertexBuffer->setBuffer();
     params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart,
@@ -5295,6 +5308,7 @@ bool pushGhostGLTFBatch(LLDrawInfo& params, LLFetchedGLTFMaterial*& last_mat,
 
     setup_ghost_texture_matrix(params);
 
+    LLRenderPass::uploadActorFxDisabled();
     // Deliberately no LLRenderPass::applyModelMatrix(params).
     params.mVertexBuffer->setBuffer();
     params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart,
@@ -5382,6 +5396,7 @@ bool pushGhostMaterialBatch(LLDrawInfo& params, LLGLSLShader& shader,
 
     setup_ghost_texture_matrix(params);
 
+    LLRenderPass::uploadActorFxDisabled();
     // Deliberately no LLRenderPass::applyModelMatrix(params).
     params.mVertexBuffer->setBuffer();
     params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart,
@@ -5499,6 +5514,7 @@ bool pushGhostGLTFBatchIndexed(LLDrawInfo& params, LLRenderPass::eGLTFIndexedMap
 
     LLGLDisable cull_face(double_sided ? GL_CULL_FACE : 0);
 
+    LLRenderPass::uploadActorFxDisabled();
     // Deliberately no LLRenderPass::applyModelMatrix(params).
     params.mVertexBuffer->setBuffer();
     params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
@@ -5631,6 +5647,7 @@ bool pushGhostBumpBatch(LLDrawInfo& params, S32 diffuse_channel)
         tex_setup = true;
     }
 
+    LLRenderPass::uploadActorFxDisabled();
     // Deliberately no LLRenderPass::applyModelMatrix(params).
     params.mVertexBuffer->setBuffer();
     params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart,
@@ -5698,6 +5715,7 @@ bool pushGhostFullbrightShinyBatch(LLDrawInfo& params, S32 diffuse_channel, bool
         }
     }
 
+    LLRenderPass::uploadActorFxDisabled();
     // Deliberately no LLRenderPass::applyModelMatrix(params).
     params.mVertexBuffer->setBuffer();
     params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart,
@@ -7017,8 +7035,12 @@ void LLPipeline::renderGeomVelocity()
     // and uploading once here persists across their later draw-pool binds.
     LLGLSLShader* velocity_programs[] =
     {
-        &gVelocityProgram, &gVelocityAlphaProgram,
+        &gVelocityProgram, &gVelocityAlphaProgram, &gVelocityPBRAlphaProgram,
+        &gVelocityAlphaIndexedProgram, &gVelocityPBRAlphaIndexedProgram,
         &gVelocitySkinnedProgram, &gVelocityAlphaSkinnedProgram,
+        &gVelocityPBRAlphaSkinnedProgram,
+        &gVelocityAlphaIndexedSkinnedProgram,
+        &gVelocityPBRAlphaIndexedSkinnedProgram,
         &gAvatarVelocityProgram, &gVelocityCameraProgram
     };
     for (LLGLSLShader* shader : velocity_programs)
