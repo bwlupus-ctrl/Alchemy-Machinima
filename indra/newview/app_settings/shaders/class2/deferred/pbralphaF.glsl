@@ -94,6 +94,7 @@ vec4 applySkyAndWaterFog(vec3 pos, vec3 additive, vec3 atten, vec4 color);
 vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
 vec2 actorFxPbrMaterial(vec2 roughness_metallic);
 vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
+float actorFxAuthoredMaterialResponse();
 bool actorFxUvTransformEnabled();
 bool actorFxRgbSplitEnabled();
 vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
@@ -191,6 +192,11 @@ void main()
     vec3 vT = vary_tangent.xyz;
 
     vec3 vB = sign * cross(vN, vT);
+#ifdef HAS_ACTOR_FX
+    float actor_fx_material_response = actorFxAuthoredMaterialResponse();
+    vNt = mix(vec3(0.0, 0.0, 1.0), vNt,
+              actor_fx_material_response);
+#endif
     vec3 norm = normalize( vNt.x * vT + vNt.y * vB + vNt.z * vN );
 
     norm *= gl_FrontFacing ? 1.0 : -1.0;
@@ -225,6 +231,9 @@ void main()
     float perceptualRoughness = orm.g * roughnessFactor;
     float metallic = orm.b * metallicFactor;
     float ao = orm.r;
+#ifdef HAS_ACTOR_FX
+    ao = mix(1.0, ao, actor_fx_material_response);
+#endif
 
     // emissiveColor is the emissive color factor from GLTF and is already in linear space
     vec3 colorEmissive = emissiveColor;

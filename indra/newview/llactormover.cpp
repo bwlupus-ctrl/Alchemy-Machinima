@@ -10165,8 +10165,9 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     // excludes BLENDED layers from the prime so the body under a sheer skirt
     // still shades (they get their own blended sweep below); the flat-tint
     // styles keep them (a translucent layer still contributes silhouette to a
-    // flat ghost). Wireframe samples the authored MASK/BLEND alpha as well, so
-    // hair cards contribute only where their material actually has coverage.
+    // flat ghost). Wireframe primes only SOLID/MASK coverage: faint BLEND cards
+    // must not become opaque hidden-line occluders. Their lines are drawn later
+    // with authored alpha, depth testing enabled, and depth writes disabled.
     // [R2-2] the non-rigged attachment faces
     // prime alongside the batches so collar and body occlude each other right.
     // [GhostDeferred] the prime deliberately IGNORES overlay_mask: a deferred-
@@ -10185,8 +10186,8 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         gGL.setColorMask(false, false);
         if (style == GHOST_STYLE_WIREFRAME)
         {
-            draw_batches(SWEEP_ALL, false, false, true);
-            draw_static(SWEEP_ALL, false, false, true);
+            draw_batches(SWEEP_SOLID, false, false, true);
+            draw_static(SWEEP_SOLID, false, false, true);
         }
         else
         {
@@ -11129,12 +11130,7 @@ void LLActorMover::walkGhostSourceGeometry(LLVOAvatar* av,
 
     static LLCachedControl<bool> exclude_temporary(
         gSavedSettings, "GhostUnifiedExcludeTemporaryAttachments", false);
-    ALGhostAttachmentEnumerator::visitWorldRoots(
-            av,
-            exclude_temporary
-                ? ALGhostTempAttachmentPolicy::EXCLUDE
-                : ALGhostTempAttachmentPolicy::INCLUDE,
-            [&](LLViewerObject* attached, S32, bool)
+    auto gather_root_geometry = [&](LLViewerObject* attached)
     {
         std::vector<LLViewerObject*> objs;
         if (attached)
@@ -11171,7 +11167,34 @@ void LLActorMover::walkGhostSourceGeometry(LLVOAvatar* av,
                 }
             }
         }
-    });
+    };
+
+    // A standalone or independently styled Animesh resolves to its generated
+    // LLControlAvatar. Its visible animated linkset is mRootVolp, not an object
+    // in the control avatar's attachment-point map, so the ordinary wearer walk
+    // cannot discover any of its faces. Harvest that same root/children domain
+    // directly; worn Animesh reached through a human wearer keeps the normal
+    // attachment enumeration below.
+    LLControlAvatar* control = av->isControlAvatar()
+        ? static_cast<LLControlAvatar*>(av) : nullptr;
+    if (control && control->mRootVolp && !control->mRootVolp->isDead()
+        && !control->mRootVolp->isHUDAttachment()
+        && (!exclude_temporary || !control->mRootVolp->isTempAttachment()))
+    {
+        gather_root_geometry(control->mRootVolp);
+    }
+    else
+    {
+        ALGhostAttachmentEnumerator::visitWorldRoots(
+                av,
+                exclude_temporary
+                    ? ALGhostTempAttachmentPolicy::EXCLUDE
+                    : ALGhostTempAttachmentPolicy::INCLUDE,
+                [&](LLViewerObject* attached, S32, bool)
+        {
+            gather_root_geometry(attached);
+        });
+    }
 
     for (LLSpatialGroup* group : groups)
     {
@@ -11438,8 +11461,9 @@ void LLActorMover::collectGhostBatches()
                 // ---- [R2-2] NON-RIGGED faces (collar / jewelry / flexi): they
                 // never carry LLFace::mAvatar, so no rigged pass owns them --
                 // per-face alpha classification mirroring the real pools (GLTF
-                // mode wins; legacy mask from the material; the alpha POOL marks
-                // its faces blended).
+                // mode wins; explicit legacy material modes are next; actual
+                // alpha-mask pool routing captures no-material auto-mask faces;
+                // the alpha POOL marks its faces blended).
                 GhostStaticFace gf;
                 gf.mFace = face;
                 gf.mObjectId = obj->getID();
@@ -11465,6 +11489,22 @@ void LLActorMover::collectGhostBatches()
                     {
                         gf.mAlphaKind = 1;
                         gf.mCutoff = mat->getAlphaMaskCutoff() * (1.f / 255.f);
+                    }
+                    else if (mat && mat->getDiffuseAlphaMode() == LLMaterial::DIFFUSE_ALPHA_MODE_BLEND)
+                    {
+                        gf.mAlphaKind = 2;
+                    }
+                    else if (!mat
+                             && (face->getPoolType() == LLDrawPool::POOL_ALPHA_MASK
+                                 || face->getPoolType() == LLDrawPool::POOL_FULLBRIGHT_ALPHA_MASK))
+                    {
+                        // Stock canRenderAsMask routing for legacy faces without
+                        // LLMaterial uses the DrawInfo cutoff (normally 0.33;
+                        // session force-mask overrides may replace it). Mirror
+                        // the exact generated value when it is available.
+                        gf.mAlphaKind = 1;
+                        gf.mCutoff = face->mDrawInfo
+                            ? face->mDrawInfo->mAlphaMaskCutoff : 0.33f;
                     }
                     else if (face->getPoolType() == LLDrawPool::POOL_ALPHA
                              || te->getColor().mV[VW] < 0.999f)

@@ -50,6 +50,7 @@ uniform int actorFxUseCoverageAlpha;
 vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
 vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
 bool actorFxActive();
+float actorFxAuthoredMaterialResponse();
 bool actorFxUvTransformEnabled();
 bool actorFxRgbSplitEnabled();
 vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
@@ -116,7 +117,10 @@ void main()
         // Re-evaluate authored glow through the same Layer/Cover contract as
         // PBR beauty. Layer preserves it; a material-owning Cover suppresses
         // it so unrelated baked signs/LEDs cannot bloom through the treatment.
-        vec3 covered_authored = actorFxEmissive(emissive, vec3(0.0));
+        // Cover authored emission without evaluating style emission here; the
+        // style is evaluated exactly once below. This is especially important
+        // for Dissolve, whose moving edge is coverage-derived.
+        vec3 covered_authored = emissive * actorFxAuthoredMaterialResponse();
         lum = max(max(covered_authored.r, covered_authored.g),
                   covered_authored.b) * vertex_emissive.a;
 

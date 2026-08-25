@@ -87,6 +87,7 @@ vec4 encodeNormal(vec3 n, float env, float gbuffer_flag);
 vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
 vec2 actorFxPbrMaterial(vec2 roughness_metallic);
 vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
+float actorFxAuthoredMaterialResponse();
 bool actorFxUvTransformEnabled();
 bool actorFxRgbSplitEnabled();
 vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
@@ -250,6 +251,11 @@ void main()
     vec3 vT = vary_tangent.xyz;
 
     vec3 vB = sign * cross(vN, vT);
+#ifdef HAS_ACTOR_FX
+    float actor_fx_material_response = actorFxAuthoredMaterialResponse();
+    vNt = mix(vec3(0.0, 0.0, 1.0), vNt,
+              actor_fx_material_response);
+#endif
     vec3 tnorm = normalize( vNt.x * vT + vNt.y * vB + vNt.z * vN );
 
     // RGB = Occlusion, Roughness, Metal
@@ -266,6 +272,9 @@ void main()
 
     spec.g *= gltf_roughness_factor[mi];
     spec.b *= gltf_metallic_factor[mi];
+#ifdef HAS_ACTOR_FX
+    spec.r = mix(1.0, spec.r, actor_fx_material_response);
+#endif
 
     vec3 emissive = gltf_emissive_color[mi];
 #ifdef HAS_ACTOR_FX

@@ -75,6 +75,7 @@ vec3 srgb_to_linear(vec3 c);
 vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
 vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
 bool actorFxActive();
+float actorFxAuthoredMaterialResponse();
 bool actorFxUvTransformEnabled();
 bool actorFxRgbSplitEnabled();
 vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
@@ -188,7 +189,7 @@ void main()
     {
         // Match PBR beauty's Layer/Cover handling of authored emissive before
         // adding the style's independent synthetic bloom contribution.
-        vec3 covered_authored = actorFxEmissive(emissive, vec3(0.0));
+        vec3 covered_authored = emissive * actorFxAuthoredMaterialResponse();
         lum = max(max(covered_authored.r, covered_authored.g),
                   covered_authored.b) * vertex_emissive.a;
 

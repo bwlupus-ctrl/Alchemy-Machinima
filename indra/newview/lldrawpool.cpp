@@ -470,6 +470,7 @@ bool actor_fx_style_needs_synthetic_bloom(const LLDirectorCast::ActorStyle& styl
     {
         case 2:  // Hologram
         case 6:  // Neon outline
+        case 10: // Dissolve incandescent boundary
         case 14: // Blueprint
         case 15: // Ectoplasm
         case 17: // Prism
@@ -505,16 +506,11 @@ bool upload_actor_fx_style(const LLUUID& style_id,
         return false;
     }
 
-    // Wireframe Layer keeps the authored fill and receives topology lines in a
-    // dedicated live pass. Cover must actually own the interior too: keep its
-    // native material draw enabled as a neutral hidden-line backing, then let
-    // the line caller select the bright topology treatment below.
-    if (style.mStyle == 3 && !allow_native_wire
-        && style.mMode != LLDirectorCast::ACTOR_STYLE_REPLACE)
-    {
-        shader->uniform1i(sActorFxEnabled, 0);
-        return false;
-    }
+    // Wire always keeps a native hidden-line backing under its dedicated live
+    // topology pass. Layer mixes authored material toward that backing by its
+    // strength; Cover owns it completely. Disabling native Wire for Layer left
+    // every legacy/PBR face fully authored, which read as material-shaped holes
+    // and mismatched patches between otherwise continuous topology lines.
 
     // Null is Director's explicit identity for You. Use the runtime agent id
     // only for stable tint/phase generation; the style lookup above must retain

@@ -66,6 +66,7 @@ vec4 encodeNormal(vec3 n, float env, float gbuffer_flag);
 vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
 vec2 actorFxPbrMaterial(vec2 roughness_metallic);
 vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
+float actorFxAuthoredMaterialResponse();
 bool actorFxUvTransformEnabled();
 bool actorFxRgbSplitEnabled();
 vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
@@ -121,6 +122,13 @@ void main()
     vec3 vT = vary_tangent.xyz;
 
     vec3 vB = sign * cross(vN, vT);
+#ifdef HAS_ACTOR_FX
+    float actor_fx_material_response = actorFxAuthoredMaterialResponse();
+    // Material-owning Cover looks keep the geometric surface but do not inherit
+    // authored tangent-space bumps. Layer and Clone return exactly 1 here.
+    vNt = mix(vec3(0.0, 0.0, 1.0), vNt,
+              actor_fx_material_response);
+#endif
     vec3 tnorm = normalize( vNt.x * vT + vNt.y * vB + vNt.z * vN );
 
     // RGB = Occlusion, Roughness, Metal
@@ -141,6 +149,11 @@ void main()
 
     spec.g *= roughnessFactor;
     spec.b *= metallicFactor;
+#ifdef HAS_ACTOR_FX
+    // Neutral occlusion prevents the old material's cavities/noise from
+    // modulating a flat/sensor/owned-material Cover treatment.
+    spec.r = mix(1.0, spec.r, actor_fx_material_response);
+#endif
 
     vec3 emissive = emissiveColor;
 #ifdef HAS_ACTOR_FX

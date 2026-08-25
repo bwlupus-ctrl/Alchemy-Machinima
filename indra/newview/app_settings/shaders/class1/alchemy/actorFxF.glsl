@@ -6,6 +6,11 @@
  * depth writes, and pool sorting remain owned by the original material shader.
  * The one deliberate exception is look 10 (Dissolve), whose coverage change is
  * the point of the look.
+ *
+ * Inherent clocked looks match actorghostF: 2, 10, 13, 15, 16, 17, 20, 21,
+ * 22, 23, 24, 26, and 27. The other looks are intentionally static in Ghost
+ * Studio too; the shared shimmer, glitch, and distortion controls can animate
+ * any look without changing that preset contract.
  */
 
 uniform int actorFxEnabled;
@@ -197,22 +202,17 @@ vec2 actorFxUv(vec2 uv, vec3 position_eye)
     }
     uv = actor_fx_screen_quantize(uv, block_pixels);
 
-    if (mode == 2 && amount > 0.001) // voxel: block the surface and stagger neighbouring cells
+    if (mode == 3 && amount > 0.001) // lens / magnify
     {
-        vec2 frag_cell = floor(actorFxFragCoord() / max(block_pixels, 1.0));
-        vec3 volume_cell = floor(position_eye / mix(0.28, 0.06, amount));
-        float cell_phase = actor_fx_hash(frag_cell + volume_cell.xy
-                                         + vec2(volume_cell.z, actorFxParams1.w));
-        vec2 texel = abs(dFdx(uv)) + abs(dFdy(uv));
-        uv += (vec2(cell_phase,
-                   actor_fx_hash(frag_cell.yx + volume_cell.yz + 19.7)) - 0.5)
-              * texel * mix(1.0, 6.0, amount);
-    }
-    else if (mode == 3 && amount > 0.001) // lens
-    {
-        vec2 d = uv - vec2(0.5);
-        float q = clamp(length(d) / 0.48, 0.0, 1.0);
-        uv = vec2(0.5) + d * mix(1.0 - 0.48 * amount, 1.0, q * q);
+        const vec2 center = vec2(0.5);
+        vec2 d = uv - center;
+        float radius = mix(0.28, 0.48, amount);
+        float q = length(d) / radius;
+        if (q < 1.0)
+        {
+            uv = center + d * mix(0.48, 0.88, q * q) * amount
+                        + d * (1.0 - amount);
+        }
     }
     else if (mode == 4 && amount > 0.001) // ripple
     {
@@ -266,9 +266,9 @@ vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction)
     float pixels = 0.0;
     if (mode == 5 && amount > 0.001)
     {
-        float band = actor_fx_hash(vec2(floor(actorFxFragCoord().y / 18.0),
-                                         floor(actorFxTime * 10.0) + actorFxParams1.w));
-        pixels += mix(1.0, 12.0, amount) * mix(0.65, 1.35, band) * direction;
+        // Clone RGB Split is a steady channel separation; time enters only
+        // through VHS tracking, creative glitch, or look 27's echo.
+        pixels += mix(1.0, 12.0, amount) * direction;
     }
     else if (mode == 8 && amount > 0.001)
     {
@@ -308,11 +308,6 @@ vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored
     // source below; Layer Alpha must blend those cues against this unchanged
     // input instead of allowing them to leak through the base side of mix().
     vec3 layer_source = source;
-    vec2 uv = authored_uv;
-    if (actorFxUvTransformEnabled())
-    {
-        uv = actorFxUv(uv, position_eye);
-    }
     vec3 n = normalize(normal_eye);
     vec3 v = normalize(-position_eye);
     float facing = clamp(abs(dot(n, v)), 0.0, 1.0);
@@ -327,7 +322,9 @@ vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored
         float cells = mix(80.0, 10.0, distort);
         vec3 cell = floor(position_eye * cells) / cells;
         float cell_shade = 0.68 + 0.32 * actor_fx_hash(cell.xy + cell.z);
-        voxel_shade = mix(1.0, cell_shade, distort);
+        // actorghostF applies one cell-lighting read after the 3..38 px sample
+        // quantization. Keep it a single cue here as well.
+        voxel_shade = cell_shade;
     }
     else if (distort_mode == 8 && distort > 0.001)
     {
@@ -427,8 +424,10 @@ vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored
     {
         float coverage = actorFxBeautyDissolveCoverage();
         if (coverage < 0.0) discard;
-        float glow = 1.0 - smoothstep(0.0, 0.10, coverage);
-        fx = source + glow * mix(vec3(1.0, 0.35, 0.02), actorFxTint, 0.4) * 2.2;
+        // The incandescent boundary is emitted once by actorFxEmissive().
+        // Keeping it out of the lit base avoids doubling the edge energy while
+        // still sharing this exact coverage/discard decision in every caller.
+        fx = source;
     }
     else if (actorFxLook == 11) // Negative
         fx = (vec3(1.0) - source) * mix(vec3(1.0), actorFxTint, 0.35);
@@ -710,5 +709,17 @@ vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color)
     {
         glow = 0.08;
     }
-    return base_emissive + styled_color * glow * strength;
+    vec3 style_emissive = styled_color * glow;
+    if (actorFxLook == 10)
+    {
+        // Use the exact beauty/shadow coverage field for the incandescent
+        // dissolve boundary. This makes the orange/tinted edge travel with the
+        // disappearing silhouette instead of merely brightening the remaining
+        // diffuse material. Exact progress endpoints produce no surviving edge.
+        float coverage = actorFxBeautyDissolveCoverage();
+        float dissolve_edge = 1.0 - smoothstep(0.0, 0.10, coverage);
+        vec3 dissolve_tint = mix(vec3(1.0, 0.35, 0.02), actorFxTint, 0.4);
+        style_emissive += dissolve_tint * dissolve_edge * 2.2;
+    }
+    return base_emissive + style_emissive * strength;
 }

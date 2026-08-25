@@ -4,12 +4,14 @@
  * Beauty and shadow programs link this same module so their silhouettes cannot
  * drift.  The field is evaluated from the mesh's raw object/rest-space vertex
  * position before skinning.  It therefore sticks to animated surfaces and has
- * no camera-, shadow-map-, texture-transform-, or time-space input.  The actor
- * phase only decorrelates different cast members without animating coverage.
+ * no camera-, shadow-map-, or texture-transform-dependent input. The shared,
+ * snapshot-frozen Actor FX clock translates the field identically in beauty
+ * and shadow passes, while actor phase decorrelates different cast members.
  */
 
 uniform int actorFxEnabled;
 uniform int actorFxLook;
+uniform float actorFxTime;
 uniform vec4 actorFxParams0;
 uniform vec4 actorFxParams1;
 uniform float actorFxDissolveProgress;
@@ -67,7 +69,14 @@ float actorFxDissolveCoverage(vec3 object_position)
     // pre-skin position makes this identical in beauty and every shadow view.
     vec2 domain = object_position.xy
                 + vec2(object_position.z * 0.73, object_position.z * 1.17);
-    float field = actor_fx_dissolve_fbm(domain * 3.2 + actor_offset);
+    // Match Ghost Studio's slowly travelling breakup rather than freezing one
+    // object-space threshold forever. Progress still owns the amount removed;
+    // time only advects the field, so fixed progress keeps stable statistical
+    // coverage while its boundary crawls. actorFxTime is frozen across every
+    // tile of a high-resolution snapshot by the uploader.
+    vec2 field_motion = vec2(0.0, actorFxTime * 0.22);
+    float field = actor_fx_dissolve_fbm(domain * 3.2 + actor_offset
+                                        + field_motion);
     float threshold = mix(0.0, 1.0, progress);
     return field - threshold;
 }

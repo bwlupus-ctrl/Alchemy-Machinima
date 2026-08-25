@@ -15,10 +15,11 @@ Known rollback points:
 - `f547400e0fb` — `Checkpoint: cinematic controls and native Actor FX groundwork`
 - `5c1de7d4503` — `Perfect native Actor FX across avatar and material paths`
 - `cb66bd165d6` — `Document stale Release shader assertion`
+- `ecc29219038` — `Complete cinematic Actor FX across all shader paths`
 
-The new all-look/wire/Dissolve pass described below is the commit immediately after
-`cb66bd165d6`. Use `git log -1 --oneline` after receiving the handoff to record its
-final hash. The earlier points allow progressively larger rollbacks if a
+The Wire/Dissolve/PBR parity corrections described below are the follow-up to
+`ecc29219038`. Use `git log -1 --oneline` after receiving the handoff to record the
+final follow-up hash. The earlier points allow progressively larger rollbacks if a
 driver-specific regression is found.
 
 ## Whole-session feature inventory
@@ -91,13 +92,19 @@ Render modes:
   coverage, shadows, velocity, depth, and normal pass ordering. Flat/sensor Cover
   looks suppress legacy spec/gloss/environment and unrelated authored emissive;
   Chrome, Gold, and Ice supply their own intentional material response.
-- Wire Layer keeps the authored fill plus live topology. Wire Cover uses a neutral
-  dark hidden-line backing plus the same exact topology, rather than leaving the
-  original material visible beneath an overlay.
+- Wire always uses the same exact live topology pass. Layer mixes the authored fill
+  toward a neutral dark hidden-line backing by Layer strength; Cover owns that
+  backing completely. This prevents separate legacy/PBR material faces from reading
+  as solid patches or holes under otherwise continuous topology.
 - Rigged/static mesh Wire samples each indexed material slot's authored MASK/BLEND
-  alpha in both hidden-line depth prime and line shading. Fully transparent hair-
-  card texels are discarded at a 1/255 coverage floor, preventing rectangular or
-  internal card edges while retaining visible semi-transparent topology.
+  alpha. The hidden-line depth prime includes only SOLID/MASK coverage; BLEND lines
+  are alpha-preserving, depth-tested, and never write depth. Fully transparent hair-
+  card texels are discarded at a 1/255 coverage floor, preventing rectangular card
+  edges without turning a faint transparent layer into an opaque self-occluder.
+- Standalone/independently styled Animesh now harvests its control avatar's
+  `mRootVolp` linkset directly. Worn Animesh continues through wearer attachment
+  enumeration. Static legacy no-material auto-mask faces inherit their actual
+  alpha-mask pool cutoff instead of being treated as solid.
 
 The feature provides all 28 Ghost Studio-derived looks plus actor/custom hue, Layer
 alpha, independent Dissolve progress, pixel size, shimmer speed/amount, glitch,
@@ -112,6 +119,12 @@ All looks evaluated in shader core (IDs are the persisted scene values):
 `19 Wallhack/ESP`, `20 Night-vision Tube`, `21 Damage Overlay`, `22 Killcam`,
 `23 Oil Slick`, `24 Vaporwave`, `25 Halftone/Comic`, `26 Sonar Reveal`, and
 `27 Hologram Echo`.
+
+The exhaustive parity audit found inherent time laws in looks
+`2/10/13/15/16/17/20/21/22/23/24/26/27`. Looks
+`0/1/3/4/5/6/7/8/9/11/12/14/18/19/25` are static in Ghost Studio by design unless
+shimmer, glitch, or a clocked distortion is enabled; they are not frozen-shader
+regressions. Effect FPS `0` means smooth real-time animation, not paused time.
 
 Independent distortion IDs are `0 None`, `1 Pixelate`, `2 Voxel`,
 `3 Lens/Magnify`, `4 Wave/Ripple`, `5 RGB Split`, `6 Block Glitch`,
@@ -162,6 +175,9 @@ skeleton remains animation-shelved.
 - Actor FX UV distortion and RGB split affect RGB/material taps only.
 - PBR OPAQUE ignores texture alpha as required; MASK and BLEND retain authored
   cutoff/transparency behavior.
+- Material-owning Cover looks neutralize inherited PBR tangent-space normal detail
+  and AO while retaining the geometric normal. Layer, Clone, and inactive paths
+  preserve the authored normal/AO/RM response exactly.
 - Actor FX disabled/zero-strength is an exact identity path: no sRGB round trip,
   optional UV work, look math, or extra texture taps.
 - Legacy deferred, PBR, and classic/system-avatar forward paths perform the Actor FX
@@ -172,13 +188,17 @@ skeleton remains animation-shelved.
   vertex format does not carry a normal.
 - Legacy and PBR material families publish styled emissive consistently.
 - Zero-authored-glow alpha faces get a lightweight synthetic glow sub-pass only for
-  the eight signature bloom looks (`2/6/14/15/17/19/26/27`). Other styles and
+  the nine signature bloom looks (`2/6/10/14/15/17/19/26/27`). Other styles and
   disabled Actor FX do not pay that duplicate alpha draw.
 
 ## Dissolve, shadows, motion blur, and snapshots
 
 - Dissolve has a dedicated persisted progress control. `0` is exactly whole and `1`
   is exactly gone; Layer alpha no longer doubles as the dissolve threshold.
+- At intermediate progress, the rest/object-space breakup field travels at the same
+  rate as Ghost Studio. Its incandescent orange/tinted edge is derived from that
+  exact shared field and contributes emissive/bloom instead of darkening under
+  scene lighting.
 - Beauty and shadow passes call the same rest/object-space Dissolve coverage utility.
 - Rigid, rigged, alpha-mask, PBR, and classic-avatar velocity shaders use the same
   coverage, so dissolved holes do not write motion vectors and smear background
@@ -273,6 +293,22 @@ the source hashes before testing.
   in-world visual and frame-time matrix below still needs to be run on the reported
   production avatars before declaring the cinematic result visually approved.
 
+### Native transparency boundary
+
+This follow-up fixes every shader-side animation mismatch found by the exhaustive
+look/distortion audit, but it does **not** claim that a native opaque GBuffer face can
+become a true translucent Ghost Studio overlay. Layer alpha is treatment opacity;
+authored OPAQUE/MASK/BLEND coverage remains authoritative. Dissolve is the deliberate
+coverage-changing exception.
+
+Exact clone-style procedural translucency for Hologram/X-ray/Neon/Ectoplasm/Prism/
+Wallhack/NV Tube/Sonar/Hologram Echo would require a shared live-VBO transparent
+activation path. A partial overlay was not enabled here because it cannot cover the
+classic system/BOM body with the existing object-skin shader, would leave the native
+actor visible underneath, and would reintroduce extra geometry cost and blend-layer
+ordering problems. Do not describe that unsolved architectural step as a shader bug
+or as completed cinematic transparency.
+
 ### Release artifact warning and verification
 
 - Do not mix an executable from one configuration/commit with another build's
@@ -301,7 +337,7 @@ screenshots or short lossless clips for comparisons.
    - Compare a crowded shot to the checkpoint build; disabled Actor FX must not
      show the old Layer overlay cost.
    - Record Layer and Cover separately for the same non-Wire look. They share one
-     native geometry pass and should be close; only the eight signature bloom looks
+     native geometry pass and should be close; only the nine signature bloom looks
      may add the documented alpha glow sub-pass. Wire deliberately adds one line
      pass and should be measured separately.
 
