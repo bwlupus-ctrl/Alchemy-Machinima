@@ -2582,16 +2582,16 @@ void cine_light_rig_model_object::test<31>()
     blobs[4].mPower = false;
     blobs[4].mShadowMode = 2;
 
-    ensure_equals("enabled powered rigs contribute 1 + 4 + 3 slots",
-        requestedShadowSlots(blobs, 5, 10u), 8u);
+    ensure_equals("legacy power flags cannot form a second master gate",
+        requestedShadowSlots(blobs, 5, 10u), 10u);
     blobs[4].mPower = true;
     ensure_equals("the five-instance total caps at the ten-slot ceiling",
         requestedShadowSlots(blobs, 5, 10u), 10u);
     blobs[0].mShadowMode = 0;
     blobs[1].mEnabled = false;
-    blobs[2].mPower = false;
-    blobs[4].mPower = false;
-    ensure_equals("none, disabled, and unpowered rigs are fully dark",
+    blobs[2].mEnabled = false;
+    blobs[4].mEnabled = false;
+    ensure_equals("none and master-disabled rigs are fully dark",
         requestedShadowSlots(blobs, 5, 10u), 0u);
 }
 
@@ -3366,5 +3366,26 @@ void cine_light_rig_model_object::test<49>()
     legacy.erase("cue_list");
     ensure("old instance blobs retain the inert undefined default",
            ALCineLightRigParamBlob::fromLLSD(legacy).mCueList.isUndefined());
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<50>()
+{
+    set_test_name("easy cone width orders and clamps authored beam presets");
+
+    ensure_equals("narrow selects Snoot", easyConeWidthToBeam(0), 2);
+    ensure_equals("medium selects Standard", easyConeWidthToBeam(1), 0);
+    ensure_equals("wide selects Softbox", easyConeWidthToBeam(2), 1);
+    ensure_equals("low width clamps", easyConeWidthToBeam(-99), 2);
+    ensure_equals("high width clamps", easyConeWidthToBeam(99), 1);
+
+    ensure_equals("Snoot displays narrow", easyConeWidthFromBeam(2), 0);
+    ensure_equals("Standard displays medium", easyConeWidthFromBeam(0), 1);
+    ensure_equals("Softbox displays wide", easyConeWidthFromBeam(1), 2);
+    for (S32 width = 0; width < 3; ++width)
+    {
+        ensure_equals("easy cone mapping round-trips",
+                      easyConeWidthFromBeam(easyConeWidthToBeam(width)), width);
+    }
 }
 } // namespace tut

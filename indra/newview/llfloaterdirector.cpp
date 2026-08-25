@@ -19,9 +19,11 @@
 #include "alpanelanimpreview.h"     // embedded shared preview pane + own-avatar controls
 #include "alpanelcinecamparams.h"   // embedded shared panel (scene preset hooks)
 #include "alpanelpatheditor.h"      // embedded shared Actor Pathing editor
+#include "alprojectorshaftpresets.h"
 #include "alcinelightrigmanager.h"
 #include "aldirectorswitcher.h"
 #include "llactormover.h"
+#include "llagent.h"                   // stable self id while avatar rebuilds
 #include "llavatarnamecache.h"
 #include "llbutton.h"
 #include "llcheckboxctrl.h"
@@ -45,6 +47,7 @@
 #include "llscrolllistctrl.h"
 #include "llsdserialize.h"          // scene LLSD XML files
 #include "llselectmgr.h"
+#include "llsliderctrl.h"
 #include "llspinctrl.h"             // group start-delay spinner (Groups section)
 #include "lltabcontainer.h"
 #include "lltextbox.h"
@@ -174,6 +177,16 @@ const char* cinecam_mode_name(S32 mode)
 LLFloaterDirector::LLFloaterDirector(const LLSD& key)
 :   LLFloater(key)
 {
+    mCommitCallbackRegistrar.add(
+        "Director.ResetControlDefault",
+        [](LLUICtrl*, const LLSD& data)
+        {
+            if (LLControlVariable* control =
+                    gSavedSettings.getControl(data.asString()))
+            {
+                control->resetToDefault(true);
+            }
+        });
 }
 
 LLFloaterDirector::~LLFloaterDirector()
@@ -202,6 +215,12 @@ void LLFloaterDirector::onClose(bool app_quitting)
 
 bool LLFloaterDirector::postBuild()
 {
+    getChild<LLComboBox>("director_ps_preset")->setCommitCallback(
+        [](LLUICtrl* control, const LLSD&)
+        {
+            ALProjectorShaftPresets::apply(control->getValue().asInteger());
+        });
+
     // ---- transport ----
     mActionBtn = getChild<LLButton>("btn_action");
     mCutBtn = getChild<LLButton>("btn_cut");
@@ -234,6 +253,7 @@ bool LLFloaterDirector::postBuild()
         { "move_tab",    TAB_ICON_MOVE },
         { "path_tab",    TAB_ICON_PATH },
         { "ghosts_tab",  TAB_ICON_GHOSTS },
+        { "actor_style_tab", TAB_ICON_GHOSTS },
         { "props_tab",   TAB_ICON_PROPS },
         { "animate_tab", TAB_ICON_ANIMATE },
         { "camera_tab",  TAB_ICON_CAMERA },
@@ -272,12 +292,14 @@ bool LLFloaterDirector::postBuild()
     mCastList->setRightMouseDownCallback(
         [this](LLUICtrl* ctrl, S32 x, S32 y, MASK) { onCastRightClick(ctrl, x, y); });
     // double-click a cast row = Set Subject A (mirrors the right-click path)
-    mCastList->setDoubleClickCallback([this]() { onCastSetSubject(true); });
+    mCastList->setDoubleClickCallback([this]() { onCastSetSubject(SUBJECT_A); });
     {
         // same LLContextMenu idiom as the Animation Explorer's list menu
         LLUICtrl::CommitCallbackRegistry::ScopedRegistrar registrar;
-        registrar.add("Director.SetSubjectA", [this](LLUICtrl*, const LLSD&) { onCastSetSubject(true); });
-        registrar.add("Director.SetSubjectB", [this](LLUICtrl*, const LLSD&) { onCastSetSubject(false); });
+        registrar.add("Director.SetSubjectA", [this](LLUICtrl*, const LLSD&) { onCastSetSubject(SUBJECT_A); });
+        registrar.add("Director.SetSubjectB", [this](LLUICtrl*, const LLSD&) { onCastSetSubject(SUBJECT_B); });
+        registrar.add("Director.SetSubjectC", [this](LLUICtrl*, const LLSD&) { onCastSetSubject(SUBJECT_C); });
+        registrar.add("Director.SetSubjectD", [this](LLUICtrl*, const LLSD&) { onCastSetSubject(SUBJECT_D); });
         registrar.add("Director.SetMarkHere", [this](LLUICtrl*, const LLSD&) { onCastSetMarkHere(); });
         registrar.add("Director.ResetToMark", [this](LLUICtrl*, const LLSD&) { onCastResetToMark(); });
         registrar.add("Director.ClearLocoAnim", [this](LLUICtrl*, const LLSD&) { onCastClearLocoAnim(); });
@@ -338,6 +360,52 @@ bool LLFloaterDirector::postBuild()
     // actor re-pointed each draw to the console's cast selection
     mPathPanel = findChild<ALPanelPathEditor>("path_editor");
 
+    // ---- Actor FX tab ----
+    // This is a view over LLDirectorCast's per-actor model. It deliberately
+    // does not share Ghost Studio's selected instance: actor styles attach to
+    // stable cast ids, with a separate null-id record for You.
+    mActorStyleTarget = getChild<LLComboBox>("actor_style_target");
+    mActorStyleEnabled = getChild<LLCheckBoxCtrl>("actor_style_enabled");
+    mActorStyleMode = getChild<LLComboBox>("actor_style_mode");
+    mActorStyleLook = getChild<LLComboBox>("actor_style_look");
+    mActorStyleUseActorHue = getChild<LLCheckBoxCtrl>("actor_style_use_actor_hue");
+    mActorStyleHue = getChild<LLSliderCtrl>("actor_style_hue");
+    mActorStyleAlpha = getChild<LLSliderCtrl>("actor_style_alpha");
+    mActorStylePixel = getChild<LLSliderCtrl>("actor_style_pixel");
+    mActorStyleShimmerSpeed = getChild<LLSliderCtrl>("actor_style_shimmer_speed");
+    mActorStyleShimmerAmount = getChild<LLSliderCtrl>("actor_style_shimmer_amount");
+    mActorStyleGlitch = getChild<LLSliderCtrl>("actor_style_glitch");
+    mActorStyleDistortion = getChild<LLComboBox>("actor_style_distortion");
+    mActorStyleDistortionAmount = getChild<LLSliderCtrl>("actor_style_distortion_amount");
+    mActorStyleBrightness = getChild<LLSliderCtrl>("actor_style_brightness");
+    mActorStyleEffectFps = getChild<LLSpinCtrl>("actor_style_effect_fps");
+    mActorStyleReset = getChild<LLButton>("actor_style_reset");
+    mActorStyleStatus = getChild<LLTextBox>("actor_style_status");
+
+    mActorStyleTarget->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onActorStyleTargetChanged(); });
+    for (LLUICtrl* control : {
+            static_cast<LLUICtrl*>(mActorStyleEnabled),
+            static_cast<LLUICtrl*>(mActorStyleMode),
+            static_cast<LLUICtrl*>(mActorStyleLook),
+            static_cast<LLUICtrl*>(mActorStyleUseActorHue),
+            static_cast<LLUICtrl*>(mActorStyleHue),
+            static_cast<LLUICtrl*>(mActorStyleAlpha),
+            static_cast<LLUICtrl*>(mActorStylePixel),
+            static_cast<LLUICtrl*>(mActorStyleShimmerSpeed),
+            static_cast<LLUICtrl*>(mActorStyleShimmerAmount),
+            static_cast<LLUICtrl*>(mActorStyleGlitch),
+            static_cast<LLUICtrl*>(mActorStyleDistortion),
+            static_cast<LLUICtrl*>(mActorStyleDistortionAmount),
+            static_cast<LLUICtrl*>(mActorStyleBrightness),
+            static_cast<LLUICtrl*>(mActorStyleEffectFps) })
+    {
+        control->setCommitCallback(
+            [this](LLUICtrl*, const LLSD&) { onActorStyleControlChanged(); });
+    }
+    mActorStyleReset->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onActorStyleReset(); });
+
     // ---- Animate tab ----
     mAnimateHeader = getChild<LLTextBox>("animate_header");
     mAnimList = getChild<LLScrollListCtrl>("anim_list");
@@ -380,6 +448,16 @@ bool LLFloaterDirector::postBuild()
     LLScrollContainer* animate_scroll = getChild<LLScrollContainer>("animate_scroll");
     LLView* animate_document = getChildView("animate_scroll_content");
     ALScrollFocus::install(animate_scroll, animate_document, animate_document);
+    LLScrollContainer* actor_style_scroll =
+        getChild<LLScrollContainer>("actor_style_scroll");
+    LLView* actor_style_document = getChildView("actor_style_scroll_content");
+    ALScrollFocus::install(actor_style_scroll, actor_style_document,
+                           actor_style_document);
+    LLScrollContainer* shafts_scroll =
+        getChild<LLScrollContainer>("projector_volumetrics_scroll");
+    LLView* shafts_document =
+        getChildView("projector_volumetrics_scroll_content");
+    ALScrollFocus::install(shafts_scroll, shafts_document, shafts_document);
 
     // ---- Camera tab ----
     mSubjectAText = getChild<LLTextBox>("subject_a_text");
@@ -406,8 +484,6 @@ bool LLFloaterDirector::postBuild()
         [this](LLUICtrl*, const LLSD&) { onOpenActorGaze(); });
     getChild<LLButton>("btn_virtual_cam")->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onOpenVirtualCam(); });
-    getChild<LLButton>("btn_pose_polish")->setCommitCallback(
-        [this](LLUICtrl*, const LLSD&) { onOpenPosePolish(); });
     // embedded shared params panel: scene files read its selected preset and
     // apply presets through it on load
     mCineCamPanel = findChild<ALPanelCineCamParams>("cinecam_params_embedded");
@@ -476,6 +552,7 @@ void LLFloaterDirector::draw()
     refreshTransport();
     refreshMoveTab();
     refreshPathTab();
+    refreshActorStyleTab();
     refreshAnimateTab();
     refreshCameraTab();
     refreshStatusStrip();
@@ -1357,7 +1434,7 @@ void LLFloaterDirector::onClickFocusActor()
     }
 }
 
-void LLFloaterDirector::onCastSetSubject(bool subject_a)
+void LLFloaterDirector::onCastSetSubject(S32 subject)
 {
     const LLUUID id = firstSelectedCastId();
     if (id.isNull())
@@ -1365,7 +1442,7 @@ void LLFloaterDirector::onCastSetSubject(bool subject_a)
         return;
     }
     LLDirectorCast& cast = LLDirectorCast::instance();
-    assign_subject(cast, subject_a ? SUBJECT_A : SUBJECT_B, id);
+    assign_subject(cast, subject, id);
 }
 
 void LLFloaterDirector::onCastSetMarkHere()
@@ -1711,6 +1788,239 @@ void LLFloaterDirector::refreshPathTab()
     {
         mPathPanel->setTargetActor(firstSelectedCastId());
     }
+}
+
+// ---------------------------------------------------------------------------
+// Actor FX tab: per-actor live-render styling
+// ---------------------------------------------------------------------------
+bool LLFloaterDirector::hasActorStyleTarget() const
+{
+    return mActorStyleTarget && mActorStyleTarget->getCurrentIndex() >= 0;
+}
+
+LLUUID LLFloaterDirector::actorStyleTargetId() const
+{
+    return hasActorStyleTarget()
+        ? mActorStyleTarget->getSelectedValue().asUUID()
+        : LLUUID::null;
+}
+
+void LLFloaterDirector::onActorStyleTargetChanged()
+{
+    // Null is both a legitimate target (You) and LLUUID's empty value, so the
+    // separate mActorStyleHadTarget flag distinguishes it from no combo row.
+    mActorStyleHadTarget = false;
+    mActorStyleSnapshot.clear();
+    refreshActorStyleTab();
+}
+
+void LLFloaterDirector::onActorStyleControlChanged()
+{
+    if (mRefreshingActorStyle || !hasActorStyleTarget())
+    {
+        return;
+    }
+
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    const LLUUID id = actorStyleTargetId();
+    // Start from the model record so future fields this UI does not know about
+    // survive an edit to one of today's controls.
+    LLDirectorCast::ActorStyle style = cast.getActorStyle(id);
+    style.mEnabled = mActorStyleEnabled->get();
+    style.mMode = static_cast<LLDirectorCast::EActorStyleMode>(llclamp(
+        mActorStyleMode->getValue().asInteger(),
+        static_cast<S32>(LLDirectorCast::ACTOR_STYLE_LAYER),
+        static_cast<S32>(LLDirectorCast::ACTOR_STYLE_REPLACE)));
+    style.mStyle = llclamp(mActorStyleLook->getValue().asInteger(), 0, 27);
+    style.mUseActorHue = mActorStyleUseActorHue->get();
+    style.mHue = (F32)mActorStyleHue->getValue().asReal();
+    style.mAlpha = (F32)mActorStyleAlpha->getValue().asReal();
+    style.mPixelSize = (F32)mActorStylePixel->getValue().asReal();
+    style.mShimmerSpeed = (F32)mActorStyleShimmerSpeed->getValue().asReal();
+    style.mShimmerAmount = (F32)mActorStyleShimmerAmount->getValue().asReal();
+    style.mGlitch = (F32)mActorStyleGlitch->getValue().asReal();
+    style.mDistortion = llclamp(
+        mActorStyleDistortion->getValue().asInteger(), 0, 8);
+    style.mDistortionAmount =
+        (F32)mActorStyleDistortionAmount->getValue().asReal();
+    style.mBrightness = (F32)mActorStyleBrightness->getValue().asReal();
+    style.mEffectFps = (F32)mActorStyleEffectFps->getValue().asReal();
+    cast.setActorStyle(id, style);
+
+    // Refresh dependent enablement (master, actor hue, distortion amount) on
+    // the next draw without hammering values during a slider drag.
+    mActorStyleSnapshot.clear();
+}
+
+void LLFloaterDirector::onActorStyleReset()
+{
+    if (!hasActorStyleTarget())
+    {
+        return;
+    }
+    LLDirectorCast::instance().setActorStyle(
+        actorStyleTargetId(), LLDirectorCast::ActorStyle());
+    mActorStyleSnapshot.clear();
+}
+
+void LLFloaterDirector::refreshActorStyleTab()
+{
+    if (!mActorStyleTarget)
+    {
+        return;
+    }
+
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    const bool have_self = isAgentAvatarValid();
+    // De-duplicate against the stable agent id even during a transient avatar
+    // rebuild. If self is momentarily invalid, do not expose the same body as a
+    // CastMember record whose style would disappear when null-id You returns.
+    const LLUUID self_id = gAgent.getID();
+
+    // Rebuild only when membership, display names, or world availability
+    // changes. The explicit You row maps to null; skip the agent's real UUID
+    // when it is also enrolled in Cast so the UI cannot offer two controls for
+    // one rendered body.
+    std::string roster_signature = have_self
+        ? "you:" + self_id.asString() + "|"
+        : std::string("no-you|");
+    for (const LLDirectorCast::CastMember& member : cast.getCast())
+    {
+        if (self_id.notNull() && member.mId == self_id)
+        {
+            continue;
+        }
+        const bool in_world = cast.resolve(member.mId) != nullptr;
+        roster_signature += member.mId.asString() + ":" + member.mLastName
+                         + (in_world ? "+|" : "-|");
+    }
+
+    if (roster_signature != mActorStyleRosterSignature)
+    {
+        mActorStyleRosterSignature = roster_signature;
+        const bool had_previous = mActorStyleTarget->getCurrentIndex() >= 0;
+        const LLSD previous = mActorStyleTarget->getSelectedValue();
+
+        mRefreshingActorStyle = true;
+        mActorStyleTarget->clearRows();
+        if (have_self)
+        {
+            mActorStyleTarget->add("You", LLSD(LLUUID::null));
+        }
+        for (const LLDirectorCast::CastMember& member : cast.getCast())
+        {
+            if (self_id.notNull() && member.mId == self_id)
+            {
+                continue;
+            }
+            const bool in_world = cast.resolve(member.mId) != nullptr;
+            std::string label = castMemberName(member.mId);
+            if (!in_world)
+            {
+                label += " (away)";
+            }
+            mActorStyleTarget->add(label, LLSD(member.mId));
+        }
+        if (!had_previous ||
+            !mActorStyleTarget->setSelectedByValue(previous, true))
+        {
+            mActorStyleTarget->selectFirstItem();
+        }
+        mRefreshingActorStyle = false;
+        mActorStyleHadTarget = false;
+        mActorStyleSnapshot.clear();
+    }
+
+    const bool have_target = hasActorStyleTarget();
+    mActorStyleTarget->setEnabled(mActorStyleTarget->getItemCount() > 0);
+    if (!have_target)
+    {
+        mActorStyleEnabled->setEnabled(false);
+        mActorStyleMode->setEnabled(false);
+        mActorStyleLook->setEnabled(false);
+        mActorStyleUseActorHue->setEnabled(false);
+        mActorStyleHue->setEnabled(false);
+        mActorStyleAlpha->setEnabled(false);
+        mActorStylePixel->setEnabled(false);
+        mActorStyleShimmerSpeed->setEnabled(false);
+        mActorStyleShimmerAmount->setEnabled(false);
+        mActorStyleGlitch->setEnabled(false);
+        mActorStyleDistortion->setEnabled(false);
+        mActorStyleDistortionAmount->setEnabled(false);
+        mActorStyleBrightness->setEnabled(false);
+        mActorStyleEffectFps->setEnabled(false);
+        mActorStyleReset->setEnabled(false);
+        mActorStyleStatus->setText(LLStringExplicit(
+            "You is unavailable and the Director cast is empty."));
+        mActorStyleHadTarget = false;
+        mActorStyleSnapshot.clear();
+        return;
+    }
+
+    const LLUUID id = actorStyleTargetId();
+    const LLDirectorCast::ActorStyle& style = cast.getActorStyle(id);
+    const std::string snapshot = llformat(
+        "%d|%d|%d|%d|%.4f|%.4f|%.4f|%.4f|%.4f|%.4f|%d|%.4f|%.4f|%.4f",
+        style.mEnabled ? 1 : 0, static_cast<S32>(style.mMode), style.mStyle,
+        style.mUseActorHue ? 1 : 0, style.mHue, style.mAlpha,
+        style.mPixelSize, style.mShimmerSpeed, style.mShimmerAmount,
+        style.mGlitch, style.mDistortion, style.mDistortionAmount,
+        style.mBrightness, style.mEffectFps);
+
+    if (!mActorStyleHadTarget || id != mActorStyleShownFor ||
+        snapshot != mActorStyleSnapshot)
+    {
+        mRefreshingActorStyle = true;
+        mActorStyleEnabled->set(style.mEnabled);
+        mActorStyleMode->setValue(static_cast<S32>(style.mMode));
+        mActorStyleLook->setValue(style.mStyle);
+        mActorStyleUseActorHue->set(style.mUseActorHue);
+        mActorStyleHue->setValue(style.mHue);
+        mActorStyleAlpha->setValue(style.mAlpha);
+        mActorStylePixel->setValue(style.mPixelSize);
+        mActorStyleShimmerSpeed->setValue(style.mShimmerSpeed);
+        mActorStyleShimmerAmount->setValue(style.mShimmerAmount);
+        mActorStyleGlitch->setValue(style.mGlitch);
+        mActorStyleDistortion->setValue(style.mDistortion);
+        mActorStyleDistortionAmount->setValue(style.mDistortionAmount);
+        mActorStyleBrightness->setValue(style.mBrightness);
+        mActorStyleEffectFps->setValue(style.mEffectFps);
+        mRefreshingActorStyle = false;
+        mActorStyleShownFor = id;
+        mActorStyleHadTarget = true;
+        mActorStyleSnapshot = snapshot;
+    }
+
+    mActorStyleEnabled->setEnabled(true);
+    const bool active = style.mEnabled;
+    mActorStyleMode->setEnabled(active);
+    mActorStyleLook->setEnabled(active);
+    mActorStyleUseActorHue->setEnabled(active);
+    mActorStyleHue->setEnabled(active && !style.mUseActorHue);
+    mActorStyleAlpha->setEnabled(active);
+    mActorStylePixel->setEnabled(active);
+    mActorStyleShimmerSpeed->setEnabled(active);
+    mActorStyleShimmerAmount->setEnabled(active);
+    mActorStyleGlitch->setEnabled(active);
+    mActorStyleDistortion->setEnabled(active);
+    mActorStyleDistortionAmount->setEnabled(
+        active && style.mDistortion != 0);
+    mActorStyleBrightness->setEnabled(active);
+    mActorStyleEffectFps->setEnabled(active);
+    mActorStyleReset->setEnabled(true);
+
+    std::string who = id.isNull() ? std::string("You")
+                                  : castMemberName(id);
+    if (id.notNull() && cast.resolve(id) == nullptr)
+    {
+        who += " (away)";
+    }
+    const char* mode = style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE
+        ? "Opaque cover preview"
+        : "Layer";
+    mActorStyleStatus->setText(LLStringExplicit(
+        style.mEnabled ? who + " \xC2\xB7 " + mode + " style active"
+                       : who + " \xC2\xB7 styling off"));
 }
 
 // ---------------------------------------------------------------------------
@@ -2111,11 +2421,6 @@ void LLFloaterDirector::onOpenActorGaze()
 void LLFloaterDirector::onOpenVirtualCam()
 {
     LLFloaterReg::showInstance("virtual_cam");
-}
-
-void LLFloaterDirector::onOpenPosePolish()
-{
-    LLFloaterReg::toggleInstance("pose_polish");
 }
 
 void LLFloaterDirector::refreshCameraTab()

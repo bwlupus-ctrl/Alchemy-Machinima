@@ -44,6 +44,10 @@ static LLPanelInjector<ALPanelCineLightRig>
 
 namespace
 {
+constexpr S32 GOBO_THUMBNAIL_SIZE = 32;
+constexpr S32 GOBO_LABEL_COLUMN_WIDTH = 304;
+constexpr S32 GOBO_PREVIEW_COLUMN_WIDTH = 40;
+
 const char* const ROLE_NAMES[ALCineLightRigModel::LIGHT_COUNT] = {
     "Key", "Fill", "Rim", "Bg"
 };
@@ -66,36 +70,19 @@ void addLabeledSeparator(LLComboBox* combo, const std::string& label,
     combo->add(label, LLSD(), ADD_BOTTOM, false);
 }
 
-void addCategorizedGobos(LLComboBox* combo)
-{
-    combo->add(ALCineLightRigModel::goboName(0), LLSD(0));
-    for (S32 category = 1;
-         category < ALCineLightRigModel::GOBO_CATEGORY_COUNT; ++category)
-    {
-        addLabeledSeparator(
-            combo, ALCineLightRigModel::goboCategoryName(category), true);
-        for (S32 index = 1; index < ALCineLightRigModel::GOBO_COUNT; ++index)
-        {
-            if (ALCineLightRigModel::goboCategory(index) == category)
-            {
-                combo->add(ALCineLightRigModel::goboName(index), LLSD(index));
-            }
-        }
-    }
-}
-
 void addThumbnailGobo(LLComboBox* combo, S32 index)
 {
     LLSD row;
     row["value"] = index;
     row["columns"][0]["column"] = "label";
     row["columns"][0]["value"] = ALCineLightRigModel::goboName(index);
-    row["columns"][0]["width"] = 208;
+    row["columns"][0]["width"] = GOBO_LABEL_COLUMN_WIDTH;
     row["columns"][1]["column"] = "preview";
     row["columns"][1]["type"] = "icon";
     row["columns"][1]["value"] = index > 0
         ? llformat("CineGobo%02d", index) : std::string();
-    row["columns"][1]["width"] = 32;
+    row["columns"][1]["width"] = GOBO_PREVIEW_COLUMN_WIDTH;
+    row["columns"][1]["icon_size"] = GOBO_THUMBNAIL_SIZE;
     combo->addElement(row, ADD_BOTTOM);
 }
 
@@ -105,10 +92,10 @@ void addThumbnailGoboHeader(LLComboBox* combo, const std::string& label)
     row["value"] = LLSD();
     row["columns"][0]["column"] = "label";
     row["columns"][0]["value"] = "\xE2\x80\x94 " + label + " \xE2\x80\x94";
-    row["columns"][0]["width"] = 208;
+    row["columns"][0]["width"] = GOBO_LABEL_COLUMN_WIDTH;
     row["columns"][1]["column"] = "preview";
     row["columns"][1]["value"] = "";
-    row["columns"][1]["width"] = 32;
+    row["columns"][1]["width"] = GOBO_PREVIEW_COLUMN_WIDTH;
     if (LLScrollListItem* item = combo->addElement(row, ADD_BOTTOM))
     {
         item->setEnabled(false);
@@ -398,6 +385,8 @@ bool ALPanelCineLightRig::postBuild()
     mEasyRim = getChild<LLComboBox>("cine_easy_rim");
     mEasyBg = getChild<LLComboBox>("cine_easy_bg");
     mEasyWarmth = getChild<LLUICtrl>("cine_easy_warmth");
+    mEasyConeWidth = getChild<LLUICtrl>("cine_easy_cone_width");
+    mEasyConeFeather = getChild<LLUICtrl>("cine_easy_cone_feather");
     mEasyModeToggle = getChild<LLCheckBoxCtrl>("cine_easy_mode");
     mFixtureRole = getChild<LLComboBox>("cine_fixture_role");
     mFixtureMode = getChild<LLCheckBoxCtrl>("cine_fixture_mode");
@@ -428,6 +417,7 @@ bool ALPanelCineLightRig::postBuild()
     mRadiusLabel = getChild<LLTextBox>("cine_radius_label");
     mRadiusDefaultColor = LLUIColorTable::instance().getColor(
         "LabelTextColor", LLColor4::white);
+    mSetupSave = getChild<LLButton>("cine_setup_save");
     mSetupDelete = getChild<LLButton>("cine_setup_delete");
     if (std::find(LIVE_PANELS.begin(), LIVE_PANELS.end(), this) ==
         LIVE_PANELS.end())
@@ -456,7 +446,7 @@ bool ALPanelCineLightRig::postBuild()
         [this](LLUICtrl*, const LLSD&) { onSetupSelected(); });
     mFlarePreset->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onFlarePresetSelected(); });
-    getChild<LLButton>("cine_setup_save")->setCommitCallback(
+    mSetupSave->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { saveSetup(); });
     getChild<LLButton>("cine_setup_delete")->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { deleteSetup(); });
@@ -498,6 +488,8 @@ bool ALPanelCineLightRig::postBuild()
         [this](LLUICtrl*, const LLSD&) { onEasyBgCommit(); });
     mEasyWarmth->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onEasyWarmthCommit(); });
+    mEasyConeWidth->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onEasyConeWidthCommit(); });
     mFixtureRole->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onFixtureRoleCommit(); });
     mFixtureMode->setCommitCallback(
@@ -526,6 +518,9 @@ bool ALPanelCineLightRig::postBuild()
         mClipStatus[i] = getChild<LLTextBox>(prefix + "_clip");
         mShaftControls[i] = getChild<LLCheckBoxCtrl>(prefix + "_shaft");
         mHeroControls[i] = getChild<LLCheckBoxCtrl>(prefix + "_hero");
+        mManualConeWidths[i] = getChild<LLUICtrl>(prefix + "_cone_width");
+        mManualConeWidths[i]->setCommitCallback(
+            [this, i](LLUICtrl*, const LLSD&) { onManualConeWidthCommit(i); });
         mShaftControls[i]->setCommitCallback(
             [i](LLUICtrl* control, const LLSD&)
             {
@@ -556,7 +551,6 @@ void ALPanelCineLightRig::populateStaticCombos()
         const std::string widget_prefix =
             std::string("cine_") + ROLE_WIDGET_NAMES[light];
         LLComboBox* profile = getChild<LLComboBox>(widget_prefix + "_profile");
-        LLComboBox* beam = getChild<LLComboBox>(widget_prefix + "_beam");
         LLComboBox* gobo = getChild<LLComboBox>(widget_prefix + "_gobo");
         LLComboBox* gel = getChild<LLComboBox>(widget_prefix + "_gel");
         LLComboBox* flicker = getChild<LLComboBox>(
@@ -565,11 +559,7 @@ void ALPanelCineLightRig::populateStaticCombos()
         {
             profile->add(ALCineLightRigModel::profileName(i), LLSD(i));
         }
-        for (S32 i = 0; i < ALCineLightRigModel::BEAM_COUNT; ++i)
-        {
-            beam->add(ALCineLightRigModel::beamName(i), LLSD(i));
-        }
-        addCategorizedGobos(gobo);
+        addThumbnailGoboLibrary(gobo);
         gel->add(ALCineLightRigModel::gelName(0), LLSD(0));
         addLabeledSeparator(gel, "Colour Temp", true);
         for (S32 i = 1; i < ALCineLightRigModel::GEL_COUNT; ++i)
@@ -595,7 +585,6 @@ void ALPanelCineLightRig::populateStaticCombos()
         const std::string setting_prefix =
             std::string("CineLightRig") + ROLE_NAMES[light];
         profile->setValue(gSavedSettings.getS32(setting_prefix + "Profile"));
-        beam->setValue(gSavedSettings.getS32(setting_prefix + "Beam"));
         gobo->setValue(gSavedSettings.getS32(setting_prefix + "Gobo"));
         gel->setValue(gSavedSettings.getS32(setting_prefix + "Gel"));
         flicker->setValue(gSavedSettings.getS32(setting_prefix + "Flicker"));
@@ -1591,6 +1580,37 @@ void ALPanelCineLightRig::onEasyWarmthCommit()
                    ALCineLightRigModel::MASTER_TEMP_MIRED_MAX));
 }
 
+void ALPanelCineLightRig::onEasyConeWidthCommit()
+{
+    if (mSyncingEasyControls || !mEasyModeActive)
+    {
+        return;
+    }
+    const S32 beam = ALCineLightRigModel::easyConeWidthToBeam(
+        mEasyConeWidth->getValue().asInteger());
+    static constexpr const char* BEAM_SETTINGS[] = {
+        "CineLightRigKeyBeam", "CineLightRigFillBeam",
+        "CineLightRigRimBeam", "CineLightRigBgBeam",
+    };
+    for (const char* setting : BEAM_SETTINGS)
+    {
+        gSavedSettings.setS32(setting, beam);
+    }
+}
+
+void ALPanelCineLightRig::onManualConeWidthCommit(S32 light)
+{
+    if (mSyncingEasyControls || light < 0 ||
+        light >= ALCineLightRigModel::LIGHT_COUNT)
+    {
+        return;
+    }
+    const S32 beam = ALCineLightRigModel::easyConeWidthToBeam(
+        mManualConeWidths[light]->getValue().asInteger());
+    gSavedSettings.setS32(
+        std::string("CineLightRig") + ROLE_NAMES[light] + "Beam", beam);
+}
+
 void ALPanelCineLightRig::onManualCommit()
 {
     // The check box is control_name-bound, so CineLightRigManual is already
@@ -1644,12 +1664,28 @@ void ALPanelCineLightRig::syncEasyControls()
             gSavedSettings.getF32("CineLightRigBgEV"))));
     set_unfocused(mEasyWarmth, LLSD(
         gSavedSettings.getF32("CineLightRigMasterTempMired")));
+    set_unfocused(mEasyConeWidth, LLSD(
+        ALCineLightRigModel::easyConeWidthFromBeam(
+            gSavedSettings.getS32("CineLightRigKeyBeam"))));
+    set_unfocused(mEasyConeFeather, LLSD(
+        gSavedSettings.getF32("BDMergeProjectorVolumetricsFeather")));
+    for (S32 light = 0; light < ALCineLightRigModel::LIGHT_COUNT; ++light)
+    {
+        set_unfocused(mManualConeWidths[light], LLSD(
+            ALCineLightRigModel::easyConeWidthFromBeam(
+                gSavedSettings.getS32(
+                    std::string("CineLightRig") + ROLE_NAMES[light] +
+                    "Beam"))));
+        mManualConeWidths[light]->setEnabled(!mEasyModeActive);
+    }
 
     mEasyBrightness->setEnabled(mEasyModeActive);
     mEasyDrama->setEnabled(mEasyModeActive);
     mEasyRim->setEnabled(mEasyModeActive);
     mEasyBg->setEnabled(mEasyModeActive);
     mEasyWarmth->setEnabled(mEasyModeActive);
+    mEasyConeWidth->setEnabled(mEasyModeActive);
+    mEasyConeFeather->setEnabled(mEasyModeActive);
     for (LLUICtrl* control : mAdvancedDrivenControls)
     {
         control->setEnabled(!mEasyModeActive);
@@ -1757,6 +1793,13 @@ void ALPanelCineLightRig::updateDerivedStatus()
         mRadiusOverCeiling = radius_over_ceiling;
         mRadiusCueInitialized = true;
     }
+    std::string setup_name = mSetupCombo
+        ? mSetupCombo->getSimple() : std::string();
+    LLStringUtil::trim(setup_name);
+    mSetupSave->setEnabled(!setup_name.empty() &&
+                           !ALCineLightRig::isMasterSetup(setup_name) &&
+                           !ALCineLightRig::isSetupDecorationName(
+                               setup_name));
     const std::string selected = mSetupCombo
         ? mSetupCombo->getSelectedValue().asString() : std::string();
     mSetupDelete->setEnabled(!selected.empty() &&

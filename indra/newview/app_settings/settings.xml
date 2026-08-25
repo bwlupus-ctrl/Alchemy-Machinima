@@ -89,7 +89,7 @@
     </map>
     <key>CineLightRigEnabled</key>
     <map>
-      <key>Comment</key><string>Enable client-only prim-free cinematic light emitters. Session-only (Persist 0) so the rig always starts OFF at login; toggle it on per session as needed.</string>
+      <key>Comment</key><string>Master power for client-only prim-free cinematic light emitters. Session-only (Persist 0) so the rig always starts OFF at login; toggle it on per session as needed.</string>
       <key>Persist</key><integer>0</integer>
       <key>Type</key><string>Boolean</string>
       <key>Value</key><integer>0</integer>
@@ -103,7 +103,7 @@
     </map>
     <key>CineLightRigPower</key>
     <map>
-      <key>Comment</key><string>Master artistic power switch for the cinematic light rig</string>
+      <key>Comment</key><string>Deprecated compatibility value for older cinematic light rig scenes; runtime master power is CineLightRigEnabled</string>
       <key>Persist</key><integer>1</integer>
       <key>Type</key><string>Boolean</string>
       <key>Value</key><integer>1</integer>
@@ -6062,7 +6062,7 @@
       <key>Type</key>
       <string>Boolean</string>
       <key>Value</key>
-      <integer>0</integer>
+      <integer>1</integer>
     </map>
     <key>ALPolishContactEnabled</key>
     <map>
@@ -6073,7 +6073,7 @@
       <key>Type</key>
       <string>Boolean</string>
       <key>Value</key>
-      <integer>0</integer>
+      <integer>1</integer>
     </map>
     <key>ALPolishContactWeight</key>
     <map>
@@ -6095,7 +6095,7 @@
       <key>Type</key>
       <string>Boolean</string>
       <key>Value</key>
-      <integer>0</integer>
+      <integer>1</integer>
     </map>
     <key>ALPolishInertiaHalfLifeSpine</key>
     <map>
@@ -6150,7 +6150,7 @@
       <key>Type</key>
       <string>Boolean</string>
       <key>Value</key>
-      <integer>0</integer>
+      <integer>1</integer>
     </map>
     <key>ALPolishSecondaryBreathAmp</key>
     <map>
@@ -6183,7 +6183,7 @@
       <key>Type</key>
       <string>Boolean</string>
       <key>Value</key>
-      <integer>0</integer>
+      <integer>1</integer>
     </map>
     <key>ALPolishPhaseMatchEnabled</key>
     <map>
@@ -6194,7 +6194,7 @@
       <key>Type</key>
       <string>Boolean</string>
       <key>Value</key>
-      <integer>0</integer>
+      <integer>1</integer>
     </map>
     <key>ALPolishLayerDiagnostic</key>
     <map>
@@ -11227,6 +11227,17 @@
       <key>Value</key>
       <integer>-1</integer>
     </map>
+    <key>JoystickAutoFlycamEnabled</key>
+    <map>
+      <key>Comment</key>
+      <string>Polls for Xbox controller hot-plug events and automatically selects the controller for Flycam.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
     <key>JoystickBuildEnabled</key>
     <map>
       <key>Comment</key>
@@ -15897,11 +15908,22 @@
   <key>BDMergeProjectorVolumetricsDither</key>
   <map>
       <key>Comment</key>
-      <string>[BDMerge G3.3 Phase 1] Projector shaft march-start dither. 0 = off (banding at low sample counts), 1 = static blue-noise (interleaved gradient; stable per screen-pixel so it never shimmers under camera motion - recommended for recording), 2 = animated blue-noise (adds a subtle per-frame rotation that averages residual banding on still shots but can shimmer slightly in motion). Default 1.</string>
+      <string>[BDMerge G3.3 Phase 1] Projector shaft march-start dither. 0 = off (banding at low sample counts), 1 = static interleaved-gradient noise (recording-safe), 2 = animated low-discrepancy phases. When BDMergeProjectorVolumetricsTemporalDither is enabled, static mode is promoted to animated only while temporal accumulation can integrate it. Default 1.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
       <string>U32</string>
+      <key>Value</key>
+      <integer>1</integer>
+  </map>
+  <key>BDMergeProjectorVolumetricsTemporalDither</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge G3.3 Precision] Temporal projector anti-banding guard. When enabled and temporal accumulation is active, dither mode 1 cycles low-discrepancy march phases so the RGBA16F history converges ray-step bands into a smoother shaft without extra samples, texture reads, or buffers. Direct/non-temporal rendering remains static. Disable for an absolutely frozen recording pattern. Default on.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
       <key>Value</key>
       <integer>1</integer>
   </map>

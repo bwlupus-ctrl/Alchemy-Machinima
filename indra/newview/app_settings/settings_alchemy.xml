@@ -3142,7 +3142,7 @@
         <key>RenderCineLensFlareStrength</key>
         <map>
             <key>Comment</key>
-            <string>Master on/off for lens flare sourced from active Cinematic Light Rig projectors. 0 turns the rig-fed flare off entirely (the sun flare, if enabled, is unaffected). Range 0 to 2.</string>
+            <string>Master on/off for lens flare sourced only from active Cinematic Light Rig projectors. Values above 0 select projector-only source mode and suppress the legacy sun/moon flare; at 0 the independent sun/moon flare can operate normally. Range 0 to 2.</string>
             <key>Persist</key>
             <integer>1</integer>
             <key>Type</key>
@@ -3160,6 +3160,39 @@
             <string>F32</string>
             <key>Value</key>
             <real>1.0</real>
+        </map>
+        <key>RenderCineLensFlareThreshold</key>
+        <map>
+            <key>Comment</key>
+            <string>Linear-HDR luma in the projector-only volumetric shaft buffer that the rig projector's emission-point neighborhood must exceed before it flares. Daylight and unrelated bright scene surfaces cannot satisfy it. 0.25 catches typical volumetric sources; higher values require a brighter rendered shaft. Range 0 to 6.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.25</real>
+        </map>
+        <key>RenderCineLensFlareProbeRadius</key>
+        <map>
+            <key>Comment</key>
+            <string>Screen-height fraction searched around a rig projector's emission point for threshold brightness. The pixel-circular ring lets a flare remain stable when an avatar covers its exact center while still requiring visible HDR shaft energy nearby. 0 uses the 3-pixel minimum; 0.06 is the default. Range 0 to 0.2.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.06</real>
+        </map>
+        <key>RenderCineLensFlareRelease</key>
+        <map>
+            <key>Comment</key>
+            <string>Exponential release time, in seconds, for a rig-projector flare after its rendered shaft ends or leaves the camera. The flare holds its last valid sensor position and fades naturally instead of being removed in one frame. 0 is immediate; 0.45 is the cinematic default. Range 0 to 2.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.45</real>
         </map>
         <key>RenderCineLensFlarePreset</key>
         <map>
@@ -3775,4 +3808,3 @@
         </map>
     </map>
 </llsd>
-

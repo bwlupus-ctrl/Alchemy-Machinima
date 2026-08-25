@@ -217,6 +217,9 @@ vec4 sample_spec(vec2 uv)
 
 void mirrorClip(vec3 pos);
 vec4 encodeNormal(vec3 n, float env, float gbuffer_flag);
+#ifdef HAS_ACTOR_FX
+vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
+#endif
 
 vec3 getNormal(int mi, inout float glossiness)
 {
@@ -276,6 +279,9 @@ void main()
     float env = mat_env_intensity[mi] * spec.a;
     float glossiness = mat_specular_color[mi].a;
     vec3 norm = getNormal(mi, glossiness);
+#ifdef HAS_ACTOR_FX
+    diffcol.rgb = actorFxApply(diffcol.rgb, norm, vary_position, vary_texcoord0.xy);
+#endif
 
     float emissive = getEmissive(mi, diffcol);
 

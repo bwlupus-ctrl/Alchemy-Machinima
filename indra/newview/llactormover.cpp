@@ -71,6 +71,18 @@ LLVOAvatar* resolve_actor(const LLUUID& id)
     return LLDirectorCast::instance().resolve(id);
 }
 
+// An enabled zero-alpha Layer has no visible color contribution, but the shared
+// actorghost renderer always depth-primes its silhouette before shading. Treat
+// it as inactive so it cannot become an invisible occluder of another styled
+// actor or Studio ghost. Replace deliberately ignores authored alpha and uses
+// its opaque interim overlay, so it remains drawable at alpha zero.
+bool actor_style_wants_overlay(const LLDirectorCast::ActorStyle& style)
+{
+    return style.mEnabled
+        && (style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE
+            || style.mAlpha > 0.001f);
+}
+
 // the locomotion anim a new Move should start for THIS actor: the cast
 // member's per-actor override when set, else the shared custom override
 // UUID, else ANIM_AGENT_WALK (all local playback only)
@@ -2226,7 +2238,7 @@ void LLActorMover::start(const LLUUID& actor_id)
         // INSTANTANEOUS ground speed (ease + per-node overrides) each frame
         av->startMotion(mv.mAnim);
         apply_custom_anim_priority(av, mv.mAnim);
-        av->setAnimTimeFactor(llclamp(mv.mSpeed, 0.05f, 10.f) / mv.mNominal);
+        av->setAnimTimeFactor(llclamp(mv.mSpeed, 0.05f, 150.f) / mv.mNominal);
 
         LL_INFOS("ActorMover") << "ghost path walk: " << av->getID()
                                << " nodes " << path.mNodes.size()
@@ -2242,7 +2254,7 @@ void LLActorMover::start(const LLUUID& actor_id)
     Move mv;
     mv.mOrigin   = av->getRootJoint()->getWorldPosition();   // rendered pose, incl. a prior move
     mv.mHeading  = yaw;
-    mv.mSpeed    = llclamp((F32)speed, 0.05f, 10.f);
+    mv.mSpeed    = llclamp((F32)speed, 0.05f, 150.f);
     mv.mDistance = llmax((F32)distance, 0.1f);
     mv.mEndMode  = llclamp((S32)end_mode, 0, 2);
     mv.mT        = 0.f;
@@ -2640,7 +2652,7 @@ void LLActorMover::resumeMove(const LLUUID& key, Move& mv, LLVOAvatar* av)
         {
             av->startMotion(mv.mAnim);
             apply_custom_anim_priority(av, mv.mAnim);
-            av->setAnimTimeFactor(llclamp(mv.mSpeed, 0.05f, 10.f)
+            av->setAnimTimeFactor(llclamp(mv.mSpeed, 0.05f, 150.f)
                                   / llmax(mv.mNominal, 0.5f));
         }
         // ease facing from the actor's current yaw on the next advance instead
@@ -3026,7 +3038,7 @@ void LLActorMover::migrateActor(const LLUUID& old_id, const LLUUID& new_id)
                 {
                     new_av->startMotion(mv.mAnim);
                     apply_custom_anim_priority(new_av, mv.mAnim);
-                    new_av->setAnimTimeFactor(llclamp(mv.mSpeed, 0.05f, 10.f)
+                    new_av->setAnimTimeFactor(llclamp(mv.mSpeed, 0.05f, 150.f)
                                               / llmax(mv.mNominal, 0.5f));
                 }
             }
@@ -9188,6 +9200,10 @@ static LLStaticHashedString sGhostLook("ghostLook");
 static LLStaticHashedString sGhostDistort("ghostDistort");
 static LLStaticHashedString sGhostDistortParams("ghostDistortParams");
 static LLStaticHashedString sGhostUseVertexAlpha("ghostUseVertexAlpha");
+// x: honor sampled texture alpha; y: authored PBR base-colour factor alpha.
+// OPAQUE PBR materials deliberately upload (0, 1): their base-colour alpha is
+// not opacity and can contain arbitrary/packed data.
+static LLStaticHashedString sGhostAlpha("ghostAlpha");
 
 // ---------------------------------------------------------------------------
 // Per-batch alpha semantics: how does the REAL render treat this rigged pass's
@@ -9537,6 +9553,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             // so a program switch / empty sweep never inherits the prior
             // draw's per-batch upload
             sh->uniform1i(sGhostUseVertexAlpha, 0);
+            sh->uniform2f(sGhostAlpha, 0.f, 1.f);
         }
         // [R2-4] park the diffuse_color GENERIC at white: buffers WITHOUT a
         // COLOR array (PBR) read the generic, whose GL boot default is BLACK
@@ -9659,16 +9676,16 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
 
             const bool is_mask = ghost_pass_is_mask(gb.mPass);
 
-            // vertex-colour ALPHA is real opacity only where the stock
-            // pipeline honors it: the alpha pool (blend passes) and PBR.
-            // Legacy non-alpha-pool faces bake SHININESS there (shiny "None"
-            // == 0), which discarded masked faces / blended styled ones to
-            // nothing unless the material happened to carry a spec/normal map.
+            // Vertex-colour ALPHA is real opacity only where the stock
+            // pipeline honors it: the alpha pool, plus cutoff-masked PBR.
+            // PBR OPAQUE ignores the completed base-colour alpha, so it must
+            // ignore BOTH texture and vertex alpha here too. Legacy non-alpha-
+            // pool faces bake SHININESS there (shiny "None" == 0).
             if (have_fx)
             {
-                const bool use_vertex_alpha = is_blend
-                    || di->mGLTFMaterial.notNull()
+                const bool is_pbr = di->mGLTFMaterial.notNull()
                     || !di->mGLTFMaterialList.empty();
+                const bool use_vertex_alpha = is_blend || (is_pbr && is_mask);
                 shader->uniform1i(sGhostUseVertexAlpha, use_vertex_alpha ? 1 : 0);
             }
 
@@ -9766,6 +9783,18 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 gGL.getTexUnit(0)->bind(
                     tex ? tex : (LLViewerTexture*)LLViewerFetchedTexture::sWhiteImagep);
 
+                if (have_fx)
+                {
+                    // Alpha follows the material's ALPHA MODE, not merely the
+                    // presence of an alpha channel. PBR base-colour factor alpha
+                    // is already baked into MAP_COLOR by LLFace; multiplying it
+                    // here again made MASK/BLEND coverage factor-squared.
+                    const bool authored_alpha = alpha_aware && (is_mask || is_blend);
+                    shader->uniform2f(sGhostAlpha,
+                                      authored_alpha ? 1.f : 0.f,
+                                      1.f);
+                }
+
                 if (clone_color)
                 {
                     // per-draw clone colour: near-white so the texture reads
@@ -9773,7 +9802,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                     // reads as glow); a GLTF base-colour / emissive factor
                     // tints as authored (linear pushed to gamma space --
                     // documented approximation for an unlit clone).
-                    F32 r = 0.98f, g = 0.98f, b = 0.98f, a = 1.f;
+                    F32 r = 0.98f, g = 0.98f, b = 0.98f, a = alpha;
                     if (!tex && subset != SWEEP_GLOW
                         && !(di->mVertexBuffer->getTypeMask() & LLVertexBuffer::MAP_COLOR))
                     {
@@ -9784,15 +9813,17 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                         // as missing in a dark set.
                         r = g = b = 0.5f;
                     }
-                    if (have_factor)
+                    // Base-colour factors are already in MAP_COLOR. Emissive
+                    // factors are not, so the independent glow sweep still
+                    // needs its authored factor here.
+                    if (have_factor && subset == SWEEP_GLOW)
                     {
                         r *= powf(llmax(factor.mV[0], 0.f), 0.4545f);
                         g *= powf(llmax(factor.mV[1], 0.f), 0.4545f);
                         b *= powf(llmax(factor.mV[2], 0.f), 0.4545f);
-                        if (subset != SWEEP_GLOW)
-                        {
-                            a = factor.mV[3];   // factor alpha shapes the blended sweep
-                        }
+                        // Factor alpha is uploaded separately in ghostAlpha so
+                        // the instance/Actor-FX alpha remains authoritative and
+                        // is never replaced by the material alpha.
                     }
                     // Ghost Studio's custom hue applies to the clone too (the fix
                     // for "the hue slider does nothing in Clone"): a deliberate art
@@ -9949,7 +9980,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 ftex ? ftex : (LLViewerTexture*)LLViewerFetchedTexture::sWhiteImagep);
             if (clone_color)
             {
-                F32 r = 0.98f, g = 0.98f, b = 0.98f, a = 1.f;
+                F32 r = 0.98f, g = 0.98f, b = 0.98f, a = alpha;
                 if (!ftex && !(vb->getTypeMask() & LLVertexBuffer::MAP_COLOR))
                 {
                     // [R3] mid-grey says "untextured" -- but ONLY for a face
@@ -9961,14 +9992,9 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                     // keep the near-white base so tint x white == authored.
                     r = g = b = 0.5f;
                 }
-                if (gmat)
-                {
-                    const LLColor4& f = gmat->mBaseColor;
-                    r *= powf(llmax(f.mV[0], 0.f), 0.4545f);
-                    g *= powf(llmax(f.mV[1], 0.f), 0.4545f);
-                    b *= powf(llmax(f.mV[2], 0.f), 0.4545f);
-                    a  = f.mV[3];
-                }
+                // LLFace already baked a GLTF base-colour factor into
+                // MAP_COLOR. Applying gmat->mBaseColor again here produced
+                // factor-squared RGB and alpha on static attachments.
                 if (gp.mTintCustom)
                 {
                     const F32 mx = llmax(llmax(tint.mV[0], tint.mV[1]),
@@ -9983,11 +10009,17 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             if (have_fx)
             {
                 // same channel-semantics gate as the rigged sweep, per face:
-                // isInAlphaPool() matches llface's vertex-alpha bake gate
-                // (covers all three alpha pools); a PBR face's vertex alpha
-                // is always real opacity
+                // isInAlphaPool() matches llface's vertex-alpha bake gate.
+                // PBR vertex/base-colour alpha participates only for MASK or
+                // BLEND; OPAQUE explicitly ignores it.
+                const bool authored_alpha = alpha_aware && gf.mAlphaKind != 0;
+                const bool use_vertex_alpha = face->isInAlphaPool()
+                    || (gmat != nullptr && authored_alpha);
                 static_shader->uniform1i(sGhostUseVertexAlpha,
-                    (face->isInAlphaPool() || gmat != nullptr) ? 1 : 0);
+                    use_vertex_alpha ? 1 : 0);
+                static_shader->uniform2f(sGhostAlpha,
+                    authored_alpha ? 1.f : 0.f,
+                    1.f);
                 static_shader->uniform4f(sGhostAux,
                     (alpha_aware && gf.mAlphaKind == 1) ? gf.mCutoff : 0.f,
                     texture_rgb ? 1.f : 0.f, gp.mPixelSize, gp.mPhase);
@@ -11101,10 +11133,12 @@ void LLActorMover::walkGhostSourceGeometry(LLVOAvatar* av,
 
 void LLActorMover::collectGhostBatches()
 {
-    // Two independent reasons to collect: the PATH-NODE ghost preview (its
+    // Three independent reasons to collect: the PATH-NODE ghost preview (its
     // classic gate: setting trio + an operator floater up) and the GHOST
     // STUDIO (enabled instances render floater-or-not -- they are scene
-    // dressing, not an editing overlay). Neither active = byte-identical
+    // dressing, not an editing overlay), plus per-cast ACTOR STYLES, which use
+    // the same frame-local geometry harvest at the actor's live placement.
+    // None active = byte-identical
     // zero cost.
     static LLCachedControl<bool> show(gSavedSettings, "ActorMoverShowHeading", true);
     static LLCachedControl<bool> onion(gSavedSettings, "PathShowOnionSkin", false);
@@ -11120,7 +11154,22 @@ void LLActorMover::collectGhostBatches()
         }
     }
     const bool studio = ALGhostStudio::instance().anyEnabled();
-    if (!path_ghosts && !studio)
+    LLDirectorCast& director_cast = LLDirectorCast::instance();
+    bool actor_styles = actor_style_wants_overlay(
+        director_cast.getActorStyle(LLUUID::null));
+    if (!actor_styles)
+    {
+        for (const LLDirectorCast::CastMember& member : director_cast.getCast())
+        {
+            if (actor_style_wants_overlay(
+                    director_cast.getActorStyle(member.mId)))
+            {
+                actor_styles = true;
+                break;
+            }
+        }
+    }
+    if (!path_ghosts && !studio && !actor_styles)
     {
         // Preserve the zero-cost teardown path and release retained keys when
         // neither feature can consume their capacity.
@@ -11176,6 +11225,30 @@ void LLActorMover::collectGhostBatches()
             {
                 wanted.insert(av);
             }
+        }
+    }
+    if (actor_styles)
+    {
+        // Null is the model's stable key for You. Cast member ids may be stable
+        // entity ids; resolve() supplies their current runtime avatar, and the
+        // wanted set deduplicates a wearer that is reachable through both keys.
+        auto add_styled_actor = [&](const LLUUID& style_id)
+        {
+            if (!actor_style_wants_overlay(
+                    director_cast.getActorStyle(style_id)))
+            {
+                return;
+            }
+            LLVOAvatar* av = director_cast.resolve(style_id);
+            if (av && !av->isDead())
+            {
+                wanted.insert(av);
+            }
+        };
+        add_styled_actor(LLUUID::null);
+        for (const LLDirectorCast::CastMember& member : director_cast.getCast())
+        {
+            add_styled_actor(member.mId);
         }
     }
     // Retain capacity only for sources wanted this frame. This bounds the maps
@@ -11248,10 +11321,23 @@ void LLActorMover::collectGhostBatches()
             [&](LLVOAvatar* wearer, LLSpatialGroup* group, U32 pass,
                 const LLPointer<LLDrawInfo>& draw_info)
             {
-                // [R2-6] everything in an attachment group belongs to THIS wearer
-                // by construction (animesh included -- those draw infos carry the
-                // attachment's own control avatar as mAvatar), so no owner check.
                 LLDrawInfo* di = draw_info.get();
+                // A spatial group is a shared world bucket, not an attachment-
+                // owner bucket. Filter every rigged draw back to this wearer;
+                // otherwise nearby avatars in the same group leak into the
+                // harvest, multiplying draw cost and producing PBR/alpha
+                // flicker as group membership changes. An animesh attachment's
+                // draw info names its LLControlAvatar, whose attached avatar is
+                // the wearer. A cast actor that IS a control avatar still wins
+                // the direct pointer comparison first.
+                LLVOAvatar* drawing_avatar = di->mAvatar.get();
+                const bool belongs_to_wearer = drawing_avatar == wearer
+                    || (drawing_avatar && drawing_avatar->isControlAvatar()
+                        && drawing_avatar->getAttachedAvatar() == wearer);
+                if (!belongs_to_wearer)
+                {
+                    return;
+                }
                 // Dedup is per SWEEP-CLASS, not pass-blind: a VB+range twin is a
                 // true duplicate only WITHIN the same sweep (SOLID/BLEND/GLOW). A
                 // different-class twin -- notably the PASS_GLTF_GLOW_RIGGED additive
@@ -11857,5 +11943,147 @@ void LLActorMover::renderStudioGhosts()
         }
     }
 
+    gGL.flush();
+}
+
+// ---------------------------------------------------------------------------
+// [ActorStyle] Draw enabled cast styles at each actor's exact live placement.
+// The harvested rigged batches already contain the current skinning owner and
+// palette; using live-foot as both destination and implicit pivot collapses the
+// ghost placement matrix to identity (T(foot) * T(-foot)). Non-rigged worn
+// attachment faces ride through the same source harvest, so Layer mode matches
+// the coverage of an overlay clone without creating a second avatar/skeleton.
+void LLActorMover::renderStyledActors()
+{
+    LLDirectorCast& director_cast = LLDirectorCast::instance();
+
+    struct StyledActorItem
+    {
+        LLUUID mStyleId;
+        LLVOAvatar* mAvatar = nullptr;
+        LLDirectorCast::ActorStyle mStyle;
+        const std::vector<GhostBatch>* mBatches = nullptr;
+        const std::vector<GhostStaticFace>* mStaticFaces = nullptr;
+        LLVector3 mFootAgent;
+    };
+
+    std::vector<StyledActorItem> items;
+    std::set<LLUUID> added_wearers;
+    auto add_actor = [&](const LLUUID& style_id)
+    {
+        const LLDirectorCast::ActorStyle& style =
+            director_cast.getActorStyle(style_id);
+        if (!actor_style_wants_overlay(style))
+        {
+            return;
+        }
+
+        LLVOAvatar* avatar = director_cast.resolve(style_id);
+        if (!avatar || avatar->isDead() || !avatar->getRootJoint()
+            || !added_wearers.insert(avatar->getID()).second)
+        {
+            return;
+        }
+
+        const std::vector<GhostBatch>* batches =
+            ghostBatchesFor(avatar->getID());
+        const std::vector<GhostStaticFace>* static_faces =
+            ghostStaticFacesFor(avatar->getID());
+        if (!batches && !static_faces)
+        {
+            return;
+        }
+
+        LLVector3 foot = avatar->getRenderPosition();
+        F32 pelvis_to_foot = avatar->getPelvisToFoot();
+        if (!llfinite(pelvis_to_foot))
+        {
+            pelvis_to_foot = 0.f;
+        }
+        foot.mV[VZ] -= llmax(0.f, pelvis_to_foot);
+        if (!foot.isFinite())
+        {
+            return;
+        }
+
+        items.push_back({ style_id, avatar, style, batches, static_faces, foot });
+    };
+
+    // Null is You. Add it first so an accidental self entry in the cast cannot
+    // double-draw the agent avatar through two stable style keys.
+    add_actor(LLUUID::null);
+    for (const LLDirectorCast::CastMember& member : director_cast.getCast())
+    {
+        add_actor(member.mId);
+    }
+    if (items.empty())
+    {
+        return;
+    }
+
+    // Styled layers are translucent scene dressing like overlay clones. Keep
+    // stable far-to-near ordering when multiple cast silhouettes overlap.
+    const LLVector3 camera_pos = LLViewerCamera::getInstance()->getOrigin();
+    std::stable_sort(items.begin(), items.end(),
+        [&](const StyledActorItem& a, const StyledActorItem& b)
+        {
+            return (a.mFootAgent - camera_pos).magVecSquared()
+                 > (b.mFootAgent - camera_pos).magVecSquared();
+        });
+
+    LLGLSUIDefault gls_ui;
+    gUIProgram.bind();
+    gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
+
+    static const std::vector<GhostBatch> sNoBatches;
+    for (const StyledActorItem& item : items)
+    {
+        const LLDirectorCast::ActorStyle& style = item.mStyle;
+
+        LLColor4 tint;
+        if (style.mUseActorHue)
+        {
+            tint = actorPathColor(item.mAvatar->getID());
+        }
+        else
+        {
+            tint.setHSL(fmodf(llmax(style.mHue, 0.f), 360.f) / 360.f,
+                        0.9f, 0.6f);
+            tint.mV[VW] = 1.f;
+        }
+
+        GhostDrawParams params;
+        params.mPixelSize = llmax(0.f, style.mPixelSize);
+        params.mShimmerSpeed = llmax(0.f, style.mShimmerSpeed);
+        params.mShimmerIntensity = llclamp(style.mShimmerAmount, 0.f, 1.f);
+        params.mGlitch = llclamp(style.mGlitch, 0.f, 1.f);
+        params.mDistort = llmax(0, style.mDistortion);
+        params.mDistortAmount = llclamp(style.mDistortionAmount, 0.f, 1.f);
+        params.mBrightness = llclamp(style.mBrightness, 0.05f, 1.5f);
+        params.mEffectFps = llclamp(style.mEffectFps, 0.f, 30.f);
+        params.mTintCustom = !style.mUseActorHue;
+        params.mPhase =
+            (F32)(item.mAvatar->getID().mData[0]
+                  | (item.mAvatar->getID().mData[1] << 8))
+            * (F_TWO_PI / 65536.f);
+
+        // Replace cannot safely hide the original until every avatar/material/
+        // attachment/impostor COLOR pass has an actor-specific exclusion while
+        // shadow casters remain enabled. Use an opaque styled layer for now: it
+        // is visibly distinct and reversible, and never punches holes in actors.
+        const F32 alpha = style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE
+            ? 1.f : llclamp(style.mAlpha, 0.f, 1.f);
+
+        drawGeometryGhost(item.mAvatar,
+                          item.mBatches ? *item.mBatches : sNoBatches,
+                          item.mFootAgent, tint, alpha,
+                          llclamp(style.mStyle,
+                                  static_cast<S32>(GHOST_STYLE_GHOST),
+                                  static_cast<S32>(GHOST_STYLE_HOLO_ECHO)),
+                          params, item.mStaticFaces);
+    }
+
+    gUIProgram.bind();
+    gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
     gGL.flush();
 }

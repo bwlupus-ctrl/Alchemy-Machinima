@@ -29,11 +29,13 @@ class ALPanelAnimPreview;
 class ALPanelCineCamParams;
 class ALPanelPathEditor;
 class LLButton;
+class LLCheckBoxCtrl;
 class LLComboBox;
 class LLContextMenu;
 class LLLineEditor;
 class LLPanel;
 class LLScrollListCtrl;
+class LLSliderCtrl;
 class LLSpinCtrl;
 class LLTabContainer;
 class LLTextBox;
@@ -92,7 +94,7 @@ private:
     uuid_vec_t selectedCastIds() const;
     LLUUID     firstSelectedCastId() const;
     // context-menu / button ops (act on the list selection)
-    void onCastSetSubject(bool subject_a);
+    void onCastSetSubject(S32 subject);
     void onCastSetMarkHere();
     void onCastResetToMark();
     void onCastClearLocoAnim();
@@ -117,6 +119,14 @@ private:
     // ---- Path tab ----
     void refreshPathTab();              // point the embedded editor at the selection
 
+    // ---- Actor FX tab ----
+    void refreshActorStyleTab();        // roster + model -> controls
+    void onActorStyleTargetChanged();
+    void onActorStyleControlChanged();  // controls -> selected actor's style
+    void onActorStyleReset();
+    bool hasActorStyleTarget() const;
+    LLUUID actorStyleTargetId() const;   // null is the explicit "You" row
+
     // ---- Animate tab ----
     void refreshAnimateTab();
     void onAnimRightClick(LLUICtrl* ctrl, S32 x, S32 y);
@@ -138,7 +148,6 @@ private:
     void onClickClearSubject(S32 subject);
     void onOpenActorGaze();
     void onOpenVirtualCam();
-    void onOpenPosePolish();
     void refreshCameraTab();
 
     // ---- Takes tab ----
@@ -216,6 +225,33 @@ private:
 
     // Path tab (dedicated) -- shared waypoint editor, targets the selection
     ALPanelPathEditor* mPathPanel = nullptr;
+
+    // Actor FX tab -- a direct editor over LLDirectorCast::ActorStyle. The
+    // selector is intentionally independent of Subjects A-D; null UUID means
+    // You, while non-null entries are stable cast-member ids (away actors keep
+    // their authored style for when they return).
+    LLComboBox*      mActorStyleTarget = nullptr;
+    LLCheckBoxCtrl*  mActorStyleEnabled = nullptr;
+    LLComboBox*      mActorStyleMode = nullptr;
+    LLComboBox*      mActorStyleLook = nullptr;
+    LLCheckBoxCtrl*  mActorStyleUseActorHue = nullptr;
+    LLSliderCtrl*    mActorStyleHue = nullptr;
+    LLSliderCtrl*    mActorStyleAlpha = nullptr;
+    LLSliderCtrl*    mActorStylePixel = nullptr;
+    LLSliderCtrl*    mActorStyleShimmerSpeed = nullptr;
+    LLSliderCtrl*    mActorStyleShimmerAmount = nullptr;
+    LLSliderCtrl*    mActorStyleGlitch = nullptr;
+    LLComboBox*      mActorStyleDistortion = nullptr;
+    LLSliderCtrl*    mActorStyleDistortionAmount = nullptr;
+    LLSliderCtrl*    mActorStyleBrightness = nullptr;
+    LLSpinCtrl*      mActorStyleEffectFps = nullptr;
+    LLButton*        mActorStyleReset = nullptr;
+    LLTextBox*       mActorStyleStatus = nullptr;
+    std::string      mActorStyleRosterSignature;
+    std::string      mActorStyleSnapshot;
+    LLUUID           mActorStyleShownFor;
+    bool             mActorStyleHadTarget = false;
+    bool             mRefreshingActorStyle = false;
 
     // Camera tab
     LLTextBox* mSubjectAText = nullptr;

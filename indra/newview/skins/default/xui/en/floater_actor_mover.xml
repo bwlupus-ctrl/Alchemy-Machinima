@@ -116,7 +116,7 @@
            top="8"
            width="360" />
           <button
-           follows="left|top"
+           follows="left|top|right"
            height="22"
            label="Actor Gaze..."
            layout="topleft"
@@ -124,17 +124,7 @@
            name="btn_actor_gaze"
            top="372"
            tool_tip="Open the Actor Gaze controls for the selected roster actor"
-           width="170" />
-          <button
-           follows="left|top|right"
-           height="22"
-           label="Pose Polish..."
-           layout="topleft"
-           left="182"
-           name="btn_pose_polish"
-           top="372"
-           tool_tip="Open the Pose Polish controls (transition smoothing, foot grounding, secondary motion, and other post-blend polish)"
-           width="170" />
+           width="344" />
         </panel>
       </scroll_container>
     </panel>

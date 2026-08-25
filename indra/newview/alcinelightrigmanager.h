@@ -41,7 +41,7 @@ struct ALCineLightRigParamBlob
     // settings.xml order so omissions are visible in review.
     bool mEnabled = false;                    // CineLightRigEnabled
     bool mScaleAware = true;                  // CineLightRigScaleAware
-    bool mPower = true;                       // CineLightRigPower
+    bool mPower = true;                       // Legacy scene compatibility only
     F32 mRadius = 1.5f;                       // CineLightRigRadius
     F32 mMasterEV = 0.f;                      // CineLightRigMasterEV
     F32 mMasterTempMired = 0.f;               // CineLightRigMasterTempMired
@@ -538,7 +538,7 @@ inline bool relinquishAutoShadowSlotsIfExternallyChanged(
 
 inline U32 requestedShadowSlots(const ALCineLightRigParamBlob& blob)
 {
-    if (!blob.mEnabled || !blob.mPower)
+    if (!blob.mEnabled)
     {
         return 0;
     }

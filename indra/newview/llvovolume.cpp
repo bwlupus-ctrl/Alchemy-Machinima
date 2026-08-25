@@ -5545,6 +5545,35 @@ static LLClientOuterTransform* resolve_outer_transform(LLFace* facep)
     return nullptr;
 }
 
+// Native Actor FX is authored for the visible Director actor, not necessarily
+// the avatar that skins this one face. Worn animated objects are skinned by an
+// LLControlAvatar, while their stable presentation identity is the avatar they
+// are attached to. A standalone animated object has no wearer, so its control
+// avatar remains the only useful runtime cast identity.
+static LLUUID resolve_actor_fx_owner(LLFace* facep)
+{
+    LLViewerObject* object = facep ? facep->getViewerObject() : nullptr;
+    LLVOAvatar* owner = object ? object->getAvatarAncestor() : nullptr;
+
+    if (!owner)
+    {
+        owner = facep ? facep->mAvatar : nullptr;
+        if (!owner && object)
+        {
+            owner = object->getAvatar();
+        }
+        if (owner && owner->isControlAvatar())
+        {
+            if (LLVOAvatar* wearer = owner->getAttachedAvatar())
+            {
+                owner = wearer;
+            }
+        }
+    }
+
+    return owner ? owner->getID() : LLUUID::null;
+}
+
 void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep, U32 type)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_VOLUME;
@@ -5612,6 +5641,7 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
     LLClientOuterTransform* outer_transform = resolve_outer_transform(facep);
 
     LLDrawable* drawable = facep->getDrawable();
+    const LLUUID actor_fx_owner = resolve_actor_fx_owner(facep);
 
     if (rigged)
     {
@@ -5804,6 +5834,7 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
         info->mOuterTransform.get() == outer_transform &&
         info->mShaderMask == shader_mask &&
         info->mAvatar == facep->mAvatar &&
+        info->mActorFxOwner == actor_fx_owner &&
         info->getSkinHash() == facep->getSkinHash())
     {
         info->mCount += facep->getIndicesCount();
@@ -5871,6 +5902,7 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
         draw_info->mGLTFMaterial = gltf_mat;
         draw_info->mShaderMask = shader_mask;
         draw_info->mAvatar = facep->mAvatar;
+        draw_info->mActorFxOwner = actor_fx_owner;
         draw_info->mSkinInfo = facep->mSkinInfo;
         // [BDMerge] Mark draws that belong to a worn attachment (rigged or not).
         // getAvatar() walks parents, so a non-rigged prim of a worn attachment

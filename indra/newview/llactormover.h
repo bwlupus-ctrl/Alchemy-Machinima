@@ -614,6 +614,17 @@ public:
     // cost when the studio has no enabled instances.
     void renderStudioGhosts();
 
+    // [ActorStyle] Re-render enabled cast actors at their exact LIVE placement
+    // and pose through the same actorghost shader used by overlay clones. This
+    // is scene dressing (not an editor indicator), so the world UI compositor
+    // calls it alongside renderStudioGhosts(), outside the UI-visibility gate.
+    // Layer mode adds the authored look over the normally rendered actor.
+    // Replace mode currently uses an opaque styled overlay but intentionally
+    // does not suppress the normal avatar: comprehensive suppression must cover
+    // the system body, every rigged/material pass, non-rigged/flexi attachments,
+    // impostors, and shadow passes before it is safe to enable.
+    void renderStyledActors();
+
     // ---- Pose/blocking ghosts: translucent REAL-avatar billboards -------------
     // Refresh each roster actor's cached impostor snapshot (a billboard image of
     // the actual rendered avatar) so renderHeadingPreview() can stamp it as a

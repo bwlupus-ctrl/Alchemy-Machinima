@@ -3089,6 +3089,22 @@ F32 beamFalloff(S32 index)
     return BEAMS[std::clamp(index, 0, BEAM_COUNT - 1)].mFalloff;
 }
 
+S32 easyConeWidthToBeam(S32 width)
+{
+    static constexpr S32 BEAM_BY_WIDTH[] = { 2, 0, 1 };
+    return BEAM_BY_WIDTH[std::clamp(width, 0, 2)];
+}
+
+S32 easyConeWidthFromBeam(S32 beam)
+{
+    switch (std::clamp(beam, 0, BEAM_COUNT - 1))
+    {
+        case 2: return 0; // Snoot
+        case 1: return 2; // Softbox
+        default: return 1; // Standard
+    }
+}
+
 const char* goboName(S32 index)
 {
     return GOBO_NAMES[std::clamp(index, 0, GOBO_COUNT - 1)];

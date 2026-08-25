@@ -288,7 +288,6 @@ bool sameGlobals(const Globals& first, const Globals& second)
            first.mBounceRatio == second.mBounceRatio &&
            first.mTransitionSec == second.mTransitionSec &&
            first.mBounceEnabled == second.mBounceEnabled &&
-           first.mPower == second.mPower &&
            first.mSeed == second.mSeed &&
            first.mMasterTempMired == second.mMasterTempMired;
 }
@@ -2122,19 +2121,10 @@ void ALCineLightRig::tickShared(
     const bool cue_driven = evaluateCuePlayback(
         presentation_time, setup, globals, transforms,
         effective_shadow_softness, effective_fx, cue_fx_epoch);
-    if (!globals.mPower)
-    {
-        mLastResolvedGroupSlots = 0;
-        destroyEmitters();
-        std::memset(&mLastFrame, 0, sizeof(mLastFrame));
-        mHaveSmoothedCentre = false;
-        mSmoothedScale = 1.f;
-        mProjectorRetryTicks = 0;
-        mOmniRetryTicks = 0;
-        mCatchlightRetryTicks = 0;
-        mLastPresentationTime = presentation_time;
-        return;
-    }
+    // CineLightRigEnabled is the sole runtime master gate. Keep the legacy
+    // preset/scene power field readable, but never allow it to form a hidden
+    // second off switch after the panel's former Enable/Power pair was merged.
+    globals.mPower = true;
     const bool object_targeted = mObjectTarget.notNull();
     LLVector3 object_centre_agent;
     F32 object_subject_scale = 1.f;

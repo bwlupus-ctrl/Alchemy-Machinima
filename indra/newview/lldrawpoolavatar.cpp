@@ -28,6 +28,7 @@
 
 #include "lldrawpoolavatar.h"
 #include "llghostavatar.h"
+#include "lldirectorcast.h"
 #include "llskinningutil.h"
 #include "llrender.h"
 
@@ -84,6 +85,34 @@ static bool is_hidden_entity_clone(const LLVOAvatar* avatarp)
         ? avatarp : avatarp->getAttachedAvatar();
     return owner && owner->isGhostAvatar()
         && !static_cast<const LLGhostAvatar*>(owner)->isEntityCloneVisible();
+}
+
+// Actor FX is authored against Director cast actors, while attachment/control
+// avatars render through their own avatar pools. Resolve those pools back to
+// the wearer so every part of one actor receives the same style state.
+static const LLVOAvatar* get_actor_fx_wearer(const LLVOAvatar* avatarp)
+{
+    if (!avatarp)
+    {
+        return nullptr;
+    }
+
+    const LLVOAvatar* attached_avatar = avatarp->getAttachedAvatar();
+    return attached_avatar ? attached_avatar : avatarp;
+}
+
+static LLUUID get_actor_fx_id(const LLVOAvatar* avatarp)
+{
+    const LLVOAvatar* wearer = get_actor_fx_wearer(avatarp);
+    return wearer ? wearer->getID() : LLUUID::null;
+}
+
+static bool has_enabled_actor_fx(const LLVOAvatar* avatarp)
+{
+    const LLVOAvatar* wearer = get_actor_fx_wearer(avatarp);
+    return wearer &&
+           !wearer->isUIAvatar() &&
+           LLDirectorCast::instance().getActorStyle(wearer->getID()).mEnabled;
 }
 
 F32 CLOTHING_GRAVITY_EFFECT = 0.7f;
@@ -886,7 +915,12 @@ void LLDrawPoolAvatar::renderAvatars(LLVOAvatar* single_avatar, S32 pass)
         return;
     }
 
-    bool impostor = !LLPipeline::sImpostorRender && avatarp->isImpostor() && !single_avatar;
+    // Cinematic Actor FX must follow the live skeleton and authored materials;
+    // a cached impostor would freeze both. Existing mute/invisible gates below
+    // remain authoritative even when the style is enabled.
+    const bool actor_fx_enabled = has_enabled_actor_fx(avatarp);
+    bool impostor = !actor_fx_enabled &&
+                    !LLPipeline::sImpostorRender && avatarp->isImpostor() && !single_avatar;
 
     if (( avatarp->isInMuteList()
           || impostor
@@ -937,9 +971,14 @@ void LLDrawPoolAvatar::renderAvatars(LLVOAvatar* single_avatar, S32 pass)
     if (pass == 1)
     {
         // render rigid meshes (eyeballs) first
+        // Upload on every avatar, including unstyled actors, so a shared bound
+        // shader cannot inherit the previous avatar's Actor FX state.
+        LLRenderPass::uploadActorFx(get_actor_fx_id(avatarp));
         avatarp->renderRigid();
         return;
     }
+
+    LLRenderPass::uploadActorFx(get_actor_fx_id(avatarp));
 
     if (LLPipeline::RenderAvatarCloth)
     {

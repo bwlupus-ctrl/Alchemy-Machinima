@@ -81,6 +81,26 @@
           function="Object.EnablePlayLocalAnim" />
     </menu_item_check>
     <menu_item_check
+        label="Set Subject C"
+        name="Set Subject C">
+      <menu_item_check.on_click
+          function="Avatar.SetSubjectC" />
+      <menu_item_check.on_check
+          function="Avatar.CheckSubjectC" />
+      <menu_item_check.on_visible
+          function="Object.EnablePlayLocalAnim" />
+    </menu_item_check>
+    <menu_item_check
+        label="Set Subject D"
+        name="Set Subject D">
+      <menu_item_check.on_click
+          function="Avatar.SetSubjectD" />
+      <menu_item_check.on_check
+          function="Avatar.CheckSubjectD" />
+      <menu_item_check.on_visible
+          function="Object.EnablePlayLocalAnim" />
+    </menu_item_check>
+    <menu_item_check
         label="Cinematic Cam Follow"
         name="CineCam Follow">
       <menu_item_check.on_click

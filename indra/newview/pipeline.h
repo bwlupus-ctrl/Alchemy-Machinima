@@ -1291,7 +1291,14 @@ public:
     // static_asserts the two stay in sync. This is unrelated to
     // AL_CINE_FLARE_MAX(8, llviewershadermgr.h), which caps how many of
     // these 20 possible sources get uploaded to the shader in a given frame.
+    // SourceState stores the last valid (uv.x, uv.y, deviceDepth,
+    // modeledReleaseEnergy), allowing a light that has just switched off to
+    // leave a sensor-space optical tail instead of disappearing in one frame.
+    // Live sources always take upload priority over these releasing tails.
     F32                 mCineFlareVisibility[20] = {};
+    LLVector4           mCineFlareSourceState[20] = {};
+    LLColor3            mCineFlareSourceColor[20] = {};
+    bool                mCineFlareSourceValid[20] = {};
 
     bool                    mInitialized;
     bool                    mShadersLoaded;

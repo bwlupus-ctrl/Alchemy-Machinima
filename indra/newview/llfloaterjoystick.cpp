@@ -197,6 +197,7 @@ void LLFloaterJoystick::apply()
 void LLFloaterJoystick::initFromSettings()
 {
     mJoystickEnabled = gSavedSettings.getBOOL("JoystickEnabled");
+    mAutoFlycamEnabled = gSavedSettings.getBOOL("JoystickAutoFlycamEnabled");
     mJoystickId = gSavedSettings.getLLSD("JoystickDeviceUUID");
 
     mJoystickAxis[0] = gSavedSettings.getS32("JoystickAxis0");
@@ -349,6 +350,7 @@ void LLFloaterJoystick::refreshListOfDevices()
 void LLFloaterJoystick::cancel()
 {
     gSavedSettings.setBOOL("JoystickEnabled", mJoystickEnabled);
+    gSavedSettings.setBOOL("JoystickAutoFlycamEnabled", mAutoFlycamEnabled);
     gSavedSettings.setLLSD("JoystickDeviceUUID", mJoystickId);
 
     gSavedSettings.setS32("JoystickAxis0", mJoystickAxis[0]);

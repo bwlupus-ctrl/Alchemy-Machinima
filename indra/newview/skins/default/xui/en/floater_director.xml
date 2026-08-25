@@ -1001,22 +1001,12 @@
              top="117"
              tool_tip="Open Virtual Cam controls, camera switcher, and shot builders"
              width="344" />
-            <button
-             follows="left|top|right"
-             height="22"
-             label="Pose Polish..."
-             layout="topleft"
-             left="10"
-             name="btn_pose_polish"
-             top="145"
-             tool_tip="Open Pose Polish: transition smoothing, foot grounding, loop-seam repair, and secondary motion toggles"
-             width="344" />
             <scroll_container
              follows="all"
-             height="371"
+             height="399"
              layout="topleft"
              left="0"
-             top="177"
+             top="149"
              name="camera_flow_scroll"
              opaque="false"
              size="15"
@@ -1225,8 +1215,8 @@
         </panel>
 
         <!-- ============ Projector volumetrics tab ============ -->
-        <!-- Director-console mirror of the temporal-stability controls in the
-             Lightbox Proj Shafts panel. All controls bind existing settings. -->
+        <!-- Complete Director-console mirror of Lightbox > Proj Shafts. Both
+             panels bind the same renderer settings and shared quick presets. -->
         <panel
          follows="all"
          background_visible="false"
@@ -1236,6 +1226,25 @@
          name="projector_volumetrics_tab"
          top="0"
          width="374">
+            <scroll_container
+             follows="all"
+             height="526"
+             layout="topleft"
+             left="0"
+             name="projector_volumetrics_scroll"
+             opaque="false"
+             reserve_scroll_corner="false"
+             top="4"
+             width="374">
+                <panel
+                 background_visible="false"
+                 follows="left|top|right"
+                 height="1360"
+                 layout="topleft"
+                 left="0"
+                 name="projector_volumetrics_scroll_content"
+                 top="0"
+                 width="354">
             <text
              follows="left|top"
              font="SansSerifBold"
@@ -1245,6 +1254,14 @@
              top="12"
              value="Projector Volumetrics"
              width="330" />
+            <text follows="left|top" height="15" layout="topleft" left="12" top="42" value="Preset:" width="54" />
+            <combo_box follows="left|top" height="22" layout="topleft" left="70" name="director_ps_preset" top="36" tool_tip="Apply a complete projector-shaft starting point; any later control can be adjusted independently." width="254">
+                <combo_box.item label="Custom" name="director_ps_preset_custom" value="-1" />
+                <combo_box.item label="Fast Preview" name="director_ps_preset_fast" value="0" />
+                <combo_box.item label="Balanced" name="director_ps_preset_balanced" value="1" />
+                <combo_box.item label="Cinematic" name="director_ps_preset_cinematic" value="2" />
+                <combo_box.item label="Hazy Stage" name="director_ps_preset_hazy" value="3" />
+            </combo_box>
             <check_box
              control_name="BDMergeProjectorVolumetrics"
              follows="left|top"
@@ -1252,34 +1269,44 @@
              label="Enable volumetric projector cones"
              layout="topleft"
              left="12"
-             top="38"
+             top="66"
              width="330" />
+            <text follows="left|top" height="16" layout="topleft" left="12" top="98" value="Brightness:" width="120" />
+            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsMultiplier" decimal_digits="2" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.05" layout="topleft" left="136" max_val="30" min_val="0.01" name="director_ps_multiplier" show_text="true" top="94" width="188" />
+            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsMultiplier" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_multiplier_reset" top="95" tool_tip="Reset to default value" width="18" />
+            <text follows="left|top" height="16" layout="topleft" left="12" top="130" value="Quality (samples):" width="120" />
+            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsResolution" decimal_digits="0" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="1" layout="topleft" left="136" max_val="64" min_val="8" name="director_ps_resolution" show_text="true" top="126" width="188" />
+            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsResolution" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_resolution_reset" top="127" tool_tip="Reset to default value" width="18" />
+            <text follows="left|top" height="16" layout="topleft" left="12" top="162" value="Forward glow:" width="120" />
+            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsAnisotropy" decimal_digits="2" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.01" layout="topleft" left="136" max_val="0.95" min_val="0" name="director_ps_anisotropy" show_text="true" top="158" width="188" />
+            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsAnisotropy" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_anisotropy_reset" top="159" tool_tip="Reset to default value" width="18" />
+            <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="10" top="190" value="Quality &amp; Performance" width="330" />
             <check_box
              control_name="BDMergeProjectorVolumetricsHalfRes"
              enabled_control="BDMergeProjectorVolumetrics"
              follows="left|top"
              height="18"
-             label="Half-res march (required for temporal)"
+             label="Half-res march (faster)"
              layout="topleft"
              left="12"
-             top="64"
+             top="216"
              width="330" />
             <check_box
              control_name="BDMergeProjectorVolumetricsTemporal"
              enabled_control="BDMergeProjectorVolumetrics"
              follows="left|top"
              height="18"
-             label="Temporal accumulation"
+             label="Temporal accumulation (needs half-res)"
              layout="topleft"
              left="12"
-             top="90"
+             top="242"
              width="330" />
             <text
              follows="left|top"
              height="16"
              layout="topleft"
              left="12"
-             top="122"
+             top="274"
              value="Temporal blend:"
              width="120" />
             <slider
@@ -1296,14 +1323,15 @@
              min_val="0"
              name="director_projvol_temporal_blend"
              show_text="true"
-             top="118"
-             width="190" />
+             top="270"
+             width="188" />
+            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsTemporalBlend" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_temporal_blend_reset" top="271" tool_tip="Reset to default value" width="18" />
             <text
              follows="left|top"
              height="16"
              layout="topleft"
              left="12"
-             top="154"
+             top="306"
              value="Temporal reject:"
              width="120" />
             <slider
@@ -1321,8 +1349,9 @@
              name="director_projvol_temporal_reject"
              show_text="true"
              tool_tip="Reduces history where the current and reprojected shaft disagree."
-             top="150"
-             width="190" />
+             top="302"
+             width="188" />
+            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsTemporalReject" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_temporal_reject_reset" top="303" tool_tip="Reset to default value" width="18" />
             <check_box
              control_name="BDMergeProjectorVolumetricsTemporalBeamDepth"
              enabled_control="BDMergeProjectorVolumetricsTemporal"
@@ -1332,8 +1361,91 @@
              layout="topleft"
              left="12"
              tool_tip="Reproject from the shaft's luminance-weighted mean distance instead of the wall."
-             top="184"
+             top="338"
              width="330" />
+            <check_box control_name="BDMergeProjectorVolumetricsScissor" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="18" label="Scissor cull" layout="topleft" left="12" top="364" width="330" />
+            <check_box control_name="BDMergeProjectorVolumetricsAdaptive" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="18" label="Adaptive samples" layout="topleft" left="12" top="390" width="330" />
+            <text follows="left|top" height="16" layout="topleft" left="12" top="422" value="Min samples:" width="120" />
+            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsMinResolution" decimal_digits="0" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="1" layout="topleft" left="136" max_val="32" min_val="4" name="director_ps_min_resolution" show_text="true" top="418" width="188" />
+            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsMinResolution" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_min_resolution_reset" top="419" tool_tip="Reset to default value" width="18" />
+            <text follows="left|top" height="16" layout="topleft" left="12" top="454" value="HDR clamp:" width="120" />
+            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsMaxLuminance" decimal_digits="1" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.5" layout="topleft" left="136" max_val="64" min_val="1" name="director_ps_max_luminance" show_text="true" top="450" width="188" />
+            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsMaxLuminance" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_max_luminance_reset" top="451" tool_tip="Reset to default value" width="18" />
+            <text follows="left|top" height="16" layout="topleft" left="12" top="486" value="Dither mode:" width="120" />
+            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsDither" decimal_digits="0" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="1" layout="topleft" left="136" max_val="2" min_val="0" name="director_ps_dither" show_text="true" tool_tip="0 = off; 1 = static; 2 = always animated." top="482" width="188" />
+            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsDither" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_dither_reset" top="483" tool_tip="Reset to default value" width="18" />
+            <check_box control_name="BDMergeProjectorVolumetricsTemporalDither" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="18" label="Temporal anti-banding (no extra samples)" layout="topleft" left="12" tool_tip="Cycles the static march phase only while temporal accumulation can average it." top="514" width="330" />
+
+            <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="10" top="542" value="Shadows &amp; Edges" width="330" />
+            <text follows="left|top" height="16" layout="topleft" left="12" top="570" value="Occluder shadows:" width="120" />
+            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsShadowSamples" decimal_digits="0" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="1" layout="topleft" left="136" max_val="4" min_val="1" name="director_ps_shadow_samples" show_text="true" top="566" width="188" />
+            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsShadowSamples" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_shadow_samples_reset" top="567" tool_tip="Reset to default value" width="18" />
+            <text follows="left|top" height="16" layout="topleft" left="12" top="602" value="Cone edge feather:" width="120" />
+            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsFeather" decimal_digits="2" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.01" layout="topleft" left="136" max_val="0.5" min_val="0" name="director_ps_feather" show_text="true" top="598" width="188" />
+            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsFeather" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_feather_reset" top="599" tool_tip="Reset to default value" width="18" />
+            <text follows="left|top" height="16" layout="topleft" left="12" top="634" value="Gobo shadow tint:" width="120" />
+            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsShadowTint" decimal_digits="2" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.01" layout="topleft" left="136" max_val="1" min_val="0" name="director_ps_shadow_tint" show_text="true" top="630" width="188" />
+            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsShadowTint" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_shadow_tint_reset" top="631" tool_tip="Reset to default value" width="18" />
+
+            <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="10" top="666" value="Color" width="330" />
+            <text follows="left|top" height="16" layout="topleft" left="12" top="698" value="Shaft tint:" width="120" />
+            <color_swatch can_apply_immediately="true" control_name="BDMergeProjectorVolumetricsTint" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="22" layout="topleft" left="136" name="director_ps_tint" top="690" width="44" />
+            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsTint" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_tint_reset" top="691" tool_tip="Reset to default value" width="18" />
+            <text follows="left|top" height="16" layout="topleft" left="12" top="726" value="Tint strength:" width="120" />
+            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsTintStrength" decimal_digits="2" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.01" layout="topleft" left="136" max_val="1" min_val="0" name="director_ps_tint_strength" show_text="true" top="722" width="188" />
+            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsTintStrength" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_tint_strength_reset" top="723" tool_tip="Reset to default value" width="18" />
+
+            <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="10" top="758" value="Atmosphere" width="330" />
+            <text follows="left|top" height="16" layout="topleft" left="12" top="786" value="Density / haze:" width="120" />
+            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsDensity" decimal_digits="2" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.05" layout="topleft" left="136" max_val="4" min_val="0" name="director_ps_density" show_text="true" top="782" width="188" />
+            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsDensity" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_density_reset" top="783" tool_tip="Reset to default value" width="18" />
+            <text follows="left|top" height="16" layout="topleft" left="12" top="818" value="Dust noise:" width="120" />
+            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsNoiseStrength" decimal_digits="2" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.01" layout="topleft" left="136" max_val="1" min_val="0" name="director_ps_noise_strength" show_text="true" top="814" width="188" />
+            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsNoiseStrength" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_noise_strength_reset" top="815" tool_tip="Reset to default value" width="18" />
+            <text follows="left|top" height="16" layout="topleft" left="12" top="850" value="Noise scale:" width="120" />
+            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsNoiseScale" decimal_digits="2" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.01" layout="topleft" left="136" max_val="2" min_val="0.01" name="director_ps_noise_scale" show_text="true" top="846" width="188" />
+            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsNoiseScale" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_noise_scale_reset" top="847" tool_tip="Reset to default value" width="18" />
+            <text follows="left|top" height="16" layout="topleft" left="12" top="882" value="Noise speed:" width="120" />
+            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsNoiseSpeed" decimal_digits="2" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.01" layout="topleft" left="136" max_val="2" min_val="-2" name="director_ps_noise_speed" show_text="true" top="878" width="188" />
+            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsNoiseSpeed" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_noise_speed_reset" top="879" tool_tip="Reset to default value" width="18" />
+            <text follows="left|top" height="16" layout="topleft" left="12" top="914" value="Wind azimuth:" width="120" />
+            <slider can_edit_text="true" control_name="BDMergeFroxelWindAzimuth" decimal_digits="0" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="1" layout="topleft" left="136" max_val="360" min_val="0" name="director_ps_wind_azimuth" show_text="true" tool_tip="Wind compass bearing (0=N, 90=E), shared by froxel air and beam dust." top="910" width="188" />
+            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeFroxelWindAzimuth" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_wind_azimuth_reset" top="911" tool_tip="Reset to default value" width="18" />
+            <text follows="left|top" height="16" layout="topleft" left="12" top="946" value="Wind elevation:" width="120" />
+            <slider can_edit_text="true" control_name="BDMergeFroxelWindElevation" decimal_digits="0" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="1" layout="topleft" left="136" max_val="90" min_val="-90" name="director_ps_wind_elevation" show_text="true" top="942" width="188" />
+            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeFroxelWindElevation" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_wind_elevation_reset" top="943" tool_tip="Reset to default value" width="18" />
+            <check_box control_name="BDMergeFroxelWindInverted" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="18" label="Invert wind direction" layout="topleft" left="136" name="director_ps_wind_inverted" top="974" width="200" />
+            <text follows="left|top" height="16" layout="topleft" left="12" top="1002" value="Height fog:" width="120" />
+            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsFogStrength" decimal_digits="2" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.01" layout="topleft" left="136" max_val="1" min_val="0" name="director_ps_fog_strength" show_text="true" top="998" width="188" />
+            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsFogStrength" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_fog_strength_reset" top="999" tool_tip="Reset to default value" width="18" />
+            <text follows="left|top" height="16" layout="topleft" left="12" top="1034" value="Fog ground dens.:" width="120" />
+            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsFogGroundDensity" decimal_digits="2" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.05" layout="topleft" left="136" max_val="4" min_val="0" name="director_ps_fog_ground_density" show_text="true" top="1030" width="188" />
+            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsFogGroundDensity" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_fog_ground_density_reset" top="1031" tool_tip="Reset to default value" width="18" />
+            <text follows="left|top" height="16" layout="topleft" left="12" top="1066" value="Fog falloff (m):" width="120" />
+            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsFogFalloff" decimal_digits="1" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.5" layout="topleft" left="136" max_val="256" min_val="0.5" name="director_ps_fog_falloff" show_text="true" top="1062" width="188" />
+            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsFogFalloff" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_fog_falloff_reset" top="1063" tool_tip="Reset to default value" width="18" />
+            <text follows="left|top" height="16" layout="topleft" left="12" top="1098" value="Fog base alt (m):" width="120" />
+            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsFogBase" decimal_digits="0" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="1" layout="topleft" left="136" max_val="4096" min_val="0" name="director_ps_fog_base" show_text="true" top="1094" width="188" />
+            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsFogBase" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_fog_base_reset" top="1095" tool_tip="Reset to default value" width="18" />
+            <text follows="left|top" height="16" layout="topleft" left="12" top="1130" value="Bloom halo:" width="120" />
+            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsBloomFeed" decimal_digits="2" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.01" layout="topleft" left="136" max_val="2" min_val="0" name="director_ps_bloom_feed" show_text="true" top="1126" width="188" />
+            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsBloomFeed" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_bloom_feed_reset" top="1127" tool_tip="Reset to default value" width="18" />
+
+            <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="10" top="1162" value="Shadow Quality (Batch 2)" width="330" />
+            <check_box control_name="BDMergeSoftProjectorShadows" follows="left|top" height="18" label="Soft projector shadows (contact-hardening + fill)" layout="topleft" left="12" tool_tip="Widen projector shadow softness with receiver distance and add an ambient fill floor." top="1190" width="330" />
+            <text follows="left|top" height="16" layout="topleft" left="12" top="1216" value="Softness:" width="120" />
+            <slider can_edit_text="true" control_name="BDMergeSoftShadowSoftness" decimal_digits="1" enabled_control="BDMergeSoftProjectorShadows" follows="left|top" height="20" increment="0.1" layout="topleft" left="136" max_val="16" min_val="0" name="director_ps_softness" show_text="true" top="1212" width="188" />
+            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeSoftShadowSoftness" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_softness_reset" top="1213" tool_tip="Reset to default value" width="18" />
+            <text follows="left|top" height="16" layout="topleft" left="12" top="1248" value="Max penumbra:" width="120" />
+            <slider can_edit_text="true" control_name="BDMergeSoftShadowMaxPenumbra" decimal_digits="1" enabled_control="BDMergeSoftProjectorShadows" follows="left|top" height="20" increment="0.5" layout="topleft" left="136" max_val="16" min_val="1" name="director_ps_max_penumbra" show_text="true" top="1244" width="188" />
+            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeSoftShadowMaxPenumbra" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_max_penumbra_reset" top="1245" tool_tip="Reset to default value" width="18" />
+            <text follows="left|top" height="16" layout="topleft" left="12" top="1280" value="Ambient fill:" width="120" />
+            <slider can_edit_text="true" control_name="BDMergeSoftShadowFill" decimal_digits="2" enabled_control="BDMergeSoftProjectorShadows" follows="left|top" height="20" increment="0.01" layout="topleft" left="136" max_val="1" min_val="0" name="director_ps_ambient_fill" show_text="true" top="1276" width="188" />
+            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeSoftShadowFill" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_ambient_fill_reset" top="1277" tool_tip="Reset to default value" width="18" />
+            <check_box control_name="BDMergeSoftShadowSun" enabled_control="BDMergeSoftProjectorShadows" follows="left|top" height="18" label="Also soften sun/moon shadows" layout="topleft" left="12" top="1308" width="330" />
+            <check_box control_name="BDMergeGoboAnisotropic" follows="left|top" height="18" label="Gobo anisotropic/mip filtering (anti-alias)" layout="topleft" left="12" tool_tip="Filter projector cookies so gobos stay crisp at distance and grazing angles." top="1334" width="330" />
+                </panel>
+            </scroll_container>
         </panel>
 
         <!-- ============ Cinematic light rig tab ============ -->
@@ -1357,7 +1469,7 @@
              width="374">
                 <panel
                  background_visible="false"
-                 height="2380"
+                 height="2522"
                  layout="topleft"
                  left="0"
                  name="cine_light_rig_scroll_content"
@@ -1367,7 +1479,7 @@
                      class="panel_cine_light_rig"
                      filename="panel_cine_light_rig.xml"
                      follows="left|top"
-                      height="2370"
+                      height="2512"
                      layout="topleft"
                      left="2"
                      name="cine_light_rig_embedded"
@@ -1488,6 +1600,180 @@
              top="8"
              width="344" />
         </panel>
+        <!-- ============ Actor FX tab ============ -->
+        <!-- Styles the live cast actor rather than creating an overlay clone.
+             The selector is independent of Subjects A-D and includes an
+             explicit You record. Values mirror Ghost Studio style ids/ranges. -->
+        <panel
+         follows="all"
+         background_visible="false"
+         height="550"
+         label="Actor FX"
+         layout="topleft"
+         name="actor_style_tab"
+         top="0"
+         width="374">
+            <scroll_container
+             follows="all"
+             height="540"
+             layout="topleft"
+             left="0"
+             name="actor_style_scroll"
+             opaque="false"
+             reserve_scroll_corner="false"
+             top="0"
+             width="374">
+                <panel
+                 background_visible="false"
+                 follows="left|top|right"
+                 height="570"
+                 layout="topleft"
+                 left="0"
+                 name="actor_style_scroll_content"
+                 top="0"
+                 width="354">
+                    <text
+                     follows="left|top|right"
+                     font="SansSerifBold"
+                     height="18"
+                     layout="topleft"
+                     left="10"
+                     name="actor_style_header"
+                     right="-10"
+                     top="10">
+                        Live Actor Styling
+                    </text>
+                    <text
+                     follows="left|top|right"
+                     height="32"
+                     layout="topleft"
+                     left="10"
+                     name="actor_style_hint"
+                     right="-10"
+                     text_color="LtGray_50"
+                     top="31">
+                        Overlay a Ghost Studio look on You or a Director cast member. Client-side only.
+                    </text>
+                    <text follows="left|top" height="16" layout="topleft" left="10" top="70" width="54">
+                        Actor:
+                    </text>
+                    <combo_box
+                     follows="left|top|right"
+                     height="22"
+                     layout="topleft"
+                     left="70"
+                     name="actor_style_target"
+                     right="-10"
+                     tool_tip="Choose You or a Director cast member. An away actor keeps the style ready for when they return."
+                     top="66" />
+                    <check_box
+                     follows="left|top"
+                     height="18"
+                     label="Enable actor styling"
+                     layout="topleft"
+                     left="10"
+                     name="actor_style_enabled"
+                     tool_tip="Master switch for this actor's client-side style"
+                     top="100"
+                     width="250" />
+                    <text follows="left|top" height="16" layout="topleft" left="10" top="132" width="84">
+                        Render mode:
+                    </text>
+                    <combo_box
+                     follows="left|top|right"
+                     height="22"
+                     layout="topleft"
+                     left="100"
+                     name="actor_style_mode"
+                     right="-10"
+                     tool_tip="Layer adds the effect over the normal actor. Opaque cover is a preview: it forces the styled layer opaque but currently leaves the normal actor underneath."
+                     top="128">
+                        <combo_box.item label="Layer" name="actor_style_layer" value="0" />
+                        <combo_box.item label="Opaque cover (preview)" name="actor_style_replace" value="1" />
+                    </combo_box>
+                    <text follows="left|top" height="16" layout="topleft" left="10" top="164" width="84">
+                        Look:
+                    </text>
+                    <combo_box
+                     follows="left|top|right"
+                     height="22"
+                     layout="topleft"
+                     left="100"
+                     name="actor_style_look"
+                     right="-10"
+                     tool_tip="The same 28 shader looks used by Ghost Studio overlays"
+                     top="160">
+                        <combo_box.item label="Ghost" name="actor_st_ghost" value="0" />
+                        <combo_box.item label="Clone" name="actor_st_clone" value="1" />
+                        <combo_box.item label="Hologram" name="actor_st_hologram" value="2" />
+                        <combo_box.item label="Wireframe" name="actor_st_wireframe" value="3" />
+                        <combo_box.item label="X-ray" name="actor_st_xray" value="4" />
+                        <combo_box.item label="Thermal" name="actor_st_thermal" value="5" />
+                        <combo_box.item label="Neon Outline" name="actor_st_neon" value="6" />
+                        <combo_box.item label="Silhouette" name="actor_st_silhouette" value="7" />
+                        <combo_box.item label="Toon/Ink" name="actor_st_toon" value="8" />
+                        <combo_box.item label="Chrome" name="actor_st_chrome" value="9" />
+                        <combo_box.item label="Dissolve" name="actor_st_dissolve" value="10" />
+                        <combo_box.item label="Negative" name="actor_st_negative" value="11" />
+                        <combo_box.item label="Gold Statue" name="actor_st_gold" value="12" />
+                        <combo_box.item label="Night-vision" name="actor_st_night" value="13" />
+                        <combo_box.item label="Blueprint" name="actor_st_blueprint" value="14" />
+                        <combo_box.item label="Ectoplasm" name="actor_st_ectoplasm" value="15" />
+                        <combo_box.item label="Frost/Ice" name="actor_st_frost" value="16" />
+                        <combo_box.item label="Prism" name="actor_st_prism" value="17" />
+                        <combo_box.item label="Thermal Scope" name="actor_st_thermal_scope" value="18" />
+                        <combo_box.item label="Wallhack/ESP" name="actor_st_wallhack" value="19" />
+                        <combo_box.item label="Night-vision Tube" name="actor_st_nv_tube" value="20" />
+                        <combo_box.item label="Damage Overlay" name="actor_st_damage" value="21" />
+                        <combo_box.item label="Killcam" name="actor_st_killcam" value="22" />
+                        <combo_box.item label="Oil Slick" name="actor_st_oil_slick" value="23" />
+                        <combo_box.item label="Vaporwave" name="actor_st_vaporwave" value="24" />
+                        <combo_box.item label="Halftone/Comic" name="actor_st_halftone" value="25" />
+                        <combo_box.item label="Sonar Reveal" name="actor_st_sonar" value="26" />
+                        <combo_box.item label="Hologram Echo" name="actor_st_holo_echo" value="27" />
+                    </combo_box>
+                    <check_box
+                     follows="left|top"
+                     height="18"
+                     initial_value="true"
+                     label="Use actor hue"
+                     layout="topleft"
+                     left="10"
+                     name="actor_style_use_actor_hue"
+                     tool_tip="Use the actor's stable Director path color. Uncheck to use Custom hue below."
+                     top="194"
+                     width="220" />
+                    <slider decimal_digits="0" follows="left|top|right" height="20" increment="5" initial_value="200" label="Custom hue" label_width="88" layout="topleft" left="10" max_val="360" min_val="0" name="actor_style_hue" right="-10" tool_tip="Tint hue in degrees when Use actor hue is off" top="220" />
+                    <slider decimal_digits="2" follows="left|top|right" height="20" increment="0.05" initial_value="0.6" label="Alpha" label_width="88" layout="topleft" left="10" max_val="1" min_val="0" name="actor_style_alpha" right="-10" tool_tip="Base opacity of the actor style" top="246" />
+                    <slider decimal_digits="0" follows="left|top|right" height="20" increment="1" initial_value="0" label="Pixelate" label_width="88" layout="topleft" left="10" max_val="64" min_val="0" name="actor_style_pixel" right="-10" tool_tip="Screen-space pixelation block size in pixels; 0 is off" top="272" />
+                    <slider decimal_digits="1" follows="left|top|right" height="20" increment="0.5" initial_value="1" label="Shimmer Hz" label_width="88" layout="topleft" left="10" max_val="10" min_val="0" name="actor_style_shimmer_speed" right="-10" tool_tip="Shimmer speed; only matters when Shimmer amount is above zero" top="298" />
+                    <slider decimal_digits="2" follows="left|top|right" height="20" increment="0.05" initial_value="0" label="Shimmer amt" label_width="88" layout="topleft" left="10" max_val="1" min_val="0" name="actor_style_shimmer_amount" right="-10" tool_tip="Brightness and alpha shimmer depth; 0 is off" top="324" />
+                    <slider decimal_digits="2" follows="left|top|right" height="20" increment="0.05" initial_value="0" label="Glitch" label_width="88" layout="topleft" left="10" max_val="1" min_val="0" name="actor_style_glitch" right="-10" tool_tip="Broken-signal horizontal tear and chroma split; 0 is off" top="350" />
+                    <text follows="left|top" height="16" layout="topleft" left="10" top="382" width="84">
+                        Distortion:
+                    </text>
+                    <combo_box follows="left|top|right" height="22" layout="topleft" left="100" name="actor_style_distortion" right="-10" tool_tip="Independent distortion layer; stacks with any selected look" top="378">
+                        <combo_box.item label="None" name="actor_ds_none" value="0" />
+                        <combo_box.item label="Pixelate" name="actor_ds_pixel" value="1" />
+                        <combo_box.item label="Voxel" name="actor_ds_voxel" value="2" />
+                        <combo_box.item label="Lens/Magnify" name="actor_ds_lens" value="3" />
+                        <combo_box.item label="Wave/Ripple" name="actor_ds_wave" value="4" />
+                        <combo_box.item label="RGB Split" name="actor_ds_rgb" value="5" />
+                        <combo_box.item label="Block Glitch" name="actor_ds_block" value="6" />
+                        <combo_box.item label="Vertical Tear" name="actor_ds_vertical" value="7" />
+                        <combo_box.item label="VHS" name="actor_ds_vhs" value="8" />
+                    </combo_box>
+                    <slider decimal_digits="2" follows="left|top|right" height="20" increment="0.05" initial_value="0.5" label="Distort amt" label_width="88" layout="topleft" left="10" max_val="1" min_val="0" name="actor_style_distortion_amount" right="-10" tool_tip="Strength of the selected independent distortion" top="410" />
+                    <slider decimal_digits="2" follows="left|top|right" height="20" increment="0.05" initial_value="1" label="Brightness" label_width="88" layout="topleft" left="10" max_val="1.5" min_val="0.05" name="actor_style_brightness" right="-10" tool_tip="Output brightness of the unlit style; reduce it to sit the actor into a dark set" top="436" />
+                    <spinner decimal_digits="0" follows="left|top" height="20" increment="1" initial_value="0" label="Effect fps" label_width="70" layout="topleft" left="10" max_val="30" min_val="0" name="actor_style_effect_fps" tool_tip="Shader animation cadence. 0 is smooth; 1-30 holds animated looks for stop motion." top="462" width="160" />
+                    <button follows="left|top" height="22" label="Reset actor style" layout="topleft" left="10" name="actor_style_reset" tool_tip="Restore this actor's style defaults and turn styling off" top="494" width="160" />
+                    <text follows="left|top|right" height="34" layout="topleft" left="10" name="actor_style_status" right="-10" text_color="LtGray_50" top="526">
+                        Select an actor.
+                    </text>
+                </panel>
+            </scroll_container>
+        </panel>
+
     </tab_container>
 
     <!-- ============ status strip ============ -->

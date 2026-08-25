@@ -9241,6 +9241,20 @@ Multiple SLurls were received from an untrusted browser within a short period.
 They will be blocked for a few seconds for your security.
   </notification>
 
+  <notification
+   icon="notifytip.tga"
+   name="XboxControllerConnected"
+   type="notifytip">
+Xbox controller detected: [DEVICE]. It is ready as the active Flycam controller using your saved mappings.
+  </notification>
+
+  <notification
+   icon="notifytip.tga"
+   name="XboxControllerDisconnected"
+   type="notifytip">
+Xbox controller disconnected.
+  </notification>
+
   <notification name="IMToast" type="notifytoast">
 [MESSAGE]
     <form name="form">

@@ -523,6 +523,8 @@ bool ALPanelLensGaze::postBuild()
     mExaggerate->setCommitCallback([this](LLUICtrl*, const LLSD&) { onExaggerateCommit(); });
     mMode->setCommitCallback([this](LLUICtrl*, const LLSD&) { onModeCommit(); });
     mGazeCues->setCommitCallback([this](LLUICtrl*, const LLSD&) { onGazeCues(); });
+    getChild<LLButton>("btn_pose_polish")->setCommitCallback(
+        [](LLUICtrl*, const LLSD&) { LLFloaterReg::toggleInstance("pose_polish"); });
 
     // Panel-managed values have no gSavedSettings control to reset. Route each
     // micro button through the same commit path as an operator edit so active

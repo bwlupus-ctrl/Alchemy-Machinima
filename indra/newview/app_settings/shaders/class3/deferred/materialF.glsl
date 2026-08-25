@@ -52,6 +52,9 @@ uniform mat3 normal_matrix;
 in vec3 vary_position;
 
 void mirrorClip(vec3 pos);
+#ifdef HAS_ACTOR_FX
+vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
+#endif
 vec4 encodeNormal(vec3 n, float env, float gbuffer_flag);
 
 #if (DIFFUSE_ALPHA_MODE == DIFFUSE_ALPHA_MODE_BLEND)
@@ -306,6 +309,9 @@ void main()
     float env = env_intensity * spec.a;
     float glossiness = specular_color.a;
     vec3 norm = getNormal(glossiness);
+#ifdef HAS_ACTOR_FX
+    diffcol.rgb = actorFxApply(diffcol.rgb, norm, vary_position, vary_texcoord0.xy);
+#endif
 
     float emissive = getEmissive(diffcol);
 
@@ -441,5 +447,4 @@ void main()
 
 #endif
 }
-
 

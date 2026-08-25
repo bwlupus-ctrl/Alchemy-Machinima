@@ -176,6 +176,7 @@ static void pushMaterialBatchIndexed(LLGLSLShader& program, U32 type, bool rigge
 
         LLRenderPass::applyModelMatrix(params);
 
+        LLRenderPass::uploadActorFx(params);
         params.mVertexBuffer->setBuffer();
         params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
     }
@@ -398,6 +399,7 @@ void LLDrawPoolMaterials::renderDeferred(S32 pass)
             params.mGroup->rebuildMesh();
         }*/
 
+        LLRenderPass::uploadActorFx(params);
         params.mVertexBuffer->setBuffer();
         params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
 

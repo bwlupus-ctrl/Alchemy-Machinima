@@ -49,6 +49,7 @@
 #include "llagentwearables.h"
 #include "llanimationstates.h"
 #include "llactormover.h"   // [ActorMover] local ghost locomotion
+#include "lldirectorcast.h" // cinematic Actor FX live-detail policy
 #include "alobjectpathmover.h"  // [ObjectPath] driven-object undamped seat sync
 #include "llavatarnamecache.h"
 #include "llavatarpropertiesprocessor.h"
@@ -12116,15 +12117,33 @@ void LLVOAvatar::updateImpostors()
 // virtual
 bool LLVOAvatar::isImpostor()
 {
+    const bool visually_muted = isVisuallyMuted();
+
+    // Actor FX is evaluated on live geometry. Keep a styled cinematic actor
+    // out of the impostor lifecycle as well as the draw-pool shortcut so its
+    // skeleton/LOD continues updating. Muting remains the stronger privacy and
+    // performance policy, and control avatars inherit their wearer's style.
+    const LLVOAvatar* actor_fx_avatar = getAttachedAvatar();
+    if (!actor_fx_avatar)
+    {
+        actor_fx_avatar = this;
+    }
+    if (!visually_muted &&
+        !actor_fx_avatar->isUIAvatar() &&
+        LLDirectorCast::instance().getActorStyle(actor_fx_avatar->getID()).mEnabled)
+    {
+        return false;
+    }
+
     // [BDMerge Batch4] Machinima High-LOD: while filming, disable the rank/count-based
     // impostor path (equivalent to RenderAvatarMaxNonImpostors=0) so all avatars render
     // full 3D. Manual visual mutes still impostor. No saved settings are touched.
     static LLCachedControl<bool> machinima(gSavedSettings, "BDMergeMachinimaHighLOD", false);
     if (machinima)
     {
-        return isVisuallyMuted();
+        return visually_muted;
     }
-    return isVisuallyMuted() || (sLimitNonImpostors && (mUpdatePeriod > 1));
+    return visually_muted || (sLimitNonImpostors && (mUpdatePeriod > 1));
 }
 
 bool LLVOAvatar::shouldImpostor(const F32 rank_factor)

@@ -62,6 +62,11 @@ uniform float clipSign;
 
 void mirrorClip(vec3 pos);
 vec4 encodeNormal(vec3 n, float env, float gbuffer_flag);
+#ifdef HAS_ACTOR_FX
+vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
+vec2 actorFxPbrMaterial(vec2 roughness_metallic);
+vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
+#endif
 
 uniform mat3 normal_matrix;
 
@@ -104,6 +109,14 @@ void main()
     emissive *= srgb_to_linear(texture(emissiveMap, emissive_texcoord.xy).rgb);
 
     tnorm *= gl_FrontFacing ? 1.0 : -1.0;
+
+#ifdef HAS_ACTOR_FX
+    col = actorFxApply(col, tnorm, vary_position, base_color_texcoord.xy);
+    vec2 fx_rm = actorFxPbrMaterial(vec2(spec.g, spec.b));
+    spec.g = fx_rm.x;
+    spec.b = fx_rm.y;
+    emissive = actorFxEmissive(emissive, col);
+#endif
 
     //spec.rgb = vec3(1,1,0);
     //col = vec3(0,0,0);
@@ -167,4 +180,3 @@ void main()
 }
 
 #endif
-

@@ -13,6 +13,7 @@
 
 #include "aldirectorswitcher.h"
 #include "alghoststudio.h"
+#include "llagentdata.h"             // gAgentID (stable even while self avatar is unavailable)
 #include "llghostavatar.h"          // LLGhostAvatar complete type for resolveEntityClone() upcast
 #include "llactormover.h"           // startAll/stopAll/placeAt (ACTION, marks)
 #include "lleventtimer.h"           // one-shot countdown timer
@@ -30,6 +31,97 @@
 
 namespace
 {
+void sanitizeActorStyle(LLDirectorCast::ActorStyle& style)
+{
+    const LLDirectorCast::ActorStyle defaults;
+    style.mMode = static_cast<LLDirectorCast::EActorStyleMode>(
+        llclamp(static_cast<S32>(style.mMode),
+                static_cast<S32>(LLDirectorCast::ACTOR_STYLE_LAYER),
+                static_cast<S32>(LLDirectorCast::ACTOR_STYLE_REPLACE)));
+    style.mStyle = llclamp(style.mStyle, 0, 27);
+    style.mHue = llclamp(std::isfinite(style.mHue) ? style.mHue : defaults.mHue,
+                         0.f, 360.f);
+    style.mAlpha = llclamp(std::isfinite(style.mAlpha) ? style.mAlpha : defaults.mAlpha,
+                           0.f, 1.f);
+    style.mPixelSize = llclamp(
+        std::isfinite(style.mPixelSize) ? style.mPixelSize : defaults.mPixelSize,
+        0.f, 64.f);
+    style.mShimmerSpeed = llclamp(
+        std::isfinite(style.mShimmerSpeed) ? style.mShimmerSpeed : defaults.mShimmerSpeed,
+        0.f, 10.f);
+    style.mShimmerAmount = llclamp(
+        std::isfinite(style.mShimmerAmount) ? style.mShimmerAmount : defaults.mShimmerAmount,
+        0.f, 1.f);
+    style.mGlitch = llclamp(
+        std::isfinite(style.mGlitch) ? style.mGlitch : defaults.mGlitch,
+        0.f, 1.f);
+    style.mDistortion = llclamp(style.mDistortion, 0, 8);
+    style.mDistortionAmount = llclamp(
+        std::isfinite(style.mDistortionAmount) ? style.mDistortionAmount
+                                               : defaults.mDistortionAmount,
+        0.f, 1.f);
+    style.mBrightness = llclamp(
+        std::isfinite(style.mBrightness) ? style.mBrightness : defaults.mBrightness,
+        0.05f, 1.5f);
+    if (!std::isfinite(style.mEffectFps) || style.mEffectFps <= 0.f)
+    {
+        style.mEffectFps = 0.f;
+    }
+    else
+    {
+        style.mEffectFps = llclamp(floorf(style.mEffectFps + 0.5f), 1.f, 30.f);
+    }
+}
+
+LLSD writeActorStyle(const LLDirectorCast::ActorStyle& input)
+{
+    LLDirectorCast::ActorStyle style = input;
+    sanitizeActorStyle(style);
+
+    LLSD data = LLSD::emptyMap();
+    data["enabled"] = style.mEnabled;
+    data["mode"] = static_cast<S32>(style.mMode);
+    data["style"] = style.mStyle;
+    data["actor_hue"] = style.mUseActorHue;
+    data["hue"] = style.mHue;
+    data["alpha"] = style.mAlpha;
+    data["pixel_size"] = style.mPixelSize;
+    data["shimmer_speed"] = style.mShimmerSpeed;
+    data["shimmer_amount"] = style.mShimmerAmount;
+    data["glitch"] = style.mGlitch;
+    data["distortion"] = style.mDistortion;
+    data["distortion_amount"] = style.mDistortionAmount;
+    data["brightness"] = style.mBrightness;
+    data["effect_fps"] = style.mEffectFps;
+    return data;
+}
+
+LLDirectorCast::ActorStyle readActorStyle(const LLSD& data)
+{
+    LLDirectorCast::ActorStyle style;
+    if (!data.isMap())
+    {
+        return style;
+    }
+
+    if (data.has("enabled"))          style.mEnabled = data["enabled"].asBoolean();
+    if (data.has("mode"))             style.mMode = static_cast<LLDirectorCast::EActorStyleMode>(data["mode"].asInteger());
+    if (data.has("style"))            style.mStyle = data["style"].asInteger();
+    if (data.has("actor_hue"))        style.mUseActorHue = data["actor_hue"].asBoolean();
+    if (data.has("hue"))              style.mHue = static_cast<F32>(data["hue"].asReal());
+    if (data.has("alpha"))            style.mAlpha = static_cast<F32>(data["alpha"].asReal());
+    if (data.has("pixel_size"))       style.mPixelSize = static_cast<F32>(data["pixel_size"].asReal());
+    if (data.has("shimmer_speed"))    style.mShimmerSpeed = static_cast<F32>(data["shimmer_speed"].asReal());
+    if (data.has("shimmer_amount"))   style.mShimmerAmount = static_cast<F32>(data["shimmer_amount"].asReal());
+    if (data.has("glitch"))           style.mGlitch = static_cast<F32>(data["glitch"].asReal());
+    if (data.has("distortion"))       style.mDistortion = data["distortion"].asInteger();
+    if (data.has("distortion_amount")) style.mDistortionAmount = static_cast<F32>(data["distortion_amount"].asReal());
+    if (data.has("brightness"))       style.mBrightness = static_cast<F32>(data["brightness"].asReal());
+    if (data.has("effect_fps"))       style.mEffectFps = static_cast<F32>(data["effect_fps"].asReal());
+    sanitizeActorStyle(style);
+    return style;
+}
+
 LLSD writeGazeAimTarget(const LLActorMover::GazeTarget& target)
 {
     LLSD data = LLSD::emptyMap();
@@ -751,6 +843,35 @@ LLDirectorCast::CastMember* LLDirectorCast::getMember(const LLUUID& id)
 const LLDirectorCast::CastMember* LLDirectorCast::getMember(const LLUUID& id) const
 {
     return const_cast<LLDirectorCast*>(this)->getMember(id);
+}
+
+const LLDirectorCast::ActorStyle& LLDirectorCast::getActorStyle(const LLUUID& id) const
+{
+    static const ActorStyle default_style;
+    if (id.isNull() || (gAgentID.notNull() && id == gAgentID))
+    {
+        return mSelfActorStyle;
+    }
+    if (const CastMember* member = getMember(id))
+    {
+        return member->mActorStyle;
+    }
+    return default_style;
+}
+
+void LLDirectorCast::setActorStyle(const LLUUID& id, const ActorStyle& input)
+{
+    ActorStyle style = input;
+    sanitizeActorStyle(style);
+    if (id.isNull() || (gAgentID.notNull() && id == gAgentID))
+    {
+        mSelfActorStyle = style;
+        return;
+    }
+    if (CastMember* member = getMember(id))
+    {
+        member->mActorStyle = style;
+    }
 }
 
 void LLDirectorCast::setLookAtCamera(const LLUUID& id, bool selected)
@@ -1588,6 +1709,7 @@ LLSD LLDirectorCast::sceneData() const
         e["loco_anim"] = m.mLocoAnim;
         e["group"] = m.mGroup;
         e["look_at_camera"] = isLookAtCamera(m.mId);
+        e["actor_style"] = writeActorStyle(m.mActorStyle);
 
         LLSD gaze_sd = LLSD::emptyMap();
         gaze_sd["mode"] = static_cast<S32>(m.mGazeTarget.mMode);
@@ -1655,6 +1777,7 @@ LLSD LLDirectorCast::sceneData() const
     {
         data["self_gaze_influence_keys"] = writeGazeInfluenceKeys(mSelfGazeInfluenceKeys);
     }
+    data["self_actor_style"] = writeActorStyle(mSelfActorStyle);
 
     // per-group start delays, only for groups that still exist (the members
     // above carry the tags; this map just annotates them)
@@ -1694,6 +1817,7 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     mSelfEyeGazeTargetEnabled = false;
     mSelfGazeCues.clear();
     mSelfGazeInfluenceKeys.clear();
+    mSelfActorStyle = ActorStyle();
 
     if (data.has("self_gaze_target"))
     {
@@ -1737,6 +1861,10 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     {
         mSelfGazeInfluenceKeys = readGazeInfluenceKeys(data["self_gaze_influence_keys"]);
     }
+    if (data.has("self_actor_style"))
+    {
+        mSelfActorStyle = readActorStyle(data["self_actor_style"]);
+    }
 
     const LLSD& cast_arr = data["cast"];
     for (LLSD::array_const_iterator it = cast_arr.beginArray();
@@ -1757,6 +1885,10 @@ void LLDirectorCast::applySceneData(const LLSD& data)
         }
         m.mLocoAnim = e["loco_anim"].asUUID();
         m.mGroup = e["group"].asString();   // absent in pre-group scenes -> ""
+        if (e.has("actor_style"))
+        {
+            m.mActorStyle = readActorStyle(e["actor_style"]);
+        }
         if (e.has("gaze_target"))
         {
             const LLSD& gaze_sd = e["gaze_target"];

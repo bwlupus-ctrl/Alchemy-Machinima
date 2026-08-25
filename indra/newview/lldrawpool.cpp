@@ -30,6 +30,8 @@
 #include "llrender.h"
 #include "llfasttimer.h"
 #include "llviewercontrol.h"
+#include "llagentdata.h"
+#include "llframetimer.h"
 
 #include "lldrawable.h"
 #include "lldrawpoolalpha.h"
@@ -55,6 +57,8 @@
 #include "llviewershadermgr.h"
 #include "llfetchedgltfmaterial.h"
 #include "llviewertexture.h"
+#include "lldirectorcast.h"
+#include "llactormover.h"
 
 S32 LLDrawPool::sNumDrawPools = 0;
 static const LLClientOuterTransform* sLastOuterTransform = nullptr;
@@ -417,6 +421,112 @@ static bool skip_rain_occlusion_attachment(const LLDrawInfo* params)
            params && params->mAttachedToAvatar;
 }
 
+namespace
+{
+const LLStaticHashedString sActorFxEnabled("actorFxEnabled");
+const LLStaticHashedString sActorFxLook("actorFxLook");
+const LLStaticHashedString sActorFxTime("actorFxTime");
+const LLStaticHashedString sActorFxTint("actorFxTint");
+const LLStaticHashedString sActorFxParams0("actorFxParams0");
+const LLStaticHashedString sActorFxParams1("actorFxParams1");
+
+LLGLSLShader* get_actor_fx_shader()
+{
+    LLGLSLShader* shader = LLGLSLShader::sCurBoundShaderPtr;
+    return shader && shader->mFeatures.hasActorFx ? shader : nullptr;
+}
+}
+
+// static
+void LLRenderPass::uploadActorFxDisabled()
+{
+    if (LLGLSLShader* shader = get_actor_fx_shader())
+    {
+        // This assignment is deliberately made for every unowned native draw.
+        // Actor-FX uniforms are program state and otherwise leak from the last
+        // styled attachment into unrelated world geometry using that program.
+        shader->uniform1i(sActorFxEnabled, 0);
+    }
+}
+
+// static
+void LLRenderPass::uploadActorFx(const LLUUID& actor_id)
+{
+    LLGLSLShader* shader = get_actor_fx_shader();
+    if (!shader)
+    {
+        return;
+    }
+
+    const LLDirectorCast::ActorStyle& style =
+        LLDirectorCast::instance().getActorStyle(actor_id);
+    if (!style.mEnabled)
+    {
+        shader->uniform1i(sActorFxEnabled, 0);
+        return;
+    }
+
+    // Null is Director's explicit identity for You. Use the runtime agent id
+    // only for stable tint/phase generation; the style lookup above must retain
+    // Director's null-is-self semantics.
+    const LLUUID& stable_id = actor_id.isNull() && gAgentID.notNull()
+        ? gAgentID : actor_id;
+
+    LLColor4 tint;
+    if (style.mUseActorHue)
+    {
+        tint = LLActorMover::actorPathColor(stable_id);
+    }
+    else
+    {
+        tint.setHSL(fmodf(llmax(style.mHue, 0.f), 360.f) / 360.f,
+                    0.9f, 0.6f);
+        tint.mV[VW] = 1.f;
+    }
+
+    const F32 real_time = static_cast<F32>(LLFrameTimer::getElapsedSeconds());
+    const F32 effect_fps = llclamp(style.mEffectFps, 0.f, 30.f);
+    const F32 effect_time = effect_fps > 0.f
+        ? floorf(real_time * effect_fps) / effect_fps
+        : real_time;
+    const F32 strength = style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE
+        ? 1.f : llclamp(style.mAlpha, 0.f, 1.f);
+    const F32 stable_phase =
+        static_cast<F32>(stable_id.mData[0] | (stable_id.mData[1] << 8))
+        * (F_TWO_PI / 65536.f);
+
+    shader->uniform1i(sActorFxLook, llclamp(style.mStyle, 0, 27));
+    shader->uniform1f(sActorFxTime, effect_time);
+    shader->uniform3f(sActorFxTint,
+                      tint.mV[VX], tint.mV[VY], tint.mV[VZ]);
+    shader->uniform4f(sActorFxParams0,
+                      strength,
+                      llmax(style.mPixelSize, 0.f),
+                      llclamp(style.mShimmerAmount, 0.f, 1.f),
+                      llclamp(style.mGlitch, 0.f, 1.f));
+    shader->uniform4f(sActorFxParams1,
+                      static_cast<F32>(llclamp(style.mDistortion, 0, 8)),
+                      llclamp(style.mDistortionAmount, 0.f, 1.f),
+                      llclamp(style.mBrightness, 0.05f, 1.5f),
+                      stable_phase);
+    shader->uniform1i(sActorFxEnabled, 1);
+}
+
+// static
+void LLRenderPass::uploadActorFx(const LLDrawInfo& params)
+{
+    // Draw-info null is intentionally *not* Director's null-is-You identity.
+    // It denotes world geometry with no stable actor owner.
+    if (params.mActorFxOwner.isNull())
+    {
+        uploadActorFxDisabled();
+    }
+    else
+    {
+        uploadActorFx(params.mActorFxOwner);
+    }
+}
+
 LLRenderPass::LLRenderPass(const U32 type)
 : LLDrawPool(type)
 {
@@ -661,6 +771,7 @@ void LLRenderPass::pushMaskBatchesIndexed(U32 type, bool rigged)
 
         applyModelMatrix(params);
 
+        uploadActorFx(params);
         params.mVertexBuffer->setBuffer();
         params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
     }
@@ -740,6 +851,7 @@ void LLRenderPass::pushEmissiveBatchesIndexed(U32 type, bool rigged)
 
         applyModelMatrix(params);
 
+        uploadActorFx(params);
         params.mVertexBuffer->setBuffer();
         params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
     }
@@ -1077,6 +1189,7 @@ void LLRenderPass::pushBatch(LLDrawInfo& params, bool texture, bool batch_textur
         }
     }
 
+    uploadActorFx(params);
     params.mVertexBuffer->setBuffer();
     params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
 
@@ -1098,6 +1211,7 @@ void LLRenderPass::pushUntexturedBatch(LLDrawInfo& params)
     }
     applyModelMatrix(params);
 
+    uploadActorFx(params);
     params.mVertexBuffer->setBuffer();
     params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
 }
@@ -1460,6 +1574,7 @@ void LLRenderPass::pushGLTFBatchIndexed(LLDrawInfo& params, eGLTFIndexedMaps map
 
     applyModelMatrix(params);
 
+    uploadActorFx(params);
     params.mVertexBuffer->setBuffer();
     params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
 }
@@ -1489,6 +1604,7 @@ void LLRenderPass::pushGLTFBatch(LLDrawInfo& params, LLFetchedGLTFMaterial*& las
 
     applyModelMatrix(params);
 
+    uploadActorFx(params);
     params.mVertexBuffer->setBuffer();
     params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
 
@@ -1504,6 +1620,7 @@ void LLRenderPass::pushUntexturedGLTFBatch(LLDrawInfo& params)
 
     applyModelMatrix(params);
 
+    uploadActorFx(params);
     params.mVertexBuffer->setBuffer();
     params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
 }

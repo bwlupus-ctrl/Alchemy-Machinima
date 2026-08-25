@@ -28,6 +28,8 @@
 
 #include "llviewerjoystick.h"
 
+#include "llframetimer.h"
+#include "llnotificationsutil.h"
 #include "llpathcamera.h"       // clear a latched path-camera preview on flycam engage
 #include "llviewercontrol.h"
 #include "llviewerwindow.h"
@@ -114,6 +116,55 @@ std::ostream& operator<<(std::ostream& out, NDOF_Device* ptr)
 
 
 #if LL_WINDOWS && !LL_MESA_HEADLESS
+namespace
+{
+constexpr F32 XBOX_DEVICE_POLL_SECONDS = 3.f;
+
+bool isXboxProductName(std::string product_name)
+{
+    LLStringUtil::toLower(product_name);
+    return product_name.find("xbox") != std::string::npos;
+}
+
+bool sameWindowsDeviceId(const LLSD& lhs, const LLSD& rhs)
+{
+    return lhs.isBinary() && rhs.isBinary() &&
+           lhs.asBinary() == rhs.asBinary();
+}
+
+struct XboxDeviceProbe
+{
+    bool mFound = false;
+    std::string mProductName;
+    LLSD mGuid;
+};
+
+BOOL CALLBACK di8_xbox_probe_callback(
+    LPCDIDEVICEINSTANCE device_instance_ptr, LPVOID user_data)
+{
+    XboxDeviceProbe* probe = static_cast<XboxDeviceProbe*>(user_data);
+    if (!device_instance_ptr || !probe)
+    {
+        return DIENUM_CONTINUE;
+    }
+
+    std::string product_name = ll_convert_wide_to_string(
+        std::wstring(device_instance_ptr->tszProductName));
+    if (!isXboxProductName(product_name))
+    {
+        return DIENUM_CONTINUE;
+    }
+
+    LLSD::Binary binary_data(sizeof(GUID));
+    memcpy(binary_data.data(), &device_instance_ptr->guidInstance,
+           sizeof(GUID));
+    probe->mFound = true;
+    probe->mProductName = product_name;
+    probe->mGuid = LLSD(binary_data);
+    return DIENUM_STOP;
+}
+}
+
 // this should reflect ndof and set axises, see ndofdev_win.cpp from ndof package
 BOOL CALLBACK EnumObjectsCallback(const DIDEVICEOBJECTINSTANCE* inst, VOID* user_data)
 {
@@ -323,7 +374,9 @@ LLViewerJoystick::LLViewerJoystick()
     mResetFlag(false),
     mCameraUpdated(true),
     mOverrideCamera(false),
-    mJoystickRun(0)
+    mJoystickRun(0),
+    mXboxWasPresent(false),
+    mXboxUserReleased(false)
 {
     for (int i = 0; i < 6; i++)
     {
@@ -431,7 +484,7 @@ LLViewerJoystick::~LLViewerJoystick()
 }
 
 // -----------------------------------------------------------------------------
-void LLViewerJoystick::init(bool autoenable)
+void LLViewerJoystick::init(bool autoenable, bool apply_defaults)
 {
 #if LIB_NDOF
     static bool libinit = false;
@@ -531,12 +584,13 @@ void LLViewerJoystick::init(bool autoenable)
         if (isLikeSpaceNavigator())
         {
             // It's a space navigator, we have defaults for it.
-            if (gSavedSettings.getString("JoystickInitialized") != "SpaceNavigator")
+            if (apply_defaults &&
+                gSavedSettings.getString("JoystickInitialized") != "SpaceNavigator")
             {
                 // Only set the defaults if we haven't already (in case they were overridden)
                 setSNDefaults();
-                gSavedSettings.setString("JoystickInitialized", "SpaceNavigator");
             }
+            gSavedSettings.setString("JoystickInitialized", "SpaceNavigator");
         }
         else
         {
@@ -2057,8 +2111,138 @@ bool LLViewerJoystick::toggleFlycam()
     return true;
 }
 
+// -----------------------------------------------------------------------------
+void LLViewerJoystick::pollForXboxController()
+{
+#if LIB_NDOF && LL_WINDOWS && !LL_MESA_HEADLESS
+    if (!gSavedSettings.getBOOL("JoystickAutoFlycamEnabled"))
+    {
+        // Fully reset the session state so re-enabling is a clean start.
+        mXboxWasPresent = false;
+        mXboxUserReleased = false;
+        mXboxAutoGuid = LLSD();
+        return;
+    }
+
+    // The user manually selected a different device after an automatic handoff:
+    // respect that choice for the rest of the session (until auto-detect is
+    // toggled off/on or the app restarts). Do not re-grab the Xbox or emit its
+    // connect/disconnect toasts once the user has taken control.
+    if (mXboxUserReleased)
+    {
+        return;
+    }
+
+    static LLFrameTimer poll_timer;
+    if (poll_timer.getElapsedTimeF32() < XBOX_DEVICE_POLL_SECONDS)
+    {
+        return;
+    }
+    poll_timer.reset();
+
+    if (!gViewerWindow || !gViewerWindow->getWindow())
+    {
+        return;
+    }
+
+    XboxDeviceProbe probe;
+    std::function<bool(std::string&, LLSD&, void*)> osx_callback;
+    void* win_callback = &di8_xbox_probe_callback;
+    const bool enumerated = gViewerWindow->getWindow()->getInputDevices(
+        DI8DEVCLASS_GAMECTRL, osx_callback, win_callback, &probe);
+
+    if (!enumerated || !probe.mFound)
+    {
+        if (mXboxWasPresent)
+        {
+            const bool active_device_was_xbox =
+                isXboxProductName(getDescription());
+            if (active_device_was_xbox)
+            {
+                if (mOverrideCamera)
+                {
+                    toggleFlycam();
+                }
+                mDriverState = JDS_UNINITIALIZED;
+                std::fill(std::begin(mAxes), std::end(mAxes), 0.f);
+                memset(mBtn, 0, sizeof(mBtn));
+                LL_INFOS("Joystick")
+                    << "Xbox controller disconnected; Flycam released."
+                    << LL_ENDL;
+                // Only announce the disconnect for a controller we were actually
+                // driving — not one the user had already switched away from.
+                LLNotificationsUtil::add("XboxControllerDisconnected");
+            }
+        }
+        mXboxWasPresent = false;
+        mXboxAutoGuid = LLSD();
+        return;
+    }
+
+    // Presence is edge-triggered. Once the automatic handoff has happened,
+    // manual Flycam/device choices remain authoritative until a reconnect.
+    if (mXboxWasPresent)
+    {
+        // If the user has since selected a different active device, latch that
+        // as a manual override and stop auto-managing the Xbox for this session.
+        if (mXboxAutoGuid.isDefined() &&
+            !sameWindowsDeviceId(mLastDeviceUUID, mXboxAutoGuid))
+        {
+            mXboxUserReleased = true;
+        }
+        return;
+    }
+
+    // Ensure libndof and its reusable device object exist. init() can choose a
+    // different saved/first controller, so explicitly select the Xbox GUID
+    // afterward when necessary.
+    if (!mNdofDev)
+    {
+        init(false, false);
+    }
+    if (mDriverState != JDS_INITIALIZED ||
+        !sameWindowsDeviceId(mLastDeviceUUID, probe.mGuid))
+    {
+        LLSD guid = probe.mGuid;
+        initDevice(guid);
+    }
+
+    if (mDriverState != JDS_INITIALIZED ||
+        !sameWindowsDeviceId(mLastDeviceUUID, probe.mGuid))
+    {
+        mXboxWasPresent = false;
+        LL_WARNS("Joystick")
+            << "Detected Xbox controller '" << probe.mProductName
+            << "' but could not initialize it; polling will retry."
+            << LL_ENDL;
+        return;
+    }
+
+    // Hot-plug selection must not touch mappings, scales, or dead zones. Use
+    // the controller configuration already persisted by the viewer.
+    gSavedSettings.setBOOL("JoystickFlycamEnabled", true);
+    gSavedSettings.setBOOL("JoystickEnabled", true);
+    gSavedSettings.setString("JoystickInitialized", "XboxController");
+    saveDeviceIdToSettings();
+    refreshFromSettings();
+
+    mXboxWasPresent = true;
+    mXboxAutoGuid = probe.mGuid;   // remember what we handed off to, to detect a later manual override
+    LL_INFOS("Joystick")
+        << "Xbox controller '" << probe.mProductName
+        << "' connected and assigned to Flycam."
+        << LL_ENDL;
+    LLSD args;
+    args["DEVICE"] = probe.mProductName;
+    LLNotificationsUtil::add("XboxControllerConnected", args);
+#endif
+}
+
+// -----------------------------------------------------------------------------
 void LLViewerJoystick::scanJoystick()
 {
+    pollForXboxController();
+
     if (mDriverState != JDS_INITIALIZED || !mJoystickEnabled)
     {
         return;

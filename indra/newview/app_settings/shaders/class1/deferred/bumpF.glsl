@@ -41,6 +41,9 @@ in vec3 vary_position;
 
 void mirrorClip(vec3 pos);
 vec4 encodeNormal(vec3 n, float env, float gbuffer_flag);
+#ifdef HAS_ACTOR_FX
+vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
+#endif
 
 void main()
 {
@@ -64,6 +67,9 @@ void main()
     frag_data[1] = vertex_color.aaaa; // spec
     //frag_data[1] = vec4(vec3(vertex_color.a), vertex_color.a+(1.0-vertex_color.a)*vertex_color.a); // spec - from former class3 - maybe better, but not so well tested
     vec3 nvn = normalize(tnorm);
+#ifdef HAS_ACTOR_FX
+    col.rgb = actorFxApply(col.rgb, nvn, vary_position, vary_texcoord0.xy);
+#endif
     frag_data[2] = encodeNormal(nvn, vertex_color.a, GBUFFER_FLAG_HAS_ATMOS);
 
 #if defined(HAS_EMISSIVE)

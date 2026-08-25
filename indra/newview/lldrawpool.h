@@ -364,6 +364,13 @@ public:
     // For rendering that doesn't use LLDrawInfo for some reason
     static void applyModelMatrix(const LLMatrix4* model_matrix);
     static void invalidateModelMatrixCache();
+    // Upload native per-actor cinematic styling to the currently bound shader.
+    // The UUID overload follows Director identity rules (null explicitly means
+    // You); LLDrawInfo's null mActorFxOwner instead means disabled and is
+    // routed through the draw-info overload/disabled helper.
+    static void uploadActorFx(const LLUUID& actor_id);
+    static void uploadActorFx(const LLDrawInfo& params);
+    static void uploadActorFxDisabled();
     void pushBatches(U32 type, bool texture = true, bool batch_textures = false);
     void pushUntexturedBatches(U32 type);
 

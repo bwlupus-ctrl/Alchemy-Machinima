@@ -19,7 +19,6 @@
 #include "llavatarnamecache.h"
 #include "llbutton.h"
 #include "lldirectorcast.h"         // group tag suffix (roster IS the cast)
-#include "llfloaterreg.h"
 #include "llscrolllistctrl.h"
 #include "lltextbox.h"
 #include "llviewerobjectlist.h"     // gObjectList
@@ -41,8 +40,6 @@ bool LLFloaterActorMover::postBuild()
     mPathPanel = findChild<ALPanelPathEditor>("path_editor");
     getChild<LLButton>("btn_actor_gaze")->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onOpenActorGaze(); });
-    getChild<LLButton>("btn_pose_polish")->setCommitCallback(
-        [this](LLUICtrl*, const LLSD&) { onOpenPosePolish(); });
 
     LLScrollContainer* move_scroll = getChild<LLScrollContainer>("move_scroll");
     LLView* move_document = getChildView("move_scroll_content");
@@ -74,11 +71,6 @@ void LLFloaterActorMover::onOpenActorGaze()
     ALFloaterActorGaze::showForSelection(
         ALFloaterActorGaze::ESelectionSource::ACTOR_MOVER,
         selectedActors());
-}
-
-void LLFloaterActorMover::onOpenPosePolish()
-{
-    LLFloaterReg::toggleInstance("pose_polish");
 }
 
 void LLFloaterActorMover::refreshRoster()

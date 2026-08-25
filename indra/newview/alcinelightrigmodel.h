@@ -292,6 +292,10 @@ void profileSRGB(S32 index, F32 rgb[3]);
 const char* beamName(S32 index);
 F32 beamFov(S32 index);
 F32 beamFalloff(S32 index);
+// Easy-mode cone width is ordered narrow-to-wide even though the authored
+// beam presets are stored Standard, Softbox, Snoot.
+S32 easyConeWidthToBeam(S32 width);
+S32 easyConeWidthFromBeam(S32 beam);
 const char* goboName(S32 index);
 // UI grouping and the authored pre-blur lookup are pure so the panel and
 // controller cannot disagree about category or softness thresholds.

@@ -77,7 +77,8 @@ uniform float projvol_g;          // Henyey-Greenstein anisotropy (forward scatt
 // [Phase 1] per-lever sub-controls (uploaded by renderProjectorVolumetric).
 uniform float projvol_feather;    // item 6: angular cone-edge softness (0 = hard)
 uniform int   projvol_shadow_samples; // item 7: occlusion sub-taps per march step
-uniform int   projvol_dither;     // item 2: 0=off(centre) 1=static bluenoise 2=animated
+uniform int   projvol_dither;     // item 2: 0=off(centre) 1=static 2=animated;
+                                  // C++ may promote 1 to 2 behind the temporal guard
 uniform float projvol_frame;      // item 2: temporal seed (frame counter, wrapped)
 uniform float projvol_max;        // item 1: HDR headroom clamp (large in linear HDR)
 
@@ -400,8 +401,10 @@ void main()
     // warp divergence, not the hash cost, is what tanked FPS whenever the dither
     // lever left 0. Sharing the offset across each hardware 2x2 quad keeps the
     // march cache/lane-coherent while the dither/temporal averaging hides the
-    // coarser pattern. Setting semantics are unchanged: 0 = off (centred 0.5),
-    // 1 = static, 2 = animated (same golden-ratio per-frame walk).
+    // coarser pattern. Shader modes: 0 = off (centred 0.5), 1 = static, 2 =
+    // animated (golden-ratio per-frame walk). With its anti-banding guard enabled,
+    // C++ sends 2 for static mode only while the RGBA16F temporal resolve can
+    // average successive phases.
     float roffset;
     if (projvol_dither == 0)
     {

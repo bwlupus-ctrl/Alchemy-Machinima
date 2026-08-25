@@ -37,6 +37,9 @@ in vec3 vary_position;
 
 void mirrorClip(vec3 pos);
 vec4 encodeNormal(vec3 n, float env, float gbuffer_flag);
+#ifdef HAS_ACTOR_FX
+vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
+#endif
 
 void main()
 {
@@ -52,10 +55,12 @@ void main()
     frag_data[0] = vec4(diff.rgb, 0.0);
     frag_data[1] = vec4(0,0,0,0);
     vec3 nvn = normalize(vary_normal);
+#ifdef HAS_ACTOR_FX
+    diff.rgb = actorFxApply(diff.rgb, nvn, vary_position, vary_texcoord0.xy);
+#endif
     frag_data[2] = encodeNormal(nvn.xyz, 0, GBUFFER_FLAG_HAS_ATMOS);
 
 #if defined(HAS_EMISSIVE)
     frag_data[3] = vec4(0);
 #endif
 }
-

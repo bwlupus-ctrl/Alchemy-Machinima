@@ -192,6 +192,14 @@ bool LLShaderMgr::attachShaderFeatures(LLGLSLShader * shader)
         return false;
     }
 
+    if (features->hasActorFx)
+    {
+        if (!shader->attachFragmentObject("alchemy/actorFxF.glsl"))
+        {
+            return false;
+        }
+    }
+
     if (features->hasSrgb || features->hasAtmospherics || features->calculatesAtmospherics || features->isDeferred)
     {
         if (!shader->attachFragmentObject("environment/srgbF.glsl"))
@@ -1620,9 +1628,12 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("uLensFlareLightColor");
 
     // Cine rig flare sources (Group 1 — rig source arrays)
+    mReservedUniforms.push_back("uCineFlareShaft");
     mReservedUniforms.push_back("uCineFlareCount");
     mReservedUniforms.push_back("uCineFlareA");
     mReservedUniforms.push_back("uCineFlareColor");
+    mReservedUniforms.push_back("uCineFlareThreshold");
+    mReservedUniforms.push_back("uCineFlareProbeRadius");
 
     // Lens flare polished-stack additions (Group 2 — element intensities)
     mReservedUniforms.push_back("uLensFlareGhostChroma");

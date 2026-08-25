@@ -19,6 +19,20 @@
     <menu_item_call.on_click
      function="Director.SetSubjectB" />
   </menu_item_call>
+  <menu_item_call
+   label="Set Subject C"
+   layout="topleft"
+   name="set_subject_c">
+    <menu_item_call.on_click
+     function="Director.SetSubjectC" />
+  </menu_item_call>
+  <menu_item_call
+   label="Set Subject D"
+   layout="topleft"
+   name="set_subject_d">
+    <menu_item_call.on_click
+     function="Director.SetSubjectD" />
+  </menu_item_call>
   <menu_item_separator layout="topleft" />
   <menu_item_call
    label="Set Mark Here"

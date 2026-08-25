@@ -816,8 +816,12 @@
      tool_tip="Reset to default" top="1827" width="14" />
 
     <text follows="left|top|right" height="32" layout="topleft" left="12"
-     name="gaze_hint" text_color="LtGray_50" top="1862" width="350"
+     name="gaze_hint" text_color="LtGray_50" top="1862" width="238"
      word_wrap="true">Editing (top) chooses the actor these rows edit: All broadcasts to every populated actor; You / A-D edit one.</text>
+    <button follows="right|top" height="22" label="Pose Polish..."
+     layout="topleft" left="258" name="btn_pose_polish" top="1866"
+     tool_tip="Open post-blend transition smoothing, foot grounding, loop repair, locomotion matching, and ambient motion controls"
+     width="106" />
     <button follows="right|top" height="22" label="Gaze Cues..."
      layout="topleft" left="370" name="btn_gaze_cues" top="1866"
      tool_tip="Edit presentation-time gaze cues for the active You/A-D subject"

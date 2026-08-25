@@ -62,6 +62,9 @@ public:
     bool hasTonemap = false;
     bool hasColorGrade = false;
     bool hasPostEffects = false;
+    // Native per-draw cinematic Actor FX. The fragment utility transforms the
+    // actor's original material result while leaving authored coverage intact.
+    bool hasActorFx = false;
 };
 
 // ============= Structure for caching shader uniforms ===============

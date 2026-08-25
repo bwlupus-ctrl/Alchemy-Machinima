@@ -317,6 +317,7 @@ set(viewer_SOURCE_FILES
     alpanelanimpreview.cpp
     alpanelatmosphericvolumes.cpp
     alpanelcinelightrig.cpp
+    alprojectorshaftpresets.cpp
     alpanelcinecamparams.cpp
     alpanellensgaze.cpp
     alpaneldirectoranimswitcher.cpp
@@ -1172,6 +1173,7 @@ set(viewer_HEADER_FILES
     alpanelanimpreview.h
     alpanelatmosphericvolumes.h
     alpanelcinelightrig.h
+    alprojectorshaftpresets.h
     alpanelcinecamparams.h
     algazemath.h
     altrajectory.h

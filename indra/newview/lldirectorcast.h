@@ -125,6 +125,33 @@ public:
         ALGazeMath::EGazeCuePhase mPhase = ALGazeMath::GAZE_CUE_BEFORE;
     };
 
+    // Client-only presentation styling for a live Director actor.  The style
+    // ids intentionally mirror Actor Mover / Ghost Studio's 0..27 shader
+    // looks, without making the cast model depend on either renderer.
+    enum EActorStyleMode : S32
+    {
+        ACTOR_STYLE_LAYER = 0,
+        ACTOR_STYLE_REPLACE
+    };
+
+    struct ActorStyle
+    {
+        bool            mEnabled = false;
+        EActorStyleMode mMode = ACTOR_STYLE_LAYER;
+        S32             mStyle = 0;
+        bool            mUseActorHue = true;
+        F32             mHue = 200.f;
+        F32             mAlpha = 0.6f;
+        F32             mPixelSize = 0.f;
+        F32             mShimmerSpeed = 1.f;
+        F32             mShimmerAmount = 0.f;
+        F32             mGlitch = 0.f;
+        S32             mDistortion = 0;
+        F32             mDistortionAmount = 0.5f;
+        F32             mBrightness = 1.f;
+        F32             mEffectFps = 0.f;
+    };
+
     struct CastMember
     {
         CastMember()
@@ -146,6 +173,7 @@ public:
         LLActorMover::GazeTarget mEyeGazeTarget; // optional eyes-only target
         GazeCueList             mGazeCues;        // ordered presentation-time performance track
         GazeInfluenceKeyList    mGazeInfluenceKeys; // parallel influence lane (empty = influence 1)
+        ActorStyle              mActorStyle;      // client-only live actor presentation
     };
 
     static LLDirectorCast& instance();
@@ -161,6 +189,12 @@ public:
     const uuid_vec_t& getIds() const { return mIds; }
     CastMember*       getMember(const LLUUID& id);
     const CastMember* getMember(const LLUUID& id) const;
+
+    // ---- per-actor presentation style ----
+    // LLUUID::null (and the agent avatar's runtime id) address You. Invalid or
+    // non-cast ids read as the disabled default and ignore writes.
+    const ActorStyle& getActorStyle(const LLUUID& id) const;
+    void              setActorStyle(const LLUUID& id, const ActorStyle& style);
 
     // ---- render-only real-avatar camera gaze selection ----
     // A subset of the cast, shared by the Camera-tab multi-select widget and
@@ -332,6 +366,7 @@ private:
     LLActorMover::GazeTarget mSelfEyeGazeTarget;
     GazeCueList mSelfGazeCues;
     GazeInfluenceKeyList mSelfGazeInfluenceKeys;
+    ActorStyle mSelfActorStyle;
     U64 mGazeCueRevision = 0;
 
     // transport state: what THIS action() run started, so cut() undoes

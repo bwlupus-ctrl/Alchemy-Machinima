@@ -31,6 +31,7 @@
 #include "llviewerprecompiledheaders.h"
 #include "alfloaterlightbox.h"
 #include "alscrollfocus.h"
+#include "alprojectorshaftpresets.h"
 
 #include "bdmergemeshpool.h"
 #include "bdmergetexpool.h"
@@ -85,6 +86,12 @@ bool ALFloaterLightBox::postBuild()
     ALScrollFocus::install(this, "projshaft_settings_scroll", "projshaft_settings_scroll_content");
     ALScrollFocus::install(this, "froxel_settings_scroll", "froxel_settings_scroll_content");
     ALScrollFocus::install(this, "weather_settings_scroll", "weather_settings_scroll_content");
+
+    getChild<LLComboBox>("ps_preset")->setCommitCallback(
+        [](LLUICtrl* control, const LLSD&)
+        {
+            ALProjectorShaftPresets::apply(control->getValue().asInteger());
+        });
 
     populateLUTCombo();
     updateTonemapper();

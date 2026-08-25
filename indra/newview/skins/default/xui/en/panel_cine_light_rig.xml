@@ -2,18 +2,16 @@
 <panel
  class="panel_cine_light_rig"
  follows="left|top|right"
- height="2460"
+ height="2512"
  layout="topleft"
  name="panel_cine_light_rig"
  width="350">
     <text follows="left|top" font="SansSerifBold" height="18" layout="topleft"
      left="8" top="6" value="Cinematic Light Rig" width="200" />
     <check_box control_name="CineLightRigEnabled" follows="left|top" height="18"
-     label="Enable" layout="topleft" left="8" name="cine_enabled" top="30" width="82" />
-    <check_box control_name="CineLightRigPower" follows="left|top" height="18"
-     label="Power" layout="topleft" left="94" name="cine_power" top="30" width="82" />
+     label="Power" layout="topleft" left="8" name="cine_power" top="30" width="82" />
     <check_box control_name="CineLightRigGizmo" follows="left|top" height="18"
-     label="Gizmo" layout="topleft" left="182" name="cine_gizmo" top="30" width="92" />
+     label="Gizmo" layout="topleft" left="94" name="cine_gizmo" top="30" width="92" />
     <text follows="left|top" height="16" layout="topleft" left="8" top="57"
      value="Anchor:" width="52" />
     <combo_box follows="left|top" height="22" layout="topleft" left="62"
@@ -75,14 +73,15 @@
      height="20" increment="0.25" layout="topleft" left="246" max_val="20"
      min_val="-20" name="cine_key_ev" top="943" width="72" />
     <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_key_ev_reset" top="944" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeyEV" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="973" value="Beam" width="42" />
-    <combo_box control_name="CineLightRigKeyBeam" follows="left|top" height="20"
-     layout="topleft" left="52" name="cine_key_beam" top="969" width="148" />
-    <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_key_beam_reset" top="970" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeyBeam" />
+    <text follows="left|top" height="15" layout="topleft" left="8" top="973" value="Cone" width="42" />
+    <slider can_edit_text="false" decimal_digits="0" follows="left|top" height="20" increment="1" layout="topleft" left="52" max_val="2" min_val="0" name="cine_key_cone_width" show_text="false" top="969" tool_tip="KEY cone: narrow Snoot, medium Standard, or wide Softbox." width="148" />
+    <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_key_cone_width_reset" top="970" tool_tip="Reset cone width to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeyBeam" />
     <check_box follows="left|top" height="18" label="Shaft" layout="topleft" left="232" name="cine_key_shaft" top="969" width="60" />
     <check_box follows="left|top" height="18" label="Hero" layout="topleft" left="292" name="cine_key_hero" top="969" width="48" />
     <text follows="left|top" height="15" layout="topleft" left="8" top="999" value="Gobo" width="42" />
-    <combo_box control_name="CineLightRigKeyGobo" follows="left|top" height="20" layout="topleft" left="52" name="cine_key_gobo" top="995" width="100" />
+    <combo_box control_name="CineLightRigKeyGobo" follows="left|top" height="20" layout="topleft" left="52" name="cine_key_gobo" top="995" width="100">
+        <combo_list page_lines="12" />
+    </combo_box>
     <button follows="left|top" height="18" layout="topleft" left="156" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_key_gobo_reset" top="996" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeyGobo" />
     <text follows="left|top" height="15" layout="topleft" left="180" top="999" value="Gel" width="26" />
     <combo_box control_name="CineLightRigKeyGel" follows="left|top" height="20" layout="topleft" left="208" name="cine_key_gel" top="995" width="110" />
@@ -130,14 +129,15 @@
      height="20" increment="0.25" layout="topleft" left="246" max_val="20"
      min_val="-20" name="cine_fill_ev" top="1161" width="72" />
     <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_fill_ev_reset" top="1162" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigFillEV" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="1191" value="Beam" width="42" />
-    <combo_box control_name="CineLightRigFillBeam" follows="left|top" height="20"
-     layout="topleft" left="52" name="cine_fill_beam" top="1187" width="148" />
-    <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_fill_beam_reset" top="1188" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigFillBeam" />
+    <text follows="left|top" height="15" layout="topleft" left="8" top="1191" value="Cone" width="42" />
+    <slider can_edit_text="false" decimal_digits="0" follows="left|top" height="20" increment="1" layout="topleft" left="52" max_val="2" min_val="0" name="cine_fill_cone_width" show_text="false" top="1187" tool_tip="FILL cone: narrow Snoot, medium Standard, or wide Softbox." width="148" />
+    <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_fill_cone_width_reset" top="1188" tool_tip="Reset cone width to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigFillBeam" />
     <check_box follows="left|top" height="18" label="Shaft" layout="topleft" left="232" name="cine_fill_shaft" top="1187" width="60" />
     <check_box follows="left|top" height="18" label="Hero" layout="topleft" left="292" name="cine_fill_hero" top="1187" width="48" />
     <text follows="left|top" height="15" layout="topleft" left="8" top="1217" value="Gobo" width="42" />
-    <combo_box control_name="CineLightRigFillGobo" follows="left|top" height="20" layout="topleft" left="52" name="cine_fill_gobo" top="1213" width="100" />
+    <combo_box control_name="CineLightRigFillGobo" follows="left|top" height="20" layout="topleft" left="52" name="cine_fill_gobo" top="1213" width="100">
+        <combo_list page_lines="12" />
+    </combo_box>
     <button follows="left|top" height="18" layout="topleft" left="156" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_fill_gobo_reset" top="1214" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigFillGobo" />
     <text follows="left|top" height="15" layout="topleft" left="180" top="1217" value="Gel" width="26" />
     <combo_box control_name="CineLightRigFillGel" follows="left|top" height="20" layout="topleft" left="208" name="cine_fill_gel" top="1213" width="110" />
@@ -181,14 +181,15 @@
      height="20" increment="0.25" layout="topleft" left="246" max_val="20"
      min_val="-20" name="cine_rim_ev" top="1379" width="72" />
     <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rim_ev_reset" top="1380" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRimEV" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="1409" value="Beam" width="42" />
-    <combo_box control_name="CineLightRigRimBeam" follows="left|top" height="20"
-     layout="topleft" left="52" name="cine_rim_beam" top="1405" width="148" />
-    <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rim_beam_reset" top="1406" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRimBeam" />
+    <text follows="left|top" height="15" layout="topleft" left="8" top="1409" value="Cone" width="42" />
+    <slider can_edit_text="false" decimal_digits="0" follows="left|top" height="20" increment="1" layout="topleft" left="52" max_val="2" min_val="0" name="cine_rim_cone_width" show_text="false" top="1405" tool_tip="RIM cone: narrow Snoot, medium Standard, or wide Softbox." width="148" />
+    <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rim_cone_width_reset" top="1406" tool_tip="Reset cone width to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRimBeam" />
     <check_box follows="left|top" height="18" label="Shaft" layout="topleft" left="232" name="cine_rim_shaft" top="1405" width="60" />
     <check_box follows="left|top" height="18" label="Hero" layout="topleft" left="292" name="cine_rim_hero" top="1405" width="48" />
     <text follows="left|top" height="15" layout="topleft" left="8" top="1435" value="Gobo" width="42" />
-    <combo_box control_name="CineLightRigRimGobo" follows="left|top" height="20" layout="topleft" left="52" name="cine_rim_gobo" top="1431" width="100" />
+    <combo_box control_name="CineLightRigRimGobo" follows="left|top" height="20" layout="topleft" left="52" name="cine_rim_gobo" top="1431" width="100">
+        <combo_list page_lines="12" />
+    </combo_box>
     <button follows="left|top" height="18" layout="topleft" left="156" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rim_gobo_reset" top="1432" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRimGobo" />
     <text follows="left|top" height="15" layout="topleft" left="180" top="1435" value="Gel" width="26" />
     <combo_box control_name="CineLightRigRimGel" follows="left|top" height="20" layout="topleft" left="208" name="cine_rim_gel" top="1431" width="110" />
@@ -232,14 +233,15 @@
      height="20" increment="0.25" layout="topleft" left="246" max_val="20"
      min_val="-20" name="cine_bg_ev" top="1597" width="72" />
     <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bg_ev_reset" top="1598" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBgEV" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="1627" value="Beam" width="42" />
-    <combo_box control_name="CineLightRigBgBeam" follows="left|top" height="20"
-     layout="topleft" left="52" name="cine_bg_beam" top="1623" width="148" />
-    <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bg_beam_reset" top="1624" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBgBeam" />
+    <text follows="left|top" height="15" layout="topleft" left="8" top="1627" value="Cone" width="42" />
+    <slider can_edit_text="false" decimal_digits="0" follows="left|top" height="20" increment="1" layout="topleft" left="52" max_val="2" min_val="0" name="cine_bg_cone_width" show_text="false" top="1623" tool_tip="BG cone: narrow Snoot, medium Standard, or wide Softbox." width="148" />
+    <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bg_cone_width_reset" top="1624" tool_tip="Reset cone width to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBgBeam" />
     <check_box follows="left|top" height="18" label="Shaft" layout="topleft" left="232" name="cine_bg_shaft" top="1623" width="60" />
     <check_box follows="left|top" height="18" label="Hero" layout="topleft" left="292" name="cine_bg_hero" top="1623" width="48" />
     <text follows="left|top" height="15" layout="topleft" left="8" top="1653" value="Gobo" width="42" />
-    <combo_box control_name="CineLightRigBgGobo" follows="left|top" height="20" layout="topleft" left="52" name="cine_bg_gobo" top="1649" width="100" />
+    <combo_box control_name="CineLightRigBgGobo" follows="left|top" height="20" layout="topleft" left="52" name="cine_bg_gobo" top="1649" width="100">
+        <combo_list page_lines="12" />
+    </combo_box>
     <button follows="left|top" height="18" layout="topleft" left="156" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bg_gobo_reset" top="1650" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBgGobo" />
     <text follows="left|top" height="15" layout="topleft" left="180" top="1653" value="Gel" width="26" />
     <combo_box control_name="CineLightRigBgGel" follows="left|top" height="20" layout="topleft" left="208" name="cine_bg_gel" top="1649" width="110" />
@@ -258,7 +260,7 @@
     <!-- Setups: presets + transition / random-cycle controls -->
     <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="8" top="148" value="Setups" width="80" />
     <combo_box allow_text_entry="true" follows="left|top" height="22" layout="topleft" left="82" name="cine_setup_combo" top="144" width="128" />
-    <button follows="left|top" height="22" label="Save" layout="topleft" left="214" name="cine_setup_save" top="144" width="58" />
+    <button follows="left|top" height="22" label="Save" layout="topleft" left="214" name="cine_setup_save" top="144" tool_tip="Built-in setups are read-only. Type a new setup name to enable Save." width="58" />
     <button follows="left|top" height="22" label="Delete" layout="topleft" left="276" name="cine_setup_delete" top="144" width="64" />
     <text follows="left|top" height="15" layout="topleft" left="8" top="174" value="Easing" width="44" />
     <combo_box control_name="CineLightRigEasing" follows="left|top" height="20" layout="topleft" left="56" name="cine_easing" top="170" tool_tip="Transition curve used for setup loads, random cycling and live edits." width="150">
@@ -308,7 +310,10 @@
     <text follows="left|top" height="15" layout="topleft" left="8" top="390" value="Warmth" width="52" />
     <slider can_edit_text="true" control_name="CineLightRigMasterTempMired" decimal_digits="0" follows="left|top" height="20" increment="5" layout="topleft" left="62" max_val="150" min_val="-110" name="cine_easy_warmth" show_text="true" top="386" tool_tip="Relative colour-temperature trim in mireds: + warms and - cools all lights." width="256" />
     <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_easy_warmth_reset" top="387" tool_tip="Reset warmth to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigMasterTempMired" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="414" value="Fine control? Switch to Advanced." width="260" />
+    <text follows="left|top" height="15" layout="topleft" left="8" top="414" value="Cone" width="38" />
+    <slider can_edit_text="false" decimal_digits="0" follows="left|top" height="20" increment="1" layout="topleft" left="46" max_val="2" min_val="0" name="cine_easy_cone_width" show_text="false" top="410" tool_tip="Set all rig lights to a narrow Snoot, medium Standard, or wide Softbox beam." width="112" />
+    <text follows="left|top" height="15" layout="topleft" left="172" top="414" value="Edge" width="36" />
+    <slider can_edit_text="false" control_name="BDMergeProjectorVolumetricsFeather" decimal_digits="2" follows="left|top" height="20" increment="0.01" layout="topleft" left="208" max_val="0.5" min_val="0" name="cine_easy_cone_feather" show_text="false" top="410" tool_tip="Soften or sharpen the visible edge of every volumetric projector cone." width="132" />
     <view_border bevel_style="in" follows="left|top|right" height="1" layout="topleft" left="8" top="432" width="332" />
 
     <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="8" top="440" value="Rig" width="80" />
@@ -419,9 +424,11 @@
      layout="topleft" left="8" top="1878" width="332" />
     <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
      left="8" top="1888" value="Cookie library" width="120" />
-    <combo_box follows="left|top" height="22" layout="topleft" left="8"
+    <combo_box follows="left|top" height="22" layout="topleft" left="8" list_min_width="360"
      name="cine_gobo_library" top="1910"
-     tool_tip="Categorized achromatic breakup library for the selected Fixture 2.0 light." width="252" />
+     tool_tip="Categorized achromatic breakup library for the selected Fixture 2.0 light." width="252">
+        <combo_list page_lines="8" />
+    </combo_box>
     <icon follows="left|top" height="64" image_name="CineGobo01" layout="topleft"
      left="272" name="cine_gobo_preview" top="1900"
      tool_tip="Sharp source thumbnail. Projection automatically uses sharp, medium or heavy pre-blur from modeled softness." width="64" />
@@ -438,50 +445,58 @@
     <view_border bevel_style="in" follows="left|top|right" height="1" layout="topleft" left="8" top="2024" width="332" />
     <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="8" top="2034" value="Lens Flare" width="120" />
     <text follows="left|top" height="15" layout="topleft" left="8" top="2060" value="Preset" width="50" />
-    <combo_box follows="left|top" height="22" layout="topleft" left="62" name="cine_flare_preset" top="2056" tool_tip="Applies a full look (streak, ghosts, halo, rings, circles, iris, arc) and snaps back to this sentinel. Master strength/intensity are not touched by presets." width="278" />
+    <combo_box follows="left|top" height="22" layout="topleft" left="62" name="cine_flare_preset" top="2056" tool_tip="Applies a full look (streak, ghosts, halo, rings, circles, iris, arc) and snaps back to this sentinel. Master strength/intensity are not touched by presets." width="278">
+        <combo_list mouse_wheel_opaque="true" page_lines="8" />
+    </combo_box>
     <text follows="left|top" height="15" layout="topleft" left="8" top="2086" value="Master" width="70" tool_tip="One-knob brightness scale over the whole composited flare (sun and rig sources together), independent of preset." />
     <slider can_edit_text="true" control_name="RenderLensFlareMaster" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="82" max_val="4" min_val="0" name="cine_flare_master" show_text="true" top="2082" width="236" />
     <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_master_reset" top="2083" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareMaster" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="2112" value="Rig flare" width="70" tool_tip="Master on/off for lens flare sourced from active Cinematic Light Rig projectors. 0 disables it; the sun flare is unaffected." />
+    <text follows="left|top" height="15" layout="topleft" left="8" top="2112" value="Rig flare" width="70" tool_tip="Projector-only flare master. Values above 0 suppress the legacy sun/moon flare; 0 restores the independent sun/moon path." />
     <slider can_edit_text="true" control_name="RenderCineLensFlareStrength" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="82" max_val="2" min_val="0" name="cine_flare_rig_strength" show_text="true" top="2108" width="236" />
     <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_rig_strength_reset" top="2109" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderCineLensFlareStrength" />
     <text follows="left|top" height="15" layout="topleft" left="8" top="2138" value="Rig intensity" width="70" tool_tip="Brightness multiplier applied to every active rig-projector flare source." />
     <slider can_edit_text="true" control_name="RenderCineLensFlareIntensity" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="82" max_val="4" min_val="0" name="cine_flare_rig_intensity" show_text="true" top="2134" width="236" />
     <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_rig_intensity_reset" top="2135" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderCineLensFlareIntensity" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="2164" value="Starburst" width="70" tool_tip="Diffraction-spike star radiating from each flare source. 0 disables it." />
-    <slider can_edit_text="true" control_name="RenderLensFlareStarburst" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="82" max_val="5" min_val="0" name="cine_flare_starburst" show_text="true" top="2160" width="236" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_starburst_reset" top="2161" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareStarburst" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="2190" value="Spikes" width="42" />
-    <spinner control_name="RenderLensFlareStarburstSpikes" decimal_digits="0" follows="left|top" height="20" increment="1" layout="topleft" left="50" max_val="32" min_val="1" name="cine_flare_starburst_spikes" top="2186" width="60" />
-    <text follows="left|top" height="15" layout="topleft" left="118" top="2190" value="Sharp" width="36" />
-    <spinner control_name="RenderLensFlareStarburstSharpness" decimal_digits="0" follows="left|top" height="20" increment="1" layout="topleft" left="156" max_val="256" min_val="1" name="cine_flare_starburst_sharpness" top="2186" width="60" />
-    <text follows="left|top" height="15" layout="topleft" left="224" top="2190" value="Len" width="26" />
-    <spinner control_name="RenderLensFlareStarburstLength" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="252" max_val="1" min_val="0" name="cine_flare_starburst_length" top="2186" width="68" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="2216" value="Iris" width="70" tool_tip="Polygonal (n-gon) iris-ghost chain marching along the source-to-center axis." />
-    <slider can_edit_text="true" control_name="RenderLensFlareIris" decimal_digits="2" follows="left|top" height="20" increment="0.02" layout="topleft" left="82" max_val="1" min_val="0" name="cine_flare_iris" show_text="true" top="2212" width="236" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_iris_reset" top="2213" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareIris" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="2242" value="Ring" width="70" tool_tip="Chromatic dispersion rings around the source." />
-    <slider can_edit_text="true" control_name="RenderLensFlareRing" decimal_digits="2" follows="left|top" height="20" increment="0.02" layout="topleft" left="82" max_val="1" min_val="0" name="cine_flare_ring" show_text="true" top="2238" width="236" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_ring_reset" top="2239" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareRing" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="2268" value="Circle" width="70" tool_tip="Spectral lens circles ringing outward through the optical axis." />
-    <slider can_edit_text="true" control_name="RenderLensFlareCircle" decimal_digits="2" follows="left|top" height="20" increment="0.02" layout="topleft" left="82" max_val="1" min_val="0" name="cine_flare_circle" show_text="true" top="2264" width="236" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_circle_reset" top="2265" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareCircle" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="2294" value="Arc" width="70" tool_tip="Partial spectral arc on the far side of frame center." />
-    <slider can_edit_text="true" control_name="RenderLensFlareArc" decimal_digits="2" follows="left|top" height="20" increment="0.02" layout="topleft" left="82" max_val="1" min_val="0" name="cine_flare_arc" show_text="true" top="2290" width="236" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_arc_reset" top="2291" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareArc" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="2320" value="Ghost chroma" width="90" tool_tip="Red/blue radial split on the ghost discs." />
-    <slider can_edit_text="true" control_name="RenderLensFlareGhostChroma" decimal_digits="3" follows="left|top" height="20" increment="0.002" layout="topleft" left="100" max_val="0.1" min_val="0" name="cine_flare_ghost_chroma" show_text="true" top="2316" width="218" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_ghost_chroma_reset" top="2317" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareGhostChroma" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="2346" value="Halo chroma" width="90" tool_tip="Red/blue radius split on the halo ring." />
-    <slider can_edit_text="true" control_name="RenderLensFlareHaloChroma" decimal_digits="3" follows="left|top" height="20" increment="0.001" layout="topleft" left="100" max_val="0.05" min_val="0" name="cine_flare_halo_chroma" show_text="true" top="2342" width="218" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_halo_chroma_reset" top="2343" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareHaloChroma" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="2372" value="Warp" width="70" tool_tip="Barrel (positive) or pincushion (negative) distortion of the ghost/halo/iris/ring/circle/arc layers. Streak and starburst stay straight." />
-    <slider can_edit_text="true" control_name="RenderLensFlareWarp" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="82" max_val="1" min_val="-1" name="cine_flare_warp" show_text="true" top="2368" width="236" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_warp_reset" top="2369" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareWarp" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="2398" value="Streak tip" width="68" tool_tip="Blends the anamorphic streak toward a tip color with distance from the source." />
-    <slider can_edit_text="true" control_name="RenderLensFlareStreakTipAmount" decimal_digits="2" follows="left|top" height="20" increment="0.02" layout="topleft" left="82" max_val="1" min_val="0" name="cine_flare_streak_tip" show_text="true" top="2394" width="236" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_streak_tip_reset" top="2395" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareStreakTipAmount" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="2424" value="Src color" width="68" tool_tip="Pulls each element's tint toward the light source's own color instead of the screen-sampled pixel under it. Useful for gelled rig projectors." />
-    <slider can_edit_text="true" control_name="RenderLensFlareSrcColorAmount" decimal_digits="2" follows="left|top" height="20" increment="0.02" layout="topleft" left="82" max_val="1" min_val="0" name="cine_flare_src_color" show_text="true" top="2420" width="236" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_src_color_reset" top="2421" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareSrcColorAmount" />
+    <text follows="left|top" height="15" layout="topleft" left="8" top="2164" value="Threshold" width="70" tool_tip="How much brighter than a lit surface a spot must be to flare. Lit floors/walls never flare; raise to require only your brightest light sources; lower toward 0 for dimmer emissive fixtures." />
+    <slider can_edit_text="true" control_name="RenderCineLensFlareThreshold" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="82" max_val="6" min_val="0" name="cine_flare_threshold" show_text="true" top="2160" width="236" />
+    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_threshold_reset" top="2161" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderCineLensFlareThreshold" />
+    <text follows="left|top" height="15" layout="topleft" left="8" top="2190" value="Starburst" width="70" tool_tip="Diffraction-spike star radiating from each flare source. 0 disables it." />
+    <slider can_edit_text="true" control_name="RenderLensFlareStarburst" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="82" max_val="5" min_val="0" name="cine_flare_starburst" show_text="true" top="2186" width="236" />
+    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_starburst_reset" top="2187" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareStarburst" />
+    <text follows="left|top" height="15" layout="topleft" left="8" top="2216" value="Spikes" width="42" />
+    <spinner control_name="RenderLensFlareStarburstSpikes" decimal_digits="0" follows="left|top" height="20" increment="1" layout="topleft" left="50" max_val="32" min_val="1" name="cine_flare_starburst_spikes" top="2212" width="60" />
+    <text follows="left|top" height="15" layout="topleft" left="118" top="2216" value="Sharp" width="36" />
+    <spinner control_name="RenderLensFlareStarburstSharpness" decimal_digits="0" follows="left|top" height="20" increment="1" layout="topleft" left="156" max_val="256" min_val="1" name="cine_flare_starburst_sharpness" top="2212" width="60" />
+    <text follows="left|top" height="15" layout="topleft" left="224" top="2216" value="Len" width="26" />
+    <spinner control_name="RenderLensFlareStarburstLength" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="252" max_val="1" min_val="0" name="cine_flare_starburst_length" top="2212" width="68" />
+    <text follows="left|top" height="15" layout="topleft" left="8" top="2242" value="Iris" width="70" tool_tip="Polygonal (n-gon) iris-ghost chain marching along the source-to-center axis." />
+    <slider can_edit_text="true" control_name="RenderLensFlareIris" decimal_digits="2" follows="left|top" height="20" increment="0.02" layout="topleft" left="82" max_val="1" min_val="0" name="cine_flare_iris" show_text="true" top="2238" width="236" />
+    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_iris_reset" top="2239" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareIris" />
+    <text follows="left|top" height="15" layout="topleft" left="8" top="2268" value="Ring" width="70" tool_tip="Chromatic dispersion rings around the source." />
+    <slider can_edit_text="true" control_name="RenderLensFlareRing" decimal_digits="2" follows="left|top" height="20" increment="0.02" layout="topleft" left="82" max_val="1" min_val="0" name="cine_flare_ring" show_text="true" top="2264" width="236" />
+    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_ring_reset" top="2265" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareRing" />
+    <text follows="left|top" height="15" layout="topleft" left="8" top="2294" value="Circle" width="70" tool_tip="Spectral lens circles ringing outward through the optical axis." />
+    <slider can_edit_text="true" control_name="RenderLensFlareCircle" decimal_digits="2" follows="left|top" height="20" increment="0.02" layout="topleft" left="82" max_val="1" min_val="0" name="cine_flare_circle" show_text="true" top="2290" width="236" />
+    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_circle_reset" top="2291" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareCircle" />
+    <text follows="left|top" height="15" layout="topleft" left="8" top="2320" value="Arc" width="70" tool_tip="Partial spectral arc on the far side of frame center." />
+    <slider can_edit_text="true" control_name="RenderLensFlareArc" decimal_digits="2" follows="left|top" height="20" increment="0.02" layout="topleft" left="82" max_val="1" min_val="0" name="cine_flare_arc" show_text="true" top="2316" width="236" />
+    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_arc_reset" top="2317" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareArc" />
+    <text follows="left|top" height="15" layout="topleft" left="8" top="2346" value="Ghost chroma" width="90" tool_tip="Red/blue radial split on the ghost discs." />
+    <slider can_edit_text="true" control_name="RenderLensFlareGhostChroma" decimal_digits="3" follows="left|top" height="20" increment="0.002" layout="topleft" left="100" max_val="0.1" min_val="0" name="cine_flare_ghost_chroma" show_text="true" top="2342" width="218" />
+    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_ghost_chroma_reset" top="2343" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareGhostChroma" />
+    <text follows="left|top" height="15" layout="topleft" left="8" top="2372" value="Halo chroma" width="90" tool_tip="Red/blue radius split on the halo ring." />
+    <slider can_edit_text="true" control_name="RenderLensFlareHaloChroma" decimal_digits="3" follows="left|top" height="20" increment="0.001" layout="topleft" left="100" max_val="0.05" min_val="0" name="cine_flare_halo_chroma" show_text="true" top="2368" width="218" />
+    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_halo_chroma_reset" top="2369" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareHaloChroma" />
+    <text follows="left|top" height="15" layout="topleft" left="8" top="2398" value="Warp" width="70" tool_tip="Barrel (positive) or pincushion (negative) distortion of the ghost/halo/iris/ring/circle/arc layers. Streak and starburst stay straight." />
+    <slider can_edit_text="true" control_name="RenderLensFlareWarp" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="82" max_val="1" min_val="-1" name="cine_flare_warp" show_text="true" top="2394" width="236" />
+    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_warp_reset" top="2395" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareWarp" />
+    <text follows="left|top" height="15" layout="topleft" left="8" top="2424" value="Streak tip" width="68" tool_tip="Blends the anamorphic streak toward a tip color with distance from the source." />
+    <slider can_edit_text="true" control_name="RenderLensFlareStreakTipAmount" decimal_digits="2" follows="left|top" height="20" increment="0.02" layout="topleft" left="82" max_val="1" min_val="0" name="cine_flare_streak_tip" show_text="true" top="2420" width="236" />
+    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_streak_tip_reset" top="2421" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareStreakTipAmount" />
+    <text follows="left|top" height="15" layout="topleft" left="8" top="2450" value="Src color" width="68" tool_tip="Pulls each element's tint toward the light source's own color instead of the screen-sampled pixel under it. Useful for gelled rig projectors." />
+    <slider can_edit_text="true" control_name="RenderLensFlareSrcColorAmount" decimal_digits="2" follows="left|top" height="20" increment="0.02" layout="topleft" left="82" max_val="1" min_val="0" name="cine_flare_src_color" show_text="true" top="2446" width="236" />
+    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_src_color_reset" top="2447" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareSrcColorAmount" />
+    <text follows="left|top" height="15" layout="topleft" left="8" top="2476" value="Release" width="68" tool_tip="Optical fade time in seconds after a rig projector's rendered shaft ends. Longer values leave a softer camera-response tail." />
+    <slider can_edit_text="true" control_name="RenderCineLensFlareRelease" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="82" max_val="2" min_val="0" name="cine_flare_release" show_text="true" top="2472" width="236" />
+    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_release_reset" top="2473" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderCineLensFlareRelease" />
 </panel>

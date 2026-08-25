@@ -114,7 +114,7 @@ class LLViewerJoystick final : public LLSingleton<LLViewerJoystick>
     LOG_CLASS(LLViewerJoystick);
 
 public:
-    void init(bool autoenable);
+    void init(bool autoenable, bool apply_defaults = true);
     void initDevice(LLSD &guid);
     bool initDevice(void * preffered_device /*LPDIRECTINPUTDEVICE8*/);
     bool initDevice(void * preffered_device /*LPDIRECTINPUTDEVICE8*/, std::string &name, LLSD &guid);
@@ -153,6 +153,7 @@ protected:
     void agentYaw(F32 yaw_inc);
     void agentJump();
     void resetDeltas(S32 axis[]);
+    void pollForXboxController();
     void loadDeviceIdFromSettings();
     void refreshFromSettings();
 #if LIB_NDOF
@@ -170,6 +171,9 @@ private:
     bool                    mCameraUpdated;
     bool                    mOverrideCamera;
     U32                     mJoystickRun;
+    bool                    mXboxWasPresent;
+    bool                    mXboxUserReleased;   // user manually chose a different device after the auto Xbox handoff; respect it this session
+    LLSD                    mXboxAutoGuid;        // GUID the auto-poll handed off to, for detecting a manual override
 
     // Windows: _GUID as U8 binary map
     // MacOS: long as an U8 binary map

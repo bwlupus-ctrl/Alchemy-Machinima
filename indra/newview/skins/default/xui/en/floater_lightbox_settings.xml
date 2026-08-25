@@ -4240,9 +4240,17 @@
 		<panel follows="all" label="Proj Shafts" layout="topleft" name="projshaft_settings" can_resize="false">
 			<scroll_container follows="all" height="806" layout="topleft" left="0"
 			 name="projshaft_settings_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="420">
-				<panel background_visible="false" follows="left|top|right" height="1135" layout="topleft" left="0"
+				<panel background_visible="false" follows="left|top|right" height="1200" layout="topleft" left="0"
 				 name="projshaft_settings_scroll_content" top="0" width="400">
 			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Projector Shafts (Set Lights)" />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="56" layout="topleft" value="Preset:" />
+			<combo_box follows="left|top" height="22" left="70" top_pad="-19" width="254" layout="topleft" name="ps_preset" tool_tip="Apply a complete projector-shaft starting point; any later control can be adjusted independently.">
+				<combo_box.item label="Custom" name="ps_preset_custom" value="-1" />
+				<combo_box.item label="Fast Preview" name="ps_preset_fast" value="0" />
+				<combo_box.item label="Balanced" name="ps_preset_balanced" value="1" />
+				<combo_box.item label="Cinematic" name="ps_preset_cinematic" value="2" />
+				<combo_box.item label="Hazy Stage" name="ps_preset_hazy" value="3" />
+			</combo_box>
 			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" label="Enable volumetric projector cones" control_name="BDMergeProjectorVolumetrics" />
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Brightness:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.01" max_val="30" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="ps_BDMergeProjectorVolumetricsMultiplier_slider" control_name="BDMergeProjectorVolumetricsMultiplier" enabled_control="BDMergeProjectorVolumetrics" />
@@ -4271,9 +4279,10 @@
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="HDR clamp:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="1" max_val="64" increment="0.5" decimal_digits="1" show_text="true" can_edit_text="true" name="ps_BDMergeProjectorVolumetricsMaxLuminance_slider" control_name="BDMergeProjectorVolumetricsMaxLuminance" enabled_control="BDMergeProjectorVolumetrics" />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ps_reset_BDMergeProjectorVolumetricsMaxLuminance"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeProjectorVolumetricsMaxLuminance" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Dither (0/1/2):" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="2" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ps_BDMergeProjectorVolumetricsDither_slider" control_name="BDMergeProjectorVolumetricsDither" enabled_control="BDMergeProjectorVolumetrics" />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Dither mode:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="2" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ps_BDMergeProjectorVolumetricsDither_slider" control_name="BDMergeProjectorVolumetricsDither" enabled_control="BDMergeProjectorVolumetrics" tool_tip="0 = off; 1 = static; 2 = always animated. Temporal anti-banding can safely cycle mode 1 while history is active." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ps_reset_BDMergeProjectorVolumetricsDither"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeProjectorVolumetricsDither" /></button>
+			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" label="Temporal anti-banding (no extra samples)" control_name="BDMergeProjectorVolumetricsTemporalDither" enabled_control="BDMergeProjectorVolumetrics" tool_tip="Cycles the static march phase only while temporal accumulation can average it. Disable for an absolutely frozen sampling pattern." />
 			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Shadows &amp; Edges" />
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Occluder shadows:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="1" max_val="4" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ps_BDMergeProjectorVolumetricsShadowSamples_slider" control_name="BDMergeProjectorVolumetricsShadowSamples" enabled_control="BDMergeProjectorVolumetrics" />

@@ -72,7 +72,8 @@ public:
         Optional<bool>                      allow_text_entry,
                                             show_text_as_tentative,
                                             allow_new_values;
-        Optional<S32>                       max_chars;
+        Optional<S32>                       max_chars,
+                                            list_min_width;
         Optional<commit_callback_t>         prearrange_callback,
                                             text_entry_callback,
                                             text_changed_callback;
@@ -252,6 +253,7 @@ private:
     bool                mAllowTextEntry;
     bool                mAllowNewValues;
     S32                 mMaxChars;
+    S32                 mListMinWidth;
     bool                mTextEntryTentative;
     commit_callback_t   mPrearrangeCallback;
     commit_callback_t   mTextEntryCallback;

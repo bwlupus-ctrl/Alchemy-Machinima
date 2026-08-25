@@ -90,6 +90,11 @@ vec3 linear_to_srgb(vec3 c);
 
 void calcAtmosphericVarsLinear(vec3 inPositionEye, vec3 norm, vec3 light_dir, out vec3 sunlit, out vec3 amblit, out vec3 atten, out vec3 additive);
 vec4 applySkyAndWaterFog(vec3 pos, vec3 additive, vec3 atten, vec4 color);
+#ifdef HAS_ACTOR_FX
+vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
+vec2 actorFxPbrMaterial(vec2 roughness_metallic);
+vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
+#endif
 
 void calcHalfVectors(vec3 lv, vec3 n, vec3 v, out vec3 h, out vec3 l, out float nh, out float nl, out float nv, out float vh, out float lightDist);
 float calcLegacyDistanceAttenuation(float distance, float falloff);
@@ -187,6 +192,14 @@ void main()
     vec3 colorEmissive = emissiveColor;
     // emissiveMap here is a vanilla RGB texture encoded as sRGB, manually convert to linear
     colorEmissive *= srgb_to_linear(texture(emissiveMap, emissive_texcoord.xy).rgb);
+
+#ifdef HAS_ACTOR_FX
+    col = actorFxApply(col, norm, vary_position, base_color_texcoord.xy);
+    vec2 fx_rm = actorFxPbrMaterial(vec2(perceptualRoughness, metallic));
+    perceptualRoughness = fx_rm.x;
+    metallic = fx_rm.y;
+    colorEmissive = actorFxEmissive(colorEmissive, col);
+#endif
 
     // PBR IBL
     float gloss      = 1.0 - perceptualRoughness;

@@ -420,9 +420,12 @@ public:
         // Cine rig flare sources (Group 1 — rig source arrays, uploaded per
         // frame like MULTI_LIGHT). AL_CINE_FLARE_MAX cap defined alongside
         // LL_DEFERRED_MULTI_LIGHT_COUNT in llviewershadermgr.h.
+        CINE_FLARE_SHAFT,                   //  "uCineFlareShaft" projector-only volumetric shaft texture
         CINE_FLARE_COUNT,                   //  "uCineFlareCount"
-        CINE_FLARE_A,                       //  "uCineFlareA"       vec4[] (uv.x, uv.y, visibility, intensity)
-        CINE_FLARE_COLOR,                   //  "uCineFlareColor"   vec4[] (linR, linG, linB, perSourceScale)
+        CINE_FLARE_A,                       //  "uCineFlareA"       vec4[] (uv.x, uv.y, visibility, deviceDepth)
+        CINE_FLARE_COLOR,                   //  "uCineFlareColor"   vec4[] (linRGB, +liveScale / -releaseScale)
+        CINE_FLARE_THRESHOLD,               //  "uCineFlareThreshold" minimum isolated-shaft HDR luma for a projector to flare
+        CINE_FLARE_PROBE_RADIUS,            //  "uCineFlareProbeRadius" screen-height fraction searched around the emission point
 
         // Lens flare polished-stack additions (Group 2 — element intensities,
         // default 0 = feature-off byte-parity with the legacy sun-only flare).

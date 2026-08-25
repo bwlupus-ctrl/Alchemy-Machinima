@@ -52,6 +52,9 @@ void sampleReflectionProbesLegacy(inout vec3 ambenv, inout vec3 glossenv, inout 
         vec2 tc, vec3 pos, vec3 norm, float glossiness, float envIntensity, bool transparent, vec3 amblit_linear);
 
 void applyLegacyEnv(inout vec3 color, vec3 legacyenv, vec4 spec, vec3 pos, vec3 norm, float envIntensity);
+#ifdef HAS_ACTOR_FX
+vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
+#endif
 
 void mirrorClip(vec3 pos);
 
@@ -82,6 +85,9 @@ void main()
     vec3 glossenv = vec3(0.0);
     vec3 legacyenv = vec3(0.0);
     vec3 norm = normalize(vary_texcoord1.xyz);
+#ifdef HAS_ACTOR_FX
+    color.rgb = actorFxApply(color.rgb, norm, vary_position, vary_texcoord0.xy);
+#endif
     vec4 spec = vec4(0,0,0,0);
     sampleReflectionProbesLegacy(ambenv, glossenv, legacyenv, vec2(0), pos.xyz, norm.xyz, spec.a, env_intensity, false, amblit);
 
@@ -94,4 +100,3 @@ void main()
 
     frag_color = max(color, vec4(0));
 }
-

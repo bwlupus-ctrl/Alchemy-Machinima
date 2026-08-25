@@ -55,6 +55,8 @@ private:
     void onEasyRimCommit();
     void onEasyBgCommit();
     void onEasyWarmthCommit();
+    void onEasyConeWidthCommit();
+    void onManualConeWidthCommit(S32 light);
     std::string fixtureSettingPrefix() const;
     void syncFixtureControls(bool force = false);
     void onFixtureRoleCommit();
@@ -109,6 +111,8 @@ private:
     LLComboBox* mEasyRim = nullptr;
     LLComboBox* mEasyBg = nullptr;
     LLUICtrl* mEasyWarmth = nullptr;
+    LLUICtrl* mEasyConeWidth = nullptr;
+    LLUICtrl* mEasyConeFeather = nullptr;
     LLCheckBoxCtrl* mEasyModeToggle = nullptr;
     LLComboBox* mFixtureRole = nullptr;
     LLCheckBoxCtrl* mFixtureMode = nullptr;
@@ -123,9 +127,11 @@ private:
     LLTextBox* mClipStatus[4] = {};
     LLCheckBoxCtrl* mShaftControls[4] = {};
     LLCheckBoxCtrl* mHeroControls[4] = {};
+    LLUICtrl* mManualConeWidths[4] = {};
     LLTextBox* mShadowHint = nullptr;
     LLButton* mShadowFixIt = nullptr;
     LLTextBox* mRadiusLabel = nullptr;
+    LLButton* mSetupSave = nullptr;
     LLButton* mSetupDelete = nullptr;
     std::vector<LLUUID> mCastIds;
     std::vector<std::string> mCastNames;

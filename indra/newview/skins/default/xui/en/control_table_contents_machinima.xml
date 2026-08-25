@@ -79,4 +79,28 @@
          tool_tip="Toggle look-at-camera for actor slot 5 (Subject D)"
          value="Look at Camera: Subject D" />
     </rows>
+    <rows
+     enabled="false"
+     name="cine_light_rig_actions"
+     value="">
+        <columns
+         type="icontext"
+         column="lst_action"
+         font="SansSerif"
+         halign="left"
+         label="Cinematic Light Rig"
+         name="lst_action"
+         value="Cam_FreeCam_Off" />
+    </rows>
+    <rows
+     name="cine_light_rig_power"
+     value="cine_light_rig_power">
+        <columns
+         column="lst_action"
+         font="SansSerif"
+         halign="left"
+         name="lst_action"
+         tool_tip="Toggle the selected Cinematic Light Rig master power on/off"
+         value="Light Rig: Master Power" />
+    </rows>
 </contents>

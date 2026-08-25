@@ -266,9 +266,14 @@ uniform float uLensFlareStarburstFalloff;         // radial decay rate from the 
 // uCineFlareCount is 0 (the default) the rig loop is skipped entirely and
 // computeLensFlare's output is bit-identical to the sun-only implementation.
 #define AL_CINE_FLARE_MAX 8
+uniform sampler2D uCineFlareShaft;                // isolated projector-volumetric RGB, never daylight
 uniform int  uCineFlareCount;                     // active rig sources, 0..AL_CINE_FLARE_MAX
-uniform vec4 uCineFlareA[AL_CINE_FLARE_MAX];      // per source: (uv.x, uv.y, visibility, intensity)
-uniform vec4 uCineFlareColor[AL_CINE_FLARE_MAX];  // per source: (linR, linG, linB, perSourceScale)
+uniform vec4 uCineFlareA[AL_CINE_FLARE_MAX];      // per source: (uv.x, uv.y, visibility, deviceDepth)
+uniform vec4 uCineFlareColor[AL_CINE_FLARE_MAX];  // per source: (linRGB, +live scale / -release scale)
+uniform float uCineFlareThreshold;                // [0, 6] linear-HDR luma the emission-point
+                                                  //   neighborhood must exceed; default 0.25.
+uniform float uCineFlareProbeRadius;              // [0, 0.2] screen-height fraction for the
+                                                  //   pixel-circular persistence ring; default 0.06.
 
 // ---- Polished-stack additions ----------------------------------------------
 // Every element below is gated by its own intensity/amount uniform whose
@@ -524,9 +529,19 @@ float flareNgonDist(vec2 p, float n, float rot)
 }
 
 vec3 flareForSource(sampler2D diffuse, sampler2D depth, vec2 uv,
-                    vec2 srcUV, float vis, vec3 srcColor, int occTaps)
+                    vec2 srcUV, float srcDepth, float vis,
+                    vec3 srcColor, int occTaps)
 {
     vec2 sun_uv = srcUV;
+
+    // Per-source HDR scale for the atmosphere-relative elements (glow,
+    // starburst). The SUN scales by sky_hdr_scale so it reads at the same
+    // relative brightness as the sky it is painted against; RIG sources
+    // (occTaps < 0) derive brightness from the isolated shaft texture and
+    // use 1.0 here so a projector's star/glow does not dim with the sky
+    // indoors or at night. For the sun this is exactly sky_hdr_scale
+    // (byte-parity).
+    float src_hdr_scale = (occTaps >= 0) ? sky_hdr_scale : 1.0;
 
     // -------------------------------------------------------------------
     // Depth-based occlusion.
@@ -597,15 +612,21 @@ vec3 flareForSource(sampler2D diffuse, sampler2D depth, vec2 uv,
     // surfaces from flaring. (Ported verbatim from the single-source
     // implementation.)
     //
-    // Rig sources (occTaps < 0): BYPASS the overbright pixel gate — a
-    // projector is a known, CPU-authored light, and its on-screen pixel
-    // may not be HDR-bright without that meaning the flare should vanish.
-    // The energy base is unit white: brightness arrives pre-folded into
-    // `vis` (CPU visibility × intensity × per-source scale) and the color
-    // is applied exactly once by the final `srcColor` multiply, so a rig
-    // source with intensity > 0 and visibility > 0 always flares. Rig
-    // sources therefore take no diffuse tap at all — their whole stack is
-    // procedural.
+    // Live rig sources (occTaps == -1): energy is read from uCineFlareShaft, the
+    // isolated projector-volumetric render target passed as `diffuse` by the
+    // rig call below. Daylight, the sun, and lit scene surfaces are absent.
+    // The actual rendered shaft brightness at the source is gated by the
+    // uCineFlareThreshold. A bright light flares hard; a dim / dimmed-down
+    // / below-threshold light gets little or no flare (no star, no glow).
+    // The emission point can legitimately sit behind the subject: requiring
+    // the exact center pixel made the flare blink whenever the avatar crossed
+    // it. Sample a pixel-circular 8-point ring around the center and keep the
+    // maximum real HDR luma, so visible shaft energy around the silhouette
+    // sustains the flare without replacing the threshold with rig assumptions.
+    // Above the soft knee the energy keeps growing with overbright (capped
+    // at 4x) so hotter sources read proportionally stronger. The gel color
+    // is still applied exactly once by the final `srcColor` multiply, and
+    // the CPU visibility and user per-source scale still ride in `vis`.
     // -------------------------------------------------------------------
     vec3  sun_color;
     float sun_lum;
@@ -620,8 +641,56 @@ vec3 flareForSource(sampler2D diffuse, sampler2D depth, vec2 uv,
         if (sun_bright <= 0.0)
             return vec3(0.0);
     }
+    else if (occTaps == -1)
+    {
+        vec2 suv = clamp(sun_uv, vec2(0.0), vec2(1.0));
+        // Radius is authored as a fraction of screen HEIGHT, then converted
+        // back through uResolution per axis. The resulting ring is circular
+        // in pixels instead of stretching on ultrawide frames. Preserve a
+        // 3-pixel minimum for sub-pixel emission points when the setting is 0.
+        float probe_px = max(uCineFlareProbeRadius * uResolution.y, 3.0);
+        vec2  ring     = probe_px / uResolution;
+        vec2  diag     = ring * 0.70710678;
+
+        float local_lum =          dot(texture(diffuse, suv).rgb, LUMA);
+        local_lum = max(local_lum, dot(texture(diffuse, clamp(suv + vec2( ring.x, 0.0), vec2(0.0), vec2(1.0))).rgb, LUMA));
+        local_lum = max(local_lum, dot(texture(diffuse, clamp(suv - vec2( ring.x, 0.0), vec2(0.0), vec2(1.0))).rgb, LUMA));
+        local_lum = max(local_lum, dot(texture(diffuse, clamp(suv + vec2(0.0,  ring.y), vec2(0.0), vec2(1.0))).rgb, LUMA));
+        local_lum = max(local_lum, dot(texture(diffuse, clamp(suv - vec2(0.0,  ring.y), vec2(0.0), vec2(1.0))).rgb, LUMA));
+        local_lum = max(local_lum, dot(texture(diffuse, clamp(suv + vec2( diag.x,  diag.y), vec2(0.0), vec2(1.0))).rgb, LUMA));
+        local_lum = max(local_lum, dot(texture(diffuse, clamp(suv + vec2(-diag.x,  diag.y), vec2(0.0), vec2(1.0))).rgb, LUMA));
+        local_lum = max(local_lum, dot(texture(diffuse, clamp(suv + vec2( diag.x, -diag.y), vec2(0.0), vec2(1.0))).rgb, LUMA));
+        local_lum = max(local_lum, dot(texture(diffuse, clamp(suv - vec2( diag.x,  diag.y), vec2(0.0), vec2(1.0))).rgb, LUMA));
+
+        // Soft threshold as a DIRECT luma floor (linear-HDR luma sampled at the
+        // shaft emission-face anchor). The previous fixed 2.0 diffuse-white
+        // floor was calibrated for the SUN and rejected the far-dimmer projector
+        // shafts entirely -- nothing flared even at threshold 0. Because the
+        // anchor is now the shaft near-plane (setupSpotLightVolumetric geometry)
+        // rather than an arbitrary surface, gating on the luma THERE keys on the
+        // actual volumetric source: raise uCineFlareThreshold to require a
+        // brighter shaft, lower toward 0 to catch faint ones. A small knee keeps
+        // low thresholds responsive.
+        float knee = max(uCineFlareThreshold * 0.5, 0.1);
+        float gate = smoothstep(uCineFlareThreshold, uCineFlareThreshold + knee, local_lum);
+        float rig_energy = gate * min(local_lum / max(uCineFlareThreshold + knee, 1e-3), 4.0);
+
+        if (rig_energy <= 0.0)
+            return vec3(0.0);
+
+        sun_color  = vec3(rig_energy);
+        sun_lum    = rig_energy;
+        sun_bright = 1.0;
+    }
     else
     {
+        // Releasing rig source (occTaps <= -2). Its real shaft has ended, so
+        // sampling the current shaft target would return black and hard-cut the
+        // flare. CPU packs the last modeled source energy into the signed source
+        // scale and exponentially decays `vis`; use a neutral unit response here
+        // so the existing tint and element math produce a smooth optical tail.
+        // This branch never samples the fallback texture, so daylight/sun pixels
+        // cannot resurrect a projector flare during release.
         sun_color  = vec3(1.0);
         sun_lum    = 1.0;
         sun_bright = 1.0;
@@ -630,14 +699,36 @@ vec3 flareForSource(sampler2D diffuse, sampler2D depth, vec2 uv,
     // ---- Source-color blend (new, gated) ----------------------------------
     // Pull the element energy tint toward the source's own color while
     // preserving the current energy luminance. For the sun this trades the
-    // screen-sampled tint for the artist tint; for rig sources (unit-white
-    // base) it pre-saturates the elements toward the gel color on top of
-    // the final srcColor multiply. Skipped entirely at the default 0.
+    // screen-sampled tint for the artist tint; for rig sources (whose
+    // energy base is the neutral screen-luma factor) it pre-saturates the
+    // elements toward the gel color on top of the final srcColor multiply.
+    // Skipped entirely at the default 0.
     if (uLensFlareSrcColorAmount > 0.0)
     {
         float src_l = max(dot(srcColor, LUMA), 1e-4);
         sun_color = mix(sun_color, srcColor * (sun_lum * sun_bright / src_l),
                         clamp(uLensFlareSrcColorAmount, 0.0, 1.0));
+    }
+
+    // ---- Rig source-plane depth layer --------------------------------------
+    // The hot core and diffraction star are attached to the projector's
+    // emission plane, so foreground scene geometry must occlude them. Glass
+    // artifacts (streak, ghosts, halo, iris, rings, circles, arc) live on the
+    // camera lens and intentionally remain composited over the foreground.
+    //
+    // srcDepth is the emission point's standard GL device depth (NDC z mapped
+    // to 0..1), matching the bound deferred depth texture. A positive gap means
+    // this output pixel contains geometry closer than the source. Derivative-
+    // scaled softness antialiases silhouettes while the small bias prevents
+    // self-occlusion from projection/depth quantization. Sun math never enters
+    // this branch, preserving its existing source treatment.
+    float source_layer_mask = 1.0;
+    if (occTaps < 0 && (uLensFlareGlow > 0.0 || uLensFlareStarburst > 0.0))
+    {
+        float scene_depth = texture(depth, clamp(uv, vec2(0.0), vec2(1.0))).r;
+        float depth_gap = srcDepth - scene_depth;
+        float softness = max(fwidth(scene_depth) * 0.25, 2.0e-5);
+        source_layer_mask = 1.0 - smoothstep(5.0e-5, 5.0e-5 + softness, depth_gap);
     }
 
     float aspect = uResolution.x / max(uResolution.y, 1.0);
@@ -661,15 +752,19 @@ vec3 flareForSource(sampler2D diffuse, sampler2D depth, vec2 uv,
     }
 
     // ---- Central glow: soft radial falloff --------------------------------
-    // Scaled by sky_hdr_scale (same as starburst) so the glow reads at the
-    // same relative brightness as the atmosphere it's painted against.
+    // Scaled by src_hdr_scale (same as starburst): sky_hdr_scale for the sun
+    // so the glow reads at the same relative brightness as the atmosphere
+    // it's painted against, 1.0 for rig sources (sky-independent).
     if (uLensFlareGlow > 0.0)
     {
         vec2  gd      = vec2(delta.x * aspect, delta.y);
         float radius2 = max(uLensFlareGlowRadius * uLensFlareGlowRadius, 1e-8);
         // r² directly from dot() — avoids the length() sqrt.
         float glow    = exp(-dot(gd, gd) * uLensFlareGlowFalloff / radius2);
-        flare += sun_color * glow * uLensFlareGlow * sky_hdr_scale;
+        if (occTaps < 0)
+            flare += sun_color * glow * uLensFlareGlow * src_hdr_scale * source_layer_mask;
+        else
+            flare += sun_color * glow * uLensFlareGlow * src_hdr_scale;
     }
 
     // ---- Anamorphic streak: horizontal band with tight vertical gaussian --
@@ -817,8 +912,12 @@ vec3 flareForSource(sampler2D diffuse, sampler2D depth, vec2 uv,
                           + pow(abs(cos(angle * primary * 2.0 + 0.5)), sharp * 1.33) * 0.3
                           + pow(abs(cos(angle * primary * 4.0 + 1.0)), sharp * 1.66) * 0.2;
 
-            flare += sun_color * pattern * envelope
-                   * uLensFlareStarburst * sky_hdr_scale;
+            if (occTaps < 0)
+                flare += sun_color * pattern * envelope
+                       * uLensFlareStarburst * src_hdr_scale * source_layer_mask;
+            else
+                flare += sun_color * pattern * envelope
+                       * uLensFlareStarburst * src_hdr_scale;
         }
     }
 
@@ -947,26 +1046,29 @@ vec3 computeLensFlare(sampler2D diffuse, sampler2D depth, vec2 uv)
     // against a negative debug value colliding with the skip sentinel).
     if (vis > 0.0)
     {
-        total = flareForSource(diffuse, depth, uv, uLensFlareSunPos, vis,
+        total = flareForSource(diffuse, depth, uv, uLensFlareSunPos, 1.0, vis,
                                uLensFlareLightColor,
                                max(uLensFlareOcclusionTaps, 0));
     }
 
     // Rig projector sources — additive, each gated by its CPU-provided
-    // visibility × intensity × per-source scale before any per-source work,
-    // and running with in-shader occlusion skipped (occTaps = -1): their
-    // occlusion/edge fade is computed CPU-side per frame.
+    // visibility × per-source scale before any per-source work. Sentinel -1 is
+    // a live isolated-shaft sample; -2 is a cached release tail which cannot
+    // sample the scene. Both use the per-pixel source-depth mask for glow/star,
+    // while edge fade and the temporal envelope are computed CPU-side.
     if (uCineFlareCount > 0)
     {
         int rig_count = min(uCineFlareCount, AL_CINE_FLARE_MAX);
         for (int i = 0; i < rig_count; i++)
         {
-            float rvis = uCineFlareA[i].z * uCineFlareA[i].w * uCineFlareColor[i].w;
+            float packed_scale = uCineFlareColor[i].w;
+            bool  releasing    = packed_scale < 0.0;
+            float rvis         = uCineFlareA[i].z * abs(packed_scale);
             if (rvis <= 0.0)
                 continue;
-            total += flareForSource(diffuse, depth, uv,
-                                    uCineFlareA[i].xy, rvis,
-                                    uCineFlareColor[i].rgb, -1);
+            total += flareForSource(uCineFlareShaft, depth, uv,
+                                    uCineFlareA[i].xy, uCineFlareA[i].w, rvis,
+                                    uCineFlareColor[i].rgb, releasing ? -2 : -1);
         }
     }
 

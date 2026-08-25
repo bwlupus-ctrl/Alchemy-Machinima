@@ -1628,6 +1628,12 @@ void render_ui(F32 zoom_factor, int subfield)
             gPipeline.disableLights();
         }
 
+        // [ActorStyle/GhostStudio] Styled cast layers and studio ghost instances
+        // are SCENE DRESSING, not editing indicators. Actor styles use the same
+        // clone renderer at the actor's exact live placement and therefore share
+        // this always-visible, pre-UI compositing stage.
+        LLActorMover::instance().renderStyledActors();
+
         // [GhostStudio] studio ghost instances are SCENE DRESSING, not an
         // editing indicator. They draw HERE -- before (and independent of) the
         // RENDER_DEBUG_FEATURE_UI gate below -- because the previous home at

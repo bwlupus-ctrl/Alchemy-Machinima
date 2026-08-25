@@ -11255,6 +11255,7 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst, bool app
         // the composite no longer needs its own pass. When HDR is off the shader
         // variant lacks the sampler and bindTexture is a no-op via getTextureChannel.
         S32 bloom_channel = -1;
+        S32 cine_flare_shaft_channel = -1;
         if (mRT->bloomMipCount > 0)
         {
             bloom_channel = shader->bindTexture(LLShaderMgr::BLOOM_SAMPLER, &mRT->bloomMip[0], false, LLTexUnit::TFO_BILINEAR);
@@ -11327,7 +11328,11 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst, bool app
             // properly, with its own clamp, in the rig-sourcing block).
             static LLCachedControl<F32> cine_flare_strength_gate(gSavedSettings, "RenderCineLensFlareStrength", 0.f);
 
-            F32 strength = llclamp(lens_flare_strength(), 0.f, 1.f);
+            // Rig flare is an exclusive projector-source mode. A persisted
+            // legacy RenderLensFlareStrength must not add a second star that
+            // follows the daylight sun while the rig controls are in use.
+            const bool cine_source_mode = llmax(cine_flare_strength_gate(), 0.f) > 0.f;
+            F32 strength = cine_source_mode ? 0.f : llclamp(lens_flare_strength(), 0.f, 1.f);
             shader->uniform1f(LLShaderMgr::LENS_FLARE_STRENGTH, strength);
 
             // Shared optical shape uniforms — streak/glow/ghost/halo/starburst/
@@ -11337,7 +11342,7 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst, bool app
             // sun's strength left these at stale/GLSL-default values whenever
             // only the rig flare was enabled, making the rig flare render
             // blank or wrong (Codex review finding).
-            const bool any_flare = (strength > 0.f) || (llmax(cine_flare_strength_gate(), 0.f) > 0.f);
+            const bool any_flare = (strength > 0.f) || cine_source_mode;
             if (any_flare)
             {
                 // Anamorphic streak
@@ -11494,13 +11499,27 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst, bool app
         // additive rig loop (`if (uCineFlareCount > 0)`) is exact byte-parity
         // with the sun-only output. Path A per the design doc: enumerate lit
         // rig slots -> live spot-projector emitters -> resolve the backing
-        // LLVOVolume prim -> project world position to screen UV with the
-        // same matrix path the sun uses (position, not direction, so this
-        // divides by clip.w rather than mirroring the sun's direction-vector
-        // z-divide).
+        // LLVOVolume prim -> construct its forward-face emission point (the
+        // volumetric cone's near plane) -> project that world position to
+        // screen UV with the same matrix path the sun uses (position, not
+        // direction, so this divides by clip.w rather than mirroring the
+        // sun's direction-vector z-divide).
         {
             static LLCachedControl<F32> cine_flare_strength(gSavedSettings, "RenderCineLensFlareStrength", 0.f);
             static LLCachedControl<F32> cine_flare_intensity(gSavedSettings, "RenderCineLensFlareIntensity", 1.f);
+            // Linear-HDR luma threshold. The shader reads the actual rendered
+            // neighborhood around each projector's emission-face UV; higher
+            // values require a brighter visible shaft. 0..~6 useful range.
+            static LLCachedControl<F32> cine_flare_threshold(gSavedSettings, "RenderCineLensFlareThreshold", 0.25f);
+            // Radius of the rig-only HDR probe ring, expressed as a fraction
+            // of screen height so it stays pixel-circular at any aspect ratio.
+            // A broad ring can see the shaft around a foreground avatar instead
+            // of toggling the flare when the avatar covers the exact source UV.
+            static LLCachedControl<F32> cine_flare_probe_radius(gSavedSettings, "RenderCineLensFlareProbeRadius", 0.06f);
+            // Exponential release time constant for the optical response after
+            // a source stops producing isolated shaft energy. This is seconds,
+            // not a per-frame lerp, so the look is stable across frame rates.
+            static LLCachedControl<F32> cine_flare_release(gSavedSettings, "RenderCineLensFlareRelease", 0.45f);
 
             // mCineFlareVisibility is sized by STABLE (slot, light) identity —
             // ALCineLightRigManager::SLOT_COUNT * ALCineLightRigModel::LIGHT_COUNT
@@ -11515,16 +11534,44 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst, bool app
             static_assert(sizeof(mCineFlareVisibility) / sizeof(mCineFlareVisibility[0]) == CINE_FLARE_STABLE_COUNT,
                           "LLPipeline::mCineFlareVisibility must be sized "
                           "ALCineLightRigManager::SLOT_COUNT * ALCineLightRigModel::LIGHT_COUNT");
+            static_assert(sizeof(mCineFlareSourceState) / sizeof(mCineFlareSourceState[0]) == CINE_FLARE_STABLE_COUNT &&
+                          sizeof(mCineFlareSourceColor) / sizeof(mCineFlareSourceColor[0]) == CINE_FLARE_STABLE_COUNT &&
+                          sizeof(mCineFlareSourceValid) / sizeof(mCineFlareSourceValid[0]) == CINE_FLARE_STABLE_COUNT,
+                          "LLPipeline cine flare release caches must match the stable source count");
 
             S32 cine_count = 0;
             LLVector4 cine_a[AL_CINE_FLARE_MAX];
             LLVector4 cine_col[AL_CINE_FLARE_MAX];
+            bool source_active[CINE_FLARE_STABLE_COUNT] = {};
 
             F32 cine_strength = llmax(cine_flare_strength(), 0.f);
+            // The threshold must read ONLY projector volumetrics. Sampling
+            // mRT->screen here lets bright daylight/sun/white surfaces satisfy
+            // a rig source's gate. The half-res shaft source is the isolated,
+            // already-resolved projector RGB generated immediately before
+            // colorCorrect. If it is unavailable there is no trustworthy signal
+            // for a NEW live source; cached release tails may still upload, but
+            // their shader branch never samples the fallback scene texture.
+            const bool shaft_available = mProjVolHalfValid &&
+                mProjVolShaftSrc != nullptr &&
+                mProjVolShaftSrc->getWidth() > 0 &&
+                mProjVolShaftSrc->getHeight() > 0;
             if (cine_strength > 0.f)
             {
                 F32 cine_intensity = llmax(cine_flare_intensity(), 0.f);
+                F32 cine_threshold = llclamp(cine_flare_threshold(), 0.f, 6.f);
+                // Shader-side gate probes isolated projector-shaft HDR at each
+                // source UV, so the CPU does not guess from emitter intensity.
+                shader->uniform1f(LLShaderMgr::CINE_FLARE_THRESHOLD, cine_threshold);
+                shader->uniform1f(LLShaderMgr::CINE_FLARE_PROBE_RADIUS,
+                                  llclamp(cine_flare_probe_radius(), 0.f, 0.2f));
                 glm::mat4 proj_mod = get_current_projection() * get_current_modelview();
+                const F32 frame_dt = llclamp(gFrameIntervalSeconds.value(), 0.f, 0.1f);
+                const F32 attack_seconds = 0.10f;
+                const F32 release_seconds = llclamp(cine_flare_release(), 0.f, 2.f);
+                const F32 attack_alpha = 1.f - expf(-frame_dt / attack_seconds);
+                const F32 release_alpha = release_seconds > 0.f
+                    ? 1.f - expf(-frame_dt / release_seconds) : 1.f;
 
                 ALCineLightRigManager& rig_mgr = ALCineLightRigManager::instance();
                 // Visit every (slot, light) pair every frame — even past the
@@ -11547,10 +11594,10 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst, bool app
 
                         F32 target_visibility = 0.f;
                         glm::vec2 uv(0.f, 0.f);
+                        F32 source_depth = 1.f;
                         LLColor3 base_color;
-                        F32 raw_intensity = 0.f;
 
-                        if (frame)
+                        if (frame && shaft_available)
                         {
                             const ALCineLightRigModel::EmitterState& emitter = frame->mProj[light_i];
                             // projectorId(i), not a tag scan (Path B), so omni
@@ -11558,38 +11605,86 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst, bool app
                             // local object tag — never flare. A freshly-
                             // created projector is null for a few retry
                             // ticks; treat that exactly like "no source"
-                            // rather than erroring.
+                            // rather than erroring. Whether a lit fixture
+                            // actually flares is now decided by the SHADER's
+                            // on-screen HDR luma probe against
+                            // uCineFlareThreshold, not a CPU intensity guess
+                            // — only skip truly-dark (mIntensity<=0) fixtures
+                            // here so they don't even get projected.
                             LLUUID id = (emitter.mOn && emitter.mIntensity > 0.f)
                                 ? rig->projectorId(light_i) : LLUUID::null;
                             LLViewerObject* obj = id.isNull() ? nullptr : gObjectList.findObject(id);
                             LLVOVolume* volume = obj ? dynamic_cast<LLVOVolume*>(obj) : nullptr;
                             if (volume)
                             {
-                                LLVector3 pos_agent = obj->getPositionAgent();
+                                // Anchor the optical flare to the projector's
+                                // emitting face, not to the prim center. This is
+                                // the same near-plane construction used by
+                                // setupSpotLightVolumetric(): projected light
+                                // travels down the volume's rotated local -Z axis
+                                // and enters the scene at the center of that face.
+                                // colorCorrect receives the isolated linear-HDR
+                                // shaft target, so the shader's threshold probe
+                                // reads the real volumetric source at the point
+                                // the flare is drawn instead of a dark point
+                                // inside the fixture or a bright scene surface.
+                                LLVector3 emit_offset(0.f, 0.f, -volume->getScale().mV[VZ] * 0.5f);
+                                emit_offset *= volume->getRenderRotation();
+                                LLVector3 pos_agent = volume->getRenderPosition() + emit_offset;
                                 glm::vec4 clip = proj_mod * glm::vec4(pos_agent.mV[0], pos_agent.mV[1], pos_agent.mV[2], 1.0f);
                                 if (clip.w > 0.f)
                                 {
-                                    glm::vec2 ndc = glm::vec2(clip.x, clip.y) / clip.w;
-                                    uv = ndc * 0.5f + 0.5f;
+                                    glm::vec3 ndc = glm::vec3(clip.x, clip.y, clip.z) / clip.w;
+                                    // Do not pack sources outside the camera's
+                                    // depth range. XY edge fade alone allowed a
+                                    // point beyond the far plane to masquerade as
+                                    // a valid screen source; source-layer depth
+                                    // masking requires a real 0..1 device depth.
+                                    if (ndc.z >= -1.f && ndc.z <= 1.f)
+                                    {
+                                        uv = glm::vec2(ndc.x, ndc.y) * 0.5f + 0.5f;
+                                        source_depth = ndc.z * 0.5f + 0.5f;
 
-                                    // Same edge-fade formula as the sun (~11344-49 above).
-                                    F32 margin = 0.2f;
-                                    F32 edge_fade = 1.f;
-                                    edge_fade *= llclamp((uv.x - (-margin)) / margin, 0.f, 1.f);
-                                    edge_fade *= llclamp(((1.f + margin) - uv.x) / margin, 0.f, 1.f);
-                                    edge_fade *= llclamp((uv.y - (-margin)) / margin, 0.f, 1.f);
-                                    edge_fade *= llclamp(((1.f + margin) - uv.y) / margin, 0.f, 1.f);
+                                        // Same edge-fade formula as the sun (~11344-49 above).
+                                        F32 margin = 0.2f;
+                                        F32 edge_fade = 1.f;
+                                        edge_fade *= llclamp((uv.x - (-margin)) / margin, 0.f, 1.f);
+                                        edge_fade *= llclamp(((1.f + margin) - uv.x) / margin, 0.f, 1.f);
+                                        edge_fade *= llclamp((uv.y - (-margin)) / margin, 0.f, 1.f);
+                                        edge_fade *= llclamp(((1.f + margin) - uv.y) / margin, 0.f, 1.f);
 
-                                    target_visibility = edge_fade;
-                                    // Color.rgb = BASE linear color (unscaled
-                                    // by intensity); A.w = raw intensity. The
-                                    // shader multiplies rvis (which includes
-                                    // A.w) by Color.rgb, so baking intensity
-                                    // into BOTH would square it — getLightLinearColor()
-                                    // (base*intensity) was the earlier, buggy
-                                    // choice here (Codex review finding).
-                                    base_color = volume->getLightLinearBaseColor();
-                                    raw_intensity = emitter.mIntensity;
+                                        target_visibility = edge_fade;
+                                        // Color.rgb = BASE linear color (unscaled
+                                        // by intensity) — the shader now derives
+                                        // brightness from its isolated shaft HDR
+                                        // luma probe, so the fixture's configured
+                                        // intensity must NOT re-multiply it here.
+                                        base_color = volume->getLightLinearBaseColor();
+                                        source_active[stable_idx] = target_visibility > 0.f;
+
+                                        // Approximate the last rendered shaft
+                                        // energy from the same linear projector
+                                        // color that feeds the volumetric march.
+                                        // It is used only after the real shaft is
+                                        // gone; live frames still use the actual
+                                        // isolated HDR texture and threshold.
+                                        const LLColor3 light_color = volume->getLightLinearColor();
+                                        F32 modeled_lum = (light_color.mV[0] * 0.2126f +
+                                                           light_color.mV[1] * 0.7152f +
+                                                           light_color.mV[2] * 0.0722f) *
+                                                          llmax(BDMergeProjectorVolumetricsMultiplier, 0.f);
+                                        modeled_lum = llfinite(modeled_lum) ? llmax(modeled_lum, 0.f) : 0.f;
+                                        const F32 knee = llmax(cine_threshold * 0.5f, 0.1f);
+                                        F32 gate_t = llclamp((modeled_lum - cine_threshold) / knee, 0.f, 1.f);
+                                        F32 gate = gate_t * gate_t * (3.f - 2.f * gate_t);
+                                        F32 release_energy = gate * llmin(
+                                            modeled_lum / llmax(cine_threshold + knee, 1e-3f), 4.f);
+
+                                        mCineFlareSourceState[stable_idx] = LLVector4(
+                                            uv.x, uv.y, source_depth, release_energy);
+                                        mCineFlareSourceColor[stable_idx] = base_color;
+                                        mCineFlareSourceValid[stable_idx] = true;
+                                    }
                                 }
                             }
                         }
@@ -11599,38 +11694,86 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst, bool app
                         // this frame — target is 0 when off/null/behind-camera,
                         // so an absent projector's OWN slot decays toward 0
                         // instead of a different light inheriting its value.
-                        F32 fade_speed = (target_visibility < mCineFlareVisibility[stable_idx]) ? 0.15f : 0.05f;
-                        mCineFlareVisibility[stable_idx] =
-                            std::lerp(mCineFlareVisibility[stable_idx], target_visibility, fade_speed);
-
-                        // Only pack sources that are actually eligible THIS
-                        // frame and while the <=8 upload cap holds. A source
-                        // that just dropped out simply isn't uploaded this
-                        // frame (acceptable — there is no cross-light identity
-                        // to fade through); its stable slot keeps decaying so
-                        // a later reappearance ramps in cleanly instead of
-                        // popping to full brightness.
-                        if (target_visibility > 0.f && cine_count < AL_CINE_FLARE_MAX)
+                        const F32 response = target_visibility < mCineFlareVisibility[stable_idx]
+                            ? release_alpha : attack_alpha;
+                        mCineFlareVisibility[stable_idx] +=
+                            (target_visibility - mCineFlareVisibility[stable_idx]) * response;
+                        if (!source_active[stable_idx] && mCineFlareVisibility[stable_idx] < 0.001f)
                         {
-                            // A.w keeps the raw emitter intensity; the global
-                            // RenderCineLensFlareIntensity multiplier rides in
-                            // Color.w (uCineFlareColor[i].w — the shader's
-                            // "perSourceScale"), matching the shader's
-                            // `rvis = A.z * A.w * Color.w` gate.
-                            cine_a[cine_count] = LLVector4(uv.x, uv.y, mCineFlareVisibility[stable_idx], raw_intensity);
-                            cine_col[cine_count] = LLVector4(base_color.mV[0], base_color.mV[1], base_color.mV[2], cine_intensity);
-                            ++cine_count;
+                            mCineFlareVisibility[stable_idx] = 0.f;
+                            mCineFlareSourceValid[stable_idx] = false;
                         }
+                    }
+                }
+
+                // Pack live sources first so a release tail can never consume
+                // one of the eight GPU slots needed by a currently lit projector.
+                // Pass 1 then fills remaining capacity with stable-identity tails.
+                for (S32 pass = 0; pass < 2 && cine_count < AL_CINE_FLARE_MAX; ++pass)
+                {
+                    const bool want_active = pass == 0;
+                    for (S32 stable_idx = 0;
+                         stable_idx < CINE_FLARE_STABLE_COUNT && cine_count < AL_CINE_FLARE_MAX;
+                         ++stable_idx)
+                    {
+                        if (source_active[stable_idx] != want_active ||
+                            !mCineFlareSourceValid[stable_idx] ||
+                            mCineFlareVisibility[stable_idx] <= 0.f)
+                        {
+                            continue;
+                        }
+
+                        const LLVector4& state = mCineFlareSourceState[stable_idx];
+                        F32 packed_scale = cine_intensity;
+                        if (!want_active)
+                        {
+                            // Negative Color.w selects the no-texture release
+                            // branch. Magnitude carries the modeled last energy.
+                            packed_scale = -cine_intensity * llmax(state.mV[VW], 0.f);
+                            if (packed_scale >= 0.f)
+                            {
+                                continue;
+                            }
+                        }
+
+                        // A.w carries the emission plane's standard GL device
+                        // depth. Glow/star remain scene-occluded during release;
+                        // the glass layers retain their lens-plane compositing.
+                        cine_a[cine_count] = LLVector4(
+                            state.mV[VX], state.mV[VY],
+                            mCineFlareVisibility[stable_idx], state.mV[VZ]);
+                        const LLColor3& color = mCineFlareSourceColor[stable_idx];
+                        cine_col[cine_count] = LLVector4(
+                            color.mV[0], color.mV[1], color.mV[2], packed_scale);
+                        ++cine_count;
+                    }
+                }
+
+                if (cine_count > 0)
+                {
+                    // Live sources sample only the isolated shaft. A release-only
+                    // frame binds the scene as a harmless valid sampler; the -2
+                    // shader branch deliberately never samples it, preventing
+                    // daylight or the sun from reviving the tail.
+                    LLRenderTarget* flare_source = shaft_available
+                        ? mProjVolShaftSrc : &mRT->screen;
+                    cine_flare_shaft_channel = shader->bindTexture(
+                        LLShaderMgr::CINE_FLARE_SHAFT, flare_source, false,
+                        LLTexUnit::TFO_BILINEAR);
+                    if (cine_flare_shaft_channel < 0)
+                    {
+                        cine_count = 0;
                     }
                 }
             }
             else
             {
-                // Feature off — decay every stable slot so a later re-enable
-                // doesn't resume at a stale smoothed visibility.
-                for (F32& visibility : mCineFlareVisibility)
+                // Explicit feature-off is an immediate mute and clears release
+                // caches so a later re-enable cannot resume a stale afterimage.
+                for (S32 stable_idx = 0; stable_idx < CINE_FLARE_STABLE_COUNT; ++stable_idx)
                 {
-                    visibility = 0.f;
+                    mCineFlareVisibility[stable_idx] = 0.f;
+                    mCineFlareSourceValid[stable_idx] = false;
                 }
             }
 
@@ -11942,6 +12085,10 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst, bool app
         if (bloom_channel > -1)
         {
             gGL.getTexUnit(bloom_channel)->unbind(LLTexUnit::TT_TEXTURE);
+        }
+        if (cine_flare_shaft_channel > -1)
+        {
+            gGL.getTexUnit(cine_flare_shaft_channel)->unbind(LLTexUnit::TT_TEXTURE);
         }
         if (depth_channel > -1)
         {
@@ -14995,7 +15142,21 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target, bool aux_dire
     // PROJVOL_G / PROJVOL_DENSITY moved to per-cone uploads so a projector's
     // per-UUID override can replace them independently of the globals.
     gDeferredProjectorVolumetricProgram.uniform1i(LLShaderMgr::PROJVOL_SHADOW_SAMPLES, (S32)llclamp(BDMergeProjectorVolumetricsShadowSamples, (U32)1, (U32)4));
-    gDeferredProjectorVolumetricProgram.uniform1i(LLShaderMgr::PROJVOL_DITHER, (S32)llclamp(BDMergeProjectorVolumetricsDither, (U32)0, (U32)2));
+    // [BDMerge G3.3 Precision] The entire projector path is already RGBA16F, so
+    // residual rings are ray-step quantization, not color-buffer quantization.
+    // The temporal anti-banding guard promotes recording-safe static mode 1 only
+    // while the RGBA16F temporal resolve can integrate low-discrepancy phases. This
+    // converges bands into a smooth shaft without adding a march step, texture
+    // fetch, render target, or memory bandwidth. It remains separately switchable
+    // so a production that needs an absolutely frozen sampling pattern can opt out.
+    static LLCachedControl<bool> projvol_temporal_dither(
+        gSavedSettings, "BDMergeProjectorVolumetricsTemporalDither", true);
+    U32 projvol_dither = llclamp(BDMergeProjectorVolumetricsDither, (U32)0, (U32)2);
+    if (temporal && projvol_temporal_dither() && projvol_dither == 1)
+    {
+        projvol_dither = 2;
+    }
+    gDeferredProjectorVolumetricProgram.uniform1i(LLShaderMgr::PROJVOL_DITHER, (S32)projvol_dither);
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FRAME, (F32)(LLFrameTimer::getFrameCount() % 1024u));
     gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_MAX, BDMergeProjectorVolumetricsMaxLuminance);
     // [BDMerge G3.3 Batch A] look-neutral performance gates. E1 frustum clip

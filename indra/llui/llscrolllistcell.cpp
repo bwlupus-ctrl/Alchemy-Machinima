@@ -105,7 +105,7 @@ const LLSD LLScrollListCell::getAltValue() const
 LLScrollListIcon::LLScrollListIcon(const LLScrollListCell::Params& p)
 :   LLScrollListCell(p),
     mIcon(LLUI::getUIImage(p.value().asString())),
-    mIconSize(0),
+    mIconSize(llmax(p.icon_size(), 0)),
     mColor(p.color),
     mAlignment(p.font_halign),
     mCallback(NULL),
@@ -118,7 +118,7 @@ LLScrollListIcon::~LLScrollListIcon()
 
 /*virtual*/
 S32     LLScrollListIcon::getHeight() const
-{ return mIcon ? mIcon->getHeight() : 0; }
+{ return mIconSize != 0 ? mIconSize : (mIcon ? mIcon->getHeight() : 0); }
 
 /*virtual*/
 const LLSD      LLScrollListIcon::getValue() const
@@ -795,4 +795,3 @@ bool LLScrollListLineEditor::handleUnicodeCharHere(llwchar uni_char )
 {
     return true;
 }
-

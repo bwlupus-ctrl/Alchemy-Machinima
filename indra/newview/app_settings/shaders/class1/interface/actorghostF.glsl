@@ -63,6 +63,10 @@ uniform int ghostLook;
 // multiplies the texture alpha; 0 = legacy non-alpha-pool face whose vertex
 // alpha bakes SHININESS, not opacity (RGB tint still always applies).
 uniform int ghostUseVertexAlpha;
+// x > .5 means the material alpha mode actually uses sampled texture alpha;
+// y is the PBR base-colour factor alpha. OPAQUE materials receive (0, 1), so
+// arbitrary/packed data in their base-colour A channel cannot punch holes.
+uniform vec2 ghostAlpha;
 // Independent, orthogonal distortion layer. x=strength, yz=lens center.
 uniform int ghostDistort;
 uniform vec4 ghostDistortParams;
@@ -248,18 +252,23 @@ void main()
     // RGB is always authored tint/base-colour and must always be honored.
     // Legacy non-alpha-pool vertex alpha holds shininess, not opacity.
     tex.rgb *= vary_vertex_color.rgb;
+    float authoredAlpha = ghostAlpha.x > 0.5 ? tex.a : 1.0;
     if (ghostUseVertexAlpha != 0)
     {
-        tex.a *= vary_vertex_color.a;
+        authoredAlpha *= vary_vertex_color.a;
     }
+    authoredAlpha *= clamp(ghostAlpha.y, 0.0, 1.0);
 
     // alpha-mask cutoff, exactly like the real render's masked passes. With
     // ghostAux.x == 0 no texel can be below the cutoff, so the branch is free
     // for opaque/blend batches.
-    if (tex.a < ghostAux.x)
+    if (authoredAlpha < ghostAux.x)
     {
         discard;
     }
+    // All look branches below consume tex.a as the authored coverage. Replace
+    // it once here so OPAQUE, MASK, and BLEND semantics stay centralized.
+    tex.a = authoredAlpha;
 
     // animated screen-space scanlines, scrolling slowly upward
     float scan_amt = clamp(ghostParams.x, 0.0, 1.0);
