@@ -55,7 +55,11 @@ private:
     void syncEasyModeForSelected(bool force = false);
     void syncEasyControls();
     bool selectedIsEasyNative() const;
-    bool normalizeSelectedForEasy();
+    // explicit_entry: the user clicked the Easy toggle, asking for the
+    // simplified vocabulary - Rim/Bg EVs may be snapped to their nearest Easy
+    // presence bucket. Passive re-syncs (first show, slot switch, scene load)
+    // pass false and never mutate near-bucket authored EVs.
+    bool normalizeSelectedForEasy(bool explicit_entry);
     void onEasyModeCommit();
     void onEasyBrightnessCommit();
     void onEasyDramaCommit();

@@ -1485,7 +1485,7 @@ bool ALPanelCineLightRig::selectedIsEasyNative() const
             is_bucket(gSavedSettings.getF32("CineLightRigBgEV"), false));
 }
 
-bool ALPanelCineLightRig::normalizeSelectedForEasy()
+bool ALPanelCineLightRig::normalizeSelectedForEasy(bool explicit_entry)
 {
     // Fold the key's own EV into Master so subject exposure is preserved while
     // Key is anchored at 0. If the folded value cannot be represented within
@@ -1500,6 +1500,48 @@ bool ALPanelCineLightRig::normalizeSelectedForEasy()
     gSavedSettings.setF32("CineLightRigMasterEV", folded);
     gSavedSettings.setF32("CineLightRigKeyEV", 0.f);
     gSavedSettings.setBOOL("CineLightRigKeyOn", true);
+
+    // Rim/Bg EVs must sit exactly on the Easy presence buckets or the
+    // per-frame syncEasyModeForSelected() re-check (selectedIsEasyNative)
+    // vetoes the mode right back off - which made Easy unenterable while any
+    // authored look with free-form EVs was active. Only an EXPLICIT toggle
+    // click may snap: the passive sync path reaches here with EVs already
+    // within selectedIsEasyNative()'s 0.01 tolerance, and rewriting a
+    // near-bucket authored EV to the exact bucket there would silently
+    // mutate looks on first show / slot switch / scene load.
+    if (!explicit_entry)
+    {
+        return true;
+    }
+    const auto snap_to_bucket = [](const char* setting, bool rim)
+    {
+        const F32 ev = gSavedSettings.getF32(setting);
+        S32 best = 1;
+        F32 best_dist = F32_MAX;
+        for (S32 presence = 1; presence < 4; ++presence)
+        {
+            const F32 bucket = rim
+                ? ALCineLightRigModel::easyRimEV(presence)
+                : ALCineLightRigModel::easyBgEV(presence);
+            const F32 dist = std::fabs(ev - bucket);
+            if (dist < best_dist)
+            {
+                best_dist = dist;
+                best = presence;
+            }
+        }
+        gSavedSettings.setF32(setting,
+            rim ? ALCineLightRigModel::easyRimEV(best)
+                : ALCineLightRigModel::easyBgEV(best));
+    };
+    if (gSavedSettings.getBOOL("CineLightRigRimOn"))
+    {
+        snap_to_bucket("CineLightRigRimEV", true);
+    }
+    if (gSavedSettings.getBOOL("CineLightRigBgOn"))
+    {
+        snap_to_bucket("CineLightRigBgEV", false);
+    }
     return true;
 }
 
@@ -1529,7 +1571,7 @@ void ALPanelCineLightRig::syncEasyModeForSelected(bool force)
         // already Easy-native instance (Key EV ~ 0), so this fold is a no-op
         // here; explicit entry via the toggle is what folds a real Key EV.
         // If it somehow cannot be represented, stay in Advanced.
-        if (!normalizeSelectedForEasy())
+        if (!normalizeSelectedForEasy(false))
         {
             mEasyModeActive = false;
         }
@@ -1549,7 +1591,7 @@ void ALPanelCineLightRig::onEasyModeCommit()
     mEasyModeSlot = static_cast<S32>(
         ALCineLightRigManager::instance().selectedSlot());
     mEasyModeActive = desired;
-    if (mEasyModeActive && !normalizeSelectedForEasy())
+    if (mEasyModeActive && !normalizeSelectedForEasy(true))
     {
         // Exposure would exceed Master EV's range (an extreme Advanced look);
         // keep this instance in Advanced. syncEasyControls reflects it.
