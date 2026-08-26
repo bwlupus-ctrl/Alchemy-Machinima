@@ -407,6 +407,7 @@ bool ALPanelCineLightRig::postBuild()
     }
     mSetupCombo = getChild<LLComboBox>("cine_setup_combo");
     mFlarePreset = getChild<LLComboBox>("cine_flare_preset");
+    mEasyFlarePreset = getChild<LLComboBox>("cine_easy_flare_preset");
     mFXCombo = getChild<LLComboBox>("cine_fx_combo");
     mSeedEditor = getChild<LLLineEditor>("cine_seed");
     mFillEV = getChild<LLSpinCtrl>("cine_fill_ev");
@@ -476,7 +477,9 @@ bool ALPanelCineLightRig::postBuild()
     mSetupCombo->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onSetupSelected(); });
     mFlarePreset->setCommitCallback(
-        [this](LLUICtrl*, const LLSD&) { onFlarePresetSelected(); });
+        [this](LLUICtrl*, const LLSD&) { onFlarePresetSelected(mFlarePreset); });
+    mEasyFlarePreset->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onFlarePresetSelected(mEasyFlarePreset); });
     mSetupSave->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { saveSetup(); });
     getChild<LLButton>("cine_setup_delete")->setCommitCallback(
@@ -670,16 +673,27 @@ void ALPanelCineLightRig::populateStaticCombos()
 
     // Lens flare presets: 0 is the "Choose preset..." sentinel (manual
     // sliders / whatever the user last dialed in); 1..19 apply-and-snap-back,
-    // mirroring the gaze Movement Style / Lean preset boxes.
-    mFlarePreset->add("Choose preset...", LLSD(0));
+    // mirroring the gaze Movement Style / Lean preset boxes. The Easy card
+    // carries a shortcut copy of this same combo, so both are populated
+    // identically here and share the single apply/snap-back code path in
+    // onFlarePresetSelected().
     constexpr S32 FLARE_PRESET_COUNT =
         static_cast<S32>(sizeof(FLARE_PRESETS) / sizeof(FLARE_PRESETS[0]));
-    for (S32 i = 0; i < FLARE_PRESET_COUNT; ++i)
+    LLComboBox* const flare_combos[] = { mFlarePreset, mEasyFlarePreset };
+    for (LLComboBox* combo : flare_combos)
     {
-        mFlarePreset->add(
-            llformat("%d  %s", i + 1, FLARE_PRESETS[i].mName), LLSD(i + 1));
+        if (!combo)
+        {
+            continue;
+        }
+        combo->add("Choose preset...", LLSD(0));
+        for (S32 i = 0; i < FLARE_PRESET_COUNT; ++i)
+        {
+            combo->add(
+                llformat("%d  %s", i + 1, FLARE_PRESETS[i].mName), LLSD(i + 1));
+        }
+        combo->setValue(0);
     }
-    mFlarePreset->setValue(0);
 }
 
 std::string ALPanelCineLightRig::fixtureSettingPrefix() const
@@ -1228,13 +1242,13 @@ void ALPanelCineLightRig::onSetupSelected()
     }
 }
 
-void ALPanelCineLightRig::onFlarePresetSelected()
+void ALPanelCineLightRig::onFlarePresetSelected(LLComboBox* source)
 {
-    if (!mFlarePreset)
+    if (!source)
     {
         return;
     }
-    const S32 index = mFlarePreset->getSelectedValue().asInteger();
+    const S32 index = source->getSelectedValue().asInteger();
     constexpr S32 FLARE_PRESET_COUNT =
         static_cast<S32>(sizeof(FLARE_PRESETS) / sizeof(FLARE_PRESETS[0]));
     // 0 is the sentinel ("Choose preset..." / manual sliders) — nothing to
@@ -1246,10 +1260,18 @@ void ALPanelCineLightRig::onFlarePresetSelected()
     }
     applyFlarePreset(FLARE_PRESETS[index - 1]);
     gSavedSettings.setS32("RenderCineLensFlarePreset", index);
-    // Snap back to the sentinel so the combo always reads as an action
-    // ("apply this look"), not a persistent mode — matches the gaze preset
-    // boxes' pick -> stamp -> reset-to-sentinel pattern.
-    mFlarePreset->setValue(0);
+    // Snap both the main-panel combo and the Easy card's shortcut copy back
+    // to the sentinel so each always reads as an action ("apply this
+    // look"), not a persistent mode — matches the gaze preset boxes' pick ->
+    // stamp -> reset-to-sentinel pattern.
+    if (mFlarePreset)
+    {
+        mFlarePreset->setValue(0);
+    }
+    if (mEasyFlarePreset)
+    {
+        mEasyFlarePreset->setValue(0);
+    }
 }
 
 void ALPanelCineLightRig::saveSetup()
@@ -1739,12 +1761,32 @@ void ALPanelCineLightRig::syncEasyControls()
     {
         shaft->setEnabled(mEasyModeActive);
     }
+    // The Easy card's Flare preset shortcut and Live Probe row are likewise
+    // direct control_name bindings / apply-and-snap-back combos with no
+    // dedicated remap handler, so gate them the same way.
+    if (LLUICtrl* flare = findChild<LLUICtrl>("cine_easy_flare_preset"))
+    {
+        flare->setEnabled(mEasyModeActive);
+    }
+    if (LLUICtrl* probe_enable = findChild<LLUICtrl>("cine_easy_probe_enable"))
+    {
+        probe_enable->setEnabled(mEasyModeActive);
+    }
+    if (LLUICtrl* probe_gizmo = findChild<LLUICtrl>("cine_easy_probe_gizmo"))
+    {
+        probe_gizmo->setEnabled(mEasyModeActive);
+    }
+    if (LLUICtrl* probe_radius = findChild<LLUICtrl>("cine_easy_probe_radius"))
+    {
+        probe_radius->setEnabled(mEasyModeActive);
+    }
     // The Easy reset buttons write the same backing settings, so gate them too;
     // otherwise a reset click would edit the light while Easy mode is off.
     static const char* const EASY_RESET_BUTTONS[] = {
         "cine_easy_brightness_reset", "cine_easy_drama_reset",
         "cine_easy_warmth_reset", "cine_easy_cone_width_reset",
         "cine_easy_cone_feather_reset", "cine_easy_shaft_length_reset",
+        "cine_easy_probe_radius_reset",
     };
     for (const char* button_name : EASY_RESET_BUTTONS)
     {
@@ -1893,6 +1935,35 @@ void ALPanelCineLightRig::updateDerivedStatus()
     mSetupDelete->setEnabled(!selected.empty() &&
                              !ALCineLightRig::isMasterSetup(selected) &&
                              !ALCineLightRig::isSetupDecorationName(selected));
+}
+
+void ALPanelCineLightRig::reshape(S32 width, S32 height, bool called_from_parent)
+{
+    // Cascades width (and any height delta) down to our children, including
+    // the "cine_light_rig_flow_grid" flow_grid. That grid's own overridden
+    // reshape() runs synchronously inside this call and repacks its cards
+    // for the new width, ending with the grid's rect set to its true packed
+    // content height.
+    LLPanel::reshape(width, height, called_from_parent);
+
+    // We are typically embedded directly as an LLScrollContainer's scroll
+    // document (see floater_cine_light_rig.xml / floater_director.xml), and
+    // LLScrollContainer reads *our* rect -- not the grid's -- every frame to
+    // compute the scrollable range. Mirror the grid's natural height onto
+    // ourselves so scrolling always reaches the full card layout. setRect()
+    // is used instead of another reshape() so we don't re-trigger the
+    // generic follows-based child cascade above and disturb the grid's
+    // already-correct position.
+    if (LLView* grid = findChildView("cine_light_rig_flow_grid"))
+    {
+        const S32 grid_height = grid->getRect().getHeight();
+        if (grid_height != getRect().getHeight())
+        {
+            LLRect r = getRect();
+            r.mTop = r.mBottom + grid_height;
+            setRect(r);
+        }
+    }
 }
 
 void ALPanelCineLightRig::draw()

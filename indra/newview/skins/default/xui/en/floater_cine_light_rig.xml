@@ -20,23 +20,13 @@
      top="24"
      width="390">
         <panel
-         background_visible="false"
-         height="2724"
+         class="panel_cine_light_rig"
+         filename="panel_cine_light_rig.xml"
+         follows="all"
          layout="topleft"
          left="0"
-         name="cine_light_rig_content"
+         name="cine_light_rig_panel"
          top="0"
-         width="370">
-            <panel
-             class="panel_cine_light_rig"
-             filename="panel_cine_light_rig.xml"
-             follows="left|top"
-             height="2714"
-             layout="topleft"
-             left="8"
-             name="cine_light_rig_panel"
-             top="4"
-             width="350" />
-        </panel>
+         width="370" />
     </scroll_container>
 </floater>

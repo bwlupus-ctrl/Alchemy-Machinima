@@ -35,6 +35,13 @@ public:
     bool postBuild() override;
     void draw() override;
     void onVisibilityChange(bool new_visibility) override;
+    // Keeps this wrapper's own rect in sync with the flow_grid card layout
+    // it hosts. flow_grid self-sizes to its packed card content whenever it
+    // reshapes (see ALFlowGrid::reshape), but that only updates flow_grid's
+    // own rect -- our containing LLScrollContainer reads *our* rect (we are
+    // its scroll document) to compute the scrollable range, so we mirror the
+    // grid's natural height onto ourselves after every reshape.
+    void reshape(S32 width, S32 height, bool called_from_parent = true) override;
 
 private:
     static const std::vector<std::string>& settings();
@@ -84,7 +91,7 @@ private:
     void adjustAim(const std::string& setting, F32 delta);
     void resetAim();
     void onSetupSelected();
-    void onFlarePresetSelected();
+    void onFlarePresetSelected(LLComboBox* source);
     void saveSetup();
     void deleteSetup();
     bool deleteSetupCallback(const LLSD& notification, const LLSD& response,
@@ -104,6 +111,7 @@ private:
     LLTextBox* mGroupStatus = nullptr;
     LLComboBox* mSetupCombo = nullptr;
     LLComboBox* mFlarePreset = nullptr;
+    LLComboBox* mEasyFlarePreset = nullptr;
     LLComboBox* mFXCombo = nullptr;
     LLLineEditor* mSeedEditor = nullptr;
     LLSpinCtrl* mFillEV = nullptr;

@@ -1,573 +1,711 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <panel
  class="panel_cine_light_rig"
- follows="left|top|right"
- height="2714"
+ follows="all"
+ height="8"
  layout="topleft"
  name="panel_cine_light_rig"
  width="350">
-    <text follows="left|top" font="SansSerifBold" height="18" layout="topleft"
-     left="8" top="6" value="Cinematic Light Rig" width="200" />
-    <check_box control_name="CineLightRigEnabled" follows="left|top" height="18"
-     label="Enable" layout="topleft" left="8" name="cine_enabled" top="30" width="82"
-     tool_tip="Master on/off for the selected Cinematic Light Rig." />
-    <check_box control_name="CineLightRigGizmo" follows="left|top" height="18"
-     label="Gizmo" layout="topleft" left="94" name="cine_gizmo" top="30" width="92" />
-    <text follows="left|top" height="16" layout="topleft" left="8" top="57"
-     value="Anchor:" width="52" />
-    <combo_box follows="left|top" height="22" layout="topleft" left="62"
-     name="cine_anchor" top="53" width="126" />
-    <button follows="left|top" height="22" label="Target Object" layout="topleft"
-     left="192" name="cine_target_object" top="53" width="96" />
-    <button follows="left|top" height="22" label="Clear" layout="topleft"
-     left="292" name="cine_clear_object" top="53" width="48" />
-    <check_box follows="left|top" height="18" label="Light group (Subjects)"
-     layout="topleft" left="8" name="cine_group_enable" top="79" width="170" />
-    <text follows="left|top" halign="right" height="16" layout="topleft"
-     left="182" name="cine_group_status" top="79" width="158" />
-    <check_box follows="left|top" height="18" label="You" layout="topleft"
-     left="8" name="cine_group_self" top="103" width="52"
-     tool_tip="Include you in the lit group." />
-    <check_box follows="left|top" height="18" label="A" layout="topleft"
-     left="60" name="cine_group_a" top="103" width="34"
-     tool_tip="Include Director Subject A in the lit group." />
-    <check_box follows="left|top" height="18" label="B" layout="topleft"
-     left="96" name="cine_group_b" top="103" width="34"
-     tool_tip="Include Director Subject B in the lit group." />
-    <check_box follows="left|top" height="18" label="C" layout="topleft"
-     left="132" name="cine_group_c" top="103" width="34"
-     tool_tip="Include Director Subject C in the lit group." />
-    <check_box follows="left|top" height="18" label="D" layout="topleft"
-     left="168" name="cine_group_d" top="103" width="34"
-     tool_tip="Include Director Subject D in the lit group." />
-    <text follows="left|top" halign="right" height="16" layout="topleft"
-     left="206" name="cine_object_target_status" top="103"
-     value="&#x2014; avatar &#x2014;" width="134" />
-    <view_border bevel_style="in" follows="left|top|right" height="1"
-     layout="topleft" left="8" top="136" width="332" />
+    <flow_grid
+     card_width="340"
+     column_gap="12"
+     follows="all"
+     height="8"
+     layout="topleft"
+     left="0"
+     max_columns="4"
+     name="cine_light_rig_flow_grid"
+     pad="8"
+     row_gap="12"
+     top="0"
+     width="340">
+        <panel
+         background_visible="false"
+         border="true"
+         follows="left|top"
+         height="129"
+         layout="topleft"
+         left="0"
+         name="cine_status_card"
+         top="0"
+         width="340">
+        <text follows="left|top" font="SansSerifBold" height="18" layout="topleft"
+         left="8" top="6" value="Cinematic Light Rig" width="200" />
+        <check_box control_name="CineLightRigEnabled" follows="left|top" height="18"
+         label="Enable" layout="topleft" left="8" name="cine_enabled" top="30" width="82"
+         tool_tip="Master on/off for the selected Cinematic Light Rig." />
+        <check_box control_name="CineLightRigGizmo" follows="left|top" height="18"
+         label="Gizmo" layout="topleft" left="94" name="cine_gizmo" top="30" width="92" />
+        <text follows="left|top" height="16" layout="topleft" left="8" top="57"
+         value="Anchor:" width="52" />
+        <combo_box follows="left|top" height="22" layout="topleft" left="62"
+         name="cine_anchor" top="53" width="126" />
+        <button follows="left|top" height="22" label="Target Object" layout="topleft"
+         left="192" name="cine_target_object" top="53" width="96" />
+        <button follows="left|top" height="22" label="Clear" layout="topleft"
+         left="292" name="cine_clear_object" top="53" width="48" />
+        <check_box follows="left|top" height="18" label="Light group (Subjects)"
+         layout="topleft" left="8" name="cine_group_enable" top="79" width="170" />
+        <text follows="left|top" halign="right" height="16" layout="topleft"
+         left="182" name="cine_group_status" top="79" width="158" />
+        <check_box follows="left|top" height="18" label="You" layout="topleft"
+         left="8" name="cine_group_self" top="103" width="52"
+         tool_tip="Include you in the lit group." />
+        <check_box follows="left|top" height="18" label="A" layout="topleft"
+         left="60" name="cine_group_a" top="103" width="34"
+         tool_tip="Include Director Subject A in the lit group." />
+        <check_box follows="left|top" height="18" label="B" layout="topleft"
+         left="96" name="cine_group_b" top="103" width="34"
+         tool_tip="Include Director Subject B in the lit group." />
+        <check_box follows="left|top" height="18" label="C" layout="topleft"
+         left="132" name="cine_group_c" top="103" width="34"
+         tool_tip="Include Director Subject C in the lit group." />
+        <check_box follows="left|top" height="18" label="D" layout="topleft"
+         left="168" name="cine_group_d" top="103" width="34"
+         tool_tip="Include Director Subject D in the lit group." />
+        <text follows="left|top" halign="right" height="16" layout="topleft"
+         left="206" name="cine_object_target_status" top="103"
+         value="&#x2014; avatar &#x2014;" width="134" />
+        </panel>
+        <panel
+         background_visible="false"
+         border="true"
+         follows="left|top"
+         height="80"
+         layout="topleft"
+         left="0"
+         name="cine_setups_card"
+         top="0"
+         width="340">
+        <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="8" top="6" value="Setups" width="80" />
+        <combo_box allow_text_entry="true" follows="left|top" height="22" layout="topleft" left="82" name="cine_setup_combo" top="2" width="128" />
+        <button follows="left|top" height="22" label="Save" layout="topleft" left="214" name="cine_setup_save" top="2" tool_tip="Built-in setups are read-only. Type a new setup name to enable Save." width="58" />
+        <button follows="left|top" height="22" label="Delete" layout="topleft" left="276" name="cine_setup_delete" top="2" width="64" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="32" value="Easing" width="44" />
+        <combo_box control_name="CineLightRigEasing" follows="left|top" height="20" layout="topleft" left="56" name="cine_easing" top="28" tool_tip="Transition curve used for setup loads, random cycling and live edits." width="150">
+            <combo_box.item label="Linear" name="cine_easing_linear" value="0" />
+            <combo_box.item label="Smoothstep" name="cine_easing_smoothstep" value="1" />
+            <combo_box.item label="Ease-in-out" name="cine_easing_inout" value="2" />
+            <combo_box.item label="Ease-out" name="cine_easing_out" value="3" />
+        </combo_box>
+        <check_box control_name="CineLightRigRandomCycle" follows="left|top" height="18" label="Random cycle" layout="topleft" left="212" name="cine_random_cycle" top="30" tool_tip="Automatically cross-fade to a random master setup on an interval." width="128" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="56" value="Interval s" width="64" />
+        <slider can_edit_text="true" control_name="CineLightRigRandomInterval" decimal_digits="0" follows="left|top" height="20" increment="1" layout="topleft" left="76" max_val="300" min_val="1" name="cine_random_interval" show_text="true" top="52" tool_tip="Seconds between random setup changes." width="242" />
+        </panel>
+        <panel
+         background_visible="false"
+         border="true"
+         follows="left|top"
+         height="62"
+         layout="topleft"
+         left="0"
+         name="cine_effects_card"
+         top="0"
+         width="340">
+        <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="8" top="6" value="Effects" width="80" />
+        <combo_box control_name="CineLightRigFX" follows="left|top" height="22" layout="topleft" left="82" name="cine_fx_combo" top="2" width="128" />
+        <button follows="left|top" height="22" label="Stop" layout="topleft" left="214" name="cine_fx_stop" top="2" width="58" />
+        <check_box control_name="CineLightRigManual" follows="left|top" height="18" label="Manual" layout="topleft" left="278" name="cine_manual" top="4" width="62" tool_tip="Manual mode: forces effects (FX) off and locks the selector so per-light aim, exposure and colour stay hand-controlled. Uncheck to use effects." />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="36" value="Seed" width="40" />
+        <line_editor follows="left|top" height="20" layout="topleft" left="52" max_length_chars="10" name="cine_seed" top="32" width="158" />
+        <button follows="left|top" height="22" label="Randomize" layout="topleft" left="214" name="cine_seed_randomize" top="32" width="86" />
+        </panel>
+        <panel
+         background_visible="false"
+         border="true"
+         follows="left|top"
+         height="248"
+         layout="topleft"
+         left="0"
+         name="cine_easy_card"
+         top="0"
+         width="340">
+        <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="8" top="6" value="Easy" width="80" />
+        <check_box control_name="CineLightRigEasyMode" follows="left|top" height="18" label="Easy mode" layout="topleft" left="246" name="cine_easy_mode" top="4" tool_tip="On uses the simplified exposure controls. Off enables Advanced EV and Ratio controls." width="94" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="32" value="Brightness" width="72" />
+        <slider can_edit_text="true" decimal_digits="1" follows="left|top" height="20" increment="0.1" layout="topleft" left="82" max_val="16" min_val="-16" name="cine_easy_brightness" show_text="true" top="28" width="236" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_easy_brightness_reset" top="29" tool_tip="Reset brightness to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigMasterEV" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="56" value="Drama" width="72" />
+        <slider can_edit_text="true" decimal_digits="1" follows="left|top" height="20" increment="0.1" layout="topleft" left="82" max_val="5" min_val="0" name="cine_easy_drama" show_text="true" top="52" tool_tip="KEY:FILL stop difference: 0 is flat, 2 is natural, and 5 is noir." width="236" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_easy_drama_reset" top="53" tool_tip="Reset drama to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRatio" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="80" value="Rim" width="38" />
+        <combo_box follows="left|top" height="20" layout="topleft" left="46" name="cine_easy_rim" top="76" width="116">
+            <combo_box.item label="Off" name="cine_easy_rim_off" value="0" />
+            <combo_box.item label="Faint" name="cine_easy_rim_faint" value="1" />
+            <combo_box.item label="Subtle" name="cine_easy_rim_subtle" value="2" />
+            <combo_box.item label="Strong" name="cine_easy_rim_strong" value="3" />
+        </combo_box>
+        <text follows="left|top" height="15" layout="topleft" left="180" top="80" value="BG" width="28" />
+        <combo_box follows="left|top" height="20" layout="topleft" left="208" name="cine_easy_bg" top="76" width="132">
+            <combo_box.item label="Off" name="cine_easy_bg_off" value="0" />
+            <combo_box.item label="Faint" name="cine_easy_bg_faint" value="1" />
+            <combo_box.item label="Subtle" name="cine_easy_bg_subtle" value="2" />
+            <combo_box.item label="Strong" name="cine_easy_bg_strong" value="3" />
+        </combo_box>
+        <text follows="left|top" height="15" layout="topleft" left="8" top="104" value="Warmth" width="52" />
+        <slider can_edit_text="true" decimal_digits="0" follows="left|top" height="20" increment="5" layout="topleft" left="62" max_val="150" min_val="-110" name="cine_easy_warmth" show_text="true" top="100" tool_tip="Relative colour-temperature trim in mireds: + warms and - cools all lights." width="256" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_easy_warmth_reset" top="101" tool_tip="Reset warmth to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigMasterTempMired" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="128" value="Cone" width="38" />
+        <slider can_edit_text="false" decimal_digits="0" follows="left|top" height="20" increment="1" layout="topleft" left="46" max_val="2" min_val="0" name="cine_easy_cone_width" show_text="false" top="124" tool_tip="Set all rig lights to a narrow Snoot, medium Standard, or wide Softbox beam." width="92" />
+        <button follows="left|top" height="18" layout="topleft" left="140" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_easy_cone_width_reset" top="125" tool_tip="Reset all rig cone widths to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeyBeam,CineLightRigFillBeam,CineLightRigRimBeam,CineLightRigBgBeam" />
+        <text follows="left|top" height="15" layout="topleft" left="172" top="128" value="Edge" width="36" />
+        <slider can_edit_text="false" decimal_digits="2" follows="left|top" height="20" increment="0.01" layout="topleft" left="208" max_val="0.5" min_val="0" name="cine_easy_cone_feather" show_text="false" top="124" tool_tip="Soften or sharpen the visible edge of every volumetric projector cone." width="112" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_easy_cone_feather_reset" top="125" tool_tip="Reset cone edge feather to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="BDMergeProjectorVolumetricsFeather" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="152" value="Shaft" width="44" tool_tip="Visible airborne beam length for all volumetric projector shafts." />
+        <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsMaxDistance" decimal_digits="1" follows="left|top" height="20" increment="0.1" layout="topleft" left="54" max_val="64" min_val="0" name="cine_easy_shaft_length" show_text="true" top="148" tool_tip="Visible airborne beam length in metres for every volumetric projector shaft. 0 follows each projector's full light range; surface illumination is unchanged. Hover and scroll the mouse wheel for 0.1 m steps." wheel_adjust="true" width="264" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_easy_shaft_length_reset" top="149" tool_tip="Reset to full projector range" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="BDMergeProjectorVolumetricsMaxDistance" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="176" value="Flare" width="42" />
+        <combo_box follows="left|top" height="22" layout="topleft" left="54" name="cine_easy_flare_preset" top="172" tool_tip="Applies a full look (streak, ghosts, halo, rings, circles, iris, arc) and snaps back to this sentinel. Master strength/intensity are not touched by presets." width="278">
+            <combo_list mouse_wheel_opaque="true" page_lines="8" />
+        </combo_box>
+        <check_box control_name="CineLightRigLiveProbeEnabled" follows="left|top" height="18" label="Probe" layout="topleft" left="8" name="cine_easy_probe_enable" top="196" tool_tip="Capture a spherical environment-only reflection probe around one rig. Costs six cubemap views per frame while enabled." width="64" />
+        <check_box control_name="CineLightRigLiveProbeGizmo" follows="left|top" height="18" label="Gizmo" layout="topleft" left="76" name="cine_easy_probe_gizmo" top="196" tool_tip="Draw the live probe's spherical influence boundary." width="64" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="224" value="Radius" width="44" />
+        <slider can_edit_text="true" control_name="CineLightRigLiveProbeRadius" decimal_digits="2" follows="left|top" height="20" increment="0.25" layout="topleft" left="56" max_val="32" min_val="0.5" name="cine_easy_probe_radius" show_text="true" top="220" tool_tip="Spherical probe influence radius in metres. Hover and scroll the mouse wheel for 0.25 m steps." wheel_adjust="true" width="256" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_easy_probe_radius_reset" top="221" tool_tip="Reset radius" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigLiveProbeRadius" />
+        </panel>
+        <panel
+         background_visible="false"
+         border="true"
+         follows="left|top"
+         height="252"
+         layout="topleft"
+         left="0"
+         name="cine_rig_card"
+         top="0"
+         width="340">
+        <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="8" top="6" value="Rig" width="80" />
+        <button follows="left|top" height="24" label="Reset all" layout="topleft" left="252" name="cine_reset_all" top="6" width="88" />
+        <text follows="left|top" height="15" layout="topleft" left="8" name="cine_radius_label" top="32" value="Radius" width="70" tool_tip="Full brightness compensation to 9.1 m; projector reach ends at 20 m." />
+        <spinner control_name="CineLightRigRadius" decimal_digits="2" follows="left|top" height="20" increment="0.25" layout="topleft" left="82" max_val="512" min_val="0.5" name="cine_radius" top="28" tool_tip="Orbit radius. Full brightness compensation up to 9.1 m; from 9.1&#x2013;20 m the light dims as the 20 m projector reach cap bites; past 20 m the subject leaves the light's reach entirely. Scale-aware geometry grows with the subject, or grows with a spread anchor group, until the same cap." width="74" />
+        <button follows="left|top" height="18" layout="topleft" left="160" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_radius_reset" top="29" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRadius" />
+        <text follows="left|top" height="15" layout="topleft" left="180" top="32" value="Master EV" width="64" />
+        <spinner control_name="CineLightRigMasterEV" decimal_digits="2" follows="left|top" height="20" increment="0.25" layout="topleft" left="246" max_val="16" min_val="-16" name="cine_master_ev" top="28" width="72" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_master_ev_reset" top="29" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigMasterEV" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="56" value="Offset Z" width="70" />
+        <spinner control_name="CineLightRigOffsetZ" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="82" max_val="10" min_val="-10" name="cine_offset_z" top="52" width="74" />
+        <button follows="left|top" height="18" layout="topleft" left="160" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_offset_z_reset" top="53" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigOffsetZ" />
+        <text follows="left|top" height="15" layout="topleft" left="180" top="56" value="Headroom" width="64" />
+        <spinner control_name="CineLightRigHeadroomStops" decimal_digits="2" follows="left|top" height="20" increment="0.25" layout="topleft" left="246" max_val="16" min_val="0" name="cine_headroom" top="52" width="72" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_headroom_reset" top="53" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigHeadroomStops" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="80" value="Warmth" width="42" />
+        <slider can_edit_text="true" control_name="CineLightRigMasterTempMired" decimal_digits="0" follows="left|top" height="20" increment="5" layout="topleft" left="52" max_val="150" min_val="-110" name="cine_master_temp" show_text="true" top="76" tool_tip="Relative colour-temperature trim in mireds: + warms, - cools all lights together; each light keeps its own gel. 0 = off." width="266" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_master_temp_reset" top="77" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigMasterTempMired" />
+        <check_box control_name="CineLightRigBounceEnabled" follows="left|top" height="18" label="Bounce" layout="topleft" left="8" name="cine_bounce" top="104" width="78" />
+        <text follows="left|top" height="15" layout="topleft" left="92" top="106" value="Ratio" width="38" />
+        <spinner control_name="CineLightRigBounceRatio" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="132" max_val="1" min_val="0" name="cine_bounce_ratio" top="102" width="68" />
+        <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bounce_ratio_reset" top="103" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBounceRatio" />
+        <text follows="left|top" height="15" layout="topleft" left="226" top="106" value="Ease s" width="38" />
+        <spinner control_name="CineLightRigTransitionSec" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="264" max_val="10" min_val="0" name="cine_transition" top="102" width="54" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_transition_reset" top="103" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigTransitionSec" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="130" value="Follow damping s" width="116" />
+        <spinner control_name="CineLightRigDamping" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="132" max_val="10" min_val="0" name="cine_damping" top="126" width="186" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_damping_reset" top="127" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigDamping" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="154" value="Tracking" width="116" />
+        <combo_box control_name="CineLightRigTrackMode" follows="left|top" height="20" layout="topleft" left="132" name="cine_track_mode" top="150" tool_tip="Skeleton follows the pose (chest bone); Body-stable ignores in-place animation and centres on the body position." width="186">
+            <combo_box.item label="Skeleton" name="cine_track_skeleton" value="0" />
+            <combo_box.item label="Body-stable" name="cine_track_body" value="1" />
+        </combo_box>
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_track_mode_reset" top="151" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigTrackMode" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="178" value="Cookie UUID" width="84" />
+        <line_editor control_name="CineLightRigCookieUUID" follows="left|top" height="20" layout="topleft" left="94" name="cine_cookie" top="174" width="224" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_cookie_reset" top="175" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigCookieUUID" />
+        <check_box control_name="CineLightRigCatchlight" follows="left|top" height="18" label="Catchlight" layout="topleft" left="8" name="cine_catchlight" top="200" tool_tip="Eye-level specular accent. It never casts shadows or consumes a shadow slot." width="98" />
+        <button follows="left|top" height="18" layout="topleft" left="108" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_catchlight_reset" top="201" tool_tip="Reset catchlight enable" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigCatchlight" />
+        <text follows="left|top" height="15" layout="topleft" left="132" top="204" value="EV" width="22" />
+        <spinner control_name="CineLightRigCatchlightEV" decimal_digits="2" follows="left|top" height="20" increment="0.25" layout="topleft" left="156" max_val="8" min_val="-8" name="cine_catchlight_ev" top="200" width="162" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_catchlight_ev_reset" top="201" tool_tip="Reset catchlight EV" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigCatchlightEV" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="228" value="Eye size" width="42" />
+        <spinner control_name="CineLightRigCatchlightSize" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="52" max_val="2" min_val="0.15" name="cine_catchlight_size" top="224" width="104" />
+        <button follows="left|top" height="18" layout="topleft" left="160" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_catchlight_size_reset" top="225" tool_tip="Reset catchlight size" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigCatchlightSize" />
+        <text follows="left|top" height="15" layout="topleft" left="180" top="228" value="Angle" width="42" />
+        <spinner control_name="CineLightRigCatchlightAngle" decimal_digits="0" follows="left|top" height="20" increment="5" layout="topleft" left="230" max_val="360" min_val="0" name="cine_catchlight_angle" top="224" width="88" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_catchlight_angle_reset" top="225" tool_tip="Reset to the classic 11 o'clock position" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigCatchlightAngle" />
+        </panel>
+        <panel
+         background_visible="false"
+         border="true"
+         follows="left|top"
+         height="178"
+         layout="topleft"
+         left="0"
+         name="cine_aim_shadow_card"
+         top="0"
+         width="340">
+        <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="8" top="6" value="Aim transforms" width="120" />
+        <text follows="left|top" height="15" layout="topleft" left="92" top="8" value="Yaw / Pitch remain pristine transforms; setup loads keep this aim." width="248" />
+        <check_box control_name="CineLightRigMirror" follows="left|top" height="18" label="Mirror" layout="topleft" left="8" name="cine_mirror" top="30" width="72" />
+        <button follows="left|top" height="22" label="Yaw -" layout="topleft" left="82" name="cine_aim_yaw_minus" top="26" width="44" />
+        <button follows="left|top" height="22" label="Yaw +" layout="topleft" left="130" name="cine_aim_yaw_plus" top="26" width="44" />
+        <button follows="left|top" height="22" label="Pitch -" layout="topleft" left="178" name="cine_aim_pitch_minus" top="26" width="48" />
+        <button follows="left|top" height="22" label="Pitch +" layout="topleft" left="230" name="cine_aim_pitch_plus" top="26" width="48" />
+        <button follows="left|top" height="22" label="Reset" layout="topleft" left="282" name="cine_aim_reset" top="26" width="58" />
 
-    <!-- KEY -->
-    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
-     left="8" name="cine_key_label" text_color="1 0.4 0.4 1" top="892"
-     value="KEY" width="52" />
-    <check_box control_name="CineLightRigKeyOn" follows="left|top" height="18"
-     label="On" layout="topleft" left="62" name="cine_key_on" top="890" width="52" />
-    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
-     left="294" name="cine_key_clip" text_color="1 0.3 0.2 1" top="892"
-     value="CLIP" visible="false" width="45" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="918" value="Yaw" width="42" />
-    <slider can_edit_text="true" control_name="CineLightRigKeyYaw" decimal_digits="1"
-     follows="left|top" height="20" increment="1" layout="topleft" left="52"
-     max_val="180" min_val="-180" name="cine_key_yaw" show_text="true" top="914" width="266" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_key_yaw_reset" top="915" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeyYaw" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="944" value="Pitch" width="42" />
-    <slider can_edit_text="true" control_name="CineLightRigKeyPitch" decimal_digits="1"
-     follows="left|top" height="20" increment="1" layout="topleft" left="52"
-     max_val="85" min_val="-85" name="cine_key_pitch" show_text="true" top="940" width="266" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_key_pitch_reset" top="941" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeyPitch" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="971" value="Colour" width="42" />
-    <combo_box control_name="CineLightRigKeyProfile" follows="left|top" height="20"
-     layout="topleft" left="52" name="cine_key_profile" top="967" width="148" />
-    <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_key_profile_reset" top="968" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeyProfile" />
-    <text follows="left|top" height="15" layout="topleft" left="226" top="971" value="EV" width="20" />
-    <spinner control_name="CineLightRigKeyEV" decimal_digits="2" follows="left|top"
-     height="20" increment="0.25" layout="topleft" left="246" max_val="20"
-     min_val="-20" name="cine_key_ev" top="967" width="72" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_key_ev_reset" top="968" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeyEV" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="997" value="Cone" width="42" />
-    <slider can_edit_text="false" decimal_digits="0" follows="left|top" height="20" increment="1" layout="topleft" left="52" max_val="2" min_val="0" name="cine_key_cone_width" show_text="false" top="993" tool_tip="KEY cone: narrow Snoot, medium Standard, or wide Softbox." width="148" />
-    <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_key_cone_width_reset" top="994" tool_tip="Reset cone width to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeyBeam" />
-    <check_box follows="left|top" height="18" label="Shaft" layout="topleft" left="232" name="cine_key_shaft" top="993" width="60" />
-    <check_box follows="left|top" height="18" label="Hero" layout="topleft" left="292" name="cine_key_hero" top="993" width="48" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="1023" value="Gobo" width="42" />
-    <combo_box control_name="CineLightRigKeyGobo" follows="left|top" height="20" layout="topleft" left="52" name="cine_key_gobo" top="1019" width="100">
-        <combo_list page_lines="12" />
-    </combo_box>
-    <button follows="left|top" height="18" layout="topleft" left="156" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_key_gobo_reset" top="1020" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeyGobo" />
-    <text follows="left|top" height="15" layout="topleft" left="180" top="1023" value="Gel" width="26" />
-    <combo_box control_name="CineLightRigKeyGel" follows="left|top" height="20" layout="topleft" left="208" name="cine_key_gel" top="1019" width="110" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_key_gel_reset" top="1020" tool_tip="Reset to no gel" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeyGel" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="1049" value="Flicker" width="42" />
-    <combo_box control_name="CineLightRigKeyFlicker" follows="left|top" height="20" layout="topleft" left="52" name="cine_key_flicker" top="1045" tool_tip="Seeded, scrub-safe practical light behavior layered over this light, including rig-wide FX." width="148" />
-    <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_key_flicker_reset" top="1046" tool_tip="Reset flicker program" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeyFlicker" />
-    <text follows="left|top" height="15" layout="topleft" left="226" top="1049" value="Amt" width="26" />
-    <slider control_name="CineLightRigKeyFlickerAmount" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="252" max_val="1" min_val="0" name="cine_key_flicker_amount" top="1045" tool_tip="Practical flicker strength. Zero is an exact no-modulation path." width="66" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_key_flicker_amount_reset" top="1046" tool_tip="Reset flicker amount" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeyFlickerAmount" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="1075" value="Shadow soft" width="80" />
-    <spinner control_name="CineLightRigKeyShadowSoft" decimal_digits="2" follows="left|top" height="20" increment="0.25" layout="topleft" left="92" max_val="8" min_val="0" name="cine_key_shadow_soft" top="1071" tool_tip="Per-projector penumbra scale. 0 uses the current global shadow behavior." width="226" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_key_shadow_soft_reset" top="1072" tool_tip="Reset to global shadow behavior" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeyShadowSoft" />
-    <view_border bevel_style="in" follows="left|top|right" height="1" layout="topleft" left="8" top="1100" width="332" />
-
-    <!-- FILL -->
-    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
-     left="8" name="cine_fill_label" text_color="0.4 1 0.4 1" top="1110"
-     value="FILL" width="42" />
-    <check_box control_name="CineLightRigFillOn" follows="left|top" height="18"
-     label="On" layout="topleft" left="52" name="cine_fill_on" top="1108" width="46" />
-    <check_box control_name="CineLightRigRatioLock" follows="left|top" height="18" label="Ratio lock" layout="topleft" left="100" name="cine_ratio_lock" top="1108" tool_tip="Drive FILL EV from KEY EV minus the selected stop ratio." width="76" />
-    <button follows="left|top" height="18" layout="topleft" left="178" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_ratio_lock_reset" top="1108" tool_tip="Reset ratio lock" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRatioLock" />
-    <slider can_edit_text="true" control_name="CineLightRigRatio" decimal_digits="2" follows="left|top" height="20" increment="0.25" layout="topleft" left="198" max_val="5" min_val="0" name="cine_ratio" show_text="true" top="1106" tool_tip="KEY:FILL stop difference, from 1:1 at zero to 32:1 at five stops." width="100" />
-    <button follows="left|top" height="18" layout="topleft" left="300" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_ratio_reset" top="1108" tool_tip="Reset ratio stops" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRatio" />
-    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
-     left="322" name="cine_fill_clip" text_color="1 0.3 0.2 1" top="1110"
-     value="CLIP" visible="false" width="26" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="1136" value="Yaw" width="42" />
-    <slider can_edit_text="true" control_name="CineLightRigFillYaw" decimal_digits="1"
-     follows="left|top" height="20" increment="1" layout="topleft" left="52"
-     max_val="180" min_val="-180" name="cine_fill_yaw" show_text="true" top="1132" width="266" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_fill_yaw_reset" top="1133" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigFillYaw" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="1162" value="Pitch" width="42" />
-    <slider can_edit_text="true" control_name="CineLightRigFillPitch" decimal_digits="1"
-     follows="left|top" height="20" increment="1" layout="topleft" left="52"
-     max_val="85" min_val="-85" name="cine_fill_pitch" show_text="true" top="1158" width="266" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_fill_pitch_reset" top="1159" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigFillPitch" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="1189" value="Colour" width="42" />
-    <combo_box control_name="CineLightRigFillProfile" follows="left|top" height="20"
-     layout="topleft" left="52" name="cine_fill_profile" top="1185" width="148" />
-    <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_fill_profile_reset" top="1186" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigFillProfile" />
-    <text follows="left|top" height="15" layout="topleft" left="226" top="1189" value="EV" width="20" />
-    <spinner control_name="CineLightRigFillEV" decimal_digits="2" follows="left|top"
-     height="20" increment="0.25" layout="topleft" left="246" max_val="20"
-     min_val="-20" name="cine_fill_ev" top="1185" width="72" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_fill_ev_reset" top="1186" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigFillEV" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="1215" value="Cone" width="42" />
-    <slider can_edit_text="false" decimal_digits="0" follows="left|top" height="20" increment="1" layout="topleft" left="52" max_val="2" min_val="0" name="cine_fill_cone_width" show_text="false" top="1211" tool_tip="FILL cone: narrow Snoot, medium Standard, or wide Softbox." width="148" />
-    <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_fill_cone_width_reset" top="1212" tool_tip="Reset cone width to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigFillBeam" />
-    <check_box follows="left|top" height="18" label="Shaft" layout="topleft" left="232" name="cine_fill_shaft" top="1211" width="60" />
-    <check_box follows="left|top" height="18" label="Hero" layout="topleft" left="292" name="cine_fill_hero" top="1211" width="48" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="1241" value="Gobo" width="42" />
-    <combo_box control_name="CineLightRigFillGobo" follows="left|top" height="20" layout="topleft" left="52" name="cine_fill_gobo" top="1237" width="100">
-        <combo_list page_lines="12" />
-    </combo_box>
-    <button follows="left|top" height="18" layout="topleft" left="156" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_fill_gobo_reset" top="1238" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigFillGobo" />
-    <text follows="left|top" height="15" layout="topleft" left="180" top="1241" value="Gel" width="26" />
-    <combo_box control_name="CineLightRigFillGel" follows="left|top" height="20" layout="topleft" left="208" name="cine_fill_gel" top="1237" width="110" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_fill_gel_reset" top="1238" tool_tip="Reset to no gel" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigFillGel" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="1267" value="Flicker" width="42" />
-    <combo_box control_name="CineLightRigFillFlicker" follows="left|top" height="20" layout="topleft" left="52" name="cine_fill_flicker" top="1263" tool_tip="Seeded, scrub-safe practical light behavior layered over this light, including rig-wide FX." width="148" />
-    <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_fill_flicker_reset" top="1264" tool_tip="Reset flicker program" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigFillFlicker" />
-    <text follows="left|top" height="15" layout="topleft" left="226" top="1267" value="Amt" width="26" />
-    <slider control_name="CineLightRigFillFlickerAmount" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="252" max_val="1" min_val="0" name="cine_fill_flicker_amount" top="1263" tool_tip="Practical flicker strength. Zero is an exact no-modulation path." width="66" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_fill_flicker_amount_reset" top="1264" tool_tip="Reset flicker amount" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigFillFlickerAmount" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="1293" value="Shadow soft" width="80" />
-    <spinner control_name="CineLightRigFillShadowSoft" decimal_digits="2" follows="left|top" height="20" increment="0.25" layout="topleft" left="92" max_val="8" min_val="0" name="cine_fill_shadow_soft" top="1289" tool_tip="Per-projector penumbra scale. 0 uses the current global shadow behavior." width="226" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_fill_shadow_soft_reset" top="1290" tool_tip="Reset to global shadow behavior" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigFillShadowSoft" />
-    <view_border bevel_style="in" follows="left|top|right" height="1" layout="topleft" left="8" top="1318" width="332" />
-
-    <!-- RIM -->
-    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
-     left="8" name="cine_rim_label" text_color="0.4 0.7 1 1" top="1328"
-     value="RIM" width="52" />
-    <check_box control_name="CineLightRigRimOn" follows="left|top" height="18"
-     label="On" layout="topleft" left="62" name="cine_rim_on" top="1326" width="52" />
-    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
-     left="294" name="cine_rim_clip" text_color="1 0.3 0.2 1" top="1328"
-     value="CLIP" visible="false" width="45" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="1354" value="Yaw" width="42" />
-    <slider can_edit_text="true" control_name="CineLightRigRimYaw" decimal_digits="1"
-     follows="left|top" height="20" increment="1" layout="topleft" left="52"
-     max_val="180" min_val="-180" name="cine_rim_yaw" show_text="true" top="1350" width="266" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rim_yaw_reset" top="1351" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRimYaw" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="1380" value="Pitch" width="42" />
-    <slider can_edit_text="true" control_name="CineLightRigRimPitch" decimal_digits="1"
-     follows="left|top" height="20" increment="1" layout="topleft" left="52"
-     max_val="85" min_val="-85" name="cine_rim_pitch" show_text="true" top="1376" width="266" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rim_pitch_reset" top="1377" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRimPitch" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="1407" value="Colour" width="42" />
-    <combo_box control_name="CineLightRigRimProfile" follows="left|top" height="20"
-     layout="topleft" left="52" name="cine_rim_profile" top="1403" width="148" />
-    <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rim_profile_reset" top="1404" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRimProfile" />
-    <text follows="left|top" height="15" layout="topleft" left="226" top="1407" value="EV" width="20" />
-    <spinner control_name="CineLightRigRimEV" decimal_digits="2" follows="left|top"
-     height="20" increment="0.25" layout="topleft" left="246" max_val="20"
-     min_val="-20" name="cine_rim_ev" top="1403" width="72" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rim_ev_reset" top="1404" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRimEV" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="1433" value="Cone" width="42" />
-    <slider can_edit_text="false" decimal_digits="0" follows="left|top" height="20" increment="1" layout="topleft" left="52" max_val="2" min_val="0" name="cine_rim_cone_width" show_text="false" top="1429" tool_tip="RIM cone: narrow Snoot, medium Standard, or wide Softbox." width="148" />
-    <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rim_cone_width_reset" top="1430" tool_tip="Reset cone width to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRimBeam" />
-    <check_box follows="left|top" height="18" label="Shaft" layout="topleft" left="232" name="cine_rim_shaft" top="1429" width="60" />
-    <check_box follows="left|top" height="18" label="Hero" layout="topleft" left="292" name="cine_rim_hero" top="1429" width="48" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="1459" value="Gobo" width="42" />
-    <combo_box control_name="CineLightRigRimGobo" follows="left|top" height="20" layout="topleft" left="52" name="cine_rim_gobo" top="1455" width="100">
-        <combo_list page_lines="12" />
-    </combo_box>
-    <button follows="left|top" height="18" layout="topleft" left="156" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rim_gobo_reset" top="1456" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRimGobo" />
-    <text follows="left|top" height="15" layout="topleft" left="180" top="1459" value="Gel" width="26" />
-    <combo_box control_name="CineLightRigRimGel" follows="left|top" height="20" layout="topleft" left="208" name="cine_rim_gel" top="1455" width="110" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rim_gel_reset" top="1456" tool_tip="Reset to no gel" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRimGel" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="1485" value="Flicker" width="42" />
-    <combo_box control_name="CineLightRigRimFlicker" follows="left|top" height="20" layout="topleft" left="52" name="cine_rim_flicker" top="1481" tool_tip="Seeded, scrub-safe practical light behavior layered over this light, including rig-wide FX." width="148" />
-    <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rim_flicker_reset" top="1482" tool_tip="Reset flicker program" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRimFlicker" />
-    <text follows="left|top" height="15" layout="topleft" left="226" top="1485" value="Amt" width="26" />
-    <slider control_name="CineLightRigRimFlickerAmount" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="252" max_val="1" min_val="0" name="cine_rim_flicker_amount" top="1481" tool_tip="Practical flicker strength. Zero is an exact no-modulation path." width="66" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rim_flicker_amount_reset" top="1482" tool_tip="Reset flicker amount" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRimFlickerAmount" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="1511" value="Shadow soft" width="80" />
-    <spinner control_name="CineLightRigRimShadowSoft" decimal_digits="2" follows="left|top" height="20" increment="0.25" layout="topleft" left="92" max_val="8" min_val="0" name="cine_rim_shadow_soft" top="1507" tool_tip="Per-projector penumbra scale. 0 uses the current global shadow behavior." width="226" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rim_shadow_soft_reset" top="1508" tool_tip="Reset to global shadow behavior" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRimShadowSoft" />
-    <view_border bevel_style="in" follows="left|top|right" height="1" layout="topleft" left="8" top="1536" width="332" />
-
-    <!-- BG -->
-    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
-     left="8" name="cine_bg_label" text_color="1 1 0.4 1" top="1546"
-     value="BG" width="52" />
-    <check_box control_name="CineLightRigBgOn" follows="left|top" height="18"
-     label="On" layout="topleft" left="62" name="cine_bg_on" top="1544" width="52" />
-    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
-     left="294" name="cine_bg_clip" text_color="1 0.3 0.2 1" top="1546"
-     value="CLIP" visible="false" width="45" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="1572" value="Yaw" width="42" />
-    <slider can_edit_text="true" control_name="CineLightRigBgYaw" decimal_digits="1"
-     follows="left|top" height="20" increment="1" layout="topleft" left="52"
-     max_val="180" min_val="-180" name="cine_bg_yaw" show_text="true" top="1568" width="266" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bg_yaw_reset" top="1569" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBgYaw" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="1598" value="Pitch" width="42" />
-    <slider can_edit_text="true" control_name="CineLightRigBgPitch" decimal_digits="1"
-     follows="left|top" height="20" increment="1" layout="topleft" left="52"
-     max_val="85" min_val="-85" name="cine_bg_pitch" show_text="true" top="1594" width="266" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bg_pitch_reset" top="1595" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBgPitch" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="1625" value="Colour" width="42" />
-    <combo_box control_name="CineLightRigBgProfile" follows="left|top" height="20"
-     layout="topleft" left="52" name="cine_bg_profile" top="1621" width="148" />
-    <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bg_profile_reset" top="1622" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBgProfile" />
-    <text follows="left|top" height="15" layout="topleft" left="226" top="1625" value="EV" width="20" />
-    <spinner control_name="CineLightRigBgEV" decimal_digits="2" follows="left|top"
-     height="20" increment="0.25" layout="topleft" left="246" max_val="20"
-     min_val="-20" name="cine_bg_ev" top="1621" width="72" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bg_ev_reset" top="1622" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBgEV" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="1651" value="Cone" width="42" />
-    <slider can_edit_text="false" decimal_digits="0" follows="left|top" height="20" increment="1" layout="topleft" left="52" max_val="2" min_val="0" name="cine_bg_cone_width" show_text="false" top="1647" tool_tip="BG cone: narrow Snoot, medium Standard, or wide Softbox." width="148" />
-    <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bg_cone_width_reset" top="1648" tool_tip="Reset cone width to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBgBeam" />
-    <check_box follows="left|top" height="18" label="Shaft" layout="topleft" left="232" name="cine_bg_shaft" top="1647" width="60" />
-    <check_box follows="left|top" height="18" label="Hero" layout="topleft" left="292" name="cine_bg_hero" top="1647" width="48" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="1677" value="Gobo" width="42" />
-    <combo_box control_name="CineLightRigBgGobo" follows="left|top" height="20" layout="topleft" left="52" name="cine_bg_gobo" top="1673" width="100">
-        <combo_list page_lines="12" />
-    </combo_box>
-    <button follows="left|top" height="18" layout="topleft" left="156" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bg_gobo_reset" top="1674" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBgGobo" />
-    <text follows="left|top" height="15" layout="topleft" left="180" top="1677" value="Gel" width="26" />
-    <combo_box control_name="CineLightRigBgGel" follows="left|top" height="20" layout="topleft" left="208" name="cine_bg_gel" top="1673" width="110" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bg_gel_reset" top="1674" tool_tip="Reset to no gel" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBgGel" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="1703" value="Flicker" width="42" />
-    <combo_box control_name="CineLightRigBgFlicker" follows="left|top" height="20" layout="topleft" left="52" name="cine_bg_flicker" top="1699" tool_tip="Seeded, scrub-safe practical light behavior layered over this light, including rig-wide FX." width="148" />
-    <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bg_flicker_reset" top="1700" tool_tip="Reset flicker program" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBgFlicker" />
-    <text follows="left|top" height="15" layout="topleft" left="226" top="1703" value="Amt" width="26" />
-    <slider control_name="CineLightRigBgFlickerAmount" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="252" max_val="1" min_val="0" name="cine_bg_flicker_amount" top="1699" tool_tip="Practical flicker strength. Zero is an exact no-modulation path." width="66" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bg_flicker_amount_reset" top="1700" tool_tip="Reset flicker amount" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBgFlickerAmount" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="1729" value="Shadow soft" width="80" />
-    <spinner control_name="CineLightRigBgShadowSoft" decimal_digits="2" follows="left|top" height="20" increment="0.25" layout="topleft" left="92" max_val="8" min_val="0" name="cine_bg_shadow_soft" top="1725" tool_tip="Per-projector penumbra scale. 0 uses the current global shadow behavior." width="226" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bg_shadow_soft_reset" top="1726" tool_tip="Reset to global shadow behavior" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBgShadowSoft" />
-    <view_border bevel_style="in" follows="left|top|right" height="1" layout="topleft" left="8" top="1754" width="332" />
-
-    <!-- Setups: presets + transition / random-cycle controls -->
-    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="8" top="148" value="Setups" width="80" />
-    <combo_box allow_text_entry="true" follows="left|top" height="22" layout="topleft" left="82" name="cine_setup_combo" top="144" width="128" />
-    <button follows="left|top" height="22" label="Save" layout="topleft" left="214" name="cine_setup_save" top="144" tool_tip="Built-in setups are read-only. Type a new setup name to enable Save." width="58" />
-    <button follows="left|top" height="22" label="Delete" layout="topleft" left="276" name="cine_setup_delete" top="144" width="64" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="174" value="Easing" width="44" />
-    <combo_box control_name="CineLightRigEasing" follows="left|top" height="20" layout="topleft" left="56" name="cine_easing" top="170" tool_tip="Transition curve used for setup loads, random cycling and live edits." width="150">
-        <combo_box.item label="Linear" name="cine_easing_linear" value="0" />
-        <combo_box.item label="Smoothstep" name="cine_easing_smoothstep" value="1" />
-        <combo_box.item label="Ease-in-out" name="cine_easing_inout" value="2" />
-        <combo_box.item label="Ease-out" name="cine_easing_out" value="3" />
-    </combo_box>
-    <check_box control_name="CineLightRigRandomCycle" follows="left|top" height="18" label="Random cycle" layout="topleft" left="212" name="cine_random_cycle" top="172" tool_tip="Automatically cross-fade to a random master setup on an interval." width="128" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="198" value="Interval s" width="64" />
-    <slider can_edit_text="true" control_name="CineLightRigRandomInterval" decimal_digits="0" follows="left|top" height="20" increment="1" layout="topleft" left="76" max_val="300" min_val="1" name="cine_random_interval" show_text="true" top="194" tool_tip="Seconds between random setup changes." width="242" />
-    <view_border bevel_style="in" follows="left|top|right" height="1" layout="topleft" left="8" top="220" width="332" />
-
-    <!-- Effects -->
-    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="8" top="232" value="Effects" width="80" />
-    <combo_box control_name="CineLightRigFX" follows="left|top" height="22" layout="topleft" left="82" name="cine_fx_combo" top="228" width="128" />
-    <button follows="left|top" height="22" label="Stop" layout="topleft" left="214" name="cine_fx_stop" top="228" width="58" />
-    <check_box control_name="CineLightRigManual" follows="left|top" height="18" label="Manual" layout="topleft" left="278" name="cine_manual" top="230" width="70" tool_tip="Manual mode: forces effects (FX) off and locks the selector so per-light aim, exposure and colour stay hand-controlled. Uncheck to use effects." />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="262" value="Seed" width="40" />
-    <line_editor follows="left|top" height="20" layout="topleft" left="52" max_length_chars="10" name="cine_seed" top="258" width="158" />
-    <button follows="left|top" height="22" label="Randomize" layout="topleft" left="214" name="cine_seed_randomize" top="258" width="86" />
-    <view_border bevel_style="in" follows="left|top|right" height="1" layout="topleft" left="8" top="284" width="332" />
-
-    <!-- Easy exposure macro -->
-    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="8" top="292" value="Easy" width="80" />
-    <check_box control_name="CineLightRigEasyMode" follows="left|top" height="18" label="Easy mode" layout="topleft" left="246" name="cine_easy_mode" top="290" tool_tip="On uses the simplified exposure controls. Off enables Advanced EV and Ratio controls." width="94" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="318" value="Brightness" width="72" />
-    <slider can_edit_text="true" decimal_digits="1" follows="left|top" height="20" increment="0.1" layout="topleft" left="82" max_val="16" min_val="-16" name="cine_easy_brightness" show_text="true" top="314" width="236" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_easy_brightness_reset" top="315" tool_tip="Reset brightness to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigMasterEV" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="342" value="Drama" width="72" />
-    <slider can_edit_text="true" decimal_digits="1" follows="left|top" height="20" increment="0.1" layout="topleft" left="82" max_val="5" min_val="0" name="cine_easy_drama" show_text="true" top="338" tool_tip="KEY:FILL stop difference: 0 is flat, 2 is natural, and 5 is noir." width="236" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_easy_drama_reset" top="339" tool_tip="Reset drama to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRatio" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="366" value="Rim" width="38" />
-    <combo_box follows="left|top" height="20" layout="topleft" left="46" name="cine_easy_rim" top="362" width="116">
-        <combo_box.item label="Off" name="cine_easy_rim_off" value="0" />
-        <combo_box.item label="Faint" name="cine_easy_rim_faint" value="1" />
-        <combo_box.item label="Subtle" name="cine_easy_rim_subtle" value="2" />
-        <combo_box.item label="Strong" name="cine_easy_rim_strong" value="3" />
-    </combo_box>
-    <text follows="left|top" height="15" layout="topleft" left="180" top="366" value="BG" width="28" />
-    <combo_box follows="left|top" height="20" layout="topleft" left="208" name="cine_easy_bg" top="362" width="132">
-        <combo_box.item label="Off" name="cine_easy_bg_off" value="0" />
-        <combo_box.item label="Faint" name="cine_easy_bg_faint" value="1" />
-        <combo_box.item label="Subtle" name="cine_easy_bg_subtle" value="2" />
-        <combo_box.item label="Strong" name="cine_easy_bg_strong" value="3" />
-    </combo_box>
-    <text follows="left|top" height="15" layout="topleft" left="8" top="390" value="Warmth" width="52" />
-    <slider can_edit_text="true" decimal_digits="0" follows="left|top" height="20" increment="5" layout="topleft" left="62" max_val="150" min_val="-110" name="cine_easy_warmth" show_text="true" top="386" tool_tip="Relative colour-temperature trim in mireds: + warms and - cools all lights." width="256" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_easy_warmth_reset" top="387" tool_tip="Reset warmth to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigMasterTempMired" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="414" value="Cone" width="38" />
-    <slider can_edit_text="false" decimal_digits="0" follows="left|top" height="20" increment="1" layout="topleft" left="46" max_val="2" min_val="0" name="cine_easy_cone_width" show_text="false" top="410" tool_tip="Set all rig lights to a narrow Snoot, medium Standard, or wide Softbox beam." width="92" />
-    <button follows="left|top" height="18" layout="topleft" left="140" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_easy_cone_width_reset" top="411" tool_tip="Reset all rig cone widths to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeyBeam,CineLightRigFillBeam,CineLightRigRimBeam,CineLightRigBgBeam" />
-    <text follows="left|top" height="15" layout="topleft" left="172" top="414" value="Edge" width="36" />
-    <slider can_edit_text="false" decimal_digits="2" follows="left|top" height="20" increment="0.01" layout="topleft" left="208" max_val="0.5" min_val="0" name="cine_easy_cone_feather" show_text="false" top="410" tool_tip="Soften or sharpen the visible edge of every volumetric projector cone." width="112" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_easy_cone_feather_reset" top="411" tool_tip="Reset cone edge feather to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="BDMergeProjectorVolumetricsFeather" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="438" value="Shaft" width="44" tool_tip="Visible airborne beam length for all volumetric projector shafts." />
-    <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsMaxDistance" decimal_digits="1" follows="left|top" height="20" increment="0.1" layout="topleft" left="54" max_val="64" min_val="0" name="cine_easy_shaft_length" show_text="true" top="434" tool_tip="Visible airborne beam length in metres for every volumetric projector shaft. 0 follows each projector's full light range; surface illumination is unchanged. Hover and scroll the mouse wheel for 0.1 m steps." wheel_adjust="true" width="264" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_easy_shaft_length_reset" top="435" tool_tip="Reset to full projector range" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="BDMergeProjectorVolumetricsMaxDistance" />
-    <view_border bevel_style="in" follows="left|top|right" height="1" layout="topleft" left="8" top="456" width="332" />
-
-    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="8" top="464" value="Rig" width="80" />
-    <button follows="left|top" height="24" label="Reset all" layout="topleft" left="252" name="cine_reset_all" top="464" width="88" />
-    <text follows="left|top" height="15" layout="topleft" left="8" name="cine_radius_label" top="490" value="Radius" width="70" tool_tip="Full brightness compensation to 9.1 m; projector reach ends at 20 m." />
-    <spinner control_name="CineLightRigRadius" decimal_digits="2" follows="left|top" height="20" increment="0.25" layout="topleft" left="82" max_val="512" min_val="0.5" name="cine_radius" top="486" tool_tip="Orbit radius. Full brightness compensation up to 9.1 m; from 9.1&#x2013;20 m the light dims as the 20 m projector reach cap bites; past 20 m the subject leaves the light's reach entirely. Scale-aware geometry grows with the subject, or grows with a spread anchor group, until the same cap." width="74" />
-    <button follows="left|top" height="18" layout="topleft" left="160" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_radius_reset" top="487" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRadius" />
-    <text follows="left|top" height="15" layout="topleft" left="180" top="490" value="Master EV" width="64" />
-    <spinner control_name="CineLightRigMasterEV" decimal_digits="2" follows="left|top" height="20" increment="0.25" layout="topleft" left="246" max_val="16" min_val="-16" name="cine_master_ev" top="486" width="72" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_master_ev_reset" top="487" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigMasterEV" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="514" value="Offset Z" width="70" />
-    <spinner control_name="CineLightRigOffsetZ" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="82" max_val="10" min_val="-10" name="cine_offset_z" top="510" width="74" />
-    <button follows="left|top" height="18" layout="topleft" left="160" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_offset_z_reset" top="511" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigOffsetZ" />
-    <text follows="left|top" height="15" layout="topleft" left="180" top="514" value="Headroom" width="64" />
-    <spinner control_name="CineLightRigHeadroomStops" decimal_digits="2" follows="left|top" height="20" increment="0.25" layout="topleft" left="246" max_val="16" min_val="0" name="cine_headroom" top="510" width="72" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_headroom_reset" top="511" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigHeadroomStops" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="538" value="Warmth" width="42" />
-    <slider can_edit_text="true" control_name="CineLightRigMasterTempMired" decimal_digits="0" follows="left|top" height="20" increment="5" layout="topleft" left="52" max_val="150" min_val="-110" name="cine_master_temp" show_text="true" top="534" tool_tip="Relative colour-temperature trim in mireds: + warms, - cools all lights together; each light keeps its own gel. 0 = off." width="266" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_master_temp_reset" top="535" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigMasterTempMired" />
-    <check_box control_name="CineLightRigBounceEnabled" follows="left|top" height="18" label="Bounce" layout="topleft" left="8" name="cine_bounce" top="562" width="78" />
-    <text follows="left|top" height="15" layout="topleft" left="92" top="564" value="Ratio" width="38" />
-    <spinner control_name="CineLightRigBounceRatio" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="132" max_val="1" min_val="0" name="cine_bounce_ratio" top="560" width="68" />
-    <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bounce_ratio_reset" top="561" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBounceRatio" />
-    <text follows="left|top" height="15" layout="topleft" left="226" top="564" value="Ease s" width="38" />
-    <spinner control_name="CineLightRigTransitionSec" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="264" max_val="10" min_val="0" name="cine_transition" top="560" width="54" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_transition_reset" top="561" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigTransitionSec" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="588" value="Follow damping s" width="116" />
-    <spinner control_name="CineLightRigDamping" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="132" max_val="10" min_val="0" name="cine_damping" top="584" width="186" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_damping_reset" top="585" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigDamping" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="612" value="Tracking" width="116" />
-    <combo_box control_name="CineLightRigTrackMode" follows="left|top" height="20" layout="topleft" left="132" name="cine_track_mode" top="608" tool_tip="Skeleton follows the pose (chest bone); Body-stable ignores in-place animation and centres on the body position." width="186">
-        <combo_box.item label="Skeleton" name="cine_track_skeleton" value="0" />
-        <combo_box.item label="Body-stable" name="cine_track_body" value="1" />
-    </combo_box>
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_track_mode_reset" top="609" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigTrackMode" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="636" value="Cookie UUID" width="84" />
-    <line_editor control_name="CineLightRigCookieUUID" follows="left|top" height="20" layout="topleft" left="94" name="cine_cookie" top="632" width="224" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_cookie_reset" top="633" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigCookieUUID" />
-    <check_box control_name="CineLightRigCatchlight" follows="left|top" height="18" label="Catchlight" layout="topleft" left="8" name="cine_catchlight" top="658" tool_tip="Eye-level specular accent. It never casts shadows or consumes a shadow slot." width="98" />
-    <button follows="left|top" height="18" layout="topleft" left="108" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_catchlight_reset" top="659" tool_tip="Reset catchlight enable" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigCatchlight" />
-    <text follows="left|top" height="15" layout="topleft" left="132" top="662" value="EV" width="22" />
-    <spinner control_name="CineLightRigCatchlightEV" decimal_digits="2" follows="left|top" height="20" increment="0.25" layout="topleft" left="156" max_val="8" min_val="-8" name="cine_catchlight_ev" top="658" width="162" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_catchlight_ev_reset" top="659" tool_tip="Reset catchlight EV" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigCatchlightEV" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="686" value="Eye size" width="42" />
-    <spinner control_name="CineLightRigCatchlightSize" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="52" max_val="2" min_val="0.15" name="cine_catchlight_size" top="682" width="104" />
-    <button follows="left|top" height="18" layout="topleft" left="160" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_catchlight_size_reset" top="683" tool_tip="Reset catchlight size" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigCatchlightSize" />
-    <text follows="left|top" height="15" layout="topleft" left="180" top="686" value="Angle" width="42" />
-    <spinner control_name="CineLightRigCatchlightAngle" decimal_digits="0" follows="left|top" height="20" increment="5" layout="topleft" left="230" max_val="360" min_val="0" name="cine_catchlight_angle" top="682" width="88" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_catchlight_angle_reset" top="683" tool_tip="Reset to the classic 11 o'clock position" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigCatchlightAngle" />
-
-    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="8" top="708" value="Aim transforms" width="120" />
-    <text follows="left|top" height="15" layout="topleft" left="92" top="710" value="Yaw / Pitch remain pristine transforms; setup loads keep this aim." width="248" />
-    <check_box control_name="CineLightRigMirror" follows="left|top" height="18" label="Mirror" layout="topleft" left="8" name="cine_mirror" top="732" width="72" />
-    <button follows="left|top" height="22" label="Yaw -" layout="topleft" left="82" name="cine_aim_yaw_minus" top="728" width="44" />
-    <button follows="left|top" height="22" label="Yaw +" layout="topleft" left="130" name="cine_aim_yaw_plus" top="728" width="44" />
-    <button follows="left|top" height="22" label="Pitch -" layout="topleft" left="178" name="cine_aim_pitch_minus" top="728" width="48" />
-    <button follows="left|top" height="22" label="Pitch +" layout="topleft" left="230" name="cine_aim_pitch_plus" top="728" width="48" />
-    <button follows="left|top" height="22" label="Reset" layout="topleft" left="282" name="cine_aim_reset" top="728" width="58" />
-
-    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="8" top="758" value="Shadow policy" width="110" />
-    <combo_box control_name="CineLightRigShadowMode" follows="left|top" height="22" layout="topleft" left="122" name="cine_shadow_mode" top="754" width="196">
-        <combo_box.item label="No rig shadows" name="cine_shadow_none" value="0" />
-        <combo_box.item label="KEY only" name="cine_shadow_key" value="1" />
-        <combo_box.item label="All projectors compete" name="cine_shadow_all" value="2" />
-    </combo_box>
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_shadow_mode_reset" top="755" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigShadowMode" />
-    <check_box control_name="CineLightRigAutoShadowSlots" follows="left|top" height="18" label="Auto-raise Max Spot Shadows" layout="topleft" left="8" name="cine_auto_shadow_slots" top="782" tool_tip="Raise-only across all enabled rig instances, capped by the GPU. Restores the pre-raise value when the rigs go dark unless another control changed it." width="250" />
-    <text follows="left|top|right" height="42" layout="topleft" left="8" name="cine_shadow_hint" text_color="1 0.75 0.25 1" top="804" visible="false" width="332" word_wrap="true" />
-    <button follows="left|top" height="22" label="Allow 2 spot shadows" layout="topleft" left="8" name="cine_shadow_fixit" top="850" tool_tip="Raises Max Spot Shadows so every requesting rig projector gets a shadow slot. Each slot renders an extra shadow map per frame." visible="false" width="170" />
-
-    <!-- Fixture 2.0 editor: one compact surface edits the selected role. -->
-    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
-     left="8" top="1764" value="Fixture 2.0" width="90" />
-    <text follows="left|top" height="15" layout="topleft" left="104" top="1766"
-     value="Light" width="34" />
-    <combo_box follows="left|top" height="20" layout="topleft" left="140"
-     name="cine_fixture_role" top="1762" width="86" />
-    <check_box follows="left|top" height="18" label="Use fixture" layout="topleft"
-     left="236" name="cine_fixture_mode" top="1764"
-     tool_tip="Use Kelvin, a three-gel stack and modeled source size instead of the legacy colour profile and single gel." width="104" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="1792"
-     value="Preset" width="52" />
-    <combo_box follows="left|top" height="20" layout="topleft" left="62"
-     name="cine_fixture_preset" top="1788"
-     tool_tip="Seeds this light's Kelvin, source size, beam and suggested gels; later edits are independent." width="278" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="1818"
-     value="Kelvin" width="52" />
-    <spinner decimal_digits="0" follows="left|top" height="20" increment="50"
-     layout="topleft" left="62" max_val="20000" min_val="2000"
-     name="cine_fixture_kelvin" top="1814" width="104" />
-    <text follows="left|top" height="15" layout="topleft" left="180" top="1818"
-     value="Source m" width="62" />
-    <spinner decimal_digits="2" follows="left|top" height="20" increment="0.05"
-     layout="topleft" left="244" max_val="4" min_val="0.01"
-     name="cine_fixture_source_size" top="1814"
-     tool_tip="Effective emitting diameter. Bigger and closer produces softer shadows without changing EV." width="96" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="1844"
-     value="Gel stack" width="58" />
-    <combo_box follows="left|top" height="20" layout="topleft" left="68"
-     name="cine_fixture_gel_0" top="1840" width="88" />
-    <combo_box follows="left|top" height="20" layout="topleft" left="160"
-     name="cine_fixture_gel_1" top="1840" width="88" />
-    <combo_box follows="left|top" height="20" layout="topleft" left="252"
-     name="cine_fixture_gel_2" top="1840" width="88" />
-    <text follows="left|top|right" height="30" layout="topleft" left="8"
-     top="1866" value="CT gels add in mireds; correction and color gels multiply. KEY source size drives the single catchlight scale." width="332" word_wrap="true" />
-    <view_border bevel_style="in" follows="left|top|right" height="1"
-     layout="topleft" left="8" top="1902" width="332" />
-    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
-     left="8" top="1912" value="Cookie library" width="120" />
-    <combo_box follows="left|top" height="22" layout="topleft" left="8" list_min_width="360"
-     name="cine_gobo_library" top="1934"
-     tool_tip="Categorized achromatic breakup library for the selected Fixture 2.0 light." width="252">
-        <combo_list page_lines="8" />
-    </combo_box>
-    <icon follows="left|top" height="64" image_name="CineGobo01" layout="topleft"
-     left="272" name="cine_gobo_preview" top="1924"
-     tool_tip="Sharp source thumbnail. Projection automatically uses sharp, medium or heavy pre-blur from modeled softness." width="64" />
-    <text follows="left|top" height="16" layout="topleft" left="8"
-     name="cine_gobo_softness" top="1964" value="sharp variant" width="252" />
-    <text follows="left|top|right" height="32" layout="topleft" left="8"
-     top="1986" value="Cookie blur follows source size; Rotating Fan uses presentation-time UV rotation." width="252" word_wrap="true" />
-    <button follows="left|top" height="24" label="Lighting cue stack..."
-     layout="topleft" left="8" name="cine_open_cues" top="2014" width="160" />
-
-    <!-- Lens Flare: rig-fed cinematic flare/star, paired with Volumetrics
-         (the per-fixture Shaft toggles above). Element controls also apply
-         to the sun flare, which otherwise lives in debug settings only. -->
-    <view_border bevel_style="in" follows="left|top|right" height="1" layout="topleft" left="8" top="2048" width="332" />
-    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="8" top="2058" value="Lens Flare" width="120" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="2084" value="Preset" width="50" />
-    <combo_box follows="left|top" height="22" layout="topleft" left="62" name="cine_flare_preset" top="2080" tool_tip="Applies a full look (streak, ghosts, halo, rings, circles, iris, arc) and snaps back to this sentinel. Master strength/intensity are not touched by presets." width="278">
-        <combo_list mouse_wheel_opaque="true" page_lines="8" />
-    </combo_box>
-    <text follows="left|top" height="15" layout="topleft" left="8" top="2110" value="Master" width="70" tool_tip="One-knob brightness scale over the whole composited flare (sun and rig sources together), independent of preset." />
-    <slider can_edit_text="true" control_name="RenderLensFlareMaster" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="82" max_val="4" min_val="0" name="cine_flare_master" show_text="true" top="2106" width="236" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_master_reset" top="2107" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareMaster" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="2136" value="Rig flare" width="70" tool_tip="Projector-only flare master. Values above 0 suppress the legacy sun/moon flare; 0 restores the independent sun/moon path." />
-    <slider can_edit_text="true" control_name="RenderCineLensFlareStrength" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="82" max_val="2" min_val="0" name="cine_flare_rig_strength" show_text="true" top="2132" width="236" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_rig_strength_reset" top="2133" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderCineLensFlareStrength" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="2162" value="Rig intensity" width="70" tool_tip="Brightness multiplier applied to every active rig-projector flare source." />
-    <slider can_edit_text="true" control_name="RenderCineLensFlareIntensity" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="82" max_val="4" min_val="0" name="cine_flare_rig_intensity" show_text="true" top="2158" width="236" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_rig_intensity_reset" top="2159" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderCineLensFlareIntensity" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="2188" value="Threshold" width="70" tool_tip="How much brighter than a lit surface a spot must be to flare. Lit floors/walls never flare; raise to require only your brightest light sources; lower toward 0 for dimmer emissive fixtures." />
-    <slider can_edit_text="true" control_name="RenderCineLensFlareThreshold" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="82" max_val="6" min_val="0" name="cine_flare_threshold" show_text="true" top="2184" width="236" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_threshold_reset" top="2185" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderCineLensFlareThreshold" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="2214" value="Starburst" width="70" tool_tip="Diffraction-spike star radiating from each flare source. 0 disables it." />
-    <slider can_edit_text="true" control_name="RenderLensFlareStarburst" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="82" max_val="5" min_val="0" name="cine_flare_starburst" show_text="true" top="2210" width="236" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_starburst_reset" top="2211" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareStarburst" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="2240" value="Spikes" width="42" />
-    <spinner control_name="RenderLensFlareStarburstSpikes" decimal_digits="0" follows="left|top" height="20" increment="1" layout="topleft" left="50" max_val="32" min_val="1" name="cine_flare_starburst_spikes" top="2236" width="60" />
-    <text follows="left|top" height="15" layout="topleft" left="118" top="2240" value="Sharp" width="36" />
-    <spinner control_name="RenderLensFlareStarburstSharpness" decimal_digits="0" follows="left|top" height="20" increment="1" layout="topleft" left="156" max_val="256" min_val="1" name="cine_flare_starburst_sharpness" top="2236" width="60" />
-    <text follows="left|top" height="15" layout="topleft" left="224" top="2240" value="Len" width="26" />
-    <spinner control_name="RenderLensFlareStarburstLength" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="252" max_val="1" min_val="0" name="cine_flare_starburst_length" top="2236" width="68" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="2266" value="Iris" width="70" tool_tip="Polygonal (n-gon) iris-ghost chain marching along the source-to-center axis." />
-    <slider can_edit_text="true" control_name="RenderLensFlareIris" decimal_digits="2" follows="left|top" height="20" increment="0.02" layout="topleft" left="82" max_val="1" min_val="0" name="cine_flare_iris" show_text="true" top="2262" width="236" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_iris_reset" top="2263" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareIris" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="2292" value="Ring" width="70" tool_tip="Chromatic dispersion rings around the source." />
-    <slider can_edit_text="true" control_name="RenderLensFlareRing" decimal_digits="2" follows="left|top" height="20" increment="0.02" layout="topleft" left="82" max_val="1" min_val="0" name="cine_flare_ring" show_text="true" top="2288" width="236" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_ring_reset" top="2289" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareRing" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="2318" value="Circle" width="70" tool_tip="Spectral lens circles ringing outward through the optical axis." />
-    <slider can_edit_text="true" control_name="RenderLensFlareCircle" decimal_digits="2" follows="left|top" height="20" increment="0.02" layout="topleft" left="82" max_val="1" min_val="0" name="cine_flare_circle" show_text="true" top="2314" width="236" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_circle_reset" top="2315" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareCircle" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="2344" value="Arc" width="70" tool_tip="Partial spectral arc on the far side of frame center." />
-    <slider can_edit_text="true" control_name="RenderLensFlareArc" decimal_digits="2" follows="left|top" height="20" increment="0.02" layout="topleft" left="82" max_val="1" min_val="0" name="cine_flare_arc" show_text="true" top="2340" width="236" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_arc_reset" top="2341" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareArc" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="2370" value="Ghost chroma" width="90" tool_tip="Red/blue radial split on the ghost discs." />
-    <slider can_edit_text="true" control_name="RenderLensFlareGhostChroma" decimal_digits="3" follows="left|top" height="20" increment="0.002" layout="topleft" left="100" max_val="0.1" min_val="0" name="cine_flare_ghost_chroma" show_text="true" top="2366" width="218" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_ghost_chroma_reset" top="2367" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareGhostChroma" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="2396" value="Halo chroma" width="90" tool_tip="Red/blue radius split on the halo ring." />
-    <slider can_edit_text="true" control_name="RenderLensFlareHaloChroma" decimal_digits="3" follows="left|top" height="20" increment="0.001" layout="topleft" left="100" max_val="0.05" min_val="0" name="cine_flare_halo_chroma" show_text="true" top="2392" width="218" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_halo_chroma_reset" top="2393" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareHaloChroma" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="2422" value="Warp" width="70" tool_tip="Barrel (positive) or pincushion (negative) distortion of the ghost/halo/iris/ring/circle/arc layers. Streak and starburst stay straight." />
-    <slider can_edit_text="true" control_name="RenderLensFlareWarp" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="82" max_val="1" min_val="-1" name="cine_flare_warp" show_text="true" top="2418" width="236" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_warp_reset" top="2419" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareWarp" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="2448" value="Streak tip" width="68" tool_tip="Blends the anamorphic streak toward a tip color with distance from the source." />
-    <slider can_edit_text="true" control_name="RenderLensFlareStreakTipAmount" decimal_digits="2" follows="left|top" height="20" increment="0.02" layout="topleft" left="82" max_val="1" min_val="0" name="cine_flare_streak_tip" show_text="true" top="2444" width="236" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_streak_tip_reset" top="2445" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareStreakTipAmount" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="2474" value="Src color" width="68" tool_tip="Pulls each element's tint toward the light source's own color instead of the screen-sampled pixel under it. Useful for gelled rig projectors." />
-    <slider can_edit_text="true" control_name="RenderLensFlareSrcColorAmount" decimal_digits="2" follows="left|top" height="20" increment="0.02" layout="topleft" left="82" max_val="1" min_val="0" name="cine_flare_src_color" show_text="true" top="2470" width="236" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_src_color_reset" top="2471" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareSrcColorAmount" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="2500" value="Release" width="68" tool_tip="Optical fade time in seconds after a rig projector's rendered shaft ends. Longer values leave a softer camera-response tail." />
-    <slider can_edit_text="true" control_name="RenderCineLensFlareRelease" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="82" max_val="2" min_val="0" name="cine_flare_release" show_text="true" top="2496" width="236" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_release_reset" top="2497" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderCineLensFlareRelease" />
-
-    <!-- Scene-level live probe. These values are deliberately outside rig
-         setup presets and cue payloads; Director scene save/load owns them. -->
-    <view_border bevel_style="in" follows="left|top|right" height="1"
-     layout="topleft" left="8" top="2528" width="332" />
-    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
-     left="8" top="2538" value="Live Probe" width="100" />
-    <text follows="left|top" height="15" layout="topleft" left="112" top="2540"
-     value="Scene setting; not saved in Setups" width="228" />
-    <check_box control_name="CineLightRigLiveProbeEnabled" follows="left|top"
-     height="18" label="Enable" layout="topleft" left="8"
-     name="cine_live_probe_enable" top="2564"
-     tool_tip="Capture a spherical environment-only reflection probe around one rig. Costs six cubemap views per frame while enabled." width="76" />
-    <check_box control_name="CineLightRigLiveProbeGizmo" follows="left|top"
-     height="18" label="Gizmo" layout="topleft" left="92"
-     name="cine_live_probe_gizmo" top="2564"
-     tool_tip="Draw the live probe's spherical influence boundary." width="76" />
-    <check_box control_name="CineLightRigLiveProbeReplaceBounce" follows="left|top"
-     height="18" label="Replace bounce" layout="topleft" left="180"
-     name="cine_live_probe_replace_bounce" top="2564"
-     tool_tip="Crossfade the target rig's synthetic bounce lights out after the live probe is ready." width="148" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="2592"
-     value="Target" width="46" />
-    <combo_box control_name="CineLightRigLiveProbeTarget" follows="left|top"
-     height="20" layout="topleft" left="56" name="cine_live_probe_target"
-     top="2588" tool_tip="Rig whose smoothed subject centre the probe follows." width="112">
-        <combo_box.item label="Self" name="cine_live_probe_self" value="0" />
-        <combo_box.item label="Subject A" name="cine_live_probe_a" value="1" />
-        <combo_box.item label="Subject B" name="cine_live_probe_b" value="2" />
-        <combo_box.item label="Subject C" name="cine_live_probe_c" value="3" />
-        <combo_box.item label="Subject D" name="cine_live_probe_d" value="4" />
-    </combo_box>
-    <text follows="left|top" height="15" layout="topleft" left="180" top="2592"
-     value="Radius m" width="58" />
-    <spinner control_name="CineLightRigLiveProbeRadius" decimal_digits="2"
-     follows="left|top" height="20" increment="0.25" layout="topleft"
-     left="240" max_val="32" min_val="0.5" name="cine_live_probe_radius"
-     top="2588" tool_tip="Spherical probe influence radius in metres." width="78" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18"
-     image_overlay="Refresh_Off" image_top_pad="0" name="cine_live_probe_radius_reset"
-     top="2589" tool_tip="Reset radius" commit_callback.function="CineLightRig.ResetControl"
-     commit_callback.parameter="CineLightRigLiveProbeRadius" />
-    <text follows="left|top" height="15" layout="topleft" left="8" top="2618"
-     value="Offset Z" width="62" />
-    <spinner control_name="CineLightRigLiveProbeOffsetZ" decimal_digits="2"
-     follows="left|top" height="20" increment="0.05" layout="topleft"
-     left="72" max_val="5" min_val="-5" name="cine_live_probe_offset"
-     top="2614" tool_tip="Vertical offset from the target rig centre." width="94" />
-    <button follows="left|top" height="18" layout="topleft" left="170" width="18"
-     image_overlay="Refresh_Off" image_top_pad="0" name="cine_live_probe_offset_reset"
-     top="2615" tool_tip="Reset vertical offset" commit_callback.function="CineLightRig.ResetControl"
-     commit_callback.parameter="CineLightRigLiveProbeOffsetZ" />
-    <text follows="left|top" height="15" layout="topleft" left="196" top="2618"
-     value="Ambiance" width="62" />
-    <spinner control_name="CineLightRigLiveProbeAmbiance" decimal_digits="2"
-     follows="left|top" height="20" increment="0.05" layout="topleft"
-     left="260" max_val="8" min_val="0" name="cine_live_probe_ambiance"
-     top="2614" tool_tip="Reflection-probe ambiance multiplier." width="58" />
-    <button follows="left|top" height="18" layout="topleft" left="322" width="18"
-     image_overlay="Refresh_Off" image_top_pad="0" name="cine_live_probe_ambiance_reset"
-     top="2615" tool_tip="Reset ambiance" commit_callback.function="CineLightRig.ResetControl"
-     commit_callback.parameter="CineLightRigLiveProbeAmbiance" />
-    <text follows="left|top|right" height="38" layout="topleft" left="8"
-     name="cine_live_probe_status" top="2644" value="Disabled" width="332"
-     word_wrap="true" />
+        <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="8" top="56" value="Shadow policy" width="110" />
+        <combo_box control_name="CineLightRigShadowMode" follows="left|top" height="22" layout="topleft" left="122" name="cine_shadow_mode" top="52" width="196">
+            <combo_box.item label="No rig shadows" name="cine_shadow_none" value="0" />
+            <combo_box.item label="KEY only" name="cine_shadow_key" value="1" />
+            <combo_box.item label="All projectors compete" name="cine_shadow_all" value="2" />
+        </combo_box>
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_shadow_mode_reset" top="53" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigShadowMode" />
+        <check_box control_name="CineLightRigAutoShadowSlots" follows="left|top" height="18" label="Auto-raise Max Spot Shadows" layout="topleft" left="8" name="cine_auto_shadow_slots" top="80" tool_tip="Raise-only across all enabled rig instances, capped by the GPU. Restores the pre-raise value when the rigs go dark unless another control changed it." width="250" />
+        <text follows="left|top|right" height="42" layout="topleft" left="8" name="cine_shadow_hint" text_color="1 0.75 0.25 1" top="102" visible="false" width="332" word_wrap="true" />
+        <button follows="left|top" height="22" label="Allow 2 spot shadows" layout="topleft" left="8" name="cine_shadow_fixit" top="148" tool_tip="Raises Max Spot Shadows so every requesting rig projector gets a shadow slot. Each slot renders an extra shadow map per frame." visible="false" width="170" />
+        </panel>
+        <panel
+         background_visible="false"
+         border="true"
+         follows="left|top"
+         height="213"
+         layout="topleft"
+         left="0"
+         name="cine_key_card"
+         top="0"
+         width="340">
+        <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
+         left="8" name="cine_key_label" text_color="1 0.4 0.4 1" top="6"
+         value="KEY" width="52" />
+        <check_box control_name="CineLightRigKeyOn" follows="left|top" height="18"
+         label="On" layout="topleft" left="62" name="cine_key_on" top="4" width="52" />
+        <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
+         left="294" name="cine_key_clip" text_color="1 0.3 0.2 1" top="6"
+         value="CLIP" visible="false" width="45" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="32" value="Yaw" width="42" />
+        <slider can_edit_text="true" control_name="CineLightRigKeyYaw" decimal_digits="1"
+         follows="left|top" height="20" increment="1" layout="topleft" left="52"
+         max_val="180" min_val="-180" name="cine_key_yaw" show_text="true" top="28" width="266" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_key_yaw_reset" top="29" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeyYaw" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="58" value="Pitch" width="42" />
+        <slider can_edit_text="true" control_name="CineLightRigKeyPitch" decimal_digits="1"
+         follows="left|top" height="20" increment="1" layout="topleft" left="52"
+         max_val="85" min_val="-85" name="cine_key_pitch" show_text="true" top="54" width="266" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_key_pitch_reset" top="55" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeyPitch" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="85" value="Colour" width="42" />
+        <combo_box control_name="CineLightRigKeyProfile" follows="left|top" height="20"
+         layout="topleft" left="52" name="cine_key_profile" top="81" width="148" />
+        <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_key_profile_reset" top="82" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeyProfile" />
+        <text follows="left|top" height="15" layout="topleft" left="226" top="85" value="EV" width="20" />
+        <spinner control_name="CineLightRigKeyEV" decimal_digits="2" follows="left|top"
+         height="20" increment="0.25" layout="topleft" left="246" max_val="20"
+         min_val="-20" name="cine_key_ev" top="81" width="72" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_key_ev_reset" top="82" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeyEV" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="111" value="Cone" width="42" />
+        <slider can_edit_text="false" decimal_digits="0" follows="left|top" height="20" increment="1" layout="topleft" left="52" max_val="2" min_val="0" name="cine_key_cone_width" show_text="false" top="107" tool_tip="KEY cone: narrow Snoot, medium Standard, or wide Softbox." width="148" />
+        <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_key_cone_width_reset" top="108" tool_tip="Reset cone width to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeyBeam" />
+        <check_box follows="left|top" height="18" label="Shaft" layout="topleft" left="232" name="cine_key_shaft" top="107" width="60" />
+        <check_box follows="left|top" height="18" label="Hero" layout="topleft" left="292" name="cine_key_hero" top="107" width="48" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="137" value="Gobo" width="42" />
+        <combo_box control_name="CineLightRigKeyGobo" follows="left|top" height="20" layout="topleft" left="52" name="cine_key_gobo" top="133" width="100">
+            <combo_list page_lines="12" />
+        </combo_box>
+        <button follows="left|top" height="18" layout="topleft" left="156" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_key_gobo_reset" top="134" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeyGobo" />
+        <text follows="left|top" height="15" layout="topleft" left="180" top="137" value="Gel" width="26" />
+        <combo_box control_name="CineLightRigKeyGel" follows="left|top" height="20" layout="topleft" left="208" name="cine_key_gel" top="133" width="110" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_key_gel_reset" top="134" tool_tip="Reset to no gel" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeyGel" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="163" value="Flicker" width="42" />
+        <combo_box control_name="CineLightRigKeyFlicker" follows="left|top" height="20" layout="topleft" left="52" name="cine_key_flicker" top="159" tool_tip="Seeded, scrub-safe practical light behavior layered over this light, including rig-wide FX." width="148" />
+        <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_key_flicker_reset" top="160" tool_tip="Reset flicker program" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeyFlicker" />
+        <text follows="left|top" height="15" layout="topleft" left="226" top="163" value="Amt" width="26" />
+        <slider control_name="CineLightRigKeyFlickerAmount" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="252" max_val="1" min_val="0" name="cine_key_flicker_amount" top="159" tool_tip="Practical flicker strength. Zero is an exact no-modulation path." width="66" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_key_flicker_amount_reset" top="160" tool_tip="Reset flicker amount" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeyFlickerAmount" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="189" value="Shadow soft" width="80" />
+        <spinner control_name="CineLightRigKeyShadowSoft" decimal_digits="2" follows="left|top" height="20" increment="0.25" layout="topleft" left="92" max_val="8" min_val="0" name="cine_key_shadow_soft" top="185" tool_tip="Per-projector penumbra scale. 0 uses the current global shadow behavior." width="226" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_key_shadow_soft_reset" top="186" tool_tip="Reset to global shadow behavior" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeyShadowSoft" />
+        </panel>
+        <panel
+         background_visible="false"
+         border="true"
+         follows="left|top"
+         height="213"
+         layout="topleft"
+         left="0"
+         name="cine_fill_card"
+         top="0"
+         width="340">
+        <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
+         left="8" name="cine_fill_label" text_color="0.4 1 0.4 1" top="6"
+         value="FILL" width="42" />
+        <check_box control_name="CineLightRigFillOn" follows="left|top" height="18"
+         label="On" layout="topleft" left="52" name="cine_fill_on" top="4" width="46" />
+        <check_box control_name="CineLightRigRatioLock" follows="left|top" height="18" label="Ratio lock" layout="topleft" left="100" name="cine_ratio_lock" top="4" tool_tip="Drive FILL EV from KEY EV minus the selected stop ratio." width="76" />
+        <button follows="left|top" height="18" layout="topleft" left="178" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_ratio_lock_reset" top="4" tool_tip="Reset ratio lock" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRatioLock" />
+        <slider can_edit_text="true" control_name="CineLightRigRatio" decimal_digits="2" follows="left|top" height="20" increment="0.25" layout="topleft" left="198" max_val="5" min_val="0" name="cine_ratio" show_text="true" top="2" tool_tip="KEY:FILL stop difference, from 1:1 at zero to 32:1 at five stops." width="100" />
+        <button follows="left|top" height="18" layout="topleft" left="300" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_ratio_reset" top="4" tool_tip="Reset ratio stops" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRatio" />
+        <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
+         left="322" name="cine_fill_clip" text_color="1 0.3 0.2 1" top="6"
+         value="CLIP" visible="false" width="18" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="32" value="Yaw" width="42" />
+        <slider can_edit_text="true" control_name="CineLightRigFillYaw" decimal_digits="1"
+         follows="left|top" height="20" increment="1" layout="topleft" left="52"
+         max_val="180" min_val="-180" name="cine_fill_yaw" show_text="true" top="28" width="266" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_fill_yaw_reset" top="29" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigFillYaw" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="58" value="Pitch" width="42" />
+        <slider can_edit_text="true" control_name="CineLightRigFillPitch" decimal_digits="1"
+         follows="left|top" height="20" increment="1" layout="topleft" left="52"
+         max_val="85" min_val="-85" name="cine_fill_pitch" show_text="true" top="54" width="266" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_fill_pitch_reset" top="55" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigFillPitch" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="85" value="Colour" width="42" />
+        <combo_box control_name="CineLightRigFillProfile" follows="left|top" height="20"
+         layout="topleft" left="52" name="cine_fill_profile" top="81" width="148" />
+        <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_fill_profile_reset" top="82" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigFillProfile" />
+        <text follows="left|top" height="15" layout="topleft" left="226" top="85" value="EV" width="20" />
+        <spinner control_name="CineLightRigFillEV" decimal_digits="2" follows="left|top"
+         height="20" increment="0.25" layout="topleft" left="246" max_val="20"
+         min_val="-20" name="cine_fill_ev" top="81" width="72" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_fill_ev_reset" top="82" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigFillEV" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="111" value="Cone" width="42" />
+        <slider can_edit_text="false" decimal_digits="0" follows="left|top" height="20" increment="1" layout="topleft" left="52" max_val="2" min_val="0" name="cine_fill_cone_width" show_text="false" top="107" tool_tip="FILL cone: narrow Snoot, medium Standard, or wide Softbox." width="148" />
+        <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_fill_cone_width_reset" top="108" tool_tip="Reset cone width to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigFillBeam" />
+        <check_box follows="left|top" height="18" label="Shaft" layout="topleft" left="232" name="cine_fill_shaft" top="107" width="60" />
+        <check_box follows="left|top" height="18" label="Hero" layout="topleft" left="292" name="cine_fill_hero" top="107" width="48" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="137" value="Gobo" width="42" />
+        <combo_box control_name="CineLightRigFillGobo" follows="left|top" height="20" layout="topleft" left="52" name="cine_fill_gobo" top="133" width="100">
+            <combo_list page_lines="12" />
+        </combo_box>
+        <button follows="left|top" height="18" layout="topleft" left="156" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_fill_gobo_reset" top="134" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigFillGobo" />
+        <text follows="left|top" height="15" layout="topleft" left="180" top="137" value="Gel" width="26" />
+        <combo_box control_name="CineLightRigFillGel" follows="left|top" height="20" layout="topleft" left="208" name="cine_fill_gel" top="133" width="110" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_fill_gel_reset" top="134" tool_tip="Reset to no gel" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigFillGel" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="163" value="Flicker" width="42" />
+        <combo_box control_name="CineLightRigFillFlicker" follows="left|top" height="20" layout="topleft" left="52" name="cine_fill_flicker" top="159" tool_tip="Seeded, scrub-safe practical light behavior layered over this light, including rig-wide FX." width="148" />
+        <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_fill_flicker_reset" top="160" tool_tip="Reset flicker program" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigFillFlicker" />
+        <text follows="left|top" height="15" layout="topleft" left="226" top="163" value="Amt" width="26" />
+        <slider control_name="CineLightRigFillFlickerAmount" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="252" max_val="1" min_val="0" name="cine_fill_flicker_amount" top="159" tool_tip="Practical flicker strength. Zero is an exact no-modulation path." width="66" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_fill_flicker_amount_reset" top="160" tool_tip="Reset flicker amount" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigFillFlickerAmount" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="189" value="Shadow soft" width="80" />
+        <spinner control_name="CineLightRigFillShadowSoft" decimal_digits="2" follows="left|top" height="20" increment="0.25" layout="topleft" left="92" max_val="8" min_val="0" name="cine_fill_shadow_soft" top="185" tool_tip="Per-projector penumbra scale. 0 uses the current global shadow behavior." width="226" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_fill_shadow_soft_reset" top="186" tool_tip="Reset to global shadow behavior" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigFillShadowSoft" />
+        </panel>
+        <panel
+         background_visible="false"
+         border="true"
+         follows="left|top"
+         height="213"
+         layout="topleft"
+         left="0"
+         name="cine_rim_card"
+         top="0"
+         width="340">
+        <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
+         left="8" name="cine_rim_label" text_color="0.4 0.7 1 1" top="6"
+         value="RIM" width="52" />
+        <check_box control_name="CineLightRigRimOn" follows="left|top" height="18"
+         label="On" layout="topleft" left="62" name="cine_rim_on" top="4" width="52" />
+        <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
+         left="294" name="cine_rim_clip" text_color="1 0.3 0.2 1" top="6"
+         value="CLIP" visible="false" width="45" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="32" value="Yaw" width="42" />
+        <slider can_edit_text="true" control_name="CineLightRigRimYaw" decimal_digits="1"
+         follows="left|top" height="20" increment="1" layout="topleft" left="52"
+         max_val="180" min_val="-180" name="cine_rim_yaw" show_text="true" top="28" width="266" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rim_yaw_reset" top="29" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRimYaw" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="58" value="Pitch" width="42" />
+        <slider can_edit_text="true" control_name="CineLightRigRimPitch" decimal_digits="1"
+         follows="left|top" height="20" increment="1" layout="topleft" left="52"
+         max_val="85" min_val="-85" name="cine_rim_pitch" show_text="true" top="54" width="266" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rim_pitch_reset" top="55" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRimPitch" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="85" value="Colour" width="42" />
+        <combo_box control_name="CineLightRigRimProfile" follows="left|top" height="20"
+         layout="topleft" left="52" name="cine_rim_profile" top="81" width="148" />
+        <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rim_profile_reset" top="82" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRimProfile" />
+        <text follows="left|top" height="15" layout="topleft" left="226" top="85" value="EV" width="20" />
+        <spinner control_name="CineLightRigRimEV" decimal_digits="2" follows="left|top"
+         height="20" increment="0.25" layout="topleft" left="246" max_val="20"
+         min_val="-20" name="cine_rim_ev" top="81" width="72" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rim_ev_reset" top="82" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRimEV" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="111" value="Cone" width="42" />
+        <slider can_edit_text="false" decimal_digits="0" follows="left|top" height="20" increment="1" layout="topleft" left="52" max_val="2" min_val="0" name="cine_rim_cone_width" show_text="false" top="107" tool_tip="RIM cone: narrow Snoot, medium Standard, or wide Softbox." width="148" />
+        <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rim_cone_width_reset" top="108" tool_tip="Reset cone width to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRimBeam" />
+        <check_box follows="left|top" height="18" label="Shaft" layout="topleft" left="232" name="cine_rim_shaft" top="107" width="60" />
+        <check_box follows="left|top" height="18" label="Hero" layout="topleft" left="292" name="cine_rim_hero" top="107" width="48" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="137" value="Gobo" width="42" />
+        <combo_box control_name="CineLightRigRimGobo" follows="left|top" height="20" layout="topleft" left="52" name="cine_rim_gobo" top="133" width="100">
+            <combo_list page_lines="12" />
+        </combo_box>
+        <button follows="left|top" height="18" layout="topleft" left="156" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rim_gobo_reset" top="134" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRimGobo" />
+        <text follows="left|top" height="15" layout="topleft" left="180" top="137" value="Gel" width="26" />
+        <combo_box control_name="CineLightRigRimGel" follows="left|top" height="20" layout="topleft" left="208" name="cine_rim_gel" top="133" width="110" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rim_gel_reset" top="134" tool_tip="Reset to no gel" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRimGel" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="163" value="Flicker" width="42" />
+        <combo_box control_name="CineLightRigRimFlicker" follows="left|top" height="20" layout="topleft" left="52" name="cine_rim_flicker" top="159" tool_tip="Seeded, scrub-safe practical light behavior layered over this light, including rig-wide FX." width="148" />
+        <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rim_flicker_reset" top="160" tool_tip="Reset flicker program" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRimFlicker" />
+        <text follows="left|top" height="15" layout="topleft" left="226" top="163" value="Amt" width="26" />
+        <slider control_name="CineLightRigRimFlickerAmount" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="252" max_val="1" min_val="0" name="cine_rim_flicker_amount" top="159" tool_tip="Practical flicker strength. Zero is an exact no-modulation path." width="66" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rim_flicker_amount_reset" top="160" tool_tip="Reset flicker amount" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRimFlickerAmount" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="189" value="Shadow soft" width="80" />
+        <spinner control_name="CineLightRigRimShadowSoft" decimal_digits="2" follows="left|top" height="20" increment="0.25" layout="topleft" left="92" max_val="8" min_val="0" name="cine_rim_shadow_soft" top="185" tool_tip="Per-projector penumbra scale. 0 uses the current global shadow behavior." width="226" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rim_shadow_soft_reset" top="186" tool_tip="Reset to global shadow behavior" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRimShadowSoft" />
+        </panel>
+        <panel
+         background_visible="false"
+         border="true"
+         follows="left|top"
+         height="213"
+         layout="topleft"
+         left="0"
+         name="cine_bg_card"
+         top="0"
+         width="340">
+        <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
+         left="8" name="cine_bg_label" text_color="1 1 0.4 1" top="6"
+         value="BG" width="52" />
+        <check_box control_name="CineLightRigBgOn" follows="left|top" height="18"
+         label="On" layout="topleft" left="62" name="cine_bg_on" top="4" width="52" />
+        <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
+         left="294" name="cine_bg_clip" text_color="1 0.3 0.2 1" top="6"
+         value="CLIP" visible="false" width="45" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="32" value="Yaw" width="42" />
+        <slider can_edit_text="true" control_name="CineLightRigBgYaw" decimal_digits="1"
+         follows="left|top" height="20" increment="1" layout="topleft" left="52"
+         max_val="180" min_val="-180" name="cine_bg_yaw" show_text="true" top="28" width="266" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bg_yaw_reset" top="29" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBgYaw" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="58" value="Pitch" width="42" />
+        <slider can_edit_text="true" control_name="CineLightRigBgPitch" decimal_digits="1"
+         follows="left|top" height="20" increment="1" layout="topleft" left="52"
+         max_val="85" min_val="-85" name="cine_bg_pitch" show_text="true" top="54" width="266" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bg_pitch_reset" top="55" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBgPitch" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="85" value="Colour" width="42" />
+        <combo_box control_name="CineLightRigBgProfile" follows="left|top" height="20"
+         layout="topleft" left="52" name="cine_bg_profile" top="81" width="148" />
+        <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bg_profile_reset" top="82" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBgProfile" />
+        <text follows="left|top" height="15" layout="topleft" left="226" top="85" value="EV" width="20" />
+        <spinner control_name="CineLightRigBgEV" decimal_digits="2" follows="left|top"
+         height="20" increment="0.25" layout="topleft" left="246" max_val="20"
+         min_val="-20" name="cine_bg_ev" top="81" width="72" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bg_ev_reset" top="82" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBgEV" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="111" value="Cone" width="42" />
+        <slider can_edit_text="false" decimal_digits="0" follows="left|top" height="20" increment="1" layout="topleft" left="52" max_val="2" min_val="0" name="cine_bg_cone_width" show_text="false" top="107" tool_tip="BG cone: narrow Snoot, medium Standard, or wide Softbox." width="148" />
+        <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bg_cone_width_reset" top="108" tool_tip="Reset cone width to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBgBeam" />
+        <check_box follows="left|top" height="18" label="Shaft" layout="topleft" left="232" name="cine_bg_shaft" top="107" width="60" />
+        <check_box follows="left|top" height="18" label="Hero" layout="topleft" left="292" name="cine_bg_hero" top="107" width="48" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="137" value="Gobo" width="42" />
+        <combo_box control_name="CineLightRigBgGobo" follows="left|top" height="20" layout="topleft" left="52" name="cine_bg_gobo" top="133" width="100">
+            <combo_list page_lines="12" />
+        </combo_box>
+        <button follows="left|top" height="18" layout="topleft" left="156" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bg_gobo_reset" top="134" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBgGobo" />
+        <text follows="left|top" height="15" layout="topleft" left="180" top="137" value="Gel" width="26" />
+        <combo_box control_name="CineLightRigBgGel" follows="left|top" height="20" layout="topleft" left="208" name="cine_bg_gel" top="133" width="110" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bg_gel_reset" top="134" tool_tip="Reset to no gel" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBgGel" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="163" value="Flicker" width="42" />
+        <combo_box control_name="CineLightRigBgFlicker" follows="left|top" height="20" layout="topleft" left="52" name="cine_bg_flicker" top="159" tool_tip="Seeded, scrub-safe practical light behavior layered over this light, including rig-wide FX." width="148" />
+        <button follows="left|top" height="18" layout="topleft" left="204" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bg_flicker_reset" top="160" tool_tip="Reset flicker program" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBgFlicker" />
+        <text follows="left|top" height="15" layout="topleft" left="226" top="163" value="Amt" width="26" />
+        <slider control_name="CineLightRigBgFlickerAmount" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="252" max_val="1" min_val="0" name="cine_bg_flicker_amount" top="159" tool_tip="Practical flicker strength. Zero is an exact no-modulation path." width="66" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bg_flicker_amount_reset" top="160" tool_tip="Reset flicker amount" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBgFlickerAmount" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="189" value="Shadow soft" width="80" />
+        <spinner control_name="CineLightRigBgShadowSoft" decimal_digits="2" follows="left|top" height="20" increment="0.25" layout="topleft" left="92" max_val="8" min_val="0" name="cine_bg_shadow_soft" top="185" tool_tip="Per-projector penumbra scale. 0 uses the current global shadow behavior." width="226" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bg_shadow_soft_reset" top="186" tool_tip="Reset to global shadow behavior" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBgShadowSoft" />
+        </panel>
+        <panel
+         background_visible="false"
+         border="true"
+         follows="left|top"
+         height="146"
+         layout="topleft"
+         left="0"
+         name="cine_fixture_card"
+         top="0"
+         width="340">
+        <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
+         left="8" top="6" value="Fixture 2.0" width="90" />
+        <text follows="left|top" height="15" layout="topleft" left="104" top="8"
+         value="Light" width="34" />
+        <combo_box follows="left|top" height="20" layout="topleft" left="140"
+         name="cine_fixture_role" top="4" width="86" />
+        <check_box follows="left|top" height="18" label="Use fixture" layout="topleft"
+         left="236" name="cine_fixture_mode" top="6"
+         tool_tip="Use Kelvin, a three-gel stack and modeled source size instead of the legacy colour profile and single gel." width="104" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="34"
+         value="Preset" width="52" />
+        <combo_box follows="left|top" height="20" layout="topleft" left="62"
+         name="cine_fixture_preset" top="30"
+         tool_tip="Seeds this light's Kelvin, source size, beam and suggested gels; later edits are independent." width="278" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="60"
+         value="Kelvin" width="52" />
+        <spinner decimal_digits="0" follows="left|top" height="20" increment="50"
+         layout="topleft" left="62" max_val="20000" min_val="2000"
+         name="cine_fixture_kelvin" top="56" width="104" />
+        <text follows="left|top" height="15" layout="topleft" left="180" top="60"
+         value="Source m" width="62" />
+        <spinner decimal_digits="2" follows="left|top" height="20" increment="0.05"
+         layout="topleft" left="244" max_val="4" min_val="0.01"
+         name="cine_fixture_source_size" top="56"
+         tool_tip="Effective emitting diameter. Bigger and closer produces softer shadows without changing EV." width="96" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="86"
+         value="Gel stack" width="58" />
+        <combo_box follows="left|top" height="20" layout="topleft" left="68"
+         name="cine_fixture_gel_0" top="82" width="88" />
+        <combo_box follows="left|top" height="20" layout="topleft" left="160"
+         name="cine_fixture_gel_1" top="82" width="88" />
+        <combo_box follows="left|top" height="20" layout="topleft" left="252"
+         name="cine_fixture_gel_2" top="82" width="88" />
+        <text follows="left|top|right" height="30" layout="topleft" left="8"
+         top="108" value="CT gels add in mireds; correction and color gels multiply. KEY source size drives the single catchlight scale." width="332" word_wrap="true" />
+        </panel>
+        <panel
+         background_visible="false"
+         border="true"
+         follows="left|top"
+         height="140"
+         layout="topleft"
+         left="0"
+         name="cine_looks_card"
+         top="0"
+         width="340">
+        <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
+         left="8" top="6" value="Cookie library" width="120" />
+        <combo_box follows="left|top" height="22" layout="topleft" left="8" list_min_width="360"
+         name="cine_gobo_library" top="28"
+         tool_tip="Categorized achromatic breakup library for the selected Fixture 2.0 light." width="252">
+            <combo_list page_lines="8" />
+        </combo_box>
+        <icon follows="left|top" height="64" image_name="CineGobo01" layout="topleft"
+         left="272" name="cine_gobo_preview" top="18"
+         tool_tip="Sharp source thumbnail. Projection automatically uses sharp, medium or heavy pre-blur from modeled softness." width="64" />
+        <text follows="left|top" height="16" layout="topleft" left="8"
+         name="cine_gobo_softness" top="58" value="sharp variant" width="252" />
+        <text follows="left|top|right" height="32" layout="topleft" left="8"
+         top="80" value="Cookie blur follows source size; Rotating Fan uses presentation-time UV rotation." width="252" word_wrap="true" />
+        <button follows="left|top" height="24" label="Lighting cue stack..."
+         layout="topleft" left="8" name="cine_open_cues" top="108" width="160" />
+        </panel>
+        <panel
+         background_visible="false"
+         border="true"
+         follows="left|top"
+         height="472"
+         layout="topleft"
+         left="0"
+         name="cine_flare_card"
+         top="0"
+         width="340">
+        <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="8" top="6" value="Lens Flare" width="120" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="32" value="Preset" width="50" />
+        <combo_box follows="left|top" height="22" layout="topleft" left="62" name="cine_flare_preset" top="28" tool_tip="Applies a full look (streak, ghosts, halo, rings, circles, iris, arc) and snaps back to this sentinel. Master strength/intensity are not touched by presets." width="278">
+            <combo_list mouse_wheel_opaque="true" page_lines="8" />
+        </combo_box>
+        <text follows="left|top" height="15" layout="topleft" left="8" top="58" value="Master" width="70" tool_tip="One-knob brightness scale over the whole composited flare (sun and rig sources together), independent of preset." />
+        <slider can_edit_text="true" control_name="RenderLensFlareMaster" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="82" max_val="4" min_val="0" name="cine_flare_master" show_text="true" top="54" width="236" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_master_reset" top="55" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareMaster" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="84" value="Rig flare" width="70" tool_tip="Projector-only flare master. Values above 0 suppress the legacy sun/moon flare; 0 restores the independent sun/moon path." />
+        <slider can_edit_text="true" control_name="RenderCineLensFlareStrength" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="82" max_val="2" min_val="0" name="cine_flare_rig_strength" show_text="true" top="80" width="236" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_rig_strength_reset" top="81" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderCineLensFlareStrength" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="110" value="Rig intensity" width="70" tool_tip="Brightness multiplier applied to every active rig-projector flare source." />
+        <slider can_edit_text="true" control_name="RenderCineLensFlareIntensity" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="82" max_val="4" min_val="0" name="cine_flare_rig_intensity" show_text="true" top="106" width="236" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_rig_intensity_reset" top="107" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderCineLensFlareIntensity" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="136" value="Threshold" width="70" tool_tip="How much brighter than a lit surface a spot must be to flare. Lit floors/walls never flare; raise to require only your brightest light sources; lower toward 0 for dimmer emissive fixtures." />
+        <slider can_edit_text="true" control_name="RenderCineLensFlareThreshold" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="82" max_val="6" min_val="0" name="cine_flare_threshold" show_text="true" top="132" width="236" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_threshold_reset" top="133" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderCineLensFlareThreshold" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="162" value="Starburst" width="70" tool_tip="Diffraction-spike star radiating from each flare source. 0 disables it." />
+        <slider can_edit_text="true" control_name="RenderLensFlareStarburst" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="82" max_val="5" min_val="0" name="cine_flare_starburst" show_text="true" top="158" width="236" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_starburst_reset" top="159" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareStarburst" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="188" value="Spikes" width="42" />
+        <spinner control_name="RenderLensFlareStarburstSpikes" decimal_digits="0" follows="left|top" height="20" increment="1" layout="topleft" left="50" max_val="32" min_val="1" name="cine_flare_starburst_spikes" top="184" width="60" />
+        <text follows="left|top" height="15" layout="topleft" left="118" top="188" value="Sharp" width="36" />
+        <spinner control_name="RenderLensFlareStarburstSharpness" decimal_digits="0" follows="left|top" height="20" increment="1" layout="topleft" left="156" max_val="256" min_val="1" name="cine_flare_starburst_sharpness" top="184" width="60" />
+        <text follows="left|top" height="15" layout="topleft" left="224" top="188" value="Len" width="26" />
+        <spinner control_name="RenderLensFlareStarburstLength" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="252" max_val="1" min_val="0" name="cine_flare_starburst_length" top="184" width="68" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="214" value="Iris" width="70" tool_tip="Polygonal (n-gon) iris-ghost chain marching along the source-to-center axis." />
+        <slider can_edit_text="true" control_name="RenderLensFlareIris" decimal_digits="2" follows="left|top" height="20" increment="0.02" layout="topleft" left="82" max_val="1" min_val="0" name="cine_flare_iris" show_text="true" top="210" width="236" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_iris_reset" top="211" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareIris" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="240" value="Ring" width="70" tool_tip="Chromatic dispersion rings around the source." />
+        <slider can_edit_text="true" control_name="RenderLensFlareRing" decimal_digits="2" follows="left|top" height="20" increment="0.02" layout="topleft" left="82" max_val="1" min_val="0" name="cine_flare_ring" show_text="true" top="236" width="236" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_ring_reset" top="237" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareRing" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="266" value="Circle" width="70" tool_tip="Spectral lens circles ringing outward through the optical axis." />
+        <slider can_edit_text="true" control_name="RenderLensFlareCircle" decimal_digits="2" follows="left|top" height="20" increment="0.02" layout="topleft" left="82" max_val="1" min_val="0" name="cine_flare_circle" show_text="true" top="262" width="236" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_circle_reset" top="263" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareCircle" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="292" value="Arc" width="70" tool_tip="Partial spectral arc on the far side of frame center." />
+        <slider can_edit_text="true" control_name="RenderLensFlareArc" decimal_digits="2" follows="left|top" height="20" increment="0.02" layout="topleft" left="82" max_val="1" min_val="0" name="cine_flare_arc" show_text="true" top="288" width="236" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_arc_reset" top="289" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareArc" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="318" value="Ghost chroma" width="90" tool_tip="Red/blue radial split on the ghost discs." />
+        <slider can_edit_text="true" control_name="RenderLensFlareGhostChroma" decimal_digits="3" follows="left|top" height="20" increment="0.002" layout="topleft" left="100" max_val="0.1" min_val="0" name="cine_flare_ghost_chroma" show_text="true" top="314" width="218" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_ghost_chroma_reset" top="315" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareGhostChroma" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="344" value="Halo chroma" width="90" tool_tip="Red/blue radius split on the halo ring." />
+        <slider can_edit_text="true" control_name="RenderLensFlareHaloChroma" decimal_digits="3" follows="left|top" height="20" increment="0.001" layout="topleft" left="100" max_val="0.05" min_val="0" name="cine_flare_halo_chroma" show_text="true" top="340" width="218" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_halo_chroma_reset" top="341" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareHaloChroma" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="370" value="Warp" width="70" tool_tip="Barrel (positive) or pincushion (negative) distortion of the ghost/halo/iris/ring/circle/arc layers. Streak and starburst stay straight." />
+        <slider can_edit_text="true" control_name="RenderLensFlareWarp" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="82" max_val="1" min_val="-1" name="cine_flare_warp" show_text="true" top="366" width="236" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_warp_reset" top="367" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareWarp" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="396" value="Streak tip" width="68" tool_tip="Blends the anamorphic streak toward a tip color with distance from the source." />
+        <slider can_edit_text="true" control_name="RenderLensFlareStreakTipAmount" decimal_digits="2" follows="left|top" height="20" increment="0.02" layout="topleft" left="82" max_val="1" min_val="0" name="cine_flare_streak_tip" show_text="true" top="392" width="236" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_streak_tip_reset" top="393" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareStreakTipAmount" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="422" value="Src color" width="68" tool_tip="Pulls each element's tint toward the light source's own color instead of the screen-sampled pixel under it. Useful for gelled rig projectors." />
+        <slider can_edit_text="true" control_name="RenderLensFlareSrcColorAmount" decimal_digits="2" follows="left|top" height="20" increment="0.02" layout="topleft" left="82" max_val="1" min_val="0" name="cine_flare_src_color" show_text="true" top="418" width="236" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_src_color_reset" top="419" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderLensFlareSrcColorAmount" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="448" value="Release" width="68" tool_tip="Optical fade time in seconds after a rig projector's rendered shaft ends. Longer values leave a softer camera-response tail." />
+        <slider can_edit_text="true" control_name="RenderCineLensFlareRelease" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="82" max_val="2" min_val="0" name="cine_flare_release" show_text="true" top="444" width="236" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_release_reset" top="445" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderCineLensFlareRelease" />
+        </panel>
+        <panel
+         background_visible="false"
+         border="true"
+         follows="left|top"
+         height="158"
+         layout="topleft"
+         left="0"
+         name="cine_probe_card"
+         top="0"
+         width="340">
+        <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
+         left="8" top="6" value="Live Probe" width="100" />
+        <text follows="left|top" height="15" layout="topleft" left="112" top="8"
+         value="Scene setting; not saved in Setups" width="228" />
+        <check_box control_name="CineLightRigLiveProbeEnabled" follows="left|top"
+         height="18" label="Enable" layout="topleft" left="8"
+         name="cine_live_probe_enable" top="32"
+         tool_tip="Capture a spherical environment-only reflection probe around one rig. Costs six cubemap views per frame while enabled." width="76" />
+        <check_box control_name="CineLightRigLiveProbeGizmo" follows="left|top"
+         height="18" label="Gizmo" layout="topleft" left="92"
+         name="cine_live_probe_gizmo" top="32"
+         tool_tip="Draw the live probe's spherical influence boundary." width="76" />
+        <check_box control_name="CineLightRigLiveProbeReplaceBounce" follows="left|top"
+         height="18" label="Replace bounce" layout="topleft" left="180"
+         name="cine_live_probe_replace_bounce" top="32"
+         tool_tip="Crossfade the target rig's synthetic bounce lights out after the live probe is ready." width="148" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="60"
+         value="Target" width="46" />
+        <combo_box control_name="CineLightRigLiveProbeTarget" follows="left|top"
+         height="20" layout="topleft" left="56" name="cine_live_probe_target"
+         top="56" tool_tip="Rig whose smoothed subject centre the probe follows." width="112">
+            <combo_box.item label="Self" name="cine_live_probe_self" value="0" />
+            <combo_box.item label="Subject A" name="cine_live_probe_a" value="1" />
+            <combo_box.item label="Subject B" name="cine_live_probe_b" value="2" />
+            <combo_box.item label="Subject C" name="cine_live_probe_c" value="3" />
+            <combo_box.item label="Subject D" name="cine_live_probe_d" value="4" />
+        </combo_box>
+        <text follows="left|top" height="15" layout="topleft" left="180" top="60"
+         value="Radius m" width="58" />
+        <spinner control_name="CineLightRigLiveProbeRadius" decimal_digits="2"
+         follows="left|top" height="20" increment="0.25" layout="topleft"
+         left="240" max_val="32" min_val="0.5" name="cine_live_probe_radius"
+         top="56" tool_tip="Spherical probe influence radius in metres." width="78" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18"
+         image_overlay="Refresh_Off" image_top_pad="0" name="cine_live_probe_radius_reset"
+         top="57" tool_tip="Reset radius" commit_callback.function="CineLightRig.ResetControl"
+         commit_callback.parameter="CineLightRigLiveProbeRadius" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="86"
+         value="Offset Z" width="62" />
+        <spinner control_name="CineLightRigLiveProbeOffsetZ" decimal_digits="2"
+         follows="left|top" height="20" increment="0.05" layout="topleft"
+         left="72" max_val="5" min_val="-5" name="cine_live_probe_offset"
+         top="82" tool_tip="Vertical offset from the target rig centre." width="94" />
+        <button follows="left|top" height="18" layout="topleft" left="170" width="18"
+         image_overlay="Refresh_Off" image_top_pad="0" name="cine_live_probe_offset_reset"
+         top="83" tool_tip="Reset vertical offset" commit_callback.function="CineLightRig.ResetControl"
+         commit_callback.parameter="CineLightRigLiveProbeOffsetZ" />
+        <text follows="left|top" height="15" layout="topleft" left="196" top="86"
+         value="Ambiance" width="62" />
+        <spinner control_name="CineLightRigLiveProbeAmbiance" decimal_digits="2"
+         follows="left|top" height="20" increment="0.05" layout="topleft"
+         left="260" max_val="8" min_val="0" name="cine_live_probe_ambiance"
+         top="82" tool_tip="Reflection-probe ambiance multiplier." width="58" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18"
+         image_overlay="Refresh_Off" image_top_pad="0" name="cine_live_probe_ambiance_reset"
+         top="83" tool_tip="Reset ambiance" commit_callback.function="CineLightRig.ResetControl"
+         commit_callback.parameter="CineLightRigLiveProbeAmbiance" />
+        <text follows="left|top|right" height="38" layout="topleft" left="8"
+         name="cine_live_probe_status" top="112" value="Disabled" width="332"
+         word_wrap="true" />
+        </panel>
+    </flow_grid>
 </panel>

@@ -136,8 +136,23 @@ void ALFlowGrid::reshape(S32 width, S32 height, bool called_from_parent)
     // parent (or none) honor the requested height instead of ballooning to the
     // parent's full height. Subtracting the border keeps a borderless scroll
     // exact and avoids a permanent 2px "crawl" scrollbar when a host adds one.
+    // The grid may be the scroll document itself OR nested one level down in a
+    // wrapper panel (e.g. panel_cine_light_rig). Walk ancestors to the nearest
+    // scroll container so a nested grid floors to the real viewport instead of
+    // the wrapper's stale (possibly taller) height - otherwise llmax() below
+    // could never shrink the grid after a widen reflow reduced its natural
+    // height, leaving a dead scroll tail.
     S32 parent_visible_height;
-    if (LLScrollContainer* scroll = dynamic_cast<LLScrollContainer*>(getParent()))
+    LLScrollContainer* scroll = nullptr;
+    for (LLView* ancestor = getParent(); ancestor; ancestor = ancestor->getParent())
+    {
+        scroll = dynamic_cast<LLScrollContainer*>(ancestor);
+        if (scroll)
+        {
+            break;
+        }
+    }
+    if (scroll)
     {
         parent_visible_height = scroll->getRect().getHeight() - 2 * scroll->getBorderWidth();
     }
