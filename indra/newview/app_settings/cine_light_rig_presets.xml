@@ -1608,6 +1608,186 @@
         <key>tint_strength</key><real>0.3</real>
       </map>
     </map>
+    <map>
+      <key>name</key><string>Night Watch Rim</string>
+      <key>category</key><string>Genre / Mood</string>
+      <key>intent</key><string>Warm tungsten front practical against a hard cold snoot rim from behind; night patrol / lookout edge separation.</string>
+      <key>radius</key><real>1.6</real>
+      <key>master_ev</key><real>-1.0</real>
+      <key>ratio_lock</key><boolean>true</boolean>
+      <key>ratio_stops</key><real>2.0</real>
+      <key>lights</key><array>
+        <map><key>yaw</key><real>10</real><key>pitch</key><real>20</real><key>profile_idx</key><integer>1</integer><key>profile_name</key><string>3200K Tung</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>160</real><key>pitch</key><real>35</real><key>profile_idx</key><integer>6</integer><key>profile_name</key><string>10000K Sky</string><key>ev</key><real>-1.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-140</real><key>pitch</key><real>10</real><key>profile_idx</key><integer>8</integer><key>profile_name</key><string>Full CTB</string><key>ev</key><real>-2.5</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>false</boolean></map>
+        <map><key>yaw</key><real>0</real><key>pitch</key><real>-20</real><key>profile_idx</key><integer>1</integer><key>profile_name</key><string>3200K Tung</string><key>ev</key><real>-2.5</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>false</boolean></map>
+      </array>
+    </map>
+    <map>
+      <key>name</key><string>Moon-Front Practical Rim</string>
+      <key>category</key><string>Genre / Mood</string>
+      <key>intent</key><string>Cool moon-soft key from the front, a single warm practical rim carving the far edge; night exterior with one lit window behind.</string>
+      <key>radius</key><real>1.7</real>
+      <key>master_ev</key><real>-1.0</real>
+      <key>ratio_lock</key><boolean>true</boolean>
+      <key>ratio_stops</key><real>2.5</real>
+      <key>lights</key><array>
+        <map><key>yaw</key><real>-20</real><key>pitch</key><real>25</real><key>profile_idx</key><integer>5</integer><key>profile_name</key><string>8000K Moon</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>150</real><key>pitch</key><real>20</real><key>profile_idx</key><integer>0</integer><key>profile_name</key><string>2700K Incan</string><key>ev</key><real>-1.5</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-160</real><key>pitch</key><real>10</real><key>profile_idx</key><integer>5</integer><key>profile_name</key><string>8000K Moon</string><key>ev</key><real>-3.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>false</boolean></map>
+        <map><key>yaw</key><real>0</real><key>pitch</key><real>-20</real><key>profile_idx</key><integer>5</integer><key>profile_name</key><string>8000K Moon</string><key>ev</key><real>-3.0</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>false</boolean></map>
+      </array>
+    </map>
+    <map>
+      <key>name</key><string>Congo Blue Night Rim</string>
+      <key>category</key><string>Genre / Mood</string>
+      <key>intent</key><string>Warm tungsten front key sliced by a saturated Congo Blue rim; a deep-night color-separation cheat.</string>
+      <key>radius</key><real>1.5</real>
+      <key>master_ev</key><real>-0.5</real>
+      <key>ratio_lock</key><boolean>true</boolean>
+      <key>ratio_stops</key><real>2.5</real>
+      <key>lights</key><array>
+        <map><key>yaw</key><real>15</real><key>pitch</key><real>15</real><key>profile_idx</key><integer>1</integer><key>profile_name</key><string>3200K Tung</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-170</real><key>pitch</key><real>30</real><key>profile_idx</key><integer>12</integer><key>profile_name</key><string>Congo Blue</string><key>ev</key><real>-1.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>120</real><key>pitch</key><real>10</real><key>profile_idx</key><integer>12</integer><key>profile_name</key><string>Congo Blue</string><key>ev</key><real>-3.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>false</boolean></map>
+        <map><key>yaw</key><real>0</real><key>pitch</key><real>-20</real><key>profile_idx</key><integer>1</integer><key>profile_name</key><string>3200K Tung</string><key>ev</key><real>-2.5</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>false</boolean></map>
+      </array>
+    </map>
+    <map>
+      <key>name</key><string>Cyber Pink Backlit Alley</string>
+      <key>category</key><string>Genre / Mood</string>
+      <key>intent</key><string>Cool blue-white front key with a hot pink rim bleeding in from behind; cyberpunk alley portrait.</string>
+      <key>radius</key><real>1.6</real>
+      <key>master_ev</key><real>-0.5</real>
+      <key>ratio_lock</key><boolean>true</boolean>
+      <key>ratio_stops</key><real>2.0</real>
+      <key>lights</key><array>
+        <map><key>yaw</key><real>-25</real><key>pitch</key><real>20</real><key>profile_idx</key><integer>4</integer><key>profile_name</key><string>6500K Cool</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>165</real><key>pitch</key><real>25</real><key>profile_idx</key><integer>15</integer><key>profile_name</key><string>Cyber Pink</string><key>ev</key><real>-0.5</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-130</real><key>pitch</key><real>15</real><key>profile_idx</key><integer>15</integer><key>profile_name</key><string>Cyber Pink</string><key>ev</key><real>-2.5</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>false</boolean></map>
+        <map><key>yaw</key><real>0</real><key>pitch</key><real>-20</real><key>profile_idx</key><integer>4</integer><key>profile_name</key><string>6500K Cool</string><key>ev</key><real>-2.5</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>false</boolean></map>
+      </array>
+    </map>
+    <map>
+      <key>name</key><string>Violet Bar Rim</string>
+      <key>category</key><string>Genre / Mood</string>
+      <key>intent</key><string>Warm candlelit-style front key against a hard violet rim from three-quarter back; late-bar loneliness.</string>
+      <key>radius</key><real>1.5</real>
+      <key>master_ev</key><real>-0.5</real>
+      <key>ratio_lock</key><boolean>true</boolean>
+      <key>ratio_stops</key><real>2.5</real>
+      <key>lights</key><array>
+        <map><key>yaw</key><real>30</real><key>pitch</key><real>20</real><key>profile_idx</key><integer>0</integer><key>profile_name</key><string>2700K Incan</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-155</real><key>pitch</key><real>35</real><key>profile_idx</key><integer>22</integer><key>profile_name</key><string>Neon Purple</string><key>ev</key><real>-1.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>130</real><key>pitch</key><real>10</real><key>profile_idx</key><integer>22</integer><key>profile_name</key><string>Neon Purple</string><key>ev</key><real>-3.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>false</boolean></map>
+        <map><key>yaw</key><real>0</real><key>pitch</key><real>-20</real><key>profile_idx</key><integer>0</integer><key>profile_name</key><string>2700K Incan</string><key>ev</key><real>-2.5</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>false</boolean></map>
+      </array>
+    </map>
+    <map>
+      <key>name</key><string>Void Edge</string>
+      <key>category</key><string>Genre / Mood</string>
+      <key>intent</key><string>Flat neutral front key with an ink-dark blue rim from directly behind; near-silhouette void separation.</string>
+      <key>radius</key><real>1.4</real>
+      <key>master_ev</key><real>-1.5</real>
+      <key>ratio_lock</key><boolean>true</boolean>
+      <key>ratio_stops</key><real>3.0</real>
+      <key>lights</key><array>
+        <map><key>yaw</key><real>-15</real><key>pitch</key><real>10</real><key>profile_idx</key><integer>2</integer><key>profile_name</key><string>4500K Neut</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>175</real><key>pitch</key><real>45</real><key>profile_idx</key><integer>20</integer><key>profile_name</key><string>Deep Space</string><key>ev</key><real>-0.5</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-150</real><key>pitch</key><real>15</real><key>profile_idx</key><integer>20</integer><key>profile_name</key><string>Deep Space</string><key>ev</key><real>-3.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>false</boolean></map>
+        <map><key>yaw</key><real>0</real><key>pitch</key><real>-20</real><key>profile_idx</key><integer>2</integer><key>profile_name</key><string>4500K Neut</string><key>ev</key><real>-3.0</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>false</boolean></map>
+      </array>
+    </map>
+    <map>
+      <key>name</key><string>Warm-Cool Front Cross</string>
+      <key>category</key><string>Genre / Mood</string>
+      <key>intent</key><string>Warm/cool dual-front cross-key, no rim; a two-source night interview look split by color temperature.</string>
+      <key>radius</key><real>1.6</real>
+      <key>master_ev</key><real>-0.5</real>
+      <key>ratio_lock</key><boolean>true</boolean>
+      <key>ratio_stops</key><real>1.5</real>
+      <key>lights</key><array>
+        <map><key>yaw</key><real>30</real><key>pitch</key><real>20</real><key>profile_idx</key><integer>1</integer><key>profile_name</key><string>3200K Tung</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-30</real><key>pitch</key><real>20</real><key>profile_idx</key><integer>4</integer><key>profile_name</key><string>6500K Cool</string><key>ev</key><real>-1.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>160</real><key>pitch</key><real>30</real><key>profile_idx</key><integer>6</integer><key>profile_name</key><string>10000K Sky</string><key>ev</key><real>-3.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>false</boolean></map>
+        <map><key>yaw</key><real>0</real><key>pitch</key><real>-20</real><key>profile_idx</key><integer>1</integer><key>profile_name</key><string>3200K Tung</string><key>ev</key><real>-2.5</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>false</boolean></map>
+      </array>
+    </map>
+    <map>
+      <key>name</key><string>Pink-Cyan Front Cross</string>
+      <key>category</key><string>Genre / Mood</string>
+      <key>intent</key><string>Symmetric pink/cyan dual-front cross-light, no rim; a flat, graphic night-club portrait.</string>
+      <key>radius</key><real>1.5</real>
+      <key>master_ev</key><real>-0.5</real>
+      <key>ratio_lock</key><boolean>true</boolean>
+      <key>ratio_stops</key><real>1.0</real>
+      <key>lights</key><array>
+        <map><key>yaw</key><real>35</real><key>pitch</key><real>15</real><key>profile_idx</key><integer>15</integer><key>profile_name</key><string>Cyber Pink</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-35</real><key>pitch</key><real>15</real><key>profile_idx</key><integer>16</integer><key>profile_name</key><string>Sci-Fi Cyan</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>180</real><key>pitch</key><real>30</real><key>profile_idx</key><integer>20</integer><key>profile_name</key><string>Deep Space</string><key>ev</key><real>-3.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>false</boolean></map>
+        <map><key>yaw</key><real>0</real><key>pitch</key><real>-20</real><key>profile_idx</key><integer>15</integer><key>profile_name</key><string>Cyber Pink</string><key>ev</key><real>-2.5</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>false</boolean></map>
+      </array>
+    </map>
+    <map>
+      <key>name</key><string>Moonlit Hair Rim</string>
+      <key>category</key><string>Genre / Mood</string>
+      <key>intent</key><string>Soft moon key from the front with a hard white hair-rim dropping from directly overhead-behind; classic night beauty separation.</string>
+      <key>radius</key><real>1.8</real>
+      <key>master_ev</key><real>-1.0</real>
+      <key>ratio_lock</key><boolean>true</boolean>
+      <key>ratio_stops</key><real>2.0</real>
+      <key>lights</key><array>
+        <map><key>yaw</key><real>10</real><key>pitch</key><real>10</real><key>profile_idx</key><integer>5</integer><key>profile_name</key><string>8000K Moon</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>175</real><key>pitch</key><real>70</real><key>profile_idx</key><integer>23</integer><key>profile_name</key><string>Pure White</string><key>ev</key><real>-0.5</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-140</real><key>pitch</key><real>20</real><key>profile_idx</key><integer>5</integer><key>profile_name</key><string>8000K Moon</string><key>ev</key><real>-3.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>false</boolean></map>
+        <map><key>yaw</key><real>0</real><key>pitch</key><real>-20</real><key>profile_idx</key><integer>5</integer><key>profile_name</key><string>8000K Moon</string><key>ev</key><real>-3.0</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>false</boolean></map>
+      </array>
+    </map>
+    <map>
+      <key>name</key><string>Low Rim Menace</string>
+      <key>category</key><string>Genre / Mood</string>
+      <key>intent</key><string>Warm front practical against a low ground-level cold rim rising from behind; unnatural night menace.</string>
+      <key>radius</key><real>1.5</real>
+      <key>master_ev</key><real>-0.5</real>
+      <key>ratio_lock</key><boolean>true</boolean>
+      <key>ratio_stops</key><real>2.5</real>
+      <key>lights</key><array>
+        <map><key>yaw</key><real>-10</real><key>pitch</key><real>15</real><key>profile_idx</key><integer>0</integer><key>profile_name</key><string>2700K Incan</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>160</real><key>pitch</key><real>-15</real><key>profile_idx</key><integer>6</integer><key>profile_name</key><string>10000K Sky</string><key>ev</key><real>-0.5</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>140</real><key>pitch</key><real>20</real><key>profile_idx</key><integer>6</integer><key>profile_name</key><string>10000K Sky</string><key>ev</key><real>-3.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>false</boolean></map>
+        <map><key>yaw</key><real>0</real><key>pitch</key><real>-25</real><key>profile_idx</key><integer>0</integer><key>profile_name</key><string>2700K Incan</string><key>ev</key><real>-2.5</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>false</boolean></map>
+      </array>
+    </map>
+    <map>
+      <key>name</key><string>Wide Two-Shot Moon Rim</string>
+      <key>category</key><string>Genre / Mood</string>
+      <key>intent</key><string>Neutral front key wide enough for a two-shot, moonlit rim separating both silhouettes from the night behind.</string>
+      <key>radius</key><real>2.2</real>
+      <key>master_ev</key><real>-0.5</real>
+      <key>ratio_lock</key><boolean>true</boolean>
+      <key>ratio_stops</key><real>2.0</real>
+      <key>lights</key><array>
+        <map><key>yaw</key><real>20</real><key>pitch</key><real>10</real><key>profile_idx</key><integer>2</integer><key>profile_name</key><string>4500K Neut</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-165</real><key>pitch</key><real>25</real><key>profile_idx</key><integer>5</integer><key>profile_name</key><string>8000K Moon</string><key>ev</key><real>-1.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>120</real><key>pitch</key><real>15</real><key>profile_idx</key><integer>5</integer><key>profile_name</key><string>8000K Moon</string><key>ev</key><real>-3.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>false</boolean></map>
+        <map><key>yaw</key><real>0</real><key>pitch</key><real>-20</real><key>profile_idx</key><integer>2</integer><key>profile_name</key><string>4500K Neut</string><key>ev</key><real>-2.5</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>false</boolean></map>
+      </array>
+    </map>
+    <map>
+      <key>name</key><string>Amber Rim Close-Up</string>
+      <key>category</key><string>Genre / Mood</string>
+      <key>intent</key><string>Tight cool front key with a warm amber snoot rim close behind; an intimate close-up isolated in the dark.</string>
+      <key>radius</key><real>1.2</real>
+      <key>master_ev</key><real>-1.0</real>
+      <key>ratio_lock</key><boolean>true</boolean>
+      <key>ratio_stops</key><real>2.5</real>
+      <key>lights</key><array>
+        <map><key>yaw</key><real>15</real><key>pitch</key><real>15</real><key>profile_idx</key><integer>4</integer><key>profile_name</key><string>6500K Cool</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-170</real><key>pitch</key><real>40</real><key>profile_idx</key><integer>13</integer><key>profile_name</key><string>Deep Amber</string><key>ev</key><real>-0.5</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>150</real><key>pitch</key><real>10</real><key>profile_idx</key><integer>13</integer><key>profile_name</key><string>Deep Amber</string><key>ev</key><real>-3.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>false</boolean></map>
+        <map><key>yaw</key><real>0</real><key>pitch</key><real>-20</real><key>profile_idx</key><integer>4</integer><key>profile_name</key><string>6500K Cool</string><key>ev</key><real>-2.5</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>false</boolean></map>
+      </array>
+    </map>
   </array>
 </map>
 </llsd>
