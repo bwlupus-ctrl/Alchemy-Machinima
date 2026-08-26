@@ -7,12 +7,16 @@
  * $/LicenseInfo$
  *
  * The Ghost Studio panel's "Place" button arms this transient LLTool for ONE
- * ghost instance: the next left-click on ground/prim moves that instance's
- * foot to the picked surface point and hands the camera straight back (same
- * clearTransientTool idiom as ALToolPathEdit's "Walk to here" one-shot). A
- * sky-miss stays armed for another try; Esc or right-click cancels without
- * moving anything. Deliberately minimal -- node dragging/selection stays the
- * path tool's business; this only answers "put THIS ghost THERE".
+ * ghost instance: the next left-click resolves an anchor through the shared
+ * ALGhostPlacementResolver ladder (visible surface -> terrain -> work plane
+ * -> camera depth, then legality) and moves that instance's foot there,
+ * handing the camera straight back (same clearTransientTool idiom as
+ * ALToolPathEdit's "Walk to here" one-shot). Open-space clicks (sky, over
+ * water, off in the void) now resolve to a real anchor instead of a miss;
+ * only a legality block (e.g. outside any loaded region) stays armed for
+ * another try. Esc or right-click cancels without moving anything.
+ * Deliberately minimal -- node dragging/selection stays the path tool's
+ * business; this only answers "put THIS ghost THERE".
  */
 
 #ifndef AL_ALTOOLGHOSTPLACE_H

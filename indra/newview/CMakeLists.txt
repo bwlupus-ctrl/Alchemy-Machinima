@@ -290,6 +290,8 @@ set(viewer_SOURCE_FILES
     alweathermodel.cpp
     alghostgroupmodel.cpp
     alghostinteractionstate.cpp
+    alghostplacementresolver.cpp
+    alghostplacementadapter.cpp
     alghostmanipproxy.cpp
     alghostnameplates.cpp
     alghoststudio.cpp
@@ -1144,6 +1146,8 @@ set(viewer_HEADER_FILES
     alweathermodel.h
     alghostgroupmodel.h
     alghostinteractionstate.h
+    alghostplacementresolver.h
+    alghostplacementadapter.h
     alghostmanipproxy.h
     alghostnameplates.h
     alghoststudio.h
@@ -2590,6 +2594,7 @@ if (BUILD_TESTING)
     alweathermodel.cpp
     alghostgroupmodel.cpp
     alghostinteractionstate.cpp
+    alghostplacementresolver.cpp
     alsceneexplorerpredicate.cpp
     llprismgate.cpp
     llagentaccess.cpp

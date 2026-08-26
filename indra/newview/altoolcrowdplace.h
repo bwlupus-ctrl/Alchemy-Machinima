@@ -16,6 +16,7 @@
 #define AL_ALTOOLCROWDPLACE_H
 
 #include "alghostinteractionstate.h"
+#include "alghostplacementresolver.h"
 #include "llsingleton.h"
 #include "lltool.h"
 #include "lluuid.h"
@@ -71,7 +72,20 @@ private:
 
     bool sessionMatchesDraft() const;
     bool ensureLiveSession();
-    bool groundPointAt(S32 x, S32 y, LLVector3d& out_global) const;
+    // Resolves the placement anchor at screen (x, y) through the shared
+    // ladder (surface -> terrain [+ water snap] -> work plane -> camera
+    // depth, then legality). Also records the basis/warning on the draft for
+    // the studio status line.
+    ALGhostPlacementResolver::ALGhostPlacementHit resolveAnchorAt(
+        S32 x, S32 y) const;
+    // Re-resolves the cursor location and feeds it through as one last
+    // EVENT_HOVER_HIT, exactly once, right before a commit gesture. Shared
+    // by handleMouseDown() (click-to-pin) and handleKey()'s Enter handling
+    // so the two stay genuinely symmetric: Enter used to trust whatever
+    // mCurrentHoverValid the last hover callback happened to leave behind,
+    // which could be a frame (or, after an Alt-camera excursion, much more)
+    // stale relative to where the cursor actually is now.
+    void refreshHoverBeforeCommit(S32 x, S32 y, MASK mask);
     bool projectedNear(const LLVector3d& point_global, S32 x, S32 y,
                        F32 radius_pixels) const;
     ScreenHit screenHitAt(S32 x, S32 y) const;

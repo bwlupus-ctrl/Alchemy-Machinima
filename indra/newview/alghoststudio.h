@@ -36,6 +36,7 @@
 #define AL_ALGHOSTSTUDIO_H
 
 #include "alghostgroupmodel.h"
+#include "alghostplacementresolver.h"
 #include "alformationsolver.h"
 #include "lluuid.h"
 #include "v3math.h"
@@ -223,6 +224,11 @@ public:
         ELockMode mLockMode = LOCK_RIGID_UNIT;
         bool mHasFacingPoint = false;
         LLVector3d mFacingPointGlobal;
+        // FACING_SOURCE normally extracts a pure world-Z yaw from the
+        // prototype's rotation (its label says "Source yaw"). Set this to
+        // restore the old behaviour of copying the prototype's FULL
+        // pitched/rolled quaternion instead.
+        bool mPreserveSourceTilt = false;
     };
 
     struct PlacementSourceSnapshot
@@ -273,12 +279,39 @@ public:
         PlacementSourceSnapshot mSource;
         FormationSpec mSpec;
         LLVector3d mAnchor;
-        F32 mYaw = 0.f;
+        // PATTERN rotation: spins the whole formation (slot layout) rigidly
+        // about the anchor pivot -- driven by the crowd tool's wheel/
+        // middle-drag. Formerly the single overloaded "mYaw" that ALSO stood
+        // in for body facing; kept as the persisted concept ("heading") a
+        // future scene-serialization schema would key on, since Ghost Studio
+        // scenes are currently session-only (see the file header) and no
+        // migration exists yet to write.
+        F32 mPatternYaw = 0.f;
+        // BODY facing bias, independent of the pattern's own rotation: an
+        // additive offset applied on top of whatever the facing mode (Author/
+        // "Rotate with formation", camera, target point, ...) resolves to.
+        // Zero reproduces the pre-split behaviour exactly (facing == pattern
+        // yaw for FACING_AUTHOR; unbiased target-facing otherwise).
+        F32 mFacingYawOffset = 0.f;
         F32 mHeight = 0.f;
         U64 mRevision = 0;
         U64 mInputFingerprint = 0;
         U64 mSolutionFingerprint = 0;
         PlacementValidation mValidation;
+        // Last anchor resolution the placement tool reported (surface /
+        // terrain / water / free-space plane / camera depth), for the studio
+        // status line. Not authoritative for the resolved slots themselves --
+        // those already sit at mAnchor. mAnchorValid is the resolver's own
+        // mValid (a legality BLOCK, not merely a warning) -- distinct from
+        // mAnchorWarning, which is also populated for a non-blocking
+        // clamp/water-snap. Without this separate flag a legality failure
+        // collapsed into just "a nonempty warning", which the status line
+        // could not tell apart from "Ready with warnings", and Confirm
+        // stayed wrongly enabled.
+        ALGhostPlacementResolver::EGhostPlacementBasis mAnchorBasis =
+            ALGhostPlacementResolver::EGhostPlacementBasis::WORK_PLANE;
+        bool mAnchorValid = true;
+        std::string mAnchorWarning;
         std::vector<ResolvedFormationSlot> mSlots;
         std::vector<U64> mOverflowMemberIds;
     };
@@ -349,6 +382,12 @@ public:
         EFormationFacing mCrowdFacing = FACING_AUTHOR;
         U32         mCrowdSlot = 0;
         F32         mCrowdBaseYaw = 0.f;
+        // The crowd draft's independent facing-offset bias, persisted onto
+        // the runtime driver at commit time so a live Track/Wave update
+        // (updatePerFrame()) reproduces the SAME authored facing the preview
+        // showed instead of snapping back to an unbiased heading on its
+        // first tick.
+        F32         mCrowdFacingYawOffset = 0.f;
         F64         mCrowdFacingStart = 0.0;
 
         // ---- body turn (independent of look-at above) ----
@@ -609,6 +648,17 @@ public:
     bool updateCrowdPlacementTransform(const LLUUID& owner_id,
                                        const LLVector3d& anchor,
                                        F32 yaw, F32 height);
+    // Independent of the pattern yaw above: the additive body-facing bias
+    // (see CrowdPlacementDraft::mFacingYawOffset).
+    bool setCrowdPlacementFacingOffset(const LLUUID& owner_id, F32 offset_rad);
+    // Records what the placement tool's anchor resolution rung/valid/warning
+    // was, for the studio status line's basis label and Blocked/Ready
+    // classification. Never fails the draft.
+    bool setCrowdPlacementAnchorInfo(
+        const LLUUID& owner_id,
+        ALGhostPlacementResolver::EGhostPlacementBasis basis,
+        bool valid,
+        const std::string& warning);
     bool setCrowdPlacementPinned(const LLUUID& owner_id, bool pinned);
     bool cancelCrowdPlacement(const LLUUID& owner_id = LLUUID::null);
     PlacementCommitResult commitCrowdPlacement(const LLUUID& owner_id,

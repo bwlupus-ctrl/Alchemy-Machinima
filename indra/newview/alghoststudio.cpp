@@ -24,6 +24,8 @@
 #include "lldrawable.h"          // FORCE_INVISIBLE (entity-clone show/hide)
 #include "llspatialpartition.h"     // LLDrawInfo (freeze reads each batch's avatar+skin)
 #include "llvoavatar.h"
+#include "llsurface.h"
+#include "llsurfacepatch.h"
 #include "llviewerobjectlist.h"
 #include "llviewerregion.h"
 #include "llworld.h"
@@ -1399,8 +1401,11 @@ bool ALGhostStudio::stepTurn(const LLUUID& id, F32 dt)
         // Re-arm if the clone has MOVED since it settled: the bearing to the
         // target is then different and the old facing is stale. Detected here
         // rather than in the setters because formation motion, chaos and the
-        // overlay duplication paths all write mFootGlobal directly.
-        if (inst->mFootGlobal == inst->mTurnSettledFoot)
+        // overlay duplication paths all write mFootGlobal directly. Epsilon
+        // (not bit-exact) compare: sub-millimetre floating-point jitter from
+        // an unrelated system must not spuriously re-arm the turn.
+        if ((inst->mFootGlobal - inst->mTurnSettledFoot).lengthSquared() <=
+            1.0e-6)
         {
             return false;
         }
@@ -1735,8 +1740,13 @@ void ALGhostStudio::updatePerFrame()
                 if (delta.mdV[VX] * delta.mdV[VX] +
                     delta.mdV[VY] * delta.mdV[VY] >= 0.000001)
                 {
+                    // The authored facing-offset bias must survive every
+                    // live update, not just the preview -- otherwise the
+                    // first runtime tick snapped the member away from the
+                    // heading the user actually authored.
                     LLQuaternion rotation(
-                        atan2f((F32)delta.mdV[VY], (F32)delta.mdV[VX]),
+                        atan2f((F32)delta.mdV[VY], (F32)delta.mdV[VX]) +
+                            inst.mCrowdFacingYawOffset,
                         LLVector3::z_axis);
                     if (inst.mGroupId.notNull())
                     {
@@ -1758,7 +1768,8 @@ void ALGhostStudio::updatePerFrame()
             const F32 phase = (F32)(facing_now - inst.mCrowdFacingStart) *
                               2.5f - (F32)inst.mCrowdSlot * 0.65f;
             inst.mRotation = LLQuaternion(
-                inst.mCrowdBaseYaw + sinf(phase) * (35.f * DEG_TO_RAD),
+                inst.mCrowdBaseYaw + inst.mCrowdFacingYawOffset +
+                    sinf(phase) * (35.f * DEG_TO_RAD),
                 LLVector3::z_axis);
             inst.mRotation.normalize();
             ++inst.mTransformRevision;
@@ -2342,6 +2353,16 @@ S32 ALGhostStudio::ungroup(const LLUUID& id)
         {
             inst->mGroupId.setNull();
             inst->mLockMode = LOCK_OFF;
+            // Dynamic crowd-facing drivers (Wave/Track subject) only run
+            // once mGroupId is null (see updatePerFrame()) and rotate the
+            // instance every frame. Left dangling after ungroup, that
+            // perpetual rotation keeps bumping mTransformRevision on what
+            // may become a NEW crowd's prototype, which used to trip
+            // crowdPlacementSourceUnchanged()'s staleness check on the very
+            // next frame -- making placement effectively impossible.
+            inst->mCrowdFacing = FACING_AUTHOR;
+            inst->mCrowdSlot = 0;
+            inst->mCrowdBaseYaw = 0.f;
         }
     if (selected_header)
     {
@@ -3559,7 +3580,7 @@ bool ALGhostStudio::beginCrowdPlacement(
     next.mSessionId.generate();
     next.mSpec = spec;
     next.mAnchor = anchor;
-    next.mYaw = yaw;
+    next.mPatternYaw = yaw;
     next.mHeight = height;
     next.mRevision = mNextCrowdDraftRevision++;
     next.mSource.mInstanceId = source->mId;
@@ -3612,10 +3633,39 @@ bool ALGhostStudio::updateCrowdPlacementTransform(
         return false;
     }
     mCrowdDraft.mAnchor = anchor;
-    mCrowdDraft.mYaw = yaw;
+    mCrowdDraft.mPatternYaw = yaw;
     mCrowdDraft.mHeight = height;
     mCrowdDraft.mRevision = mNextCrowdDraftRevision++;
     return resolveCrowdPlacement();
+}
+
+bool ALGhostStudio::setCrowdPlacementFacingOffset(
+    const LLUUID& owner_id, F32 offset_rad)
+{
+    if (mCrowdCommitInProgress || !mCrowdDraft.mActive ||
+        owner_id != mCrowdDraft.mOwnerId || !llfinite(offset_rad))
+    {
+        return false;
+    }
+    mCrowdDraft.mFacingYawOffset = offset_rad;
+    mCrowdDraft.mRevision = mNextCrowdDraftRevision++;
+    return resolveCrowdPlacement();
+}
+
+bool ALGhostStudio::setCrowdPlacementAnchorInfo(
+    const LLUUID& owner_id,
+    ALGhostPlacementResolver::EGhostPlacementBasis basis,
+    bool valid,
+    const std::string& warning)
+{
+    if (!mCrowdDraft.mActive || owner_id != mCrowdDraft.mOwnerId)
+    {
+        return false;
+    }
+    mCrowdDraft.mAnchorBasis = basis;
+    mCrowdDraft.mAnchorValid = valid;
+    mCrowdDraft.mAnchorWarning = warning;
+    return true;
 }
 
 bool ALGhostStudio::setCrowdPlacementPinned(
@@ -3691,8 +3741,16 @@ bool ALGhostStudio::crowdPlacementSourceUnchanged(std::string* reason) const
     const bool same_rotation =
         current_rotation.isFinite() && captured_rotation.isFinite() &&
         fabsf(dot(current_rotation, captured_rotation)) >= 0.999999f;
-    if (source->mTransformRevision != snap.mTransformRevision ||
-        delta.lengthSquared() > 1.0e-10 ||
+    // Position/rotation/scale are the real gate, via epsilon compares -- a
+    // dynamic crowd-facing driver (Wave/Track subject) left running on this
+    // instance (e.g. right after ungrouping it, before that path was fixed to
+    // clear the driver) would genuinely rotate it every frame and correctly
+    // still fail here. A BARE mTransformRevision bump with no material
+    // position/rotation/scale change is advisory only during preview: it
+    // used to be a hard blocker on its own, which made an otherwise
+    // perfectly placeable prototype "stale" the instant anything (even an
+    // unrelated system) re-authored an identical-looking transform.
+    if (delta.lengthSquared() > 1.0e-10 ||
         !same_rotation || fabsf(source->mScale - snap.mScale) > 0.00001f)
     {
         return reject("The prototype moved or changed scale; stage it again.");
@@ -3700,6 +3758,16 @@ bool ALGhostStudio::crowdPlacementSourceUnchanged(std::string* reason) const
     if (snap.mGroupId.notNull())
     {
         return reject("Ungroup the prototype before building a crowd.");
+    }
+    if (source->mTransformRevision != snap.mTransformRevision)
+    {
+        if (reason)
+        {
+            *reason =
+                "The prototype's transform revision changed since staging; "
+                "re-stage before committing if this crowd looks wrong.";
+        }
+        return true;
     }
     if (reason) reason->clear();
     return true;
@@ -3784,17 +3852,11 @@ bool ALGhostStudio::resolveCrowdPlacement()
         draft.mValidation.mMessage = "The selected group mode is invalid.";
         return false;
     }
-    if ((draft.mSpec.mFacing == FACING_WORLD_POINT ||
-         draft.mSpec.mFacing == FACING_TARGET_ACTOR ||
-         draft.mSpec.mFacing == FACING_TRACK_SUBJECT) &&
-        (!draft.mSpec.mHasFacingPoint ||
-         !draft.mSpec.mFacingPointGlobal.isFinite()))
-    {
-        draft.mValidation.mSolverStatus = Status::InvalidInput;
-        draft.mValidation.mMessage =
-            "Pick a valid facing point before placing this crowd.";
-        return false;
-    }
+    // A missing/invalid facing target for these modes used to hard-fail the
+    // entire placement. It now falls back to the formation heading (see the
+    // per-slot switch below) with a warning instead -- a "Blocked" failure
+    // should mean a genuine blocker (missing prototype, invalid spec,
+    // legality, clone allocation), not "you have not picked a point yet".
     if (draft.mSpec.mFacing == FACING_PATH_HEADING)
     {
         draft.mValidation.mSolverStatus = Status::UnsupportedShape;
@@ -3822,7 +3884,7 @@ bool ALGhostStudio::resolveCrowdPlacement()
     request.mCenterSpacingMeters = draft.mSpec.mCenterSpacing;
     request.mEdgeGapMeters = draft.mSpec.mEdgeGap;
     request.mJitterMeters = draft.mSpec.mJitter;
-    request.mYawRadians = draft.mYaw;
+    request.mYawRadians = draft.mPatternYaw;
     request.mGridColumns = draft.mSpec.mGridColumns;
     request.mGridRows = draft.mSpec.mGridRows;
     request.mColumnSpacingMeters = draft.mSpec.mFileSpacing;
@@ -3843,7 +3905,12 @@ bool ALGhostStudio::resolveCrowdPlacement()
     {
         Member member;
         member.mId = (U64)i + 1;
-        member.mFootprintRadiusMeters = 0.0;
+        // A zero footprint let the edge-gap setting protect nothing: any
+        // positive gap value still let members overlap because the solver
+        // saw every member as a mathematical point. Estimate a real
+        // avatar-sized clearance radius instead, scaled with the prototype.
+        member.mFootprintRadiusMeters =
+            (F64)llmax(0.30f, 0.30f * draft.mSource.mScale);
         request.mMembers.push_back(member);
     }
 
@@ -3882,7 +3949,7 @@ bool ALGhostStudio::resolveCrowdPlacement()
         return false;
     }
     if (!draft.mAnchor.isFinite() || !llfinite(draft.mHeight) ||
-        !llfinite(draft.mYaw))
+        !llfinite(draft.mPatternYaw) || !llfinite(draft.mFacingYawOffset))
     {
         validation.mMessage = "The placement anchor is not finite.";
         return false;
@@ -3902,7 +3969,11 @@ bool ALGhostStudio::resolveCrowdPlacement()
     // to rotate off-axis / wobble as the heading changed. FACING_SOURCE
     // (handled below) remains the explicit opt-in that reproduces the
     // prototype's full pitch/roll.
-    LLQuaternion authored(draft.mYaw, LLVector3::z_axis);
+    // FACING_AUTHOR ("Rotate with formation"): body facing = pattern yaw +
+    // the independent facing-offset bias. Zero offset reproduces the
+    // pre-split behaviour exactly (body facing tracks the pattern 1:1).
+    LLQuaternion authored(
+        draft.mPatternYaw + draft.mFacingYawOffset, LLVector3::z_axis);
     authored.normalize();
 
     auto yaw_to = [this](const LLVector3d& from, const LLVector3d& to,
@@ -3930,37 +4001,85 @@ bool ALGhostStudio::resolveCrowdPlacement()
         if (draft.mSpec.mTerrainConform)
         {
             LLVector3 agent = gAgent.getPosAgentFromGlobal(slot.mFoot);
-            if (!LLWorld::getInstance()->getRegionFromPosAgent(agent))
+            LLViewerRegion* region =
+                LLWorld::getInstance()->getRegionFromPosAgent(agent);
+            // A region existing is not proof its terrain data has actually
+            // arrived -- LLSurface's height array starts at Z=0 everywhere
+            // until real patch data streams in, so without checking
+            // getHasReceivedData() an unloaded patch silently placed the
+            // slot at sea level instead of falling back to the formation
+            // plane.
+            LLSurfacePatch* patch = region
+                ? region->getLand().resolvePatchRegion(
+                    region->getPosRegionFromGlobal(slot.mFoot))
+                : nullptr;
+            if (region && patch && patch->getHasReceivedData())
             {
-                draft.mSlots.clear();
-                validation.mCanCommit = false;
-                validation.mMessage =
-                    "Terrain data is unavailable for one or more slots.";
-                return false;
+                agent.mV[VZ] =
+                    LLWorld::getInstance()->resolveLandHeightAgent(agent) +
+                    draft.mHeight;
+                slot.mFoot = gAgent.getPosGlobalFromAgent(agent);
             }
-            agent.mV[VZ] =
-                LLWorld::getInstance()->resolveLandHeightAgent(agent) +
-                draft.mHeight;
-            slot.mFoot = gAgent.getPosGlobalFromAgent(agent);
+            else
+            {
+                // Best-effort: one region with no loaded terrain data must
+                // not invalidate the ENTIRE crowd. Leave this single slot on
+                // the flat formation plane (already computed above) and
+                // surface a warning instead of failing the whole placement.
+                validation.mPartial = true;
+                if (validation.mMessage.empty())
+                {
+                    validation.mMessage =
+                        "Terrain data is unavailable for one or more slots; "
+                        "they were kept on the formation plane.";
+                }
+            }
         }
 
-        F32 facing_yaw = draft.mYaw;
+        F32 facing_yaw = draft.mPatternYaw;
         bool pure_yaw = false;
+        bool full_quaternion_set = false;
         switch (draft.mSpec.mFacing)
         {
         case FACING_SOURCE:
-            slot.mRotation = draft.mSource.mRotation;
+            if (draft.mSpec.mPreserveSourceTilt)
+            {
+                // Explicit opt-in: reproduce the prototype's FULL
+                // pitched/rolled quaternion, with the independent
+                // facing-offset bias composed on top as an ADDITIONAL
+                // world-Z yaw (applied after/on top of the preserved tilt,
+                // in the v*q convention this codebase uses -- same-axis
+                // yaw-only composition would be ambiguous once real
+                // pitch/roll is involved, so this is a genuine rotation
+                // composition, not just adding two yaw scalars). Without
+                // this the offset spinner was silently a no-op whenever
+                // preserve-tilt was checked.
+                slot.mRotation = draft.mSource.mRotation *
+                    LLQuaternion(draft.mFacingYawOffset, LLVector3::z_axis);
+                full_quaternion_set = true;
+            }
+            else
+            {
+                // "Source yaw" now means what its label says: a pure
+                // world-Z yaw extraction (same formula as
+                // Instance::getYaw()), never a smuggled-in pitch/roll.
+                const LLVector3 source_forward =
+                    LLVector3::x_axis * draft.mSource.mRotation;
+                facing_yaw =
+                    atan2f(source_forward.mV[VY], source_forward.mV[VX]);
+                pure_yaw = true;
+            }
             break;
         case FACING_CAMERA:
-            facing_yaw = yaw_to(slot.mFoot, camera_global, draft.mYaw);
+            facing_yaw = yaw_to(slot.mFoot, camera_global, draft.mPatternYaw);
             pure_yaw = true;
             break;
         case FACING_CENTROID_IN:
-            facing_yaw = yaw_to(slot.mFoot, draft.mAnchor, draft.mYaw);
+            facing_yaw = yaw_to(slot.mFoot, draft.mAnchor, draft.mPatternYaw);
             pure_yaw = true;
             break;
         case FACING_OUTWARD:
-            facing_yaw = yaw_to(draft.mAnchor, slot.mFoot, draft.mYaw);
+            facing_yaw = yaw_to(draft.mAnchor, slot.mFoot, draft.mPatternYaw);
             pure_yaw = true;
             break;
         case FACING_WORLD_POINT:
@@ -3970,19 +4089,33 @@ bool ALGhostStudio::resolveCrowdPlacement()
             {
                 facing_yaw = yaw_to(slot.mFoot,
                                     draft.mSpec.mFacingPointGlobal,
-                                    draft.mYaw);
+                                    draft.mPatternYaw);
                 pure_yaw = true;
+            }
+            else
+            {
+                // Missing facing target: fall back to the formation heading
+                // (facing_yaw/pure_yaw already default to that) instead of
+                // failing the whole placement -- surfaced as a warning.
+                validation.mPartial = true;
+                if (validation.mMessage.empty())
+                {
+                    validation.mMessage =
+                        "No facing target is set; using the formation "
+                        "heading instead.";
+                }
             }
             break;
         case FACING_AISLE:
         case FACING_FACE_ACROSS:
         {
-            const LLVector3d axis(cosf(draft.mYaw), sinf(draft.mYaw), 0.0);
+            const LLVector3d axis(
+                cosf(draft.mPatternYaw), sinf(draft.mPatternYaw), 0.0);
             const LLVector3d relative = slot.mFoot - draft.mAnchor;
             const LLVector3d nearest = draft.mAnchor +
                 axis * (relative.mdV[VX] * axis.mdV[VX] +
                         relative.mdV[VY] * axis.mdV[VY]);
-            facing_yaw = yaw_to(slot.mFoot, nearest, draft.mYaw);
+            facing_yaw = yaw_to(slot.mFoot, nearest, draft.mPatternYaw);
             pure_yaw = true;
             break;
         }
@@ -3998,12 +4131,12 @@ bool ALGhostStudio::resolveCrowdPlacement()
                     solved.mSlots[member].mLocalY, 0.0);
             }
             centroid /= (F64)(last - first);
-            facing_yaw = yaw_to(slot.mFoot, centroid, draft.mYaw);
+            facing_yaw = yaw_to(slot.mFoot, centroid, draft.mPatternYaw);
             pure_yaw = true;
             break;
         }
         case FACING_LOOSE:
-            facing_yaw = yaw_to(slot.mFoot, draft.mAnchor, draft.mYaw) +
+            facing_yaw = yaw_to(slot.mFoot, draft.mAnchor, draft.mPatternYaw) +
                 (seeded_unit(draft.mSource.mInstanceId,
                     draft.mSpec.mSeed + 1300u + source_slot.mInputIndex) -
                  0.5f) * (30.f * DEG_TO_RAD);
@@ -4017,18 +4150,18 @@ bool ALGhostStudio::resolveCrowdPlacement()
                 facing_yaw = yaw_to(slot.mFoot,
                     draft.mAnchor + LLVector3d(previous.mLocalX,
                                               previous.mLocalY, 0.0),
-                    draft.mYaw);
+                    draft.mPatternYaw);
                 pure_yaw = true;
             }
             break;
         case FACING_WAVE:
-            facing_yaw = draft.mYaw +
+            facing_yaw = draft.mPatternYaw +
                 sinf((F32)source_slot.mInputIndex * 0.65f) *
                 (35.f * DEG_TO_RAD);
             pure_yaw = true;
             break;
         case FACING_MIRROR_SOURCE:
-            facing_yaw = draft.mYaw + F_PI;
+            facing_yaw = draft.mPatternYaw + F_PI;
             pure_yaw = true;
             break;
         case FACING_RANDOM:
@@ -4042,10 +4175,16 @@ bool ALGhostStudio::resolveCrowdPlacement()
         default:
             break;
         }
-        if (draft.mSpec.mFacing != FACING_SOURCE)
+        if (!full_quaternion_set)
         {
+            // The independent facing-offset bias applies on top of every
+            // yaw-based resolution (including the formation-heading
+            // fallback carried by `authored`), never to a preserved full
+            // source quaternion.
             slot.mRotation = pure_yaw
-                ? LLQuaternion(facing_yaw, LLVector3::z_axis) : authored;
+                ? LLQuaternion(facing_yaw + draft.mFacingYawOffset,
+                              LLVector3::z_axis)
+                : authored;
         }
         slot.mRotation.normalize();
         const F32 slot_rotation_norm =
@@ -4077,10 +4216,21 @@ bool ALGhostStudio::resolveCrowdPlacement()
     }
     else
     {
+        // A per-slot best-effort warning (terrain data unavailable / no
+        // facing target set) accumulated in validation.mMessage above must
+        // survive here -- overwriting it unconditionally with the generic
+        // success stats discarded the ONLY place that explained which slots
+        // fell back and why, even though mPartial correctly stayed set.
+        const std::string partial_warning =
+            validation.mPartial ? validation.mMessage : std::string();
         validation.mMessage = llformat(
             "%u previewed · fitted radius %.2f m · edge gap %.2f m",
             validation.mPlacedCount, validation.mPlacedRadius,
             validation.mActualMinEdgeGap);
+        if (!partial_warning.empty())
+        {
+            validation.mMessage += " \xC2\xB7 " + partial_warning;
+        }
     }
     return validation.mCanCommit;
 }
@@ -4284,11 +4434,17 @@ ALGhostStudio::PlacementCommitResult ALGhostStudio::commitCrowdPlacement(
     LLQuaternion expected_rotation = source_slot.mRotation;
     const F32 placed_rotation_magnitude = placed_rotation.normalize();
     const F32 expected_rotation_magnitude = expected_rotation.normalize();
+    // Epsilon transform comparison only -- NOT a bit-exact revision-arithmetic
+    // gate. apply_slot(0) bumps the revision by exactly 1, but so does any
+    // other setYaw()/setFootGlobal()/setTransform()/setScale() call a runtime
+    // consumer happens to make with the SAME resulting values (harmless: the
+    // epsilon checks below already say "still exactly where we put it"). The
+    // old `mTransformRevision == draft.mSource.mTransformRevision + 1` hard
+    // requirement failed in exactly that harmless case and rolled back a
+    // successful placement over nothing.
     const bool source_still_exact =
         placed_source &&
         placed_source->mGroupId.isNull() &&
-        placed_source->mTransformRevision ==
-            draft.mSource.mTransformRevision + 1 &&
         (placed_source->mFootGlobal - source_slot.mFoot).lengthSquared() <=
             1.0e-10 &&
         llfinite(placed_rotation_magnitude) &&
@@ -4302,23 +4458,41 @@ ALGhostStudio::PlacementCommitResult ALGhostStudio::commitCrowdPlacement(
     {
         // A runtime consumer edited or replaced the prototype after our
         // stored transform was applied. Preserve that newer external state;
-        // only the copies belong to this failed transaction.
-        rollback(false);
+        // only the copies belong to this failed transaction. apply_slot(0)
+        // above already succeeded and moved the prototype (source_was_changed
+        // is true), so THIS rollback must also restore the prototype's
+        // original pre-commit transform -- passing a hardcoded false here
+        // used to leave the prototype moved even though every copy was
+        // removed.
+        rollback(source_was_changed);
         result.mMessage =
             "The prototype changed during crowd creation; copies were removed.";
         return result;
     }
 
-    if (draft.mSpec.mFacing == FACING_TRACK_SUBJECT ||
-        draft.mSpec.mFacing == FACING_WAVE)
+    for (size_t i = 0; i < ids.size(); ++i)
     {
-        for (size_t i = 0; i < ids.size(); ++i)
+        Instance* member = getInstance(ids[i]);
+        if (!member) continue;
+        // Always clear whatever crowd-facing driver this member may have
+        // INHERITED (e.g. duplicated from a prototype that itself used to be
+        // a Wave/Track-subject crowd member) before applying this crowd's
+        // own facing policy. Without this, a member silently kept animating
+        // under the old formation's driver even though the new formation
+        // never asked for it.
+        member->mCrowdFacing = FACING_AUTHOR;
+        member->mCrowdSlot = (U32)i;
+        member->mCrowdBaseYaw = draft.mPatternYaw;
+        // Persist the independent facing-offset bias onto the runtime
+        // driver too -- the preview already composed it in (see the
+        // resolveCrowdPlacement() facing switch), but only mCrowdBaseYaw was
+        // being stored here, so a live Track/Wave update on first tick threw
+        // the authored offset away.
+        member->mCrowdFacingYawOffset = draft.mFacingYawOffset;
+        if (draft.mSpec.mFacing == FACING_TRACK_SUBJECT ||
+            draft.mSpec.mFacing == FACING_WAVE)
         {
-            Instance* member = getInstance(ids[i]);
-            if (!member) continue;
             member->mCrowdFacing = draft.mSpec.mFacing;
-            member->mCrowdSlot = (U32)i;
-            member->mCrowdBaseYaw = draft.mYaw;
             member->mCrowdFacingStart = LLTimer::getTotalSeconds();
             if (draft.mSpec.mFacing == FACING_TRACK_SUBJECT)
             {
@@ -4459,7 +4633,7 @@ void ALGhostStudio::renderFormationPreview()
         case GUIDE_SQUARE:
         {
             const LLQuaternion guide_rotation(
-                mCrowdDraft.mYaw, LLVector3::z_axis);
+                mCrowdDraft.mPatternYaw, LLVector3::z_axis);
             const LLVector3 x =
                 LLVector3(guide_size, 0.f, 0.f) * guide_rotation;
             const LLVector3 y =

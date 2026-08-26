@@ -354,6 +354,9 @@ bool ALPanelGhostStudio::postBuild()
         getChild<LLSpinCtrl>("brigade_rank_spacing_spinner");
     mFormationFacing = getChild<LLComboBox>("formation_facing_combo");
     mFormationTerrain = getChild<LLCheckBoxCtrl>("formation_terrain_check");
+    mFacingYawOffset = getChild<LLSpinCtrl>("facing_yaw_offset_spinner");
+    mPreserveSourceTilt =
+        getChild<LLCheckBoxCtrl>("preserve_source_tilt_check");
     mCrowdCopiesAs = getChild<LLComboBox>("crowd_copies_as_combo");
     mCrowdCreateMode = getChild<LLComboBox>("crowd_create_mode_combo");
     mLockMode = getChild<LLComboBox>("lock_mode_combo");
@@ -528,11 +531,31 @@ bool ALPanelGhostStudio::postBuild()
            static_cast<LLUICtrl*>(mBrigadeRankSpacing),
            static_cast<LLUICtrl*>(mFormationFacing),
            static_cast<LLUICtrl*>(mFormationTerrain),
+           static_cast<LLUICtrl*>(mPreserveSourceTilt),
            static_cast<LLUICtrl*>(mCrowdCreateMode) })
     {
         control->setCommitCallback(
             [this](LLUICtrl*, const LLSD&) { updateOwnedCrowdPlacement(); });
     }
+    // Independent of FormationSpec: the facing-offset bias lives directly on
+    // the crowd draft (CrowdPlacementDraft::mFacingYawOffset), not the spec,
+    // so it goes through its own dedicated setter rather than
+    // updateOwnedCrowdPlacement()'s spec re-resolve.
+    mFacingYawOffset->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            const ALGhostStudio::CrowdPlacementDraft& draft =
+                ALGhostStudio::instance().getCrowdPlacementDraft();
+            if (!draft.mActive || draft.mOwnerId != mPlacementOwner)
+            {
+                return;
+            }
+            const F32 offset_rad =
+                (F32)mFacingYawOffset->getValue().asReal() * DEG_TO_RAD;
+            ALGhostStudio::instance().setCrowdPlacementFacingOffset(
+                mPlacementOwner, offset_rad);
+            refreshCrowdPlacement();
+        });
     mArrayBuildBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickBuildArray(); });
     mCrowdConfirmBtn->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onClickCrowdConfirm(); });
@@ -2683,6 +2706,13 @@ void ALPanelGhostStudio::onClickBuildArray()
         mLastCrowdMessage = "Could not start crowd placement.";
         return;
     }
+    // A facing-offset value set BEFORE "Preview in world" (no active draft
+    // existed yet, so the spinner's own commit callback was a no-op) must
+    // not be silently discarded: seed the just-created draft with whatever
+    // the spinner currently shows before refreshCrowdPlacement() below can
+    // pull the display back down to the draft's still-default 0.
+    studio.setCrowdPlacementFacingOffset(mPlacementOwner,
+        (F32)mFacingYawOffset->getValue().asReal() * DEG_TO_RAD);
 
     const ALGhostStudio::CrowdPlacementDraft& draft =
         studio.getCrowdPlacementDraft();
@@ -2960,6 +2990,7 @@ ALGhostStudio::FormationSpec ALPanelGhostStudio::capturePlacementSpec() const
     spec.mTerrainConform = mFormationTerrain->get();
     spec.mFacing = (ALGhostStudio::EFormationFacing)
         mFormationFacing->getValue().asInteger();
+    spec.mPreserveSourceTilt = mPreserveSourceTilt->get();
     spec.mLockMode =
         (ALGhostStudio::ELockMode)mCrowdCreateMode->getValue().asInteger();
 
@@ -3058,6 +3089,11 @@ void ALPanelGhostStudio::refreshCrowdPlacement()
         mFormationSeed->setValue((S32)draft.mSpec.mSeed);
         mFormationTerrain->set(draft.mSpec.mTerrainConform);
         mFormationFacing->setValue((S32)draft.mSpec.mFacing);
+        mPreserveSourceTilt->set(draft.mSpec.mPreserveSourceTilt);
+        if (!mFacingYawOffset->hasFocus())
+        {
+            mFacingYawOffset->setValue(draft.mFacingYawOffset * RAD_TO_DEG);
+        }
         mCrowdCreateMode->setValue((S32)draft.mSpec.mLockMode);
         mCrowdCopiesAs->setValue((S32)draft.mSource.mKind);
         mApplyingCrowdDraft = false;
@@ -3094,6 +3130,8 @@ void ALPanelGhostStudio::refreshCrowdPlacement()
            static_cast<LLUICtrl*>(mFormationSeed),
            static_cast<LLUICtrl*>(mFormationFacing),
            static_cast<LLUICtrl*>(mFormationTerrain),
+           static_cast<LLUICtrl*>(mFacingYawOffset),
+           static_cast<LLUICtrl*>(mPreserveSourceTilt),
            static_cast<LLUICtrl*>(mCrowdCreateMode) })
     {
         control->setEnabled(can_edit);
@@ -3125,20 +3163,42 @@ void ALPanelGhostStudio::refreshCrowdPlacement()
     mPickFacingTarget->setEnabled(
         !draft.mActive && have_prototype);
     mCrowdConfirmBtn->setEnabled(
-        owner && draft.mValidation.mCanCommit && source_unchanged);
+        owner && draft.mValidation.mCanCommit && source_unchanged &&
+        draft.mAnchorValid);
     mCrowdUnpinBtn->setEnabled(owner && draft.mPinned);
     mCrowdCancelBtn->setEnabled(owner);
 
+    // Status vocabulary: Ready / Ready with warnings / Blocked. Only genuine
+    // blockers (missing prototype / invalid spec via mCanCommit, a legality
+    // block via !mAnchorValid, or identity/backing/group change via
+    // !source_unchanged) count as Blocked; a best-effort terrain fallback, a
+    // missing facing target, an anchor clamp/water-snap, or advisory
+    // revision drift are warnings, not failures. A legality failure used to
+    // collapse into just a nonempty mAnchorWarning -- indistinguishable from
+    // a non-blocking clamp/snap warning -- so Confirm stayed wrongly
+    // enabled; mAnchorValid is the resolver's own verdict and settles it.
     std::string status;
     if (blocked)
     {
-        status = "Read-only: another Ghost Studio panel owns placement.\n" +
+        status = "Blocked: another Ghost Studio panel owns placement.\n" +
                  draft.mValidation.mMessage;
     }
     else if (owner)
     {
+        const bool is_blocked =
+            !draft.mValidation.mCanCommit || !source_unchanged ||
+            !draft.mAnchorValid;
+        const bool has_warning =
+            !is_blocked &&
+            (draft.mValidation.mPartial || !draft.mAnchorWarning.empty() ||
+             !source_reason.empty());
+        const char* ready_word = is_blocked
+            ? "Blocked" : (has_warning ? "Ready with warnings" : "Ready");
+        const std::string basis_label =
+            ALGhostPlacementResolver::basisLabel(draft.mAnchorBasis);
         status = llformat(
-            "Preview: %d/%d slots \xC2\xB7 span %.2fm \xC2\xB7 gap %.2fm%s",
+            "%s (%s) \xC2\xB7 %d/%d slots \xC2\xB7 span %.2fm \xC2\xB7 gap %.2fm%s",
+            ready_word, basis_label.c_str(),
             (S32)draft.mValidation.mPlacedCount,
             (S32)draft.mValidation.mRequestedCount,
             draft.mValidation.mPlacedRadius,
@@ -3146,7 +3206,7 @@ void ALPanelGhostStudio::refreshCrowdPlacement()
             draft.mPinned ? " \xC2\xB7 pinned" : "");
         if (!source_unchanged)
         {
-            status = "Cannot confirm this draft.\n" + source_reason;
+            status = "Blocked: cannot confirm this draft.\n" + source_reason;
         }
         else
         {
@@ -3162,6 +3222,14 @@ void ALPanelGhostStudio::refreshCrowdPlacement()
             if (!commit_message.empty())
             {
                 status += "\n" + commit_message;
+            }
+            else if (!draft.mAnchorWarning.empty())
+            {
+                status += "\n" + draft.mAnchorWarning;
+            }
+            else if (!source_reason.empty())
+            {
+                status += "\n" + source_reason;
             }
             else
             {

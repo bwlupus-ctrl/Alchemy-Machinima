@@ -294,6 +294,12 @@ private:
     LLSpinCtrl*       mBrigadeRankSpacing = nullptr;
     LLComboBox*       mFormationFacing = nullptr;
     LLCheckBoxCtrl*   mFormationTerrain = nullptr;
+    // Body-facing bias, independent of the pattern's own wheel-driven
+    // rotation (CrowdPlacementDraft::mFacingYawOffset).
+    LLSpinCtrl*       mFacingYawOffset = nullptr;
+    // FACING_SOURCE opt-in: keep the prototype's full pitched/rolled
+    // quaternion instead of the default pure world-Z yaw extraction.
+    LLCheckBoxCtrl*   mPreserveSourceTilt = nullptr;
     LLComboBox*       mCrowdCopiesAs = nullptr;
     LLComboBox*       mCrowdCreateMode = nullptr;
     LLComboBox*       mLockMode = nullptr;

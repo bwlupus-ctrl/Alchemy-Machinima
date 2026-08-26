@@ -292,10 +292,10 @@
 
           <panel border="false" follows="all" height="490" label="Crowd" layout="topleft" name="crowd_tab" width="500">
             <scroll_container follows="all" height="490" layout="topleft" left="0" name="crowd_scroll" reserve_scroll_corner="false" top="0" width="500">
-              <panel background_visible="false" follows="left|top" height="582" layout="topleft" left="0" name="crowd_scroll_body" top="0" width="484">
+              <panel background_visible="false" follows="left|top" height="604" layout="topleft" left="0" name="crowd_scroll_body" top="0" width="484">
 
         <!-- Reliable crowd placement -->
-        <panel follows="left|top" height="376" layout="topleft" left="0" name="array_section" top="0" width="484">
+        <panel follows="left|top" height="398" layout="topleft" left="0" name="array_section" top="0" width="484">
           <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="array_section_label" right="-8" top="8" width="332">Crowd Placement</text>
           <spinner decimal_digits="0" follows="left|top" height="18" increment="1" initial_value="5" label="Count" label_width="40" layout="topleft" left="8" max_val="256" min_val="2" name="array_count_spinner" top="30"
            tool_tip="Total clones in the crowd, including the selected prototype" width="78" />
@@ -370,7 +370,7 @@
 
           <combo_box follows="left|top" height="22" initial_value="0" layout="topleft" left="8" name="formation_facing_combo" top="176" width="142"
            tool_tip="Heading resolved once into the placement draft">
-            <combo_box.item label="Author heading" name="face_author" value="0" />
+            <combo_box.item label="Rotate with formation" name="face_author" value="0" />
             <combo_box.item label="Source yaw" name="face_source" value="1" />
             <combo_box.item label="Camera / stage" name="face_camera" value="2" />
             <combo_box.item label="Centroid in" name="face_in" value="3" />
@@ -396,15 +396,20 @@
           <button follows="left|top" height="22" label="Pick facing point" layout="topleft" left="340" name="btn_pick_facing_target" top="176"
            tool_tip="Set the selected prototype's fixed world-facing point before previewing" width="118" />
 
-          <button follows="left|top" height="22" label="Preview in world" layout="topleft" left="8" name="btn_array_build" top="206"
+          <spinner decimal_digits="1" follows="left|top" height="18" increment="1" initial_value="0" label="Facing offset" label_width="76" layout="topleft" left="8" max_val="180" min_val="-180" name="facing_yaw_offset_spinner" top="198"
+           tool_tip="Body facing bias, independent of the pattern's own wheel-driven rotation" width="166" />
+          <check_box follows="left|top" height="18" label="Preserve source tilt" layout="topleft" left="182" name="preserve_source_tilt_check" top="198"
+           tool_tip="Source yaw normally extracts a pure world-Z heading; check this to reproduce the prototype's full pitch/roll instead" width="160" />
+
+          <button follows="left|top" height="22" label="Preview in world" layout="topleft" left="8" name="btn_array_build" top="228"
            tool_tip="Show every exact clone slot without creating anything yet" width="110" />
-          <button follows="left|top" height="22" label="Confirm" layout="topleft" left="124" name="btn_crowd_confirm" top="206"
+          <button follows="left|top" height="22" label="Confirm" layout="topleft" left="124" name="btn_crowd_confirm" top="228"
            tool_tip="Create the exact visible preview" width="70" />
-          <button follows="left|top" height="22" label="Unpin" layout="topleft" left="200" name="btn_crowd_unpin" top="206"
+          <button follows="left|top" height="22" label="Unpin" layout="topleft" left="200" name="btn_crowd_unpin" top="228"
            tool_tip="Return a pinned layout to following the mouse" width="62" />
-          <button follows="left|top" height="22" label="Cancel" layout="topleft" left="268" name="btn_crowd_cancel" top="206"
+          <button follows="left|top" height="22" label="Cancel" layout="topleft" left="268" name="btn_crowd_cancel" top="228"
            tool_tip="Discard the placement draft without creating clones" width="66" />
-          <combo_box control_name="GhostStudioOverlayPalette" follows="left|top" height="22" layout="topleft" left="340" name="formation_overlay_palette_combo" top="206" width="140"
+          <combo_box control_name="GhostStudioOverlayPalette" follows="left|top" height="22" layout="topleft" left="340" name="formation_overlay_palette_combo" top="228" width="140"
            tool_tip="High-contrast colours for the in-world crowd preview markers and numbers (the dark outline is always kept)">
             <combo_box.item label="Preview: Neon green" name="palette_green" value="0" />
             <combo_box.item label="Preview: Neon yellow" name="palette_yellow" value="1" />
@@ -413,33 +418,33 @@
             <combo_box.item label="Preview: Magenta" name="palette_magenta" value="4" />
           </combo_box>
 
-          <text follows="left|top" height="40" layout="topleft" left="8" name="crowd_placement_status" text_color="LtGray_50" top="236" width="450"
+          <text follows="left|top" height="40" layout="topleft" left="8" name="crowd_placement_status" text_color="LtGray_50" top="258" width="450"
            word_wrap="true">Ready. Select a clone, choose a formation, then Preview in world.</text>
-          <text follows="left|top" height="38" layout="topleft" left="8" name="crowd_placement_instructions" text_color="LtGray_50" top="280" width="450"
+          <text follows="left|top" height="38" layout="topleft" left="8" name="crowd_placement_instructions" text_color="LtGray_50" top="302" width="450"
            word_wrap="true">Wheel rotates · hold MMB and drag for height · click once pins · click again or Confirm creates · Alt camera · Esc cancels</text>
 
-          <combo_box follows="left|top" height="22" initial_value="1" layout="topleft" left="8" name="nameplate_mode_combo" top="324" width="124"
+          <combo_box follows="left|top" height="22" initial_value="1" layout="topleft" left="8" name="nameplate_mode_combo" top="346" width="124"
            tool_tip="Off hides clone labels; Smart shows one label for a collapsed group; All also labels expanded members">
             <combo_box.item label="Names: Off" name="names_off" value="0" />
             <combo_box.item label="Names: Smart" name="names_smart" value="1" />
             <combo_box.item label="Names: All" name="names_all" value="2" />
           </combo_box>
-          <check_box follows="left|top" height="18" label="Edit group members" layout="topleft" left="140" name="group_edit_members_check" top="326"
+          <check_box follows="left|top" height="18" label="Edit group members" layout="topleft" left="140" name="group_edit_members_check" top="348"
            tool_tip="Expand the selected group and allow member-local positioning" width="146" />
-          <combo_box follows="left|top" height="22" initial_value="1" layout="topleft" left="292" name="lock_mode_combo" top="324" width="166"
+          <combo_box follows="left|top" height="22" initial_value="1" layout="topleft" left="292" name="lock_mode_combo" top="346" width="166"
            tool_tip="Behavior of the selected existing group; this does not set how a new crowd is created">
             <combo_box.item label="Selected group: Off" name="lock_off" value="0" />
             <combo_box.item label="Selected group: Rigid" name="lock_rigid" value="1" />
             <combo_box.item label="Selected group: Move+Face" name="lock_move_face" value="2" />
           </combo_box>
-          <check_box follows="left|top" height="18" label="Pin member offset" layout="topleft" left="8" name="group_member_pinned_check" top="352"
+          <check_box follows="left|top" height="18" label="Pin member offset" layout="topleft" left="8" name="group_member_pinned_check" top="374"
            tool_tip="Keep this member's edited local offset when group authoring updates" width="142" />
-          <button follows="left|top" height="22" label="Reset member" layout="topleft" left="156" name="btn_group_member_reset" top="348"
+          <button follows="left|top" height="22" label="Reset member" layout="topleft" left="156" name="btn_group_member_reset" top="370"
            tool_tip="Restore this member's authored local transform inside the group" width="106" />
         </panel>
 
         <!-- Time and formation motion -->
-        <panel follows="left|top" height="206" layout="topleft" left="0" name="motion_section" top="376" width="484">
+        <panel follows="left|top" height="206" layout="topleft" left="0" name="motion_section" top="398" width="484">
           <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="motion_section_label" right="-8" top="8" width="332">Freeze Strip &amp; Formation Motion</text>
           <spinner decimal_digits="0" follows="left|top" height="18" increment="1" initial_value="8" label="Frames" label_width="44" layout="topleft" left="8" max_val="64" min_val="1" name="strip_count_spinner" top="30"
            tool_tip="Number of successive real-time pose snapshots" width="78" />
