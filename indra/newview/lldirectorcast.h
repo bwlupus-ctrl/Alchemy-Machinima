@@ -125,20 +125,43 @@ public:
         ALGazeMath::EGazeCuePhase mPhase = ALGazeMath::GAZE_CUE_BEFORE;
     };
 
-    // Client-only presentation styling for a live Director actor.  The style
-    // ids intentionally mirror Actor Mover / Ghost Studio's 0..27 shader
-    // looks, without making the cast model depend on either renderer.
+    // Client-only presentation styling for a live Director actor. IDs 0..27
+    // are the shared Actor Mover / Ghost Studio look prefix. IDs above that
+    // boundary are intentionally exclusive to live Actor Styling.
     enum EActorStyleMode : S32
     {
         ACTOR_STYLE_LAYER = 0,
         ACTOR_STYLE_REPLACE
     };
 
+    enum EActorStyleLook : S32
+    {
+        ACTOR_LOOK_DEFAULT          = 0,
+        ACTOR_LOOK_FORWARD_FALLBACK = 1,  // authored Clone for older viewers
+        ACTOR_LOOK_SHARED_MAX       = 27,
+        ACTOR_LOOK_RIM_NOIR         = 28,
+        ACTOR_LOOK_GEL_SPLIT        = 29,
+        ACTOR_LOOK_BASS_SWEEP       = 30,
+        ACTOR_LOOK_MOONLIT          = 31,
+        ACTOR_LOOK_POSSESSED        = 32,
+        ACTOR_LOOK_MAX              = ACTOR_LOOK_POSSESSED
+    };
+
+    static bool isActorStyleLook(S32 look)
+    {
+        return look >= ACTOR_LOOK_DEFAULT && look <= ACTOR_LOOK_MAX;
+    }
+
+    static bool isLiveActorStyleLook(S32 look)
+    {
+        return look > ACTOR_LOOK_SHARED_MAX && look <= ACTOR_LOOK_MAX;
+    }
+
     struct ActorStyle
     {
         bool            mEnabled = false;
         EActorStyleMode mMode = ACTOR_STYLE_LAYER;
-        S32             mStyle = 0;
+        S32             mStyle = ACTOR_LOOK_DEFAULT;
         bool            mUseActorHue = true;
         F32             mHue = 200.f;
         F32             mAlpha = 0.6f;

@@ -28,7 +28,15 @@ constexpr S32 GEL_COUNT = 15;
 constexpr S32 FIXTURE_GEL_COUNT = 19;
 constexpr S32 FIXTURE_GEL_SLOT_COUNT = 3;
 constexpr S32 FIXTURE_PRESET_COUNT = 13;
-constexpr S32 FX_COUNT = 63;
+// Frozen boundary of the original numeric FX library.  Persistence and
+// practical-flicker hash domains use this value so appended effects cannot
+// reinterpret or retime existing scenes.
+constexpr S32 FX_LEGACY_COUNT = 63;
+constexpr S32 FX_CANDY_ORBIT = FX_LEGACY_COUNT;
+constexpr S32 FX_RIMWAVE = 64;
+constexpr S32 FX_AFTERHOURS_DRIFT = 65;
+constexpr S32 FX_SOMETHING_BEHIND_YOU = 66;
+constexpr S32 FX_COUNT = 67;
 enum FlickerProgram : S32
 {
     FLICKER_NONE = 0,

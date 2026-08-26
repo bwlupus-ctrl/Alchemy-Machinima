@@ -884,7 +884,8 @@ LLSD cueToLLSD(const Cue& input)
     {
         data["shadow_soft_override"].append(cue.mShadowSoftOverride[i]);
     }
-    data["fx"] = cue.mFX;
+    ALCineLightRigPersistence::writeFX(
+        data, "fx", "fx_key", cue.mFX);
     data["provenance"] = cue.mProvenance;
     return data;
 }
@@ -934,7 +935,8 @@ bool cueFromLLSD(const LLSD& data, Cue& output)
                 data["shadow_soft_override"][i].asReal());
         }
     }
-    cue.mFX = data.has("fx") ? data["fx"].asInteger() : -1;
+    cue.mFX = ALCineLightRigPersistence::readFX(
+        data, "fx", "fx_key");
     cue.mProvenance = data["provenance"].asString();
     output = sanitizeCue(cue);
     return true;
@@ -3713,7 +3715,8 @@ LLSD ALCineLightRig::sceneData() const
     data["orbit_pitch"] = transforms.mPitchDeg;
     const S32 requested_fx = std::clamp(
         gSavedSettings.getS32("CineLightRigFX"), -1, FX_COUNT - 1);
-    data["fx"] = requested_fx;
+    ALCineLightRigPersistence::writeFX(
+        data, "fx", "fx_key", requested_fx);
     data["seed"] = llformat(
         "%u", gSavedSettings.getU32("CineLightRigSeed"));
     const F64 phase = requested_fx >= 0 && requested_fx == mActiveFX &&
@@ -3868,10 +3871,10 @@ void ALCineLightRig::applySceneData(const LLSD& data)
         }
         gSavedSettings.setU32("CineLightRigSeed", seed);
     }
-    if (data.has("fx"))
+    if (data.has("fx") || data.has("fx_key"))
     {
-        const S32 fx = std::clamp(
-            data["fx"].asInteger(), -1, FX_COUNT - 1);
+        const S32 fx = ALCineLightRigPersistence::readFX(
+            data, "fx", "fx_key");
         gSavedSettings.setS32("CineLightRigFX", fx);
         const F64 phase = data.has("fx_phase")
             ? data["fx_phase"].asReal() : 0.0;

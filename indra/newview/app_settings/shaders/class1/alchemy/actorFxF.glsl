@@ -152,6 +152,41 @@ vec2 actorFxDeviceUv()
     return clamp(actorFxFragCoord() / frame_size, vec2(0.0), vec2(1.0));
 }
 
+// Live-actor-exclusive clocks share the deterministic Actor FX time and UUID
+// phase. They therefore remain phase-locked across material families, tiled
+// snapshots, shared beauty, and the optional synthetic-emission replay.
+float actorFxStableUnitPhase()
+{
+    return fract(actorFxParams1.w * 0.15915494);
+}
+
+float actorFxBassSweepBand()
+{
+    float tempo = max(actorFxParams2.x, 0.20);
+    float phase = fract(actorFxDeviceUv().y * 2.5
+                      - actorFxTime * (0.22 + 0.16 * tempo)
+                      + actorFxStableUnitPhase());
+    return 1.0 - smoothstep(0.025, 0.10, abs(phase - 0.5));
+}
+
+float actorFxBassSweepBeat()
+{
+    float tempo = max(actorFxParams2.x, 0.20);
+    float wave = 0.5 + 0.5 * sin(6.2831853
+        * (actorFxTime * tempo + actorFxStableUnitPhase()));
+    return pow(wave, 8.0);
+}
+
+float actorFxPossessedHeartbeat()
+{
+    float phase = fract(actorFxTime * max(actorFxParams2.x, 0.25)
+                        + actorFxStableUnitPhase());
+    float first = 1.0 - smoothstep(0.0, 0.055, abs(phase - 0.10));
+    float second = 0.62
+        * (1.0 - smoothstep(0.0, 0.045, abs(phase - 0.26)));
+    return max(first, second);
+}
+
 bool actorFxCoverMode()
 {
     return actorFxParams2.w > 0.5;
@@ -659,6 +694,59 @@ vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored
         // Material callers have already assembled source.r/source.b from the
         // animated side taps requested by actorFxRgbSplitEnabled().
         fx = source * actorFxTint + actorFxTint * edge * 1.2;
+    else if (actorFxLook == 28) // Live: Rim Noir
+    {
+        float rim_wide = smoothstep(0.05, 0.72, edge);
+        float rim_core = smoothstep(0.48, 0.92, edge);
+        vec3 noir = mix(vec3(lum), source, 0.28)
+                  * (0.34 + 0.66 * smoothstep(0.035, 0.65, lum));
+        fx = noir + actorFxTint * (0.28 * rim_wide + 1.10 * rim_core);
+    }
+    else if (actorFxLook == 29) // Live: Gel Split
+    {
+        float rim_wide = smoothstep(0.05, 0.72, edge);
+        float rim_core = smoothstep(0.48, 0.92, edge);
+        float side = smoothstep(-0.35, 0.35, n.x);
+        vec3 cool = mix(vec3(0.02, 0.75, 1.00), actorFxTint, 0.22);
+        vec3 warm = mix(vec3(1.00, 0.02, 0.38), actorFxTint.zyx, 0.18);
+        vec3 gel = mix(cool, warm, side);
+        fx = source * 0.78 + gel * (0.30 * rim_wide + 1.05 * rim_core);
+    }
+    else if (actorFxLook == 30) // Live: Bass Sweep
+    {
+        float rim_wide = smoothstep(0.05, 0.72, edge);
+        float rim_core = smoothstep(0.48, 0.92, edge);
+        float sweep_band = actorFxBassSweepBand();
+        float beat = actorFxBassSweepBeat();
+        vec3 club = mix(vec3(0.05, 0.85, 1.00), actorFxTint, 0.50);
+        fx = source * (0.68 + 0.16 * beat)
+           + club * (sweep_band * (0.35 + 1.05 * beat)
+                     + 0.30 * rim_wide + 0.25 * rim_core);
+    }
+    else if (actorFxLook == 31) // Live: Moonlit
+    {
+        float rim_wide = smoothstep(0.05, 0.72, edge);
+        float rim_core = smoothstep(0.48, 0.92, edge);
+        vec3 moon = mix(vec3(0.16, 0.30, 0.72), actorFxTint, 0.18);
+        vec3 night = mix(vec3(lum) * vec3(0.22, 0.30, 0.50),
+                         source, 0.24) * 0.58;
+        fx = night + moon * (0.20 * rim_wide + 0.72 * rim_core);
+    }
+    else if (actorFxLook == 32) // Live: Possessed
+    {
+        float rim_wide = smoothstep(0.05, 0.72, edge);
+        float rim_core = smoothstep(0.48, 0.92, edge);
+        float heartbeat = actorFxPossessedHeartbeat();
+        float under = pow(max(dot(n, vec3(0.0, -0.816, 0.578)), 0.0), 2.0);
+        float crawl = 0.5 + 0.5 * sin(position_eye.y * 7.5
+                    + position_eye.x * 2.2 - actorFxTime * 0.9
+                    + actorFxParams1.w);
+        vec3 blood = mix(vec3(0.75, 0.003, 0.015), actorFxTint, 0.20);
+        fx = source * (0.32 + 0.38 * (1.0 - under))
+           + blood * (under * (0.26 + 1.25 * heartbeat)
+                      + rim_core * (0.22 + 0.28 * heartbeat)
+                      + 0.08 * crawl * rim_wide);
+    }
 
     // Ghost Studio adds restrained cues after the style so flat-tint looks
     // still reveal the selected distortion. Native textured looks keep their
@@ -760,7 +848,7 @@ float actorFxPbrNormalAoResponse()
 float actorFxPbrAuthoredEmissiveResponse()
 {
     if (!actorFxActive() || actorFxLook == 1 || actorFxLook == 10 ||
-        actorFxLook == 21)
+        actorFxLook == 21 || (actorFxLook >= 28 && actorFxLook <= 32))
     {
         return 1.0;
     }
@@ -828,7 +916,7 @@ vec3 actorFxPbrPreLight(vec3 source)
 }
 
 // Lightweight, emission-only evaluator shared by beauty and both glow
-// permutations.  It intentionally contains only the nine frozen signature
+// permutations. It intentionally contains only deliberate signature-bloom
 // looks, but uses the exact beauty masks, clocks, distortion envelope, signal,
 // brightness, and strength laws.
 vec3 actorFxPbrSyntheticEmission(vec3 authored_source,
@@ -839,7 +927,8 @@ vec3 actorFxPbrSyntheticEmission(vec3 authored_source,
     if (!actorFxActive() ||
         !(actorFxLook == 2 || actorFxLook == 6 || actorFxLook == 10 ||
           actorFxLook == 14 || actorFxLook == 15 || actorFxLook == 17 ||
-          actorFxLook == 19 || actorFxLook == 26 || actorFxLook == 27))
+          actorFxLook == 19 || actorFxLook == 26 || actorFxLook == 27 ||
+          actorFxLook == 30))
     {
         return vec3(0.0);
     }
@@ -927,11 +1016,21 @@ vec3 actorFxPbrSyntheticEmission(vec3 authored_source,
         emission = tint * (edge * 0.7 + beam * 2.5)
                  * 0.22 * emission_scale;
     }
-    else // 27: Hologram interference
+    else if (actorFxLook == 27) // Hologram interference
     {
         float scan_peak = smoothstep(0.72, 1.0, band);
         emission = tint * (edge * 1.2 + scan_peak * 0.14)
                  * 0.22 * emission_scale;
+    }
+    else // 30: Live Bass Sweep
+    {
+        float rim_core = smoothstep(0.48, 0.92, edge);
+        float sweep_band = actorFxBassSweepBand();
+        float beat = actorFxBassSweepBeat();
+        vec3 club = actor_fx_pbr_palette(
+            mix(vec3(0.05, 0.85, 1.00), actorFxTint, 0.50));
+        emission = club * (sweep_band * (0.20 + 0.12 * beat)
+                         + 0.10 * rim_core) * emission_scale;
     }
 
     float distort = clamp(actorFxParams1.y, 0.0, 1.0);
@@ -1294,6 +1393,62 @@ vec3 actorFxPbrPostLight(vec3 lit_color, vec3 authored_source,
     else if (actorFxLook == 27) // Hologram interference
     {
         fx = graphic_source * tint + tint * edge * 1.2 * hdr_scale;
+    }
+    else if (actorFxLook == 28) // Live: Rim Noir
+    {
+        vec3 neutral = actor_fx_pbr_palette(vec3(lum)) * hdr_scale;
+        vec3 noir = mix(neutral, source, 0.28)
+                  * (0.34 + 0.66 * smoothstep(0.035, 0.65, lum));
+        fx = noir + tint * hdr_scale
+                  * (0.28 * rim_wide + 1.10 * rim_core);
+    }
+    else if (actorFxLook == 29) // Live: Gel Split
+    {
+        float side = smoothstep(-0.35, 0.35, n.x);
+        vec3 cool = actor_fx_pbr_palette(
+            mix(vec3(0.02, 0.75, 1.00), actorFxTint, 0.22));
+        vec3 warm = actor_fx_pbr_palette(
+            mix(vec3(1.00, 0.02, 0.38), actorFxTint.zyx, 0.18));
+        vec3 gel = mix(cool, warm, side);
+        fx = source * 0.78 + gel * hdr_scale
+           * (0.30 * rim_wide + 1.05 * rim_core);
+    }
+    else if (actorFxLook == 30) // Live: Bass Sweep
+    {
+        float sweep_band = actorFxBassSweepBand();
+        float beat = actorFxBassSweepBeat();
+        vec3 club = actor_fx_pbr_palette(
+            mix(vec3(0.05, 0.85, 1.00), actorFxTint, 0.50));
+        fx = source * (0.68 + 0.16 * beat)
+           + club * hdr_scale
+             * (sweep_band * (0.35 + 1.05 * beat)
+                + 0.30 * rim_wide + 0.25 * rim_core);
+    }
+    else if (actorFxLook == 31) // Live: Moonlit
+    {
+        vec3 moon = actor_fx_pbr_palette(
+            mix(vec3(0.16, 0.30, 0.72), actorFxTint, 0.18));
+        vec3 cool_luma = actor_fx_pbr_palette(
+            clamp(vec3(lum) * vec3(0.22, 0.30, 0.50), 0.0, 1.0))
+            * hdr_scale;
+        vec3 night = mix(cool_luma, source, 0.24) * 0.58;
+        fx = night + moon * hdr_scale
+                   * (0.20 * rim_wide + 0.72 * rim_core);
+    }
+    else if (actorFxLook == 32) // Live: Possessed
+    {
+        float heartbeat = actorFxPossessedHeartbeat();
+        float under = pow(max(dot(n, vec3(0.0, -0.816, 0.578)), 0.0), 2.0);
+        float crawl = 0.5 + 0.5 * sin(position_eye.y * 7.5
+                    + position_eye.x * 2.2 - actorFxTime * 0.9
+                    + actorFxParams1.w);
+        vec3 blood = actor_fx_pbr_palette(
+            mix(vec3(0.75, 0.003, 0.015), actorFxTint, 0.20));
+        fx = source * (0.32 + 0.38 * (1.0 - under))
+           + blood * hdr_scale
+             * (under * (0.26 + 1.25 * heartbeat)
+                + rim_core * (0.22 + 0.28 * heartbeat)
+                + 0.08 * crawl * rim_wide);
     }
 
     // UV displacement and RGB side taps were already applied to the authored

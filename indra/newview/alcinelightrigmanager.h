@@ -289,7 +289,8 @@ inline LLSD ALCineLightRigParamBlob::toLLSD() const
     data["CineLightRigMirror"] = mMirror;
     data["CineLightRigOrbitYaw"] = mOrbitYaw;
     data["CineLightRigOrbitPitch"] = mOrbitPitch;
-    data["CineLightRigFX"] = mFX;
+    ALCineLightRigPersistence::writeFX(
+        data, "CineLightRigFX", "CineLightRigFXKey", mFX);
     data["CineLightRigShadowMode"] = mShadowMode;
     data["CineLightRigGizmo"] = mGizmo;
     data["CineLightRigRatioLock"] = mRatioLock;
@@ -337,7 +338,8 @@ inline LLSD ALCineLightRigParamBlob::toLLSD() const
     }
     data["fx_phase"] = mFXPhase;
     data["pending_fx_phase"] = mPendingFXPhase;
-    data["pending_fx_id"] = mPendingFXId;
+    ALCineLightRigPersistence::writeFX(
+        data, "pending_fx_id", "pending_fx_key", mPendingFXId);
     if (mCueList.isMap())
     {
         data["cue_list"] = mCueList;
@@ -381,7 +383,8 @@ inline ALCineLightRigParamBlob ALCineLightRigParamBlob::fromLLSD(
     AL_CINE_READ_BOOL("CineLightRigMirror", blob.mMirror);
     AL_CINE_READ_F32("CineLightRigOrbitYaw", blob.mOrbitYaw);
     AL_CINE_READ_F32("CineLightRigOrbitPitch", blob.mOrbitPitch);
-    AL_CINE_READ_S32("CineLightRigFX", blob.mFX);
+    blob.mFX = ALCineLightRigPersistence::readFX(
+        data, "CineLightRigFX", "CineLightRigFXKey");
     AL_CINE_READ_S32("CineLightRigShadowMode", blob.mShadowMode);
     AL_CINE_READ_BOOL("CineLightRigGizmo", blob.mGizmo);
     AL_CINE_READ_BOOL("CineLightRigRatioLock", blob.mRatioLock);
@@ -471,8 +474,8 @@ inline ALCineLightRigParamBlob ALCineLightRigParamBlob::fromLLSD(
     if (data.has("fx_phase")) blob.mFXPhase = data["fx_phase"].asReal();
     if (data.has("pending_fx_phase"))
         blob.mPendingFXPhase = data["pending_fx_phase"].asReal();
-    if (data.has("pending_fx_id"))
-        blob.mPendingFXId = data["pending_fx_id"].asInteger();
+    blob.mPendingFXId = ALCineLightRigPersistence::readFX(
+        data, "pending_fx_id", "pending_fx_key");
     if (data["cue_list"].isMap())
         blob.mCueList = data["cue_list"];
     return blob;

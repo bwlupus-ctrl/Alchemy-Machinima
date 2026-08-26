@@ -205,7 +205,8 @@ const char* FX_NAMES[FX_COUNT] = {
     "Boogie Floor", "Shootout", "Chopper Hunt", "Plasma Globe",
     "Dimensional Rift", "Kawoosh", "Time Circuits", "Jacob's Ladder",
     "Build & Drop", "Biolume Tide", "Mount Doom", "Vaporwave Sunset",
-    "Carousel Waltz", "Five Tones",
+    "Carousel Waltz", "Five Tones", "Candy Orbit", "Rimwave",
+    "Afterhours Drift", "Something Behind You",
 };
 
 const F32 FX_INTERVALS[FX_COUNT] = {
@@ -218,6 +219,7 @@ const F32 FX_INTERVALS[FX_COUNT] = {
     0.10f,
     0.125f, 0.05f, 0.10f, 0.05f, 0.10f, 0.10f, 0.10f, 0.05f,
     0.10f, 0.20f, 0.20f, 0.25f, 0.10f, 0.15f,
+    0.10f, 0.10f, 0.20f, 0.10f,
 };
 
 F32 finiteOr(F32 value, F32 fallback)
@@ -729,6 +731,33 @@ void initializeFX(S32 fx, LightBase lights[LIGHT_COUNT])
         setLight(lights, 1, 40.f, 50.f, 10, -10.f, 0, true);
         setLight(lights, 2, -40.f, 55.f, 10, -10.f, 0, true);
         setLight(lights, 3, 180.f, 60.f, 10, -10.f, 0, true);
+        break;
+    case FX_CANDY_ORBIT:
+        setLight(lights, 0, 30.f, 25.f, 15, -2.6f, 1, true);
+        setLight(lights, 1, 0.f, 0.f, 20, -10.f, 0, false);
+        setLight(lights, 2, 150.f, 30.f, 16, -2.6f, 1, true);
+        setLight(lights, 3, -150.f, 20.f, 17, -2.6f, 1, true);
+        break;
+    case FX_RIMWAVE:
+        setLight(lights, 0, 145.f, 25.f, 15, -0.65f, 2, true);
+        setLight(lights, 1, 0.f, 0.f, 20, -10.f, 0, false);
+        setLight(lights, 2, -145.f, 25.f, 16, -0.65f, 2, true);
+        setLight(lights, 3, 180.f, -10.f, 22, -3.f, 0, true);
+        break;
+    case FX_AFTERHOURS_DRIFT:
+        setLight(lights, 0, 65.f, 48.f, 5, -0.8f, 1, true);
+        lights[0].mGobo = 10;
+        setLight(lights, 1, 0.f, 0.f, 20, -10.f, 0, false);
+        setLight(lights, 2, -155.f, 22.f, 13, -2.8f, 2, true);
+        setLight(lights, 3, 180.f, -15.f, 15, -3.5f, 0, true);
+        lights[3].mGobo = 23;
+        break;
+    case FX_SOMETHING_BEHIND_YOU:
+        setLight(lights, 0, 95.f, 18.f, 23, -4.f, 2, true);
+        lights[0].mGobo = 7;
+        setLight(lights, 1, 0.f, 0.f, 20, -10.f, 0, false);
+        setLight(lights, 2, -160.f, 25.f, 19, -10.f, 2, true);
+        setLight(lights, 3, 180.f, -20.f, 20, -4.f, 0, true);
         break;
     default:
         break;
@@ -2803,6 +2832,65 @@ void evalFX(S32 fx, U64 seed, F64 t_seconds,
         }
         break;
     }
+    case FX_CANDY_ORBIT: // Candy Orbit
+    {
+        static const S32 ACTIVE[3] = { 0, 2, 3 };
+        static const F32 BASE_YAW[3] = { 30.f, 150.f, -150.f };
+        for (S32 n = 0; n < 3; ++n)
+        {
+            const F64 phase = TWO_PI * static_cast<F64>(n) / 3.0;
+            const F32 crest = 0.5f + 0.5f *
+                phaseCos(fs * 0.07 - phase);
+            LightBase& light = lights[ACTIVE[n]];
+            light.mEV = -2.6f + 2.4f * crest;
+            light.mYawDeg = wrap180(BASE_YAW[n] + 8.f *
+                phaseSin(fs * 0.025 + phase));
+        }
+        break;
+    }
+    case FX_RIMWAVE: // Rimwave
+    {
+        const F32 sweep = 0.5f + 0.5f * phaseSin(fs * 0.08);
+        const F32 drift = 10.f * phaseSin(fs * 0.025);
+        lights[0].mEV = -1.5f + 1.7f * sweep;
+        lights[2].mEV = -1.5f + 1.7f * (1.f - sweep);
+        lights[0].mYawDeg = wrap180(145.f + drift);
+        lights[2].mYawDeg = wrap180(-145.f - drift);
+        lights[3].mEV = -3.f + 0.25f * phaseSin(fs * 0.04);
+        break;
+    }
+    case FX_AFTERHOURS_DRIFT: // Afterhours Drift
+    {
+        const F64 slow = fs * 0.025;
+        lights[0].mYawDeg = wrap180(65.f + 22.f * phaseSin(slow));
+        lights[0].mPitchDeg = 48.f + 7.f * phaseCos(slow * 0.7);
+        lights[0].mEV = -0.8f + 0.35f * phaseSin(fs * 0.045);
+
+        const F32 q = std::max(0.f, phaseSin(fs * 0.08));
+        const F32 hump = q * q * q * q;
+        lights[2].mEV = -2.8f + 1.6f * hump;
+        lights[3].mEV = -3.5f + 0.25f * phaseSin(fs * 0.17) +
+            0.15f * phaseSin(fs * 0.047);
+        break;
+    }
+    case FX_SOMETHING_BEHIND_YOU: // Something Behind You
+    {
+        const F64 b = positiveFmod(fs, 180.0) / 180.0;
+        lights[0].mYawDeg = wrap180(95.f - 190.f * static_cast<F32>(b));
+        lights[0].mPitchDeg = 18.f + 6.f * phaseSin(TWO_PI * b);
+        lights[0].mEV = b >= 0.82
+            ? -10.f
+            : -4.f + 2.4f * phaseSin(0.5 * TWO_PI * b);
+
+        const F64 u = std::clamp((b - 0.62) / 0.20, 0.0, 1.0);
+        F32 reveal = b >= 0.62 && b <= 0.82
+            ? phaseSin(0.5 * TWO_PI * u)
+            : 0.f;
+        reveal *= reveal;
+        lights[2].mEV = -10.f + 10.5f * reveal;
+        lights[3].mEV = -4.f + 0.2f * phaseSin(TWO_PI * b);
+        break;
+    }
     default:
         break;
     }
@@ -2840,7 +2928,7 @@ void evalFlicker(S32 program, U64 light_seed, F64 t_seconds, F32 amount,
     const U64 seed = light_seed ? light_seed : DEFAULT_SEED;
     const F64 seconds = std::clamp(
         finiteOr(t_seconds, 0.0), 0.0, MAX_FX_SECONDS);
-    const S32 hash_domain = FX_COUNT + program;
+    const S32 hash_domain = FX_LEGACY_COUNT + program;
     const auto hash = [seed, hash_domain](U64 counter, S32 draw)
     {
         return unitHash(seed, hash_domain, counter, 0, draw);

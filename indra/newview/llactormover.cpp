@@ -83,7 +83,7 @@ LLVOAvatar* resolve_actor(const LLUUID& id)
 // treatment: leaving native beauty active is the fail-open result.
 bool actor_style_wants_shared_replay(const LLDirectorCast::ActorStyle& style)
 {
-    if (!style.mEnabled || style.mStyle < 0 || style.mStyle > 27)
+    if (!style.mEnabled || !LLDirectorCast::isActorStyleLook(style.mStyle))
     {
         return false;
     }
@@ -9696,6 +9696,14 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         return 0;
     }
 
+    // IDs above the shared prefix are a live-world contract. Preserve the
+    // historical default Ghost behavior for every non-world caller even if
+    // malformed/future instance data somehow supplies a live-only value.
+    if (!gp.mWorldLinear && LLDirectorCast::isLiveActorStyleLook(style))
+    {
+        style = GHOST_STYLE_GHOST;
+    }
+
     // shader choice + graceful degradation (see the header comment). The
     // rigged variant skins the batches; the BASE variant places the NON-RIGGED
     // attachment faces (collar/jewelry/flexi) through their own render matrix.
@@ -10857,6 +10865,11 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     case GHOST_STYLE_HALFTONE:
     case GHOST_STYLE_SONAR:
     case GHOST_STYLE_HOLO_ECHO:
+    case LLDirectorCast::ACTOR_LOOK_RIM_NOIR:
+    case LLDirectorCast::ACTOR_LOOK_GEL_SPLIT:
+    case LLDirectorCast::ACTOR_LOOK_BASS_SWEEP:
+    case LLDirectorCast::ACTOR_LOOK_MOONLIT:
+    case LLDirectorCast::ACTOR_LOOK_POSSESSED:
     {
         // Toolkit looks share one shader and one clean front-surface sweep.
         // This prevents cosmetic/alpha layers from double-blending while still
@@ -12753,9 +12766,10 @@ bool LLActorMover::renderSystemActorGhost(LLVOAvatar* avatar,
 
     const LLDirectorCast::ActorStyle& style =
         LLDirectorCast::instance().getActorStyle(style_id);
-    const S32 look = llclamp(style.mStyle,
-                             static_cast<S32>(GHOST_STYLE_GHOST),
-                             static_cast<S32>(GHOST_STYLE_HOLO_ECHO));
+    const S32 look = llclamp(
+        style.mStyle,
+        static_cast<S32>(LLDirectorCast::ACTOR_LOOK_DEFAULT),
+        static_cast<S32>(LLDirectorCast::ACTOR_LOOK_MAX));
     const F32 treatment_strength = llclamp(style.mAlpha, 0.f, 1.f);
     const bool coverage_replacement =
         style.mMode == LLDirectorCast::ACTOR_STYLE_LAYER

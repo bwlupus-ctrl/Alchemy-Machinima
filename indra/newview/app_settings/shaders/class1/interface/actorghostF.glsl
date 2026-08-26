@@ -973,6 +973,79 @@ void main()
 #endif
         alpha = color.a * tex.a * (0.55 + edge * 0.45);
     }
+#ifdef GHOST_WORLD_PASS
+    else if (ghostLook == 28) // Live Actor: Rim Noir
+    {
+        float tonal = 0.34 + 0.66 * smoothstep(0.035, 0.65, lum);
+        rgb = mix(vec3(lum), tex.rgb, 0.28) * tonal;
+        worldRadiance = ghostWorldRadiance(
+            color.rgb, 0.28 * worldRimWide + 1.10 * worldRimCore);
+        alpha = color.a * tex.a;
+    }
+    else if (ghostLook == 29) // Live Actor: Gel Split
+    {
+        float side = smoothstep(-0.35, 0.35, n.x);
+        vec3 cool = mix(vec3(0.02, 0.75, 1.00), color.rgb, 0.22);
+        vec3 warm = mix(vec3(1.00, 0.02, 0.38), color.rgb.zyx, 0.18);
+        vec3 gel = mix(cool, warm, side);
+        rgb = tex.rgb * 0.78;
+        worldRadiance = ghostWorldRadiance(
+            gel, 0.30 * worldRimWide + 1.05 * worldRimCore);
+        alpha = color.a * tex.a;
+    }
+    else if (ghostLook == 30) // Live Actor: Bass Sweep
+    {
+        float tempo = max(ghostFx.x, 0.20);
+        float unit_phase = fract(ghostAux.w * 0.15915494);
+        float sweep_phase = fract(ghostDeviceUv().y * 2.5
+                                  - ghostTime * (0.22 + 0.16 * tempo)
+                                  + unit_phase);
+        float sweep_band = 1.0 - smoothstep(
+            0.025, 0.10, abs(sweep_phase - 0.5));
+        float beat_wave = 0.5 + 0.5 * sin(
+            6.2831853 * (ghostTime * tempo + unit_phase));
+        float beat = pow(beat_wave, 8.0);
+        vec3 club = mix(vec3(0.05, 0.85, 1.00), color.rgb, 0.50);
+        rgb = tex.rgb * (0.68 + 0.16 * beat);
+        worldRadiance = ghostWorldRadiance(
+            club, sweep_band * (0.35 + 1.05 * beat)
+                  + 0.30 * worldRimWide + 0.25 * worldRimCore);
+        worldBloomRadiance = ghostWorldRadiance(
+            club, sweep_band * (0.20 + 0.12 * beat)
+                  + 0.10 * worldRimCore);
+        alpha = color.a * tex.a;
+    }
+    else if (ghostLook == 31) // Live Actor: Moonlit
+    {
+        vec3 moon = mix(vec3(0.16, 0.30, 0.72), color.rgb, 0.18);
+        rgb = mix(vec3(lum) * vec3(0.22, 0.30, 0.50),
+                  tex.rgb, 0.24) * 0.58;
+        worldRadiance = ghostWorldRadiance(
+            moon, 0.20 * worldRimWide + 0.72 * worldRimCore);
+        alpha = color.a * tex.a;
+    }
+    else if (ghostLook == 32) // Live Actor: Possessed
+    {
+        float unit_phase = fract(ghostAux.w * 0.15915494);
+        float heart_phase = fract(
+            ghostTime * max(ghostFx.x, 0.25) + unit_phase);
+        float first = 1.0 - smoothstep(
+            0.0, 0.055, abs(heart_phase - 0.10));
+        float second = 0.62 * (1.0 - smoothstep(
+            0.0, 0.045, abs(heart_phase - 0.26)));
+        float heartbeat = max(first, second);
+        float under = pow(max(dot(n, vec3(0.0, -0.816, 0.578)), 0.0), 2.0);
+        float crawl = 0.5 + 0.5 * sin(vary_position.y * 7.5
+                    + vary_position.x * 2.2 - ghostTime * 0.9 + ghostAux.w);
+        vec3 blood = mix(vec3(0.75, 0.003, 0.015), color.rgb, 0.20);
+        rgb = tex.rgb * (0.32 + 0.38 * (1.0 - under));
+        worldRadiance = ghostWorldRadiance(
+            blood, under * (0.26 + 1.25 * heartbeat)
+                 + worldRimCore * (0.22 + 0.28 * heartbeat)
+                 + 0.08 * crawl * worldRimWide);
+        alpha = color.a * tex.a;
+    }
+#endif
     if (ghostLook >= 5)
     {
 #ifdef GHOST_WORLD_PASS

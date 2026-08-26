@@ -480,6 +480,7 @@ bool LLRenderPass::actorFxLookNeedsSyntheticBloom(S32 look)
         case 19: // Wallhack / ESP
         case 26: // Sonar reveal
         case 27: // Hologram interference
+        case LLDirectorCast::ACTOR_LOOK_BASS_SWEEP:
             return true;
         default:
             return false;
@@ -614,7 +615,10 @@ bool upload_actor_fx_style(const LLUUID& style_id,
         static_cast<F32>(stable_id.mData[0] | (stable_id.mData[1] << 8))
         * (F_TWO_PI / 65536.f);
 
-    shader->uniform1i(sActorFxLook, llclamp(style.mStyle, 0, 27));
+    shader->uniform1i(sActorFxLook, llclamp(
+        style.mStyle,
+        static_cast<S32>(LLDirectorCast::ACTOR_LOOK_DEFAULT),
+        static_cast<S32>(LLDirectorCast::ACTOR_LOOK_MAX)));
     shader->uniform1f(sActorFxTime, effect_time);
     shader->uniform3f(sActorFxTint,
                       tint.mV[VX], tint.mV[VY], tint.mV[VZ]);

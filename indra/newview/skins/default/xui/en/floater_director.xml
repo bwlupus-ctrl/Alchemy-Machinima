@@ -1652,7 +1652,7 @@
                      right="-10"
                      text_color="LtGray_50"
                      top="31">
-                        Overlay a Ghost Studio look on You or a Director cast member. Client-side only.
+                        Style You or a Director cast member with shared or live-exclusive cinematic looks. Client-side only.
                     </text>
                     <text follows="left|top" height="16" layout="topleft" left="10" top="70" width="54">
                         Actor:
@@ -1701,7 +1701,7 @@
                      left="100"
                      name="actor_style_look"
                      right="-10"
-                     tool_tip="The same 28 shader looks used by Ghost Studio overlays"
+                     tool_tip="Shared Ghost Studio looks plus live-actor-exclusive cinematic treatments"
                      top="160">
                         <combo_box.item label="Ghost" name="actor_st_ghost" value="0" />
                         <combo_box.item label="Clone" name="actor_st_clone" value="1" />
@@ -1731,6 +1731,12 @@
                         <combo_box.item label="Halftone/Comic" name="actor_st_halftone" value="25" />
                         <combo_box.item label="Sonar Reveal" name="actor_st_sonar" value="26" />
                         <combo_box.item label="Hologram Echo" name="actor_st_holo_echo" value="27" />
+                        <combo_box.item enabled="false" label="-- Live Actor Exclusives --" name="actor_st_live_separator" value="-1" />
+                        <combo_box.item label="Rim Noir" name="actor_st_rim_noir" value="28" />
+                        <combo_box.item label="Gel Split" name="actor_st_gel_split" value="29" />
+                        <combo_box.item label="Bass Sweep" name="actor_st_bass_sweep" value="30" />
+                        <combo_box.item label="Moonlit" name="actor_st_moonlit" value="31" />
+                        <combo_box.item label="Possessed" name="actor_st_possessed" value="32" />
                     </combo_box>
                     <check_box
                      follows="left|top"
@@ -1747,7 +1753,7 @@
                     <slider decimal_digits="2" follows="left|top|right" height="20" increment="0.05" initial_value="0.6" label="Effect opacity" label_width="88" layout="topleft" left="10" max_val="1" min_val="0" name="actor_style_alpha" right="-10" tool_tip="Opacity of the styled effect. Layer overlays the original actor; Cover controls the replacement opacity, where 0 makes the actor fully invisible. This does not control Dissolve coverage." top="246" />
                     <slider decimal_digits="2" follows="left|top|right" height="20" increment="0.01" initial_value="0.5" label="Dissolve" label_width="88" layout="topleft" left="10" max_val="1" min_val="0" name="actor_style_dissolve_progress" right="-10" tool_tip="Dissolve progress: 0 keeps the actor whole; 1 removes it completely. Only available for the Dissolve look." top="272" visible="false" />
                     <slider decimal_digits="0" follows="left|top|right" height="20" increment="1" initial_value="0" label="Pixelate" label_width="88" layout="topleft" left="10" max_val="64" min_val="0" name="actor_style_pixel" right="-10" tool_tip="Screen-space pixelation block size in pixels; 0 is off" top="298" />
-                    <slider decimal_digits="1" follows="left|top|right" height="20" increment="0.5" initial_value="1" label="Shimmer Hz" label_width="88" layout="topleft" left="10" max_val="10" min_val="0" name="actor_style_shimmer_speed" right="-10" tool_tip="Shimmer speed; only matters when Shimmer amount is above zero" top="324" />
+                    <slider decimal_digits="1" follows="left|top|right" height="20" increment="0.5" initial_value="1" label="Shimmer Hz" label_width="88" layout="topleft" left="10" max_val="10" min_val="0" name="actor_style_shimmer_speed" right="-10" tool_tip="Animation tempo for Bass Sweep and Possessed; shimmer rate for other looks when Shimmer amount is above zero" top="324" />
                     <slider decimal_digits="2" follows="left|top|right" height="20" increment="0.05" initial_value="0" label="Shimmer amt" label_width="88" layout="topleft" left="10" max_val="1" min_val="0" name="actor_style_shimmer_amount" right="-10" tool_tip="Brightness and alpha shimmer depth; 0 is off" top="350" />
                     <slider decimal_digits="2" follows="left|top|right" height="20" increment="0.05" initial_value="0" label="Glitch" label_width="88" layout="topleft" left="10" max_val="1" min_val="0" name="actor_style_glitch" right="-10" tool_tip="Broken-signal horizontal tear and chroma split; 0 is off" top="376" />
                     <text follows="left|top" height="16" layout="topleft" left="10" top="408" width="84">
@@ -1765,7 +1771,7 @@
                         <combo_box.item label="VHS" name="actor_ds_vhs" value="8" />
                     </combo_box>
                     <slider decimal_digits="2" follows="left|top|right" height="20" increment="0.05" initial_value="0.5" label="Distort amt" label_width="88" layout="topleft" left="10" max_val="1" min_val="0" name="actor_style_distortion_amount" right="-10" tool_tip="Strength of the selected independent distortion" top="436" />
-                    <slider decimal_digits="2" follows="left|top|right" height="20" increment="0.05" initial_value="1" label="Brightness" label_width="88" layout="topleft" left="10" max_val="1.5" min_val="0.05" name="actor_style_brightness" right="-10" tool_tip="Output brightness of the unlit style; reduce it to sit the actor into a dark set" top="462" />
+                    <slider decimal_digits="2" follows="left|top|right" height="20" increment="0.05" initial_value="1" label="Brightness" label_width="88" layout="topleft" left="10" max_val="1.5" min_val="0.05" name="actor_style_brightness" right="-10" tool_tip="Output brightness of the styled branch; reduce it to sit the actor into a dark set" top="462" />
                     <spinner decimal_digits="0" follows="left|top" height="20" increment="1" initial_value="0" label="Effect fps" label_width="70" layout="topleft" left="10" max_val="30" min_val="0" name="actor_style_effect_fps" tool_tip="Shader animation cadence. 0 is smooth; 1-30 holds animated looks for stop motion." top="488" width="160" />
                     <button follows="left|top" height="22" label="Reset actor style" layout="topleft" left="10" name="actor_style_reset" tool_tip="Restore this actor's style defaults and turn styling off" top="520" width="160" />
                     <text follows="left|top|right" height="34" layout="topleft" left="10" name="actor_style_status" right="-10" text_color="LtGray_50" top="552">

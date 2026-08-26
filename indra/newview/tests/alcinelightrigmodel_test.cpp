@@ -966,8 +966,8 @@ void cine_light_rig_model_object::test<9>()
 
     ensure_equals("profile row count", PROFILE_COUNT, 24);
     ensure_equals("beam row count", BEAM_COUNT, 3);
-    ensure_equals("FX name row count", FX_COUNT, 63);
-    ensure_equals("FX interval row count", FX_COUNT, 63);
+    ensure_equals("FX name row count", FX_COUNT, 67);
+    ensure_equals("FX interval row count", FX_COUNT, 67);
 
     for (S32 i = 0; i < PROFILE_COUNT; ++i)
     {
@@ -1052,7 +1052,8 @@ void cine_light_rig_model_object::test<9>()
         "Boogie Floor", "Shootout", "Chopper Hunt", "Plasma Globe",
         "Dimensional Rift", "Kawoosh", "Time Circuits", "Jacob's Ladder",
         "Build & Drop", "Biolume Tide", "Mount Doom", "Vaporwave Sunset",
-        "Carousel Waltz", "Five Tones",
+        "Carousel Waltz", "Five Tones", "Candy Orbit", "Rimwave",
+        "Afterhours Drift", "Something Behind You",
     };
     for (S32 i = 0; i < FX_COUNT; ++i)
     {
@@ -1069,6 +1070,7 @@ void cine_light_rig_model_object::test<9>()
         0.10f,
         0.125f, 0.05f, 0.10f, 0.05f, 0.10f, 0.10f, 0.10f, 0.05f,
         0.10f, 0.20f, 0.20f, 0.25f, 0.10f, 0.15f,
+        0.10f, 0.10f, 0.20f, 0.10f,
     };
     for (S32 i = 0; i < FX_COUNT; ++i)
     {
@@ -1820,10 +1822,23 @@ void cine_light_rig_model_object::test<14>()
             evalFX(fx, 0x123456789abcdef0ULL, time, fx_lights);
             for (S32 i = 0; i < LIGHT_COUNT; ++i)
             {
-                // Night Train (FX 40) intentionally projects the Slats gobo (4)
-                // on the KEY light for its passing-window-frames look; every
-                // other FX leaves all gobos at the operator default (0).
-                const S32 expected_gobo = (fx == 40 && i == 0) ? 4 : 0;
+                S32 expected_gobo = 0;
+                if (fx == 40 && i == 0)
+                {
+                    expected_gobo = 4; // Night Train: Slats on Key.
+                }
+                else if (fx == FX_AFTERHOURS_DRIFT && i == 0)
+                {
+                    expected_gobo = 10; // Curtain Edge on Key.
+                }
+                else if (fx == FX_AFTERHOURS_DRIFT && i == 3)
+                {
+                    expected_gobo = 23; // Neon Sign Mask on Background.
+                }
+                else if (fx == FX_SOMETHING_BEHIND_YOU && i == 0)
+                {
+                    expected_gobo = 7; // Branches on Key.
+                }
                 ensure_equals("FX gobo matches the FX contract",
                               fx_lights[i].mGobo, expected_gobo);
             }
@@ -3386,6 +3401,95 @@ void cine_light_rig_model_object::test<50>()
     {
         ensure_equals("easy cone mapping round-trips",
                       easyConeWidthFromBeam(easyConeWidthToBeam(width)), width);
+    }
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<51>()
+{
+    set_test_name("new nightlife and horror FX preserve their authored motion");
+
+    LightBase lights[LIGHT_COUNT];
+    evalFX(FX_CANDY_ORBIT, 123, 0.0, lights);
+    S32 active = 0;
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+    {
+        active += lights[i].mOn ? 1 : 0;
+    }
+    ensure_equals("Candy Orbit has three active lights", active, 3);
+    ensure("Candy Orbit keeps Fill off", !lights[1].mOn);
+    for (S32 i : { 0, 2, 3 })
+    {
+        ensure("Candy Orbit EV stays in its authored range",
+               lights[i].mEV >= -2.6001f && lights[i].mEV <= -0.1999f);
+    }
+
+    for (F64 time : { 0.0, 1.9634954084936207, 137.0 })
+    {
+        evalFX(FX_RIMWAVE, 123, time, lights);
+        ensure("Rimwave keeps Fill off", !lights[1].mOn);
+        ensure_approximately_equals_range(
+            "Rimwave opposed-edge EV sum is constant",
+            lights[0].mEV + lights[2].mEV, -1.3f, 1e-5f);
+    }
+
+    for (F64 time : { 0.0, 3.4, 47.0, 500.0 })
+    {
+        evalFX(FX_AFTERHOURS_DRIFT, 123, time, lights);
+        ensure_equals("Afterhours Drift keeps Curtain Edge on Key",
+                      lights[0].mGobo, 10);
+        ensure_equals("Afterhours Drift keeps Neon Sign Mask on Background",
+                      lights[3].mGobo, 23);
+        for (const LightBase& light : lights)
+        {
+            ensure("Afterhours Drift output stays finite",
+                   std::isfinite(light.mYawDeg) &&
+                   std::isfinite(light.mPitchDeg) &&
+                   std::isfinite(light.mEV));
+        }
+    }
+
+    LightBase horror_mid[LIGHT_COUNT];
+    evalFX(FX_SOMETHING_BEHIND_YOU, 123, 9.0, horror_mid);
+    ensure_approximately_equals_range("horror midpoint Key yaw",
+                                      horror_mid[0].mYawDeg, 0.f, 1e-5f);
+    ensure_approximately_equals_range("horror midpoint Key pitch",
+                                      horror_mid[0].mPitchDeg, 18.f, 1e-5f);
+    ensure_approximately_equals_range("horror midpoint Key EV",
+                                      horror_mid[0].mEV, -1.6f, 1e-5f);
+
+    evalFX(FX_SOMETHING_BEHIND_YOU, 123, 12.96, lights);
+    ensure_approximately_equals_range("horror blood-rim reveal peaks",
+                                      lights[2].mEV, 0.5f, 1e-4f);
+    evalFX(FX_SOMETHING_BEHIND_YOU, 123, 15.3, lights);
+    ensure_equals("horror dark tail turns Key down", lights[0].mEV, -10.f);
+    ensure_equals("horror dark tail turns Rim down", lights[2].mEV, -10.f);
+
+    evalFX(FX_SOMETHING_BEHIND_YOU, 123, 9.0, lights);
+    ensureSameLights("horror backward scrub reproduces the midpoint",
+                     horror_mid, lights);
+
+    const S32 new_fx[] = {
+        FX_CANDY_ORBIT, FX_RIMWAVE, FX_AFTERHOURS_DRIFT,
+        FX_SOMETHING_BEHIND_YOU,
+    };
+    for (S32 fx : new_fx)
+    {
+        for (F64 time : { 0.0, 0.001, 12.96, 18.0, 137.0 })
+        {
+            evalFX(fx, 123, time, lights);
+            for (const LightBase& light : lights)
+            {
+                ensure("new FX output is finite and bounded",
+                       std::isfinite(light.mYawDeg) &&
+                       std::isfinite(light.mPitchDeg) &&
+                       std::isfinite(light.mEV) &&
+                       std::fabs(light.mYawDeg) <= 180.f &&
+                       std::fabs(light.mPitchDeg) <= PITCH_LIMIT_DEG &&
+                       light.mProfile >= 0 && light.mProfile < PROFILE_COUNT &&
+                       light.mGobo >= 0 && light.mGobo < GOBO_COUNT);
+            }
+        }
     }
 }
 } // namespace tut

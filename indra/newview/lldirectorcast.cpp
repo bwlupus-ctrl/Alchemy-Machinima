@@ -33,6 +33,48 @@
 
 namespace
 {
+const char* actorStyleLookKey(S32 look)
+{
+    switch (look)
+    {
+        case LLDirectorCast::ACTOR_LOOK_RIM_NOIR:   return "live.rim_noir";
+        case LLDirectorCast::ACTOR_LOOK_GEL_SPLIT:  return "live.gel_split";
+        case LLDirectorCast::ACTOR_LOOK_BASS_SWEEP: return "live.bass_sweep";
+        case LLDirectorCast::ACTOR_LOOK_MOONLIT:    return "live.moonlit";
+        case LLDirectorCast::ACTOR_LOOK_POSSESSED:  return "live.possessed";
+        default:                                    return nullptr;
+    }
+}
+
+bool actorStyleLookFromKey(const std::string& key, S32& look)
+{
+    if (key == "live.rim_noir")
+    {
+        look = LLDirectorCast::ACTOR_LOOK_RIM_NOIR;
+    }
+    else if (key == "live.gel_split")
+    {
+        look = LLDirectorCast::ACTOR_LOOK_GEL_SPLIT;
+    }
+    else if (key == "live.bass_sweep")
+    {
+        look = LLDirectorCast::ACTOR_LOOK_BASS_SWEEP;
+    }
+    else if (key == "live.moonlit")
+    {
+        look = LLDirectorCast::ACTOR_LOOK_MOONLIT;
+    }
+    else if (key == "live.possessed")
+    {
+        look = LLDirectorCast::ACTOR_LOOK_POSSESSED;
+    }
+    else
+    {
+        return false;
+    }
+    return true;
+}
+
 void sanitizeActorStyle(LLDirectorCast::ActorStyle& style)
 {
     const LLDirectorCast::ActorStyle defaults;
@@ -40,7 +82,10 @@ void sanitizeActorStyle(LLDirectorCast::ActorStyle& style)
         llclamp(static_cast<S32>(style.mMode),
                 static_cast<S32>(LLDirectorCast::ACTOR_STYLE_LAYER),
                 static_cast<S32>(LLDirectorCast::ACTOR_STYLE_REPLACE)));
-    style.mStyle = llclamp(style.mStyle, 0, 27);
+    if (!LLDirectorCast::isActorStyleLook(style.mStyle))
+    {
+        style.mStyle = LLDirectorCast::ACTOR_LOOK_DEFAULT;
+    }
     style.mHue = llclamp(std::isfinite(style.mHue) ? style.mHue : defaults.mHue,
                          0.f, 360.f);
     style.mAlpha = llclamp(std::isfinite(style.mAlpha) ? style.mAlpha : defaults.mAlpha,
@@ -87,7 +132,18 @@ LLSD writeActorStyle(const LLDirectorCast::ActorStyle& input)
     LLSD data = LLSD::emptyMap();
     data["enabled"] = style.mEnabled;
     data["mode"] = static_cast<S32>(style.mMode);
-    data["style"] = style.mStyle;
+    if (const char* look_key = actorStyleLookKey(style.mStyle))
+    {
+        // Keep the legacy numeric value inside the original shared range. An
+        // older viewer ignores look_key and renders an authored Clone instead
+        // of clamping a future live-only ID to Hologram Echo.
+        data["style"] = LLDirectorCast::ACTOR_LOOK_FORWARD_FALLBACK;
+        data["look_key"] = look_key;
+    }
+    else
+    {
+        data["style"] = style.mStyle;
+    }
     data["actor_hue"] = style.mUseActorHue;
     data["hue"] = style.mHue;
     data["alpha"] = style.mAlpha;
@@ -114,6 +170,14 @@ LLDirectorCast::ActorStyle readActorStyle(const LLSD& data)
     if (data.has("enabled"))          style.mEnabled = data["enabled"].asBoolean();
     if (data.has("mode"))             style.mMode = static_cast<LLDirectorCast::EActorStyleMode>(data["mode"].asInteger());
     if (data.has("style"))            style.mStyle = data["style"].asInteger();
+    if (data.has("look_key"))
+    {
+        S32 keyed_style = style.mStyle;
+        if (actorStyleLookFromKey(data["look_key"].asString(), keyed_style))
+        {
+            style.mStyle = keyed_style;
+        }
+    }
     if (data.has("actor_hue"))        style.mUseActorHue = data["actor_hue"].asBoolean();
     if (data.has("hue"))              style.mHue = static_cast<F32>(data["hue"].asReal());
     if (data.has("alpha"))            style.mAlpha = static_cast<F32>(data["alpha"].asReal());

@@ -23,6 +23,78 @@ class LLViewerRegion;
 class LLVOVolume;
 class LLVOAvatar;
 
+// Compatibility envelope for the first extended FX appended after the
+// original 0..62 library.  Old viewers understand only the numeric field and
+// clamp unknown positive ids to their last effect, so extended effects carry a
+// stable key while their legacy numeric fallback is deliberately None (-1).
+namespace ALCineLightRigPersistence
+{
+constexpr S32 LEGACY_FX_COUNT = ALCineLightRigModel::FX_LEGACY_COUNT;
+static_assert(ALCineLightRigModel::FX_CANDY_ORBIT == LEGACY_FX_COUNT,
+              "Extended Cinematic Light FX must remain append-only");
+static_assert(ALCineLightRigModel::FX_RIMWAVE == 64 &&
+              ALCineLightRigModel::FX_AFTERHOURS_DRIFT == 65 &&
+              ALCineLightRigModel::FX_SOMETHING_BEHIND_YOU == 66,
+              "Serialized Cinematic Light FX ids must remain stable");
+
+inline const char* extendedFXKey(S32 fx)
+{
+    switch (fx)
+    {
+        case ALCineLightRigModel::FX_CANDY_ORBIT: return "cine.candy_orbit";
+        case ALCineLightRigModel::FX_RIMWAVE: return "cine.rimwave";
+        case ALCineLightRigModel::FX_AFTERHOURS_DRIFT:
+            return "cine.afterhours_drift";
+        case ALCineLightRigModel::FX_SOMETHING_BEHIND_YOU:
+            return "cine.something_behind_you";
+        default: return nullptr;
+    }
+}
+
+inline S32 extendedFXFromKey(const std::string& key)
+{
+    if (key == "cine.candy_orbit")
+        return ALCineLightRigModel::FX_CANDY_ORBIT;
+    if (key == "cine.rimwave") return ALCineLightRigModel::FX_RIMWAVE;
+    if (key == "cine.afterhours_drift")
+        return ALCineLightRigModel::FX_AFTERHOURS_DRIFT;
+    if (key == "cine.something_behind_you")
+        return ALCineLightRigModel::FX_SOMETHING_BEHIND_YOU;
+    return -1;
+}
+
+inline S32 legacyFXForStorage(S32 fx)
+{
+    return fx >= LEGACY_FX_COUNT ? -1 : fx;
+}
+
+inline void writeFX(LLSD& data, const char* legacy_field,
+                    const char* key_field, S32 fx)
+{
+    data[legacy_field] = legacyFXForStorage(fx);
+    if (const char* key = extendedFXKey(fx))
+    {
+        data[key_field] = key;
+    }
+}
+
+inline S32 readFX(const LLSD& data, const char* legacy_field,
+                  const char* key_field)
+{
+    // A present extended key is authoritative. Unknown keys intentionally
+    // resolve to None instead of falling through to a potentially unsafe id.
+    if (data.has(key_field))
+    {
+        return data[key_field].isString()
+            ? extendedFXFromKey(data[key_field].asString()) : -1;
+    }
+
+    const S32 legacy = data.has(legacy_field)
+        ? data[legacy_field].asInteger() : -1;
+    return legacy >= -1 && legacy < LEGACY_FX_COUNT ? legacy : -1;
+}
+} // namespace ALCineLightRigPersistence
+
 enum class ALCineLightRigSlot : S32
 {
     SELF = 0,

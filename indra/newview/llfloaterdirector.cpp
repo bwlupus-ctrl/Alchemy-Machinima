@@ -970,7 +970,10 @@ bool LLFloaterDirector::saveScene(const std::string& name)
     {
         if (LLControlVariable* ctrl = gSavedSettings.getControl(setting))
         {
-            settings[setting] = ctrl->getValue();
+            settings[setting] = setting == "CineLightRigFX"
+                ? LLSD(ALCineLightRigPersistence::legacyFXForStorage(
+                    ctrl->getValue().asInteger()))
+                : ctrl->getValue();
         }
     }
     scene["settings"] = settings;
@@ -1833,7 +1836,10 @@ void LLFloaterDirector::onActorStyleControlChanged()
         mActorStyleMode->getValue().asInteger(),
         static_cast<S32>(LLDirectorCast::ACTOR_STYLE_LAYER),
         static_cast<S32>(LLDirectorCast::ACTOR_STYLE_REPLACE)));
-    style.mStyle = llclamp(mActorStyleLook->getValue().asInteger(), 0, 27);
+    style.mStyle = llclamp(
+        mActorStyleLook->getValue().asInteger(),
+        static_cast<S32>(LLDirectorCast::ACTOR_LOOK_DEFAULT),
+        static_cast<S32>(LLDirectorCast::ACTOR_LOOK_MAX));
     style.mUseActorHue = mActorStyleUseActorHue->get();
     style.mHue = (F32)mActorStyleHue->getValue().asReal();
     style.mAlpha = (F32)mActorStyleAlpha->getValue().asReal();

@@ -1151,6 +1151,81 @@
         <key>tint_strength</key><real>0.3</real>
       </map>
     </map>
+    <map>
+      <key>name</key><string>Afterparty Glow</string>
+      <key>category</key><string>Genre / Mood</string>
+      <key>intent</key><string>Warm flattering face light with candy cyan/magenta edges and a soft neon-sign background.</string>
+      <key>radius</key><real>1.45</real>
+      <key>master_ev</key><real>0.25</real>
+      <key>ratio_lock</key><boolean>true</boolean>
+      <key>ratio_stops</key><real>1.5</real>
+      <key>lights</key><array>
+        <map><key>yaw</key><real>25</real><key>pitch</key><real>30</real><key>profile_idx</key><integer>17</integer><key>profile_name</key><string>Golden Hour</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-30</real><key>pitch</key><real>5</real><key>profile_idx</key><integer>15</integer><key>profile_name</key><string>Cyber Pink</string><key>ev</key><real>-1.5</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>155</real><key>pitch</key><real>30</real><key>profile_idx</key><integer>16</integer><key>profile_name</key><string>Sci-Fi Cyan</string><key>ev</key><real>0.5</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-165</real><key>pitch</key><real>-10</real><key>profile_idx</key><integer>22</integer><key>profile_name</key><string>Neon Purple</string><key>ev</key><real>-2.0</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>23</integer><key>gobo_name</key><string>Neon Sign Mask</string></map>
+      </array>
+    </map>
+    <map>
+      <key>name</key><string>Laser Lace</string>
+      <key>category</key><string>Genre / Mood</string>
+      <key>intent</key><string>Three narrow rear and side patterned cuts leave the face dark for a laser-club silhouette.</string>
+      <key>radius</key><real>1.60</real>
+      <key>master_ev</key><real>0.50</real>
+      <key>ratio_lock</key><boolean>false</boolean>
+      <key>ratio_stops</key><real>0</real>
+      <key>lights</key><array>
+        <map><key>yaw</key><real>150</real><key>pitch</key><real>15</real><key>profile_idx</key><integer>14</integer><key>profile_name</key><string>Emerald</string><key>ev</key><real>-0.5</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>17</integer><key>gobo_name</key><string>Fine Celo</string></map>
+        <map><key>yaw</key><real>-150</real><key>pitch</key><real>15</real><key>profile_idx</key><integer>16</integer><key>profile_name</key><string>Sci-Fi Cyan</string><key>ev</key><real>-1.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>17</integer><key>gobo_name</key><string>Fine Celo</string></map>
+        <map><key>yaw</key><real>180</real><key>pitch</key><real>40</real><key>profile_idx</key><integer>22</integer><key>profile_name</key><string>Neon Purple</string><key>ev</key><real>0.5</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>0</real><key>pitch</key><real>-20</real><key>profile_idx</key><integer>20</integer><key>profile_name</key><string>Deep Space</string><key>ev</key><real>-4.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>false</boolean></map>
+      </array>
+    </map>
+    <map>
+      <key>name</key><string>Midnight Motel</string>
+      <key>category</key><string>Genre / Mood</string>
+      <key>intent</key><string>Cold moonlight through a curtain, dying tungsten fill, amber edge, and a distant magenta sign.</string>
+      <key>radius</key><real>1.55</real>
+      <key>master_ev</key><real>0.25</real>
+      <key>ratio_lock</key><boolean>true</boolean>
+      <key>ratio_stops</key><real>3.0</real>
+      <key>lights</key><array>
+        <map><key>yaw</key><real>70</real><key>pitch</key><real>25</real><key>profile_idx</key><integer>5</integer><key>profile_name</key><string>8000K Moon</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>10</integer><key>gobo_name</key><string>Curtain Edge</string></map>
+        <map><key>yaw</key><real>-25</real><key>pitch</key><real>0</real><key>profile_idx</key><integer>0</integer><key>profile_name</key><string>2700K Incan</string><key>ev</key><real>-3.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>160</real><key>pitch</key><real>20</real><key>profile_idx</key><integer>13</integer><key>profile_name</key><string>Deep Amber</string><key>ev</key><real>-1.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-165</real><key>pitch</key><real>-15</real><key>profile_idx</key><integer>15</integer><key>profile_name</key><string>Cyber Pink</string><key>ev</key><real>-3.5</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>23</integer><key>gobo_name</key><string>Neon Sign Mask</string></map>
+      </array>
+    </map>
+    <map>
+      <key>name</key><string>Red Door</string>
+      <key>category</key><string>Genre / Mood</string>
+      <key>intent</key><string>A narrow moonlit door crack searches the face while blood-red backlight cuts the silhouette.</string>
+      <key>radius</key><real>1.45</real>
+      <key>master_ev</key><real>0.50</real>
+      <key>ratio_lock</key><boolean>false</boolean>
+      <key>ratio_stops</key><real>0</real>
+      <key>lights</key><array>
+        <map><key>yaw</key><real>85</real><key>pitch</key><real>10</real><key>profile_idx</key><integer>5</integer><key>profile_name</key><string>8000K Moon</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>12</integer><key>gobo_name</key><string>Door Crack</string></map>
+        <map><key>yaw</key><real>-45</real><key>pitch</key><real>0</real><key>profile_idx</key><integer>20</integer><key>profile_name</key><string>Deep Space</string><key>ev</key><real>-4.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>false</boolean></map>
+        <map><key>yaw</key><real>-155</real><key>pitch</key><real>30</real><key>profile_idx</key><integer>19</integer><key>profile_name</key><string>Blood Red</string><key>ev</key><real>0.5</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>180</real><key>pitch</key><real>-20</real><key>profile_idx</key><integer>20</integer><key>profile_name</key><string>Deep Space</string><key>ev</key><real>-3.5</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>true</boolean></map>
+      </array>
+    </map>
+    <map>
+      <key>name</key><string>Black Velvet Halo</string>
+      <key>category</key><string>Genre / Mood</string>
+      <key>intent</key><string>Face held near black between opposed gold and magenta rims over a blue void.</string>
+      <key>radius</key><real>1.60</real>
+      <key>master_ev</key><real>0.25</real>
+      <key>ratio_lock</key><boolean>false</boolean>
+      <key>ratio_stops</key><real>0</real>
+      <key>lights</key><array>
+        <map><key>yaw</key><real>0</real><key>pitch</key><real>20</real><key>profile_idx</key><integer>20</integer><key>profile_name</key><string>Deep Space</string><key>ev</key><real>-3.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>145</real><key>pitch</key><real>20</real><key>profile_idx</key><integer>17</integer><key>profile_name</key><string>Golden Hour</string><key>ev</key><real>-0.5</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-145</real><key>pitch</key><real>25</real><key>profile_idx</key><integer>10</integer><key>profile_name</key><string>Magenta</string><key>ev</key><real>0.5</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>180</real><key>pitch</key><real>-10</real><key>profile_idx</key><integer>12</integer><key>profile_name</key><string>Congo Blue</string><key>ev</key><real>-3.5</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>true</boolean></map>
+      </array>
+    </map>
   </array>
 </map>
 </llsd>
