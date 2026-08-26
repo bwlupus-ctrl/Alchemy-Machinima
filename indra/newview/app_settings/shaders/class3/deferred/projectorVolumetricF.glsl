@@ -44,8 +44,9 @@ in vec2 vary_fragcoord;
 
 // Local-light params (uploaded per slot by setupSpotLightVolumetric + the
 // per-cone color/size/falloff/shadow-index uploads in renderProjectorVolumetric).
-// proj_mat/proj_n/proj_focus/proj_lod/proj_range/size/color/projectionMap are
-// declared (and consumed) by deferredUtil.glsl - do not redeclare them here.
+// Projector uniforms consumed only inside deferredUtil.glsl are declared there.
+// Uniforms read directly in this shader object must also be declared here; the
+// GLSL linker merges matching declarations across fragment-stage objects.
 uniform vec3  center;           // LIGHT_CENTER, view space
 uniform float size;             // LIGHT_SIZE (sphere-of-influence radius); also
                                 // consumed inside deferredUtil - declared here
@@ -67,6 +68,7 @@ uniform vec3  color;            // DIFFUSE_COLOR - light's linear diffuse color 
 uniform float proj_focus;       // deferredUtil cookie LOD params (read directly here)
 uniform float proj_lod;
 uniform float proj_range;
+uniform vec3  proj_n;           // projector axis used by the shaft-length clip
 uniform float projvol_max_distance; // metres along projector axis; 0 = full range
 
 // Shared godray controls (this program uploads its OWN values into these).
