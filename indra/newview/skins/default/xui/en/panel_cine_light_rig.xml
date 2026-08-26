@@ -158,11 +158,11 @@
         <combo_box follows="left|top" height="22" layout="topleft" left="54" name="cine_easy_flare_preset" top="172" tool_tip="Applies a full look (streak, ghosts, halo, rings, circles, iris, arc) and snaps back to this sentinel. Master strength/intensity are not touched by presets." width="278">
             <combo_list mouse_wheel_opaque="true" page_lines="8" />
         </combo_box>
-        <check_box control_name="CineLightRigLiveProbeEnabled" follows="left|top" height="18" label="Probe" layout="topleft" left="8" name="cine_easy_probe_enable" top="196" tool_tip="Capture a spherical environment-only reflection probe around one rig. Costs six cubemap views per frame while enabled." width="64" />
-        <check_box control_name="CineLightRigLiveProbeGizmo" follows="left|top" height="18" label="Gizmo" layout="topleft" left="76" name="cine_easy_probe_gizmo" top="196" tool_tip="Draw the live probe's spherical influence boundary." width="64" />
-        <text follows="left|top" height="15" layout="topleft" left="8" top="224" value="Radius" width="44" />
-        <slider can_edit_text="true" control_name="CineLightRigLiveProbeRadius" decimal_digits="2" follows="left|top" height="20" increment="0.25" layout="topleft" left="56" max_val="32" min_val="0.5" name="cine_easy_probe_radius" show_text="true" top="220" tool_tip="Spherical probe influence radius in metres. Hover and scroll the mouse wheel for 0.25 m steps." wheel_adjust="true" width="256" />
-        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_easy_probe_radius_reset" top="221" tool_tip="Reset radius" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigLiveProbeRadius" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="200" value="PBR Probe" width="66" tool_tip="Live PBR reflection probe captured around the target rig." />
+        <slider can_edit_text="true" control_name="CineLightRigLiveProbeRadius" decimal_digits="2" follows="left|top" height="20" increment="0.25" layout="topleft" left="78" max_val="32" min_val="0.5" name="cine_easy_probe_radius" show_text="true" top="196" tool_tip="PBR reflection probe influence radius in metres (spherical). Hover and scroll the mouse wheel for 0.25 m steps." wheel_adjust="true" width="234" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_easy_probe_radius_reset" top="197" tool_tip="Reset probe radius" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigLiveProbeRadius" />
+        <check_box control_name="CineLightRigLiveProbeEnabled" follows="left|top" height="18" label="Probe" layout="topleft" left="16" name="cine_easy_probe_enable" top="222" tool_tip="Capture a spherical environment-only PBR reflection probe around one rig. Costs six cubemap views per frame while enabled." width="64" />
+        <check_box control_name="CineLightRigLiveProbeGizmo" follows="left|top" height="18" label="Gizmo" layout="topleft" left="84" name="cine_easy_probe_gizmo" top="222" tool_tip="Draw the live probe's spherical influence boundary." width="64" />
         </panel>
         <panel
          background_visible="false"
