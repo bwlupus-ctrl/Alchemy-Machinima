@@ -99,6 +99,9 @@ uniform int ghostUseVertexAlpha;
 #ifdef GHOST_WORLD_PASS
 uniform int ghostAlphaCutoffMode;
 #endif
+#if defined(GHOST_SHARED_DISSOLVE) && !defined(GHOST_WORLD_PASS)
+#error GHOST_SHARED_DISSOLVE requires GHOST_WORLD_PASS
+#endif
 // x > .5 means the material alpha mode actually uses sampled texture alpha;
 // y is the PBR base-colour factor alpha. OPAQUE materials receive (0, 1), so
 // arbitrary/packed data in their base-colour A channel cannot punch holes.
@@ -151,6 +154,24 @@ float ghostSrgbChannelToLinear(float channel)
         ? c / 12.92
         : pow((c + 0.055) / 1.055, 2.4);
 }
+#ifdef GHOST_WORLD_PASS
+// Localized world radiance is authored as a display-space palette plus an HDR
+// intensity. Decode the bounded palette first and multiply the intensity in
+// linear space; decoding palette*intensity made values above one grow
+// superlinearly. The peak extraction is defensive for composite colours such
+// as Halftone ink that can already exceed display white before this helper.
+vec3 ghostWorldRadiance(vec3 display_color, float intensity)
+{
+    vec3 positive = max(display_color, vec3(0.0));
+    float palette_scale = max(max(max(positive.r, positive.g), positive.b), 1.0);
+    vec3 palette = clamp(positive / palette_scale, vec3(0.0), vec3(1.0));
+    vec3 decoded = vec3(ghostSrgbChannelToLinear(palette.r),
+                        ghostSrgbChannelToLinear(palette.g),
+                        ghostSrgbChannelToLinear(palette.b));
+    vec3 working = ghostWorldLinear != 0 ? decoded : palette;
+    return working * palette_scale * max(intensity, 0.0);
+}
+#endif
 in vec4 vary_vertex_color;
 
 vec2 ghostDeviceUv()
@@ -367,7 +388,12 @@ void main()
         float mono = dot(tex.rgb, vec3(0.299, 0.587, 0.114));
         tex.rgb = mix(tex.rgb, vec3(mono), 0.25 * distort);
     }
+#ifndef GHOST_WORLD_PASS
+    // Shared-world voxel shading is applied once after EOTF decoding with the
+    // other scalar distortion cues. Historical clone overlays retain their
+    // display-space multiplication here.
     tex.rgb *= voxelShade;
+#endif
     if (torn > 0.0)
     {
         // chroma split on the torn slice: R and B sampled a hair apart
@@ -435,9 +461,16 @@ void main()
     float band     = 0.5 + 0.5 * sin((fragCoord.y / period + ghostTime * 1.7) * 6.2831853);
     float scan     = mix(1.0, 0.30 + 0.70 * band, scan_amt);
 
-    // fresnel-ish rim from the eye-space normal / view direction
-    vec3  n   = normalize(vary_normal);
-    vec3  v   = normalize(-vary_position);
+    // Fresnel-ish rim from the eye-space normal / view direction. Both the
+    // historical clone program and shared-world replay must survive degenerate
+    // geometry and eye-plane vertices without publishing NaNs.
+    float normal_len2 = dot(vary_normal, vary_normal);
+    vec3 n = normal_len2 > 1e-12
+        ? vary_normal * inversesqrt(normal_len2) : vec3(0.0, 0.0, 1.0);
+    vec3 view_vector = -vary_position;
+    float view_len2 = dot(view_vector, view_vector);
+    vec3 v = view_len2 > 1e-12
+        ? view_vector * inversesqrt(view_len2) : vec3(0.0, 0.0, 1.0);
     float rim = pow(1.0 - clamp(abs(dot(n, v)), 0.0, 1.0), 2.0) * ghostParams.y;
 
     // subtle whole-body flicker (13 Hz-ish beat against 7.3, capped at -30%)
@@ -460,7 +493,14 @@ void main()
     // alpha, so an x-ray body is faint inside with bright silhouette edges).
     // [R2-1] the per-instance brightness scales the WHOLE output colour (rim
     // included) but never the alpha -- a dimmed clone stays as opaque.
-    vec3  rgb   = base * scan * flicker + color.rgb * rim;
+    vec3 rgb;
+#ifdef GHOST_WORLD_PASS
+    // Shared live replay is converted to scene linear before its animated
+    // signal envelope. Ghost Studio retains the historical display-space law.
+    rgb = base * scan + color.rgb * rim;
+#else
+    rgb = base * scan * flicker + color.rgb * rim;
+#endif
 #ifdef GHOST_WORLD_PASS
     // Shared world replay gates the rim as well as the body.  Without tex.a on
     // the additive rim term, a fully transparent texel on a BLEND card still
@@ -479,9 +519,55 @@ void main()
     float lum = dot(tex.rgb, vec3(0.299, 0.587, 0.114));
     float facing = clamp(abs(dot(n, v)), 0.0, 1.0);
     float edge = pow(1.0 - facing, 2.0);
+#ifdef GHOST_WORLD_PASS
+    // Ghost Studio owns final display RGB, while this permutation is authored
+    // into the pre-exposure HDR world.  Keep a separate, localized radiance
+    // channel so graphic looks retain a readable geometry-normal silhouette
+    // without turning their complete surface into fullbright bloom. Each
+    // palette is decoded before its HDR intensity, then added after the common
+    // display-colour conversion.
+    vec3 worldRadiance = vec3(0.0);
+    vec3 worldBloomRadiance = vec3(0.0);
+    float worldRimWide = smoothstep(0.05, 0.72, edge);
+    float worldRimCore = smoothstep(0.48, 0.92, edge);
+
+    if (ghostLook == 0) // Ghost: pale body with a soft apparition rim.
+    {
+        worldRadiance = ghostWorldRadiance(
+            color.rgb, 0.10 + worldRimWide * 0.18);
+    }
+    else if (ghostLook == 2) // Hologram: scan body plus projector rim.
+    {
+        worldRadiance = ghostWorldRadiance(
+            color.rgb, scan * 0.24 + worldRimWide * 0.42
+                       + worldRimCore * 0.30);
+        // Bloom is the bright scan crest and rim subset, not the complete
+        // projector body/readability floor.
+        worldBloomRadiance = ghostWorldRadiance(
+            color.rgb, pow(band, 4.0) * 0.12 + worldRimWide * 0.24
+                       + worldRimCore * 0.24);
+    }
+    else if (ghostLook == 3) // Wire: exact GL_LINE topology, never a UV grid.
+    {
+        worldRadiance = ghostWorldRadiance(color.rgb, 0.42);
+    }
+    else if (ghostLook == 4) // X-ray: faint interior, strong continuous rim.
+    {
+        rgb = color.rgb * (0.16 + edge * 2.2) + tex.rgb * 0.04;
+        worldRadiance = ghostWorldRadiance(
+            color.rgb, 0.08 + worldRimWide * 0.42
+                       + worldRimCore * 0.34);
+    }
+#endif
     if (ghostLook == 5) // Thermal
     {
         rgb = mix(heat_lut(clamp(lum + edge * 0.28, 0.0, 1.0)), color.rgb, 0.12);
+#ifdef GHOST_WORLD_PASS
+        // Preserve the heat palette through HDR exposure without making the
+        // complete actor a bloom source.
+        worldRadiance = ghostWorldRadiance(
+            rgb, 0.08 + worldRimWide * 0.10);
+#endif
         alpha = color.a * tex.a;
     }
     else if (ghostLook == 6) // Neon outline
@@ -489,6 +575,12 @@ void main()
         rgb = color.rgb * edge * 3.0;
 #ifdef GHOST_WORLD_PASS
         float edgeMask = smoothstep(0.12, 0.75, edge);
+        // A dark covered interior anchors the luminous silhouette on both
+        // bright and dark backgrounds; radiance remains edge-localized.
+        rgb += color.rgb * 0.035;
+        worldRadiance = ghostWorldRadiance(
+            color.rgb, worldRimWide * 0.38 + worldRimCore * 0.82);
+        worldBloomRadiance = worldRadiance * 0.82;
         // Edge intensity must remain inside the material's authored coverage;
         // otherwise transparent portions of BLEND cards become neon quads.
         alpha = color.a * tex.a * edgeMask;
@@ -500,6 +592,13 @@ void main()
     else if (ghostLook == 7) // Silhouette
     {
         rgb = color.rgb;
+#ifdef GHOST_WORLD_PASS
+        // A restrained body floor and paired rim keep the flat treatment
+        // legible without classifying Silhouette as an explicit bloom look.
+        rgb *= 0.82;
+        worldRadiance = ghostWorldRadiance(
+            color.rgb, 0.08 + worldRimWide * 0.14);
+#endif
         alpha = color.a * tex.a;
     }
     else if (ghostLook == 8) // Toon / ink
@@ -508,14 +607,35 @@ void main()
         vec3 poster = floor(tex.rgb * bands + 0.5) / bands;
         float ink = smoothstep(0.18, 0.62, edge);
         rgb = mix(poster * color.rgb, vec3(0.015), ink);
+#ifdef GHOST_WORLD_PASS
+        // Restore a small paper/readability floor after display-to-linear
+        // conversion.  Ink itself remains dark and non-emissive.
+        worldRadiance = ghostWorldRadiance(
+            poster * color.rgb, 0.035 + (1.0 - ink) * 0.045);
+#endif
         alpha = color.a * tex.a;
     }
     else if (ghostLook == 9) // Chrome
     {
         vec3 r = reflect(-v, n);
         float stripes = 0.5 + 0.5 * sin((r.y * 2.4 + r.x) * 3.1415927);
+#ifdef GHOST_WORLD_PASS
+        // Legacy/BOM has no reflection-probe BRDF in this replay. Approximate
+        // the PBR Chrome contract with a dark metal base, a broad environment
+        // band, and a view-dependent white glint instead of a flat grey wash.
+        float glint = smoothstep(0.72, 0.98, stripes);
+        rgb = mix(vec3(0.025, 0.04, 0.07),
+                  vec3(0.78, 0.88, 1.0), stripes);
+        rgb = mix(rgb, color.rgb, 0.12)
+            + vec3(0.35, 0.42, 0.50)
+              * (glint * 0.32 + worldRimCore * 0.28);
+        worldRadiance = ghostWorldRadiance(
+            vec3(0.55, 0.68, 0.82),
+            glint * 0.10 + worldRimCore * 0.08);
+#else
         rgb = mix(vec3(0.05, 0.08, 0.12), vec3(0.9, 0.95, 1.0), stripes);
         rgb = mix(rgb, color.rgb, 0.18) + edge * 0.35;
+#endif
         alpha = color.a * tex.a;
     }
     else if (ghostLook == 10) // Dissolve
@@ -543,8 +663,18 @@ void main()
         if (d < 0.0) discard;
         float glow = 1.0 - smoothstep(0.0, 0.10, d);
         ghostDissolveEdge = glow * worldDissolveTreatmentStrength;
-        rgb = tex.rgb * color.rgb
-            + glow * mix(vec3(1.0, 0.35, 0.02), color.rgb, 0.4) * 2.2;
+        rgb = tex.rgb * color.rgb;
+#ifdef GHOST_WORLD_PASS
+        // Keep the incandescent edge in the same localized-radiance channel as
+        // every other signature look. Beauty and bloom now share one colour,
+        // one treatment strength, and the one common flicker/brightness law.
+        worldRadiance = ghostWorldRadiance(
+            mix(vec3(1.0, 0.35, 0.02), color.rgb, 0.4),
+            ghostDissolveEdge * 2.2);
+        worldBloomRadiance = worldRadiance;
+#else
+        rgb += glow * mix(vec3(1.0, 0.35, 0.02), color.rgb, 0.4) * 2.2;
+#endif
         // Match shared PBR output coverage exactly: surviving MASK fragments
         // remain material-opaque, while BLEND retains its authored ramp.
         alpha = worldAuthoredCoverage * smoothstep(0.0, 0.025, d);
@@ -564,9 +694,22 @@ void main()
     }
     else if (ghostLook == 12) // Gold statue
     {
+#ifdef GHOST_WORLD_PASS
+        // A broad view lobe stands in for the reflection response available on
+        // PBR attachments. Keep the dark ochre body so the highlight reads as
+        // metal rather than as blanket yellow emission.
+        float gold_lobe = clamp(smoothstep(0.04, 0.92, lum)
+                                + worldRimWide * 0.30, 0.0, 1.0);
+        rgb = mix(vec3(0.105, 0.028, 0.003),
+                  vec3(1.0, 0.72, 0.16), gold_lobe);
+        rgb *= mix(vec3(1.0), color.rgb, 0.10);
+        worldRadiance = ghostWorldRadiance(
+            vec3(1.0, 0.58, 0.10), worldRimCore * 0.10);
+#else
         rgb = mix(vec3(0.16, 0.055, 0.008), vec3(1.0, 0.72, 0.16),
                   smoothstep(0.05, 0.9, lum)) + edge * vec3(0.5, 0.3, 0.05);
         rgb *= mix(vec3(1.0), color.rgb, 0.12);
+#endif
         alpha = color.a * tex.a;
     }
     else if (ghostLook == 13) // Night vision
@@ -575,6 +718,11 @@ void main()
         float nv = clamp(lum * 1.35 + grain * 0.14, 0.0, 1.0);
         rgb = vec3(0.03, nv, 0.08) * (0.72 + 0.28 * band);
         rgb *= mix(vec3(1.0), color.rgb, 0.12);
+#ifdef GHOST_WORLD_PASS
+        worldRadiance = ghostWorldRadiance(
+            vec3(0.015, 0.10 + nv * 0.10, 0.025),
+            0.72 + 0.28 * band);
+#endif
         alpha = color.a * tex.a;
     }
     else if (ghostLook == 14) // Blueprint
@@ -582,6 +730,13 @@ void main()
         vec2 grid_uv = abs(fract(fragCoord / 18.0) - 0.5);
         float grid = 1.0 - smoothstep(0.43, 0.49, max(grid_uv.x, grid_uv.y));
         rgb = vec3(0.005, 0.035, 0.09) + color.rgb * (edge * 1.8 + grid * 0.11);
+#ifdef GHOST_WORLD_PASS
+        // Emit the drafted grid and silhouette, never the navy backing.
+        worldRadiance = ghostWorldRadiance(
+            color.rgb, grid * 0.22 + worldRimWide * 0.30
+                       + worldRimCore * 0.38);
+        worldBloomRadiance = worldRadiance * 0.84;
+#endif
         alpha = color.a * tex.a;
     }
     else if (ghostLook == 15) // Ectoplasm
@@ -595,6 +750,11 @@ void main()
         // actorFxF by expressing the ectoplasm wisps as luminance so legacy,
         // system/BOM, and PBR faces do not split at material boundaries.
         rgb *= mix(0.28, 1.0, wispy);
+        worldRadiance = ghostWorldRadiance(
+            mix(vec3(0.015, 0.12, 0.04), color.rgb, 0.7),
+            wispy * (0.22 + flow * 0.34) + worldRimCore * 0.24);
+        worldBloomRadiance = worldRadiance
+            * clamp(wispy * 0.68 + worldRimCore * 0.32, 0.0, 1.0);
         alpha = color.a * tex.a;
 #else
         // Ghost Studio keeps its historical wispy transparency.
@@ -605,16 +765,41 @@ void main()
     {
         float sparkle = pow(ghost_hash(floor(fragCoord / 3.0)
                                           + floor(ghostTime * 3.0)), 18.0);
+#ifdef GHOST_WORLD_PASS
+        // Dielectric ice approximation: blue body, milky grazing response and
+        // sparse crystalline glints. Avoid a broad metallic-looking glow.
+        float ice_lobe = clamp(lum * 0.34 + worldRimWide * 0.76, 0.0, 1.0);
+        rgb = mix(vec3(0.11, 0.34, 0.62), vec3(0.88, 0.98, 1.0), ice_lobe)
+            + sparkle * 1.35;
+        rgb *= mix(vec3(1.0), color.rgb, 0.12);
+        worldRadiance = ghostWorldRadiance(
+            vec3(0.62, 0.88, 1.0),
+            sparkle * 0.85 + worldRimCore * 0.10);
+#else
         rgb = mix(vec3(0.15, 0.42, 0.7), vec3(0.86, 0.97, 1.0), lum * 0.45 + edge)
               + sparkle * 1.6;
         rgb *= mix(vec3(1.0), color.rgb, 0.15);
+#endif
         alpha = color.a * tex.a;
     }
     else if (ghostLook == 17) // Prism
     {
+#ifdef GHOST_WORLD_PASS
+        vec3 spectrum = ghost_rainbow(edge * 0.82 + ghostTime * 0.035
+                                      + ghostAux.w * 0.05);
+        // Thin-film colour belongs mainly at grazing angles. A restrained
+        // neutral/tinted body prevents the legacy portion from reading as an
+        // unrelated unlit rainbow beside PBR surfaces.
+        rgb = mix(vec3(0.025, 0.035, 0.055), color.rgb * 0.16, 0.35)
+            + spectrum * (0.16 + edge * 1.55);
+        worldRadiance = ghostWorldRadiance(
+            spectrum, worldRimWide * 0.34 + worldRimCore * 0.46);
+        worldBloomRadiance = worldRadiance * 0.80;
+#else
         rgb = ghost_rainbow(edge * 0.82 + ghostTime * 0.035 + ghostAux.w * 0.05)
               * (0.25 + edge * 1.7);
         rgb = mix(rgb, color.rgb, 0.12);
+#endif
         alpha = color.a * tex.a * (0.2 + edge * 0.8);
     }
     else if (ghostLook == 18) // Thermal scope
@@ -625,11 +810,22 @@ void main()
                       + (1.0 - smoothstep(0.002, 0.012, abs(p.y - 0.5)));
         rgb = heat_lut(lum + edge * 0.32) * (0.35 + 0.65 * vignette)
               + color.rgb * reticle * 0.22;
+#ifdef GHOST_WORLD_PASS
+        worldRadiance = ghostWorldRadiance(
+            heat_lut(lum + edge * 0.32),
+            0.06 + worldRimWide * 0.08)
+            + ghostWorldRadiance(color.rgb, reticle * 0.16);
+#endif
         alpha = color.a * tex.a;
     }
     else if (ghostLook == 19) // Wallhack / ESP
     {
         rgb = color.rgb * (0.16 + edge * 3.1) + vec3(lum) * color.rgb * 0.12;
+#ifdef GHOST_WORLD_PASS
+        worldRadiance = ghostWorldRadiance(
+            color.rgb, worldRimWide * 0.42 + worldRimCore * 0.64);
+        worldBloomRadiance = worldRadiance * 0.82;
+#endif
         alpha = color.a * tex.a * (0.28 + edge * 0.72);
     }
     else if (ghostLook == 20) // Night-vision tube
@@ -639,14 +835,35 @@ void main()
         float grain = ghost_hash(fragCoord + floor(ghostTime * 20.0)) - 0.5;
         float ir = clamp(lum * 1.55 + edge * 0.55 + grain * 0.16, 0.0, 1.0);
         rgb = vec3(0.025, ir, 0.045) * tube;
+#ifdef GHOST_WORLD_PASS
+        worldRadiance = ghostWorldRadiance(
+            vec3(0.01, 0.10 + ir * 0.10, 0.018), tube);
+#endif
         alpha = color.a * tex.a * tube;
     }
     else if (ghostLook == 21) // Damage overlay
     {
+#ifdef GHOST_WORLD_PASS
+        // Shared scalar/indexed/system world permutations all export the same
+        // raw/rest-space position used by Dissolve. Build the wound field there
+        // so it cannot restart at every material UV island. The stable actor
+        // phase offsets repeated meshes without introducing time swimming.
+        vec2 damage_domain = vec2(
+            vary_object_position.x + vary_object_position.z * 0.73,
+            vary_object_position.y + vary_object_position.z * 1.17);
+        damage_domain = damage_domain * 1.35
+            + vec2(cos(ghostAux.w), sin(ghostAux.w)) * 0.31;
+        vec2 p = fract(damage_domain) - 0.5;
+#else
         vec2 p = fract(vary_texcoord0) - 0.5;
+#endif
         float wound = smoothstep(0.18, 0.68, length(p))
                     * (0.55 + 0.45 * sin(ghostTime * 5.5 + ghostAux.w));
         rgb = mix(tex.rgb * color.rgb, vec3(0.72, 0.005, 0.01), wound * 0.82);
+#ifdef GHOST_WORLD_PASS
+        worldRadiance = ghostWorldRadiance(
+            vec3(0.52, 0.003, 0.006), wound * 0.12);
+#endif
         alpha = color.a * tex.a;
     }
     else if (ghostLook == 22) // Killcam
@@ -656,20 +873,53 @@ void main()
         float bars = step(device_y, 0.12) + step(0.88, device_y);
         rgb = mix(vec3(lum + grain * 0.10), color.rgb * vec3(lum), 0.18);
         rgb *= 1.0 - clamp(bars, 0.0, 1.0) * 0.78;
+#ifdef GHOST_WORLD_PASS
+        worldRadiance = ghostWorldRadiance(
+            color.rgb * vec3(lum),
+            (1.0 - clamp(bars, 0.0, 1.0)) * 0.055);
+#endif
         alpha = color.a * tex.a;
     }
     else if (ghostLook == 23) // Oil slick / iridescent
     {
+#ifdef GHOST_WORLD_PASS
+        float film = facing * 1.3 + lum * 0.22 + ghostTime * 0.018;
+        vec3 spectrum = ghost_rainbow(film);
+        // Approximate a dielectric thin-film coat: authored colour remains in
+        // the body while spectral response rises continuously toward grazing.
+        rgb = tex.rgb * 0.22
+            + spectrum * (0.20 + worldRimWide * 0.92
+                          + worldRimCore * 0.28);
+        worldRadiance = ghostWorldRadiance(
+            spectrum, worldRimCore * 0.07);
+#else
         rgb = ghost_rainbow(facing * 1.3 + lum * 0.22 + ghostTime * 0.018)
               * (0.34 + edge * 1.25) + tex.rgb * 0.14;
+#endif
         alpha = color.a * tex.a;
     }
     else if (ghostLook == 24) // Vaporwave
     {
+#ifdef GHOST_WORLD_PASS
+        // Match the native PBR treatment's tile-safe full-frame field. One
+        // device-space grid now spans BOM, legacy, rigged, static and PBR
+        // components without restarting at material or snapshot-tile edges.
+        vec2 vapor_uv = ghostDeviceUv();
+        float horizon = fract(vapor_uv.y * 12.0 + ghostTime * 0.25);
+        float grid = 1.0 - smoothstep(
+            0.04, 0.12,
+            min(fract(vapor_uv.x * 10.0), horizon));
+#else
         float horizon = fract(vary_texcoord0.y * 12.0 + ghostTime * 0.25);
         float grid = 1.0 - smoothstep(0.04, 0.12, min(fract(vary_texcoord0.x * 10.0), horizon));
+#endif
         vec3 candy = mix(vec3(1.0, 0.03, 0.55), vec3(0.0, 0.92, 1.0), lum);
         rgb = candy * (0.65 + grid * 0.55) + color.rgb * edge;
+#ifdef GHOST_WORLD_PASS
+        worldRadiance = ghostWorldRadiance(candy, grid * 0.16)
+            + ghostWorldRadiance(
+                color.rgb, worldRimWide * 0.12 + worldRimCore * 0.12);
+#endif
         alpha = color.a * tex.a;
     }
     else if (ghostLook == 25) // Halftone / comic
@@ -678,7 +928,17 @@ void main()
         float dotMask = 1.0 - smoothstep(sqrt(max(lum, 0.02)) * 0.34,
                                          sqrt(max(lum, 0.02)) * 0.34 + 0.08,
                                          length(cell));
+#ifdef GHOST_WORLD_PASS
+        // Match the native comic treatment's readable paper/ink floor while
+        // retaining the same seven-pixel screen-space dot law.
+        vec3 paper = color.rgb * (0.045 + 0.10 * lum) + tex.rgb * 0.06;
+        vec3 ink = color.rgb * (vec3(0.55) + tex.rgb * 0.75);
+        rgb = mix(paper, ink, dotMask);
+        worldRadiance = ghostWorldRadiance(
+            mix(paper, ink, dotMask), 0.11);
+#else
         rgb = mix(vec3(0.015), color.rgb * (0.35 + tex.rgb), dotMask);
+#endif
         alpha = color.a * tex.a;
     }
     else if (ghostLook == 26) // Sonar reveal
@@ -687,6 +947,14 @@ void main()
         float beam = 1.0 - smoothstep(0.0, 0.075,
                                      abs(ghostDeviceUv().y - sweep));
         rgb = color.rgb * (0.08 + edge * 0.7 + beam * 2.5);
+#ifdef GHOST_WORLD_PASS
+        worldRadiance = ghostWorldRadiance(
+            color.rgb, beam * 0.78 + worldRimWide * 0.22
+                       + worldRimCore * 0.30);
+        worldBloomRadiance = ghostWorldRadiance(
+            color.rgb, beam * 0.74 + worldRimWide * 0.16
+                       + worldRimCore * 0.24);
+#endif
         alpha = color.a * tex.a * (0.22 + edge * 0.35 + beam * 0.55);
     }
     else if (ghostLook == 27) // Hologram interference / double image
@@ -695,6 +963,14 @@ void main()
         vec3 a = GHOST_DIFFUSE_SAMPLE(uv + echo).rgb;
         vec3 b = GHOST_DIFFUSE_SAMPLE(uv - echo).rgb;
         rgb = vec3(a.r, tex.g, b.b) * color.rgb + color.rgb * edge * 1.2;
+#ifdef GHOST_WORLD_PASS
+        worldRadiance = ghostWorldRadiance(
+            color.rgb, 0.08 * (0.5 + 0.5 * band)
+                       + worldRimWide * 0.26 + worldRimCore * 0.34);
+        worldBloomRadiance = ghostWorldRadiance(
+            color.rgb, pow(band, 4.0) * 0.045
+                       + worldRimWide * 0.18 + worldRimCore * 0.28);
+#endif
         alpha = color.a * tex.a * (0.55 + edge * 0.45);
     }
     if (ghostLook >= 5)
@@ -704,20 +980,35 @@ void main()
         // World beauty restores this value only for Dissolve; every other live
         // look restores authoritative authored material coverage below.
         syntheticCoverage = clamp(alpha, 0.0, 1.0);
-#endif
+#else
         rgb *= flicker;
         alpha *= flicker;
+#endif
     }
 #ifdef GHOST_WORLD_PASS
     // The common creative flicker is RGB animation, not surface coverage.
     // Dissolve restores its pre-flicker edge-shaped alpha; all other looks
     // restore the untouched material coverage captured above.
     alpha = ghostLook == 10 ? syntheticCoverage : worldAuthoredCoverage;
+    // The localized world radiance is kept outside the historical display RGB
+    // equation above. Apply the one common shimmer/glitch envelope and the one
+    // user brightness multiplier here. The palette was already decoded before
+    // these HDR intensity terms, so neither value receives an sRGB transfer a
+    // second time. This keeps beauty and explicit bloom phase-locked without
+    // changing Ghost Studio's non-world permutation.
+    worldRadiance *= flicker * max(ghostFx.w, 0.0);
+    worldBloomRadiance *= flicker * max(ghostFx.w, 0.0);
 #endif
+#ifndef GHOST_WORLD_PASS
     rgb *= max(ghostFx.w, 0.0);
+#endif
     // Flat-tint looks have no authored texture detail to reveal a UV warp.
     // Add a restrained signal cue so every distortion remains readable on
     // Ghost/X-ray/etc. while textured looks still show the actual sample warp.
+#ifdef GHOST_WORLD_PASS
+    float worldDistortionCue = 1.0;
+    vec3 worldDistortionAdditive = vec3(0.0);
+#endif
     if (distort > 0.001)
     {
         if (ghostDistort == 1)
@@ -725,37 +1016,91 @@ void main()
             vec2 cell = fract(fragCoord / mix(2.0, 18.0, distort));
             float seam = smoothstep(0.0, 0.10, min(min(cell.x, cell.y),
                                                     min(1.0 - cell.x, 1.0 - cell.y)));
-            rgb *= mix(0.82, 1.0, seam);
+            float cue = mix(0.82, 1.0, seam);
+#ifdef GHOST_WORLD_PASS
+            worldDistortionCue *= cue;
+#else
+            rgb *= cue;
+#endif
         }
         else if (ghostDistort == 2)
+        {
+#ifdef GHOST_WORLD_PASS
+            worldDistortionCue *= voxelShade;
+#else
             rgb *= voxelShade;
+#endif
+        }
         else if (ghostDistort == 3)
         {
             float lensRing = 1.0 - smoothstep(0.012, 0.035,
                 abs(length(vary_texcoord0 - ghostDistortParams.yz) - 0.38));
+#ifdef GHOST_WORLD_PASS
+            worldDistortionAdditive += ghostWorldRadiance(
+                color.rgb, lensRing * 0.25 * distort);
+#else
             rgb += color.rgb * lensRing * 0.25 * distort;
+#endif
         }
         else if (ghostDistort == 4)
-            rgb *= 0.88 + 0.12 * sin(fragCoord.y * 0.12 + ghostTime * 4.2) * distort;
+        {
+            float cue = 0.88 + 0.12
+                * sin(fragCoord.y * 0.12 + ghostTime * 4.2) * distort;
+#ifdef GHOST_WORLD_PASS
+            worldDistortionCue *= cue;
+#else
+            rgb *= cue;
+#endif
+        }
         else if (ghostDistort == 5)
+        {
+#ifdef GHOST_WORLD_PASS
+            worldDistortionAdditive += vec3(edge, 0.0, -edge)
+                * 0.35 * distort;
+#else
             rgb += vec3(edge, 0.0, -edge) * 0.35 * distort;
+#endif
+        }
         else if (ghostDistort == 6)
-            rgb *= 0.82 + 0.18 * ghost_hash(floor(vary_texcoord0 * vec2(12.0, 22.0))
-                                             + floor(ghostTime * 7.0)) * distort;
+        {
+            float cue = 0.82 + 0.18
+                * ghost_hash(floor(vary_texcoord0 * vec2(12.0, 22.0))
+                             + floor(ghostTime * 7.0)) * distort;
+#ifdef GHOST_WORLD_PASS
+            worldDistortionCue *= cue;
+#else
+            rgb *= cue;
+#endif
+        }
         else if (ghostDistort == 7)
-            rgb *= 0.86 + 0.14 * ghost_hash(vec2(floor(fragCoord.x / 13.0),
-                                                  floor(ghostTime * 8.0))) * distort;
+        {
+            float cue = 0.86 + 0.14
+                * ghost_hash(vec2(floor(fragCoord.x / 13.0),
+                                  floor(ghostTime * 8.0))) * distort;
+#ifdef GHOST_WORLD_PASS
+            worldDistortionCue *= cue;
+#else
+            rgb *= cue;
+#endif
+        }
     }
     if (ghostDistort == 8)
-        rgb *= 1.0 - vhsBand * 0.22 * distort;
-#ifdef GHOST_WORLD_PASS
-    if (ghostLook == 10 && ghostCoverageLayerStrength >= 0.0)
     {
-        // Apply Layer strength after the complete animated look so the source
-        // endpoint does not inherit dissolve tint, edge, flicker, or brightness.
-        rgb = mix(worldDissolveSource, rgb,
-                  worldDissolveTreatmentStrength);
+        float cue = 1.0 - vhsBand * 0.22 * distort;
+#ifdef GHOST_WORLD_PASS
+        worldDistortionCue *= cue;
+#else
+        rgb *= cue;
+#endif
     }
+#ifdef GHOST_WORLD_PASS
+    // Scalar distortion treatments dim/shape the same localized radiance in
+    // beauty and bloom. Lens and chromatic cues remain beauty-only additions.
+    worldRadiance *= worldDistortionCue;
+    worldBloomRadiance *= worldDistortionCue;
+#endif
+#ifdef GHOST_WORLD_PASS
+    vec3 worldLinearDissolveSource = worldDissolveSource;
 #endif
     if (ghostWorldLinear != 0)
     {
@@ -765,45 +1110,50 @@ void main()
         rgb = vec3(ghostSrgbChannelToLinear(rgb.r),
                    ghostSrgbChannelToLinear(rgb.g),
                    ghostSrgbChannelToLinear(rgb.b));
+#ifdef GHOST_WORLD_PASS
+        worldLinearDissolveSource = vec3(
+            ghostSrgbChannelToLinear(worldDissolveSource.r),
+            ghostSrgbChannelToLinear(worldDissolveSource.g),
+            ghostSrgbChannelToLinear(worldDissolveSource.b));
+#endif
     }
 #ifdef GHOST_WORLD_PASS
+    // Apply animation, user brightness, and scalar distortion once in scene
+    // linear space. Additive lens/chromatic cues participate in the same
+    // terminal signal envelope. Dissolve then interpolates two linear endpoints
+    // so its Layer source never inherits treatment animation or brightness.
+    float worldSignal = flicker * max(ghostFx.w, 0.0);
+    rgb = (rgb * worldDistortionCue + worldDistortionAdditive) * worldSignal;
+    if (ghostLook == 10 && ghostCoverageLayerStrength >= 0.0)
+    {
+        rgb = mix(worldLinearDissolveSource, rgb,
+                  worldDissolveTreatmentStrength);
+    }
+    // Beauty receives precisely the same localized radiance that the optional
+    // glow replay publishes below. Fog/atmospherics then attenuate the combined
+    // world result through the existing path.
+    rgb += worldRadiance;
     if (ghostGlowOnly != 0)
     {
-        float strength = 0.0;
-        if (ghostLook == 2) strength = 0.55;
-        else if (ghostLook == 6) strength = 0.45;
-        else if (ghostLook == 14 || ghostLook == 15 || ghostLook == 17 ||
-                 ghostLook == 19 || ghostLook == 26 || ghostLook == 27)
-        {
-            strength = 0.22;
-        }
-
-        vec3 emitted = rgb * strength;
-        if (ghostLook == 10)
-        {
-            vec3 dissolveTint = mix(vec3(1.0, 0.35, 0.02), color.rgb, 0.4);
-            // Beauty RGB was converted to linear immediately above. Convert
-            // the separately reconstructed dissolve edge too before deriving
-            // HDR bloom energy; otherwise this one look over-bloomed relative
-            // to the exact same edge colour in world beauty. This branch only
-            // exists in the world permutation, so Ghost Studio is unchanged.
-            dissolveTint = vec3(ghostSrgbChannelToLinear(dissolveTint.r),
-                                ghostSrgbChannelToLinear(dissolveTint.g),
-                                ghostSrgbChannelToLinear(dissolveTint.b));
-            emitted = dissolveTint * ghostDissolveEdge * 2.2;
-        }
-        // The styled RGB already contains each look's edge/beam/scan shaping
-        // and the one common signal pulse. Gate ordinary treatment bloom only
-        // by authoritative material coverage so those cues are not squared;
-        // surviving MASK texels stay binary and BLEND keeps its authored ramp.
-        float bloomCoverage = worldAuthoredCoverage;
-        if (ghostLook == 10)
-        {
-            // Dissolve reconstructs its incandescent edge independently of
-            // beauty RGB, so apply the signal pulse here exactly once while
-            // retaining the same MASK/BLEND material gate as every other look.
-            bloomCoverage = clamp(worldAuthoredCoverage * flicker, 0.0, 1.0);
-        }
+        // The caller only schedules this pass for the frozen signature list.
+        // Publish the localized scan/rim/grid/wisp/beam radiance itself, never
+        // the complete styled body. That keeps bloom spatially aligned with
+        // beauty and prevents a second broad fullbright silhouette.
+        vec3 emitted = worldBloomRadiance;
+        // Extract the complete sky/underwater transmittance from the affine fog
+        // function. Additive haze is background radiance and must never become
+        // actor emission.
+        vec3 foggedEmission = applySkyAndWaterFog(
+            vary_position, getAdditiveColor(), getAtmosAttenuation(),
+            vec4(emitted, 1.0)).rgb;
+        vec3 foggedZero = applySkyAndWaterFog(
+            vary_position, getAdditiveColor(), getAtmosAttenuation(),
+            vec4(vec3(0.0), 1.0)).rgb;
+        emitted = max(foggedEmission - foggedZero, vec3(0.0));
+        // Gate treatment bloom by authoritative material coverage. Surviving
+        // MASK texels stay binary and BLEND retains its authored ramp.
+        float bloomCoverage = ghostLook == 10
+            ? syntheticCoverage : worldAuthoredCoverage;
         float glow = max(max(emitted.r, emitted.g), emitted.b)
                    * bloomCoverage;
         frag_color = vec4(0.0, 0.0, 0.0, max(glow, 0.0));

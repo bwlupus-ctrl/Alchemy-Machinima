@@ -11,6 +11,7 @@ uniform mat4 modelview_matrix;
 uniform mat4 projection_matrix;
 mat4 getObjectSkinnedTransform();
 #else
+uniform mat3 normal_matrix;
 uniform mat4 modelview_projection_matrix;
 uniform mat4 modelview_matrix;
 #endif
@@ -25,6 +26,7 @@ uniform vec4[2] texture_emissive_transform;
 #endif
 
 in vec3 position;
+in vec3 normal;
 in vec4 emissive;
 in vec4 diffuse_color;
 in vec2 texcoord0;
@@ -41,6 +43,7 @@ out vec2 emissive_texcoord;
 out vec4 vertex_emissive;
 out vec4 vertex_color;
 out vec3 vary_position;
+out vec3 vary_normal;
 #ifdef SHARED_ACTOR_FX_SLOT_FILTER
 flat out int vary_shared_material_slot;
 #endif
@@ -65,6 +68,17 @@ void main()
     gl_Position = modelview_projection_matrix * vec4(position.xyz, 1.0);
     vary_position = (modelview_matrix * vec4(position.xyz, 1.0)).xyz;
 #endif
+
+    // Match sharedActorFxPbrV exactly: style rims use the unperturbed smooth
+    // eye-space vertex normal, including the live object-skin palette path.
+#ifdef HAS_SKIN
+    vec3 n = (mat * vec4(normal.xyz + position.xyz, 1.0)).xyz - pos.xyz;
+#else
+    vec3 n = normal_matrix * normal;
+#endif
+    float n_len2 = dot(n, n);
+    vary_normal = n_len2 > 1e-12
+        ? n * inversesqrt(n_len2) : vec3(0.0, 0.0, 1.0);
 
 #ifdef SHARED_ACTOR_FX_SLOT_FILTER
     int mi = texture_index;

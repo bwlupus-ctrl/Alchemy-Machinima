@@ -26,6 +26,31 @@ float actorFxBeautyDissolveAlpha()
     return 1.0;
 }
 
+float actorFxPbrDissolveCoverage()
+{
+    return 1.0;
+}
+
+float actorFxPbrDissolveAlpha(float coverage)
+{
+    return 1.0;
+}
+
+float actorFxPbrNormalAoResponse()
+{
+    return 1.0;
+}
+
+float actorFxPbrAuthoredEmissiveResponse()
+{
+    return 1.0;
+}
+
+vec3 actorFxPbrVhsColor(vec3 source)
+{
+    return source;
+}
+
 bool actorFxRgbSplitEnabled()
 {
     return false;
@@ -49,6 +74,28 @@ vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction)
 vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv)
 {
     return source;
+}
+
+vec3 actorFxPbrPreLight(vec3 source)
+{
+    return source;
+}
+
+vec3 actorFxPbrPostLight(vec3 lit_color, vec3 authored_source,
+                         vec3 geometry_normal_eye, vec3 position_eye,
+                         vec2 authored_uv, float dissolve_coverage,
+                         out vec3 synthetic_emission)
+{
+    synthetic_emission = vec3(0.0);
+    return lit_color;
+}
+
+vec3 actorFxPbrSyntheticEmission(vec3 authored_source,
+                                 vec3 geometry_normal_eye,
+                                 vec3 position_eye, vec2 authored_uv,
+                                 float dissolve_coverage)
+{
+    return vec3(0.0);
 }
 
 vec2 actorFxPbrMaterial(vec2 roughness_metallic)

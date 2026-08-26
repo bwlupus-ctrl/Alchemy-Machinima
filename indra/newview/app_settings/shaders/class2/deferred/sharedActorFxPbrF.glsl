@@ -109,18 +109,22 @@ uniform vec2 light_deferred_attenuation[8];
 vec3 srgb_to_linear(vec3 c);
 void calcAtmosphericVarsLinear(vec3 inPositionEye, vec3 norm,
                                vec3 light_dir, out vec3 sunlit,
-                               out vec3 amblit, out vec3 atten,
-                               out vec3 additive);
+                               out vec3 amblit, out vec3 additive,
+                               out vec3 atten);
 vec4 applySkyAndWaterFog(vec3 pos, vec3 additive, vec3 atten, vec4 color);
 
 #ifdef HAS_ACTOR_FX
-vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye,
-                  vec2 authored_uv);
+vec3 actorFxPbrPreLight(vec3 source);
+vec3 actorFxPbrPostLight(vec3 lit_color, vec3 authored_source,
+                         vec3 geometry_normal_eye, vec3 position_eye,
+                         vec2 authored_uv, float dissolve_coverage,
+                         out vec3 synthetic_emission);
 vec2 actorFxPbrMaterial(vec2 roughness_metallic);
-vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
-vec3 actorFxBeautyEmissive(vec3 authored_emissive, vec3 styled_color);
-float actorFxBeautyDissolveAlpha();
-float actorFxAuthoredMaterialResponse();
+float actorFxPbrDissolveCoverage();
+float actorFxPbrDissolveAlpha(float coverage);
+float actorFxPbrNormalAoResponse();
+float actorFxPbrAuthoredEmissiveResponse();
+vec3 actorFxPbrVhsColor(vec3 source);
 bool actorFxUvTransformEnabled();
 bool actorFxRgbSplitEnabled();
 vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
@@ -335,6 +339,17 @@ void main()
 #endif
 
 #ifdef HAS_ACTOR_FX
+    // Evaluate the coverage-changing look once.  The same rest-space value is
+    // reused by beauty alpha and the incandescent edge, avoiding three FBM
+    // evaluations per fragment and keeping MASK/BLEND boundaries identical.
+    float actor_fx_dissolve_coverage = actorFxPbrDissolveCoverage();
+    if (actor_fx_dissolve_coverage < 0.0)
+    {
+        discard;
+    }
+#endif
+
+#ifdef HAS_ACTOR_FX
     bool fx_uv_transform = actorFxUvTransformEnabled();
     bool fx_rgb_split = actorFxRgbSplitEnabled();
     vec2 fx_base_uv = base_color_texcoord.xy;
@@ -356,6 +371,11 @@ void main()
     // Decode first, multiply the factor second.
     basecolor.rgb = srgb_to_linear(basecolor.rgb);
     vec3 col = basecolor.rgb * vertex_color.rgb;
+#ifdef HAS_ACTOR_FX
+    // Synthetic emission is based on this stable authored sample in beauty and
+    // glow alike; it must not depend on the result of PBR lighting.
+    vec3 actor_fx_authored_source = col;
+#endif
 
 #ifdef HAS_ACTOR_FX
     vec2 fx_normal_uv = normal_texcoord;
@@ -373,12 +393,32 @@ void main()
     vec3 vB = vary_sign * cross(vN, vT);
 
 #ifdef HAS_ACTOR_FX
-    float actor_fx_material_response = actorFxAuthoredMaterialResponse();
-    vNt = mix(vec3(0.0, 0.0, 1.0), vNt,
-              actor_fx_material_response);
+    // Style rims use the unperturbed geometric normal.  Material normal maps
+    // still feed the BRDF below, but UV seams can no longer split a silhouette
+    // rim, sonar sweep, prism edge, or synthetic bloom mask.
+    vec3 actor_fx_geometry_normal = vN;
+    float actor_fx_geometry_len2 = dot(actor_fx_geometry_normal,
+                                       actor_fx_geometry_normal);
+    actor_fx_geometry_normal = actor_fx_geometry_len2 > 1e-12
+        ? actor_fx_geometry_normal * inversesqrt(actor_fx_geometry_len2)
+        : vec3(0.0, 0.0, 1.0);
+    actor_fx_geometry_normal *= gl_FrontFacing ? 1.0 : -1.0;
 #endif
 
-    vec3 norm = normalize(vNt.x * vT + vNt.y * vB + vNt.z * vN);
+#ifdef HAS_ACTOR_FX
+    float actor_fx_normal_ao_response = actorFxPbrNormalAoResponse();
+    vNt = mix(vec3(0.0, 0.0, 1.0), vNt,
+              actor_fx_normal_ao_response);
+#endif
+
+    vec3 material_normal = vNt.x * vT + vNt.y * vB + vNt.z * vN;
+    float material_normal_len2 = dot(material_normal, material_normal);
+    float vertex_normal_len2 = dot(vN, vN);
+    vec3 material_normal_fallback = vertex_normal_len2 > 1e-12
+        ? vN * inversesqrt(vertex_normal_len2) : vec3(0.0, 0.0, 1.0);
+    vec3 norm = material_normal_len2 > 1e-12
+        ? material_normal * inversesqrt(material_normal_len2)
+        : material_normal_fallback;
     norm *= gl_FrontFacing ? 1.0 : -1.0;
 
     vec3 light_dir = (sun_up_factor == 1) ? sun_dir : moon_dir;
@@ -395,7 +435,9 @@ void main()
     vec3 sunlit_linear = sunlit;
 
     float scol = 1.0;
-    vec2 frag = vary_fragcoord.xy / vary_fragcoord.z * 0.5 + 0.5;
+    float frag_w = abs(vary_fragcoord.z) > 1e-6
+        ? vary_fragcoord.z : (vary_fragcoord.z < 0.0 ? -1e-6 : 1e-6);
+    vec2 frag = vary_fragcoord.xy / frag_w * 0.5 + 0.5;
 #ifdef HAS_SUN_SHADOW
     scol = sampleDirectionalShadow(pos, norm, frag);
 #endif
@@ -415,10 +457,12 @@ void main()
     float metallic = orm.b * shared_metallic_factor();
     float ao = orm.r;
 #ifdef HAS_ACTOR_FX
-    ao = mix(1.0, ao, actor_fx_material_response);
+    ao = mix(1.0, ao, actor_fx_normal_ao_response);
 #endif
 
-    // The texture is decoded before multiplying the already-linear GLTF factor.
+    // Sample authored emission independently. Actor FX filters this exact value
+    // once, but it does not enter the BRDF result that the post-light creative
+    // treatment classifies and modulates.
     vec3 colorEmissive = shared_emissive_factor();
 #ifdef HAS_ACTOR_FX
     vec2 fx_emissive_uv = emissive_texcoord;
@@ -439,14 +483,20 @@ void main()
     colorEmissive *= srgb_to_linear(
         shared_sample_emissive(emissive_texcoord));
 #endif
+#ifdef HAS_ACTOR_FX
+    colorEmissive = actorFxPbrVhsColor(colorEmissive);
+#endif
 
 #ifdef HAS_ACTOR_FX
-    col = actorFxApply(col, norm, vary_position, base_color_texcoord);
+    // Only physical replacement materials touch the inputs to the single PBR
+    // evaluation. Graphic/sensor looks are applied to lit HDR below.
+    col = actorFxPbrPreLight(col);
     vec2 fx_rm = actorFxPbrMaterial(
         vec2(perceptualRoughness, metallic));
     perceptualRoughness = fx_rm.x;
     metallic = fx_rm.y;
-    colorEmissive = actorFxBeautyEmissive(colorEmissive, col);
+    vec3 actor_fx_authored_emission = colorEmissive
+        * actorFxPbrAuthoredEmissiveResponse();
 #endif
 
     float gloss = 1.0 - perceptualRoughness;
@@ -468,11 +518,21 @@ void main()
     vec3 specularColor = vec3(0.0);
     calcDiffuseSpecular(col, metallic, diffuseColor, specularColor);
 
-    vec3 v = -normalize(pos);
+    vec3 view_eye = -pos;
+    float view_len2 = dot(view_eye, view_eye);
+    vec3 v = view_len2 > 1e-12
+        ? view_eye * inversesqrt(view_len2) : vec3(0.0, 0.0, 1.0);
+#ifdef HAS_ACTOR_FX
+    // Authored emission is recombined after the creative post-light treatment,
+    // so the single PBR evaluation receives no emission to recolour or pulse.
+    vec3 pbr_authored_emission = vec3(0.0);
+#else
+    vec3 pbr_authored_emission = colorEmissive;
+#endif
     vec3 color = pbrBaseLight(diffuseColor, specularColor, metallic,
                               v, norm, perceptualRoughness, light_dir,
                               sunlit_linear, scol, radiance, irradiance,
-                              colorEmissive, ao, additive, atten);
+                              pbr_authored_emission, ao, additive, atten);
 
     vec3 light = vec3(0.0);
 #define LIGHT_LOOP(i) light += pbrCalcPointLightOrSpotLight(                 \
@@ -492,6 +552,17 @@ void main()
 #undef LIGHT_LOOP
 
     color += light;
+#ifdef HAS_ACTOR_FX
+    vec3 actor_fx_synthetic_emission;
+    color = actorFxPbrPostLight(color, actor_fx_authored_source,
+                                actor_fx_geometry_normal, vary_position,
+                                base_color_texcoord,
+                                actor_fx_dissolve_coverage,
+                                actor_fx_synthetic_emission);
+    // Authored and style emission are now independent and each is added once.
+    // Both remain inside the normal atmosphere/fog operation below.
+    color += actor_fx_authored_emission + actor_fx_synthetic_emission;
+#endif
     color = applySkyAndWaterFog(pos, additive, atten,
                                 vec4(color, 1.0)).rgb;
 
@@ -500,7 +571,7 @@ void main()
     output_alpha *= authored_alpha;
 #endif
 #ifdef HAS_ACTOR_FX
-    output_alpha *= actorFxBeautyDissolveAlpha();
+    output_alpha *= actorFxPbrDissolveAlpha(actor_fx_dissolve_coverage);
 #endif
 
     float final_scale = classic_mode > 0 ? 1.1 : 1.0;

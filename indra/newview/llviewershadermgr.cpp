@@ -2276,6 +2276,11 @@ bool LLViewerShaderMgr::loadShadersDeferred()
                                   synthetic ? "Synthetic " : "");
             glow.mFeatures.hasSrgb = true;
             glow.mFeatures.hasActorFx = true;
+            // Synthetic treatment bloom is emitted from the same pre-resolve
+            // world stream as shared beauty. Attach the identical sky/water
+            // atmosphere law; authored native bloom remains unmodified.
+            glow.mFeatures.calculatesAtmospherics = true;
+            glow.mFeatures.hasAtmospherics = true;
             const S32 indexed_channels = llmax(
                 LLGLSLShader::sSharedPBRIndexedGLTFChannels, 1);
             if (slot_filter)

@@ -57,10 +57,14 @@ uniform float sharedActorFxOpacity;
 // the same deliberately synthetic look set used by non-emissive components,
 // preventing material-boundary bloom on ordinary looks.
 uniform int sharedActorFxSyntheticEnabled;
+uniform vec3 sun_dir;
+uniform vec3 moon_dir;
+uniform int sun_up_factor;
 
 out vec4 frag_color;
 
 in vec3 vary_position;
+in vec3 vary_normal;
 in vec4 vertex_emissive;
 in vec4 vertex_color;
 in vec2 base_color_texcoord;
@@ -72,16 +76,60 @@ flat in int vary_shared_material_slot;
 vec3 srgb_to_linear(vec3 c);
 
 #ifdef HAS_ACTOR_FX
-vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye,
-                  vec2 authored_uv);
-vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
+vec3 actorFxPbrSyntheticEmission(vec3 authored_source,
+                                 vec3 geometry_normal_eye,
+                                 vec3 position_eye, vec2 authored_uv,
+                                 float dissolve_coverage);
 bool actorFxActive();
-float actorFxAuthoredMaterialResponse();
+float actorFxPbrDissolveCoverage();
+float actorFxPbrDissolveAlpha(float coverage);
+float actorFxPbrAuthoredEmissiveResponse();
+vec3 actorFxPbrVhsColor(vec3 source);
 bool actorFxUvTransformEnabled();
 bool actorFxRgbSplitEnabled();
 vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
 vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
 #endif
+
+void calcAtmosphericVarsLinear(vec3 inPositionEye, vec3 norm,
+                               vec3 light_dir, out vec3 sunlit,
+                               out vec3 amblit, out vec3 additive,
+                               out vec3 atten);
+vec4 applySkyAndWaterFog(vec3 pos, vec3 additive, vec3 atten, vec4 color);
+
+vec3 shared_glow_geometry_normal()
+{
+    vec3 n = vary_normal;
+    float n_len2 = dot(n, n);
+    n = n_len2 > 1e-12
+        ? n * inversesqrt(n_len2) : vec3(0.0, 0.0, 1.0);
+    return n * (gl_FrontFacing ? 1.0 : -1.0);
+}
+
+vec3 shared_glow_attenuate_synthetic(vec3 emitted, vec3 geometry_normal)
+{
+    if (max(max(emitted.r, emitted.g), emitted.b) <= 0.0)
+    {
+        return vec3(0.0);
+    }
+
+    vec3 light_dir = (sun_up_factor == 1) ? sun_dir : moon_dir;
+    vec3 sunlit;
+    vec3 amblit;
+    vec3 additive;
+    vec3 atten;
+    calcAtmosphericVarsLinear(vary_position, geometry_normal, light_dir,
+                               sunlit, amblit, additive, atten);
+
+    // applySkyAndWaterFog is affine. Subtract its zero-input result to retain
+    // the exact sky/underwater transmittance while excluding additive haze,
+    // which is background radiance and must never become actor bloom.
+    vec3 fogged = applySkyAndWaterFog(
+        vary_position, additive, atten, vec4(emitted, 1.0)).rgb;
+    vec3 fogged_zero = applySkyAndWaterFog(
+        vary_position, additive, atten, vec4(vec3(0.0), 1.0)).rgb;
+    return max(fogged - fogged_zero, vec3(0.0));
+}
 
 #ifdef SHARED_ACTOR_FX_SLOT_FILTER
 vec4 shared_glow_sample_basecolor(vec2 uv)
@@ -171,6 +219,11 @@ void main()
 
 #ifdef HAS_ACTOR_FX
     bool actor_fx_active = actorFxActive();
+    float actor_fx_dissolve_coverage = actorFxPbrDissolveCoverage();
+    if (actor_fx_dissolve_coverage < 0.0)
+    {
+        discard;
+    }
     bool fx_uv_transform = actor_fx_active && actorFxUvTransformEnabled();
     bool fx_rgb_split = actor_fx_active && actorFxRgbSplitEnabled();
     vec2 fx_base_uv = base_color_texcoord;
@@ -214,25 +267,25 @@ void main()
 #ifdef HAS_ACTOR_FX
     if (actor_fx_active)
     {
-        covered_authored *= actorFxAuthoredMaterialResponse();
+        covered_authored = actorFxPbrVhsColor(covered_authored);
+        covered_authored *= actorFxPbrAuthoredEmissiveResponse();
 
-        // Glow VBOs do not require tangent/normal streams.  Match the native
-        // Actor FX glow program and reconstruct the eye-space geometric normal.
-        vec3 actor_fx_normal = cross(dFdx(vary_position), dFdy(vary_position));
-        float actor_fx_normal_len2 = dot(actor_fx_normal, actor_fx_normal);
-        actor_fx_normal = actor_fx_normal_len2 > 1e-12
-            ? actor_fx_normal * inversesqrt(actor_fx_normal_len2)
-            : vec3(0.0, 0.0, 1.0);
+        // Match beauty's smooth, unperturbed geometry normal. Material normal
+        // maps remain a BRDF detail and cannot facet or split treatment bloom.
+        vec3 actor_fx_normal = shared_glow_geometry_normal();
 
         // Decode sRGB first; vertex_color is the linear GLTF baseColorFactor.
         vec3 styled_source = srgb_to_linear(basecolor.rgb) * vertex_color.rgb;
-        vec3 styled = actorFxApply(styled_source,
-                                   actor_fx_normal,
-                                   vary_position,
-                                   base_color_texcoord);
         if (sharedActorFxSyntheticEnabled != 0)
         {
-            synthetic_emissive = actorFxEmissive(vec3(0.0), styled);
+            synthetic_emissive = actorFxPbrSyntheticEmission(
+                styled_source, actor_fx_normal, vary_position,
+                base_color_texcoord, actor_fx_dissolve_coverage);
+            // Native authored bloom remains on its established unfogged glow
+            // contract. Only treatment emission mirrors beauty's fog/water
+            // extinction, so authored emission is never double-fogged.
+            synthetic_emissive = shared_glow_attenuate_synthetic(
+                synthetic_emissive, actor_fx_normal);
         }
     }
 #endif
@@ -243,8 +296,11 @@ void main()
                                   synthetic_emissive.g),
                               synthetic_emissive.b);
     float coverage = 1.0;
+#ifdef HAS_ACTOR_FX
+    coverage *= actorFxPbrDissolveAlpha(actor_fx_dissolve_coverage);
+#endif
 #if SHARED_ACTOR_FX_ALPHA_MODE == SHARED_ACTOR_FX_ALPHA_BLEND
-    coverage = authored_alpha;
+    coverage *= authored_alpha;
 #endif
 
     float opacity = clamp(sharedActorFxOpacity, 0.0, 1.0);

@@ -13,33 +13,43 @@ atmospheric-volume investigation, and the current Actor FX shared-activation wor
 
 ## Implementation and machine-validation state
 
-- Implementation commit: `ab48c7cdd5407c842a7ab60b5804984582d7451b`
+- Shared-activation base commit: `ab48c7cdd5407c842a7ab60b5804984582d7451b`
   (`Complete full shared Actor FX activation`)
-- `git diff --check`: **PASS** for the handoff update and implementation worktree
-- Changed XUI XML parse checks: **PASS**
+- Deferred-native cinematic redesign: the commit containing this handoff; use
+  `git log -1 --oneline` after checkout to identify it exactly
+- `git diff --check`: **PASS** for the redesign implementation worktree
+- Changed XUI XML parse checks from the full session: **PASS**
 - Release build command: **PASS, exit 0**
 - Release artifact:
   `I:\alchemy-machinima\build-Windows-vs2026-os\newview\Release\AlchemyTest.exe`
 - Artifact size: `81826816` bytes
 - Artifact SHA-256:
-  `414DBFFB4A186EF22F8435868D9B61A5AC94415CC28834239E17D4FDF7B60BD9`
-- Shader staging audit: **17 changed/new shaders staged and checked; missing 0;
-  mismatch 0**
+  `DDCD660DC6C64B70A991164DEA68D9DF5466E0CE537AD189523CFEB225F58E66`
+- Shader staging audit: **all 8 edited shader sources equal their Release runtime
+  copies byte-for-byte; missing 0; mismatch 0**
 - Exact-artifact GPU smoke: **PASS** on NVIDIA GeForce RTX 5090, OpenGL 4.6,
   NVIDIA driver `591.74`, reported VRAM `32607 MB`
-- Smoke log Actor FX critical counter: `ActorCriticalCount=0`
-- Static/adversarial audits: `P0=0`, `P1=0`
-- Smoke-test PID `56104`: stopped after validation
+- Smoke log Actor FX critical counter: `ActorFxGpuErrors=0`; deferred shaders loaded
+  and both scalar and indexed shared-PBR families compiled/linked
+- The first GPU smoke found an invalid two-argument `vec4` constructor in three glow
+  paths. It was corrected, restaged, and the complete GPU smoke was rerun cleanly.
+- Consolidated static/adversarial recheck: `P0=0`, `P1=0`
+- Temporary smoke-test PIDs `72864` and `51204`: stopped after validation; the user's
+  pre-existing viewer PID `66568` was not stopped or modified
 - Known smoke warning: the unrelated optional Cine Outline shader still reports its
   existing compile warning; it does not invalidate Actor FX/shared-PBR loading
 - In-world cinematic visual matrix: **REQUIRED; not yet completed**
 - GPU/frame-time comparison: **REQUIRED; not yet completed**
 
-The implementation commit contains same-frame shared activation, actor-wide
-readiness, the third alpha stream, component sorting, Cover depth behavior, and full
-scalar/indexed PBR beauty replay with authored/synthetic glow. The build, staging,
-XML, static-audit, and shader-load smoke gates passed. Those machine gates do not
-prove in-world visual perfection, alpha ordering on production avatars, animation
+The shared-activation base supplies same-frame actor-wide replay, readiness, the
+third alpha stream, component sorting, Cover depth behavior, and full scalar/indexed
+PBR material replay. The current redesign changes how those captured materials are
+styled: live PBR avatars now use a scene-linear, deferred-native cinematic treatment,
+while classic/BOM/system/Animesh world paths receive compatible linear-light timing,
+distortion, brightness, bloom, and atmosphere handling. Clone rendering deliberately
+retains its historical late unlit/post-tonemap appearance. The Release build,
+staging, XML, static-audit, and shader-load smoke gates passed. Those machine gates do
+not prove in-world visual perfection, alpha ordering on production avatars, animation
 parity, or acceptable cinematic frame time; the runtime matrix remains mandatory.
 
 ## Safety and workspace rules
@@ -298,6 +308,52 @@ The optional PBR shader family is all-or-none. A missing/link-failed permutation
 disable shared PBR activation and leave the actor native; it must not trip
 `LLViewerShaderMgr::setShaders: ASSERT(loaded)` or leave only some materials styled.
 
+## Deferred-native cinematic look redesign — implemented, visual validation pending
+
+The live actor and a Ghost Studio clone enter the renderer at different stages, so
+literal clone-shader reuse was rejected as the quality target. Clones keep their late
+unlit/post-tonemap treatment. Live deferred actors now use a scene-linear contract
+that preserves authored PBR response first and applies the selected cinematic design
+at the correct material, lighting, coverage, emission, and atmosphere stages.
+
+- Every persisted look ID `0..27` and distortion ID `0..8` remains supported; no ID
+  or saved-setting migration was introduced.
+- Chrome (`9`), Gold Statue (`12`), Frost/Ice (`16`), Prism (`17`), and Oil Slick
+  (`23`) are physical-material looks. They modify PBR material inputs before the one
+  BRDF evaluation instead of repainting an already-lit avatar.
+- Graphic and sensor looks classify a stable authored-colour source in Cover mode;
+  Layer treats the normally lit HDR result. Alpha interpolates the appropriate PBR
+  endpoints and does not trigger a second BRDF evaluation.
+- Authored emissive beauty is separated from style-generated emission, filtered once,
+  and recombined once before atmospheric attenuation. Synthetic bloom is deliberately
+  limited to IDs `2`, `6`, `10`, `14`, `15`, `17`, `19`, `26`, and `27`; the other
+  looks do not receive an accidental whole-body glow.
+- VHS transforms the lit source, authored Cover source, style-emission source, and
+  authored emissive beauty/glow consistently. Shimmer, glitch, brightness, scalar
+  distortion, and the shared effect clock are applied exactly once.
+- Sky and underwater extinction affect PBR and legacy-world synthetic glow without
+  adding fog colour into the bloom buffer. Classic/BOM/system/Animesh world styling
+  performs modulation after sRGB decode. The clone path is intentionally unchanged.
+- Geometry normals drive Actor FX rims and bloom; authored shading/material normals
+  remain responsible for BRDF detail. Degenerate normals, view vectors, and shadow
+  divides have finite-value guards.
+- Authored OPAQUE/MASK/BLEND coverage remains authoritative. Dissolve is the only look
+  that intentionally changes coverage; no generic look is allowed to flatten hair,
+  lashes, BOM layers, PBR blend faces, or multi-material heads into opaque cards.
+- Shader-family activation remains coupled and fail-open. Unsupported or link-failed
+  exact replay leaves the complete actor native for that frame rather than producing
+  a partially styled actor or retrying a known-bad shader.
+- Expensive perceptual/HDR/tint work is lazy for source-only Clone, Chrome, Dissolve,
+  and Gold paths unless lens tint is needed. Full PBR replay, transparent overdraw,
+  legacy Layer composition, and Wireframe topology still carry real GPU cost and must
+  be profiled rather than assumed inexpensive.
+
+This redesign is intended to make the live version look purpose-built for deferred
+rendering, not merely identical in pixels to the clone. Side-by-side clone comparison
+is still useful for creative intent, timing, and control response, but acceptance is
+the strongest cinematic result each render architecture can produce while preserving
+the live actor's materials, animation, alpha, lighting, and scene integration.
+
 ## Actor FX looks, controls, and animation audit
 
 Persisted look IDs must remain stable:
@@ -403,6 +459,8 @@ Shared Actor Ghost/classic shaders:
 
 Shared PBR beauty/glow shaders:
 
+- `indra\newview\app_settings\shaders\class1\alchemy\actorFxF.glsl`
+- `indra\newview\app_settings\shaders\class1\alchemy\actorFxFallbackF.glsl`
 - `indra\newview\app_settings\shaders\class1\deferred\sharedActorFxPbrV.glsl`
 - `indra\newview\app_settings\shaders\class2\deferred\sharedActorFxPbrF.glsl`
 - `indra\newview\app_settings\shaders\class1\deferred\sharedActorFxPbrGlowV.glsl`

@@ -12,6 +12,7 @@ uniform mat4 modelview_matrix;
 uniform mat4 projection_matrix;
 mat4 getObjectSkinnedTransform();
 #else
+uniform mat3 normal_matrix;
 uniform mat4 modelview_projection_matrix;
 uniform mat4 modelview_matrix;
 #endif
@@ -24,6 +25,7 @@ uniform vec4[2] texture_base_color_transform;
 #endif
 
 in vec3 position;
+in vec3 normal;
 in vec4 diffuse_color;
 in vec2 texcoord0;
 #ifdef SHARED_ACTOR_FX_SLOT_FILTER
@@ -32,6 +34,7 @@ in int texture_index;
 
 out vec3 vary_actor_fx_position;
 out vec3 vary_position;
+out vec3 vary_normal;
 out vec4 vertex_color;
 out vec2 base_color_texcoord;
 #ifdef SHARED_ACTOR_FX_SLOT_FILTER
@@ -46,14 +49,27 @@ void main()
 {
     vary_actor_fx_position = position;
 #ifdef HAS_SKIN
-    mat4 mat = modelview_matrix * getObjectSkinnedTransform();
-    vec3 pos = (mat * vec4(position, 1.0)).xyz;
+    mat4 mat = getObjectSkinnedTransform();
+    mat = modelview_matrix * mat;
+    vec3 pos = (mat * vec4(position.xyz, 1.0)).xyz;
     gl_Position = projection_matrix * vec4(pos, 1.0);
     vary_position = pos;
 #else
     gl_Position = modelview_projection_matrix * vec4(position, 1.0);
     vary_position = (modelview_matrix * vec4(position, 1.0)).xyz;
 #endif
+
+    // Keep synthetic-only VBOs on the same smooth geometry-normal contract as
+    // shared beauty and authored glow. Attribute-mask preflight fails open if
+    // a malformed source VBO cannot provide MAP_NORMAL.
+#ifdef HAS_SKIN
+    vec3 n = (mat * vec4(normal.xyz + position.xyz, 1.0)).xyz - pos.xyz;
+#else
+    vec3 n = normal_matrix * normal;
+#endif
+    float n_len2 = dot(n, n);
+    vary_normal = n_len2 > 1e-12
+        ? n * inversesqrt(n_len2) : vec3(0.0, 0.0, 1.0);
 
 #ifdef SHARED_ACTOR_FX_SLOT_FILTER
     int mi = texture_index;
