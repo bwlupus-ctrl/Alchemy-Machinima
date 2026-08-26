@@ -1064,6 +1064,54 @@ LLUUID ALCineLightRig::projectorId(S32 light) const
     return mProjectors[light]->getID();
 }
 
+bool ALCineLightRig::liveProbeCentre(LLVector3d& centre) const
+{
+    if (!mHaveSmoothedCentre || !mSmoothedCentre.isFinite())
+    {
+        return false;
+    }
+    centre = mSmoothedCentre;
+    return true;
+}
+
+void ALCineLightRig::liveProbeIgnoredLightIds(
+    std::vector<LLUUID>& ids) const
+{
+    ids.clear();
+    ids.reserve(LIGHT_COUNT + 1);
+    for (const LLPointer<LLVOVolume>& omni : mOmnis)
+    {
+        if (omni.notNull() && !omni->isDead())
+        {
+            ids.push_back(omni->getID());
+        }
+    }
+    if (mCatchlight.notNull() && !mCatchlight->isDead())
+    {
+        ids.push_back(mCatchlight->getID());
+    }
+}
+
+void ALCineLightRig::liveProbeProjectorIds(std::vector<LLUUID>& ids) const
+{
+    ids.clear();
+    ids.reserve(LIGHT_COUNT);
+    for (const LLPointer<LLVOVolume>& projector : mProjectors)
+    {
+        if (projector.notNull() && !projector->isDead() &&
+            projector->getIsLight())
+        {
+            ids.push_back(projector->getID());
+        }
+    }
+}
+
+void ALCineLightRig::setLiveProbeBounceScale(F32 scale)
+{
+    mLiveProbeBounceScale = std::isfinite(scale)
+        ? std::clamp(scale, 0.f, 1.f) : 1.f;
+}
+
 void ALCineLightRig::startFX(S32 fx_id, F64 presentation_time)
 {
     if (fx_id < 0 || fx_id >= FX_COUNT ||
@@ -2302,6 +2350,9 @@ void ALCineLightRig::tickShared(
             ? avatar->getUniformScale() : 1.f;
     }
     globals = sanitizeGlobals(globals);
+    globals.mBounceRatio *= mLiveProbeBounceScale;
+    globals.mBounceEnabled = globals.mBounceEnabled &&
+        globals.mBounceRatio > F_APPROXIMATELY_ZERO;
     const F32 subject_scale = globals.mSubjectScale;
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
     {
@@ -2735,6 +2786,7 @@ bool ALCineLightRig::isClipped(S32 light) const
 void ALCineLightRig::shutdown()
 {
     mLastResolvedGroupSlots = 0;
+    mLiveProbeBounceScale = 1.f;
     destroyEmitters();
     mHaveSmoothedCentre = false;
     mSmoothedScale = 1.f;

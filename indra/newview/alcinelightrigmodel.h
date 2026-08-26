@@ -36,7 +36,11 @@ constexpr S32 FX_CANDY_ORBIT = FX_LEGACY_COUNT;
 constexpr S32 FX_RIMWAVE = 64;
 constexpr S32 FX_AFTERHOURS_DRIFT = 65;
 constexpr S32 FX_SOMETHING_BEHIND_YOU = 66;
-constexpr S32 FX_COUNT = 67;
+constexpr S32 FX_SLOW_DANCE = 67;
+constexpr S32 FX_SEANCE_CIRCLE = 68;
+constexpr S32 FX_STROBE_RUNWAY = 69;
+constexpr S32 FX_EMBER_WIND = 70;
+constexpr S32 FX_COUNT = 71;
 enum FlickerProgram : S32
 {
     FLICKER_NONE = 0,

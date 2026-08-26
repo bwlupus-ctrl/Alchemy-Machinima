@@ -40,9 +40,12 @@ const char* actorStyleLookKey(S32 look)
         case LLDirectorCast::ACTOR_LOOK_RIM_NOIR:   return "live.rim_noir";
         case LLDirectorCast::ACTOR_LOOK_GEL_SPLIT:  return "live.gel_split";
         case LLDirectorCast::ACTOR_LOOK_BASS_SWEEP: return "live.bass_sweep";
-        case LLDirectorCast::ACTOR_LOOK_MOONLIT:    return "live.moonlit";
-        case LLDirectorCast::ACTOR_LOOK_POSSESSED:  return "live.possessed";
-        default:                                    return nullptr;
+        case LLDirectorCast::ACTOR_LOOK_MOONLIT:       return "live.moonlit";
+        case LLDirectorCast::ACTOR_LOOK_POSSESSED:     return "live.possessed";
+        case LLDirectorCast::ACTOR_LOOK_SERAPH:        return "live.seraph";
+        case LLDirectorCast::ACTOR_LOOK_INTERROGATION: return "live.interrogation";
+        case LLDirectorCast::ACTOR_LOOK_WRAITH:        return "live.wraith";
+        default:                                       return nullptr;
     }
 }
 
@@ -67,6 +70,18 @@ bool actorStyleLookFromKey(const std::string& key, S32& look)
     else if (key == "live.possessed")
     {
         look = LLDirectorCast::ACTOR_LOOK_POSSESSED;
+    }
+    else if (key == "live.seraph")
+    {
+        look = LLDirectorCast::ACTOR_LOOK_SERAPH;
+    }
+    else if (key == "live.interrogation")
+    {
+        look = LLDirectorCast::ACTOR_LOOK_INTERROGATION;
+    }
+    else if (key == "live.wraith")
+    {
+        look = LLDirectorCast::ACTOR_LOOK_WRAITH;
     }
     else
     {

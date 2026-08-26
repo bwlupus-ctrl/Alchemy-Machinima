@@ -762,6 +762,7 @@ namespace
     {
         LLPipeline::VolumetricShaftOverride ov;
         ov.multiplier   = gSavedSettings.getF32("BDMergeProjectorVolumetricsMultiplier");
+        ov.maxDistance  = gSavedSettings.getF32("BDMergeProjectorVolumetricsMaxDistance");
         ov.feather      = gSavedSettings.getF32("BDMergeProjectorVolumetricsFeather");
         ov.anisotropy   = gSavedSettings.getF32("BDMergeProjectorVolumetricsAnisotropy");
         ov.density      = gSavedSettings.getF32("BDMergeProjectorVolumetricsDensity");

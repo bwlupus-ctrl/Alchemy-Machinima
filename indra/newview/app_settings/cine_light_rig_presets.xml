@@ -1226,6 +1226,81 @@
         <map><key>yaw</key><real>180</real><key>pitch</key><real>-10</real><key>profile_idx</key><integer>12</integer><key>profile_name</key><string>Congo Blue</string><key>ev</key><real>-3.5</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>true</boolean></map>
       </array>
     </map>
+    <map>
+      <key>name</key><string>Two-Face Council</string>
+      <key>category</key><string>Genre / Mood</string>
+      <key>intent</key><string>Opposed warm and cool hard keys, no fill; face split into two allegiances for tense dialogue.</string>
+      <key>radius</key><real>1.6</real>
+      <key>master_ev</key><real>0.75</real>
+      <key>ratio_lock</key><boolean>false</boolean>
+      <key>ratio_stops</key><real>0</real>
+      <key>lights</key><array>
+        <map><key>yaw</key><real>78</real><key>pitch</key><real>18</real><key>profile_idx</key><integer>1</integer><key>profile_name</key><string>3200K Tung</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-78</real><key>pitch</key><real>18</real><key>profile_idx</key><integer>6</integer><key>profile_name</key><string>10000K Sky</string><key>ev</key><real>-0.5</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-160</real><key>pitch</key><real>35</real><key>profile_idx</key><integer>23</integer><key>profile_name</key><string>Pure White</string><key>ev</key><real>-2.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>0</real><key>pitch</key><real>-20</real><key>profile_idx</key><integer>20</integer><key>profile_name</key><string>Deep Space</string><key>ev</key><real>-3.5</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>false</boolean></map>
+      </array>
+    </map>
+    <map>
+      <key>name</key><string>Sodium Alley</string>
+      <key>category</key><string>Genre / Mood</string>
+      <key>intent</key><string>Monochrome amber street-lamp night; one high sodium source, cold moon rim, almost no fill.</string>
+      <key>radius</key><real>1.55</real>
+      <key>master_ev</key><real>0.5</real>
+      <key>ratio_lock</key><boolean>true</boolean>
+      <key>ratio_stops</key><real>3.5</real>
+      <key>lights</key><array>
+        <map><key>yaw</key><real>55</real><key>pitch</key><real>55</real><key>profile_idx</key><integer>13</integer><key>profile_name</key><string>Deep Amber</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-40</real><key>pitch</key><real>5</real><key>profile_idx</key><integer>13</integer><key>profile_name</key><string>Deep Amber</string><key>ev</key><real>-3.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-150</real><key>pitch</key><real>30</real><key>profile_idx</key><integer>6</integer><key>profile_name</key><string>10000K Sky</string><key>ev</key><real>-2.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>170</real><key>pitch</key><real>-10</real><key>profile_idx</key><integer>13</integer><key>profile_name</key><string>Deep Amber</string><key>ev</key><real>-3.5</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>false</boolean></map>
+      </array>
+    </map>
+    <map>
+      <key>name</key><string>Concert Blue</string>
+      <key>category</key><string>Genre / Mood</string>
+      <key>intent</key><string>Stadium back cross of congo blue and magenta with a hard white pin key; big-stage concert.</string>
+      <key>radius</key><real>1.7</real>
+      <key>master_ev</key><real>0.5</real>
+      <key>ratio_lock</key><boolean>false</boolean>
+      <key>ratio_stops</key><real>0</real>
+      <key>lights</key><array>
+        <map><key>yaw</key><real>0</real><key>pitch</key><real>40</real><key>profile_idx</key><integer>23</integer><key>profile_name</key><string>Pure White</string><key>ev</key><real>-0.5</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>135</real><key>pitch</key><real>25</real><key>profile_idx</key><integer>12</integer><key>profile_name</key><string>Congo Blue</string><key>ev</key><real>0.5</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-135</real><key>pitch</key><real>25</real><key>profile_idx</key><integer>10</integer><key>profile_name</key><string>Magenta</string><key>ev</key><real>0.5</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>180</real><key>pitch</key><real>60</real><key>profile_idx</key><integer>16</integer><key>profile_name</key><string>Sci-Fi Cyan</string><key>ev</key><real>-1.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean></map>
+      </array>
+    </map>
+    <map>
+      <key>name</key><string>Séance</string>
+      <key>category</key><string>Genre / Mood</string>
+      <key>intent</key><string>Warm candle uplight below the eyeline with a cold source behind; occult, unnatural, intimate.</string>
+      <key>radius</key><real>1.3</real>
+      <key>master_ev</key><real>0.5</real>
+      <key>ratio_lock</key><boolean>true</boolean>
+      <key>ratio_stops</key><real>3.0</real>
+      <key>lights</key><array>
+        <map><key>yaw</key><real>10</real><key>pitch</key><real>-35</real><key>profile_idx</key><integer>0</integer><key>profile_name</key><string>2700K Incan</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-35</real><key>pitch</key><real>-25</real><key>profile_idx</key><integer>7</integer><key>profile_name</key><string>Full CTO</string><key>ev</key><real>-2.5</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>175</real><key>pitch</key><real>30</real><key>profile_idx</key><integer>6</integer><key>profile_name</key><string>10000K Sky</string><key>ev</key><real>-1.5</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>0</real><key>pitch</key><real>20</real><key>profile_idx</key><integer>8</integer><key>profile_name</key><string>Full CTB</string><key>ev</key><real>-3.0</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>false</boolean></map>
+      </array>
+    </map>
+    <map>
+      <key>name</key><string>Dream Bloom</string>
+      <key>category</key><string>Genre / Mood</string>
+      <key>intent</key><string>Soft near-shadowless pastel high-key; pink and cyan wrap for ethereal fashion / dream sequences.</string>
+      <key>radius</key><real>1.9</real>
+      <key>master_ev</key><real>0.25</real>
+      <key>ratio_lock</key><boolean>true</boolean>
+      <key>ratio_stops</key><real>0.8</real>
+      <key>lights</key><array>
+        <map><key>yaw</key><real>28</real><key>pitch</key><real>35</real><key>profile_idx</key><integer>15</integer><key>profile_name</key><string>Cyber Pink</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>-32</real><key>pitch</key><real>25</real><key>profile_idx</key><integer>16</integer><key>profile_name</key><string>Sci-Fi Cyan</string><key>ev</key><real>-0.6</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>180</real><key>pitch</key><real>45</real><key>profile_idx</key><integer>23</integer><key>profile_name</key><string>Pure White</string><key>ev</key><real>-1.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+        <map><key>yaw</key><real>150</real><key>pitch</key><real>-10</real><key>profile_idx</key><integer>15</integer><key>profile_name</key><string>Cyber Pink</string><key>ev</key><real>-1.8</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean></map>
+      </array>
+    </map>
   </array>
 </map>
 </llsd>

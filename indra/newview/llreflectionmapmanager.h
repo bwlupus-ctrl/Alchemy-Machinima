@@ -30,6 +30,7 @@
 #include "llrendertarget.h"
 #include "llcubemaparray.h"
 #include "llcubemap.h"
+#include "lluuid.h"
 
 class LLSpatialGroup;
 class LLViewerObject;
@@ -127,6 +128,25 @@ public:
     // Guaranteed to not return null
     LLReflectionMap* registerViewerObject(LLViewerObject* vobj);
 
+    // Designate the one client-only cinematic probe that receives the
+    // six-face realtime update slot. Its capture remains environment-only;
+    // ignored_light_ids prevents synthetic rig fill/catchlight from being
+    // baked back into the probe.
+    void setCinematicLiveProbe(
+        LLReflectionMap* probe,
+        const std::vector<LLUUID>& ignored_light_ids = {},
+        const std::vector<LLUUID>& pinned_light_ids = {});
+    bool isCinematicLiveProbeCapture() const
+    {
+        return mCinematicLiveProbeCapture;
+    }
+    bool isCinematicLiveProbeIgnoredLight(const LLUUID& id) const;
+    bool isCinematicLiveProbePinnedLight(const LLUUID& id) const;
+    U32 getCinematicLiveProbePinnedLightCount() const
+    {
+        return static_cast<U32>(mCinematicPinnedLightIds.size());
+    }
+
     // reset all state on the next update
     void reset();
 
@@ -209,7 +229,8 @@ private:
     void doProbeUpdate();
 
     // update the specified face of the specified probe
-    void updateProbeFace(LLReflectionMap* probe, U32 face);
+    void updateProbeFace(LLReflectionMap* probe, U32 face,
+                         bool force_dynamic = false);
 
     // list of active reflection maps
     std::vector<LLPointer<LLReflectionMap> > mProbes;
@@ -239,6 +260,16 @@ private:
     // Realtime probes should update all six sides of the irradiance map on "odd" frames and all six sides of the
     // radiance map on "even" frames.
     bool mRealtimeRadiancePass = false;
+
+    // The cinematic probe owns the realtime slot while present. It is updated
+    // live without enabling the dynamic-content mask, so the followed avatar
+    // and particles cannot photograph themselves from inside the probe.
+    LLPointer<LLReflectionMap> mCinematicLiveProbe;
+    std::vector<LLUUID> mCinematicIgnoredLightIds;
+    std::vector<LLUUID> mCinematicPinnedLightIds;
+    bool mCinematicLiveProbeCapture = false;
+    bool mCinematicIrradianceReady = false;
+    bool mCinematicRadianceReady = false;
 
     LLPointer<LLReflectionMap> mDefaultProbe;  // default reflection probe to fall back to for pixels with no probe influences (should always be at cube index 0)
 
@@ -277,4 +308,3 @@ private:
 
     ReflectionProbeData mProbeData;
 };
-

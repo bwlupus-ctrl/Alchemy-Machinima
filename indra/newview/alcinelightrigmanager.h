@@ -12,6 +12,7 @@
 
 #include "alcinelightrig.h"
 
+#include <algorithm>
 #include <cmath>
 #include <string>
 
@@ -773,6 +774,89 @@ inline TickPath pathFor(U32 enabled_mask, ALCineLightRigSlot selected,
     return TickPath::TICK_FROM_BLOB;
 }
 
+inline F32 liveProbeBounceScale(bool enabled, bool replace_bounce,
+                                bool target_matches, F32 fade)
+{
+    if (!enabled || !replace_bounce || !target_matches ||
+        !std::isfinite(fade))
+    {
+        return 1.f;
+    }
+    return 1.f - std::clamp(fade, 0.f, 1.f);
+}
+
+struct LiveProbeConfig
+{
+    bool mEnabled = false;
+    S32 mTarget = 0;
+    F32 mRadius = 3.f;
+    F32 mOffsetZ = 0.f;
+    F32 mAmbiance = 1.f;
+    bool mReplaceBounce = true;
+    bool mGizmo = false;
+};
+
+inline LiveProbeConfig sanitizeLiveProbeConfig(LiveProbeConfig config)
+{
+    config.mTarget = std::clamp(config.mTarget, 0, 4);
+    config.mRadius = std::isfinite(config.mRadius)
+        ? std::clamp(config.mRadius, 0.5f, 32.f) : 3.f;
+    config.mOffsetZ = std::isfinite(config.mOffsetZ)
+        ? std::clamp(config.mOffsetZ, -5.f, 5.f) : 0.f;
+    config.mAmbiance = std::isfinite(config.mAmbiance)
+        ? std::clamp(config.mAmbiance, 0.f, 8.f) : 1.f;
+    return config;
+}
+
+inline LLSD liveProbeConfigToLLSD(const LiveProbeConfig& input)
+{
+    const LiveProbeConfig config = sanitizeLiveProbeConfig(input);
+    LLSD data = LLSD::emptyMap();
+    data["enabled"] = config.mEnabled;
+    data["target"] = config.mTarget;
+    data["radius"] = config.mRadius;
+    data["offset_z"] = config.mOffsetZ;
+    data["ambiance"] = config.mAmbiance;
+    data["replace_bounce"] = config.mReplaceBounce;
+    data["gizmo"] = config.mGizmo;
+    return data;
+}
+
+inline bool liveProbeConfigFromLLSD(
+    const LLSD& data, LiveProbeConfig& config)
+{
+    config = LiveProbeConfig();
+    if (data.isUndefined())
+    {
+        return true; // Pre-Live-Probe scene: defined, disabled migration.
+    }
+    if (!data.isMap() || !data["enabled"].isBoolean() ||
+        !data["target"].isInteger() || !data["radius"].isReal() ||
+        !data["offset_z"].isReal() || !data["ambiance"].isReal() ||
+        !data["replace_bounce"].isBoolean() ||
+        !data["gizmo"].isBoolean())
+    {
+        return false;
+    }
+
+    LiveProbeConfig parsed;
+    parsed.mEnabled = data["enabled"].asBoolean();
+    parsed.mTarget = data["target"].asInteger();
+    parsed.mRadius = static_cast<F32>(data["radius"].asReal());
+    parsed.mOffsetZ = static_cast<F32>(data["offset_z"].asReal());
+    parsed.mAmbiance = static_cast<F32>(data["ambiance"].asReal());
+    parsed.mReplaceBounce = data["replace_bounce"].asBoolean();
+    parsed.mGizmo = data["gizmo"].asBoolean();
+    if (!std::isfinite(parsed.mRadius) ||
+        !std::isfinite(parsed.mOffsetZ) ||
+        !std::isfinite(parsed.mAmbiance))
+    {
+        return false;
+    }
+    config = sanitizeLiveProbeConfig(parsed);
+    return true;
+}
+
 inline ALCineLightRigSlot normalizeSelected(
     U32 enabled_mask, ALCineLightRigSlot selected)
 {
@@ -815,6 +899,15 @@ public:
     static constexpr Slot SLOT_D = Slot::D;
     static constexpr S32 SLOT_COUNT = static_cast<S32>(Slot::COUNT);
 
+    enum class LiveProbeState
+    {
+        DISABLED,
+        UNAVAILABLE,
+        WAITING_FOR_TARGET,
+        WARMING,
+        LIVE
+    };
+
     static ALCineLightRigManager& instance();
 
     void tick(F64 presentation_time);
@@ -837,6 +930,8 @@ public:
     S32 enabledCount() const;
     U32 requestedShadowSlots(U32 ceiling) const;
     Slot cameraFocusSlot() const { return mFocusState.mFocus; }
+    LiveProbeState liveProbeState() const;
+    F32 liveProbeFade() const;
 
 private:
     ALCineLightRigManager();
@@ -846,6 +941,11 @@ private:
     void restoreAutoShadowSlots();
     void updateRandomCycle(F64 presentation_time);
     void resolveCameraFocus();
+    bool ensureLiveProbe();
+    void destroyLiveProbe();
+    void updateLiveProbe();
+    void renderLiveProbeGizmo() const;
+    F32 liveProbeBounceScaleFor(Slot slot) const;
     void applyShadowSuppression();
     void clearShadowSuppression();
     void persist() const;
@@ -863,6 +963,11 @@ private:
     bool mLastAutoShadowEnabled = false;
     bool mAutoShadowInputsInitialized = false;
     bool mNeedsSessionRestore = false;
+
+    LLPointer<LLVOVolume> mLiveProbe;
+    LLViewerRegion* mLiveProbeRegion = nullptr;
+    Slot mLiveProbeTarget = Slot::COUNT;
+    S32 mLiveProbeRetryTicks = 0;
 
     // Random setup cycling. Timed off scrub-safe presentation time. The
     // "currently-active" setup used for exclusion is read from the rig's

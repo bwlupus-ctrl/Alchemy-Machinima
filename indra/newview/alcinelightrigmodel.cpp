@@ -207,6 +207,7 @@ const char* FX_NAMES[FX_COUNT] = {
     "Build & Drop", "Biolume Tide", "Mount Doom", "Vaporwave Sunset",
     "Carousel Waltz", "Five Tones", "Candy Orbit", "Rimwave",
     "Afterhours Drift", "Something Behind You",
+    "Slow Dance", "Seance Circle", "Strobe Runway", "Ember Wind",
 };
 
 const F32 FX_INTERVALS[FX_COUNT] = {
@@ -220,6 +221,7 @@ const F32 FX_INTERVALS[FX_COUNT] = {
     0.125f, 0.05f, 0.10f, 0.05f, 0.10f, 0.10f, 0.10f, 0.05f,
     0.10f, 0.20f, 0.20f, 0.25f, 0.10f, 0.15f,
     0.10f, 0.10f, 0.20f, 0.10f,
+    0.25f, 0.15f, 0.06f, 0.10f,
 };
 
 F32 finiteOr(F32 value, F32 fallback)
@@ -758,6 +760,30 @@ void initializeFX(S32 fx, LightBase lights[LIGHT_COUNT])
         setLight(lights, 1, 0.f, 0.f, 20, -10.f, 0, false);
         setLight(lights, 2, -160.f, 25.f, 19, -10.f, 2, true);
         setLight(lights, 3, 180.f, -20.f, 20, -4.f, 0, true);
+        break;
+    case FX_SLOW_DANCE:
+        setLight(lights, 0, 30.f, 30.f, 1, -0.3f, 1, true);   // warm key, will orbit
+        setLight(lights, 1, -35.f, 12.f, 2, -2.0f, 1, true);  // soft fill, breathes
+        setLight(lights, 2, -150.f, 35.f, 5, -2.5f, 2, true); // cool rim, swells
+        setLight(lights, 3, 0.f, -20.f, 20, -10.f, 0, false); // background off
+        break;
+    case FX_SEANCE_CIRCLE:
+        setLight(lights, 0, 10.f, -35.f, 0, -1.0f, 1, true);  // warm candle uplight
+        setLight(lights, 1, -35.f, -25.f, 7, -3.0f, 1, true); // dim warm fill
+        setLight(lights, 2, 175.f, 30.f, 6, -10.f, 2, true);  // cold back reveal (off until swell)
+        setLight(lights, 3, 0.f, 20.f, 8, -10.f, 0, false);   // background off
+        break;
+    case FX_STROBE_RUNWAY:
+        setLight(lights, 0, 0.f, 35.f, 23, -0.5f, 2, true);   // white front strobe
+        setLight(lights, 1, 60.f, 20.f, 23, -10.f, 0, true);  // marching accent A
+        setLight(lights, 2, 180.f, 30.f, 23, -10.f, 0, true); // marching accent B
+        setLight(lights, 3, -60.f, 20.f, 23, -10.f, 0, true); // marching accent C
+        break;
+    case FX_EMBER_WIND:
+        setLight(lights, 0, 15.f, -25.f, 13, -1.0f, 1, true); // warm fire low, gusts
+        setLight(lights, 1, -30.f, -15.f, 7, -2.0f, 1, true); // warm fill
+        setLight(lights, 2, 170.f, 25.f, 5, -2.5f, 0, true);  // cool night rim, steady
+        setLight(lights, 3, 0.f, 20.f, 20, -10.f, 0, false);  // background off
         break;
     default:
         break;
@@ -2889,6 +2915,58 @@ void evalFX(S32 fx, U64 seed, F64 t_seconds,
         reveal *= reveal;
         lights[2].mEV = -10.f + 10.5f * reveal;
         lights[3].mEV = -4.f + 0.2f * phaseSin(TWO_PI * b);
+        break;
+    }
+    case FX_SLOW_DANCE:
+    {
+        // Warm key drifts in a slow arc; fill and cool rim breathe counter-phase.
+        lights[0].mYawDeg = wrap180(30.f + 22.f * phaseSin(fs * 0.05));
+        lights[0].mPitchDeg = 30.f + 6.f * phaseCos(fs * 0.04);
+        lights[0].mEV = -0.3f + 0.30f * phaseSin(fs * 0.06);
+        lights[1].mEV = -2.0f + 0.50f * phaseSin(fs * 0.06 + TWO_PI * 0.5);
+        lights[2].mEV = -2.5f + 1.20f * (0.5f + 0.5f * phaseSin(fs * 0.045 + 1.5));
+        lights[2].mYawDeg = wrap180(-150.f + 10.f * phaseSin(fs * 0.03));
+        break;
+    }
+    case FX_SEANCE_CIRCLE:
+    {
+        // Warm uplight breathes with irregular crackle; a cold reveal swells in on a slow cycle.
+        const F32 breath = 0.5f + 0.5f * phaseSin(fs * 0.08);
+        const F32 crackle = 0.15f * (unitHash(seed, fx, counter, 0, 0) - 0.5f);
+        lights[0].mEV = -1.0f + 1.0f * breath + crackle;
+        lights[1].mEV = -3.0f + 0.40f * phaseSin(fs * 0.05 + 1.0);
+        const F64 cyc = positiveFmod(fs, 90.0) / 90.0;
+        F32 reveal = (cyc >= 0.55 && cyc <= 0.80)
+            ? phaseSin(0.5 * TWO_PI * (cyc - 0.55) / 0.25)
+            : 0.f;
+        reveal *= reveal;
+        lights[2].mEV = -10.f + 9.5f * reveal;
+        break;
+    }
+    case FX_STROBE_RUNWAY:
+    {
+        // Rhythmic hard white front strobe; a single side accent marches around each bar.
+        const bool gate = positiveMod(step, 2) == 0;
+        lights[0].mEV = gate ? 0.5f : -10.f;
+        const S32 march = static_cast<S32>(positiveMod(step / 2, LIGHT_COUNT - 1));
+        for (S32 n = 1; n < LIGHT_COUNT; ++n)
+        {
+            lights[n].mEV = (n - 1) == march ? 0.0f : -10.f;
+        }
+        break;
+    }
+    case FX_EMBER_WIND:
+    {
+        // Summed low sines make smooth gusts; rare hash flares punch a bright surge.
+        const F32 gust = 0.5f * phaseSin(fs * 0.11) +
+            0.3f * phaseSin(fs * 0.27 + 1.3) +
+            0.2f * phaseSin(fs * 0.53 + 2.7);
+        const F32 flare = unitHash(seed, fx, counter, 0, 0) > 0.92f ? 1.2f : 0.f;
+        const F32 shimmer = 0.12f * (unitHash(seed, fx, counter, 0, 1) - 0.5f);
+        lights[0].mEV = -1.0f + 1.4f * (0.5f + 0.5f * gust) + flare + shimmer;
+        lights[0].mYawDeg = wrap180(15.f + 8.f * gust);
+        lights[1].mEV = -2.0f + 0.80f * (0.5f + 0.5f * phaseSin(fs * 0.19 + 0.6));
+        lights[2].mEV = -2.5f + 0.15f * phaseSin(fs * 0.07);
         break;
     }
     default:

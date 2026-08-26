@@ -220,6 +220,10 @@ public:
     ALCineLightRigSlot slot() const { return mSlot; }
     LLVOAvatar* resolveSlotAvatar() const;
     LLUUID projectorId(S32 light) const;
+    bool liveProbeCentre(LLVector3d& centre) const;
+    void liveProbeIgnoredLightIds(std::vector<LLUUID>& ids) const;
+    void liveProbeProjectorIds(std::vector<LLUUID>& ids) const;
+    void setLiveProbeBounceScale(F32 scale);
 
     void setAnchor(const LLUUID& id);
     const LLUUID& getAnchor() const { return mAnchor; }
@@ -422,6 +426,7 @@ private:
     bool mShaftEnabled[ALCineLightRigModel::LIGHT_COUNT] = {};
     bool mHeroEnabled[ALCineLightRigModel::LIGHT_COUNT] = {};
     F32 mShadowSoftness[ALCineLightRigModel::LIGHT_COUNT] = {};
+    F32 mLiveProbeBounceScale = 1.f;
     ALCineLightRigModel::RigFrame mLastFrame;
 };
 

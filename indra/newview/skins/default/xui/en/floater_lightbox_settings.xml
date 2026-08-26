@@ -4244,12 +4244,16 @@
 				 name="projshaft_settings_scroll_content" top="0" width="400">
 			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Projector Shafts (Set Lights)" />
 			<text follows="left|top" height="15" left="10" top_pad="8" width="56" layout="topleft" value="Preset:" />
-			<combo_box follows="left|top" height="22" left="70" top_pad="-19" width="254" layout="topleft" name="ps_preset" tool_tip="Apply a complete projector-shaft starting point; any later control can be adjusted independently.">
+			<combo_box follows="left|top" height="22" left="70" top_pad="-19" width="254" layout="topleft" name="ps_preset" tool_tip="Apply a complete Projector Shafts + Froxel Air atmosphere look; this replaces the matching Froxel Air density, ambient, noise, fog, and wind settings.">
 				<combo_box.item label="Custom" name="ps_preset_custom" value="-1" />
 				<combo_box.item label="Fast Preview" name="ps_preset_fast" value="0" />
 				<combo_box.item label="Balanced" name="ps_preset_balanced" value="1" />
 				<combo_box.item label="Cinematic" name="ps_preset_cinematic" value="2" />
 				<combo_box.item label="Hazy Stage" name="ps_preset_hazy" value="3" />
+				<combo_box.item label="Clear Air" name="ps_preset_clear" value="4" />
+				<combo_box.item label="Searchlight" name="ps_preset_searchlight" value="5" />
+				<combo_box.item label="Dust Storm" name="ps_preset_dust_storm" value="6" />
+				<combo_box.item label="Dream Mist" name="ps_preset_dream_mist" value="7" />
 			</combo_box>
 			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" label="Enable volumetric projector cones" control_name="BDMergeProjectorVolumetrics" />
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Brightness:" />
@@ -4335,6 +4339,9 @@
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Bloom halo:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="2" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ps_BDMergeProjectorVolumetricsBloomFeed_slider" control_name="BDMergeProjectorVolumetricsBloomFeed" enabled_control="BDMergeProjectorVolumetrics" />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ps_reset_BDMergeProjectorVolumetricsBloomFeed"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeProjectorVolumetricsBloomFeed" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Shaft length (m):" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="64" increment="0.5" decimal_digits="1" show_text="true" can_edit_text="true" name="ps_BDMergeProjectorVolumetricsMaxDistance_slider" control_name="BDMergeProjectorVolumetricsMaxDistance" enabled_control="BDMergeProjectorVolumetrics" tool_tip="Maximum visible airborne beam length. 0 follows the projector's full light range; surface illumination is unchanged." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to full projector range" name="ps_reset_BDMergeProjectorVolumetricsMaxDistance"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeProjectorVolumetricsMaxDistance" /></button>
 			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Shadow Quality (Batch 2)" />
 			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" label="Soft projector shadows (contact-hardening + fill)" control_name="BDMergeSoftProjectorShadows" tool_tip="Widen the projector-shadow PCF kernel with receiver distance (sharp at contact, softer far away) and lift shadows off pure black toward a fill floor. Off = classic hard shadows." />
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Softness:" />

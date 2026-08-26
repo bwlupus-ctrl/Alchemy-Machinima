@@ -15,6 +15,7 @@ namespace
 const char* const SHAFT_SETTINGS[] = {
     "BDMergeProjectorVolumetrics",
     "BDMergeProjectorVolumetricsMultiplier",
+    "BDMergeProjectorVolumetricsMaxDistance",
     "BDMergeProjectorVolumetricsResolution",
     "BDMergeProjectorVolumetricsAnisotropy",
     "BDMergeProjectorVolumetricsHalfRes",
@@ -28,6 +29,8 @@ const char* const SHAFT_SETTINGS[] = {
     "BDMergeProjectorVolumetricsMaxLuminance",
     "BDMergeProjectorVolumetricsDither",
     "BDMergeProjectorVolumetricsTemporalDither",
+    "BDMergeProjectorVolumetricsFrustumClip",
+    "BDMergeProjectorVolumetricsShadowJitterTap",
     "BDMergeProjectorVolumetricsShadowSamples",
     "BDMergeProjectorVolumetricsFeather",
     "BDMergeProjectorVolumetricsShadowTint",
@@ -37,14 +40,32 @@ const char* const SHAFT_SETTINGS[] = {
     "BDMergeProjectorVolumetricsNoiseStrength",
     "BDMergeProjectorVolumetricsNoiseScale",
     "BDMergeProjectorVolumetricsNoiseSpeed",
+    "BDMergeProjectorVolumetricsDustIntensity",
+    "BDMergeProjectorVolumetricsDustScale",
+    "BDMergeProjectorVolumetricsDustDrift",
     "BDMergeFroxelWindAzimuth",
     "BDMergeFroxelWindElevation",
     "BDMergeFroxelWindInverted",
+    "BDMergeFroxelDensity",
+    "BDMergeFroxelAmbient",
+    "BDMergeFroxelNoiseStrength",
+    "BDMergeFroxelNoiseScale",
+    "BDMergeFroxelNoiseSpeed",
+    "BDMergeFroxelFogStrength",
+    "BDMergeFroxelFogGroundDensity",
+    "BDMergeFroxelFogFalloff",
+    "BDMergeFroxelFogBase",
     "BDMergeProjectorVolumetricsFogStrength",
     "BDMergeProjectorVolumetricsFogGroundDensity",
     "BDMergeProjectorVolumetricsFogFalloff",
     "BDMergeProjectorVolumetricsFogBase",
     "BDMergeProjectorVolumetricsBloomFeed",
+    "BDMergeProjectorVolumetricsBloomFeedAnamorphic",
+    "BDMergeProjectorVolumetricsRimStrength",
+    "BDMergeProjectorVolumetricsRimPower",
+    "BDMergeProjectorVolumetricsRimWrap",
+    "BDMergeProjectorVolumetricsRimThreshold",
+    "BDMergeProjectorVolumetricsRimSoftness",
     "BDMergeSoftProjectorShadows",
     "BDMergeSoftShadowSoftness",
     "BDMergeSoftShadowMaxPenumbra",
@@ -71,11 +92,16 @@ namespace ALProjectorShaftPresets
 {
 void apply(S32 preset)
 {
-    if (preset < FAST_PREVIEW || preset > HAZY_STAGE)
+    if (preset < FAST_PREVIEW || preset > DREAM_MIST)
     {
         return;
     }
 
+    // Dust is a compile-time shader permutation. Keep it out of the generic
+    // reset loop and write its final state once after all scalar controls, so
+    // reselecting Dust Storm does not rebuild shaders off/on and every genuine
+    // transition needs at most one rebuild.
+    const bool wants_dust = preset == DUST_STORM;
     resetToKnownBase();
     switch (preset)
     {
@@ -92,6 +118,9 @@ void apply(S32 preset)
         gSavedSettings.setF32("BDMergeProjectorVolumetricsDensity", 0.65f);
         gSavedSettings.setF32("BDMergeProjectorVolumetricsNoiseStrength", 0.05f);
         gSavedSettings.setF32("BDMergeProjectorVolumetricsBloomFeed", 0.f);
+        gSavedSettings.setF32("BDMergeFroxelDensity", 0.012f);
+        gSavedSettings.setF32("BDMergeFroxelAmbient", 0.10f);
+        gSavedSettings.setF32("BDMergeFroxelNoiseStrength", 0.02f);
         gSavedSettings.setBOOL("BDMergeSoftProjectorShadows", false);
         break;
 
@@ -118,6 +147,11 @@ void apply(S32 preset)
         gSavedSettings.setF32("BDMergeProjectorVolumetricsNoiseScale", 1.50f);
         gSavedSettings.setF32("BDMergeProjectorVolumetricsNoiseSpeed", 0.15f);
         gSavedSettings.setF32("BDMergeProjectorVolumetricsBloomFeed", 0.25f);
+        gSavedSettings.setF32("BDMergeFroxelDensity", 0.025f);
+        gSavedSettings.setF32("BDMergeFroxelAmbient", 0.25f);
+        gSavedSettings.setF32("BDMergeFroxelNoiseStrength", 0.12f);
+        gSavedSettings.setF32("BDMergeFroxelNoiseScale", 1.50f);
+        gSavedSettings.setF32("BDMergeFroxelNoiseSpeed", 0.15f);
         gSavedSettings.setBOOL("BDMergeSoftProjectorShadows", true);
         gSavedSettings.setF32("BDMergeSoftShadowSoftness", 3.5f);
         gSavedSettings.setF32("BDMergeSoftShadowMaxPenumbra", 7.f);
@@ -148,12 +182,151 @@ void apply(S32 preset)
         gSavedSettings.setF32("BDMergeProjectorVolumetricsFogFalloff", 10.f);
         gSavedSettings.setF32("BDMergeProjectorVolumetricsFogBase", 0.f);
         gSavedSettings.setF32("BDMergeProjectorVolumetricsBloomFeed", 0.40f);
+        gSavedSettings.setF32("BDMergeFroxelDensity", 0.055f);
+        gSavedSettings.setF32("BDMergeFroxelAmbient", 0.40f);
+        gSavedSettings.setF32("BDMergeFroxelNoiseStrength", 0.30f);
+        gSavedSettings.setF32("BDMergeFroxelNoiseScale", 0.60f);
+        gSavedSettings.setF32("BDMergeFroxelNoiseSpeed", 0.25f);
+        gSavedSettings.setF32("BDMergeFroxelFogStrength", 0.45f);
+        gSavedSettings.setF32("BDMergeFroxelFogGroundDensity", 1.50f);
+        gSavedSettings.setF32("BDMergeFroxelFogFalloff", 10.f);
         gSavedSettings.setBOOL("BDMergeSoftProjectorShadows", true);
         gSavedSettings.setF32("BDMergeSoftShadowSoftness", 4.f);
         gSavedSettings.setF32("BDMergeSoftShadowMaxPenumbra", 8.f);
         gSavedSettings.setF32("BDMergeSoftShadowFill", 0.06f);
         gSavedSettings.setBOOL("BDMergeGoboAnisotropic", true);
         break;
+
+    case CLEAR_AIR:
+        // Crisp, restrained air: enough scatter to reveal the cone without
+        // turning the whole set milky or introducing animated particulate.
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsMultiplier", 0.80f);
+        gSavedSettings.setU32("BDMergeProjectorVolumetricsResolution", 32u);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsAnisotropy", 0.58f);
+        gSavedSettings.setBOOL("BDMergeProjectorVolumetricsHalfRes", true);
+        gSavedSettings.setBOOL("BDMergeProjectorVolumetricsTemporal", true);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsTemporalBlend", 0.82f);
+        gSavedSettings.setU32("BDMergeProjectorVolumetricsShadowSamples", 2u);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsFeather", 0.08f);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsDensity", 0.28f);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsBloomFeed", 0.f);
+        gSavedSettings.setF32("BDMergeFroxelDensity", 0.008f);
+        gSavedSettings.setF32("BDMergeFroxelAmbient", 0.06f);
+        gSavedSettings.setF32("BDMergeFroxelNoiseStrength", 0.f);
+        gSavedSettings.setF32("BDMergeFroxelFogStrength", 0.f);
+        gSavedSettings.setBOOL("BDMergeSoftProjectorShadows", false);
+        gSavedSettings.setBOOL("BDMergeGoboAnisotropic", true);
+        break;
+
+    case SEARCHLIGHT:
+        // A long, tight, high-contrast beam with just enough moving air to
+        // keep it photographic instead of reading as a solid cone.
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsMultiplier", 1.55f);
+        gSavedSettings.setU32("BDMergeProjectorVolumetricsResolution", 40u);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsAnisotropy", 0.90f);
+        gSavedSettings.setBOOL("BDMergeProjectorVolumetricsHalfRes", true);
+        gSavedSettings.setBOOL("BDMergeProjectorVolumetricsTemporal", true);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsTemporalBlend", 0.88f);
+        gSavedSettings.setU32("BDMergeProjectorVolumetricsShadowSamples", 3u);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsFeather", 0.06f);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsDensity", 0.72f);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsNoiseStrength", 0.08f);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsNoiseScale", 1.20f);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsNoiseSpeed", 0.12f);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsBloomFeed", 0.15f);
+        gSavedSettings.setF32("BDMergeFroxelDensity", 0.018f);
+        gSavedSettings.setF32("BDMergeFroxelAmbient", 0.12f);
+        gSavedSettings.setF32("BDMergeFroxelNoiseStrength", 0.08f);
+        gSavedSettings.setF32("BDMergeFroxelNoiseScale", 1.20f);
+        gSavedSettings.setF32("BDMergeFroxelNoiseSpeed", 0.12f);
+        gSavedSettings.setBOOL("BDMergeSoftProjectorShadows", true);
+        gSavedSettings.setF32("BDMergeSoftShadowSoftness", 2.f);
+        gSavedSettings.setF32("BDMergeSoftShadowMaxPenumbra", 5.f);
+        gSavedSettings.setF32("BDMergeSoftShadowFill", 0.02f);
+        gSavedSettings.setBOOL("BDMergeGoboAnisotropic", true);
+        break;
+
+    case DUST_STORM:
+        // Dense, turbulent, wind-driven particulate. A finite cap keeps the
+        // high-density beam readable instead of filling the whole projector range.
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsMaxDistance", 14.f);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsMultiplier", 1.10f);
+        gSavedSettings.setU32("BDMergeProjectorVolumetricsResolution", 36u);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsAnisotropy", 0.68f);
+        gSavedSettings.setBOOL("BDMergeProjectorVolumetricsHalfRes", true);
+        gSavedSettings.setBOOL("BDMergeProjectorVolumetricsTemporal", true);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsTemporalBlend", 0.80f);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsTemporalReject", 5.f);
+        gSavedSettings.setU32("BDMergeProjectorVolumetricsShadowSamples", 2u);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsFeather", 0.28f);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsDensity", 3.0f);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsNoiseStrength", 0.75f);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsNoiseScale", 0.35f);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsNoiseSpeed", 0.45f);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsDustIntensity", 1.60f);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsDustScale", 0.60f);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsDustDrift", 0.35f);
+        gSavedSettings.setF32("BDMergeFroxelWindAzimuth", 35.f);
+        gSavedSettings.setF32("BDMergeFroxelWindElevation", 12.f);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsFogStrength", 0.55f);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsFogGroundDensity", 3.f);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsFogFalloff", 6.f);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsBloomFeed", 0.18f);
+        gSavedSettings.setF32("BDMergeFroxelDensity", 0.12f);
+        gSavedSettings.setF32("BDMergeFroxelAmbient", 0.22f);
+        gSavedSettings.setF32("BDMergeFroxelNoiseStrength", 0.85f);
+        gSavedSettings.setF32("BDMergeFroxelNoiseScale", 0.35f);
+        gSavedSettings.setF32("BDMergeFroxelNoiseSpeed", 0.45f);
+        gSavedSettings.setF32("BDMergeFroxelFogStrength", 0.55f);
+        gSavedSettings.setF32("BDMergeFroxelFogGroundDensity", 3.f);
+        gSavedSettings.setF32("BDMergeFroxelFogFalloff", 6.f);
+        gSavedSettings.setBOOL("BDMergeSoftProjectorShadows", true);
+        gSavedSettings.setF32("BDMergeSoftShadowSoftness", 4.5f);
+        gSavedSettings.setF32("BDMergeSoftShadowMaxPenumbra", 9.f);
+        gSavedSettings.setF32("BDMergeSoftShadowFill", 0.06f);
+        gSavedSettings.setBOOL("BDMergeGoboAnisotropic", true);
+        break;
+
+    case DREAM_MIST:
+        // Broad, low-contrast mist with a gentle halo and slow large-scale drift.
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsMaxDistance", 18.f);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsMultiplier", 0.90f);
+        gSavedSettings.setU32("BDMergeProjectorVolumetricsResolution", 32u);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsAnisotropy", 0.74f);
+        gSavedSettings.setBOOL("BDMergeProjectorVolumetricsHalfRes", true);
+        gSavedSettings.setBOOL("BDMergeProjectorVolumetricsTemporal", true);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsTemporalBlend", 0.90f);
+        gSavedSettings.setU32("BDMergeProjectorVolumetricsShadowSamples", 2u);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsFeather", 0.34f);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsDensity", 0.65f);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsNoiseStrength", 0.12f);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsNoiseScale", 0.20f);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsNoiseSpeed", 0.08f);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsFogStrength", 0.75f);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsFogGroundDensity", 2.2f);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsFogFalloff", 12.f);
+        gSavedSettings.setF32("BDMergeProjectorVolumetricsBloomFeed", 0.50f);
+        gSavedSettings.setF32("BDMergeFroxelDensity", 0.04f);
+        gSavedSettings.setF32("BDMergeFroxelAmbient", 0.50f);
+        gSavedSettings.setF32("BDMergeFroxelNoiseStrength", 0.12f);
+        gSavedSettings.setF32("BDMergeFroxelNoiseScale", 0.20f);
+        gSavedSettings.setF32("BDMergeFroxelNoiseSpeed", 0.08f);
+        gSavedSettings.setF32("BDMergeFroxelFogStrength", 0.75f);
+        gSavedSettings.setF32("BDMergeFroxelFogGroundDensity", 2.2f);
+        gSavedSettings.setF32("BDMergeFroxelFogFalloff", 12.f);
+        gSavedSettings.setBOOL("BDMergeSoftProjectorShadows", true);
+        gSavedSettings.setF32("BDMergeSoftShadowSoftness", 5.f);
+        gSavedSettings.setF32("BDMergeSoftShadowMaxPenumbra", 9.f);
+        gSavedSettings.setF32("BDMergeSoftShadowFill", 0.08f);
+        gSavedSettings.setBOOL("BDMergeGoboAnisotropic", true);
+        break;
+    }
+
+    if (gSavedSettings.getBOOL("BDMergeProjectorVolumetricsDust") !=
+        wants_dust)
+    {
+        gSavedSettings.setBOOL(
+            "BDMergeProjectorVolumetricsDust", wants_dust);
     }
 }
 }

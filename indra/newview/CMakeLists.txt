@@ -2080,6 +2080,7 @@ set_source_files_properties(${viewer_CHARACTER_FILES}
 list(APPEND viewer_SOURCE_FILES ${viewer_CHARACTER_FILES})
 
 set(viewer_MISC_FILES
+    stage_runtime_assets.cmake
     viewer_manifest.py
     )
 
@@ -2359,6 +2360,38 @@ elseif(LINUX)
   set(MANIFEST_PACKAGE_OUT_FILE ${product}.tar.xz)
 endif()
 
+# Runtime settings and XUI are consumed from the staged tree, but the viewer
+# manifest POST_BUILD command does not run when only an asset changes. Keep a
+# lightweight, always-run dependency for Windows developer builds so direct
+# viewer-target builds refresh those files without forcing a C++ relink.
+set(RUNTIME_ASSET_PACKAGE_DEPENDENCIES)
+if(WINDOWS)
+  set(RUNTIME_ASSET_CONFIG
+    "$<IF:$<BOOL:${LL_GENERATOR_IS_MULTI_CONFIG}>,$<CONFIG>,default>")
+  set(RUNTIME_ASSET_INDEX
+    "${CMAKE_CURRENT_BINARY_DIR}/runtime_assets_${RUNTIME_ASSET_CONFIG}.txt")
+  set(RUNTIME_ASSET_STAMP
+    "${CMAKE_CURRENT_BINARY_DIR}/runtime_assets_${RUNTIME_ASSET_CONFIG}.sha256")
+  add_custom_target(stage_viewer_runtime_assets
+    COMMAND ${CMAKE_COMMAND}
+      "-DRUNTIME_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}"
+      "-DRUNTIME_DEST_DIR=${MANIFEST_DEST_DIR}"
+      "-DRUNTIME_INDEX_FILE=${RUNTIME_ASSET_INDEX}"
+      "-DRUNTIME_STAMP_FILE=${RUNTIME_ASSET_STAMP}"
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/stage_runtime_assets.cmake
+    # The index is intentionally not a BYPRODUCT: preserving it across `clean`
+    # retains deletion provenance for files staged before the clean. The stamp
+    # is disposable and exists only to retrigger package/local-dist outputs.
+    BYPRODUCTS ${RUNTIME_ASSET_STAMP}
+    COMMENT "Staging viewer runtime settings, shaders, dust, and XUI"
+    VERBATIM
+    )
+  add_dependencies(${VIEWER_BINARY_NAME} stage_viewer_runtime_assets)
+  list(APPEND RUNTIME_ASSET_PACKAGE_DEPENDENCIES
+    ${CMAKE_CURRENT_SOURCE_DIR}/stage_runtime_assets.cmake
+    ${RUNTIME_ASSET_STAMP})
+endif()
+
 # Viewer Manifest Copy
 add_custom_command(
   TARGET ${VIEWER_BINARY_NAME} POST_BUILD
@@ -2422,6 +2455,7 @@ if(IS_DIRECTORY ${LOCAL_DIST_DIR})
       DEPENDS
       ${CMAKE_CURRENT_SOURCE_DIR}/viewer_manifest.py
       ${CMAKE_CURRENT_BINARY_DIR}/viewer_version.txt
+      ${RUNTIME_ASSET_PACKAGE_DEPENDENCIES}
       ${VIEWER_BINARY_NAME}
       COMMENT "Performing viewer_manifest local dist copy"
       )
@@ -2461,6 +2495,7 @@ if (PACKAGE)
       DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/viewer_manifest.py
         ${CMAKE_CURRENT_BINARY_DIR}/viewer_version.txt
+        ${RUNTIME_ASSET_PACKAGE_DEPENDENCIES}
         ${VIEWER_BINARY_NAME} # Prevents two copies of manifest from running at the same time
     COMMENT "Performing viewer_manifest package"
     )

@@ -229,10 +229,33 @@ void registerCineLightRigResetControl()
         "CineLightRig.ResetControl",
         [](LLUICtrl*, const LLSD& param)
         {
-            if (LLControlVariable* control =
-                    gSavedSettings.getControl(param.asString()))
+            // Accept a single control name or a comma-separated list so one
+            // reset button (e.g. the Easy cone width) can restore every backing
+            // setting at once.
+            const std::string names = param.asString();
+            size_t start = 0;
+            while (start <= names.size())
             {
-                control->resetToDefault(true);
+                const size_t comma = names.find(',', start);
+                const size_t end =
+                    (comma == std::string::npos) ? names.size() : comma;
+                const size_t first = names.find_first_not_of(" \t", start);
+                if (first != std::string::npos && first < end)
+                {
+                    const size_t last = names.find_last_not_of(" \t", end - 1);
+                    const std::string name =
+                        names.substr(first, last - first + 1);
+                    if (LLControlVariable* control =
+                            gSavedSettings.getControl(name))
+                    {
+                        control->resetToDefault(true);
+                    }
+                }
+                if (comma == std::string::npos)
+                {
+                    break;
+                }
+                start = comma + 1;
             }
         });
 }
@@ -355,6 +378,13 @@ const std::vector<std::string>& ALPanelCineLightRig::settings()
         "CineLightRigBgFlickerAmount",
         "CineLightRigBgShadowSoft",
         "CineLightRigBgOn",
+        "CineLightRigLiveProbeEnabled",
+        "CineLightRigLiveProbeTarget",
+        "CineLightRigLiveProbeRadius",
+        "CineLightRigLiveProbeOffsetZ",
+        "CineLightRigLiveProbeAmbiance",
+        "CineLightRigLiveProbeReplaceBounce",
+        "CineLightRigLiveProbeGizmo",
     };
     return names;
 }
@@ -399,6 +429,7 @@ bool ALPanelCineLightRig::postBuild()
     mGoboLibrary = getChild<LLComboBox>("cine_gobo_library");
     mGoboPreview = getChild<LLIconCtrl>("cine_gobo_preview");
     mGoboSoftness = getChild<LLTextBox>("cine_gobo_softness");
+    mLiveProbeStatus = getChild<LLTextBox>("cine_live_probe_status");
     const char* const advanced_driven_names[] = {
         "cine_master_ev", "cine_master_ev_reset",
         "cine_key_ev", "cine_key_ev_reset",
@@ -490,6 +521,8 @@ bool ALPanelCineLightRig::postBuild()
         [this](LLUICtrl*, const LLSD&) { onEasyWarmthCommit(); });
     mEasyConeWidth->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onEasyConeWidthCommit(); });
+    mEasyConeFeather->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onEasyConeFeatherCommit(); });
     mFixtureRole->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onFixtureRoleCommit(); });
     mFixtureMode->setCommitCallback(
@@ -1598,6 +1631,20 @@ void ALPanelCineLightRig::onEasyConeWidthCommit()
     }
 }
 
+void ALPanelCineLightRig::onEasyConeFeatherCommit()
+{
+    // Guarded like the other Easy controls so the slider is inert (no write to
+    // the global projector feather) whenever Easy mode is not active.
+    if (mSyncingEasyControls || !mEasyModeActive)
+    {
+        return;
+    }
+    gSavedSettings.setF32(
+        "BDMergeProjectorVolumetricsFeather",
+        std::clamp(static_cast<F32>(mEasyConeFeather->getValue().asReal()),
+                   0.f, 0.5f));
+}
+
 void ALPanelCineLightRig::onManualConeWidthCommit(S32 light)
 {
     if (mSyncingEasyControls || light < 0 ||
@@ -1686,6 +1733,20 @@ void ALPanelCineLightRig::syncEasyControls()
     mEasyWarmth->setEnabled(mEasyModeActive);
     mEasyConeWidth->setEnabled(mEasyModeActive);
     mEasyConeFeather->setEnabled(mEasyModeActive);
+    // The Easy reset buttons write the same backing settings, so gate them too;
+    // otherwise a reset click would edit the light while Easy mode is off.
+    static const char* const EASY_RESET_BUTTONS[] = {
+        "cine_easy_brightness_reset", "cine_easy_drama_reset",
+        "cine_easy_warmth_reset", "cine_easy_cone_width_reset",
+        "cine_easy_cone_feather_reset",
+    };
+    for (const char* button_name : EASY_RESET_BUTTONS)
+    {
+        if (LLUICtrl* button = findChild<LLUICtrl>(button_name))
+        {
+            button->setEnabled(mEasyModeActive);
+        }
+    }
     for (LLUICtrl* control : mAdvancedDrivenControls)
     {
         control->setEnabled(!mEasyModeActive);
@@ -1792,6 +1853,27 @@ void ALPanelCineLightRig::updateDerivedStatus()
             : mRadiusDefaultColor);
         mRadiusOverCeiling = radius_over_ceiling;
         mRadiusCueInitialized = true;
+    }
+    const ALCineLightRigManager& manager = ALCineLightRigManager::instance();
+    switch (manager.liveProbeState())
+    {
+        case ALCineLightRigManager::LiveProbeState::DISABLED:
+            mLiveProbeStatus->setText(LLStringExplicit("Disabled"));
+            break;
+        case ALCineLightRigManager::LiveProbeState::UNAVAILABLE:
+            mLiveProbeStatus->setText(
+                LLStringExplicit("Unavailable: enable probe coverage and at least 2 slots"));
+            break;
+        case ALCineLightRigManager::LiveProbeState::WAITING_FOR_TARGET:
+            mLiveProbeStatus->setText(LLStringExplicit("Waiting for the target rig"));
+            break;
+        case ALCineLightRigManager::LiveProbeState::WARMING:
+            mLiveProbeStatus->setText(llformat("Warming... %d%%",
+                ll_round(manager.liveProbeFade() * 100.f)));
+            break;
+        case ALCineLightRigManager::LiveProbeState::LIVE:
+            mLiveProbeStatus->setText(LLStringExplicit("Live"));
+            break;
     }
     std::string setup_name = mSetupCombo
         ? mSetupCombo->getSimple() : std::string();

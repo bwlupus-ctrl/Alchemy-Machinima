@@ -67,6 +67,7 @@ uniform vec3  color;            // DIFFUSE_COLOR - light's linear diffuse color 
 uniform float proj_focus;       // deferredUtil cookie LOD params (read directly here)
 uniform float proj_lod;
 uniform float proj_range;
+uniform float projvol_max_distance; // metres along projector axis; 0 = full range
 
 // Shared godray controls (this program uploads its OWN values into these).
 uniform int   godray_res;         // raymarch sample count (bounded local march;
@@ -384,11 +385,44 @@ void main()
         }
     }
 
+    // Artist-facing shaft-length cap. l_dist at a point t*d is affine in t:
+    //   l_dist(t) = -dot(C, proj_n) + t*dot(d, proj_n)
+    // Clip the march interval against that far plane so the full sample budget
+    // stays concentrated in the visible part of the beam. Surface lighting and
+    // the post-march rim evaluation remain intentionally uncapped.
+    bool shaft_empty = false;
+    if (projvol_max_distance > 0.0)
+    {
+        float axis_origin = -dot(C, proj_n);
+        float axis_rate   = dot(d, proj_n);
+        if (axis_rate > 1e-6)
+        {
+            t1 = min(t1, (projvol_max_distance - axis_origin) / axis_rate);
+        }
+        else if (axis_rate < -1e-6)
+        {
+            t0 = max(t0, (projvol_max_distance - axis_origin) / axis_rate);
+        }
+        else if (axis_origin > projvol_max_distance)
+        {
+            shaft_empty = true;
+        }
+        if (t1 <= t0)
+        {
+            // Do not return: the surface-coupled rim below is intentionally
+            // independent of the airborne shaft-length cap. Collapse the march
+            // interval and let the shader continue to that evaluation.
+            shaft_empty = true;
+            t1 = t0;
+        }
+    }
+
     float march_len = t1 - t0;
-    // max() guards godray_res == 0: the rim-only mode for froxel-injected projectors
-    // (beam lives in the grid; only the surface rim + bloom-feed halo render here).
-    // Without it dt = inf and 0*inf = NaN would poison the final shaft.
-    float dt        = march_len / max(float(godray_res), 1.0); // physical step length
+    // An empty cap interval and godray_res == 0 both mean rim-only: skip the
+    // airborne loop while preserving the later surface evaluation. max() keeps
+    // dt finite so 0*inf can never poison the final shaft.
+    int shaft_steps = shaft_empty ? 0 : godray_res;
+    float dt        = march_len / max(float(shaft_steps), 1.0); // physical step length
 
     // [Phase 1 item 2] blue-noise (interleaved gradient) march-start offset.
     // Static per pixel-quad => no crawl under camera motion; optional frame rotation.
@@ -437,7 +471,7 @@ void main()
     float depth_w = 0.0;
     float w_sum   = 0.0;
 
-    for (int i = 0; i < godray_res; ++i)
+    for (int i = 0; i < shaft_steps; ++i)
     {
         float t    = t0 + (float(i) + roffset) * dt;
         vec3  spos = d * t;               // view-space sample point

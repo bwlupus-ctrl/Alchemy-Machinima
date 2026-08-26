@@ -1045,6 +1045,35 @@ void main()
                  + 0.08 * crawl * worldRimWide);
         alpha = color.a * tex.a;
     }
+    else if (ghostLook == 33) // Live Actor: Seraph
+    {
+        float top = smoothstep(-0.10, 0.80, n.y);
+        vec3 halo = mix(vec3(1.00, 0.86, 0.55), color.rgb, 0.20);
+        rgb = tex.rgb * (0.72 + 0.10 * top);
+        worldRadiance = ghostWorldRadiance(
+            halo, 0.35 * worldRimWide + 1.20 * worldRimCore * (0.5 + 0.5 * top));
+        alpha = color.a * tex.a;
+    }
+    else if (ghostLook == 34) // Live Actor: Interrogation
+    {
+        float key = smoothstep(-0.15, 0.60, n.x);
+        float shadow = 1.0 - key;
+        rgb = mix(vec3(lum), tex.rgb, 0.5) * (0.40 + 1.20 * key)
+            * (1.0 - 0.85 * shadow);
+        worldRadiance = ghostWorldRadiance(color.rgb, 0.60 * worldRimCore);
+        alpha = color.a * tex.a;
+    }
+    else if (ghostLook == 35) // Live Actor: Wraith
+    {
+        float flick = 0.70 + 0.30 * sin(ghostTime * 6.0 + vary_position.y * 3.0);
+        float crawl = 0.5 + 0.5 * sin(vary_position.y * 9.0 - ghostTime * 1.6);
+        vec3 spectral = mix(vec3(0.15, 1.00, 0.55), color.rgb, 0.15);
+        rgb = mix(vec3(lum) * vec3(0.20, 0.42, 0.28), tex.rgb, 0.22) * 0.5;
+        worldRadiance = ghostWorldRadiance(
+            spectral, flick * (0.22 * worldRimWide + 0.95 * worldRimCore
+                               + 0.10 * crawl * worldRimWide));
+        alpha = color.a * tex.a;
+    }
 #endif
     if (ghostLook >= 5)
     {

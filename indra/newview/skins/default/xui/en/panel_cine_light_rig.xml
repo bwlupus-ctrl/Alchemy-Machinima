@@ -2,7 +2,7 @@
 <panel
  class="panel_cine_light_rig"
  follows="left|top|right"
- height="2512"
+ height="2690"
  layout="topleft"
  name="panel_cine_light_rig"
  width="350">
@@ -289,10 +289,10 @@
     <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="8" top="292" value="Easy" width="80" />
     <check_box control_name="CineLightRigEasyMode" follows="left|top" height="18" label="Easy mode" layout="topleft" left="246" name="cine_easy_mode" top="290" tool_tip="On uses the simplified exposure controls. Off enables Advanced EV and Ratio controls." width="94" />
     <text follows="left|top" height="15" layout="topleft" left="8" top="318" value="Brightness" width="72" />
-    <slider can_edit_text="true" control_name="CineLightRigMasterEV" decimal_digits="1" follows="left|top" height="20" increment="0.1" layout="topleft" left="82" max_val="16" min_val="-16" name="cine_easy_brightness" show_text="true" top="314" width="236" />
+    <slider can_edit_text="true" decimal_digits="1" follows="left|top" height="20" increment="0.1" layout="topleft" left="82" max_val="16" min_val="-16" name="cine_easy_brightness" show_text="true" top="314" width="236" />
     <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_easy_brightness_reset" top="315" tool_tip="Reset brightness to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigMasterEV" />
     <text follows="left|top" height="15" layout="topleft" left="8" top="342" value="Drama" width="72" />
-    <slider can_edit_text="true" control_name="CineLightRigRatio" decimal_digits="1" follows="left|top" height="20" increment="0.1" layout="topleft" left="82" max_val="5" min_val="0" name="cine_easy_drama" show_text="true" top="338" tool_tip="KEY:FILL stop difference: 0 is flat, 2 is natural, and 5 is noir." width="236" />
+    <slider can_edit_text="true" decimal_digits="1" follows="left|top" height="20" increment="0.1" layout="topleft" left="82" max_val="5" min_val="0" name="cine_easy_drama" show_text="true" top="338" tool_tip="KEY:FILL stop difference: 0 is flat, 2 is natural, and 5 is noir." width="236" />
     <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_easy_drama_reset" top="339" tool_tip="Reset drama to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRatio" />
     <text follows="left|top" height="15" layout="topleft" left="8" top="366" value="Rim" width="38" />
     <combo_box follows="left|top" height="20" layout="topleft" left="46" name="cine_easy_rim" top="362" width="116">
@@ -309,12 +309,14 @@
         <combo_box.item label="Strong" name="cine_easy_bg_strong" value="3" />
     </combo_box>
     <text follows="left|top" height="15" layout="topleft" left="8" top="390" value="Warmth" width="52" />
-    <slider can_edit_text="true" control_name="CineLightRigMasterTempMired" decimal_digits="0" follows="left|top" height="20" increment="5" layout="topleft" left="62" max_val="150" min_val="-110" name="cine_easy_warmth" show_text="true" top="386" tool_tip="Relative colour-temperature trim in mireds: + warms and - cools all lights." width="256" />
+    <slider can_edit_text="true" decimal_digits="0" follows="left|top" height="20" increment="5" layout="topleft" left="62" max_val="150" min_val="-110" name="cine_easy_warmth" show_text="true" top="386" tool_tip="Relative colour-temperature trim in mireds: + warms and - cools all lights." width="256" />
     <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_easy_warmth_reset" top="387" tool_tip="Reset warmth to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigMasterTempMired" />
     <text follows="left|top" height="15" layout="topleft" left="8" top="414" value="Cone" width="38" />
-    <slider can_edit_text="false" decimal_digits="0" follows="left|top" height="20" increment="1" layout="topleft" left="46" max_val="2" min_val="0" name="cine_easy_cone_width" show_text="false" top="410" tool_tip="Set all rig lights to a narrow Snoot, medium Standard, or wide Softbox beam." width="112" />
+    <slider can_edit_text="false" decimal_digits="0" follows="left|top" height="20" increment="1" layout="topleft" left="46" max_val="2" min_val="0" name="cine_easy_cone_width" show_text="false" top="410" tool_tip="Set all rig lights to a narrow Snoot, medium Standard, or wide Softbox beam." width="92" />
+    <button follows="left|top" height="18" layout="topleft" left="140" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_easy_cone_width_reset" top="411" tool_tip="Reset all rig cone widths to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeyBeam,CineLightRigFillBeam,CineLightRigRimBeam,CineLightRigBgBeam" />
     <text follows="left|top" height="15" layout="topleft" left="172" top="414" value="Edge" width="36" />
-    <slider can_edit_text="false" control_name="BDMergeProjectorVolumetricsFeather" decimal_digits="2" follows="left|top" height="20" increment="0.01" layout="topleft" left="208" max_val="0.5" min_val="0" name="cine_easy_cone_feather" show_text="false" top="410" tool_tip="Soften or sharpen the visible edge of every volumetric projector cone." width="132" />
+    <slider can_edit_text="false" decimal_digits="2" follows="left|top" height="20" increment="0.01" layout="topleft" left="208" max_val="0.5" min_val="0" name="cine_easy_cone_feather" show_text="false" top="410" tool_tip="Soften or sharpen the visible edge of every volumetric projector cone." width="112" />
+    <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_easy_cone_feather_reset" top="411" tool_tip="Reset cone edge feather to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="BDMergeProjectorVolumetricsFeather" />
     <view_border bevel_style="in" follows="left|top|right" height="1" layout="topleft" left="8" top="432" width="332" />
 
     <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="8" top="440" value="Rig" width="80" />
@@ -500,4 +502,69 @@
     <text follows="left|top" height="15" layout="topleft" left="8" top="2476" value="Release" width="68" tool_tip="Optical fade time in seconds after a rig projector's rendered shaft ends. Longer values leave a softer camera-response tail." />
     <slider can_edit_text="true" control_name="RenderCineLensFlareRelease" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="82" max_val="2" min_val="0" name="cine_flare_release" show_text="true" top="2472" width="236" />
     <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_flare_release_reset" top="2473" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="RenderCineLensFlareRelease" />
+
+    <!-- Scene-level live probe. These values are deliberately outside rig
+         setup presets and cue payloads; Director scene save/load owns them. -->
+    <view_border bevel_style="in" follows="left|top|right" height="1"
+     layout="topleft" left="8" top="2504" width="332" />
+    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
+     left="8" top="2514" value="Live Probe" width="100" />
+    <text follows="left|top" height="15" layout="topleft" left="112" top="2516"
+     value="Scene setting; not saved in Setups" width="228" />
+    <check_box control_name="CineLightRigLiveProbeEnabled" follows="left|top"
+     height="18" label="Enable" layout="topleft" left="8"
+     name="cine_live_probe_enable" top="2540"
+     tool_tip="Capture a spherical environment-only reflection probe around one rig. Costs six cubemap views per frame while enabled." width="76" />
+    <check_box control_name="CineLightRigLiveProbeGizmo" follows="left|top"
+     height="18" label="Gizmo" layout="topleft" left="92"
+     name="cine_live_probe_gizmo" top="2540"
+     tool_tip="Draw the live probe's spherical influence boundary." width="76" />
+    <check_box control_name="CineLightRigLiveProbeReplaceBounce" follows="left|top"
+     height="18" label="Replace bounce" layout="topleft" left="180"
+     name="cine_live_probe_replace_bounce" top="2540"
+     tool_tip="Crossfade the target rig's synthetic bounce lights out after the live probe is ready." width="148" />
+    <text follows="left|top" height="15" layout="topleft" left="8" top="2568"
+     value="Target" width="46" />
+    <combo_box control_name="CineLightRigLiveProbeTarget" follows="left|top"
+     height="20" layout="topleft" left="56" name="cine_live_probe_target"
+     top="2564" tool_tip="Rig whose smoothed subject centre the probe follows." width="112">
+        <combo_box.item label="Self" name="cine_live_probe_self" value="0" />
+        <combo_box.item label="Subject A" name="cine_live_probe_a" value="1" />
+        <combo_box.item label="Subject B" name="cine_live_probe_b" value="2" />
+        <combo_box.item label="Subject C" name="cine_live_probe_c" value="3" />
+        <combo_box.item label="Subject D" name="cine_live_probe_d" value="4" />
+    </combo_box>
+    <text follows="left|top" height="15" layout="topleft" left="180" top="2568"
+     value="Radius m" width="58" />
+    <spinner control_name="CineLightRigLiveProbeRadius" decimal_digits="2"
+     follows="left|top" height="20" increment="0.25" layout="topleft"
+     left="240" max_val="32" min_val="0.5" name="cine_live_probe_radius"
+     top="2564" tool_tip="Spherical probe influence radius in metres." width="78" />
+    <button follows="left|top" height="18" layout="topleft" left="322" width="18"
+     image_overlay="Refresh_Off" image_top_pad="0" name="cine_live_probe_radius_reset"
+     top="2565" tool_tip="Reset radius" commit_callback.function="CineLightRig.ResetControl"
+     commit_callback.parameter="CineLightRigLiveProbeRadius" />
+    <text follows="left|top" height="15" layout="topleft" left="8" top="2594"
+     value="Offset Z" width="62" />
+    <spinner control_name="CineLightRigLiveProbeOffsetZ" decimal_digits="2"
+     follows="left|top" height="20" increment="0.05" layout="topleft"
+     left="72" max_val="5" min_val="-5" name="cine_live_probe_offset"
+     top="2590" tool_tip="Vertical offset from the target rig centre." width="94" />
+    <button follows="left|top" height="18" layout="topleft" left="170" width="18"
+     image_overlay="Refresh_Off" image_top_pad="0" name="cine_live_probe_offset_reset"
+     top="2591" tool_tip="Reset vertical offset" commit_callback.function="CineLightRig.ResetControl"
+     commit_callback.parameter="CineLightRigLiveProbeOffsetZ" />
+    <text follows="left|top" height="15" layout="topleft" left="196" top="2594"
+     value="Ambiance" width="62" />
+    <spinner control_name="CineLightRigLiveProbeAmbiance" decimal_digits="2"
+     follows="left|top" height="20" increment="0.05" layout="topleft"
+     left="260" max_val="8" min_val="0" name="cine_live_probe_ambiance"
+     top="2590" tool_tip="Reflection-probe ambiance multiplier." width="58" />
+    <button follows="left|top" height="18" layout="topleft" left="322" width="18"
+     image_overlay="Refresh_Off" image_top_pad="0" name="cine_live_probe_ambiance_reset"
+     top="2591" tool_tip="Reset ambiance" commit_callback.function="CineLightRig.ResetControl"
+     commit_callback.parameter="CineLightRigLiveProbeAmbiance" />
+    <text follows="left|top|right" height="38" layout="topleft" left="8"
+     name="cine_live_probe_status" top="2620" value="Disabled" width="332"
+     word_wrap="true" />
 </panel>

@@ -187,7 +187,7 @@ static bool selectionHasGhostManipProxy(LLObjectSelectionHandle selection)
 static void synthesizeLocalPreviewNode(LLSelectNode* nodep, LLViewerObject* objectp)
 {
     if (!nodep || !isLocalPreviewObject(objectp) ||
-        objectp->isCineRigEmitter())
+        objectp->isCineRigEmitter() || objectp->isCineRigProbe())
     {
         return;
     }

@@ -561,6 +561,10 @@ public:
     void setPrismAuxiliaryWaterHeight(const LLVector3& eye);
     F32 getRenderWaterHeight() const;
     void endPrismAuxiliaryState();
+    // Preserve the main-eye nearby-light set while a cinematic reflection
+    // probe builds a probe-local set for all six cubemap faces.
+    bool beginCinematicProbeCapture();
+    void endCinematicProbeCapture();
     void setupAvatarLights(bool for_edit = false);
     void enableLights(U32 mask);
     void enableLightsDynamic();
@@ -1351,6 +1355,9 @@ protected:
     light_set_t                     mNearbyLights; // lights near camera
     LLColor4                        mHWLightColors[8];
 
+    bool                            mCinematicProbeCaptureActive = false;
+    light_set_t                     mCinematicSavedNearbyLights;
+
     // Main-view state retained while the one scheduled Prism capture owns the
     // shared renderer. The nearby set owns LLPointer references, which keeps
     // every drawable alive until its NEARBY_LIGHT bit can be restored safely.
@@ -1631,6 +1638,7 @@ public:
     static bool BDMergeProjectorVolumetrics;
     static U32 BDMergeProjectorVolumetricsResolution;
     static F32 BDMergeProjectorVolumetricsMultiplier;
+    static F32 BDMergeProjectorVolumetricsMaxDistance;  // axial airborne-beam cap; 0 = full range
     static F32 BDMergeProjectorVolumetricsAnisotropy;
     // [BDMerge G3.3 Phase 1] cinema levers
     static U32 BDMergeProjectorVolumetricsDither;
@@ -1757,6 +1765,7 @@ public:
     struct VolumetricShaftOverride
     {
         F32      multiplier   = 1.f;
+        F32      maxDistance  = 0.f;
         F32      feather      = 0.15f;
         F32      anisotropy   = 0.72f;
         F32      density      = 1.f;

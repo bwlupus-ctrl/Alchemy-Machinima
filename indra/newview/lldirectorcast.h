@@ -144,7 +144,10 @@ public:
         ACTOR_LOOK_BASS_SWEEP       = 30,
         ACTOR_LOOK_MOONLIT          = 31,
         ACTOR_LOOK_POSSESSED        = 32,
-        ACTOR_LOOK_MAX              = ACTOR_LOOK_POSSESSED
+        ACTOR_LOOK_SERAPH           = 33,
+        ACTOR_LOOK_INTERROGATION    = 34,
+        ACTOR_LOOK_WRAITH           = 35,
+        ACTOR_LOOK_MAX              = ACTOR_LOOK_WRAITH
     };
 
     static bool isActorStyleLook(S32 look)

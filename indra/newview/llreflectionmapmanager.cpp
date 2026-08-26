@@ -264,6 +264,17 @@ void LLReflectionMapManager::update()
             mDynamicProbeCount = mRenderReflectionProbeCount;
         }
 
+        // The default probe owns slot zero. While the cinematic Live Probe is
+        // designated, reserve one additional effective slot even when manual
+        // dynamic-allocation rounding would otherwise collapse a two-probe
+        // scene back to a single cube.
+        if (mCinematicLiveProbe.notNull() &&
+            mRenderReflectionProbeLevel > 0 &&
+            mRenderReflectionProbeCount >= 2)
+        {
+            mDynamicProbeCount = llmax(mDynamicProbeCount, 2u);
+        }
+
         mDynamicProbeCount = llmin(mDynamicProbeCount, LL_MAX_REFLECTION_PROBE_COUNT);
 
         if (mDynamicProbeCount != probe_count_temp)
@@ -330,6 +341,7 @@ void LLReflectionMapManager::update()
     bool realtime = mRenderReflectionProbeDetail >= (S32)LLReflectionMapManager::DetailLevel::REALTIME;
 
     LLReflectionMap* closestDynamic = nullptr;
+    LLReflectionMap* cinematicLive = nullptr;
 
     LLReflectionMap* oldestProbe = nullptr;
     LLReflectionMap* oldestOccluded = nullptr;
@@ -345,6 +357,18 @@ void LLReflectionMapManager::update()
     llassert(mProbes[0] == mDefaultProbe);
     llassert(mProbes[0]->mCubeArray == mTexture);
     llassert(mProbes[0]->mCubeIndex == 0);
+
+    // Keep the explicitly selected cinematic probe inside the finite cubemap
+    // allocation even in probe-dense scenes. Index zero remains the default.
+    if (mCinematicLiveProbe.notNull())
+    {
+        auto iter = std::find(
+            mProbes.begin() + 1, mProbes.end(), mCinematicLiveProbe);
+        if (iter != mProbes.end() && iter != mProbes.begin() + 1)
+        {
+            std::rotate(mProbes.begin() + 1, iter, iter + 1);
+        }
+    }
 
     // make sure we're assigning cube slots to the closest probes
 
@@ -439,7 +463,7 @@ void LLReflectionMapManager::update()
         }
         else
         {
-            if (!did_update &&
+            if (probe != mCinematicLiveProbe && !did_update &&
                 i < mReflectionProbeCount &&
                 (oldestProbe == nullptr ||
                     check_priority(probe, oldestProbe)))
@@ -448,7 +472,11 @@ void LLReflectionMapManager::update()
             }
         }
 
-        if (realtime &&
+        if (probe == mCinematicLiveProbe && probe->mCubeIndex != -1)
+        {
+            cinematicLive = probe;
+        }
+        else if (realtime &&
             closestDynamic == nullptr &&
             probe->mCubeIndex != -1 &&
             probe->getIsDynamic())
@@ -464,21 +492,48 @@ void LLReflectionMapManager::update()
         }
     }
 
-    if (realtime && closestDynamic != nullptr)
+    LLReflectionMap* realtime_probe = cinematicLive
+        ? cinematicLive : (realtime ? closestDynamic : nullptr);
+    if (realtime_probe != nullptr)
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("rmmu - realtime");
-        // update the closest dynamic probe realtime
+        // The designated cinematic probe owns the one realtime slot. Without
+        // one, preserve the shipped closest-dynamic behavior.
         // should do a full irradiance pass on "odd" frames and a radiance pass on "even" frames
-        closestDynamic->autoAdjustOrigin();
+        realtime_probe->autoAdjustOrigin();
 
         // store and override the value of "isRadiancePass" -- parts of the render pipe rely on "isRadiancePass" to set
         // lighting values etc
         bool radiance_pass = isRadiancePass();
         mRadiancePass = mRealtimeRadiancePass;
+        mCinematicLiveProbeCapture = realtime_probe == cinematicLive;
+        const bool saved_nearby_lights = mCinematicLiveProbeCapture &&
+            gPipeline.beginCinematicProbeCapture();
         for (U32 i = 0; i < 6; ++i)
         {
-            updateProbeFace(closestDynamic, i);
+            updateProbeFace(realtime_probe, i);
         }
+        if (mCinematicLiveProbeCapture)
+        {
+            if (mRealtimeRadiancePass)
+            {
+                mCinematicRadianceReady = true;
+            }
+            else
+            {
+                mCinematicIrradianceReady = true;
+            }
+            if (mCinematicIrradianceReady && mCinematicRadianceReady)
+            {
+                realtime_probe->mComplete = true;
+                updateNeighbors(realtime_probe);
+            }
+        }
+        if (saved_nearby_lights)
+        {
+            gPipeline.endCinematicProbeCapture();
+        }
+        mCinematicLiveProbeCapture = false;
         mRealtimeRadiancePass = !mRealtimeRadiancePass;
 
         // restore "isRadiancePass"
@@ -678,6 +733,48 @@ LLReflectionMap* LLReflectionMapManager::registerViewerObject(LLViewerObject* vo
     return probe;
 }
 
+void LLReflectionMapManager::setCinematicLiveProbe(
+    LLReflectionMap* probe, const std::vector<LLUUID>& ignored_light_ids,
+    const std::vector<LLUUID>& pinned_light_ids)
+{
+    if (mCinematicLiveProbe.get() != probe)
+    {
+        mCinematicLiveProbe = probe;
+        mCinematicIrradianceReady = false;
+        mCinematicRadianceReady = false;
+        mRealtimeRadiancePass = false;
+        if (probe)
+        {
+            probe->mComplete = false;
+            probe->mFadeIn = 0.f;
+        }
+    }
+    mCinematicIgnoredLightIds = ignored_light_ids;
+    mCinematicPinnedLightIds = pinned_light_ids;
+    if (!probe)
+    {
+        mCinematicLiveProbeCapture = false;
+    }
+}
+
+bool LLReflectionMapManager::isCinematicLiveProbeIgnoredLight(
+    const LLUUID& id) const
+{
+    return mCinematicLiveProbeCapture &&
+        std::find(mCinematicIgnoredLightIds.begin(),
+                  mCinematicIgnoredLightIds.end(), id) !=
+            mCinematicIgnoredLightIds.end();
+}
+
+bool LLReflectionMapManager::isCinematicLiveProbePinnedLight(
+    const LLUUID& id) const
+{
+    return mCinematicLiveProbeCapture &&
+        std::find(mCinematicPinnedLightIds.begin(),
+                  mCinematicPinnedLightIds.end(), id) !=
+            mCinematicPinnedLightIds.end();
+}
+
 S32 LLReflectionMapManager::allocateCubeIndex()
 {
     if (!mCubeFree.empty())
@@ -761,7 +858,8 @@ void LLReflectionMapManager::doProbeUpdate()
 // The next six passes render the scene with both radiance and irradiance into the same scratch space cube map and generate a simple mip chain.
 // At the end of these passes, a radiance map is generated for this probe and placed into the radiance cube map array at the index for this probe.
 // In effect this simulates single-bounce lighting.
-void LLReflectionMapManager::updateProbeFace(LLReflectionMap* probe, U32 face)
+void LLReflectionMapManager::updateProbeFace(
+    LLReflectionMap* probe, U32 face, bool force_dynamic)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DISPLAY;
     LL_PROFILE_GPU_ZONE("probe update");
@@ -785,14 +883,14 @@ void LLReflectionMapManager::updateProbeFace(LLReflectionMap* probe, U32 face)
         gPipeline.andRenderTypeMask(LLPipeline::RENDER_TYPE_SKY, LLPipeline::RENDER_TYPE_WL_SKY,
             LLPipeline::RENDER_TYPE_WATER, LLPipeline::RENDER_TYPE_VOIDWATER, LLPipeline::RENDER_TYPE_CLOUDS, LLPipeline::RENDER_TYPE_TERRAIN, LLPipeline::END_RENDER_TYPES);
 
-        probe->update(mRenderTarget.getWidth(), face);
+        probe->update(mRenderTarget.getWidth(), face, force_dynamic);
 
         gPipeline.popRenderTypeMask();
     }
     else
     {
         llassert(mRenderReflectionProbeLevel > 0); // should never update a probe that's not the default probe if reflection coverage is none
-        probe->update(mRenderTarget.getWidth(), face);
+        probe->update(mRenderTarget.getWidth(), face, force_dynamic);
     }
 
     gPipeline.mRT = &gPipeline.mMainRT;
@@ -1476,6 +1574,8 @@ void LLReflectionMapManager::initReflectionMaps()
         mUpdatingProbe = nullptr;
         mRadiancePass = false;
         mRealtimeRadiancePass = false;
+        mCinematicIrradianceReady = false;
+        mCinematicRadianceReady = false;
 
         // if default probe already exists, remember whether or not it's complete (SL-20498)
         bool default_complete = mDefaultProbe.isNull() ? false : mDefaultProbe->mComplete;
@@ -1536,6 +1636,12 @@ void LLReflectionMapManager::initReflectionMaps()
 
 void LLReflectionMapManager::cleanup()
 {
+    mCinematicLiveProbe = nullptr;
+    mCinematicIgnoredLightIds.clear();
+    mCinematicPinnedLightIds.clear();
+    mCinematicLiveProbeCapture = false;
+    mCinematicIrradianceReady = false;
+    mCinematicRadianceReady = false;
     mVertexBuffer = nullptr;
     mRenderTarget.release();
 

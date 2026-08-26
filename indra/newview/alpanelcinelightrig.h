@@ -56,6 +56,7 @@ private:
     void onEasyBgCommit();
     void onEasyWarmthCommit();
     void onEasyConeWidthCommit();
+    void onEasyConeFeatherCommit();
     void onManualConeWidthCommit(S32 light);
     std::string fixtureSettingPrefix() const;
     void syncFixtureControls(bool force = false);
@@ -129,6 +130,7 @@ private:
     LLCheckBoxCtrl* mHeroControls[4] = {};
     LLUICtrl* mManualConeWidths[4] = {};
     LLTextBox* mShadowHint = nullptr;
+    LLTextBox* mLiveProbeStatus = nullptr;
     LLButton* mShadowFixIt = nullptr;
     LLTextBox* mRadiusLabel = nullptr;
     LLButton* mSetupSave = nullptr;

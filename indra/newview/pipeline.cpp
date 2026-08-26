@@ -317,6 +317,7 @@ F32 LLPipeline::RenderVolumetricLightingFalloffMultiplier;
 bool LLPipeline::BDMergeProjectorVolumetrics;
 U32 LLPipeline::BDMergeProjectorVolumetricsResolution;
 F32 LLPipeline::BDMergeProjectorVolumetricsMultiplier;
+F32 LLPipeline::BDMergeProjectorVolumetricsMaxDistance;
 F32 LLPipeline::BDMergeProjectorVolumetricsAnisotropy;
 U32 LLPipeline::BDMergeProjectorVolumetricsDither;
 F32 LLPipeline::BDMergeProjectorVolumetricsFeather;
@@ -794,6 +795,7 @@ void LLPipeline::init()
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetrics");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsResolution");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsMultiplier");
+    connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsMaxDistance");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsAnisotropy");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsDither");
     connectRefreshCachedSettingsSafe("BDMergeProjectorVolumetricsFeather");
@@ -1789,6 +1791,19 @@ void LLPipeline::refreshCachedSettings()
     BDMergeProjectorVolumetrics = gSavedSettings.getBOOL("BDMergeProjectorVolumetrics");
     BDMergeProjectorVolumetricsResolution = gSavedSettings.getU32("BDMergeProjectorVolumetricsResolution");
     BDMergeProjectorVolumetricsMultiplier = gSavedSettings.getF32("BDMergeProjectorVolumetricsMultiplier");
+    const F32 previous_projvol_max_distance =
+        BDMergeProjectorVolumetricsMaxDistance;
+    BDMergeProjectorVolumetricsMaxDistance = llclamp(
+        gSavedSettings.getF32("BDMergeProjectorVolumetricsMaxDistance"),
+        0.f, 64.f);
+    if (BDMergeProjectorVolumetricsMaxDistance !=
+        previous_projvol_max_distance)
+    {
+        // A shortened beam must not retain the old tail through either temporal
+        // accumulator. Both histories are safe to invalidate before allocation.
+        gPipeline.mProjVolHistoryValid = false;
+        gPipeline.mFroxelHistoryValid = false;
+    }
     BDMergeProjectorVolumetricsAnisotropy = gSavedSettings.getF32("BDMergeProjectorVolumetricsAnisotropy");
     BDMergeProjectorVolumetricsDither = gSavedSettings.getU32("BDMergeProjectorVolumetricsDither");
     BDMergeProjectorVolumetricsFeather = gSavedSettings.getF32("BDMergeProjectorVolumetricsFeather");
@@ -9134,8 +9149,100 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
     assertInitialized();
 
-    if (LLPipeline::sReflectionRender || gCubeSnapshot || LLPipeline::sRenderingHUDs || LLApp::isExiting())
+    const bool cinematic_probe_capture = gCubeSnapshot &&
+        mReflectionMapManager.isCinematicLiveProbeCapture();
+    if (((LLPipeline::sReflectionRender || gCubeSnapshot) &&
+         !cinematic_probe_capture) || LLPipeline::sRenderingHUDs ||
+        LLApp::isExiting())
     {
+        return;
+    }
+
+    if (cinematic_probe_capture)
+    {
+        // Normal probes deliberately reuse the main-eye list. This probe can
+        // follow an off-camera rig, so build a transient cube-eye list without
+        // touching persistent NEARBY_LIGHT bits or fade clocks. The target
+        // projectors are pinned ahead of all other lights.
+        mNearbyLights.clear();
+        static LLCachedControl<S32> cine_local_light_count(
+            gSavedSettings, "RenderLocalLightCount", 256);
+        static LLCachedControl<F32> cine_light_scale(
+            gSavedSettings, "AlchemyGlobalLightScale", 1.f);
+        const S32 pinned_count = static_cast<S32>(
+            mReflectionMapManager.getCinematicLiveProbePinnedLightCount());
+        if (std::max((S32)cine_local_light_count, pinned_count) < 1)
+        {
+            return;
+        }
+
+        const LLVector3 cam_pos = camera.getOrigin();
+        const F32 max_dist = sRenderDeferred
+            ? llmin(RenderFarClip, camera.getFar())
+            : llmin(llmin(RenderFarClip, camera.getFar()),
+                    LIGHT_MAX_RADIUS * 4.f);
+        S32 pinned_order = 0;
+        for (LLDrawable* drawable : mLights)
+        {
+            LLVOVolume* light = drawable ? drawable->getVOVolume() : nullptr;
+            if (!light || !drawable->isState(LLDrawable::LIGHT) ||
+                light->isHUDAttachment() ||
+                mReflectionMapManager.isCinematicLiveProbeIgnoredLight(
+                    light->getID()))
+            {
+                continue;
+            }
+            if (light->isAttachment())
+            {
+                if (!sRenderAttachedLights)
+                {
+                    continue;
+                }
+                LLVOAvatar* avatar = light->getAvatar();
+                if (!bdmerge_should_render_light(
+                        true, avatar == gAgentAvatarp) ||
+                    (avatar && (avatar->isTooComplex() ||
+                                avatar->isInMuteList() ||
+                                avatar->isTooSlow())))
+                {
+                    continue;
+                }
+            }
+            else if (!light->isCineRigEmitter() &&
+                     !bdmerge_should_render_light(false, false))
+            {
+                continue;
+            }
+
+            const F32 light_radius = light->getLightRadius() * 1.5f;
+            const LLColor3 light_color =
+                light->getLightLinearColor() * (F32)cine_light_scale;
+            if (light_radius <= 0.001f ||
+                light_color.magVecSquared() < 0.001f)
+            {
+                continue;
+            }
+            LLVector4a center;
+            center.load3(drawable->getPositionAgent().mV);
+            LLVector4a radius;
+            radius.splat(light_radius);
+            const bool pinned =
+                mReflectionMapManager.isCinematicLiveProbePinnedLight(
+                    light->getID());
+            const bool is_spot = light->isLightSpotlight();
+            if (!pinned && !is_spot &&
+                camera.AABBInFrustumNoFarClip(center, radius) == 0)
+            {
+                continue;
+            }
+            const F32 dist = pinned ? -4096.f + pinned_order++
+                                    : calc_light_dist(light, cam_pos, max_dist);
+            if (pinned || dist < max_dist || is_spot)
+            {
+                mNearbyLights.insert(
+                    Light(drawable, dist, LIGHT_FADE_TIME));
+            }
+        }
         return;
     }
 
@@ -9625,6 +9732,32 @@ void LLPipeline::endPrismAuxiliaryState()
     mPrismAuxiliaryStateActive = false;
 }
 
+bool LLPipeline::beginCinematicProbeCapture()
+{
+    if (mCinematicProbeCaptureActive)
+    {
+        LL_WARNS("CineLightRig")
+            << "Rejected nested cinematic probe capture light scope"
+            << LL_ENDL;
+        return false;
+    }
+    mCinematicProbeCaptureActive = true;
+    mCinematicSavedNearbyLights = mNearbyLights;
+    mNearbyLights.clear();
+    return true;
+}
+
+void LLPipeline::endCinematicProbeCapture()
+{
+    if (!mCinematicProbeCaptureActive)
+    {
+        return;
+    }
+    mNearbyLights = mCinematicSavedNearbyLights;
+    mCinematicSavedNearbyLights.clear();
+    mCinematicProbeCaptureActive = false;
+}
+
 void LLPipeline::setupHWLights()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
@@ -9722,15 +9855,36 @@ void LLPipeline::setupHWLights()
     mLightMovingMask = 0;
 
     static LLCachedControl<S32> local_light_count(gSavedSettings, "RenderLocalLightCount", 256);
+    const S32 effective_local_light_count = std::max(
+        (S32)local_light_count,
+        mReflectionMapManager.isCinematicLiveProbeCapture()
+            ? static_cast<S32>(mReflectionMapManager
+                .getCinematicLiveProbePinnedLightCount())
+            : 0);
+    const bool cinematic_pinned_only =
+        mReflectionMapManager.isCinematicLiveProbeCapture() &&
+        (S32)local_light_count < 1;
 
-    if (local_light_count >= 1)
+    if (effective_local_light_count >= 1)
     {
+        S32 cinematic_light_count = 0;
         for (light_set_t::iterator iter = mNearbyLights.begin();
              iter != mNearbyLights.end(); ++iter)
         {
             LLDrawable* drawable = iter->drawable;
             LLVOVolume* light = drawable->getVOVolume();
             if (!light)
+            {
+                continue;
+            }
+            if (mReflectionMapManager.isCinematicLiveProbeIgnoredLight(
+                    light->getID()))
+            {
+                continue;
+            }
+            if (cinematic_pinned_only &&
+                !mReflectionMapManager.isCinematicLiveProbePinnedLight(
+                    light->getID()))
             {
                 continue;
             }
@@ -9754,6 +9908,12 @@ void LLPipeline::setupHWLights()
                      !bdmerge_should_render_light(false, false))
             {
                 continue;
+            }
+
+            if (mReflectionMapManager.isCinematicLiveProbeCapture() &&
+                ++cinematic_light_count > effective_local_light_count)
+            {
+                break;
             }
 
             if (drawable->isState(LLDrawable::ACTIVE))
@@ -14536,7 +14696,6 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
         // sample. Frame counter mirrors the per-cone PROJVOL_FRAME upload.
         gFroxelInjectProgram.uniform1i(LLShaderMgr::FROXEL_JITTER, temporal ? 1 : 0);
         gFroxelInjectProgram.uniform1f(LLShaderMgr::FROXEL_FRAME, (F32)(LLFrameTimer::getFrameCount() % 1024u));
-
         S32 mch = gFroxelInjectProgram.enableTexture(LLShaderMgr::FROXEL_MEDIA);
         if (mch > -1)
         {
@@ -14640,6 +14799,7 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
             VolumetricShaftOverride ov;
             const bool has_ov = getVolumetricShaftOverride(matched_id, ov);
             const F32 e_mult     = has_ov ? ov.multiplier   : BDMergeProjectorVolumetricsMultiplier;
+            const F32 e_max_dist = has_ov ? ov.maxDistance  : BDMergeProjectorVolumetricsMaxDistance;
             const F32 e_feather  = has_ov ? ov.feather      : BDMergeProjectorVolumetricsFeather;
             const F32 e_g        = has_ov ? ov.anisotropy   : BDMergeProjectorVolumetricsAnisotropy;
             const LLColor3 e_tint = has_ov ? ov.tint        : BDMergeProjectorVolumetricsTint;
@@ -14648,6 +14808,10 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
             gFroxelInjectProgram.uniform1f(LLShaderMgr::GODRAY_MULTIPLIER, e_mult);
             gFroxelInjectProgram.uniform1f(LLShaderMgr::PROJVOL_FEATHER, e_feather);
             gFroxelInjectProgram.uniform1f(LLShaderMgr::PROJVOL_G, e_g);
+            static const LLStaticHashedString sProjVolMaxDistance(
+                "projvol_max_distance");
+            gFroxelInjectProgram.uniform1f(
+                sProjVolMaxDistance, llclamp(e_max_dist, 0.f, 64.f));
 
             LLColor3 col = volume->getLightLinearColor() * light_scale;
             if (e_tintStr > 0.f) // shaft tint lerp (no-op at TintStrength 0), same as per-cone
@@ -15465,6 +15629,7 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target, bool aux_dire
 
         // Remaining per-cone override levers (brightness/feather/g/density/tint).
         const F32 e_mult     = has_ov ? ov.multiplier   : BDMergeProjectorVolumetricsMultiplier;
+        const F32 e_max_dist = has_ov ? ov.maxDistance  : BDMergeProjectorVolumetricsMaxDistance;
         const F32 e_feather  = has_ov ? ov.feather      : BDMergeProjectorVolumetricsFeather;
         const F32 e_g        = has_ov ? ov.anisotropy   : BDMergeProjectorVolumetricsAnisotropy;
         const F32 e_density  = has_ov ? ov.density       : BDMergeProjectorVolumetricsDensity;
@@ -15474,6 +15639,10 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target, bool aux_dire
         gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::GODRAY_MULTIPLIER, e_mult);
         gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FEATHER, e_feather);
         gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_G, e_g);
+        static const LLStaticHashedString sProjVolMaxDistance(
+            "projvol_max_distance");
+        gDeferredProjectorVolumetricProgram.uniform1f(
+            sProjVolMaxDistance, llclamp(e_max_dist, 0.f, 64.f));
         // [BDMerge F4] Per-cone media flattening when the froxel master is ON: the
         // shared atmosphere (density/height-fog/noise) now lives in the froxel grid,
         // so a per-cone march (hero cone or rim-only cone) marching its OWN fog on top
@@ -16059,6 +16228,8 @@ void LLPipeline::setVolumetricShaftOverride(const LLUUID& id, const VolumetricSh
     if (id.isNull())
         return;
     sVolumetricShaftOverrides[id] = ov;
+    gPipeline.mProjVolHistoryValid = false;
+    gPipeline.mFroxelHistoryValid = false;
     sVolumetricShaftObjects.insert(id); // capturing implies enabling the shaft
 }
 
@@ -16066,7 +16237,11 @@ void LLPipeline::clearVolumetricShaftOverride(const LLUUID& id)
 {
     auto it = sVolumetricShaftOverrides.find(id);
     if (it != sVolumetricShaftOverrides.end())
+    {
         sVolumetricShaftOverrides.erase(it);
+        gPipeline.mProjVolHistoryValid = false;
+        gPipeline.mFroxelHistoryValid = false;
+    }
 }
 
 bool LLPipeline::getVolumetricShaftOverride(const LLUUID& id, VolumetricShaftOverride& out)
@@ -17426,8 +17601,15 @@ void LLPipeline::renderDeferredLighting()
 
         static LLCachedControl<S32> local_light_count(gSavedSettings, "RenderLocalLightCount", 256);
         static LLCachedControl<S32> probe_level(gSavedSettings, "RenderReflectionProbeLevel", 0);
+        const S32 effective_local_light_count = std::max(
+            (S32)local_light_count,
+            mReflectionMapManager.isCinematicLiveProbeCapture()
+                ? static_cast<S32>(mReflectionMapManager
+                    .getCinematicLiveProbePinnedLightCount())
+                : 0);
 
-        if (local_light_count > 0 && (!gCubeSnapshot || probe_level > 0))
+        if (effective_local_light_count > 0 &&
+            (!gCubeSnapshot || probe_level > 0))
         {
             static std::vector<LLVector4>        fullscreen_lights;
             static LLDrawable::drawable_vector_t spot_lights;
@@ -17466,15 +17648,20 @@ void LLPipeline::renderDeferredLighting()
                 S32 count = 0;
                 for (light_set_t::iterator iter = mNearbyLights.begin(); iter != mNearbyLights.end(); ++iter)
                 {
-                    count++;
-                    if (count > local_light_count)
-                    { //stop collecting lights once we hit the limit
-                        break;
-                    }
-
                     LLDrawable * drawablep = iter->drawable;
                     LLVOVolume * volume = drawablep->getVOVolume();
                     if (!volume)
+                    {
+                        continue;
+                    }
+
+                    // A cinematic live probe captures the four authored rig
+                    // projectors, but not the target rig's synthetic bounce or
+                    // eye catchlight. Baking those helpers into irradiance would
+                    // double-count fill when the probe is applied.
+                    if (gCubeSnapshot &&
+                        mReflectionMapManager.isCinematicLiveProbeIgnoredLight(
+                            volume->getID()))
                     {
                         continue;
                     }
@@ -17498,6 +17685,12 @@ void LLPipeline::renderDeferredLighting()
                              !bdmerge_should_render_light(false, false))
                     {
                         continue;
+                    }
+
+                    count++;
+                    if (count > effective_local_light_count)
+                    { //stop collecting lights once we hit the effective limit
+                        break;
                     }
 
                     LLVector4a center;

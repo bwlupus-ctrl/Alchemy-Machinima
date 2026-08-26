@@ -747,6 +747,34 @@ vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored
                       + rim_core * (0.22 + 0.28 * heartbeat)
                       + 0.08 * crawl * rim_wide);
     }
+    else if (actorFxLook == 33) // Live: Seraph
+    {
+        float rim_wide = smoothstep(0.05, 0.72, edge);
+        float rim_core = smoothstep(0.40, 0.95, edge);
+        float top = smoothstep(-0.10, 0.80, n.y);
+        vec3 halo = mix(vec3(1.00, 0.86, 0.55), actorFxTint, 0.20);
+        fx = source * (0.72 + 0.10 * top)
+           + halo * (0.35 * rim_wide + 1.20 * rim_core * (0.5 + 0.5 * top));
+    }
+    else if (actorFxLook == 34) // Live: Interrogation
+    {
+        float rim_core = smoothstep(0.48, 0.92, edge);
+        float key = smoothstep(-0.15, 0.60, n.x);
+        float shadow = 1.0 - key;
+        vec3 lit = mix(vec3(lum), source, 0.5) * (0.40 + 1.20 * key);
+        fx = lit * (1.0 - 0.85 * shadow) + actorFxTint * (0.60 * rim_core);
+    }
+    else if (actorFxLook == 35) // Live: Wraith
+    {
+        float rim_wide = smoothstep(0.05, 0.72, edge);
+        float rim_core = smoothstep(0.45, 0.95, edge);
+        float flick = 0.70 + 0.30 * sin(actorFxTime * 6.0 + position_eye.y * 3.0);
+        float crawl = 0.5 + 0.5 * sin(position_eye.y * 9.0 - actorFxTime * 1.6);
+        vec3 spectral = mix(vec3(0.15, 1.00, 0.55), actorFxTint, 0.15);
+        vec3 body = mix(vec3(lum) * vec3(0.20, 0.42, 0.28), source, 0.22) * 0.5;
+        fx = body + spectral * flick
+           * (0.22 * rim_wide + 0.95 * rim_core + 0.10 * crawl * rim_wide);
+    }
 
     // Ghost Studio adds restrained cues after the style so flat-tint looks
     // still reveal the selected distortion. Native textured looks keep their
@@ -1021,6 +1049,22 @@ vec3 actorFxPbrSyntheticEmission(vec3 authored_source,
         float scan_peak = smoothstep(0.72, 1.0, band);
         emission = tint * (edge * 1.2 + scan_peak * 0.14)
                  * 0.22 * emission_scale;
+    }
+    else if (actorFxLook == 33) // Live: Seraph
+    {
+        float top = smoothstep(-0.10, 0.80, n.y);
+        vec3 halo = actor_fx_pbr_palette(mix(vec3(1.00, 0.86, 0.55), actorFxTint, 0.20));
+        emission = halo * (edge * 0.90 + 0.35) * top * 0.22 * emission_scale;
+    }
+    else if (actorFxLook == 34) // Live: Interrogation (no synthetic emission)
+    {
+        emission = vec3(0.0);
+    }
+    else if (actorFxLook == 35) // Live: Wraith
+    {
+        float flick = 0.70 + 0.30 * sin(actorFxTime * 6.0 + position_eye.y * 3.0);
+        vec3 spectral = actor_fx_pbr_palette(mix(vec3(0.15, 1.00, 0.55), actorFxTint, 0.15));
+        emission = spectral * edge * 0.40 * flick * emission_scale;
     }
     else // 30: Live Bass Sweep
     {
@@ -1449,6 +1493,33 @@ vec3 actorFxPbrPostLight(vec3 lit_color, vec3 authored_source,
              * (under * (0.26 + 1.25 * heartbeat)
                 + rim_core * (0.22 + 0.28 * heartbeat)
                 + 0.08 * crawl * rim_wide);
+    }
+    else if (actorFxLook == 33) // Live: Seraph
+    {
+        float top = smoothstep(-0.10, 0.80, n.y);
+        vec3 halo = actor_fx_pbr_palette(mix(vec3(1.00, 0.86, 0.55), actorFxTint, 0.20));
+        fx = source * (0.72 + 0.10 * top)
+           + halo * hdr_scale
+             * (0.35 * rim_wide + 1.20 * rim_core * (0.5 + 0.5 * top));
+    }
+    else if (actorFxLook == 34) // Live: Interrogation
+    {
+        float key = smoothstep(-0.15, 0.60, n.x);
+        float shadow = 1.0 - key;
+        vec3 lit = mix(actor_fx_pbr_palette(vec3(lum)) * hdr_scale, source, 0.5)
+                 * (0.40 + 1.20 * key);
+        fx = lit * (1.0 - 0.85 * shadow) + actorFxTint * hdr_scale * (0.60 * rim_core);
+    }
+    else if (actorFxLook == 35) // Live: Wraith
+    {
+        float flick = 0.70 + 0.30 * sin(actorFxTime * 6.0 + position_eye.y * 3.0);
+        float crawl = 0.5 + 0.5 * sin(position_eye.y * 9.0 - actorFxTime * 1.6);
+        vec3 spectral = actor_fx_pbr_palette(mix(vec3(0.15, 1.00, 0.55), actorFxTint, 0.15));
+        vec3 body = mix(actor_fx_pbr_palette(
+            clamp(vec3(lum) * vec3(0.20, 0.42, 0.28), 0.0, 1.0)) * hdr_scale,
+            source, 0.22) * 0.5;
+        fx = body + spectral * hdr_scale * flick
+           * (0.22 * rim_wide + 0.95 * rim_core + 0.10 * crawl * rim_wide);
     }
 
     // UV displacement and RGB side taps were already applied to the authored

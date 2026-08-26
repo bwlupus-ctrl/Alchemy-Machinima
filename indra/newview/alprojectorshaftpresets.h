@@ -17,6 +17,10 @@ enum Preset : S32
     BALANCED,
     CINEMATIC,
     HAZY_STAGE,
+    CLEAR_AIR,
+    SEARCHLIGHT,
+    DUST_STORM,
+    DREAM_MIST,
 };
 
 void apply(S32 preset);

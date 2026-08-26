@@ -318,6 +318,55 @@
       <key>Type</key><string>LLSD</string>
       <key>Value</key><map />
     </map>
+    <key>CineLightRigLiveProbeEnabled</key>
+    <map>
+      <key>Comment</key><string>Enable the single client-only cinematic live reflection probe</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigLiveProbeTarget</key>
+    <map>
+      <key>Comment</key><string>Rig slot followed by the cinematic live probe (0 Self, 1 A, 2 B, 3 C, 4 D)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigLiveProbeRadius</key>
+    <map>
+      <key>Comment</key><string>Spherical cinematic live-probe influence radius in metres</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>3.0</real>
+    </map>
+    <key>CineLightRigLiveProbeOffsetZ</key>
+    <map>
+      <key>Comment</key><string>Vertical offset from the followed rig centre to the cinematic live probe in metres</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
+    <key>CineLightRigLiveProbeAmbiance</key>
+    <map>
+      <key>Comment</key><string>Reflection-probe ambiance strength for the cinematic live probe</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.0</real>
+    </map>
+    <key>CineLightRigLiveProbeReplaceBounce</key>
+    <map>
+      <key>Comment</key><string>Crossfade the followed rig's synthetic bounce omnis out as the cinematic live probe fades in</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>1</integer>
+    </map>
+    <key>CineLightRigLiveProbeGizmo</key>
+    <map>
+      <key>Comment</key><string>Draw the cinematic live probe influence sphere</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
     <key>CineLightRigKeyYaw</key>
     <map>
       <key>Comment</key><string>KEY pristine yaw in degrees</string>
@@ -15893,6 +15942,17 @@
       <string>F32</string>
       <key>Value</key>
       <real>1.0</real>
+  </map>
+  <key>BDMergeProjectorVolumetricsMaxDistance</key>
+  <map>
+      <key>Comment</key>
+      <string>[BDMerge Projector Shafts] Maximum visible airborne shaft length in metres (0-64; default 0 = follow the projector's full light range). This clips only volumetric scattering along the projector axis; the projector still illuminates surfaces at its normal radius and surface rim lighting is unchanged.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
   </map>
   <key>BDMergeProjectorVolumetricsAnisotropy</key>
   <map>

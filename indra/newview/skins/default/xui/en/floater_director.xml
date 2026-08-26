@@ -1239,7 +1239,7 @@
                 <panel
                  background_visible="false"
                  follows="left|top|right"
-                 height="1360"
+                 height="1392"
                  layout="topleft"
                  left="0"
                  name="projector_volumetrics_scroll_content"
@@ -1255,12 +1255,16 @@
              value="Projector Volumetrics"
              width="330" />
             <text follows="left|top" height="15" layout="topleft" left="12" top="42" value="Preset:" width="54" />
-            <combo_box follows="left|top" height="22" layout="topleft" left="70" name="director_ps_preset" top="36" tool_tip="Apply a complete projector-shaft starting point; any later control can be adjusted independently." width="254">
+            <combo_box follows="left|top" height="22" layout="topleft" left="70" name="director_ps_preset" top="36" tool_tip="Apply a complete Projector Shafts + Froxel Air atmosphere look; this replaces the matching Froxel Air density, ambient, noise, fog, and wind settings." width="254">
                 <combo_box.item label="Custom" name="director_ps_preset_custom" value="-1" />
                 <combo_box.item label="Fast Preview" name="director_ps_preset_fast" value="0" />
                 <combo_box.item label="Balanced" name="director_ps_preset_balanced" value="1" />
                 <combo_box.item label="Cinematic" name="director_ps_preset_cinematic" value="2" />
                 <combo_box.item label="Hazy Stage" name="director_ps_preset_hazy" value="3" />
+                <combo_box.item label="Clear Air" name="director_ps_preset_clear" value="4" />
+                <combo_box.item label="Searchlight" name="director_ps_preset_searchlight" value="5" />
+                <combo_box.item label="Dust Storm" name="director_ps_preset_dust_storm" value="6" />
+                <combo_box.item label="Dream Mist" name="director_ps_preset_dream_mist" value="7" />
             </combo_box>
             <check_box
              control_name="BDMergeProjectorVolumetrics"
@@ -1430,20 +1434,23 @@
             <text follows="left|top" height="16" layout="topleft" left="12" top="1130" value="Bloom halo:" width="120" />
             <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsBloomFeed" decimal_digits="2" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.01" layout="topleft" left="136" max_val="2" min_val="0" name="director_ps_bloom_feed" show_text="true" top="1126" width="188" />
             <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsBloomFeed" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_bloom_feed_reset" top="1127" tool_tip="Reset to default value" width="18" />
+            <text follows="left|top" height="16" layout="topleft" left="12" top="1162" value="Shaft length (m):" width="120" />
+            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsMaxDistance" decimal_digits="1" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.5" layout="topleft" left="136" max_val="64" min_val="0" name="director_ps_max_distance" show_text="true" top="1158" tool_tip="Maximum visible airborne beam length. 0 follows the projector's full light range; surface illumination is unchanged." width="188" />
+            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsMaxDistance" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_max_distance_reset" top="1159" tool_tip="Reset to full projector range" width="18" />
 
-            <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="10" top="1162" value="Shadow Quality (Batch 2)" width="330" />
-            <check_box control_name="BDMergeSoftProjectorShadows" follows="left|top" height="18" label="Soft projector shadows (contact-hardening + fill)" layout="topleft" left="12" tool_tip="Widen projector shadow softness with receiver distance and add an ambient fill floor." top="1190" width="330" />
-            <text follows="left|top" height="16" layout="topleft" left="12" top="1216" value="Softness:" width="120" />
-            <slider can_edit_text="true" control_name="BDMergeSoftShadowSoftness" decimal_digits="1" enabled_control="BDMergeSoftProjectorShadows" follows="left|top" height="20" increment="0.1" layout="topleft" left="136" max_val="16" min_val="0" name="director_ps_softness" show_text="true" top="1212" width="188" />
-            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeSoftShadowSoftness" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_softness_reset" top="1213" tool_tip="Reset to default value" width="18" />
-            <text follows="left|top" height="16" layout="topleft" left="12" top="1248" value="Max penumbra:" width="120" />
-            <slider can_edit_text="true" control_name="BDMergeSoftShadowMaxPenumbra" decimal_digits="1" enabled_control="BDMergeSoftProjectorShadows" follows="left|top" height="20" increment="0.5" layout="topleft" left="136" max_val="16" min_val="1" name="director_ps_max_penumbra" show_text="true" top="1244" width="188" />
-            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeSoftShadowMaxPenumbra" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_max_penumbra_reset" top="1245" tool_tip="Reset to default value" width="18" />
-            <text follows="left|top" height="16" layout="topleft" left="12" top="1280" value="Ambient fill:" width="120" />
-            <slider can_edit_text="true" control_name="BDMergeSoftShadowFill" decimal_digits="2" enabled_control="BDMergeSoftProjectorShadows" follows="left|top" height="20" increment="0.01" layout="topleft" left="136" max_val="1" min_val="0" name="director_ps_ambient_fill" show_text="true" top="1276" width="188" />
-            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeSoftShadowFill" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_ambient_fill_reset" top="1277" tool_tip="Reset to default value" width="18" />
-            <check_box control_name="BDMergeSoftShadowSun" enabled_control="BDMergeSoftProjectorShadows" follows="left|top" height="18" label="Also soften sun/moon shadows" layout="topleft" left="12" top="1308" width="330" />
-            <check_box control_name="BDMergeGoboAnisotropic" follows="left|top" height="18" label="Gobo anisotropic/mip filtering (anti-alias)" layout="topleft" left="12" tool_tip="Filter projector cookies so gobos stay crisp at distance and grazing angles." top="1334" width="330" />
+            <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="10" top="1194" value="Shadow Quality (Batch 2)" width="330" />
+            <check_box control_name="BDMergeSoftProjectorShadows" follows="left|top" height="18" label="Soft projector shadows (contact-hardening + fill)" layout="topleft" left="12" tool_tip="Widen projector shadow softness with receiver distance and add an ambient fill floor." top="1222" width="330" />
+            <text follows="left|top" height="16" layout="topleft" left="12" top="1248" value="Softness:" width="120" />
+            <slider can_edit_text="true" control_name="BDMergeSoftShadowSoftness" decimal_digits="1" enabled_control="BDMergeSoftProjectorShadows" follows="left|top" height="20" increment="0.1" layout="topleft" left="136" max_val="16" min_val="0" name="director_ps_softness" show_text="true" top="1244" width="188" />
+            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeSoftShadowSoftness" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_softness_reset" top="1245" tool_tip="Reset to default value" width="18" />
+            <text follows="left|top" height="16" layout="topleft" left="12" top="1280" value="Max penumbra:" width="120" />
+            <slider can_edit_text="true" control_name="BDMergeSoftShadowMaxPenumbra" decimal_digits="1" enabled_control="BDMergeSoftProjectorShadows" follows="left|top" height="20" increment="0.5" layout="topleft" left="136" max_val="16" min_val="1" name="director_ps_max_penumbra" show_text="true" top="1276" width="188" />
+            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeSoftShadowMaxPenumbra" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_max_penumbra_reset" top="1277" tool_tip="Reset to default value" width="18" />
+            <text follows="left|top" height="16" layout="topleft" left="12" top="1312" value="Ambient fill:" width="120" />
+            <slider can_edit_text="true" control_name="BDMergeSoftShadowFill" decimal_digits="2" enabled_control="BDMergeSoftProjectorShadows" follows="left|top" height="20" increment="0.01" layout="topleft" left="136" max_val="1" min_val="0" name="director_ps_ambient_fill" show_text="true" top="1308" width="188" />
+            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeSoftShadowFill" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_ambient_fill_reset" top="1309" tool_tip="Reset to default value" width="18" />
+            <check_box control_name="BDMergeSoftShadowSun" enabled_control="BDMergeSoftProjectorShadows" follows="left|top" height="18" label="Also soften sun/moon shadows" layout="topleft" left="12" top="1340" width="330" />
+            <check_box control_name="BDMergeGoboAnisotropic" follows="left|top" height="18" label="Gobo anisotropic/mip filtering (anti-alias)" layout="topleft" left="12" tool_tip="Filter projector cookies so gobos stay crisp at distance and grazing angles." top="1366" width="330" />
                 </panel>
             </scroll_container>
         </panel>
@@ -1469,7 +1476,7 @@
              width="374">
                 <panel
                  background_visible="false"
-                 height="2522"
+                 height="2700"
                  layout="topleft"
                  left="0"
                  name="cine_light_rig_scroll_content"
@@ -1479,7 +1486,7 @@
                      class="panel_cine_light_rig"
                      filename="panel_cine_light_rig.xml"
                      follows="left|top"
-                      height="2512"
+                      height="2690"
                      layout="topleft"
                      left="2"
                      name="cine_light_rig_embedded"
@@ -1737,6 +1744,9 @@
                         <combo_box.item label="Bass Sweep" name="actor_st_bass_sweep" value="30" />
                         <combo_box.item label="Moonlit" name="actor_st_moonlit" value="31" />
                         <combo_box.item label="Possessed" name="actor_st_possessed" value="32" />
+                        <combo_box.item label="Seraph" name="actor_st_seraph" value="33" />
+                        <combo_box.item label="Interrogation" name="actor_st_interrogation" value="34" />
+                        <combo_box.item label="Wraith" name="actor_st_wraith" value="35" />
                     </combo_box>
                     <check_box
                      follows="left|top"

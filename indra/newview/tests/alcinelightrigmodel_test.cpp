@@ -795,7 +795,8 @@ void cine_light_rig_model_object::test<6>()
     const S32 random_fx[] = {
         1, 2, 5, 6, 9, 11, 13, 14, 17, 20, 25, 27, 30, 31,
         33, 34, 35, 37, 41, 42, 43, 44, 48,
-        50, 51, 52, 53, 54, 56, 58, 59
+        50, 51, 52, 53, 54, 56, 58, 59,
+        68, 70
     };
     for (S32 fx : random_fx)
     {
@@ -966,8 +967,8 @@ void cine_light_rig_model_object::test<9>()
 
     ensure_equals("profile row count", PROFILE_COUNT, 24);
     ensure_equals("beam row count", BEAM_COUNT, 3);
-    ensure_equals("FX name row count", FX_COUNT, 67);
-    ensure_equals("FX interval row count", FX_COUNT, 67);
+    ensure_equals("FX name row count", FX_COUNT, 71);
+    ensure_equals("FX interval row count", FX_COUNT, 71);
 
     for (S32 i = 0; i < PROFILE_COUNT; ++i)
     {
@@ -1054,6 +1055,7 @@ void cine_light_rig_model_object::test<9>()
         "Build & Drop", "Biolume Tide", "Mount Doom", "Vaporwave Sunset",
         "Carousel Waltz", "Five Tones", "Candy Orbit", "Rimwave",
         "Afterhours Drift", "Something Behind You",
+        "Slow Dance", "Seance Circle", "Strobe Runway", "Ember Wind",
     };
     for (S32 i = 0; i < FX_COUNT; ++i)
     {
@@ -1071,6 +1073,7 @@ void cine_light_rig_model_object::test<9>()
         0.125f, 0.05f, 0.10f, 0.05f, 0.10f, 0.10f, 0.10f, 0.05f,
         0.10f, 0.20f, 0.20f, 0.25f, 0.10f, 0.15f,
         0.10f, 0.10f, 0.20f, 0.10f,
+        0.25f, 0.15f, 0.06f, 0.10f,
     };
     for (S32 i = 0; i < FX_COUNT; ++i)
     {
@@ -3491,5 +3494,80 @@ void cine_light_rig_model_object::test<51>()
             }
         }
     }
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<52>()
+{
+    set_test_name("live probe crossfades only its target rig bounce");
+    using ALCineLightRigManagerModel::liveProbeBounceScale;
+
+    ensure_equals("disabled probe preserves bounce",
+        liveProbeBounceScale(false, true, true, 1.f), 1.f);
+    ensure_equals("replacement opt-out preserves bounce",
+        liveProbeBounceScale(true, false, true, 1.f), 1.f);
+    ensure_equals("non-target rig preserves bounce",
+        liveProbeBounceScale(true, true, false, 1.f), 1.f);
+    ensure_equals("cold probe preserves bounce",
+        liveProbeBounceScale(true, true, true, 0.f), 1.f);
+    ensure_equals("half-ready probe halves synthetic bounce",
+        liveProbeBounceScale(true, true, true, 0.5f), 0.5f);
+    ensure_equals("ready probe fully replaces synthetic bounce",
+        liveProbeBounceScale(true, true, true, 1.f), 0.f);
+    ensure_equals("fade clamps below zero",
+        liveProbeBounceScale(true, true, true, -1.f), 1.f);
+    ensure_equals("fade clamps above one",
+        liveProbeBounceScale(true, true, true, 2.f), 0.f);
+    ensure_equals("non-finite fade fails open",
+        liveProbeBounceScale(true, true, true,
+            std::numeric_limits<F32>::quiet_NaN()), 1.f);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<53>()
+{
+    set_test_name("live probe scene codec is atomic and preset-independent");
+    using namespace ALCineLightRigManagerModel;
+
+    LiveProbeConfig authored;
+    authored.mEnabled = true;
+    authored.mTarget = 3;
+    authored.mRadius = 7.5f;
+    authored.mOffsetZ = -0.75f;
+    authored.mAmbiance = 1.25f;
+    authored.mReplaceBounce = false;
+    authored.mGizmo = true;
+
+    LiveProbeConfig decoded;
+    ensure("complete scene block decodes",
+        liveProbeConfigFromLLSD(liveProbeConfigToLLSD(authored), decoded));
+    ensure("enabled round-trips", decoded.mEnabled);
+    ensure_equals("target round-trips", decoded.mTarget, 3);
+    ensure_equals("radius round-trips", decoded.mRadius, 7.5f);
+    ensure_equals("offset round-trips", decoded.mOffsetZ, -0.75f);
+    ensure_equals("ambiance round-trips", decoded.mAmbiance, 1.25f);
+    ensure("replacement opt-out round-trips", !decoded.mReplaceBounce);
+    ensure("gizmo round-trips", decoded.mGizmo);
+
+    decoded = authored;
+    ensure("absent legacy block migrates cleanly",
+        liveProbeConfigFromLLSD(LLSD(), decoded));
+    ensure("legacy migration disables probe", !decoded.mEnabled);
+    ensure_equals("legacy migration restores radius default",
+        decoded.mRadius, 3.f);
+
+    LLSD malformed = liveProbeConfigToLLSD(authored);
+    malformed["radius"] = "invalid";
+    decoded = authored;
+    ensure("malformed block is rejected atomically",
+        !liveProbeConfigFromLLSD(malformed, decoded));
+    ensure("rejected block cannot retain prior enable", !decoded.mEnabled);
+    ensure_equals("rejected block cannot retain prior radius",
+        decoded.mRadius, 3.f);
+
+    const LLSD rig_blob = ALCineLightRigParamBlob().toLLSD();
+    ensure("rig Setup/instance payload excludes scene-level probe",
+        !rig_blob.has("live_probe") &&
+        !rig_blob.has("CineLightRigLiveProbeEnabled"));
 }
 } // namespace tut

@@ -13,13 +13,22 @@
 
 #include "llagent.h"
 #include "llagentcamera.h"
+#include "llapp.h"
 #include "lldirectorcast.h"
+#include "lldrawable.h"
 #include "llgl.h"
+#include "llreflectionmap.h"
+#include "llrender.h"
 #include "llviewercontrol.h"
 #include "llviewercamera.h"
 #include "llviewerobject.h"
 #include "llviewerobjectlist.h"
+#include "llviewerregion.h"
+#include "llviewershadermgr.h"
 #include "llvoavatar.h"
+#include "llvolume.h"
+#include "llvolumemgr.h"
+#include "llvovolume.h"
 #include "pipeline.h"
 
 #include <algorithm>
@@ -35,6 +44,63 @@ using namespace ALCineLightRigManagerModel;
 
 constexpr char INSTANCE_SETTING[] = "CineLightRigInstances";
 constexpr S32 INSTANCE_STORE_VERSION = 1;
+constexpr S32 LIVE_PROBE_RETRY_TICKS = 60;
+constexpr F32 LIVE_PROBE_RADIUS_MIN = 0.5f;
+constexpr F32 LIVE_PROBE_RADIUS_MAX = 32.f;
+constexpr F32 LIVE_PROBE_OFFSET_MIN = -5.f;
+constexpr F32 LIVE_PROBE_OFFSET_MAX = 5.f;
+constexpr F32 LIVE_PROBE_AMBIANCE_MIN = 0.f;
+constexpr F32 LIVE_PROBE_AMBIANCE_MAX = 8.f;
+constexpr F32 LIVE_PROBE_NEAR_CLIP = 0.1f;
+constexpr S32 LIVE_PROBE_GIZMO_SEGMENTS = 48;
+
+F32 liveProbeSetting(F32 value, F32 minimum, F32 maximum, F32 fallback)
+{
+    return std::isfinite(value) ? std::clamp(value, minimum, maximum)
+                                : fallback;
+}
+
+ALCineLightRigManagerModel::LiveProbeConfig liveProbeConfigFromSettings()
+{
+    using ALCineLightRigManagerModel::LiveProbeConfig;
+    LiveProbeConfig config;
+    config.mEnabled =
+        gSavedSettings.getBOOL("CineLightRigLiveProbeEnabled");
+    config.mTarget =
+        gSavedSettings.getS32("CineLightRigLiveProbeTarget");
+    config.mRadius =
+        gSavedSettings.getF32("CineLightRigLiveProbeRadius");
+    config.mOffsetZ =
+        gSavedSettings.getF32("CineLightRigLiveProbeOffsetZ");
+    config.mAmbiance =
+        gSavedSettings.getF32("CineLightRigLiveProbeAmbiance");
+    config.mReplaceBounce =
+        gSavedSettings.getBOOL("CineLightRigLiveProbeReplaceBounce");
+    config.mGizmo =
+        gSavedSettings.getBOOL("CineLightRigLiveProbeGizmo");
+    return ALCineLightRigManagerModel::sanitizeLiveProbeConfig(config);
+}
+
+void liveProbeConfigToSettings(
+    const ALCineLightRigManagerModel::LiveProbeConfig& input)
+{
+    const auto config =
+        ALCineLightRigManagerModel::sanitizeLiveProbeConfig(input);
+    gSavedSettings.setBOOL(
+        "CineLightRigLiveProbeEnabled", config.mEnabled);
+    gSavedSettings.setS32(
+        "CineLightRigLiveProbeTarget", config.mTarget);
+    gSavedSettings.setF32(
+        "CineLightRigLiveProbeRadius", config.mRadius);
+    gSavedSettings.setF32(
+        "CineLightRigLiveProbeOffsetZ", config.mOffsetZ);
+    gSavedSettings.setF32(
+        "CineLightRigLiveProbeAmbiance", config.mAmbiance);
+    gSavedSettings.setBOOL(
+        "CineLightRigLiveProbeReplaceBounce", config.mReplaceBounce);
+    gSavedSettings.setBOOL(
+        "CineLightRigLiveProbeGizmo", config.mGizmo);
+}
 
 bool validSlotValue(S32 value)
 {
@@ -336,6 +402,220 @@ const ALCineLightRig& ALCineLightRigManager::at(Slot slot) const
     return mInstances[validSlot(slot) ? slotIndex(slot) : 0];
 }
 
+F32 ALCineLightRigManager::liveProbeFade() const
+{
+    const S32 configured_target = std::clamp(
+        gSavedSettings.getS32("CineLightRigLiveProbeTarget"), 0,
+        SLOT_COUNT - 1);
+    if (!gSavedSettings.getBOOL("CineLightRigLiveProbeEnabled") ||
+        mLiveProbe.isNull() || mLiveProbe->isDead() ||
+        mLiveProbeTarget != static_cast<Slot>(configured_target) ||
+        mLiveProbe->mReflectionProbe.isNull() ||
+        !mLiveProbe->mReflectionProbe->mComplete)
+    {
+        return 0.f;
+    }
+    return std::clamp(mLiveProbe->mReflectionProbe->mFadeIn, 0.f, 1.f);
+}
+
+ALCineLightRigManager::LiveProbeState
+ALCineLightRigManager::liveProbeState() const
+{
+    if (!gSavedSettings.getBOOL("CineLightRigLiveProbeEnabled"))
+    {
+        return LiveProbeState::DISABLED;
+    }
+    if (!LLPipeline::sReflectionProbesEnabled ||
+        gGLManager.mGLVersion < 4.05f ||
+        gSavedSettings.getS32("RenderReflectionProbeLevel") <= 0 ||
+        gSavedSettings.getU32("RenderReflectionProbeCount") < 2)
+    {
+        return LiveProbeState::UNAVAILABLE;
+    }
+    const Slot target = static_cast<Slot>(std::clamp(
+        gSavedSettings.getS32("CineLightRigLiveProbeTarget"), 0,
+        SLOT_COUNT - 1));
+    LLVector3d centre;
+    if (!isSlotEnabled(target) || !at(target).liveProbeCentre(centre))
+    {
+        return LiveProbeState::WAITING_FOR_TARGET;
+    }
+    return liveProbeFade() >= 1.f
+        ? LiveProbeState::LIVE : LiveProbeState::WARMING;
+}
+
+F32 ALCineLightRigManager::liveProbeBounceScaleFor(Slot slot) const
+{
+    const Slot target = static_cast<Slot>(std::clamp(
+        gSavedSettings.getS32("CineLightRigLiveProbeTarget"), 0,
+        SLOT_COUNT - 1));
+    return ALCineLightRigManagerModel::liveProbeBounceScale(
+        gSavedSettings.getBOOL("CineLightRigLiveProbeEnabled"),
+        gSavedSettings.getBOOL("CineLightRigLiveProbeReplaceBounce"),
+        slot == target && mLiveProbeTarget == target, liveProbeFade());
+}
+
+void ALCineLightRigManager::destroyLiveProbe()
+{
+    gPipeline.mReflectionMapManager.setCinematicLiveProbe(nullptr);
+    LLPointer<LLVOVolume> dying = mLiveProbe;
+    mLiveProbe = nullptr;
+    mLiveProbeRegion = nullptr;
+    mLiveProbeTarget = Slot::COUNT;
+    if (dying.notNull() && !dying->isDead())
+    {
+        dying->setIsReflectionProbe(false);
+        dying->markDead();
+    }
+}
+
+bool ALCineLightRigManager::ensureLiveProbe()
+{
+    LLViewerRegion* region = gAgent.getRegion();
+    if (!region || LLApp::isExiting() ||
+        !LLPipeline::sReflectionProbesEnabled ||
+        gGLManager.mGLVersion < 4.05f ||
+        gSavedSettings.getS32("RenderReflectionProbeLevel") <= 0 ||
+        gSavedSettings.getU32("RenderReflectionProbeCount") < 2)
+    {
+        destroyLiveProbe();
+        return false;
+    }
+    if (mLiveProbe.notNull() && !mLiveProbe->isDead() &&
+        mLiveProbeRegion == region && mLiveProbe->mReflectionProbe.notNull())
+    {
+        return true;
+    }
+
+    destroyLiveProbe();
+    LLViewerObject* object = gObjectList.createObjectViewer(
+        LL_PCODE_VOLUME, region);
+    LLVOVolume* volume = dynamic_cast<LLVOVolume*>(object);
+    if (!volume)
+    {
+        if (object)
+        {
+            object->markDead();
+        }
+        return false;
+    }
+
+    volume->mbCanSelect = false;
+    volume->mIsLocalOnly = true;
+    volume->mLocalObjectKind = LLViewerObject::LOCAL_OBJECT_CINE_RIG_PROBE;
+    volume->setFlagsWithoutUpdate(
+        FLAGS_OBJECT_YOU_OWNER | FLAGS_OBJECT_MODIFY | FLAGS_OBJECT_MOVE |
+        FLAGS_OBJECT_COPY | FLAGS_OBJECT_TRANSFER, true);
+    gPipeline.createObject(volume);
+    volume->setLOD(LLVolumeLODGroup::NUM_LODS - 1);
+
+    LLVolumeParams params;
+    params.setType(LL_PCODE_PROFILE_SQUARE, LL_PCODE_PATH_LINE);
+    params.setBeginAndEndS(0.f, 1.f);
+    params.setBeginAndEndT(0.f, 1.f);
+    params.setRatio(1.f, 1.f);
+    params.setShear(0.f, 0.f);
+    if (!volume->setVolume(params, LLVolumeLODGroup::NUM_LODS - 1, true))
+    {
+        volume->markDead();
+        return false;
+    }
+
+    volume->setIsLight(false);
+    volume->setScale(LLVector3(1.f, 1.f, 1.f), false);
+    volume->setIsReflectionProbe(true);
+    volume->setReflectionProbeIsBox(false);
+    volume->setReflectionProbeIsDynamic(false);
+    volume->setReflectionProbeIsMirror(false);
+    volume->setReflectionProbeNearClip(LIVE_PROBE_NEAR_CLIP);
+    if (volume->mReflectionProbe.isNull())
+    {
+        volume->setIsReflectionProbe(false);
+        volume->markDead();
+        return false;
+    }
+    if (volume->mDrawable.notNull())
+    {
+        volume->mDrawable->setState(LLDrawable::FORCE_INVISIBLE);
+    }
+    mLiveProbe = volume;
+    mLiveProbeRegion = region;
+    return true;
+}
+
+void ALCineLightRigManager::updateLiveProbe()
+{
+    if (!gSavedSettings.getBOOL("CineLightRigLiveProbeEnabled") ||
+        LLApp::isExiting())
+    {
+        destroyLiveProbe();
+        mLiveProbeRetryTicks = 0;
+        return;
+    }
+
+    const Slot target = static_cast<Slot>(std::clamp(
+        gSavedSettings.getS32("CineLightRigLiveProbeTarget"), 0,
+        SLOT_COUNT - 1));
+    LLVector3d centre;
+    if (!isSlotEnabled(target) || !at(target).liveProbeCentre(centre))
+    {
+        destroyLiveProbe();
+        mLiveProbeRetryTicks = 0;
+        return;
+    }
+    if (mLiveProbeTarget != Slot::COUNT && mLiveProbeTarget != target)
+    {
+        destroyLiveProbe();
+        mLiveProbeRetryTicks = 0;
+    }
+    if (mLiveProbeRegion && mLiveProbeRegion != gAgent.getRegion())
+    {
+        destroyLiveProbe();
+        mLiveProbeRetryTicks = 0;
+    }
+
+    if (mLiveProbeRetryTicks > 0)
+    {
+        --mLiveProbeRetryTicks;
+        return;
+    }
+    if (!ensureLiveProbe())
+    {
+        mLiveProbeRetryTicks = LIVE_PROBE_RETRY_TICKS;
+        return;
+    }
+
+    mLiveProbeTarget = target;
+    const F32 radius = liveProbeSetting(
+        gSavedSettings.getF32("CineLightRigLiveProbeRadius"),
+        LIVE_PROBE_RADIUS_MIN, LIVE_PROBE_RADIUS_MAX, 3.f);
+    const F32 offset_z = liveProbeSetting(
+        gSavedSettings.getF32("CineLightRigLiveProbeOffsetZ"),
+        LIVE_PROBE_OFFSET_MIN, LIVE_PROBE_OFFSET_MAX, 0.f);
+    const F32 ambiance = liveProbeSetting(
+        gSavedSettings.getF32("CineLightRigLiveProbeAmbiance"),
+        LIVE_PROBE_AMBIANCE_MIN, LIVE_PROBE_AMBIANCE_MAX, 1.f);
+    centre.mdV[VZ] += offset_z;
+    mLiveProbe->setPositionGlobal(centre, false);
+    const F32 diameter = radius * 2.f;
+    mLiveProbe->setScale(LLVector3(diameter, diameter, diameter), false);
+    mLiveProbe->setReflectionProbeAmbiance(ambiance);
+    mLiveProbe->setReflectionProbeNearClip(LIVE_PROBE_NEAR_CLIP);
+    if (mLiveProbe->mDrawable.notNull())
+    {
+        gPipeline.updateMoveNormalAsync(mLiveProbe->mDrawable);
+        mLiveProbe->mDrawable->setState(LLDrawable::FORCE_INVISIBLE);
+    }
+
+    std::vector<LLUUID> ignored_light_ids;
+    std::vector<LLUUID> pinned_light_ids;
+    at(target).liveProbeIgnoredLightIds(ignored_light_ids);
+    at(target).liveProbeProjectorIds(pinned_light_ids);
+    gPipeline.mReflectionMapManager.setCinematicLiveProbe(
+        mLiveProbe->mReflectionProbe, ignored_light_ids, pinned_light_ids);
+    mLiveProbeRetryTicks = 0;
+}
+
 ALCineLightRigManager::ParamBlob ALCineLightRigManager::captureSelected() const
 {
     return ParamBlob::fromSettings(&selected());
@@ -355,8 +635,10 @@ void ALCineLightRigManager::setSelectedSlot(Slot slot)
 
 void ALCineLightRigManager::resetAllToSelf()
 {
-    // The panel has already reset all 63 live keys. Omitting the rig keeps
+    // The panel has already reset every live key. Omitting the rig keeps
     // every session-only field at its shipped default as well.
+    destroyLiveProbe();
+    mLiveProbeRetryTicks = 0;
     const ParamBlob defaults = ParamBlob::fromSettings();
     for (S32 i = 0; i < SLOT_COUNT; ++i)
     {
@@ -568,6 +850,8 @@ void ALCineLightRigManager::tick(F64 presentation_time)
     {
         const Slot slot = static_cast<Slot>(i);
         const bool owns_shadows = slot == mFocusState.mFocus;
+        mInstances[i].setLiveProbeBounceScale(
+            liveProbeBounceScaleFor(slot));
         switch (pathFor(enabled_mask, mSelected, slot))
         {
             case TickPath::TICK_SELECTED_VERBATIM:
@@ -590,6 +874,7 @@ void ALCineLightRigManager::tick(F64 presentation_time)
     // shaft setups (a suppressed projector loses its shadow slot AND its shaft).
     // applyShadowSuppression()/suppressedSlotMask() are retained (unused here)
     // for a future soft focus-priority bias.
+    updateLiveProbe();
 }
 
 void ALCineLightRigManager::updateRandomCycle(F64 presentation_time)
@@ -708,6 +993,8 @@ void ALCineLightRigManager::shutdown()
         }
         persist();
     }
+    destroyLiveProbe();
+    mLiveProbeRetryTicks = 0;
     clearShadowSuppression();
     for (ALCineLightRig& rig : mInstances)
     {
@@ -719,6 +1006,61 @@ void ALCineLightRigManager::shutdown()
 void ALCineLightRigManager::renderGizmo() const
 {
     selected().renderGizmo();
+    renderLiveProbeGizmo();
+}
+
+void ALCineLightRigManager::renderLiveProbeGizmo() const
+{
+    if (!gSavedSettings.getBOOL("CineLightRigLiveProbeGizmo") ||
+        mLiveProbe.isNull() || mLiveProbe->isDead())
+    {
+        return;
+    }
+
+    const LLVector3 centre = mLiveProbe->getRenderPosition();
+    const LLVector3 scale = mLiveProbe->getScale();
+    const F32 radius = 0.5f * std::max(scale.mV[VX],
+        std::max(scale.mV[VY], scale.mV[VZ]));
+    if (!centre.isFinite() || !std::isfinite(radius) || radius <= 0.f)
+    {
+        return;
+    }
+
+    LLGLSUIDefault gls_ui;
+    gUIProgram.bind();
+    gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
+    gGL.setLineWidth(2.f);
+    gGL.color4f(0.1f, 0.85f, 1.f, 0.9f);
+    gGL.begin(LLRender::LINES);
+    for (S32 segment = 0; segment < LIVE_PROBE_GIZMO_SEGMENTS; ++segment)
+    {
+        const F32 angle0 = F_TWO_PI * static_cast<F32>(segment) /
+            LIVE_PROBE_GIZMO_SEGMENTS;
+        const F32 angle1 = F_TWO_PI * static_cast<F32>(segment + 1) /
+            LIVE_PROBE_GIZMO_SEGMENTS;
+        const F32 c0 = cosf(angle0) * radius;
+        const F32 s0 = sinf(angle0) * radius;
+        const F32 c1 = cosf(angle1) * radius;
+        const F32 s1 = sinf(angle1) * radius;
+        const LLVector3 points0[3] = {
+            centre + LLVector3(c0, s0, 0.f),
+            centre + LLVector3(c0, 0.f, s0),
+            centre + LLVector3(0.f, c0, s0),
+        };
+        const LLVector3 points1[3] = {
+            centre + LLVector3(c1, s1, 0.f),
+            centre + LLVector3(c1, 0.f, s1),
+            centre + LLVector3(0.f, c1, s1),
+        };
+        for (S32 circle = 0; circle < 3; ++circle)
+        {
+            gGL.vertex3fv(points0[circle].mV);
+            gGL.vertex3fv(points1[circle].mV);
+        }
+    }
+    gGL.end();
+    gGL.flush();
+    gGL.setLineWidth(1.f);
 }
 
 void ALCineLightRigManager::persist() const
@@ -819,6 +1161,8 @@ LLSD ALCineLightRigManager::sceneData() const
         entry["slot"] = i;
         data["instances"].append(entry);
     }
+    data["live_probe"] = ALCineLightRigManagerModel::liveProbeConfigToLLSD(
+        liveProbeConfigFromSettings());
     persist();
     return data;
 }
@@ -828,11 +1172,32 @@ void ALCineLightRigManager::applySceneData(const LLSD& data)
     // This call owns the frozen no-block / unknown-version / v1 split. All
     // multi-instance reads remain additive and happen only after it returns.
     selected().applySceneData(data);
-    if (!data.isMap() || !data["version"].isInteger() ||
+    if (!data.isMap() || !data.has("version"))
+    {
+        liveProbeConfigToSettings(
+            ALCineLightRigManagerModel::LiveProbeConfig());
+        destroyLiveProbe();
+        mLiveProbeRetryTicks = 0;
+        return;
+    }
+    if (!data["version"].isInteger() ||
         data["version"].asInteger() != 1)
     {
         return;
     }
+
+    ALCineLightRigManagerModel::LiveProbeConfig live_probe;
+    if (!ALCineLightRigManagerModel::liveProbeConfigFromLLSD(
+            data["live_probe"], live_probe))
+    {
+        LL_WARNS("CineLightRig")
+            << "Director scene has a malformed Live Probe block; applying "
+               "the disabled defaults instead of retaining hybrid state"
+            << LL_ENDL;
+    }
+    liveProbeConfigToSettings(live_probe);
+    destroyLiveProbe();
+    mLiveProbeRetryTicks = 0;
 
     if (data["instances"].isArray() &&
         data["instances"].size() == SLOT_COUNT)
