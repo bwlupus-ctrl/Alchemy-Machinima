@@ -34,6 +34,7 @@
 #include "llviewercontrol.h"
 #include "v3color.h"
 #include "llviewerobject.h"
+#include "llvoavatar.h"
 #include "pipeline.h"
 
 #include <algorithm>
@@ -217,6 +218,43 @@ void applyFlarePreset(const FlarePresetRow& row)
     gSavedSettings.setF32("RenderLensFlareArc", row.mArcInt);
 }
 
+// 6-preset Night Mask table. Applying a preset stamps the mask SHAPE and its
+// strength knobs (distance/feather/darkness/tint strength/desaturation) onto
+// the matching CineLightRigNightMask* setting. Enabled and TintColor are
+// deliberately NOT part of any preset row: the checkbox is what turns the
+// mask on (a preset only shapes it), and TintColor stays whatever the user
+// last picked in the swatch.
+struct NightMaskPresetRow
+{
+    const char* mName;
+    S32 mShape;
+    F32 mDistance;
+    F32 mFeather;
+    F32 mDarkness;
+    F32 mTintStrength;
+    F32 mDesaturation;
+};
+
+const NightMaskPresetRow NIGHT_MASK_PRESETS[6] = {
+    // name                 shape   dist  feath  dark  tint  desat
+    { "Campfire Bubble",     1,     4.f,  3.f,  0.15f, 0.25f, 0.20f },
+    { "Moonlit Iris",        1,     6.f,  5.f,  0.25f, 0.50f, 0.40f },
+    { "Stage Box",           2,     5.f,  2.f,  0.10f, 0.00f, 0.00f },
+    { "Background Drop",     0,     8.f,  6.f,  0.20f, 0.30f, 0.25f },
+    { "Deep Night Wide",     1,    10.f,  8.f,  0.08f, 0.60f, 0.50f },
+    { "Pitch Black Cell",    2,     3.f,  1.f,  0.02f, 0.00f, 0.00f },
+};
+
+void applyNightMaskPreset(const NightMaskPresetRow& row)
+{
+    gSavedSettings.setS32("CineLightRigNightMaskShape", row.mShape);
+    gSavedSettings.setF32("CineLightRigNightMaskDistance", row.mDistance);
+    gSavedSettings.setF32("CineLightRigNightMaskFeather", row.mFeather);
+    gSavedSettings.setF32("CineLightRigNightMaskDarkness", row.mDarkness);
+    gSavedSettings.setF32("CineLightRigNightMaskTintStrength", row.mTintStrength);
+    gSavedSettings.setF32("CineLightRigNightMaskDesaturation", row.mDesaturation);
+}
+
 void registerCineLightRigResetControl()
 {
     static bool registered = false;
@@ -385,6 +423,17 @@ const std::vector<std::string>& ALPanelCineLightRig::settings()
         "CineLightRigLiveProbeAmbiance",
         "CineLightRigLiveProbeReplaceBounce",
         "CineLightRigLiveProbeGizmo",
+        "CineLightRigNightMaskEnabled",
+        "CineLightRigNightMaskTarget",
+        "CineLightRigNightMaskShape",
+        "CineLightRigNightMaskDistance",
+        "CineLightRigNightMaskFeather",
+        "CineLightRigNightMaskDarkness",
+        "CineLightRigNightMaskHeightOffset",
+        "CineLightRigNightMaskGizmo",
+        "CineLightRigNightMaskTintStrength",
+        "CineLightRigNightMaskTintColor",
+        "CineLightRigNightMaskDesaturation",
     };
     return names;
 }
@@ -431,6 +480,9 @@ bool ALPanelCineLightRig::postBuild()
     mGoboPreview = getChild<LLIconCtrl>("cine_gobo_preview");
     mGoboSoftness = getChild<LLTextBox>("cine_gobo_softness");
     mLiveProbeStatus = getChild<LLTextBox>("cine_live_probe_status");
+    mNightMaskPreset = getChild<LLComboBox>("cine_night_mask_preset");
+    mEasyNightMaskPreset = getChild<LLComboBox>("cine_easy_night_mask_preset");
+    mNightMaskStatus = getChild<LLTextBox>("night_mask_status");
     const char* const advanced_driven_names[] = {
         "cine_master_ev", "cine_master_ev_reset",
         "cine_key_ev", "cine_key_ev_reset",
@@ -480,6 +532,10 @@ bool ALPanelCineLightRig::postBuild()
         [this](LLUICtrl*, const LLSD&) { onFlarePresetSelected(mFlarePreset); });
     mEasyFlarePreset->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onFlarePresetSelected(mEasyFlarePreset); });
+    mNightMaskPreset->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onNightMaskPresetSelected(mNightMaskPreset); });
+    mEasyNightMaskPreset->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onNightMaskPresetSelected(mEasyNightMaskPreset); });
     mSetupSave->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { saveSetup(); });
     getChild<LLButton>("cine_setup_delete")->setCommitCallback(
@@ -691,6 +747,27 @@ void ALPanelCineLightRig::populateStaticCombos()
         {
             combo->add(
                 llformat("%d  %s", i + 1, FLARE_PRESETS[i].mName), LLSD(i + 1));
+        }
+        combo->setValue(0);
+    }
+
+    // Night Mask presets: same sentinel / apply-and-snap-back pattern as the
+    // lens flare presets above, shared identically by the Advanced card combo
+    // and the Easy card's shortcut copy.
+    constexpr S32 NIGHT_MASK_PRESET_COUNT =
+        static_cast<S32>(sizeof(NIGHT_MASK_PRESETS) / sizeof(NIGHT_MASK_PRESETS[0]));
+    LLComboBox* const night_mask_combos[] = { mNightMaskPreset, mEasyNightMaskPreset };
+    for (LLComboBox* combo : night_mask_combos)
+    {
+        if (!combo)
+        {
+            continue;
+        }
+        combo->add("Choose preset...", LLSD(0));
+        for (S32 i = 0; i < NIGHT_MASK_PRESET_COUNT; ++i)
+        {
+            combo->add(
+                llformat("%d  %s", i + 1, NIGHT_MASK_PRESETS[i].mName), LLSD(i + 1));
         }
         combo->setValue(0);
     }
@@ -1274,6 +1351,37 @@ void ALPanelCineLightRig::onFlarePresetSelected(LLComboBox* source)
     }
 }
 
+void ALPanelCineLightRig::onNightMaskPresetSelected(LLComboBox* source)
+{
+    if (!source)
+    {
+        return;
+    }
+    const S32 index = source->getSelectedValue().asInteger();
+    constexpr S32 NIGHT_MASK_PRESET_COUNT =
+        static_cast<S32>(sizeof(NIGHT_MASK_PRESETS) / sizeof(NIGHT_MASK_PRESETS[0]));
+    // 0 is the sentinel ("Choose preset..." / manual sliders) — nothing to
+    // stamp. Guard the upper bound too in case the combo ever desyncs from
+    // the table.
+    if (index <= 0 || index > NIGHT_MASK_PRESET_COUNT)
+    {
+        return;
+    }
+    applyNightMaskPreset(NIGHT_MASK_PRESETS[index - 1]);
+    // m3: snap BOTH the Advanced-card combo and the Easy card's shortcut copy
+    // back to the sentinel — a preset is an action ("apply this look"), not a
+    // persistent mode. Enable is untouched: the checkbox is what turns Night
+    // Mask on.
+    if (mNightMaskPreset)
+    {
+        mNightMaskPreset->setValue(0);
+    }
+    if (mEasyNightMaskPreset)
+    {
+        mEasyNightMaskPreset->setValue(0);
+    }
+}
+
 void ALPanelCineLightRig::saveSetup()
 {
     std::string name = mSetupCombo ? mSetupCombo->getSimple() : std::string();
@@ -1822,13 +1930,28 @@ void ALPanelCineLightRig::syncEasyControls()
     {
         probe_radius->setEnabled(mEasyModeActive);
     }
+    // The Easy card's Night row (Enable + preset shortcut + Darkness) is
+    // likewise a direct control_name binding / apply-and-snap-back combo with
+    // no dedicated remap handler, so gate it the same way as Flare/Probe above.
+    if (LLUICtrl* night_enable = findChild<LLUICtrl>("cine_easy_night_mask_enable"))
+    {
+        night_enable->setEnabled(mEasyModeActive);
+    }
+    if (LLUICtrl* night_preset = findChild<LLUICtrl>("cine_easy_night_mask_preset"))
+    {
+        night_preset->setEnabled(mEasyModeActive);
+    }
+    if (LLUICtrl* night_darkness = findChild<LLUICtrl>("cine_easy_night_mask_darkness"))
+    {
+        night_darkness->setEnabled(mEasyModeActive);
+    }
     // The Easy reset buttons write the same backing settings, so gate them too;
     // otherwise a reset click would edit the light while Easy mode is off.
     static const char* const EASY_RESET_BUTTONS[] = {
         "cine_easy_brightness_reset", "cine_easy_drama_reset",
         "cine_easy_warmth_reset", "cine_easy_cone_width_reset",
         "cine_easy_cone_feather_reset", "cine_easy_shaft_length_reset",
-        "cine_easy_probe_radius_reset",
+        "cine_easy_probe_radius_reset", "cine_easy_night_mask_darkness_reset",
     };
     for (const char* button_name : EASY_RESET_BUTTONS)
     {
@@ -1964,6 +2087,42 @@ void ALPanelCineLightRig::updateDerivedStatus()
         case ALCineLightRigManager::LiveProbeState::LIVE:
             mLiveProbeStatus->setText(LLStringExplicit("Live"));
             break;
+    }
+    if (mNightMaskStatus)
+    {
+        std::string night_status;
+        if (gSavedSettings.getBOOL("CineLightRigNightMaskEnabled"))
+        {
+            // M1: Night Mask only runs inside LLPipeline::renderFinalize's
+            // `if (hdr)` block — mirror that exact gate here so the status
+            // line agrees with what actually renders.
+            const bool hdr_active = gGLManager.mGLVersion > 4.05f &&
+                gSavedSettings.getBOOL("RenderHDREnabled");
+            if (!hdr_active)
+            {
+                night_status = "Requires HDR rendering";
+            }
+            else
+            {
+                // Same Director Cast lookup as the Target combo / M3's
+                // independent anchor resolution in LLPipeline::updateNightMaskAnchor.
+                LLDirectorCast& cast = LLDirectorCast::instance();
+                LLVOAvatar* target_avatar = nullptr;
+                switch (gSavedSettings.getS32("CineLightRigNightMaskTarget"))
+                {
+                    case 1: target_avatar = cast.resolveSubjectA(); break;
+                    case 2: target_avatar = cast.resolveSubjectB(); break;
+                    case 3: target_avatar = cast.resolveSubjectC(); break;
+                    case 4: target_avatar = cast.resolveSubjectD(); break;
+                    default: target_avatar = cast.resolve(LLUUID::null); break;
+                }
+                if (!target_avatar || target_avatar->isDead())
+                {
+                    night_status = "No target";
+                }
+            }
+        }
+        mNightMaskStatus->setText(LLStringExplicit(night_status));
     }
     std::string setup_name = mSetupCombo
         ? mSetupCombo->getSimple() : std::string();

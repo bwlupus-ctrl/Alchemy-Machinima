@@ -114,7 +114,7 @@
          background_visible="false"
          border="true"
          follows="left|top"
-         height="248"
+         height="298"
          layout="topleft"
          left="0"
          name="cine_easy_card"
@@ -163,6 +163,13 @@
         <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_easy_probe_radius_reset" top="197" tool_tip="Reset probe radius" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigLiveProbeRadius" />
         <check_box control_name="CineLightRigLiveProbeEnabled" follows="left|top" height="18" label="Probe" layout="topleft" left="16" name="cine_easy_probe_enable" top="222" tool_tip="Capture a spherical environment-only PBR reflection probe around one rig. Costs six cubemap views per frame while enabled." width="64" />
         <check_box control_name="CineLightRigLiveProbeGizmo" follows="left|top" height="18" label="Gizmo" layout="topleft" left="84" name="cine_easy_probe_gizmo" top="222" tool_tip="Draw the live probe's spherical influence boundary." width="64" />
+        <check_box control_name="CineLightRigNightMaskEnabled" follows="left|top" height="18" label="Night" layout="topleft" left="8" name="cine_easy_night_mask_enable" top="246" tool_tip="Darkens everything outside a shape centred on the target subject, faking night." width="54" />
+        <combo_box follows="left|top" height="22" layout="topleft" left="66" name="cine_easy_night_mask_preset" top="242" tool_tip="Applies a full Night Mask look and snaps back to this sentinel." width="256">
+            <combo_list mouse_wheel_opaque="true" page_lines="8" />
+        </combo_box>
+        <text follows="left|top" height="15" layout="topleft" left="8" top="274" value="Darkness" width="56" />
+        <slider can_edit_text="true" control_name="CineLightRigNightMaskDarkness" decimal_digits="2" follows="left|top" height="20" increment="0.01" layout="topleft" left="66" max_val="1" min_val="0" name="cine_easy_night_mask_darkness" show_text="true" top="270" tool_tip="Night Mask brightness floor beyond the feather band: 0 is pitch black, 1 is no darkening." width="238" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_easy_night_mask_darkness_reset" top="271" tool_tip="Reset darkness" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigNightMaskDarkness" />
         </panel>
         <panel
          background_visible="false"
@@ -705,6 +712,126 @@
          commit_callback.parameter="CineLightRigLiveProbeAmbiance" />
         <text follows="left|top|right" height="38" layout="topleft" left="8"
          name="cine_live_probe_status" top="112" value="Disabled" width="332"
+         word_wrap="true" />
+        </panel>
+        <panel
+         background_visible="false"
+         border="true"
+         follows="left|top"
+         height="316"
+         layout="topleft"
+         left="0"
+         name="cine_night_mask_card"
+         top="0"
+         width="340">
+        <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
+         left="8" top="6" value="Night Mask" width="110" />
+        <text follows="left|top" height="15" layout="topleft" left="124" top="8"
+         value="Scene setting; not saved in Setups" width="208" />
+        <check_box control_name="CineLightRigNightMaskEnabled" follows="left|top"
+         height="18" label="Enable" layout="topleft" left="8"
+         name="cine_night_mask_enable" top="32"
+         tool_tip="Darkens (and optionally grades) everything outside a shape centred on the target subject, faking night." width="70" />
+        <check_box control_name="CineLightRigNightMaskGizmo" follows="left|top"
+         height="18" label="Gizmo" layout="topleft" left="82"
+         name="cine_night_mask_gizmo" top="32"
+         tool_tip="Draw the Night Mask boundary." width="70" />
+        <text follows="left|top" height="15" layout="topleft" left="164" top="36"
+         value="Target" width="32" />
+        <combo_box control_name="CineLightRigNightMaskTarget" follows="left|top"
+         height="20" layout="topleft" left="198" name="cine_night_mask_target"
+         top="32" tool_tip="Subject the Night Mask is anchored to." width="134">
+            <combo_box.item label="Self" name="cine_night_mask_self" value="0" />
+            <combo_box.item label="Subject A" name="cine_night_mask_a" value="1" />
+            <combo_box.item label="Subject B" name="cine_night_mask_b" value="2" />
+            <combo_box.item label="Subject C" name="cine_night_mask_c" value="3" />
+            <combo_box.item label="Subject D" name="cine_night_mask_d" value="4" />
+        </combo_box>
+        <text follows="left|top" height="15" layout="topleft" left="8" top="62"
+         value="Shape" width="40" />
+        <combo_box control_name="CineLightRigNightMaskShape" follows="left|top"
+         height="20" layout="topleft" left="48" name="cine_night_mask_shape"
+         top="58" tool_tip="Boundary shape: camera-facing plane, sphere, or a cube yaw-aligned to the subject." width="96">
+            <combo_box.item label="Plane" name="cine_night_mask_shape_plane" value="0" />
+            <combo_box.item label="Sphere" name="cine_night_mask_shape_sphere" value="1" />
+            <combo_box.item label="Cube" name="cine_night_mask_shape_cube" value="2" />
+        </combo_box>
+        <text follows="left|top" height="15" layout="topleft" left="152" top="62"
+         value="Height Z" width="52" />
+        <spinner control_name="CineLightRigNightMaskHeightOffset" decimal_digits="2"
+         follows="left|top" height="20" increment="0.05" layout="topleft"
+         left="206" max_val="10" min_val="-10" name="cine_night_mask_height"
+         top="58" tool_tip="Vertical offset from the subject's render position to the Night Mask anchor." width="60" />
+        <button follows="left|top" height="18" layout="topleft" left="270" width="18"
+         image_overlay="Refresh_Off" image_top_pad="0" name="cine_night_mask_height_reset"
+         top="59" tool_tip="Reset height offset" commit_callback.function="CineLightRig.ResetControl"
+         commit_callback.parameter="CineLightRigNightMaskHeightOffset" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="88"
+         value="Preset" width="44" />
+        <combo_box follows="left|top" height="20" layout="topleft" left="52"
+         name="cine_night_mask_preset" top="84"
+         tool_tip="Applies a full look (shape, distance, feather, darkness, tint, desaturation) and snaps back to this sentinel. Enable and tint color are not touched by presets." width="280" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="114"
+         value="Distance m" width="62" />
+        <slider can_edit_text="true" control_name="CineLightRigNightMaskDistance"
+         decimal_digits="2" follows="left|top" height="20" increment="0.25"
+         layout="topleft" left="70" max_val="64" min_val="0" name="cine_night_mask_distance"
+         show_text="true" top="110" tool_tip="Inner boundary distance in metres from the anchor. Hover and scroll the mouse wheel for 0.25 m steps." wheel_adjust="true" width="234" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18"
+         image_overlay="Refresh_Off" image_top_pad="0" name="cine_night_mask_distance_reset"
+         top="111" tool_tip="Reset distance" commit_callback.function="CineLightRig.ResetControl"
+         commit_callback.parameter="CineLightRigNightMaskDistance" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="140"
+         value="Feather m" width="62" />
+        <slider can_edit_text="true" control_name="CineLightRigNightMaskFeather"
+         decimal_digits="2" follows="left|top" height="20" increment="0.25"
+         layout="topleft" left="70" max_val="64" min_val="0" name="cine_night_mask_feather"
+         show_text="true" top="136" tool_tip="Feather band width in metres past the inner boundary. Hover and scroll the mouse wheel for 0.25 m steps." wheel_adjust="true" width="234" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18"
+         image_overlay="Refresh_Off" image_top_pad="0" name="cine_night_mask_feather_reset"
+         top="137" tool_tip="Reset feather" commit_callback.function="CineLightRig.ResetControl"
+         commit_callback.parameter="CineLightRigNightMaskFeather" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="166"
+         value="Darkness" width="62" />
+        <slider can_edit_text="true" control_name="CineLightRigNightMaskDarkness"
+         decimal_digits="2" follows="left|top" height="20" increment="0.01"
+         layout="topleft" left="70" max_val="1" min_val="0" name="cine_night_mask_darkness"
+         show_text="true" top="162" tool_tip="Brightness floor beyond the feather band: 0 is pitch black, 1 is no darkening." width="234" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18"
+         image_overlay="Refresh_Off" image_top_pad="0" name="cine_night_mask_darkness_reset"
+         top="163" tool_tip="Reset darkness" commit_callback.function="CineLightRig.ResetControl"
+         commit_callback.parameter="CineLightRigNightMaskDarkness" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="192"
+         value="Tint str" width="62" />
+        <slider can_edit_text="true" control_name="CineLightRigNightMaskTintStrength"
+         decimal_digits="2" follows="left|top" height="20" increment="0.01"
+         layout="topleft" left="70" max_val="1" min_val="0" name="cine_night_mask_tint_strength"
+         show_text="true" top="188" tool_tip="Strength of the tint color applied beyond the feather band." width="234" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18"
+         image_overlay="Refresh_Off" image_top_pad="0" name="cine_night_mask_tint_strength_reset"
+         top="189" tool_tip="Reset tint strength" commit_callback.function="CineLightRig.ResetControl"
+         commit_callback.parameter="CineLightRigNightMaskTintStrength" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="222"
+         value="Tint color" width="70" />
+        <color_swatch can_apply_immediately="true" control_name="CineLightRigNightMaskTintColor"
+         follows="left|top" height="24" layout="topleft" left="82" name="cine_night_mask_tint_color"
+         top="212" tool_tip="Night Mask tint color. Authored as sRGB; converted to linear before it reaches the shader." width="44" />
+        <button follows="left|top" height="18" layout="topleft" left="134" width="18"
+         image_overlay="Refresh_Off" image_top_pad="0" name="cine_night_mask_tint_color_reset"
+         top="213" tool_tip="Reset tint color" commit_callback.function="CineLightRig.ResetControl"
+         commit_callback.parameter="CineLightRigNightMaskTintColor" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="248"
+         value="Desat" width="62" />
+        <slider can_edit_text="true" control_name="CineLightRigNightMaskDesaturation"
+         decimal_digits="2" follows="left|top" height="20" increment="0.01"
+         layout="topleft" left="70" max_val="1" min_val="0" name="cine_night_mask_desaturation"
+         show_text="true" top="244" tool_tip="Desaturation strength applied beyond the feather band." width="234" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18"
+         image_overlay="Refresh_Off" image_top_pad="0" name="cine_night_mask_desaturation_reset"
+         top="245" tool_tip="Reset desaturation" commit_callback.function="CineLightRig.ResetControl"
+         commit_callback.parameter="CineLightRigNightMaskDesaturation" />
+        <text follows="left|top|right" height="38" layout="topleft" left="8"
+         name="night_mask_status" top="270" value="" width="324"
          word_wrap="true" />
         </panel>
     </flow_grid>

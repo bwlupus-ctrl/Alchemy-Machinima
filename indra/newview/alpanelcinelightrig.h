@@ -96,6 +96,7 @@ private:
     void resetAim();
     void onSetupSelected();
     void onFlarePresetSelected(LLComboBox* source);
+    void onNightMaskPresetSelected(LLComboBox* source);
     void saveSetup();
     void deleteSetup();
     bool deleteSetupCallback(const LLSD& notification, const LLSD& response,
@@ -116,6 +117,9 @@ private:
     LLComboBox* mSetupCombo = nullptr;
     LLComboBox* mFlarePreset = nullptr;
     LLComboBox* mEasyFlarePreset = nullptr;
+    LLComboBox* mNightMaskPreset = nullptr;
+    LLComboBox* mEasyNightMaskPreset = nullptr;
+    LLTextBox* mNightMaskStatus = nullptr;
     LLComboBox* mFXCombo = nullptr;
     LLLineEditor* mSeedEditor = nullptr;
     LLSpinCtrl* mFillEV = nullptr;

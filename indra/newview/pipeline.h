@@ -1257,6 +1257,66 @@ public:
     LLRenderTarget              mReShadeSceneRaw;
     bool                        mReShadeRawSceneValid = false;
 
+    // Night Mask: per-frame resolved state, shared verbatim between
+    // generateLuminance() (B1 bloom-metering fix) and applyOnLensFilters()
+    // (the actual darkening pass) so both consume the SAME single enable
+    // resolve/anchor-smoothing update instead of each re-deriving it (which
+    // would double-step the exponential smoothing). Populated once per frame
+    // by updateNightMaskAnchor(), called from renderFinalize() before either
+    // consumer runs. See alcinelightrigmanager.cpp renderNightMaskGizmo() for
+    // the read-only UI-3D consumer.
+    struct NightMaskFrameState
+    {
+        // True only when Enabled, the on-lens program is complete, the frame
+        // isn't a "no post-processing" snapshot, HDR is active, the target
+        // resolved this frame, AND the parameters aren't a no-op (darkness<1
+        // or desaturation>0 or a non-identity tint at nonzero strength) — the
+        // FINAL will-render decision (Codex review B1a), not merely "would
+        // render if applyOnLensFilters's own later gates allow it". A missing
+        // target or an inert/blocked state is NOT active — never garbage,
+        // just inert (mirrors applyGradND's density<=0 early-out).
+        bool      mActive = false;
+        S32       mShape = 1;
+        F32       mDistance = 4.f;
+        F32       mFeather = 3.f;
+        F32       mDarkness = 0.15f;
+        F32       mTintStrength = 0.f;
+        F32       mDesaturation = 0.f;
+        LLColor3  mTintLinear;       // sRGB setting already converted to linear
+        glm::vec3 mAnchorView{0.f, 0.f, 0.f}; // smoothed anchor in THIS frame's view space
+        glm::mat3 mBoxBasis{1.f};    // cube-only: view-space delta -> yaw-local axes
+
+        // Cross-frame smoothing state (independent of the Live Probe rig —
+        // see M3 in the Night Mask design review).
+        bool      mHaveSmoothed = false;
+        bool      mWasEnabled = false;
+        LLVector3 mSmoothedPosAgent;
+        LLVector3 mSmoothedForward{1.f, 0.f, 0.f}; // 2D (x,y) subject facing, z unused
+        F64       mLastTime = -1.0;
+        LLUUID    mLastTargetId;
+        U64       mLastRegionHandle = 0;
+
+        // B1(b): exponentially ramped toward (mActive ? 0.f : 1.f) rather
+        // than snapped, so generateLuminance()'s bloom-metering scale (see
+        // B1) doesn't pump exposure in the single frame a Night Mask toggle
+        // lands. Shares the same presentation-time base as the smoothing
+        // above; mBloomScaleTime<0 or a detected time reversal snaps instead
+        // of ramping.
+        F32       mBloomScale = 1.f;
+        F64       mBloomScaleTime = -1.0;
+    } mNightMaskFrame;
+
+    // Resolves the Night Mask target avatar, advances the anchor
+    // position/yaw smoothing, and fills mNightMaskFrame for this frame.
+    // Called once from renderFinalize(), before generateLuminance() and
+    // applyOnLensFilters() so both read one coherent resolve (B1).
+    void updateNightMaskAnchor();
+
+    // Read-only accessor for the UI-3D gizmo pass (renderNightMaskGizmo in
+    // alcinelightrigmanager.cpp), which draws after renderFinalize has
+    // already resolved this frame's anchor.
+    const NightMaskFrameState& getNightMaskFrameState() const { return mNightMaskFrame; }
+
     static const U32 MAX_PREVIEW_WIDTH;
 
     //texture for making the glow

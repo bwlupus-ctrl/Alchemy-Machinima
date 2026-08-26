@@ -945,6 +945,7 @@ private:
     void destroyLiveProbe();
     void updateLiveProbe();
     void renderLiveProbeGizmo() const;
+    void renderNightMaskGizmo() const;
     F32 liveProbeBounceScaleFor(Slot slot) const;
     void applyShadowSuppression();
     void clearShadowSuppression();

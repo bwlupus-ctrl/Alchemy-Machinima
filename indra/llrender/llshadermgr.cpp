@@ -1717,6 +1717,15 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("polarizer_params");
     mReservedUniforms.push_back("polarizer_params2");
 
+    // Night Mask (subject-anchored darkness mask; pre-tonemap on-lens filter)
+    mReservedUniforms.push_back("night_mask_params");
+    mReservedUniforms.push_back("night_mask_params2");
+    mReservedUniforms.push_back("night_mask_anchor_view");
+    mReservedUniforms.push_back("night_mask_box_basis");
+    mReservedUniforms.push_back("night_mask_tint");
+    mReservedUniforms.push_back("night_mask_shape");
+    mReservedUniforms.push_back("night_mask_inv_proj");
+
     // Color Correction LUT
     mReservedUniforms.push_back("uColorGradeLut");
     mReservedUniforms.push_back("uColorGradeLutSize");

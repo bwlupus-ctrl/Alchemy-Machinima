@@ -471,6 +471,34 @@ public:
         POLARIZER_PARAMS,                   //  "polarizer_params"
         POLARIZER_PARAMS2,                  //  "polarizer_params2"
 
+        // Night Mask (subject-anchored darkness mask; pre-tonemap on-lens
+        // filter, evaluated FIRST in the on-lens stack — see
+        // LLPipeline::applyOnLensFilters). Packed:
+        //   night_mask_params  = (active [0/1], distance, feather, darkness)
+        //   night_mask_params2 = (tint_strength, desaturation, unused, unused)
+        // night_mask_anchor_view is the smoothed subject anchor already
+        // transformed into VIEW SPACE on the CPU (gGLLastModelView), so the
+        // shader only ever compares against the current pixel's own
+        // view-space reconstruction — no agent-space math in-shader.
+        // night_mask_box_basis rotates a view-space delta into the cube's
+        // yaw-aligned local space (CPU-composed: subject yaw x the view
+        // rotation); unused for the plane/sphere shapes. night_mask_inv_proj
+        // is a DEDICATED inverse-projection matrix, deliberately NOT the
+        // managed inv_proj/INVERSE_PROJECTION_MATRIX uniform: LLVertexBuffer::
+        // drawArrays()'s gGL.syncMatrices() call re-uploads inv_proj from the
+        // LIVE GL projection whenever its hash differs from what this shader
+        // last saw, silently clobbering an explicit CPU override BEFORE the
+        // actual glDrawArrays — see LLPipeline::applyOnLensFilters. Night
+        // Mask reconstructs view-space position locally against this uniform
+        // instead of calling deferredUtil's getPosition().
+        NIGHT_MASK_PARAMS,                  //  "night_mask_params"
+        NIGHT_MASK_PARAMS2,                 //  "night_mask_params2"
+        NIGHT_MASK_ANCHOR_VIEW,             //  "night_mask_anchor_view"
+        NIGHT_MASK_BOX_BASIS,               //  "night_mask_box_basis"
+        NIGHT_MASK_TINT,                    //  "night_mask_tint"  (linear; CPU converts from the sRGB-authored setting)
+        NIGHT_MASK_SHAPE,                   //  "night_mask_shape" (0 plane, 1 sphere, 2 cube)
+        NIGHT_MASK_INV_PROJ,                 //  "night_mask_inv_proj" (dedicated; NOT the managed inv_proj)
+
         // Color Correction LUT
         COLOR_GRADE_LUT,                    //  "uColorGradeLut"
         COLOR_GRADE_LUT_SIZE,               //  "uColorGradeLutSize"

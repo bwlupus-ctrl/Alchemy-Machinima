@@ -323,6 +323,141 @@ uniform float uLensFlareSrcColorAmount;           // [0, 1]   0 = off (screen-sa
 uniform float uLensFlareMaster;                   // default 1.0 = off (branch not taken)
 
 // =============================================================================
+// Night Mask  (subject-anchored darkness mask; pre-tonemap on-lens filter)
+// =============================================================================
+//
+// Fakes night by darkening (and optionally grading) everything OUTSIDE a
+// shape centred on a target avatar: 0 = camera-facing plane (view-depth
+// cutoff past the anchor), 1 = sphere, 2 = cube yaw-aligned to the subject.
+// Evaluated FIRST in the on-lens stack (before Graduated ND / Polarizer) so
+// the ReShade raw-scene capture downstream sees the masked result — Night
+// Mask is a world-lighting fake, not a camera-lens artifact, and must be
+// visible to RTGI-style bridges the way GradND/Polarizer deliberately are
+// not (see the ordering comment in LLPipeline::applyOnLensFilters).
+//
+// Major1 (Codex review): deferredUtil's getPosition() reconstructs view-space
+// position using the SHARED `inv_proj` uniform — but LLVertexBuffer::
+// drawArrays()'s gGL.syncMatrices() call re-uploads inv_proj from the LIVE GL
+// projection matrix whenever its hash has changed since this shader was last
+// bound, and that happens INSIDE drawArrays(), i.e. AFTER any CPU-side
+// uniform override and BEFORE the actual glDrawArrays (llrender.cpp
+// syncMatrices). renderFinalize() runs after render_ui() has already touched
+// the live matrix stack (and some paths, e.g. Scene Monitor, reset it
+// entirely mid-frame), so an override of the MANAGED inv_proj is not
+// trustworthy here — depending on it silently reconstructs from the wrong
+// projection on exactly the frames this was meant to guard against.
+//
+// Fix: night_mask_inv_proj is a DEDICATED uniform nothing else ever
+// re-syncs, uploaded from inverse(gGLLastProjection) by
+// LLPipeline::applyOnLensFilters, and nightMaskGetPosition() below
+// reconstructs view-space position locally with the exact same math
+// deferredUtil's getPosition()/getScreenCoordinate()/getDepth() use, just
+// against this dedicated matrix instead of the managed one. GradND/Polarizer
+// never call getPosition() and are untouched by any of this.
+//
+// The smoothed subject anchor is transformed into VIEW SPACE on the CPU with
+// that SAME gGLLastModelView-derived frame into night_mask_anchor_view, so
+// both sides of every comparison below live in one coherent current-frame
+// view space.
+//
+// Sphere and the camera-facing plane are rotation-invariant / view-depth
+// only, so they read night_mask_anchor_view directly. The cube alone needs
+// the subject's yaw: night_mask_box_basis is a CPU-composed 3x3 rotation
+// (view-space rotation x inverse subject yaw) that maps a view-space delta
+// straight into the box's yaw-aligned local axes — no agent-space transform
+// happens in-shader.
+//
+// Transparency limitation: post-water alpha does not write depth, so a pixel
+// behind translucent water/glass classifies using the OPAQUE surface behind
+// it, not the transparent surface itself. This is a known, accepted v1
+// limitation (matches how GradND/Polarizer's own sky-confine depth test
+// behaves) — no in-shader fix.
+//
+// Packed uniforms:
+//   night_mask_params  = (active [0/1], distance, feather, darkness)
+//   night_mask_params2 = (tint_strength, desaturation, unused, unused)
+uniform vec4  night_mask_params;
+uniform vec4  night_mask_params2;
+uniform vec3  night_mask_anchor_view;
+uniform mat3  night_mask_box_basis;
+uniform vec3  night_mask_tint;
+uniform int   night_mask_shape;
+uniform mat4  night_mask_inv_proj;
+
+// Local view-space reconstruction against the DEDICATED night_mask_inv_proj
+// uniform — replicates deferredUtil.glsl's getPosition() math exactly
+// (getScreenCoordinate: uv*2-1; NDC z from depth*2-1) but never touches the
+// managed inv_proj/getPosition(), which the outer comment block explains is
+// unsafe for this pass.
+vec4 nightMaskGetPosition(vec2 pos_screen, sampler2D depth)
+{
+    float d  = texture(depth, pos_screen).r;
+    vec2  sc = pos_screen * 2.0 - vec2(1.0, 1.0);
+    vec4  ndc = vec4(sc.x, sc.y, 2.0 * d - 1.0, 1.0);
+    vec4  pos = night_mask_inv_proj * ndc;
+    pos /= pos.w;
+    pos.w = 1.0;
+    return pos;
+}
+
+// Exact signed-distance box (Inigo Quilez); p and b already share the box's
+// local axes, b is the half-extent (uniform per M6: vec3(distance)).
+float nightMaskBoxSDF(vec3 p, vec3 b)
+{
+    vec3 q = abs(p) - b;
+    return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
+}
+
+vec3 applyNightMask(vec3 color, vec2 uv, sampler2D depth)
+{
+    // "active" folds Enabled + HDR-required + valid-target-this-frame into a
+    // single CPU-resolved switch (LLPipeline::updateNightMaskAnchor). Cheapest
+    // possible early-out, mirroring applyGradND's density<=0.0 convention —
+    // strength-0 must be exactly identity.
+    if (night_mask_params.x <= 0.5)
+        return color;
+
+    float mask_distance = max(night_mask_params.y, 0.0);
+    float feather        = max(night_mask_params.z, 0.0);
+    float darkness        = clamp(night_mask_params.w, 0.0, 1.0);
+    float tint_strength   = clamp(night_mask_params2.x, 0.0, 1.0);
+    float desaturation    = clamp(night_mask_params2.y, 0.0, 1.0);
+
+    vec3 view_pos = nightMaskGetPosition(uv, depth).xyz;
+    vec3 delta    = view_pos - night_mask_anchor_view;
+
+    float sd;
+    if (night_mask_shape == 1)
+    {
+        // Sphere: rotation-invariant, plain view-space distance.
+        sd = length(delta) - mask_distance;
+    }
+    else if (night_mask_shape == 2)
+    {
+        // Cube: rotate the view-space delta into the subject's yaw-aligned
+        // local axes (CPU-composed basis), then an exact box SDF.
+        vec3 local = night_mask_box_basis * delta;
+        sd = nightMaskBoxSDF(local, vec3(mask_distance));
+    }
+    else
+    {
+        // Camera-facing plane: darkens beyond `distance` metres of VIEW DEPTH
+        // past the anchor. View space looks down -Z, so depth grows as -z.
+        sd = (-view_pos.z) - (-night_mask_anchor_view.z) - mask_distance;
+    }
+
+    float factor = feather > 1e-4 ? smoothstep(0.0, feather, sd) : step(0.0, sd);
+
+    color *= mix(1.0, darkness, factor);
+
+    float luma = dot(color, LUMA);
+    color = mix(color, vec3(luma), desaturation * factor);
+    color = mix(color, color * night_mask_tint, tint_strength * factor);
+
+    return color;
+}
+
+// =============================================================================
 // Graduated ND  (pre-tonemap exposure region)
 // =============================================================================
 //

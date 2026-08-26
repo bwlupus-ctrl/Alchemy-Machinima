@@ -367,6 +367,84 @@
       <key>Type</key><string>Boolean</string>
       <key>Value</key><integer>0</integer>
     </map>
+    <key>CineLightRigNightMaskEnabled</key>
+    <map>
+      <key>Comment</key><string>Enable the subject-anchored Night Mask darkness fake</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigNightMaskTarget</key>
+    <map>
+      <key>Comment</key><string>Subject the Night Mask is anchored to (0 Self, 1 A, 2 B, 3 C, 4 D)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigNightMaskShape</key>
+    <map>
+      <key>Comment</key><string>Night Mask boundary shape (0 camera-facing plane, 1 sphere, 2 yaw-aligned cube)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>1</integer>
+    </map>
+    <key>CineLightRigNightMaskDistance</key>
+    <map>
+      <key>Comment</key><string>Night Mask inner boundary distance in metres from the anchor</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>4.0</real>
+    </map>
+    <key>CineLightRigNightMaskFeather</key>
+    <map>
+      <key>Comment</key><string>Night Mask feather band width in metres past the inner boundary</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>3.0</real>
+    </map>
+    <key>CineLightRigNightMaskDarkness</key>
+    <map>
+      <key>Comment</key><string>Night Mask darkness floor (0 black, 1 no darkening) beyond the feather band</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.15</real>
+    </map>
+    <key>CineLightRigNightMaskHeightOffset</key>
+    <map>
+      <key>Comment</key><string>Vertical offset from the subject's render position to the Night Mask anchor, in metres</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
+    <key>CineLightRigNightMaskGizmo</key>
+    <map>
+      <key>Comment</key><string>Draw the Night Mask boundary</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigNightMaskTintStrength</key>
+    <map>
+      <key>Comment</key><string>Night Mask tint strength applied beyond the feather band</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
+    <key>CineLightRigNightMaskTintColor</key>
+    <map>
+      <key>Comment</key><string>Night Mask tint color (authored sRGB; converted to linear before upload)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Color3</string>
+      <key>Value</key>
+      <array><real>0.55</real><real>0.65</real><real>1.0</real></array>
+    </map>
+    <key>CineLightRigNightMaskDesaturation</key>
+    <map>
+      <key>Comment</key><string>Night Mask desaturation strength applied beyond the feather band</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
     <key>CineLightRigKeyYaw</key>
     <map>
       <key>Comment</key><string>KEY pristine yaw in degrees</string>

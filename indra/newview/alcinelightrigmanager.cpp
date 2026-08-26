@@ -53,6 +53,8 @@ constexpr F32 LIVE_PROBE_AMBIANCE_MIN = 0.f;
 constexpr F32 LIVE_PROBE_AMBIANCE_MAX = 8.f;
 constexpr F32 LIVE_PROBE_NEAR_CLIP = 0.1f;
 constexpr S32 LIVE_PROBE_GIZMO_SEGMENTS = 48;
+constexpr S32 NIGHT_MASK_GIZMO_SEGMENTS = 48;
+constexpr F32 NIGHT_MASK_GIZMO_PLANE_HALF_SIZE = 3.f;
 
 F32 liveProbeSetting(F32 value, F32 minimum, F32 maximum, F32 fallback)
 {
@@ -1007,6 +1009,7 @@ void ALCineLightRigManager::renderGizmo() const
 {
     selected().renderGizmo();
     renderLiveProbeGizmo();
+    renderNightMaskGizmo();
 }
 
 void ALCineLightRigManager::renderLiveProbeGizmo() const
@@ -1059,6 +1062,191 @@ void ALCineLightRigManager::renderLiveProbeGizmo() const
         }
     }
     gGL.end();
+    gGL.flush();
+    gGL.setLineWidth(1.f);
+}
+
+// m5: draws the Night Mask boundary using the SAME per-frame anchor state
+// LLPipeline::updateNightMaskAnchor() resolved during renderFinalize (agent
+// space, already smoothed) — this is a read-only UI-3D consumer, mirroring
+// renderLiveProbeGizmo() above but with a color distinct from the Live Probe
+// gizmo's cyan, and drawn as sphere great-circles / a yaw-aligned cube
+// wireframe / a camera-facing rectangle depending on shape.
+void ALCineLightRigManager::renderNightMaskGizmo() const
+{
+    // m-c: gate on the gizmo toggle, the Enabled setting (a stale mActive can
+    // otherwise outlive a mid-HDR-off disable, since updateNightMaskAnchor
+    // only runs inside renderFinalize's `if (hdr)` block), AND the resolved
+    // frame state's mActive — draw only when the mask would actually render
+    // this frame, matching what the user sees, not merely whenever a
+    // smoothed anchor happens to still exist (which would show stale
+    // geometry after disable / target loss / HDR-off).
+    if (!gSavedSettings.getBOOL("CineLightRigNightMaskGizmo") ||
+        !gSavedSettings.getBOOL("CineLightRigNightMaskEnabled"))
+    {
+        return;
+    }
+    const LLPipeline::NightMaskFrameState& state = gPipeline.getNightMaskFrameState();
+    if (!state.mActive || !state.mHaveSmoothed || !state.mSmoothedPosAgent.isFinite())
+    {
+        return;
+    }
+
+    const LLVector3 centre = state.mSmoothedPosAgent;
+    const F32 inner = std::max(state.mDistance, 0.f);
+    const F32 outer = std::max(state.mDistance + state.mFeather, 0.f);
+    // Moonlight violet-blue — distinct from the Live Probe gizmo's cyan.
+    const LLColor4 inner_color(0.55f, 0.45f, 1.f, 0.9f);
+    const LLColor4 outer_color(0.55f, 0.45f, 1.f, 0.35f);
+
+    LLGLSUIDefault gls_ui;
+    gUIProgram.bind();
+    gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
+    gGL.setLineWidth(2.f);
+
+    if (state.mShape == 1) // sphere: three great circles, matching the Live Probe gizmo
+    {
+        const auto draw_sphere = [&](F32 radius, const LLColor4& color)
+        {
+            if (radius <= 0.f)
+            {
+                return;
+            }
+            gGL.color4fv(color.mV);
+            gGL.begin(LLRender::LINES);
+            for (S32 segment = 0; segment < NIGHT_MASK_GIZMO_SEGMENTS; ++segment)
+            {
+                const F32 angle0 = F_TWO_PI * static_cast<F32>(segment) /
+                    NIGHT_MASK_GIZMO_SEGMENTS;
+                const F32 angle1 = F_TWO_PI * static_cast<F32>(segment + 1) /
+                    NIGHT_MASK_GIZMO_SEGMENTS;
+                const F32 c0 = cosf(angle0) * radius, s0 = sinf(angle0) * radius;
+                const F32 c1 = cosf(angle1) * radius, s1 = sinf(angle1) * radius;
+                const LLVector3 points0[3] = {
+                    centre + LLVector3(c0, s0, 0.f),
+                    centre + LLVector3(c0, 0.f, s0),
+                    centre + LLVector3(0.f, c0, s0),
+                };
+                const LLVector3 points1[3] = {
+                    centre + LLVector3(c1, s1, 0.f),
+                    centre + LLVector3(c1, 0.f, s1),
+                    centre + LLVector3(0.f, c1, s1),
+                };
+                for (S32 circle = 0; circle < 3; ++circle)
+                {
+                    gGL.vertex3fv(points0[circle].mV);
+                    gGL.vertex3fv(points1[circle].mV);
+                }
+            }
+            gGL.end();
+        };
+        draw_sphere(inner, inner_color);
+        draw_sphere(outer, outer_color);
+    }
+    else if (state.mShape == 2) // cube: yaw-aligned wireframe box
+    {
+        const F32 yaw = atan2f(state.mSmoothedForward.mV[VY], state.mSmoothedForward.mV[VX]);
+        const LLVector3 right(cosf(yaw), sinf(yaw), 0.f);
+        const LLVector3 fwd(-sinf(yaw), cosf(yaw), 0.f);
+        const LLVector3 up(0.f, 0.f, 1.f);
+
+        const auto draw_box = [&](F32 half, const LLColor4& color)
+        {
+            if (half <= 0.f)
+            {
+                return;
+            }
+            const LLVector3 rr = right * half, ff = fwd * half, uu = up * half;
+            const LLVector3 corners[8] = {
+                centre - rr - ff - uu, centre + rr - ff - uu,
+                centre + rr + ff - uu, centre - rr + ff - uu,
+                centre - rr - ff + uu, centre + rr - ff + uu,
+                centre + rr + ff + uu, centre - rr + ff + uu,
+            };
+            static const S32 edges[12][2] = {
+                {0,1},{1,2},{2,3},{3,0},
+                {4,5},{5,6},{6,7},{7,4},
+                {0,4},{1,5},{2,6},{3,7},
+            };
+            gGL.color4fv(color.mV);
+            gGL.begin(LLRender::LINES);
+            for (const auto& edge : edges)
+            {
+                gGL.vertex3fv(corners[edge[0]].mV);
+                gGL.vertex3fv(corners[edge[1]].mV);
+            }
+            gGL.end();
+        };
+        draw_box(inner, inner_color);
+
+        // m-d: the true outer boundary (boxSDF == feather) is a ROUNDED box —
+        // exact on the 6 flat faces, but rounded at the edges/corners. A
+        // scaled-up cube at half-extent (inner+feather) overstates those
+        // edges/corners. Draw the outer contour honestly instead: each face
+        // rectangle kept at its ORIGINAL (inner) extent, translated outward
+        // by `feather` along that face's own normal — exact on the faces,
+        // and visibly open at the corners rather than falsely closed.
+        if (state.mFeather > 0.f)
+        {
+            const LLVector3 axes[3]      = { right, fwd, up };
+            const LLVector3 tangents0[3] = { fwd, right, right };
+            const LLVector3 tangents1[3] = { up, up, fwd };
+            const F32 signs[2] = { -1.f, 1.f };
+            for (S32 axis = 0; axis < 3; ++axis)
+            {
+                const LLVector3 t0 = tangents0[axis] * inner;
+                const LLVector3 t1 = tangents1[axis] * inner;
+                for (F32 sign : signs)
+                {
+                    const LLVector3 face_centre =
+                        centre + axes[axis] * (sign * (inner + state.mFeather));
+                    const LLVector3 face_corners[4] = {
+                        face_centre - t0 - t1, face_centre + t0 - t1,
+                        face_centre + t0 + t1, face_centre - t0 + t1,
+                    };
+                    gGL.color4fv(outer_color.mV);
+                    gGL.begin(LLRender::LINES);
+                    for (S32 i = 0; i < 4; ++i)
+                    {
+                        gGL.vertex3fv(face_corners[i].mV);
+                        gGL.vertex3fv(face_corners[(i + 1) % 4].mV);
+                    }
+                    gGL.end();
+                }
+            }
+        }
+    }
+    else // plane: a camera-facing rectangle at the cutoff depth
+    {
+        LLViewerCamera* camera = LLViewerCamera::getInstance();
+        const LLVector3 cam_pos = camera->getOrigin();
+        const LLVector3 fwd = camera->getAtAxis();
+        const LLVector3 right = camera->getLeftAxis() * -1.f;
+        const LLVector3 up = camera->getUpAxis();
+        const F32 anchor_depth = (centre - cam_pos) * fwd;
+
+        const auto draw_plane = [&](F32 dist, const LLColor4& color)
+        {
+            const LLVector3 plane_centre = cam_pos + fwd * (anchor_depth + dist);
+            const LLVector3 rr = right * NIGHT_MASK_GIZMO_PLANE_HALF_SIZE;
+            const LLVector3 uu = up * NIGHT_MASK_GIZMO_PLANE_HALF_SIZE;
+            const LLVector3 corners[4] = {
+                plane_centre - rr - uu, plane_centre + rr - uu,
+                plane_centre + rr + uu, plane_centre - rr + uu,
+            };
+            gGL.color4fv(color.mV);
+            gGL.begin(LLRender::LINES);
+            for (S32 i = 0; i < 4; ++i)
+            {
+                gGL.vertex3fv(corners[i].mV);
+                gGL.vertex3fv(corners[(i + 1) % 4].mV);
+            }
+            gGL.end();
+        };
+        draw_plane(inner, inner_color);
+        draw_plane(outer, outer_color);
+    }
+
     gGL.flush();
     gGL.setLineWidth(1.f);
 }

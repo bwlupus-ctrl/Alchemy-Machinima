@@ -71,6 +71,7 @@
 #include "lltexturecache.h"
 #include "lltexturefetch.h"
 #include "llimageworker.h"
+#include "lldirectorcast.h"     // [Night Mask] Self/Subject A-D target resolution
 #include "lldrawable.h"
 #include "lldrawpoolalpha.h"
 #include "lldrawpoolavatar.h"
@@ -11197,6 +11198,23 @@ void LLPipeline::generateLuminance(LLRenderTarget* src, LLRenderTarget* dst)
         static LLStaticHashedString diffuse_luminance_scale_s("diffuse_luminance_scale");
         gLuminanceProgram.uniform1f(diffuse_luminance_scale_s, diffuse_luminance_scale);
 
+        // [Night Mask B1] bloomMip[0] sampled above is LAST frame's bloom —
+        // generateBloomHDR() for the CURRENT frame runs later in renderFinalize,
+        // after applyOnLensFilters. When Night Mask is active, that bloom was
+        // built from the MASKED scene, so feeding it into this frame's
+        // metering indirectly lowers next-frame metering and exposure
+        // creeps up over time as a feedback loop. Scale the emissive/bloom
+        // term by mNightMaskFrame.mBloomScale — an exponential ramp toward
+        // (mActive ? 0 : 1) computed once this frame by updateNightMaskAnchor()
+        // (called just above generateLuminance in renderFinalize, the FINAL
+        // will-render resolve applyOnLensFilters also reads via mActive, so
+        // this can never disagree with whether the mask actually ran). B1(b):
+        // ramped rather than snapped so a Night Mask toggle can't pump
+        // exposure in a single frame.
+        static LLStaticHashedString night_mask_bloom_scale_s("night_mask_bloom_scale");
+        gLuminanceProgram.uniform1f(night_mask_bloom_scale_s,
+            mNightMaskFrame.mBloomScale);
+
         mScreenTriangleVB->setBuffer();
         mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
         dst->flush();
@@ -12301,6 +12319,283 @@ void LLPipeline::copyScreenSpaceReflections(LLRenderTarget* src, LLRenderTarget*
     }
 }
 
+// Night Mask: resolves the target avatar (Self/Subject A-D, the SAME Director
+// Cast lookup the Live Probe target combo uses), advances the anchor
+// position/yaw smoothing, and fills mNightMaskFrame for THIS frame. Called
+// once from renderFinalize(), before generateLuminance() (B1: bloom-metering
+// scale) and applyOnLensFilters() (the darkening pass itself) so both read one
+// coherent resolve instead of each independently re-deriving it — a second
+// independent resolve would double-step the exponential smoothing below.
+//
+// M3: deliberately independent of ALCineLightRig's liveProbeCentre/rig-offset
+// state — that state is gated on the Live Probe rig slot being enabled and
+// tracks that rig's own offsets, neither of which Night Mask should inherit.
+void LLPipeline::updateNightMaskAnchor()
+{
+    NightMaskFrameState& state = mNightMaskFrame;
+
+    // Major2 (Codex review): presentation_time is the shared clock for both
+    // the anchor smoothing and the B1(b) bloom-scale ramp below. A
+    // non-finite value (should never happen, but a poisoned clock must never
+    // propagate) is treated as a missing target for THIS frame and forces
+    // the smoothing validity flag false, so a later finite frame snaps fresh
+    // instead of interpolating from/against a NaN-derived state.
+    const F64 now = LLPresentationTime::currentFrame().presentation_time;
+    const bool now_finite = std::isfinite(now);
+
+    // B1(b): ramps the luminance pass's bloom-metering scale toward its
+    // target (0 while the mask will actually render and darken the scene
+    // this frame, 1 otherwise) instead of snapping it in a single frame,
+    // which would let a Night Mask toggle pump exposure. Called at every
+    // return point below with the correct target, so the ramp keeps running
+    // even while the mask itself is disabled/inert. Snaps (rather than
+    // ramping) on first use, a detected time reversal, or a non-finite clock.
+    const auto ramp_bloom_scale = [&](F32 target)
+    {
+        constexpr F32 BLOOM_SCALE_TAU_SEC = 0.4f;
+        if (!now_finite)
+        {
+            state.mBloomScale = target;
+            return;
+        }
+        if (state.mBloomScaleTime < 0.0 || now < state.mBloomScaleTime)
+        {
+            state.mBloomScale = target;
+        }
+        else
+        {
+            const F64 dt = now - state.mBloomScaleTime;
+            const F32 alpha = 1.f - expf(-(F32)dt / BLOOM_SCALE_TAU_SEC);
+            state.mBloomScale += (target - state.mBloomScale) * alpha;
+        }
+        state.mBloomScaleTime = now;
+    };
+
+    if (!now_finite)
+    {
+        state.mActive = false;
+        state.mHaveSmoothed = false;
+        ramp_bloom_scale(1.f);
+        return;
+    }
+
+    static LLCachedControl<bool> enabled(gSavedSettings, "CineLightRigNightMaskEnabled", false);
+    if (!enabled())
+    {
+        state.mActive = false;
+        state.mWasEnabled = false;
+        ramp_bloom_scale(1.f);
+        return;
+    }
+
+    // B1(a): fold the on-lens program's completeness and the same
+    // "no post-processing" snapshot gate applyOnLensFilters checks into THIS
+    // resolve, so mActive becomes the FINAL will-render decision rather than
+    // "would render if applyOnLensFilters's own later gates allow it".
+    // Without this, generateLuminance() (called right after this in
+    // renderFinalize) could zero bloom metering for a frame where
+    // applyOnLensFilters then skips the mask draw entirely via one of these
+    // exact gates, permanently biasing exposure upward. Duplicated (not
+    // shared via a helper) because both call sites run synchronously within
+    // the same renderFinalize() with no yield in between, so the values
+    // cannot drift between them.
+    static LLCachedControl<bool> should_auto_adjust(gSavedSettings, "RenderSkyAutoAdjustLegacy", false);
+    static LLCachedControl<bool> buildNoPost(gSavedSettings, "RenderDisablePostProcessing", false);
+    LLSettingsSky::ptr_t night_mask_psky = LLEnvironment::instance().getCurrentSky();
+    const bool night_mask_legacy_gamma = night_mask_psky &&
+        night_mask_psky->getReflectionProbeAmbiance(should_auto_adjust) == 0.f;
+    const bool night_mask_no_post = gSnapshotNoPost || night_mask_legacy_gamma ||
+        (buildNoPost && gFloaterTools && gFloaterTools->isAvailable());
+    const bool will_render = gOnLensFiltersProgram.isComplete() && !night_mask_no_post;
+
+    static LLCachedControl<S32>  target_setting(gSavedSettings, "CineLightRigNightMaskTarget", 0);
+    static LLCachedControl<S32>  shape_setting(gSavedSettings, "CineLightRigNightMaskShape", 1);
+    static LLCachedControl<F32>  distance_setting(gSavedSettings, "CineLightRigNightMaskDistance", 4.f);
+    static LLCachedControl<F32>  feather_setting(gSavedSettings, "CineLightRigNightMaskFeather", 3.f);
+    static LLCachedControl<F32>  darkness_setting(gSavedSettings, "CineLightRigNightMaskDarkness", 0.15f);
+    static LLCachedControl<F32>  height_offset_setting(gSavedSettings, "CineLightRigNightMaskHeightOffset", 0.f);
+    static LLCachedControl<F32>  tint_strength_setting(gSavedSettings, "CineLightRigNightMaskTintStrength", 0.f);
+    static LLCachedControl<LLColor3> tint_color_setting(gSavedSettings, "CineLightRigNightMaskTintColor", LLColor3(0.55f, 0.65f, 1.f));
+    static LLCachedControl<F32>  desaturation_setting(gSavedSettings, "CineLightRigNightMaskDesaturation", 0.f);
+
+    // m-a: llclamp() passes NaN through unchanged (lldefs.h), so sanitize
+    // every scalar with a finite check (non-finite -> the setting's own
+    // default) BEFORE clamping — a corrupted settings file must degrade to
+    // the default look, never propagate NaN into shader uniforms.
+    const auto finite_or = [](F32 v, F32 fallback)
+    { return std::isfinite(v) ? v : fallback; };
+
+    // M6: clamp every authored parameter on the CPU before it ever reaches a
+    // shader uniform (pattern: pipeline.cpp GradND/Polarizer clamps above).
+    const S32 shape        = std::clamp(static_cast<S32>(shape_setting()), 0, 2);
+    const F32 distance     = llclamp(finite_or((F32)distance_setting(), 4.f), 0.f, 256.f);
+    const F32 feather      = llclamp(finite_or((F32)feather_setting(), 3.f), 0.f, 256.f);
+    const F32 darkness     = llclamp(finite_or((F32)darkness_setting(), 0.15f), 0.f, 1.f);
+    const F32 height_off   = llclamp(finite_or((F32)height_offset_setting(), 0.f), -64.f, 64.f);
+    const F32 tint_str     = llclamp(finite_or((F32)tint_strength_setting(), 0.f), 0.f, 1.f);
+    const F32 desaturation = llclamp(finite_or((F32)desaturation_setting(), 0.f), 0.f, 1.f);
+
+    state.mShape = shape;
+    state.mDistance = distance;
+    state.mFeather = feather;
+    state.mDarkness = darkness;
+    state.mTintStrength = tint_str;
+    state.mDesaturation = desaturation;
+    // m4/m-a: TintColor is authored in the picker as sRGB; sanitize each
+    // component (non-finite -> default, then clamp to [0,1]) before
+    // converting to linear (pattern: linearColor3 at pipeline.cpp ~11544) so
+    // the shader only ever multiplies by a finite, in-range linear tint.
+    static const LLColor3 NIGHT_MASK_DEFAULT_TINT(0.55f, 0.65f, 1.f);
+    LLColor3 tint_raw = tint_color_setting();
+    for (S32 i = 0; i < 3; ++i)
+    {
+        tint_raw.mV[i] = llclamp(
+            finite_or(tint_raw.mV[i], NIGHT_MASK_DEFAULT_TINT.mV[i]), 0.f, 1.f);
+    }
+    state.mTintLinear = linearColor3(tint_raw);
+
+    // M3: independent anchor resolution via the same Director Cast lookup the
+    // Live Probe target combo uses (0 Self, 1-4 Subject A-D) — NOT
+    // ALCineLightRig::resolveSlotAvatar()/liveProbeCentre().
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    LLVOAvatar* avatar = nullptr;
+    switch (target_setting())
+    {
+        case 1: avatar = cast.resolveSubjectA(); break;
+        case 2: avatar = cast.resolveSubjectB(); break;
+        case 3: avatar = cast.resolveSubjectC(); break;
+        case 4: avatar = cast.resolveSubjectD(); break;
+        case 0:
+        default: avatar = cast.resolve(LLUUID::null); break;
+    }
+
+    // M3: missing target => mask inert this frame, never garbage. Leave the
+    // smoothed position/yaw untouched (a brief one-frame resolution gap
+    // should not force a re-snap once the target reappears).
+    if (!avatar || avatar->isDead())
+    {
+        state.mActive = false;
+        state.mWasEnabled = true;
+        ramp_bloom_scale(1.f);
+        return;
+    }
+
+    // M4: reset (snap) smoothing on target change, teleport/region change, or
+    // time reversal (pattern: alcinelightrig.cpp setAnchor()/tickShared()).
+    LLViewerRegion* region = gAgent.getRegion();
+    const U64 region_handle = region ? region->getHandle() : 0;
+    const bool just_enabled = !state.mWasEnabled;
+    if (!state.mHaveSmoothed || just_enabled ||
+        avatar->getID() != state.mLastTargetId ||
+        region_handle != state.mLastRegionHandle ||
+        state.mLastTime < 0.0 || now < state.mLastTime)
+    {
+        state.mHaveSmoothed = false;
+    }
+    state.mWasEnabled = true;
+    state.mLastTargetId = avatar->getID();
+    state.mLastRegionHandle = region_handle;
+
+    const LLVector3 true_pos =
+        avatar->getRenderPosition() + LLVector3(0.f, 0.f, height_off);
+    LLVector3 forward = LLVector3::x_axis * avatar->getRenderRotation();
+    forward.mV[VZ] = 0.f;
+    if (!forward.isFinite() || forward.normalize() <= F_APPROXIMATELY_ZERO)
+    {
+        forward = LLVector3::x_axis;
+    }
+
+    // Major2: a non-finite resolved target position would poison every
+    // downstream vector op (view-space transform, SDF math) if it ever
+    // reached mSmoothedPosAgent. Treat it exactly like a missing target for
+    // this frame, and force mHaveSmoothed false so the NEXT finite frame
+    // snaps fresh instead of lerping away from a value we never stored.
+    if (!true_pos.isFinite())
+    {
+        state.mActive = false;
+        state.mWasEnabled = true;
+        state.mHaveSmoothed = false;
+        ramp_bloom_scale(1.f);
+        return;
+    }
+
+    // Short critically-damped/exp-lerp smoothing, matching
+    // ALCineLightRig::tickShared()'s damping idiom exactly (alpha = 1 -
+    // exp(-dt/damping)). "Short" per the design review — a fixed constant,
+    // not a user-exposed setting (this is deliberately not in the settings
+    // block the review specified).
+    constexpr F32 NIGHT_MASK_DAMPING_SEC = 0.15f;
+    if (!state.mHaveSmoothed)
+    {
+        state.mSmoothedPosAgent = true_pos;
+        state.mSmoothedForward = forward;
+        state.mHaveSmoothed = true;
+    }
+    else
+    {
+        const F64 dt = now - state.mLastTime;
+        const F32 alpha = 1.f - expf(-(F32)dt / NIGHT_MASK_DAMPING_SEC);
+        state.mSmoothedPosAgent += (true_pos - state.mSmoothedPosAgent) * alpha;
+        state.mSmoothedForward += (forward - state.mSmoothedForward) * alpha;
+        if (state.mSmoothedForward.normalize() <= F_APPROXIMATELY_ZERO)
+        {
+            state.mSmoothedForward = forward;
+        }
+    }
+    state.mLastTime = now;
+
+    // B1(c): a non-identity-tint check — tint_strength>0 with a WHITE
+    // (1,1,1) linear tint is a no-op multiply, so it must not count as
+    // "contributing" on its own. M6 no-op parity with applyGradND's own
+    // convention otherwise: darkness>=1 AND no desaturation AND no non-white
+    // tint is a true identity, even with a valid target.
+    const bool tint_is_identity =
+        std::fabs(state.mTintLinear.mV[0] - 1.f) < 1e-4f &&
+        std::fabs(state.mTintLinear.mV[1] - 1.f) < 1e-4f &&
+        std::fabs(state.mTintLinear.mV[2] - 1.f) < 1e-4f;
+    const bool contributes =
+        darkness < (1.f - 1e-4f) || desaturation > 0.f ||
+        (tint_str > 0.f && !tint_is_identity);
+    state.mActive = contributes && will_render;
+    ramp_bloom_scale(state.mActive ? 0.f : 1.f);
+    if (!state.mActive)
+    {
+        return;
+    }
+
+    // M5: transform the agent-space anchor with the SAME saved frame matrices
+    // the weather pass uses (pipeline.cpp ~13702-13706) — renderFinalize runs
+    // after render_ui() has begun touching the live GL matrix stack, so the
+    // live stack is not trustworthy here.
+    const glm::mat4 modelview = glm::make_mat4(gGLLastModelView);
+    const glm::vec4 anchor_view4 = modelview * glm::vec4(
+        state.mSmoothedPosAgent.mV[VX], state.mSmoothedPosAgent.mV[VY],
+        state.mSmoothedPosAgent.mV[VZ], 1.f);
+    state.mAnchorView = glm::vec3(anchor_view4);
+
+    if (shape == 2)
+    {
+        // Cube only: compose the view-space delta -> yaw-local-axes basis
+        // once here, so the shader does zero agent-space math (see M5/M6
+        // comment in postEffectUtilsF.glsl::applyNightMask). Both view_pos
+        // and the anchor share this SAME modelview, so their difference is
+        // rotation-only (no translation term to carry): delta_agent =
+        // R_modelview^T * delta_view, then local = R_yaw^T * delta_agent.
+        const F32 yaw = atan2f(state.mSmoothedForward.mV[VY], state.mSmoothedForward.mV[VX]);
+        const F32 cy = cosf(yaw), sy = sinf(yaw);
+        // Column-major: R_yaw rotates the box's local +X/+Y axes into agent
+        // space by `yaw` about world/agent Z.
+        const glm::mat3 yaw_rot(
+            cy,  sy, 0.f,
+            -sy, cy, 0.f,
+            0.f, 0.f, 1.f);
+        const glm::mat3 modelview_rot(modelview);
+        // box_basis * delta_view == R_yaw^T * (R_modelview^T * delta_view)
+        //                        == R_yaw^T * delta_agent == local
+        state.mBoxBasis = glm::transpose(modelview_rot * yaw_rot);
+    }
+}
+
 // On-lens filters (Graduated ND + Polarizer) applied to the linear HDR scene
 // BEFORE bloom/flare generation, so those optics respect the filtered scene the
 // way a real on-lens ND/polarizer does. Exposure is metered upstream from the
@@ -12310,24 +12605,58 @@ void LLPipeline::copyScreenSpaceReflections(LLRenderTarget* src, LLRenderTarget*
 // during post) and writes the filtered result back into `screen`; every later
 // pass reads `screen` unchanged. Self-gates to a no-op (no copy, no draw) when
 // neither filter is active, preserving byte-identical output when disabled.
+//
+// Night Mask (subject-anchored darkness mask) is the THIRD on-lens filter,
+// evaluated FIRST inside the shared fragment shader (before GradND/Polarizer)
+// — see the M8 ordering note further down for how its ReShade raw-scene
+// capture ordering differs from GradND/Polarizer's.
+//
+// M2: three later passes deliberately BYPASS Night Mask and are not expected
+// to change for v1 — a shaft or outline punching through the darkened region
+// is the intended look, not a bug:
+//   - renderCineOutline(&mRT->screen)   (called right after this, in the
+//     `if (hdr)` block of renderFinalize) — the outline is a director-facing
+//     overlay, not scene light; it should read on top of the mask.
+//   - the legacy sun godray pass (renderFinalize, display-stage placement,
+//     "[BDMerge G3.2] volumetric lighting / godrays") — an atmospheric shaft
+//     is meant to visibly punch through a darkened background.
+//   - lens flare, composited inside colorCorrectF (computeLensFlare) — a lens
+//     artifact belongs to the CAMERA, not the scene, so it sits entirely
+//     outside the world-lighting fake Night Mask represents.
 void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
 {
     if (!gOnLensFiltersProgram.isComplete())
         return;
 
-    // Cheap enable gate FIRST — when both filters are off this returns before any
-    // GPU profiling zone, settings resolve, copy, or draw, keeping the disabled
-    // hot path minimal (only two cached-control reads).
+    // Cheap enable gate FIRST — when all three filters are off this returns before
+    // any GPU profiling zone, settings resolve, copy, or draw, keeping the disabled
+    // hot path minimal. mNightMaskFrame.mActive was already resolved once this
+    // frame by updateNightMaskAnchor() (called from renderFinalize before this),
+    // so folding it in here costs nothing extra — and per the design review (m2),
+    // a missing-target/HDR-off Night Mask must not suppress an independently
+    // enabled GradND/Polarizer, which this OR naturally preserves: an inert Night
+    // Mask simply contributes no additional reason to run.
+    //
+    // B1(a): mActive is the FINAL will-render decision — updateNightMaskAnchor()
+    // duplicates BOTH gates immediately below (program completeness and the
+    // "no post-processing" snapshot gate) into its own resolve before setting
+    // mActive, specifically so this function's copies of those same gates can
+    // never cause the mask to be skipped on a frame where mActive already said
+    // it was active (which would leave generateLuminance()'s bloom-metering
+    // scale zeroed for a frame that never actually drew the mask). The checks
+    // below are NOT redundant to remove: GradND/Polarizer still need their own
+    // copies gated independently of Night Mask's state.
     static LLCachedControl<bool> gnd_enabled(gSavedSettings, "RenderGradNDEnabled", false);
     static LLCachedControl<bool> pol_enabled(gSavedSettings, "RenderPolarizerEnabled", false);
-    if (!gnd_enabled() && !pol_enabled())
+    const bool night_active = mNightMaskFrame.mActive;
+    if (!gnd_enabled() && !pol_enabled() && !night_active)
         return;
 
     // "No post-processing" snapshots must stay filter-free.
     static LLCachedControl<bool> should_auto_adjust(gSavedSettings, "RenderSkyAutoAdjustLegacy", false);
     static LLCachedControl<bool> buildNoPost(gSavedSettings, "RenderDisablePostProcessing", false);
     LLSettingsSky::ptr_t psky = LLEnvironment::instance().getCurrentSky();
-    bool legacy_gamma = psky->getReflectionProbeAmbiance(should_auto_adjust) == 0.f;
+    bool legacy_gamma = psky && psky->getReflectionProbeAmbiance(should_auto_adjust) == 0.f;
     bool no_post = gSnapshotNoPost || legacy_gamma || (buildNoPost && gFloaterTools && gFloaterTools->isAvailable());
     if (no_post)
         return;
@@ -12424,27 +12753,61 @@ void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
     p_glare_depth = llclamp(p_glare_depth, 0.5f, 1.f);
 
     // Nothing to do — skip the pass entirely (byte-identical, zero cost).
-    if (density <= 0.f && p_strength <= 0.f)
+    if (density <= 0.f && p_strength <= 0.f && !night_active)
         return;
 
-    // ReShade decouple: past every early-out, this pass WILL modify `screen`,
-    // so snapshot the RAW (pre-on-lens) scene first for the ReShade bridge —
-    // RTGI-style effects must reflect the unfiltered surfaces (a lens filter
-    // does not change surface-to-surface bounce). COLOR-only framebuffer blit
-    // via copyContents — NOT copyRenderTarget, whose shader samples
-    // deferredScreen's depth (which `screen` shares) and would create a depth
-    // feedback loop; a blit samples no textures. When decouple is off or the
-    // target is unallocated, mReShadeRawSceneValid stays false (reset each
-    // frame in renderFinalize) and the bridge publishes mRT->screen as before.
+    // --- Night Mask -------------------------------------------------------
+    // Parameters were already clamped and resolved once this frame by
+    // updateNightMaskAnchor() into mNightMaskFrame; just read them here.
+    const S32 night_shape           = mNightMaskFrame.mShape;
+    const F32 night_distance        = mNightMaskFrame.mDistance;
+    const F32 night_feather         = mNightMaskFrame.mFeather;
+    const F32 night_darkness        = mNightMaskFrame.mDarkness;
+    const F32 night_tint_strength   = mNightMaskFrame.mTintStrength;
+    const F32 night_desaturation    = mNightMaskFrame.mDesaturation;
+    const LLColor3& night_tint      = mNightMaskFrame.mTintLinear;
+    const glm::vec3& night_anchor_view = mNightMaskFrame.mAnchorView;
+    const glm::mat3& night_box_basis   = mNightMaskFrame.mBoxBasis;
+    // M5 / Major1 (Codex review): matches the SAME saved frame matrices the
+    // anchor was transformed with (gGLLastProjection), not the live GL stack
+    // render_ui() has already touched. Uploaded into the DEDICATED
+    // night_mask_inv_proj uniform, never the managed inv_proj/
+    // INVERSE_PROJECTION_MATRIX — LLVertexBuffer::drawArrays()'s
+    // gGL.syncMatrices() call re-uploads the managed inv_proj from the LIVE
+    // projection whenever its hash differs from what this shader last saw,
+    // which happens INSIDE drawArrays() and would silently clobber an
+    // override of that uniform before the actual glDrawArrays fires (e.g. on
+    // any frame the Scene Monitor path has reset the live projection
+    // mid-frame). The shader reconstructs view-space position locally
+    // against this dedicated matrix (postEffectUtilsF.glsl
+    // nightMaskGetPosition) instead of calling deferredUtil's getPosition().
+    // Only needed while Night Mask actually contributes to a given sub-pass
+    // (see draw_on_lens_pass below).
+    const glm::mat4 night_inverse_projection =
+        night_active ? glm::inverse(glm::make_mat4(gGLLastProjection)) : glm::mat4(1.f);
+
+    // ReShade decouple: past every early-out, this pass WILL modify `screen`.
+    // M8 ordering: Night Mask is a world-lighting fake, not a camera-lens
+    // artifact — ReShade (RTGI-style effects) MUST see it baked into the raw
+    // scene it receives, unlike GradND/Polarizer, which stay decoupled (a lens
+    // filter does not change surface-to-surface bounce, so RTGI must reflect
+    // the UNFILTERED surfaces for those two). When Night Mask is active this
+    // pass therefore runs in TWO draws through the shared shader/program:
+    //   1) Night Mask only, baked back into `screen`
+    //   2) raw-scene capture (mask included, GradND/Polarizer NOT yet applied)
+    //   3) GradND/Polarizer only (Night Mask forced off — already applied)
+    // When Night Mask is inactive this collapses to the original single draw
+    // with the capture BEFORE it, byte-identical to the pre-Night-Mask code.
     static LLCachedControl<bool> reshade_decouple(gSavedSettings, "RenderReShadeDecoupleOnLens", true);
-    if (reshade_decouple() && mReShadeSceneRaw.getWidth() > 0)
+    const bool want_raw_capture = reshade_decouple() && mReShadeSceneRaw.getWidth() > 0;
+    const auto capture_raw_scene = [&]()
     {
         mReShadeSceneRaw.copyContents(*screen,
                                       0, 0, screen->getWidth(), screen->getHeight(),
                                       0, 0, mReShadeSceneRaw.getWidth(), mReShadeSceneRaw.getHeight(),
                                       GL_COLOR_BUFFER_BIT, GL_NEAREST);
         mReShadeRawSceneValid = true;
-    }
+    };
 
     F32 aspect  = (screen->getHeight() > 0) ? (F32)screen->getWidth() / (F32)screen->getHeight() : 1.f;
     F32 sun_u = 0.5f, sun_v = 0.5f, has_sun = 0.f;
@@ -12483,39 +12846,111 @@ void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
     // depth buffer, so sampling deferredScreen's depth while drawing here creates
     // no feedback loop; `screen` shares deferredScreen's depth, so drawing
     // directly into `screen` while sampling that depth would be undefined.
-    mWaterDis.bindTarget();
+    //
+    // include_night / include_gradnd_pol select which filter(s) this particular
+    // draw applies; the shader early-outs identically (per-effect) on whichever
+    // side is excluded, so excluding GradND/Polarizer here is exactly the same
+    // "density<=0 / strength<=0" early-out path as today, and excluding Night
+    // Mask is the same "active<=0.5" early-out documented in applyNightMask.
+    const auto draw_on_lens_pass = [&](bool include_night, bool include_gradnd_pol)
     {
-        LLGLDepthTest depth(GL_FALSE, GL_FALSE);
-        LLGLDisable blend(GL_BLEND);
+        mWaterDis.bindTarget();
+        {
+            LLGLDepthTest depth(GL_FALSE, GL_FALSE);
+            LLGLDisable blend(GL_BLEND);
 
-        gOnLensFiltersProgram.bind();
-        gOnLensFiltersProgram.bindTexture(LLShaderMgr::DEFERRED_DIFFUSE, screen, false, LLTexUnit::TFO_POINT);
-        gOnLensFiltersProgram.bindTexture(LLShaderMgr::DEFERRED_DEPTH, &mRT->deferredScreen, true);
-        gOnLensFiltersProgram.bindTexture(LLShaderMgr::EXPOSURE_MAP, &mExposureMap);
-        gOnLensFiltersProgram.uniform1f(LLShaderMgr::EXPOSURE, exposure);
+            gOnLensFiltersProgram.bind();
+            gOnLensFiltersProgram.bindTexture(LLShaderMgr::DEFERRED_DIFFUSE, screen, false, LLTexUnit::TFO_POINT);
+            gOnLensFiltersProgram.bindTexture(LLShaderMgr::DEFERRED_DEPTH, &mRT->deferredScreen, true);
+            gOnLensFiltersProgram.bindTexture(LLShaderMgr::EXPOSURE_MAP, &mExposureMap);
+            gOnLensFiltersProgram.uniform1f(LLShaderMgr::EXPOSURE, exposure);
 
-        gOnLensFiltersProgram.uniform4f(LLShaderMgr::GRADND_PARAMS,     density, angle_rad, position, softness);
-        gOnLensFiltersProgram.uniform4f(LLShaderMgr::GRADND_PARAMS2,    sky_confine, sun_weight, sun_radius, flip);
-        gOnLensFiltersProgram.uniform4f(LLShaderMgr::POLARIZER_PARAMS,  p_strength, p_sky_sat, p_sky_darken, p_band_radius);
-        gOnLensFiltersProgram.uniform4f(LLShaderMgr::POLARIZER_PARAMS2, p_glare, p_glare_thr, p_glare_depth, p_auto_band);
-        gOnLensFiltersProgram.uniform4f(LLShaderMgr::GRADND_SUN,        sun_u, sun_v, has_sun, aspect);
+            gOnLensFiltersProgram.uniform4f(LLShaderMgr::GRADND_PARAMS,
+                include_gradnd_pol ? density : 0.f, angle_rad, position, softness);
+            gOnLensFiltersProgram.uniform4f(LLShaderMgr::GRADND_PARAMS2,    sky_confine, sun_weight, sun_radius, flip);
+            gOnLensFiltersProgram.uniform4f(LLShaderMgr::POLARIZER_PARAMS,
+                include_gradnd_pol ? p_strength : 0.f, p_sky_sat, p_sky_darken, p_band_radius);
+            gOnLensFiltersProgram.uniform4f(LLShaderMgr::POLARIZER_PARAMS2, p_glare, p_glare_thr, p_glare_depth, p_auto_band);
+            gOnLensFiltersProgram.uniform4f(LLShaderMgr::GRADND_SUN,        sun_u, sun_v, has_sun, aspect);
 
-        mScreenTriangleVB->setBuffer();
-        mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+            // m-e: draw_night false uploads strength-0 Night Mask uniforms by
+            // design (identity path — see applyNightMask's active<=0.5
+            // early-out), exactly like a GradND/Polarizer-only draw uploads
+            // density/strength 0 above.
+            const bool draw_night = include_night && night_active;
+            gOnLensFiltersProgram.uniform4f(LLShaderMgr::NIGHT_MASK_PARAMS,
+                draw_night ? 1.f : 0.f, night_distance, night_feather, night_darkness);
+            gOnLensFiltersProgram.uniform4f(LLShaderMgr::NIGHT_MASK_PARAMS2,
+                night_tint_strength, night_desaturation, 0.f, 0.f);
+            gOnLensFiltersProgram.uniform1i(LLShaderMgr::NIGHT_MASK_SHAPE, night_shape);
+            if (draw_night)
+            {
+                gOnLensFiltersProgram.uniform3f(LLShaderMgr::NIGHT_MASK_ANCHOR_VIEW,
+                    night_anchor_view.x, night_anchor_view.y, night_anchor_view.z);
+                gOnLensFiltersProgram.uniform3f(LLShaderMgr::NIGHT_MASK_TINT,
+                    night_tint.mV[0], night_tint.mV[1], night_tint.mV[2]);
+                if (night_shape == 2)
+                {
+                    gOnLensFiltersProgram.uniformMatrix3fv(LLShaderMgr::NIGHT_MASK_BOX_BASIS,
+                        1, false, glm::value_ptr(night_box_basis));
+                }
+                // Major1: upload the DEDICATED night_mask_inv_proj uniform —
+                // NOT the managed INVERSE_PROJECTION_MATRIX/inv_proj, which
+                // gGL.syncMatrices() (called inside the drawArrays() below)
+                // can silently re-upload from the LIVE projection AFTER this
+                // override and before the actual glDrawArrays. See the
+                // comment on night_inverse_projection above.
+                gOnLensFiltersProgram.uniformMatrix4fv(LLShaderMgr::NIGHT_MASK_INV_PROJ,
+                    1, false, glm::value_ptr(night_inverse_projection));
+            }
 
-        gOnLensFiltersProgram.unbind();
+            mScreenTriangleVB->setBuffer();
+            mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+
+            gOnLensFiltersProgram.unbind();
+        }
+        mWaterDis.flush();
+
+        // Copy the filtered scene back into `screen` for the downstream passes
+        // (bloom/flare/tonemap). Use a raw COLOR-only framebuffer blit — NOT
+        // copyRenderTarget, whose shader samples deferredScreen's depth (which
+        // `screen` shares), reintroducing the depth feedback loop. A blit samples no
+        // textures, so it is feedback-free. GL_COLOR_BUFFER_BIT leaves depth alone.
+        screen->copyContents(mWaterDis,
+                             0, 0, mWaterDis.getWidth(), mWaterDis.getHeight(),
+                             0, 0, screen->getWidth(), screen->getHeight(),
+                             GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    };
+
+    if (night_active)
+    {
+        // Pass 1: Night Mask only, baked into `screen`.
+        draw_on_lens_pass(true, false);
+
+        // M8: raw-scene capture AFTER the mask, BEFORE GradND/Polarizer.
+        if (want_raw_capture)
+        {
+            capture_raw_scene();
+        }
+
+        // Pass 2: GradND/Polarizer only (Night Mask already applied; forced
+        // off here so it isn't double-applied). Skipped entirely when neither
+        // wants to run, leaving the mask-only result as the final output.
+        if (density > 0.f || p_strength > 0.f)
+        {
+            draw_on_lens_pass(false, true);
+        }
     }
-    mWaterDis.flush();
-
-    // Copy the filtered scene back into `screen` for the downstream passes
-    // (bloom/flare/tonemap). Use a raw COLOR-only framebuffer blit — NOT
-    // copyRenderTarget, whose shader samples deferredScreen's depth (which
-    // `screen` shares), reintroducing the depth feedback loop. A blit samples no
-    // textures, so it is feedback-free. GL_COLOR_BUFFER_BIT leaves depth alone.
-    screen->copyContents(mWaterDis,
-                         0, 0, mWaterDis.getWidth(), mWaterDis.getHeight(),
-                         0, 0, screen->getWidth(), screen->getHeight(),
-                         GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    else
+    {
+        // Unchanged existing behavior: capture BEFORE the single GradND/
+        // Polarizer draw — byte-identical to the pre-Night-Mask code path.
+        if (want_raw_capture)
+        {
+            capture_raw_scene();
+        }
+        draw_on_lens_pass(false, true);
+    }
 }
 
 void LLPipeline::generateGlow(LLRenderTarget* src)
@@ -16694,6 +17129,13 @@ void LLPipeline::renderFinalize()
 
     if (hdr)
     {
+        // Night Mask: resolve the target/anchor/smoothing ONCE this frame,
+        // before generateLuminance() (B1 bloom-metering fix) and
+        // applyOnLensFilters() (the darkening pass) both consume it — see the
+        // comment on updateNightMaskAnchor() for why they must share one
+        // resolve rather than each independently re-deriving it.
+        updateNightMaskAnchor();
+
         generateLuminance(&mRT->screen, &mLuminanceMap);
 
         generateExposure(&mLuminanceMap, &mExposureMap);

@@ -42,6 +42,7 @@ uniform float     exposure;      // manual exposure knob (RenderExposure)
 
 in vec2 vary_fragcoord;
 
+vec3 applyNightMask(vec3 color, vec2 uv, sampler2D depth);
 vec3 applyGradND(vec3 color, vec2 uv, sampler2D depth);
 vec3 applyPolarizer(vec3 color, vec2 uv, sampler2D depth, float exposure_scale);
 
@@ -56,6 +57,11 @@ void main()
     // even though this pass runs before exposure is applied.
     float exposure_scale = texture(exposureMap, vec2(0.5, 0.5)).r * exposure;
 
+    // Night Mask runs FIRST: it is a world-lighting fake (not a camera-lens
+    // artifact like the ND/polarizer below it), and LLPipeline::applyOnLensFilters
+    // snapshots the ReShade raw-scene capture right after this draw, so the
+    // mask must already be baked into `diff` by the time that capture happens.
+    diff.rgb = applyNightMask(diff.rgb, vary_fragcoord, depthMap);
     diff.rgb = applyGradND(diff.rgb, vary_fragcoord, depthMap);
     diff.rgb = applyPolarizer(diff.rgb, vary_fragcoord, depthMap, exposure_scale);
     frag_color = diff;
