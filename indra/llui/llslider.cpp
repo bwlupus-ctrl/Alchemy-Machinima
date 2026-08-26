@@ -55,13 +55,15 @@ LLSlider::Params::Params()
     track_highlight_horizontal_image("track_highlight_horizontal_image"),
     track_highlight_vertical_image("track_highlight_vertical_image"),
     mouse_down_callback("mouse_down_callback"),
-    mouse_up_callback("mouse_up_callback")
+    mouse_up_callback("mouse_up_callback"),
+    wheel_adjust("wheel_adjust", false)
 {}
 
 LLSlider::LLSlider(const LLSlider::Params& p)
 :   LLF32UICtrl(p),
     mMouseOffset( 0 ),
     mOrientation ((p.orientation() == "horizontal") ? HORIZONTAL : VERTICAL),
+    mWheelAdjust(p.wheel_adjust),
     mThumbOutlineColor(p.thumb_outline_color()),
     mThumbCenterColor(p.thumb_center_color()),
     mThumbImage(p.thumb_image),
@@ -287,7 +289,9 @@ bool LLSlider::handleKeyHere(KEY key, MASK mask)
 
 bool LLSlider::handleScrollWheel(S32 x, S32 y, LLScrollDelta delta)
 {
-    if ( mOrientation == VERTICAL )
+    // [AL] wheel_adjust: hovered vertical wheel steps a horizontal slider by its
+    // increment (wheel up = increase), giving precision control without dragging.
+    if ( mOrientation == VERTICAL || (mWheelAdjust && mOrientation == HORIZONTAL) )
     {
         F32 new_val = getValueF32() - delta.mClicks * getIncrement();
         setValueAndCommit(new_val);

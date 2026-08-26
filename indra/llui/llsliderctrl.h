@@ -53,6 +53,9 @@ public:
         Optional<bool>          can_edit_text;
         Optional<bool>          is_volume_slider;
         Optional<S32>           decimal_digits;
+        // [AL] passthrough to LLSlider::Params::wheel_adjust (hover wheel steps
+        // a horizontal slider by its increment); off by default.
+        Optional<bool>          wheel_adjust;
 
         Optional<LLUIColor>     text_color,
                                 text_disabled_color;
@@ -72,6 +75,7 @@ public:
             can_edit_text("can_edit_text"),
             is_volume_slider("volume"),
             decimal_digits("decimal_digits", 3),
+            wheel_adjust("wheel_adjust", false),
             text_color("text_color"),
             text_disabled_color("text_disabled_color"),
             slider_bar("slider_bar"),

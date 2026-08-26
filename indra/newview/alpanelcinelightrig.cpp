@@ -1733,12 +1733,18 @@ void ALPanelCineLightRig::syncEasyControls()
     mEasyWarmth->setEnabled(mEasyModeActive);
     mEasyConeWidth->setEnabled(mEasyModeActive);
     mEasyConeFeather->setEnabled(mEasyModeActive);
+    // Easy Shaft length is a direct control_name binding (no remap handler), but
+    // it edits a global lever, so gate it on Easy exactly like Cone/Edge above.
+    if (LLUICtrl* shaft = findChild<LLUICtrl>("cine_easy_shaft_length"))
+    {
+        shaft->setEnabled(mEasyModeActive);
+    }
     // The Easy reset buttons write the same backing settings, so gate them too;
     // otherwise a reset click would edit the light while Easy mode is off.
     static const char* const EASY_RESET_BUTTONS[] = {
         "cine_easy_brightness_reset", "cine_easy_drama_reset",
         "cine_easy_warmth_reset", "cine_easy_cone_width_reset",
-        "cine_easy_cone_feather_reset",
+        "cine_easy_cone_feather_reset", "cine_easy_shaft_length_reset",
     };
     for (const char* button_name : EASY_RESET_BUTTONS)
     {

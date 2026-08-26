@@ -1799,9 +1799,11 @@ void LLPipeline::refreshCachedSettings()
     if (BDMergeProjectorVolumetricsMaxDistance !=
         previous_projvol_max_distance)
     {
-        // A shortened per-cone beam must not retain its old tail through the
-        // projector temporal accumulator. Froxel/Voxel Air is independent.
+        // A shortened beam must not retain its old tail through a temporal
+        // accumulator: per-cone history AND the froxel light atlas (injected
+        // projectors clip by this same lever). Voxel Air settings untouched.
         gPipeline.mProjVolHistoryValid = false;
+        gPipeline.mFroxelHistoryValid  = false;
     }
     BDMergeProjectorVolumetricsAnisotropy = gSavedSettings.getF32("BDMergeProjectorVolumetricsAnisotropy");
     BDMergeProjectorVolumetricsDither = gSavedSettings.getU32("BDMergeProjectorVolumetricsDither");
@@ -14798,6 +14800,7 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
             VolumetricShaftOverride ov;
             const bool has_ov = getVolumetricShaftOverride(matched_id, ov);
             const F32 e_mult     = has_ov ? ov.multiplier   : BDMergeProjectorVolumetricsMultiplier;
+            const F32 e_max_dist = has_ov ? ov.maxDistance  : BDMergeProjectorVolumetricsMaxDistance;
             const F32 e_feather  = has_ov ? ov.feather      : BDMergeProjectorVolumetricsFeather;
             const F32 e_g        = has_ov ? ov.anisotropy   : BDMergeProjectorVolumetricsAnisotropy;
             const LLColor3 e_tint = has_ov ? ov.tint        : BDMergeProjectorVolumetricsTint;
@@ -14806,6 +14809,13 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
             gFroxelInjectProgram.uniform1f(LLShaderMgr::GODRAY_MULTIPLIER, e_mult);
             gFroxelInjectProgram.uniform1f(LLShaderMgr::PROJVOL_FEATHER, e_feather);
             gFroxelInjectProgram.uniform1f(LLShaderMgr::PROJVOL_G, e_g);
+            // Shaft length must clip this projector's grid injection exactly like the
+            // per-cone march, or the slider goes dead whenever its cone is demoted to
+            // rim-only by froxel injection. Projector lever only - no Voxel Air state.
+            static const LLStaticHashedString sFroxelProjVolMaxDistance(
+                "projvol_max_distance");
+            gFroxelInjectProgram.uniform1f(
+                sFroxelProjVolMaxDistance, llclamp(e_max_dist, 0.f, 64.f));
             LLColor3 col = volume->getLightLinearColor() * light_scale;
             if (e_tintStr > 0.f) // shaft tint lerp (no-op at TintStrength 0), same as per-cone
             {
@@ -16220,6 +16230,9 @@ static LLPipeline::VolumetricShaftOverride globalFroxelShaftInputs()
 {
     LLPipeline::VolumetricShaftOverride inputs;
     inputs.multiplier = LLPipeline::BDMergeProjectorVolumetricsMultiplier;
+    // maxDistance clips the injected beam too (froxelInjectF), so it must take
+    // part in the history-invalidation comparison like every other grid input.
+    inputs.maxDistance = LLPipeline::BDMergeProjectorVolumetricsMaxDistance;
     inputs.feather = LLPipeline::BDMergeProjectorVolumetricsFeather;
     inputs.anisotropy = LLPipeline::BDMergeProjectorVolumetricsAnisotropy;
     inputs.tint = LLPipeline::BDMergeProjectorVolumetricsTint;
@@ -16232,6 +16245,7 @@ static bool froxelShaftInputsDiffer(
     const LLPipeline::VolumetricShaftOverride& rhs)
 {
     return lhs.multiplier != rhs.multiplier ||
+           lhs.maxDistance != rhs.maxDistance ||
            lhs.feather != rhs.feather ||
            lhs.anisotropy != rhs.anisotropy ||
            lhs.tint.mV[0] != rhs.tint.mV[0] ||

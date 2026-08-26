@@ -1435,7 +1435,7 @@
             <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsBloomFeed" decimal_digits="2" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.01" layout="topleft" left="136" max_val="2" min_val="0" name="director_ps_bloom_feed" show_text="true" top="1126" width="188" />
             <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsBloomFeed" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_bloom_feed_reset" top="1127" tool_tip="Reset to default value" width="18" />
             <text follows="left|top" height="16" layout="topleft" left="12" top="1162" value="Shaft length (m):" width="120" />
-            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsMaxDistance" decimal_digits="1" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.5" layout="topleft" left="136" max_val="64" min_val="0" name="director_ps_max_distance" show_text="true" top="1158" tool_tip="Maximum visible airborne beam length. 0 follows the projector's full light range; surface illumination is unchanged." width="188" />
+            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsMaxDistance" decimal_digits="1" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.1" layout="topleft" left="136" max_val="64" min_val="0" name="director_ps_max_distance" show_text="true" top="1158" tool_tip="Maximum visible airborne beam length. 0 follows the projector's full light range; surface illumination is unchanged. Hover and scroll the mouse wheel for 0.1 m steps." wheel_adjust="true" width="188" />
             <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsMaxDistance" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_max_distance_reset" top="1159" tool_tip="Reset to full projector range" width="18" />
 
             <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="10" top="1194" value="Shadow Quality (Batch 2)" width="330" />
@@ -1476,7 +1476,7 @@
              width="374">
                 <panel
                  background_visible="false"
-                 height="2700"
+                 height="2724"
                  layout="topleft"
                  left="0"
                  name="cine_light_rig_scroll_content"
@@ -1486,7 +1486,7 @@
                      class="panel_cine_light_rig"
                      filename="panel_cine_light_rig.xml"
                      follows="left|top"
-                      height="2690"
+                      height="2714"
                      layout="topleft"
                      left="2"
                      name="cine_light_rig_embedded"

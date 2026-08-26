@@ -62,6 +62,11 @@ public:
         Optional<CommitCallbackParam>   mouse_down_callback,
                                         mouse_up_callback;
 
+        // [AL] Opt-in: let the ordinary (vertical) scroll wheel step a HORIZONTAL
+        // slider by its increment while hovered, for precision adjustment. Off by
+        // default so sliders inside scroll containers keep routing the wheel to
+        // the container. Vertical sliders already take the vertical wheel.
+        Optional<bool>                  wheel_adjust;
 
         Params();
     };
@@ -108,6 +113,7 @@ private:
     LLPointer<LLUIImage>    mTrackHighlightVerticalImage;
 
     const EOrientation  mOrientation;
+    const bool          mWheelAdjust; // [AL] hovered vertical wheel steps a horizontal slider
 
     LLRect      mThumbRect;
     LLUIColor   mThumbOutlineColor;

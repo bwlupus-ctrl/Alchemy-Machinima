@@ -145,6 +145,10 @@ LLSliderCtrl::LLSliderCtrl(const LLSliderCtrl::Params& p)
     {
         slider_p.orientation = p.orientation;
     }
+    if (!slider_p.wheel_adjust.isProvided())
+    {
+        slider_p.wheel_adjust = p.wheel_adjust; // [AL] hover-wheel precision opt-in
+    }
 
     slider_p.commit_callback.function = &LLSliderCtrl::onSliderCommit;
     slider_p.control_name = p.control_name;
