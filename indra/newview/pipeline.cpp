@@ -1799,10 +1799,9 @@ void LLPipeline::refreshCachedSettings()
     if (BDMergeProjectorVolumetricsMaxDistance !=
         previous_projvol_max_distance)
     {
-        // A shortened beam must not retain the old tail through either temporal
-        // accumulator. Both histories are safe to invalidate before allocation.
+        // A shortened per-cone beam must not retain its old tail through the
+        // projector temporal accumulator. Froxel/Voxel Air is independent.
         gPipeline.mProjVolHistoryValid = false;
-        gPipeline.mFroxelHistoryValid = false;
     }
     BDMergeProjectorVolumetricsAnisotropy = gSavedSettings.getF32("BDMergeProjectorVolumetricsAnisotropy");
     BDMergeProjectorVolumetricsDither = gSavedSettings.getU32("BDMergeProjectorVolumetricsDither");
@@ -14799,7 +14798,6 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
             VolumetricShaftOverride ov;
             const bool has_ov = getVolumetricShaftOverride(matched_id, ov);
             const F32 e_mult     = has_ov ? ov.multiplier   : BDMergeProjectorVolumetricsMultiplier;
-            const F32 e_max_dist = has_ov ? ov.maxDistance  : BDMergeProjectorVolumetricsMaxDistance;
             const F32 e_feather  = has_ov ? ov.feather      : BDMergeProjectorVolumetricsFeather;
             const F32 e_g        = has_ov ? ov.anisotropy   : BDMergeProjectorVolumetricsAnisotropy;
             const LLColor3 e_tint = has_ov ? ov.tint        : BDMergeProjectorVolumetricsTint;
@@ -14808,11 +14806,6 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
             gFroxelInjectProgram.uniform1f(LLShaderMgr::GODRAY_MULTIPLIER, e_mult);
             gFroxelInjectProgram.uniform1f(LLShaderMgr::PROJVOL_FEATHER, e_feather);
             gFroxelInjectProgram.uniform1f(LLShaderMgr::PROJVOL_G, e_g);
-            static const LLStaticHashedString sProjVolMaxDistance(
-                "projvol_max_distance");
-            gFroxelInjectProgram.uniform1f(
-                sProjVolMaxDistance, llclamp(e_max_dist, 0.f, 64.f));
-
             LLColor3 col = volume->getLightLinearColor() * light_scale;
             if (e_tintStr > 0.f) // shaft tint lerp (no-op at TintStrength 0), same as per-cone
             {
@@ -16223,13 +16216,45 @@ bool LLPipeline::isProjectorShadowSuppressed(LLVOVolume* volume)
 // Setting an override also implicitly flags the projector so it emits a shaft; the
 // render loop consults getVolumetricShaftOverride() per cone. Not persisted -
 // cleared with the flag set on relog (clearVolumetricShafts).
+static LLPipeline::VolumetricShaftOverride globalFroxelShaftInputs()
+{
+    LLPipeline::VolumetricShaftOverride inputs;
+    inputs.multiplier = LLPipeline::BDMergeProjectorVolumetricsMultiplier;
+    inputs.feather = LLPipeline::BDMergeProjectorVolumetricsFeather;
+    inputs.anisotropy = LLPipeline::BDMergeProjectorVolumetricsAnisotropy;
+    inputs.tint = LLPipeline::BDMergeProjectorVolumetricsTint;
+    inputs.tintStrength = LLPipeline::BDMergeProjectorVolumetricsTintStrength;
+    return inputs;
+}
+
+static bool froxelShaftInputsDiffer(
+    const LLPipeline::VolumetricShaftOverride& lhs,
+    const LLPipeline::VolumetricShaftOverride& rhs)
+{
+    return lhs.multiplier != rhs.multiplier ||
+           lhs.feather != rhs.feather ||
+           lhs.anisotropy != rhs.anisotropy ||
+           lhs.tint.mV[0] != rhs.tint.mV[0] ||
+           lhs.tint.mV[1] != rhs.tint.mV[1] ||
+           lhs.tint.mV[2] != rhs.tint.mV[2] ||
+           lhs.tintStrength != rhs.tintStrength;
+}
+
 void LLPipeline::setVolumetricShaftOverride(const LLUUID& id, const VolumetricShaftOverride& ov)
 {
     if (id.isNull())
         return;
+    const bool was_shaft_enabled = sVolumetricShaftObjects.count(id) != 0;
+    auto existing = sVolumetricShaftOverrides.find(id);
+    const VolumetricShaftOverride previous =
+        existing != sVolumetricShaftOverrides.end()
+            ? existing->second : globalFroxelShaftInputs();
     sVolumetricShaftOverrides[id] = ov;
     gPipeline.mProjVolHistoryValid = false;
-    gPipeline.mFroxelHistoryValid = false;
+    if (!was_shaft_enabled || froxelShaftInputsDiffer(previous, ov))
+    {
+        gPipeline.mFroxelHistoryValid = false;
+    }
     sVolumetricShaftObjects.insert(id); // capturing implies enabling the shaft
 }
 
@@ -16238,9 +16263,14 @@ void LLPipeline::clearVolumetricShaftOverride(const LLUUID& id)
     auto it = sVolumetricShaftOverrides.find(id);
     if (it != sVolumetricShaftOverrides.end())
     {
+        const bool changes_froxel = froxelShaftInputsDiffer(
+            it->second, globalFroxelShaftInputs());
         sVolumetricShaftOverrides.erase(it);
         gPipeline.mProjVolHistoryValid = false;
-        gPipeline.mFroxelHistoryValid = false;
+        if (changes_froxel)
+        {
+            gPipeline.mFroxelHistoryValid = false;
+        }
     }
 }
 

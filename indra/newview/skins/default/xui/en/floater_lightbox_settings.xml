@@ -4244,7 +4244,7 @@
 				 name="projshaft_settings_scroll_content" top="0" width="400">
 			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Projector Shafts (Set Lights)" />
 			<text follows="left|top" height="15" left="10" top_pad="8" width="56" layout="topleft" value="Preset:" />
-			<combo_box follows="left|top" height="22" left="70" top_pad="-19" width="254" layout="topleft" name="ps_preset" tool_tip="Apply a complete Projector Shafts + Froxel Air atmosphere look; this replaces the matching Froxel Air density, ambient, noise, fog, and wind settings.">
+			<combo_box follows="left|top" height="22" left="70" top_pad="-19" width="254" layout="topleft" name="ps_preset" tool_tip="Apply a complete projector-shaft starting point; Froxel/Voxel Air settings are not changed.">
 				<combo_box.item label="Custom" name="ps_preset_custom" value="-1" />
 				<combo_box.item label="Fast Preview" name="ps_preset_fast" value="0" />
 				<combo_box.item label="Balanced" name="ps_preset_balanced" value="1" />

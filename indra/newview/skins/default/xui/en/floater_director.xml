@@ -1255,7 +1255,7 @@
              value="Projector Volumetrics"
              width="330" />
             <text follows="left|top" height="15" layout="topleft" left="12" top="42" value="Preset:" width="54" />
-            <combo_box follows="left|top" height="22" layout="topleft" left="70" name="director_ps_preset" top="36" tool_tip="Apply a complete Projector Shafts + Froxel Air atmosphere look; this replaces the matching Froxel Air density, ambient, noise, fog, and wind settings." width="254">
+            <combo_box follows="left|top" height="22" layout="topleft" left="70" name="director_ps_preset" top="36" tool_tip="Apply a complete projector-shaft starting point; Froxel/Voxel Air settings are not changed." width="254">
                 <combo_box.item label="Custom" name="director_ps_preset_custom" value="-1" />
                 <combo_box.item label="Fast Preview" name="director_ps_preset_fast" value="0" />
                 <combo_box.item label="Balanced" name="director_ps_preset_balanced" value="1" />

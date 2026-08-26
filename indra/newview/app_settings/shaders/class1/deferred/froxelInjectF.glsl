@@ -64,7 +64,6 @@ uniform vec2  froxel_tan_half_fov;  // (tan(fovx/2), tan(fovy/2)) for view-pos r
 // projectionMap live in deferredUtil.glsl - do not redeclare them here.
 uniform vec3  center;               // LIGHT_CENTER, view space (light sphere centre)
 uniform float size;                 // LIGHT_SIZE (sphere-of-influence radius); also
-uniform float projvol_max_distance; // metres along projector axis; 0 = full range
                                     // read by clipProjectedLightVars in deferredUtil
 uniform float falloff;              // LIGHT_FALLOFF
 uniform vec3  color;                // DIFFUSE_COLOR - light's linear diffuse (+tint lerp)
@@ -179,11 +178,6 @@ void main()
     vec4  proj_tc;
     float dist, l_dist;
     if (clipProjectedLightVars(center, vpos, dist, l_dist, lv, proj_tc))
-    {
-        frag_color = vec4(0.0);
-        return;
-    }
-    if (projvol_max_distance > 0.0 && l_dist > projvol_max_distance)
     {
         frag_color = vec4(0.0);
         return;

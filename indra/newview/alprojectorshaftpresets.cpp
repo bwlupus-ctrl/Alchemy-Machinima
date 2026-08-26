@@ -43,18 +43,8 @@ const char* const SHAFT_SETTINGS[] = {
     "BDMergeProjectorVolumetricsDustIntensity",
     "BDMergeProjectorVolumetricsDustScale",
     "BDMergeProjectorVolumetricsDustDrift",
-    "BDMergeFroxelWindAzimuth",
-    "BDMergeFroxelWindElevation",
-    "BDMergeFroxelWindInverted",
-    "BDMergeFroxelDensity",
-    "BDMergeFroxelAmbient",
-    "BDMergeFroxelNoiseStrength",
-    "BDMergeFroxelNoiseScale",
-    "BDMergeFroxelNoiseSpeed",
-    "BDMergeFroxelFogStrength",
-    "BDMergeFroxelFogGroundDensity",
-    "BDMergeFroxelFogFalloff",
-    "BDMergeFroxelFogBase",
+    // Froxel/Voxel Air is a separate engine and is intentionally not reset or
+    // authored by projector-shaft presets.
     "BDMergeProjectorVolumetricsFogStrength",
     "BDMergeProjectorVolumetricsFogGroundDensity",
     "BDMergeProjectorVolumetricsFogFalloff",
@@ -118,9 +108,6 @@ void apply(S32 preset)
         gSavedSettings.setF32("BDMergeProjectorVolumetricsDensity", 0.65f);
         gSavedSettings.setF32("BDMergeProjectorVolumetricsNoiseStrength", 0.05f);
         gSavedSettings.setF32("BDMergeProjectorVolumetricsBloomFeed", 0.f);
-        gSavedSettings.setF32("BDMergeFroxelDensity", 0.012f);
-        gSavedSettings.setF32("BDMergeFroxelAmbient", 0.10f);
-        gSavedSettings.setF32("BDMergeFroxelNoiseStrength", 0.02f);
         gSavedSettings.setBOOL("BDMergeSoftProjectorShadows", false);
         break;
 
@@ -147,11 +134,6 @@ void apply(S32 preset)
         gSavedSettings.setF32("BDMergeProjectorVolumetricsNoiseScale", 1.50f);
         gSavedSettings.setF32("BDMergeProjectorVolumetricsNoiseSpeed", 0.15f);
         gSavedSettings.setF32("BDMergeProjectorVolumetricsBloomFeed", 0.25f);
-        gSavedSettings.setF32("BDMergeFroxelDensity", 0.025f);
-        gSavedSettings.setF32("BDMergeFroxelAmbient", 0.25f);
-        gSavedSettings.setF32("BDMergeFroxelNoiseStrength", 0.12f);
-        gSavedSettings.setF32("BDMergeFroxelNoiseScale", 1.50f);
-        gSavedSettings.setF32("BDMergeFroxelNoiseSpeed", 0.15f);
         gSavedSettings.setBOOL("BDMergeSoftProjectorShadows", true);
         gSavedSettings.setF32("BDMergeSoftShadowSoftness", 3.5f);
         gSavedSettings.setF32("BDMergeSoftShadowMaxPenumbra", 7.f);
@@ -182,14 +164,6 @@ void apply(S32 preset)
         gSavedSettings.setF32("BDMergeProjectorVolumetricsFogFalloff", 10.f);
         gSavedSettings.setF32("BDMergeProjectorVolumetricsFogBase", 0.f);
         gSavedSettings.setF32("BDMergeProjectorVolumetricsBloomFeed", 0.40f);
-        gSavedSettings.setF32("BDMergeFroxelDensity", 0.055f);
-        gSavedSettings.setF32("BDMergeFroxelAmbient", 0.40f);
-        gSavedSettings.setF32("BDMergeFroxelNoiseStrength", 0.30f);
-        gSavedSettings.setF32("BDMergeFroxelNoiseScale", 0.60f);
-        gSavedSettings.setF32("BDMergeFroxelNoiseSpeed", 0.25f);
-        gSavedSettings.setF32("BDMergeFroxelFogStrength", 0.45f);
-        gSavedSettings.setF32("BDMergeFroxelFogGroundDensity", 1.50f);
-        gSavedSettings.setF32("BDMergeFroxelFogFalloff", 10.f);
         gSavedSettings.setBOOL("BDMergeSoftProjectorShadows", true);
         gSavedSettings.setF32("BDMergeSoftShadowSoftness", 4.f);
         gSavedSettings.setF32("BDMergeSoftShadowMaxPenumbra", 8.f);
@@ -210,10 +184,6 @@ void apply(S32 preset)
         gSavedSettings.setF32("BDMergeProjectorVolumetricsFeather", 0.08f);
         gSavedSettings.setF32("BDMergeProjectorVolumetricsDensity", 0.28f);
         gSavedSettings.setF32("BDMergeProjectorVolumetricsBloomFeed", 0.f);
-        gSavedSettings.setF32("BDMergeFroxelDensity", 0.008f);
-        gSavedSettings.setF32("BDMergeFroxelAmbient", 0.06f);
-        gSavedSettings.setF32("BDMergeFroxelNoiseStrength", 0.f);
-        gSavedSettings.setF32("BDMergeFroxelFogStrength", 0.f);
         gSavedSettings.setBOOL("BDMergeSoftProjectorShadows", false);
         gSavedSettings.setBOOL("BDMergeGoboAnisotropic", true);
         break;
@@ -234,11 +204,6 @@ void apply(S32 preset)
         gSavedSettings.setF32("BDMergeProjectorVolumetricsNoiseScale", 1.20f);
         gSavedSettings.setF32("BDMergeProjectorVolumetricsNoiseSpeed", 0.12f);
         gSavedSettings.setF32("BDMergeProjectorVolumetricsBloomFeed", 0.15f);
-        gSavedSettings.setF32("BDMergeFroxelDensity", 0.018f);
-        gSavedSettings.setF32("BDMergeFroxelAmbient", 0.12f);
-        gSavedSettings.setF32("BDMergeFroxelNoiseStrength", 0.08f);
-        gSavedSettings.setF32("BDMergeFroxelNoiseScale", 1.20f);
-        gSavedSettings.setF32("BDMergeFroxelNoiseSpeed", 0.12f);
         gSavedSettings.setBOOL("BDMergeSoftProjectorShadows", true);
         gSavedSettings.setF32("BDMergeSoftShadowSoftness", 2.f);
         gSavedSettings.setF32("BDMergeSoftShadowMaxPenumbra", 5.f);
@@ -266,20 +231,10 @@ void apply(S32 preset)
         gSavedSettings.setF32("BDMergeProjectorVolumetricsDustIntensity", 1.60f);
         gSavedSettings.setF32("BDMergeProjectorVolumetricsDustScale", 0.60f);
         gSavedSettings.setF32("BDMergeProjectorVolumetricsDustDrift", 0.35f);
-        gSavedSettings.setF32("BDMergeFroxelWindAzimuth", 35.f);
-        gSavedSettings.setF32("BDMergeFroxelWindElevation", 12.f);
         gSavedSettings.setF32("BDMergeProjectorVolumetricsFogStrength", 0.55f);
         gSavedSettings.setF32("BDMergeProjectorVolumetricsFogGroundDensity", 3.f);
         gSavedSettings.setF32("BDMergeProjectorVolumetricsFogFalloff", 6.f);
         gSavedSettings.setF32("BDMergeProjectorVolumetricsBloomFeed", 0.18f);
-        gSavedSettings.setF32("BDMergeFroxelDensity", 0.12f);
-        gSavedSettings.setF32("BDMergeFroxelAmbient", 0.22f);
-        gSavedSettings.setF32("BDMergeFroxelNoiseStrength", 0.85f);
-        gSavedSettings.setF32("BDMergeFroxelNoiseScale", 0.35f);
-        gSavedSettings.setF32("BDMergeFroxelNoiseSpeed", 0.45f);
-        gSavedSettings.setF32("BDMergeFroxelFogStrength", 0.55f);
-        gSavedSettings.setF32("BDMergeFroxelFogGroundDensity", 3.f);
-        gSavedSettings.setF32("BDMergeFroxelFogFalloff", 6.f);
         gSavedSettings.setBOOL("BDMergeSoftProjectorShadows", true);
         gSavedSettings.setF32("BDMergeSoftShadowSoftness", 4.5f);
         gSavedSettings.setF32("BDMergeSoftShadowMaxPenumbra", 9.f);
@@ -306,14 +261,6 @@ void apply(S32 preset)
         gSavedSettings.setF32("BDMergeProjectorVolumetricsFogGroundDensity", 2.2f);
         gSavedSettings.setF32("BDMergeProjectorVolumetricsFogFalloff", 12.f);
         gSavedSettings.setF32("BDMergeProjectorVolumetricsBloomFeed", 0.50f);
-        gSavedSettings.setF32("BDMergeFroxelDensity", 0.04f);
-        gSavedSettings.setF32("BDMergeFroxelAmbient", 0.50f);
-        gSavedSettings.setF32("BDMergeFroxelNoiseStrength", 0.12f);
-        gSavedSettings.setF32("BDMergeFroxelNoiseScale", 0.20f);
-        gSavedSettings.setF32("BDMergeFroxelNoiseSpeed", 0.08f);
-        gSavedSettings.setF32("BDMergeFroxelFogStrength", 0.75f);
-        gSavedSettings.setF32("BDMergeFroxelFogGroundDensity", 2.2f);
-        gSavedSettings.setF32("BDMergeFroxelFogFalloff", 12.f);
         gSavedSettings.setBOOL("BDMergeSoftProjectorShadows", true);
         gSavedSettings.setF32("BDMergeSoftShadowSoftness", 5.f);
         gSavedSettings.setF32("BDMergeSoftShadowMaxPenumbra", 9.f);
