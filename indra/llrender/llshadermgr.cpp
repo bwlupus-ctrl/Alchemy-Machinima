@@ -1974,6 +1974,11 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("diopter_comp2");
     mReservedUniforms.push_back("diopter_ghost");
     mReservedUniforms.push_back("diopter_ghost2");
+
+    // [Ultimate Diopter] warped present depth for ReShade alignment (lockstep
+    // with the enum block appended in llshadermgr.h)
+    mReservedUniforms.push_back("diopterWarpMap");
+    mReservedUniforms.push_back("depth_warp_params");
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 
     std::set<std::string> dupe_check;

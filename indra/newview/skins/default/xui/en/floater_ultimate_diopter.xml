@@ -144,6 +144,17 @@
                         <combo_box.item label="Follow camera focus subject" name="t1" value="1" />
                     </combo_box>
                     <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="2" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterTrackMode" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterTrackMode" />
+                    <combo_box
+                     name="diopter_placement"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="6" height="23" width="360"
+                     label="Placement"
+                     tool_tip="Framed: a placed glass element with a visible boundary. On-lens: the whole frame sits behind the filter and the center only sets the optical axis. In on-lens mode the Size slider and Contents combo are inert; size-targeted motion (Pulse: Size, Stutter Size) breathes the falloff reach instead."
+                     control_name="CineDiopterPlacementMode">
+                        <combo_box.item label="Framed element" name="pl0" value="0" />
+                        <combo_box.item label="On-lens (edge to edge)" name="pl1" value="1" />
+                    </combo_box>
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="2" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterPlacementMode" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterPlacementMode" />
                     <check_box
                      name="diopter_freeze"
                      layout="topleft" follows="left|top"

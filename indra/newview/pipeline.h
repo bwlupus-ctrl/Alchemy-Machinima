@@ -183,8 +183,18 @@ public:
     void applyCAS(LLRenderTarget* src, LLRenderTarget* dst);
     void renderCineFisheye(LLRenderTarget* src, LLRenderTarget* dst);
     // [Ultimate Diopter] two-pass lens-front diopter/halo: MRT gather into
-    // mDiopterMap, then composite src -> dst (caller swaps).
-    void renderUltimateDiopter(LLRenderTarget* src, LLRenderTarget* dst);
+    // mDiopterMap, then composite src -> dst (caller swaps either way).
+    // Returns true only when the diopter actually rendered — false on the
+    // internal copy-through early-outs, where the warp map is stale and the
+    // present depth re-warp must stay off.
+    bool renderUltimateDiopter(LLRenderTarget* src, LLRenderTarget* dst);
+    // [Ultimate Diopter] write the given preset's resolved style/motion look
+    // into the CineDiopter* sliders (skipping edited_control, which holds the
+    // user's fresh edit) so flipping to Custom preserves the on-screen look.
+    // sDiopterPresetMaterializing guards the auto-Custom listener against
+    // re-entry while the write-back runs.
+    static void materializeDiopterPreset(U32 preset_id, const std::string& edited_control);
+    static bool sDiopterPresetMaterializing;
     // [BDMerge G3.2] volumetric lighting (donor: Black Dragon)
     void renderVolumetric(LLRenderTarget* src, LLRenderTarget* dst);
     // [Cine Outline Phase 1] additive deferred edge pass feeding bloom/glow.

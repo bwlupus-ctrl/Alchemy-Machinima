@@ -31,9 +31,11 @@
 #include "llfloaterreg.h"
 #include "llviewerfloaterreg.h"
 
-// [Ultimate Diopter] Diopter.ResetControl commit-callback registration
+// [Ultimate Diopter] Diopter.ResetControl commit-callback registration and
+// preset materialization (LLPipeline::materializeDiopterPreset)
 #include "lluictrl.h"
 #include "llviewercontrol.h"
+#include "pipeline.h"
 
 #include "animationexplorer.h" // [BDMerge F7]
 #include "ao.h"
@@ -560,6 +562,61 @@ void LLViewerFloaterReg::registerFloaters()
                 start = comma + 1;
             }
         });
+    // [Ultimate Diopter] editing a preset-owned style/motion control returns
+    // the preset combo to Custom so the edit takes effect (plan §9.1) —
+    // otherwise renderUltimateDiopter's preset switch (CineDiopterPreset != 0)
+    // overrides the style/motion block every frame and the slider silently
+    // does nothing. CineDiopterPreset itself is intentionally excluded below.
+    {
+        static const char* const preset_owned_controls[] =
+        {
+            "CineDiopterShape", "CineDiopterContent", "CineDiopterHollow",
+            "CineDiopterArcLengthDeg", "CineDiopterBrokenCount", "CineDiopterCharacter",
+            "CineDiopterGlassProfile", "CineDiopterIOR", "CineDiopterThickness",
+            "CineDiopterRimWidth", "CineDiopterRimWarp", "CineDiopterRimCaustic",
+            "CineDiopterRimDarken", "CineDiopterApertureShape", "CineDiopterBlades",
+            "CineDiopterBladeCurve", "CineDiopterAnamorph", "CineDiopterCatEye",
+            "CineDiopterSpotBlur", "CineDiopterBokehHighlight", "CineDiopterRingCount",
+            "CineDiopterRingFold", "CineDiopterRingPhase", "CineDiopterTwistDeg",
+            "CineDiopterLobeAmt", "CineDiopterLobeCount", "CineDiopterLobePhaseDeg",
+            "CineDiopterGhostCount", "CineDiopterGhostSpacing", "CineDiopterTangentSmear",
+            "CineDiopterRadialSmear", "CineDiopterGhostGain", "CineDiopterDispersion",
+            "CineDiopterPatternMode", "CineDiopterPatternSegments", "CineDiopterPatternFeedDeg",
+            "CineDiopterPatternZoom", "CineDiopterMotionMode", "CineDiopterHandheld",
+            "CineDiopterHandheldSpeed", "CineDiopterSpinMode", "CineDiopterSpinSpeed",
+            "CineDiopterSeamGhostPx", "CineDiopterPlacementMode",
+        };
+        for (const char* name : preset_owned_controls)
+        {
+            if (LLControlVariable* control = gSavedSettings.getControl(name))
+            {
+                // Connection is intentionally never stored/disconnected: it
+                // must live for the app's lifetime, same as the settings it
+                // watches.
+                control->getSignal()->connect(
+                    [](LLControlVariable* changed, const LLSD&, const LLSD&)
+                    {
+                        // Non-destructive flip to Custom: first write the
+                        // active preset's resolved look into the sliders
+                        // (except the control being edited), so the edit
+                        // tweaks the look on screen instead of collapsing it
+                        // to raw slider state. The materializing flag stops
+                        // those write-backs from re-entering this listener.
+                        if (LLPipeline::sDiopterPresetMaterializing)
+                        {
+                            return;
+                        }
+                        U32 active = gSavedSettings.getU32("CineDiopterPreset");
+                        if (active != 0)
+                        {
+                            LLPipeline::materializeDiopterPreset(
+                                active, changed ? changed->getName() : std::string());
+                            gSavedSettings.setU32("CineDiopterPreset", 0);
+                        }
+                    });
+            }
+        }
+    }
     LLFloaterReg::add("ultimate_diopter", "floater_ultimate_diopter.xml", &LLFloaterReg::build<LLFloater>);
     LLFloaterReg::add("cine_light_cues", "floater_cine_light_cues.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<ALFloaterCineLightCues>);
     LLFloaterReg::add("flycam_recorder", "floater_flycam_recorder.xml", &LLFloaterReg::build<LLFloater>);

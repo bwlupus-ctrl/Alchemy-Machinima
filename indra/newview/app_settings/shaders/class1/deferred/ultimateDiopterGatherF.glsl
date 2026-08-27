@@ -4,6 +4,9 @@
  * [Ultimate Diopter] Pass 1 of 2: dual-focus gather to MRT.
  *   frag_data[0] = clear-side gather RGB (linear) + region mask in A
  *   frag_data[1] = diopter-side gather RGB (linear) + refraction rim in A
+ *   frag_data[2] = mask-blended, mirrored source uv the diopter side samples
+ *                  (RG16F; the present pass re-warps scene depth through it
+ *                  so ReShade depth effects align with the warped color)
  *
  * Native port of the VirtualCinema_Diopter v2.2 region/glass/gather system
  * plus the Ultimate Diopter halo fold layer (concentric ring fold, twist,
@@ -20,7 +23,7 @@
 
 /*[EXTRA_CODE_HERE]*/
 
-out vec4 frag_data[2];
+out vec4 frag_data[3];
 
 in vec2 vary_fragcoord;
 
@@ -55,7 +58,7 @@ uniform vec4 diopter_aperture;
 uniform vec4 diopter_aperture2;
 // profile, ior1, thickness, rimWidth
 uniform vec4 diopter_glass;
-// rimWarp, reserved, reserved, reserved
+// rimWarp, placementMode (0 framed / 1 on-lens), reserved, reserved
 uniform vec4 diopter_glass2;
 // ringCount, ringFold, twistRad, ringPhase
 uniform vec4 diopter_halo;
@@ -194,7 +197,41 @@ float ud_mask(vec2 uv)
     int   content = int(diopter_shape2.w + 0.5);
     float m;
 
-    if (shape == 0)                                  // Full Frame
+    if (diopter_glass2.y > 0.5)                      // On-Lens (edge to edge)
+    {
+        // no shape SDF: the whole frame is glass and the center is only the
+        // optical axis. Only the angular arc / broken-ring crops still
+        // apply, computed in the same aspect-corrected, rotated local frame
+        // as the framed shapes ("full with angular crops").
+        float aspect = screen_res.x / screen_res.y;
+        vec2 p = uv - diopter_shape.xy;
+        p.x *= aspect;
+        float sA = sin(diopter_shape2.x), cA = cos(diopter_shape2.x);
+        vec2 q = vec2(p.x * cA - p.y * sA, p.x * sA + p.y * cA);
+
+        q.x /= max(diopter_shape.w, 0.05);           // stretch
+
+        float feather = max(diopter_shape2.y, 1e-4);
+        float ang = atan(q.y, q.x);
+
+        m = 1.0;
+
+        float arcLen = diopter_shape7.z;
+        if (arcLen < UD_TAU - 1e-3)
+        {
+            float af = max(feather * 4.0, 0.02);
+            float ad = abs(ud_wrapPi(ang)) - arcLen * 0.5;
+            m *= 1.0 - smoothstep(-af, af, ad);
+        }
+        float broken = diopter_shape7.w;
+        if (broken > 0.5)
+        {
+            // glass occupies the central 65% of each of N segments
+            float ph = abs(fract(ang * broken / UD_TAU + 0.5) * 2.0 - 1.0);
+            m *= 1.0 - smoothstep(0.65 - 0.15, 0.65 + 0.15, ph);
+        }
+    }
+    else if (shape == 0)                             // Full Frame
     {
         m = 1.0;
     }
@@ -323,6 +360,21 @@ void ud_glassRefract(vec2 uv, out vec2 disp, out float rim)
 
     float mag = diopter_glass.y * diopter_glass.z * 0.06;
     disp = dir * slope * mag * conv;
+
+    // On-Lens: the unit rim now sits at the frame corners, so the cap-slope
+    // singularity would displace edge pixels by most of the frame and
+    // mirror-smear them. Keep visible edge character but bound it: gentler
+    // slope ceiling and a hard cap on the displacement length.
+    if (diopter_glass2.y > 0.5)
+    {
+        disp = dir * min(slope, 8.0) * mag * conv;
+        float dlen = length(disp);
+        if (dlen > 0.12)
+        {
+            disp *= 0.12 / dlen;
+        }
+    }
+
     disp.x /= aspect;
     rim = rimW;
 }
@@ -443,12 +495,21 @@ float ud_apReach(float ang)
 }
 
 //---------------------------------------------------------------- gather
+// source uv a gather actually reads for a given (warped) center: magnify
+// about the optical center, then the refraction displacement. Shared with
+// the warp-map output in main() so the depth re-warp stays in exact
+// agreement with what the diopter gather samples.
+vec2 ud_gatherBuv(vec2 gatherCenter, float magnify, vec2 refrDisp)
+{
+    return diopter_shape.xy + (gatherCenter - diopter_shape.xy) * (1.0 / magnify) + refrDisp;
+}
+
 // scatter-as-gather defocus in working linear, per-channel axial CA,
 // highlight bias, shaped bokeh reach, cat's-eye clipping, depth-edge protect
 vec3 ud_gather(vec2 uv, vec2 gatherCenter, float focusM, float magnify,
                float floorCoC, float axialCA, vec2 refrDisp)
 {
-    vec2 buv = diopter_shape.xy + (gatherCenter - diopter_shape.xy) * (1.0 / magnify) + refrDisp;
+    vec2 buv = ud_gatherBuv(gatherCenter, magnify, refrDisp);
     float searchR = max(diopter_focus2.w, floorCoC);
     vec2 px = 1.0 / screen_res;
 
@@ -557,6 +618,16 @@ void main()
         cDio = cClear;
     }
 
+    // warp map: the final mask-blended, mirrored source uv the diopter side
+    // samples for this pixel (identity on the clear side). Computed through
+    // ud_gatherBuv with exactly the inputs the dio gather above receives, so
+    // the present pass can pull scene depth through the same warp as color.
+    // Written on every path through main() — the skip branches above only
+    // gate the gathers, never this output.
+    vec2 warpUV = ud_mirror2(mix(uv,
+        ud_gatherBuv(dioCenter, diopter_focus3.w, refrDisp), m));
+
     frag_data[0] = vec4(cClear, m);
     frag_data[1] = vec4(cDio, rim);
+    frag_data[2] = vec4(warpUV, 0.0, 0.0);
 }

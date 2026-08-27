@@ -48,6 +48,13 @@ out vec4 frag_color;
 uniform sampler2D diffuseRect;      // Linear Rec.709 / linear-sRGB.
 uniform sampler2D depthMap;
 
+// [Ultimate Diopter / Cine Fisheye] warped present depth for ReShade.
+uniform sampler2D diopterWarpMap;   // RG16F: diopter output uv -> scene uv
+uniform vec4 depth_warp_params;     // x diopter active (0/1), y fisheye active (0/1), z/w reserved
+uniform vec4 fisheye_params;        // x k1, y k2, z vignette radius, w vignette softness
+uniform vec4 fisheye_params2;       // x/y lens center, z zoom, w reserved
+uniform vec2 uResolution;           // shared with postEffectUtilsF.glsl
+
 // =============================================================================
 // Forward Declarations
 // =============================================================================
@@ -83,5 +90,34 @@ void main()
     diff.rgb = clampHDRRange(diff.rgb);
     frag_color = diff;
 
-    gl_FragDepth = texture(depthMap, vary_fragcoord.xy).r;
+    // Depth must ride through the same lens warps as color, or ReShade's
+    // depth-driven effects outline the unwarped scene. Order: fisheye
+    // mapping FIRST (present pixel -> fisheye source = diopter output
+    // space), then the diopter warp map (diopter output -> scene space).
+    vec2 duv = vary_fragcoord.xy;
+    if (depth_warp_params.y > 0.5)
+    {
+        // exact forward source-uv mapping from cineFisheyeF.glsl; the color
+        // pass blacks out-of-range samples, depth just clamps instead.
+        // aspect comes from depth_warp_params.z (the actual post-chain
+        // target) so it is byte-identical to the fisheye pass's screen_res
+        // aspect even under a resolution divisor.
+        float aspect = max(depth_warp_params.z, 1e-4);
+        vec2 c = duv * 2.0 - 1.0 - fisheye_params2.xy * 2.0;
+        c.x *= aspect;
+        float r = length(c);
+        float rn = r / max(fisheye_params.z, 0.05);
+        float rn2 = rn * rn;
+        float g = (1.0 + fisheye_params.x * rn2 +
+                   fisheye_params.y * rn2 * rn2) /
+                  (1.0 + fisheye_params.x + fisheye_params.y);
+        vec2 src = c * g / max(fisheye_params2.z, 0.25);
+        duv = clamp(vec2(src.x / aspect, src.y) * 0.5 + 0.5 +
+                    fisheye_params2.xy, 0.0, 1.0);
+    }
+    if (depth_warp_params.x > 0.5)
+    {
+        duv = clamp(texture(diopterWarpMap, duv).rg, 0.0, 1.0);
+    }
+    gl_FragDepth = texture(depthMap, duv).r;
 }

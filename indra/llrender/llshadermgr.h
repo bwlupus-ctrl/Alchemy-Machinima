@@ -756,7 +756,7 @@ public:
         DIOPTER_APERTURE,                  //  "diopter_aperture"   apShape, blades, bladeRotRad, bladeCurve
         DIOPTER_APERTURE2,                 //  "diopter_aperture2"  apInner, anamorph, anamAngleRad, catEye
         DIOPTER_GLASS,                     //  "diopter_glass"      profile, ior1, thickness, rimWidth
-        DIOPTER_GLASS2,                    //  "diopter_glass2"     rimWarp, reserved, reserved, reserved
+        DIOPTER_GLASS2,                    //  "diopter_glass2"     rimWarp, placementMode, reserved, reserved
         DIOPTER_HALO,                      //  "diopter_halo"       ringCount, ringFold, twistRad, ringPhase
         DIOPTER_HALO2,                     //  "diopter_halo2"      lobeAmt, lobeCount, lobePhaseRad, warpActive
         DIOPTER_PATTERN,                   //  "diopter_pattern"    mode, segments, feedRad, srcZoom
@@ -764,6 +764,12 @@ public:
         DIOPTER_COMP2,                     //  "diopter_comp2"      rimCaustic, rimDarken, blend, debugView
         DIOPTER_GHOST,                     //  "diopter_ghost"      ghostCount, ghostSpacing, radialSmear, tangentSmear
         DIOPTER_GHOST2,                    //  "diopter_ghost2"     ghostThreshold, ghostKnee, dispersion, ghostGain
+
+        // [Ultimate Diopter] warped present depth for ReShade alignment.
+        // Appended at the end in lockstep with the matching push_back block
+        // in llshadermgr.cpp.
+        DIOPTER_WARP_MAP,                  //  "diopterWarpMap"     (sampler: RG16F diopter source-uv map)
+        DEPTH_WARP_PARAMS,                 //  "depth_warp_params"  diopterActive (0/1), fisheyeActive (0/1), reserved, reserved
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

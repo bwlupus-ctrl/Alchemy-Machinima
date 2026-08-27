@@ -150,6 +150,13 @@
       <key>Type</key><string>U32</string>
       <key>Value</key><integer>0</integer>
     </map>
+    <key>CineDiopterPlacementMode</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter placement: 0 framed element (placed glass with visible boundary), 1 on-lens (edge-to-edge filter; center is the optical axis)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
     <key>CineDiopterCenterX</key>
     <map>
       <key>Comment</key><string>Ultimate Diopter optical center X (0..1)</string>
