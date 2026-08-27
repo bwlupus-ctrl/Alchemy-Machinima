@@ -13985,8 +13985,12 @@ bool LLPipeline::renderUltimateDiopter(LLRenderTarget* src, LLRenderTarget* dst)
     // motion term (path, stutter hashes, handheld noise, spin envelopes)
     // once per period. F32 precision at multi-hour uptimes only coarsens
     // motion granularity to a few ms, which is invisible; a snap is not.
+    // Presentation clock (Temporal Capture): the glass rides Director world
+    // time, so bullet time / slow-mo decelerates the lens motion with the
+    // scene. In LIVE mode this equals wall time (stock), and the clock eases
+    // continuously through scale changes, so there is never a phase snap.
     F32 t_now = freeze ? llclamp((F32)freeze_at, 0.f, 3600.f)
-                       : (F32)gFrameTimeSeconds;
+                       : (F32)LLPresentationTime::currentFrame().presentation_time;
     F32 tm = t_now * llclamp((F32)m_speed, 0.f, 4.f);
 
     // ---- placement + motion ----------------------------------------------
@@ -14964,9 +14968,10 @@ bool LLPipeline::renderUltimateKaleidoscope(LLRenderTarget* src, LLRenderTarget*
     alKaleidoResolveLook(llclamp((U32)kal_preset, 0U, 11U), look);
 
     // ---- deterministic timeline (freeze-aware; feeds motion, spin, feed
-    // spin, and the FX Flow phase alike) ------------------------------------
+    // spin, and the FX Flow phase alike). Presentation clock: the fold rides
+    // Director world time (bullet time / slow-mo), == wall time in LIVE ----
     F32 t_now = kal_freeze ? llclamp((F32)kal_freeze_at, 0.f, 20.f)
-                           : (F32)gFrameTimeSeconds;
+                           : (F32)LLPresentationTime::currentFrame().presentation_time;
 
     // ---- focus anchor (Track motion / Focus protect anchor) --------------
     // only resolved when something consumes it (Track=5 / anchor Focus=2)
@@ -17564,7 +17569,11 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target, bool aux_dire
     // smooth noise scroll - NOT the wrapped frame counter used by the dither.
     glm::mat4 inv_mv = glm::inverse(mat);
     gDeferredProjectorVolumetricProgram.uniformMatrix4fv(LLShaderMgr::PROJVOL_INV_MODELVIEW, 1, false, glm::value_ptr(inv_mv));
-    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_TIME, fmodf(gFrameTimeSeconds, 3600.f));
+    // Presentation clock (matches FROXEL_TIME): shaft dust/noise freezes and
+    // slows with Director world time instead of crawling through bullet time.
+    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_TIME,
+        static_cast<F32>(std::fmod(
+            LLPresentationTime::currentFrame().presentation_time, 3600.0)));
     // [Batch 1 C] PROJVOL_DENSITY moved to the per-cone upload (overridable).
     // [F4 flattening REMOVED] F4 zeroed the per-cone noise/fog (and forced density 1)
     // whenever the froxel master was on, to prevent double-fog. In practice it stole
@@ -20491,10 +20500,12 @@ void LLPipeline::renderDeferredLighting()
             static const LLStaticHashedString sPrismEnvSheenGround(
                 "prismEnvSheenGround");
 
-            // Animated screen effects advance on the shared frame clock, and
-            // the fmodf wrap keeps the uniform small so long sessions never
-            // lose float precision (the FROXEL_TIME / PROJVOL_TIME pattern).
-            // The clock is capture-independent, so upload it once per batch.
+            // Animated screen effects advance on WALL time (gFrameTimeSeconds)
+            // by design: capture-independent, so upload it once per batch.
+            // This deliberately DIVERGES from FROXEL_TIME / PROJVOL_TIME /
+            // the diopter clocks, which follow the Temporal Capture
+            // presentation clock; only the fmod-wrap idiom is shared (keeps
+            // the uniform small so long sessions never lose float precision).
             gPrismLensProgram.uniform1f(sScreenEffectTime,
                                         fmodf(gFrameTimeSeconds, 3600.f));
 
