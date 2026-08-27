@@ -30,6 +30,14 @@ uniform vec4 outline_params;
 // x = legacy glow / HDR alpha feed. Remaining components are reserved.
 uniform vec4 outline_params2;
 
+// deferredUtil/gbufferUtil are linked in as separate compile units, so their
+// functions must be forward-declared here or this unit fails to compile
+// (this shader had been failing to load since inception for lack of these)
+float getDepth(vec2 pos_screen);
+vec4 getNorm(vec2 screenpos);
+vec4 getPosition(vec2 pos_screen);
+vec4 getPositionWithDepth(vec2 pos_screen, float depth);
+
 float cineLinearDepth(vec2 tc, float center_depth)
 {
     // Saturate a far-plane neighbor rather than allowing it to dominate the

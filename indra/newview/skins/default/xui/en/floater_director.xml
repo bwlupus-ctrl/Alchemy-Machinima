@@ -1001,12 +1001,22 @@
              top="117"
              tool_tip="Open Virtual Cam controls, camera switcher, and shot builders"
              width="344" />
+            <button
+             follows="left|top|right"
+             height="22"
+             label="Ultimate Diopter..."
+             layout="topleft"
+             left="10"
+             name="btn_ultimate_diopter"
+             top="145"
+             tool_tip="Open the Ultimate Diopter lens-front diopter and halo effect controls"
+             width="344" />
             <scroll_container
              follows="all"
-             height="399"
+             height="371"
              layout="topleft"
              left="0"
-             top="149"
+             top="177"
              name="camera_flow_scroll"
              opaque="false"
              size="15"

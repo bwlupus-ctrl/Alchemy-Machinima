@@ -40,7 +40,9 @@ uniform vec4 diopter_ghost;
 // ghostThreshold, ghostKnee, dispersion, ghostGain
 uniform vec4 diopter_ghost2;
 
-// deferredUtil.glsl (attached via isDeferred) provides getPosition()
+// deferredUtil.glsl is linked in as a separate compile unit (isDeferred), so
+// its functions must be forward-declared here or this unit fails to compile
+vec4 getPosition(vec2 pos_screen);   // view space, managed inv_proj
 
 const float UD_TAU  = 6.2831853;
 const vec3  UD_LUMA = vec3(0.2126, 0.7152, 0.0722);

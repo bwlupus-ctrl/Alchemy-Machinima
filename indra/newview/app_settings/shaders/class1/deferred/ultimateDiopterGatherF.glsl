@@ -64,9 +64,9 @@ uniform vec4 diopter_halo2;
 // pattern mode, segments, feedRad, srcZoom
 uniform vec4 diopter_pattern;
 
-// deferredUtil.glsl (attached via isDeferred) provides:
-//   float getDepth(vec2 pos_screen);
-//   vec4  getPosition(vec2 pos_screen);   // view space, managed inv_proj
+// deferredUtil.glsl is linked in as a separate compile unit (isDeferred), so
+// its functions must be forward-declared here or this unit fails to compile
+vec4 getPosition(vec2 pos_screen);   // view space, managed inv_proj
 
 #ifndef DIOPTER_TAPS
 #define DIOPTER_TAPS 24
