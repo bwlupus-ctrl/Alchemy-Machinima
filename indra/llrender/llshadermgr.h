@@ -770,6 +770,21 @@ public:
         // in llshadermgr.cpp.
         DIOPTER_WARP_MAP,                  //  "diopterWarpMap"     (sampler: RG16F diopter source-uv map)
         DEPTH_WARP_PARAMS,                 //  "depth_warp_params"  diopterActive (0/1), fisheyeActive (0/1), reserved, reserved
+
+        // [Ultimate Kaleidoscope] tool mode 1 of the Ultimate Diopter post
+        // pass. vec4 bundles, appended at the end in lockstep with the
+        // matching push_back block in llshadermgr.cpp.
+        KAL_PATTERN,                       //  "kal_pattern"        mode, segments, ringCount, edgeWrap
+        KAL_SHAPE,                         //  "kal_shape"          rotRadTotal, twistRadTotal, starSharp, shapeBias
+        KAL_CENTER,                        //  "kal_center"         center.xy, protectCenter.xy (uv, y-up)
+        KAL_SOURCE,                        //  "kal_source"         feedRadTotal, srcZoom, srcOffset.xy
+        KAL_FX,                            //  "kal_fx"             fxBand, fxAmount, ftPhase, fxFreq
+        KAL_PROTECT,                       //  "kal_protect"        protectMode, discRadius, discFeather, depthInvert
+        KAL_DEPTH,                         //  "kal_depth"          depthCutM, depthFeatherM, reserved, reserved
+        KAL_WAVE,                          //  "kal_wave"           wavePhase, waveGain, waveAmp, waveFreq
+        KAL_LOOK,                          //  "kal_look"           seamSoften, blend, debugView, reserved
+        KAL_CELL,                          //  "kal_cell"           cellSizeVar, cellBreathe, cellSubdiv, cellMerge
+        KAL_CELL2,                         //  "kal_cell2"          cellTint, reserved, reserved, reserved
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

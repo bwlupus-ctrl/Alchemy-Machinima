@@ -297,6 +297,9 @@ extern LLGLSLShader         gCineFisheyeProgram;
 // [Ultimate Diopter] pass 1 gather at four tap-count quality tiers + pass 2 composite
 extern LLGLSLShader         gUltimateDiopterGatherProgram[4];
 extern LLGLSLShader         gUltimateDiopterProgram;
+// [Ultimate Kaleidoscope] tool mode 1 of the Ultimate Diopter post pass:
+// single MRT pass, no permutations
+extern LLGLSLShader         gUltimateKaleidoProgram;
 // [BDMerge G3.2] volumetric lighting (donor: Black Dragon)
 extern LLGLSLShader         gVolumetricLightProgram;
 // [Cine Outline Phase 1] deferred normal/depth outline post pass

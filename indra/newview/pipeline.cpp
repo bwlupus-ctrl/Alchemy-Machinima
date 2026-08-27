@@ -13378,6 +13378,77 @@ static F32 diopter_drift(F32 seed, F32 t)
     return 0.6f * diopter_noise1(t + seed, 17.f) + 0.4f * diopter_noise1(t * 2.13f + seed * 1.7f, 17.f);
 }
 
+// [Ultimate Kaleidoscope] deterministic CPU ports of the reference's hash /
+// noise (VCK_HashCell / VCK_Noise1). The GLSL never sees time; every animated
+// value is resolved here and uploaded. Placed above renderUltimateDiopter
+// because the diopter's own six new motion cases (Orbit/Wander/Handheld/
+// Pendulum/Heartbeat/Strobe Jump) call kalHashCell / kalNoise1 too.
+
+static F32 kalFract(F32 x) { return x - floorf(x); }
+
+// sin-free Hoskins-style hash for integer cell ids (exact port of
+// VCK_HashCell with ci = (cx, cy); note the reference hashes (x, y, x))
+static F32 kalHashCell(F32 cx, F32 cy)
+{
+    F32 qx = kalFract(cx * 0.1031f);
+    F32 qy = kalFract(cy * 0.1031f);
+    F32 qz = qx;                                 // frac(ci.x * 0.1031) again
+    F32 d  = qx * (qy + 33.33f) + qy * (qz + 33.33f) + qz * (qx + 33.33f);
+    qx += d; qy += d; qz += d;
+    return kalFract((qx + qy) * qz);
+}
+
+// smooth 1-D value noise in [-1,1] (hash lattice + smoothstep); seedv
+// decorrelates the axes. Port of VCK_Noise1 (drives Wander / Handheld).
+static F32 kalNoise1(F32 x, F32 seedv)
+{
+    F32 fl = floorf(x);
+    F32 u  = x - fl;
+    u = u * u * (3.f - 2.f * u);
+    F32 a = kalHashCell(fl, seedv);
+    F32 b = kalHashCell(fl + 1.f, seedv);
+    return (a + (b - a) * u) * 2.f - 1.f;
+}
+
+// output rotation envelope in DEGREES. Constant / one-shot ease / eased loop /
+// inertial flick (2nd-order step response). Exact port of VCK_SpinDeg; same
+// math as the diopter's inline spin block. t_now is the freeze-aware clock.
+static F32 alKaleidoSpinDeg(S32 spin_mode, F32 t_now, F32 spin_speed_dps,
+                            F32 travel_deg, F32 duration_s, F32 bounce,
+                            F32 delay_s)
+{
+    const F32 TAU = 6.2831853f;
+
+    if (spin_mode == 0)                          // Constant
+    {
+        return t_now * spin_speed_dps;
+    }
+
+    F32 td  = llmax(t_now - delay_s, 0.f);
+    F32 dur = llmax(duration_s, 1e-3f);
+
+    if (spin_mode == 1)                          // Ease (one-shot, holds at Travel)
+    {
+        F32 u = llclamp(td / dur, 0.f, 1.f);
+        return travel_deg * (u * u * (3.f - 2.f * u));
+    }
+    if (spin_mode == 2)                          // Loop (eased there-and-back)
+    {
+        F32 u = td / dur; u -= floorf(u);
+        F32 tri = fabsf(u * 2.f - 1.f);
+        return travel_deg * (1.f - tri * tri * (3.f - 2.f * tri));
+    }
+
+    // Flick: 2nd-order step response. Low damping -> overshoot + settle.
+    F32 zeta = 0.95f + (0.28f - 0.95f) * llclamp(bounce, 0.f, 1.f);
+    F32 wn   = TAU / dur;
+    F32 root = sqrtf(llmax(1.f - zeta * zeta, 1e-4f));
+    F32 wd   = wn * root;
+    F32 e    = expf(-zeta * wn * td);
+    F32 resp = 1.f - e * (cosf(wd * td) + (zeta / root) * sinf(wd * td));
+    return travel_deg * resp;
+}
+
 // The preset-overridable style/motion block, resolved from settings with the
 // renderer's clamps. ONE resolver serves both the per-frame render path and
 // preset materialization (auto-Custom), so the two can never drift: when the
@@ -13484,7 +13555,7 @@ static void alDiopterResolveLook(U32 preset_id, ALDiopterLook& o)
     F32& pattern_zoom = o.mPatternZoom;  pattern_zoom = llclamp((F32)p_zoom, 0.05f, 4.f);
     F32& handheld = o.mHandheld;         handheld = llclamp((F32)m_handheld, 0.f, 1.f);
     F32& handheld_speed = o.mHandheldSpeed; handheld_speed = llclamp((F32)m_handheld_speed, 0.05f, 4.f);
-    S32& motion = o.mMotion;             motion = llclamp((S32)(U32)m_mode, 0, 5);
+    S32& motion = o.mMotion;             motion = llclamp((S32)(U32)m_mode, 0, 11);
     S32& spin_mode = o.mSpinMode;        spin_mode = llclamp((S32)(U32)m_spin_mode, 0, 3);
     F32& spin_speed = o.mSpinSpeed;      spin_speed = (F32)m_spin_speed;
     F32& seam_px = o.mSeamPx;            seam_px = llclamp((F32)c_seam_px, 0.f, 12.f);
@@ -14020,6 +14091,58 @@ bool LLPipeline::renderUltimateDiopter(LLRenderTarget* src, LLRenderTarget* dst)
             focus_rack = (f0 + (f1 - f0) * k) * llclamp((F32)m_stutter_focus, 0.f, 1.f);
         }
     }
+    else if (motion == 6)        // Orbit (center circles its home point)
+    {
+        // radius = Path Amplitude, start phase = Sweep Direction.
+        // y-up displacement: circles COUNTER-clockwise on screen where the
+        // ReShade reference (y-down) circles clockwise - deliberate house
+        // convention (matches Sweep/Path vertical sense), do not "fix".
+        F32 ph = tm * TAU + ma;
+        center_x += cosf(ph) * (F32)m_path_amp;
+        center_y += sinf(ph) * (F32)m_path_amp;
+    }
+    else if (motion == 7)        // Wander (organic aimless drift)
+    {
+        // 2-octave noise drift, range = Path Amplitude
+        center_x += (kalNoise1(tm, 3.1f) + 0.5f * kalNoise1(tm * 2.337f, 5.7f))
+                    * ((F32)m_path_amp * 0.66f);
+        center_y += (kalNoise1(tm * 0.83f, 9.2f) + 0.5f * kalNoise1(tm * 1.941f, 12.9f))
+                    * ((F32)m_path_amp * 0.66f);
+    }
+    else if (motion == 8)        // Handheld (fine documentary shake)
+    {
+        // 11x-rate fine position noise + slight rotation, intensity = Path
+        // Amplitude (distinct from the additive CineDiopterHandheld layer)
+        F32 ts = tm * 11.f;      // base shake frequency
+        center_x += (kalNoise1(ts, 21.4f) * 0.7f + 0.3f * kalNoise1(ts * 2.7f, 27.9f))
+                    * ((F32)m_path_amp * 0.08f);
+        center_y += (kalNoise1(ts * 1.13f, 31.7f) * 0.7f + 0.3f * kalNoise1(ts * 3.1f, 37.3f))
+                    * ((F32)m_path_amp * 0.08f);
+        stutter_angle_deg += kalNoise1(ts * 0.9f, 41.1f) * (F32)m_path_amp * 6.f;
+    }
+    else if (motion == 9)        // Pendulum (the element angle rocks)
+    {
+        // swing = Sweep Range x 90 deg, rides eff_angle_rad like Stutter's kick
+        stutter_angle_deg += sinf(tm * TAU) * (F32)m_sweep_range * 90.f;
+    }
+    else if (motion == 10)       // Heartbeat (lub-dub double thump)
+    {
+        // reference thumps Source Zoom; the diopter's zoom equivalent is
+        // size_scale (the animated element size). depth = Pulse Amount x 0.6
+        F32 ph = tm - floorf(tm);
+        F32 beat = expf(-14.f * ph)
+                 + ((ph > 0.22f) ? 0.55f * expf(-14.f * (ph - 0.22f)) : 0.f);
+        size_scale = 1.f + beat * llclamp((F32)m_pulse_amt, 0.f, 1.f) * 0.6f;
+    }
+    else if (motion == 11)       // Strobe Jump (hashed teleport cuts)
+    {
+        // new hashed center + angle kick every 1/Speed sec:
+        // range = 2 x Path Amplitude, kick = Sweep Range x 120 deg
+        F32 tick = floorf(tm);
+        center_x += (kalHashCell(tick, 51.3f) - 0.5f) * (2.f * (F32)m_path_amp);
+        center_y += (kalHashCell(tick, 57.9f) - 0.5f) * (2.f * (F32)m_path_amp);
+        stutter_angle_deg += (kalHashCell(tick, 63.1f) - 0.5f) * (F32)m_sweep_range * 120.f;
+    }
 
     // handheld life: additive figure-8 gait + noise drift + focus breath
     F32 handheld_focus_off = 0.f;
@@ -14277,6 +14400,662 @@ bool LLPipeline::renderUltimateDiopter(LLRenderTarget* src, LLRenderTarget* dst)
 
     gUltimateDiopterProgram.unbind();
     dst->flush();
+    return true;
+}
+
+// [Ultimate Kaleidoscope] ----------------------------------------------------
+// Tool mode 1 of the Ultimate Diopter post pass: native port of
+// VirtualCinema_Kaleidoscope.fx v1.2 onto native depth and viewer time. A
+// single full-screen MRT pass into mDiopterMap (color / unused / warp uv),
+// then attachment 0 is copied into dst exactly like copyRenderTarget. All
+// motion is resolved here on the CPU once per frame so the shader stays
+// deterministic; freeze pins the clock to a user-chosen timeline second.
+// kalFract / kalHashCell / kalNoise1 / alKaleidoSpinDeg live above
+// renderUltimateDiopter (the diopter's own Orbit/Wander/Handheld/Pendulum/
+// Heartbeat/Strobe Jump motion cases call kalHashCell / kalNoise1 too).
+
+// The preset-overridable style/motion block for the Kaleidoscope tool mode,
+// resolved from settings with the renderer's clamps. ONE resolver serves both
+// the per-frame render path and preset materialization (auto-Custom), so the
+// two can never drift: when the user edits a preset-owned control, the
+// current preset's resolved look is written back into the sliders (except the
+// control being edited) BEFORE the combo flips to Custom.
+struct ALKaleidoLook
+{
+    S32 mMode, mEdgeWrap, mProtectMode, mProtectAnchor, mMotion, mPulseTarget, mSpinMode;
+    F32 mSegments, mAngleDeg, mTwistDeg, mRingCount, mStarSharp, mShapeBias;
+    F32 mSourceAngleDeg, mSourceZoom, mSourceOffX, mSourceOffY, mSourceSpinDps;
+    F32 mFXBand, mFXAmount, mFXFlow, mFXFreq;
+    F32 mProtectRadius, mProtectFeather, mDepthCutM, mDepthFeatherM;
+    bool mDepthInvert, mPingPong;
+    F32 mSpeed, mMotionAngleDeg, mSweepRange, mPulseAmt;
+    F32 mWaveAmp, mWaveFreq, mPathFreqX, mPathFreqY, mPathPhase, mPathAmp;
+    F32 mSpinSpeedDps, mSpinTravelDeg, mSpinDurationS, mSpinBounce, mSpinDelayS;
+    F32 mSeamSoften;
+    F32 mCellSizeVar, mCellBreathe, mCellSubdiv, mCellMerge, mCellTint;
+};
+
+static void alKaleidoResolveLook(U32 preset_id, ALKaleidoLook& o)
+{
+    static LLCachedControl<U32> k_mode(gSavedSettings, "CineDiopterKalMode", 0U);
+    static LLCachedControl<U32> k_segments(gSavedSettings, "CineDiopterKalSegments", 8U);
+    static LLCachedControl<F32> k_angle(gSavedSettings, "CineDiopterKalAngle", 0.f);
+    static LLCachedControl<F32> k_twist(gSavedSettings, "CineDiopterKalTwist", 0.f);
+    static LLCachedControl<U32> k_edge_wrap(gSavedSettings, "CineDiopterKalEdgeWrap", 0U);
+    static LLCachedControl<U32> k_ring_count(gSavedSettings, "CineDiopterKalRingCount", 4U);
+    static LLCachedControl<F32> k_star_sharp(gSavedSettings, "CineDiopterKalStarSharp", 0.6f);
+    static LLCachedControl<F32> k_shape_bias(gSavedSettings, "CineDiopterKalShapeBias", 0.35f);
+    static LLCachedControl<F32> k_src_angle(gSavedSettings, "CineDiopterKalSourceAngle", 0.f);
+    static LLCachedControl<F32> k_src_zoom(gSavedSettings, "CineDiopterKalSourceZoom", 1.f);
+    static LLCachedControl<F32> k_src_off_x(gSavedSettings, "CineDiopterKalSourceOffsetX", 0.f);
+    static LLCachedControl<F32> k_src_off_y(gSavedSettings, "CineDiopterKalSourceOffsetY", 0.f);
+    static LLCachedControl<F32> k_src_spin(gSavedSettings, "CineDiopterKalSourceSpin", 0.f);
+    static LLCachedControl<F32> k_fx_band(gSavedSettings, "CineDiopterKalFXBand", 0.25f);
+    static LLCachedControl<F32> k_fx_amount(gSavedSettings, "CineDiopterKalFXAmount", 0.5f);
+    static LLCachedControl<F32> k_fx_flow(gSavedSettings, "CineDiopterKalFXFlow", 0.25f);
+    static LLCachedControl<F32> k_fx_freq(gSavedSettings, "CineDiopterKalFXFreq", 6.f);
+    static LLCachedControl<U32> k_protect_mode(gSavedSettings, "CineDiopterKalProtectMode", 0U);
+    static LLCachedControl<F32> k_protect_radius(gSavedSettings, "CineDiopterKalProtectRadius", 0.3f);
+    static LLCachedControl<F32> k_protect_feather(gSavedSettings, "CineDiopterKalProtectFeather", 0.1f);
+    static LLCachedControl<U32> k_protect_anchor(gSavedSettings, "CineDiopterKalProtectAnchor", 1U);
+    static LLCachedControl<F32> k_depth_cut(gSavedSettings, "CineDiopterKalDepthCut", 8.f);
+    static LLCachedControl<F32> k_depth_feather(gSavedSettings, "CineDiopterKalDepthFeatherM", 1.f);
+    static LLCachedControl<bool> k_depth_invert(gSavedSettings, "CineDiopterKalDepthInvert", false);
+    static LLCachedControl<U32> k_motion(gSavedSettings, "CineDiopterKalMotionMode", 0U);
+    static LLCachedControl<F32> k_speed(gSavedSettings, "CineDiopterKalSpeed", 0.3f);
+    static LLCachedControl<F32> k_motion_angle(gSavedSettings, "CineDiopterKalMotionAngle", 0.f);
+    static LLCachedControl<F32> k_sweep_range(gSavedSettings, "CineDiopterKalSweepRange", 1.f);
+    static LLCachedControl<bool> k_ping_pong(gSavedSettings, "CineDiopterKalPingPong", true);
+    static LLCachedControl<U32> k_pulse_target(gSavedSettings, "CineDiopterKalPulseTarget", 0U);
+    static LLCachedControl<F32> k_pulse_amt(gSavedSettings, "CineDiopterKalPulseAmt", 0.4f);
+    static LLCachedControl<F32> k_wave_amp(gSavedSettings, "CineDiopterKalWaveAmp", 0.06f);
+    static LLCachedControl<F32> k_wave_freq(gSavedSettings, "CineDiopterKalWaveFreq", 6.f);
+    static LLCachedControl<F32> k_path_fx(gSavedSettings, "CineDiopterKalPathFreqX", 1.f);
+    static LLCachedControl<F32> k_path_fy(gSavedSettings, "CineDiopterKalPathFreqY", 1.4f);
+    static LLCachedControl<F32> k_path_phase(gSavedSettings, "CineDiopterKalPathPhase", 1.5708f);
+    static LLCachedControl<F32> k_path_amp(gSavedSettings, "CineDiopterKalPathAmp", 0.2f);
+    static LLCachedControl<U32> k_spin_mode(gSavedSettings, "CineDiopterKalSpinMode", 0U);
+    static LLCachedControl<F32> k_spin_speed(gSavedSettings, "CineDiopterKalSpinSpeed", 0.f);
+    static LLCachedControl<F32> k_spin_travel(gSavedSettings, "CineDiopterKalSpinTravel", 90.f);
+    static LLCachedControl<F32> k_spin_duration(gSavedSettings, "CineDiopterKalSpinDuration", 1.2f);
+    static LLCachedControl<F32> k_spin_bounce(gSavedSettings, "CineDiopterKalSpinBounce", 0.3f);
+    static LLCachedControl<F32> k_spin_delay(gSavedSettings, "CineDiopterKalSpinDelay", 0.f);
+    static LLCachedControl<F32> k_seam_soften(gSavedSettings, "CineDiopterKalSeamSoften", 0.f);
+    static LLCachedControl<F32> k_cell_size_var(gSavedSettings, "CineDiopterKalCellSizeVar", 0.f);
+    static LLCachedControl<F32> k_cell_breathe(gSavedSettings, "CineDiopterKalCellBreathe", 0.f);
+    static LLCachedControl<F32> k_cell_subdiv(gSavedSettings, "CineDiopterKalCellSubdiv", 0.f);
+    static LLCachedControl<F32> k_cell_merge(gSavedSettings, "CineDiopterKalCellMerge", 0.f);
+    static LLCachedControl<F32> k_cell_tint(gSavedSettings, "CineDiopterKalCellTint", 0.f);
+
+    S32& mode = o.mMode;                     mode = llclamp((S32)(U32)k_mode, 0, 23);
+    F32& segments = o.mSegments;             segments = (F32)llclamp((U32)k_segments, 2U, 64U);
+    F32& angle_deg = o.mAngleDeg;            angle_deg = llclamp((F32)k_angle, -180.f, 180.f);
+    F32& twist_deg = o.mTwistDeg;            twist_deg = llclamp((F32)k_twist, -720.f, 720.f);
+    S32& edge_wrap = o.mEdgeWrap;            edge_wrap = llclamp((S32)(U32)k_edge_wrap, 0, 2);
+    F32& ring_count = o.mRingCount;          ring_count = (F32)llclamp((U32)k_ring_count, 1U, 16U);
+    F32& star_sharp = o.mStarSharp;          star_sharp = llclamp((F32)k_star_sharp, 0.f, 1.f);
+    F32& shape_bias = o.mShapeBias;          shape_bias = llclamp((F32)k_shape_bias, -1.f, 1.f);
+    F32& src_angle = o.mSourceAngleDeg;      src_angle = llclamp((F32)k_src_angle, -180.f, 180.f);
+    F32& src_zoom = o.mSourceZoom;           src_zoom = llclamp((F32)k_src_zoom, 0.1f, 4.f);
+    F32& src_off_x = o.mSourceOffX;          src_off_x = llclamp((F32)k_src_off_x, -0.5f, 0.5f);
+    F32& src_off_y = o.mSourceOffY;          src_off_y = llclamp((F32)k_src_off_y, -0.5f, 0.5f);
+    F32& src_spin = o.mSourceSpinDps;        src_spin = llclamp((F32)k_src_spin, -180.f, 180.f);
+    F32& fx_band = o.mFXBand;                fx_band = llclamp((F32)k_fx_band, 0.02f, 1.f);
+    F32& fx_amount = o.mFXAmount;            fx_amount = llclamp((F32)k_fx_amount, 0.f, 1.f);
+    F32& fx_flow = o.mFXFlow;                fx_flow = llclamp((F32)k_fx_flow, -4.f, 4.f);
+    F32& fx_freq = o.mFXFreq;                fx_freq = llclamp((F32)k_fx_freq, 1.f, 24.f);
+    S32& protect_mode = o.mProtectMode;      protect_mode = llclamp((S32)(U32)k_protect_mode, 0, 3);
+    F32& protect_radius = o.mProtectRadius;  protect_radius = llclamp((F32)k_protect_radius, 0.f, 1.f);
+    F32& protect_feather = o.mProtectFeather; protect_feather = llclamp((F32)k_protect_feather, 0.001f, 0.5f);
+    S32& protect_anchor = o.mProtectAnchor;  protect_anchor = llclamp((S32)(U32)k_protect_anchor, 0, 2);
+    F32& depth_cut = o.mDepthCutM;           depth_cut = llclamp((F32)k_depth_cut, 0.1f, 256.f);
+    F32& depth_feather = o.mDepthFeatherM;   depth_feather = llclamp((F32)k_depth_feather, 0.05f, 32.f);
+    bool& depth_invert = o.mDepthInvert;     depth_invert = k_depth_invert;
+    S32& motion = o.mMotion;                 motion = llclamp((S32)(U32)k_motion, 0, 11);
+    F32& speed = o.mSpeed;                   speed = llclamp((F32)k_speed, 0.f, 4.f);
+    F32& motion_angle = o.mMotionAngleDeg;   motion_angle = llclamp((F32)k_motion_angle, -180.f, 180.f);
+    F32& sweep_range = o.mSweepRange;        sweep_range = llclamp((F32)k_sweep_range, 0.f, 1.5f);
+    bool& ping_pong = o.mPingPong;           ping_pong = k_ping_pong;
+    S32& pulse_target = o.mPulseTarget;      pulse_target = llclamp((S32)(U32)k_pulse_target, 0, 2);
+    F32& pulse_amt = o.mPulseAmt;            pulse_amt = llclamp((F32)k_pulse_amt, 0.f, 1.f);
+    F32& wave_amp = o.mWaveAmp;              wave_amp = llclamp((F32)k_wave_amp, 0.f, 0.4f);
+    F32& wave_freq = o.mWaveFreq;            wave_freq = llclamp((F32)k_wave_freq, 0.f, 24.f);
+    F32& path_fx = o.mPathFreqX;             path_fx = llclamp((F32)k_path_fx, 0.f, 6.f);
+    F32& path_fy = o.mPathFreqY;             path_fy = llclamp((F32)k_path_fy, 0.f, 6.f);
+    F32& path_phase = o.mPathPhase;          path_phase = llclamp((F32)k_path_phase, 0.f, 6.2832f);
+    F32& path_amp = o.mPathAmp;              path_amp = llclamp((F32)k_path_amp, 0.f, 0.5f);
+    S32& spin_mode = o.mSpinMode;            spin_mode = llclamp((S32)(U32)k_spin_mode, 0, 3);
+    F32& spin_speed = o.mSpinSpeedDps;       spin_speed = llclamp((F32)k_spin_speed, -180.f, 180.f);
+    F32& spin_travel = o.mSpinTravelDeg;     spin_travel = llclamp((F32)k_spin_travel, -720.f, 720.f);
+    F32& spin_duration = o.mSpinDurationS;   spin_duration = llclamp((F32)k_spin_duration, 0.05f, 8.f);
+    F32& spin_bounce = o.mSpinBounce;        spin_bounce = llclamp((F32)k_spin_bounce, 0.f, 1.f);
+    F32& spin_delay = o.mSpinDelayS;         spin_delay = llclamp((F32)k_spin_delay, 0.f, 10.f);
+    F32& seam_soften = o.mSeamSoften;        seam_soften = llclamp((F32)k_seam_soften, 0.f, 1.f);
+    F32& cell_size_var = o.mCellSizeVar;     cell_size_var = llclamp((F32)k_cell_size_var, 0.f, 1.f);
+    F32& cell_breathe = o.mCellBreathe;      cell_breathe = llclamp((F32)k_cell_breathe, 0.f, 1.f);
+    F32& cell_subdiv = o.mCellSubdiv;        cell_subdiv = llclamp((F32)k_cell_subdiv, 0.f, 1.f);
+    F32& cell_merge = o.mCellMerge;          cell_merge = llclamp((F32)k_cell_merge, 0.f, 1.f);
+    F32& cell_tint = o.mCellTint;            cell_tint = llclamp((F32)k_cell_tint, 0.f, 1.f);
+
+    // Every non-Custom preset fully owns the whole style/motion block:
+    // baseline everything to the reference defaults, then each case sets
+    // only its deviations. Framing (centers), Blend, DebugView, Freeze stay
+    // on the user's sliders so a preset survives being moved to a new shot.
+    if (preset_id != 0U)
+    {
+        mode = 0; segments = 8.f; angle_deg = 0.f; twist_deg = 0.f;
+        edge_wrap = 0; ring_count = 4.f; star_sharp = 0.6f; shape_bias = 0.35f;
+        src_angle = 0.f; src_zoom = 1.f; src_off_x = 0.f; src_off_y = 0.f;
+        src_spin = 0.f;
+        fx_band = 0.25f; fx_amount = 0.5f; fx_flow = 0.25f; fx_freq = 6.f;
+        protect_mode = 0; protect_radius = 0.3f; protect_feather = 0.1f;
+        protect_anchor = 1; depth_cut = 8.f; depth_feather = 1.f;
+        depth_invert = false;
+        motion = 0; speed = 0.3f; motion_angle = 0.f; sweep_range = 1.f;
+        ping_pong = true; pulse_target = 0; pulse_amt = 0.4f;
+        wave_amp = 0.06f; wave_freq = 6.f;
+        path_fx = 1.f; path_fy = 1.4f; path_phase = 1.5708f; path_amp = 0.2f;
+        spin_mode = 0; spin_speed = 0.f; spin_travel = 90.f;
+        spin_duration = 1.2f; spin_bounce = 0.3f; spin_delay = 0.f;
+        seam_soften = 0.f;
+        cell_size_var = 0.f; cell_breathe = 0.f; cell_subdiv = 0.f;
+        cell_merge = 0.f; cell_tint = 0.f;
+    }
+    switch (preset_id)
+    {
+        default: break;                          // 0 = Custom
+        case 1:  // Classic Mirror - the hand-held kaleidoscope tube: 8-fold
+                 // mirror, the feed slice slowly turning, mirror lines
+                 // feathered against TAA crawl.
+            mode = 0; segments = 8.f;
+            src_spin = 9.f;
+            seam_soften = 0.3f;
+            break;
+        case 2:  // Pinwheel - 10 rotated (unmirrored) copies; pattern and
+                 // feed counter-rotate for a layered carnival spin.
+            mode = 1; segments = 10.f;
+            src_zoom = 1.1f;
+            src_spin = -14.f;
+            spin_speed = 8.f;                    // Constant spin (mode 0 from baseline)
+            break;
+        case 3:  // Concentric Cathedral - rose-window rings with a gentle
+                 // twist; Wave motion undulates the petals like leaded glass
+                 // under water.
+            mode = 6; segments = 12.f; ring_count = 5.f;
+            twist_deg = 30.f;
+            src_zoom = 1.15f;
+            src_spin = 2.f;
+            motion = 3; speed = 0.18f;
+            wave_amp = 0.05f; wave_freq = 8.f;
+            break;
+        case 4:  // Echo Rings - the subject repeated in concentric shells
+                 // pouring outward; pattern tracks the camera focus and the
+                 // clean subject disc is held on top, pinned to focus.
+            mode = 9; ring_count = 6.f;
+            fx_band = 0.26f; fx_flow = 0.3f;
+            motion = 5;                          // Track
+            protect_mode = 1; protect_radius = 0.2f; protect_feather = 0.12f;
+            protect_anchor = 2;                  // Focus
+            break;
+        case 5:  // Vortex - the world churns around a readable figure;
+            // tracks focus, near-depth subject dropped back on top.
+            mode = 11;
+            fx_amount = 0.55f; fx_flow = 0.35f;
+            motion = 5;                          // Track
+            protect_mode = 2; depth_cut = 6.f; depth_feather = 1.2f;
+            break;
+        case 6:  // Infinity Tunnel - log-polar shells, continuous dolly-
+                 // through, a slow constant spin and per-shell twist for the
+                 // wormhole read.
+            mode = 14;
+            fx_band = 0.18f; fx_amount = 0.45f; fx_flow = 0.22f;
+            twist_deg = 20.f;
+            spin_speed = 4.f;                    // Constant spin (mode 0 from baseline)
+            break;
+        case 7:  // Droste - Escher print-gallery loop: FX Amount is the zoom
+                 // step per octave, Shape Bias the rotation per octave, Flow
+                 // the endless zoom itself.
+            mode = 17;
+            fx_band = 0.22f; fx_amount = 0.5f; fx_flow = 0.18f;
+            shape_bias = 0.5f;
+            break;
+        case 8:  // Gem Facets - wedge x ring cells with hashed tilts, facets
+                 // glinting in sequence; size scatter + iridescent tint sell
+                 // the cut stone.
+            mode = 22; segments = 10.f; ring_count = 5.f;
+            fx_amount = 0.6f; fx_flow = 0.4f;
+            cell_size_var = 0.35f; cell_tint = 0.5f;
+            spin_speed = 3.f;                    // Constant spin (mode 0 from baseline)
+            break;
+        case 9:  // Fly's Eye - compound-eye hex facets re-imaging the frame;
+                 // merge gives mixed facet sizes, breathe + tint make the
+                 // wall feel alive.
+            mode = 20; segments = 14.f;
+            src_zoom = 1.6f;
+            fx_amount = 0.35f; fx_flow = 0.15f;
+            cell_size_var = 0.25f; cell_breathe = 0.15f;
+            cell_merge = 0.35f; cell_tint = 0.4f;
+            break;
+        case 10: // Shatter - wedge shards with hashed drift and a slow
+                 // churn; the near-depth subject stays whole in front.
+            mode = 15; segments = 14.f;
+            fx_band = 0.3f; fx_amount = 0.65f; fx_flow = 0.2f;
+            protect_mode = 2; depth_cut = 8.f; depth_feather = 1.f;
+            break;
+        case 11: // Mandala - petals grown from the subject's own imagery;
+                 // Wave undulation plus an eased there-and-back spin, like a
+                 // meditative breathing mandala.
+            mode = 13; segments = 12.f;
+            fx_band = 0.3f; fx_flow = 0.12f;
+            twist_deg = 15.f;
+            src_spin = 5.f;
+            motion = 3; speed = 0.15f;
+            wave_amp = 0.06f; wave_freq = 6.f;
+            spin_mode = 2; spin_travel = 45.f; spin_duration = 6.f;
+            break;
+    }
+}
+
+// [Ultimate Kaleidoscope] everything the motion system animates, resolved to
+// FINAL values. The GLSL receives these; it contains no motion branches.
+struct ALKaleidoMotionState
+{
+    F32 mCenterX, mCenterY;      // pattern center (uv, y-up)
+    F32 mZoom;                   // source zoom (Pulse:Zoom / Heartbeat applied)
+    F32 mTwistDeg;               // twist deg (Pulse:Twist wobble applied)
+    F32 mSrcOffX, mSrcOffY;      // source offset (Pulse:Offset drift applied)
+    F32 mMotionRotDeg;           // Handheld / Pendulum / StrobeJump rotation
+    F32 mWavePhase, mWaveGain;   // Wave motion outputs
+};
+
+// Line-faithful port of the reference's 12-way motion block (PS_Kaleido
+// "motion" section). Motion displacement vectors are client-native y-up —
+// the house convention the diopter's Sweep/Path already use — so a sweep
+// angle of +45 deg moves up-right on screen. t_now is the freeze-aware
+// clock; Track uses the focus uv from alKaleidoFocusUV (falls back to the
+// manual center when invalid, replacing the reference's tracker texture).
+static void alKaleidoResolveMotion(const ALKaleidoLook& look,
+                                   F32 center_x, F32 center_y,
+                                   F32 t_now,
+                                   bool focus_valid, F32 focus_x, F32 focus_y,
+                                   ALKaleidoMotionState& mo)
+{
+    const F32 DEG = 0.0174532925f;
+    const F32 TAU = 6.2831853f;
+
+    mo.mCenterX = center_x;
+    mo.mCenterY = center_y;
+    mo.mZoom = look.mSourceZoom;
+    mo.mTwistDeg = look.mTwistDeg;
+    mo.mSrcOffX = look.mSourceOffX;
+    mo.mSrcOffY = look.mSourceOffY;
+    mo.mMotionRotDeg = 0.f;
+    mo.mWavePhase = 0.f;
+    mo.mWaveGain = 0.f;
+
+    const F32 tm = t_now * look.mSpeed;
+    const F32 ma = look.mMotionAngleDeg * DEG;
+    const F32 dir_x = cosf(ma), dir_y = sinf(ma);
+
+    switch (look.mMotion)
+    {
+        default: break;                          // 0 = Static
+        case 1:                                  // Sweep
+        {
+            F32 sx;
+            if (look.mPingPong)
+            {
+                F32 x = tm * 0.5f; x -= floorf(x);
+                x = fabsf(x * 2.f - 1.f);
+                sx = x * x * (3.f - 2.f * x);
+            }
+            else
+            {
+                sx = tm - floorf(tm);
+            }
+            mo.mCenterX += dir_x * (sx - 0.5f) * look.mSweepRange;
+            mo.mCenterY += dir_y * (sx - 0.5f) * look.mSweepRange;
+            break;
+        }
+        case 2:                                  // Pulse
+        {
+            F32 pulse = sinf(tm * TAU) * 0.5f + 0.5f;
+            F32 bip = (pulse - 0.5f) * 2.f * look.mPulseAmt;   // -amt .. +amt
+            if (look.mPulseTarget == 0)
+            {
+                mo.mZoom = look.mSourceZoom * (1.f + bip);
+            }
+            else if (look.mPulseTarget == 1)
+            {
+                mo.mTwistDeg = look.mTwistDeg + bip * 360.f;
+            }
+            else
+            {
+                mo.mSrcOffX += dir_x * bip * 0.5f;
+                mo.mSrcOffY += dir_y * bip * 0.5f;
+            }
+            break;
+        }
+        case 3:                                  // Wave (petal undulation)
+            mo.mWavePhase = tm * TAU;
+            mo.mWaveGain = 1.f;
+            break;
+        case 4:                                  // Path (Lissajous drift)
+            mo.mCenterX += sinf(tm * look.mPathFreqX) * look.mPathAmp;
+            mo.mCenterY += sinf(tm * look.mPathFreqY + look.mPathPhase) * look.mPathAmp;
+            break;
+        case 5:                                  // Track (follow the focus subject)
+            if (focus_valid)
+            {
+                mo.mCenterX = focus_x;
+                mo.mCenterY = focus_y;
+            }
+            break;
+        case 6:                                  // Orbit (circle the home point)
+        {
+            // y-up displacement convention: this orbits COUNTER-clockwise on
+            // screen where ReShade's y-down frame orbits clockwise. Deliberate
+            // (matches the diopter's Sweep/Path vertical sense) - do not "fix".
+            F32 ph = tm * TAU + ma;
+            mo.mCenterX += cosf(ph) * look.mPathAmp;
+            mo.mCenterY += sinf(ph) * look.mPathAmp;
+            break;
+        }
+        case 7:                                  // Wander (organic aimless drift)
+            mo.mCenterX += (kalNoise1(tm, 3.1f) + 0.5f * kalNoise1(tm * 2.337f, 5.7f))
+                           * (look.mPathAmp * 0.66f);
+            mo.mCenterY += (kalNoise1(tm * 0.83f, 9.2f) + 0.5f * kalNoise1(tm * 1.941f, 12.9f))
+                           * (look.mPathAmp * 0.66f);
+            break;
+        case 8:                                  // Handheld (fine documentary shake)
+        {
+            F32 ts = tm * 11.f;                  // base shake frequency
+            mo.mCenterX += (kalNoise1(ts, 21.4f) * 0.7f + 0.3f * kalNoise1(ts * 2.7f, 27.9f))
+                           * (look.mPathAmp * 0.08f);
+            mo.mCenterY += (kalNoise1(ts * 1.13f, 31.7f) * 0.7f + 0.3f * kalNoise1(ts * 3.1f, 37.3f))
+                           * (look.mPathAmp * 0.08f);
+            mo.mMotionRotDeg += kalNoise1(ts * 0.9f, 41.1f) * look.mPathAmp * 6.f;
+            break;
+        }
+        case 9:                                  // Pendulum (pattern angle rocks)
+            mo.mMotionRotDeg += sinf(tm * TAU) * look.mSweepRange * 90.f;
+            break;
+        case 10:                                 // Heartbeat (lub-dub zoom thump)
+        {
+            F32 ph = tm - floorf(tm);
+            F32 beat = expf(-14.f * ph)
+                     + ((ph > 0.22f) ? 0.55f * expf(-14.f * (ph - 0.22f)) : 0.f);
+            mo.mZoom = look.mSourceZoom * (1.f + beat * look.mPulseAmt * 0.6f);
+            break;
+        }
+        case 11:                                 // Strobe Jump (hashed teleport cuts)
+        {
+            F32 tick = floorf(tm);
+            mo.mCenterX += (kalHashCell(tick, 51.3f) - 0.5f) * (2.f * look.mPathAmp);
+            mo.mCenterY += (kalHashCell(tick, 57.9f) - 0.5f) * (2.f * look.mPathAmp);
+            mo.mMotionRotDeg += (kalHashCell(tick, 63.1f) - 0.5f) * look.mSweepRange * 120.f;
+            break;
+        }
+    }
+}
+
+// [Ultimate Kaleidoscope] screen-space uv of the camera's focus subject, for
+// Motion = Track and Protect Anchor = Focus. Returns false when no valid
+// on-screen anchor exists (caller keeps the manual sliders).
+static bool alKaleidoFocusUV(F32& out_x, F32& out_y)
+{
+    // sLastFocusPoint is only refreshed while renderDoF actually runs; when
+    // DoF is gated off it goes stale, so fall back to the camera's own
+    // alt-zoom focus target (same idiom as renderDoF / renderUltimateDiopter)
+    static LLCachedControl<bool> dof_in_edit_mode(gSavedSettings, "RenderDepthOfFieldInEditMode", false);
+    const bool dof_focus_live = LLPipeline::RenderDepthOfField &&
+        (dof_in_edit_mode || !LLToolMgr::getInstance()->inBuildMode()) &&
+        !LLPipeline::sLastFocusPoint.isExactlyZero();
+
+    LLVector3 focus_agent;
+    if (dof_focus_live)
+    {
+        focus_agent = LLPipeline::sLastFocusPoint;
+    }
+    else
+    {
+        LLViewerRegion* region = gAgent.getRegion();
+        if (!region)
+        {
+            return false;
+        }
+        LLVector3 fa = LLVector3(gAgentCamera.getFocusGlobal() - region->getOriginGlobal());
+        if (fa.isExactlyZero())
+        {
+            return false;
+        }
+        focus_agent = fa;
+    }
+
+    LLCoordGL pt;
+    if (!LLViewerCamera::getInstance()->projectPosAgentToScreen(focus_agent, pt, false))
+    {
+        return false;
+    }
+
+    // projectPosAgentToScreen returns SCALED UI coordinates; map with the
+    // scaled world rect or HiDPI displays drift the anchor
+    const LLRect& world_rect = gViewerWindow->getWorldViewRectScaled();
+    if (world_rect.getWidth() <= 0 || world_rect.getHeight() <= 0)
+    {
+        return false;
+    }
+    out_x = llclamp((F32)(pt.mX - world_rect.mLeft) / (F32)world_rect.getWidth(), 0.f, 1.f);
+    out_y = llclamp((F32)(pt.mY - world_rect.mBottom) / (F32)world_rect.getHeight(), 0.f, 1.f);
+    return true;
+}
+
+// static
+void LLPipeline::materializeKaleidoPreset(U32 preset_id, const std::string& edited_control)
+{
+    ALKaleidoLook look;
+    alKaleidoResolveLook(llclamp(preset_id, 0U, 11U), look);
+
+    // Writing equal values does not fire commit signals (LLControlVariable
+    // only fires on change), but changed fields would re-enter the
+    // auto-Custom listener without this guard.
+    sDiopterPresetMaterializing = true;
+
+    auto putU = [&edited_control](const char* name, U32 v)
+    {
+        if (edited_control != name) gSavedSettings.setU32(name, v);
+    };
+    auto putF = [&edited_control](const char* name, F32 v)
+    {
+        if (edited_control != name) gSavedSettings.setF32(name, v);
+    };
+    auto putB = [&edited_control](const char* name, bool v)
+    {
+        if (edited_control != name) gSavedSettings.setBOOL(name, v);
+    };
+
+    putU("CineDiopterKalMode", (U32)look.mMode);
+    putU("CineDiopterKalSegments", (U32)look.mSegments);
+    putU("CineDiopterKalEdgeWrap", (U32)look.mEdgeWrap);
+    putU("CineDiopterKalRingCount", (U32)look.mRingCount);
+    putU("CineDiopterKalProtectMode", (U32)look.mProtectMode);
+    putU("CineDiopterKalProtectAnchor", (U32)look.mProtectAnchor);
+    putU("CineDiopterKalMotionMode", (U32)look.mMotion);
+    putU("CineDiopterKalPulseTarget", (U32)look.mPulseTarget);
+    putU("CineDiopterKalSpinMode", (U32)look.mSpinMode);
+    putB("CineDiopterKalDepthInvert", look.mDepthInvert);
+    putB("CineDiopterKalPingPong", look.mPingPong);
+    putF("CineDiopterKalAngle", look.mAngleDeg);
+    putF("CineDiopterKalTwist", look.mTwistDeg);
+    putF("CineDiopterKalStarSharp", look.mStarSharp);
+    putF("CineDiopterKalShapeBias", look.mShapeBias);
+    putF("CineDiopterKalSourceAngle", look.mSourceAngleDeg);
+    putF("CineDiopterKalSourceZoom", look.mSourceZoom);
+    putF("CineDiopterKalSourceOffsetX", look.mSourceOffX);
+    putF("CineDiopterKalSourceOffsetY", look.mSourceOffY);
+    putF("CineDiopterKalSourceSpin", look.mSourceSpinDps);
+    putF("CineDiopterKalFXBand", look.mFXBand);
+    putF("CineDiopterKalFXAmount", look.mFXAmount);
+    putF("CineDiopterKalFXFlow", look.mFXFlow);
+    putF("CineDiopterKalFXFreq", look.mFXFreq);
+    putF("CineDiopterKalProtectRadius", look.mProtectRadius);
+    putF("CineDiopterKalProtectFeather", look.mProtectFeather);
+    putF("CineDiopterKalDepthCut", look.mDepthCutM);
+    putF("CineDiopterKalDepthFeatherM", look.mDepthFeatherM);
+    putF("CineDiopterKalSpeed", look.mSpeed);
+    putF("CineDiopterKalMotionAngle", look.mMotionAngleDeg);
+    putF("CineDiopterKalSweepRange", look.mSweepRange);
+    putF("CineDiopterKalPulseAmt", look.mPulseAmt);
+    putF("CineDiopterKalWaveAmp", look.mWaveAmp);
+    putF("CineDiopterKalWaveFreq", look.mWaveFreq);
+    putF("CineDiopterKalPathFreqX", look.mPathFreqX);
+    putF("CineDiopterKalPathFreqY", look.mPathFreqY);
+    putF("CineDiopterKalPathPhase", look.mPathPhase);
+    putF("CineDiopterKalPathAmp", look.mPathAmp);
+    putF("CineDiopterKalSpinSpeed", look.mSpinSpeedDps);
+    putF("CineDiopterKalSpinTravel", look.mSpinTravelDeg);
+    putF("CineDiopterKalSpinDuration", look.mSpinDurationS);
+    putF("CineDiopterKalSpinBounce", look.mSpinBounce);
+    putF("CineDiopterKalSpinDelay", look.mSpinDelayS);
+    putF("CineDiopterKalSeamSoften", look.mSeamSoften);
+    putF("CineDiopterKalCellSizeVar", look.mCellSizeVar);
+    putF("CineDiopterKalCellBreathe", look.mCellBreathe);
+    putF("CineDiopterKalCellSubdiv", look.mCellSubdiv);
+    putF("CineDiopterKalCellMerge", look.mCellMerge);
+    putF("CineDiopterKalCellTint", look.mCellTint);
+
+    sDiopterPresetMaterializing = false;
+}
+
+bool LLPipeline::renderUltimateKaleidoscope(LLRenderTarget* src, LLRenderTarget* dst)
+{
+    if (!gUltimateKaleidoProgram.isComplete() || !mDiopterMap.isComplete())
+    {
+        copyRenderTarget(src, dst);
+        return false;
+    }
+
+    // ---- settings the look does NOT own (framing / output) ---------------
+    static LLCachedControl<U32> kal_preset(gSavedSettings, "CineDiopterKalPreset", 0U);
+    static LLCachedControl<F32> kal_blend(gSavedSettings, "CineDiopterKalBlend", 1.f);
+    static LLCachedControl<U32> kal_debug(gSavedSettings, "CineDiopterKalDebugView", 0U);
+    static LLCachedControl<bool> kal_freeze(gSavedSettings, "CineDiopterKalFreezeTime", false);
+    static LLCachedControl<F32> kal_freeze_at(gSavedSettings, "CineDiopterKalFreezeAt", 0.f);
+    static LLCachedControl<F32> kal_cx(gSavedSettings, "CineDiopterKalCenterX", 0.5f);
+    static LLCachedControl<F32> kal_cy(gSavedSettings, "CineDiopterKalCenterY", 0.5f);
+    static LLCachedControl<F32> kal_pcx(gSavedSettings, "CineDiopterKalProtectCenterX", 0.5f);
+    static LLCachedControl<F32> kal_pcy(gSavedSettings, "CineDiopterKalProtectCenterY", 0.5f);
+
+    const F32 DEG = 0.0174532925f;
+
+    F32 master_blend = llclamp((F32)kal_blend, 0.f, 1.f);
+    if (master_blend < 0.001f)
+    {
+        copyRenderTarget(src, dst);
+        return false;
+    }
+
+    LL_PROFILE_GPU_ZONE("ultimate kaleidoscope");
+
+    // ---- resolve preset-overridable look ---------------------------------
+    // preset_id is clamped so an out-of-range debug value behaves as the
+    // last defined preset instead of silently half-neutralizing Custom.
+    ALKaleidoLook look;
+    alKaleidoResolveLook(llclamp((U32)kal_preset, 0U, 11U), look);
+
+    // ---- deterministic timeline (freeze-aware; feeds motion, spin, feed
+    // spin, and the FX Flow phase alike) ------------------------------------
+    F32 t_now = kal_freeze ? llclamp((F32)kal_freeze_at, 0.f, 20.f)
+                           : (F32)gFrameTimeSeconds;
+
+    // ---- focus anchor (Track motion / Focus protect anchor) --------------
+    // only resolved when something consumes it (Track=5 / anchor Focus=2)
+    F32 focus_x = 0.5f, focus_y = 0.5f;
+    const bool focus_wanted = (look.mMotion == 5) || (look.mProtectAnchor == 2);
+    const bool focus_valid = focus_wanted && alKaleidoFocusUV(focus_x, focus_y);
+
+    // ---- CPU motion resolve ----------------------------------------------
+    ALKaleidoMotionState mo;
+    alKaleidoResolveMotion(look,
+                           llclamp((F32)kal_cx, 0.f, 1.f),
+                           llclamp((F32)kal_cy, 0.f, 1.f),
+                           t_now, focus_valid, focus_x, focus_y, mo);
+
+    F32 spin_deg = alKaleidoSpinDeg(look.mSpinMode, t_now, look.mSpinSpeedDps,
+                                    look.mSpinTravelDeg, look.mSpinDurationS,
+                                    look.mSpinBounce, look.mSpinDelayS);
+
+    // ---- protect anchor resolution ORDER: motion first (mo holds the
+    // post-motion pattern center), then the anchor picks:
+    //   0 = pattern center (follows motion), 1 = fixed sliders,
+    //   2 = focus subject (falls back to the fixed sliders when invalid)
+    F32 protect_cx = llclamp((F32)kal_pcx, 0.f, 1.f);
+    F32 protect_cy = llclamp((F32)kal_pcy, 0.f, 1.f);
+    if (look.mProtectAnchor == 0)
+    {
+        protect_cx = mo.mCenterX;
+        protect_cy = mo.mCenterY;
+    }
+    else if (look.mProtectAnchor == 2 && focus_valid)
+    {
+        protect_cx = focus_x;
+        protect_cy = focus_y;
+    }
+
+    // ---- degrees -> radians at the upload boundary only ------------------
+    const F32 rot_total_rad = (look.mAngleDeg + mo.mMotionRotDeg + spin_deg) * DEG;
+    const F32 twist_rad     = mo.mTwistDeg * DEG;
+    const F32 feed_rad      = (look.mSourceAngleDeg + t_now * look.mSourceSpinDps) * DEG;
+    // FX Flow phase accumulates in CYCLES (the shader multiplies by 2*pi
+    // exactly where the reference does); frozen because t_now is
+    const F32 ft_phase      = t_now * look.mFXFlow;
+
+    // ---- pass: single full-screen MRT into mDiopterMap --------------------
+    F32 out_w = (F32)dst->getWidth();
+    F32 out_h = (F32)dst->getHeight();
+
+    mDiopterMap.bindTarget();
+    gUltimateKaleidoProgram.bind();
+    LLGLSLShader& prog = gUltimateKaleidoProgram;
+
+    // ---- upload (packing documented in llshadermgr.h and the GLSL header)
+    prog.uniform2f(LLShaderMgr::DEFERRED_SCREEN_RES, out_w, out_h);
+    prog.bindTexture(LLShaderMgr::DEFERRED_DIFFUSE, src, false, LLTexUnit::TFO_BILINEAR);
+    prog.bindTexture(LLShaderMgr::DEFERRED_DEPTH, &mRT->deferredScreen, true);
+
+    prog.uniform4f(LLShaderMgr::KAL_PATTERN, (F32)look.mMode, look.mSegments,
+                   look.mRingCount, (F32)look.mEdgeWrap);
+    prog.uniform4f(LLShaderMgr::KAL_SHAPE, rot_total_rad, twist_rad,
+                   look.mStarSharp, look.mShapeBias);
+    prog.uniform4f(LLShaderMgr::KAL_CENTER, mo.mCenterX, mo.mCenterY,
+                   protect_cx, protect_cy);
+    prog.uniform4f(LLShaderMgr::KAL_SOURCE, feed_rad, mo.mZoom,
+                   mo.mSrcOffX, mo.mSrcOffY);
+    prog.uniform4f(LLShaderMgr::KAL_FX, look.mFXBand, look.mFXAmount,
+                   ft_phase, look.mFXFreq);
+    prog.uniform4f(LLShaderMgr::KAL_PROTECT, (F32)look.mProtectMode,
+                   look.mProtectRadius, look.mProtectFeather,
+                   look.mDepthInvert ? 1.f : 0.f);
+    prog.uniform4f(LLShaderMgr::KAL_DEPTH, look.mDepthCutM, look.mDepthFeatherM,
+                   0.f, 0.f);
+    prog.uniform4f(LLShaderMgr::KAL_WAVE, mo.mWavePhase, mo.mWaveGain,
+                   look.mWaveAmp, look.mWaveFreq);
+    prog.uniform4f(LLShaderMgr::KAL_LOOK, look.mSeamSoften, master_blend,
+                   (F32)llclamp((U32)kal_debug, 0U, 3U), 0.f);
+    prog.uniform4f(LLShaderMgr::KAL_CELL, look.mCellSizeVar, look.mCellBreathe,
+                   look.mCellSubdiv, look.mCellMerge);
+    prog.uniform4f(LLShaderMgr::KAL_CELL2, look.mCellTint, 0.f, 0.f, 0.f);
+
+    mScreenTriangleVB->setBuffer();
+    mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+
+    gUltimateKaleidoProgram.unbind();
+    mDiopterMap.flush();
+
+    // ---- copy mDiopterMap attachment 0 -> dst, same simple blit
+    // copyRenderTarget uses (it binds src's attachment 0 as DEFERRED_DIFFUSE)
+    copyRenderTarget(&mDiopterMap, dst);
+
     return true;
 }
 
@@ -18248,14 +19027,33 @@ void LLPipeline::renderFinalize()
     {
         static LLCachedControl<bool> diopter_enabled(
             gSavedSettings, "CineDiopterEnabled", false);
-        if (diopter_enabled && !gSnapshotNoPost && mDiopterMap.isComplete() &&
-            gUltimateDiopterProgram.isComplete())
+        // [Ultimate Kaleidoscope] tool mode 1 of the same master enable:
+        // Kaleidoscope shares mDiopterMap and the diopter_warped / present
+        // depth re-warp plumbing, so only the render call and its own
+        // program-complete gate branch on tool mode.
+        static LLCachedControl<U32> diopter_tool_mode(
+            gSavedSettings, "CineDiopterToolMode", 0U);
+        if (diopter_enabled && !gSnapshotNoPost && mDiopterMap.isComplete())
         {
-            // returns false on its internal early-outs (incomplete gather
-            // program, zero blend), where attachment 2 holds a stale warp
-            // map that must not drive the present depth re-warp
-            diopter_warped = renderUltimateDiopter(sourceBuffer, targetBuffer);
-            std::swap(sourceBuffer, targetBuffer);
+            if ((U32)diopter_tool_mode == 1U)
+            {
+                if (gUltimateKaleidoProgram.isComplete())
+                {
+                    // returns false on its internal early-outs (incomplete
+                    // program, zero blend), where attachment 2 holds a stale
+                    // warp map that must not drive the present depth re-warp
+                    diopter_warped = renderUltimateKaleidoscope(sourceBuffer, targetBuffer);
+                    std::swap(sourceBuffer, targetBuffer);
+                }
+            }
+            else if (gUltimateDiopterProgram.isComplete())
+            {
+                // returns false on its internal early-outs (incomplete gather
+                // program, zero blend), where attachment 2 holds a stale warp
+                // map that must not drive the present depth re-warp
+                diopter_warped = renderUltimateDiopter(sourceBuffer, targetBuffer);
+                std::swap(sourceBuffer, targetBuffer);
+            }
         }
     }
 

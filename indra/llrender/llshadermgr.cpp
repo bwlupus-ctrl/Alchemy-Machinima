@@ -1979,6 +1979,19 @@ void LLShaderMgr::initAttribsAndUniforms()
     // with the enum block appended in llshadermgr.h)
     mReservedUniforms.push_back("diopterWarpMap");
     mReservedUniforms.push_back("depth_warp_params");
+
+    // [Ultimate Kaleidoscope] (lockstep with the enum block in llshadermgr.h)
+    mReservedUniforms.push_back("kal_pattern");
+    mReservedUniforms.push_back("kal_shape");
+    mReservedUniforms.push_back("kal_center");
+    mReservedUniforms.push_back("kal_source");
+    mReservedUniforms.push_back("kal_fx");
+    mReservedUniforms.push_back("kal_protect");
+    mReservedUniforms.push_back("kal_depth");
+    mReservedUniforms.push_back("kal_wave");
+    mReservedUniforms.push_back("kal_look");
+    mReservedUniforms.push_back("kal_cell");
+    mReservedUniforms.push_back("kal_cell2");
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 
     std::set<std::string> dupe_check;

@@ -617,6 +617,65 @@ void LLViewerFloaterReg::registerFloaters()
             }
         }
     }
+    // [Ultimate Kaleidoscope] tool mode 1 of the Ultimate Diopter floater:
+    // same auto-Custom contract as the CineDiopter* array above, enumerated
+    // 1:1 from ALKaleidoLook's 49 fields (pipeline.cpp). Framing (CenterX/Y,
+    // ProtectCenterX/Y), Blend, DebugView, Freeze/FreezeAt, and the preset
+    // selector itself are deliberately excluded — same contract as the
+    // diopter's own array.
+    {
+        static const char* const kal_preset_owned_controls[] =
+        {
+            "CineDiopterKalMode", "CineDiopterKalEdgeWrap", "CineDiopterKalProtectMode",
+            "CineDiopterKalProtectAnchor", "CineDiopterKalMotionMode", "CineDiopterKalPulseTarget",
+            "CineDiopterKalSpinMode", "CineDiopterKalSegments", "CineDiopterKalAngle",
+            "CineDiopterKalTwist", "CineDiopterKalRingCount", "CineDiopterKalStarSharp",
+            "CineDiopterKalShapeBias", "CineDiopterKalSourceAngle", "CineDiopterKalSourceZoom",
+            "CineDiopterKalSourceOffsetX", "CineDiopterKalSourceOffsetY", "CineDiopterKalSourceSpin",
+            "CineDiopterKalFXBand", "CineDiopterKalFXAmount", "CineDiopterKalFXFlow",
+            "CineDiopterKalFXFreq", "CineDiopterKalProtectRadius", "CineDiopterKalProtectFeather",
+            "CineDiopterKalDepthCut", "CineDiopterKalDepthFeatherM", "CineDiopterKalDepthInvert",
+            "CineDiopterKalPingPong", "CineDiopterKalSpeed", "CineDiopterKalMotionAngle",
+            "CineDiopterKalSweepRange", "CineDiopterKalPulseAmt", "CineDiopterKalWaveAmp",
+            "CineDiopterKalWaveFreq", "CineDiopterKalPathFreqX", "CineDiopterKalPathFreqY",
+            "CineDiopterKalPathPhase", "CineDiopterKalPathAmp", "CineDiopterKalSpinSpeed",
+            "CineDiopterKalSpinTravel", "CineDiopterKalSpinDuration", "CineDiopterKalSpinBounce",
+            "CineDiopterKalSpinDelay", "CineDiopterKalSeamSoften", "CineDiopterKalCellSizeVar",
+            "CineDiopterKalCellBreathe", "CineDiopterKalCellSubdiv", "CineDiopterKalCellMerge",
+            "CineDiopterKalCellTint",
+        };
+        for (const char* name : kal_preset_owned_controls)
+        {
+            if (LLControlVariable* control = gSavedSettings.getControl(name))
+            {
+                // Connection is intentionally never stored/disconnected: it
+                // must live for the app's lifetime, same as the settings it
+                // watches.
+                control->getSignal()->connect(
+                    [](LLControlVariable* changed, const LLSD&, const LLSD&)
+                    {
+                        // Non-destructive flip to Custom: first write the
+                        // active preset's resolved look into the sliders
+                        // (except the control being edited), so the edit
+                        // tweaks the look on screen instead of collapsing it
+                        // to raw slider state. Reuses sDiopterPresetMaterializing
+                        // — the diopter and kaleidoscope tool modes never
+                        // materialize concurrently.
+                        if (LLPipeline::sDiopterPresetMaterializing)
+                        {
+                            return;
+                        }
+                        U32 active = gSavedSettings.getU32("CineDiopterKalPreset");
+                        if (active != 0)
+                        {
+                            LLPipeline::materializeKaleidoPreset(
+                                active, changed ? changed->getName() : std::string());
+                            gSavedSettings.setU32("CineDiopterKalPreset", 0);
+                        }
+                    });
+            }
+        }
+    }
     LLFloaterReg::add("ultimate_diopter", "floater_ultimate_diopter.xml", &LLFloaterReg::build<LLFloater>);
     LLFloaterReg::add("cine_light_cues", "floater_cine_light_cues.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<ALFloaterCineLightCues>);
     LLFloaterReg::add("flycam_recorder", "floater_flycam_recorder.xml", &LLFloaterReg::build<LLFloater>);

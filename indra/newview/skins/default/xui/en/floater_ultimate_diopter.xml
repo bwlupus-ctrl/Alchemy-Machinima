@@ -8,12 +8,12 @@
  height="640"
  layout="topleft"
  min_height="420"
- min_width="440"
+ min_width="520"
  name="ultimate_diopter"
  save_rect="true"
  single_instance="true"
  title="Ultimate Diopter"
- width="440">
+ width="520">
     <tab_container
      follows="all"
      height="612"
@@ -22,7 +22,7 @@
      name="diopter_tabs"
      tab_position="top"
      top="24"
-     width="432">
+     width="512">
 
         <!-- ============================ Main ============================ -->
         <panel
@@ -37,14 +37,14 @@
              name="diopter_scroll_main"
              opaque="false"
              top="0"
-             width="428">
+             width="508">
                 <panel
                  height="560"
                  layout="topleft"
                  left="0"
                  name="diopter_inner_main"
                  top="0"
-                 width="406">
+                 width="486">
                     <check_box
                      name="diopter_enabled"
                      layout="topleft" follows="left|top"
@@ -52,6 +52,17 @@
                      label="Enable Ultimate Diopter"
                      tool_tip="Master switch. When off the effect allocates no render targets and adds no draw calls."
                      control_name="CineDiopterEnabled" />
+                    <combo_box
+                     name="diopter_tool_mode"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="10" height="23" width="360"
+                     label="Tool Mode"
+                     tool_tip="Switches the post pass between the Ultimate Diopter (lens-front glass/halo) and the Ultimate Kaleidoscope (fold patterns). Both share this floater's master enable and render target; only one runs at a time."
+                     control_name="CineDiopterToolMode">
+                        <combo_box.item label="Diopter" name="tm0" value="0" />
+                        <combo_box.item label="Kaleidoscope" name="tm1" value="1" />
+                    </combo_box>
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="2" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterToolMode" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterToolMode" />
                     <combo_box
                      name="diopter_preset"
                      layout="topleft" follows="left|top"
@@ -200,14 +211,14 @@
              name="diopter_scroll_shape"
              opaque="false"
              top="0"
-             width="428">
+             width="508">
                 <panel
                  height="700"
                  layout="topleft"
                  left="0"
                  name="diopter_inner_shape"
                  top="0"
-                 width="406">
+                 width="486">
                     <combo_box
                      name="diopter_shape"
                      layout="topleft" follows="left|top"
@@ -414,14 +425,14 @@
              name="diopter_scroll_focus"
              opaque="false"
              top="0"
-             width="428">
+             width="508">
                 <panel
                  height="560"
                  layout="topleft"
                  left="0"
                  name="diopter_inner_focus"
                  top="0"
-                 width="406">
+                 width="486">
                     <combo_box
                      name="diopter_focus_mode"
                      layout="topleft" follows="left|top"
@@ -552,7 +563,7 @@
 
         <!-- ========================= Glass &amp; Halo ====================== -->
         <panel
-         label="Glass &amp; Halo"
+         label="Glass"
          layout="topleft"
          name="diopter_tab_glass">
             <scroll_container
@@ -563,14 +574,14 @@
              name="diopter_scroll_glass"
              opaque="false"
              top="0"
-             width="428">
+             width="508">
                 <panel
                  height="800"
                  layout="topleft"
                  left="0"
                  name="diopter_inner_glass"
                  top="0"
-                 width="406">
+                 width="486">
                     <combo_box
                      name="diopter_profile"
                      layout="topleft" follows="left|top"
@@ -798,7 +809,7 @@
 
         <!-- ======================= Bokeh &amp; Facets ======================= -->
         <panel
-         label="Bokeh &amp; Facets"
+         label="Bokeh"
          layout="topleft"
          name="diopter_tab_bokeh">
             <scroll_container
@@ -809,14 +820,14 @@
              name="diopter_scroll_bokeh"
              opaque="false"
              top="0"
-             width="428">
+             width="508">
                 <panel
                  height="620"
                  layout="topleft"
                  left="0"
                  name="diopter_inner_bokeh"
                  top="0"
-                 width="406">
+                 width="486">
                     <combo_box
                      name="diopter_ap_shape"
                      layout="topleft" follows="left|top"
@@ -971,14 +982,14 @@
              name="diopter_scroll_motion"
              opaque="false"
              top="0"
-             width="428">
+             width="508">
                 <panel
                  height="820"
                  layout="topleft"
                  left="0"
                  name="diopter_inner_motion"
                  top="0"
-                 width="406">
+                 width="486">
                     <combo_box
                      name="diopter_motion_mode"
                      layout="topleft" follows="left|top"
@@ -991,6 +1002,12 @@
                         <combo_box.item label="Wave" name="m3" value="3" />
                         <combo_box.item label="Path (Lissajous)" name="m4" value="4" />
                         <combo_box.item label="Stutter (rapid random)" name="m5" value="5" />
+                        <combo_box.item label="Orbit" name="m6" value="6" />
+                        <combo_box.item label="Wander" name="m7" value="7" />
+                        <combo_box.item label="Handheld" name="m8" value="8" />
+                        <combo_box.item label="Pendulum" name="m9" value="9" />
+                        <combo_box.item label="Heartbeat" name="m10" value="10" />
+                        <combo_box.item label="Strobe Jump" name="m11" value="11" />
                     </combo_box>
                     <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="2" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterMotionMode" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterMotionMode" />
                     <slider
@@ -1222,6 +1239,589 @@
                      min_val="0" max_val="10" increment="0.1" decimal_digits="1"
                      control_name="CineDiopterSpinDelayS" />
                     <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterSpinDelayS" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterSpinDelayS" />
+                </panel>
+            </scroll_container>
+        </panel>
+
+        <!-- =========================== Kaleido =========================== -->
+        <panel
+         label="Kaleido"
+         layout="topleft"
+         name="diopter_tab_kaleido">
+            <scroll_container
+             follows="all"
+             height="560"
+             layout="topleft"
+             left="0"
+             name="diopter_scroll_kaleido"
+             opaque="false"
+             top="0"
+             width="508">
+                <panel
+                 height="660"
+                 layout="topleft"
+                 left="0"
+                 name="diopter_inner_kaleido"
+                 top="0"
+                 width="486">
+                    <combo_box
+                     name="kal_preset"
+                     layout="topleft" follows="left|top"
+                     left="12" top="12" height="23" width="360"
+                     label="Preset"
+                     tool_tip="Sets the fold pattern and motion character. Framing (center, protect center), Blend, Setup View and Freeze stay on your sliders."
+                     control_name="CineDiopterKalPreset">
+                        <combo_box.item label="Custom (use sliders)" name="kp0" value="0" />
+                        <combo_box.item label="Classic Mirror" name="kp1" value="1" />
+                        <combo_box.item label="Pinwheel" name="kp2" value="2" />
+                        <combo_box.item label="Concentric Cathedral" name="kp3" value="3" />
+                        <combo_box.item label="Echo Rings" name="kp4" value="4" />
+                        <combo_box.item label="Vortex" name="kp5" value="5" />
+                        <combo_box.item label="Infinity Tunnel" name="kp6" value="6" />
+                        <combo_box.item label="Droste" name="kp7" value="7" />
+                        <combo_box.item label="Gem Facets" name="kp8" value="8" />
+                        <combo_box.item label="Fly's Eye" name="kp9" value="9" />
+                        <combo_box.item label="Shatter" name="kp10" value="10" />
+                        <combo_box.item label="Mandala" name="kp11" value="11" />
+                    </combo_box>
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="2" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalPreset" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalPreset" />
+                    <combo_box
+                     name="kal_mode"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="10" height="23" width="360"
+                     label="Pattern"
+                     control_name="CineDiopterKalMode">
+                        <combo_box.item label="Radial Mirror" name="km0" value="0" />
+                        <combo_box.item label="Radial Rotate (Pinwheel)" name="km1" value="1" />
+                        <combo_box.item label="Mirror Tile" name="km2" value="2" />
+                        <combo_box.item label="Honeycomb" name="km3" value="3" />
+                        <combo_box.item label="Square Grid" name="km4" value="4" />
+                        <combo_box.item label="Triangle" name="km5" value="5" />
+                        <combo_box.item label="Concentric Rings" name="km6" value="6" />
+                        <combo_box.item label="Star" name="km7" value="7" />
+                        <combo_box.item label="Pinwheel Lattice" name="km8" value="8" />
+                        <combo_box.item label="Echo Rings" name="km9" value="9" />
+                        <combo_box.item label="Orbit Clones" name="km10" value="10" />
+                        <combo_box.item label="Vortex" name="km11" value="11" />
+                        <combo_box.item label="Ripple" name="km12" value="12" />
+                        <combo_box.item label="Petal Mandala" name="km13" value="13" />
+                        <combo_box.item label="Infinity Tunnel" name="km14" value="14" />
+                        <combo_box.item label="Shatter" name="km15" value="15" />
+                        <combo_box.item label="Spiral Arms" name="km16" value="16" />
+                        <combo_box.item label="Droste Spiral" name="km17" value="17" />
+                        <combo_box.item label="Polygon Prism" name="km18" value="18" />
+                        <combo_box.item label="Strip Mirror" name="km19" value="19" />
+                        <combo_box.item label="Fly's Eye" name="km20" value="20" />
+                        <combo_box.item label="Inversion" name="km21" value="21" />
+                        <combo_box.item label="Gem Facets" name="km22" value="22" />
+                        <combo_box.item label="Sawtooth Sun" name="km23" value="23" />
+                    </combo_box>
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="2" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalMode" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalMode" />
+                    <slider
+                     name="kal_segments"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="6" height="16" width="360"
+                     label="Segments" label_width="140"
+                     min_val="2" max_val="64" increment="1" decimal_digits="0"
+                     control_name="CineDiopterKalSegments" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalSegments" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalSegments" />
+                    <slider
+                     name="kal_center_x"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Center X" label_width="140"
+                     min_val="0" max_val="1" increment="0.005" decimal_digits="3"
+                     control_name="CineDiopterKalCenterX" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalCenterX" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalCenterX" />
+                    <slider
+                     name="kal_center_y"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Center Y" label_width="140"
+                     min_val="0" max_val="1" increment="0.005" decimal_digits="3"
+                     control_name="CineDiopterKalCenterY" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalCenterY" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalCenterY" />
+                    <slider
+                     name="kal_angle"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Angle (deg)" label_width="140"
+                     min_val="-180" max_val="180" increment="1" decimal_digits="0"
+                     control_name="CineDiopterKalAngle" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalAngle" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalAngle" />
+                    <slider
+                     name="kal_twist"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Twist (deg)" label_width="140"
+                     min_val="-720" max_val="720" increment="1" decimal_digits="0"
+                     control_name="CineDiopterKalTwist" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalTwist" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalTwist" />
+                    <combo_box
+                     name="kal_edge_wrap"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="8" height="23" width="360"
+                     label="Edge Wrap"
+                     control_name="CineDiopterKalEdgeWrap">
+                        <combo_box.item label="Mirror" name="ew0" value="0" />
+                        <combo_box.item label="Tile" name="ew1" value="1" />
+                        <combo_box.item label="Clamp" name="ew2" value="2" />
+                    </combo_box>
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="2" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalEdgeWrap" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalEdgeWrap" />
+                    <slider
+                     name="kal_ring_count"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="6" height="16" width="360"
+                     label="Ring Count" label_width="140"
+                     min_val="1" max_val="16" increment="1" decimal_digits="0"
+                     control_name="CineDiopterKalRingCount" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalRingCount" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalRingCount" />
+                    <slider
+                     name="kal_star_sharp"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Star Sharpness" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterKalStarSharp" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalStarSharp" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalStarSharp" />
+                    <slider
+                     name="kal_shape_bias"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Shape Bias" label_width="140"
+                     min_val="-1" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterKalShapeBias" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalShapeBias" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalShapeBias" />
+                    <slider
+                     name="kal_source_angle"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="10" height="16" width="360"
+                     label="Source Angle (deg)" label_width="140"
+                     min_val="-180" max_val="180" increment="1" decimal_digits="0"
+                     control_name="CineDiopterKalSourceAngle" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalSourceAngle" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalSourceAngle" />
+                    <slider
+                     name="kal_source_zoom"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Source Zoom" label_width="140"
+                     min_val="0.1" max_val="4" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterKalSourceZoom" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalSourceZoom" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalSourceZoom" />
+                    <slider
+                     name="kal_source_offset_x"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Source Offset X" label_width="140"
+                     min_val="-0.5" max_val="0.5" increment="0.005" decimal_digits="3"
+                     control_name="CineDiopterKalSourceOffsetX" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalSourceOffsetX" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalSourceOffsetX" />
+                    <slider
+                     name="kal_source_offset_y"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Source Offset Y" label_width="140"
+                     min_val="-0.5" max_val="0.5" increment="0.005" decimal_digits="3"
+                     control_name="CineDiopterKalSourceOffsetY" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalSourceOffsetY" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalSourceOffsetY" />
+                    <slider
+                     name="kal_source_spin"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Source Spin (deg/s)" label_width="140"
+                     min_val="-180" max_val="180" increment="1" decimal_digits="0"
+                     control_name="CineDiopterKalSourceSpin" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalSourceSpin" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalSourceSpin" />
+                    <slider
+                     name="kal_fx_band"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="10" height="16" width="360"
+                     label="Subject FX Band" label_width="140"
+                     min_val="0.02" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterKalFXBand" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalFXBand" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalFXBand" />
+                    <slider
+                     name="kal_fx_amount"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Subject FX Amount" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterKalFXAmount" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalFXAmount" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalFXAmount" />
+                    <slider
+                     name="kal_fx_flow"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Subject FX Flow" label_width="140"
+                     min_val="-4" max_val="4" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterKalFXFlow" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalFXFlow" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalFXFlow" />
+                    <slider
+                     name="kal_fx_freq"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Subject FX Frequency" label_width="140"
+                     min_val="1" max_val="24" increment="0.5" decimal_digits="1"
+                     control_name="CineDiopterKalFXFreq" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalFXFreq" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalFXFreq" />
+                    <slider
+                     name="kal_seam_soften"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="10" height="16" width="360"
+                     label="Seam Soften" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     tool_tip="Feathers the mirror seams (Radial Mirror pattern only)."
+                     control_name="CineDiopterKalSeamSoften" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalSeamSoften" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalSeamSoften" />
+                    <slider
+                     name="kal_blend"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Master Blend" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterKalBlend" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalBlend" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalBlend" />
+                    <combo_box
+                     name="kal_debug"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="6" height="23" width="360"
+                     label="Setup View"
+                     control_name="CineDiopterKalDebugView">
+                        <combo_box.item label="Off" name="kd0" value="0" />
+                        <combo_box.item label="Wedges" name="kd1" value="1" />
+                        <combo_box.item label="Center / Protect" name="kd2" value="2" />
+                        <combo_box.item label="Subject Mask" name="kd3" value="3" />
+                    </combo_box>
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="2" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalDebugView" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalDebugView" />
+                    <slider
+                     name="kal_cell_size_var"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="10" height="16" width="360"
+                     label="Cell Size Scatter" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterKalCellSizeVar" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalCellSizeVar" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalCellSizeVar" />
+                    <slider
+                     name="kal_cell_breathe"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Cell Breathing" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterKalCellBreathe" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalCellBreathe" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalCellBreathe" />
+                    <slider
+                     name="kal_cell_subdiv"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Cell Subdivide Chance" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterKalCellSubdiv" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalCellSubdiv" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalCellSubdiv" />
+                    <slider
+                     name="kal_cell_merge"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Cell Merge Chance" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterKalCellMerge" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalCellMerge" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalCellMerge" />
+                    <slider
+                     name="kal_cell_tint"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Cell Iridescent Tint" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterKalCellTint" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalCellTint" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalCellTint" />
+                </panel>
+            </scroll_container>
+        </panel>
+
+        <!-- ======================== Kaleido Motion ======================= -->
+        <panel
+         label="Kal Anim"
+         layout="topleft"
+         name="diopter_tab_kaleido_motion">
+            <scroll_container
+             follows="all"
+             height="560"
+             layout="topleft"
+             left="0"
+             name="diopter_scroll_kaleido_motion"
+             opaque="false"
+             top="0"
+             width="508">
+                <panel
+                 height="710"
+                 layout="topleft"
+                 left="0"
+                 name="diopter_inner_kaleido_motion"
+                 top="0"
+                 width="486">
+                    <combo_box
+                     name="kal_motion_mode"
+                     layout="topleft" follows="left|top"
+                     left="12" top="12" height="23" width="360"
+                     label="Motion"
+                     control_name="CineDiopterKalMotionMode">
+                        <combo_box.item label="Static" name="kmm0" value="0" />
+                        <combo_box.item label="Sweep" name="kmm1" value="1" />
+                        <combo_box.item label="Pulse" name="kmm2" value="2" />
+                        <combo_box.item label="Wave" name="kmm3" value="3" />
+                        <combo_box.item label="Path (Lissajous)" name="kmm4" value="4" />
+                        <combo_box.item label="Track (follow focus subject)" name="kmm5" value="5" />
+                        <combo_box.item label="Orbit" name="kmm6" value="6" />
+                        <combo_box.item label="Wander" name="kmm7" value="7" />
+                        <combo_box.item label="Handheld" name="kmm8" value="8" />
+                        <combo_box.item label="Pendulum" name="kmm9" value="9" />
+                        <combo_box.item label="Heartbeat" name="kmm10" value="10" />
+                        <combo_box.item label="Strobe Jump" name="kmm11" value="11" />
+                    </combo_box>
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="2" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalMotionMode" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalMotionMode" />
+                    <slider
+                     name="kal_speed"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="6" height="16" width="360"
+                     label="Speed" label_width="140"
+                     min_val="0" max_val="4" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterKalSpeed" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalSpeed" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalSpeed" />
+                    <slider
+                     name="kal_motion_angle"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Sweep/Orbit Direction" label_width="140"
+                     min_val="-180" max_val="180" increment="1" decimal_digits="0"
+                     control_name="CineDiopterKalMotionAngle" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalMotionAngle" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalMotionAngle" />
+                    <slider
+                     name="kal_sweep_range"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Sweep/Pendulum Range" label_width="140"
+                     min_val="0" max_val="1.5" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterKalSweepRange" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalSweepRange" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalSweepRange" />
+                    <check_box
+                     name="kal_ping_pong"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="6" height="16" width="360"
+                     label="Sweep Ping-Pong"
+                     control_name="CineDiopterKalPingPong" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalPingPong" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalPingPong" />
+                    <combo_box
+                     name="kal_pulse_target"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="8" height="23" width="360"
+                     label="Pulse Target"
+                     control_name="CineDiopterKalPulseTarget">
+                        <combo_box.item label="Source Zoom" name="kpt0" value="0" />
+                        <combo_box.item label="Twist" name="kpt1" value="1" />
+                        <combo_box.item label="Source Offset" name="kpt2" value="2" />
+                    </combo_box>
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="2" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalPulseTarget" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalPulseTarget" />
+                    <slider
+                     name="kal_pulse_amt"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="6" height="16" width="360"
+                     label="Pulse/Heartbeat Amount" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterKalPulseAmt" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalPulseAmt" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalPulseAmt" />
+                    <slider
+                     name="kal_wave_amp"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Wave Amplitude" label_width="140"
+                     min_val="0" max_val="0.4" increment="0.005" decimal_digits="3"
+                     control_name="CineDiopterKalWaveAmp" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalWaveAmp" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalWaveAmp" />
+                    <slider
+                     name="kal_wave_freq"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Wave Frequency" label_width="140"
+                     min_val="0" max_val="24" increment="0.5" decimal_digits="1"
+                     control_name="CineDiopterKalWaveFreq" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalWaveFreq" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalWaveFreq" />
+                    <slider
+                     name="kal_path_fx"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Path Freq X" label_width="140"
+                     min_val="0" max_val="6" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterKalPathFreqX" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalPathFreqX" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalPathFreqX" />
+                    <slider
+                     name="kal_path_fy"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Path Freq Y" label_width="140"
+                     min_val="0" max_val="6" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterKalPathFreqY" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalPathFreqY" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalPathFreqY" />
+                    <slider
+                     name="kal_path_phase"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Path Phase" label_width="140"
+                     min_val="0" max_val="6.2832" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterKalPathPhase" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalPathPhase" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalPathPhase" />
+                    <slider
+                     name="kal_path_amp"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Path/Orbit/Wander Amplitude" label_width="140"
+                     min_val="0" max_val="0.5" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterKalPathAmp" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalPathAmp" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalPathAmp" />
+                    <combo_box
+                     name="kal_spin_mode"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="10" height="23" width="360"
+                     label="Spin Mode"
+                     control_name="CineDiopterKalSpinMode">
+                        <combo_box.item label="Off / Constant" name="ksm0" value="0" />
+                        <combo_box.item label="Ease (one-shot)" name="ksm1" value="1" />
+                        <combo_box.item label="Loop (there-and-back)" name="ksm2" value="2" />
+                        <combo_box.item label="Flick (spin &amp; settle)" name="ksm3" value="3" />
+                    </combo_box>
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="2" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalSpinMode" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalSpinMode" />
+                    <slider
+                     name="kal_spin_speed"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="6" height="16" width="360"
+                     label="Spin Rate (deg/s)" label_width="140"
+                     min_val="-180" max_val="180" increment="1" decimal_digits="0"
+                     control_name="CineDiopterKalSpinSpeed" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalSpinSpeed" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalSpinSpeed" />
+                    <slider
+                     name="kal_spin_travel"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Spin Travel (deg)" label_width="140"
+                     min_val="-720" max_val="720" increment="1" decimal_digits="0"
+                     control_name="CineDiopterKalSpinTravel" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalSpinTravel" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalSpinTravel" />
+                    <slider
+                     name="kal_spin_duration"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Spin Duration (s)" label_width="140"
+                     min_val="0.05" max_val="8" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterKalSpinDuration" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalSpinDuration" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalSpinDuration" />
+                    <slider
+                     name="kal_spin_bounce"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Spin Overshoot" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterKalSpinBounce" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalSpinBounce" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalSpinBounce" />
+                    <slider
+                     name="kal_spin_delay"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Spin Delay (s)" label_width="140"
+                     min_val="0" max_val="10" increment="0.1" decimal_digits="1"
+                     control_name="CineDiopterKalSpinDelay" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalSpinDelay" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalSpinDelay" />
+                    <combo_box
+                     name="kal_protect_mode"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="10" height="23" width="360"
+                     label="Protect Mode"
+                     tool_tip="Holds the untouched subject over the kaleidoscope."
+                     control_name="CineDiopterKalProtectMode">
+                        <combo_box.item label="Off" name="kpm0" value="0" />
+                        <combo_box.item label="Radius (disc)" name="kpm1" value="1" />
+                        <combo_box.item label="Depth" name="kpm2" value="2" />
+                        <combo_box.item label="Radius + Depth" name="kpm3" value="3" />
+                    </combo_box>
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="2" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalProtectMode" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalProtectMode" />
+                    <slider
+                     name="kal_protect_radius"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="6" height="16" width="360"
+                     label="Protect Radius" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterKalProtectRadius" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalProtectRadius" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalProtectRadius" />
+                    <slider
+                     name="kal_protect_feather"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Protect Feather" label_width="140"
+                     min_val="0.001" max_val="0.5" increment="0.005" decimal_digits="3"
+                     control_name="CineDiopterKalProtectFeather" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalProtectFeather" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalProtectFeather" />
+                    <combo_box
+                     name="kal_protect_anchor"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="6" height="23" width="360"
+                     label="Protect Anchor"
+                     control_name="CineDiopterKalProtectAnchor">
+                        <combo_box.item label="Pattern Center" name="kpa0" value="0" />
+                        <combo_box.item label="Fixed" name="kpa1" value="1" />
+                        <combo_box.item label="Focus" name="kpa2" value="2" />
+                    </combo_box>
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="2" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalProtectAnchor" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalProtectAnchor" />
+                    <slider
+                     name="kal_protect_center_x"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="6" height="16" width="360"
+                     label="Protect Center X (Fixed)" label_width="140"
+                     min_val="0" max_val="1" increment="0.005" decimal_digits="3"
+                     control_name="CineDiopterKalProtectCenterX" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalProtectCenterX" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalProtectCenterX" />
+                    <slider
+                     name="kal_protect_center_y"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Protect Center Y (Fixed)" label_width="140"
+                     min_val="0" max_val="1" increment="0.005" decimal_digits="3"
+                     control_name="CineDiopterKalProtectCenterY" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalProtectCenterY" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalProtectCenterY" />
+                    <slider
+                     name="kal_depth_cut"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Depth Cut (m)" label_width="140"
+                     min_val="0.1" max_val="256" increment="0.1" decimal_digits="1"
+                     control_name="CineDiopterKalDepthCut" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalDepthCut" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalDepthCut" />
+                    <slider
+                     name="kal_depth_feather"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Depth Feather (m)" label_width="140"
+                     min_val="0.05" max_val="32" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterKalDepthFeatherM" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalDepthFeatherM" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalDepthFeatherM" />
+                    <check_box
+                     name="kal_depth_invert"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="6" height="16" width="360"
+                     label="Invert Depth Protect"
+                     control_name="CineDiopterKalDepthInvert" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalDepthInvert" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalDepthInvert" />
+                    <check_box
+                     name="kal_freeze"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="12" height="16" width="360"
+                     label="Freeze Motion (for stills)"
+                     control_name="CineDiopterKalFreezeTime" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalFreezeTime" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalFreezeTime" />
+                    <slider
+                     name="kal_freeze_at"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="360"
+                     label="Freeze At (sec)" label_width="140"
+                     min_val="0" max_val="20" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterKalFreezeAt" />
+                    <button follows="left|top" height="18" layout="topleft" left="376" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalFreezeAt" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalFreezeAt" />
                 </panel>
             </scroll_container>
         </panel>

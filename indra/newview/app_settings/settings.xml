@@ -733,7 +733,7 @@
     </map>
     <key>CineDiopterMotionMode</key>
     <map>
-      <key>Comment</key><string>Ultimate Diopter motion: 0 static, 1 sweep, 2 pulse, 3 wave, 4 path, 5 stutter</string>
+      <key>Comment</key><string>Ultimate Diopter motion: 0 static, 1 sweep, 2 pulse, 3 wave, 4 path, 5 stutter, 6 orbit, 7 wander, 8 handheld, 9 pendulum, 10 heartbeat, 11 strobe jump</string>
       <key>Persist</key><integer>1</integer>
       <key>Type</key><string>U32</string>
       <key>Value</key><integer>0</integer>
@@ -940,6 +940,419 @@
       <key>Persist</key><integer>1</integer>
       <key>Type</key><string>U32</string>
       <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineDiopterToolMode</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter tool mode: 0 Diopter, 1 Kaleidoscope</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineDiopterKalPreset</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope creative preset (0 = Custom sliders)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineDiopterKalMode</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope fold pattern mode (0..23)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineDiopterKalSegments</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope mirror/rotation segment count</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>8</integer>
+    </map>
+    <key>CineDiopterKalCenterX</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope pattern center X (0..1)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineDiopterKalCenterY</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope pattern center Y (0..1)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineDiopterKalAngle</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope pattern angle in degrees</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterKalTwist</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope twist over normalized radius, degrees</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterKalEdgeWrap</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope fold edge wrap: 0 mirror, 1 tile, 2 clamp</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineDiopterKalRingCount</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope ring count (ring-based modes)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>4</integer>
+    </map>
+    <key>CineDiopterKalStarSharp</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope Star mode point sharpness</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.6</real>
+    </map>
+    <key>CineDiopterKalShapeBias</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope shape bias (spiral pitch / rotation-per-octave / skew, mode-dependent)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.35</real>
+    </map>
+    <key>CineDiopterKalSourceAngle</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope source feed slice angle in degrees</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterKalSourceZoom</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope source zoom</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1</real>
+    </map>
+    <key>CineDiopterKalSourceOffsetX</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope source offset X</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterKalSourceOffsetY</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope source offset Y</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterKalSourceSpin</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope source feed spin speed, degrees per second</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterKalFXBand</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope subject FX band radius (normalized)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.25</real>
+    </map>
+    <key>CineDiopterKalFXAmount</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope subject FX amount</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineDiopterKalFXFlow</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope subject FX flow speed</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.25</real>
+    </map>
+    <key>CineDiopterKalFXFreq</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope subject FX ripple frequency</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>6</real>
+    </map>
+    <key>CineDiopterKalProtectMode</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope protect mode: 0 off, 1 disc, 2 depth, 3 disc+depth</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineDiopterKalProtectRadius</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope protect disc radius (normalized)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.3</real>
+    </map>
+    <key>CineDiopterKalProtectFeather</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope protect disc feather</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.1</real>
+    </map>
+    <key>CineDiopterKalProtectAnchor</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope protect disc anchor: 0 pattern center, 1 fixed, 2 focus subject</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>1</integer>
+    </map>
+    <key>CineDiopterKalProtectCenterX</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope protect disc center X (fixed anchor)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineDiopterKalProtectCenterY</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope protect disc center Y (fixed anchor)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineDiopterKalDepthCut</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope depth protect cut distance, meters</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>8</real>
+    </map>
+    <key>CineDiopterKalDepthFeatherM</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope depth protect feather, meters</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1</real>
+    </map>
+    <key>CineDiopterKalDepthInvert</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope invert the depth protect mask</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineDiopterKalMotionMode</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope motion mode (0..11)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineDiopterKalSpeed</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope motion speed</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.3</real>
+    </map>
+    <key>CineDiopterKalMotionAngle</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope motion sweep/orbit direction, degrees</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterKalSweepRange</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope Sweep/Pendulum/StrobeJump motion range</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1</real>
+    </map>
+    <key>CineDiopterKalPingPong</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope Sweep motion ping-pongs instead of wrapping</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>1</integer>
+    </map>
+    <key>CineDiopterKalPulseTarget</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope Pulse motion target: 0 zoom, 1 twist, 2 offset</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineDiopterKalPulseAmt</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope Pulse/Heartbeat motion amount</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.4</real>
+    </map>
+    <key>CineDiopterKalWaveAmp</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope Wave motion amplitude</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.06</real>
+    </map>
+    <key>CineDiopterKalWaveFreq</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope Wave motion frequency</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>6</real>
+    </map>
+    <key>CineDiopterKalPathFreqX</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope Path motion X frequency</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1</real>
+    </map>
+    <key>CineDiopterKalPathFreqY</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope Path motion Y frequency</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.4</real>
+    </map>
+    <key>CineDiopterKalPathPhase</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope Path motion Y phase, radians</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.5708</real>
+    </map>
+    <key>CineDiopterKalPathAmp</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope Path/Orbit/Wander/Handheld/StrobeJump motion amplitude</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.2</real>
+    </map>
+    <key>CineDiopterKalSpinMode</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope spin envelope: 0 constant, 1 ease, 2 loop, 3 flick</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineDiopterKalSpinSpeed</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope constant spin rate in degrees per second</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterKalSpinTravel</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope spin travel in degrees for ease/loop/flick</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>90</real>
+    </map>
+    <key>CineDiopterKalSpinDuration</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope spin duration / settle in seconds</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.2</real>
+    </map>
+    <key>CineDiopterKalSpinBounce</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope flick spin overshoot</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.3</real>
+    </map>
+    <key>CineDiopterKalSpinDelay</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope spin delay in seconds</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterKalSeamSoften</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope Radial Mirror seam soften</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterKalBlend</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope master A/B blend against the untouched frame</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1</real>
+    </map>
+    <key>CineDiopterKalDebugView</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope setup view: 0 off, 1 wedges, 2 center/protect, 3 subject mask</string>
+      <key>Persist</key><integer>0</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineDiopterKalFreezeTime</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope freeze motion for stills</string>
+      <key>Persist</key><integer>0</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineDiopterKalFreezeAt</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope frozen timeline second</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterKalCellSizeVar</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope Cell Variety size scatter</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterKalCellBreathe</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope Cell Variety breathing</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterKalCellSubdiv</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope Cell Variety subdivide chance</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterKalCellMerge</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope Cell Variety merge chance</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterKalCellTint</key>
+    <map>
+      <key>Comment</key><string>Ultimate Kaleidoscope Cell Variety iridescent tint</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
     </map>
     <key>CineLightRigEnabled</key>
     <map>

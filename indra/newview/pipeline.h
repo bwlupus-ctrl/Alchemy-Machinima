@@ -195,6 +195,19 @@ public:
     // re-entry while the write-back runs.
     static void materializeDiopterPreset(U32 preset_id, const std::string& edited_control);
     static bool sDiopterPresetMaterializing;
+    // [Ultimate Kaleidoscope] tool mode 1 of the Ultimate Diopter post pass:
+    // single full-screen MRT pass into mDiopterMap (color + unused + warp
+    // uv), then attachment 0 copied src -> dst (caller swaps either way).
+    // Returns true only when the kaleidoscope actually rendered — false on
+    // the internal copy-through early-outs, where the warp map is stale and
+    // the present depth re-warp must stay off.
+    bool renderUltimateKaleidoscope(LLRenderTarget* src, LLRenderTarget* dst);
+    // [Ultimate Kaleidoscope] write the given preset's resolved style/motion
+    // look into the CineDiopterKal* sliders (skipping edited_control, which
+    // holds the user's fresh edit) so flipping to Custom preserves the
+    // on-screen look. Reuses sDiopterPresetMaterializing — the diopter and
+    // kaleidoscope tool modes never materialize concurrently.
+    static void materializeKaleidoPreset(U32 preset_id, const std::string& edited_control);
     // [BDMerge G3.2] volumetric lighting (donor: Black Dragon)
     void renderVolumetric(LLRenderTarget* src, LLRenderTarget* dst);
     // [Cine Outline Phase 1] additive deferred edge pass feeding bloom/glow.

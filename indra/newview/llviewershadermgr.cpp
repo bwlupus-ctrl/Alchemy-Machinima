@@ -237,6 +237,8 @@ LLGLSLShader            gCineFisheyeProgram;
 // [Ultimate Diopter] pass 1 gather (quality tap tiers) + pass 2 composite
 LLGLSLShader            gUltimateDiopterGatherProgram[4];
 LLGLSLShader            gUltimateDiopterProgram;
+// [Ultimate Kaleidoscope] tool mode 1 of the Ultimate Diopter post pass
+LLGLSLShader            gUltimateKaleidoProgram;
 // [BDMerge G3.2] volumetric lighting (donor: Black Dragon)
 LLGLSLShader            gVolumetricLightProgram;
 // [Cine Outline Phase 1] deferred normal/depth outline post pass
@@ -642,6 +644,8 @@ void LLViewerShaderMgr::finalizeShaderList()
         mShaderList.push_back(&gUltimateDiopterGatherProgram[i]);
     }
     mShaderList.push_back(&gUltimateDiopterProgram);
+    // [Ultimate Kaleidoscope]
+    mShaderList.push_back(&gUltimateKaleidoProgram);
     // [BDMerge G3.3] projector volumetrics links the same atmospherics/deferred
     // util set as G3.2, so register it too (keeps linked util externs satisfied).
     mShaderList.push_back(&gDeferredProjectorVolumetricProgram);
@@ -1628,6 +1632,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
             gUltimateDiopterGatherProgram[i].unload();
         }
         gUltimateDiopterProgram.unload();
+        gUltimateKaleidoProgram.unload();
         gVolumetricLightProgram.unload();
         gCineOutlineProgram.unload();
         gDeferredProjectorVolumetricProgram.unload(); // [BDMerge G3.3]
@@ -3895,6 +3900,23 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         if (!success)
         {
             LL_WARNS() << "Failed to create shader '" << gUltimateDiopterProgram.mName << "', disabling!" << LL_ENDL;
+            success = true;
+        }
+
+        // [Ultimate Kaleidoscope] tool mode 1 of the Ultimate Diopter post
+        // pass: single full-screen MRT pass, no permutations. Same vertex
+        // shader + registration pattern as gUltimateDiopterProgram.
+        gUltimateKaleidoProgram.mName = "Ultimate Kaleidoscope Shader";
+        gUltimateKaleidoProgram.mFeatures.isDeferred = true;
+        gUltimateKaleidoProgram.mShaderFiles.clear();
+        gUltimateKaleidoProgram.clearPermutations();
+        gUltimateKaleidoProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gUltimateKaleidoProgram.mShaderFiles.push_back(make_pair("deferred/ultimateKaleidoF.glsl", GL_FRAGMENT_SHADER));
+        gUltimateKaleidoProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gUltimateKaleidoProgram.createShader();
+        if (!success)
+        {
+            LL_WARNS() << "Failed to create shader '" << gUltimateKaleidoProgram.mName << "', disabling!" << LL_ENDL;
             success = true;
         }
     }
