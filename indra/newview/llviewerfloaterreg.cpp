@@ -31,6 +31,10 @@
 #include "llfloaterreg.h"
 #include "llviewerfloaterreg.h"
 
+// [Ultimate Diopter] Diopter.ResetControl commit-callback registration
+#include "lluictrl.h"
+#include "llviewercontrol.h"
+
 #include "animationexplorer.h" // [BDMerge F7]
 #include "ao.h"
 #include "alchatbar.h"
@@ -524,7 +528,38 @@ void LLViewerFloaterReg::registerFloaters()
     // (ALPanelCineCamParams), shared with the Director Console
     LLFloaterReg::add("cinematic_camera", "floater_cinematic_camera.xml", &LLFloaterReg::build<LLFloater>);
     LLFloaterReg::add("cine_light_rig", "floater_cine_light_rig.xml", &LLFloaterReg::build<LLFloater>);
-    // [Ultimate Diopter] pure-XML shell; all controls bind to CineDiopter* settings
+    // [Ultimate Diopter] pure-XML shell; all controls bind to CineDiopter* settings.
+    // Its mini reset buttons need a commit callback that is registered BEFORE the
+    // floater is ever built — the light rig's equivalent only registers when a rig
+    // panel is constructed, so the diopter carries its own. Accepts one control
+    // name or a comma-separated list, matching CineLightRig.ResetControl.
+    LLUICtrl::CommitCallbackRegistry::defaultRegistrar().add(
+        "Diopter.ResetControl",
+        [](LLUICtrl*, const LLSD& param)
+        {
+            const std::string names = param.asString();
+            size_t start = 0;
+            while (start <= names.size())
+            {
+                const size_t comma = names.find(',', start);
+                const size_t end = (comma == std::string::npos) ? names.size() : comma;
+                const size_t first = names.find_first_not_of(" \t", start);
+                if (first != std::string::npos && first < end)
+                {
+                    const size_t last = names.find_last_not_of(" \t", end - 1);
+                    if (LLControlVariable* control =
+                            gSavedSettings.getControl(names.substr(first, last - first + 1)))
+                    {
+                        control->resetToDefault(true);
+                    }
+                }
+                if (comma == std::string::npos)
+                {
+                    break;
+                }
+                start = comma + 1;
+            }
+        });
     LLFloaterReg::add("ultimate_diopter", "floater_ultimate_diopter.xml", &LLFloaterReg::build<LLFloater>);
     LLFloaterReg::add("cine_light_cues", "floater_cine_light_cues.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<ALFloaterCineLightCues>);
     LLFloaterReg::add("flycam_recorder", "floater_flycam_recorder.xml", &LLFloaterReg::build<LLFloater>);
