@@ -1,0 +1,1098 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- [Ultimate Diopter] pure-XML floater; every control binds straight to a
+     CineDiopter* setting, so no C++ floater class is needed. Each tab wraps
+     its controls in a scroll_container so no control can be clipped at any
+     floater size. -->
+<floater
+ can_resize="true"
+ height="640"
+ layout="topleft"
+ min_height="420"
+ min_width="440"
+ name="ultimate_diopter"
+ save_rect="true"
+ single_instance="true"
+ title="Ultimate Diopter"
+ width="440">
+    <tab_container
+     follows="all"
+     height="612"
+     layout="topleft"
+     left="4"
+     name="diopter_tabs"
+     tab_position="top"
+     top="24"
+     width="432">
+
+        <!-- ============================ Main ============================ -->
+        <panel
+         label="Main"
+         layout="topleft"
+         name="diopter_tab_main">
+            <scroll_container
+             follows="all"
+             height="560"
+             layout="topleft"
+             left="0"
+             name="diopter_scroll_main"
+             opaque="false"
+             top="0"
+             width="428">
+                <panel
+                 height="560"
+                 layout="topleft"
+                 left="0"
+                 name="diopter_inner_main"
+                 top="0"
+                 width="406">
+                    <check_box
+                     name="diopter_enabled"
+                     layout="topleft" follows="left|top"
+                     left="12" top="12" height="16" width="380"
+                     label="Enable Ultimate Diopter"
+                     tool_tip="Master switch. When off the effect allocates no render targets and adds no draw calls."
+                     control_name="CineDiopterEnabled" />
+                    <combo_box
+                     name="diopter_preset"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="10" height="23" width="380"
+                     label="Preset"
+                     tool_tip="Sets the optical character. Framing (position, size, focus, angle) stays on your sliders."
+                     control_name="CineDiopterPreset">
+                        <combo_box.item label="Custom (use sliders)" name="p0" value="0" />
+                        <combo_box.item label="Split Diopter (classic)" name="p1" value="1" />
+                        <combo_box.item label="Dream Spot" name="p2" value="2" />
+                        <combo_box.item label="Anamorphic Cinema" name="p3" value="3" />
+                        <combo_box.item label="Vintage Swirl" name="p4" value="4" />
+                        <combo_box.item label="Hand Lens (free glass)" name="p5" value="5" />
+                        <combo_box.item label="Halo FX - Subtle" name="p6" value="6" />
+                        <combo_box.item label="Halo FX - Full" name="p7" value="7" />
+                        <combo_box.item label="Halo FX - Half Moon" name="p8" value="8" />
+                        <combo_box.item label="Halo FX - Split Moon" name="p9" value="9" />
+                        <combo_box.item label="Halo FX - Crescent" name="p10" value="10" />
+                        <combo_box.item label="Halo FX - Broken Ring" name="p11" value="11" />
+                        <combo_box.item label="Halo FX - Handheld" name="p12" value="12" />
+                        <combo_box.item label="Faceted - Radial Mirror" name="p13" value="13" />
+                        <combo_box.item label="Concentric Echo" name="p14" value="14" />
+                        <combo_box.item label="Prism Split" name="p15" value="15" />
+                        <combo_box.item label="Heart Bokeh" name="p16" value="16" />
+                        <combo_box.item label="Star Dream" name="p17" value="17" />
+                        <combo_box.item label="Moon Bite (crescent)" name="p18" value="18" />
+                        <combo_box.item label="Petal Dream (flower window)" name="p19" value="19" />
+                        <combo_box.item label="Macro Pulse" name="p20" value="20" />
+                    </combo_box>
+                    <combo_box
+                     name="diopter_quality"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="6" height="23" width="380"
+                     label="Quality"
+                     control_name="CineDiopterQuality">
+                        <combo_box.item label="Preview (12 taps)" name="q0" value="0" />
+                        <combo_box.item label="Balanced (24 taps)" name="q1" value="1" />
+                        <combo_box.item label="High (40 taps)" name="q2" value="2" />
+                        <combo_box.item label="Hero Still (64 taps)" name="q3" value="3" />
+                    </combo_box>
+                    <slider
+                     name="diopter_blend"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="10" height="16" width="380"
+                     label="Master Blend" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterBlend" />
+                    <slider
+                     name="diopter_center_x"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="6" height="16" width="380"
+                     label="Center X" label_width="140"
+                     min_val="0" max_val="1" increment="0.005" decimal_digits="3"
+                     control_name="CineDiopterCenterX" />
+                    <slider
+                     name="diopter_center_y"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Center Y" label_width="140"
+                     min_val="0" max_val="1" increment="0.005" decimal_digits="3"
+                     control_name="CineDiopterCenterY" />
+                    <slider
+                     name="diopter_size"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Size" label_width="140"
+                     min_val="0.01" max_val="1" increment="0.005" decimal_digits="3"
+                     control_name="CineDiopterSize" />
+                    <slider
+                     name="diopter_angle"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Angle (deg)" label_width="140"
+                     min_val="-180" max_val="180" increment="1" decimal_digits="0"
+                     control_name="CineDiopterAngleDeg" />
+                    <combo_box
+                     name="diopter_track"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="10" height="23" width="380"
+                     label="Anchor"
+                     control_name="CineDiopterTrackMode">
+                        <combo_box.item label="Manual center" name="t0" value="0" />
+                        <combo_box.item label="Follow camera focus subject" name="t1" value="1" />
+                    </combo_box>
+                    <check_box
+                     name="diopter_freeze"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="12" height="16" width="380"
+                     label="Freeze Motion (for stills)"
+                     control_name="CineDiopterFreeze" />
+                    <slider
+                     name="diopter_freeze_at"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Freeze At (sec)" label_width="140"
+                     min_val="0" max_val="20" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterFreezeAt" />
+                    <combo_box
+                     name="diopter_debug"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="10" height="23" width="380"
+                     label="Setup View"
+                     control_name="CineDiopterDebugView">
+                        <combo_box.item label="Off" name="d0" value="0" />
+                        <combo_box.item label="Region Mask" name="d1" value="1" />
+                        <combo_box.item label="Focus Map" name="d2" value="2" />
+                        <combo_box.item label="Depth" name="d3" value="3" />
+                        <combo_box.item label="Rim / Envelope" name="d4" value="4" />
+                    </combo_box>
+                </panel>
+            </scroll_container>
+        </panel>
+
+        <!-- ============================ Shape =========================== -->
+        <panel
+         label="Shape"
+         layout="topleft"
+         name="diopter_tab_shape">
+            <scroll_container
+             follows="all"
+             height="560"
+             layout="topleft"
+             left="0"
+             name="diopter_scroll_shape"
+             opaque="false"
+             top="0"
+             width="428">
+                <panel
+                 height="700"
+                 layout="topleft"
+                 left="0"
+                 name="diopter_inner_shape"
+                 top="0"
+                 width="406">
+                    <combo_box
+                     name="diopter_shape"
+                     layout="topleft" follows="left|top"
+                     left="12" top="12" height="23" width="380"
+                     label="Shape"
+                     control_name="CineDiopterShape">
+                        <combo_box.item label="Full Frame" name="s0" value="0" />
+                        <combo_box.item label="Split (half)" name="s1" value="1" />
+                        <combo_box.item label="Ramp (gradient)" name="s2" value="2" />
+                        <combo_box.item label="Bar (stripe)" name="s3" value="3" />
+                        <combo_box.item label="Circle / Lens" name="s4" value="4" />
+                        <combo_box.item label="Squircle (rounded box)" name="s5" value="5" />
+                        <combo_box.item label="Polygon" name="s6" value="6" />
+                        <combo_box.item label="Star" name="s7" value="7" />
+                        <combo_box.item label="Heart" name="s8" value="8" />
+                        <combo_box.item label="Flower" name="s9" value="9" />
+                        <combo_box.item label="Blob (organic)" name="s10" value="10" />
+                        <combo_box.item label="Crescent" name="s11" value="11" />
+                    </combo_box>
+                    <combo_box
+                     name="diopter_content"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="6" height="23" width="380"
+                     label="Contents"
+                     control_name="CineDiopterContent">
+                        <combo_box.item label="Diopter (refocus / glass)" name="c0" value="0" />
+                        <combo_box.item label="Sharp Window (surround melts)" name="c1" value="1" />
+                    </combo_box>
+                    <slider
+                     name="diopter_stretch"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="10" height="16" width="380"
+                     label="Stretch" label_width="140"
+                     min_val="0.2" max_val="5" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterStretch" />
+                    <slider
+                     name="diopter_feather"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Seam Feather" label_width="140"
+                     min_val="0.001" max_val="0.5" increment="0.005" decimal_digits="3"
+                     control_name="CineDiopterFeather" />
+                    <check_box
+                     name="diopter_invert"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="6" height="16" width="380"
+                     label="Invert (flip region and surround)"
+                     control_name="CineDiopterInvert" />
+                    <slider
+                     name="diopter_hollow"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="8" height="16" width="380"
+                     label="Hollow (ring)" label_width="140"
+                     min_val="0" max_val="0.95" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterHollow" />
+                    <slider
+                     name="diopter_arc_len"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Arc Length (deg)" label_width="140"
+                     min_val="10" max_val="360" increment="1" decimal_digits="0"
+                     control_name="CineDiopterArcLengthDeg" />
+                    <slider
+                     name="diopter_broken"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Broken Segments" label_width="140"
+                     min_val="0" max_val="16" increment="1" decimal_digits="0"
+                     control_name="CineDiopterBrokenCount" />
+                    <slider
+                     name="diopter_round"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Corner Rounding" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterCornerRound" />
+                    <slider
+                     name="diopter_wobble_amt"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Edge Wobble" label_width="140"
+                     min_val="0" max_val="0.3" increment="0.005" decimal_digits="3"
+                     control_name="CineDiopterWobbleAmt" />
+                    <slider
+                     name="diopter_wobble_freq"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Wobble Frequency" label_width="140"
+                     min_val="1" max_val="40" increment="0.5" decimal_digits="1"
+                     control_name="CineDiopterWobbleFreq" />
+                    <slider
+                     name="diopter_poly_sides"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="8" height="16" width="380"
+                     label="Polygon Sides" label_width="140"
+                     min_val="3" max_val="12" increment="1" decimal_digits="0"
+                     control_name="CineDiopterPolySides" />
+                    <slider
+                     name="diopter_star_points"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Star Points" label_width="140"
+                     min_val="3" max_val="12" increment="1" decimal_digits="0"
+                     control_name="CineDiopterStarPoints" />
+                    <slider
+                     name="diopter_star_inner"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Star Inner Radius" label_width="140"
+                     min_val="0.1" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterStarInner" />
+                    <slider
+                     name="diopter_petal_count"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Flower Petals" label_width="140"
+                     min_val="2" max_val="12" increment="1" decimal_digits="0"
+                     control_name="CineDiopterPetalCount" />
+                    <slider
+                     name="diopter_petal_depth"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Petal Depth" label_width="140"
+                     min_val="0" max_val="0.9" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterPetalDepth" />
+                    <slider
+                     name="diopter_blob_seed"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Blob Seed" label_width="140"
+                     min_val="0" max_val="99" increment="1" decimal_digits="0"
+                     control_name="CineDiopterBlobSeed" />
+                    <slider
+                     name="diopter_blob_amt"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Blob Irregularity" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterBlobAmt" />
+                    <slider
+                     name="diopter_crescent_bite"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Crescent Bite" label_width="140"
+                     min_val="0.2" max_val="1.5" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterCrescentBite" />
+                    <slider
+                     name="diopter_crescent_shift"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Crescent Shift" label_width="140"
+                     min_val="0" max_val="1.5" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterCrescentShift" />
+                    <slider
+                     name="diopter_squircle_pow"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Squircle Exponent" label_width="140"
+                     min_val="2" max_val="8" increment="0.1" decimal_digits="1"
+                     control_name="CineDiopterSquirclePow" />
+                    <slider
+                     name="diopter_split_curve"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Split Curvature" label_width="140"
+                     min_val="-3" max_val="3" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterSplitCurvature" />
+                </panel>
+            </scroll_container>
+        </panel>
+
+        <!-- ============================ Focus =========================== -->
+        <panel
+         label="Focus"
+         layout="topleft"
+         name="diopter_tab_focus">
+            <scroll_container
+             follows="all"
+             height="560"
+             layout="topleft"
+             left="0"
+             name="diopter_scroll_focus"
+             opaque="false"
+             top="0"
+             width="428">
+                <panel
+                 height="560"
+                 layout="topleft"
+                 left="0"
+                 name="diopter_inner_focus"
+                 top="0"
+                 width="406">
+                    <combo_box
+                     name="diopter_focus_mode"
+                     layout="topleft" follows="left|top"
+                     left="12" top="12" height="23" width="380"
+                     label="Base Focus"
+                     control_name="CineDiopterFocusMode">
+                        <combo_box.item label="Manual distance (m)" name="fm0" value="0" />
+                        <combo_box.item label="Camera focus point" name="fm1" value="1" />
+                    </combo_box>
+                    <slider
+                     name="diopter_base_m"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="6" height="16" width="380"
+                     label="Base Distance (m)" label_width="140"
+                     min_val="0.1" max_val="128" increment="0.1" decimal_digits="1"
+                     control_name="CineDiopterBaseFocusM" />
+                    <combo_box
+                     name="diopter_lens_mode"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="10" height="23" width="380"
+                     label="Lens Focus"
+                     control_name="CineDiopterLensFocusMode">
+                        <combo_box.item label="Physical power (+D)" name="lm0" value="0" />
+                        <combo_box.item label="Manual distance (m)" name="lm1" value="1" />
+                    </combo_box>
+                    <slider
+                     name="diopter_power"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="6" height="16" width="380"
+                     label="Power (+D)" label_width="140"
+                     min_val="-10" max_val="10" increment="0.25" decimal_digits="2"
+                     control_name="CineDiopterPower" />
+                    <slider
+                     name="diopter_lens_m"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Lens Distance (m)" label_width="140"
+                     min_val="0.1" max_val="128" increment="0.1" decimal_digits="1"
+                     control_name="CineDiopterLensFocusM" />
+                    <slider
+                     name="diopter_focus_width"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="10" height="16" width="380"
+                     label="In-Focus Width (m)" label_width="140"
+                     min_val="0" max_val="20" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterFocusWidthM" />
+                    <slider
+                     name="diopter_falloff"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Falloff Rate" label_width="140"
+                     min_val="0.5" max_val="40" increment="0.25" decimal_digits="2"
+                     control_name="CineDiopterFalloffRate" />
+                    <slider
+                     name="diopter_curve"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Falloff Curve" label_width="140"
+                     min_val="0.4" max_val="3" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterFalloffCurve" />
+                    <slider
+                     name="diopter_near_str"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Near Blur" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterNearStrength" />
+                    <slider
+                     name="diopter_far_str"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Far Blur" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterFarStrength" />
+                    <slider
+                     name="diopter_max_blur"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Max Blur (px)" label_width="140"
+                     min_val="1" max_val="64" increment="1" decimal_digits="0"
+                     control_name="CineDiopterMaxBlurPx" />
+                    <slider
+                     name="diopter_floor_max"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Surround Max Blur" label_width="140"
+                     min_val="1" max_val="96" increment="1" decimal_digits="0"
+                     control_name="CineDiopterFloorMaxBlurPx" />
+                    <slider
+                     name="diopter_spot_blur"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Window Surround" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterSpotBlur" />
+                    <slider
+                     name="diopter_bokeh_hi"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Bokeh Highlight" label_width="140"
+                     min_val="0" max_val="3" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterBokehHighlight" />
+                    <slider
+                     name="diopter_depth_edge"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Depth Edge Protect" label_width="140"
+                     min_val="0" max_val="16" increment="0.1" decimal_digits="1"
+                     control_name="CineDiopterDepthEdgeM" />
+                </panel>
+            </scroll_container>
+        </panel>
+
+        <!-- ========================= Glass &amp; Halo ====================== -->
+        <panel
+         label="Glass &amp; Halo"
+         layout="topleft"
+         name="diopter_tab_glass">
+            <scroll_container
+             follows="all"
+             height="560"
+             layout="topleft"
+             left="0"
+             name="diopter_scroll_glass"
+             opaque="false"
+             top="0"
+             width="428">
+                <panel
+                 height="800"
+                 layout="topleft"
+                 left="0"
+                 name="diopter_inner_glass"
+                 top="0"
+                 width="406">
+                    <combo_box
+                     name="diopter_profile"
+                     layout="topleft" follows="left|top"
+                     left="12" top="12" height="23" width="380"
+                     label="Element Profile"
+                     control_name="CineDiopterGlassProfile">
+                        <combo_box.item label="Off (focus only)" name="g0" value="0" />
+                        <combo_box.item label="Plano-Convex" name="g1" value="1" />
+                        <combo_box.item label="Biconvex (strong)" name="g2" value="2" />
+                        <combo_box.item label="Meniscus" name="g3" value="3" />
+                        <combo_box.item label="Bubble (diverging)" name="g4" value="4" />
+                    </combo_box>
+                    <slider
+                     name="diopter_ior"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="6" height="16" width="380"
+                     label="Refraction (IOR-1)" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterIOR" />
+                    <slider
+                     name="diopter_thick"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Thickness" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterThickness" />
+                    <slider
+                     name="diopter_rim_width"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Rim Width" label_width="140"
+                     min_val="0.02" max_val="0.6" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterRimWidth" />
+                    <slider
+                     name="diopter_rim_warp"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Rim Warp" label_width="140"
+                     min_val="0" max_val="3" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterRimWarp" />
+                    <slider
+                     name="diopter_rim_caustic"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Rim Caustic" label_width="140"
+                     min_val="0" max_val="2" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterRimCaustic" />
+                    <slider
+                     name="diopter_rim_darken"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Rim Darken" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterRimDarken" />
+                    <slider
+                     name="diopter_character"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="8" height="16" width="380"
+                     label="Character" label_width="140"
+                     min_val="0" max_val="2" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterCharacter" />
+                    <slider
+                     name="diopter_ca_scale"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Lateral CA" label_width="140"
+                     min_val="0" max_val="3" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterCAScale" />
+                    <slider
+                     name="diopter_axial_scale"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Axial CA" label_width="140"
+                     min_val="0" max_val="3" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterAxialCAScale" />
+                    <slider
+                     name="diopter_field_scale"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Field Curvature" label_width="140"
+                     min_val="0" max_val="3" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterFieldCurveScale" />
+                    <slider
+                     name="diopter_vig_scale"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Edge Vignette" label_width="140"
+                     min_val="0" max_val="2" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterEdgeVignetteScale" />
+                    <slider
+                     name="diopter_ring_count"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="8" height="16" width="380"
+                     label="Halo Rings" label_width="140"
+                     min_val="1" max_val="16" increment="0.5" decimal_digits="1"
+                     control_name="CineDiopterRingCount" />
+                    <slider
+                     name="diopter_ring_fold"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Ring Fold" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterRingFold" />
+                    <slider
+                     name="diopter_ring_phase"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Ring Phase" label_width="140"
+                     min_val="-8" max_val="8" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterRingPhase" />
+                    <slider
+                     name="diopter_twist"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Twist (deg)" label_width="140"
+                     min_val="-180" max_val="180" increment="1" decimal_digits="0"
+                     control_name="CineDiopterTwistDeg" />
+                    <slider
+                     name="diopter_lobe_amt"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Lobe Amount" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterLobeAmt" />
+                    <slider
+                     name="diopter_lobe_count"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Lobe Count" label_width="140"
+                     min_val="1" max_val="12" increment="1" decimal_digits="0"
+                     control_name="CineDiopterLobeCount" />
+                    <slider
+                     name="diopter_lobe_phase"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Lobe Phase (deg)" label_width="140"
+                     min_val="-180" max_val="180" increment="1" decimal_digits="0"
+                     control_name="CineDiopterLobePhaseDeg" />
+                    <slider
+                     name="diopter_ghost_count"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="8" height="16" width="380"
+                     label="Ghost Copies" label_width="140"
+                     min_val="0" max_val="6" increment="1" decimal_digits="0"
+                     control_name="CineDiopterGhostCount" />
+                    <slider
+                     name="diopter_ghost_spacing"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Ghost Spacing" label_width="140"
+                     min_val="0" max_val="2" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterGhostSpacing" />
+                    <slider
+                     name="diopter_tangent_smear"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Arc Smear" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterTangentSmear" />
+                    <slider
+                     name="diopter_radial_smear"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Radial Smear" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterRadialSmear" />
+                    <slider
+                     name="diopter_ghost_threshold"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Highlight Threshold" label_width="140"
+                     min_val="0" max_val="2" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterGhostThreshold" />
+                    <slider
+                     name="diopter_ghost_knee"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Highlight Knee" label_width="140"
+                     min_val="0.01" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterGhostKnee" />
+                    <slider
+                     name="diopter_ghost_gain"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Arc Energy" label_width="140"
+                     min_val="0" max_val="2" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterGhostGain" />
+                    <slider
+                     name="diopter_dispersion"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Dispersion" label_width="140"
+                     min_val="0" max_val="2" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterDispersion" />
+                </panel>
+            </scroll_container>
+        </panel>
+
+        <!-- ======================= Bokeh &amp; Facets ======================= -->
+        <panel
+         label="Bokeh &amp; Facets"
+         layout="topleft"
+         name="diopter_tab_bokeh">
+            <scroll_container
+             follows="all"
+             height="560"
+             layout="topleft"
+             left="0"
+             name="diopter_scroll_bokeh"
+             opaque="false"
+             top="0"
+             width="428">
+                <panel
+                 height="620"
+                 layout="topleft"
+                 left="0"
+                 name="diopter_inner_bokeh"
+                 top="0"
+                 width="406">
+                    <combo_box
+                     name="diopter_ap_shape"
+                     layout="topleft" follows="left|top"
+                     left="12" top="12" height="23" width="380"
+                     label="Aperture Shape"
+                     control_name="CineDiopterApertureShape">
+                        <combo_box.item label="Round" name="a0" value="0" />
+                        <combo_box.item label="Polygon" name="a1" value="1" />
+                        <combo_box.item label="Star" name="a2" value="2" />
+                        <combo_box.item label="Heart" name="a3" value="3" />
+                        <combo_box.item label="Anamorphic" name="a4" value="4" />
+                    </combo_box>
+                    <slider
+                     name="diopter_blades"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="6" height="16" width="380"
+                     label="Sides / Points" label_width="140"
+                     min_val="3" max_val="11" increment="1" decimal_digits="0"
+                     control_name="CineDiopterBlades" />
+                    <slider
+                     name="diopter_blade_rot"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Rotation (deg)" label_width="140"
+                     min_val="-180" max_val="180" increment="1" decimal_digits="0"
+                     control_name="CineDiopterBladeRotDeg" />
+                    <slider
+                     name="diopter_blade_curve"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Blade Curvature" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterBladeCurve" />
+                    <slider
+                     name="diopter_ap_inner"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Star Inner" label_width="140"
+                     min_val="0.1" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterApertureInner" />
+                    <slider
+                     name="diopter_anamorph"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Anamorphic Squeeze" label_width="140"
+                     min_val="0.2" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterAnamorph" />
+                    <slider
+                     name="diopter_anam_angle"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Anamorphic Angle" label_width="140"
+                     min_val="-180" max_val="180" increment="1" decimal_digits="0"
+                     control_name="CineDiopterAnamorphAngleDeg" />
+                    <slider
+                     name="diopter_cat_eye"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Cat's-Eye" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterCatEye" />
+                    <combo_box
+                     name="diopter_pattern_mode"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="14" height="23" width="380"
+                     label="Faceted Fold"
+                     control_name="CineDiopterPatternMode">
+                        <combo_box.item label="Off" name="pm0" value="0" />
+                        <combo_box.item label="Radial Mirror" name="pm1" value="1" />
+                        <combo_box.item label="Radial Rotate (pinwheel)" name="pm2" value="2" />
+                        <combo_box.item label="Star" name="pm3" value="3" />
+                    </combo_box>
+                    <slider
+                     name="diopter_pattern_seg"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="6" height="16" width="380"
+                     label="Segments" label_width="140"
+                     min_val="2" max_val="32" increment="1" decimal_digits="0"
+                     control_name="CineDiopterPatternSegments" />
+                    <slider
+                     name="diopter_pattern_feed"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Feed Angle (deg)" label_width="140"
+                     min_val="-180" max_val="180" increment="1" decimal_digits="0"
+                     control_name="CineDiopterPatternFeedDeg" />
+                    <slider
+                     name="diopter_pattern_zoom"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Source Zoom" label_width="140"
+                     min_val="0.05" max_val="4" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterPatternZoom" />
+                    <slider
+                     name="diopter_seam_px"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="14" height="16" width="380"
+                     label="Seam Double (px)" label_width="140"
+                     min_val="0" max_val="12" increment="0.5" decimal_digits="1"
+                     control_name="CineDiopterSeamGhostPx" />
+                    <slider
+                     name="diopter_seam_amt"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Seam Double Amount" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterSeamGhostAmt" />
+                    <slider
+                     name="diopter_mag_scale"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="14" height="16" width="380"
+                     label="Magnify Scale" label_width="140"
+                     min_val="0" max_val="3" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterMagnifyScale" />
+                    <slider
+                     name="diopter_mag_trim"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Magnify Trim" label_width="140"
+                     min_val="-0.1" max_val="0.2" increment="0.005" decimal_digits="3"
+                     control_name="CineDiopterMagnifyTrim" />
+                </panel>
+            </scroll_container>
+        </panel>
+
+        <!-- =========================== Motion =========================== -->
+        <panel
+         label="Motion"
+         layout="topleft"
+         name="diopter_tab_motion">
+            <scroll_container
+             follows="all"
+             height="560"
+             layout="topleft"
+             left="0"
+             name="diopter_scroll_motion"
+             opaque="false"
+             top="0"
+             width="428">
+                <panel
+                 height="820"
+                 layout="topleft"
+                 left="0"
+                 name="diopter_inner_motion"
+                 top="0"
+                 width="406">
+                    <combo_box
+                     name="diopter_motion_mode"
+                     layout="topleft" follows="left|top"
+                     left="12" top="12" height="23" width="380"
+                     label="Motion"
+                     control_name="CineDiopterMotionMode">
+                        <combo_box.item label="Static" name="m0" value="0" />
+                        <combo_box.item label="Sweep" name="m1" value="1" />
+                        <combo_box.item label="Pulse" name="m2" value="2" />
+                        <combo_box.item label="Wave" name="m3" value="3" />
+                        <combo_box.item label="Path (Lissajous)" name="m4" value="4" />
+                        <combo_box.item label="Stutter (rapid random)" name="m5" value="5" />
+                    </combo_box>
+                    <slider
+                     name="diopter_motion_speed"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="6" height="16" width="380"
+                     label="Speed" label_width="140"
+                     min_val="0" max_val="4" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterMotionSpeed" />
+                    <slider
+                     name="diopter_motion_angle"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Sweep Direction" label_width="140"
+                     min_val="-180" max_val="180" increment="1" decimal_digits="0"
+                     control_name="CineDiopterMotionAngleDeg" />
+                    <slider
+                     name="diopter_sweep_range"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Sweep Range" label_width="140"
+                     min_val="0" max_val="1.5" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterSweepRange" />
+                    <check_box
+                     name="diopter_ping_pong"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="6" height="16" width="380"
+                     label="Sweep Ping-Pong"
+                     control_name="CineDiopterSweepPingPong" />
+                    <combo_box
+                     name="diopter_pulse_target"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="8" height="23" width="380"
+                     label="Pulse Target"
+                     control_name="CineDiopterPulseTarget">
+                        <combo_box.item label="Size" name="pt0" value="0" />
+                        <combo_box.item label="Focus (rack)" name="pt1" value="1" />
+                    </combo_box>
+                    <slider
+                     name="diopter_pulse_amt"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="6" height="16" width="380"
+                     label="Pulse Amount" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterPulseAmt" />
+                    <slider
+                     name="diopter_wave_amp"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Wave Amplitude" label_width="140"
+                     min_val="0" max_val="0.3" increment="0.005" decimal_digits="3"
+                     control_name="CineDiopterWaveAmp" />
+                    <slider
+                     name="diopter_path_fx"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Path Freq X" label_width="140"
+                     min_val="0" max_val="6" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterPathFreqX" />
+                    <slider
+                     name="diopter_path_fy"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Path Freq Y" label_width="140"
+                     min_val="0" max_val="6" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterPathFreqY" />
+                    <slider
+                     name="diopter_path_phase"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Path Phase" label_width="140"
+                     min_val="0" max_val="6.2832" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterPathPhase" />
+                    <slider
+                     name="diopter_path_amp"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Path Amplitude" label_width="140"
+                     min_val="0" max_val="0.5" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterPathAmp" />
+                    <slider
+                     name="diopter_stutter_rate"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="8" height="16" width="380"
+                     label="Stutter Rate (Hz)" label_width="140"
+                     min_val="1" max_val="30" increment="0.5" decimal_digits="1"
+                     control_name="CineDiopterStutterRate" />
+                    <slider
+                     name="diopter_stutter_pos"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Stutter Position" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterStutterPos" />
+                    <slider
+                     name="diopter_stutter_angle"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Stutter Angle" label_width="140"
+                     min_val="0" max_val="180" increment="1" decimal_digits="0"
+                     control_name="CineDiopterStutterAngleDeg" />
+                    <slider
+                     name="diopter_stutter_size"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Stutter Size" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterStutterSize" />
+                    <slider
+                     name="diopter_stutter_focus"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Stutter Focus" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterStutterFocus" />
+                    <slider
+                     name="diopter_stutter_smooth"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Stutter Smooth" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterStutterSmooth" />
+                    <slider
+                     name="diopter_handheld"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="8" height="16" width="380"
+                     label="Handheld" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterHandheld" />
+                    <slider
+                     name="diopter_handheld_speed"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Handheld Speed" label_width="140"
+                     min_val="0.05" max_val="4" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterHandheldSpeed" />
+                    <slider
+                     name="diopter_handheld_gait"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Gait vs Drift" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterHandheldGait" />
+                    <slider
+                     name="diopter_handheld_rot"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Angle Sway (deg)" label_width="140"
+                     min_val="0" max_val="12" increment="0.25" decimal_digits="2"
+                     control_name="CineDiopterHandheldRotDeg" />
+                    <slider
+                     name="diopter_handheld_focus"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Focus Breath" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterHandheldFocus" />
+                    <combo_box
+                     name="diopter_spin_mode"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="8" height="23" width="380"
+                     label="Spin Mode"
+                     control_name="CineDiopterSpinMode">
+                        <combo_box.item label="Off / Constant" name="sm0" value="0" />
+                        <combo_box.item label="Ease (one-shot)" name="sm1" value="1" />
+                        <combo_box.item label="Loop (there-and-back)" name="sm2" value="2" />
+                        <combo_box.item label="Flick (spin &amp; settle)" name="sm3" value="3" />
+                    </combo_box>
+                    <slider
+                     name="diopter_spin_speed"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="6" height="16" width="380"
+                     label="Spin Rate (deg/s)" label_width="140"
+                     min_val="-180" max_val="180" increment="1" decimal_digits="0"
+                     control_name="CineDiopterSpinSpeed" />
+                    <slider
+                     name="diopter_spin_travel"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Spin Travel (deg)" label_width="140"
+                     min_val="-360" max_val="360" increment="1" decimal_digits="0"
+                     control_name="CineDiopterSpinTravelDeg" />
+                    <slider
+                     name="diopter_spin_duration"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Spin Duration (s)" label_width="140"
+                     min_val="0.05" max_val="8" increment="0.05" decimal_digits="2"
+                     control_name="CineDiopterSpinDurationS" />
+                    <slider
+                     name="diopter_spin_bounce"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Spin Overshoot" label_width="140"
+                     min_val="0" max_val="1" increment="0.01" decimal_digits="2"
+                     control_name="CineDiopterSpinBounce" />
+                    <slider
+                     name="diopter_spin_delay"
+                     layout="topleft" follows="left|top"
+                     left="12" top_pad="4" height="16" width="380"
+                     label="Spin Delay (s)" label_width="140"
+                     min_val="0" max_val="10" increment="0.1" decimal_digits="1"
+                     control_name="CineDiopterSpinDelayS" />
+                </panel>
+            </scroll_container>
+        </panel>
+    </tab_container>
+</floater>

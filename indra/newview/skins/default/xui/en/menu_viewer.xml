@@ -159,6 +159,13 @@
          function="Floater.Toggle"
          parameter="phototools" />
       </menu_item_call>
+      <menu_item_call
+       label="Ultimate Diopter..."
+       name="ultimate_diopter_item_call">
+        <menu_item_call.on_click
+         function="Floater.Toggle"
+         parameter="ultimate_diopter" />
+      </menu_item_call>
       <menu_item_check
        label="Depth of Field Focus lock"
        layout="topleft"

@@ -182,6 +182,9 @@ public:
     void compositeBloomHDR(LLRenderTarget* scene);
     void applyCAS(LLRenderTarget* src, LLRenderTarget* dst);
     void renderCineFisheye(LLRenderTarget* src, LLRenderTarget* dst);
+    // [Ultimate Diopter] two-pass lens-front diopter/halo: MRT gather into
+    // mDiopterMap, then composite src -> dst (caller swaps).
+    void renderUltimateDiopter(LLRenderTarget* src, LLRenderTarget* dst);
     // [BDMerge G3.2] volumetric lighting (donor: Black Dragon)
     void renderVolumetric(LLRenderTarget* src, LLRenderTarget* dst);
     // [Cine Outline Phase 1] additive deferred edge pass feeding bloom/glow.
@@ -1256,6 +1259,12 @@ public:
     // bridge publishes mRT->screen exactly as before.
     LLRenderTarget              mReShadeSceneRaw;
     bool                        mReShadeRawSceneValid = false;
+
+    // [Ultimate Diopter] pass-1 MRT target: attachment 0 = clear gather +
+    // mask, attachment 1 = diopter gather + rim. RGBA16F, full-res.
+    // Allocated ONLY while CineDiopterEnabled is set (settings listener
+    // triggers realloc) so the effect holds zero VRAM when off.
+    LLRenderTarget              mDiopterMap;
 
     // Night Mask: per-frame resolved state, shared verbatim between
     // generateLuminance() (B1 bloom-metering fix) and applyOnLensFilters()

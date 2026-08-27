@@ -87,6 +87,853 @@
       <key>Type</key><string>F32</string>
       <key>Value</key><real>0</real>
     </map>
+    <key>CineDiopterEnabled</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter master enable. Session-only (Persist 0) so the effect and its render targets always start OFF at login.</string>
+      <key>Persist</key><integer>0</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineDiopterPreset</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter creative preset (0 = Custom sliders)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineDiopterQuality</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter gather quality tier: 0 preview (12 taps), 1 balanced (24), 2 high (40), 3 hero still (64)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>1</integer>
+    </map>
+    <key>CineDiopterBlend</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter master A/B blend against the untouched frame</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1</real>
+    </map>
+    <key>CineDiopterDebugView</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter setup view: 0 off, 1 mask, 2 focus map, 3 depth, 4 rim/envelope</string>
+      <key>Persist</key><integer>0</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineDiopterFreeze</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter freeze motion for stills</string>
+      <key>Persist</key><integer>0</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineDiopterFreezeAt</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter frozen timeline second</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterShape</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter region shape: 0 full, 1 split, 2 ramp, 3 bar, 4 circle, 5 squircle, 6 polygon, 7 star, 8 heart, 9 flower, 10 blob, 11 crescent</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>1</integer>
+    </map>
+    <key>CineDiopterContent</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter region contents: 0 diopter glass, 1 sharp window (surround melts)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineDiopterCenterX</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter optical center X (0..1)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineDiopterCenterY</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter optical center Y (0..1)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineDiopterSize</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter region size (radius / half-width)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.28</real>
+    </map>
+    <key>CineDiopterStretch</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter shape stretch along local X (1 = neutral)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1</real>
+    </map>
+    <key>CineDiopterAngleDeg</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter region angle in degrees</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>90</real>
+    </map>
+    <key>CineDiopterFeather</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter seam feather width</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.06</real>
+    </map>
+    <key>CineDiopterInvert</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter flip region and surround</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineDiopterHollow</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter hollow: carves any closed shape into a ring (0 solid .. 0.95)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterCornerRound</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter corner rounding for polygon/star/flower/blob</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterWobbleAmt</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter static organic edge wobble amount</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterWobbleFreq</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter edge wobble frequency</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>8</real>
+    </map>
+    <key>CineDiopterPolySides</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter polygon shape sides</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>6</integer>
+    </map>
+    <key>CineDiopterStarPoints</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter star shape points</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>5</integer>
+    </map>
+    <key>CineDiopterStarInner</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter star shape inner radius fraction</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.45</real>
+    </map>
+    <key>CineDiopterPetalCount</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter flower shape petal count</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>6</integer>
+    </map>
+    <key>CineDiopterPetalDepth</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter flower shape petal depth</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.45</real>
+    </map>
+    <key>CineDiopterBlobSeed</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter blob shape random seed</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>7</real>
+    </map>
+    <key>CineDiopterBlobAmt</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter blob shape irregularity</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.6</real>
+    </map>
+    <key>CineDiopterCrescentBite</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter crescent bite radius</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.85</real>
+    </map>
+    <key>CineDiopterCrescentShift</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter crescent bite shift</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.6</real>
+    </map>
+    <key>CineDiopterSquirclePow</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter squircle exponent (2 circle .. 8 box)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>4</real>
+    </map>
+    <key>CineDiopterSplitCurvature</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter split seam curvature</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterArcLengthDeg</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter angular arc coverage in degrees (360 = full; 180 = half moon)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>360</real>
+    </map>
+    <key>CineDiopterBrokenCount</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter broken-ring segment count (0 = solid; 2 = split moon)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineDiopterFocusMode</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter base focus source: 0 manual meters, 1 camera focus point</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>1</integer>
+    </map>
+    <key>CineDiopterBaseFocusM</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter manual base focus distance in meters</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>8</real>
+    </map>
+    <key>CineDiopterLensFocusMode</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter lens focus source: 0 physical +D power, 1 manual meters</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineDiopterPower</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter optical power in diopters; positive pulls the lens plane nearer</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>2</real>
+    </map>
+    <key>CineDiopterLensFocusM</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter manual lens focus distance in meters</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.5</real>
+    </map>
+    <key>CineDiopterFocusWidthM</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter in-focus dead zone width in meters</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.4</real>
+    </map>
+    <key>CineDiopterFalloffRate</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter blur falloff rate relative to focus distance</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>6</real>
+    </map>
+    <key>CineDiopterFalloffCurve</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter blur falloff curve exponent</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1</real>
+    </map>
+    <key>CineDiopterNearStrength</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter near-side blur strength</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1</real>
+    </map>
+    <key>CineDiopterFarStrength</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter far-side blur strength</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1</real>
+    </map>
+    <key>CineDiopterMaxBlurPx</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter maximum focus blur radius in pixels</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>24</real>
+    </map>
+    <key>CineDiopterFloorMaxBlurPx</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter surround / field-curvature max blur radius in pixels</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>48</real>
+    </map>
+    <key>CineDiopterSpotBlur</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter sharp-window surround blur amount</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.7</real>
+    </map>
+    <key>CineDiopterBokehHighlight</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter bokeh highlight bias</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.6</real>
+    </map>
+    <key>CineDiopterDepthEdgeM</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter depth edge protection in meters (0 = off)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterCharacter</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter master aberration character (0 clinical .. 2 heavy vintage)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1</real>
+    </map>
+    <key>CineDiopterMagnifyScale</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter magnification scale</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1</real>
+    </map>
+    <key>CineDiopterMagnifyTrim</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter magnification trim</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterCAScale</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter lateral chromatic aberration scale</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1</real>
+    </map>
+    <key>CineDiopterAxialCAScale</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter axial chromatic aberration (bokeh fringe) scale</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1</real>
+    </map>
+    <key>CineDiopterFieldCurveScale</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter field curvature scale</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1</real>
+    </map>
+    <key>CineDiopterEdgeVignetteScale</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter edge optical vignette scale</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineDiopterGlassProfile</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter element profile: 0 off, 1 plano-convex, 2 biconvex, 3 meniscus, 4 bubble</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineDiopterIOR</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter refraction strength (IOR-1)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineDiopterThickness</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter element thickness</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineDiopterRimWidth</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter refraction rim band width</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.25</real>
+    </map>
+    <key>CineDiopterRimWarp</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter rim warp boost</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1</real>
+    </map>
+    <key>CineDiopterRimCaustic</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter rim caustic / edge light</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.4</real>
+    </map>
+    <key>CineDiopterRimDarken</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter rim edge darken</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.3</real>
+    </map>
+    <key>CineDiopterApertureShape</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter bokeh aperture shape: 0 round, 1 polygon, 2 star, 3 heart, 4 anamorphic</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineDiopterBlades</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter aperture sides / points</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>6</integer>
+    </map>
+    <key>CineDiopterBladeRotDeg</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter aperture rotation in degrees</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterBladeCurve</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter blade curvature (0 hard .. 1 round)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.3</real>
+    </map>
+    <key>CineDiopterApertureInner</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter star bokeh inner radius</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.45</real>
+    </map>
+    <key>CineDiopterAnamorph</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter anamorphic bokeh squeeze (1 round)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineDiopterAnamorphAngleDeg</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter anamorphic bokeh angle in degrees</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterCatEye</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter cat's-eye edge bokeh swirl</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterRingCount</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter halo concentric ring count</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>3</real>
+    </map>
+    <key>CineDiopterRingFold</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter halo ring fold strength (0 = plain glass)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterTwistDeg</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter halo twist across the glass radius in degrees</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterRingPhase</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter halo ring phase offset</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterLobeAmt</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter halo irregular lobe amount</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterLobeCount</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter halo lobe count</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>3</real>
+    </map>
+    <key>CineDiopterLobePhaseDeg</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter halo lobe phase in degrees</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterGhostCount</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter halo ghost copy count (0..6)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineDiopterGhostSpacing</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter ghost spacing</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineDiopterRadialSmear</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter ghost radial smear</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.25</real>
+    </map>
+    <key>CineDiopterTangentSmear</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter ghost tangential arc smear</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.4</real>
+    </map>
+    <key>CineDiopterGhostThreshold</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter highlight threshold for ghost/arc energy</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineDiopterGhostKnee</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter soft knee below the highlight threshold</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.25</real>
+    </map>
+    <key>CineDiopterDispersion</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter spectral dispersion of ghosts</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.3</real>
+    </map>
+    <key>CineDiopterGhostGain</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter ghost energy gain</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.4</real>
+    </map>
+    <key>CineDiopterPatternMode</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter faceted fold: 0 off, 1 radial mirror, 2 radial rotate (pinwheel), 3 star</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineDiopterPatternSegments</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter faceted fold segment count</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>8</integer>
+    </map>
+    <key>CineDiopterPatternFeedDeg</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter faceted fold source feed angle in degrees</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterPatternZoom</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter faceted fold source zoom</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1</real>
+    </map>
+    <key>CineDiopterSeamGhostPx</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter seam double-image offset in pixels</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterSeamGhostAmt</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter seam double-image amount</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineDiopterMotionMode</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter motion: 0 static, 1 sweep, 2 pulse, 3 wave, 4 path, 5 stutter</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineDiopterMotionSpeed</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter motion speed</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.3</real>
+    </map>
+    <key>CineDiopterMotionAngleDeg</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter sweep direction in degrees</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterSweepRange</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter sweep range</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1</real>
+    </map>
+    <key>CineDiopterSweepPingPong</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter sweep ping-pong</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>1</integer>
+    </map>
+    <key>CineDiopterPulseTarget</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter pulse target: 0 size, 1 focus rack</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineDiopterPulseAmt</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter pulse amount</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.4</real>
+    </map>
+    <key>CineDiopterWaveAmp</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter wave-motion edge undulation amplitude</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.04</real>
+    </map>
+    <key>CineDiopterPathFreqX</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter path motion X frequency</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1</real>
+    </map>
+    <key>CineDiopterPathFreqY</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter path motion Y frequency</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.4</real>
+    </map>
+    <key>CineDiopterPathPhase</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter path motion phase</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.5708</real>
+    </map>
+    <key>CineDiopterPathAmp</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter path motion amplitude</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.25</real>
+    </map>
+    <key>CineDiopterStutterRate</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter stutter rate in Hz</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>8</real>
+    </map>
+    <key>CineDiopterStutterPos</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter stutter position jump</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.4</real>
+    </map>
+    <key>CineDiopterStutterAngleDeg</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter stutter angle jump in degrees</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>30</real>
+    </map>
+    <key>CineDiopterStutterSize</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter stutter size jump</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.3</real>
+    </map>
+    <key>CineDiopterStutterFocus</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter stutter focus rack jump</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterStutterSmooth</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter stutter smoothness (0 hard cut .. 1 walk)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterHandheld</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter handheld life amount</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterHandheldSpeed</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter handheld speed</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1</real>
+    </map>
+    <key>CineDiopterHandheldGait</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter handheld gait vs drift (0 drift .. 1 figure-8)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.4</real>
+    </map>
+    <key>CineDiopterHandheldRotDeg</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter handheld angle sway in degrees</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>2</real>
+    </map>
+    <key>CineDiopterHandheldFocus</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter handheld focus breath</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.25</real>
+    </map>
+    <key>CineDiopterSpinMode</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter spin mode: 0 constant, 1 ease, 2 loop, 3 flick</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineDiopterSpinSpeed</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter constant spin rate in degrees per second</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterSpinTravelDeg</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter spin travel in degrees for ease/loop/flick</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>90</real>
+    </map>
+    <key>CineDiopterSpinDurationS</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter spin duration / settle in seconds</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.2</real>
+    </map>
+    <key>CineDiopterSpinBounce</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter flick spin overshoot</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.3</real>
+    </map>
+    <key>CineDiopterSpinDelayS</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter spin delay in seconds</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>CineDiopterTrackMode</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter anchor: 0 manual center, 1 follow the camera focus subject</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
     <key>CineLightRigEnabled</key>
     <map>
       <key>Comment</key><string>Master power for client-only prim-free cinematic light emitters. Session-only (Persist 0) so the rig always starts OFF at login; toggle it on per session as needed.</string>

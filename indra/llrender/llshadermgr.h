@@ -738,6 +738,32 @@ public:
 
         WEATHER_RAIN_MAP,                  //  "weather_rain_map"
         WEATHER_RAIN_OCCLUSION_MAP,        //  "weather_rain_occlusion_map"
+
+        // [Ultimate Diopter] native lens-front diopter / halo post pass.
+        // vec4 bundles, appended at the end in lockstep with the matching
+        // push_back block in llshadermgr.cpp.
+        DIOPTER_SHAPE,                     //  "diopter_shape"      center.xy, size, stretch
+        DIOPTER_SHAPE2,                    //  "diopter_shape2"     angleRad, feather, invert, content
+        DIOPTER_SHAPE3,                    //  "diopter_shape3"     shape, hollow, cornerRound, splitCurvature
+        DIOPTER_SHAPE4,                    //  "diopter_shape4"     wobbleAmt, wobbleFreq, wavePhase, waveGain
+        DIOPTER_SHAPE5,                    //  "diopter_shape5"     polySides, starPoints, starInner, squirclePow
+        DIOPTER_SHAPE6,                    //  "diopter_shape6"     petalCount, petalDepth, blobSeed, blobAmt
+        DIOPTER_SHAPE7,                    //  "diopter_shape7"     crescentBite, crescentShift, arcLenRad, brokenCount
+        DIOPTER_FOCUS,                     //  "diopter_focus"      baseFocusM, lensFocusM, focusWidthM, falloffRate
+        DIOPTER_FOCUS2,                    //  "diopter_focus2"     falloffCurve, nearStr, farStr, maxBlurPx
+        DIOPTER_FOCUS3,                    //  "diopter_focus3"     floorMaxPx, spotBlur, bokehHi, magnify
+        DIOPTER_FOCUS4,                    //  "diopter_focus4"     axialCA_M, fieldCurve, depthEdgeM, reserved
+        DIOPTER_APERTURE,                  //  "diopter_aperture"   apShape, blades, bladeRotRad, bladeCurve
+        DIOPTER_APERTURE2,                 //  "diopter_aperture2"  apInner, anamorph, anamAngleRad, catEye
+        DIOPTER_GLASS,                     //  "diopter_glass"      profile, ior1, thickness, rimWidth
+        DIOPTER_GLASS2,                    //  "diopter_glass2"     rimWarp, reserved, reserved, reserved
+        DIOPTER_HALO,                      //  "diopter_halo"       ringCount, ringFold, twistRad, ringPhase
+        DIOPTER_HALO2,                     //  "diopter_halo2"      lobeAmt, lobeCount, lobePhaseRad, warpActive
+        DIOPTER_PATTERN,                   //  "diopter_pattern"    mode, segments, feedRad, srcZoom
+        DIOPTER_COMP,                      //  "diopter_comp"       seamGhostPx, seamGhostAmt, caMag, edgeVig
+        DIOPTER_COMP2,                     //  "diopter_comp2"      rimCaustic, rimDarken, blend, debugView
+        DIOPTER_GHOST,                     //  "diopter_ghost"      ghostCount, ghostSpacing, radialSmear, tangentSmear
+        DIOPTER_GHOST2,                    //  "diopter_ghost2"     ghostThreshold, ghostKnee, dispersion, ghostGain
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

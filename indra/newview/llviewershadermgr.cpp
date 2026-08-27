@@ -234,6 +234,9 @@ LLGLSLShader            gSMAABlendWeightsProgram[4];
 LLGLSLShader            gSMAANeighborhoodBlendProgram[4];
 LLGLSLShader            gCASProgram;
 LLGLSLShader            gCineFisheyeProgram;
+// [Ultimate Diopter] pass 1 gather (quality tap tiers) + pass 2 composite
+LLGLSLShader            gUltimateDiopterGatherProgram[4];
+LLGLSLShader            gUltimateDiopterProgram;
 // [BDMerge G3.2] volumetric lighting (donor: Black Dragon)
 LLGLSLShader            gVolumetricLightProgram;
 // [Cine Outline Phase 1] deferred normal/depth outline post pass
@@ -633,6 +636,12 @@ void LLViewerShaderMgr::finalizeShaderList()
     mShaderList.push_back(&gVolumetricLightProgram);
     mShaderList.push_back(&gCineOutlineProgram);
     mShaderList.push_back(&gCineFisheyeProgram);
+    // [Ultimate Diopter]
+    for (U32 i = 0; i < 4; ++i)
+    {
+        mShaderList.push_back(&gUltimateDiopterGatherProgram[i]);
+    }
+    mShaderList.push_back(&gUltimateDiopterProgram);
     // [BDMerge G3.3] projector volumetrics links the same atmospherics/deferred
     // util set as G3.2, so register it too (keeps linked util externs satisfied).
     mShaderList.push_back(&gDeferredProjectorVolumetricProgram);
@@ -1613,6 +1622,12 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         }
         gCASProgram.unload();
         gCineFisheyeProgram.unload();
+        // [Ultimate Diopter]
+        for (U32 i = 0; i < 4; ++i)
+        {
+            gUltimateDiopterGatherProgram[i].unload();
+        }
+        gUltimateDiopterProgram.unload();
         gVolumetricLightProgram.unload();
         gCineOutlineProgram.unload();
         gDeferredProjectorVolumetricProgram.unload(); // [BDMerge G3.3]
@@ -3839,6 +3854,47 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         if (!success)
         {
             LL_WARNS() << "Failed to create shader '" << gCineFisheyeProgram.mName << "', disabling!" << LL_ENDL;
+            success = true;
+        }
+    }
+
+    if (success)
+    {
+        // [Ultimate Diopter] pass 1: dual-focus MRT gather, four fixed
+        // tap-count tiers so drivers see compile-time loop bounds.
+        static const char* diopter_taps[4] = { "12", "24", "40", "64" };
+        for (U32 i = 0; i < 4; ++i)
+        {
+            LLGLSLShader& p = gUltimateDiopterGatherProgram[i];
+            p.mName = llformat("Ultimate Diopter Gather Shader %s taps", diopter_taps[i]);
+            p.mFeatures.isDeferred = true;
+            p.mShaderFiles.clear();
+            p.clearPermutations();
+            p.addPermutation("DIOPTER_TAPS", diopter_taps[i]);
+            p.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+            p.mShaderFiles.push_back(make_pair("deferred/ultimateDiopterGatherF.glsl", GL_FRAGMENT_SHADER));
+            p.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+            success = p.createShader();
+            if (!success)
+            {
+                LL_WARNS() << "Failed to create shader '" << p.mName << "', disabling!" << LL_ENDL;
+                success = true;
+            }
+        }
+
+        // [Ultimate Diopter] pass 2: composite (seam ghost, halo ghosts,
+        // dispersion, rim, vignette, debug views, master blend).
+        gUltimateDiopterProgram.mName = "Ultimate Diopter Composite Shader";
+        gUltimateDiopterProgram.mFeatures.isDeferred = true;
+        gUltimateDiopterProgram.mShaderFiles.clear();
+        gUltimateDiopterProgram.clearPermutations();
+        gUltimateDiopterProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gUltimateDiopterProgram.mShaderFiles.push_back(make_pair("deferred/ultimateDiopterF.glsl", GL_FRAGMENT_SHADER));
+        gUltimateDiopterProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gUltimateDiopterProgram.createShader();
+        if (!success)
+        {
+            LL_WARNS() << "Failed to create shader '" << gUltimateDiopterProgram.mName << "', disabling!" << LL_ENDL;
             success = true;
         }
     }

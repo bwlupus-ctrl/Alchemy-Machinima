@@ -524,6 +524,8 @@ void LLViewerFloaterReg::registerFloaters()
     // (ALPanelCineCamParams), shared with the Director Console
     LLFloaterReg::add("cinematic_camera", "floater_cinematic_camera.xml", &LLFloaterReg::build<LLFloater>);
     LLFloaterReg::add("cine_light_rig", "floater_cine_light_rig.xml", &LLFloaterReg::build<LLFloater>);
+    // [Ultimate Diopter] pure-XML shell; all controls bind to CineDiopter* settings
+    LLFloaterReg::add("ultimate_diopter", "floater_ultimate_diopter.xml", &LLFloaterReg::build<LLFloater>);
     LLFloaterReg::add("cine_light_cues", "floater_cine_light_cues.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<ALFloaterCineLightCues>);
     LLFloaterReg::add("flycam_recorder", "floater_flycam_recorder.xml", &LLFloaterReg::build<LLFloater>);
     LLFloaterReg::add("flycam_orbit", "floater_flycam_orbit.xml", &LLFloaterReg::build<LLFloater>);

@@ -1950,6 +1950,30 @@ void LLShaderMgr::initAttribsAndUniforms()
 
     mReservedUniforms.push_back("weather_rain_map");
     mReservedUniforms.push_back("weather_rain_occlusion_map");
+
+    // [Ultimate Diopter] must stay in lockstep with the enum block in llshadermgr.h
+    mReservedUniforms.push_back("diopter_shape");
+    mReservedUniforms.push_back("diopter_shape2");
+    mReservedUniforms.push_back("diopter_shape3");
+    mReservedUniforms.push_back("diopter_shape4");
+    mReservedUniforms.push_back("diopter_shape5");
+    mReservedUniforms.push_back("diopter_shape6");
+    mReservedUniforms.push_back("diopter_shape7");
+    mReservedUniforms.push_back("diopter_focus");
+    mReservedUniforms.push_back("diopter_focus2");
+    mReservedUniforms.push_back("diopter_focus3");
+    mReservedUniforms.push_back("diopter_focus4");
+    mReservedUniforms.push_back("diopter_aperture");
+    mReservedUniforms.push_back("diopter_aperture2");
+    mReservedUniforms.push_back("diopter_glass");
+    mReservedUniforms.push_back("diopter_glass2");
+    mReservedUniforms.push_back("diopter_halo");
+    mReservedUniforms.push_back("diopter_halo2");
+    mReservedUniforms.push_back("diopter_pattern");
+    mReservedUniforms.push_back("diopter_comp");
+    mReservedUniforms.push_back("diopter_comp2");
+    mReservedUniforms.push_back("diopter_ghost");
+    mReservedUniforms.push_back("diopter_ghost2");
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 
     std::set<std::string> dupe_check;

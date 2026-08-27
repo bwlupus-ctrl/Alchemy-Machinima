@@ -1128,6 +1128,8 @@ void settings_setup_listeners()
     setting_setup_signal_listener(gSavedSettings, "RenderFSAAType", handleReleaseGLBufferChanged);
     // [BDMerge A5.4-1a] toggling the velocity buffer allocates/frees mVelocityMap
     setting_setup_signal_listener(gSavedSettings, "BDMergeVelocityBuffer", handleReleaseGLBufferChanged);
+    // [Ultimate Diopter] toggling the effect allocates/frees mDiopterMap
+    setting_setup_signal_listener(gSavedSettings, "CineDiopterEnabled", handleReleaseGLBufferChanged);
     setting_setup_signal_listener(gSavedSettings, "BDMergeMotionBlur", handleReleaseGLBufferChanged); // [BDMerge A5.4-3] realloc velocity RT
     setting_setup_signal_listener(gSavedSettings, "RenderSMAAUseStencil", handleReleaseGLBufferChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderSMAAPredication", handleSetShaderChanged);

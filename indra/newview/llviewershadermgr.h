@@ -294,6 +294,9 @@ extern LLGLSLShader         gSMAABlendWeightsProgram[4];
 extern LLGLSLShader         gSMAANeighborhoodBlendProgram[4];
 extern LLGLSLShader         gCASProgram;
 extern LLGLSLShader         gCineFisheyeProgram;
+// [Ultimate Diopter] pass 1 gather at four tap-count quality tiers + pass 2 composite
+extern LLGLSLShader         gUltimateDiopterGatherProgram[4];
+extern LLGLSLShader         gUltimateDiopterProgram;
 // [BDMerge G3.2] volumetric lighting (donor: Black Dragon)
 extern LLGLSLShader         gVolumetricLightProgram;
 // [Cine Outline Phase 1] deferred normal/depth outline post pass

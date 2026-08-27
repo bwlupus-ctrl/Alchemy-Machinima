@@ -1325,6 +1325,27 @@ bool LLPipeline::allocateScreenBufferInternal(U32 resX, U32 resY)
         }
         mReShadeRawSceneValid = false;
 
+        // [Ultimate Diopter] pass-1 MRT target (clear+mask / diopter+rim).
+        // Allocated only while the effect is enabled so it holds zero VRAM
+        // when off; CineDiopterEnabled has a release-GL-buffer listener.
+        {
+            static LLCachedControl<bool> diopter_enabled(gSavedSettings, "CineDiopterEnabled", false);
+            if (diopter_enabled)
+            {
+                bool diopter_ok = mDiopterMap.allocate(resX, resY, GL_RGBA16F);
+                diopter_ok = diopter_ok && mDiopterMap.addColorAttachment(GL_RGBA16F);
+                if (!diopter_ok)
+                {
+                    LL_WARNS_ONCE() << "Ultimate Diopter target allocation failed; effect disabled this session." << LL_ENDL;
+                    mDiopterMap.release();
+                }
+            }
+            else
+            {
+                mDiopterMap.release();
+            }
+        }
+
         if(RenderScreenSpaceReflections)
         {
             mSceneMap.allocate(resX, resY, screenFormat, true);
@@ -1948,6 +1969,8 @@ void LLPipeline::releaseGLBuffers()
 
     mReShadeSceneRaw.release();
     mReShadeRawSceneValid = false;
+
+    mDiopterMap.release(); // [Ultimate Diopter]
 
     mSceneMap.release();
 
@@ -13318,6 +13341,731 @@ void LLPipeline::renderCineFisheye(LLRenderTarget* src, LLRenderTarget* dst)
     dst->flush();
 }
 
+// [Ultimate Diopter] ---------------------------------------------------------
+// Native lens-front diopter / halo simulation (port of the VirtualCinema
+// Diopter v2.2 + Kaleidoscope fold vocabulary onto native depth and viewer
+// time). Two passes: an MRT dual-focus gather into mDiopterMap, then a
+// composite into dst. All motion is resolved here on the CPU once per frame
+// so both passes and stills stay deterministic; freeze pins the clock to a
+// user-chosen timeline second.
+
+// deterministic hash/noise helpers (match the GLSL side's conventions)
+static F32 diopter_hash(F32 x, F32 y)
+{
+    F32 v = sinf(x * 12.9898f + y * 78.233f) * 43758.5453f;
+    return v - floorf(v);
+}
+
+// smooth 1-D value noise in [-1,1]
+static F32 diopter_noise1(F32 x, F32 seed)
+{
+    F32 fl = floorf(x);
+    F32 u = x - fl;
+    u = u * u * (3.f - 2.f * u);
+    F32 a = diopter_hash(fl, seed);
+    F32 b = diopter_hash(fl + 1.f, seed);
+    return (a + (b - a) * u) * 2.f - 1.f;
+}
+
+// two-octave organic drift in ~[-1,1]
+static F32 diopter_drift(F32 seed, F32 t)
+{
+    return 0.6f * diopter_noise1(t + seed, 17.f) + 0.4f * diopter_noise1(t * 2.13f + seed * 1.7f, 17.f);
+}
+
+void LLPipeline::renderUltimateDiopter(LLRenderTarget* src, LLRenderTarget* dst)
+{
+    // ---- settings ---------------------------------------------------------
+    static LLCachedControl<U32> preset(gSavedSettings, "CineDiopterPreset", 0U);
+    static LLCachedControl<U32> quality(gSavedSettings, "CineDiopterQuality", 1U);
+    static LLCachedControl<F32> blend(gSavedSettings, "CineDiopterBlend", 1.f);
+    static LLCachedControl<U32> debug_view(gSavedSettings, "CineDiopterDebugView", 0U);
+    static LLCachedControl<bool> freeze(gSavedSettings, "CineDiopterFreeze", false);
+    static LLCachedControl<F32> freeze_at(gSavedSettings, "CineDiopterFreezeAt", 0.f);
+
+    static LLCachedControl<U32> s_shape(gSavedSettings, "CineDiopterShape", 1U);
+    static LLCachedControl<U32> s_content(gSavedSettings, "CineDiopterContent", 0U);
+    static LLCachedControl<F32> s_center_x(gSavedSettings, "CineDiopterCenterX", 0.5f);
+    static LLCachedControl<F32> s_center_y(gSavedSettings, "CineDiopterCenterY", 0.5f);
+    static LLCachedControl<F32> s_size(gSavedSettings, "CineDiopterSize", 0.28f);
+    static LLCachedControl<F32> s_stretch(gSavedSettings, "CineDiopterStretch", 1.f);
+    static LLCachedControl<F32> s_angle(gSavedSettings, "CineDiopterAngleDeg", 90.f);
+    static LLCachedControl<F32> s_feather(gSavedSettings, "CineDiopterFeather", 0.06f);
+    static LLCachedControl<bool> s_invert(gSavedSettings, "CineDiopterInvert", false);
+    static LLCachedControl<F32> s_hollow(gSavedSettings, "CineDiopterHollow", 0.f);
+    static LLCachedControl<F32> s_round(gSavedSettings, "CineDiopterCornerRound", 0.f);
+    static LLCachedControl<F32> s_wobble_amt(gSavedSettings, "CineDiopterWobbleAmt", 0.f);
+    static LLCachedControl<F32> s_wobble_freq(gSavedSettings, "CineDiopterWobbleFreq", 8.f);
+    static LLCachedControl<U32> s_poly_sides(gSavedSettings, "CineDiopterPolySides", 6U);
+    static LLCachedControl<U32> s_star_points(gSavedSettings, "CineDiopterStarPoints", 5U);
+    static LLCachedControl<F32> s_star_inner(gSavedSettings, "CineDiopterStarInner", 0.45f);
+    static LLCachedControl<U32> s_petal_count(gSavedSettings, "CineDiopterPetalCount", 6U);
+    static LLCachedControl<F32> s_petal_depth(gSavedSettings, "CineDiopterPetalDepth", 0.45f);
+    static LLCachedControl<F32> s_blob_seed(gSavedSettings, "CineDiopterBlobSeed", 7.f);
+    static LLCachedControl<F32> s_blob_amt(gSavedSettings, "CineDiopterBlobAmt", 0.6f);
+    static LLCachedControl<F32> s_crescent_bite(gSavedSettings, "CineDiopterCrescentBite", 0.85f);
+    static LLCachedControl<F32> s_crescent_shift(gSavedSettings, "CineDiopterCrescentShift", 0.6f);
+    static LLCachedControl<F32> s_squircle_pow(gSavedSettings, "CineDiopterSquirclePow", 4.f);
+    static LLCachedControl<F32> s_split_curve(gSavedSettings, "CineDiopterSplitCurvature", 0.f);
+    static LLCachedControl<F32> s_arc_len(gSavedSettings, "CineDiopterArcLengthDeg", 360.f);
+    static LLCachedControl<U32> s_broken(gSavedSettings, "CineDiopterBrokenCount", 0U);
+
+    static LLCachedControl<U32> f_focus_mode(gSavedSettings, "CineDiopterFocusMode", 1U);
+    static LLCachedControl<F32> f_base_m(gSavedSettings, "CineDiopterBaseFocusM", 8.f);
+    static LLCachedControl<U32> f_lens_mode(gSavedSettings, "CineDiopterLensFocusMode", 0U);
+    static LLCachedControl<F32> f_power(gSavedSettings, "CineDiopterPower", 2.f);
+    static LLCachedControl<F32> f_lens_m(gSavedSettings, "CineDiopterLensFocusM", 1.5f);
+    static LLCachedControl<F32> f_width_m(gSavedSettings, "CineDiopterFocusWidthM", 0.4f);
+    static LLCachedControl<F32> f_falloff(gSavedSettings, "CineDiopterFalloffRate", 6.f);
+    static LLCachedControl<F32> f_curve(gSavedSettings, "CineDiopterFalloffCurve", 1.f);
+    static LLCachedControl<F32> f_near_str(gSavedSettings, "CineDiopterNearStrength", 1.f);
+    static LLCachedControl<F32> f_far_str(gSavedSettings, "CineDiopterFarStrength", 1.f);
+    static LLCachedControl<F32> f_max_blur(gSavedSettings, "CineDiopterMaxBlurPx", 24.f);
+    static LLCachedControl<F32> f_floor_max(gSavedSettings, "CineDiopterFloorMaxBlurPx", 48.f);
+    static LLCachedControl<F32> f_spot_blur(gSavedSettings, "CineDiopterSpotBlur", 0.7f);
+    static LLCachedControl<F32> f_bokeh_hi(gSavedSettings, "CineDiopterBokehHighlight", 0.6f);
+    static LLCachedControl<F32> f_depth_edge(gSavedSettings, "CineDiopterDepthEdgeM", 0.f);
+
+    static LLCachedControl<F32> g_character(gSavedSettings, "CineDiopterCharacter", 1.f);
+    static LLCachedControl<F32> g_mag_scale(gSavedSettings, "CineDiopterMagnifyScale", 1.f);
+    static LLCachedControl<F32> g_mag_trim(gSavedSettings, "CineDiopterMagnifyTrim", 0.f);
+    static LLCachedControl<F32> g_ca_scale(gSavedSettings, "CineDiopterCAScale", 1.f);
+    static LLCachedControl<F32> g_axial_scale(gSavedSettings, "CineDiopterAxialCAScale", 1.f);
+    static LLCachedControl<F32> g_field_scale(gSavedSettings, "CineDiopterFieldCurveScale", 1.f);
+    static LLCachedControl<F32> g_vig_scale(gSavedSettings, "CineDiopterEdgeVignetteScale", 0.5f);
+    static LLCachedControl<U32> g_profile(gSavedSettings, "CineDiopterGlassProfile", 0U);
+    static LLCachedControl<F32> g_ior(gSavedSettings, "CineDiopterIOR", 0.5f);
+    static LLCachedControl<F32> g_thick(gSavedSettings, "CineDiopterThickness", 0.5f);
+    static LLCachedControl<F32> g_rim_width(gSavedSettings, "CineDiopterRimWidth", 0.25f);
+    static LLCachedControl<F32> g_rim_warp(gSavedSettings, "CineDiopterRimWarp", 1.f);
+    static LLCachedControl<F32> g_rim_caustic(gSavedSettings, "CineDiopterRimCaustic", 0.4f);
+    static LLCachedControl<F32> g_rim_darken(gSavedSettings, "CineDiopterRimDarken", 0.3f);
+
+    static LLCachedControl<U32> a_shape(gSavedSettings, "CineDiopterApertureShape", 0U);
+    static LLCachedControl<U32> a_blades(gSavedSettings, "CineDiopterBlades", 6U);
+    static LLCachedControl<F32> a_blade_rot(gSavedSettings, "CineDiopterBladeRotDeg", 0.f);
+    static LLCachedControl<F32> a_blade_curve(gSavedSettings, "CineDiopterBladeCurve", 0.3f);
+    static LLCachedControl<F32> a_inner(gSavedSettings, "CineDiopterApertureInner", 0.45f);
+    static LLCachedControl<F32> a_anam(gSavedSettings, "CineDiopterAnamorph", 0.5f);
+    static LLCachedControl<F32> a_anam_angle(gSavedSettings, "CineDiopterAnamorphAngleDeg", 0.f);
+    static LLCachedControl<F32> a_cat_eye(gSavedSettings, "CineDiopterCatEye", 0.f);
+
+    static LLCachedControl<F32> h_ring_count(gSavedSettings, "CineDiopterRingCount", 3.f);
+    static LLCachedControl<F32> h_ring_fold(gSavedSettings, "CineDiopterRingFold", 0.f);
+    static LLCachedControl<F32> h_twist(gSavedSettings, "CineDiopterTwistDeg", 0.f);
+    static LLCachedControl<F32> h_ring_phase(gSavedSettings, "CineDiopterRingPhase", 0.f);
+    static LLCachedControl<F32> h_lobe_amt(gSavedSettings, "CineDiopterLobeAmt", 0.f);
+    static LLCachedControl<F32> h_lobe_count(gSavedSettings, "CineDiopterLobeCount", 3.f);
+    static LLCachedControl<F32> h_lobe_phase(gSavedSettings, "CineDiopterLobePhaseDeg", 0.f);
+
+    static LLCachedControl<U32> gh_count(gSavedSettings, "CineDiopterGhostCount", 0U);
+    static LLCachedControl<F32> gh_spacing(gSavedSettings, "CineDiopterGhostSpacing", 0.5f);
+    static LLCachedControl<F32> gh_radial(gSavedSettings, "CineDiopterRadialSmear", 0.25f);
+    static LLCachedControl<F32> gh_tangent(gSavedSettings, "CineDiopterTangentSmear", 0.4f);
+    static LLCachedControl<F32> gh_threshold(gSavedSettings, "CineDiopterGhostThreshold", 0.5f);
+    static LLCachedControl<F32> gh_knee(gSavedSettings, "CineDiopterGhostKnee", 0.25f);
+    static LLCachedControl<F32> gh_dispersion(gSavedSettings, "CineDiopterDispersion", 0.3f);
+    static LLCachedControl<F32> gh_gain(gSavedSettings, "CineDiopterGhostGain", 0.4f);
+
+    static LLCachedControl<U32> p_mode(gSavedSettings, "CineDiopterPatternMode", 0U);
+    static LLCachedControl<U32> p_segments(gSavedSettings, "CineDiopterPatternSegments", 8U);
+    static LLCachedControl<F32> p_feed(gSavedSettings, "CineDiopterPatternFeedDeg", 0.f);
+    static LLCachedControl<F32> p_zoom(gSavedSettings, "CineDiopterPatternZoom", 1.f);
+
+    static LLCachedControl<F32> c_seam_px(gSavedSettings, "CineDiopterSeamGhostPx", 0.f);
+    static LLCachedControl<F32> c_seam_amt(gSavedSettings, "CineDiopterSeamGhostAmt", 0.5f);
+
+    static LLCachedControl<U32> m_mode(gSavedSettings, "CineDiopterMotionMode", 0U);
+    static LLCachedControl<F32> m_speed(gSavedSettings, "CineDiopterMotionSpeed", 0.3f);
+    static LLCachedControl<F32> m_angle(gSavedSettings, "CineDiopterMotionAngleDeg", 0.f);
+    static LLCachedControl<F32> m_sweep_range(gSavedSettings, "CineDiopterSweepRange", 1.f);
+    static LLCachedControl<bool> m_ping_pong(gSavedSettings, "CineDiopterSweepPingPong", true);
+    static LLCachedControl<U32> m_pulse_target(gSavedSettings, "CineDiopterPulseTarget", 0U);
+    static LLCachedControl<F32> m_pulse_amt(gSavedSettings, "CineDiopterPulseAmt", 0.4f);
+    static LLCachedControl<F32> m_wave_amp(gSavedSettings, "CineDiopterWaveAmp", 0.04f);
+    static LLCachedControl<F32> m_path_fx(gSavedSettings, "CineDiopterPathFreqX", 1.f);
+    static LLCachedControl<F32> m_path_fy(gSavedSettings, "CineDiopterPathFreqY", 1.4f);
+    static LLCachedControl<F32> m_path_phase(gSavedSettings, "CineDiopterPathPhase", 1.5708f);
+    static LLCachedControl<F32> m_path_amp(gSavedSettings, "CineDiopterPathAmp", 0.25f);
+    static LLCachedControl<F32> m_stutter_rate(gSavedSettings, "CineDiopterStutterRate", 8.f);
+    static LLCachedControl<F32> m_stutter_pos(gSavedSettings, "CineDiopterStutterPos", 0.4f);
+    static LLCachedControl<F32> m_stutter_angle(gSavedSettings, "CineDiopterStutterAngleDeg", 30.f);
+    static LLCachedControl<F32> m_stutter_size(gSavedSettings, "CineDiopterStutterSize", 0.3f);
+    static LLCachedControl<F32> m_stutter_focus(gSavedSettings, "CineDiopterStutterFocus", 0.f);
+    static LLCachedControl<F32> m_stutter_smooth(gSavedSettings, "CineDiopterStutterSmooth", 0.f);
+    static LLCachedControl<F32> m_handheld(gSavedSettings, "CineDiopterHandheld", 0.f);
+    static LLCachedControl<F32> m_handheld_speed(gSavedSettings, "CineDiopterHandheldSpeed", 1.f);
+    static LLCachedControl<F32> m_handheld_gait(gSavedSettings, "CineDiopterHandheldGait", 0.4f);
+    static LLCachedControl<F32> m_handheld_rot(gSavedSettings, "CineDiopterHandheldRotDeg", 2.f);
+    static LLCachedControl<F32> m_handheld_focus(gSavedSettings, "CineDiopterHandheldFocus", 0.25f);
+    static LLCachedControl<U32> m_spin_mode(gSavedSettings, "CineDiopterSpinMode", 0U);
+    static LLCachedControl<F32> m_spin_speed(gSavedSettings, "CineDiopterSpinSpeed", 0.f);
+    static LLCachedControl<F32> m_spin_travel(gSavedSettings, "CineDiopterSpinTravelDeg", 90.f);
+    static LLCachedControl<F32> m_spin_duration(gSavedSettings, "CineDiopterSpinDurationS", 1.2f);
+    static LLCachedControl<F32> m_spin_bounce(gSavedSettings, "CineDiopterSpinBounce", 0.3f);
+    static LLCachedControl<F32> m_spin_delay(gSavedSettings, "CineDiopterSpinDelayS", 0.f);
+    static LLCachedControl<U32> m_track_mode(gSavedSettings, "CineDiopterTrackMode", 0U);
+
+    const U32 q = llclamp((U32)quality, 0U, 3U);
+    LLGLSLShader& gather_prog = gUltimateDiopterGatherProgram[q];
+    if (!gather_prog.isComplete() || !gUltimateDiopterProgram.isComplete() || !mDiopterMap.isComplete())
+    {
+        copyRenderTarget(src, dst);
+        return;
+    }
+
+    F32 master_blend = llclamp((F32)blend, 0.f, 1.f);
+    if (master_blend < 0.001f)
+    {
+        copyRenderTarget(src, dst);
+        return;
+    }
+
+    LL_PROFILE_GPU_ZONE("ultimate diopter");
+
+    const F32 DEG = 0.0174532925f;
+    const F32 TAU = 6.2831853f;
+
+    // ---- resolve preset-overridable look ---------------------------------
+    S32 shape = llclamp((S32)(U32)s_shape, 0, 11);
+    S32 content = llclamp((S32)(U32)s_content, 0, 1);
+    F32 stretch = llclamp((F32)s_stretch, 0.2f, 5.f);
+    F32 hollow = llclamp((F32)s_hollow, 0.f, 0.95f);
+    F32 arc_len = llclamp((F32)s_arc_len, 10.f, 360.f);
+    F32 broken = (F32)llclamp((U32)s_broken, 0U, 16U);
+    F32 character = llclamp((F32)g_character, 0.f, 2.f);
+    F32 power = llclamp((F32)f_power, -10.f, 10.f);
+    S32 profile = llclamp((S32)(U32)g_profile, 0, 4);
+    F32 ior1 = llclamp((F32)g_ior, 0.f, 1.f);
+    F32 thick = llclamp((F32)g_thick, 0.f, 1.f);
+    F32 rim_width = llclamp((F32)g_rim_width, 0.02f, 0.6f);
+    F32 rim_warp = llclamp((F32)g_rim_warp, 0.f, 3.f);
+    F32 rim_caustic = llclamp((F32)g_rim_caustic, 0.f, 2.f);
+    F32 rim_darken = llclamp((F32)g_rim_darken, 0.f, 1.f);
+    S32 ap_shape = llclamp((S32)(U32)a_shape, 0, 4);
+    F32 ap_blades = (F32)llclamp((U32)a_blades, 3U, 11U);
+    F32 ap_curve = llclamp((F32)a_blade_curve, 0.f, 1.f);
+    F32 ap_anam = llclamp((F32)a_anam, 0.2f, 1.f);
+    F32 cat_eye = llclamp((F32)a_cat_eye, 0.f, 1.f);
+    F32 spot_blur = llclamp((F32)f_spot_blur, 0.f, 1.f);
+    F32 bokeh_hi = llclamp((F32)f_bokeh_hi, 0.f, 3.f);
+    F32 ring_count = llclamp((F32)h_ring_count, 1.f, 16.f);
+    F32 ring_fold = llclamp((F32)h_ring_fold, 0.f, 1.f);
+    F32 twist_deg = llclamp((F32)h_twist, -180.f, 180.f);
+    F32 lobe_amt = llclamp((F32)h_lobe_amt, 0.f, 1.f);
+    F32 lobe_count = llclamp((F32)h_lobe_count, 1.f, 12.f);
+    F32 ring_phase = llclamp((F32)h_ring_phase, -8.f, 8.f);
+    F32 lobe_phase_deg = llclamp((F32)h_lobe_phase, -180.f, 180.f);
+    F32 pattern_feed_deg = llclamp((F32)p_feed, -180.f, 180.f);
+    F32 ghost_count = (F32)llclamp((U32)gh_count, 0U, 6U);
+    F32 ghost_spacing = llclamp((F32)gh_spacing, 0.f, 2.f);
+    F32 radial_smear = llclamp((F32)gh_radial, 0.f, 1.f);
+    F32 tangent_smear = llclamp((F32)gh_tangent, 0.f, 1.f);
+    F32 ghost_gain = llclamp((F32)gh_gain, 0.f, 2.f);
+    F32 dispersion = llclamp((F32)gh_dispersion, 0.f, 2.f);
+    S32 pattern_mode = llclamp((S32)(U32)p_mode, 0, 3);
+    F32 pattern_seg = (F32)llclamp((U32)p_segments, 2U, 32U);
+    F32 pattern_zoom = llclamp((F32)p_zoom, 0.05f, 4.f);
+    F32 handheld = llclamp((F32)m_handheld, 0.f, 1.f);
+    F32 handheld_speed = llclamp((F32)m_handheld_speed, 0.05f, 4.f);
+    S32 motion = llclamp((S32)(U32)m_mode, 0, 5);
+    S32 spin_mode = llclamp((S32)(U32)m_spin_mode, 0, 3);
+    F32 spin_speed = (F32)m_spin_speed;
+    F32 seam_px = llclamp((F32)c_seam_px, 0.f, 12.f);
+
+    // Presets set the optical CHARACTER; framing (center/size/focus/angle)
+    // stays on the user's sliders so a preset survives being moved to a new
+    // shot. Same contract as the GradND/Polarizer preset switches.
+    //
+    // Every non-Custom preset fully owns the warp block — all eight fields
+    // (fold, twist, lobe amount, pattern mode/zoom, ring/lobe phase, feed) —
+    // like the reference resolver, which assigns every field: neutralize
+    // first, then let each case set what it uses. Otherwise leftover slider
+    // state re-arms or re-phases the annulus warp under a preset, making the
+    // same preset render differently for different operators.
+    // preset_id is clamped so an out-of-range debug value behaves as the
+    // last defined preset instead of silently half-neutralizing Custom.
+    const U32 preset_id = llclamp((U32)preset, 0U, 20U);
+    if (preset_id != 0U)
+    {
+        ring_fold = 0.f;
+        twist_deg = 0.f;
+        lobe_amt = 0.f;
+        pattern_mode = 0;
+        pattern_zoom = 1.f;
+        ring_phase = 0.f;
+        lobe_phase_deg = 0.f;
+        pattern_feed_deg = 0.f;
+    }
+    switch (preset_id)
+    {
+        default: break;                              // 0 = Custom
+        case 1:  // Split Diopter (classic)
+            shape = 1; content = 0; character = 0.2f; profile = 0; hollow = 0.f;
+            ap_shape = 0; motion = 0; handheld = 0.f; ghost_count = 0.f; ring_fold = 0.f;
+            break;
+        case 2:  // Dream Spot (sharp window)
+            shape = 4; content = 1; character = 0.8f; profile = 0; ap_shape = 0;
+            spot_blur = 0.85f; bokeh_hi = 1.2f; handheld = 0.15f; handheld_speed = 0.5f;
+            ghost_count = 0.f; ring_fold = 0.f;
+            break;
+        case 3:  // Anamorphic Cinema
+            shape = 4; content = 0; character = 0.7f;
+            ap_shape = 4; ap_anam = 0.45f; cat_eye = 0.6f; bokeh_hi = 1.f;
+            profile = 1; ior1 = 0.35f; thick = 0.4f;
+            handheld = 0.2f; handheld_speed = 0.6f; ghost_count = 0.f; ring_fold = 0.f;
+            break;
+        case 4:  // Vintage Swirl
+            shape = 4; content = 0; character = 1.8f;
+            ap_shape = 1; ap_blades = 6.f; ap_curve = 0.1f; cat_eye = 0.9f; bokeh_hi = 0.8f;
+            profile = 2; ior1 = 0.6f; thick = 0.6f; rim_warp = 1.6f;
+            ghost_count = 0.f; ring_fold = 0.f;
+            break;
+        case 5:  // Hand Lens (free glass)
+            shape = 4; content = 1; character = 0.4f; ap_shape = 0;
+            spot_blur = 0.4f; bokeh_hi = 1.f;
+            profile = 1; ior1 = 0.55f; thick = 0.6f;
+            rim_width = 0.3f; rim_warp = 1.f; rim_caustic = 0.4f; rim_darken = 0.3f;
+            handheld = 0.5f; handheld_speed = 0.8f; ghost_count = 0.f; ring_fold = 0.f;
+            break;
+        case 6:  // Halo FX - Subtle
+            shape = 4; content = 0; hollow = 0.55f; character = 0.5f;
+            profile = 3; ior1 = 0.4f; thick = 0.45f; rim_width = 0.35f;
+            ring_count = 2.5f; ring_fold = 0.2f; twist_deg = 12.f;
+            lobe_amt = 0.12f; lobe_count = 3.f;
+            ghost_count = 2.f; ghost_spacing = 0.5f; tangent_smear = 0.25f; radial_smear = 0.15f;
+            ghost_gain = 0.35f; dispersion = 0.3f;
+            arc_len = 360.f; broken = 0.f;
+            break;
+        case 7:  // Halo FX - Full
+            shape = 4; content = 0; hollow = 0.45f; character = 0.8f;
+            profile = 2; ior1 = 0.55f; thick = 0.55f; rim_width = 0.4f; rim_warp = 1.4f;
+            ring_count = 5.f; ring_fold = 0.65f; twist_deg = 40.f;
+            lobe_amt = 0.25f; lobe_count = 3.f;
+            ghost_count = 4.f; ghost_spacing = 0.7f; tangent_smear = 0.65f; radial_smear = 0.4f;
+            ghost_gain = 0.55f; dispersion = 0.6f;
+            arc_len = 360.f; broken = 0.f;
+            break;
+        case 8:  // Halo FX - Half Moon
+            shape = 4; content = 0; hollow = 0.45f; character = 0.8f;
+            profile = 2; ior1 = 0.55f; thick = 0.55f; rim_width = 0.4f; rim_warp = 1.4f;
+            ring_count = 4.f; ring_fold = 0.55f; twist_deg = 30.f;
+            ghost_count = 3.f; tangent_smear = 0.55f; radial_smear = 0.3f;
+            ghost_gain = 0.5f; dispersion = 0.5f;
+            arc_len = 180.f; broken = 0.f;
+            break;
+        case 9:  // Halo FX - Split Moon
+            shape = 4; content = 0; hollow = 0.45f; character = 0.8f;
+            profile = 2; ior1 = 0.55f; thick = 0.55f; rim_width = 0.4f; rim_warp = 1.4f;
+            ring_count = 4.f; ring_fold = 0.55f; twist_deg = 30.f;
+            ghost_count = 3.f; tangent_smear = 0.55f; radial_smear = 0.3f;
+            ghost_gain = 0.5f; dispersion = 0.5f;
+            arc_len = 360.f; broken = 2.f;
+            break;
+        case 10: // Halo FX - Crescent
+            shape = 11; content = 0; character = 0.8f;
+            profile = 3; ior1 = 0.5f; thick = 0.5f; rim_width = 0.35f;
+            ring_count = 3.f; ring_fold = 0.45f; twist_deg = 25.f;
+            ghost_count = 2.f; tangent_smear = 0.5f; radial_smear = 0.25f;
+            ghost_gain = 0.45f; dispersion = 0.45f;
+            break;
+        case 11: // Halo FX - Broken Ring
+            shape = 4; content = 0; hollow = 0.5f; character = 0.8f;
+            profile = 2; ior1 = 0.5f; thick = 0.5f; rim_width = 0.4f;
+            ring_count = 4.f; ring_fold = 0.5f; twist_deg = 25.f;
+            ghost_count = 3.f; tangent_smear = 0.5f; radial_smear = 0.3f;
+            ghost_gain = 0.5f; dispersion = 0.5f;
+            arc_len = 360.f; broken = 5.f;
+            break;
+        case 12: // Halo FX - Handheld
+            shape = 4; content = 0; hollow = 0.45f; character = 0.8f;
+            profile = 2; ior1 = 0.55f; thick = 0.55f; rim_width = 0.4f; rim_warp = 1.4f;
+            ring_count = 4.f; ring_fold = 0.55f; twist_deg = 35.f;
+            lobe_amt = 0.2f; lobe_count = 3.f;
+            ghost_count = 3.f; tangent_smear = 0.55f; radial_smear = 0.35f;
+            ghost_gain = 0.5f; dispersion = 0.5f;
+            handheld = 0.5f; handheld_speed = 0.8f;
+            break;
+        case 13: // Faceted - Radial Mirror
+            shape = 4; content = 0; hollow = 0.35f; character = 0.6f;
+            profile = 1; ior1 = 0.4f; thick = 0.4f;
+            pattern_mode = 1; pattern_seg = 8.f;
+            ring_fold = 0.3f; ring_count = 3.f; twist_deg = 15.f;
+            ghost_count = 2.f; ghost_gain = 0.35f; dispersion = 0.35f;
+            break;
+        case 14: // Concentric Echo
+            shape = 4; content = 0; hollow = 0.4f; character = 0.5f;
+            profile = 0;
+            ring_count = 6.f; ring_fold = 0.85f; twist_deg = 0.f;
+            ghost_count = 2.f; tangent_smear = 0.3f; radial_smear = 0.2f;
+            ghost_gain = 0.35f; dispersion = 0.3f;
+            break;
+        case 15: // Prism Split
+            shape = 1; content = 0; character = 1.2f; profile = 0; hollow = 0.f;
+            dispersion = 1.2f; ghost_count = 2.f; ghost_gain = 0.3f;
+            tangent_smear = 0.2f; radial_smear = 0.4f;
+            seam_px = 6.f;
+            break;
+        case 16: // Heart Bokeh
+            shape = 4; content = 1; character = 0.5f; profile = 0;
+            ap_shape = 3; ap_curve = 0.f; spot_blur = 0.75f; bokeh_hi = 1.6f;
+            ghost_count = 0.f; ring_fold = 0.f;
+            break;
+        case 17: // Star Dream
+            shape = 4; content = 1; character = 0.5f; profile = 0;
+            ap_shape = 2; ap_blades = 6.f; spot_blur = 0.75f; bokeh_hi = 1.6f;
+            ghost_count = 0.f; ring_fold = 0.f;
+            break;
+        case 18: // Moon Bite (crescent)
+            shape = 11; content = 0; character = 0.9f; profile = 0; ap_shape = 0;
+            handheld = 0.25f; handheld_speed = 0.6f; ghost_count = 0.f; ring_fold = 0.f;
+            break;
+        case 19: // Petal Dream (flower window)
+            shape = 9; content = 1; character = 0.5f; profile = 0; ap_shape = 0;
+            spot_blur = 0.8f; bokeh_hi = 1.5f;
+            spin_mode = 0; spin_speed = 5.f;
+            handheld = 0.15f; handheld_speed = 0.5f; ghost_count = 0.f; ring_fold = 0.f;
+            break;
+        case 20: // Macro Pulse
+            shape = 4; content = 0; character = 0.9f; profile = 0;
+            ap_shape = 1; ap_blades = 8.f;
+            motion = 2; ghost_count = 0.f; ring_fold = 0.f;
+            break;
+    }
+
+    // ---- deterministic timeline ------------------------------------------
+    // Unwrapped viewer time: an fmod wrap would snap every non-periodic
+    // motion term (path, stutter hashes, handheld noise, spin envelopes)
+    // once per period. F32 precision at multi-hour uptimes only coarsens
+    // motion granularity to a few ms, which is invisible; a snap is not.
+    F32 t_now = freeze ? llclamp((F32)freeze_at, 0.f, 3600.f)
+                       : (F32)gFrameTimeSeconds;
+    F32 tm = t_now * llclamp((F32)m_speed, 0.f, 4.f);
+
+    // ---- placement + motion ----------------------------------------------
+    F32 center_x = llclamp((F32)s_center_x, 0.f, 1.f);
+    F32 center_y = llclamp((F32)s_center_y, 0.f, 1.f);
+
+    // sLastFocusPoint is only refreshed while renderDoF actually runs; if
+    // DoF is gated off the stored point goes stale, so both track and
+    // camera-focus modes must fall back to manual in that state.
+    static LLCachedControl<bool> dof_in_edit_mode(gSavedSettings, "RenderDepthOfFieldInEditMode", false);
+    const bool dof_focus_live = RenderDepthOfField &&
+        (dof_in_edit_mode || !LLToolMgr::getInstance()->inBuildMode()) &&
+        !sLastFocusPoint.isExactlyZero();
+
+    // track: anchor the lens to the camera's resolved focus subject
+    if ((U32)m_track_mode == 1U && dof_focus_live)
+    {
+        LLCoordGL pt;
+        if (LLViewerCamera::getInstance()->projectPosAgentToScreen(sLastFocusPoint, pt, false))
+        {
+            // projectPosAgentToScreen returns SCALED UI coordinates; map
+            // with the scaled world rect or HiDPI displays drift the anchor
+            const LLRect& world_rect = gViewerWindow->getWorldViewRectScaled();
+            if (world_rect.getWidth() > 0 && world_rect.getHeight() > 0)
+            {
+                center_x = llclamp((F32)(pt.mX - world_rect.mLeft) / (F32)world_rect.getWidth(), 0.f, 1.f);
+                center_y = llclamp((F32)(pt.mY - world_rect.mBottom) / (F32)world_rect.getHeight(), 0.f, 1.f);
+            }
+        }
+    }
+
+    F32 size_scale = 1.f;
+    F32 wave_phase = 0.f;
+    F32 wave_gain = 0.f;
+    F32 focus_rack = 0.f;        // 0..1 blend from lens focus toward base focus
+    F32 stutter_angle_deg = 0.f;
+
+    F32 ma = (F32)m_angle * DEG;
+    F32 dir_x = cosf(ma), dir_y = sinf(ma);
+
+    if (motion == 1)             // Sweep
+    {
+        F32 sx;
+        if (m_ping_pong)
+        {
+            F32 x = tm * 0.5f; x = x - floorf(x);
+            x = fabsf(x * 2.f - 1.f);
+            sx = x * x * (3.f - 2.f * x);
+        }
+        else
+        {
+            sx = tm - floorf(tm);
+        }
+        center_x += dir_x * (sx - 0.5f) * (F32)m_sweep_range;
+        center_y += dir_y * (sx - 0.5f) * (F32)m_sweep_range;
+    }
+    else if (motion == 2)        // Pulse
+    {
+        F32 pulse = sinf(tm * TAU) * 0.5f + 0.5f;
+        if ((U32)m_pulse_target == 0U)
+            size_scale = 1.f + (pulse - 0.5f) * 2.f * (F32)m_pulse_amt;
+        else
+            // reference resolves lerp(base, lens, pulse): pulse 1 = lens
+            // plane, pulse 0 = base plane, so the rack-toward-base amount
+            // is the COMPLEMENT of the pulse
+            focus_rack = (1.f - pulse) * llclamp((F32)m_pulse_amt, 0.f, 1.f);
+    }
+    else if (motion == 3)        // Wave
+    {
+        wave_phase = tm * TAU;
+        wave_gain = 1.f;
+    }
+    else if (motion == 4)        // Path (Lissajous)
+    {
+        center_x += sinf(tm * (F32)m_path_fx) * (F32)m_path_amp;
+        center_y += sinf(tm * (F32)m_path_fy + (F32)m_path_phase) * (F32)m_path_amp;
+    }
+    else if (motion == 5)        // Stutter (rapid-fire random)
+    {
+        F32 rate = llmax((F32)m_stutter_rate, 0.1f);
+        F32 ph = t_now * rate;
+        F32 tick = floorf(ph);
+        F32 fr = ph - tick;
+        F32 sm = llclamp((F32)m_stutter_smooth, 0.f, 1.f);
+        F32 k = (sm <= 1e-3f) ? 0.f : llclamp(fr / sm, 0.f, 1.f);
+        k = k * k * (3.f - 2.f * k);
+
+        F32 r0x = diopter_hash(tick, 1.f), r0y = diopter_hash(tick, 2.f);
+        F32 r1x = diopter_hash(tick + 1.f, 1.f), r1y = diopter_hash(tick + 1.f, 2.f);
+        center_x += ((r0x + (r1x - r0x) * k) * 2.f - 1.f) * (F32)m_stutter_pos * 0.4f;
+        center_y += ((r0y + (r1y - r0y) * k) * 2.f - 1.f) * (F32)m_stutter_pos * 0.4f;
+
+        F32 s0 = diopter_hash(tick, 5.f), s1 = diopter_hash(tick + 1.f, 5.f);
+        size_scale *= 1.f + ((s0 + (s1 - s0) * k) * 2.f - 1.f) * (F32)m_stutter_size;
+
+        F32 a0 = diopter_hash(tick, 3.f), a1 = diopter_hash(tick + 1.f, 3.f);
+        stutter_angle_deg = ((a0 + (a1 - a0) * k) * 2.f - 1.f) * (F32)m_stutter_angle;
+
+        if (content != 1 && (F32)m_stutter_focus > 0.f)
+        {
+            F32 f0 = diopter_hash(tick, 4.f), f1 = diopter_hash(tick + 1.f, 4.f);
+            focus_rack = (f0 + (f1 - f0) * k) * llclamp((F32)m_stutter_focus, 0.f, 1.f);
+        }
+    }
+
+    // handheld life: additive figure-8 gait + noise drift + focus breath
+    F32 handheld_focus_off = 0.f;
+    F32 handheld_sway_deg = 0.f;
+    if (handheld > 0.f)
+    {
+        F32 th = t_now * handheld_speed;
+        F32 gait_x = sinf(th * TAU) * 0.5f;
+        F32 gait_y = sinf(th * 2.f * TAU) * 0.5f;
+        F32 drift_x = diopter_drift(11.3f, th * 0.7f);
+        F32 drift_y = diopter_drift(71.9f, th * 0.7f);
+        F32 gm = llclamp((F32)m_handheld_gait, 0.f, 1.f);
+        center_x += (drift_x + (gait_x - drift_x) * gm) * handheld * 0.08f;
+        center_y += (drift_y + (gait_y - drift_y) * gm) * handheld * 0.08f;
+        handheld_sway_deg = diopter_drift(3.1f, th * 0.5f) * (F32)m_handheld_rot * handheld;
+        if (content != 1)
+            handheld_focus_off = diopter_drift(23.f, th * 0.4f) * (F32)m_handheld_focus * handheld;
+    }
+
+    // spin envelope: constant / ease / loop / flick
+    F32 spin_deg = 0.f;
+    {
+        F32 td = llmax(t_now - (F32)m_spin_delay, 0.f);
+        F32 dur = llmax((F32)m_spin_duration, 1e-3f);
+        if (spin_mode == 0)
+        {
+            spin_deg = t_now * spin_speed;
+        }
+        else if (spin_mode == 1)
+        {
+            F32 u = llclamp(td / dur, 0.f, 1.f);
+            spin_deg = (F32)m_spin_travel * (u * u * (3.f - 2.f * u));
+        }
+        else if (spin_mode == 2)
+        {
+            F32 u = td / dur; u = u - floorf(u);
+            F32 tri = fabsf(u * 2.f - 1.f);
+            spin_deg = (F32)m_spin_travel * (1.f - tri * tri * (3.f - 2.f * tri));
+        }
+        else
+        {
+            F32 zeta = 0.95f + (0.28f - 0.95f) * llclamp((F32)m_spin_bounce, 0.f, 1.f);
+            F32 wn = TAU / dur;
+            F32 root = sqrtf(llmax(1.f - zeta * zeta, 1e-4f));
+            F32 wd = wn * root;
+            F32 e = expf(-zeta * wn * td);
+            spin_deg = (F32)m_spin_travel * (1.f - e * (cosf(wd * td) + (zeta / root) * sinf(wd * td)));
+        }
+    }
+
+    F32 eff_angle_rad = ((F32)s_angle + spin_deg + handheld_sway_deg + stutter_angle_deg) * DEG;
+
+    // ---- focus planes in view meters --------------------------------------
+    F32 base_focus_m = llclamp((F32)f_base_m, 0.1f, 4096.f);
+    if ((U32)f_focus_mode == 1U && dof_focus_live)
+    {
+        LLViewerCamera* camera = LLViewerCamera::getInstance();
+        F32 d = (sLastFocusPoint - camera->getOrigin()) * camera->getAtAxis();
+        if (d > 0.05f)
+        {
+            base_focus_m = llclamp(d, 0.1f, 4096.f);
+        }
+    }
+
+    F32 lens_focus_m;
+    if ((U32)f_lens_mode == 1U)
+    {
+        lens_focus_m = llclamp((F32)f_lens_m, 0.1f, 4096.f);
+    }
+    else
+    {
+        // thin-lens close-up: s' = 1 / (1/s + D); +D pulls focus nearer
+        F32 denom = 1.f / base_focus_m + power;
+        lens_focus_m = (denom > 1e-4f) ? llclamp(1.f / denom, 0.1f, 4096.f) : 4096.f;
+    }
+
+    // aberration driver: optical strength in diopters. No minimum clamp:
+    // equal planes / zero power must be optically neutral (no magnify, CA,
+    // field curvature, or vignette).
+    F32 strength_d = llclamp(fabsf(1.f / lens_focus_m - 1.f / base_focus_m), 0.f, 10.f);
+
+    F32 magnify = llmax(1.f, 1.f + strength_d * 0.010f * (F32)g_mag_scale + (F32)g_mag_trim);
+    if (profile > 0) magnify = 1.f;               // refraction owns magnification
+    F32 field_curve = llclamp(strength_d * 0.15f * character * (F32)g_field_scale, 0.f, 1.f);
+    F32 axial_ca_m = strength_d * 0.004f * character * (F32)g_axial_scale * lens_focus_m;
+    F32 ca_mag = strength_d * 0.15f * character * (F32)g_ca_scale * 0.01f;
+    F32 edge_vig = strength_d * 0.02f * character * (F32)g_vig_scale;
+
+    // rack/breath modulation of the lens plane, then Sharp Window override
+    lens_focus_m = lens_focus_m * (1.f - focus_rack) + base_focus_m * focus_rack;
+    lens_focus_m = llclamp(lens_focus_m * (1.f + handheld_focus_off * 0.06f), 0.1f, 4096.f);
+    if (content == 1)
+    {
+        lens_focus_m = base_focus_m;
+        magnify = 1.f;
+        axial_ca_m = 0.f;
+    }
+
+    // ---- pass 1: dual-focus MRT gather -----------------------------------
+    F32 out_w = (F32)dst->getWidth();
+    F32 out_h = (F32)dst->getHeight();
+
+    mDiopterMap.bindTarget();
+    gather_prog.bind();
+
+    gather_prog.uniform2f(LLShaderMgr::DEFERRED_SCREEN_RES, out_w, out_h);
+    gather_prog.bindTexture(LLShaderMgr::DEFERRED_DIFFUSE, src, false, LLTexUnit::TFO_BILINEAR);
+    gather_prog.bindTexture(LLShaderMgr::DEFERRED_DEPTH, &mRT->deferredScreen, true);
+
+    const F32 eff_size = llclamp((F32)s_size * size_scale, 0.01f, 1.5f);
+
+    // shared shape/look uniforms uploaded through a lambda so both passes
+    // stay in perfect agreement
+    auto upload_shape = [&](LLGLSLShader& p)
+    {
+        p.uniform4f(LLShaderMgr::DIOPTER_SHAPE, center_x, center_y, eff_size, stretch);
+        p.uniform4f(LLShaderMgr::DIOPTER_SHAPE2, eff_angle_rad,
+                    llclamp((F32)s_feather, 0.001f, 0.5f), s_invert ? 1.f : 0.f, (F32)content);
+    };
+    upload_shape(gather_prog);
+
+    gather_prog.uniform4f(LLShaderMgr::DIOPTER_SHAPE3, (F32)shape, hollow,
+                          llclamp((F32)s_round, 0.f, 1.f), llclamp((F32)s_split_curve, -3.f, 3.f));
+    gather_prog.uniform4f(LLShaderMgr::DIOPTER_SHAPE4,
+                          llclamp((F32)s_wobble_amt, 0.f, 0.3f),
+                          llclamp((F32)s_wobble_freq, 1.f, 40.f),
+                          wave_phase,
+                          llclamp((F32)m_wave_amp, 0.f, 0.3f) * wave_gain);
+    gather_prog.uniform4f(LLShaderMgr::DIOPTER_SHAPE5,
+                          (F32)llclamp((U32)s_poly_sides, 3U, 12U),
+                          (F32)llclamp((U32)s_star_points, 3U, 12U),
+                          llclamp((F32)s_star_inner, 0.1f, 1.f),
+                          llclamp((F32)s_squircle_pow, 2.f, 8.f));
+    gather_prog.uniform4f(LLShaderMgr::DIOPTER_SHAPE6,
+                          (F32)llclamp((U32)s_petal_count, 2U, 12U),
+                          llclamp((F32)s_petal_depth, 0.f, 0.9f),
+                          llclamp((F32)s_blob_seed, 0.f, 99.f),
+                          llclamp((F32)s_blob_amt, 0.f, 1.f));
+    gather_prog.uniform4f(LLShaderMgr::DIOPTER_SHAPE7,
+                          llclamp((F32)s_crescent_bite, 0.2f, 1.5f),
+                          llclamp((F32)s_crescent_shift, 0.f, 1.5f),
+                          arc_len * DEG, broken);
+    gather_prog.uniform4f(LLShaderMgr::DIOPTER_FOCUS, base_focus_m, lens_focus_m,
+                          llclamp((F32)f_width_m, 0.f, 20.f), llclamp((F32)f_falloff, 0.5f, 40.f));
+    gather_prog.uniform4f(LLShaderMgr::DIOPTER_FOCUS2,
+                          llclamp((F32)f_curve, 0.4f, 3.f),
+                          llclamp((F32)f_near_str, 0.f, 1.f),
+                          llclamp((F32)f_far_str, 0.f, 1.f),
+                          llclamp((F32)f_max_blur, 1.f, 64.f));
+    gather_prog.uniform4f(LLShaderMgr::DIOPTER_FOCUS3,
+                          llclamp((F32)f_floor_max, 1.f, 96.f), spot_blur, bokeh_hi, magnify);
+    gather_prog.uniform4f(LLShaderMgr::DIOPTER_FOCUS4, axial_ca_m, field_curve,
+                          llclamp((F32)f_depth_edge, 0.f, 16.f), 0.f);
+    gather_prog.uniform4f(LLShaderMgr::DIOPTER_APERTURE, (F32)ap_shape, ap_blades,
+                          llclamp((F32)a_blade_rot, -180.f, 180.f) * DEG, ap_curve);
+    gather_prog.uniform4f(LLShaderMgr::DIOPTER_APERTURE2,
+                          llclamp((F32)a_inner, 0.1f, 1.f), ap_anam,
+                          llclamp((F32)a_anam_angle, -180.f, 180.f) * DEG, cat_eye);
+    gather_prog.uniform4f(LLShaderMgr::DIOPTER_GLASS, (F32)profile, ior1, thick, rim_width);
+    gather_prog.uniform4f(LLShaderMgr::DIOPTER_GLASS2, rim_warp, 0.f, 0.f, 0.f);
+    // halo2.w gates the whole warp: the shader's annulus reconstruction is
+    // only an identity inside the band, so it must be skipped entirely
+    // whenever every fold/twist/lobe/pattern/zoom term is neutral
+    bool warp_active = (pattern_mode > 0) || (ring_fold > 1e-3f) ||
+                       (fabsf(twist_deg) > 1e-2f) || (lobe_amt > 1e-3f) ||
+                       (fabsf(pattern_zoom - 1.f) > 1e-3f);
+
+    gather_prog.uniform4f(LLShaderMgr::DIOPTER_HALO, ring_count, ring_fold,
+                          twist_deg * DEG, ring_phase);
+    gather_prog.uniform4f(LLShaderMgr::DIOPTER_HALO2, lobe_amt, lobe_count,
+                          lobe_phase_deg * DEG,
+                          warp_active ? 1.f : 0.f);
+    gather_prog.uniform4f(LLShaderMgr::DIOPTER_PATTERN, (F32)pattern_mode, pattern_seg,
+                          pattern_feed_deg * DEG,
+                          pattern_zoom);
+
+    mScreenTriangleVB->setBuffer();
+    mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+
+    gather_prog.unbind();
+    mDiopterMap.flush();
+
+    // ---- pass 2: composite ------------------------------------------------
+    dst->bindTarget();
+    gUltimateDiopterProgram.bind();
+
+    gUltimateDiopterProgram.uniform2f(LLShaderMgr::DEFERRED_SCREEN_RES, out_w, out_h);
+    upload_shape(gUltimateDiopterProgram);
+    gUltimateDiopterProgram.uniform4f(LLShaderMgr::DIOPTER_FOCUS, base_focus_m, lens_focus_m,
+                                      llclamp((F32)f_width_m, 0.f, 20.f),
+                                      llclamp((F32)f_falloff, 0.5f, 40.f));
+    gUltimateDiopterProgram.uniform4f(LLShaderMgr::DIOPTER_COMP, seam_px,
+                                      llclamp((F32)c_seam_amt, 0.f, 1.f), ca_mag, edge_vig);
+    gUltimateDiopterProgram.uniform4f(LLShaderMgr::DIOPTER_COMP2, rim_caustic, rim_darken,
+                                      master_blend, (F32)llclamp((U32)debug_view, 0U, 4U));
+    gUltimateDiopterProgram.uniform4f(LLShaderMgr::DIOPTER_GHOST, ghost_count, ghost_spacing,
+                                      radial_smear, tangent_smear);
+    gUltimateDiopterProgram.uniform4f(LLShaderMgr::DIOPTER_GHOST2,
+                                      llclamp((F32)gh_threshold, 0.f, 2.f),
+                                      llclamp((F32)gh_knee, 0.01f, 1.f),
+                                      dispersion, ghost_gain);
+
+    S32 channel = gUltimateDiopterProgram.enableTexture(LLShaderMgr::DEFERRED_DIFFUSE, mDiopterMap.getUsage());
+    if (channel > -1)
+    {
+        mDiopterMap.bindTexture(0, channel, LLTexUnit::TFO_BILINEAR);
+    }
+    channel = gUltimateDiopterProgram.enableTexture(LLShaderMgr::DEFERRED_EMISSIVE, mDiopterMap.getUsage());
+    if (channel > -1)
+    {
+        mDiopterMap.bindTexture(1, channel, LLTexUnit::TFO_BILINEAR);
+    }
+    gUltimateDiopterProgram.bindTexture(LLShaderMgr::DIFFUSE_MAP, src, false, LLTexUnit::TFO_BILINEAR);
+    gUltimateDiopterProgram.bindTexture(LLShaderMgr::DEFERRED_DEPTH, &mRT->deferredScreen, true);
+
+    mScreenTriangleVB->setBuffer();
+    mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+
+    gUltimateDiopterProgram.unbind();
+    dst->flush();
+}
+
 void LLPipeline::applyFXAA(LLRenderTarget* src, LLRenderTarget* dst)
 {
     LL_PROFILE_GPU_ZONE("FXAA");
@@ -17274,6 +18022,21 @@ void LLPipeline::renderFinalize()
         std::swap(sourceBuffer, targetBuffer);
     }
 // [/RLVa:KB]
+
+    // [Ultimate Diopter] lens-front diopter/halo. After DoF/RLVa so it
+    // composes on their result, before fisheye so lens distortion warps the
+    // diopter like real front-of-lens glass. Full no-post gating happens
+    // inside; this cheap gate keeps the disabled cost at one bool check.
+    {
+        static LLCachedControl<bool> diopter_enabled(
+            gSavedSettings, "CineDiopterEnabled", false);
+        if (diopter_enabled && !gSnapshotNoPost && mDiopterMap.isComplete() &&
+            gUltimateDiopterProgram.isComplete())
+        {
+            renderUltimateDiopter(sourceBuffer, targetBuffer);
+            std::swap(sourceBuffer, targetBuffer);
+        }
+    }
 
     static LLCachedControl<bool> fisheye_enabled(
         gSavedSettings, "CineFisheyeEnabled", false);
