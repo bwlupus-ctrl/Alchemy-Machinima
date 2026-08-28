@@ -26722,6 +26722,17 @@
     <key>Value</key>
     <integer>1</integer>
   </map>
+  <key>RenderHDR16BitColor</key>
+  <map>
+    <key>Comment</key>
+    <string>Use 16-bit float (RGBA16F) for the post-processing color chain instead of 10-bit (RGB10_A2). Removes banding in heavy color grades at a real FPS cost. Read at buffer allocation, so a change requires a restart. Only applies when HDR rendering is enabled.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>Boolean</string>
+    <key>Value</key>
+    <integer>0</integer>
+  </map>
     <key>RenderDisableVintageMode</key>
     <map>
         <key>Comment</key>

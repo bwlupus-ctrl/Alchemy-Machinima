@@ -778,7 +778,19 @@
         <check_box.commit_callback
           function="Pref.RenderOptionUpdate" />
     </check_box>
-    
+
+    <check_box
+      control_name="RenderHDR16BitColor"
+      height="16"
+      initial_value="false"
+      label="16-bit color (requires restart)"
+      layout="topleft"
+      left="420"
+      name="HDR16BitColor"
+      top_delta="20"
+      tool_tip="Renders the post-processing color chain at 16-bit float instead of 10-bit. Removes banding in heavy color grades, at a real frame-rate cost (heaviest at 4K and above). Only applies while HDR and Emissive is on. Takes effect after a restart."
+      width="240" />
+
   <text
     type="string"
     length="1"

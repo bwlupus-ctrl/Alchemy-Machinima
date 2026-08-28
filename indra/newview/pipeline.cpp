@@ -1215,7 +1215,14 @@ bool LLPipeline::allocateScreenBufferInternal(U32 resX, U32 resY)
         mRT->deferredLight.release();
     }
 
-    U32 post_color_fmt = hdr ? GL_RGB10_A2 : GL_RGBA;
+    // Post ping-pong precision. Default 10-bit (RGB10_A2); RenderHDR16BitColor
+    // promotes the whole post chain (postPing/Pong + FXAA/SMAA below) to fp16
+    // (RGBA16F) to kill banding in heavy grades, at a real per-pass bandwidth
+    // cost that is why it is opt-in rather than the default. Read here at
+    // buffer allocation only, so the pref is "requires restart" in the UI.
+    // Non-HDR is unchanged (8-bit RGBA).
+    const bool post_16bit = hdr && gSavedSettings.getBOOL("RenderHDR16BitColor");
+    U32 post_color_fmt = hdr ? (post_16bit ? GL_RGBA16F : GL_RGB10_A2) : GL_RGBA;
     if(mRT != &mHeroProbeRT)
     {
         if (hdr)
@@ -1256,8 +1263,12 @@ bool LLPipeline::allocateScreenBufferInternal(U32 resX, U32 resY)
             }
         }
 
-        mRT->postPingMap.allocate(resX, resY, post_color_fmt);
-        mRT->postPongMap.allocate(resX, resY, post_color_fmt);
+        // Propagate allocation failure (like the FXAA/SMAA path below) so the
+        // caller's lower-resolution retry can run. Matters more now that the
+        // fp16 post option doubles these to 8 bytes/pixel: a VRAM-tight 4K+
+        // user must fall back rather than hit an FBO-less bindTarget assert.
+        if (!mRT->postPingMap.allocate(resX, resY, post_color_fmt)) return false;
+        if (!mRT->postPongMap.allocate(resX, resY, post_color_fmt)) return false;
     }
 
     allocateShadowBuffer(resX, resY);
