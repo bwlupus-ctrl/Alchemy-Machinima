@@ -89,6 +89,23 @@ static const U32 SL_COVERAGE_ATTACHMENT = 2;
 class LLPipeline
 {
 public:
+    // Effective client-side alpha policy. Material assets are immutable and may
+    // be shared by unrelated objects, so overrides are resolved per face and
+    // baked into LLDrawInfo instead of modifying LLMaterial/LLGLTFMaterial.
+    enum EEffectiveAlphaMode : U8
+    {
+        ALPHA_MODE_OPAQUE = 0,
+        ALPHA_MODE_MASK   = 1,
+        ALPHA_MODE_BLEND  = 2
+    };
+
+    struct AlphaPolicy
+    {
+        EEffectiveAlphaMode mMode = ALPHA_MODE_OPAQUE;
+        F32 mCutoff = -1.f; // valid for MASK; -1 disables alpha discard
+        bool mOverridden = false;
+    };
+
     static constexpr U32 BLOOM_MAX_MIPS = 7;
 
     LLPipeline();
@@ -313,6 +330,7 @@ public:
     static F32   getAlphaMaskCutoffOverride(const LLUUID& id); // -1 if unset
     // Object override wins if present (>=0); else avatar override; else -1 (none).
     static F32   resolveAlphaMaskCutoff(const LLUUID& objRootId, const LLUUID& avatarId);
+    static AlphaPolicy resolveAlphaPolicy(const LLFace* facep);
 
     void applyFXAA(LLRenderTarget* src, LLRenderTarget* dst);
     void generateSMAABuffers(LLRenderTarget* src);

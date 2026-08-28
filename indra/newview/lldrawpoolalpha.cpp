@@ -627,7 +627,8 @@ void LLDrawPoolAlpha::renderPbrEmissives(std::vector<LLDrawInfo*>& emissives)
 
         llassert(draw->mGLTFMaterial);
         LLGLDisable cull_face(draw->mGLTFMaterial->mDoubleSided ? GL_CULL_FACE : 0);
-        draw->mGLTFMaterial->bind(draw->mTexture);
+        draw->mGLTFMaterial->bind(
+            draw->mTexture, draw->mAlphaMaskCutoff);
         LLRenderPass::uploadActorFx(*draw);
         draw->mVertexBuffer->setBuffer();
         draw->mVertexBuffer->drawRange(LLRender::TRIANGLES, draw->mStart, draw->mEnd, draw->mCount, draw->mOffset);
@@ -724,7 +725,8 @@ void LLDrawPoolAlpha::renderRiggedPbrEmissives(std::vector<LLDrawInfo*>& emissiv
         }
 
         LLGLDisable cull_face(draw->mGLTFMaterial->mDoubleSided ? GL_CULL_FACE : 0);
-        draw->mGLTFMaterial->bind(draw->mTexture);
+        draw->mGLTFMaterial->bind(
+            draw->mTexture, draw->mAlphaMaskCutoff);
         LLRenderPass::uploadActorFx(*draw);
         draw->mVertexBuffer->setBuffer();
         draw->mVertexBuffer->drawRange(LLRender::TRIANGLES, draw->mStart, draw->mEnd, draw->mCount, draw->mOffset);
@@ -773,7 +775,8 @@ void LLDrawPoolAlpha::renderActorFxEmissives(
             llassert(draw->mGLTFMaterial);
             LLGLDisable cull_face(draw->mGLTFMaterial->mDoubleSided
                                       ? GL_CULL_FACE : 0);
-            draw->mGLTFMaterial->bind(draw->mTexture);
+            draw->mGLTFMaterial->bind(
+                draw->mTexture, draw->mAlphaMaskCutoff);
             if (custom_blend)
             {
                 // Match the beauty alpha draw's custom-blend cutoff override.
@@ -1083,7 +1086,8 @@ void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, EAlphaStream stream
 
                 LLGLDisable cull_face(gltf_mat && gltf_mat->mDoubleSided ? GL_CULL_FACE : 0);
 
-                if (gltf_mat && gltf_mat->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_BLEND)
+                if (gltf_mat &&
+                    params.mEffectiveAlphaMode == LLPipeline::ALPHA_MODE_BLEND)
                 {
                     target_shader = pbr_shader;
                     if (params.mAvatar != nullptr)
@@ -1097,7 +1101,8 @@ void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, EAlphaStream stream
                         gPipeline.bindDeferredShaderFast(*target_shader);
                     }
 
-                    params.mGLTFMaterial->bind(params.mTexture);
+                    params.mGLTFMaterial->bind(
+                        params.mTexture, params.mAlphaMaskCutoff);
                 }
                 else
                 {

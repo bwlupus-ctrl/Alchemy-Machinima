@@ -5361,10 +5361,15 @@ bool pushGhostGLTFBatch(LLDrawInfo& params, LLFetchedGLTFMaterial*& last_mat,
         LLViewerTexture* tex = params.mTexture.get();
         if (mat != last_mat || tex != last_tex)
         {
-            mat->bind(params.mTexture);
+            mat->bind(params.mTexture, params.mAlphaMaskCutoff);
             last_mat = mat;
             last_tex = tex;
         }
+    }
+    if (!LLPipeline::sShadowRender || params.mAlphaMaskCutoff >= 0.f)
+    {
+        LLGLSLShader::sCurBoundShaderPtr->setMinimumAlpha(
+            params.mAlphaMaskCutoff);
     }
 
     LLGLDisable cull_face(mat && mat->mDoubleSided ? GL_CULL_FACE : 0);
@@ -5515,7 +5520,12 @@ bool pushGhostGLTFBatchIndexed(LLDrawInfo& params, LLRenderPass::eGLTFIndexedMap
         LLViewerTexture* base = mat->mBaseColorTexture.notNull() ? mat->mBaseColorTexture.get() : LLViewerFetchedTexture::sWhiteImagep.get();
         gGL.getTexUnit(s)->bindFast(base);
 
-        min_alpha[s] = (mat->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_MASK) ? mat->mAlphaCutoff : -1.f;
+        min_alpha[s] =
+            s < (S32)params.mGLTFAlphaMaskCutoffList.size()
+                ? params.mGLTFAlphaMaskCutoffList[s]
+                : ((mat->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_MASK)
+                       ? mat->mAlphaCutoff
+                       : -1.f);
 
         LLGLTFMaterial::TextureTransform::Pack packed;
         mat->mTextureTransform[LLGLTFMaterial::GLTF_TEXTURE_INFO_BASE_COLOR].getPacked(packed);
@@ -6357,7 +6367,7 @@ void LLPipeline::renderGhostRiggedBlend(const LLCamera& camera)
         }
         if (di->mGLTFMaterial.notNull())
         {
-            if (di->mGLTFMaterial->mAlphaMode != LLGLTFMaterial::ALPHA_MODE_BLEND
+            if (di->mEffectiveAlphaMode != LLPipeline::ALPHA_MODE_BLEND
                 || di->mGLTFMaterialList.size() > 1)
             {
                 return false;   // indexed / non-blend PBR: outside Slice 1
@@ -18440,6 +18450,128 @@ F32 LLPipeline::resolveAlphaMaskCutoff(const LLUUID& objRootId, const LLUUID& av
     if (objCut >= 0.f)
         return objCut;
     return getAlphaMaskCutoffOverride(avatarId);
+}
+
+// Resolve one immutable material plus the session/global client overrides into
+// the concrete mode that geometry generation and every render pass must use.
+// This is deliberately face-based: object/avatar ownership and rigging are not
+// properties of a shared LLMaterial/LLGLTFMaterial asset.
+LLPipeline::AlphaPolicy LLPipeline::resolveAlphaPolicy(const LLFace* facep)
+{
+    AlphaPolicy policy;
+    if (!facep)
+    {
+        return policy;
+    }
+
+    const LLTextureEntry* te = facep->getTextureEntry();
+    if (!te)
+    {
+        return policy;
+    }
+
+    if (const LLGLTFMaterial* gltf = te->getGLTFRenderMaterial())
+    {
+        if (gltf->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_MASK)
+        {
+            policy.mMode = ALPHA_MODE_MASK;
+            policy.mCutoff = llclamp(gltf->mAlphaCutoff, 0.f, 1.f);
+        }
+        else if (gltf->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_BLEND)
+        {
+            policy.mMode = ALPHA_MODE_BLEND;
+        }
+    }
+    else if (const LLMaterial* mat = te->getMaterialParams().get())
+    {
+        switch (mat->getDiffuseAlphaMode())
+        {
+        case LLMaterial::DIFFUSE_ALPHA_MODE_MASK:
+            policy.mMode = ALPHA_MODE_MASK;
+            policy.mCutoff = mat->getAlphaMaskCutoff() * (1.f / 255.f);
+            break;
+        case LLMaterial::DIFFUSE_ALPHA_MODE_BLEND:
+            policy.mMode = ALPHA_MODE_BLEND;
+            break;
+        default:
+            break;
+        }
+    }
+    else if (facep->isInAlphaPool())
+    {
+        policy.mMode = ALPHA_MODE_BLEND;
+    }
+
+    LLViewerObject* vobj = facep->getViewerObject();
+    if (!vobj)
+    {
+        // Authored material policy does not depend on object ownership.
+        return policy;
+    }
+
+    LLViewerObject* root = vobj->getRootEdit();
+    const LLUUID obj_id = root ? root->getID() : vobj->getID();
+    const LLUUID avatar_id = vobj->getAvatar() ? vobj->getAvatar()->getID() : LLUUID::null;
+    const S32 override_mode = resolveAlphaMode(obj_id, avatar_id);
+
+    // Match the established physical guard. Force Blend is always meaningful;
+    // Force Mask only takes over a face whose TE alpha/glow do not require
+    // continuous blending.
+    const bool mask_eligible =
+        te->getColor().mV[3] == 1.f && te->getGlow() == 0.f;
+
+    if (override_mode == 2)
+    {
+        policy.mMode = ALPHA_MODE_BLEND;
+        policy.mCutoff = -1.f;
+        policy.mOverridden = true;
+        return policy;
+    }
+
+    static LLCachedControl<F32> force_cutoff(
+        gSavedSettings, "BDMergeForceAlphaMaskCutoff", 0.5f);
+
+    if (override_mode == 1)
+    {
+        if (mask_eligible)
+        {
+            F32 cutoff = resolveAlphaMaskCutoff(obj_id, avatar_id);
+            policy.mMode = ALPHA_MODE_MASK;
+            policy.mCutoff = llclamp(
+                cutoff >= 0.f ? cutoff : (F32)force_cutoff, 0.f, 1.f);
+            policy.mOverridden = true;
+        }
+        return policy;
+    }
+
+    // Preserve the global hammer, now through the same policy as per-target
+    // overrides. Only alpha-capable faces participate; creator-authored MASK
+    // cutoffs remain authoritative as before.
+    static LLCachedControl<bool> force_mask(
+        gSavedSettings, "BDMergeForceAlphaMask", false);
+    static LLCachedControl<bool> force_mask_rigged(
+        gSavedSettings, "BDMergeForceAlphaMaskRigged", false);
+
+    LLViewerTexture* texture = facep->getTexture();
+    const bool texture_has_alpha = texture &&
+        ((texture->getComponents() == 4 &&
+          texture->getType() != LLViewerTexture::MEDIA_TEXTURE) ||
+         texture->getComponents() == 2);
+    const bool alpha_capable =
+        policy.mMode != ALPHA_MODE_OPAQUE || texture_has_alpha;
+
+    if (force_mask && mask_eligible && alpha_capable &&
+        (force_mask_rigged || !facep->isState(LLFace::RIGGED)))
+    {
+        if (policy.mMode != ALPHA_MODE_MASK)
+        {
+            policy.mMode = ALPHA_MODE_MASK;
+            policy.mCutoff = llclamp((F32)force_cutoff, 0.f, 1.f);
+            policy.mOverridden = true;
+        }
+    }
+
+    return policy;
 }
 
 // Match the light-source prim's own ID and its root-edit ID (the context menu

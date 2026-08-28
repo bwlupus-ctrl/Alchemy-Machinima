@@ -204,7 +204,10 @@ void resolveBatchBindings(LLDrawInfo* di, GhostAuditBatch& out)
                     ? refReal(mat->mMetallicRoughnessTexture.get()) : refWhite();
             slot.mGhost.mColorTransformHash = slot.mStock.mColorTransformHash =
                 hashTransform(mat->mTextureTransform[LLGLTFMaterial::GLTF_TEXTURE_INFO_BASE_COLOR]);
-            slot.mGhost.mAlphaCutoff = slot.mStock.mAlphaCutoff = mat->mAlphaCutoff;
+            slot.mGhost.mAlphaCutoff = slot.mStock.mAlphaCutoff =
+                s < (S32)di->mGLTFAlphaMaskCutoffList.size()
+                    ? di->mGLTFAlphaMaskCutoffList[s]
+                    : mat->mAlphaCutoff;
             slot.mGhost.mDoubleSided = slot.mStock.mDoubleSided = mat->mDoubleSided;
             out.mSlots.push_back(slot);
         }
@@ -241,7 +244,8 @@ void resolveBatchBindings(LLDrawInfo* di, GhostAuditBatch& out)
                 ? refReal(mat->mMetallicRoughnessTexture.get()) : refWhite();
         slot.mGhost.mColorTransformHash = slot.mStock.mColorTransformHash =
             hashTransform(mat->mTextureTransform[LLGLTFMaterial::GLTF_TEXTURE_INFO_BASE_COLOR]);
-        slot.mGhost.mAlphaCutoff = slot.mStock.mAlphaCutoff = mat->mAlphaCutoff;
+        slot.mGhost.mAlphaCutoff = slot.mStock.mAlphaCutoff =
+            di->mAlphaMaskCutoff;
         slot.mGhost.mDoubleSided = slot.mStock.mDoubleSided = mat->mDoubleSided;
         out.mSlots.push_back(slot);
         return;

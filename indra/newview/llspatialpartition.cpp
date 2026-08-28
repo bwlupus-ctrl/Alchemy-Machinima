@@ -3862,6 +3862,8 @@ LLColor4U LLDrawInfo::getDebugColor() const
 void LLDrawInfo::validate()
 {
     mVertexBuffer->validateRange(mStart, mEnd, mCount, mOffset);
+    llassert(mGLTFAlphaMaskCutoffList.empty() ||
+             mGLTFAlphaMaskCutoffList.size() == mGLTFMaterialList.size());
 }
 
 U64 LLDrawInfo::getSkinHash()
@@ -4169,4 +4171,3 @@ void LLCullResult::assertDrawMapsEmpty()
         }
     }
 }
-

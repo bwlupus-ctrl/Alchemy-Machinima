@@ -9492,7 +9492,11 @@ LLViewerTexture* ghost_batch_slot_texture(LLDrawInfo* di, S32 slot, bool emissiv
         {
             return nullptr;     // gap left by a fragmented batch (never sampled)
         }
-        if (m->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_MASK)
+        if ((size_t)slot < di->mGLTFAlphaMaskCutoffList.size())
+        {
+            out_cutoff = di->mGLTFAlphaMaskCutoffList[slot];
+        }
+        else if (m->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_MASK)
         {
             out_cutoff = m->mAlphaCutoff;
         }
@@ -9551,7 +9555,7 @@ F32 ghost_batch_cutoff(LLDrawInfo* di, U32 pass)
     }
     if (di->mGLTFMaterial.notNull())
     {
-        return di->mGLTFMaterial->mAlphaCutoff;
+        return di->mAlphaMaskCutoff;
     }
     return di->mAlphaMaskCutoff;
 }
@@ -12088,7 +12092,21 @@ void LLActorMover::collectGhostBatches()
                 gf.mObjectId = obj->getID();
                 const LLTextureEntry* te = face->getTextureEntry();
                 LLGLTFMaterial* gmat = te ? te->getGLTFRenderMaterial() : nullptr;
-                if (gmat)
+                LLDrawInfo* face_info = face->mDrawInfo;
+                if (face_info &&
+                    face_info->mEffectiveAlphaMode == LLPipeline::ALPHA_MODE_MASK)
+                {
+                    gf.mAlphaKind = 1;
+                    gf.mCutoff = face_info->mAlphaMaskCutoff;
+                    gf.mDoubleSided = gmat && gmat->mDoubleSided;
+                }
+                else if (face_info &&
+                         face_info->mEffectiveAlphaMode == LLPipeline::ALPHA_MODE_BLEND)
+                {
+                    gf.mAlphaKind = 2;
+                    gf.mDoubleSided = gmat && gmat->mDoubleSided;
+                }
+                else if (gmat)
                 {
                     gf.mDoubleSided = gmat->mDoubleSided;
                     if (gmat->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_MASK)
@@ -13433,8 +13451,30 @@ bool shared_same_pbr_geometry(const LLDrawInfo* lhs, const LLDrawInfo* rhs)
         && lhs->mCount == rhs->mCount && lhs->mOffset == rhs->mOffset;
 }
 
-bool shared_pbr_alpha_mode(const LLFetchedGLTFMaterial* material,
-                           U8& out_mode)
+bool shared_pbr_alpha_mode(const LLDrawInfo* info, U8& out_mode)
+{
+    if (!info)
+    {
+        return false;
+    }
+    switch (info->mEffectiveAlphaMode)
+    {
+    case LLPipeline::ALPHA_MODE_OPAQUE:
+        out_mode = SHARED_ACTOR_FX_PBR_ALPHA_OPAQUE;
+        return true;
+    case LLPipeline::ALPHA_MODE_MASK:
+        out_mode = SHARED_ACTOR_FX_PBR_ALPHA_MASK;
+        return true;
+    case LLPipeline::ALPHA_MODE_BLEND:
+        out_mode = SHARED_ACTOR_FX_PBR_ALPHA_BLEND;
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool shared_pbr_authored_alpha_mode(
+    const LLFetchedGLTFMaterial* material, U8& out_mode)
 {
     if (!material)
     {
@@ -14004,13 +14044,16 @@ void LLActorMover::buildSharedActorStyleQueue()
                 {
                     return false;
                 }
+                U8 draw_mode = 0;
+                if (!shared_pbr_alpha_mode(base_info, draw_mode) ||
+                    draw_mode != command.mAlphaMode)
+                {
+                    return false;
+                }
                 for (const LLPointer<LLFetchedGLTFMaterial>& material :
                      base_info->mGLTFMaterialList)
                 {
-                    U8 slot_mode = 0;
-                    if (material.isNull()
-                        || !shared_pbr_alpha_mode(material.get(), slot_mode)
-                        || slot_mode != command.mAlphaMode)
+                    if (material.isNull())
                     {
                         return false;
                     }
@@ -14095,7 +14138,7 @@ void LLActorMover::buildSharedActorStyleQueue()
                             : nullptr)))
                 : nullptr;
             U8 alpha_mode = 0;
-            if (!info || !shared_pbr_alpha_mode(material, alpha_mode))
+            if (!info || !shared_pbr_alpha_mode(info, alpha_mode))
             {
                 replay_complete = false;
                 return;
@@ -14132,11 +14175,8 @@ void LLActorMover::buildSharedActorStyleQueue()
                 for (const LLPointer<LLFetchedGLTFMaterial>& slot_material :
                      info->mGLTFMaterialList)
                 {
-                    U8 slot_mode = 0;
                     bool slot_emissive = false;
                     if (slot_material.isNull()
-                        || !shared_pbr_alpha_mode(slot_material.get(), slot_mode)
-                        || slot_mode != alpha_mode
                         || !shared_pbr_material_has_authored_emissive(
                                slot_material.get(), slot_emissive))
                     {
@@ -14250,8 +14290,12 @@ void LLActorMover::buildSharedActorStyleQueue()
             }
 
             U8 alpha_mode = 0;
+            LLDrawInfo* static_info =
+                source_face.mFace ? source_face.mFace->mDrawInfo : nullptr;
             if (!LLViewerShaderMgr::hasSharedActorFxPBRShaders()
-                || !shared_pbr_alpha_mode(material, alpha_mode))
+                || !(static_info
+                         ? shared_pbr_alpha_mode(static_info, alpha_mode)
+                         : shared_pbr_authored_alpha_mode(material, alpha_mode)))
             {
                 replay_complete = false;
                 continue;
@@ -14974,6 +15018,8 @@ bool LLActorMover::renderSharedActorPBRCommands(
                 ? command.mGlowInfo : base_info)
             : nullptr;
         LLFace* face = command.mStaticFace.mFace;
+        LLDrawInfo* policy_info =
+            command.mRigged ? base_info : (face ? face->mDrawInfo : nullptr);
         LLVertexBuffer* vb = command.mRigged
             ? (draw_info ? draw_info->mVertexBuffer.get() : nullptr)
             : (face ? face->getVertexBuffer() : nullptr);
@@ -15075,7 +15121,9 @@ bool LLActorMover::renderSharedActorPBRCommands(
                         : LLViewerFetchedTexture::sWhiteImagep.get());
                 shader->bindTexture(LLShaderMgr::DIFFUSE_MAP, base);
                 shader->uniform1f(LLShaderMgr::MINIMUM_ALPHA,
-                                  material->mAlphaCutoff);
+                                  policy_info
+                                      ? policy_info->mAlphaMaskCutoff
+                                      : material->mAlphaCutoff);
                 LLGLTFMaterial::TextureTransform::Pack packed;
                 material->mTextureTransform[
                     LLGLTFMaterial::GLTF_TEXTURE_INFO_BASE_COLOR]
@@ -15087,7 +15135,9 @@ bool LLActorMover::renderSharedActorPBRCommands(
         }
         else
         {
-            material->bind(media);
+            material->bind(
+                media,
+                policy_info ? policy_info->mAlphaMaskCutoff : -2.f);
         }
         if (uses_texture_matrix)
         {

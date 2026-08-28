@@ -61,7 +61,8 @@ LLFetchedGLTFMaterial& LLFetchedGLTFMaterial::operator=(const LLFetchedGLTFMater
     return *this;
 }
 
-void LLFetchedGLTFMaterial::bind(LLViewerTexture* media_tex)
+void LLFetchedGLTFMaterial::bind(LLViewerTexture* media_tex,
+                                 F32 alpha_cutoff_override)
 {
     // glTF 2.0 Specification 3.9.4. Alpha Coverage
     // mAlphaCutoff is only valid for LLGLTFMaterial::ALPHA_MODE_MASK
@@ -73,7 +74,19 @@ void LLFetchedGLTFMaterial::bind(LLViewerTexture* media_tex)
     LLViewerTexture* baseColorTex = media_tex ? media_tex : mBaseColorTexture;
     LLViewerTexture* emissiveTex = media_tex ? media_tex : mEmissiveTexture;
 
-    if (!LLPipeline::sShadowRender || (mAlphaMode == LLGLTFMaterial::ALPHA_MODE_MASK))
+    const bool has_alpha_override = alpha_cutoff_override >= -1.f;
+    if (has_alpha_override)
+    {
+        min_alpha = alpha_cutoff_override;
+        // BLEND shadows install their own coverage threshold before binding.
+        // A -1 effective cutoff means "do not clobber that threshold" there.
+        if (!LLPipeline::sShadowRender || min_alpha >= 0.f)
+        {
+            shader->uniform1f(LLShaderMgr::MINIMUM_ALPHA, min_alpha);
+        }
+    }
+    else if (!LLPipeline::sShadowRender ||
+             (mAlphaMode == LLGLTFMaterial::ALPHA_MODE_MASK))
     {
         if (mAlphaMode == LLGLTFMaterial::ALPHA_MODE_MASK)
         {

@@ -1407,7 +1407,8 @@ void LLRenderPass::pushVelocityBatchesTextured(U32 type, bool legacy_material)
                 ? params.mTexture.get()
                 : gltf->mBaseColorTexture.get();
             gGL.getTexUnit(0)->bindFast(base ? base : LLViewerFetchedTexture::sWhiteImagep.get());
-            LLGLSLShader::sCurBoundShaderPtr->setMinimumAlpha(gltf->mAlphaCutoff);
+            LLGLSLShader::sCurBoundShaderPtr->setMinimumAlpha(
+                params.mAlphaMaskCutoff);
             LLGLTFMaterial::TextureTransform::Pack packed;
             gltf->mTextureTransform[LLGLTFMaterial::GLTF_TEXTURE_INFO_BASE_COLOR].getPacked(packed);
             LLGLSLShader::sCurBoundShaderPtr->uniform4fv(
@@ -1592,7 +1593,8 @@ void LLRenderPass::pushRiggedVelocityBatchesTextured(U32 type, bool legacy_mater
                 ? params.mTexture.get()
                 : gltf->mBaseColorTexture.get();
             gGL.getTexUnit(0)->bindFast(base ? base : LLViewerFetchedTexture::sWhiteImagep.get());
-            LLGLSLShader::sCurBoundShaderPtr->setMinimumAlpha(gltf->mAlphaCutoff);
+            LLGLSLShader::sCurBoundShaderPtr->setMinimumAlpha(
+                params.mAlphaMaskCutoff);
             LLGLTFMaterial::TextureTransform::Pack packed;
             gltf->mTextureTransform[LLGLTFMaterial::GLTF_TEXTURE_INFO_BASE_COLOR].getPacked(packed);
             LLGLSLShader::sCurBoundShaderPtr->uniform4fv(
@@ -1673,7 +1675,10 @@ void LLRenderPass::pushVelocityAlphaBatchesIndexed(U32 type, bool gltf, bool rig
                     ? mat->mBaseColorTexture.get()
                     : LLViewerFetchedTexture::sWhiteImagep.get();
                 gGL.getTexUnit(s)->bindFast(base);
-                min_alpha[s] = mat->mAlphaCutoff;
+                min_alpha[s] =
+                    s < (S32)params.mGLTFAlphaMaskCutoffList.size()
+                        ? params.mGLTFAlphaMaskCutoffList[s]
+                        : mat->mAlphaCutoff;
                 LLGLTFMaterial::TextureTransform::Pack packed;
                 mat->mTextureTransform[LLGLTFMaterial::GLTF_TEXTURE_INFO_BASE_COLOR].getPacked(packed);
                 memcpy(&bc_xform[8 * s], packed, sizeof(packed));
@@ -2103,7 +2108,12 @@ void LLRenderPass::pushGLTFBatchIndexed(LLDrawInfo& params,
         LLViewerTexture* base = mat->mBaseColorTexture.notNull() ? mat->mBaseColorTexture.get() : LLViewerFetchedTexture::sWhiteImagep.get();
         gGL.getTexUnit(s)->bindFast(base);
 
-        min_alpha[s] = (mat->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_MASK) ? mat->mAlphaCutoff : -1.f;
+        min_alpha[s] =
+            s < (S32)params.mGLTFAlphaMaskCutoffList.size()
+                ? params.mGLTFAlphaMaskCutoffList[s]
+                : ((mat->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_MASK)
+                       ? mat->mAlphaCutoff
+                       : -1.f);
 
         // getPacked() takes F32(&)[8]; copy each transform into its slot stride.
         LLGLTFMaterial::TextureTransform::Pack packed;
@@ -2210,10 +2220,18 @@ void LLRenderPass::pushGLTFBatch(LLDrawInfo& params, LLFetchedGLTFMaterial*& las
         LLViewerTexture* tex = params.mTexture.get();
         if (mat != lastMat || tex != lastTex)
         {
-            mat->bind(params.mTexture);
+            mat->bind(params.mTexture, params.mAlphaMaskCutoff);
             lastMat = mat;
             lastTex = tex;
         }
+    }
+
+    // Material/texture caching must not cache the per-draw cutoff. Two objects
+    // may share one PBR asset while carrying different client overrides.
+    if (!LLPipeline::sShadowRender || params.mAlphaMaskCutoff >= 0.f)
+    {
+        LLGLSLShader::sCurBoundShaderPtr->setMinimumAlpha(
+            params.mAlphaMaskCutoff);
     }
 
     LLGLDisable cull_face(mat && mat->mDoubleSided ? GL_CULL_FACE : 0);
@@ -2240,6 +2258,12 @@ void LLRenderPass::pushUntexturedGLTFBatch(LLDrawInfo& params)
     auto& mat = params.mGLTFMaterial;
 
     LLGLDisable cull_face(mat->mDoubleSided ? GL_CULL_FACE : 0);
+
+    if (!LLPipeline::sShadowRender || params.mAlphaMaskCutoff >= 0.f)
+    {
+        LLGLSLShader::sCurBoundShaderPtr->setMinimumAlpha(
+            params.mAlphaMaskCutoff);
+    }
 
     applyModelMatrix(params);
 
