@@ -36,6 +36,7 @@
 #include "lluictrl.h"
 #include "llviewercontrol.h"
 #include "pipeline.h"
+#include "aldiopterpresetbank.h" // [Ultimate Diopter] Custom bank, §6.3
 
 #include "animationexplorer.h" // [BDMerge F7]
 #include "ao.h"
@@ -59,6 +60,7 @@
 #include "alfloaterprogressview.h"
 #include "alfloaterregiontracker.h"
 #include "alfloatertransactionlog.h"
+#include "alfloaterultimatediopter.h"
 #include "alfloaterwebprofile.h"
 #include "allegacynotificationwellwindow.h"
 
@@ -562,31 +564,34 @@ void LLViewerFloaterReg::registerFloaters()
                 start = comma + 1;
             }
         });
+    // [Ultimate Diopter] Custom-bank state machine (design doc §6.3). Load
+    // both banks' on-disk validity state BEFORE any listener below is
+    // installed: the one-time startup sync's "snapshot the bank IF ABSENT"
+    // test (piece 3, at the bottom of this function) needs
+    // alDiopterHasValidBank() to see whatever is already on disk, or the
+    // first run after an upgrade would snapshot the not-yet-materialized,
+    // stale slider values as if they were the user's Custom look --
+    // destroying it on the very upgrade meant to protect it.
+    alDiopterLoadBanks();
+
     // [Ultimate Diopter] editing a preset-owned style/motion control returns
     // the preset combo to Custom so the edit takes effect (plan §9.1) —
     // otherwise renderUltimateDiopter's preset switch (CineDiopterPreset != 0)
     // overrides the style/motion block every frame and the slider silently
     // does nothing. CineDiopterPreset itself is intentionally excluded below.
+    // [§6.3 piece 2] Setting the exit reason to AL_EXIT_AUTO_AFTER_EDIT
+    // immediately before the write-to-0 is what lets the selection listener
+    // below (piece 2b, alDiopterHandlePresetTransition) tell "the user
+    // picked Custom in the combo" apart from "an edit/reset just
+    // materialized-then-flipped" -- the latter must RE-SNAPSHOT the bank
+    // from the just-edited look, never restore the OLD bank over it (that
+    // would silently erase the edit the user just made). Diopter.ResetControl
+    // travels this identical path, so resets need no separate wiring. The
+    // owned-control name list itself lives in aldiopterpresetbank.cpp as the
+    // single source of truth shared with the bank's own snapshot/restore, so
+    // the write-list and the snapshot-list can never drift apart.
     {
-        static const char* const preset_owned_controls[] =
-        {
-            "CineDiopterShape", "CineDiopterContent", "CineDiopterHollow",
-            "CineDiopterArcLengthDeg", "CineDiopterBrokenCount", "CineDiopterCharacter",
-            "CineDiopterGlassProfile", "CineDiopterIOR", "CineDiopterThickness",
-            "CineDiopterRimWidth", "CineDiopterRimWarp", "CineDiopterRimCaustic",
-            "CineDiopterRimDarken", "CineDiopterApertureShape", "CineDiopterBlades",
-            "CineDiopterBladeCurve", "CineDiopterAnamorph", "CineDiopterCatEye",
-            "CineDiopterSpotBlur", "CineDiopterBokehHighlight", "CineDiopterRingCount",
-            "CineDiopterRingFold", "CineDiopterRingPhase", "CineDiopterTwistDeg",
-            "CineDiopterLobeAmt", "CineDiopterLobeCount", "CineDiopterLobePhaseDeg",
-            "CineDiopterGhostCount", "CineDiopterGhostSpacing", "CineDiopterTangentSmear",
-            "CineDiopterRadialSmear", "CineDiopterGhostGain", "CineDiopterDispersion",
-            "CineDiopterPatternMode", "CineDiopterPatternSegments", "CineDiopterPatternFeedDeg",
-            "CineDiopterPatternZoom", "CineDiopterMotionMode", "CineDiopterHandheld",
-            "CineDiopterHandheldSpeed", "CineDiopterSpinMode", "CineDiopterSpinSpeed",
-            "CineDiopterSeamGhostPx", "CineDiopterPlacementMode",
-        };
-        for (const char* name : preset_owned_controls)
+        for (const std::string& name : alDiopterOwnedControlNames(AL_BANK_DIOPTER))
         {
             if (LLControlVariable* control = gSavedSettings.getControl(name))
             {
@@ -602,7 +607,7 @@ void LLViewerFloaterReg::registerFloaters()
                         // tweaks the look on screen instead of collapsing it
                         // to raw slider state. The materializing flag stops
                         // those write-backs from re-entering this listener.
-                        if (LLPipeline::sDiopterPresetMaterializing)
+                        if (alDiopterIsPresetMaterializing())
                         {
                             return;
                         }
@@ -611,40 +616,44 @@ void LLViewerFloaterReg::registerFloaters()
                         {
                             LLPipeline::materializeDiopterPreset(
                                 active, changed ? changed->getName() : std::string());
+                            alDiopterSetPresetExitReason(AL_EXIT_AUTO_AFTER_EDIT);
                             gSavedSettings.setU32("CineDiopterPreset", 0);
                         }
                     });
             }
         }
     }
+    // [§6.3 piece 2b] The preset SELECTION listener. Installed once, for the
+    // app's lifetime (like the owned-setting listeners above), so
+    // materialize-on-selection works even when the floater is closed. Thin
+    // wrapper around alDiopterHandlePresetTransition -- the guard check,
+    // reason branching, and abort-on-snapshot-failure ALL live there now
+    // (Codex review finding F6), shared verbatim with
+    // tests/aldiopterpresetbank_test.cpp rather than duplicated here; this
+    // listener's only job is to materialize when told to, since that call
+    // needs LLPipeline and the shared function deliberately does not.
+    if (LLControlVariable* c = gSavedSettings.getControl("CineDiopterPreset"))
+    {
+        c->getSignal()->connect(
+            [](LLControlVariable*, const LLSD& newv, const LLSD& oldv)
+            {
+                const U32 id = (U32)newv.asInteger();
+                const ALPresetTransitionAction action = alDiopterHandlePresetTransition(
+                    AL_BANK_DIOPTER, "CineDiopterPreset", id, (U32)oldv.asInteger());
+                if (action == AL_TRANSITION_MATERIALIZE)
+                {
+                    LLPipeline::materializeDiopterPreset(id, std::string());
+                }
+            });
+    }
     // [Ultimate Kaleidoscope] tool mode 1 of the Ultimate Diopter floater:
-    // same auto-Custom contract as the CineDiopter* array above, enumerated
-    // 1:1 from ALKaleidoLook's 49 fields (pipeline.cpp). Framing (CenterX/Y,
+    // same auto-Custom contract as the diopter block above, enumerated 1:1
+    // from ALKaleidoLook's 49 fields (pipeline.cpp). Framing (CenterX/Y,
     // ProtectCenterX/Y), Blend, DebugView, Freeze/FreezeAt, and the preset
     // selector itself are deliberately excluded — same contract as the
-    // diopter's own array.
+    // diopter's own list.
     {
-        static const char* const kal_preset_owned_controls[] =
-        {
-            "CineDiopterKalMode", "CineDiopterKalEdgeWrap", "CineDiopterKalProtectMode",
-            "CineDiopterKalProtectAnchor", "CineDiopterKalMotionMode", "CineDiopterKalPulseTarget",
-            "CineDiopterKalSpinMode", "CineDiopterKalSegments", "CineDiopterKalAngle",
-            "CineDiopterKalTwist", "CineDiopterKalRingCount", "CineDiopterKalStarSharp",
-            "CineDiopterKalShapeBias", "CineDiopterKalSourceAngle", "CineDiopterKalSourceZoom",
-            "CineDiopterKalSourceOffsetX", "CineDiopterKalSourceOffsetY", "CineDiopterKalSourceSpin",
-            "CineDiopterKalFXBand", "CineDiopterKalFXAmount", "CineDiopterKalFXFlow",
-            "CineDiopterKalFXFreq", "CineDiopterKalProtectRadius", "CineDiopterKalProtectFeather",
-            "CineDiopterKalDepthCut", "CineDiopterKalDepthFeatherM", "CineDiopterKalDepthInvert",
-            "CineDiopterKalPingPong", "CineDiopterKalSpeed", "CineDiopterKalMotionAngle",
-            "CineDiopterKalSweepRange", "CineDiopterKalPulseAmt", "CineDiopterKalWaveAmp",
-            "CineDiopterKalWaveFreq", "CineDiopterKalPathFreqX", "CineDiopterKalPathFreqY",
-            "CineDiopterKalPathPhase", "CineDiopterKalPathAmp", "CineDiopterKalSpinSpeed",
-            "CineDiopterKalSpinTravel", "CineDiopterKalSpinDuration", "CineDiopterKalSpinBounce",
-            "CineDiopterKalSpinDelay", "CineDiopterKalSeamSoften", "CineDiopterKalCellSizeVar",
-            "CineDiopterKalCellBreathe", "CineDiopterKalCellSubdiv", "CineDiopterKalCellMerge",
-            "CineDiopterKalCellTint",
-        };
-        for (const char* name : kal_preset_owned_controls)
+        for (const std::string& name : alDiopterOwnedControlNames(AL_BANK_KALEIDO))
         {
             if (LLControlVariable* control = gSavedSettings.getControl(name))
             {
@@ -658,10 +667,11 @@ void LLViewerFloaterReg::registerFloaters()
                         // active preset's resolved look into the sliders
                         // (except the control being edited), so the edit
                         // tweaks the look on screen instead of collapsing it
-                        // to raw slider state. Reuses sDiopterPresetMaterializing
-                        // — the diopter and kaleidoscope tool modes never
-                        // materialize concurrently.
-                        if (LLPipeline::sDiopterPresetMaterializing)
+                        // to raw slider state. Reuses the shared
+                        // materializing guard -- the diopter and
+                        // kaleidoscope tool modes never materialize
+                        // concurrently.
+                        if (alDiopterIsPresetMaterializing())
                         {
                             return;
                         }
@@ -670,13 +680,89 @@ void LLViewerFloaterReg::registerFloaters()
                         {
                             LLPipeline::materializeKaleidoPreset(
                                 active, changed ? changed->getName() : std::string());
+                            alDiopterSetPresetExitReason(AL_EXIT_AUTO_AFTER_EDIT);
                             gSavedSettings.setU32("CineDiopterKalPreset", 0);
                         }
                     });
             }
         }
     }
-    LLFloaterReg::add("ultimate_diopter", "floater_ultimate_diopter.xml", &LLFloaterReg::build<LLFloater>);
+    // [§6.3 piece 2b] Kaleidoscope's preset SELECTION listener -- identical
+    // thin wrapper around the same shared alDiopterHandlePresetTransition,
+    // against the kaleido bank/materializer.
+    if (LLControlVariable* c = gSavedSettings.getControl("CineDiopterKalPreset"))
+    {
+        c->getSignal()->connect(
+            [](LLControlVariable*, const LLSD& newv, const LLSD& oldv)
+            {
+                const U32 id = (U32)newv.asInteger();
+                const ALPresetTransitionAction action = alDiopterHandlePresetTransition(
+                    AL_BANK_KALEIDO, "CineDiopterKalPreset", id, (U32)oldv.asInteger());
+                if (action == AL_TRANSITION_MATERIALIZE)
+                {
+                    LLPipeline::materializeKaleidoPreset(id, std::string());
+                }
+            });
+    }
+    // [§6.3 piece 3] One-time startup sync, for BOTH tools. Connecting a
+    // boost::signals2 slot does not invoke it, and these listeners install
+    // after settings load (llappviewer.cpp:819-821, then :2819-2820, both
+    // via initConfiguration() at :821, ahead of registerFloaters() at
+    // :961) -- so a saved non-Custom preset would otherwise never sync its
+    // sliders, surviving restarts indefinitely. "Snapshot the bank IF
+    // ABSENT" (rather than unconditionally) is the load-bearing rule: the
+    // alDiopterLoadBanks() call at the top of this function must run before
+    // this check so a genuine existing bank is never overwritten by
+    // stale, not-yet-materialized slider values.
+    //
+    // [Codex review finding F2] A failed snapshot here is the SAME failure
+    // mode as a failed interactive Custom -> non-Custom transition, so it
+    // gets the SAME abort semantics -- revert to Custom under the guard,
+    // skip materialization, invalidate/refuse the bank, notify -- via the
+    // identical alDiopterAbortPresetSelection helper (`prior_preset` is 0,
+    // Custom, exactly as it always is at the interactive call site's
+    // `was == 0` branch). Materializing unconditionally here, ignoring
+    // whether the snapshot actually succeeded, would silently apply a
+    // preset the fork could no longer promise to restore from.
+    {
+        const U32 active = gSavedSettings.getU32("CineDiopterPreset");
+        if (active != 0)
+        {
+            bool bank_ok = alDiopterHasValidBank(AL_BANK_DIOPTER);
+            if (!bank_ok)
+            {
+                bank_ok = alDiopterSnapshotCustomBank(AL_BANK_DIOPTER);
+            }
+            if (bank_ok)
+            {
+                LLPipeline::materializeDiopterPreset(active, std::string());
+            }
+            else
+            {
+                alDiopterAbortPresetSelection(AL_BANK_DIOPTER, "CineDiopterPreset", 0);
+            }
+        }
+    }
+    {
+        const U32 active = gSavedSettings.getU32("CineDiopterKalPreset");
+        if (active != 0)
+        {
+            bool bank_ok = alDiopterHasValidBank(AL_BANK_KALEIDO);
+            if (!bank_ok)
+            {
+                bank_ok = alDiopterSnapshotCustomBank(AL_BANK_KALEIDO);
+            }
+            if (bank_ok)
+            {
+                LLPipeline::materializeKaleidoPreset(active, std::string());
+            }
+            else
+            {
+                alDiopterAbortPresetSelection(AL_BANK_KALEIDO, "CineDiopterKalPreset", 0);
+            }
+        }
+    }
+    LLFloaterReg::add("ultimate_diopter", "floater_ultimate_diopter.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<ALFloaterUltimateDiopter>);
     LLFloaterReg::add("cine_light_cues", "floater_cine_light_cues.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<ALFloaterCineLightCues>);
     LLFloaterReg::add("flycam_recorder", "floater_flycam_recorder.xml", &LLFloaterReg::build<LLFloater>);
     LLFloaterReg::add("flycam_orbit", "floater_flycam_orbit.xml", &LLFloaterReg::build<LLFloater>);

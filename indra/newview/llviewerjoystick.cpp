@@ -2121,6 +2121,9 @@ void LLViewerJoystick::pollForXboxController()
         mXboxWasPresent = false;
         mXboxUserReleased = false;
         mXboxAutoGuid = LLSD();
+        // Guarantee one fresh enumeration on re-enable even if no device
+        // event fires in between.
+        mDeviceListDirty = true;
         return;
     }
 
@@ -2133,12 +2136,25 @@ void LLViewerJoystick::pollForXboxController()
         return;
     }
 
+    // EVENT-DRIVEN, not periodic: DI8 EnumDevices walks the HID/registry
+    // stack on the main thread (tens of ms on some driver stacks — a visible
+    // micro-stutter while filming), so it must never run on a timer. We
+    // enumerate only when WM_DEVICECHANGE marked the device list dirty
+    // (plug AND unplug both broadcast DBT_DEVNODES_CHANGED), plus once at
+    // startup. The short timer below is only a DEBOUNCE: one arrival can
+    // fire several WM_DEVICECHANGE messages, and the poll interval collapses
+    // that burst into a single enumeration.
+    if (!mDeviceListDirty)
+    {
+        return;
+    }
     static LLFrameTimer poll_timer;
     if (poll_timer.getElapsedTimeF32() < XBOX_DEVICE_POLL_SECONDS)
     {
         return;
     }
     poll_timer.reset();
+    mDeviceListDirty = false;
 
     if (!gViewerWindow || !gViewerWindow->getWindow())
     {
@@ -2151,7 +2167,20 @@ void LLViewerJoystick::pollForXboxController()
     const bool enumerated = gViewerWindow->getWindow()->getInputDevices(
         DI8DEVCLASS_GAMECTRL, osx_callback, win_callback, &probe);
 
-    if (!enumerated || !probe.mFound)
+    if (!enumerated)
+    {
+        // A transient EnumDevices FAILURE is not a disconnect: releasing an
+        // active pad and toasting on it would be wrong, and with event-driven
+        // scans there may be no later device event to correct the mistake.
+        // Preserve presence and re-arm so the next scan (debounced) retries.
+        mDeviceListDirty = true;
+        LL_WARNS("Joystick")
+            << "DirectInput device enumeration failed; will retry."
+            << LL_ENDL;
+        return;
+    }
+
+    if (!probe.mFound)
     {
         if (mXboxWasPresent)
         {
@@ -2211,9 +2240,12 @@ void LLViewerJoystick::pollForXboxController()
         !sameWindowsDeviceId(mLastDeviceUUID, probe.mGuid))
     {
         mXboxWasPresent = false;
+        // Event-driven scans need an explicit re-arm to retry a failed init
+        // (the debounce timer paces the retries to one per poll interval).
+        mDeviceListDirty = true;
         LL_WARNS("Joystick")
             << "Detected Xbox controller '" << probe.mProductName
-            << "' but could not initialize it; polling will retry."
+            << "' but could not initialize it; the next scan will retry."
             << LL_ENDL;
         return;
     }

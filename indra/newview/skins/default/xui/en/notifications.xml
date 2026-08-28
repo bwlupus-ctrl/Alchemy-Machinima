@@ -13676,4 +13676,23 @@ This cannot be undone.
     <tag>confirm</tag>
     <usetemplate name="okcancelbuttons" notext="Cancel" yestext="Reset All"/>
   </notification>
+
+  <!-- Ultimate Diopter Custom-bank state machine (design doc §6.3). -->
+  <notification
+   icon="alertmodal.tga"
+   name="DiopterPresetBankWriteFailed"
+   type="alertmodal">
+    <unique/>
+    Couldn't save your Custom diopter settings, so the preset wasn't applied. Your current settings are unchanged.
+    <tag>fail</tag>
+  </notification>
+
+  <notification
+   icon="alertmodal.tga"
+   name="DiopterPresetBankInvalidateFailed"
+   type="alertmodal">
+    <unique/>
+    Couldn't mark your Custom diopter bank unsafe on disk. To protect your settings, restoring it has been disabled for the rest of this session.
+    <tag>fail</tag>
+  </notification>
 </notifications>

@@ -200,7 +200,7 @@ PRED_NONE is not a truth-valued predicate. It marks a term that uses (mSetting, 
 | 93 | diopter_mag_scale | CineDiopterMagnifyScale | rst_CineDiopterMagnifyScale | AL_TOOL_DIOPTER | SEC_GLASS_OPTICS | false | false | TIER_UNARMED | 1 | C1{mTermCount=3}: Profile=Off AND Content=Diopter AND PRED_LENS_POWERED |
 | 94 | diopter_mag_trim | CineDiopterMagnifyTrim | rst_CineDiopterMagnifyTrim | AL_TOOL_DIOPTER | SEC_GLASS_OPTICS | false | false | TIER_OVERRIDDEN | 1 | C1{mTermCount=2}: Profile=Off AND Content=Diopter |
 | 95 | diopter_motion_mode | CineDiopterMotionMode | rst_CineDiopterMotionMode | AL_TOOL_DIOPTER | SEC_MOTION_PARAMS | true | false | TIER_MODE | 1 | C1{mTermCount=0}: ALWAYS |
-| 96 | diopter_motion_speed | CineDiopterMotionSpeed | rst_CineDiopterMotionSpeed | AL_TOOL_DIOPTER | SEC_MOTION_PARAMS | false | false | TIER_MODE | 1 | C1{mTermCount=1}: Motion{1,2,3,4,5,6,7,8,9,10,11} |
+| 96 | diopter_motion_speed | CineDiopterMotionSpeed | rst_CineDiopterMotionSpeed | AL_TOOL_DIOPTER | SEC_MOTION_PARAMS | false | false | TIER_MODE | 1 | C1{mTermCount=1}: Motion{1,2,3,4,6,7,8,9,10,11} |
 | 97 | diopter_motion_angle | CineDiopterMotionAngleDeg | rst_CineDiopterMotionAngleDeg | AL_TOOL_DIOPTER | SEC_MOTION_PARAMS | false | false | TIER_MODE | 1 | C1{mTermCount=1}: Motion{1,6} |
 | 98 | diopter_sweep_range | CineDiopterSweepRange | rst_CineDiopterSweepRange | AL_TOOL_DIOPTER | SEC_MOTION_PARAMS | false | false | TIER_MODE | 1 | C1{mTermCount=1}: Motion{1,9,11} |
 | 99 | diopter_ping_pong | CineDiopterSweepPingPong | rst_CineDiopterSweepPingPong | AL_TOOL_DIOPTER | SEC_MOTION_PARAMS | false | false | TIER_MODE | 1 | C1{mTermCount=1}: Motion{1} |
@@ -299,6 +299,7 @@ PRED_NONE is not a truth-valued predicate. It marks a term that uses (mSetting, 
 - Rows 135 / 139 kal_source_angle / kal_source_spin exclude modes 2 (Mirror Tile) and 8 (Pinwheel Lattice), neither of which reads feed (Codex 1.7 plus the rev-2 self-audit).
 - Rows 93–94 diopter_mag_scale / diopter_mag_trim need Profile = Off and Content = Diopter because magnify is forced to 1.f at pipeline.cpp:14252 and pipeline.cpp:14261-14264. Row 93 additionally needs PRED_LENS_POWERED: Magnify Scale is multiplied by strength_d, while Magnify Trim is additive in the exact expression at pipeline.cpp:14249-14251.
 - Rows 27 and 93 mPresetOwned are false: CineDiopterStarPoints and CineDiopterMagnifyScale are absent from both the 44-entry owned array at llviewerfloaterreg.cpp:571-588 and the 44 materializer writes at pipeline.cpp:13764-13807. (This derivation caught the design doc's illustrative rows marking both true; the doc was corrected to false in the same revision, so doc and table now agree.)
+- Row 96 (rev-6.1 implementation correction, Codex-adjudicated: the TABLE was wrong, not the renderer): Motion Speed excludes Motion{5}. Stutter deliberately runs on its own clock — `F32 ph = t_now * rate;` with `rate = llmax((F32)m_stutter_rate, 0.1f)` (pipeline.cpp:14128-14131) — and never reads the shared `tm = t_now * MotionSpeed` timeline. Rev 6 listed Motion{1..11} here (and design-doc §2.1's motion matrix shows Speed ✓ for Stutter — that cell is likewise wrong). Mask is Motion{1,2,3,4,6,7,8,9,10,11} = 0xFDE.
 
 ## Rev-5 row disagreement audit
 

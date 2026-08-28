@@ -1354,6 +1354,20 @@
       <key>Type</key><string>F32</string>
       <key>Value</key><real>0</real>
     </map>
+    <key>CineDiopterUIActiveOnly</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter floater: On hides controls that are not part of the current mode; Off shows them dimmed with an explanation instead (it cannot restore controls that live in a different mode's overlay panel -- see the floater's own tooltip)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>1</integer>
+    </map>
+    <key>CineDiopterUIRectVersion</key>
+    <map>
+      <key>Comment</key><string>Ultimate Diopter floater: internal saved-rect migration marker, bumped whenever the floater's min_height/min_width grow enough that an old saved rect could sit below the new floor. Not a user setting.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
     <key>CineLightRigEnabled</key>
     <map>
       <key>Comment</key><string>Master power for client-only prim-free cinematic light emitters. Session-only (Persist 0) so the rig always starts OFF at login; toggle it on per session as needed.</string>

@@ -2150,6 +2150,11 @@ bool LLViewerWindow::handleTimerEvent(LLWindow *window)
 
 bool LLViewerWindow::handleDeviceChange(LLWindow *window)
 {
+    // The Xbox auto-detect enumerates DirectInput ONLY when this flag is set
+    // (event-driven; the old periodic main-thread EnumDevices walk caused a
+    // micro-stutter every few seconds while filming).
+    LLViewerJoystick::getInstance()->setDeviceListDirty();
+
     // give a chance to use a joystick after startup (hot-plugging)
     if (!LLViewerJoystick::getInstance()->isJoystickInitialized() )
     {

@@ -79,7 +79,8 @@ LLComboBox::Params::Params()
     combo_button("combo_button"),
     combo_list("combo_list"),
     combo_editor("combo_editor"),
-    drop_down_button("drop_down_button")
+    drop_down_button("drop_down_button"),
+    wheel_select("wheel_select", true)
 {
     addSynonym(items, "combo_item");
 }
@@ -99,7 +100,8 @@ LLComboBox::LLComboBox(const LLComboBox::Params& p)
     mTextChangedCallback(p.text_changed_callback()),
     mListPosition(p.list_position),
     mLastSelectedIndex(-1),
-    mLabel(p.label)
+    mLabel(p.label),
+    mWheelSelect(p.wheel_select)
 {
     // Text label button
 
@@ -960,6 +962,16 @@ bool LLComboBox::handleScrollWheel(S32 x, S32 y, LLScrollDelta delta)
     if (mList->getVisible())
     {
         return mList->handleScrollWheel(x, y, delta);
+    }
+
+    // [AL] wheel_select opt-out: below this point a hovered wheel over a
+    // CLOSED combo changes the selection and commits. For combos where that
+    // is a semantic hazard rather than a harmless scrub (mode/preset jumps --
+    // see floater_ultimate_diopter.xml), refuse the event so it can bubble to
+    // an ancestor (e.g. a scroll container) instead.
+    if (!mWheelSelect)
+    {
+        return false;
     }
 
     if (mAllowTextEntry) // We might be editable

@@ -156,6 +156,14 @@ protected:
     void pollForXboxController();
     void loadDeviceIdFromSettings();
     void refreshFromSettings();
+public:
+    // WM_DEVICECHANGE (via LLViewerWindow::handleDeviceChange) marks the
+    // device list dirty; pollForXboxController only enumerates DirectInput
+    // when this is set. Eliminates the periodic main-thread DI8 EnumDevices
+    // walk (a filming micro-stutter every few seconds) — enumeration now
+    // happens only on actual plug/unplug events and once at startup.
+    void setDeviceListDirty() { mDeviceListDirty = true; }
+private:
 #if LIB_NDOF
     static NDOF_HotPlugResult HotPlugAddCallback(NDOF_Device *dev);
     static void HotPlugRemovalCallback(NDOF_Device *dev);
@@ -174,6 +182,7 @@ private:
     bool                    mXboxWasPresent;
     bool                    mXboxUserReleased;   // user manually chose a different device after the auto Xbox handoff; respect it this session
     LLSD                    mXboxAutoGuid;        // GUID the auto-poll handed off to, for detecting a manual override
+    bool                    mDeviceListDirty = true;  // true at startup so the first scan enumerates once
 
     // Windows: _GUID as U8 binary map
     // MacOS: long as an U8 binary map

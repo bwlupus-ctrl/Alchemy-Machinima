@@ -89,6 +89,13 @@ public:
 
         Multiple<ItemParams>                items;
 
+        // [AL] Opt-out: a hovered wheel over a CLOSED combo normally changes
+        // the selection and commits (llcombobox.cpp:958-1000). Default true
+        // preserves that behavior everywhere; set false per-combo where a
+        // stray wheel click is a semantic hazard rather than a harmless
+        // scrub (e.g. mode/preset combos -- see floater_ultimate_diopter.xml).
+        Optional<bool>                      wheel_select;
+
         Params();
     };
 
@@ -263,6 +270,7 @@ private:
     boost::signals2::connection mImageLoadedConnection;
     commit_signal_t     mOnReturnSignal;
     S32                 mLastSelectedIndex;
+    bool                mWheelSelect; // [AL] wheel_select opt-out; see Params::wheel_select
 };
 
 // A combo box with icons for the list of items.

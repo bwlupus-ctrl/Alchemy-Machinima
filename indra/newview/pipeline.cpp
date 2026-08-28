@@ -33,6 +33,7 @@
 #include "alcinelightrig.h"
 #include "alcinelightrigmanager.h"
 #include "alcinelightrigmodel.h"
+#include "aldiopterrelevance.h"      // [Ultimate Diopter] shared armed-state helpers, wave 2
 #include "alweathermodel.h"
 
 // library includes
@@ -13739,7 +13740,13 @@ static void alDiopterResolveLook(U32 preset_id, ALDiopterLook& o)
     }
 }
 
-bool LLPipeline::sDiopterPresetMaterializing = false;
+// [Ultimate Diopter] §5.3 / wave-2 floater state -- published every frame by
+// alDiopterResolveBaseFocus() via the call-swap-6 site in
+// renderUltimateDiopter, since the floater's refresh runs outside that
+// function. Conservative initial value (MANUAL, the factory slider default)
+// until the first frame with the effect enabled runs.
+ALDiopterFocusProvenance LLPipeline::sDiopterBaseFocusProvenance = AL_DIOPTER_FOCUS_MANUAL;
+F32 LLPipeline::sDiopterBaseFocusResolvedM = 8.f;
 
 // static
 void LLPipeline::materializeDiopterPreset(U32 preset_id, const std::string& edited_control)
@@ -13749,8 +13756,11 @@ void LLPipeline::materializeDiopterPreset(U32 preset_id, const std::string& edit
 
     // Writing equal values does not fire commit signals (LLControlVariable
     // only fires on change), but changed fields would re-enter the
-    // auto-Custom listener without this guard.
-    sDiopterPresetMaterializing = true;
+    // auto-Custom listener without this guard. RAII (not a raw flag write)
+    // because the abort path (alDiopterAbortPresetSelection,
+    // aldiopterpresetbank.cpp) can nest a second materialize-guard scope
+    // inside this one -- see §6.3.
+    ALScopedPresetMaterializing guard;
 
     auto putU = [&edited_control](const char* name, U32 v)
     {
@@ -13805,8 +13815,53 @@ void LLPipeline::materializeDiopterPreset(U32 preset_id, const std::string& edit
     putF("CineDiopterHandheldSpeed", look.mHandheldSpeed);
     putF("CineDiopterSpinSpeed", look.mSpinSpeed);
     putF("CineDiopterSeamGhostPx", look.mSeamPx);
+}
 
-    sDiopterPresetMaterializing = false;
+// [Ultimate Diopter] §5.3 / call-swap 6 -- the base-focus resolver, extracted
+// verbatim from the branch structure that used to live inline in
+// renderUltimateDiopter, so the renderer and the wave-2 floater
+// (ALFloaterUltimateDiopter) can never disagree about which state produced
+// base_focus_m. A branch that does NOT replace out_m leaves out_prov MANUAL
+// -- that is the "dead-via-fallback" state design doc row 38 (Base
+// Distance) keys on: the slider is live only when BOTH camera-focus
+// branches fail to resolve a target.
+void alDiopterResolveBaseFocus(F32 slider_m, U32 focus_mode, bool dof_focus_live,
+                                F32& out_m, ALDiopterFocusProvenance& out_prov)
+{
+    out_m = llclamp(slider_m, 0.1f, 4096.f);
+    out_prov = AL_DIOPTER_FOCUS_MANUAL;
+
+    if (focus_mode == 1U && dof_focus_live)
+    {
+        LLViewerCamera* camera = LLViewerCamera::getInstance();
+        F32 d = (LLPipeline::sLastFocusPoint - camera->getOrigin()) * camera->getAtAxis();
+        if (d > 0.05f)
+        {
+            out_m = llclamp(d, 0.1f, 4096.f);
+            out_prov = AL_DIOPTER_FOCUS_DOF_LIVE;
+        }
+    }
+    else if (focus_mode == 1U)
+    {
+        // camera focus must not silently degrade to manual when viewer DoF
+        // is off: sLastFocusPoint is stale in that state, so fall back to
+        // the camera's own alt-zoom focus target (same idiom as renderDoF).
+        LLViewerCamera* camera = LLViewerCamera::getInstance();
+        LLViewerRegion* region = gAgent.getRegion();
+        if (region)
+        {
+            LLVector3 focus_agent = LLVector3(gAgentCamera.getFocusGlobal() - region->getOriginGlobal());
+            if (!focus_agent.isExactlyZero())
+            {
+                F32 d = (focus_agent - camera->getOrigin()) * camera->getAtAxis();
+                if (d > 0.05f)
+                {
+                    out_m = llclamp(d, 0.1f, 4096.f);
+                    out_prov = AL_DIOPTER_FOCUS_ALT_ZOOM;
+                }
+            }
+        }
+    }
 }
 
 bool LLPipeline::renderUltimateDiopter(LLRenderTarget* src, LLRenderTarget* dst)
@@ -14151,7 +14206,7 @@ bool LLPipeline::renderUltimateDiopter(LLRenderTarget* src, LLRenderTarget* dst)
     // handheld life: additive figure-8 gait + noise drift + focus breath
     F32 handheld_focus_off = 0.f;
     F32 handheld_sway_deg = 0.f;
-    if (handheld > 0.f)
+    if (alDiopterHandheldArmed(handheld))  // [Ultimate Diopter] call-swap 4
     {
         F32 th = t_now * handheld_speed;
         F32 gait_x = sinf(th * TAU) * 0.5f;
@@ -14200,60 +14255,40 @@ bool LLPipeline::renderUltimateDiopter(LLRenderTarget* src, LLRenderTarget* dst)
     F32 eff_angle_rad = ((F32)s_angle + spin_deg + handheld_sway_deg + stutter_angle_deg) * DEG;
 
     // ---- focus planes in view meters --------------------------------------
-    F32 base_focus_m = llclamp((F32)f_base_m, 0.1f, 4096.f);
-    if ((U32)f_focus_mode == 1U && dof_focus_live)
-    {
-        LLViewerCamera* camera = LLViewerCamera::getInstance();
-        F32 d = (sLastFocusPoint - camera->getOrigin()) * camera->getAtAxis();
-        if (d > 0.05f)
-        {
-            base_focus_m = llclamp(d, 0.1f, 4096.f);
-        }
-    }
-    else if ((U32)f_focus_mode == 1U)
-    {
-        // camera focus must not silently degrade to manual when viewer DoF
-        // is off: sLastFocusPoint is stale in that state, so fall back to
-        // the camera's own alt-zoom focus target (same idiom as renderDoF).
-        LLViewerCamera* camera = LLViewerCamera::getInstance();
-        LLViewerRegion* region = gAgent.getRegion();
-        if (region)
-        {
-            LLVector3 focus_agent = LLVector3(gAgentCamera.getFocusGlobal() - region->getOriginGlobal());
-            if (!focus_agent.isExactlyZero())
-            {
-                F32 d = (focus_agent - camera->getOrigin()) * camera->getAtAxis();
-                if (d > 0.05f)
-                {
-                    base_focus_m = llclamp(d, 0.1f, 4096.f);
-                }
-            }
-        }
-    }
+    // [Ultimate Diopter] call-swap 6: extracted verbatim into
+    // alDiopterResolveBaseFocus() (below renderUltimateDiopter's caller-side
+    // helpers) so the wave-2 floater can read the SAME provenance the
+    // renderer resolved this frame instead of re-deriving it from
+    // gSavedSettings + camera state and risking drift (design doc §5.3).
+    F32 base_focus_m;
+    ALDiopterFocusProvenance base_focus_prov;
+    alDiopterResolveBaseFocus((F32)f_base_m, (U32)f_focus_mode, dof_focus_live,
+                               base_focus_m, base_focus_prov);
+    LLPipeline::sDiopterBaseFocusProvenance = base_focus_prov;
+    LLPipeline::sDiopterBaseFocusResolvedM = base_focus_m;
 
-    F32 lens_focus_m;
-    if ((U32)f_lens_mode == 1U)
-    {
-        lens_focus_m = llclamp((F32)f_lens_m, 0.1f, 4096.f);
-    }
-    else
-    {
-        // thin-lens close-up: s' = 1 / (1/s + D); +D pulls focus nearer
-        F32 denom = 1.f / base_focus_m + power;
-        lens_focus_m = (denom > 1e-4f) ? llclamp(1.f / denom, 0.1f, 4096.f) : 4096.f;
-    }
+    // [Ultimate Diopter] call-swap 2
+    F32 lens_focus_m = alDiopterLensFocusM((U32)f_lens_mode, (F32)f_lens_m, base_focus_m, power);
 
     // aberration driver: optical strength in diopters. No minimum clamp:
     // equal planes / zero power must be optically neutral (no magnify, CA,
     // field curvature, or vignette).
-    F32 strength_d = llclamp(fabsf(1.f / lens_focus_m - 1.f / base_focus_m), 0.f, 10.f);
+    F32 strength_d = alDiopterStrengthD(lens_focus_m, base_focus_m);  // [Ultimate Diopter] call-swap 3
 
     F32 magnify = llmax(1.f, 1.f + strength_d * 0.010f * (F32)g_mag_scale + (F32)g_mag_trim);
-    if (profile > 0) magnify = 1.f;               // refraction owns magnification
+    if (alDiopterRefractionArmed(profile)) magnify = 1.f;  // [Ultimate Diopter] call-swap 5 -- refraction owns magnification
     F32 field_curve = llclamp(strength_d * 0.15f * character * (F32)g_field_scale, 0.f, 1.f);
     F32 axial_ca_m = strength_d * 0.004f * character * (F32)g_axial_scale * lens_focus_m;
     F32 ca_mag = strength_d * 0.15f * character * (F32)g_ca_scale * 0.01f;
     F32 edge_vig = strength_d * 0.02f * character * (F32)g_vig_scale;
+
+    // [Ultimate Diopter] call-swap 7 -- Layer-3 runtime differential (design
+    // doc §2.3): assert the shared UI-facing predicate helpers agree with
+    // this frame's actual armed state, so a future edit to either side that
+    // breaks the other is caught in a debug build rather than only by the
+    // (separate) 1580-case sweep corpus.
+    llassert(alDiopterFieldCurveArmed(strength_d, character, (F32)g_field_scale) == (field_curve > 0.f));
+    llassert(alDiopterAberrationArmed(strength_d, character) == (strength_d > 0.f && character > 0.f));
 
     // rack/breath modulation of the lens plane, then Sharp Window override
     lens_focus_m = lens_focus_m * (1.f - focus_rack) + base_focus_m * focus_rack;
@@ -14347,9 +14382,8 @@ bool LLPipeline::renderUltimateDiopter(LLRenderTarget* src, LLRenderTarget* dst)
     // halo2.w gates the whole warp: the shader's annulus reconstruction is
     // only an identity inside the band, so it must be skipped entirely
     // whenever every fold/twist/lobe/pattern/zoom term is neutral
-    bool warp_active = (pattern_mode > 0) || (ring_fold > 1e-3f) ||
-                       (fabsf(twist_deg) > 1e-2f) || (lobe_amt > 1e-3f) ||
-                       (fabsf(pattern_zoom - 1.f) > 1e-3f);
+    bool warp_active = alDiopterWarpArmed(pattern_mode, ring_fold, twist_deg,
+                                          lobe_amt, pattern_zoom);  // [Ultimate Diopter] call-swap 1
 
     gather_prog.uniform4f(LLShaderMgr::DIOPTER_HALO, ring_count, ring_fold,
                           twist_deg * DEG, ring_phase);
@@ -14862,8 +14896,10 @@ void LLPipeline::materializeKaleidoPreset(U32 preset_id, const std::string& edit
 
     // Writing equal values does not fire commit signals (LLControlVariable
     // only fires on change), but changed fields would re-enter the
-    // auto-Custom listener without this guard.
-    sDiopterPresetMaterializing = true;
+    // auto-Custom listener without this guard. RAII (not a raw flag write)
+    // for the same nesting-safety reason as materializeDiopterPreset -- see
+    // §6.3.
+    ALScopedPresetMaterializing guard;
 
     auto putU = [&edited_control](const char* name, U32 v)
     {
@@ -14927,9 +14963,14 @@ void LLPipeline::materializeKaleidoPreset(U32 preset_id, const std::string& edit
     putF("CineDiopterKalCellSubdiv", look.mCellSubdiv);
     putF("CineDiopterKalCellMerge", look.mCellMerge);
     putF("CineDiopterKalCellTint", look.mCellTint);
-
-    sDiopterPresetMaterializing = false;
 }
+
+// [Ultimate Diopter] §6.3 piece 2f's write-back revert failure path
+// (alDiopterAbortPresetSelection) now lives in aldiopterpresetbank.cpp,
+// alongside the rest of the guard/reason state machine (Codex review
+// finding F6) -- moved out of this file so it, and
+// alDiopterHandlePresetTransition, have no rendering-pipeline dependency
+// and can be linked into tests/aldiopterpresetbank_test.cpp directly.
 
 bool LLPipeline::renderUltimateKaleidoscope(LLRenderTarget* src, LLRenderTarget* dst)
 {

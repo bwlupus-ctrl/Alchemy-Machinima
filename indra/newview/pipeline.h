@@ -47,6 +47,8 @@
 #include "llprismlens.h"
 #include "lluuid.h"                 // [GhostDeferred] coverage-map key
 #include "llghostcoverage.h"        // [GhostDeferred] per-category coverage mask
+#include "aldiopterpresetbank.h"    // [Ultimate Diopter] ALDiopterBankKind, §6.3
+#include "aldiopterrelevance.h"     // [Ultimate Diopter] ALDiopterFocusProvenance, wave 2
 
 #include <stack>
 #include <set>
@@ -191,10 +193,23 @@ public:
     // [Ultimate Diopter] write the given preset's resolved style/motion look
     // into the CineDiopter* sliders (skipping edited_control, which holds the
     // user's fresh edit) so flipping to Custom preserves the on-screen look.
-    // sDiopterPresetMaterializing guards the auto-Custom listener against
-    // re-entry while the write-back runs.
+    // Guarded by ALScopedPresetMaterializing (aldiopterpresetbank.h) against
+    // re-entering the auto-Custom listener while the write-back runs. The
+    // guard/reason-flag state machine that used to live here as
+    // sDiopterPresetMaterializing / ALPresetExit / ScopedPresetMaterializing
+    // moved to aldiopterpresetbank.h/.cpp (Codex review finding F6) so
+    // aldiopterpresetbank.cpp's alDiopterHandlePresetTransition -- and its
+    // unit test -- have no rendering-pipeline dependency.
     static void materializeDiopterPreset(U32 preset_id, const std::string& edited_control);
-    static bool sDiopterPresetMaterializing;
+
+    // [Ultimate Diopter] §5.3 / wave-2 floater state -- the base-focus
+    // resolver's last result (call-swap 6, alDiopterResolveBaseFocus() at
+    // file scope in pipeline.cpp), published every frame so
+    // ALFloaterUltimateDiopter can read provenance without re-deriving it --
+    // its refresh runs outside renderUltimateDiopter.
+    static ALDiopterFocusProvenance sDiopterBaseFocusProvenance;
+    static F32 sDiopterBaseFocusResolvedM;
+
     // [Ultimate Kaleidoscope] tool mode 1 of the Ultimate Diopter post pass:
     // single full-screen MRT pass into mDiopterMap (color + unused + warp
     // uv), then attachment 0 copied src -> dst (caller swaps either way).
@@ -205,8 +220,9 @@ public:
     // [Ultimate Kaleidoscope] write the given preset's resolved style/motion
     // look into the CineDiopterKal* sliders (skipping edited_control, which
     // holds the user's fresh edit) so flipping to Custom preserves the
-    // on-screen look. Reuses sDiopterPresetMaterializing — the diopter and
-    // kaleidoscope tool modes never materialize concurrently.
+    // on-screen look. Guarded by the same ALScopedPresetMaterializing as
+    // materializeDiopterPreset -- the diopter and kaleidoscope tool modes
+    // never materialize concurrently.
     static void materializeKaleidoPreset(U32 preset_id, const std::string& edited_control);
     // [BDMerge G3.2] volumetric lighting (donor: Black Dragon)
     void renderVolumetric(LLRenderTarget* src, LLRenderTarget* dst);
@@ -1917,6 +1933,24 @@ public:
 
 void render_bbox(const LLVector3 &min, const LLVector3 &max);
 void render_hud_elements();
+
+// [Ultimate Diopter] §6.3 piece 2f's write-back revert failure path --
+// alDiopterAbortPresetSelection -- and the guard/reason state machine it
+// runs under now live in aldiopterpresetbank.h (Codex review finding F6),
+// not here; this header only includes that one for ALDiopterBankKind.
+
+// [Ultimate Diopter] §5.3 / wave-1 handoff call-swap 6 -- the base-focus
+// resolver, extracted verbatim from renderUltimateDiopter's inline branch
+// structure so the UI (ALFloaterUltimateDiopter) and the renderer can never
+// disagree about which state produced base_focus_m. `slider_m` is the raw
+// CineDiopterBaseFocusM value (not yet clamped); `focus_mode` is
+// CineDiopterFocusMode (0 manual, 1 camera); `dof_focus_live` mirrors the
+// renderer's own gate (RenderDepthOfField && ... &&
+// !sLastFocusPoint.isExactlyZero()). A branch that does NOT replace out_m
+// leaves out_prov MANUAL -- the "dead-via-fallback" state design doc row 38
+// keys on.
+void alDiopterResolveBaseFocus(F32 slider_m, U32 focus_mode, bool dof_focus_live,
+                                F32& out_m, ALDiopterFocusProvenance& out_prov);
 
 extern LLPipeline gPipeline;
 extern bool gDebugPipeline;

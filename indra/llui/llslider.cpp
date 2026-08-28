@@ -293,7 +293,27 @@ bool LLSlider::handleScrollWheel(S32 x, S32 y, LLScrollDelta delta)
     // increment (wheel up = increase), giving precision control without dragging.
     if ( mOrientation == VERTICAL || (mWheelAdjust && mOrientation == HORIZONTAL) )
     {
-        F32 new_val = getValueF32() - delta.mClicks * getIncrement();
+        // [Ultimate Diopter] design doc §4.3 -- Ctrl OR Alt held = a x10
+        // coarse step (matching LLSpinCtrl's own Ctrl/Alt/Shift modifier
+        // convention, llspinctrl.cpp:176-190, which uses Alt for its x10
+        // case), for the handful of large-range sliders (e.g. Kaleido
+        // Twist, -720..720 by 1) where one click of plain wheel_adjust
+        // would take 1000+ clicks end to end. Coarse only, no fine
+        // modifier: a fine step (e.g. increment*0.1) would need
+        // setValueAndCommit() to pass a precision_override flag through to
+        // setValue() (llslider.cpp's own setValue() already snaps to a
+        // multiple of mIncrement, llslider.cpp:101-114), which
+        // setValueAndCommit() does not plumb today and which would change
+        // behaviour for every wheel_adjust slider already shipping in the
+        // viewer, not just this floater's. step*10 stays an exact multiple
+        // of mIncrement, so that snapping is a no-op and no such plumbing
+        // is needed.
+        F32 step = getIncrement();
+        if (gKeyboard && (gKeyboard->getKeyDown(KEY_CONTROL) || gKeyboard->getKeyDown(KEY_ALT)))
+        {
+            step *= 10.f;
+        }
+        F32 new_val = getValueF32() - delta.mClicks * step;
         setValueAndCommit(new_val);
         return true;
     }
