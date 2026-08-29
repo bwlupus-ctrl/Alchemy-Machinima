@@ -17,6 +17,7 @@
 #include <algorithm>                // std::reverse (path reverse op)
 #include <cmath>                    // std::isfinite
 #include <functional>               // bounded adaptive arc subdivision
+#include <limits>                   // bounded activation offset conversion
 #include <set>                      // collectGhostBatches (wanted-actor set)
 
 #include "alobjectpathmover.h"      // heading preview also draws enrolled PROP paths
@@ -72,6 +73,12 @@ extern bool gCubeSnapshot;
 
 namespace
 {
+// Scene loading and live authoring share these hard path compilation bounds.
+constexpr S32 MAX_PATH_NODES = 4096;
+constexpr S32 MAX_ARC_SAMPLES_PER_SEGMENT = 4096;
+constexpr S32 MAX_ARC_SAMPLES_PER_PATH = 65536;
+constexpr F32 SYNC_SEEK_SNAP_M = 1.0f;
+
 // [Director] roster storage moved into LLDirectorCast (the roster IS the
 // cast); this stays the single resolution path for mover call sites.
 // null id = my avatar; a stale roster id (actor left the region) resolves to
@@ -187,11 +194,14 @@ bool LLActorMover::startLocalMotion(LLVOAvatar* av, LocalMotionHandle& handle,
     handle.mSourceAnim = source_anim;
     handle.mActualAnim = source_anim;
     handle.mOwnerToken.generate();
+
+    // AO discovery must be observational. AOEngine::override() is a global
+    // state transition that can stop the current stand/gait and send simulator
+    // requests; a local Director clip must never use it as a lookup function.
     if (allow_ao && av->isSelf() &&
         gSavedPerAccountSettings.getBOOL("AlchemyAOEnable"))
     {
-        handle.mAOActive = true;
-        const LLUUID replacement = AOEngine::instance().override(source_anim, true);
+        const LLUUID replacement = AOEngine::instance().resolveAnimation(source_anim);
         if (replacement.notNull())
         {
             handle.mActualAnim = replacement;
@@ -202,10 +212,6 @@ bool LLActorMover::startLocalMotion(LLVOAvatar* av, LocalMotionHandle& handle,
     const bool signaled = av->isAnyAnimationSignaled(&handle.mActualAnim, 1);
     if (was_active && signaled)
     {
-        if (handle.mAOActive)
-        {
-            AOEngine::instance().override(handle.mSourceAnim, false);
-        }
         handle.clear();
         return false;
     }
@@ -215,10 +221,6 @@ bool LLActorMover::startLocalMotion(LLVOAvatar* av, LocalMotionHandle& handle,
         (external_sample && (!motion->supportsExternalSampling() ||
          !motion->claimPresentationControl(handle.mOwnerToken))))
     {
-        if (handle.mAOActive)
-        {
-            AOEngine::instance().override(handle.mSourceAnim, false);
-        }
         handle.clear();
         return false;
     }
@@ -241,16 +243,24 @@ bool LLActorMover::startLocalMotion(LLVOAvatar* av, LocalMotionHandle& handle,
         }
         if (external_sample && !handle.mPendingLoad)
         {
-            const F32 loop_in = keyframe->getLoopIn();
-            const F32 cycle = keyframe->getLoopOut() - loop_in;
-            activation_offset = loop_in;
+            const F64 loop_in = (F64)keyframe->getLoopIn();
+            const F64 cycle = (F64)keyframe->getLoopOut() - loop_in;
+            F64 bounded_offset = loop_in;
             if (cycle > 0.001f)
             {
-                while (activation_offset <= motion->getEaseInDuration() + 0.001f)
+                const F64 threshold = (F64)motion->getEaseInDuration() + 0.001;
+                if (bounded_offset <= threshold)
                 {
-                    activation_offset += cycle;
+                    // Small authoring cycles and large ease values must not
+                    // turn activation into an unbounded per-frame loop.
+                    const F64 cycles = std::floor((threshold - bounded_offset) /
+                                                  cycle) + 1.0;
+                    bounded_offset += cycles * cycle;
                 }
             }
+            activation_offset = (F32)llmin(
+                bounded_offset,
+                (F64)std::numeric_limits<F32>::max());
         }
     }
 
@@ -265,10 +275,6 @@ bool LLActorMover::startLocalMotion(LLVOAvatar* av, LocalMotionHandle& handle,
             {
                 motion->releasePresentationControl(handle.mOwnerToken);
             }
-            if (handle.mAOActive)
-            {
-                AOEngine::instance().override(handle.mSourceAnim, false);
-            }
             handle.clear();
             return false;
         }
@@ -282,18 +288,10 @@ bool LLActorMover::startLocalMotion(LLVOAvatar* av, LocalMotionHandle& handle,
 
 void LLActorMover::stopLocalMotion(LLVOAvatar* av, LocalMotionHandle& handle)
 {
-    if (!handle.valid() && !handle.mAOActive)
+    if (!handle.valid())
     {
         handle.clear();
         return;
-    }
-    if (!av && handle.mAOActive && isAgentAvatarValid())
-    {
-        av = gAgentAvatarp;
-    }
-    if (handle.mAOActive && handle.mSourceAnim.notNull())
-    {
-        AOEngine::instance().override(handle.mSourceAnim, false);
     }
     if (av && handle.mActualAnim.notNull())
     {
@@ -304,8 +302,12 @@ void LLActorMover::stopLocalMotion(LLVOAvatar* av, LocalMotionHandle& handle)
                 motion->releasePresentationControl(handle.mOwnerToken);
             }
         }
-        if (handle.mOwnsMotion &&
-            (av->isSelf() || !av->isAnyAnimationSignaled(&handle.mActualAnim, 1)))
+        // Ownership can change after a local start: if the simulator now
+        // signals this UUID, release presentation control but leave the
+        // simulator-owned motion alive for both self and non-self avatars.
+        const bool signaled =
+            av->isAnyAnimationSignaled(&handle.mActualAnim, 1);
+        if (handle.mOwnsMotion && !signaled)
         {
             av->LLCharacter::stopMotion(handle.mActualAnim, true);
         }
@@ -443,8 +445,14 @@ S32 LLActorMover::desiredLocomotionRole(LLVOAvatar* av, const Move& mv,
     if (mv.mAirborne)
     {
         // Air paths never silently fall back to a walking body clip. Hover is
-        // the low-speed boundary role; missing sparse roles fail soft to no clip.
-        return speed < 0.15f ? Cast::LOCO_HOVER : Cast::LOCO_FLY;
+        // the low-speed boundary role; separate entry/exit thresholds prevent
+        // noisy speeds around the boundary from rebuilding the gait each frame.
+        // Missing sparse roles still fail soft to no clip.
+        constexpr F32 HOVER_TO_FLY_MPS = 0.20f;
+        constexpr F32 FLY_TO_HOVER_MPS = 0.10f;
+        const F32 threshold = mv.mRole == Cast::LOCO_FLY
+            ? FLY_TO_HOVER_MPS : HOVER_TO_FLY_MPS;
+        return speed < threshold ? Cast::LOCO_HOVER : Cast::LOCO_FLY;
     }
     LLUUID walk_anim, run_anim;
     F32 walk_nominal = 3.f, run_nominal = 3.f;
@@ -555,6 +563,14 @@ void LLActorMover::updateLocomotionGait(LLVOAvatar* av, Move& mv, F32 speed,
 {
     using Cast = LLDirectorCast;
     const S32 desired = desiredLocomotionRole(av, mv, llmax(speed, 0.f));
+    // A load failure, controller purge, or external stop may invalidate the
+    // owned primary between frames. Never let the role marker suppress a
+    // deterministic restart attempt (the failed-asset quarantine still gates
+    // a known bad UUID in beginLocomotionTransition()).
+    if (!mv.mLocomotion.valid() && !mv.mSecondaryLocomotion.valid())
+    {
+        mv.mRole = Cast::LOCO_NONE;
+    }
     if (desired == Cast::LOCO_NONE)
     {
         return;
@@ -724,6 +740,42 @@ void LLActorMover::stopLocomotion(LLVOAvatar* av, Move& mv)
 
 void LLActorMover::updateLocomotionSample(LLVOAvatar* av, Move& mv)
 {
+    auto clean_lost_motion = [this, av](LocalMotionHandle& handle)
+    {
+        if (!av || !handle.valid())
+        {
+            return false;
+        }
+        LLMotion* motion = av->findMotion(handle.mActualAnim);
+        if (!motion)
+        {
+            return false; // failed-load quarantine below owns missing instances
+        }
+        const bool active_or_loading = handle.mPendingLoad ||
+            av->isMotionActive(handle.mActualAnim);
+        if (active_or_loading &&
+            (!handle.mControlsMotion ||
+             motion->isPresentationControlledBy(handle.mOwnerToken)))
+        {
+            return false;
+        }
+        stopLocalMotion(av, handle);
+        return true;
+    };
+    if (clean_lost_motion(mv.mLocomotion))
+    {
+        // Do not quarantine an externally stopped/ownership-lost clip as bad;
+        // clear the role marker so the next gait update can reacquire it.
+        mv.mRole = LLDirectorCast::LOCO_NONE;
+        mv.mAnim.setNull();
+    }
+    if (clean_lost_motion(mv.mSecondaryLocomotion))
+    {
+        mv.mSecondaryRole = LLDirectorCast::LOCO_NONE;
+        mv.mTransitionElapsed = 0.f;
+        setLocalMotionWeight(av, mv.mLocomotion, 1.f);
+    }
+
     auto clean_failed_motion = [this, av](LocalMotionHandle& handle)
     {
         if (!av || !handle.valid())
@@ -734,8 +786,8 @@ void LLActorMover::updateLocomotionSample(LLVOAvatar* av, Move& mv)
         if (!motion)
         {
             // The controller deletes a failed loading motion from its canonical
-            // map. Balance AO and clear our token even when there is no longer
-            // an instance on which presentation control can be released.
+            // map. Clear our token even when there is no longer an instance on
+            // which presentation control can be released.
             stopLocalMotion(av, handle);
             return true;
         }
@@ -1061,7 +1113,6 @@ void LLActorMover::Path::rebuild()
     constexpr F64 POSITION_TOLERANCE_M = 0.005;
     constexpr F64 LENGTH_EXCESS_TOLERANCE_M = 0.002;
     constexpr S32 MAX_RECURSION_DEPTH = 12;
-    constexpr S32 MAX_SAMPLES_PER_SEGMENT = 4096;
 
     F64 acc = 0.0;
     LLVector3d prev = evalSegment(0, 0.f);
@@ -1088,6 +1139,9 @@ void LLActorMover::Path::rebuild()
         return (p - (a + ab * u)).length();
     };
 
+    // One accepted leaf retains four evaluator samples. Reserve one leaf for
+    // every remaining segment; unused leaves roll forward to later segments.
+    S32 remaining_leaf_budget = (MAX_ARC_SAMPLES_PER_PATH - 1) / 4;
     for (S32 s = 0; s < segs; ++s)
     {
         const LLVector3d p0 = evalSegment(s, 0.f);
@@ -1095,6 +1149,7 @@ void LLActorMover::Path::rebuild()
         std::function<void(F32, const LLVector3d&, F32, const LLVector3d&,
                            S32, S32)>
             subdivide;
+        S32 leaves_used = 0;
         subdivide = [&](F32 t0, const LLVector3d& a,
                         F32 t1, const LLVector3d& b, S32 depth,
                         S32 leaf_budget)
@@ -1121,7 +1176,7 @@ void LLActorMover::Path::rebuild()
             {
                 // Allocate disjoint leaf budgets to the two branches. A leaf
                 // retains exactly four samples, so no recursion/unwind order
-                // can exceed MAX_SAMPLES_PER_SEGMENT.
+                // can exceed its segment or whole-path sample budget.
                 const S32 left_budget = leaf_budget / 2;
                 subdivide(t0, a, tm, m, depth + 1, left_budget);
                 subdivide(tm, m, t1, b, depth + 1,
@@ -1132,6 +1187,7 @@ void LLActorMover::Path::rebuild()
             // Retain all samples used by the accepted error estimate. This
             // keeps distance-to-parameter inversion faithful without a second
             // evaluator pass and guarantees the authored endpoint is present.
+            ++leaves_used;
             const F32 times[4] = { tq, tm, tr, t1 };
             const LLVector3d points[4] = { q, m, r, b };
             for (S32 i = 0; i < 4; ++i)
@@ -1142,8 +1198,12 @@ void LLActorMover::Path::rebuild()
             }
         };
 
-        subdivide(0.f, p0, 1.f, p1, 0,
-                  MAX_SAMPLES_PER_SEGMENT / 4);
+        const S32 remaining_segments = segs - s;
+        const S32 segment_leaf_budget = llclamp(
+            remaining_leaf_budget / remaining_segments, 1,
+            MAX_ARC_SAMPLES_PER_SEGMENT / 4);
+        subdivide(0.f, p0, 1.f, p1, 0, segment_leaf_budget);
+        remaining_leaf_budget -= leaves_used;
         mNodeDist.push_back((F32)acc);      // node (s+1) at the end of segment s
     }
     mTotalLength = (F32)acc;
@@ -1397,11 +1457,10 @@ LLSD LLActorMover::pathSceneData(const LLUUID& actor_id) const
 
 bool LLActorMover::applyPathSceneData(const LLUUID& actor_id, const LLSD& data)
 {
-    constexpr S32 MAX_SCENE_NODES = 4096;
     constexpr S32 PATH_SCHEMA = 1;
     if (!data.isMap() || data["schema"].asInteger() != PATH_SCHEMA ||
         !data["nodes"].isArray() ||
-        data["nodes"].size() > MAX_SCENE_NODES)
+        data["nodes"].size() > MAX_PATH_NODES)
     {
         return false;
     }
@@ -1493,6 +1552,11 @@ void LLActorMover::appendWaypointHere(const LLUUID& actor_id)
     {
         return;
     }
+    Path& path = mPaths[av->getID()];
+    if (path.mNodes.size() >= static_cast<size_t>(MAX_PATH_NODES))
+    {
+        return;
+    }
     // Store the node at FOOT/GROUND level (mPosGlobal) AND the authored root
     // height above that ground (mRootAbove). The ground level: drop the
     // pelvis-to-foot from the rendered root, then ground-snap so the node lands
@@ -1513,7 +1577,6 @@ void LLActorMover::appendWaypointHere(const LLUUID& actor_id)
     wp.mPosGlobal = gAgent.getPosGlobalFromAgent(foot);
     wp.mRootAbove = root.mV[VZ] - ground_z;     // captured standing height above ground
 
-    Path& path = mPaths[av->getID()];
     path.mNodes.push_back(wp);
     path.markDirty();
     LL_INFOS("ActorMover") << "path waypoint " << path.mNodes.size()
@@ -1553,6 +1616,10 @@ F32 capture_root_above(LLVOAvatar* av)
 S32 LLActorMover::appendWaypointAt(const LLUUID& actor_id, const LLVector3d& ground_pos)
 {
     Path& path = editPath(actor_id);
+    if (path.mNodes.size() >= static_cast<size_t>(MAX_PATH_NODES))
+    {
+        return -1;
+    }
     Waypoint wp;
     wp.mPosGlobal = ground_pos;
     wp.mRootAbove = capture_root_above(resolve_actor(actor_id));
@@ -1564,6 +1631,10 @@ S32 LLActorMover::appendWaypointAt(const LLUUID& actor_id, const LLVector3d& gro
 S32 LLActorMover::insertWaypoint(const LLUUID& actor_id, S32 index, const LLVector3d& ground_pos)
 {
     Path& path = editPath(actor_id);
+    if (path.mNodes.size() >= static_cast<size_t>(MAX_PATH_NODES))
+    {
+        return -1;
+    }
     const S32 at = llclamp(index, 0, (S32)path.mNodes.size());
     Waypoint wp;
     wp.mPosGlobal = ground_pos;
@@ -3464,10 +3535,13 @@ bool LLActorMover::applyOverride(LLVOAvatar* av)
             mv.mTravelOdometer = mv.mEndMode == 0
                 ? (F64)llmin(mv.mSpeed * mv.mT, mv.mDistance)
                 : (F64)(mv.mSpeed * mv.mT);
-            updateLocomotionGait(av, mv, mv.mSpeed, dt, false);
-            updateLocomotionSample(av, mv);
+            if (mv.mDistance > 0.001f && mv.mSpeed > 0.001f)
+            {
+                updateLocomotionGait(av, mv, mv.mSpeed, dt, false);
+            }
 
-            if (mv.mEndMode == 0 && s >= mv.mDistance && mv.mLocomotion.valid())
+            if (mv.mEndMode == 0 && s >= mv.mDistance &&
+                (mv.mLocomotion.valid() || mv.mSecondaryLocomotion.valid()))
             {
                 // Arrived: settle instead of leaking either side of a gait fade.
                 stopLocalMotion(av, mv.mSecondaryLocomotion);
@@ -3932,6 +4006,8 @@ void LLActorMover::migrateActor(const LLUUID& old_id, const LLUUID& new_id)
     if (had_move)
     {
         Move mv = mit->second;
+        const LLUUID migrating_dwell_anim = mv.mDwellNode >= 0
+            ? mv.mDwellAnim : LLUUID::null;
         LLVOAvatar* old_av = resolve_actor(old_id);
         mMoves.erase(mit);
 
@@ -3939,12 +4015,11 @@ void LLActorMover::migrateActor(const LLUUID& old_id, const LLUUID& new_id)
         // (a live refresh replaces first, kills after): silence its loco /
         // dwell anim exactly like enterSuspend()/stop() would, so the corpse
         // doesn't keep cycling until its deferred death lands
-        // A dead/unresolved self still needs its AO transaction balanced;
-        // stopLocalMotion's null-avatar path resolves the current self safely.
         stopLocomotion(old_av && !old_av->isDead() ? old_av : nullptr, mv);
         mv.mLocomotion.clear();
         mv.mSecondaryLocomotion.clear();
         mv.mDwellMotion.clear();
+        mv.mDwellAnim = migrating_dwell_anim;
 
         // a LIVE (non-suspended) move keeps walking straight through the
         // swap, but its anims died with the old body: restart them on the new
@@ -4130,7 +4205,6 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
     // zero duration falls through to the normal walk below (byte-identical), so
     // the flag is safe when no take is loaded. A single-frame arc jump larger than
     // this is a scrub SEEK -> snap facing rather than turn-rate-lag toward it.
-    const F32 SYNC_SEEK_SNAP_M = 1.0f;
     bool sync_active = false;
     bool sync_seek   = false;
     if (path.mSyncToTake)
@@ -4155,10 +4229,7 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
                 stopLocalMotion(av, mv.mDwellMotion);
                 mv.mDwellAnim.setNull();
             }
-            if (mv.mAnim.notNull())
-            {
-                startLocomotion(av, mv);
-            }
+            startLocomotion(av, mv);
             mv.mLastDwellNode = mv.mDwellNode;
             mv.mDwellNode = -1;
         }
@@ -4242,11 +4313,8 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
                 mv.mDwellT = 0.f;
                 // switch to a stand (or the node's anim) so the actor isn't walking
                 // in place while held; both gait sides belong to this hold.
-                if (mv.mAnim.notNull())
-                {
-                    stopLocalMotion(av, mv.mSecondaryLocomotion);
-                    stopLocalMotion(av, mv.mLocomotion);
-                }
+                stopLocalMotion(av, mv.mSecondaryLocomotion);
+                stopLocalMotion(av, mv.mLocomotion);
                 const LLUUID& na = path.mNodes[best].mAnim;
                 if (na.notNull())
                 {
@@ -4260,8 +4328,15 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
     }
 
     mv.mDist = nd;
-    updateLocomotionGait(av, mv, speed, dt, sync_seek);
-    updateLocomotionSample(av, mv);
+    if (sync_seek &&
+        (mv.mLocomotion.valid() || mv.mSecondaryLocomotion.valid()))
+    {
+        updateLocomotionSample(av, mv);
+    }
+    else
+    {
+        updateLocomotionGait(av, mv, speed, dt, sync_seek);
+    }
 
     // ---- evaluate the spline (global) ----
     LLVector3d pos_global, tan_global;
@@ -4461,11 +4536,30 @@ void LLActorMover::advanceFollower(LLVOAvatar* av, Move& mv, const Follow& f, F3
     {
         traveled_step = llmin(traveled_step, total - traveled_step);
     }
+    const bool follower_seek = traveled_step > SYNC_SEEK_SNAP_M;
     const F32 follower_speed = (dt > 1e-4f) ? traveled_step / dt : 0.f;
     mv.mDist = fArc;
-    mv.mTravelOdometer += (F64)traveled_step;
-    updateLocomotionGait(av, mv, follower_speed, dt, false);
-    updateLocomotionSample(av, mv);
+    if (follower_seek)
+    {
+        // A scrub is an absolute seek, not traveled history. This makes the
+        // sampled foot phase deterministic for a given leader playhead.
+        mv.mTravelOdometer = llmax(0.0, (F64)fArc);
+    }
+    else
+    {
+        mv.mTravelOdometer += (F64)traveled_step;
+    }
+    mv.mContactDiscontinuity = follower_seek;
+    if (follower_seek &&
+        (mv.mLocomotion.valid() || mv.mSecondaryLocomotion.valid()))
+    {
+        // Snap the owned clocks without interpreting scrub velocity as gait.
+        updateLocomotionSample(av, mv);
+    }
+    else
+    {
+        updateLocomotionGait(av, mv, follower_speed, dt, follower_seek);
+    }
 
     // ---- evaluate the LEADER's spline at the follower's arc ----
     LLVector3d pos_global, tan_global;
@@ -4522,7 +4616,7 @@ void LLActorMover::advanceFollower(LLVOAvatar* av, Move& mv, const Follow& f, F3
             target_pitch = llclamp(target_pitch, -45.f * DEG_TO_RAD, 45.f * DEG_TO_RAD);
         }
     }
-    updatePathFacing(mv, target_yaw, target_pitch, dt, false);
+    updatePathFacing(mv, target_yaw, target_pitch, dt, follower_seek);
 
 }
 

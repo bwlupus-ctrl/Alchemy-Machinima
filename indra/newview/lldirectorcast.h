@@ -203,8 +203,6 @@ public:
         F32    mNominalSpeed = 3.f;
         F32    mManualLeftPlantPhase = -1.f; // -1 = infer/loop-in fallback
         bool   mAllowAO = false;
-        F32    mMinNaturalRate = 0.5f;
-        F32    mMaxNaturalRate = 2.f;
     };
 
     struct LocomotionSet

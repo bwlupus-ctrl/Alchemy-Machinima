@@ -531,7 +531,8 @@ void LLMotionController::updateIdleMotion(LLMotion* motionp)
         if (mLastTime <= motionp->getStopTime())
         {
             // store residual weight for this motion
-            motionp->mResidualWeight = motionp->getPose()->getWeight();
+            motionp->mResidualWeight = motionp->getPresentationBaseWeight(
+                motionp->getPose()->getWeight());
         }
     }
     else if (mAnimTime > motionp->mSendStopTimestamp)
@@ -548,7 +549,8 @@ void LLMotionController::updateIdleMotion(LLMotion* motionp)
     {
         if (mLastTime < motionp->mActivationTimestamp)
         {
-            motionp->mResidualWeight = motionp->getPose()->getWeight();
+            motionp->mResidualWeight = motionp->getPresentationBaseWeight(
+                motionp->getPose()->getWeight());
         }
     }
 }
@@ -710,7 +712,8 @@ void LLMotionController::updateMotionsByType(LLMotion::LLMotionBlendType anim_ty
             if (mLastTime <= motionp->getStopTime())
             {
                 // store residual weight for this motion
-                motionp->mResidualWeight = motionp->getPose()->getWeight();
+                motionp->mResidualWeight = motionp->getPresentationBaseWeight(
+                    motionp->getPose()->getWeight());
             }
 
             if (motionp->getEaseOutDuration() == 0.f)
@@ -761,7 +764,8 @@ void LLMotionController::updateMotionsByType(LLMotion::LLMotionBlendType anim_ty
         {
             if (mLastTime < motionp->mActivationTimestamp)
             {
-                motionp->mResidualWeight = motionp->getPose()->getWeight();
+                motionp->mResidualWeight = motionp->getPresentationBaseWeight(
+                    motionp->getPose()->getWeight());
             }
             if (motionp->getEaseInDuration() == 0.f)
             {
@@ -985,7 +989,8 @@ bool LLMotionController::activateMotionInstance(LLMotion *motion, F32 time)
         return true;
     }
 
-    motion->mResidualWeight = motion->getPose()->getWeight();
+    motion->mResidualWeight = motion->getPresentationBaseWeight(
+        motion->getPose()->getWeight());
 
     // set stop time based on given duration and ease out time
     if (motion->getDuration() != 0.f && !motion->getLoop())

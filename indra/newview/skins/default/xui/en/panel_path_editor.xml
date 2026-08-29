@@ -468,7 +468,7 @@
      left="130"
      top="376"
      name="path_pitch_check"
-     tool_tip="Tilt the body pitch to the local slope while walking"
+     tool_tip="Tilt the body to the local slope on ground paths. Air paths always pitch along the flight tangent"
      width="120" />
     <check_box
      follows="left|top"

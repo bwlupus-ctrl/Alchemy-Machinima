@@ -100,6 +100,10 @@ class AOEngine
         void enable(bool enable);
         void enableStands(bool enable_stands);
         const LLUUID override(const LLUUID& motion, bool start);
+        // Resolve the AO asset currently selected for a stock motion without
+        // cycling state, stopping animations, changing timers, or sending a
+        // simulator request. Null means the stock motion should be used.
+        LLUUID resolveAnimation(const LLUUID& motion) const;
         void tick();
         void update();
         void reload(bool);

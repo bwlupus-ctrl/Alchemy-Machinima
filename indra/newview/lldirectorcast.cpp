@@ -268,20 +268,6 @@ void sanitizeLocomotionRole(LLDirectorCast::LocomotionRoleEntry& entry)
     {
         entry.mManualLeftPlantPhase = fmodf(entry.mManualLeftPlantPhase, 1.f);
     }
-    if (!std::isfinite(entry.mMinNaturalRate))
-    {
-        entry.mMinNaturalRate = 0.5f;
-    }
-    if (!std::isfinite(entry.mMaxNaturalRate))
-    {
-        entry.mMaxNaturalRate = 2.f;
-    }
-    entry.mMinNaturalRate = llclamp(entry.mMinNaturalRate, 0.05f, 8.f);
-    entry.mMaxNaturalRate = llclamp(entry.mMaxNaturalRate, 0.05f, 8.f);
-    if (entry.mMinNaturalRate > entry.mMaxNaturalRate)
-    {
-        std::swap(entry.mMinNaturalRate, entry.mMaxNaturalRate);
-    }
 }
 
 LLSD writeLocomotionSet(const LLDirectorCast::LocomotionSet& set)
@@ -304,8 +290,6 @@ LLSD writeLocomotionSet(const LLDirectorCast::LocomotionSet& set)
         role_data["nominal_speed"] = entry.mNominalSpeed;
         role_data["manual_left_plant_phase"] = entry.mManualLeftPlantPhase;
         role_data["allow_ao"] = entry.mAllowAO;
-        role_data["min_natural_rate"] = entry.mMinNaturalRate;
-        role_data["max_natural_rate"] = entry.mMaxNaturalRate;
         result[key] = role_data;
     }
     return result;
@@ -337,10 +321,6 @@ LLDirectorCast::LocomotionSet readLocomotionSet(const LLSD& data)
             entry.mManualLeftPlantPhase = (F32)it->second["manual_left_plant_phase"].asReal();
         if (it->second.has("allow_ao"))
             entry.mAllowAO = it->second["allow_ao"].asBoolean();
-        if (it->second.has("min_natural_rate"))
-            entry.mMinNaturalRate = (F32)it->second["min_natural_rate"].asReal();
-        if (it->second.has("max_natural_rate"))
-            entry.mMaxNaturalRate = (F32)it->second["max_natural_rate"].asReal();
         sanitizeLocomotionRole(entry);
         set.edit(role) = entry;
     }

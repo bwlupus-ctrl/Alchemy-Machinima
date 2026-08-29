@@ -125,6 +125,8 @@ public:
     // never mutate shared asset data, and reset automatically on deactivate.
     // A non-null token is required so unrelated systems cannot accidentally
     // overwrite or release another system's presentation state.
+    // Claiming is intentionally motion-type agnostic for weight-only control;
+    // only external clock sampling is capability-gated below.
     bool claimPresentationControl(const LLUUID& owner);
     void releasePresentationControl(const LLUUID& owner);
     bool isPresentationControlledBy(const LLUUID& owner) const;
@@ -156,6 +158,15 @@ public:
         return mPresentationWeight == 1.f
             ? stock_weight
             : stock_weight * mPresentationWeight;
+    }
+    F32 getPresentationBaseWeight(F32 presented_weight) const
+    {
+        // Residual controller weights are stored in the stock-weight domain.
+        // At zero presentation weight no inverse exists; zero is the only
+        // stable residual and prevents a hidden clip from leaking back in.
+        return mPresentationWeight == 1.f ? presented_weight
+            : (mPresentationWeight > 0.f
+                ? presented_weight / mPresentationWeight : 0.f);
     }
 
     F32 getStopTime() const { return mStopTimestamp; }

@@ -804,20 +804,13 @@
              left="10"
              top="258"
              name="locomotion_role_combo"
-             tool_tip="Role this animation and metadata will author for the selected cast member"
+             tool_tip="Runtime-selected roles. Idle is the fallback for Hover when no Hover clip is configured"
              width="120">
                 <combo_box.item label="Idle" name="loco_idle" value="1" />
                 <combo_box.item label="Walk forward" name="loco_walk" value="2" />
                 <combo_box.item label="Run forward" name="loco_run" value="3" />
-                <combo_box.item label="Turn left" name="loco_turn_left" value="4" />
-                <combo_box.item label="Turn right" name="loco_turn_right" value="5" />
-                <combo_box.item label="Walk backward" name="loco_back" value="6" />
-                <combo_box.item label="Strafe left" name="loco_strafe_left" value="7" />
-                <combo_box.item label="Strafe right" name="loco_strafe_right" value="8" />
                 <combo_box.item label="Fly" name="loco_fly" value="9" />
                 <combo_box.item label="Hover" name="loco_hover" value="10" />
-                <combo_box.item label="Takeoff" name="loco_takeoff" value="11" />
-                <combo_box.item label="Land" name="loco_land" value="12" />
             </combo_box>
             <spinner
              decimal_digits="2"

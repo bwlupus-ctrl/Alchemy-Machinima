@@ -967,7 +967,6 @@ private:
         LLUUID mSourceAnim;
         LLUUID mActualAnim;
         LLUUID mOwnerToken;
-        bool   mAOActive = false;
         bool   mOwnsMotion = false;
         bool   mControlsMotion = false;
         bool   mPendingLoad = false;
@@ -977,7 +976,6 @@ private:
             mSourceAnim.setNull();
             mActualAnim.setNull();
             mOwnerToken.setNull();
-            mAOActive = false;
             mOwnsMotion = false;
             mControlsMotion = false;
             mPendingLoad = false;

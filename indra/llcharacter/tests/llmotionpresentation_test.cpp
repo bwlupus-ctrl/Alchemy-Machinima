@@ -67,9 +67,9 @@ void motion_presentation_object::test<2>()
     ensure("claim", motion.claimPresentationControl(owner));
     ensure("external sample accepted", motion.setExternalSampleTime(owner, 1.25f));
     ensure("external clock active", motion.usesExternalSampleClock());
-    ensure_approximately("external time selected", motion.getEffectiveUpdateTime(7.f), 1.25f, 0.0001f);
+    ensure_distance("external time selected", motion.getEffectiveUpdateTime(7.f), 1.25f, 0.0001f);
     ensure("native clock restored", motion.useNativePresentationClock(owner));
-    ensure_approximately("native time selected", motion.getEffectiveUpdateTime(7.f), 7.f, 0.0001f);
+    ensure_distance("native time selected", motion.getEffectiveUpdateTime(7.f), 7.f, 0.0001f);
 }
 
 template<> template<>
@@ -89,10 +89,12 @@ void motion_presentation_object::test<4>()
     const LLUUID owner = LLUUID::generateNewID();
     ensure("claim", motion.claimPresentationControl(owner));
     ensure("weight accepted", motion.setPresentationWeight(owner, 0.25f));
-    ensure_approximately("weight applied", motion.applyPresentationWeight(0.8f), 0.2f, 0.0001f);
+    ensure_distance("weight applied", motion.applyPresentationWeight(0.8f), 0.2f, 0.0001f);
+    ensure_distance("base weight recovered", motion.getPresentationBaseWeight(0.2f),
+                    0.8f, 0.0001f);
     motion.releasePresentationControl(owner);
     ensure("owner released", !motion.isPresentationControlledBy(owner));
-    ensure_approximately("identity restored", motion.applyPresentationWeight(0.8f), 0.8f, 0.0001f);
+    ensure_distance("identity restored", motion.applyPresentationWeight(0.8f), 0.8f, 0.0001f);
     ensure("stale owner cannot write", !motion.setPresentationWeight(owner, 0.f));
 }
 
@@ -103,9 +105,9 @@ void motion_presentation_object::test<5>()
     const LLUUID owner = LLUUID::generateNewID();
     ensure("claim", motion.claimPresentationControl(owner));
     ensure("low clamp", motion.setPresentationWeight(owner, -4.f));
-    ensure_approximately("low clamped", motion.getPresentationWeight(), 0.f, 0.0001f);
+    ensure_distance("low clamped", motion.getPresentationWeight(), 0.f, 0.0001f);
     ensure("high clamp", motion.setPresentationWeight(owner, 4.f));
-    ensure_approximately("high clamped", motion.getPresentationWeight(), 1.f, 0.0001f);
+    ensure_distance("high clamped", motion.getPresentationWeight(), 1.f, 0.0001f);
 }
 
 template<> template<>
@@ -122,8 +124,8 @@ void motion_presentation_object::test<6>()
         owner, std::numeric_limits<F32>::quiet_NaN()));
     ensure("clock remains native after rejected samples",
            !motion.usesExternalSampleClock());
-    ensure_approximately("weight remains identity after rejected weight",
-                         motion.getPresentationWeight(), 1.f, 0.0001f);
+    ensure_distance("weight remains identity after rejected weight",
+                    motion.getPresentationWeight(), 1.f, 0.0001f);
 }
 
 template<> template<>
@@ -137,10 +139,10 @@ void motion_presentation_object::test<7>()
     motion.deactivate();
     ensure("deactivate clears owner", !motion.hasPresentationControl());
     ensure("deactivate restores native clock", !motion.usesExternalSampleClock());
-    ensure_approximately("deactivate restores identity weight",
-                         motion.getPresentationWeight(), 1.f, 0.0001f);
-    ensure_approximately("native mapping remains exact at large time",
-                         motion.getEffectiveUpdateTime(123456.f),
-                         123456.f, 0.0001f);
+    ensure_distance("deactivate restores identity weight",
+                    motion.getPresentationWeight(), 1.f, 0.0001f);
+    ensure_distance("native passthrough remains exact at large time",
+                    motion.getEffectiveUpdateTime(123456.f),
+                    123456.f, 0.0001f);
 }
 }

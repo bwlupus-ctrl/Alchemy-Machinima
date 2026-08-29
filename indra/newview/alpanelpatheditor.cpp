@@ -403,7 +403,7 @@ void ALPanelPathEditor::refreshPathControls()
     mEaseIn->setEnabled(have_actor);
     mEaseOut->setEnabled(have_actor);
     mGroundFollow->setEnabled(have_actor && !(path && path->mAirborne));
-    mPitch->setEnabled(have_actor);
+    mPitch->setEnabled(have_actor && !(path && path->mAirborne));
     mAirborne->setEnabled(have_actor);
     mEndCombo->setEnabled(have_actor);
 

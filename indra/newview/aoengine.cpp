@@ -496,6 +496,33 @@ void AOEngine::setStateCycleTimer(const AOSet::AOState* state)
     }
 }
 
+LLUUID AOEngine::resolveAnimation(const LLUUID& motion) const
+{
+    if (!mEnabled || !mCurrentSet)
+    {
+        return LLUUID::null;
+    }
+
+    const AOSet::AOState* state = getStateForMotion(motion);
+    if (!state || state->mAnimations.empty())
+    {
+        return LLUUID::null;
+    }
+
+    // Prefer the asset already active for this state. Otherwise use the
+    // selected slot exactly as-is: discovery must not advance/randomize the AO
+    // cycle or lazily rewrite inventory-backed state.
+    if (state->mCurrentAnimationID.notNull())
+    {
+        return state->mCurrentAnimationID;
+    }
+    if (state->mCurrentAnimation >= state->mAnimations.size())
+    {
+        return LLUUID::null;
+    }
+    return state->mAnimations[state->mCurrentAnimation].mAssetUUID;
+}
+
 const LLUUID AOEngine::override(const LLUUID& motion, bool start)
 {
     LL_DEBUGS("AOEngine") << "override(" << gAnimLibrary.animationName(motion) << "," << start << ")" << LL_ENDL;

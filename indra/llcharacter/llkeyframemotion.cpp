@@ -1064,8 +1064,13 @@ void LLKeyframeMotion::applyExternalLocomotionSeed()
             phase = info.valid() ? info.mLeftPlantPhase : 0.f;
         }
         phase = fmodf(llmax(phase, 0.f), 1.f);
-        sample = cycle_start + fmod(mLocomotionSeedBaseTime +
-                                    (F64)phase * cycle_length, cycle_length);
+        F64 cycle_offset = fmod(mLocomotionSeedBaseTime +
+                                (F64)phase * cycle_length, cycle_length);
+        if (cycle_offset < 0.0)
+        {
+            cycle_offset += cycle_length;
+        }
+        sample = cycle_start + cycle_offset;
     }
     else
     {

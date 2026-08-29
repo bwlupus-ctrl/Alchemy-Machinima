@@ -2183,9 +2183,17 @@ S32 LLFloaterDirector::selectedLocomotionRole() const
     const S32 role = mLocomotionRoleCombo
         ? mLocomotionRoleCombo->getValue().asInteger()
         : LLDirectorCast::LOCO_WALK_FORWARD;
-    return role > LLDirectorCast::LOCO_NONE &&
-           role < LLDirectorCast::LOCO_ROLE_COUNT
-        ? role : LLDirectorCast::LOCO_WALK_FORWARD;
+    switch (role)
+    {
+        case LLDirectorCast::LOCO_IDLE:
+        case LLDirectorCast::LOCO_WALK_FORWARD:
+        case LLDirectorCast::LOCO_RUN_FORWARD:
+        case LLDirectorCast::LOCO_FLY:
+        case LLDirectorCast::LOCO_HOVER:
+            return role;
+        default:
+            return LLDirectorCast::LOCO_WALK_FORWARD;
+    }
 }
 
 void LLFloaterDirector::applySelectedLocomotion(const LLUUID& anim)
@@ -2305,18 +2313,12 @@ void LLFloaterDirector::onLocomotionMetadataCommit()
         return;
     }
     const S32 role = selectedLocomotionRole();
-    auto found = member->mLocomotionSet.mRoles.find(role);
-    if (found == member->mLocomotionSet.mRoles.end())
-    {
-        // Keep these values as authoring defaults until Set role supplies an
-        // animation; sparse role maps never contain metadata-only entries.
-        return;
-    }
-    found->second.mNominalSpeed = llclamp(
+    auto& entry = member->mLocomotionSet.mRoles[role];
+    entry.mNominalSpeed = llclamp(
         (F32)mLocomotionSpeed->getValue().asReal(), 0.05f, 20.f);
-    found->second.mManualLeftPlantPhase = llclamp(
+    entry.mManualLeftPlantPhase = llclamp(
         (F32)mLocomotionPhase->getValue().asReal(), -1.f, 1.f);
-    found->second.mAllowAO = mLocomotionAllowAO->get();
+    entry.mAllowAO = mLocomotionAllowAO->get();
     mLocomotionEditorLoaded = false;
 }
 
@@ -2330,6 +2332,7 @@ void LLFloaterDirector::refreshLocomotionRoleEditor(const LLUUID& member_id)
               static_cast<LLDirectorCast::ELocomotionRole>(role))
         : nullptr;
     const LLUUID anim = entry ? entry->mAnim : LLUUID::null;
+    const bool configured = entry && anim.notNull();
     const F32 speed = entry ? entry->mNominalSpeed
                             : default_locomotion_speed(role);
     const F32 phase = entry ? entry->mManualLeftPlantPhase : -1.f;
@@ -2360,11 +2363,12 @@ void LLFloaterDirector::refreshLocomotionRoleEditor(const LLUUID& member_id)
     mLocomotionAllowAO->setEnabled(have_member);
 
     std::string status = "Select a cast member";
-    if (member && !entry)
+    if (member && !configured)
     {
-        status = std::string(locomotion_role_label(role)) + ": fallback";
+        status = std::string(locomotion_role_label(role)) +
+            (entry ? ": fallback; metadata draft" : ": fallback");
     }
-    else if (entry)
+    else if (configured)
     {
         status = std::string(locomotion_role_label(role)) +
             (cast.resolve(member_id) ? ": not loaded; starts on ACTION"
