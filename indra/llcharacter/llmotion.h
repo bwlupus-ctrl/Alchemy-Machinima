@@ -59,6 +59,12 @@ public:
         STATUS_HOLD
     };
 
+    enum class PresentationClockMode : U8
+    {
+        NATIVE,
+        EXTERNAL_SAMPLE
+    };
+
     // Constructor
     LLMotion(const LLUUID &id);
 
@@ -112,6 +118,44 @@ public:
         }
         LLJoint::JointPriority p = jsp->getPriority();
         return (p == LLJoint::USE_MOTION_PRIORITY) ? getPriority() : p;
+    }
+
+    // Owner-scoped, client-only presentation controls. These are deliberately
+    // per motion instance: they never alter the containing character's clock,
+    // never mutate shared asset data, and reset automatically on deactivate.
+    // A non-null token is required so unrelated systems cannot accidentally
+    // overwrite or release another system's presentation state.
+    bool claimPresentationControl(const LLUUID& owner);
+    void releasePresentationControl(const LLUUID& owner);
+    bool isPresentationControlledBy(const LLUUID& owner) const;
+    bool hasPresentationControl() const { return mPresentationOwner.notNull(); }
+
+    // External sampling is opt-in by motion type. Keyframe motions support it;
+    // procedural/non-keyframe motions reject it and continue on native
+    // controller time. The stored sample survives STATUS_HOLD so the first pose
+    // after an asynchronous asset load is evaluated at the requested time.
+    bool setExternalSampleTime(const LLUUID& owner, F32 sample_time);
+    bool useNativePresentationClock(const LLUUID& owner);
+    bool usesExternalSampleClock() const
+    {
+        return mPresentationClockMode == PresentationClockMode::EXTERNAL_SAMPLE;
+    }
+    F32 getEffectiveUpdateTime(F32 native_time) const
+    {
+        return usesExternalSampleClock() ? mExternalSampleTime : native_time;
+    }
+
+    // Explicit crossfade multiplier, independent of mFadeWeight (which remains
+    // the controller's LOD fade). The identity value takes the exact stock
+    // arithmetic path; callers therefore pay no numerical or behavioral cost
+    // unless they have successfully claimed this instance.
+    bool setPresentationWeight(const LLUUID& owner, F32 weight);
+    F32 getPresentationWeight() const { return mPresentationWeight; }
+    F32 applyPresentationWeight(F32 stock_weight) const
+    {
+        return mPresentationWeight == 1.f
+            ? stock_weight
+            : stock_weight * mPresentationWeight;
     }
 
     F32 getStopTime() const { return mStopTimestamp; }
@@ -178,6 +222,9 @@ public:
     // called when a motion is deactivated
     virtual void onDeactivate() = 0;
 
+    // Only deterministic keyframe-backed motions opt into absolute sampling.
+    virtual bool supportsExternalSampling() const { return false; }
+
     // can we crossfade this motion with a new instance when restarted?
     // should ultimately always be true, but lack of emote blending, etc
     // requires this
@@ -212,9 +259,16 @@ protected:
     F32 mResidualWeight;        // blend weight at beginning of stop motion phase
     F32 mFadeWeight;            // for fading in and out based on LOD
     S32 mPriorityOverride;      // client-side per-instance priority override; -1 = none (baked)
+    LLUUID mPresentationOwner;  // non-null while one client feature owns controls
+    PresentationClockMode mPresentationClockMode;
+    F32 mExternalSampleTime;    // absolute local clip sample, seconds
+    F32 mPresentationWeight;    // explicit 0..1 multiplier; LOD fade is separate
     U8  mJointSignature[3][LL_CHARACTER_MAX_ANIMATED_JOINTS];   // signature of which joints are animated at what priority
     void (*mDeactivateCallback)(void* data);
     void* mDeactivateCallbackUserData;
+
+private:
+    void resetPresentationControl();
 };
 
 

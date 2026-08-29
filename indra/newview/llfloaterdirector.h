@@ -134,11 +134,16 @@ private:
     LLUUID selectedAnimId() const;      // selected row's anim asset id
     LLUUID pasteAnimId() const;         // validated paste-row UUID (null = invalid)
     void onAnimCopyUUID();
-    void onAnimSetLoco();               // row -> selected member's loco anim
+    void onAnimSetLoco();               // row -> selected member's selected locomotion role
     void onAnimPlayLocal(bool play);    // start/stopMotion, client-side only
     void onPastePlayLocal(bool play);
     void onPasteSetLoco();
     void onClickClearLoco();
+    S32 selectedLocomotionRole() const;
+    void onLocomotionRoleChanged();
+    void onLocomotionMetadataCommit();
+    void applySelectedLocomotion(const LLUUID& anim);
+    void refreshLocomotionRoleEditor(const LLUUID& member_id);
     // The shared preview panel is fed the anim to show + the object playing it:
     LLUUID previewAnimId() const;                       // selected row, else pasted uuid
     LLUUID animSourceObject(const LLUUID& anim_id) const; // the object playing it on you
@@ -293,9 +298,20 @@ private:
     LLButton*         mPastePlayBtn = nullptr;
     LLButton*         mPasteStopBtn = nullptr;
     LLButton*         mPasteSetLocoBtn = nullptr;
+    LLComboBox*       mLocomotionRoleCombo = nullptr;
+    LLSpinCtrl*       mLocomotionSpeed = nullptr;
+    LLSpinCtrl*       mLocomotionPhase = nullptr;
+    LLCheckBoxCtrl*   mLocomotionAllowAO = nullptr;
     LLTextBox*        mLocoText = nullptr;
     LLButton*         mClearLocoBtn = nullptr;
     LLHandle<LLContextMenu> mAnimMenuHandle;
+    LLUUID mLocomotionEditorMember;
+    LLUUID mLocomotionEditorAnim;
+    S32    mLocomotionEditorRole = -1;
+    F32    mLocomotionEditorSpeed = -1.f;
+    F32    mLocomotionEditorPhase = -2.f;
+    bool   mLocomotionEditorAllowAO = false;
+    bool   mLocomotionEditorLoaded = false;
     // shared preview pane + own-avatar controls (owns its own dummy); fed the
     // selected/pasted anim + its source object each draw
     ALPanelAnimPreview* mAnimPreviewPanel = nullptr;

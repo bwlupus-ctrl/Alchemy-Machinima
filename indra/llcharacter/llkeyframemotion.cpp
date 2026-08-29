@@ -53,6 +53,8 @@ LLKeyframeDataCache::keyframe_data_map_t    LLKeyframeDataCache::sKeyframeDataMa
 // LLKeyframeWalkMotion::sPhaseInfoCache's per-asset caching for Milestone 3.
 bool LLKeyframeMotion::sLoopSeamRepairEnabled = false;
 std::map<LLUUID, LLKeyframeMotion::LoopSeamInfo> LLKeyframeMotion::sLoopSeamCache;
+std::map<LLUUID, LLKeyframeMotion::LocomotionPhaseInfo>
+    LLKeyframeMotion::sLocomotionPhaseCache;
 
 //-----------------------------------------------------------------------------
 // Globals
@@ -458,6 +460,9 @@ LLKeyframeMotion::LLKeyframeMotion(const LLUUID &id)
         mLastUpdateTime(0.f),
         mLastLoopedTime(0.f),
         mAssetStatus(ASSET_UNDEFINED),
+        mLocomotionSeedPending(false),
+        mLocomotionSeedBaseTime(0.0),
+        mLocomotionSeedPhase(-1.f),
         // [PosePolish M4] loop-seam repair runtime state; see llkeyframemotion.h.
         mSeamHavePrevLoopedTime(false),
         mSeamBlendActive(false),
@@ -713,6 +718,8 @@ bool LLKeyframeMotion::setupPose()
 //-----------------------------------------------------------------------------
 bool LLKeyframeMotion::onActivate()
 {
+    applyExternalLocomotionSeed();
+
     // If the keyframe anim has an associated emote, trigger it.
     if (mJointMotionList->mEmoteID.notNull())
     {
@@ -761,6 +768,7 @@ bool LLKeyframeMotion::onActivate()
 bool LLKeyframeMotion::onUpdate(F32 time, U8* joint_mask)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_AVATAR;
+    time = getEffectiveUpdateTime(time);
     // llassert(time >= 0.f);       // This will fire
     time = llmax(0.f, time);
 
@@ -878,6 +886,194 @@ void LLKeyframeMotion::applyKeyframes(F32 time)
         mCharacter->setAnimationData("Hand Pose", &mJointMotionList->mHandPose);
         mCharacter->setAnimationData("Hand Pose Priority", &mJointMotionList->mMaxPriority);
     }
+}
+
+namespace
+{
+constexpr S32 GENERIC_PHASE_SAMPLES = 24;
+
+F32 wrap_generic_phase(F32 phase)
+{
+    phase = fmodf(phase, 1.f);
+    return phase < 0.f ? phase + 1.f : phase;
+}
+
+bool find_generic_plant_window(const std::vector<F32>& activity,
+                               F32 threshold, F32& center, F32& length)
+{
+    const S32 count = static_cast<S32>(activity.size());
+    S32 best_start = -1, best_length = 0, run_start = -1, run_length = 0;
+    for (S32 i = 0; i < count * 2; ++i)
+    {
+        if (activity[i % count] <= threshold)
+        {
+            if (run_length == 0) run_start = i;
+            ++run_length;
+            if (run_length > best_length && run_length <= count)
+            {
+                best_start = run_start;
+                best_length = run_length;
+            }
+        }
+        else
+        {
+            run_length = 0;
+        }
+    }
+    if (best_start < 0) return false;
+    length = static_cast<F32>(best_length) / count;
+    center = wrap_generic_phase(
+        (static_cast<F32>(best_start) + 0.5f * (best_length - 1)) / count);
+    return true;
+}
+}
+
+const LLKeyframeMotion::LocomotionPhaseInfo&
+LLKeyframeMotion::getGenericLocomotionPhaseInfo()
+{
+    // Loading is not a stable analysis result.  In particular, do not poison
+    // the asset-wide cache with NOT_LOOPING before the async asset callback has
+    // populated mJointMotionList; the next mover frame must be able to analyze
+    // the newly available curves.
+    if (!mJointMotionList)
+    {
+        static const LocomotionPhaseInfo loading_info;
+        return loading_info;
+    }
+
+    auto cached = sLocomotionPhaseCache.find(getID());
+    if (cached != sLocomotionPhaseCache.end()) return cached->second;
+
+    LocomotionPhaseInfo info;
+    info.mStatus = LocomotionPhaseInfo::NOT_LOOPING;
+    if (mJointMotionList && mJointMotionList->mLoop &&
+        mJointMotionList->mDuration > 1e-4f)
+    {
+        const F32 cycle_start = mJointMotionList->mLoopInPoint;
+        const F32 cycle_length = mJointMotionList->mLoopOutPoint - cycle_start;
+        if (cycle_length >= 0.15f)
+        {
+            JointMotion* left = nullptr;
+            JointMotion* right = nullptr;
+            for (U32 i = 0; i < mJointMotionList->getNumJointMotions(); ++i)
+            {
+                JointMotion* joint = mJointMotionList->getJointMotion(i);
+                if (!joint) continue;
+                if (joint->mJointName == "mAnkleLeft") left = joint;
+                else if (joint->mJointName == "mAnkleRight") right = joint;
+            }
+            info.mStatus = LocomotionPhaseInfo::MISSING_ANKLES;
+            if (left && right)
+            {
+                std::vector<F32> la(GENERIC_PHASE_SAMPLES, 0.f);
+                std::vector<F32> ra(GENERIC_PHASE_SAMPLES, 0.f);
+                const F32 step = cycle_length / GENERIC_PHASE_SAMPLES;
+                const F32 duration = mJointMotionList->mDuration;
+                F32 left_max = 0.f, right_max = 0.f;
+                for (S32 i = 0; i < GENERIC_PHASE_SAMPLES; ++i)
+                {
+                    const F32 t0 = cycle_start + step * i;
+                    const F32 t1 = cycle_start + step * (i + 1);
+                    const LLQuaternion lr0 = left->mRotationCurve.getValue(t0, duration);
+                    const LLQuaternion lr1 = left->mRotationCurve.getValue(t1, duration);
+                    const LLQuaternion rr0 = right->mRotationCurve.getValue(t0, duration);
+                    const LLQuaternion rr1 = right->mRotationCurve.getValue(t1, duration);
+                    la[i] = 2.f * acosf(llclamp(fabsf(dot(lr0, lr1)), 0.f, 1.f));
+                    ra[i] = 2.f * acosf(llclamp(fabsf(dot(rr0, rr1)), 0.f, 1.f));
+                    if (left->mPositionCurve.mNumKeys > 0)
+                    {
+                        la[i] += (left->mPositionCurve.getValue(t1, duration) -
+                                  left->mPositionCurve.getValue(t0, duration)).magVec() * 2.f;
+                    }
+                    if (right->mPositionCurve.mNumKeys > 0)
+                    {
+                        ra[i] += (right->mPositionCurve.getValue(t1, duration) -
+                                  right->mPositionCurve.getValue(t0, duration)).magVec() * 2.f;
+                    }
+                    left_max = llmax(left_max, la[i]);
+                    right_max = llmax(right_max, ra[i]);
+                }
+
+                F32 left_center = 0.f, left_window = 0.f;
+                F32 right_center = 0.f, right_window = 0.f;
+                const bool left_ok = left_max > 0.f &&
+                    find_generic_plant_window(la, left_max * 0.35f,
+                                              left_center, left_window);
+                const bool right_ok = right_max > 0.f &&
+                    find_generic_plant_window(ra, right_max * 0.35f,
+                                              right_center, right_window);
+                const F32 offset = wrap_generic_phase(right_center - left_center);
+                info.mStatus = LocomotionPhaseInfo::NO_ALTERNATING_PLANTS;
+                if (left_ok && right_ok && left_window >= 0.12f && left_window <= 0.55f &&
+                    right_window >= 0.12f && right_window <= 0.55f &&
+                    offset >= 0.20f && offset <= 0.80f)
+                {
+                    info.mStatus = LocomotionPhaseInfo::VALID;
+                    info.mCycleStart = cycle_start;
+                    info.mCycleLength = cycle_length;
+                    info.mLeftPlantPhase = left_center;
+                    info.mRightOffset = offset;
+                    info.mLeftPlantWindow = left_window;
+                    info.mRightPlantWindow = right_window;
+                    const F32 alternation = 1.f -
+                        llclamp(fabsf(offset - 0.5f) / 0.3f, 0.f, 1.f);
+                    info.mConfidence = llclamp(
+                        0.5f * alternation +
+                        0.5f * (1.f - fabsf(left_window - right_window)),
+                        0.f, 1.f);
+                }
+            }
+        }
+    }
+    return sLocomotionPhaseCache.insert(std::make_pair(getID(), info))
+        .first->second;
+}
+
+void LLKeyframeMotion::setExternalLocomotionSeed(const LLUUID& owner,
+                                                  F64 base_time,
+                                                  F32 normalized_phase)
+{
+    if (!isPresentationControlledBy(owner) || !usesExternalSampleClock() ||
+        !llfinite(base_time) || !llfinite(normalized_phase))
+    {
+        return;
+    }
+    mLocomotionSeedPending = true;
+    mLocomotionSeedBaseTime = base_time;
+    mLocomotionSeedPhase = normalized_phase;
+    applyExternalLocomotionSeed();
+}
+
+void LLKeyframeMotion::applyExternalLocomotionSeed()
+{
+    if (!mLocomotionSeedPending || !mJointMotionList ||
+        !usesExternalSampleClock())
+    {
+        return;
+    }
+
+    F64 sample = mLocomotionSeedBaseTime;
+    const F64 cycle_start = mJointMotionList->mLoopInPoint;
+    const F64 cycle_length = mJointMotionList->mLoopOutPoint - cycle_start;
+    if (mJointMotionList->mLoop && cycle_length > 0.001)
+    {
+        F32 phase = mLocomotionSeedPhase;
+        if (phase < 0.f)
+        {
+            const LocomotionPhaseInfo& info = getGenericLocomotionPhaseInfo();
+            phase = info.valid() ? info.mLeftPlantPhase : 0.f;
+        }
+        phase = fmodf(llmax(phase, 0.f), 1.f);
+        sample = cycle_start + fmod(mLocomotionSeedBaseTime +
+                                    (F64)phase * cycle_length, cycle_length);
+    }
+    else
+    {
+        sample = llclamp(sample, 0.0,
+                         llmax(0.0, (F64)mJointMotionList->mDuration));
+    }
+    mExternalSampleTime = (F32)sample;
+    mLocomotionSeedPending = false;
 }
 
 //-----------------------------------------------------------------------------
@@ -1243,6 +1439,9 @@ void LLKeyframeMotion::applyConstraints(F32 time, U8* joint_mask)
 //-----------------------------------------------------------------------------
 void LLKeyframeMotion::onDeactivate()
 {
+    mLocomotionSeedPending = false;
+    mLocomotionSeedBaseTime = 0.0;
+    mLocomotionSeedPhase = -1.f;
     for (JointConstraint* constraintp : mConstraints)
     {
         deactivateConstraint(constraintp);
@@ -2784,6 +2983,7 @@ void LLKeyframeMotion::setEaseOut(F32 ease_in)
 //-----------------------------------------------------------------------------
 void LLKeyframeMotion::flushKeyframeCache()
 {
+    sLocomotionPhaseCache.clear();
     // TODO: Make this safe to do
 //  LLKeyframeDataCache::clear();
 }
@@ -2797,6 +2997,7 @@ void LLKeyframeMotion::setLoop(bool loop)
     {
         mJointMotionList->mLoop = loop;
         mSendStopTimestamp = F32_MAX;
+        sLocomotionPhaseCache.erase(getID());
 
         // [PosePolish M4] the cached seam analysis (getLoopSeamInfo()) was
         // computed against the *previous* loop window; a preview/edit-tool
@@ -2819,6 +3020,7 @@ void LLKeyframeMotion::setLoopIn(F32 in_point)
     if (mJointMotionList)
     {
         mJointMotionList->mLoopInPoint = in_point;
+        sLocomotionPhaseCache.erase(getID());
 
         // set up loop keys
         for (U32 i = 0; i < mJointMotionList->getNumJointMotions(); i++)
@@ -2855,6 +3057,7 @@ void LLKeyframeMotion::setLoopOut(F32 out_point)
     if (mJointMotionList)
     {
         mJointMotionList->mLoopOutPoint = out_point;
+        sLocomotionPhaseCache.erase(getID());
 
         // set up loop keys
         for (U32 i = 0; i < mJointMotionList->getNumJointMotions(); i++)

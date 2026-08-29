@@ -73,6 +73,27 @@ public:
     ALPosePolish(ALPosePolish&&) = delete;
     ALPosePolish& operator=(ALPosePolish&&) = delete;
 
+    // Advisory, frame-stamped mover input. Unknown values preserve the stock
+    // velocity/height inference; this channel never exposes leg-joint writes to
+    // Actor Mover. A stale frame is ignored by runContact().
+    struct ContactHints
+    {
+        U32 mFrame = 0xFFFFFFFF;
+        bool mMoverOwnsRoot = false;
+        bool mGrounded = false;
+        bool mDiscontinuity = false;
+        F32 mExpectedPlant[2] = { -1.f, -1.f };
+        bool mHaveGround[2] = { false, false };
+        F32 mGroundZ[2] = { 0.f, 0.f };
+        LLVector3 mGroundNormal[2] = {
+            LLVector3(0.f, 0.f, 1.f), LLVector3(0.f, 0.f, 1.f) };
+    };
+
+    void setContactHints(const ContactHints& hints)
+    {
+        mContactHints = hints;
+    }
+
     // Run the polish stage for @av this frame. @dt is the real frame interval
     // (gFrameIntervalSeconds) used by the inertializer's decay; presentation
     // pause/scrub is handled via reset(). No-op when ALPolishEnabled is false
@@ -127,6 +148,7 @@ private:
     ALContactStab::ContactFoot mFoot[2];        // 0 = left, 1 = right
     F32                 mContactBlend[2] = { 0.f, 0.f };  // per-leg IK ramp 0..1
     LLVector3           mContactHold[2];        // last world hold pos (ramp-out target)
+    ContactHints        mContactHints;
 
     // M2 sub-stage: hold planted feet in world space via the leg IK. Defined in
     // llvoavatar.cpp (needs LLVOAvatar). No-op unless ALPolishContactEnabled;

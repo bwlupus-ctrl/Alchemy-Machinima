@@ -84,6 +84,7 @@ bool ALPanelPathEditor::postBuild()
     mEaseOut       = getChild<LLSpinCtrl>("path_easeout_spinner");
     mGroundFollow  = getChild<LLCheckBoxCtrl>("path_groundfollow_check");
     mPitch         = getChild<LLCheckBoxCtrl>("path_pitch_check");
+    mAirborne      = getChild<LLCheckBoxCtrl>("path_airborne_check");
     mEndCombo      = getChild<LLComboBox>("path_end_combo");
     mColorSwatch   = getChild<LLPanel>("color_swatch");
 
@@ -134,6 +135,7 @@ bool ALPanelPathEditor::postBuild()
     mEaseOut->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPathEaseOutCommit(); });
     mGroundFollow->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPathGroundFollowCommit(); });
     mPitch->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPathPitchCommit(); });
+    mAirborne->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPathAirborneCommit(); });
     mEndCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPathEndCommit(); });
 
     mSetCamBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSetCam(); });
@@ -400,8 +402,9 @@ void ALPanelPathEditor::refreshPathControls()
     mTension->setEnabled(have_actor);
     mEaseIn->setEnabled(have_actor);
     mEaseOut->setEnabled(have_actor);
-    mGroundFollow->setEnabled(have_actor);
+    mGroundFollow->setEnabled(have_actor && !(path && path->mAirborne));
     mPitch->setEnabled(have_actor);
+    mAirborne->setEnabled(have_actor);
     mEndCombo->setEnabled(have_actor);
 
     // engine defaults when no path yet (a Path struct's own defaults)
@@ -411,6 +414,7 @@ void ALPanelPathEditor::refreshPathControls()
     const F32  eout   = path ? path->mEaseOut      : 0.f;
     const bool gfoll  = path ? path->mGroundFollow : false;
     const bool pit    = path ? path->mPitchToSlope : false;
+    const bool air    = path ? path->mAirborne     : false;
     const S32  emode  = path ? path->mEndMode      : 0;
     const S32  aface  = path ? path->mArrivalFacingMode : 0;
 
@@ -441,6 +445,10 @@ void ALPanelPathEditor::refreshPathControls()
     if ((mPitch->getValue().asBoolean()) != pit)
     {
         mPitch->set(pit);
+    }
+    if ((mAirborne->getValue().asBoolean()) != air)
+    {
+        mAirborne->set(air);
     }
 
     // combo <- (end mode + arrival facing)
@@ -1386,6 +1394,19 @@ void ALPanelPathEditor::onPathPitchCommit()
     if (mActor.isNull()) { return; }
     LLActorMover::Path& p = LLActorMover::instance().editPath(mActor);
     p.mPitchToSlope = mPitch->get();
+    p.markDirty();
+}
+
+void ALPanelPathEditor::onPathAirborneCommit()
+{
+    if (mActor.isNull()) { return; }
+    LLActorMover::instance().snapshotForUndo(mActor);
+    LLActorMover::Path& p = LLActorMover::instance().editPath(mActor);
+    p.mAirborne = mAirborne->get();
+    if (p.mAirborne)
+    {
+        p.mGroundFollow = false;
+    }
     p.markDirty();
 }
 

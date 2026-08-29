@@ -6303,6 +6303,17 @@
       <key>Value</key>
       <real>3.0</real>
     </map>
+    <key>ActorMoverGaitTransitionTime</key>
+    <map>
+      <key>Comment</key>
+      <string>[ActorMover V2] Duration in seconds for phase-driven walk/run crossfades. Pending animation assets hold the outgoing gait until loaded.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.25</real>
+    </map>
     <key>PathTurnRateDegPerSec</key>
     <map>
       <key>Comment</key>

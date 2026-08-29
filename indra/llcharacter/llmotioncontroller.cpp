@@ -419,6 +419,7 @@ bool LLMotionController::startMotion(const LLUUID &id, F32 start_offset)
     // motion that is stopping will be allowed to stop but
     // replaced by a new instance of that motion
     if (motion
+        && !motion->hasPresentationControl()
         && !mPaused
         && motion->canDeprecate()
         && motion->getFadeWeight() > 0.01f // not LOD-ed out
@@ -688,7 +689,8 @@ void LLMotionController::updateMotionsByType(LLMotion::LLMotionBlendType anim_ty
             {
                 // if not, let's stop it this time through and deactivate it the next
 
-                posep->setWeight(motionp->getFadeWeight());
+                posep->setWeight(
+                    motionp->applyPresentationWeight(motionp->getFadeWeight()));
                 motionp->onUpdate(motionp->getStopTime() - motionp->mActivationTimestamp, last_joint_signature);
             }
             else
@@ -717,7 +719,9 @@ void LLMotionController::updateMotionsByType(LLMotion::LLMotionBlendType anim_ty
             }
             else
             {
-                posep->setWeight(motionp->getFadeWeight() * motionp->mResidualWeight * cubic_step(1.f - ((mAnimTime - motionp->getStopTime()) / motionp->getEaseOutDuration())));
+                const F32 stock_weight = motionp->getFadeWeight() * motionp->mResidualWeight
+                    * cubic_step(1.f - ((mAnimTime - motionp->getStopTime()) / motionp->getEaseOutDuration()));
+                posep->setWeight(motionp->applyPresentationWeight(stock_weight));
             }
 
             // perform motion update
@@ -729,7 +733,8 @@ void LLMotionController::updateMotionsByType(LLMotion::LLMotionBlendType anim_ty
         //**********************
         else if (mAnimTime > motionp->mActivationTimestamp + motionp->getEaseInDuration())
         {
-            posep->setWeight(motionp->getFadeWeight());
+            posep->setWeight(
+                motionp->applyPresentationWeight(motionp->getFadeWeight()));
 
             //should we notify the simulator that this motion should be stopped?
             if (mAnimTime > motionp->mSendStopTimestamp)
@@ -760,12 +765,16 @@ void LLMotionController::updateMotionsByType(LLMotion::LLMotionBlendType anim_ty
             }
             if (motionp->getEaseInDuration() == 0.f)
             {
-                posep->setWeight(motionp->getFadeWeight());
+                posep->setWeight(
+                    motionp->applyPresentationWeight(motionp->getFadeWeight()));
             }
             else
             {
                 // perform motion update
-                posep->setWeight(motionp->getFadeWeight() * motionp->mResidualWeight + (1.f - motionp->mResidualWeight) * cubic_step((mAnimTime - motionp->mActivationTimestamp) / motionp->getEaseInDuration()));
+                const F32 stock_weight = motionp->getFadeWeight() * motionp->mResidualWeight
+                    + (1.f - motionp->mResidualWeight)
+                        * cubic_step((mAnimTime - motionp->mActivationTimestamp) / motionp->getEaseInDuration());
+                posep->setWeight(motionp->applyPresentationWeight(stock_weight));
             }
             // perform motion update
             update_result = motionp->onUpdate(mAnimTime - motionp->mActivationTimestamp, last_joint_signature);

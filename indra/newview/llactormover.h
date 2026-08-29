@@ -29,6 +29,7 @@
 #define LL_LLACTORMOVER_H
 
 #include "lluuid.h"
+#include "llsd.h"
 #include "v3math.h"
 #include "v3dmath.h"
 #include "v4color.h"        // actorPathColor()
@@ -36,6 +37,7 @@
 #include "m4math.h"         // frozen attachment matrices (GhostDrawParams)
 #include "llghostcoverage.h" // [GhostDeferred] per-category clone coverage mask
 #include "algazemotor.h"    // per-actor coordinated gaze motor state (spec 6A)
+#include "altrajectory.h"   // deterministic C2 path-facing trajectory
 
 #include <map>
 #include <vector>
@@ -118,6 +120,7 @@ public:
         LLUUID mArrivalTarget;          // cast member id (mode 2)
         bool   mGroundFollow = false;   // clamp feet to terrain/prims each frame
         bool   mPitchToSlope = false;   // tilt root pitch to the local slope
+        bool   mAirborne = false;       // authored air path: fly/hover roles, no contacts
 
         // ---- P3 sync-to-take: the Flycam Recorder playhead drives the arc ------
         // When mSyncToTake AND a take is loaded (>=1 keyframe, duration > 0), the
@@ -151,11 +154,14 @@ public:
         void       evalAtDistance(F32 d, LLVector3d& pos, LLVector3d& tangent) const;
     };
 
-    // path accessors (session-only; scene code reads/writes through these)
+    // Path accessors. Geometry caches and edit history remain session-only;
+    // authored state round-trips through the versioned Director scene schema.
     Path&       editPath(const LLUUID& actor_id);          // creates an empty path if absent
     const Path* getPath(const LLUUID& actor_id) const;     // nullptr when none
     bool        hasWalkablePath(const LLUUID& actor_id) const;   // path with >= 2 nodes
     void        clearPath(const LLUUID& actor_id);
+    LLSD        pathSceneData(const LLUUID& actor_id) const;
+    bool        applyPathSceneData(const LLUUID& actor_id, const LLSD& data);
 
     // test harness (chat commands) + panel "Add": append a ground-snapped
     // waypoint at the actor's current rendered position.
@@ -956,6 +962,29 @@ public:
 private:
     LLActorMover() = default;
 
+    struct LocalMotionHandle
+    {
+        LLUUID mSourceAnim;
+        LLUUID mActualAnim;
+        LLUUID mOwnerToken;
+        bool   mAOActive = false;
+        bool   mOwnsMotion = false;
+        bool   mControlsMotion = false;
+        bool   mPendingLoad = false;
+
+        void clear()
+        {
+            mSourceAnim.setNull();
+            mActualAnim.setNull();
+            mOwnerToken.setNull();
+            mAOActive = false;
+            mOwnsMotion = false;
+            mControlsMotion = false;
+            mPendingLoad = false;
+        }
+        bool valid() const { return mActualAnim.notNull(); }
+    };
+
     struct Move
     {
         LLVector3 mOrigin;      // rendered start position (agent region coords)
@@ -994,6 +1023,26 @@ private:
         S32       mLastDwellNode = -1;  // last node already dwelled (avoid re-trigger)
         LLUUID    mDwellAnim;           // per-node anim started for the dwell (stop on resume)
 
+        LocalMotionHandle mLocomotion;
+        LocalMotionHandle mSecondaryLocomotion;
+        LocalMotionHandle mDwellMotion;
+        F64       mTravelOdometer = 0.0;
+        F32       mPhaseOrigin = 0.f;
+        F32       mSecondaryNominal = 3.f;
+        F32       mSecondaryPhaseOrigin = 0.f;
+        S32       mRole = 0;
+        S32       mSecondaryRole = 0;
+        LLUUID    mFailedLocomotionAnim; // suppress per-frame retry of one bad asset
+        F32       mTransitionElapsed = 0.f;
+        F32       mTransitionDuration = 0.25f;
+        ALTrajectory::ScalarProgram mYawProgram;
+        F64       mYawClock = 0.0;
+        F32       mYawTarget = 0.f;
+        bool      mYawProgramValid = false;
+        bool      mContactDiscontinuity = false;
+        bool      mAirborne = false;
+
+
         // ---- TP-away suspend/resume state ---------------------------------
         // A suspended walk freezes here: applyOverride() returns early (no clock
         // advance, no stale placement) until the state machine resumes or
@@ -1009,6 +1058,32 @@ private:
     };
 
     static F32 pathParam(const Move& mv, F32* face); // leg progress s, facing
+
+    bool startLocalMotion(LLVOAvatar* av, LocalMotionHandle& handle,
+                          const LLUUID& source_anim, bool allow_ao,
+                          F32 initial_weight = 1.f,
+                          bool external_sample = true,
+                          F64 sample_base_time = 0.0,
+                          F32 sample_phase = -1.f);
+    void stopLocalMotion(LLVOAvatar* av, LocalMotionHandle& handle);
+    bool setLocalMotionSample(LLVOAvatar* av, LocalMotionHandle& handle,
+                              F64 traveled_distance, F32 nominal_speed,
+                              F32 phase_origin = 0.f);
+    bool setLocalMotionWeight(LLVOAvatar* av, LocalMotionHandle& handle, F32 weight);
+    F32 resolveLocalMotionPhase(LLVOAvatar* av, const LocalMotionHandle& handle,
+                                F32 configured_phase) const;
+    void startLocomotion(LLVOAvatar* av, Move& mv);
+    void stopLocomotion(LLVOAvatar* av, Move& mv);
+    void updateLocomotionSample(LLVOAvatar* av, Move& mv);
+    bool resolveLocomotionRole(LLVOAvatar* av, S32 requested_role,
+                               LLUUID& anim, F32& nominal_speed,
+                               F32& phase_origin, bool& allow_ao) const;
+    S32 desiredLocomotionRole(LLVOAvatar* av, const Move& mv, F32 speed) const;
+    void beginLocomotionTransition(LLVOAvatar* av, Move& mv, S32 target_role);
+    void updateLocomotionGait(LLVOAvatar* av, Move& mv, F32 speed,
+                              F32 dt, bool discontinuity);
+    void updatePathFacing(Move& mv, F32 target_yaw, F32 target_pitch,
+                          F32 dt, bool discontinuity);
 
     // per-frame evaluation of an active path traversal (called from
     // applyOverride once the path clock has advanced this frame)
@@ -1057,6 +1132,7 @@ private:
         LLUUID mArrivalTarget;
         bool   mGroundFollow = false;
         bool   mPitchToSlope = false;
+        bool   mAirborne = false;
         bool   mSyncToTake   = false;
         F32    mSyncLeadTrail = 0.f;
     };

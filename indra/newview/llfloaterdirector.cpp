@@ -105,7 +105,7 @@ bool can_start_manual_subject_shot(std::string* reason)
 
 // scene files live beside the cinematic presets, same idiom
 constexpr char SCENE_SUBDIR[]  = "director_scenes";
-constexpr S32  SCENE_VERSION   = 4;
+constexpr S32  SCENE_VERSION   = 6;
 
 // the assign combo's explicit "ungroup" row: discoverable equivalent of
 // committing an empty name (which still works)
@@ -189,6 +189,45 @@ constexpr char GLYPH_PLAYING[] = "\xE2\x96\xB6";    // BLACK RIGHT-POINTING TRIA
 const char* cinecam_mode_name(S32 mode)
 {
     return LLCinematicCamera::modeName(mode);
+}
+
+const char* locomotion_role_label(S32 role)
+{
+    using Cast = LLDirectorCast;
+    switch (role)
+    {
+        case Cast::LOCO_IDLE:          return "Idle";
+        case Cast::LOCO_WALK_FORWARD:  return "Walk forward";
+        case Cast::LOCO_RUN_FORWARD:   return "Run forward";
+        case Cast::LOCO_TURN_LEFT:     return "Turn left";
+        case Cast::LOCO_TURN_RIGHT:    return "Turn right";
+        case Cast::LOCO_WALK_BACKWARD: return "Walk backward";
+        case Cast::LOCO_STRAFE_LEFT:   return "Strafe left";
+        case Cast::LOCO_STRAFE_RIGHT:  return "Strafe right";
+        case Cast::LOCO_FLY:           return "Fly";
+        case Cast::LOCO_HOVER:         return "Hover";
+        case Cast::LOCO_TAKEOFF:       return "Takeoff";
+        case Cast::LOCO_LAND:          return "Land";
+        default:                       return "Unknown";
+    }
+}
+
+F32 default_locomotion_speed(S32 role)
+{
+    using Cast = LLDirectorCast;
+    switch (role)
+    {
+        case Cast::LOCO_RUN_FORWARD:
+        case Cast::LOCO_FLY:
+            return 6.f;
+        case Cast::LOCO_WALK_FORWARD:
+        case Cast::LOCO_WALK_BACKWARD:
+        case Cast::LOCO_STRAFE_LEFT:
+        case Cast::LOCO_STRAFE_RIGHT:
+            return 3.f;
+        default:
+            return 1.f;
+    }
 }
 
 } // anonymous namespace
@@ -439,6 +478,11 @@ bool LLFloaterDirector::postBuild()
     mPastePlayBtn = getChild<LLButton>("btn_paste_play");
     mPasteStopBtn = getChild<LLButton>("btn_paste_stop");
     mPasteSetLocoBtn = getChild<LLButton>("btn_paste_setloco");
+    mLocomotionRoleCombo = getChild<LLComboBox>("locomotion_role_combo");
+    mLocomotionSpeed = getChild<LLSpinCtrl>("locomotion_speed");
+    mLocomotionPhase = getChild<LLSpinCtrl>("locomotion_phase");
+    mLocomotionAllowAO = getChild<LLCheckBoxCtrl>("locomotion_allow_ao");
+    mLocomotionRoleCombo->setValue(LLDirectorCast::LOCO_WALK_FORWARD);
     mLocoText = getChild<LLTextBox>("loco_text");
     mClearLocoBtn = getChild<LLButton>("btn_clear_loco");
     mAnimCopyBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAnimCopyUUID(); });
@@ -449,6 +493,12 @@ bool LLFloaterDirector::postBuild()
     mPasteStopBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPastePlayLocal(false); });
     mPasteSetLocoBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPasteSetLoco(); });
     mClearLocoBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickClearLoco(); });
+    mLocomotionRoleCombo->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onLocomotionRoleChanged(); });
+    for (LLUICtrl* control : { static_cast<LLUICtrl*>(mLocomotionSpeed),
+                               static_cast<LLUICtrl*>(mLocomotionPhase),
+                               static_cast<LLUICtrl*>(mLocomotionAllowAO) })
+        control->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLocomotionMetadataCommit(); });
     mAnimList->setRightMouseDownCallback(
         [this](LLUICtrl* ctrl, S32 x, S32 y, MASK) { onAnimRightClick(ctrl, x, y); });
     getChild<LLButton>("btn_open_animexp")->setCommitCallback(
@@ -1107,11 +1157,10 @@ void LLFloaterDirector::loadScene(const std::string& name)
                                 "Prism configuration and loading only tolerant "
                                 "legacy scene fields" << LL_ENDL;
     }
-    else if (version == 3 || version == 4)
+    else if (version >= 3 && version <= SCENE_VERSION)
     {
-        // v3 and v4 share the same Prism scene schema; v4 only raises the capture
-        // count ceiling (an older viewer treats v4 as a future version and keeps
-        // its live Prism config instead of hard-rejecting the whole scene).
+        // v3-v6 share the same Prism schema. Later versions add cast locomotion
+        // and actor-path data without changing Prism's atomic registry contract.
         // Validate and atomically replace Prism before mutating transport, cast,
         // settings, or CineCam state. A malformed payload leaves the live scene
         // and retained Prism outputs wholly untouched.
@@ -1518,6 +1567,7 @@ void LLFloaterDirector::onCastClearLocoAnim()
         if (LLDirectorCast::CastMember* m = cast.getMember(id))
         {
             m->mLocoAnim.setNull();
+            m->mLocomotionSet.mRoles.erase(LLDirectorCast::LOCO_WALK_FORWARD);
         }
     }
 }
@@ -2128,16 +2178,44 @@ void LLFloaterDirector::onAnimCopyUUID()
     LLClipboard::instance().copyToClipboard(idwstr, 0, narrow(idwstr.size()));
 }
 
-void LLFloaterDirector::onAnimSetLoco()
+S32 LLFloaterDirector::selectedLocomotionRole() const
 {
-    const LLUUID anim = selectedAnimId();
+    const S32 role = mLocomotionRoleCombo
+        ? mLocomotionRoleCombo->getValue().asInteger()
+        : LLDirectorCast::LOCO_WALK_FORWARD;
+    return role > LLDirectorCast::LOCO_NONE &&
+           role < LLDirectorCast::LOCO_ROLE_COUNT
+        ? role : LLDirectorCast::LOCO_WALK_FORWARD;
+}
+
+void LLFloaterDirector::applySelectedLocomotion(const LLUUID& anim)
+{
     LLDirectorCast::CastMember* m =
         LLDirectorCast::instance().getMember(firstSelectedCastId());
-    if (anim.notNull() && m)
+    if (anim.isNull() || !m)
     {
-        // the loco line under the paste row is the visible confirmation
+        return;
+    }
+
+    const S32 role = selectedLocomotionRole();
+    auto& entry = m->mLocomotionSet.edit(
+        static_cast<LLDirectorCast::ELocomotionRole>(role));
+    entry.mAnim = anim;
+    entry.mNominalSpeed = llclamp(
+        (F32)mLocomotionSpeed->getValue().asReal(), 0.05f, 20.f);
+    entry.mManualLeftPlantPhase = llclamp(
+        (F32)mLocomotionPhase->getValue().asReal(), -1.f, 1.f);
+    entry.mAllowAO = mLocomotionAllowAO->get();
+    if (role == LLDirectorCast::LOCO_WALK_FORWARD)
+    {
         m->mLocoAnim = anim;
     }
+    mLocomotionEditorLoaded = false;
+}
+
+void LLFloaterDirector::onAnimSetLoco()
+{
+    applySelectedLocomotion(selectedAnimId());
 }
 
 // Apply the client-side play-local priority (DirectorAnimPlayLocalPriority) to a
@@ -2194,13 +2272,7 @@ void LLFloaterDirector::onPastePlayLocal(bool play)
 
 void LLFloaterDirector::onPasteSetLoco()
 {
-    const LLUUID anim = pasteAnimId();
-    LLDirectorCast::CastMember* m =
-        LLDirectorCast::instance().getMember(firstSelectedCastId());
-    if (anim.notNull() && m)
-    {
-        m->mLocoAnim = anim;
-    }
+    applySelectedLocomotion(pasteAnimId());
 }
 
 void LLFloaterDirector::onClickClearLoco()
@@ -2208,7 +2280,140 @@ void LLFloaterDirector::onClickClearLoco()
     if (LLDirectorCast::CastMember* m =
             LLDirectorCast::instance().getMember(firstSelectedCastId()))
     {
-        m->mLocoAnim.setNull();
+        const S32 role = selectedLocomotionRole();
+        m->mLocomotionSet.mRoles.erase(role);
+        if (role == LLDirectorCast::LOCO_WALK_FORWARD)
+        {
+            m->mLocoAnim.setNull();
+        }
+        mLocomotionEditorLoaded = false;
+    }
+}
+
+void LLFloaterDirector::onLocomotionRoleChanged()
+{
+    mLocomotionEditorLoaded = false;
+    refreshLocomotionRoleEditor(firstSelectedCastId());
+}
+
+void LLFloaterDirector::onLocomotionMetadataCommit()
+{
+    LLDirectorCast::CastMember* member =
+        LLDirectorCast::instance().getMember(firstSelectedCastId());
+    if (!member)
+    {
+        return;
+    }
+    const S32 role = selectedLocomotionRole();
+    auto found = member->mLocomotionSet.mRoles.find(role);
+    if (found == member->mLocomotionSet.mRoles.end())
+    {
+        // Keep these values as authoring defaults until Set role supplies an
+        // animation; sparse role maps never contain metadata-only entries.
+        return;
+    }
+    found->second.mNominalSpeed = llclamp(
+        (F32)mLocomotionSpeed->getValue().asReal(), 0.05f, 20.f);
+    found->second.mManualLeftPlantPhase = llclamp(
+        (F32)mLocomotionPhase->getValue().asReal(), -1.f, 1.f);
+    found->second.mAllowAO = mLocomotionAllowAO->get();
+    mLocomotionEditorLoaded = false;
+}
+
+void LLFloaterDirector::refreshLocomotionRoleEditor(const LLUUID& member_id)
+{
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    const LLDirectorCast::CastMember* member = cast.getMember(member_id);
+    const S32 role = selectedLocomotionRole();
+    const LLDirectorCast::LocomotionRoleEntry* entry = member
+        ? member->mLocomotionSet.get(
+              static_cast<LLDirectorCast::ELocomotionRole>(role))
+        : nullptr;
+    const LLUUID anim = entry ? entry->mAnim : LLUUID::null;
+    const F32 speed = entry ? entry->mNominalSpeed
+                            : default_locomotion_speed(role);
+    const F32 phase = entry ? entry->mManualLeftPlantPhase : -1.f;
+    const bool allow_ao = entry && entry->mAllowAO;
+    const bool changed = !mLocomotionEditorLoaded ||
+        member_id != mLocomotionEditorMember ||
+        role != mLocomotionEditorRole || anim != mLocomotionEditorAnim ||
+        speed != mLocomotionEditorSpeed || phase != mLocomotionEditorPhase ||
+        allow_ao != mLocomotionEditorAllowAO;
+    if (changed)
+    {
+        mLocomotionSpeed->setValue(speed);
+        mLocomotionPhase->setValue(phase);
+        mLocomotionAllowAO->set(allow_ao);
+        mLocomotionEditorMember = member_id;
+        mLocomotionEditorRole = role;
+        mLocomotionEditorAnim = anim;
+        mLocomotionEditorSpeed = speed;
+        mLocomotionEditorPhase = phase;
+        mLocomotionEditorAllowAO = allow_ao;
+        mLocomotionEditorLoaded = true;
+    }
+
+    const bool have_member = member != nullptr;
+    mLocomotionRoleCombo->setEnabled(have_member);
+    mLocomotionSpeed->setEnabled(have_member);
+    mLocomotionPhase->setEnabled(have_member);
+    mLocomotionAllowAO->setEnabled(have_member);
+
+    std::string status = "Select a cast member";
+    if (member && !entry)
+    {
+        status = std::string(locomotion_role_label(role)) + ": fallback";
+    }
+    else if (entry)
+    {
+        status = std::string(locomotion_role_label(role)) +
+            (cast.resolve(member_id) ? ": not loaded; starts on ACTION"
+                                     : ": configured; actor away");
+        if (LLVOAvatar* av = cast.resolve(member_id))
+        {
+            if (LLKeyframeMotion* motion = dynamic_cast<LLKeyframeMotion*>(
+                    av->findMotion(entry->mAnim)))
+            {
+                if (!motion->isLoaded())
+                {
+                    status = std::string(locomotion_role_label(role)) +
+                        ": loading";
+                }
+                else if (entry->mManualLeftPlantPhase >= 0.f)
+                {
+                    status = std::string(locomotion_role_label(role)) +
+                        ": manual phase";
+                }
+                else
+                {
+                    const auto& info = motion->getGenericLocomotionPhaseInfo();
+                    switch (info.mStatus)
+                    {
+                        case LLKeyframeMotion::LocomotionPhaseInfo::VALID:
+                            status = llformat("%s: auto phase %.0f%%",
+                                locomotion_role_label(role),
+                                info.mConfidence * 100.f);
+                            break;
+                        case LLKeyframeMotion::LocomotionPhaseInfo::MISSING_ANKLES:
+                            status = std::string(locomotion_role_label(role)) +
+                                ": no ankle curves; loop-in fallback";
+                            break;
+                        case LLKeyframeMotion::LocomotionPhaseInfo::NO_ALTERNATING_PLANTS:
+                            status = std::string(locomotion_role_label(role)) +
+                                ": phase unclear; loop-in fallback";
+                            break;
+                        default:
+                            status = std::string(locomotion_role_label(role)) +
+                                ": non-looping; loop-in fallback";
+                            break;
+                    }
+                }
+            }
+        }
+    }
+    if (mLocoText->getText() != status)
+    {
+        mLocoText->setText(status);
     }
 }
 
@@ -2334,8 +2539,7 @@ void LLFloaterDirector::refreshAnimateTab()
     mAnimSetLocoBtn->setEnabled(have_row && sel.notNull());
     setToolTipIfChanged(mAnimSetLocoBtn, !have_row ? no_row_tip
         : sel.isNull() ? std::string("Select a cast member first")
-        : "Use this animation as " + member_name
-          + "'s walk while the mover drives them (overrides the shared custom anim)");
+        : "Use this animation for " + member_name + "'s selected locomotion role");
     const std::string not_in_world_tip = sel.isNull()
         ? std::string("Select a cast member first")
         : member_name + " is not in world";
@@ -2366,26 +2570,19 @@ void LLFloaterDirector::refreshAnimateTab()
     mPasteSetLocoBtn->setEnabled(pasted.notNull() && sel.notNull());
     setToolTipIfChanged(mPasteSetLocoBtn, pasted.isNull() ? bad_uuid_tip
         : sel.isNull() ? std::string("Select a cast member first")
-        : "Use the pasted animation as " + member_name + "'s walk while the mover drives them");
+        : "Use the pasted animation for " + member_name + "'s selected locomotion role");
 
-    // loco-anim affordance: current override + Clear
+    // Sparse locomotion-role authoring and live analysis status.
     const LLDirectorCast::CastMember* m = cast.getMember(sel);
-    std::string loco = "Loco anim: \xE2\x80\x94";
-    if (m)
-    {
-        loco = m->mLocoAnim.notNull() ? "Loco anim: " + m->mLocoAnim.asString()
-                                      : std::string("Loco anim: default walk");
-    }
-    if (mLocoText->getText() != loco)
-    {
-        mLocoText->setText(loco);
-    }
-    const bool have_loco = m && m->mLocoAnim.notNull();
+    refreshLocomotionRoleEditor(sel);
+    const S32 selected_role = selectedLocomotionRole();
+    const bool have_loco = m && m->mLocomotionSet.mRoles.find(selected_role) !=
+        m->mLocomotionSet.mRoles.end();
     mClearLocoBtn->setEnabled(have_loco);
     setToolTipIfChanged(mClearLocoBtn, !m
         ? std::string("Select a cast member first")
-        : have_loco ? member_name + " returns to the default walk (or the shared custom anim when enabled)"
-                    : std::string("No loco anim override set"));
+        : have_loco ? std::string("Clear this role and restore its deterministic fallback")
+                    : std::string("This role already uses its fallback"));
 
     // feed the shared preview panel: the selected row (else the pasted UUID) on
     // loop, with its Stop / Revoke / Blacklist pointed at whatever object is

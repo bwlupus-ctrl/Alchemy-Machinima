@@ -630,7 +630,7 @@
                 <panel
                  background_visible="false"
                  follows="left|top|right"
-                 height="520"
+                 height="560"
                  layout="topleft"
                  left="0"
                  name="animate_scroll_content"
@@ -699,7 +699,7 @@
             <button
              follows="left|top"
              height="20"
-             label="Set as loco"
+             label="Set role"
              layout="topleft"
              left="92"
              top="150"
@@ -764,7 +764,7 @@
             <button
              follows="left|top"
              height="20"
-             label="Set as loco"
+             label="Set role"
              layout="topleft"
              left="182"
              top="216"
@@ -792,12 +792,82 @@
              height="14"
              layout="topleft"
              left="10"
-             top="244"
+             top="242"
+             name="locomotion_editor_label"
+             width="344">
+                Locomotion role                 m/s       phase
+            </text>
+            <combo_box
+             follows="left|top"
+             height="20"
+             layout="topleft"
+             left="10"
+             top="258"
+             name="locomotion_role_combo"
+             tool_tip="Role this animation and metadata will author for the selected cast member"
+             width="120">
+                <combo_box.item label="Idle" name="loco_idle" value="1" />
+                <combo_box.item label="Walk forward" name="loco_walk" value="2" />
+                <combo_box.item label="Run forward" name="loco_run" value="3" />
+                <combo_box.item label="Turn left" name="loco_turn_left" value="4" />
+                <combo_box.item label="Turn right" name="loco_turn_right" value="5" />
+                <combo_box.item label="Walk backward" name="loco_back" value="6" />
+                <combo_box.item label="Strafe left" name="loco_strafe_left" value="7" />
+                <combo_box.item label="Strafe right" name="loco_strafe_right" value="8" />
+                <combo_box.item label="Fly" name="loco_fly" value="9" />
+                <combo_box.item label="Hover" name="loco_hover" value="10" />
+                <combo_box.item label="Takeoff" name="loco_takeoff" value="11" />
+                <combo_box.item label="Land" name="loco_land" value="12" />
+            </combo_box>
+            <spinner
+             decimal_digits="2"
+             follows="left|top"
+             height="20"
+             increment="0.05"
+             initial_value="3"
+             layout="topleft"
+             left="134"
+             max_val="20"
+             min_val="0.05"
+             name="locomotion_speed"
+             tool_tip="Authored natural travel speed in metres per second"
+             top="258"
+             width="62" />
+            <spinner
+             decimal_digits="2"
+             follows="left|top"
+             height="20"
+             increment="0.05"
+             initial_value="-1"
+             layout="topleft"
+             left="200"
+             max_val="1"
+             min_val="-1"
+             name="locomotion_phase"
+             tool_tip="Left-foot plant phase. -1 analyzes the loaded clip automatically; 0..1 is a manual cycle phase"
+             top="258"
+             width="62" />
+            <check_box
+             follows="left|top"
+             height="20"
+             label="AO"
+             layout="topleft"
+             left="266"
+             name="locomotion_allow_ao"
+             tool_tip="Allow the local AO to replace this role. Explicit custom assets bypass AO by default"
+             top="258"
+             width="50" />
+            <text
+             follows="left|top"
+             height="14"
+             layout="topleft"
+             left="10"
+             top="284"
              name="loco_text"
-             tool_tip="The selected member's locomotion override: the animation the mover plays while walking them"
+             tool_tip="Selected role, configured asset, and automatic phase-analysis status"
              use_ellipses="true"
              width="272">
-                Loco anim: &#8212;
+                Walk forward: fallback
             </text>
             <button
              follows="left|top"
@@ -805,7 +875,7 @@
              label="Clear"
              layout="topleft"
              left="288"
-             top="242"
+             top="282"
              name="btn_clear_loco"
              width="66" />
 
@@ -821,7 +891,7 @@
              height="14"
              layout="topleft"
              left="10"
-             top="270"
+             top="310"
              name="preview_section_lbl"
              width="344">
                 Preview &amp; animation control
@@ -833,7 +903,7 @@
              height="188"
              layout="topleft"
              left="10"
-             top="288"
+             top="328"
              name="anim_preview_panel"
              width="344" />
             <!-- console-only: open the standalone Explorer (recent-anim list) -->
@@ -843,7 +913,7 @@
              label="Open Animation Explorer"
              layout="topleft"
              left="190"
-             top="482"
+             top="522"
              name="btn_open_animexp"
              tool_tip="Open the standalone Animation Explorer (recent-animation list, name lookups)"
              width="164" />

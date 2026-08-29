@@ -179,6 +179,50 @@ public:
         F32             mEffectFps = 0.f;
     };
 
+    enum ELocomotionRole : S32
+    {
+        LOCO_NONE = 0,
+        LOCO_IDLE,
+        LOCO_WALK_FORWARD,
+        LOCO_RUN_FORWARD,
+        LOCO_TURN_LEFT,
+        LOCO_TURN_RIGHT,
+        LOCO_WALK_BACKWARD,
+        LOCO_STRAFE_LEFT,
+        LOCO_STRAFE_RIGHT,
+        LOCO_FLY,
+        LOCO_HOVER,
+        LOCO_TAKEOFF,
+        LOCO_LAND,
+        LOCO_ROLE_COUNT
+    };
+
+    struct LocomotionRoleEntry
+    {
+        LLUUID mAnim;
+        F32    mNominalSpeed = 3.f;
+        F32    mManualLeftPlantPhase = -1.f; // -1 = infer/loop-in fallback
+        bool   mAllowAO = false;
+        F32    mMinNaturalRate = 0.5f;
+        F32    mMaxNaturalRate = 2.f;
+    };
+
+    struct LocomotionSet
+    {
+        std::unordered_map<S32, LocomotionRoleEntry> mRoles;
+
+        const LocomotionRoleEntry* get(ELocomotionRole role) const
+        {
+            auto found = mRoles.find(static_cast<S32>(role));
+            return found == mRoles.end() ? nullptr : &found->second;
+        }
+        LocomotionRoleEntry& edit(ELocomotionRole role)
+        {
+            return mRoles[static_cast<S32>(role)];
+        }
+        bool empty() const { return mRoles.empty(); }
+    };
+
     struct CastMember
     {
         CastMember()
@@ -194,6 +238,7 @@ public:
         LLVector3               mMark = LLVector3::zero;    // region coords; unset unless mHasMark
         bool                    mHasMark = false;
         LLUUID                  mLocoAnim;       // per-actor locomotion override (null = stock walk)
+        LocomotionSet           mLocomotionSet;  // sparse V2 role set with deterministic fallbacks
         std::string             mGroup;          // production group tag ("" = ungrouped; session-only)
         LLActorMover::GazeTarget mGazeTarget;    // per-cast authored gaze target config
         bool                    mEyeGazeTargetEnabled = false;

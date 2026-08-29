@@ -215,6 +215,138 @@ LLDirectorCast::ActorStyle readActorStyle(const LLSD& data)
     return style;
 }
 
+const char* locomotionRoleKey(LLDirectorCast::ELocomotionRole role)
+{
+    switch (role)
+    {
+        case LLDirectorCast::LOCO_IDLE:          return "idle";
+        case LLDirectorCast::LOCO_WALK_FORWARD:  return "walk_forward";
+        case LLDirectorCast::LOCO_RUN_FORWARD:   return "run_forward";
+        case LLDirectorCast::LOCO_TURN_LEFT:     return "turn_left";
+        case LLDirectorCast::LOCO_TURN_RIGHT:    return "turn_right";
+        case LLDirectorCast::LOCO_WALK_BACKWARD: return "walk_backward";
+        case LLDirectorCast::LOCO_STRAFE_LEFT:   return "strafe_left";
+        case LLDirectorCast::LOCO_STRAFE_RIGHT:  return "strafe_right";
+        case LLDirectorCast::LOCO_FLY:           return "fly";
+        case LLDirectorCast::LOCO_HOVER:         return "hover";
+        case LLDirectorCast::LOCO_TAKEOFF:       return "takeoff";
+        case LLDirectorCast::LOCO_LAND:          return "land";
+        default:                                 return nullptr;
+    }
+}
+
+bool locomotionRoleFromKey(const std::string& key,
+                           LLDirectorCast::ELocomotionRole& role)
+{
+    for (S32 value = LLDirectorCast::LOCO_IDLE;
+         value < LLDirectorCast::LOCO_ROLE_COUNT; ++value)
+    {
+        const auto candidate = static_cast<LLDirectorCast::ELocomotionRole>(value);
+        const char* name = locomotionRoleKey(candidate);
+        if (name && key == name)
+        {
+            role = candidate;
+            return true;
+        }
+    }
+    return false;
+}
+
+void sanitizeLocomotionRole(LLDirectorCast::LocomotionRoleEntry& entry)
+{
+    if (!std::isfinite(entry.mNominalSpeed))
+    {
+        entry.mNominalSpeed = 3.f;
+    }
+    entry.mNominalSpeed = llclamp(entry.mNominalSpeed, 0.05f, 20.f);
+    if (!std::isfinite(entry.mManualLeftPlantPhase) ||
+        entry.mManualLeftPlantPhase < 0.f)
+    {
+        entry.mManualLeftPlantPhase = -1.f;
+    }
+    else
+    {
+        entry.mManualLeftPlantPhase = fmodf(entry.mManualLeftPlantPhase, 1.f);
+    }
+    if (!std::isfinite(entry.mMinNaturalRate))
+    {
+        entry.mMinNaturalRate = 0.5f;
+    }
+    if (!std::isfinite(entry.mMaxNaturalRate))
+    {
+        entry.mMaxNaturalRate = 2.f;
+    }
+    entry.mMinNaturalRate = llclamp(entry.mMinNaturalRate, 0.05f, 8.f);
+    entry.mMaxNaturalRate = llclamp(entry.mMaxNaturalRate, 0.05f, 8.f);
+    if (entry.mMinNaturalRate > entry.mMaxNaturalRate)
+    {
+        std::swap(entry.mMinNaturalRate, entry.mMaxNaturalRate);
+    }
+}
+
+LLSD writeLocomotionSet(const LLDirectorCast::LocomotionSet& set)
+{
+    LLSD result = LLSD::emptyMap();
+    for (S32 value = LLDirectorCast::LOCO_IDLE;
+         value < LLDirectorCast::LOCO_ROLE_COUNT; ++value)
+    {
+        const auto role = static_cast<LLDirectorCast::ELocomotionRole>(value);
+        const auto* original = set.get(role);
+        const char* key = locomotionRoleKey(role);
+        if (!original || !key || original->mAnim.isNull())
+        {
+            continue;
+        }
+        LLDirectorCast::LocomotionRoleEntry entry = *original;
+        sanitizeLocomotionRole(entry);
+        LLSD role_data = LLSD::emptyMap();
+        role_data["anim"] = entry.mAnim;
+        role_data["nominal_speed"] = entry.mNominalSpeed;
+        role_data["manual_left_plant_phase"] = entry.mManualLeftPlantPhase;
+        role_data["allow_ao"] = entry.mAllowAO;
+        role_data["min_natural_rate"] = entry.mMinNaturalRate;
+        role_data["max_natural_rate"] = entry.mMaxNaturalRate;
+        result[key] = role_data;
+    }
+    return result;
+}
+
+LLDirectorCast::LocomotionSet readLocomotionSet(const LLSD& data)
+{
+    LLDirectorCast::LocomotionSet set;
+    if (!data.isMap())
+    {
+        return set;
+    }
+    for (LLSD::map_const_iterator it = data.beginMap(); it != data.endMap(); ++it)
+    {
+        LLDirectorCast::ELocomotionRole role = LLDirectorCast::LOCO_NONE;
+        if (!locomotionRoleFromKey(it->first, role) || !it->second.isMap())
+        {
+            continue;
+        }
+        LLDirectorCast::LocomotionRoleEntry entry;
+        entry.mAnim = it->second["anim"].asUUID();
+        if (entry.mAnim.isNull())
+        {
+            continue;
+        }
+        if (it->second.has("nominal_speed"))
+            entry.mNominalSpeed = (F32)it->second["nominal_speed"].asReal();
+        if (it->second.has("manual_left_plant_phase"))
+            entry.mManualLeftPlantPhase = (F32)it->second["manual_left_plant_phase"].asReal();
+        if (it->second.has("allow_ao"))
+            entry.mAllowAO = it->second["allow_ao"].asBoolean();
+        if (it->second.has("min_natural_rate"))
+            entry.mMinNaturalRate = (F32)it->second["min_natural_rate"].asReal();
+        if (it->second.has("max_natural_rate"))
+            entry.mMaxNaturalRate = (F32)it->second["max_natural_rate"].asReal();
+        sanitizeLocomotionRole(entry);
+        set.edit(role) = entry;
+    }
+    return set;
+}
+
 using SceneActorIdRemap = std::map<LLUUID, LLUUID>;
 
 // Translate a scene-owned actor reference through the same canonical identity
@@ -1937,10 +2069,23 @@ LLSD LLDirectorCast::sceneData() const
         {
             e["mark"] = ll_sd_from_vector3(m.mMark);
         }
-        e["loco_anim"] = m.mLocoAnim;
+        const LocomotionRoleEntry* walk =
+            m.mLocomotionSet.get(LOCO_WALK_FORWARD);
+        e["loco_anim"] = walk && walk->mAnim.notNull()
+            ? walk->mAnim : m.mLocoAnim;
+        const LLSD locomotion_set = writeLocomotionSet(m.mLocomotionSet);
+        if (locomotion_set.size() > 0)
+        {
+            e["locomotion_set"] = locomotion_set;
+        }
         e["group"] = m.mGroup;
         e["look_at_camera"] = isLookAtCamera(m.mId);
         e["actor_style"] = writeActorStyle(m.mActorStyle);
+        const LLSD path = LLActorMover::instance().pathSceneData(m.mId);
+        if (path.isMap())
+        {
+            e["actor_path"] = path;
+        }
 
         LLSD gaze_sd = LLSD::emptyMap();
         gaze_sd["mode"] = static_cast<S32>(m.mGazeTarget.mMode);
@@ -2009,6 +2154,11 @@ LLSD LLDirectorCast::sceneData() const
         data["self_gaze_influence_keys"] = writeGazeInfluenceKeys(mSelfGazeInfluenceKeys);
     }
     data["self_actor_style"] = writeActorStyle(mSelfActorStyle);
+    const LLSD self_path = LLActorMover::instance().pathSceneData(LLUUID::null);
+    if (self_path.isMap())
+    {
+        data["self_actor_path"] = self_path;
+    }
 
     // per-group start delays, only for groups that still exist (the members
     // above carry the tags; this map just annotates them)
@@ -2032,6 +2182,11 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     // group delays belong to the outgoing cast, so both reset here.
     cancelPendingStarts();
     LLActorMover::instance().clearAllDirectorLookAtRuntime();
+    LLActorMover::instance().clearPath(LLUUID::null);
+    for (const CastMember& old_member : mCast)
+    {
+        LLActorMover::instance().clearPath(old_member.mId);
+    }
     mGroupDelays.clear();
     mCast.clear();
     mIds.clear();
@@ -2119,6 +2274,10 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     {
         mSelfActorStyle = readActorStyle(data["self_actor_style"]);
     }
+    if (data.has("self_actor_path"))
+    {
+        LLActorMover::instance().applyPathSceneData(LLUUID::null, data["self_actor_path"]);
+    }
 
     for (LLSD::array_const_iterator it = cast_arr.beginArray();
          it != cast_arr.endArray(); ++it)
@@ -2141,6 +2300,18 @@ void LLDirectorCast::applySceneData(const LLSD& data)
             m.mMark = ll_vector3_from_sd(e["mark"]);
         }
         m.mLocoAnim = e["loco_anim"].asUUID();
+        if (e.has("locomotion_set"))
+        {
+            m.mLocomotionSet = readLocomotionSet(e["locomotion_set"]);
+        }
+        else if (m.mLocoAnim.notNull())
+        {
+            LocomotionRoleEntry legacy;
+            legacy.mAnim = m.mLocoAnim;
+            legacy.mNominalSpeed = 3.f;
+            legacy.mAllowAO = false;
+            m.mLocomotionSet.edit(LOCO_WALK_FORWARD) = legacy;
+        }
         m.mGroup = e["group"].asString();   // absent in pre-group scenes -> ""
         if (e.has("actor_style"))
         {
@@ -2199,6 +2370,12 @@ void LLDirectorCast::applySceneData(const LLSD& data)
         if (e["look_at_camera"].asBoolean()) // absent in older scenes -> false
         {
             mLookAtCameraIds.insert(m.mId);
+        }
+        if (e.has("actor_path") &&
+            !LLActorMover::instance().applyPathSceneData(m.mId, e["actor_path"]))
+        {
+            LL_WARNS("Director") << "Ignored invalid actor path for "
+                                 << m.mId << LL_ENDL;
         }
         // refresh the cached name when the actor is in world; a resolve
         // failure just leaves the member "(away)" -- never dropped

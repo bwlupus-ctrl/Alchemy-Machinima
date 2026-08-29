@@ -470,6 +470,16 @@
      name="path_pitch_check"
      tool_tip="Tilt the body pitch to the local slope while walking"
      width="120" />
+    <check_box
+     follows="left|top"
+     height="16"
+     label="Air path"
+     layout="topleft"
+     left="254"
+     top="376"
+     name="path_airborne_check"
+     tool_tip="Use fly/hover locomotion roles, pitch along the flight path, and release Pose Polish foot contacts"
+     width="100" />
     <combo_box
      follows="left|top"
      height="20"

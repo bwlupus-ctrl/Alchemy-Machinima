@@ -1108,6 +1108,10 @@ private:
 public:
     bool            mInAir;
     LLFrameTimer    mTimeInAir;
+    void setMoverContactHints(const ALPosePolish::ContactHints& hints)
+    {
+        mPosePolish.setContactHints(hints);
+    }
 
 /**                    Actions
  **                                                                            **

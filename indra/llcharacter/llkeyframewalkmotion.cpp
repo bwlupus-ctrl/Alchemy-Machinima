@@ -188,6 +188,24 @@ void LLKeyframeWalkMotion::onDeactivate()
 bool LLKeyframeWalkMotion::onUpdate(F32 time, U8* joint_mask)
 {
     LL_PROFILE_ZONE_SCOPED;
+
+    // Character Mover's absolute sample already encodes distance/cadence.
+    // Bypass the legacy "Walk Speed" integrator or the built-in walk/run
+    // subclasses would warp the requested sample a second time. Keep the
+    // phase handoff fed from the effective clip time so stock and custom gait
+    // transitions observe the pose that was actually displayed.
+    if (usesExternalSampleClock())
+    {
+        const F32 adjusted_time = getEffectiveUpdateTime(time);
+        mRealTimeLast = time;
+        mAdjTimeLast = adjusted_time;
+        if (sPhaseAwareLocomotionEnabled)
+        {
+            updateLocomotionHandoff(adjusted_time);
+        }
+        return LLKeyframeMotion::onUpdate(time, joint_mask);
+    }
+
     // compute time since last update
     F32 deltaTime = time - mRealTimeLast;
 

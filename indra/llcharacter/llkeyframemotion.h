@@ -156,6 +156,8 @@ public:
     // called when a motion is deactivated
     virtual void onDeactivate();
 
+    bool supportsExternalSampling() const override { return true; }
+
     virtual void setStopTime(F32 time);
 
     static void onLoadComplete(const LLUUID& asset_uuid,
@@ -167,6 +169,7 @@ public:
     bool    serialize(LLDataPacker& dp) const;
     bool    deserialize(LLDataPacker& dp, const LLUUID& asset_id, bool allow_invalid_joints = true);
     bool    isLoaded() { return mJointMotionList != NULL; }
+    bool    hasLoadFailed() const { return mAssetStatus == ASSET_FETCH_FAILED; }
     bool    dumpToFile(const std::string& name);
 
 
@@ -184,6 +187,35 @@ public:
     void setLoopIn(F32 in_point);
 
     void setLoopOut(F32 out_point);
+
+    // Per-asset phase metadata for every loaded keyframe clip, including
+    // arbitrary user UUIDs instantiated as generic LLKeyframeMotion objects.
+    struct LocomotionPhaseInfo
+    {
+        enum Status : U8
+        {
+            NOT_ANALYZED,
+            VALID,
+            NOT_LOOPING,
+            MISSING_ANKLES,
+            NO_ALTERNATING_PLANTS
+        };
+        Status mStatus = NOT_ANALYZED;
+        F32 mCycleStart = 0.f;
+        F32 mCycleLength = 0.f;
+        F32 mLeftPlantPhase = 0.f;
+        F32 mRightOffset = 0.5f;
+        F32 mLeftPlantWindow = 0.f;
+        F32 mRightPlantWindow = 0.f;
+        F32 mConfidence = 0.f;
+        bool valid() const { return mStatus == VALID; }
+    };
+    const LocomotionPhaseInfo& getGenericLocomotionPhaseInfo();
+    // Seed the externally controlled clip clock before activation. If the
+    // asset is still loading, onActivate() resolves this seed after the
+    // keyframe data arrives so the first rendered pose is phase-correct.
+    void setExternalLocomotionSeed(const LLUUID& owner, F64 base_time,
+                                   F32 normalized_phase);
 
     void setHandPose(LLHandMotion::eHandPose pose) {
         if (mJointMotionList) mJointMotionList->mHandPose = pose;
@@ -529,6 +561,11 @@ protected:
     F32                             mLastUpdateTime;
     F32                             mLastLoopedTime;
     AssetStatus                     mAssetStatus;
+    bool                            mLocomotionSeedPending;
+    F64                             mLocomotionSeedBaseTime;
+    F32                             mLocomotionSeedPhase;
+
+    void applyExternalLocomotionSeed();
 
     // [PosePolish M4] Loop-seam repair per-instance runtime state (the post-wrap
     // blend window). Only ever written/read when sLoopSeamRepairEnabled is true --
@@ -543,6 +580,7 @@ protected:
 
     static bool                             sLoopSeamRepairEnabled;
     static std::map<LLUUID, LoopSeamInfo>   sLoopSeamCache;
+    static std::map<LLUUID, LocomotionPhaseInfo> sLocomotionPhaseCache;
 
 public:
     void setCharacter(LLCharacter* character) { mCharacter = character; }

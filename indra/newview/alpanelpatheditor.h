@@ -129,6 +129,7 @@ private:
     void onPathEaseOutCommit();
     void onPathGroundFollowCommit();
     void onPathPitchCommit();
+    void onPathAirborneCommit();
     void onPathEndCommit();
 
     // cached name for the header
@@ -175,6 +176,7 @@ private:
     LLSpinCtrl*        mEaseOut = nullptr;
     LLCheckBoxCtrl*    mGroundFollow = nullptr;
     LLCheckBoxCtrl*    mPitch = nullptr;
+    LLCheckBoxCtrl*    mAirborne = nullptr;
     LLComboBox*        mEndCombo = nullptr;
     LLPanel*           mColorSwatch = nullptr;
 

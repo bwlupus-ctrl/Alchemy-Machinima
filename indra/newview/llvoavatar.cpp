@@ -5236,6 +5236,17 @@ void ALPosePolish::runContact(LLVOAvatar* av, F32 dt)
     const bool joints_ok = pelvis && hip_l && knee_l && ankle_l
                                   && hip_r && knee_r && ankle_r;
     const bool big_dt = !(dt > 0.f) || dt > 0.25f;
+    const bool have_mover_hints =
+        mContactHints.mFrame == LLFrameTimer::getFrameCount() &&
+        mContactHints.mMoverOwnsRoot;
+    if (have_mover_hints && mContactHints.mDiscontinuity)
+    {
+        ALContactStab::resetFoot(mFoot[0]);
+        ALContactStab::resetFoot(mFoot[1]);
+        mContactBlend[0] = mContactBlend[1] = 0.f;
+    }
+    const bool airborne = have_mover_hints
+        ? !mContactHints.mGrounded : av->mInAir;
 
     // Grounded biped locomotion only (plan rule 5): sitting, flying / in-air,
     // underwater / swimming, an incomplete leg rig, or a dt discontinuity
@@ -5245,7 +5256,7 @@ void ALPosePolish::runContact(LLVOAvatar* av, F32 dt)
     // bones, so joint presence is not proof of a walking biped -- a grounded
     // full-body dance can still qualify; the contact inference's speed/height
     // gating is the practical filter there (documented limitation for v1).
-    if (!joints_ok || big_dt || av->isSitting() || av->mInAir || av->mBelowWater)
+    if (!joints_ok || big_dt || av->isSitting() || airborne || av->mBelowWater)
     {
         ALContactStab::resetFoot(mFoot[0]);
         ALContactStab::resetFoot(mFoot[1]);
@@ -5334,7 +5345,7 @@ void ALPosePolish::runContact(LLVOAvatar* av, F32 dt)
         { hip_r, knee_r, ankle_r, &mHipRightJoint, &mKneeRightJoint, &mAnkleRightJoint, &mTargetRight, &mIKRight },
     };
 
-    const ALContactStab::ContactParams params;   // tuned defaults (alcontactstab.h)
+    const ALContactStab::ContactParams default_params;
     const F32 max_weight = llclamp((F32)contact_weight, 0.f, 1.f);
 
     for (S32 i = 0; i < 2; ++i)
@@ -5345,11 +5356,37 @@ void ALPosePolish::runContact(LLVOAvatar* av, F32 dt)
         // and the ground height under it (mirror stand motion's getGround use).
         const LLVector3 foot_pos = leg.mCopyAnkle->getWorldPosition();
         LLVector3 ground_pos, ground_norm;
-        av->getGround(foot_pos, ground_pos, ground_norm);
+        if (have_mover_hints && mContactHints.mHaveGround[i])
+        {
+            ground_pos = foot_pos;
+            ground_pos.mV[VZ] = mContactHints.mGroundZ[i];
+            ground_norm = mContactHints.mGroundNormal[i];
+        }
+        else
+        {
+            av->getGround(foot_pos, ground_pos, ground_norm);
+        }
 
         bool planted = false;
-        const LLVector3 hold = ALContactStab::updateFoot(
-            mFoot[i], params, foot_pos, ground_pos.mV[VZ], dt, planted);
+        LLVector3 hold = foot_pos;
+        const F32 expected = have_mover_hints
+            ? mContactHints.mExpectedPlant[i] : -1.f;
+        if (expected >= 0.f && expected < 0.5f)
+        {
+            // Expected swing accelerates release through the existing blend-out
+            // path; it never teleports a planted lock or writes a joint here.
+            ALContactStab::resetFoot(mFoot[i]);
+        }
+        else
+        {
+            ALContactStab::ContactParams params = default_params;
+            if (expected >= 0.5f)
+            {
+                params.mPlantDwell *= 0.5f; // height/reach/speed gates still apply
+            }
+            hold = ALContactStab::updateFoot(
+                mFoot[i], params, foot_pos, ground_pos.mV[VZ], dt, planted);
+        }
 
         F32 want = 0.f;
         if (planted)

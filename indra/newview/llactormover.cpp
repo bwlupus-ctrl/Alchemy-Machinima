@@ -15,6 +15,8 @@
 #include "algazemotor.h"           // coordinated gaze motor program assembly (spec 6A)
 
 #include <algorithm>                // std::reverse (path reverse op)
+#include <cmath>                    // std::isfinite
+#include <functional>               // bounded adaptive arc subdivision
 #include <set>                      // collectGhostBatches (wanted-actor set)
 
 #include "alobjectpathmover.h"      // heading preview also draws enrolled PROP paths
@@ -30,6 +32,7 @@
 #include "llagentcamera.h"          // cameraMouselook gaze feedback interlock
 #include "llanimationstates.h"      // ANIM_AGENT_WALK
 #include "llappviewer.h"            // gFrameIntervalSeconds
+#include "llsdutil_math.h"          // versioned path vector/quaternion LLSD
 #include "llcontrolavatar.h"        // animesh attachments bucket under the wearer (model ghost)
 #include "lldirectorcast.h"         // [Director] roster storage + per-actor loco anim
 #include "lldrawpool.h"             // LLRenderPass (rigged pass enum + uploadMatrixPalette)
@@ -43,6 +46,7 @@
 #include "llcinematiccamera.h"      // camera-gaze feedback interlock
 #include "llprismlens.h"            // [Prism] Vcam Gate on-air camera eye resolution
 #include "llmotion.h"               // LLMotion::setPriorityOverride (custom-anim priority)
+#include "llkeyframemotion.h"       // loop metadata for distance-driven local sampling
 #include "llgl.h"
 #include "llglstates.h"             // LLGLSUIDefault (heading preview)
 #include "lljoint.h"
@@ -165,6 +169,678 @@ void apply_custom_anim_priority(LLVOAvatar* av, const LLUUID& anim)
     {
         m->setPriorityOverride(prio);
     }
+}
+
+bool LLActorMover::startLocalMotion(LLVOAvatar* av, LocalMotionHandle& handle,
+                                    const LLUUID& source_anim, bool allow_ao,
+                                    F32 initial_weight,
+                                    bool external_sample,
+                                    F64 sample_base_time,
+                                    F32 sample_phase)
+{
+    stopLocalMotion(av, handle);
+    if (!av || source_anim.isNull())
+    {
+        return false;
+    }
+
+    handle.mSourceAnim = source_anim;
+    handle.mActualAnim = source_anim;
+    handle.mOwnerToken.generate();
+    if (allow_ao && av->isSelf() &&
+        gSavedPerAccountSettings.getBOOL("AlchemyAOEnable"))
+    {
+        handle.mAOActive = true;
+        const LLUUID replacement = AOEngine::instance().override(source_anim, true);
+        if (replacement.notNull())
+        {
+            handle.mActualAnim = replacement;
+        }
+    }
+
+    const bool was_active = av->isMotionActive(handle.mActualAnim);
+    const bool signaled = av->isAnyAnimationSignaled(&handle.mActualAnim, 1);
+    if (was_active && signaled)
+    {
+        if (handle.mAOActive)
+        {
+            AOEngine::instance().override(handle.mSourceAnim, false);
+        }
+        handle.clear();
+        return false;
+    }
+
+    LLMotion* motion = av->createMotion(handle.mActualAnim);
+    if (!motion ||
+        (external_sample && (!motion->supportsExternalSampling() ||
+         !motion->claimPresentationControl(handle.mOwnerToken))))
+    {
+        if (handle.mAOActive)
+        {
+            AOEngine::instance().override(handle.mSourceAnim, false);
+        }
+        handle.clear();
+        return false;
+    }
+    handle.mControlsMotion = external_sample;
+    handle.mPendingLoad = false;
+    if (external_sample)
+    {
+        motion->setPresentationWeight(handle.mOwnerToken, initial_weight);
+        motion->setExternalSampleTime(handle.mOwnerToken, 0.f);
+    }
+    F32 activation_offset = 0.f;
+    if (LLKeyframeMotion* keyframe = dynamic_cast<LLKeyframeMotion*>(motion))
+    {
+        handle.mPendingLoad = !keyframe->isLoaded();
+        if (external_sample)
+        {
+            keyframe->setExternalLocomotionSeed(handle.mOwnerToken,
+                                                 sample_base_time,
+                                                 sample_phase);
+        }
+        if (external_sample && !handle.mPendingLoad)
+        {
+            const F32 loop_in = keyframe->getLoopIn();
+            const F32 cycle = keyframe->getLoopOut() - loop_in;
+            activation_offset = loop_in;
+            if (cycle > 0.001f)
+            {
+                while (activation_offset <= motion->getEaseInDuration() + 0.001f)
+                {
+                    activation_offset += cycle;
+                }
+            }
+        }
+    }
+
+
+    if (!was_active)
+    {
+        handle.mOwnsMotion = av->LLCharacter::startMotion(handle.mActualAnim,
+                                                           activation_offset);
+        if (!handle.mOwnsMotion)
+        {
+            if (handle.mControlsMotion)
+            {
+                motion->releasePresentationControl(handle.mOwnerToken);
+            }
+            if (handle.mAOActive)
+            {
+                AOEngine::instance().override(handle.mSourceAnim, false);
+            }
+            handle.clear();
+            return false;
+        }
+    }
+    if (handle.mOwnsMotion)
+    {
+        apply_custom_anim_priority(av, handle.mActualAnim);
+    }
+    return true;
+}
+
+void LLActorMover::stopLocalMotion(LLVOAvatar* av, LocalMotionHandle& handle)
+{
+    if (!handle.valid() && !handle.mAOActive)
+    {
+        handle.clear();
+        return;
+    }
+    if (!av && handle.mAOActive && isAgentAvatarValid())
+    {
+        av = gAgentAvatarp;
+    }
+    if (handle.mAOActive && handle.mSourceAnim.notNull())
+    {
+        AOEngine::instance().override(handle.mSourceAnim, false);
+    }
+    if (av && handle.mActualAnim.notNull())
+    {
+        if (LLMotion* motion = av->findMotion(handle.mActualAnim))
+        {
+            if (handle.mControlsMotion)
+            {
+                motion->releasePresentationControl(handle.mOwnerToken);
+            }
+        }
+        if (handle.mOwnsMotion &&
+            (av->isSelf() || !av->isAnyAnimationSignaled(&handle.mActualAnim, 1)))
+        {
+            av->LLCharacter::stopMotion(handle.mActualAnim, true);
+        }
+    }
+    handle.clear();
+}
+
+bool LLActorMover::setLocalMotionSample(LLVOAvatar* av, LocalMotionHandle& handle,
+                                        F64 traveled_distance, F32 nominal_speed,
+                                        F32 phase_origin)
+{
+    if (!av || !handle.mControlsMotion || !llfinite(traveled_distance) ||
+        !llfinite(nominal_speed) || !llfinite(phase_origin) || nominal_speed <= 0.f)
+    {
+        return false;
+    }
+    LLMotion* motion = av->findMotion(handle.mActualAnim);
+    if (!motion || !motion->isPresentationControlledBy(handle.mOwnerToken))
+    {
+        return false;
+    }
+
+    const F64 base_time = llmax(0.0, traveled_distance) / (F64)nominal_speed;
+    F64 sample = base_time;
+    if (LLKeyframeMotion* keyframe = dynamic_cast<LLKeyframeMotion*>(motion))
+    {
+        keyframe->setExternalLocomotionSeed(handle.mOwnerToken, base_time,
+                                             phase_origin);
+
+        const F32 loop_in = keyframe->getLoopIn();
+        const F32 cycle = keyframe->getLoopOut() - loop_in;
+        if (cycle > 0.001f)
+        {
+            sample += (F64)llmax(phase_origin, 0.f) * (F64)cycle;
+            sample = (F64)loop_in + fmod(sample, (F64)cycle);
+            if (sample < loop_in)
+            {
+                sample += cycle;
+            }
+        }
+    }
+    return motion->setExternalSampleTime(handle.mOwnerToken, (F32)sample);
+}
+
+bool LLActorMover::setLocalMotionWeight(LLVOAvatar* av, LocalMotionHandle& handle,
+                                        F32 weight)
+{
+    if (!av || !handle.mControlsMotion)
+    {
+        return false;
+    }
+    if (LLMotion* motion = av->findMotion(handle.mActualAnim))
+    {
+        return motion->setPresentationWeight(handle.mOwnerToken, weight);
+    }
+    return false;
+}
+
+bool LLActorMover::resolveLocomotionRole(LLVOAvatar* av, S32 requested_role,
+                                         LLUUID& anim, F32& nominal_speed,
+                                         F32& phase_origin, bool& allow_ao) const
+{
+    using Cast = LLDirectorCast;
+    anim.setNull();
+    nominal_speed = 3.f;
+    phase_origin = -1.f;
+    allow_ao = false;
+    if (!av)
+    {
+        return false;
+    }
+
+    const Cast::CastMember* member = Cast::instance().getMember(av->getID());
+    auto load_entry = [&](S32 role) -> bool
+    {
+        if (!member)
+        {
+            return false;
+        }
+        const auto* entry = member->mLocomotionSet.get(
+            static_cast<Cast::ELocomotionRole>(role));
+        if (!entry || entry->mAnim.isNull())
+        {
+            return false;
+        }
+        anim = entry->mAnim;
+        nominal_speed = llmax(entry->mNominalSpeed, 0.05f);
+        phase_origin = entry->mManualLeftPlantPhase;
+        allow_ao = entry->mAllowAO;
+        return true;
+    };
+
+    if (load_entry(requested_role))
+    {
+        return true;
+    }
+    switch (requested_role)
+    {
+        case Cast::LOCO_RUN_FORWARD:
+        case Cast::LOCO_WALK_BACKWARD:
+        case Cast::LOCO_STRAFE_LEFT:
+        case Cast::LOCO_STRAFE_RIGHT:
+            return resolveLocomotionRole(av, Cast::LOCO_WALK_FORWARD,
+                                         anim, nominal_speed, phase_origin, allow_ao);
+        case Cast::LOCO_HOVER:
+            return resolveLocomotionRole(av, Cast::LOCO_IDLE,
+                                         anim, nominal_speed, phase_origin, allow_ao);
+        case Cast::LOCO_TAKEOFF:
+        case Cast::LOCO_LAND:
+            if (resolveLocomotionRole(av, Cast::LOCO_FLY,
+                                      anim, nominal_speed, phase_origin, allow_ao))
+            {
+                return true;
+            }
+            return resolveLocomotionRole(av, Cast::LOCO_HOVER,
+                                         anim, nominal_speed, phase_origin, allow_ao);
+        case Cast::LOCO_WALK_FORWARD:
+        {
+            anim = locomotion_anim(av->getID());
+            static LLCachedControl<F32> nominal(
+                gSavedSettings, "ActorMoverWalkNominal", 3.0f);
+            nominal_speed = llmax((F32)nominal, 0.05f);
+            allow_ao = anim == ANIM_AGENT_WALK;
+            return anim.notNull();
+        }
+        default:
+            return false;
+    }
+}
+
+S32 LLActorMover::desiredLocomotionRole(LLVOAvatar* av, const Move& mv,
+                                        F32 speed) const
+{
+    using Cast = LLDirectorCast;
+    if (mv.mAirborne)
+    {
+        // Air paths never silently fall back to a walking body clip. Hover is
+        // the low-speed boundary role; missing sparse roles fail soft to no clip.
+        return speed < 0.15f ? Cast::LOCO_HOVER : Cast::LOCO_FLY;
+    }
+    LLUUID walk_anim, run_anim;
+    F32 walk_nominal = 3.f, run_nominal = 3.f;
+    F32 phase = 0.f;
+    bool allow_ao = false;
+    if (!resolveLocomotionRole(av, Cast::LOCO_WALK_FORWARD,
+                               walk_anim, walk_nominal, phase, allow_ao))
+    {
+        return Cast::LOCO_NONE;
+    }
+    if (!resolveLocomotionRole(av, Cast::LOCO_RUN_FORWARD,
+                               run_anim, run_nominal, phase, allow_ao) ||
+        run_anim == walk_anim)
+    {
+        return Cast::LOCO_WALK_FORWARD;
+    }
+
+    const F32 midpoint = 0.5f * (walk_nominal + run_nominal);
+    const F32 hysteresis = llmax(0.1f, fabsf(run_nominal - walk_nominal) * 0.1f);
+    const F32 threshold = mv.mRole == Cast::LOCO_RUN_FORWARD
+        ? midpoint - hysteresis : midpoint + hysteresis;
+    return speed >= threshold ? Cast::LOCO_RUN_FORWARD
+                              : Cast::LOCO_WALK_FORWARD;
+}
+
+void LLActorMover::beginLocomotionTransition(LLVOAvatar* av, Move& mv,
+                                              S32 target_role)
+{
+    if (!av || target_role == mv.mRole)
+    {
+        return;
+    }
+
+    LLUUID target_anim;
+    F32 target_nominal = 3.f;
+    F32 target_phase = 0.f;
+    bool allow_ao = false;
+    if (!resolveLocomotionRole(av, target_role, target_anim, target_nominal,
+                               target_phase, allow_ao))
+    {
+        return;
+    }
+    if (target_anim == mv.mFailedLocomotionAnim)
+    {
+        return;
+    }
+    if (target_anim == mv.mLocomotion.mSourceAnim)
+    {
+        target_phase = resolveLocalMotionPhase(av, mv.mLocomotion, target_phase);
+        mv.mRole = target_role;
+        mv.mAnim = target_anim;
+        mv.mNominal = target_nominal;
+        mv.mPhaseOrigin = target_phase;
+        return;
+    }
+
+    if (mv.mSecondaryLocomotion.valid())
+    {
+        stopLocalMotion(av, mv.mSecondaryLocomotion);
+    }
+    if (!mv.mLocomotion.valid())
+    {
+        mv.mRole = target_role;
+        mv.mAnim = target_anim;
+        mv.mNominal = target_nominal;
+        if (startLocalMotion(av, mv.mLocomotion, target_anim, allow_ao, 1.f,
+                             true, mv.mTravelOdometer / target_nominal,
+                             target_phase))
+        {
+            if (mv.mFailedLocomotionAnim == target_anim)
+            {
+                mv.mFailedLocomotionAnim.setNull();
+            }
+            target_phase = resolveLocalMotionPhase(av, mv.mLocomotion, target_phase);
+        }
+        else
+        {
+            mv.mFailedLocomotionAnim = target_anim;
+        }
+        mv.mPhaseOrigin = target_phase;
+        updateLocomotionSample(av, mv);
+        return;
+    }
+
+    if (!startLocalMotion(av, mv.mSecondaryLocomotion,
+                          target_anim, allow_ao, 0.f, true,
+                          mv.mTravelOdometer / target_nominal, target_phase))
+    {
+        mv.mFailedLocomotionAnim = target_anim;
+        return;
+    }
+    if (mv.mFailedLocomotionAnim == target_anim) mv.mFailedLocomotionAnim.setNull();
+    target_phase = resolveLocalMotionPhase(
+        av, mv.mSecondaryLocomotion, target_phase);
+    mv.mSecondaryRole = target_role;
+    mv.mSecondaryNominal = target_nominal;
+    mv.mSecondaryPhaseOrigin = target_phase;
+    mv.mTransitionElapsed = 0.f;
+    static LLCachedControl<F32> transition_time(
+        gSavedSettings, "ActorMoverGaitTransitionTime", 0.25f);
+    mv.mTransitionDuration = llclamp((F32)transition_time, 0.05f, 2.f);
+    setLocalMotionSample(av, mv.mSecondaryLocomotion, mv.mTravelOdometer,
+                         mv.mSecondaryNominal, mv.mSecondaryPhaseOrigin);
+}
+
+void LLActorMover::updateLocomotionGait(LLVOAvatar* av, Move& mv, F32 speed,
+                                        F32 dt, bool discontinuity)
+{
+    using Cast = LLDirectorCast;
+    const S32 desired = desiredLocomotionRole(av, mv, llmax(speed, 0.f));
+    if (desired == Cast::LOCO_NONE)
+    {
+        return;
+    }
+
+    if (discontinuity && desired != mv.mRole)
+    {
+        stopLocalMotion(av, mv.mSecondaryLocomotion);
+        stopLocalMotion(av, mv.mLocomotion);
+        mv.mRole = Cast::LOCO_NONE;
+        mv.mSecondaryRole = Cast::LOCO_NONE;
+        LLUUID target;
+        bool allow_ao = false;
+        if (resolveLocomotionRole(av, desired, target, mv.mNominal,
+                                  mv.mPhaseOrigin, allow_ao))
+        {
+            mv.mRole = desired;
+            mv.mAnim = target;
+            if (!startLocalMotion(av, mv.mLocomotion, target, allow_ao, 1.f,
+                                  true, mv.mTravelOdometer / mv.mNominal,
+                                  mv.mPhaseOrigin))
+            {
+                mv.mFailedLocomotionAnim = target;
+            }
+            else if (mv.mFailedLocomotionAnim == target)
+            {
+                mv.mFailedLocomotionAnim.setNull();
+            }
+        }
+        updateLocomotionSample(av, mv);
+        return;
+    }
+
+    if (mv.mSecondaryLocomotion.valid() && desired == mv.mRole)
+    {
+        stopLocalMotion(av, mv.mSecondaryLocomotion);
+        mv.mSecondaryRole = Cast::LOCO_NONE;
+        mv.mTransitionElapsed = 0.f;
+        setLocalMotionWeight(av, mv.mLocomotion, 1.f);
+    }
+    else if (!mv.mSecondaryLocomotion.valid() && desired != mv.mRole)
+    {
+        beginLocomotionTransition(av, mv, desired);
+    }
+
+    if (!mv.mSecondaryLocomotion.valid())
+    {
+        updateLocomotionSample(av, mv);
+        return;
+    }
+
+    LLKeyframeMotion* secondary = dynamic_cast<LLKeyframeMotion*>(
+        av->findMotion(mv.mSecondaryLocomotion.mActualAnim));
+    if (secondary && secondary->hasLoadFailed())
+    {
+        mv.mFailedLocomotionAnim = mv.mSecondaryLocomotion.mSourceAnim;
+        stopLocalMotion(av, mv.mSecondaryLocomotion);
+        mv.mSecondaryRole = Cast::LOCO_NONE;
+        mv.mTransitionElapsed = 0.f;
+        setLocalMotionWeight(av, mv.mLocomotion, 1.f);
+        updateLocomotionSample(av, mv);
+        return;
+    }
+    if (secondary)
+    {
+        mv.mSecondaryLocomotion.mPendingLoad = !secondary->isLoaded();
+    }
+    if (mv.mSecondaryLocomotion.mPendingLoad)
+    {
+        setLocalMotionWeight(av, mv.mLocomotion, 1.f);
+        setLocalMotionWeight(av, mv.mSecondaryLocomotion, 0.f);
+        // Loading the incoming role must not freeze the outgoing stride.
+        updateLocomotionSample(av, mv);
+        return;
+    }
+
+    mv.mTransitionElapsed += llmax(dt, 0.f);
+    const F32 u = llclamp(mv.mTransitionElapsed /
+                          llmax(mv.mTransitionDuration, 0.001f), 0.f, 1.f);
+    const F32 weight = u * u * u * (u * (u * 6.f - 15.f) + 10.f);
+    setLocalMotionWeight(av, mv.mLocomotion, 1.f - weight);
+    setLocalMotionWeight(av, mv.mSecondaryLocomotion, weight);
+    updateLocomotionSample(av, mv);
+
+    if (u >= 1.f)
+    {
+        stopLocalMotion(av, mv.mLocomotion);
+        mv.mLocomotion = mv.mSecondaryLocomotion;
+        mv.mSecondaryLocomotion.clear();
+        mv.mRole = mv.mSecondaryRole;
+        mv.mSecondaryRole = Cast::LOCO_NONE;
+        mv.mNominal = mv.mSecondaryNominal;
+        mv.mPhaseOrigin = mv.mSecondaryPhaseOrigin;
+        mv.mAnim = mv.mLocomotion.mSourceAnim;
+        setLocalMotionWeight(av, mv.mLocomotion, 1.f);
+    }
+}
+
+F32 LLActorMover::resolveLocalMotionPhase(LLVOAvatar* av,
+                                           const LocalMotionHandle& handle,
+                                           F32 configured_phase) const
+{
+    if (configured_phase >= 0.f)
+    {
+        return fmodf(configured_phase, 1.f);
+    }
+    if (handle.mPendingLoad)
+    {
+        return -1.f;
+    }
+    if (av && handle.valid())
+    {
+        if (LLKeyframeMotion* keyframe =
+                dynamic_cast<LLKeyframeMotion*>(av->findMotion(handle.mActualAnim)))
+        {
+            const LLKeyframeMotion::LocomotionPhaseInfo& info =
+                keyframe->getGenericLocomotionPhaseInfo();
+            if (info.valid())
+            {
+                return info.mLeftPlantPhase;
+            }
+        }
+    }
+    return -1.f;
+}
+
+void LLActorMover::startLocomotion(LLVOAvatar* av, Move& mv)
+{
+    using Cast = LLDirectorCast;
+    stopLocalMotion(av, mv.mSecondaryLocomotion);
+    stopLocalMotion(av, mv.mLocomotion);
+    mv.mSecondaryRole = Cast::LOCO_NONE;
+    const S32 role = desiredLocomotionRole(av, mv, mv.mSpeed);
+    LLUUID anim;
+    bool allow_ao = false;
+    if (resolveLocomotionRole(av, role, anim, mv.mNominal,
+                              mv.mPhaseOrigin, allow_ao))
+    {
+        mv.mRole = role;
+        mv.mAnim = anim;
+        if (startLocalMotion(av, mv.mLocomotion, anim, allow_ao, 1.f, true,
+                             mv.mTravelOdometer / mv.mNominal,
+                             mv.mPhaseOrigin))
+        {
+            if (mv.mFailedLocomotionAnim == anim)
+            {
+                mv.mFailedLocomotionAnim.setNull();
+            }
+            mv.mPhaseOrigin = resolveLocalMotionPhase(
+                av, mv.mLocomotion, mv.mPhaseOrigin);
+        }
+        else
+        {
+            mv.mFailedLocomotionAnim = anim;
+        }
+        updateLocomotionSample(av, mv);
+    }
+}
+
+void LLActorMover::stopLocomotion(LLVOAvatar* av, Move& mv)
+{
+    stopLocalMotion(av, mv.mDwellMotion);
+    stopLocalMotion(av, mv.mSecondaryLocomotion);
+    stopLocalMotion(av, mv.mLocomotion);
+    mv.mDwellAnim.setNull();
+}
+
+void LLActorMover::updateLocomotionSample(LLVOAvatar* av, Move& mv)
+{
+    auto clean_failed_motion = [this, av](LocalMotionHandle& handle)
+    {
+        if (!av || !handle.valid())
+        {
+            return false;
+        }
+        LLMotion* motion = av->findMotion(handle.mActualAnim);
+        if (!motion)
+        {
+            // The controller deletes a failed loading motion from its canonical
+            // map. Balance AO and clear our token even when there is no longer
+            // an instance on which presentation control can be released.
+            stopLocalMotion(av, handle);
+            return true;
+        }
+        LLKeyframeMotion* keyframe = dynamic_cast<LLKeyframeMotion*>(motion);
+        if (!keyframe || !keyframe->hasLoadFailed())
+        {
+            return false;
+        }
+        stopLocalMotion(av, handle);
+        return true;
+    };
+    const LLUUID failed_primary = mv.mLocomotion.mSourceAnim;
+    if (clean_failed_motion(mv.mLocomotion))
+    {
+        mv.mFailedLocomotionAnim = failed_primary;
+        mv.mRole = LLDirectorCast::LOCO_NONE;
+        mv.mAnim.setNull();
+    }
+    const LLUUID failed_secondary = mv.mSecondaryLocomotion.mSourceAnim;
+    if (clean_failed_motion(mv.mSecondaryLocomotion))
+    {
+        mv.mFailedLocomotionAnim = failed_secondary;
+        mv.mSecondaryRole = LLDirectorCast::LOCO_NONE;
+        mv.mTransitionElapsed = 0.f;
+        setLocalMotionWeight(av, mv.mLocomotion, 1.f);
+    }
+
+    auto refresh_load_state = [av](LocalMotionHandle& handle)
+    {
+        if (!av || !handle.valid())
+        {
+            return false;
+        }
+        LLKeyframeMotion* keyframe =
+            dynamic_cast<LLKeyframeMotion*>(av->findMotion(handle.mActualAnim));
+        const bool loaded = keyframe && keyframe->isLoaded();
+        handle.mPendingLoad = !loaded;
+        return loaded;
+    };
+
+    if (mv.mPhaseOrigin < 0.f &&
+        refresh_load_state(mv.mLocomotion))
+    {
+        mv.mPhaseOrigin = resolveLocalMotionPhase(
+            av, mv.mLocomotion, mv.mPhaseOrigin);
+    }
+    if (mv.mSecondaryPhaseOrigin < 0.f &&
+        refresh_load_state(mv.mSecondaryLocomotion))
+    {
+        mv.mSecondaryPhaseOrigin = resolveLocalMotionPhase(
+            av, mv.mSecondaryLocomotion, mv.mSecondaryPhaseOrigin);
+    }
+
+    setLocalMotionSample(av, mv.mLocomotion, mv.mTravelOdometer,
+                         llmax(mv.mNominal, 0.05f),
+                         mv.mPhaseOrigin);
+    setLocalMotionSample(av, mv.mSecondaryLocomotion, mv.mTravelOdometer,
+                         llmax(mv.mSecondaryNominal, 0.05f),
+                         mv.mSecondaryPhaseOrigin);
+}
+
+void LLActorMover::updatePathFacing(Move& mv, F32 target_yaw, F32 target_pitch,
+                                    F32 dt, bool discontinuity)
+{
+    mv.mYawClock += llmax(0.f, dt);
+    if (discontinuity)
+    {
+        mv.mCurRot.setEulerAngles(0.f, target_pitch, target_yaw);
+        mv.mYawProgramValid = false;
+        mv.mYawTarget = target_yaw;
+        return;
+    }
+
+    LLVector3 current_at = LLVector3(1.f, 0.f, 0.f) * mv.mCurRot;
+    ALTrajectory::ScalarSample state = {
+        atan2f(current_at.mV[VY], current_at.mV[VX]), 0.f, 0.f };
+    if (mv.mYawProgramValid)
+    {
+        state = ALTrajectory::sample(mv.mYawProgram, mv.mYawClock);
+    }
+
+    // Retarget only when the desired look-ahead heading changes materially.
+    // Sampling and rebuilding at the same absolute local epoch preserves C2
+    // state; a stable target keeps the existing closed-form program untouched.
+    const bool retarget = !mv.mYawProgramValid ||
+        fabsf(ALTrajectory::shortestArcDelta(mv.mYawTarget, target_yaw)) >
+            0.5f * DEG_TO_RAD;
+    if (retarget)
+    {
+        static LLCachedControl<F32> turn_rate(
+            gSavedSettings, "PathTurnRateDegPerSec", 180.f);
+        const F32 rate = llmax(1.f, (F32)turn_rate) * DEG_TO_RAD;
+        const F32 angle = fabsf(
+            ALTrajectory::shortestArcDelta(state.mP, target_yaw));
+        const F64 duration = llclamp((F64)(angle / rate), 0.08, 0.75);
+        mv.mYawProgram = ALTrajectory::solveShortestArc(
+            mv.mYawClock, duration, state.mP, state.mV, state.mA,
+            target_yaw, 0.f, 0.f, true, 0, 1);
+        mv.mYawTarget = target_yaw;
+        mv.mYawProgramValid = true;
+        state = ALTrajectory::sample(mv.mYawProgram, mv.mYawClock);
+    }
+
+    mv.mCurRot.setEulerAngles(0.f, target_pitch,
+                              ALTrajectory::wrapToPi(state.mP));
 }
 
 // ===========================================================================
@@ -376,25 +1052,98 @@ void LLActorMover::Path::rebuild()
         return;
     }
 
-    // sub-sample each segment and integrate chord length into a cumulative
-    // arc-length table, so traversal can advance at CONSTANT GROUND SPEED
-    // (distance) rather than constant spline parameter. 24 samples/segment is
-    // plenty for a handful of actors and the table only rebuilds on edit.
-    const S32 SUB = 24;
+    // Build an error-bounded inversion table rather than assigning every span
+    // the same parameter density.  The midpoint alone is insufficient for an
+    // S-shaped interval, so each acceptance test uses the quarter, midpoint,
+    // and three-quarter samples.  The position test catches lateral bowing;
+    // fine-polyline minus chord length catches curves that double back close to
+    // the chord.  Hard limits make coincident/pathological authored data safe.
+    constexpr F64 POSITION_TOLERANCE_M = 0.005;
+    constexpr F64 LENGTH_EXCESS_TOLERANCE_M = 0.002;
+    constexpr S32 MAX_RECURSION_DEPTH = 12;
+    constexpr S32 MAX_SAMPLES_PER_SEGMENT = 4096;
+
     F64 acc = 0.0;
     LLVector3d prev = evalSegment(0, 0.f);
     mNodeDist.push_back(0.f);               // node 0 sits at distance 0
     mArc.push_back({ 0.f, 0, 0.f });
+
+    auto point_line_distance = [](const LLVector3d& p,
+                                  const LLVector3d& a,
+                                  const LLVector3d& b) -> F64
+    {
+        const LLVector3d ab = b - a;
+        const F64 ab_len_sq = ab.mdV[VX] * ab.mdV[VX] +
+                              ab.mdV[VY] * ab.mdV[VY] +
+                              ab.mdV[VZ] * ab.mdV[VZ];
+        if (ab_len_sq <= 1e-18)
+        {
+            return (p - a).length();
+        }
+        const LLVector3d ap = p - a;
+        const F64 u = llclamp((ap.mdV[VX] * ab.mdV[VX] +
+                               ap.mdV[VY] * ab.mdV[VY] +
+                               ap.mdV[VZ] * ab.mdV[VZ]) / ab_len_sq,
+                              0.0, 1.0);
+        return (p - (a + ab * u)).length();
+    };
+
     for (S32 s = 0; s < segs; ++s)
     {
-        for (S32 j = 1; j <= SUB; ++j)
+        const LLVector3d p0 = evalSegment(s, 0.f);
+        const LLVector3d p1 = evalSegment(s, 1.f);
+        std::function<void(F32, const LLVector3d&, F32, const LLVector3d&,
+                           S32, S32)>
+            subdivide;
+        subdivide = [&](F32 t0, const LLVector3d& a,
+                        F32 t1, const LLVector3d& b, S32 depth,
+                        S32 leaf_budget)
         {
-            const F32 lt = (F32)j / (F32)SUB;
-            const LLVector3d p = evalSegment(s, lt);
-            acc += (p - prev).length();
-            prev = p;
-            mArc.push_back({ (F32)acc, s, lt });
-        }
+            const F32 span = t1 - t0;
+            const F32 tq = t0 + span * 0.25f;
+            const F32 tm = t0 + span * 0.50f;
+            const F32 tr = t0 + span * 0.75f;
+            const LLVector3d q = evalSegment(s, tq);
+            const LLVector3d m = evalSegment(s, tm);
+            const LLVector3d r = evalSegment(s, tr);
+            const F64 chord = (b - a).length();
+            const F64 fine_length = (q - a).length() + (m - q).length() +
+                                    (r - m).length() + (b - r).length();
+            const F64 deviation = llmax(point_line_distance(q, a, b),
+                                  llmax(point_line_distance(m, a, b),
+                                        point_line_distance(r, a, b)));
+            const bool within_error =
+                deviation <= POSITION_TOLERANCE_M &&
+                fine_length - chord <= LENGTH_EXCESS_TOLERANCE_M;
+            const bool at_limit = depth >= MAX_RECURSION_DEPTH || leaf_budget <= 1;
+
+            if (!within_error && !at_limit)
+            {
+                // Allocate disjoint leaf budgets to the two branches. A leaf
+                // retains exactly four samples, so no recursion/unwind order
+                // can exceed MAX_SAMPLES_PER_SEGMENT.
+                const S32 left_budget = leaf_budget / 2;
+                subdivide(t0, a, tm, m, depth + 1, left_budget);
+                subdivide(tm, m, t1, b, depth + 1,
+                          leaf_budget - left_budget);
+                return;
+            }
+
+            // Retain all samples used by the accepted error estimate. This
+            // keeps distance-to-parameter inversion faithful without a second
+            // evaluator pass and guarantees the authored endpoint is present.
+            const F32 times[4] = { tq, tm, tr, t1 };
+            const LLVector3d points[4] = { q, m, r, b };
+            for (S32 i = 0; i < 4; ++i)
+            {
+                acc += (points[i] - prev).length();
+                prev = points[i];
+                mArc.push_back({ (F32)acc, s, times[i] });
+            }
+        };
+
+        subdivide(0.f, p0, 1.f, p1, 0,
+                  MAX_SAMPLES_PER_SEGMENT / 4);
         mNodeDist.push_back((F32)acc);      // node (s+1) at the end of segment s
     }
     mTotalLength = (F32)acc;
@@ -595,6 +1344,146 @@ bool LLActorMover::hasWalkablePath(const LLUUID& actor_id) const
 void LLActorMover::clearPath(const LLUUID& actor_id)
 {
     mPaths.erase(path_key(actor_id));
+}
+
+LLSD LLActorMover::pathSceneData(const LLUUID& actor_id) const
+{
+    const Path* path = getPath(actor_id);
+    if (!path || path->mNodes.empty())
+    {
+        return LLSD();
+    }
+
+    LLSD data = LLSD::emptyMap();
+    data["schema"] = 1;
+    data["speed"] = path->mSpeed;
+    data["end_mode"] = path->mEndMode;
+    data["tension"] = path->mTension;
+    data["ease_in"] = path->mEaseIn;
+    data["ease_out"] = path->mEaseOut;
+    data["arrival_facing_mode"] = path->mArrivalFacingMode;
+    data["arrival_dir"] = path->mArrivalDir;
+    data["arrival_target"] = path->mArrivalTarget;
+    data["ground_follow"] = path->mGroundFollow;
+    data["pitch_to_slope"] = path->mPitchToSlope;
+    data["airborne"] = path->mAirborne;
+    data["sync_to_take"] = path->mSyncToTake;
+    data["sync_lead_trail"] = path->mSyncLeadTrail;
+
+    LLSD nodes = LLSD::emptyArray();
+    for (const Waypoint& node : path->mNodes)
+    {
+        LLSD value = LLSD::emptyMap();
+        value["position"] = ll_sd_from_vector3d(node.mPosGlobal);
+        value["root_above"] = node.mRootAbove;
+        value["dwell"] = node.mDwell;
+        value["speed_override"] = node.mSpeedOverride;
+        value["anim"] = node.mAnim;
+        value["ground_offset"] = node.mGroundOffset;
+        value["yaw_offset"] = node.mYawOffset;
+        value["has_camera"] = node.mHasCam;
+        if (node.mHasCam)
+        {
+            value["camera_position"] = ll_sd_from_vector3d(node.mCamPosGlobal);
+            value["camera_rotation"] = ll_sd_from_quaternion(node.mCamRot);
+            value["camera_fov"] = node.mCamFov;
+            value["camera_transition"] = node.mCamTransition;
+        }
+        nodes.append(value);
+    }
+    data["nodes"] = nodes;
+    return data;
+}
+
+bool LLActorMover::applyPathSceneData(const LLUUID& actor_id, const LLSD& data)
+{
+    constexpr S32 MAX_SCENE_NODES = 4096;
+    constexpr S32 PATH_SCHEMA = 1;
+    if (!data.isMap() || data["schema"].asInteger() != PATH_SCHEMA ||
+        !data["nodes"].isArray() ||
+        data["nodes"].size() > MAX_SCENE_NODES)
+    {
+        return false;
+    }
+    auto finite_f32 = [](const LLSD& value, F32 fallback)
+    {
+        const F64 number = value.asReal();
+        return std::isfinite(number) ? static_cast<F32>(number) : fallback;
+    };
+
+    Path loaded;
+    loaded.mSpeed = llclamp(finite_f32(data["speed"], 1.f), 0.05f, 100.f);
+    loaded.mEndMode = llclamp(data["end_mode"].asInteger(), 0, 2);
+    loaded.mTension = llclamp(finite_f32(data["tension"], 0.5f), 0.f, 1.f);
+    loaded.mEaseIn = llclamp(finite_f32(data["ease_in"], 0.f), 0.f, 60.f);
+    loaded.mEaseOut = llclamp(finite_f32(data["ease_out"], 0.f), 0.f, 60.f);
+    loaded.mArrivalFacingMode = llclamp(
+        data["arrival_facing_mode"].asInteger(), 0, 2);
+    loaded.mArrivalDir = ALTrajectory::wrapToPi(
+        finite_f32(data["arrival_dir"], 0.f));
+    loaded.mArrivalTarget = data["arrival_target"].asUUID();
+    loaded.mGroundFollow = data["ground_follow"].asBoolean();
+    loaded.mPitchToSlope = data["pitch_to_slope"].asBoolean();
+    loaded.mAirborne = data["airborne"].asBoolean();
+    if (loaded.mAirborne)
+    {
+        loaded.mGroundFollow = false;
+    }
+    loaded.mSyncToTake = data["sync_to_take"].asBoolean();
+    loaded.mSyncLeadTrail = llclamp(
+        finite_f32(data["sync_lead_trail"], 0.f), -3600.f, 3600.f);
+
+    for (LLSD::array_const_iterator it = data["nodes"].beginArray();
+         it != data["nodes"].endArray(); ++it)
+    {
+        const LLSD& value = *it;
+        if (!value.isMap() || !value.has("position"))
+        {
+            return false;
+        }
+        Waypoint node;
+        node.mPosGlobal = ll_vector3d_from_sd(value["position"]);
+        if (!node.mPosGlobal.isFinite())
+        {
+            return false;
+        }
+        node.mRootAbove = llclamp(finite_f32(value["root_above"], 0.f), 0.f, 10.f);
+        node.mDwell = llclamp(finite_f32(value["dwell"], 0.f), 0.f, 3600.f);
+        node.mSpeedOverride = llclamp(
+            finite_f32(value["speed_override"], 0.f), 0.f, 100.f);
+        node.mAnim = value["anim"].asUUID();
+        node.mGroundOffset = llclamp(
+            finite_f32(value["ground_offset"], 0.f), -100.f, 100.f);
+        node.mYawOffset = ALTrajectory::wrapToPi(
+            finite_f32(value["yaw_offset"], 0.f));
+        node.mHasCam = value["has_camera"].asBoolean();
+        if (node.mHasCam)
+        {
+            node.mCamPosGlobal = ll_vector3d_from_sd(value["camera_position"]);
+            node.mCamRot = ll_quaternion_from_sd(value["camera_rotation"]);
+            if (!node.mCamPosGlobal.isFinite() || !node.mCamRot.isFinite())
+            {
+                return false;
+            }
+            node.mCamRot.normalize();
+            node.mCamFov = llclamp(finite_f32(value["camera_fov"], 60.f * DEG_TO_RAD),
+                                   1.f * DEG_TO_RAD, 179.f * DEG_TO_RAD);
+            node.mCamTransition = llclamp(
+                value["camera_transition"].asInteger(), 0, 1);
+        }
+        loaded.mNodes.push_back(node);
+    }
+
+    const LLUUID key = path_key(actor_id);
+    if (key.isNull())
+    {
+        return false;
+    }
+    loaded.markDirty();
+    loaded.rebuild();
+    mPaths[key] = loaded;
+    mHistory.erase(key);
+    return true;
 }
 
 void LLActorMover::appendWaypointHere(const LLUUID& actor_id)
@@ -1578,6 +2467,7 @@ LLActorMover::PathState LLActorMover::captureState(const LLUUID& key) const
         st.mArrivalTarget     = p.mArrivalTarget;
         st.mGroundFollow      = p.mGroundFollow;
         st.mPitchToSlope      = p.mPitchToSlope;
+        st.mAirborne          = p.mAirborne;
         st.mSyncToTake        = p.mSyncToTake;
         st.mSyncLeadTrail     = p.mSyncLeadTrail;
     }
@@ -1604,6 +2494,7 @@ void LLActorMover::applyState(const LLUUID& key, const PathState& st)
         p.mArrivalTarget     = st.mArrivalTarget;
         p.mGroundFollow      = st.mGroundFollow;
         p.mPitchToSlope      = st.mPitchToSlope;
+        p.mAirborne          = st.mAirborne;
         p.mSyncToTake        = st.mSyncToTake;
         p.mSyncLeadTrail     = st.mSyncLeadTrail;
         p.markDirty();
@@ -1840,6 +2731,7 @@ bool LLActorMover::copyPathTo(const LLUUID& src_actor, const LLUUID& dst_actor)
     dst.mArrivalTarget     = src.mArrivalTarget;
     dst.mGroundFollow      = src.mGroundFollow;
     dst.mPitchToSlope      = src.mPitchToSlope;
+    dst.mAirborne          = src.mAirborne;
     dst.mSyncToTake        = src.mSyncToTake;
     dst.mSyncLeadTrail     = src.mSyncLeadTrail;
     dst.markDirty();
@@ -2216,9 +3108,9 @@ void LLActorMover::start(const LLUUID& actor_id)
     if (isFollowing(av->getID()))
     {
         auto old_it = mMoves.find(av->getID());
-        if (old_it != mMoves.end() && old_it->second.mAnim.notNull())
+        if (old_it != mMoves.end())
         {
-            av->stopMotion(old_it->second.mAnim);
+            stopLocomotion(av, old_it->second);
         }
 
         Move mv;
@@ -2230,10 +3122,16 @@ void LLActorMover::start(const LLUUID& actor_id)
         mv.mNominal  = llmax((F32)nominal, 0.5f);
         mv.mAnim     = locomotion_anim(av->getID());
         mv.mFaceInit = false;
-        mMoves[av->getID()] = mv;
+        const auto follow_it = mFollows.find(path_key(av->getID()));
+        if (follow_it != mFollows.end())
+        {
+            const auto leader_path = mPaths.find(follow_it->second.mLeader);
+            mv.mAirborne = leader_path != mPaths.end() &&
+                           leader_path->second.mAirborne;
+        }
 
-        av->startMotion(mv.mAnim);          // cadence is retimed per frame by ground speed
-        apply_custom_anim_priority(av, mv.mAnim);
+        startLocomotion(av, mv);
+        mMoves[av->getID()] = mv;
         LL_INFOS("ActorMover") << "ghost follow walk: " << av->getID() << LL_ENDL;
         return;
     }
@@ -2252,9 +3150,9 @@ void LLActorMover::start(const LLUUID& actor_id)
         // restart guard mirrors the legacy path: stop a prior walk's anim so it
         // doesn't keep looping under the new cadence (a placeAt hold has none)
         auto old_it = mMoves.find(av->getID());
-        if (old_it != mMoves.end() && old_it->second.mAnim.notNull())
+        if (old_it != mMoves.end())
         {
-            av->stopMotion(old_it->second.mAnim);
+            stopLocomotion(av, old_it->second);
         }
 
         Move mv;
@@ -2266,14 +3164,11 @@ void LLActorMover::start(const LLUUID& actor_id)
         mv.mDir      = 1.f;
         mv.mNominal  = llmax((F32)nominal, 0.5f);
         mv.mAnim     = locomotion_anim(av->getID());
+        mv.mAirborne = path.mAirborne;
         mv.mFaceInit = false;
-        mMoves[av->getID()] = mv;
 
-        // cadence-lock seeds from the path speed; advancePath() then tracks the
-        // INSTANTANEOUS ground speed (ease + per-node overrides) each frame
-        av->startMotion(mv.mAnim);
-        apply_custom_anim_priority(av, mv.mAnim);
-        av->setAnimTimeFactor(llclamp(mv.mSpeed, 0.05f, 150.f) / mv.mNominal);
+        startLocomotion(av, mv);
+        mMoves[av->getID()] = mv;
 
         LL_INFOS("ActorMover") << "ghost path walk: " << av->getID()
                                << " nodes " << path.mNodes.size()
@@ -2299,20 +3194,14 @@ void LLActorMover::start(const LLUUID& actor_id)
     // it doesn't keep looping under the new cycle (a placeAt() hold has no
     // anim, hence the null guard)
     auto old_it = mMoves.find(av->getID());
-    if (old_it != mMoves.end() && old_it->second.mAnim.notNull()
-        && old_it->second.mAnim != mv.mAnim)
+    if (old_it != mMoves.end())
     {
-        av->stopMotion(old_it->second.mAnim);
+        stopLocomotion(av, old_it->second);
     }
 
+    mv.mNominal = llmax((F32)nominal, 0.5f);
+    startLocomotion(av, mv);
     mMoves[av->getID()] = mv;
-
-    // cadence lock: walk-cycle clock scaled to actual ground speed, so foot
-    // plants match the traversal at ANY speed. Local motion + local clock:
-    // nothing is sent to the sim (custom anims play locally too).
-    av->startMotion(mv.mAnim);
-    apply_custom_anim_priority(av, mv.mAnim);
-    av->setAnimTimeFactor(mv.mSpeed / llmax((F32)nominal, 0.5f));
 
     LL_INFOS("ActorMover") << "ghost move: " << av->getID() << " speed " << mv.mSpeed
                            << " dist " << mv.mDistance << " anim " << mv.mAnim << LL_ENDL;
@@ -2338,21 +3227,9 @@ void LLActorMover::stop(const LLUUID& actor_id)
     auto it = mMoves.find(key);
     if (it != mMoves.end())
     {
-        const LLUUID anim = it->second.mAnim;
-        const LLUUID dwell_anim = it->second.mDwellAnim;    // path dwell, if any
+        Move dying = it->second;
         mMoves.erase(it);
-        if (av)
-        {
-            if (anim.notNull())     // placeAt() holds carry no anim
-            {
-                av->stopMotion(anim);
-            }
-            if (dwell_anim.notNull())   // stopped mid-dwell: kill the node anim too
-            {
-                av->stopMotion(dwell_anim);
-            }
-            av->setAnimTimeFactor(1.f);
-        }
+        stopLocomotion(av, dying);
     }
 }
 
@@ -2362,18 +3239,8 @@ void LLActorMover::stopAll()
     LLDirectorCast::instance().cancelPendingStarts();
     for (auto& pair : mMoves)
     {
-        if (LLVOAvatar* mav = resolve_actor(pair.first))
-        {
-            if (pair.second.mAnim.notNull())    // placeAt() holds carry no anim
-            {
-                mav->stopMotion(pair.second.mAnim);
-            }
-            if (pair.second.mDwellAnim.notNull())   // path stopped mid-dwell
-            {
-                mav->stopMotion(pair.second.mDwellAnim);
-            }
-            mav->setAnimTimeFactor(1.f);
-        }
+        LLVOAvatar* mav = resolve_actor(pair.first);
+        stopLocomotion(mav, pair.second);
     }
     mMoves.clear();
 }
@@ -2580,6 +3447,7 @@ bool LLActorMover::applyOverride(LLVOAvatar* av)
         {
             dt = llclamp(gFrameIntervalSeconds.value(), 0.f, 0.25f);
         }
+        mv.mContactDiscontinuity = false;
 
         if (mv.mIsPath)
         {
@@ -2593,12 +3461,18 @@ bool LLActorMover::applyOverride(LLVOAvatar* av)
 
             F32 face;
             const F32 s = pathParam(mv, &face);
+            mv.mTravelOdometer = mv.mEndMode == 0
+                ? (F64)llmin(mv.mSpeed * mv.mT, mv.mDistance)
+                : (F64)(mv.mSpeed * mv.mT);
+            updateLocomotionGait(av, mv, mv.mSpeed, dt, false);
+            updateLocomotionSample(av, mv);
 
-            if (mv.mEndMode == 0 && s >= mv.mDistance && av->findMotion(mv.mAnim))
+            if (mv.mEndMode == 0 && s >= mv.mDistance && mv.mLocomotion.valid())
             {
-                // arrived: settle into a stand instead of walking in place
-                av->stopMotion(mv.mAnim);
-                av->setAnimTimeFactor(1.f);
+                // Arrived: settle instead of leaking either side of a gait fade.
+                stopLocalMotion(av, mv.mSecondaryLocomotion);
+                stopLocalMotion(av, mv.mLocomotion);
+                mv.mAnim.setNull();
             }
 
             const LLVector3 dir(cosf(mv.mHeading), sinf(mv.mHeading), 0.f);
@@ -2609,6 +3483,69 @@ bool LLActorMover::applyOverride(LLVOAvatar* av)
 
     av->getRootJoint()->setWorldPosition(mv.mCurPos);
     av->getRootJoint()->setWorldRotation(mv.mCurRot);
+
+    ALPosePolish::ContactHints hints;
+    hints.mFrame = frame;
+    hints.mMoverOwnsRoot = true;
+    hints.mGrounded = !mv.mAirborne;
+    hints.mDiscontinuity = mv.mContactDiscontinuity;
+
+    // Publish expected plant/swing only when curve analysis proved a genuine
+    // alternating gait. Unknown or invalid metadata leaves -1 and preserves
+    // Pose Polish's existing velocity/height inference. During a crossfade,
+    // the higher-weight side owns the advisory phase.
+    const LocalMotionHandle* phase_handle = &mv.mLocomotion;
+    F32 phase_nominal = mv.mNominal;
+    F32 phase_origin = mv.mPhaseOrigin;
+    if (mv.mSecondaryLocomotion.valid())
+    {
+        LLMotion* secondary = av->findMotion(
+            mv.mSecondaryLocomotion.mActualAnim);
+        if (secondary && secondary->getPresentationWeight() >= 0.5f)
+        {
+            phase_handle = &mv.mSecondaryLocomotion;
+            phase_nominal = mv.mSecondaryNominal;
+            phase_origin = mv.mSecondaryPhaseOrigin;
+        }
+    }
+    if (!mv.mAirborne && phase_handle->valid() && phase_origin >= 0.f)
+    {
+        LLKeyframeMotion* keyframe = dynamic_cast<LLKeyframeMotion*>(
+            av->findMotion(phase_handle->mActualAnim));
+        if (keyframe && keyframe->isLoaded())
+        {
+            const auto& info = keyframe->getGenericLocomotionPhaseInfo();
+            if (info.valid() && info.mCycleLength > 0.001f)
+            {
+                F64 cycle_phase = mv.mTravelOdometer /
+                    ((F64)llmax(phase_nominal, 0.05f) *
+                     (F64)info.mCycleLength) + (F64)phase_origin;
+                cycle_phase = fmod(cycle_phase, 1.0);
+                if (cycle_phase < 0.0)
+                {
+                    cycle_phase += 1.0;
+                }
+                auto circular_distance = [](F32 a, F32 b)
+                {
+                    F32 d = fabsf(a - b);
+                    return llmin(d, 1.f - d);
+                };
+                const F32 left_center = phase_origin;
+                F32 right_center = fmodf(left_center + info.mRightOffset, 1.f);
+                if (right_center < 0.f)
+                {
+                    right_center += 1.f;
+                }
+                hints.mExpectedPlant[0] = circular_distance(
+                    (F32)cycle_phase, left_center) <=
+                    0.5f * info.mLeftPlantWindow ? 1.f : 0.f;
+                hints.mExpectedPlant[1] = circular_distance(
+                    (F32)cycle_phase, right_center) <=
+                    0.5f * info.mRightPlantWindow ? 1.f : 0.f;
+            }
+        }
+    }
+    av->setMoverContactHints(hints);
     return true;
 }
 
@@ -2655,18 +3592,7 @@ void LLActorMover::enterSuspend(const LLUUID& key, Move& mv, LLVOAvatar* av)
     // a still-present actor (e.g. the user's own avatar on teleport) must not be
     // left standing there walking in place: stop the loco / dwell anim. The walk
     // clock is already frozen because applyOverride() bails while suspended.
-    if (av && !av->isDead())
-    {
-        if (mv.mAnim.notNull() && av->findMotion(mv.mAnim))
-        {
-            av->stopMotion(mv.mAnim);
-        }
-        if (mv.mDwellAnim.notNull() && av->findMotion(mv.mDwellAnim))
-        {
-            av->stopMotion(mv.mDwellAnim);
-        }
-        av->setAnimTimeFactor(1.f);
-    }
+    stopLocomotion(av && !av->isDead() ? av : nullptr, mv);
     LL_INFOS("ActorMover") << "walk SUSPENDED for " << key
                            << " at dist " << mv.mDist << LL_ENDL;
 }
@@ -2685,10 +3611,7 @@ void LLActorMover::resumeMove(const LLUUID& key, Move& mv, LLVOAvatar* av)
         // finished stop-mode walk resumes as a settled stand, facing still eases)
         if (!mv.mArrived && mv.mAnim.notNull())
         {
-            av->startMotion(mv.mAnim);
-            apply_custom_anim_priority(av, mv.mAnim);
-            av->setAnimTimeFactor(llclamp(mv.mSpeed, 0.05f, 150.f)
-                                  / llmax(mv.mNominal, 0.5f));
+            startLocomotion(av, mv);
         }
         // ease facing from the actor's current yaw on the next advance instead
         // of snapping to the stored travel facing
@@ -2908,18 +3831,7 @@ void LLActorMover::cancelSuspended(const LLUUID& actor_id)
     // drop the walk back to idle. enterSuspend() already stopped the loco anim
     // on a resolvable actor, but clear any anim that might still be resolving so
     // a cancel never leaves a looping walk cycle behind.
-    if (LLVOAvatar* av = resolve_actor(key))
-    {
-        if (it->second.mAnim.notNull() && av->findMotion(it->second.mAnim))
-        {
-            av->stopMotion(it->second.mAnim);
-        }
-        if (it->second.mDwellAnim.notNull() && av->findMotion(it->second.mDwellAnim))
-        {
-            av->stopMotion(it->second.mDwellAnim);
-        }
-        av->setAnimTimeFactor(1.f);
-    }
+    stopLocomotion(resolve_actor(key), it->second);
     mMoves.erase(it);
 }
 
@@ -3020,28 +3932,19 @@ void LLActorMover::migrateActor(const LLUUID& old_id, const LLUUID& new_id)
     if (had_move)
     {
         Move mv = mit->second;
+        LLVOAvatar* old_av = resolve_actor(old_id);
         mMoves.erase(mit);
 
         // the doomed old body may still be alive for the rest of this frame
         // (a live refresh replaces first, kills after): silence its loco /
         // dwell anim exactly like enterSuspend()/stop() would, so the corpse
         // doesn't keep cycling until its deferred death lands
-        if (LLVOAvatar* old_av = resolve_actor(old_id))
-        {
-            if (!old_av->isDead())
-            {
-                if (mv.mAnim.notNull() && old_av->findMotion(mv.mAnim))
-                {
-                    old_av->stopMotion(mv.mAnim);
-                }
-                if (mv.mDwellAnim.notNull() &&
-                    old_av->findMotion(mv.mDwellAnim))
-                {
-                    old_av->stopMotion(mv.mDwellAnim);
-                }
-                old_av->setAnimTimeFactor(1.f);
-            }
-        }
+        // A dead/unresolved self still needs its AO transaction balanced;
+        // stopLocalMotion's null-avatar path resolves the current self safely.
+        stopLocomotion(old_av && !old_av->isDead() ? old_av : nullptr, mv);
+        mv.mLocomotion.clear();
+        mv.mSecondaryLocomotion.clear();
+        mv.mDwellMotion.clear();
 
         // a LIVE (non-suspended) move keeps walking straight through the
         // swap, but its anims died with the old body: restart them on the new
@@ -3066,15 +3969,13 @@ void LLActorMover::migrateActor(const LLUUID& old_id, const LLUUID& new_id)
                     // (the dwell-complete path restarts the walk itself)
                     if (mv.mDwellAnim.notNull())
                     {
-                        new_av->startMotion(mv.mDwellAnim);
+                        startLocalMotion(new_av, mv.mDwellMotion,
+                                         mv.mDwellAnim, false, 1.f, false);
                     }
                 }
                 else if (!mv.mArrived && !legacy_settled && mv.mAnim.notNull())
                 {
-                    new_av->startMotion(mv.mAnim);
-                    apply_custom_anim_priority(new_av, mv.mAnim);
-                    new_av->setAnimTimeFactor(llclamp(mv.mSpeed, 0.05f, 150.f)
-                                              / llmax(mv.mNominal, 0.5f));
+                    startLocomotion(new_av, mv);
                 }
             }
         }
@@ -3153,21 +4054,8 @@ void LLActorMover::dropActor(const LLUUID& actor_id)
     auto it = mMoves.find(actor_id);
     if (it != mMoves.end())
     {
-        // guarded anim stop, mirrors cancelSuspended(): the body is usually
-        // already dead or dying here, but never leave a looping walk behind
-        if (LLVOAvatar* av = resolve_actor(actor_id))
-        {
-            if (it->second.mAnim.notNull() && av->findMotion(it->second.mAnim))
-            {
-                av->stopMotion(it->second.mAnim);
-            }
-            if (it->second.mDwellAnim.notNull() &&
-                av->findMotion(it->second.mDwellAnim))
-            {
-                av->stopMotion(it->second.mDwellAnim);
-            }
-            av->setAnimTimeFactor(1.f);
-        }
+        LLVOAvatar* av = resolve_actor(actor_id);
+        stopLocomotion(av, it->second);
         mMoves.erase(it);
     }
     mPaths.erase(actor_id);
@@ -3205,6 +4093,7 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
     }
 
     Path& path = mPaths[av->getID()];       // start() guaranteed this exists
+    mv.mAirborne = path.mAirborne;          // path-wide edits take effect next frame
     if (path.mDirty)
     {
         path.rebuild();
@@ -3261,15 +4150,14 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
         if (mv.mDwellT >= want)
         {
             // resume: stop the dwell anim (if any) and restart the loco walk
-            if (mv.mDwellAnim.notNull())
+            if (mv.mDwellMotion.valid())
             {
-                av->stopMotion(mv.mDwellAnim);
+                stopLocalMotion(av, mv.mDwellMotion);
                 mv.mDwellAnim.setNull();
             }
             if (mv.mAnim.notNull())
             {
-                av->startMotion(mv.mAnim);
-                apply_custom_anim_priority(av, mv.mAnim);
+                startLocomotion(av, mv);
             }
             mv.mLastDwellNode = mv.mDwellNode;
             mv.mDwellNode = -1;
@@ -3278,7 +4166,7 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
     }
 
     // ---- advance arc-length distance ----
-    F32       speed;
+    F32       speed = 0.f;
     const F32 old_d = mv.mDist;
     F32       nd;
     if (sync_active)
@@ -3290,12 +4178,13 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
         F32 u = (rec.getPlayhead() + path.mSyncLeadTrail) / dur;
         u = llclamp(u, 0.f, 1.f);
         nd = u * path.mTotalLength;
-        // cadence tracks the ground speed IMPLIED by the playhead motion (dArc/dt),
-        // so feet stay planted at any play/scrub rate; a paused playhead -> 0 speed
-        // -> a frozen stride. A large one-frame jump is a scrub seek (snap facing).
+        // A paused playhead freezes the absolute local sample. A large one-frame
+        // jump is a scrub seek (snap facing), and backward scrubbing intentionally
+        // samples the locomotion clip backward.
         const F32 d_arc = nd - old_d;
-        speed     = (dt > 1e-4f) ? fabsf(d_arc) / dt : 0.f;
+        speed = (dt > 1e-4f) ? fabsf(d_arc) / dt : 0.f;
         sync_seek = fabsf(d_arc) > SYNC_SEEK_SNAP_M;
+        mv.mTravelOdometer = llmax(0.0, (F64)nd);
         mv.mDir     = 1.f;      // always face forward along the path
         mv.mArrived = false;    // a synced actor never settles; a scrub can move it
     }
@@ -3303,6 +4192,7 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
     {
         speed = pathSpeedAt(path, mv.mDist, loop || pingpong);
         nd    = mv.mDist + mv.mDir * speed * dt;
+        F32 traveled_step = speed * dt;
 
         mv.mArrived = false;
         if (loop)
@@ -3347,26 +4237,31 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
             if (best >= 0)
             {
                 nd = best_d;
+                traveled_step = fabsf(best_d - old_d);
                 mv.mDwellNode = best;
                 mv.mDwellT = 0.f;
                 // switch to a stand (or the node's anim) so the actor isn't walking
-                // in place while held
+                // in place while held; both gait sides belong to this hold.
                 if (mv.mAnim.notNull())
                 {
-                    av->stopMotion(mv.mAnim);
-                    av->setAnimTimeFactor(1.f);
+                    stopLocalMotion(av, mv.mSecondaryLocomotion);
+                    stopLocalMotion(av, mv.mLocomotion);
                 }
                 const LLUUID& na = path.mNodes[best].mAnim;
                 if (na.notNull())
                 {
-                    av->startMotion(na);
+                    startLocalMotion(av, mv.mDwellMotion, na, false,
+                                     1.f, false);
                     mv.mDwellAnim = na;
                 }
             }
         }
+        mv.mTravelOdometer += (F64)traveled_step;
     }
 
     mv.mDist = nd;
+    updateLocomotionGait(av, mv, speed, dt, sync_seek);
+    updateLocomotionSample(av, mv);
 
     // ---- evaluate the spline (global) ----
     LLVector3d pos_global, tan_global;
@@ -3388,12 +4283,13 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
     const F32 spline_ground_z = agent.mV[VZ];
     F32 ground_z = spline_ground_z;
     bool ground_hit = false;
-    if (path.mGroundFollow)
+    if (path.mGroundFollow && !path.mAirborne)
     {
         ground_z = resolveGroundZ(av, agent, agent.mV[VZ], ground_hit);
     }
     ground_z += pathGroundOffsetAt(path, mv.mDist);
     const F32 root_above = pathRootAboveAt(path, mv.mDist);
+    mv.mContactDiscontinuity = sync_seek;
     agent.mV[VZ] = ground_z + root_above;
     mv.mCurPos = agent;
 
@@ -3445,52 +4341,50 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
     }
     else
     {
-        target_yaw = atan2f((F32)tan_global.mdV[VY], (F32)tan_global.mdV[VX]);
+        // Look ahead along traveled arc so the body anticipates curvature.
+        // Reverse ping-pong travel samples behind the current arc rather than
+        // deriving a forward tangent and reading as accidental backpedal.
+        const F32 lookahead = llclamp(speed * 0.25f, 0.15f, 2.f);
+        F32 facing_d = mv.mDist + mv.mDir * lookahead;
+        if (loop)
+        {
+            facing_d -= floorf(facing_d / path.mTotalLength) * path.mTotalLength;
+        }
+        else
+        {
+            facing_d = llclamp(facing_d, 0.f, path.mTotalLength);
+        }
+        LLVector3d facing_pos, facing_tan;
+        path.evalAtDistance(facing_d, facing_pos, facing_tan);
+        const LLVector3d look = facing_pos - pos_global;
+        target_yaw = look.length() > 1e-5
+            ? atan2f((F32)look.mdV[VY], (F32)look.mdV[VX])
+            : atan2f((F32)tan_global.mdV[VY], (F32)tan_global.mdV[VX]);
     }
 
     // optional pitch-to-slope: from the path's climb tangent (a P1 approximation;
     // a surface-normal pitch is a P2 refinement noted in the report)
     F32 target_pitch = 0.f;
-    if (path.mPitchToSlope)
+    if (path.mPitchToSlope || path.mAirborne)
     {
         const F32 horiz = sqrtf((F32)(tan_global.mdV[VX] * tan_global.mdV[VX]
                                     + tan_global.mdV[VY] * tan_global.mdV[VY]));
         target_pitch = atan2f(-(F32)tan_global.mdV[VZ], llmax(horiz, 1e-4f));
+        if (path.mAirborne)
+        {
+            target_pitch = llclamp(target_pitch, -45.f * DEG_TO_RAD, 45.f * DEG_TO_RAD);
+        }
     }
 
-    // max turn-rate clamp on YAW so sharp corners ease instead of snapping;
-    // straightaways (delta ~ 0) are untouched. Pitch tracks directly (slope
-    // changes are gradual).
-    static LLCachedControl<F32> turn_rate(gSavedSettings, "PathTurnRateDegPerSec", 180.f);
-    LLVector3 cur_at = LLVector3(1.f, 0.f, 0.f) * mv.mCurRot;
-    const F32 cur_yaw = atan2f(cur_at.mV[VY], cur_at.mV[VX]);
-    F32 dyaw = target_yaw - cur_yaw;
-    while (dyaw >  F_PI) { dyaw -= 2.f * F_PI; }
-    while (dyaw < -F_PI) { dyaw += 2.f * F_PI; }
-    // a scrub seek snaps facing (up to a half turn in one frame); normal playback
-    // and free walks ease at the configured turn rate
-    const F32 max_step = sync_seek ? F_PI
-                                   : llmax(1.f, (F32)turn_rate) * DEG_TO_RAD * dt;
-    dyaw = llclamp(dyaw, -max_step, max_step);
-    mv.mCurRot.setEulerAngles(0.f, target_pitch, cur_yaw + dyaw);
-
-    // ---- cadence lock from the instantaneous ground speed ----
-    // TODO(gait): optional walk/run anim swap by a speed threshold -- left as a
-    // hook. Swapping the loco anim mid-walk risks foot-slide/pop and would
-    // override a per-actor custom anim, so it wants its own tuning pass.
-    if (!mv.mArrived && mv.mAnim.notNull())
-    {
-        av->setAnimTimeFactor(speed / llmax(mv.mNominal, 0.5f));
-    }
+    // Ordinary playback uses the shared scalar C2 solver. A recorder seek is
+    // an explicit discontinuity and snaps instead of integrating fake history.
+    updatePathFacing(mv, target_yaw, target_pitch, dt, sync_seek);
 
     // ---- arrival: settle into a stand at the last node (stop mode) ----
-    if (mv.mArrived && mv.mAnim.notNull())
+    if (mv.mArrived && (mv.mLocomotion.valid() || mv.mSecondaryLocomotion.valid()))
     {
-        if (av->findMotion(mv.mAnim))
-        {
-            av->stopMotion(mv.mAnim);
-        }
-        av->setAnimTimeFactor(1.f);
+        stopLocalMotion(av, mv.mSecondaryLocomotion);
+        stopLocalMotion(av, mv.mLocomotion);
         mv.mAnim.setNull();     // stop() won't double-stop; facing keeps easing
     }
 }
@@ -3505,8 +4399,8 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
 // ---------------------------------------------------------------------------
 void LLActorMover::advanceFollower(LLVOAvatar* av, Move& mv, const Follow& f, F32 dt)
 {
-    // hold helper: paint the last good pose (seed from the live pose the first
-    // time so we never place at the coordinate origin) with a frozen stride
+    // Hold the last good pose and leave this clip's absolute local sample frozen.
+    // Seed from the live pose the first time so we never place at the origin.
     auto holdInPlace = [&]()
     {
         if (!mv.mFaceInit)
@@ -3515,10 +4409,6 @@ void LLActorMover::advanceFollower(LLVOAvatar* av, Move& mv, const Follow& f, F3
             mv.mCurRot          = av->getRenderRotation();
             mv.mFollowRootAbove = llmax(0.f, av->getPelvisToFoot());
             mv.mFaceInit        = true;
-        }
-        if (mv.mAnim.notNull())
-        {
-            av->setAnimTimeFactor(0.f);     // planted stride while waiting
         }
     };
 
@@ -3544,6 +4434,7 @@ void LLActorMover::advanceFollower(LLVOAvatar* av, Move& mv, const Follow& f, F3
         lpath.rebuild();
     }
     const F32 total = lpath.mTotalLength;
+    mv.mAirborne = lpath.mAirborne;
     if (total <= 0.001f)
     {
         holdInPlace();
@@ -3565,11 +4456,16 @@ void LLActorMover::advanceFollower(LLVOAvatar* av, Move& mv, const Follow& f, F3
     }
 
     const F32 old_d   = mv.mDist;
-    const F32 implied = (dt > 1e-4f) ? fabsf(fArc - old_d) / dt : 0.f;
-    // a loop-seam wrap (arc jumps total->0) would spike the implied speed for one
-    // frame; cap the cadence so the stride never flickers at the seam
-    const F32 cad_speed = llmin(implied, 12.f);
+    F32 traveled_step = fabsf(fArc - old_d);
+    if (lpath.mEndMode == 1)
+    {
+        traveled_step = llmin(traveled_step, total - traveled_step);
+    }
+    const F32 follower_speed = (dt > 1e-4f) ? traveled_step / dt : 0.f;
     mv.mDist = fArc;
+    mv.mTravelOdometer += (F64)traveled_step;
+    updateLocomotionGait(av, mv, follower_speed, dt, false);
+    updateLocomotionSample(av, mv);
 
     // ---- evaluate the LEADER's spline at the follower's arc ----
     LLVector3d pos_global, tan_global;
@@ -3588,7 +4484,7 @@ void LLActorMover::advanceFollower(LLVOAvatar* av, Move& mv, const Follow& f, F3
     LLVector3 agent = gAgent.getPosAgentFromGlobal(pos_global);
     F32  ground_z   = agent.mV[VZ];
     bool ground_hit = false;
-    if (lpath.mGroundFollow)
+    if (lpath.mGroundFollow && !lpath.mAirborne)
     {
         ground_z = resolveGroundZ(av, agent, agent.mV[VZ], ground_hit);
     }
@@ -3596,30 +4492,38 @@ void LLActorMover::advanceFollower(LLVOAvatar* av, Move& mv, const Follow& f, F3
     agent.mV[VZ] = ground_z + mv.mFollowRootAbove;
     mv.mCurPos = agent;
 
-    // ---- facing: leader tangent at the follower's position, turn-rate clamped ----
-    const F32 target_yaw = atan2f((F32)tan_global.mdV[VY], (F32)tan_global.mdV[VX]);
+    // ---- facing: anticipate the leader curve in the leader's travel direction ----
+    const F32 travel_dir = lit->second.mDir;
+    const F32 lookahead = llclamp(follower_speed * 0.25f, 0.15f, 2.f);
+    F32 facing_d = fArc + travel_dir * lookahead;
+    if (lpath.mEndMode == 1)
+    {
+        facing_d -= floorf(facing_d / total) * total;
+    }
+    else
+    {
+        facing_d = llclamp(facing_d, 0.f, total);
+    }
+    LLVector3d facing_pos, facing_tan;
+    lpath.evalAtDistance(facing_d, facing_pos, facing_tan);
+    const LLVector3d look = facing_pos - pos_global;
+    const F32 target_yaw = look.length() > 1e-5
+        ? atan2f((F32)look.mdV[VY], (F32)look.mdV[VX])
+        : atan2f((F32)(tan_global.mdV[VY] * travel_dir),
+                 (F32)(tan_global.mdV[VX] * travel_dir));
     F32 target_pitch = 0.f;
-    if (lpath.mPitchToSlope)
+    if (lpath.mPitchToSlope || lpath.mAirborne)
     {
         const F32 horiz = sqrtf((F32)(tan_global.mdV[VX] * tan_global.mdV[VX]
                                     + tan_global.mdV[VY] * tan_global.mdV[VY]));
         target_pitch = atan2f(-(F32)tan_global.mdV[VZ], llmax(horiz, 1e-4f));
+        if (lpath.mAirborne)
+        {
+            target_pitch = llclamp(target_pitch, -45.f * DEG_TO_RAD, 45.f * DEG_TO_RAD);
+        }
     }
-    static LLCachedControl<F32> turn_rate(gSavedSettings, "PathTurnRateDegPerSec", 180.f);
-    LLVector3 cur_at = LLVector3(1.f, 0.f, 0.f) * mv.mCurRot;
-    const F32 cur_yaw = atan2f(cur_at.mV[VY], cur_at.mV[VX]);
-    F32 dyaw = target_yaw - cur_yaw;
-    while (dyaw >  F_PI) { dyaw -= 2.f * F_PI; }
-    while (dyaw < -F_PI) { dyaw += 2.f * F_PI; }
-    const F32 max_step = llmax(1.f, (F32)turn_rate) * DEG_TO_RAD * dt;
-    dyaw = llclamp(dyaw, -max_step, max_step);
-    mv.mCurRot.setEulerAngles(0.f, target_pitch, cur_yaw + dyaw);
+    updatePathFacing(mv, target_yaw, target_pitch, dt, false);
 
-    // ---- cadence lock from the follower's own instantaneous ground speed ----
-    if (mv.mAnim.notNull())
-    {
-        av->setAnimTimeFactor(cad_speed / llmax(mv.mNominal, 0.5f));
-    }
 }
 
 // ===========================================================================
