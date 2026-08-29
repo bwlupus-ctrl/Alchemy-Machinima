@@ -1585,7 +1585,7 @@ Do all of this for **both** tools; the kaleido path is identical with 49 fields 
 
 One more, cheap: **label the escape hatch honestly.** The Custom item currently reads "Custom (use sliders)". Under the new behaviour every preset uses the sliders, so rename it to **"Custom (start from scratch)"** and put a one-line status under the combo: `Vintage Swirl — edit any control to make it yours`.
 
-**4. Explain the greys.** Every Tier B and Tier C control gets a rewritten tooltip when it goes inert, using the fork's `setToolTipIfChanged` helper (currently duplicated at `llfloaterdirector.cpp:584` and `alfloatervirtualcam.cpp:29` — **a third copy is the point to extract it into a shared header**):
+**4. Explain the greys.** Every Tier B and Tier C control gets a rewritten tooltip when it goes inert, using the fork's `setToolTipIfChanged` idiom (kept locally by the Director Console and Ultimate Diopter; the former standalone Virtual Cam helper was retired when those controls moved into Director):
 
 - Base Distance, disabled: *"Overridden — Base Focus is tracking the camera focus subject"*
 - Ghost Spacing, disabled: *"Raise Ghost Copies above 0 to use this"*
@@ -1647,7 +1647,7 @@ The coarse modifier is safe to land early: with no modifier held, behaviour is i
 | Oracle extractor + generated oracle + cross-product test target (**1580 cases across 9 sweeps**, plus the predicate-flip and clause-coverage meta-rules, §2.3) | `tests/aldiopterrelevance_oracle.py`, `tests/aldiopterrelevance_oracle.llsd`, `tests/aldiopterrelevance_test.cpp`, `CMakeLists.txt` |
 | Factor out `alDiopterWarpArmed()`, `alDiopterAberrationArmed()`, and `alDiopterResolveBaseFocus()` returning provenance (§5.3) | `pipeline.cpp` / `pipeline.h` |
 | Master-enable tier: whole floater dimmed with one affordance when `CineDiopterEnabled == 0` (§1.4 Tier 0) | `alfloaterultimatediopter.cpp` |
-| Extract `setToolTipIfChanged` to a shared header | `llfloaterdirector.cpp`, `alfloatervirtualcam.cpp`, new header |
+| Keep the small `setToolTipIfChanged` helpers local | `llfloaterdirector.cpp`, `alfloaterultimatediopter.cpp` |
 | Structural + branch-coverage validators (§2.3) | `alfloaterultimatediopter.cpp`, test target |
 | Build wiring | `indra/newview/CMakeLists.txt` |
 

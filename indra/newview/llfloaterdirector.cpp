@@ -62,6 +62,7 @@
 #include "llvoavatarself.h"         // gAgentAvatarp, isAgentAvatarValid()
 
 #include <algorithm>
+#include <set>
 
 namespace
 {
@@ -83,6 +84,24 @@ constexpr char TAB_ICON_SHAFTS[]  = "Command_PersonalLighting_Icon";
 constexpr char TAB_ICON_LIGHTS[]  = "Command_Lightbox_Icon";
 constexpr char TAB_ICON_TEMPORAL[] = "Command_Environments_Icon"; // day-cycle/time metaphor (no clock asset ships)
 constexpr char TAB_ICON_WEATHER[]  = "Command_Water_Icon"; // rain/precipitation metaphor (distinct from Time's sky icon)
+constexpr F32 PRISM_SNAPSHOT_POLL_SECONDS = 0.25f;
+
+bool can_start_manual_subject_shot(std::string* reason)
+{
+    if (!LLDirectorCast::instance().resolveSubjectA())
+    {
+        if (reason) *reason = "Set a live Director Subject A first";
+        return false;
+    }
+    if (ALDirectorSwitcher::instance().isDrivingCamera())
+    {
+        if (reason) *reason =
+            "Stop the Director Switcher before starting a manual shot";
+        return false;
+    }
+    if (reason) reason->clear();
+    return true;
+}
 
 // scene files live beside the cinematic presets, same idiom
 constexpr char SCENE_SUBDIR[]  = "director_scenes";
@@ -484,8 +503,19 @@ bool LLFloaterDirector::postBuild()
     mClearDBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickClearSubject(SUBJECT_D); });
     getChild<LLButton>("btn_actor_gaze")->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onOpenActorGaze(); });
-    getChild<LLButton>("btn_virtual_cam")->setCommitCallback(
-        [this](LLUICtrl*, const LLSD&) { onOpenVirtualCam(); });
+    mPrismSummaryText = getChild<LLTextBox>("prism_summary");
+    mPrismManageBtn = getChild<LLButton>("btn_prism_manage");
+    mOtsPairBtn = getChild<LLButton>("btn_build_ots_pair");
+    mZollyBtn = getChild<LLButton>("btn_start_zolly");
+    mHeroArcBtn = getChild<LLButton>("btn_start_hero_arc");
+    mPrismManageBtn->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onClickManagePrism(); });
+    mOtsPairBtn->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onClickBuildOtsPair(); });
+    mZollyBtn->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onClickZolly(); });
+    mHeroArcBtn->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onClickHeroArc(); });
     getChild<LLButton>("btn_ultimate_diopter")->setCommitCallback(
         [](LLUICtrl*, const LLSD&) { LLFloaterReg::showInstance("ultimate_diopter"); });
     // embedded shared params panel: scene files read its selected preset and
@@ -2440,9 +2470,67 @@ void LLFloaterDirector::onOpenActorGaze()
         selectedCastIds());
 }
 
-void LLFloaterDirector::onOpenVirtualCam()
+void LLFloaterDirector::onClickManagePrism()
 {
-    LLFloaterReg::showInstance("virtual_cam");
+    LLFloaterReg::showInstance("prism_manager");
+}
+
+void LLFloaterDirector::onClickBuildOtsPair()
+{
+    std::string reason;
+    if (!LLPrismLens::buildOtsPairFromSubjects(nullptr, nullptr, &reason))
+    {
+        LLNotificationsUtil::add(
+            "GenericAlert",
+            LLSD().with("MESSAGE", reason.empty()
+                ? "Unable to build the OTS camera pair." : reason));
+        return;
+    }
+    mHavePrismSummary = false;
+}
+
+void LLFloaterDirector::onClickZolly()
+{
+    std::string reason;
+    if (!can_start_manual_subject_shot(&reason))
+    {
+        LLNotificationsUtil::add(
+            "GenericAlert", LLSD().with("MESSAGE", reason));
+        return;
+    }
+
+    const F32 first = gSavedSettings.getF32("CinematicCamVertigoStartDist");
+    const F32 second = gSavedSettings.getF32("CinematicCamVertigoEndDist");
+    const F32 near_distance = llmin(first, second);
+    const F32 far_distance = llmax(first, second);
+    const bool dolly_in =
+        gSavedSettings.getS32("CinematicCamVertigoDirection") != 0;
+    gSavedSettings.setF32("CinematicCamVertigoStartDist",
+                          dolly_in ? far_distance : near_distance);
+    gSavedSettings.setF32("CinematicCamVertigoEndDist",
+                          dolly_in ? near_distance : far_distance);
+    gSavedSettings.setS32("CinematicCamVertigoEndMode", 0);
+    LLCinematicCamera::instance().triggerMode(
+        LLCinematicCamera::MODE_DOLLY_ZOOM, true);
+}
+
+void LLFloaterDirector::onClickHeroArc()
+{
+    std::string reason;
+    if (!can_start_manual_subject_shot(&reason))
+    {
+        LLNotificationsUtil::add(
+            "GenericAlert", LLSD().with("MESSAGE", reason));
+        return;
+    }
+
+    const F32 angle = llclamp(
+        gSavedSettings.getF32("CinematicCamArcGeneratorAngle"), 30.f, 180.f);
+    gSavedSettings.setF32("CinematicCamArcFrom", -0.5f * angle);
+    gSavedSettings.setF32("CinematicCamArcTo", 0.5f * angle);
+    gSavedSettings.setS32("CinematicCamArcEndMode", 0);
+    LLCinematicCamera::instance().triggerMode(
+        LLCinematicCamera::MODE_ARC, true);
 }
 
 void LLFloaterDirector::refreshCameraTab()
@@ -2495,6 +2583,128 @@ void LLFloaterDirector::refreshCameraTab()
     setToolTipIfChanged(mClearDBtn, d.notNull()
         ? std::string("Clear Subject D")
         : std::string("Subject D is not set"));
+
+    // The Director refreshes all tab models while it is open. Avoid taking
+    // Prism registry/gate snapshots every frame unless Camera is the visible
+    // tab; the controls will refresh immediately when their visible chain is
+    // restored.
+    if (!mOtsPairBtn->isInVisibleChain())
+    {
+        return;
+    }
+
+    LLVOAvatar* live_a = cast.resolveSubjectA();
+    LLVOAvatar* live_b = cast.resolveSubjectB();
+    const bool distinct_live_pair = live_a && live_b &&
+        live_a->getID() != live_b->getID();
+    if (!distinct_live_pair)
+    {
+        mOtsPairBtn->setEnabled(false);
+        setToolTipIfChanged(mOtsPairBtn,
+            !live_a || !live_b
+                ? std::string("Set live Director Subjects A and B first")
+                : std::string("Subjects A and B must be different avatars"));
+    }
+
+    std::string subject_shot_reason;
+    const bool can_trigger_subject_shot =
+        can_start_manual_subject_shot(&subject_shot_reason);
+    mZollyBtn->setEnabled(can_trigger_subject_shot);
+    mHeroArcBtn->setEnabled(can_trigger_subject_shot);
+    const std::string subject_shot_tip = can_trigger_subject_shot
+        ? std::string("Start this one-shot move locked to Subject A's head")
+        : subject_shot_reason;
+    setToolTipIfChanged(mZollyBtn, subject_shot_tip);
+    setToolTipIfChanged(mHeroArcBtn, subject_shot_tip);
+
+    if (mHavePrismSummary &&
+        mPrismRefreshTimer.getElapsedTimeF32() < PRISM_SNAPSHOT_POLL_SECONDS)
+    {
+        return;
+    }
+    mPrismRefreshTimer.reset();
+
+    const LLPrismLens::RegistrySnapshot ots_registry =
+        LLPrismLens::registrySnapshot();
+    const LLPrismLens::GateSnapshot ots_gate = LLPrismLens::gateSnapshot();
+    std::set<LLUUID> replaceable_ots_captures;
+    std::size_t replaceable_ots_arms = 0;
+    for (const LLPrismLens::GateArmedCamera& armed :
+         ots_gate.mSettings.mArmed)
+    {
+        if (LLPrismLens::isOtsPairArmLabel(armed.mLabel))
+        {
+            ++replaceable_ots_arms;
+            replaceable_ots_captures.insert(armed.mCaptureId);
+        }
+    }
+    U32 replaceable_ots_capture_count = 0;
+    for (U32 index = 0; index < ots_registry.mCaptureCount; ++index)
+    {
+        if (replaceable_ots_captures.count(
+                ots_registry.mCaptures[index].mHandle.mId) != 0)
+        {
+            ++replaceable_ots_capture_count;
+        }
+    }
+    const bool ots_capacity =
+        ots_registry.mCaptureCount - replaceable_ots_capture_count <=
+            LLPrismLens::MAX_CAPTURES - 2 &&
+        ots_gate.mSettings.mArmed.size() - replaceable_ots_arms <=
+            LLPrismLens::MAX_CAPTURES - 2;
+    mOtsPairBtn->setEnabled(distinct_live_pair && ots_capacity);
+    setToolTipIfChanged(mOtsPairBtn,
+        !live_a || !live_b
+            ? std::string("Set live Director Subjects A and B first")
+            : !distinct_live_pair
+                ? std::string("Subjects A and B must be different avatars")
+                : !ots_capacity
+                    ? std::string("Two free VCam capture and Gate arm slots are required")
+                    : std::string("Create reciprocal matched-lens OTS A/B virtual cameras and arm both in the Gate"));
+
+    const U64 prism_configuration_revision =
+        ots_registry.mConfigurationRevision;
+    const U64 prism_runtime_revision = ots_registry.mRuntimeRevision;
+    if (!mHavePrismSummary ||
+        prism_configuration_revision != mPrismConfigurationRevision ||
+        prism_runtime_revision != mPrismRuntimeRevision)
+    {
+        const LLPrismLens::RegistrySnapshot& snapshot = ots_registry;
+        U32 capture_attention = 0;
+        U32 display_attention = 0;
+        U32 updating = 0;
+        for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+        {
+            const LLPrismLens::CaptureDefinition& capture =
+                snapshot.mCaptures[index];
+            capture_attention += capture.mRuntime.mHealth !=
+                LLPrismLens::ECaptureHealth::READY;
+            updating +=
+                capture.mRuntime.mActivity == LLPrismLens::EActivityState::LIVE ||
+                capture.mRuntime.mActivity == LLPrismLens::EActivityState::THROTTLED;
+        }
+        for (U32 index = 0; index < snapshot.mDisplayCount; ++index)
+        {
+            display_attention += snapshot.mDisplays[index].mRuntime.mHealth !=
+                LLPrismLens::EDisplayHealth::READY;
+        }
+        const bool needs_attention =
+            capture_attention != 0 || display_attention != 0;
+
+        mPrismSummaryText->setText(llformat(
+            "Prism %u/%u captures | %u/%u faces | %u live%s",
+            snapshot.mCaptureCount, LLPrismLens::MAX_CAPTURES,
+            snapshot.mDisplayCount, LLPrismLens::MAX_DISPLAY_BINDINGS,
+            updating, needs_attention ? " | attention" : ""));
+        setToolTipIfChanged(mPrismSummaryText, llformat(
+            "%u captures and %u display bindings; attention: %u capture%s, %u display%s. Open Virtual Cam Manager for sources, faces, optics, picture FPS, and adaptive performance.",
+            snapshot.mCaptureCount, snapshot.mDisplayCount,
+            capture_attention, capture_attention == 1 ? "" : "s",
+            display_attention, display_attention == 1 ? "" : "s"));
+        mPrismConfigurationRevision = prism_configuration_revision;
+        mPrismRuntimeRevision = prism_runtime_revision;
+        mHavePrismSummary = true;
+    }
 }
 
 // ---------------------------------------------------------------------------

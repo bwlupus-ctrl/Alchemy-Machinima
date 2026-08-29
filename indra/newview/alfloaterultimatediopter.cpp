@@ -36,11 +36,8 @@
 
 namespace
 {
-// Third copy of the fork's setToolTipIfChanged idiom (llfloaterdirector.cpp,
-// alfloatervirtualcam.cpp) -- design doc §7 Phase 2 flags this as the point
-// to extract a shared header, but that touches two files outside this
-// wave's deliverable list, so it stays local here; see the wave-2 handoff
-// note for the deferral.
+// Local copy of the fork's setToolTipIfChanged idiom (also used by the
+// Director Console). Keep it here so the lens controls remain self-contained.
 void setToolTipIfChanged(LLUICtrl* ctrl, const std::string& tip)
 {
     if (ctrl && ctrl->getToolTip() != tip)
@@ -248,7 +245,7 @@ const LLColor4 RESET_NON_DEFAULT_TINT(0.95f, 0.75f, 0.25f, 1.f);
 // would mean editing renderDoF/renderUltimateDiopter/alKaleidoFocusUV's own
 // bodies, and pipeline.cpp/.h are not in this wave's named Phase 4 file
 // list. Flagged as deferred cleanup in the wave-4 handoff, the same
-// judgment call wave 2 made for setToolTipIfChanged's third copy. Must stay
+// local-helper judgment used for the UI tooltip helpers. Must stay
 // byte-for-byte identical to pipeline.cpp's three copies (RenderDepthOfField,
 // RenderDepthOfFieldInEditMode, LLToolMgr::inBuildMode(), sLastFocusPoint).
 bool alDiopterUiDofFocusLive()

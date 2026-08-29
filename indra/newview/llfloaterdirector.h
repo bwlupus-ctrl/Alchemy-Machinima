@@ -19,6 +19,7 @@
 #define LL_LLFLOATERDIRECTOR_H
 
 #include "llfloater.h"
+#include "llframetimer.h"
 
 #include <string>
 #include <utility>
@@ -147,7 +148,10 @@ private:
     void onClickSetSubjectFromSelection(S32 subject);
     void onClickClearSubject(S32 subject);
     void onOpenActorGaze();
-    void onOpenVirtualCam();
+    void onClickManagePrism();
+    void onClickBuildOtsPair();
+    void onClickZolly();
+    void onClickHeroArc();
     void refreshCameraTab();
 
     // ---- Takes tab ----
@@ -267,6 +271,15 @@ private:
     LLButton*  mClearBBtn = nullptr;
     LLButton*  mClearCBtn = nullptr;
     LLButton*  mClearDBtn = nullptr;
+    LLTextBox* mPrismSummaryText = nullptr;
+    LLButton*  mPrismManageBtn = nullptr;
+    LLButton*  mOtsPairBtn = nullptr;
+    LLButton*  mZollyBtn = nullptr;
+    LLButton*  mHeroArcBtn = nullptr;
+    U64        mPrismConfigurationRevision = 0;
+    U64        mPrismRuntimeRevision = 0;
+    bool       mHavePrismSummary = false;
+    LLFrameTimer mPrismRefreshTimer;
 
     // Animate tab
     LLTextBox*        mAnimateHeader = nullptr;

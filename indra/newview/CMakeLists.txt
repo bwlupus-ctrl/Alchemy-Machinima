@@ -313,7 +313,6 @@ set(viewer_SOURCE_FILES
     llfloateractormover.cpp
     llfloaterdirector.cpp
     alfloateractorgaze.cpp
-    alfloatervirtualcam.cpp
     alfloatergazecues.cpp
     llfloaterprismmanager.cpp
     alfloatertemporalcapture.cpp
@@ -1174,7 +1173,6 @@ set(viewer_HEADER_FILES
     llfloateractormover.h
     llfloaterdirector.h
     alfloateractorgaze.h
-    alfloatervirtualcam.h
     alfloatergazecues.h
     llfloaterprismmanager.h
     alfloatertemporalcapture.h
