@@ -166,7 +166,7 @@ public:
         // stable residual and prevents a hidden clip from leaking back in.
         return mPresentationWeight == 1.f ? presented_weight
             : (mPresentationWeight > 0.f
-                ? presented_weight / mPresentationWeight : 0.f);
+                ? llclamp(presented_weight / mPresentationWeight, 0.f, 1.f) : 0.f);
     }
 
     F32 getStopTime() const { return mStopTimestamp; }

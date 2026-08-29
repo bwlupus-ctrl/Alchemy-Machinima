@@ -531,6 +531,8 @@ void LLActorMover::beginLocomotionTransition(LLVOAvatar* av, Move& mv,
         else
         {
             mv.mFailedLocomotionAnim = target_anim;
+            mv.mRole = LLDirectorCast::LOCO_NONE;
+            mv.mAnim.setNull();
         }
         mv.mPhaseOrigin = target_phase;
         updateLocomotionSample(av, mv);
@@ -563,14 +565,6 @@ void LLActorMover::updateLocomotionGait(LLVOAvatar* av, Move& mv, F32 speed,
 {
     using Cast = LLDirectorCast;
     const S32 desired = desiredLocomotionRole(av, mv, llmax(speed, 0.f));
-    // A load failure, controller purge, or external stop may invalidate the
-    // owned primary between frames. Never let the role marker suppress a
-    // deterministic restart attempt (the failed-asset quarantine still gates
-    // a known bad UUID in beginLocomotionTransition()).
-    if (!mv.mLocomotion.valid() && !mv.mSecondaryLocomotion.valid())
-    {
-        mv.mRole = Cast::LOCO_NONE;
-    }
     if (desired == Cast::LOCO_NONE)
     {
         return;
@@ -594,6 +588,8 @@ void LLActorMover::updateLocomotionGait(LLVOAvatar* av, Move& mv, F32 speed,
                                   mv.mPhaseOrigin))
             {
                 mv.mFailedLocomotionAnim = target;
+                mv.mRole = Cast::LOCO_NONE;
+                mv.mAnim.setNull();
             }
             else if (mv.mFailedLocomotionAnim == target)
             {
@@ -704,6 +700,8 @@ void LLActorMover::startLocomotion(LLVOAvatar* av, Move& mv)
     stopLocalMotion(av, mv.mLocomotion);
     mv.mSecondaryRole = Cast::LOCO_NONE;
     const S32 role = desiredLocomotionRole(av, mv, mv.mSpeed);
+    mv.mRole = Cast::LOCO_NONE;
+    mv.mAnim.setNull();
     LLUUID anim;
     bool allow_ao = false;
     if (resolveLocomotionRole(av, role, anim, mv.mNominal,
@@ -725,6 +723,8 @@ void LLActorMover::startLocomotion(LLVOAvatar* av, Move& mv)
         else
         {
             mv.mFailedLocomotionAnim = anim;
+            mv.mRole = Cast::LOCO_NONE;
+            mv.mAnim.setNull();
         }
         updateLocomotionSample(av, mv);
     }
@@ -749,7 +749,16 @@ void LLActorMover::updateLocomotionSample(LLVOAvatar* av, Move& mv)
         LLMotion* motion = av->findMotion(handle.mActualAnim);
         if (!motion)
         {
-            return false; // failed-load quarantine below owns missing instances
+            // A missing pending instance is the controller's failed-load shape;
+            // leave it for quarantine below. A previously loaded instance can
+            // instead disappear after external deactivation/purge, which is a
+            // recoverable loss and must not poison the asset UUID.
+            if (handle.mPendingLoad)
+            {
+                return false;
+            }
+            stopLocalMotion(av, handle);
+            return true;
         }
         const bool active_or_loading = handle.mPendingLoad ||
             av->isMotionActive(handle.mActualAnim);
@@ -828,14 +837,14 @@ void LLActorMover::updateLocomotionSample(LLVOAvatar* av, Move& mv)
         return loaded;
     };
 
-    if (mv.mPhaseOrigin < 0.f &&
-        refresh_load_state(mv.mLocomotion))
+    const bool primary_loaded = refresh_load_state(mv.mLocomotion);
+    if (mv.mPhaseOrigin < 0.f && primary_loaded)
     {
         mv.mPhaseOrigin = resolveLocalMotionPhase(
             av, mv.mLocomotion, mv.mPhaseOrigin);
     }
-    if (mv.mSecondaryPhaseOrigin < 0.f &&
-        refresh_load_state(mv.mSecondaryLocomotion))
+    const bool secondary_loaded = refresh_load_state(mv.mSecondaryLocomotion);
+    if (mv.mSecondaryPhaseOrigin < 0.f && secondary_loaded)
     {
         mv.mSecondaryPhaseOrigin = resolveLocalMotionPhase(
             av, mv.mSecondaryLocomotion, mv.mSecondaryPhaseOrigin);
@@ -4335,7 +4344,11 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
     }
     else
     {
-        updateLocomotionGait(av, mv, speed, dt, sync_seek);
+        // A seek with no owned clip needs a deterministic fallback. Never let
+        // one-frame scrub distance select RUN/FLY and leak history into the
+        // sampled pose; zero selects WALK/HOVER while the absolute odometer
+        // still chooses the authored foot phase.
+        updateLocomotionGait(av, mv, sync_seek ? 0.f : speed, dt, sync_seek);
     }
 
     // ---- evaluate the spline (global) ----
@@ -4558,7 +4571,9 @@ void LLActorMover::advanceFollower(LLVOAvatar* av, Move& mv, const Follow& f, F3
     }
     else
     {
-        updateLocomotionGait(av, mv, follower_speed, dt, follower_seek);
+        updateLocomotionGait(av, mv,
+                             follower_seek ? 0.f : follower_speed,
+                             dt, follower_seek);
     }
 
     // ---- evaluate the LEADER's spline at the follower's arc ----
