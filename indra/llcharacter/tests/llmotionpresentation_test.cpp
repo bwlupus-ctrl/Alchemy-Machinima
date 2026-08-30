@@ -141,8 +141,8 @@ void motion_presentation_object::test<7>()
     ensure("deactivate restores native clock", !motion.usesExternalSampleClock());
     ensure_distance("deactivate restores identity weight",
                     motion.getPresentationWeight(), 1.f, 0.0001f);
-    ensure_distance("native passthrough remains exact at large time",
-                    motion.getEffectiveUpdateTime(123456.f),
-                    123456.f, 0.0001f);
+    ensure_equals("native passthrough remains exact at large time",
+                  motion.getEffectiveUpdateTime(123456.f),
+                  123456.f);
 }
 }

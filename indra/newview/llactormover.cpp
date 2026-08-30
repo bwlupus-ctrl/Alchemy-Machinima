@@ -177,6 +177,7 @@ void apply_custom_anim_priority(LLVOAvatar* av, const LLUUID& anim)
         m->setPriorityOverride(prio);
     }
 }
+} // anonymous namespace
 
 bool LLActorMover::startLocalMotion(LLVOAvatar* av, LocalMotionHandle& handle,
                                     const LLUUID& source_anim, bool allow_ao,
@@ -903,6 +904,9 @@ void LLActorMover::updatePathFacing(Move& mv, F32 target_yaw, F32 target_pitch,
     mv.mCurRot.setEulerAngles(0.f, target_pitch,
                               ALTrajectory::wrapToPi(state.mP));
 }
+
+namespace
+{
 
 // ===========================================================================
 // Actor pathing (P1) -- spline + traversal math
