@@ -1349,6 +1349,50 @@
             <key>Value</key>
             <real>0.0</real>
         </map>
+        <key>AlchemyToneMapContrast</key>
+        <map>
+            <key>Comment</key>
+            <string>Shared post-tonemap contrast applied to every tonemapper's output, pivoting on mid-grey (0.5). 1.0 = neutral (no change).</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>1.0</real>
+        </map>
+        <key>AlchemyToneMapKhronosDesaturation</key>
+        <map>
+            <key>Comment</key>
+            <string>Khronos PBR Neutral tonemapper (type 0): desaturation strength applied while compressing highlights.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.15</real>
+        </map>
+        <key>AlchemyToneMapKhronosStartCompression</key>
+        <map>
+            <key>Comment</key>
+            <string>Khronos PBR Neutral tonemapper (type 0): peak value at which highlight compression begins.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.76</real>
+        </map>
+        <key>AlchemyToneMapSaturation</key>
+        <map>
+            <key>Comment</key>
+            <string>Shared post-tonemap saturation applied to every tonemapper's output. 1.0 = neutral (no change), &lt;1 desaturates, &gt;1 boosts.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>1.0</real>
+        </map>
         <key>AlchemyRevokeObjectPerms</key>
         <map>
             <key>Comment</key>

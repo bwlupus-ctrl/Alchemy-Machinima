@@ -110,14 +110,19 @@ vec3 toneMapACES_Hill(vec3 color)
     return color;
 }
 
+// tonemap_khronos_params: .x = desaturation, .y = startCompression (peak value where
+// highlight compression begins). Defaults (0.15, 0.76) reproduce the original
+// Khronos sample implementation's hardcoded constants exactly.
+uniform vec2 tonemap_khronos_params;
+
 // Khronos Neutral tonemapping
 // https://github.com/KhronosGroup/ToneMapping/tree/main
 // Input color is non-negative and resides in the Linear Rec. 709 color space.
 // Output color is also Linear Rec. 709, but in the [0, 1] range.
 vec3 PBRNeutralToneMapping( vec3 color )
 {
-  const float startCompression = 0.8 - 0.04;
-  const float desaturation = 0.15;
+  float startCompression = tonemap_khronos_params.y;
+  float desaturation = tonemap_khronos_params.x;
 
   float x = min(color.r, min(color.g, color.b));
   float offset = x < 0.08 ? x - 6.25 * x * x : 0.04;
@@ -126,7 +131,7 @@ vec3 PBRNeutralToneMapping( vec3 color )
   float peak = max(color.r, max(color.g, color.b));
   if (peak < startCompression) return color;
 
-  const float d = 1. - startCompression;
+  float d = 1. - startCompression;
   float newPeak = 1. - d * d / (peak + d - startCompression);
   color *= newPeak / peak;
 
@@ -329,6 +334,9 @@ vec3 uchimura(vec3 color)
 uniform float exposure;
 uniform float tonemap_mix;
 uniform int tonemap_type;
+// tonemap_grade: .x = saturation, .y = contrast. Shared post-tonemap grade
+// stage applied to every operator's output. Identity at (1.0, 1.0).
+uniform vec2 tonemap_grade;
 
 // AMD FidelityFX LPM (tonemap type 7). Defined in deferred/LPMUtil.glsl,
 // which reads its own tonemap_amd[24] + tonemap_amd_shoulder uniforms.
@@ -375,6 +383,16 @@ vec3 applyToneMap(vec3 color)
     }
 
     color.rgb = clamp(color.rgb, vec3(0.0), vec3(1.0));
+
+    // Shared saturation/contrast grade, applied to every tonemapper's output.
+    // Mathematically an identity when tonemap_grade == (1.0, 1.0):
+    //   mix(x, y, 1.0) == y, and (color - 0.5) * 1.0 + 0.5 == color.
+    color = mix(vec3(dot(color, vec3(0.2126, 0.7152, 0.0722))), color, tonemap_grade.x);
+    color = (color - 0.5) * tonemap_grade.y + 0.5;
+    // Clamp back to display-referred [0,1] (matches the post-operator clamp
+    // above): a boosted saturation/contrast must not leak >1 into the final
+    // mix or downstream passes (FXAA / HDR capture). No-op at neutral.
+    color = clamp(color, 0.0, 1.0);
 
     // mix tonemapped and linear here to provide adjustment
     return mix(clamped_color, color, tonemap_mix);

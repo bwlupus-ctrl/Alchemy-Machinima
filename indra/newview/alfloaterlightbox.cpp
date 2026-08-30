@@ -400,6 +400,22 @@ void ALFloaterLightBox::onClickResetGroupDefault(const LLSD& userdata)
             }
         }
 
+        // Post-tonemap grade (Khronos Neutral only, tonemap type 0) parameters.
+        static const char* const khronos_grade_controls[] = {
+            "AlchemyToneMapSaturation",
+            "AlchemyToneMapContrast",
+            "AlchemyToneMapKhronosDesaturation",
+            "AlchemyToneMapKhronosStartCompression",
+        };
+        for (const char* control_name : khronos_grade_controls)
+        {
+            LLControlVariable* controlp = gSavedSettings.getControl(control_name);
+            if (controlp)
+            {
+                controlp->resetToDefault(true);
+            }
+        }
+
         // AMD FidelityFX LPM (tonemap type 7) parameters.
         static const char* const amd_lpm_controls[] = {
             "AlchemyToneMapAMDHDRMax",
@@ -546,6 +562,24 @@ void ALFloaterLightBox::updateTonemapper()
         if (LLView* v = findChild<LLView>(widget_name))
         {
             v->setVisible(amd);
+        }
+    }
+
+    // [Grade] The post-tonemap Saturation/Contrast and Khronos highlight
+    // Desat/Knee sliders only apply to (and are only shown for) tonemap
+    // type 0 (Khronos Neutral); hide them for every other tonemapper.
+    static const std::string khronos_widgets[] = {
+        "tm_saturation_label",    "tm_saturation_slider",    "tm_saturation_spinner",
+        "tm_contrast_label",      "tm_contrast_slider",      "tm_contrast_spinner",
+        "tm_khronos_desat_label", "tm_khronos_desat_slider", "tm_khronos_desat_spinner",
+        "tm_khronos_knee_label",  "tm_khronos_knee_slider",  "tm_khronos_knee_spinner",
+    };
+    const bool khronos = (gSavedSettings.getS32("AlchemyRenderTonemapType") == 0);
+    for (const std::string& widget_name : khronos_widgets)
+    {
+        if (LLView* v = findChild<LLView>(widget_name))
+        {
+            v->setVisible(khronos);
         }
     }
 }
