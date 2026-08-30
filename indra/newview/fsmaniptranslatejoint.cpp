@@ -231,7 +231,8 @@ void FSManipTranslateJoint::restoreGL()
                 }
             }
         }
-        LLImageGL::setManualImage(GL_TEXTURE_2D, mip, GL_RGBA, rez, rez, GL_RGBA, GL_UNSIGNED_BYTE, d);
+        LLImageGL::setManualImage(GL_TEXTURE_2D, mip, GL_RGBA, rez, rez, GL_RGBA,
+                                  GL_UNSIGNED_BYTE, d, true, true);
         rez = rez >> 1;
         mip++;
     }

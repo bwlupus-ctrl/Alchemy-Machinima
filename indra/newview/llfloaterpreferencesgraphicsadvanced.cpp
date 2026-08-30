@@ -38,6 +38,7 @@
 #include "lltrans.h"
 #include "llviewershadermgr.h"
 #include "llviewertexturelist.h"
+#include "llviewertexture.h"
 #include "llvoavatar.h"
 #include "pipeline.h"
 // [RLVa:KB] - Checked: 2010-03-18 (RLVa-1.2.0a)
@@ -51,6 +52,7 @@ LLFloaterPreferenceGraphicsAdvanced::LLFloaterPreferenceGraphicsAdvanced(const L
     mCommitCallbackRegistrar.add("Pref.RenderOptionUpdate",            boost::bind(&LLFloaterPreferenceGraphicsAdvanced::onRenderOptionEnable, this));
     mCommitCallbackRegistrar.add("Pref.UpdateIndirectMaxNonImpostors", boost::bind(&LLFloaterPreferenceGraphicsAdvanced::updateMaxNonImpostors,this));
     mCommitCallbackRegistrar.add("Pref.UpdateIndirectMaxComplexity",   boost::bind(&LLFloaterPreferenceGraphicsAdvanced::updateMaxComplexity,this));
+    mCommitCallbackRegistrar.add("Pref.UpdateVRAMCap",                 boost::bind(&LLFloaterPreferenceGraphicsAdvanced::onVRAMCapChanged, this));
 
     mCommitCallbackRegistrar.add("Pref.Cancel", boost::bind(&LLFloaterPreferenceGraphicsAdvanced::onBtnCancel, this, _2));
     mCommitCallbackRegistrar.add("Pref.OK",     boost::bind(&LLFloaterPreferenceGraphicsAdvanced::onBtnOK, this, _2));
@@ -109,7 +111,20 @@ bool LLFloaterPreferenceGraphicsAdvanced::postBuild()
         {
             updateIndirectMaxNonImpostors(new_val);
         });
+    LLSliderCtrl* vram_cap = getChild<LLSliderCtrl>("VRAMCap");
+    vram_cap->setMaxValue(llmax((F32)gGLManager.mVRAM, 768.f));
+    // LLSliderCtrl writes an LLSD real by default. Normalize the persisted
+    // value back to the declared U32 setting type when this floater opens.
+    gSavedSettings.setU32("RenderMaxVRAMBudget",
+                          gSavedSettings.getU32("RenderMaxVRAMBudget"));
+    refreshVRAMStatus();
     return true;
+}
+
+void LLFloaterPreferenceGraphicsAdvanced::draw()
+{
+    refreshVRAMStatus();
+    LLFloater::draw();
 }
 
 void LLFloaterPreferenceGraphicsAdvanced::onOpen(const LLSD& key)
@@ -151,6 +166,12 @@ void LLFloaterPreferenceGraphicsAdvanced::onAdvancedAtmosphericsEnable()
 
 void LLFloaterPreferenceGraphicsAdvanced::refresh()
 {
+    LLSliderCtrl* vram_cap = getChild<LLSliderCtrl>("VRAMCap", true);
+    if (vram_cap)
+    {
+        vram_cap->setMaxValue(llmax((F32)gGLManager.mVRAM, 768.f));
+    }
+    refreshVRAMStatus();
     // sliders and their text boxes
     //  mPostProcess = gSavedSettings.getS32("RenderGlowResolutionPow");
     // slider text boxes
@@ -174,6 +195,82 @@ void LLFloaterPreferenceGraphicsAdvanced::refresh()
     bool enable_complexity = gSavedSettings.getS32("RenderAvatarComplexityMode") != LLVOAvatar::AV_RENDER_ONLY_SHOW_FRIENDS;
     getChild<LLSliderCtrl>("IndirectMaxComplexity")->setEnabled(enable_complexity);
     getChild<LLSliderCtrl>("IndirectMaxNonImpostors")->setEnabled(enable_complexity);
+}
+
+void LLFloaterPreferenceGraphicsAdvanced::refreshVRAMStatus()
+{
+    LLTextBox* status = getChild<LLTextBox>("VRAMStatus", true);
+    LLTextBox* title = getChild<LLTextBox>("VRAMStatusTitle", true);
+    if (!status)
+    {
+        return;
+    }
+
+    if (title)
+    {
+        if (LLViewerTexture::isCaptureQualityPinActive())
+        {
+            title->setText(std::string("VRAM GOVERNOR — LIVE STATUS — CAPTURE QUALITY PIN"));
+        }
+        else if (LLViewerTexture::isCaptureModeActive() && LLViewerTexture::isVRAMPressureActive())
+        {
+            title->setText(std::string("VRAM GOVERNOR — LIVE STATUS — CAP ENFORCED DURING CAPTURE"));
+        }
+        else
+        {
+            title->setText(std::string("VRAM GOVERNOR — LIVE STATUS"));
+        }
+    }
+
+    const U32 requested_cap = gSavedSettings.getU32("RenderMaxVRAMBudget");
+    const char* mode = requested_cap > 0 ? "Custom" : "Auto";
+    std::string driver = LLViewerTexture::sDriverAvailableVRAMMegabytes >= 0.f
+        ? llformat("%.0f MB", LLViewerTexture::sDriverAvailableVRAMMegabytes)
+        : "Unavailable";
+    std::string evictions = LLViewerTexture::sVRAMEvictionDataAvailable
+        ? llformat("%u", LLViewerTexture::sVRAMEvictionCount)
+        : "Unavailable";
+    const std::string requested = requested_cap > 0
+        ? llformat("%u MB", requested_cap)
+        : "Auto";
+    std::string text = llformat(
+        "Mode: %s  |  Requested: %s  |  Configured: %.0f MB  |  Effective: %.0f MB%s  |  State: %s\n"
+        "Tracked: %.0f MB  |  Textures: %.0f MB  |  Reducible: %.0f MB  |  Fixed: %.0f MB  |  Vertex: %.0f MB  |  RT subset: %.0f MB\n"
+        "Viewer headroom: %.0f MB  |  Driver free: %s  |  NVIDIA evictions: %s  |  Discard bias: %.2f",
+        mode,
+        requested.c_str(),
+        LLViewerTexture::sVRAMBudgetMegabytes,
+        LLViewerTexture::sEffectiveVRAMBudgetMegabytes,
+        LLViewerTexture::sVRAMCapAdjustedForFixedAllocations ? " (raised above fixed floor)" : "",
+        LLViewerTexture::getVRAMPressureStatus(),
+        LLViewerTexture::sTrackedVRAMMegabytes,
+        LLViewerTexture::sTextureVRAMMegabytes,
+        LLViewerTexture::sReducibleTextureVRAMMegabytes,
+        LLViewerTexture::sFixedVRAMMegabytes,
+        LLViewerTexture::sVertexVRAMMegabytes,
+        LLViewerTexture::sRenderTargetVRAMMegabytes,
+        LLViewerTexture::sFreeVRAMMegabytes,
+        driver.c_str(),
+        evictions.c_str(),
+        LLViewerTexture::sDesiredDiscardBias);
+    status->setText(text);
+}
+
+void LLFloaterPreferenceGraphicsAdvanced::onVRAMCapChanged()
+{
+    // Zero is the Auto sentinel. Keep every Custom value enforceable by the
+    // governor's documented 768 MB minimum instead of exposing 256/512 MB
+    // slider stops that would silently clamp elsewhere.
+    U32 cap = (U32)ll_round(getChild<LLSliderCtrl>("VRAMCap")->getValueF32());
+    if (cap > 0 && cap < 768)
+    {
+        cap = 768;
+        getChild<LLSliderCtrl>("VRAMCap")->setValue((F32)cap);
+    }
+    // Write explicitly as U32. Relying on LLSliderCtrl's generic control binding
+    // stores an LLSD real, which left the governor's typed cached value at Auto.
+    gSavedSettings.setU32("RenderMaxVRAMBudget", cap);
+    refreshVRAMStatus();
 }
 
 void LLFloaterPreferenceGraphicsAdvanced::refreshEnabledGraphics()

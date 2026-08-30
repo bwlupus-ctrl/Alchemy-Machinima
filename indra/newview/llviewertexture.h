@@ -90,6 +90,13 @@ class LLTextureBar;
 class LLViewerTexture : public LLGLTexture
 {
 public:
+    enum EVRAMPressureState
+    {
+        VRAM_PRESSURE_NORMAL = 0,
+        VRAM_PRESSURE_ELEVATED,
+        VRAM_PRESSURE_CRITICAL
+    };
+
     enum
     {
         LOCAL_TEXTURE,
@@ -115,11 +122,16 @@ public:
     // [BDMerge] True while the viewer believes a take is in progress (manual
     // capture pin, or auto-armed by hide-UI / flycam / cinematic cam / Director
     // ACTION). Resolved once per frame in updateClass(); callers must not
-    // re-derive it. Drives the discard-bias pin and full-resolution textures.
+    // re-derive it.
     static bool isCaptureModeActive();
+    // Capture quality is allowed to pin bias/full-resolution textures only
+    // while the VRAM governor is Normal. The cap owns Pressure and Critical.
+    static bool isCaptureQualityPinActive();
+    static bool isVRAMPressureActive();
     static bool isSystemMemoryLow();
     static bool isSystemMemoryCritical();
     static F32 getSystemMemoryBudgetFactor();
+    static const char* getVRAMPressureStatus();
 
     LLViewerTexture(bool usemipmaps = true);
     LLViewerTexture(const LLUUID& id, bool usemipmaps) ;
@@ -224,8 +236,23 @@ public:
     static bool sFreezeImageUpdates;
     static F32  sCurrentTime ;
 
-    // estimated free memory for textures, by bias calculation
+    // Runtime VRAM-governor telemetry. Render-target bytes are already part of
+    // texture bytes and are exposed separately for diagnostics only.
     static F32 sFreeVRAMMegabytes;
+    static F32 sVRAMBudgetMegabytes;
+    static F32 sEffectiveVRAMBudgetMegabytes;
+    static F32 sTrackedVRAMMegabytes;
+    static F32 sTextureVRAMMegabytes;
+    static F32 sReducibleTextureVRAMMegabytes;
+    static F32 sFixedVRAMMegabytes;
+    static F32 sVertexVRAMMegabytes;
+    static F32 sRenderTargetVRAMMegabytes;
+    static F32 sDriverAvailableVRAMMegabytes;
+    static U32 sVRAMEvictionCount;
+    static bool sVRAMEvictionDataAvailable;
+    static bool sVRAMBudgetIsCustom;
+    static bool sVRAMCapAdjustedForFixedAllocations;
+    static EVRAMPressureState sVRAMPressureState;
 
     enum EDebugTexels
     {

@@ -165,7 +165,9 @@ void LLRenderTarget::resize(U32 resx, U32 resy)
     for (U32 i = 0; i < mTex.size(); ++i)
     { //resize color attachments
         gGL.getTexUnit(0)->bindManual(mUsage, mTex[i]);
-        LLImageGL::setManualImage(LLTexUnit::getInternalType(mUsage), 0, mInternalFormat[i], mResX, mResY, GL_RGBA, GL_UNSIGNED_BYTE, NULL, false);
+        LLImageGL::setManualImage(LLTexUnit::getInternalType(mUsage), 0, mInternalFormat[i], mResX, mResY,
+                                  GL_RGBA, GL_UNSIGNED_BYTE, NULL, false,
+                                  mGenerateMipMaps != LLTexUnit::TMG_NONE);
         sBytesAllocated += static_cast<S32>(pix_diff * get_color_format_bytes_per_pixel(mInternalFormat[i]));
     }
 
@@ -322,10 +324,16 @@ bool LLRenderTarget::addColorAttachment(U32 color_fmt)
 
     {
         clear_glerror();
-        LLImageGL::setManualImage(LLTexUnit::getInternalType(mUsage), 0, color_fmt, mResX, mResY, GL_RGBA, GL_UNSIGNED_BYTE, NULL, false);
+        LLImageGL::setManualImage(LLTexUnit::getInternalType(mUsage), 0, color_fmt, mResX, mResY,
+                                  GL_RGBA, GL_UNSIGNED_BYTE, NULL, false,
+                                  mGenerateMipMaps != LLTexUnit::TMG_NONE);
         if (glGetError() != GL_NO_ERROR)
         {
             LL_WARNS() << "Could not allocate color buffer for render target." << LL_ENDL;
+            // deleteTextures defers the GL delete by several frames; remove the
+            // just-created accounting record now so a failed allocation cannot
+            // transiently drive the governor.
+            LLImageGLMemory::free_cur_tex_image();
             LLImageGL::deleteTextures(1, &tex);
             return false;
         }
@@ -396,13 +404,16 @@ bool LLRenderTarget::allocateDepth()
     LLImageGL::setManualImage(internal_type, 0, info.internal_format, mResX, mResY, info.pixel_format, info.pixel_type, NULL, false);
     gGL.getTexUnit(0)->setTextureFilteringOption(LLTexUnit::TFO_POINT);
 
-    sBytesAllocated += mResX * mResY * info.bytes_per_pixel;
-
     if (glGetError() != GL_NO_ERROR)
     {
         LL_WARNS() << "Unable to allocate depth buffer for render target." << LL_ENDL;
+        LLImageGLMemory::free_cur_tex_image();
+        LLImageGL::deleteTextures(1, &mDepth);
+        mDepth = 0;
         return false;
     }
+
+    sBytesAllocated += mResX * mResY * info.bytes_per_pixel;
 
     return true;
 }
@@ -690,6 +701,46 @@ void LLRenderTarget::copyContents(LLRenderTarget& source, S32 srcX0, S32 srcY0, 
         glBindFramebuffer(GL_FRAMEBUFFER, sCurFBO);
         stop_glerror();
     }
+}
+
+void LLRenderTarget::copyContentsFromAttachment(LLRenderTarget& source, U32 src_attachment,
+                                                 S32 srcX0, S32 srcY0, S32 srcX1, S32 srcY1,
+                                                 S32 dstX0, S32 dstY0, S32 dstX1, S32 dstY1,
+                                                 U32 mask, U32 filter)
+{
+    LL_PROFILE_GPU_ZONE("LLRenderTarget::copyContentsFromAttachment");
+
+    llassert(mask != GL_DEPTH_BUFFER_BIT); // attachment selection is a color-buffer concept only
+
+    gGL.flush();
+    if (!source.mFBO || !mFBO)
+    {
+        LL_WARNS() << "Cannot copy framebuffer contents for non FBO render targets." << LL_ENDL;
+        return;
+    }
+
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, source.mFBO);
+    stop_glerror();
+    glReadBuffer(GL_COLOR_ATTACHMENT0 + src_attachment);
+    stop_glerror();
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, mFBO);
+    stop_glerror();
+    check_framebuffer_status();
+    stop_glerror();
+    glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter);
+    stop_glerror();
+    // Restore the convention bindTarget() establishes (GL_COLOR_ATTACHMENT0) so
+    // other callers -- including this class's own copyContents(), which reads
+    // whatever the source's current read buffer happens to be -- keep finding
+    // it in place.
+    glReadBuffer(GL_COLOR_ATTACHMENT0);
+    stop_glerror();
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+    stop_glerror();
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    stop_glerror();
+    glBindFramebuffer(GL_FRAMEBUFFER, sCurFBO);
+    stop_glerror();
 }
 
 // static

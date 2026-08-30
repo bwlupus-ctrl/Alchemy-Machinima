@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
 <floater
-  height="492"
+  height="612"
   layout="topleft"
   name="prefs_graphics_advanced"
   help_topic="Preferences_Graphics_Advanced"
   single_instance="true"
   save_rect="true"
   title="ADVANCED GRAPHICS PREFERENCES"
-  width="800">
+  width="825">
 
 <!-- This block shows Advanced Settings -->
 
@@ -154,6 +154,27 @@
           value="2048"/>
     </combo_box>
 
+  <slider
+    control_name="RenderMaxVRAMBudget"
+    decimal_digits="0"
+    follows="left|top"
+    height="18"
+    increment="256"
+    initial_value="0"
+    label="VRAM cap (0 = Auto):"
+    label_width="185"
+    layout="topleft"
+    left="30"
+    min_val="0"
+    max_val="32768"
+    name="VRAMCap"
+    show_text="true"
+    top_delta="20"
+    tool_tip="Maximum VRAM the viewer may manage, in MB. Zero automatically uses detected VRAM. Custom caps take effect immediately; the effective cap may rise if fixed render targets and buffers already exceed it."
+    width="336">
+    <slider.commit_callback
+      function="Pref.UpdateVRAMCap" />
+  </slider>
   <check_box
     control_name="RenderVSyncEnable"
     height="16"
@@ -161,7 +182,7 @@
     label="Enable VSync"
     layout="topleft"
     left="30"
-    top_delta="16"
+    top_delta="24"
     name="vsync"
     tool_tip="Synchronizes the frame rate to the refresh rate of the monitor, which results in smooth performance."
     width="315" />
@@ -665,7 +686,7 @@
   </text>
    <view_border
       bevel_style="in"
-      height="417"
+      height="453"
       layout="topleft"
       left="385"
       name="vert_border"
@@ -1171,15 +1192,51 @@
   </slider>
   <!-- End of Tone Mapping Settings-->
   <!-- End of Advanced Settings block -->
+
+  <view_border
+    bevel_style="in"
+    follows="left|right|bottom"
+    height="70"
+    layout="topleft"
+    left="20"
+    name="vram_status_border"
+    top="480"
+    width="785" />
+  <text
+    type="string"
+    length="1"
+    follows="left|right|bottom"
+    font.style="BOLD"
+    height="18"
+    layout="topleft"
+    left="32"
+    name="VRAMStatusTitle"
+    top="488"
+    width="761">
+      VRAM GOVERNOR — LIVE STATUS
+  </text>
+  <text
+    type="string"
+    length="1"
+    follows="left|right|bottom"
+    height="40"
+    layout="topleft"
+    left="32"
+    name="VRAMStatus"
+    top="506"
+    width="761"
+    word_wrap="true">
+      Mode: Auto | Requested: Auto | Configured: 0 MB | Effective: 0 MB | State: Normal
+  </text>
+
 	<view_border
       bevel_style="in"
       height="0"
       layout="topleft"
       left="13"
       name="horiz_border"
-      top="455"
-      top_delta="45"
-      width="774"/>
+      top="556"
+      width="799"/>
   <button
     follows="top|left"
     height="23"

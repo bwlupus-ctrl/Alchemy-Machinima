@@ -183,6 +183,18 @@ public:
     void copyContents(LLRenderTarget& source, S32 srcX0, S32 srcY0, S32 srcX1, S32 srcY1, S32 dstX0, S32 dstY0, S32 dstX1, S32 dstY1,
                       U32 mask, U32 filter);
 
+    // Like copyContents(), but reads from a specific color attachment of
+    // source rather than whatever GL_READ_BUFFER source's FBO currently has
+    // set (copyContents() implicitly reads attachment 0, since that is the
+    // read buffer bindTarget() leaves in place). Color-only (mask must not be
+    // GL_DEPTH_BUFFER_BIT). Restores source's read buffer to
+    // GL_COLOR_ATTACHMENT0 before returning -- other callers (including
+    // copyContents()) rely on finding that convention in place.
+    void copyContentsFromAttachment(LLRenderTarget& source, U32 src_attachment,
+                                    S32 srcX0, S32 srcY0, S32 srcX1, S32 srcY1,
+                                    S32 dstX0, S32 dstY0, S32 dstX1, S32 dstY1,
+                                    U32 mask, U32 filter);
+
     static void copyContentsToFramebuffer(LLRenderTarget& source, S32 srcX0, S32 srcY0, S32 srcX1, S32 srcY1, S32 dstX0, S32 dstY0,
                                           S32 dstX1, S32 dstY1, U32 mask, U32 filter);
 

@@ -55,6 +55,9 @@ namespace LLImageGLMemory
     // (driver-padded via dataFormatVRAMBytes per level). count covers
     // array slices / cube faces, each of which gets its own pyramid.
     void alloc_tex_image(U32 width, U32 height, U32 intformat, U32 count, bool has_mips = false);
+    // Reclassify a shared-name texture after all surfaces or mip levels exist.
+    // Legacy cubemaps allocate six faces through one GL texture name.
+    void update_tex_image(U32 texName, U32 count, bool has_mips);
     void free_tex_image(U32 texName);
     void free_tex_images(U32 count, const U32* texNames);
     void free_cur_tex_image();
@@ -69,19 +72,14 @@ public:
     // call once per frame
     static void updateClass();
 
-    // Get an estimate of how many bytes have been allocated in vram for
-    // textures. Allocations recorded via alloc_tex_image with has_mips=true
-    // include the full mip pyramid (driver-padded via dataFormatVRAMBytes);
-    // allocations from external setManualImage callers that don't pass
-    // has_mips=true cover level 0 only.
-    //
-    // NOTE: viewer consumers (llviewertexture.cpp, lltextureview.cpp)
-    // historically scaled this by 2x via a /512 divisor instead of /1024
-    // when converting to MB. That fudge predates per-mip accounting and
-    // also compensates for driver-side overhead (descriptor structs, page
-    // alignment) plus the unaccounted external-setManualImage callers.
-    // Leave it alone until the budget code is reconciled holistically.
+    // Base-level bytes for all tracked texture allocations. Use the resident
+    // estimate below for budgeting; this base-only accessor remains available
+    // for diagnostics and compatibility.
     static U64 getTextureBytesAllocated();
+    // Estimated resident bytes, including complete mip chains when present.
+    static U64 getTextureBytesAllocatedEstimate();
+    // Mip-bearing subset: the pool the discard/downrez governor can reduce.
+    static U64 getMipmappedTextureBytesAllocatedEstimate();
 
     // These 2 functions replace glGenTextures() and glDeleteTextures()
     static void generateTextures(S32 numTextures, U32 *textures);

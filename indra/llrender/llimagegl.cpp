@@ -70,8 +70,76 @@ U32 LLImageGL::sFrameCount = 0;
 
 // texture memory accounting (for macOS)
 static LLMutex sTexMemMutex;
-static boost::unordered_map<U32, U64> sTextureAllocs;
+struct LLTextureAllocation
+{
+    U32 mWidth = 0;
+    U32 mHeight = 0;
+    U32 mInternalFormat = 0;
+    U32 mCount = 0;
+    U64 mBaseBytes = 0;
+    U64 mEstimatedBytes = 0;
+    U64 mMipmappedBytes = 0;
+};
+
+static boost::unordered_map<U32, LLTextureAllocation> sTextureAllocs;
 static U64 sTextureBytes = 0;
+static U64 sTextureEstimatedBytes = 0;
+static U64 sMipmappedTextureEstimatedBytes = 0;
+
+// Generic GL_COMPRESSED_* formats let the driver choose the codec. Estimate
+// their resident block-compressed footprint instead of charging the source
+// channel depth as if it were uncompressed.
+static U64 get_estimated_texture_bytes(U32 intformat, U32 width, U32 height)
+{
+    U32 bits_per_pixel = 0;
+    switch (intformat)
+    {
+        case GL_COMPRESSED_RED:
+        case GL_COMPRESSED_RGB:
+        case GL_COMPRESSED_SRGB:
+        case GL_COMPRESSED_LUMINANCE:
+        case GL_COMPRESSED_ALPHA:
+            bits_per_pixel = 4;
+            break;
+        case GL_COMPRESSED_RG:
+        case GL_COMPRESSED_RGBA:
+        case GL_COMPRESSED_SRGB_ALPHA:
+        case GL_COMPRESSED_LUMINANCE_ALPHA:
+            bits_per_pixel = 8;
+            break;
+        default:
+            return (U64)LLImageGL::dataFormatVRAMBytes(intformat, width, height);
+    }
+
+    width = llmax(width, 4u);
+    height = llmax(height, 4u);
+    const U64 bytes = ((U64)width * (U64)height * bits_per_pixel + 7) >> 3;
+    return (bytes + 3) & ~3ULL;
+}
+
+static U64 get_estimated_mip_chain_bytes(U32 intformat, U32 width, U32 height)
+{
+    U64 bytes = get_estimated_texture_bytes(intformat, width, height);
+    while (width > 1 || height > 1)
+    {
+        width = llmax(width >> 1, 1u);
+        height = llmax(height >> 1, 1u);
+        bytes += get_estimated_texture_bytes(intformat, width, height);
+    }
+    return bytes;
+}
+
+static LLTextureAllocation get_texture_allocation(U32 width, U32 height,
+                                                  U32 intformat, U32 count,
+                                                  bool has_mips)
+{
+    const U64 base_size = get_estimated_texture_bytes(intformat, width, height) * count;
+    const U64 estimated_size = has_mips
+        ? get_estimated_mip_chain_bytes(intformat, width, height) * count
+        : base_size;
+    return { width, height, intformat, count, base_size, estimated_size,
+             has_mips ? estimated_size : 0 };
+}
 
 // track a texture alloc on the currently bound texture.
 // asserts that no currently tracked alloc exists
@@ -80,34 +148,58 @@ void LLImageGLMemory::alloc_tex_image(U32 width, U32 height, U32 intformat, U32 
     U32 texUnit = gGL.getCurrentTexUnitIndex();
     llassert(texUnit == 0); // allocations should always be done on tex unit 0
     U32 texName = gGL.getTexUnit(texUnit)->getCurrTexture();
-    U64 size = LLImageGL::dataFormatVRAMBytes(intformat, width, height);
-    if (has_mips)
-    {
-        // Sum the mip pyramid down to 1x1 the same way getMipBytes does,
-        // so non-power-of-two and non-square cases stay exact rather than
-        // relying on the 4/3 geometric-series approximation.
-        S32 w = (S32)width;
-        S32 h = (S32)height;
-        while (w > 1 && h > 1)
-        {
-            w >>= 1; if (w == 0) w = 1;
-            h >>= 1; if (h == 0) h = 1;
-            size += LLImageGL::dataFormatVRAMBytes(intformat, w, h);
-        }
-    }
-    size *= count;
-
-    llassert(size >= 0);
+    const LLTextureAllocation allocation =
+        get_texture_allocation(width, height, intformat, count, has_mips);
 
     sTexMemMutex.lock();
 
-    // it is a precondition that no existing allocation exists for this texture
-    llassert(sTextureAllocs.find(texName) == sTextureAllocs.end());
+    auto existing = sTextureAllocs.find(texName);
+    if (existing != sTextureAllocs.end())
+    {
+        // Remain symmetric in release builds even if a caller violates the
+        // replace-before-free contract. This is safer than silently drifting
+        // every global counter upward.
+        LL_WARNS_ONCE("TextureMemory")
+            << "Replacing an existing VRAM accounting record for texture " << texName
+            << LL_ENDL;
+        sTextureBytes -= existing->second.mBaseBytes;
+        sTextureEstimatedBytes -= existing->second.mEstimatedBytes;
+        sMipmappedTextureEstimatedBytes -= existing->second.mMipmappedBytes;
+    }
 
-    sTextureAllocs[texName] = size;
-    sTextureBytes += size;
+    sTextureAllocs[texName] = allocation;
+    sTextureBytes += allocation.mBaseBytes;
+    sTextureEstimatedBytes += allocation.mEstimatedBytes;
+    sMipmappedTextureEstimatedBytes += allocation.mMipmappedBytes;
 
     sTexMemMutex.unlock();
+}
+
+void LLImageGLMemory::update_tex_image(U32 texName, U32 count, bool has_mips)
+{
+    LLMutexLock lock(&sTexMemMutex);
+    auto iter = sTextureAllocs.find(texName);
+    if (iter == sTextureAllocs.end())
+    {
+        return;
+    }
+
+    const LLTextureAllocation previous = iter->second;
+    const LLTextureAllocation replacement =
+        get_texture_allocation(previous.mWidth, previous.mHeight,
+                               previous.mInternalFormat, count, has_mips);
+
+    llassert(previous.mBaseBytes <= sTextureBytes);
+    llassert(previous.mEstimatedBytes <= sTextureEstimatedBytes);
+    llassert(previous.mMipmappedBytes <= sMipmappedTextureEstimatedBytes);
+    sTextureBytes -= previous.mBaseBytes;
+    sTextureEstimatedBytes -= previous.mEstimatedBytes;
+    sMipmappedTextureEstimatedBytes -= previous.mMipmappedBytes;
+
+    iter->second = replacement;
+    sTextureBytes += replacement.mBaseBytes;
+    sTextureEstimatedBytes += replacement.mEstimatedBytes;
+    sMipmappedTextureEstimatedBytes += replacement.mMipmappedBytes;
 }
 
 // track texture free on given texName
@@ -117,9 +209,13 @@ void LLImageGLMemory::free_tex_image(U32 texName)
     auto iter = sTextureAllocs.find(texName);
     if (iter != sTextureAllocs.end()) // sometimes a texName will be "freed" before allocated (e.g. first call to setManualImage for a given texName)
     {
-        llassert(iter->second <= sTextureBytes); // sTextureBytes MUST NOT go below zero
+        llassert(iter->second.mBaseBytes <= sTextureBytes);
+        llassert(iter->second.mEstimatedBytes <= sTextureEstimatedBytes);
+        llassert(iter->second.mMipmappedBytes <= sMipmappedTextureEstimatedBytes);
 
-        sTextureBytes -= iter->second;
+        sTextureBytes -= iter->second.mBaseBytes;
+        sTextureEstimatedBytes -= iter->second.mEstimatedBytes;
+        sMipmappedTextureEstimatedBytes -= iter->second.mMipmappedBytes;
 
         sTextureAllocs.erase(iter);
     }
@@ -151,6 +247,18 @@ using namespace LLImageGLMemory;
 U64 LLImageGL::getTextureBytesAllocated()
 {
     return sTextureBytes;
+}
+
+// static
+U64 LLImageGL::getTextureBytesAllocatedEstimate()
+{
+    return sTextureEstimatedBytes;
+}
+
+// static
+U64 LLImageGL::getMipmappedTextureBytesAllocatedEstimate()
+{
+    return sMipmappedTextureEstimatedBytes;
 }
 
 //statics
@@ -867,6 +975,11 @@ bool LLImageGL::setImage(const U8* data_in, bool data_hasmips /* = false */, S32
     {
         if (data_hasmips)
         {
+            if (is_compressed)
+            {
+                free_cur_tex_image();
+            }
+
             // NOTE: data_in points to largest image; smaller images
             // are stored BEFORE the largest image
             for (S32 d=mCurrentDiscardLevel; d<=mMaxDiscardLevel; d++)
@@ -886,6 +999,10 @@ bool LLImageGL::setImage(const U8* data_in, bool data_hasmips /* = false */, S32
                 {
                     GLsizei tex_size = (GLsizei)dataFormatBytes(mFormatPrimary, w, h);
                     glCompressedTexImage2D(mTarget, gl_level, mFormatPrimary, w, h, 0, tex_size, (GLvoid *)data_in);
+                    if (gl_level == 0)
+                    {
+                        alloc_tex_image(w, h, mFormatPrimary, 1, true);
+                    }
                     stop_glerror();
                 }
                 else
@@ -1084,8 +1201,10 @@ bool LLImageGL::setImage(const U8* data_in, bool data_hasmips /* = false */, S32
         S32 h = getHeight();
         if (is_compressed)
         {
+            free_cur_tex_image();
             GLsizei tex_size = (GLsizei)dataFormatBytes(mFormatPrimary, w, h);
             glCompressedTexImage2D(mTarget, 0, mFormatPrimary, w, h, 0, tex_size, (GLvoid *)data_in);
+            alloc_tex_image(w, h, mFormatPrimary, 1, false);
             stop_glerror();
         }
         else
@@ -1097,7 +1216,7 @@ bool LLImageGL::setImage(const U8* data_in, bool data_hasmips /* = false */, S32
             }
 
             LLImageGL::setManualImage(mTarget, 0, mFormatInternal, w, h,
-                         mFormatPrimary, mFormatType, (GLvoid *)data_in, mAllowCompression);
+                         mFormatPrimary, mFormatType, (GLvoid *)data_in, mAllowCompression, mUseMipMaps);
             analyzeAlpha(data_in, w, h);
 
             updatePickMask(w, h, data_in);
@@ -2878,7 +2997,8 @@ void LLImageGL::checkActiveThread()
             llassert(w > 0 && h > 0 && cur_mip_data);
             U8 test = cur_mip_data[w*h*mComponents-1];
             {
-                LLImageGL::setManualImage(mTarget, m, mFormatInternal, w, h, mFormatPrimary, mFormatType, cur_mip_data);
+                LLImageGL::setManualImage(mTarget, m, mFormatInternal, w, h, mFormatPrimary,
+                                          mFormatType, cur_mip_data, mAllowCompression, mUseMipMaps);
                 stop_glerror();
             }
             if (prev_mip_data && prev_mip_data != rawdata)
@@ -2920,4 +3040,3 @@ void LLImageGLThread::run()
     gGL.shutdown();
     mWindow->destroySharedContext(mContext);
 }
-
