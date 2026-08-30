@@ -1186,6 +1186,7 @@ set(viewer_HEADER_FILES
     alprojectorshaftpresets.h
     alpanelcinecamparams.h
     algazemath.h
+    alpathgeometry.h
     altrajectory.h
     algazerecruit.h
     algazeblink.h
@@ -2687,6 +2688,14 @@ if (BUILD_TESTING)
   # [Machinima] Pose Polish pure-math modules (inertialization, contact, etc.);
   # header-only, TUT registered directly like ALGazeMath.
   LL_ADD_INTEGRATION_TEST(alposepolish
+    ""
+    "${test_libs}"
+    "${test_project}"
+  )
+
+  # Character Mover exact path primitives are header-only pure geometry so the
+  # runtime, preview and tests share one evaluator.
+  LL_ADD_INTEGRATION_TEST(alpathgeometry
     ""
     "${test_libs}"
     "${test_project}"

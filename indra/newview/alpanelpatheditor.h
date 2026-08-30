@@ -92,7 +92,10 @@ private:
     void onClickMirror();
     void onClickLoopClose();
     void onClickCopyTo();
+    void onClickPlayPath();
+    void onClickStopPath();
     void onClickWalkHere();     // arms a single ground click via ALToolPathEdit
+    void onClickCenterPrimitive();
 
     // TP-away suspend banner actions (resume where it left off / translate the
     // path to the actor's current spot and resume / drop the suspended walk)
@@ -131,6 +134,8 @@ private:
     void onPathPitchCommit();
     void onPathAirborneCommit();
     void onPathEndCommit();
+    void onPathShapeCommit();
+    void onPrimitiveCommit();
 
     // cached name for the header
     static std::string actorName(const LLUUID& id);
@@ -163,6 +168,8 @@ private:
     LLButton*          mMirrorBtn = nullptr;
     LLButton*          mLoopCloseBtn = nullptr;
     LLButton*          mWalkHereBtn = nullptr;
+    LLButton*          mPlayPathBtn = nullptr;
+    LLButton*          mStopPathBtn = nullptr;
     LLComboBox*        mCopyToCombo = nullptr;
     LLButton*          mCopyBtn = nullptr;
     std::string        mCopySig;   // cast+target signature so the combo rebuilds only on change
@@ -179,6 +186,16 @@ private:
     LLCheckBoxCtrl*    mAirborne = nullptr;
     LLComboBox*        mEndCombo = nullptr;
     LLPanel*           mColorSwatch = nullptr;
+    LLComboBox*        mShapeCombo = nullptr;
+    LLButton*          mCenterPrimitiveBtn = nullptr;
+    LLSpinCtrl*        mPrimitiveRadiusX = nullptr;
+    LLSpinCtrl*        mPrimitiveRadiusY = nullptr;
+    LLSpinCtrl*        mPrimitiveStart = nullptr;
+    LLSpinCtrl*        mPrimitiveSweep = nullptr;
+    LLSpinCtrl*        mPrimitiveYaw = nullptr;
+    LLSpinCtrl*        mPrimitivePitch = nullptr;
+    LLSpinCtrl*        mPrimitiveRoll = nullptr;
+    LLSpinCtrl*        mPrimitiveRise = nullptr;
 
     // P3 per-node camera row
     LLButton*          mSetCamBtn = nullptr;

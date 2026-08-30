@@ -149,7 +149,7 @@
         <panel
          background_visible="false"
          follows="left|top|right"
-         height="638"
+         height="770"
          layout="topleft"
          left="0"
          name="path_scroll_content"
@@ -164,14 +164,14 @@
            top="6"
            name="path_section_lbl"
            width="348">
-            Path (waypoints)
+            Path (waypoints + exact shapes)
           </text>
           <!-- Shared Actor Pathing editor: the same panel Director embeds. -->
           <panel
            class="panel_path_editor"
            filename="panel_path_editor.xml"
            follows="left|top|right"
-           height="604"
+           height="736"
            layout="topleft"
            left="0"
            name="path_editor"

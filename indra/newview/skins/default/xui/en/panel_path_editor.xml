@@ -10,7 +10,7 @@
 <panel
  background_visible="false"
  border="false"
- height="604"
+ height="736"
  layout="topleft"
  name="panel_path_editor"
  width="360">
@@ -294,13 +294,33 @@
     <button
      follows="left|top"
      height="20"
-     label="Walk here"
+     label="Walk to Point..."
      layout="topleft"
      left="258"
      top="222"
      name="btn_walk_here"
-     tool_tip="Arm one ground click: the actor gets a straight path to that spot and walks it"
+     tool_tip="Arm one ground click for a one-off straight move. This replaces the authored path; use Play Path below to play the path unchanged."
      width="96" />
+    <button
+     follows="left|top"
+     height="20"
+     label="Play Path"
+     layout="topleft"
+     left="6"
+     top="246"
+     name="btn_play_path"
+     tool_tip="Play this authored path without firing ACTION"
+     width="170" />
+    <button
+     follows="left|top"
+     height="20"
+     label="Stop Path"
+     layout="topleft"
+     left="182"
+     top="246"
+     name="btn_stop_path"
+     tool_tip="Stop this path and release its path camera"
+     width="172" />
 
     <text
      follows="left|top"
@@ -308,7 +328,7 @@
      height="12"
      layout="topleft"
      left="6"
-     top="248"
+     top="272"
      name="node_lbl"
      width="200">
         Selected node
@@ -326,7 +346,7 @@
      min_val="-5"
      name="node_height_spinner"
      tool_tip="Manual height nudge at this node (m). 0 = feet on the ground"
-     top="262"
+     top="286"
      width="170" />
     <spinner
      decimal_digits="1"
@@ -341,7 +361,7 @@
      min_val="0"
      name="node_dwell_spinner"
      tool_tip="Seconds the actor holds at this node (0 = no pause)"
-     top="262"
+     top="286"
      width="172" />
     <spinner
      decimal_digits="2"
@@ -356,14 +376,14 @@
      min_val="0"
      name="node_speed_spinner"
      tool_tip="Speed override at this node (m/s). 0 = use the path speed"
-     top="282"
+     top="306"
      width="170" />
     <text
      follows="left|top"
      height="12"
      layout="topleft"
      left="184"
-     top="284"
+     top="308"
      name="node_anim_lbl"
      width="170">
         Node anim (UUID)
@@ -376,7 +396,7 @@
      max_length_chars="36"
      name="node_anim_editor"
      tool_tip="Play this animation at the node instead of the walk anim (local only). Blank = walk anim"
-     top="300"
+     top="324"
      width="348" />
 
     <text
@@ -385,7 +405,7 @@
      height="12"
      layout="topleft"
      left="6"
-     top="322"
+     top="346"
      name="path_lbl"
      width="200">
         Path settings
@@ -403,7 +423,7 @@
      min_val="0.05"
      name="path_speed_spinner"
      tool_tip="Nominal ground speed along the path (m/s). Per-node overrides win where set"
-     top="336"
+     top="360"
      width="170" />
     <slider
      decimal_digits="2"
@@ -418,7 +438,7 @@
      min_val="0"
      name="path_tension_slider"
      tool_tip="Corner smoothing (0..1): 0 = tight, near-straight corners; 1 = full flowing curves"
-     top="336"
+     top="360"
      width="172" />
     <spinner
      decimal_digits="1"
@@ -433,7 +453,7 @@
      min_val="0"
      name="path_easein_spinner"
      tool_tip="Accelerate from a standstill over this many seconds at the start"
-     top="356"
+     top="380"
      width="170" />
     <spinner
      decimal_digits="1"
@@ -448,7 +468,7 @@
      min_val="0"
      name="path_easeout_spinner"
      tool_tip="Decelerate to a stop over this many seconds into the final node"
-     top="356"
+     top="380"
      width="172" />
     <check_box
      follows="left|top"
@@ -456,7 +476,7 @@
      label="Ground-follow"
      layout="topleft"
      left="6"
-     top="376"
+     top="400"
      name="path_groundfollow_check"
      tool_tip="Clamp feet to terrain / prims each frame so the walk rides slopes and stairs"
      width="120" />
@@ -466,7 +486,7 @@
      label="Pitch to slope"
      layout="topleft"
      left="130"
-     top="376"
+     top="400"
      name="path_pitch_check"
      tool_tip="Tilt the body to the local slope on ground paths. Air paths always pitch along the flight tangent"
      width="120" />
@@ -476,7 +496,7 @@
      label="Air path"
      layout="topleft"
      left="254"
-     top="376"
+     top="400"
      name="path_airborne_check"
      tool_tip="Use fly/hover locomotion roles, pitch along the flight path, and release Pose Polish foot contacts"
      width="100" />
@@ -485,7 +505,7 @@
      height="20"
      layout="topleft"
      left="6"
-     top="394"
+     top="418"
      name="path_end_combo"
      tool_tip="What happens when the actor reaches the end of the path"
      width="180">
@@ -499,7 +519,7 @@
      height="12"
      layout="topleft"
      left="196"
-     top="398"
+     top="422"
      name="color_lbl"
      tool_tip="This actor's path color in world (auto, from its id)"
      width="42">
@@ -513,7 +533,7 @@
      height="16"
      layout="topleft"
      left="240"
-     top="396"
+     top="420"
      name="color_swatch"
      tool_tip="This actor's path color in world (auto, from its id)"
      width="40" />
@@ -524,7 +544,90 @@
      height="12"
      layout="topleft"
      left="6"
-     top="418"
+     top="444"
+     name="primitive_lbl"
+     width="60">
+        Shape
+    </text>
+    <combo_box
+     follows="left|top"
+     height="20"
+     layout="topleft"
+     left="70"
+     top="440"
+     name="path_shape_combo"
+     tool_tip="Choose authored waypoint geometry or an exact parametric primitive"
+     width="150">
+        <combo_box.item label="Waypoints" name="shape_waypoints" value="0" />
+        <combo_box.item label="Circle / Arc" name="shape_circle" value="1" />
+        <combo_box.item label="Ellipse / Arc" name="shape_ellipse" value="2" />
+        <combo_box.item label="Helix" name="shape_helix" value="3" />
+    </combo_box>
+    <button
+     follows="left|top"
+     height="20"
+     label="Center on actor"
+     layout="topleft"
+     left="224"
+     top="440"
+     name="btn_primitive_center"
+     width="130" />
+    <spinner
+     decimal_digits="2" follows="left|top" height="16" increment="0.1"
+     label="Radius X (m)" label_width="72" layout="topleft" left="6"
+     max_val="10000" min_val="0.01" name="primitive_radius_x"
+     tool_tip="Exact circle radius or ellipse major/minor radius along local X"
+     top="464" width="170" />
+    <spinner
+     decimal_digits="2" follows="left|top" height="16" increment="0.1"
+     label="Radius Y (m)" label_width="72" layout="topleft" left="182"
+     max_val="10000" min_val="0.01" name="primitive_radius_y"
+     tool_tip="Ellipse radius along local Y; circles and helixes use Radius X"
+     top="464" width="172" />
+    <spinner
+     decimal_digits="1" follows="left|top" height="16" increment="5"
+     label="Start (deg)" label_width="66" layout="topleft" left="6"
+     max_val="36000" min_val="-36000" name="primitive_start_deg"
+     tool_tip="Angular position where the primitive begins"
+     top="484" width="170" />
+    <spinner
+     decimal_digits="1" follows="left|top" height="16" increment="5"
+     label="Sweep (deg)" label_width="72" layout="topleft" left="182"
+     max_val="36000" min_val="-36000" name="primitive_sweep_deg"
+     tool_tip="Signed angular travel. 180 is a half arc, 360 a full turn, negative reverses direction, and values over 360 make multiple turns."
+     top="484" width="172" />
+    <spinner
+     decimal_digits="1" follows="left|top" height="16" increment="5"
+     label="Plane yaw" label_width="66" layout="topleft" left="6"
+     max_val="360" min_val="-360" name="primitive_yaw_deg"
+     tool_tip="Rotate the primitive plane around world up"
+     top="504" width="170" />
+    <spinner
+     decimal_digits="1" follows="left|top" height="16" increment="5"
+     label="Plane tilt" label_width="72" layout="topleft" left="182"
+     max_val="180" min_val="-180" name="primitive_pitch_deg"
+     tool_tip="Tilt the primitive plane out of the horizontal plane"
+     top="504" width="172" />
+    <spinner
+     decimal_digits="1" follows="left|top" height="16" increment="5"
+     label="Plane roll" label_width="66" layout="topleft" left="6"
+     max_val="180" min_val="-180" name="primitive_roll_deg"
+     tool_tip="Roll the primitive plane around its local travel axis"
+     top="524" width="170" />
+    <spinner
+     decimal_digits="2" follows="left|top" height="16" increment="0.25"
+     label="Rise (m)" label_width="72" layout="topleft" left="182"
+     max_val="10000" min_val="-10000" name="primitive_rise"
+     tool_tip="Helix height change over the authored sweep"
+     top="524" width="172" />
+
+    <text
+     follows="left|top"
+     font="SansSerifSmallBold"
+     height="12"
+     layout="topleft"
+     left="6"
+     top="550"
      name="cam_lbl"
      width="70">
         Camera
@@ -536,7 +639,7 @@
      label="Enable path camera (session)"
      layout="topleft"
      left="80"
-     top="416"
+     top="548"
      name="path_camera_enable_check"
      tool_tip="When on, the cameras you set on Subject A's path drive the view as that actor walks, so a walk plays as one actor + camera take. Off is a no-op; existing pathing is unchanged. The camera hands back to normal control the moment the walk stops, finishes, is cut, or the actor leaves the region."
      width="274" />
@@ -546,7 +649,7 @@
      label="Set camera here"
      layout="topleft"
      left="6"
-     top="436"
+     top="568"
      name="btn_node_setcam"
      tool_tip="Capture the current camera position, aim and FOV into this node"
      width="130" />
@@ -556,7 +659,7 @@
      label="Clear camera"
      layout="topleft"
      left="140"
-     top="436"
+     top="568"
      name="btn_node_clearcam"
      tool_tip="Remove the camera from this node"
      width="110" />
@@ -565,7 +668,7 @@
      height="20"
      layout="topleft"
      left="6"
-     top="460"
+     top="592"
      name="node_cam_transition_combo"
      tool_tip="How the camera reaches this node. Cut: snap to this shot when the actor arrives. Ease: glide from the previous camera node as the actor walks between them."
      width="120">
@@ -578,7 +681,7 @@
      label="Preview"
      layout="topleft"
      left="132"
-     top="460"
+     top="592"
      name="btn_node_preview"
      tool_tip="Jump the camera to this node's shot to check the framing, without walking"
      width="110" />
@@ -587,7 +690,7 @@
      height="12"
      layout="topleft"
      left="6"
-     top="486"
+     top="618"
      name="node_cam_status"
      text_color="LtGray_50"
      use_ellipses="true"
@@ -603,7 +706,7 @@
      height="12"
      layout="topleft"
      left="6"
-     top="506"
+     top="638"
      name="choreo_lbl"
      width="200">
         Choreography
@@ -614,7 +717,7 @@
      label="Sync to camera take"
      layout="topleft"
      left="6"
-     top="520"
+     top="652"
      name="sync_take_check"
      tool_tip="Drive this path from the Flycam Recorder playhead: play or scrub the take and the actor moves in lockstep. No take loaded = no change to the walk."
      width="186" />
@@ -631,14 +734,14 @@
      min_val="-60"
      name="sync_offset_spinner"
      tool_tip="Lead (+) or trail (-) the lens by this many seconds along the take"
-     top="520"
+     top="652"
      width="158" />
     <text
      follows="left|top"
      height="12"
      layout="topleft"
      left="6"
-     top="540"
+     top="672"
      name="sync_status"
      text_color="LtGray_50"
      use_ellipses="true"
@@ -651,7 +754,7 @@
      height="12"
      layout="topleft"
      left="6"
-     top="558"
+     top="690"
      name="follow_lbl"
      width="42">
         Follow
@@ -661,7 +764,7 @@
      height="20"
      layout="topleft"
      left="50"
-     top="556"
+     top="688"
      name="follow_leader_combo"
      tool_tip="Pick a cast member whose path this actor should follow. Self and any choice that would loop the procession are excluded."
      width="186" />
@@ -671,7 +774,7 @@
      label="Stop following"
      layout="topleft"
      left="240"
-     top="556"
+     top="688"
      name="btn_stop_following"
      tool_tip="Stop following; this actor keeps its own path (if any)"
      width="114" />
@@ -689,14 +792,14 @@
      min_val="0"
      name="follow_offset_spinner"
      tool_tip="Metres the follower stays behind the leader along the path"
-     top="578"
+     top="710"
      width="170" />
     <text
      follows="left|top"
      height="12"
      layout="topleft"
      left="182"
-     top="580"
+     top="712"
      name="follow_status"
      text_color="LtGray_50"
      use_ellipses="true"

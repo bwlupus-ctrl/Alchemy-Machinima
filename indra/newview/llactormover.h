@@ -38,6 +38,7 @@
 #include "llghostcoverage.h" // [GhostDeferred] per-category clone coverage mask
 #include "algazemotor.h"    // per-actor coordinated gaze motor state (spec 6A)
 #include "altrajectory.h"   // deterministic C2 path-facing trajectory
+#include "alpathgeometry.h" // exact circle/ellipse/helix path primitives
 
 #include <map>
 #include <vector>
@@ -65,7 +66,7 @@ public:
     // (byte-identical default behavior). Waypoints are stored in GLOBAL
     // coordinates so a path survives region crossings (same idiom as
     // LLFlycamRecorder::Keyframe). Session-only for now; the accessors below
-    // let scene code read/write nodes + params without touching the internals.
+    // round-trip the authored schema without exposing compiled caches.
     // -----------------------------------------------------------------------
     struct Waypoint
     {
@@ -122,6 +123,23 @@ public:
         bool   mPitchToSlope = false;   // tilt root pitch to the local slope
         bool   mAirborne = false;       // authored air path: fly/hover roles, no contacts
 
+        // ---- V2 exact whole-path primitive ---------------------------------
+        // WAYPOINTS preserves the centripetal Catmull-Rom path. The other types
+        // evaluate an exact parametric span across 0..1. mNodes remain event
+        // anchors (dwell/animation/camera metadata) and are compiled onto evenly
+        // spaced primitive parameters; their positions are never approximate
+        // control geometry for a primitive.
+        S32        mShape = ALPathGeometry::WAYPOINTS;
+        LLVector3d mPrimitiveCenterGlobal;
+        F32        mPrimitiveRadiusX = 3.f;
+        F32        mPrimitiveRadiusY = 2.f;
+        F32        mPrimitiveStartDeg = 0.f;
+        F32        mPrimitiveSweepDeg = 360.f;
+        F32        mPrimitiveYawDeg = 0.f;
+        F32        mPrimitivePitchDeg = 0.f;
+        F32        mPrimitiveRollDeg = 0.f;
+        F32        mPrimitiveRise = 3.f;
+
         // ---- P3 sync-to-take: the Flycam Recorder playhead drives the arc ------
         // When mSyncToTake AND a take is loaded (>=1 keyframe, duration > 0), the
         // actor's arc position is derived every frame from the recorder playhead
@@ -148,6 +166,10 @@ public:
         std::vector<ArcSample> mArc;        // cumulative arc-length lookup
 
         S32        segmentCount() const;    // n-1 (stop/pingpong) or n (loop)
+        bool       isPrimitive() const { return ALPathGeometry::isPrimitive(mShape); }
+        ALPathGeometry::Primitive primitive() const;
+        LLVector3d evalPrimitive(F32 u) const;
+        void       syncPrimitiveNodes();
         void       rebuild();               // fills mArc / mNodeDist / mTotalLength
         LLVector3d evalSegment(S32 seg, F32 t) const;   // centripetal CR + tension blend
         // position (global) + unit travel tangent (global) at arc distance d
@@ -162,6 +184,12 @@ public:
     void        clearPath(const LLUUID& actor_id);
     LLSD        pathSceneData(const LLUUID& actor_id) const;
     bool        applyPathSceneData(const LLUUID& actor_id, const LLSD& data);
+    // Explicit, undo-friendly primitive authoring. Selecting a primitive is a
+    // visible conversion: existing node metadata is retained and evenly mapped;
+    // a pathless actor receives five event anchors. Switching back freezes the
+    // currently compiled primitive anchors as an ordinary waypoint path.
+    bool        setPathShape(const LLUUID& actor_id, S32 shape);
+    bool        centerPathPrimitiveOnActor(const LLUUID& actor_id);
 
     // test harness (chat commands) + panel "Add": append a ground-snapped
     // waypoint at the actor's current rendered position.
@@ -1131,6 +1159,16 @@ private:
         bool   mGroundFollow = false;
         bool   mPitchToSlope = false;
         bool   mAirborne = false;
+        S32        mShape = ALPathGeometry::WAYPOINTS;
+        LLVector3d mPrimitiveCenterGlobal;
+        F32        mPrimitiveRadiusX = 3.f;
+        F32        mPrimitiveRadiusY = 2.f;
+        F32        mPrimitiveStartDeg = 0.f;
+        F32        mPrimitiveSweepDeg = 360.f;
+        F32        mPrimitiveYawDeg = 0.f;
+        F32        mPrimitivePitchDeg = 0.f;
+        F32        mPrimitiveRollDeg = 0.f;
+        F32        mPrimitiveRise = 3.f;
         bool   mSyncToTake   = false;
         F32    mSyncLeadTrail = 0.f;
     };

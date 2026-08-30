@@ -1056,12 +1056,53 @@ F32 LLActorMover::evalPathYawOffset(const Path& path, F32 dist)
 // ---------------------------------------------------------------------------
 // Path compilation (arc-length table) + evaluation
 // ---------------------------------------------------------------------------
+ALPathGeometry::Primitive LLActorMover::Path::primitive() const
+{
+    ALPathGeometry::Primitive out;
+    out.mType = mShape;
+    out.mCenter = mPrimitiveCenterGlobal;
+    out.mRadiusX = mPrimitiveRadiusX;
+    out.mRadiusY = mPrimitiveRadiusY;
+    out.mStartDeg = mPrimitiveStartDeg;
+    out.mSweepDeg = mPrimitiveSweepDeg;
+    out.mYawDeg = mPrimitiveYawDeg;
+    out.mPitchDeg = mPrimitivePitchDeg;
+    out.mRollDeg = mPrimitiveRollDeg;
+    out.mRise = mPrimitiveRise;
+    return out;
+}
+
+LLVector3d LLActorMover::Path::evalPrimitive(F32 u) const
+{
+    return ALPathGeometry::evaluate(primitive(), static_cast<F64>(u));
+}
+
+void LLActorMover::Path::syncPrimitiveNodes()
+{
+    if (!isPrimitive() || mNodes.size() < 2)
+    {
+        return;
+    }
+    const F32 denom = static_cast<F32>(mNodes.size() - 1);
+    for (S32 i = 0; i < static_cast<S32>(mNodes.size()); ++i)
+    {
+        mNodes[i].mPosGlobal = evalPrimitive(static_cast<F32>(i) / denom);
+    }
+}
+
 S32 LLActorMover::Path::segmentCount() const
 {
     const S32 n = (S32)mNodes.size();
     if (n < 2)
     {
         return 0;
+    }
+    // Exact primitives already include their authored sweep, including the
+    // closing seam of a full turn. Loop playback wraps arc distance; adding a
+    // synthetic last->first segment here would double that seam.
+    if (isPrimitive())
+    {
+        return n - 1;
     }
     // loop wraps the last node back to the first (one extra segment)
     return (mEndMode == 1) ? n : (n - 1);
@@ -1070,6 +1111,12 @@ S32 LLActorMover::Path::segmentCount() const
 LLVector3d LLActorMover::Path::evalSegment(S32 seg, F32 t) const
 {
     const S32 n = (S32)mNodes.size();
+    if (isPrimitive())
+    {
+        const F32 denom = static_cast<F32>(llmax(1, n - 1));
+        return evalPrimitive((static_cast<F32>(seg) + llclamp(t, 0.f, 1.f)) /
+                             denom);
+    }
     const bool loop = (mEndMode == 1);
     auto node = [&](S32 i) -> LLVector3d
     {
@@ -1108,12 +1155,42 @@ void LLActorMover::Path::rebuild()
 {
     mArc.clear();
     mNodeDist.clear();
+    syncPrimitiveNodes();
     mTotalLength = 0.f;
     mDirty = false;
 
     const S32 segs = segmentCount();
     if (segs <= 0)
     {
+        return;
+    }
+
+    // Circle/arc and circular helix have constant speed in normalized
+    // parameter and therefore exact distance inversion. Retain four samples
+    // per event span for speed/duration integration while keeping the same
+    // whole-path bound as waypoint adaptive subdivision.
+    F64 exact_length = 0.0;
+    if (isPrimitive() &&
+        ALPathGeometry::analyticLength(primitive(), exact_length))
+    {
+        mTotalLength = static_cast<F32>(llclamp(
+            exact_length, 0.0, static_cast<F64>(std::numeric_limits<F32>::max())));
+        mNodeDist.reserve(mNodes.size());
+        mArc.reserve(static_cast<size_t>(segs) * 4 + 1);
+        mNodeDist.push_back(0.f);
+        mArc.push_back({ 0.f, 0, 0.f });
+        for (S32 s = 0; s < segs; ++s)
+        {
+            for (S32 i = 1; i <= 4; ++i)
+            {
+                const F32 local_t = static_cast<F32>(i) * 0.25f;
+                const F32 u = (static_cast<F32>(s) + local_t) /
+                              static_cast<F32>(segs);
+                mArc.push_back({ mTotalLength * u, s, local_t });
+            }
+            mNodeDist.push_back(mTotalLength *
+                static_cast<F32>(s + 1) / static_cast<F32>(segs));
+        }
         return;
     }
 
@@ -1224,6 +1301,21 @@ void LLActorMover::Path::rebuild()
 
 void LLActorMover::Path::evalAtDistance(F32 d, LLVector3d& pos, LLVector3d& tangent) const
 {
+    F64 exact_length = 0.0;
+    if (isPrimitive() &&
+        ALPathGeometry::analyticLength(primitive(), exact_length) &&
+        exact_length > 1e-9)
+    {
+        // Runtime distance is F32 and terminates at mTotalLength; divide by the
+        // same stored value so the authored endpoint and loop seam hit u==1.
+        const F64 distance_length = llmax(1e-9, static_cast<F64>(mTotalLength));
+        const F64 u = llclamp(static_cast<F64>(d) / distance_length, 0.0, 1.0);
+        const ALPathGeometry::Primitive p = primitive();
+        pos = ALPathGeometry::evaluate(p, u);
+        tangent = ALPathGeometry::derivative(p, u);
+        return;
+    }
+
     if (mArc.empty())
     {
         pos = mNodes.empty() ? LLVector3d() : mNodes[0].mPosGlobal;
@@ -1416,7 +1508,26 @@ bool LLActorMover::hasWalkablePath(const LLUUID& actor_id) const
 
 void LLActorMover::clearPath(const LLUUID& actor_id)
 {
-    mPaths.erase(path_key(actor_id));
+    const LLUUID key = path_key(actor_id);
+    // Clearing during a Director group-delay window must also disarm the queued
+    // start; otherwise it can later fall through to a surprise legacy move.
+    LLDirectorCast::instance().cancelPendingStart(key);
+
+    // Destruction is a transaction: retire an active path Move (and its local
+    // locomotion handles) before erasing the geometry it references. This also
+    // makes hasActivePathCamera() false in the same frame, so camera dispatch
+    // falls through to the normal owner instead of sampling an empty path at
+    // global origin on the next update.
+    auto move = mMoves.find(key);
+    if (move != mMoves.end() && move->second.mIsPath)
+    {
+        stop(key);
+    }
+    mPaths.erase(key);
+    if (mEditActor == key)
+    {
+        mEditNode = -1;
+    }
 }
 
 LLSD LLActorMover::pathSceneData(const LLUUID& actor_id) const
@@ -1428,7 +1539,7 @@ LLSD LLActorMover::pathSceneData(const LLUUID& actor_id) const
     }
 
     LLSD data = LLSD::emptyMap();
-    data["schema"] = 1;
+    data["schema"] = 2;
     data["speed"] = path->mSpeed;
     data["end_mode"] = path->mEndMode;
     data["tension"] = path->mTension;
@@ -1442,6 +1553,19 @@ LLSD LLActorMover::pathSceneData(const LLUUID& actor_id) const
     data["airborne"] = path->mAirborne;
     data["sync_to_take"] = path->mSyncToTake;
     data["sync_lead_trail"] = path->mSyncLeadTrail;
+    data["shape"] = path->mShape;
+    if (path->isPrimitive())
+    {
+        data["primitive_center"] = ll_sd_from_vector3d(path->mPrimitiveCenterGlobal);
+        data["primitive_radius_x"] = path->mPrimitiveRadiusX;
+        data["primitive_radius_y"] = path->mPrimitiveRadiusY;
+        data["primitive_start_deg"] = path->mPrimitiveStartDeg;
+        data["primitive_sweep_deg"] = path->mPrimitiveSweepDeg;
+        data["primitive_yaw_deg"] = path->mPrimitiveYawDeg;
+        data["primitive_pitch_deg"] = path->mPrimitivePitchDeg;
+        data["primitive_roll_deg"] = path->mPrimitiveRollDeg;
+        data["primitive_rise"] = path->mPrimitiveRise;
+    }
 
     LLSD nodes = LLSD::emptyArray();
     for (const Waypoint& node : path->mNodes)
@@ -1470,8 +1594,10 @@ LLSD LLActorMover::pathSceneData(const LLUUID& actor_id) const
 
 bool LLActorMover::applyPathSceneData(const LLUUID& actor_id, const LLSD& data)
 {
-    constexpr S32 PATH_SCHEMA = 1;
-    if (!data.isMap() || data["schema"].asInteger() != PATH_SCHEMA ||
+    constexpr S32 PATH_SCHEMA_MIN = 1;
+    constexpr S32 PATH_SCHEMA_MAX = 2;
+    const S32 schema = data["schema"].asInteger();
+    if (!data.isMap() || schema < PATH_SCHEMA_MIN || schema > PATH_SCHEMA_MAX ||
         !data["nodes"].isArray() ||
         data["nodes"].size() > MAX_PATH_NODES)
     {
@@ -1504,6 +1630,69 @@ bool LLActorMover::applyPathSceneData(const LLUUID& actor_id, const LLSD& data)
     loaded.mSyncToTake = data["sync_to_take"].asBoolean();
     loaded.mSyncLeadTrail = llclamp(
         finite_f32(data["sync_lead_trail"], 0.f), -3600.f, 3600.f);
+
+    if (schema >= 2)
+    {
+        loaded.mShape = llclamp(data["shape"].asInteger(),
+                                static_cast<S32>(ALPathGeometry::WAYPOINTS),
+                                static_cast<S32>(ALPathGeometry::HELIX));
+        if (loaded.isPrimitive())
+        {
+            if (!data.has("primitive_center"))
+            {
+                return false;
+            }
+            loaded.mPrimitiveCenterGlobal =
+                ll_vector3d_from_sd(data["primitive_center"]);
+            if (!loaded.mPrimitiveCenterGlobal.isFinite())
+            {
+                return false;
+            }
+            loaded.mPrimitiveRadiusX = llclamp(
+                finite_f32(data["primitive_radius_x"], 3.f), 0.01f, 10000.f);
+            loaded.mPrimitiveRadiusY = llclamp(
+                finite_f32(data["primitive_radius_y"], 2.f), 0.01f, 10000.f);
+            loaded.mPrimitiveStartDeg = llclamp(
+                finite_f32(data["primitive_start_deg"], 0.f), -36000.f, 36000.f);
+            loaded.mPrimitiveSweepDeg = llclamp(
+                finite_f32(data["primitive_sweep_deg"], 360.f), -36000.f, 36000.f);
+            loaded.mPrimitiveYawDeg = llclamp(
+                finite_f32(data["primitive_yaw_deg"], 0.f), -36000.f, 36000.f);
+            loaded.mPrimitivePitchDeg = llclamp(
+                finite_f32(data["primitive_pitch_deg"], 0.f), -36000.f, 36000.f);
+            loaded.mPrimitiveRollDeg = llclamp(
+                finite_f32(data["primitive_roll_deg"], 0.f), -36000.f, 36000.f);
+            loaded.mPrimitiveRise = llclamp(
+                finite_f32(data["primitive_rise"], 3.f), -10000.f, 10000.f);
+            if (loaded.mShape == ALPathGeometry::CIRCLE_ARC ||
+                loaded.mShape == ALPathGeometry::HELIX)
+            {
+                loaded.mPrimitiveRadiusY = loaded.mPrimitiveRadiusX;
+            }
+            if (loaded.mShape == ALPathGeometry::HELIX)
+            {
+                loaded.mAirborne = true;
+                loaded.mGroundFollow = false;
+                if (loaded.mEndMode == 1 &&
+                    std::fabs(loaded.mPrimitiveRise) > 0.001f)
+                {
+                    // A rising helix cannot wrap without teleporting vertically.
+                    loaded.mEndMode = 2;
+                }
+            }
+            if (loaded.mEndMode == 1)
+            {
+                // A looped primitive must end on its own seam. Sanitize scene
+                // data just as the editor does so hand-edited/older files cannot
+                // introduce an endpoint-to-start teleport.
+                const F32 direction = loaded.mPrimitiveSweepDeg < 0.f ? -1.f : 1.f;
+                const F32 turns = static_cast<F32>(llmax(1,
+                    static_cast<S32>(std::floor(
+                        std::fabs(loaded.mPrimitiveSweepDeg) / 360.f + 0.5f))));
+                loaded.mPrimitiveSweepDeg = direction * turns * 360.f;
+            }
+        }
+    }
 
     for (LLSD::array_const_iterator it = data["nodes"].beginArray();
          it != data["nodes"].endArray(); ++it)
@@ -1546,6 +1735,10 @@ bool LLActorMover::applyPathSceneData(const LLUUID& actor_id, const LLSD& data)
         loaded.mNodes.push_back(node);
     }
 
+    if (loaded.isPrimitive() && loaded.mNodes.size() < 2)
+    {
+        return false;
+    }
     const LLUUID key = path_key(actor_id);
     if (key.isNull())
     {
@@ -1553,8 +1746,193 @@ bool LLActorMover::applyPathSceneData(const LLUUID& actor_id, const LLSD& data)
     }
     loaded.markDirty();
     loaded.rebuild();
+    auto active = mMoves.find(key);
+    if (active != mMoves.end() && active->second.mIsPath)
+    {
+        stop(key);
+    }
     mPaths[key] = loaded;
     mHistory.erase(key);
+    return true;
+}
+
+bool LLActorMover::setPathShape(const LLUUID& actor_id, S32 shape)
+{
+    shape = llclamp(shape, static_cast<S32>(ALPathGeometry::WAYPOINTS),
+                    static_cast<S32>(ALPathGeometry::HELIX));
+    LLVOAvatar* av = resolve_actor(actor_id);
+    if (!av || !av->getRootJoint())
+    {
+        return false;
+    }
+    const LLUUID key = av->getID();
+    auto active = mMoves.find(key);
+    if (active != mMoves.end() && active->second.mIsPath)
+    {
+        stop(key);
+    }
+
+    auto path_it = mPaths.find(key);
+    if (path_it == mPaths.end() && shape == ALPathGeometry::WAYPOINTS)
+    {
+        return false;
+    }
+    if (path_it == mPaths.end())
+    {
+        path_it = mPaths.emplace(key, Path()).first;
+    }
+    Path& path = path_it->second;
+    const bool was_helix = path.mShape == ALPathGeometry::HELIX;
+    if (path.isPrimitive())
+    {
+        path.syncPrimitiveNodes();
+    }
+    if (shape == ALPathGeometry::WAYPOINTS)
+    {
+        path.mShape = shape;
+        if (was_helix)
+        {
+            path.mAirborne = false;
+        }
+        path.markDirty();
+        path.rebuild();
+        return path.mNodes.size() >= 2;
+    }
+
+    const bool new_path = path.mNodes.size() < 2;
+    if (new_path)
+    {
+        path.mNodes.clear();
+        const LLVector3 root_agent = av->getRootJoint()->getWorldPosition();
+        LLVector3d foot_global = gAgent.getPosGlobalFromAgent(root_agent);
+        const F32 root_above = llmax(0.f, av->getPelvisToFoot());
+        foot_global.mdV[VZ] -= root_above;
+        path.mPrimitiveCenterGlobal = foot_global;
+        for (S32 i = 0; i < 5; ++i)
+        {
+            Waypoint node;
+            node.mRootAbove = root_above;
+            path.mNodes.push_back(node);
+        }
+        path.mPrimitiveRadiusX = 3.f;
+        path.mPrimitiveRadiusY = 2.f;
+        path.mPrimitiveStartDeg = 0.f;
+        path.mPrimitiveSweepDeg = 360.f;
+        path.mPrimitiveYawDeg = 0.f;
+        path.mPrimitivePitchDeg = 0.f;
+        path.mPrimitiveRollDeg = 0.f;
+        path.mPrimitiveRise = 3.f;
+    }
+    else if (!path.isPrimitive())
+    {
+        LLVector3d center;
+        for (const Waypoint& node : path.mNodes)
+        {
+            center += node.mPosGlobal;
+        }
+        center *= 1.0 / static_cast<F64>(path.mNodes.size());
+        LLVector3d direction = path.mNodes.back().mPosGlobal -
+                               path.mNodes.front().mPosGlobal;
+        direction.mdV[VZ] = 0.0;
+        if (direction.length() < 1e-6 && path.mNodes.size() > 1)
+        {
+            direction = path.mNodes[1].mPosGlobal - path.mNodes[0].mPosGlobal;
+            direction.mdV[VZ] = 0.0;
+        }
+        const F64 yaw = direction.length() > 1e-6
+            ? std::atan2(direction.mdV[VY], direction.mdV[VX]) : 0.0;
+        const F64 cs = std::cos(yaw);
+        const F64 sn = std::sin(yaw);
+        F64 rx = 0.0;
+        F64 ry = 0.0;
+        for (const Waypoint& node : path.mNodes)
+        {
+            const LLVector3d delta = node.mPosGlobal - center;
+            rx = llmax(rx, std::fabs(delta.mdV[VX] * cs + delta.mdV[VY] * sn));
+            ry = llmax(ry, std::fabs(-delta.mdV[VX] * sn + delta.mdV[VY] * cs));
+        }
+        rx = llmax(rx, 0.5);
+        ry = llmax(ry, llmax(0.5, rx * 0.67));
+        path.mPrimitiveCenterGlobal = center;
+        path.mPrimitiveRadiusX = static_cast<F32>(rx);
+        path.mPrimitiveRadiusY = static_cast<F32>(ry);
+        path.mPrimitiveYawDeg = static_cast<F32>(yaw * RAD_TO_DEG);
+        const LLVector3d first_delta = path.mNodes.front().mPosGlobal - center;
+        const F64 local_x = first_delta.mdV[VX] * cs + first_delta.mdV[VY] * sn;
+        const F64 local_y = -first_delta.mdV[VX] * sn + first_delta.mdV[VY] * cs;
+        path.mPrimitiveStartDeg = static_cast<F32>(
+            std::atan2(local_y / ry, local_x / rx) * RAD_TO_DEG);
+        path.mPrimitiveSweepDeg = 360.f;
+        path.mPrimitivePitchDeg = 0.f;
+        path.mPrimitiveRollDeg = 0.f;
+        path.mPrimitiveRise = static_cast<F32>(
+            path.mNodes.back().mPosGlobal.mdV[VZ] -
+            path.mNodes.front().mPosGlobal.mdV[VZ]);
+        if (shape == ALPathGeometry::HELIX && std::fabs(path.mPrimitiveRise) < 0.1f)
+        {
+            path.mPrimitiveRise = 3.f;
+        }
+        if (shape == ALPathGeometry::HELIX)
+        {
+            path.mPrimitiveCenterGlobal.mdV[VZ] =
+                path.mNodes.front().mPosGlobal.mdV[VZ];
+        }
+    }
+
+    path.mShape = shape;
+    if (shape == ALPathGeometry::CIRCLE_ARC || shape == ALPathGeometry::HELIX)
+    {
+        path.mPrimitiveRadiusY = path.mPrimitiveRadiusX;
+    }
+    if (shape == ALPathGeometry::HELIX)
+    {
+        path.mAirborne = true;
+        path.mGroundFollow = false;
+        path.mEndMode = 0;
+    }
+    else
+    {
+        if (was_helix)
+        {
+            path.mAirborne = false;
+        }
+        if (new_path)
+        {
+            path.mEndMode = 1;
+        }
+    }
+    path.markDirty();
+    path.rebuild();
+    return true;
+}
+
+bool LLActorMover::centerPathPrimitiveOnActor(const LLUUID& actor_id)
+{
+    LLVOAvatar* av = resolve_actor(actor_id);
+    const Path* current = av ? getPath(av->getID()) : nullptr;
+    if (!av || !av->getRootJoint() || !current || !current->isPrimitive())
+    {
+        return false;
+    }
+    Path* path = &editPath(av->getID());
+    if (isPathWalking(av->getID()))
+    {
+        stop(av->getID());
+    }
+    LLVector3d center = gAgent.getPosGlobalFromAgent(
+        av->getRootJoint()->getWorldPosition());
+    center.mdV[VZ] -= llmax(0.f, av->getPelvisToFoot());
+    const LLVector3d delta = center - path->mPrimitiveCenterGlobal;
+    path->mPrimitiveCenterGlobal = center;
+    for (Waypoint& node : path->mNodes)
+    {
+        if (node.mHasCam)
+        {
+            node.mCamPosGlobal += delta;
+        }
+    }
+    path->markDirty();
+    path->rebuild();
     return true;
 }
 
@@ -1562,6 +1940,11 @@ void LLActorMover::appendWaypointHere(const LLUUID& actor_id)
 {
     LLVOAvatar* av = resolve_actor(actor_id);
     if (!av || !av->getRootJoint())
+    {
+        return;
+    }
+    const Path* current = getPath(av->getID());
+    if (isPathWalking(av->getID()) || (current && current->isPrimitive()))
     {
         return;
     }
@@ -1628,6 +2011,11 @@ F32 capture_root_above(LLVOAvatar* av)
 
 S32 LLActorMover::appendWaypointAt(const LLUUID& actor_id, const LLVector3d& ground_pos)
 {
+    const Path* current = getPath(actor_id);
+    if (isPathWalking(actor_id) || (current && current->isPrimitive()))
+    {
+        return -1;
+    }
     Path& path = editPath(actor_id);
     if (path.mNodes.size() >= static_cast<size_t>(MAX_PATH_NODES))
     {
@@ -1643,6 +2031,11 @@ S32 LLActorMover::appendWaypointAt(const LLUUID& actor_id, const LLVector3d& gro
 
 S32 LLActorMover::insertWaypoint(const LLUUID& actor_id, S32 index, const LLVector3d& ground_pos)
 {
+    const Path* current = getPath(actor_id);
+    if (isPathWalking(actor_id) || (current && current->isPrimitive()))
+    {
+        return -1;
+    }
     Path& path = editPath(actor_id);
     if (path.mNodes.size() >= static_cast<size_t>(MAX_PATH_NODES))
     {
@@ -1660,7 +2053,8 @@ S32 LLActorMover::insertWaypoint(const LLUUID& actor_id, S32 index, const LLVect
 bool LLActorMover::moveWaypoint(const LLUUID& actor_id, S32 index, const LLVector3d& new_ground_pos)
 {
     const Path* cp = getPath(actor_id);
-    if (!cp || index < 0 || index >= (S32)cp->mNodes.size())
+    if (!cp || cp->isPrimitive() || isPathWalking(actor_id) ||
+        index < 0 || index >= (S32)cp->mNodes.size())
     {
         return false;
     }
@@ -1677,7 +2071,8 @@ bool LLActorMover::moveWaypoint(const LLUUID& actor_id, S32 index, const LLVecto
 bool LLActorMover::deleteWaypoint(const LLUUID& actor_id, S32 index)
 {
     const Path* cp = getPath(actor_id);
-    if (!cp || index < 0 || index >= (S32)cp->mNodes.size())
+    if (!cp || cp->isPrimitive() || isPathWalking(actor_id) ||
+        index < 0 || index >= (S32)cp->mNodes.size())
     {
         return false;
     }
@@ -2552,6 +2947,16 @@ LLActorMover::PathState LLActorMover::captureState(const LLUUID& key) const
         st.mGroundFollow      = p.mGroundFollow;
         st.mPitchToSlope      = p.mPitchToSlope;
         st.mAirborne          = p.mAirborne;
+        st.mShape             = p.mShape;
+        st.mPrimitiveCenterGlobal = p.mPrimitiveCenterGlobal;
+        st.mPrimitiveRadiusX  = p.mPrimitiveRadiusX;
+        st.mPrimitiveRadiusY  = p.mPrimitiveRadiusY;
+        st.mPrimitiveStartDeg = p.mPrimitiveStartDeg;
+        st.mPrimitiveSweepDeg = p.mPrimitiveSweepDeg;
+        st.mPrimitiveYawDeg   = p.mPrimitiveYawDeg;
+        st.mPrimitivePitchDeg = p.mPrimitivePitchDeg;
+        st.mPrimitiveRollDeg  = p.mPrimitiveRollDeg;
+        st.mPrimitiveRise     = p.mPrimitiveRise;
         st.mSyncToTake        = p.mSyncToTake;
         st.mSyncLeadTrail     = p.mSyncLeadTrail;
     }
@@ -2560,9 +2965,14 @@ LLActorMover::PathState LLActorMover::captureState(const LLUUID& key) const
 
 void LLActorMover::applyState(const LLUUID& key, const PathState& st)
 {
+    auto active = mMoves.find(key);
+    if (active != mMoves.end() && active->second.mIsPath)
+    {
+        stop(key);
+    }
     if (st.mNodes.empty())
     {
-        mPaths.erase(key);      // undo of the first placement drops the path
+        mPaths.erase(key);
     }
     else
     {
@@ -2579,6 +2989,16 @@ void LLActorMover::applyState(const LLUUID& key, const PathState& st)
         p.mGroundFollow      = st.mGroundFollow;
         p.mPitchToSlope      = st.mPitchToSlope;
         p.mAirborne          = st.mAirborne;
+        p.mShape             = st.mShape;
+        p.mPrimitiveCenterGlobal = st.mPrimitiveCenterGlobal;
+        p.mPrimitiveRadiusX  = st.mPrimitiveRadiusX;
+        p.mPrimitiveRadiusY  = st.mPrimitiveRadiusY;
+        p.mPrimitiveStartDeg = st.mPrimitiveStartDeg;
+        p.mPrimitiveSweepDeg = st.mPrimitiveSweepDeg;
+        p.mPrimitiveYawDeg   = st.mPrimitiveYawDeg;
+        p.mPrimitivePitchDeg = st.mPrimitivePitchDeg;
+        p.mPrimitiveRollDeg  = st.mPrimitiveRollDeg;
+        p.mPrimitiveRise     = st.mPrimitiveRise;
         p.mSyncToTake        = st.mSyncToTake;
         p.mSyncLeadTrail     = st.mSyncLeadTrail;
         p.markDirty();
@@ -2670,6 +3090,16 @@ bool LLActorMover::reversePath(const LLUUID& actor_id)
         return false;
     }
     Path& p = editPath(actor_id);
+    if (p.isPrimitive())
+    {
+        p.syncPrimitiveNodes();
+        ALPathGeometry::Primitive primitive = p.primitive();
+        ALPathGeometry::reverse(primitive);
+        p.mPrimitiveCenterGlobal = primitive.mCenter;
+        p.mPrimitiveStartDeg = primitive.mStartDeg;
+        p.mPrimitiveSweepDeg = primitive.mSweepDeg;
+        p.mPrimitiveRise = primitive.mRise;
+    }
     std::reverse(p.mNodes.begin(), p.mNodes.end());     // per-node data rides each node
     p.markDirty();
     p.rebuild();
@@ -2686,6 +3116,10 @@ bool LLActorMover::mirrorPath(const LLUUID& actor_id)
     if (!cp || cp->mNodes.size() < 2)
     {
         return false;
+    }
+    if (cp->isPrimitive())
+    {
+        return false; // reflected arbitrary planes need an explicit handedness UI
     }
     Path& p = editPath(actor_id);
     const S32 n = (S32)p.mNodes.size();
@@ -2767,6 +3201,23 @@ bool LLActorMover::loopClosePath(const LLUUID& actor_id)
         return false;
     }
     Path& p = editPath(actor_id);
+    if (p.isPrimitive())
+    {
+        if (p.mShape == ALPathGeometry::HELIX && std::fabs(p.mPrimitiveRise) > 0.001f)
+        {
+            return false;
+        }
+        const F32 direction = p.mPrimitiveSweepDeg < 0.f ? -1.f : 1.f;
+        const F32 turns = static_cast<F32>(llmax(1,
+            static_cast<S32>(std::floor(
+                std::fabs(p.mPrimitiveSweepDeg) / 360.f + 0.5f))));
+        p.mPrimitiveSweepDeg = direction * turns * 360.f;
+        p.mEndMode = 1;
+        p.mArrivalFacingMode = 0;
+        p.markDirty();
+        p.rebuild();
+        return true;
+    }
     // snap the last node onto the first (position + standing height + nudge) so
     // the loop seam is a single shared point, and set the end mode to loop
     const Waypoint& first = p.mNodes.front();
@@ -2816,6 +3267,16 @@ bool LLActorMover::copyPathTo(const LLUUID& src_actor, const LLUUID& dst_actor)
     dst.mGroundFollow      = src.mGroundFollow;
     dst.mPitchToSlope      = src.mPitchToSlope;
     dst.mAirborne          = src.mAirborne;
+    dst.mShape             = src.mShape;
+    dst.mPrimitiveCenterGlobal = src.mPrimitiveCenterGlobal;
+    dst.mPrimitiveRadiusX  = src.mPrimitiveRadiusX;
+    dst.mPrimitiveRadiusY  = src.mPrimitiveRadiusY;
+    dst.mPrimitiveStartDeg = src.mPrimitiveStartDeg;
+    dst.mPrimitiveSweepDeg = src.mPrimitiveSweepDeg;
+    dst.mPrimitiveYawDeg   = src.mPrimitiveYawDeg;
+    dst.mPrimitivePitchDeg = src.mPrimitivePitchDeg;
+    dst.mPrimitiveRollDeg  = src.mPrimitiveRollDeg;
+    dst.mPrimitiveRise     = src.mPrimitiveRise;
     dst.mSyncToTake        = src.mSyncToTake;
     dst.mSyncLeadTrail     = src.mSyncLeadTrail;
     dst.markDirty();
@@ -2854,7 +3315,15 @@ bool LLActorMover::setNodeCamera(const LLUUID& actor_id, S32 index,
                                  const LLQuaternion& cam_rot, F32 cam_fov, S32 transition)
 {
     const Path* cp = getPath(actor_id);
-    if (!cp || index < 0 || index >= (S32)cp->mNodes.size())
+    if (!cp || index < 0 || index >= (S32)cp->mNodes.size() ||
+        !cam_pos_global.isFinite() || !cam_rot.isFinite() ||
+        !std::isfinite(cam_fov))
+    {
+        return false;
+    }
+    LLQuaternion safe_rot = cam_rot;
+    safe_rot.normalize();
+    if (!safe_rot.isFinite())
     {
         return false;
     }
@@ -2862,8 +3331,8 @@ bool LLActorMover::setNodeCamera(const LLUUID& actor_id, S32 index,
     Waypoint& w = path.mNodes[index];
     w.mHasCam       = true;
     w.mCamPosGlobal = cam_pos_global;
-    w.mCamRot       = cam_rot;
-    w.mCamFov       = cam_fov;
+    w.mCamRot       = safe_rot;
+    w.mCamFov       = cam_fov > 0.01f ? llclamp(cam_fov, 0.1f, 2.9f) : 0.f;
     w.mCamTransition = llclamp(transition, 0, 1);
     return true;
 }
@@ -3893,6 +4362,10 @@ bool LLActorMover::reanchorWalk(const LLUUID& actor_id)
     // translate the WHOLE path (and every node camera) so the current arc
     // position lands on the actor -> the walk continues from here on the new sim
     const LLVector3d delta = foot_global - cur_pos;
+    if (path.isPrimitive())
+    {
+        path.mPrimitiveCenterGlobal += delta;
+    }
     for (Waypoint& w : path.mNodes)
     {
         w.mPosGlobal += delta;
@@ -4180,7 +4653,20 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
         return;
     }
 
-    Path& path = mPaths[av->getID()];       // start() guaranteed this exists
+    auto path_it = mPaths.find(av->getID());
+    if (path_it == mPaths.end() || path_it->second.mNodes.size() < 2)
+    {
+        // A path Move must never manufacture missing geometry with operator[].
+        // clearPath() normally retires the Move transactionally; this guard also
+        // contains any future out-of-band erase/load failure at the actor's live
+        // root and releases path-camera ownership immediately.
+        mv.mCurPos = av->getRootJoint()
+            ? av->getRootJoint()->getWorldPosition() : av->getPositionAgent();
+        mv.mArrived = true;
+        enterSuspend(av->getID(), mv, av);
+        return;
+    }
+    Path& path = path_it->second;
     mv.mAirborne = path.mAirborne;          // path-wide edits take effect next frame
     if (path.mDirty)
     {

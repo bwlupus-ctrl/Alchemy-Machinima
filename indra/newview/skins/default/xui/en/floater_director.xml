@@ -528,7 +528,7 @@
              width="374">
                 <panel
                  background_visible="false"
-                 height="620"
+                 height="752"
                  layout="topleft"
                  left="0"
                  top="0"
@@ -538,7 +538,7 @@
                      class="panel_path_editor"
                      filename="panel_path_editor.xml"
                      follows="left|top|right"
-                     height="604"
+                     height="736"
                      layout="topleft"
                      left="0"
                      name="path_editor"
