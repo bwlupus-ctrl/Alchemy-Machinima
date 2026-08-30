@@ -75,6 +75,7 @@ public:
         F32        mSpeedOverride = 0.f;// local ground speed, m/s (0 = use path speed)
         LLUUID     mAnim;               // per-node anim (null = use loco anim)
         F32        mGroundOffset = 0.f; // manual Z nudge at this node, m
+        F32        mCornerRadius = 0.f; // exact line-to-arc fillet radius, m (0 = off)
         // [ObjectPath] authored yaw offset at this node, radians: the object
         // path mover ADDS this to the tangent facing as a drive passes the
         // node (fake a skid / drift through a corner; interpolated across the
@@ -112,6 +113,7 @@ public:
         // ---- authored data (this is what scene code serializes) ----
         std::vector<Waypoint> mNodes;
         F32    mSpeed        = 1.f;     // nominal ground speed, m/s
+        F32    mCadence      = 3.f;     // animation design speed / foot cadence reference
         S32    mEndMode      = 0;       // 0 stop, 1 loop, 2 ping-pong
         F32    mTension      = 0.5f;    // 0 = tight/near-polyline, 1 = loose/flowing
         F32    mEaseIn       = 0.f;     // accel ramp at path start, s
@@ -160,18 +162,33 @@ public:
         // Treat as opaque. Built in GLOBAL coords so it is origin-independent
         // (a region crossing does not invalidate it).
         struct ArcSample { F32 mDist; S32 mSeg; F32 mLocalT; };
+        struct CompiledPiece
+        {
+            bool   mIsArc = false;
+            LLVector3d mStart;
+            LLVector3d mEnd;
+            ALPathGeometry::CornerFillet mFillet;
+            F32    mArcStart = 0.f;
+            F32    mArcEnd = 1.f;
+            F32    mStartDistance = 0.f;
+            F32    mEndDistance = 0.f;
+            S32    mNodeAtEnd = -1;
+        };
         bool                   mDirty = true;
         F32                    mTotalLength = 0.f;
         std::vector<F32>       mNodeDist;   // cumulative arc distance at each node
         std::vector<ArcSample> mArc;        // cumulative arc-length lookup
+        std::vector<CompiledPiece> mCornerPieces; // exact line/fillet route, when active
 
-        S32        segmentCount() const;    // n-1 (stop/pingpong) or n (loop)
+        S32        segmentCount() const;    // compiled pieces, else n-1/n
         bool       isPrimitive() const { return ALPathGeometry::isPrimitive(mShape); }
         ALPathGeometry::Primitive primitive() const;
         LLVector3d evalPrimitive(F32 u) const;
         void       syncPrimitiveNodes();
+        void       compileCornerPieces();
         void       rebuild();               // fills mArc / mNodeDist / mTotalLength
         LLVector3d evalSegment(S32 seg, F32 t) const;   // centripetal CR + tension blend
+        F32        cornerSpeedLimitAt(F32 d) const;
         // position (global) + unit travel tangent (global) at arc distance d
         void       evalAtDistance(F32 d, LLVector3d& pos, LLVector3d& tangent) const;
     };
@@ -184,11 +201,14 @@ public:
     void        clearPath(const LLUUID& actor_id);
     LLSD        pathSceneData(const LLUUID& actor_id) const;
     bool        applyPathSceneData(const LLUUID& actor_id, const LLSD& data);
-    // Explicit, undo-friendly primitive authoring. Selecting a primitive is a
+    // Explicit, undo-friendly exact-shape authoring. Selecting a shape is a
     // visible conversion: existing node metadata is retained and evenly mapped;
-    // a pathless actor receives five event anchors. Switching back freezes the
+    // a pathless actor receives event anchors. Switching back freezes the
     // currently compiled primitive anchors as an ordinary waypoint path.
     bool        setPathShape(const LLUUID& actor_id, S32 shape);
+    // Fit an exact half arc or sine wave between the existing first/last nodes.
+    // Per-node metadata is retained and redistributed along the fitted shape.
+    bool        fitPathPrimitiveToEndpoints(const LLUUID& actor_id, S32 shape);
     bool        centerPathPrimitiveOnActor(const LLUUID& actor_id);
 
     // test harness (chat commands) + panel "Add": append a ground-snapped
@@ -210,6 +230,7 @@ public:
     bool setNodeSpeed(const LLUUID& actor_id, S32 index, F32 speed_override);
     bool setNodeAnim(const LLUUID& actor_id, S32 index, const LLUUID& anim);
     bool setNodeGroundOffset(const LLUUID& actor_id, S32 index, F32 offset_m);
+    bool setNodeCornerRadius(const LLUUID& actor_id, S32 index, F32 radius_m);
     bool setNodeYawOffset(const LLUUID& actor_id, S32 index, F32 yaw_rad);  // [ObjectPath] skid
 
     // [ObjectPath] evaluation helpers shared with the object path mover, so an
@@ -629,16 +650,16 @@ public:
     void onActorRuntimeReplaced(const LLUUID& stable_id, const LLUUID& old_id,
                                 const LLUUID& new_id, bool removing_instance);
 
-    // in-world heading preview lines (called from render_ui_3d, same pass as
-    // the debug beacons). Zero cost unless ActorMoverShowHeading is on AND
-    // the Actor Mover floater is open.
-    void renderHeadingPreview();
+    // In-world heading/path preview. The main view calls this while its scene
+    // color + depth target is still bound, so avatars and real actor ghosts
+    // correctly occlude guides. depth_aware=false remains available to tools.
+    void renderHeadingPreview(bool depth_aware = false);
 
     // Lean editing overlay for ONE actor's path (spline + numbered node markers +
-    // hover/selection highlight), called from render_ui_3d while the path-edit tool
-    // is active so markers always show what is being marked -- from the first node --
-    // independent of the Show-path toggle / roster / >=2-node gating above.
-    void renderActorPathOverlay(const LLUUID& actor_id, bool editing, S32 hover_node = -1);
+    // hover/selection highlight), drawn with scene depth while the path-edit tool
+    // is active so markers always show what is being marked -- from the first node.
+    void renderActorPathOverlay(const LLUUID& actor_id, bool editing,
+                                S32 hover_node = -1, bool depth_aware = false);
 
     // [GhostStudio] draw every enabled studio ghost instance (far-to-near)
     // through the model-ghost renderer with its per-instance placement, style
@@ -1149,6 +1170,7 @@ private:
     {
         std::vector<Waypoint> mNodes;
         F32    mSpeed        = 1.f;
+        F32    mCadence      = 3.f;
         S32    mEndMode      = 0;
         F32    mTension      = 0.5f;
         F32    mEaseIn       = 0.f;

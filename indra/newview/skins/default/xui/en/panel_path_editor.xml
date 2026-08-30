@@ -1,872 +1,263 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
-<!-- Actor Pathing editor (ALPanelPathEditor, class "panel_path_editor"):
-     waypoint list + per-node inspector + path-wide controls + an in-world
-     "Edit mode" toggle, plus the P3 QOL row (length/duration readout, undo/redo,
-     reverse/mirror/loop-close, copy-to-actor, walk-to-here, pose ghosts).
-     Embedded by the Director Console Path tab and the standalone Actor Mover,
-     exactly like panel_cinecam_params. The host sets the target actor each
-     frame; the panel drives LLActorMover's editing API and the shared
-     edit-selection model. -->
+<!-- Shared Actor Path editor. The accordion keeps related controls readable,
+     while preserving every stable widget name consumed by ALPanelPathEditor. -->
 <panel
  background_visible="false"
  border="false"
- height="736"
+ height="720"
  layout="topleft"
  name="panel_path_editor"
- width="360">
+ width="500">
 
-    <text
-     follows="left|top"
-     font="SansSerifBold"
-     height="16"
-     layout="topleft"
-     left="6"
-     top="2"
-     name="path_header"
-     use_ellipses="true"
-     width="238">
-        Path &#8212; select a cast member
-    </text>
-    <check_box
-     follows="top|right"
-     height="16"
-     label="Edit mode"
-     layout="topleft"
-     left="248"
-     top="2"
-     name="edit_mode_check"
-     tool_tip="Edit this path in world: click the ground to place a waypoint, drag a node to move it, right-click a node to delete it. Unchecking (or leaving this tab) hands the camera back"
-     width="106" />
-    <text
-     follows="left|top"
-     height="12"
-     layout="topleft"
-     left="6"
-     top="20"
-     mouse_opaque="false"
-     name="hint"
-     text_color="LtGray_50"
-     use_ellipses="true"
-     width="348">
-        Click ground to place &#183; drag a node to move &#183; right-click to delete
-    </text>
+  <text
+   follows="left|top|right"
+   font="SansSerifBold"
+   height="16"
+   layout="topleft"
+   left="8"
+   top="2"
+   name="path_header"
+   use_ellipses="true"
+   width="350">
+    Path &#8212; select a cast member
+  </text>
+  <check_box
+   follows="top|right"
+   height="18"
+   label="Edit in world"
+   layout="topleft"
+   left="370"
+   top="1"
+   name="edit_mode_check"
+   tool_tip="Click ground to place, drag a node to move, and right-click a node to delete it. Leaving this tab hands the camera back."
+   width="122" />
+  <text
+   follows="left|top|right"
+   height="14"
+   layout="topleft"
+   left="8"
+   top="21"
+   mouse_opaque="false"
+   name="hint"
+   text_color="LtGray_50"
+   use_ellipses="true"
+   width="484">
+    Build with points, then shape the route; open only the section you need.
+  </text>
 
-    <scroll_list
-     column_padding="0"
-     draw_heading="true"
-     follows="left|top|right"
-     height="120"
-     layout="topleft"
-     left="6"
-     top="34"
-     name="waypoint_list"
-     tool_tip="Waypoints in order. Select a row to inspect / highlight that node in world"
-     width="348">
-        <columns label="#" name="num" width="24" />
-        <columns label="Role" name="role" width="52" />
-        <columns label="Detail" name="detail" width="268" />
-    </scroll_list>
+  <accordion
+   follows="all"
+   height="680"
+   layout="topleft"
+   left="4"
+   name="path_sections"
+   single_expansion="false"
+   top="38"
+   width="492">
 
-    <text
-     follows="left|top"
-     font="SansSerifSmall"
-     height="12"
+    <accordion_tab
+     expanded="true"
+     fit_panel="true"
+     height="304"
      layout="topleft"
-     left="6"
-     top="156"
-     name="path_readout"
-     tool_tip="Total path length and the estimated time to walk it once (accounts for speed, per-node speed overrides, ease in/out and dwell)"
-     use_ellipses="true"
-     width="80">
-        No path yet
-    </text>
-    <check_box
-     control_name="PathShowOnionSkin"
-     follows="top|right"
-     height="14"
-     label="Pose ghosts"
-     layout="topleft"
-     left="88"
-     top="155"
-     name="onion_skin_check"
-     tool_tip="Show styled copies of the actor at every node of its path so you can read the staging without pressing ACTION. The look comes from the style dropdown alongside (true 3D body: ghost, clone, hologram, wireframe, x-ray); actors with no rigged mesh fall back to a frozen camera-facing avatar snapshot (impostor), or a stick figure if PathGhostUseImpostor is off. Client-side overlay; shows with the path preview."
-     width="82" />
-    <combo_box
-     control_name="PathGhostStyle"
-     follows="top|right"
-     height="18"
-     layout="topleft"
-     left="172"
-     top="153"
-     name="ghost_style_combo"
-     tool_tip="Look of the 3D pose ghost. The full overlay look set mirrors Ghost Studio and the Director Console."
-     width="60">
-        <combo_box.item label="Ghost" name="gs_ghost" value="0" />
-        <combo_box.item label="Clone" name="gs_clone" value="1" />
-        <combo_box.item label="Hologram" name="gs_hologram" value="2" />
-        <combo_box.item label="Wireframe" name="gs_wireframe" value="3" />
-        <combo_box.item label="X-ray" name="gs_xray" value="4" />
-        <combo_box.item label="Thermal" name="gs_thermal" value="5" />
-        <combo_box.item label="Neon Outline" name="gs_neon" value="6" />
-        <combo_box.item label="Silhouette" name="gs_silhouette" value="7" />
-        <combo_box.item label="Toon/Ink" name="gs_toon" value="8" />
-        <combo_box.item label="Chrome" name="gs_chrome" value="9" />
-        <combo_box.item label="Dissolve" name="gs_dissolve" value="10" />
-        <combo_box.item label="Negative" name="gs_negative" value="11" />
-        <combo_box.item label="Gold Statue" name="gs_gold" value="12" />
-        <combo_box.item label="Night-vision" name="gs_night" value="13" />
-        <combo_box.item label="Blueprint" name="gs_blueprint" value="14" />
-        <combo_box.item label="Ectoplasm" name="gs_ectoplasm" value="15" />
-        <combo_box.item label="Frost/Ice" name="gs_frost" value="16" />
-        <combo_box.item label="Prism" name="gs_prism" value="17" />
-        <combo_box.item label="Thermal Scope" name="gs_thermal_scope" value="18" />
-        <combo_box.item label="Wallhack/ESP" name="gs_wallhack" value="19" />
-        <combo_box.item label="NV Tube" name="gs_nv_tube" value="20" />
-        <combo_box.item label="Damage" name="gs_damage" value="21" />
-        <combo_box.item label="Killcam" name="gs_killcam" value="22" />
-        <combo_box.item label="Oil Slick" name="gs_oil_slick" value="23" />
-        <combo_box.item label="Vaporwave" name="gs_vaporwave" value="24" />
-        <combo_box.item label="Halftone" name="gs_halftone" value="25" />
-        <combo_box.item label="Sonar" name="gs_sonar" value="26" />
-        <combo_box.item label="Holo Echo" name="gs_holo_echo" value="27" />
-    </combo_box>
-    <combo_box
-     control_name="PathGhostDistort"
-     follows="top|right"
-     height="18"
-     layout="topleft"
-     left="234"
-     top="153"
-     name="ghost_distort_combo"
-     tool_tip="Independent distortion; stacks with every path-ghost look."
-     width="80">
-        <combo_box.item label="None" name="gd_none" value="0" />
-        <combo_box.item label="Pixelate" name="gd_pixel" value="1" />
-        <combo_box.item label="Voxel" name="gd_voxel" value="2" />
-        <combo_box.item label="Lens" name="gd_lens" value="3" />
-        <combo_box.item label="Wave" name="gd_wave" value="4" />
-        <combo_box.item label="RGB Split" name="gd_rgb" value="5" />
-        <combo_box.item label="Block" name="gd_block" value="6" />
-        <combo_box.item label="V-Tear" name="gd_vertical" value="7" />
-        <combo_box.item label="VHS" name="gd_vhs" value="8" />
-    </combo_box>
-    <spinner
-     control_name="PathGhostEffectFps"
-     decimal_digits="0"
-     follows="top|right"
-     height="18"
-     increment="1"
-     initial_value="0"
-     label="FX fps"
-     label_width="38"
-     layout="topleft"
-     left="234"
-     max_val="30"
-     min_val="0"
-     name="ghost_effect_fps"
-     tool_tip="Shader animation cadence for path ghosts. 0 is smooth; 1-30 is stop motion."
-     top="133"
-     width="120" />
-    <slider
-     control_name="PathGhostDistortAmount"
-     decimal_digits="2"
-     follows="top|right"
-     height="18"
-     increment="0.05"
-     initial_value="0.5"
-     layout="topleft"
-     left="316"
-     max_val="1"
-     min_val="0"
-     name="ghost_distort_amount"
-     tool_tip="Path-ghost distortion amount"
-     top="153"
-     width="38" />
+     name="nodes_playback_tab"
+     title="Nodes &amp; Playback">
+      <panel follows="all" height="304" layout="topleft" left="0" name="nodes_playback_panel" top="0" width="488">
+        <scroll_list
+         column_padding="0" draw_heading="true" follows="left|top|right"
+         height="112" layout="topleft" left="8" top="4"
+         name="waypoint_list"
+         tool_tip="Waypoints in order. Select a row to inspect or highlight that node in world"
+         width="472">
+          <columns label="#" name="num" width="28" />
+          <columns label="Role" name="role" width="62" />
+          <columns label="Detail" name="detail" width="370" />
+        </scroll_list>
 
-    <button
-     follows="left|top"
-     height="20"
-     label="Add"
-     layout="topleft"
-     left="6"
-     top="174"
-     name="btn_wp_add"
-     tool_tip="Append a waypoint at the actor's feet"
-     width="84" />
-    <button
-     follows="left|top"
-     height="20"
-     label="Insert"
-     layout="topleft"
-     left="94"
-     top="174"
-     name="btn_wp_insert"
-     width="84" />
-    <button
-     follows="left|top"
-     height="20"
-     label="Delete"
-     layout="topleft"
-     left="182"
-     top="174"
-     name="btn_wp_delete"
-     width="84" />
-    <button
-     follows="left|top"
-     height="20"
-     label="Clear"
-     layout="topleft"
-     left="270"
-     top="174"
-     name="btn_wp_clear"
-     width="84" />
+        <text follows="left|top" font="SansSerifSmall" height="14" layout="topleft"
+         left="8" top="120" name="path_readout"
+         tool_tip="Length and estimated duration including speed overrides, easing, and dwell"
+         use_ellipses="true" width="194">No path yet</text>
+        <check_box control_name="PathShowOnionSkin" follows="left|top" height="16"
+         label="Pose ghosts" layout="topleft" left="208" top="119"
+         name="onion_skin_check"
+         tool_tip="Show styled actor copies at path anchors for blocking without playing the path"
+         width="102" />
+        <combo_box control_name="PathGhostStyle" follows="left|top|right" height="20"
+         layout="topleft" left="312" top="116" name="ghost_style_combo"
+         tool_tip="Appearance of path pose ghosts" width="168">
+          <combo_box.item label="Ghost" name="gs_ghost" value="0" />
+          <combo_box.item label="Clone" name="gs_clone" value="1" />
+          <combo_box.item label="Hologram" name="gs_hologram" value="2" />
+          <combo_box.item label="Wireframe" name="gs_wireframe" value="3" />
+          <combo_box.item label="X-ray" name="gs_xray" value="4" />
+          <combo_box.item label="Thermal" name="gs_thermal" value="5" />
+          <combo_box.item label="Neon Outline" name="gs_neon" value="6" />
+          <combo_box.item label="Silhouette" name="gs_silhouette" value="7" />
+          <combo_box.item label="Toon/Ink" name="gs_toon" value="8" />
+          <combo_box.item label="Chrome" name="gs_chrome" value="9" />
+          <combo_box.item label="Dissolve" name="gs_dissolve" value="10" />
+          <combo_box.item label="Negative" name="gs_negative" value="11" />
+          <combo_box.item label="Gold Statue" name="gs_gold" value="12" />
+          <combo_box.item label="Night-vision" name="gs_night" value="13" />
+          <combo_box.item label="Blueprint" name="gs_blueprint" value="14" />
+          <combo_box.item label="Ectoplasm" name="gs_ectoplasm" value="15" />
+          <combo_box.item label="Frost/Ice" name="gs_frost" value="16" />
+          <combo_box.item label="Prism" name="gs_prism" value="17" />
+          <combo_box.item label="Thermal Scope" name="gs_thermal_scope" value="18" />
+          <combo_box.item label="Wallhack/ESP" name="gs_wallhack" value="19" />
+          <combo_box.item label="NV Tube" name="gs_nv_tube" value="20" />
+          <combo_box.item label="Damage" name="gs_damage" value="21" />
+          <combo_box.item label="Killcam" name="gs_killcam" value="22" />
+          <combo_box.item label="Oil Slick" name="gs_oil_slick" value="23" />
+          <combo_box.item label="Vaporwave" name="gs_vaporwave" value="24" />
+          <combo_box.item label="Halftone" name="gs_halftone" value="25" />
+          <combo_box.item label="Sonar" name="gs_sonar" value="26" />
+          <combo_box.item label="Holo Echo" name="gs_holo_echo" value="27" />
+        </combo_box>
+        <combo_box control_name="PathGhostDistort" follows="left|top" height="20"
+         layout="topleft" left="208" top="140" name="ghost_distort_combo"
+         tool_tip="Independent path-ghost distortion" width="128">
+          <combo_box.item label="No distortion" name="gd_none" value="0" />
+          <combo_box.item label="Pixelate" name="gd_pixel" value="1" />
+          <combo_box.item label="Voxel" name="gd_voxel" value="2" />
+          <combo_box.item label="Lens" name="gd_lens" value="3" />
+          <combo_box.item label="Wave" name="gd_wave" value="4" />
+          <combo_box.item label="RGB Split" name="gd_rgb" value="5" />
+          <combo_box.item label="Block" name="gd_block" value="6" />
+          <combo_box.item label="V-Tear" name="gd_vertical" value="7" />
+          <combo_box.item label="VHS" name="gd_vhs" value="8" />
+        </combo_box>
+        <slider control_name="PathGhostDistortAmount" can_edit_text="true"
+         decimal_digits="2" follows="left|top" height="18" increment="0.05"
+         label="Amount" label_width="48" layout="topleft" left="340"
+         max_val="1" min_val="0" name="ghost_distort_amount" top="141" width="140" />
+        <spinner control_name="PathGhostEffectFps" decimal_digits="0" follows="left|top"
+         height="18" increment="1" initial_value="0" label="FX cadence (fps)"
+         label_width="96" layout="topleft" left="8" max_val="30" min_val="0"
+         name="ghost_effect_fps" tool_tip="0 is smooth; 1-30 gives stop-motion shader animation"
+         top="141" width="190" />
 
-    <button
-     follows="left|top"
-     height="20"
-     label="Undo"
-     layout="topleft"
-     left="6"
-     top="198"
-     name="btn_edit_undo"
-     tool_tip="Undo the last path edit"
-     width="58" />
-    <button
-     follows="left|top"
-     height="20"
-     label="Redo"
-     layout="topleft"
-     left="66"
-     top="198"
-     name="btn_edit_redo"
-     tool_tip="Redo the last undone edit"
-     width="58" />
-    <button
-     follows="left|top"
-     height="20"
-     label="Reverse"
-     layout="topleft"
-     left="126"
-     top="198"
-     name="btn_edit_reverse"
-     tool_tip="Reverse the path direction"
-     width="74" />
-    <button
-     follows="left|top"
-     height="20"
-     label="Mirror"
-     layout="topleft"
-     left="202"
-     top="198"
-     name="btn_edit_mirror"
-     tool_tip="Mirror the path left-to-right across its line of travel"
-     width="70" />
-    <button
-     follows="left|top"
-     height="20"
-     label="Loop"
-     layout="topleft"
-     left="274"
-     top="198"
-     name="btn_edit_loopclose"
-     tool_tip="Snap the last waypoint onto the first and set the path to loop"
-     width="80" />
+        <button follows="left|top" height="22" label="Add at actor" layout="topleft" left="8" top="166" name="btn_wp_add" width="112" />
+        <button follows="left|top" height="22" label="Insert after" layout="topleft" left="124" top="166" name="btn_wp_insert" width="112" />
+        <button follows="left|top" height="22" label="Delete node" layout="topleft" left="240" top="166" name="btn_wp_delete" width="112" />
+        <button follows="left|top" height="22" label="Clear path" layout="topleft" left="356" top="166" name="btn_wp_clear" width="124" />
 
-    <combo_box
-     follows="left|top"
-     height="20"
-     layout="topleft"
-     left="6"
-     top="222"
-     name="copy_to_combo"
-     tool_tip="Cast member to copy this path onto"
-     width="150" />
-    <button
-     follows="left|top"
-     height="20"
-     label="Copy to"
-     layout="topleft"
-     left="160"
-     top="222"
-     name="btn_copy_to"
-     tool_tip="Copy this path onto the chosen cast member (overlays at the same spot)"
-     width="96" />
-    <button
-     follows="left|top"
-     height="20"
-     label="Walk to Point..."
-     layout="topleft"
-     left="258"
-     top="222"
-     name="btn_walk_here"
-     tool_tip="Arm one ground click for a one-off straight move. This replaces the authored path; use Play Path below to play the path unchanged."
-     width="96" />
-    <button
-     follows="left|top"
-     height="20"
-     label="Play Path"
-     layout="topleft"
-     left="6"
-     top="246"
-     name="btn_play_path"
-     tool_tip="Play this authored path without firing ACTION"
-     width="170" />
-    <button
-     follows="left|top"
-     height="20"
-     label="Stop Path"
-     layout="topleft"
-     left="182"
-     top="246"
-     name="btn_stop_path"
-     tool_tip="Stop this path and release its path camera"
-     width="172" />
+        <button follows="left|top" height="22" label="Undo" layout="topleft" left="8" top="192" name="btn_edit_undo" width="66" />
+        <button follows="left|top" height="22" label="Redo" layout="topleft" left="78" top="192" name="btn_edit_redo" width="66" />
+        <button follows="left|top" height="22" label="Reverse" layout="topleft" left="148" top="192" name="btn_edit_reverse" width="92" />
+        <button follows="left|top" height="22" label="Mirror" layout="topleft" left="244" top="192" name="btn_edit_mirror" width="90" />
+        <button follows="left|top" height="22" label="Close loop" layout="topleft" left="338" top="192" name="btn_edit_loopclose" width="142" />
 
-    <text
-     follows="left|top"
-     font="SansSerifSmallBold"
-     height="12"
-     layout="topleft"
-     left="6"
-     top="272"
-     name="node_lbl"
-     width="200">
-        Selected node
-    </text>
-    <spinner
-     decimal_digits="2"
-     follows="left|top"
-     height="16"
-     increment="0.05"
-     label="Height (m)"
-     label_width="66"
-     layout="topleft"
-     left="6"
-     max_val="5"
-     min_val="-5"
-     name="node_height_spinner"
-     tool_tip="Manual height nudge at this node (m). 0 = feet on the ground"
-     top="286"
-     width="170" />
-    <spinner
-     decimal_digits="1"
-     follows="left|top"
-     height="16"
-     increment="0.5"
-     label="Dwell (s)"
-     label_width="56"
-     layout="topleft"
-     left="182"
-     max_val="120"
-     min_val="0"
-     name="node_dwell_spinner"
-     tool_tip="Seconds the actor holds at this node (0 = no pause)"
-     top="286"
-     width="172" />
-    <spinner
-     decimal_digits="2"
-     follows="left|top"
-     height="16"
-     increment="0.05"
-     label="Speed (m/s)"
-     label_width="66"
-     layout="topleft"
-     left="6"
-     max_val="10"
-     min_val="0"
-     name="node_speed_spinner"
-     tool_tip="Speed override at this node (m/s). 0 = use the path speed"
-     top="306"
-     width="170" />
-    <text
-     follows="left|top"
-     height="12"
-     layout="topleft"
-     left="184"
-     top="308"
-     name="node_anim_lbl"
-     width="170">
-        Node anim (UUID)
-    </text>
-    <line_editor
-     follows="left|top|right"
-     height="18"
-     layout="topleft"
-     left="6"
-     max_length_chars="36"
-     name="node_anim_editor"
-     tool_tip="Play this animation at the node instead of the walk anim (local only). Blank = walk anim"
-     top="324"
-     width="348" />
+        <combo_box follows="left|top" height="22" layout="topleft" left="8" top="218"
+         name="copy_to_combo" tool_tip="Cast member to copy this path onto" width="210" />
+        <button follows="left|top" height="22" label="Copy path to" layout="topleft" left="222" top="218" name="btn_copy_to" width="112" />
+        <button follows="left|top" height="22" label="Walk to Point..." layout="topleft" left="338" top="218" name="btn_walk_here" width="142" />
 
-    <text
-     follows="left|top"
-     font="SansSerifSmallBold"
-     height="12"
-     layout="topleft"
-     left="6"
-     top="346"
-     name="path_lbl"
-     width="200">
-        Path settings
-    </text>
-    <spinner
-     decimal_digits="2"
-     follows="left|top"
-     height="16"
-     increment="0.05"
-     label="Speed (m/s)"
-     label_width="66"
-     layout="topleft"
-     left="6"
-     max_val="10"
-     min_val="0.05"
-     name="path_speed_spinner"
-     tool_tip="Nominal ground speed along the path (m/s). Per-node overrides win where set"
-     top="360"
-     width="170" />
-    <slider
-     decimal_digits="2"
-     follows="left|top"
-     height="16"
-     increment="0.05"
-     label="Smoothing"
-     label_width="62"
-     layout="topleft"
-     left="182"
-     max_val="1"
-     min_val="0"
-     name="path_tension_slider"
-     tool_tip="Corner smoothing (0..1): 0 = tight, near-straight corners; 1 = full flowing curves"
-     top="360"
-     width="172" />
-    <spinner
-     decimal_digits="1"
-     follows="left|top"
-     height="16"
-     increment="0.5"
-     label="Ease in (s)"
-     label_width="66"
-     layout="topleft"
-     left="6"
-     max_val="10"
-     min_val="0"
-     name="path_easein_spinner"
-     tool_tip="Accelerate from a standstill over this many seconds at the start"
-     top="380"
-     width="170" />
-    <spinner
-     decimal_digits="1"
-     follows="left|top"
-     height="16"
-     increment="0.5"
-     label="Ease out (s)"
-     label_width="68"
-     layout="topleft"
-     left="182"
-     max_val="10"
-     min_val="0"
-     name="path_easeout_spinner"
-     tool_tip="Decelerate to a stop over this many seconds into the final node"
-     top="380"
-     width="172" />
-    <check_box
-     follows="left|top"
-     height="16"
-     label="Ground-follow"
-     layout="topleft"
-     left="6"
-     top="400"
-     name="path_groundfollow_check"
-     tool_tip="Clamp feet to terrain / prims each frame so the walk rides slopes and stairs"
-     width="120" />
-    <check_box
-     follows="left|top"
-     height="16"
-     label="Pitch to slope"
-     layout="topleft"
-     left="130"
-     top="400"
-     name="path_pitch_check"
-     tool_tip="Tilt the body to the local slope on ground paths. Air paths always pitch along the flight tangent"
-     width="120" />
-    <check_box
-     follows="left|top"
-     height="16"
-     label="Air path"
-     layout="topleft"
-     left="254"
-     top="400"
-     name="path_airborne_check"
-     tool_tip="Use fly/hover locomotion roles, pitch along the flight path, and release Pose Polish foot contacts"
-     width="100" />
-    <combo_box
-     follows="left|top"
-     height="20"
-     layout="topleft"
-     left="6"
-     top="418"
-     name="path_end_combo"
-     tool_tip="What happens when the actor reaches the end of the path"
-     width="180">
-        <combo_box.item label="Stop at end" name="pe_stop" value="0" />
-        <combo_box.item label="Stop + face target" name="pe_stopface" value="1" />
-        <combo_box.item label="Loop" name="pe_loop" value="2" />
-        <combo_box.item label="Ping-pong" name="pe_pingpong" value="3" />
-    </combo_box>
-    <text
-     follows="left|top"
-     height="12"
-     layout="topleft"
-     left="196"
-     top="422"
-     name="color_lbl"
-     tool_tip="This actor's path color in world (auto, from its id)"
-     width="42">
-        Color
-    </text>
-    <panel
-     background_visible="true"
-     background_opaque="true"
-     border="true"
-     follows="left|top"
-     height="16"
-     layout="topleft"
-     left="240"
-     top="420"
-     name="color_swatch"
-     tool_tip="This actor's path color in world (auto, from its id)"
-     width="40" />
+        <button follows="left|top" height="24" label="Play Path" layout="topleft" left="8" top="246" name="btn_play_path" width="232" />
+        <button follows="left|top|right" height="24" label="Stop Path" layout="topleft" left="244" top="246" name="btn_stop_path" width="236" />
+      </panel>
+    </accordion_tab>
 
-    <text
-     follows="left|top"
-     font="SansSerifSmallBold"
-     height="12"
-     layout="topleft"
-     left="6"
-     top="444"
-     name="primitive_lbl"
-     width="60">
-        Shape
-    </text>
-    <combo_box
-     follows="left|top"
-     height="20"
-     layout="topleft"
-     left="70"
-     top="440"
-     name="path_shape_combo"
-     tool_tip="Choose authored waypoint geometry or an exact parametric primitive"
-     width="150">
-        <combo_box.item label="Waypoints" name="shape_waypoints" value="0" />
-        <combo_box.item label="Circle / Arc" name="shape_circle" value="1" />
-        <combo_box.item label="Ellipse / Arc" name="shape_ellipse" value="2" />
-        <combo_box.item label="Helix" name="shape_helix" value="3" />
-    </combo_box>
-    <button
-     follows="left|top"
-     height="20"
-     label="Center on actor"
-     layout="topleft"
-     left="224"
-     top="440"
-     name="btn_primitive_center"
-     width="130" />
-    <spinner
-     decimal_digits="2" follows="left|top" height="16" increment="0.1"
-     label="Radius X (m)" label_width="72" layout="topleft" left="6"
-     max_val="10000" min_val="0.01" name="primitive_radius_x"
-     tool_tip="Exact circle radius or ellipse major/minor radius along local X"
-     top="464" width="170" />
-    <spinner
-     decimal_digits="2" follows="left|top" height="16" increment="0.1"
-     label="Radius Y (m)" label_width="72" layout="topleft" left="182"
-     max_val="10000" min_val="0.01" name="primitive_radius_y"
-     tool_tip="Ellipse radius along local Y; circles and helixes use Radius X"
-     top="464" width="172" />
-    <spinner
-     decimal_digits="1" follows="left|top" height="16" increment="5"
-     label="Start (deg)" label_width="66" layout="topleft" left="6"
-     max_val="36000" min_val="-36000" name="primitive_start_deg"
-     tool_tip="Angular position where the primitive begins"
-     top="484" width="170" />
-    <spinner
-     decimal_digits="1" follows="left|top" height="16" increment="5"
-     label="Sweep (deg)" label_width="72" layout="topleft" left="182"
-     max_val="36000" min_val="-36000" name="primitive_sweep_deg"
-     tool_tip="Signed angular travel. 180 is a half arc, 360 a full turn, negative reverses direction, and values over 360 make multiple turns."
-     top="484" width="172" />
-    <spinner
-     decimal_digits="1" follows="left|top" height="16" increment="5"
-     label="Plane yaw" label_width="66" layout="topleft" left="6"
-     max_val="360" min_val="-360" name="primitive_yaw_deg"
-     tool_tip="Rotate the primitive plane around world up"
-     top="504" width="170" />
-    <spinner
-     decimal_digits="1" follows="left|top" height="16" increment="5"
-     label="Plane tilt" label_width="72" layout="topleft" left="182"
-     max_val="180" min_val="-180" name="primitive_pitch_deg"
-     tool_tip="Tilt the primitive plane out of the horizontal plane"
-     top="504" width="172" />
-    <spinner
-     decimal_digits="1" follows="left|top" height="16" increment="5"
-     label="Plane roll" label_width="66" layout="topleft" left="6"
-     max_val="180" min_val="-180" name="primitive_roll_deg"
-     tool_tip="Roll the primitive plane around its local travel axis"
-     top="524" width="170" />
-    <spinner
-     decimal_digits="2" follows="left|top" height="16" increment="0.25"
-     label="Rise (m)" label_width="72" layout="topleft" left="182"
-     max_val="10000" min_val="-10000" name="primitive_rise"
-     tool_tip="Helix height change over the authored sweep"
-     top="524" width="172" />
+    <accordion_tab expanded="false" fit_panel="true" height="224" layout="topleft"
+     name="node_camera_tab" title="Selected Node &amp; Camera">
+      <panel follows="all" height="224" layout="topleft" left="0" name="node_camera_panel" top="0" width="488">
+        <text follows="left|top" font="SansSerifSmallBold" height="14" layout="topleft" left="8" top="6" name="node_lbl" width="220">Selected node timing &amp; action</text>
+        <spinner decimal_digits="2" follows="left|top" height="18" increment="0.05" label="Height nudge (m)" label_width="100" layout="topleft" left="8" max_val="5" min_val="-5" name="node_height_spinner" top="26" width="230" />
+        <spinner decimal_digits="1" follows="left|top" height="18" increment="0.5" label="Dwell (s)" label_width="70" layout="topleft" left="246" max_val="120" min_val="0" name="node_dwell_spinner" top="26" width="234" />
+        <spinner decimal_digits="2" follows="left|top" height="18" increment="0.05" label="Speed override (m/s)" label_width="124" layout="topleft" left="8" max_val="10" min_val="0" name="node_speed_spinner" top="50" width="230" />
+        <spinner decimal_digits="2" follows="left|top" height="18" increment="0.1" label="Corner radius (m)" label_width="108" layout="topleft" left="246" max_val="10000" min_val="0" name="node_corner_radius_spinner" top="50" tool_tip="0 keeps the waypoint corner sharp; a positive value inserts an exact tangent circular turn" width="234" />
+        <text follows="left|top" height="14" layout="topleft" left="8" top="76" name="node_anim_lbl" width="234">Node animation UUID</text>
+        <line_editor follows="left|top|right" height="20" layout="topleft" left="8" max_length_chars="36" name="node_anim_editor" top="92" width="472" />
 
-    <text
-     follows="left|top"
-     font="SansSerifSmallBold"
-     height="12"
-     layout="topleft"
-     left="6"
-     top="550"
-     name="cam_lbl"
-     width="70">
-        Camera
-    </text>
-    <check_box
-     control_name="PathCameraEnabled"
-     follows="left|top"
-     height="16"
-     label="Enable path camera (session)"
-     layout="topleft"
-     left="80"
-     top="548"
-     name="path_camera_enable_check"
-     tool_tip="When on, the cameras you set on Subject A's path drive the view as that actor walks, so a walk plays as one actor + camera take. Off is a no-op; existing pathing is unchanged. The camera hands back to normal control the moment the walk stops, finishes, is cut, or the actor leaves the region."
-     width="274" />
-    <button
-     follows="left|top"
-     height="20"
-     label="Set camera here"
-     layout="topleft"
-     left="6"
-     top="568"
-     name="btn_node_setcam"
-     tool_tip="Capture the current camera position, aim and FOV into this node"
-     width="130" />
-    <button
-     follows="left|top"
-     height="20"
-     label="Clear camera"
-     layout="topleft"
-     left="140"
-     top="568"
-     name="btn_node_clearcam"
-     tool_tip="Remove the camera from this node"
-     width="110" />
-    <combo_box
-     follows="left|top"
-     height="20"
-     layout="topleft"
-     left="6"
-     top="592"
-     name="node_cam_transition_combo"
-     tool_tip="How the camera reaches this node. Cut: snap to this shot when the actor arrives. Ease: glide from the previous camera node as the actor walks between them."
-     width="120">
-        <combo_box.item label="Cut" name="cam_cut" value="0" />
-        <combo_box.item label="Ease" name="cam_ease" value="1" />
-    </combo_box>
-    <button
-     follows="left|top"
-     height="20"
-     label="Preview"
-     layout="topleft"
-     left="132"
-     top="592"
-     name="btn_node_preview"
-     tool_tip="Jump the camera to this node's shot to check the framing, without walking"
-     width="110" />
-    <text
-     follows="left|top"
-     height="12"
-     layout="topleft"
-     left="6"
-     top="618"
-     name="node_cam_status"
-     text_color="LtGray_50"
-     use_ellipses="true"
-     width="348">
-        Select a waypoint to author its camera
-    </text>
+        <text follows="left|top" font="SansSerifSmallBold" height="14" layout="topleft" left="8" top="120" name="cam_lbl" width="80">Node camera</text>
+        <check_box control_name="PathCameraEnabled" follows="left|top|right" height="18" label="Enable authored path camera for this session" layout="topleft" left="98" top="118" name="path_camera_enable_check" width="382" />
+        <button follows="left|top" height="22" label="Capture camera here" layout="topleft" left="8" top="142" name="btn_node_setcam" width="154" />
+        <button follows="left|top" height="22" label="Clear camera" layout="topleft" left="166" top="142" name="btn_node_clearcam" width="114" />
+        <combo_box follows="left|top" height="22" layout="topleft" left="284" top="142" name="node_cam_transition_combo" width="94">
+          <combo_box.item label="Cut" name="cam_cut" value="0" />
+          <combo_box.item label="Ease" name="cam_ease" value="1" />
+        </combo_box>
+        <button follows="left|top|right" height="22" label="Preview shot" layout="topleft" left="382" top="142" name="btn_node_preview" width="98" />
+        <text follows="left|top|right" height="28" layout="topleft" left="8" top="170" name="node_cam_status" text_color="LtGray_50" use_ellipses="true" width="472">Select a waypoint to author its camera</text>
+      </panel>
+    </accordion_tab>
 
-    <!-- Choreography: sync this path to a camera Take (recorder playhead drives
-         the walk) and follow another cast member's path (procession). -->
-    <text
-     follows="left|top"
-     font="SansSerifSmallBold"
-     height="12"
-     layout="topleft"
-     left="6"
-     top="638"
-     name="choreo_lbl"
-     width="200">
-        Choreography
-    </text>
-    <check_box
-     follows="left|top"
-     height="16"
-     label="Sync to camera take"
-     layout="topleft"
-     left="6"
-     top="652"
-     name="sync_take_check"
-     tool_tip="Drive this path from the Flycam Recorder playhead: play or scrub the take and the actor moves in lockstep. No take loaded = no change to the walk."
-     width="186" />
-    <spinner
-     decimal_digits="1"
-     follows="left|top"
-     height="16"
-     increment="0.5"
-     label="Lead/trail (s)"
-     label_width="88"
-     layout="topleft"
-     left="196"
-     max_val="60"
-     min_val="-60"
-     name="sync_offset_spinner"
-     tool_tip="Lead (+) or trail (-) the lens by this many seconds along the take"
-     top="652"
-     width="158" />
-    <text
-     follows="left|top"
-     height="12"
-     layout="topleft"
-     left="6"
-     top="672"
-     name="sync_status"
-     text_color="LtGray_50"
-     use_ellipses="true"
-     width="348">
-        Off, the walk uses its own clock
-    </text>
+    <accordion_tab expanded="false" fit_panel="true" height="174" layout="topleft"
+     name="movement_timing_tab" title="Movement &amp; Timing">
+      <panel follows="all" height="174" layout="topleft" left="0" name="movement_timing_panel" top="0" width="488">
+        <spinner decimal_digits="2" follows="left|top" height="18" increment="0.05" label="Travel speed (m/s)" label_width="112" layout="topleft" left="8" max_val="10" min_val="0.05" name="path_speed_spinner" top="8" width="230" />
+        <slider can_edit_text="true" decimal_digits="2" follows="left|top|right" height="18" increment="0.05" label="Foot cadence ref" label_width="94" layout="topleft" left="246" max_val="12" min_val="0.5" name="path_cadence_slider" tool_tip="Animation design-speed reference. Lower values make foot cycles quicker at a given travel speed; higher values make them slower. Stored per path." top="8" width="234" />
+        <slider can_edit_text="true" decimal_digits="2" follows="left|top|right" height="18" increment="0.05" label="Corner smoothing" label_width="108" layout="topleft" left="8" max_val="1" min_val="0" name="path_tension_slider" top="34" width="472" />
+        <spinner decimal_digits="1" follows="left|top" height="18" increment="0.5" label="Ease in (s)" label_width="76" layout="topleft" left="8" max_val="10" min_val="0" name="path_easein_spinner" top="60" width="230" />
+        <spinner decimal_digits="1" follows="left|top" height="18" increment="0.5" label="Ease out (s)" label_width="78" layout="topleft" left="246" max_val="10" min_val="0" name="path_easeout_spinner" top="60" width="234" />
+        <check_box follows="left|top" height="18" label="Ground-follow" layout="topleft" left="8" top="86" name="path_groundfollow_check" width="144" />
+        <check_box follows="left|top" height="18" label="Pitch to slope" layout="topleft" left="160" top="86" name="path_pitch_check" width="144" />
+        <check_box follows="left|top" height="18" label="Air path" layout="topleft" left="312" top="86" name="path_airborne_check" width="120" />
+        <combo_box follows="left|top" height="22" layout="topleft" left="8" top="112" name="path_end_combo" tool_tip="What happens at the end of the path" width="230">
+          <combo_box.item label="Stop at end" name="pe_stop" value="0" />
+          <combo_box.item label="Stop + face target" name="pe_stopface" value="1" />
+          <combo_box.item label="Loop" name="pe_loop" value="2" />
+          <combo_box.item label="Ping-pong" name="pe_pingpong" value="3" />
+        </combo_box>
+        <text follows="left|top" height="14" layout="topleft" left="250" top="116" name="color_lbl" width="92">World color</text>
+        <panel background_visible="true" background_opaque="true" border="true" follows="left|top" height="18" layout="topleft" left="344" top="114" name="color_swatch" width="136" />
+      </panel>
+    </accordion_tab>
 
-    <text
-     follows="left|top"
-     height="12"
-     layout="topleft"
-     left="6"
-     top="690"
-     name="follow_lbl"
-     width="42">
-        Follow
-    </text>
-    <combo_box
-     follows="left|top"
-     height="20"
-     layout="topleft"
-     left="50"
-     top="688"
-     name="follow_leader_combo"
-     tool_tip="Pick a cast member whose path this actor should follow. Self and any choice that would loop the procession are excluded."
-     width="186" />
-    <button
-     follows="left|top"
-     height="20"
-     label="Stop following"
-     layout="topleft"
-     left="240"
-     top="688"
-     name="btn_stop_following"
-     tool_tip="Stop following; this actor keeps its own path (if any)"
-     width="114" />
-    <spinner
-     decimal_digits="1"
-     follows="left|top"
-     height="16"
-     increment="0.5"
-     initial_value="3.0"
-     label="Behind (m)"
-     label_width="66"
-     layout="topleft"
-     left="6"
-     max_val="64"
-     min_val="0"
-     name="follow_offset_spinner"
-     tool_tip="Metres the follower stays behind the leader along the path"
-     top="710"
-     width="170" />
-    <text
-     follows="left|top"
-     height="12"
-     layout="topleft"
-     left="182"
-     top="712"
-     name="follow_status"
-     text_color="LtGray_50"
-     use_ellipses="true"
-     width="172">
-        Not following
-    </text>
+    <accordion_tab expanded="false" fit_panel="true" height="210" layout="topleft"
+     name="shape_designer_tab" title="Shape Designer">
+      <panel follows="all" height="210" layout="topleft" left="0" name="shape_designer_panel" top="0" width="488">
+        <text follows="left|top" font="SansSerifSmallBold" height="14" layout="topleft" left="8" top="8" name="primitive_lbl" width="54">Shape</text>
+        <combo_box follows="left|top" height="22" layout="topleft" left="66" top="4" name="path_shape_combo" width="230">
+          <combo_box.item label="Waypoints" name="shape_waypoints" value="0" />
+          <combo_box.item label="Circle / Arc" name="shape_circle" value="1" />
+          <combo_box.item label="Ellipse / Arc" name="shape_ellipse" value="2" />
+          <combo_box.item label="Helix" name="shape_helix" value="3" />
+          <combo_box.item label="Diamond" name="shape_diamond" value="4" />
+          <combo_box.item label="Figure 8" name="shape_figure_eight" value="5" />
+          <combo_box.item label="Sine Wave" name="shape_sine_wave" value="6" />
+        </combo_box>
+        <button follows="left|top|right" height="22" label="Center on actor" layout="topleft" left="304" top="4" name="btn_primitive_center" width="176" />
 
-    <!-- TP-away suspend banner: shown only while the selected actor's walk is
-         suspended (actor derezzed, left the region, or teleported). Declared
-         last so it draws on top; overlays the hint band near the top of the
-         panel and drives LLActorMover resume / re-anchor / cancel. Hidden by
-         default; the panel toggles it via setVisible. -->
-    <panel
-     background_visible="true"
-     background_opaque="true"
-     bg_opaque_color="DkGray"
-     border="true"
-     follows="left|top|right"
-     height="42"
-     layout="topleft"
-     left="4"
-     name="suspend_banner"
-     top="18"
-     visible="false"
-     width="352">
-        <text
-         follows="left|top"
-         font="SansSerifSmallBold"
-         height="14"
-         layout="topleft"
-         left="6"
-         name="suspend_status"
-         text_color="EmphasisColor"
-         top="4"
-         use_ellipses="true"
-         width="340">
-            Walk suspended &#8212; actor away
-        </text>
-        <button
-         follows="left|top"
-         height="20"
-         label="Resume"
-         layout="topleft"
-         left="6"
-         name="btn_suspend_resume"
-         tool_tip="Resume the walk from where it left off"
-         top="20"
-         width="80" />
-        <button
-         follows="left|top"
-         height="20"
-         label="Re-anchor here"
-         layout="topleft"
-         left="90"
-         name="btn_suspend_reanchor"
-         tool_tip="Move the whole path to the actor's current position and resume from here (keep shooting on this sim)"
-         top="20"
-         width="150" />
-        <button
-         follows="left|top"
-         height="20"
-         label="Cancel"
-         layout="topleft"
-         left="244"
-         name="btn_suspend_cancel"
-         tool_tip="Drop the suspended walk and return to idle"
-         top="20"
-         width="100" />
-    </panel>
+        <text follows="left|top|right" height="14" layout="topleft" left="8" top="32" name="endpoint_generator_lbl" text_color="LtGray_50" width="472">Turn the first and last authored points into an exact generated path:</text>
+        <button follows="left|top" height="24" label="Fit Half Arc to Endpoints" layout="topleft" left="8" top="50" name="btn_fit_half_arc" tool_tip="Use the first and last path points as the ends of an exact semicircle" width="230" />
+        <button follows="left|top|right" height="24" label="Fit Sine Wave to Endpoints" layout="topleft" left="246" top="50" name="btn_fit_sine" tool_tip="Use the first and last path points as the ends of an exact sine wave" width="234" />
+
+        <spinner decimal_digits="2" follows="left|top" height="18" increment="0.1" label="Extent X (m)" label_width="82" layout="topleft" left="8" max_val="10000" min_val="0.01" name="primitive_radius_x" top="82" width="230" />
+        <spinner decimal_digits="2" follows="left|top" height="18" increment="0.1" label="Extent Y (m)" label_width="82" layout="topleft" left="246" max_val="10000" min_val="0.01" name="primitive_radius_y" top="82" width="234" />
+        <spinner decimal_digits="1" follows="left|top" height="18" increment="5" label="Start / phase (deg)" label_width="112" layout="topleft" left="8" max_val="36000" min_val="-36000" name="primitive_start_deg" top="108" width="230" />
+        <spinner decimal_digits="1" follows="left|top" height="18" increment="5" label="Sweep / cycles (deg)" label_width="122" layout="topleft" left="246" max_val="36000" min_val="-36000" name="primitive_sweep_deg" top="108" width="234" />
+        <spinner decimal_digits="1" follows="left|top" height="18" increment="5" label="Plane yaw" label_width="76" layout="topleft" left="8" max_val="360" min_val="-360" name="primitive_yaw_deg" top="134" width="230" />
+        <spinner decimal_digits="1" follows="left|top" height="18" increment="5" label="Plane pitch" label_width="76" layout="topleft" left="246" max_val="180" min_val="-180" name="primitive_pitch_deg" top="134" width="234" />
+        <spinner decimal_digits="1" follows="left|top" height="18" increment="5" label="Plane roll" label_width="76" layout="topleft" left="8" max_val="180" min_val="-180" name="primitive_roll_deg" top="160" width="230" />
+        <spinner decimal_digits="2" follows="left|top" height="18" increment="0.25" label="Rise / end ΔZ (m)" label_width="112" layout="topleft" left="246" max_val="10000" min_val="-10000" name="primitive_rise" top="160" width="234" />
+      </panel>
+    </accordion_tab>
+
+    <accordion_tab expanded="false" fit_panel="true" height="150" layout="topleft"
+     name="choreography_tab" title="Choreography">
+      <panel follows="all" height="150" layout="topleft" left="0" name="choreography_panel" top="0" width="488">
+        <text follows="left|top" font="SansSerifSmallBold" height="14" layout="topleft" left="8" top="8" name="choreo_lbl" width="150">Camera take sync</text>
+        <check_box follows="left|top" height="18" label="Sync to camera take" layout="topleft" left="8" top="28" name="sync_take_check" width="210" />
+        <spinner decimal_digits="1" follows="left|top|right" height="18" increment="0.5" label="Lead/trail (s)" label_width="88" layout="topleft" left="246" max_val="60" min_val="-60" name="sync_offset_spinner" top="28" width="234" />
+        <text follows="left|top|right" height="14" layout="topleft" left="8" top="50" name="sync_status" text_color="LtGray_50" use_ellipses="true" width="472">Off, the walk uses its own clock</text>
+        <text follows="left|top" font="SansSerifSmallBold" height="14" layout="topleft" left="8" top="74" name="follow_lbl" width="70">Follow</text>
+        <combo_box follows="left|top" height="22" layout="topleft" left="82" top="70" name="follow_leader_combo" width="236" />
+        <button follows="left|top|right" height="22" label="Stop following" layout="topleft" left="326" top="70" name="btn_stop_following" width="154" />
+        <spinner decimal_digits="1" follows="left|top" height="18" increment="0.5" initial_value="3.0" label="Behind (m)" label_width="72" layout="topleft" left="8" max_val="64" min_val="0" name="follow_offset_spinner" top="100" width="230" />
+        <text follows="left|top|right" height="14" layout="topleft" left="246" top="103" name="follow_status" text_color="LtGray_50" use_ellipses="true" width="234">Not following</text>
+      </panel>
+    </accordion_tab>
+  </accordion>
+
+  <panel
+   background_visible="true" background_opaque="true" bg_opaque_color="DkGray"
+   border="true" follows="left|top|right" height="48" layout="topleft" left="4"
+   name="suspend_banner" top="18" visible="false" width="492">
+    <text follows="left|top|right" font="SansSerifSmallBold" height="14" layout="topleft" left="8" name="suspend_status" text_color="EmphasisColor" top="4" use_ellipses="true" width="476">Walk suspended &#8212; actor away</text>
+    <button follows="left|top" height="22" label="Resume" layout="topleft" left="8" name="btn_suspend_resume" top="22" width="104" />
+    <button follows="left|top" height="22" label="Re-anchor here" layout="topleft" left="120" name="btn_suspend_reanchor" top="22" width="210" />
+    <button follows="left|top|right" height="22" label="Cancel walk" layout="topleft" left="338" name="btn_suspend_cancel" top="22" width="146" />
+  </panel>
 </panel>

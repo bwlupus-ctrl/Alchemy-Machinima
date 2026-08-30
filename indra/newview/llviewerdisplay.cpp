@@ -860,7 +860,7 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
                 // save-restored around this block). No-op with zero cost unless
                 // the ghost toggle + impostor mode are on and a mover/Director
                 // floater is open. The billboards themselves are drawn later in
-                // render_ui_3d() by renderHeadingPreview().
+                // the scene-depth guide pass by renderHeadingPreview().
                 LLActorMover::instance().updateGhostImpostors();
 
                 set_current_projection(proj);
@@ -1120,6 +1120,36 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
         if (LLPipeline::sRenderDeferred)
         {
             gPipeline.renderDeferredLighting();
+        }
+
+        // [ActorPath] Composite operator guides while the main scene target and
+        // its world depth are still available. This gives real avatars, deferred
+        // actor ghosts, props, and terrain true render priority over path lines.
+        // The previous render_ui_3d home ran after LLDrawPoolHUD cleared depth,
+        // which forced every guide over every body regardless of distance.
+        if (!gCubeSnapshot && !LLPipeline::sPrismLensRender &&
+            gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI) &&
+            gViewerWindow->getUIVisibility())
+        {
+            gPipeline.mRT->screen.bindTarget();
+            // Reassert the world camera matrices explicitly. The deferred
+            // lighting pass currently leaves them active, but the path overlay
+            // must not depend on that ambient state if another composite is
+            // inserted above this block later.
+            gGL.matrixMode(LLRender::MM_PROJECTION);
+            gGL.loadMatrix(glm::value_ptr(get_current_projection()));
+            gGL.matrixMode(LLRender::MM_MODELVIEW);
+            gGL.loadMatrix(glm::value_ptr(get_current_modelview()));
+            LLActorMover::instance().renderHeadingPreview(true);
+            if (LLToolMgr::getInstance()->getCurrentTool() ==
+                (LLTool*)ALToolPathEdit::getInstance())
+            {
+                LLActorMover& mover = LLActorMover::instance();
+                mover.renderActorPathOverlay(
+                    mover.getEditActor(), true,
+                    ALToolPathEdit::getInstance()->getHoverNode(), true);
+            }
+            gPipeline.mRT->screen.flush();
         }
 
         LLPrismLens::compositeDebug();
@@ -1808,27 +1838,14 @@ void render_ui_3d()
         gObjectList.renderObjectBeacons();
         gObjectList.resetObjectBeacons();
         gSky.addSunMoonBeacons();
-        // [ActorMover] in-world heading preview lines (client-side only;
-        // no-op unless ActorMoverShowHeading is on and the floater is open)
-        LLActorMover::instance().renderHeadingPreview();
+        // Actor path guides moved to the pre-finalize scene-depth pass in
+        // display(); do not redraw them here on this cleared depth buffer.
         // [Prism] render-only camera frustum guides (client-side only; cheap
         // early-out unless PrismCameraGuideEnable is on AND some camera feed has
         // its per-camera guide toggled). Under the same UI-visibility gate so it
         // hides while filming.
         LLPrismLens::renderCameraGuides();
         ALCineLightRigManager::instance().renderGizmo();
-        // [ActorMover] While the path-edit tool is active, ALWAYS draw the edit
-        // actor's path overlay -- ribbon + every node from the first one, plus
-        // hover/selection highlight -- independent of the Show-path toggle, roster
-        // membership, and node count, so you always see what you are marking. Still
-        // under the UI-visibility gate above, so it hides when filming (UI hidden).
-        if (LLToolMgr::getInstance()->getCurrentTool() ==
-            (LLTool*)ALToolPathEdit::getInstance())
-        {
-            LLActorMover& am = LLActorMover::instance();
-            am.renderActorPathOverlay(am.getEditActor(), true,
-                                      ALToolPathEdit::getInstance()->getHoverNode());
-        }
         // Formation placement preview -- same UI pass, same gating discipline
         // (returns immediately unless a formation is actually staged).
         ALGhostStudio::instance().renderFormationPreview();

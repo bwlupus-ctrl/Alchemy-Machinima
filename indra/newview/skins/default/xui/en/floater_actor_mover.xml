@@ -4,13 +4,13 @@
  can_resize="true"
  height="700"
  min_height="440"
- min_width="390"
+ min_width="500"
  layout="topleft"
  name="floater_actor_mover"
  save_rect="true"
  single_instance="true"
  title="ACTOR MOVER (LOCAL)"
- width="390">
+ width="540">
   <scroll_list
    column_padding="0"
    draw_heading="true"
@@ -20,15 +20,15 @@
    left="12"
    top="24"
    name="roster_list"
-   width="276">
+   width="420">
     <columns
      label="Actor"
      name="name"
-     width="170" />
+     width="270" />
     <columns
      label="Status"
      name="status"
-     width="100" />
+     width="140" />
   </scroll_list>
   <text
    type="string"
@@ -39,7 +39,7 @@
    left="12"
    top_pad="6"
    name="status_text"
-   width="276">
+   width="420">
     Idle
   </text>
   <text
@@ -50,7 +50,7 @@
    top_pad="4"
    name="hint_text"
    text_color="LtGray_50"
-   width="276">
+   width="420">
     Right-click avatar/animesh &gt; Actor Mover Target.
   </text>
   <!-- in-world path preview toggle: host chrome (the console keeps its own copy
@@ -65,7 +65,7 @@
    top_pad="8"
    name="show_heading_check"
    tool_tip="Show the in-world path preview for each roster actor. With a walkable path: the thick outlined spline with direction chevrons and numbered node markers (start green, end red, dwell nodes ringed). With no path: the thick straight heading arrow along the planned bearing for the configured distance. Client-side only; updates live."
-   width="276" />
+   width="420" />
   <!-- Move and Path are independent scroll documents. The roster remains
        sticky, and each embedded list/preview keeps its own wheel handling. -->
   <tab_container
@@ -76,7 +76,7 @@
    name="actor_mover_tabs"
    tab_height="24"
    top="190"
-   width="378">
+   width="528">
     <panel
      background_visible="false"
      follows="all"
@@ -84,7 +84,7 @@
      label="Move"
      layout="topleft"
      name="move_tab"
-     width="378">
+     width="528">
       <scroll_container
        follows="all"
        height="472"
@@ -94,7 +94,7 @@
        opaque="false"
        reserve_scroll_corner="false"
        top="0"
-       width="378">
+       width="528">
         <panel
          background_visible="false"
          follows="left|top|right"
@@ -103,7 +103,7 @@
          left="0"
          name="move_scroll_content"
          top="0"
-         width="360">
+         width="500">
           <!-- Shared Actor Mover transport: the same panel Director embeds. -->
           <panel
            class="panel_actor_mover"
@@ -114,7 +114,7 @@
            left="0"
            name="actor_mover_panel"
            top="8"
-           width="360" />
+           width="500" />
           <button
            follows="left|top|right"
            height="22"
@@ -124,7 +124,7 @@
            name="btn_actor_gaze"
            top="372"
            tool_tip="Open the Actor Gaze controls for the selected roster actor"
-           width="344" />
+           width="484" />
         </panel>
       </scroll_container>
     </panel>
@@ -135,7 +135,7 @@
      label="Path"
      layout="topleft"
      name="path_tab"
-     width="378">
+     width="528">
       <scroll_container
        follows="all"
        height="472"
@@ -145,7 +145,7 @@
        opaque="false"
        reserve_scroll_corner="false"
        top="0"
-       width="378">
+       width="528">
         <panel
          background_visible="false"
          follows="left|top|right"
@@ -154,7 +154,7 @@
          left="0"
          name="path_scroll_content"
          top="0"
-         width="360">
+         width="500">
           <text
            follows="left|top"
            font="SansSerifBold"
@@ -163,7 +163,7 @@
            left="6"
            top="6"
            name="path_section_lbl"
-           width="348">
+           width="484">
             Path (waypoints + exact shapes)
           </text>
           <!-- Shared Actor Pathing editor: the same panel Director embeds. -->
@@ -171,12 +171,12 @@
            class="panel_path_editor"
            filename="panel_path_editor.xml"
            follows="left|top|right"
-           height="736"
+           height="720"
            layout="topleft"
            left="0"
            name="path_editor"
            top="26"
-           width="360" />
+           width="500" />
         </panel>
       </scroll_container>
     </panel>

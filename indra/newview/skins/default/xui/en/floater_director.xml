@@ -516,7 +516,7 @@
          layout="topleft"
          name="path_tab"
          top="0"
-         width="374">
+         width="720">
             <scroll_container
              follows="all"
              height="540"
@@ -525,25 +525,25 @@
              top="0"
              name="path_scroll"
              opaque="false"
-             width="374">
+             width="720">
                 <panel
                  background_visible="false"
-                 height="752"
+                 height="736"
                  layout="topleft"
                  left="0"
                  top="0"
                  name="path_scroll_content"
-                 width="354">
+                 width="500">
                     <panel
                      class="panel_path_editor"
                      filename="panel_path_editor.xml"
-                     follows="left|top|right"
-                     height="736"
+                     follows="left|top"
+                     height="720"
                      layout="topleft"
                      left="0"
                      name="path_editor"
                      top="8"
-                     width="354" />
+                     width="500" />
                 </panel>
             </scroll_container>
         </panel>

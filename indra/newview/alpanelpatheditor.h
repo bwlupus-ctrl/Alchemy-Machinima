@@ -28,6 +28,7 @@
 #include <vector>
 
 class LLButton;
+class LLAccordionCtrl;
 class LLCheckBoxCtrl;
 class LLComboBox;
 class LLLineEditor;
@@ -123,10 +124,12 @@ private:
     void onNodeHeightCommit();
     void onNodeDwellCommit();
     void onNodeSpeedCommit();
+    void onNodeCornerRadiusCommit();
     void onNodeAnimCommit();
 
     // path-wide commits (drive the Path struct directly; defaults = engine defaults)
     void onPathSpeedCommit();
+    void onPathCadenceCommit();
     void onPathTensionCommit();
     void onPathEaseInCommit();
     void onPathEaseOutCommit();
@@ -136,6 +139,8 @@ private:
     void onPathEndCommit();
     void onPathShapeCommit();
     void onPrimitiveCommit();
+    void onClickFitHalfArc();
+    void onClickFitSine();
 
     // cached name for the header
     static std::string actorName(const LLUUID& id);
@@ -143,15 +148,24 @@ private:
     LLUUID mActor;              // current target (raw cast/roster id; null = none)
     bool   mEditMode = false;   // our transient tool is armed
     bool   mSuspendShown = false;   // banner visibility last set (avoid churn)
+    S32    mAccordionNormalHeight = 0;
 
     // change-diffing snapshot so the list only rebuilds when the geometry/
     // summary of a node actually changed
-    struct NodeSnap { LLVector3d mPos; F32 mDwell = 0.f; F32 mSpeed = 0.f; bool mHasCam = false; };
+    struct NodeSnap
+    {
+        LLVector3d mPos;
+        F32 mDwell = 0.f;
+        F32 mSpeed = 0.f;
+        F32 mCornerRadius = 0.f;
+        bool mHasCam = false;
+    };
     std::vector<NodeSnap> mSnap;
     S32    mSnapEndMode = -999;    // end mode the current rows were built for
     S32    mLastEngineNode = -2;   // last edit-node we mirrored into the list
 
     // widgets
+    LLAccordionCtrl*   mAccordion = nullptr;
     LLTextBox*         mHeader = nullptr;
     LLCheckBoxCtrl*    mEditModeCheck = nullptr;
     LLScrollListCtrl*  mList = nullptr;
@@ -176,8 +190,10 @@ private:
     LLSpinCtrl*        mNodeHeight = nullptr;
     LLSpinCtrl*        mNodeDwell = nullptr;
     LLSpinCtrl*        mNodeSpeed = nullptr;
+    LLSpinCtrl*        mNodeCornerRadius = nullptr;
     LLLineEditor*      mNodeAnim = nullptr;
     LLSpinCtrl*        mPathSpeed = nullptr;
+    LLSliderCtrl*      mCadence = nullptr;
     LLSliderCtrl*      mTension = nullptr;
     LLSpinCtrl*        mEaseIn = nullptr;
     LLSpinCtrl*        mEaseOut = nullptr;
@@ -188,6 +204,8 @@ private:
     LLPanel*           mColorSwatch = nullptr;
     LLComboBox*        mShapeCombo = nullptr;
     LLButton*          mCenterPrimitiveBtn = nullptr;
+    LLButton*          mFitHalfArcBtn = nullptr;
+    LLButton*          mFitSineBtn = nullptr;
     LLSpinCtrl*        mPrimitiveRadiusX = nullptr;
     LLSpinCtrl*        mPrimitiveRadiusY = nullptr;
     LLSpinCtrl*        mPrimitiveStart = nullptr;

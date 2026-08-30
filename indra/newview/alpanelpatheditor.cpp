@@ -14,6 +14,7 @@
 #include "altoolpathedit.h"
 #include "llactormover.h"
 #include "llagent.h"                 // gAgent camera origin <-> global (Set camera here)
+#include "llaccordionctrl.h"
 #include "llavatarnamecache.h"
 #include "llbutton.h"
 #include "llcheckboxctrl.h"
@@ -41,6 +42,18 @@ constexpr S32 END_STOP       = 0;   // mEndMode 0, arrival facing none
 constexpr S32 END_STOP_FACE  = 1;   // mEndMode 0, arrival facing = Subject A
 constexpr S32 END_LOOP       = 2;   // mEndMode 1
 constexpr S32 END_PINGPONG   = 3;   // mEndMode 2
+
+bool cornerRadiusEligible(const LLActorMover::Path* path, S32 node,
+                          bool walking)
+{
+    if (!path || path->isPrimitive() || walking || path->mNodes.size() < 3 ||
+        node < 0 || node >= static_cast<S32>(path->mNodes.size()))
+    {
+        return false;
+    }
+    return path->mEndMode == 1 ||
+           (node > 0 && node + 1 < static_cast<S32>(path->mNodes.size()));
+}
 } // anonymous namespace
 
 ALPanelPathEditor::ALPanelPathEditor()
@@ -57,6 +70,8 @@ ALPanelPathEditor::~ALPanelPathEditor()
 
 bool ALPanelPathEditor::postBuild()
 {
+    mAccordion     = getChild<LLAccordionCtrl>("path_sections");
+    mAccordionNormalHeight = mAccordion->getRect().getHeight();
     mHeader        = getChild<LLTextBox>("path_header");
     mEditModeCheck = getChild<LLCheckBoxCtrl>("edit_mode_check");
     mList          = getChild<LLScrollListCtrl>("waypoint_list");
@@ -79,8 +94,10 @@ bool ALPanelPathEditor::postBuild()
     mNodeHeight    = getChild<LLSpinCtrl>("node_height_spinner");
     mNodeDwell     = getChild<LLSpinCtrl>("node_dwell_spinner");
     mNodeSpeed     = getChild<LLSpinCtrl>("node_speed_spinner");
+    mNodeCornerRadius = getChild<LLSpinCtrl>("node_corner_radius_spinner");
     mNodeAnim      = getChild<LLLineEditor>("node_anim_editor");
     mPathSpeed     = getChild<LLSpinCtrl>("path_speed_spinner");
+    mCadence       = getChild<LLSliderCtrl>("path_cadence_slider");
     mTension       = getChild<LLSliderCtrl>("path_tension_slider");
     mEaseIn        = getChild<LLSpinCtrl>("path_easein_spinner");
     mEaseOut       = getChild<LLSpinCtrl>("path_easeout_spinner");
@@ -91,6 +108,8 @@ bool ALPanelPathEditor::postBuild()
     mColorSwatch   = getChild<LLPanel>("color_swatch");
     mShapeCombo    = getChild<LLComboBox>("path_shape_combo");
     mCenterPrimitiveBtn = getChild<LLButton>("btn_primitive_center");
+    mFitHalfArcBtn = getChild<LLButton>("btn_fit_half_arc");
+    mFitSineBtn = getChild<LLButton>("btn_fit_sine");
     mPrimitiveRadiusX = getChild<LLSpinCtrl>("primitive_radius_x");
     mPrimitiveRadiusY = getChild<LLSpinCtrl>("primitive_radius_y");
     mPrimitiveStart = getChild<LLSpinCtrl>("primitive_start_deg");
@@ -141,9 +160,12 @@ bool ALPanelPathEditor::postBuild()
     mNodeHeight->setCommitCallback([this](LLUICtrl*, const LLSD&) { onNodeHeightCommit(); });
     mNodeDwell->setCommitCallback([this](LLUICtrl*, const LLSD&) { onNodeDwellCommit(); });
     mNodeSpeed->setCommitCallback([this](LLUICtrl*, const LLSD&) { onNodeSpeedCommit(); });
+    mNodeCornerRadius->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onNodeCornerRadiusCommit(); });
     mNodeAnim->setCommitCallback([this](LLUICtrl*, const LLSD&) { onNodeAnimCommit(); });
 
     mPathSpeed->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPathSpeedCommit(); });
+    mCadence->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPathCadenceCommit(); });
     mTension->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPathTensionCommit(); });
     mEaseIn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPathEaseInCommit(); });
     mEaseOut->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPathEaseOutCommit(); });
@@ -153,6 +175,8 @@ bool ALPanelPathEditor::postBuild()
     mEndCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPathEndCommit(); });
     mShapeCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPathShapeCommit(); });
     mCenterPrimitiveBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickCenterPrimitive(); });
+    mFitHalfArcBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickFitHalfArc(); });
+    mFitSineBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickFitSine(); });
     mPrimitiveRadiusX->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPrimitiveCommit(); });
     mPrimitiveRadiusY->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPrimitiveCommit(); });
     mPrimitiveStart->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPrimitiveCommit(); });
@@ -295,6 +319,7 @@ void ALPanelPathEditor::refreshList()
         if (mSnap[i].mPos != path->mNodes[i].mPosGlobal ||
             mSnap[i].mDwell != path->mNodes[i].mDwell ||
             mSnap[i].mSpeed != path->mNodes[i].mSpeedOverride ||
+            mSnap[i].mCornerRadius != path->mNodes[i].mCornerRadius ||
             mSnap[i].mHasCam != path->mNodes[i].mHasCam)
         {
             changed = true;
@@ -323,6 +348,11 @@ void ALPanelPathEditor::refreshList()
                 if (!detail.empty()) { detail += "  "; }
                 detail += llformat("%.2f m/s", w.mSpeedOverride);
             }
+            if (w.mCornerRadius > 0.f)
+            {
+                if (!detail.empty()) { detail += "  "; }
+                detail += llformat("corner %.2fm", w.mCornerRadius);
+            }
             if (w.mHasCam)
             {
                 if (!detail.empty()) { detail += "  "; }
@@ -340,7 +370,8 @@ void ALPanelPathEditor::refreshList()
             row["columns"][2]["column"] = "detail";
             row["columns"][2]["value"]  = detail;
             mList->addElement(row, ADD_BOTTOM);
-            mSnap.push_back({ w.mPosGlobal, w.mDwell, w.mSpeedOverride, w.mHasCam });
+            mSnap.push_back({ w.mPosGlobal, w.mDwell, w.mSpeedOverride,
+                              w.mCornerRadius, w.mHasCam });
         }
         mLastEngineNode = -2;       // force a selection re-sync below
     }
@@ -379,10 +410,18 @@ void ALPanelPathEditor::refreshInspector()
     const LLActorMover::Path* path = LLActorMover::instance().getPath(mActor);
     const S32 sel = listSelectedNode();
     const bool have = path && sel >= 0 && sel < (S32)path->mNodes.size();
+    const bool corner_node = cornerRadiusEligible(
+        path, sel, LLActorMover::instance().isPathWalking(mActor));
 
     mNodeHeight->setEnabled(have);
     mNodeDwell->setEnabled(have);
     mNodeSpeed->setEnabled(have);
+    mNodeCornerRadius->setEnabled(corner_node);
+    mNodeCornerRadius->setToolTip(corner_node
+        ? std::string("Exact circular turn radius at this node. Oversized radii "
+                      "are reduced automatically to fit the adjacent legs.")
+        : std::string("Select an interior waypoint on a stopped path. Loop paths "
+                      "may round every node."));
     mNodeAnim->setEnabled(have);
 
     if (!have)
@@ -407,6 +446,12 @@ void ALPanelPathEditor::refreshInspector()
     {
         mNodeSpeed->setValue(w.mSpeedOverride);
     }
+    if (!mNodeCornerRadius->hasFocus() &&
+        fabsf((F32)mNodeCornerRadius->getValue().asReal() -
+              w.mCornerRadius) > 0.001f)
+    {
+        mNodeCornerRadius->setValue(w.mCornerRadius);
+    }
     if (!mNodeAnim->hasFocus())
     {
         const std::string s = w.mAnim.isNull() ? std::string() : w.mAnim.asString();
@@ -421,9 +466,19 @@ void ALPanelPathEditor::refreshPathControls()
 {
     LLActorMover& mover = LLActorMover::instance();
     const LLActorMover::Path* path = mover.getPath(mActor);
+    if (path && path->mDirty)
+    {
+        // UI mode must follow the route the engine actually compiled, not a
+        // stale authored radius. Node dragging can invalidate the last fillet.
+        LLActorMover::Path& compiled = mover.editPath(mActor);
+        compiled.rebuild();
+        path = &compiled;
+    }
     const bool have_actor = mActor.notNull();
     const bool walking = have_actor && mover.isPathWalking(mActor);
     const bool primitive = path && path->isPrimitive();
+    const bool exact_corners = path && !primitive &&
+                               !path->mCornerPieces.empty();
     const S32 shape = path ? path->mShape : ALPathGeometry::WAYPOINTS;
     const bool can_edit_geometry = have_actor && !walking && !primitive;
     mEditModeCheck->setEnabled(can_edit_geometry);
@@ -433,7 +488,13 @@ void ALPanelPathEditor::refreshPathControls()
     }
 
     mPathSpeed->setEnabled(have_actor);
-    mTension->setEnabled(have_actor && !primitive);
+    mCadence->setEnabled(have_actor);
+    mTension->setEnabled(have_actor && !primitive && !walking && !exact_corners);
+    mTension->setToolTip(exact_corners
+        ? std::string("Corner smoothing is replaced by exact straight/arc "
+                      "geometry while any node has a Corner radius.")
+        : std::string("Blend waypoint routing from straight segments to a "
+                      "flowing centripetal curve."));
     mEaseIn->setEnabled(have_actor);
     mEaseOut->setEnabled(have_actor);
     mGroundFollow->setEnabled(have_actor && !(path && path->mAirborne));
@@ -443,18 +504,22 @@ void ALPanelPathEditor::refreshPathControls()
     mShapeCombo->setEnabled(have_actor && !walking);
     mCenterPrimitiveBtn->setEnabled(have_actor && primitive && !walking);
     mPrimitiveRadiusX->setEnabled(have_actor && primitive && !walking);
-    mPrimitiveRadiusY->setEnabled(have_actor &&
-        shape == ALPathGeometry::ELLIPSE_ARC && !walking);
+    const bool uses_radius_y = shape == ALPathGeometry::ELLIPSE_ARC ||
+                               shape == ALPathGeometry::DIAMOND ||
+                               shape == ALPathGeometry::FIGURE_EIGHT ||
+                               shape == ALPathGeometry::SINE_WAVE;
+    mPrimitiveRadiusY->setEnabled(have_actor && uses_radius_y && !walking);
     mPrimitiveStart->setEnabled(have_actor && primitive && !walking);
     mPrimitiveSweep->setEnabled(have_actor && primitive && !walking);
     mPrimitiveYaw->setEnabled(have_actor && primitive && !walking);
     mPrimitivePitch->setEnabled(have_actor && primitive && !walking);
     mPrimitiveRoll->setEnabled(have_actor && primitive && !walking);
     mPrimitiveRise->setEnabled(have_actor &&
-        shape == ALPathGeometry::HELIX && !walking);
+        (shape == ALPathGeometry::HELIX || shape == ALPathGeometry::SINE_WAVE) && !walking);
 
     // engine defaults when no path yet (a Path struct's own defaults)
     const F32  speed  = path ? path->mSpeed        : 1.f;
+    const F32  cadence = path ? path->mCadence     : 3.f;
     const F32  tens   = path ? path->mTension      : 0.5f;
     const F32  ein    = path ? path->mEaseIn       : 0.f;
     const F32  eout   = path ? path->mEaseOut      : 0.f;
@@ -468,6 +533,11 @@ void ALPanelPathEditor::refreshPathControls()
         fabsf((F32)mPathSpeed->getValue().asReal() - speed) > 0.001f)
     {
         mPathSpeed->setValue(speed);
+    }
+    if (!mCadence->hasFocus() &&
+        fabsf((F32)mCadence->getValue().asReal() - cadence) > 0.001f)
+    {
+        mCadence->setValue(cadence);
     }
     if (!mTension->hasFocus() &&
         fabsf((F32)mTension->getValue().asReal() - tens) > 0.001f)
@@ -530,7 +600,7 @@ void ALPanelPathEditor::refreshPathControls()
 
     mShapeCombo->setToolTip(walking
         ? std::string("Stop path playback before converting its geometry")
-        : std::string("Exact path geometry: Waypoints, Circle/Arc, Ellipse/Arc, or Helix"));
+        : std::string("Exact path geometry: Waypoints, arcs, helix, diamond, figure eight, or sine wave"));
     mCenterPrimitiveBtn->setToolTip(!primitive
         ? std::string("Choose an exact primitive first")
         : (walking ? std::string("Stop path playback before repositioning the primitive")
@@ -552,6 +622,8 @@ void ALPanelPathEditor::refreshPathControls()
     mInsertBtn->setEnabled(waypoint_edit && sel >= 0);
     mDeleteBtn->setEnabled(waypoint_edit && sel >= 0);
     mClearBtn->setEnabled(have_actor && n > 0);
+    mFitHalfArcBtn->setEnabled(have_actor && n >= 2 && !walking);
+    mFitSineBtn->setEnabled(have_actor && n >= 2 && !walking);
     const std::string geometry_reason = walking
         ? std::string("Stop path playback before editing waypoint geometry")
         : (primitive ? std::string("Primitive event anchors are generated; edit the exact shape controls below")
@@ -664,6 +736,24 @@ void ALPanelPathEditor::refreshSuspendBanner()
         {
             mHint->setVisible(!suspended);
         }
+
+        // The banner occupies the same top band as the normal hint. Move the
+        // accordion below its actual bottom edge while suspended, then restore
+        // the full-height layout when the walk resumes.
+        S32 accordion_height = mAccordionNormalHeight;
+        if (suspended)
+        {
+            constexpr S32 BANNER_GAP = 4;
+            const S32 normal_top =
+                mAccordion->getRect().mBottom + mAccordionNormalHeight;
+            const S32 clear_top =
+                mSuspendBanner->getRect().mBottom - BANNER_GAP;
+            accordion_height -= llmax(0, normal_top - clear_top);
+            accordion_height = llmax(1, accordion_height);
+        }
+        mAccordion->reshape(
+            mAccordion->getRect().getWidth(), accordion_height, false);
+        mAccordion->arrange();
     }
     if (!suspended)
     {
@@ -1046,7 +1136,10 @@ void ALPanelPathEditor::refreshReadout()
         const char* shape = !path ? "Waypoints"
             : path->mShape == ALPathGeometry::CIRCLE_ARC ? "Circle/Arc"
             : path->mShape == ALPathGeometry::ELLIPSE_ARC ? "Ellipse/Arc"
-            : path->mShape == ALPathGeometry::HELIX ? "Helix" : "Waypoints";
+            : path->mShape == ALPathGeometry::HELIX ? "Helix"
+            : path->mShape == ALPathGeometry::DIAMOND ? "Diamond"
+            : path->mShape == ALPathGeometry::FIGURE_EIGHT ? "Figure 8"
+            : path->mShape == ALPathGeometry::SINE_WAVE ? "Sine Wave" : "Waypoints";
         // middot U+00B7, em-dash U+2014 as raw UTF-8
         txt = llformat("%.1f m \xC2\xB7 ~%.1f s%s \xC2\xB7 %s",
                        len, dur, suffix, shape);
@@ -1104,11 +1197,15 @@ void ALPanelPathEditor::refreshEditButtons()
         : (reason.empty()
         ? std::string("Mirror the path left-to-right across its line of travel (positions and cameras)")
         : reason));
-    const bool helix_open = primitive && path->mShape == ALPathGeometry::HELIX &&
-                            fabsf(path->mPrimitiveRise) > 0.001f;
-    mLoopCloseBtn->setEnabled(ops_ok && !helix_open);
-    mLoopCloseBtn->setToolTip(helix_open
-        ? std::string("A rising helix cannot close; set Rise to 0 first")
+    const bool open_primitive = primitive &&
+        (path->mShape == ALPathGeometry::SINE_WAVE ||
+         (path->mShape == ALPathGeometry::HELIX &&
+          fabsf(path->mPrimitiveRise) > 0.001f));
+    mLoopCloseBtn->setEnabled(ops_ok && !open_primitive);
+    mLoopCloseBtn->setToolTip(open_primitive
+        ? (path->mShape == ALPathGeometry::SINE_WAVE
+            ? std::string("A sine wave is open; use Ping-pong to repeat it")
+            : std::string("A rising helix cannot close; set Rise to 0 first"))
         : (reason.empty()
         ? std::string("Snap the last waypoint onto the first and set the path to loop")
         : reason));
@@ -1478,6 +1575,44 @@ void ALPanelPathEditor::onNodeSpeedCommit()
     }
 }
 
+void ALPanelPathEditor::onNodeCornerRadiusCommit()
+{
+    const S32 sel = listSelectedNode();
+    LLActorMover& mover = LLActorMover::instance();
+    const LLActorMover::Path* path = mover.getPath(mActor);
+    const bool eligible = mActor.notNull() && cornerRadiusEligible(
+        path, sel, mover.isPathWalking(mActor));
+    if (!eligible)
+    {
+        return;
+    }
+    const F32 radius =
+        (F32)mNodeCornerRadius->getValue().asReal();
+    if (radius > 0.001f)
+    {
+        const S32 n = static_cast<S32>(path->mNodes.size());
+        const S32 prev = (sel + n - 1) % n;
+        const S32 next = (sel + 1) % n;
+        ALPathGeometry::CornerFillet preview;
+        if (!ALPathGeometry::buildCornerFillet(
+                path->mNodes[prev].mPosGlobal,
+                path->mNodes[sel].mPosGlobal,
+                path->mNodes[next].mPosGlobal,
+                radius, preview))
+        {
+            mNodeCornerRadius->setValue(path->mNodes[sel].mCornerRadius);
+            LLNotificationsUtil::add(
+                "GenericAlert",
+                LLSD().with("MESSAGE",
+                    "This waypoint cannot be rounded. Its adjacent legs must "
+                    "form a non-degenerate turn."));
+            return;
+        }
+    }
+    mover.snapshotForUndo(mActor);
+    mover.setNodeCornerRadius(mActor, sel, radius);
+}
+
 void ALPanelPathEditor::onNodeAnimCommit()
 {
     const S32 sel = listSelectedNode();
@@ -1512,11 +1647,33 @@ void ALPanelPathEditor::onPathSpeedCommit()
     p.markDirty();
 }
 
-void ALPanelPathEditor::onPathTensionCommit()
+void ALPanelPathEditor::onPathCadenceCommit()
 {
     if (mActor.isNull()) { return; }
     LLActorMover::instance().snapshotForUndo(mActor);
     LLActorMover::Path& p = LLActorMover::instance().editPath(mActor);
+    p.mCadence = llclamp((F32)mCadence->getValue().asReal(), 0.5f, 12.f);
+}
+
+void ALPanelPathEditor::onPathTensionCommit()
+{
+    LLActorMover& mover = LLActorMover::instance();
+    const LLActorMover::Path* current = mover.getPath(mActor);
+    if (mActor.isNull() || mover.isPathWalking(mActor) || !current ||
+        current->isPrimitive())
+    {
+        return;
+    }
+    LLActorMover::Path& p = mover.editPath(mActor);
+    if (p.mDirty)
+    {
+        p.rebuild();
+    }
+    if (!p.mCornerPieces.empty())
+    {
+        return;
+    }
+    mover.snapshotForUndo(mActor);
     p.mTension = llclamp((F32)mTension->getValue().asReal(), 0.f, 1.f);
     p.markDirty();      // geometry shape changed -> arc-length rebuild
 }
@@ -1578,8 +1735,9 @@ void ALPanelPathEditor::onPathEndCommit()
     switch (mEndCombo->getValue().asInteger())
     {
         case END_LOOP:
-            if (p.mShape == ALPathGeometry::HELIX &&
-                fabsf(p.mPrimitiveRise) > 0.001f)
+            if (p.mShape == ALPathGeometry::SINE_WAVE ||
+                (p.mShape == ALPathGeometry::HELIX &&
+                 fabsf(p.mPrimitiveRise) > 0.001f))
             {
                 // A rising helix has no closed seam. Ping-pong is the only
                 // continuous repeating traversal until Rise is set to zero.
@@ -1634,6 +1792,37 @@ void ALPanelPathEditor::onPathShapeCommit()
     mover.setPathShape(mActor, mShapeCombo->getValue().asInteger());
 }
 
+void ALPanelPathEditor::onClickFitHalfArc()
+{
+    LLActorMover& mover = LLActorMover::instance();
+    if (mActor.isNull() || mover.isPathWalking(mActor)) { return; }
+    LLPathCamera::instance().stopPreview();
+    exitEditMode();
+    if (!mover.fitPathPrimitiveToEndpoints(mActor, ALPathGeometry::CIRCLE_ARC))
+    {
+        LLNotificationsUtil::add(
+            "GenericAlert",
+            LLSD().with("MESSAGE",
+                "Could not fit a half arc. Add two distinct path endpoints."));
+    }
+}
+
+void ALPanelPathEditor::onClickFitSine()
+{
+    LLActorMover& mover = LLActorMover::instance();
+    if (mActor.isNull() || mover.isPathWalking(mActor)) { return; }
+    LLPathCamera::instance().stopPreview();
+    exitEditMode();
+    if (!mover.fitPathPrimitiveToEndpoints(mActor, ALPathGeometry::SINE_WAVE))
+    {
+        LLNotificationsUtil::add(
+            "GenericAlert",
+            LLSD().with("MESSAGE",
+                "Could not fit a sine wave. Add two endpoints with at least "
+                "0.02 m of horizontal separation."));
+    }
+}
+
 void ALPanelPathEditor::onPrimitiveCommit()
 {
     LLActorMover& mover = LLActorMover::instance();
@@ -1672,7 +1861,7 @@ void ALPanelPathEditor::onPrimitiveCommit()
     }
     if (path.mEndMode == 1)
     {
-        if (rising_helix)
+        if (rising_helix || path.mShape == ALPathGeometry::SINE_WAVE)
         {
             // Editing Rise after selecting Loop must not create a vertical
             // endpoint-to-start teleport.

@@ -946,7 +946,8 @@ LLVector3d centripetalCR(const LLVector3d& p0, const LLVector3d& p1,
 }
 
 // ground speed at arc distance d: the per-node speed override blended across
-// nodes (so cadence never step-discontinuities), then the ease-in/out ramp.
+// nodes (so node speed changes never step-discontinue), the exact-corner
+// approach/exit envelope, then the ease-in/out ramp.
 F32 pathSpeedAt(const LLActorMover::Path& path, F32 d, bool skip_ease)
 {
     F32 base = llmax(path.mSpeed, 0.05f);
@@ -970,6 +971,7 @@ F32 pathSpeedAt(const LLActorMover::Path& path, F32 d, bool skip_ease)
         const F32 f = (db > da) ? llclamp((d - da) / (db - da), 0.f, 1.f) : 0.f;
         base = llmax(eff(i) * (1.f - f) + eff(i + 1) * f, 0.05f);
     }
+    base = llmin(base, path.cornerSpeedLimitAt(d));
     if (skip_ease)
     {
         return base;
@@ -1090,8 +1092,116 @@ void LLActorMover::Path::syncPrimitiveNodes()
     }
 }
 
+void LLActorMover::Path::compileCornerPieces()
+{
+    mCornerPieces.clear();
+    const S32 n = static_cast<S32>(mNodes.size());
+    if (mShape != ALPathGeometry::WAYPOINTS || n < 3)
+    {
+        return;
+    }
+
+    const bool loop = mEndMode == 1;
+    bool any_requested = false;
+    for (S32 i = loop ? 0 : 1; i < (loop ? n : n - 1); ++i)
+    {
+        any_requested = any_requested || mNodes[i].mCornerRadius > 0.001f;
+    }
+    if (!any_requested)
+    {
+        return; // preserve the historical tension-blended waypoint path exactly
+    }
+
+    std::vector<ALPathGeometry::CornerFillet> fillets(n);
+    std::vector<bool> valid(n, false);
+    bool any_valid = false;
+    for (S32 i = loop ? 0 : 1; i < (loop ? n : n - 1); ++i)
+    {
+        const S32 prev = (i + n - 1) % n;
+        const S32 next = (i + 1) % n;
+        valid[i] = ALPathGeometry::buildCornerFillet(
+            mNodes[prev].mPosGlobal, mNodes[i].mPosGlobal,
+            mNodes[next].mPosGlobal, mNodes[i].mCornerRadius, fillets[i]);
+        any_valid = any_valid || valid[i];
+    }
+    if (!any_valid)
+    {
+        return;
+    }
+
+    auto add_line = [this](const LLVector3d& start, const LLVector3d& end,
+                           S32 node_at_end)
+    {
+        CompiledPiece piece;
+        piece.mStart = start;
+        piece.mEnd = end;
+        piece.mNodeAtEnd = node_at_end;
+        mCornerPieces.push_back(piece);
+    };
+    auto add_arc = [this](const ALPathGeometry::CornerFillet& fillet,
+                          F32 u0, F32 u1, S32 node_at_end)
+    {
+        CompiledPiece piece;
+        piece.mIsArc = true;
+        piece.mFillet = fillet;
+        piece.mArcStart = u0;
+        piece.mArcEnd = u1;
+        piece.mStart = ALPathGeometry::evaluateCornerFillet(fillet, u0);
+        piece.mEnd = ALPathGeometry::evaluateCornerFillet(fillet, u1);
+        piece.mNodeAtEnd = node_at_end;
+        mCornerPieces.push_back(piece);
+    };
+
+    LLVector3d cursor;
+    if (loop && valid[0])
+    {
+        // Put the logical start node at the rounded corner's midpoint. The
+        // second half opens the loop; the first half closes back to the seam.
+        cursor = ALPathGeometry::evaluateCornerFillet(fillets[0], 0.5);
+        add_arc(fillets[0], 0.5f, 1.f, -1);
+        cursor = fillets[0].mExit;
+    }
+    else
+    {
+        cursor = mNodes[0].mPosGlobal;
+    }
+
+    for (S32 i = 1; i < n; ++i)
+    {
+        if (valid[i])
+        {
+            add_line(cursor, fillets[i].mEntry, -1);
+            add_arc(fillets[i], 0.f, 0.5f, i);
+            add_arc(fillets[i], 0.5f, 1.f, -1);
+            cursor = fillets[i].mExit;
+        }
+        else
+        {
+            add_line(cursor, mNodes[i].mPosGlobal, i);
+            cursor = mNodes[i].mPosGlobal;
+        }
+    }
+
+    if (loop)
+    {
+        if (valid[0])
+        {
+            add_line(cursor, fillets[0].mEntry, -1);
+            add_arc(fillets[0], 0.f, 0.5f, -1);
+        }
+        else
+        {
+            add_line(cursor, mNodes[0].mPosGlobal, -1);
+        }
+    }
+}
+
 S32 LLActorMover::Path::segmentCount() const
 {
+    if (!mCornerPieces.empty())
+    {
+        return static_cast<S32>(mCornerPieces.size());
+    }
     const S32 n = (S32)mNodes.size();
     if (n < 2)
     {
@@ -1110,6 +1220,20 @@ S32 LLActorMover::Path::segmentCount() const
 
 LLVector3d LLActorMover::Path::evalSegment(S32 seg, F32 t) const
 {
+    if (!mCornerPieces.empty())
+    {
+        const CompiledPiece& piece =
+            mCornerPieces[llclamp(seg, 0,
+                static_cast<S32>(mCornerPieces.size()) - 1)];
+        const F64 u = llclamp(static_cast<F64>(t), 0.0, 1.0);
+        if (piece.mIsArc)
+        {
+            const F64 arc_u =
+                piece.mArcStart + (piece.mArcEnd - piece.mArcStart) * u;
+            return ALPathGeometry::evaluateCornerFillet(piece.mFillet, arc_u);
+        }
+        return piece.mStart * (1.0 - u) + piece.mEnd * u;
+    }
     const S32 n = (S32)mNodes.size();
     if (isPrimitive())
     {
@@ -1155,7 +1279,9 @@ void LLActorMover::Path::rebuild()
 {
     mArc.clear();
     mNodeDist.clear();
+    mCornerPieces.clear();
     syncPrimitiveNodes();
+    compileCornerPieces();
     mTotalLength = 0.f;
     mDirty = false;
 
@@ -1206,7 +1332,15 @@ void LLActorMover::Path::rebuild()
 
     F64 acc = 0.0;
     LLVector3d prev = evalSegment(0, 0.f);
-    mNodeDist.push_back(0.f);               // node 0 sits at distance 0
+    const bool rounded_corners = !mCornerPieces.empty();
+    if (rounded_corners)
+    {
+        mNodeDist.assign(mNodes.size(), 0.f);
+    }
+    else
+    {
+        mNodeDist.push_back(0.f);           // node 0 sits at distance 0
+    }
     mArc.push_back({ 0.f, 0, 0.f });
 
     auto point_line_distance = [](const LLVector3d& p,
@@ -1236,6 +1370,10 @@ void LLActorMover::Path::rebuild()
     {
         const LLVector3d p0 = evalSegment(s, 0.f);
         const LLVector3d p1 = evalSegment(s, 1.f);
+        if (rounded_corners)
+        {
+            mCornerPieces[s].mStartDistance = static_cast<F32>(acc);
+        }
         std::function<void(F32, const LLVector3d&, F32, const LLVector3d&,
                            S32, S32)>
             subdivide;
@@ -1294,9 +1432,69 @@ void LLActorMover::Path::rebuild()
             MAX_ARC_SAMPLES_PER_SEGMENT / 4);
         subdivide(0.f, p0, 1.f, p1, 0, segment_leaf_budget);
         remaining_leaf_budget -= leaves_used;
-        mNodeDist.push_back((F32)acc);      // node (s+1) at the end of segment s
+        if (rounded_corners)
+        {
+            mCornerPieces[s].mEndDistance = static_cast<F32>(acc);
+            const S32 node = mCornerPieces[s].mNodeAtEnd;
+            if (node >= 0 && node < static_cast<S32>(mNodeDist.size()))
+            {
+                // A rounded corner's logical event/camera mark is the arc
+                // midpoint, not the unreachable geometric pivot.
+                mNodeDist[node] = static_cast<F32>(acc);
+            }
+        }
+        else
+        {
+            mNodeDist.push_back((F32)acc);  // node (s+1) at segment end
+        }
     }
     mTotalLength = (F32)acc;
+}
+
+F32 LLActorMover::Path::cornerSpeedLimitAt(F32 d) const
+{
+    if (mCornerPieces.empty() || mArc.size() < 2 || mTotalLength <= 0.f)
+    {
+        return std::numeric_limits<F32>::max();
+    }
+
+    d = llclamp(d, 0.f, mTotalLength);
+    const bool loop = mEndMode == 1;
+    F32 limit = std::numeric_limits<F32>::max();
+
+    // Comfortable lateral acceleration cap: v_curve = sqrt(a_lat*r). On each
+    // adjoining straight, v^2 = v_curve^2 + 2*a_long*distance creates a
+    // continuous deterministic braking/acceleration envelope. Taking the
+    // minimum across every arc also handles consecutive corners and loops.
+    constexpr F32 CORNER_LATERAL_ACCEL_MPS2 = 2.5f;
+    constexpr F32 CORNER_LONGITUDINAL_ACCEL_MPS2 = 2.5f;
+    for (const CompiledPiece& piece : mCornerPieces)
+    {
+        if (!piece.mIsArc)
+        {
+            continue;
+        }
+
+        const F32 curve_limit = llmax(0.2f, std::sqrt(
+            CORNER_LATERAL_ACCEL_MPS2 *
+            static_cast<F32>(piece.mFillet.mRadius)));
+        F32 distance = 0.f;
+        if (d < piece.mStartDistance || d > piece.mEndDistance)
+        {
+            auto endpoint_distance = [&](F32 endpoint)
+            {
+                const F32 direct = fabsf(d - endpoint);
+                return loop ? llmin(direct, mTotalLength - direct) : direct;
+            };
+            distance = llmin(endpoint_distance(piece.mStartDistance),
+                             endpoint_distance(piece.mEndDistance));
+        }
+        const F32 envelope = std::sqrt(
+            curve_limit * curve_limit +
+            2.f * CORNER_LONGITUDINAL_ACCEL_MPS2 * distance);
+        limit = llmin(limit, envelope);
+    }
+    return limit;
 }
 
 void LLActorMover::Path::evalAtDistance(F32 d, LLVector3d& pos, LLVector3d& tangent) const
@@ -1539,8 +1737,9 @@ LLSD LLActorMover::pathSceneData(const LLUUID& actor_id) const
     }
 
     LLSD data = LLSD::emptyMap();
-    data["schema"] = 2;
+    data["schema"] = 4;
     data["speed"] = path->mSpeed;
+    data["cadence"] = path->mCadence;
     data["end_mode"] = path->mEndMode;
     data["tension"] = path->mTension;
     data["ease_in"] = path->mEaseIn;
@@ -1577,6 +1776,7 @@ LLSD LLActorMover::pathSceneData(const LLUUID& actor_id) const
         value["speed_override"] = node.mSpeedOverride;
         value["anim"] = node.mAnim;
         value["ground_offset"] = node.mGroundOffset;
+        value["corner_radius"] = node.mCornerRadius;
         value["yaw_offset"] = node.mYawOffset;
         value["has_camera"] = node.mHasCam;
         if (node.mHasCam)
@@ -1595,7 +1795,7 @@ LLSD LLActorMover::pathSceneData(const LLUUID& actor_id) const
 bool LLActorMover::applyPathSceneData(const LLUUID& actor_id, const LLSD& data)
 {
     constexpr S32 PATH_SCHEMA_MIN = 1;
-    constexpr S32 PATH_SCHEMA_MAX = 2;
+    constexpr S32 PATH_SCHEMA_MAX = 4;
     const S32 schema = data["schema"].asInteger();
     if (!data.isMap() || schema < PATH_SCHEMA_MIN || schema > PATH_SCHEMA_MAX ||
         !data["nodes"].isArray() ||
@@ -1605,12 +1805,18 @@ bool LLActorMover::applyPathSceneData(const LLUUID& actor_id, const LLSD& data)
     }
     auto finite_f32 = [](const LLSD& value, F32 fallback)
     {
+        if (value.isUndefined())
+        {
+            return fallback;
+        }
         const F64 number = value.asReal();
         return std::isfinite(number) ? static_cast<F32>(number) : fallback;
     };
 
     Path loaded;
     loaded.mSpeed = llclamp(finite_f32(data["speed"], 1.f), 0.05f, 100.f);
+    loaded.mCadence = schema >= 3
+        ? llclamp(finite_f32(data["cadence"], 3.f), 0.5f, 12.f) : 3.f;
     loaded.mEndMode = llclamp(data["end_mode"].asInteger(), 0, 2);
     loaded.mTension = llclamp(finite_f32(data["tension"], 0.5f), 0.f, 1.f);
     loaded.mEaseIn = llclamp(finite_f32(data["ease_in"], 0.f), 0.f, 60.f);
@@ -1635,7 +1841,8 @@ bool LLActorMover::applyPathSceneData(const LLUUID& actor_id, const LLSD& data)
     {
         loaded.mShape = llclamp(data["shape"].asInteger(),
                                 static_cast<S32>(ALPathGeometry::WAYPOINTS),
-                                static_cast<S32>(ALPathGeometry::HELIX));
+                                static_cast<S32>(schema >= 3 ? ALPathGeometry::SINE_WAVE
+                                                             : ALPathGeometry::HELIX));
         if (loaded.isPrimitive())
         {
             if (!data.has("primitive_center"))
@@ -1680,6 +1887,10 @@ bool LLActorMover::applyPathSceneData(const LLUUID& actor_id, const LLSD& data)
                     loaded.mEndMode = 2;
                 }
             }
+            if (loaded.mShape == ALPathGeometry::SINE_WAVE && loaded.mEndMode == 1)
+            {
+                loaded.mEndMode = 2;
+            }
             if (loaded.mEndMode == 1)
             {
                 // A looped primitive must end on its own seam. Sanitize scene
@@ -1715,6 +1926,9 @@ bool LLActorMover::applyPathSceneData(const LLUUID& actor_id, const LLSD& data)
         node.mAnim = value["anim"].asUUID();
         node.mGroundOffset = llclamp(
             finite_f32(value["ground_offset"], 0.f), -100.f, 100.f);
+        node.mCornerRadius = schema >= 4
+            ? llclamp(finite_f32(value["corner_radius"], 0.f), 0.f, 10000.f)
+            : 0.f;
         node.mYawOffset = ALTrajectory::wrapToPi(
             finite_f32(value["yaw_offset"], 0.f));
         node.mHasCam = value["has_camera"].asBoolean();
@@ -1759,7 +1973,7 @@ bool LLActorMover::applyPathSceneData(const LLUUID& actor_id, const LLSD& data)
 bool LLActorMover::setPathShape(const LLUUID& actor_id, S32 shape)
 {
     shape = llclamp(shape, static_cast<S32>(ALPathGeometry::WAYPOINTS),
-                    static_cast<S32>(ALPathGeometry::HELIX));
+                    static_cast<S32>(ALPathGeometry::SINE_WAVE));
     LLVOAvatar* av = resolve_actor(actor_id);
     if (!av || !av->getRootJoint())
     {
@@ -1808,7 +2022,8 @@ bool LLActorMover::setPathShape(const LLUUID& actor_id, S32 shape)
         const F32 root_above = llmax(0.f, av->getPelvisToFoot());
         foot_global.mdV[VZ] -= root_above;
         path.mPrimitiveCenterGlobal = foot_global;
-        for (S32 i = 0; i < 5; ++i)
+        const S32 anchor_count = shape == ALPathGeometry::FIGURE_EIGHT ? 9 : 5;
+        for (S32 i = 0; i < anchor_count; ++i)
         {
             Waypoint node;
             node.mRootAbove = root_above;
@@ -1821,7 +2036,7 @@ bool LLActorMover::setPathShape(const LLUUID& actor_id, S32 shape)
         path.mPrimitiveYawDeg = 0.f;
         path.mPrimitivePitchDeg = 0.f;
         path.mPrimitiveRollDeg = 0.f;
-        path.mPrimitiveRise = 3.f;
+        path.mPrimitiveRise = shape == ALPathGeometry::SINE_WAVE ? 0.f : 3.f;
     }
     else if (!path.isPrimitive())
     {
@@ -1868,6 +2083,24 @@ bool LLActorMover::setPathShape(const LLUUID& actor_id, S32 shape)
         path.mPrimitiveRise = static_cast<F32>(
             path.mNodes.back().mPosGlobal.mdV[VZ] -
             path.mNodes.front().mPosGlobal.mdV[VZ]);
+        if (shape == ALPathGeometry::SINE_WAVE)
+        {
+            const LLVector3d& first = path.mNodes.front().mPosGlobal;
+            const LLVector3d& last = path.mNodes.back().mPosGlobal;
+            const LLVector3d chord = last - first;
+            const F64 horizontal = std::sqrt(chord.mdV[VX] * chord.mdV[VX] +
+                                             chord.mdV[VY] * chord.mdV[VY]);
+            path.mPrimitiveCenterGlobal = (first + last) * 0.5;
+            path.mPrimitiveRadiusX = static_cast<F32>(llmax(0.5, horizontal * 0.5));
+            path.mPrimitiveRadiusY = static_cast<F32>(llmax(0.5, horizontal * 0.25));
+            path.mPrimitiveYawDeg = static_cast<F32>(
+                std::atan2(chord.mdV[VY], chord.mdV[VX]) * RAD_TO_DEG);
+            path.mPrimitiveStartDeg = 0.f;
+            path.mPrimitiveSweepDeg = 360.f;
+            path.mPrimitivePitchDeg = 0.f;
+            path.mPrimitiveRollDeg = 0.f;
+            path.mPrimitiveRise = static_cast<F32>(chord.mdV[VZ]);
+        }
         if (shape == ALPathGeometry::HELIX && std::fabs(path.mPrimitiveRise) < 0.1f)
         {
             path.mPrimitiveRise = 3.f;
@@ -1896,13 +2129,64 @@ bool LLActorMover::setPathShape(const LLUUID& actor_id, S32 shape)
         {
             path.mAirborne = false;
         }
-        if (new_path)
+        if (shape == ALPathGeometry::SINE_WAVE)
+        {
+            path.mEndMode = 2;
+        }
+        else if (new_path)
         {
             path.mEndMode = 1;
         }
     }
     path.markDirty();
     path.rebuild();
+    return true;
+}
+
+bool LLActorMover::fitPathPrimitiveToEndpoints(const LLUUID& actor_id, S32 shape)
+{
+    if ((shape != ALPathGeometry::CIRCLE_ARC &&
+         shape != ALPathGeometry::SINE_WAVE) || isPathWalking(actor_id))
+    {
+        return false;
+    }
+    const Path* current = getPath(actor_id);
+    if (!current || current->mNodes.size() < 2)
+    {
+        return false;
+    }
+    ALPathGeometry::Primitive fitted = current->primitive();
+    if (!ALPathGeometry::fitPrimitiveToEndpoints(
+            fitted, shape,
+            current->mNodes.front().mPosGlobal,
+            current->mNodes.back().mPosGlobal))
+    {
+        return false;
+    }
+
+    snapshotForUndo(actor_id);
+    Path* path = &editPath(actor_id);
+    path->mShape = fitted.mType;
+    path->mPrimitiveCenterGlobal = fitted.mCenter;
+    path->mPrimitiveRadiusX = fitted.mRadiusX;
+    path->mPrimitiveRadiusY = fitted.mRadiusY;
+    path->mPrimitiveStartDeg = fitted.mStartDeg;
+    path->mPrimitiveSweepDeg = fitted.mSweepDeg;
+    path->mPrimitiveYawDeg = fitted.mYawDeg;
+    path->mPrimitivePitchDeg = fitted.mPitchDeg;
+    path->mPrimitiveRollDeg = fitted.mRollDeg;
+    path->mPrimitiveRise = fitted.mRise;
+    if (shape == ALPathGeometry::CIRCLE_ARC)
+    {
+        path->mEndMode = 0;
+    }
+    else
+    {
+        path->mEndMode = 2;
+    }
+    path->mArrivalFacingMode = 0;
+    path->markDirty();
+    path->rebuild();
     return true;
 }
 
@@ -2150,6 +2434,23 @@ bool LLActorMover::setNodeGroundOffset(const LLUUID& actor_id, S32 index, F32 of
     Path& path = editPath(actor_id);
     path.mNodes[index].mGroundOffset = offset_m;
     path.markDirty();
+    return true;
+}
+
+bool LLActorMover::setNodeCornerRadius(const LLUUID& actor_id, S32 index,
+                                       F32 radius_m)
+{
+    const Path* cp = getPath(actor_id);
+    if (!cp || cp->isPrimitive() || isPathWalking(actor_id) ||
+        index < 0 || index >= static_cast<S32>(cp->mNodes.size()) ||
+        !std::isfinite(radius_m))
+    {
+        return false;
+    }
+    Path& path = editPath(actor_id);
+    path.mNodes[index].mCornerRadius = llclamp(radius_m, 0.f, 10000.f);
+    path.markDirty();
+    path.rebuild();
     return true;
 }
 
@@ -2937,6 +3238,7 @@ LLActorMover::PathState LLActorMover::captureState(const LLUUID& key) const
         const Path& p = it->second;
         st.mNodes             = p.mNodes;
         st.mSpeed             = p.mSpeed;
+        st.mCadence           = p.mCadence;
         st.mEndMode           = p.mEndMode;
         st.mTension           = p.mTension;
         st.mEaseIn            = p.mEaseIn;
@@ -2979,6 +3281,7 @@ void LLActorMover::applyState(const LLUUID& key, const PathState& st)
         Path& p = mPaths[key];
         p.mNodes             = st.mNodes;
         p.mSpeed             = st.mSpeed;
+        p.mCadence           = st.mCadence;
         p.mEndMode           = st.mEndMode;
         p.mTension           = st.mTension;
         p.mEaseIn            = st.mEaseIn;
@@ -3098,6 +3401,9 @@ bool LLActorMover::reversePath(const LLUUID& actor_id)
         p.mPrimitiveCenterGlobal = primitive.mCenter;
         p.mPrimitiveStartDeg = primitive.mStartDeg;
         p.mPrimitiveSweepDeg = primitive.mSweepDeg;
+        p.mPrimitiveYawDeg = primitive.mYawDeg;
+        p.mPrimitivePitchDeg = primitive.mPitchDeg;
+        p.mPrimitiveRollDeg = primitive.mRollDeg;
         p.mPrimitiveRise = primitive.mRise;
     }
     std::reverse(p.mNodes.begin(), p.mNodes.end());     // per-node data rides each node
@@ -3203,7 +3509,8 @@ bool LLActorMover::loopClosePath(const LLUUID& actor_id)
     Path& p = editPath(actor_id);
     if (p.isPrimitive())
     {
-        if (p.mShape == ALPathGeometry::HELIX && std::fabs(p.mPrimitiveRise) > 0.001f)
+        if (p.mShape == ALPathGeometry::SINE_WAVE ||
+            (p.mShape == ALPathGeometry::HELIX && std::fabs(p.mPrimitiveRise) > 0.001f))
         {
             return false;
         }
@@ -3257,6 +3564,7 @@ bool LLActorMover::copyPathTo(const LLUUID& src_actor, const LLUUID& dst_actor)
     const Path& src = sit->second;
     dst.mNodes             = src.mNodes;
     dst.mSpeed             = src.mSpeed;
+    dst.mCadence           = src.mCadence;
     dst.mEndMode           = src.mEndMode;
     dst.mTension           = src.mTension;
     dst.mEaseIn            = src.mEaseIn;
@@ -3681,6 +3989,10 @@ void LLActorMover::start(const LLUUID& actor_id)
             const auto leader_path = mPaths.find(follow_it->second.mLeader);
             mv.mAirborne = leader_path != mPaths.end() &&
                            leader_path->second.mAirborne;
+            if (leader_path != mPaths.end())
+            {
+                mv.mNominal = llclamp(leader_path->second.mCadence, 0.5f, 12.f);
+            }
         }
 
         startLocomotion(av, mv);
@@ -3715,7 +4027,7 @@ void LLActorMover::start(const LLUUID& actor_id)
         mv.mDistance = path.mTotalLength;
         mv.mDist     = 0.f;
         mv.mDir      = 1.f;
-        mv.mNominal  = llmax((F32)nominal, 0.5f);
+        mv.mNominal  = llclamp(path.mCadence, 0.5f, 12.f);
         mv.mAnim     = locomotion_anim(av->getID());
         mv.mAirborne = path.mAirborne;
         mv.mFaceInit = false;
@@ -4668,6 +4980,7 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
     }
     Path& path = path_it->second;
     mv.mAirborne = path.mAirborne;          // path-wide edits take effect next frame
+    mv.mNominal = llclamp(path.mCadence, 0.5f, 12.f);
     if (path.mDirty)
     {
         path.rebuild();
@@ -5007,6 +5320,7 @@ void LLActorMover::advanceFollower(LLVOAvatar* av, Move& mv, const Follow& f, F3
     }
 
     Path& lpath = pit->second;
+    mv.mNominal = llclamp(lpath.mCadence, 0.5f, 12.f);
     if (lpath.mDirty)
     {
         lpath.rebuild();
@@ -11194,7 +11508,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     {
         *out_complete = true;
     }
-    if (!av || av->isDead() || (batches.empty() && (!static_faces || static_faces->empty())))
+    if (!av || av->isDead() || !av->getRootJoint() || (batches.empty() && (!static_faces || static_faces->empty())))
     {
         if (out_complete)
         {
@@ -11264,7 +11578,12 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     // Pivoting at the foot keeps rotated/scaled feet planted on `foot`; with
     // the default params (yaw 0, scale 1) this collapses to the classic pure
     // translation T(foot - live_foot).
-    const LLVector3 live_root = av->getRenderPosition();
+    // Pivot on the SKELETON ROOT (the same reference the live skinning palette is
+    // built from), NOT getRenderPosition() (the drawable). A Mover-V2 path walk
+    // advances only the skeleton root and leaves the drawable placement put, so
+    // pivoting on the drawable drifted the node ghost by the walked distance
+    // (foot landed at N + (root - drawable)). getRootJoint() null-guarded above.
+    const LLVector3 live_root = av->getRootJoint()->getWorldPosition();
     // getPelvisToFoot() can return a negative, absurd, or non-finite value for a
     // non-standard or still-loading skeleton (e.g. a tiny "special skeleton"
     // avatar). Used raw it drops the scale pivot ABOVE the mesh, so scaling
@@ -12534,7 +12853,7 @@ static int ghost_pass_sweep_class(U32 pass)
 }
 
 // ---------------------------------------------------------------------------
-void LLActorMover::renderHeadingPreview()
+void LLActorMover::renderHeadingPreview(bool depth_aware)
 {
     // (Ghost Studio instances do NOT draw here: they are scene dressing, not
     // an editing indicator, so render_ui_3d() calls renderStudioGhosts()
@@ -12582,9 +12901,12 @@ void LLActorMover::renderHeadingPreview()
     static LLCachedControl<F32>  ghost_distort_amount(gSavedSettings, "PathGhostDistortAmount", 0.5f);
     const F32 dist = llmax((F32)distance, 0.1f);
 
-    // same beacon-style local overlay as renderObjectBeacons(): UI shader, no
-    // texture, no depth writes -- strictly a client-side overlay
-    LLGLSUIDefault gls_ui;
+    // The main view supplies its scene color/depth target here. Blend the guides
+    // into color without writing depth; opaque avatars, deferred actor ghosts,
+    // props, and terrain therefore remain visually in front of the path.
+    LLGLEnable blend_state(GL_BLEND);
+    LLGLDisable cull(GL_CULL_FACE);
+    LLGLDepthTest depth(depth_aware, false, GL_LEQUAL);
     gUIProgram.bind();
     gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
 
@@ -12617,11 +12939,8 @@ void LLActorMover::renderHeadingPreview()
     const S32    edit_node  = mEditNode;
 
     // Ghost billboards are collected across the whole roster and drawn LAST, in a
-    // single far-to-near pass, so the translucent avatar cards blend correctly
-    // against each other (the UI 3D pass runs on a cleared depth buffer, so there
-    // is no scene depth to sort against -- painter order is what we control) and
-    // do not interleave with the opaque line/ribbon viz. Only populated when the
-    // ghost toggle is on, so the default-off path allocates nothing.
+    // single far-to-near pass, so translucent cards blend correctly against each
+    // other and do not interleave with the line/ribbon visualization.
     struct GhostItem
     {
         LLVOAvatar* mAv;
@@ -12638,8 +12957,8 @@ void LLActorMover::renderHeadingPreview()
         roster.push_back(LLUUID::null);     // my avatar
     }
     // While the in-world path edit tool is active it draws the edit actor's path
-    // overlay itself (with hover/selection feedback via renderActorPathOverlay,
-    // called from render_ui_3d), so skip that actor here to avoid a double-draw.
+    // overlay itself (with hover/selection feedback via renderActorPathOverlay in
+    // the same scene-depth guide pass), so skip that actor here to avoid a double-draw.
     // Non-edit actors preview normally.
     const bool path_edit_tool_active =
         (LLToolMgr::getInstance()->getCurrentTool() == (LLTool*)ALToolPathEdit::getInstance());
@@ -12702,7 +13021,14 @@ void LLActorMover::renderHeadingPreview()
             const bool loop = (path.mEndMode == 1);
             for (S32 i = 0; i < n; ++i)
             {
-                LLVector3 base = gAgent.getPosAgentFromGlobal(path.mNodes[i].mPosGlobal);
+                LLVector3d event_global = path.mNodes[i].mPosGlobal;
+                LLVector3d event_tangent(1.0, 0.0, 0.0);
+                if (i < static_cast<S32>(path.mNodeDist.size()))
+                {
+                    path.evalAtDistance(
+                        path.mNodeDist[i], event_global, event_tangent);
+                }
+                LLVector3 base = gAgent.getPosAgentFromGlobal(event_global);
                 base.mV[VZ] += NODE_BASE_LIFT;
                 const bool is_start = (i == 0);
                 const bool is_end   = (i == n - 1) && !loop;    // a loop has no distinct end
@@ -12725,19 +13051,9 @@ void LLActorMover::renderHeadingPreview()
                 // ghost pass below (real impostor billboard, or stick fallback).
                 if (onion)
                 {
-                    S32 fromIdx = i;
-                    S32 toIdx   = (i + 1 < n) ? (i + 1) : (loop ? 0 : i);
-                    if (toIdx == fromIdx && i > 0)
-                    {
-                        fromIdx = i - 1;    // last node of an open path: face along the incoming leg
-                        toIdx   = i;
-                    }
-                    LLVector3 face(1.f, 0.f, 0.f);
-                    if (toIdx != fromIdx)
-                    {
-                        face = gAgent.getPosAgentFromGlobal(path.mNodes[toIdx].mPosGlobal)
-                             - gAgent.getPosAgentFromGlobal(path.mNodes[fromIdx].mPosGlobal);
-                    }
+                    LLVector3 face(static_cast<F32>(event_tangent.mdV[VX]),
+                                   static_cast<F32>(event_tangent.mdV[VY]),
+                                   static_cast<F32>(event_tangent.mdV[VZ]));
                     const F32 gh = path.mNodes[i].mRootAbove * 1.9f;
                     ghosts.push_back({ av, base, face, gh, col_mid });
                 }
@@ -12865,10 +13181,10 @@ void LLActorMover::renderHeadingPreview()
     // actor's own worn mesh re-skinned and re-placed, depth-tested so it reads as
     // a real translucent body), else a real avatar impostor billboard (drawImpostor-
     // Ghost), else the readable stick figure (drawPoseGhost). Sorted far-to-near so
-    // the translucent draws stack correctly. NOTE (documented caveat): the ghost
-    // pass runs on a cleared depth buffer, so world geometry does NOT occlude the
-    // ghosts -- they read as a client overlay ON TOP of the scene (each model
-    // ghost still self-occludes cleanly via its own depth prime).
+    // the translucent draws stack correctly. In the scene-depth guide pass, world
+    // geometry occludes these ghosts; each model ghost also self-occludes via its
+    // own depth prime. The fallback UI path remains available to non-depth-aware
+    // callers.
     if (!ghosts.empty())
     {
         const LLVector3 cam_pos = cam->getOrigin();
@@ -12923,7 +13239,7 @@ void LLActorMover::renderHeadingPreview()
             }
         }
 
-        // Pass B: billboard / stick fallback on the cleared-depth UI overlay.
+        // Pass B: billboard / stick fallback, inheriting the caller's depth mode.
         for (const GhostItem* gp : fallback)
         {
             const GhostItem& g = *gp;
@@ -12957,13 +13273,14 @@ void LLActorMover::renderHeadingPreview()
 
 // ---------------------------------------------------------------------------
 // Lean per-actor path overlay used by the in-world path edit tool (called from
-// render_ui_3d while the tool is active). Draws the actor's spline ribbon +
+// the scene-depth guide pass while the tool is active). Draws the spline ribbon +
 // chevrons (>= 2 nodes) and numbered node markers (from the FIRST node), a
 // breathing highlight on the edit-selected node and a steady highlight on the
 // hovered node. Independent of the roster / floater / >=2-node / Show-path gating
 // in renderHeadingPreview(), so editing always shows what is being marked. Zero
 // cost when the actor has no path.
-void LLActorMover::renderActorPathOverlay(const LLUUID& actor_id, bool editing, S32 hover_node)
+void LLActorMover::renderActorPathOverlay(const LLUUID& actor_id, bool editing,
+                                          S32 hover_node, bool depth_aware)
 {
     auto pit = mPaths.find(actor_id);
     if (pit == mPaths.end() || pit->second.mNodes.empty())
@@ -12976,9 +13293,9 @@ void LLActorMover::renderActorPathOverlay(const LLUUID& actor_id, bool editing, 
         path.rebuild();
     }
 
-    // same beacon-style client overlay as renderHeadingPreview(): UI shader, no
-    // texture, no depth writes -- a pure client-side indicator over any ground.
-    LLGLSUIDefault gls_ui;
+    LLGLEnable blend_state(GL_BLEND);
+    LLGLDisable cull(GL_CULL_FACE);
+    LLGLDepthTest depth(depth_aware, false, GL_LEQUAL);
     gUIProgram.bind();
     gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
 
@@ -13046,6 +13363,31 @@ void LLActorMover::renderActorPathOverlay(const LLUUID& actor_id, bool editing, 
             drawSelectedHighlight(base, c, pulse);
         }
         drawNodeMarker(base, c, path.mNodes[i].mDwell > 0.f);
+
+        // A rounded node is a control pivot outside the traveled fillet. Show a
+        // thin tether and a secondary route marker at the logical event midpoint,
+        // while keeping the numbered pivot as the draggable edit target.
+        if (path.mNodes[i].mCornerRadius > 0.f &&
+            i < static_cast<S32>(path.mNodeDist.size()))
+        {
+            LLVector3d route_global;
+            LLVector3d route_tangent;
+            path.evalAtDistance(path.mNodeDist[i], route_global, route_tangent);
+            LLVector3 route = gAgent.getPosAgentFromGlobal(route_global);
+            route.mV[VZ] += NODE_BASE_LIFT;
+            if ((route - base).magVecSquared() > 0.0001f)
+            {
+                gGL.setLineWidth(1.f);
+                gGL.begin(LLRender::LINES);
+                gGL.color4f(c.mV[VX], c.mV[VY], c.mV[VZ], 0.45f);
+                gGL.vertex3fv(base.mV);
+                gGL.vertex3fv(route.mV);
+                gGL.end();
+                LLColor4 route_col = c;
+                route_col.mV[VW] = 0.55f;
+                drawNodeMarker(route, route_col, false);
+            }
+        }
 
         LLVector3 num_at = base;
         num_at.mV[VZ] += NODE_STICK_H + 0.06f;
@@ -13770,7 +14112,7 @@ void LLActorMover::buildGhostDeferredQueue(const LLCamera& camera, U32 view_stam
         ++mGhostDeferredCounters.mLiveInstancesConsidered;
 
         LLVOAvatar* av = resolve_actor(inst.mSource);
-        if (!av || av->isDead())
+        if (!av || av->isDead() || !av->getRootJoint())
         {
             ++mGhostDeferredCounters.mUnresolvedSources;
             continue;
@@ -13799,7 +14141,12 @@ void LLActorMover::buildGhostDeferredQueue(const LLCamera& camera, U32 view_stam
         // then suppressed the correctly placed overlay, making the crowd vanish.
         proxy.mRotation     = ~av->getRotation() * inst.mRotation;
         proxy.mScale        = llclamp(inst.mScale, GHOST_SCALE_MIN, GHOST_SCALE_MAX);
-        const LLVector3 live_root = av->getRenderPosition();
+        // Pivot on the SKELETON ROOT (matches the world-space skinning palette),
+        // NOT getRenderPosition() (the drawable): a Mover path walk advances only
+        // the root, so a drawable-based pivot drifted the deferred clone -- and its
+        // cull bounds -- by the walked distance. Same bug/fix as drawGeometryGhost;
+        // getRootJoint() null-guarded at the source check above.
+        const LLVector3 live_root = av->getRootJoint()->getWorldPosition();
         // Same non-standard / still-loading skeleton hazard as the forward overlay
         // (drawGeometryGhost): a raw pelvis-to-foot can come back negative or
         // non-finite, which skews the pivot and bakes NaN into the proxy bounds
