@@ -2157,16 +2157,29 @@ LLVOAvatar* LLVOAvatar::asAvatar()
 //-----------------------------------------------------------------------------
 void LLVOAvatar::startDefaultMotions()
 {
-    //-------------------------------------------------------------------------
-    // start default motions
-    //-------------------------------------------------------------------------
-    startMotion( ANIM_AGENT_HEAD_ROT );
-    startMotion( ANIM_AGENT_EYE );
-    startMotion( ANIM_AGENT_BODY_NOISE );
-    startMotion( ANIM_AGENT_BREATHE_ROT );
-    startMotion( ANIM_AGENT_PHYSICS_MOTION );
-    startMotion( ANIM_AGENT_HAND_MOTION );
-    startMotion( ANIM_AGENT_PELVIS_FIX );
+    // [Alchemy] Honor mEnableDefaultMotions HERE, not only at the buildCharacter()
+    // call site. LLControlAvatar (llcontrolavatar.cpp:58) and LLGhostAvatar
+    // (llghostavatar.cpp:100) clear the flag on purpose, and every other
+    // default-motion start in this file already checks it (buildCharacter,
+    // processAnimationStateChanges, getOffObject). This was the one unguarded
+    // entry: FSPoserAnimator::tryPosingAvatar() calls it for whatever it poses,
+    // which on an animesh strands head-rot/eye/breathe/pelvis-fix drivers on the
+    // object's rig after posing stops (stopPosingAvatar() only stops the posing
+    // motion, and flushAllMotions() restarts active motions, so a skeleton reset
+    // did not clear them either).
+    if (mEnableDefaultMotions)
+    {
+        //---------------------------------------------------------------------
+        // start default motions
+        //---------------------------------------------------------------------
+        startMotion( ANIM_AGENT_HEAD_ROT );
+        startMotion( ANIM_AGENT_EYE );
+        startMotion( ANIM_AGENT_BODY_NOISE );
+        startMotion( ANIM_AGENT_BREATHE_ROT );
+        startMotion( ANIM_AGENT_PHYSICS_MOTION );
+        startMotion( ANIM_AGENT_HAND_MOTION );
+        startMotion( ANIM_AGENT_PELVIS_FIX );
+    }
 
     //-------------------------------------------------------------------------
     // restart any currently active motions
@@ -5548,6 +5561,30 @@ void ALPosePolish::run(LLVOAvatar* av, F32 dt)
     {
         return;   // master gate off (default) -> no-op
     }
+    // [Alchemy] A WORN animesh (control avatar whose root volume is an attachment)
+    // rides the wearer's attachment point: no ground, no locomotion, and often a
+    // repurposed rig. Contact IK, inertialization and breath/sway on it can only
+    // disfigure. Rezzed animesh actors keep polish (the Actor Mover feeds them
+    // contact hints).
+    //
+    // A GHOST clone (entity clone) is likewise excluded: its pose is driven by the
+    // Ghost Studio system (mirror/directed/frozen), not by a fresh per-frame motion
+    // blend, so polish's additive deltas (delta * current) multiply onto the
+    // previous frame's already-polished result and accumulate into a slow
+    // rotational drift ("clone drifts in a slow anticlockwise circle"). The clone
+    // already mirrors a source whose pose includes that source's own polish, so
+    // re-running it here is double application anyway.
+    //
+    // Drop shadow state so nothing stale survives detach/re-attach or a drive-mode
+    // change.
+    if ((av->isControlAvatar() && av->getAttachedAvatar()) || av->isGhostAvatar())
+    {
+        if (mSeeded)
+        {
+            reset();
+        }
+        return;
+    }
     mDiagInertia = mDiagContact = mDiagSecondary = 0;   // M5 per-frame counts
     static LLCachedControl<bool> inertia_enabled(gSavedSettings, "ALPolishInertiaEnabled", false);
     if (inertia_enabled)
@@ -7192,7 +7229,38 @@ bool LLVOAvatar::isAnyAnimationSignaled(const LLUUID *anim_array, const S32 num_
 void LLVOAvatar::resetAnimations()
 {
     LLKeyframeMotion::flushKeyframeCache();
-    flushAllMotions();
+    if (!isControlAvatar())
+    {
+        // Stock: rebuild every active motion instance and restart it at its
+        // current time offset. Unchanged for normal (non-self) avatars.
+        flushAllMotions();
+        return;
+    }
+
+    // [Alchemy] Animesh: flushAllMotions() RESTARTS whatever is active, so a
+    // stranded local driver (poser default motions, an FSPosingMotion, a
+    // switchboard or Actor Mover local anim) survives "Reset Skeleton &
+    // Animations". Do a real stop: stop every active instance immediately (marks
+    // it stopped, removes it from the active list, clears any client-side priority
+    // override), forget the playing set, and re-derive it from what the simulator
+    // signals. This has to happen here because LLControlAvatar::updateAnimations()
+    // is event-driven (ObjectAnimation message / volume change), not per-frame.
+    //
+    // Simulator-signaled object animations are NOT lost: processAnimationStateChanges()
+    // restarts them from t=0 immediately out of the signaled-animation map. A
+    // "stuck" starred animation is owned by the object's script and cannot be
+    // stopped from the client.
+    std::vector<LLUUID> active_ids;
+    for (LLMotion* motionp : getMotionController().getActiveMotions())
+    {
+        active_ids.push_back(motionp->getID());
+    }
+    for (const LLUUID& id : active_ids)
+    {
+        LLCharacter::stopMotion(id, true);   // never self: bypass AO/remap on purpose
+    }
+    mPlayingAnimations.clear();
+    processAnimationStateChanges();
 }
 
 //-----------------------------------------------------------------------------

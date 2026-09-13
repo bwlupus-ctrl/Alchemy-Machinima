@@ -7003,11 +7003,33 @@ class LLAvatarToggleSearch : public view_listener_t
     }
 };
 
+// [Alchemy] Reset Skeleton on an animesh must target the animesh's OWN control
+// avatar. find_avatar_from_object() walks an ATTACHMENT up to its wearer, which is
+// correct for every other caller (touch/inspect/cast handlers on a worn object),
+// but for a WORN animesh it resets the wearer and leaves the animesh rig untouched.
+// Resolve the animated-object case first, for these two reset handlers only.
+static LLVOAvatar* find_reset_skeleton_target(LLViewerObject* object)
+{
+    if (object && !object->isAvatar())
+    {
+        // getControlAvatar() resolves through getRootEdit(), so a child prim of a
+        // worn or rezzed animesh linkset lands on the same control avatar.
+        if (LLControlAvatar* cav = object->getControlAvatar())
+        {
+            if (!cav->isDead())
+            {
+                return cav;
+            }
+        }
+    }
+    return find_avatar_from_object(object);
+}
+
 class LLAvatarResetSkeleton : public view_listener_t
 {
     bool handleEvent(const LLSD& userdata)
     {
-        if (LLVOAvatar* avatar = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject()))
+        if (LLVOAvatar* avatar = find_reset_skeleton_target(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject()))
         {
             if(avatar->getID() == gAgentID)
             {
@@ -7041,7 +7063,7 @@ class LLAvatarResetSkeletonAndAnimations : public view_listener_t
 {
     bool handleEvent(const LLSD& userdata)
     {
-        if (LLVOAvatar* avatar = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject()))
+        if (LLVOAvatar* avatar = find_reset_skeleton_target(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject()))
         {
             if(avatar->getID() == gAgentID)
             {
