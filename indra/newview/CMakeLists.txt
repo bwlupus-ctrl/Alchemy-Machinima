@@ -285,6 +285,7 @@ set(viewer_SOURCE_FILES
     alcinelightrig.cpp
     alcinelightrigmanager.cpp
     alcinehaze.cpp
+    alcinerigrim.cpp
     alcinelightrigmodel.cpp
     aldiopterpresetbank.cpp
     aldiopterrelevance.cpp
@@ -1184,6 +1185,7 @@ set(viewer_HEADER_FILES
     alpanelanimpreview.h
     alpanelatmosphericvolumes.h
     alcinehaze.h
+    alcinerigrim.h
     alpanelcinelightrig.h
     alprojectorshaftpresets.h
     alpanelcinecamparams.h

@@ -235,6 +235,19 @@ bool blobMapWellFormed(const LLSD& data)
              (light.has("shadow_soft") &&
               !light["shadow_soft"].isReal() &&
               !light["shadow_soft"].isInteger()) ||
+            // [RigRim] per-light rim params (Phase A), optional for old scenes.
+            (light.has("rim_gain") &&
+             !light["rim_gain"].isReal() &&
+             !light["rim_gain"].isInteger()) ||
+            (light.has("rim_sharpness") &&
+             !light["rim_sharpness"].isReal() &&
+             !light["rim_sharpness"].isInteger()) ||
+            (light.has("rim_wrap") &&
+             !light["rim_wrap"].isReal() &&
+             !light["rim_wrap"].isInteger()) ||
+            (light.has("rim_back_bias") &&
+             !light["rim_back_bias"].isReal() &&
+             !light["rim_back_bias"].isInteger()) ||
             (light.has("flicker_program") &&
              !light["flicker_program"].isInteger()) ||
             (light.has("flicker_amount") &&
@@ -684,6 +697,40 @@ bool ALCineLightRigManager::isSlotLit(Slot slot) const
     }
     return rig.isGroupEnabled() ? rig.lastResolvedGroupSlots() != 0
                                 : rig.resolveSlotAvatar() != nullptr;
+}
+
+// [RigRim] resolve a drawable id to the rig light it belongs to. 5 slots x 4
+// lights x (1 or 2) UUID compares per frame per local light; negligible, no
+// cache needed. [RigRim] P2-1: compare ids FIRST (cheap array/UUID reads)
+// and only pay for isSlotLit() (which can resolve the slot's avatar or
+// object target) once a slot's projector/omni id actually matches — matches
+// are rare (0 or 1 per frame) while this runs once per visible local light.
+bool ALCineLightRigManager::rigRimParamsFor(
+    const LLUUID& id, LLVector4& out) const
+{
+    if (id.isNull())
+    {
+        return false;
+    }
+    static LLCachedControl<bool> include_bounce(
+        gSavedSettings, "CineRigRimIncludeBounce", false);
+    for (S32 i = 0; i < SLOT_COUNT; ++i)
+    {
+        const Slot slot = static_cast<Slot>(i);
+        const ALCineLightRig& rig = at(slot);
+        for (S32 light = 0; light < ALCineLightRigModel::LIGHT_COUNT; ++light)
+        {
+            const bool projector_match = rig.projectorId(light) == id;
+            const bool omni_match = !projector_match && include_bounce() &&
+                rig.omniId(light) == id;
+            if ((projector_match || omni_match) && isSlotLit(slot))
+            {
+                out = rig.rigRimParams(light);
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 U32 ALCineLightRigManager::enabledMask() const
@@ -1433,6 +1480,23 @@ void ALCineLightRigManager::migrateLegacyScene(const LLSD& data)
     ParamBlob migrated = captureSelected();
     // Object targeting did not exist in the legacy single-rig scene block.
     migrated.mObjectTarget.setNull();
+    // [RigRim] Round-2 P2-B fix: an EARLIER round-1 fix unconditionally reset
+    // every light's rim fields here, reasoning that captureSelected()'s live
+    // snapshot could carry a previous scene's rim values into a legacy
+    // migration. That over-corrected: migrateLegacyScene() is reached ONLY
+    // from ALCineLightRigManager::applySceneData(), which itself is called
+    // ONLY from LLFloaterDirector::loadScene() (verified: single call chain,
+    // no startup/session-restore path reaches it) -- and loadScene() already
+    // resets every CineRigRim* flat setting to default BEFORE calling
+    // applySceneData() whenever the scene lacks "CineRigRimEnabled" (a
+    // genuinely pre-Rig-Rim scene). So by the time captureSelected() reads
+    // gSavedSettings here, it is already either (a) carrying the scene's own
+    // correctly-restored rim values (a new-format scene whose "instances"
+    // array happened to be malformed for an unrelated reason, falling back
+    // to this legacy path) or (b) already zeroed/defaulted (a genuinely
+    // legacy scene). Forcing a reset here a second time would incorrectly
+    // discard case (a)'s legitimately-saved values, so no rim-specific
+    // handling is needed in this function at all.
     const LLDirectorCast& cast = LLDirectorCast::instance();
     const LLUUID subjects[4] = {
         cast.getSubjectA(), cast.getSubjectB(),

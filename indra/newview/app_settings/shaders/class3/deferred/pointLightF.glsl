@@ -67,9 +67,17 @@ void pbrPunctual(vec3 diffuseColor, vec3 specularColor,
 
 GBufferInfo getGBuffer(vec2 screenpos);
 
+// [RigRim] per-light rim params (x gain, y k, z wrap, w back bias); zero for
+// every non-rig light.  Uploaded next to LIGHT_CENTER/LIGHT_SIZE in the
+// deferred box-light loop.  Globals + helper live in deferredUtil.glsl.
+uniform vec4 rig_rim_light;
+int rigRimMode();
+vec3 rigRimTerm(vec3 n, vec3 v, vec3 l, vec3 c_l, vec3 diffuseColor, float roughness, vec4 rim);
+
 void main()
 {
     vec3 final_color = vec3(0);
+    vec3 rim_color   = vec3(0); // [RigRim]
     vec2 tc          = getScreenCoord(vary_fragcoord);
     vec3 pos         = getPosition(tc).xyz;
     GBufferInfo gb = getGBuffer(tc);
@@ -115,6 +123,18 @@ void main()
         pbrPunctual(diffuseColor, specularColor, perceptualRoughness, metallic, n.xyz, v, normalize(lv), nl, diffPunc, specPunc);
 
         final_color += intensity* clamp(nl * (diffPunc + specPunc), vec3(0), vec3(10));
+
+        // [RigRim] PBR branch (omni: no cone, no per-light shadow); additive on
+        // top of the light's own contribution (mode 0 never enters).
+        if (rigRimMode() != 0)
+        {
+            rim_color = rigRimTerm(n.xyz, v, l, dist_atten * color, diffuseColor, perceptualRoughness, rig_rim_light);
+            if (rigRimMode() == 2)
+            {
+                final_color = vec3(0.0); // debug: rim only
+            }
+            final_color += rim_color;
+        }
     }
     else
     {
@@ -123,6 +143,14 @@ void main()
             discard;
         }
         spec.rgb = srgb_to_linear(spec.rgb);
+
+        // [RigRim] legacy branch; roughness from legacy glossiness.  (nl here
+        // is the eps-clamped calcHalfVectors value, so the discard above never
+        // fires; the helper recomputes n.l itself for the wrap term.)
+        if (rigRimMode() != 0)
+        {
+            rim_color = rigRimTerm(n, v, l, dist_atten * color.rgb, diffuse, 1.0 - spec.a, rig_rim_light);
+        }
 
         float lit = nl * dist_atten;
 
@@ -142,6 +170,17 @@ void main()
                 float scol = fres*texture(lightFunc, vec2(nh, spec.a)).r*gt/(nh*nl);
                 final_color += lit*scol*color.rgb*spec.rgb;
             }
+        }
+
+        // [RigRim] fold the rim in BEFORE the all-black discard so rim-only
+        // pixels survive (mode 0 never enters; the discard is unchanged).
+        if (rigRimMode() != 0)
+        {
+            if (rigRimMode() == 2)
+            {
+                final_color = vec3(0.0); // debug: rim only
+            }
+            final_color += rim_color;
         }
 
         if (dot(final_color, final_color) <= 0.0)

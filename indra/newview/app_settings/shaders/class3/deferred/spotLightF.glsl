@@ -93,9 +93,17 @@ GBufferInfo getGBuffer(vec2 screenpos);
 // [BDMerge NSpot] direct per-projector shadow sampling (shadowUtil.glsl)
 float sampleSpotShadow(vec3 pos, vec3 norm, int index, vec2 pos_screen);
 
+// [RigRim] per-projector rim params (x gain, y k, z wrap, w back bias); the
+// globals + helper live in deferredUtil.glsl.  Uploaded by setupSpotLight();
+// zero for every non-rig projector, so only rig fixtures ever add rim.
+uniform vec4 rig_rim_light;
+int rigRimMode();
+vec3 rigRimTerm(vec3 n, vec3 v, vec3 l, vec3 c_l, vec3 diffuseColor, float roughness, vec4 rim);
+
 void main()
 {
     vec3 final_color = vec3(0,0,0);
+    vec3 rim_color   = vec3(0,0,0); // [RigRim]
     vec2 tc          = getScreenCoord(vary_fragcoord);
     vec3 pos         = getPosition(tc).xyz;
 
@@ -196,6 +204,17 @@ void main()
             pbrPunctual(diffuseColor, specularColor, perceptualRoughness, metallic, n.xyz, v, normalize(lv), nl, diffPunc, specPunc);
 
             final_color += amb_rgb * clamp(nl * (diffPunc + specPunc), vec3(0), vec3(10));
+
+            // [RigRim] PBR branch: rim weighted by this projector's cookie/cone
+            // (getProjectedLightDiffuseColor == colour x gobo x edge fade),
+            // distance attenuation and its own shadow.  Sampled OUTSIDE the
+            // nl > 0 test so wrap can reach just past the terminator; the
+            // 3.25 balance magic is deliberately omitted (see deferredUtil).
+            if (rigRimMode() != 0)
+            {
+                vec3 rim_lit = getProjectedLightDiffuseColor( l_dist, proj_tc.xy ) * dist_atten * shadow;
+                rim_color += rigRimTerm(n.xyz, v, l, rim_lit, diffuseColor, perceptualRoughness, rig_rim_light);
+            }
         }
     }
     else
@@ -226,6 +245,14 @@ void main()
 
             amb_rgb = getProjectedLightAmbiance( amb_da, dist_atten, lit, nl, 1.0, proj_tc.xy );
             final_color += diffuse.rgb * amb_rgb * max(dot(-normalize(lv), n), 0.0);
+
+            // [RigRim] legacy (Blinn-Phong) branch: same weighting as the PBR
+            // branch; roughness derived from legacy glossiness (spec.a).
+            if (rigRimMode() != 0)
+            {
+                vec3 rim_lit = getProjectedLightDiffuseColor( l_dist, proj_tc.xy ) * dist_atten * shadow;
+                rim_color += rigRimTerm(n, v, l, rim_lit, diffuse.rgb, 1.0 - spec.a, rig_rim_light);
+            }
         }
 
         if (spec.a > 0.0)
@@ -278,6 +305,17 @@ void main()
 
     //not sure why, but this line prevents MATBUG-194
     final_color = max(final_color, vec3(0.0));
+    // [RigRim] additive on top of the projector's own lighting; the classic_mode
+    // final_scale below applies to both so the balance is preserved.  Mode 0
+    // never reaches this block (exact no-op).
+    if (rigRimMode() != 0)
+    {
+        if (rigRimMode() == 2)
+        {
+            final_color = vec3(0.0); // debug: rim only
+        }
+        final_color += rim_color;
+    }
     float final_scale = 1.0;
     if (classic_mode > 0)
         final_scale = 0.9;

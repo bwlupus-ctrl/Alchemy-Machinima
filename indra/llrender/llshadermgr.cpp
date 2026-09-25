@@ -2030,6 +2030,13 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("cine_haze_debug");
     mReservedUniforms.push_back("cine_haze_additive");
 
+    // [RigRim] Rig Rim Light (lockstep with the enum block appended in
+    // llshadermgr.h)
+    mReservedUniforms.push_back("rig_rim_mode");
+    mReservedUniforms.push_back("rig_rim_globals");
+    mReservedUniforms.push_back("rig_rim_light");
+    mReservedUniforms.push_back("rig_rim_lights");
+
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 
     std::set<std::string> dupe_check;

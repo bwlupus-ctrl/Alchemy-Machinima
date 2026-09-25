@@ -2594,6 +2594,181 @@
       <key>Type</key><string>Boolean</string>
       <key>Value</key><integer>0</integer>
     </map>
+    <key>CineRigRimEnabled</key>
+    <map>
+      <key>Comment</key><string>[RigRim] Rig Rim Light master enable: per-pixel rim lighting term on the Cine Light Rig fixtures (off = bit-exact no-op)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineRigRimMasterGain</key>
+    <map>
+      <key>Comment</key><string>[RigRim] Rig Rim Light master gain, multiplies every fixture's rim amount</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.0</real>
+    </map>
+    <key>CineRigRimRoughnessSoften</key>
+    <map>
+      <key>Comment</key><string>[RigRim] Rig Rim Light roughness softening: how much surface roughness widens and softens the grazing rim band</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineRigRimBackSoftness</key>
+    <map>
+      <key>Comment</key><string>[RigRim] Rig Rim Light back-light softness: width of the ramp deciding whether a light counts as behind the subject</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineRigRimTint</key>
+    <map>
+      <key>Comment</key><string>[RigRim] Rig Rim Light surface tint: 0 pure light colour, 1 rim fully multiplied by the surface albedo</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.25</real>
+    </map>
+    <key>CineRigRimIncludeAlpha</key>
+    <map>
+      <key>Comment</key><string>[RigRim] Rig Rim Light on forward alpha / transparent surfaces such as hair and mesh alpha</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>1</integer>
+    </map>
+    <key>CineRigRimIncludeProbes</key>
+    <map>
+      <key>Comment</key><string>[RigRim] Also render Rig Rim Light into reflection/irradiance probe captures</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineRigRimIncludeBounce</key>
+    <map>
+      <key>Comment</key><string>[RigRim] The rig's synthetic omni bounce fills also carry their light's rim params</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineRigRimDebugRimOnly</key>
+    <map>
+      <key>Comment</key><string>[RigRim] Debug: local lights show only their rim term (sun/sky/ambient are untouched). Not persisted: a debug view should never survive a restart.</string>
+      <key>Persist</key><integer>0</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineRigRimKeyGain</key>
+    <map>
+      <key>Comment</key><string>[RigRim] KEY fixture rim strength (0 = none)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
+    <key>CineRigRimKeySharpness</key>
+    <map>
+      <key>Comment</key><string>[RigRim] KEY fixture rim grazing-angle exponent: higher is a thinner edge band</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>3.0</real>
+    </map>
+    <key>CineRigRimKeyWrap</key>
+    <map>
+      <key>Comment</key><string>[RigRim] KEY fixture rim wrap: lets the rim band continue past the light's terminator</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.35</real>
+    </map>
+    <key>CineRigRimKeyBackBias</key>
+    <map>
+      <key>Comment</key><string>[RigRim] KEY fixture rim back-light threshold: -1 rims from any angle, 1 only when directly behind the subject</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
+    <key>CineRigRimFillGain</key>
+    <map>
+      <key>Comment</key><string>[RigRim] FILL fixture rim strength (0 = none)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
+    <key>CineRigRimFillSharpness</key>
+    <map>
+      <key>Comment</key><string>[RigRim] FILL fixture rim grazing-angle exponent: higher is a thinner edge band</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>3.0</real>
+    </map>
+    <key>CineRigRimFillWrap</key>
+    <map>
+      <key>Comment</key><string>[RigRim] FILL fixture rim wrap: lets the rim band continue past the light's terminator</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.35</real>
+    </map>
+    <key>CineRigRimFillBackBias</key>
+    <map>
+      <key>Comment</key><string>[RigRim] FILL fixture rim back-light threshold: -1 rims from any angle, 1 only when directly behind the subject</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
+    <key>CineRigRimRimGain</key>
+    <map>
+      <key>Comment</key><string>[RigRim] RIM fixture rim strength (0 = none); defaults on so enabling Rig Rim Light immediately shows a clean edge from the RIM light</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.0</real>
+    </map>
+    <key>CineRigRimRimSharpness</key>
+    <map>
+      <key>Comment</key><string>[RigRim] RIM fixture rim grazing-angle exponent: higher is a thinner edge band</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>3.0</real>
+    </map>
+    <key>CineRigRimRimWrap</key>
+    <map>
+      <key>Comment</key><string>[RigRim] RIM fixture rim wrap: lets the rim band continue past the light's terminator</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.35</real>
+    </map>
+    <key>CineRigRimRimBackBias</key>
+    <map>
+      <key>Comment</key><string>[RigRim] RIM fixture rim back-light threshold: -1 rims from any angle, 1 only when directly behind the subject</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
+    <key>CineRigRimBgGain</key>
+    <map>
+      <key>Comment</key><string>[RigRim] BG fixture rim strength (0 = none)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
+    <key>CineRigRimBgSharpness</key>
+    <map>
+      <key>Comment</key><string>[RigRim] BG fixture rim grazing-angle exponent: higher is a thinner edge band</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>3.0</real>
+    </map>
+    <key>CineRigRimBgWrap</key>
+    <map>
+      <key>Comment</key><string>[RigRim] BG fixture rim wrap: lets the rim band continue past the light's terminator</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.35</real>
+    </map>
+    <key>CineRigRimBgBackBias</key>
+    <map>
+      <key>Comment</key><string>[RigRim] BG fixture rim back-light threshold: -1 rims from any angle, 1 only when directly behind the subject</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
     <key>CineLightRigEasyMode</key>
     <map>
       <key>Comment</key><string>Show the simplified cinematic light exposure controls; this is a UI preference and does not gate rendering</string>

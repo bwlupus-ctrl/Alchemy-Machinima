@@ -30,6 +30,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "alcinehaze.h"
+#include "alcinerigrim.h" // [RigRim]
 
 #include "pipeline.h"
 #include "alcinelightrig.h"
@@ -10149,6 +10150,7 @@ void LLPipeline::setupHWLights()
             light_state->setConstantAttenuation(0.f);
             light_state->setSize(light->getLightRadius() * 1.5f);
             light_state->setFalloff(light->getLightFalloff(DEFERRED_LIGHT_FALLOFF));
+            light_state->setRigRim(ALCineRigRim::paramsForVolume(light)); // [RigRim]
 
             if (sRenderDeferred)
             {
@@ -10205,6 +10207,7 @@ void LLPipeline::setupHWLights()
         light->setDiffuse(LLColor4::black);
         light->setAmbient(LLColor4::black);
         light->setSpecular(LLColor4::black);
+        light->setRigRim(LLVector4(0.f, 0.f, 0.f, 0.f)); // [RigRim]
     }
 
     // Bookmark comment to allow searching for mSpecialRenderMode == 3 (avatar edit mode),
@@ -10308,6 +10311,7 @@ void LLPipeline::enableLightsPreview()
     light->setSpecular(specular0);
     light->setSpotExponent(0.f);
     light->setSpotCutoff(180.f);
+    light->setRigRim(LLVector4(0.f, 0.f, 0.f, 0.f)); // [RigRim] P2-3
 
     light_pos = LLVector4(dir1, 0.f);
 
@@ -10319,6 +10323,7 @@ void LLPipeline::enableLightsPreview()
     light->setSpecular(specular1);
     light->setSpotExponent(0.f);
     light->setSpotCutoff(180.f);
+    light->setRigRim(LLVector4(0.f, 0.f, 0.f, 0.f)); // [RigRim] P2-3
 
     light_pos = LLVector4(dir2, 0.f);
     light = gGL.getLight(3);
@@ -10329,6 +10334,7 @@ void LLPipeline::enableLightsPreview()
     light->setSpecular(specular2);
     light->setSpotExponent(0.f);
     light->setSpotCutoff(180.f);
+    light->setRigRim(LLVector4(0.f, 0.f, 0.f, 0.f)); // [RigRim] P2-3
 }
 
 
@@ -20559,6 +20565,10 @@ void LLPipeline::bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_
     // deferred haze pass and every forward shader reached through
     // bindDeferredShaderFast()'s slow path.
     ALCineHaze::bind(shader);
+
+    // [RigRim] Rig Rim Light globals (no-op for programs that do not link
+    // deferredUtil.glsl). Covers pointLightF / spotLightF / multiPointLightF.
+    ALCineRigRim::bindGlobals(shader);
 }
 
 
@@ -20944,6 +20954,12 @@ void LLPipeline::renderDeferredLighting()
             static LLDrawable::drawable_vector_t spot_lights;
             static LLDrawable::drawable_vector_t fullscreen_spot_lights;
             static std::vector<LLVector4>        light_colors;
+            static std::vector<LLVector4>        light_rims; // [RigRim]
+            // [RigRim] Round-2 P2 fix: read once per call so the point-light
+            // push and the multi-light batch pack/upload below can both skip
+            // their rim-specific work when Rig Rim is off, instead of only
+            // short-circuiting inside ALCineRigRim::paramsForVolume().
+            const bool rig_rim_active = ALCineRigRim::isEnabled();
 
             gGL.setSceneBlendType(LLRender::BT_ADD);
             LLSettingsSky::ptr_t        psky        = LLEnvironment::instance().getCurrentSky();
@@ -21073,6 +21089,8 @@ void LLPipeline::renderDeferredLighting()
                         gDeferredLightProgram.uniform3fv(LLShaderMgr::DIFFUSE_COLOR, 1, col.mV);
                         gDeferredLightProgram.uniform1f(LLShaderMgr::LIGHT_FALLOFF, volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF));
                         gDeferredLightProgram.uniform1i(LLShaderMgr::CLASSIC_MODE, (psky->canAutoAdjust()) ? 1 : 0);
+                        // [RigRim]
+                        gDeferredLightProgram.uniform4fv(LLShaderMgr::RIG_RIM_LIGHT, 1, ALCineRigRim::paramsForVolume(volume).mV);
 
                         gGL.syncMatrices();
 
@@ -21098,6 +21116,12 @@ void LLPipeline::renderDeferredLighting()
 
                         fullscreen_lights.push_back(LLVector4(tc.x, tc.y, tc.z, s));
                         light_colors.push_back(LLVector4(col.mV[0], col.mV[1], col.mV[2], volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF)));
+                        // [RigRim] Only staged when active; every consumer below checks the
+                        // same function-constant rig_rim_active, so indices stay parallel.
+                        if (rig_rim_active)
+                        {
+                            light_rims.push_back(ALCineRigRim::paramsForVolume(volume));
+                        }
                     }
                 }
 
@@ -21159,6 +21183,7 @@ void LLPipeline::renderDeferredLighting()
                 const U32 max_count = LL_DEFERRED_MULTI_LIGHT_COUNT;
                 LLVector4 light[max_count];
                 LLVector4 col[max_count];
+                LLVector4 rim[max_count]; // [RigRim]
 
                 F32 far_z = 0.f;
 
@@ -21166,6 +21191,13 @@ void LLPipeline::renderDeferredLighting()
                 {
                     light[count] = fullscreen_lights[i];
                     col[count] = light_colors[i];
+                    // [RigRim] Round-2 P2 fix: skip packing the rim slot when off;
+                    // the upload below is skipped too, so a stale/uninitialized
+                    // entry here is never read.
+                    if (rig_rim_active)
+                    {
+                        rim[count] = light_rims[i]; // [RigRim]
+                    }
 
                     far_z = llmin(light[count].mV[2] - light[count].mV[3], far_z);
                     count++;
@@ -21177,6 +21209,23 @@ void LLPipeline::renderDeferredLighting()
                         gDeferredMultiLightProgram[idx].uniform1i(LLShaderMgr::MULTI_LIGHT_COUNT, count);
                         gDeferredMultiLightProgram[idx].uniform4fv(LLShaderMgr::MULTI_LIGHT, count, light[0].mV);
                         gDeferredMultiLightProgram[idx].uniform4fv(LLShaderMgr::MULTI_LIGHT_COL, count, col[0].mV);
+                        // [RigRim] P2-5: the GLSL name `rig_rim_lights` is reused for two
+                        // differently-shaped arrays: this program's multiPointLightF.glsl
+                        // declares vec4[LIGHT_COUNT] parallel to MULTI_LIGHT/MULTI_LIGHT_COL
+                        // (uploaded here, manually, once per batch), while the forward alpha
+                        // programs declare vec4[8] parallel to light_position[8] (uploaded by
+                        // LLRender::syncLightState() from the GL light-unit state). This is
+                        // safe only because gDeferredMultiLightProgram has no
+                        // hasLighting/calculatesLighting/calculatesAtmospherics feature flag,
+                        // so LLRender::syncMatrices() never auto-calls syncLightState() for
+                        // it and the GL-light-unit upload can never clobber this one.
+                        // [RigRim] Round-2 P2 fix: skip the upload entirely when off;
+                        // mode 0 was already uploaded via bindGlobals() above and the
+                        // shader early-outs before ever reading rig_rim_lights.
+                        if (rig_rim_active)
+                        {
+                            gDeferredMultiLightProgram[idx].uniform4fv(LLShaderMgr::RIG_RIM_LIGHTS, count, rim[0].mV); // [RigRim]
+                        }
                         gDeferredMultiLightProgram[idx].uniform1f(LLShaderMgr::MULTI_LIGHT_FAR_Z, far_z);
                         gDeferredMultiLightProgram[idx].uniform1i(LLShaderMgr::CLASSIC_MODE, (psky->canAutoAdjust()) ? 1 : 0);
                         far_z = 0.f;
@@ -21228,6 +21277,7 @@ void LLPipeline::renderDeferredLighting()
             spot_lights.clear();
             fullscreen_spot_lights.clear();
             light_colors.clear();
+            light_rims.clear(); // [RigRim]
         }
 
         gGL.setColorMask(true, true);
@@ -22019,6 +22069,11 @@ void LLPipeline::setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep)
     shader.uniform4fv(LLShaderMgr::GOBO_ANIM_PARAMS, 1, gobo_anim);
     shader.uniform3fv(LLShaderMgr::GOBO_TINT, 1, gobo_tint);
     shader.uniform4fv(LLShaderMgr::GOBO_PATTERN_PARAMS, 1, gobo_pp);
+
+    // [RigRim] covers both gDeferredSpotLightProgram and
+    // gDeferredMultiSpotLightProgram (both surface spot loops call this).
+    // Not uploaded by setupSpotLightVolumetric: the volumetric march has no rim.
+    shader.uniform4fv(LLShaderMgr::RIG_RIM_LIGHT, 1, ALCineRigRim::paramsForVolume(volume).mV);
 }
 
 // [BDMerge G3.3] Side-effect-free variant of setupSpotLight for the finalize-stage

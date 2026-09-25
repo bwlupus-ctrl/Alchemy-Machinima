@@ -932,6 +932,34 @@ const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()
         "CineLightRigBgBeam",
         "CineLightRigBgGobo",
         "CineLightRigBgOn",
+        // [RigRim] Rig Rim Light (Phase A).
+        "CineRigRimEnabled",
+        "CineRigRimMasterGain",
+        "CineRigRimRoughnessSoften",
+        "CineRigRimBackSoftness",
+        "CineRigRimTint",
+        "CineRigRimIncludeAlpha",
+        "CineRigRimIncludeProbes",
+        "CineRigRimIncludeBounce",
+        // [RigRim] P2-4: CineRigRimDebugRimOnly is deliberately NOT part of
+        // scene state (Persist 0 in settings.xml) — a debug view should
+        // never be saved into, or restored from, a Director scene.
+        "CineRigRimKeyGain",
+        "CineRigRimKeySharpness",
+        "CineRigRimKeyWrap",
+        "CineRigRimKeyBackBias",
+        "CineRigRimFillGain",
+        "CineRigRimFillSharpness",
+        "CineRigRimFillWrap",
+        "CineRigRimFillBackBias",
+        "CineRigRimRimGain",
+        "CineRigRimRimSharpness",
+        "CineRigRimRimWrap",
+        "CineRigRimRimBackBias",
+        "CineRigRimBgGain",
+        "CineRigRimBgSharpness",
+        "CineRigRimBgWrap",
+        "CineRigRimBgBackBias",
     };
     return settings;
 }
@@ -1215,6 +1243,29 @@ void LLFloaterDirector::loadScene(const std::string& name)
                 if (LLControlVariable* ctrl = gSavedSettings.getControl(setting))
                 {
                     ctrl->setValue(scene["settings"][setting]);
+                }
+            }
+        }
+    }
+
+    // [RigRim] P1-C fix: a scene saved before Rig Rim existed (or any scene
+    // whose settings map simply omits it) has no "CineRigRimEnabled" key.
+    // The loop above only ever SETS a key it finds, so leaving the rest
+    // untouched would let a PREVIOUSLY loaded scene's rim state (enabled,
+    // custom per-light values) leak into this one. Reset every CineRigRim*
+    // control to its default (master Enabled -> off, per-light values -> the
+    // contract per-light defaults) so an old scene renders exactly as it was
+    // authored, with Rig Rim off.
+    if (!scene["settings"].isMap() ||
+        !scene["settings"].has("CineRigRimEnabled"))
+    {
+        for (const std::string& setting : sceneSettingsList())
+        {
+            if (setting.rfind("CineRigRim", 0) == 0)
+            {
+                if (LLControlVariable* ctrl = gSavedSettings.getControl(setting))
+                {
+                    ctrl->resetToDefault(true);
                 }
             }
         }

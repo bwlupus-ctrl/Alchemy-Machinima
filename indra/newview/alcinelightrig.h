@@ -15,6 +15,7 @@
 #include "llsd.h"
 #include "lluuid.h"
 #include "v3dmath.h"
+#include "v4math.h" // [RigRim] LLVector4 per-light rim params
 
 #include <string>
 #include <vector>
@@ -220,6 +221,11 @@ public:
     ALCineLightRigSlot slot() const { return mSlot; }
     LLVOAvatar* resolveSlotAvatar() const;
     LLUUID projectorId(S32 light) const;
+    // [RigRim] bounce-fill omni id for a rig light, mirrors projectorId.
+    LLUUID omniId(S32 light) const;
+    // [RigRim] per-light rim params (Phase A), bounds-checked; returns a
+    // static zero vector for an out-of-range index.
+    const LLVector4& rigRimParams(S32 light) const;
     bool liveProbeCentre(LLVector3d& centre) const;
     void liveProbeIgnoredLightIds(std::vector<LLUUID>& ids) const;
     void liveProbeProjectorIds(std::vector<LLUUID>& ids) const;
@@ -323,6 +329,8 @@ private:
         bool catchlight_enabled, F32 catchlight_ev, F32 catchlight_size,
         F32 catchlight_angle, const F32 shadow_softness[
             ALCineLightRigModel::LIGHT_COUNT],
+        // [RigRim] per-light rim params (Phase A).
+        const LLVector4 rig_rim[ALCineLightRigModel::LIGHT_COUNT],
         const std::string& cookie_setting,
         ALCineLightRigModel::Setup& setup,
         ALCineLightRigModel::Globals& globals,
@@ -426,6 +434,9 @@ private:
     bool mShaftEnabled[ALCineLightRigModel::LIGHT_COUNT] = {};
     bool mHeroEnabled[ALCineLightRigModel::LIGHT_COUNT] = {};
     F32 mShadowSoftness[ALCineLightRigModel::LIGHT_COUNT] = {};
+    // [RigRim] per-light rim params (Phase A); zeroed explicitly in the
+    // constructor since LLVector4's default constructor sets w = 1.
+    LLVector4 mRigRim[ALCineLightRigModel::LIGHT_COUNT];
     F32 mLiveProbeBounceScale = 1.f;
     ALCineLightRigModel::RigFrame mLastFrame;
 };

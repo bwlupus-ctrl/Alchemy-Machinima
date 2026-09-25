@@ -34,6 +34,12 @@ uniform float sun_wash;
 uniform int   light_count;
 uniform vec4  light[LIGHT_COUNT];     // .w = size; see C++ fullscreen_lights.push_back()
 uniform vec4  light_col[LIGHT_COUNT]; // .a = falloff
+// [RigRim] per-light rim params, parallel to light[] / light_col[] (x gain,
+// y k, z wrap, w back bias).  Zero for every non-rig light.  Uploaded with
+// the same count as MULTI_LIGHT / MULTI_LIGHT_COL from the fullscreen batch.
+uniform vec4  rig_rim_lights[LIGHT_COUNT];
+int rigRimMode();
+vec3 rigRimTerm(vec3 n, vec3 v, vec3 l, vec3 c_l, vec3 diffuseColor, float roughness, vec4 rim);
 
 uniform vec2  screen_res;
 uniform float far_z;
@@ -68,6 +74,7 @@ GBufferInfo getGBuffer(vec2 screenpos);
 void main()
 {
     vec3 final_color = vec3(0, 0, 0);
+    vec3 rim_color   = vec3(0, 0, 0); // [RigRim]
     vec2 tc          = getScreenCoord(vary_fragcoord);
     vec3 pos         = getPosition(tc).xyz;
     if (pos.z < far_z)
@@ -121,6 +128,12 @@ void main()
                 vec3 specPunc = vec3(0);
                 pbrPunctual(diffuseColor, specularColor, perceptualRoughness, metallic, n.xyz, v, lv, nl, diff, specPunc);
                 final_color += intensity * clamp(nl * (diff + specPunc), vec3(0), vec3(10));
+
+                // [RigRim] PBR branch (omni: no cone, no per-light shadow)
+                if (rigRimMode() != 0)
+                {
+                    rim_color += rigRimTerm(n.xyz, v, lv, dist_atten * lightColor, diffuseColor, perceptualRoughness, rig_rim_lights[light_idx]);
+                }
             }
         }
     }
@@ -166,8 +179,28 @@ void main()
 
                     final_color += col;
                 }
+
+                // [RigRim] legacy branch: evaluated outside the nl > 0 test so
+                // wrap can reach just past the terminator.  Own normalize /
+                // attenuation because the existing block only computes them
+                // for front-facing pixels; roughness from legacy glossiness.
+                if (rigRimMode() != 0)
+                {
+                    vec3  rim_l     = lv / max(length(lv), 1.0e-6);
+                    float rim_atten = calcLegacyDistanceAttenuation(dist, light_col[i].a);
+                    rim_color += rigRimTerm(n, v, rim_l, rim_atten * light_col[i].rgb, diffuse, 1.0 - spec.a, rig_rim_lights[i]);
+                }
             }
         }
+    }
+    // [RigRim] additive on top of the batch's own lighting (mode 0 never enters)
+    if (rigRimMode() != 0)
+    {
+        if (rigRimMode() == 2)
+        {
+            final_color = vec3(0.0); // debug: rim only
+        }
+        final_color += rim_color;
     }
     float final_scale = 1.0;
     if (classic_mode > 0)
@@ -182,5 +215,7 @@ void main()
     vec4 dummy2 = light_col[0];
     vec4 dummy3 = light[LIGHT_COUNT - 1];
     vec4 dummy4 = light_col[LIGHT_COUNT - 1];
+    vec4 dummy5 = rig_rim_lights[0];               // [RigRim]
+    vec4 dummy6 = rig_rim_lights[LIGHT_COUNT - 1]; // [RigRim]
 #endif
 }

@@ -787,7 +787,96 @@ void pbrPunctual(vec3 diffuseColor, vec3 specularColor,
     spec = specContrib;
 }
 
-vec3 pbrCalcPointLightOrSpotLight(vec3 diffuseColor, vec3 specularColor,
+// [RigRim] ------------------------------------------------------------------
+// Rig Rim Light (Cine Light Rig, Phase A).  A per-pixel rim LIGHTING term that
+// is evaluated inside every local-light path a rig fixture can reach:
+//   * deferred projector / spot        class3/deferred/spotLightF.glsl
+//   * deferred omni box + fullscreen   class3/deferred/pointLightF.glsl,
+//                                      class3/deferred/multiPointLightF.glsl
+//   * forward alpha (PBR + legacy)     pbrCalcPointLightOrSpotLightRim() below,
+//                                      class2/deferred/alphaF.glsl,
+//                                      class3/deferred/materialF.glsl,
+//                                      class2/deferred/sharedActorFxPbrF.glsl
+// Because it is a lighting term (no neighbour taps, no edge mask, no history)
+// it can never draw an outline - it only brightens grazing, back-lit pixels the
+// light already reaches.  This is the "fix by construction" for the screen-space
+// rim-glow outline complaint; the Phase-1 screen-space Rim Glow (rimGlow*F.glsl,
+// CineRimGlow*) is a separate, untouched feature.
+//
+// Math (all vectors eye space, unit length; v = surface->camera, l = surface->light):
+//   NoV   = |n.v|
+//   k_eff = mix(k, min(k, 1), roughness * soften)      grazing exponent, softened
+//   g     = (1 - NoV)^k_eff                            grazing width / sharpness
+//   w_l   = saturate((n.l + wrap) / (1 + wrap))        wrap lighting
+//   b     = smoothstep(b0, b0 + backSoft, -(v.l))      back-light-ness
+//   rim   = masterGain * gain * c_l * g * w_l * b * mix(1, diffuseColor, tint)
+// c_l is the light's colour x distance attenuation x cone/gobo x shadow EXACTLY
+// as the calling path already computed it, but WITHOUT the 3.25 / 3.0 legacy
+// balance magic, so gain = 1 means "rim peak ~ this light's own diffuse peak".
+//
+// Energy / balance: the RIM fixture already lights the subject through the
+// normal diffuse+specular path; the rim term is purely ADDITIVE on top of it.
+// Balance is therefore per-light gain x master gain, and the result is clamped
+// to the same [0,10] range the punctual lights use.
+//
+// Off path: rig_rim_mode == 0 is the bit-exact no-op.  Every caller wraps its
+// rim block in `if (rigRimMode() != 0)` so no extra texture taps / ALU run and
+// nothing is added to the existing result; the helper additionally early-outs
+// when the effective gain is zero, so an individual light with gain 0 costs
+// nothing beyond the uniform branch even while the feature is on.
+//
+// Packing (uploaded by C++, see rigrim_contract.md):
+//   rig_rim_mode      int   0 off | 1 on | 2 debug "rim only" (local lights' base
+//                           contribution suppressed; sun/sky untouched)
+//   rig_rim_globals   vec4  x master gain, y roughness softening 0..1,
+//                           z back-light softness (width of b in -(v.l)),
+//                           w surface tint amount 0..1
+//   per-light vec4    x gain, y grazing exponent k, z wrap 0..1, w back bias b0
+//                     (single light: rig_rim_light; batched: rig_rim_lights[])
+uniform int  rig_rim_mode;
+uniform vec4 rig_rim_globals;
+
+int rigRimMode()
+{
+    return rig_rim_mode;
+}
+
+vec3 rigRimTerm(vec3 n,            // surface normal (eye space)
+                vec3 v,            // surface -> camera, normalized
+                vec3 l,            // surface -> light, normalized
+                vec3 c_l,          // light colour x atten x cone/gobo x shadow
+                vec3 diffuseColor, // for the optional surface tint
+                float roughness,   // perceptual roughness (legacy: 1 - glossiness)
+                vec4 rim)          // x gain, y k, z wrap, w back bias
+{
+    float gain = rim.x * rig_rim_globals.x;
+    if (gain <= 0.0)
+    {
+        return vec3(0.0);
+    }
+
+    float NoV    = abs(dot(n, v));
+    float soften = clamp(roughness, 0.0, 1.0) * clamp(rig_rim_globals.y, 0.0, 1.0);
+    float k      = max(rim.y, 0.05);
+    float k_eff  = mix(k, min(k, 1.0), soften); // rough surfaces get a wider, softer rim
+    float g      = pow(clamp(1.0 - NoV, 0.0, 1.0), k_eff);
+
+    float wrap   = clamp(rim.z, 0.0, 1.0);
+    float w_l    = clamp((dot(n, l) + wrap) / (1.0 + wrap), 0.0, 1.0);
+
+    float b0     = rim.w;
+    float b1     = b0 + max(rig_rim_globals.z, 1.0e-4);
+    float b      = smoothstep(b0, b1, -dot(v, l));
+
+    vec3  tint   = mix(vec3(1.0), diffuseColor, clamp(rig_rim_globals.w, 0.0, 1.0));
+
+    return clamp(gain * c_l * (g * w_l * b) * tint, vec3(0.0), vec3(10.0));
+}
+
+// [RigRim] Forward-alpha punctual light WITH the rim term.  The rim-less
+// pbrCalcPointLightOrSpotLight() below forwards here with rim = 0, which the
+// helper early-outs on, so every existing caller keeps its exact result.
+vec3 pbrCalcPointLightOrSpotLightRim(vec3 diffuseColor, vec3 specularColor,
                     float perceptualRoughness,
                     float metallic,
                     vec3 n, // normal
@@ -796,7 +885,8 @@ vec3 pbrCalcPointLightOrSpotLight(vec3 diffuseColor, vec3 specularColor,
                     vec3 lp, // light position
                     vec3 ld, // light direction (for spotlights)
                     vec3 lightColor,
-                    float lightSize, float falloff, float is_pointlight, float ambiance)
+                    float lightSize, float falloff, float is_pointlight, float ambiance,
+                    vec4 rim) // [RigRim] per-light rim params (rig_rim_lights[i])
 {
     vec3 color = vec3(0,0,0);
 
@@ -824,11 +914,42 @@ vec3 pbrCalcPointLightOrSpotLight(vec3 diffuseColor, vec3 specularColor,
 
         pbrPunctual(diffuseColor, specularColor, perceptualRoughness, metallic, n.xyz, v, lv, nl, diffPunc, specPunc);
         color = intensity * clamp(nl * (diffPunc + specPunc), vec3(0), vec3(10));
+
+        // [RigRim] additive rim from this forward light (cone + attenuation
+        // weighted; forward lights carry no per-light shadow).
+        if (rig_rim_mode != 0)
+        {
+            vec3 rim_col = rigRimTerm(n.xyz, v, lv, spot_atten * dist_atten * lightColor,
+                                      diffuseColor, perceptualRoughness, rim);
+            if (rig_rim_mode == 2)
+            {
+                color = vec3(0.0); // debug: rim only
+            }
+            color += rim_col;
+        }
     }
     float final_scale = 1.0;
     if (classic_mode > 0)
         final_scale = 0.9;
     return color * final_scale;
+}
+
+vec3 pbrCalcPointLightOrSpotLight(vec3 diffuseColor, vec3 specularColor,
+                    float perceptualRoughness,
+                    float metallic,
+                    vec3 n, // normal
+                    vec3 p, // pixel position
+                    vec3 v, // view vector (negative normalized pixel position)
+                    vec3 lp, // light position
+                    vec3 ld, // light direction (for spotlights)
+                    vec3 lightColor,
+                    float lightSize, float falloff, float is_pointlight, float ambiance)
+{
+    // [RigRim] rim = 0 -> rigRimTerm() early-outs -> result identical to the
+    // pre-RigRim body of this function.
+    return pbrCalcPointLightOrSpotLightRim(diffuseColor, specularColor, perceptualRoughness, metallic,
+                                           n, p, v, lp, ld, lightColor, lightSize, falloff,
+                                           is_pointlight, ambiance, vec4(0.0));
 }
 
 void calcDiffuseSpecular(vec3 baseColor, float metallic, inout vec3 diffuseColor, inout vec3 specularColor)

@@ -825,6 +825,17 @@ public:
         CINE_HAZE_DEBUG,                   //  "cine_haze_debug"       int  developer view selector
         CINE_HAZE_ADDITIVE,                //  "cine_haze_additive"    int  1 = additive-blended draw (transmittance only)
 
+        // [RigRim] Rig Rim Light (Cine Light Rig Phase A; deferredUtil.glsl
+        // rigRimTerm()).  Globals are uploaded by ALCineRigRim::bindGlobals()
+        // from LLPipeline::bindDeferredShader() and prepare_alpha_shader();
+        // the per-light params by the deferred light loops / setupSpotLight()
+        // and LLRender::syncLightState().  Appended at the end in lockstep with
+        // the matching push_back block in llshadermgr.cpp.
+        RIG_RIM_MODE,                      //  "rig_rim_mode"          int  0 off (bit-exact no-op), 1 on, 2 debug rim-only
+        RIG_RIM_GLOBALS,                   //  "rig_rim_globals"       vec4 master gain, roughness softening, back softness, surface tint
+        RIG_RIM_LIGHT,                     //  "rig_rim_light"         vec4 single light: gain, k, wrap, back bias (pointLightF / spotLightF)
+        RIG_RIM_LIGHTS,                    //  "rig_rim_lights"        vec4[] batched: multiPointLightF[LIGHT_COUNT], forward alpha[LL_NUM_LIGHT_UNITS]
+
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

@@ -114,6 +114,11 @@ ALCineLightRigParamBlob distinctiveBlob()
         blob.mLights[i].mGelSlot[2] = 15 + i;
         blob.mLights[i].mSourceSizeM = 0.05f * (i + 1);
         blob.mLights[i].mFixturePreset = 2 + i;
+        // [RigRim] per-light rim params (Phase A).
+        blob.mLights[i].mRimGain = 0.1f + i * 0.2f;
+        blob.mLights[i].mRimSharpness = 1.f + i * 0.5f;
+        blob.mLights[i].mRimWrap = 0.07f + i * 0.1f; // [RigRim] avoid 0.35 == kDefaultRimWrap
+        blob.mLights[i].mRimBackBias = -0.5f + i * 0.3f;
         blob.mShaftEnabled[i] = (i & 1) != 0;
         blob.mHeroEnabled[i] = i >= 2;
     }
@@ -182,6 +187,11 @@ void ensureSameBlob(const ALCineLightRigParamBlob& expected,
         }
         ensure_equals("blob light SourceSize", actual.mLights[i].mSourceSizeM, expected.mLights[i].mSourceSizeM);
         ensure_equals("blob light FixturePreset", actual.mLights[i].mFixturePreset, expected.mLights[i].mFixturePreset);
+        // [RigRim] per-light rim params (Phase A).
+        ensure_equals("blob light RimGain", actual.mLights[i].mRimGain, expected.mLights[i].mRimGain);
+        ensure_equals("blob light RimSharpness", actual.mLights[i].mRimSharpness, expected.mLights[i].mRimSharpness);
+        ensure_equals("blob light RimWrap", actual.mLights[i].mRimWrap, expected.mLights[i].mRimWrap);
+        ensure_equals("blob light RimBackBias", actual.mLights[i].mRimBackBias, expected.mLights[i].mRimBackBias);
     }
     if (!include_session)
     {
@@ -259,6 +269,19 @@ void seedSettingsIndependently(FakeRigSettings& settings,
         settings.setF32(prefix + "SourceSizeM", value.mLights[i].mSourceSizeM);
         settings.setS32(prefix + "FixturePreset", value.mLights[i].mFixturePreset);
     }
+    // [RigRim] per-light rim params (Phase A): second prefix table.
+    static const char* const rim_prefixes[LIGHT_COUNT] = {
+        "CineRigRimKey", "CineRigRimFill",
+        "CineRigRimRim", "CineRigRimBg"
+    };
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+    {
+        const std::string rim_prefix(rim_prefixes[i]);
+        settings.setF32(rim_prefix + "Gain", value.mLights[i].mRimGain);
+        settings.setF32(rim_prefix + "Sharpness", value.mLights[i].mRimSharpness);
+        settings.setF32(rim_prefix + "Wrap", value.mLights[i].mRimWrap);
+        settings.setF32(rim_prefix + "BackBias", value.mLights[i].mRimBackBias);
+    }
 }
 
 void ensureSettingsMatchIndependently(
@@ -325,6 +348,21 @@ void ensureSettingsMatchIndependently(
             settings.getF32(prefix + "SourceSizeM");
         actual.mLights[i].mFixturePreset =
             settings.getS32(prefix + "FixturePreset");
+    }
+    // [RigRim] per-light rim params (Phase A): second prefix table.
+    static const char* const rim_prefixes[LIGHT_COUNT] = {
+        "CineRigRimKey", "CineRigRimFill",
+        "CineRigRimRim", "CineRigRimBg"
+    };
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+    {
+        const std::string rim_prefix(rim_prefixes[i]);
+        actual.mLights[i].mRimGain = settings.getF32(rim_prefix + "Gain");
+        actual.mLights[i].mRimSharpness =
+            settings.getF32(rim_prefix + "Sharpness");
+        actual.mLights[i].mRimWrap = settings.getF32(rim_prefix + "Wrap");
+        actual.mLights[i].mRimBackBias =
+            settings.getF32(rim_prefix + "BackBias");
     }
     ensureSameBlob(expected, actual, false);
 }
@@ -458,7 +496,12 @@ void renderScaleOneGolden(F32 radius, const LightBase live[LIGHT_COUNT],
 }
 
 struct cine_light_rig_model_data {};
-typedef test_group<cine_light_rig_model_data> cine_light_rig_model_group;
+// [RigRim] Round-2 P2-A fix: tut::test_group defaults MaxTestsInGroup to 50
+// (tut.hpp ~130) and registers test<n> for n = MaxTestsInGroup..1 by
+// recursive template instantiation starting AT that ceiling -- test<51>
+// through test<54> below compiled but were never registered/run. Raised to
+// 64 for headroom.
+typedef test_group<cine_light_rig_model_data, 64> cine_light_rig_model_group;
 typedef cine_light_rig_model_group::object cine_light_rig_model_object;
 cine_light_rig_model_group cine_light_rig_model_tests(
     "ALCineLightRigModel");
@@ -3597,5 +3640,87 @@ void cine_light_rig_model_object::test<53>()
     ensure("rig Setup/instance payload excludes scene-level probe",
         !rig_blob.has("live_probe") &&
         !rig_blob.has("CineLightRigLiveProbeEnabled"));
+}
+
+// [RigRim] P1-B / P2-2 regression coverage: a scene blob saved before Rig
+// Rim existed (or before a given per-light key was added) must round-trip
+// to the CONTRACT per-light default, not the Light struct's own
+// index-independent default (which would silently zero the RIM fixture's
+// default gain instead of leaving it at 1.0). Also covers NaN/inf
+// sanitization on the values that ARE present.
+template<> template<>
+void cine_light_rig_model_object::test<54>()
+{
+    set_test_name("rim params: absent LLSD keys fall back to the per-light "
+                  "contract default, not the struct default");
+    const ALCineLightRigParamBlob expected = distinctiveBlob();
+    LLSD data = expected.toLLSD();
+    ensure("rim gain is stored per light",
+        data["lights"][2].has("rim_gain"));
+
+    // A pre-Rig-Rim scene: strip every rim key from every light.
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+    {
+        data["lights"][i].erase("rim_gain");
+        data["lights"][i].erase("rim_sharpness");
+        data["lights"][i].erase("rim_wrap");
+        data["lights"][i].erase("rim_back_bias");
+    }
+    const ALCineLightRigParamBlob legacy = ALCineLightRigParamBlob::fromLLSD(data);
+    static const F32 kExpectedDefaultGain[LIGHT_COUNT] = { 0.f, 0.f, 1.f, 0.f };
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+    {
+        ensure_equals("absent rim_gain uses the per-light contract default",
+            legacy.mLights[i].mRimGain, kExpectedDefaultGain[i]);
+        ensure_equals("absent rim_sharpness uses the contract default",
+            legacy.mLights[i].mRimSharpness, 3.f);
+        ensure_equals("absent rim_wrap uses the contract default",
+            legacy.mLights[i].mRimWrap, 0.35f);
+        ensure_equals("absent rim_back_bias uses the contract default",
+            legacy.mLights[i].mRimBackBias, 0.f);
+    }
+    // Matches ALPanelCineLightRig's settings.xml defaults for
+    // CineRigRim{Key,Fill,Rim,Bg}Gain: only the RIM fixture defaults on.
+    ensure_equals("RIM is the only fixture with a nonzero default gain",
+        ALCineLightRigParamBlob::defaultRimGain(2), 1.f);
+    ensure_equals("KEY default gain is off", ALCineLightRigParamBlob::defaultRimGain(0), 0.f);
+    ensure_equals("FILL default gain is off", ALCineLightRigParamBlob::defaultRimGain(1), 0.f);
+    ensure_equals("BG default gain is off", ALCineLightRigParamBlob::defaultRimGain(3), 0.f);
+
+    // [RigRim] Round-2 P2-C: a bare default-constructed blob (no fromLLSD /
+    // fromSettingsStore involved at all -- e.g. a non-migrated
+    // ALCineLightRigManager slot reset to `ParamBlob()`) must ALSO start
+    // with the per-light contract default, not the Light struct's flat
+    // 0-default.
+    const ALCineLightRigParamBlob bare_default;
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+    {
+        ensure_equals("bare default-constructed blob matches the per-light "
+                      "contract default gain",
+            bare_default.mLights[i].mRimGain, kExpectedDefaultGain[i]);
+    }
+
+    // An explicit value is still honoured (absent != "present but zero").
+    LLSD explicit_zero = expected.toLLSD();
+    explicit_zero["lights"][2]["rim_gain"] = 0.0;
+    ensure_equals("an explicit zero rim_gain is NOT replaced by the default",
+        ALCineLightRigParamBlob::fromLLSD(explicit_zero).mLights[2].mRimGain, 0.f);
+
+    // [RigRim] P2-2: NaN/inf in a present key must not survive the read.
+    LLSD non_finite = expected.toLLSD();
+    non_finite["lights"][2]["rim_gain"] =
+        std::numeric_limits<double>::quiet_NaN();
+    non_finite["lights"][0]["rim_sharpness"] =
+        std::numeric_limits<double>::infinity();
+    const ALCineLightRigParamBlob sanitized =
+        ALCineLightRigParamBlob::fromLLSD(non_finite);
+    ensure("NaN rim_gain falls back to the per-light default",
+        std::isfinite(sanitized.mLights[2].mRimGain));
+    ensure_equals("NaN rim_gain falls back to the RIM default specifically",
+        sanitized.mLights[2].mRimGain, 1.f);
+    ensure("infinite rim_sharpness falls back to the contract default",
+        std::isfinite(sanitized.mLights[0].mRimSharpness));
+    ensure_equals("infinite rim_sharpness falls back to 3.0",
+        sanitized.mLights[0].mRimSharpness, 3.f);
 }
 } // namespace tut

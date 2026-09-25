@@ -116,11 +116,19 @@ uniform vec4 light_position[8];
 uniform vec3 light_direction[8];
 uniform vec4 light_attenuation[8];
 uniform vec3 light_diffuse[8];
+uniform vec4 rig_rim_lights[8]; // [RigRim] per-unit rim params (x gain, y k, z wrap, w back bias), see LLRender::syncLightState()
 
 float getAmbientClamp();
 void waterClip(vec3 pos);
 
-vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spec, vec3 v, vec3 n, vec4 lp, vec3 ln, float la, float fa, float is_pointlight, inout float glare, float ambiance)
+// [RigRim] shared rim helper (deferredUtil.glsl)
+int rigRimMode();
+vec3 rigRimTerm(vec3 n, vec3 v, vec3 l, vec3 c_l, vec3 diffuseColor, float roughness, vec4 rim);
+
+// [RigRim] `rim` = this light unit's rig rim params (rig_rim_lights[i]); zero
+// for non-rig lights.  NOTE: `v` is the eye-space POSITION and `npos` the
+// normalized view vector here (legacy naming).
+vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spec, vec3 v, vec3 n, vec4 lp, vec3 ln, float la, float fa, float is_pointlight, inout float glare, float ambiance, vec4 rim)
 {
     // SL-14895 inverted attenuation work-around
     // This routine is tweaked to match deferred lighting, but previously used an inverted la value. To reconstruct
@@ -204,6 +212,19 @@ vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spe
                 glare = max(glare, speccol.r);
                 glare += max(cur_glare, 0.0);
             }
+        }
+
+        // [RigRim] additive rim (cone + attenuation weighted, no shadow);
+        // roughness from legacy glossiness (spec.a).  Independent of `da` so
+        // wrap can reach past the terminator.  Mode 0 never enters.
+        if (rigRimMode() != 0)
+        {
+            vec3 rim_col = rigRimTerm(n, npos, lv, (spot * spot) * dist_atten * light_col, diffuse, 1.0 - spec.a, rim);
+            if (rigRimMode() == 2)
+            {
+                col = vec3(0.0); // debug: rim only
+            }
+            col += rim_col;
         }
     }
     float final_scale = 1.0;
@@ -490,7 +511,8 @@ void main()
     vec3 npos = normalize(-pos.xyz);
     vec3 light = vec3(0, 0, 0);
 
-#define LIGHT_LOOP(i) light.rgb += calcPointLightOrSpotLight(light_diffuse[i].rgb, npos, diffuse.rgb, spec, pos.xyz, norm.xyz, light_position[i], light_direction[i].xyz, light_attenuation[i].x, light_attenuation[i].y, light_attenuation[i].z, glare, light_attenuation[i].w );
+// [RigRim] trailing rig_rim_lights[i] argument
+#define LIGHT_LOOP(i) light.rgb += calcPointLightOrSpotLight(light_diffuse[i].rgb, npos, diffuse.rgb, spec, pos.xyz, norm.xyz, light_position[i], light_direction[i].xyz, light_attenuation[i].x, light_attenuation[i].y, light_attenuation[i].z, glare, light_attenuation[i].w, rig_rim_lights[i] );
 
     LIGHT_LOOP(1)
         LIGHT_LOOP(2)

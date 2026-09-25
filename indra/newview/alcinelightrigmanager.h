@@ -18,6 +18,24 @@
 
 struct ALCineLightRigParamBlob
 {
+    // [RigRim] Round-2 P2-E: centralized per-light rim defaults. Declared
+    // BEFORE the Light struct so its own in-class member initializers below
+    // can reference them directly, and shared by defaultRimGain(),
+    // fromLLSD()'s absent-key fallbacks, this struct's own default
+    // constructor (below), and ALCineRigRim::makeParams()'s NaN/inf
+    // fallbacks in alcinerigrim.cpp. settings.xml's
+    // CineRigRim{Key,Fill,Rim,Bg}{Sharpness,Wrap,BackBias}/Gain defaults are
+    // necessarily literal there, but MUST match these values.
+    static constexpr F32 kDefaultRimSharpness = 3.f;
+    static constexpr F32 kDefaultRimWrap = 0.35f;
+    static constexpr F32 kDefaultRimBackBias = 0.f;
+    // Per-light default rim gain (KEY 0, FILL 0, RIM 1, BG 0): only the RIM
+    // fixture defaults on, so ticking CineRigRimEnabled immediately shows a
+    // clean edge from the RIM light without the user touching anything else.
+    static constexpr F32 kDefaultRimGainByIndex[ALCineLightRigModel::LIGHT_COUNT] = {
+        0.f, 0.f, 1.f, 0.f
+    };
+
     struct Light
     {
         F32 mYaw = 0.f;
@@ -39,7 +57,36 @@ struct ALCineLightRigParamBlob
         // Appended last so the positional aggregate-initialized mLights[]
         // array below (which only lists its first 11 members) is unaffected.
         F32 mOffsetZ = 0.f;
+        // [RigRim] per-light rim params (Phase A). Gain 0 is the exact
+        // no-op; the flat default here is index-independent on purpose (a
+        // bare Light{} carries no index), so per-light gain specifically
+        // uses defaultRimGain(i) wherever an index is available -- see the
+        // ALCineLightRigParamBlob default constructor below.
+        F32 mRimGain = 0.f;
+        F32 mRimSharpness = kDefaultRimSharpness;
+        F32 mRimWrap = kDefaultRimWrap;
+        F32 mRimBackBias = kDefaultRimBackBias;
     };
+
+    // [RigRim] P1-B fix: per-light default rim gain, indexed. The Light
+    // struct's own in-class default (0.f) is index-independent, so anywhere
+    // that needs "as if Rig Rim had never touched this light" (an absent
+    // LLSD key, or a bare default-constructed blob) must use this instead of
+    // the struct default, or the RIM fixture's default would silently come
+    // back wrong (0 instead of 1).
+    static F32 defaultRimGain(S32 light_index)
+    {
+        return (light_index >= 0 &&
+                light_index < ALCineLightRigModel::LIGHT_COUNT)
+            ? kDefaultRimGainByIndex[light_index] : 0.f;
+    }
+
+    // [RigRim] P2-2: NaN/inf guard for values read from LLSD (llclamp passes
+    // NaN through unchanged).
+    static F32 sanitizeF32(F32 v, F32 fallback)
+    {
+        return std::isfinite(v) ? v : fallback;
+    }
 
     // The complete selected-instance editing buffer. Keep this list in
     // settings.xml order so omissions are visible in review.
@@ -105,6 +152,23 @@ struct ALCineLightRigParamBlob
         {  0.f, -20.f, 3,  0.f, 0, 0, 0,
           ALCineLightRigModel::FLICKER_NONE, 0.f, 0.f, false },
     };
+
+    // [RigRim] Round-2 P2-C fix: every default-constructed blob (not just
+    // ones built through fromLLSD()/fromSettingsStore(), which already
+    // apply defaultRimGain() for an absent/never-seeded value) must start
+    // with the per-light contract default (RIM=1, others=0), not the Light
+    // struct's flat 0-default -- e.g. a non-migrated ALCineLightRigManager
+    // slot reset to `ParamBlob()` in migrateLegacyScene()'s "every OTHER
+    // slot" loop. A user-declared default constructor does not affect this
+    // struct's copy/move/assignment (those stay implicit) or the mLights[]
+    // in-class positional initializer above, which still runs first.
+    ALCineLightRigParamBlob()
+    {
+        for (S32 i = 0; i < ALCineLightRigModel::LIGHT_COUNT; ++i)
+        {
+            mLights[i].mRimGain = defaultRimGain(i);
+        }
+    }
 
     // Per-instance session state. Runtime-derived emitter/smoothing/transition
     // state deliberately remains on ALCineLightRig.
@@ -199,6 +263,23 @@ struct ALCineLightRigParamBlob
             blob.mLights[i].mFixturePreset =
                 settings.getS32(prefix + "FixturePreset");
         }
+
+        // [RigRim] per-light rim params: second prefix table (Phase A).
+        static const char* const rim_prefixes[
+            ALCineLightRigModel::LIGHT_COUNT] = {
+                "CineRigRimKey", "CineRigRimFill",
+                "CineRigRimRim", "CineRigRimBg"
+            };
+        for (S32 i = 0; i < ALCineLightRigModel::LIGHT_COUNT; ++i)
+        {
+            const std::string rim_prefix(rim_prefixes[i]);
+            blob.mLights[i].mRimGain = settings.getF32(rim_prefix + "Gain");
+            blob.mLights[i].mRimSharpness =
+                settings.getF32(rim_prefix + "Sharpness");
+            blob.mLights[i].mRimWrap = settings.getF32(rim_prefix + "Wrap");
+            blob.mLights[i].mRimBackBias =
+                settings.getF32(rim_prefix + "BackBias");
+        }
         return blob;
     }
 
@@ -269,6 +350,21 @@ struct ALCineLightRigParamBlob
             settings.setS32(
                 prefix + "FixturePreset", mLights[i].mFixturePreset);
         }
+
+        // [RigRim] per-light rim params: second prefix table (Phase A).
+        static const char* const rim_prefixes[
+            ALCineLightRigModel::LIGHT_COUNT] = {
+                "CineRigRimKey", "CineRigRimFill",
+                "CineRigRimRim", "CineRigRimBg"
+            };
+        for (S32 i = 0; i < ALCineLightRigModel::LIGHT_COUNT; ++i)
+        {
+            const std::string rim_prefix(rim_prefixes[i]);
+            settings.setF32(rim_prefix + "Gain", mLights[i].mRimGain);
+            settings.setF32(rim_prefix + "Sharpness", mLights[i].mRimSharpness);
+            settings.setF32(rim_prefix + "Wrap", mLights[i].mRimWrap);
+            settings.setF32(rim_prefix + "BackBias", mLights[i].mRimBackBias);
+        }
     }
 };
 
@@ -325,6 +421,11 @@ inline LLSD ALCineLightRigParamBlob::toLLSD() const
         light["kelvin"] = mLights[i].mKelvin;
         light["source_size_m"] = mLights[i].mSourceSizeM;
         light["fixture_preset"] = mLights[i].mFixturePreset;
+        // [RigRim] per-light rim params (Phase A).
+        light["rim_gain"] = mLights[i].mRimGain;
+        light["rim_sharpness"] = mLights[i].mRimSharpness;
+        light["rim_wrap"] = mLights[i].mRimWrap;
+        light["rim_back_bias"] = mLights[i].mRimBackBias;
         light["fixture_gel_slots"] = LLSD::emptyArray();
         for (S32 slot = 0;
              slot < ALCineLightRigModel::FIXTURE_GEL_SLOT_COUNT; ++slot)
@@ -452,6 +553,32 @@ inline ALCineLightRigParamBlob ALCineLightRigParamBlob::fromLLSD(
             if (light.has("fixture_preset"))
                 blob.mLights[i].mFixturePreset =
                     light["fixture_preset"].asInteger();
+            // [RigRim] P1-B fix: absent = the per-light CONTRACT default
+            // (RIM 1.0, others 0; sharpness 3, wrap 0.35, back bias 0), NOT
+            // the Light struct's index-independent default, so a scene blob
+            // saved before Rig Rim existed (or before a given key was added)
+            // round-trips to "as authored" instead of silently zeroing the
+            // RIM fixture's default gain. [RigRim] P2-2: values are also
+            // NaN/inf-sanitized before they can reach llclamp or a uniform.
+            blob.mLights[i].mRimGain = light.has("rim_gain")
+                ? sanitizeF32(static_cast<F32>(light["rim_gain"].asReal()),
+                              defaultRimGain(i))
+                : defaultRimGain(i);
+            blob.mLights[i].mRimSharpness = light.has("rim_sharpness")
+                ? sanitizeF32(
+                    static_cast<F32>(light["rim_sharpness"].asReal()),
+                    kDefaultRimSharpness)
+                : kDefaultRimSharpness;
+            blob.mLights[i].mRimWrap = light.has("rim_wrap")
+                ? sanitizeF32(
+                    static_cast<F32>(light["rim_wrap"].asReal()),
+                    kDefaultRimWrap)
+                : kDefaultRimWrap;
+            blob.mLights[i].mRimBackBias = light.has("rim_back_bias")
+                ? sanitizeF32(
+                    static_cast<F32>(light["rim_back_bias"].asReal()),
+                    kDefaultRimBackBias)
+                : kDefaultRimBackBias;
             if (light["fixture_gel_slots"].isArray() &&
                 light["fixture_gel_slots"].size() ==
                     ALCineLightRigModel::FIXTURE_GEL_SLOT_COUNT)
@@ -963,6 +1090,10 @@ public:
     const ALCineLightRig& at(Slot slot) const;
     bool isSlotEnabled(Slot slot) const;
     bool isSlotLit(Slot slot) const;
+    // [RigRim] true + params when `id` is a projector (or, with
+    // CineRigRimIncludeBounce, an omni bounce fill) of a currently-lit slot.
+    // The catchlight and unlit slots resolve to false.
+    bool rigRimParamsFor(const LLUUID& id, LLVector4& out) const;
     U32 enabledMask() const;
     S32 enabledCount() const;
     U32 requestedShadowSlots(U32 ceiling) const;

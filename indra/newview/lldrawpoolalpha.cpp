@@ -27,6 +27,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "alcinehaze.h"
+#include "alcinerigrim.h" // [RigRim]
 
 #include <optional>
 
@@ -117,6 +118,11 @@ static void prepare_alpha_shader(LLGLSLShader* shader, bool deferredEnvironment,
     // bindDeferredShader() but still call applySkyAndWaterFog() for its
     // transmittance (their fogged(c) - fogged(0) difference keeps only that).
     ALCineHaze::bind(*shader);
+
+    // [RigRim] Rig Rim Light globals for forward alpha (pbralpha, alphaF,
+    // materialF alpha-blend, sharedActorFx). Uses the CURRENT gCubeSnapshot at
+    // bind time so probe captures get mode 0 unless CineRigRimIncludeProbes.
+    ALCineRigRim::bindGlobals(*shader, /*forward_alpha=*/true);
 
     if (LLPipeline::sRenderingHUDs)
     { // for HUD attachments, only the pre-water pass is executed and we never want to clip anything

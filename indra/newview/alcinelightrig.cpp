@@ -11,6 +11,7 @@
 
 #include "alcinelightrig.h"
 #include "alcinelightrigmanager.h"
+#include "alcinerigrim.h" // [RigRim]
 
 #include "llagent.h"
 #include "llapp.h"
@@ -1010,6 +1011,11 @@ ALCineLightRig::ALCineLightRig(ALCineLightRigSlot slot)
     std::memset(mTransitionTarget, 0, sizeof(mTransitionTarget));
     std::memset(mCurrentLive, 0, sizeof(mCurrentLive));
     std::memset(&mLastFrame, 0, sizeof(mLastFrame));
+    // [RigRim] LLVector4's default constructor sets w = 1, so zero explicitly.
+    for (S32 i = 0; i < ALCineLightRigModel::LIGHT_COUNT; ++i)
+    {
+        mRigRim[i] = LLVector4(0.f, 0.f, 0.f, 0.f);
+    }
 }
 
 ALCineLightRig::~ALCineLightRig() = default;
@@ -1067,6 +1073,28 @@ LLUUID ALCineLightRig::projectorId(S32 light) const
         return LLUUID::null;
     }
     return mProjectors[light]->getID();
+}
+
+// [RigRim] bounce-fill omni id for a rig light, mirrors projectorId.
+LLUUID ALCineLightRig::omniId(S32 light) const
+{
+    if (light < 0 || light >= LIGHT_COUNT || mOmnis[light].isNull() ||
+        mOmnis[light]->isDead())
+    {
+        return LLUUID::null;
+    }
+    return mOmnis[light]->getID();
+}
+
+// [RigRim] per-light rim params (Phase A), bounds-checked.
+const LLVector4& ALCineLightRig::rigRimParams(S32 light) const
+{
+    static const LLVector4 zero(0.f, 0.f, 0.f, 0.f);
+    if (light < 0 || light >= LIGHT_COUNT)
+    {
+        return zero;
+    }
+    return mRigRim[light];
 }
 
 bool ALCineLightRig::liveProbeCentre(LLVector3d& centre) const
@@ -2081,6 +2109,39 @@ void ALCineLightRig::tickSelected(F64 presentation_time, bool owns_shadows)
         gSavedSettings, "CineLightRigRimShadowSoft");
     static LLCachedControl<F32> bg_shadow_soft(
         gSavedSettings, "CineLightRigBgShadowSoft");
+    // [RigRim] per-light rim params (Phase A).
+    static LLCachedControl<F32> key_rim_gain(
+        gSavedSettings, "CineRigRimKeyGain");
+    static LLCachedControl<F32> key_rim_sharpness(
+        gSavedSettings, "CineRigRimKeySharpness");
+    static LLCachedControl<F32> key_rim_wrap(
+        gSavedSettings, "CineRigRimKeyWrap");
+    static LLCachedControl<F32> key_rim_back_bias(
+        gSavedSettings, "CineRigRimKeyBackBias");
+    static LLCachedControl<F32> fill_rim_gain(
+        gSavedSettings, "CineRigRimFillGain");
+    static LLCachedControl<F32> fill_rim_sharpness(
+        gSavedSettings, "CineRigRimFillSharpness");
+    static LLCachedControl<F32> fill_rim_wrap(
+        gSavedSettings, "CineRigRimFillWrap");
+    static LLCachedControl<F32> fill_rim_back_bias(
+        gSavedSettings, "CineRigRimFillBackBias");
+    static LLCachedControl<F32> rim_rim_gain(
+        gSavedSettings, "CineRigRimRimGain");
+    static LLCachedControl<F32> rim_rim_sharpness(
+        gSavedSettings, "CineRigRimRimSharpness");
+    static LLCachedControl<F32> rim_rim_wrap(
+        gSavedSettings, "CineRigRimRimWrap");
+    static LLCachedControl<F32> rim_rim_back_bias(
+        gSavedSettings, "CineRigRimRimBackBias");
+    static LLCachedControl<F32> bg_rim_gain(
+        gSavedSettings, "CineRigRimBgGain");
+    static LLCachedControl<F32> bg_rim_sharpness(
+        gSavedSettings, "CineRigRimBgSharpness");
+    static LLCachedControl<F32> bg_rim_wrap(
+        gSavedSettings, "CineRigRimBgWrap");
+    static LLCachedControl<F32> bg_rim_back_bias(
+        gSavedSettings, "CineRigRimBgBackBias");
     if (LLApp::isExiting())
     {
         shutdown();
@@ -2110,10 +2171,21 @@ void ALCineLightRig::tickSelected(F64 presentation_time, bool owns_shadows)
     const F32 shadow_softness[LIGHT_COUNT] = {
         key_shadow_soft, fill_shadow_soft, rim_shadow_soft, bg_shadow_soft
     };
+    // [RigRim] per-light rim params (Phase A).
+    const LLVector4 rig_rim[LIGHT_COUNT] = {
+        ALCineRigRim::makeParams(key_rim_gain, key_rim_sharpness,
+                                 key_rim_wrap, key_rim_back_bias),
+        ALCineRigRim::makeParams(fill_rim_gain, fill_rim_sharpness,
+                                 fill_rim_wrap, fill_rim_back_bias),
+        ALCineRigRim::makeParams(rim_rim_gain, rim_rim_sharpness,
+                                 rim_rim_wrap, rim_rim_back_bias),
+        ALCineRigRim::makeParams(bg_rim_gain, bg_rim_sharpness,
+                                 bg_rim_wrap, bg_rim_back_bias),
+    };
     tickShared(presentation_time, owns_shadows, fx_setting, offset_z_setting,
                damping_setting, track_mode_setting, scale_aware_setting,
                shadow_mode, catchlight_enabled, catchlight_ev,
-               catchlight_size, catchlight_angle, shadow_softness,
+               catchlight_size, catchlight_angle, shadow_softness, rig_rim,
                cookie_setting(), setup, globals, transforms);
 }
 
@@ -2132,9 +2204,14 @@ void ALCineLightRig::tickFromBlob(const ALCineLightRigParamBlob& blob,
     const F32 catchlight_size = blob.mCatchlightSize;
     const F32 catchlight_angle = blob.mCatchlightAngle;
     F32 shadow_softness[LIGHT_COUNT];
+    // [RigRim] per-light rim params (Phase A).
+    LLVector4 rig_rim[LIGHT_COUNT];
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
     {
         shadow_softness[i] = blob.mLights[i].mShadowSoft;
+        rig_rim[i] = ALCineRigRim::makeParams(
+            blob.mLights[i].mRimGain, blob.mLights[i].mRimSharpness,
+            blob.mLights[i].mRimWrap, blob.mLights[i].mRimBackBias);
     }
     const std::string& cookie_setting = blob.mCookieUUID;
     if (LLApp::isExiting())
@@ -2166,7 +2243,7 @@ void ALCineLightRig::tickFromBlob(const ALCineLightRigParamBlob& blob,
     tickShared(presentation_time, owns_shadows, fx_setting, offset_z_setting,
                damping_setting, track_mode_setting, scale_aware_setting,
                shadow_mode, catchlight_enabled, catchlight_ev,
-               catchlight_size, catchlight_angle, shadow_softness,
+               catchlight_size, catchlight_angle, shadow_softness, rig_rim,
                cookie_setting, setup, globals, transforms);
 }
 
@@ -2176,6 +2253,8 @@ void ALCineLightRig::tickShared(
     bool scale_aware_setting, S32 shadow_mode,
     bool catchlight_enabled, F32 catchlight_ev, F32 catchlight_size,
     F32 catchlight_angle, const F32 shadow_softness[LIGHT_COUNT],
+    // [RigRim] per-light rim params (Phase A).
+    const LLVector4 rig_rim[LIGHT_COUNT],
     const std::string& cookie_setting, Setup& setup, Globals& globals,
     Transforms& transforms)
 {
@@ -2376,6 +2455,8 @@ void ALCineLightRig::tickShared(
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
     {
         mShadowSoftness[i] = effective_shadow_softness[i];
+        // [RigRim] per-light rim params (Phase A).
+        mRigRim[i] = rig_rim ? rig_rim[i] : LLVector4(0.f, 0.f, 0.f, 0.f);
     }
 
     LLViewerRegion* region = gAgent.getRegion();

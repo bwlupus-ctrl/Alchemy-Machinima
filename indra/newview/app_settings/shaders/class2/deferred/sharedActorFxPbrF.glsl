@@ -105,6 +105,7 @@ uniform vec3 light_direction[8];
 uniform vec4 light_attenuation[8];
 uniform vec3 light_diffuse[8];
 uniform vec2 light_deferred_attenuation[8];
+uniform vec4 rig_rim_lights[8]; // [RigRim] per-unit rim params, see LLRender::syncLightState()
 
 vec3 srgb_to_linear(vec3 c);
 void calcAtmosphericVarsLinear(vec3 inPositionEye, vec3 norm,
@@ -176,6 +177,23 @@ vec3 pbrCalcPointLightOrSpotLight(vec3 diffuseColor,
                                   float falloff,
                                   float is_pointlight,
                                   float ambiance);
+
+// [RigRim] same as above plus the per-light rim params (deferredUtil.glsl)
+vec3 pbrCalcPointLightOrSpotLightRim(vec3 diffuseColor,
+                                     vec3 specularColor,
+                                     float perceptualRoughness,
+                                     float metallic,
+                                     vec3 n,
+                                     vec3 p,
+                                     vec3 v,
+                                     vec3 lp,
+                                     vec3 ld,
+                                     vec3 lightColor,
+                                     float lightSize,
+                                     float falloff,
+                                     float is_pointlight,
+                                     float ambiance,
+                                     vec4 rim);
 
 #ifdef SHARED_ACTOR_FX_SLOT_FILTER
 vec4 shared_sample_basecolor(vec2 uv)
@@ -535,12 +553,14 @@ void main()
                               pbr_authored_emission, ao, additive, atten);
 
     vec3 light = vec3(0.0);
-#define LIGHT_LOOP(i) light += pbrCalcPointLightOrSpotLight(                 \
+    // [RigRim] ...Rim variant carries rig_rim_lights[i]; identical result when
+    // the rim params are zero / rig_rim_mode is 0.
+#define LIGHT_LOOP(i) light += pbrCalcPointLightOrSpotLightRim(              \
         diffuseColor, specularColor, perceptualRoughness, metallic,          \
         norm, pos, v, light_position[i].xyz, light_direction[i].xyz,         \
         light_diffuse[i].rgb, light_deferred_attenuation[i].x,               \
         light_deferred_attenuation[i].y, light_attenuation[i].z,             \
-        light_attenuation[i].w);
+        light_attenuation[i].w, rig_rim_lights[i]);
 
     LIGHT_LOOP(1)
     LIGHT_LOOP(2)
