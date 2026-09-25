@@ -446,6 +446,7 @@ const std::vector<std::string>& ALPanelCineLightRig::settings()
         "CineRigRimRoughnessSoften",
         "CineRigRimBackSoftness",
         "CineRigRimTint",
+        "CineRigRimShadow", // [RigRim]
         "CineRigRimIncludeAlpha",
         "CineRigRimIncludeProbes",
         "CineRigRimIncludeBounce",

@@ -835,6 +835,7 @@ public:
         RIG_RIM_GLOBALS,                   //  "rig_rim_globals"       vec4 master gain, roughness softening, back softness, surface tint
         RIG_RIM_LIGHT,                     //  "rig_rim_light"         vec4 single light: gain, k, wrap, back bias (pointLightF / spotLightF)
         RIG_RIM_LIGHTS,                    //  "rig_rim_lights"        vec4[] batched: multiPointLightF[LIGHT_COUNT], forward alpha[LL_NUM_LIGHT_UNITS]
+        RIG_RIM_SHADOW,                    //  "rig_rim_shadow"        float 0 rim ignores the projector shadow .. 1 fully shadowed (spotLightF)
 
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;

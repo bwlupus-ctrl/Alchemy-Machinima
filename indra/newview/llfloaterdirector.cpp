@@ -938,6 +938,7 @@ const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()
         "CineRigRimRoughnessSoften",
         "CineRigRimBackSoftness",
         "CineRigRimTint",
+        "CineRigRimShadow", // [RigRim]
         "CineRigRimIncludeAlpha",
         "CineRigRimIncludeProbes",
         "CineRigRimIncludeBounce",

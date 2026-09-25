@@ -97,6 +97,11 @@ float sampleSpotShadow(vec3 pos, vec3 norm, int index, vec2 pos_screen);
 // globals + helper live in deferredUtil.glsl.  Uploaded by setupSpotLight();
 // zero for every non-rig projector, so only rig fixtures ever add rim.
 uniform vec4 rig_rim_light;
+// [RigRim] Rim shadow: 1 = rim shadowed exactly like the light (default, physical).
+// Lower values relax the shadow ONLY near/behind the terminator (n.l < 0.3), where
+// shadow-map self-shadowing erases the wrap zone that a light directly behind the
+// subject depends on; light-facing surfaces (n.l >= 0.3) stay fully shadowed.
+uniform float rig_rim_shadow;
 int rigRimMode();
 vec3 rigRimTerm(vec3 n, vec3 v, vec3 l, vec3 c_l, vec3 diffuseColor, float roughness, vec4 rim);
 
@@ -212,7 +217,8 @@ void main()
             // 3.25 balance magic is deliberately omitted (see deferredUtil).
             if (rigRimMode() != 0)
             {
-                vec3 rim_lit = getProjectedLightDiffuseColor( l_dist, proj_tc.xy ) * dist_atten * shadow;
+                vec3 rim_lit = getProjectedLightDiffuseColor( l_dist, proj_tc.xy ) * dist_atten
+                             * mix(shadow, 1.0, (1.0 - clamp(rig_rim_shadow, 0.0, 1.0)) * (1.0 - smoothstep(0.0, 0.3, dot(n.xyz, l))));
                 rim_color += rigRimTerm(n.xyz, v, l, rim_lit, diffuseColor, perceptualRoughness, rig_rim_light);
             }
         }
@@ -250,7 +256,8 @@ void main()
             // branch; roughness derived from legacy glossiness (spec.a).
             if (rigRimMode() != 0)
             {
-                vec3 rim_lit = getProjectedLightDiffuseColor( l_dist, proj_tc.xy ) * dist_atten * shadow;
+                vec3 rim_lit = getProjectedLightDiffuseColor( l_dist, proj_tc.xy ) * dist_atten
+                             * mix(shadow, 1.0, (1.0 - clamp(rig_rim_shadow, 0.0, 1.0)) * (1.0 - smoothstep(0.0, 0.3, dot(n, l))));
                 rim_color += rigRimTerm(n, v, l, rim_lit, diffuse.rgb, 1.0 - spec.a, rig_rim_light);
             }
         }

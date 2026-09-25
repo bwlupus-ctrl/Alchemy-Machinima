@@ -2036,6 +2036,7 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("rig_rim_globals");
     mReservedUniforms.push_back("rig_rim_light");
     mReservedUniforms.push_back("rig_rim_lights");
+    mReservedUniforms.push_back("rig_rim_shadow"); // [RigRim] Rim shadow
 
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 

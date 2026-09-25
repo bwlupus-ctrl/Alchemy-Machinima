@@ -182,6 +182,10 @@ void ALCineRigRim::bindGlobals(LLGLSLShader& shader, bool forward_alpha)
                      llclamp(finiteOr(roughness_soften, 0.5f), 0.f, 1.f),
                      llclamp(finiteOr(back_softness, 0.5f), 0.01f, 2.f),
                      llclamp(finiteOr(tint, 0.25f), 0.f, 1.f));
+
+    // [RigRim] Rim shadow (spotLightF only; location -1 elsewhere is a no-op).
+    static LLCachedControl<F32> rim_shadow(gSavedSettings, "CineRigRimShadow", 1.f);
+    shader.uniform1f(LLShaderMgr::RIG_RIM_SHADOW, llclamp(finiteOr(rim_shadow, 1.f), 0.f, 1.f));
 }
 
 // [RigRim]

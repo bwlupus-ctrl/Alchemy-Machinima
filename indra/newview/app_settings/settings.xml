@@ -2629,6 +2629,13 @@
       <key>Type</key><string>F32</string>
       <key>Value</key><real>0.25</real>
     </map>
+    <key>CineRigRimShadow</key>
+    <map>
+      <key>Comment</key><string>[RigRim] How much a rig projector's shadow map darkens its rim: 1 rim is shadowed exactly like the light (physical); lower values relax the shadow near the terminator so a light directly behind the subject still rims it, but also let rim through occluders there</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.0</real>
+    </map>
     <key>CineRigRimIncludeAlpha</key>
     <map>
       <key>Comment</key><string>[RigRim] Rig Rim Light on forward alpha / transparent surfaces such as hair and mesh alpha</string>
