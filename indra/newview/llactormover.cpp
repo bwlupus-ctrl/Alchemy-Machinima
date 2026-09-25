@@ -1024,6 +1024,113 @@ F32 pathNodeScalarAt(const LLActorMover::Path& path, F32 d,
     return va * (1.f - f) + vb * f;
 }
 
+// [ObjectPath] pure geometric path-tangent facing (world yaw only, no start-
+// alignment, no skid) at arc distance d -- the "keep facing the path" fallback
+// used by evalPathOrientation. Guarded against a degenerate/vertical tangent:
+// tests the HORIZONTAL magnitude (not 3D) so a pure-Z segment holds yaw 0 rather
+// than taking atan2 of a tiny noise x/y (or a signed zero) and spinning.
+LLQuaternion pathTangentFacingAt(const LLActorMover::Path& path, F32 d)
+{
+    LLVector3d pos, tangent;
+    path.evalAtDistance(d, pos, tangent);
+    const F32 tx = (F32)tangent.mdV[VX], ty = (F32)tangent.mdV[VY];
+    const F32 yaw = (tx * tx + ty * ty > 1.0e-8f) ? atan2f(ty, tx) : 0.f;
+    LLQuaternion q;
+    q.setEulerAngles(0.f, 0.f, yaw);
+    return q;
+}
+
+// [ObjectPath] evalPathOrientation's per-node value, mirroring pathNodeScalarAt's
+// bracketing but for a quaternion with a mode-dependent fallback/derivation:
+//  - as_offset == false (AUTHORED): an authored node contributes its mOrient
+//    verbatim (an absolute world pose); an un-authored node contributes its OWN
+//    tangent-facing quaternion (so it reads as "keep facing the path here").
+//  - as_offset == true (FACE_PATH_PLUS_OFFSET): "Capture Orient" always stores
+//    the SAME thing (the prop's live world rotation) regardless of mode, so an
+//    authored node's contribution is derived by factoring the tangent-facing
+//    component at THAT node back out: offset = tangent_facing(node)^-1 *
+//    mOrient, i.e. "whatever was left over after just facing the path there" --
+//    the same delta-from-a-captured-reference idiom ALObjectPathMover::start()
+//    already uses for the start-alignment capture. An un-authored node
+//    contributes identity (no extra rotation).
+// Per-node orientation contribution (only ever called for mHasOrient nodes --
+// bracketing skips the rest):
+//  - AUTHORED (as_offset false): the node's absolute world mOrient.
+//  - FACE_PATH_PLUS_OFFSET (as_offset true): the LOCAL offset that, pre-applied
+//    to the pure tangent facing at this node, reproduces the captured mOrient.
+//    LL a*b applies a first, so with q_off = mOrient * ~facing(node):
+//    q_off * facing = mOrient*(~facing*facing) = mOrient at the node. (The
+//    previous ~facing * mOrient was the wrong side and double-applied heading.)
+LLQuaternion pathOrientNodeValue(const LLActorMover::Path& path, S32 idx, F32 node_d,
+                                 bool as_offset)
+{
+    const S32 n = (S32)path.mNodes.size();
+    const LLActorMover::Waypoint& w = path.mNodes[llclamp(idx, 0, n - 1)];
+    if (as_offset)
+    {
+        return w.mOrient * ~pathTangentFacingAt(path, node_d);
+    }
+    return w.mOrient;
+}
+
+// Bracket by ORIENTED nodes ONLY. Un-oriented nodes are transparent, so an
+// authored orientation holds/interpolates across gaps rather than snapping to a
+// tangent facing at every un-authored node; loops wrap across the last->first
+// seam. Returns the mode-appropriate fallback (tangent facing / identity offset)
+// when the path has no authored orientation at all.
+LLQuaternion pathOrientationAt(const LLActorMover::Path& path, F32 d, bool as_offset)
+{
+    const S32 n  = (S32)path.mNodes.size();
+    const S32 nd = (S32)path.mNodeDist.size();
+    if (n == 0 || nd == 0)
+    {
+        return as_offset ? LLQuaternion() : pathTangentFacingAt(path, d);
+    }
+    const bool loop  = (path.mEndMode == 1);
+    const F32  total = llmax(path.mTotalLength, 0.01f);
+    const S32  lim   = llmin(n, nd);
+
+    S32 ia = -1, ib = -1, first = -1, last = -1;
+    for (S32 k = 0; k < lim; ++k)
+    {
+        if (!path.mNodes[k].mHasOrient) { continue; }
+        if (first < 0) { first = k; }
+        last = k;
+        if (path.mNodeDist[k] <= d)      { ia = k; }
+        else if (ib < 0)                 { ib = k; }
+    }
+    if (first < 0)
+    {
+        return as_offset ? LLQuaternion() : pathTangentFacingAt(path, d);   // nothing authored
+    }
+
+    F32 da, db;
+    if (ia < 0)                     // before the first oriented node
+    {
+        if (!loop) { return pathOrientNodeValue(path, first, path.mNodeDist[first], as_offset); }
+        ia = last;  da = path.mNodeDist[last] - total;      // wrap the closing seam
+    }
+    else { da = path.mNodeDist[ia]; }
+    if (ib < 0)                     // after the last oriented node
+    {
+        if (!loop) { return pathOrientNodeValue(path, last, path.mNodeDist[last], as_offset); }
+        ib = first; db = path.mNodeDist[first] + total;
+    }
+    else { db = path.mNodeDist[ib]; }
+
+    const F32 f = (db - da > 1.0e-4f) ? llclamp((d - da) / (db - da), 0.f, 1.f) : 0.f;
+    const LLQuaternion qa = pathOrientNodeValue(path, ia, path.mNodeDist[ia], as_offset);
+    LLQuaternion       qb = pathOrientNodeValue(path, ib, path.mNodeDist[ib], as_offset);
+    // Shortest-arc guard: nearest hemisphere so the slerp turns <=180 deg and
+    // f==0/1 return qa/qb exactly.
+    if (dot(qa, qb) < 0.f) { qb = -qb; }
+    // LL slerp's near-identical branch is an UNnormalized lerp -> normalize or a
+    // driven prop gets a non-unit rotation (visible scale/shear).
+    LLQuaternion out = slerp(f, qa, qb);
+    out.normalize();
+    return out;
+}
+
 F32 pathGroundOffsetAt(const LLActorMover::Path& path, F32 d)
 {
     return pathNodeScalarAt(path, d,
@@ -1053,6 +1160,11 @@ F32 LLActorMover::evalPathYawOffset(const Path& path, F32 dist)
 {
     return pathNodeScalarAt(path, dist,
                             [](const Waypoint& w) { return w.mYawOffset; });
+}
+
+LLQuaternion LLActorMover::evalPathOrientation(const Path& path, F32 dist, bool as_offset)
+{
+    return pathOrientationAt(path, dist, as_offset);
 }
 
 // ---------------------------------------------------------------------------
@@ -2424,6 +2536,36 @@ bool LLActorMover::setNodeYawOffset(const LLUUID& actor_id, S32 index, F32 yaw_r
     return true;
 }
 
+// [ObjectPath] authored per-node orientation (same field-setter shape as its
+// siblings). Stores the WORLD rotation verbatim -- what it means is decided at
+// EVAL time by Path::mRotationMode (evalPathOrientation), not here.
+bool LLActorMover::setNodeOrient(const LLUUID& actor_id, S32 index, const LLQuaternion& orient)
+{
+    const Path* cp = getPath(actor_id);
+    if (!cp || index < 0 || index >= (S32)cp->mNodes.size())
+    {
+        return false;
+    }
+    Path& path = editPath(actor_id);
+    path.mNodes[index].mOrient = orient;
+    path.mNodes[index].mHasOrient = true;
+    path.markDirty();
+    return true;
+}
+
+bool LLActorMover::clearNodeOrient(const LLUUID& actor_id, S32 index)
+{
+    const Path* cp = getPath(actor_id);
+    if (!cp || index < 0 || index >= (S32)cp->mNodes.size())
+    {
+        return false;
+    }
+    Path& path = editPath(actor_id);
+    path.mNodes[index].mHasOrient = false;
+    path.markDirty();
+    return true;
+}
+
 bool LLActorMover::setNodeGroundOffset(const LLUUID& actor_id, S32 index, F32 offset_m)
 {
     const Path* cp = getPath(actor_id);
@@ -3576,6 +3718,7 @@ bool LLActorMover::copyPathTo(const LLUUID& src_actor, const LLUUID& dst_actor)
     dst.mPitchToSlope      = src.mPitchToSlope;
     dst.mAirborne          = src.mAirborne;
     dst.mShape             = src.mShape;
+    dst.mRotationMode      = src.mRotationMode;   // [ObjectPath] keep authored rot mode on copy (#8)
     dst.mPrimitiveCenterGlobal = src.mPrimitiveCenterGlobal;
     dst.mPrimitiveRadiusX  = src.mPrimitiveRadiusX;
     dst.mPrimitiveRadiusY  = src.mPrimitiveRadiusY;
@@ -4249,6 +4392,17 @@ bool LLActorMover::applyOverride(LLVOAvatar* av)
     }
     auto it = mMoves.find(av->getID());
     if (it == mMoves.end())
+    {
+        return false;
+    }
+    // [TrueMirror] A TRUE-mirror ghost is stamped from its source's final pose
+    // after gObjectList.update(); the mover must not own its root (it would
+    // fight the stamped facing and walk a pose that is not its own). Returning
+    // false here (before the clock advances) parks the walk: LLGhostAvatar's
+    // idleUpdate takes the foot-lock branch, and the Move resumes from the
+    // same path distance when the clone leaves TRUE_MIRROR.
+    if (av->isGhostAvatar() &&
+        static_cast<LLGhostAvatar*>(av)->isTrueMirrorDriven())
     {
         return false;
     }
@@ -5629,6 +5783,16 @@ void LLActorMover::applyGaze(LLVOAvatar* av)
         return;                 // this avatar has no gaze entry -> byte-identical
     }
     Gaze& g = git->second;
+
+    // [TrueMirror] The clone's head/eye/torso aim and blink come from the
+    // source's stamped joints + face params (ALGhostStudio::updatePostObjectList
+    // runs after this). Do not paint the clone's own gaze layer or re-enable
+    // its eye motion; the gaze entry is left intact for when the mode changes.
+    if (av->isGhostAvatar() &&
+        static_cast<LLGhostAvatar*>(av)->isTrueMirrorDriven())
+    {
+        return;
+    }
 
     // Real avatars already run their stock eye motion. Synthetic clones do
     // not run default motions, so opt only their eye/blink motion in while

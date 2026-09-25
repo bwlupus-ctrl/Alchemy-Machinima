@@ -3499,28 +3499,39 @@ void cine_light_rig_model_object::test<51>()
 template<> template<>
 void cine_light_rig_model_object::test<52>()
 {
-    set_test_name("live probe crossfades only its target rig bounce");
-    using ALCineLightRigManagerModel::liveProbeBounceScale;
+    set_test_name("live probe bounce keep scales only its target rig bounce");
+    using ALCineLightRigManagerModel::liveProbeBounceKeepScale;
 
     ensure_equals("disabled probe preserves bounce",
-        liveProbeBounceScale(false, true, true, 1.f), 1.f);
-    ensure_equals("replacement opt-out preserves bounce",
-        liveProbeBounceScale(true, false, true, 1.f), 1.f);
+        liveProbeBounceKeepScale(false, 0.f, true, 1.f), 1.f);
+    ensure_equals("keep=1 never darkens the fill",
+        liveProbeBounceKeepScale(true, 1.f, true, 1.f), 1.f);
     ensure_equals("non-target rig preserves bounce",
-        liveProbeBounceScale(true, true, false, 1.f), 1.f);
+        liveProbeBounceKeepScale(true, 0.f, false, 1.f), 1.f);
     ensure_equals("cold probe preserves bounce",
-        liveProbeBounceScale(true, true, true, 0.f), 1.f);
-    ensure_equals("half-ready probe halves synthetic bounce",
-        liveProbeBounceScale(true, true, true, 0.5f), 0.5f);
-    ensure_equals("ready probe fully replaces synthetic bounce",
-        liveProbeBounceScale(true, true, true, 1.f), 0.f);
+        liveProbeBounceKeepScale(true, 0.f, true, 0.f), 1.f);
+    ensure_equals("half-ready probe with keep=0 halves synthetic bounce",
+        liveProbeBounceKeepScale(true, 0.f, true, 0.5f), 0.5f);
+    ensure_equals("ready probe with keep=0 fully replaces (legacy Replace bounce)",
+        liveProbeBounceKeepScale(true, 0.f, true, 1.f), 0.f);
+    ensure_equals("ready probe with keep=0.5 keeps half",
+        liveProbeBounceKeepScale(true, 0.5f, true, 1.f), 0.5f);
+    ensure_equals("half-ready probe with keep=0.5 keeps three quarters",
+        liveProbeBounceKeepScale(true, 0.5f, true, 0.5f), 0.75f);
     ensure_equals("fade clamps below zero",
-        liveProbeBounceScale(true, true, true, -1.f), 1.f);
+        liveProbeBounceKeepScale(true, 0.f, true, -1.f), 1.f);
     ensure_equals("fade clamps above one",
-        liveProbeBounceScale(true, true, true, 2.f), 0.f);
+        liveProbeBounceKeepScale(true, 0.f, true, 2.f), 0.f);
+    ensure_equals("keep clamps above one",
+        liveProbeBounceKeepScale(true, 2.f, true, 1.f), 1.f);
+    ensure_equals("keep clamps below zero",
+        liveProbeBounceKeepScale(true, -1.f, true, 1.f), 0.f);
     ensure_equals("non-finite fade fails open",
-        liveProbeBounceScale(true, true, true,
+        liveProbeBounceKeepScale(true, 0.f, true,
             std::numeric_limits<F32>::quiet_NaN()), 1.f);
+    ensure_equals("non-finite keep fails open",
+        liveProbeBounceKeepScale(true,
+            std::numeric_limits<F32>::quiet_NaN(), true, 1.f), 1.f);
 }
 
 template<> template<>
@@ -3535,7 +3546,7 @@ void cine_light_rig_model_object::test<53>()
     authored.mRadius = 7.5f;
     authored.mOffsetZ = -0.75f;
     authored.mAmbiance = 1.25f;
-    authored.mReplaceBounce = false;
+    authored.mBounceKeep = 0.35f;
     authored.mGizmo = true;
 
     LiveProbeConfig decoded;
@@ -3546,7 +3557,7 @@ void cine_light_rig_model_object::test<53>()
     ensure_equals("radius round-trips", decoded.mRadius, 7.5f);
     ensure_equals("offset round-trips", decoded.mOffsetZ, -0.75f);
     ensure_equals("ambiance round-trips", decoded.mAmbiance, 1.25f);
-    ensure("replacement opt-out round-trips", !decoded.mReplaceBounce);
+    ensure_equals("bounce keep round-trips", decoded.mBounceKeep, 0.35f);
     ensure("gizmo round-trips", decoded.mGizmo);
 
     decoded = authored;
@@ -3564,6 +3575,23 @@ void cine_light_rig_model_object::test<53>()
     ensure("rejected block cannot retain prior enable", !decoded.mEnabled);
     ensure_equals("rejected block cannot retain prior radius",
         decoded.mRadius, 3.f);
+
+    // Scenes saved before bounce_keep existed carry only the legacy bool.
+    LLSD legacy = liveProbeConfigToLLSD(authored);
+    legacy.erase("bounce_keep");
+    legacy["replace_bounce"] = true;
+    ensure("legacy replace_bounce=true decodes", liveProbeConfigFromLLSD(legacy, decoded));
+    ensure_equals("legacy full replace migrates to keep 0", decoded.mBounceKeep, 0.f);
+    legacy["replace_bounce"] = false;
+    ensure("legacy replace_bounce=false decodes", liveProbeConfigFromLLSD(legacy, decoded));
+    ensure_equals("legacy opt-out migrates to keep 1", decoded.mBounceKeep, 1.f);
+
+    LLSD bad_keep = liveProbeConfigToLLSD(authored);
+    bad_keep["bounce_keep"] = "invalid";
+    ensure("malformed bounce_keep is rejected", !liveProbeConfigFromLLSD(bad_keep, decoded));
+
+    ensure("encoder writes the legacy key for older builds",
+        liveProbeConfigToLLSD(authored).has("replace_bounce"));
 
     const LLSD rig_blob = ALCineLightRigParamBlob().toLLSD();
     ensure("rig Setup/instance payload excludes scene-level probe",

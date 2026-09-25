@@ -29,6 +29,8 @@
 
 #include "llviewerprecompiledheaders.h"
 
+#include "alcinehaze.h"
+
 #include "pipeline.h"
 #include "alcinelightrig.h"
 #include "alcinelightrigmanager.h"
@@ -122,6 +124,7 @@
 #include "llworld.h"
 #include "llcubemap.h"
 #include "llviewershadermgr.h"
+#include "altoolpathedit.h"            // [ActorPath] post-bloom path guide pass
 #include "llactormover.h"               // [GhostDeferred] clone proxy queue
 #include "llfetchedgltfmaterial.h"      // [GhostDeferred] GLTF clone batches
 #include "llviewertexture.h"            // [GhostDeferred] fallback textures
@@ -1269,6 +1272,11 @@ bool LLPipeline::allocateScreenBufferInternal(U32 resX, U32 resY)
         // user must fall back rather than hit an FBO-less bindTarget assert.
         if (!mRT->postPingMap.allocate(resX, resY, post_color_fmt)) return false;
         if (!mRT->postPongMap.allocate(resX, resY, post_color_fmt)) return false;
+        // [ActorPath] The non-HDR guide pass is composited into postPing only
+        // after legacy glow extraction. Share the already-owned scene depth so
+        // actors, props, and terrain still occlude the operator guide; this adds
+        // no depth allocation and fullscreen post passes keep depth disabled.
+        mRT->deferredScreen.shareDepthBuffer(mRT->postPingMap);
     }
 
     allocateShadowBuffer(resX, resY);
@@ -1337,6 +1345,47 @@ bool LLPipeline::allocateScreenBufferInternal(U32 resX, U32 resY)
         }
         mReShadeRawSceneValid = false;
 
+        // Deferred G-buffer preserve-copies for the ReShade bridge (see
+        // mReShadeAlbedoRaw/mReShadeNormalsRaw declaration comment above).
+        // Formats mirror deferredScreen's own attachment 0 (always
+        // GL_SRGB8_ALPHA8) and attachment 2 (GL_RGBA16 HDR / GL_RGB10_A2
+        // non-HDR, matching addDeferredAttachments()). Gated on
+        // RenderReShadeGBufferPublish so the two extra per-frame blits cost
+        // nothing when the setting is off.
+        static LLCachedControl<bool> reshade_gbuffer_publish(gSavedSettings, "RenderReShadeGBufferPublish", true);
+        if (reshade_gbuffer_publish())
+        {
+            mReShadeAlbedoRaw.allocate(resX, resY, GL_SRGB8_ALPHA8);
+            mReShadeNormalsRaw.allocate(resX, resY, hdr ? GL_RGBA16 : GL_RGB10_A2);
+
+            // llreshadebridgeabi.h's header comment documents a known failure
+            // mode for every texture this bridge publishes: "The published
+            // textures are level-0-only mutable textures -- NOT mipmap-
+            // complete. Copying from them is fine; binding them directly to
+            // ReShade effect samplers is NOT (samples black...)". BASE_LEVEL/
+            // MAX_LEVEL are texture-OBJECT state (unlike filter/wrap, they are
+            // NOT overridable by a GL sampler object), so clamping them to 0
+            // here is honored by ANY consumer that binds this texture name --
+            // including an add-on effect that samples it with a mipmapped
+            // filter -- and makes the (single, level-0) image legally
+            // "mipmap complete" regardless. No effect on the level-0 texel
+            // data these two targets ever contain, or on the viewer's own
+            // reads of them (already point/bilinear, never mipmapped).
+            for (LLRenderTarget* rt : { &mReShadeAlbedoRaw, &mReShadeNormalsRaw })
+            {
+                gGL.getTexUnit(0)->bindManual(rt->getUsage(), rt->getTexture(0));
+                const U32 tex_type = LLTexUnit::getInternalType(rt->getUsage());
+                glTexParameteri(tex_type, GL_TEXTURE_BASE_LEVEL, 0);
+                glTexParameteri(tex_type, GL_TEXTURE_MAX_LEVEL, 0);
+            }
+        }
+        else
+        {
+            mReShadeAlbedoRaw.release();
+            mReShadeNormalsRaw.release();
+        }
+        mReShadeGBufferRawValid = false;
+
         // [Ultimate Diopter] pass-1 MRT target: 0 = clear+mask, 1 = diopter+rim,
         // 2 = RG16F source-uv warp map for the present depth re-warp.
         // Allocated only while the effect is enabled so it holds zero VRAM
@@ -1360,6 +1409,81 @@ bool LLPipeline::allocateScreenBufferInternal(U32 resX, U32 resY)
             else
             {
                 mDiopterMap.release();
+            }
+        }
+
+        // [RimGlow Phase 1] gated allocation, fail-closed on partial failure
+        // (mirrors the Ultimate Diopter pattern immediately above). Only
+        // mRimGlowRadHist[] needs to survive across frames (the Mask pass's
+        // temporal captured-light accumulation); mRimGlowWork/Tmp/Wrap/
+        // Glow*/Dir* are fully recomputed every frame and hold no state, so
+        // they are simply released/reallocated with no history implications.
+        // CineRimGlowEnabled has a release-GL-buffer listener
+        // (llviewercontrol.cpp settings_setup_listeners()).
+        {
+            static LLCachedControl<bool> rimglow_enabled(gSavedSettings, "CineRimGlowEnabled", false);
+            auto release_rimglow = [this]()
+            {
+                mRimGlowWork.release();
+                mRimGlowRadHist[0].release();
+                mRimGlowRadHist[1].release();
+                mRimGlowTmp.release();
+                mRimGlowWrap.release();
+                mRimGlowGlowTmp.release();
+                mRimGlowGlow.release();
+                mRimGlowHistoryValid = false;
+            };
+            if (rimglow_enabled)
+            {
+                const U32 half_w = llmax(1u, resX / 2);
+                const U32 half_h = llmax(1u, resY / 2);
+
+                // Working FBO: attachment 0 = mask, 1 = subj, 2 = radHist_out,
+                // 3 = dir. Exactly 4 attachments -- the addColorAttachment()
+                // cap (llrendertarget.cpp).
+                bool ok = mRimGlowWork.allocate(resX, resY, GL_RGBA16F);
+                ok = ok && mRimGlowWork.addColorAttachment(GL_R16F);
+                ok = ok && mRimGlowWork.addColorAttachment(GL_RGBA16F);
+                ok = ok && mRimGlowWork.addColorAttachment(GL_RG16F);
+                ok = ok && mRimGlowRadHist[0].allocate(resX, resY, GL_RGBA16F);
+                ok = ok && mRimGlowRadHist[1].allocate(resX, resY, GL_RGBA16F);
+                ok = ok && mRimGlowTmp.allocate(resX, resY, GL_RGBA16F);
+                ok = ok && mRimGlowWrap.allocate(resX, resY, GL_RGBA16F);
+                // Glow chain: 2-attachment MRT per stage (attach0=color,
+                // attach1=paired dir) so the blurHasDir=1 invocations blur
+                // color and direction together in one draw.
+                ok = ok && mRimGlowGlowTmp.allocate(half_w, half_h, GL_RGBA16F);
+                ok = ok && mRimGlowGlowTmp.addColorAttachment(GL_RG16F);
+                ok = ok && mRimGlowGlow.allocate(half_w, half_h, GL_RGBA16F);
+                ok = ok && mRimGlowGlow.addColorAttachment(GL_RG16F);
+
+                if (!ok)
+                {
+                    LL_WARNS_ONCE() << "RimGlow render targets failed to allocate; effect disabled this session." << LL_ENDL;
+                    release_rimglow();
+                }
+                else
+                {
+                    // Freshly (re)allocated this call -> no trustworthy
+                    // prev-frame radiance. Clear both history slots so the
+                    // very first read (whichever slot mRimGlowHistoryIdx
+                    // names) can never sample stale/garbage texels.
+                    mRimGlowHistoryValid = false;
+                    mRimGlowHistoryIdx = 0;
+                    LLGLDisable no_scissor(GL_SCISSOR_TEST);
+                    LLRenderTarget* hist_targets[2] = { &mRimGlowRadHist[0], &mRimGlowRadHist[1] };
+                    for (LLRenderTarget* hist : hist_targets)
+                    {
+                        hist->bindTarget();
+                        glClearColor(0.f, 0.f, 0.f, 0.f);
+                        hist->clear(GL_COLOR_BUFFER_BIT);
+                        hist->flush();
+                    }
+                }
+            }
+            else
+            {
+                release_rimglow();
             }
         }
 
@@ -1986,6 +2110,10 @@ void LLPipeline::releaseGLBuffers()
 
     mReShadeSceneRaw.release();
     mReShadeRawSceneValid = false;
+
+    mReShadeAlbedoRaw.release();
+    mReShadeNormalsRaw.release();
+    mReShadeGBufferRawValid = false;
 
     mDiopterMap.release(); // [Ultimate Diopter]
 
@@ -12053,9 +12181,36 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst, bool app
             shader->uniform1i(LLShaderMgr::TONEMAP_TYPE, tonemap_type_setting);
             shader->uniform1f(LLShaderMgr::TONEMAP_MIX, psky->getTonemapMix(should_auto_adjust()));
 
+            // Shared post-tonemap saturation/contrast grade, applied after every
+            // operator (all tonemap_type values). Defaults (1.0, 1.0) are a no-op.
+            static LLCachedControl<F32> tonemap_saturation(gSavedSettings, "AlchemyToneMapSaturation", 1.f);
+            static LLCachedControl<F32> tonemap_contrast(gSavedSettings, "AlchemyToneMapContrast", 1.f);
+            shader->uniform2f(LLShaderMgr::TONEMAP_GRADE, tonemap_saturation(), tonemap_contrast());
+
             constexpr F32 max_screen_brightness = 1.f;
             switch (tonemap_type_setting)
             {
+                case 0: // Khronos PBR Neutral
+                {
+                    static LLCachedControl<F32> tonemap_khronos_desaturation(gSavedSettings, "AlchemyToneMapKhronosDesaturation", 0.15f);
+                    static LLCachedControl<F32> tonemap_khronos_start_compression(gSavedSettings, "AlchemyToneMapKhronosStartCompression", 0.76f);
+
+                    shader->uniform2f(LLShaderMgr::TONEMAP_KHRONOS_PARAMS, tonemap_khronos_desaturation(), tonemap_khronos_start_compression());
+                    break;
+                }
+                case 8: // S-Log3 / cine log capture
+                {
+                    // Pack the log-capture controls into the existing tonemap_params
+                    // vec4 (no new uniform plumbing). Shader layout in tonemapUtilF:
+                    //   .x = curve family, .y = range, .z = shadow toe, .w = EV.
+                    static LLCachedControl<S32> slog_curve(gSavedSettings, "AlchemyToneMapSLogCurve", 0);
+                    static LLCachedControl<S32> slog_range(gSavedSettings, "AlchemyToneMapSLogRange", 0);
+                    static LLCachedControl<F32> slog_toe(gSavedSettings, "AlchemyToneMapSLogToe", 0.f);
+                    static LLCachedControl<F32> slog_ev(gSavedSettings, "AlchemyToneMapSLogEV", 0.f);
+                    shader->uniform4f(LLShaderMgr::TONEMAP_PARAMS,
+                                      (F32)slog_curve(), (F32)slog_range(), slog_toe(), slog_ev());
+                    break;
+                }
                 case 2: // ACES Godot
                 {
                     static LLCachedControl<F32> tonemap_aces_white(gSavedSettings, "RenderTonemapACESWhite", 6.f);
@@ -15476,6 +15631,518 @@ void LLPipeline::renderCineOutline(LLRenderTarget* dst)
     unbindDeferredShader(gCineOutlineProgram);
     dst->flush();
     gGL.setSceneBlendType(LLRender::BT_ALPHA);
+}
+
+namespace
+{
+    // [RimGlow Phase 1] Host-computed separable-Gaussian energy
+    // normalization, matching the blur shader's own kernel EXACTLY (seam
+    // reconciliation, rimglow_native_plan.md) so WrapNorm/GlowNorm stay
+    // consistent with whatever sigma/band the blur pass actually ran with:
+    //   k_i   = exp(-i^2 / (2*sigma^2)),  i in [-n, n],  n = min(ceil(3*sigma), 48)
+    //   cov_i = clamp(min(i+0.5, b/2) - max(i-0.5, -b/2), 0, 1)
+    //   peak  = sum(k_i * cov_i) / sum(k_i)
+    //   Norm  = 1 / max(peak, 1e-3)
+    F32 rimGlowBlurNorm(F32 sigma, F32 band)
+    {
+        sigma = llmax(sigma, 1e-3f);
+        const S32 n = llmin((S32)ceilf(3.f * sigma), 48);
+        F32 num = 0.f, den = 0.f;
+        for (S32 i = -n; i <= n; ++i)
+        {
+            const F32 fi  = (F32)i;
+            const F32 k   = expf(-(fi * fi) / (2.f * sigma * sigma));
+            const F32 cov = llclamp(llmin(fi + 0.5f, band * 0.5f) - llmax(fi - 0.5f, -band * 0.5f), 0.f, 1.f);
+            num += k * cov;
+            den += k;
+        }
+        const F32 peak = num / llmax(den, 1e-6f);
+        return 1.f / llmax(peak, 1e-3f);
+    }
+
+    S32 rimGlowBlurTaps(F32 sigma)
+    {
+        return llmin((S32)ceilf(3.f * llmax(sigma, 1e-3f)), 48);
+    }
+}
+
+// [RimGlow Phase 1] Depth-gated Auto Rim for the in-focus subject.
+//
+// Pass order (rimglow_native_plan.md / seam reconciliation):
+//   Mask (MRT0-3: mask,subj,radHist_out,dir; reads dst + G-buffer normal/
+//         depth + mRimGlowRadHist[prev])
+//   -> WrapH (mask -> tmp)                    [Two-Color reserved; no-op Ph1]
+//   -> WrapV (tmp -> wrap)                    [Two-Color reserved; no-op Ph1]
+//   -> Downsample (mask,dir -> half MRT: mRimGlowGlowTmp{color,dir})
+//   -> GlowH (GlowTmp -> Glow, MRT color+dir, blurHasDir=1)
+//   -> GlowV (Glow -> GlowTmp, MRT color+dir, blurHasDir=1; FINAL result
+//             ends up back in the Tmp-named target -- the only hazard-free
+//             assignment across a 3-stage chain sharing 2 physical buffers)
+//   -> Composite (reads rimMask/rimSubj from mRimGlowWork, rimWrap, and
+//                 rimGlow/rimGlowDir from mRimGlowGlowTmp; writes into a
+//                 mWaterDis scratch, blitted back into dst -- the exact
+//                 read-scratch-blit idiom applyOnLensFilters uses, since
+//                 dst cannot be sampled and written in the same draw)
+// Then: copyContentsFromAttachment(mRimGlowWork, src_attachment=2, ...) into
+// mRimGlowRadHist[cur]; advance mRimGlowHistoryIdx only after that succeeds.
+void LLPipeline::renderVirtualCinemaRimGlow(LLRenderTarget* dst)
+{
+    static LLCachedControl<bool> enabled(gSavedSettings, "CineRimGlowEnabled", false);
+    // HDR-path-only, self-checked (the call site is not itself inside an
+    // `if (hdr)` block -- renderFroxelVolumetrics/renderProjectorVolumetric,
+    // immediately before it, run in both paths). Mirrors the same hdr
+    // resolve used at the top of renderFinalize().
+    static LLCachedControl<bool> has_hdr(gSavedSettings, "RenderHDREnabled", true);
+    const bool hdr = gGLManager.mGLVersion > 4.05f && has_hdr();
+    if (!enabled() || !hdr || gCubeSnapshot || gSnapshotNoPost || !dst ||
+        !mRimGlowWork.isComplete() ||
+        !gRimGlowMaskProgram.isComplete() || !gRimGlowDownsampleProgram.isComplete() ||
+        !gRimGlowBlurProgram.isComplete() || !gRimGlowCompositeProgram.isComplete())
+    {
+        return;
+    }
+
+    LL_PROFILE_GPU_ZONE("renderVirtualCinemaRimGlow");
+
+    const F32 full_w = (F32)dst->getWidth();
+    const F32 full_h = (F32)dst->getHeight();
+    const F32 half_w = (F32)mRimGlowGlowTmp.getWidth();
+    const F32 half_h = (F32)mRimGlowGlowTmp.getHeight();
+
+    // --- settings ------------------------------------------------------
+    static LLCachedControl<S32> focus_target(gSavedSettings, "CineRimGlowFocusTarget", 0);
+    static LLCachedControl<F32> manual_focus_depth(gSavedSettings, "CineRimGlowManualFocusDepth", 4.f);
+    static LLCachedControl<F32> focus_feather_rel(gSavedSettings, "CineRimGlowFocusFeatherRel", 0.35f);
+
+    static LLCachedControl<F32> gather_radius_s(gSavedSettings, "CineRimGlowGatherRadius", 10.f);
+    static LLCachedControl<F32> light_threshold(gSavedSettings, "CineRimGlowLightThreshold", 0.5f);
+    static LLCachedControl<F32> source_priority_stops(gSavedSettings, "CineRimGlowSourcePriorityStops", 6.f);
+    static LLCachedControl<F32> gather_falloff(gSavedSettings, "CineRimGlowGatherFalloff", 0.7f);
+    static LLCachedControl<F32> background_bias(gSavedSettings, "CineRimGlowBackgroundBias", 0.01f);
+    static LLCachedControl<F32> background_feather(gSavedSettings, "CineRimGlowBackgroundFeather", 0.02f);
+    static LLCachedControl<F32> wrap_spread(gSavedSettings, "CineRimGlowWrapSpread", 0.75f);
+    static LLCachedControl<F32> rim_independence(gSavedSettings, "CineRimGlowRimIndependence", 0.85f);
+    static LLCachedControl<F32> auto_rim_gain(gSavedSettings, "CineRimGlowAutoRimGain", 1.5f);
+    static LLCachedControl<F32> color_saturation(gSavedSettings, "CineRimGlowColorSaturation", 1.f);
+    static LLCachedControl<F32> rim_crosstalk(gSavedSettings, "CineRimGlowRimCrosstalk", 0.4f);
+    static LLCachedControl<F32> crosstalk_knee(gSavedSettings, "CineRimGlowCrosstalkKnee", 0.5f);
+
+    static LLCachedControl<F32> rim_fresnel(gSavedSettings, "CineRimGlowRimFresnel", 0.5f);
+    static LLCachedControl<F32> fresnel_base(gSavedSettings, "CineRimGlowFresnelBase", 0.15f);
+    static LLCachedControl<F32> fresnel_power(gSavedSettings, "CineRimGlowFresnelPower", 5.f);
+    static LLCachedControl<F32> form_directional(gSavedSettings, "CineRimGlowFormDirectional", 0.5f);
+    static LLCachedControl<F32> directional_wrap(gSavedSettings, "CineRimGlowDirectionalWrap", 0.5f);
+
+    static LLCachedControl<S32> rim_width(gSavedSettings, "CineRimGlowRimWidth", 2);
+    static LLCachedControl<F32> auto_wrap_falloff(gSavedSettings, "CineRimGlowAutoWrapFalloff", 1.f);
+    static LLCachedControl<F32> auto_atm_falloff(gSavedSettings, "CineRimGlowAutoAtmFalloff", 1.f);
+    static LLCachedControl<F32> core_gain(gSavedSettings, "CineRimGlowCoreGain", 1.f);
+    static LLCachedControl<F32> wrap_gain(gSavedSettings, "CineRimGlowWrapGain", 1.f);
+    static LLCachedControl<F32> atm_gain(gSavedSettings, "CineRimGlowAtmGain", 1.f);
+    static LLCachedControl<F32> auto_interior_fill(gSavedSettings, "CineRimGlowAutoInteriorFill", 1.f);
+    static LLCachedControl<F32> auto_interior_response(gSavedSettings, "CineRimGlowAutoInteriorResponse", 0.5f);
+    static LLCachedControl<F32> resp_knee(gSavedSettings, "CineRimGlowRespKnee", 0.5f);
+    static LLCachedControl<F32> auto_interior_tint(gSavedSettings, "CineRimGlowAutoInteriorTint", 0.6f);
+    static LLCachedControl<F32> auto_halo(gSavedSettings, "CineRimGlowAutoHalo", 0.25f);
+    static LLCachedControl<F32> halo_tight(gSavedSettings, "CineRimGlowHaloTight", 0.5f);
+    static LLCachedControl<F32> halo_occlusion(gSavedSettings, "CineRimGlowHaloOcclusion", 1.f);
+    static LLCachedControl<F32> inward_bleed(gSavedSettings, "CineRimGlowInwardBleed", 8.f);
+    static LLCachedControl<F32> auto_interior_reach(gSavedSettings, "CineRimGlowAutoInteriorReach", 40.f);
+
+    static LLCachedControl<F32> rim_shoulder_knee(gSavedSettings, "CineRimGlowRimShoulderKnee", 1.f);
+    static LLCachedControl<F32> rim_white(gSavedSettings, "CineRimGlowRimWhite", 6.f);
+    static LLCachedControl<F32> auto_settle(gSavedSettings, "CineRimGlowAutoSettle", 0.5f);
+    static LLCachedControl<F32> settle_depth_tol(gSavedSettings, "CineRimGlowSettleDepthTol", 0.25f);
+    static LLCachedControl<F32> settle_light_reject_stops(gSavedSettings, "CineRimGlowSettleLightRejectStops", 4.f);
+    static LLCachedControl<F32> settle_light_reject(gSavedSettings, "CineRimGlowSettleLightReject", 0.5f);
+
+    static LLCachedControl<F32> edge_threshold(gSavedSettings, "CineRimGlowEdgeThreshold", 0.02f);
+    static LLCachedControl<F32> edge_feather(gSavedSettings, "CineRimGlowEdgeFeather", 0.02f);
+    static LLCachedControl<F32> edge_normal_gate(gSavedSettings, "CineRimGlowEdgeNormalGate", 0.5f);
+
+    static LLCachedControl<F32> dir_coherence_lo(gSavedSettings, "CineRimGlowDirCoherenceLo", 0.3f);
+    static LLCachedControl<F32> dir_coherence_hi(gSavedSettings, "CineRimGlowDirCoherenceHi", 0.9f);
+
+    // --- CPU focus resolve (manual/object; no GPU autofocus this phase) --
+    // Mirrors updateNightMaskAnchor()'s LLDirectorCast resolve + smoothing.
+    // CineRimGlowManualFocusDepth is the fallback used whenever the
+    // resolved target is missing/dead (never garbage -- mirrors Night
+    // Mask's own missing-target handling); 0=Self also resolves through
+    // LLDirectorCast (matches CineLightRigNightMaskTarget's own convention).
+    F32 focusZ = manual_focus_depth();
+    {
+        LLDirectorCast& cast = LLDirectorCast::instance();
+        LLVOAvatar* avatar = nullptr;
+        switch (focus_target())
+        {
+            case 1: avatar = cast.resolveSubjectA(); break;
+            case 2: avatar = cast.resolveSubjectB(); break;
+            case 3: avatar = cast.resolveSubjectC(); break;
+            case 4: avatar = cast.resolveSubjectD(); break;
+            case 0: default: avatar = cast.resolve(LLUUID::null); break;
+        }
+
+        if (avatar && !avatar->isDead())
+        {
+            const LLVector3 true_pos = avatar->getRenderPosition();
+            LLViewerRegion* region = gAgent.getRegion();
+            const U64 region_handle = region ? region->getHandle() : 0;
+            const F64 now = LLPresentationTime::currentFrame().presentation_time;
+            const bool now_finite = std::isfinite(now);
+
+            if (true_pos.isFinite())
+            {
+                RimGlowFocusState& fs = mRimGlowFocus;
+                const bool snap = !fs.mHaveSmoothed || avatar->getID() != fs.mLastTargetId ||
+                    region_handle != fs.mLastRegionHandle ||
+                    fs.mLastTime < 0.0 || (now_finite && now < fs.mLastTime);
+
+                const glm::mat4 modelview = glm::make_mat4(gGLLastModelView);
+                const glm::vec4 view4 = modelview * glm::vec4(true_pos.mV[VX], true_pos.mV[VY], true_pos.mV[VZ], 1.f);
+                const F32 raw_focus_z = llmax(-view4.z, 0.f); // metric view depth, metres
+
+                if (snap)
+                {
+                    fs.mSmoothedFocusZ = raw_focus_z;
+                }
+                else if (now_finite)
+                {
+                    // Same critically-damped exponential idiom as Night
+                    // Mask's anchor smoothing (updateNightMaskAnchor()).
+                    constexpr F32 RIMGLOW_FOCUS_DAMPING_SEC = 0.15f;
+                    const F64 dt_s = llmax(now - fs.mLastTime, 0.0);
+                    const F32 alpha = 1.f - expf(-(F32)dt_s / RIMGLOW_FOCUS_DAMPING_SEC);
+                    fs.mSmoothedFocusZ += (raw_focus_z - fs.mSmoothedFocusZ) * alpha;
+                }
+                fs.mHaveSmoothed = true;
+                fs.mLastTargetId = avatar->getID();
+                fs.mLastRegionHandle = region_handle;
+                if (now_finite) fs.mLastTime = now;
+
+                focusZ = fs.mSmoothedFocusZ;
+            }
+        }
+        else
+        {
+            mRimGlowFocus.mHaveSmoothed = false; // missing target -> resnap when it returns
+        }
+    }
+
+    // --- exposure lock ---------------------------------------------------
+    // rim_exposure_lock mirrors tonemapUtilF.glsl::applyExposure's own
+    // type==8 (S-Log3 Capture) override, so RimGlow's internal gather
+    // thresholds see the SAME effective exposure the tonemap will apply
+    // downstream. There is no `tonemap_type` uniform on the rim shaders --
+    // the lock is precomputed here.
+    static LLCachedControl<S32> tonemap_type_setting(gSavedSettings, "AlchemyRenderTonemapType", 0);
+    const S32 rim_exposure_lock = (tonemap_type_setting() == 8) ? 1 : 0;
+
+    // --- host-computed lobe norms (MUST match the blur kernel exactly) ---
+    const F32 inward_bleed_c = llclamp((F32)inward_bleed(), 0.f, 32.f);
+    const F32 interior_reach_c = llclamp((F32)auto_interior_reach(), 0.f, 64.f);
+    const F32 sigma_wrap = inward_bleed_c * 0.5f;               // full-res texels
+    const F32 sigma_glow = interior_reach_c * 0.25f;            // half-res texels
+    const F32 band_wrap = (F32)rim_width();
+    const F32 band_glow = (F32)rim_width() * 0.5f;
+    const F32 wrap_norm = rimGlowBlurNorm(sigma_wrap, band_wrap);
+    const F32 glow_norm = rimGlowBlurNorm(sigma_glow, band_glow);
+
+    // GatherRadius clamped to a resolution-relative ceiling (N4 budget
+    // guard) so a user cranking the slider at 4K can't blow the per-pixel
+    // texture-fetch/cache-locality budget.
+    const F32 gather_radius_c = llmin((F32)gather_radius_s(), 0.03f * full_h);
+
+    // dt for the Mask pass's temporal settle -- same value exposureF gets
+    // (frame delta time); guarded dt<=0 -> 1/60 on the shader side.
+    const F32 dt = gFrameIntervalSeconds.value();
+    static LLCachedControl<F32> render_exposure(gSavedSettings, "RenderExposure", 1.f);
+    const F32 manual_exposure = llclamp(render_exposure(), 0.5f, 4.f);
+
+    const U32 cur  = mRimGlowHistoryIdx & 1u;
+    const U32 prev = cur ^ 1u;
+
+    // ===================== Mask (MRT0-3) =====================
+    {
+        mRimGlowWork.bindTarget();
+        bindDeferredShader(gRimGlowMaskProgram); // isDeferred+hasFullGBuffer: getNorm/getNormRaw/getPosition/getDepth
+        // bindDeferredShader() points DEFERRED_DIFFUSE (diffuseRect) at
+        // mRT->deferredScreen's own attachment 0 (pre-lighting G-buffer
+        // albedo) -- override it to `dst` (the lit HDR scene the Auto Rim
+        // gather must read), identical to how applyOnLensFilters/Composite
+        // below repurpose the same channel for the lit scene rather than
+        // raw albedo.
+        gRimGlowMaskProgram.bindTexture(LLShaderMgr::DEFERRED_DIFFUSE, dst, false, LLTexUnit::TFO_POINT);
+
+        S32 ch = gRimGlowMaskProgram.enableTexture(LLShaderMgr::RIMGLOW_RAD_HIST);
+        if (ch > -1)
+        {
+            mRimGlowRadHist[prev].bindTexture(0, ch, LLTexUnit::TFO_POINT);
+            gGL.getTexUnit(ch)->setTextureAddressMode(LLTexUnit::TAM_CLAMP);
+        }
+        gRimGlowMaskProgram.bindTexture(LLShaderMgr::EXPOSURE_MAP, &mExposureMap);
+        gRimGlowMaskProgram.uniform2f(LLShaderMgr::DEFERRED_SCREEN_RES, full_w, full_h);
+        gRimGlowMaskProgram.uniform1f(LLShaderMgr::EXPOSURE, manual_exposure);
+        static const LLStaticHashedString sDt("dt");
+        gRimGlowMaskProgram.uniform1f(sDt, dt > 0.f ? dt : (1.f / 60.f));
+        static const LLStaticHashedString sRimExpLock("rim_exposure_lock");
+        gRimGlowMaskProgram.uniform1i(sRimExpLock, rim_exposure_lock);
+
+        static const LLStaticHashedString sFocusZ("focusZ");
+        static const LLStaticHashedString sFocusFeatherRel("FocusFeatherRel");
+        gRimGlowMaskProgram.uniform1f(sFocusZ, focusZ);
+        gRimGlowMaskProgram.uniform1f(sFocusFeatherRel, llmax((F32)focus_feather_rel(), 1e-3f));
+
+        static const LLStaticHashedString sGatherRadius("GatherRadius");
+        static const LLStaticHashedString sLightThreshold("LightThreshold");
+        static const LLStaticHashedString sSourcePriorityStops("SourcePriorityStops");
+        static const LLStaticHashedString sGatherFalloff("GatherFalloff");
+        static const LLStaticHashedString sBackgroundBias("BackgroundBias");
+        static const LLStaticHashedString sBackgroundFeather("BackgroundFeather");
+        static const LLStaticHashedString sWrapSpread("WrapSpread");
+        static const LLStaticHashedString sRimIndependence("RimIndependence");
+        static const LLStaticHashedString sAutoRimGain("AutoRimGain");
+        static const LLStaticHashedString sColorSaturation("ColorSaturation");
+        static const LLStaticHashedString sRimCrosstalk("RimCrosstalk");
+        static const LLStaticHashedString sCrosstalkKnee("CrosstalkKnee");
+        gRimGlowMaskProgram.uniform1f(sGatherRadius, gather_radius_c);
+        gRimGlowMaskProgram.uniform1f(sLightThreshold, light_threshold());
+        gRimGlowMaskProgram.uniform1f(sSourcePriorityStops, source_priority_stops());
+        gRimGlowMaskProgram.uniform1f(sGatherFalloff, gather_falloff());
+        gRimGlowMaskProgram.uniform1f(sBackgroundBias, background_bias());
+        gRimGlowMaskProgram.uniform1f(sBackgroundFeather, background_feather());
+        gRimGlowMaskProgram.uniform1f(sWrapSpread, wrap_spread());
+        gRimGlowMaskProgram.uniform1f(sRimIndependence, rim_independence());
+        gRimGlowMaskProgram.uniform1f(sAutoRimGain, auto_rim_gain());
+        gRimGlowMaskProgram.uniform1f(sColorSaturation, color_saturation());
+        gRimGlowMaskProgram.uniform1f(sRimCrosstalk, rim_crosstalk());
+        gRimGlowMaskProgram.uniform1f(sCrosstalkKnee, crosstalk_knee());
+
+        static const LLStaticHashedString sEdgeThreshold("EdgeThreshold");
+        static const LLStaticHashedString sEdgeFeather("EdgeFeather");
+        static const LLStaticHashedString sEdgeNormalGate("EdgeNormalGate");
+        static const LLStaticHashedString sRimWidth("RimWidth");
+        gRimGlowMaskProgram.uniform1f(sEdgeThreshold, edge_threshold());
+        gRimGlowMaskProgram.uniform1f(sEdgeFeather, edge_feather());
+        gRimGlowMaskProgram.uniform1f(sEdgeNormalGate, edge_normal_gate());
+        gRimGlowMaskProgram.uniform1i(sRimWidth, rim_width());
+
+        static const LLStaticHashedString sAutoSettle("AutoSettle");
+        static const LLStaticHashedString sSettleDepthTol("SettleDepthTol");
+        static const LLStaticHashedString sSettleLightRejectStops("SettleLightRejectStops");
+        static const LLStaticHashedString sSettleLightReject("SettleLightReject");
+        gRimGlowMaskProgram.uniform1f(sAutoSettle, auto_settle());
+        gRimGlowMaskProgram.uniform1f(sSettleDepthTol, settle_depth_tol());
+        gRimGlowMaskProgram.uniform1f(sSettleLightRejectStops, settle_light_reject_stops());
+        gRimGlowMaskProgram.uniform1f(sSettleLightReject, settle_light_reject());
+
+        mScreenTriangleVB->setBuffer();
+        mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+
+        if (ch > -1) gRimGlowMaskProgram.disableTexture(LLShaderMgr::RIMGLOW_RAD_HIST);
+        unbindDeferredShader(gRimGlowMaskProgram);
+        mRimGlowWork.flush();
+    }
+
+    // ===================== WrapH / WrapV =====================
+    // Two-Color rim is reserved (Mode fixed to Auto Rim this phase); these
+    // two draws still run every frame per the agreed pass order, producing
+    // a harmless zero/no-op result on the shader side.
+    auto run_blur = [&](LLRenderTarget& src, LLRenderTarget* src_dir, LLRenderTarget& dst_rt,
+                         F32 texel_w, F32 texel_h, F32 axis_x, F32 axis_y,
+                         F32 sigma, S32 taps, S32 has_dir)
+    {
+        dst_rt.bindTarget();
+        gRimGlowBlurProgram.bind();
+
+        S32 ch = gRimGlowBlurProgram.enableTexture(LLShaderMgr::RIMGLOW_BLUR_SRC);
+        if (ch > -1)
+        {
+            src.bindTexture(0, ch, LLTexUnit::TFO_POINT);
+            gGL.getTexUnit(ch)->setTextureAddressMode(LLTexUnit::TAM_CLAMP);
+        }
+        S32 dch = gRimGlowBlurProgram.enableTexture(LLShaderMgr::RIMGLOW_BLUR_SRC_DIR);
+        if (dch > -1 && src_dir)
+        {
+            src_dir->bindTexture(has_dir ? 1 : 0, dch, LLTexUnit::TFO_POINT);
+            gGL.getTexUnit(dch)->setTextureAddressMode(LLTexUnit::TAM_CLAMP);
+        }
+
+        static const LLStaticHashedString sBlurTexel("blurTexel");
+        static const LLStaticHashedString sBlurAxis("blurAxis");
+        static const LLStaticHashedString sBlurSigma("blurSigma");
+        static const LLStaticHashedString sBlurTaps("blurTaps");
+        static const LLStaticHashedString sBlurHasDir("blurHasDir");
+        static const LLStaticHashedString sDirCoherenceLo("DirCoherenceLo");
+        static const LLStaticHashedString sDirCoherenceHi("DirCoherenceHi");
+        gRimGlowBlurProgram.uniform2f(sBlurTexel, texel_w, texel_h);
+        gRimGlowBlurProgram.uniform2f(sBlurAxis, axis_x, axis_y);
+        gRimGlowBlurProgram.uniform1f(sBlurSigma, sigma);
+        gRimGlowBlurProgram.uniform1i(sBlurTaps, taps);
+        gRimGlowBlurProgram.uniform1i(sBlurHasDir, has_dir);
+        gRimGlowBlurProgram.uniform1f(sDirCoherenceLo, dir_coherence_lo());
+        gRimGlowBlurProgram.uniform1f(sDirCoherenceHi, dir_coherence_hi());
+
+        mScreenTriangleVB->setBuffer();
+        mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+
+        if (ch > -1) gRimGlowBlurProgram.disableTexture(LLShaderMgr::RIMGLOW_BLUR_SRC);
+        if (dch > -1) gRimGlowBlurProgram.disableTexture(LLShaderMgr::RIMGLOW_BLUR_SRC_DIR);
+        gRimGlowBlurProgram.unbind();
+        dst_rt.flush();
+    };
+
+    {
+        const F32 taps_wrap = (F32)rimGlowBlurTaps(sigma_wrap);
+        run_blur(mRimGlowWork, nullptr, mRimGlowTmp, 1.f / full_w, 1.f / full_h, 1.f, 0.f, sigma_wrap, (S32)taps_wrap, 0);
+        run_blur(mRimGlowTmp, nullptr, mRimGlowWrap, 1.f / full_w, 1.f / full_h, 0.f, 1.f, sigma_wrap, (S32)taps_wrap, 0);
+    }
+
+    // ===================== Downsample (mask,dir -> half MRT) =====================
+    {
+        mRimGlowGlowTmp.bindTarget();
+        gRimGlowDownsampleProgram.bind();
+
+        S32 ch = gRimGlowDownsampleProgram.enableTexture(LLShaderMgr::RIMGLOW_DS_SRC);
+        if (ch > -1)
+        {
+            mRimGlowWork.bindTexture(0, ch, LLTexUnit::TFO_POINT);
+            gGL.getTexUnit(ch)->setTextureAddressMode(LLTexUnit::TAM_CLAMP);
+        }
+        S32 dch = gRimGlowDownsampleProgram.enableTexture(LLShaderMgr::RIMGLOW_DS_SRC_DIR);
+        if (dch > -1)
+        {
+            mRimGlowWork.bindTexture(3, dch, LLTexUnit::TFO_POINT);
+            gGL.getTexUnit(dch)->setTextureAddressMode(LLTexUnit::TAM_CLAMP);
+        }
+        static const LLStaticHashedString sDsTexelSize("dsTexelSize");
+        gRimGlowDownsampleProgram.uniform2f(sDsTexelSize, 1.f / full_w, 1.f / full_h);
+
+        mScreenTriangleVB->setBuffer();
+        mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+
+        if (ch > -1) gRimGlowDownsampleProgram.disableTexture(LLShaderMgr::RIMGLOW_DS_SRC);
+        if (dch > -1) gRimGlowDownsampleProgram.disableTexture(LLShaderMgr::RIMGLOW_DS_SRC_DIR);
+        gRimGlowDownsampleProgram.unbind();
+        mRimGlowGlowTmp.flush();
+    }
+
+    // ===================== GlowH / GlowV (MRT color+dir, blurHasDir=1) =====================
+    {
+        const F32 taps_glow = (F32)rimGlowBlurTaps(sigma_glow);
+        run_blur(mRimGlowGlowTmp, &mRimGlowGlowTmp, mRimGlowGlow, 1.f / half_w, 1.f / half_h, 1.f, 0.f, sigma_glow, (S32)taps_glow, 1);
+        run_blur(mRimGlowGlow, &mRimGlowGlow, mRimGlowGlowTmp, 1.f / half_w, 1.f / half_h, 0.f, 1.f, sigma_glow, (S32)taps_glow, 1);
+        // Final glow+dir result now sits back in mRimGlowGlowTmp (attach0
+        // color, attach1 dir) -- the only hazard-free assignment across a
+        // 3-stage chain (Downsample, GlowH, GlowV) sharing 2 physical MRT
+        // targets. Composite reads it below.
+    }
+
+    // ===================== Composite (read-scratch-blit via mWaterDis) =====================
+    {
+        mWaterDis.bindTarget();
+        bindDeferredShader(gRimGlowCompositeProgram); // isDeferred+hasFullGBuffer
+
+        gRimGlowCompositeProgram.bindTexture(LLShaderMgr::DEFERRED_DIFFUSE, dst, false, LLTexUnit::TFO_POINT);
+
+        S32 mch = gRimGlowCompositeProgram.enableTexture(LLShaderMgr::RIMGLOW_MASK);
+        if (mch > -1) { mRimGlowWork.bindTexture(0, mch, LLTexUnit::TFO_POINT); gGL.getTexUnit(mch)->setTextureAddressMode(LLTexUnit::TAM_CLAMP); }
+        S32 sch = gRimGlowCompositeProgram.enableTexture(LLShaderMgr::RIMGLOW_SUBJ);
+        if (sch > -1) { mRimGlowWork.bindTexture(1, sch, LLTexUnit::TFO_POINT); gGL.getTexUnit(sch)->setTextureAddressMode(LLTexUnit::TAM_CLAMP); }
+        S32 wch = gRimGlowCompositeProgram.enableTexture(LLShaderMgr::RIMGLOW_WRAP);
+        if (wch > -1) { mRimGlowWrap.bindTexture(0, wch, LLTexUnit::TFO_POINT); gGL.getTexUnit(wch)->setTextureAddressMode(LLTexUnit::TAM_CLAMP); }
+        S32 gch = gRimGlowCompositeProgram.enableTexture(LLShaderMgr::RIMGLOW_GLOW);
+        if (gch > -1) { mRimGlowGlowTmp.bindTexture(0, gch, LLTexUnit::TFO_BILINEAR); gGL.getTexUnit(gch)->setTextureAddressMode(LLTexUnit::TAM_CLAMP); }
+        S32 gdch = gRimGlowCompositeProgram.enableTexture(LLShaderMgr::RIMGLOW_GLOW_DIR);
+        if (gdch > -1) { mRimGlowGlowTmp.bindTexture(1, gdch, LLTexUnit::TFO_BILINEAR); gGL.getTexUnit(gdch)->setTextureAddressMode(LLTexUnit::TAM_CLAMP); }
+        gRimGlowCompositeProgram.bindTexture(LLShaderMgr::EXPOSURE_MAP, &mExposureMap);
+
+        gRimGlowCompositeProgram.uniform2f(LLShaderMgr::DEFERRED_SCREEN_RES, full_w, full_h);
+        static const LLStaticHashedString sRimExpLock2("rim_exposure_lock");
+        gRimGlowCompositeProgram.uniform1i(sRimExpLock2, rim_exposure_lock);
+        static const LLStaticHashedString sFocusZ2("focusZ");
+        static const LLStaticHashedString sFocusFeatherRel2("FocusFeatherRel");
+        gRimGlowCompositeProgram.uniform1f(sFocusZ2, focusZ);
+        gRimGlowCompositeProgram.uniform1f(sFocusFeatherRel2, llmax((F32)focus_feather_rel(), 1e-3f));
+
+        static const LLStaticHashedString sRimFresnel("RimFresnel");
+        static const LLStaticHashedString sFresnelBase("FresnelBase");
+        static const LLStaticHashedString sFresnelPower("FresnelPower");
+        static const LLStaticHashedString sFormDirectional("FormDirectional");
+        static const LLStaticHashedString sDirectionalWrap("DirectionalWrap");
+        gRimGlowCompositeProgram.uniform1f(sRimFresnel, rim_fresnel());
+        gRimGlowCompositeProgram.uniform1f(sFresnelBase, fresnel_base());
+        gRimGlowCompositeProgram.uniform1f(sFresnelPower, fresnel_power());
+        gRimGlowCompositeProgram.uniform1f(sFormDirectional, form_directional());
+        gRimGlowCompositeProgram.uniform1f(sDirectionalWrap, directional_wrap());
+
+        static const LLStaticHashedString sAutoWrapFalloff("AutoWrapFalloff");
+        static const LLStaticHashedString sAutoAtmFalloff("AutoAtmFalloff");
+        static const LLStaticHashedString sCoreGain("CoreGain");
+        static const LLStaticHashedString sWrapGain("WrapGain");
+        static const LLStaticHashedString sAtmGain("AtmGain");
+        static const LLStaticHashedString sAutoInteriorFill("AutoInteriorFill");
+        static const LLStaticHashedString sAutoInteriorResponse("AutoInteriorResponse");
+        static const LLStaticHashedString sRespKnee("RespKnee");
+        static const LLStaticHashedString sAutoInteriorTint("AutoInteriorTint");
+        static const LLStaticHashedString sAutoHalo("AutoHalo");
+        static const LLStaticHashedString sHaloTight("HaloTight");
+        static const LLStaticHashedString sHaloOcclusion("HaloOcclusion");
+        static const LLStaticHashedString sWrapNorm("WrapNorm");
+        static const LLStaticHashedString sGlowNorm("GlowNorm");
+        static const LLStaticHashedString sRimWidthC("RimWidth");
+        gRimGlowCompositeProgram.uniform1i(sRimWidthC, rim_width());
+        gRimGlowCompositeProgram.uniform1f(sAutoWrapFalloff, auto_wrap_falloff());
+        gRimGlowCompositeProgram.uniform1f(sAutoAtmFalloff, auto_atm_falloff());
+        gRimGlowCompositeProgram.uniform1f(sCoreGain, core_gain());
+        gRimGlowCompositeProgram.uniform1f(sWrapGain, wrap_gain());
+        gRimGlowCompositeProgram.uniform1f(sAtmGain, atm_gain());
+        gRimGlowCompositeProgram.uniform1f(sAutoInteriorFill, auto_interior_fill());
+        gRimGlowCompositeProgram.uniform1f(sAutoInteriorResponse, auto_interior_response());
+        gRimGlowCompositeProgram.uniform1f(sRespKnee, resp_knee());
+        gRimGlowCompositeProgram.uniform1f(sAutoInteriorTint, auto_interior_tint());
+        gRimGlowCompositeProgram.uniform1f(sAutoHalo, auto_halo());
+        gRimGlowCompositeProgram.uniform1f(sHaloTight, halo_tight());
+        gRimGlowCompositeProgram.uniform1f(sHaloOcclusion, halo_occlusion());
+        gRimGlowCompositeProgram.uniform1f(sWrapNorm, wrap_norm);
+        gRimGlowCompositeProgram.uniform1f(sGlowNorm, glow_norm);
+
+        static const LLStaticHashedString sRimShoulderKnee("RimShoulderKnee");
+        static const LLStaticHashedString sRimWhite("RimWhite");
+        gRimGlowCompositeProgram.uniform1f(sRimShoulderKnee, rim_shoulder_knee());
+        gRimGlowCompositeProgram.uniform1f(sRimWhite, rim_white());
+
+        mScreenTriangleVB->setBuffer();
+        mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+
+        if (mch > -1) gRimGlowCompositeProgram.disableTexture(LLShaderMgr::RIMGLOW_MASK);
+        if (sch > -1) gRimGlowCompositeProgram.disableTexture(LLShaderMgr::RIMGLOW_SUBJ);
+        if (wch > -1) gRimGlowCompositeProgram.disableTexture(LLShaderMgr::RIMGLOW_WRAP);
+        if (gch > -1) gRimGlowCompositeProgram.disableTexture(LLShaderMgr::RIMGLOW_GLOW);
+        if (gdch > -1) gRimGlowCompositeProgram.disableTexture(LLShaderMgr::RIMGLOW_GLOW_DIR);
+        unbindDeferredShader(gRimGlowCompositeProgram);
+        mWaterDis.flush();
+
+        // Read-scratch-blit copy-back: dst cannot be sampled (DEFERRED_DIFFUSE
+        // above) and written in the same draw, so the composited result is
+        // blitted back COLOR-ONLY (identical idiom to applyOnLensFilters'
+        // draw_on_lens_pass, pipeline.cpp).
+        dst->copyContents(mWaterDis,
+                           0, 0, mWaterDis.getWidth(), mWaterDis.getHeight(),
+                           0, 0, dst->getWidth(), dst->getHeight(),
+                           GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    }
+
+    // ===================== propagate radHist_out -> history[cur] =====================
+    mRimGlowRadHist[cur].copyContentsFromAttachment(
+        mRimGlowWork, /*src_attachment=*/2,
+        0, 0, (S32)full_w, (S32)full_h,
+        0, 0, (S32)full_w, (S32)full_h,
+        GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
+    // Advance only after the propagation above has been issued for a
+    // successful Mask-pass write this frame (mirrors mProjVolHistoryIdx).
+    mRimGlowHistoryIdx = prev;
+    mRimGlowHistoryValid = true;
 }
 
 // [BDMerge G3.2] volumetric lighting / godrays pass. Donor: Black Dragon
@@ -19034,6 +19701,50 @@ void LLPipeline::renderFinalize()
 
     assertInitialized();
 
+    // Preserve the world camera before fullscreen post passes alter ambient GL
+    // state. Actor-path guides are inserted after bloom/glow extraction so their
+    // UI colors cannot become a neon halo, but they still need the exact world
+    // matrices and shared scene depth used by the original depth-aware pass.
+    const glm::mat4 actor_path_projection = get_current_projection();
+    const glm::mat4 actor_path_modelview = get_current_modelview();
+    auto render_actor_path_guides = [&](LLRenderTarget* target)
+    {
+        if (!target || gCubeSnapshot || LLPipeline::sPrismLensRender ||
+            !hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI) ||
+            !gViewerWindow->getUIVisibility())
+        {
+            return;
+        }
+
+        const glm::mat4 saved_projection = get_current_projection();
+        const glm::mat4 saved_modelview = get_current_modelview();
+        target->bindTarget();
+        gGL.matrixMode(LLRender::MM_PROJECTION);
+        gGL.loadMatrix(glm::value_ptr(actor_path_projection));
+        gGL.matrixMode(LLRender::MM_MODELVIEW);
+        gGL.loadMatrix(glm::value_ptr(actor_path_modelview));
+        // Fullscreen bloom/projector passes may leave an additive blend
+        // function behind even though GL_BLEND itself is disabled. The guide
+        // draw enables blending internally, so reassert ordinary alpha here.
+        gGL.setSceneBlendType(LLRender::BT_ALPHA);
+
+        LLActorMover::instance().renderHeadingPreview(true);
+        if (LLToolMgr::getInstance()->getCurrentTool() ==
+            (LLTool*)ALToolPathEdit::getInstance())
+        {
+            LLActorMover& mover = LLActorMover::instance();
+            mover.renderActorPathOverlay(
+                mover.getEditActor(), true,
+                ALToolPathEdit::getInstance()->getHoverNode(), true);
+        }
+        target->flush();
+
+        gGL.matrixMode(LLRender::MM_PROJECTION);
+        gGL.loadMatrix(glm::value_ptr(saved_projection));
+        gGL.matrixMode(LLRender::MM_MODELVIEW);
+        gGL.loadMatrix(glm::value_ptr(saved_modelview));
+    };
+
     // ReShade decouple: assume no raw-scene capture until applyOnLensFilters
     // actually performs one this frame. Reset unconditionally (including the
     // non-HDR path) so a stale snapshot from a previous frame can never be
@@ -19104,6 +19815,18 @@ void LLPipeline::renderFinalize()
 
     renderProjectorVolumetric(&mRT->screen);
 
+    // [RimGlow Phase 1] Depth-gated Auto Rim. Inserted HERE -- after the
+    // froxel/projector-volumetric composites have already landed in
+    // mRT->screen (so the Auto Rim soft-max gather sees real volumetric
+    // light as a source) but strictly before colorCorrect (so it still
+    // operates on linear, pre-tonemap, pre-exposure-applied HDR) and before
+    // feedProjectorVolumetricBloom()/render_actor_path_guides() below (so
+    // the actor-path editor overlay draws on top of RimGlow's result, never
+    // rim-lit itself). HDR-path-only, matching every other pre-tonemap
+    // alchemy post effect (applyOnLensFilters, renderCineOutline). Self-
+    // gates to a no-op via CineRimGlowEnabled/isComplete() checks inside.
+    renderVirtualCinemaRimGlow(&mRT->screen);
+
     // [BDMerge G3.3 Phase 3 item 4] Optional, controlled soft-glow halo: feed a
     // scaled, blurred copy of the just-marched half-res shaft into the HDR bloom
     // pyramid base. Runs only in the HDR path (the bloom pyramid exists there) and
@@ -19113,6 +19836,10 @@ void LLPipeline::renderFinalize()
     if (hdr)
     {
         feedProjectorVolumetricBloom();
+
+        // Bloom has already sampled the clean scene. Keep guides in the HDR
+        // color/AA/lens chain, but exclude them from bloom extraction.
+        render_actor_path_guides(&mRT->screen);
     }
 
     // Handles tonemap, colorgrading, and gamma correction in one pass. In the HDR
@@ -19128,6 +19855,10 @@ void LLPipeline::renderFinalize()
     {
         renderCineOutline(&mRT->postPingMap);
         generateGlow(&mRT->postPingMap);
+
+        // Legacy glow likewise samples first; draw into the depth-sharing post
+        // target afterward so guide pixels cannot seed its blur pyramid.
+        render_actor_path_guides(&mRT->postPingMap);
     }
 
     LLRenderTarget* sourceBuffer = &mRT->postPingMap;
@@ -19822,6 +20553,12 @@ void LLPipeline::bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_
     shader.uniform3fv(LLShaderMgr::MOONLIGHT_COLOR, 1, mMoonDiffuse.mV);
 
     shader.uniform1f(LLShaderMgr::REFLECTION_PROBE_MAX_LOD, mReflectionMapManager.mMaxProbeLOD);
+
+    // [Cine Haze] Cinematic Depth Atmosphere uniforms (no-op for programs that do
+    // not link cineHazeF.glsl; uniform-gated off path in the shaders).  Covers the
+    // deferred haze pass and every forward shader reached through
+    // bindDeferredShaderFast()'s slow path.
+    ALCineHaze::bind(shader);
 }
 
 
@@ -19841,10 +20578,85 @@ LLVector4 pow4fsrgb(LLVector4 v, F32 f)
     return v;
 }
 
+// ReShade bridge: see the mReShadeAlbedoRaw/mReShadeNormalsRaw declaration
+// comment in pipeline.h for why this exists. Blits deferredScreen's albedo
+// (attachment 0) and normals (attachment 2) into dedicated, persistent
+// targets so gatherFrame() -- which runs much later, after renderFinalize()'s
+// whole post chain -- has a snapshot from the one point in the frame those
+// attachments are known-good, instead of reading gPipeline.mRT->deferredScreen
+// live at capture time. Self-gates to a no-op (leaving
+// mReShadeGBufferRawValid false, so the bridge falls back to the live
+// deferredScreen attachments exactly as before) for every render pass except
+// the main view: aux/probe cube-face passes and hero-mirror updates run with
+// mRT pointed at their own scratch pack (mAuxillaryRT/mHeroProbeRT), Prism
+// Lens aux updates swap mRT to a scratch pack for the same reason, and
+// impostor/HUD passes render a completely different subject. Same guard
+// style as renderDeferredLighting's own publish_visible_diffuse latch below.
+void LLPipeline::preserveReShadeGBuffer()
+{
+    static LLCachedControl<bool> reshade_gbuffer_publish(gSavedSettings, "RenderReShadeGBufferPublish", true);
+    mReShadeGBufferRawValid = false;
+
+    if (!reshade_gbuffer_publish() ||
+        mRT != &mMainRT ||
+        gCubeSnapshot ||
+        LLPipeline::sRenderingHUDs ||
+        sImpostorRender ||
+        LLPipeline::sPrismLensRender ||
+        mReShadeAlbedoRaw.getWidth() == 0 ||
+        mReShadeNormalsRaw.getWidth() == 0)
+    {
+        return;
+    }
+
+    LLRenderTarget& def = mRT->deferredScreen;
+    if (def.getNumTextures() < 3)
+    {
+        // No normals attachment this session -- addDeferredAttachments()
+        // always adds ORM + normals, so this should not happen, but fail
+        // closed rather than blit an attachment index that doesn't exist.
+        return;
+    }
+
+    const U32 w = def.getWidth();
+    const U32 h = def.getHeight();
+
+    // Attachment 0 = albedo. copyContents() reads whatever GL_READ_BUFFER
+    // def's FBO currently has set, which is GL_COLOR_ATTACHMENT0 -- the state
+    // def's own bindTarget() call (the deferred geometry pass, above in
+    // display()) left it in -- so a plain copyContents() already targets
+    // attachment 0 without needing to touch the read buffer.
+    mReShadeAlbedoRaw.copyContents(def, 0, 0, w, h,
+                                   0, 0, mReShadeAlbedoRaw.getWidth(), mReShadeAlbedoRaw.getHeight(),
+                                   GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
+    // Attachment 2 = normals; needs the explicit-attachment variant.
+    mReShadeNormalsRaw.copyContentsFromAttachment(def, 2, 0, 0, w, h,
+                                                  0, 0, mReShadeNormalsRaw.getWidth(), mReShadeNormalsRaw.getHeight(),
+                                                  GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
+    mReShadeGBufferRawValid = true;
+}
+
 void LLPipeline::renderDeferredLighting()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_PIPELINE;
     LL_PROFILE_GPU_ZONE("renderDeferredLighting");
+
+    // ReShade bridge: capture deferredScreen's albedo/normals for gatherFrame()
+    // NOW, at the earliest point they are guaranteed fully populated and
+    // before any of this function's own reads (or renderFinalize()'s post
+    // chain, which runs long before gatherFrame() actually publishes) get a
+    // chance to touch them. See preserveReShadeGBuffer() / the
+    // mReShadeAlbedoRaw+mReShadeNormalsRaw declaration comment in pipeline.h.
+    // Deliberately called BEFORE the sCull early-out below (mirroring how
+    // mReShadeRawSceneValid is reset unconditionally at the top of
+    // renderFinalize()): the G-buffer was already populated by
+    // renderGeomDeferred() earlier in display(), independent of sCull, so a
+    // null sCull here must not leave a stale prior-frame capture published as
+    // if it were current.
+    preserveReShadeGBuffer();
+
     if (!sCull)
     {
         return;

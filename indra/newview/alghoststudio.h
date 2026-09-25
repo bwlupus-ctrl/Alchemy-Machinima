@@ -97,8 +97,17 @@ public:
     // avatar. MIRROR = copy the source's live animation state (default; the
     // current behaviour). DIRECTED = play mDirectedAnim on the clone's OWN
     // motion controller only, ignoring the source. FROZEN = hold the current
-    // pose. Ignored for overlay instances.
-    enum EDriveMode : S32 { DRIVE_MIRROR = 0, DRIVE_DIRECTED, DRIVE_FROZEN };
+    // pose. TRUE_MIRROR = stamp the source's FINAL evaluated pose (post-motion,
+    // post-gaze/IK/Pose-Polish local joint state + animated face morphs) onto
+    // the clone every frame from updatePostObjectList(); the clone's own
+    // controller is paused so nothing competes with the stamp. Heavier than
+    // MIRROR (per-joint copy per clone per frame), so MIRROR stays the default.
+    // Appended LAST so existing numeric values (UI combo, chat) are unchanged.
+    // Ignored for overlay instances.
+    enum EDriveMode : S32
+    {
+        DRIVE_MIRROR = 0, DRIVE_DIRECTED, DRIVE_FROZEN, DRIVE_TRUE_MIRROR
+    };
     enum ELoopMode : S32 { LOOP_RETRIGGER = 0, LOOP_PLAY_ONCE };
     enum ELockMode : S32
     {
@@ -580,6 +589,12 @@ public:
                             const LLUUID& target_id, bool keep_facing);
     void      updateLookAt();
     void      updatePerFrame();
+    // [TrueMirror] Runs AFTER gObjectList.update() (llappviewer.cpp), i.e.
+    // after every avatar's updateCharacter() for this frame, so a
+    // DRIVE_TRUE_MIRROR clone reads its source's FINAL pose (motions, then
+    // Pose Polish, then gaze/IK) with zero frame lag. updatePerFrame() runs
+    // BEFORE the object list and cannot see that pose.
+    void      updatePostObjectList();
     bool      refreshEntityClone(const LLUUID& id);   // re-pull source appearance + worn attachments onto the clone
     bool      setInstanceChaos(const LLUUID& id, F32 amount);
     bool      setInstanceLook(const LLUUID& id, EGhostLook look);
@@ -769,6 +784,11 @@ private:
     bool mCrowdCommitInProgress = false;
 
     void stepAllTurns();
+    // [TrueMirror] True if this instance's body facing is owned by the stamped
+    // source root (DRIVE_TRUE_MIRROR entity clone with GhostTrueMirrorCopyFacing
+    // on). The Studio's own yaw writers (keep-facing, turn-to, crowd facing)
+    // are skipped for it so they neither fight the stamp nor drift mRotation.
+    bool trueMirrorOwnsFacing(const Instance& inst) const;
     void updateFreezeStrips(F64 now);
     void updateFormationMotion(F64 now);
     LLGhostAvatar* createEntityRuntime(Instance& inst, S32& attachments);

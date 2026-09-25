@@ -5762,7 +5762,26 @@ bool LLVOAvatar::updateCharacter(LLAgent &agent)
     // discontinuities and stabilize foot contact BEFORE the gaze layer paints
     // on top, so gaze solves against a continuous, grounded pose. No-op unless
     // ALPolishEnabled. See docs/pose_polish_integration_plan.md.
-    mPosePolish.run(this, gFrameIntervalSeconds.value());
+    //
+    // [Alchemy fix] Pose Polish composes its deltas ADDITIVELY over the current
+    // joint rotations (delta * current), which is only correct on a freshly
+    // blended pose. When the motion controller is PAUSED -- e.g. selecting/editing
+    // an attachment pauses the wearer's avatar (LLSelectMgr::pauseAssociatedAvatars
+    // -> requestPause), so blendAndApply() no longer runs -- there is no fresh pose
+    // to offset from, and the secondary/inertia stages multiply their deltas onto
+    // the previous frame's already-polished result every frame. That accumulates
+    // into a growing chest/torso bend ("avatar drifts about the torso while editing
+    // an attachment"). Skip and reset polish while paused so it resumes cleanly on
+    // unpause. The Animation Preview path (mSpecialRenderMode == 1) FORCE_UPDATEs
+    // the blend above, so it still has a fresh pose and must keep running.
+    if (areAnimationsPaused() && mSpecialRenderMode != 1)
+    {
+        mPosePolish.reset();
+    }
+    else
+    {
+        mPosePolish.run(this, gFrameIntervalSeconds.value());
+    }
 
     // [Director/ActorMover] arbitrate the post-motion look-at layer. Director gets
     // first refusal for selected real cast avatars; Actor Mover is skipped when

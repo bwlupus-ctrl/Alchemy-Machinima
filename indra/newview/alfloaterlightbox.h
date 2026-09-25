@@ -60,6 +60,10 @@ public:
     void onSelLightClearOverride();
     void onSelGoboChanged();
 
+    // [Cine Haze] Depth Haze tab actions.
+    void onCineHazePreset(const LLSD& userdata);
+    void onCineHazeRefFromCamera();
+
     boost::signals2::scoped_connection mTonemapConnection;
     boost::signals2::scoped_connection mCASConnection;
 };

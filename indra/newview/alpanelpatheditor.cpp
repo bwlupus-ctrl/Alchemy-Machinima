@@ -30,6 +30,7 @@
 #include "lltextbox.h"
 #include "lltoolmgr.h"
 #include "llviewercamera.h"          // capture the live render camera pose
+#include "llviewercontrol.h"         // gSavedSettings for session-tool resets
 
 // both the Director Console Move tab and the standalone Actor Mover embed this
 // via <panel class="panel_path_editor" filename="panel_path_editor.xml"/>
@@ -201,6 +202,58 @@ bool ALPanelPathEditor::postBuild()
     mStopFollowBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onStopFollow(); });
     mFollowOffset->setCommitCallback([this](LLUICtrl*, const LLSD&) { onFollowOffsetCommit(); });
 
+    // Match Camera/Lights: every authored or session-adjustable Path value gets
+    // a standard 18 px, icon-only reset. Pairing the icon with its target also
+    // makes its enabled state follow selection/playback constraints exactly.
+    auto bind_reset = [this](const char* button_name, const char* target_name,
+                             const char* key)
+    {
+        LLButton* button = getChild<LLButton>(button_name);
+        LLUICtrl* target = getChild<LLUICtrl>(target_name);
+        mResetBindings.emplace_back(button, target);
+        const std::string reset_key(key);
+        button->setCommitCallback(
+            [this, reset_key](LLUICtrl*, const LLSD&)
+            {
+                onResetControl(reset_key);
+            });
+    };
+
+    bind_reset("reset_onion_skin", "onion_skin_check", "setting:PathShowOnionSkin");
+    bind_reset("reset_ghost_style", "ghost_style_combo", "setting:PathGhostStyle");
+    bind_reset("reset_ghost_effect_fps", "ghost_effect_fps", "setting:PathGhostEffectFps");
+    bind_reset("reset_ghost_distort", "ghost_distort_combo", "setting:PathGhostDistort");
+    bind_reset("reset_ghost_distort_amount", "ghost_distort_amount", "setting:PathGhostDistortAmount");
+    bind_reset("reset_node_height", "node_height_spinner", "node_height");
+    bind_reset("reset_node_dwell", "node_dwell_spinner", "node_dwell");
+    bind_reset("reset_node_speed", "node_speed_spinner", "node_speed");
+    bind_reset("reset_node_corner_radius", "node_corner_radius_spinner", "node_corner_radius");
+    bind_reset("reset_node_anim", "node_anim_editor", "node_anim");
+    bind_reset("reset_path_camera_enable", "path_camera_enable_check", "setting:PathCameraEnabled");
+    bind_reset("reset_node_cam_transition", "node_cam_transition_combo", "node_cam_transition");
+    bind_reset("reset_path_speed", "path_speed_spinner", "path_speed");
+    bind_reset("reset_path_cadence", "path_cadence_slider", "path_cadence");
+    bind_reset("reset_path_tension", "path_tension_slider", "path_tension");
+    bind_reset("reset_path_easein", "path_easein_spinner", "path_easein");
+    bind_reset("reset_path_easeout", "path_easeout_spinner", "path_easeout");
+    bind_reset("reset_path_groundfollow", "path_groundfollow_check", "path_groundfollow");
+    bind_reset("reset_path_pitch", "path_pitch_check", "path_pitch");
+    bind_reset("reset_path_airborne", "path_airborne_check", "path_airborne");
+    bind_reset("reset_path_end", "path_end_combo", "path_end");
+    bind_reset("reset_path_shape", "path_shape_combo", "path_shape");
+    bind_reset("reset_primitive_radius_x", "primitive_radius_x", "primitive_radius_x");
+    bind_reset("reset_primitive_radius_y", "primitive_radius_y", "primitive_radius_y");
+    bind_reset("reset_primitive_start", "primitive_start_deg", "primitive_start");
+    bind_reset("reset_primitive_sweep", "primitive_sweep_deg", "primitive_sweep");
+    bind_reset("reset_primitive_yaw", "primitive_yaw_deg", "primitive_yaw");
+    bind_reset("reset_primitive_pitch", "primitive_pitch_deg", "primitive_pitch");
+    bind_reset("reset_primitive_roll", "primitive_roll_deg", "primitive_roll");
+    bind_reset("reset_primitive_rise", "primitive_rise", "primitive_rise");
+    bind_reset("reset_sync_take", "sync_take_check", "sync_take");
+    bind_reset("reset_sync_offset", "sync_offset_spinner", "sync_offset");
+    bind_reset("reset_follow_leader", "follow_leader_combo", "follow_leader");
+    bind_reset("reset_follow_offset", "follow_offset_spinner", "follow_offset");
+
     if (mColorSwatch)
     {
         mColorSwatch->setBackgroundVisible(true);
@@ -273,8 +326,152 @@ void ALPanelPathEditor::draw()
     refreshEditButtons();
     refreshCopyCombo();
     refreshChoreography();
+    refreshResetButtons();
 
     LLPanel::draw();
+}
+
+void ALPanelPathEditor::refreshResetButtons()
+{
+    for (const auto& binding : mResetBindings)
+    {
+        binding.first->setEnabled(binding.second->getEnabled());
+    }
+}
+
+void ALPanelPathEditor::onResetControl(const std::string& key)
+{
+    static const std::string SETTING_PREFIX("setting:");
+    if (key.compare(0, SETTING_PREFIX.size(), SETTING_PREFIX) == 0)
+    {
+        if (LLControlVariable* control =
+                gSavedSettings.getControl(key.substr(SETTING_PREFIX.size())))
+        {
+            control->resetToDefault(true);
+        }
+        return;
+    }
+
+    if (mActor.isNull())
+    {
+        return;
+    }
+
+    // Set the paired widget, then use its production commit path. This keeps
+    // validation, engine clamping, geometry rebuilds, and undo behavior exactly
+    // the same as a hand edit instead of maintaining a second mutation path.
+    if (key == "node_height")
+    {
+        mNodeHeight->setValue(0.f); onNodeHeightCommit();
+    }
+    else if (key == "node_dwell")
+    {
+        mNodeDwell->setValue(0.f); onNodeDwellCommit();
+    }
+    else if (key == "node_speed")
+    {
+        mNodeSpeed->setValue(0.f); onNodeSpeedCommit();
+    }
+    else if (key == "node_corner_radius")
+    {
+        mNodeCornerRadius->setValue(0.f); onNodeCornerRadiusCommit();
+    }
+    else if (key == "node_anim")
+    {
+        mNodeAnim->setText(std::string()); onNodeAnimCommit();
+    }
+    else if (key == "node_cam_transition")
+    {
+        mCamTransCombo->setValue(1); onCamTransitionCommit();
+    }
+    else if (key == "path_speed")
+    {
+        mPathSpeed->setValue(1.f); onPathSpeedCommit();
+    }
+    else if (key == "path_cadence")
+    {
+        mCadence->setValue(3.f); onPathCadenceCommit();
+    }
+    else if (key == "path_tension")
+    {
+        mTension->setValue(0.5f); onPathTensionCommit();
+    }
+    else if (key == "path_easein")
+    {
+        mEaseIn->setValue(0.f); onPathEaseInCommit();
+    }
+    else if (key == "path_easeout")
+    {
+        mEaseOut->setValue(0.f); onPathEaseOutCommit();
+    }
+    else if (key == "path_groundfollow")
+    {
+        mGroundFollow->set(false); onPathGroundFollowCommit();
+    }
+    else if (key == "path_pitch")
+    {
+        mPitch->set(false); onPathPitchCommit();
+    }
+    else if (key == "path_airborne")
+    {
+        mAirborne->set(false); onPathAirborneCommit();
+    }
+    else if (key == "path_end")
+    {
+        mEndCombo->setValue(END_STOP); onPathEndCommit();
+    }
+    else if (key == "path_shape")
+    {
+        mShapeCombo->setValue(ALPathGeometry::WAYPOINTS); onPathShapeCommit();
+    }
+    else if (key == "primitive_radius_x")
+    {
+        mPrimitiveRadiusX->setValue(3.f); onPrimitiveCommit();
+    }
+    else if (key == "primitive_radius_y")
+    {
+        mPrimitiveRadiusY->setValue(2.f); onPrimitiveCommit();
+    }
+    else if (key == "primitive_start")
+    {
+        mPrimitiveStart->setValue(0.f); onPrimitiveCommit();
+    }
+    else if (key == "primitive_sweep")
+    {
+        mPrimitiveSweep->setValue(360.f); onPrimitiveCommit();
+    }
+    else if (key == "primitive_yaw")
+    {
+        mPrimitiveYaw->setValue(0.f); onPrimitiveCommit();
+    }
+    else if (key == "primitive_pitch")
+    {
+        mPrimitivePitch->setValue(0.f); onPrimitiveCommit();
+    }
+    else if (key == "primitive_roll")
+    {
+        mPrimitiveRoll->setValue(0.f); onPrimitiveCommit();
+    }
+    else if (key == "primitive_rise")
+    {
+        mPrimitiveRise->setValue(3.f); onPrimitiveCommit();
+    }
+    else if (key == "sync_take")
+    {
+        mSyncCheck->set(false); onSyncToggle();
+    }
+    else if (key == "sync_offset")
+    {
+        mSyncOffset->setValue(0.f); onSyncOffsetCommit();
+    }
+    else if (key == "follow_leader")
+    {
+        LLActorMover::instance().clearFollow(mActor);
+    }
+    else if (key == "follow_offset")
+    {
+        mFollowOffset->setValue(3.f); onFollowOffsetCommit();
+    }
 }
 
 void ALPanelPathEditor::onVisibilityChange(bool new_visibility)

@@ -106,6 +106,19 @@ public:
         LLQuaternion mCamRot;            // camera orientation, world frame
         F32          mCamFov = 0.f;      // vertical FOV, radians (0 = viewer default)
         S32          mCamTransition = 1; // how the camera REACHES this node: 0 cut, 1 ease
+
+        // [ObjectPath] authored world-frame orientation, captured verbatim from
+        // the prop's live rotation by the panel's "Capture Orient" button. What
+        // it MEANS is decided by Path::mRotationMode (evalPathOrientation):
+        // AUTHORED reads it as an absolute world pose; FACE_PATH_PLUS_OFFSET
+        // reads it as "what I wanted the pose to look like here", from which the
+        // tangent-facing component at this node is factored out to leave a pure
+        // extra offset. Ignored in FACE_PATH mode and always ignored by the
+        // avatar walk (whose facing is the turn-rate-smoothed tangent -- same
+        // carve-out as mYawOffset). Rides PathState/undo automatically, like the
+        // other per-node fields.
+        bool         mHasOrient = false;
+        LLQuaternion mOrient;
     };
 
     struct Path
@@ -124,6 +137,22 @@ public:
         bool   mGroundFollow = false;   // clamp feet to terrain/prims each frame
         bool   mPitchToSlope = false;   // tilt root pitch to the local slope
         bool   mAirborne = false;       // authored air path: fly/hover roles, no contacts
+
+        // [ObjectPath] base-rotation mode for the OBJECT path drive. The avatar
+        // walk never reads this (its facing is always the turn-rate-smoothed
+        // tangent -- same carve-out as mYawOffset), so a pathless-of-this-field
+        // avatar scene is unaffected; only ALObjectPathMover::update() switches
+        // on it. FACE_PATH is the default and is the untouched original formula
+        // (tangent facing + skid, start-alignment preserved), so existing prop
+        // paths stay byte-identical. See evalPathOrientation() for AUTHORED /
+        // FACE_PATH_PLUS_OFFSET.
+        enum EObjectPathRotationMode
+        {
+            OBJPATH_ROT_FACE_PATH = 0,             // default: tangent facing + skid
+            OBJPATH_ROT_AUTHORED = 1,               // slerp authored mOrient across nodes
+            OBJPATH_ROT_FACE_PATH_PLUS_OFFSET = 2   // tangent facing * authored offset
+        };
+        S32    mRotationMode = OBJPATH_ROT_FACE_PATH;
 
         // ---- V2 exact whole-path primitive ---------------------------------
         // WAYPOINTS preserves the centripetal Catmull-Rom path. The other types
@@ -232,6 +261,16 @@ public:
     bool setNodeGroundOffset(const LLUUID& actor_id, S32 index, F32 offset_m);
     bool setNodeCornerRadius(const LLUUID& actor_id, S32 index, F32 radius_m);
     bool setNodeYawOffset(const LLUUID& actor_id, S32 index, F32 yaw_rad);  // [ObjectPath] skid
+    // [ObjectPath] per-node authored orientation (Path::mRotationMode AUTHORED /
+    // FACE_PATH_PLUS_OFFSET). setNodeOrient stores the given WORLD rotation
+    // verbatim (the panel's "Capture Orient" passes the prop's live rotation)
+    // and sets mHasOrient; clearNodeOrient drops back to "no authored pose here"
+    // (AUTHORED falls back to tangent facing at that node; the offset mode falls
+    // back to no extra offset). Does not affect arc-length geometry, but marks
+    // dirty anyway for the same reason the other per-node setters do (one path
+    // to rebuild, never two).
+    bool setNodeOrient(const LLUUID& actor_id, S32 index, const LLQuaternion& orient);
+    bool clearNodeOrient(const LLUUID& actor_id, S32 index);
 
     // [ObjectPath] evaluation helpers shared with the object path mover, so an
     // object drive uses the EXACT speed math the avatar walk uses (per-node
@@ -239,6 +278,16 @@ public:
     // implementation to drift) plus the interpolated per-node yaw offset.
     static F32 evalPathSpeed(const Path& path, F32 dist, bool skip_ease);
     static F32 evalPathYawOffset(const Path& path, F32 dist);
+    // [ObjectPath] interpolated per-node authored orientation at arc distance
+    // dist, bracketed exactly like evalPathYawOffset. as_offset selects how a
+    // node with no authored orientation (mHasOrient == false) contributes:
+    // false (AUTHORED mode) -> that node's own tangent-facing quaternion, so an
+    // un-authored node reads as "keep facing the path"; true
+    // (FACE_PATH_PLUS_OFFSET) -> identity, so an un-authored node adds no extra
+    // rotation on top of the live tangent facing. See llactormover.cpp for the
+    // full derivation (mirrors the Drive start-alignment idiom in
+    // ALObjectPathMover::start()).
+    static LLQuaternion evalPathOrientation(const Path& path, F32 dist, bool as_offset);
 
     // ---- P3 per-node camera (author an actor+camera TAKE inline) --------------
     // Capture a camera into a node from a render-camera pose already resolved to

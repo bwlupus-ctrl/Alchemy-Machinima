@@ -345,6 +345,10 @@
                  label="AMD LPM"
                  name="7"
                  value="7"/>
+                <combo_box.item
+                 label="S-Log3 Capture"
+                 name="8"
+                 value="8"/>
 			</combo_box>
 			<button
 				name="exposure_default_btn"
@@ -751,6 +755,132 @@
 				increment="0.1"
 				name="lpm_satb_spinner"
 				control_name="AlchemyToneMapAMDSaturationB" />
+				<!-- [S-Log3] Capture controls (tonemap type 8 only). Gated
+				     visible/hidden in ALFloaterLightBox::updateTonemapper(). -->
+				<text
+					follows="left|top"
+					height="15"
+					left="30"
+					top_pad="5"
+					width="100"
+					layout="topleft"
+					name="slog_curve_label"
+					tool_tip="Which standard log curve to encode. Grade with the matching CST in post."
+					value="Log curve:" />
+				<combo_box
+					allow_text_entry="false"
+					tool_tip="Which standard log curve to encode. Grade with the matching CST in post."
+					control_name="AlchemyToneMapSLogCurve"
+					follows="left|top"
+					height="16"
+					layout="topleft"
+					left_delta="100"
+					right="-2"
+					max_chars="128"
+					name="slog_curve_combo"
+					top_delta="-2">
+					<combo_box.item label="Sony S-Log3" name="slog3" value="0" />
+					<combo_box.item label="Sony S-Log2" name="slog2" value="1" />
+					<combo_box.item label="ARRI LogC3" name="logc3" value="2" />
+					<combo_box.item label="Cineon / DPX" name="cineon" value="3" />
+				</combo_box>
+				<text
+					follows="left|top"
+					height="15"
+					left="30"
+					top_pad="7"
+					width="100"
+					layout="topleft"
+					name="slog_range_label"
+					tool_tip="Full or Legal/Video (SMPTE narrow) code range. Must match the Data Levels of your grade CST."
+					value="Encoding range:" />
+				<combo_box
+					allow_text_entry="false"
+					tool_tip="Full or Legal/Video (SMPTE narrow) code range. Must match the Data Levels of your grade CST."
+					control_name="AlchemyToneMapSLogRange"
+					follows="left|top"
+					height="16"
+					layout="topleft"
+					left_delta="100"
+					right="-2"
+					max_chars="128"
+					name="slog_range_combo"
+					top_delta="-2">
+					<combo_box.item label="Full" name="full" value="0" />
+					<combo_box.item label="Legal / Video" name="legal" value="1" />
+				</combo_box>
+				<text
+					follows="left|top"
+					height="15"
+					left="30"
+					top_pad="7"
+					width="100"
+					layout="topleft"
+					name="slog_toe_label"
+					tool_tip="Shadow toe/pedestal lift for 8-bit shadow protection. 0 = off. Needs a matching inverse in the grade."
+					value="Shadow toe:" />
+				<slider_bar
+					top_pad="-18"
+					height="20"
+					increment="0.01"
+					follows="left|top|right"
+					layout="topleft"
+					max_val="0.3"
+					min_val="0.0"
+					left_delta="100"
+					right="-55"
+					name="slog_toe_slider"
+					control_name="AlchemyToneMapSLogToe" />
+				<spinner
+					top_pad="-20"
+					height="15"
+					label_width="0"
+					right="-1"
+					decimal_digits="2"
+					follows="top|right"
+					layout="topleft"
+					max_val="0.3"
+					min_val="0.0"
+					width="55"
+					increment="0.01"
+					name="slog_toe_spinner"
+					control_name="AlchemyToneMapSLogToe" />
+				<text
+					follows="left|top"
+					height="15"
+					left="30"
+					top_pad="5"
+					width="100"
+					layout="topleft"
+					name="slog_ev_label"
+					tool_tip="Exposure offset (EV stops) applied before the log curve, on top of the Exposure control above."
+					value="EV offset:" />
+				<slider_bar
+					top_pad="-18"
+					height="20"
+					increment="0.1"
+					follows="left|top|right"
+					layout="topleft"
+					max_val="8.0"
+					min_val="-8.0"
+					left_delta="100"
+					right="-55"
+					name="slog_ev_slider"
+					control_name="AlchemyToneMapSLogEV" />
+				<spinner
+					top_pad="-20"
+					height="15"
+					label_width="0"
+					right="-1"
+					decimal_digits="1"
+					follows="top|right"
+					layout="topleft"
+					max_val="8.0"
+					min_val="-8.0"
+					width="55"
+					increment="0.1"
+					name="slog_ev_spinner"
+					control_name="AlchemyToneMapSLogEV" />
 				<!-- ================= Graduated ND (pre-tonemap) ================= -->
 				<view_border bevel_style="none" height="0" layout="topleft" left="0" name="gradnd_border" top_pad="10" width="500" />
 				<check_box
@@ -4605,6 +4735,91 @@
 				</panel>
 			</scroll_container>
 		</panel>
+		<!-- [Cine Haze] Cinematic Depth Atmosphere tab: distance / height haze that
+		     reduces contrast toward an atmosphere colour (not blur), composed after
+		     the WindLight aerial perspective in linear HDR before exposure/tonemap.
+		     Same compact slider+reset pattern as the Froxel Air tab; all value
+		     controls are XML-bound (control_name) with the generic
+		     LightBox.ResetControlDefault reset handler. Preset / reset-all /
+		     from-camera buttons go through ALCineHaze via ALFloaterLightBox. -->
+		<panel follows="all" label="Depth Haze" layout="topleft" name="cinehaze_settings" can_resize="false">
+			<scroll_container follows="all" height="806" layout="topleft" left="0"
+			 name="cinehaze_settings_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="420">
+				<panel background_visible="false" follows="left|top|right" height="700" layout="topleft" left="0"
+				 name="cinehaze_settings_scroll_content" top="0" width="400">
+			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Cinematic Depth Atmosphere (distance haze)" />
+			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" label="Enable depth haze (master)" control_name="CineHazeEnable" tool_tip="Distant geometry loses contrast toward the atmosphere colour; nearby stays clear. Off = renderer untouched. Sits on top of the sky's own WindLight haze. Mutually exclusive with Froxel Air: while the froxel master is on this layer is automatically disabled." />
+			<combo_box follows="left|top" layout="topleft" height="22" left="12" top_pad="8" width="170" name="ch_preset_combo" tool_tip="Apply a cinematic depth-haze preset. Height presets (Mist, Valley) anchor the layer at your current camera altitude.">
+					<combo_box.item label="Preset..." name="custom" value="custom" />
+					<combo_box.item label="Subtle cinematic" name="subtle" value="subtle" />
+					<combo_box.item label="Aerial vista" name="vista" value="vista" />
+					<combo_box.item label="Golden hour" name="golden" value="golden" />
+					<combo_box.item label="Blue hour" name="bluehour" value="bluehour" />
+					<combo_box.item label="Morning mist (low)" name="mist" value="mist" />
+					<combo_box.item label="Valley fog (heavy)" name="valley" value="valley" />
+					<combo_box.item label="Dream / ethereal" name="dream" value="dream" />
+					<combo_box.item label="Noir / cold" name="noir" value="noir" />
+					<combo_box.item label="Smoke / interior" name="smoke" value="smoke" />
+				</combo_box>
+			<button follows="left|top" layout="topleft" height="22" left="192" top_pad="-22" width="120" label="Reset all" name="ch_reset_all" tool_tip="Reset every depth-haze setting to its default (haze off)."><button.commit_callback function="LightBox.CineHazePreset" parameter="reset" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="10" width="124" layout="topleft" value="Master strength:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ch_CineHazeStrength_slider" control_name="CineHazeStrength" enabled_control="CineHazeEnable" tool_tip="Multiplies the final fog amount. 0 = no work done." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ch_reset_CineHazeStrength"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineHazeStrength" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Density (1/m):" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="0.05" increment="0.0005" decimal_digits="4" show_text="true" can_edit_text="true" name="ch_CineHazeDensity_slider" control_name="CineHazeDensity" enabled_control="CineHazeEnable" tool_tip="Extinction per metre. Transmittance = exp(-density * (distance - start)); 0.004 halves contrast ~173 m past the start distance." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ch_reset_CineHazeDensity"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineHazeDensity" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Start distance (m):" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="300" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ch_CineHazeStartDistance_slider" control_name="CineHazeStartDistance" enabled_control="CineHazeEnable" tool_tip="True camera-to-surface distance (metres) before haze starts accumulating; keeps the subject clear." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ch_reset_CineHazeStartDistance"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineHazeStartDistance" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Max opacity:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ch_CineHazeMaxOpacity_slider" control_name="CineHazeMaxOpacity" enabled_control="CineHazeEnable" tool_tip="Ceiling on how much atmosphere colour can replace the scene, so far geometry stays readable." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ch_reset_CineHazeMaxOpacity"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineHazeMaxOpacity" /></button>
+			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Atmosphere colour" />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Colour source:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="ch_color_mode_combo" control_name="CineHazeColorMode" enabled_control="CineHazeEnable" tool_tip="Sky-linked reuses the active WindLight sky's far haze colour per view direction (seamless with the horizon, no screen averaging). Manual uses the swatch below.">
+				<combo_box.item label="Sky-linked (WindLight)" name="ch_mode_env" value="1" />
+				<combo_box.item label="Manual colour" name="ch_mode_manual" value="0" />
+			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="10" width="124" layout="topleft" value="Manual colour:" />
+			<color_swatch follows="left|top" height="22" left="136" top_pad="-17" width="44" layout="topleft" can_apply_immediately="true" name="ch_color_swatch" control_name="CineHazeColor" enabled_control="CineHazeEnable" tool_tip="Atmosphere colour (sRGB picker). White = the brightness of a white sky pixel before exposure." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ch_reset_CineHazeColor"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineHazeColor" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Colour intensity:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="4" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="ch_CineHazeColorIntensity_slider" control_name="CineHazeColorIntensity" enabled_control="CineHazeEnable" tool_tip="Brightness multiplier on the atmosphere colour (both sources), in linear HDR before exposure." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ch_reset_CineHazeColorIntensity"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineHazeColorIntensity" /></button>
+			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Height fog (optional)" />
+			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" label="Height-dependent density (denser low)" control_name="CineHazeHeightEnable" enabled_control="CineHazeEnable" tool_tip="density = base * exp(-falloff * (height - reference)), integrated analytically along each ray. Falloff 0 is exactly uniform haze." />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Reference height (m):" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="4096" increment="0.5" decimal_digits="1" show_text="true" can_edit_text="true" name="ch_CineHazeReferenceHeight_slider" control_name="CineHazeReferenceHeight" enabled_control="CineHazeHeightEnable" tool_tip="Absolute SL altitude (metres) where the haze has its base density; denser below, thinner above." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ch_reset_CineHazeReferenceHeight"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineHazeReferenceHeight" /></button>
+			<button follows="left|top" layout="topleft" height="20" left="136" top_pad="4" width="120" label="From camera" name="ch_ref_from_camera" enabled_control="CineHazeHeightEnable" tool_tip="Set the reference height to the current camera altitude."><button.commit_callback function="LightBox.CineHazeRefFromCamera" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Height falloff (1/m):" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="0.5" increment="0.005" decimal_digits="3" show_text="true" can_edit_text="true" name="ch_CineHazeHeightFalloff_slider" control_name="CineHazeHeightFalloff" enabled_control="CineHazeHeightEnable" tool_tip="Density thins by e every 1/falloff metres above the reference (0.05 = 20 m). 0 = uniform." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ch_reset_CineHazeHeightFalloff"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineHazeHeightFalloff" /></button>
+			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Advanced: sun response" />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Sun tint:" />
+			<color_swatch follows="left|top" height="22" left="136" top_pad="-17" width="44" layout="topleft" can_apply_immediately="true" name="ch_sun_tint_swatch" control_name="CineHazeSunTint" enabled_control="CineHazeEnable" tool_tip="Warm tint added to the atmosphere colour toward the sun (moon at night, 25%). Applied only through the haze, so zero haze = zero glow; unshadowed (no light shafts)." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ch_reset_CineHazeSunTint"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineHazeSunTint" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Sun strength:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="2" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ch_CineHazeSunStrength_slider" control_name="CineHazeSunStrength" enabled_control="CineHazeEnable" tool_tip="Strength of the sun-facing tint. 0 disables the lobe entirely." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ch_reset_CineHazeSunStrength"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineHazeSunStrength" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Lobe width (deg):" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="1" max_val="89" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ch_CineHazeSunLobeWidth_slider" control_name="CineHazeSunLobeWidth" enabled_control="CineHazeEnable" tool_tip="Angle from the sun at which the tint falls to half strength." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ch_reset_CineHazeSunLobeWidth"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineHazeSunLobeWidth" /></button>
+			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Developer" />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Debug view:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="ch_debug_combo" control_name="CineHazeDebugView" enabled_control="CineHazeEnable" tool_tip="Replaces the hazed pixels with a diagnostic value (shown through the normal exposure/tonemap). Not saved between sessions.">
+				<combo_box.item label="Off" name="ch_dbg_0" value="0" />
+				<combo_box.item label="Distance (0-512 m)" name="ch_dbg_1" value="1" />
+				<combo_box.item label="Density at surface / base" name="ch_dbg_2" value="2" />
+				<combo_box.item label="Optical depth" name="ch_dbg_3" value="3" />
+				<combo_box.item label="Transmittance" name="ch_dbg_4" value="4" />
+				<combo_box.item label="Fog amount" name="ch_dbg_5" value="5" />
+				<combo_box.item label="Sky exclusion" name="ch_dbg_6" value="6" />
+			</combo_box>
+			<text follows="left|top" height="45" left="10" top_pad="8" width="380" layout="topleft" word_wrap="true" value="Notes: applied in linear HDR before exposure/bloom/tonemap; skipped in reflection probes, HUDs and impostors. Additive particles get transmittance only. Automatically disabled while Froxel Air volumetrics are enabled (that system applies its own distance/height medium)." />
+				</panel>
+			</scroll_container>
+		</panel>
 		<!-- [BDMerge G3.3 Batch 3] Selected Light quick panel: live per-projector
 		     controls that follow the currently-selected object. Controls enable
 		     only when a spotlight projector is selected; state is driven from
@@ -4687,6 +4902,138 @@
 			<check_box follows="left|top" height="16" left="12" top_pad="8" width="360" layout="topleft" name="sl_gobo_invert" label="Invert (negative cookie)">
 				<check_box.commit_callback function="LightBox.SelGoboInvert" />
 			</check_box>
+		</panel>
+		<!-- [RimGlow Phase 1] Depth-gated Auto Rim for the in-focus subject.
+		     Auto Rim only this phase (Two-Color/Rotoscope reserved). Every
+		     slider here binds directly to its CineRimGlow* setting via
+		     control_name (no per-slider C++); enabled_control greys the
+		     whole panel out when the master toggle is off. -->
+		<panel follows="all" label="Rim Glow" layout="topleft" name="rimglow_settings" can_resize="false">
+			<scroll_container follows="all" height="806" layout="topleft" left="0"
+			 name="rimglow_settings_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="420">
+				<panel background_visible="false" follows="left|top|right" height="1980" layout="topleft" left="0"
+				 name="rimglow_settings_scroll_content" top="0" width="400">
+					<check_box
+						follows="left|top" height="16" left="10" top="8" width="300" layout="topleft"
+						label="Enable Rim Glow (Auto Rim)"
+						tool_tip="Depth-gated physical backlight for the in-focus subject. Allocates ~120-250 MB of additional render targets at 1080p-1440p (more at 4K / with half-res glow off) only while enabled -- see the note below."
+						control_name="CineRimGlowEnabled" name="rimglow_enabled_check" />
+					<text follows="left|top" height="30" left="10" top_pad="4" width="380" layout="topleft" wrap="true"
+					 text_color="Yellow" value="VRAM note: Rim Glow holds its own render targets (working buffer + history + blur chains) for as long as it is enabled -- these are NOT reclaimable by the texture memory manager. Disable when not filming to free the VRAM." />
+
+					<text follows="left|top" height="15" left="10" top_pad="10" width="200" layout="topleft" value="-- Subject / Focus --" font="SansSerifBold" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="6" width="150" layout="topleft" value="Focus Target:" enabled_control="CineRimGlowEnabled" />
+					<combo_box allow_text_entry="false" control_name="CineRimGlowFocusTarget" follows="left|top" height="20" layout="topleft" left="160" right="-4" top_delta="-2" name="rimglow_focus_target_combo" enabled_control="CineRimGlowEnabled" tool_tip="Who the subject is, resolved the same way as the Cine Light Rig Night Mask target.">
+						<combo_box.item label="Self" name="rg_focus_self" value="0" />
+						<combo_box.item label="Subject A" name="rg_focus_a" value="1" />
+						<combo_box.item label="Subject B" name="rg_focus_b" value="2" />
+						<combo_box.item label="Subject C" name="rg_focus_c" value="3" />
+						<combo_box.item label="Subject D" name="rg_focus_d" value="4" />
+					</combo_box>
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Manual/Fallback Depth (m):" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0.1" max_val="50" increment="0.1" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_manual_depth_slider" control_name="CineRimGlowManualFocusDepth" enabled_control="CineRimGlowEnabled" tool_tip="Used whenever the resolved focus target is missing/dead." />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Focus Feather (rel):" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0.05" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_focus_feather_slider" control_name="CineRimGlowFocusFeatherRel" enabled_control="CineRimGlowEnabled" tool_tip="Full weight within +/- this (relative) of the subject depth; feathers out to +/-2x." />
+
+					<text follows="left|top" height="15" left="10" top_pad="14" width="200" layout="topleft" value="-- Capture --" font="SansSerifBold" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="6" width="150" layout="topleft" value="Light Search Distance (px):" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="2" max_val="64" increment="0.5" decimal_digits="1" show_text="true" can_edit_text="true" name="rimglow_gather_radius_slider" control_name="CineRimGlowGatherRadius" enabled_control="CineRimGlowEnabled" tool_tip="How far behind the edge to look for light. Clamped to 3% of screen height regardless of this slider." />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Ignore Light Dimmer Than:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_light_threshold_slider" control_name="CineRimGlowLightThreshold" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Highlight Recovery (stops):" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="12" increment="0.1" decimal_digits="1" show_text="true" can_edit_text="true" name="rimglow_priority_stops_slider" control_name="CineRimGlowSourcePriorityStops" enabled_control="CineRimGlowEnabled" tool_tip="Un-clips SL's display-referred highlight clamp so real lights dominate the rim." />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Distance Falloff:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_gather_falloff_slider" control_name="CineRimGlowGatherFalloff" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Subject/Light Separation:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="0.1" increment="0.001" decimal_digits="3" show_text="true" can_edit_text="true" name="rimglow_background_bias_slider" control_name="CineRimGlowBackgroundBias" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Separation Feather:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0.001" max_val="0.2" increment="0.001" decimal_digits="3" show_text="true" can_edit_text="true" name="rimglow_background_feather_slider" control_name="CineRimGlowBackgroundFeather" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Wrap Spread (capture width):" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_wrap_spread_slider" control_name="CineRimGlowWrapSpread" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Independence (selectivity):" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_independence_slider" control_name="CineRimGlowRimIndependence" enabled_control="CineRimGlowEnabled" tool_tip="1 = a single bright source sets the rim regardless of surrounding black." />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Rim Gain:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="8" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_gain_slider" control_name="CineRimGlowAutoRimGain" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Color Saturation:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="2" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_saturation_slider" control_name="CineRimGlowColorSaturation" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Highlight Crosstalk:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_crosstalk_slider" control_name="CineRimGlowRimCrosstalk" enabled_control="CineRimGlowEnabled" tool_tip="Lets the hottest captured light bleed toward white." />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Crosstalk Knee:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_crosstalk_knee_slider" control_name="CineRimGlowCrosstalkKnee" enabled_control="CineRimGlowEnabled" />
+
+					<text follows="left|top" height="15" left="10" top_pad="14" width="200" layout="topleft" value="-- Form (Fresnel) --" font="SansSerifBold" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="6" width="150" layout="topleft" value="Fresnel Wrap:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_rim_fresnel_slider" control_name="CineRimGlowRimFresnel" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Fresnel Floor:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_fresnel_base_slider" control_name="CineRimGlowFresnelBase" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Fresnel Power:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="1" max_val="10" increment="0.1" decimal_digits="1" show_text="true" can_edit_text="true" name="rimglow_fresnel_power_slider" control_name="CineRimGlowFresnelPower" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Form Directional Bias:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_form_directional_slider" control_name="CineRimGlowFormDirectional" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Directional Wrap:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_directional_wrap_slider" control_name="CineRimGlowDirectionalWrap" enabled_control="CineRimGlowEnabled" />
+
+					<text follows="left|top" height="15" left="10" top_pad="14" width="200" layout="topleft" value="-- Lobes --" font="SansSerifBold" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="6" width="150" layout="topleft" value="Edge Width (px):" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="1" max_val="12" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="rimglow_rim_width_slider" control_name="CineRimGlowRimWidth" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Wrap Lobe Falloff:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="4" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_wrap_falloff_slider" control_name="CineRimGlowAutoWrapFalloff" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Atmosphere Lobe Falloff:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="4" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_atm_falloff_slider" control_name="CineRimGlowAutoAtmFalloff" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Core Gain:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="4" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_core_gain_slider" control_name="CineRimGlowCoreGain" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Wrap Gain:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="4" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_wrap_gain_slider" control_name="CineRimGlowWrapGain" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Atmosphere Gain:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="4" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_atm_gain_slider" control_name="CineRimGlowAtmGain" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Interior Fill:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="4" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_interior_fill_slider" control_name="CineRimGlowAutoInteriorFill" enabled_control="CineRimGlowEnabled" tool_tip="Pushes the captured backlight inward onto the subject instead of bleeding outward." />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Fill Follows Form:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_interior_response_slider" control_name="CineRimGlowAutoInteriorResponse" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Fill Response Knee:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_resp_knee_slider" control_name="CineRimGlowRespKnee" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Fill Picks Up Surface Color:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_interior_tint_slider" control_name="CineRimGlowAutoInteriorTint" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Outward Halo:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="2" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_halo_slider" control_name="CineRimGlowAutoHalo" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Halo Tightness:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_halo_tight_slider" control_name="CineRimGlowHaloTight" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Halo Respects Foreground:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_halo_occlusion_slider" control_name="CineRimGlowHaloOcclusion" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Inward Wrap Blur (px):" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="32" increment="0.5" decimal_digits="1" show_text="true" can_edit_text="true" name="rimglow_inward_bleed_slider" control_name="CineRimGlowInwardBleed" enabled_control="CineRimGlowEnabled" tool_tip="Clamped to 32px." />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Interior Reach (px):" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="1" max_val="64" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="rimglow_interior_reach_slider" control_name="CineRimGlowAutoInteriorReach" enabled_control="CineRimGlowEnabled" tool_tip="How deep the glow-chain blur reaches from the edge. Clamped to 64px." />
+
+					<text follows="left|top" height="15" left="10" top_pad="14" width="200" layout="topleft" value="-- Shoulder --" font="SansSerifBold" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="6" width="150" layout="topleft" value="Shoulder Knee:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="4" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_shoulder_knee_slider" control_name="CineRimGlowRimShoulderKnee" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="White Point:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0.5" max_val="16" increment="0.1" decimal_digits="1" show_text="true" can_edit_text="true" name="rimglow_rim_white_slider" control_name="CineRimGlowRimWhite" enabled_control="CineRimGlowEnabled" />
+
+					<text follows="left|top" height="15" left="10" top_pad="14" width="200" layout="topleft" value="-- Settle (temporal) --" font="SansSerifBold" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="6" width="150" layout="topleft" value="Settle (anti-flicker):" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="0.95" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_settle_slider" control_name="CineRimGlowAutoSettle" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Settle Depth Tolerance:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0.01" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_settle_depth_tol_slider" control_name="CineRimGlowSettleDepthTol" enabled_control="CineRimGlowEnabled" tool_tip="Rejects history across a depth discontinuity (relative)." />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Light-Change Reject (stops):" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="12" increment="0.1" decimal_digits="1" show_text="true" can_edit_text="true" name="rimglow_settle_light_stops_slider" control_name="CineRimGlowSettleLightRejectStops" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Light-Change Reject Amount:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_settle_light_reject_slider" control_name="CineRimGlowSettleLightReject" enabled_control="CineRimGlowEnabled" />
+
+					<text follows="left|top" height="15" left="10" top_pad="14" width="200" layout="topleft" value="-- Edge --" font="SansSerifBold" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="6" width="150" layout="topleft" value="Edge Threshold:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="0.2" increment="0.001" decimal_digits="3" show_text="true" can_edit_text="true" name="rimglow_edge_threshold_slider" control_name="CineRimGlowEdgeThreshold" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Edge Feather:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0.001" max_val="0.2" increment="0.001" decimal_digits="3" show_text="true" can_edit_text="true" name="rimglow_edge_feather_slider" control_name="CineRimGlowEdgeFeather" enabled_control="CineRimGlowEnabled" />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Edge Normal Gate:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_edge_normal_gate_slider" control_name="CineRimGlowEdgeNormalGate" enabled_control="CineRimGlowEnabled" tool_tip="How much the G-buffer normal gates the edge detector alongside depth." />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Glow Coherence Low:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_coherence_lo_slider" control_name="CineRimGlowDirCoherenceLo" enabled_control="CineRimGlowEnabled" tool_tip="Directional-coherence bounds narrowing/widening the glow blur near sharp silhouette features." />
+					<text follows="left|top" height="15" left="10" top_pad="8" width="150" layout="topleft" value="Glow Coherence High:" enabled_control="CineRimGlowEnabled" />
+					<slider follows="left|top|right" layout="topleft" height="20" top_pad="-16" left="160" right="-4" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="rimglow_coherence_hi_slider" control_name="CineRimGlowDirCoherenceHi" enabled_control="CineRimGlowEnabled" />
+				</panel>
+			</scroll_container>
 		</panel>
 	</tab_container>
 </floater>

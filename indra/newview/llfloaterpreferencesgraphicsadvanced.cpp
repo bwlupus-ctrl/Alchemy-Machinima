@@ -208,7 +208,11 @@ void LLFloaterPreferenceGraphicsAdvanced::refreshVRAMStatus()
 
     if (title)
     {
-        if (LLViewerTexture::isCaptureQualityPinActive())
+        if (!gSavedSettings.getBOOL("RenderVRAMGovernorEnabled"))
+        {
+            title->setText(std::string("VRAM GOVERNOR — OFF (full quality, no cap enforcement)"));
+        }
+        else if (LLViewerTexture::isCaptureQualityPinActive())
         {
             title->setText(std::string("VRAM GOVERNOR — LIVE STATUS — CAPTURE QUALITY PIN"));
         }

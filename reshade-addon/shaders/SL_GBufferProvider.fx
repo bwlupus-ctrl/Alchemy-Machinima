@@ -84,8 +84,12 @@ void SL_FullscreenVS(in uint id : SV_VertexID,
 // (BDMergeVelocityBuffer / A5.4). Gated on SL_SEM_VALID_MOTION: when the
 // viewer's velocity buffer is off the bit is clear and (in COEXIST) the pass
 // is a pure no-op, preserving Launchpad's estimated motion.
+// SHIP DEFAULT 0: motion is OFF out of the box (iMMERSE uses its own
+// depth-derived motion estimate) — avoids pan-ghosting from noisy SL vectors
+// and the extra pass cost. OWNED mode below still force-enables it. Set to 1
+// in ReShade's per-effect preprocessor UI to feed real SL motion vectors.
 #ifndef SL_PROVIDE_MOTION
-#define SL_PROVIDE_MOTION 1
+#define SL_PROVIDE_MOTION 0
 #endif
 
 // Provide real unlit albedo into Deferred::AlbedoTex so RTGI bounces true
@@ -168,12 +172,26 @@ uniform float SL_MOTION_SCALE <
 uniform bool SL_MOTION_FLIP_X < ui_label = "Motion flip X"; ui_category = "Motion"; > = true;
 uniform bool SL_MOTION_FLIP_Y < ui_label = "Motion flip Y"; ui_category = "Motion"; > = false;
 
+// GL eye-space normals are Y-UP; iMMERSE reconstructs view coords Y-DOWN
+// (uv_to_proj maps V through a positive multiplier, so +V => +Y downward).
+// Without negating Y, every off-axis normal lands on the WRONG side of 0.5 in
+// octahedral space (front-facing Y=0 is unaffected, which is why a camera-facing
+// wall still reads 0.5,0.5 and masks the bug). Live bool so the sign can be
+// confirmed in-world without a reload: ON = corrected/centered; if the vertical
+// gradient looks INVERTED, turn OFF.
+uniform bool SL_NORMAL_FLIP_Y <
+    ui_label = "Normal flip Y (GL->iMMERSE)";
+    ui_tooltip = "GL normals are Y-up, iMMERSE view space is Y-down. ON centers off-axis normals (correct). OFF = legacy unflipped.";
+    ui_category = "Advanced";
+> = true;
+
 float3 sl_gl_to_view(float3 n_gl)
 {
+    float ny = SL_NORMAL_FLIP_Y ? -n_gl.y : n_gl.y;
 #if SL_NORMAL_FLIP_Z
-    return float3(n_gl.x, n_gl.y, -n_gl.z);
+    return float3(n_gl.x, ny, -n_gl.z);
 #else
-    return n_gl;
+    return float3(n_gl.x, ny,  n_gl.z);
 #endif
 }
 

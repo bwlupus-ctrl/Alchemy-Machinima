@@ -59,6 +59,7 @@
 #include "lldebugview.h"
 #include "lldiskcache.h"
 #include "llenvironment.h"
+#include "llsettingsvo.h"
 #include "llfilepicker.h"
 #include "llfirstuse.h"
 #include "llfloaterabout.h"
@@ -10094,6 +10095,25 @@ class LLWorldEnvSettings : public view_listener_t
             LLEnvironment::instance().setSelectedEnvironment(LLEnvironment::ENV_LOCAL, LLEnvironment::TRANSITION_INSTANT);
             defocusEnvFloaters();
         }
+        else if (event_name == "studio_day")
+        {
+            // Flat, grey-balanced, PBR-aware neutral sky for machinima capture /
+            // color grading. Unlike the sunrise/noon/sunset/midnight entries above,
+            // this isn't a server asset UUID -- it's built in code (see
+            // LLSettingsVOSky::buildStudioNeutralDay()) and applied via the
+            // fixed-sky-pointer overload of setEnvironment(), the same path used
+            // to apply a sky from the Personal Lighting / fixed-sky floaters.
+            LLEnvironment::instance().setEnvironment(LLEnvironment::ENV_LOCAL, LLSettingsVOSky::buildStudioNeutralDay());
+            LLEnvironment::instance().setSelectedEnvironment(LLEnvironment::ENV_LOCAL, LLEnvironment::TRANSITION_INSTANT);
+            defocusEnvFloaters();
+        }
+        else if (event_name == "studio_night")
+        {
+            // See "studio_day" above.
+            LLEnvironment::instance().setEnvironment(LLEnvironment::ENV_LOCAL, LLSettingsVOSky::buildStudioNeutralNight());
+            LLEnvironment::instance().setSelectedEnvironment(LLEnvironment::ENV_LOCAL, LLEnvironment::TRANSITION_INSTANT);
+            defocusEnvFloaters();
+        }
         else if (event_name == "region")
         {
             // reset probe data when reverting back to region sky setting
@@ -10164,6 +10184,16 @@ class LLWorldEnableEnvSettings : public view_listener_t
         else if (event_name == "midnight")
             {
             result = (skyid == LLEnvironment::KNOWN_SKY_MIDNIGHT);
+            }
+        else if (event_name == "studio_day")
+            {
+            // No fixed server asset UUID exists for a code-built sky, so match
+            // on name instead (set in LLSettingsVOSky::buildStudioNeutralDay()).
+            result = (skyname == "Studio Neutral (Day)");
+            }
+        else if (event_name == "studio_night")
+            {
+            result = (skyname == "Studio Neutral (Night)");
             }
         else if (event_name == "region")
             {

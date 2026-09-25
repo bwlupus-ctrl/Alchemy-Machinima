@@ -82,10 +82,13 @@
          label="Pose ghosts" layout="topleft" left="208" top="119"
          name="onion_skin_check"
          tool_tip="Show styled actor copies at path anchors for blocking without playing the path"
-         width="102" />
+         width="80" />
+        <button follows="left|top" height="18" layout="topleft" left="290" width="18"
+         image_overlay="Refresh_Off" image_top_pad="0" name="reset_onion_skin" top="118"
+         tool_tip="Reset pose ghosts to default" />
         <combo_box control_name="PathGhostStyle" follows="left|top|right" height="20"
          layout="topleft" left="312" top="116" name="ghost_style_combo"
-         tool_tip="Appearance of path pose ghosts" width="168">
+         tool_tip="Appearance of path pose ghosts" width="146">
           <combo_box.item label="Ghost" name="gs_ghost" value="0" />
           <combo_box.item label="Clone" name="gs_clone" value="1" />
           <combo_box.item label="Hologram" name="gs_hologram" value="2" />
@@ -115,9 +118,12 @@
           <combo_box.item label="Sonar" name="gs_sonar" value="26" />
           <combo_box.item label="Holo Echo" name="gs_holo_echo" value="27" />
         </combo_box>
+        <button follows="left|top" height="18" layout="topleft" left="462" width="18"
+         image_overlay="Refresh_Off" image_top_pad="0" name="reset_ghost_style" top="117"
+         tool_tip="Reset ghost style to default" />
         <combo_box control_name="PathGhostDistort" follows="left|top" height="20"
          layout="topleft" left="208" top="140" name="ghost_distort_combo"
-         tool_tip="Independent path-ghost distortion" width="128">
+         tool_tip="Independent path-ghost distortion" width="106">
           <combo_box.item label="No distortion" name="gd_none" value="0" />
           <combo_box.item label="Pixelate" name="gd_pixel" value="1" />
           <combo_box.item label="Voxel" name="gd_voxel" value="2" />
@@ -128,15 +134,24 @@
           <combo_box.item label="V-Tear" name="gd_vertical" value="7" />
           <combo_box.item label="VHS" name="gd_vhs" value="8" />
         </combo_box>
+        <button follows="left|top" height="18" layout="topleft" left="318" width="18"
+         image_overlay="Refresh_Off" image_top_pad="0" name="reset_ghost_distort" top="141"
+         tool_tip="Reset ghost distortion to default" />
         <slider control_name="PathGhostDistortAmount" can_edit_text="true"
          decimal_digits="2" follows="left|top" height="18" increment="0.05"
          label="Amount" label_width="48" layout="topleft" left="340"
-         max_val="1" min_val="0" name="ghost_distort_amount" top="141" width="140" />
+         max_val="1" min_val="0" name="ghost_distort_amount" top="141" width="118" />
+        <button follows="left|top" height="18" layout="topleft" left="462" width="18"
+         image_overlay="Refresh_Off" image_top_pad="0" name="reset_ghost_distort_amount" top="141"
+         tool_tip="Reset distortion amount to default" />
         <spinner control_name="PathGhostEffectFps" decimal_digits="0" follows="left|top"
          height="18" increment="1" initial_value="0" label="FX cadence (fps)"
          label_width="96" layout="topleft" left="8" max_val="30" min_val="0"
          name="ghost_effect_fps" tool_tip="0 is smooth; 1-30 gives stop-motion shader animation"
-         top="141" width="190" />
+         top="141" width="168" />
+        <button follows="left|top" height="18" layout="topleft" left="180" width="18"
+         image_overlay="Refresh_Off" image_top_pad="0" name="reset_ghost_effect_fps" top="141"
+         tool_tip="Reset FX cadence to default" />
 
         <button follows="left|top" height="22" label="Add at actor" layout="topleft" left="8" top="166" name="btn_wp_add" width="112" />
         <button follows="left|top" height="22" label="Insert after" layout="topleft" left="124" top="166" name="btn_wp_insert" width="112" />
@@ -163,21 +178,28 @@
      name="node_camera_tab" title="Selected Node &amp; Camera">
       <panel follows="all" height="224" layout="topleft" left="0" name="node_camera_panel" top="0" width="488">
         <text follows="left|top" font="SansSerifSmallBold" height="14" layout="topleft" left="8" top="6" name="node_lbl" width="220">Selected node timing &amp; action</text>
-        <spinner decimal_digits="2" follows="left|top" height="18" increment="0.05" label="Height nudge (m)" label_width="100" layout="topleft" left="8" max_val="5" min_val="-5" name="node_height_spinner" top="26" width="230" />
-        <spinner decimal_digits="1" follows="left|top" height="18" increment="0.5" label="Dwell (s)" label_width="70" layout="topleft" left="246" max_val="120" min_val="0" name="node_dwell_spinner" top="26" width="234" />
-        <spinner decimal_digits="2" follows="left|top" height="18" increment="0.05" label="Speed override (m/s)" label_width="124" layout="topleft" left="8" max_val="10" min_val="0" name="node_speed_spinner" top="50" width="230" />
-        <spinner decimal_digits="2" follows="left|top" height="18" increment="0.1" label="Corner radius (m)" label_width="108" layout="topleft" left="246" max_val="10000" min_val="0" name="node_corner_radius_spinner" top="50" tool_tip="0 keeps the waypoint corner sharp; a positive value inserts an exact tangent circular turn" width="234" />
+        <spinner decimal_digits="2" follows="left|top" height="18" increment="0.05" label="Height nudge (m)" label_width="100" layout="topleft" left="8" max_val="5" min_val="-5" name="node_height_spinner" top="26" width="208" />
+        <button follows="left|top" height="18" layout="topleft" left="220" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_node_height" top="26" tool_tip="Reset height nudge" />
+        <spinner decimal_digits="1" follows="left|top" height="18" increment="0.5" label="Dwell (s)" label_width="70" layout="topleft" left="246" max_val="120" min_val="0" name="node_dwell_spinner" top="26" width="212" />
+        <button follows="left|top" height="18" layout="topleft" left="462" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_node_dwell" top="26" tool_tip="Reset dwell" />
+        <spinner decimal_digits="2" follows="left|top" height="18" increment="0.05" label="Speed override (m/s)" label_width="124" layout="topleft" left="8" max_val="10" min_val="0" name="node_speed_spinner" top="50" width="208" />
+        <button follows="left|top" height="18" layout="topleft" left="220" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_node_speed" top="50" tool_tip="Reset speed override" />
+        <spinner decimal_digits="2" follows="left|top" height="18" increment="0.1" label="Corner radius (m)" label_width="108" layout="topleft" left="246" max_val="10000" min_val="0" name="node_corner_radius_spinner" top="50" tool_tip="0 keeps the waypoint corner sharp; a positive value inserts an exact tangent circular turn" width="212" />
+        <button follows="left|top" height="18" layout="topleft" left="462" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_node_corner_radius" top="50" tool_tip="Reset corner radius" />
         <text follows="left|top" height="14" layout="topleft" left="8" top="76" name="node_anim_lbl" width="234">Node animation UUID</text>
-        <line_editor follows="left|top|right" height="20" layout="topleft" left="8" max_length_chars="36" name="node_anim_editor" top="92" width="472" />
+        <line_editor follows="left|top|right" height="20" layout="topleft" left="8" max_length_chars="36" name="node_anim_editor" top="92" width="450" />
+        <button follows="left|top" height="18" layout="topleft" left="462" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_node_anim" top="93" tool_tip="Clear node animation" />
 
         <text follows="left|top" font="SansSerifSmallBold" height="14" layout="topleft" left="8" top="120" name="cam_lbl" width="80">Node camera</text>
-        <check_box control_name="PathCameraEnabled" follows="left|top|right" height="18" label="Enable authored path camera for this session" layout="topleft" left="98" top="118" name="path_camera_enable_check" width="382" />
+        <check_box control_name="PathCameraEnabled" follows="left|top|right" height="18" label="Enable authored path camera for this session" layout="topleft" left="98" top="118" name="path_camera_enable_check" width="360" />
+        <button follows="left|top" height="18" layout="topleft" left="462" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_path_camera_enable" top="118" tool_tip="Reset authored camera enable" />
         <button follows="left|top" height="22" label="Capture camera here" layout="topleft" left="8" top="142" name="btn_node_setcam" width="154" />
         <button follows="left|top" height="22" label="Clear camera" layout="topleft" left="166" top="142" name="btn_node_clearcam" width="114" />
-        <combo_box follows="left|top" height="22" layout="topleft" left="284" top="142" name="node_cam_transition_combo" width="94">
+        <combo_box follows="left|top" height="22" layout="topleft" left="284" top="142" name="node_cam_transition_combo" width="72">
           <combo_box.item label="Cut" name="cam_cut" value="0" />
           <combo_box.item label="Ease" name="cam_ease" value="1" />
         </combo_box>
+        <button follows="left|top" height="18" layout="topleft" left="360" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_node_cam_transition" top="144" tool_tip="Reset camera transition to Ease" />
         <button follows="left|top|right" height="22" label="Preview shot" layout="topleft" left="382" top="142" name="btn_node_preview" width="98" />
         <text follows="left|top|right" height="28" layout="topleft" left="8" top="170" name="node_cam_status" text_color="LtGray_50" use_ellipses="true" width="472">Select a waypoint to author its camera</text>
       </panel>
@@ -186,20 +208,29 @@
     <accordion_tab expanded="false" fit_panel="true" height="174" layout="topleft"
      name="movement_timing_tab" title="Movement &amp; Timing">
       <panel follows="all" height="174" layout="topleft" left="0" name="movement_timing_panel" top="0" width="488">
-        <spinner decimal_digits="2" follows="left|top" height="18" increment="0.05" label="Travel speed (m/s)" label_width="112" layout="topleft" left="8" max_val="10" min_val="0.05" name="path_speed_spinner" top="8" width="230" />
-        <slider can_edit_text="true" decimal_digits="2" follows="left|top|right" height="18" increment="0.05" label="Foot cadence ref" label_width="94" layout="topleft" left="246" max_val="12" min_val="0.5" name="path_cadence_slider" tool_tip="Animation design-speed reference. Lower values make foot cycles quicker at a given travel speed; higher values make them slower. Stored per path." top="8" width="234" />
-        <slider can_edit_text="true" decimal_digits="2" follows="left|top|right" height="18" increment="0.05" label="Corner smoothing" label_width="108" layout="topleft" left="8" max_val="1" min_val="0" name="path_tension_slider" top="34" width="472" />
-        <spinner decimal_digits="1" follows="left|top" height="18" increment="0.5" label="Ease in (s)" label_width="76" layout="topleft" left="8" max_val="10" min_val="0" name="path_easein_spinner" top="60" width="230" />
-        <spinner decimal_digits="1" follows="left|top" height="18" increment="0.5" label="Ease out (s)" label_width="78" layout="topleft" left="246" max_val="10" min_val="0" name="path_easeout_spinner" top="60" width="234" />
-        <check_box follows="left|top" height="18" label="Ground-follow" layout="topleft" left="8" top="86" name="path_groundfollow_check" width="144" />
-        <check_box follows="left|top" height="18" label="Pitch to slope" layout="topleft" left="160" top="86" name="path_pitch_check" width="144" />
-        <check_box follows="left|top" height="18" label="Air path" layout="topleft" left="312" top="86" name="path_airborne_check" width="120" />
-        <combo_box follows="left|top" height="22" layout="topleft" left="8" top="112" name="path_end_combo" tool_tip="What happens at the end of the path" width="230">
+        <spinner decimal_digits="2" follows="left|top" height="18" increment="0.05" label="Travel speed (m/s)" label_width="112" layout="topleft" left="8" max_val="10" min_val="0.05" name="path_speed_spinner" top="8" width="208" />
+        <button follows="left|top" height="18" layout="topleft" left="220" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_path_speed" top="8" tool_tip="Reset travel speed" />
+        <slider can_edit_text="true" decimal_digits="2" follows="left|top|right" height="18" increment="0.05" label="Foot cadence ref" label_width="94" layout="topleft" left="246" max_val="12" min_val="0.5" name="path_cadence_slider" tool_tip="Animation design-speed reference. Lower values make foot cycles quicker at a given travel speed; higher values make them slower. Stored per path." top="8" width="212" />
+        <button follows="left|top" height="18" layout="topleft" left="462" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_path_cadence" top="8" tool_tip="Reset foot cadence reference" />
+        <slider can_edit_text="true" decimal_digits="2" follows="left|top|right" height="18" increment="0.05" label="Corner smoothing" label_width="108" layout="topleft" left="8" max_val="1" min_val="0" name="path_tension_slider" top="34" width="450" />
+        <button follows="left|top" height="18" layout="topleft" left="462" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_path_tension" top="34" tool_tip="Reset corner smoothing" />
+        <spinner decimal_digits="1" follows="left|top" height="18" increment="0.5" label="Ease in (s)" label_width="76" layout="topleft" left="8" max_val="10" min_val="0" name="path_easein_spinner" top="60" width="208" />
+        <button follows="left|top" height="18" layout="topleft" left="220" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_path_easein" top="60" tool_tip="Reset ease in" />
+        <spinner decimal_digits="1" follows="left|top" height="18" increment="0.5" label="Ease out (s)" label_width="78" layout="topleft" left="246" max_val="10" min_val="0" name="path_easeout_spinner" top="60" width="212" />
+        <button follows="left|top" height="18" layout="topleft" left="462" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_path_easeout" top="60" tool_tip="Reset ease out" />
+        <check_box follows="left|top" height="18" label="Ground-follow" layout="topleft" left="8" top="86" name="path_groundfollow_check" width="122" />
+        <button follows="left|top" height="18" layout="topleft" left="134" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_path_groundfollow" top="86" tool_tip="Reset ground-follow" />
+        <check_box follows="left|top" height="18" label="Pitch to slope" layout="topleft" left="160" top="86" name="path_pitch_check" width="122" />
+        <button follows="left|top" height="18" layout="topleft" left="286" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_path_pitch" top="86" tool_tip="Reset pitch to slope" />
+        <check_box follows="left|top" height="18" label="Air path" layout="topleft" left="312" top="86" name="path_airborne_check" width="146" />
+        <button follows="left|top" height="18" layout="topleft" left="462" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_path_airborne" top="86" tool_tip="Reset air path" />
+        <combo_box follows="left|top" height="22" layout="topleft" left="8" top="112" name="path_end_combo" tool_tip="What happens at the end of the path" width="208">
           <combo_box.item label="Stop at end" name="pe_stop" value="0" />
           <combo_box.item label="Stop + face target" name="pe_stopface" value="1" />
           <combo_box.item label="Loop" name="pe_loop" value="2" />
           <combo_box.item label="Ping-pong" name="pe_pingpong" value="3" />
         </combo_box>
+        <button follows="left|top" height="18" layout="topleft" left="220" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_path_end" top="114" tool_tip="Reset end behavior" />
         <text follows="left|top" height="14" layout="topleft" left="250" top="116" name="color_lbl" width="92">World color</text>
         <panel background_visible="true" background_opaque="true" border="true" follows="left|top" height="18" layout="topleft" left="344" top="114" name="color_swatch" width="136" />
       </panel>
@@ -209,7 +240,7 @@
      name="shape_designer_tab" title="Shape Designer">
       <panel follows="all" height="210" layout="topleft" left="0" name="shape_designer_panel" top="0" width="488">
         <text follows="left|top" font="SansSerifSmallBold" height="14" layout="topleft" left="8" top="8" name="primitive_lbl" width="54">Shape</text>
-        <combo_box follows="left|top" height="22" layout="topleft" left="66" top="4" name="path_shape_combo" width="230">
+        <combo_box follows="left|top" height="22" layout="topleft" left="66" top="4" name="path_shape_combo" width="208">
           <combo_box.item label="Waypoints" name="shape_waypoints" value="0" />
           <combo_box.item label="Circle / Arc" name="shape_circle" value="1" />
           <combo_box.item label="Ellipse / Arc" name="shape_ellipse" value="2" />
@@ -218,20 +249,29 @@
           <combo_box.item label="Figure 8" name="shape_figure_eight" value="5" />
           <combo_box.item label="Sine Wave" name="shape_sine_wave" value="6" />
         </combo_box>
+        <button follows="left|top" height="18" layout="topleft" left="278" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_path_shape" top="6" tool_tip="Reset to Waypoints" />
         <button follows="left|top|right" height="22" label="Center on actor" layout="topleft" left="304" top="4" name="btn_primitive_center" width="176" />
 
         <text follows="left|top|right" height="14" layout="topleft" left="8" top="32" name="endpoint_generator_lbl" text_color="LtGray_50" width="472">Turn the first and last authored points into an exact generated path:</text>
         <button follows="left|top" height="24" label="Fit Half Arc to Endpoints" layout="topleft" left="8" top="50" name="btn_fit_half_arc" tool_tip="Use the first and last path points as the ends of an exact semicircle" width="230" />
         <button follows="left|top|right" height="24" label="Fit Sine Wave to Endpoints" layout="topleft" left="246" top="50" name="btn_fit_sine" tool_tip="Use the first and last path points as the ends of an exact sine wave" width="234" />
 
-        <spinner decimal_digits="2" follows="left|top" height="18" increment="0.1" label="Extent X (m)" label_width="82" layout="topleft" left="8" max_val="10000" min_val="0.01" name="primitive_radius_x" top="82" width="230" />
-        <spinner decimal_digits="2" follows="left|top" height="18" increment="0.1" label="Extent Y (m)" label_width="82" layout="topleft" left="246" max_val="10000" min_val="0.01" name="primitive_radius_y" top="82" width="234" />
-        <spinner decimal_digits="1" follows="left|top" height="18" increment="5" label="Start / phase (deg)" label_width="112" layout="topleft" left="8" max_val="36000" min_val="-36000" name="primitive_start_deg" top="108" width="230" />
-        <spinner decimal_digits="1" follows="left|top" height="18" increment="5" label="Sweep / cycles (deg)" label_width="122" layout="topleft" left="246" max_val="36000" min_val="-36000" name="primitive_sweep_deg" top="108" width="234" />
-        <spinner decimal_digits="1" follows="left|top" height="18" increment="5" label="Plane yaw" label_width="76" layout="topleft" left="8" max_val="360" min_val="-360" name="primitive_yaw_deg" top="134" width="230" />
-        <spinner decimal_digits="1" follows="left|top" height="18" increment="5" label="Plane pitch" label_width="76" layout="topleft" left="246" max_val="180" min_val="-180" name="primitive_pitch_deg" top="134" width="234" />
-        <spinner decimal_digits="1" follows="left|top" height="18" increment="5" label="Plane roll" label_width="76" layout="topleft" left="8" max_val="180" min_val="-180" name="primitive_roll_deg" top="160" width="230" />
-        <spinner decimal_digits="2" follows="left|top" height="18" increment="0.25" label="Rise / end ΔZ (m)" label_width="112" layout="topleft" left="246" max_val="10000" min_val="-10000" name="primitive_rise" top="160" width="234" />
+        <spinner decimal_digits="2" follows="left|top" height="18" increment="0.1" label="Extent X (m)" label_width="82" layout="topleft" left="8" max_val="10000" min_val="0.01" name="primitive_radius_x" top="82" width="208" />
+        <button follows="left|top" height="18" layout="topleft" left="220" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_primitive_radius_x" top="82" tool_tip="Reset Extent X" />
+        <spinner decimal_digits="2" follows="left|top" height="18" increment="0.1" label="Extent Y (m)" label_width="82" layout="topleft" left="246" max_val="10000" min_val="0.01" name="primitive_radius_y" top="82" width="212" />
+        <button follows="left|top" height="18" layout="topleft" left="462" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_primitive_radius_y" top="82" tool_tip="Reset Extent Y" />
+        <spinner decimal_digits="1" follows="left|top" height="18" increment="5" label="Start / phase (deg)" label_width="112" layout="topleft" left="8" max_val="36000" min_val="-36000" name="primitive_start_deg" top="108" width="208" />
+        <button follows="left|top" height="18" layout="topleft" left="220" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_primitive_start" top="108" tool_tip="Reset start / phase" />
+        <spinner decimal_digits="1" follows="left|top" height="18" increment="5" label="Sweep / cycles (deg)" label_width="122" layout="topleft" left="246" max_val="36000" min_val="-36000" name="primitive_sweep_deg" top="108" width="212" />
+        <button follows="left|top" height="18" layout="topleft" left="462" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_primitive_sweep" top="108" tool_tip="Reset sweep / cycles" />
+        <spinner decimal_digits="1" follows="left|top" height="18" increment="5" label="Plane yaw" label_width="76" layout="topleft" left="8" max_val="360" min_val="-360" name="primitive_yaw_deg" top="134" width="208" />
+        <button follows="left|top" height="18" layout="topleft" left="220" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_primitive_yaw" top="134" tool_tip="Reset plane yaw" />
+        <spinner decimal_digits="1" follows="left|top" height="18" increment="5" label="Plane pitch" label_width="76" layout="topleft" left="246" max_val="180" min_val="-180" name="primitive_pitch_deg" top="134" width="212" />
+        <button follows="left|top" height="18" layout="topleft" left="462" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_primitive_pitch" top="134" tool_tip="Reset plane pitch" />
+        <spinner decimal_digits="1" follows="left|top" height="18" increment="5" label="Plane roll" label_width="76" layout="topleft" left="8" max_val="180" min_val="-180" name="primitive_roll_deg" top="160" width="208" />
+        <button follows="left|top" height="18" layout="topleft" left="220" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_primitive_roll" top="160" tool_tip="Reset plane roll" />
+        <spinner decimal_digits="2" follows="left|top" height="18" increment="0.25" label="Rise / end ΔZ (m)" label_width="112" layout="topleft" left="246" max_val="10000" min_val="-10000" name="primitive_rise" top="160" width="212" />
+        <button follows="left|top" height="18" layout="topleft" left="462" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_primitive_rise" top="160" tool_tip="Reset rise" />
       </panel>
     </accordion_tab>
 
@@ -239,13 +279,17 @@
      name="choreography_tab" title="Choreography">
       <panel follows="all" height="150" layout="topleft" left="0" name="choreography_panel" top="0" width="488">
         <text follows="left|top" font="SansSerifSmallBold" height="14" layout="topleft" left="8" top="8" name="choreo_lbl" width="150">Camera take sync</text>
-        <check_box follows="left|top" height="18" label="Sync to camera take" layout="topleft" left="8" top="28" name="sync_take_check" width="210" />
-        <spinner decimal_digits="1" follows="left|top|right" height="18" increment="0.5" label="Lead/trail (s)" label_width="88" layout="topleft" left="246" max_val="60" min_val="-60" name="sync_offset_spinner" top="28" width="234" />
+        <check_box follows="left|top" height="18" label="Sync to camera take" layout="topleft" left="8" top="28" name="sync_take_check" width="208" />
+        <button follows="left|top" height="18" layout="topleft" left="220" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_sync_take" top="28" tool_tip="Reset camera take sync" />
+        <spinner decimal_digits="1" follows="left|top|right" height="18" increment="0.5" label="Lead/trail (s)" label_width="88" layout="topleft" left="246" max_val="60" min_val="-60" name="sync_offset_spinner" top="28" width="212" />
+        <button follows="left|top" height="18" layout="topleft" left="462" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_sync_offset" top="28" tool_tip="Reset lead / trail" />
         <text follows="left|top|right" height="14" layout="topleft" left="8" top="50" name="sync_status" text_color="LtGray_50" use_ellipses="true" width="472">Off, the walk uses its own clock</text>
         <text follows="left|top" font="SansSerifSmallBold" height="14" layout="topleft" left="8" top="74" name="follow_lbl" width="70">Follow</text>
-        <combo_box follows="left|top" height="22" layout="topleft" left="82" top="70" name="follow_leader_combo" width="236" />
+        <combo_box follows="left|top" height="22" layout="topleft" left="82" top="70" name="follow_leader_combo" width="214" />
+        <button follows="left|top" height="18" layout="topleft" left="300" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_follow_leader" top="72" tool_tip="Reset follow leader" />
         <button follows="left|top|right" height="22" label="Stop following" layout="topleft" left="326" top="70" name="btn_stop_following" width="154" />
-        <spinner decimal_digits="1" follows="left|top" height="18" increment="0.5" initial_value="3.0" label="Behind (m)" label_width="72" layout="topleft" left="8" max_val="64" min_val="0" name="follow_offset_spinner" top="100" width="230" />
+        <spinner decimal_digits="1" follows="left|top" height="18" increment="0.5" initial_value="3.0" label="Behind (m)" label_width="72" layout="topleft" left="8" max_val="64" min_val="0" name="follow_offset_spinner" top="100" width="208" />
+        <button follows="left|top" height="18" layout="topleft" left="220" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_follow_offset" top="100" tool_tip="Reset following distance" />
         <text follows="left|top|right" height="14" layout="topleft" left="246" top="103" name="follow_status" text_color="LtGray_50" use_ellipses="true" width="234">Not following</text>
       </panel>
     </accordion_tab>

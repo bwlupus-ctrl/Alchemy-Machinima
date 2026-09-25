@@ -26,6 +26,7 @@
 #include "v3dmath.h"
 
 #include <vector>
+#include <utility>
 
 class LLButton;
 class LLAccordionCtrl;
@@ -71,6 +72,7 @@ private:
     void refreshEditButtons();              // P3 QOL: undo/redo/reverse/mirror/loop/walk enable
     void refreshCopyCombo();                // P3 QOL: cast picker for "copy path to"
     void refreshChoreography();             // P3 sync-to-take + follow-the-leader row
+    void refreshResetButtons();             // mini reset enable state follows its control
     void syncListSelectionFromEngine();     // engine edit node -> list row
 
     S32  listSelectedNode() const;          // selected row -> node index (-1 none)
@@ -141,6 +143,7 @@ private:
     void onPrimitiveCommit();
     void onClickFitHalfArc();
     void onClickFitSine();
+    void onResetControl(const std::string& key);
 
     // cached name for the header
     static std::string actorName(const LLUUID& id);
@@ -231,6 +234,10 @@ private:
     LLSpinCtrl*        mFollowOffset = nullptr;
     LLTextBox*         mFollowStatus = nullptr;
     std::string        mFollowSig;   // cast+target+cycle signature (rebuild on change)
+
+    // Icon-only reset buttons mirror their paired editor control. Pointers are
+    // non-owning; XUI owns every child for the panel lifetime.
+    std::vector<std::pair<LLButton*, LLUICtrl*>> mResetBindings;
 
     // in-world placement hint (hidden while the suspend banner is up)
     LLTextBox*         mHint = nullptr;

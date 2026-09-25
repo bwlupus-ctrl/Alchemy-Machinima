@@ -377,6 +377,8 @@ public:
         TONEMAP_PARAMS,
         TONEMAP_AMD,                        //  "tonemap_amd" (AMD FidelityFX LPM control block)
         TONEMAP_AMD_SHOULDER,               //  "tonemap_amd_shoulder"
+        TONEMAP_KHRONOS_PARAMS,             //  "tonemap_khronos_params" (Khronos Neutral: .x=desaturation, .y=startCompression)
+        TONEMAP_GRADE,                      //  "tonemap_grade" (shared post-tonemap saturation/contrast, all operators)
 
         // Alchemy Effects Stack
         FRAME_ID,                           //  "uFrameId"
@@ -785,6 +787,42 @@ public:
         KAL_LOOK,                          //  "kal_look"           seamSoften, blend, debugView, reserved
         KAL_CELL,                          //  "kal_cell"           cellSizeVar, cellBreathe, cellSubdiv, cellMerge
         KAL_CELL2,                         //  "kal_cell2"          cellTint, reserved, reserved, reserved
+
+        // [RimGlow Phase 1] cross-pass scratch-texture samplers only. Every
+        // scalar RimGlow parameter (gather/fresnel/lobe/shoulder/edge/focus/
+        // blur-control uniforms) is set BY NAME via the LLStaticHashedString
+        // uniform*() overloads instead — no enum needed for those. These
+        // texture samplers DO need reserved slots because
+        // LLGLSLShader::bindTexture()/enableTexture() only accept the S32
+        // reserved-uniform index, not an arbitrary name. Names here are the
+        // EXACT sampler names the shader side declares (rimglow_native_plan.md
+        // seam reconciliation) — appended at the end in lockstep with the
+        // matching push_back block in llshadermgr.cpp.
+        RIMGLOW_RAD_HIST,                  //  "rimRadHist"   (Mask input: mRimGlowRadHist[prev])
+        RIMGLOW_DS_SRC,                    //  "dsSrc"        (Downsample input: mRimGlowWork attachment 0, mask)
+        RIMGLOW_DS_SRC_DIR,                //  "dsSrcDir"     (Downsample input: mRimGlowWork attachment 3, dir)
+        RIMGLOW_BLUR_SRC,                  //  "blurSrc"      (Blur input, reused per invocation: mask/color chain)
+        RIMGLOW_BLUR_SRC_DIR,              //  "blurSrcDir"   (Blur input, reused per invocation: dir/aux chain)
+        RIMGLOW_MASK,                      //  "rimMask"      (Composite input: mRimGlowWork attachment 0)
+        RIMGLOW_SUBJ,                      //  "rimSubj"      (Composite input: mRimGlowWork attachment 1)
+        RIMGLOW_WRAP,                      //  "rimWrap"      (Composite input: WrapV final output)
+        RIMGLOW_GLOW,                      //  "rimGlow"      (Composite input: glow chain final, LINEAR filter)
+        RIMGLOW_GLOW_DIR,                  //  "rimGlowDir"   (Composite input: dir chain final, LINEAR filter)
+
+        // [Cine Haze] Cinematic Depth Atmosphere (windlight/cineHazeF.glsl),
+        // uploaded by ALCineHaze::bind() from LLPipeline::bindDeferredShader()
+        // and the alpha pool's prepare_alpha_shader().  Appended at the end in
+        // lockstep with the matching push_back block in llshadermgr.cpp.
+        CINE_HAZE_ACTIVE,                  //  "cine_haze_active"      int  0 = bypass (bit-exact off path)
+        CINE_HAZE_PARAMS,                  //  "cine_haze_params"      vec4 density, start distance, max opacity, master strength
+        CINE_HAZE_HEIGHT,                  //  "cine_haze_height"      vec4 height enable, reference height, falloff, camera world height
+        CINE_HAZE_UP,                      //  "cine_haze_up"          vec3 world +Z in eye space
+        CINE_HAZE_COLOR,                   //  "cine_haze_color"       vec4 manual colour (sRGB) + intensity
+        CINE_HAZE_COLOR_MODE,              //  "cine_haze_color_mode"  int  0 manual, 1 environment-linked
+        CINE_HAZE_SUN,                     //  "cine_haze_sun"         vec4 linear sun tint * strength, lobe exponent
+        CINE_HAZE_DEBUG,                   //  "cine_haze_debug"       int  developer view selector
+        CINE_HAZE_ADDITIVE,                //  "cine_haze_additive"    int  1 = additive-blended draw (transmittance only)
+
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

@@ -511,6 +511,8 @@ void LLGhostAvatar::setEntityLook(S32 look, F32 alpha)
 
 void LLGhostAvatar::clearClonedObjectAnimations()
 {
+    // [AnimeshRepeat] Nothing latched survives an erase of every clone entry.
+    resetHeldAnimeshRepeat();
     object_signaled_animation_map_t& object_anims =
         LLObjectSignaledAnimationMap::instance().getMap();
     for (const ClonedLinkset& linkset : mClonedLinksets)
@@ -535,12 +537,17 @@ void LLGhostAvatar::synchronizeCloneAnimations(
     // machinery: it performs a pure ledger diff and can only start/stop
     // motions in this synthetic avatar's own controller.  It has no agent,
     // simulator, sound, notification, sit, AO, or avatar-state branches.
+    // Start/stop semantics mirror LLVOAvatar::processAnimationStateChanges():
+    // an animation is stopped ONLY when the source stops signaling it.  A new
+    // sequence id for a still-signaled animation (AOs routinely re-assert their
+    // override every few seconds) must not stop it: stopMotion(immediate) then
+    // startMotion re-activates the motion at t=0, replaying a sit/lie intro
+    // forever ("stand, sit, stand...") while the source -- whose startMotion on
+    // an already-active motion keeps playing -- simply holds the pose.
     for (auto playing = mClonePlayingAnimations.begin();
          playing != mClonePlayingAnimations.end();)
     {
-        const auto desired = desired_animations.find(playing->first);
-        if (desired == desired_animations.end() ||
-            desired->second != playing->second)
+        if (desired_animations.find(playing->first) == desired_animations.end())
         {
             LLCharacter::stopMotion(playing->first, true);
             playing = mClonePlayingAnimations.erase(playing);
@@ -553,8 +560,12 @@ void LLGhostAvatar::synchronizeCloneAnimations(
 
     for (const auto& desired : desired_animations)
     {
+        // Signaled but not playing, or a new sequence id: (re)request exactly
+        // like the stock path.  startMotion() does not rewind an active motion;
+        // on a finished one-shot it replays it -- the same thing the source does.
         const auto playing = mClonePlayingAnimations.find(desired.first);
-        if (playing == mClonePlayingAnimations.end())
+        if (playing == mClonePlayingAnimations.end() ||
+            playing->second != desired.second)
         {
             if (LLCharacter::startMotion(desired.first))
             {
@@ -568,13 +579,22 @@ void LLGhostAvatar::synchronizeCloneAnimations(
 void LLGhostAvatar::setEntityDriveMode(S32 mode, const LLUUID& directed_anim)
 {
     mode = llclamp(mode, (S32)ALGhostStudio::DRIVE_MIRROR,
-                         (S32)ALGhostStudio::DRIVE_FROZEN);
+                         (S32)ALGhostStudio::DRIVE_TRUE_MIRROR);
     if (mode == mEntityDriveMode && directed_anim == mEntityDirectedAnim)
     {
         return;
     }
 
-    if (mEntityDriveMode == ALGhostStudio::DRIVE_FROZEN)
+    // [AnimeshRepeat] A drive-mode change re-derives every linkset's hold
+    // state from scratch on the next idleUpdate(); stale replay records must
+    // not carry a pending/seen flag across it.
+    resetHeldAnimeshRepeat();
+
+    // FROZEN and TRUE_MIRROR both hold the wearer's controller paused
+    // (TRUE_MIRROR never pauses the animesh control avatars, so that vector
+    // is simply empty for it).
+    if (mEntityDriveMode == ALGhostStudio::DRIVE_FROZEN ||
+        mEntityDriveMode == ALGhostStudio::DRIVE_TRUE_MIRROR)
     {
         mEntityPauseRequest = nullptr;
         mEntityControlPauseRequests.clear();
@@ -616,6 +636,223 @@ void LLGhostAvatar::setEntityDriveMode(S32 mode, const LLUUID& directed_anim)
                 mEntityControlPauseRequests.push_back(control->requestPause());
             }
         }
+    }
+    else if (mode == ALGhostStudio::DRIVE_TRUE_MIRROR)
+    {
+        // [TrueMirror] The post-object-list stamp must be the ONLY writer of
+        // this clone's pose. Suppress every competing driver on the clone:
+        //  - its own motion blend: pause the wearer controller (the ledger was
+        //    emptied above when leaving MIRROR; physics stays "active" but a
+        //    paused controller never runs it -- the source's physics-driven
+        //    morphs are stamped instead when clone physics is on);
+        //  - Pose Polish: LLVOAvatar::updateCharacter resets it while paused;
+        //  - its own eye/blink motion: stop it (blink lids come from the
+        //    source's Blink_* params, eye joints from the source skeleton);
+        //  - Actor Mover root override + gaze layer: LLActorMover checks
+        //    isTrueMirrorDriven() and returns early;
+        //  - Ghost Studio keep-facing / turn-to / crowd facing: skipped in
+        //    ALGhostStudio via trueMirrorOwnsFacing().
+        // Animesh attachments are NOT paused: they keep the ObjectAnimation
+        // ledger mirror (see idleUpdate), since their control avatars are
+        // separate skeletons the stamp does not cover.
+        setEntityEyeMotionEnabled(false);
+        mEntityPauseRequest = requestPause();
+        mTrueMirrorSourceValid = false;
+        mTrueMirrorLastStampFrame = 0;
+    }
+}
+
+bool LLGhostAvatar::isTrueMirrorDriven() const
+{
+    return mEntityDriveMode == ALGhostStudio::DRIVE_TRUE_MIRROR;
+}
+
+void LLGhostAvatar::applyTrueMirrorStamp()
+{
+    if (mEntityDriveMode != ALGhostStudio::DRIVE_TRUE_MIRROR ||
+        isDead() || !isBuilt() || !mRoot)
+    {
+        return;
+    }
+    // Once per frame, whatever the caller.
+    const U32 frame = LLFrameTimer::getFrameCount();
+    if (mTrueMirrorLastStampFrame == frame)
+    {
+        return;
+    }
+    mTrueMirrorLastStampFrame = frame;
+
+    // Resolve the source through gObjectList every frame (never retained).
+    // A ghost source is allowed: its final pose is evaluated in the object
+    // list like any avatar (a TRUE_MIRROR ghost source is itself stamped in
+    // the same post-pass, in Studio instance order, so a chain may lag by one
+    // frame per link). Fallback for a missing / dead / unbuilt source or a
+    // self-reference is HOLD: nothing is written, and the paused controller
+    // keeps the last stamped pose until the source is back.
+    LLViewerObject* source_obj = gObjectList.findObject(mAnimationSourceId);
+    LLVOAvatar* source = source_obj ? source_obj->asAvatar() : nullptr;
+    const bool source_ok = source && source != this && !source->isDead() &&
+                           source->isBuilt() && source->getRootJoint();
+    if (source_ok != mTrueMirrorSourceValid)
+    {
+        mTrueMirrorSourceValid = source_ok;
+        LL_INFOS("GhostStudio") << "TRUE mirror clone " << getID()
+            << (source_ok ? " stamping from source "
+                          : " holding last pose; source unavailable ")
+            << mAnimationSourceId << LL_ENDL;
+    }
+    if (!source_ok)
+    {
+        return;
+    }
+
+    static LLCachedControl<bool> copy_facing(
+        gSavedSettings, "GhostTrueMirrorCopyFacing", true);
+    static LLCachedControl<bool> copy_face(
+        gSavedSettings, "GhostTrueMirrorCopyFace", true);
+
+    stampTrueMirrorSkeleton(source, copy_facing);
+    if (copy_face)
+    {
+        stampTrueMirrorFace(source);
+    }
+
+    // Same trailing contract as updateCharacter(): re-propagate the world
+    // matrices now so everything downstream this frame (attachment drawable
+    // moves, rigged matrix palettes, system-mesh reskin via mNeedsSkin --
+    // already set by the clone's own updateCharacter this frame) reads the
+    // stamped pose rather than a dirty-flagged stale one.
+    mRoot->updateWorldMatrixChildren();
+}
+
+void LLGhostAvatar::stampTrueMirrorSkeleton(LLVOAvatar* source, bool copy_facing)
+{
+    // Root: mRoot is NOT in mSkeleton (mSkeleton[0] is mPelvis, parented
+    // under mRoot -- LLAvatarAppearance::buildSkeleton). Its local rotation IS
+    // its world rotation (no parent), so copying it mirrors the source's body
+    // facing, including any procedural body turn written to the root. Its
+    // POSITION is deliberately left alone: the clone keeps its own placement
+    // (Studio foot lock) and mirrors the pose where it stands.
+    if (copy_facing)
+    {
+        const LLQuaternion root_rot = source->getRootJoint()->getRotation();
+        if (root_rot.isFinite())
+        {
+            mRoot->setRotation(root_rot);
+        }
+    }
+
+    // Skeleton joints: both avatars are built from the same avatar_skeleton.xml
+    // so the lists are index-parallel; the name check is a cheap guard against
+    // a mismatched/partial skeleton, with a by-name fallback. Rotation always;
+    // position too, so animated/overridden joint offsets (pelvis height from
+    // the anim, mesh joint position overrides, Bento translations) mirror as
+    // well. Scale is NOT copied: it is the clone's own shape/appearance.
+    // setPosition(pos, false) writes mXform directly, bypassing the clone's
+    // attachment overrides -- intended: the source's final (already
+    // override-resolved) position is what we want to reproduce.
+    const avatar_joint_list_t& src_skel = source->getSkeleton();
+    const avatar_joint_list_t& dst_skel = getSkeleton();
+    const size_t count = llmin(src_skel.size(), dst_skel.size());
+    for (size_t i = 0; i < count; ++i)
+    {
+        LLJoint* src = src_skel[i];
+        LLJoint* dst = dst_skel[i];
+        if (!src || !dst)
+        {
+            continue;
+        }
+        if (src->getName() != dst->getName())
+        {
+            dst = getJoint(src->getName());
+            if (!dst)
+            {
+                continue;
+            }
+        }
+        dst->setRotation(src->getRotation());
+        dst->setPosition(src->getPosition());
+    }
+}
+
+void LLGhostAvatar::buildTrueMirrorParamSets()
+{
+    // Scoped deliberately: VISUAL_PARAM_GROUP_ANIMATABLE (group 1) covers
+    // every driven shape sub-morph too (hundreds of params that are pure
+    // appearance), so copying the whole group would be both expensive and
+    // wrong if the clone's appearance snapshot ever diverges from the source.
+    // The ANIMATED face state is exactly: LLEmote expressions (Express_*),
+    // LLEyeMotion blink lids (Blink_*), voice lipsync (Lipsync_*), plus the
+    // eight LLPhysicsMotion driven morphs (ids 1200..1207, the same set
+    // neutralizeEntityPhysicsParams() resets).
+    mTrueMirrorFaceParamIds.clear();
+    mTrueMirrorPhysicsParamIds.clear();
+    for (LLVisualParam* param = getFirstVisualParam(); param;
+         param = getNextVisualParam())
+    {
+        if (!param->getInfo())
+        {
+            continue;
+        }
+        const S32 id = param->getID();
+        const std::string& name = param->getName();
+        if (name.rfind("Express_", 0) == 0 ||
+            name.rfind("Blink_", 0) == 0 ||
+            name.rfind("Lipsync_", 0) == 0)
+        {
+            mTrueMirrorFaceParamIds.push_back(id);
+        }
+        else if (id >= 1200 && id <= 1207)
+        {
+            mTrueMirrorPhysicsParamIds.push_back(id);
+        }
+    }
+    mTrueMirrorParamSetsBuilt = true;
+}
+
+void LLGhostAvatar::stampTrueMirrorFace(LLVOAvatar* source)
+{
+    if (!mTrueMirrorParamSetsBuilt)
+    {
+        buildTrueMirrorParamSets();
+    }
+
+    bool changed = false;
+    auto copy_param = [this, source, &changed](S32 id)
+    {
+        LLVisualParam* dst = getVisualParam(id);
+        LLVisualParam* src = source->getVisualParam(id);
+        // Never fight an in-flight appearance animation on the clone.
+        if (!dst || !src || dst->isAnimating())
+        {
+            return;
+        }
+        const F32 weight = src->getWeight();
+        if (weight != dst->getWeight())
+        {
+            setVisualParamWeight(dst, weight);
+            changed = true;
+        }
+    };
+    for (S32 id : mTrueMirrorFaceParamIds)
+    {
+        copy_param(id);
+    }
+    // Clone physics OFF keeps its neutralized morphs (setEntityPhysicsEnabled);
+    // ON mirrors the source's jiggle since the clone's own physics motion is
+    // paused under TRUE_MIRROR.
+    if (mEntityPhysicsEnabled)
+    {
+        for (S32 id : mTrueMirrorPhysicsParamIds)
+        {
+            copy_param(id);
+        }
+    }
+    if (changed)
+    {
+        // Same apply path LLEmote / LLEyeMotion use each frame: applies only
+        // the params whose effective weight changed, then dirtyMesh().
+        updateVisualParams();
     }
 }
 
@@ -1798,6 +2035,10 @@ S32 LLGhostAvatar::cloneAttachmentsFrom(LLVOAvatar* source)
 
 void LLGhostAvatar::releaseClonedAttachments()
 {
+    // [AnimeshRepeat] The records go away with mClonedLinksets below; clear
+    // explicitly so the teardown paths (Refresh, despawn, markDead) share
+    // one reset with the other lifecycle points.
+    resetHeldAnimeshRepeat();
     object_signaled_animation_map_t& object_anims =
         LLObjectSignaledAnimationMap::instance().getMap();
     for (const ClonedLinkset& linkset : mClonedLinksets)
@@ -2005,6 +2246,206 @@ void LLGhostAvatar::markDead()
     LLVOAvatar::markDead();
 }
 
+// [AnimeshRepeat] A latched ledger entry keeps a LOOPING asset running, but a
+// ONE-SHOT animesh animation (the usual script-retriggered tail/idle) plays
+// out once and freezes: the source's script was the thing restarting it every
+// cycle, and once the source is detached nothing does. With the opt-in
+// GhostMirrorRepeatHeldAnimesh on, stand in for that script on the clone's
+// OWN control avatar: when a held one-shot has finished, start it again.
+//
+// Lever: LLCharacter::startMotion(id) on the linkset root's control avatar
+// (one per root-edit linkset; children resolve to it). On an inactive, loaded
+// motion that is activateMotionInstance(), which samples onUpdate(0.f) --
+// no preceding stop, no LLMotion::activate() (bypasses controller
+// bookkeeping), no setLoop() (mutates the shared cached asset). The ledger
+// is never written, so LLVOAvatar::mPlayingAnimations keeps its sequence-id
+// provenance: a returning live signal or a later erase still starts/stops
+// the animation through processAnimationStateChanges() exactly as before.
+//
+// Eligibility: the id must be signaled only by LATCHED clone prims (a LIVE
+// prim's signal takes precedence and is the source's business), the motion
+// must be loaded (not in mLoadingMotions -- an unloaded LLKeyframeMotion
+// reports getLoop()==false and getDuration()==0), have positive duration and
+// getLoop()==false. A looping asset is never restarted.
+//
+// Transition logic (per id, ClonedLinkset::RepeatState): observe ACTIVE ->
+// mSeenActive; observe INACTIVE with mSeenActive -> replay once, clear
+// mSeenActive, set mPending; observe ACTIVE again -> clear mPending, set
+// mSeenActive (armed for the next completion). A replay that never becomes
+// active (mPending and still inactive/not loading) counts a failure and is
+// retried at most MAX_REPLAY_FAILURES times. Absent record == armed, so a
+// clip that had already finished when the hold began replays once.
+//
+// Honesty: each replay samples from frame 0 after the previous instance has
+// eased out to rest -- FUNCTIONAL repetition with a visible seam per cycle,
+// not seamless looping. Also a genuinely one-shot action (a mechanism
+// closing, a reaction) now repeats, which is why this is opt-in.
+void LLGhostAvatar::repeatHeldAnimesh()
+{
+    static LLCachedControl<bool> repeat_held_animesh(
+        gSavedSettings, "GhostMirrorRepeatHeldAnimesh", false);
+    static LLCachedControl<bool> hold_on_source_change(
+        gSavedSettings, "GhostMirrorHoldOnSourceChange", true);
+    constexpr U32 MAX_REPLAY_FAILURES = 3;
+
+    if (!repeat_held_animesh || !hold_on_source_change ||
+        (mEntityDriveMode != ALGhostStudio::DRIVE_MIRROR &&
+         mEntityDriveMode != ALGhostStudio::DRIVE_TRUE_MIRROR))
+    {
+        return;
+    }
+
+    const object_signaled_animation_map_t& object_anims =
+        LLObjectSignaledAnimationMap::instance().getMap();
+
+    for (ClonedLinkset& linkset : mClonedLinksets)
+    {
+        if (!linkset.mAnimeshHeld)
+        {
+            continue; // live mirror: the source's script retriggers
+        }
+        LLViewerObject* root = gObjectList.findObject(linkset.mRoot);
+        if (!root || root->isDead() || !root->isAnimatedObject())
+        {
+            continue;
+        }
+        LLControlAvatar* cav = root->getControlAvatar();
+        if (!cav || cav->isDead())
+        {
+            continue;
+        }
+        if (linkset.mRepeatControlAvatarId != cav->getID())
+        {
+            // First sight, or the control avatar was re-created (lazy skin
+            // arrival, ObjectAnimation-driven relink): its motion instances
+            // are new, so any pending/seen state is meaningless.
+            linkset.mRepeatControlAvatarId = cav->getID();
+            linkset.mRepeatStates.clear();
+        }
+        LLMotionController& controller = cav->getMotionController();
+        // The CONTROL AVATAR's own pause (Studio FROZEN, selection pause),
+        // not the wearer's: TRUE_MIRROR pauses the wearer but leaves the
+        // animesh path live. startMotion() while paused records nothing
+        // useful and the motion would stay stopped. Jellydolled control
+        // avatars shelve every animation; leave them alone too.
+        if (controller.isPaused() ||
+            cav->getOverallAppearance() != LLVOAvatar::AOA_NORMAL)
+        {
+            continue;
+        }
+
+        // Partition the linkset's signaled ids by contributor.
+        std::set<LLUUID> latched_ids;
+        std::set<LLUUID> live_ids;
+        auto collect = [&](const LLUUID& clone_id)
+        {
+            object_signaled_animation_map_t::const_iterator entry =
+                object_anims.find(clone_id);
+            if (entry == object_anims.end())
+            {
+                return;
+            }
+            const bool latched =
+                std::find(linkset.mAnimeshLatchedPrims.begin(),
+                          linkset.mAnimeshLatchedPrims.end(),
+                          clone_id) != linkset.mAnimeshLatchedPrims.end();
+            for (const auto& anim : entry->second)
+            {
+                (latched ? latched_ids : live_ids).insert(anim.first);
+            }
+        };
+        collect(linkset.mRoot);
+        for (const LLUUID& child_id : linkset.mChildren)
+        {
+            collect(child_id);
+        }
+
+        for (const LLUUID& anim_id : latched_ids)
+        {
+            if (live_ids.count(anim_id))
+            {
+                continue; // a live contributor owns this id
+            }
+            ClonedLinkset::RepeatState& state = linkset.mRepeatStates[anim_id];
+            if (state.mFailures >= MAX_REPLAY_FAILURES)
+            {
+                continue;
+            }
+            LLMotion* motion = cav->findMotion(anim_id);
+            if (!motion || controller.isMotionLoading(motion))
+            {
+                // Never instantiated, or still fetching (a replay may be
+                // pending on it): nothing observable yet.
+                continue;
+            }
+            if (cav->isMotionActive(anim_id))
+            {
+                state.mSeenActive = true;
+                state.mPending = false;
+                continue;
+            }
+            // Inactive and loaded: attributes are now trustworthy.
+            if (motion->getLoop() || motion->getDuration() <= 0.f)
+            {
+                continue; // looping assets keep going on their own
+            }
+            if (state.mPending)
+            {
+                // The replay we issued never activated. Count it; retry
+                // below while under the cap so a transient miss recovers
+                // without a per-frame storm.
+                state.mPending = false;
+                ++state.mFailures;
+                if (state.mFailures >= MAX_REPLAY_FAILURES)
+                {
+                    LL_WARNS("GhostStudio")
+                        << "AnimeshRepeat giving up on " << anim_id
+                        << " root=" << linkset.mRoot
+                        << " after " << state.mFailures
+                        << " replays that never activated" << LL_ENDL;
+                    continue;
+                }
+                // fall through: retry this frame, still under the cap
+            }
+            else if (!state.mSeenActive && state.mFailures > 0)
+            {
+                // Past failures but no replay in flight and no activation
+                // seen since: wait for the source-of-truth (an observed
+                // activation) rather than probing every frame.
+                continue;
+            }
+            // Consume this completion: one replay per ACTIVE -> INACTIVE
+            // edge (or one at hold entry for a clip that finished before the
+            // hold began -- a fresh record starts unarmed-but-absent, which
+            // the map insert above treats as armed).
+            state.mSeenActive = false;
+            if (cav->LLCharacter::startMotion(anim_id))
+            {
+                state.mPending = true;
+                LL_DEBUGS("GhostStudio")
+                    << "AnimeshRepeat replay " << anim_id
+                    << " root=" << linkset.mRoot
+                    << " cav=" << cav->getID() << LL_ENDL;
+            }
+            else
+            {
+                ++state.mFailures;
+            }
+        }
+    }
+}
+
+void LLGhostAvatar::resetHeldAnimeshRepeat()
+{
+    for (ClonedLinkset& linkset : mClonedLinksets)
+    {
+        linkset.mAnimeshHeld = false;
+        linkset.mAnimeshLatchedPrims.clear();
+        linkset.mRepeatControlAvatarId.setNull();
+        linkset.mRepeatStates.clear();
+    }
+}
+
 // virtual
 void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
 {
@@ -2088,9 +2529,12 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
     // local prim before refreshing the linkset's LLControlAvatar.
     object_signaled_animation_map_t& object_anims =
         LLObjectSignaledAnimationMap::instance().getMap();
-    if (mEntityDriveMode == ALGhostStudio::DRIVE_MIRROR)
+    // [TrueMirror] animesh control avatars are separate skeletons the joint
+    // stamp does not cover, so TRUE_MIRROR keeps the ledger mirror for them.
+    if (mEntityDriveMode == ALGhostStudio::DRIVE_MIRROR ||
+        mEntityDriveMode == ALGhostStudio::DRIVE_TRUE_MIRROR)
     {
-      for (const ClonedLinkset& linkset : mClonedLinksets)
+      for (ClonedLinkset& linkset : mClonedLinksets)
       {
         LLViewerObject* root = gObjectList.findObject(linkset.mRoot);
         if (!root || root->isDead() || !root->isAnimatedObject())
@@ -2098,65 +2542,117 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
             continue;
         }
 
+        bool changed = false;
+        // Clone prims whose ledger entry was LATCHED (kept, not mirrored)
+        // this frame. Non-empty == the linkset's animesh is HELD; recorded on
+        // the linkset for repeatHeldAnimesh() (runs after this loop).
+        std::vector<LLUUID> latched_prims;
+
         // Hold the clone's animesh when the SOURCE linkset is gone. A wearer's
         // outfit change re-rezzes its animesh with fresh UUIDs, so the source-id
         // lookups below would all miss and mirror_one would erase (stop) the
         // clone's animation - freezing the mesh on a transient source change.
-        // Skipping keeps the last performance playing; a still-present source
-        // that genuinely stopped its animesh still mirrors the stop normally.
-        // Gated by GhostMirrorHoldOnSourceChange (off = faithful live mirror).
+        // Skipping keeps the last performance playing. Gated by
+        // GhostMirrorHoldOnSourceChange (off = faithful live mirror).
+        bool source_gone = false;
         if (hold_on_source_change)
         {
             LLViewerObject* source_root =
                 gObjectList.findObject(linkset.mSourceRoot);
-            if (!source_root || source_root->isDead())
-            {
-                continue;
-            }
+            source_gone = !source_root || source_root->isDead();
         }
 
-        bool changed = false;
-        auto mirror_one = [&object_anims, &changed](const LLUUID& source_id,
-                                                    const LLUUID& clone_id)
+        if (source_gone)
         {
-            object_signaled_animation_map_t::const_iterator found =
-                object_anims.find(source_id);
-            if (found == object_anims.end() || found->second.empty())
+            // Every prim keeps its current entry.
+            latched_prims.push_back(linkset.mRoot);
+            latched_prims.insert(latched_prims.end(),
+                                 linkset.mChildren.begin(),
+                                 linkset.mChildren.end());
+        }
+        else
+        {
+            // (hold_on_source_change is a function-local static: usable inside
+            // the lambda without capture.)
+            auto mirror_one = [&object_anims, &changed, &latched_prims](
+                                  const LLUUID& source_id,
+                                  const LLUUID& clone_id)
             {
-                // Missing and empty both mean "no requested animations"; do not
-                // leave an empty synthetic-prim entry in the process-wide map.
+                object_signaled_animation_map_t::const_iterator found =
+                    object_anims.find(source_id);
+                if (found == object_anims.end() || found->second.empty())
+                {
+                    // [AnimeshDetachHold] A detach empties the source prim's
+                    // signaled set (its script's attach(NULL_KEY) stop and/or
+                    // the sim's final ObjectAnimation) BEFORE the prim dies,
+                    // so this branch -- not the dead-source skip above -- is
+                    // what stopped the clone's tail on a source detach. Mirror
+                    // the bento hold (`!mirrored_animations.empty()` above):
+                    // with the hold on, an empty/missing source set is a
+                    // source change to ride out, so LATCH the clone's existing
+                    // entry instead of erasing it. The control avatar keeps a
+                    // looping asset running for as long as the entry stands;
+                    // a finished one-shot is replayed only by the opt-in
+                    // repeatHeldAnimesh(). A switch to a different set is
+                    // non-empty and still mirrors normally. Off = faithful
+                    // live mirror.
+                    if (hold_on_source_change)
+                    {
+                        latched_prims.push_back(clone_id);
+                        return;
+                    }
+                    // Missing and empty both mean "no requested animations";
+                    // do not leave an empty synthetic-prim entry in the
+                    // process-wide map.
+                    object_signaled_animation_map_t::iterator clone =
+                        object_anims.find(clone_id);
+                    if (clone != object_anims.end())
+                    {
+                        // Erasing an already-empty entry changes no animation
+                        // state.
+                        changed = !clone->second.empty() || changed;
+                        object_anims.erase(clone);
+                    }
+                    return;
+                }
+
                 object_signaled_animation_map_t::iterator clone =
                     object_anims.find(clone_id);
-                if (clone != object_anims.end())
+                if (clone == object_anims.end())
                 {
-                    // Erasing an already-empty entry changes no animation state.
-                    changed = !clone->second.empty() || changed;
-                    object_anims.erase(clone);
+                    object_anims.emplace(clone_id, found->second);
+                    changed = true;
                 }
-                return;
-            }
+                else if (clone->second != found->second)
+                {
+                    clone->second = found->second;
+                    changed = true;
+                }
+            };
 
-            object_signaled_animation_map_t::iterator clone =
-                object_anims.find(clone_id);
-            if (clone == object_anims.end())
+            mirror_one(linkset.mSourceRoot, linkset.mRoot);
+            const size_t count = llmin(linkset.mChildren.size(),
+                                       linkset.mSourceChildren.size());
+            for (size_t i = 0; i < count; ++i)
             {
-                object_anims.emplace(clone_id, found->second);
-                changed = true;
+                mirror_one(linkset.mSourceChildren[i], linkset.mChildren[i]);
             }
-            else if (clone->second != found->second)
-            {
-                clone->second = found->second;
-                changed = true;
-            }
-        };
-
-        mirror_one(linkset.mSourceRoot, linkset.mRoot);
-        const size_t count = llmin(linkset.mChildren.size(),
-                                   linkset.mSourceChildren.size());
-        for (size_t i = 0; i < count; ++i)
-        {
-            mirror_one(linkset.mSourceChildren[i], linkset.mChildren[i]);
         }
+
+        // [AnimeshRepeat] Publish this frame's hold state for
+        // repeatHeldAnimesh(). On the held->live edge drop the replay
+        // records unconditionally (not tied to `changed`): the returning
+        // live signal owns the animation from here, and the ledger mirror
+        // above already handed it over through the normal sequence-id path.
+        const bool held = !latched_prims.empty();
+        if (held != linkset.mAnimeshHeld)
+        {
+            linkset.mAnimeshHeld = held;
+            linkset.mRepeatStates.clear();
+            linkset.mRepeatControlAvatarId.setNull();
+        }
+        linkset.mAnimeshLatchedPrims.swap(latched_prims);
+
         if (changed)
         {
             root->updateControlAvatar();
@@ -2188,6 +2684,11 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
             }
         }
     }
+
+    // [AnimeshRepeat] After the ledger loop (which published each linkset's
+    // hold state) and after the speed re-assert, so a replay starts on a
+    // control avatar already running at the Studio speed.
+    repeatHeldAnimesh();
 
     LLVOAvatar::idleUpdate(agent, time);
 

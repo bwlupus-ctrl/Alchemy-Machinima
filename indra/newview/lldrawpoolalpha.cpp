@@ -26,6 +26,8 @@
 
 #include "llviewerprecompiledheaders.h"
 
+#include "alcinehaze.h"
+
 #include <optional>
 
 #include "lldrawpoolalpha.h"
@@ -109,6 +111,12 @@ static void prepare_alpha_shader(LLGLSLShader* shader, bool deferredEnvironment,
 
     shader->bind();
     shader->uniform1f(LLShaderMgr::DISPLAY_GAMMA, (gamma > 0.1f) ? 1.0f / gamma : (1.0f / 2.2f));
+
+    // [Cine Haze] prime every alpha-pool program once per pass, including the
+    // glow-only programs (deferredEnvironment == false) that never go through
+    // bindDeferredShader() but still call applySkyAndWaterFog() for its
+    // transmittance (their fogged(c) - fogged(0) difference keeps only that).
+    ALCineHaze::bind(*shader);
 
     if (LLPipeline::sRenderingHUDs)
     { // for HUD attachments, only the pre-water pass is executed and we never want to clip anything
@@ -1249,11 +1257,26 @@ void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, EAlphaStream stream
                         reset_minimum_alpha = true;
                     }
 
+                    // [Cine Haze] additive-blended draws (dst factor ONE: additive
+                    // particles / glow faces) must not accumulate the atmosphere
+                    // colour once per layer -- tell the shader to apply transmittance
+                    // only.  Value-cached uniform; only touched around additive draws.
+                    const bool cine_haze_additive = (params.mBlendFuncDst == LLRender::BF_ONE) && current_shader;
+                    if (cine_haze_additive)
+                    {
+                        current_shader->uniform1i(LLShaderMgr::CINE_HAZE_ADDITIVE, 1);
+                    }
+
                     actor_fx_glow = LLRenderPass::uploadActorFx(
                         params, depth_only);
                     params.mVertexBuffer->setBuffer();
                     params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
                     stop_glerror();
+
+                    if (cine_haze_additive && current_shader)
+                    {
+                        current_shader->uniform1i(LLShaderMgr::CINE_HAZE_ADDITIVE, 0);
+                    }
 
                     if (reset_minimum_alpha)
                     {

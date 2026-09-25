@@ -34,8 +34,6 @@
 #include "llactormover.h"
 #include "alghoststudio.h"   // [ActorMover] heading preview lines
 #include "allocalfogmanager.h"
-#include "altoolpathedit.h"  // [ActorMover] path-edit tool owns the live edit overlay
-#include "lltoolmgr.h"       // current-tool check for the path-edit overlay
 #include "llclonefidelityaudit.h"   // [CloneFidelity] late source-vs-clone audit hook
 #include "llghostdeferreddiagnostics.h"  // [GhostDeferred] render-state invariant check
 
@@ -1120,36 +1118,6 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
         if (LLPipeline::sRenderDeferred)
         {
             gPipeline.renderDeferredLighting();
-        }
-
-        // [ActorPath] Composite operator guides while the main scene target and
-        // its world depth are still available. This gives real avatars, deferred
-        // actor ghosts, props, and terrain true render priority over path lines.
-        // The previous render_ui_3d home ran after LLDrawPoolHUD cleared depth,
-        // which forced every guide over every body regardless of distance.
-        if (!gCubeSnapshot && !LLPipeline::sPrismLensRender &&
-            gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI) &&
-            gViewerWindow->getUIVisibility())
-        {
-            gPipeline.mRT->screen.bindTarget();
-            // Reassert the world camera matrices explicitly. The deferred
-            // lighting pass currently leaves them active, but the path overlay
-            // must not depend on that ambient state if another composite is
-            // inserted above this block later.
-            gGL.matrixMode(LLRender::MM_PROJECTION);
-            gGL.loadMatrix(glm::value_ptr(get_current_projection()));
-            gGL.matrixMode(LLRender::MM_MODELVIEW);
-            gGL.loadMatrix(glm::value_ptr(get_current_modelview()));
-            LLActorMover::instance().renderHeadingPreview(true);
-            if (LLToolMgr::getInstance()->getCurrentTool() ==
-                (LLTool*)ALToolPathEdit::getInstance())
-            {
-                LLActorMover& mover = LLActorMover::instance();
-                mover.renderActorPathOverlay(
-                    mover.getEditActor(), true,
-                    ALToolPathEdit::getInstance()->getHoverNode(), true);
-            }
-            gPipeline.mRT->screen.flush();
         }
 
         LLPrismLens::compositeDebug();

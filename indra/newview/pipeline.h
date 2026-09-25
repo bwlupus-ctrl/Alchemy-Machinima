@@ -245,6 +245,14 @@ public:
     void renderVolumetric(LLRenderTarget* src, LLRenderTarget* dst);
     // [Cine Outline Phase 1] additive deferred edge pass feeding bloom/glow.
     void renderCineOutline(LLRenderTarget* dst);
+    // [RimGlow Phase 1] depth-gated Auto Rim for the in-focus subject: MRT
+    // mask/subj/radHist/dir gather (reads dst + G-buffer normal/depth +
+    // mRimGlowRadHist[prev]) -> wrap blur chain (Two-Color reserved, no-op
+    // this phase) -> half-res downsample -> glow/dir blur chain -> composite,
+    // written back into dst via the mWaterDis read-scratch-blit idiom (same
+    // pattern as applyOnLensFilters). Auto Rim only; CPU-resolved
+    // manual/object focus (LLDirectorCast), no GPU autofocus pass this phase.
+    void renderVirtualCinemaRimGlow(LLRenderTarget* dst);
     // [BDMerge G3.3] per-projector volumetric light cones: additive pass, one
     // fullscreen cone per shadow-casting projector slot, in place on target.
     // [Prism camera feed] aux_direct=true is the Prism auxiliary (VCam) capture
@@ -548,6 +556,15 @@ public:
     void unbindReflectionProbes(LLGLSLShader& shader);
 
     void renderDeferredLighting();
+
+    // Blit deferredScreen's albedo (attachment 0) and normals (attachment 2)
+    // into mReShadeAlbedoRaw / mReShadeNormalsRaw for the ReShade bridge,
+    // while they are still guaranteed valid (see the members' declaration
+    // comment for why gatherFrame() can't safely read deferredScreen live).
+    // Called from the top of renderDeferredLighting(); self-gates to a no-op
+    // for aux/probe/impostor/HUD/Prism-aux render passes (mRT != &mMainRT) and
+    // when RenderReShadeGBufferPublish is off.
+    void preserveReShadeGBuffer();
 
     // apply atmospheric haze based on contents of color and depth buffer
     // should be called just before rendering water when camera is under water
@@ -1317,11 +1334,93 @@ public:
     LLRenderTarget              mReShadeSceneRaw;
     bool                        mReShadeRawSceneValid = false;
 
+    // Deferred G-buffer preserve-copies for the ReShade bridge. deferredScreen
+    // attachment 0 (albedo) and attachment 2 (normals) are only known-good
+    // between the deferred geometry pass and the point renderDeferredLighting
+    // finishes consuming them for lighting; gatherFrame() runs much later
+    // (after renderFinalize()'s whole post chain), so rather than have the
+    // bridge read gPipeline.mRT->deferredScreen directly at that late point,
+    // renderDeferredLighting() blits its own copies here immediately after
+    // the G-buffer is complete for the main view. Same lifetime pattern as
+    // mReShadeSceneRaw above, and same reasoning: preserve a copy at the
+    // last-known-good moment rather than trust a live buffer at capture time.
+    // Formats mirror deferredScreen's own attachments: albedo is
+    // GL_SRGB8_ALPHA8 (matches deferredScreen attachment 0, allocated in
+    // allocateScreenBufferInternal); normals is GL_RGBA16 under HDR /
+    // GL_RGB10_A2 non-HDR (matches addDeferredAttachments()). Gated on
+    // RenderReShadeGBufferPublish so the two extra per-frame blits cost
+    // nothing when the setting is off. mReShadeGBufferRawValid is reset every
+    // renderDeferredLighting call and only set true when a capture actually
+    // happened for the main view this frame; when false the bridge falls back
+    // to reading gPipeline.mRT->deferredScreen directly, exactly as before.
+    LLRenderTarget              mReShadeAlbedoRaw;
+    LLRenderTarget              mReShadeNormalsRaw;
+    bool                        mReShadeGBufferRawValid = false;
+
     // [Ultimate Diopter] pass-1 MRT target: attachment 0 = clear gather +
     // mask, attachment 1 = diopter gather + rim. RGBA16F, full-res.
     // Allocated ONLY while CineDiopterEnabled is set (settings listener
     // triggers realloc) so the effect holds zero VRAM when off.
     LLRenderTarget              mDiopterMap;
+
+    // [RimGlow Phase 1] Allocated ONLY while CineRimGlowEnabled is set
+    // (settings listener triggers realloc, mirrors mDiopterMap) so the
+    // effect holds zero VRAM when off. Fail-closed: any allocation failure
+    // releases every RimGlow target and disables the effect for the session.
+    //
+    // ONE single-buffered working FBO, full-res, recomputed fresh every
+    // frame (never itself ping-ponged): attachment 0 = mask (RGBA16F),
+    // attachment 1 = subj (R16F), attachment 2 = radHist_out (RGBA16F, this
+    // frame's blended captured-light, read immediately by the Composite
+    // pass), attachment 3 = dir (RG16F). Exactly 4 attachments = the
+    // LLRenderTarget::addColorAttachment() cap (llrendertarget.cpp).
+    LLRenderTarget              mRimGlowWork;
+
+    // Standalone 2-element ping-pong pair holding ONLY the temporal
+    // radiance-accumulation history -- the one piece of Mask-pass state that
+    // must survive across frames. Kept separate from mRimGlowWork rather
+    // than duplicating the whole 4-attachment bundle: mask/subj/dir are
+    // fully recomputed every frame and need no history, so duplicating them
+    // would waste VRAM for nothing. Propagated each frame via
+    // mRimGlowWork.copyContentsFromAttachment(source_attachment=2, ...).
+    LLRenderTarget              mRimGlowRadHist[2];
+    U32                         mRimGlowHistoryIdx = 0;
+    // False on (re)allocation, on allocation failure, and every frame the
+    // master enable is off (mirrors mProjVolHistoryValid) -- true only after
+    // a fully successful Mask-pass write + history propagation this frame.
+    bool                        mRimGlowHistoryValid = false;
+
+    // Wrap blur chain (Two-Color rim; reserved, a no-op pass in Phase 1
+    // since Mode is fixed to Auto Rim). Full-res RGBA16F.
+    LLRenderTarget              mRimGlowTmp;
+    LLRenderTarget              mRimGlowWrap;
+
+    // Half-res glow blur chain: EACH of these is a 2-attachment MRT target
+    // (attachment 0 = color RGBA16F, attachment 1 = paired directional-
+    // coherence buffer RG16F), downsampled from mRimGlowWork attachments 0
+    // and 3. Fused into one object per stage (rather than 4 independent
+    // single-attachment targets) because the shared blurHasDir=1 "glow
+    // chain" invocation blurs color and direction together in one draw --
+    // see LLPipeline::renderVirtualCinemaRimGlow for the read/write ping-
+    // pong (Downsample -> GlowTmp; GlowH: GlowTmp -> Glow; GlowV: Glow ->
+    // GlowTmp (final); Composite reads GlowTmp's two attachments).
+    LLRenderTarget              mRimGlowGlowTmp;   // attach0=color, attach1=dir
+    LLRenderTarget              mRimGlowGlow;      // attach0=color, attach1=dir
+
+    // [RimGlow Phase 1] CPU-resolved manual/object focus depth -- no GPU
+    // autofocus pass this phase (see LLPipeline::renderVirtualCinemaRimGlow).
+    // Exponentially smoothed exactly like NightMaskFrameState::mSmoothedPosAgent
+    // (updateNightMaskAnchor()); reset (snap) on target change/teleport/
+    // region change/time reversal, identically to Night Mask.
+    struct RimGlowFocusState
+    {
+        bool    mHaveSmoothed = false;
+        F32     mSmoothedFocusZ = 0.f;     // view-space Z, smoothed
+        LLUUID  mLastTargetId;
+        U64     mLastRegionHandle = 0;
+        F64     mLastTime = -1.0;
+    };
+    RimGlowFocusState           mRimGlowFocus;
 
     // Night Mask: per-frame resolved state, shared verbatim between
     // generateLuminance() (B1 bloom-metering fix) and applyOnLensFilters()

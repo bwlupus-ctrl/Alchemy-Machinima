@@ -28,6 +28,7 @@
 #include "lluuid.h"
 
 class LLButton;
+class LLCheckBoxCtrl;
 class LLComboBox;
 class LLScrollListCtrl;
 class LLSpinCtrl;
@@ -58,6 +59,17 @@ private:
     void onCommitNodeSkid();
     void onCommitNodeSpeed();
 
+    // ---- orientation --------------------------------------------------------
+    void onCaptureOrient();     // store the prop's live world rot into the selected node
+    void onCommitRotationMode();
+
+    // ---- oscillation / rock / spin (one handler: re-reads the whole group) --
+    void onCommitEffects();
+
+    // ---- simple axis shuttle --------------------------------------------------
+    void onCommitShuttleAxis(); // toggles the slope spinner's enabled state (XZ only)
+    void onClickShuttle();
+
     // ---- refresh ----------------------------------------------------------
     void refresh();             // throttled from draw(); rebuilds both lists
     void refreshNodePane();     // node list + per-node/param controls for the selection
@@ -76,6 +88,32 @@ private:
     LLSpinCtrl*       mNodeSkidSpin = nullptr;
     LLSpinCtrl*       mNodeSpeedSpin = nullptr;
     LLTextBox*        mStatusText = nullptr;
+
+    // ---- orientation ----
+    LLButton*         mBtnCaptureOrient = nullptr;
+    LLComboBox*       mRotationModeCombo = nullptr;
+
+    // ---- oscillation (hover + rock) ----
+    LLCheckBoxCtrl*   mHoverOnCheck = nullptr;
+    LLComboBox*       mHoverWaveCombo = nullptr;
+    LLSpinCtrl*       mHoverAmpSpin = nullptr;
+    LLSpinCtrl*       mHoverFreqSpin = nullptr;
+    LLCheckBoxCtrl*   mRockOnCheck = nullptr;
+    LLComboBox*       mRockAxisCombo = nullptr;
+    LLSpinCtrl*       mRockAmpSpin = nullptr;
+    LLSpinCtrl*       mRockFreqSpin = nullptr;
+
+    // ---- spin ----
+    LLCheckBoxCtrl*   mSpinOnCheck = nullptr;
+    LLComboBox*       mSpinAxisCombo = nullptr;
+    LLSpinCtrl*       mSpinSpeedSpin = nullptr;
+
+    // ---- shuttle ----
+    LLComboBox*       mShuttleAxisCombo = nullptr;
+    LLComboBox*       mShuttleSignCombo = nullptr;
+    LLSpinCtrl*       mShuttleDistanceSpin = nullptr;
+    LLSpinCtrl*       mShuttleSpeedSpin = nullptr;
+    LLSpinCtrl*       mShuttleSlopeSpin = nullptr;
 
     LLFrameTimer mRefreshTimer;     // throttle the draw()-driven refresh
     std::string  mStatusMsg;        // sticky last-action line (beats the summary)

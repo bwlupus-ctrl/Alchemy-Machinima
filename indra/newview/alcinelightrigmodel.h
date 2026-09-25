@@ -81,6 +81,10 @@ struct LightBase
 {
     F32  mYawDeg = 0.f;
     F32  mPitchDeg = 0.f;
+    // World-Z height offset in raw metres, additive on top of the rig's
+    // global Offset Z and independent of yaw/pitch. Default zero is an exact
+    // no-op so existing setups/presets are unchanged until moved.
+    F32  mOffsetZ = 0.f;
     S32  mProfile = 0;
     F32  mEV = 0.f;
     S32  mBeam = 0;

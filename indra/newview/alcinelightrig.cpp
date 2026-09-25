@@ -251,6 +251,7 @@ bool sameLight(const LightBase& first, const LightBase& second)
 {
     return first.mYawDeg == second.mYawDeg &&
            first.mPitchDeg == second.mPitchDeg &&
+           first.mOffsetZ == second.mOffsetZ &&
            first.mProfile == second.mProfile &&
            first.mEV == second.mEV &&
            first.mBeam == second.mBeam &&
@@ -467,6 +468,7 @@ LLSD lightToLLSD(const LightBase& light)
     LLSD data = LLSD::emptyMap();
     data["yaw"] = light.mYawDeg;
     data["pitch"] = light.mPitchDeg;
+    data["offset_z"] = light.mOffsetZ;
     data["profile_idx"] = light.mProfile;
     data["profile_name"] = profileName(light.mProfile);
     data["ev"] = light.mEV;
@@ -519,6 +521,9 @@ bool setupFromLLSD(const LLSD& data, Setup& output)
         LightBase& light = setup.mLights[i];
         light.mYawDeg = static_cast<F32>(item["yaw"].asReal());
         light.mPitchDeg = static_cast<F32>(item["pitch"].asReal());
+        // Old saved Setups predate this key; absent means the inert default.
+        light.mOffsetZ = item.has("offset_z")
+            ? static_cast<F32>(item["offset_z"].asReal()) : 0.f;
         light.mProfile = item["profile_idx"].asInteger();
         if (item["profile_name"].isString())
         {
@@ -1189,6 +1194,14 @@ void ALCineLightRig::readSettings(Setup& setup, Globals& globals,
     static LLCachedControl<F32> fill_pitch(gSavedSettings, "CineLightRigFillPitch");
     static LLCachedControl<F32> rim_pitch(gSavedSettings, "CineLightRigRimPitch");
     static LLCachedControl<F32> bg_pitch(gSavedSettings, "CineLightRigBgPitch");
+    static LLCachedControl<F32> key_offset_z(
+        gSavedSettings, "CineLightRigKeyOffsetZ");
+    static LLCachedControl<F32> fill_offset_z(
+        gSavedSettings, "CineLightRigFillOffsetZ");
+    static LLCachedControl<F32> rim_offset_z(
+        gSavedSettings, "CineLightRigRimOffsetZ");
+    static LLCachedControl<F32> bg_offset_z(
+        gSavedSettings, "CineLightRigBgOffsetZ");
     static LLCachedControl<S32> key_profile(gSavedSettings, "CineLightRigKeyProfile");
     static LLCachedControl<S32> fill_profile(gSavedSettings, "CineLightRigFillProfile");
     static LLCachedControl<S32> rim_profile(gSavedSettings, "CineLightRigRimProfile");
@@ -1249,6 +1262,9 @@ void ALCineLightRig::readSettings(Setup& setup, Globals& globals,
     const F32 pitches[LIGHT_COUNT] = {
         key_pitch, fill_pitch, rim_pitch, bg_pitch
     };
+    const F32 offset_zs[LIGHT_COUNT] = {
+        key_offset_z, fill_offset_z, rim_offset_z, bg_offset_z
+    };
     const S32 profiles[LIGHT_COUNT] = {
         key_profile, fill_profile, rim_profile, bg_profile
     };
@@ -1276,6 +1292,7 @@ void ALCineLightRig::readSettings(Setup& setup, Globals& globals,
     {
         setup.mLights[i].mYawDeg = yaws[i];
         setup.mLights[i].mPitchDeg = pitches[i];
+        setup.mLights[i].mOffsetZ = offset_zs[i];
         setup.mLights[i].mProfile = profiles[i];
         setup.mLights[i].mEV = evs[i];
         setup.mLights[i].mBeam = beams[i];
@@ -1328,6 +1345,7 @@ void ALCineLightRig::readSettings(const ALCineLightRigParamBlob& blob,
     {
         setup.mLights[i].mYawDeg = blob.mLights[i].mYaw;
         setup.mLights[i].mPitchDeg = blob.mLights[i].mPitch;
+        setup.mLights[i].mOffsetZ = blob.mLights[i].mOffsetZ;
         setup.mLights[i].mProfile = blob.mLights[i].mProfile;
         setup.mLights[i].mEV = blob.mLights[i].mEV;
         setup.mLights[i].mBeam = blob.mLights[i].mBeam;
@@ -1378,6 +1396,7 @@ void ALCineLightRig::writeSetupToSettings(const Setup& input) const
         const LightBase& light = setup.mLights[i];
         gSavedSettings.setF32(prefix + "Yaw", light.mYawDeg);
         gSavedSettings.setF32(prefix + "Pitch", light.mPitchDeg);
+        gSavedSettings.setF32(prefix + "OffsetZ", light.mOffsetZ);
         gSavedSettings.setS32(prefix + "Profile", light.mProfile);
         gSavedSettings.setF32(prefix + "EV", light.mEV);
         gSavedSettings.setS32(prefix + "Beam", light.mBeam);
@@ -2548,6 +2567,10 @@ void ALCineLightRig::tickShared(
         {
             // FX owns the animated profile/pose. Physical gel and practical
             // flicker modifiers remain layered above that rig-wide animation.
+            // Per-light Z is a framing modifier in the same family (like
+            // gel), not part of the FX-owned animated pose, so a manually
+            // set height survives while an FX animation is active.
+            fx_setup.mLights[i].mOffsetZ = setup.mLights[i].mOffsetZ;
             fx_setup.mLights[i].mGel = setup.mLights[i].mGel;
             fx_setup.mLights[i].mFlickerProgram =
                 setup.mLights[i].mFlickerProgram;

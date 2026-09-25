@@ -87,6 +87,335 @@
       <key>Type</key><string>F32</string>
       <key>Value</key><real>0</real>
     </map>
+    <key>CineRimGlowEnabled</key>
+    <map>
+      <key>Comment</key><string>Virtual Cinema RimGlow master enable (Phase 1: Auto Rim only). Session-only (Persist 0) so the effect and its render targets always start OFF at login -- allocating them costs real VRAM (see the floater note).</string>
+      <key>Persist</key><integer>0</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineRimGlowFocusTarget</key>
+    <map>
+      <key>Comment</key><string>RimGlow subject: 0 Self, 1-4 Director Cast Subject A-D</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineRimGlowManualFocusDepth</key>
+    <map>
+      <key>Comment</key><string>RimGlow fallback subject depth (metres) used whenever the resolved focus target is missing/dead</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>4.0</real>
+    </map>
+    <key>CineRimGlowFocusFeatherRel</key>
+    <map>
+      <key>Comment</key><string>RimGlow focus band: full weight within +/-FocusFeatherRel (relative) of focusZ, feather to +/-2x</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.35</real>
+    </map>
+    <key>CineRimGlowGatherRadius</key>
+    <map>
+      <key>Comment</key><string>RimGlow Auto Rim light-search distance in pixels (clamped CPU-side to 0.03 * screen height)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>10.0</real>
+    </map>
+    <key>CineRimGlowLightThreshold</key>
+    <map>
+      <key>Comment</key><string>RimGlow: ignore captured light dimmer than this</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineRimGlowSourcePriorityStops</key>
+    <map>
+      <key>Comment</key><string>RimGlow: stops of highlight recovery favoring the brightest captured source</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>6.0</real>
+    </map>
+    <key>CineRimGlowGatherFalloff</key>
+    <map>
+      <key>Comment</key><string>RimGlow: inverse-square distance falloff weight for the light gather</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.7</real>
+    </map>
+    <key>CineRimGlowBackgroundBias</key>
+    <map>
+      <key>Comment</key><string>RimGlow: how much farther than the subject a pixel must be to count as light</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.01</real>
+    </map>
+    <key>CineRimGlowBackgroundFeather</key>
+    <map>
+      <key>Comment</key><string>RimGlow: soft falloff width for the subject/light separation test</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.02</real>
+    </map>
+    <key>CineRimGlowWrapSpread</key>
+    <map>
+      <key>Comment</key><string>RimGlow: how far around the form the light is gathered from (0 tight, 1 wide)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.75</real>
+    </map>
+    <key>CineRimGlowRimIndependence</key>
+    <map>
+      <key>Comment</key><string>RimGlow: soft-maximum source selectivity (1 = single brightest source owns the rim)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.85</real>
+    </map>
+    <key>CineRimGlowAutoRimGain</key>
+    <map>
+      <key>Comment</key><string>RimGlow: master brightness for the captured backlight</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.5</real>
+    </map>
+    <key>CineRimGlowColorSaturation</key>
+    <map>
+      <key>Comment</key><string>RimGlow: saturation of the captured rim color (1 = physical)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.0</real>
+    </map>
+    <key>CineRimGlowRimCrosstalk</key>
+    <map>
+      <key>Comment</key><string>RimGlow: highlight crosstalk toward white for the hottest captured light</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.4</real>
+    </map>
+    <key>CineRimGlowCrosstalkKnee</key>
+    <map>
+      <key>Comment</key><string>RimGlow: luminance knee for highlight crosstalk</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineRimGlowRimFresnel</key>
+    <map>
+      <key>Comment</key><string>RimGlow: blend of the interior fill toward a Fresnel/N.V wrap curve</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineRimGlowFresnelBase</key>
+    <map>
+      <key>Comment</key><string>RimGlow: minimum Fresnel fill retained on flat, camera-facing surfaces</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.15</real>
+    </map>
+    <key>CineRimGlowFresnelPower</key>
+    <map>
+      <key>Comment</key><string>RimGlow: Fresnel curve exponent</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>5.0</real>
+    </map>
+    <key>CineRimGlowFormDirectional</key>
+    <map>
+      <key>Comment</key><string>RimGlow: directional bias of the form response</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineRimGlowDirectionalWrap</key>
+    <map>
+      <key>Comment</key><string>RimGlow: directional wrap sharpness</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineRimGlowRimWidth</key>
+    <map>
+      <key>Comment</key><string>RimGlow: silhouette edge-detect width in pixels</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>2</integer>
+    </map>
+    <key>CineRimGlowAutoWrapFalloff</key>
+    <map>
+      <key>Comment</key><string>RimGlow: falloff of the wrap lobe from the edge toward the core</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.0</real>
+    </map>
+    <key>CineRimGlowAutoAtmFalloff</key>
+    <map>
+      <key>Comment</key><string>RimGlow: falloff of the outward atmospheric lobe</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.0</real>
+    </map>
+    <key>CineRimGlowCoreGain</key>
+    <map>
+      <key>Comment</key><string>RimGlow: gain of the core (unblurred) rim lobe</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.0</real>
+    </map>
+    <key>CineRimGlowWrapGain</key>
+    <map>
+      <key>Comment</key><string>RimGlow: gain of the inward wrap lobe</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.0</real>
+    </map>
+    <key>CineRimGlowAtmGain</key>
+    <map>
+      <key>Comment</key><string>RimGlow: gain of the outward atmospheric/halo lobe</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.0</real>
+    </map>
+    <key>CineRimGlowAutoInteriorFill</key>
+    <map>
+      <key>Comment</key><string>RimGlow: pushes the captured backlight inward onto the subject (interior fill)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.0</real>
+    </map>
+    <key>CineRimGlowAutoInteriorResponse</key>
+    <map>
+      <key>Comment</key><string>RimGlow: how much the interior fill tracks the subject's own brightness</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineRimGlowRespKnee</key>
+    <map>
+      <key>Comment</key><string>RimGlow: knee for the interior-fill response curve</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineRimGlowAutoInteriorTint</key>
+    <map>
+      <key>Comment</key><string>RimGlow: how much the interior fill picks up the subject's own surface color</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.6</real>
+    </map>
+    <key>CineRimGlowAutoHalo</key>
+    <map>
+      <key>Comment</key><string>RimGlow: outward halo/background bleed strength</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.25</real>
+    </map>
+    <key>CineRimGlowHaloTight</key>
+    <map>
+      <key>Comment</key><string>RimGlow: how tightly the halo hugs the silhouette</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineRimGlowHaloOcclusion</key>
+    <map>
+      <key>Comment</key><string>RimGlow: how much the halo respects a closer foreground occluder</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.0</real>
+    </map>
+    <key>CineRimGlowInwardBleed</key>
+    <map>
+      <key>Comment</key><string>RimGlow: wrap-chain blur distance in pixels (full-res; clamped CPU-side to 32)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>8.0</real>
+    </map>
+    <key>CineRimGlowAutoInteriorReach</key>
+    <map>
+      <key>Comment</key><string>RimGlow: glow-chain blur distance in pixels (full-res equivalent; clamped CPU-side to 64)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>40.0</real>
+    </map>
+    <key>CineRimGlowRimShoulderKnee</key>
+    <map>
+      <key>Comment</key><string>RimGlow: highlight shoulder knee before the white cap</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.0</real>
+    </map>
+    <key>CineRimGlowRimWhite</key>
+    <map>
+      <key>Comment</key><string>RimGlow: luminance at which the rim caps to white</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>6.0</real>
+    </map>
+    <key>CineRimGlowAutoSettle</key>
+    <map>
+      <key>Comment</key><string>RimGlow: temporal settle of the captured light (anti-flicker); 0 = instant</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineRimGlowSettleDepthTol</key>
+    <map>
+      <key>Comment</key><string>RimGlow: relative depth tolerance rejecting temporal history across a depth discontinuity</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.25</real>
+    </map>
+    <key>CineRimGlowSettleLightRejectStops</key>
+    <map>
+      <key>Comment</key><string>RimGlow: luminance-stop threshold rejecting temporal history on a sudden light change</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>4.0</real>
+    </map>
+    <key>CineRimGlowSettleLightReject</key>
+    <map>
+      <key>Comment</key><string>RimGlow: strength of the sudden-light-change history rejection</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineRimGlowEdgeThreshold</key>
+    <map>
+      <key>Comment</key><string>RimGlow: minimum depth step counted as the subject's silhouette edge</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.02</real>
+    </map>
+    <key>CineRimGlowEdgeFeather</key>
+    <map>
+      <key>Comment</key><string>RimGlow: soft falloff of the silhouette edge detector</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.02</real>
+    </map>
+    <key>CineRimGlowEdgeNormalGate</key>
+    <map>
+      <key>Comment</key><string>RimGlow: how much the G-buffer normal gates the edge detector alongside depth</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineRimGlowDirCoherenceLo</key>
+    <map>
+      <key>Comment</key><string>RimGlow: directional-coherence lower bound narrowing the glow blur near sharp features</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.3</real>
+    </map>
+    <key>CineRimGlowDirCoherenceHi</key>
+    <map>
+      <key>Comment</key><string>RimGlow: directional-coherence upper bound allowing the full blur width</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.9</real>
+    </map>
     <key>CineDiopterEnabled</key>
     <map>
       <key>Comment</key><string>Ultimate Diopter master enable. Session-only (Persist 0) so the effect and its render targets always start OFF at login.</string>
@@ -1636,10 +1965,17 @@
     </map>
     <key>CineLightRigLiveProbeReplaceBounce</key>
     <map>
-      <key>Comment</key><string>Crossfade the followed rig's synthetic bounce omnis out as the cinematic live probe fades in</string>
+      <key>Comment</key><string>LEGACY (superseded by CineLightRigLiveProbeBounceKeep; no longer read). Crossfade the followed rig's synthetic bounce omnis out as the cinematic live probe fades in</string>
       <key>Persist</key><integer>1</integer>
       <key>Type</key><string>Boolean</string>
       <key>Value</key><integer>1</integer>
+    </map>
+    <key>CineLightRigLiveProbeBounceKeep</key>
+    <map>
+      <key>Comment</key><string>Share of the followed rig's synthetic bounce kept once the cinematic live probe is fully faded in: 0 = the probe's captured bounce fully replaces it (old Replace bounce), 1 = keep all rig bounce so enabling the probe never darkens the fill</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.0</real>
     </map>
     <key>CineLightRigLiveProbeGizmo</key>
     <map>
@@ -1739,6 +2075,13 @@
       <key>Persist</key><integer>1</integer>
       <key>Type</key><string>F32</string>
       <key>Value</key><real>35.0</real>
+    </map>
+    <key>CineLightRigKeyOffsetZ</key>
+    <map>
+      <key>Comment</key><string>KEY per-light height offset in metres, additive on top of the rig's Offset Z</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
     </map>
     <key>CineLightRigKeyProfile</key>
     <map>
@@ -1866,6 +2209,13 @@
       <key>Type</key><string>F32</string>
       <key>Value</key><real>5.0</real>
     </map>
+    <key>CineLightRigFillOffsetZ</key>
+    <map>
+      <key>Comment</key><string>FILL per-light height offset in metres, additive on top of the rig's Offset Z</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
     <key>CineLightRigFillProfile</key>
     <map>
       <key>Comment</key><string>FILL colour-profile index</string>
@@ -1992,6 +2342,13 @@
       <key>Type</key><string>F32</string>
       <key>Value</key><real>45.0</real>
     </map>
+    <key>CineLightRigRimOffsetZ</key>
+    <map>
+      <key>Comment</key><string>RIM per-light height offset in metres, additive on top of the rig's Offset Z</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
     <key>CineLightRigRimProfile</key>
     <map>
       <key>Comment</key><string>RIM colour-profile index</string>
@@ -2117,6 +2474,13 @@
       <key>Persist</key><integer>1</integer>
       <key>Type</key><string>F32</string>
       <key>Value</key><real>-20.0</real>
+    </map>
+    <key>CineLightRigBgOffsetZ</key>
+    <map>
+      <key>Comment</key><string>BG per-light height offset in metres, additive on top of the rig's Offset Z</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
     </map>
     <key>CineLightRigBgProfile</key>
     <map>
@@ -6369,6 +6733,41 @@
       <key>Value</key>
       <integer>1</integer>
     </map>
+    <key>GhostMirrorRepeatHeldAnimesh</key>
+    <map>
+      <key>Comment</key>
+      <string>[GhostStudio] Opt-in companion to GhostMirrorHoldOnSourceChange. While a clone's animesh is HELD (source linkset detached/gone, or its animation signal empty under the hold), replay each held one-shot animesh animation on the clone's own control avatar whenever it finishes, so a script-retriggered tail or idle keeps cycling instead of freezing on its last pose. Looping animations are never restarted. This is functional repetition, not seamless looping: each replay starts from frame 0 after the previous pass eases out, so expect a small seam per cycle -- and a deliberate one-shot action (a mechanism closing, a reaction) will repeat too, which is why this is off by default. No effect while the source is live (its own script retriggers) or when the hold option is off.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <!-- [TrueMirror] begin: DRIVE_TRUE_MIRROR settings -->
+    <key>GhostTrueMirrorCopyFacing</key>
+    <map>
+      <key>Comment</key>
+      <string>[GhostStudio] In TRUE MIRROR drive mode, also copy the source's root (body facing) rotation onto the clone so procedural body turns mirror; the Studio's own keep-facing / turn-to / crowd facing are skipped for that clone. Off = the clone keeps its authored Studio facing and only the pelvis-and-below pose is mirrored. World position is never copied either way.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>GhostTrueMirrorCopyFace</key>
+    <map>
+      <key>Comment</key>
+      <string>[GhostStudio] In TRUE MIRROR drive mode, also copy the source's animated face morphs (Express_* expressions, Blink_* lids, Lipsync_*, and the physics-driven morphs when the clone's physics is on). Off = skeleton only.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <!-- [TrueMirror] end -->
     <key>GhostDeferredDebugLog</key>
     <map>
       <key>Comment</key>
@@ -17104,6 +17503,28 @@
     <key>Value</key>
     <integer>1</integer>
   </map>
+  <key>RenderReShadeGBufferPublish</key>
+  <map>
+    <key>Comment</key>
+    <string>When on (default), preserve deferredScreen's albedo and normals G-buffer attachments into dedicated copies immediately after the deferred lighting pass consumes them, and publish those copies to the ReShade bridge instead of reading the live deferredScreen attachments at capture time (which by then may no longer reflect this frame's populated G-buffer). Off = publish the live deferredScreen attachments exactly as before this fix, at zero extra per-frame blit cost.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>Boolean</string>
+    <key>Value</key>
+    <integer>1</integer>
+  </map>
+  <key>RenderReShadeGBufferDiag</key>
+  <map>
+    <key>Comment</key>
+    <string>[ReShade G-buffer diag] Log deferredScreen's texture count, the published albedo/normals GL handles+formats, whether the RenderReShadeGBufferPublish preserve-copy ran, and the resolved semantic_valid_bits, about once every 2 seconds. Diagnostics only; off by default.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>Boolean</string>
+    <key>Value</key>
+    <integer>0</integer>
+  </map>
   <key>RenderHDRIExposure</key>
   <map>
     <key>Comment</key>
@@ -17217,11 +17638,22 @@
   <key>RenderMaxVRAMBudget</key>
   <map>
     <key>Comment</key>
-    <string>Maximum amount of texture memory to budget for (in MB), or 0 for autodetect.</string>
+    <string>Maximum tracked GPU memory budget in MB, or 0 for automatic detected-VRAM budgeting. The runtime governor may raise an impossible custom cap above fixed render-target, buffer, and non-discardable texture residency.</string>
     <key>Persist</key>
     <integer>1</integer>
     <key>Type</key>
     <string>U32</string>
+    <key>Value</key>
+    <integer>0</integer>
+  </map>
+  <key>RenderVRAMGovernorEnabled</key>
+  <map>
+    <key>Comment</key>
+    <string>Enable the VRAM budget governor (adaptive texture-residency cap enforcement, incl. during capture). Off = original behavior: full quality, no cap enforcement.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>Boolean</string>
     <key>Value</key>
     <integer>0</integer>
   </map>

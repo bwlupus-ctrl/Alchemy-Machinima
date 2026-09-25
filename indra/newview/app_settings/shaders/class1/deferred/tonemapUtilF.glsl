@@ -342,9 +342,88 @@ uniform vec2 tonemap_grade;
 // which reads its own tonemap_amd[24] + tonemap_amd_shoulder uniforms.
 void RunLPMFilter(inout vec3 diff);
 
+// Defined in environment/srgbF.glsl (already linked into this program for
+// linear_to_srgb). Used to pre-compensate the mandatory downstream sRGB encode.
+vec3 srgb_to_linear(vec3 cs);
+
+// ==== CINE LOG CAPTURE (tonemap type 8) =====================================
+// Encodes a standard cinema LOG curve per channel from the linear scene HDR
+// buffer -- the viewer IS the log camera. Controls arrive via tonemap_params
+// (packed in pipeline.cpp case 8): .x = curve (0 S-Log3, 1 S-Log2, 2 ARRI
+// LogC3, 3 Cineon), .y = range (0 Full, 1 Legal/Video), .z = shadow toe
+// [0,0.3], .w = EV offset [-8,8].
+// Returns srgb_to_linear(code) so the UNCONDITIONAL downstream linear_to_srgb()
+// in colorCorrectF cancels it, leaving TRUE log code values in the backbuffer.
+// !! Disable any ReShade log / VCC encode -- it would double-encode. !!
+// Grade in Resolve (CST): Input Color Space = Rec.709 (OETF only, NO gamut
+// transform -- do NOT pick S-Gamut3 / ARRI Wide Gamut), Input Gamma = the
+// matching curve, Data Levels = Full/Video to match .y. Toe inverse = subtract
+// 0.18*toe per channel in linear, AFTER the log CST.
+// Math derived + round-trip verified (Fable). tonemap_params + srgb_to_linear
+// already declared above -- do not redeclare.
+const float SLF_LOG10_2 = 0.30102999566398120;   // log10(x) = log2(x)*log10(2)
+vec3 slf_log10(vec3 x) { return log2(x) * SLF_LOG10_2; }
+
+// 0: Sony S-Log3
+vec3 slf_oetf_slog3(vec3 x)
+{
+    vec3 lo = (x * ((171.2102946929 - 95.0) / 0.01125) + 95.0) / 1023.0;
+    vec3 hi = (420.0 + slf_log10((x + 0.01) / 0.19) * 261.5) / 1023.0; // arg > 0 for x >= 0
+    return mix(lo, hi, step(0.01125, x));                              // x >= 0.01125 -> hi
+}
+// 1: Sony S-Log2 (t<0 tangent branch omitted: unreachable after max(c,0))
+vec3 slf_oetf_slog2(vec3 x)
+{
+    vec3 t = x / 0.9;
+    vec3 y = 0.432699 * slf_log10(t * (155.0 / 219.0) + 0.037584) + (0.616596 + 0.03);
+    return (y * 876.0 + 64.0) / 1023.0;
+}
+// 2: ARRI LogC3, EI 800
+vec3 slf_oetf_logc3(vec3 x)
+{
+    const float cut = 0.010591, a = 5.555556, b = 0.052272,
+                c   = 0.247190, d = 0.385537, e = 5.367655, f = 0.092809;
+    vec3 lo = e * x + f;
+    vec3 hi = c * slf_log10(a * x + b) + d;
+    return mix(lo, hi, step(cut, x));        // continuous at cut, >= vs > immaterial
+}
+// 3: Cineon / DPX (black 95, white 685, 300 codes/decade, black-anchored)
+vec3 slf_oetf_cineon(vec3 x)
+{
+    const float OFF = 0.0107977516232771;    // 10^((95-685)/300)
+    return (685.0 + 300.0 * slf_log10(x * (1.0 - OFF) + OFF)) / 1023.0;
+}
+
+vec3 encode_slog_family(vec3 c)
+{
+    int   curve = int(floor(tonemap_params.x + 0.5));
+    int   range = int(floor(tonemap_params.y + 0.5));
+    float toe   = clamp(tonemap_params.z, 0.0, 0.3);
+    float ev    = clamp(tonemap_params.w, -8.0, 8.0);
+
+    c = max(c, vec3(0.0));                   // 1. clamp
+    c *= exp2(ev);                           // 2. EV
+    c += vec3(0.18 * toe);                   // 3. toe: linear flare, in units of mid-grey
+
+    vec3 code;                               // 4. per-channel OETF -> full-range code [0,1]
+    if      (curve == 1) code = slf_oetf_slog2(c);
+    else if (curve == 2) code = slf_oetf_logc3(c);
+    else if (curve == 3) code = slf_oetf_cineon(c);
+    else                 code = slf_oetf_slog3(c);
+    code = clamp(code, vec3(0.0), vec3(1.0));
+
+    if (range == 1)                          // 5. SMPTE narrow: 0..1023 -> 64..940
+        code = (code * 876.0 + 64.0) / 1023.0;
+
+    return srgb_to_linear(code);             // 6. cancels the pipeline's linear_to_srgb()
+}
+
 vec3 applyExposure(vec3 color)
 {
     float exp_scale = texture(exposureMap, vec2(0.5,0.5)).r;
+    // S-Log3 capture (type 8): manual iris only (RenderExposure); ignore auto-
+    // exposure adaptation so a fixed transfer sees a fixed, stable input.
+    if (tonemap_type == 8) exp_scale = 1.0;
     return color * exposure * exp_scale;
 }
 
@@ -380,6 +459,10 @@ vec3 applyToneMap(vec3 color)
     case 7:
         RunLPMFilter(color);
         break;
+    case 8:
+        // Cine log capture. Return immediately: the shared saturation/contrast
+        // grade and the linear<->tonemap mix below would corrupt log codes.
+        return encode_slog_family(color);
     }
 
     color.rgb = clamp(color.rgb, vec3(0.0), vec3(1.0));

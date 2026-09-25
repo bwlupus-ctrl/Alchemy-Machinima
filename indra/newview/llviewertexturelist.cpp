@@ -917,7 +917,9 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
         bool on_screen = false;
 
         U32 face_count = 0;
-        U32 max_faces_to_check = 1024;
+        static LLCachedControl<bool> vram_governor_enabled(gSavedSettings, "RenderVRAMGovernorEnabled", false);
+        const U32 max_faces_to_check =
+            vram_governor_enabled && LLViewerTexture::sDesiredDiscardBias > 1.f ? 256 : 1024;
 
         // get adjusted bias based on image resolution
         LLImageGL* img = imagep->getGLTexture();
@@ -1240,6 +1242,11 @@ F32 LLViewerTextureList::updateImagesFetchTextures(F32 max_time)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_TEXTURE;
 
+    static LLCachedControl<bool> vram_governor_enabled(gSavedSettings, "RenderVRAMGovernorEnabled", false);
+    constexpr U32 MAX_PACED_SWEEP_EXTRA_TEXTURES = 64;
+    constexpr F32 MAX_PACED_SWEEP_SECONDS = 0.001f;
+    LLTimer timer;
+
     typedef std::vector<LLPointer<LLViewerFetchedTexture> > entries_list_t;
     static entries_list_t entries;
     entries.clear();
@@ -1253,17 +1260,26 @@ F32 LLViewerTextureList::updateImagesFetchTextures(F32 max_time)
 
     //update MIN_UPDATE_COUNT or 5% of other textures, whichever is greater
     update_count = llmax((U32) MIN_UPDATE_COUNT, (U32) mUUIDMap.size()/20);
-    if (LLViewerTexture::sDesiredDiscardBias > 1.f
-        && LLViewerTexture::sBiasTexturesUpdated < (U32)mUUIDMap.size())
+    const bool accelerated_sweep = LLViewerTexture::sDesiredDiscardBias > 1.f
+        && LLViewerTexture::sBiasTexturesUpdated < (U32)mUUIDMap.size();
+    if (accelerated_sweep)
     {
         // We are over memory target. Bias affects discard rates, so update
-        // existing textures agresively to free memory faster.
-        update_count = (S32)(update_count * LLViewerTexture::sDesiredDiscardBias);
-
-        // This isn't particularly precise and can overshoot, but it doesn't need
-        // to be, just making sure it did a full circle and doesn't get stuck updating
-        // at bias = 4 with 4 times the rate permanently.
-        LLViewerTexture::sBiasTexturesUpdated += update_count;
+        // existing textures faster. With the governor enabled, bound the extra
+        // candidates per frame; the elapsed-time budget below bounds the work.
+        const U32 accelerated_count =
+            (U32)(update_count * LLViewerTexture::sDesiredDiscardBias);
+        if (vram_governor_enabled)
+        {
+            update_count = llmin(accelerated_count,
+                                 update_count + MAX_PACED_SWEEP_EXTRA_TEXTURES);
+        }
+        else
+        {
+            // Governor Off preserves the original approximate sweep accounting.
+            update_count = accelerated_count;
+            LLViewerTexture::sBiasTexturesUpdated += update_count;
+        }
     }
     update_count = llmin(update_count, (U32) mUUIDMap.size());
 
@@ -1288,8 +1304,18 @@ F32 LLViewerTextureList::updateImagesFetchTextures(F32 max_time)
         }
     }
 
-    LLTimer timer;
+    if (!vram_governor_enabled)
+    {
+        // Preserve the legacy time budget, which historically excluded the
+        // candidate-copy phase when the governor is disabled.
+        timer.reset();
+    }
 
+    const F32 work_time_budget = vram_governor_enabled && accelerated_sweep
+        ? llmin(max_time, MAX_PACED_SWEEP_SECONDS)
+        : max_time;
+
+    U32 processed_count = 0;
     for (auto& imagep : entries)
     {
         mLastUpdateKey = LLTextureKey(imagep->getID(), (ETexListType)imagep->getTextureListType());
@@ -1299,10 +1325,27 @@ F32 LLViewerTextureList::updateImagesFetchTextures(F32 max_time)
             updateImageDecodePriority(imagep);
             imagep->updateFetch();
         }
+        ++processed_count;
 
-        if (timer.getElapsedTimeF32() > max_time)
+        if (timer.getElapsedTimeF32() > work_time_budget)
         {
             break;
+        }
+    }
+
+    if (vram_governor_enabled && accelerated_sweep)
+    {
+        const U32 sweep_size = (U32)mUUIDMap.size();
+        const U32 previous_count = LLViewerTexture::sBiasTexturesUpdated;
+        LLViewerTexture::sBiasTexturesUpdated =
+            llmin(previous_count + processed_count, sweep_size);
+        if (previous_count < sweep_size &&
+            LLViewerTexture::sBiasTexturesUpdated >= sweep_size)
+        {
+            LL_DEBUGS("VRAMGovernor")
+                << "Completed paced texture sweep: considered=" << sweep_size
+                << ", discard_bias=" << LLViewerTexture::sDesiredDiscardBias
+                << LL_ENDL;
         }
     }
 
@@ -1921,5 +1964,3 @@ bool LLUIImageList::initFromFile()
     }
     return true;
 }
-
-

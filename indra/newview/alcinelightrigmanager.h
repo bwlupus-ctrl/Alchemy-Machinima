@@ -36,6 +36,9 @@ struct ALCineLightRigParamBlob
         S32 mGelSlot[ALCineLightRigModel::FIXTURE_GEL_SLOT_COUNT] = {};
         F32 mSourceSizeM = 0.10f;
         S32 mFixturePreset = 0;
+        // Appended last so the positional aggregate-initialized mLights[]
+        // array below (which only lists its first 11 members) is unaffected.
+        F32 mOffsetZ = 0.f;
     };
 
     // The complete selected-instance editing buffer. Keep this list in
@@ -169,6 +172,7 @@ struct ALCineLightRigParamBlob
             const std::string prefix(prefixes[i]);
             blob.mLights[i].mYaw = settings.getF32(prefix + "Yaw");
             blob.mLights[i].mPitch = settings.getF32(prefix + "Pitch");
+            blob.mLights[i].mOffsetZ = settings.getF32(prefix + "OffsetZ");
             blob.mLights[i].mProfile = settings.getS32(prefix + "Profile");
             blob.mLights[i].mEV = settings.getF32(prefix + "EV");
             blob.mLights[i].mBeam = settings.getS32(prefix + "Beam");
@@ -241,6 +245,7 @@ struct ALCineLightRigParamBlob
             const std::string prefix(prefixes[i]);
             settings.setF32(prefix + "Yaw", mLights[i].mYaw);
             settings.setF32(prefix + "Pitch", mLights[i].mPitch);
+            settings.setF32(prefix + "OffsetZ", mLights[i].mOffsetZ);
             settings.setS32(prefix + "Profile", mLights[i].mProfile);
             settings.setF32(prefix + "EV", mLights[i].mEV);
             settings.setS32(prefix + "Beam", mLights[i].mBeam);
@@ -306,6 +311,7 @@ inline LLSD ALCineLightRigParamBlob::toLLSD() const
         LLSD light = LLSD::emptyMap();
         light["yaw"] = mLights[i].mYaw;
         light["pitch"] = mLights[i].mPitch;
+        light["offset_z"] = mLights[i].mOffsetZ;
         light["profile"] = mLights[i].mProfile;
         light["ev"] = mLights[i].mEV;
         light["beam"] = mLights[i].mBeam;
@@ -408,6 +414,11 @@ inline ALCineLightRigParamBlob ALCineLightRigParamBlob::fromLLSD(
                 blob.mLights[i].mYaw = static_cast<F32>(light["yaw"].asReal());
             if (light.has("pitch"))
                 blob.mLights[i].mPitch = static_cast<F32>(light["pitch"].asReal());
+            // Absent means the inert 0.f default, so old saved instance
+            // blobs without this key load unchanged.
+            if (light.has("offset_z"))
+                blob.mLights[i].mOffsetZ =
+                    static_cast<F32>(light["offset_z"].asReal());
             if (light.has("profile"))
                 blob.mLights[i].mProfile = light["profile"].asInteger();
             if (light.has("ev"))
@@ -774,15 +785,21 @@ inline TickPath pathFor(U32 enabled_mask, ALCineLightRigSlot selected,
     return TickPath::TICK_FROM_BLOB;
 }
 
-inline F32 liveProbeBounceScale(bool enabled, bool replace_bounce,
-                                bool target_matches, F32 fade)
+// Scale applied to the target rig's synthetic bounce while the live probe is
+// active. bounce_keep is how much of that bounce survives once the probe has
+// fully faded in: 0 = the probe's captured irradiance fully replaces it (the
+// old "Replace bounce" behaviour), 1 = the rig's bounce is kept and the probe
+// only adds. scale = 1 - fade * (1 - keep). Non-finite inputs fail open (1).
+inline F32 liveProbeBounceKeepScale(bool enabled, F32 bounce_keep,
+                                    bool target_matches, F32 fade)
 {
-    if (!enabled || !replace_bounce || !target_matches ||
-        !std::isfinite(fade))
+    if (!enabled || !target_matches || !std::isfinite(fade))
     {
         return 1.f;
     }
-    return 1.f - std::clamp(fade, 0.f, 1.f);
+    const F32 keep = std::isfinite(bounce_keep)
+        ? std::clamp(bounce_keep, 0.f, 1.f) : 1.f;
+    return 1.f - std::clamp(fade, 0.f, 1.f) * (1.f - keep);
 }
 
 struct LiveProbeConfig
@@ -792,7 +809,9 @@ struct LiveProbeConfig
     F32 mRadius = 3.f;
     F32 mOffsetZ = 0.f;
     F32 mAmbiance = 1.f;
-    bool mReplaceBounce = true;
+    // 0..1: share of the rig's synthetic bounce kept once the probe is live
+    // (replaces the old all-or-nothing mReplaceBounce; 1 = never darken).
+    F32 mBounceKeep = 1.f;
     bool mGizmo = false;
 };
 
@@ -805,6 +824,8 @@ inline LiveProbeConfig sanitizeLiveProbeConfig(LiveProbeConfig config)
         ? std::clamp(config.mOffsetZ, -5.f, 5.f) : 0.f;
     config.mAmbiance = std::isfinite(config.mAmbiance)
         ? std::clamp(config.mAmbiance, 0.f, 8.f) : 1.f;
+    config.mBounceKeep = std::isfinite(config.mBounceKeep)
+        ? std::clamp(config.mBounceKeep, 0.f, 1.f) : 1.f;
     return config;
 }
 
@@ -817,7 +838,9 @@ inline LLSD liveProbeConfigToLLSD(const LiveProbeConfig& input)
     data["radius"] = config.mRadius;
     data["offset_z"] = config.mOffsetZ;
     data["ambiance"] = config.mAmbiance;
-    data["replace_bounce"] = config.mReplaceBounce;
+    data["bounce_keep"] = config.mBounceKeep;
+    // Legacy key kept so older builds can still read the scene block.
+    data["replace_bounce"] = config.mBounceKeep < 0.5f;
     data["gizmo"] = config.mGizmo;
     return data;
 }
@@ -845,11 +868,25 @@ inline bool liveProbeConfigFromLLSD(
     parsed.mRadius = static_cast<F32>(data["radius"].asReal());
     parsed.mOffsetZ = static_cast<F32>(data["offset_z"].asReal());
     parsed.mAmbiance = static_cast<F32>(data["ambiance"].asReal());
-    parsed.mReplaceBounce = data["replace_bounce"].asBoolean();
+    // bounce_keep is optional: scenes saved before it existed only carry the
+    // legacy replace_bounce bool (true = full replace = keep 0).
+    if (data.has("bounce_keep"))
+    {
+        if (!data["bounce_keep"].isReal())
+        {
+            return false;
+        }
+        parsed.mBounceKeep = static_cast<F32>(data["bounce_keep"].asReal());
+    }
+    else
+    {
+        parsed.mBounceKeep = data["replace_bounce"].asBoolean() ? 0.f : 1.f;
+    }
     parsed.mGizmo = data["gizmo"].asBoolean();
     if (!std::isfinite(parsed.mRadius) ||
         !std::isfinite(parsed.mOffsetZ) ||
-        !std::isfinite(parsed.mAmbiance))
+        !std::isfinite(parsed.mAmbiance) ||
+        !std::isfinite(parsed.mBounceKeep))
     {
         return false;
     }

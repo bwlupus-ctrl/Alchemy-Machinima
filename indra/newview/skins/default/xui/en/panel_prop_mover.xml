@@ -7,7 +7,7 @@
 <panel
  background_visible="false"
  follows="all"
- height="470"
+ height="660"
  layout="topleft"
  name="panel_prop_mover"
  width="360">
@@ -246,12 +246,362 @@
     <!-- "Show paths in world" promoted to the global Director top strip
          (show_paths_global_check, next to Action fires). One ActorMoverShowHeading toggle. -->
 
+    <!-- ============ orientation (selected node + path-wide mode) ============ -->
+    <text
+     follows="left|top"
+     height="14"
+     layout="topleft"
+     left="8"
+     top="374"
+     name="orient_header"
+     text_color="LtGray_50"
+     width="200">
+        Orientation
+    </text>
+    <button
+     follows="left|top"
+     height="22"
+     label="Capture Orient"
+     layout="topleft"
+     left="8"
+     top="392"
+     name="btn_capture_orient"
+     tool_tip="Store the prop's CURRENT world rotation into the selected node (used by the Authored / Face path + offset rotation modes below)"
+     width="120" />
+    <combo_box
+     follows="left|top"
+     height="22"
+     layout="topleft"
+     left="134"
+     top="392"
+     name="rotation_mode_combo"
+     tool_tip="How the drive orients the prop: Face path (default) faces the travel tangent + skid; Authored slerps the captured per-node orientations; Face path + offset applies a captured orientation as an extra twist/tilt on top of the tangent facing"
+     width="214">
+        <combo_box.item
+         label="Face path"
+         name="rot_face_path"
+         value="0" />
+        <combo_box.item
+         label="Authored"
+         name="rot_authored"
+         value="1" />
+        <combo_box.item
+         label="Face path + offset"
+         name="rot_face_path_offset"
+         value="2" />
+    </combo_box>
+
+    <!-- ============ oscillation: hover + rock (per-prop, session-only) ============ -->
+    <text
+     follows="left|top"
+     height="14"
+     layout="topleft"
+     left="8"
+     top="424"
+     name="osc_header"
+     text_color="LtGray_50"
+     width="200">
+        Oscillation
+    </text>
+    <check_box
+     follows="left|top"
+     height="18"
+     label="Hover"
+     layout="topleft"
+     left="8"
+     top="444"
+     name="hover_on_check"
+     tool_tip="Bob the prop up/down in place on a sine wave, on top of whatever the path is doing"
+     width="50" />
+    <combo_box
+     follows="left|top"
+     height="20"
+     layout="topleft"
+     left="60"
+     top="442"
+     name="hover_wave_combo"
+     tool_tip="Full = plain sine (up and down); Half = rectified sine (always up from the base, a bounce/pulse feel)"
+     width="76">
+        <combo_box.item
+         label="Full"
+         name="hover_wave_full"
+         value="0" />
+        <combo_box.item
+         label="Half"
+         name="hover_wave_half"
+         value="1" />
+    </combo_box>
+    <spinner
+     decimal_digits="2"
+     follows="left|top"
+     height="20"
+     increment="0.05"
+     label="Amp m"
+     label_width="40"
+     layout="topleft"
+     left="140"
+     max_val="10"
+     min_val="0"
+     top="442"
+     name="hover_amp_spin"
+     tool_tip="Hover amplitude, metres"
+     width="110" />
+    <spinner
+     decimal_digits="2"
+     follows="left|top"
+     height="20"
+     increment="0.05"
+     label="Hz"
+     label_width="20"
+     layout="topleft"
+     left="254"
+     max_val="10"
+     min_val="0"
+     top="442"
+     name="hover_freq_spin"
+     tool_tip="Hover frequency, Hz (cycles per second)"
+     width="98" />
+    <check_box
+     follows="left|top"
+     height="18"
+     label="Rock"
+     layout="topleft"
+     left="8"
+     top="470"
+     name="rock_on_check"
+     tool_tip="Rock/tilt the prop back and forth on a sine wave, on top of whatever the path is doing"
+     width="50" />
+    <combo_box
+     follows="left|top"
+     height="20"
+     layout="topleft"
+     left="60"
+     top="468"
+     name="rock_axis_combo"
+     tool_tip="Which local axes the rock angle drives: X only (roll), X+Y (roll+pitch), or X+Y+Z (roll+pitch+yaw)"
+     width="90">
+        <combo_box.item
+         label="X"
+         name="rock_axis_x"
+         value="0" />
+        <combo_box.item
+         label="X+Y"
+         name="rock_axis_xy"
+         value="1" />
+        <combo_box.item
+         label="X+Y+Z"
+         name="rock_axis_xyz"
+         value="2" />
+    </combo_box>
+    <spinner
+     decimal_digits="1"
+     follows="left|top"
+     height="20"
+     increment="1"
+     label="Amp deg"
+     label_width="40"
+     layout="topleft"
+     left="154"
+     max_val="90"
+     min_val="0"
+     top="468"
+     name="rock_amp_spin"
+     tool_tip="Rock amplitude, degrees"
+     width="110" />
+    <spinner
+     decimal_digits="2"
+     follows="left|top"
+     height="20"
+     increment="0.05"
+     label="Hz"
+     label_width="20"
+     layout="topleft"
+     left="268"
+     max_val="10"
+     min_val="0"
+     top="468"
+     name="rock_freq_spin"
+     tool_tip="Rock frequency, Hz (cycles per second)"
+     width="84" />
+
+    <!-- ============ continuous spin (per-prop, session-only) ============ -->
+    <text
+     follows="left|top"
+     height="14"
+     layout="topleft"
+     left="8"
+     top="498"
+     name="spin_header"
+     text_color="LtGray_50"
+     width="200">
+        Spin
+    </text>
+    <check_box
+     follows="left|top"
+     height="18"
+     label="Spin"
+     layout="topleft"
+     left="8"
+     top="518"
+     name="spin_on_check"
+     tool_tip="Continuously spin the prop about one local axis, on top of whatever the path is doing"
+     width="50" />
+    <combo_box
+     follows="left|top"
+     height="20"
+     layout="topleft"
+     left="60"
+     top="516"
+     name="spin_axis_combo"
+     tool_tip="Which local axis to spin about"
+     width="70">
+        <combo_box.item
+         label="X"
+         name="spin_axis_x"
+         value="0" />
+        <combo_box.item
+         label="Y"
+         name="spin_axis_y"
+         value="1" />
+        <combo_box.item
+         label="Z"
+         name="spin_axis_z"
+         value="2" />
+    </combo_box>
+    <spinner
+     decimal_digits="1"
+     follows="left|top"
+     height="20"
+     increment="5"
+     label="deg/s"
+     label_width="45"
+     layout="topleft"
+     left="134"
+     max_val="720"
+     min_val="-720"
+     top="516"
+     name="spin_speed_spin"
+     tool_tip="Spin rate, degrees per second (negative reverses direction)"
+     width="170" />
+
+    <!-- ============ simple axis shuttle (one-shot path builder) ============ -->
+    <text
+     follows="left|top"
+     height="14"
+     layout="topleft"
+     left="8"
+     top="546"
+     name="shuttle_header"
+     text_color="LtGray_50"
+     width="200">
+        Shuttle
+    </text>
+    <combo_box
+     follows="left|top"
+     height="20"
+     layout="topleft"
+     left="8"
+     top="564"
+     name="shuttle_axis_combo"
+     tool_tip="World axis to shuttle along: X (east/west), Y (north/south), Z (straight up/down), or XZ (a sloped ramp -- see Slope)"
+     width="80">
+        <combo_box.item
+         label="X"
+         name="shuttle_axis_x"
+         value="0" />
+        <combo_box.item
+         label="Y"
+         name="shuttle_axis_y"
+         value="1" />
+        <combo_box.item
+         label="Z"
+         name="shuttle_axis_z"
+         value="2" />
+        <combo_box.item
+         label="XZ"
+         name="shuttle_axis_xz"
+         value="3" />
+    </combo_box>
+    <combo_box
+     follows="left|top"
+     height="20"
+     layout="topleft"
+     left="92"
+     top="564"
+     name="shuttle_sign_combo"
+     tool_tip="Direction along the chosen axis"
+     width="50">
+        <combo_box.item
+         label="+"
+         name="shuttle_sign_pos"
+         value="0" />
+        <combo_box.item
+         label="-"
+         name="shuttle_sign_neg"
+         value="1" />
+    </combo_box>
+    <spinner
+     decimal_digits="0"
+     follows="left|top"
+     height="20"
+     increment="5"
+     label="Slope deg"
+     label_width="50"
+     layout="topleft"
+     left="146"
+     max_val="89"
+     min_val="-89"
+     top="564"
+     name="shuttle_slope_spin"
+     tool_tip="XZ axis only: ramp angle from horizontal (0 = flat along X, 90 = straight up Z)"
+     width="200" />
+    <spinner
+     decimal_digits="2"
+     follows="left|top"
+     height="20"
+     increment="0.5"
+     label="Dist m"
+     label_width="50"
+     layout="topleft"
+     left="8"
+     max_val="500"
+     min_val="0.1"
+     top="588"
+     name="shuttle_distance_spin"
+     tool_tip="Total shuttle travel distance, metres, from the prop's current position"
+     width="150" />
+    <spinner
+     decimal_digits="2"
+     follows="left|top"
+     height="20"
+     increment="0.25"
+     label="m/s"
+     label_width="35"
+     layout="topleft"
+     left="162"
+     max_val="50"
+     min_val="0.05"
+     top="588"
+     name="shuttle_speed_spin"
+     tool_tip="Shuttle drive speed, metres per second"
+     width="115" />
+    <button
+     follows="left|top"
+     height="22"
+     label="Shuttle"
+     layout="topleft"
+     left="283"
+     top="586"
+     name="btn_shuttle"
+     tool_tip="Build a straight ping-pong path at the prop's current position along the chosen axis and start driving it (replaces any existing path on this prop)"
+     width="69" />
+
     <text
      follows="left|top|right"
      height="28"
      layout="topleft"
      left="8"
-     top="394"
+     top="618"
      name="status_text"
      text_color="LtGray"
      word_wrap="true"

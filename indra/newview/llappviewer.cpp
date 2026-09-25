@@ -5403,6 +5403,11 @@ void LLAppViewer::idle()
         if (!(logoutRequestSent() && hasSavedFinalSnapshot()))
         {
             gObjectList.update(gAgent);
+            // [GhostStudio] TRUE-mirror clones copy their source's FINAL pose
+            // (post-motion, post-gaze/IK) -- which only exists once every
+            // avatar's updateCharacter() has run above. Must stay immediately
+            // after gObjectList.update() and before any render-side consumer.
+            ALGhostStudio::instance().updatePostObjectList();
         }
     }
 

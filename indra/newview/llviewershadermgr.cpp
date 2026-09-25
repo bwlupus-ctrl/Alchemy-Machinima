@@ -243,6 +243,11 @@ LLGLSLShader            gUltimateKaleidoProgram;
 LLGLSLShader            gVolumetricLightProgram;
 // [Cine Outline Phase 1] deferred normal/depth outline post pass
 LLGLSLShader            gCineOutlineProgram;
+// [RimGlow Phase 1] depth-gated Auto Rim multi-pass chain
+LLGLSLShader            gRimGlowMaskProgram;
+LLGLSLShader            gRimGlowDownsampleProgram;
+LLGLSLShader            gRimGlowBlurProgram;
+LLGLSLShader            gRimGlowCompositeProgram;
 // [BDMerge G3.3] per-projector volumetric light cones (visible spotlight shafts)
 LLGLSLShader            gDeferredProjectorVolumetricProgram;
 LLGLSLShader            gDeferredProjectorVolumetricUpsampleProgram; // [BDMerge G3.3 P1 item 3]
@@ -637,6 +642,11 @@ void LLViewerShaderMgr::finalizeShaderList()
     // haze_density/(blue_density+haze_density) = 0/0 = NaN and blacks the frame
     mShaderList.push_back(&gVolumetricLightProgram);
     mShaderList.push_back(&gCineOutlineProgram);
+    // [RimGlow Phase 1]
+    mShaderList.push_back(&gRimGlowMaskProgram);
+    mShaderList.push_back(&gRimGlowDownsampleProgram);
+    mShaderList.push_back(&gRimGlowBlurProgram);
+    mShaderList.push_back(&gRimGlowCompositeProgram);
     mShaderList.push_back(&gCineFisheyeProgram);
     // [Ultimate Diopter]
     for (U32 i = 0; i < 4; ++i)
@@ -1264,6 +1274,7 @@ std::string LLViewerShaderMgr::loadBasicShaders()
     index_channels.push_back(-1);    shaders.push_back( make_pair( "windlight/gammaF.glsl",                 mShaderLevel[SHADER_WINDLIGHT]) );
     index_channels.push_back(-1);    shaders.push_back( make_pair( "windlight/atmosphericsFuncs.glsl",       mShaderLevel[SHADER_WINDLIGHT] ) );
     index_channels.push_back(-1);    shaders.push_back( make_pair( "windlight/atmosphericsF.glsl",          mShaderLevel[SHADER_WINDLIGHT] ) );
+    index_channels.push_back(-1);    shaders.push_back( make_pair( "windlight/cineHazeF.glsl",              mShaderLevel[SHADER_WINDLIGHT] ) ); // [Cine Haze]
     index_channels.push_back(-1);    shaders.push_back( make_pair( "environment/waterFogF.glsl",                mShaderLevel[SHADER_WATER] ) );
     index_channels.push_back(-1);    shaders.push_back( make_pair( "environment/srgbF.glsl",                    mShaderLevel[SHADER_ENVIRONMENT] ) );
     index_channels.push_back(-1);    shaders.push_back( make_pair( "deferred/deferredUtil.glsl",                    1) );
@@ -3842,6 +3853,81 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         if (!success)
         {
             LL_WARNS() << "Failed to create shader '" << gCineOutlineProgram.mName << "', disabling!" << LL_ENDL;
+            success = true;
+        }
+    }
+
+    // [RimGlow Phase 1] depth-gated Auto Rim. Mask/Composite need the G-buffer
+    // (normal + depth) exactly like gCineOutlineProgram; Downsample/Blur only
+    // ever sample RimGlow's own scratch render targets, so they carry no
+    // special deferred features. Every failure here is non-fatal to the rest
+    // of shader load (success reset to true, mirroring gCineOutlineProgram) --
+    // LLPipeline::renderVirtualCinemaRimGlow() gates on isComplete() for all
+    // four programs and no-ops the whole effect if any one failed to build.
+    if (success)
+    {
+        gRimGlowMaskProgram.mName = "RimGlow Mask Shader";
+        gRimGlowMaskProgram.mFeatures.isDeferred = true;      // attaches deferredUtil.glsl (getPosition/getDepth/getNorm/getNormRaw)
+        gRimGlowMaskProgram.mFeatures.hasFullGBuffer = true;  // attaches gbufferUtil.glsl
+        gRimGlowMaskProgram.mShaderFiles.clear();
+        gRimGlowMaskProgram.clearPermutations();
+        gRimGlowMaskProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gRimGlowMaskProgram.mShaderFiles.push_back(make_pair("alchemy/rimGlowMaskF.glsl", GL_FRAGMENT_SHADER));
+        gRimGlowMaskProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gRimGlowMaskProgram.createShader();
+        if (!success)
+        {
+            LL_WARNS() << "Failed to create shader '" << gRimGlowMaskProgram.mName << "', disabling!" << LL_ENDL;
+            success = true;
+        }
+    }
+
+    if (success)
+    {
+        gRimGlowDownsampleProgram.mName = "RimGlow Downsample Shader";
+        gRimGlowDownsampleProgram.mShaderFiles.clear();
+        gRimGlowDownsampleProgram.clearPermutations();
+        gRimGlowDownsampleProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gRimGlowDownsampleProgram.mShaderFiles.push_back(make_pair("alchemy/rimGlowDownsampleF.glsl", GL_FRAGMENT_SHADER));
+        gRimGlowDownsampleProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gRimGlowDownsampleProgram.createShader();
+        if (!success)
+        {
+            LL_WARNS() << "Failed to create shader '" << gRimGlowDownsampleProgram.mName << "', disabling!" << LL_ENDL;
+            success = true;
+        }
+    }
+
+    if (success)
+    {
+        gRimGlowBlurProgram.mName = "RimGlow Blur Shader";
+        gRimGlowBlurProgram.mShaderFiles.clear();
+        gRimGlowBlurProgram.clearPermutations();
+        gRimGlowBlurProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gRimGlowBlurProgram.mShaderFiles.push_back(make_pair("alchemy/rimGlowBlurF.glsl", GL_FRAGMENT_SHADER));
+        gRimGlowBlurProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gRimGlowBlurProgram.createShader();
+        if (!success)
+        {
+            LL_WARNS() << "Failed to create shader '" << gRimGlowBlurProgram.mName << "', disabling!" << LL_ENDL;
+            success = true;
+        }
+    }
+
+    if (success)
+    {
+        gRimGlowCompositeProgram.mName = "RimGlow Composite Shader";
+        gRimGlowCompositeProgram.mFeatures.isDeferred = true;
+        gRimGlowCompositeProgram.mFeatures.hasFullGBuffer = true;
+        gRimGlowCompositeProgram.mShaderFiles.clear();
+        gRimGlowCompositeProgram.clearPermutations();
+        gRimGlowCompositeProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gRimGlowCompositeProgram.mShaderFiles.push_back(make_pair("alchemy/rimGlowCompositeF.glsl", GL_FRAGMENT_SHADER));
+        gRimGlowCompositeProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gRimGlowCompositeProgram.createShader();
+        if (!success)
+        {
+            LL_WARNS() << "Failed to create shader '" << gRimGlowCompositeProgram.mName << "', disabling!" << LL_ENDL;
             success = true;
         }
     }

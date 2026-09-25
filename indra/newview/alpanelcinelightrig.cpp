@@ -32,6 +32,8 @@
 #include "llui.h"
 #include "lluicolortable.h"
 #include "llviewercontrol.h"
+#include "llenvironment.h"
+#include "llsettingssky.h"
 #include "v3color.h"
 #include "llviewerobject.h"
 #include "llvoavatar.h"
@@ -346,6 +348,7 @@ const std::vector<std::string>& ALPanelCineLightRig::settings()
         "CineLightRigCatchlightAngle",
         "CineLightRigKeyYaw",
         "CineLightRigKeyPitch",
+        "CineLightRigKeyOffsetZ",
         "CineLightRigKeyProfile",
         "CineLightRigKeyEV",
         "CineLightRigKeyBeam",
@@ -364,6 +367,7 @@ const std::vector<std::string>& ALPanelCineLightRig::settings()
         "CineLightRigKeyOn",
         "CineLightRigFillYaw",
         "CineLightRigFillPitch",
+        "CineLightRigFillOffsetZ",
         "CineLightRigFillProfile",
         "CineLightRigFillEV",
         "CineLightRigFillBeam",
@@ -382,6 +386,7 @@ const std::vector<std::string>& ALPanelCineLightRig::settings()
         "CineLightRigFillOn",
         "CineLightRigRimYaw",
         "CineLightRigRimPitch",
+        "CineLightRigRimOffsetZ",
         "CineLightRigRimProfile",
         "CineLightRigRimEV",
         "CineLightRigRimBeam",
@@ -400,6 +405,7 @@ const std::vector<std::string>& ALPanelCineLightRig::settings()
         "CineLightRigRimOn",
         "CineLightRigBgYaw",
         "CineLightRigBgPitch",
+        "CineLightRigBgOffsetZ",
         "CineLightRigBgProfile",
         "CineLightRigBgEV",
         "CineLightRigBgBeam",
@@ -421,7 +427,7 @@ const std::vector<std::string>& ALPanelCineLightRig::settings()
         "CineLightRigLiveProbeRadius",
         "CineLightRigLiveProbeOffsetZ",
         "CineLightRigLiveProbeAmbiance",
-        "CineLightRigLiveProbeReplaceBounce",
+        "CineLightRigLiveProbeBounceKeep",
         "CineLightRigLiveProbeGizmo",
         "CineLightRigNightMaskEnabled",
         "CineLightRigNightMaskTarget",
@@ -2068,26 +2074,49 @@ void ALPanelCineLightRig::updateDerivedStatus()
         mRadiusCueInitialized = true;
     }
     const ALCineLightRigManager& manager = ALCineLightRigManager::instance();
-    switch (manager.liveProbeState())
+    const ALCineLightRigManager::LiveProbeState probe_state = manager.liveProbeState();
+    std::string probe_status;
+    switch (probe_state)
     {
         case ALCineLightRigManager::LiveProbeState::DISABLED:
-            mLiveProbeStatus->setText(LLStringExplicit("Disabled"));
+            probe_status = "Disabled";
             break;
         case ALCineLightRigManager::LiveProbeState::UNAVAILABLE:
-            mLiveProbeStatus->setText(
-                LLStringExplicit("Unavailable: enable probe coverage and at least 2 slots"));
+            probe_status = "Unavailable: enable probe coverage and at least 2 slots";
             break;
         case ALCineLightRigManager::LiveProbeState::WAITING_FOR_TARGET:
-            mLiveProbeStatus->setText(LLStringExplicit("Waiting for the target rig"));
+            probe_status = "Waiting for the target rig";
             break;
         case ALCineLightRigManager::LiveProbeState::WARMING:
-            mLiveProbeStatus->setText(llformat("Warming... %d%%",
-                ll_round(manager.liveProbeFade() * 100.f)));
+            probe_status = llformat("Warming... %d%%",
+                ll_round(manager.liveProbeFade() * 100.f));
             break;
         case ALCineLightRigManager::LiveProbeState::LIVE:
-            mLiveProbeStatus->setText(LLStringExplicit("Live"));
+            probe_status = "Live";
             break;
     }
+    if (probe_state != ALCineLightRigManager::LiveProbeState::DISABLED)
+    {
+        // Effective fill ambiance, computed exactly as LLReflectionMapManager
+        // does (max of the sky's probe ambiance and this probe's): a probe
+        // Ambiance at or below the sky floor has no visible effect.
+        static LLCachedControl<bool> should_auto_adjust(gSavedSettings, "RenderSkyAutoAdjustLegacy", false);
+        static LLCachedControl<F32> probe_ambiance(gSavedSettings, "CineLightRigLiveProbeAmbiance", 1.f);
+        static LLCachedControl<F32> bounce_keep(gSavedSettings, "CineLightRigLiveProbeBounceKeep", 1.f);
+        F32 sky_floor = 0.f;
+        if (LLSettingsSky::ptr_t psky = LLEnvironment::instance().getCurrentSky())
+        {
+            sky_floor = psky->getReflectionProbeAmbiance(should_auto_adjust);
+        }
+        const F32 probe_amb = llclamp((F32)probe_ambiance, 0.f, 8.f);
+        const F32 effective = llmax(sky_floor, probe_amb);
+        const F32 keep = llclamp((F32)bounce_keep, 0.f, 1.f);
+        probe_status += llformat("\nFill: probe %.2f, sky floor %.2f -> %.2f%s. Rig bounce kept %d%%",
+            probe_amb, sky_floor, effective,
+            (probe_amb <= sky_floor) ? " (probe Ambiance has no effect)" : "",
+            ll_round(keep * 100.f));
+    }
+    mLiveProbeStatus->setText(probe_status);
     if (mNightMaskStatus)
     {
         std::string night_status;

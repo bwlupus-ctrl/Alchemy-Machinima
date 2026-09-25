@@ -35,6 +35,10 @@ vec3 linear_to_srgb(vec3 col);
 
 vec3 atmosFragLighting(vec3 light, vec3 additive, vec3 atten);
 
+// [Cine Haze] Cinematic Depth Atmosphere layer (windlight/cineHazeF.glsl).
+// Returns `color` untouched when cine_haze_active == 0.
+vec3 cineHazeApply(vec3 pos_eye, vec3 color);
+
 // get a water fog color that will apply the appropriate haze to a color given
 // a blend function of (ONE, SOURCE_ALPHA)
 vec4 getWaterFogViewNoClip(vec3 pos)
@@ -126,6 +130,9 @@ vec4 applySkyAndWaterFog(vec3 pos, vec3 additive, vec3 atten, vec4 color)
         else
         {
             color.rgb = atmosFragLighting(color.rgb, additive, atten);
+            // [Cine Haze] after the WindLight aerial perspective, above-water only
+            // (the deferred haze pass does the same for opaque / water-surface pixels)
+            color.rgb = cineHazeApply(pos, color.rgb);
         }
     }
     else
@@ -133,6 +140,7 @@ vec4 applySkyAndWaterFog(vec3 pos, vec3 additive, vec3 atten, vec4 color)
         if (obj_above_water)
         {
             color.rgb = atmosFragLighting(color.rgb, additive, atten);
+            color.rgb = cineHazeApply(pos, color.rgb);
         }
         else
         {

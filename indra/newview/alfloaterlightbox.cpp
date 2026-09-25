@@ -32,6 +32,7 @@
 #include "alfloaterlightbox.h"
 #include "alscrollfocus.h"
 #include "alprojectorshaftpresets.h"
+#include "alcinehaze.h"
 
 #include "bdmergemeshpool.h"
 #include "bdmergetexpool.h"
@@ -72,6 +73,9 @@ ALFloaterLightBox::ALFloaterLightBox(const LLSD& key)
     mCommitCallbackRegistrar.add("LightBox.SelGoboVar2", std::bind(&ALFloaterLightBox::onSelGoboChanged, this));
     mCommitCallbackRegistrar.add("LightBox.SelGoboSoft", std::bind(&ALFloaterLightBox::onSelGoboChanged, this));
     mCommitCallbackRegistrar.add("LightBox.SelGoboInvert", std::bind(&ALFloaterLightBox::onSelGoboChanged, this));
+    // [Cine Haze] Depth Haze tab actions (value controls are XML-bound).
+    mCommitCallbackRegistrar.add("LightBox.CineHazePreset", std::bind(&ALFloaterLightBox::onCineHazePreset, this, std::placeholders::_2));
+    mCommitCallbackRegistrar.add("LightBox.CineHazeRefFromCamera", std::bind(&ALFloaterLightBox::onCineHazeRefFromCamera, this));
 }
 
 ALFloaterLightBox::~ALFloaterLightBox()
@@ -86,11 +90,24 @@ bool ALFloaterLightBox::postBuild()
     ALScrollFocus::install(this, "projshaft_settings_scroll", "projshaft_settings_scroll_content");
     ALScrollFocus::install(this, "froxel_settings_scroll", "froxel_settings_scroll_content");
     ALScrollFocus::install(this, "weather_settings_scroll", "weather_settings_scroll_content");
+    ALScrollFocus::install(this, "cinehaze_settings_scroll", "cinehaze_settings_scroll_content");
 
     getChild<LLComboBox>("ps_preset")->setCommitCallback(
         [](LLUICtrl* control, const LLSD&)
         {
             ALProjectorShaftPresets::apply(control->getValue().asInteger());
+        });
+
+    getChild<LLComboBox>("ch_preset_combo")->setCommitCallback(
+        [](LLUICtrl* control, const LLSD&)
+        {
+            const std::string preset = control->getValue().asString();
+            if (!preset.empty() && preset != "custom")
+            {
+                ALCineHaze::applyPreset(preset);
+            }
+            // Action combo: snap back to the header so re-picking the same preset re-applies.
+            control->setValue(LLSD("custom"));
         });
 
     populateLUTCombo();
@@ -308,6 +325,25 @@ void ALFloaterLightBox::onSelGoboChanged()
     if (soft) gobo.mPatternParams.mV[2] = static_cast<F32>(soft->getValue().asReal());
     if (invert) gobo.mPatternParams.mV[3] = invert->get() ? 1.f : 0.f;
     LLPipeline::setGoboOverride(pObj->getID(), gobo);
+}
+
+// [Cine Haze] Depth Haze tab: "subtle" preset or "reset" (all controls to default).
+void ALFloaterLightBox::onCineHazePreset(const LLSD& userdata)
+{
+    const std::string& preset = userdata.asString();
+    if (preset == "reset")
+    {
+        ALCineHaze::resetToDefaults();
+    }
+    else
+    {
+        ALCineHaze::applyPreset(preset);
+    }
+}
+
+void ALFloaterLightBox::onCineHazeRefFromCamera()
+{
+    ALCineHaze::setReferenceHeightFromCamera();
 }
 
 void ALFloaterLightBox::populateLUTCombo()
@@ -580,6 +616,24 @@ void ALFloaterLightBox::updateTonemapper()
         if (LLView* v = findChild<LLView>(widget_name))
         {
             v->setVisible(khronos);
+        }
+    }
+
+    // [S-Log3] The S-Log3 capture controls (curve family, encoding range,
+    // shadow toe, EV offset) only apply to tonemap type 8; show them only when
+    // S-Log3 Capture is selected and hide them for every other tonemapper.
+    static const std::string slog_widgets[] = {
+        "slog_curve_label", "slog_curve_combo",
+        "slog_range_label", "slog_range_combo",
+        "slog_toe_label",   "slog_toe_slider",   "slog_toe_spinner",
+        "slog_ev_label",    "slog_ev_slider",    "slog_ev_spinner",
+    };
+    const bool slog = (gSavedSettings.getS32("AlchemyRenderTonemapType") == 8);
+    for (const std::string& widget_name : slog_widgets)
+    {
+        if (LLView* v = findChild<LLView>(widget_name))
+        {
+            v->setVisible(slog);
         }
     }
 }

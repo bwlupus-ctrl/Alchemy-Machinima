@@ -1275,13 +1275,57 @@
         <key>AlchemyRenderTonemapType</key>
         <map>
             <key>Comment</key>
-            <string>What tonemapper to use: 0 = Khronos Neutral, 1 = ACES Hill, 2 = ACES Boosted, 3 = Reinhard, 4 = Filmic, 5 = GT, 6 = AgX, 7 = AMD LPM</string>
+            <string>What tonemapper to use: 0 = Khronos Neutral, 1 = ACES Hill, 2 = ACES Boosted, 3 = Reinhard, 4 = Filmic, 5 = GT, 6 = AgX, 7 = AMD LPM, 8 = S-Log3 Capture</string>
             <key>Persist</key>
             <integer>1</integer>
             <key>Type</key>
             <string>S32</string>
             <key>Value</key>
             <integer>7</integer>
+        </map>
+        <key>AlchemyToneMapSLogCurve</key>
+        <map>
+            <key>Comment</key>
+            <string>S-Log3 Capture tonemapper (type 8): log curve family. 0 = Sony S-Log3, 1 = Sony S-Log2, 2 = ARRI LogC3, 3 = Cineon/DPX.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>S32</string>
+            <key>Value</key>
+            <integer>0</integer>
+        </map>
+        <key>AlchemyToneMapSLogRange</key>
+        <map>
+            <key>Comment</key>
+            <string>S-Log3 Capture tonemapper (type 8): encoding range. 0 = Full, 1 = Legal/Video (SMPTE narrow). Must match the Data Levels setting of the grade CST.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>S32</string>
+            <key>Value</key>
+            <integer>0</integer>
+        </map>
+        <key>AlchemyToneMapSLogToe</key>
+        <map>
+            <key>Comment</key>
+            <string>S-Log3 Capture tonemapper (type 8): shadow toe/pedestal lift for 8-bit shadow protection, 0.0 (off) to 0.3. Requires a matching inverse in the grade.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.0</real>
+        </map>
+        <key>AlchemyToneMapSLogEV</key>
+        <map>
+            <key>Comment</key>
+            <string>S-Log3 Capture tonemapper (type 8): exposure EV offset applied before the log curve, -8.0 to 8.0.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.0</real>
         </map>
         <key>AlchemyToneMapAMDHDRMax</key>
         <map>
@@ -3849,6 +3893,184 @@
             <string>Boolean</string>
             <key>Value</key>
             <integer>1</integer>
+        </map>
+        <!-- [Cine Haze] Cinematic Depth Atmosphere: distance / height haze that
+             reduces contrast toward an atmosphere colour, composed after the
+             WindLight aerial perspective in linear HDR (pre-exposure/tonemap).
+             Consumed by ALCineHaze::bind() -> windlight/cineHazeF.glsl.
+             Master toggle is OFF by default; off path is bit-identical. -->
+        <key>CineHazeEnable</key>
+        <map>
+            <key>Comment</key>
+            <string>Master toggle for the Cinematic Depth Atmosphere (distance/height haze toward an atmosphere colour). Off = renderer untouched. Automatically no-ops while BDMergeFroxelVolumetrics is on (mutually exclusive media).</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>Boolean</string>
+            <key>Value</key>
+            <integer>0</integer>
+        </map>
+        <key>CineHazeStrength</key>
+        <map>
+            <key>Comment</key>
+            <string>[0, 1] Master strength of the cinematic haze layer (multiplies the final fog amount). 0 = no work done.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>1.0</real>
+        </map>
+        <key>CineHazeDensity</key>
+        <map>
+            <key>Comment</key>
+            <string>[0, 0.05] Haze extinction density in 1/metre (SL world units). Transmittance = exp(-density * (distance - start)). 0.004 halves contrast at ~173 m beyond the start distance.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.004</real>
+        </map>
+        <key>CineHazeStartDistance</key>
+        <map>
+            <key>Comment</key>
+            <string>[0, 300] Distance from the camera in metres (true ray length, not view depth) before the haze starts accumulating. Keeps nearby subjects clear.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>20.0</real>
+        </map>
+        <key>CineHazeMaxOpacity</key>
+        <map>
+            <key>Comment</key>
+            <string>[0, 1] Ceiling on how much of the atmosphere colour can replace the scene at any distance (keeps far geometry readable).</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.85</real>
+        </map>
+        <key>CineHazeColorMode</key>
+        <map>
+            <key>Comment</key>
+            <string>Atmosphere colour source: 1 = environment-linked (the active WindLight sky's far haze colour in each view direction, seamless with the horizon), 0 = manual CineHazeColor.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>S32</string>
+            <key>Value</key>
+            <integer>1</integer>
+        </map>
+        <key>CineHazeColor</key>
+        <map>
+            <key>Comment</key>
+            <string>Manual atmosphere colour (sRGB picker value; converted to linear and scaled by the sky HDR scale so white matches a white sky pixel). Used when CineHazeColorMode is 0.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>Color3</string>
+            <key>Value</key>
+            <array>
+                <real>0.62</real>
+                <real>0.70</real>
+                <real>0.80</real>
+            </array>
+        </map>
+        <key>CineHazeColorIntensity</key>
+        <map>
+            <key>Comment</key>
+            <string>[0, 4] Brightness multiplier on the atmosphere colour (both modes), in linear scene radiance before exposure.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>1.0</real>
+        </map>
+        <key>CineHazeHeightEnable</key>
+        <map>
+            <key>Comment</key>
+            <string>Make the haze height-dependent: density = CineHazeDensity * exp(-CineHazeHeightFalloff * (height - CineHazeReferenceHeight)), integrated analytically along each view ray. Off = uniform haze.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>Boolean</string>
+            <key>Value</key>
+            <integer>0</integer>
+        </map>
+        <key>CineHazeReferenceHeight</key>
+        <map>
+            <key>Comment</key>
+            <string>[0, 4096] Absolute SL altitude in metres (agent-space Z) at which the haze has its base density. Denser below, thinner above. Use the Lightbox "From camera" button to snap it to the current camera height.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>20.0</real>
+        </map>
+        <key>CineHazeHeightFalloff</key>
+        <map>
+            <key>Comment</key>
+            <string>[0, 0.5] Height falloff k in 1/metre: density thins by e every 1/k metres above the reference height (0.05 = 20 m e-fold). 0 reduces exactly to uniform haze.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.05</real>
+        </map>
+        <key>CineHazeSunTint</key>
+        <map>
+            <key>Comment</key>
+            <string>Advanced: warm tint added to the atmosphere colour toward the sun (moon at night, 25%). Applied only through the haze amount, so zero haze = zero glow. Unshadowed directional approximation (no light shafts).</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>Color3</string>
+            <key>Value</key>
+            <array>
+                <real>1.0</real>
+                <real>0.86</real>
+                <real>0.68</real>
+            </array>
+        </map>
+        <key>CineHazeSunStrength</key>
+        <map>
+            <key>Comment</key>
+            <string>[0, 2] Strength of the sun-facing tint on the haze colour. 0 disables the lobe.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.0</real>
+        </map>
+        <key>CineHazeSunLobeWidth</key>
+        <map>
+            <key>Comment</key>
+            <string>[1, 89] Angular half-width in degrees at which the sun tint falls to half strength (pow(cos, e) lobe).</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>30.0</real>
+        </map>
+        <key>CineHazeDebugView</key>
+        <map>
+            <key>Comment</key>
+            <string>Developer view for the cinematic haze: 0 off, 1 distance (0..512 m), 2 density at surface relative to base, 3 optical depth, 4 transmittance, 5 final fog amount, 6 sky exclusion (sky magenta, fogged geometry green). Not persisted.</string>
+            <key>Persist</key>
+            <integer>0</integer>
+            <key>Type</key>
+            <string>S32</string>
+            <key>Value</key>
+            <integer>0</integer>
         </map>
     </map>
 </llsd>

@@ -1289,6 +1289,32 @@
                  parameter="setenv" />
             </menu_item_check>
             <menu_item_check
+             label="Studio Neutral (Day)"
+             name="StudioNeutralDay">
+                <menu_item_check.on_click
+                 function="World.EnvSettings"
+                 parameter="studio_day" />
+                <menu_item_check.on_check
+                 function="World.EnableEnvSettings"
+                 parameter="studio_day" />
+                <menu_item_check.on_enable
+                 function="RLV.EnableIfNot"
+                 parameter="setenv" />
+            </menu_item_check>
+            <menu_item_check
+             label="Studio Neutral (Night)"
+             name="StudioNeutralNight">
+                <menu_item_check.on_click
+                 function="World.EnvSettings"
+                 parameter="studio_night" />
+                <menu_item_check.on_check
+                 function="World.EnableEnvSettings"
+                 parameter="studio_night" />
+                <menu_item_check.on_enable
+                 function="RLV.EnableIfNot"
+                 parameter="setenv" />
+            </menu_item_check>
+            <menu_item_check
              label="Use Shared Environment"
              name="Use Shared Environment"
              shortcut="control|shift|X">

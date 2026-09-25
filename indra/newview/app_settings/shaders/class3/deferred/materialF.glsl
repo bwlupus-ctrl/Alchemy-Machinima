@@ -68,6 +68,24 @@ vec4 encodeNormal(vec3 n, float env, float gbuffer_flag);
 
 out vec4 frag_color;
 
+#ifdef HAS_VISIBLE_DIFFUSE
+// [ReShadeBridge] Visible-diffuse sidecar MRT outputs (mRT->screen attachments
+// 1 and 2). The alpha pool renders legacy-material BLEND faces with both
+// attachments write-enabled (lldrawpoolalpha.cpp renderAlpha opens the indexed
+// guard for every draw in its loop, and this program is bound there via
+// gDeferredMaterialProgram[mask]). A program bound in that window WITHOUT these
+// outputs writes UNDEFINED values into both attachments -- the exact H1 hazard
+// the emissive sub-pass comments call out -- and the ReShade provider then
+// trusts the garbage as albedo wherever the undefined exactness K lands above
+// its threshold (saturated green/magenta patches on alpha surfaces in RTGI).
+// HAS_VISIBLE_DIFFUSE is injected by add_common_permutations()
+// (llviewershadermgr.cpp), so these exist exactly when the sidecar exists.
+// Declared ONLY in the BLEND variant: the deferred variant's frag_data[4]
+// already occupies locations 0-3.
+layout(location = 1) out vec4 visible_diffuse;
+layout(location = 2) out vec2 surface_coverage;
+#endif
+
 #ifdef HAS_SUN_SHADOW
 float sampleDirectionalShadow(vec3 pos, vec3 norm, vec2 pos_screen);
 #endif
@@ -503,6 +521,23 @@ void main()
     if (classic_mode > 0)
         final_scale = 1.1;
     frag_color = max(vec4(color * final_scale, al), vec4(0));
+
+#ifdef HAS_VISIBLE_DIFFUSE
+    // Same contract as alphaF.glsl: RGB = LINEAR diffuse reflectance of THIS
+    // layer (diffcol.rgb went through srgb_to_linear at the top of the blend
+    // path), A = the same alpha the beauty blend composites with, so the
+    // sidecar's over-blend (SRC_ALPHA / ONE_MINUS_SRC_ALPHA) and the exactness
+    // union (ONE / ONE_MINUS_SRC_ALPHA) track the on-screen composite exactly.
+    // Legacy fullbright (emissive == 1) has no diffuse-lighting response: its
+    // colour is unlit OUTPUT, not reflectance, so publish ZERO diffuse -- the
+    // same declared-BRDF statement fullbrightF.glsl makes, not a missing
+    // measurement. K still claims this layer's coverage.
+    visible_diffuse = vec4(max(diffcol.rgb, vec3(0.0)) * (1.0 - emissive), al);
+    // R = 0 is written but masked off by the pool (the seed pass owns deferred
+    // coverage); G claims forward coverage in proportion to this layer's
+    // alpha, accumulating as a union under ONE / ONE_MINUS_SRC_COLOR.
+    surface_coverage = vec2(0.0, al);
+#endif
 
 #else // mode is not DIFFUSE_ALPHA_MODE_BLEND, encode to gbuffer
     // deferred path               // See: C++: addDeferredAttachment(), shader: softenLightF.glsl

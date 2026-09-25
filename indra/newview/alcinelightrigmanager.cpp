@@ -76,8 +76,8 @@ ALCineLightRigManagerModel::LiveProbeConfig liveProbeConfigFromSettings()
         gSavedSettings.getF32("CineLightRigLiveProbeOffsetZ");
     config.mAmbiance =
         gSavedSettings.getF32("CineLightRigLiveProbeAmbiance");
-    config.mReplaceBounce =
-        gSavedSettings.getBOOL("CineLightRigLiveProbeReplaceBounce");
+    config.mBounceKeep =
+        gSavedSettings.getF32("CineLightRigLiveProbeBounceKeep");
     config.mGizmo =
         gSavedSettings.getBOOL("CineLightRigLiveProbeGizmo");
     return ALCineLightRigManagerModel::sanitizeLiveProbeConfig(config);
@@ -98,8 +98,8 @@ void liveProbeConfigToSettings(
         "CineLightRigLiveProbeOffsetZ", config.mOffsetZ);
     gSavedSettings.setF32(
         "CineLightRigLiveProbeAmbiance", config.mAmbiance);
-    gSavedSettings.setBOOL(
-        "CineLightRigLiveProbeReplaceBounce", config.mReplaceBounce);
+    gSavedSettings.setF32(
+        "CineLightRigLiveProbeBounceKeep", config.mBounceKeep);
     gSavedSettings.setBOOL(
         "CineLightRigLiveProbeGizmo", config.mGizmo);
 }
@@ -225,6 +225,8 @@ bool blobMapWellFormed(const LLSD& data)
         if (!light.isMap() ||
             (!light["yaw"].isReal() && !light["yaw"].isInteger()) ||
             (!light["pitch"].isReal() && !light["pitch"].isInteger()) ||
+            (light.has("offset_z") && !light["offset_z"].isReal() &&
+             !light["offset_z"].isInteger()) ||
             !light["profile"].isInteger() ||
             (!light["ev"].isReal() && !light["ev"].isInteger()) ||
             !light["beam"].isInteger() ||
@@ -451,9 +453,9 @@ F32 ALCineLightRigManager::liveProbeBounceScaleFor(Slot slot) const
     const Slot target = static_cast<Slot>(std::clamp(
         gSavedSettings.getS32("CineLightRigLiveProbeTarget"), 0,
         SLOT_COUNT - 1));
-    return ALCineLightRigManagerModel::liveProbeBounceScale(
+    return ALCineLightRigManagerModel::liveProbeBounceKeepScale(
         gSavedSettings.getBOOL("CineLightRigLiveProbeEnabled"),
-        gSavedSettings.getBOOL("CineLightRigLiveProbeReplaceBounce"),
+        gSavedSettings.getF32("CineLightRigLiveProbeBounceKeep"),
         slot == target && mLiveProbeTarget == target, liveProbeFade());
 }
 

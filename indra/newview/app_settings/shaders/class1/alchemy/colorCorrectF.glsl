@@ -62,6 +62,12 @@ vec3 applyExposure(vec3 color);
 vec3 applyToneMap(vec3 color);
 #endif
 
+// Shared with tonemapUtilF. 8 == S-Log3 capture: a raw, ungraded camera-style
+// transfer, so the color-grade stages below are bypassed for it. Declared
+// unconditionally (a COLOR_GRADE-only variant has no TONEMAP define); when the
+// pass has no tonemap the CPU leaves this at its default 0, so grading applies.
+uniform int tonemap_type;
+
 #ifdef COLOR_GRADE
 vec3 applyWhiteBalance(vec3 diff);
 vec3 applyLiftGammaGain(vec3 diff);
@@ -140,8 +146,12 @@ void main()
     // White balance and lift/gamma/gain run in linear light, between exposure
     // and tonemap, so chromatic adaptation and the three-way grade act on
     // physically meaningful HDR values rather than rolled-off display ones.
-    diff.rgb = applyWhiteBalance(diff.rgb);
-    diff.rgb = applyLiftGammaGain(diff.rgb);
+    // Bypassed for S-Log3 capture: grade neutrally, correct in post.
+    if (tonemap_type != 8)
+    {
+        diff.rgb = applyWhiteBalance(diff.rgb);
+        diff.rgb = applyLiftGammaGain(diff.rgb);
+    }
 #endif
 
 #ifdef TONEMAP
@@ -152,7 +162,8 @@ void main()
 
 #ifdef COLOR_GRADE
     // Split toning after tonemap so tints apply to rolled-off values.
-    diff.rgb = applySplitToning(diff.rgb);
+    if (tonemap_type != 8) // bypass for S-Log3 capture
+        diff.rgb = applySplitToning(diff.rgb);
 #endif
 
     diff.rgb = linear_to_srgb(diff.rgb);
@@ -166,14 +177,19 @@ void main()
 #ifdef COLOR_GRADE
     // 6.5 black/white point → 7 brightness+contrast → 7.5 hi/shadow recovery
     // → 8 saturation → 9 vibrance → 10 hue shift → 11 LUT → 12 curves.
-    diff.rgb = applyBlackWhitePoint(diff.rgb);
-    diff.rgb = applyBrightnessContrast(diff.rgb);
-    diff.rgb = applyShadowHighlightRecovery(diff.rgb);
-    diff.rgb = applySaturation(diff.rgb);
-    diff.rgb = applyVibrance(diff.rgb);
-    diff.rgb = applyHueShift(diff.rgb);
-    diff.rgb = applyLUTGrading(diff.rgb);
-    diff.rgb = applyChannelCurves(diff.rgb);
+    // All bypassed for S-Log3 capture: the recorder must receive raw log code
+    // values, so no display-space grade (especially the LUT) may touch them.
+    if (tonemap_type != 8)
+    {
+        diff.rgb = applyBlackWhitePoint(diff.rgb);
+        diff.rgb = applyBrightnessContrast(diff.rgb);
+        diff.rgb = applyShadowHighlightRecovery(diff.rgb);
+        diff.rgb = applySaturation(diff.rgb);
+        diff.rgb = applyVibrance(diff.rgb);
+        diff.rgb = applyHueShift(diff.rgb);
+        diff.rgb = applyLUTGrading(diff.rgb);
+        diff.rgb = applyChannelCurves(diff.rgb);
+    }
 #endif
 
     diff.rgb = clamp(diff.rgb, vec3(0.0), vec3(1.0)); // We should always be 0-1 past this point

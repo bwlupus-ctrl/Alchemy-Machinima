@@ -46,6 +46,13 @@ uniform int cube_snapshot;
 
 uniform float sky_hdr_scale;
 
+// [Cine Haze] Cinematic Depth Atmosphere layer (windlight/cineHazeF.glsl).
+// Uniform-gated: with cine_haze_active == 0 this pass is byte-identical to before.
+uniform int cine_haze_active;
+uniform int cine_haze_debug;
+void cineHazeDeferred(vec3 pos_eye, inout vec3 additive_linear, inout float atten);
+vec3 cineHazeDebugColor(vec3 pos_eye, bool is_sky);
+
 void main()
 {
     vec2  tc           = vary_fragcoord.xy;
@@ -79,6 +86,12 @@ void main()
     if (depth >= 1.0)
     {
         //should only be true of sky, clouds, sun/moon, and stars
+        if (cine_haze_active != 0 && cine_haze_debug != 0)
+        {
+            // developer view: show the sky exclusion instead of discarding
+            frag_color = vec4(cineHazeDebugColor(pos.xyz, true), 0.0);
+            return;
+        }
         discard;
     }
 
@@ -89,6 +102,19 @@ void main()
         alpha = atten.r;
         color = srgb_to_linear(additive*2.0);
         color *= sky_hdr_scale;
+
+        // [Cine Haze] compose the artist layer on top of the WindLight aerial
+        // perspective inside the same blend (see cineHazeDeferred for the algebra).
+        if (cine_haze_active != 0)
+        {
+            if (cine_haze_debug != 0)
+            {
+                // alpha 0 => dst * 0 + debug colour: replaces the pixel
+                frag_color = vec4(cineHazeDebugColor(pos.xyz, false), 0.0);
+                return;
+            }
+            cineHazeDeferred(pos.xyz, color, alpha);
+        }
     }
     else
     {

@@ -246,6 +246,7 @@ LightBase cleanLight(const LightBase& input, F32 min_ev = MIN_EV)
     std::memset(&output, 0, sizeof(output));
     output.mYawDeg = wrap180(finiteOr(input.mYawDeg, 0.f));
     output.mPitchDeg = clampPitch(input.mPitchDeg);
+    output.mOffsetZ = std::clamp(finiteOr(input.mOffsetZ, 0.f), -10.f, 10.f);
     output.mProfile = std::clamp(input.mProfile, 0, PROFILE_COUNT - 1);
     output.mEV = std::clamp(finiteOr(input.mEV, 0.f), min_ev, MAX_EV);
     output.mBeam = std::clamp(input.mBeam, 0, BEAM_COUNT - 1);
@@ -412,6 +413,7 @@ void copyCleanLights(const LightBase input[LIGHT_COUNT],
         const LightBase safe = cleanLight(input[i]);
         output[i].mYawDeg = safe.mYawDeg;
         output[i].mPitchDeg = safe.mPitchDeg;
+        output[i].mOffsetZ = safe.mOffsetZ;
         output[i].mProfile = safe.mProfile;
         output[i].mEV = safe.mEV;
         output[i].mBeam = safe.mBeam;
@@ -1056,6 +1058,10 @@ void computeLive(const Setup& setup, const Transforms& transforms,
             : wrap180(oriented);
         out[i].mPitchDeg = clampPitch(
             base.mPitchDeg + safe_transforms.mPitchDeg);
+        // A raw-metres world height nudge, not an angle: it is carried
+        // straight through, untouched by the rig-wide yaw/pitch/mirror
+        // transform (matching mEV/mProfile's simple pass-through below).
+        out[i].mOffsetZ = base.mOffsetZ;
         out[i].mProfile = base.mProfile;
         out[i].mEV = base.mEV;
         out[i].mBeam = base.mBeam;
@@ -1105,6 +1111,8 @@ LightBase blendLight(const LightBase& start, const LightBase& target,
         safe_start.mYawDeg + delta_yaw * eased);
     output.mPitchDeg = safe_start.mPitchDeg +
         (safe_target.mPitchDeg - safe_start.mPitchDeg) * eased;
+    output.mOffsetZ = safe_start.mOffsetZ +
+        (safe_target.mOffsetZ - safe_start.mOffsetZ) * eased;
     output.mProfile = eased > 0.5f
         ? safe_target.mProfile : safe_start.mProfile;
     output.mEV = safe_start.mEV +
@@ -1601,7 +1609,11 @@ void render(F32 radius, const LightBase live[LIGHT_COUNT],
         const F32 cos_pitch = std::cos(pitch);
         const F32 off_x = effective_radius * cos_pitch * std::cos(yaw);
         const F32 off_y = effective_radius * cos_pitch * std::sin(yaw);
-        const F32 off_z = effective_radius * std::sin(pitch);
+        // mOffsetZ is a raw-metres world height nudge (0.5 == half a metre
+        // up), so it is added AFTER effective_radius has already absorbed
+        // subject_scale -- a moved light stays a predictable, subject-size-
+        // independent distance above/below its yaw/pitch-derived position.
+        const F32 off_z = effective_radius * std::sin(pitch) + light.mOffsetZ;
         const F32 total_ev = light.mEV + safe_globals.mMasterEV + distance_ev;
         const F32 pre_headroom = std::exp2(
             std::clamp(total_ev, -64.f, 64.f));
@@ -1667,6 +1679,15 @@ void render(F32 radius, const LightBase live[LIGHT_COUNT],
         projector.mOffX = off_x;
         projector.mOffY = off_y;
         projector.mOffZ = off_z;
+        // NOTE: kept as division by effective_radius (unchanged) rather than
+        // the offset vector's true length, matching off_x/off_y and the
+        // pre-existing byte-exact golden-frame test at mOffsetZ == 0. With a
+        // non-zero mOffsetZ this triple is therefore no longer exactly unit
+        // length. In practice this is harmless: the caller (applyFrame) only
+        // ever falls back to it when the light's true position coincides
+        // with the aim centre, and otherwise re-derives aim geometrically
+        // from the real (offset-inclusive) rendered position. Flagged for
+        // review rather than "fixed" to avoid perturbing that golden test.
         projector.mAimX = -off_x / effective_radius;
         projector.mAimY = -off_y / effective_radius;
         projector.mAimZ = -off_z / effective_radius;
@@ -1695,7 +1716,9 @@ void render(F32 radius, const LightBase live[LIGHT_COUNT],
         EmitterState& omni = out.mOmni[i];
         omni.mOffX = effective_radius * omni_cos * std::cos(yaw);
         omni.mOffY = effective_radius * omni_cos * std::sin(yaw);
-        omni.mOffZ = effective_radius * std::sin(omni_pitch);
+        // Same physical light as the projector above: its bounce/omni proxy
+        // follows the same raw-metres height nudge.
+        omni.mOffZ = effective_radius * std::sin(omni_pitch) + light.mOffsetZ;
         omni.mAimZ = -1.f;
         omni.mSR = rgb[0];
         omni.mSG = rgb[1];

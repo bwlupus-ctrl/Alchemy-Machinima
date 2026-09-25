@@ -2093,34 +2093,47 @@ void ALPanelGhostStudio::onClickAnimResume()
 
 void ALPanelGhostStudio::onDriveModeCommit()
 {
-    ALGhostStudio::Instance* inst =
-        ALGhostStudio::instance().getInstance(selectedInstance());
-    if (!inst || inst->mKind != ALGhostStudio::BACKING_ENTITY_CLONE)
-    {
-        return;
-    }
+    // A RIGID group is one authoring unit: a drive-mode change (this is the
+    // "Mirror the actor" pose control) must reach every member, not just the
+    // list row's representative. selectedInstance() collapses a selected
+    // group header down to its FIRST member only, which used to leave every
+    // other ghost in the group on its previous drive mode. selectedInstances()
+    // expands a selected group header to its full membership -- the same
+    // pattern sibling commit handlers (onLoopModeCommit, onStyleCommit, ...)
+    // already use.
     const ALGhostStudio::EDriveMode mode =
         (ALGhostStudio::EDriveMode)mDriveModeCombo->getValue().asInteger();
     LLUUID anim(mDirectedAnimEdit->getText());
-    ALGhostStudio::instance().setInstanceDriveMode(inst->mId, mode, anim);
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    for (const LLUUID& id : selectedInstances())
+    {
+        const ALGhostStudio::Instance* inst = studio.getInstance(id);
+        if (inst && inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+        {
+            studio.setInstanceDriveMode(id, mode, anim);
+        }
+    }
 }
 
 void ALPanelGhostStudio::onDirectedAnimCommit()
 {
-    ALGhostStudio::Instance* inst =
-        ALGhostStudio::instance().getInstance(selectedInstance());
-    if (!inst || inst->mKind != ALGhostStudio::BACKING_ENTITY_CLONE ||
-        inst->mDriveMode != ALGhostStudio::DRIVE_DIRECTED)
-    {
-        return;
-    }
+    // See onDriveModeCommit(): apply to every member of a selected group, not
+    // just the representative.
     LLUUID anim(mDirectedAnimEdit->getText());
     if (anim.isNull())
     {
         return;
     }
-    ALGhostStudio::instance().setInstanceDriveMode(
-        inst->mId, ALGhostStudio::DRIVE_DIRECTED, anim);
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    for (const LLUUID& id : selectedInstances())
+    {
+        const ALGhostStudio::Instance* inst = studio.getInstance(id);
+        if (inst && inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE &&
+            inst->mDriveMode == ALGhostStudio::DRIVE_DIRECTED)
+        {
+            studio.setInstanceDriveMode(id, ALGhostStudio::DRIVE_DIRECTED, anim);
+        }
+    }
 }
 
 void ALPanelGhostStudio::onAnimationLibraryCommit()
@@ -2608,11 +2621,14 @@ void ALPanelGhostStudio::onEffectFpsCommit()
 
 void ALPanelGhostStudio::onEntityLookCommit()
 {
-    if (ALGhostStudio::Instance* inst =
-            ALGhostStudio::instance().getInstance(selectedInstance()))
+    // See onDriveModeCommit(): apply to every member of a selected group, not
+    // just the representative selectedInstance() would collapse to.
+    const ALGhostStudio::EGhostLook look =
+        (ALGhostStudio::EGhostLook)mEntityLookCombo->getValue().asInteger();
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    for (const LLUUID& id : selectedInstances())
     {
-        ALGhostStudio::instance().setInstanceLook(
-            inst->mId, (ALGhostStudio::EGhostLook)mEntityLookCombo->getValue().asInteger());
+        studio.setInstanceLook(id, look);
     }
 }
 

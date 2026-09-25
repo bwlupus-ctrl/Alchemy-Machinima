@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
 <floater
-  height="612"
+  height="672"
   layout="topleft"
   name="prefs_graphics_advanced"
   help_topic="Preferences_Graphics_Advanced"
@@ -1170,6 +1170,10 @@
        label="AMD LPM"
        name="7"
        value="7"/>
+      <combo_box.item
+       label="S-Log3 Capture"
+       name="8"
+       value="8"/>
   </combo_box>
   <slider
    control_name="RenderTonemapMix"
@@ -1196,7 +1200,7 @@
   <view_border
     bevel_style="in"
     follows="left|right|bottom"
-    height="70"
+    height="128"
     layout="topleft"
     left="20"
     name="vram_status_border"
@@ -1219,7 +1223,7 @@
     type="string"
     length="1"
     follows="left|right|bottom"
-    height="40"
+    height="58"
     layout="topleft"
     left="32"
     name="VRAMStatus"
@@ -1228,6 +1232,18 @@
     word_wrap="true">
       Mode: Auto | Requested: Auto | Configured: 0 MB | Effective: 0 MB | State: Normal
   </text>
+  <check_box
+    control_name="RenderVRAMGovernorEnabled"
+    follows="left|right|bottom"
+    height="20"
+    initial_value="false"
+    label="Enable VRAM governor (cap enforcement)"
+    layout="topleft"
+    left="32"
+    name="VRAMGovernorEnabled"
+    top="580"
+    tool_tip="Off (default): the viewer's original discard-bias memory management runs unchanged - full quality, no VRAM cap enforcement, even during capture. On: the adaptive VRAM budget governor above enforces the cap and only pins full quality during capture while VRAM pressure is Normal."
+    width="500" />
 
 	<view_border
       bevel_style="in"
@@ -1235,7 +1251,7 @@
       layout="topleft"
       left="13"
       name="horiz_border"
-      top="556"
+      top="614"
       width="799"/>
   <button
     follows="top|left"

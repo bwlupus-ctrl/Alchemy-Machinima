@@ -1487,7 +1487,8 @@ void ALGhostStudio::updateLookAt()
         // Turn owns the body when it is armed. Both write mRotation, so running
         // keep-facing as well would just be overwritten by stepTurn a moment
         // later -- worse, it would fight it every frame.
-        if (inst.mKeepFacing && inst.mTurnMode == TURN_MODE_OFF)
+        if (inst.mKeepFacing && inst.mTurnMode == TURN_MODE_OFF &&
+            !trueMirrorOwnsFacing(inst))
         {
             if (inst.mGroupId.notNull() &&
                 !tracking_groups.insert(inst.mGroupId).second) continue;
@@ -1730,6 +1731,11 @@ void ALGhostStudio::updatePerFrame()
     std::set<LLUUID> dynamic_facing_groups;
     for (Instance& inst : mInstances)
     {
+        // [TrueMirror] the stamped source root owns this clone's facing.
+        if (trueMirrorOwnsFacing(inst))
+        {
+            continue;
+        }
         if (inst.mCrowdFacing == FACING_TRACK_SUBJECT)
         {
             LLVector3d target;
@@ -1803,7 +1809,8 @@ void ALGhostStudio::updatePerFrame()
     for (const Instance& inst : mInstances)
     {
         if (inst.mKeepFacing && inst.mMotion != MOTION_SPIN
-            && inst.mTurnMode == TURN_MODE_OFF)
+            && inst.mTurnMode == TURN_MODE_OFF
+            && !trueMirrorOwnsFacing(inst))
         {
             if (inst.mGroupId.notNull() &&
                 !tracking_groups.insert(inst.mGroupId).second) continue;
@@ -1815,6 +1822,46 @@ void ALGhostStudio::updatePerFrame()
         faceInstance(id);
     }
     stepAllTurns();
+}
+
+bool ALGhostStudio::trueMirrorOwnsFacing(const Instance& inst) const
+{
+    static LLCachedControl<bool> copy_facing(
+        gSavedSettings, "GhostTrueMirrorCopyFacing", true);
+    return inst.mKind == BACKING_ENTITY_CLONE &&
+           inst.mDriveMode == DRIVE_TRUE_MIRROR && copy_facing;
+}
+
+void ALGhostStudio::updatePostObjectList()
+{
+    assert_main_thread();
+    // Hook point: called from LLAppViewer::idle() immediately after
+    // gObjectList.update(gAgent). By then every avatar -- source and clone
+    // alike -- has run LLVOAvatar::updateCharacter() for this frame
+    // (updateMotions -> Pose Polish -> Director/ActorMover gaze), so the
+    // source's joints hold its FINAL pose and nothing else writes the clone's
+    // joints before the render passes consume them (system-mesh reskin,
+    // rigged matrix palettes and attachment drawable moves all read the joint
+    // state later in the frame). mActiveObjects is swap-removed on
+    // deactivation, so a same-frame copy from inside the clone's own
+    // idleUpdate() could not guarantee source-before-clone ordering; this
+    // post-pass does, with zero frame lag.
+    //
+    // The ghost self-gates on ITS OWN drive mode, not the instance's: the
+    // Director anim switcher can temporarily re-drive a ghost (DIRECTED /
+    // FROZEN) without touching the Studio model, and must not be stamped over.
+    for (const Instance& inst : mInstances)
+    {
+        if (inst.mKind != BACKING_ENTITY_CLONE ||
+            inst.mDriveMode != DRIVE_TRUE_MIRROR)
+        {
+            continue;
+        }
+        if (LLGhostAvatar* ghost = resolveEntityClone(inst.mId))
+        {
+            ghost->applyTrueMirrorStamp();
+        }
+    }
 }
 
 void ALGhostStudio::stepAllTurns()
@@ -1836,7 +1883,8 @@ void ALGhostStudio::stepAllTurns()
     std::set<LLUUID> turning_groups;
     for (const Instance& inst : mInstances)
     {
-        if (inst.mTurnMode != TURN_MODE_OFF && inst.mMotion != MOTION_SPIN)
+        if (inst.mTurnMode != TURN_MODE_OFF && inst.mMotion != MOTION_SPIN
+            && !trueMirrorOwnsFacing(inst))
         {
             if (inst.mGroupId.notNull() &&
                 !turning_groups.insert(inst.mGroupId).second) continue;

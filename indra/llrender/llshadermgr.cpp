@@ -318,6 +318,15 @@ bool LLShaderMgr::attachShaderFeatures(LLGLSLShader * shader)
         {
             return false;
         }
+
+        // [Cine Haze] shared transmittance / atmosphere-colour library.  Pure
+        // functions + uniforms (all uniform-gated), attached to exactly the set of
+        // programs that can call it: the deferred haze pass and every forward
+        // shader that links environment/waterFogF.glsl (hasAtmospherics).
+        if (!shader->attachFragmentObject("windlight/cineHazeF.glsl"))
+        {
+            return false;
+        }
     }
 
     if (features->isPBRTerrain)
@@ -1633,6 +1642,8 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("tonemap_params");
     mReservedUniforms.push_back("tonemap_amd");
     mReservedUniforms.push_back("tonemap_amd_shoulder");
+    mReservedUniforms.push_back("tonemap_khronos_params");
+    mReservedUniforms.push_back("tonemap_grade");
 
     // Alchemy Effects Stack
     mReservedUniforms.push_back("uFrameId");
@@ -1992,6 +2003,31 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("kal_look");
     mReservedUniforms.push_back("kal_cell");
     mReservedUniforms.push_back("kal_cell2");
+
+    // [RimGlow Phase 1] cross-pass scratch-texture samplers (see llshadermgr.h)
+    mReservedUniforms.push_back("rimRadHist");
+    mReservedUniforms.push_back("dsSrc");
+    mReservedUniforms.push_back("dsSrcDir");
+    mReservedUniforms.push_back("blurSrc");
+    mReservedUniforms.push_back("blurSrcDir");
+    mReservedUniforms.push_back("rimMask");
+    mReservedUniforms.push_back("rimSubj");
+    mReservedUniforms.push_back("rimWrap");
+    mReservedUniforms.push_back("rimGlow");
+    mReservedUniforms.push_back("rimGlowDir");
+
+    // [Cine Haze] Cinematic Depth Atmosphere (lockstep with the enum block
+    // appended in llshadermgr.h)
+    mReservedUniforms.push_back("cine_haze_active");
+    mReservedUniforms.push_back("cine_haze_params");
+    mReservedUniforms.push_back("cine_haze_height");
+    mReservedUniforms.push_back("cine_haze_up");
+    mReservedUniforms.push_back("cine_haze_color");
+    mReservedUniforms.push_back("cine_haze_color_mode");
+    mReservedUniforms.push_back("cine_haze_sun");
+    mReservedUniforms.push_back("cine_haze_debug");
+    mReservedUniforms.push_back("cine_haze_additive");
+
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 
     std::set<std::string> dupe_check;
