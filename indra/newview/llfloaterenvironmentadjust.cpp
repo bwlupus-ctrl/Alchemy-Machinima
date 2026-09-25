@@ -157,6 +157,35 @@ bool LLFloaterEnvironmentAdjust::postBuild()
 
     getChild<LLUICtrl>(FIELD_REFLECTION_PROBE_AMBIANCE)->setCommitCallback([this](LLUICtrl*, const LLSD&) { onReflectionProbeAmbianceChanged(); });
 
+    // [EnvIntensity] Light Intensity strip (lp_env_intensity). The sliders and
+    // the Auto exposure checkbox bind to viewer settings via control_name in the
+    // XML; only the reset-to-0-EV buttons need code. Viewer-side multipliers,
+    // never written into the sky asset (mLiveSky is untouched).
+    if (LLUICtrl* sun_reset = findChild<LLUICtrl>("env_sun_ev_reset"))
+    {
+        sun_reset->setCommitCallback([](LLUICtrl*, const LLSD&)
+        {
+            if (auto ctrl = gSavedSettings.getControl("AlchemyEnvSunEV")) { ctrl->resetToDefault(true); }
+        });
+    }
+    if (LLUICtrl* gi_reset = findChild<LLUICtrl>("env_gi_ev_reset"))
+    {
+        gi_reset->setCommitCallback([](LLUICtrl*, const LLSD&)
+        {
+            if (auto ctrl = gSavedSettings.getControl("AlchemyEnvSkyGIEV")) { ctrl->resetToDefault(true); }
+        });
+    }
+    // [EnvIntensity] The classic/legacy note (updateGammaLabel) depends on
+    // RenderSkyAutoAdjustLegacy, a viewer setting the environment change path
+    // never signals, so listen to it directly. scoped_connection member:
+    // disconnected automatically when the floater is destroyed. The note text
+    // does not depend on the EV values themselves, so no listener on those.
+    if (auto auto_adjust_ctrl = gSavedSettings.getControl("RenderSkyAutoAdjustLegacy"))
+    {
+        mEnvIntensityAutoAdjustConn = auto_adjust_ctrl->getSignal()->connect(
+            [this](LLControlVariable*, const LLSD&, const LLSD&) { updateGammaLabel(); });
+    }
+
     // [BDMerge B13] BD - Windlight Stuff: preset combo, save/delete/import,
     // cloud scroll locks. All the widgets live in a hidden bottom strip
     // (lp_bdmerge, visible="false"); when the gate is off nothing below is
@@ -602,6 +631,32 @@ void LLFloaterEnvironmentAdjust::updateGammaLabel()
     {
         childSetValue("scene_gamma_label", getString("brightness_string"));
         getChild<LLUICtrl>(FIELD_SKY_SCENE_GAMMA)->setToolTip(std::string());
+    }
+
+    // [EnvIntensity] Two sky states make the Light Intensity sliders (partly)
+    // inert, mirroring LLSettingsVOSky::applySpecial:
+    //  - classic sky (pre-PBR shading: a legacy sky with RenderSkyAutoAdjustLegacy
+    //    off): both EV factors are inactive (1.0);
+    //  - legacy-gamma sky (probe ambiance == 0, no tonemapper): the Sun / Moon
+    //    boost is capped at 0 EV.
+    // Surface that instead of leaving dead sliders. Runs from refresh() (open +
+    // every environment update), from the probe-ambiance slider, and from the
+    // RenderSkyAutoAdjustLegacy change signal connected in postBuild.
+    if (LLUICtrl* note = findChild<LLUICtrl>("env_legacy_sun_note"))
+    {
+        const bool classic_sky  = mLiveSky->canAutoAdjust() && !should_auto_adjust();
+        const bool legacy_gamma = (ambiance == 0.f);
+        if (classic_sky)
+        {
+            note->setValue(getString("env_intensity_classic_note"));
+            note->setToolTip(getString("env_intensity_classic_tooltip"));
+        }
+        else if (legacy_gamma)
+        {
+            note->setValue(getString("env_intensity_legacy_note"));
+            note->setToolTip(getString("env_intensity_legacy_tooltip"));
+        }
+        note->setVisible(classic_sky || legacy_gamma);
     }
 }
 

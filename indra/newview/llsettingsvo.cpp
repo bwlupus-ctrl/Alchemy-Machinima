@@ -921,10 +921,16 @@ void LLSettingsVOSky::applySpecial(void *ptarget, bool force)
     static LLCachedControl<F32> auto_adjust_blue_horizon_scale(gSavedSettings, "RenderSkyAutoAdjustBlueHorizonScale", 1.f);
     static LLCachedControl<F32> auto_adjust_blue_density_scale(gSavedSettings, "RenderSkyAutoAdjustBlueDensityScale", 1.f);
     static LLCachedControl<F32> auto_adjust_sun_color_scale(gSavedSettings, "RenderSkyAutoAdjustSunColorScale", 1.f);
-    static LLCachedControl<F32> sunlight_scale(gSavedSettings, "RenderSkySunlightScale", 1.5f);
-    static LLCachedControl<F32> sunlight_hdr_scale(gSavedSettings, "RenderHDRSkySunlightScale", 1.5f);
-    static LLCachedControl<F32> ambient_scale(gSavedSettings, "RenderSkyAmbientScale", 1.5f);
+    // [EnvIntensity] fallbacks aligned with settings.xml (all 1.0; the old 1.5
+    // fallbacks were unreachable but misleading).
+    static LLCachedControl<F32> sunlight_scale(gSavedSettings, "RenderSkySunlightScale", 1.0f);
+    static LLCachedControl<F32> sunlight_hdr_scale(gSavedSettings, "RenderHDRSkySunlightScale", 1.0f);
+    static LLCachedControl<F32> ambient_scale(gSavedSettings, "RenderSkyAmbientScale", 1.0f);
     static LLCachedControl<F32> tonemap_mix_setting(gSavedSettings, "RenderTonemapMix", 1.f);
+    // [EnvIntensity] viewer-side Light Intensity (Personal Lighting floater).
+    // Stops, 0 = stock. Never written into the sky asset.
+    static LLCachedControl<F32> env_sun_ev(gSavedSettings, "AlchemyEnvSunEV", 0.f);
+    static LLCachedControl<F32> env_gi_ev(gSavedSettings, "AlchemyEnvSkyGIEV", 0.f);
 
     // sky is a "classic" sky following pre SL 7.0 shading
     bool classic_mode = psky->canAutoAdjust() && !should_auto_adjust();
@@ -934,8 +940,52 @@ void LLSettingsVOSky::applySpecial(void *ptarget, bool force)
         psky->setTonemapMix(tonemap_mix_setting);
     }
 
-    shader->uniform1f(LLShaderMgr::SKY_SUNLIGHT_SCALE, hdr ? sunlight_hdr_scale : sunlight_scale);
-    shader->uniform1f(LLShaderMgr::SKY_AMBIENT_SCALE, ambient_scale);
+    // [EnvIntensity] Light Intensity EV factors. exp2f(0) == 1.0 exactly, so
+    // 0 EV is bit-identical to stock. They are uploaded as their OWN uniforms
+    // (sky_sun_ev_scale / sky_gi_scale) and applied in linear light by
+    // atmosphericsFuncs.glsl (calcAtmosphericVarsLinear), so the pre-PBR
+    // compatibility scales below keep their stock semantics. SUNLIGHT_COLOR is
+    // deliberately NOT scaled (sky dome / clouds / volumetrics keep stock
+    // levels and atmosphericsFuncs would otherwise apply the boost twice).
+    F32 env_sun_mul = exp2f(llclamp((F32)env_sun_ev, -4.f, 4.f));
+    F32 env_gi_mul  = exp2f(llclamp((F32)env_gi_ev, -4.f, 4.f));
+    // Classic skies (pre-PBR shading; only when RenderSkyAutoAdjustLegacy is
+    // off on a legacy sky) keep sunlit/amblit sRGB-encoded and every classic
+    // consumer (softenLightF / alphaF / materialF legacy branches, pbrBaseLight
+    // classic) sums sun and ambient in encoded space BEFORE decoding, so a
+    // linear EV factor cannot be applied correctly without rewriting the
+    // classic combination itself. The factors are therefore INACTIVE (1.0) in
+    // classic mode -- correct by construction -- and the Personal Lighting
+    // floater's note says so.
+    if (classic_mode)
+    {
+        env_sun_mul = 1.f;
+        env_gi_mul  = 1.f;
+    }
+    // Legacy-gamma skies (probe ambiance == 0) skip the tonemapper, so any sun
+    // boost above stock would hard-clip in legacyGamma(); allow darkening only.
+    if (psky->getReflectionProbeAmbiance(should_auto_adjust) == 0.f)
+    {
+        env_sun_mul = llmin(env_sun_mul, 1.f);
+    }
+    // Probe captures: the GI factor must be 1.0 for EVERY gCubeSnapshot pass,
+    // not just the irradiance pass. The irradiance pass bakes amblit into the
+    // irradiance maps; the radiance pass (ambscale 1) bakes GI-lit geometry
+    // into the radiance maps, which the irradiance pass then samples through
+    // reflective geometry (radscale 0.5, glossenv -> iblSpec) and convolves.
+    // Display-time tapIrradianceMap multiplies by sky_gi_scale on top, so any
+    // GI factor inside a capture is applied twice. Holding it at 1.0 for all
+    // captures applies it exactly once, at display. Accepted consequence:
+    // glossy reflections of indirect-lit geometry show stock GI. The sun
+    // factor stays active in captures: it scales the SOURCE light once, the
+    // bounce it produces is what the probes hold, and display time scales only
+    // the direct term, so no path applies it twice.
+    const F32 env_gi_mul_capture_safe = gCubeSnapshot ? 1.f : env_gi_mul;
+
+    shader->uniform1f(LLShaderMgr::SKY_SUNLIGHT_SCALE, hdr ? sunlight_hdr_scale : sunlight_scale); // compat only (stock)
+    shader->uniform1f(LLShaderMgr::SKY_AMBIENT_SCALE, ambient_scale);                                // compat only (stock)
+    shader->uniform1f(LLShaderMgr::SKY_SUN_EV_SCALE, env_sun_mul);                                   // [EnvIntensity]
+    shader->uniform1f(LLShaderMgr::SKY_GI_SCALE, env_gi_mul_capture_safe);                           // [EnvIntensity]
     shader->uniform1i(LLShaderMgr::CLASSIC_MODE, classic_mode);
 
     LLRender::sClassicMode = classic_mode;

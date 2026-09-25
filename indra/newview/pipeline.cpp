@@ -20889,13 +20889,25 @@ void LLPipeline::renderDeferredLighting()
             LL_PROFILE_GPU_ZONE("atmospherics");
             bindDeferredShader(soften_shader);
 
-            static LLCachedControl<F32> ssao_scale(gSavedSettings, "RenderSSAOIrradianceScale", 0.5f);
-            static LLCachedControl<F32> ssao_max(gSavedSettings, "RenderSSAOIrradianceMax", 0.25f);
+            // [EnvIntensity] fallbacks aligned with settings.xml (0.6 / 0.18).
+            static LLCachedControl<F32> ssao_scale(gSavedSettings, "RenderSSAOIrradianceScale", 0.6f);
+            static LLCachedControl<F32> ssao_max(gSavedSettings, "RenderSSAOIrradianceMax", 0.18f);
             static LLStaticHashedString ssao_scale_str("ssao_irradiance_scale");
             static LLStaticHashedString ssao_max_str("ssao_irradiance_max");
+            // [EnvIntensity] ssao_irradiance_max is an ABSOLUTE clamp on the
+            // occluded irradiance; scale it with the Sky/GI multiplier so raising
+            // GI does not darken occluded corners relative to open ones.
+            // exp2f(0) == 1.0 exactly -> 0 EV is bit-identical. No capture-pass
+            // gating is needed here: SSAO is disabled while gCubeSnapshot is set
+            // (RenderDeferredSSAO && !gCubeSnapshot gates above), so this clamp
+            // never reaches the probe irradiance/radiance captures.
+            // Inactive (1.0) in classic mode, mirroring LLSettingsVOSky::applySpecial
+            // (LLRender::sClassicMode is set there each frame).
+            static LLCachedControl<F32> env_gi_ev(gSavedSettings, "AlchemyEnvSkyGIEV", 0.f);
+            const F32 env_gi_mul = LLRender::sClassicMode ? 1.f : exp2f(llclamp((F32)env_gi_ev, -4.f, 4.f));
 
             soften_shader.uniform1f(ssao_scale_str, ssao_scale);
-            soften_shader.uniform1f(ssao_max_str, ssao_max);
+            soften_shader.uniform1f(ssao_max_str, ssao_max * env_gi_mul);
 
             LLEnvironment &environment = LLEnvironment::instance();
 

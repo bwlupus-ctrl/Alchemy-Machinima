@@ -117,6 +117,11 @@ private:
     LLSettingsSky::ptr_t        mLiveSky;
     LLSettingsWater::ptr_t      mLiveWater;
     LLEnvironment::connection_t mEventConnection;
+
+    // [EnvIntensity] RenderSkyAutoAdjustLegacy change -> updateGammaLabel(),
+    // so the Light Intensity classic/legacy note never goes stale. Scoped:
+    // disconnects automatically when the floater is destroyed.
+    boost::signals2::scoped_connection mEnvIntensityAutoAdjustConn;
 };
 
 #endif // LL_FLOATERFIXEDENVIRONMENT_H

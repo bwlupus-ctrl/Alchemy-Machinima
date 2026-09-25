@@ -42,6 +42,12 @@ uniform float sun_moon_glow_factor;
 uniform float sky_sunlight_scale;
 uniform float sky_ambient_scale;
 uniform int classic_mode;
+// [EnvIntensity] viewer-side Light Intensity EV factors (2^EV), kept separate
+// from the pre-PBR compatibility scales above so those keep their stock
+// semantics. Both are exactly 1.0 at 0 EV, 1.0 in classic mode, and
+// sky_gi_scale is 1.0 during every probe capture (see applySpecial).
+uniform float sky_sun_ev_scale;
+uniform float sky_gi_scale;
 
 float getAmbientClamp() { return 1.0f; }
 
@@ -203,4 +209,16 @@ void calcAtmosphericVarsLinear(vec3 inPositionEye, vec3 norm, vec3 light_dir, ou
     // (allows for mixing of light sources other than sunlight e.g. reflection probes)
     sunlit *= sky_sunlight_scale;
     amblit *= sky_ambient_scale;
+
+    // [EnvIntensity] Light Intensity EV factors act on LINEAR light, which is
+    // what sunlit/amblit are at this point on the PBR path. Classic mode keeps
+    // them sRGB-encoded and its consumers sum sun and ambient in encoded space
+    // before decoding, so no linear factor can be applied correctly here or
+    // there: the factors are INACTIVE in classic mode (the C++ side uploads
+    // 1.0 then as well). exp2(0) == 1.0, so 0 EV stays bit-identical.
+    if (classic_mode < 1)
+    {
+        sunlit *= sky_sun_ev_scale;
+        amblit *= sky_gi_scale;
+    }
 }

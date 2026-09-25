@@ -27,6 +27,10 @@
 
 uniform float reflection_probe_ambiance;
 
+// [EnvIntensity] viewer-side Sky/GI intensity (2^AlchemyEnvSkyGIEV); mirrors the
+// class3 probe-irradiance multiplier so probes-off behaves consistently.
+uniform float sky_gi_scale;
+
 uniform samplerCube environmentMap;
 
 uniform mat3 env_mat;
@@ -37,7 +41,7 @@ vec3 linear_to_srgb(vec3 c);
 void sampleReflectionProbes(inout vec3 ambenv, inout vec3 glossenv,
         vec2 tc, vec3 pos, vec3 norm, float glossiness, bool transparent, vec3 amblit_linear)
 {
-    ambenv = mix(ambenv, vec3(reflection_probe_ambiance * 0.25), reflection_probe_ambiance);
+    ambenv = mix(ambenv, vec3(reflection_probe_ambiance * 0.25 * sky_gi_scale), reflection_probe_ambiance); // [EnvIntensity]
 
     vec3 refnormpersp = normalize(reflect(pos.xyz, norm.xyz));
     vec3 env_vec = env_mat * refnormpersp;
@@ -59,7 +63,7 @@ vec4 sampleReflectionProbesDebug(vec3 pos)
 void sampleReflectionProbesLegacy(inout vec3 ambenv, inout vec3 glossenv, inout vec3 legacyenv,
         vec2 tc, vec3 pos, vec3 norm, float glossiness, float envIntensity, bool transparent, vec3 amblit_linear)
 {
-    ambenv = mix(ambenv, vec3(reflection_probe_ambiance * 0.25), reflection_probe_ambiance);
+    ambenv = mix(ambenv, vec3(reflection_probe_ambiance * 0.25 * sky_gi_scale), reflection_probe_ambiance); // [EnvIntensity]
 
     vec3 refnormpersp = normalize(reflect(pos.xyz, norm.xyz));
     vec3 env_vec = env_mat * refnormpersp;

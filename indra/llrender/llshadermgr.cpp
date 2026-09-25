@@ -1377,6 +1377,8 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("sky_hdr_scale");
     mReservedUniforms.push_back("sky_sunlight_scale");
     mReservedUniforms.push_back("sky_ambient_scale");
+    mReservedUniforms.push_back("sky_gi_scale");     // [EnvIntensity] keep in lockstep with LLShaderMgr::SKY_GI_SCALE
+    mReservedUniforms.push_back("sky_sun_ev_scale"); // [EnvIntensity] keep in lockstep with LLShaderMgr::SKY_SUN_EV_SCALE
     mReservedUniforms.push_back("classic_mode");
     mReservedUniforms.push_back("blue_horizon");
     mReservedUniforms.push_back("blue_density");

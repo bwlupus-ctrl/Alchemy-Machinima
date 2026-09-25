@@ -125,6 +125,8 @@ public:
         SKY_HDR_SCALE,                      //  "sky_hdr_scale"
         SKY_SUNLIGHT_SCALE,                 //  "sky_sunlight_scale"
         SKY_AMBIENT_SCALE,                  //  "sky_ambient_scale"
+        SKY_GI_SCALE,                       //  "sky_gi_scale"          [EnvIntensity] Sky/GI EV factor (2^AlchemyEnvSkyGIEV): probe irradiance + amblit; 1.0 = stock, 1.0 in classic mode and during every probe capture
+        SKY_SUN_EV_SCALE,                   //  "sky_sun_ev_scale"      [EnvIntensity] Sun/Moon EV factor (2^AlchemyEnvSunEV) applied in linear light; 1.0 = stock, 1.0 in classic mode
         CLASSIC_MODE,                       //  "classic_mode"
         BLUE_HORIZON,                       //  "blue_horizon"
         BLUE_DENSITY,                       //  "blue_density"

@@ -4072,5 +4072,65 @@
             <key>Value</key>
             <integer>0</integer>
         </map>
+        <!-- [EnvIntensity] viewer-side Light Intensity (Personal Lighting floater).
+             Multipliers in stops on top of the EEP sky; 0 = stock, never written
+             into the sky asset. -->
+        <key>AlchemyEnvSunEV</key>
+        <map>
+            <key>Comment</key>
+            <string>Sun / Moon light intensity offset in stops (EV) applied on top of the current sky. 0 = stock look. Scales direct sun/moon light on surfaces only (not the sky dome, clouds or volumetric shafts). Capped at 0 on legacy (non-HDR) skies, which cannot tonemap; inactive on classic skies (legacy sky with RenderSkyAutoAdjustLegacy off). UI range -2..+3.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.0</real>
+        </map>
+        <key>AlchemyEnvSkyGIEV</key>
+        <map>
+            <key>Comment</key>
+            <string>Sky light / GI intensity offset in stops (EV) applied on top of the current sky. 0 = stock look. Scales reflection-probe irradiance, the EEP ambient fallback and the SSAO irradiance clamp together at display time only (held at 1.0 during probe captures, so glossy reflections of indirect-lit surfaces show the stock level). Inactive on classic skies (legacy sky with RenderSkyAutoAdjustLegacy off). UI range -2..+2.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.0</real>
+        </map>
+        <!-- [EnvIntensity] previously read via LLCachedControl with hard-coded
+             defaults but never declared; declared here with those same defaults. -->
+        <key>RenderDynamicExposureEnabled</key>
+        <map>
+            <key>Comment</key>
+            <string>Enable dynamic (auto) exposure adaptation. When off, exposure is fixed at 1.0 so the Light Intensity sliders act exactly. Default matches the previous hard-coded behavior (on).</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>Boolean</string>
+            <key>Value</key>
+            <integer>1</integer>
+        </map>
+        <key>RenderDynamicExposureSpeedError</key>
+        <map>
+            <key>Comment</key>
+            <string>Dynamic exposure adaptation: residual error fraction used to derive the adaptation speed. Previous hard-coded default 0.1.</string>
+            <key>Persist</key>
+            <integer>0</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.1</real>
+        </map>
+        <key>RenderDynamicExposureSpeedTarget</key>
+        <map>
+            <key>Comment</key>
+            <string>Dynamic exposure adaptation: seconds to reach the target within the error fraction. Previous hard-coded default 2.0.</string>
+            <key>Persist</key>
+            <integer>0</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>2.0</real>
+        </map>
     </map>
 </llsd>

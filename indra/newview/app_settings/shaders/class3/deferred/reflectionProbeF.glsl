@@ -39,6 +39,11 @@ uniform int cube_snapshot;
 uniform int prism_auxiliary;
 uniform float max_probe_lod;
 
+// [EnvIntensity] viewer-side Sky/GI intensity (2^AlchemyEnvSkyGIEV). Scales the
+// probe IRRADIANCE sample only; the amblit/probe blend weight is untouched.
+// Uploaded from LLSettingsVOSky::applySpecial; 1.0 is bit-identical to stock.
+uniform float sky_gi_scale;
+
 uniform bool transparent_surface;
 
 uniform int classic_mode;
@@ -575,7 +580,9 @@ vec3 tapIrradianceMap(vec3 pos, vec3 dir, out float w, out float dw, vec3 c, int
     v -= c;
     v = env_mat * v;
 
-    vec3 col = textureLod(irradianceProbes, vec4(v.xyz, refIndex[i].x), 0).rgb * refParams[i].x;
+    // [EnvIntensity] sky_gi_scale multiplies the irradiance term only; the mix
+    // weight below stays min(refParams.x, 1) so the ambiance blend is unchanged.
+    vec3 col = textureLod(irradianceProbes, vec4(v.xyz, refIndex[i].x), 0).rgb * refParams[i].x * sky_gi_scale;
 
     col = mix(amblit, col, min(refParams[i].x, 1.0));
 

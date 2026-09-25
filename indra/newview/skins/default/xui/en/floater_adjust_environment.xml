@@ -5,17 +5,22 @@
          save_rect="false"
          title="Personal Lighting"
          width="845"
-         height="280"
+         height="335"
          min_width="500"
-         min_height="275"
+         min_height="330"
          single_instance="true"
          can_resize="false">
   <string name="hdr_string">HDR Scale:</string>
   <string name="brightness_string">Brightness:</string>
   <string name="hdr_tooltip">Intensity of lighting effects such as realistically bright skies and dynamic exposure. 1.0 is the default, 0 is off, values between 0 and 1 are mixing Ambient with HDR.</string>
+  <!-- [EnvIntensity] Light Intensity note texts, selected in updateGammaLabel(). -->
+  <string name="env_intensity_classic_note">Classic sky: Light Intensity sliders are inactive</string>
+  <string name="env_intensity_classic_tooltip">This is a classic (pre-PBR) sky: a legacy sky with "auto-adjust legacy skies" (RenderSkyAutoAdjustLegacy) turned off. Classic shading mixes sun and ambient in gamma space, where a stop-based factor cannot be applied correctly, so both Light Intensity sliders are inactive on it. Turn RenderSkyAutoAdjustLegacy on, or use a sky with Reflection Probe Ambiance above 0, to use them.</string>
+  <string name="env_intensity_legacy_note">Legacy sky: Sun boost above 0 EV has no effect</string>
+  <string name="env_intensity_legacy_tooltip">This sky has no Reflection Probe Ambiance (legacy / non-HDR), so it skips the tonemapper: Sun / Moon boosts above 0 EV would clip and are capped at 0 EV. Negative values still work. Set Reflection Probe Ambiance above 0 to enable boosts.</string>
     <layout_stack name="outer_stack"
                   width="845"
-                  height="275"
+                  height="330"
                   follows="all"
                   animate="false"
                   top="0"
@@ -519,6 +524,155 @@
                                top_pad="8"/>
                 </layout_panel>
             </layout_stack>
+        </layout_panel>
+        <!-- [EnvIntensity] Light Intensity strip.
+             Layout: fixed 52 px panel. The layout stack charges 3 px of panel
+             spacing for every visible panel that is not the last one
+             (lllayoutstack.cpp:429/438), so this strip costs 52 + 3 = 55 px and
+             the floater height, min_height and outer_stack height above were
+             raised by exactly 55 (280->335, 275->330, 275->330). The stock
+             env_controls panel therefore keeps its original 272 px (330 - 3
+             spacing - 55) with lp_bdmerge hidden; when the BDMerge strip is
+             shown, postBuild still grows the floater by that strip's own 28 px
+             (its 3 px separator was already charged while hidden -> 272 again).
+             Behaviour: the sliders and the Auto exposure checkbox bind to viewer
+             settings through control_name (two-way: Debug Settings edits show
+             up live). The two reset buttons and the legacy-sky note are wired in
+             llfloaterenvironmentadjust.cpp. Viewer-side multipliers only: saved
+             with the viewer settings, persist across skies, never written into
+             the EEP asset. All controls use absolute left/top inside the panel.
+             Columns: header/auto-exposure 5..115, Sun 125..356, Sky 385..616,
+             legacy note 640..840, hint row at top 38 across 125..840. -->
+        <layout_panel name="lp_env_intensity"
+                      border="false"
+                      bevel_style="in"
+                      auto_resize="false"
+                      user_resize="false"
+                      height="52"
+                      min_height="52"
+                      visible="true">
+            <text follows="left|top"
+                  font="SansSerifBold"
+                  height="10"
+                  layout="topleft"
+                  left="5"
+                  top="5"
+                  name="env_intensity_label"
+                  tool_tip="Viewer-side light intensity offsets applied on top of the current sky. Saved with your viewer settings, persist across skies and are never written into the sky (EEP) asset."
+                  width="110">Light Intensity</text>
+            <check_box control_name="RenderDynamicExposureEnabled"
+                       follows="left|top"
+                       height="16"
+                       label="Auto exposure"
+                       layout="topleft"
+                       left="7"
+                       top="20"
+                       name="env_auto_exposure"
+                       tool_tip="Dynamic (auto) exposure. It partially compensates intensity changes (about 2 stops of range), so the sliders feel softer in dim scenes. Turn it off for a fixed exposure and exact slider control. S-Log3 capture already ignores it. Viewer setting, not saved into the sky."
+                       width="110"/>
+            <text follows="left|top"
+                  height="10"
+                  layout="topleft"
+                  left="125"
+                  top="5"
+                  name="env_sun_ev_label"
+                  tool_tip="Direct sun / moon light on surfaces, in stops (EV). 0.00 = the sky's stock level."
+                  width="150">Sun / Moon (EV):</text>
+            <slider control_name="AlchemyEnvSunEV"
+                    decimal_digits="2"
+                    follows="left|top"
+                    height="16"
+                    increment="0.05"
+                    initial_value="0"
+                    layout="topleft"
+                    left="125"
+                    top="19"
+                    min_val="-2"
+                    max_val="3"
+                    name="env_sun_ev"
+                    text_width="46"
+                    tool_tip="Sun / moon intensity offset in stops (2^EV: +1.00 doubles, -1.00 halves). 0.00 = the sky's stock level, range -2 to +3. Viewer-side: saved with your settings, persists across skies, never written into the sky (EEP). Scales direct light on surfaces only; the sun disc, sky dome, clouds and volumetric shafts keep their level. On legacy (non-HDR) skies boosts above 0 EV are capped (no tonemapper); darkening still works. Inactive on classic skies (legacy sky with auto-adjust off)."
+                    width="192"
+                    can_edit_text="true"/>
+            <text follows="left|top"
+                  height="10"
+                  layout="topleft"
+                  left="320"
+                  top="22"
+                  name="env_sun_ev_unit"
+                  width="18">EV</text>
+            <button follows="left|top"
+                    height="22"
+                    layout="topleft"
+                    left="338"
+                    top="16"
+                    name="env_sun_ev_reset"
+                    scale_image="true"
+                    image_overlay="Refresh_Off"
+                    image_overlay_alignment="center"
+                    tool_tip="Reset Sun / Moon to 0.00 EV (the sky's stock level)"
+                    width="18"/>
+            <text follows="left|top"
+                  height="10"
+                  layout="topleft"
+                  left="385"
+                  top="5"
+                  name="env_gi_ev_label"
+                  tool_tip="Sky light / indirect (reflection-probe GI) light on surfaces, in stops (EV). 0.00 = the sky's stock level."
+                  width="150">Sky light (GI) (EV):</text>
+            <slider control_name="AlchemyEnvSkyGIEV"
+                    decimal_digits="2"
+                    follows="left|top"
+                    height="16"
+                    increment="0.05"
+                    initial_value="0"
+                    layout="topleft"
+                    left="385"
+                    top="19"
+                    min_val="-2"
+                    max_val="2"
+                    name="env_gi_ev"
+                    text_width="46"
+                    tool_tip="Sky light / GI intensity offset in stops (2^EV: +1.00 doubles, -1.00 halves). 0.00 = the sky's stock level, range -2 to +2. Viewer-side: saved with your settings, persists across skies, never written into the sky (EEP). Scales reflection-probe irradiance and the sky ambient fallback together, so it works with probes on or off. The sky dome itself keeps its level; glossy reflections of indirect-lit surfaces show the stock level. Inactive on classic skies (legacy sky with auto-adjust off)."
+                    width="192"
+                    can_edit_text="true"/>
+            <text follows="left|top"
+                  height="10"
+                  layout="topleft"
+                  left="580"
+                  top="22"
+                  name="env_gi_ev_unit"
+                  width="18">EV</text>
+            <button follows="left|top"
+                    height="22"
+                    layout="topleft"
+                    left="598"
+                    top="16"
+                    name="env_gi_ev_reset"
+                    scale_image="true"
+                    image_overlay="Refresh_Off"
+                    image_overlay_alignment="center"
+                    tool_tip="Reset Sky light (GI) to 0.00 EV (the sky's stock level)"
+                    width="18"/>
+            <text follows="left|top"
+                  font="SansSerifSmall"
+                  height="10"
+                  layout="topleft"
+                  left="640"
+                  top="5"
+                  name="env_legacy_sun_note"
+                  visible="false"
+                  tool_tip="This sky has no Reflection Probe Ambiance (legacy / non-HDR), so it skips the tonemapper: Sun / Moon boosts above 0 EV would clip and are capped at 0 EV. Negative values still work. Set Reflection Probe Ambiance above 0 to enable boosts."
+                  width="200">Legacy sky: Sun boost above 0 EV has no effect</text>
+            <text follows="left|top"
+                  font="SansSerifSmall"
+                  height="10"
+                  layout="topleft"
+                  left="125"
+                  top="38"
+                  name="env_intensity_hint"
+                  tool_tip="Auto exposure adapts to scene brightness (about 2 stops of range) and so partially compensates the sliders; turn it off for exact control. Both sliders are viewer-side multipliers: not saved into the sky, and the sun disc / sky dome do not change with them."
+                  width="715">Auto exposure partially compensates (~2 stops): turn it off for exact control. Viewer-side only, not saved into the sky.</text>
         </layout_panel>
         <!-- [BDMerge B13] BD local Windlight presets strip: hidden by default,
              shown and wired only when BDMergeEnvLocalPresets is enabled
