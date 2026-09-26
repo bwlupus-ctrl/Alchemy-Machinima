@@ -34,7 +34,7 @@ struct Preset
     bool crOn;
     F32  crAngle, crW;
     S32  depthMode;
-    F32  metricThr, width, soft, far;
+    F32  metricThr, width, soft, farCutoff; // [RotoInk] not "far": Windows headers #define far
     S32  inkMode;
     F32  reach, opacity;
     S32  blend;
@@ -169,7 +169,7 @@ void ALRotoInk::applyPreset(const std::string& key)
     gSavedSettings.setF32("CineOutlineMetricThreshold", row->metricThr);
     gSavedSettings.setF32("CineOutlineWidth", row->width);
     gSavedSettings.setF32("CineOutlineSoftness", row->soft);
-    gSavedSettings.setF32("CineOutlineFarCutoff", row->far);
+    gSavedSettings.setF32("CineOutlineFarCutoff", row->farCutoff);
 
     // Colour mode / opacity / blend.
     gSavedSettings.setS32("CineOutlineInkColorMode", row->inkMode);
